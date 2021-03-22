@@ -20,33 +20,25 @@ Test Supplychain class.
 """
 
 import unittest
-import os
 import numpy as np
 
+from climada import CONFIG
 from climada.entity.exposures.base import Exposures
 from climada.entity import ImpactFuncSet, IFTropCyclone
 from climada.hazard.base import Hazard
 from climada.engine.supplychain import SupplyChain
-from climada.util.constants import SOURCE_DIR
 from climada.util.constants import EXP_DEMO_H5
 
-HAZ_DIR = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, 'hazard/test/data/')
-HAZ_TEST_MAT = os.path.join(HAZ_DIR, 'atl_prob_no_name.mat')
-
-TEST_DATA_DIR = os.path.join(SOURCE_DIR, 'engine', 'test', 'data')
-TEST_WIOD = 'WIOTtest_Nov16_ROW.xlsb'
-TEST_EXP = 'test_sup_exp.mat'
-TEST_HAZ = 'test_hazard'
-HAZ_DIR = os.path.join(SOURCE_DIR, 'hazard', 'test', 'data')
-HAZ_TEST_MAT = os.path.join(HAZ_DIR, 'atl_prob_no_name.mat')
+HAZ_TEST_MAT = CONFIG.hazard.test_data.dir().joinpath('atl_prob_no_name.mat')
+DIR_TEST_DATA = CONFIG.engine.test_data.dir()
 
 class TestSupplyChain(unittest.TestCase):
     """Testing the SupplyChain class."""
     def test_read_wiot(self):
         """Test reading of wiod table."""
         sup = SupplyChain()
-        sup.read_wiot(year = 'test', file_path=TEST_DATA_DIR, rows_range=(5,117),
-                      col_iso3=2, cols_data_range=(4,116), cols_sect_range=(1,61))
+        sup.read_wiot(year='test', file_path=DIR_TEST_DATA, user_data=True,
+                      rows_range=(5,117), col_iso3=2, cols_data_range=(4,116), cols_sect_range=(1,61))
 
         self.assertAlmostEqual(sup.mriot_data[0, 0], 12924.1797, places=3)
         self.assertAlmostEqual(sup.mriot_data[0, -1], 0, places=3)
@@ -69,8 +61,8 @@ class TestSupplyChain(unittest.TestCase):
         """Test running direct and indirect impact calculations."""
         
         sup = SupplyChain()
-        sup.read_wiot(year='test', file_path=TEST_DATA_DIR, rows_range=(5,117),
-                      col_iso3=2, cols_data_range=(4,116), cols_sect_range=(1,61))
+        sup.read_wiot(year='test', file_path=DIR_TEST_DATA, user_data=True,
+                      rows_range=(5,117), col_iso3=2, cols_data_range=(4,116), cols_sect_range=(1,61))
 
         # Tropical cyclone over Florida and Caribbean
         hazard = Hazard('TC')

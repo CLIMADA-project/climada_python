@@ -1,0 +1,11 @@
+tag_hazard,tag_exposure,tag_impact_func,unit,tot_value,aai_agg,event_id,event_name,event_date,event_frequency,at_event,eai_exp,exp_lat,exp_lon,exp_crs
+['TC'],['file_exp.p'],[''],USD,1000,1001,0,event_0,1.0,0.1,0,0,1.5,2.5,EPSG:4326
+['file_haz.p'],['descr exp'],[''],,,,1,event_1,1.0,0.1,50,100,1.5,2.5,
+['descr haz'],,,,,,2,event_2,1.0,0.1,100,200,1.5,2.5,
+,,,,,,3,event_3,1.0,0.1,150,300,1.5,2.5,
+,,,,,,4,event_4,1.0,0.1,200,400,1.5,2.5,
+,,,,,,,,,,,500,1.5,2.5,
+,,,,,,,,,,,600,1.5,2.5,
+,,,,,,,,,,,700,1.5,2.5,
+,,,,,,,,,,,800,1.5,2.5,
+,,,,,,,,,,,900,1.5,2.5,

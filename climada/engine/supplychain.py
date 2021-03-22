@@ -25,18 +25,17 @@ import os
 import logging
 import datetime as dt
 from tqdm import tqdm
+from pathlib import Path
 import numpy as np
 import pandas as pd
 from iso3166 import countries_by_alpha3
 from iso3166 import countries_by_numeric
 from climada.util.files_handler import download_file
 from climada.engine import Impact
-from climada.util.constants import DATA_DIR, SYSTEM_DIR
+from climada.util.constants import SYSTEM_DIR
 from climada.entity.exposures.base import Exposures
 
 LOGGER = logging.getLogger(__name__)
-
-SUP_DATA_DIR = os.path.join(DATA_DIR, 'supplychain')
 WIOD_FILE_LINK = 'http://www.wiod.org/protected3/data16/wiot_ROW/'
 
 class SupplyChain():
@@ -90,7 +89,6 @@ class SupplyChain():
                 used in calculation of indirect risk.
             risk_structure (np.array): 3-dim np.array containing for each year
                 the risk relations between all sector/country-pairs.
-            For further theoretical background, see documentation.
         """
     def __init__(self):
         """Initialization"""
@@ -103,8 +101,9 @@ class SupplyChain():
         self.n_sectors = 0
         self.mriot_type = 'None'
 
-    def read_wiot(self, year=2014, file_path=SYSTEM_DIR, rows_range=(5,2469),
-                  col_iso3=2, cols_data_range=(4,2468), cols_sect_range=(1,61)):
+    def read_wiot(self, year=2014, file_path=SYSTEM_DIR, user_data=False,
+                  rows_range=(5,2469), col_iso3=2, cols_data_range=(4,2468),
+                  cols_sect_range=(1,61)):
         """Read multi-regional input-output table of the WIOD project.
         See www.wiod.org and the following paper: Timmer, M. P., Dietzenbacher,
         E., Los, B., Stehrer, R. and de Vries, G. J. (2015), "An Illustrated
@@ -117,8 +116,11 @@ class SupplyChain():
         Parameters:
             year (int): year of wiot table. Valid years go from 2000 to 2014.
                         Default 2014.
-            file_path (str): path to the folder where the wiod table is stored or
-                             needs to be downloaded into.
+            file_path (str): path to the folder where the wiod table is stored.
+                            Deafult is SYSTEM_DIR. If data are not present, they
+                            will be downloaded in save_dir, i.e., ~/climada/data/results
+                            If user-defined, user_data must be set to True
+            user_data (bool): If user data are provided, Default False
             rows_range (tuple): start and end position of rows with data
             col_iso3 (int): pos of col with iso3 countries
             cols_data_range (tuple): start and end position of cols with data
@@ -128,14 +130,37 @@ class SupplyChain():
         """
 
         file_name = 'WIOT{}_Nov16_ROW.xlsb'.format(year)
-        if file_name not in os.listdir(file_path):
-            os.chdir(SYSTEM_DIR)
-            download_link = WIOD_FILE_LINK + file_name
-            download_file(download_link)
-            LOGGER.debug('Downloading WIOT table for year %s', year)
+        results_folder = Path(file_path).joinpath('results')
 
-        mriot = pd.read_excel(os.path.join(file_path, file_name),
-                              engine='pyxlsb')
+        if not user_data:
+            try:
+                # if results folder exists but file does not - > download file
+                if file_name not in os.listdir(results_folder):
+                    os.chdir(SYSTEM_DIR)
+                    download_link = WIOD_FILE_LINK + file_name
+                    download_file(download_link)
+                    LOGGER.debug('Downloading WIOT table for year %s', year)
+
+                    mriot = pd.read_excel(os.path.join(results_folder, file_name),
+                                  engine='pyxlsb')
+
+                # if folder and file exist -> load file
+                else:
+                    mriot = pd.read_excel(os.path.join(results_folder, file_name),
+                                  engine='pyxlsb')
+
+            # if folder does not exist -> create folder and download file
+            except FileNotFoundError:
+                os.chdir(SYSTEM_DIR)
+                download_link = WIOD_FILE_LINK + file_name
+                download_file(download_link)
+                LOGGER.debug('Downloading WIOT table for year %s', year)
+
+                mriot = pd.read_excel(os.path.join(results_folder, file_name),
+                                  engine='pyxlsb')
+        else:
+            mriot = pd.read_excel(os.path.join(file_path, file_name),
+                                  engine='pyxlsb')
 
         row_st,row_end=rows_range
         col_sect,row_sect_end=cols_sect_range
@@ -212,8 +237,8 @@ class SupplyChain():
         years = np.unique([date.year for date in dates])
 
         # Keep original order of countries
-        _, cntry_idx = np.unique(exposure.region_id, return_index=True)
-        unique_regid_same_order = exposure.region_id[np.sort(cntry_idx)]
+        _, cntry_idx = np.unique(exposure.gdf.region_id, return_index=True)
+        unique_regid_same_order = exposure.gdf.region_id[np.sort(cntry_idx)]
 
         n_years = len(years)
         n_subsecs = end_pos - init_pos
@@ -222,12 +247,12 @@ class SupplyChain():
 
         cntry_dir_imp = []
         for cntry in unique_regid_same_order:
-            cntyr_exp = Exposures(exposure[exposure.region_id == cntry])
+            cntyr_exp = Exposures(exposure.gdf[exposure.gdf.region_id == cntry])
             cntyr_exp.check()
 
             # Normalize exposure
-            total_ctry_value = cntyr_exp.loc[:, 'value'].sum()
-            cntyr_exp.loc[:, 'value'] = cntyr_exp.value.div(total_ctry_value)
+            total_ctry_value = cntyr_exp.gdf.loc[:, 'value'].sum()
+            cntyr_exp.gdf.loc[:, 'value'] = cntyr_exp.gdf.value.div(total_ctry_value)
 
             # Calc impact for country
             imp = Impact()
