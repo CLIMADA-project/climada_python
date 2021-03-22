@@ -50,12 +50,14 @@ class TestPlots(unittest.TestCase):
     
     def test_geo_scatter_categorical(self):
         """Plots ones with geo_scatteR_categorical"""
+        # test default with one plot
         values = np.array([1, 2.0, 1, 'a'])
         coord = np.array([[26, 0], [26, 1], [28, 0], [29, 1]])
         u_plot.geo_scatter_categorical(values, coord, 'value', 'test plot',
                         pop_name=True)
         plt.close()
 
+        #test multiple plots with non default kwargs
         values = np.array([[1, 2.0, 1, 'a'], [0, 0, 0, 0]])
         coord = np.array([[26, 0], [26, 1], [28, 0], [29, 1]])
         u_plot.geo_scatter_categorical(values, coord, 'value', 'test plot',
@@ -64,6 +66,15 @@ class TestPlots(unittest.TestCase):
                                   2.0: 'float',
                                   'a': 'string'},
                         pop_name=False, cmap='Set1')
+        plt.close()
+        
+        #test colormap warning
+        values = np.array([[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11],
+                           [12, 13, 14, 15]])
+        coord = np.array([[26, 0], [26, 1], [28, 0], [29, 1]])
+        u_plot.geo_scatter_categorical(values, coord, 'value', 'test plot',
+                        pop_name=False, cmap='Set1')
+        
         plt.close()
 
 # Execute Tests

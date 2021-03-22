@@ -432,8 +432,8 @@ def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
         cat_name = dict(zip(array_sub_unique, cat_name))
     cat_name = {str(key): value for key, value in cat_name.items()}
     if not isinstance(axes, np.ndarray):
-        axes = [axes]
-    for ax in axes:
+        axes = np.array([axes])
+    for ax in axes.ravel():
         cbar = ax.collections[-1].colorbar
         cbar.set_ticks(np.arange(array_sub_n))
         cbar.set_ticklabels([cat_name[str(val)] for val in array_sub_unique])
