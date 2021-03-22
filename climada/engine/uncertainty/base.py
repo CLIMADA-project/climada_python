@@ -245,19 +245,18 @@ class Uncertainty():
             raise ValueError("Parameter names from unc_vars do not "
                              "correspond to parameters names of sample")
         for metric, df_distr in self.metrics.items():
-            if df_distr.empty:
-                continue
-            check &= (len(df_distr) == self.n_samples)
-            if not check:
-                raise ValueError(f"Metric f{metric} has less values than the "
-                             "number of samples {self.n_samples}")
-            
-            if df_distr.isnull().values.any():
-                LOGGER.warning("At least one metric evaluated to Nan for " +
-                    "one cominbation of uncertainty parameters containend " +
-                    "in sample. Note that the sensitivity analysis will " +
-                    "then return Nan. " +
-                    "See https://github.com/SALib/SALib/issues/237")
+            if not df_distr.empty:
+                check &= (len(df_distr) == self.n_samples)
+                if not check:
+                    raise ValueError(f"Metric f{metric} has less values than"
+                             " the number of samples {self.n_samples}")
+                
+                if df_distr.isnull().values.any():
+                    LOGGER.warning("At least one metric evaluated to Nan for " 
+                        "one cominbation of uncertainty parameters containend " 
+                        "in sample. Note that the sensitivity analysis will " 
+                        "then return Nan. " 
+                        "See https://github.com/SALib/SALib/issues/237")
         return check
         
     
