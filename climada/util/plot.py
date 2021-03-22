@@ -401,13 +401,13 @@ def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
     array_sub_n = array_sub_unique.size
     
     #default qualitative cmap
-    CMAP = 'Dark2'
+    cmap_name = 'Dark2'
         
     if 'cmap' in kwargs:
-        CMAP = kwargs['cmap']
+        cmap_name = kwargs['cmap']
         del kwargs['cmap'] 
         
-    cmap = mpl.colors.ListedColormap(plt.get_cmap(CMAP).colors[:array_sub_n]) 
+    cmap = mpl.colors.ListedColormap(plt.get_cmap(cmap_name).colors[:array_sub_n]) 
     if array_sub_n > cmap.N:
         LOGGER.warning("More than %d categories cannot be plotted accurately "
                        "using the default colormap '%s'. You can manually "
