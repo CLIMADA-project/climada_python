@@ -317,10 +317,11 @@ class TCForecast(TCTracks):
         # TODO use drop_vars after upgrading xarray
         track = track.drop('ts_int')
 
-        track['radius_max_wind'] = np.full_like(track.time, np.nan,
-                                                dtype=float)
-        track['environmental_pressure'] = np.full_like(
-            track.time, DEF_ENV_PRESSURE, dtype=float
+        track['radius_max_wind'] = (('time'), np.full_like(
+            track.time, np.nan, dtype=float)
+        )
+        track['environmental_pressure'] = (('time'), np.full_like(
+            track.time, DEF_ENV_PRESSURE, dtype=float)
         )
 
         # according to specs always num-num-letter
