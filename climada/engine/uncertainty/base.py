@@ -89,7 +89,7 @@ class UncVar():
             Variable defined as a function of the uncertainty parameters
         distr_dict : dict
             Dictionary of the probability density distributions of the
-            uncertainty parameters, with keys the matching the keyword
+            uncertainty parameters, with keys matching the keyword
             arguments (i.e. uncertainty parameters) of the unc_var function.
             The distribution must be of type scipy.stats
             https://docs.scipy.org/doc/scipy/reference/stats.html
