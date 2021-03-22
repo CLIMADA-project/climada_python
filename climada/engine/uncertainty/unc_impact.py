@@ -112,7 +112,7 @@ class UncImpact(Uncertainty):
 
         """
 
-        if self.sample.empty:
+        if self.samples_df.empty:
             raise ValueError("No sample was found. Please create one first"
                              "using UncImpact.make_sample(N)")
 
@@ -124,7 +124,7 @@ class UncImpact(Uncertainty):
         self.calc_at_event = calc_at_event
         
         start = time.time()
-        one_sample = self.sample.iloc[0:1].iterrows()
+        one_sample = self.samples_df.iloc[0:1].iterrows()
         imp_metrics = map(self._map_impact_calc, one_sample)
         [aai_agg_list, freq_curve_list,
          eai_exp_list, at_event_list, tot_value_list] = list(zip(*imp_metrics))
@@ -137,11 +137,11 @@ class UncImpact(Uncertainty):
             LOGGER.info('Using %s CPUs.', pool.ncpus)
             chunksize = min(self.n_runs // pool.ncpus, 100)
             imp_metrics = pool.map(self._map_impact_calc,
-                                           self.samples.iterrows(),
+                                           self.samples_df.iterrows(),
                                            chunsize = chunksize)
 
         else:
-            imp_metrics = map(self._map_impact_calc, self.sample.iterrows())
+            imp_metrics = map(self._map_impact_calc, self.samples_df.iterrows())
         
         #Perform the actual computation
         with log_level(level='ERROR', name_prefix='climada'):

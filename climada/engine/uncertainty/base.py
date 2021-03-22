@@ -188,7 +188,7 @@ class Uncertainty():
 
     """
 
-    def __init__(self, unc_vars, sample=None, metrics=None,
+    def __init__(self, unc_vars, samples=None, metrics=None,
                  sensitivity=None):
         """
         Initialize Uncertainty
@@ -197,7 +197,7 @@ class Uncertainty():
         ----------
         unc_vars : dict
             keys are names and values are climade.engine.uncertainty.UncVar 
-        sample : pd.DataFrame, optional
+        samples : pd.DataFrame, optional
             DataFrame of sampled parameter values. Column names must be
             parameter names (all labels) from all unc_vars.
             The default is pd.DataFrame().
@@ -205,7 +205,8 @@ class Uncertainty():
             Dictionnary of the CLIMADA metrics (outputs from 
             Impact.calc() or CostBenefits.calcl()) for which the uncertainty
             distribution (and optionally the sensitivity) will be computed. 
-            For each sample, each metric must have a definite value.             
+            For each sample (row of samples), each metric must have a definite
+            value.             
             Metrics are named directly after their defining attributes:
                 Impact: ['aai_agg', 'freq_curve', 'eai_exp', 'at_event']
                 CostBenefits: ['tot_climate_risk', 'benefit', 'cost_ben_ratio',
@@ -220,7 +221,7 @@ class Uncertainty():
         """
     
         self.unc_vars = unc_vars if unc_vars else {}
-        self.sample = sample if sample is not None else pd.DataFrame(
+        self.samples_df = samples if samples is not None else pd.DataFrame(
             columns = self.param_labels)
         self.sampling_method = None
         self.metrics = metrics if metrics is not None else {}
@@ -239,7 +240,7 @@ class Uncertainty():
 
         """
         check = True
-        check &= (self.param_labels == self.sample.columns.to_list())
+        check &= (self.param_labels == self.samples_df.columns.to_list())
         if not check:
             raise ValueError("Parameter names from unc_vars do not "
                              "correspond to parameters names of sample")
@@ -272,8 +273,8 @@ class Uncertainty():
 
         """
 
-        if isinstance(self.sample, pd.DataFrame):
-            return self.sample.shape[0]
+        if isinstance(self.samples_df, pd.DataFrame):
+            return self.samples_df.shape[0]
         return 0
 
     @property
@@ -347,7 +348,7 @@ class Uncertainty():
             Optional keyword arguments of the chosen SALib sampling method.
 
         """
-        self.sample = sampling_method
+        self.samples_df = sampling_method
         uniform_base_sample = self._make_uniform_base_sample(N,
                                                              sampling_method,
                                                              sampling_kwargs)
@@ -356,7 +357,7 @@ class Uncertainty():
             df_samples[param] = df_samples[param].apply(
                 self.distr_dict[param].ppf
                 )
-        self.sample = df_samples
+        self.samples_df = df_samples
         LOGGER.info("Effective number of made samples: %d" %self.n_samples)
         return df_samples
 
@@ -477,7 +478,7 @@ class Uncertainty():
         #Certaint Salib method required model input (X) and output (Y), others
         #need only ouput (Y)
         salib_kwargs = method.analyze.__code__.co_varnames
-        X = self.sample.to_numpy() if 'X' in salib_kwargs else None
+        X = self.samples_df.to_numpy() if 'X' in salib_kwargs else None
 
         if method_kwargs is None: method_kwargs = {} 
         sensitivity_dict = {}
@@ -588,7 +589,7 @@ class Uncertainty():
 
         """
         
-        if self.sample.empty:
+        if self.samples_df.empty:
             raise ValueError("No uncertainty sample present."+
                     "Please make a sample first.")
 
@@ -599,7 +600,7 @@ class Uncertainty():
             if label is None:
                 ax.remove()
                 continue
-            self.sample[label].hist(ax=ax, bins=100) 
+            self.samples_df[label].hist(ax=ax, bins=100) 
             ax.set_title(label)
             ax.set_xlabel('value')
             ax.set_ylabel('Sample count')
