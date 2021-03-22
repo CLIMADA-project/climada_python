@@ -50,8 +50,8 @@ class UncVar():
             exp.set_country('CHE', exponent=[m, n])
             return exp
         distr_dict = {
-            m: sp.stats.randint(low=0, high=5),
-            n: sp.stats.randint(low=0, high=5)
+            'm': sp.stats.randint(low=0, high=5),
+            'n': sp.stats.randint(low=0, high=5)
             }
         unc_var_cat = UncVar(litpop_cat, distr_dict)
 
