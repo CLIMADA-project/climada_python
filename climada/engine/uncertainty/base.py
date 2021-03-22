@@ -202,12 +202,16 @@ class Uncertainty():
             parameter names (all labels) from all unc_vars.
             The default is pd.DataFrame().
         metrics : dict(), optional
-            Dictionnary of the CLIMADA metrics for which the sensitivity
-            will be computed. For each sample, each metric must have a
-            definite value.
-            Keys are metric names (e.g. 'aai_agg', 'freq_curve') and 
-            values are pd.DataFrame with values for each parameter sample
-            (one row per sample).
+            Dictionnary of the CLIMADA metrics (outputs from 
+            Impact.calc() or CostBenefits.calcl()) for which the uncertainty
+            distribution (and optionally the sensitivity) will be computed. 
+            For each sample, each metric must have a definite value.             
+            Metrics are named directly after their defining attributes:
+                Impact: ['aai_agg', 'freq_curve', 'eai_exp', 'at_event']
+                CostBenefits: ['tot_climate_risk', 'benefit', 'cost_ben_ratio',
+                               'imp_meas_present', 'imp_meas_future']
+            Keys are metric names and values are pd.DataFrame with values 
+            for each parameter sample (one row per sample).            
             The default is {}.
         sensitivity: dict(), optional
             Dictionnary of the sensitivity analysis for each uncertainty
