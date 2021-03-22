@@ -116,7 +116,7 @@ class UncVar():
         """
 
         nplots = len(self.distr_dict)
-        nrows, ncols = int(nplots / 3) + 1, min(nplots, 3)
+        nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
         fig, axis = plt.subplots(nrows=nrows, ncols=ncols, figsize=(20, 16))
         if nplots > 1:
             flat_axes = axis.flatten()
@@ -531,7 +531,7 @@ class Uncertainty():
         df_values_log = df_values_log.replace([np.inf, -np.inf], np.nan)
         cols = df_values_log.columns
         nplots = len(cols)
-        nrows, ncols = int(nplots / 3) + 1, min(nplots, 3)
+        nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
         fig, axes = plt.subplots(nrows = nrows,
                                  ncols = ncols,
                                  figsize=(nrows*7, ncols * 3.5),
@@ -589,7 +589,7 @@ class Uncertainty():
                     "Please make a sample first.")
 
         nplots = len(self.param_labels)
-        nrows, ncols = int(nplots / 3) + 1, min(nplots, 3)
+        nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
         fig, axis = plt.subplots(nrows=nrows, ncols=ncols, figsize=(20, 16))
         for ax, label in zip_longest(axis.flatten(), self.param_labels, fillvalue=None):
             if label is None:
@@ -645,7 +645,7 @@ class Uncertainty():
             
             
         nplots = len(metric_list)
-        nrows, ncols = int(nplots / 3) + 1, min(nplots, 3)
+        nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
         fig, axes = plt.subplots(nrows = nrows,
                                  ncols = ncols,
                                  figsize=(nrows*9, ncols * 3.5),
