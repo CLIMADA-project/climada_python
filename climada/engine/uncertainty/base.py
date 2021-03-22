@@ -114,7 +114,6 @@ class UncVar():
             The figure and axis handle of the plot.
 
         """
-        # zip_longest(flat_axes, cols, fillvalue=None):
 
         nplots = len(self.distr_dict)
         nrows, ncols = int(nplots / 3) + 1, min(nplots, 3)
