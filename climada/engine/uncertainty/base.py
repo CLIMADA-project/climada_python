@@ -448,16 +448,37 @@ class Uncertainty():
 
     def calc_sensitivity(self, salib_method='sobol', method_kwargs=None):
         """
-        Compute the sensitivity indices using SALib
+        Compute the sensitivity indices using SALib. Prior to doing this
+        sensitivity analysis, one must compute the distribution of the output
+        metrics values (i.e. self.metrics is defined) for all the parameter 
+        samples (rows of self.samples_df).
+        
+        According to Wikipedia, sensitivity analysis is “the study of how the
+        uncertainty in the output of a mathematical model or system (numerical
+        or otherwise) can be apportioned to different sources of uncertainty
+        in its inputs.” The sensitivity of each input is often represented by
+        a numeric value, called the sensitivity index. Sensitivity indices
+        come in several forms:
+
+        First-order indices: measures the contribution to the output variance
+        by a single model input alone.
+        Second-order indices: measures the contribution to the output variance
+        caused by the interaction of two model inputs.
+        Total-order index: measures the contribution to the output variance
+        caused by a model input, including both its first-order effects
+        (the input varying alone) and all higher-order interactions.
+
 
         Parameters
         ----------
         salib_method : str
             sensitivity analysis method from SALib.analyse
-            https://salib.readthedocs.io/en/latest/api.html
             Possible choices:
                 'fast', 'rbd_fact', 'morris', 'sobol', 'delta', 'ff'
             The default is 'sobol'.
+            Note that in Salib, sampling methods and sensitivity analysis
+            methods should be used in specific pairs.
+            https://salib.readthedocs.io/en/latest/api.html
         method_kwargs: dict(), optional
             Keyword arguments of the chosen SALib analyse method.
             The default is to use SALib's default arguments.
