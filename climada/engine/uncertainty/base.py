@@ -346,7 +346,14 @@ class Uncertainty():
         sampling_kwargs: dict()
             Optional keyword arguments of the chosen SALib sampling method.
 
+
+        Returns
+        -------
+        df_samples: pd.DataFrame()
+            Dataframe of the generated samples 
+            (one row = one sample, columns = uncertainty parameters)
         """
+        
         self.samples_df = sampling_method
         uniform_base_sample = self._make_uniform_base_sample(N,
                                                              sampling_method,
