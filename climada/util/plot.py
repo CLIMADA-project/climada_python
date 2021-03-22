@@ -410,9 +410,9 @@ def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
     cmap = mpl.colors.ListedColormap(plt.get_cmap(CMAP).colors[:array_sub_n]) 
     if array_sub_n > cmap.N:
         LOGGER.warning("More than %d categories cannot be plotted accurately "
-                       "using the default color map '%s'. You can manually "
-                       "specify a QUALITATIV color map using the `cmap` "
-                       "attribute. Matplotlibs default are "
+                       "using the default colormap '%s'. You can manually "
+                       "specify a qualitative colormap using the `cmap` "
+                       "attribute. For Matplotlib's built-in colormaps, see "
            "https://matplotlib.org/stable/tutorials/colors/colormaps.html",
                        cmap.N, cmap.name)
         
