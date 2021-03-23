@@ -30,7 +30,7 @@ from iso3166 import countries as iso_cntry
 from climada.entity.exposures.base import Exposures
 from climada.entity.tag import Tag
 import climada.util.coordinates as u_coord
-from climada.util.coordinates import pts_to_raster_meta, get_resolution
+from climada.util.coordinates import pts_to_raster_meta, get_resolution, get_gridcellarea
 from climada import CONFIG
 
 
@@ -259,12 +259,7 @@ class CropProduction(Exposures):
                     int(yearrange[1] - yearchunk['startyear']))
 
         # The area covered by a grid cell is calculated depending on the latitude
-        # 1 degree = 111.12km (at the equator); resolution data: 0.5 degree;
-        # longitudal distance in km = 111.12*0.5*cos(lat);
-        # latitudal distance in km = 111.12*0.5;
-        # area = longitudal distance * latitudal distance;
-        # 1km2 = 100ha
-        area = (111.12 * 0.5)**2 * np.cos(np.deg2rad(lat)) * 100
+        area = get_gridcellarea(lat, resolution=0.5)
 
         # The area covered by a crop is calculated as the product of the fraction and
         # the grid cell size

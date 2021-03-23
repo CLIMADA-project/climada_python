@@ -317,6 +317,31 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
         raise KeyError
     return (dist, vtan) if log else dist
 
+def get_gridcellarea(lat, resolution=0.5, unit='km2'):
+    """The area covered by a grid cell is calculated depending on the latitude
+        1 degree = ONE_LAT_KM (111.12km at the equator)
+        longitudal distance in km = ONE_LAT_KM*resolution*cos(lat)
+        latitudal distance in km = ONE_LAT_KM*resolution
+        area = longitudal distance * latitudal distance
+
+    Parameters
+    ----------
+    lat : np.array
+        Latitude of the respective grid cell
+    resolution: int, optional
+        raster resolution in degree (default: 0.5 degree)
+    unit: string, optional
+        unit of the output area (default: km2, alternative: m2)
+
+    """
+
+    if unit == 'm2':
+        area = (ONE_LAT_KM * resolution)**2 * np.cos(np.deg2rad(lat)) * 100 * 1000000
+    else:
+        area = (ONE_LAT_KM * resolution)**2 * np.cos(np.deg2rad(lat)) * 100
+
+    return area
+
 def grid_is_regular(coord):
     """Return True if grid is regular. If True, returns height and width.
 
