@@ -37,14 +37,14 @@ import scipy as sp
 from pathos.pools import ProcessPool as Pool
 
 
-def impf_dem(x_impf=1):
+def impf_dem(x_paa=1, x_mdd=1):
     impf = ImpactFunc()
     impf.haz_type = 'TC'
     impf.id = 1
     impf.intensity_unit = 'm/s'
     impf.intensity = np.linspace(0, 150, num=100)
-    impf.mdd = np.repeat(1, len(impf.intensity))
-    impf.paa = np.arange(0, len(impf.intensity)) / len(impf.intensity) * x_impf
+    impf.mdd = np.repeat(1, len(impf.intensity)) * x_mdd
+    impf.paa = np.arange(0, len(impf.intensity)) / len(impf.intensity) * x_paa
     impf.check()
     impf_set = ImpactFuncSet()
     impf_set.append(impf)
@@ -71,7 +71,8 @@ def make_imp_uncs():
     exp_unc = UncVar(exp, exp_distr)
     
     impf = impf_dem
-    impf_distr = {"x_impf": sp.stats.beta(0.5, 1),
+    impf_distr = {"x_paa": sp.stats.beta(0.5, 1),
+                  "x_mdd": sp.stats.uniform(0.8, 1.2)
               }
     impf_unc = UncVar(impf, impf_distr)
     
@@ -104,10 +105,11 @@ class TestUncVar(unittest.TestCase):
     def test_init_pass(self):
         
         impf = impf_dem
-        distr_dict = {"x_impf": sp.stats.uniform(0.8,1.2)
-              }
+        distr_dict = {"x_paa": sp.stats.beta(0.5, 1),
+                      "x_mdd": sp.stats.uniform(0.8, 1.2)
+                      }
         impf_unc = UncVar(impf, distr_dict)
-        self.assertListEqual(impf_unc.labels, ['x_impf'])
+        self.assertListEqual(impf_unc.labels, ['x_paa', 'x_mdd'])
         self.assertTrue(isinstance(impf_unc.distr_dict, dict))
         
     def test_evaluate_pass(self):
@@ -116,8 +118,8 @@ class TestUncVar(unittest.TestCase):
         distr_dict = {"x_impf": sp.stats.uniform(0.8, 1.2),
               }
         impf_unc = UncVar(impf, distr_dict)
-        impf_eval = impf_unc.evaluate({'x_impf': 0.8})
-        impf_true = impf_dem(x_impf = 0.8)
+        impf_eval = impf_unc.evaluate({'x_paa': 0.8, 'x_mdd': 1.1})
+        impf_true = impf_dem(x_paa=0.8, x_mdd=1.1)
         self.assertEqual(impf_eval.size(), impf_true.size())
         impf_func1 = impf_eval.get_func()['TC'][1]
         impf_func2 = impf_true.get_func()['TC'][1]
@@ -144,7 +146,8 @@ class TestUncVar(unittest.TestCase):
 
     def test_plot_pass(self):
         impf = impf_dem()
-        distr_dict = {'x_impf': sp.stats.norm(1, 2)
+        distr_dict = {"x_paa": sp.stats.beta(0.5, 1),
+                      "x_mdd": sp.stats.uniform(0.8, 1.2)
               }
         impf_unc = UncVar(impf, distr_dict)
         self.assertIsNotNone(impf_unc.plot());
@@ -180,19 +183,21 @@ class TestUncertainty(unittest.TestCase):
         self.assertDictEqual(unc.sensitivity, {})
         
         self.assertEqual(unc.n_samples, 0)
-        self.assertSetEqual(set(unc.param_labels), {'x_exp', 'x_haz', 'x_impf'})
+        self.assertSetEqual(set(unc.param_labels), {'x_exp', 'x_haz',
+                                                    'x_paa', 'x_mdd'})
         self.assertSetEqual(set(unc.problem['names']),
-                            {'x_exp', 'x_haz', 'x_impf'})
+                            {'x_exp', 'x_haz', 'x_paa', 'x_mdd'})
         self.assertSetEqual(set(unc.distr_dict.keys()),
-                            {"x_exp", "x_impf", "x_haz"})
+                            {"x_exp", "x_paa", "x_mdd", "x_haz"})
         
         unc = Uncertainty(
             {'exp': exp_unc, 'impf': impf_unc}, 
-            samples = pd.DataFrame({'x_exp': [1, 2], 'x_impf': [3, 4]}),
+            samples = pd.DataFrame({'x_exp': [1, 2], 'x_paa': [3, 4],
+                                    'x_mdd': [1, 2]}),
             metrics = {'aai_agg': pd.DataFrame({'aai_agg': [100, 200]})}
             )
         self.assertEqual(unc.n_samples, 2)
-        self.assertSetEqual(set(unc.param_labels), {'x_exp', 'x_impf'})
+        self.assertSetEqual(set(unc.param_labels), {'x_exp', 'x_paa', 'x_mdd'})
         self.assertListEqual(list(unc.metrics['aai_agg']['aai_agg']), [100, 200])
         self.assertDictEqual(unc.sensitivity, {})
         
@@ -388,21 +393,23 @@ class TestUncImpact(unittest.TestCase):
         self.assertTrue(
             np.allclose(
                 unc.metrics['aai_agg'].aai_agg,
-                np.array([6.750486e+07, 1.000553e+08, 3.307738e+09,
-                          3.307738e+09, 1.000553e+08,4.902708e+09])
+                np.array([9.600984e+07, 1.668144e+08, 8.068803e+08,
+                          1.274945e+08, 1.071482e+09, 2.215182e+08,
+                          1.401932e+09, 1.861671e+09])
                 )
             )
         self.assertTrue(
             np.allclose(
                 unc.metrics['freq_curve'].rp5,
-                np.zeros(6)
+                np.zeros(8)
                 )
             )
         self.assertTrue(
             np.allclose(
                 unc.metrics['freq_curve'].rp250,
-                np.array([2.025634e+09, 3.002382e+09, 9.925607e+10,
-                          9.925607e+10, 3.002382e+09, 1.471167e+11])
+                np.array([2.880990e+09, 5.005640e+09, 2.421225e+10,
+                          3.825758e+09, 3.215222e+10, 6.647149e+09,
+                          4.206811e+10, 5.586359e+10])
                 )
             )
         self.assertTrue(unc.metrics['eai_exp'].empty)
