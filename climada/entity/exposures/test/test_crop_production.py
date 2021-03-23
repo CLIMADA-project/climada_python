@@ -85,8 +85,8 @@ class TestCropProduction(unittest.TestCase):
         # (2) biomass = False
         exp = CropProduction()
         exp.set_from_isimip_netcdf(input_dir=INPUT_DIR, filename=FILENAME, hist_mean=FILENAME_MEAN,
-                                      bbox=[-5, 45, 10, 50], yearrange=np.array([2001, 2005]),
-                                      scenario='flexible', unit='t/y', crop = 'mai', irr='firr')
+                                   bbox=[-5, 45, 10, 50], yearrange=np.array([2001, 2005]),
+                                   scenario='flexible', unit='t/y', crop = 'mai', irr='firr')
         max_tonnes = exp.gdf.value.max()
         exp.set_value_to_kcal(biomass=False)
         self.assertEqual(exp.gdf.latitude.min(), 45.25)
