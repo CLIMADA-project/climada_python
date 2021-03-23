@@ -24,8 +24,8 @@ __all__ = ['SupplyChain']
 import os
 import logging
 import datetime as dt
-from tqdm import tqdm
 from pathlib import Path
+from tqdm import tqdm
 import numpy as np
 import pandas as pd
 from iso3166 import countries_by_alpha3
@@ -114,14 +114,14 @@ class SupplyChain():
             http://www.wiod.org/database/wiots16
 
         Parameters:
-            year (int): year of wiot table. Valid years go from 2000 to 2014.
+            year (int): Year of wiot table. Valid years go from 2000 to 2014.
                         Default 2014.
-            file_path (str): path to the folder where the wiod table is stored.
+            file_path (str): Path to folder where the wiod table is stored.
                             Deafult is SYSTEM_DIR. If data are not present, they
                             will be downloaded in save_dir, i.e., ~/climada/data/results
                             If user-defined, user_data must be set to True
             user_data (bool): If user data are provided, Default False
-            rows_range (tuple): start and end position of rows with data
+            rows_range (tuple): Start and end position of rows with data
             col_iso3 (int): pos of col with iso3 countries
             cols_data_range (tuple): start and end position of cols with data
             cols_sect_range (tuple): start and end position of sectors' names
