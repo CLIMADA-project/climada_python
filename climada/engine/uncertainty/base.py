@@ -637,25 +637,36 @@ class Uncertainty():
    
     def plot_sensitivity(self, salib_si='S1', metric_list=None):
         """
-        Plot the first order sensitivity indices of the chosen metric.
+        Plot one of the first order sensitivity indices of the chosen
+        metric(s). This requires that a senstivity analysis was already
+        performed. 
+        
+        E.g. For the sensitivity analysis method 'sobol', the choices 
+        are ['S1', 'ST'], for 'delta' the  choices are ['delta', 'S1']. 
+        
+        For more information see the SAlib documentation:
+        https://salib.readthedocs.io/en/latest/basics.html
 
         Parameters
         ----------
         salib_si: string, optional
-            The first order sensitivity index to plot (see SALib option)
-            https://salib.readthedocs.io/en/latest/basics.html
+            The first order (one value per metric output) sensitivity index
+            to plot. This must be a key of the sensitivity dictionnaries in
+            self.sensitivity[metric] for each metric in metric_list.
             The default is S1.
             
         metric_list: list of strings, optional
-            List of metrics to plot the sensitivity
-            The default is ['aai_agg', 'freq_curve', 'tot_climate_risk', 
-                           'benefit', 'cost_ben_ratio', 'imp_meas_present',
-                           'imp_meas_future', 'tot_value']
+            List of metrics to plot the sensitivity. If a metric is not found
+            in self.sensitivity, it is ignored.
+            The default is all metrics from Impact.calc or CostBenefit.calc:
+            ['aai_agg', 'freq_curve', 'tot_climate_risk', 'benefit',
+             'cost_ben_ratio', 'imp_meas_present', 'imp_meas_future',
+             'tot_value']
 
         Raises
         ------
         ValueError
-            If no sensitivity was computed the plot cannot be made.
+            If no sensitivity is available the plot cannot be made.
 
         Returns
         -------
@@ -749,8 +760,8 @@ def check_salib(sampling_method, sensitivity_method):
     
     if sampling_method not in SALIB_COMPATIBILITY[sensitivity_method]:
         LOGGER.warning("The chosen combination of sensitivity method (%s)"
-            " and sampling method (%s) does not correspond to the recommendation"
-            " of the salib pacakge."
+            " and sampling method (%s) does not correspond to the"
+            " recommendation of the salib pacakge."
             "\n https://salib.readthedocs.io/en/latest/api.html"
             %(sampling_method, sensitivity_method)
             )
