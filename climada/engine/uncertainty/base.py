@@ -79,18 +79,19 @@ class UncVar():
 
     """
 
-    def __init__(self, unc_var, distr_dict):
+    def __init__(self, uncvar_func, distr_dict):
         """
         Initialize UncVar
 
         Parameters
         ----------
-        unc_var : function
+        uncvar_func : function
             Variable defined as a function of the uncertainty parameters
         distr_dict : dict
             Dictionary of the probability density distributions of the
             uncertainty parameters, with keys matching the keyword
-            arguments (i.e. uncertainty parameters) of the unc_var function.
+            arguments (i.e. uncertainty parameters) of the uncvar_func
+            function.
             The distribution must be of type scipy.stats
             https://docs.scipy.org/doc/scipy/reference/stats.html
 
@@ -101,7 +102,7 @@ class UncVar():
         """
         self.labels = list(distr_dict.keys())
         self.distr_dict = distr_dict
-        self.unc_var = unc_var
+        self.uncvar_func = uncvar_func
 
 
     def plot(self):
@@ -142,7 +143,7 @@ class UncVar():
         Parameters
         ----------
         uncvar_kwargs : dict
-            These parameters will be passed to self.unc_var.
+            These parameters will be passed to self.uncvar_func.
             They must be the input parameters of the uncertainty variable .
 
         Returns
@@ -151,7 +152,7 @@ class UncVar():
             Evaluated uncertainty variable
 
         """
-        return self.unc_var(**uncvar_kwargs)
+        return self.uncvar_func(**uncvar_kwargs)
     
     
     @staticmethod
@@ -174,7 +175,7 @@ class UncVar():
         if isinstance(var, UncVar):
             return var
 
-        return UncVar(unc_var=lambda: var, distr_dict={})
+        return UncVar(uncvar_func=lambda: var, distr_dict={})
 
 
 
