@@ -213,7 +213,7 @@ class UncImpact(Uncertainty):
 
     def plot_rp_distribution(self):
         """
-        Plot the distribution of return period values.
+        Plot the distribution of return period values. 
 
         Parameters
         ----------
@@ -231,7 +231,7 @@ class UncImpact(Uncertainty):
         """
 
         if not self.metrics:
-            raise ValueError("No uncertainty data present for this emtrics. "+
+            raise ValueError("No uncertainty data present for these metrics. "+
                     "Please run an uncertainty analysis first.")
 
 
