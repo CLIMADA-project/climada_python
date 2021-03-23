@@ -26,7 +26,7 @@ def impact_yearset(eis, n_resampled_years=None, year_list=None, multiple_events=
                    sampling_vect=None, n_events_per_year=None):
 
     """PURPOSE:
-      convert an event (per occurrence) impact set (eis) into an annual impact
+      Create an annual impact set (ais) by sampling events for each year from an existing probabilistic event impact set (eis).
       set (ais).
 
     INPUTS:
@@ -247,12 +247,12 @@ def calculate_correction_fac(impact_per_year, nr_resampled_years, eis):
 
     return correction_factor
 
-def wrapper_multi_impact(list_impacts, nr_resampled_years):
+def wrapper_multi_impact(list_impacts, n_resampled_years):
     """Compute the total impact of several event impact sets in one annual impact set
 
     INPUT:
         list_impacts (list): list of impact class objects
-        nr_resampled_years (int): the target number of years the impact yearset shall
+        n_resampled_years (int): the target number of years the impact yearset shall
             contain.
     OUTPUT:
         ais_total (impact class object): combined annual impact set for all given event impact sets
