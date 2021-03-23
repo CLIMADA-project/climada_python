@@ -124,7 +124,7 @@ class UncVar():
         else:
             flat_axes = np.array([axes])
         for ax, name_distr in zip_longest(flat_axes,
-                                    self.distr_dict.items(), 
+                                    self.distr_dict.items(),
                                     fillvalue=None):
             if name_distr is None:
                 ax.remove()
@@ -153,8 +153,8 @@ class UncVar():
 
         """
         return self.uncvar_func(**uncvar_kwargs)
-    
-    
+
+
     @staticmethod
     def var_to_uncvar(var):
         """
@@ -197,30 +197,30 @@ class Uncertainty():
         Parameters
         ----------
         unc_vars : dict
-            keys are names and values are climade.engine.uncertainty.UncVar 
+            keys are names and values are climade.engine.uncertainty.UncVar
         samples : pd.DataFrame, optional
             DataFrame of sampled parameter values. Column names must be
             parameter names (all labels) from all unc_vars.
             The default is pd.DataFrame().
         metrics : dict(), optional
-            Dictionnary of the CLIMADA metrics (outputs from 
+            Dictionnary of the CLIMADA metrics (outputs from
             Impact.calc() or CostBenefits.calcl()) for which the uncertainty
-            distribution (and optionally the sensitivity) will be computed. 
+            distribution (and optionally the sensitivity) will be computed.
             For each sample (row of samples), each metric must have a definite
-            value.             
+            value.
             Metrics are named directly after their defining attributes:
                 Impact: ['aai_agg', 'freq_curve', 'eai_exp', 'at_event']
                 CostBenefits: ['tot_climate_risk', 'benefit', 'cost_ben_ratio',
                                'imp_meas_present', 'imp_meas_future']
-            Keys are metric names and values are pd.DataFrame with values 
-            for each parameter sample (one row per sample).            
+            Keys are metric names and values are pd.DataFrame with values
+            for each parameter sample (one row per sample).
             The default is {}.
         sensitivity: dict(), optional
             Dictionnary of the sensitivity analysis for each uncertainty
             parameter.
             The default is {}.
         """
-    
+
         self.unc_vars = unc_vars if unc_vars else {}
         self.samples_df = samples if samples is not None else pd.DataFrame(
             columns = self.param_labels)
@@ -228,8 +228,8 @@ class Uncertainty():
         self.metrics = metrics if metrics is not None else {}
         self.sensitivity = sensitivity if sensitivity is not None else {}
         self.check()
-    
-    
+
+
     def check(self):
         """
         Check if the data variables are consistent
@@ -251,16 +251,16 @@ class Uncertainty():
                 if not check:
                     raise ValueError(f"Metric f{metric} has less values than"
                              " the number of samples {self.n_samples}")
-                
+
                 if df_distr.isnull().values.any():
-                    LOGGER.warning("At least one metric evaluated to Nan for " 
-                        "one cominbation of uncertainty parameters containend " 
-                        "in sample. Note that the sensitivity analysis will " 
-                        "then return Nan. " 
+                    LOGGER.warning("At least one metric evaluated to Nan for "
+                        "one cominbation of uncertainty parameters containend "
+                        "in sample. Note that the sensitivity analysis will "
+                        "then return Nan. "
                         "See https://github.com/SALib/SALib/issues/237")
         return check
-        
-    
+
+
     @property
     def n_samples(self):
         """
@@ -307,7 +307,7 @@ class Uncertainty():
         for unc_var in self.unc_vars.values():
             distr_dict.update(unc_var.distr_dict)
         return distr_dict
-    
+
     @property
     def problem(self):
         """
@@ -351,10 +351,10 @@ class Uncertainty():
         Returns
         -------
         df_samples: pd.DataFrame()
-            Dataframe of the generated samples 
+            Dataframe of the generated samples
             (one row = one sample, columns = uncertainty parameters)
         """
-        
+
         self.samples_df = sampling_method
         uniform_base_sample = self._make_uniform_base_sample(N,
                                                              sampling_method,
@@ -398,7 +398,7 @@ class Uncertainty():
             parameters using the defined sampling method (self.sampling_method)
 
         """
-        
+
         if sampling_kwargs is None: sampling_kwargs = {}
 
         #To import a submodule from a module use 'from_list' necessary
@@ -416,7 +416,7 @@ class Uncertainty():
 
 
     def est_comp_time(self, time_one_run, pool=None):
-        """      
+        """
         Estimate the computation time
 
         Parameters
@@ -438,12 +438,12 @@ class Uncertainty():
                 "%.2fs. This is suspiciously long. Possible " % time_one_run +
                 "Potential reasons: unc_vars are loading data, centroids not"+
                 " assigned to exp before defining unc_var, ..." +
-                "\n If computation cannot be reduced, consider using" 
+                "\n If computation cannot be reduced, consider using"
                 " a surrogate model https://www.uqlab.com/")
 
         ncpus = pool.ncpus if pool else 1
         total_time = self.n_samples * time_one_run / ncpus
-        
+
         return total_time
 
 
@@ -451,9 +451,9 @@ class Uncertainty():
         """
         Compute the sensitivity indices using SALib. Prior to doing this
         sensitivity analysis, one must compute the distribution of the output
-        metrics values (i.e. self.metrics is defined) for all the parameter 
+        metrics values (i.e. self.metrics is defined) for all the parameter
         samples (rows of self.samples_df).
-        
+
         According to Wikipedia, sensitivity analysis is “the study of how the
         uncertainty in the output of a mathematical model or system (numerical
         or otherwise) can be apportioned to different sources of uncertainty
@@ -491,9 +491,9 @@ class Uncertainty():
             as returned by SALib.
 
         """
-        
+
         check_salib(self.sampling_method, salib_method)
-        
+
         #To import a submodule from a module use 'from_list' necessary
         #c.f. https://stackoverflow.com/questions/2724260/why-does-pythons-import-require-fromlist
         method = getattr(
@@ -502,13 +502,13 @@ class Uncertainty():
                        ),
             salib_method
             )
-        
+
         #Certaint Salib method required model input (X) and output (Y), others
         #need only ouput (Y)
         salib_kwargs = method.analyze.__code__.co_varnames
         X = self.samples_df.to_numpy() if 'X' in salib_kwargs else None
 
-        if method_kwargs is None: method_kwargs = {} 
+        if method_kwargs is None: method_kwargs = {}
         sensitivity_dict = {}
         for name, df_metric in self.metrics.items():
             sensitivity_dict[name] = {}
@@ -521,7 +521,7 @@ class Uncertainty():
                     sensitivity_index = method.analyze(self.problem, Y,
                                                             **method_kwargs)
                 sensitivity_dict[name].update({metric: sensitivity_index})
-        
+
         self.sensitivity = sensitivity_dict
 
         return sensitivity_dict
@@ -604,7 +604,7 @@ class Uncertainty():
     def plot_sample(self):
         """
         Plot the sample distributions of the uncertainty parameters.
-        
+
         Raises
         ------
         ValueError
@@ -616,7 +616,7 @@ class Uncertainty():
             The figure and axis handle of the plot.
 
         """
-        
+
         if self.samples_df.empty:
             raise ValueError("No uncertainty sample present."+
                     "Please make a sample first.")
@@ -628,23 +628,23 @@ class Uncertainty():
             if label is None:
                 ax.remove()
                 continue
-            self.samples_df[label].hist(ax=ax, bins=100) 
+            self.samples_df[label].hist(ax=ax, bins=100)
             ax.set_title(label)
             ax.set_xlabel('value')
             ax.set_ylabel('Sample count')
-            
+
         return fig, axis
 
-   
+
     def plot_sensitivity(self, salib_si='S1', metric_list=None):
         """
         Plot one of the first order sensitivity indices of the chosen
         metric(s). This requires that a senstivity analysis was already
-        performed. 
-        
-        E.g. For the sensitivity analysis method 'sobol', the choices 
-        are ['S1', 'ST'], for 'delta' the  choices are ['delta', 'S1']. 
-        
+        performed.
+
+        E.g. For the sensitivity analysis method 'sobol', the choices
+        are ['S1', 'ST'], for 'delta' the  choices are ['delta', 'S1'].
+
         For more information see the SAlib documentation:
         https://salib.readthedocs.io/en/latest/basics.html
 
@@ -655,7 +655,7 @@ class Uncertainty():
             to plot. This must be a key of the sensitivity dictionnaries in
             self.sensitivity[metric] for each metric in metric_list.
             The default is S1.
-            
+
         metric_list: list of strings, optional
             List of metrics to plot the sensitivity. If a metric is not found
             in self.sensitivity, it is ignored.
@@ -679,15 +679,15 @@ class Uncertainty():
         if not self.metrics:
             raise ValueError("No sensitivity present for this metrics. "
                     "Please run a sensitivity analysis first.")
-            
+
         if metric_list is None:
-            metric_list = ['aai_agg', 'freq_curve', 'tot_climate_risk', 
+            metric_list = ['aai_agg', 'freq_curve', 'tot_climate_risk',
                            'eai_exp', 'at_event', 'tot_value',
                            'benefit', 'cost_ben_ratio', 'imp_meas_present',
                            'imp_meas_future', 'tot_value']
             metric_list = list(set(metric_list) & set(self.metrics.keys()))
-            
-            
+
+
         nplots = len(metric_list)
         nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
         fig, axes = plt.subplots(nrows = nrows,
@@ -699,7 +699,7 @@ class Uncertainty():
             flat_axes = axes.flatten()
         else:
             flat_axes = np.array([axes])
-        
+
         for ax, metric in zip_longest(flat_axes, metric_list, fillvalue=None):
             if metric is None:
                 ax.remove()
@@ -725,17 +725,17 @@ class Uncertainty():
             ax.set_xticklabels(self.param_labels, rotation=0)
             ax.set_title(salib_si + ' - ' + metric)
         plt.tight_layout()
-            
+
         return fig, axes
-    
-    
+
+
 SALIB_COMPATIBILITY = {
     'fast': ['fast_sampler'],
     'rbd_fast': ['latin'] ,
     'morris': ['morris'],
     'sobol' : ['saltelli'],
     'delta' : ['latin'],
-    'dgsm' : ['fast_sampler', 'latin', 'morris', 'saltelli', 'latin', 'ff'], 
+    'dgsm' : ['fast_sampler', 'latin', 'morris', 'saltelli', 'latin', 'ff'],
     'ff' : ['ff'],
     }
 
@@ -758,7 +758,7 @@ def check_salib(sampling_method, sensitivity_method):
         pairing.
 
     """
-    
+
     if sampling_method not in SALIB_COMPATIBILITY[sensitivity_method]:
         LOGGER.warning("The chosen combination of sensitivity method (%s)"
             " and sampling method (%s) does not correspond to the"
@@ -768,4 +768,4 @@ def check_salib(sampling_method, sensitivity_method):
             )
         return False
     return True
-    
+

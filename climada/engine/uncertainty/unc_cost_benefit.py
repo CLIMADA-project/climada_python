@@ -111,9 +111,9 @@ class UncCostBenefit(Uncertainty):
         """
 
         if self.samples_df.empty:
-            raise ValueError("No sample was found. Please create one first" + 
+            raise ValueError("No sample was found. Please create one first" +
                         "using UncImpact.make_sample(N)")
-            
+
         start = time.time()
         one_sample = self.samples_df.iloc[0:1].iterrows()
         cb_metrics = map(self._map_costben_calc, one_sample)
@@ -122,7 +122,7 @@ class UncCostBenefit(Uncertainty):
          tot_climate_risk,
          benefit,
          cost_ben_ratio] = list(zip(*cb_metrics))
-        elapsed_time = (time.time() - start) 
+        elapsed_time = (time.time() - start)
         est_com_time = self.est_comp_time(elapsed_time, pool)
         LOGGER.info(f"\n\nEstimated computation time: {est_com_time}s\n")
 
@@ -137,7 +137,7 @@ class UncCostBenefit(Uncertainty):
         else:
             cb_metrics = map(partial(self._map_costben_calc, **kwargs),
                              self.samples_df.iterrows())
-        
+
         #Perform the actual computation
         with log_level(level='ERROR', name_prefix='climada'):
             [imp_meas_present,
@@ -174,7 +174,7 @@ class UncCostBenefit(Uncertainty):
                         met_dic.update(dic_tmp)
                     df_imp_meas = df_imp_meas.append(pd.DataFrame(met_dic))
             self.metrics[name] = df_imp_meas
-            
+
         LOGGER.info("Currently the freq_curve is not saved. Please " +
                     "change the risk_func if return period information " +
                     "needed")
@@ -224,4 +224,3 @@ class UncCostBenefit(Uncertainty):
                  cb.cost_ben_ratio
                  ]
 
-    
