@@ -504,7 +504,7 @@ class Uncertainty():
 
         #Certaint Salib method required model input (X) and output (Y), others
         #need only ouput (Y)
-        salib_kwargs = method.analyze.__code__.co_varnames
+        salib_kwargs = method.analyze.__code__.co_varnames #obtain all kwargs of the salib method
         X = self.samples_df.to_numpy() if 'X' in salib_kwargs else None
 
         if method_kwargs is None: method_kwargs = {}
