@@ -27,7 +27,8 @@ def sig_dig(x, n_sig_dig = 16):
     """
     Rounds x to n_sig_dig number of significant digits.
     0, inf, Nan are returned unchanged.
-    Examples: 1.234567 -> 1.2346, 123456.89 -> 123460.0
+    Examples: n_sig_dig = 5
+        1.234567 -> 1.2346, 123456.89 -> 123460.0
 
     Parameters
     ----------
