@@ -34,7 +34,6 @@ from climada.util.coordinates import pts_to_raster_meta, get_resolution, get_gri
 from climada import CONFIG
 
 
-
 logging.root.setLevel(logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
 
