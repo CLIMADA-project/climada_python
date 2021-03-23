@@ -94,7 +94,7 @@ winter wheat, following FAO (2001).” (Müller et al., 2021)
 
 Version 1: conversion factors for crop biomass "as purchased",
     here applied as default for FAO-normalized production:
-    Production [kcal] = KCAL_PER_TON [t] * X [kcal/t]
+    Production [kcal] = Production [t] * KCAL_PER_TON [kcal/t]
 """
 
 KCAL_PER_TON = dict()
@@ -158,7 +158,8 @@ class CropProduction(Exposures):
         """Wrapper to fill exposure from NetCDF file from ISIMIP. Requires historical
         mean relative cropyield module as additional input.
         Optional Parameters:
-            input_dir (Path or str): path to input data directory
+            input_dir (Path or str): path to input data directory,
+                default: INPUT_DIR
             filename (string): name of the landuse data file to use,
                 e.g. "histsoc_landuse-15crops_annual_1861_2005.nc""
             hist_mean (str or array): historic mean crop yield per centroid (or path)
@@ -507,7 +508,8 @@ class CropProduction(Exposures):
         by the FAO.
 
         Optional Parameters:
-            input_dir (Path or str): directory containing the input (FAO pricing) data
+            input_dir (Path or str): directory containing the input (FAO pricing) data,
+                default: INPUT_DIR
             yearrange (array): year range for prices, can also be set to a single year
                 Default is set to the arbitrary time range (2000, 2018)
                 The data is available for the years 1991-2018
@@ -605,7 +607,7 @@ def init_full_exp_set_isimip(input_dir=None, filename=None, hist_mean_dir=None,
         Exposures are aggregated per crop and irrigation type.
 
         Parameters:
-        input_dir (str or Path): path to input data directory
+        input_dir (str or Path): path to input data directory, default: INPUT_DIR
         filename (string): if not specified differently, the file
             'histsoc_landuse-15crops_annual_1861_2005.nc' will be used
         output_dir (string): path to output data directory
@@ -680,7 +682,7 @@ def normalize_with_fao_cp(exp_firr, exp_noirr, input_dir=None,
         exp_noirr (crop_production): exposure under no irrigation
 
     Optional Parameters:
-        input_dir (Path or str): directory containing exposure input data
+        input_dir (Path or str): directory containing exposure input data, default: INPUT_DIR
         yearrange (array): the mean crop production in this year range is used to normalize
             the exposure data
             Default is set to the arbitrary time range (2008, 2018)

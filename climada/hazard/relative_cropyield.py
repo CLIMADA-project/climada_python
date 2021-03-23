@@ -34,6 +34,7 @@ from scipy import sparse
 import scipy.stats
 import h5py
 import xarray as xr
+
 from climada.hazard.base import Hazard
 from climada.util import dates_times as dt
 from climada.util import coordinates as coord
@@ -114,7 +115,7 @@ class RelativeCropyield(Hazard):
         Build and tested for output from ISIMIP2 and ISIMIP3, but might also work
         for other NetCDF containing gridded crop model output from other sources.
         Parameters:
-            input_dir (Path or str): path to input data directory
+            input_dir (Path or str): path to input data directory, default: INPUT_DIR
             filename (string): name of netcdf file in input_dir. If filename is given,
                 the other parameters specifying the model run are not required!
             bbox (list of four floats): bounding box:
@@ -221,7 +222,7 @@ class RelativeCropyield(Hazard):
             yearrange_mean (array): time period used to calculate the mean intensity
                 default: 1976-2005 (historical)
             save (boolean): save mean to file? default: False
-            output_dir (str or Path): path of output directory
+            output_dir (str or Path): path of output directory, default: OUTPUT_DIR
 
             Returns:
                 hist_mean(array): contains mean value over the given reference
@@ -404,8 +405,8 @@ def set_multiple_rc_from_isimip(input_dir=None, output_dir=None, bbox=None,
     crop yield in a given input directory and save it to output directory.
 
         Optional Parameters:
-            input_dir (pathlib.Path or str): path to input data directory
-            output_dir (pathlib.Path or str): path to output data directory
+            input_dir (pathlib.Path or str): path to input data directory, default: INPUT_DIR
+            output_dir (pathlib.Path or str): path to output data directory, default: OUTPUT_DIR
             bbox (list of four floats): bounding box:
                 [lon min, lat min, lon max, lat max]
             isimip_run (string): name of the ISIMIP run (f.i. ISIMIP2a or ISIMIP2b)
@@ -707,7 +708,7 @@ def calc_his_haz_isimip(his_file, file_props, input_dir=None, bbox=None,
         Parameters:
             his_file (string): file name of historical input hazard file
             file_props (dict): file properties of all historical input hazard files
-            input_dir (Path): path to input data directory
+            input_dir (Path): path to input data directory, default: INPUT_DIR
             bbox (list of four floats): bounding box:
                 [lon min, lat min, lon max, lat max]
             yearrange_mean (int tuple): year range for the historical mean
@@ -799,7 +800,7 @@ def calc_fut_haz_isimip(his_file, scenario, file_props, hist_mean, input_dir=Non
                 combination and crop-irr cobination
 
         Optional Parameters:
-            input_dir (Path): path to input data directory
+            input_dir (Path): path to input data directory, default: INPUT_DIR
             bbox (list of four floats): bounding box:
                 [lon min, lat min, lon max, lat max]
             fut_file (string): file name of future input hazard file. If given,
@@ -892,7 +893,7 @@ def read_wheat_mask_isimip3(input_dir=None, filename=None, bbox=None):
     combine_crops is True.
 
     Optional Parameters:
-        input_dir (Path or str): path to directory containing input file
+        input_dir (Path or str): path to directory containing input file, default: INPUT_DIR
         filename (str): name of file
         bbox (tuple): geogr. bounding box, tuple or array with for elements.
 
