@@ -355,7 +355,6 @@ class Uncertainty():
             (one row = one sample, columns = uncertainty parameters)
         """
 
-        self.samples_df = sampling_method
         uniform_base_sample = self._make_uniform_base_sample(N,
                                                              sampling_method,
                                                              sampling_kwargs)
