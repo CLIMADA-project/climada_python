@@ -40,7 +40,7 @@ class UncCostBenefit(Uncertainty):
     Cost Benefit Uncertainty analysis class
 
     This is the base class to perform uncertainty analysis on the outputs of a
-    climada.engine.costbenefit.CostBenefit() object using the SALib package.
+    climada.engine.costbenefit.CostBenefit().
 
     """
 
