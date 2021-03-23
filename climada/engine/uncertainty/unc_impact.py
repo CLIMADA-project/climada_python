@@ -122,16 +122,16 @@ class UncImpact(Uncertainty):
         self.rp = rp
         self.calc_eai_exp = calc_eai_exp
         self.calc_at_event = calc_at_event
-        
+
         start = time.time()
         one_sample = self.samples_df.iloc[0:1].iterrows()
         imp_metrics = map(self._map_impact_calc, one_sample)
         [aai_agg_list, freq_curve_list,
          eai_exp_list, at_event_list, tot_value_list] = list(zip(*imp_metrics))
-        elapsed_time = (time.time() - start) 
+        elapsed_time = (time.time() - start)
         est_com_time = self.est_comp_time(elapsed_time, pool)
         LOGGER.info(f"\n\nEstimated computation time: {est_com_time}s\n")
-        
+
         #Compute impact distributions
         if pool:
             LOGGER.info('Using %s CPUs.', pool.ncpus)
@@ -142,13 +142,13 @@ class UncImpact(Uncertainty):
 
         else:
             imp_metrics = map(self._map_impact_calc, self.samples_df.iterrows())
-        
+
         #Perform the actual computation
         with log_level(level='ERROR', name_prefix='climada'):
             [aai_agg_list, freq_curve_list,
              eai_exp_list, at_event_list,
              tot_value_list] = list(zip(*imp_metrics))
-            
+
 
         # Assign computed impact distribution data to self
         self.metrics['aai_agg']  = pd.DataFrame(aai_agg_list,
@@ -161,7 +161,7 @@ class UncImpact(Uncertainty):
         self.metrics['tot_value'] = pd.DataFrame(tot_value_list,
                                                  columns = ['tot_value'])
         self.check()
-        
+
         return None
 
     def _map_impact_calc(self, sample_iterrows):
@@ -194,7 +194,7 @@ class UncImpact(Uncertainty):
         imp = Impact()
 
         imp.calc(exposures=exp, impact_funcs=impf, hazard=haz)
-    
+
         # Extract from climada.impact the chosen metrics
         freq_curve = imp.calc_freq_curve(self.rp).impact
 
@@ -213,7 +213,7 @@ class UncImpact(Uncertainty):
 
     def plot_rp_distribution(self):
         """
-        Plot the distribution of return period values. 
+        Plot the distribution of return period values.
 
         Parameters
         ----------
@@ -256,8 +256,8 @@ class UncImpact(Uncertainty):
         ax.set_yticklabels(df_values.columns)
 
         return fig, ax
-    
-    
+
+
     def plot_sensitivity_map(self, exp, salib_si='S1'):
         """
         Plot a map of the largest sensitivity index in each exposure point
@@ -281,20 +281,20 @@ class UncImpact(Uncertainty):
             The axis handle of the plot.
 
         """
-        
+
         try:
             si_eai = self.sensitivity['eai_exp']
             eai_max_si_idx = [
                 np.argmax(si_dict[salib_si])
                 for si_dict in si_eai.values()
                 ]
-            
+
         except KeyError as verr:
             raise ValueError("No sensitivity indices found for"
                   " impact.eai_exp. Please compute sensitivity first using"
                   " UncImpact.calc_sensitivity(calc_eai_exp=True)"
                   ) from verr
-           
+
         plot_val = np.array([eai_max_si_idx]).astype(float)
         coord = np.array([exp.gdf.latitude, exp.gdf.longitude]).transpose()
         ax = u_plot.geo_scatter_categorical(
@@ -303,7 +303,7 @@ class UncImpact(Uncertainty):
                 title='Sensitivity map',
                 cat_name= self.param_labels
                 )
-        
+
         return ax
 
-            
+
