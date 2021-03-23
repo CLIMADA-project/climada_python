@@ -23,13 +23,14 @@ import numpy as np
 import pandas as pd
 import geopandas as gpd
 from sklearn.neighbors import DistanceMetric
+import rasterio
 from rasterio.windows import Window
 
 from climada import CONFIG
 from climada.entity.exposures.base import Exposures, INDICATOR_IF, \
      INDICATOR_CENTR, add_sea, DEF_REF_YEAR, DEF_VALUE_UNIT
 from climada.entity.tag import Tag
-from climada.hazard.base import Hazard
+from climada.hazard.base import Hazard, Centroids
 from climada.util.constants import ENT_TEMPLATE_XLS, ONE_LAT_KM, DEF_CRS, HAZ_DEMO_FL
 from climada.util.coordinates import coord_on_land, equal_crs
 
@@ -54,18 +55,31 @@ class TestFuncs(unittest.TestCase):
     """Check assign function"""
 
     def test_assign_pass(self):
-        """Check that assigned attribute is correctly set."""
-        # Fill with dummy values
-        expo = good_exposures()
-        expo.check()
-        # Fill with dummy values the centroids
-        haz = Hazard('TC')
-        haz.centroids.set_lat_lon(np.ones(expo.shape[0] + 6), np.ones(expo.shape[0] + 6))
-        # assign
-        expo.assign_centroids(haz)
+        """Check that attribute `assigned` is correctly set."""
+        np_rand = np.random.RandomState(123456789)
 
-        # check assigned variable has been set with correct length
-        self.assertEqual(expo.shape[0], len(expo[INDICATOR_CENTR + 'TC']))
+        haz = Hazard('FL')
+        haz.set_raster([HAZ_DEMO_FL], window=Window(10, 20, 50, 60))
+        haz.raster_to_vector()
+        ncentroids = haz.centroids.size
+
+        exp = Exposures()
+        exp.gdf.crs = haz.centroids.crs
+
+        # some are matching exactly, some are geographically close
+        exp.gdf['longitude'] = np.concatenate([
+            haz.centroids.lon, haz.centroids.lon + 0.001 * (-0.5 + np_rand.rand(ncentroids))])
+        exp.gdf['latitude'] = np.concatenate([
+            haz.centroids.lat, haz.centroids.lat + 0.001 * (-0.5 + np_rand.rand(ncentroids))])
+        expected_result = np.concatenate([np.arange(ncentroids), np.arange(ncentroids)])
+
+        # make sure that it works for both float32 and float64
+        for test_dtype in [np.float64, np.float32]:
+            haz.centroids.lat = haz.centroids.lat.astype(test_dtype)
+            haz.centroids.lon = haz.centroids.lon.astype(test_dtype)
+            exp.assign_centroids(haz)
+            self.assertEqual(exp.gdf.shape[0], len(exp.gdf[INDICATOR_CENTR + 'FL']))
+            np.testing.assert_array_equal(exp.gdf[INDICATOR_CENTR + 'FL'].values, expected_result)
 
     def test_read_raster_pass(self):
         """set_from_raster"""
@@ -73,33 +87,58 @@ class TestFuncs(unittest.TestCase):
         exp.set_from_raster(HAZ_DEMO_FL, window=Window(10, 20, 50, 60))
         exp.check()
         self.assertTrue(equal_crs(exp.crs, DEF_CRS))
-        self.assertAlmostEqual(exp['latitude'].max(),
+        self.assertAlmostEqual(exp.gdf['latitude'].max(),
                                10.248220966978932 - 0.009000000000000341 / 2)
-        self.assertAlmostEqual(exp['latitude'].min(),
+        self.assertAlmostEqual(exp.gdf['latitude'].min(),
                                10.248220966978932 - 0.009000000000000341
                                / 2 - 59 * 0.009000000000000341)
-        self.assertAlmostEqual(exp['longitude'].min(),
+        self.assertAlmostEqual(exp.gdf['longitude'].min(),
                                -69.2471495969998 + 0.009000000000000341 / 2)
-        self.assertAlmostEqual(exp['longitude'].max(),
+        self.assertAlmostEqual(exp.gdf['longitude'].max(),
                                -69.2471495969998 + 0.009000000000000341
                                / 2 + 49 * 0.009000000000000341)
-        self.assertEqual(len(exp), 60 * 50)
-        self.assertAlmostEqual(exp.value.values.reshape((60, 50))[25, 12], 0.056825936)
+        self.assertEqual(len(exp.gdf), 60 * 50)
+        self.assertAlmostEqual(exp.gdf.value.values.reshape((60, 50))[25, 12], 0.056825936)
 
     def test_assign_raster_pass(self):
         """Test assign_centroids with raster hazard"""
-        exp = Exposures()
-        exp['longitude'] = np.array([-69.235, -69.2427, -72, -68.8016496, 30])
-        exp['latitude'] = np.array([10.235, 10.226, 2, 9.71272097, 50])
-        exp.crs = DEF_CRS
         haz = Hazard('FL')
-        haz.set_raster([HAZ_DEMO_FL], window=Window(10, 20, 50, 60))
+
+        # explicit, easy-to-understand raster centroids for hazard
+        haz.centroids = Centroids()
+        haz.centroids.meta = {
+            'count': 1, 'crs': DEF_CRS,
+            'width': 20, 'height': 10,
+            'transform': rasterio.Affine(1.5, 0.0, -20, 0.0, -1.4, 8)
+        }
+
+        # explicit points with known results (see `expected_result` for details)
+        exp = Exposures(crs=DEF_CRS)
+        exp.gdf['longitude'] = np.array([
+            -20.1, -20.0, -19.8, -19.0, -18.6, -18.4,
+            -19.0, -19.0, -19.0, -19.0,
+            -20.1, 0.0, 10.1, 10.1, 10.1, 0.0, -20.2, -20.3,
+            -6.4, 9.8, 0.0,
+        ])
+        exp.gdf['latitude'] = np.array([
+            7.3, 7.3, 7.3, 7.3, 7.3, 7.3,
+            8.1, 7.9, 6.7, 6.5,
+            8.1, 8.2, 8.3, 0.0, -6.1, -6.2, -6.3, 0.0,
+            -1.9, -1.7, 0.0,
+        ])
         exp.assign_centroids(haz)
-        self.assertEqual(exp[INDICATOR_CENTR + 'FL'][0], 51)
-        self.assertEqual(exp[INDICATOR_CENTR + 'FL'][1], 100)
-        self.assertEqual(exp[INDICATOR_CENTR + 'FL'][2], -1)
-        self.assertEqual(exp[INDICATOR_CENTR + 'FL'][3], 3000 - 1)
-        self.assertEqual(exp[INDICATOR_CENTR + 'FL'][4], -1)
+
+        expected_result = [
+            # constant y-value, varying x-value
+            -1, 0, 0, 0, 0, 1,
+            # constant x-value, varying y-value
+            -1, 0, 0, 20,
+            # out of bounds: topleft, top, topright, right, bottomright, bottom, bottomleft, left
+            -1, -1, -1, -1, -1, -1, -1, -1,
+            # some explicit points within the raster
+            149, 139, 113,
+        ]
+        np.testing.assert_array_equal(exp.gdf[INDICATOR_CENTR + 'FL'].values, expected_result)
 
 
     def test_assign_raster_same_pass(self):
@@ -110,30 +149,53 @@ class TestFuncs(unittest.TestCase):
         haz = Hazard('FL')
         haz.set_raster([HAZ_DEMO_FL], window=Window(10, 20, 50, 60))
         exp.assign_centroids(haz)
-        self.assertTrue(np.array_equal(exp[INDICATOR_CENTR + 'FL'].values,
+        self.assertTrue(np.array_equal(exp.gdf[INDICATOR_CENTR + 'FL'].values,
                                        np.arange(haz.centroids.size, dtype=int)))
+
+    def test_assign_large_hazard_subset_pass(self):
+        """Test assign_centroids with raster hazard"""
+        exp = Exposures()
+        exp.set_from_raster(HAZ_DEMO_FL, window=Window(10, 20, 50, 60))
+        exp.gdf.latitude[[0, 1]] = exp.gdf.latitude[[1, 0]]
+        exp.gdf.longitude[[0, 1]] = exp.gdf.longitude[[1, 0]]
+        exp.check()
+        haz = Hazard('FL')
+        haz.set_raster([HAZ_DEMO_FL])
+        haz.raster_to_vector()
+        exp.assign_centroids(haz)
+        assigned_centroids = haz.centroids.select(sel_cen=exp.gdf[INDICATOR_CENTR + 'FL'].values)
+        np.testing.assert_array_equal(assigned_centroids.lat, exp.gdf.latitude)
+        np.testing.assert_array_equal(assigned_centroids.lon, exp.gdf.longitude)
+
 
 class TestChecker(unittest.TestCase):
     """Test logs of check function"""
 
     def test_info_logs_pass(self):
-        """Wrong exposures definition"""
-        expo = good_exposures()
-
+        """Correct exposures definition"""
         with self.assertLogs('climada.entity.exposures.base', level='INFO') as cm:
+            expo = good_exposures()
             expo.check()
-        self.assertIn('crs set to default value', cm.output[0])
-        self.assertIn('tag metadata set to default value', cm.output[1])
-        self.assertIn('ref_year metadata set to default value', cm.output[2])
-        self.assertIn('value_unit metadata set to default value', cm.output[3])
-        self.assertIn('meta metadata set to default value', cm.output[4])
-        self.assertIn('geometry not set', cm.output[6])
+        self.assertIn('meta set to default value', cm.output[0])
+        self.assertIn('tag set to default value', cm.output[1])
+        self.assertIn('ref_year set to default value', cm.output[2])
+        self.assertIn('value_unit set to default value', cm.output[3])
+        self.assertIn('crs set to default value', cm.output[4])
         self.assertIn('cover not set', cm.output[5])
+        self.assertIn('geometry not set', cm.output[6])
+
+        self.assertTrue(expo.crs is not None)
+        self.assertTrue(expo.gdf.crs is not None)
+        with self.assertLogs('climada.entity.exposures.base', level='INFO') as cm:
+            expo2 = Exposures(expo.gdf, meta={'crs': 4230})
+            expo2.check()
+            self.assertEqual(expo.crs, expo2.crs)
+        self.assertTrue(any(['ignored and overwritten' in line for line in cm.output]))
 
     def test_error_logs_fail(self):
         """Wrong exposures definition"""
         expo = good_exposures()
-        expo = expo.drop(['longitude'], axis=1)
+        expo.gdf.drop(['longitude'], inplace=True, axis=1)
 
         with self.assertLogs('climada.entity.exposures.base', level='ERROR') as cm:
             with self.assertRaises(ValueError):
@@ -144,7 +206,7 @@ class TestChecker(unittest.TestCase):
         """Wrong exposures definition"""
         expo = good_exposures()
         expo.set_geometry_points()
-        expo.latitude.values[0] = 5
+        expo.gdf.latitude.values[0] = 5
 
         with self.assertRaises(ValueError):
             expo.check()
@@ -183,19 +245,19 @@ class TestIO(unittest.TestCase):
         self.assertEqual(exp_df.crs, exp_read.crs)
         self.assertEqual(exp_df.tag.file_name, exp_read.tag.file_name)
         self.assertEqual(exp_df.tag.description, exp_read.tag.description)
-        self.assertTrue(np.array_equal(exp_df.latitude.values, exp_read.latitude.values))
-        self.assertTrue(np.array_equal(exp_df.longitude.values, exp_read.longitude.values))
-        self.assertTrue(np.array_equal(exp_df.value.values, exp_read.value.values))
-        self.assertTrue(np.array_equal(exp_df.deductible.values, exp_read.deductible.values))
-        self.assertTrue(np.array_equal(exp_df.cover.values, exp_read.cover.values))
-        self.assertTrue(np.array_equal(exp_df.region_id.values, exp_read.region_id.values))
-        self.assertTrue(np.array_equal(exp_df.category_id.values, exp_read.category_id.values))
-        self.assertTrue(np.array_equal(exp_df.if_TC.values, exp_read.if_TC.values))
-        self.assertTrue(np.array_equal(exp_df.centr_TC.values, exp_read.centr_TC.values))
-        self.assertTrue(np.array_equal(exp_df.if_FL.values, exp_read.if_FL.values))
-        self.assertTrue(np.array_equal(exp_df.centr_FL.values, exp_read.centr_FL.values))
+        self.assertTrue(np.array_equal(exp_df.gdf.latitude.values,    exp_read.gdf.latitude.values))
+        self.assertTrue(np.array_equal(exp_df.gdf.longitude.values,   exp_read.gdf.longitude.values))
+        self.assertTrue(np.array_equal(exp_df.gdf.value.values,       exp_read.gdf.value.values))
+        self.assertTrue(np.array_equal(exp_df.gdf.deductible.values,  exp_read.gdf.deductible.values))
+        self.assertTrue(np.array_equal(exp_df.gdf.cover.values,       exp_read.gdf.cover.values))
+        self.assertTrue(np.array_equal(exp_df.gdf.region_id.values,   exp_read.gdf.region_id.values))
+        self.assertTrue(np.array_equal(exp_df.gdf.category_id.values, exp_read.gdf.category_id.values))
+        self.assertTrue(np.array_equal(exp_df.gdf.if_TC.values,       exp_read.gdf.if_TC.values))
+        self.assertTrue(np.array_equal(exp_df.gdf.centr_TC.values,    exp_read.gdf.centr_TC.values))
+        self.assertTrue(np.array_equal(exp_df.gdf.if_FL.values,       exp_read.gdf.if_FL.values))
+        self.assertTrue(np.array_equal(exp_df.gdf.centr_FL.values,    exp_read.gdf.centr_FL.values))
 
-        for point_df, point_read in zip(exp_df.geometry.values, exp_read.geometry.values):
+        for point_df, point_read in zip(exp_df.gdf.geometry.values, exp_read.gdf.geometry.values):
             self.assertEqual(point_df.x, point_read.x)
             self.assertEqual(point_df.y, point_read.y)
 
@@ -204,13 +266,13 @@ class TestAddSea(unittest.TestCase):
     def test_add_sea_pass(self):
         """Test add_sea function with fake data."""
         exp = Exposures()
-        exp['value'] = np.arange(0, 1.0e6, 1.0e5)
+        exp.gdf['value'] = np.arange(0, 1.0e6, 1.0e5)
         min_lat, max_lat = 27.5, 30
         min_lon, max_lon = -18, -12
-        exp['latitude'] = np.linspace(min_lat, max_lat, 10)
-        exp['longitude'] = np.linspace(min_lon, max_lon, 10)
-        exp['region_id'] = np.ones(10)
-        exp['if_TC'] = np.ones(10)
+        exp.gdf['latitude'] = np.linspace(min_lat, max_lat, 10)
+        exp.gdf['longitude'] = np.linspace(min_lon, max_lon, 10)
+        exp.gdf['region_id'] = np.ones(10)
+        exp.gdf['if_TC'] = np.ones(10)
         exp.ref_year = 2015
         exp.value_unit = 'XSD'
         exp.check()
@@ -228,23 +290,55 @@ class TestAddSea(unittest.TestCase):
         max_lat = max_lat + sea_coast
         min_lon = min_lon - sea_coast
         max_lon = max_lon + sea_coast
-        self.assertEqual(np.min(exp_sea.latitude), min_lat)
-        self.assertEqual(np.min(exp_sea.longitude), min_lon)
-        self.assertTrue(np.array_equal(exp_sea.value.values[:10], np.arange(0, 1.0e6, 1.0e5)))
+        self.assertEqual(np.min(exp_sea.gdf.latitude), min_lat)
+        self.assertEqual(np.min(exp_sea.gdf.longitude), min_lon)
+        self.assertTrue(np.array_equal(exp_sea.gdf.value.values[:10], np.arange(0, 1.0e6, 1.0e5)))
         self.assertEqual(exp_sea.ref_year, exp.ref_year)
         self.assertEqual(exp_sea.value_unit, exp.value_unit)
 
-        on_sea_lat = exp_sea.latitude.values[11:]
-        on_sea_lon = exp_sea.longitude.values[11:]
+        on_sea_lat = exp_sea.gdf.latitude.values[11:]
+        on_sea_lon = exp_sea.gdf.longitude.values[11:]
         res_on_sea = coord_on_land(on_sea_lat, on_sea_lon)
         res_on_sea = ~res_on_sea
         self.assertTrue(np.all(res_on_sea))
 
         dist = DistanceMetric.get_metric('haversine')
         self.assertAlmostEqual(dist.pairwise([
-            [exp_sea.longitude.values[-1], exp_sea.latitude.values[-1]],
-            [exp_sea.longitude.values[-2], exp_sea.latitude.values[-2]],
+            [exp_sea.gdf.longitude.values[-1], exp_sea.gdf.latitude.values[-1]],
+            [exp_sea.gdf.longitude.values[-2], exp_sea.gdf.latitude.values[-2]],
         ])[0][1], sea_res_km)
+
+
+class TestConcat(unittest.TestCase):
+    """Check constructor Exposures through DataFrames readers"""
+    def setUp(self):
+        exp = Exposures(crs='epsg:3395')
+        exp.gdf['value'] = np.arange(0, 1.0e6, 1.0e5)
+        min_lat, max_lat = 27.5, 30
+        min_lon, max_lon = -18, -12
+        exp.gdf['latitude'] = np.linspace(min_lat, max_lat, 10)
+        exp.gdf['longitude'] = np.linspace(min_lon, max_lon, 10)
+        exp.gdf['region_id'] = np.ones(10)
+        exp.gdf['if_TC'] = np.ones(10)
+        exp.ref_year = 2015
+        exp.value_unit = 'XSD'
+        self.dummy = exp
+
+    def test_concat_pass(self):
+        """Test condat function with fake data."""
+
+        self.dummy.check()
+
+        catexp = Exposures.concat([self.dummy, self.dummy.gdf, pd.DataFrame(self.dummy.gdf.values, columns=self.dummy.gdf.columns), self.dummy])
+        self.assertEqual(self.dummy.gdf.shape, (10,5))
+        self.assertEqual(catexp.gdf.shape, (40,5))
+        self.assertEqual(catexp.gdf.crs, 'epsg:3395')
+
+    def test_concat_fail(self):
+        """Test failing concat function with fake data."""
+
+        with self.assertRaises(TypeError):
+            Exposures.concat([self.dummy, self.dummy.gdf, self.dummy.gdf.values, self.dummy])
 
 
 class TestGeoDFFuncs(unittest.TestCase):
@@ -260,8 +354,8 @@ class TestGeoDFFuncs(unittest.TestCase):
         self.assertEqual(exp_copy.value_unit, exp.value_unit)
         self.assertEqual(exp_copy.tag.description, exp.tag.description)
         self.assertEqual(exp_copy.tag.file_name, exp.tag.file_name)
-        self.assertTrue(np.array_equal(exp_copy.latitude.values, exp.latitude.values))
-        self.assertTrue(np.array_equal(exp_copy.longitude.values, exp.longitude.values))
+        self.assertTrue(np.array_equal(exp_copy.gdf.latitude.values, exp.gdf.latitude.values))
+        self.assertTrue(np.array_equal(exp_copy.gdf.longitude.values, exp.gdf.longitude.values))
 
     def test_to_crs_inplace_pass(self):
         """Test to_crs function inplace."""
@@ -290,14 +384,14 @@ class TestGeoDFFuncs(unittest.TestCase):
         self.assertEqual(exp_tr.tag.description, '')
         self.assertEqual(exp_tr.tag.file_name, '')
 
-    def test_constructoer_pass(self):
+    def test_constructor_pass(self):
         """Test initialization with input GeiDataFrame"""
         in_gpd = gpd.GeoDataFrame()
         in_gpd['value'] = np.zeros(10)
         in_gpd.ref_year = 2015
-        in_exp = Exposures(in_gpd)
+        in_exp = Exposures(in_gpd, ref_year=2015)
         self.assertEqual(in_exp.ref_year, 2015)
-        self.assertTrue(np.array_equal(in_exp.value, np.zeros(10)))
+        self.assertTrue(np.array_equal(in_exp.gdf.value, np.zeros(10)))
 
 # Execute Tests
 if __name__ == "__main__":

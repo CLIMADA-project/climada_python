@@ -56,10 +56,13 @@ BASINS = {
     'A': 'A - Arabian Sea (North Indian Ocean)',
     'B': 'B - Bay of Bengal (North Indian Ocean)',
     'U': 'U - Australia',
-    'S': 'S - South-West Indian Ocean'
+    'S': 'S - South-West Indian Ocean',
+    'X': 'X - Undefined Basin'
 }
 """Gleaned from the ECMWF wiki at
 https://confluence.ecmwf.int/display/FCST/Tropical+Cyclone+tracks+in+BUFR+-+including+genesis
+with added basin 'X' to deal with it appearing in operational forecasts
+(see e.g. years 2020 and 2021 in the sidebar at https://www.ecmwf.int/en/forecasts/charts/tcyclone/)
 and Wikipedia at https://en.wikipedia.org/wiki/Invest_(meteorology)
 """
 
@@ -314,14 +317,20 @@ class TCForecast(TCTracks):
         # TODO use drop_vars after upgrading xarray
         track = track.drop('ts_int')
 
-        track['radius_max_wind'] = np.full_like(track.time, np.nan,
-                                                dtype=float)
-        track['environmental_pressure'] = np.full_like(
-            track.time, DEF_ENV_PRESSURE, dtype=float
+        track['radius_max_wind'] = (('time'), np.full_like(
+            track.time, np.nan, dtype=float)
+        )
+        track['environmental_pressure'] = (('time'), np.full_like(
+            track.time, DEF_ENV_PRESSURE, dtype=float)
         )
 
         # according to specs always num-num-letter
         track.attrs['basin'] = BASINS[sid[2]]
+
+        if sid[2] == 'X':
+            LOGGER.info(
+                'Undefined basin %s for track name %s ensemble no. %d',
+                sid[2], track.attrs['name'], track.attrs['ensemble_number'])
 
         cat_name = CAT_NAMES[set_category(
             max_sus_wind=track.max_sustained_wind.values,

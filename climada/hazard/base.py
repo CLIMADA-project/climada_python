@@ -40,11 +40,11 @@ from pathos.pools import ProcessPool as Pool
 from climada.hazard.tag import Tag as TagHazard
 from climada.hazard.centroids.centr import Centroids
 import climada.util.plot as u_plot
-import climada.util.checker as check
+import climada.util.checker as u_check
 import climada.util.dates_times as u_dt
 from climada import CONFIG
-import climada.util.hdf5_handler as hdf5
-import climada.util.coordinates as co
+import climada.util.hdf5_handler as u_hdf5
+import climada.util.coordinates as u_coord
 
 LOGGER = logging.getLogger(__name__)
 
@@ -458,7 +458,7 @@ class Hazard():
             else:
                 points_df[inten_name] = np.asarray(self.fraction[i_ev - self.size, :].toarray()).\
                 reshape(-1)
-        raster, meta = co.points_to_raster(points_df, val_names, scheduler=scheduler)
+        raster, meta = u_coord.points_to_raster(points_df, val_names, scheduler=scheduler)
         self.intensity = sparse.csr_matrix(raster[:self.size, :, :].reshape(self.size, -1))
         self.fraction = sparse.csr_matrix(raster[self.size:, :, :].reshape(self.size, -1))
         self.centroids = Centroids()
@@ -481,16 +481,16 @@ class Hazard():
             var_names = DEF_VAR_MAT
         LOGGER.info('Reading %s', file_name)
         self.clear()
-        self.tag.file_name = file_name
+        self.tag.file_name = str(file_name)
         self.tag.description = description
         try:
-            data = hdf5.read(file_name)
+            data = u_hdf5.read(file_name)
             try:
                 data = data[var_names['field_name']]
             except KeyError:
                 pass
 
-            haz_type = hdf5.get_string(data[var_names['var_name']['per_id']])
+            haz_type = u_hdf5.get_string(data[var_names['var_name']['per_id']])
             self.tag.haz_type = haz_type
             self.centroids.read_mat(file_name, var_names=var_names['var_cent'])
             self._read_att_mat(data, file_name, var_names)
@@ -665,7 +665,7 @@ class Hazard():
         return inten_stats
 
     def plot_rp_intensity(self, return_periods=(25, 50, 100, 250),
-                          smooth=True, axis=None, **kwargs):
+                          smooth=True, axis=None, figsize=(9, 13), **kwargs):
         """Compute and plot hazard exceedance intensity maps for different
         return periods. Calls local_exceedance_inten.
 
@@ -673,6 +673,7 @@ class Hazard():
             return_periods (tuple(int), optional): return periods to consider
             smooth (bool, optional): smooth plot to plot.RESOLUTIONxplot.RESOLUTION
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
+            figsize (tuple, optional): figure size for plt.subplots
             kwargs (optional): arguments for pcolormesh matplotlib function
                 used in event plots
 
@@ -688,7 +689,7 @@ class Hazard():
             title.append('Return period: ' + str(ret) + ' years')
         axis = u_plot.geo_im_from_array(inten_stats, self.centroids.coord,
                                         colbar_name, title, smooth=smooth,
-                                        axes=axis, **kwargs)
+                                        axes=axis, figsize=figsize, **kwargs)
         return axis, inten_stats
 
     def plot_intensity(self, event=None, centr=None, smooth=True, axis=None,
@@ -956,7 +957,7 @@ class Hazard():
         if not intensity:
             variable = self.fraction
         if self.centroids.meta:
-            co.write_raster(file_name, variable.toarray(), self.centroids.meta)
+            u_coord.write_raster(file_name, variable.toarray(), self.centroids.meta)
         else:
             pixel_geom = self.centroids.calc_pixels_polygons()
             profile = self.centroids.meta
@@ -1024,9 +1025,9 @@ class Hazard():
             if var_name == 'centroids':
                 self.centroids.read_hdf5(hf_data.get(var_name))
             elif var_name == 'tag':
-                self.tag.haz_type = hf_data.get('haz_type')[0]
-                self.tag.file_name = hf_data.get('file_name')[0]
-                self.tag.description = hf_data.get('description')[0]
+                self.tag.haz_type = u_hdf5.to_string(hf_data.get('haz_type')[0])
+                self.tag.file_name = u_hdf5.to_string(hf_data.get('file_name')[0])
+                self.tag.description = u_hdf5.to_string(hf_data.get('description')[0])
             elif isinstance(var_val, np.ndarray) and var_val.ndim == 1:
                 setattr(self, var_name, np.array(hf_data.get(var_name)))
             elif isinstance(var_val, sparse.csr_matrix):
@@ -1039,11 +1040,13 @@ class Hazard():
                                                                hf_csr['indptr'][:]),
                                                               hf_csr.attrs['shape']))
             elif isinstance(var_val, str):
-                setattr(self, var_name, hf_data.get(var_name)[0])
+                setattr(self, var_name, u_hdf5.to_string(hf_data.get(var_name)[0]))
             elif isinstance(var_val, list):
-                setattr(self, var_name, np.array(hf_data.get(var_name)).tolist())
+                var_value = [x for x in map(u_hdf5.to_string, np.array(hf_data.get(var_name)).tolist())]
+                setattr(self, var_name, var_value)
             else:
                 setattr(self, var_name, hf_data.get(var_name))
+            
         hf_data.close()
 
     def concatenate(self, haz_src, append=False):
@@ -1093,7 +1096,8 @@ class Hazard():
             ev_set.add((ev_name, ev_date))
         return ev_set
 
-    def _event_plot(self, event_id, mat_var, col_name, smooth, axis=None, **kwargs):
+    def _event_plot(self, event_id, mat_var, col_name, smooth, axis=None,
+                    figsize=(9, 13), **kwargs):
         """Plot an event of the input matrix.
 
         Parameters:
@@ -1105,6 +1109,7 @@ class Hazard():
             col_name (sparse matrix): Colorbar label
             smooth (bool, optional): smooth plot to plot.RESOLUTIONxplot.RESOLUTION
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
+            figsize (tuple, optional): figure size for plt.subplots
             kwargs (optional): arguments for pcolormesh matplotlib function
 
         Returns:
@@ -1140,7 +1145,8 @@ class Hazard():
             l_title.append(title)
 
         return u_plot.geo_im_from_array(array_val, self.centroids.coord, col_name,
-                                        l_title, smooth=smooth, axes=axis, **kwargs)
+                                        l_title, smooth=smooth, axes=axis,
+                                        figsize=figsize, **kwargs)
 
     def _centr_plot(self, centr_idx, mat_var, col_name, axis=None, **kwargs):
         """Plot a centroid of the input matrix.
@@ -1234,15 +1240,15 @@ class Hazard():
             LOGGER.error("There are events with the same identifier.")
             raise ValueError
 
-        check.check_oligatories(self.__dict__, self.vars_oblig, 'Hazard.',
+        u_check.check_oligatories(self.__dict__, self.vars_oblig, 'Hazard.',
                                 num_ev, num_ev, num_cen)
-        check.check_optionals(self.__dict__, self.vars_opt, 'Hazard.', num_ev)
-        self.event_name = check.array_default(num_ev, self.event_name,
+        u_check.check_optionals(self.__dict__, self.vars_opt, 'Hazard.', num_ev)
+        self.event_name = u_check.array_default(num_ev, self.event_name,
                                               'Hazard.event_name',
                                               list(self.event_id))
-        self.date = check.array_default(num_ev, self.date, 'Hazard.date',
+        self.date = u_check.array_default(num_ev, self.date, 'Hazard.date',
                                         np.ones(self.event_id.shape, dtype=int))
-        self.orig = check.array_default(num_ev, self.orig, 'Hazard.orig',
+        self.orig = u_check.array_default(num_ev, self.orig, 'Hazard.orig',
                                         np.zeros(self.event_id.shape, dtype=bool))
         if len(self._events_set()) != num_ev:
             LOGGER.error("There are events with same date and name.")
@@ -1286,20 +1292,20 @@ class Hazard():
         self.event_id = np.squeeze(
             data[var_names['var_name']['even_id']].astype(np.int, copy=False))
         try:
-            self.units = hdf5.get_string(data[var_names['var_name']['unit']])
+            self.units = u_hdf5.get_string(data[var_names['var_name']['unit']])
         except KeyError:
             pass
 
         n_cen = self.centroids.size
         n_event = len(self.event_id)
         try:
-            self.intensity = hdf5.get_sparse_csr_mat(
+            self.intensity = u_hdf5.get_sparse_csr_mat(
                 data[var_names['var_name']['inten']], (n_event, n_cen))
         except ValueError as err:
             LOGGER.error('Size missmatch in intensity matrix.')
             raise err
         try:
-            self.fraction = hdf5.get_sparse_csr_mat(
+            self.fraction = u_hdf5.get_sparse_csr_mat(
                 data[var_names['var_name']['frac']], (n_event, n_cen))
         except ValueError as err:
             LOGGER.error('Size missmatch in fraction matrix.')
@@ -1309,12 +1315,12 @@ class Hazard():
                                                       dtype=np.float))
         # Event names: set as event_id if no provided
         try:
-            self.event_name = hdf5.get_list_str_from_ref(
+            self.event_name = u_hdf5.get_list_str_from_ref(
                 file_name, data[var_names['var_name']['ev_name']])
         except KeyError:
             self.event_name = list(self.event_id)
         try:
-            comment = hdf5.get_string(data[var_names['var_name']['comment']])
+            comment = u_hdf5.get_string(data[var_names['var_name']['comment']])
             self.tag.description += ' ' + comment
         except KeyError:
             pass

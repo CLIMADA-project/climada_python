@@ -19,6 +19,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define functions to handle with coordinates
 """
 
+import ast
 import copy
 import logging
 import math
@@ -51,7 +52,7 @@ from climada.util.constants import (DEF_CRS, SYSTEM_DIR, ONE_LAT_KM,
                                     ISIMIP_NATID_TO_ISO,
                                     RIVER_FLOOD_REGIONS_CSV)
 from climada.util.files_handler import download_file
-import climada.util.hdf5_handler as hdf5
+import climada.util.hdf5_handler as u_hdf5
 
 pd.options.mode.chained_assignment = None
 
@@ -113,39 +114,36 @@ def latlon_to_geosph_vector(lat, lon, rad=False, basis=False):
 def lon_normalize(lon, center=0.0):
     """ Normalizes degrees such that always -180 < lon - center <= 180
 
-    The input data is modified in place (!) using the following operations:
-
-        (lon) -> (lon ± 360)
+    The input data is modified in place!
 
     Parameters
     ----------
     lon : np.array
         Longitudinal coordinates
     center : float, optional
-        Central longitude value to use instead of 0.
+        Central longitude value to use instead of 0. If None, the central longitude is determined
+        automatically.
 
     Returns
     -------
     lon : np.array
-        Normalized longitudinal coordinates.
+        Normalized longitudinal coordinates. Since the input `lon` is modified in place (!), the
+        returned array is the same Python object (instead of a copy).
     """
+    if center is None:
+        center = 0.5 * sum(lon_bounds(lon))
     bounds = (center - 180, center + 180)
-    maxiter = 10
-    i = 0
-    while True:
-        msk1 = (lon > bounds[1])
-        lon[msk1] -= 360
-        msk2 = (lon <= bounds[0])
-        lon[msk2] += 360
-        if msk1.sum() == 0 and msk2.sum() == 0:
-            break
-        i += 1
-        if i > maxiter:
-            LOGGER.warning("lon_normalize: killed before finishing")
-            break
+    # map to [center - 360, center + 360] using modulo operator
+    outside_mask = (lon <= bounds[0]) | (lon > bounds[1])
+    lon[outside_mask] = (lon[outside_mask] % 360) + (center - center % 360)
+    # map from [center - 360, center + 360] to [center - 180, center + 180], adding ±360
+    if center % 360 < 180:
+        lon[lon > bounds[1]] -= 360
+    else:
+        lon[lon <= bounds[0]] += 360
     return lon
 
-def latlon_bounds(lat, lon, buffer=0.0):
+def lon_bounds(lon, buffer=0.0):
     """Bounds of a set of degree values, respecting the periodicity in longitude
 
     The longitudinal upper bound may be 180 or larger to make sure that the upper bound is always
@@ -158,30 +156,28 @@ def latlon_bounds(lat, lon, buffer=0.0):
     Usually, an application of this function is followed by a renormalization of longitudinal
     values around the longitudinal middle value:
 
-    >>> bounds = latlon_bounds(lat, lon)
+    >>> bounds = lon_bounds(lon)
     >>> lon_mid = 0.5 * (bounds[0] + bounds[2])
     >>> lon = lon_normalize(lon, center=lon_mid)
     >>> np.all((bounds[0] <= lon) & (lon <= bounds[2]))
 
     Example
     -------
-    >>> latlon_bounds(np.array([0, -2, 5]), np.array([-179, 175, 178]))
-    (175, -2, 181, 5)
-    >>> latlon_bounds(np.array([0, -2, 5]), np.array([-179, 175, 178]), buffer=1)
-    (174, -3, 182, 6)
+    >>> lon_bounds(np.array([-179, 175, 178]))
+    (175, 181)
+    >>> lon_bounds(np.array([-179, 175, 178]), buffer=1)
+    (174, 182)
 
     Parameters
     ----------
-    lat : np.array
-        Latitudinal coordinates
     lon : np.array
         Longitudinal coordinates
     buffer : float, optional
-        Buffer to add to all sides of the bounding box. Default: 0.0.
+        Buffer to add to both sides of the bounding box. Default: 0.0.
 
     Returns
     -------
-    bounds : tuple (lon_min, lat_min, lon_max, lat_max)
+    bounds : tuple (lon_min, lon_max)
         Bounding box of the given points.
     """
     lon = lon_normalize(lon.copy())
@@ -206,6 +202,37 @@ def latlon_bounds(lat, lon, buffer=0.0):
         if lon_min <= -180:
             lon_min += 360
             lon_max += 360
+    return (lon_min, lon_max)
+
+
+def latlon_bounds(lat, lon, buffer=0.0):
+    """Bounds of a set of degree values, respecting the periodicity in longitude
+
+    See `lon_bounds` for more information about the handling of longitudinal values crossing the
+    antimeridian.
+
+    Example
+    -------
+    >>> latlon_bounds(np.array([0, -2, 5]), np.array([-179, 175, 178]))
+    (175, -2, 181, 5)
+    >>> latlon_bounds(np.array([0, -2, 5]), np.array([-179, 175, 178]), buffer=1)
+    (174, -3, 182, 6)
+
+    Parameters
+    ----------
+    lat : np.array
+        Latitudinal coordinates
+    lon : np.array
+        Longitudinal coordinates
+    buffer : float, optional
+        Buffer to add to all sides of the bounding box. Default: 0.0.
+
+    Returns
+    -------
+    bounds : tuple (lon_min, lat_min, lon_max, lat_max)
+        Bounding box of the given points.
+    """
+    lon_min, lon_max = lon_bounds(lon, buffer=buffer)
     return (lon_min, max(lat.min() - buffer, -90), lon_max, min(lat.max() + buffer, 90))
 
 def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
@@ -226,9 +253,11 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
         Default: True
     method : str, optional
         Specify an approximation method to use:
-        * "equirect": equirectangular; very fast, good only at small distances.
-        * "geosphere": spherical approximation, slower, but much higher accuracy.
-        Default: "equirect".
+        * "equirect": Distance according to sinusoidal projection. Fast, but inaccurate for large
+          distances and high latitudes.
+        * "geosphere": Exact spherical distance. Much more accurate at all distances, but slow.
+        Note that ellipsoidal distances would be even more accurate, but are currently not
+        implemented. Default: "equirect".
     units : str, optional
         Specify a unit for the distance. One of:
         * "km": distance in km.
@@ -256,17 +285,18 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
 
     if method == "equirect":
         if normalize:
-            lon_normalize(lon1)
-            lon_normalize(lon2)
-        d_lat = lat2[:, None] - lat1[:, :, None]
-        d_lon = lon2[:, None] - lon1[:, :, None]
-        fact1 = np.heaviside(d_lon - 180, 0)
-        fact2 = np.heaviside(-d_lon - 180, 0)
-        d_lon -= (fact1 - fact2) * 360
-        d_lon *= np.cos(np.radians(lat1[:, :, None]))
-        dist = np.sqrt(d_lon**2 + d_lat**2) * unit_factor
-        if log:
-            vtan = np.stack([d_lat, d_lon], axis=-1) * unit_factor
+            mid_lon = 0.5 * sum(lon_bounds(np.concatenate([lon1, lon2])))
+            lon_normalize(lon1, center=mid_lon)
+            lon_normalize(lon2, center=mid_lon)
+        vtan = np.stack([lat2[:, None] - lat1[:, :, None],
+                         lon2[:, None] - lon1[:, :, None]], axis=-1)
+        fact1 = np.heaviside(vtan[..., 1] - 180, 0)
+        fact2 = np.heaviside(-vtan[..., 1] - 180, 0)
+        vtan[..., 1] -= (fact1 - fact2) * 360
+        vtan[..., 1] *= np.cos(np.radians(lat1[:, :, None]))
+        vtan *= unit_factor
+        # faster version of `dist = np.linalg.norm(vtan, axis=-1)`
+        dist = np.sqrt(np.einsum("...l,...l->...", vtan, vtan))
     elif method == "geosphere":
         lat1, lon1, lat2, lon2 = map(np.radians, [lat1, lon1, lat2, lon2])
         dlat = 0.5 * (lat2[:, None] - lat1[:, :, None])
@@ -719,14 +749,14 @@ def get_region_gridpoints(countries=None, regions=None, resolution=150,
 
     if basemap == "natearth":
         base_file = NATEARTH_CENTROIDS[resolution]
-        hdf5_f = hdf5.read(base_file)
+        hdf5_f = u_hdf5.read(base_file)
         meta = hdf5_f['meta']
         grid_shape = (meta['height'][0], meta['width'][0])
         transform = rasterio.Affine(*meta['transform'])
         region_id = hdf5_f['region_id'].reshape(grid_shape)
         lon, lat = raster_to_meshgrid(transform, grid_shape[1], grid_shape[0])
     elif basemap == "isimip":
-        hdf5_f = hdf5.read(ISIMIP_GPWV3_NATID_150AS)
+        hdf5_f = u_hdf5.read(ISIMIP_GPWV3_NATID_150AS)
         dim_lon, dim_lat = hdf5_f['lon'], hdf5_f['lat']
         bounds = dim_lon.min(), dim_lat.min(), dim_lon.max(), dim_lat.max()
         orig_res = get_resolution(dim_lon, dim_lat)
@@ -931,7 +961,7 @@ def get_country_code(lat, lon, gridded=False):
     lat, lon = [np.asarray(ar).ravel() for ar in [lat, lon]]
     LOGGER.info('Setting region_id %s points.', str(lat.size))
     if gridded:
-        base_file = hdf5.read(NATEARTH_CENTROIDS[150])
+        base_file = u_hdf5.read(NATEARTH_CENTROIDS[150])
         meta, region_id = base_file['meta'], base_file['region_id']
         transform = rasterio.Affine(*meta['transform'])
         region_id = region_id.reshape(meta['height'][0], meta['width'][0])
@@ -1088,20 +1118,58 @@ def raster_to_meshgrid(transform, width, height):
     return np.meshgrid(np.arange(xmin + xres / 2, xmax, xres),
                        np.arange(ymin + yres / 2, ymax, yres))
 
+
+def to_crs_user_input(crs_obj):
+    """Returns a crs string or dictionary from a hdf5 file object.
+
+    bytes are decoded to str
+    if the string starts with a '{' it is assumed to be a dumped string from a dictionary
+    and ast is used to parse it.
+
+    Parameters
+    ----------
+    crs_obj : int, dict or str or bytes
+        the crs object to be converted user input
+
+    Returns
+    -------
+    str or dict
+        to eventually be used as argument of rasterio.crs.CRS.from_user_input
+        and pyproj.crs.CRS.from_user_input
+
+    Raises
+    ------
+    ValueError
+        if type(crs_obj) has the wrong type
+    """
+    if type(crs_obj) in [dict, int]:
+        return crs_obj
+
+    crs_string = crs_obj.decode() if isinstance(crs_obj, bytes) else crs_obj
+
+    if not isinstance(crs_string, str):
+        raise ValueError(f"crs has unhandled data set type: {type(crs_string)}")
+
+    if crs_string[0] == '{':
+        return ast.literal_eval(crs_string)
+
+    return crs_string
+
+
 def equal_crs(crs_one, crs_two):
     """Compare two crs
 
     Parameters
     ----------
-    crs_one : dict or string or wkt
+    crs_one : dict, str or int
         user crs
-    crs_two : dict or string or wkt
+    crs_two : dict, str or int
         user crs
 
     Returns
     -------
     equal : bool
-        Whether the two specified CRS are equal.
+        Whether the two specified CRS are equal according tho rasterio.crs.CRS.from_user_input
     """
     return rasterio.crs.CRS.from_user_input(crs_one) == rasterio.crs.CRS.from_user_input(crs_two)
 
@@ -1221,7 +1289,7 @@ def read_raster(file_name, band=None, src_crs=None, window=None, geometry=None,
 
                 src_crs = src.crs if src_crs is None else src_crs
                 if not src_crs:
-                    src_crs = rasterio.crs.CRS.from_dict(DEF_CRS)
+                    src_crs = rasterio.crs.CRS.from_user_input(DEF_CRS)
                 transform = (transform, width, height) if transform else None
                 inten = _read_raster_reproject(src, src_crs, dst_meta, band=band,
                                                geometry=geometry, dst_crs=dst_crs,
@@ -1251,7 +1319,7 @@ def read_raster(file_name, band=None, src_crs=None, window=None, geometry=None,
                 })
 
     if not dst_meta['crs']:
-        dst_meta['crs'] = rasterio.crs.CRS.from_dict(DEF_CRS)
+        dst_meta['crs'] = rasterio.crs.CRS.from_user_input(DEF_CRS)
 
     intensity = inten[range(len(band)), :]
     dst_shape = (len(band), dst_meta['height'] * dst_meta['width'])
@@ -1298,33 +1366,27 @@ def read_raster_bounds(path, bounds, res=None, bands=None):
         width, height = bounds[2] - bounds[0], bounds[3] - bounds[1]
         shape = (int(np.ceil(height / res[1]) + 1),
                  int(np.ceil(width / res[0]) + 1))
+
+        # make sure that the extent of pixel centers covers the specified regions
         extra = (0.5 * ((shape[1] - 1) * res[0] - width),
                  0.5 * ((shape[0] - 1) * res[1] - height))
         bounds = (bounds[0] - extra[0] - 0.5 * res[0], bounds[1] - extra[1] - 0.5 * res[1],
                   bounds[2] + extra[0] + 0.5 * res[0], bounds[3] + extra[1] + 0.5 * res[1])
 
-        if bounds[0] > 180:
-            bounds = (bounds[0] - 360, bounds[1], bounds[2] - 360, bounds[3])
-
-        window = src.window(*bounds)
-        w_transform = src.window_transform(window)
-        transform = rasterio.Affine(np.sign(w_transform[0]) * res[0], 0, w_transform[2],
-                                    0, np.sign(w_transform[4]) * res[1], w_transform[5])
-
-        if bounds[2] <= 180:
-            data = src.read(bands, out_shape=shape, window=window,
-                            resampling=resampling)
-        else:
-            # split up at antimeridian
-            bounds_sub = [(bounds[0], bounds[1], 180, bounds[3]),
-                          (-180, bounds[1], bounds[2] - 360, bounds[3])]
-            ratio_left = (bounds_sub[0][2] - bounds_sub[0][0]) / (bounds[2] - bounds[0])
-            shapes_sub = [(shape[0], int(shape[1] * ratio_left))]
-            shapes_sub.append((shape[0], shape[1] - shapes_sub[0][1]))
-            windows_sub = [src.window(*bds) for bds in bounds_sub]
-            data = [src.read(bands, out_shape=shp, window=win, resampling=resampling)
-                    for shp, win in zip(shapes_sub, windows_sub)]
-            data = np.concatenate(data, axis=2)
+        data = np.zeros((len(bands),) + shape, dtype=src.dtypes[0])
+        res = (np.sign(src.transform[0]) * res[0], np.sign(src.transform[4]) * res[1])
+        transform = rasterio.Affine(res[0], 0, bounds[0] if res[0] > 0 else bounds[2],
+                                    0, res[1], bounds[1] if res[1] > 0 else bounds[3])
+        crs = DEF_CRS if src.crs is None else src.crs
+        for iband, band in enumerate(bands):
+            rasterio.warp.reproject(
+                source=rasterio.band(src, band),
+                destination=data[iband],
+                src_transform=src.transform,
+                src_crs=src.crs,
+                dst_transform=transform,
+                dst_crs=crs,
+                resampling=resampling)
     return data, transform
 
 def read_raster_sample(path, lat, lon, intermediate_res=None, method='linear', fill_value=None):
@@ -1574,7 +1636,7 @@ def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, schedul
         return df_exp.apply(fun, axis=1)
 
     LOGGER.info('Raster from resolution %s to %s.', res, raster_res)
-    df_poly = points_df[val_names]
+    df_poly = gpd.GeoDataFrame(points_df[val_names])
     if not scheduler:
         df_poly['geometry'] = apply_box(points_df)
     else:
@@ -1582,9 +1644,19 @@ def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, schedul
                                npartitions=cpu_count())
         df_poly['geometry'] = ddata.map_partitions(apply_box, meta=Polygon) \
                                    .compute(scheduler=scheduler)
+    df_poly.crs = points_df.crs
+
+    # renormalize longitude if necessary
+    if df_poly.crs == DEF_CRS:
+        xmin, ymin, xmax, ymax = latlon_bounds(points_df.latitude.values,
+                                               points_df.longitude.values)
+        x_mid = 0.5 * (xmin + xmax)
+        df_poly = df_poly.to_crs({"proj": "longlat", "lon_wrap": x_mid})
+    else:
+        xmin, ymin, xmax, ymax = (points_df.longitude.min(), points_df.latitude.min(),
+                                  points_df.longitude.max(), points_df.latitude.max())
+
     # construct raster
-    xmin, ymin, xmax, ymax = (points_df.longitude.min(), points_df.latitude.min(),
-                              points_df.longitude.max(), points_df.latitude.max())
     rows, cols, ras_trans = pts_to_raster_meta((xmin, ymin, xmax, ymax),
                                                (raster_res, -raster_res))
     raster_out = np.zeros((len(val_names), rows, cols))

@@ -38,48 +38,48 @@ class TestReader(unittest.TestCase):
         # Check results
         n_expos = 50
 
-        self.assertEqual(expo.index.shape, (n_expos,))
-        self.assertEqual(expo.index[0], 0)
-        self.assertEqual(expo.index[n_expos - 1], n_expos - 1)
+        self.assertEqual(expo.gdf.index.shape, (n_expos,))
+        self.assertEqual(expo.gdf.index[0], 0)
+        self.assertEqual(expo.gdf.index[n_expos - 1], n_expos - 1)
 
-        self.assertEqual(expo.value.shape, (n_expos,))
-        self.assertEqual(expo.value[0], 13927504367.680632)
-        self.assertEqual(expo.value[n_expos - 1], 12624818493.687229)
+        self.assertEqual(expo.gdf.value.shape, (n_expos,))
+        self.assertEqual(expo.gdf.value[0], 13927504367.680632)
+        self.assertEqual(expo.gdf.value[n_expos - 1], 12624818493.687229)
 
-        self.assertEqual(expo.deductible.shape, (n_expos,))
-        self.assertEqual(expo.deductible[0], 0)
-        self.assertEqual(expo.deductible[n_expos - 1], 0)
+        self.assertEqual(expo.gdf.deductible.shape, (n_expos,))
+        self.assertEqual(expo.gdf.deductible[0], 0)
+        self.assertEqual(expo.gdf.deductible[n_expos - 1], 0)
 
-        self.assertEqual(expo.cover.shape, (n_expos,))
-        self.assertEqual(expo.cover[0], 13927504367.680632)
-        self.assertEqual(expo.cover[n_expos - 1], 12624818493.687229)
+        self.assertEqual(expo.gdf.cover.shape, (n_expos,))
+        self.assertEqual(expo.gdf.cover[0], 13927504367.680632)
+        self.assertEqual(expo.gdf.cover[n_expos - 1], 12624818493.687229)
 
-        self.assertIn('int', str(expo.if_.dtype))
-        self.assertEqual(expo.if_.shape, (n_expos,))
-        self.assertEqual(expo.if_[0], 1)
-        self.assertEqual(expo.if_[n_expos - 1], 1)
+        self.assertIn('int', str(expo.gdf.if_.dtype))
+        self.assertEqual(expo.gdf.if_.shape, (n_expos,))
+        self.assertEqual(expo.gdf.if_[0], 1)
+        self.assertEqual(expo.gdf.if_[n_expos - 1], 1)
 
-        self.assertIn('int', str(expo.category_id.dtype))
-        self.assertEqual(expo.category_id.shape, (n_expos,))
-        self.assertEqual(expo.category_id[0], 1)
-        self.assertEqual(expo.category_id[n_expos - 1], 1)
+        self.assertIn('int', str(expo.gdf.category_id.dtype))
+        self.assertEqual(expo.gdf.category_id.shape, (n_expos,))
+        self.assertEqual(expo.gdf.category_id[0], 1)
+        self.assertEqual(expo.gdf.category_id[n_expos - 1], 1)
 
-        self.assertIn('int', str(expo.centr_.dtype))
-        self.assertEqual(expo.centr_.shape, (n_expos,))
-        self.assertEqual(expo.centr_[0], 47)
-        self.assertEqual(expo.centr_[n_expos - 1], 46)
+        self.assertIn('int', str(expo.gdf.centr_.dtype))
+        self.assertEqual(expo.gdf.centr_.shape, (n_expos,))
+        self.assertEqual(expo.gdf.centr_[0], 47)
+        self.assertEqual(expo.gdf.centr_[n_expos - 1], 46)
 
-        self.assertTrue('region_id' not in expo)
+        self.assertTrue('region_id' not in expo.gdf)
 
-        self.assertEqual(expo.latitude.shape, (n_expos,))
-        self.assertEqual(expo.latitude[0], 26.93389900000)
-        self.assertEqual(expo.latitude[n_expos - 1], 26.34795700000)
-        self.assertEqual(expo.longitude[0], -80.12879900000)
-        self.assertEqual(expo.longitude[n_expos - 1], -80.15885500000)
+        self.assertEqual(expo.gdf.latitude.shape, (n_expos,))
+        self.assertEqual(expo.gdf.latitude[0], 26.93389900000)
+        self.assertEqual(expo.gdf.latitude[n_expos - 1], 26.34795700000)
+        self.assertEqual(expo.gdf.longitude[0], -80.12879900000)
+        self.assertEqual(expo.gdf.longitude[n_expos - 1], -80.15885500000)
 
         self.assertEqual(expo.ref_year, 2016)
         self.assertEqual(expo.value_unit, 'USD')
-        self.assertEqual(expo.tag.file_name, ENT_TEST_MAT)
+        self.assertEqual(expo.tag.file_name, str(ENT_TEST_MAT))
 
 class TestObligatories(unittest.TestCase):
     """Test reading exposures obligatory values."""
@@ -125,7 +125,7 @@ class TestOptionals(unittest.TestCase):
         exp.read_mat(ENT_TEST_MAT, var_names=new_var_names)
 
         # Check results
-        self.assertTrue('category_id' not in exp)
+        self.assertTrue('category_id' not in exp.gdf)
 
     def test_no_region_pass(self):
         """Not error if no region id."""
@@ -135,7 +135,7 @@ class TestOptionals(unittest.TestCase):
         exp.read_mat(ENT_TEST_MAT, var_names=new_var_names)
 
         # Check results
-        self.assertTrue('region_id' not in exp)
+        self.assertTrue('region_id' not in exp.gdf)
 
     def test_no_unit_pass(self):
         """Not error if no value unit."""
@@ -155,7 +155,7 @@ class TestOptionals(unittest.TestCase):
         exp.read_mat(ENT_TEST_MAT, var_names=new_var_names)
 
         # Check results
-        self.assertTrue('centr_' not in exp)
+        self.assertTrue('centr_' not in exp.gdf)
 
     def test_no_refyear_pass(self):
         """Not error if no value unit."""
