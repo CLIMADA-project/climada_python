@@ -600,7 +600,8 @@ def init_full_exp_set_isimip(input_dir=None, filename=None, hist_mean_dir=None,
         Exposures are aggregated per crop and irrigation type.
 
         Parameters:
-        input_dir (str or Path): path to input data directory, default: INPUT_DIR
+        input_dir (str or Path): path to input data directory,
+            default: {CONFIG.exposures.crop_production.local_data}/Input/Exposure
         filename (string): if not specified differently, the file
             'histsoc_landuse-15crops_annual_1861_2005.nc' will be used
         output_dir (string): path to output data directory
