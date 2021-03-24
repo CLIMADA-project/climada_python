@@ -844,7 +844,8 @@ def generate_WS_forecast_hazard(run_datetime = dt.datetime.today().replace(hour=
                                            + dt.timedelta(days=2)),
                              haz_model = 'icon-eu-eps',
                              haz_raw_storage = None):
-    """ use parameters to generate needed forecast hazard.
+    """ use parameters to generate needed forecast hazard either by download
+    or through file.
     Parameters:
     run_datetime (datetime, optional): The starting timepoint of the forecast run
         of the icon model, defaults to today 00:00 hours
@@ -855,7 +856,9 @@ def generate_WS_forecast_hazard(run_datetime = dt.datetime.today().replace(hour=
         be used: one of ['icon-eu-eps', 'cosmo1e_file', 'cosmo2e_file']
     haz_raw_storage (str, optional): path to folder, where netcdf files
         are stored, mendatory when haz_model is 'cosmo1e_file' or
-        'cosmo2e_file'
+        'cosmo2e_file'. the string must contain one set of curly brakets,
+        used by the function str.format to include
+        run_datetime.strftime('%y%m%d%H').
     Returns:
         hazard
         haz_model
@@ -883,7 +886,7 @@ def generate_WS_forecast_hazard(run_datetime = dt.datetime.today().replace(hour=
         LOGGER.info('Generating ' + 
                     haz_model + 
                     ' hazard.')  
-        if  not haz_raw_storage:
+        if not haz_raw_storage:
             haz_raw_storage = (
                 "D:\\Documents_DATA\\Cosmo\\Wind\\" +
                 "cosmoe_forecast_{}_vmax.nc"
