@@ -637,8 +637,8 @@ def init_full_exp_set_isimip(input_dir=None, filename=None, hist_mean_dir=None,
     if not unit:
         unit = 't/y'
 
-    filenames = [f.parts[-1] for f in hist_mean_dir.iterdir() if f.is_file() if not
-                 f.parts[-1].startswith('.')]
+    filenames = [f.name for f in hist_mean_dir.iterdir()
+                 if f.is_file() and not f.name.startswith('.')]
 
     # generate output directory if it does not exist yet
     target_dir = output_dir / 'Exposure'

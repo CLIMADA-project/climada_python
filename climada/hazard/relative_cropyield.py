@@ -442,8 +442,8 @@ def set_multiple_rc_from_isimip(input_dir=None, output_dir=None, bbox=None,
         LOGGER.error('output_dir needs to be valid directory given as str or Path instance')
         raise NameError
 
-    filenames = [f.parts[-1] for f in input_dir.iterdir() if f.is_file() if not
-                 f.parts[-1].startswith('.')]
+    filenames = [f.name for f in input_dir.iterdir()
+                 if f.is_file() and not f.name.startswith('.')]
 
     # generate output directories if they do not exist yet
     Path(output_dir, 'Hazard').mkdir(parents=True, exist_ok=True)
