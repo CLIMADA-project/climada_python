@@ -55,6 +55,8 @@ DATA_DIR = str(CONFIG.local_data.save_dir.dir())
 
 FORECAST_DIR = str(Path(DATA_DIR) / 'forecast')
 
+FORECAST_PLOT_DIR = str(Path(FORECAST_DIR) / 'plots')
+
 # defining colormaps
 # The colors are in line the european meteoalarm colors http://www.meteoalarm.info/ 
 # and with the colors used at MeteoSwiss https://www.natural-hazards.ch/home/dealing-with-natural-hazards/explanation-of-the-danger-levels.html
@@ -102,7 +104,6 @@ class Forecast():
         exposure (Exposure):
         country (str):
         vulnerability (ImpactFuncSet):
-        save_dir (str):
     """
 
     def __init__(self,
@@ -137,7 +138,6 @@ class Forecast():
         self.exposure = exposure
         self.exposure_name = iso_cntry.get(exposure.gdf.region_id.unique()[0]).name
         self.vulnerability = impact_funcs
-        self.save_dir = FORECAST_DIR
         self._impact = [Impact() for i in range(len(self.run_datetime))]
 
     def ei_exp(self, run_datetime = None):
@@ -151,10 +151,6 @@ class Forecast():
             run_datetime = self.run_datetime[0]
         haz_ind = np.argwhere(np.isin(self.run_datetime, run_datetime))[0][0]
         return self._impact[haz_ind].aai_agg
-
-    @property
-    def plot_dir(self):
-        return str(Path(self.save_dir) / 'plots')
 
     def haz_summary_str(self, run_datetime = None):
         """ provide a summary string for the hazard part of the forecast
@@ -203,10 +199,8 @@ class Forecast():
         """ calculate the impact using 
         exposure, hazard, and vulnerabilty. """
         # generate folders
-        if not Path(self.save_dir).exists():
-            Path(self.save_dir).mkdir()
-        if not Path(self.plot_dir).exists():
-            Path(self.plot_dir).mkdir()     
+        if not Path(FORECAST_PLOT_DIR).exists():
+            Path(FORECAST_PLOT_DIR).mkdir(parents=True)     
 
         # force reassign
         if force_reassign:
@@ -242,7 +236,7 @@ class Forecast():
         map_file_name = (self.summary_str(run_datetime) +
                          '_impact_map' +
                          '.jpeg')
-        map_file_name_full = Path(self.plot_dir) / map_file_name
+        map_file_name_full = Path(FORECAST_PLOT_DIR) / map_file_name
         lead_time_str = '{:.0f}'.format(self.lead_time(run_datetime).days +
                                         self.lead_time(run_datetime).seconds/60/60/24) # cant show '2' and '2.5'
         title_dict = {'event_day': self.event_date.strftime('%a %d %b %Y 00-24UTC'),
@@ -363,7 +357,7 @@ class Forecast():
         histbin_file_name = (self.summary_str(run_datetime) +
                              '_histbin' +
                              '.svg')
-        histbin_file_name_full = Path(self.plot_dir) / histbin_file_name
+        histbin_file_name_full = Path(FORECAST_PLOT_DIR) / histbin_file_name
         lower_bound = np.max([np.floor(np.log10(np.max([np.min(self._impact[haz_ind].at_event), 0.1]))), 0])
         upper_bound = np.max([np.ceil(np.log10(np.max([np.max(self._impact[haz_ind].at_event), 0.1]))), lower_bound + 5]) + 0.1
         bins_log = np.arange(lower_bound, upper_bound, 0.5)
@@ -456,7 +450,7 @@ class Forecast():
                  '_exceed_' +
                  str(threshold) +
                  '_map.jpeg')
-        wind_map_file_name_full = Path(self.plot_dir) / wind_map_file_name
+        wind_map_file_name_full = Path(FORECAST_PLOT_DIR) / wind_map_file_name
         lead_time_str = '{:.0f}'.format(self.lead_time(run_datetime).days + self.lead_time(run_datetime).seconds/60/60/24) # cant show '2' and '2.5'
         title_dict = {'event_day': self.event_date.strftime('%a %d %b %Y 00-24UTC'),
                       'run_start': run_datetime.strftime('%d.%m.%Y %HUTC +') + lead_time_str + 'd',
@@ -587,7 +581,7 @@ class Forecast():
         haz_ind = np.argwhere(np.isin(self.run_datetime, run_datetime))[0][0]
         warn_map_file_name = (self.summary_str(run_datetime) +
                               '_warn_map.jpeg')
-        warn_map_file_name_full = Path(self.plot_dir) / warn_map_file_name
+        warn_map_file_name_full = Path(FORECAST_PLOT_DIR) / warn_map_file_name
         decision_dict = {'probability_aggregation': probability_aggregation,
                          'area_aggregation': area_aggregation}
         lead_time_str = '{:.0f}'.format(self.lead_time(run_datetime).days + self.lead_time(run_datetime).seconds/60/60/24) # cant show '2' and '2.5'
