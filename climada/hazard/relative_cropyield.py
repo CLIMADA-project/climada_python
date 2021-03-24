@@ -407,8 +407,10 @@ def set_multiple_rc_from_isimip(input_dir=None, output_dir=None, bbox=None,
     crop yield in a given input directory and save it to output directory.
 
         Optional Parameters:
-            input_dir (pathlib.Path or str): path to input data directory, default: INPUT_DIR
-            output_dir (pathlib.Path or str): path to output data directory, default: OUTPUT_DIR
+            input_dir (pathlib.Path or str): path to input data directory,
+                default: {CONFIG.exposures.crop_production.local_data}/Input/Exposure
+            output_dir (pathlib.Path or str): path to output data directory,
+                default: {CONFIG.exposures.crop_production.local_data}/Output
             bbox (list of four floats): bounding box:
                 [lon min, lat min, lon max, lat max]
             isimip_run (string): name of the ISIMIP run (f.i. ISIMIP2a or ISIMIP2b)
