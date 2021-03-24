@@ -336,11 +336,7 @@ def geo_im_from_array(array_sub, coord, var_name, title,
     return axes
 
 def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
-                            cat_name=None,
-                            pop_name=False, buffer=BUFFER,
-                            extend='neither', proj=ccrs.PlateCarree(),
-                            shapes=True,
-                            **kwargs):
+                            cat_name=None, **kwargs):
     """
     Map plots for categorical data defined in array(s) over input
     coordinates. The categories must be a finite set of unique values
@@ -379,16 +375,6 @@ def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
         Categories name for the colorbar labels.
         Keys are all the unique values in array_cub, values are their labels.
         The default is labels = unique values.
-    pop_name : bool, optional
-        add names of the populated places. The default is False.
-    buffer : float, optional
-        border to add to coordinates. The default is BUFFER = 1.0.
-    extend : str, optional
-        extend border colorbar with arrows. The default is 'neither'.
-        Possible values : [ 'neither' | 'both' | 'min' | 'max' ]
-    proj : ccrs
-        coordinate reference system used in coordinates.
-        The default is ccrs.PlateCarree()
     **kwargs
         Arbitrary keyword arguments for hexbin matplotlib function
 
