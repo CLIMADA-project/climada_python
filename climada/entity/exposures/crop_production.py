@@ -676,7 +676,8 @@ def normalize_with_fao_cp(exp_firr, exp_noirr, input_dir=None,
         exp_noirr (crop_production): exposure under no irrigation
 
     Optional Parameters:
-        input_dir (Path or str): directory containing exposure input data, default: INPUT_DIR
+        input_dir (Path or str): directory containing exposure input data,
+            default: {CONFIG.exposures.crop_production.local_data}/Input/Exposure
         yearrange (array): the mean crop production in this year range is used to normalize
             the exposure data
             Default is set to the arbitrary time range (2008, 2018)
