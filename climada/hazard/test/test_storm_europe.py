@@ -21,6 +21,8 @@ Test StormEurope class
 
 import copy
 import unittest
+import logging
+import mock
 import datetime as dt
 import numpy as np
 from scipy import sparse
@@ -29,6 +31,7 @@ from climada import CONFIG
 from climada.hazard.storm_europe import StormEurope
 from climada.hazard.centroids.centr import DEF_VAR_EXCEL, Centroids
 from climada.util.constants import WS_DEMO_NC
+
 
 DATA_DIR = CONFIG.hazard.test_data.dir()
 
@@ -89,7 +92,9 @@ class TestReader(unittest.TestCase):
         var_names['col_name']['region_id'] = 'iso_n3'
         test_centroids = Centroids()
         test_centroids.read_excel(
-            DATA_DIR.joinpath('fp_centroids-test.xls'), var_names=var_names)
+            DATA_DIR.joinpath('fp_centroids-test.xls'),
+            var_names=var_names
+            )
         storms = StormEurope()
         storms.read_footprints(WS_DEMO_NC, centroids=test_centroids)
 
@@ -146,6 +151,63 @@ class TestReader(unittest.TestCase):
         self.assertEqual(storms_prob.centroids.size, 3054)
         self.assertIsInstance(storms_prob.intensity,
                               sparse.csr.csr_matrix)
+        
+    def test_cosmoe_read(self):
+        """test reading from cosmo-e netcdf"""
+        haz = StormEurope()
+        haz.read_cosmoe_file(DATA_DIR.joinpath('storm_europe_cosmoe_forecast_vmax_testfile.nc'),
+                             run_datetime=dt.datetime(2018,1,1),
+                             event_date=dt.datetime(2018,1,3))
+        self.assertEqual(haz.tag.haz_type, 'WS')
+        self.assertEqual(haz.units, 'm/s')
+        self.assertEqual(haz.event_id.size, 21)
+        self.assertEqual(haz.date.size, 21)
+        self.assertEqual(dt.datetime.fromordinal(haz.date[0]).year, 2018)
+        self.assertEqual(dt.datetime.fromordinal(haz.date[0]).month, 1)
+        self.assertEqual(dt.datetime.fromordinal(haz.date[0]).day, 3)
+        self.assertEqual(haz.event_id[-1], 21)
+        self.assertEqual(haz.event_name[-1], '2018-01-03_ens21')
+        self.assertIsInstance(haz.intensity,
+                              sparse.csr.csr_matrix)
+        self.assertIsInstance(haz.fraction,
+                              sparse.csr.csr_matrix)
+        self.assertEqual(haz.intensity.shape, (21, 25))
+        self.assertAlmostEqual(haz.intensity.max(), 36.426735,places=3)
+        self.assertEqual(haz.fraction.shape, (21, 25))
+    
+    def test_icon_read(self):
+        """test reading from icon grib"""
+        haz = StormEurope()
+        haz.read_icon_grib(dt.datetime(2021, 1, 28),
+                           dt.datetime(2021, 1, 28),
+                           model_name='test',
+                           grib_dir=CONFIG.hazard.test_data.str(),
+                           delete_raw_data=False)
+        self.assertEqual(haz.tag.haz_type, 'WS')
+        self.assertEqual(haz.units, 'm/s')
+        self.assertEqual(haz.event_id.size, 40)
+        self.assertEqual(haz.date.size, 40)
+        self.assertEqual(dt.datetime.fromordinal(haz.date[0]).year, 2021)
+        self.assertEqual(dt.datetime.fromordinal(haz.date[0]).month, 1)
+        self.assertEqual(dt.datetime.fromordinal(haz.date[0]).day, 28)
+        self.assertEqual(haz.event_id[-1], 40)
+        self.assertEqual(haz.event_name[-1], '2021-01-28_ens40')
+        self.assertIsInstance(haz.intensity,
+                              sparse.csr.csr_matrix)
+        self.assertIsInstance(haz.fraction,
+                              sparse.csr.csr_matrix)
+        self.assertEqual(haz.intensity.shape, (40, 49))
+        self.assertAlmostEqual(haz.intensity.max(), 17.276321,places=3)
+        self.assertEqual(haz.fraction.shape, (40, 49))
+        logger = logging.getLogger('climada.hazard.storm_europe')
+        with mock.patch.object(logger,'warning') as mock_logger:
+            with self.assertRaises(ValueError):
+                haz.read_icon_grib(dt.datetime(2021, 1, 28, 6),
+                                    dt.datetime(2021, 1, 28),
+                                    model_name='test',
+                                    grib_dir=CONFIG.hazard.test_data.str(),
+                                    delete_raw_data=False)
+            mock_logger.assert_called_once()
 
 
 # Execute Tests
