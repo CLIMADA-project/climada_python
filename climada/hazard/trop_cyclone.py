@@ -214,7 +214,7 @@ class TropCyclone(Hazard):
     @staticmethod
     def video_intensity(track_name, tracks, centroids, file_name=None,
                         writer=animation.PillowWriter(bitrate=500),
-                        **kwargs):
+                        figsize=(9, 13), **kwargs):
         """Generate video of TC wind fields node by node and returns its
         corresponding TropCyclone instances and track pieces.
 
@@ -225,6 +225,7 @@ class TropCyclone(Hazard):
             file_name (str, optional): file name to save video, if provided
             writer = (matplotlib.animation.*, optional): video writer. Default:
                 pillow with bitrate=500
+            figsize (tuple, optional): figure size for plt.subplots
             kwargs (optional): arguments for pcolormesh matplotlib function
                 used in event plots
 
@@ -284,7 +285,7 @@ class TropCyclone(Hazard):
 
         if file_name:
             LOGGER.info('Generating video %s', file_name)
-            fig, axis = u_plot.make_map()
+            fig, axis = u_plot.make_map(figsize=figsize)
             pbar = tqdm(total=idx_plt.size - 2)
             ani = animation.FuncAnimation(fig, run, frames=idx_plt.size - 2,
                                           interval=500, blit=False)

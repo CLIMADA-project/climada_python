@@ -113,7 +113,7 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,
             # use different projections for plot and data to shift the central lon in the plot
             xmin, xmax = u_coord.lon_bounds(np.concatenate([c[:, 1] for c in list_coord]))
             proj_plot = ccrs.PlateCarree(central_longitude=0.5 * (xmin + xmax))
-        _, axes = make_map(num_im, proj=proj_plot)
+        _, axes = make_map(num_im, proj=proj_plot, figsize=figsize)
 
     if not isinstance(axes, np.ndarray):
         axes_iter = np.array([[axes]])
@@ -208,7 +208,7 @@ def geo_scatter_from_array(array_sub, geo_coord, var_name, title,
     if 'cmap' not in kwargs:
         kwargs['cmap'] = 'Wistia'
     if axes is None:
-        _, axes = make_map(num_im, proj=proj)
+        _, axes = make_map(num_im, proj=proj, figsize=figsize)
     axes_iter = axes
     if not isinstance(axes, np.ndarray):
         axes_iter = np.array([[axes]])
@@ -290,7 +290,7 @@ def geo_im_from_array(array_sub, coord, var_name, title,
     if 'vmax' not in kwargs:
         kwargs['vmax'] = np.nanmax(array_sub)
     if axes is None:
-        _, axes = make_map(num_im, proj=proj)
+        _, axes = make_map(num_im, proj=proj, figsize=figsize)
     axes_iter = axes
     if not isinstance(axes, np.ndarray):
         axes_iter = np.array([[axes]])
