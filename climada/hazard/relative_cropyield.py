@@ -115,7 +115,8 @@ class RelativeCropyield(Hazard):
         Build and tested for output from ISIMIP2 and ISIMIP3, but might also work
         for other NetCDF containing gridded crop model output from other sources.
         Parameters:
-            input_dir (Path or str): path to input data directory, default: INPUT_DIR
+            input_dir (Path or str): path to input data directory,
+                default: {CONFIG.exposures.crop_production.local_data}/Input/Exposure
             filename (string): name of netcdf file in input_dir. If filename is given,
                 the other parameters specifying the model run are not required!
             bbox (list of four floats): bounding box:
