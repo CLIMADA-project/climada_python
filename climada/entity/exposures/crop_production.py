@@ -487,9 +487,9 @@ class CropProduction(Exposures):
             LOGGER.warning('self.unit is not t/y.')
         self.gdf['tonnes_per_year'] = self.gdf['value'].values
         if biomass:
-            self.gdf.value = self.gdf.value * KCAL_PER_TON['biomass'][self.crop]
+            self.gdf.value *= KCAL_PER_TON['biomass'][self.crop]
         else:
-            self.gdf.value = self.gdf.value * KCAL_PER_TON['drymatter'][self.crop]
+            self.gdf.value *= KCAL_PER_TON['drymatter'][self.crop]
 
         self.value_unit = 'kcal/y'
         return self
