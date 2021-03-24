@@ -10,4 +10,5 @@ dependencies:
   - pip
   - pip:
     - coverage>=4.5
+    - nbformat
     - readthedocs-sphinx-ext>=2.1
