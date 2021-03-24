@@ -115,8 +115,7 @@ KCAL_PER_TON['drymatter'] = {'mai': 3.56e6 / (1-.12),
 
 
 # Default folder structure for ISIMIP data:
-#   deposit the landuse files in the directory: climada_python/data/ISIMIP_crop/Input/Exposure
-#   deposit the FAO files in the directory: climada_python/data/ISIMIP_crop/Input/Exposure/FAO
+#   deposit the landuse and FAO files in the directory: {CONFIG.exposures.crop_production.local_data}/Input/Exposure
 # The FAO files need to be downloaded and renamed
 #   FAO_FILE: contains producer prices per crop, country and year
 #               (http://www.fao.org/faostat/en/#data/PP)
