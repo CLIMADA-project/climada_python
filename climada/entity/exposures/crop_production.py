@@ -209,8 +209,7 @@ class CropProduction(Exposures):
 
         if isinstance(filename, Path): # if Path, extract pure filename as string
             if  filename.is_file() and filename.parent.is_dir():
-                LOGGER.info('input_dir is reset from %s to %s' %(str(input_dir),
-                                                                 str(filename.parent)))
+                LOGGER.info('input_dir is reset from %s to %s', input_dir, filename.parent)
                 input_dir = filename.parent
             filename = filename.parts[-1]
 
