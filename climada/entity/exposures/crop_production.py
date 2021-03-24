@@ -157,7 +157,7 @@ class CropProduction(Exposures):
         mean relative cropyield module as additional input.
         Optional Parameters:
             input_dir (Path or str): path to input data directory,
-                default: INPUT_DIR
+                default: {CONFIG.exposures.crop_production.local_data}/Input/Exposure
             filename (string): name of the landuse data file to use,
                 e.g. "histsoc_landuse-15crops_annual_1861_2005.nc""
             hist_mean (str or array): historic mean crop yield per centroid (or path)
