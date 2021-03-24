@@ -502,7 +502,7 @@ class CropProduction(Exposures):
 
         Optional Parameters:
             input_dir (Path or str): directory containing the input (FAO pricing) data,
-                default: INPUT_DIR
+                default: {CONFIG.exposures.crop_production.local_data}/Input/Exposure
             yearrange (array): year range for prices, can also be set to a single year
                 Default is set to the arbitrary time range (2000, 2018)
                 The data is available for the years 1991-2018
