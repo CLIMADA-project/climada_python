@@ -88,8 +88,8 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,
         by default None
     figsize : tuple, optional
         figure size for plt.subplots, by default (9, 13)
-    **kwargs : dict, optional
-        arguments for hexbin matplotlib function
+    **kwargs
+        arbitrary keyword arguments for hexbin matplotlib function
 
     Returns
     -------
@@ -190,8 +190,8 @@ def geo_scatter_from_array(array_sub, geo_coord, var_name, title,
         by default None
     figsize : tuple, optional
         figure size for plt.subplots, by default (9, 13)
-    **kwargs : dict, optional
-        arguments for scatter matplotlib function
+    **kwargs
+        arbitrary keyword arguments for scatter matplotlib function
 
     Returns
     -------
@@ -266,8 +266,8 @@ def geo_im_from_array(array_sub, coord, var_name, title,
         by default None
     figsize : tuple, optional
         figure size for plt.subplots, by default (9, 13)
-    **kwargs : dict, optional
-        arguments for pcolormesh matplotlib function
+    **kwargs
+        arbitrary keyword arguments for pcolormesh matplotlib function
 
     Returns
     -------
@@ -389,8 +389,8 @@ def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
     proj : ccrs
         coordinate reference system used in coordinates.
         The default is ccrs.PlateCarree()
-    kwargs : optional
-        arguments for hexbin matplotlib function
+    **kwargs
+        Arbitrary keyword arguments for hexbin matplotlib function
 
     Returns
     -------
@@ -413,7 +413,7 @@ def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
         else:
             cmap_name = 'defined by the user'
     else:
-        # default qualitative colormap        
+        # default qualitative colormap
         cmap_name = 'Dark2'
         cmap = mpl.colors.ListedColormap(
             plt.get_cmap(cmap_name).colors[:array_sub_n]
@@ -755,7 +755,7 @@ def multibar_plot(ax, data, colors=None, total_width=0.8, single_width=1,
     bars = []
 
     # Iterate over all data
-    for i, (name, values) in enumerate(data.items()):
+    for i, (_name, values) in enumerate(data.items()):
         # The offset in x direction of that bar
         x_offset = (i - n_bars / 2) * bar_width + bar_width / 2
 
