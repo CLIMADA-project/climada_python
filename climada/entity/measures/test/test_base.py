@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -294,7 +294,7 @@ class TestApply(unittest.TestCase):
         self.assertTrue(np.array_equal(res_exp.gdf.region_id.values[0], 4))
         self.assertTrue(np.array_equal(res_exp.gdf.region_id.values[1:25], np.ones(24) * 3))
         self.assertTrue(np.array_equal(res_exp.gdf.region_id.values[25:], np.ones(25)))
-        
+
         # changed exposures
         self.assertTrue(np.array_equal(res_exp.gdf.value.values[:25], new_exp.gdf.value.values[:25]))
         self.assertTrue(np.all(np.not_equal(res_exp.gdf.value.values[:25], exp.gdf.value.values[:25])))

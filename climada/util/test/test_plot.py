@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -45,9 +45,9 @@ class TestFuncs(unittest.TestCase):
         res, unit = u_plot.get_transformation({'init': 'epsg:3035'})
         self.assertIsInstance(res, cartopy._epsg._EPSGProjection)
         self.assertEqual(unit, 'm')
-        
+
 class TestPlots(unittest.TestCase):
-    
+
     def test_geo_scatter_categorical(self):
         """Plots ones with geo_scatteR_categorical"""
         # test default with one plot
@@ -67,16 +67,16 @@ class TestPlots(unittest.TestCase):
                                   'a': 'string'},
                         pop_name=False, cmap='Set1')
         plt.close()
-        
+
         #test colormap warning
         values = np.array([[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11],
                            [12, 13, 14, 15]])
         coord = np.array([[26, 0], [26, 1], [28, 0], [29, 1]])
         u_plot.geo_scatter_categorical(values, coord, 'value', 'test plot',
                         pop_name=False, cmap='Set1')
-        
+
         plt.close()
-        
+
         #test colormap warning with 256 colors
         values = np.array([[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11],
                            [12, 13, 14, 15]])
