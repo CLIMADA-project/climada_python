@@ -99,7 +99,6 @@ class Forecast():
         run_datetime (datetime.datetime):
         event_date (datetime.datetime):
         hazard (Hazard):
-        haz_type (str):
         haz_model (str):
         exposure (Exposure):
         country (str):
@@ -110,6 +109,7 @@ class Forecast():
                  hazard_dict,
                  exposure,
                  impact_funcs,
+                 haz_model = None,
                  exposure_name = None):
         """ Initialization with hazard, exposure and vulnerability. 
         Parameters:
@@ -123,8 +123,11 @@ class Forecast():
                 event can be provided.
             exposures (Exposures): exposures
             impact_funcs (ImpactFuncSet): impact functions
+            haz_model (str, optional): short string specifying the model used 
+                to create the hazard, if possible three big letters.
+                default is 'NWP' for numerical weather prediction.
             exposure_name (str, optional): short string specifying the exposure,
-            which is used in filenames.
+                which is used in filenames.
         """
         self.run_datetime = [key for key in hazard_dict.keys()]
         self.hazard = [hazard_dict[key] for key in self.run_datetime]
@@ -136,8 +139,10 @@ class Forecast():
                        'events with different event_dates and the Forecast ' +
                        'class cannot function proberly with such hazards.')
         self.event_date = dt.datetime.fromordinal(np.unique(hazard_dates)[0])
-        self.haz_type = [hazard.tag.haz_type for hazard in self.hazard]
-        self.haz_model = ''
+        if haz_model == None:
+            self.haz_model = 'NWP'
+        else:
+            self.haz_model = haz_model
         self.exposure = exposure
         if exposure_name == None:
             try:
@@ -170,7 +175,7 @@ class Forecast():
         if run_datetime == None:
             run_datetime = self.run_datetime[0]
         haz_ind = np.argwhere(np.isin(self.run_datetime, run_datetime))[0][0]
-        return (self.haz_type[haz_ind] +
+        return (self.hazard[haz_ind].tag.haz_type +
                 '_' +
                 self.haz_model +
                 '_run' +
