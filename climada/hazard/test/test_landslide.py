@@ -19,6 +19,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Unit test landslide module.
 """
 import unittest
+import geopandas as gpd
 import numpy as np
 import shapely
 from scipy import sparse
@@ -43,7 +44,16 @@ class TestLandslideModule(unittest.TestCase):
         self.assertEqual(np.unique(LS_hist.intensity.data),np.array([1]))
         self.assertEqual(np.unique(LS_hist.fraction.data),np.array([1]))
         self.assertTrue((LS_hist.frequency.data<=1).all())
-
+        
+        input_gdf = gpd.read_file(LS_HIST_FILE)
+        LS_hist = Landslide()
+        LS_hist.set_ls_hist(bbox=(20,40,23,46), 
+                                  input_gdf=input_gdf)
+        self.assertEqual(LS_hist.size, 272)
+        self.assertEqual(LS_hist.tag.haz_type, 'LS')
+        self.assertEqual(np.unique(LS_hist.intensity.data),np.array([1]))
+        self.assertEqual(np.unique(LS_hist.fraction.data),np.array([1]))
+        self.assertTrue((LS_hist.frequency.data<=1).all())
         
     def test_set_ls_prob(self):
         """ Test the function set_ls_prob()"""
