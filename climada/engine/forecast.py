@@ -36,6 +36,7 @@ import pyproj
 import shapely
 from cartopy.io import shapereader
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from iso3166 import countries as iso_cntry
 
 from climada.entity.exposures import Exposures, LitPop
 from climada.hazard import StormEurope, Hazard
@@ -54,6 +55,17 @@ DATA_DIR = str(CONFIG.local_data.save_dir.dir())
 
 FORECAST_DIR = str(Path(DATA_DIR) / 'forecast')
 
+# defining colormaps
+# The colors are in line the european meteoalarm colors http://www.meteoalarm.info/ 
+# and with the colors used at MeteoSwiss https://www.natural-hazards.ch/home/dealing-with-natural-hazards/explanation-of-the-danger-levels.html
+# colors for warning levels
+COLORS_WARN = np.array([[204 / 255, 255 / 255, 102 / 255, 1],  # green
+                        [255 / 255, 255 / 255, 0 / 255, 1],  # yellow
+                        [255 / 255, 153 / 255, 0 / 255, 1],  # orange
+                        [255 / 255, 0 / 255, 0 / 255, 1],  # red
+                        [128 / 255, 0 / 255, 0 / 255, 1],  # dark red
+                        ])
+#colors for warning probabilities
 warnprob_colors = np.array([[255 / 255, 255 / 255, 255 / 255, 1],  # white
                             [215 / 255, 227 / 255, 238 / 255, 1],  # lightest blue
                             [181 / 255, 202 / 255, 255 / 255, 1],  # ligthblue
@@ -67,36 +79,18 @@ warnprob_colors = np.array([[255 / 255, 255 / 255, 255 / 255, 1],  # white
                             ])
 warnprob_colors_extended = np.repeat(warnprob_colors, 10, axis=0)
 CMAP_WARNPROB = ListedColormap(warnprob_colors_extended)
-# impact
+# colors for impact forecast
 color_map_pre = plt.get_cmap('plasma', 90)
 impact_colors = color_map_pre(np.linspace(0, 1, 90))
 white_extended = np.repeat([[255 / 255, 255 / 255, 255 / 255, 1]], 10, axis=0)
 impact_colors_extended = np.append(white_extended, impact_colors, axis=0)
 CMAP_IMPACT = ListedColormap(impact_colors_extended)
-# warning levels
-COLORS_WARN = np.array([[204 / 255, 255 / 255, 102 / 255, 1],  # green
-                        [255 / 255, 255 / 255, 0 / 255, 1],  # yellow
-                        [255 / 255, 153 / 255, 0 / 255, 1],  # orange
-                        [255 / 255, 0 / 255, 0 / 255, 1],  # red
-                        [128 / 255, 0 / 255, 0 / 255, 1],  # dark red
-                        ])
 
-SMALL_SIZE = 10
-MEDIUM_SIZE = 10
-BIGGER_SIZE = 10
-
-plt.rc('font', size=SMALL_SIZE)  # controls default text sizes
-plt.rc('axes', titlesize=SMALL_SIZE)  # fontsize of the axes title
-plt.rc('axes', labelsize=MEDIUM_SIZE)  # fontsize of the x and y labels
-plt.rc('xtick', labelsize=SMALL_SIZE)  # fontsize of the tick labels
-plt.rc('ytick', labelsize=SMALL_SIZE)  # fontsize of the tick labels
-plt.rc('legend', fontsize=SMALL_SIZE)  # legend fontsize
-plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
 
 class Forecast():
-    """Forecast definition. Compute an impact forecast with predefined setups
-    of hazard generation, exposure generation and impact functions. Use the
-    calc() method to generate all needed components and calculate a forecasted
+    """Forecast definition. Compute an impact forecast with predefined hazard
+    originating from a forecast (like numerical weather prediction models),
+    exposure and impact. Use the calc() method to calculate a forecasted
     impact. Then use the plotting methods to illustrate the forecasted impacts.
 
     Attributes:
@@ -113,9 +107,21 @@ class Forecast():
 
     def __init__(self,
                  hazard_dict,
-                 impact_funcs,
-                 country_or_exposure='Switzerland'):
-        """ Empty initialization."""
+                 exposure,
+                 impact_funcs):
+        """ Initialization with hazard, exposure and vulnerability. 
+        Parameters:
+            hazard_dict (dict, {datetime.datetime: Hazard}): dictionary of the
+                format {run_datetime: Hazard} with run_datetime being the
+                initialization time of a weather forecast run and Hazard being
+                a climada Hazard derived from that forecast for one event.
+                A probabilistic representation of that one event is possible,
+                as long as the attribute Hazard.date is the same for all
+                events. Several run_datetime:Hazard combinations for the same
+                event can be provided.
+            exposures (Exposures): exposures
+            impact_funcs (ImpactFuncSet): impact functions
+        """
         self.run_datetime = [key for key in hazard_dict.keys()]
         self.hazard = [hazard_dict[key] for key in self.run_datetime]
         #check event_date
@@ -128,33 +134,34 @@ class Forecast():
         self.event_date = dt.datetime.fromordinal(np.unique(hazard_dates)[0])
         self.haz_type = [hazard.tag.haz_type for hazard in self.hazard]
         self.haz_model = ''
-        if isinstance(country_or_exposure, Exposures):
-            self.exposure = country_or_exposure
-            self.country = 'costum'
-        else:
-            self.exposure = 'litpop'
-            self.country = country_or_exposure
+        self.exposure = exposure
+        self.exposure_name = iso_cntry.get(exposure.gdf.region_id.unique()[0]).name
         self.vulnerability = impact_funcs
         self.save_dir = FORECAST_DIR
         self._impact = [Impact() for i in range(len(self.run_datetime))]
 
-    # @property
-    # def ei_exp(self):
-    #     return self._impact.eai_exp
+    def ei_exp(self, run_datetime = None):
+        if run_datetime == None:
+            run_datetime = self.run_datetime[0]
+        haz_ind = np.argwhere(np.isin(self.run_datetime, run_datetime))[0][0]
+        return self._impact[haz_ind].eai_exp
 
-    # @property
-    # def ai_agg(self):
-    #     return self._impact.aai_agg
+    def ai_agg(self, run_datetime = None):
+        if run_datetime == None:
+            run_datetime = self.run_datetime[0]
+        haz_ind = np.argwhere(np.isin(self.run_datetime, run_datetime))[0][0]
+        return self._impact[haz_ind].aai_agg
 
     @property
     def plot_dir(self):
         return str(Path(self.save_dir) / 'plots')
 
-    @property
-    def haz_dir(self):
-        return str(Path(self.save_dir) / 'hazards')
-
     def haz_summary_str(self, run_datetime = None):
+        """ provide a summary string for the hazard part of the forecast
+        Parameters:
+            run_datetime (datetime.datetime, optional): select the used hazard
+                by the run_datetime
+        """
         if run_datetime == None:
             run_datetime = self.run_datetime[0]
         haz_ind = np.argwhere(np.isin(self.run_datetime, run_datetime))[0][0]
@@ -168,32 +175,38 @@ class Forecast():
                 )
 
     def summary_str(self, run_datetime = None):
+        """ provide a summary string for the impact forecast
+        Parameters:
+            run_datetime (datetime.datetime, optional): select the used hazard
+                by the run_datetime
+        """
         if run_datetime == None:
             run_datetime = self.run_datetime[0]
         haz_ind = np.argwhere(np.isin(self.run_datetime, run_datetime))[0][0]
         return (self.haz_summary_str(run_datetime) +
                 '_' +
-                self.country
+                self.exposure_name
                 )
 
     def lead_time(self, run_datetime = None):
+        """ provide the lead time for the impact forecast
+        Parameters:
+            run_datetime (datetime.datetime, optional): select the used hazard
+                by the run_datetime
+        """
         if run_datetime == None:
             run_datetime = self.run_datetime[0]
         haz_ind = np.argwhere(np.isin(self.run_datetime, run_datetime))[0][0]
         return self.event_date-run_datetime
 
     def calc(self, force_reassign=False, check_plot = False):
-        """ calculate the impact generating and using the needed 
+        """ calculate the impact using 
         exposure, hazard, and vulnerabilty. """
-        # generate folder
+        # generate folders
         if not Path(self.save_dir).exists():
             Path(self.save_dir).mkdir()
         if not Path(self.plot_dir).exists():
-            Path(self.plot_dir).mkdir()
-        if not Path(self.haz_dir).exists():
-            Path(self.haz_dir).mkdir()        
-        # generate all needed objects
-        self.generate_exposure()
+            Path(self.plot_dir).mkdir()     
 
         # force reassign
         if force_reassign:
@@ -205,58 +218,7 @@ class Forecast():
                          haz_i,
                          save_mat=True)
             if check_plot:
-                self._impact[ind_i].plot_hexbin_eai_exposure()
-        # collect all needed attributes
-        # self.tag = imp_tmp.tag
-        # self._impact.event_id = imp_tmp.event_id
-        # self.event_name = imp_tmp.event_name
-        # self.date = imp_tmp.date
-        # self._impact.coord_exp = imp_tmp.coord_exp
-        # self.crs = imp_tmp.crs
-        # self.ei_exp = imp_tmp.eai_exp
-        # self._impact.at_event = imp_tmp.at_event
-        # self.frequency = imp_tmp.frequency
-        # self.tot_value = imp_tmp.tot_value
-        # self.ai_agg = imp_tmp.aai_agg
-        # self._impact.unit = imp_tmp.unit
-        # self._impact.imp_mat = imp_tmp.imp_mat
-        # plot
-
-
-    
-
-
-    def generate_exposure(self):
-        """ use country and exposure parameters to generate needed exposure """
-        if isinstance(self.exposure ,Exposures):
-            return
-        else: #generate exposure
-            if self.exposure == 'litpop':
-                filename = Path(self.save_dir) / ('exp_' + 
-                                                  self.exposure +
-                                                  '_' +
-                                                  self.country +
-                                                  '.hdf5')
-                if filename.exists():
-                    LOGGER.info('Loading ' + 
-                                self.exposure + 
-                                ' exposure.')
-                    self.exposure = LitPop()
-                    self.exposure.read_hdf5(filename)
-                    return
-                else:
-                    LOGGER.info('Generating ' + 
-                                self.exposure + 
-                                ' exposure.')                    
-                    self.exposure = LitPop()
-                    self.exposure.set_country(self.country,
-                                                        reference_year=2020)
-                    self.exposure.write_hdf5(filename)
-                    return
-            else: #not implemented error
-                LOGGER.error("exposure_type specified in exposure'" +
-                             " not yet implemented.")
-                return
+                self._impact[ind_i].plot_hexbin_ei_exposure()
 
     def plot_imp_map(self,
                      run_datetime = None,
@@ -281,7 +243,6 @@ class Forecast():
                          '_impact_map' +
                          '.jpeg')
         map_file_name_full = Path(self.plot_dir) / map_file_name
-        leadtime = self.event_date - run_datetime
         lead_time_str = '{:.0f}'.format(self.lead_time(run_datetime).days +
                                         self.lead_time(run_datetime).seconds/60/60/24) # cant show '2' and '2.5'
         title_dict = {'event_day': self.event_date.strftime('%a %d %b %Y 00-24UTC'),
@@ -312,19 +273,11 @@ class Forecast():
         haz_ind = np.argwhere(np.isin(self.run_datetime, run_datetime))[0][0]
         # tryout new plot with right projection
         extend = 'neither'
-        try:
-            crs_epsg = ccrs.Mercator()
-            # crs_epsg = ccrs.epsg(2056)
-        except:
-            crs_epsg = ccrs.Mercator()
-        #    title = "title"
-        #    cbar_label = 'Value ()'
+        crs_epsg = ccrs.Mercator()
         value = self._impact[haz_ind].eai_exp
         #    value[np.invert(mask)] = np.nan
         coord = self._impact[haz_ind].coord_exp
-        # u_plot.geo_scatter_from_array(value, coord, cbar_label, title, \
-        #    pop_name, buffer, extend, proj=crs_epsg)
-    
+
         # Generate array of values used in each subplot
         array_sub = value
         shapes = True
@@ -393,8 +346,7 @@ class Forecast():
             # axis.set_extent((5.70, 10.49, 45.7, 47.81), crs=ccrs.PlateCarree())
     
         return fig, axis
-    
-    
+
     def plot_hist(self,run_datetime = None, save_fig=True,close_fig=True):
         """ plot histogram of the forecasted impacts all ensemble members
         Parameters:
@@ -468,7 +420,7 @@ class Forecast():
         plt.figtext(0.125, 0.94, title_dict['explain_text'], fontsize='x-large', color='k', ha='left')
         plt.figtext(0.9, 0.98, title_dict['event_day'], fontsize='x-large', color='r', ha='right')
         plt.figtext(0.9, 0.94, title_dict['run_start'], fontsize='x-large', color='k', ha='right')
-        plt.xlabel('forecasted total damage for ' + self.country +
+        plt.xlabel('forecasted total damage for ' + self.exposure_name +
                    ' [' + self._impact[haz_ind].unit + ']')
         plt.ylabel('probability')
         plt.text(0.75, 0.85,
@@ -605,7 +557,7 @@ class Forecast():
     def plot_warn_map(self, polygon_file = None,
                       polygon_file_crs = 'epsg:4326',
                       thresholds = [2,3,4,5],
-                      decision_level = 'grid_point',
+                      decision_level = 'exposure_point',
                       probability_aggregation = 0.5, area_aggregation = 0.5,
                       title = 'WARNINGS',
                       explain_text =  'warn level based on thresholds',
@@ -619,7 +571,7 @@ class Forecast():
                 the crs. has to be readable by pyproj.Proj
             thresholds (list of 4 floats): thresholds for coloring region
                 ins second, third, forth and fifth warning color
-            decision_level (str): either 'gridpoint'  or 'polygon'
+            decision_level (str): either 'exposure_point'  or 'polygon'
             probability_aggregation (float or str): either a float between
                 [0..1] spezifying a quantile or 'mean' or 'sum'
             area_aggregation (float or str): either a float between
@@ -643,13 +595,7 @@ class Forecast():
                       'run_start': run_datetime.strftime('%d.%m.%Y %HUTC +') + lead_time_str + 'd',
                       'explain_text': explain_text,
                       'model_text': title}
-        #                                title = ('COSMO-E wind velocity based warnings\n' +
-        #                                         'warn level: ' +
-        #                                         str(warn_dict['warn_level']) +
-        #                                         ' threshold: ' +
-        #                                         str(warn_dict['threshold']) +
-        #                                         ' m/s')
-    
+
         f, ax = self._plot_warn(run_datetime, thresholds, decision_level, decision_dict,
                                 polygon_file, polygon_file_crs, title_dict)
         if save_fig:
@@ -717,7 +663,7 @@ class Forecast():
             # decide warninglevel
             warn_level = 0
             for ind_i, warn_thres_i in enumerate(thresholds):
-                if decision_level == 'grid_point':
+                if decision_level == 'exposure_point':
                     if not (isinstance(decision_dict['probability_aggregation'], float)
                             &
                             isinstance(decision_dict['area_aggregation'], float)):
@@ -776,18 +722,7 @@ class Forecast():
                                 crs=ccrs.PlateCarree(),
                                 facecolor=COLORS_WARN[warn_level, :],
                                 edgecolor='gray')
-                # add country boundaries
-        # u_plot.add_shapes(axis)
-        # # add warning regions
-        # shp = shapereader.Reader(polygon_file)
-        # project_crs = lambda x, y: pyproj.transform(pyproj.Proj(init='epsg:21781'), pyproj.Proj(init='epsg:4150'),
-        #                                             x, y)
-        # for geometry, record in zip(shp.geometries(), shp.records()):
-        #     geom2 = shapely.ops.transform(project_crs, geometry)
-        #     axis.add_geometries([geom2], crs=ccrs.PlateCarree(), facecolor='', \
-        #                         edgecolor='gray')    
-    
-    
+
         # Create legend in this axis
         legend_elements = [
             Patch(facecolor=COLORS_WARN[0, :],
@@ -816,7 +751,12 @@ class Forecast():
         axis.set_extent((5.70, 10.49, 45.7, 47.81), crs=ccrs.PlateCarree())
         return fig, axis
 
-    def plot_hexbin_eai_exposure(self,run_datetime = None):
+    def plot_hexbin_ei_exposure(self,run_datetime = None):
+        """ plot the expected impact
+        Parameters:
+            run_datetime (datetime.datetime, optional): select the used hazard
+                by the run_datetime
+        """
         # select hazard with run_datetime
         if run_datetime == None:
             run_datetime = self.run_datetime[0]
