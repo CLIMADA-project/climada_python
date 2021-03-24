@@ -226,7 +226,7 @@ class Forecast():
                          haz_i,
                          save_mat=True)
             if check_plot:
-                self._impact[ind_i].plot_hexbin_ei_exposure()
+                self._impact[ind_i].plot_hexbin_eai_exposure()
 
     def plot_imp_map(self,
                      run_datetime = None,
