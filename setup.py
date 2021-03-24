@@ -28,7 +28,7 @@ extra_files.append(here + '/climada/conf/defaults.conf')
 setup(
     name='climada',
 
-    version='1.4.0',
+    version='2.0.0',
 
     description='CLIMADA in Python',
 
@@ -46,7 +46,7 @@ setup(
         #   5 - Production/Stable
         'Development Status :: 4 - Beta',
         'Topic :: Climate Adaptation',
-        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.8',
     ],
 
     keywords='climate adaptation',
