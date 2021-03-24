@@ -109,7 +109,8 @@ class Forecast():
     def __init__(self,
                  hazard_dict,
                  exposure,
-                 impact_funcs):
+                 impact_funcs,
+                 exposure_name = None):
         """ Initialization with hazard, exposure and vulnerability. 
         Parameters:
             hazard_dict (dict, {datetime.datetime: Hazard}): dictionary of the
@@ -122,6 +123,8 @@ class Forecast():
                 event can be provided.
             exposures (Exposures): exposures
             impact_funcs (ImpactFuncSet): impact functions
+            exposure_name (str, optional): short string specifying the exposure,
+            which is used in filenames.
         """
         self.run_datetime = [key for key in hazard_dict.keys()]
         self.hazard = [hazard_dict[key] for key in self.run_datetime]
@@ -136,7 +139,13 @@ class Forecast():
         self.haz_type = [hazard.tag.haz_type for hazard in self.hazard]
         self.haz_model = ''
         self.exposure = exposure
-        self.exposure_name = iso_cntry.get(exposure.gdf.region_id.unique()[0]).name
+        if exposure_name == None:
+            try:
+                self.exposure_name = iso_cntry.get(exposure.gdf.region_id.unique()[0]).name
+            except:
+                self.exposure_name = 'custom'
+        else:
+            self.exposure_name = exposure_name
         self.vulnerability = impact_funcs
         self._impact = [Impact() for i in range(len(self.run_datetime))]
 
@@ -193,7 +202,7 @@ class Forecast():
         if run_datetime == None:
             run_datetime = self.run_datetime[0]
         haz_ind = np.argwhere(np.isin(self.run_datetime, run_datetime))[0][0]
-        return self.event_date-run_datetime
+        return self.event_date - run_datetime
 
     def calc(self, force_reassign=False, check_plot = False):
         """ calculate the impact using 
