@@ -134,35 +134,37 @@ class Landslide(Hazard):
                 surrounding extent.
         """
         if isinstance(input_gdf, gpd.GeoDataFrame):
-            LOGGER.info(f'Using pre-loaded gdf {input_gdf}')
-            ls_gdf_bbox = input_gdf.copy()        
+            LOGGER.info('Using pre-loaded gdf')
+            gdf_cropped = input_gdf.copy().cx[bbox[0]:bbox[2], bbox[1]:bbox[3]]
         else:
             LOGGER.info(f'Reading in gdf from source {input_gdf}')
-            ls_gdf_bbox = gpd.read_file(input_gdf, bbox=bbox)          
+            gdf_cropped = gpd.read_file(input_gdf, bbox=bbox)          
         
         LOGGER.info(f'Generating a raster with resolution {res} for box {bbox}')
-        self.centroids.set_raster_from_pnt_bounds(bbox,res,crs=ls_gdf_bbox.crs)
+        if not gdf_cropped.crs:
+            gdf_cropped.crs = DEF_CRS    
+        self.centroids.set_raster_from_pnt_bounds(bbox,res,crs=gdf_cropped.crs)
 
-        n_ev = len(ls_gdf_bbox)
+        n_ev = len(gdf_cropped)
         
         # assign lat-lon points of LS events to corresponding grid & flattened
         # grid-index
-        ls_gdf_bbox = ls_gdf_bbox.assign(row=np.nan, col=np.nan)
-        ls_gdf_bbox[['col', 'row']] = ls_gdf_bbox.apply(
+        gdf_cropped = gdf_cropped.assign(row=np.nan, col=np.nan)
+        gdf_cropped[['col', 'row']] = gdf_cropped.apply(
             lambda row: mapping_point2grid(row.geometry.x, row.geometry.y,
                                            bbox[0], bbox[-1], res), axis = 1
                                            ).tolist()
-        ls_gdf_bbox['flat_ix'] = ls_gdf_bbox.apply(
+        gdf_cropped['flat_ix'] = gdf_cropped.apply(
             lambda row: mapping_grid2flattened(row.col, row.row, 
                                                self.centroids.shape), axis = 1)        
         self.intensity = sparse.csr_matrix(
-            (np.ones(n_ev), (np.arange(n_ev), ls_gdf_bbox.flat_ix)), 
+            (np.ones(n_ev), (np.arange(n_ev), gdf_cropped.flat_ix)), 
             shape=(n_ev, self.centroids.size))
         self.fraction = self.intensity.copy()
         self.frequency = self.intensity.copy()
         
-        if hasattr(ls_gdf_bbox, 'ev_date'):
-            self.date = pd.to_datetime(ls_gdf_bbox.ev_date, yearfirst=True)
+        if hasattr(gdf_cropped, 'ev_date'):
+            self.date = pd.to_datetime(gdf_cropped.ev_date, yearfirst=True)
         else:
             LOGGER.info('No event dates set from source')
             
