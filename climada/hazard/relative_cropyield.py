@@ -222,7 +222,8 @@ class RelativeCropyield(Hazard):
             yearrange_mean (array): time period used to calculate the mean intensity
                 default: 1976-2005 (historical)
             save (boolean): save mean to file? default: False
-            output_dir (str or Path): path of output directory, default: OUTPUT_DIR
+            output_dir (str or Path): path of output directory,
+                default: {CONFIG.exposures.crop_production.local_data}/Output
 
             Returns:
                 hist_mean(array): contains mean value over the given reference
