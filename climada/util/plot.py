@@ -56,47 +56,36 @@ MAX_BINS = 2000
 
 def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,
                        buffer=BUFFER, extend='neither',
-                       proj=ccrs.PlateCarree(), axes=None, **kwargs):
-    """
-    Plot array values binned over input coordinates.
+                       proj=ccrs.PlateCarree(), axes=None, figsize=(9, 13),
+                       **kwargs):
+    """Plot array values binned over input coordinates.
 
-    Parameters
-    ----------
-    array_sub : np.array(1d or 2d) or list(np.array)
-        Each array (in a row or in  the list) are values at each point 
-        in corresponding geo_coord that are binned in one subplot.
-    geo_coord  : 2d np.array or list(2d np.array)
-        (lat, lon) for each point in a row. If one provided, the same grid is
-        used for all subplots. Otherwise provide as many as subplots
-        in array_sub.
-    var_name : str or list(str)
-        label to be shown in the colorbar. If one
-        provided, the same is used for all subplots. Otherwise provide as
-        many as subplots in array_sub.
-    title : str or list(str)
-        subplot title. If one provided, the same is
-        used for all subplots. Otherwise provide as many as subplots in
-        array_sub.
-    pop_name : (bool, optional)
-        add names of the populated places. The Default is True.
-    buffer : float, optional
-        border to add to coordinates. The default is BUFFER = 1.0.
-    extend : str, optional
-        extend border colorbar with arrows. The default is 'neither'.
-        Possible values are [ 'neither' | 'both' | 'min' | 'max' ]
-    proj : ccrs
-        coordinate reference system of the given data.
-        The default is ccrs.PlateCarree()
-    kwargs : optional
-        arguments for hexbin matplotlib function
+    Parameters:
+        array_sub (np.array(1d or 2d) or list(np.array)): Each array (in a row
+            or in  the list) are values at each point in corresponding
+            geo_coord that are binned in one subplot.
+        geo_coord (2d np.array or list(2d np.array)): (lat, lon) for each
+            point in a row. If one provided, the same grid is used for all
+            subplots. Otherwise provide as many as subplots in array_sub.
+        var_name (str or list(str)): label to be shown in the colorbar. If one
+            provided, the same is used for all subplots. Otherwise provide as
+            many as subplots in array_sub.
+        title (str or list(str)): subplot title. If one provided, the same is
+            used for all subplots. Otherwise provide as many as subplots in
+            array_sub.
+        pop_name (bool, optional): add names of the populated places.
+        buffer (float, optional): border to add to coordinates
+        extend (str, optional): extend border colorbar with arrows.
+            [ 'neither' | 'both' | 'min' | 'max' ]
+        proj (ccrs): coordinate reference system of the given data
+        figsize (tuple, optional): figure size for plt.subplots
+        kwargs (optional): arguments for hexbin matplotlib function
 
-    Returns
-    -------
-    axes : cartopy.mpl.geoaxes.GeoAxesSubplot
+    Returns:
+        cartopy.mpl.geoaxes.GeoAxesSubplot
 
-    Raises
-    ------
-    ValueError
+    Raises:
+        ValueError
     """
     # Generate array of values used in each subplot
     num_im, list_arr = _get_collection_arrays(array_sub)
@@ -152,53 +141,39 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,
 
     return axes
 
-
 def geo_scatter_from_array(array_sub, geo_coord, var_name, title,
                            pop_name=True, buffer=BUFFER, extend='neither',
                            proj=ccrs.PlateCarree(), shapes=True, axes=None,
-                           **kwargs):
+                           figsize=(9, 13), **kwargs):
+    """Plot array values binned over input coordinates.
+
+    Parameters:
+        array_sub (np.array(1d or 2d) or list(np.array)): Each array (in a row
+            or in  the list) are values at each point in corresponding
+            geo_coord that are binned in one subplot.
+        geo_coord (2d np.array or list(2d np.array)): (lat, lon) for each
+            point in a row. If one provided, the same grid is used for all
+            subplots. Otherwise provide as many as subplots in array_sub.
+        var_name (str or list(str)): label to be shown in the colorbar. If one
+            provided, the same is used for all subplots. Otherwise provide as
+            many as subplots in array_sub.
+        title (str or list(str)): subplot title. If one provided, the same is
+            used for all subplots. Otherwise provide as many as subplots in
+            array_sub.
+        pop_name (bool, optional): add names of the populated places.
+        buffer (float, optional): border to add to coordinates
+        extend (str, optional): extend border colorbar with arrows.
+            [ 'neither' | 'both' | 'min' | 'max' ]
+        proj (ccrs): coordinate reference system used in coordinates
+        figsize (tuple, optional): figure size for plt.subplots
+        kwargs (optional): arguments for hexbin matplotlib function
+
+    Returns:
+        cartopy.mpl.geoaxes.GeoAxesSubplot
+
+    Raises:
+        ValueError
     """
-    Plot array values binned over input coordinates.
-
-    Parameters
-    ----------
-    array_sub : np.array(1d or 2d) or list(np.array)
-        Each array (in a row or in  the list) are values at each point 
-        in corresponding geo_coord that are binned in one subplot.
-    geo_coord : 2d np.array or list(2d np.array) 
-        (lat, lon) for each point in a row. If one provided, the same grid 
-        is used for all subplots. Otherwise provide as many as subplots
-        in array_sub.
-    var_name : str or list(str)
-        label to be shown in the colorbar. If one
-        provided, the same is used for all subplots. Otherwise provide as
-        many as subplots in array_sub.
-    title : str or list(str)
-        subplot title. If one provided, the same is
-        used for all subplots. Otherwise provide as many as subplots in
-        array_sub.
-    pop_name : bool, optional
-        add names of the populated places. The default is True.
-    buffer : float, optional
-        border to add to coordinates. The default is BUFFER = 1.0.
-    extend : str, optional
-        extend border colorbar with arrows. The default is 'neither'.
-        Possible values : [ 'neither' | 'both' | 'min' | 'max' ]
-    proj : ccrs 
-        coordinate reference system used in coordinates.
-        The default is ccrs.PlateCarree()
-    kwargs : optional 
-        arguments for hexbin matplotlib function
-
-    Returns
-    -------
-    axes : cartopy.mpl.geoaxes.GeoAxesSubplot
-
-    Raises
-    ------
-    ValueError
-    """
-    
     # Generate array of values used in each subplot
     num_im, list_arr = _get_collection_arrays(array_sub)
     list_tit = to_list(num_im, title, 'title')
@@ -238,41 +213,33 @@ def geo_scatter_from_array(array_sub, geo_coord, var_name, title,
     return axes
 
 def geo_im_from_array(array_sub, coord, var_name, title,
-                      proj=None, smooth=True, axes=None, **kwargs):
-    """
-    Image(s) plot defined in array(s) over input coordinates.
+                      proj=None, smooth=True, axes=None, figsize=(9, 13),
+                      **kwargs):
+    """Image(s) plot defined in array(s) over input coordinates.
 
-    Parameters
-    ----------
-    array_sub : np.array(1d or 2d) or list(np.array)
-        Each array (in a row
-        or in  the list) are values at each point in corresponding
-        geo_coord that are ploted in one subplot.
-    coord : 2d np.array
-        (lat, lon) for each point in a row. The same grid is used for all
-        subplots.
-    var_name : str or list(str)
-        label to be shown in the colorbar. If one
-        provided, the same is used for all subplots. Otherwise provide as
-        many as subplots in array_sub.
-    title : str or list(str)
-        subplot title. If one provided, the same is
-        used for all subplots. Otherwise provide as many as subplots in
-        array_sub.
-    proj : (ccrs)
-        coordinate reference system used in coordinates
-    smooth : bool, optional
-        smooth plot to RESOLUTIONxRESOLUTION. The default is True
-    kwargs : optional
-        keyword arguments for pcolormesh matplotlib function.
+    Parameters:
+        array_sub (np.array(1d or 2d) or list(np.array)): Each array (in a row
+            or in  the list) are values at each point in corresponding
+            geo_coord that are ploted in one subplot.
+        coord (2d np.array): (lat, lon) for each point in a row. The same grid is used for all
+            subplots.
+        var_name (str or list(str)): label to be shown in the colorbar. If one
+            provided, the same is used for all subplots. Otherwise provide as
+            many as subplots in array_sub.
+        title (str or list(str)): subplot title. If one provided, the same is
+            used for all subplots. Otherwise provide as many as subplots in
+            array_sub.
+        proj (ccrs): coordinate reference system used in coordinates
+        smooth (bool, optional): smooth plot to RESOLUTIONxRESOLUTION. Default:
+            True.
+        figsize (tuple, optional): figure size for plt.subplots
+        kwargs (optional): arguments for pcolormesh matplotlib function.
 
-    Returns
-    -------
-    axes : cartopy.mpl.geoaxes.GeoAxesSubplot
+    Returns:
+        cartopy.mpl.geoaxes.GeoAxesSubplot
 
-    Raises
-    ------
-    ValueError
+    Raises:
+        ValueError
     """
     # Generate array of values used in each subplot
     num_im, list_arr = _get_collection_arrays(array_sub)
