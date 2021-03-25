@@ -224,6 +224,14 @@ class Exposures():
             [f"crs: {self.crs}", "data:", str(self.gdf)]
         )
 
+    def _access_item(self, *args):
+        raise TypeError("Since CLIMADA 2.0, Exposures objects are not subscriptable. Data "
+                        "fields of Exposures objects are accessed using the `gdf` attribute. "
+                        "For example, `expo['value']` is replaced by `expo.gdf['value']`.")
+    __getitem__ = _access_item
+    __setitem__ = _access_item
+    __delitem__ = _access_item
+
     def check(self):
         """Check Exposures consistency.
 
