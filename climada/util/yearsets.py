@@ -183,7 +183,7 @@ def create_sampling_vector(n_resampled_years, n_annual_events, n_input_events):
     
     return sampling_vect
 
-def calculate_correction_fac(impact_per_year, n_resampled_years, eis):
+def calculate_correction_fac(impact_per_year, eis):
     """Apply a correction factor to ensure the expected annual impact (eai) of the annual
     impact set(ais) amounts to the eai of the event impact set (eis)
 
@@ -196,7 +196,7 @@ def calculate_correction_fac(impact_per_year, n_resampled_years, eis):
         correction_factor (int): the correction factor is calculated as eis_eai/ais_eai
     """
 
-    ais_eai = np.sum(impact_per_year)/n_resampled_years
+    ais_eai = np.sum(impact_per_year)/len(impact_per_year)
     eis_eai = np.sum(eis.frequency*eis.at_event)
     correction_factor = eis_eai/ais_eai
     LOGGER.info("The correction factor amounts to %s", (correction_factor-1)*100)
