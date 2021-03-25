@@ -665,7 +665,7 @@ class Hazard():
         return inten_stats
 
     def plot_rp_intensity(self, return_periods=(25, 50, 100, 250),
-                          smooth=True, axis=None, **kwargs):
+                          smooth=True, axis=None, figsize=(9, 13), **kwargs):
         """Compute and plot hazard exceedance intensity maps for different
         return periods. Calls local_exceedance_inten.
 
@@ -673,6 +673,7 @@ class Hazard():
             return_periods (tuple(int), optional): return periods to consider
             smooth (bool, optional): smooth plot to plot.RESOLUTIONxplot.RESOLUTION
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
+            figsize (tuple, optional): figure size for plt.subplots
             kwargs (optional): arguments for pcolormesh matplotlib function
                 used in event plots
 
@@ -688,7 +689,7 @@ class Hazard():
             title.append('Return period: ' + str(ret) + ' years')
         axis = u_plot.geo_im_from_array(inten_stats, self.centroids.coord,
                                         colbar_name, title, smooth=smooth,
-                                        axes=axis, **kwargs)
+                                        axes=axis, figsize=figsize, **kwargs)
         return axis, inten_stats
 
     def plot_intensity(self, event=None, centr=None, smooth=True, axis=None,
@@ -1095,7 +1096,8 @@ class Hazard():
             ev_set.add((ev_name, ev_date))
         return ev_set
 
-    def _event_plot(self, event_id, mat_var, col_name, smooth, axis=None, **kwargs):
+    def _event_plot(self, event_id, mat_var, col_name, smooth, axis=None,
+                    figsize=(9, 13), **kwargs):
         """Plot an event of the input matrix.
 
         Parameters:
@@ -1107,6 +1109,7 @@ class Hazard():
             col_name (sparse matrix): Colorbar label
             smooth (bool, optional): smooth plot to plot.RESOLUTIONxplot.RESOLUTION
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
+            figsize (tuple, optional): figure size for plt.subplots
             kwargs (optional): arguments for pcolormesh matplotlib function
 
         Returns:
@@ -1142,7 +1145,8 @@ class Hazard():
             l_title.append(title)
 
         return u_plot.geo_im_from_array(array_val, self.centroids.coord, col_name,
-                                        l_title, smooth=smooth, axes=axis, **kwargs)
+                                        l_title, smooth=smooth, axes=axis,
+                                        figsize=figsize, **kwargs)
 
     def _centr_plot(self, centr_idx, mat_var, col_name, axis=None, **kwargs):
         """Plot a centroid of the input matrix.

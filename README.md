@@ -6,7 +6,7 @@
 
 CLIMADA stands for **CLIM**ate **ADA**ptation and is a probabilistic natural catastrophe impact model, that also calculates averted damage (benefit) thanks to adaptation measures of any kind (from grey to green infrastructure, behavioural, etc.).
 
-This is the Python (3.6+) version of CLIMADA - please see https://github.com/davidnbresch/climada for backward compatibility (MATLAB).
+This is the Python (3.8+) version of CLIMADA - please see https://github.com/davidnbresch/climada for backward compatibility (MATLAB).
 
 ## Getting started
 

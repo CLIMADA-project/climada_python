@@ -250,8 +250,8 @@ class TestNightLight(unittest.TestCase):
 
         self.assertTrue(np.allclose(lat_ref[on_ref], lat_res))
         self.assertTrue(np.allclose(lon_ref[on_ref], lon_res))
-        self.assertAlmostEqual(nightlight_res[0], 0.1410256410256411)
-        self.assertAlmostEqual(nightlight_res[1], 0.3589743589743589)
+        self.assertAlmostEqual(nightlight_res[0], 0.1683201638775818)
+        self.assertAlmostEqual(nightlight_res[1], 0.33167983612241814)
 
 class TestEconIndices(unittest.TestCase):
     """Test functions to get economic indices."""

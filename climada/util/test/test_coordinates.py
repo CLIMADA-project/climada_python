@@ -45,6 +45,7 @@ from climada.util.coordinates import (convert_wgs_to_utm,
                                       get_coastlines,
                                       get_country_code,
                                       get_country_geometries,
+                                      get_gridcellarea,
                                       get_land_geometry,
                                       get_resolution,
                                       grid_is_regular,
@@ -180,6 +181,17 @@ class TestFunc(unittest.TestCase):
                 # longitude from 179 to -179 is positive (!) in lon-direction
                 np.testing.assert_array_less(100, vec[1, :] / factor)
 
+
+    def test_get_gridcellarea(self):
+        """Test get_gridcellarea function to calculate the gridcellarea from a given latitude"""
+        
+        lat = np.array([54.75, 54.25])
+        resolution = 0.5
+        area = get_gridcellarea(lat, resolution)
+        
+        self.assertAlmostEqual(area[0], 178159.73363005)
+        self.assertAlmostEqual(area[1], 180352.82386516)
+        self.assertEqual(lat.shape, area.shape)
 
     def test_read_vector_pass(self):
         """Test one columns data"""
