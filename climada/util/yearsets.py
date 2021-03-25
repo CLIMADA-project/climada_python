@@ -116,7 +116,7 @@ def sample_annual_impacts(eis, n_resampled_years, sampling_vect=None):
     impact_per_event = np.zeros(np.sum(sampling_vect['events_per_year']))
     impact_per_year = np.zeros(n_resampled_years)
 
-    for idx_event, event in enumerate(sampling_vect):
+    for idx_event, event in enumerate(sampling_vect['selected_events']):
         impact_per_event[idx_event] = eis.at_event[sampling_vect['selected_events'][event]]
 
     idx = 0
