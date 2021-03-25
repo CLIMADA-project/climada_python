@@ -202,21 +202,3 @@ def calculate_correction_fac(impact_per_year, n_resampled_years, eis):
     LOGGER.info("The correction factor amounts to %s", (correction_factor-1)*100)
 
     return correction_factor
-
-def wrapper_multi_impact(list_impacts, n_resampled_years):
-    """Compute the total impact of several event impact sets in one annual impact set
-
-    INPUT:
-        list_impacts (list): list of impact class objects
-        n_resampled_years (int): the target number of years the impact yearset shall
-            contain.
-    OUTPUT:
-        ais_total (impact class object): combined annual impact set for all given event impact sets
-    """
-
-    ais_total = np.zeros(n_resampled_years)
-    for impact in list_impacts:
-        ais_impact = impact_yearset(impact, n_resampled_years)
-        ais_total += ais_impact
-
-    return ais_total
