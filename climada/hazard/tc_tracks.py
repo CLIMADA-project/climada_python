@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -1137,7 +1137,7 @@ class TCTracks():
         """Exact extent of trackset as tuple, no buffer."""
         return self.get_extent(deg_buffer=0.0)
 
-    def plot(self, axis=None, figsize=(9, 13), **kwargs):
+    def plot(self, axis=None, figsize=(9, 13), legend=True, **kwargs):
         """Track over earth. Historical events are blue, probabilistic black.
 
         Parameters
@@ -1147,6 +1147,9 @@ class TCTracks():
         figsize: (float, float), optional
             figure size for plt.subplots
             The default is (9, 13)
+        legend : bool, optional
+            whether to display a legend of Tropical Cyclone categories.
+            Default: True.
         kwargs : optional
             arguments for LineCollection matplotlib, e.g. alpha=0.5
 
@@ -1191,16 +1194,17 @@ class TCTracks():
             track_lc.set_array(track.max_sustained_wind.values)
             axis.add_collection(track_lc)
 
-        leg_lines = [Line2D([0], [0], color=CAT_COLORS[i_col], lw=2)
-                     for i_col in range(len(SAFFIR_SIM_CAT))]
-        leg_names = [CAT_NAMES[i_col] for i_col in sorted(CAT_NAMES.keys())]
-        if synth_flag:
-            leg_lines.append(Line2D([0], [0], color='grey', lw=2, ls='solid'))
-            leg_lines.append(Line2D([0], [0], color='grey', lw=2, ls=':'))
-            leg_names.append('Historical')
-            leg_names.append('Synthetic')
+        if legend:
+            leg_lines = [Line2D([0], [0], color=CAT_COLORS[i_col], lw=2)
+                         for i_col in range(len(SAFFIR_SIM_CAT))]
+            leg_names = [CAT_NAMES[i_col] for i_col in sorted(CAT_NAMES.keys())]
+            if synth_flag:
+                leg_lines.append(Line2D([0], [0], color='grey', lw=2, ls='solid'))
+                leg_lines.append(Line2D([0], [0], color='grey', lw=2, ls=':'))
+                leg_names.append('Historical')
+                leg_names.append('Synthetic')
+            axis.legend(leg_lines, leg_names, loc=0)
 
-        axis.legend(leg_lines, leg_names, loc=0)
         return axis
 
     def write_netcdf(self, folder_name):

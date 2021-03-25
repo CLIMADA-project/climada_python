@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -45,6 +45,7 @@ from climada.util.coordinates import (convert_wgs_to_utm,
                                       get_coastlines,
                                       get_country_code,
                                       get_country_geometries,
+                                      get_gridcellarea,
                                       get_land_geometry,
                                       get_resolution,
                                       grid_is_regular,
@@ -181,6 +182,17 @@ class TestFunc(unittest.TestCase):
                 np.testing.assert_array_less(100, vec[1, :] / factor)
 
 
+    def test_get_gridcellarea(self):
+        """Test get_gridcellarea function to calculate the gridcellarea from a given latitude"""
+        
+        lat = np.array([54.75, 54.25])
+        resolution = 0.5
+        area = get_gridcellarea(lat, resolution)
+        
+        self.assertAlmostEqual(area[0], 178159.73363005)
+        self.assertAlmostEqual(area[1], 180352.82386516)
+        self.assertEqual(lat.shape, area.shape)
+
     def test_read_vector_pass(self):
         """Test one columns data"""
         shp_file = shapereader.natural_earth(resolution='110m', category='cultural',
@@ -240,7 +252,7 @@ class TestFunc(unittest.TestCase):
         for arg in ['epsg:4326', b'epsg:4326', DEF_CRS, 4326]:
             self.assertEqual(pcrs, PCRS.from_user_input(to_crs_user_input(arg)))
             self.assertEqual(rcrs, RCRS.from_user_input(to_crs_user_input(arg)))
-            
+
         # can they be misunderstood from the provider?
         for arg in [{'init': 'epsg:4326', 'no_defs': True}, b'{"init": "epsg:4326", "no_defs": True}' ]:
             self.assertFalse(pcrs == PCRS.from_user_input(to_crs_user_input(arg)))
