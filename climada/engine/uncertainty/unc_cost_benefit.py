@@ -127,16 +127,17 @@ class UncCostBenefit(Uncertainty):
         LOGGER.info(f"\n\nEstimated computation time: {est_com_time}s\n")
 
         #Compute impact distributions
-        if pool:
-            LOGGER.info('Using %s CPUs.', pool.ncpus)
-            chunksize = min(self.n_samples // pool.ncpus, 100)
-            cb_metrics = pool.map(partial(self._map_costben_calc, **kwargs),
-                                           self.samples_df.iterrows(),
-                                           chunsize = chunksize)
-
-        else:
-            cb_metrics = map(partial(self._map_costben_calc, **kwargs),
-                             self.samples_df.iterrows())
+        with log_level(level='ERROR', name_prefix='climada'):
+            if pool:
+                LOGGER.info('Using %s CPUs.', pool.ncpus)
+                chunksize = min(self.n_samples // pool.ncpus, 100)
+                cb_metrics = pool.map(partial(self._map_costben_calc, **kwargs),
+                                               self.samples_df.iterrows(),
+                                               chunsize = chunksize)
+    
+            else:
+                cb_metrics = map(partial(self._map_costben_calc, **kwargs),
+                                 self.samples_df.iterrows())
 
         #Perform the actual computation
         with log_level(level='ERROR', name_prefix='climada'):
