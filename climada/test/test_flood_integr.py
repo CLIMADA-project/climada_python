@@ -4,23 +4,24 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
-from climada.util.constants import NAT_REG_ID
+
 Test flood module.
 """
+
 import unittest
 from climada.hazard.river_flood import RiverFlood
-from climada.util.constants import HAZ_DEMO_FLDDPH, HAZ_DEMO_FLDFRC, DEMO_GDP2ASSET
+from climada.util.constants import DEMO_GDP2ASSET, HAZ_DEMO_FLDDPH, HAZ_DEMO_FLDFRC
 from climada.entity.exposures.gdp_asset import GDP2Asset
 from climada.entity.impact_funcs.river_flood import flood_imp_func_set
 from climada.engine import Impact
@@ -76,7 +77,7 @@ class TestRiverFlood(unittest.TestCase):
         imp.calc(gdpa, if_set, testRF)
 
         self.assertAlmostEqual(imp.at_event[0], 226839.72426476143)
-        self.assertAlmostEqual(gdpa['if_RF'].iloc[0], 3.0)
+        self.assertAlmostEqual(gdpa.gdf['if_RF'].iloc[0], 3.0)
 
 
 # Execute Tests

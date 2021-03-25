@@ -4,27 +4,25 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
 Test crop potential module.
 """
-import os
 import unittest
 import numpy as np
 from climada.hazard.relative_cropyield import RelativeCropyield
-from climada.util.constants import DATA_DIR
+from climada.util.constants import DEMO_DIR as INPUT_DIR
 
-INPUT_DIR = os.path.join(DATA_DIR, 'demo')
 FN_STR_DEMO = 'annual_FR_DE_DEMO'
 
 
@@ -33,7 +31,7 @@ class TestRelativeCropyield(unittest.TestCase):
     def test_load_EU_all(self):
         """Test defining crop potential hazard from complete demo file (Central Europe)"""
         haz = RelativeCropyield()
-        haz.set_from_single_run(input_dir=INPUT_DIR, yearrange=(2001, 2005),
+        haz.set_from_isimip_netcdf(input_dir=INPUT_DIR, yearrange=(2001, 2005),
                                 ag_model='lpjml', cl_model='ipsl-cm5a-lr', scenario='historical',
                                 soc='2005soc', co2='co2', crop='whe', irr='noirr',
                                 fn_str_var=FN_STR_DEMO)
@@ -57,7 +55,7 @@ class TestRelativeCropyield(unittest.TestCase):
     def test_set_rel_yield(self):
         """Test setting intensity to relativ yield"""
         haz = RelativeCropyield()
-        haz.set_from_single_run(input_dir=INPUT_DIR, yearrange=(2001, 2005), ag_model='lpjml',
+        haz.set_from_isimip_netcdf(input_dir=INPUT_DIR, yearrange=(2001, 2005), ag_model='lpjml',
                                 cl_model='ipsl-cm5a-lr', scenario='historical', soc='2005soc',
                                 co2='co2', crop='whe', irr='noirr', fn_str_var=FN_STR_DEMO)
         hist_mean = haz.calc_mean(np.array([2001, 2005]))
@@ -76,7 +74,7 @@ class TestRelativeCropyield(unittest.TestCase):
     def test_set_percentile_to_int(self):
         """Test setting intensity to percentile of the yield"""
         haz = RelativeCropyield()
-        haz.set_from_single_run(input_dir=INPUT_DIR, yearrange=(2001, 2005), ag_model='lpjml',
+        haz.set_from_isimip_netcdf(input_dir=INPUT_DIR, yearrange=(2001, 2005), ag_model='lpjml',
                                 cl_model='ipsl-cm5a-lr', scenario='historical', soc='2005soc',
                                 co2='co2', crop='whe', irr='noirr', fn_str_var=FN_STR_DEMO)
         haz.set_percentile_to_int()

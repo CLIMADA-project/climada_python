@@ -1,44 +1,40 @@
 name: climada_env
 channels:
+  - conda-forge
   - defaults
 dependencies:
-  - bottleneck=1.3.2
-  - cartopy=0.17.0
-  - conda-forge::cfgrib=0.9.7.7
-  - cython=0.29.21
-  - dask=2.25.0
-  - fiona=1.8.13.post1
-  - gdal=3.0.4
-  - geopandas=0.6.1
-  - h5py=2.10.0
-  - haversine=2.3.0
-  - nbconvert=5.6.1
-  - nbformat=5.0.7
-  - netcdf4=1.5.4
-  - numba=0.51.2
-  - numpy=1.18.1
-  - matplotlib=3.2.2
-  - matplotlib-base=3.2.2
-  - pandas=1.0.5
-  - pandas-datareader=0.8.1
-  - pillow=7.2.0
-  - pint=0.15
+  - bottleneck>=1.3
+  - cartopy>=0.18
+  - cfgrib>=0.9.7
+  - contextily>=1.0
+  - dask>=2.25
+  - geopandas>=0.6,<0.9
+  - h5py>=2.10
+  - haversine>=2.3
+  - iso3166>=1.0
+  - matplotlib>=3.2
+  - netcdf4>=1.5
+  - numba>=0.51
+  - openpyxl>=3.0
+  - pandas-datareader>=0.9
+  - pathos>=0.2
+  - pint>=0.15
   - pip
-  - conda-forge::proj=7.0.0
-  - pytables=3.6.1
-  - rasterio=1.1.5
-  - scikit-learn=0.23.2
-  - statsmodels=0.11.1
-  - tabulate=0.8.7
-  - tqdm=4.48.2
-  - xarray=0.13.0
-  - xlrd=1.2.0
-  - xlsxwriter=1.3.3
+  - pyepsg>=0.4
+  - pytables>=3.6
+  - python=3.8
+  - rasterio>=1.1
+  - requests>=2.24
+  - scikit-learn>=0.23
+  - scipy>=1.6
+  - statsmodels>=0.11
+  - tabulate>=0.8
+  - tqdm>=4.48
+  - xarray>=0.13
+  - xlrd>=1.2
+  - xlsxwriter>=1.3
+  - xmlrunner>=1.7
   - pip:
-    - contextily==1.0.0
-    - iso3166==1.0.1
-    - jupyter
-    - overpy==0.4
-    - pathos==0.2.6
-    - pybufrkit==0.2.17
-    - xmlrunner==1.7.7
+    - pybufrkit>=0.2
+    - overpy>=0.4
+

@@ -4,25 +4,25 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
 Test CostBenefit class.
 """
-import os
 import copy
 import unittest
 import numpy as np
 
+from climada import CONFIG
 from climada.entity.entity_def import Entity
 from climada.entity.disc_rates import DiscRates
 from climada.hazard.base import Hazard
@@ -31,20 +31,18 @@ risk_rp_100, risk_rp_250, _norm_values
 from climada.engine import Impact
 from climada.util.constants import ENT_DEMO_FUTURE, ENT_DEMO_TODAY
 
-HAZ_DATA_DIR = os.path.join(os.path.dirname(__file__), '../../hazard/test/data')
-HAZ_TEST_MAT = os.path.join(HAZ_DATA_DIR, 'atl_prob_no_name.mat')
-ENT_TEST_MAT = os.path.join(os.path.dirname(__file__),
-                            '../../entity/exposures/test/data/demo_today.mat')
+HAZ_TEST_MAT = CONFIG.hazard.test_data.dir().joinpath('atl_prob_no_name.mat')
+ENT_TEST_MAT = CONFIG.exposures.test_data.dir().joinpath('demo_today.mat')
 
 class TestSteps(unittest.TestCase):
     """Test intermediate steps"""
     def test_calc_impact_measures_pass(self):
         """Test _calc_impact_measures against reference value"""
-        self.assertTrue(os.path.isfile(HAZ_TEST_MAT), "{} is not a file".format(HAZ_TEST_MAT))
+        self.assertTrue(HAZ_TEST_MAT.is_file(), "{} is not a file".format(HAZ_TEST_MAT))
         hazard = Hazard('TC')
         hazard.read_mat(HAZ_TEST_MAT)
 
-        self.assertTrue(os.path.isfile(ENT_TEST_MAT), "{} is not a file".format(ENT_TEST_MAT))
+        self.assertTrue(ENT_TEST_MAT.is_file(), "{} is not a file".format(ENT_TEST_MAT))
         entity = Entity()
         entity.read_mat(ENT_TEST_MAT)
         entity.check()
@@ -741,7 +739,7 @@ class TestCalc(unittest.TestCase):
         hazard.read_mat(HAZ_TEST_MAT)
         entity = Entity()
         entity.read_excel(ENT_DEMO_TODAY)
-        entity.exposures.rename(columns={'if_': 'if_TC'}, inplace=True)
+        entity.exposures.gdf.rename(columns={'if_': 'if_TC'}, inplace=True)
         entity.check()
         entity.exposures.ref_year = 2018
 

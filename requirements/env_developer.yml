@@ -1,11 +1,15 @@
 name: climada_env
 channels:
+  - conda-forge
   - defaults
 dependencies:
-  - astroid=2.3.3
-  - mccabe=0.6.1
-  - pylint=2.4.4
-  - sphinx=2.0.1
+  - astroid>=2.3
+  - mccabe>=0.6
+  - pylint>=2.7
+  - sphinx>=2.0
   - pip
   - pip:
-    - coverage==4.5.3
+    - coverage>=4.5
+    - descartes
+    - nbformat
+    - readthedocs-sphinx-ext>=2.1

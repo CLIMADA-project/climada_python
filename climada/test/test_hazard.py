@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -19,15 +19,15 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Test Hazard base class.
 """
 
-import os
+import unittest
 import numpy as np
 from scipy import sparse
-import unittest
 
+from climada import CONFIG
 from climada.hazard.base import Hazard
 from climada.util.constants import HAZ_DEMO_FL
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
+DATA_DIR = CONFIG.test_data.dir()
 
 class TestCentroids(unittest.TestCase):
     """Test centroids functionalities"""
@@ -42,10 +42,10 @@ class TestCentroids(unittest.TestCase):
         self.assertEqual(haz_fl.intensity.min(), -9999.0)
         self.assertAlmostEqual(haz_fl.intensity.max(), 4.662774085998535)
 
-        haz_fl.write_raster(os.path.join(DATA_DIR, 'test_write_hazard.tif'))
+        haz_fl.write_raster(DATA_DIR.joinpath('test_write_hazard.tif'))
 
         haz_read = Hazard('FL')
-        haz_read.set_raster([os.path.join(DATA_DIR, 'test_write_hazard.tif')])
+        haz_read.set_raster([DATA_DIR.joinpath('test_write_hazard.tif')])
         self.assertTrue(np.allclose(haz_fl.intensity.toarray(), haz_read.intensity.toarray()))
         self.assertEqual(np.unique(np.array(haz_fl.fraction.toarray())).size, 2)
 
@@ -76,10 +76,10 @@ class TestCentroids(unittest.TestCase):
         haz_fl.centroids.set_lat_lon(np.array([1, 2, 3]), np.array([1, 2, 3]))
         haz_fl.check()
 
-        haz_fl.write_raster(os.path.join(DATA_DIR, 'test_write_hazard.tif'))
+        haz_fl.write_raster(DATA_DIR.joinpath('test_write_hazard.tif'))
 
         haz_read = Hazard('FL')
-        haz_read.set_raster([os.path.join(DATA_DIR, 'test_write_hazard.tif')])
+        haz_read.set_raster([DATA_DIR.joinpath('test_write_hazard.tif')])
         self.assertEqual(haz_read.intensity.shape, (1, 9))
         self.assertTrue(np.allclose(np.unique(np.array(haz_read.intensity.toarray())),
                                     np.array([0.0, 0.1, 0.2, 0.5])))
@@ -97,11 +97,11 @@ class TestCentroids(unittest.TestCase):
         haz_fl.centroids.set_lat_lon(np.array([1, 2, 3]), np.array([1, 2, 3]))
         haz_fl.check()
 
-        haz_fl.write_raster(os.path.join(DATA_DIR, 'test_write_hazard.tif'), intensity=False)
+        haz_fl.write_raster(DATA_DIR.joinpath('test_write_hazard.tif'), intensity=False)
 
         haz_read = Hazard('FL')
-        haz_read.set_raster([os.path.join(DATA_DIR, 'test_write_hazard.tif')],
-                            files_fraction=[os.path.join(DATA_DIR, 'test_write_hazard.tif')])
+        haz_read.set_raster([DATA_DIR.joinpath('test_write_hazard.tif')],
+                            files_fraction=[DATA_DIR.joinpath('test_write_hazard.tif')])
         self.assertEqual(haz_read.intensity.shape, (1, 9))
         self.assertEqual(haz_read.fraction.shape, (1, 9))
         self.assertTrue(np.allclose(np.unique(np.array(haz_read.fraction.toarray())),

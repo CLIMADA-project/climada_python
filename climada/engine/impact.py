@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -37,13 +37,15 @@ import xlsxwriter
 from tqdm import tqdm
 
 
-from climada.entity.tag import Tag
-from climada.entity.exposures.base import Exposures
-from climada.hazard.tag import Tag as TagHaz
-from climada.entity.exposures.base import INDICATOR_IF, INDICATOR_CENTR
+from climada.entity import Exposures, Tag
+from climada.entity.exposures import INDICATOR_IF, INDICATOR_CENTR
+from climada.hazard import Tag as TagHaz
 import climada.util.plot as u_plot
-from climada.util.config import CONFIG
+from climada import CONFIG
 from climada.util.constants import DEF_CRS
+import climada.util.coordinates as u_coord
+import climada.util.dates_times as u_dt
+from climada.util.select import get_attributes_with_matching_dimension
 
 LOGGER = logging.getLogger(__name__)
 
@@ -56,7 +58,9 @@ class Impact():
             hazard: {'exp': Tag(), 'if_set': Tag(), 'haz': TagHazard()}
         event_id (np.array): id (>0) of each hazard event
         event_name (list): name of each hazard event
-        date (np.array): date of events
+        date (np.array): date if events as integer date corresponding to the
+            proleptic Gregorian ordinal, where January 1 of year 1 has
+            ordinal 1 (ordinal format of datetime library)
         coord_exp (np.ndarray): exposures coordinates [lat, lon] (in degrees)
         eai_exp (np.array): expected annual impact for each exposure
         at_event (np.array): impact for each hazard event
@@ -151,7 +155,7 @@ class Impact():
         """
         # 1. Assign centroids to each exposure if not done
         assign_haz = INDICATOR_CENTR + hazard.tag.haz_type
-        if assign_haz not in exposures:
+        if assign_haz not in exposures.gdf:
             exposures.assign_centroids(hazard)
         else:
             LOGGER.info('Exposures matching centroids found in %s', assign_haz)
@@ -161,17 +165,17 @@ class Impact():
         self.event_id = hazard.event_id
         self.event_name = hazard.event_name
         self.date = hazard.date
-        self.coord_exp = np.stack([exposures.latitude.values,
-                                   exposures.longitude.values], axis=1)
+        self.coord_exp = np.stack([exposures.gdf.latitude.values,
+                                   exposures.gdf.longitude.values], axis=1)
         self.frequency = hazard.frequency
         self.at_event = np.zeros(hazard.intensity.shape[0])
-        self.eai_exp = np.zeros(exposures.value.size)
+        self.eai_exp = np.zeros(exposures.gdf.value.size)
         self.tag = {'exp': exposures.tag, 'if_set': impact_funcs.tag,
                     'haz': hazard.tag}
         self.crs = exposures.crs
 
         # Select exposures with positive value and assigned centroid
-        exp_idx = np.where((exposures.value > 0) & (exposures[assign_haz] >= 0))[0]
+        exp_idx = np.where((exposures.gdf.value > 0) & (exposures.gdf[assign_haz] >= 0))[0]
         if exp_idx.size == 0:
             LOGGER.warning("No affected exposures.")
 
@@ -182,18 +186,18 @@ class Impact():
         # Get damage functions for this hazard
         if_haz = INDICATOR_IF + hazard.tag.haz_type
         haz_imp = impact_funcs.get_func(hazard.tag.haz_type)
-        if if_haz not in exposures and INDICATOR_IF not in exposures:
+        if if_haz not in exposures.gdf and INDICATOR_IF not in exposures.gdf:
             LOGGER.error('Missing exposures impact functions %s.', INDICATOR_IF)
             raise ValueError
-        if if_haz not in exposures:
+        if if_haz not in exposures.gdf:
             LOGGER.info('Missing exposures impact functions for hazard %s. '
                         'Using impact functions in %s.', if_haz, INDICATOR_IF)
             if_haz = INDICATOR_IF
 
         # Check if deductible and cover should be applied
         insure_flag = False
-        if ('deductible' in exposures) and ('cover' in exposures) \
-        and exposures.cover.max():
+        if ('deductible' in exposures.gdf) and ('cover' in exposures.gdf) \
+        and exposures.gdf.cover.max():
             insure_flag = True
 
         if save_mat:
@@ -204,9 +208,9 @@ class Impact():
         tot_exp = 0
         for imp_fun in haz_imp:
             # get indices of all the exposures with this impact function
-            exp_iimp = np.where(exposures[if_haz].values[exp_idx] == imp_fun.id)[0]
+            exp_iimp = np.where(exposures.gdf[if_haz].values[exp_idx] == imp_fun.id)[0]
             tot_exp += exp_iimp.size
-            exp_step = int(CONFIG['global']['max_matrix_size'] / num_events)
+            exp_step = CONFIG.max_matrix_size.int() // num_events
             if not exp_step:
                 LOGGER.error('Increase max_matrix_size configuration parameter'
                              ' to > %s', str(num_events))
@@ -225,7 +229,7 @@ class Impact():
         self.aai_agg = sum(self.at_event * hazard.frequency)
 
         if save_mat:
-            shape = (self.date.size, exposures.value.size)
+            shape = (self.date.size, exposures.gdf.value.size)
             self.imp_mat = sparse.csr_matrix(self.imp_mat, shape=shape)
 
     def calc_risk_transfer(self, attachment, cover):
@@ -510,7 +514,7 @@ class Impact():
         np.savez(file_name, data=self.imp_mat.data, indices=self.imp_mat.indices,
                  indptr=self.imp_mat.indptr, shape=self.imp_mat.shape)
 
-    def calc_impact_year_set(self, all_years=True, year_range=[]):
+    def calc_impact_year_set(self, all_years=True, year_range=None):
         """Calculate yearly impact from impact data.
 
         Parameters:
@@ -521,6 +525,9 @@ class Impact():
         Returns:
              Impact year set of type numpy.ndarray with summed impact per year.
         """
+        if year_range is None:
+            year_range = []
+
         orig_year = np.array([dt.datetime.fromordinal(date).year
                               for date in self.date])
         if orig_year.size == 0 and len(year_range) == 0:
@@ -561,7 +568,7 @@ class Impact():
             return []
         num_cen = self.imp_mat.shape[1]
         imp_stats = np.zeros((len(return_periods), num_cen))
-        cen_step = int(CONFIG['global']['max_matrix_size'] / self.imp_mat.shape[0])
+        cen_step = CONFIG.max_matrix_size.int() // self.imp_mat.shape[0]
         if not cen_step:
             LOGGER.error('Increase max_matrix_size configuration parameter to'
                          ' > %s', str(self.imp_mat.shape[0]))
@@ -659,7 +666,7 @@ class Impact():
         self.coord_exp[:, 0] = imp_df.exp_lat[:num_exp]
         self.coord_exp[:, 1] = imp_df.exp_lon[:num_exp]
         try:
-            self.crs = ast.literal_eval(imp_df.exp_crs.values[0])
+            self.crs = u_coord.to_crs_user_input(imp_df.exp_crs.values[0])
         except AttributeError:
             self.crs = DEF_CRS
         self.tag['haz'] = TagHaz(str(imp_df.tag_hazard[0]),
@@ -705,14 +712,14 @@ class Impact():
         self.coord_exp[:, 0] = dfr.exp_lat.values[:self.eai_exp.size]
         self.coord_exp[:, 1] = dfr.exp_lon.values[:self.eai_exp.size]
         try:
-            self.crs = ast.literal_eval(dfr.exp_crs.values[0])
+            self.crs = u_coord.to_csr_user_input(dfr.exp_crs.values[0])
         except AttributeError:
             self.crs = DEF_CRS
 
     @staticmethod
     def video_direct_impact(exp, if_set, haz_list, file_name='',
                             writer=animation.PillowWriter(bitrate=500),
-                            imp_thresh=0, args_exp=dict(), args_imp=dict()):
+                            imp_thresh=0, args_exp=None, args_imp=None):
         """
         Computes and generates video of accumulated impact per input events
         over exposure.
@@ -734,9 +741,13 @@ class Impact():
         Returns:
             list(Impact)
         """
+        if args_exp is None:
+            args_exp = dict()
+        if args_imp is None:
+            args_imp = dict()
         imp_list = []
         exp_list = []
-        imp_arr = np.zeros(len(exp))
+        imp_arr = np.zeros(len(exp.gdf))
         for i_time, _ in enumerate(haz_list):
             imp_tmp = Impact()
             imp_tmp.calc(exp, if_set, haz_list[i_time])
@@ -752,14 +763,14 @@ class Impact():
                  np.array([haz.intensity.max() for haz in haz_list]).max()]
 
         if 'vmin' not in args_exp:
-            args_exp['vmin'] = exp.value.values.min()
+            args_exp['vmin'] = exp.gdf.value.values.min()
 
         if 'vmin' not in args_imp:
             args_imp['vmin'] = np.array([imp.eai_exp.min() for imp in imp_list
                                          if imp.eai_exp.size]).min()
 
         if 'vmax' not in args_exp:
-            args_exp['vmax'] = exp.value.values.max()
+            args_exp['vmax'] = exp.gdf.value.values.max()
 
         if 'vmax' not in args_imp:
             args_imp['vmax'] = np.array([imp.eai_exp.max() for imp in imp_list
@@ -850,7 +861,7 @@ class Impact():
             return
 
         # get assigned centroids
-        icens = exposures[INDICATOR_CENTR + hazard.tag.haz_type].values[exp_iimp]
+        icens = exposures.gdf[INDICATOR_CENTR + hazard.tag.haz_type].values[exp_iimp]
 
         # get affected intensities
         inten_val = hazard.intensity[:, icens]
@@ -858,14 +869,14 @@ class Impact():
         fract = hazard.fraction[:, icens]
         # impact = fraction * mdr * value
         inten_val.data = imp_fun.calc_mdr(inten_val.data)
-        impact = fract.multiply(inten_val).multiply(exposures.value.values[exp_iimp])
+        impact = fract.multiply(inten_val).multiply(exposures.gdf.value.values[exp_iimp])
 
         if insure_flag and impact.nonzero()[0].size:
             inten_val = hazard.intensity[:, icens].toarray()
             paa = np.interp(inten_val, imp_fun.intensity, imp_fun.paa)
             impact = impact.toarray()
-            impact -= exposures.deductible.values[exp_iimp] * paa
-            impact = np.clip(impact, 0, exposures.cover.values[exp_iimp])
+            impact -= exposures.gdf.deductible.values[exp_iimp] * paa
+            impact = np.clip(impact, 0, exposures.gdf.cover.values[exp_iimp])
             self.eai_exp[exp_iimp] += np.einsum('ji,j->i', impact, hazard.frequency)
             impact = sparse.coo_matrix(impact)
         else:
@@ -873,7 +884,7 @@ class Impact():
                 impact.multiply(hazard.frequency.reshape(-1, 1)), axis=0)))
 
         self.at_event += np.squeeze(np.asarray(np.sum(impact, axis=1)))
-        self.tot_value += np.sum(exposures.value.values[exp_iimp])
+        self.tot_value += np.sum(exposures.gdf.value.values[exp_iimp])
         if isinstance(self.imp_mat, tuple):
             row_ind, col_ind = impact.nonzero()
             self.imp_mat[0].extend(list(impact.data))
@@ -881,16 +892,18 @@ class Impact():
             self.imp_mat[1][1].extend(list(exp_iimp[col_ind]))
 
     def _build_exp(self):
-        eai_exp = Exposures()
-        eai_exp['value'] = self.eai_exp
-        eai_exp['latitude'] = self.coord_exp[:, 0]
-        eai_exp['longitude'] = self.coord_exp[:, 1]
-        eai_exp.crs = self.crs
-        eai_exp.value_unit = self.unit
-        eai_exp.ref_year = 0
-        eai_exp.tag = Tag()
-        eai_exp.meta = None
-        return eai_exp
+        return Exposures(
+            data={
+                'value': self.eai_exp,
+                'latitude': self.coord_exp[:, 0],
+                'longitude': self.coord_exp[:, 1],
+            },
+            crs=self.crs,
+            value_unit=self.unit,
+            ref_year=0,
+            tag=Tag(),
+            meta=None
+        )
 
     def _build_exp_event(self, event_id):
         """Write impact of an event as Exposures
@@ -898,16 +911,18 @@ class Impact():
         Parameters:
             event_id(int): id of the event
         """
-        impact_csr_exp = Exposures()
-        impact_csr_exp['value'] = self.imp_mat.toarray()[event_id - 1, :]
-        impact_csr_exp['latitude'] = self.coord_exp[:, 0]
-        impact_csr_exp['longitude'] = self.coord_exp[:, 1]
-        impact_csr_exp.crs = self.crs
-        impact_csr_exp.value_unit = self.unit
-        impact_csr_exp.ref_year = 0
-        impact_csr_exp.tag = Tag()
-        impact_csr_exp.meta = None
-        return impact_csr_exp
+        return Exposures(
+            data={
+                'value': self.imp_mat[event_id - 1].toarray().ravel(),
+                'latitude': self.coord_exp[:, 0],
+                'longitude': self.coord_exp[:, 1],
+            },
+            crs=self.crs,
+            value_unit=self.unit,
+            ref_year=0,
+            tag=Tag(),
+            meta=None
+        )
 
     @staticmethod
     def _cen_return_imp(imp, freq, imp_th, return_periods):
@@ -939,6 +954,200 @@ class Impact():
         imp_fit[wrong_inten] = 0.
 
         return imp_fit
+
+
+    def select(self,
+               event_ids=None, event_names=None, dates=None,
+               coord_exp=None):
+        """
+        Select a subset of events and/or exposure points from the impact.
+        If multiple input variables are not None, it returns all the impacts
+        matching at least one of the conditions.
+
+        Note:
+            the frequencies are NOT adjusted. Method to adjust frequencies
+        and obtain correct eai_exp:
+            1- Select subset of impact according to your choice
+            imp = impact.select(...)
+            2- Adjust manually the frequency of the subset of impact
+            imp.frequency = [...]
+            3- Use select without arguments to select all events and recompute
+            the eai_exp with the updated frequencies.
+            imp = imp.select()
+
+        Parameters
+        ----------
+        event_ids : list[int], optional
+            Selection of events by their id. The default is None.
+        event_names : list[str], optional
+            Selection of events by their name. The default is None.
+        dates : tuple(), optional
+            (start-date, end-date), events are selected if they are >=
+            than start-date and <= than end-date. Dates in same format
+            as impact.date (ordinal format of datetime library)
+            The default is None.
+        coord_exp : (np.ndarray), optional]
+            Selection of exposures coordinates [lat, lon] (in degrees)
+            The default is None.
+
+        Raises
+        ------
+        ValueError
+            If the impact matrix is missing, the eai_exp and aai_agg cannot
+            be updated for a selection of events and/or exposures.
+
+        Returns
+        -------
+        imp : climada.engine.Impact
+            A new impact object with a selection of events and/or exposures
+
+        """
+
+        nb_events = self.event_id.size
+        nb_exp = len(self.coord_exp)
+
+        if self.imp_mat.shape != (nb_events, nb_exp):
+            raise ValueError("The impact matrix is missing or incomplete. " +
+                             "The eai_exp and aai_agg cannot be computed. " +
+                             "Please recompute impact.calc() with save_mat=True" +
+                             " before using impact.select()")
+
+        if nb_events == nb_exp:
+            LOGGER.warning("The number of events is equal to the number of "
+                           "exposure points. It is not possible to "
+                           "differentiate events and exposures attributes. "
+                           "Please add/remove one event/exposure point. "
+                           "This is a purely technical limitation of this "
+                           "method.")
+            return None
+
+
+        if (dates, event_ids, event_names) != (None, None, None):
+            sel_ev = self._selected_events_idx(event_ids, event_names,\
+                                          dates, nb_events)
+        else:
+            sel_ev = None
+
+        if coord_exp is not None:
+            sel_exp = self._selected_exposures_idx(coord_exp)
+        else:
+            sel_exp = None
+
+
+        imp = copy.deepcopy(self)
+
+        #apply event selection to impact attributes
+        if sel_ev:
+            # set all attributes that are 'per event', i.e. have a dimension
+            # of length equal to the number of events (=nb_events)
+            for attr in get_attributes_with_matching_dimension(imp, [nb_events]):
+
+                value = imp.__getattribute__(attr)
+                if isinstance(value, np.ndarray):
+                    if value.ndim == 1:
+                        setattr(imp, attr, value[sel_ev])
+                    else:
+                        LOGGER.warning("Found a multidimensional numpy array "
+                            " with one dimension matching the number of events. "
+                            " But multidimensional numpy arrays are not handled "
+                            " in impact.select")
+
+                elif isinstance(value, sparse.csr_matrix):
+                    setattr(imp, attr, value[sel_ev, :])
+
+                elif isinstance(value, list) and value:
+                    setattr(imp, attr, [value[idx] for idx in sel_ev])
+
+                else:
+                    pass
+
+            LOGGER.info("The eai_exp and aai_agg are computed for the "
+                    "selected subset of events WITHOUT modification of "
+                    "the frequencies.")
+
+
+        #apply exposure selection to impact attributes
+        if sel_exp:
+
+            imp.coord_exp = imp.coord_exp[sel_exp]
+            imp.imp_mat = imp.imp_mat[:, sel_exp]
+
+            # .A1 reduce 1d matrix to 1d array
+            imp.at_event = imp.imp_mat.sum(axis=1).A1
+            imp.tot_value = None
+            LOGGER.info("The total value cannot be re-computed for a "
+                           "subset of exposures and is set to None.")
+
+        # cast frequency vector into 2d array for sparse matrix multiplication
+        freq_mat = imp.frequency.reshape(len(imp.frequency), 1)
+        # .A1 reduce 1d matrix to 1d array
+        imp.eai_exp = imp.imp_mat.multiply(freq_mat).sum(axis=0).A1
+        imp.aai_agg = imp.eai_exp.sum()
+
+        return imp
+
+    def _selected_exposures_idx(self, coord_exp):
+
+        if coord_exp is None:
+            sel_exp = []
+        else:
+            sel_exp =  [
+                j
+                for j, coord in enumerate(self.coord_exp)
+                if coord in coord_exp
+                ]
+            if not sel_exp:
+                LOGGER.warning("No exposure coordinates matches the selection.")
+
+        return sel_exp
+
+    def _selected_events_idx(self, event_ids, event_names, dates, nb_events):
+
+        # filter events by date
+        if dates is None:
+            mask_dt = np.zeros(nb_events, dtype=bool)
+        else:
+            mask_dt = np.ones(nb_events, dtype=bool)
+            date_ini, date_end = dates
+            if isinstance(date_ini, str):
+                date_ini = u_dt.str_to_date(date_ini)
+                date_end = u_dt.str_to_date(date_end)
+            mask_dt &= (date_ini <= self.date)
+            mask_dt &= (self.date <= date_end)
+            if not np.any(mask_dt):
+                LOGGER.info('No impact event in given date range %s.', dates)
+
+        sel_dt = list(np.argwhere(mask_dt).reshape(-1)) # Convert bool to indices
+
+        # filter events by id
+        if event_ids is None:
+            sel_id = []
+        else:
+            sel_id = [list(self.event_id).index(_id) for _id in event_ids]
+            if not sel_id:
+                LOGGER.info('No impact event with given ids %s found.',
+                            event_ids)
+
+        # filter events by name
+        if event_names is None:
+            sel_na = []
+        else:
+            sel_na = [list(self.event_name).index(name) for name in event_names]
+            if not sel_na:
+                LOGGER.info('No impact event with given names %s found.',
+                            event_names)
+
+
+        #select events with machting id, name or date field.
+        sel_ev = [idx for idx in set(sel_dt + sel_id + sel_na)]
+
+        #if no event found matching ids, names or dates, return None
+        if (dates, event_ids, event_names) != (None, None, None)\
+            and not sel_ev:
+            LOGGER.warning("No event matches the selection. ")
+            return None
+
+        return sel_ev
 
 class ImpactFreqCurve():
     """Impact exceedence frequency curve.

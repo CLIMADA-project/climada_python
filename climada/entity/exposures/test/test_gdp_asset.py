@@ -4,18 +4,19 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
-Unit Tests on GDP2Asset exposures.
+---
 
+Unit Tests on GDP2Asset exposures.
 """
 import numpy as np
 import unittest
@@ -48,9 +49,10 @@ class TestGDP2AssetFunctions(unittest.TestCase):
     """Test LitPop Class methods"""
 
     def test_set_one_country(self):
-        exp_test = ga.GDP2Asset._set_one_country('LIE', 2000, path=DEMO_GDP2ASSET)
         with self.assertRaises(KeyError):
             ga.GDP2Asset._set_one_country('LIE', 2001, path=DEMO_GDP2ASSET)
+
+        exp_test = ga.GDP2Asset._set_one_country('LIE', 2000, path=DEMO_GDP2ASSET).gdf
 
         self.assertAlmostEqual(exp_test.iloc[0, 2], 9.5206968)
         self.assertAlmostEqual(exp_test.iloc[1, 2], 9.5623634)
@@ -114,9 +116,9 @@ class TestGDP2AssetFunctions(unittest.TestCase):
     def test_read_GDP(self):
 
         exp_test = ga.GDP2Asset._set_one_country('LIE', 2000, DEMO_GDP2ASSET)
-        coordinates = np.zeros((exp_test.shape[0], 2))
-        coordinates[:, 0] = np.array(exp_test['latitude'])
-        coordinates[:, 1] = np.array(exp_test['longitude'])
+        coordinates = np.zeros((exp_test.gdf.shape[0], 2))
+        coordinates[:, 0] = np.array(exp_test.gdf['latitude'])
+        coordinates[:, 1] = np.array(exp_test.gdf['longitude'])
 
         with self.assertRaises(KeyError):
             ga._read_GDP(coordinates, ref_year=2600, path=DEMO_GDP2ASSET)
