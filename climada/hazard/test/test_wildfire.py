@@ -19,19 +19,19 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Test Wild fire class
 """
 
-import os
+# import os
+from pathlib import Path
 import unittest
 import numpy as np
 from scipy import sparse
-from rasterio import Affine
 
 from climada.hazard.wildfire import WildFire
 from climada.hazard.centroids.centr import Centroids
-from climada.util import get_resolution
 from climada.util.constants import ONE_LAT_KM
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
-TEST_FIRMS = os.path.join(DATA_DIR, "California_firms_Soberanes_2016_viirs.csv")
+DATA_DIR = (Path(__file__).parent).joinpath('data')
+TEST_FIRMS = Path.joinpath(DATA_DIR, "California_firms_Soberanes_2016_viirs.csv")
+
 
 description = ''
 

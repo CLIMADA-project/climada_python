@@ -1,16 +1,17 @@
 """
 Test Wild fire class
 """
-
-import os
+from pathlib import Path
 import unittest
 import numpy as np
 
 from climada.hazard import WildFire
 
+DATA_DIR = (Path(__file__).parent).joinpath('../test/data')
+TEST_FIRMS = Path.joinpath(DATA_DIR, "WF_FIRMS.csv")
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), '../test/data')
-TEST_FIRMS = os.path.join(DATA_DIR, "WF_FIRMS.csv")
+# DATA_DIR = os.path.join(os.path.dirname(__file__), '../test/data')
+# TEST_FIRMS = os.path.join(DATA_DIR, "WF_FIRMS.csv")
 
 description = ''
 
