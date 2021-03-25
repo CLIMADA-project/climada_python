@@ -349,8 +349,14 @@ class TropCyclone(Hazard):
         reachable_coastal_centr_idx = coastal_idx[reachable_centr_idx]
         npositions = windfields.shape[0]
 
-        intensity = np.linalg.norm(windfields, axis=-1).max(axis=0)
+        intensity_per_timestep = np.linalg.norm(windfields, axis=-1)
+        intensity_argmax = np.argmax(intensity_per_timestep, axis=0)
+        intensity_tmax = track.time.values[intensity_argmax]
+
+        intensity = np.take_along_axis(
+            intensity_per_timestep, intensity_argmax[None], axis=0)[0]
         intensity[intensity < self.intensity_thres] = 0
+        intensity_tmax[intensity == 0] = 0
         intensity_sparse = sparse.csr_matrix(
             (intensity, reachable_coastal_centr_idx, [0, intensity.size]),
             shape=(1, ncentroids))
@@ -359,6 +365,10 @@ class TropCyclone(Hazard):
         new_haz = TropCyclone()
         new_haz.tag = TagHazard(HAZ_TYPE, 'Name: ' + track.name)
         new_haz.intensity = intensity_sparse
+        # time when maxwind is attained in "hours since 1970-01-01T00:00"
+        new_haz.date_h_maxwind = sparse.csr_matrix(
+            (intensity_tmax.astype("datetime64[h]").astype(np.int64),
+             reachable_coastal_centr_idx, [0, intensity.size]), shape=(1, ncentroids))
         if store_windfields:
             wf_full = np.zeros((npositions, ncentroids, 2))
             wf_full[:, reachable_coastal_centr_idx, :] = windfields
@@ -373,9 +383,9 @@ class TropCyclone(Hazard):
         new_haz.fraction.data.fill(1)
         # store first day of track as date
         new_haz.date = np.array([
-            dt.datetime(track.time.dt.year[0],
-                        track.time.dt.month[0],
-                        track.time.dt.day[0]).toordinal()
+            dt.datetime(int(track.time.dt.year[0]),
+                        int(track.time.dt.month[0]),
+                        int(track.time.dt.day[0])).toordinal()
         ])
         new_haz.orig = np.array([track.orig_event_flag])
         new_haz.category = np.array([track.category])

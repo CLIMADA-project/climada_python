@@ -86,6 +86,14 @@ class TestReader(unittest.TestCase):
             self.assertEqual(tc_haz.fraction[0, 100], 1)
             self.assertEqual(tc_haz.fraction[0, 260], 0)
             self.assertEqual(tc_haz.fraction.nonzero()[0].size, 280)
+            self.assertTrue(isinstance(tc_haz.date_h_maxwind, sparse.csr.csr_matrix))
+            self.assertEqual(tc_haz.date_h_maxwind.shape, (1, 296))
+            self.assertEqual(tc_haz.date_h_maxwind.nonzero()[0].size, 280)
+            self.assertEqual(tc_haz.date_h_maxwind[0, 100].astype("datetime64[h]"),
+                             np.datetime64("1951-09-02T08"))
+            # points that are not affected get default value for date_h_maxwind:
+            self.assertEqual(tc_haz.date_h_maxwind[0, 260].astype("datetime64[h]"),
+                             np.datetime64("1970-01-01T00"))
 
             self.assertTrue(isinstance(tc_haz.intensity, sparse.csr.csr_matrix))
             self.assertEqual(tc_haz.intensity.shape, (1, 296))
@@ -127,18 +135,27 @@ class TestReader(unittest.TestCase):
         self.assertTrue(np.array_equal(tc_haz.frequency, np.array([1])))
         self.assertTrue(isinstance(tc_haz.intensity, sparse.csr.csr_matrix))
         self.assertTrue(isinstance(tc_haz.fraction, sparse.csr.csr_matrix))
+        self.assertTrue(isinstance(tc_haz.date_h_maxwind, sparse.csr.csr_matrix))
         self.assertEqual(tc_haz.intensity.shape, (1, 296))
         self.assertEqual(tc_haz.fraction.shape, (1, 296))
+        self.assertEqual(tc_haz.date_h_maxwind.dtype, np.int64)
+        self.assertEqual(tc_haz.date_h_maxwind.shape, (1, 296))
 
         self.assertEqual(tc_haz.fraction.nonzero()[0].size, 0)
         self.assertEqual(tc_haz.intensity.nonzero()[0].size, 0)
 
     def test_two_files_pass(self):
-        """Test set function set_from_tracks with two ibtracs."""
+        """Test set function set_from_tracks with two ibtracs and removed duplicates."""
         tc_track = TCTracks()
         tc_track.read_processed_ibtracs_csv([TEST_TRACK_SHORT, TEST_TRACK_SHORT])
         tc_haz = TropCyclone()
         tc_haz.set_from_tracks(tc_track, CENTR_TEST_BRB)
+
+        self.assertEqual(tc_haz.event_id.size, 2)
+        self.assertEqual(tc_haz.intensity.shape, (2, 296))
+        self.assertEqual(tc_haz.fraction.shape, (2, 296))
+        self.assertEqual(tc_haz.date_h_maxwind.shape, (2, 296))
+
         tc_haz.remove_duplicates()
         tc_haz.check()
 
@@ -154,8 +171,10 @@ class TestReader(unittest.TestCase):
         self.assertTrue(np.array_equal(tc_haz.orig, np.array([True])))
         self.assertTrue(isinstance(tc_haz.intensity, sparse.csr.csr_matrix))
         self.assertTrue(isinstance(tc_haz.fraction, sparse.csr.csr_matrix))
+        self.assertTrue(isinstance(tc_haz.date_h_maxwind, sparse.csr.csr_matrix))
         self.assertEqual(tc_haz.intensity.shape, (1, 296))
         self.assertEqual(tc_haz.fraction.shape, (1, 296))
+        self.assertEqual(tc_haz.date_h_maxwind.shape, (1, 296))
 
         self.assertEqual(tc_haz.fraction.nonzero()[0].size, 0)
         self.assertEqual(tc_haz.intensity.nonzero()[0].size, 0)

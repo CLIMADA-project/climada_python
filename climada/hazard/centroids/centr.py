@@ -109,7 +109,7 @@ class Centroids():
     def __init__(self):
         """Initialize to None raster and vector"""
         self.meta = dict()
-        self.geometry = gpd.GeoSeries()
+        self.geometry = gpd.GeoSeries(gpd.array.from_shapely([]))
         self.lat = np.array([])
         self.lon = np.array([])
         self.area_pixel = np.array([])
@@ -1043,7 +1043,8 @@ class Centroids():
         memo[id(self)] = result
         for key, value in self.__dict__.items():
             if key == 'geometry':
-                setattr(result, key, gpd.GeoSeries(crs=self.geometry.crs))
+                setattr(result, key,
+                        gpd.GeoSeries(gpd.array.from_shapely([]), crs=self.geometry.crs))
             else:
                 setattr(result, key, copy.deepcopy(value, memo))
         return result
