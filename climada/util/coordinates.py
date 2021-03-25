@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -316,6 +316,31 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
         LOGGER.error("Unknown distance approximation method: %s", method)
         raise KeyError
     return (dist, vtan) if log else dist
+
+def get_gridcellarea(lat, resolution=0.5, unit='km2'):
+    """The area covered by a grid cell is calculated depending on the latitude
+        1 degree = ONE_LAT_KM (111.12km at the equator)
+        longitudal distance in km = ONE_LAT_KM*resolution*cos(lat)
+        latitudal distance in km = ONE_LAT_KM*resolution
+        area = longitudal distance * latitudal distance
+
+    Parameters
+    ----------
+    lat : np.array
+        Latitude of the respective grid cell
+    resolution: int, optional
+        raster resolution in degree (default: 0.5 degree)
+    unit: string, optional
+        unit of the output area (default: km2, alternative: m2)
+
+    """
+
+    if unit == 'm2':
+        area = (ONE_LAT_KM * resolution)**2 * np.cos(np.deg2rad(lat)) * 100 * 1000000
+    else:
+        area = (ONE_LAT_KM * resolution)**2 * np.cos(np.deg2rad(lat)) * 100
+
+    return area
 
 def grid_is_regular(coord):
     """Return True if grid is regular. If True, returns height and width.
@@ -800,6 +825,71 @@ def get_region_gridpoints(countries=None, regions=None, resolution=150,
     else:
         lat, lon = [ar.ravel() for ar in [lat, lon]]
     return lat, lon
+
+def mapping_point2grid(x, y, xmin, ymax, res):
+    """Given the coordinates of a point, find the index of a grid cell from 
+    a raster into which it falls.
+    
+    Note
+    ----
+    Coordinates of the point and of the raster need to have the same CRS (e.g.
+    both in lat/lon, EPSG:4326)
+    
+    Parameters
+    ---------
+    x : float
+        x-coordinate of point
+    y : float
+        y-coordinate of point
+    xmin: float
+        coords top left corner of raster file - x
+    ymax: float
+        coords of top left corner of raster file - y
+    res: float or tuple
+        resolution of raster file. Float if res_x=res_y else (res_x, res_y).
+    
+    Returns
+    ------- 
+    col, row : tuple
+        column index and row index in grid matrix where point falls into
+    
+    Raises
+    ------
+    ValueError if Point outside of top left corner of raster
+    """
+    if (isinstance(res, tuple) or isinstance(res, list)):
+        res_x, res_y = (abs(res) for res in res)
+    else:
+        res_x = res_y = abs(res)
+    col = int((x - xmin) / res_x)
+    row = int((ymax - y) / res_y)
+    if (col < 0 or row < 0):
+        LOGGER.error('Point not inside grid')
+        raise ValueError  
+    return col, row
+    
+def mapping_grid2flattened(col, row, matrix_shape):
+    """ given a col and row index and the initial 2D matrix shape,
+    return the 1-dimensional index of the same point in the flattened matrix
+    - assumes concatenation along the row-axis (x-direction) 
+    
+    Parameters
+    ----------
+    col : int
+        Column Index of an entry in the original matrix
+    row : int
+        Row index of an entry in the original matrix
+    matrix_shape: (int, int)
+        Shape of the matrix (n_rows, n_cols)
+    
+    Returns
+    -------
+    index (1D) of the point in the flattened array (int)
+    """
+    if (row > matrix_shape[0] or col > matrix_shape[1]):
+        LOGGER.error('Indicated row  or column index larger than matrix')
+        raise ValueError
+    return row * matrix_shape[1] + col
 
 def region2isos(regions):
     """Convert region names to ISO 3166 alpha-3 codes of countries

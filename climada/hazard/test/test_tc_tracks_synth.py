@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -397,31 +397,31 @@ class TestSynth(unittest.TestCase):
         self.assertEqual(tc_track.data[1].name, '1951239N12334_gen1')
         self.assertEqual(tc_track.data[1].id_no, 1.951239012334010e+12)
         self.assertAlmostEqual(tc_track.data[1].lon[0].values, -25.0448138)
-        self.assertAlmostEqual(tc_track.data[1].lon[1].values, -25.74350584)
-        self.assertAlmostEqual(tc_track.data[1].lon[2].values, -26.53816584)
-        self.assertAlmostEqual(tc_track.data[1].lon[3].values, -27.70882553)
-        self.assertAlmostEqual(tc_track.data[1].lon[4].values, -28.60215804)
-        self.assertAlmostEqual(tc_track.data[1].lon[8].values, -33.91441471)
+        self.assertAlmostEqual(tc_track.data[1].lon[1].values, -25.74439739)
+        self.assertAlmostEqual(tc_track.data[1].lon[2].values, -26.54491644)
+        self.assertAlmostEqual(tc_track.data[1].lon[3].values, -27.73156829)
+        self.assertAlmostEqual(tc_track.data[1].lon[4].values, -28.63175987)
+        self.assertAlmostEqual(tc_track.data[1].lon[8].values, -34.05293373)
 
         self.assertAlmostEqual(tc_track.data[1].lat[0].values, 11.96825841)
-        self.assertAlmostEqual(tc_track.data[1].lat[4].values, 11.53325679)
-        self.assertAlmostEqual(tc_track.data[1].lat[5].values, 11.2794089)
-        self.assertAlmostEqual(tc_track.data[1].lat[6].values, 11.06101848)
-        self.assertAlmostEqual(tc_track.data[1].lat[7].values, 10.87011188)
-        self.assertAlmostEqual(tc_track.data[1].lat[8].values, 10.56160248)
+        self.assertAlmostEqual(tc_track.data[1].lat[4].values, 11.86769405)
+        self.assertAlmostEqual(tc_track.data[1].lat[5].values, 11.84378139)
+        self.assertAlmostEqual(tc_track.data[1].lat[6].values, 11.85957282)
+        self.assertAlmostEqual(tc_track.data[1].lat[7].values, 11.84555291)
+        self.assertAlmostEqual(tc_track.data[1].lat[8].values, 11.8065998)
 
         self.assertFalse(tc_track.data[2].orig_event_flag)
         self.assertEqual(tc_track.data[2].name, '1951239N12334_gen2')
         self.assertAlmostEqual(tc_track.data[2].id_no, 1.951239012334020e+12)
         self.assertAlmostEqual(tc_track.data[2].lon[0].values, -25.47658461)
-        self.assertAlmostEqual(tc_track.data[2].lon[3].values, -28.07321308)
-        self.assertAlmostEqual(tc_track.data[2].lon[4].values, -28.84362221)
-        self.assertAlmostEqual(tc_track.data[2].lon[8].values, -33.58163207)
+        self.assertAlmostEqual(tc_track.data[2].lon[3].values, -28.08465841)
+        self.assertAlmostEqual(tc_track.data[2].lon[4].values, -28.85901852)
+        self.assertAlmostEqual(tc_track.data[2].lon[8].values, -33.62144837)
 
         self.assertAlmostEqual(tc_track.data[2].lat[0].values, 11.82886685)
-        self.assertAlmostEqual(tc_track.data[2].lat[6].values, 12.48419948)
-        self.assertAlmostEqual(tc_track.data[2].lat[7].values, 12.67466604)
-        self.assertAlmostEqual(tc_track.data[2].lat[8].values, 12.75050471)
+        self.assertAlmostEqual(tc_track.data[2].lat[6].values, 11.71068012)
+        self.assertAlmostEqual(tc_track.data[2].lat[7].values, 11.69832976)
+        self.assertAlmostEqual(tc_track.data[2].lat[8].values, 11.64145734)
 
     def test_random_walk_decay_pass(self):
         """Test land decay is called from calc_perturbed_trajectories."""
