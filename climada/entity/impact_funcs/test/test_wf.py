@@ -29,7 +29,7 @@ class TestIFWildfire(unittest.TestCase):
         imp_fun = IFWildfire()
         imp_fun.set_default_FIRMS(i_half_check)
         self.assertEqual(imp_fun.name, 'wildfire default 10 km')
-        self.assertEqual(imp_fun.haz_type, 'WF')
+        self.assertEqual(imp_fun.haz_type, 'WFsingle')
         self.assertEqual(imp_fun.id, 1)
         self.assertEqual(imp_fun.intensity_unit, 'K')
         self.assertTrue(np.array_equal(imp_fun.intensity, np.arange(295,500,5)))
@@ -48,7 +48,7 @@ class TestIFWildfire(unittest.TestCase):
         imp_fun = IFWildfire()
         imp_fun.set_step(THRESH_step)
         self.assertEqual(imp_fun.name, 'wildfire step')
-        self.assertEqual(imp_fun.haz_type, 'WF')
+        self.assertEqual(imp_fun.haz_type, 'WFsingle')
         self.assertEqual(imp_fun.id, 1)
         self.assertEqual(imp_fun.intensity_unit, 'K')
         self.assertTrue(np.array_equal(imp_fun.intensity,
