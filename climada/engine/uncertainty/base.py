@@ -32,6 +32,8 @@ from climada.util.value_representation import sig_dig as u_sig_dig
 
 LOGGER = logging.getLogger(__name__)
 
+METRICS_2D = ['eai_exp', 'at_event']
+
 
 class UncVar():
     """
@@ -557,7 +559,8 @@ class Uncertainty():
 
         df_values = pd.DataFrame()
         for metric in metric_list:
-            df_values = df_values.append(self.metrics[metric])
+            if metric not in METRICS_2D:
+                df_values = df_values.append(self.metrics[metric])
 
         df_values_log = df_values.apply(np.log10).copy()
         df_values_log = df_values_log.replace([np.inf, -np.inf], np.nan)
