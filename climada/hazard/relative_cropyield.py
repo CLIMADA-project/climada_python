@@ -24,6 +24,8 @@ __all__ = ['RelativeCropyield']
 
 import logging
 from pathlib import Path
+import copy
+
 import numpy as np
 from matplotlib import pyplot as plt
 import cartopy
@@ -32,7 +34,6 @@ from scipy import sparse
 import scipy.stats
 import h5py
 import xarray as xr
-
 
 from climada.hazard.base import Hazard
 from climada.util import dates_times as dt
@@ -106,15 +107,16 @@ class RelativeCropyield(Hazard):
         self.intensity_def = INT_DEF
 
     def set_from_isimip_netcdf(self, input_dir=None, filename=None, bbox=None,
-                            yearrange=None, ag_model=None, cl_model=None, bias_corr=None,
-                            scenario=None, soc=None, co2=None, crop=None,
-                            irr=None, fn_str_var=None):
+                               yearrange=None, ag_model=None, cl_model=None, bias_corr=None,
+                               scenario=None, soc=None, co2=None, crop=None,
+                               irr=None, fn_str_var=None):
 
         """Wrapper to fill hazard from crop yield NetCDF file.
         Build and tested for output from ISIMIP2 and ISIMIP3, but might also work
         for other NetCDF containing gridded crop model output from other sources.
         Parameters:
-            input_dir (string): path to input data directory
+            input_dir (Path or str): path to input data directory,
+                default: {CONFIG.exposures.crop_production.local_data}/Input/Exposure
             filename (string): name of netcdf file in input_dir. If filename is given,
                 the other parameters specifying the model run are not required!
             bbox (list of four floats): bounding box:
@@ -151,6 +153,7 @@ class RelativeCropyield(Hazard):
             bbox = BBOX
         if input_dir is None:
             input_dir = INPUT_DIR
+        input_dir = Path(input_dir)
         if not Path(input_dir).is_dir():
             LOGGER.error('Input directory %s does not exist', input_dir)
             raise NameError
@@ -182,7 +185,7 @@ class RelativeCropyield(Hazard):
             _, crop, irr = crop_irr.split('-')
 
         # if no yearrange is given, load full range from input file:
-        if yearrange is None or len(yearrange)==0:
+        if yearrange is None or len(yearrange) == 0:
             yearrange = yearchunk['yearrange']
 
         # define indexes of the netcdf-bands to be extracted, and the
@@ -213,19 +216,23 @@ class RelativeCropyield(Hazard):
         return self
 
     def calc_mean(self, yearrange_mean=None,
-                  save=False, output_dir=OUTPUT_DIR):
+                  save=False, output_dir=None):
         """Calculates mean of the hazard for a given reference time period
 
             Optional Parameters:
             yearrange_mean (array): time period used to calculate the mean intensity
                 default: 1976-2005 (historical)
             save (boolean): save mean to file? default: False
-            output_dir (str): path of output directory
+            output_dir (str or Path): path of output directory,
+                default: {CONFIG.exposures.crop_production.local_data}/Output
 
             Returns:
                 hist_mean(array): contains mean value over the given reference
                     time period for each centroid
         """
+        if output_dir is None:
+            output_dir = OUTPUT_DIR
+        output_dir = Path(output_dir)
         if yearrange_mean is None:
             yearrange_mean = YEARCHUNKS['historical']['yearrange_mean']
         startyear, endyear = yearrange_mean
@@ -235,7 +242,7 @@ class RelativeCropyield(Hazard):
 
         if save:
             # generate output directories if they do not exist yet
-            mean_dir = Path(output_dir, 'Hist_mean')
+            mean_dir = output_dir / 'Hist_mean'
             mean_dir.mkdir(parents=True, exist_ok=True)
             # save mean_file
             mean_file = h5py.File(Path(
@@ -391,69 +398,19 @@ class RelativeCropyield(Hazard):
 
         return fig
 
-    def plot_comparing_maps(self, his, fut, axes, nr_cli_models=1, model=1):
-        """Plots comparison maps of historic and future data and their difference fut-his
 
-        Parameters:
-            his (sparse matrix): historic mean annual yield or mean relative yield
-            fut (sparse matrix): future mean annual yield or mean relative yield
-            axes (Geoaxes): subplot axes that can be generated with ag_drought_util.setup_subplots
-            nr_cli_models (int): number of climate models and respectively nr of rows within
-                                    the subplot
-            model (int): current row to plot - this method can be used in a loop to plot
-                subplots in one figure consisting of several rows of subplots.
-                One row displays the intensity for present and future climate and the difference of
-                the two for one model-combination (ag_model and cl_model)
-
-        Returns:
-            geoaxes
-        """
-        dif = fut - his
-        self.event_id = 0
-
-        for subplot in range(3):
-
-            if self.intensity_def == 'Yearly Yield':
-                self.units = 't / y'
-            elif self.intensity_def == 'Relative Yield':
-                self.units = ''
-
-            if subplot == 0:
-                self.intensity = sparse.csr_matrix(his)
-                dif_def = 0
-            elif subplot == 1:
-                self.intensity = sparse.csr_matrix(fut)
-                dif_def = 0
-            elif subplot == 2:
-                self.intensity = sparse.csr_matrix(dif)
-                dif_def = 1
-
-
-            if nr_cli_models == 1:
-                ax1 = self.plot_intensity_cp(event=0, dif=dif_def, axis=axes[subplot])
-            else:
-                ax1 = self.plot_intensity_cp(event=0, dif=dif_def, axis=axes[model, subplot])
-
-            ax1.set_title('')
-
-        if nr_cli_models == 1:
-            cols = ['Historical', 'Future', 'Difference = Future - Historical']
-            for ax0, col in zip(axes, cols):
-                ax0.set_title(col, size='large')
-
-        return axes
-
-
-def set_multiple_rc_from_isimip(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox=None,
-                             isimip_run=None, yearrange_his=None, yearrange_mean=None,
-                             return_data=False, save=True, combine_subcrops=True):
+def set_multiple_rc_from_isimip(input_dir=None, output_dir=None, bbox=None,
+                                isimip_run=None, yearrange_his=None, yearrange_mean=None,
+                                return_data=False, save=True, combine_subcrops=True):
 
     """Wrapper to generate full hazard set from all ISIMIP-NetCDF files with
     crop yield in a given input directory and save it to output directory.
 
         Optional Parameters:
-            input_dir (string): path to input data directory
-            output_dir (string): path to output data directory
+            input_dir (pathlib.Path or str): path to input data directory,
+                default: {CONFIG.exposures.crop_production.local_data}/Input/Exposure
+            output_dir (pathlib.Path or str): path to output data directory,
+                default: {CONFIG.exposures.crop_production.local_data}/Output
             bbox (list of four floats): bounding box:
                 [lon min, lat min, lon max, lat max]
             isimip_run (string): name of the ISIMIP run (f.i. ISIMIP2a or ISIMIP2b)
@@ -474,8 +431,23 @@ def set_multiple_rc_from_isimip(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox
         bbox = BBOX
     if isimip_run is None:
         isimip_run = 'ISIMIP2b'
-    filenames = [f for f in Path(input_dir).iterdir()
-                 if f.is_file() and 'yield' in f.name and not f.name.startswith('.')]
+    if input_dir is None:
+        input_dir = INPUT_DIR
+    if output_dir is None:
+        output_dir = OUTPUT_DIR
+    if isinstance(input_dir, str):
+        input_dir = Path(input_dir)
+    if not (isinstance(input_dir, Path) and input_dir.is_dir()):
+        LOGGER.error('input_dir needs to be valid directory given as str or Path instance')
+        raise NameError
+    if isinstance(output_dir, str):
+        output_dir = Path(output_dir)
+    if not (isinstance(output_dir, Path) and output_dir.is_dir()):
+        LOGGER.error('output_dir needs to be valid directory given as str or Path instance')
+        raise NameError
+
+    filenames = [f.name for f in input_dir.iterdir()
+                 if f.is_file() and not f.name.startswith('.')]
 
     # generate output directories if they do not exist yet
     Path(output_dir, 'Hazard').mkdir(parents=True, exist_ok=True)
@@ -486,21 +458,24 @@ def set_multiple_rc_from_isimip(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox
 
     (his_file_list, file_props, hist_mean_per_crop,
      scenario_list, _, combi_crop_list) = init_hazard_sets_isimip(filenames,
-                                                         input_dir=input_dir,
-                                                         bbox=bbox, isimip_run=isimip_run,
-                                                         yearrange_his=yearrange_his,
-                                                         combine_subcrops=combine_subcrops)
+                                                                  input_dir=input_dir,
+                                                                  bbox=bbox, isimip_run=isimip_run,
+                                                                  yearrange_his=yearrange_his,
+                                                                  combine_subcrops=combine_subcrops)
 
     if (yearrange_mean is None) and (isimip_run == 'ISIMIP2b'):
         yearrange_mean = YEARCHUNKS[file_props[his_file_list[0]]['scenario']]['yearrange_mean']
     elif (yearrange_mean is None) and (isimip_run == 'ISIMIP3b'):
         yearrange_mean = YEARCHUNKS['historical_ISIMIP3b']['yearrange_mean']
         # (1983, 2013) # c.f. Jaegermeyr et al. on ISIMIP3b
+    elif (yearrange_mean is None) and (isimip_run == 'ISIMIP2a'):
+        yearrange_mean = YEARCHUNKS['ISIMIP2a']['yearrange_mean']
+        # (1980, 1999)
 
     for his_file in his_file_list:
         haz_his, filename, hist_mean = calc_his_haz_isimip(his_file, file_props,
-                                                    input_dir=input_dir, bbox=bbox,
-                                                    yearrange_mean=yearrange_mean)
+                                                           input_dir=input_dir, bbox=bbox,
+                                                           yearrange_mean=yearrange_mean)
         # save the historical mean depending on the crop-irrigation combination
         # the idx keeps track of the row in which the hist_mean values are written per crop-irr to
         # ensure that all files are assigned to the corresponding crop-irr combination
@@ -602,14 +577,14 @@ def set_multiple_rc_from_isimip(input_dir=INPUT_DIR, output_dir=OUTPUT_DIR, bbox
     return filename_list, output_list
 
 def init_hazard_sets_isimip(filenames, input_dir=None, bbox=None, isimip_run=None,
-                    yearrange_his=None, combine_subcrops=True):
+                            yearrange_his=None, combine_subcrops=True):
     """Initialize full hazard set.
 
         Parameters:
             filenames (list): list of filenames
 
         Optional Parameters:
-            input_dir (string): path to input data directory, default: INPUT_DIR
+            input_dir (pathlib.Path): path to input data directory, default: INPUT_DIR
             bbox (list of four floats): bounding box:
                 [lon min, lat min, lon max, lat max], default: BBOX
             isimip_run (string): name of the ISIMIP run ('ISIMIP2a', 'ISIMIP2b', or 'ISIMIP3b')
@@ -629,7 +604,7 @@ def init_hazard_sets_isimip(filenames, input_dir=None, bbox=None, isimip_run=Non
     """
     # set default values for parameters not defined:
     if input_dir is None:
-        input_dir = INPUT_DIR
+        input_dir = Path(INPUT_DIR)
     if bbox is None:
         bbox = BBOX
     if isimip_run is None:
@@ -651,12 +626,8 @@ def init_hazard_sets_isimip(filenames, input_dir=None, bbox=None, isimip_run=Non
                     continue
                 if crop == 'ri1': # first harvest rice
                     combi_crop = 'ric'
-                    # if not isfile(join(input_dir, file.replace('yield-ri1-', 'yield-ri2-'))):
-                    #     continue # skip ri1 runs without equivalent ri2 run
                 if crop == 'swh': # spring wheat
                     combi_crop = 'whe'
-                    # if not isfile(join(input_dir, file.replace('yield-swh-', 'yield-wwh-'))):
-                    #     continue # skip swh runs without equivalent wwh run
             if scenario == 'historical':
                 his_file_list.append(file)
                 if (yearrange_his is None) and (isimip_run == 'ISIMIP2b'):
@@ -715,9 +686,9 @@ def init_hazard_sets_isimip(filenames, input_dir=None, bbox=None, isimip_run=Non
     #   global_annual_1861_2005.nc
     haz_dummy = RelativeCropyield()
     haz_dummy.set_from_isimip_netcdf(input_dir=input_dir, filename=his_file_list[0], bbox=bbox,
-                                  scenario=file_props[his_file_list[0]]['scenario'],
-                                  yearrange=(file_props[his_file_list[0]]['startyear'],
-                                              file_props[his_file_list[0]]['endyear']))
+                                     scenario=file_props[his_file_list[0]]['scenario'],
+                                     yearrange=(file_props[his_file_list[0]]['startyear'],
+                                                file_props[his_file_list[0]]['endyear']))
 
     # initiate the historic mean for each combination of crop and irrigation type
     # the idx keeps track of the row in which the hist_mean values are written per crop-irr to
@@ -734,14 +705,14 @@ def init_hazard_sets_isimip(filenames, input_dir=None, bbox=None, isimip_run=Non
     return his_file_list, file_props, hist_mean_per_crop, scenario_list, \
         crop_irr_list, combi_crop_irr_list
 
-def calc_his_haz_isimip(his_file, file_props, input_dir=INPUT_DIR, bbox=BBOX,
+def calc_his_haz_isimip(his_file, file_props, input_dir=None, bbox=None,
                         yearrange_mean=None):
     """Create historical hazard and calculate historical mean.
 
         Parameters:
             his_file (string): file name of historical input hazard file
             file_props (dict): file properties of all historical input hazard files
-            input_dir (string): path to input data directory
+            input_dir (Path): path to input data directory, default: INPUT_DIR
             bbox (list of four floats): bounding box:
                 [lon min, lat min, lon max, lat max]
             yearrange_mean (int tuple): year range for the historical mean
@@ -752,12 +723,16 @@ def calc_his_haz_isimip(his_file, file_props, input_dir=INPUT_DIR, bbox=BBOX,
             filename (string): name to save historical hazard
             hist_mean (array): historical mean of the historical hazard
     """
+    if input_dir is None:
+        input_dir = Path(INPUT_DIR)
+    if bbox is None:
+        bbox = BBOX
 
     haz_his = RelativeCropyield()
     haz_his.set_from_isimip_netcdf(input_dir=input_dir, filename=his_file, bbox=bbox,
-                                scenario=file_props[his_file]['scenario'],
-                                yearrange=np.array([file_props[his_file]['startyear'],
-                                                    file_props[his_file]['endyear']]))
+                                   scenario=file_props[his_file]['scenario'],
+                                   yearrange=np.array([file_props[his_file]['startyear'],
+                                                       file_props[his_file]['endyear']]))
     crop = file_props[his_file]['crop']
     # combine subcrops if crop and combi_crop not the same:
     if crop != file_props[his_file]['combi_crop']:
@@ -769,12 +744,12 @@ def calc_his_haz_isimip(his_file, file_props, input_dir=INPUT_DIR, bbox=BBOX,
             his_file2 = his_file.replace('_yield-ri1-', '_yield-ri2-')
         else:
             his_file2 = None
-        if his_file2 and Path(input_dir, his_file2).is_file():
+        if his_file2 and (input_dir / his_file2).is_file():
             haz_his2 = RelativeCropyield()
             haz_his2.set_from_isimip_netcdf(input_dir=input_dir, filename=his_file2, bbox=bbox,
-                                scenario=file_props[his_file]['scenario'],
-                                yearrange=np.array([file_props[his_file]['startyear'],
-                                                    file_props[his_file]['endyear']]))
+                                            scenario=file_props[his_file]['scenario'],
+                                            yearrange=np.array([file_props[his_file]['startyear'],
+                                                                file_props[his_file]['endyear']]))
             # The masks in the NetCDF file divides all wheat growing areas globally in two distinct
             # categories, either growing winter wheat (wwh) or spring wheat (swh). Since the hazard
             # sets for wwh and swh are calculated for the whole globe ("all crops everywhere") we
@@ -784,13 +759,12 @@ def calc_his_haz_isimip(his_file, file_props, input_dir=INPUT_DIR, bbox=BBOX,
             # mask of winter wheat in spring wheat and vice versa:
                 whe_mask = read_wheat_mask_isimip3(input_dir=input_dir, bbox=bbox)
                 haz_his.intensity = sparse.csr_matrix(np.multiply(haz_his.intensity.todense(),
-                                                        whe_mask.swh_mask.values.flatten()
-                                                        )
-                                            )
-                haz_his2.intensity = sparse.csr_matrix(np.multiply(haz_his2.intensity.todense(),
-                                                        whe_mask.wwh_mask.values.flatten()
-                                                        )
-                                            )
+                                                                  whe_mask.swh_mask.values.flatten()
+                                                                  )
+                                                      )
+                haz_his2.intensity = sparse.csr_matrix(
+                    np.multiply(haz_his2.intensity.todense(), whe_mask.wwh_mask.values.flatten()
+                                ))
             # replace NaN by 0.0:
             haz_his.intensity.data[np.isnan(haz_his.intensity.data)] = 0.0
             haz_his2.intensity.data[np.isnan(haz_his2.intensity.data)] = 0.0
@@ -818,8 +792,8 @@ def calc_his_haz_isimip(his_file, file_props, input_dir=INPUT_DIR, bbox=BBOX,
 
     return haz_his, filename, hist_mean
 
-def calc_fut_haz_isimip(his_file, scenario, file_props, hist_mean, input_dir=INPUT_DIR, bbox=BBOX,
-                 fut_file=None, yearrange_fut=None):
+def calc_fut_haz_isimip(his_file, scenario, file_props, hist_mean, input_dir=None,
+                        bbox=None, fut_file=None, yearrange_fut=None):
     """Create future hazard.
 
         Parameters:
@@ -830,7 +804,7 @@ def calc_fut_haz_isimip(his_file, scenario, file_props, hist_mean, input_dir=INP
                 combination and crop-irr cobination
 
         Optional Parameters:
-            input_dir (string): path to input data directory
+            input_dir (Path): path to input data directory, default: INPUT_DIR
             bbox (list of four floats): bounding box:
                 [lon min, lat min, lon max, lat max]
             fut_file (string): file name of future input hazard file. If given,
@@ -842,6 +816,10 @@ def calc_fut_haz_isimip(his_file, scenario, file_props, hist_mean, input_dir=INP
             haz_fut (RelativeCropyield): future hazard
             filename (string): name to save future hazard
     """
+    if input_dir is None:
+        input_dir = Path(INPUT_DIR)
+    if bbox is None:
+        bbox = BBOX
     if yearrange_fut is None:
         if isinstance(fut_file, str) and (len(fut_file.split('_')[-2]) == 4):
             yearrange_fut = (int(fut_file.split('_')[-2]),
@@ -855,15 +833,15 @@ def calc_fut_haz_isimip(his_file, scenario, file_props, hist_mean, input_dir=INP
 
     haz_fut = RelativeCropyield()
     haz_fut.set_from_isimip_netcdf(input_dir=input_dir, filename=fut_file,
-                                bbox=bbox, yearrange=yearrange_fut,
-                                ag_model=file_props[his_file]['ag_model'],
-                                cl_model=file_props[his_file]['cl_model'],
-                                bias_corr=file_props[his_file]['bias_corr'],
-                                scenario=scenario,
-                                soc=file_props[his_file]['soc'],
-                                co2=file_props[his_file]['co2'],
-                                crop=file_props[his_file]['crop'],
-                                irr=file_props[his_file]['irr'])
+                                   bbox=bbox, yearrange=yearrange_fut,
+                                   ag_model=file_props[his_file]['ag_model'],
+                                   cl_model=file_props[his_file]['cl_model'],
+                                   bias_corr=file_props[his_file]['bias_corr'],
+                                   scenario=scenario,
+                                   soc=file_props[his_file]['soc'],
+                                   co2=file_props[his_file]['co2'],
+                                   crop=file_props[his_file]['crop'],
+                                   irr=file_props[his_file]['irr'])
 
     crop = file_props[his_file]['crop']
     # combine subcrops if crop and combi_crop not the same:
@@ -879,26 +857,25 @@ def calc_fut_haz_isimip(his_file, scenario, file_props, hist_mean, input_dir=INP
         if fut_file2 and Path(input_dir, fut_file2).is_file():
             haz_fut2 = RelativeCropyield()
             haz_fut2.set_from_isimip_netcdf(input_dir=input_dir, filename=fut_file2,
-                                bbox=bbox, yearrange=yearrange_fut,
-                                ag_model=file_props[his_file]['ag_model'],
-                                cl_model=file_props[his_file]['cl_model'],
-                                bias_corr=file_props[his_file]['bias_corr'],
-                                scenario=scenario,
-                                soc=file_props[his_file]['soc'],
-                                co2=file_props[his_file]['co2'],
-                                crop=file_props[his_file]['crop'],
-                                irr=file_props[his_file]['irr'])
+                                            bbox=bbox, yearrange=yearrange_fut,
+                                            ag_model=file_props[his_file]['ag_model'],
+                                            cl_model=file_props[his_file]['cl_model'],
+                                            bias_corr=file_props[his_file]['bias_corr'],
+                                            scenario=scenario,
+                                            soc=file_props[his_file]['soc'],
+                                            co2=file_props[his_file]['co2'],
+                                            crop=file_props[his_file]['crop'],
+                                            irr=file_props[his_file]['irr'])
             if crop == 'swh':
             # mask of winter wheat in spring wheat and vice versa:
                 whe_mask = read_wheat_mask_isimip3(input_dir=input_dir, bbox=bbox)
                 haz_fut.intensity = sparse.csr_matrix(np.multiply(haz_fut.intensity.todense(),
-                                                        whe_mask.swh_mask.values.flatten()
-                                                        )
-                                            )
-                haz_fut2.intensity = sparse.csr_matrix(np.multiply(haz_fut2.intensity.todense(),
-                                                        whe_mask.wwh_mask.values.flatten()
-                                                        )
-                                            )
+                                                                  whe_mask.swh_mask.values.flatten()
+                                                                  )
+                                                      )
+                haz_fut2.intensity = sparse.csr_matrix(
+                    np.multiply(haz_fut2.intensity.todense(), whe_mask.wwh_mask.values.flatten()
+                                ))
             # replace NaN by 0.0:
             haz_fut.intensity.data[np.isnan(haz_fut.intensity.data)] = 0.0
             haz_fut2.intensity.data[np.isnan(haz_fut2.intensity.data)] = 0.0
@@ -920,7 +897,7 @@ def read_wheat_mask_isimip3(input_dir=None, filename=None, bbox=None):
     combine_crops is True.
 
     Optional Parameters:
-        input_dir (str or Path): path to directory containing input file
+        input_dir (Path or str): path to directory containing input file, default: INPUT_DIR
         filename (str): name of file
         bbox (tuple): geogr. bounding box, tuple or array with for elements.
 
@@ -928,12 +905,76 @@ def read_wheat_mask_isimip3(input_dir=None, filename=None, bbox=None):
         whe_mask (xarray)"""
 
     if input_dir is None:
-        input_dir = INPUT_DIR
+        input_dir = Path(INPUT_DIR)
     if filename is None:
-        filename= 'winter_and_spring_wheat_areas_phase3.nc4'
+        filename = 'winter_and_spring_wheat_areas_phase3.nc4'
     if bbox is None:
         bbox = BBOX
 
     whe_mask = xr.open_dataset(Path(input_dir, filename), decode_times=False)
     [lonmin, latmin, lonmax, latmax] = bbox
     return whe_mask.sel(lon=slice(lonmin, lonmax), lat=slice(latmax, latmin))
+
+def plot_comparing_maps(haz_his, haz_fut, axes=None, nr_cli_models=1, model=1):
+    """Plots comparison maps of historic and future data and their difference fut-his
+
+    Parameters:
+        haz_his (RelativeCropyield): historic hazard
+        haz_fut (RelativeCropyield): future hazard
+        axes (Geoaxes): subplot axes that are generated if not given
+            (sets the figure size depending on the extent of the single plots and
+             the amount of rows)
+        nr_cli_models (int): number of climate models and respectively nr of rows within
+            the subplot
+        model (int): current row to plot - this method can be used in a loop to plot
+            subplots in one figure consisting of several rows of subplots.
+            One row displays the intensity for present and future climate and the difference of
+            the two for one model-combination (ag_model and cl_model)
+
+    Returns:
+        figure, geoaxes
+    """
+
+
+    if axes is None:
+        len_lat = (np.max(haz_his.centroids.lat)-np.min(haz_his.centroids.lat))*(2.5/13.5)
+        len_lon = (np.max(haz_his.centroids.lon)-np.min(haz_his.centroids.lon))*(5/26)
+
+        fig, axes = plt.subplots(nr_cli_models, 3, figsize=(3*len_lon, nr_cli_models*len_lat), \
+                                 subplot_kw=dict(projection=cartopy.crs.PlateCarree()))
+
+        for subplot in range(3*nr_cli_models):
+            axes.flat[subplot].set_extent([np.min(haz_his.centroids.lon),
+                                           np.max(haz_his.centroids.lon),
+                                           np.min(haz_his.centroids.lat),
+                                           np.max(haz_his.centroids.lat)])
+
+    haz2plot = RelativeCropyield()
+    haz2plot = copy.deepcopy(haz_his)
+    haz2plot.event_id = 0
+
+    his_mean = sparse.csr_matrix(haz_his.intensity.mean(axis=0))
+    fut_mean = sparse.csr_matrix(haz_fut.intensity.mean(axis=0))
+
+    for subplot in range(3):
+
+        if subplot == 0:
+            haz2plot.intensity = his_mean
+        elif subplot == 1:
+            haz2plot.intensity = fut_mean
+        elif subplot == 2:
+            haz2plot.intensity = fut_mean - his_mean
+
+        if nr_cli_models == 1:
+            ax1 = haz2plot.plot_intensity_cp(event=0, dif=0, axis=axes[subplot])
+        else:
+            ax1 = haz2plot.plot_intensity_cp(event=0, dif=1, axis=axes[model, subplot])
+
+        ax1.set_title('')
+
+    if nr_cli_models == 1:
+        cols = ['Historical', 'Future', 'Difference = Future - Historical']
+        for ax0, col in zip(axes, cols):
+            ax0.set_title(col, size='large')
+
+    return fig, axes
