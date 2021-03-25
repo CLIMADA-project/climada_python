@@ -22,7 +22,7 @@ import climada.util.dates_times as u_dt
 
 LOGGER = logging.getLogger(__name__)
 
-def impact_yearset(eis, n_resampled_years=None, year_list=None, sampling_vect=None):
+def impact_yearset(eis, sampled_years=None, sampling_vect=None):
 
     """PURPOSE:
       Create an annual impact set (ais) by sampling events for each year from an existing
@@ -31,10 +31,8 @@ def impact_yearset(eis, n_resampled_years=None, year_list=None, sampling_vect=No
     INPUTS:
       eis (impact class object): an event impact set (eis)
     OPTIONAL INPUT:
-        n_resampled_years(int): the target number of years the impact yearset shall
-            contain.
-        year_list (list): list of years for the resulting annual impact set
-            (by default a list starting on the 01-01-0001 is generated)
+        sampled_years (list): list of years for the resulting annual impact set
+            (by default a 1000 year long list starting on the 01-01-0001 is generated)
         sampling_vect (dict): the sampling vector. Needs to be obtained in a first
           call, i.e. [ais, sampling_vect] = climada_eis2ais(...) and then
           provided in subsequent calls(s) to obtain the exact same sampling
@@ -49,10 +47,12 @@ def impact_yearset(eis, n_resampled_years=None, year_list=None, sampling_vect=No
       sampling_vect: the sampling vector (can be used to re-create the exact same yearset)
       """
 
-    if not year_list:
-        year_list = [str(date) + '-01-01' for date in np.arange(1, n_resampled_years+1
-                                                                ).tolist()]
 
+    if not sampled_years:
+        sampled_years = np.arange(1, 1000+1).tolist()
+    
+    year_list = [str(date) + '-01-01' for date in sampled_years]
+    n_resampled_years = len(year_list)
 
     if not np.all(eis.frequency == eis.frequency[0]):
         LOGGER.warning("The frequencies of the single events differ among each other."
