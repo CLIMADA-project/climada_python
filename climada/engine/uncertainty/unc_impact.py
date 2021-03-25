@@ -135,7 +135,7 @@ class UncImpact(Uncertainty):
         #Compute impact distributions
         if pool:
             LOGGER.info('Using %s CPUs.', pool.ncpus)
-            chunksize = min(self.n_runs // pool.ncpus, 100)
+            chunksize = min(self.n_samples // pool.ncpus, 100)
             imp_metrics = pool.map(self._map_impact_calc,
                                            self.samples_df.iterrows(),
                                            chunsize = chunksize)
