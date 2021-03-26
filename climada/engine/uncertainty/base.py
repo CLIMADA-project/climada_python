@@ -348,6 +348,8 @@ class Uncertainty():
         Make a sample for all parameters with their respective
         distributions using the chosen sampling_method from SALib.
         https://salib.readthedocs.io/en/latest/api.html
+        
+        This sets the attributes self.sampling method and self.samples_df.
 
         Parameters
         ----------
@@ -482,6 +484,8 @@ class Uncertainty():
         Total-order index: measures the contribution to the output variance
         caused by a model input, including both its first-order effects
         (the input varying alone) and all higher-order interactions.
+        
+        This sets the attribute self.sensitivity.
 
 
         Parameters
