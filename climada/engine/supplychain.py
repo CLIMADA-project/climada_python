@@ -27,7 +27,6 @@ from pathlib import Path
 from tqdm import tqdm
 import numpy as np
 import pandas as pd
-from iso3166 import countries_by_alpha3
 from iso3166 import countries_by_numeric
 from climada.util import files_handler as u_fh
 from climada.engine import Impact
@@ -44,9 +43,6 @@ class SupplyChain():
     Attributes:
         mriot_data (np.array): 2-dim np.array of floats representing the data of
             a full multi-regional input-output table (mriot).
-        countries (np.array): 1-dim np.array of strings containing the full list
-            of countries represented in the mriot, corresponding to the columns/
-            rows of mriot_data. For these countries risk calculations can be made.
         countries_iso3 (np.array): similar to .countries, but containing the
             countries' respective iso3-codes.
         sectors (np.array): 1-dim np.array of strings containing the full
@@ -88,7 +84,6 @@ class SupplyChain():
     def __init__(self):
         """Initialization"""
         self.mriot_data = np.array([], dtype='f')
-        self.countries = np.array([], dtype='str')
         self.countries_iso3 = np.array([], dtype='str')
         self.sectors = np.array([], dtype='str')
         self.total_prod = np.array([], dtype='f')
@@ -125,7 +120,7 @@ class SupplyChain():
             u_fh.download_file(download_link, download_dir=file_folder)
             LOGGER.info('Downloading WIOD table for year %s', year)
         mriot = pd.read_excel(file_loc, engine='pyxlsb')
-        
+
         # hard-coded values based on the structure of the wiod tables
         col_sectors = 1
         col_iso3 = 2
@@ -134,29 +129,18 @@ class SupplyChain():
         start_col, end_col = (4, 2468)
 
         self.sectors = mriot.iloc[start_row:end_row_sectors, col_sectors].values
-        countries_iso3 = np.unique(mriot.iloc[start_row:end_row, col_iso3])
-        # move Rest Of World (ROW) at the end of the array as countries
-        # are in chronological order
-        idx_row = np.where(countries_iso3 == 'ROW')[0][0]
-        self.countries_iso3 = np.hstack([countries_iso3[:idx_row],
-                                         countries_iso3[idx_row+1:], 
-                                         np.array('ROW')])
+        self.countries_iso3 = mriot.iloc[start_row:end_row, col_iso3].unique()
         self.mriot_data = mriot.iloc[start_row:end_row,
-                                start_col:end_col].values
+                                     start_col:end_col].values
         self.total_prod = mriot.iloc[start_row:end_row, -1].values
         self.cntry_pos = {
             iso3: range(len(self.sectors)*i, len(self.sectors)*(i+1))
             for i, iso3 in enumerate(self.countries_iso3)
             }
-        self.countries = [countries_by_alpha3[iso3][0] 
-                          for iso3 in self.countries_iso3[:-1]]
-        self.countries.append('Rest of World')
-
-        self.countries = np.array(self.countries, dtype=str)
         self.mriot_type = 'wiod'
 
     def calc_sector_direct_impact(self, hazard, exposure, imp_fun_set,
-                                  sec_subsec=None, sector_type=None):
+                                  sector_type='service', selected_subsec=None):
         """Calculate for each country/sector-combination the direct impact per year.
         I.e. compute one year impact set for each country/sector combination. Returns
         the notion of a supplychain year impact set, which is a dataframe with size
@@ -166,24 +150,21 @@ class SupplyChain():
             hazard (Hazard): Hazard object for impact calculation.
             exposure (Exposures): Exposures object for impact calculation.
             imp_fun_set (ImpactFuncSet): Set of impact functions.
-            sec_subsec (list): User-defined list with the start and end positions
-                of sector in the mriot table. Default None.
+            selected_subsec (list): User-defined list with positions of the
+                                    subsector to analyze. Default None.
             sector_type (str): If sec_subsec is not defined; it sets the start
                 and end positions in the mriot tablefor some default sectors.
                 Possible values are "service", "manufacturing", "agriculture"
                 and "mining". Either sec_subsec or sector_type must be defined.
         """
 
-        if not sec_subsec:
-            built_in_sec_subsec = {'service': [26, 56],
-                                   'manufacturing': [4, 23],
-                                   'agriculture': [0, 1],
-                                   'mining': [3, 4]}
+        if not selected_subsec:
+            built_in_subsec_pos = {'service': range(26, 56),
+                                   'manufacturing': range(4, 23),
+                                   'agriculture': range(0, 1),
+                                   'mining': range(3, 4)}
 
-            sec_subsec = built_in_sec_subsec[sector_type]
-
-        # Positions of subsectors in table
-        init_pos, end_pos = sec_subsec
+            selected_subsec = built_in_subsec_pos[sector_type]
 
         dates = [
             dt.datetime.strptime(date, "%Y-%m-%d")
@@ -191,13 +172,10 @@ class SupplyChain():
             ]
         self.years = np.unique([date.year for date in dates])
 
-        # Keep original order of countries
-        _, cntry_idx = np.unique(exposure.gdf.region_id, return_index=True)
-        unique_regid_same_order = exposure.gdf.region_id[np.sort(cntry_idx)]
-
-        n_subsecs = end_pos - init_pos
+        unique_regid_same_order = exposure.gdf.region_id.unique()   
+        # n_subsecs = end_pos - init_pos
         self.direct_impact = np.zeros(shape=(len(self.years),
-                                             len(self.countries)*len(self.sectors)))
+                                             len(self.countries_iso3)*len(self.sectors)))
 
         self.cntry_dir_imp = []
         for cntry in unique_regid_same_order:
@@ -217,28 +195,22 @@ class SupplyChain():
             cntry_iso3 = countries_by_numeric.get(str(cntry)).alpha3
             idx_country = np.where(self.countries_iso3 == cntry_iso3)[0]
 
-            if idx_country.size > 0.:
-                step_in_table = idx_country[0]*len(self.sectors)
-            else:
-                step_in_table = (len(self.countries)-1)*len(self.sectors)
+            if not idx_country.size > 0.:
                 cntry_iso3 = 'ROW'
 
             self.cntry_dir_imp.append(cntry_iso3)
+            
+            subsec_cntry_pos = np.array(selected_subsec) + self.cntry_pos[cntry_iso3][0]
+            subsec_cntry_prod = self.mriot_data[subsec_cntry_pos].sum(axis=1)
 
-            values_pos_cntry = range(step_in_table+init_pos,
-                                     step_in_table+end_pos)
-            subsec_cntry_prod = self.mriot_data[values_pos_cntry].sum(axis=1)
-
-            imp_year_set = np.repeat(imp_year_set,
-                                     n_subsecs).reshape(len(self.years), n_subsecs)
+            imp_year_set = np.repeat(imp_year_set, len(selected_subsec)
+                                     ).reshape(len(self.years), 
+                                               len(selected_subsec))
             direct_impact_cntry = np.multiply(imp_year_set, subsec_cntry_prod)
 
-            # Sum needed below in case of many ROWs, which need be aggregated.
-            # Another option is to keep them separate, but it requires changing
-            # all functions below as impact matrix will no longer have
-            # dim = (n_years, self.n_countries*self.n_sectors) but
-            # dim = (n_years, (self.n_countries+#ROWs_countries-1)*self.n_sectors)
-            self.direct_impact[:, values_pos_cntry] += direct_impact_cntry.astype(np.float32)
+            # Sum needed below in case of many ROWs, which are aggregated into 
+            # one country as per WIOD table.
+            self.direct_impact[:, subsec_cntry_pos] += direct_impact_cntry.astype(np.float32)
 
         # average impact across years
         self.direct_aai_agg = self.direct_impact.mean(axis=0)
