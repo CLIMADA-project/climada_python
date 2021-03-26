@@ -529,15 +529,20 @@ class Uncertainty():
         return sensitivity_dict
 
 
-    def plot_distribution(self, metric_list=None):
+    def plot_distribution(self, metric_list=None, figsize=None):
         """
         Plot the distribution of values.
 
         Parameters
         ----------
-        metric_list: list
+        metric_list: list, optional
             List of metrics to plot the distribution.
             The default is None.
+        figsize: tuple(int or float, int or float), optional
+            The figsize argument of matplotlib.pyplot.subplots()
+            The default is derived from the total number of plots (nplots) as:
+                nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
+                figsize = (nrows*7, ncols * 3.5)
 
         Raises
         ------
@@ -546,8 +551,8 @@ class Uncertainty():
 
         Returns
         -------
-        fig, axes: matplotlib.pyplot.figure, matplotlib.pyplot.axes
-            The figure and axis handle of the plot.
+        axes: matplotlib.pyplot.axes
+            The axes handle of the plot.
 
         """
 
@@ -568,11 +573,13 @@ class Uncertainty():
         cols = df_values_log.columns
         nplots = len(cols)
         nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
+        if not figsize:
+            figsize = (nrows * 7, ncols * 3.5)
         fig, axes = plt.subplots(nrows = nrows,
                                  ncols = ncols,
-                                 figsize=(nrows*7, ncols * 3.5),
-                                 sharex=True,
-                                 sharey=True)
+                                 figsize = figsize,
+                                 sharex = True,
+                                 sharey = True)
         if nplots > 1:
             flat_axes = axes.flatten()
         else:
@@ -601,12 +608,18 @@ class Uncertainty():
             ax.set_ylabel('density of events')
             ax.legend()
 
-        return fig, axes
+        return axes
 
 
-    def plot_sample(self):
+    def plot_sample(self, figsize=(8, 6)):
         """
         Plot the sample distributions of the uncertainty parameters.
+        
+        Parameters
+        ---------
+        figsize: tuple(int or float, int or float), optional
+            The figsize argument of matplotlib.pyplot.subplots()
+            The default is (8, 6)
 
         Raises
         ------
@@ -615,8 +628,8 @@ class Uncertainty():
 
         Returns
         -------
-        fig, ax: matplotlib.pyplot.figure, matplotlib.pyplot.axes
-            The figure and axis handle of the plot.
+        axes: matplotlib.pyplot.axes
+            The axis handle of the plot.
 
         """
 
@@ -626,8 +639,10 @@ class Uncertainty():
 
         nplots = len(self.param_labels)
         nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
-        fig, axis = plt.subplots(nrows=nrows, ncols=ncols, figsize=(20, 16))
-        for ax, label in zip_longest(axis.flatten(), self.param_labels, fillvalue=None):
+        fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize)
+        for ax, label in zip_longest(axes.flatten(),
+                                     self.param_labels,
+                                     fillvalue=None):
             if label is None:
                 ax.remove()
                 continue
@@ -636,10 +651,10 @@ class Uncertainty():
             ax.set_xlabel('value')
             ax.set_ylabel('Sample count')
 
-        return fig, axis
+        return axes
 
 
-    def plot_sensitivity(self, salib_si='S1', metric_list=None):
+    def plot_sensitivity(self, salib_si='S1', metric_list=None, figsize=None):
         """
         Plot one of the first order sensitivity indices of the chosen
         metric(s). This requires that a senstivity analysis was already
@@ -658,7 +673,6 @@ class Uncertainty():
             to plot. This must be a key of the sensitivity dictionnaries in
             self.sensitivity[metric] for each metric in metric_list.
             The default is S1.
-
         metric_list: list of strings, optional
             List of metrics to plot the sensitivity. If a metric is not found
             in self.sensitivity, it is ignored.
@@ -666,6 +680,11 @@ class Uncertainty():
             ['aai_agg', 'freq_curve', 'tot_climate_risk', 'benefit',
              'cost_ben_ratio', 'imp_meas_present', 'imp_meas_future',
              'tot_value']
+        figsize: tuple(int or float, int or float), optional
+            The figsize argument of matplotlib.pyplot.subplots()
+            The default is derived from the total number of plots (nplots) as:
+                nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
+                figsize = (nrows*7, ncols * 3.5)
 
         Raises
         ------
@@ -674,8 +693,8 @@ class Uncertainty():
 
         Returns
         -------
-        fig, axes: matplotlib.pyplot.figure, matplotlib.pyplot.axes
-            The figure and axis handle of the plot.
+        axes: matplotlib.pyplot.axes
+            The axes handle of the plot.
 
         """
 
@@ -694,7 +713,7 @@ class Uncertainty():
         nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
         fig, axes = plt.subplots(nrows = nrows,
                                  ncols = ncols,
-                                 figsize=(nrows*9, ncols * 3.5),
+                                 figsize=(nrows*7, ncols * 3.5),
                                  sharex=True,
                                  sharey=True)
         if nplots > 1:
@@ -728,7 +747,7 @@ class Uncertainty():
             ax.set_title(salib_si + ' - ' + metric)
         plt.tight_layout()
 
-        return fig, axes
+        return axes
 
 
 SALIB_COMPATIBILITY = {
