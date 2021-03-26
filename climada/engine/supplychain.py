@@ -144,22 +144,12 @@ class SupplyChain():
         self.mriot_data = mriot.iloc[start_row:end_row,
                                 start_col:end_col].values
         self.total_prod = mriot.iloc[start_row:end_row, -1].values
-
-        # self.cntry_pos = {}
-        # self.countries = []
-        # for i, _ in enumerate(self.countries_iso3):
-        #     iso3 = self.countries_iso3[i]
-        #     self.cntry_pos.update({iso3: range(i*n_sectors, n_sectors*(i+1))})
-        #     try:
-        #         self.countries.append(countries_by_alpha3[iso3][0])
-        #     except KeyError:
-        #         self.countries.append('Rest of World')
-
-        self.cntry_pos = { 
+        self.cntry_pos = {
             iso3: range(len(self.sectors)*i, len(self.sectors)*(i+1))
             for i, iso3 in enumerate(self.countries_iso3)
             }
-        self.countries = [countries_by_alpha3[iso3][0] for iso3 in self.countries_iso3[:-1]]
+        self.countries = [countries_by_alpha3[iso3][0] 
+                          for iso3 in self.countries_iso3[:-1]]
         self.countries.append('Rest of World')
 
         self.countries = np.array(self.countries, dtype=str)
