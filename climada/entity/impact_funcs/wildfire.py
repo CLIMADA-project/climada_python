@@ -1,15 +1,21 @@
 """
 This file is part of CLIMADA.
+
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
+
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
+
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
-You should have received a copy of the GNU Lesser General Public License along
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
+
 ---
+
 Define impact functions for WildFires.
 """
 
@@ -95,7 +101,7 @@ class IFWildfire(ImpactFunc):
         and top (sig_max) of a sigmoid.
 
         Default values are not calibrated.
-        
+
         Parameters:
             int_range (array, optional): x-axis range of imapct function [K]
             sig_mid (float, optional): "intercept"
@@ -112,4 +118,4 @@ class IFWildfire(ImpactFunc):
         self.intensity = np.arange(295, 500, 5)
         self.mdd = np.ones(len(self.intensity))
         self.paa = sig_max/(1+np.exp(-sig_shape*(self.intensity-sig_mid)))
-        
+

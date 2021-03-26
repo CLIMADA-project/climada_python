@@ -1,4 +1,21 @@
 """
+This file is part of CLIMADA.
+
+Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
+
+CLIMADA is free software: you can redistribute it and/or modify it under the
+terms of the GNU General Public License as published by the Free
+Software Foundation, version 3.
+
+CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along
+with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
+
+---
+
 Test Wild fire class
 """
 from pathlib import Path
@@ -50,7 +67,7 @@ class TestWildFire(unittest.TestCase):
         """ Test set_hist_event_year_set """
         wf = WildFire()
         wf.set_hist_fire_seasons_FIRMS(TEST_FIRMS)
-        
+
         self.assertEqual(wf.tag.haz_type, 'WFseason')
         self.assertEqual(wf.units, 'K')
         self.assertTrue(np.allclose(wf.event_id, np.arange(1, 2)))
@@ -85,7 +102,7 @@ class TestWildFire(unittest.TestCase):
         self.assertEqual(wf.fraction.shape, (2, 51042))
         self.assertEqual(wf.intensity[1, :].nonzero()[1][0], 5080)
         self.assertEqual(wf.intensity[1, :].nonzero()[1][4], 32991)
-        self.assertEqual(wf.intensity[0, :].nonzero()[1][11], 939)       
+        self.assertEqual(wf.intensity[0, :].nonzero()[1][11], 939)
         self.assertAlmostEqual(wf.intensity[1, 5080], 334.3)
         self.assertAlmostEqual(wf.intensity[1, 32991], 309.9)
         self.assertAlmostEqual(wf.intensity[0, 939], 356.0)
@@ -97,7 +114,7 @@ class TestWildFire(unittest.TestCase):
         wf = WildFire()
         wf.set_hist_fire_FIRMS(TEST_FIRMS)
         wf.summarize_fires_to_seasons()
-        
+
         self.assertEqual(wf.tag.haz_type, 'WFseason')
         self.assertEqual(wf.units, 'K')
         self.assertTrue(np.allclose(wf.event_id, np.arange(1, 2)))

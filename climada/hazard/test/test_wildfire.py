@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -209,7 +209,7 @@ class TestMethodsFirms(unittest.TestCase):
             wf._firms_clustering(firms, 0.375, 15)
             # compute event_id
             WildFire.days_thres_firms = 2
-            wf._firms_fire(WildFire.days_thres_firms, firms.cons_id.values, firms.clus_id.values, 
+            wf._firms_fire(WildFire.days_thres_firms, firms.cons_id.values, firms.clus_id.values,
                 firms.event_id.values, firms.iter_ev.values, firms.datenum.values)
             i_iter += 1
         self.assertEqual(i_iter, 2)
