@@ -133,15 +133,17 @@ class UncImpact(Uncertainty):
         LOGGER.info(f"\n\nEstimated computation time: {est_com_time}s\n")
 
         #Compute impact distributions
-        if pool:
-            LOGGER.info('Using %s CPUs.', pool.ncpus)
-            chunksize = min(self.n_samples // pool.ncpus, 100)
-            imp_metrics = pool.map(self._map_impact_calc,
-                                           self.samples_df.iterrows(),
-                                           chunsize = chunksize)
-
-        else:
-            imp_metrics = map(self._map_impact_calc, self.samples_df.iterrows())
+        with log_level(level='ERROR', name_prefix='climada'):
+            if pool:
+                LOGGER.info('Using %s CPUs.', pool.ncpus)
+                chunksize = min(self.n_samples // pool.ncpus, 100)
+                imp_metrics = pool.map(self._map_impact_calc,
+                                               self.samples_df.iterrows(),
+                                               chunsize = chunksize)
+    
+            else:
+                imp_metrics = map(self._map_impact_calc,
+                                  self.samples_df.iterrows())
 
         #Perform the actual computation
         with log_level(level='ERROR', name_prefix='climada'):
@@ -305,7 +307,7 @@ class UncImpact(Uncertainty):
         coord = np.array([exp.gdf.latitude, exp.gdf.longitude]).transpose()
         ax = u_plot.geo_scatter_categorical(
                 plot_val, coord,
-                var_name='Largest sensitivity index' + salib_si,
+                var_name='Largest sensitivity index ' + salib_si,
                 title='Sensitivity map',
                 cat_name= self.param_labels,
                 figsize=figsize
