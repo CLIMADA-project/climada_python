@@ -34,6 +34,8 @@ LOGGER = logging.getLogger(__name__)
 
 METRICS_2D = ['eai_exp', 'at_event']
 
+FIG_W, FIG_H = 5, 6 #default figize width/heigh column/work multiplicators
+
 
 class UncVar():
     """
@@ -117,7 +119,7 @@ class UncVar():
             The figsize argument of matplotlib.pyplot.subplots()
             The default is derived from the total number of plots (nplots) as:
                 nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
-                figsize = (ncols * 3.5, nrows*7)
+                figsize = (ncols * FIG_W, nrows * FIG_H)
 
         Returns
         -------
@@ -129,7 +131,7 @@ class UncVar():
         nplots = len(self.distr_dict)
         nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
         if figsize is None:
-            figsize = (ncols * 3.5, nrows*7)
+            figsize = (ncols * FIG_W, nrows * FIG_H)
         fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize)
         if nplots > 1:
             flat_axes = axes.flatten()
@@ -552,7 +554,7 @@ class Uncertainty():
             The figsize argument of matplotlib.pyplot.subplots()
             The default is derived from the total number of plots (nplots) as:
                 nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
-                figsize = (ncols * 3.5, nrows*7)
+                figsize = (ncols * FIG_W, nrows * FIG_H)
 
         Raises
         ------
@@ -584,7 +586,7 @@ class Uncertainty():
         nplots = len(cols)
         nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
         if not figsize:
-            figsize = (ncols * 3.5, nrows*7)
+            figsize = (ncols * FIG_W, nrows * FIG_H)
         fig, axes = plt.subplots(nrows = nrows,
                                  ncols = ncols,
                                  figsize = figsize,
@@ -621,7 +623,7 @@ class Uncertainty():
         return axes
 
 
-    def plot_sample(self, figsize=(8, 6)):
+    def plot_sample(self, figsize=None):
         """
         Plot the sample distributions of the uncertainty parameters.
         
@@ -629,7 +631,9 @@ class Uncertainty():
         ---------
         figsize: tuple(int or float, int or float), optional
             The figsize argument of matplotlib.pyplot.subplots()
-            The default is (8, 6)
+            The default is derived from the total number of plots (nplots) as:
+                nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
+                figsize = (ncols * FIG_W, nrows * FIG_H)
 
         Raises
         ------
@@ -649,6 +653,8 @@ class Uncertainty():
 
         nplots = len(self.param_labels)
         nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
+        if not figsize:
+            figsize = (ncols * FIG_W, nrows * FIG_H)
         fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize)
         for ax, label in zip_longest(axes.flatten(),
                                      self.param_labels,
@@ -694,7 +700,7 @@ class Uncertainty():
             The figsize argument of matplotlib.pyplot.subplots()
             The default is derived from the total number of plots (nplots) as:
                 nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
-                figsize = (ncols * 3.5, nrows*7)
+                figsize = (ncols * FIG_W, nrows * FIG_H)
 
         Raises
         ------
@@ -722,7 +728,7 @@ class Uncertainty():
         nplots = len(metric_list)
         nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
         if not figsize:
-            figsize = (ncols * 3.5, nrows * 7)
+            figsize = (ncols * FIG_W, nrows * FIG_H)
         fig, axes = plt.subplots(nrows = nrows,
                                  ncols = ncols,
                                  figsize = figsize,
