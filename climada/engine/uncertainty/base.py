@@ -542,7 +542,7 @@ class Uncertainty():
             The figsize argument of matplotlib.pyplot.subplots()
             The default is derived from the total number of plots (nplots) as:
                 nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
-                figsize = (nrows*7, ncols * 3.5)
+                figsize = (ncols * 3.5, nrows*7)
 
         Raises
         ------
@@ -574,7 +574,7 @@ class Uncertainty():
         nplots = len(cols)
         nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
         if not figsize:
-            figsize = (nrows * 7, ncols * 3.5)
+            figsize = (ncols * 3.5, nrows*7)
         fig, axes = plt.subplots(nrows = nrows,
                                  ncols = ncols,
                                  figsize = figsize,
@@ -684,7 +684,7 @@ class Uncertainty():
             The figsize argument of matplotlib.pyplot.subplots()
             The default is derived from the total number of plots (nplots) as:
                 nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
-                figsize = (nrows*7, ncols * 3.5)
+                figsize = (ncols * 3.5, nrows*7)
 
         Raises
         ------
@@ -711,11 +711,13 @@ class Uncertainty():
 
         nplots = len(metric_list)
         nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
+        if not figsize:
+            figsize = (ncols * 3.5, nrows * 7)
         fig, axes = plt.subplots(nrows = nrows,
                                  ncols = ncols,
-                                 figsize=(nrows*7, ncols * 3.5),
-                                 sharex=True,
-                                 sharey=True)
+                                 figsize = figsize,
+                                 sharex = True,
+                                 sharey = True)
         if nplots > 1:
             flat_axes = axes.flatten()
         else:
