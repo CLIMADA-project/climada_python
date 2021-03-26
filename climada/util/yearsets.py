@@ -10,7 +10,7 @@ PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
 You should have received a copy of the GNU Lesser General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 ---
-Define functions to handle impact year_sets
+Define functions to handle impact_yearsets
 """
 
 import copy
@@ -25,21 +25,25 @@ LOGGER = logging.getLogger(__name__)
 def impact_yearset(event_impacts, sampled_years=None, sampling_vect=None):
 
     """PURPOSE:
-      Create an annual_impacts for each year in the sampled_years list by sampling events
-      from existing event_impacts.
+      Create an annual_impacts object containing a probabilistic impact for each year 
+      in the sampled_years list (or a list generated with the length of given sampled_years) 
+      by sampling events from the existing input event_impacts.
 
     INPUTS:
-      event_impacts (impact object): impacts per event
+      event_impacts (impact object): impact per event
     OPTIONAL INPUT:
         sampled_years (int or list): either an integer specifying the amount of years to 
             be sampled or a list of years that shall be covered by the resulting annual_impacts
             default: a 1000 year-long list starting in the year 0001
-        sampling_vect (dict): the sampling vector containing two arrays:
-            selected_events (array): sampled events (len: total amount of sampled events)
-            events_per_year (array): events per resampled year 
-            Needs to be obtained in a first call, 
+        sampling_vect (dict): the sampling vector specifying which events contained in the events_impacts
+            are selected in the newly created annual_impacts and the number of events per year in the
+            annual_impacts, therefore the sampling_vect contains two arrays:
+                selected_events (array): sampled events (len: total amount of sampled events)
+                events_per_year (array): events per resampled year 
+            The sampling_vector needs to be obtained in a first call, 
             i.e. [annual_impacts, sampling_vect] = climada_yearsets.impact_yearset(...)
-            and then provided in subsequent calls(s) to obtain the exact same sampling
+            and can then be provided in subsequent calls(s) to obtain the exact same sampling 
+            (also for a different event_impacts object)
 
     OUTPUTS:
       annual_impacts(impact object): annual impacts for all sampled_years
@@ -54,6 +58,12 @@ def impact_yearset(event_impacts, sampled_years=None, sampling_vect=None):
         sampled_years = np.arange(1, 1000+1).tolist()
     elif not sampled_years:
         sampled_years = np.arange(1, len(sampling_vect['selected_events'])+1).tolist()
+    # elif isinstance(sampled_years, int) and sampling_vect:
+        #test sampled_years = len(sampling_vect['selected_events'])
+        #if not fulfilled: logger warning!
+    # elif isinstance(sampled_years, list) and sampling_vect:
+        #test len(sampled_years) = sampling_vect
+        #if not fulfilled: logger warning!
     elif isinstance(sampled_years, int):
         sampled_years = np.arange(1, sampled_years+1).tolist() #problem to change the input var?
 
@@ -61,8 +71,10 @@ def impact_yearset(event_impacts, sampled_years=None, sampling_vect=None):
     n_sampled_years = len(year_list)
 
     if not np.all(event_impacts.frequency == event_impacts.frequency[0]):
-        LOGGER.warning("The frequencies of the single events differ among each other."
-                       "Please beware that this might influence the results.")
+        LOGGER.warning("The frequencies of the single events in the given event_impacts"
+                       "differ among each other. Please beware that this will influence" 
+                       "the resulting annual_impacts as the events are sampled uniformaly"
+                       "and different frequencies are (not yet) taken into account.")
 
 
     # INITIALISATION
@@ -96,7 +108,7 @@ def impact_yearset(event_impacts, sampled_years=None, sampling_vect=None):
 
 
 def sample_annual_impacts(event_impacts, n_sampled_years, sampling_vect=None):
-    """Sample multiple events per year
+    """Sample annual impacts from the given event_impacts
 
     INPUTS:
         event_impacts (impact object): event impact
