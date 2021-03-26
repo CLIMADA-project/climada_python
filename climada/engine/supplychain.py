@@ -101,9 +101,8 @@ class SupplyChain():
         self.n_sectors = 0
         self.mriot_type = 'None'
 
-    def read_wiot(self, year=2014, file_path=SYSTEM_DIR, user_data=False,
-                  rows_range=(5,2469), col_iso3=2, cols_data_range=(4,2468),
-                  cols_sect_range=(1,61)):
+    def read_wiod(self, year=2014, file_folder=SYSTEM_DIR.joinpath('results'), 
+                  user_data=False):
         """Read multi-regional input-output table of the WIOD project.
         See www.wiod.org and the following paper: Timmer, M. P., Dietzenbacher,
         E., Los, B., Stehrer, R. and de Vries, G. J. (2015), "An Illustrated
@@ -121,50 +120,56 @@ class SupplyChain():
                             will be downloaded in save_dir, i.e., ~/climada/data/results
                             If user-defined, user_data must be set to True
             user_data (bool): If user data are provided, Default False
-            rows_range (tuple): Start and end position of rows with data
-            col_iso3 (int): pos of col with iso3 countries
-            cols_data_range (tuple): start and end position of cols with data
-            cols_sect_range (tuple): start and end position of sectors' names
 
             Default values of the last four args allow reading the full wiot table.
         """
 
         file_name = 'WIOT{}_Nov16_ROW.xlsb'.format(year)
-        results_folder = Path(file_path).joinpath('results')
+        file_folder = Path(file_folder)
+        file_folder.mkdir(exist_ok=True)
+        file_loc = file_folder / file_name
 
-        if not user_data:
-            try:
-                # if results folder exists but file does not - > download file
-                if file_name not in os.listdir(results_folder):
-                    os.chdir(SYSTEM_DIR)
-                    download_link = WIOD_FILE_LINK + file_name
-                    u_fh.download_file(download_link)
-                    LOGGER.debug('Downloading WIOT table for year %s', year)
+        if not file_loc in file_folder.iterdir():
+            download_link = WIOD_FILE_LINK + file_name
+            u_fh.download_file(download_link, download_dir=file_folder)
+            LOGGER.info('Downloading WIOD table for year %s', year)
+        mriot = pd.read_excel(file_loc, engine='pyxlsb')
 
-                    mriot = pd.read_excel(os.path.join(results_folder, file_name),
-                                  engine='pyxlsb')
+        # if not user_data:
+        #     try:
+        #         # if results folder exists but file does not - > download file
+        #         if file_name not in os.listdir(results_folder):
+        #             os.chdir(SYSTEM_DIR)
+        #             download_link = WIOD_FILE_LINK + file_name
+        #             u_fh.download_file(download_link)
+        #             LOGGER.debug('Downloading WIOT table for year %s', year)
 
-                # if folder and file exist -> load file
-                else:
-                    mriot = pd.read_excel(os.path.join(results_folder, file_name),
-                                  engine='pyxlsb')
+        #             mriot = pd.read_excel(os.path.join(results_folder, file_name),
+        #                           engine='pyxlsb')
 
-            # if folder does not exist -> create folder and download file
-            except FileNotFoundError:
-                os.chdir(SYSTEM_DIR)
-                download_link = WIOD_FILE_LINK + file_name
-                u_fh.download_file(download_link)
-                LOGGER.debug('Downloading WIOT table for year %s', year)
+        #         # if folder and file exist -> load file
+        #         else:
+        #             mriot = pd.read_excel(os.path.join(results_folder, file_name),
+        #                           engine='pyxlsb')
 
-                mriot = pd.read_excel(os.path.join(results_folder, file_name),
-                                  engine='pyxlsb')
-        else:
-            mriot = pd.read_excel(os.path.join(file_path, file_name),
-                                  engine='pyxlsb')
+        #     # if folder does not exist -> create folder and download file
+        #     except FileNotFoundError:
+        #         os.chdir(SYSTEM_DIR)
+        #         download_link = WIOD_FILE_LINK + file_name
+        #         u_fh.download_file(download_link)
+        #         LOGGER.debug('Downloading WIOT table for year %s', year)
 
-        row_st,row_end=rows_range
-        col_sect,row_sect_end=cols_sect_range
-        col_data_st,col_data_end=cols_data_range
+        #         mriot = pd.read_excel(os.path.join(results_folder, file_name),
+        #                           engine='pyxlsb')
+        # else:
+        #     mriot = pd.read_excel(os.path.join(file_path, file_name),
+        #                           engine='pyxlsb')
+        
+        # hard-coded values based on the structure of the wiod tables
+        col_iso3=2
+        row_st,row_end=(5,2469)
+        col_sect,row_sect_end=(1,61)
+        col_data_st,col_data_end=(4,2468)
 
         sectors = mriot.iloc[row_st:row_sect_end, col_sect].values
         countries_iso3 = np.unique(mriot.iloc[row_st:row_end, col_iso3])
