@@ -107,20 +107,30 @@ class UncVar():
         self.uncvar_func = uncvar_func
 
 
-    def plot(self):
+    def plot(self, figsize=None):
         """
         Plot the distributions of the parameters of the uncertainty variable.
+        
+        Parameters
+        ----------
+        figsize: tuple(int or float, int or float), optional
+            The figsize argument of matplotlib.pyplot.subplots()
+            The default is derived from the total number of plots (nplots) as:
+                nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
+                figsize = (ncols * 3.5, nrows*7)
 
         Returns
         -------
-        fig, axes: matplotlib.pyplot.figure, matplotlib.pyplot.axes
-            The figure and axis handle of the plot.
+        axes: matplotlib.pyplot.figure, matplotlib.pyplot.axes
+            The figure and axes handle of the plot.
 
         """
 
         nplots = len(self.distr_dict)
         nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
-        fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(20, 16))
+        if figsize is None:
+            figsize = (ncols * 3.5, nrows*7)
+        fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize)
         if nplots > 1:
             flat_axes = axes.flatten()
         else:
@@ -135,7 +145,7 @@ class UncVar():
             x = np.linspace(distr.ppf(0.001), distr.ppf(0.999), 100)
             ax.plot(x, distr.pdf(x), label=param_name)
             ax.legend()
-        return fig, axes
+        return axes
 
 
     def evaluate(self, uncvar_kwargs):
