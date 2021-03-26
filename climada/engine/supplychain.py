@@ -195,8 +195,10 @@ class SupplyChain():
         # Positions of subsectors in table
         init_pos, end_pos = sec_subsec
 
-        dates = [dt.datetime.strptime(date, "%Y-%m-%d")\
-                      for date in hazard.get_event_date()]
+        dates = [
+            dt.datetime.strptime(date, "%Y-%m-%d")
+            for date in hazard.get_event_date()
+            ]
         self.years = np.unique([date.year for date in dates])
 
         # Keep original order of countries
