@@ -30,7 +30,7 @@ import numpy as np
 import pandas as pd
 from iso3166 import countries_by_alpha3
 from iso3166 import countries_by_numeric
-from climada.util.files_handler import download_file
+from climada.util import files_handler as u_fh
 from climada.engine import Impact
 from climada.util.constants import SYSTEM_DIR
 from climada.entity.exposures.base import Exposures
@@ -138,7 +138,7 @@ class SupplyChain():
                 if file_name not in os.listdir(results_folder):
                     os.chdir(SYSTEM_DIR)
                     download_link = WIOD_FILE_LINK + file_name
-                    download_file(download_link)
+                    u_fh.download_file(download_link)
                     LOGGER.debug('Downloading WIOT table for year %s', year)
 
                     mriot = pd.read_excel(os.path.join(results_folder, file_name),
@@ -153,7 +153,7 @@ class SupplyChain():
             except FileNotFoundError:
                 os.chdir(SYSTEM_DIR)
                 download_link = WIOD_FILE_LINK + file_name
-                download_file(download_link)
+                u_fh.download_file(download_link)
                 LOGGER.debug('Downloading WIOT table for year %s', year)
 
                 mriot = pd.read_excel(os.path.join(results_folder, file_name),
