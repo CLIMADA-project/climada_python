@@ -211,13 +211,16 @@ class UncImpact(Uncertainty):
         return [imp.aai_agg, freq_curve, eai_exp, at_event, imp.tot_value]
 
 
-    def plot_rp_distribution(self):
+    def plot_rp_distribution(self, figsize=(8, 6)):
         """
         Plot the distribution of return period values.
 
         Parameters
         ----------
-
+        figsize: tuple(int or float, int or float), optional
+            The figsize argument of matplotlib.pyplot.subplots()
+            The default is (8, 6)
+    
         Raises
         ------
         ValueError
@@ -225,8 +228,8 @@ class UncImpact(Uncertainty):
 
         Returns
         -------
-        fig, axes: matplotlib.pyplot.figure, matplotlib.pyplot.axes
-            The figure and axis handle of the plot.
+        ax: matplotlib.pyplot.axes
+            The axis handle of the plot.
 
         """
 
@@ -237,7 +240,7 @@ class UncImpact(Uncertainty):
 
         df_values = self.metrics['freq_curve']
 
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=figsize)
 
         min_l, max_l = df_values.min().min(), df_values.max().max()
 
@@ -255,10 +258,10 @@ class UncImpact(Uncertainty):
         ax.set_yticks(np.arange(0, 2*(n+1), 2))
         ax.set_yticklabels(df_values.columns)
 
-        return fig, ax
+        return ax
 
 
-    def plot_sensitivity_map(self, exp, salib_si='S1'):
+    def plot_sensitivity_map(self, exp, salib_si='S1', figsize=(8, 6)):
         """
         Plot a map of the largest sensitivity index in each exposure point
 
@@ -269,6 +272,9 @@ class UncImpact(Uncertainty):
         salib_si : str, optional
             The name of the sensitivity index to plot.
             The default is 'S1'.
+        figsize: tuple(int or float, int or float), optional
+            The figsize argument of matplotlib.pyplot.subplots()
+            The default is (8, 6)
 
         Raises
         ------
@@ -277,7 +283,7 @@ class UncImpact(Uncertainty):
 
         Returns
         -------
-        axes: matplotlib.pyplot.axes
+        ax: matplotlib.pyplot.axes
             The axis handle of the plot.
 
         """
@@ -301,7 +307,8 @@ class UncImpact(Uncertainty):
                 plot_val, coord,
                 var_name='Largest sensitivity index' + salib_si,
                 title='Sensitivity map',
-                cat_name= self.param_labels
+                cat_name= self.param_labels,
+                figsize=figsize
                 )
 
         return ax
