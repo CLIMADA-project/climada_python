@@ -94,6 +94,8 @@ class UncCostBenefit(Uncertainty):
 
         By default, imp_meas_present, imp_meas_future, tot_climate_risk,
         benefit, cost_ben_ratio are computed.
+        
+        This sets the attribute self.metrics.
 
         Parameters
         ----------

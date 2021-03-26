@@ -88,6 +88,9 @@ class UncImpact(Uncertainty):
         Optionally, eai_exp and at_event is computed (this may require
         a larger amount of memory if n_samples and/or the number of centroids
         is large).
+        
+        This sets the attributes self.rp, self.calc_eai_exp,
+        self.calc_at_event, self.metrics.
 
         Parameters
         ----------
