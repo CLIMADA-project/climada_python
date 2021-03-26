@@ -205,7 +205,7 @@ class Uncertainty():
             parameter names (all labels) from all unc_vars.
             The default is pd.DataFrame().
         metrics : dict(), optional
-            Dictionnary of the CLIMADA metrics (outputs from
+            dictionary of the CLIMADA metrics (outputs from
             Impact.calc() or CostBenefits.calcl()) for which the uncertainty
             distribution (and optionally the sensitivity) will be computed.
             For each sample (row of samples), each metric must have a definite
@@ -218,7 +218,7 @@ class Uncertainty():
             for each parameter sample (one row per sample).
             The default is {}.
         sensitivity: dict(), optional
-            Dictionnary of the sensitivity analysis for each uncertainty
+            dictionary of the sensitivity analysis for each uncertainty
             parameter.
             The default is {}.
         """
@@ -320,7 +320,7 @@ class Uncertainty():
         Returns
         -------
         problem : dict
-            Salib problem dictionnary.
+            Salib problem dictionary.
 
         """
         return {
@@ -488,8 +488,8 @@ class Uncertainty():
         Returns
         -------
         sensitivity_dict : dict
-            Dictionnary of the sensitivity indices. Keys are the
-            metrics names, values the sensitivity indices dictionnary
+            dictionary of the sensitivity indices. Keys are the
+            metrics names, values the sensitivity indices dictionary
             as returned by SALib.
 
         """
