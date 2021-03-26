@@ -21,7 +21,6 @@ Define the SupplyChain class.
 
 __all__ = ['SupplyChain']
 
-import os
 import logging
 import datetime as dt
 from pathlib import Path
@@ -56,10 +55,6 @@ class SupplyChain():
         total_prod (np.array): 1-dim arrays of floats representing the total
             production value of each country/sector-pair, i.e. each sector's
             total production per country.
-        n_countries (int): number of countries represented in the used mriot.
-            Equals the number of unique entries in the countries list.
-        n_sectors (int): number of sectors represented in the used mriot.
-            Equals the number of unique entries in the sectors list.
         mriot_type (str): short string describing the mriot used for analysis.
         cntry_pos (dict): dict with positions of all countries in the
             mriot table and output arrays.
@@ -97,9 +92,8 @@ class SupplyChain():
         self.countries_iso3 = np.array([], dtype='str')
         self.sectors = np.array([], dtype='str')
         self.total_prod = np.array([], dtype='f')
-        self.n_countries = 0
-        self.n_sectors = 0
         self.mriot_type = 'None'
+        self.cntry_pos = {}
 
     def read_wiod(self, year=2014, file_folder=SYSTEM_DIR.joinpath('results')):
         """Read multi-regional input-output table of the WIOD project.
@@ -139,40 +133,31 @@ class SupplyChain():
         start_row, end_row = (5, 2469)
         start_col, end_col = (4, 2468)
 
-        sectors = mriot.iloc[start_row:end_row_sectors, col_sectors].values
+        self.sectors = mriot.iloc[start_row:end_row_sectors, col_sectors].values
         countries_iso3 = np.unique(mriot.iloc[start_row:end_row, col_iso3])
         # move Rest Of World (ROW) at the end of the array as countries
         # are in chronological order
         idx_row = np.where(countries_iso3 == 'ROW')[0][0]
-        countries_iso3 = np.hstack([countries_iso3[:idx_row],
-                                    countries_iso3[idx_row+1:], np.array('ROW')])
-
-        mriot_data = mriot.iloc[start_row:end_row,
+        self.countries_iso3 = np.hstack([countries_iso3[:idx_row],
+                                         countries_iso3[idx_row+1:], 
+                                         np.array('ROW')])
+        self.mriot_data = mriot.iloc[start_row:end_row,
                                 start_col:end_col].values
-        total_prod = mriot.iloc[start_row:end_row, -1].values
+        self.total_prod = mriot.iloc[start_row:end_row, -1].values
 
-        n_countries = len(countries_iso3)
-        n_sectors = len(sectors)
+        n_sectors = len(self.sectors)
 
-        cntry_pos = {}
-        countries = []
-        for i, _ in enumerate(countries_iso3):
-            iso3 = countries_iso3[i]
-            cntry_pos.update({iso3: range(i*n_sectors, n_sectors*(i+1))})
-
+        self.cntry_pos = {}
+        self.countries = []
+        for i, _ in enumerate(self.countries_iso3):
+            iso3 = self.countries_iso3[i]
+            self.cntry_pos.update({iso3: range(i*n_sectors, n_sectors*(i+1))})
             try:
-                countries.append(countries_by_alpha3[iso3][0])
+                self.countries.append(countries_by_alpha3[iso3][0])
             except KeyError:
-                countries.append('Rest of World')
+                self.countries.append('Rest of World')
 
-        self.mriot_data = mriot_data
-        self.countries = np.array(countries, dtype=str)
-        self.countries_iso3 = countries_iso3
-        self.sectors = sectors
-        self.total_prod = total_prod
-        self.n_countries = n_countries
-        self.n_sectors = n_sectors
-        self.cntry_pos = cntry_pos
+        self.countries = np.array(self.countries, dtype=str)
         self.mriot_type = 'wiod'
 
     def calc_sector_direct_impact(self, hazard, exposure, imp_fun_set,
@@ -207,18 +192,17 @@ class SupplyChain():
 
         dates = [dt.datetime.strptime(date, "%Y-%m-%d")\
                       for date in hazard.get_event_date()]
-        years = np.unique([date.year for date in dates])
+        self.years = np.unique([date.year for date in dates])
 
         # Keep original order of countries
         _, cntry_idx = np.unique(exposure.gdf.region_id, return_index=True)
         unique_regid_same_order = exposure.gdf.region_id[np.sort(cntry_idx)]
 
-        n_years = len(years)
         n_subsecs = end_pos - init_pos
-        direct_impact = np.zeros(shape=(n_years,
-                                        self.n_countries*self.n_sectors))
+        self.direct_impact = np.zeros(shape=(len(self.years),
+                                             len(self.countries)*len(self.sectors)))
 
-        cntry_dir_imp = []
+        self.cntry_dir_imp = []
         for cntry in unique_regid_same_order:
             cntyr_exp = Exposures(exposure.gdf[exposure.gdf.region_id == cntry])
             cntyr_exp.check()
@@ -237,19 +221,19 @@ class SupplyChain():
             idx_country = np.where(self.countries_iso3 == cntry_iso3)[0]
 
             if idx_country.size > 0.:
-                step_in_table = idx_country[0]*self.n_sectors
+                step_in_table = idx_country[0]*len(self.sectors)
             else:
-                step_in_table = (self.n_countries-1)*self.n_sectors
+                step_in_table = (len(self.countries)-1)*len(self.sectors)
                 cntry_iso3 = 'ROW'
 
-            cntry_dir_imp.append(cntry_iso3)
+            self.cntry_dir_imp.append(cntry_iso3)
 
             values_pos_cntry = range(step_in_table+init_pos,
                                      step_in_table+end_pos)
             subsec_cntry_prod = self.mriot_data[values_pos_cntry].sum(axis=1)
 
             imp_year_set = np.repeat(imp_year_set,
-                                     n_subsecs).reshape(n_years, n_subsecs)
+                                     n_subsecs).reshape(len(self.years), n_subsecs)
             direct_impact_cntry = np.multiply(imp_year_set, subsec_cntry_prod)
 
             # Sum needed below in case of many ROWs, which need be aggregated.
@@ -257,13 +241,10 @@ class SupplyChain():
             # all functions below as impact matrix will no longer have
             # dim = (n_years, self.n_countries*self.n_sectors) but
             # dim = (n_years, (self.n_countries+#ROWs_countries-1)*self.n_sectors)
-            direct_impact[:, values_pos_cntry] += direct_impact_cntry.astype(np.float32)
+            self.direct_impact[:, values_pos_cntry] += direct_impact_cntry.astype(np.float32)
 
-        self.direct_impact = direct_impact
         # average impact across years
         self.direct_aai_agg = self.direct_impact.mean(axis=0)
-        self.years = years
-        self.cntry_dir_imp = cntry_dir_imp
 
     def calc_indirect_impact(self, io_approach='ghosh'):
         """Estimate indirect impact based on direct impact using input-output (IO)
@@ -284,7 +265,6 @@ class SupplyChain():
 
         io_switch = {'leontief': self._leontief_calc, 'ghosh': self._ghosh_calc,
                      'eeioa': self._eeioa_calc}
-        io_data = {}
 
         # Compute coefficients based on selected IO approach
         coefficients = np.zeros_like(self.mriot_data, dtype=np.float32)
@@ -300,13 +280,12 @@ class SupplyChain():
                     coefficients[row_i, :] = np.divide(row, self.total_prod[row_i])
                 else:
                     coefficients[row_i, :] = 0
-        io_data['coefficients'] = coefficients
 
         inverse = np.linalg.inv(np.identity(len(self.mriot_data)) - coefficients)
         inverse = inverse.astype(np.float32)
 
         # Calculate indirect impacts
-        indirect_impact = np.zeros_like(self.direct_impact, dtype=np.float32)
+        self.indirect_impact = np.zeros_like(self.direct_impact, dtype=np.float32)
         risk_structure = np.zeros(np.shape(self.mriot_data) + (len(self.years),),
                                   dtype=np.float32)
 
@@ -326,15 +305,15 @@ class SupplyChain():
             risk_structure = io_switch[io_approach](direct_intensity, inverse,
                                                     risk_structure, year_i)
             # Total indirect risk per sector/country-combination:
-            indirect_impact[year_i, :] = np.nansum(
+            self.indirect_impact[year_i, :] = np.nansum(
                 risk_structure[:, :, year_i], axis=0)
 
-        io_data['inverse'] = inverse
-        io_data['risk_structure'] = risk_structure
-        io_data['io_approach'] = io_approach
-        self.io_data = io_data
-        self.indirect_impact = indirect_impact
         self.indirect_aai_agg = self.indirect_impact.mean(axis=0)
+
+        self.io_data = {}
+        self.io_data.update({'coefficients': coefficients, 'inverse': inverse,
+                             'risk_structure' : risk_structure, 
+                             'io_approach' : io_approach})
 
     def calc_total_impact(self):
         """Calculates the total impact and total average annual impact on each
