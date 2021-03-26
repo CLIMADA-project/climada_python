@@ -252,7 +252,7 @@ class SupplyChain():
 
             # Normalize exposure
             total_ctry_value = cntyr_exp.gdf.loc[:, 'value'].sum()
-            cntyr_exp.gdf.loc[:, 'value'] = cntyr_exp.gdf.value.div(total_ctry_value)
+            cntyr_exp.gdf['value'] /= total_ctry_value
 
             # Calc impact for country
             imp = Impact()
