@@ -101,8 +101,7 @@ class SupplyChain():
         self.n_sectors = 0
         self.mriot_type = 'None'
 
-    def read_wiod(self, year=2014, file_folder=SYSTEM_DIR.joinpath('results'), 
-                  user_data=False):
+    def read_wiod(self, year=2014, file_folder=SYSTEM_DIR.joinpath('results')):
         """Read multi-regional input-output table of the WIOD project.
         See www.wiod.org and the following paper: Timmer, M. P., Dietzenbacher,
         E., Los, B., Stehrer, R. and de Vries, G. J. (2015), "An Illustrated
@@ -119,8 +118,6 @@ class SupplyChain():
                             Deafult is SYSTEM_DIR. If data are not present, they
                             will be downloaded in save_dir, i.e., ~/climada/data/results
                             If user-defined, user_data must be set to True
-            user_data (bool): If user data are provided, Default False
-
             Default values of the last four args allow reading the full wiot table.
         """
 
@@ -134,54 +131,25 @@ class SupplyChain():
             u_fh.download_file(download_link, download_dir=file_folder)
             LOGGER.info('Downloading WIOD table for year %s', year)
         mriot = pd.read_excel(file_loc, engine='pyxlsb')
-
-        # if not user_data:
-        #     try:
-        #         # if results folder exists but file does not - > download file
-        #         if file_name not in os.listdir(results_folder):
-        #             os.chdir(SYSTEM_DIR)
-        #             download_link = WIOD_FILE_LINK + file_name
-        #             u_fh.download_file(download_link)
-        #             LOGGER.debug('Downloading WIOT table for year %s', year)
-
-        #             mriot = pd.read_excel(os.path.join(results_folder, file_name),
-        #                           engine='pyxlsb')
-
-        #         # if folder and file exist -> load file
-        #         else:
-        #             mriot = pd.read_excel(os.path.join(results_folder, file_name),
-        #                           engine='pyxlsb')
-
-        #     # if folder does not exist -> create folder and download file
-        #     except FileNotFoundError:
-        #         os.chdir(SYSTEM_DIR)
-        #         download_link = WIOD_FILE_LINK + file_name
-        #         u_fh.download_file(download_link)
-        #         LOGGER.debug('Downloading WIOT table for year %s', year)
-
-        #         mriot = pd.read_excel(os.path.join(results_folder, file_name),
-        #                           engine='pyxlsb')
-        # else:
-        #     mriot = pd.read_excel(os.path.join(file_path, file_name),
-        #                           engine='pyxlsb')
         
         # hard-coded values based on the structure of the wiod tables
-        col_iso3=2
-        row_st,row_end=(5,2469)
-        col_sect,row_sect_end=(1,61)
-        col_data_st,col_data_end=(4,2468)
+        col_sectors = 1
+        col_iso3 = 2
+        end_row_sectors = 61
+        start_row, end_row = (5, 2469)
+        start_col, end_col = (4, 2468)
 
-        sectors = mriot.iloc[row_st:row_sect_end, col_sect].values
-        countries_iso3 = np.unique(mriot.iloc[row_st:row_end, col_iso3])
+        sectors = mriot.iloc[start_row:end_row_sectors, col_sectors].values
+        countries_iso3 = np.unique(mriot.iloc[start_row:end_row, col_iso3])
         # move Rest Of World (ROW) at the end of the array as countries
         # are in chronological order
         idx_row = np.where(countries_iso3 == 'ROW')[0][0]
         countries_iso3 = np.hstack([countries_iso3[:idx_row],
                                     countries_iso3[idx_row+1:], np.array('ROW')])
 
-        mriot_data = mriot.iloc[row_st:row_end,
-                                col_data_st:col_data_end].values
-        total_prod = mriot.iloc[row_st:row_end, -1].values
+        mriot_data = mriot.iloc[start_row:end_row,
+                                start_col:end_col].values
+        total_prod = mriot.iloc[start_row:end_row, -1].values
 
         n_countries = len(countries_iso3)
         n_sectors = len(sectors)
