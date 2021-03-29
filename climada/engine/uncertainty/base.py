@@ -213,10 +213,10 @@ class Uncertainty():
     distr_dict : dict
         Comon flattened dictionary of all the distr_dic list in unc_vars.
         It represents the distribution of all the uncertainty parameters.
-    problem : dict
+    problem_sa : dict
         The description of the uncertainty variables and their
         distribution as used in SALib.
-        https://salib.readthedocs.io/en/latest/getting-started.html.
+        https://salib.readthedocs.io/en/latest/basics.html.
     metrics : dict
         Dictionnary of the value of the CLIMADA metrics for each sample 
         (of the uncertainty parameters) defined in samples_df.
@@ -356,15 +356,15 @@ class Uncertainty():
         return distr_dict
 
     @property
-    def problem(self):
+    def problem_sa(self):
         """
         The description of the uncertainty variables and their
         distribution as used in SALib.
-        https://salib.readthedocs.io/en/latest/getting-started.html.
+        https://salib.readthedocs.io/en/latest/basics.html
 
         Returns
         -------
-        problem : dict
+        problem_sa : dict
             Salib problem dictionary.
 
         """
@@ -459,9 +459,8 @@ class Uncertainty():
                        ),
             sampling_method
             )
-        sample_uniform = salib_sampling_method.sample(problem = self.problem,
-                                                     N = N,
-                                                     **sampling_kwargs)
+        sample_uniform = salib_sampling_method.sample(
+            problem_sa = self.problem_sa, N = N, **sampling_kwargs)
         return sample_uniform
 
 
@@ -568,10 +567,10 @@ class Uncertainty():
             for metric in df_metric:
                 Y = df_metric[metric].to_numpy()
                 if X is not None:
-                    sensitivity_index = method.analyze(self.problem, X, Y,
+                    sensitivity_index = method.analyze(self.problem_sa, X, Y,
                                                             **method_kwargs)
                 else:
-                    sensitivity_index = method.analyze(self.problem, Y,
+                    sensitivity_index = method.analyze(self.problem_sa, Y,
                                                             **method_kwargs)
                 sensitivity_dict[name].update({metric: sensitivity_index})
 

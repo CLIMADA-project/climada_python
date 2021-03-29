@@ -61,10 +61,10 @@ class UncCostBenefit(Uncertainty):
     distr_dict : dict
         Comon flattened dictionary of all the distr_dic list in unc_vars.
         It represents the distribution of all the uncertainty parameters.
-    problem : dict
+    problem_sa : dict
         The description of the uncertainty variables and their
         distribution as used in SALib.
-        https://salib.readthedocs.io/en/latest/getting-started.html.
+        https://salib.readthedocs.io/en/latest/basics.html
     metrics : dict
         Dictionnary of the value of the CLIMADA metrics for each sample 
         (of the uncertainty parameters) defined in samples_df.
