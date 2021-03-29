@@ -164,25 +164,6 @@ class UncVar():
         return axes
 
 
-    def evaluate(self, uncvar_kwargs):
-        """
-        Evaluate the uncertainty variable.
-
-        Parameters
-        ----------
-        uncvar_kwargs : dict
-            These parameters will be passed to self.uncvar_func.
-            They must be the input parameters of the uncertainty variable .
-
-        Returns
-        -------
-
-            Evaluated uncertainty variable
-
-        """
-        return self.uncvar_func(**uncvar_kwargs)
-
-
     @staticmethod
     def var_to_uncvar(var):
         """

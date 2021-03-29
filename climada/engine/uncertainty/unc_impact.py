@@ -232,9 +232,9 @@ class UncImpact(Uncertainty):
         haz_samples = sample_iterrows[1][self.unc_vars['haz'].labels].to_dict()
         impf_samples = sample_iterrows[1][self.unc_vars['impf'].labels].to_dict()
 
-        exp = self.unc_vars['exp'].evaluate(exp_samples)
-        haz = self.unc_vars['haz'].evaluate(haz_samples)
-        impf = self.unc_vars['impf'].evaluate(impf_samples)
+        exp = self.unc_vars['exp'].uncvar_func(**exp_samples)
+        haz = self.unc_vars['haz'].uncvar_func(**haz_samples)
+        impf = self.unc_vars['impf'].uncvar_func(**impf_samples)
 
         imp = Impact()
 
