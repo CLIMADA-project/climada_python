@@ -40,7 +40,7 @@ def impact_yearset(event_impacts, sampled_years=None, sampling_vect=None):
             of events per year in the annual_impacts, therefore the sampling_vect contains
             two arrays:
                 selected_events (array): sampled events (len: total amount of sampled events)
-                events_per_year (array): events per resampled year
+                events_per_year (array): events per sampled year
             The sampling_vector needs to be obtained in a first call,
             i.e. [annual_impacts, sampling_vect] = climada_yearsets.impact_yearset(...)
             and can then be provided in subsequent calls(s) to obtain the exact same sampling
@@ -50,7 +50,7 @@ def impact_yearset(event_impacts, sampled_years=None, sampling_vect=None):
       annual_impacts(impact object): annual impacts for all sampled_years
       sampling_vect (dict): the sampling vector containing two arrays:
           selected_events (array): sampled events (len: total amount of sampled events)
-          events_per_year (array): events per resampled year
+          events_per_year (array): events per sampled year
           Can be used to re-create the exact same annual_impacts yearset
       """
 
@@ -126,8 +126,8 @@ def create_sampling_vector(n_sampled_years, n_annual_events, n_input_events):
     OUTPUT:
         sampling_vect (dict): the sampling vector containing two arrays:
             selected_events (array): sampled events (len: total amount of sampled events)
-            events_per_year (array): events per resampled year
-        n_events_per_year (array): number of events per resampled year
+            events_per_year (array): events per sampled year
+        n_events_per_year (array): number of events per sampled year
     """
 
     if n_annual_events != 1:
@@ -177,10 +177,10 @@ def compute_annual_impacts(event_impacts, n_sampled_years, sampling_vect):
           contain.
         sampling_vect (dict): the sampling vector containing two arrays:
             selected_events (array): sampled events (len: total amount of sampled events)
-            events_per_year (array): events per resampled year
+            events_per_year (array): events per sampled year
 
     OUTPUTS:
-        impact_per_year (array): resampled impact per year (length = n_sampled_years)
+        impact_per_year (array): sampled impact per year (length = n_sampled_years)
       """
 
     impact_per_event = np.zeros(np.sum(sampling_vect['events_per_year']))
