@@ -25,31 +25,32 @@ LOGGER = logging.getLogger(__name__)
 def impact_yearset(event_impacts, sampled_years=None, sampling_vect=None):
 
     """PURPOSE:
-      Create an annual_impacts object containing a probabilistic impact for each year 
-      in the sampled_years list (or a list generated with the length of given sampled_years) 
+      Create an annual_impacts object containing a probabilistic impact for each year
+      in the sampled_years list (or a list generated with the length of given sampled_years)
       by sampling events from the existing input event_impacts.
 
     INPUTS:
       event_impacts (impact object): impact per event
     OPTIONAL INPUT:
-        sampled_years (int or list): either an integer specifying the amount of years to 
+        sampled_years (int or list): either an integer specifying the amount of years to
             be sampled or a list of years that shall be covered by the resulting annual_impacts
             default: a 1000 year-long list starting in the year 0001
-        sampling_vect (dict): the sampling vector specifying which events contained in the events_impacts
-            are selected in the newly created annual_impacts and the number of events per year in the
-            annual_impacts, therefore the sampling_vect contains two arrays:
+        sampling_vect (dict): the sampling vector specifying which events contained in the
+            events_impacts are selected in the newly created annual_impacts and the number
+            of events per year in the annual_impacts, therefore the sampling_vect contains
+            two arrays:
                 selected_events (array): sampled events (len: total amount of sampled events)
-                events_per_year (array): events per resampled year 
-            The sampling_vector needs to be obtained in a first call, 
+                events_per_year (array): events per resampled year
+            The sampling_vector needs to be obtained in a first call,
             i.e. [annual_impacts, sampling_vect] = climada_yearsets.impact_yearset(...)
-            and can then be provided in subsequent calls(s) to obtain the exact same sampling 
+            and can then be provided in subsequent calls(s) to obtain the exact same sampling
             (also for a different event_impacts object)
 
     OUTPUTS:
       annual_impacts(impact object): annual impacts for all sampled_years
       sampling_vect (dict): the sampling vector containing two arrays:
           selected_events (array): sampled events (len: total amount of sampled events)
-          events_per_year (array): events per resampled year  
+          events_per_year (array): events per resampled year
           Can be used to re-create the exact same annual_impacts yearset
       """
 
@@ -72,7 +73,7 @@ def impact_yearset(event_impacts, sampled_years=None, sampling_vect=None):
 
     if not np.all(event_impacts.frequency == event_impacts.frequency[0]):
         LOGGER.warning("The frequencies of the single events in the given event_impacts"
-                       "differ among each other. Please beware that this will influence" 
+                       "differ among each other. Please beware that this will influence"
                        "the resulting annual_impacts as the events are sampled uniformaly"
                        "and different frequencies are (not yet) taken into account.")
 
@@ -148,33 +149,6 @@ def sample_annual_impacts(event_impacts, n_sampled_years, sampling_vect=None):
     return impact_per_year, sampling_vect
 
 
-def sample_events(tot_n_events, n_input_events):
-    """Sample events (length = tot_n_events) uniformely from an array (n_input_events)
-    without replacement (if tot_n_events > n_input_events the input events are repeated
-                         (tot_n_events/n_input_events-1) times).
-
-    INPUT:
-        tot_n_events (int): number of events to be sampled
-        n_input_events (int): number of events contained in given event impact set (event_impacts)
-
-    OUTPUT:
-        selected_events (array): uniformaly sampled events (length: len(tot_n_events))
-      """
-
-    repetitions = np.ceil(tot_n_events/(n_input_events-1)).astype('int')
-
-    rng = default_rng()
-    if repetitions >= 2:
-        selected_events = np.round(rng.choice((n_input_events-1)*repetitions,
-                                              size=tot_n_events, replace=False)/repetitions
-                                   ).astype('int')
-    else:
-        selected_events = rng.choice((n_input_events-1), size=tot_n_events,
-                                     replace=False).astype('int')
-
-
-    return selected_events
-
 def create_sampling_vector(n_sampled_years, n_annual_events, n_input_events):
     """Sample amount of events per year following a Poisson distribution
 
@@ -205,6 +179,33 @@ def create_sampling_vector(n_sampled_years, n_annual_events, n_input_events):
     sampling_vect = {'selected_events': selected_events, 'events_per_year': events_per_year}
 
     return sampling_vect
+
+def sample_events(tot_n_events, n_input_events):
+    """Sample events (length = tot_n_events) uniformely from an array (n_input_events)
+    without replacement (if tot_n_events > n_input_events the input events are repeated
+                         (tot_n_events/n_input_events-1) times).
+
+    INPUT:
+        tot_n_events (int): number of events to be sampled
+        n_input_events (int): number of events contained in given event impact set (event_impacts)
+
+    OUTPUT:
+        selected_events (array): uniformaly sampled events (length: len(tot_n_events))
+      """
+
+    repetitions = np.ceil(tot_n_events/(n_input_events-1)).astype('int')
+
+    rng = default_rng()
+    if repetitions >= 2:
+        selected_events = np.round(rng.choice((n_input_events-1)*repetitions,
+                                              size=tot_n_events, replace=False)/repetitions
+                                   ).astype('int')
+    else:
+        selected_events = rng.choice((n_input_events-1), size=tot_n_events,
+                                     replace=False).astype('int')
+
+
+    return selected_events
 
 def calculate_correction_fac(impact_per_year, event_impacts):
     """Calculate a correction factor that can be used to scale the annual_impacts in such
