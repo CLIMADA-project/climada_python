@@ -468,8 +468,9 @@ class Uncertainty():
         """
 
         if sampling_kwargs is None: sampling_kwargs = {}
-
-        #To import a submodule from a module use 'from_list' necessary
+        
+        #Import the named submodule from the SALib sample module
+        #From the workings of __import__ the use of 'from_list' is necessary
         #c.f. https://stackoverflow.com/questions/2724260/why-does-pythons-import-require-fromlist
         salib_sampling_method = getattr(
             __import__('SALib.sample',
@@ -564,7 +565,8 @@ class Uncertainty():
 
         check_salib(self.sampling_method, salib_method)
 
-        #To import a submodule from a module use 'from_list' necessary
+        #Import the named submodule from the SALib analyse module
+        #From the workings of __import__ the use of 'from_list' is necessary
         #c.f. https://stackoverflow.com/questions/2724260/why-does-pythons-import-require-fromlist
         method = getattr(
             __import__('SALib.analyze',
