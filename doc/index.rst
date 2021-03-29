@@ -9,14 +9,26 @@ User guide
 
 .. toctree::
    :maxdepth: 2
+   guide/Guide_Get_Started
+   guide/Guide_Introduction
+   guide/Guide_Installation
+   guide/Guide_CLIMADA_Tutorial
+   guide/Guide_PythonDos-n-Donts
+   guide/Guide_Euler
+   guide/Py_Performance
+   guide/Guide_Miscellaneous
 
-   guide/introduction
-   guide/install
-   guide/tutorial
-   guide/data_dependencies
-   guide/configuration
-   guide/developer
-   guide/git_flow
+----------
+Developer guide
+----------
+
+.. toctree::
+   :maxdepth: 2
+
+   guide/Guide_Configuration
+   guide/Guide_Git_Development
+   guide/Guide_Continuous_Integration_and_Testing
+   guide/Guide_Reviewer_Checklist
 
 
 ----------------------
