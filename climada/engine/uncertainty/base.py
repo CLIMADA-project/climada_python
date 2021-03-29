@@ -43,6 +43,20 @@ class UncVar():
 
     An uncertainty variable requires a single or multi-parameter function.
     The parameters must follow a given distribution.
+    
+    Attributes
+    ----------
+    distr_dict : dict
+        Distribution of the uncertainty parameters. Keys are uncertainty
+        parameters names and Values are probability density distribution
+        from scipy.stats package 
+        https://docs.scipy.org/doc/scipy/reference/stats.html
+    labels : list
+        Names of the uncertainty parameters (keys of distr_dict)
+    uncvar_func : function
+        User defined python fucntion with the uncertainty parameters
+        as kwargs and which returns a climada object.
+        
 
     Examples
     --------
@@ -57,7 +71,7 @@ class UncVar():
             'm': sp.stats.randint(low=0, high=5),
             'n': sp.stats.randint(low=0, high=5)
             }
-        unc_var_cat = UncVar(litpop_cat, distr_dict)
+        unc_var_cat = UncVar(uncvar_func=litpop_cat, distr_dict=distr_dict)
 
     Continuous variable function: Impact function for TC
         import scipy as sp
@@ -79,7 +93,7 @@ class UncVar():
               "vmin": sp.stats.norm(loc=15, scale=30),
               "k": sp.stats.randint(low=1, high=9)
               }
-        unc_var_cont = UncVar(imp_fun_tc, distr_dict)
+        unc_var_cont = UncVar(uncvar_func=imp_fun_tc, distr_dict=distr_dict)
 
     """
 
@@ -200,6 +214,44 @@ class Uncertainty():
     This is the base class to perform uncertainty analysis on the outputs of a
     climada.engine.impact.Impact() or climada.engine.costbenefit.CostBenefit()
     object.
+    
+    Attributes
+    ----------
+    unc_vars : dict(UncVar)
+        Dictonnary of the required uncertainty variables. 
+    samples_df : pandas.DataFrame
+        Values of the sampled uncertainty parameters. It has n_samples rows
+        and one column per uncertainty parameter.
+    sampling_method : str
+        Name of the sampling method from SAlib. 
+        https://salib.readthedocs.io/en/latest/api.html#
+    n_samples : int
+        Effective number of samples (number of rows of samples_df)
+    param_labels : list
+        Name of all the uncertainty parameters
+    distr_dict : dict
+        Comon flattened dictionary of all the distr_dic list in unc_vars.
+        It represents the distribution of all the uncertainty parameters.
+    problem : dict
+        The description of the uncertainty variables and their
+        distribution as used in SALib.
+        https://salib.readthedocs.io/en/latest/getting-started.html.
+    metrics : dict
+        Dictionnary of the value of the CLIMADA metrics for each sample 
+        (of the uncertainty parameters) defined in samples_df.
+        Keys are metrics names, e.g. 'aai_agg'', 'freq_curve',
+        'eai_exp', 'at_event' for impact.calc and 'tot_climate_risk',
+        'benefit', 'cost_ben_ratio', 'imp_meas_present', 'imp_meas_future' for
+        cost_benefit.calc. Values are pd.DataFrame of dict(pd.DataFrame),
+        with one row for one sample.
+    sensitivity: dict
+        Sensitivity indices for each metric.
+        Keys are metrics names, e.g. 'aai_agg'', 'freq_curve',
+        'eai_exp', 'at_event' for impact.calc and 'tot_climate_risk',
+        'benefit', 'cost_ben_ratio', 'imp_meas_present', 'imp_meas_future' for
+        cost_benefit.calc. Values are the sensitivity indices dictionary
+        as returned by SALib.
+    
 
     """
 

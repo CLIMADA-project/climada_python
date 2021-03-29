@@ -41,6 +41,46 @@ class UncImpact(Uncertainty):
 
     This is the base class to perform uncertainty analysis on the outputs of a
     climada.engine.impact.Impact() object.
+    
+    Attributes
+    ----------
+    rp : list(int)
+        List of the chosen return periods.
+    calc_eai_exp : bool
+        Compute eai_exp or not
+    calc_at_event : bool
+        Compute eai_exp or not
+    unc_vars : dict(UncVar)
+        Dictonnary of the required uncertainty variables ['exp',
+        'impf', 'haz'] and values are the corresponding UncVar.
+    samples_df : pandas.DataFrame
+        Values of the sampled uncertainty parameters. It has n_samples rows
+        and one column per uncertainty parameter.
+    sampling_method : str
+        Name of the sampling method from SAlib. 
+        https://salib.readthedocs.io/en/latest/api.html#
+    n_samples : int
+        Effective number of samples (number of rows of samples_df)
+    param_labels : list
+        Name of all the uncertainty parameters
+    distr_dict : dict
+        Comon flattened dictionary of all the distr_dic list in unc_vars.
+        It represents the distribution of all the uncertainty parameters.
+    problem : dict
+        The description of the uncertainty variables and their
+        distribution as used in SALib.
+        https://salib.readthedocs.io/en/latest/getting-started.html.
+    metrics : dict
+        Dictionnary of the value of the CLIMADA metrics for each sample 
+        (of the uncertainty parameters) defined in samples_df.
+        Keys are metrics names ['aai_agg'', 'freq_curve', 'eai_exp',
+        'at_event'] and falues are pd.DataFrame of dict(pd.DataFrame),
+        with one row for one sample.
+    sensitivity: dict
+        Sensitivity indices for each metric.
+        Keys are metrics names ['aai_agg'', 'freq_curve', 'eai_exp',
+        'at_event'] and values are the sensitivity indices dictionary
+        as returned by SALib.
 
     """
 
