@@ -89,6 +89,7 @@ white_extended = np.repeat([[255 / 255, 255 / 255, 255 / 255, 1]], 10, axis=0)
 impact_colors_extended = np.append(white_extended, impact_colors, axis=0)
 CMAP_IMPACT = ListedColormap(impact_colors_extended)
 
+
 class Forecast():
     """Forecast definition. Compute an impact forecast with predefined hazard
     originating from a forecast (like numerical weather prediction models),
@@ -131,7 +132,7 @@ class Forecast():
         """
         self.run_datetime = [key for key in hazard_dict.keys()]
         self.hazard = [hazard_dict[key] for key in self.run_datetime]
-        #check event_date
+        # check event_date
         hazard_dates = [date for hazard in self.hazard for date in hazard.date]
         if not (len(np.unique(hazard_dates)) == 1):
             raise ValueError('Please provide hazards containing only one ' +
@@ -423,11 +424,12 @@ class Forecast():
             plt.clf()
             plt.close(f)
 
-    def _number_to_str(n):
+    @staticmethod
+    def _number_to_str(number):
         number_names = ['', ' thousand', ' million', ' billion', ' trillion']
         millidx = max(0, min(len(number_names) - 1,
-                             int(math.floor(0 if n == 0 else math.log10(abs(n)) / 3))))
-        return '{:.0f}{}'.format(n / 10 ** (3 * millidx), number_names[millidx])
+                             int(math.floor(0 if number == 0 else math.log10(abs(number)) / 3))))
+        return '{:.0f}{}'.format(number / 10 ** (3 * millidx), number_names[millidx])
 
     def plot_exceedence_prob(self, threshold, explain_str=None,
                              run_datetime=None, save_fig=True, close_fig=True):
@@ -626,7 +628,6 @@ class Forecast():
         # add warning regions
         shp = shapereader.Reader(polygon_file)
         transformer = pyproj.Transformer.from_crs(polygon_file_crs,
-                                                  # self._impact.crs['init'],
                                                   self._impact[haz_ind].crs,
                                                   always_xy=True)
         # checking the decision dict and define the corresponding functions
@@ -649,9 +650,9 @@ class Forecast():
                 decision_dict_functions[aggregation] = np.mean
             else:
                 raise ValueError("Parameter area_aggregation of " +
-                           "Forecast.plot_warn_map() must eiter be " +
-                           "a float between [0..1], which " +
-                           "specifys a quantile. or 'sum' or 'mean'.")
+                                 "Forecast.plot_warn_map() must eiter be " +
+                                 "a float between [0..1], which " +
+                                 "specifys a quantile. or 'sum' or 'mean'.")
 
         for geometry, record in zip(shp.geometries(), shp.records()):
             geom2 = shapely.ops.transform(transformer.transform, geometry)
@@ -726,7 +727,7 @@ class Forecast():
                 by the run_datetime
         """
         # select hazard with run_datetime
-        if run_datetime == None:
+        if run_datetime is None:
             run_datetime = self.run_datetime[0]
         haz_ind = np.argwhere(np.isin(self.run_datetime, run_datetime))[0][0]
         return self._impact[haz_ind].plot_hexbin_eai_exposure()
