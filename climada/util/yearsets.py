@@ -193,16 +193,12 @@ def sample_events(tot_n_events, n_input_events):
         selected_events (array): uniformaly sampled events (length: len(tot_n_events))
       """
 
-    repetitions = np.ceil(tot_n_events/(n_input_events)).astype('int')
-
+    repetitions = np.ceil(tot_n_events/n_input_events).astype('int')
+    indeces = np.tile(np.arange(n_input_events), repetitions)
+    
     rng = default_rng()
-    if repetitions >= 2:
-        selected_events = np.round(rng.choice((n_input_events-1)*repetitions,
-                                              size=tot_n_events, replace=False)/repetitions
-                                   ).astype('int')
-    else:
-        selected_events = rng.choice((n_input_events-1), size=tot_n_events,
-                                     replace=False).astype('int')
+    selected_events = rng.choice(indeces, size=tot_n_events, 
+                                 replace=False).astype('int')
 
 
     return selected_events
