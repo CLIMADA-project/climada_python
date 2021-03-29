@@ -160,7 +160,7 @@ class SupplyChain():
         selected_subsec : str or list
             Positions of the selected sectors. These positions can be either
             defined by the user by passing a list of values, or by using built-in
-            sectors' aggregations passing a string with possible values being
+            sectors' aggregations for the WIOD dat passing a string with possible values being
             "service", "manufacturing", "agriculture" or "mining". Default is "service".
 
         """
