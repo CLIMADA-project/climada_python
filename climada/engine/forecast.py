@@ -26,7 +26,6 @@ __all__ = ['Forecast']
 import logging
 import datetime as dt
 import math
-
 import numpy as np
 from pathlib import Path
 import matplotlib.pyplot as plt
@@ -134,11 +133,11 @@ class Forecast():
         self.hazard = [hazard_dict[key] for key in self.run_datetime]
         #check event_date
         hazard_dates = [date for hazard in self.hazard for date in hazard.date]
-        if not len(np.unique(hazard_dates)) == 1:
-            ValueError('Please provide hazards containing only one ' +
-                       'event_date. The current hazards contain several ' +
-                       'events with different event_dates and the Forecast ' +
-                       'class cannot function proberly with such hazards.')
+        if not (len(np.unique(hazard_dates)) == 1):
+            raise ValueError('Please provide hazards containing only one ' +
+                              'event_date. The current hazards contain several ' +
+                              'events with different event_dates and the Forecast ' +
+                              'class cannot function proberly with such hazards.')
         self.event_date = dt.datetime.fromordinal(np.unique(hazard_dates)[0])
         if haz_model is None:
             self.haz_model = 'NWP'
@@ -185,7 +184,7 @@ class Forecast():
                 self.event_date.strftime('%Y%m%d')
                 )
 
-    def summary_str(self, run_datetime=None):
+    def summary_str(self, run_datetime = None):
         """ provide a summary string for the impact forecast
         Parameters:
             run_datetime (datetime.datetime, optional): select the used hazard
@@ -649,7 +648,7 @@ class Forecast():
             elif decision_dict[aggregation] == 'mean':
                 decision_dict_functions[aggregation] = np.mean
             else:
-                ValueError("Parameter area_aggregation of " +
+                raise ValueError("Parameter area_aggregation of " +
                            "Forecast.plot_warn_map() must eiter be " +
                            "a float between [0..1], which " +
                            "specifys a quantile. or 'sum' or 'mean'.")
@@ -692,9 +691,9 @@ class Forecast():
                     if value_per_region >= warn_thres_i:
                         warn_level = ind_i+1
                 else:
-                    ValueError("Parameter decision_level of " +
-                               "Forecast.plot_warn_map() must eiter be " +
-                               "'grid_point' or 'polygon'.")
+                    raise ValueError("Parameter decision_level of " +
+                                     "Forecast.plot_warn_map() must eiter be " +
+                                     "'exposure_point' or 'polygon'.")
             # plot warn_region with specific color (dependent on warning level)
             axis.add_geometries([geom2],
                                 crs=ccrs.PlateCarree(),
@@ -727,7 +726,7 @@ class Forecast():
                 by the run_datetime
         """
         # select hazard with run_datetime
-        if run_datetime is None:
+        if run_datetime == None:
             run_datetime = self.run_datetime[0]
         haz_ind = np.argwhere(np.isin(self.run_datetime, run_datetime))[0][0]
         return self._impact[haz_ind].plot_hexbin_eai_exposure()
