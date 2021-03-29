@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -27,7 +27,7 @@ import geopandas as gpd
 import numpy as np
 from pyproj.crs import CRS as PCRS
 import shapely
-from shapely.geometry import box
+from shapely.geometry import box, Point
 from rasterio.windows import Window
 from rasterio.warp import Resampling
 from rasterio import Affine
@@ -52,6 +52,8 @@ from climada.util.coordinates import (convert_wgs_to_utm,
                                       latlon_bounds,
                                       latlon_to_geosph_vector,
                                       lon_normalize,
+                                      mapping_grid2flattened,
+                                      mapping_point2grid,
                                       nat_earth_resolution,
                                       points_to_raster,
                                       pts_to_raster_meta,
@@ -252,7 +254,7 @@ class TestFunc(unittest.TestCase):
         for arg in ['epsg:4326', b'epsg:4326', DEF_CRS, 4326]:
             self.assertEqual(pcrs, PCRS.from_user_input(to_crs_user_input(arg)))
             self.assertEqual(rcrs, RCRS.from_user_input(to_crs_user_input(arg)))
-            
+
         # can they be misunderstood from the provider?
         for arg in [{'init': 'epsg:4326', 'no_defs': True}, b'{"init": "epsg:4326", "no_defs": True}' ]:
             self.assertFalse(pcrs == PCRS.from_user_input(to_crs_user_input(arg)))
@@ -265,7 +267,35 @@ class TestFunc(unittest.TestCase):
         with self.assertRaises(SyntaxError):
             to_crs_user_input('{init: epsg:4326, no_defs: True}')
 
-
+    def test_mapping_point2grid(self):
+        res = (-1, 0.5)
+        geometry = Point(10,40)
+        out = mapping_point2grid(geometry.x, geometry.y, 5, 50, res)
+        self.assertEqual(out, (5, 20))
+        
+        res = -0.5
+        geometry = Point(10,40)
+        out = mapping_point2grid(geometry.x, geometry.y, 5, 50,res)
+        self.assertEqual(out, (10, 20))
+        
+        res = 1
+        geometry = Point(-10,-40)
+        out = mapping_point2grid(geometry.x, geometry.y, -20,-30, res)
+        self.assertEqual(out, (10, 10))
+        
+        geometry = Point(-30,-40)
+        with self.assertRaises(ValueError):
+            mapping_point2grid(geometry.x, geometry.y, -20,-30,  res) 
+        
+    def test_mapping_grid2flattened(self):
+        matrix = np.ones((5,8))
+        out = mapping_grid2flattened(0, 0, matrix.shape)
+        self.assertEqual(out, 0)
+        out = mapping_grid2flattened(7, 4, matrix.shape)
+        self.assertEqual(out, 39)
+        with self.assertRaises(ValueError):
+            mapping_grid2flattened(4, 7, matrix.shape)
+        
 class TestGetGeodata(unittest.TestCase):
     def test_nat_earth_resolution_pass(self):
         """Correct resolution."""

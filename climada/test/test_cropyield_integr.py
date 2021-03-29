@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -22,7 +22,7 @@ Tests on Drought Hazard exposure and Impact function.
 import unittest
 import numpy as np
 from climada.util.constants import DEMO_DIR as INPUT_DIR
-from climada.hazard.relative_cropyield import (RelativeCropyield, init_hazard_sets_isimip, 
+from climada.hazard.relative_cropyield import (RelativeCropyield, init_hazard_sets_isimip,
                                                calc_his_haz_isimip)
 from climada.entity.exposures.crop_production import CropProduction
 from climada.entity import ImpactFuncSet, IFRelativeCropyield
@@ -129,22 +129,22 @@ class TestIntegr(unittest.TestCase):
                      'pepic_miroc5_ewembi_historical_2005soc_co2_yield-whe-firr_global_annual_DEMO_TJANJIN_1861_2005.nc',
                      'pepic_miroc5_ewembi_historical_2005soc_co2_yield-whe-noirr_global_annual_DEMO_TJANJIN_1861_2005.nc']
 
-        (his_file_list, file_props, hist_mean_per_crop, 
+        (his_file_list, file_props, hist_mean_per_crop,
           scenario_list, crop_list, combi_crop_list) = init_hazard_sets_isimip(files_his, input_dir=INPUT_DIR,
-                                                      bbox=bbox, isimip_run = 'test_file', 
+                                                      bbox=bbox, isimip_run = 'test_file',
                                                       yearrange_his = np.array([1980,2005]))
         yearrange_mean = (1980, 2005)
         for his_file in his_file_list:
-            haz_his, filename, hist_mean = calc_his_haz_isimip(his_file, file_props, input_dir=INPUT_DIR, 
+            haz_his, filename, hist_mean = calc_his_haz_isimip(his_file, file_props, input_dir=INPUT_DIR,
                                                         bbox=bbox, yearrange_mean=yearrange_mean)
 
-            hist_mean_per_crop[(file_props[his_file])['crop_irr']]['value'][ 
+            hist_mean_per_crop[(file_props[his_file])['crop_irr']]['value'][
                 hist_mean_per_crop[(file_props[his_file])['crop_irr']]['idx'], :] = hist_mean
             hist_mean_per_crop[file_props[his_file]['crop_irr']]['idx'] += 1
 
         self.assertEqual(np.shape(hist_mean_per_crop['whe-firr']['value'])[0], 1)
-        self.assertEqual(np.shape(hist_mean_per_crop['whe-noirr']['value'])[0], 2) 
-        
+        self.assertEqual(np.shape(hist_mean_per_crop['whe-noirr']['value'])[0], 2)
+
         # calculate mean hist_mean for each crop-irrigation
         for crop_irr in crop_list:
             mean = np.mean((hist_mean_per_crop[crop_irr])['value'], 0)
@@ -153,8 +153,8 @@ class TestIntegr(unittest.TestCase):
         self.assertEqual('whe-noirr', crop_list[0])
         self.assertEqual(np.mean(hist_mean_per_crop['whe-noirr']['value']), np.mean(output_list[0]))
         self.assertEqual(np.mean(hist_mean_per_crop['whe-noirr']['value'][:,1]), output_list[0][1])
-        
-                                                      
+
+
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestIntegr)

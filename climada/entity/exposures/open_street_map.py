@@ -1,14 +1,22 @@
 """
 This file is part of CLIMADA.
-Copyright (C) 2019 ETH Zurich, CLIMADA contributors listed in AUTHORS.
+
+Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
+
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
+
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
-You should have received a copy of the GNU Lesser General Public License along
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
+
+---
+
+Obtain data from OpenStreetMap.
 """
 
 import time
@@ -584,7 +592,7 @@ def _get_midpoints(highValueArea):
         High_Value_Area_gdf.loc[index, "projected_area"] = transform(proj, s).area
         # turn warnings on again
         logging.captureWarnings(False)
-        
+
     # change active geometry from polygons to midpoints
     from shapely.wkt import loads
     High_Value_Area_gdf = High_Value_Area_gdf.rename(columns={'geometry': 'geo_polys',

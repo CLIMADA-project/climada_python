@@ -38,7 +38,7 @@ setup(
 
     author='ETH',
 
-    license='GNU General Public License',
+    license='OSI Approved :: GNU General Public License v3 (GPLv3)',
 
     classifiers=[
         #   3 - Alpha
