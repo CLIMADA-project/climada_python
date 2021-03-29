@@ -19,132 +19,121 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Unit test landslide module.
 """
 import unittest
-import math
-from rasterio.windows import Window
+import geopandas as gpd
+import numpy as np
+import shapely
+from scipy import sparse
 
 from climada import CONFIG
-from climada.hazard.landslide import Landslide
-from climada.util.constants import SYSTEM_DIR as LS_FILE_DIR
+from climada.hazard.landslide import Landslide, sample_events_from_probs
+from climada.util.coordinates import read_raster
 
 DATA_DIR = CONFIG.hazard.test_data.dir()
+LS_HIST_FILE = DATA_DIR / 'test_ls_hist.shp'
+LS_PROB_FILE = DATA_DIR / 'test_ls_prob.tif'
 
-# class TestTiffFcts(unittest.TestCase):
-#    """Test functions for getting input tiffs in landslide module, outside Landslide() instance"""
-#    def test_get_nowcast_tiff(self):
-#        start_date = dt.datetime.strftime(dt.datetime.now() - timedelta(2), '%Y-%m-%d')
-#        end_date = dt.datetime.strftime(dt.datetime.now() - timedelta(1), '%Y-%m-%d')
-#        tif_type= ["monthly","daily"]
-#
-#        for item in tif_type:
-#            landslide.get_nowcast_tiff(tif_type=item, startTime=start_date, endTime=end_date, save_path=DATA_DIR)
-#
-#        search_criteria = "LS*.tif"
-#        LS_files_daily = glob.glob(DATA_DIR.joinpath(search_criteria))
-#        search_criteria = "*5400.tif"
-#        LS_files_monthly = glob.glob(search_criteria)
-#
-#        self.assertTrue(len(LS_files_daily)>0)
-#        self.assertTrue(len(LS_files_monthly)==12)
-#
-#        for item in LS_files_daily:
-#            os.remove(item)
-#
-#        for item in LS_files_monthly:
-#            os.remove(item)
+class TestLandslideModule(unittest.TestCase):     
 
-#    def test_combine_nowcast_tiff(self):
-#        landslide.combine_nowcast_tiff(DATA_DIR, search_criteria='test_global*.tif', operator="maximum")
-#        search_criteria = "combined*.tif"
-#        combined_daily = glob.glob(DATA_DIR.joinpath(search_criteria))
-#        self.assertEqual(len(combined_daily), 1)
-#        for item in combined_daily:
-#            os.remove(item)
-#
-#        landslide.combine_nowcast_tiff(DATA_DIR, search_criteria='*5400_test.tif', operator="sum")
-#        search_criteria = "combined*.tif"
-#        combined_monthly = glob.glob(DATA_DIR.joinpath(search_criteria))
-#        self.assertEqual(len(combined_monthly),1)
-#        for item in combined_monthly:
-#            os.remove(item)
+    def test_set_ls_hist(self):
+        """ Test function set_ls_hist()"""
+        LS_hist = Landslide()
+        LS_hist.set_ls_hist(bbox=(20,40,23,46), 
+                                  input_gdf=LS_HIST_FILE)
+        self.assertEqual(LS_hist.size, 272)
+        self.assertEqual(LS_hist.tag.haz_type, 'LS')
+        self.assertEqual(np.unique(LS_hist.intensity.data),np.array([1]))
+        self.assertEqual(np.unique(LS_hist.fraction.data),np.array([1]))
+        self.assertTrue((LS_hist.frequency.data<=1).all())
+        
+        input_gdf = gpd.read_file(LS_HIST_FILE)
+        LS_hist = Landslide()
+        LS_hist.set_ls_hist(bbox=(20,40,23,46), 
+                                  input_gdf=input_gdf)
+        self.assertEqual(LS_hist.size, 272)
+        self.assertEqual(LS_hist.tag.haz_type, 'LS')
+        self.assertEqual(np.unique(LS_hist.intensity.data),np.array([1]))
+        self.assertEqual(np.unique(LS_hist.fraction.data),np.array([1]))
+        self.assertTrue((LS_hist.frequency.data<=1).all())
+        
+    def test_set_ls_prob(self):
+        """ Test the function set_ls_prob()"""
+        LS_prob = Landslide()
+        n_years=1000
+        LS_prob.set_ls_prob(bbox=(8,45,11,46), 
+                            path_sourcefile=LS_PROB_FILE, n_years=n_years,
+                            dist='binom')
 
-class TestLandslideModule(unittest.TestCase):
-
-    def test_get_window_from_coords(self):
-        empty_LS = Landslide()
-        window_array = empty_LS._get_window_from_coords(
-            path_sourcefile=LS_FILE_DIR.joinpath('ls_pr_NGI_UNEP/ls_pr.tif'),
-            bbox=[47, 8, 46, 7])
-        self.assertEqual(window_array[0], 22440)
-        self.assertEqual(window_array[1], 5159)
-        self.assertEqual(window_array[2], 120)
-        self.assertEqual(window_array[3], 120)
-
-    def test_get_raster_meta(self):
-        empty_LS = Landslide()
-        pixel_width, pixel_height = empty_LS._get_raster_meta(
-            path_sourcefile=LS_FILE_DIR.joinpath('ls_pr_NGI_UNEP', 'ls_pr.tif'),
-            window_array=[865, 840, 120, 120])
-        self.assertTrue(math.isclose(pixel_width, -0.00833, rel_tol=1e-03))
-        self.assertTrue(math.isclose(pixel_height, 0.00833, rel_tol=1e-03))
-
-    def test_intensity_cat_to_prob(self):
-        empty_LS = Landslide()
-        window_array = empty_LS._get_window_from_coords(
-            path_sourcefile=DATA_DIR.joinpath('test_global_landslide_nowcast_20190501.tif'),
-            bbox=[47, 23, 46, 22])
-        empty_LS.set_raster(
-            [DATA_DIR.joinpath('test_global_landslide_nowcast_20190501.tif')],
-            window=Window(window_array[0], window_array[1], window_array[3], window_array[2]))
-        empty_LS._intensity_cat_to_prob(max_prob=0.0001)
-        self.assertTrue(max(empty_LS.intensity_cat.data) == 2)
-        self.assertTrue(min(empty_LS.intensity_cat.data) == 1)
-        self.assertTrue(max(empty_LS.intensity.data) == 0.0001)
-        self.assertTrue(min(empty_LS.intensity.data) == 0)
-
-    def test_intensity_prob_to_binom(self):
-        empty_LS = Landslide()
-        window_array = empty_LS._get_window_from_coords(
-            path_sourcefile=DATA_DIR.joinpath('test_global_landslide_nowcast_20190501.tif'),
-            bbox=[47, 23, 46, 22])
-        empty_LS.set_raster(
-            [DATA_DIR.joinpath('test_global_landslide_nowcast_20190501.tif')],
-            window=Window(window_array[0], window_array[1], window_array[3], window_array[2]))
-        empty_LS._intensity_cat_to_prob(max_prob=0.0001)
-        empty_LS._intensity_prob_to_binom(100)
-        self.assertTrue(max(empty_LS.intensity_prob.data) == 0.0001)
-        self.assertTrue(min(empty_LS.intensity_prob.data) == 0)
-        self.assertTrue(max(empty_LS.intensity.data) == 1)
-        self.assertTrue(min(empty_LS.intensity.data) == 0)
-
-    def test_intensity_binom_to_range(self):
-        empty_LS = Landslide()
-        window_array = empty_LS._get_window_from_coords(
-            path_sourcefile=DATA_DIR.joinpath('test_global_landslide_nowcast_20190501.tif'),
-            bbox=[47, 23, 46, 22])
-        empty_LS.set_raster(
-            [DATA_DIR.joinpath('test_global_landslide_nowcast_20190501.tif')],
-            window=Window(window_array[0], window_array[1], window_array[3], window_array[2]))
-        empty_LS._intensity_cat_to_prob(max_prob=0.0001)
-        empty_LS._intensity_prob_to_binom(100)
-        empty_LS.check()
-        empty_LS.centroids.set_meta_to_lat_lon()
-        empty_LS.centroids.set_geometry_points()
-        empty_LS._intensity_binom_to_range(max_dist=1000)
-        self.assertTrue(
-            len(empty_LS.intensity.data[(empty_LS.intensity.data > 0)
-                                        & (empty_LS.intensity.data < 1)]) > 0)
-
-    def test_get_hist_events(self):
-        empty_LS = Landslide()
-        bbox = [48, 23, 40, 20]
-        COOLR_path = DATA_DIR.joinpath('nasa_global_landslide_catalog_point.shp')
-        LS_catalogue_part = empty_LS._get_hist_events(bbox, COOLR_path)
-        self.assertTrue(max(LS_catalogue_part.latitude) <= bbox[0])
-        self.assertTrue(min(LS_catalogue_part.latitude) >= bbox[2])
-        self.assertTrue(max(LS_catalogue_part.longitude) <= bbox[1])
-        self.assertTrue(min(LS_catalogue_part.longitude) >= bbox[3])
-
-
+        self.assertEqual(LS_prob.tag.haz_type, 'LS')
+        self.assertEqual(LS_prob.intensity.shape,(1, 43200))
+        self.assertEqual(LS_prob.fraction.shape,(1, 43200))
+        self.assertTrue(max(LS_prob.intensity.data)<=1)
+        self.assertEqual(min(LS_prob.intensity.data),0)
+        self.assertTrue(max(LS_prob.fraction.data)<=n_years)
+        self.assertEqual(min(LS_prob.fraction.data),0)
+        self.assertEqual(LS_prob.frequency.shape, (1, 43200))
+        self.assertEqual(min(LS_prob.frequency.data),0)
+        self.assertTrue(max(LS_prob.frequency.data)<=1/n_years)
+        self.assertEqual(LS_prob.centroids.crs.to_epsg(), 4326)
+        self.assertTrue(LS_prob.centroids.coord.max() <= 46)
+        self.assertTrue(LS_prob.centroids.coord.min() >= 8)
+        
+        LS_prob = Landslide()
+        n_years=300
+        LS_prob.set_ls_prob(bbox=(8,45,11,46), 
+                            path_sourcefile=LS_PROB_FILE,
+                            dist='poisson', n_years=n_years)
+        self.assertEqual(LS_prob.tag.haz_type, 'LS')
+        self.assertEqual(LS_prob.intensity.shape,(1, 43200))
+        self.assertEqual(LS_prob.fraction.shape,(1, 43200))
+        self.assertTrue(max(LS_prob.intensity.data)<=1)
+        self.assertEqual(min(LS_prob.intensity.data),0)
+        self.assertTrue(max(LS_prob.fraction.data)<=n_years)
+        self.assertEqual(min(LS_prob.fraction.data),0)
+        self.assertEqual(LS_prob.frequency.shape, (1, 43200))
+        self.assertEqual(min(LS_prob.frequency.data),0)
+        self.assertTrue(max(LS_prob.frequency.data)<=1/n_years)
+        self.assertEqual(LS_prob.centroids.crs.to_epsg(), 4326)
+        self.assertTrue(LS_prob.centroids.coord.max() <= 46)
+        self.assertTrue(LS_prob.centroids.coord.min() >= 8)
+        
+        LS_prob = Landslide()
+        corr_fact = 1.8*10e6
+        LS_prob.set_ls_prob(bbox=(8,45,11,46), 
+                            path_sourcefile=LS_PROB_FILE,
+                            dist='poisson', corr_fact=corr_fact)
+        self.assertEqual(LS_prob.tag.haz_type, 'LS')
+        self.assertEqual(LS_prob.intensity.shape,(1, 43200))
+        self.assertEqual(LS_prob.fraction.shape,(1, 43200))
+        self.assertTrue(max(LS_prob.intensity.data)<=1)
+        self.assertEqual(min(LS_prob.intensity.data),0)
+        self.assertTrue(max(LS_prob.fraction.data)<=n_years)
+        self.assertEqual(min(LS_prob.fraction.data),0)
+        self.assertEqual(LS_prob.frequency.shape, (1, 43200))
+        self.assertEqual(min(LS_prob.frequency.data),0)
+        self.assertTrue(max(LS_prob.frequency.data)<=1/n_years)
+        self.assertEqual(LS_prob.centroids.crs.to_epsg(), 4326)
+        self.assertTrue(LS_prob.centroids.coord.max() <= 46)
+        self.assertTrue(LS_prob.centroids.coord.min() >= 8)
+    
+    def test_sample_events_from_probs(self):
+        bbox = (8,45,11,46)
+        corr_fact = 10e6
+        n_years = 400
+        __, prob_matrix = read_raster(LS_PROB_FILE, geometry=
+                                      [shapely.geometry.box(*bbox, ccw=True)])
+        prob_matrix = sparse.csr_matrix(prob_matrix/corr_fact)
+        
+        ev_matrix = sample_events_from_probs(prob_matrix, n_years, 
+                                             dist='binom')
+        self.assertTrue(max(ev_matrix.data) <= n_years)
+        self.assertEqual(min(ev_matrix.data), 0)
+        
+        ev_matrix = sample_events_from_probs(prob_matrix/corr_fact, n_years, 
+                                             dist='poisson')
+        self.assertTrue(max(ev_matrix.data) <= n_years)
+        self.assertEqual(min(ev_matrix.data), 0)
+      
+      
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestLandslideModule)
-    unittest.TextTestRunner(verbosity=2).run(TESTS)
+    unittest.TextTestRunner(verbosity=2).run(TESTS)           

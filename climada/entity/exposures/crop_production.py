@@ -467,7 +467,7 @@ class CropProduction(Exposures):
                                         isimip_version=isimip_version)
             combined_exp[:, j+1] = self.gdf.value
 
-        self.gdf['value'] = np.mean(combined_exp, 1)
+        self.gdf.value = np.mean(combined_exp, 1)
         self.gdf['crop'] = crop
 
         self.check()
