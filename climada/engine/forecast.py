@@ -339,15 +339,15 @@ class Forecast():
 
             # Create colorbar in this axis
             cbax = make_axes_locatable(axis).append_axes('bottom', size="6.5%", \
-                                                         pad=0.1, axes_class=plt.Axes)
+                                                         pad=0.3, axes_class=plt.Axes)
             cbar = plt.colorbar(hex_bin, cax=cbax, orientation='horizontal',
                                 extend=extend)
             cbar.set_label(name)
             cbar.formatter.set_scientific(False)
             cbar.set_ticks([0, 1000, 10000, 100000, 1000000])
             cbar.set_ticklabels(['0', "1'000", "10'000", "100'000", "1'000'000"])
-            title_position = {'model_text': [0.02, 0.84], 'explain_text': [0.02, 0.8], 'event_day': [0.98, 0.84],
-                              'run_start': [0.98, 0.8]}
+            title_position = {'model_text': [0.02, 0.85], 'explain_text': [0.02, 0.81], 'event_day': [0.98, 0.85],
+                              'run_start': [0.98, 0.81]}
             left_right = {'model_text': 'left', 'explain_text': 'left', 'event_day': 'right', 'run_start': 'right'}
             color = {'model_text': 'k', 'explain_text': 'r', 'event_day': 'k', 'run_start': 'k'}
             [plt.figtext(title_position[t][0], title_position[t][1], tit[t], fontsize='xx-large', color=color[t],
@@ -555,12 +555,12 @@ class Forecast():
     
             # Create colorbar in this axis
             cbax = make_axes_locatable(axis).append_axes('bottom', size="6.5%", \
-                                                         pad=0.1, axes_class=plt.Axes)
+                                                         pad=0.3, axes_class=plt.Axes)
             cbar = plt.colorbar(hex_bin, cax=cbax, orientation='horizontal',
                                 extend=extend)
             cbar.set_label(name)
-            title_position = {'model_text': [0.02, 0.93], 'explain_text': [0.02, 0.89], 'event_day': [0.98, 0.93],
-                              'run_start': [0.98, 0.89]}
+            title_position = {'model_text': [0.02, 0.94], 'explain_text': [0.02, 0.9], 'event_day': [0.98, 0.94],
+                              'run_start': [0.98, 0.9]}
             left_right = {'model_text': 'left', 'explain_text': 'left', 'event_day': 'right', 'run_start': 'right'}
             color = {'model_text': 'k', 'explain_text': 'r', 'event_day': 'k', 'run_start': 'k'}
             [plt.figtext(title_position[t][0], title_position[t][1], tit[t], fontsize='xx-large', color=color[t],
