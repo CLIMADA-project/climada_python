@@ -38,4 +38,5 @@ dependencies:
   - pip:
     - pybufrkit>=0.2
     - overpy>=0.4
+    - SALib>=1.3
 
