@@ -245,10 +245,10 @@ class UncCostBenefit(Uncertainty):
         haz_fut_samples = param_sample[1][self.unc_vars['haz_fut'].labels].to_dict()
         ent_fut_samples = param_sample[1][self.unc_vars['ent_fut'].labels].to_dict()
 
-        haz = self.unc_vars['haz'].evaluate(haz_samples)
-        ent = self.unc_vars['ent'].evaluate(ent_samples)
-        haz_fut = self.unc_vars['haz_fut'].evaluate(haz_fut_samples)
-        ent_fut = self.unc_vars['ent_fut'].evaluate(ent_fut_samples)
+        haz = self.unc_vars['haz'].uncvar_func(**haz_samples)
+        ent = self.unc_vars['ent'].uncvar_func(**ent_samples)
+        haz_fut = self.unc_vars['haz_fut'].uncvar_func(**haz_fut_samples)
+        ent_fut = self.unc_vars['ent_fut'].uncvar_func(**ent_fut_samples)
 
         cb = CostBenefit()
         cb.calc(hazard=haz, entity=ent, haz_future=haz_fut, ent_future=ent_fut,

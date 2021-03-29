@@ -118,7 +118,7 @@ class TestUncVar(unittest.TestCase):
         distr_dict = {"x_impf": sp.stats.uniform(0.8, 1.2),
               }
         impf_unc = UncVar(impf, distr_dict)
-        impf_eval = impf_unc.evaluate({'x_paa': 0.8, 'x_mdd': 1.1})
+        impf_eval = impf_unc.uncvar_func(**{'x_paa': 0.8, 'x_mdd': 1.1})
         impf_true = impf_dem(x_paa=0.8, x_mdd=1.1)
         self.assertEqual(impf_eval.size(), impf_true.size())
         impf_func1 = impf_eval.get_func()['TC'][1]
@@ -161,11 +161,11 @@ class TestUncVar(unittest.TestCase):
 
         var = UncVar.var_to_uncvar(exp)
         self.assertDictEqual(var.distr_dict, {})
-        self.assertTrue(isinstance(var.evaluate({}), Exposures))
+        self.assertTrue(isinstance(var.uncvar_func(), Exposures))
 
         unc_var = UncVar.var_to_uncvar(UncVar(exp, distr_dict))
         self.assertDictEqual(unc_var.distr_dict, distr_dict)
-        self.assertTrue(isinstance(var.evaluate({}), Exposures))
+        self.assertTrue(isinstance(var.uncvar_func(), Exposures))
 
 
 
@@ -435,7 +435,7 @@ class TestUncImpact(unittest.TestCase):
         unc.make_sample(N=1)
         unc.calc_distribution(calc_eai_exp=True)
         unc.calc_sensitivity()
-        unc.plot_sensitivity_map(exp_unc.evaluate({'x_exp': 1}))
+        unc.plot_sensitivity_map(exp_unc.uncvar_func(x_exp= 1))
         plt.close()
 
         #Non-default parameters
@@ -443,7 +443,7 @@ class TestUncImpact(unittest.TestCase):
         unc.make_sample(N=1, sampling_method='morris')
         unc.calc_distribution(calc_eai_exp=True)
         unc.calc_sensitivity(salib_method='morris')
-        unc.plot_sensitivity_map(exp_unc.evaluate({'x_exp': 1}), salib_si='mu')
+        unc.plot_sensitivity_map(exp_unc.uncvar_func(x_exp= 1), salib_si='mu')
         plt.close()
 
 
