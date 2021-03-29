@@ -23,7 +23,7 @@ dependencies:
   - pyepsg>=0.4
   - pytables>=3.6
   - python=3.8
-  - pyxlsb=1.0.8  
+  - pyxlsb>=1.0
   - rasterio>=1.1
   - requests>=2.24
   - scikit-learn>=0.23
@@ -39,4 +39,3 @@ dependencies:
     - pybufrkit>=0.2
     - overpy>=0.4
     - SALib>=1.3
-
