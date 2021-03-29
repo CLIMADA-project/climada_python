@@ -88,8 +88,14 @@ def impact_yearset(event_impacts, sampled_years=None, sampling_vect=None):
     annual_impacts.at_event = np.zeros([1, n_sampled_years+1])
     annual_impacts.date = []
 
-
-    impact_per_year, sampling_vect = sample_annual_impacts(event_impacts, n_sampled_years,
+    
+    if not sampling_vect:
+        n_annual_events = np.sum(event_impacts.frequency)
+        n_input_events = len(event_impacts.event_id)
+        sampling_vect = create_sampling_vector(n_sampled_years, n_annual_events,
+                                               n_input_events)
+    
+    impact_per_year = sample_annual_impacts(event_impacts, n_sampled_years,
                                                            sampling_vect)
 
 
@@ -108,7 +114,7 @@ def impact_yearset(event_impacts, sampled_years=None, sampling_vect=None):
     return annual_impacts, sampling_vect
 
 
-def sample_annual_impacts(event_impacts, n_sampled_years, sampling_vect=None):
+def sample_annual_impacts(event_impacts, n_sampled_years, sampling_vect):
     """Sample annual impacts from the given event_impacts
 
     INPUTS:
@@ -121,17 +127,7 @@ def sample_annual_impacts(event_impacts, n_sampled_years, sampling_vect=None):
 
     OUTPUTS:
         impact_per_year (array): resampled impact per year (length = n_sampled_years)
-        sampling_vect (dict): the sampling vector containing two arrays:
-            selected_events (array): sampled events (len: total amount of sampled events)
-            events_per_year (array): events per resampled year
       """
-
-    n_annual_events = np.sum(event_impacts.frequency)
-
-    if not sampling_vect:
-        n_input_events = len(event_impacts.event_id)
-        sampling_vect = create_sampling_vector(n_sampled_years, n_annual_events,
-                                               n_input_events)
 
     impact_per_event = np.zeros(np.sum(sampling_vect['events_per_year']))
     impact_per_year = np.zeros(n_sampled_years)
@@ -146,7 +142,7 @@ def sample_annual_impacts(event_impacts, n_sampled_years, sampling_vect=None):
             'events_per_year'][year])])
         idx += sampling_vect['events_per_year'][year]
 
-    return impact_per_year, sampling_vect
+    return impact_per_year
 
 
 def create_sampling_vector(n_sampled_years, n_annual_events, n_input_events):
