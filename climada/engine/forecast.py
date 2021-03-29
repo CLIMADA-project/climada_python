@@ -133,11 +133,11 @@ class Forecast():
         self.hazard = [hazard_dict[key] for key in self.run_datetime]
         #check event_date
         hazard_dates = [date for hazard in self.hazard for date in hazard.date]
-        if not len(np.unique(hazard_dates)) == 1:
-            ValueError('Please provide hazards containing only one ' +
-                       'event_date. The current hazards contain several ' +
-                       'events with different event_dates and the Forecast ' +
-                       'class cannot function proberly with such hazards.')
+        if not (len(np.unique(hazard_dates)) == 1):
+            raise ValueError('Please provide hazards containing only one ' +
+                              'event_date. The current hazards contain several ' +
+                              'events with different event_dates and the Forecast ' +
+                              'class cannot function proberly with such hazards.')
         self.event_date = dt.datetime.fromordinal(np.unique(hazard_dates)[0])
         if haz_model == None:
             self.haz_model = 'NWP'
@@ -684,12 +684,12 @@ class Forecast():
                     if not (isinstance(decision_dict['probability_aggregation'], float)
                             &
                             isinstance(decision_dict['area_aggregation'], float)):
-                        ValueError(" If decision_level is 'grid_point'," +
-                                   "parameters probability_aggregation and " +
-                                   "area_aggregation of " +
-                                   "Forecast.plot_warn_map() must both be " +
-                                   "floats between [0..1]. Which each " +
-                                   "specify quantiles.")
+                        raise ValueError(" If decision_level is 'grid_point'," +
+                                         "parameters probability_aggregation and " +
+                                         "area_aggregation of " +
+                                         "Forecast.plot_warn_map() must both be " +
+                                         "floats between [0..1]. Which each " +
+                                         "specify quantiles.")
                     # decision at each grid_point
                     probabilities = np.squeeze(np.asarray((self._impact[haz_ind].imp_mat >= warn_thres_i).sum(axis=0) / self._impact[haz_ind].event_id.size))
                     # quantiles over probability
@@ -710,10 +710,10 @@ class Forecast():
                         value_per_member = np.mean(self._impact[haz_ind].imp_mat[:,in_geom].todense(),
                                                          axis=1)
                     else:
-                        ValueError("Parameter area_aggregation of " +
-                                   "Forecast.plot_warn_map() must eiter be " +
-                                   "a float between [0..1], which " +
-                                   "specifys a quantile. or 'sum' or 'mean'.")
+                        raise ValueError("Parameter area_aggregation of " +
+                                         "Forecast.plot_warn_map() must eiter be " +
+                                         "a float between [0..1], which " +
+                                         "specifys a quantile. or 'sum' or 'mean'.")
                     #aggregation over members/probability
                     if isinstance(decision_dict['probability_aggregation'], float):
                         value_per_region = np.percentile(value_per_member,
@@ -723,17 +723,17 @@ class Forecast():
                     elif  decision_dict['probability_aggregation']=='mean':
                         value_per_region = np.mean(value_per_member)
                     else:
-                        ValueError("Parameter probability_aggregation of " +
-                                   "Forecast.plot_warn_map() must eiter be " +
-                                   "a float between [0..1], which " +
-                                   "specifys a quantile. or 'sum' or 'mean'.")
+                        raise ValueError("Parameter probability_aggregation of " +
+                                         "Forecast.plot_warn_map() must eiter be " +
+                                         "a float between [0..1], which " +
+                                         "specifys a quantile. or 'sum' or 'mean'.")
                     #warn level decision
                     if value_per_region >= warn_thres_i:
                         warn_level = ind_i+1
                 else:
-                    ValueError("Parameter decision_level of " +
-                               "Forecast.plot_warn_map() must eiter be " +
-                               "'grid_point' or 'polygon'.")
+                    raise ValueError("Parameter decision_level of " +
+                                     "Forecast.plot_warn_map() must eiter be " +
+                                     "'exposure_point' or 'polygon'.")
             # plot warn_region with specific color (dependent on warning level)
             axis.add_geometries([geom2],
                                 crs=ccrs.PlateCarree(),
