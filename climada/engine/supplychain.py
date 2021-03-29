@@ -37,77 +37,83 @@ LOGGER = logging.getLogger(__name__)
 WIOD_FILE_LINK = 'http://www.wiod.org/protected3/data16/wiot_ROW/'
 
 class SupplyChain():
-    """SupplyChain definition. It provides methods for the entire supplychain-risk
-    workflow and attributes holding the workflow's data and results.
+    """SupplyChain class.
 
-    Attributes:
-        mriot_data (np.array): 2-dim np.array of floats representing the data of
-            a full multi-regional input-output table (mriot).
-        countries_iso3 (np.array): similar to .countries, but containing the
-            countries' respective iso3-codes.
-        sectors (np.array): 1-dim np.array of strings containing the full
-            list of sectors represented in the mriot, corresponding to the columns/
-            rows of mriot_data. For these sectors risk calculations can be made.
-        total_prod (np.array): 1-dim arrays of floats representing the total
-            production value of each country/sector-pair, i.e. each sector's
-            total production per country.
-        mriot_type (str): short string describing the mriot used for analysis.
-        cntry_pos (dict): dict with positions of all countries in the
-            mriot table and output arrays.
-        cntry_dir_imp (list): list with countries with direct impacts.
-    Attributes storing results of risk calculations:
-        years (np.array): 1-dim np.array containing all years for which impact
-            calculations where made (in yyyy format).
-        direct_impact (np.array): 2-dim np.array containing an impact-YEAR-set
-            with direct impact per year on each country/sector-pair.
-        direct_aai_agg (np.array): 1-dim np.array containing the average annual
-            direct impact for each country/sector-pair.
-        indirect_impact (np.array): 2-dim np.array containing an impact-YEAR-set
-            with indirect impact per year on each country/sector-pair.
-        indirect_aai_agg (np.array): 1-dim np.array containing the average annual
-            indirect impact for each country/sector-pair.
-        total_impact (np.array): 2-dim array containing an impact-year-set with
-            total (i.e. sum direct+indirect) impact per year on each
-            country/sector-pair.
-        total_aai_agg (np.array): 1-dim np.array containing the average annual
-            total impact for each country/sector-pair.
-        io_data (dict): dictionary with four key:value-pairs:
-            coefficients (np.array): 2-dim np.array containing the technical or
-                allocation coefficient matrix, depending on employed io approach.
-            inverse (np.array): 2-dim np.array containing Leontief or Ghosh
-                inverse matrix, depending on employed io approach.
-            io_approach (str): string informing about which io approach was
-                used in calculation of indirect risk.
-            risk_structure (np.array): 3-dim np.array containing for each year
-                the risk relations between all sector/country-pairs.
-        """
+    The SupplyChain class provides methods for loading input-output tables and
+    computing direct, indirect and total impacts.
+
+    Attributes
+    ----------
+    mriot_data : np.array
+        The input-output table data.
+    countries_iso3 : np.array
+        Countries considered by the input-output table reported via ISO3 codes.
+    sectors : np.array
+        Sectors considered by the input-output table.
+    total_prod : np.array
+        Countries' total production.
+    mriot_type : str
+        Type of the adopted input-output table. Currently only WIOD tables
+        are supported.
+    cntry_pos : dict
+        Countrie's positions within the input-output tables and impact arrays.
+    cntry_dir_imp : list
+        Countries undergoing direct impacts.
+    years : np.array
+        Years of the considered hazard events for which impact is calculated.
+    direct_impact : np.array
+        Direct impact array.
+    direct_aai_agg : np.array
+        Average annual direct impact array.
+    indirect_impact : np.array
+        Indirect impact array.
+    indirect_aai_agg : np.array
+        Average annual indirect impact array.
+    total_impact : np.array
+        Total impact array.
+    total_aai_agg : np.array
+        Average annual total impact array.
+    io_data : dict
+        Dictionary with the coefficients, inverse and risk_structure matrixes and
+        the selected input-output approach.
+    """
+
     def __init__(self):
-        """Initialization"""
+        """Initialize SupplyChain."""
         self.mriot_data = np.array([], dtype='f')
         self.countries_iso3 = np.array([], dtype='str')
         self.sectors = np.array([], dtype='str')
         self.total_prod = np.array([], dtype='f')
-        self.mriot_type = 'None'
+        self.mriot_type = ''
         self.cntry_pos = {}
+        self.years = np.array([], dtype='f')
+        self.direct_impact = np.array([], dtype='f')
+        self.direct_aai_agg = np.array([], dtype='f')
+        self.indirect_impact = np.array([], dtype='f')
+        self.indirect_aai_agg = np.array([], dtype='f')
+        self.total_impact = np.array([], dtype='f')
+        self.total_aai_agg = np.array([], dtype='f')
+        self.io_data = {}
 
     def read_wiod(self, year=2014, file_folder=SYSTEM_DIR.joinpath('results')):
-        """Read multi-regional input-output table of the WIOD project.
-        See www.wiod.org and the following paper: Timmer, M. P., Dietzenbacher,
-        E., Los, B., Stehrer, R. and de Vries, G. J. (2015), "An Illustrated
-        User Guide to the World Input–Output Database: the Case of Global
-        Automotive Production", Review of International Economics., 23: 575–605
+        """Read multi-regional input-output table of the WIOD project
+        http://www.wiod.org/database/wiots16
 
-        The function supports WIOD tables release available here:
-            http://www.wiod.org/database/wiots16
+        Parameters
+        ----------
+        year : int
+            Year of WIOD table to use. Valid years go from 2000 to 2014.
+            Default year is 2014.
+        file_path : str
+            Path to folder where the WIOD table is stored. Default is SYSTEM_DIR/results.
+            If data are not present, they are downloaded.
 
-        Parameters:
-            year (int): Year of wiot table. Valid years go from 2000 to 2014.
-                        Default 2014.
-            file_path (str): Path to folder where the wiod table is stored.
-                            Deafult is SYSTEM_DIR. If data are not present, they
-                            will be downloaded in save_dir, i.e., ~/climada/data/results
-                            If user-defined, user_data must be set to True
-            Default values of the last four args allow reading the full wiot table.
+        References
+        ----------
+        [1] Timmer, M. P., Dietzenbacher, E., Los, B., Stehrer, R. and de Vries, G. J.
+        (2015), "An Illustrated User Guide to the World Input–Output Database: the Case
+        of Global Automotive Production", Review of International Economics., 23: 575–605
+
         """
 
         file_name = 'WIOT{}_Nov16_ROW.xlsb'.format(year)
@@ -140,31 +146,31 @@ class SupplyChain():
         self.mriot_type = 'wiod'
 
     def calc_sector_direct_impact(self, hazard, exposure, imp_fun_set,
-                                  sector_type='service', selected_subsec=None):
-        """Calculate for each country/sector-combination the direct impact per year.
-        I.e. compute one year impact set for each country/sector combination. Returns
-        the notion of a supplychain year impact set, which is a dataframe with size
-        (n years) * ((n countries)*(n sectors)).
+                                  selected_subsec="service"):
+        """Calculate direct impacts.
 
         Parameters:
-            hazard (Hazard): Hazard object for impact calculation.
-            exposure (Exposures): Exposures object for impact calculation.
-            imp_fun_set (ImpactFuncSet): Set of impact functions.
-            selected_subsec (list): User-defined list with positions of the
-                                    subsector to analyze. Default None.
-            sector_type (str): If sec_subsec is not defined; it sets the start
-                and end positions in the mriot tablefor some default sectors.
-                Possible values are "service", "manufacturing", "agriculture"
-                and "mining". Either sec_subsec or sector_type must be defined.
+        ----------
+        hazard : Hazard
+            Hazard object for impact calculation.
+        exposure : Exposures
+            Exposures object for impact calculation.
+        imp_fun_set : ImpactFuncSet
+            Set of impact functions.
+        selected_subsec : str or list
+            Positions of the selected sectors. These positions can be either
+            defined by the user by passing a list of values, or by using built-in
+            sectors' aggregations passing a string with possible values being
+            "service", "manufacturing", "agriculture" or "mining". Default is "service".
+
         """
 
-        if not selected_subsec:
+        if isinstance(selected_subsec, str):
             built_in_subsec_pos = {'service': range(26, 56),
                                    'manufacturing': range(4, 23),
                                    'agriculture': range(0, 1),
                                    'mining': range(3, 4)}
-
-            selected_subsec = built_in_subsec_pos[sector_type]
+            selected_subsec = built_in_subsec_pos[selected_subsec]
 
         dates = [
             dt.datetime.strptime(date, "%Y-%m-%d")
@@ -172,8 +178,7 @@ class SupplyChain():
             ]
         self.years = np.unique([date.year for date in dates])
 
-        unique_regid_same_order = exposure.gdf.region_id.unique()   
-        # n_subsecs = end_pos - init_pos
+        unique_regid_same_order = exposure.gdf.region_id.unique()
         self.direct_impact = np.zeros(shape=(len(self.years),
                                              len(self.countries_iso3)*len(self.sectors)))
 
@@ -199,16 +204,16 @@ class SupplyChain():
                 cntry_iso3 = 'ROW'
 
             self.cntry_dir_imp.append(cntry_iso3)
-            
+
             subsec_cntry_pos = np.array(selected_subsec) + self.cntry_pos[cntry_iso3][0]
             subsec_cntry_prod = self.mriot_data[subsec_cntry_pos].sum(axis=1)
 
             imp_year_set = np.repeat(imp_year_set, len(selected_subsec)
-                                     ).reshape(len(self.years), 
+                                     ).reshape(len(self.years),
                                                len(selected_subsec))
             direct_impact_cntry = np.multiply(imp_year_set, subsec_cntry_prod)
 
-            # Sum needed below in case of many ROWs, which are aggregated into 
+            # Sum needed below in case of many ROWs, which are aggregated into
             # one country as per WIOD table.
             self.direct_impact[:, subsec_cntry_pos] += direct_impact_cntry.astype(np.float32)
 
@@ -216,20 +221,23 @@ class SupplyChain():
         self.direct_aai_agg = self.direct_impact.mean(axis=0)
 
     def calc_indirect_impact(self, io_approach='ghosh'):
-        """Estimate indirect impact based on direct impact using input-output (IO)
-        methodology. There are three IO approaches to choose from (see Parameters).
-            [1] Standard Input-Output (IO) Model;
-                W. W. Leontief, Output, employment, consumption, and investment,
-                The Quarterly Journal of Economics 58 (2) 290?314, 1944
-            [2] Ghosh Model;
-                Ghosh, A., Input-Output Approach in an Allocation System,
-                Economica, New Series, 25, no. 97: 58-64. doi:10.2307/2550694, 1958
-            [3] Environmentally Extended Input-Output Analysis (EEIOA);
-                Kitzes, J., An Introduction to Environmentally-Extended Input-Output Analysis,
-                Resources 2013, 2, 489-503; doi:10.3390/resources2040489, 2013
-        Parameters:
-            io_approach (str): string specifying which IO approach the user would
-                like to use. Either 'leontief', 'ghosh' (default) or 'eeioa'.
+        """Calculate indirect impacts according to the specified input-output
+        appraoch. This function needs to be run after calc_sector_direct_impact.
+
+        Parameters
+        ----------
+        io_approach : str
+            The adopted input-output modeling approach. Possible approaches
+            are 'leontief', 'ghosh' and 'eeioa'. Default is 'gosh'.
+
+        References
+        ----------
+        [1] W. W. Leontief, Output, employment, consumption, and investment,
+        The Quarterly Journal of Economics 58, 1944.
+        [2] Ghosh, A., Input-Output Approach in an Allocation System,
+        Economica, New Series, 25, no. 97: 58-64. doi:10.2307/2550694, 1958.
+        [3] Kitzes, J., An Introduction to Environmentally-Extended Input-Output
+        Analysis, Resources, 2, 489-503; doi:10.3390/resources2040489, 2013.
         """
 
         io_switch = {'leontief': self._leontief_calc, 'ghosh': self._ghosh_calc,
@@ -281,17 +289,16 @@ class SupplyChain():
 
         self.io_data = {}
         self.io_data.update({'coefficients': coefficients, 'inverse': inverse,
-                             'risk_structure' : risk_structure, 
+                             'risk_structure' : risk_structure,
                              'io_approach' : io_approach})
 
     def calc_total_impact(self):
-        """Calculates the total impact and total average annual impact on each
-        country/sector """
+        """Calculate total impacts summing direct and indirect impacts."""
         self.total_impact = self.indirect_impact + self.direct_impact
         self.total_aai_agg = self.total_impact.mean(axis=0)
 
     def _leontief_calc(self, direct_intensity, inverse, risk_structure, year_i):
-        """It calculates the risk_structure based on the Leontief approach"""
+        """Calculate the risk_structure based on the Leontief approach."""
         demand = self.total_prod - np.nansum(self.mriot_data, axis=1)
         degr_demand = direct_intensity*demand
         for idx, row in enumerate(inverse):
@@ -299,7 +306,7 @@ class SupplyChain():
         return risk_structure
 
     def _ghosh_calc(self, direct_intensity, inverse, risk_structure, year_i):
-        """It calculates the risk_structure based on the Ghosh approach"""
+        """Calculate the risk_structure based on the Ghosh approach."""
         value_added = self.total_prod - np.nansum(self.mriot_data, axis=0)
         degr_value_added = np.maximum(direct_intensity*value_added,\
                                       np.zeros_like(value_added))
@@ -309,8 +316,7 @@ class SupplyChain():
         return risk_structure
 
     def _eeioa_calc(self, direct_intensity, inverse, risk_structure, year_i):
-        """It calculates the risk_structure based on the EEIOA approach"""
-
+        """Calculate the risk_structure based on the EEIOA approach."""
         for idx, col in enumerate(inverse.T):
             risk_structure[:, idx, year_i] = (direct_intensity * col) * self.total_prod[idx]
         return risk_structure
