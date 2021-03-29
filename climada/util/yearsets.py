@@ -88,13 +88,13 @@ def impact_yearset(event_impacts, sampled_years=None, sampling_vect=None):
     annual_impacts.at_event = np.zeros([1, n_sampled_years+1])
     annual_impacts.date = []
 
-    #generate sampling vector if not given as input
+    #create sampling vector if not given as input
     if not sampling_vect:
         n_annual_events = np.sum(event_impacts.frequency)
         n_input_events = len(event_impacts.event_id)
         sampling_vect = create_sampling_vector(n_sampled_years, n_annual_events,
                                                n_input_events)
-    
+
     #compute annual_impacts
     impact_per_year = compute_annual_impacts(event_impacts, n_sampled_years,
                                              sampling_vect)
@@ -113,7 +113,6 @@ def impact_yearset(event_impacts, sampled_years=None, sampling_vect=None):
 
 
     return annual_impacts, sampling_vect
-
 
 def create_sampling_vector(n_sampled_years, n_annual_events, n_input_events):
     """Sample amount of events per year following a Poisson distribution
@@ -161,14 +160,13 @@ def sample_events(tot_n_events, n_input_events):
 
     repetitions = np.ceil(tot_n_events/n_input_events).astype('int')
     indeces = np.tile(np.arange(n_input_events), repetitions)
-    
+
     rng = default_rng()
-    selected_events = rng.choice(indeces, size=tot_n_events, 
+    selected_events = rng.choice(indeces, size=tot_n_events,
                                  replace=False).astype('int')
 
 
     return selected_events
-
 
 def compute_annual_impacts(event_impacts, n_sampled_years, sampling_vect):
     """Sample annual impacts from the given event_impacts
