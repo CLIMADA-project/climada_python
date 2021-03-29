@@ -27,7 +27,8 @@ def impact_yearset(event_impacts, sampled_years=None, sampling_vect=None):
     """PURPOSE:
       Create an annual_impacts object containing a probabilistic impact for each year
       in the sampled_years list (or a list generated with the length of given sampled_years)
-      by sampling events from the existing input event_impacts.
+      by sampling events from the existing input event_impacts with a Poisson distribution centered
+      around n_events = sum(event_impacts.frequency).
 
     INPUTS:
       event_impacts (impact object): impact per event
@@ -159,7 +160,7 @@ def sample_events(tot_n_events, n_input_events):
       """
 
     repetitions = np.ceil(tot_n_events/n_input_events).astype('int')
-    indeces = np.tile(np.arange(n_input_events), repetitions)
+    indices = np.tile(np.arange(n_input_events), repetitions)
 
     rng = default_rng()
     selected_events = rng.choice(indeces, size=tot_n_events,
