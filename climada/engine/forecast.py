@@ -25,6 +25,8 @@ __all__ = ['Forecast']
 
 import logging
 import datetime as dt
+import math
+
 import numpy as np
 from pathlib import Path
 import matplotlib.pyplot as plt
@@ -67,7 +69,7 @@ COLORS_WARN = np.array([[204 / 255, 255 / 255, 102 / 255, 1],  # green
                         [255 / 255, 0 / 255, 0 / 255, 1],  # red
                         [128 / 255, 0 / 255, 0 / 255, 1],  # dark red
                         ])
-#colors for warning probabilities
+# colors for warning probabilities
 warnprob_colors = np.array([[255 / 255, 255 / 255, 255 / 255, 1],  # white
                             [215 / 255, 227 / 255, 238 / 255, 1],  # lightest blue
                             [181 / 255, 202 / 255, 255 / 255, 1],  # ligthblue
@@ -87,7 +89,6 @@ impact_colors = color_map_pre(np.linspace(0, 1, 90))
 white_extended = np.repeat([[255 / 255, 255 / 255, 255 / 255, 1]], 10, axis=0)
 impact_colors_extended = np.append(white_extended, impact_colors, axis=0)
 CMAP_IMPACT = ListedColormap(impact_colors_extended)
-
 
 class Forecast():
     """Forecast definition. Compute an impact forecast with predefined hazard
@@ -109,8 +110,8 @@ class Forecast():
                  hazard_dict,
                  exposure,
                  impact_funcs,
-                 haz_model = None,
-                 exposure_name = None):
+                 haz_model=None,
+                 exposure_name=None):
         """ Initialization with hazard, exposure and vulnerability. 
         Parameters:
             hazard_dict (dict, {datetime.datetime: Hazard}): dictionary of the
@@ -139,12 +140,12 @@ class Forecast():
                        'events with different event_dates and the Forecast ' +
                        'class cannot function proberly with such hazards.')
         self.event_date = dt.datetime.fromordinal(np.unique(hazard_dates)[0])
-        if haz_model == None:
+        if haz_model is None:
             self.haz_model = 'NWP'
         else:
             self.haz_model = haz_model
         self.exposure = exposure
-        if exposure_name == None:
+        if exposure_name is None:
             try:
                 self.exposure_name = iso_cntry.get(exposure.gdf.region_id.unique()[0]).name
             except:
@@ -154,14 +155,14 @@ class Forecast():
         self.vulnerability = impact_funcs
         self._impact = [Impact() for i in range(len(self.run_datetime))]
 
-    def ei_exp(self, run_datetime = None):
-        if run_datetime == None:
+    def ei_exp(self, run_datetime=None):
+        if run_datetime is None:
             run_datetime = self.run_datetime[0]
         haz_ind = np.argwhere(np.isin(self.run_datetime, run_datetime))[0][0]
         return self._impact[haz_ind].eai_exp
 
     def ai_agg(self, run_datetime = None):
-        if run_datetime == None:
+        if run_datetime is None:
             run_datetime = self.run_datetime[0]
         haz_ind = np.argwhere(np.isin(self.run_datetime, run_datetime))[0][0]
         return self._impact[haz_ind].aai_agg
@@ -172,7 +173,7 @@ class Forecast():
             run_datetime (datetime.datetime, optional): select the used hazard
                 by the run_datetime
         """
-        if run_datetime == None:
+        if run_datetime is None:
             run_datetime = self.run_datetime[0]
         haz_ind = np.argwhere(np.isin(self.run_datetime, run_datetime))[0][0]
         return (self.hazard[haz_ind].tag.haz_type +
@@ -184,13 +185,13 @@ class Forecast():
                 self.event_date.strftime('%Y%m%d')
                 )
 
-    def summary_str(self, run_datetime = None):
+    def summary_str(self, run_datetime=None):
         """ provide a summary string for the impact forecast
         Parameters:
             run_datetime (datetime.datetime, optional): select the used hazard
                 by the run_datetime
         """
-        if run_datetime == None:
+        if run_datetime is None:
             run_datetime = self.run_datetime[0]
         haz_ind = np.argwhere(np.isin(self.run_datetime, run_datetime))[0][0]
         return (self.haz_summary_str(run_datetime) +
@@ -198,13 +199,13 @@ class Forecast():
                 self.exposure_name
                 )
 
-    def lead_time(self, run_datetime = None):
+    def lead_time(self, run_datetime=None):
         """ provide the lead time for the impact forecast
         Parameters:
             run_datetime (datetime.datetime, optional): select the used hazard
                 by the run_datetime
         """
-        if run_datetime == None:
+        if run_datetime is None:
             run_datetime = self.run_datetime[0]
         haz_ind = np.argwhere(np.isin(self.run_datetime, run_datetime))[0][0]
         return self.event_date - run_datetime
@@ -214,7 +215,7 @@ class Forecast():
         exposure, hazard, and vulnerabilty. """
         # generate folders
         if not Path(FORECAST_PLOT_DIR).exists():
-            Path(FORECAST_PLOT_DIR).mkdir(parents=True)     
+            Path(FORECAST_PLOT_DIR).mkdir(parents=True)
 
         # force reassign
         if force_reassign:
@@ -229,7 +230,7 @@ class Forecast():
                 self._impact[ind_i].plot_hexbin_eai_exposure()
 
     def plot_imp_map(self,
-                     run_datetime = None,
+                     run_datetime=None,
                      save_fig=True,
                      close_fig=True,
                      shapes_file=None):
@@ -243,7 +244,7 @@ class Forecast():
                 in crs=epsg(21781)
         """
         # select hazard with run_datetime
-        if run_datetime == None:
+        if run_datetime is None:
             run_datetime = self.run_datetime[0]
         haz_ind = np.argwhere(np.isin(self.run_datetime, run_datetime))[0][0]
         # plot impact map of all runs
@@ -261,10 +262,9 @@ class Forecast():
                       'model_text': "CLIMADA IMPACT"}
         f, ax = self._plot_imp_map(
                              run_datetime,
-                             mask=self._impact[haz_ind].eai_exp > 1000,
                              title=title_dict,
                              cbar_label=('forecasted damage per gridcell [' +
-                                         self._impact[haz_ind].unit + 
+                                         self._impact[haz_ind].unit +
                                          ']'),
                              polygon_file=shapes_file
                              )
@@ -274,9 +274,9 @@ class Forecast():
             f.clf()
             plt.close(f)
 
-    def _plot_imp_map(self, run_datetime, mask, title, cbar_label, polygon_file = None):
+    def _plot_imp_map(self, run_datetime, title, cbar_label, polygon_file=None):
         # select hazard with run_datetime
-        if run_datetime == None:
+        if run_datetime is None:
             run_datetime = self.run_datetime[0]
         haz_ind = np.argwhere(np.isin(self.run_datetime, run_datetime))[0][0]
         # tryout new plot with right projection
@@ -315,13 +315,9 @@ class Forecast():
             if coord.shape[0] != array_im.size:
                 raise ValueError("Size mismatch in input array: %s != %s." % \
                                  (coord.shape[0], array_im.size))
-    
             # Binned image with coastlines
             extent = u_plot._get_borders(coord)
             axis.set_extent((extent), ccrs.PlateCarree())
-            # if pop_name:
-            #     u_plot.add_populated_places(axis, extent, proj)
-    
             hex_bin = axis.scatter(coord[:, 1], coord[:, 0], c=array_im, \
                                    transform=ccrs.PlateCarree(), **kwargs)
             if shapes:
@@ -333,10 +329,8 @@ class Forecast():
                     geom2 = shapely.ops.transform(project_crs, geometry)
                     axis.add_geometries([geom2], crs=ccrs.PlateCarree(), facecolor='', \
                                         edgecolor='gray')
-                
             else: # add country boundaries
                 u_plot.add_shapes(axis)
-
             # Create colorbar in this axis
             cbax = make_axes_locatable(axis).append_axes('bottom', size="6.5%", \
                                                          pad=0.3, axes_class=plt.Axes)
@@ -355,10 +349,10 @@ class Forecast():
 
             plt.subplots_adjust(top=0.8)
             # axis.set_extent((5.70, 10.49, 45.7, 47.81), crs=ccrs.PlateCarree())
-    
+
         return fig, axis
 
-    def plot_hist(self,run_datetime = None, save_fig=True,close_fig=True):
+    def plot_hist(self, run_datetime=None, save_fig=True, close_fig=True):
         """ plot histogram of the forecasted impacts all ensemble members
         Parameters:
             run_datetime (datetime.datetime, optional): select the used hazard
@@ -367,7 +361,7 @@ class Forecast():
             close_fig (bool): True default to close the figure
         """
         # select hazard with run_datetime
-        if run_datetime == None:
+        if run_datetime is None:
             run_datetime = self.run_datetime[0]
         haz_ind = np.argwhere(np.isin(self.run_datetime, run_datetime))[0][0]
         # plot histogram of all runs
@@ -387,28 +381,13 @@ class Forecast():
                  weights=np.ones(len(self._impact[haz_ind].at_event)) / len(self._impact[haz_ind].at_event))
         ax.yaxis.set_major_formatter(PercentFormatter(1))
         formatter = ScalarFormatter()
-        formatter.set_scientific(False)
-        #                        formatter.format = "%:'.0f"
+        formatter.set_scientific(False) #formatter.format = "%:'.0f"
         ax.xaxis.set_major_formatter(formatter)
-    
+
         x_ticklabels = list()
         x_ticks = list()
-        ticklabel_dict = {1: "1",
-                          10: "10",
-                          100: "100",
-                          1000: "1'000",
-                          10000: "10'000",
-                          100000: "100'000",
-                          1000000: "1 million",
-                          10000000: "10 million",
-                          100000000: "100 million",
-                          1000000000: "1 billion",
-                          10000000000: "10 billion",
-                          100000000000: "100 billion",
-                          1000000000000: "1 trillion",
-                          10000000000000: "10 trillion",
-                          100000000000000: "100 trillion",
-                          }
+        ticklabel_dict = {pow(10, i): self._number_to_str(pow(10, i)) for i in range(0, 15)} #turn int to str
+
         for i in np.arange(15):
             tick_i = 10.0 ** i
             x_ticks.append(tick_i)
@@ -417,11 +396,7 @@ class Forecast():
         ax.xaxis.set_ticklabels(x_ticklabels)
         plt.xticks(rotation=15, horizontalalignment='right')
         plt.xlim([(10 ** -0.25) * bins[0], (10 ** 0.25) * bins[-1]])
-        #                        plt.title('COSMO-E impact forecast\n'+
-        #                                  'for ' + event_day.strftime('%A, %d.%m.%Y') +
-        #                                  '\n' +
-        #                                  'run started at ' +
-        #                                  each_run.strftime('%d.%m.%Y %H:%M'))
+
         lead_time_str = '{:.0f}'.format(self.lead_time(run_datetime).days + self.lead_time(run_datetime).seconds/60/60/24) # cant show '2' and '2.5'
         title_dict = {'event_day': self.event_date.strftime('%a %d %b %Y 00-24UTC'),
                       'run_start': run_datetime.strftime('%d.%m.%Y %HUTC +') + lead_time_str + 'd',
@@ -449,8 +424,14 @@ class Forecast():
             plt.clf()
             plt.close(f)
 
+    def _number_to_str(n):
+        number_names = ['', ' thousand', ' million', ' billion', ' trillion']
+        millidx = max(0, min(len(number_names) - 1,
+                             int(math.floor(0 if n == 0 else math.log10(abs(n)) / 3))))
+        return '{:.0f}{}'.format(n / 10 ** (3 * millidx), number_names[millidx])
+
     def plot_exceedence_prob(self, threshold, explain_str=None,
-                             run_datetime = None, save_fig=True,close_fig=True):
+                             run_datetime=None, save_fig=True, close_fig=True):
         """ plot exceedence map
         Parameters:
             threshold (float): threshold of impact unit for which exceedence
@@ -463,7 +444,7 @@ class Forecast():
             close_fig (bool): True default to close the figure
         """
         # select hazard with run_datetime
-        if run_datetime == None:
+        if run_datetime is None:
             run_datetime = self.run_datetime[0]
         haz_ind = np.argwhere(np.isin(self.run_datetime, run_datetime))[0][0]
         wind_map_file_name = (self.summary_str(run_datetime) +
@@ -471,14 +452,15 @@ class Forecast():
                  str(threshold) +
                  '_map.jpeg')
         wind_map_file_name_full = Path(FORECAST_PLOT_DIR) / wind_map_file_name
-        lead_time_str = '{:.0f}'.format(self.lead_time(run_datetime).days + self.lead_time(run_datetime).seconds/60/60/24) # cant show '2' and '2.5'
+        lead_time_str = '{:.0f}'.format(self.lead_time(run_datetime).days +
+                                        self.lead_time(run_datetime).seconds/60/60/24) # cant show '2' and '2.5'
         title_dict = {'event_day': self.event_date.strftime('%a %d %b %Y 00-24UTC'),
                       'run_start': run_datetime.strftime('%d.%m.%Y %HUTC +') + lead_time_str + 'd',
                       'explain_text': ('threshold: ' +
                                        str(threshold) +
                                        ' ' +
                                        self._impact[haz_ind].unit) if explain_str is None else explain_str,
-                      'model_text': 'Exceedance probability map'}
+                                       'model_text': 'Exceedance probability map'}
         cbar_label = 'probabilty of reaching threshold'
         f, ax = self._plot_exc_prob(run_datetime, threshold, title_dict, cbar_label)
         if save_fig:
@@ -487,10 +469,10 @@ class Forecast():
             plt.clf()
             plt.close(f)
 
-    def _plot_exc_prob(self, run_datetime, threshold, title, cbar_label, polygon_file = None, mask = None):
+    def _plot_exc_prob(self, run_datetime, threshold, title, cbar_label, polygon_file=None, mask=None):
         """  plot the probability of reaching a threshold """
         # select hazard with run_datetime
-        if run_datetime == None:
+        if run_datetime is None:
             run_datetime = self.run_datetime[0]
         haz_ind = np.argwhere(np.isin(self.run_datetime, run_datetime))[0][0]
         extend = 'neither'
@@ -498,17 +480,11 @@ class Forecast():
             crs_epsg = ccrs.epsg(2056)
         except:
             crs_epsg = ccrs.Mercator()
-    
-        #    title = "title"
-        #    cbar_label = 'Value ()'
+
         value = np.squeeze(np.asarray((self._impact[haz_ind].imp_mat > threshold).sum(axis=0) / self._impact[haz_ind].event_id.size))
         if mask is not None:
             value[np.invert(mask)] = np.nan
-        #    value[value==0] = np.nan
         coord = self._impact[haz_ind].coord_exp
-        # u_plot.geo_scatter_from_array(value, coord, cbar_label, title, \
-        #    pop_name, buffer, extend, proj=crs_epsg)
-    
         # Generate array of values used in each subplot
         array_sub = value
         shapes = True
@@ -522,12 +498,12 @@ class Forecast():
         list_tit = to_list(num_im, title, 'title')
         list_name = to_list(num_im, var_name, 'var_name')
         list_coord = to_list(num_im, geo_coord, 'geo_coord')
-    
+
         kwargs = dict()
         kwargs['cmap'] = CMAP_WARNPROB
         kwargs['s'] = 5
         kwargs['marker'] = ','
-        kwargs['norm'] = BoundaryNorm([0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0], CMAP_WARNPROB.N, clip=True)
+        kwargs['norm'] = BoundaryNorm(np.linspace(0,1,11), CMAP_WARNPROB.N, clip=True)
 
         # Generate each subplot
         fig, axis_sub = u_plot.make_map(num_im, proj=proj)
@@ -538,7 +514,7 @@ class Forecast():
             if coord.shape[0] != array_im.size:
                 raise ValueError("Size mismatch in input array: %s != %s." % \
                                  (coord.shape[0], array_im.size))
-    
+
             hex_bin = axis.scatter(coord[:, 1], coord[:, 0], c=array_im, \
                                    transform=ccrs.PlateCarree(), **kwargs)
             if shapes:
@@ -550,9 +526,7 @@ class Forecast():
                     geom2 = shapely.ops.transform(project_crs, geometry)
                     axis.add_geometries([geom2], crs=ccrs.PlateCarree(), facecolor='', \
                                         edgecolor='gray')
-                # add country boundaries
-            #            u_plot.add_shapes(axis)
-    
+
             # Create colorbar in this axis
             cbax = make_axes_locatable(axis).append_axes('bottom', size="6.5%", \
                                                          pad=0.3, axes_class=plt.Axes)
@@ -565,21 +539,19 @@ class Forecast():
             color = {'model_text': 'k', 'explain_text': 'r', 'event_day': 'k', 'run_start': 'k'}
             [plt.figtext(title_position[t][0], title_position[t][1], tit[t], fontsize='xx-large', color=color[t],
                          ha=left_right[t]) for t in tit]
-
-            #        axis.set_title(tit)
             axis.set_extent((5.70, 10.49, 45.7, 47.81), crs=ccrs.PlateCarree())
-    
+
         return fig, axis
-    
-    def plot_warn_map(self, polygon_file = None,
-                      polygon_file_crs = 'epsg:4326',
-                      thresholds = [2,3,4,5],
-                      decision_level = 'exposure_point',
-                      probability_aggregation = 0.5, area_aggregation = 0.5,
-                      title = 'WARNINGS',
-                      explain_text =  'warn level based on thresholds',
-                      run_datetime = None,
-                      save_fig=True,close_fig=True):
+
+    def plot_warn_map(self, polygon_file=None,
+                      polygon_file_crs='epsg:4326',
+                      thresholds='default',
+                      decision_level='exposure_point',
+                      probability_aggregation=0.5, area_aggregation=0.5,
+                      title='WARNINGS',
+                      explain_text='warn level based on thresholds',
+                      run_datetime=None,
+                      save_fig=True, close_fig=True):
         """ plot map colored with 5 warning colors for all regions in provided
         shape file.
         Parameters:
@@ -599,7 +571,9 @@ class Forecast():
             close_fig (bool): True default to close the figure
         """
         # select hazard with run_datetime
-        if run_datetime == None:
+        if thresholds == 'default':
+            thresholds = [2, 3, 4, 5]
+        if run_datetime is None:
             run_datetime = self.run_datetime[0]
         haz_ind = np.argwhere(np.isin(self.run_datetime, run_datetime))[0][0]
         warn_map_file_name = (self.summary_str(run_datetime) +
@@ -627,30 +601,22 @@ class Forecast():
                    title):
         """ plotting the warning level of each warning region based on thresholds """
         # select hazard with run_datetime
-        if run_datetime == None:
+        if run_datetime is None:
             run_datetime = self.run_datetime[0]
         haz_ind = np.argwhere(np.isin(self.run_datetime, run_datetime))[0][0]
         try:
             crs_epsg = ccrs.epsg(2056)
         except:
             crs_epsg = ccrs.Mercator()
-    
-        # u_plot.geo_scatter_from_array(value, coord, cbar_label, title, \
-        #    pop_name, buffer, extend, proj=crs_epsg)
-    
-        # Generate array of values used in each subplot
-
         proj = crs_epsg
 
-
-
-    
         kwargs = dict()
         kwargs['cmap'] = CMAP_WARNPROB
         kwargs['s'] = 5
         kwargs['marker'] = ','
-        kwargs['norm'] = BoundaryNorm([0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0], CMAP_WARNPROB.N, clip=True)
-    
+        kwargs['norm'] = BoundaryNorm(np.linspace(0,1,11),
+                                      CMAP_WARNPROB.N, clip=True)
+
         # Generate each subplot
         fig, axis = u_plot.make_map(1, proj=proj)
         if isinstance(axis, np.ndarray):
@@ -658,76 +624,71 @@ class Forecast():
         tit = title
         fig.set_size_inches(9, 8)
 
-
-    
         # add warning regions
         shp = shapereader.Reader(polygon_file)
         transformer = pyproj.Transformer.from_crs(polygon_file_crs,
                                                   # self._impact.crs['init'],
                                                   self._impact[haz_ind].crs,
                                                   always_xy=True)
-        # project_crs = lambda x, y: pyproj.transform(pyproj.Proj(init='epsg:21781'),
-        #                                             pyproj.Proj(init='epsg:4150'),
-        #                                             x, y)
+        # checking the decision dict and define the corresponding functions
+        if not (isinstance(decision_dict['probability_aggregation'], float)
+                &
+                isinstance(decision_dict['area_aggregation'], float)):
+            ValueError(" If decision_level is 'grid_point'," +
+                       "parameters probability_aggregation and " +
+                       "area_aggregation of " +
+                       "Forecast.plot_warn_map() must both be " +
+                       "floats between [0..1]. Which each " +
+                       "specify quantiles.")
+        decision_dict_functions = decision_dict.copy()
+        for aggregation in decision_dict:
+            if isinstance(decision_dict[aggregation], float):
+                decision_dict_functions[aggregation] = np.percentile
+            elif decision_dict[aggregation] == 'sum':
+                decision_dict_functions[aggregation] = np.sum
+            elif decision_dict[aggregation] == 'mean':
+                decision_dict_functions[aggregation] = np.mean
+            else:
+                ValueError("Parameter area_aggregation of " +
+                           "Forecast.plot_warn_map() must eiter be " +
+                           "a float between [0..1], which " +
+                           "specifys a quantile. or 'sum' or 'mean'.")
+
         for geometry, record in zip(shp.geometries(), shp.records()):
             geom2 = shapely.ops.transform(transformer.transform, geometry)
-            # geom2 = shapely.ops.transform(project_crs, geometry)
             in_geom = u_coord_on_land(lat=self._impact[haz_ind].coord_exp[:, 0],
                                       lon=self._impact[haz_ind].coord_exp[:, 1],
-                                      land_geom=geom2) 
+                                      land_geom=geom2)
             if not in_geom.any():
                 continue
-            # decide warninglevel
+            # decide warning level
             warn_level = 0
             for ind_i, warn_thres_i in enumerate(thresholds):
                 if decision_level == 'exposure_point':
-                    if not (isinstance(decision_dict['probability_aggregation'], float)
-                            &
-                            isinstance(decision_dict['area_aggregation'], float)):
-                        ValueError(" If decision_level is 'grid_point'," +
-                                   "parameters probability_aggregation and " +
-                                   "area_aggregation of " +
-                                   "Forecast.plot_warn_map() must both be " +
-                                   "floats between [0..1]. Which each " +
-                                   "specify quantiles.")
                     # decision at each grid_point
-                    probabilities = np.squeeze(np.asarray((self._impact[haz_ind].imp_mat >= warn_thres_i).sum(axis=0) / self._impact[haz_ind].event_id.size))
+                    probabilities = np.squeeze(np.asarray((self._impact[haz_ind].imp_mat >= warn_thres_i).sum(axis=0)/
+                                                           self._impact[haz_ind].event_id.size))
                     # quantiles over probability
                     area = (probabilities[in_geom] >= decision_dict['probability_aggregation']).sum()
                     # quantiles over area
                     if area >= (in_geom.sum() * decision_dict['area_aggregation']):
                         warn_level = ind_i+1
                 elif decision_level == 'polygon':
-                    #aggregation over area
+                    # aggregation over area
                     if isinstance(decision_dict['area_aggregation'], float):
-                        value_per_member = np.percentile(self._impact[haz_ind].imp_mat[:,in_geom].todense(),
-                                                         decision_dict['area_aggregation'],
-                                                         axis=1)
-                    elif  decision_dict['area_aggregation']=='sum':
-                        value_per_member = np.sum(self._impact[haz_ind].imp_mat[:,in_geom].todense(),
-                                                         axis=1)
-                    elif  decision_dict['area_aggregation']=='mean':
-                        value_per_member = np.mean(self._impact[haz_ind].imp_mat[:,in_geom].todense(),
-                                                         axis=1)
+                        value_per_member = decision_dict_functions['area_aggregation']\
+                            (self._impact[haz_ind].imp_mat[:, in_geom].todense(), decision_dict['area_aggregation'], axis=1)
                     else:
-                        ValueError("Parameter area_aggregation of " +
-                                   "Forecast.plot_warn_map() must eiter be " +
-                                   "a float between [0..1], which " +
-                                   "specifys a quantile. or 'sum' or 'mean'.")
-                    #aggregation over members/probability
+                        value_per_member = decision_dict_functions['area_aggregation'] \
+                            (self._impact[haz_ind].imp_mat[:, in_geom].todense(),
+                             axis=1)
+                    # aggregation over members/probability
                     if isinstance(decision_dict['probability_aggregation'], float):
-                        value_per_region = np.percentile(value_per_member,
+                        value_per_region = decision_dict_functions['probability_aggregation'](value_per_member,
                                                          decision_dict['probability_aggregation'])
-                    elif  decision_dict['probability_aggregation']=='sum':
-                        value_per_region = np.sum(value_per_member)
-                    elif  decision_dict['probability_aggregation']=='mean':
-                        value_per_region = np.mean(value_per_member)
                     else:
-                        ValueError("Parameter probability_aggregation of " +
-                                   "Forecast.plot_warn_map() must eiter be " +
-                                   "a float between [0..1], which " +
-                                   "specifys a quantile. or 'sum' or 'mean'.")
-                    #warn level decision
+                        value_per_region = decision_dict_functions['probability_aggregation'](value_per_member)
+                    # warn level decision
                     if value_per_region >= warn_thres_i:
                         warn_level = ind_i+1
                 else:
@@ -741,23 +702,12 @@ class Forecast():
                                 edgecolor='gray')
 
         # Create legend in this axis
-        legend_elements = [
-            Patch(facecolor=COLORS_WARN[0, :],
-                  edgecolor='gray',
-                  label='1: Minimal or no hazard'),  # Warning level 1
-            Patch(facecolor=COLORS_WARN[1, :],
-                  edgecolor='gray',
-                  label='2: Moderate hazard'),
-            Patch(facecolor=COLORS_WARN[2, :],
-                  edgecolor='gray',
-                  label='3: Significant hazard'),
-            Patch(facecolor=COLORS_WARN[3, :],
-                  edgecolor='gray',
-                  label='4: Severe hazard'),
-            Patch(facecolor=COLORS_WARN[4, :],
-                  edgecolor='gray',
-                  label='5: Very severe hazard'),
-        ]
+        hazard_levels = ['1: Minimal or no hazard', '2: Moderate hazard',
+                         '3: Significant hazard', '4: Severe hazard', '5: Very severe hazard']
+        legend_elements = [Patch(facecolor=COLORS_WARN[n, :],
+                           edgecolor='gray',
+                           label=hazard_level) for n, hazard_level in enumerate(hazard_levels)]
+
         axis.legend(handles=legend_elements, loc='upper center', framealpha=0.5,
                     bbox_to_anchor=(0.5, -0.02), ncol=3)
         title_position = {'model_text': [0.02, 0.91], 'explain_text': [0.02, 0.87], 'event_day': [0.98, 0.91],
@@ -770,14 +720,14 @@ class Forecast():
         axis.set_extent((5.70, 10.49, 45.7, 47.81), crs=ccrs.PlateCarree())
         return fig, axis
 
-    def plot_hexbin_ei_exposure(self,run_datetime = None):
+    def plot_hexbin_ei_exposure(self, run_datetime=None):
         """ plot the expected impact
         Parameters:
             run_datetime (datetime.datetime, optional): select the used hazard
                 by the run_datetime
         """
         # select hazard with run_datetime
-        if run_datetime == None:
+        if run_datetime is None:
             run_datetime = self.run_datetime[0]
         haz_ind = np.argwhere(np.isin(self.run_datetime, run_datetime))[0][0]
         return self._impact[haz_ind].plot_hexbin_eai_exposure()
