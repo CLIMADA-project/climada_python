@@ -95,7 +95,7 @@ class SupplyChain():
         self.total_aai_agg = np.array([], dtype='f')
         self.io_data = {}
 
-    def read_wiod(self, year=2014, file_folder=SYSTEM_DIR.joinpath('results')):
+    def read_wiod16(self, year=2014, file_folder=SYSTEM_DIR.joinpath('results')):
         """Read multi-regional input-output table of the WIOD project
         http://www.wiod.org/database/wiots16
 

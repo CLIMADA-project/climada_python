@@ -37,7 +37,7 @@ class TestSupplyChain(unittest.TestCase):
     def test_read_wiot(self):
         """Test reading of wiod table."""
         sup = SupplyChain()
-        sup.read_wiod(year='test', file_path=DIR_TEST_DATA)
+        sup.read_wiod16(year='test', file_path=DIR_TEST_DATA)
 
         self.assertAlmostEqual(sup.mriot_data[0, 0], 12924.1797, places=3)
         self.assertAlmostEqual(sup.mriot_data[0, -1], 0, places=3)
@@ -60,7 +60,7 @@ class TestSupplyChain(unittest.TestCase):
         """Test running direct and indirect impact calculations."""
         
         sup = SupplyChain()
-        sup.read_wiod(year='test', file_path=DIR_TEST_DATA)
+        sup.read_wiod16(year='test', file_path=DIR_TEST_DATA)
 
         # Tropical cyclone over Florida and Caribbean
         hazard = Hazard('TC')
