@@ -22,7 +22,7 @@ import climada.util.dates_times as u_dt
 
 LOGGER = logging.getLogger(__name__)
 
-def impact_yearset(event_impacts, sampled_years=None, sampling_vect=None):
+def impact_yearset(event_impacts, sampled_years=None, sampling_vect=None, correction_fac=True):
 
     """PURPOSE:
       Create an annual_impacts object containing a probabilistic impact for each year
@@ -46,6 +46,8 @@ def impact_yearset(event_impacts, sampled_years=None, sampling_vect=None):
             i.e. [annual_impacts, sampling_vect] = climada_yearsets.impact_yearset(...)
             and can then be provided in subsequent calls(s) to obtain the exact same sampling
             (also for a different event_impacts object)
+        correction_fac (boolean): if True the resulting annual_impacts are scaled in such a way
+            that the expected annual impact (eai) of the annual_impacts = eai of events_impacts
 
     OUTPUTS:
       annual_impacts(impact object): annual impacts for all sampled_years
@@ -101,14 +103,13 @@ def impact_yearset(event_impacts, sampled_years=None, sampling_vect=None):
                                              sampling_vect)
 
 
-    #adjust for sampling error
-    correction_factor = calculate_correction_fac(impact_per_year, event_impacts)
-    # if correction_factor > 0.1:
-    #     tex = raw_input("Do you want to exclude small events?")
-
+    if correction_fac: #adjust for sampling error
+        correction_factor = calculate_correction_fac(impact_per_year, event_impacts)
+        annual_impacts.at_event = impact_per_year / correction_factor
+    else:
+        annual_impacts.at_event = impact_per_year
 
     annual_impacts.date = u_dt.str_to_date(year_list)
-    annual_impacts.at_event = impact_per_year / correction_factor
     annual_impacts.frequency = np.ones(n_sampled_years)*sum(sampling_vect['events_per_year']
                                                             )/n_sampled_years
 
@@ -218,5 +219,8 @@ def calculate_correction_fac(impact_per_year, event_impacts):
     event_impacts_eai = np.sum(event_impacts.frequency*event_impacts.at_event)
     correction_factor = event_impacts_eai/annual_impacts_eai
     LOGGER.info("The correction factor amounts to %s", (correction_factor-1)*100)
-
+    
+    # if correction_factor > 0.1:
+    #     tex = raw_input("Do you want to exclude small events?")
+    
     return correction_factor
