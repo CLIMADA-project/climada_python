@@ -88,15 +88,16 @@ def impact_yearset(event_impacts, sampled_years=None, sampling_vect=None):
     annual_impacts.at_event = np.zeros([1, n_sampled_years+1])
     annual_impacts.date = []
 
-    
+    #generate sampling vector if not given as input
     if not sampling_vect:
         n_annual_events = np.sum(event_impacts.frequency)
         n_input_events = len(event_impacts.event_id)
         sampling_vect = create_sampling_vector(n_sampled_years, n_annual_events,
                                                n_input_events)
     
-    impact_per_year = sample_annual_impacts(event_impacts, n_sampled_years,
-                                                           sampling_vect)
+    #compute annual_impacts
+    impact_per_year = compute_annual_impacts(event_impacts, n_sampled_years,
+                                             sampling_vect)
 
 
     #adjust for sampling error
@@ -112,37 +113,6 @@ def impact_yearset(event_impacts, sampled_years=None, sampling_vect=None):
 
 
     return annual_impacts, sampling_vect
-
-
-def sample_annual_impacts(event_impacts, n_sampled_years, sampling_vect):
-    """Sample annual impacts from the given event_impacts
-
-    INPUTS:
-        event_impacts (impact object): event impact
-        n_sampled_years (int): the target number of years the impact yearset shall
-          contain.
-        sampling_vect (dict): the sampling vector containing two arrays:
-            selected_events (array): sampled events (len: total amount of sampled events)
-            events_per_year (array): events per resampled year
-
-    OUTPUTS:
-        impact_per_year (array): resampled impact per year (length = n_sampled_years)
-      """
-
-    impact_per_event = np.zeros(np.sum(sampling_vect['events_per_year']))
-    impact_per_year = np.zeros(n_sampled_years)
-
-    for idx_event, event in enumerate(sampling_vect['selected_events']):
-        impact_per_event[idx_event] = event_impacts.at_event[sampling_vect[
-            'selected_events'][event]]
-
-    idx = 0
-    for year in range(n_sampled_years):
-        impact_per_year[year] = np.sum(impact_per_event[idx:(idx+sampling_vect[
-            'events_per_year'][year])])
-        idx += sampling_vect['events_per_year'][year]
-
-    return impact_per_year
 
 
 def create_sampling_vector(n_sampled_years, n_annual_events, n_input_events):
@@ -198,6 +168,38 @@ def sample_events(tot_n_events, n_input_events):
 
 
     return selected_events
+
+
+def compute_annual_impacts(event_impacts, n_sampled_years, sampling_vect):
+    """Sample annual impacts from the given event_impacts
+
+    INPUTS:
+        event_impacts (impact object): event impact
+        n_sampled_years (int): the target number of years the impact yearset shall
+          contain.
+        sampling_vect (dict): the sampling vector containing two arrays:
+            selected_events (array): sampled events (len: total amount of sampled events)
+            events_per_year (array): events per resampled year
+
+    OUTPUTS:
+        impact_per_year (array): resampled impact per year (length = n_sampled_years)
+      """
+
+    impact_per_event = np.zeros(np.sum(sampling_vect['events_per_year']))
+    impact_per_year = np.zeros(n_sampled_years)
+
+    for idx_event, event in enumerate(sampling_vect['selected_events']):
+        impact_per_event[idx_event] = event_impacts.at_event[sampling_vect[
+            'selected_events'][event]]
+
+    idx = 0
+    for year in range(n_sampled_years):
+        impact_per_year[year] = np.sum(impact_per_event[idx:(idx+sampling_vect[
+            'events_per_year'][year])])
+        idx += sampling_vect['events_per_year'][year]
+
+    return impact_per_year
+
 
 def calculate_correction_fac(impact_per_year, event_impacts):
     """Calculate a correction factor that can be used to scale the annual_impacts in such
