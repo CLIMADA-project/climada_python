@@ -67,16 +67,14 @@ def impact_yearset(event_impacts, sampled_years=None, sampling_vect=None, correc
         sampled_years = np.arange(1, 1000+1).tolist()
     elif not sampled_years:
         sampled_years = np.arange(1, len(sampling_vect['selected_events'])+1).tolist()
-    elif isinstance(sampled_years, int) and sampling_vect:
-        if sampled_years != len(sampling_vect['selected_events']):
-            raise ValueError("The number of sampled_years and the length of the list of"
-                             "selected events in the sampling vector must be equal.")
-    elif isinstance(sampled_years, list) and sampling_vect:
+    elif isinstance(sampled_years, int):
+        sampled_years = np.arange(1, sampled_years+1).tolist()
+    
+    if sampling_vect:
         if len(sampled_years) != len(sampling_vect['selected_events']):
             raise ValueError("The number of sampled_years and the length of the list of"
                              "selected events in the sampling vector must be equal.")
-    elif isinstance(sampled_years, int):
-        sampled_years = np.arange(1, sampled_years+1).tolist() #problem to change the input var?
+
 
     year_list = [str(date) + '-01-01' for date in sampled_years]
     n_sampled_years = len(year_list)
