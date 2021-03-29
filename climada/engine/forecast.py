@@ -346,10 +346,13 @@ class Forecast():
             cbar.formatter.set_scientific(False)
             cbar.set_ticks([0, 1000, 10000, 100000, 1000000])
             cbar.set_ticklabels(['0', "1'000", "10'000", "100'000", "1'000'000"])
-            plt.figtext(0.125, 0.84, tit['model_text'], fontsize='x-large', color='k', ha='left')
-            plt.figtext(0.125, 0.81, tit['explain_text'], fontsize='x-large', color='k', ha='left')
-            plt.figtext(0.9, 0.84, tit['event_day'], fontsize='x-large', color='r', ha='right')
-            plt.figtext(0.9, 0.81, tit['run_start'], fontsize='x-large', color='k', ha='right')
+            title_position = {'model_text': [0.02, 0.84], 'explain_text': [0.02, 0.8], 'event_day': [0.98, 0.84],
+                              'run_start': [0.98, 0.8]}
+            left_right = {'model_text': 'left', 'explain_text': 'left', 'event_day': 'right', 'run_start': 'right'}
+            color = {'model_text': 'k', 'explain_text': 'r', 'event_day': 'k', 'run_start': 'k'}
+            [plt.figtext(title_position[t][0], title_position[t][1], tit[t], fontsize='xx-large', color=color[t],
+                         ha=left_right[t]) for t in tit]
+
             plt.subplots_adjust(top=0.8)
             # axis.set_extent((5.70, 10.49, 45.7, 47.81), crs=ccrs.PlateCarree())
     
@@ -424,10 +427,13 @@ class Forecast():
                       'run_start': run_datetime.strftime('%d.%m.%Y %HUTC +') + lead_time_str + 'd',
                       'explain_text': ('total building damage caused by wind'),
                       'model_text': "CLIMADA IMPACT"}
-        plt.figtext(0.125, 0.98, title_dict['model_text'], fontsize='x-large', color='k', ha='left')
-        plt.figtext(0.125, 0.94, title_dict['explain_text'], fontsize='x-large', color='k', ha='left')
-        plt.figtext(0.9, 0.98, title_dict['event_day'], fontsize='x-large', color='r', ha='right')
-        plt.figtext(0.9, 0.94, title_dict['run_start'], fontsize='x-large', color='k', ha='right')
+        title_position = {'model_text': [0.13, 0.94], 'explain_text': [0.13, 0.9], 'event_day': [0.9, 0.94],
+                          'run_start': [0.9, 0.9]}
+        left_right = {'model_text': 'left', 'explain_text': 'left', 'event_day': 'right', 'run_start': 'right'}
+        color = {'model_text': 'k', 'explain_text': 'r', 'event_day': 'k', 'run_start': 'k'}
+        [plt.figtext(title_position[t][0], title_position[t][1], title_dict[t], fontsize='x-large', color=color[t],
+                     ha=left_right[t]) for t in title_dict]
+
         plt.xlabel('forecasted total damage for ' + self.exposure_name +
                    ' [' + self._impact[haz_ind].unit + ']')
         plt.ylabel('probability')
@@ -553,10 +559,13 @@ class Forecast():
             cbar = plt.colorbar(hex_bin, cax=cbax, orientation='horizontal',
                                 extend=extend)
             cbar.set_label(name)
-            plt.figtext(0.125, 0.84, tit['model_text'], fontsize='x-large', color='k', ha='left')
-            plt.figtext(0.125, 0.81, tit['explain_text'], fontsize='x-large', color='k', ha='left')
-            plt.figtext(0.9, 0.84, tit['event_day'], fontsize='x-large', color='r', ha='right')
-            plt.figtext(0.9, 0.81, tit['run_start'], fontsize='x-large', color='k', ha='right')
+            title_position = {'model_text': [0.02, 0.93], 'explain_text': [0.02, 0.89], 'event_day': [0.98, 0.93],
+                              'run_start': [0.98, 0.89]}
+            left_right = {'model_text': 'left', 'explain_text': 'left', 'event_day': 'right', 'run_start': 'right'}
+            color = {'model_text': 'k', 'explain_text': 'r', 'event_day': 'k', 'run_start': 'k'}
+            [plt.figtext(title_position[t][0], title_position[t][1], tit[t], fontsize='xx-large', color=color[t],
+                         ha=left_right[t]) for t in tit]
+
             #        axis.set_title(tit)
             axis.set_extent((5.70, 10.49, 45.7, 47.81), crs=ccrs.PlateCarree())
     
@@ -751,10 +760,12 @@ class Forecast():
         ]
         axis.legend(handles=legend_elements, loc='upper center', framealpha=0.5,
                     bbox_to_anchor=(0.5, -0.02), ncol=3)
-        plt.figtext(0.125, 0.84, tit['model_text'], fontsize='x-large', color='k', ha='left')
-        plt.figtext(0.125, 0.81, tit['explain_text'], fontsize='x-large', color='k', ha='left')
-        plt.figtext(0.9, 0.84, tit['event_day'], fontsize='x-large', color='r', ha='right')
-        plt.figtext(0.9, 0.81, tit['run_start'], fontsize='x-large', color='k', ha='right')
+        title_position = {'model_text': [0.02, 0.91], 'explain_text': [0.02, 0.87], 'event_day': [0.98, 0.91],
+                          'run_start': [0.98, 0.87]}
+        left_right = {'model_text': 'left', 'explain_text': 'left', 'event_day': 'right', 'run_start': 'right'}
+        color = {'model_text': 'k', 'explain_text': 'r', 'event_day': 'k', 'run_start': 'k'}
+        [plt.figtext(title_position[t][0], title_position[t][1], tit[t], fontsize='xx-large', color=color[t],
+                     ha=left_right[t]) for t in tit]
 
         axis.set_extent((5.70, 10.49, 45.7, 47.81), crs=ccrs.PlateCarree())
         return fig, axis
