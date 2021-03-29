@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -45,7 +45,7 @@ class TestCreateIconName(unittest.TestCase):
         self.assertEqual(url, ('https://opendata.dwd.de/weather/nwp/'+
                                'icon-eu-eps/grib/00/vmax_10m/')
                          )
-        self.assertEqual(file_name, 
+        self.assertEqual(file_name,
                          ('icon-eu-eps_europe_icosahedral_single-level_'+
                           '2021020200_{lead_i:03}_vmax_10m.grib2.bz2')
                          )
@@ -53,7 +53,7 @@ class TestCreateIconName(unittest.TestCase):
                                       np.concatenate([np.arange(1,49),
                                                       [51,54,]])
                                       )
-        
+
         def test_leadtime_warning(self):
             """Adjustment for wrong leadtime"""
             url, file_name, lead_times = _create_icon_grib_name(
@@ -61,7 +61,7 @@ class TestCreateIconName(unittest.TestCase):
                 max_lead_time=240,
                 )
             self.assertEqual(lead_times.max(),120)
-        
+
 
 class TestDownloadIcon(unittest.TestCase):
     """Test download_icon_grib function"""
@@ -72,14 +72,14 @@ class TestDownloadIcon(unittest.TestCase):
                 download_icon_grib(dt.datetime(2020,1,1))
         except IOError:
             pass
-        
-        
+
+
 class TestDownloadIconCentroids(unittest.TestCase):
     """Test download_icon_centroids_file function"""
     def test_download_icon(self):
         """Value Error if model unknown"""
         with self.assertRaises(ValueError):
-            download_icon_centroids_file(model_name='icon')      
+            download_icon_centroids_file(model_name='icon')
 
 
 class TestDeleteIcon(unittest.TestCase):
@@ -87,14 +87,14 @@ class TestDeleteIcon(unittest.TestCase):
 
     def test_file_not_exist_warning(self):
         """test warning if file does not exist"""
-        
+
         logger = logging.getLogger('climada.util.dwd_icon_loader')
         with mock.patch.object(logger,'warning') as mock_logger:
             delete_icon_grib(dt.datetime(1908, 2, 2),
                                  max_lead_time=1,
                                  )
             mock_logger.assert_called_once()
-    
+
     def test_rm_file(self):
         """test if file is removed"""
         url, file_name, lead_times = _create_icon_grib_name(

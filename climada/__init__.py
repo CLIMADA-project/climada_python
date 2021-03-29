@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -27,8 +27,6 @@ from .util.constants import *
 
 __all__ = ['init']
 
-
-NGI_UNEP_DIR = SYSTEM_DIR.joinpath('ls_pr_NGI_UNEP')
 GSDP_DIR = SYSTEM_DIR.joinpath('GSDP')
 
 REPO_DATA = {
@@ -48,12 +46,6 @@ REPO_DATA = {
         SYSTEM_DIR.joinpath('tc_if_cal_v01_TDR1.0.csv'),
         SYSTEM_DIR.joinpath('tc_if_cal_v01_EDR.csv'),
         SYSTEM_DIR.joinpath('tc_if_cal_v01_RMSF.csv'),
-    ],
-    'data/system/ls_pr_NGI_UNEP': [
-        NGI_UNEP_DIR.joinpath('ls_pr_md.xml'),
-        NGI_UNEP_DIR.joinpath('ls_pr.tfw'),
-        NGI_UNEP_DIR.joinpath('ls_pr.tif'),
-        NGI_UNEP_DIR.joinpath('ls_pr.xml'),
     ],
     'data/system/GSDP': [
         GSDP_DIR.joinpath(f'{cc}_GSDP.xls')
@@ -90,7 +82,7 @@ REPO_DATA = {
 
 def setup_climada_data():
 
-    for dirpath in [DEMO_DIR, SYSTEM_DIR, NGI_UNEP_DIR, GSDP_DIR]:
+    for dirpath in [DEMO_DIR, SYSTEM_DIR, GSDP_DIR]:
         dirpath.mkdir(parents=True, exist_ok=True)
 
     for src_dir, path_list in REPO_DATA.items():
