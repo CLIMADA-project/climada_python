@@ -1875,16 +1875,16 @@ def _make_line_from_track(track, split_lines_antimeridian=True):
     if lon.size == 1:
         return Point(lon, lat)
     extent = u_coord.lon_bounds(lon)
-    if split_lines_antimeridian and extent[0] <= 180 <= extent[1]:
+    if split_lines_antimeridian and extent[0] <= 180 < extent[1]:
         # in this case split into multilines
-        hem_west = lon < 0
-        # if all points on one side are +180 or -180, keep as a single line
-        if np.all(lon[hem_west] == -180) or np.all(lon[~hem_west] == 180):
-            if np.all(lon[hem_west] == -180):
-                lon[hem_west] = 180
-            else:
-                lon[~hem_west] = -180
+        hem_east = lon > 0
+
+        # if all points on the eastern hemisphere are exactly at +180, but the
+        # track approaches from the western hemisphere, keep as a single line
+        if np.all(lon[hem_east] == 180):
+            lon[hem_east] = -180
             return LineString(np.c_[lon, lat])
+
         # otherwise, split lines
         split_idx = np.concatenate((np.array([0]),
                                     np.where(np.diff(lon > 0))[0] + 1,
@@ -1904,7 +1904,7 @@ def _make_line_from_track(track, split_lines_antimeridian=True):
                 new_lon = np.append(am_lon, new_lon)
                 new_lat = np.append(lat_app, new_lat)
             if idx < len(split_idx) - 2:
-                # not last setment of the line: add last value to antimeridian
+                # not last segment of the line: add last value to antimeridian
                 lon_next = u_coord.lon_normalize(lon.copy()[split_idx[idx+1]-1:split_idx[idx+1]+1],
                                                  center=am_lon)
                 lat_next = lat[split_idx[idx+1]-1:split_idx[idx+1]+1]
