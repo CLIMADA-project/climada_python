@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -223,6 +223,14 @@ class Exposures():
             [f"{md}: {self.__dict__[md]}" for md in type(self)._metadata] +
             [f"crs: {self.crs}", "data:", str(self.gdf)]
         )
+
+    def _access_item(self, *args):
+        raise TypeError("Since CLIMADA 2.0, Exposures objects are not subscriptable. Data "
+                        "fields of Exposures objects are accessed using the `gdf` attribute. "
+                        "For example, `expo['value']` is replaced by `expo.gdf['value']`.")
+    __getitem__ = _access_item
+    __setitem__ = _access_item
+    __delitem__ = _access_item
 
     def check(self):
         """Check Exposures consistency.

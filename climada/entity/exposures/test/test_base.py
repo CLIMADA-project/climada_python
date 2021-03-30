@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -385,13 +385,21 @@ class TestGeoDFFuncs(unittest.TestCase):
         self.assertEqual(exp_tr.tag.file_name, '')
 
     def test_constructor_pass(self):
-        """Test initialization with input GeiDataFrame"""
+        """Test initialization with input GeoDataFrame"""
         in_gpd = gpd.GeoDataFrame()
         in_gpd['value'] = np.zeros(10)
         in_gpd.ref_year = 2015
         in_exp = Exposures(in_gpd, ref_year=2015)
         self.assertEqual(in_exp.ref_year, 2015)
         self.assertTrue(np.array_equal(in_exp.gdf.value, np.zeros(10)))
+
+    def test_error_on_access_item(self):
+        """Test error output when trying to access items as in CLIMADA 1.x"""
+        expo = good_exposures()
+        with self.assertRaises(TypeError) as err:
+            expo['value'] = 3
+        self.assertIn("CLIMADA 2", str(err.exception))
+        self.assertIn("gdf", str(err.exception))
 
 # Execute Tests
 if __name__ == "__main__":
