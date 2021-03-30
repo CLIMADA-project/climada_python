@@ -98,10 +98,7 @@ class SupplyChain():
         self.total_aai_agg = np.array([], dtype='f')
         self.io_data = {}
 
-    def read_wiod16(self, year=2014,
-                    table_info_pos={'range_rows':(5, 2469),
-                                    'range_cols':(4, 2468),
-                                    'col_iso3':2,'col_sectors':1}):
+    def read_wiod16(self, year=2014, table_info_pos=None):
         """Read multi-regional input-output tables of the 2016 release of the
         WIOD project: http://www.wiod.org/database/wiots16
 
@@ -112,7 +109,7 @@ class SupplyChain():
             Default year is 2014.
         table_info_pos: dict
             Dictionary with info about how to properly read the WIOD table.
-            Default values allow reading the full WIOD table. Keys are:
+            Default is None. Required keys are:
                 range_rows : tuple
                     initial and end positions of data along rows.
                 range_cols : tuple
@@ -128,6 +125,10 @@ class SupplyChain():
         of Global Automotive Production", Review of International Economics., 23: 575–605
 
         """
+        if table_info_pos is None:
+            table_info_pos = {'range_rows':(5, 2469),
+                              'range_cols':(4, 2468),
+                              'col_iso3':2,'col_sectors':1}
 
         file_name = 'WIOT{}_Nov16_ROW.xlsb'.format(year)
         file_loc = WIOD_DIRECTORY / file_name
@@ -163,7 +164,8 @@ class SupplyChain():
         hazard : Hazard
             Hazard object for impact calculation.
         exposure : Exposures
-            Exposures object for impact calculation.
+            Exposures object for impact calculation. For WIOD tables, countries
+            names need to follow ISO3 codes.
         imp_fun_set : ImpactFuncSet
             Set of impact functions.
         selected_subsec : str or list
@@ -303,7 +305,7 @@ class SupplyChain():
         self.total_aai_agg = self.total_impact.mean(axis=0)
 
     def _map_exp_to_mriot(self, exp_regid, mriot_type):
-        """Map regions names in exposure into theiInput-output regions names."""
+        """Map regions names in exposure into Input-output regions names."""
 
         if mriot_type == 'WIOD':
             mriot_reg_name = countries_by_numeric.get(str(exp_regid)).alpha3
