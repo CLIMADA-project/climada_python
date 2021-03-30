@@ -306,7 +306,10 @@ class SupplyChain():
         self.total_aai_agg = self.total_impact.mean(axis=0)
 
     def _map_exp_to_mriot(self, exp_regid, mriot_type):
-        """Map regions names in exposure into Input-output regions names."""
+        """
+        Map regions names in exposure into Input-output regions names.
+        exp_regid must be conform to ISO3 country code format.
+        """
 
         if mriot_type == 'WIOD':
             mriot_reg_name = countries_by_numeric.get(str(exp_regid)).alpha3
