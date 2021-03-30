@@ -25,7 +25,6 @@ __all__ = ['Forecast']
 
 import logging
 import datetime as dt
-import math
 import numpy as np
 from pathlib import Path
 import matplotlib.pyplot as plt
@@ -292,7 +291,8 @@ class Forecast():
                      save_fig=True,
                      close_fig=False,
                      polygon_file=None,
-                     polygon_file_crs='epsg:4326'):
+                     polygon_file_crs='epsg:4326',
+                     proj=ccrs.PlateCarree()):
         """ plot a map of the impacts
 
         Parameters
@@ -312,6 +312,11 @@ class Forecast():
             String of pattern <provider>:<code> specifying
             the crs. has to be readable by pyproj.Proj. Default is
             'epsg:4326'.
+        proj: ccrs
+            coordinate reference system used in coordinates
+        Returns
+        -------
+        cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         # select hazard with run_datetime
         if run_datetime is None:
@@ -338,6 +343,7 @@ class Forecast():
                                          ']'),
                              polygon_file=polygon_file,
                              polygon_file_crs=polygon_file_crs,
+                             proj=proj
                              )
         if save_fig:
             fig.savefig(map_file_name_full)
@@ -347,14 +353,14 @@ class Forecast():
         return axes
 
     def _plot_imp_map(self, run_datetime, title, cbar_label,
-                      polygon_file=None,polygon_file_crs='epsg:4326'):
+                      polygon_file=None,polygon_file_crs='epsg:4326',
+                      proj=ccrs.PlateCarree()):
         # select hazard with run_datetime
         if run_datetime is None:
             run_datetime = self.run_datetime[0]
         haz_ind = np.argwhere(np.isin(self.run_datetime, run_datetime))[0][0]
         # tryout new plot with right projection
         extend = 'neither'
-        crs_epsg = ccrs.Mercator()
         value = self._impact[haz_ind].eai_exp
         #    value[np.invert(mask)] = np.nan
         coord = self._impact[haz_ind].coord_exp
@@ -364,7 +370,6 @@ class Forecast():
         shapes = True
         if not polygon_file:
             shapes = False
-        proj = crs_epsg
         var_name = cbar_label
         geo_coord = coord
         num_im, list_arr = u_plot._get_collection_arrays(array_sub)
@@ -405,11 +410,11 @@ class Forecast():
             if shapes:
                 # add warning regions
                 shp = shapereader.Reader(polygon_file)
-                project_crs = lambda x, y: pyproj.transform(pyproj.Proj(init=polygon_file_crs),
-                                                            pyproj.Proj(init='epsg:4326'),
-                                                            x, y)
+                transformer = pyproj.Transformer.from_crs(polygon_file_crs,
+                                                          self._impact[haz_ind].crs,
+                                                          always_xy=True)
                 for geometry, _ in zip(shp.geometries(), shp.records()):
-                    geom2 = shapely.ops.transform(project_crs, geometry)
+                    geom2 = shapely.ops.transform(transformer.transform, geometry)
                     axis.add_geometries([geom2],
                                         crs=ccrs.PlateCarree(),
                                         facecolor='',
@@ -462,6 +467,9 @@ class Forecast():
             True default to save the figure.
         close_fig: bool, optional
             True default to close the figure.
+        Returns
+        -------
+        matplotlib.axes.Axes
         """
         # select hazard with run_datetime
         if run_datetime is None:
@@ -531,6 +539,7 @@ class Forecast():
         if close_fig:
             plt.clf()
             plt.close(f)
+        return ax
 
     @staticmethod
     def _number_to_str(number):
@@ -555,7 +564,9 @@ class Forecast():
         return '{:.0f} {}'.format(value, name)
 
     def plot_exceedence_prob(self, threshold, explain_str=None,
-                             run_datetime=None, save_fig=True, close_fig=False):
+                             run_datetime=None, save_fig=True, close_fig=False,
+                             polygon_file=None, polygon_file_crs='epsg:4326',
+                             proj=ccrs.PlateCarree()):
         """ plot exceedence map
 
         Parameters
@@ -573,6 +584,19 @@ class Forecast():
             True default to save the figure
         close_fig: bool, optional
             True default to close the figure
+        polygon_file: str, optional
+            Points to a .shp-file with polygons do be drawn as outlines on
+            the plot, default is None to not draw the lines. please also
+            specify the crs in the parameter polygon_file_crs.
+        polygon_file_crs: str, optional
+            String of pattern <provider>:<code> specifying
+            the crs. has to be readable by pyproj.Proj. Default is
+            'epsg:4326'.
+        proj: ccrs
+            coordinate reference system used in coordinates
+        Returns
+        -------
+        cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         # select hazard with run_datetime
         if run_datetime is None:
@@ -593,25 +617,25 @@ class Forecast():
                                        self._impact[haz_ind].unit) if explain_str is None else explain_str,
                                        'model_text': 'Exceedance probability map'}
         cbar_label = 'probabilty of reaching threshold'
-        f, _ = self._plot_exc_prob(run_datetime, threshold, title_dict, cbar_label)
+        fig, axes = self._plot_exc_prob(run_datetime, threshold, title_dict,
+                                        cbar_label, proj,
+                                        polygon_file=polygon_file,
+                                        polygon_file_crs=polygon_file_crs)
         if save_fig:
             plt.savefig(wind_map_file_name_full)
         if close_fig:
             plt.clf()
-            plt.close(f)
+            plt.close(fig)
+        return axes
 
-    def _plot_exc_prob(self, run_datetime, threshold, title, cbar_label, polygon_file=None, mask=None):
+    def _plot_exc_prob(self, run_datetime, threshold, title, cbar_label,
+                       proj=ccrs.PlateCarree(), polygon_file=None,polygon_file_crs='epsg:4326', mask=None):
         """  plot the probability of reaching a threshold """
         # select hazard with run_datetime
         if run_datetime is None:
             run_datetime = self.run_datetime[0]
         haz_ind = np.argwhere(np.isin(self.run_datetime, run_datetime))[0][0]
         extend = 'neither'
-        try:
-            crs_epsg = ccrs.epsg(2056)
-        except:
-            crs_epsg = ccrs.Mercator()
-
         value = np.squeeze(np.asarray((self._impact[haz_ind].imp_mat > threshold).sum(axis=0) / self._impact[haz_ind].event_id.size))
         if mask is not None:
             value[np.invert(mask)] = np.nan
@@ -621,8 +645,6 @@ class Forecast():
         shapes = True
         if not polygon_file:
             shapes = False
-
-        proj = crs_epsg
         var_name = cbar_label
         geo_coord = coord
         num_im, list_arr = u_plot._get_collection_arrays(array_sub)
@@ -654,10 +676,11 @@ class Forecast():
             if shapes:
                 # add warning regions
                 shp = shapereader.Reader(polygon_file)
-                project_crs = lambda x, y: pyproj.transform(pyproj.Proj(init='epsg:21781'), pyproj.Proj(init='epsg:4150'),
-                                                            x, y)
+                transformer = pyproj.Transformer.from_crs(polygon_file_crs,
+                                                          self._impact[haz_ind].crs,
+                                                          always_xy=True)
                 for geometry, _ in zip(shp.geometries(), shp.records()):
-                    geom2 = shapely.ops.transform(project_crs, geometry)
+                    geom2 = shapely.ops.transform(transformer.transform, geometry)
                     axis.add_geometries([geom2], crs=ccrs.PlateCarree(), facecolor='', \
                                         edgecolor='gray')
 
@@ -699,6 +722,7 @@ class Forecast():
                       title='WARNINGS',
                       explain_text='warn level based on thresholds',
                       run_datetime=None,
+                      proj=ccrs.PlateCarree(),
                       save_fig=True, close_fig=False):
         """ plot map colored with 5 warning colors for all regions in provided
         shape file.
@@ -730,10 +754,15 @@ class Forecast():
             Default is 'WARNINGS'.
         explain_text: str, optional
             Defaut is 'warn level based on thresholds'.
+        proj: ccrs
+            coordinate reference system used in coordinates
         save_fig: bool, optional
             True default to save the figure
         close_fig: bool, optional
             True default to close the figure
+        Returns
+        -------
+        cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         # select hazard with run_datetime
         if thresholds == 'default':
@@ -754,33 +783,30 @@ class Forecast():
                       'explain_text': explain_text,
                       'model_text': title}
 
-        f, _ = self._plot_warn(run_datetime,
+        fig, axes = self._plot_warn(run_datetime,
                                 thresholds,
                                 decision_level,
                                 decision_dict,
                                 polygon_file,
                                 polygon_file_crs,
-                                title_dict)
+                                title_dict,
+                                proj)
         if save_fig:
             plt.savefig(warn_map_file_name_full)
         if close_fig:
             plt.clf()
-            plt.close(f)
+            plt.close(fig)
+        return axes
 
     def _plot_warn(self, run_datetime, thresholds,
                    decision_level, decision_dict,
                    polygon_file, polygon_file_crs,
-                   title):
+                   title, proj=ccrs.PlateCarree()):
         """ plotting the warning level of each warning region based on thresholds """
         # select hazard with run_datetime
         if run_datetime is None:
             run_datetime = self.run_datetime[0]
         haz_ind = np.argwhere(np.isin(self.run_datetime, run_datetime))[0][0]
-        try:
-            crs_epsg = ccrs.epsg(2056)
-        except:
-            crs_epsg = ccrs.Mercator()
-        proj = crs_epsg
 
         kwargs = dict()
         kwargs['cmap'] = CMAP_WARNPROB
