@@ -165,8 +165,8 @@ class SupplyChain():
         hazard : Hazard
             Hazard object for impact calculation.
         exposure : Exposures
-            Exposures object for impact calculation. For WIOD tables, countries
-            names need to follow ISO3 codes.
+            Exposures object for impact calculation. For WIOD tables, exposure.region_id
+            must be country names following ISO3 codes.
         imp_fun_set : ImpactFuncSet
             Set of impact functions.
         selected_subsec : str or list
