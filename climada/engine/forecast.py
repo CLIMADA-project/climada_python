@@ -292,7 +292,8 @@ class Forecast():
                      close_fig=False,
                      polygon_file=None,
                      polygon_file_crs='epsg:4326',
-                     proj=ccrs.PlateCarree()):
+                     proj=ccrs.PlateCarree(),
+                     figsize=(9, 13)):
         """ plot a map of the impacts
 
         Parameters
@@ -314,6 +315,8 @@ class Forecast():
             'epsg:4326'.
         proj: ccrs
             coordinate reference system used in coordinates
+        figsize: tuple
+            figure size for plt.subplots, width, height in inches
         Returns
         -------
         cartopy.mpl.geoaxes.GeoAxesSubplot
@@ -343,7 +346,8 @@ class Forecast():
                                          ']'),
                              polygon_file=polygon_file,
                              polygon_file_crs=polygon_file_crs,
-                             proj=proj
+                             proj=proj,
+                             figsize=figsize
                              )
         if save_fig:
             fig.savefig(map_file_name_full)
@@ -354,7 +358,7 @@ class Forecast():
 
     def _plot_imp_map(self, run_datetime, title, cbar_label,
                       polygon_file=None,polygon_file_crs='epsg:4326',
-                      proj=ccrs.PlateCarree()):
+                      proj=ccrs.PlateCarree(),figsize=(9, 13)):
         # select hazard with run_datetime
         if run_datetime is None:
             run_datetime = self.run_datetime[0]
@@ -390,7 +394,7 @@ class Forecast():
             )
 
         # Generate each subplot
-        fig, axis_sub = u_plot.make_map(num_im, proj=proj)
+        fig, axis_sub = u_plot.make_map(num_im, proj=proj, figsize=figsize)
         if not isinstance(axis_sub, np.ndarray):
             axis_sub = np.array([[axis_sub]])
         fig.set_size_inches(9, 8)
@@ -455,7 +459,8 @@ class Forecast():
             plt.subplots_adjust(top=0.8)
         return fig, axis_sub
 
-    def plot_hist(self, run_datetime=None, save_fig=True, close_fig=False):
+    def plot_hist(self, run_datetime=None, save_fig=True, close_fig=False,
+                  figsize=(9, 8)):
         """ plot histogram of the forecasted impacts all ensemble members
 
         Parameters
@@ -467,6 +472,8 @@ class Forecast():
             True default to save the figure.
         close_fig: bool, optional
             True default to close the figure.
+        figsize: tuple
+            figure size for plt.subplots, width, height in inches
         Returns
         -------
         matplotlib.axes.Axes
@@ -484,7 +491,7 @@ class Forecast():
         upper_bound = np.max([np.ceil(np.log10(np.max([np.max(self._impact[haz_ind].at_event), 0.1]))), lower_bound + 5]) + 0.1
         bins_log = np.arange(lower_bound, upper_bound, 0.5)
         bins = 10 ** bins_log
-        f = plt.figure(figsize=(9, 8))
+        f = plt.figure(figsize=figsize)
         ax = f.add_subplot(111)
         plt.xscale('log')
         plt.hist([np.max([x, 1]) for x in self._impact[haz_ind].at_event],
@@ -566,7 +573,7 @@ class Forecast():
     def plot_exceedence_prob(self, threshold, explain_str=None,
                              run_datetime=None, save_fig=True, close_fig=False,
                              polygon_file=None, polygon_file_crs='epsg:4326',
-                             proj=ccrs.PlateCarree()):
+                             proj=ccrs.PlateCarree(), figsize=(9, 13)):
         """ plot exceedence map
 
         Parameters
@@ -594,6 +601,8 @@ class Forecast():
             'epsg:4326'.
         proj: ccrs
             coordinate reference system used in coordinates
+        figsize: tuple
+            figure size for plt.subplots, width, height in inches
         Returns
         -------
         cartopy.mpl.geoaxes.GeoAxesSubplot
@@ -620,7 +629,8 @@ class Forecast():
         fig, axes = self._plot_exc_prob(run_datetime, threshold, title_dict,
                                         cbar_label, proj,
                                         polygon_file=polygon_file,
-                                        polygon_file_crs=polygon_file_crs)
+                                        polygon_file_crs=polygon_file_crs,
+                                        figsize=figsize)
         if save_fig:
             plt.savefig(wind_map_file_name_full)
         if close_fig:
@@ -629,7 +639,9 @@ class Forecast():
         return axes
 
     def _plot_exc_prob(self, run_datetime, threshold, title, cbar_label,
-                       proj=ccrs.PlateCarree(), polygon_file=None,polygon_file_crs='epsg:4326', mask=None):
+                       proj=ccrs.PlateCarree(), polygon_file=None,
+                       polygon_file_crs='epsg:4326', mask=None,
+                       figsize=(9, 13)):
         """  plot the probability of reaching a threshold """
         # select hazard with run_datetime
         if run_datetime is None:
@@ -659,7 +671,7 @@ class Forecast():
         kwargs['norm'] = BoundaryNorm(np.linspace(0,1,11), CMAP_WARNPROB.N, clip=True)
 
         # Generate each subplot
-        fig, axis_sub = u_plot.make_map(num_im, proj=proj)
+        fig, axis_sub = u_plot.make_map(num_im, proj=proj, figsize=figsize)
         if not isinstance(axis_sub, np.ndarray):
             axis_sub = np.array([[axis_sub]])
         fig.set_size_inches(9, 8)
@@ -723,6 +735,7 @@ class Forecast():
                       explain_text='warn level based on thresholds',
                       run_datetime=None,
                       proj=ccrs.PlateCarree(),
+                      figsize=(9, 13),
                       save_fig=True, close_fig=False):
         """ plot map colored with 5 warning colors for all regions in provided
         shape file.
@@ -756,6 +769,8 @@ class Forecast():
             Defaut is 'warn level based on thresholds'.
         proj: ccrs
             coordinate reference system used in coordinates
+        figsize: tuple
+            figure size for plt.subplots, width, height in inches
         save_fig: bool, optional
             True default to save the figure
         close_fig: bool, optional
@@ -790,7 +805,8 @@ class Forecast():
                                 polygon_file,
                                 polygon_file_crs,
                                 title_dict,
-                                proj)
+                                proj,
+                                figsize=figsize)
         if save_fig:
             plt.savefig(warn_map_file_name_full)
         if close_fig:
@@ -801,7 +817,8 @@ class Forecast():
     def _plot_warn(self, run_datetime, thresholds,
                    decision_level, decision_dict,
                    polygon_file, polygon_file_crs,
-                   title, proj=ccrs.PlateCarree()):
+                   title, proj=ccrs.PlateCarree(),
+                   figsize=(9, 13)):
         """ plotting the warning level of each warning region based on thresholds """
         # select hazard with run_datetime
         if run_datetime is None:
@@ -816,7 +833,7 @@ class Forecast():
                                       CMAP_WARNPROB.N, clip=True)
 
         # Generate each subplot
-        fig, axis = u_plot.make_map(1, proj=proj)
+        fig, axis = u_plot.make_map(1, proj=proj, figsize=figsize)
         if isinstance(axis, np.ndarray):
             axis = axis[0]
         tit = title
