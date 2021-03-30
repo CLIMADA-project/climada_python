@@ -158,7 +158,7 @@ class Forecast():
         if exposure_name is None:
             try:
                 self.exposure_name = iso_cntry.get(exposure.gdf.region_id.unique()[0]).name
-            except:
+            except (KeyError, AttributeError):
                 self.exposure_name = 'custom'
         else:
             self.exposure_name = exposure_name
@@ -234,7 +234,6 @@ class Forecast():
         """
         if run_datetime is None:
             run_datetime = self.run_datetime[0]
-        haz_ind = np.argwhere(np.isin(self.run_datetime, run_datetime))[0][0]
         return (self.haz_summary_str(run_datetime) +
                 '_' +
                 self.exposure_name
@@ -250,7 +249,6 @@ class Forecast():
         """
         if run_datetime is None:
             run_datetime = self.run_datetime[0]
-        haz_ind = np.argwhere(np.isin(self.run_datetime, run_datetime))[0][0]
         return self.event_date - run_datetime
 
     def calc(self, force_reassign=False, check_plot=False):
@@ -421,18 +419,16 @@ class Forecast():
                      'explain_text': 'r',
                      'event_day': 'k',
                      'run_start': 'k'}
-            [plt.figtext(title_position[t][0],
-                         title_position[t][1],
-                         tit[t],
-                         fontsize='xx-large',
-                         color=color[t],
-                         ha=left_right[t])
-             for t in tit]
+            for t in tit:
+                plt.figtext(title_position[t][0],
+                            title_position[t][1],
+                            tit[t],
+                            fontsize='xx-large',
+                            color=color[t],
+                            ha=left_right[t])
 
             plt.subplots_adjust(top=0.8)
-            # axis.set_extent((5.70, 10.49, 45.7, 47.81), crs=ccrs.PlateCarree())
-
-        return fig, axis
+        return fig, axis_sub
 
     def plot_hist(self, run_datetime=None, save_fig=True, close_fig=True):
         """ plot histogram of the forecasted impacts all ensemble members
@@ -492,13 +488,13 @@ class Forecast():
                           'run_start': [0.9, 0.9]}
         left_right = {'model_text': 'left', 'explain_text': 'left', 'event_day': 'right', 'run_start': 'right'}
         color = {'model_text': 'k', 'explain_text': 'r', 'event_day': 'k', 'run_start': 'k'}
-        [plt.figtext(title_position[t][0],
-                     title_position[t][1],
-                     title_dict[t],
-                     fontsize='x-large',
-                     color=color[t],
-                     ha=left_right[t])
-         for t in title_dict]
+        for t in title_dict:
+            plt.figtext(title_position[t][0],
+                        title_position[t][1],
+                        title_dict[t],
+                        fontsize='xx-large',
+                        color=color[t],
+                        ha=left_right[t])
 
         plt.xlabel('forecasted total damage for ' + self.exposure_name +
                    ' [' + self._impact[haz_ind].unit + ']')
@@ -657,16 +653,17 @@ class Forecast():
                      'explain_text': 'r',
                      'event_day': 'k',
                      'run_start': 'k'}
-            [plt.figtext(title_position[t][0],
-                         title_position[t][1],
-                         tit[t],
-                         fontsize='xx-large',
-                         color=color[t],
-                         ha=left_right[t])
-             for t in tit]
-            axis.set_extent((5.70, 10.49, 45.7, 47.81), crs=ccrs.PlateCarree())
+            for t in tit:
+                plt.figtext(title_position[t][0],
+                            title_position[t][1],
+                            tit[t],
+                            fontsize='xx-large',
+                            color=color[t],
+                            ha=left_right[t])
+            extent = u_plot._get_borders(coord)
+            axis.set_extent((extent), ccrs.PlateCarree())
 
-        return fig, axis
+        return fig, axis_sub
 
     def plot_warn_map(self, polygon_file=None,
                       polygon_file_crs='epsg:4326',
@@ -683,7 +680,7 @@ class Forecast():
         Parameters
         ----------
         polygon_file: str, optional
-        path to shp-file containing warning region polygons
+            path to shp-file containing warning region polygons
         polygon_file_crs: str, optional
             String of pattern <provider>:<code> specifying
             the crs. has to be readable by pyproj.Proj. Default is
@@ -716,7 +713,6 @@ class Forecast():
             thresholds = [2, 3, 4, 5]
         if run_datetime is None:
             run_datetime = self.run_datetime[0]
-        haz_ind = np.argwhere(np.isin(self.run_datetime, run_datetime))[0][0]
         warn_map_file_name = (self.summary_str(run_datetime) +
                               '_warn_map.jpeg')
         warn_map_file_name_full = Path(FORECAST_PLOT_DIR) / warn_map_file_name
@@ -871,15 +867,16 @@ class Forecast():
                  'explain_text': 'r',
                  'event_day': 'k',
                  'run_start': 'k'}
-        [plt.figtext(title_position[t][0],
-                     title_position[t][1],
-                     tit[t],
-                     fontsize='xx-large',
-                     color=color[t],
-                     ha=left_right[t])
-         for t in tit]
+        for t in tit:
+            plt.figtext(title_position[t][0],
+                        title_position[t][1],
+                        tit[t],
+                        fontsize='xx-large',
+                        color=color[t],
+                        ha=left_right[t])
 
-        axis.set_extent((5.70, 10.49, 45.7, 47.81), crs=ccrs.PlateCarree())
+        extent = u_plot._get_borders(self._impact[haz_ind].coord_exp)
+        axis.set_extent((extent), ccrs.PlateCarree())
         return fig, axis
 
     def plot_hexbin_ei_exposure(self, run_datetime=None):
