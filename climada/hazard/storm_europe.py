@@ -846,7 +846,8 @@ def generate_WS_forecast_hazard(run_datetime = dt.datetime.today().replace(hour=
                                                                           microsecond=0)
                                               + dt.timedelta(days=2)),
                                 haz_model = 'icon-eu-eps',
-                                haz_raw_storage = None):
+                                haz_raw_storage = None,
+                                save_haz = True):
     """ use the initialization time (run_datetime), the date of the event and
     specify the forecast model (haz_model) to generate a Hazard from forecast
     data either by download or through reading from existing file.
@@ -862,13 +863,19 @@ def generate_WS_forecast_hazard(run_datetime = dt.datetime.today().replace(hour=
         defaults to the day after tomorrow
     haz_model: str, optional
         select the name of the model to
-        be used: one of ['icon-eu-eps', 'cosmo1e_file', 'cosmo2e_file']
+        be used: one of ['icon-eu-eps', 'cosmo1e_file', 'cosmo2e_file'],
+        default is 'icon-eu-eps'.
     haz_raw_storage: str, optional
         path to folder, where netcdf files
         are stored, mendatory when haz_model is 'cosmo1e_file' or
         'cosmo2e_file'. the string must contain one set of curly brakets,
         used by the function str.format to include
         run_datetime.strftime('%y%m%d%H').
+        Default None resolves to "cosmoe_forecast_{}_vmax.nc" in
+        CONFIG.hazard.storm_europe.forecast_dir
+    save_haz: bool, optional
+        flag if resulting hazard should be saved in 
+        CONFIG.hazard.storm_europe.forecast_dir, default is True.
     Returns
     -------
     Hazard
@@ -922,7 +929,8 @@ def generate_WS_forecast_hazard(run_datetime = dt.datetime.today().replace(hour=
                 run_datetime=run_datetime,
                 model_name=full_model_name_temp
                 )
-            hazard.write_hdf5(haz_file_name)
+            if save_haz:
+                hazard.write_hdf5(haz_file_name)
     elif haz_model == 'icon-eu-eps':
         haz_model='IEE'
         haz_file_name = Path(FORECAST_DIR) / (HAZ_TYPE +
@@ -950,7 +958,8 @@ def generate_WS_forecast_hazard(run_datetime = dt.datetime.today().replace(hour=
                 event_date=event_date,
                 delete_raw_data=False
                 )
-            hazard.write_hdf5(haz_file_name)
+            if save_haz:
+                hazard.write_hdf5(haz_file_name)
     else:
         raise NotImplementedError("specific 'WS' hazard not implemented yet. " +
                                   "Please specify a valid value for haz_model.")
