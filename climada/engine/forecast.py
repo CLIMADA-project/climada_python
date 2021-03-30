@@ -47,11 +47,11 @@ from climada.util.coordinates import coord_on_land as u_coord_on_land
 
 LOGGER = logging.getLogger(__name__)
 
-DATA_DIR = str(CONFIG.local_data.save_dir.dir())
+DATA_DIR = CONFIG.local_data.save_dir.str()
 
-FORECAST_DIR = str(Path(DATA_DIR) / 'forecast')
+FORECAST_DIR = CONFIG.engine.forecast.local_data.str()
 
-FORECAST_PLOT_DIR = str(Path(FORECAST_DIR) / 'plots')
+FORECAST_PLOT_DIR = CONFIG.engine.forecast.plot_dir.str()
 
 # defining colormaps
 # The colors are in line the european meteoalarm colors http://www.meteoalarm.info/

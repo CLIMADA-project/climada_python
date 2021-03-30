@@ -31,6 +31,7 @@ import matplotlib.pyplot as plt
 from scipy import sparse
 import datetime as dt
 
+from climada.util.config import CONFIG
 from climada.hazard.base import Hazard
 from climada.hazard.centroids.centr import Centroids
 from climada.hazard.tag import Tag as TagHazard
@@ -52,6 +53,8 @@ HAZ_TYPE = 'WS'
 
 N_PROB_EVENTS = 5 * 6
 """Number of events per historic event in probabilistic dataset"""
+
+FORECAST_DIR = CONFIG.hazard.storm_europe.forecast_dir.str()
 
 
 class StormEurope(Hazard):
@@ -874,56 +877,68 @@ def generate_WS_forecast_hazard(run_datetime = dt.datetime.today().replace(hour=
         if haz_model == 'cosmo2e_file':
             haz_model='C2E'
             full_model_name_temp = 'COSMO-2E'
-        # haz_file_name = Path(haz_dir) / (haz_summary_str +
-        #                                       '.hdf5')   
-        # if haz_file_name.exists():
-        #     LOGGER.info('Loading hazard from ' + 
-        #                 str(haz_file_name) + 
-        #                 '.')
-        #     hazard = StormEurope()
-        #     hazard.read_hdf5(haz_file_name)
-        # else:
-        LOGGER.info('Generating ' + 
-                    haz_model + 
-                    ' hazard.')  
-        if not haz_raw_storage:
-            haz_raw_storage = (
-                "D:\\Documents_DATA\\Cosmo\\Wind\\" +
-                "cosmoe_forecast_{}_vmax.nc"
+        haz_file_name = Path(FORECAST_DIR) / (HAZ_TYPE +
+                                              '_' +
+                                              haz_model +
+                                              '_run' +
+                                              run_datetime.strftime('%Y%m%d%H') +
+                                              '_event' +
+                                              event_date.strftime('%Y%m%d')
+                                              +
+                                              '.hdf5')   
+        if haz_file_name.exists():
+            LOGGER.info('Loading hazard from ' + 
+                        str(haz_file_name) + 
+                        '.')
+            hazard = StormEurope()
+            hazard.read_hdf5(haz_file_name)
+        else:
+            LOGGER.info('Generating ' + 
+                        haz_model + 
+                        ' hazard.')  
+            if not haz_raw_storage:
+                haz_raw_storage = Path(FORECAST_DIR) / "cosmoe_forecast_{}_vmax.nc"
+            fp_file = Path(
+                str(haz_raw_storage).format(
+                    run_datetime.strftime('%y%m%d%H')
+                    )
                 )
-        fp_file = Path(
-            haz_raw_storage.format(
-                run_datetime.strftime('%y%m%d%H')
+            hazard = StormEurope()
+            hazard.read_cosmoe_file(
+                fp_file, 
+                event_date=event_date,
+                run_datetime=run_datetime,
+                model_name=full_model_name_temp
                 )
-            )
-        hazard = StormEurope()
-        hazard.read_cosmoe_file(
-            fp_file, 
-            event_date=event_date,
-            run_datetime=run_datetime,
-            model_name=full_model_name_temp
-            )
+            hazard.write_hdf5(haz_file_name)
     elif haz_model == 'icon-eu-eps':
         haz_model='IEE'
-        # haz_file_name = Path(haz_dir) / (haz_summary_str +
-        #                                       '.hdf5')
-        # if haz_file_name.exists():
-        #     LOGGER.info('Loading hazard from ' + 
-        #                 str(haz_file_name) + 
-        #                 '.')
-        #     hazard = StormEurope()
-        #     hazard.read_hdf5(haz_file_name)
-        # else:
-        LOGGER.info('Generating ' + 
-                    haz_model + 
-                    ' hazard.')                    
-        hazard = StormEurope()
-        hazard.read_icon_grib(
-            run_datetime,
-            event_date=event_date,
-            delete_raw_data=False
-            )
-        # hazard.write_hdf5(haz_file_name)
+        haz_file_name = Path(FORECAST_DIR) / (HAZ_TYPE +
+                                              '_' +
+                                              haz_model +
+                                              '_run' +
+                                              run_datetime.strftime('%Y%m%d%H') +
+                                              '_event' +
+                                              event_date.strftime('%Y%m%d')
+                                              +
+                                              '.hdf5')   
+        if haz_file_name.exists():
+            LOGGER.info('Loading hazard from ' + 
+                        str(haz_file_name) + 
+                        '.')
+            hazard = StormEurope()
+            hazard.read_hdf5(haz_file_name)
+        else:
+            LOGGER.info('Generating ' + 
+                        haz_model + 
+                        ' hazard.')                    
+            hazard = StormEurope()
+            hazard.read_icon_grib(
+                run_datetime,
+                event_date=event_date,
+                delete_raw_data=False
+                )
+            hazard.write_hdf5(haz_file_name)
     else:
         LOGGER.error("specific 'WS' hazard not implemented yet. " +
                      "Please specify a valid value for haz_model.")
