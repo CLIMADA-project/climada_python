@@ -71,18 +71,20 @@ def impact_yearset(event_impacts, sampled_years=None, sampling_vect=None, correc
         sampled_years = np.arange(1, sampled_years+1).tolist()
 
     if sampling_vect:
-        if len(sampled_years) != len(sampling_vect['selected_events']):
-            raise ValueError("The number of sampled_years and the length of the list of"
-                             "selected events in the sampling vector must be equal.")
-
+        if len(sampled_years) != len(sampling_vect['events_per_year']):
+            raise ValueError("The number of sampled_years and the length of the list of "
+                             "events_per_year in the sampling vector must be equal.")
+        if sum(sampling_vect['events_per_year']) != len(sampling_vect['selected_events']):
+            raise ValueError("The sampling vector is faulty: the sum of selected events "
+                             "does not correspond to the number of selected events.")
 
     year_list = [str(date) + '-01-01' for date in sampled_years]
     n_sampled_years = len(year_list)
 
     if not np.all(event_impacts.frequency == event_impacts.frequency[0]):
-        LOGGER.warning("The frequencies of the single events in the given event_impacts"
-                       "differ among each other. Please beware that this will influence"
-                       "the resulting annual_impacts as the events are sampled uniformaly"
+        LOGGER.warning("The frequencies of the single events in the given event_impacts "
+                       "differ among each other. Please beware that this will influence "
+                       "the resulting annual_impacts as the events are sampled uniformaly "
                        "and different frequencies are (not yet) taken into account.")
 
 
