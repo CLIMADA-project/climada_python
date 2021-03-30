@@ -33,13 +33,7 @@ from climada.util.constants import EXP_DEMO_H5
 HAZ_TEST_MAT = CONFIG.hazard.test_data.dir().joinpath('atl_prob_no_name.mat')
 DIR_TEST_DATA = CONFIG.engine.test_data.dir()
 
-WIOD_DIRECTORY = CONFIG.engine.supplychain.local_data.wiod.dir()
-"""Directory where WIOD tables are downloaded into."""
-
 test_file = 'WIOTtest_Nov16_ROW.xlsb'
-test_folder = '.\\climada\\engine\\test\\data\\'
-
-shutil.copy(test_folder + test_file, WIOD_DIRECTORY)
 
 class TestSupplyChain(unittest.TestCase):
     """Testing the SupplyChain class."""
