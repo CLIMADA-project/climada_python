@@ -22,6 +22,7 @@ Define Uncertainty class.
 __all__ = ['UncVar', 'Uncertainty']
 
 import logging
+import json
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -805,6 +806,28 @@ class Uncertainty():
 
         return axes
 
+
+    def save_samples_df(self, filename):
+        self.sampled_df.to_csv(filename, index=False)
+    
+    def load_samples_df(self, filename):
+        self.sampled_df = pd.read_csv(filename)
+        
+    def save_metrics(self, filename):
+        with open(filename, 'w') as fp:
+            json.dump(self.metrics, fp)
+            
+    def load_metrics(self, filename):
+        with open(filename, 'r') as fp:
+            self.metrics = json.load(fp)
+            
+    def save_sensitivity(self, filename):
+        with open(filename, 'w') as fp:
+            json.dump(self.sensitivity, fp)
+            
+    def load_sensitivity(self, filename):
+        with open(filename, 'r') as fp:
+            self.sensitivity = json.load(fp)
 
 SALIB_COMPATIBILITY = {
     'fast': ['fast_sampler'],
