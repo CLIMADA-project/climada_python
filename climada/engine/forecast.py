@@ -39,12 +39,7 @@ from cartopy.io import shapereader
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from iso3166 import countries as iso_cntry
 
-from climada.entity.exposures import Exposures, LitPop
-from climada.hazard import StormEurope, Hazard
 from climada.engine import Impact
-from climada.entity.impact_funcs import ImpactFuncSet
-from climada.entity.impact_funcs.storm_europe import IFStormEurope
-from climada.entity.impact_funcs.trop_cyclone import IFTropCyclone
 import climada.util.plot as u_plot
 from climada.util.config import CONFIG
 from climada.util.files_handler import to_list
@@ -59,8 +54,9 @@ FORECAST_DIR = str(Path(DATA_DIR) / 'forecast')
 FORECAST_PLOT_DIR = str(Path(FORECAST_DIR) / 'plots')
 
 # defining colormaps
-# The colors are in line the european meteoalarm colors http://www.meteoalarm.info/ 
-# and with the colors used at MeteoSwiss https://www.natural-hazards.ch/home/dealing-with-natural-hazards/explanation-of-the-danger-levels.html
+# The colors are in line the european meteoalarm colors http://www.meteoalarm.info/
+# and with the colors used at MeteoSwiss
+# https://www.natural-hazards.ch/home/dealing-with-natural-hazards/explanation-of-the-danger-levels.html
 # colors for warning levels
 COLORS_WARN = np.array([[204 / 255, 255 / 255, 102 / 255, 1],  # green
                         [255 / 255, 255 / 255, 0 / 255, 1],  # yellow
@@ -148,7 +144,7 @@ class Forecast():
         self.hazard = [hazard_dict[key] for key in self.run_datetime]
         # check event_date
         hazard_dates = [date for hazard in self.hazard for date in hazard.date]
-        if not (len(np.unique(hazard_dates)) == 1):
+        if not len(np.unique(hazard_dates)) == 1:
             raise ValueError('Please provide hazards containing only one ' +
                               'event_date. The current hazards contain several ' +
                               'events with different event_dates and the Forecast ' +
@@ -258,7 +254,7 @@ class Forecast():
         return self.event_date - run_datetime
 
     def calc(self, force_reassign=False, check_plot=False):
-        """ calculate the impact using 
+        """ calculate the impact using
         exposure, hazard, and vulnerabilty.
 
         Parameters
@@ -319,7 +315,7 @@ class Forecast():
                                     'd'),
                       'explain_text': ('mean building damage caused by wind'),
                       'model_text': "CLIMADA IMPACT"}
-        f, ax = self._plot_imp_map(
+        f, _ = self._plot_imp_map(
                              run_datetime,
                              title=title_dict,
                              cbar_label=('forecasted damage per gridcell [' +
@@ -362,15 +358,24 @@ class Forecast():
         kwargs['cmap'] = CMAP_IMPACT
         kwargs['s'] = 5
         kwargs['marker'] = ','
-        kwargs['norm'] = BoundaryNorm(np.append(np.append([0], [10 ** x for x in np.arange(0, 2.9, 2.9 / 9)]),
-                                                [10 ** x for x in np.arange(3, 7, 4 / 90)]), CMAP_IMPACT.N, clip=True)
+        kwargs['norm'] = BoundaryNorm(
+            np.append(
+                np.append([0], [10 ** x for x in np.arange(0, 2.9, 2.9 / 9)]),
+                [10 ** x for x in np.arange(3, 7, 4 / 90)]),
+            CMAP_IMPACT.N,
+            clip=True
+            )
 
         # Generate each subplot
         fig, axis_sub = u_plot.make_map(num_im, proj=proj)
         if not isinstance(axis_sub, np.ndarray):
             axis_sub = np.array([[axis_sub]])
         fig.set_size_inches(9, 8)
-        for array_im, axis, tit, name, coord in zip(list_arr, axis_sub.flatten(), list_tit, list_name, list_coord):
+        for array_im, axis, tit, name, coord in zip(list_arr,
+                                                    axis_sub.flatten(),
+                                                    list_tit,
+                                                    list_name,
+                                                    list_coord):
             if coord.shape[0] != array_im.size:
                 raise ValueError("Size mismatch in input array: %s != %s." % \
                                  (coord.shape[0], array_im.size))
@@ -382,29 +387,47 @@ class Forecast():
             if shapes:
                 # add warning regions
                 shp = shapereader.Reader(polygon_file)
-                project_crs = lambda x, y: pyproj.transform(pyproj.Proj(init='epsg:21781'), pyproj.Proj(init='epsg:4150'),
+                project_crs = lambda x, y: pyproj.transform(pyproj.Proj(init='epsg:21781'),
+                                                            pyproj.Proj(init='epsg:4150'),
                                                             x, y)
-                for geometry, record in zip(shp.geometries(), shp.records()):
+                for geometry, _ in zip(shp.geometries(), shp.records()):
                     geom2 = shapely.ops.transform(project_crs, geometry)
-                    axis.add_geometries([geom2], crs=ccrs.PlateCarree(), facecolor='', \
+                    axis.add_geometries([geom2],
+                                        crs=ccrs.PlateCarree(),
+                                        facecolor='',
                                         edgecolor='gray')
             else: # add country boundaries
                 u_plot.add_shapes(axis)
             # Create colorbar in this axis
-            cbax = make_axes_locatable(axis).append_axes('bottom', size="6.5%", \
-                                                         pad=0.3, axes_class=plt.Axes)
+            cbax = make_axes_locatable(axis).append_axes('bottom',
+                                                         size="6.5%",
+                                                         pad=0.3,
+                                                         axes_class=plt.Axes)
             cbar = plt.colorbar(hex_bin, cax=cbax, orientation='horizontal',
                                 extend=extend)
             cbar.set_label(name)
             cbar.formatter.set_scientific(False)
             cbar.set_ticks([0, 1000, 10000, 100000, 1000000])
             cbar.set_ticklabels(['0', "1'000", "10'000", "100'000", "1'000'000"])
-            title_position = {'model_text': [0.02, 0.85], 'explain_text': [0.02, 0.81], 'event_day': [0.98, 0.85],
+            title_position = {'model_text': [0.02, 0.85],
+                              'explain_text': [0.02, 0.81],
+                              'event_day': [0.98, 0.85],
                               'run_start': [0.98, 0.81]}
-            left_right = {'model_text': 'left', 'explain_text': 'left', 'event_day': 'right', 'run_start': 'right'}
-            color = {'model_text': 'k', 'explain_text': 'r', 'event_day': 'k', 'run_start': 'k'}
-            [plt.figtext(title_position[t][0], title_position[t][1], tit[t], fontsize='xx-large', color=color[t],
-                         ha=left_right[t]) for t in tit]
+            left_right = {'model_text': 'left',
+                          'explain_text': 'left',
+                          'event_day': 'right',
+                          'run_start': 'right'}
+            color = {'model_text': 'k',
+                     'explain_text': 'r',
+                     'event_day': 'k',
+                     'run_start': 'k'}
+            [plt.figtext(title_position[t][0],
+                         title_position[t][1],
+                         tit[t],
+                         fontsize='xx-large',
+                         color=color[t],
+                         ha=left_right[t])
+             for t in tit]
 
             plt.subplots_adjust(top=0.8)
             # axis.set_extent((5.70, 10.49, 45.7, 47.81), crs=ccrs.PlateCarree())
@@ -469,8 +492,13 @@ class Forecast():
                           'run_start': [0.9, 0.9]}
         left_right = {'model_text': 'left', 'explain_text': 'left', 'event_day': 'right', 'run_start': 'right'}
         color = {'model_text': 'k', 'explain_text': 'r', 'event_day': 'k', 'run_start': 'k'}
-        [plt.figtext(title_position[t][0], title_position[t][1], title_dict[t], fontsize='x-large', color=color[t],
-                     ha=left_right[t]) for t in title_dict]
+        [plt.figtext(title_position[t][0],
+                     title_position[t][1],
+                     title_dict[t],
+                     fontsize='x-large',
+                     color=color[t],
+                     ha=left_right[t])
+         for t in title_dict]
 
         plt.xlabel('forecasted total damage for ' + self.exposure_name +
                    ' [' + self._impact[haz_ind].unit + ']')
@@ -495,7 +523,7 @@ class Forecast():
         Parameters
         ----------
         number: int
-        
+
         Returns
         -------
         str
@@ -543,7 +571,7 @@ class Forecast():
                                        self._impact[haz_ind].unit) if explain_str is None else explain_str,
                                        'model_text': 'Exceedance probability map'}
         cbar_label = 'probabilty of reaching threshold'
-        f, ax = self._plot_exc_prob(run_datetime, threshold, title_dict, cbar_label)
+        f, _ = self._plot_exc_prob(run_datetime, threshold, title_dict, cbar_label)
         if save_fig:
             plt.savefig(wind_map_file_name_full)
         if close_fig:
@@ -591,7 +619,10 @@ class Forecast():
         if not isinstance(axis_sub, np.ndarray):
             axis_sub = np.array([[axis_sub]])
         fig.set_size_inches(9, 8)
-        for array_im, axis, tit, name, coord in zip(list_arr, axis_sub.flatten(), list_tit, list_name, list_coord):
+        for array_im, axis, tit, name, coord in zip(list_arr,
+                                                    axis_sub.flatten(),
+                                                    list_tit, list_name,
+                                                    list_coord):
             if coord.shape[0] != array_im.size:
                 raise ValueError("Size mismatch in input array: %s != %s." % \
                                  (coord.shape[0], array_im.size))
@@ -603,7 +634,7 @@ class Forecast():
                 shp = shapereader.Reader(polygon_file)
                 project_crs = lambda x, y: pyproj.transform(pyproj.Proj(init='epsg:21781'), pyproj.Proj(init='epsg:4150'),
                                                             x, y)
-                for geometry, record in zip(shp.geometries(), shp.records()):
+                for geometry, _ in zip(shp.geometries(), shp.records()):
                     geom2 = shapely.ops.transform(project_crs, geometry)
                     axis.add_geometries([geom2], crs=ccrs.PlateCarree(), facecolor='', \
                                         edgecolor='gray')
@@ -614,12 +645,25 @@ class Forecast():
             cbar = plt.colorbar(hex_bin, cax=cbax, orientation='horizontal',
                                 extend=extend)
             cbar.set_label(name)
-            title_position = {'model_text': [0.02, 0.94], 'explain_text': [0.02, 0.9], 'event_day': [0.98, 0.94],
+            title_position = {'model_text': [0.02, 0.94],
+                              'explain_text': [0.02, 0.9],
+                              'event_day': [0.98, 0.94],
                               'run_start': [0.98, 0.9]}
-            left_right = {'model_text': 'left', 'explain_text': 'left', 'event_day': 'right', 'run_start': 'right'}
-            color = {'model_text': 'k', 'explain_text': 'r', 'event_day': 'k', 'run_start': 'k'}
-            [plt.figtext(title_position[t][0], title_position[t][1], tit[t], fontsize='xx-large', color=color[t],
-                         ha=left_right[t]) for t in tit]
+            left_right = {'model_text': 'left',
+                          'explain_text': 'left',
+                          'event_day': 'right',
+                          'run_start': 'right'}
+            color = {'model_text': 'k',
+                     'explain_text': 'r',
+                     'event_day': 'k',
+                     'run_start': 'k'}
+            [plt.figtext(title_position[t][0],
+                         title_position[t][1],
+                         tit[t],
+                         fontsize='xx-large',
+                         color=color[t],
+                         ha=left_right[t])
+             for t in tit]
             axis.set_extent((5.70, 10.49, 45.7, 47.81), crs=ccrs.PlateCarree())
 
         return fig, axis
@@ -678,14 +722,22 @@ class Forecast():
         warn_map_file_name_full = Path(FORECAST_PLOT_DIR) / warn_map_file_name
         decision_dict = {'probability_aggregation': probability_aggregation,
                          'area_aggregation': area_aggregation}
-        lead_time_str = '{:.0f}'.format(self.lead_time(run_datetime).days + self.lead_time(run_datetime).seconds/60/60/24) # cant show '2' and '2.5'
+        lead_time_str = '{:.0f}'.format(self.lead_time(run_datetime).days +
+                                        self.lead_time(run_datetime).seconds/60/60/24) # cant show '2' and '2.5'
         title_dict = {'event_day': self.event_date.strftime('%a %d %b %Y 00-24UTC'),
-                      'run_start': run_datetime.strftime('%d.%m.%Y %HUTC +') + lead_time_str + 'd',
+                      'run_start': (run_datetime.strftime('%d.%m.%Y %HUTC +') +
+                                    lead_time_str +
+                                    'd'),
                       'explain_text': explain_text,
                       'model_text': title}
 
-        f, ax = self._plot_warn(run_datetime, thresholds, decision_level, decision_dict,
-                                polygon_file, polygon_file_crs, title_dict)
+        f, _ = self._plot_warn(run_datetime,
+                                thresholds,
+                                decision_level,
+                                decision_dict,
+                                polygon_file,
+                                polygon_file_crs,
+                                title_dict)
         if save_fig:
             plt.savefig(warn_map_file_name_full)
         if close_fig:
@@ -730,7 +782,7 @@ class Forecast():
         if not (isinstance(decision_dict['probability_aggregation'], float)
                 &
                 isinstance(decision_dict['area_aggregation'], float)):
-            ValueError(" If decision_level is 'grid_point'," +
+            ValueError(" If decision_level is 'exposure_point'," +
                        "parameters probability_aggregation and " +
                        "area_aggregation of " +
                        "Forecast.plot_warn_map() must both be " +
@@ -750,7 +802,7 @@ class Forecast():
                                  "a float between [0..1], which " +
                                  "specifys a quantile. or 'sum' or 'mean'.")
 
-        for geometry, record in zip(shp.geometries(), shp.records()):
+        for geometry, _ in zip(shp.geometries(), shp.records()):
             geom2 = shapely.ops.transform(transformer.transform, geometry)
             in_geom = u_coord_on_land(lat=self._impact[haz_ind].coord_exp[:, 0],
                                       lon=self._impact[haz_ind].coord_exp[:, 1],
@@ -801,17 +853,31 @@ class Forecast():
         hazard_levels = ['1: Minimal or no hazard', '2: Moderate hazard',
                          '3: Significant hazard', '4: Severe hazard', '5: Very severe hazard']
         legend_elements = [Patch(facecolor=COLORS_WARN[n, :],
-                           edgecolor='gray',
-                           label=hazard_level) for n, hazard_level in enumerate(hazard_levels)]
+                                 edgecolor='gray',
+                                 label=hazard_level)
+                           for n, hazard_level in enumerate(hazard_levels)]
 
         axis.legend(handles=legend_elements, loc='upper center', framealpha=0.5,
                     bbox_to_anchor=(0.5, -0.02), ncol=3)
-        title_position = {'model_text': [0.02, 0.91], 'explain_text': [0.02, 0.87], 'event_day': [0.98, 0.91],
+        title_position = {'model_text': [0.02, 0.91],
+                          'explain_text': [0.02, 0.87],
+                          'event_day': [0.98, 0.91],
                           'run_start': [0.98, 0.87]}
-        left_right = {'model_text': 'left', 'explain_text': 'left', 'event_day': 'right', 'run_start': 'right'}
-        color = {'model_text': 'k', 'explain_text': 'r', 'event_day': 'k', 'run_start': 'k'}
-        [plt.figtext(title_position[t][0], title_position[t][1], tit[t], fontsize='xx-large', color=color[t],
-                     ha=left_right[t]) for t in tit]
+        left_right = {'model_text': 'left',
+                      'explain_text': 'left',
+                      'event_day': 'right',
+                      'run_start': 'right'}
+        color = {'model_text': 'k',
+                 'explain_text': 'r',
+                 'event_day': 'k',
+                 'run_start': 'k'}
+        [plt.figtext(title_position[t][0],
+                     title_position[t][1],
+                     tit[t],
+                     fontsize='xx-large',
+                     color=color[t],
+                     ha=left_right[t])
+         for t in tit]
 
         axis.set_extent((5.70, 10.49, 45.7, 47.81), crs=ccrs.PlateCarree())
         return fig, axis
