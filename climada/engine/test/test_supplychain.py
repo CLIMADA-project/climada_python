@@ -21,7 +21,6 @@ Test Supplychain class.
 
 import unittest
 import numpy as np
-import shutil
 
 from climada import CONFIG
 from climada.entity.exposures.base import Exposures
