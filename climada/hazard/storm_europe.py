@@ -837,35 +837,47 @@ class StormEurope(Hazard):
 
 
 def generate_WS_forecast_hazard(run_datetime = dt.datetime.today().replace(hour=0, 
-                                                                        minute=0, 
-                                                                        second=0, 
-                                                                        microsecond=0),
-                             event_date = (dt.datetime.today().replace(hour=0, 
-                                                                       minute=0, 
-                                                                       second=0,
-                                                                       microsecond=0)
-                                           + dt.timedelta(days=2)),
-                             haz_model = 'icon-eu-eps',
-                             haz_raw_storage = None):
-    """ use parameters to generate needed forecast hazard either by download
-    or through file.
-    Parameters:
-    run_datetime (datetime, optional): The starting timepoint of the forecast run
+                                                                           minute=0, 
+                                                                           second=0, 
+                                                                           microsecond=0),
+                                event_date = (dt.datetime.today().replace(hour=0, 
+                                                                          minute=0, 
+                                                                          second=0,
+                                                                          microsecond=0)
+                                              + dt.timedelta(days=2)),
+                                haz_model = 'icon-eu-eps',
+                                haz_raw_storage = None):
+    """ use the initialization time (run_datetime), the date of the event and
+    specify the forecast model (haz_model) to generate a Hazard from forecast
+    data either by download or through reading from existing file.
+    
+    Parameters
+    ----------
+    run_datetime: datetime.datetime, optional
+        The starting timepoint of the forecast run
         of the icon model, defaults to today 00:00 hours
-    event_date (datetime, optional): one day within the forecast
+    event_date: datetime.datetime, optional
+        one day within the forecast
         period, only this day (00H-24H) will be included in the hazard,
         defaults to the day after tomorrow
-    haz_model (str,optional): select the name of the model to
+    haz_model: str, optional
+        select the name of the model to
         be used: one of ['icon-eu-eps', 'cosmo1e_file', 'cosmo2e_file']
-    haz_raw_storage (str, optional): path to folder, where netcdf files
+    haz_raw_storage: str, optional
+        path to folder, where netcdf files
         are stored, mendatory when haz_model is 'cosmo1e_file' or
         'cosmo2e_file'. the string must contain one set of curly brakets,
         used by the function str.format to include
         run_datetime.strftime('%y%m%d%H').
-    Returns:
+    Returns
+    -------
+    Hazard
         hazard
+    str
         haz_model
+    datetime.datetime
         run_datetime
+    datetime.datetime
         event_date
     """
     if (haz_model == 'cosmo1e_file'
