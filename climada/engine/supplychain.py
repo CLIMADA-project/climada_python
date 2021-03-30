@@ -23,42 +23,45 @@ __all__ = ['SupplyChain']
 
 import logging
 import datetime as dt
-from pathlib import Path
 from tqdm import tqdm
 import numpy as np
 import pandas as pd
 from iso3166 import countries_by_numeric
+
+from climada import CONFIG
 from climada.util import files_handler as u_fh
 from climada.engine import Impact
-from climada.util.constants import SYSTEM_DIR
 from climada.entity.exposures.base import Exposures
 
 LOGGER = logging.getLogger(__name__)
-WIOD_FILE_LINK = 'http://www.wiod.org/protected3/data16/wiot_ROW/'
+WIOD_FILE_LINK = CONFIG.engine.supplychain.resources.wiod16.str()
+"""Link to the 2016 release of the WIOD tables."""
+
+WIOD_DIRECTORY = CONFIG.engine.supplychain.local_data.wiod.dir()
+"""Directory where WIOD tables are downloaded into."""
 
 class SupplyChain():
     """SupplyChain class.
 
-    The SupplyChain class provides methods for loading input-output tables and
-    computing direct, indirect and total impacts.
+    The SupplyChain class provides methods for loading Multi-Regional Input-Output
+    Tables (MRIOT) and computing direct, indirect and total impacts.
 
     Attributes
     ----------
     mriot_data : np.array
         The input-output table data.
-    countries_iso3 : np.array
-        Countries considered by the input-output table reported via ISO3 codes.
+    mriot_reg_names : np.array
+        Names of regions considered in the input-output table.
     sectors : np.array
-        Sectors considered by the input-output table.
+        Sectors considered in the input-output table.
     total_prod : np.array
         Countries' total production.
     mriot_type : str
-        Type of the adopted input-output table. Currently only WIOD tables
-        are supported.
-    cntry_pos : dict
-        Countrie's positions within the input-output tables and impact arrays.
-    cntry_dir_imp : list
-        Countries undergoing direct impacts.
+        Type of the adopted input-output table.
+    reg_pos : dict
+        Regions' positions within the input-output table and impact arrays.
+    reg_dir_imp : list
+        Regions undergoing direct impacts.
     years : np.array
         Years of the considered hazard events for which impact is calculated.
     direct_impact : np.array
@@ -75,17 +78,17 @@ class SupplyChain():
         Average annual total impact array.
     io_data : dict
         Dictionary with the coefficients, inverse and risk_structure matrixes and
-        the selected input-output approach.
+        the selected input-output modeling approach.
     """
 
     def __init__(self):
         """Initialize SupplyChain."""
         self.mriot_data = np.array([], dtype='f')
-        self.countries_iso3 = np.array([], dtype='str')
+        self.mriot_reg_names = np.array([], dtype='str')
         self.sectors = np.array([], dtype='str')
         self.total_prod = np.array([], dtype='f')
         self.mriot_type = ''
-        self.cntry_pos = {}
+        self.reg_pos = {}
         self.years = np.array([], dtype='f')
         self.direct_impact = np.array([], dtype='f')
         self.direct_aai_agg = np.array([], dtype='f')
@@ -95,19 +98,29 @@ class SupplyChain():
         self.total_aai_agg = np.array([], dtype='f')
         self.io_data = {}
 
-    def read_wiod16(self, year=2014, file_folder=SYSTEM_DIR.joinpath('results')):
-        """Read multi-regional input-output table of the WIOD project
-        http://www.wiod.org/database/wiots16
+    def read_wiod16(self, year=2014,
+                    table_info_pos={'range_rows':(5, 2469),
+                                    'range_cols':(4, 2468),
+                                    'col_iso3':2,'col_sectors':1}):
+        """Read multi-regional input-output tables of the 2016 release of the
+        WIOD project: http://www.wiod.org/database/wiots16
 
         Parameters
         ----------
         year : int
             Year of WIOD table to use. Valid years go from 2000 to 2014.
             Default year is 2014.
-        file_path : str
-            Path to folder where the WIOD table is stored. Default is SYSTEM_DIR/results.
-            If data are not present, they are downloaded.
-
+        table_info_pos: dict
+            Dictionary with info about how to properly read the WIOD table.
+            Default values allow reading the full WIOD table. Keys are:
+                range_rows : tuple
+                    initial and end positions of data along rows.
+                range_cols : tuple
+                    initial and end positions of data along columns.
+                col_iso3 : int
+                    column with countries names in ISO3 codes.
+                col_sectors : int
+                    column with sector names.
         References
         ----------
         [1] Timmer, M. P., Dietzenbacher, E., Los, B., Stehrer, R. and de Vries, G. J.
@@ -117,33 +130,29 @@ class SupplyChain():
         """
 
         file_name = 'WIOT{}_Nov16_ROW.xlsb'.format(year)
-        file_folder = Path(file_folder)
-        file_folder.mkdir(exist_ok=True)
-        file_loc = file_folder / file_name
+        file_loc = WIOD_DIRECTORY / file_name
 
-        if not file_loc in file_folder.iterdir():
+        if not file_loc in WIOD_DIRECTORY.iterdir():
             download_link = WIOD_FILE_LINK + file_name
-            u_fh.download_file(download_link, download_dir=file_folder)
+            u_fh.download_file(download_link, download_dir=WIOD_DIRECTORY)
             LOGGER.info('Downloading WIOD table for year %s', year)
         mriot = pd.read_excel(file_loc, engine='pyxlsb')
 
-        # hard-coded values based on the structure of the wiod tables
-        col_sectors = 1
-        col_iso3 = 2
-        end_row_sectors = 61
-        start_row, end_row = (5, 2469)
-        start_col, end_col = (4, 2468)
+        col_iso3 = table_info_pos['col_iso3']
+        col_sectors = table_info_pos['col_sectors']
+        start_row, end_row = table_info_pos['range_rows']
+        start_col, end_col = table_info_pos['range_cols']
 
-        self.sectors = mriot.iloc[start_row:end_row_sectors, col_sectors].values
-        self.countries_iso3 = mriot.iloc[start_row:end_row, col_iso3].unique()
+        self.sectors = mriot.iloc[start_row:end_row, col_sectors].unique()
+        self.mriot_reg_names = mriot.iloc[start_row:end_row, col_iso3].unique()
         self.mriot_data = mriot.iloc[start_row:end_row,
                                      start_col:end_col].values
         self.total_prod = mriot.iloc[start_row:end_row, -1].values
-        self.cntry_pos = {
-            iso3: range(len(self.sectors)*i, len(self.sectors)*(i+1))
-            for i, iso3 in enumerate(self.countries_iso3)
+        self.reg_pos = {
+            name: range(len(self.sectors)*i, len(self.sectors)*(i+1))
+            for i, name in enumerate(self.mriot_reg_names)
             }
-        self.mriot_type = 'wiod'
+        self.mriot_type = 'WIOD'
 
     def calc_sector_direct_impact(self, hazard, exposure, imp_fun_set,
                                   selected_subsec="service"):
@@ -160,8 +169,9 @@ class SupplyChain():
         selected_subsec : str or list
             Positions of the selected sectors. These positions can be either
             defined by the user by passing a list of values, or by using built-in
-            sectors' aggregations for the WIOD dat passing a string with possible values being
-            "service", "manufacturing", "agriculture" or "mining". Default is "service".
+            sectors' aggregations for the WIOD data passing a string with possible
+            values being "service", "manufacturing", "agriculture" or "mining".
+            Default is "service".
 
         """
 
@@ -178,44 +188,39 @@ class SupplyChain():
             ]
         self.years = np.unique([date.year for date in dates])
 
-        unique_regid_same_order = exposure.gdf.region_id.unique()
+        unique_exp_regid = exposure.gdf.region_id.unique()
         self.direct_impact = np.zeros(shape=(len(self.years),
-                                             len(self.countries_iso3)*len(self.sectors)))
+                                             len(self.mriot_reg_names)*len(self.sectors)))
 
-        self.cntry_dir_imp = []
-        for cntry in unique_regid_same_order:
-            cntyr_exp = Exposures(exposure.gdf[exposure.gdf.region_id == cntry])
-            cntyr_exp.check()
+        self.reg_dir_imp = []
+        for exp_regid in unique_exp_regid:
+            reg_exp = Exposures(exposure.gdf[exposure.gdf.region_id == exp_regid])
+            reg_exp.check()
 
             # Normalize exposure
-            total_ctry_value = cntyr_exp.gdf['value'].sum()
-            cntyr_exp.gdf['value'] /= total_ctry_value
+            total_reg_value = reg_exp.gdf['value'].sum()
+            reg_exp.gdf['value'] /= total_reg_value
 
             # Calc impact for country
             imp = Impact()
-            imp.calc(cntyr_exp, imp_fun_set, hazard)
+            imp.calc(reg_exp, imp_fun_set, hazard)
             imp_year_set = np.array(list(imp.calc_impact_year_set(imp).values()))
 
-            # Total production of country
-            cntry_iso3 = countries_by_numeric.get(str(cntry)).alpha3
-            idx_country = np.where(self.countries_iso3 == cntry_iso3)[0]
+            mriot_reg_name = self._map_exp_to_mriot(exp_regid, self.mriot_type)
 
-            if not idx_country.size > 0.:
-                cntry_iso3 = 'ROW'
+            self.reg_dir_imp.append(mriot_reg_name)
 
-            self.cntry_dir_imp.append(cntry_iso3)
-
-            subsec_cntry_pos = np.array(selected_subsec) + self.cntry_pos[cntry_iso3][0]
-            subsec_cntry_prod = self.mriot_data[subsec_cntry_pos].sum(axis=1)
+            subsec_reg_pos = np.array(selected_subsec) + self.reg_pos[mriot_reg_name][0]
+            subsec_reg_prod = self.mriot_data[subsec_reg_pos].sum(axis=1)
 
             imp_year_set = np.repeat(imp_year_set, len(selected_subsec)
                                      ).reshape(len(self.years),
                                                len(selected_subsec))
-            direct_impact_cntry = np.multiply(imp_year_set, subsec_cntry_prod)
+            direct_impact_reg = np.multiply(imp_year_set, subsec_reg_prod)
 
             # Sum needed below in case of many ROWs, which are aggregated into
             # one country as per WIOD table.
-            self.direct_impact[:, subsec_cntry_pos] += direct_impact_cntry.astype(np.float32)
+            self.direct_impact[:, subsec_reg_pos] += direct_impact_reg.astype(np.float32)
 
         # average impact across years
         self.direct_aai_agg = self.direct_impact.mean(axis=0)
@@ -296,6 +301,21 @@ class SupplyChain():
         """Calculate total impacts summing direct and indirect impacts."""
         self.total_impact = self.indirect_impact + self.direct_impact
         self.total_aai_agg = self.total_impact.mean(axis=0)
+
+    def _map_exp_to_mriot(self, exp_regid, mriot_type):
+        """Map regions names in exposure into theiInput-output regions names."""
+
+        if mriot_type == 'WIOD':
+            mriot_reg_name = countries_by_numeric.get(str(exp_regid)).alpha3
+            idx_country = np.where(self.mriot_reg_names == mriot_reg_name)[0]
+
+            if not idx_country.size > 0.:
+                mriot_reg_name = 'ROW'
+
+        elif mriot_type == '':
+            mriot_reg_name = exp_regid
+
+        return mriot_reg_name
 
     def _leontief_calc(self, direct_intensity, inverse, risk_structure, year_i):
         """Calculate the risk_structure based on the Leontief approach."""
