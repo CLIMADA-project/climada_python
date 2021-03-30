@@ -441,8 +441,8 @@ class Forecast():
                           'event_day': 'right',
                           'run_start': 'right'}
             color = {'model_text': 'k',
-                     'explain_text': 'r',
-                     'event_day': 'k',
+                     'explain_text': 'k',
+                     'event_day': 'r',
                      'run_start': 'k'}
             for t in tit:
                 plt.figtext(title_position[t][0],
@@ -511,12 +511,12 @@ class Forecast():
         lead_time_str = '{:.0f}'.format(self.lead_time(run_datetime).days + self.lead_time(run_datetime).seconds/60/60/24) # cant show '2' and '2.5'
         title_dict = {'event_day': self.event_date.strftime('%a %d %b %Y 00-24UTC'),
                       'run_start': run_datetime.strftime('%d.%m.%Y %HUTC +') + lead_time_str + 'd',
-                      'explain_text': ('total building damage caused by wind'),
+                      'explain_text': ('total building damage'),
                       'model_text': "CLIMADA IMPACT"}
         title_position = {'model_text': [0.13, 0.94], 'explain_text': [0.13, 0.9], 'event_day': [0.9, 0.94],
                           'run_start': [0.9, 0.9]}
         left_right = {'model_text': 'left', 'explain_text': 'left', 'event_day': 'right', 'run_start': 'right'}
-        color = {'model_text': 'k', 'explain_text': 'r', 'event_day': 'k', 'run_start': 'k'}
+        color = {'model_text': 'k', 'explain_text': 'k', 'event_day': 'r', 'run_start': 'k'}
         for t in title_dict:
             plt.figtext(title_position[t][0],
                         title_position[t][1],
@@ -699,8 +699,8 @@ class Forecast():
                           'event_day': 'right',
                           'run_start': 'right'}
             color = {'model_text': 'k',
-                     'explain_text': 'r',
-                     'event_day': 'k',
+                     'explain_text': 'k',
+                     'event_day': 'r',
                      'run_start': 'k'}
             for t in tit:
                 plt.figtext(title_position[t][0],
@@ -917,8 +917,8 @@ class Forecast():
                       'event_day': 'right',
                       'run_start': 'right'}
         color = {'model_text': 'k',
-                 'explain_text': 'r',
-                 'event_day': 'k',
+                 'explain_text': 'k',
+                 'event_day': 'r',
                  'run_start': 'k'}
         for t in tit:
             plt.figtext(title_position[t][0],
