@@ -128,7 +128,8 @@ class SupplyChain():
         if table_info_pos is None:
             table_info_pos = {'range_rows':(5, 2469),
                               'range_cols':(4, 2468),
-                              'col_iso3':2,'col_sectors':1}
+                              'col_iso3':2,
+                              'col_sectors':1}
 
         file_name = 'WIOT{}_Nov16_ROW.xlsb'.format(year)
         file_loc = WIOD_DIRECTORY / file_name
