@@ -44,6 +44,8 @@ import climada.util.plot as u_plot
 from climada.util.config import CONFIG
 from climada.util.files_handler import to_list
 from climada.util.coordinates import coord_on_land as u_coord_on_land
+from climada.util.value_representation import \
+    value_to_monetary_unit as u_value_to_monetary_unit
 
 LOGGER = logging.getLogger(__name__)
 
@@ -106,6 +108,7 @@ class Forecast():
         Short string specifying the model used to create the hazard,
         if possible three big letters.
     exposure: Exposure
+        an CLIMADA Exposures containg values at risk
     country: str
         Country for which the forecast is done.
     vulnerability: ImpactFuncSet
@@ -116,7 +119,7 @@ class Forecast():
                  hazard_dict,
                  exposure,
                  impact_funcs,
-                 haz_model='NWP'
+                 haz_model='NWP',
                  exposure_name=None):
         """ Initialization with hazard, exposure and vulnerability.
 
@@ -142,17 +145,18 @@ class Forecast():
         self.run_datetime = list(hazard_dict.keys())
         self.hazard = list(hazard_dict.values())
         # check event_date
-        hazard_date = np.unique( [date for hazard in self.hazard for date in hazard.date] )                                 
+        hazard_date = np.unique([
+            date
+            for hazard in self.hazard
+            for date in hazard.date
+            ])                          
         if not len(hazard_date) == 1:
             raise ValueError('Please provide hazards containing only one ' +
                               'event_date. The current hazards contain several ' +
                               'events with different event_dates and the Forecast ' +
                               'class cannot function proberly with such hazards.')
-        self.event_date = dt.datetime.fromordinal(hazard_date)
-        if haz_model is None:
-            self.haz_model = 'NWP'
-        else:
-            self.haz_model = haz_model
+        self.event_date = dt.datetime.fromordinal(hazard_date[0])
+        self.haz_model = haz_model
         self.exposure = exposure
         if exposure_name is None:
             try:
@@ -162,16 +166,17 @@ class Forecast():
         else:
             self.exposure_name = exposure_name
         self.vulnerability = impact_funcs
-        self._impact = [Impact() dt in self.run_datetime]
+        self._impact = [Impact() for dt in self.run_datetime]
 
     def ei_exp(self, run_datetime=None):
         """
-        Expected annual impact
+        Expected impact per exposure
 
         Parameters
         ----------
         run_datetime: datetime.datetime, optional
-            Select the used hazard by the run_datetime.
+            Select the used hazard by the run_datetime,
+            default is first element of attribute run_datetime.
         Returns
         -------
         float
@@ -182,12 +187,13 @@ class Forecast():
         return self._impact[haz_ind].eai_exp
 
     def ai_agg(self, run_datetime=None):
-        """ Annual average impact
+        """ average impact aggregated over all exposures
 
         Parameters
         ----------
         run_datetime: datetime.datetime, optional
-            Select the used hazard by the run_datetime.
+            Select the used hazard by the run_datetime,
+            default is first element of attribute run_datetime.
         Returns
         -------
         float
@@ -203,10 +209,12 @@ class Forecast():
         Parameters
         ----------
         run_datetime: datetime.datetime, optional
-            Select the used hazard by the run_datetime.
+            Select the used hazard by the run_datetime,
+            default is first element of attribute run_datetime.
         Returns
         -------
-        str
+        str 
+            summarizing the most important information about the hazard
         """
         if run_datetime is None:
             run_datetime = self.run_datetime[0]
@@ -226,10 +234,13 @@ class Forecast():
         Parameters
         ----------
         run_datetime: datetime.datetime, optional
-            Select the used hazard by the run_datetime.
+            Select the used hazard by the run_datetime,
+            default is first element of attribute run_datetime.
         Returns
         -------
-        str
+        str 
+            summarizing the most important information about 
+            the impact forecast
         """
         if run_datetime is None:
             run_datetime = self.run_datetime[0]
@@ -244,56 +255,63 @@ class Forecast():
         Parameters
         ----------
         run_datetime: datetime.datetime, optional
-            select the used hazard by the run_datetime.
+            Select the used hazard by the run_datetime,
+            default is first element of attribute run_datetime.
+         Returns
+        -------
+        datetime.timedelta 
+            the difference between the initialization time of the forecast
+            model run and the date of the event, commenly named lead time
         """
         if run_datetime is None:
             run_datetime = self.run_datetime[0]
         return self.event_date - run_datetime
 
-    def calc(self, force_reassign=False, check_plot=False):
-        """ calculate the impact using
-        exposure, hazard, and vulnerabilty.
+    def calc(self, force_reassign=False):
+        """ calculate the impacts for all lead times using
+        exposure, all hazards of all run_datetime, and ImpactFunctionSet.
 
         Parameters
         ----------
         force_reassign: bool, optional
-            Reassign centroids.
-        check_plot: bool, optional
-            Show plot of expected annual impact if True.
+            Reassign hazard centroids to the exposure for all hazards,
+            default is false.
         """
-        # generate folders
-        if not Path(FORECAST_PLOT_DIR).exists():
-            Path(FORECAST_PLOT_DIR).mkdir(parents=True)
-
-        # force reassign
-        if force_reassign:
-            self.exposure.assign_centroids(self.hazard)
         # calc impact
         for ind_i, haz_i in enumerate(self.hazard):
+            # force reassign
+            if force_reassign:
+                self.exposure.assign_centroids(haz_i)
             self._impact[ind_i].calc(self.exposure,
                          self.vulnerability,
                          haz_i,
                          save_mat=True)
-            if check_plot:
-                self._impact[ind_i].plot_hexbin_eai_exposure()
 
     def plot_imp_map(self,
                      run_datetime=None,
                      save_fig=True,
-                     close_fig=True,
-                     shapes_file=None):
+                     close_fig=False,
+                     polygon_file=None,
+                     polygon_file_crs='epsg:4326'):
         """ plot a map of the impacts
 
         Parameters
         ----------
         run_datetime: datetime.datetime, optional
-            Select the used hazard by the run_datetime.
+            Select the used hazard by the run_datetime,
+            default is first element of attribute run_datetime.
         save_fig: bool, optional
             True default to save the figure.
         close_fig: bool, optional
             True default to close the figure.
-        shapes_file: str, optional
-            Points to a .shp-file with polygons in crs=epsg(21781).
+        polygon_file: str, optional
+            Points to a .shp-file with polygons do be drawn as outlines on
+            the plot, default is None to not draw the lines. please also
+            specify the crs in the parameter polygon_file_crs.
+        polygon_file_crs: str, optional
+            String of pattern <provider>:<code> specifying
+            the crs. has to be readable by pyproj.Proj. Default is
+            'epsg:4326'.
         """
         # select hazard with run_datetime
         if run_datetime is None:
@@ -312,21 +330,24 @@ class Forecast():
                                     'd'),
                       'explain_text': ('mean building damage caused by wind'),
                       'model_text': "CLIMADA IMPACT"}
-        f, _ = self._plot_imp_map(
+        fig, axes = self._plot_imp_map(
                              run_datetime,
                              title=title_dict,
                              cbar_label=('forecasted damage per gridcell [' +
                                          self._impact[haz_ind].unit +
                                          ']'),
-                             polygon_file=shapes_file
+                             polygon_file=polygon_file,
+                             polygon_file_crs=polygon_file_crs,
                              )
         if save_fig:
-            f.savefig(map_file_name_full)
+            fig.savefig(map_file_name_full)
         if close_fig:
-            f.clf()
-            plt.close(f)
+            fig.clf()
+            plt.close(fig)
+        return axes
 
-    def _plot_imp_map(self, run_datetime, title, cbar_label, polygon_file=None):
+    def _plot_imp_map(self, run_datetime, title, cbar_label,
+                      polygon_file=None,polygon_file_crs='epsg:4326'):
         # select hazard with run_datetime
         if run_datetime is None:
             run_datetime = self.run_datetime[0]
@@ -384,8 +405,8 @@ class Forecast():
             if shapes:
                 # add warning regions
                 shp = shapereader.Reader(polygon_file)
-                project_crs = lambda x, y: pyproj.transform(pyproj.Proj(init='epsg:21781'),
-                                                            pyproj.Proj(init='epsg:4150'),
+                project_crs = lambda x, y: pyproj.transform(pyproj.Proj(init=polygon_file_crs),
+                                                            pyproj.Proj(init='epsg:4326'),
                                                             x, y)
                 for geometry, _ in zip(shp.geometries(), shp.records()):
                     geom2 = shapely.ops.transform(project_crs, geometry)
@@ -405,7 +426,7 @@ class Forecast():
             cbar.set_label(name)
             cbar.formatter.set_scientific(False)
             cbar.set_ticks([0, 1000, 10000, 100000, 1000000])
-            cbar.set_ticklabels(['0', "1'000", "10'000", "100'000", "1'000'000"])
+            cbar.set_ticklabels(['0', "1 000", "10 000", "100 000", "1 000 000"])
             title_position = {'model_text': [0.02, 0.85],
                               'explain_text': [0.02, 0.81],
                               'event_day': [0.98, 0.85],
@@ -429,13 +450,14 @@ class Forecast():
             plt.subplots_adjust(top=0.8)
         return fig, axis_sub
 
-    def plot_hist(self, run_datetime=None, save_fig=True, close_fig=True):
+    def plot_hist(self, run_datetime=None, save_fig=True, close_fig=False):
         """ plot histogram of the forecasted impacts all ensemble members
 
         Parameters
         ----------
         run_datetime: datetime.datetime, optional
-            Select the used hazard by the run_datetime.
+            Select the used hazard by the run_datetime,
+            default is first element of attribute run_datetime.
         save_fig: bool, optional
             True default to save the figure.
         close_fig: bool, optional
@@ -500,7 +522,7 @@ class Forecast():
         plt.ylabel('probability')
         plt.text(0.75, 0.85,
                  # 'mean damage:\n' + locale.currency(np.round(imp.at_event.mean()), grouping=True),
-                 'mean damage:\nCHF ' + '{0:,}'.format(np.int(np.round(self._impact[haz_ind].at_event.mean()))).replace(',', "'"),
+                 'mean damage:\nCHF ' + '{0:,}'.format(np.int(np.round(self._impact[haz_ind].at_event.mean()))).replace(',', " "),
                  horizontalalignment='center',
                  verticalalignment='center',
                  transform=ax.transAxes)
@@ -523,13 +545,17 @@ class Forecast():
         -------
         str
         """
-        number_names = ['', ' thousand', ' million', ' billion', ' trillion']
-        millidx = max(0, min(len(number_names) - 1,
-                             int(math.floor(0 if number == 0 else math.log10(abs(number)) / 3))))
-        return '{:.0f}{}'.format(number / 10 ** (3 * millidx), number_names[millidx])
+        number_names = {0:'',
+                        1000: 'thousand',
+                        1000000: 'million',
+                        1000000000: 'billion',
+                        1000000000000: 'trillion'}
+        [value], name = u_value_to_monetary_unit(number,
+                                                   abbreviations=number_names)
+        return '{:.0f} {}'.format(value, name)
 
     def plot_exceedence_prob(self, threshold, explain_str=None,
-                             run_datetime=None, save_fig=True, close_fig=True):
+                             run_datetime=None, save_fig=True, close_fig=False):
         """ plot exceedence map
 
         Parameters
@@ -541,7 +567,8 @@ class Forecast():
             Short str which explains threshold, explain_str is included
             in the title of the figure.
         run_datetime: datetime.datetime, optional
-            Select the used hazard by the run_datetime.
+            Select the used hazard by the run_datetime,
+            default is first element of attribute run_datetime.
         save_fig: bool, optional
             True default to save the figure
         close_fig: bool, optional
@@ -672,7 +699,7 @@ class Forecast():
                       title='WARNINGS',
                       explain_text='warn level based on thresholds',
                       run_datetime=None,
-                      save_fig=True, close_fig=True):
+                      save_fig=True, close_fig=False):
         """ plot map colored with 5 warning colors for all regions in provided
         shape file.
 
@@ -697,7 +724,8 @@ class Forecast():
             Either a float between [0..1] specifying a quantile
             or 'mean' or 'sum'. Default value is 0.5.
         run_datetime: datetime.datetime, optional
-            Select the used hazard by the run_datetime.
+            Select the used hazard by the run_datetime,
+            default is first element of attribute run_datetime.
         title: str, optional
             Default is 'WARNINGS'.
         explain_text: str, optional
@@ -884,7 +912,8 @@ class Forecast():
         Parameters
         ----------
         run_datetime: datetime.datetime, optional
-            Select the used hazard by the run_datetime.
+            Select the used hazard by the run_datetime,
+            default is first element of attribute run_datetime.
         Returns
         -------
         cartopy.mpl.geoaxes.GeoAxesSubplot

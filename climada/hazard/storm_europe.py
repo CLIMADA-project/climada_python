@@ -940,12 +940,10 @@ def generate_WS_forecast_hazard(run_datetime = dt.datetime.today().replace(hour=
                 )
             hazard.write_hdf5(haz_file_name)
     else:
-        LOGGER.error("specific 'WS' hazard not implemented yet. " +
-                     "Please specify a valid value for haz_model.")
+        raise NotImplementedError("specific 'WS' hazard not implemented yet. " +
+                                  "Please specify a valid value for haz_model.")
 
     # check if hazard is successfully generated for Forecast
     if not isinstance(hazard, Hazard):
         LOGGER.warning('Hazard generation unsuccessful.')
-    # if not haz_model:
-    #     LOGGER.error("Forecast.params['haz_model'] not specified.")
     return hazard, haz_model, run_datetime, event_date
