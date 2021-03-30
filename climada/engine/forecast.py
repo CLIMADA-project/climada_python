@@ -96,13 +96,12 @@ class Forecast():
 
     Attributes
     ----------
-    run_datetime: list
-        List of datetime.datetime,
+    run_datetime: list of datetime.datetime
         initialization time of the forecast model run used to create the Hazard
     event_date: datetime.datetime
         Date on which the Hazard event takes place
-    hazard: list
-        List of CLIMADA Hazard
+    hazard: list of CLIMADA Hazard
+        List of the hazard forecast with different lead times.
     haz_model: str
         Short string specifying the model used to create the hazard,
         if possible three big letters.
@@ -117,7 +116,7 @@ class Forecast():
                  hazard_dict,
                  exposure,
                  impact_funcs,
-                 haz_model=None,
+                 haz_model='NWP'
                  exposure_name=None):
         """ Initialization with hazard, exposure and vulnerability.
 
@@ -140,16 +139,16 @@ class Forecast():
         exposure_name: str, optional
             Short string specifying the exposure, which is used in filenames.
         """
-        self.run_datetime = [key for key in hazard_dict.keys()]
-        self.hazard = [hazard_dict[key] for key in self.run_datetime]
+        self.run_datetime = list(hazard_dict.keys())
+        self.hazard = list(hazard_dict.values())
         # check event_date
-        hazard_dates = [date for hazard in self.hazard for date in hazard.date]
-        if not len(np.unique(hazard_dates)) == 1:
+        hazard_date = np.unique( [date for hazard in self.hazard for date in hazard.date] )                                 
+        if not len(hazard_date) == 1:
             raise ValueError('Please provide hazards containing only one ' +
                               'event_date. The current hazards contain several ' +
                               'events with different event_dates and the Forecast ' +
                               'class cannot function proberly with such hazards.')
-        self.event_date = dt.datetime.fromordinal(np.unique(hazard_dates)[0])
+        self.event_date = dt.datetime.fromordinal(hazard_date)
         if haz_model is None:
             self.haz_model = 'NWP'
         else:
@@ -163,7 +162,7 @@ class Forecast():
         else:
             self.exposure_name = exposure_name
         self.vulnerability = impact_funcs
-        self._impact = [Impact() for i in range(len(self.run_datetime))]
+        self._impact = [Impact() dt in self.run_datetime]
 
     def ei_exp(self, run_datetime=None):
         """
