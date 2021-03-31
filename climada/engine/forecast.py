@@ -329,7 +329,7 @@ class Forecast():
             The default is (9, 13)
         Returns
         -------
-        cartopy.mpl.geoaxes.GeoAxesSubplot
+        axes: cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         # select hazard with run_datetime
         if run_datetime is None:
@@ -487,7 +487,7 @@ class Forecast():
             The default is (9, 8)
         Returns
         -------
-        matplotlib.axes.Axes
+        axes: matplotlib.axes.Axes
         """
         # select hazard with run_datetime
         if run_datetime is None:
@@ -618,7 +618,7 @@ class Forecast():
             The default is (9, 13)
         Returns
         -------
-        axis: cartopy.mpl.geoaxes.GeoAxesSubplot
+        axes: cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         # select hazard with run_datetime
         if run_datetime is None:
@@ -791,7 +791,7 @@ class Forecast():
             Figure is not drawn if True. The default is False.
         Returns
         -------
-        axes : cartopy.mpl.geoaxes.GeoAxesSubplot
+        axes: cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         # select hazard with run_datetime
         if thresholds == 'default':
@@ -963,7 +963,8 @@ class Forecast():
         axis.set_extent((extent), ccrs.PlateCarree())
         return fig, axis
 
-    def plot_hexbin_ei_exposure(self, run_datetime=None):
+    def plot_hexbin_ei_exposure(self, run_datetime=None,
+                                figsize=(9,13)):
         """ plot the expected impact
 
         Parameters
@@ -971,12 +972,15 @@ class Forecast():
         run_datetime: datetime.datetime, optional
             Select the used hazard by the run_datetime,
             default is first element of attribute run_datetime.
+        figsize: tuple
+            figure size for plt.subplots, width, height in inches
+            The default is (9, 13)
         Returns
         -------
-        cartopy.mpl.geoaxes.GeoAxesSubplot
+        axes: cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         # select hazard with run_datetime
         if run_datetime is None:
             run_datetime = self.run_datetime[0]
         haz_ind = np.argwhere(np.isin(self.run_datetime, run_datetime))[0][0]
-        return self._impact[haz_ind].plot_hexbin_eai_exposure()
+        return self._impact[haz_ind].plot_hexbin_eai_exposure(figsize=figsize)
