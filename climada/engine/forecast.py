@@ -310,9 +310,9 @@ class Forecast():
             Select the used hazard by the run_datetime,
             default is first element of attribute run_datetime.
         save_fig: bool, optional
-            True default to save the figure.
+            Figure is saved if True. Default is True.
         close_fig: bool, optional
-            True default to close the figure.
+            Figure not drawn if True. Default is False.
         polygon_file: str, optional
             Points to a .shp-file with polygons do be drawn as outlines on
             the plot, default is None to not draw the lines. please also
@@ -323,8 +323,10 @@ class Forecast():
             'epsg:4326'.
         proj: ccrs
             coordinate reference system used in coordinates
+            The default is ccrs.PlateCarree()
         figsize: tuple
             figure size for plt.subplots, width, height in inches
+            The default is (9, 13)
         Returns
         -------
         cartopy.mpl.geoaxes.GeoAxesSubplot
@@ -477,11 +479,12 @@ class Forecast():
             Select the used hazard by the run_datetime,
             default is first element of attribute run_datetime.
         save_fig: bool, optional
-            True default to save the figure.
+            Figure is saved if True. Default is True.
         close_fig: bool, optional
-            True default to close the figure.
+            Figure is not drawn if True. Default is False.
         figsize: tuple
             figure size for plt.subplots, width, height in inches
+            The default is (9, 8)
         Returns
         -------
         matplotlib.axes.Axes
@@ -609,11 +612,13 @@ class Forecast():
             'epsg:4326'.
         proj: ccrs
             coordinate reference system used in coordinates
+            The default is ccrs.PlateCarree()
         figsize: tuple
             figure size for plt.subplots, width, height in inches
+            The default is (9, 13)
         Returns
         -------
-        cartopy.mpl.geoaxes.GeoAxesSubplot
+        axis: cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         # select hazard with run_datetime
         if run_datetime is None:
@@ -779,13 +784,14 @@ class Forecast():
             coordinate reference system used in coordinates
         figsize: tuple
             figure size for plt.subplots, width, height in inches
+            The default is (9, 13)
         save_fig: bool, optional
-            True default to save the figure
+            Figure is saved if True. The default is True.
         close_fig: bool, optional
-            True default to close the figure
+            Figure is not drawn if True. The default is False.
         Returns
         -------
-        cartopy.mpl.geoaxes.GeoAxesSubplot
+        axes : cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         # select hazard with run_datetime
         if thresholds == 'default':
