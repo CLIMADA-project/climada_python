@@ -92,6 +92,10 @@ class Forecast():
     originating from a forecast (like numerical weather prediction models),
     exposure and impact. Use the calc() method to calculate a forecasted
     impact. Then use the plotting methods to illustrate the forecasted impacts.
+    By default plots are saved under in a '/forecast/plots' folder in the
+    configurable save_dir in local_data (see climada.util.config) under a name
+    summarizing the Hazard type, haz model name, initialization time of the
+    forecast run, event date, exposure name and the plot title.
     As the class is relatively new, there might be future changes to the attributes,
     the methods, and the parameters used to call the methods.
     It was discovered at some point, that there might be a memory leak in
@@ -310,7 +314,9 @@ class Forecast():
             Select the used hazard by the run_datetime,
             default is first element of attribute run_datetime.
         save_fig: bool, optional
-            Figure is saved if True. Default is True.
+            Figure is saved if True, folder is within your configurable 
+            save_dir and filename is derived from the method summary_str()
+            (for more details see class docstring).  Default is True.
         close_fig: bool, optional
             Figure not drawn if True. Default is False.
         polygon_file: str, optional
@@ -479,7 +485,9 @@ class Forecast():
             Select the used hazard by the run_datetime,
             default is first element of attribute run_datetime.
         save_fig: bool, optional
-            Figure is saved if True. Default is True.
+            Figure is saved if True, folder is within your configurable
+            save_dir and filename is derived from the method summary_str()
+            (for more details see class docstring).  Default is True.
         close_fig: bool, optional
             Figure is not drawn if True. Default is False.
         figsize: tuple
@@ -599,9 +607,11 @@ class Forecast():
             Select the used hazard by the run_datetime,
             default is first element of attribute run_datetime.
         save_fig: bool, optional
-            True default to save the figure
+            Figure is saved if True, folder is within your configurable
+            save_dir and filename is derived from the method summary_str()
+            (for more details see class docstring).  Default is True.
         close_fig: bool, optional
-            True default to close the figure
+            Figure not drawn if True. Default is False.
         polygon_file: str, optional
             Points to a .shp-file with polygons do be drawn as outlines on
             the plot, default is None to not draw the lines. please also
@@ -786,7 +796,9 @@ class Forecast():
             figure size for plt.subplots, width, height in inches
             The default is (9, 13)
         save_fig: bool, optional
-            Figure is saved if True. The default is True.
+            Figure is saved if True, folder is within your configurable
+            save_dir and filename is derived from the method summary_str()
+            (for more details see class docstring).  Default is True.
         close_fig: bool, optional
             Figure is not drawn if True. The default is False.
         Returns
