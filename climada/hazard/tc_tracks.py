@@ -1253,9 +1253,11 @@ class TCTracks():
             per track time step, with variable values per time step (radius_max_wind,
             max_sustained_wind, etc) as columns in addition to attributes.
         split_lines_antimeridian : bool, optional
-            If True, tracks that cross the antimeridian are split into two Lines as a
-            MultiLineString, with one Line on each side of the meridian. This ensures all Lines
-            are within (-180, +180) degrees longitude.
+            If True, tracks that cross the antimeridian are split into multiple Lines as a
+            MultiLineString, with each Line on either side of the meridian. This ensures all Lines
+            are within (-180, +180) degrees longitude. Note that lines might be split at more
+            locations than strictly necessary, due to the underlying splitting algorithm
+            (https://github.com/Toblerity/Shapely/issues/572).
 
         Returns
         -------
@@ -1276,9 +1278,11 @@ class TCTracks():
             gdf = gdf_long.join(gdf)
 
         elif split_lines_antimeridian:
-            # LineString only works with more than one lat/lon pair
+            # enforce longitudes to be within [-180, 180] range
             t_lons = [u_coord.lon_normalize(t.lon.values.copy()) for t in self.data]
             t_lats = [t.lat.values for t in self.data]
+
+            # LineString only works with more than one lat/lon pair
             gdf.geometry = gpd.GeoSeries([
                 LineString(np.c_[lons, lats]) if lons.size > 1
                 else Point(lons, lats)
@@ -1286,11 +1290,13 @@ class TCTracks():
             ])
             gdf.crs = DEF_CRS
 
-            # only work on tracks that come close to the antimeridian
+            # for splitting, restrict to tracks that come close to the antimeridian
             t_split_mask = np.asarray([
                 (lon > 170).any() and (lon < -170).any() and lon.size > 1
                 for lon in t_lons])
 
+            # note that tracks might be splitted at self-intersections as well:
+            # https://github.com/Toblerity/Shapely/issues/572
             antimeridian = LineString([(180, -90), (180, 90)])
             gdf.loc[t_split_mask, "geometry"] = gdf.geometry[t_split_mask] \
                 .to_crs({"proj": "longlat", "lon_wrap": 180}) \
