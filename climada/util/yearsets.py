@@ -68,18 +68,19 @@ def impact_yearset(event_impacts, sampled_years=None, sampling_dict=None, correc
 
     if not sampled_years and not sampling_dict:
         sampled_years = np.arange(1, 1000+1).tolist()
-    elif not sampled_years:
-        sampled_years = np.arange(1, len(sampling_dict['selected_events'])+1).tolist()
     elif isinstance(sampled_years, int):
         sampled_years = np.arange(1, sampled_years+1).tolist()
-
-    if sampling_dict:
-        if len(sampled_years) != len(sampling_dict['events_per_year']):
-            raise ValueError("The number of sampled_years and the length of the list of "
-                             "events_per_year in the sampling dictionary must be equal.")
-        if sum(sampling_dict['events_per_year']) != len(sampling_dict['selected_events']):
-            raise ValueError("The sampling dictionary is faulty: the sum of selected events "
-                             "does not correspond to the number of selected events.")
+    elif not sampled_years:
+        sampled_years = np.arange(1, len(sampling_dict['selected_events'])+1).tolist()
+    elif len(sampled_years) != len(sampling_dict['events_per_year']):
+        LOGGER.info("The number of sampled_years and the length of the list of events_per_year "
+                    "in the sampling_dict differ. The number of years contained in the "
+                    "sampling_dict are used as number of sampled_years.")
+        sampled_years = np.arange(1, len(sampling_dict['selected_events'])+1).tolist()
+        
+    if sampling_dict and sum(sampling_dict['events_per_year']) != len(sampling_dict['selected_events']):
+        raise ValueError("The sampling dictionary is faulty: the sum of selected events "
+                         "does not correspond to the number of selected events.")
 
     year_list = [str(date) + '-01-01' for date in sampled_years]
     n_sampled_years = len(year_list)
