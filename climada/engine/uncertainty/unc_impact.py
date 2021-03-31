@@ -22,10 +22,11 @@ Define Uncertainty Impact class
 __all__ = ['UncImpact']
 
 import logging
+import time
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import time
 
 from climada.engine import Impact
 from climada.engine.uncertainty.base import Uncertainty, UncVar
@@ -173,7 +174,7 @@ class UncImpact(Uncertainty):
          eai_exp_list, at_event_list, tot_value_list] = list(zip(*imp_metrics))
         elapsed_time = (time.time() - start)
         est_com_time = self.est_comp_time(elapsed_time, pool)
-        LOGGER.info(f"\n\nEstimated computation time: {est_com_time}s\n")
+        LOGGER.info("\n\nEstimated computation time: %.2f s\n" %est_com_time)
 
         #Compute impact distributions
         with log_level(level='ERROR', name_prefix='climada'):
@@ -185,7 +186,7 @@ class UncImpact(Uncertainty):
                                                chunsize = chunksize)
 
             else:
-                imp_metrics = dictionnarmap(self._map_impact_calc,
+                imp_metrics = map(self._map_impact_calc,
                                   self.samples_df.iterrows())
 
         #Perform the actual computation
@@ -207,7 +208,6 @@ class UncImpact(Uncertainty):
                                                  columns = ['tot_value'])
         self.check()
 
-        return None
 
     def _map_impact_calc(self, sample_iterrows):
         """
