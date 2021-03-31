@@ -185,7 +185,7 @@ class TestUncertainty(unittest.TestCase):
         self.assertEqual(unc.n_samples, 0)
         self.assertSetEqual(set(unc.param_labels), {'x_exp', 'x_haz',
                                                     'x_paa', 'x_mdd'})
-        self.assertSetEqual(set(unc.problem['names']),
+        self.assertSetEqual(set(unc.problem_sa['names']),
                             {'x_exp', 'x_haz', 'x_paa', 'x_mdd'})
         self.assertSetEqual(set(unc.distr_dict.keys()),
                             {"x_exp", "x_paa", "x_mdd", "x_haz"})
