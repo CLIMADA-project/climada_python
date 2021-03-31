@@ -41,7 +41,7 @@ class UncImpact(Uncertainty):
 
     This is the base class to perform uncertainty analysis on the outputs of a
     climada.engine.impact.Impact() object.
-    
+
     Attributes
     ----------
     rp : list(int)
@@ -57,7 +57,7 @@ class UncImpact(Uncertainty):
         Values of the sampled uncertainty parameters. It has n_samples rows
         and one column per uncertainty parameter.
     sampling_method : str
-        Name of the sampling method from SAlib. 
+        Name of the sampling method from SAlib.
         https://salib.readthedocs.io/en/latest/api.html#
     n_samples : int
         Effective number of samples (number of rows of samples_df)
@@ -71,7 +71,7 @@ class UncImpact(Uncertainty):
         distribution as used in SALib.
         https://salib.readthedocs.io/en/latest/basics.html
     metrics : dict
-        Dictionnary of the value of the CLIMADA metrics for each sample 
+        Dictionnary of the value of the CLIMADA metrics for each sample
         (of the uncertainty parameters) defined in samples_df.
         Keys are metrics names ['aai_agg'', 'freq_curve', 'eai_exp',
         'at_event'] and falues are pd.DataFrame of dict(pd.DataFrame),
@@ -128,7 +128,7 @@ class UncImpact(Uncertainty):
         Optionally, eai_exp and at_event is computed (this may require
         a larger amount of memory if n_samples and/or the number of centroids
         is large).
-        
+
         This sets the attributes self.rp, self.calc_eai_exp,
         self.calc_at_event, self.metrics.
 
@@ -183,9 +183,9 @@ class UncImpact(Uncertainty):
                 imp_metrics = pool.map(self._map_impact_calc,
                                                self.samples_df.iterrows(),
                                                chunsize = chunksize)
-    
+
             else:
-                imp_metrics = map(self._map_impact_calc,
+                imp_metrics = dictionnarmap(self._map_impact_calc,
                                   self.samples_df.iterrows())
 
         #Perform the actual computation
@@ -265,7 +265,7 @@ class UncImpact(Uncertainty):
         figsize: tuple(int or float, int or float), optional
             The figsize argument of matplotlib.pyplot.subplots()
             The default is (8, 6)
-    
+
         Raises
         ------
         ValueError
@@ -357,5 +357,3 @@ class UncImpact(Uncertainty):
                 )
 
         return ax
-
-
