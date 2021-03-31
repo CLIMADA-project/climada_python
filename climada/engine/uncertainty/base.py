@@ -461,7 +461,7 @@ class Uncertainty():
             sampling_method
             )
         sample_uniform = salib_sampling_method.sample(
-            problem_sa = self.problem_sa, N = N, **sampling_kwargs)
+            problem = self.problem_sa, N = N, **sampling_kwargs)
         return sample_uniform
 
 
