@@ -35,10 +35,11 @@ def impact_yearset(event_impacts, sampled_years=None, sampling_vect=None, correc
           impact object containing impacts per event
     Optional parameters:
         sampled_years : int or list
-            Either an integer specifying the amount of years to
-            be sampled or a list of years that shall be covered by the resulting annual_impacts
-            default: a 1000 year-long list starting in the year 0001
-        sampling_vect : dict
+            Either an integer specifying the number of years to
+            be sampled (labelled [0001,...,sampled_years]) or a list 
+            of years that shall be covered by the resulting annual_impacts.
+            The default is a 1000 year-long list starting in the year 0001.
+        sampling_dict : dict
             The sampling vector specifying which events contained in the events_impacts are
             selected in the newly created annual_impacts and the number of events per year
             in the annual_impacts, therefore the sampling_vect contains two arrays:
@@ -81,7 +82,7 @@ def impact_yearset(event_impacts, sampled_years=None, sampling_vect=None, correc
     year_list = [str(date) + '-01-01' for date in sampled_years]
     n_sampled_years = len(year_list)
 
-    if not np.all(event_impacts.frequency == event_impacts.frequency[0]):
+    if len(np.unique(event_impacts.frequency)) > 1:
         LOGGER.warning("The frequencies of the single events in the given event_impacts "
                        "differ among each other. Please beware that this will influence "
                        "the resulting annual_impacts as the events are sampled uniformaly "
