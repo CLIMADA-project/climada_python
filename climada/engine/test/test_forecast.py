@@ -54,7 +54,6 @@ class TestCalc(unittest.TestCase):
         data['value'] = np.ones_like(data['latitude']) * 100000
         data['deductible'] = np.zeros_like(data['latitude'])
         data[INDICATOR_IF + 'WS'] = np.ones_like(data['latitude'])
-        # data['category_id'] = np.array([1, 2, 3])
         data['region_id'] = np.ones_like(data['latitude'],dtype=int) * 756
         expo = Exposures(gpd.GeoDataFrame(data=data))
         #vulnerability
@@ -92,7 +91,6 @@ class TestCalc(unittest.TestCase):
         data['value'] = np.ones_like(data['latitude']) * 100000
         data['deductible'] = np.zeros_like(data['latitude'])
         data[INDICATOR_IF + 'WS'] = np.ones_like(data['latitude'])
-        # data['category_id'] = np.array([1, 2, 3])
         data['region_id'] = np.ones_like(data['latitude'],dtype=int) * 756
         expo = Exposures(gpd.GeoDataFrame(data=data))
         #vulnerability
@@ -129,7 +127,6 @@ class TestPlot(unittest.TestCase):
         data['value'] = np.ones_like(data['latitude']) * 100000
         data['deductible'] = np.zeros_like(data['latitude'])
         data[INDICATOR_IF + 'WS'] = np.ones_like(data['latitude'])
-        # data['category_id'] = np.array([1, 2, 3])
         data['region_id'] = np.ones_like(data['latitude'],dtype=int) * 756
         expo = Exposures(gpd.GeoDataFrame(data=data))
         #vulnerability
