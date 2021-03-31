@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -28,7 +28,7 @@ import numpy as np
 
 class TestDigits(unittest.TestCase):
     """Test date functions"""
-    
+
     def test_sig_dig_pass(self):
         """Test sig_dig function"""
         n_sig_dig = 3
@@ -39,7 +39,7 @@ class TestDigits(unittest.TestCase):
         self.assertTrue(
             np.array_equal(sig_dig_list(nbs_in, n_sig_dig), nbs_out)
             )
-        
+
     def test_sig_dig_fail(self):
         """Test sig_dig function"""
         n_sig_dig_wrong = 4
@@ -50,7 +50,7 @@ class TestDigits(unittest.TestCase):
         self.assertFalse(
             np.array_equal(sig_dig_list(nbs_in, n_sig_dig_wrong), nbs_out)
             )
-        
+
     def test_value_to_monetary_unit_pass(self):
         """Test money_unit function"""
         nbs_in = [-1e10, -1e6, -1e2, 0, 1e3, 1e7, 1e11]
@@ -61,7 +61,7 @@ class TestDigits(unittest.TestCase):
             money, names = value_to_monetary_unit(nb_in)
             self.assertEqual(money[0], nb_out)
             self.assertEqual(names, names_out[j])
-            
+
     def test_value_to_monetary_unit_sigdig_pass(self):
         """Test money_unit function with significant digits"""
         nbs_in = [-1e10*1.2345, -1e6*1.2345, -1e2*1.2345, 0, 1e3*1.2345,
@@ -73,7 +73,7 @@ class TestDigits(unittest.TestCase):
             money, names = value_to_monetary_unit(nb_in, n_sig_dig=3)
             self.assertEqual(money[0], nb_out)
             self.assertEqual(names, names_out[j])
-            
+
     def test_value_to_monetary_unit_list_pass(self):
         """Test money_unit function with list of numbers"""
         nbs_in = [-1e10*1.2345, -1e9*1.2345]
