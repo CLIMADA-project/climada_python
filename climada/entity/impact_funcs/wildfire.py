@@ -64,7 +64,7 @@ class IFWildfire(ImpactFunc):
         self.intensity = np.arange(295, 500, 5)
         i_thresh = 295
         i_n = (self.intensity-i_thresh)/(i_half-i_thresh)
-        self.paa = i_n**3/(1+i_n**3)
+        self.paa = i_n**3 / (1 + i_n**3)
         self.mdd = np.ones(len(self.intensity))
 
     def set_step(self, threshold=295., if_id=1):
@@ -118,4 +118,3 @@ class IFWildfire(ImpactFunc):
         self.intensity = np.arange(295, 500, 5)
         self.mdd = np.ones(len(self.intensity))
         self.paa = sig_max/(1+np.exp(-sig_shape*(self.intensity-sig_mid)))
-
