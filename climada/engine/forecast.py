@@ -25,8 +25,8 @@ __all__ = ['Forecast']
 
 import logging
 import datetime as dt
-import numpy as np
 from pathlib import Path
+import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 from matplotlib.ticker import PercentFormatter, ScalarFormatter
@@ -160,7 +160,7 @@ class Forecast():
             date
             for hazard in self.hazard
             for date in hazard.date
-            ])                          
+            ])
         if not len(hazard_date) == 1:
             raise ValueError('Please provide hazards containing only one ' +
                               'event_date. The current hazards contain several ' +
@@ -224,7 +224,7 @@ class Forecast():
             default is first element of attribute run_datetime.
         Returns
         -------
-        str 
+        str
             summarizing the most important information about the hazard
         """
         if run_datetime is None:
@@ -249,8 +249,8 @@ class Forecast():
             default is first element of attribute run_datetime.
         Returns
         -------
-        str 
-            summarizing the most important information about 
+        str
+            summarizing the most important information about
             the impact forecast
         """
         if run_datetime is None:
@@ -270,7 +270,7 @@ class Forecast():
             default is first element of attribute run_datetime.
          Returns
         -------
-        datetime.timedelta 
+        datetime.timedelta
             the difference between the initialization time of the forecast
             model run and the date of the event, commenly named lead time
         """
@@ -314,7 +314,7 @@ class Forecast():
             Select the used hazard by the run_datetime,
             default is first element of attribute run_datetime.
         save_fig: bool, optional
-            Figure is saved if True, folder is within your configurable 
+            Figure is saved if True, folder is within your configurable
             save_dir and filename is derived from the method summary_str()
             (for more details see class docstring).  Default is True.
         close_fig: bool, optional
@@ -347,7 +347,7 @@ class Forecast():
                          '.jpeg')
         map_file_name_full = Path(FORECAST_PLOT_DIR) / map_file_name
         lead_time_str = '{:.0f}'.format(self.lead_time(run_datetime).days +
-                                        self.lead_time(run_datetime).seconds/60/60/24) # cant show '2' and '2.5'
+                                        self.lead_time(run_datetime).seconds/60/60/24)
         title_dict = {'event_day': self.event_date.strftime('%a %d %b %Y 00-24UTC'),
                       'run_start': (run_datetime.strftime('%d.%m.%Y %HUTC +') +
                                     lead_time_str +
@@ -464,13 +464,13 @@ class Forecast():
                      'explain_text': 'k',
                      'event_day': 'r',
                      'run_start': 'k'}
-            for t in tit:
-                plt.figtext(title_position[t][0],
-                            title_position[t][1],
-                            tit[t],
+            for t_i in tit:
+                plt.figtext(title_position[t_i][0],
+                            title_position[t_i][1],
+                            tit[t_i],
                             fontsize='xx-large',
-                            color=color[t],
-                            ha=left_right[t])
+                            color=color[t_i],
+                            ha=left_right[t_i])
 
             plt.subplots_adjust(top=0.8)
         return fig, axis_sub
@@ -506,20 +506,24 @@ class Forecast():
                              '_histbin' +
                              '.svg')
         histbin_file_name_full = Path(FORECAST_PLOT_DIR) / histbin_file_name
-        lower_bound = np.max([np.floor(np.log10(np.max([np.min(self._impact[haz_ind].at_event), 0.1]))), 0])
-        upper_bound = np.max([np.ceil(np.log10(np.max([np.max(self._impact[haz_ind].at_event), 0.1]))), lower_bound + 5]) + 0.1
+        lower_bound = np.max([np.floor(
+            np.log10(np.max([np.min(self._impact[haz_ind].at_event), 0.1]))
+            ), 0])
+        upper_bound = np.max([np.ceil(
+            np.log10(np.max([np.max(self._impact[haz_ind].at_event), 0.1]))
+            ),lower_bound + 5]) + 0.1
         bins_log = np.arange(lower_bound, upper_bound, 0.5)
         bins = 10 ** bins_log
-        f = plt.figure(figsize=figsize)
-        ax = f.add_subplot(111)
+        fig = plt.figure(figsize=figsize)
+        axes = fig.add_subplot(111)
         plt.xscale('log')
         plt.hist([np.max([x, 1]) for x in self._impact[haz_ind].at_event],
                  bins=bins,
                  weights=np.ones(len(self._impact[haz_ind].at_event)) / len(self._impact[haz_ind].at_event))
-        ax.yaxis.set_major_formatter(PercentFormatter(1))
+        axes.yaxis.set_major_formatter(PercentFormatter(1))
         formatter = ScalarFormatter()
         formatter.set_scientific(False) #formatter.format = "%:'.0f"
-        ax.xaxis.set_major_formatter(formatter)
+        axes.xaxis.set_major_formatter(formatter)
 
         x_ticklabels = list()
         x_ticks = list()
@@ -529,43 +533,56 @@ class Forecast():
             tick_i = 10.0 ** i
             x_ticks.append(tick_i)
             x_ticklabels.append(ticklabel_dict[tick_i])
-        ax.xaxis.set_ticks(x_ticks)
-        ax.xaxis.set_ticklabels(x_ticklabels)
+        axes.xaxis.set_ticks(x_ticks)
+        axes.xaxis.set_ticklabels(x_ticklabels)
         plt.xticks(rotation=15, horizontalalignment='right')
         plt.xlim([(10 ** -0.25) * bins[0], (10 ** 0.25) * bins[-1]])
 
-        lead_time_str = '{:.0f}'.format(self.lead_time(run_datetime).days + self.lead_time(run_datetime).seconds/60/60/24) # cant show '2' and '2.5'
+        lead_time_str = '{:.0f}'.format(self.lead_time(run_datetime).days +
+                                        self.lead_time(run_datetime).seconds/60/60/24)
         title_dict = {'event_day': self.event_date.strftime('%a %d %b %Y 00-24UTC'),
-                      'run_start': run_datetime.strftime('%d.%m.%Y %HUTC +') + lead_time_str + 'd',
+                      'run_start': (run_datetime.strftime('%d.%m.%Y %HUTC +') +
+                                    lead_time_str +
+                                    'd'),
                       'explain_text': ('total building damage'),
                       'model_text': "CLIMADA IMPACT"}
-        title_position = {'model_text': [0.13, 0.94], 'explain_text': [0.13, 0.9], 'event_day': [0.9, 0.94],
+        title_position = {'model_text': [0.13, 0.94],
+                          'explain_text': [0.13, 0.9],
+                          'event_day': [0.9, 0.94],
                           'run_start': [0.9, 0.9]}
-        left_right = {'model_text': 'left', 'explain_text': 'left', 'event_day': 'right', 'run_start': 'right'}
-        color = {'model_text': 'k', 'explain_text': 'k', 'event_day': 'r', 'run_start': 'k'}
-        for t in title_dict:
-            plt.figtext(title_position[t][0],
-                        title_position[t][1],
-                        title_dict[t],
+        left_right = {'model_text': 'left',
+                      'explain_text': 'left',
+                      'event_day': 'right',
+                      'run_start': 'right'}
+        color = {'model_text': 'k',
+                 'explain_text': 'k',
+                 'event_day': 'r',
+                 'run_start': 'k'}
+        for t_i in title_dict:
+            plt.figtext(title_position[t_i][0],
+                        title_position[t_i][1],
+                        title_dict[t_i],
                         fontsize='xx-large',
-                        color=color[t],
-                        ha=left_right[t])
+                        color=color[t_i],
+                        ha=left_right[t_i])
 
         plt.xlabel('forecasted total damage for ' + self.exposure_name +
                    ' [' + self._impact[haz_ind].unit + ']')
         plt.ylabel('probability')
         plt.text(0.75, 0.85,
-                 # 'mean damage:\n' + locale.currency(np.round(imp.at_event.mean()), grouping=True),
-                 'mean damage:\nCHF ' + '{0:,}'.format(np.int(np.round(self._impact[haz_ind].at_event.mean()))).replace(',', " "),
+                 'mean damage:\nCHF ' +
+                 self._number_to_str(
+                     self._impact[haz_ind].at_event.mean()
+                     ),
                  horizontalalignment='center',
                  verticalalignment='center',
-                 transform=ax.transAxes)
+                 transform=axes.transAxes)
         if save_fig:
             plt.savefig(histbin_file_name_full)
         if close_fig:
             plt.clf()
-            plt.close(f)
-        return ax
+            plt.close(fig)
+        return axes
 
     @staticmethod
     def _number_to_str(number):
@@ -640,9 +657,11 @@ class Forecast():
                  '_map.jpeg')
         wind_map_file_name_full = Path(FORECAST_PLOT_DIR) / wind_map_file_name
         lead_time_str = '{:.0f}'.format(self.lead_time(run_datetime).days +
-                                        self.lead_time(run_datetime).seconds/60/60/24) # cant show '2' and '2.5'
+                                        self.lead_time(run_datetime).seconds/60/60/24)
         title_dict = {'event_day': self.event_date.strftime('%a %d %b %Y 00-24UTC'),
-                      'run_start': run_datetime.strftime('%d.%m.%Y %HUTC +') + lead_time_str + 'd',
+                      'run_start': (run_datetime.strftime('%d.%m.%Y %HUTC +') +
+                                    lead_time_str +
+                                    'd'),
                       'explain_text': ('threshold: ' +
                                        str(threshold) +
                                        ' ' +
@@ -671,7 +690,13 @@ class Forecast():
             run_datetime = self.run_datetime[0]
         haz_ind = np.argwhere(np.isin(self.run_datetime, run_datetime))[0][0]
         extend = 'neither'
-        value = np.squeeze(np.asarray((self._impact[haz_ind].imp_mat > threshold).sum(axis=0) / self._impact[haz_ind].event_id.size))
+        value = np.squeeze(
+            np.asarray((self._impact[haz_ind].imp_mat
+                        >
+                        threshold).sum(axis=0)
+                       /
+                       self._impact[haz_ind].event_id.size)
+            )
         if mask is not None:
             value[np.invert(mask)] = np.nan
         coord = self._impact[haz_ind].coord_exp
@@ -737,13 +762,13 @@ class Forecast():
                      'explain_text': 'k',
                      'event_day': 'r',
                      'run_start': 'k'}
-            for t in tit:
-                plt.figtext(title_position[t][0],
-                            title_position[t][1],
-                            tit[t],
+            for t_i in tit:
+                plt.figtext(title_position[t_i][0],
+                            title_position[t_i][1],
+                            tit[t_i],
                             fontsize='xx-large',
-                            color=color[t],
-                            ha=left_right[t])
+                            color=color[t_i],
+                            ha=left_right[t_i])
             extent = u_plot._get_borders(coord)
             axis.set_extent((extent), ccrs.PlateCarree())
 
@@ -816,7 +841,7 @@ class Forecast():
         decision_dict = {'probability_aggregation': probability_aggregation,
                          'area_aggregation': area_aggregation}
         lead_time_str = '{:.0f}'.format(self.lead_time(run_datetime).days +
-                                        self.lead_time(run_datetime).seconds/60/60/24) # cant show '2' and '2.5'
+                                        self.lead_time(run_datetime).seconds/60/60/24)
         title_dict = {'event_day': self.event_date.strftime('%a %d %b %Y 00-24UTC'),
                       'run_start': (run_datetime.strftime('%d.%m.%Y %HUTC +') +
                                     lead_time_str +
@@ -906,10 +931,17 @@ class Forecast():
             for ind_i, warn_thres_i in enumerate(thresholds):
                 if decision_level == 'exposure_point':
                     # decision at each grid_point
-                    probabilities = np.squeeze(np.asarray((self._impact[haz_ind].imp_mat >= warn_thres_i).sum(axis=0)/
-                                                           self._impact[haz_ind].event_id.size))
+                    probabilities = np.squeeze(
+                        np.asarray((self._impact[haz_ind].imp_mat
+                                    >=
+                                    warn_thres_i).sum(axis=0)
+                                   /
+                                   self._impact[haz_ind].event_id.size)
+                        )
                     # quantiles over probability
-                    area = (probabilities[in_geom] >= decision_dict['probability_aggregation']).sum()
+                    area = (probabilities[in_geom]
+                            >=
+                            decision_dict['probability_aggregation']).sum()
                     # quantiles over area
                     if area >= (in_geom.sum() * decision_dict['area_aggregation']):
                         warn_level = ind_i+1
@@ -917,17 +949,21 @@ class Forecast():
                     # aggregation over area
                     if isinstance(decision_dict['area_aggregation'], float):
                         value_per_member = decision_dict_functions['area_aggregation']\
-                            (self._impact[haz_ind].imp_mat[:, in_geom].todense(), decision_dict['area_aggregation'], axis=1)
+                            (self._impact[haz_ind].imp_mat[:, in_geom].todense(),
+                             decision_dict['area_aggregation'],
+                             axis=1)
                     else:
-                        value_per_member = decision_dict_functions['area_aggregation'] \
+                        value_per_member = decision_dict_functions['area_aggregation']\
                             (self._impact[haz_ind].imp_mat[:, in_geom].todense(),
                              axis=1)
                     # aggregation over members/probability
                     if isinstance(decision_dict['probability_aggregation'], float):
-                        value_per_region = decision_dict_functions['probability_aggregation'](value_per_member,
-                                                         decision_dict['probability_aggregation'])
+                        value_per_region = decision_dict_functions['probability_aggregation']\
+                            (value_per_member,
+                             decision_dict['probability_aggregation'])
                     else:
-                        value_per_region = decision_dict_functions['probability_aggregation'](value_per_member)
+                        value_per_region = decision_dict_functions['probability_aggregation']\
+                            (value_per_member)
                     # warn level decision
                     if value_per_region >= warn_thres_i:
                         warn_level = ind_i+1
@@ -963,13 +999,13 @@ class Forecast():
                  'explain_text': 'k',
                  'event_day': 'r',
                  'run_start': 'k'}
-        for t in tit:
-            plt.figtext(title_position[t][0],
-                        title_position[t][1],
-                        tit[t],
+        for t_i in tit:
+            plt.figtext(title_position[t_i][0],
+                        title_position[t_i][1],
+                        tit[t_i],
                         fontsize='xx-large',
-                        color=color[t],
-                        ha=left_right[t])
+                        color=color[t_i],
+                        ha=left_right[t_i])
 
         extent = u_plot._get_borders(self._impact[haz_ind].coord_exp)
         axis.set_extent((extent), ccrs.PlateCarree())
