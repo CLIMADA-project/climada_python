@@ -114,8 +114,9 @@ class Forecast():
         if possible three big letters.
     exposure: Exposure
         an CLIMADA Exposures containg values at risk
-    country: str
-        Country for which the forecast is done.
+    exposure_name: str
+        string specifying the exposure (e.g. 'EU'), which is used to
+        name output files.
     vulnerability: ImpactFuncSet
         Set of impact functions used in the impact calculation.
     """
@@ -145,7 +146,8 @@ class Forecast():
             if possible three big letters. Default is 'NWP' for numerical
             weather prediction.
         exposure_name: str, optional
-            Short string specifying the exposure, which is used in filenames.
+            string specifying the exposure (e.g. 'EU'), which is used to
+            name output files.
         """
         self.run_datetime = list(hazard_dict.keys())
         self.hazard = list(hazard_dict.values())
