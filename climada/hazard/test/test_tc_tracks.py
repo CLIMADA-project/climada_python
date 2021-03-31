@@ -43,6 +43,7 @@ TEST_TRACK_EMANUEL = DATA_DIR.joinpath('emanuel_test_tracks.mat')
 TEST_TRACK_EMANUEL_CORR = DATA_DIR.joinpath('temp_mpircp85cal_full.mat')
 TEST_TRACK_CHAZ = DATA_DIR.joinpath('chaz_test_tracks.nc')
 TEST_TRACK_STORM = DATA_DIR.joinpath('storm_test_tracks.txt')
+TEST_TRACKS_ANTIMERIDIAN = DATA_DIR.joinpath('tracks-antimeridian')
 
 
 class TestIbtracs(unittest.TestCase):
@@ -433,6 +434,44 @@ class TestIO(unittest.TestCase):
         self.assertAlmostEqual(gdf_line.geometry[0].length, 54.0634224372971)
         self.assertIsInstance(gdf_line.bounds.minx, pd.core.series.Series)
 
+        anti_track = tc.TCTracks()
+        anti_track.read_netcdf(TEST_TRACKS_ANTIMERIDIAN)
+
+        split = anti_track.to_geodataframe(split_lines_antimeridian=True)
+        split.set_index('sid', inplace=True)
+        self.assertEqual(len(split.loc['1980052S16155'].geometry), 8)
+        self.assertFalse(split.loc['2018079S09162'].geometry.is_simple)
+
+        nosplit = anti_track.to_geodataframe(split_lines_antimeridian=False)
+        nosplit.set_index('sid', inplace=True)
+        self.assertIsInstance(nosplit.loc['1980052S16155'].geometry, LineString)
+        self.assertFalse(nosplit.loc['2018079S09162'].geometry.is_simple)
+
+        split_bounds = pd.DataFrame(
+            data = {
+                'minx': [148.600006, -180.000000],
+                'miny': [-22.410000, -38.583244],
+                'maxx': [162.399994, 180.000000],
+                'maxy': [-13.4, -17.0],
+            },
+            index = pd.Index(['2018079S09162', '1980052S16155'], 
+                             name='sid')
+        )
+
+        nosplit_bounds = pd.DataFrame(
+            data = {
+                'minx': [148.600006, 150.800003],
+                'miny': [-22.410000, -38.583244],
+                'maxx': [162.399994, 185.000000],
+                'maxy': [-13.40, -17.00],
+            },
+            index = pd.Index(['2018079S09162', '1980052S16155'], 
+                             name='sid')
+        )
+
+        pd.testing.assert_frame_equal(split_bounds, split.bounds)
+        pd.testing.assert_frame_equal(nosplit_bounds, nosplit.bounds)
+
 class TestFuncs(unittest.TestCase):
     """Test functions over TC tracks"""
 
@@ -761,67 +800,6 @@ class TestFuncs(unittest.TestCase):
         self.assertTrue(tracks_in_exp.get_track(storms['in']))
         self.assertFalse(tracks_in_exp.get_track(storms['out']))
 
-    def test_make_line_from_track(self):
-        """Check _make_line_from_track function"""
-        test_cases = [
-            # single time step
-            [[0], [185], Point(-175, 0)],
-            # move along antimeridian
-            [[-10, 0, 10], [180, -180, 180], LineString([(180, -10), (180, 0), (180, 10)])],
-            # don't cross antimeridian
-            [[0, 0, 0], [-15, 50, 175], LineString([(-15, 0), (50, 0), (175, 0)])],
-            # all segments are interpreted in such a way that they are of length < 180
-            [[0, 0, 0], [-5, 5, 190], LineString([(-5, 0), (5, 0), (-170, 0)])],
-            # touch antimeridian from left
-            [[0, 0, 0], [-15, 50, 180], LineString([(-15, 0), (50, 0), (180, 0)])],
-            [[0, 0, 0], [180, 50, -15], LineString([(180, 0), (50, 0), (-15, 0)])],
-            [[0, 0, 0], [160, 180, 160], LineString([(160, 0), (180, 0), (160, 0)])],
-            # touch antimeridian from right
-            [[0, 0, 0], [15, -50, -180], LineString([(15, 0), (-50, 0), (-180, 0)])],
-            [[0, 0, 0], [-180, -50, 15], LineString([(-180, 0), (-50, 0), (15, 0)])],
-            [[0, 0, 0], [-160, -180, -160], LineString([(-160, 0), (-180, 0), (-160, 0)])],
-            # cross antimeridian from left
-            [[0, 0, 0], [-5, 50, 185],
-             MultiLineString([[(-5, 0), (50, 0), (180, 0)], [(-180, 0), (-175, 0)]])],
-            [[0, 0, 0, 0], [-5, 50, 180, 185],
-             MultiLineString([[(-5, 0), (50, 0), (180, 0)], [(-180, 0), (-175, 0)]])],
-            [[0, 0, 0, 0, 0], [0, 70, 170, 240, 310],
-             MultiLineString([[(0, 0), (70, 0), (170, 0), (180, 0)],
-                              [(-180, 0), (-120, 0), (-50, 0)]])],
-            # cross antimeridian from right
-            [[0, 0, 0], [5, -50, -185],
-             MultiLineString([[(5, 0), (-50, 0), (-180, 0)], [(180, 0), (175, 0)]])],
-            [[0, 0, 0, 0], [5, -50, -180, -185],
-             MultiLineString([[(5, 0), (-50, 0), (-180, 0)], [(180, 0), (175, 0)]])],
-            # self-intersection
-            [[0, 1, 0.5, 0.5], [0, 1, 1, 0], LineString([(0, 0), (1, 1), (1, 0.5), (0, 0.5)])],
-            # self-intersection at antimeridian
-            [[0, 1, 0.5, 0.5], [179, 181, 181, 179],
-             MultiLineString([[(179, 0), (180, 0.5)],
-                              [(-180, 0.5), (-179, 1), (-179, 0.5), (-180, 0.5)],
-                              [(180, 0.5), (179, 0.5)]])],
-            # self-intersection after crossing antimeridian
-            [[0, 1, 0.5, 0.5], [179, 183, 183, 179],
-             MultiLineString([[(179, 0), (180, 0.25)],
-                              [(-180, 0.25), (-177, 1), (-177, 0.5), (-180, 0.5)],
-                              [(180, 0.5), (179, 0.5)]])],
-            # crosses than touches after intersecting itself
-            [[0, 1, 0.5, 0.5, 1], [179, 183, 183, 180, 181],
-             MultiLineString([[(179, 0), (180, 0.25)],
-                              [(-180, 0.25), (-177, 1), (-177, 0.5), (-180, 0.5), (-179, 1)]])],
-        ]
-        for lat, lon, geo in test_cases:
-            lat, lon = np.array(lat), np.array(lon)
-            track = xr.Dataset({
-                'time_step': ('time', np.full((lat.size,), 6, dtype=np.float64)),
-            }, coords={
-                'time': np.array([np.datetime64('2000-01-01T00:00') + i * np.timedelta64(6, 'h')
-                                  for i in range(lat.size)]),
-                'lat': ('time', lat),
-                'lon': ('time', lon),
-            })
-            line = tc._make_line_from_track(track, split_lines_antimeridian=True)
-            self.assertTrue(line == geo, msg=f"{line} != {geo}")
 
 # Execute Tests
 if __name__ == "__main__":
