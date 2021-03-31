@@ -123,9 +123,6 @@ venv.bak/
 # mac finder files
 .DS_Store
 
-# directory with input data for hazard emulator tutorial 
-data/emulator
-
 # climada system data files
 # they get downloaded separately from the repo
 data/system/global_coast*
