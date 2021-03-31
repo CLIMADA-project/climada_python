@@ -98,7 +98,9 @@ class SupplyChain():
         self.total_aai_agg = np.array([], dtype='f')
         self.io_data = {}
 
-    def read_wiod16(self, year=2014, table_info_pos=None):
+    def read_wiod16(self, year=2014, range_rows=(5,2469),
+                    range_cols=(4,2468), col_iso3=2,
+                    col_sectors=1):
         """Read multi-regional input-output tables of the 2016 release of the
         WIOD project: http://www.wiod.org/database/wiots16
 
@@ -107,17 +109,14 @@ class SupplyChain():
         year : int
             Year of WIOD table to use. Valid years go from 2000 to 2014.
             Default year is 2014.
-        table_info_pos: dict
-            Dictionary with info about how to properly read the WIOD table.
-            Default is None. Required keys are:
-                range_rows : tuple
-                    initial and end positions of data along rows.
-                range_cols : tuple
-                    initial and end positions of data along columns.
-                col_iso3 : int
-                    column with countries names in ISO3 codes.
-                col_sectors : int
-                    column with sector names.
+        range_rows : tuple
+            initial and end positions of data along rows. Default is (5,2469).
+        range_cols : tuple
+            initial and end positions of data along columns. Default is (4,2468).
+        col_iso3 : int
+            column with countries names in ISO3 codes. Default is 2.
+        col_sectors : int
+            column with sector names. Default is 1.
         References
         ----------
         [1] Timmer, M. P., Dietzenbacher, E., Los, B., Stehrer, R. and de Vries, G. J.
@@ -125,11 +124,6 @@ class SupplyChain():
         of Global Automotive Production", Review of International Economics., 23: 575–605
 
         """
-        if table_info_pos is None:
-            table_info_pos = {'range_rows':(5, 2469),
-                              'range_cols':(4, 2468),
-                              'col_iso3':2,
-                              'col_sectors':1}
 
         file_name = 'WIOT{}_Nov16_ROW.xlsb'.format(year)
         file_loc = WIOD_DIRECTORY / file_name

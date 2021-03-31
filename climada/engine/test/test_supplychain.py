@@ -40,9 +40,9 @@ class TestSupplyChain(unittest.TestCase):
         """Test reading of wiod table."""
         sup = SupplyChain()
         sup.read_wiod16(year='test', 
-                        table_info_pos={'range_rows':(5,117), 
-                                        'range_cols':(4,116), 
-                                        'col_iso3':2,'col_sectors':1})
+                        range_rows=(5,117), 
+                        range_cols=(4,116), 
+                        col_iso3=2, col_sectors=1)
         
         self.assertAlmostEqual(sup.mriot_data[0, 0], 12924.1797, places=3)
         self.assertAlmostEqual(sup.mriot_data[0, -1], 0, places=3)
@@ -64,10 +64,10 @@ class TestSupplyChain(unittest.TestCase):
         """Test running direct impact calculations."""
         
         sup = SupplyChain()
-        sup.read_wiod16(year='test',
-                        table_info_pos={'range_rows':(5,117), 
-                                        'range_cols':(4,116), 
-                                        'col_iso3':2,'col_sectors':1})
+        sup.read_wiod16(year='test', 
+                        range_rows=(5,117), 
+                        range_cols=(4,116), 
+                        col_iso3=2, col_sectors=1)
         
         # Tropical cyclone over Florida and Caribbean
         hazard = Hazard('TC')
@@ -178,10 +178,10 @@ class TestSupplyChain(unittest.TestCase):
         """Test running indirect impact calculations."""
         
         sup = SupplyChain()
-        sup.read_wiod16(year='test',
-                        table_info_pos={'range_rows':(5,117), 
-                                        'range_cols':(4,116), 
-                                        'col_iso3':2,'col_sectors':1})
+        sup.read_wiod16(year='test', 
+                        range_rows=(5,117), 
+                        range_cols=(4,116), 
+                        col_iso3=2, col_sectors=1)
 
         # Tropical cyclone over Florida and Caribbean
         hazard = Hazard('TC')
@@ -235,10 +235,10 @@ class TestSupplyChain(unittest.TestCase):
     def test_calc_sector_total_impact(self):
         """Test running total impact calculations.""" 
         sup = SupplyChain()
-        sup.read_wiod16(year='test',
-                        table_info_pos={'range_rows':(5,117), 
-                                        'range_cols':(4,116), 
-                                        'col_iso3':2,'col_sectors':1})
+        sup.read_wiod16(year='test', 
+                        range_rows=(5,117), 
+                        range_cols=(4,116), 
+                        col_iso3=2, col_sectors=1)
 
         # Tropical cyclone over Florida and Caribbean
         hazard = Hazard('TC')
