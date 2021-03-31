@@ -41,7 +41,7 @@ class UncCostBenefit(Uncertainty):
 
     This is the base class to perform uncertainty analysis on the outputs of a
     climada.engine.costbenefit.CostBenefit().
-    
+
     Attributes
     ----------
     unc_vars : dict(UncVar)
@@ -52,7 +52,7 @@ class UncCostBenefit(Uncertainty):
         Values of the sampled uncertainty parameters. It has n_samples rows
         and one column per uncertainty parameter.
     sampling_method : str
-        Name of the sampling method from SAlib. 
+        Name of the sampling method from SAlib.
         https://salib.readthedocs.io/en/latest/api.html#
     n_samples : int
         Effective number of samples (number of rows of samples_df)
@@ -66,7 +66,7 @@ class UncCostBenefit(Uncertainty):
         distribution as used in SALib.
         https://salib.readthedocs.io/en/latest/basics.html
     metrics : dict
-        Dictionnary of the value of the CLIMADA metrics for each sample 
+        Dictionnary of the value of the CLIMADA metrics for each sample
         (of the uncertainty parameters) defined in samples_df.
         Keys are metrics names ['tot_climate_risk', 'benefit',
         'cost_ben_ratio', 'imp_meas_present', 'imp_meas_future'] and values
@@ -129,7 +129,7 @@ class UncCostBenefit(Uncertainty):
 
         By default, imp_meas_present, imp_meas_future, tot_climate_risk,
         benefit, cost_ben_ratio are computed.
-        
+
         This sets the attribute self.metrics.
 
         Parameters
@@ -171,7 +171,7 @@ class UncCostBenefit(Uncertainty):
                 cb_metrics = pool.map(partial(self._map_costben_calc, **kwargs),
                                                self.samples_df.iterrows(),
                                                chunsize = chunksize)
-    
+
             else:
                 cb_metrics = map(partial(self._map_costben_calc, **kwargs),
                                  self.samples_df.iterrows())
@@ -261,4 +261,3 @@ class UncCostBenefit(Uncertainty):
                  cb.benefit,
                  cb.cost_ben_ratio
                  ]
-

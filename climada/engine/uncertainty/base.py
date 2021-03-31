@@ -225,7 +225,7 @@ class Uncertainty():
         distribution as used in SALib.
         https://salib.readthedocs.io/en/latest/basics.html.
     metrics : dict
-        Dictionnary of the value of the CLIMADA metrics for each sample
+        Dictionary of the value of the CLIMADA metrics for each sample
         (of the uncertainty parameters) defined in samples_df.
         Keys are metrics names, e.g. 'aai_agg'', 'freq_curve',
         'eai_exp', 'at_event' for impact.calc and 'tot_climate_risk',
@@ -731,7 +731,7 @@ class Uncertainty():
         ----------
         salib_si: string, optional
             The first order (one value per metric output) sensitivity index
-            to plot. This must be a key of the sensitivity dictionnaries in
+            to plot. This must be a key of the sensitivity dictionaries in
             self.sensitivity[metric] for each metric in metric_list.
             The default is S1.
         metric_list: list of strings, optional
@@ -821,9 +821,9 @@ class Uncertainty():
         ----------
         filename : str or pathlib.Path, optional
             The filename with absolute or relative path.
-            The default name is "samples_df + datetime.now() + .csv" and 
+            The default name is "samples_df + datetime.now() + .csv" and
             the default path is taken from climada.config
-            
+
         Returns
         -------
         save_path : pathlib.Path
@@ -836,7 +836,7 @@ class Uncertainty():
         save_path = Path(filename)
         save_path = save_path.with_suffix('.csv')
         self.samples_df.to_csv(save_path, index=False)
-        
+
         return save_path
 
 
@@ -865,15 +865,15 @@ class Uncertainty():
         Parameters
         filename : str or pathlib.Path, optional
             The filename with absolute or relative path.
-            The default name is "metrics + datetime.now() + .json" and 
+            The default name is "metrics + datetime.now() + .json" and
             the default path is taken from climada.config
-            
+
         Returns
         -------
         save_path : pathlib.Path
             Path to the saved file
         """
-        
+
         if filename is None:
             filename = "metrics" + dt.now().strftime("%Y-%m-%d-%H%M%S")
             filename = Path(DATA_DIR) / Path(filename)
@@ -914,15 +914,15 @@ class Uncertainty():
         Parameters
         filename : str or pathlib.Path, optional
             The filename with absolute or relative path.
-            The default name is "sensitivity + datetime.now() + .json" and 
+            The default name is "sensitivity + datetime.now() + .json" and
             the default path is taken from climada.config
-            
+
         Returns
         -------
         save_path : pathlib.Path
             Path to the saved file
         """
-        
+
         if filename is None:
             filename = "sensitivity" + dt.now().strftime("%Y-%m-%d-%H%M%S")
             filename = Path(DATA_DIR) / Path(filename)
@@ -995,4 +995,3 @@ def check_salib(sampling_method, sensitivity_method):
             )
         return False
     return True
-
