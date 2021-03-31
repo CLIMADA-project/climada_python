@@ -93,13 +93,13 @@ def impact_yearset(event_impacts, sampled_years=None, sampling_dict=None, correc
 
 
     # INITIALISATION
-    # to do: add a flag to distinguish annual_impacts from other impact class objects
     # artificially generate a generic  annual impact set (by sampling the event impact set)
     annual_impacts = copy.deepcopy(event_impacts)
     annual_impacts.event_id = [] # to indicate not by event any more
     annual_impacts.event_id = np.arange(1, n_sampled_years+1)
     annual_impacts.frequency = [] # init, see below
     annual_impacts.at_event = np.zeros([1, n_sampled_years+1])
+    annual_impacts.tag['annual_impacts object'] = True
 
     #create sampling dictionary if not given as input
     if not sampling_dict:
