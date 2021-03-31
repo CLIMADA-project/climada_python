@@ -23,18 +23,19 @@ Test uncertainty module.
 
 import unittest
 
-from climada.entity import ImpactFunc, ImpactFuncSet
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import scipy as sp
 
+from pathos.pools import ProcessPool as Pool
+
+from climada.entity import ImpactFunc, ImpactFuncSet
 from climada.entity.entity_def import Entity
 from climada.entity import Exposures
 from climada.util.constants import EXP_DEMO_H5, HAZ_DEMO_H5, ENT_DEMO_TODAY, ENT_DEMO_FUTURE
 from climada.hazard import Hazard
 from climada.engine.uncertainty import UncVar, UncImpact, UncCostBenefit, Uncertainty
-import scipy as sp
-from pathos.pools import ProcessPool as Pool
 
 
 def impf_dem(x_paa=1, x_mdd=1):
@@ -150,7 +151,7 @@ class TestUncVar(unittest.TestCase):
                       "x_mdd": sp.stats.uniform(0.8, 1.2)
               }
         impf_unc = UncVar(impf, distr_dict)
-        self.assertIsNotNone(impf_unc.plot());
+        self.assertIsNotNone(impf_unc.plot())
         plt.close()
 
     def test_vac_to_uncvar(self):
@@ -200,7 +201,7 @@ class TestUncertainty(unittest.TestCase):
         self.assertSetEqual(set(unc.param_labels), {'x_exp', 'x_paa', 'x_mdd'})
         self.assertListEqual(list(unc.metrics['aai_agg']['aai_agg']), [100, 200])
         self.assertDictEqual(unc.sensitivity, {})
-        
+
     def test_save_pass(self):
         exp_unc, impf_unc, haz_unc = make_imp_uncs()
 
@@ -209,21 +210,21 @@ class TestUncertainty(unittest.TestCase):
                            'haz': haz_unc})
         unc.make_sample(1)
         filename = unc.save_samples_df()
-        
+
         unc_imp = UncImpact(exp_unc, impf_unc, haz_unc)
         unc_imp.load_samples_df(filename)
-        
+
         unc_imp.calc_distribution()
         filename = unc.save_metrics()
         unc_imp.load_metrics(filename)
-        
+
         unc_imp.calc_sensitivity()
         filename = unc.save_sensitivity()
         unc_imp.load_sensitivity(filename)
 
     def test_make_sample_pass(self):
 
-        exp_unc, impf_unc, haz_unc = make_imp_uncs()
+        exp_unc, _ , haz_unc = make_imp_uncs()
 
         unc = Uncertainty({'exp': exp_unc,
                            'haz': haz_unc})
@@ -255,7 +256,7 @@ class TestUncertainty(unittest.TestCase):
 
     def test_plot_sample_pass(self):
 
-        exp_unc, impf_unc, haz_unc = make_imp_uncs()
+        exp_unc, _, haz_unc = make_imp_uncs()
 
         unc = Uncertainty({'exp': exp_unc,
                            'haz': haz_unc})
@@ -266,7 +267,7 @@ class TestUncertainty(unittest.TestCase):
 
     def test_est_comp_time_pass(self):
 
-        exp_unc, impf_unc, haz_unc = make_imp_uncs()
+        exp_unc, _, haz_unc = make_imp_uncs()
 
         unc = Uncertainty({'exp': exp_unc,
                            'haz': haz_unc})
@@ -284,7 +285,7 @@ class TestUncertainty(unittest.TestCase):
 
     def test_calc_sensitivty_pass(self):
 
-        exp_unc, impf_unc, haz_unc = make_imp_uncs()
+        exp_unc, _, haz_unc = make_imp_uncs()
         samples = pd.DataFrame({'x_exp': [1, 2, 3, 4],
                                'x_haz': [0.1, 0.2, 0.3, 0.4]})
         metrics = {'rp': pd.DataFrame({'rp100': [9, 10, 11, 12],
@@ -312,7 +313,7 @@ class TestUncertainty(unittest.TestCase):
 
     def test_calc_sensitivty_XY_pass(self):
 
-        exp_unc, impf_unc, haz_unc = make_imp_uncs()
+        exp_unc, _, haz_unc = make_imp_uncs()
         samples = pd.DataFrame({'x_exp': [1, 2, 3, 4],
                                'x_haz': [0.1, 0.2, 0.3, 0.4]})
         metrics = {'rp': pd.DataFrame({'rp100': [9.0, 10.0, 11.0, 12.0],
@@ -341,7 +342,7 @@ class TestUncertainty(unittest.TestCase):
 
     def test_plot_sensitivity(self):
 
-        exp_unc, impf_unc, haz_unc = make_imp_uncs()
+        exp_unc, _, haz_unc = make_imp_uncs()
         samples = pd.DataFrame({'x_exp': [1, 2, 3, 4],
                                'x_haz': [0.1, 0.2, 0.3, 0.4]})
         metrics = {'freq_curve': pd.DataFrame(
@@ -366,7 +367,7 @@ class TestUncertainty(unittest.TestCase):
 
     def test_plot_distribution(self):
 
-        exp_unc, impf_unc, haz_unc = make_imp_uncs()
+        exp_unc, _, haz_unc = make_imp_uncs()
         samples = pd.DataFrame({'x_exp': [1, 2, 3, 4],
                                'x_haz': [0.1, 0.2, 0.3, 0.4]})
         metrics = {'freq_curve': pd.DataFrame(
@@ -387,7 +388,7 @@ class TestUncImpact(unittest.TestCase):
 
     def test_init_pass(self):
 
-        exp_unc, impf_unc, haz_unc = make_imp_uncs()
+        exp_unc, impf_unc, _ = make_imp_uncs()
         haz = haz_dem()
 
         unc = UncImpact(exp_unc, impf_unc, haz)
@@ -399,7 +400,7 @@ class TestUncImpact(unittest.TestCase):
 
     def test_calc_distribution_pass(self):
 
-        exp_unc, impf_unc, haz_unc = make_imp_uncs()
+        exp_unc, impf_unc, _ = make_imp_uncs()
         haz = haz_dem()
         unc = UncImpact(exp_unc, impf_unc, haz)
         unc.make_sample(N=1)
@@ -437,7 +438,7 @@ class TestUncImpact(unittest.TestCase):
 
     def test_plot_distribution_pass(self):
 
-        exp_unc, impf_unc, haz_unc = make_imp_uncs()
+        exp_unc, impf_unc, _ = make_imp_uncs()
         haz = haz_dem()
         unc = UncImpact(exp_unc, impf_unc, haz)
         unc.make_sample(N=1)
@@ -447,7 +448,7 @@ class TestUncImpact(unittest.TestCase):
 
     def test_plot_sensitivity_map_pass(self):
 
-        exp_unc, impf_unc, haz_unc = make_imp_uncs()
+        exp_unc, impf_unc, _ = make_imp_uncs()
         haz = haz_dem()
 
         #Default parameters

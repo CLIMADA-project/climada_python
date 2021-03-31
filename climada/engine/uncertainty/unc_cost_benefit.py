@@ -141,10 +141,6 @@ class UncCostBenefit(Uncertainty):
             Any keyword arguments of climada.engine.CostBenefit.calc()
             EXCEPT: haz, ent, haz_fut, ent_fut
 
-        Returns
-        -------
-        None.
-
         """
 
         if self.samples_df.empty:
@@ -161,7 +157,7 @@ class UncCostBenefit(Uncertainty):
          cost_ben_ratio] = list(zip(*cb_metrics))
         elapsed_time = (time.time() - start)
         est_com_time = self.est_comp_time(elapsed_time, pool)
-        LOGGER.info(f"\n\nEstimated computation time: {est_com_time}s\n")
+        LOGGER.info("\n\nEstimated computation time: %.2fs\n" %est_com_time)
 
         #Compute impact distributions
         with log_level(level='ERROR', name_prefix='climada'):
@@ -217,8 +213,6 @@ class UncCostBenefit(Uncertainty):
                     "change the risk_func if return period information " +
                     "needed")
         self.check()
-
-        return None
 
 
     def _map_costben_calc(self, param_sample, **kwargs):

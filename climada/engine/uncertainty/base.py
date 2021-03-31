@@ -23,12 +23,14 @@ __all__ = ['UncVar', 'Uncertainty']
 
 import logging
 import json
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
+
 from itertools import zip_longest
 from pathlib import Path
+
+import pandas as pd
+import numpy as np
 from datetime import datetime as dt
+import matplotlib.pyplot as plt
 
 from climada.util.value_representation import value_to_monetary_unit as u_vtm
 from climada.util.value_representation import sig_dig as u_sig_dig
@@ -567,7 +569,8 @@ class Uncertainty():
         salib_kwargs = method.analyze.__code__.co_varnames #obtain all kwargs of the salib method
         X = self.samples_df.to_numpy() if 'X' in salib_kwargs else None
 
-        if method_kwargs is None: method_kwargs = {}
+        if method_kwargs is None:
+            method_kwargs = {}
         sensitivity_dict = {}
         for name, df_metric in self.metrics.items():
             sensitivity_dict[name] = {}
