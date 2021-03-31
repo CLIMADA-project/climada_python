@@ -106,7 +106,7 @@ def impact_yearset(event_impacts, sampled_years=None, sampling_dict=None, correc
     if not sampling_dict:
         n_annual_events = np.sum(event_impacts.frequency)
         n_input_events = len(event_impacts.event_id)
-        sampling_dict = create_sampling_dictor(n_sampled_years, n_annual_events,
+        sampling_dict = create_sampling_dict(n_sampled_years, n_annual_events,
                                                n_input_events)
 
     #compute annual_impacts
@@ -126,7 +126,7 @@ def impact_yearset(event_impacts, sampled_years=None, sampling_dict=None, correc
 
     return annual_impacts, sampling_dict
 
-def create_sampling_dictor(n_sampled_years, n_annual_events, n_input_events):
+def create_sampling_dict(n_sampled_years, n_annual_events, n_input_events):
     """Create a sampling dictionary consisting of the amount of events per sample year and the
     index of the sampled events
 
