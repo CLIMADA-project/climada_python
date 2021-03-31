@@ -27,13 +27,19 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from itertools import zip_longest
+from pathlib import Path
+from datetime import datetime as dt
 
 from climada.util.value_representation import value_to_monetary_unit as u_vtm
 from climada.util.value_representation import sig_dig as u_sig_dig
+from climada import CONFIG
 
 LOGGER = logging.getLogger(__name__)
 
+# Metrics that are multi-dimensional
 METRICS_2D = ['eai_exp', 'at_event']
+
+DATA_DIR = CONFIG.engine.uncertainty.local_data.user_data.dir()
 
 FIG_W, FIG_H = 5, 6 #default figize width/heigh column/work multiplicators
 
@@ -44,20 +50,20 @@ class UncVar():
 
     An uncertainty variable requires a single or multi-parameter function.
     The parameters must follow a given distribution.
-    
+
     Attributes
     ----------
     distr_dict : dict
         Distribution of the uncertainty parameters. Keys are uncertainty
         parameters names and Values are probability density distribution
-        from scipy.stats package 
+        from scipy.stats package
         https://docs.scipy.org/doc/scipy/reference/stats.html
     labels : list
         Names of the uncertainty parameters (keys of distr_dict)
     uncvar_func : function
         User defined python fucntion with the uncertainty parameters
         as kwargs and which returns a climada object.
-        
+
 
     Examples
     --------
@@ -127,7 +133,7 @@ class UncVar():
     def plot(self, figsize=None):
         """
         Plot the distributions of the parameters of the uncertainty variable.
-        
+
         Parameters
         ----------
         figsize: tuple(int or float, int or float), optional
@@ -196,16 +202,16 @@ class Uncertainty():
     This is the base class to perform uncertainty analysis on the outputs of a
     climada.engine.impact.Impact() or climada.engine.costbenefit.CostBenefit()
     object.
-    
+
     Attributes
     ----------
     unc_vars : dict(UncVar)
-        Dictonnary of the required uncertainty variables. 
+        Dictonnary of the required uncertainty variables.
     samples_df : pandas.DataFrame
         Values of the sampled uncertainty parameters. It has n_samples rows
         and one column per uncertainty parameter.
     sampling_method : str
-        Name of the sampling method from SAlib. 
+        Name of the sampling method from SAlib.
         https://salib.readthedocs.io/en/latest/api.html#
     n_samples : int
         Effective number of samples (number of rows of samples_df)
@@ -219,7 +225,7 @@ class Uncertainty():
         distribution as used in SALib.
         https://salib.readthedocs.io/en/latest/basics.html.
     metrics : dict
-        Dictionnary of the value of the CLIMADA metrics for each sample 
+        Dictionnary of the value of the CLIMADA metrics for each sample
         (of the uncertainty parameters) defined in samples_df.
         Keys are metrics names, e.g. 'aai_agg'', 'freq_curve',
         'eai_exp', 'at_event' for impact.calc and 'tot_climate_risk',
@@ -233,7 +239,7 @@ class Uncertainty():
         'benefit', 'cost_ben_ratio', 'imp_meas_present', 'imp_meas_future' for
         cost_benefit.calc. Values are the sensitivity indices dictionary
         as returned by SALib.
-    
+
 
     """
 
@@ -382,7 +388,7 @@ class Uncertainty():
         Make a sample for all parameters with their respective
         distributions using the chosen sampling_method from SALib.
         https://salib.readthedocs.io/en/latest/api.html
-        
+
         This sets the attributes self.sampling method and self.samples_df.
 
         Parameters
@@ -404,7 +410,7 @@ class Uncertainty():
             Dataframe of the generated samples
             (one row = one sample, columns = uncertainty parameters)
         """
-        
+
         self.sampling_method = sampling_method
         uniform_base_sample = self._make_uniform_base_sample(N,
                                                              sampling_method,
@@ -450,7 +456,7 @@ class Uncertainty():
         """
 
         if sampling_kwargs is None: sampling_kwargs = {}
-        
+
         #Import the named submodule from the SALib sample module
         #From the workings of __import__ the use of 'from_list' is necessary
         #c.f. https://stackoverflow.com/questions/2724260/why-does-pythons-import-require-fromlist
@@ -518,7 +524,7 @@ class Uncertainty():
         Total-order index: measures the contribution to the output variance
         caused by a model input, including both its first-order effects
         (the input varying alone) and all higher-order interactions.
-        
+
         This sets the attribute self.sensitivity.
 
 
@@ -665,7 +671,7 @@ class Uncertainty():
     def plot_sample(self, figsize=None):
         """
         Plot the sample distributions of the uncertainty parameters.
-        
+
         Parameters
         ---------
         figsize: tuple(int or float, int or float), optional
@@ -807,27 +813,148 @@ class Uncertainty():
         return axes
 
 
-    def save_samples_df(self, filename):
-        self.sampled_df.to_csv(filename, index=False)
-    
-    def load_samples_df(self, filename):
-        self.sampled_df = pd.read_csv(filename)
+    def save_samples_df(self, filename=None):
+        """
+        Save the samples_df dataframe to .csv
+
+        Parameters
+        ----------
+        filename : str or pathlib.Path, optional
+            The filename with absolute or relative path.
+            The default name is "samples_df + datetime.now() + .csv" and 
+            the default path is taken from climada.config
+            
+        Returns
+        -------
+        save_path : pathlib.Path
+            Path to the saved file
+
+        """
+        if filename is None:
+            filename = "samples_df" + dt.now().strftime("%Y-%m-%d-%H%M%S")
+            filename = Path(DATA_DIR) / Path(filename)
+        save_path = Path(filename)
+        save_path = save_path.with_suffix('.csv')
+        self.samples_df.to_csv(save_path, index=False)
         
-    def save_metrics(self, filename):
-        with open(filename, 'w') as fp:
-            json.dump(self.metrics, fp)
+        return save_path
+
+
+    def load_samples_df(self, filename):
+        """
+        Load a samples_df from .csv file
+
+        Parameters
+        ----------
+        filename : str or pathlib.Path
+            The filename with absolute or relative path.
+
+        Returns
+        -------
+        samples_df : pandas.DataFrame
+            The loaded samples_df
+        """
+
+        self.samples_df = pd.read_csv(Path(filename).with_suffix('.csv'))
+        return self.samples_df
+
+    def save_metrics(self, filename=None):
+        """
+        Save the metrics dictionary to .json
+
+        Parameters
+        filename : str or pathlib.Path, optional
+            The filename with absolute or relative path.
+            The default name is "metrics + datetime.now() + .json" and 
+            the default path is taken from climada.config
             
-    def load_metrics(self, filename):
-        with open(filename, 'r') as fp:
-            self.metrics = json.load(fp)
+        Returns
+        -------
+        save_path : pathlib.Path
+            Path to the saved file
+        """
+        
+        if filename is None:
+            filename = "metrics" + dt.now().strftime("%Y-%m-%d-%H%M%S")
+            filename = Path(DATA_DIR) / Path(filename)
+        save_path = Path(filename).with_suffix('.json')
+        with open(save_path, 'w') as f:
+            json.dump(self.metrics, f)
+        return save_path
+
+    def load_metrics(self, filename, directory=None):
+        """
+        Load a metrics from .json file
+
+        Parameters
+        ----------
+        filename : str or pathlib.Path
+            The filename.
+        directory : str or pathlib.Path, optional
+            The directory path. The default is taken from
+            climada.config
+
+        Returns
+        -------
+        metrics : dict
+            The loaded metrics dictionary
+
+        """
+        if directory is None:
+            directory = DATA_DIR
+        load_path = Path(filename).with_suffix('.json')
+        with open(load_path, 'r') as f:
+            self.metrics = json.load(f)
+        return self.metrics
+
+    def save_sensitivity(self, filename=None):
+        """
+        Save the sensitivity dictionary to .json
+
+        Parameters
+        filename : str or pathlib.Path, optional
+            The filename with absolute or relative path.
+            The default name is "sensitivity + datetime.now() + .json" and 
+            the default path is taken from climada.config
             
-    def save_sensitivity(self, filename):
-        with open(filename, 'w') as fp:
-            json.dump(self.sensitivity, fp)
-            
+        Returns
+        -------
+        save_path : pathlib.Path
+            Path to the saved file
+        """
+        
+        if filename is None:
+            filename = "sensitivity" + dt.now().strftime("%Y-%m-%d-%H%M%S")
+            filename = Path(DATA_DIR) / Path(filename)
+        save_path = Path(filename).with_suffix('.json')
+        with open(save_path, 'w') as f:
+            json.dump(self.sensitivity, f)
+        return save_path
+
     def load_sensitivity(self, filename):
-        with open(filename, 'r') as fp:
-            self.sensitivity = json.load(fp)
+        """
+        Load a sensitivity from .json file
+
+        Parameters
+        ----------
+        filename : str or pathlib.Path
+            The filename
+        directory : str or pathlib.Path, optional
+            The directory path. The default is taken from
+            climada.config
+
+        Returns
+        -------
+        sensitivity : dict
+            The loaded sensitivity dictionary
+
+        """
+
+        load_path = Path(filename).with_suffix('.json')
+        with open(load_path, 'r') as f:
+            self.sensitivity = json.load(f)
+        return self.sensitivity
+
 
 SALIB_COMPATIBILITY = {
     'fast': ['fast_sampler'],
