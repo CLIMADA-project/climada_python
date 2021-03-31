@@ -410,8 +410,7 @@ class TestIO(unittest.TestCase):
         self.assertEqual(len(tc_track.data), 0)
 
     def test_to_geodataframe_points(self):
-        """Conversion of TCTracks to GeoDataFrame using Points.
-        """
+        """Conversion of TCTracks to GeoDataFrame using Points."""
         tc_track = tc.TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK)
 
@@ -423,8 +422,7 @@ class TestIO(unittest.TestCase):
         self.assertIsInstance(gdf_points.iloc[0].time, pd._libs.tslibs.timestamps.Timestamp)
 
     def test_to_geodataframe_line(self):
-        """Conversion of TCTracks to GeoDataFrame using LineStrings.
-        """
+        """Conversion of TCTracks to GeoDataFrame using LineStrings."""
         tc_track = tc.TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK)
 
@@ -435,42 +433,32 @@ class TestIO(unittest.TestCase):
         self.assertIsInstance(gdf_line.bounds.minx, pd.core.series.Series)
 
         anti_track = tc.TCTracks()
+        # test data set with two tracks:
+        # * 1980052S16155: crosses the antimeridian
+        # * 2018079S09162: close, but doesn't cross antimeridian; has self-intersections
         anti_track.read_netcdf(TEST_TRACKS_ANTIMERIDIAN)
 
         split = anti_track.to_geodataframe(split_lines_antimeridian=True)
         split.set_index('sid', inplace=True)
+        self.assertIsInstance(split.loc['1980052S16155'].geometry, MultiLineString)
+        self.assertIsInstance(split.loc['2018079S09162'].geometry, LineString)
         self.assertEqual(len(split.loc['1980052S16155'].geometry), 8)
         self.assertFalse(split.loc['2018079S09162'].geometry.is_simple)
 
         nosplit = anti_track.to_geodataframe(split_lines_antimeridian=False)
         nosplit.set_index('sid', inplace=True)
         self.assertIsInstance(nosplit.loc['1980052S16155'].geometry, LineString)
+        self.assertIsInstance(nosplit.loc['2018079S09162'].geometry, LineString)
         self.assertFalse(nosplit.loc['2018079S09162'].geometry.is_simple)
 
-        split_bounds = pd.DataFrame(
-            data = {
-                'minx': [148.600006, -180.000000],
-                'miny': [-22.410000, -38.583244],
-                'maxx': [162.399994, 180.000000],
-                'maxy': [-13.4, -17.0],
-            },
-            index = pd.Index(['2018079S09162', '1980052S16155'], 
-                             name='sid')
-        )
-
-        nosplit_bounds = pd.DataFrame(
-            data = {
-                'minx': [148.600006, 150.800003],
-                'miny': [-22.410000, -38.583244],
-                'maxx': [162.399994, 185.000000],
-                'maxy': [-13.40, -17.00],
-            },
-            index = pd.Index(['2018079S09162', '1980052S16155'], 
-                             name='sid')
-        )
-
-        pd.testing.assert_frame_equal(split_bounds, split.bounds)
-        pd.testing.assert_frame_equal(nosplit_bounds, nosplit.bounds)
+        np.testing.assert_array_almost_equal(
+            split.loc['1980052S16155'].geometry.bounds, (-180, -38.583244, 180, -17))
+        np.testing.assert_array_almost_equal(
+            nosplit.loc['1980052S16155'].geometry.bounds, (150.800003, -38.583244, 185, -17))
+        np.testing.assert_array_almost_equal(
+            split.loc['2018079S09162'].geometry.bounds, (148.600006, -22.41, 162.399994, -13.4))
+        np.testing.assert_array_almost_equal(
+            nosplit.loc['2018079S09162'].geometry.bounds, (148.600006, -22.41, 162.399994, -13.4))
 
 class TestFuncs(unittest.TestCase):
     """Test functions over TC tracks"""
