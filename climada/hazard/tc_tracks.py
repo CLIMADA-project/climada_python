@@ -1888,7 +1888,7 @@ def _make_line_from_track(track, split_lines_antimeridian=True):
     ----------
     track : xr.Dataset
         A track as present as an element of TCTracks.data
-    
+
     Returns
     -------
     line : Point, LineString, MultiLineString

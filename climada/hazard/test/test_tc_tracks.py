@@ -25,6 +25,7 @@ import numpy as np
 import netCDF4 as nc
 import pandas as pd
 import geopandas as gpd
+from shapely.geometry import Point, LineString, MultiLineString
 
 import climada.hazard.tc_tracks as tc
 from climada import CONFIG
@@ -760,6 +761,67 @@ class TestFuncs(unittest.TestCase):
         self.assertTrue(tracks_in_exp.get_track(storms['in']))
         self.assertFalse(tracks_in_exp.get_track(storms['out']))
 
+    def test_make_line_from_track(self):
+        """Check _make_line_from_track function"""
+        test_cases = [
+            # single time step
+            [[0], [185], Point(-175, 0)],
+            # move along antimeridian
+            [[-10, 0, 10], [180, -180, 180], LineString([(180, -10), (180, 0), (180, 10)])],
+            # don't cross antimeridian
+            [[0, 0, 0], [-15, 50, 175], LineString([(-15, 0), (50, 0), (175, 0)])],
+            # all segments are interpreted in such a way that they are of length < 180
+            [[0, 0, 0], [-5, 5, 190], LineString([(-5, 0), (5, 0), (-170, 0)])],
+            # touch antimeridian from left
+            [[0, 0, 0], [-15, 50, 180], LineString([(-15, 0), (50, 0), (180, 0)])],
+            [[0, 0, 0], [180, 50, -15], LineString([(180, 0), (50, 0), (-15, 0)])],
+            [[0, 0, 0], [160, 180, 160], LineString([(160, 0), (180, 0), (160, 0)])],
+            # touch antimeridian from right
+            [[0, 0, 0], [15, -50, -180], LineString([(15, 0), (-50, 0), (-180, 0)])],
+            [[0, 0, 0], [-180, -50, 15], LineString([(-180, 0), (-50, 0), (15, 0)])],
+            [[0, 0, 0], [-160, -180, -160], LineString([(-160, 0), (-180, 0), (-160, 0)])],
+            # cross antimeridian from left
+            [[0, 0, 0], [-5, 50, 185],
+             MultiLineString([[(-5, 0), (50, 0), (180, 0)], [(-180, 0), (-175, 0)]])],
+            [[0, 0, 0, 0], [-5, 50, 180, 185],
+             MultiLineString([[(-5, 0), (50, 0), (180, 0)], [(-180, 0), (-175, 0)]])],
+            [[0, 0, 0, 0, 0], [0, 70, 170, 240, 310],
+             MultiLineString([[(0, 0), (70, 0), (170, 0), (180, 0)],
+                              [(-180, 0), (-120, 0), (-50, 0)]])],
+            # cross antimeridian from right
+            [[0, 0, 0], [5, -50, -185],
+             MultiLineString([[(5, 0), (-50, 0), (-180, 0)], [(180, 0), (175, 0)]])],
+            [[0, 0, 0, 0], [5, -50, -180, -185],
+             MultiLineString([[(5, 0), (-50, 0), (-180, 0)], [(180, 0), (175, 0)]])],
+            # self-intersection
+            [[0, 1, 0.5, 0.5], [0, 1, 1, 0], LineString([(0, 0), (1, 1), (1, 0.5), (0, 0.5)])],
+            # self-intersection at antimeridian
+            [[0, 1, 0.5, 0.5], [179, 181, 181, 179],
+             MultiLineString([[(179, 0), (180, 0.5)],
+                              [(-180, 0.5), (-179, 1), (-179, 0.5), (-180, 0.5)],
+                              [(180, 0.5), (179, 0.5)]])],
+            # self-intersection after crossing antimeridian
+            [[0, 1, 0.5, 0.5], [179, 183, 183, 179],
+             MultiLineString([[(179, 0), (180, 0.25)],
+                              [(-180, 0.25), (-177, 1), (-177, 0.5), (-180, 0.5)],
+                              [(180, 0.5), (179, 0.5)]])],
+            # crosses than touches after intersecting itself
+            [[0, 1, 0.5, 0.5, 1], [179, 183, 183, 180, 181],
+             MultiLineString([[(179, 0), (180, 0.25)],
+                              [(-180, 0.25), (-177, 1), (-177, 0.5), (-180, 0.5), (-179, 1)]])],
+        ]
+        for lat, lon, geo in test_cases:
+            lat, lon = np.array(lat), np.array(lon)
+            track = xr.Dataset({
+                'time_step': ('time', np.full((lat.size,), 6, dtype=np.float64)),
+            }, coords={
+                'time': np.array([np.datetime64('2000-01-01T00:00') + i * np.timedelta64(6, 'h')
+                                  for i in range(lat.size)]),
+                'lat': ('time', lat),
+                'lon': ('time', lon),
+            })
+            line = tc._make_line_from_track(track, split_lines_antimeridian=True)
+            self.assertTrue(line == geo, msg=f"{line} != {geo}")
 
 # Execute Tests
 if __name__ == "__main__":
