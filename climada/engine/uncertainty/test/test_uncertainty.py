@@ -200,6 +200,26 @@ class TestUncertainty(unittest.TestCase):
         self.assertSetEqual(set(unc.param_labels), {'x_exp', 'x_paa', 'x_mdd'})
         self.assertListEqual(list(unc.metrics['aai_agg']['aai_agg']), [100, 200])
         self.assertDictEqual(unc.sensitivity, {})
+        
+    def test_save_pass(self):
+        exp_unc, impf_unc, haz_unc = make_imp_uncs()
+
+        unc = Uncertainty({'exp': exp_unc,
+                           'impf': impf_unc,
+                           'haz': haz_unc})
+        unc.make_sample(1)
+        filename = unc.save_samples_df()
+        
+        unc_imp = UncImpact(exp_unc, impf_unc, haz_unc)
+        unc_imp.load_samples_df(filename)
+        
+        unc_imp.calc_distribution()
+        filename = unc.save_metrics()
+        unc_imp.load_metrics(filename)
+        
+        unc_imp.calc_sensitivity()
+        filename = unc.save_sensitivity()
+        unc_imp.load_sensitivity(filename)
 
     def test_make_sample_pass(self):
 
