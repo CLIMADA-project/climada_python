@@ -93,7 +93,13 @@ class Forecast():
     exposure and impact. Use the calc() method to calculate a forecasted
     impact. Then use the plotting methods to illustrate the forecasted impacts.
     As the class is relatively new, there might be future changes to the attributes,
-    the methods, and the parameters used to call the methods
+    the methods, and the parameters used to call the methods.
+    It was discovered at some point, that there might be a memory leak in
+    matplotlib even when figures are closed
+    (https://github.com/matplotlib/matplotlib/issues/8519). Due to this reason
+    the plotting functions in this module have the flag close_fig, to close
+    figures within the function scope, which might mitigate that problem if a
+    script runs this plotting functions many times.
 
     Attributes
     ----------
