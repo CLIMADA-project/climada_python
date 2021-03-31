@@ -37,11 +37,24 @@ class IFWildfire(ImpactFunc):
 
     def set_default_FIRMS(self, i_half=535.8, if_id=1):
 
-        """Using the formula of Emanuele 2011 but adjusted to wildfire.
-        As 295K resembles the lowest number of a FIRMS data set, i_thresh can
-        be set constant to 295 K leaving i_half the only parameter that needs
-        calibration. i_half is set to 523.8 as a result of the calibration
-        performed by Lüthi (2021).
+        """ This function sets the impact curve to a sigmoid type shape, as
+        common in impact modelling. We adapted the function as proposed by
+        Emanuele (2011) which hinges on two parameters (intercept (i_thresh)
+        and steepness (i_half) of the sigmoid).
+
+        .. math::
+            f = \frac{i_{n}^{3}}{1+i_{n}^{3}}
+        with
+
+        .. math::
+            i_n = \frac{MAX[(I_{lat, lon}-I_{thresh}), 0]}{I_{half}-I_{thresh}}
+
+        The intercept is defined at the minimum intensity of a FIRMS value
+        (295K) which leaves the steepness (i_half) the only parameter that
+        needs to be calibrated.
+
+        Here, i_half is set to 523.8 as a result of the calibration
+        performed by Lüthi et al. (in prep).
 
         Calibration has been performed globally (using EMDAT data) on a 10 km
         resolution. Thus, function is optimised to estimate impacts on 10 km.
@@ -53,9 +66,6 @@ class IFWildfire(ImpactFunc):
             i_half (float, optional): steepnes of the IF, [K] at which 50% of
             max. damage is expected
             if_id (int, optional): impact function id. Default: 1
-
-        Raises:
-            ValueError
         """
 
         self.id = if_id
@@ -64,13 +74,13 @@ class IFWildfire(ImpactFunc):
         self.intensity = np.arange(295, 500, 5)
         i_thresh = 295
         i_n = (self.intensity-i_thresh)/(i_half-i_thresh)
-        self.paa = i_n**3/(1+i_n**3)
+        self.paa = i_n**3 / (1 + i_n**3)
         self.mdd = np.ones(len(self.intensity))
 
     def set_step(self, threshold=295., if_id=1):
 
         """ Step function type impact function. Everything is destroyed above
-        threshold. Can be usefull for high resolution modelling.
+        threshold. Usefull for high resolution modelling.
 
         Defaults are not calibrated
 
@@ -82,8 +92,6 @@ class IFWildfire(ImpactFunc):
             destroyed
             if_id (int, optional): impact function id. Default: 1
 
-        Raises:
-            ValueError
         """
 
         self.id = if_id
@@ -100,22 +108,19 @@ class IFWildfire(ImpactFunc):
         Parameters can be thought of as intercept (sig_mid), slope (sig_shape)
         and top (sig_max) of a sigmoid.
 
+        For more information: https://en.wikipedia.org/wiki/Logistic_function
+
         Default values are not calibrated.
 
         Parameters:
-            int_range (array, optional): x-axis range of imapct function [K]
             sig_mid (float, optional): "intercept"
             sig_shape (float, optional): "slope"
             sig_max (float, optional): "top", between 0. and 1.
             if_id (int, optional): impact function id. Default: 1
-
-        Raises:
-            ValueError
         """
         self.id = if_id
         self.name = "wildfire sigmoid"
         self.intensity_unit = "K"
         self.intensity = np.arange(295, 500, 5)
         self.mdd = np.ones(len(self.intensity))
-        self.paa = sig_max/(1+np.exp(-sig_shape*(self.intensity-sig_mid)))
-
+        self.paa = sig_max / (1 + np.exp(-sig_shape * (self.intensity - sig_mid)))
