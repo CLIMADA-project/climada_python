@@ -117,4 +117,4 @@ class IFWildfire(ImpactFunc):
         self.intensity_unit = "K"
         self.intensity = np.arange(295, 500, 5)
         self.mdd = np.ones(len(self.intensity))
-        self.paa = sig_max/(1+np.exp(-sig_shape*(self.intensity-sig_mid)))
+        self.paa = sig_max / (1 + np.exp(-sig_shape * (self.intensity - sig_mid)))
