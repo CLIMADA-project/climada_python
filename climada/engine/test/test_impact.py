@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -542,9 +542,9 @@ class TestRiskTrans(unittest.TestCase):
         self.assertTrue(np.allclose(imp_rt.eai_exp, np.array([])))
         self.assertTrue(np.allclose(imp_rt.at_event, np.array([0, 0, 0, 1, 2, 3, 4, 5, 6, 10])))
         self.assertAlmostEqual(imp_rt.aai_agg, 6.2)
-        
+
 def dummy_impact():
-    
+
     imp = Impact()
     imp.event_id = np.arange(6)
     imp.event_name = [0, 1, 'two', 'three', 30, 31]
@@ -559,21 +559,21 @@ def dummy_impact():
     imp.unit = 'USD'
     imp.imp_mat = sparse.csr_matrix(np.array([
         [0,0], [1,1], [2,2], [3,3], [30,30], [31,31]
-        ]))       
-    
+        ]))
+
     return imp
-    
+
 class TestSelect(unittest.TestCase):
     """Test select method"""
     def test_select_event_id_pass(self):
         """Test select by event id"""
-        
+
         imp = dummy_impact()
         sel_imp = imp.select(event_ids=[0, 1, 2])
 
         self.assertEqual(sel_imp.crs, imp.crs)
         self.assertEqual(sel_imp.unit, imp.unit)
-        
+
         self.assertTrue(np.array_equal(sel_imp.event_id, np.array([0, 1, 2])))
         self.assertEqual(sel_imp.event_name, [0, 1, 'two'])
         self.assertTrue(np.array_equal(sel_imp.date, np.array([0, 1, 2])))
@@ -585,23 +585,23 @@ class TestSelect(unittest.TestCase):
                                         np.array([[0,0], [1,1], [2,2]])))
         self.assertTrue(np.allclose(sel_imp.eai_exp, np.array([1/6+2, 1/6+2])))
         self.assertEqual(sel_imp.aai_agg, 4+2/6)
-        
+
         self.assertEqual(sel_imp.tot_value, 7)
         self.assertTrue(np.array_equal(sel_imp.coord_exp,
                                        np.array([[1, 2], [1.5, 2.5]])))
-                        
+
         self.assertIsInstance(sel_imp, Impact)
         self.assertIsInstance(sel_imp.imp_mat, sparse.csr_matrix)
-       
+
     def test_select_event_name_pass(self):
         """Test select by event name"""
-        
+
         imp = dummy_impact()
         sel_imp = imp.select(event_names=[0, 1, 'two'])
 
         self.assertEqual(sel_imp.crs, imp.crs)
         self.assertEqual(sel_imp.unit, imp.unit)
-        
+
         self.assertTrue(np.array_equal(sel_imp.event_id, np.array([0, 1, 2])))
         self.assertEqual(sel_imp.event_name, [0, 1, 'two'])
         self.assertTrue(np.array_equal(sel_imp.date, np.array([0, 1, 2])))
@@ -613,23 +613,23 @@ class TestSelect(unittest.TestCase):
                                         np.array([[0,0], [1,1], [2,2]])))
         self.assertTrue(np.allclose(sel_imp.eai_exp, np.array([1/6+2, 1/6+2])))
         self.assertEqual(sel_imp.aai_agg, 4+2/6)
-        
+
         self.assertEqual(sel_imp.tot_value, 7)
         self.assertTrue(np.array_equal(sel_imp.coord_exp,
                                        np.array([[1, 2], [1.5, 2.5]])))
-                        
+
         self.assertIsInstance(sel_imp, Impact)
         self.assertIsInstance(sel_imp.imp_mat, sparse.csr_matrix)
-        
+
     def test_select_dates_pass(self):
         """Test select by event dates"""
-        
+
         imp = dummy_impact()
         sel_imp = imp.select(dates=(0, 2))
 
         self.assertEqual(sel_imp.crs, imp.crs)
         self.assertEqual(sel_imp.unit, imp.unit)
-        
+
         self.assertTrue(np.array_equal(sel_imp.event_id, np.array([0, 1, 2])))
         self.assertEqual(sel_imp.event_name, [0, 1, 'two'])
         self.assertTrue(np.array_equal(sel_imp.date, np.array([0, 1, 2])))
@@ -641,23 +641,23 @@ class TestSelect(unittest.TestCase):
                                         np.array([[0,0], [1,1], [2,2]])))
         self.assertTrue(np.allclose(sel_imp.eai_exp, np.array([1/6+2, 1/6+2])))
         self.assertEqual(sel_imp.aai_agg, 4+2/6)
-        
+
         self.assertEqual(sel_imp.tot_value, 7)
         self.assertTrue(np.array_equal(sel_imp.coord_exp,
                                        np.array([[1, 2], [1.5, 2.5]])))
-                        
+
         self.assertIsInstance(sel_imp, Impact)
         self.assertIsInstance(sel_imp.imp_mat, sparse.csr_matrix)
-        
+
     def test_select_coord_exp_pass(self):
         """ test select by exp coordinates """
-        
+
         imp = dummy_impact()
         sel_imp = imp.select(coord_exp=np.array([1,2]))
 
         self.assertEqual(sel_imp.crs, imp.crs)
         self.assertEqual(sel_imp.unit, imp.unit)
-        
+
         self.assertTrue(np.array_equal(sel_imp.event_id, imp.event_id))
         self.assertEqual(sel_imp.event_name, imp.event_name)
         self.assertTrue(np.array_equal(sel_imp.date, imp.date))
@@ -669,34 +669,34 @@ class TestSelect(unittest.TestCase):
                             np.array([[0], [1], [2], [3], [30], [31]])))
         self.assertTrue(np.allclose(sel_imp.eai_exp, np.array([1/6+2+3+1+31/30])))
         self.assertEqual(sel_imp.aai_agg, 1/6+2+3+1+31/30)
-        
+
         self.assertEqual(sel_imp.tot_value, None)
         self.assertTrue(np.array_equal(sel_imp.coord_exp,
                                        np.array([[1, 2]])))
-                        
+
         self.assertIsInstance(sel_imp, Impact)
         self.assertIsInstance(sel_imp.imp_mat, sparse.csr_matrix)
-        
+
     def test_select_event_identity_pass(self):
         """ test select same impact with event name, id and date """
-        
+
         # Read default entity values
         ent = Entity()
         ent.read_excel(ENT_DEMO_TODAY)
         ent.check()
-        
+
         # Read default hazard file
         hazard = Hazard('TC')
         hazard.read_mat(HAZ_TEST_MAT)
         # Create impact object
         imp = Impact()
-        
+
         # Assign centroids to exposures
         ent.exposures.assign_centroids(hazard)
-        
+
         # Compute the impact over the whole exposures
         imp.calc(ent.exposures, ent.impact_funcs, hazard, save_mat=True)
-        
+
         sel_imp = imp.select(event_ids=imp.event_id,
                              event_names=imp.event_name,
                              dates=(min(imp.date), max(imp.date))
@@ -704,7 +704,7 @@ class TestSelect(unittest.TestCase):
 
         self.assertEqual(sel_imp.crs, imp.crs)
         self.assertEqual(sel_imp.unit, imp.unit)
-        
+
         self.assertTrue(np.array_equal(sel_imp.event_id, imp.event_id))
         self.assertEqual(sel_imp.event_name, imp.event_name)
         self.assertTrue(np.array_equal(sel_imp.date, imp.date))
@@ -717,27 +717,27 @@ class TestSelect(unittest.TestCase):
         self.assertTrue(np.array_equal(sel_imp.eai_exp,
                                        imp.eai_exp))
         self.assertAlmostEqual(round(sel_imp.aai_agg,5), round(imp.aai_agg,5))
-        
+
         self.assertEqual(sel_imp.tot_value, imp.tot_value)
         self.assertTrue(np.array_equal(sel_imp.coord_exp,
                                        imp.coord_exp))
-                        
+
         self.assertIsInstance(sel_imp, Impact)
         self.assertIsInstance(sel_imp.imp_mat, sparse.csr_matrix)
-        
+
 
     def test_select_new_attributes(self):
         """Test if impact has new attributes """
-        
+
         imp = dummy_impact()
         imp.new_per_ev =  ['a', 'b', 'c', 'd', 'e', 'f']
         sel_imp = imp.select(event_names=[0, 1, 'two'])
-        
+
         self.assertEqual(sel_imp.new_per_ev, ['a', 'b', 'c'])
 
         self.assertEqual(sel_imp.crs, imp.crs)
         self.assertEqual(sel_imp.unit, imp.unit)
-        
+
         self.assertTrue(np.array_equal(sel_imp.event_id, np.array([0, 1, 2])))
         self.assertEqual(sel_imp.event_name, [0, 1, 'two'])
         self.assertTrue(np.array_equal(sel_imp.date, np.array([0, 1, 2])))
@@ -749,25 +749,25 @@ class TestSelect(unittest.TestCase):
                                         np.array([[0,0], [1,1], [2,2]])))
         self.assertTrue(np.allclose(sel_imp.eai_exp, np.array([1/6+2, 1/6+2])))
         self.assertEqual(sel_imp.aai_agg, 4+2/6)
-        
+
         self.assertEqual(sel_imp.tot_value, 7)
         self.assertTrue(np.array_equal(sel_imp.coord_exp,
                                        np.array([[1, 2], [1.5, 2.5]])))
-        
-                        
+
+
         self.assertIsInstance(sel_imp, Impact)
         self.assertIsInstance(sel_imp.imp_mat, sparse.csr_matrix)
-        
-        
+
+
     def test_select_id_name_dates_pass(self):
         """Test select by event ids, names, and dates"""
-        
+
         imp = dummy_impact()
         sel_imp = imp.select(event_ids=[0], event_names=[1, 'two'], dates=(0, 2))
 
         self.assertEqual(sel_imp.crs, imp.crs)
         self.assertEqual(sel_imp.unit, imp.unit)
-        
+
         self.assertTrue(np.array_equal(sel_imp.event_id, np.array([0, 1, 2])))
         self.assertEqual(sel_imp.event_name, [0, 1, 'two'])
         self.assertTrue(np.array_equal(sel_imp.date, np.array([0, 1, 2])))
@@ -779,17 +779,17 @@ class TestSelect(unittest.TestCase):
                                         np.array([[0,0], [1,1], [2,2]])))
         self.assertTrue(np.allclose(sel_imp.eai_exp, np.array([1/6+2, 1/6+2])))
         self.assertEqual(sel_imp.aai_agg, 4+2/6)
-        
+
         self.assertEqual(sel_imp.tot_value, 7)
         self.assertTrue(np.array_equal(sel_imp.coord_exp,
                                        np.array([[1, 2], [1.5, 2.5]])))
-                        
+
         self.assertIsInstance(sel_imp, Impact)
         self.assertIsInstance(sel_imp.imp_mat, sparse.csr_matrix)
-        
+
     def test_select_imp_map_fail(self):
         """Test that selection fails if imp_mat is empty"""
-        
+
         imp = dummy_impact()
         imp.imp_mat = sparse.csr_matrix(np.empty((0, 0)))
         with self.assertRaises(ValueError):
