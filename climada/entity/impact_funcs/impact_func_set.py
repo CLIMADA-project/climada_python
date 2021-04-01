@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -32,7 +32,7 @@ import xlsxwriter
 from climada.entity.impact_funcs.base import ImpactFunc
 from climada.entity.tag import Tag
 import climada.util.plot as u_plot
-import climada.util.hdf5_handler as hdf5
+import climada.util.hdf5_handler as u_hdf5
 
 LOGGER = logging.getLogger(__name__)
 
@@ -326,7 +326,7 @@ class ImpactFuncSet():
         dfr = pd.read_excel(file_name, var_names['sheet_name'])
 
         self.clear()
-        self.tag.file_name = file_name
+        self.tag.file_name = str(file_name)
         self.tag.description = description
         self._fill_dfr(dfr, var_names)
 
@@ -344,7 +344,7 @@ class ImpactFuncSet():
             for row, (fun_id, fun_type) in enumerate(
                     zip(imp[var_names['var_name']['fun_id']].squeeze(),
                         imp[var_names['var_name']['peril']].squeeze())):
-                type_str = hdf5.get_str_from_ref(file_name, fun_type)
+                type_str = u_hdf5.get_str_from_ref(file_name, fun_type)
                 key = (type_str, int(fun_id))
                 if key not in func_pos:
                     func_pos[key] = list()
@@ -355,7 +355,7 @@ class ImpactFuncSet():
             """Get rows with same string in var_name."""
             prev_str = ""
             for row in idxs:
-                cur_str = hdf5.get_str_from_ref(file_name, imp[var_name][row][0])
+                cur_str = u_hdf5.get_str_from_ref(file_name, imp[var_name][row][0])
                 if prev_str == "":
                     prev_str = cur_str
                 elif prev_str != cur_str:
@@ -363,9 +363,9 @@ class ImpactFuncSet():
                     raise ValueError
             return prev_str
 
-        imp = hdf5.read(file_name)
+        imp = u_hdf5.read(file_name)
         self.clear()
-        self.tag.file_name = file_name
+        self.tag.file_name = str(file_name)
         self.tag.description = description
 
         try:

@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -21,7 +21,7 @@ Test interpolation module.
 import unittest
 import numpy as np
 
-import climada.util.interpolation as interp
+import climada.util.interpolation as u_interp
 from climada.util.constants import ONE_LAT_KM
 
 def def_input_values():
@@ -117,7 +117,7 @@ class TestDistance(unittest.TestCase):
         lats2 = 14
         lons2 = 56
         self.assertAlmostEqual(7709.827814738594,
-                               interp.dist_approx(lats1, lons1, cos_lats1, lats2, lons2))
+                               u_interp.dist_approx(lats1, lons1, cos_lats1, lats2, lons2))
 
     def test_dist_sqr_approx_pass(self):
         """Test against matlab reference."""
@@ -128,7 +128,7 @@ class TestDistance(unittest.TestCase):
         lons2 = 56
         self.assertAlmostEqual(
             7709.827814738594,
-            np.sqrt(interp.dist_sqr_approx(lats1, lons1, cos_lats1, lats2, lons2)) * ONE_LAT_KM)
+            np.sqrt(u_interp.dist_sqr_approx(lats1, lons1, cos_lats1, lats2, lons2)) * ONE_LAT_KM)
 
 class TestInterpIndex(unittest.TestCase):
     """Test interpol_index function's interface"""
@@ -136,41 +136,41 @@ class TestInterpIndex(unittest.TestCase):
     def test_wrong_method_fail(self):
         """Check exception is thrown when wrong method is given"""
         with self.assertLogs('climada.util.interpolation', level='ERROR') as cm:
-            interp.interpol_index(np.ones((10, 2)), np.ones((7, 2)), 'method')
+            u_interp.interpol_index(np.ones((10, 2)), np.ones((7, 2)), 'method')
         self.assertIn('Interpolation using method with distance haversine is not supported.',
                       cm.output[0])
 
     def test_wrong_distance_fail(self):
         """Check exception is thrown when wrong distance is given"""
         with self.assertLogs('climada.util.interpolation', level='ERROR') as cm:
-            interp.interpol_index(np.ones((10, 2)), np.ones((7, 2)),
-                                  distance='distance')
+            u_interp.interpol_index(np.ones((10, 2)), np.ones((7, 2)),
+                                    distance='distance')
         self.assertIn('Interpolation using NN with distance distance is not supported.',
                       cm.output[0])
 
     def test_wrong_centroid_fail(self):
         """Check exception is thrown when centroids missing one dimension"""
         with self.assertRaises(IndexError):
-            interp.interpol_index(np.ones((10, 1)), np.ones((7, 2)),
-                                  distance='approx')
+            u_interp.interpol_index(np.ones((10, 1)), np.ones((7, 2)),
+                                    distance='approx')
         with self.assertRaises(ValueError):
-            interp.interpol_index(np.ones((10, 1)), np.ones((7, 2)),
-                                  distance='haversine')
+            u_interp.interpol_index(np.ones((10, 1)), np.ones((7, 2)),
+                                    distance='haversine')
 
     def test_wrong_coord_fail(self):
         """Check exception is thrown when coordinates missing one dimension"""
         with self.assertRaises(IndexError):
-            interp.interpol_index(np.ones((10, 2)), np.ones((7, 1)),
-                                  distance='approx')
+            u_interp.interpol_index(np.ones((10, 2)), np.ones((7, 1)),
+                                    distance='approx')
         with self.assertRaises(ValueError):
-            interp.interpol_index(np.ones((10, 2)), np.ones((7, 1)),
-                                  distance='haversine')
+            u_interp.interpol_index(np.ones((10, 2)), np.ones((7, 1)),
+                                    distance='haversine')
 
 class TestNN(unittest.TestCase):
     """Test interpolator neareast neighbor with approximate distance"""
 
     def tearDown(self):
-        interp.THRESHOLD = 100
+        u_interp.THRESHOLD = 100
 
     def normal_pass(self, dist):
         """Checking result against matlab climada_demo_step_by_step"""
@@ -178,8 +178,8 @@ class TestNN(unittest.TestCase):
         exposures, centroids = def_input_values()
 
         # Interpolate with default threshold
-        neighbors = interp.interpol_index(centroids, exposures,
-                                          'NN', dist)
+        neighbors = u_interp.interpol_index(centroids, exposures,
+                                            'NN', dist)
         # Reference output
         ref_neighbors = def_ref()
         # Check results
@@ -195,8 +195,8 @@ class TestNN(unittest.TestCase):
         # Interpolate with lower threshold to raise warnings
         threshold = 50
         with self.assertLogs('climada.util.interpolation', level='INFO') as cm:
-            neighbors = interp.interpol_index(centroids, exposures, 'NN',
-                                              dist, threshold=threshold)
+            neighbors = u_interp.interpol_index(centroids, exposures, 'NN',
+                                                dist, threshold=threshold)
         self.assertIn("Distance to closest centroid", cm.output[0])
 
         ref_neighbors = def_ref_50()
@@ -213,7 +213,7 @@ class TestNN(unittest.TestCase):
         exposures[2, :] = exposures[0, :]
 
         # Interpolate with default threshold
-        neighbors = interp.interpol_index(centroids, exposures, 'NN', dist)
+        neighbors = u_interp.interpol_index(centroids, exposures, 'NN', dist)
 
         # Check output neighbors have same size as coordinates
         self.assertEqual(len(neighbors), exposures.shape[0])

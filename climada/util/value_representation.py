@@ -1,6 +1,21 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
+This file is part of CLIMADA.
+
+Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
+
+CLIMADA is free software: you can redistribute it and/or modify it under the
+terms of the GNU General Public License as published by the Free
+Software Foundation, version 3.
+
+CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along
+with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
+
+---
+
 Created on Mon Nov 16 19:21:42 2020
 
 @author: ckropf
@@ -14,17 +29,21 @@ import decimal
 
 LOGGER = logging.getLogger(__name__)
 
-ABBREV = {1:'',
-          1000: 'K',
-          1000000: 'M',
-          1000000000: 'Bn',
-          1000000000000: 'Tn'}
+ABBREV = {
+    1:'',
+    1000: 'K',
+    1000000: 'M',
+    1000000000: 'Bn',
+    1000000000000: 'Tn'
+    }
 
 
 def sig_dig(x, n_sig_dig = 16):
     """
     Rounds x to n_sig_dig number of significant digits.
-    Examples: 1.234567 -> 1.2346, 123456.89 -> 123460.0
+    0, inf, Nan are returned unchanged.
+    Examples: n_sig_dig = 5
+        1.234567 -> 1.2346, 123456.89 -> 123460.0
 
     Parameters
     ----------
@@ -72,7 +91,8 @@ def sig_dig_list(iterable, n_sig_dig=16):
 
 def value_to_monetary_unit(values, n_sig_dig=None, abbreviations=None):
     """
-    Converts values to closest common monetary unit, default: (K, M Bn, Tn)
+    Converts list of values to closest common monetary unit 
+    0, Nan and inf have not unit.
 
     Parameters
     ----------
@@ -85,7 +105,8 @@ def value_to_monetary_unit(values, n_sig_dig=None, abbreviations=None):
     abbreviations: dict, optional
         Name of the abbreviations for the money 1000s counts
         Default:
-         {0:'',
+         {
+          1:'',
           1000: 'K',
           1000000: 'M',
           1000000000: 'Bn',
@@ -97,6 +118,12 @@ def value_to_monetary_unit(values, n_sig_dig=None, abbreviations=None):
         Array of values in monetary unit
     name : string
         Monetary unit
+        
+    Examples
+    --------
+    values = [1e6, 2*1e6, 4.5*1e7, 0, Nan, inf] ->
+        [1, 2, 4.5, 0, Nan, inf]
+        ['M']
 
     """
 
@@ -108,19 +135,18 @@ def value_to_monetary_unit(values, n_sig_dig=None, abbreviations=None):
 
     exponents = []
     for val in values:
-        if val == 0:
-            exponents.append(0)
+        if math.isclose(val, 0) or not math.isfinite(val):
             continue
         exponents.append(math.log10(abs(val)))
-
+    if not exponents: exponents = [0]
     max_exp = max(exponents)
     min_exp = min(exponents)
 
     avg_exp = math.floor((max_exp + min_exp) / 2)  # rounded down
     mil_exp = 3 * math.floor(avg_exp/3)
 
-    name = ''
-    thsder = int(10**mil_exp)
+    thsder = int(10**mil_exp) #Remove negative exponents
+    thsder = 1 if thsder < 1 else thsder
 
     try:
         name = abbreviations[thsder]

@@ -4,33 +4,32 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
 Test CentroidsVector and CentroidsRaster classes.
 """
-import os
 import unittest
 
 import numpy as np
 import pandas as pd
 import geopandas as gpd
 
+from climada import CONFIG
 from climada.hazard.centroids.centr import Centroids
 from climada.util.constants import GLB_CENTROIDS_MAT, HAZ_TEMPLATE_XLS
 
-HAZ_DIR = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir,
-                       'test/data/')
-HAZ_TEST_MAT = os.path.join(HAZ_DIR, 'atl_prob_no_name.mat')
+HAZ_DIR = CONFIG.hazard.test_data.dir()
+HAZ_TEST_MAT = HAZ_DIR.joinpath('atl_prob_no_name.mat')
 
 
 class TestCentroidsReader(unittest.TestCase):
@@ -71,20 +70,24 @@ class TestCentroidsReader(unittest.TestCase):
 
     def test_base_grid(self):
         """Read new centroids using from_base_grid, then select by extent."""
-
-        centroids = Centroids().from_base_grid(land=True, res_as=150)
+        centroids = Centroids.from_base_grid(land=True, res_as=150)
+        self.assertEqual(centroids.lat.size, 8858035)
+        self.assertTrue(np.all(np.diff(centroids.lat) <= 0))
 
         count_sandwich = np.sum(centroids.region_id == 239)
-
-        self.assertEqual(centroids.lat.size, 8858035)
         self.assertEqual(count_sandwich, 321)
 
         count_sgi = centroids.select(
             reg_id=239,
             extent=(-39, -34.7, -55.5, -53.6)  # south georgia island
         ).size
-
         self.assertEqual(count_sgi, 296)
+
+        # test negative latitudinal orientation by testing that northern hemisphere (Russia)
+        # is listed before southern hemisphere (South Africa)
+        russia_max_idx = (centroids.region_id == 643).nonzero()[0].max()
+        safrica_min_idx = (centroids.region_id == 710).nonzero()[0].min()
+        self.assertTrue(russia_max_idx < safrica_min_idx)
 
     def test_geodataframe(self):
         """Test that constructing a valid Centroids instance from gdf works."""

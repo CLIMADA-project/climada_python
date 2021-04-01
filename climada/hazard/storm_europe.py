@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -21,22 +21,30 @@ Define StormEurope class.
 
 __all__ = ['StormEurope']
 
+import bz2
 import logging
+from pathlib import Path
 import numpy as np
 import xarray as xr
 import pandas as pd
 import matplotlib.pyplot as plt
 from scipy import sparse
+import datetime as dt
 
+from climada.util.config import CONFIG
 from climada.hazard.base import Hazard
 from climada.hazard.centroids.centr import Centroids
 from climada.hazard.tag import Tag as TagHazard
 from climada.util.files_handler import get_file_names
-from climada.util.dates_times import (
-    datetime64_to_ordinal,
-    last_year,
-    first_year
-)
+from climada.util.dates_times import (datetime64_to_ordinal,
+                                      last_year,
+                                      first_year,
+                                      date_to_str
+                                      )
+from climada.util.dwd_icon_loader import (download_icon_centroids_file,
+                                          download_icon_grib,
+                                          delete_icon_grib,
+                                          )
 
 LOGGER = logging.getLogger(__name__)
 
@@ -46,10 +54,16 @@ HAZ_TYPE = 'WS'
 N_PROB_EVENTS = 5 * 6
 """Number of events per historic event in probabilistic dataset"""
 
+FORECAST_DIR = CONFIG.hazard.storm_europe.forecast_dir.str()
+
 
 class StormEurope(Hazard):
     """A hazard set containing european winter storm events. Historic storm
-    events can be downloaded at http://wisc.climate.copernicus.eu/
+    events can be downloaded at http://wisc.climate.copernicus.eu/ and read
+    read_footprints(). Weather forecasts can be automatically downloaded from
+    https://opendata.dwd.de/ and read with read_icon_grib(). Weather forecast
+    from the COSMO-Consortium http://www.cosmo-model.org/ can be read with
+    read_cosmoe_file().
 
     Attributes:
         ssi_wisc (np.array, float): Storm Severity Index (SSI) as recorded in
@@ -199,6 +213,231 @@ class StormEurope(Hazard):
         ncdf.close()
         return new_haz
 
+
+    def read_cosmoe_file(self, fp_file, run_datetime, event_date=None,
+                         model_name='COSMO-2E', description=None):
+        """Clear instance and read gust footprint from weather forecast
+        into it. The funciton is designed for the COSMO ensemble model used by
+        the COSMO Consortium http://www.cosmo-model.org/ and postprocessed to
+        an netcdf file using fieldextra. One event is one full day in UTC.
+        Works for MeteoSwiss model output of
+        COSMO-1E (11 members, resolution 1.1 km, forecast period 33-45 hours)
+        COSMO-2E (21 members, resolution 2.2 km, forecast period 5 days)
+
+        Parameters:
+            fp_file (str): string directing to one netcdf file
+            run_datetime (datetime): The starting timepoint of the forecast run
+                of the cosmo model
+            event_date (datetime, optional): one day within the forecast
+                period, only this day (00H-24H) will be included in the hazard
+            model_name (str,optional): provide the name of the COSMO model,
+                for the description (e.g., 'COSMO-1E', 'COSMO-2E')
+            description (str, optional): description of the events, defaults
+                to a combination of model_name and run_datetime
+        """
+        self.clear()
+        # create centroids
+        self.centroids = self._centroids_from_nc(fp_file)
+
+        # read intensity from file
+        ncdf = xr.open_dataset(fp_file)
+        ncdf = ncdf.assign_coords(date=('time',ncdf["time"].dt.floor("D")))
+
+        if event_date:
+            try:
+                stacked = ncdf.sel(time=event_date.strftime('%Y-%m-%d')
+                                    ).groupby('date'
+                                              ).max().stack(intensity=('y_1',
+                                                                       'x_1'))
+            except KeyError:
+                raise ValueError('Extraction of date and coordinates failed. '
+                                 'This is most likely because '
+                                 'the selected event_date {} is not contained'
+                                 ' in the weather forecast selected by '
+                                 'fp_file {}. Please adjust event_date'
+                                 ' or fp_file.'.format(
+                                     event_date.strftime('%Y-%m-%d'),
+                                     fp_file))
+            considered_dates = np.datetime64(event_date)
+        else:
+            time_covered_step = ncdf['time'].diff('time')
+            time_covered_day = time_covered_step.groupby('date').sum()
+            # forecast run should cover at least 18 hours of a day
+            considered_dates_bool = time_covered_day >= np.timedelta64(18,'h')
+            stacked = ncdf.groupby('date'
+                                    ).max().sel(date=considered_dates_bool
+                                                ).stack(intensity=('y_1',
+                                                                   'x_1'))
+            considered_dates = stacked['date'].values
+        stacked = stacked.stack(date_ensemble=('date', 'epsd_1'))
+        stacked = stacked.where(stacked.VMAX_10M > self.intensity_thres)
+        stacked = stacked.fillna(0)
+
+        # fill in values from netCDF
+        self.intensity = sparse.csr_matrix(stacked.VMAX_10M.T)
+        self.event_id = np.arange(stacked.date_ensemble.size)+1
+
+
+        # fill in default values
+        self.units = 'm/s'
+        self.fraction = self.intensity.copy().tocsr()
+        self.fraction.data.fill(1)
+        self.orig = np.ones_like(self.event_id)*False
+        self.orig[(stacked.epsd_1 == 0).values] = True
+        self.date = np.repeat(
+            np.array(datetime64_to_ordinal(considered_dates)),
+            np.unique(ncdf.epsd_1).size
+            )
+        self.event_name = [date_i + '_ens' + str(ens_i)
+                           for date_i, ens_i in zip(date_to_str(self.date),
+                                                    stacked.epsd_1.values+1)
+                           ]
+        self.frequency = np.divide(
+                np.ones_like(self.event_id),
+                np.unique(ncdf.epsd_1).size)
+        if not description:
+            description = (model_name +
+                           ' weather forecast windfield ' +
+                           'for run startet at ' +
+                           run_datetime.strftime('%Y%m%d%H'))
+
+        self.tag = TagHazard(
+                HAZ_TYPE, 'Hazard set not saved, too large to pickle',
+                description=description
+            )
+        # close netcdf file
+        ncdf.close()
+        self.check()
+
+    def read_icon_grib(self, run_datetime, event_date=None,
+                       model_name='icon-eu-eps', description=None,
+                       grib_dir=None, delete_raw_data=True):
+        """Clear instance and download and read dwd icon weather forecast
+        footprints into it. New files are available for 24 hours on
+        https://opendata.dwd.de, old files can be processed if they are
+        already stored in grib_dir.
+        One event is one full day in UTC. Current setup works for runs
+        starting at 00H and 12H. Otherwise the aggregation is inaccurate,
+        because of the given file structure with 1-hour, 3-hour and
+        6-hour maxima provided.
+
+        Parameters:
+            run_datetime (datetime): The starting timepoint of the forecast run
+                of the icon model
+            event_date (datetime, optional): one day within the forecast
+                period, only this day (00H-24H) will be included in the hazard
+            model_name (str,optional): select the name of the icon model to
+                be downloaded. Must match the url on https://opendata.dwd.de
+                (see download_icon_grib for further info)
+            description (str, optional): description of the events, defaults
+                to a combination of model_name and run_datetime
+            grib_dir (str, optional): path to folder, where grib files are
+                or should be stored
+            delete_raw_data (bool,optional): select if downloaded raw data in
+                .grib.bz2 file format should be stored on the computer or
+                removed
+        """
+        self.clear()
+        if not (run_datetime.hour == 0 or run_datetime.hour == 12):
+            LOGGER.warning('The event definition is inaccuratly implemented '+
+                           'for starting times, which are not 00H or 12H.')
+        # download files, if they don't already exist
+        file_names = download_icon_grib(run_datetime,
+                                        model_name=model_name,
+                                        download_dir=grib_dir)
+
+        # create centroids
+        nc_centroids_file = download_icon_centroids_file(model_name, grib_dir)
+        self.centroids = self._centroids_from_nc(nc_centroids_file)
+
+        # read intensity from files
+        for ind_i, file_i in enumerate(file_names):
+            gripfile_path_i = Path(file_i[:-4])
+            with open(file_i, 'rb') as source, open(gripfile_path_i, 'wb') as dest:
+                dest.write(bz2.decompress(source.read()))
+            ds_i = xr.open_dataset(gripfile_path_i, engine='cfgrib')
+            if ind_i == 0:
+                stacked = ds_i
+            else:
+                stacked = xr.concat([stacked,ds_i], 'valid_time')
+
+        # create intensity matrix with max for each full day
+        stacked = stacked.assign_coords(date=('valid_time',stacked["valid_time"].dt.floor("D")))
+        if event_date:
+            try:
+                stacked = stacked.sel(valid_time=event_date.strftime('%Y-%m-%d')).groupby('date').max()
+            except KeyError:
+                raise ValueError('Extraction of date and coordinates failed. '
+                                 'This is most likely because '
+                                 'the selected event_date {} is not contained'
+                                 ' in the weather forecast selected by '
+                                 'run_datetime {}. Please adjust event_date'
+                                 ' or run_datetime.'.format(
+                                     event_date.strftime('%Y-%m-%d'),
+                                     run_datetime.strftime('%Y-%m-%d %H:%M')))
+
+            considered_dates = np.datetime64(event_date)
+        else:
+            time_covered_step = stacked['valid_time'].diff('valid_time')
+            time_covered_day = time_covered_step.groupby('date').sum()
+            # forecast run should cover at least 18 hours of a day
+            considered_dates_bool = time_covered_day >= np.timedelta64(18,'h')
+            stacked = stacked.groupby('date').max().sel(date=considered_dates_bool)
+            considered_dates = stacked['date'].values
+        stacked = stacked.stack(date_ensemble=('date', 'number'))
+        stacked = stacked.where(stacked > self.intensity_thres)
+        stacked = stacked.fillna(0)
+
+
+        # fill in values from netCDF
+        self.intensity = sparse.csr_matrix(stacked.gust.T)
+        self.event_id = np.arange(stacked.date_ensemble.size)+1
+
+        # fill in default values
+        self.units = 'm/s'
+        self.fraction = self.intensity.copy().tocsr()
+        self.fraction.data.fill(1)
+        self.orig = np.ones_like(self.event_id)*False
+        self.orig[(stacked.number == 1).values] = True
+
+        self.date = np.repeat(
+            np.array(datetime64_to_ordinal(considered_dates)),
+            np.unique(stacked.number).size
+            )
+        self.event_name = [date_i + '_ens' + str(ens_i)
+                           for date_i, ens_i in zip(date_to_str(self.date),
+                                                    stacked.number.values)
+                           ]
+        self.frequency = np.divide(
+                np.ones_like(self.event_id),
+                np.unique(stacked.number).size)
+        if not description:
+            description = ('icon weather forecast windfield ' +
+                           'for run startet at ' +
+                           run_datetime.strftime('%Y%m%d%H'))
+
+        self.tag = TagHazard(
+            HAZ_TYPE, 'Hazard set not saved, too large to pickle',
+            description=description
+            )
+        self.check()
+
+
+
+        # delete generated .grib2 and .4cc40.idx files
+        for ind_i, file_i in enumerate(file_names):
+            gripfile_path_i = Path(file_i[:-4])
+            idxfile_path_i = next(gripfile_path_i.parent.glob(
+                str(gripfile_path_i.name) + '.*.idx'))
+            gripfile_path_i.unlink()
+            idxfile_path_i.unlink()
+
+        if delete_raw_data:
+            #delete downloaded .bz2 files
+            delete_icon_grib(run_datetime,
+                             model_name=model_name,
+                             download_dir=grib_dir)
+
     @staticmethod
     def _centroids_from_nc(file_name):
         """Construct Centroids from the grid described by 'latitude' and
@@ -207,6 +446,7 @@ class StormEurope(Hazard):
         LOGGER.info('Constructing centroids from %s', file_name)
         cent = Centroids()
         ncdf = xr.open_dataset(file_name)
+        create_meshgrid = True
         if hasattr(ncdf, 'latitude'):
             lats = ncdf.latitude.data
             lons = ncdf.longitude.data
@@ -214,15 +454,30 @@ class StormEurope(Hazard):
             lats = ncdf.lat.data
             lons = ncdf.lon.data
         elif hasattr(ncdf, 'lat_1'):
-            lats = ncdf.lat_1.data
-            lons = ncdf.lon_1.data
+            if len(ncdf.lon_1.shape)>1 & \
+                (ncdf.lon_1.shape == ncdf.lat_1.shape) \
+                :
+                lats = ncdf.lat_1.data.flatten()
+                lons = ncdf.lon_1.data.flatten()
+                create_meshgrid = False
+            else:
+                lats = ncdf.lat_1.data
+                lons = ncdf.lon_1.data
+        elif hasattr(ncdf, 'clat'):
+            lats = ncdf.clat.data
+            lons = ncdf.clon.data
+            if ncdf.clat.attrs['units']=='radian':
+                lats = np.rad2deg(lats)
+                lons = np.rad2deg(lons)
+            create_meshgrid = False
         else:
             raise AttributeError('netcdf file has no field named latitude or '
                                  'other know abrivation for coordinates.')
         ncdf.close()
 
-        lats, lons = np.array([np.repeat(lats, len(lons)),
-                               np.tile(lons, len(lats))])
+        if create_meshgrid:
+            lats, lons = np.array([np.repeat(lats, len(lons)),
+                                   np.tile(lons, len(lats))])
         cent = Centroids()
         cent.set_lat_lon(lats, lons)
         cent.set_area_pixel()
@@ -395,7 +650,7 @@ class StormEurope(Hazard):
 
         return fig, axs
 
-    def generate_prob_storms(self, reg_id=528, spatial_shift=4, ssi_args={},
+    def generate_prob_storms(self, reg_id=528, spatial_shift=4, ssi_args=None,
                              **kwargs):
         """Generates a new hazard set with one original and 29 probabilistic
         storms per historic storm. This represents a partial implementation of
@@ -495,7 +750,7 @@ class StormEurope(Hazard):
 
         return new_haz
 
-    def _hist2prob(self, intensity1d, sel_cen, spatial_shift, ssi_args={},
+    def _hist2prob(self, intensity1d, sel_cen, spatial_shift, ssi_args=None,
                    power=1.15, scale=0.0225):
         """Internal function, intended to be called from generate_prob_storms.
         Generates six permutations based on one historical storm event, which
@@ -524,6 +779,8 @@ class StormEurope(Hazard):
         ssi : np.array
             SSI per synthetic event according to provided method.
         """
+        if not ssi_args:
+            ssi_args = {}
         shape_ndarray = tuple([N_PROB_EVENTS]) + self.centroids.shape
 
         # reshape to the raster that the data represents
@@ -577,3 +834,137 @@ class StormEurope(Hazard):
         ssi = self.calc_ssi(intensity=intensity_out, **ssi_args)
 
         return intensity_out[:, sel_cen], ssi
+
+
+def generate_WS_forecast_hazard(run_datetime = dt.datetime.today().replace(hour=0, 
+                                                                           minute=0, 
+                                                                           second=0, 
+                                                                           microsecond=0),
+                                event_date = (dt.datetime.today().replace(hour=0, 
+                                                                          minute=0, 
+                                                                          second=0,
+                                                                          microsecond=0)
+                                              + dt.timedelta(days=2)),
+                                haz_model = 'icon-eu-eps',
+                                haz_raw_storage = None,
+                                save_haz = True):
+    """ use the initialization time (run_datetime), the date of the event and
+    specify the forecast model (haz_model) to generate a Hazard from forecast
+    data either by download or through reading from existing file.
+    
+    Parameters
+    ----------
+    run_datetime: datetime.datetime, optional
+        The starting timepoint of the forecast run
+        of the icon model, defaults to today 00:00 hours
+    event_date: datetime.datetime, optional
+        one day within the forecast
+        period, only this day (00H-24H) will be included in the hazard,
+        defaults to the day after tomorrow
+    haz_model: str, optional
+        select the name of the model to
+        be used: one of ['icon-eu-eps', 'cosmo1e_file', 'cosmo2e_file'],
+        default is 'icon-eu-eps'.
+    haz_raw_storage: str, optional
+        path to folder, where netcdf files
+        are stored, mendatory when haz_model is 'cosmo1e_file' or
+        'cosmo2e_file'. the string must contain one set of curly brakets,
+        used by the function str.format to include
+        run_datetime.strftime('%y%m%d%H').
+        Default None resolves to "cosmoe_forecast_{}_vmax.nc" in
+        CONFIG.hazard.storm_europe.forecast_dir
+    save_haz: bool, optional
+        flag if resulting hazard should be saved in 
+        CONFIG.hazard.storm_europe.forecast_dir, default is True.
+    Returns
+    -------
+    Hazard
+        hazard
+    str
+        haz_model
+    datetime.datetime
+        run_datetime
+    datetime.datetime
+        event_date
+    """
+    if (haz_model == 'cosmo1e_file'
+        or
+        haz_model == 'cosmo2e_file'):
+        if haz_model == 'cosmo1e_file':
+            haz_model='C1E'
+            full_model_name_temp = 'COSMO-1E'
+        if haz_model == 'cosmo2e_file':
+            haz_model='C2E'
+            full_model_name_temp = 'COSMO-2E'
+        haz_file_name = Path(FORECAST_DIR) / (HAZ_TYPE +
+                                              '_' +
+                                              haz_model +
+                                              '_run' +
+                                              run_datetime.strftime('%Y%m%d%H') +
+                                              '_event' +
+                                              event_date.strftime('%Y%m%d')
+                                              +
+                                              '.hdf5')   
+        if haz_file_name.exists():
+            LOGGER.info('Loading hazard from ' + 
+                        str(haz_file_name) + 
+                        '.')
+            hazard = StormEurope()
+            hazard.read_hdf5(haz_file_name)
+        else:
+            LOGGER.info('Generating ' + 
+                        haz_model + 
+                        ' hazard.')  
+            if not haz_raw_storage:
+                haz_raw_storage = Path(FORECAST_DIR) / "cosmoe_forecast_{}_vmax.nc"
+            fp_file = Path(
+                str(haz_raw_storage).format(
+                    run_datetime.strftime('%y%m%d%H')
+                    )
+                )
+            hazard = StormEurope()
+            hazard.read_cosmoe_file(
+                fp_file, 
+                event_date=event_date,
+                run_datetime=run_datetime,
+                model_name=full_model_name_temp
+                )
+            if save_haz:
+                hazard.write_hdf5(haz_file_name)
+    elif haz_model == 'icon-eu-eps':
+        haz_model='IEE'
+        haz_file_name = Path(FORECAST_DIR) / (HAZ_TYPE +
+                                              '_' +
+                                              haz_model +
+                                              '_run' +
+                                              run_datetime.strftime('%Y%m%d%H') +
+                                              '_event' +
+                                              event_date.strftime('%Y%m%d')
+                                              +
+                                              '.hdf5')   
+        if haz_file_name.exists():
+            LOGGER.info('Loading hazard from ' + 
+                        str(haz_file_name) + 
+                        '.')
+            hazard = StormEurope()
+            hazard.read_hdf5(haz_file_name)
+        else:
+            LOGGER.info('Generating ' + 
+                        haz_model + 
+                        ' hazard.')                    
+            hazard = StormEurope()
+            hazard.read_icon_grib(
+                run_datetime,
+                event_date=event_date,
+                delete_raw_data=False
+                )
+            if save_haz:
+                hazard.write_hdf5(haz_file_name)
+    else:
+        raise NotImplementedError("specific 'WS' hazard not implemented yet. " +
+                                  "Please specify a valid value for haz_model.")
+
+    # check if hazard is successfully generated for Forecast
+    if not isinstance(hazard, Hazard):
+        LOGGER.warning('Hazard generation unsuccessful.')
+    return hazard, haz_model, run_datetime, event_date

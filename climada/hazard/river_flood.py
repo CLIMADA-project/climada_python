@@ -1,17 +1,17 @@
 """
 This file is part of CLIMADA.
 
-Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -22,16 +22,15 @@ Define RiverFlood class.
 __all__ = ['RiverFlood']
 
 import logging
-import os
+import datetime as dt
+import copy
+from pathlib import Path
 import numpy as np
 import scipy as sp
 import xarray as xr
 import pandas as pd
 import geopandas as gpd
-import datetime as dt
-from datetime import date
 from rasterio.warp import Resampling
-import copy
 from climada.util.constants import RIVER_FLOOD_REGIONS_CSV
 from climada.util.coordinates import get_region_gridpoints,\
                                      region2isos, country_iso2natid
@@ -73,7 +72,7 @@ class RiverFlood(Hazard):
 
     def set_from_nc(self, dph_path=None, frc_path=None, origin=False,
                     centroids=None, countries=None, reg=None, shape=None, ISINatIDGrid=False,
-                    years=[2000]):
+                    years=None):
         """Wrapper to fill hazard from nc_flood file
         Parameters:
             dph_path (string): Flood file to read (depth)
@@ -91,16 +90,18 @@ class RiverFlood(Hazard):
         raises:
             NameError
         """
+        if years is None:
+            years = [2000]
         if dph_path is None:
             LOGGER.error('No flood-depth-path set')
             raise NameError
         if frc_path is None:
             LOGGER.error('No flood-fraction-path set')
             raise NameError
-        if not os.path.exists(dph_path):
+        if not Path(dph_path).exists():
             LOGGER.error('Invalid flood-file path %s', dph_path)
             raise NameError
-        if not os.path.exists(frc_path):
+        if not Path(frc_path).exists():
             LOGGER.error('Invalid flood-file path %s', frc_path)
             raise NameError
 
@@ -173,12 +174,12 @@ class RiverFlood(Hazard):
 
         else:  # use given centroids
             # if centroids.meta or grid_is_regular(centroids)[0]:
-            """TODO: implement case when meta or regulargrid is defined
-                     centroids.meta or grid_is_regular(centroidsxarray)[0]:
-                     centroids>flood --> error
-                     reprojection, resampling.average (centroids< flood)
-                     (transform)
-                     reprojection change resampling"""
+            #TODO: implement case when meta or regulargrid is defined
+            #      centroids.meta or grid_is_regular(centroidsxarray)[0]:
+            #      centroids>flood --> error
+            #      reprojection, resampling.average (centroids< flood)
+            #      (transform)
+            #      reprojection change resampling"""
             # else:
             if centroids.meta:
                 centroids.set_meta_to_lat_lon()
@@ -195,7 +196,7 @@ class RiverFlood(Hazard):
             self.fraction = sp.sparse.csr_matrix(fraction)
 
         self.units = 'm'
-        self.tag.file_name = dph_path + ';' + frc_path
+        self.tag.file_name = str(dph_path) + ';' + str(frc_path)
         self.event_id = np.arange(self.intensity.shape[0])
         self.event_name = list(map(str, years))
 
@@ -240,7 +241,7 @@ class RiverFlood(Hazard):
         Raises:
             NameError
         """
-        if not os.path.exists(fld_trend_path):
+        if not Path(fld_trend_path).exists():
             LOGGER.error('Invalid ReturnLevel-file path %s', fld_trend_path)
             raise NameError
         else:
@@ -275,7 +276,7 @@ class RiverFlood(Hazard):
             NameErroris function
         """
 
-        if not os.path.exists(frc_path):
+        if not Path(frc_path).exists():
             LOGGER.error('Invalid ReturnLevel-file path %s', frc_path)
             raise NameError
         else:
@@ -299,7 +300,7 @@ class RiverFlood(Hazard):
         """
         self.centroids.set_area_pixel()
         area_centr = self.centroids.area_pixel
-        event_years = np.array([date.fromordinal(self.date[i]).year
+        event_years = np.array([dt.date.fromordinal(self.date[i]).year
                                 for i in range(len(self.date))])
         years = np.unique(event_years)
         year_ev_mk = self._annual_event_mask(event_years, years)
@@ -325,8 +326,8 @@ class RiverFlood(Hazard):
             bool array (columns contain events, rows contain years)
         """
         event_mask = np.full((len(years), len(event_years)), False, dtype=bool)
-        for year_ind in range(len(years)):
-            events = np.where(event_years == years[year_ind])[0]
+        for year_ind, year in enumerate(years):
+            events = np.where(event_years == year)[0]
             event_mask[year_ind, events] = True
         return event_mask
 
@@ -344,7 +345,7 @@ class RiverFlood(Hazard):
         self.fv_annual = np.sum(fv_ann_centr, axis=1)
 
     @staticmethod
-    def _select_exact_area(countries=[], reg=[]):
+    def _select_exact_area(countries=None, reg=None):
         """Extract coordinates of selected countries or region
         from NatID grid. If countries are given countries are cut,
         if only reg is given, the whole region is cut.
@@ -362,7 +363,7 @@ class RiverFlood(Hazard):
         if reg:
             country_isos = region2isos(reg)
         else:
-            country_isos = countries
+            country_isos = countries if countries else []
 
         natIDs = country_iso2natid(country_isos)
 

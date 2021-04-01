@@ -9,14 +9,26 @@ User guide
 
 .. toctree::
    :maxdepth: 2
+   guide/Guide_Get_Started
+   guide/Guide_Introduction
+   guide/Guide_Installation
+   guide/Guide_CLIMADA_Tutorial
+   guide/Guide_PythonDos-n-Donts
+   guide/Guide_Euler
+   guide/Py_Performance
+   guide/Guide_Miscellaneous
 
-   guide/introduction
-   guide/install
-   guide/tutorial
-   guide/data_dependencies
-   guide/configuration
-   guide/developer
-   guide/git_flow
+----------
+Developer guide
+----------
+
+.. toctree::
+   :maxdepth: 2
+
+   guide/Guide_Configuration
+   guide/Guide_Git_Development
+   guide/Guide_Continuous_Integration_and_Testing
+   guide/Guide_Reviewer_Checklist
 
 
 ----------------------
@@ -39,12 +51,12 @@ License
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.

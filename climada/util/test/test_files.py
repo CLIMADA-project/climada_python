@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -19,12 +19,13 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Test files_handler module.
 """
 
-import os
 import unittest
+from pathlib import Path
 
 from climada.util.files_handler import to_list, get_file_names, download_file, \
 get_extension
-from climada.util.constants import DATA_DIR, GLB_CENTROIDS_MAT, ENT_TEMPLATE_XLS
+from climada.util.constants import DEMO_DIR, GLB_CENTROIDS_MAT, ENT_TEMPLATE_XLS
+
 
 class TestDownloadUrl(unittest.TestCase):
     """Test download_file function"""
@@ -36,6 +37,7 @@ class TestDownloadUrl(unittest.TestCase):
                 download_file(url)
         except IOError:
             pass
+
 
 class TestToStrList(unittest.TestCase):
     """Test to_list function"""
@@ -70,6 +72,7 @@ class TestToStrList(unittest.TestCase):
             to_list(num_exp, values, val_name)
         self.assertIn("Provide one or 3 values.", cm.output[0])
 
+
 class TestGetFileNames(unittest.TestCase):
     """Test get_file_names function. Only works with actually existing
         files and directories."""
@@ -77,41 +80,41 @@ class TestGetFileNames(unittest.TestCase):
         """If input is one file name, return a list with this file name"""
         file_name = GLB_CENTROIDS_MAT
         out = get_file_names(file_name)
-        self.assertEqual([file_name], out)
+        self.assertEqual([str(file_name)], out)
 
     def test_several_file_copy(self):
         """If input is a list with several file names, return the same list"""
         file_name = [GLB_CENTROIDS_MAT, ENT_TEMPLATE_XLS]
         out = get_file_names(file_name)
-        self.assertEqual(file_name, out)
+        self.assertEqual([str(x) for x in file_name], out)
 
     def test_folder_contents(self):
         """If input is one folder name, return a list with containg files.
         Folder names are not contained."""
-        file_name = os.path.join(DATA_DIR, 'demo')
+        file_name = DEMO_DIR
         out = get_file_names(file_name)
         for file in out:
-            self.assertEqual('.', os.path.splitext(file)[1][0])
+            self.assertEqual('.', Path(file).suffix[0])
 
-        file_name = DATA_DIR
+        file_name = DEMO_DIR.parent
         out = get_file_names(file_name)
         for file in out:
-            self.assertNotEqual('', os.path.splitext(file)[1])
+            self.assertNotEqual('', Path(file).suffix)
 
     def test_globbing(self):
         """If input is a glob pattern, return a list of matching visible
             files; omit folders.
         """
-        file_name = os.path.join(DATA_DIR, 'demo')
-        out = get_file_names(file_name)
+        file_name = DEMO_DIR
+        out = get_file_names(f'{file_name}/*')
 
-        tmp_files = os.listdir(file_name)
-        tmp_files = [os.path.join(file_name, f) for f in tmp_files]
-        tmp_files = [f for f in tmp_files if not os.path.isdir(f)
-                     and not os.path.basename(os.path.normpath(f)).startswith('.')]
+        tmp_files = [str(f)
+                     for f in Path(file_name).iterdir()
+                     if f.is_file() and not f.name.startswith('.')]
 
         self.assertEqual(len(tmp_files), len(out))
         self.assertEqual(sorted(tmp_files), sorted(out))
+
 
 class TestExtension(unittest.TestCase):
     """Test get_extension"""
@@ -120,14 +123,14 @@ class TestExtension(unittest.TestCase):
         """Test no extension"""
         file_name = '/Users/aznarsig/Documents/Python/climada_python/data/demo/SC22000_VE__M1'
         self.assertEqual('', get_extension(file_name)[1])
-        self.assertEqual(file_name, get_extension(file_name)[0])
+        self.assertEqual(str(Path(file_name)), get_extension(file_name)[0])
 
     def test_get_extension_one_pass(self):
         """Test not compressed"""
         file_name = '/Users/aznarsig/Documents/Python/climada_python/data/demo/SC22000_VE__M1.grd'
         self.assertEqual('.grd', get_extension(file_name)[1])
         self.assertEqual(
-            '/Users/aznarsig/Documents/Python/climada_python/data/demo/SC22000_VE__M1',
+            str(Path('/Users/aznarsig/Documents/Python/climada_python/data/demo/SC22000_VE__M1')),
             get_extension(file_name)[0])
 
     def test_get_extension_two_pass(self):
@@ -136,8 +139,9 @@ class TestExtension(unittest.TestCase):
                     '/data/demo/SC22000_VE__M1.grd.gz'
         self.assertEqual('.grd.gz', get_extension(file_name)[1])
         self.assertEqual(
-            '/Users/aznarsig/Documents/Python/climada_python/data/demo/SC22000_VE__M1',
+            str(Path('/Users/aznarsig/Documents/Python/climada_python/data/demo/SC22000_VE__M1')),
             get_extension(file_name)[0])
+
 
 # Execute Tests
 if __name__ == "__main__":

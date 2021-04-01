@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -33,13 +33,13 @@ class TestDefault(unittest.TestCase):
         ent = SpamAgrar()
         with self.assertLogs('climada.entity.exposures.spam_agrar', level='INFO') as cm:
             ent.init_spam_agrar()
-        ent_select = ent[ent['region_id'] == 208]  # select Denmark only
+        ent_select = ent.gdf[ent.gdf.region_id == 208]  # select Denmark only
         self.assertIn('Lat. range: -55.375 to +71.125.', cm.output[0])
         self.assertIn('Lon. range: -179.125 to +179.958.', cm.output[1])
         self.assertIn("Total V_agg TA global: 1301919384722.2 USD.", cm.output[2])
-        self.assertTrue(ent.region_id.min() == 4)
-        self.assertTrue(ent.region_id[10000] == 246)
-        self.assertTrue(ent.region_id.max() == 894)
+        self.assertTrue(ent.gdf.region_id.min() == 4)
+        self.assertTrue(ent.gdf.region_id[10000] == 246)
+        self.assertTrue(ent.gdf.region_id.max() == 894)
         self.assertTrue(ent_select.value.sum() == 1878858118.0)
         self.assertTrue(ent_select.region_id.min() == 208)
         self.assertTrue(ent_select.region_id.max() == 208)
@@ -53,8 +53,8 @@ class TestDefault(unittest.TestCase):
         self.assertIn('Lat. range: +1.875 to +5.958.', cm.output[0])
         self.assertIn('Lon. range: -58.042 to -54.042.', cm.output[1])
         self.assertIn("Total V_agg TA Suriname: 78879225.2 USD.", cm.output[2])
-        self.assertTrue(ent.region_id.min() == 740)
-        self.assertTrue(ent.region_id.max() == 740)
+        self.assertTrue(ent.gdf.region_id.min() == 740)
+        self.assertTrue(ent.gdf.region_id.max() == 740)
 
     def test_zurich_pass(self):
         """Test admin 1 Zurich for default parameters:"""
@@ -66,8 +66,8 @@ class TestDefault(unittest.TestCase):
         self.assertIn('Lat. range: +47.208 to +47.625.', cm.output[0])
         self.assertIn('Lon. range: +8.375 to +8.875.', cm.output[1])
         self.assertIn("Total V_agg TA CHE Zurich: 56644555.1 USD.", cm.output[2])
-        self.assertTrue(ent.region_id.min() == 756)
-        self.assertTrue(ent.region_id.max() == 756)
+        self.assertTrue(ent.gdf.region_id.min() == 756)
+        self.assertTrue(ent.gdf.region_id.max() == 756)
 
 class TestOtherVar(unittest.TestCase):
     """Test SPAM exposures based on other variables."""
@@ -83,8 +83,8 @@ class TestOtherVar(unittest.TestCase):
         self.assertIn('Lat. range: +45.875 to +47.792.', cm.output[0])
         self.assertIn('Lon. range: +6.042 to +10.375.', cm.output[1])
         self.assertIn("Total H TI CHE: 28427.1 Ha.", cm.output[2])
-        self.assertTrue(ent.region_id.min() == 756)
-        self.assertTrue(ent.region_id.max() == 756)
+        self.assertTrue(ent.gdf.region_id.min() == 756)
+        self.assertTrue(ent.gdf.region_id.max() == 756)
 
     def test_ucayali_pass(self):
         """Test admin 2 region Ucayali for non-default parameters:"""

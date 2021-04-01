@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -138,9 +138,9 @@ class TestPlotter(unittest.TestCase):
     def test_ctx_osm_pass(self):
         """Test basemap function using osm images"""
         myexp = Exposures()
-        myexp['latitude'] = np.array([30, 40, 50])
-        myexp['longitude'] = np.array([0, 0, 0])
-        myexp['value'] = np.array([1, 1, 1])
+        myexp.gdf['latitude'] = np.array([30, 40, 50])
+        myexp.gdf['longitude'] = np.array([0, 0, 0])
+        myexp.gdf['value'] = np.array([1, 1, 1])
         myexp.check()
 
         try:
