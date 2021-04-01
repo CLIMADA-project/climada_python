@@ -24,12 +24,12 @@ __all__ = ['UncVar', 'Uncertainty']
 import logging
 import json
 
+from datetime import datetime as dt
 from itertools import zip_longest
 from pathlib import Path
 
 import pandas as pd
 import numpy as np
-from datetime import datetime as dt
 import matplotlib.pyplot as plt
 
 from climada.util.value_representation import value_to_monetary_unit as u_vtm
@@ -155,7 +155,7 @@ class UncVar():
         nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
         if figsize is None:
             figsize = (ncols * FIG_W, nrows * FIG_H)
-        fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize)
+        _fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize)
         if nplots > 1:
             flat_axes = axes.flatten()
         else:
@@ -423,7 +423,7 @@ class Uncertainty():
                 self.distr_dict[param].ppf
                 )
         self.samples_df = df_samples
-        LOGGER.info("Effective number of made samples: %d" %self.n_samples)
+        LOGGER.info("Effective number of made samples: %d", self.n_samples)
         return df_samples
 
 
@@ -457,7 +457,8 @@ class Uncertainty():
 
         """
 
-        if sampling_kwargs is None: sampling_kwargs = {}
+        if sampling_kwargs is None:
+            sampling_kwargs = {}
 
         #Import the named submodule from the SALib sample module
         #From the workings of __import__ the use of 'from_list' is necessary
@@ -492,12 +493,12 @@ class Uncertainty():
         """
         time_one_run = u_sig_dig(time_one_run, n_sig_dig=3)
         if time_one_run > 5:
-            LOGGER.warning("Computation time for one set of parameters is "+
-                "%.2fs. This is suspiciously long. Possible " % time_one_run +
-                "Potential reasons: unc_vars are loading data, centroids not"+
-                " assigned to exp before defining unc_var, ..." +
+            LOGGER.warning("Computation time for one set of parameters is "
+                "%.2fs. This is suspiciously long. Possible "
+                "Potential reasons: unc_vars are loading data, centroids not"
+                " assigned to exp before defining unc_var, ..."
                 "\n If computation cannot be reduced, consider using"
-                " a surrogate model https://www.uqlab.com/")
+                " a surrogate model https://www.uqlab.com/", time_one_run)
 
         ncpus = pool.ncpus if pool else 1
         total_time = self.n_samples * time_one_run / ncpus
@@ -635,7 +636,7 @@ class Uncertainty():
         nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
         if not figsize:
             figsize = (ncols * FIG_W, nrows * FIG_H)
-        fig, axes = plt.subplots(nrows = nrows,
+        _fig, axes = plt.subplots(nrows = nrows,
                                  ncols = ncols,
                                  figsize = figsize,
                                  sharex = True,
@@ -703,7 +704,7 @@ class Uncertainty():
         nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
         if not figsize:
             figsize = (ncols * FIG_W, nrows * FIG_H)
-        fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize)
+        _fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize)
         for ax, label in zip_longest(axes.flatten(),
                                      self.param_labels,
                                      fillvalue=None):
@@ -777,7 +778,7 @@ class Uncertainty():
         nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
         if not figsize:
             figsize = (ncols * FIG_W, nrows * FIG_H)
-        fig, axes = plt.subplots(nrows = nrows,
+        _fig, axes = plt.subplots(nrows = nrows,
                                  ncols = ncols,
                                  figsize = figsize,
                                  sharex = True,
@@ -993,8 +994,8 @@ def check_salib(sampling_method, sensitivity_method):
         LOGGER.warning("The chosen combination of sensitivity method (%s)"
             " and sampling method (%s) does not correspond to the"
             " recommendation of the salib pacakge."
-            "\n https://salib.readthedocs.io/en/latest/api.html"
-            %(sampling_method, sensitivity_method)
+            "\n https://salib.readthedocs.io/en/latest/api.html",
+            sampling_method, sensitivity_method
             )
         return False
     return True

@@ -157,7 +157,7 @@ class UncCostBenefit(Uncertainty):
          cost_ben_ratio] = list(zip(*cb_metrics))
         elapsed_time = (time.time() - start)
         est_com_time = self.est_comp_time(elapsed_time, pool)
-        LOGGER.info("\n\nEstimated computation time: %.2fs\n" %est_com_time)
+        LOGGER.info("\n\nEstimated computation time: %.2fs\n", est_com_time)
 
         #Compute impact distributions
         with log_level(level='ERROR', name_prefix='climada'):
@@ -209,8 +209,8 @@ class UncCostBenefit(Uncertainty):
                     df_imp_meas = df_imp_meas.append(pd.DataFrame(met_dic))
             self.metrics[name] = df_imp_meas
 
-        LOGGER.info("Currently the freq_curve is not saved. Please " +
-                    "change the risk_func if return period information " +
+        LOGGER.info("Currently the freq_curve is not saved. Please "
+                    "change the risk_func if return period information "
                     "needed")
         self.check()
 
