@@ -174,7 +174,7 @@ class UncImpact(Uncertainty):
          eai_exp_list, at_event_list, tot_value_list] = list(zip(*imp_metrics))
         elapsed_time = (time.time() - start)
         est_com_time = self.est_comp_time(elapsed_time, pool)
-        LOGGER.info("\n\nEstimated computation time: %.2f s\n" %est_com_time)
+        LOGGER.info("\n\nEstimated computation time: %.2f s\n", est_com_time)
 
         #Compute impact distributions
         with log_level(level='ERROR', name_prefix='climada'):
@@ -285,11 +285,11 @@ class UncImpact(Uncertainty):
 
         df_values = self.metrics['freq_curve']
 
-        fig, ax = plt.subplots(figsize=figsize)
+        _fig, ax = plt.subplots(figsize=figsize)
 
         min_l, max_l = df_values.min().min(), df_values.max().max()
 
-        for n, (name, values) in enumerate(df_values.iteritems()):
+        for n, (_name, values) in enumerate(df_values.iteritems()):
             count, division = np.histogram(values, bins=10)
             count = count / count.max()
             losses = [(bin_i + bin_f )/2 for (bin_i, bin_f) in zip(division[:-1], division[1:])]
