@@ -42,16 +42,16 @@ YEAR_LIST = list(range(2000, 2010))
 class TestYearSets(unittest.TestCase):
     """Test yearset functions"""
     def test_impact_yearset(self):
-        """Test computing an annual_impacts object for a given range of years (N_SAMPLED_YEARS) 
+        """Test computing an annual_impacts object for a given range of years (N_SAMPLED_YEARS)
         from an event_impacts object and a sampling dictionary"""
         annual_impacts, sampling_dict = yearsets.impact_yearset(EVENT_IMPACTS, N_SAMPLED_YEARS,
                                                                 SAMPLING_DICT, False)
 
         self.assertEqual(annual_impacts.at_event[0], 30)
         self.assertEqual(annual_impacts.date[1], 366)
-        
+
     def test_impact_yearset_yearlist(self):
-        """Test computing an annual_impacts object for a given list of years (YEAR_LIST) 
+        """Test computing an annual_impacts object for a given list of years (YEAR_LIST)
         from an event_impacts object and a sampling dictionary"""
         annual_impacts, sampling_dict = yearsets.impact_yearset(EVENT_IMPACTS, YEAR_LIST,
                                                                 SAMPLING_DICT, False)
@@ -94,11 +94,10 @@ class TestYearSets(unittest.TestCase):
     def test_computing_annual_impacts(self):
         """Test the calculation of annual impacts from a given sampling dictionary."""
         impact_per_year = yearsets.compute_annual_impacts(EVENT_IMPACTS, SAMPLING_DICT)
-
         self.assertEqual(impact_per_year[0], 30)
 
     def test_correction_fac(self):
-        """Test the calculation of a correction factor as the ration of the expected annual 
+        """Test the calculation of a correction factor as the ration of the expected annual
         impact (eai) of the event_impacts and the eai of the annual_impacts"""
         impact_per_year = yearsets.compute_annual_impacts(EVENT_IMPACTS, SAMPLING_DICT)
         correction_factor = yearsets.calculate_correction_fac(impact_per_year, EVENT_IMPACTS)
