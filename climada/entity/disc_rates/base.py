@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -29,10 +29,10 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import xlsxwriter
 
-import climada.util.checker as check
+import climada.util.checker as u_check
 from climada.entity.tag import Tag
 import climada.util.finance as u_fin
-import climada.util.hdf5_handler as hdf5
+import climada.util.hdf5_handler as u_hdf5
 
 LOGGER = logging.getLogger(__name__)
 
@@ -91,7 +91,7 @@ class DiscRates():
         Raises:
             ValueError
         """
-        check.size(len(self.years), self.rates, 'DiscRates.rates')
+        u_check.size(len(self.years), self.rates, 'DiscRates.rates')
 
     def select(self, year_range):
         """Select discount rates in given years.
@@ -195,9 +195,9 @@ class DiscRates():
             description (str, optional): description of the data
             var_names (dict, optional): name of the variables in the file
         """
-        disc = hdf5.read(file_name)
+        disc = u_hdf5.read(file_name)
         self.clear()
-        self.tag.file_name = file_name
+        self.tag.file_name = str(file_name)
         self.tag.description = description
         try:
             disc = disc[var_names['sup_field_name']]
@@ -223,7 +223,7 @@ class DiscRates():
         """
         dfr = pd.read_excel(file_name, var_names['sheet_name'])
         self.clear()
-        self.tag.file_name = file_name
+        self.tag.file_name = str(file_name)
         self.tag.description = description
         try:
             self.years = dfr[var_names['col_name']['year']].values. \

@@ -105,3 +105,19 @@ climada\.util\.scalebar\_plot module
     :undoc-members:
     :show-inheritance:
 
+climada\.util\.select module
+----------------------------
+
+.. automodule:: climada.util.select
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+climada\.util\.value\_representation module
+-------------------------------------------
+
+.. automodule:: climada.util.value_representation
+    :members:
+    :undoc-members:
+    :show-inheritance:
+

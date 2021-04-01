@@ -1,32 +1,32 @@
 """
 This file is part of CLIMADA.
 
-Copyright (C) 2017 CLIMADA contributors listed in AUTHORS.
+Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
-functions to merge EMDAT damages to hazard events
+Functions to merge EMDAT damages to hazard events.
 """
 import logging
 import pickle
 from datetime import datetime
+from pathlib import Path
 import pandas as pd
 import numpy as np
 from iso3166 import countries as iso_cntry
 from cartopy.io import shapereader
 import shapefile
-# import climada
 
 from climada.util.finance import gdp
 from climada.util.constants import DEF_CRS
@@ -437,7 +437,7 @@ def clean_emdat_df(emdat_file, countries=None, hazard=None, year_range=None,
     (3) filter by country, hazard type and year range (if any given)
 
     Parameters:
-        emdat_file (str or DataFrame): Either string with full path to CSV-file or
+        emdat_file (str, Path, or DataFrame): Either string with full path to CSV-file or
             pandas.DataFrame loaded from EM-DAT CSV
 
     Optional parameters:
@@ -459,7 +459,7 @@ def clean_emdat_df(emdat_file, countries=None, hazard=None, year_range=None,
         df_data (pandas.DataFrame): DataFrame containing cleaned and filtered EM-DAT impact data
     """
     # (1) load EM-DAT data from CSV to DataFrame, skipping the header:
-    if isinstance(emdat_file, str):
+    if isinstance(emdat_file, (str, Path)):
         df_emdat = pd.read_csv(emdat_file, encoding="ISO-8859-1", header=0)
         counter = 0
         while not ('Country' in df_emdat.columns and 'ISO' in df_emdat.columns):
@@ -723,7 +723,7 @@ def emdat_impact_event(emdat_file_csv, countries=None, hazard=None, year_range=N
 
     Parameters:
         emdat_file_csv (str): Full path to EMDAT-file (CSV), i.e.:
-            emdat_file_csv = os.path.join(SYSTEM_DIR, 'emdat_201810.csv')
+            emdat_file_csv = SYSTEM_DIR.joinpath('emdat_201810.csv')
 
     Optional parameters:
         countries (list of str): country ISO3-codes or names, e.g. ['JAM', 'CUB'].
@@ -778,7 +778,7 @@ def emdat_to_impact(emdat_file_csv, hazard_type_climada, year_range=None, countr
 
     Parameters:
         emdat_file_csv (str): Full path to EMDAT-file (CSV), i.e.:
-            emdat_file_csv = os.path.join(SYSTEM_DIR, 'emdat_201810.csv')
+            emdat_file_csv = SYSTEM_DIR.joinpath('emdat_201810.csv')
         hazard_type_climada (str): Hazard type CLIMADA abbreviation,
             i.e. 'TC' for tropical cyclone
 

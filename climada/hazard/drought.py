@@ -1,18 +1,17 @@
-
 """
 This file is part of CLIMADA.
 
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -24,8 +23,8 @@ Define Drought class.
 __all__ = ['Drought']
 
 
-import os
 import logging
+from pathlib import Path
 import numpy as np
 import xarray as xr
 import pandas as pd
@@ -33,14 +32,12 @@ from scipy import sparse
 import matplotlib as mpl
 from matplotlib import pyplot as plt
 
+from climada import CONFIG
 from climada.hazard.base import Hazard
-#from climada.hazard.tag import Tag as TagHazard
-
 from climada.util.files_handler import download_file
 from climada.util.dates_times import datetime64_to_ordinal
-from climada.util.constants import DATA_DIR
-from climada.util.dates_times import str_to_date
-from climada.util.dates_times import date_to_str
+from climada.util.constants import SYSTEM_DIR
+from climada.util.dates_times import str_to_date, date_to_str
 
 logging.root.setLevel(logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
@@ -50,9 +47,9 @@ DFL_THRESHOLD = -1
 DFL_INTENSITY_DEF = 1
 
 
-SPEI_FILE_URL = r'http://digital.csic.es/bitstream/10261/153475/8'
-SPEI_FILE_DIR = os.path.join(DATA_DIR, 'system')
-SPEI_FILE_NAME = r'spei06.nc'
+SPEI_FILE_URL = CONFIG.hazard.drought.resources.spei_file_url.str()
+SPEI_FILE_DIR = SYSTEM_DIR
+SPEI_FILE_NAME = 'spei06.nc'
 
 
 
@@ -83,21 +80,17 @@ class Drought(Hazard):
         """Empty constructor."""
         Hazard.__init__(self, HAZ_TYPE)
 #        Hazard.__init__(self)
-        #self.file_url = SPEI_FILE_URL
+#        self.file_url = SPEI_FILE_URL
 #        self.file_dir = SPEI_FILE_DIR
 #        self.file_name = SPEI_FILE_NAME
 
-        self.file_path = os.path.join(SPEI_FILE_DIR, SPEI_FILE_NAME)
+        self.file_path = Path(SPEI_FILE_DIR, SPEI_FILE_NAME)
         self.threshold = DFL_THRESHOLD
         self.intensity_definition = DFL_INTENSITY_DEF
         self.latmin = LATMIN
         self.latmax = LATMAX
         self.lonmin = LONMIN
         self.lonmax = LONMAX
-
-
-
-
 
 
     def set_area(self, latmin, lonmin, latmax, lonmax):
@@ -110,11 +103,7 @@ class Drought(Hazard):
 
     def set_file_path(self, path):
         """Set path of the SPEI data"""
-#        self.file_dir = os.path.dirname(path)
-#        self.file_name = os.path.basename(path)
-
-#        self.file_path = os.path.join(self.file_dir, self.file_name)
-        self.file_path = os.path.join(path)
+        self.file_path = Path(path)
 
 #    def set_file_url(self, file_url):
 #        """Set url to download the file, if not already in the folder"""
@@ -161,26 +150,22 @@ class Drought(Hazard):
 
     def setup(self):
         """Set up the hazard drought"""
-        #self.tag = TagHazard(HAZ_TYPE, 'TEST')
-
         try:
 
-            #file_path = os.path.join(self.file_dir, self.file_name)
+            if not self.file_path.is_file():
 
-            if not os.path.isfile(self.file_path):
-
-                if self.file_path == os.path.join(SPEI_FILE_DIR, SPEI_FILE_NAME):
+                if self.file_path == Path(SPEI_FILE_DIR, SPEI_FILE_NAME):
 
                     try:
                         path_dwl = download_file(SPEI_FILE_URL + '/' + SPEI_FILE_NAME)
 
                         try:
-                            os.rename(path_dwl, self.file_path)
+                            Path(path_dwl).rename(self.file_path)
 
                         except:
                             raise FileNotFoundError('The file ' + str(path_dwl)
                                                     + ' could not be moved to '
-                                                    + str(os.path.dirname(self.file_path)))
+                                                    + str(self.file_path.parent))
 
                     except:
                         raise FileExistsError('The file ' + str(self.file_path) + ' could not '

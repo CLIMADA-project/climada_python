@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -19,13 +19,12 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define climate change scenarios for tropical cycones.
 """
 
-import os
 import numpy as np
 import pandas as pd
 
 from climada.util.constants import SYSTEM_DIR
 
-TOT_RADIATIVE_FORCE = os.path.join(SYSTEM_DIR, 'rcp_db.xls')
+TOT_RADIATIVE_FORCE = SYSTEM_DIR.joinpath('rcp_db.xls')
 """© RCP Database (Version 2.0.5) http://www.iiasa.ac.at/web-apps/tnt/RcpDb.
 generated: 2018-07-04 10:47:59."""
 

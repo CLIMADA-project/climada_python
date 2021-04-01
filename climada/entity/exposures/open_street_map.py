@@ -1,20 +1,28 @@
 """
 This file is part of CLIMADA.
-Copyright (C) 2019 ETH Zurich, CLIMADA contributors listed in AUTHORS.
+
+Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
+
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
+
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
-You should have received a copy of the GNU Lesser General Public License along
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
+
+---
+
+Obtain data from OpenStreetMap.
 """
 
-import os
 import time
 import logging
 from functools import partial
+from pathlib import Path
 
 #matplotlib.use('Qt5Agg', force=True)
 import matplotlib.pyplot as plt
@@ -32,6 +40,7 @@ import overpy
 from climada.entity import Exposures
 from climada.entity.exposures.litpop import LitPop
 
+LOGGER = logging.getLogger(__name__)
 
 def _insistent_osm_api_query(query_clause, read_chunk_size=100000, end_of_patience=127):
     """Runs a single Overpass API query through overpy.Overpass.query.
@@ -108,10 +117,10 @@ def _format_shape_osm(bbox, result_NodesFromWays, result_NodesWaysFromRels, item
                    'properties': {'Name': 'str:80', 'Natural_Type': 'str:80', 'Item': 'str:80'}}
     schema_line = {'geometry': 'LineString',
                    'properties': {'Name': 'str:80', 'Natural_Type': 'str:80', 'Item': 'str:80'}}
-    shapeout_poly = save_path + '/' + str(item) + '_poly_' + str(int(bbox[0])) +\
-    '_' + str(int(bbox[1])) + ".shp"
-    shapeout_line = save_path + '/' + str(item) + '_line_' + str(int(bbox[0])) +\
-    '_' + str(int(bbox[1])) + ".shp"
+    shapeout_poly = save_path.joinpath(
+        str(item) + '_poly_' + str(int(bbox[0])) + '_' + str(int(bbox[1])) + ".shp")
+    shapeout_line = save_path.joinpath(
+        str(item) + '_line_' + str(int(bbox[0])) + '_' + str(int(bbox[1])) + ".shp")
 
     way_poly = []
     way_line = []
@@ -140,12 +149,14 @@ def _format_shape_osm(bbox, result_NodesFromWays, result_NodesWaysFromRels, item
 
     gdf_poly = geopandas.read_file(shapeout_poly)
     for ending in ['.shp', ".cpg", ".dbf", ".prj", '.shx']:
-        os.remove(save_path + '/' + str(item) + '_poly_' + str(int(bbox[0])) +
-                  '_' + str(int(bbox[1])) + ending)
+        save_path.joinpath(
+            str(item) + '_poly_' + str(int(bbox[0])) + '_' + str(int(bbox[1])) + ending
+        ).unlink()
     gdf_line = geopandas.read_file(shapeout_line)
     for ending in ['.shp', ".cpg", ".dbf", ".prj", '.shx']:
-        os.remove(save_path + '/' + str(item) + '_line_' + str(int(bbox[0])) +
-                  '_' + str(int(bbox[1])) + ending)
+        save_path.joinpath(
+            str(item) + '_line_' + str(int(bbox[0])) + '_' + str(int(bbox[1])) + ending
+        ).unlink()
 
     # add buffer to the lines (0.000045° are ~5m)
     for geom in gdf_line.geometry:
@@ -215,8 +226,8 @@ def _format_shape_osm(bbox, result_NodesFromWays, result_NodesWaysFromRels, item
     schema_multi = {'geometry': 'MultiPolygon',
                     'properties': {'Name': 'str:80', 'Type': 'str:80', 'Item': 'str:80'}}
 
-    shapeout_multi = (save_path + '/' + str(item) + '_multi_' + str(int(bbox[0])) + '_'
-                      + str(int(bbox[1])) + ".shp")
+    shapeout_multi = save_path.joinpath(
+        str(item) + '_multi_' + str(int(bbox[0])) + '_' + str(int(bbox[1])) + ".shp")
 
     with fiona.open(shapeout_multi, 'w', crs=from_epsg(4326),
                     driver='ESRI Shapefile', schema=schema_multi) as output:
@@ -228,8 +239,9 @@ def _format_shape_osm(bbox, result_NodesFromWays, result_NodesWaysFromRels, item
             output.write({'geometry': geom, 'properties': prop1})
     gdf_multi = geopandas.read_file(shapeout_multi)  # save_path + '/' + shapeout_multi)
     for ending in ['.shp', ".cpg", ".dbf", ".prj", '.shx']:
-        os.remove(save_path + '/' + str(item) + '_multi_' + str(int(bbox[0])) +
-                  '_' + str(int(bbox[1])) + ending)
+        save_path.joinpath(
+            str(item) + '_multi_' + str(int(bbox[0])) + '_' + str(int(bbox[1])) + ending
+        ).unlink()
     gdf_all = gdf_all.append(gdf_multi, sort=True)
 
     print('Combined all results for %s to one GeoDataFrame: done' % item)
@@ -260,12 +272,12 @@ def _combine_dfs_osm(types, save_path, bbox):
             OSM_features_gdf_combined.geometry[i] = geom.buffer(0.000045)
         i += 1
 
-    OSM_features_gdf_combined.to_file(save_path + '/OSM_features_' + str(int(bbox[0])) +
-                                      '_' + str(int(bbox[1])) + '.shp')
+    OSM_features_gdf_combined.to_file(save_path.joinpath('OSM_features_' + str(int(bbox[0])) +
+                                      '_' + str(int(bbox[1])) + '.shp'))
 
     return OSM_features_gdf_combined
 
-def get_features_OSM(bbox, types, save_path=os.getcwd(), check_plot=1):
+def get_features_OSM(bbox, types, save_path=None, check_plot=1):
     """
     Get shapes from all types of objects that are available on Open Street Map via an API query
     and save them as geodataframe.
@@ -275,7 +287,7 @@ def get_features_OSM(bbox, types, save_path=os.getcwd(), check_plot=1):
          types (list): List of features items that should be downloaded from OSM, e.g.
                 {'natural','waterway','water', 'landuse=forest','landuse=farmland',
                 'landuse=grass','wetland'}
-         save_path (str): String with absolute path for saving output. Default is cwd
+         save_path (str or pathlib.Path): String with absolute path for saving output. Default is cwd
          check_plot: default is 1 (yes), else 0.
 
     Returns:
@@ -295,6 +307,11 @@ def get_features_OSM(bbox, types, save_path=os.getcwd(), check_plot=1):
                                       'landuse=grass', 'wetland'}, \
                                       save_path = save_path, check_plot=1)
     """
+    if save_path is None:
+        save_path = Path.cwd()
+    elif isinstance(save_path, str):
+        save_path = Path(save_path)
+
     for item in types:
         # API Queries for relations, nodes and ways
         print('Querying Relations, Nodes and Ways for %s...' % item)
@@ -339,14 +356,14 @@ def _makeUnion(gdf):
     Low_Value_Union = unary_union([union1, union2])
     return Low_Value_Union
 
-def get_highValueArea(bbox, save_path=os.getcwd(), Low_Value_gdf=None, check_plot=1):
+def get_highValueArea(bbox, save_path=None, Low_Value_gdf=None, check_plot=1):
     """
     In case low-value features were queried with get_features_OSM(),
     calculate the "counter-shape" representig high value area for a given bounding box.
 
     Parameters:
         bbox (array): List of coordinates in format [South, West, North, East]
-        save_path (str): path for results
+        save_path (str or pathlib.Path): path for results
         Low_Value_gdf (str): absolute path of gdf of low value items which is to be inverted.
           If left empty, searches for OSM_features_gdf_combined_lat_lon.shp in save_path.
         checkplot
@@ -359,20 +376,22 @@ def get_highValueArea(bbox, save_path=os.getcwd(), Low_Value_gdf=None, check_plo
                                     Low_Value_gdf = save_path+'/Low_Value_gdf_combined_47_8.shp')
     important: Use same bbox and save_path as for get_features_OSM().
     """
+    if save_path is None:
+        save_path = Path.cwd()
+    elif isinstance(save_path, str):
+        save_path = Path(save_path)
 
     Outer_Poly = geometry.Polygon([(bbox[1], bbox[2]), (bbox[1], bbox[0]),
                                    (bbox[3], bbox[0]), (bbox[3], bbox[2])])
 
-
     if Low_Value_gdf is None:
+        filepath = save_path.joinpath(
+            'OSM_features_gdf_combined_' + str(int(bbox[0])) + '_' + str(int(bbox[1])) + '.shp')
         try:
-            Low_Value_gdf = geopandas.read_file(
-                save_path + '/OSM_features_gdf_combined_' + str(int(bbox[0])) + '_'
-                + str(int(bbox[1])) + '.shp')
+            Low_Value_gdf = geopandas.read_file(filepath)
         except:
-            print('No Low-Value-Union found with name %s. \n Please add.'
-                  % (save_path + '/OSM_features_gdf_combined_' + str(int(bbox[0])) + '_' +
-                     str(int(bbox[1])) + '.shp'))
+            LOGGER.error('No Low-Value-Union found with name %s. \n Please add.', filepath)
+            raise
     else:
         Low_Value_gdf = geopandas.read_file(Low_Value_gdf)
 
@@ -384,7 +403,7 @@ def get_highValueArea(bbox, save_path=os.getcwd(), Low_Value_gdf=None, check_plo
 
     # save high value multipolygon as shapefile and re-read as gdf:
     schema = {'geometry': 'MultiPolygon', 'properties': {'Name': 'str:80'}}
-    shapeout = (save_path + '/High_Value_Area_' + str(int(bbox[0]))
+    shapeout = save_path.joinpath('High_Value_Area_' + str(int(bbox[0]))
                 + '_' + str(int(bbox[1])) + ".shp")
     with fiona.open(shapeout, 'w', crs=from_epsg(4326), driver='ESRI Shapefile',
                     schema=schema) as output:
@@ -409,12 +428,11 @@ def _get_litpop_bbox(country, highValueArea, **kwargs):
     """get litpop exposure for the bbox area of the queried OSM features
     Parameters:
         country (str)
-        highValueArea (gdf)
+        highValueArea (GeoDataFrame)
         bbox (array)
         kwargs (dict): arguments for LitPop set_country method
     Returns:
-        exp_sub (exposure)
-        High_Value_Area_gdf (gdf)
+        exp_sub (LitPop)
     """
     # Load LitPop Exposure for whole country, and High Value Area
     exp = LitPop()
@@ -422,40 +440,41 @@ def _get_litpop_bbox(country, highValueArea, **kwargs):
     exp.set_geometry_points()
 
     # Crop bbox of High Value Area from Country Exposure
-    exp_sub = exp.cx[min(highValueArea.bounds.minx):max(highValueArea.bounds.maxx),
-                     min(highValueArea.bounds.miny):max(highValueArea.bounds.maxy)]
+    exp.gdf = exp.gdf.cx[min(highValueArea.bounds.minx):max(highValueArea.bounds.maxx),
+                         min(highValueArea.bounds.miny):max(highValueArea.bounds.maxy)]
 
-    return exp_sub
+    return exp
 
 def _split_exposure_highlow(exp_sub, mode, High_Value_Area_gdf):
     """divide litpop exposure into high-value exposure and low-value exposure
     according to area queried in OSM, re-assign all low values to high-value centroids
     Parameters:
-        exp_sub (exposure)
+        exp_sub (Exposures)
         mode (str)
+        High_Value_Area_gdf (GeoDataFrame)
     Returns:
-        exp_sub_high (exposure)
+        exp_sub_high (Exposures)
     """
 
-    exp_sub_high = pd.DataFrame(columns=exp_sub.columns)
-    exp_sub_low = pd.DataFrame(columns=exp_sub.columns)
-    for i, pt in enumerate(exp_sub.geometry):
+    exp_sub_high = pd.DataFrame(columns=exp_sub.gdf.columns)
+    exp_sub_low = pd.DataFrame(columns=exp_sub.gdf.columns)
+    for i, pt in enumerate(exp_sub.gdf.geometry):
         if pt.within(High_Value_Area_gdf.loc[0]['geometry']):
-            exp_sub_high = exp_sub_high.append(exp_sub.iloc[i])
+            exp_sub_high = exp_sub_high.append(exp_sub.gdf.iloc[i])
         else:
-            exp_sub_low = exp_sub_low.append(exp_sub.iloc[i])
+            exp_sub_low = exp_sub_low.append(exp_sub.gdf.iloc[i])
 
     exp_sub_high = GeoDataFrame(exp_sub_high, crs=exp_sub.crs, geometry=exp_sub_high.geometry)
     exp_sub_low = GeoDataFrame(exp_sub_low, crs=exp_sub.crs, geometry=exp_sub_low.geometry)
 
     if mode == "nearest":
         # assign asset values of low-value points to nearest point in high-value df.
-        pointsToAssign = exp_sub_high.geometry.unary_union
+        points_to_assign = exp_sub_high.geometry.unary_union
         exp_sub_high["addedValNN"] = 0
         for i in range(0, len(exp_sub_low)):
             nearest = exp_sub_high.geometry == nearest_points(exp_sub_low.iloc[i].geometry,
-                                                              pointsToAssign)[1]  # point
-            exp_sub_high.addedValNN.loc[nearest] = exp_sub_low.iloc[i].value
+                                                              points_to_assign)[1]  # point
+            exp_sub_high.addedValNN.loc[nearest] += exp_sub_low.iloc[i].value
         exp_sub_high["combinedValNN"] = exp_sub_high[['addedValNN', 'value']].sum(axis=1)
         exp_sub_high.rename(columns={'value': 'value_old', 'combinedValNN': 'value'},
                             inplace=True)
@@ -480,12 +499,14 @@ def _split_exposure_highlow(exp_sub, mode, High_Value_Area_gdf):
 
     else:
         print("No proper re-assignment mode set. "
-              "Please choose either nearest, even or proportional.")
+              "Please choose either 'nearest', 'even' or 'proportional'.")
 
-    return exp_sub_high
+    exp = exp_sub.copy(deep=False)
+    exp.gdf = exp_sub_high
+    return exp
 
 def get_osmstencil_litpop(bbox, country, mode, highValueArea=None,
-                          save_path=os.getcwd(), check_plot=1, **kwargs):
+                          save_path=None, check_plot=1, **kwargs):
     """
     Generate climada-compatible exposure by downloading LitPop exposure for a bounding box,
     corrected for centroids which lie inside a certain high-value multipolygon area
@@ -510,29 +531,30 @@ def get_osmstencil_litpop(bbox, country, mode, highValueArea=None,
                           save_path + '/High_Value_Area_47_8.shp' ,\
                           save_path = save_path)
     """
+    if save_path is None:
+        save_path = Path.cwd()
+    elif isinstance(save_path, str):
+        save_path = Path(save_path)
+
     if highValueArea is None:
         try:
-            High_Value_Area_gdf = \
-            geopandas.read_file(os.getcwd() + '/High_Value_Area_' + str(int(bbox[0])) + '_' +
-                                str(int(bbox[1])) + ".shp")
+            filepath = str(Path.cwd().joinpath(
+                'High_Value_Area_' + str(int(bbox[0])) + '_' + str(int(bbox[1])) + ".shp"))
+            High_Value_Area_gdf = geopandas.read_file(filepath)
         except:
-            print('No file found of form %s. Please add or specify path.'
-                  % (os.getcwd() + 'High_Value_Area_' + str(int(bbox[0])) + '_' +
-                     str(int(bbox[1])) + ".shp"))
+            LOGGER.error('No file found of form %s. Please add or specify path.', filepath)
+            raise
     else:
         High_Value_Area_gdf = geopandas.read_file(highValueArea)
 
     exp_sub = _get_litpop_bbox(country, High_Value_Area_gdf, **kwargs)
 
-    exp_sub_high = _split_exposure_highlow(exp_sub, mode, High_Value_Area_gdf)
-
-    ###### how to "spread" centroids with value to e.g. hexagons? ###########
-    # put exp_sub_high back into CLIMADA-compatible exposure format and save as hdf5 file:
-    exp_sub_high_exp = Exposures(exp_sub_high)
-    exp_sub_high_exp.set_lat_lon()
+    exp_sub_high_exp = _split_exposure_highlow(exp_sub, mode, High_Value_Area_gdf)
     exp_sub_high_exp.check()
-    exp_sub_high_exp.write_hdf5(save_path + '/exposure_high_' + str(int(bbox[0])) +
-                                '_' + str(int(bbox[1])) + '.h5')
+
+    # save as hdf5 file:
+    exp_sub_high_exp.write_hdf5(save_path.joinpath('exposure_high_' + str(int(bbox[0])) +
+                                '_' + str(int(bbox[1])) + '.h5'))
     # plotting
     if check_plot == 1:
         # normal hexagons
@@ -570,7 +592,7 @@ def _get_midpoints(highValueArea):
         High_Value_Area_gdf.loc[index, "projected_area"] = transform(proj, s).area
         # turn warnings on again
         logging.captureWarnings(False)
-        
+
     # change active geometry from polygons to midpoints
     from shapely.wkt import loads
     High_Value_Area_gdf = High_Value_Area_gdf.rename(columns={'geometry': 'geo_polys',
@@ -584,20 +606,27 @@ def _assign_values_exposure(High_Value_Area_gdf, mode, country, **kwargs):
     """add value-columns to high-resolution exposure gdf
     according to m2 area of underlying features.
 
-    Parameters:
-        High_Value_Area_gdf
-        mode
-        country
-        kwargs (dict): arguments for LitPop set_country method
+    Parameters
+    ----------
+    High_Value_Area_gdf : GeoDataFrame
+         high-resolution exposure gdf
+    mode : str
+        'LitPop' or 'default'
+    country : str
+        country alpha-3 code
+    kwargs : dict
+        arguments for LitPop set_country method
 
-    Returns:
-        exp_sub_high
+    Returns
+    -------
+    GeoDataFrame
+        High_Value_Area_gdf, the transformed input dataframe
     """
 
     if mode == "LitPop":
         # assign LitPop values of this area to houses.
         exp_sub = _get_litpop_bbox(country, High_Value_Area_gdf, **kwargs)
-        totalValue = sum(exp_sub.value)
+        totalValue = sum(exp_sub.gdf.value)
         totalArea = sum(High_Value_Area_gdf['projected_area'])
         High_Value_Area_gdf['value'] = 0
         for index in High_Value_Area_gdf.index:
@@ -613,7 +642,7 @@ def _assign_values_exposure(High_Value_Area_gdf, mode, country, **kwargs):
     return High_Value_Area_gdf
 
 def make_osmexposure(highValueArea, mode="default", country=None,
-                     save_path=os.getcwd(), check_plot=1, **kwargs):
+                     save_path=None, check_plot=1, **kwargs):
     """
     Generate climada-compatiple entity by assigning values to midpoints of
     individual house shapes from OSM query, according to surface area and country.
@@ -637,6 +666,11 @@ def make_osmexposure(highValueArea, mode="default", country=None,
         make_osmexposure(save_path + '/OSM_features_47_8.shp',
                          mode="default", save_path = save_path, check_plot=1)
     """
+    if save_path is None:
+        save_path = Path.cwd()
+    elif isinstance(save_path, str):
+        save_path = Path(save_path)
+
     High_Value_Area_gdf = _get_midpoints(highValueArea)
 
     High_Value_Area_gdf = _assign_values_exposure(High_Value_Area_gdf, mode, country, **kwargs)
@@ -645,9 +679,9 @@ def make_osmexposure(highValueArea, mode="default", country=None,
     exp_buildings = Exposures(High_Value_Area_gdf)
     exp_buildings.set_lat_lon()
     exp_buildings.check()
-    exp_buildings.write_hdf5(save_path + '/exposure_buildings_' + mode + '_' +
+    exp_buildings.write_hdf5(save_path.joinpath('exposure_buildings_' + mode + '_' +
                              str(int(min(High_Value_Area_gdf.bounds.miny))) +
-                             '_' + str(int(min(High_Value_Area_gdf.bounds.minx))) + '.h5')
+                             '_' + str(int(min(High_Value_Area_gdf.bounds.minx))) + '.h5'))
 
     # plotting
     if check_plot == 1:

@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-import os
 import sys
+from pathlib import Path
 import unittest
 import matplotlib
 
-from climada.util.constants import SOURCE_DIR
+from climada.util.config import SOURCE_DIR
 
 def find_install_tests():
     """select unit tests."""
@@ -22,13 +22,13 @@ def main():
         import xmlrunner
         arg = sys.argv[1]
         if arg == 'report':
-            output = os.path.join(SOURCE_DIR, '../tests_xml')
-            xmlrunner.XMLTestRunner(output=output).run(find_install_tests())
+            output = Path(__file__).parent.joinpath('tests_xml')
+            xmlrunner.XMLTestRunner(output=str(output)).run(find_install_tests())
     else:
         # execute without xml reports
         unittest.TextTestRunner(verbosity=2).run(find_install_tests())
 
 if __name__ == '__main__':
     matplotlib.use("Agg")
-    sys.path.append(os.getcwd())
+    sys.path.append(str(SOURCE_DIR))
     main()
