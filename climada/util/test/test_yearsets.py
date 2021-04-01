@@ -37,7 +37,7 @@ SAMPLING_DICT = {'selected_events': np.tile(np.arange(0,10),2),
                   'events_per_year': np.array(np.ones(10, dtype=int)*2)}
 
 N_SAMPLED_YEARS = 10
-YEAR_LIST = np.arange(2000, 2010).tolist()
+YEAR_LIST = list(range(2000, 2010))
 
 class TestYearSets(unittest.TestCase):
     """Test yearset functions"""
