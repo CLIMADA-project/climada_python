@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -142,6 +142,18 @@ class TestIbtracs(unittest.TestCase):
         self.assertAlmostEqual(track_ds.lat.values[-1], 31.40, places=5)
         self.assertAlmostEqual(track_ds.central_pressure.values[-1], 980, places=5)
 
+    def test_read_antimeridian(self):
+        """Read a track that crosses the antimeridian and make sure that lon is consistent"""
+        tc_track = tc.TCTracks()
+        storm_id = '2013224N12220'
+
+        # the officially responsible agencies 'usa' and 'tokyo' use different signs in lon, but we
+        # have to `estimate_missing` because both have gaps in reported values
+        tc_track.read_ibtracs_netcdf(storm_id=storm_id, provider=['official_3h'],
+                                     estimate_missing=True)
+        track_ds = tc_track.get_track()
+        np.testing.assert_array_less(0, track_ds.lon)
+
     def test_read_estimate_missing(self):
         """Read a tropical cyclone and estimate missing values."""
         tc_track = tc.TCTracks()
@@ -157,6 +169,11 @@ class TestIbtracs(unittest.TestCase):
         self.assertAlmostEqual(track_ds.central_pressure.values[42], 980, places=5)
         # the wind speed at position 44 is missing in the original data
         self.assertAlmostEqual(track_ds.max_sustained_wind.values[44], 58, places=0)
+        self.assertAlmostEqual(track_ds.radius_oci.values[40], 160, places=0)
+        # after position 42, ROCI is missing in the original data
+        self.assertAlmostEqual(track_ds.radius_oci.values[42], 200, places=-1)
+        self.assertAlmostEqual(track_ds.radius_oci.values[85], 165, places=-1)
+        self.assertAlmostEqual(track_ds.radius_oci.values[95], 155, places=-1)
 
     def test_read_official(self):
         """Read a tropical cyclone, only officially reported values."""

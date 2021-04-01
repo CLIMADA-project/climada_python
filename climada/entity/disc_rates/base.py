@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -197,7 +197,7 @@ class DiscRates():
         """
         disc = u_hdf5.read(file_name)
         self.clear()
-        self.tag.file_name = file_name
+        self.tag.file_name = str(file_name)
         self.tag.description = description
         try:
             disc = disc[var_names['sup_field_name']]
@@ -223,7 +223,7 @@ class DiscRates():
         """
         dfr = pd.read_excel(file_name, var_names['sheet_name'])
         self.clear()
-        self.tag.file_name = file_name
+        self.tag.file_name = str(file_name)
         self.tag.description = description
         try:
             self.years = dfr[var_names['col_name']['year']].values. \

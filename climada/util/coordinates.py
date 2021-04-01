@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -19,6 +19,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define functions to handle with coordinates
 """
 
+import ast
 import copy
 import logging
 import math
@@ -113,9 +114,7 @@ def latlon_to_geosph_vector(lat, lon, rad=False, basis=False):
 def lon_normalize(lon, center=0.0):
     """ Normalizes degrees such that always -180 < lon - center <= 180
 
-    The input data is modified in place (!) using the following operations:
-
-        (lon) -> (lon ± 360)
+    The input data is modified in place!
 
     Parameters
     ----------
@@ -128,24 +127,20 @@ def lon_normalize(lon, center=0.0):
     Returns
     -------
     lon : np.array
-        Normalized longitudinal coordinates.
+        Normalized longitudinal coordinates. Since the input `lon` is modified in place (!), the
+        returned array is the same Python object (instead of a copy).
     """
     if center is None:
         center = 0.5 * sum(lon_bounds(lon))
     bounds = (center - 180, center + 180)
-    maxiter = 10
-    i = 0
-    while True:
-        msk1 = (lon > bounds[1])
-        lon[msk1] -= 360
-        msk2 = (lon <= bounds[0])
-        lon[msk2] += 360
-        if msk1.sum() == 0 and msk2.sum() == 0:
-            break
-        i += 1
-        if i > maxiter:
-            LOGGER.warning("lon_normalize: killed before finishing")
-            break
+    # map to [center - 360, center + 360] using modulo operator
+    outside_mask = (lon <= bounds[0]) | (lon > bounds[1])
+    lon[outside_mask] = (lon[outside_mask] % 360) + (center - center % 360)
+    # map from [center - 360, center + 360] to [center - 180, center + 180], adding ±360
+    if center % 360 < 180:
+        lon[lon > bounds[1]] -= 360
+    else:
+        lon[lon <= bounds[0]] += 360
     return lon
 
 def lon_bounds(lon, buffer=0.0):
@@ -321,6 +316,31 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
         LOGGER.error("Unknown distance approximation method: %s", method)
         raise KeyError
     return (dist, vtan) if log else dist
+
+def get_gridcellarea(lat, resolution=0.5, unit='km2'):
+    """The area covered by a grid cell is calculated depending on the latitude
+        1 degree = ONE_LAT_KM (111.12km at the equator)
+        longitudal distance in km = ONE_LAT_KM*resolution*cos(lat)
+        latitudal distance in km = ONE_LAT_KM*resolution
+        area = longitudal distance * latitudal distance
+
+    Parameters
+    ----------
+    lat : np.array
+        Latitude of the respective grid cell
+    resolution: int, optional
+        raster resolution in degree (default: 0.5 degree)
+    unit: string, optional
+        unit of the output area (default: km2, alternative: m2)
+
+    """
+
+    if unit == 'm2':
+        area = (ONE_LAT_KM * resolution)**2 * np.cos(np.deg2rad(lat)) * 100 * 1000000
+    else:
+        area = (ONE_LAT_KM * resolution)**2 * np.cos(np.deg2rad(lat)) * 100
+
+    return area
 
 def grid_is_regular(coord):
     """Return True if grid is regular. If True, returns height and width.
@@ -806,6 +826,71 @@ def get_region_gridpoints(countries=None, regions=None, resolution=150,
         lat, lon = [ar.ravel() for ar in [lat, lon]]
     return lat, lon
 
+def mapping_point2grid(x, y, xmin, ymax, res):
+    """Given the coordinates of a point, find the index of a grid cell from 
+    a raster into which it falls.
+    
+    Note
+    ----
+    Coordinates of the point and of the raster need to have the same CRS (e.g.
+    both in lat/lon, EPSG:4326)
+    
+    Parameters
+    ---------
+    x : float
+        x-coordinate of point
+    y : float
+        y-coordinate of point
+    xmin: float
+        coords top left corner of raster file - x
+    ymax: float
+        coords of top left corner of raster file - y
+    res: float or tuple
+        resolution of raster file. Float if res_x=res_y else (res_x, res_y).
+    
+    Returns
+    ------- 
+    col, row : tuple
+        column index and row index in grid matrix where point falls into
+    
+    Raises
+    ------
+    ValueError if Point outside of top left corner of raster
+    """
+    if (isinstance(res, tuple) or isinstance(res, list)):
+        res_x, res_y = (abs(res) for res in res)
+    else:
+        res_x = res_y = abs(res)
+    col = int((x - xmin) / res_x)
+    row = int((ymax - y) / res_y)
+    if (col < 0 or row < 0):
+        LOGGER.error('Point not inside grid')
+        raise ValueError  
+    return col, row
+    
+def mapping_grid2flattened(col, row, matrix_shape):
+    """ given a col and row index and the initial 2D matrix shape,
+    return the 1-dimensional index of the same point in the flattened matrix
+    - assumes concatenation along the row-axis (x-direction) 
+    
+    Parameters
+    ----------
+    col : int
+        Column Index of an entry in the original matrix
+    row : int
+        Row index of an entry in the original matrix
+    matrix_shape: (int, int)
+        Shape of the matrix (n_rows, n_cols)
+    
+    Returns
+    -------
+    index (1D) of the point in the flattened array (int)
+    """
+    if (row > matrix_shape[0] or col > matrix_shape[1]):
+        LOGGER.error('Indicated row  or column index larger than matrix')
+        raise ValueError
+    return row * matrix_shape[1] + col
+
 def region2isos(regions):
     """Convert region names to ISO 3166 alpha-3 codes of countries
 
@@ -1123,20 +1208,58 @@ def raster_to_meshgrid(transform, width, height):
     return np.meshgrid(np.arange(xmin + xres / 2, xmax, xres),
                        np.arange(ymin + yres / 2, ymax, yres))
 
+
+def to_crs_user_input(crs_obj):
+    """Returns a crs string or dictionary from a hdf5 file object.
+
+    bytes are decoded to str
+    if the string starts with a '{' it is assumed to be a dumped string from a dictionary
+    and ast is used to parse it.
+
+    Parameters
+    ----------
+    crs_obj : int, dict or str or bytes
+        the crs object to be converted user input
+
+    Returns
+    -------
+    str or dict
+        to eventually be used as argument of rasterio.crs.CRS.from_user_input
+        and pyproj.crs.CRS.from_user_input
+
+    Raises
+    ------
+    ValueError
+        if type(crs_obj) has the wrong type
+    """
+    if type(crs_obj) in [dict, int]:
+        return crs_obj
+
+    crs_string = crs_obj.decode() if isinstance(crs_obj, bytes) else crs_obj
+
+    if not isinstance(crs_string, str):
+        raise ValueError(f"crs has unhandled data set type: {type(crs_string)}")
+
+    if crs_string[0] == '{':
+        return ast.literal_eval(crs_string)
+
+    return crs_string
+
+
 def equal_crs(crs_one, crs_two):
     """Compare two crs
 
     Parameters
     ----------
-    crs_one : dict or string or wkt
+    crs_one : dict, str or int
         user crs
-    crs_two : dict or string or wkt
+    crs_two : dict, str or int
         user crs
 
     Returns
     -------
     equal : bool
-        Whether the two specified CRS are equal.
+        Whether the two specified CRS are equal according tho rasterio.crs.CRS.from_user_input
     """
     return rasterio.crs.CRS.from_user_input(crs_one) == rasterio.crs.CRS.from_user_input(crs_two)
 
@@ -1256,7 +1379,7 @@ def read_raster(file_name, band=None, src_crs=None, window=None, geometry=None,
 
                 src_crs = src.crs if src_crs is None else src_crs
                 if not src_crs:
-                    src_crs = rasterio.crs.CRS.from_dict(DEF_CRS)
+                    src_crs = rasterio.crs.CRS.from_user_input(DEF_CRS)
                 transform = (transform, width, height) if transform else None
                 inten = _read_raster_reproject(src, src_crs, dst_meta, band=band,
                                                geometry=geometry, dst_crs=dst_crs,
@@ -1286,7 +1409,7 @@ def read_raster(file_name, band=None, src_crs=None, window=None, geometry=None,
                 })
 
     if not dst_meta['crs']:
-        dst_meta['crs'] = rasterio.crs.CRS.from_dict(DEF_CRS)
+        dst_meta['crs'] = rasterio.crs.CRS.from_user_input(DEF_CRS)
 
     intensity = inten[range(len(band)), :]
     dst_shape = (len(band), dst_meta['height'] * dst_meta['width'])
@@ -1333,33 +1456,27 @@ def read_raster_bounds(path, bounds, res=None, bands=None):
         width, height = bounds[2] - bounds[0], bounds[3] - bounds[1]
         shape = (int(np.ceil(height / res[1]) + 1),
                  int(np.ceil(width / res[0]) + 1))
+
+        # make sure that the extent of pixel centers covers the specified regions
         extra = (0.5 * ((shape[1] - 1) * res[0] - width),
                  0.5 * ((shape[0] - 1) * res[1] - height))
         bounds = (bounds[0] - extra[0] - 0.5 * res[0], bounds[1] - extra[1] - 0.5 * res[1],
                   bounds[2] + extra[0] + 0.5 * res[0], bounds[3] + extra[1] + 0.5 * res[1])
 
-        if bounds[0] > 180:
-            bounds = (bounds[0] - 360, bounds[1], bounds[2] - 360, bounds[3])
-
-        window = src.window(*bounds)
-        w_transform = src.window_transform(window)
-        transform = rasterio.Affine(np.sign(w_transform[0]) * res[0], 0, w_transform[2],
-                                    0, np.sign(w_transform[4]) * res[1], w_transform[5])
-
-        if bounds[2] <= 180:
-            data = src.read(bands, out_shape=shape, window=window,
-                            resampling=resampling)
-        else:
-            # split up at antimeridian
-            bounds_sub = [(bounds[0], bounds[1], 180, bounds[3]),
-                          (-180, bounds[1], bounds[2] - 360, bounds[3])]
-            ratio_left = (bounds_sub[0][2] - bounds_sub[0][0]) / (bounds[2] - bounds[0])
-            shapes_sub = [(shape[0], int(shape[1] * ratio_left))]
-            shapes_sub.append((shape[0], shape[1] - shapes_sub[0][1]))
-            windows_sub = [src.window(*bds) for bds in bounds_sub]
-            data = [src.read(bands, out_shape=shp, window=win, resampling=resampling)
-                    for shp, win in zip(shapes_sub, windows_sub)]
-            data = np.concatenate(data, axis=2)
+        data = np.zeros((len(bands),) + shape, dtype=src.dtypes[0])
+        res = (np.sign(src.transform[0]) * res[0], np.sign(src.transform[4]) * res[1])
+        transform = rasterio.Affine(res[0], 0, bounds[0] if res[0] > 0 else bounds[2],
+                                    0, res[1], bounds[1] if res[1] > 0 else bounds[3])
+        crs = DEF_CRS if src.crs is None else src.crs
+        for iband, band in enumerate(bands):
+            rasterio.warp.reproject(
+                source=rasterio.band(src, band),
+                destination=data[iband],
+                src_transform=src.transform,
+                src_crs=src.crs,
+                dst_transform=transform,
+                dst_crs=crs,
+                resampling=resampling)
     return data, transform
 
 def read_raster_sample(path, lat, lon, intermediate_res=None, method='linear', fill_value=None):
@@ -1609,7 +1726,7 @@ def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, schedul
         return df_exp.apply(fun, axis=1)
 
     LOGGER.info('Raster from resolution %s to %s.', res, raster_res)
-    df_poly = points_df[val_names]
+    df_poly = gpd.GeoDataFrame(points_df[val_names])
     if not scheduler:
         df_poly['geometry'] = apply_box(points_df)
     else:
@@ -1617,9 +1734,19 @@ def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, schedul
                                npartitions=cpu_count())
         df_poly['geometry'] = ddata.map_partitions(apply_box, meta=Polygon) \
                                    .compute(scheduler=scheduler)
+    df_poly.crs = points_df.crs
+
+    # renormalize longitude if necessary
+    if df_poly.crs == DEF_CRS:
+        xmin, ymin, xmax, ymax = latlon_bounds(points_df.latitude.values,
+                                               points_df.longitude.values)
+        x_mid = 0.5 * (xmin + xmax)
+        df_poly = df_poly.to_crs({"proj": "longlat", "lon_wrap": x_mid})
+    else:
+        xmin, ymin, xmax, ymax = (points_df.longitude.min(), points_df.latitude.min(),
+                                  points_df.longitude.max(), points_df.latitude.max())
+
     # construct raster
-    xmin, ymin, xmax, ymax = (points_df.longitude.min(), points_df.latitude.min(),
-                              points_df.longitude.max(), points_df.latitude.max())
     rows, cols, ras_trans = pts_to_raster_meta((xmin, ymin, xmax, ymax),
                                                (raster_res, -raster_res))
     raster_out = np.zeros((len(val_names), rows, cols))

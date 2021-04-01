@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -954,7 +954,7 @@ class TestReaderMat(unittest.TestCase):
         self.assertFalse(hazard.orig[4818])
 
         # tag hazard
-        self.assertEqual(hazard.tag.file_name, HAZ_TEST_MAT)
+        self.assertEqual(hazard.tag.file_name, str(HAZ_TEST_MAT))
         self.assertEqual(hazard.tag.description,
                          ' TC hazard event set, generated 14-Nov-2017 10:09:05')
         self.assertEqual(hazard.tag.haz_type, 'TC')

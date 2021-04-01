@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -55,17 +55,22 @@ class DownloadProgressBar(tqdm):
 
 
 def download_file(url, download_dir=None, overwrite=True):
-    """Download file from url in current folder and provide absolute file path
-    and name.
+    """Download file from url to given target folder and provide full path of the downloaded file.
 
-    Parameters:
-        url (str): url containing data to download
+    Parameters
+    ----------
+    url : str
+        url containing data to download
+    download_dir : Path or str, optional
+        the parent directory of the eventually downloaded file
+    overwrite : bool, optional
+        whether or not an alredy existing file at the target location should be overwritten,
+        by default True
 
-    Returns:
-        str
-
-    Raises:
-        ValueError
+    Returns
+    -------
+    str
+        the full path to the eventually downloaded file
     """
     file_name = url.split('/')[-1]
     if file_name.strip() == '':

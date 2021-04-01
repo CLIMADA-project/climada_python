@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -79,7 +79,7 @@ class TestReader(unittest.TestCase):
 
         self.assertEqual(expo.ref_year, 2016)
         self.assertEqual(expo.value_unit, 'USD')
-        self.assertEqual(expo.tag.file_name, ENT_TEST_MAT)
+        self.assertEqual(expo.tag.file_name, str(ENT_TEST_MAT))
 
 class TestObligatories(unittest.TestCase):
     """Test reading exposures obligatory values."""

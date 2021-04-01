@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -29,7 +29,6 @@ import pandas as pd
 from geopandas import GeoDataFrame
 
 from climada.entity.exposures.base import Exposures, INDICATOR_IF, INDICATOR_CENTR
-from climada.engine.impact import Impact
 import climada.util.checker as u_check
 
 LOGGER = logging.getLogger(__name__)
@@ -294,6 +293,7 @@ class Measure():
         else:
             exp_imp = exposures
 
+        from climada.engine.impact import Impact
         imp = Impact()
         imp.calc(exp_imp, if_set, hazard)
 
@@ -332,7 +332,7 @@ class Measure():
 
         if exposures is new_exp:
             new_exp = exposures.copy(deep=True)
-        
+
         if imp_set is not new_ifs:
             # provide new impact functions ids to changed impact functions
             fun_ids = list(new_ifs.get_func()[self.haz_type].keys())

@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -24,6 +24,7 @@ import pandas as pd
 import unittest
 import urllib
 import xmlrunner
+import datetime as dt
 
 # solve version problem in pandas-datareader-0.6.0. see:
 # https://stackoverflow.com/questions/50394873/import-pandas-datareader-gives-
@@ -35,6 +36,9 @@ from climada.entity.exposures.nightlight import NOAA_SITE, NASA_SITE, BM_FILENAM
 from climada.hazard.tc_tracks import IBTRACS_URL, IBTRACS_FILE
 from climada.hazard.tc_tracks_forecast import TCForecast
 from climada.util.finance import WORLD_BANK_WEALTH_ACC, WORLD_BANK_INC_GRP
+from climada.util.dwd_icon_loader import (download_icon_grib,
+                                          delete_icon_grib,
+                                          download_icon_centroids_file)
 from climada.util.files_handler import download_file, download_ftp
 
 class TestDataAvail(unittest.TestCase):
@@ -81,6 +85,23 @@ class TestDataAvail(unittest.TestCase):
         """Test availability ECMWF essentials TC forecast."""
         fcast = TCForecast.fetch_bufr_ftp()
         [f.close() for f in fcast]
+
+    def test_icon_forecast_download(self):
+        """Test availability of DWD icon forecast."""
+        run_datetime = dt.datetime.utcnow() - dt.timedelta(hours=5)
+        run_datetime = run_datetime.replace(hour=run_datetime.hour//12*12,
+                                            minute=0,
+                                            second=0,
+                                            microsecond=0)
+        icon_file = download_icon_grib(run_datetime,max_lead_time=1)
+        self.assertEqual(len(icon_file), 1)
+        delete_icon_grib(run_datetime,max_lead_time=1) #deletes icon_file
+        self.assertFalse(Path(icon_file[0]).exists())
+
+    def test_icon_centroids_download(self):
+        """Test availablility of DWD icon grid information."""
+        grid_file = download_icon_centroids_file()
+        Path(grid_file).unlink()
 
 # Execute Tests
 if __name__ == '__main__':
