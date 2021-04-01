@@ -827,14 +827,14 @@ def get_region_gridpoints(countries=None, regions=None, resolution=150,
     return lat, lon
 
 def mapping_point2grid(x, y, xmin, ymax, res):
-    """Given the coordinates of a point, find the index of a grid cell from 
+    """Given the coordinates of a point, find the index of a grid cell from
     a raster into which it falls.
-    
+
     Note
     ----
     Coordinates of the point and of the raster need to have the same CRS (e.g.
     both in lat/lon, EPSG:4326)
-    
+
     Parameters
     ---------
     x : float
@@ -847,12 +847,12 @@ def mapping_point2grid(x, y, xmin, ymax, res):
         coords of top left corner of raster file - y
     res: float or tuple
         resolution of raster file. Float if res_x=res_y else (res_x, res_y).
-    
+
     Returns
-    ------- 
+    -------
     col, row : tuple
         column index and row index in grid matrix where point falls into
-    
+
     Raises
     ------
     ValueError if Point outside of top left corner of raster
@@ -865,14 +865,14 @@ def mapping_point2grid(x, y, xmin, ymax, res):
     row = int((ymax - y) / res_y)
     if (col < 0 or row < 0):
         LOGGER.error('Point not inside grid')
-        raise ValueError  
+        raise ValueError
     return col, row
-    
+
 def mapping_grid2flattened(col, row, matrix_shape):
     """ given a col and row index and the initial 2D matrix shape,
     return the 1-dimensional index of the same point in the flattened matrix
-    - assumes concatenation along the row-axis (x-direction) 
-    
+    - assumes concatenation along the row-axis (x-direction)
+
     Parameters
     ----------
     col : int
@@ -881,7 +881,7 @@ def mapping_grid2flattened(col, row, matrix_shape):
         Row index of an entry in the original matrix
     matrix_shape: (int, int)
         Shape of the matrix (n_rows, n_cols)
-    
+
     Returns
     -------
     index (1D) of the point in the flattened array (int)
