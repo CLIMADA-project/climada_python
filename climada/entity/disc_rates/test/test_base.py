@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -191,7 +191,7 @@ class TestReaderExcel(unittest.TestCase):
         self.assertEqual(disc_rate.rates.min(), 0.02)
         self.assertEqual(disc_rate.rates.max(), 0.02)
 
-        self.assertEqual(disc_rate.tag.file_name, ENT_DEMO_TODAY)
+        self.assertEqual(disc_rate.tag.file_name, str(ENT_DEMO_TODAY))
         self.assertEqual(disc_rate.tag.description, description)
 
     def test_template_file_pass(self):
@@ -212,7 +212,7 @@ class TestReaderExcel(unittest.TestCase):
         self.assertEqual(disc_rate.rates.min(), 0.02)
         self.assertEqual(disc_rate.rates.max(), 0.02)
 
-        self.assertEqual(disc_rate.tag.file_name, ENT_TEMPLATE_XLS)
+        self.assertEqual(disc_rate.tag.file_name, str(ENT_TEMPLATE_XLS))
         self.assertEqual(disc_rate.tag.description, '')
 
 class TestReaderMat(unittest.TestCase):
@@ -238,7 +238,7 @@ class TestReaderMat(unittest.TestCase):
         self.assertEqual(disc_rate.rates.min(), 0.02)
         self.assertEqual(disc_rate.rates.max(), 0.02)
 
-        self.assertEqual(disc_rate.tag.file_name, ENT_TEST_MAT)
+        self.assertEqual(disc_rate.tag.file_name, str(ENT_TEST_MAT))
         self.assertEqual(disc_rate.tag.description, description)
 
 
@@ -260,7 +260,7 @@ class TestWriter(unittest.TestCase):
         self.assertTrue(np.array_equal(disc_read.years, disc_rate.years))
         self.assertTrue(np.array_equal(disc_read.rates, disc_rate.rates))
 
-        self.assertEqual(disc_read.tag.file_name, file_name)
+        self.assertEqual(disc_read.tag.file_name, str(file_name))
         self.assertEqual(disc_read.tag.description, '')
 
 # Execute Tests

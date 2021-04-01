@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -42,7 +42,7 @@ class TestSave(unittest.TestCase):
         ent = {'value': [1, 2, 3]}
         with self.assertLogs('climada.util.save', level='INFO') as cm:
             save(file_name, ent)
-        self.assertTrue(Path(DATA_DIR, file_name).is_file())
+        self.assertTrue(CONFIG.local_data.save_dir.dir().joinpath(file_name).is_file())
         self.assertTrue((file_name in cm.output[0]) or
                         (file_name in cm.output[1]))
 
@@ -52,7 +52,6 @@ class TestSave(unittest.TestCase):
         ent = {'value': [1, 2, 3]}
         save(file_name, ent)
         res = load(file_name)
-        self.assertTrue(Path(DATA_DIR, file_name).is_file())
         self.assertTrue('value' in res)
         self.assertTrue(res['value'] == ent['value'])
 

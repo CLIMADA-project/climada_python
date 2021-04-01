@@ -1,18 +1,20 @@
 """
 This file is part of CLIMADA.
 
-Copyright (C) 2019 ETH Zurich, CLIMADA contributors listed in AUTHORS.
+Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
+
+---
 
 Integration Test for open_street_map.py and 3 time consuming unit tests
 """
@@ -57,9 +59,9 @@ class TestOpenStreetMapModule(unittest.TestCase):
                 DATA_DIR.joinpath('High_Value_Area_47_8.shp'),
                 DATA_DIR, check_plot=0)
             self.assertIsInstance(exposure_high_47_8, Exposures)
-            self.assertEqual(len(exposure_high_47_8.columns), 8)
+            self.assertEqual(len(exposure_high_47_8.gdf.columns), 8)
             self.assertGreater(
-                exposure_high_47_8.iloc[random.randint(0, len(exposure_high_47_8))].value,
+                exposure_high_47_8.gdf.iloc[random.randint(0, len(exposure_high_47_8.gdf))].value,
                 0)
 
     def test_make_osmexposure(self):
@@ -69,17 +71,17 @@ class TestOpenStreetMapModule(unittest.TestCase):
             DATA_DIR.joinpath('buildings_47_8.shp'),
             mode='default', save_path=DATA_DIR, check_plot=0)
         self.assertIsInstance(buildings_47_8_default, Exposures)
-        self.assertEqual(len(buildings_47_8_default.columns), 12)
+        self.assertEqual(len(buildings_47_8_default.gdf.columns), 12)
         self.assertEqual(
-            buildings_47_8_default.loc[
-                random.randint(0, len(buildings_47_8_default))].geometry.type,
+            buildings_47_8_default.gdf.loc[
+                random.randint(0, len(buildings_47_8_default.gdf))].geometry.type,
             "Point")
         self.assertGreater(
-            buildings_47_8_default.loc[random.randint(0, len(buildings_47_8_default))].value,
+            buildings_47_8_default.gdf.loc[random.randint(0, len(buildings_47_8_default.gdf))].value,
             0)
         self.assertGreater(
-            buildings_47_8_default.loc[
-                random.randint(0, len(buildings_47_8_default))].projected_area,
+            buildings_47_8_default.gdf.loc[
+                random.randint(0, len(buildings_47_8_default.gdf))].projected_area,
             0)
 
         # With LitPop values
@@ -87,16 +89,16 @@ class TestOpenStreetMapModule(unittest.TestCase):
                                                      country='CHE', mode="LitPop",
                                                      save_path=DATA_DIR, check_plot=0)
         self.assertIsInstance(buildings_47_8_LitPop, Exposures)
-        self.assertEqual(len(buildings_47_8_LitPop.columns), 12)
+        self.assertEqual(len(buildings_47_8_LitPop.gdf.columns), 12)
         self.assertEqual(
-            buildings_47_8_LitPop.loc[random.randint(0, len(buildings_47_8_LitPop))].geometry.type,
+            buildings_47_8_LitPop.gdf.loc[random.randint(0, len(buildings_47_8_LitPop.gdf))].geometry.type,
             "Point")
         self.assertGreater(
-            buildings_47_8_LitPop.loc[random.randint(0, len(buildings_47_8_LitPop))].value,
+            buildings_47_8_LitPop.gdf.loc[random.randint(0, len(buildings_47_8_LitPop.gdf))].value,
             0)
         self.assertGreater(
-            buildings_47_8_LitPop.loc[
-                random.randint(0, len(buildings_47_8_LitPop))].projected_area,
+            buildings_47_8_LitPop.gdf.loc[
+                random.randint(0, len(buildings_47_8_LitPop.gdf))].projected_area,
             0)
 
         for mode in ['default', 'LitPop']:
@@ -113,9 +115,9 @@ class TestOSMlongUnitTests(unittest.TestCase):
         # Execute function
         exp_sub = OSM._get_litpop_bbox(country, highValueArea)
         self.assertTrue(
-            math.isclose(min(exp_sub.latitude), highValueArea.bounds.miny, rel_tol=1e-2))
+            math.isclose(min(exp_sub.gdf.latitude), highValueArea.bounds.miny, rel_tol=1e-2))
         self.assertTrue(
-            math.isclose(max(exp_sub.longitude), highValueArea.bounds.maxx, rel_tol=1e-2))
+            math.isclose(max(exp_sub.gdf.longitude), highValueArea.bounds.maxx, rel_tol=1e-2))
 
     def test_split_exposure_highlow(self):
         """test _split_exposure_highlow within get_osmstencil_litpop function"""
@@ -128,12 +130,14 @@ class TestOSMlongUnitTests(unittest.TestCase):
         for mode in {'proportional', 'even'}:
             print('testing mode %s' % mode)
             exp_sub_high = OSM._split_exposure_highlow(exp_sub, mode, High_Value_Area_gdf)
-            self.assertTrue(math.isclose(sum(exp_sub_high.value),
-                                         sum(exp_sub.value),
+            self.assertTrue(math.isclose(sum(exp_sub_high.gdf.value),
+                                         sum(exp_sub.gdf.value),
                                          rel_tol=0.01))
+            exp_sub_high.check()
         print('testing mode nearest neighbour')
         exp_sub_high = OSM._split_exposure_highlow(exp_sub, "nearest", High_Value_Area_gdf)
-        self.assertTrue(math.isclose(sum(exp_sub_high.value), sum(exp_sub.value), rel_tol=0.1))
+        self.assertTrue(math.isclose(sum(exp_sub_high.gdf.value), sum(exp_sub.gdf.value), rel_tol=0.1))
+        exp_sub_high.check()
 
     def test_assign_values_exposure(self):
         """test _assign_values_exposure within make_osmexposure function"""

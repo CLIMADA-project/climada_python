@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -20,20 +20,17 @@ Tests on Drought Hazard exposure and Impact function.
 """
 
 import unittest
-import os
 import numpy as np
 from climada.util.constants import DEMO_DIR as INPUT_DIR
-from climada.hazard.relative_cropyield import (RelativeCropyield, init_hazard_sets_isimip, 
+from climada.hazard.relative_cropyield import (RelativeCropyield, init_hazard_sets_isimip,
                                                calc_his_haz_isimip)
 from climada.entity.exposures.crop_production import CropProduction
 from climada.entity import ImpactFuncSet, IFRelativeCropyield
 from climada.engine import Impact
 
-
 FN_STR_DEMO = 'annual_FR_DE_DEMO'
 FILENAME_LU = 'histsoc_landuse-15crops_annual_FR_DE_DEMO_2001_2005.nc'
 FILENAME_MEAN = 'hist_mean_mai-firr_1976-2005_DE_FR.hdf5'
-
 
 class TestIntegr(unittest.TestCase):
     """Test loading functions from the ISIMIP Agricultural Drought class and
@@ -43,18 +40,17 @@ class TestIntegr(unittest.TestCase):
         bbox = [-5, 42, 16, 55]
         haz = RelativeCropyield()
         haz.set_from_isimip_netcdf(input_dir=INPUT_DIR, yearrange=(2001, 2005), bbox=bbox,
-                                ag_model='lpjml', cl_model='ipsl-cm5a-lr', scenario='historical',
-                                soc='2005soc', co2='co2', crop='whe', irr='noirr',
-                                fn_str_var=FN_STR_DEMO)
+                                   ag_model='lpjml', cl_model='ipsl-cm5a-lr', scenario='historical',
+                                   soc='2005soc', co2='co2', crop='whe', irr='noirr',
+                                   fn_str_var=FN_STR_DEMO)
         hist_mean = haz.calc_mean(yearrange_mean=(2001, 2005))
         haz.set_rel_yield_to_int(hist_mean)
         haz.centroids.set_region_id()
 
         exp = CropProduction()
         exp.set_from_isimip_netcdf(input_dir=INPUT_DIR, filename=FILENAME_LU, hist_mean=FILENAME_MEAN,
-                                              bbox=bbox, yearrange=(2001, 2005),
-                                              scenario='flexible', unit='t/y', crop='whe', irr='firr')
-
+                                   bbox=bbox, yearrange=(2001, 2005),
+                                   scenario='flexible', unit='t/y', crop='whe', irr='firr')
         exp.set_value_to_usd(INPUT_DIR, yearrange=(2000, 2018))
         exp.assign_centroids(haz, threshold=20)
 
@@ -65,9 +61,11 @@ class TestIntegr(unittest.TestCase):
         if_cp.check()
 
         impact = Impact()
-        impact.calc(exp.loc[exp.region_id == 276], if_cp, haz.select(['2002']), save_mat=True)
+        reg_sel = exp.copy()
+        reg_sel.gdf = reg_sel.gdf[reg_sel.gdf.region_id == 276]
+        impact.calc(reg_sel, if_cp, haz.select(['2002']), save_mat=True)
 
-        exp_manual = exp.value.loc[exp.region_id == 276].values
+        exp_manual = reg_sel.gdf.value
         impact_manual = haz.select(event_names=['2002'], reg_id=276).intensity.multiply(exp_manual)
         dif = (impact_manual - impact.imp_mat).data
 
@@ -75,10 +73,10 @@ class TestIntegr(unittest.TestCase):
         self.assertEqual(haz.size, 5)
         self.assertEqual(haz.centroids.size, 1092)
         self.assertAlmostEqual(haz.intensity.mean(), -2.0489097e-08)
-        self.assertAlmostEqual(exp.value.max(), 53074789.755290434)
-        self.assertEqual(exp.latitude.values.size, 1092)
-        self.assertAlmostEqual(exp.value[3], 0.0)
-        self.assertAlmostEqual(exp.value[1077], 405026.6857207429)
+        self.assertAlmostEqual(exp.gdf.value.max(), 53074789.755290434)
+        self.assertEqual(exp.gdf.latitude.values.size, 1092)
+        self.assertAlmostEqual(exp.gdf.value[3], 0.0)
+        self.assertAlmostEqual(exp.gdf.value[1077], 405026.6857207429)
         self.assertAlmostEqual(impact.imp_mat.data[3], -176102.5359452465 )
         self.assertEqual(len(dif), 0)
 
@@ -113,7 +111,7 @@ class TestIntegr(unittest.TestCase):
         exp_nan.set_from_isimip_netcdf(input_dir=INPUT_DIR, filename=FILENAME_LU, hist_mean=FILENAME_MEAN,
                                               bbox=[0, 42, 10, 52], yearrange=(2001, 2005),
                                               scenario='flexible', unit='t/y', crop='whe', irr='firr')
-        exp_nan.value[exp_nan.value==0] = np.nan
+        exp_nan.gdf.value[exp_nan.gdf.value==0] = np.nan
         exp_nan.assign_centroids(haz, threshold=20)
 
         impact_nan = Impact()
@@ -131,22 +129,22 @@ class TestIntegr(unittest.TestCase):
                      'pepic_miroc5_ewembi_historical_2005soc_co2_yield-whe-firr_global_annual_DEMO_TJANJIN_1861_2005.nc',
                      'pepic_miroc5_ewembi_historical_2005soc_co2_yield-whe-noirr_global_annual_DEMO_TJANJIN_1861_2005.nc']
 
-        (his_file_list, file_props, hist_mean_per_crop, 
+        (his_file_list, file_props, hist_mean_per_crop,
           scenario_list, crop_list, combi_crop_list) = init_hazard_sets_isimip(files_his, input_dir=INPUT_DIR,
-                                                      bbox=bbox, isimip_run = 'test_file', 
+                                                      bbox=bbox, isimip_run = 'test_file',
                                                       yearrange_his = np.array([1980,2005]))
         yearrange_mean = (1980, 2005)
         for his_file in his_file_list:
-            haz_his, filename, hist_mean = calc_his_haz_isimip(his_file, file_props, input_dir=INPUT_DIR, 
+            haz_his, filename, hist_mean = calc_his_haz_isimip(his_file, file_props, input_dir=INPUT_DIR,
                                                         bbox=bbox, yearrange_mean=yearrange_mean)
 
-            hist_mean_per_crop[(file_props[his_file])['crop_irr']]['value'][ 
+            hist_mean_per_crop[(file_props[his_file])['crop_irr']]['value'][
                 hist_mean_per_crop[(file_props[his_file])['crop_irr']]['idx'], :] = hist_mean
             hist_mean_per_crop[file_props[his_file]['crop_irr']]['idx'] += 1
 
         self.assertEqual(np.shape(hist_mean_per_crop['whe-firr']['value'])[0], 1)
-        self.assertEqual(np.shape(hist_mean_per_crop['whe-noirr']['value'])[0], 2) 
-        
+        self.assertEqual(np.shape(hist_mean_per_crop['whe-noirr']['value'])[0], 2)
+
         # calculate mean hist_mean for each crop-irrigation
         for crop_irr in crop_list:
             mean = np.mean((hist_mean_per_crop[crop_irr])['value'], 0)
@@ -155,8 +153,8 @@ class TestIntegr(unittest.TestCase):
         self.assertEqual('whe-noirr', crop_list[0])
         self.assertEqual(np.mean(hist_mean_per_crop['whe-noirr']['value']), np.mean(output_list[0]))
         self.assertEqual(np.mean(hist_mean_per_crop['whe-noirr']['value'][:,1]), output_list[0][1])
-        
-                                                      
+
+
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestIntegr)
