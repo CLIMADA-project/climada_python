@@ -1,6 +1,10 @@
 climada\.engine package
 =======================
 
+.. toctree::
+
+    climada.engine.uncertainty
+
 climada\.engine\.calibration\_opt module
 ----------------------------------------
 
@@ -17,6 +21,14 @@ climada\.engine\.cost\_benefit module
     :undoc-members:
     :show-inheritance:
 
+climada\.engine\.forecast module
+--------------------------------
+
+.. automodule:: climada.engine.forecast
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 climada\.engine\.impact module
 ------------------------------
 
@@ -29,6 +41,14 @@ climada\.engine\.impact\_data module
 ------------------------------------
 
 .. automodule:: climada.engine.impact_data
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+climada\.engine\.supplychain module
+-----------------------------------
+
+.. automodule:: climada.engine.supplychain
     :members:
     :undoc-members:
     :show-inheritance:

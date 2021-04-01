@@ -41,6 +41,14 @@ climada\.util\.dates\_times module
     :undoc-members:
     :show-inheritance:
 
+climada\.util\.dwd\_icon\_loader module
+---------------------------------------
+
+.. automodule:: climada.util.dwd_icon_loader
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 climada\.util\.earth\_engine module
 -----------------------------------
 
@@ -117,6 +125,14 @@ climada\.util\.value\_representation module
 -------------------------------------------
 
 .. automodule:: climada.util.value_representation
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+climada\.util\.yearsets module
+------------------------------
+
+.. automodule:: climada.util.yearsets
     :members:
     :undoc-members:
     :show-inheritance:
