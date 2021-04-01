@@ -4,27 +4,26 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
 Test CentroidsVector and CentroidsRaster classes.
 """
-import os
 import unittest
 
 from cartopy.io import shapereader
-from fiona.crs import from_epsg
 import geopandas as gpd
 import numpy as np
+from pyproj.crs import CRS
 import rasterio
 from rasterio.windows import Window
 from shapely.geometry.point import Point
@@ -632,9 +631,9 @@ class TestReader(unittest.TestCase):
         centr = Centroids()
         inten = centr.set_vector_file(shp_file, ['pop_min', 'pop_max'])
 
-        self.assertEqual(centr.geometry.crs, from_epsg(NE_EPSG))
+        self.assertEqual(CRS.from_user_input(centr.geometry.crs), CRS.from_epsg(NE_EPSG))
         self.assertEqual(centr.geometry.size, centr.lat.size)
-        self.assertEqual(centr.geometry.crs, from_epsg(NE_EPSG))
+        self.assertEqual(CRS.from_user_input(centr.geometry.crs), CRS.from_epsg(NE_EPSG))
         self.assertAlmostEqual(centr.lon[0], 12.453386544971766)
         self.assertAlmostEqual(centr.lon[-1], 114.18306345846304)
         self.assertAlmostEqual(centr.lat[0], 41.903282179960115)

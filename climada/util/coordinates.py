@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -19,6 +19,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define functions to handle with coordinates
 """
 
+import ast
 import copy
 import logging
 import math
@@ -366,6 +367,31 @@ def metres_to_degrees(lat, lon, dist=100):
     """
     _, lat_end, _ = pyproj.Geod(ellps='WGS84').fwd(lon, lat, 0, dist)
     return abs(lat-lat_end)
+
+def get_gridcellarea(lat, resolution=0.5, unit='km2'):
+    """The area covered by a grid cell is calculated depending on the latitude
+        1 degree = ONE_LAT_KM (111.12km at the equator)
+        longitudal distance in km = ONE_LAT_KM*resolution*cos(lat)
+        latitudal distance in km = ONE_LAT_KM*resolution
+        area = longitudal distance * latitudal distance
+
+    Parameters
+    ----------
+    lat : np.array
+        Latitude of the respective grid cell
+    resolution: int, optional
+        raster resolution in degree (default: 0.5 degree)
+    unit: string, optional
+        unit of the output area (default: km2, alternative: m2)
+
+    """
+
+    if unit == 'm2':
+        area = (ONE_LAT_KM * resolution)**2 * np.cos(np.deg2rad(lat)) * 100 * 1000000
+    else:
+        area = (ONE_LAT_KM * resolution)**2 * np.cos(np.deg2rad(lat)) * 100
+
+    return area
 
 def grid_is_regular(coord):
     """Return True if grid is regular. If True, returns height and width.
@@ -851,6 +877,71 @@ def get_region_gridpoints(countries=None, regions=None, resolution=150,
         lat, lon = [ar.ravel() for ar in [lat, lon]]
     return lat, lon
 
+def mapping_point2grid(x, y, xmin, ymax, res):
+    """Given the coordinates of a point, find the index of a grid cell from
+    a raster into which it falls.
+
+    Note
+    ----
+    Coordinates of the point and of the raster need to have the same CRS (e.g.
+    both in lat/lon, EPSG:4326)
+
+    Parameters
+    ---------
+    x : float
+        x-coordinate of point
+    y : float
+        y-coordinate of point
+    xmin: float
+        coords top left corner of raster file - x
+    ymax: float
+        coords of top left corner of raster file - y
+    res: float or tuple
+        resolution of raster file. Float if res_x=res_y else (res_x, res_y).
+
+    Returns
+    -------
+    col, row : tuple
+        column index and row index in grid matrix where point falls into
+
+    Raises
+    ------
+    ValueError if Point outside of top left corner of raster
+    """
+    if (isinstance(res, tuple) or isinstance(res, list)):
+        res_x, res_y = (abs(res) for res in res)
+    else:
+        res_x = res_y = abs(res)
+    col = int((x - xmin) / res_x)
+    row = int((ymax - y) / res_y)
+    if (col < 0 or row < 0):
+        LOGGER.error('Point not inside grid')
+        raise ValueError
+    return col, row
+
+def mapping_grid2flattened(col, row, matrix_shape):
+    """ given a col and row index and the initial 2D matrix shape,
+    return the 1-dimensional index of the same point in the flattened matrix
+    - assumes concatenation along the row-axis (x-direction)
+
+    Parameters
+    ----------
+    col : int
+        Column Index of an entry in the original matrix
+    row : int
+        Row index of an entry in the original matrix
+    matrix_shape: (int, int)
+        Shape of the matrix (n_rows, n_cols)
+
+    Returns
+    -------
+    index (1D) of the point in the flattened array (int)
+    """
+    if (row > matrix_shape[0] or col > matrix_shape[1]):
+        LOGGER.error('Indicated row  or column index larger than matrix')
+        raise ValueError
+    return row * matrix_shape[1] + col
+
 def region2isos(regions):
     """Convert region names to ISO 3166 alpha-3 codes of countries
 
@@ -1168,20 +1259,58 @@ def raster_to_meshgrid(transform, width, height):
     return np.meshgrid(np.arange(xmin + xres / 2, xmax, xres),
                        np.arange(ymin + yres / 2, ymax, yres))
 
+
+def to_crs_user_input(crs_obj):
+    """Returns a crs string or dictionary from a hdf5 file object.
+
+    bytes are decoded to str
+    if the string starts with a '{' it is assumed to be a dumped string from a dictionary
+    and ast is used to parse it.
+
+    Parameters
+    ----------
+    crs_obj : int, dict or str or bytes
+        the crs object to be converted user input
+
+    Returns
+    -------
+    str or dict
+        to eventually be used as argument of rasterio.crs.CRS.from_user_input
+        and pyproj.crs.CRS.from_user_input
+
+    Raises
+    ------
+    ValueError
+        if type(crs_obj) has the wrong type
+    """
+    if type(crs_obj) in [dict, int]:
+        return crs_obj
+
+    crs_string = crs_obj.decode() if isinstance(crs_obj, bytes) else crs_obj
+
+    if not isinstance(crs_string, str):
+        raise ValueError(f"crs has unhandled data set type: {type(crs_string)}")
+
+    if crs_string[0] == '{':
+        return ast.literal_eval(crs_string)
+
+    return crs_string
+
+
 def equal_crs(crs_one, crs_two):
     """Compare two crs
 
     Parameters
     ----------
-    crs_one : dict or string or wkt
+    crs_one : dict, str or int
         user crs
-    crs_two : dict or string or wkt
+    crs_two : dict, str or int
         user crs
 
     Returns
     -------
     equal : bool
-        Whether the two specified CRS are equal.
+        Whether the two specified CRS are equal according tho rasterio.crs.CRS.from_user_input
     """
     return rasterio.crs.CRS.from_user_input(crs_one) == rasterio.crs.CRS.from_user_input(crs_two)
 
@@ -1301,7 +1430,7 @@ def read_raster(file_name, band=None, src_crs=None, window=None, geometry=None,
 
                 src_crs = src.crs if src_crs is None else src_crs
                 if not src_crs:
-                    src_crs = rasterio.crs.CRS.from_dict(DEF_CRS)
+                    src_crs = rasterio.crs.CRS.from_user_input(DEF_CRS)
                 transform = (transform, width, height) if transform else None
                 inten = _read_raster_reproject(src, src_crs, dst_meta, band=band,
                                                geometry=geometry, dst_crs=dst_crs,
@@ -1331,7 +1460,7 @@ def read_raster(file_name, band=None, src_crs=None, window=None, geometry=None,
                 })
 
     if not dst_meta['crs']:
-        dst_meta['crs'] = rasterio.crs.CRS.from_dict(DEF_CRS)
+        dst_meta['crs'] = rasterio.crs.CRS.from_user_input(DEF_CRS)
 
     intensity = inten[range(len(band)), :]
     dst_shape = (len(band), dst_meta['height'] * dst_meta['width'])

@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -174,5 +174,8 @@ EARTH_RADIUS_KM = 6371
 DEF_EPSG = 4326
 """Default EPSG code"""
 
-DEF_CRS = from_epsg(DEF_EPSG)
-"""Default coordinate reference system WGS 84"""
+DEF_CRS = f'EPSG:{DEF_EPSG}'
+"""Default coordinate reference system WGS 84, str, for pyproj and rasterio CRS.from_string()"""
+
+DEF_CRS_FIONA = from_epsg(DEF_EPSG)
+"""Default coordinate reference system WGS 84, dict, for fiona interface"""

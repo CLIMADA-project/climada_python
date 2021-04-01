@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -42,7 +42,8 @@ from numba import jit
 import numpy as np
 import pandas as pd
 import scipy.io.matlab as matlab
-from shapely.geometry import Point, LineString
+from shapely.geometry import Point, LineString, MultiLineString
+import shapely.ops
 from sklearn.neighbors import DistanceMetric
 import statsmodels.api as sm
 import xarray as xr
@@ -50,7 +51,7 @@ import xarray as xr
 # climada dependencies
 from climada.util import ureg
 import climada.util.coordinates as u_coord
-from climada.util.constants import EARTH_RADIUS_KM, SYSTEM_DIR
+from climada.util.constants import EARTH_RADIUS_KM, SYSTEM_DIR, DEF_CRS
 from climada.util.files_handler import get_file_names, download_ftp
 import climada.util.plot as u_plot
 import climada.hazard.tc_tracks_synth
@@ -457,6 +458,19 @@ class TCTracks():
             preferred_idx = all_vals.notnull().any(dim="date_time").argmax(dim='agency')
             ibtracs_ds[tc_var] = all_vals.isel(agency=preferred_idx)
 
+            # Usually, if an agency reports about a track that crosses the antimeridian, the
+            # longitude is always chosen positive. However, it can happen, that the TC crosses the
+            # antimeridian according to one agency, but not according to another. When mixing
+            # agency data, this can yield inconsistent sign changes in longitude. We remove those:
+            if tc_var == 'lon':
+                # By IBTrACS default, no longitude should be <= -180, but this is not true for some
+                # agencies, so we have to manually enforce this policy:
+                ibtracs_ds[tc_var].values[(ibtracs_ds[tc_var] <= -180).values] += 360
+                crossing_mask = ((ibtracs_ds[tc_var] > 170).any(dim="date_time")
+                                 & (ibtracs_ds[tc_var] < -170).any(dim="date_time")
+                                 & (ibtracs_ds[tc_var] < 0)).values
+                ibtracs_ds[tc_var].values[crossing_mask] += 360
+
             if interpolate_missing:
                 with warnings.catch_warnings():
                     # Upstream issue, see https://github.com/pydata/xarray/issues/4167
@@ -510,6 +524,11 @@ class TCTracks():
             track_ds = ibtracs_ds.sel(storm=i_track, date_time=t_msk)
             st_penv = xr.apply_ufunc(basin_fun, track_ds.basin, vectorize=True)
 
+            # a track that crosses the antimeridian in IBTrACS might be truncated by `t_msk` in
+            # such a way that the remaining part is not crossing the antimeridian:
+            if (track_ds.lon.values > 180).all():
+                track_ds['lon'] -= 360
+
             # set time_step in hours
             track_ds['time_step'] = xr.ones_like(track_ds.time, dtype=float)
             if track_ds.time.size > 1:
@@ -537,7 +556,7 @@ class TCTracks():
 
             if estimate_missing:
                 track_ds['rmw'][:] = estimate_rmw(track_ds.rmw.values, track_ds.pres.values)
-                track_ds['roci'][:] = estimate_roci(track_ds.roci.values, track_ds.rmw.values)
+                track_ds['roci'][:] = estimate_roci(track_ds.roci.values, track_ds.pres.values)
                 track_ds['roci'][:] = np.fmax(track_ds.rmw.values, track_ds.roci.values)
 
             # ensure environmental pressure >= central pressure
@@ -545,7 +564,7 @@ class TCTracks():
             track_ds['poci'][:] = np.fmax(track_ds.poci, track_ds.pres)
 
             all_tracks.append(xr.Dataset({
-                'time_step': ('time', track_ds.time_step),
+                'time_step': ('time', track_ds.time_step.data),
                 'radius_max_wind': ('time', track_ds.rmw.data),
                 'radius_oci': ('time', track_ds.roci.data),
                 'max_sustained_wind': ('time', track_ds.wind.data),
@@ -1119,13 +1138,19 @@ class TCTracks():
         """Exact extent of trackset as tuple, no buffer."""
         return self.get_extent(deg_buffer=0.0)
 
-    def plot(self, axis=None, **kwargs):
+    def plot(self, axis=None, figsize=(9, 13), legend=True, **kwargs):
         """Track over earth. Historical events are blue, probabilistic black.
 
         Parameters
         ----------
         axis : matplotlib.axes._subplots.AxesSubplot, optional
             axis to use
+        figsize: (float, float), optional
+            figure size for plt.subplots
+            The default is (9, 13)
+        legend : bool, optional
+            whether to display a legend of Tropical Cyclone categories.
+            Default: True.
         kwargs : optional
             arguments for LineCollection matplotlib, e.g. alpha=0.5
 
@@ -1147,7 +1172,7 @@ class TCTracks():
 
         if not axis:
             proj = ccrs.PlateCarree(central_longitude=mid_lon)
-            _, axis = u_plot.make_map(proj=proj)
+            _, axis = u_plot.make_map(proj=proj, figsize=figsize)
         axis.set_extent(extent, crs=kwargs['transform'])
         u_plot.add_shapes(axis)
 
@@ -1170,16 +1195,17 @@ class TCTracks():
             track_lc.set_array(track.max_sustained_wind.values)
             axis.add_collection(track_lc)
 
-        leg_lines = [Line2D([0], [0], color=CAT_COLORS[i_col], lw=2)
-                     for i_col in range(len(SAFFIR_SIM_CAT))]
-        leg_names = [CAT_NAMES[i_col] for i_col in sorted(CAT_NAMES.keys())]
-        if synth_flag:
-            leg_lines.append(Line2D([0], [0], color='grey', lw=2, ls='solid'))
-            leg_lines.append(Line2D([0], [0], color='grey', lw=2, ls=':'))
-            leg_names.append('Historical')
-            leg_names.append('Synthetic')
+        if legend:
+            leg_lines = [Line2D([0], [0], color=CAT_COLORS[i_col], lw=2)
+                         for i_col in range(len(SAFFIR_SIM_CAT))]
+            leg_names = [CAT_NAMES[i_col] for i_col in sorted(CAT_NAMES.keys())]
+            if synth_flag:
+                leg_lines.append(Line2D([0], [0], color='grey', lw=2, ls='solid'))
+                leg_lines.append(Line2D([0], [0], color='grey', lw=2, ls=':'))
+                leg_names.append('Historical')
+                leg_names.append('Synthetic')
+            axis.legend(leg_lines, leg_names, loc=0)
 
-        axis.legend(leg_lines, leg_names, loc=0)
         return axis
 
     def write_netcdf(self, folder_name):
@@ -1214,17 +1240,24 @@ class TCTracks():
             track.attrs['orig_event_flag'] = bool(track.orig_event_flag)
             self.data.append(track)
 
-    def to_geodataframe(self, as_points=False):
+
+    def to_geodataframe(self, as_points=False, split_lines_antimeridian=True):
         """Transform this TCTracks instance into a GeoDataFrame.
 
         Parameters
         ----------
         as_points : bool, optional
-            If False (default), one feature (row) per track with a LineString as geometry (or Point
-            geometry for tracks of length one) and all track attributes (sid, name,
-            orig_event_flag, etc) as dataframe columns. If True, one feature (row) per track time
-            step, with variable values per time step (radius_max_wind, max_sustained_wind, etc) as
-            columns in addition to attributes.
+            If False (default), one feature (row) per track with a LineString or MultiLineString
+            as geometry (or Point geometry for tracks of length one) and all track attributes
+            (sid, name, orig_event_flag, etc) as dataframe columns. If True, one feature (row)
+            per track time step, with variable values per time step (radius_max_wind,
+            max_sustained_wind, etc) as columns in addition to attributes.
+        split_lines_antimeridian : bool, optional
+            If True, tracks that cross the antimeridian are split into multiple Lines as a
+            MultiLineString, with each Line on either side of the meridian. This ensures all Lines
+            are within (-180, +180) degrees longitude. Note that lines might be split at more
+            locations than strictly necessary, due to the underlying splitting algorithm
+            (https://github.com/Toblerity/Shapely/issues/572).
 
         Returns
         -------
@@ -1237,12 +1270,41 @@ class TCTracks():
         if as_points:
             gdf_long = pd.concat([track.to_dataframe().assign(idx=i)
                                   for i, track in enumerate(self.data)])
-            gdf_long['geometry'] = gdf_long.apply(lambda x: Point(x['lon'],x['lat']), axis=1)
+            gdf_long['lon'] = u_coord.lon_normalize(gdf_long['lon'].values.copy())
+            gdf_long['geometry'] = gdf_long.apply(lambda x: Point(x['lon'], x['lat']), axis=1)
             gdf_long = gdf_long.drop(columns=['lon', 'lat'])
             gdf_long = gpd.GeoDataFrame(gdf_long.reset_index().set_index('idx'),
-                                        geometry='geometry')
+                                        geometry='geometry', crs=DEF_CRS)
             gdf = gdf_long.join(gdf)
 
+        elif split_lines_antimeridian:
+            # enforce longitudes to be within [-180, 180] range
+            t_lons = [u_coord.lon_normalize(t.lon.values.copy()) for t in self.data]
+            t_lats = [t.lat.values for t in self.data]
+
+            # LineString only works with more than one lat/lon pair
+            gdf.geometry = gpd.GeoSeries([
+                LineString(np.c_[lons, lats]) if lons.size > 1
+                else Point(lons, lats)
+                for lons, lats in zip(t_lons, t_lats)
+            ])
+            gdf.crs = DEF_CRS
+
+            # for splitting, restrict to tracks that come close to the antimeridian
+            t_split_mask = np.asarray([
+                (lon > 170).any() and (lon < -170).any() and lon.size > 1
+                for lon in t_lons])
+
+            # note that tracks might be splitted at self-intersections as well:
+            # https://github.com/Toblerity/Shapely/issues/572
+            antimeridian = LineString([(180, -90), (180, 90)])
+            gdf.loc[t_split_mask, "geometry"] = gdf.geometry[t_split_mask] \
+                .to_crs({"proj": "longlat", "lon_wrap": 180}) \
+                .apply(lambda line: MultiLineString([
+                    LineString([(x - 360, y) for x, y in segment.coords])
+                    if any(x > 180 for x, y in segment.coords) else segment
+                    for segment in shapely.ops.split(line, antimeridian).geoms
+                ]))
         else:
             # LineString only works with more than one lat/lon pair
             gdf.geometry = gpd.GeoSeries([
@@ -1250,6 +1312,7 @@ class TCTracks():
                 else Point(track.lon.data, track.lat.data)
                 for track in self.data
             ])
+            gdf.crs = DEF_CRS
 
         return gdf
 
@@ -1851,3 +1914,4 @@ def set_category(max_sus_wind, wind_unit='kn', saffir_scale=None):
         return (np.argwhere(max_wind < saffir_scale) - 1)[0][0]
     except IndexError:
         return -1
+

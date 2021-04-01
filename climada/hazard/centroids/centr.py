@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -19,7 +19,6 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define Centroids class.
 """
 
-import ast
 import copy
 import logging
 from pathlib import Path
@@ -29,6 +28,7 @@ import geopandas as gpd
 import h5py
 import numpy as np
 import pandas as pd
+from pyproj.crs import CRS
 import rasterio
 from rasterio.warp import Resampling
 from scipy import sparse
@@ -37,12 +37,13 @@ from shapely.geometry.point import Point
 from climada.util.constants import (DEF_CRS,
                                     ONE_LAT_KM,
                                     NATEARTH_CENTROIDS)
-
 import climada.util.coordinates as u_coord
 import climada.util.hdf5_handler as u_hdf5
 import climada.util.plot as u_plot
 
 __all__ = ['Centroids']
+
+PROJ_CEA = CRS.from_user_input({'proj': 'cea'})
 
 DEF_VAR_MAT = {
     'field_names': ['centroids', 'hazard'],
@@ -621,10 +622,7 @@ class Centroids():
         self.set_geometry_points(scheduler)
         LOGGER.debug('Setting area_pixel %s points.', str(self.lat.size))
         xy_pixels = self.geometry.buffer(res / 2).envelope
-        is_cea = ('units' in self.geometry.crs
-                  and self.geometry.crs['units'] in ['m', 'metre', 'meter']
-                  or u_coord.equal_crs(self.geometry.crs, {'proj': 'cea'}))
-        if is_cea:
+        if PROJ_CEA == self.geometry.crs:
             self.area_pixel = xy_pixels.area.values
         else:
             self.area_pixel = xy_pixels.to_crs(crs={'proj': 'cea'}).area.values
@@ -656,10 +654,7 @@ class Centroids():
                 u_coord.get_resolution(self.lat, self.lon, min_resol=min_resol))
             lat_unique = np.array(np.unique(self.lat))
             lon_unique_len = len(np.unique(self.lon))
-            is_cea = ('units' in self.geometry.crs
-                      and self.geometry.crs['units'] in ['m', 'metre', 'meter']
-                      or u_coord.equal_crs(self.geometry.crs, {'proj': 'cea'}))
-            if is_cea:
+            if PROJ_CEA == self.geometry.crs:
                 self.area_pixel = np.repeat(res_lat * res_lon, lon_unique_len)
                 return
 
@@ -815,13 +810,16 @@ class Centroids():
         self.lat = ygrid.flatten()
         self.geometry = gpd.GeoSeries(crs=self.meta['crs'])
 
-    def plot(self, axis=None, **kwargs):
+    def plot(self, axis=None, figsize=(9, 13), **kwargs):
         """Plot centroids scatter points over earth.
 
         Parameters
         ----------
         axis : matplotlib.axes._subplots.AxesSubplot, optional
             axis to use
+        figsize: (float, float), optional
+            figure size for plt.subplots
+            The default is (9, 13)
         kwargs : optional
             arguments for scatter matplotlib function
 
@@ -844,7 +842,7 @@ class Centroids():
                                       self.lon.max() + pad, self.lat.max() + pad)
 
         if not axis:
-            _, axis = u_plot.make_map(proj=proj_plot)
+            _, axis = u_plot.make_map(proj=proj_plot, figsize=figsize)
 
         axis.set_extent((xmin, xmax, ymin, ymax), crs=proj_data)
         u_plot.add_shapes(axis)
@@ -910,7 +908,7 @@ class Centroids():
                             data=[value.a, value.b, value.c, value.d, value.e, value.f],
                             dtype=float)
         hf_str = data.create_dataset('crs', (1,), dtype=str_dt)
-        hf_str[0] = str(dict(self.crs))
+        hf_str[0] = CRS.from_user_input(self.crs).to_wkt()
 
         if isinstance(file_data, str):
             data.close()
@@ -931,7 +929,7 @@ class Centroids():
         self.clear()
         crs = DEF_CRS
         if data.get('crs'):
-            crs = ast.literal_eval(data.get('crs')[0])
+            crs = u_coord.to_crs_user_input(data.get('crs')[0])
         if data.get('lat') and data.get('lat').size:
             self.set_lat_lon(np.array(data.get('lat')), np.array(data.get('lon')), crs)
         elif data.get('latitude') and data.get('latitude').size:
