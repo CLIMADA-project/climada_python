@@ -29,6 +29,9 @@ def impact_yearset(event_impacts, sampled_years=None, sampling_dict=None, correc
                                  of given sampled_years)
       by sampling events from the existing input event_impacts with a Poisson distribution
       centered around n_events per year (n_events = sum(event_impacts.frequency)).
+      In contrast to the expected annual impact (eai) annual_impacts contains impact values that
+      differ among years (the correction factor can however be used to scale the annual_impacts
+                          to fit the eai of the events_impacts object that is used to generated it)
 
     Parameters:
       event_impacts : impact object
