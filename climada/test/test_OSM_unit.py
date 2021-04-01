@@ -1,31 +1,35 @@
 """
 This file is part of CLIMADA.
 
-Copyright (C) 2019 ETH Zurich, CLIMADA contributors listed in AUTHORS.
+Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
+
+---
 
 Unit Tests on Open Street Map exposures.
 """
 
 import unittest
-from climada.entity.exposures import open_street_map as OSM
-import os
 import random
-import geopandas
-import pandas as pd
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
-# just for now:
+import pandas as pd
+import geopandas
+
+from climada import CONFIG
+from climada.entity.exposures import open_street_map as OSM
+
+DATA_DIR = CONFIG.test_data.dir()
+
 class TestOSMFunctions(unittest.TestCase):
     """Test OSM Class methods"""
 
@@ -90,12 +94,13 @@ class TestOSMFunctions(unittest.TestCase):
             if geom.type == 'LineString':
                 OSM_features_gdf_combined.geometry[i] = geom.buffer(0.000045)
             i += 1
+        # waterway_gdf_all_47_8 is in the global scope as defined in line 76 :|
         self.assertGreater(len(OSM_features_gdf_combined), len(waterway_gdf_all_47_8))
         self.assertNotIn('LineString', OSM_features_gdf_combined.geometry.type)
 
     def test_makeUnion(self):
         """test makeUnion function within get_highValueArea function"""
-        gdf_all = geopandas.read_file(os.path.join(DATA_DIR, 'OSM_features_47_8.shp'))
+        gdf_all = geopandas.read_file(DATA_DIR.joinpath('OSM_features_47_8.shp'))
 
         # Execute function
         Low_Value_Union = OSM._makeUnion(gdf_all)
@@ -107,7 +112,7 @@ class TestOSMFunctions(unittest.TestCase):
 #        """test _get_litpop_bbox within get_osmstencil_litpop function"""
 #        # Define and load parameters
 #        country = 'CHE'
-#        highValueArea = geopandas.read_file(os.path.join(DATA_DIR,'High_Value_Area_47_8.shp'))
+#        highValueArea = geopandas.read_file(DATA_DIR.joinpath('High_Value_Area_47_8.shp'))
 #
 #        # Execute function
 #        exp_sub = OSM._get_litpop_bbox(country, highValueArea)
@@ -119,9 +124,9 @@ class TestOSMFunctions(unittest.TestCase):
 #        """test _split_exposure_highlow within get_osmstencil_litpop function"""
 #        # Define and load parameters:
 #        country = 'CHE' #this takes too long for unit test probably
-#        highValueArea = geopandas.read_file(os.path.join(DATA_DIR,'High_Value_Area_47_8.shp'))
+#        highValueArea = geopandas.read_file(DATA_DIR.joinpath('High_Value_Area_47_8.shp'))
 #        exp_sub = OSM._get_litpop_bbox(country, highValueArea)
-#        High_Value_Area_gdf = geopandas.read_file(os.path.join(DATA_DIR,'High_Value_Area_47_8.shp'))
+#        High_Value_Area_gdf = geopandas.read_file(DATA_DIR.joinpath('High_Value_Area_47_8.shp'))
 #
 #        # execute function
 #        for mode in {'proportional','even'}:
@@ -135,7 +140,7 @@ class TestOSMFunctions(unittest.TestCase):
     def test_get_midpoints(self):
         """test _get_midpoints within make_osmexposure function"""
         # Define and load parameters:
-        building_path = os.path.join(DATA_DIR, 'buildings_47_8.shp')
+        building_path = DATA_DIR.joinpath('buildings_47_8.shp')
 
         building_gdf = OSM._get_midpoints(building_path)
         self.assertEqual(building_gdf.loc[random.randint(0, len(building_gdf))].geometry.type,
@@ -147,7 +152,7 @@ class TestOSMFunctions(unittest.TestCase):
         """test _assign_values_exposure within make_osmexposure function"""
         # Define and load parameters:
         # function tested previously
-        building_gdf = OSM._get_midpoints(os.path.join(DATA_DIR, 'buildings_47_8.shp'))
+        building_gdf = OSM._get_midpoints(DATA_DIR.joinpath('buildings_47_8.shp'))
         # mode LitPop takes too long for unit test, since loads entire CH-litpop exposure!
         # moved to integration test
         mode = 'default'
