@@ -32,14 +32,12 @@ from climada.util.constants import EXP_DEMO_H5
 HAZ_TEST_MAT = CONFIG.hazard.test_data.dir().joinpath('atl_prob_no_name.mat')
 DIR_TEST_DATA = CONFIG.engine.test_data.dir()
 
-test_file = 'WIOTtest_Nov16_ROW.xlsb'
-
 class TestSupplyChain(unittest.TestCase):
     """Testing the SupplyChain class."""
     def test_read_wiot(self):
         """Test reading of wiod table."""
         sup = SupplyChain()
-        sup.read_wiod16(year='test', 
+        sup.read_wiod16(year='test',
                         range_rows=(5,117), 
                         range_cols=(4,116), 
                         col_iso3=2, col_sectors=1)
