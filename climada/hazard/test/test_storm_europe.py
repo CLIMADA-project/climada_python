@@ -28,7 +28,7 @@ import numpy as np
 from scipy import sparse
 
 from climada import CONFIG
-from climada.hazard.storm_europe import StormEurope
+from climada.hazard.storm_europe import StormEurope, generate_WS_forecast_hazard
 from climada.hazard.centroids.centr import DEF_VAR_EXCEL, Centroids
 from climada.util.constants import WS_DEMO_NC
 
@@ -208,7 +208,23 @@ class TestReader(unittest.TestCase):
                                     grib_dir=CONFIG.hazard.test_data.str(),
                                     delete_raw_data=False)
             mock_logger.assert_called_once()
-
+            
+    def test_generate_forecast(self):
+        """ testing generating a forecast """
+        hazard, haz_model, run_datetime, event_date = generate_WS_forecast_hazard(
+            run_datetime=dt.datetime(2018,1,1),
+            event_date=dt.datetime(2018,1,3),
+            haz_model='cosmo2e_file',
+            haz_raw_storage=DATA_DIR.joinpath('storm_europe_cosmoe_forecast' +
+                                              '_vmax_testfile.nc'),
+            save_haz=False,
+            )
+        self.assertEqual(run_datetime.year, 2018)
+        self.assertEqual(run_datetime.month, 1)
+        self.assertEqual(run_datetime.day, 1)
+        self.assertEqual(event_date.day, 3)
+        self.assertEqual(hazard.event_name[-1], '2018-01-03_ens21')
+        self.assertEqual(haz_model, 'C2E')
 
 # Execute Tests
 if __name__ == "__main__":
