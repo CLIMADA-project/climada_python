@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -64,6 +64,20 @@ class TestECMWF(unittest.TestCase):
                          np.datetime64('2020-03-19T12:00:00.000000'))
         self.assertEqual(forecast.data[1].is_ensemble, True)
 
+    def test_equal_timestep(self):
+        """Test equal timestep"""
+        forecast = TCForecast()
+        forecast.fetch_ecmwf(TEST_BUFR_FILES)
+        forecast.equal_timestep(1)
+
+        self.assertEqual(forecast.data[1].time.size, 49)
+        self.assertEqual(forecast.data[1].lat.size, 49)
+        self.assertEqual(forecast.data[1].lon.size, 49)
+        self.assertEqual(forecast.data[1].max_sustained_wind.size, 49)
+        self.assertEqual(forecast.data[1].central_pressure.size, 49)
+        self.assertEqual(forecast.data[1].radius_max_wind.size, 49)
+        self.assertEqual(forecast.data[1].environmental_pressure.size, 49)
+        self.assertEqual(forecast.data[1].time_step[2], 1.)
 
 # Execute Tests
 if __name__ == "__main__":

@@ -4,15 +4,17 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
+
+---
 
 Unit Tests on LitPop exposures.
 """
@@ -22,7 +24,7 @@ from climada.entity.exposures import litpop as lp
 
 def _rnd(number, dec=6):
     return np.around(number, decimals=dec)
-# ---------------------
+
 class TestLitPopClass(unittest.TestCase):
     """Unit tests for the LitPop exposure class"""
     def test_wrong_iso3_fail(self):

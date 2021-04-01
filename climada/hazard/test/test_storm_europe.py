@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -28,7 +28,7 @@ import numpy as np
 from scipy import sparse
 
 from climada import CONFIG
-from climada.hazard.storm_europe import StormEurope
+from climada.hazard.storm_europe import StormEurope, generate_WS_forecast_hazard
 from climada.hazard.centroids.centr import DEF_VAR_EXCEL, Centroids
 from climada.util.constants import WS_DEMO_NC
 
@@ -151,7 +151,7 @@ class TestReader(unittest.TestCase):
         self.assertEqual(storms_prob.centroids.size, 3054)
         self.assertIsInstance(storms_prob.intensity,
                               sparse.csr.csr_matrix)
-        
+
     def test_cosmoe_read(self):
         """test reading from cosmo-e netcdf"""
         haz = StormEurope()
@@ -174,7 +174,7 @@ class TestReader(unittest.TestCase):
         self.assertEqual(haz.intensity.shape, (21, 25))
         self.assertAlmostEqual(haz.intensity.max(), 36.426735,places=3)
         self.assertEqual(haz.fraction.shape, (21, 25))
-    
+
     def test_icon_read(self):
         """test reading from icon grib"""
         haz = StormEurope()
@@ -208,7 +208,23 @@ class TestReader(unittest.TestCase):
                                     grib_dir=CONFIG.hazard.test_data.str(),
                                     delete_raw_data=False)
             mock_logger.assert_called_once()
-
+            
+    def test_generate_forecast(self):
+        """ testing generating a forecast """
+        hazard, haz_model, run_datetime, event_date = generate_WS_forecast_hazard(
+            run_datetime=dt.datetime(2018,1,1),
+            event_date=dt.datetime(2018,1,3),
+            haz_model='cosmo2e_file',
+            haz_raw_storage=DATA_DIR.joinpath('storm_europe_cosmoe_forecast' +
+                                              '_vmax_testfile.nc'),
+            save_haz=False,
+            )
+        self.assertEqual(run_datetime.year, 2018)
+        self.assertEqual(run_datetime.month, 1)
+        self.assertEqual(run_datetime.day, 1)
+        self.assertEqual(event_date.day, 3)
+        self.assertEqual(hazard.event_name[-1], '2018-01-03_ens21')
+        self.assertEqual(haz_model, 'C2E')
 
 # Execute Tests
 if __name__ == "__main__":

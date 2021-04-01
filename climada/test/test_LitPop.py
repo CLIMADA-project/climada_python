@@ -4,15 +4,17 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
+
+---
 
 Tests on LitPop exposures.
 """
@@ -27,7 +29,7 @@ from climada.entity.exposures import gpw_import
 from climada.util.finance import world_bank_wealth_account
 from climada.util.coordinates import equal_crs
 
-# ---------------------
+
 class TestLitPopExposure(unittest.TestCase):
     """Test LitPop exposure data model:"""
 
@@ -135,7 +137,7 @@ class TestFunctionIntegration(unittest.TestCase):
         cut_bbox = lp._get_country_shape(curr_country, 1)[0]
         all_coords = lp._litpop_box2coords(cut_bbox, resolution, 1)
         self.assertEqual(len(all_coords), 25)
-        self.assertTrue(22.08333333333333 in min(all_coords)) 
+        self.assertTrue(22.08333333333333 in min(all_coords))
         self.assertTrue(117.91666666666666 in min(all_coords))
         litpop_data = lp._get_litpop_box(cut_bbox, resolution, 0, 2016, [1, 1])
         self.assertEqual(len(litpop_data), 25)

@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -29,7 +29,9 @@ import xarray as xr
 import pandas as pd
 import matplotlib.pyplot as plt
 from scipy import sparse
+import datetime as dt
 
+from climada.util.config import CONFIG
 from climada.hazard.base import Hazard
 from climada.hazard.centroids.centr import Centroids
 from climada.hazard.tag import Tag as TagHazard
@@ -51,6 +53,8 @@ HAZ_TYPE = 'WS'
 
 N_PROB_EVENTS = 5 * 6
 """Number of events per historic event in probabilistic dataset"""
+
+FORECAST_DIR = CONFIG.hazard.storm_europe.forecast_dir.str()
 
 
 class StormEurope(Hazard):
@@ -371,7 +375,7 @@ class StormEurope(Hazard):
                                  ' or run_datetime.'.format(
                                      event_date.strftime('%Y-%m-%d'),
                                      run_datetime.strftime('%Y-%m-%d %H:%M')))
-            
+
             considered_dates = np.datetime64(event_date)
         else:
             time_covered_step = stacked['valid_time'].diff('valid_time')
@@ -830,3 +834,137 @@ class StormEurope(Hazard):
         ssi = self.calc_ssi(intensity=intensity_out, **ssi_args)
 
         return intensity_out[:, sel_cen], ssi
+
+
+def generate_WS_forecast_hazard(run_datetime = dt.datetime.today().replace(hour=0, 
+                                                                           minute=0, 
+                                                                           second=0, 
+                                                                           microsecond=0),
+                                event_date = (dt.datetime.today().replace(hour=0, 
+                                                                          minute=0, 
+                                                                          second=0,
+                                                                          microsecond=0)
+                                              + dt.timedelta(days=2)),
+                                haz_model = 'icon-eu-eps',
+                                haz_raw_storage = None,
+                                save_haz = True):
+    """ use the initialization time (run_datetime), the date of the event and
+    specify the forecast model (haz_model) to generate a Hazard from forecast
+    data either by download or through reading from existing file.
+    
+    Parameters
+    ----------
+    run_datetime: datetime.datetime, optional
+        The starting timepoint of the forecast run
+        of the icon model, defaults to today 00:00 hours
+    event_date: datetime.datetime, optional
+        one day within the forecast
+        period, only this day (00H-24H) will be included in the hazard,
+        defaults to the day after tomorrow
+    haz_model: str, optional
+        select the name of the model to
+        be used: one of ['icon-eu-eps', 'cosmo1e_file', 'cosmo2e_file'],
+        default is 'icon-eu-eps'.
+    haz_raw_storage: str, optional
+        path to folder, where netcdf files
+        are stored, mendatory when haz_model is 'cosmo1e_file' or
+        'cosmo2e_file'. the string must contain one set of curly brakets,
+        used by the function str.format to include
+        run_datetime.strftime('%y%m%d%H').
+        Default None resolves to "cosmoe_forecast_{}_vmax.nc" in
+        CONFIG.hazard.storm_europe.forecast_dir
+    save_haz: bool, optional
+        flag if resulting hazard should be saved in 
+        CONFIG.hazard.storm_europe.forecast_dir, default is True.
+    Returns
+    -------
+    Hazard
+        hazard
+    str
+        haz_model
+    datetime.datetime
+        run_datetime
+    datetime.datetime
+        event_date
+    """
+    if (haz_model == 'cosmo1e_file'
+        or
+        haz_model == 'cosmo2e_file'):
+        if haz_model == 'cosmo1e_file':
+            haz_model='C1E'
+            full_model_name_temp = 'COSMO-1E'
+        if haz_model == 'cosmo2e_file':
+            haz_model='C2E'
+            full_model_name_temp = 'COSMO-2E'
+        haz_file_name = Path(FORECAST_DIR) / (HAZ_TYPE +
+                                              '_' +
+                                              haz_model +
+                                              '_run' +
+                                              run_datetime.strftime('%Y%m%d%H') +
+                                              '_event' +
+                                              event_date.strftime('%Y%m%d')
+                                              +
+                                              '.hdf5')   
+        if haz_file_name.exists():
+            LOGGER.info('Loading hazard from ' + 
+                        str(haz_file_name) + 
+                        '.')
+            hazard = StormEurope()
+            hazard.read_hdf5(haz_file_name)
+        else:
+            LOGGER.info('Generating ' + 
+                        haz_model + 
+                        ' hazard.')  
+            if not haz_raw_storage:
+                haz_raw_storage = Path(FORECAST_DIR) / "cosmoe_forecast_{}_vmax.nc"
+            fp_file = Path(
+                str(haz_raw_storage).format(
+                    run_datetime.strftime('%y%m%d%H')
+                    )
+                )
+            hazard = StormEurope()
+            hazard.read_cosmoe_file(
+                fp_file, 
+                event_date=event_date,
+                run_datetime=run_datetime,
+                model_name=full_model_name_temp
+                )
+            if save_haz:
+                hazard.write_hdf5(haz_file_name)
+    elif haz_model == 'icon-eu-eps':
+        haz_model='IEE'
+        haz_file_name = Path(FORECAST_DIR) / (HAZ_TYPE +
+                                              '_' +
+                                              haz_model +
+                                              '_run' +
+                                              run_datetime.strftime('%Y%m%d%H') +
+                                              '_event' +
+                                              event_date.strftime('%Y%m%d')
+                                              +
+                                              '.hdf5')   
+        if haz_file_name.exists():
+            LOGGER.info('Loading hazard from ' + 
+                        str(haz_file_name) + 
+                        '.')
+            hazard = StormEurope()
+            hazard.read_hdf5(haz_file_name)
+        else:
+            LOGGER.info('Generating ' + 
+                        haz_model + 
+                        ' hazard.')                    
+            hazard = StormEurope()
+            hazard.read_icon_grib(
+                run_datetime,
+                event_date=event_date,
+                delete_raw_data=False
+                )
+            if save_haz:
+                hazard.write_hdf5(haz_file_name)
+    else:
+        raise NotImplementedError("specific 'WS' hazard not implemented yet. " +
+                                  "Please specify a valid value for haz_model.")
+
+    # check if hazard is successfully generated for Forecast
+    if not isinstance(hazard, Hazard):
+        LOGGER.warning('Hazard generation unsuccessful.')
+    return hazard, haz_model, run_datetime, event_date

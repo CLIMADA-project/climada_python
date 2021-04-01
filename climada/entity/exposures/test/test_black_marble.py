@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -250,8 +250,8 @@ class TestNightLight(unittest.TestCase):
 
         self.assertTrue(np.allclose(lat_ref[on_ref], lat_res))
         self.assertTrue(np.allclose(lon_ref[on_ref], lon_res))
-        self.assertAlmostEqual(nightlight_res[0], 0.1410256410256411)
-        self.assertAlmostEqual(nightlight_res[1], 0.3589743589743589)
+        self.assertAlmostEqual(nightlight_res[0], 0.1683201638775818)
+        self.assertAlmostEqual(nightlight_res[1], 0.33167983612241814)
 
 class TestEconIndices(unittest.TestCase):
     """Test functions to get economic indices."""

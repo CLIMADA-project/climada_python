@@ -6,7 +6,7 @@
 
 CLIMADA stands for **CLIM**ate **ADA**ptation and is a probabilistic natural catastrophe impact model, that also calculates averted damage (benefit) thanks to adaptation measures of any kind (from grey to green infrastructure, behavioural, etc.).
 
-This is the Python (3.6+) version of CLIMADA - please see https://github.com/davidnbresch/climada for backward compatibility (MATLAB).
+This is the Python (3.8+) version of CLIMADA - please see https://github.com/davidnbresch/climada for backward compatibility (MATLAB).
 
 ## Getting started
 
@@ -53,8 +53,6 @@ We use [SemVer](http://semver.org/) for versioning. For the versions available, 
 
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
-CLIMADA is free software: you can redistribute it and/or modify it under the terms of the GNU GENERAL PUBLIC LICENSE Version 3, 29 June 2007 as published by the Free Software Foundation, https://github.com/CLIMADA-project/climada_python/blob/main/LICENSE
+CLIMADA is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License Version 3, 29 June 2007 as published by the Free Software Foundation, https://www.gnu.org/licenses/gpl-3.0.html
 
-CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details:
-
-<https://www.gnu.org/licenses/lgpl.html>
+CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details: https://www.gnu.org/licenses/gpl-3.0.html
