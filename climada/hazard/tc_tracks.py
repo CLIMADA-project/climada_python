@@ -42,7 +42,8 @@ from numba import jit
 import numpy as np
 import pandas as pd
 import scipy.io.matlab as matlab
-from shapely.geometry import Point, LineString
+from shapely.geometry import Point, LineString, MultiLineString
+import shapely.ops
 from sklearn.neighbors import DistanceMetric
 import statsmodels.api as sm
 import xarray as xr
@@ -50,7 +51,7 @@ import xarray as xr
 # climada dependencies
 from climada.util import ureg
 import climada.util.coordinates as u_coord
-from climada.util.constants import EARTH_RADIUS_KM, SYSTEM_DIR
+from climada.util.constants import EARTH_RADIUS_KM, SYSTEM_DIR, DEF_CRS
 from climada.util.files_handler import get_file_names, download_ftp
 import climada.util.plot as u_plot
 import climada.hazard.tc_tracks_synth
@@ -1253,17 +1254,24 @@ class TCTracks():
             track.attrs['orig_event_flag'] = bool(track.orig_event_flag)
             self.data.append(track)
 
-    def to_geodataframe(self, as_points=False):
+
+    def to_geodataframe(self, as_points=False, split_lines_antimeridian=True):
         """Transform this TCTracks instance into a GeoDataFrame.
 
         Parameters
         ----------
         as_points : bool, optional
-            If False (default), one feature (row) per track with a LineString as geometry (or Point
-            geometry for tracks of length one) and all track attributes (sid, name,
-            orig_event_flag, etc) as dataframe columns. If True, one feature (row) per track time
-            step, with variable values per time step (radius_max_wind, max_sustained_wind, etc) as
-            columns in addition to attributes.
+            If False (default), one feature (row) per track with a LineString or MultiLineString
+            as geometry (or Point geometry for tracks of length one) and all track attributes
+            (sid, name, orig_event_flag, etc) as dataframe columns. If True, one feature (row)
+            per track time step, with variable values per time step (radius_max_wind,
+            max_sustained_wind, etc) as columns in addition to attributes.
+        split_lines_antimeridian : bool, optional
+            If True, tracks that cross the antimeridian are split into multiple Lines as a
+            MultiLineString, with each Line on either side of the meridian. This ensures all Lines
+            are within (-180, +180) degrees longitude. Note that lines might be split at more
+            locations than strictly necessary, due to the underlying splitting algorithm
+            (https://github.com/Toblerity/Shapely/issues/572).
 
         Returns
         -------
@@ -1276,12 +1284,41 @@ class TCTracks():
         if as_points:
             gdf_long = pd.concat([track.to_dataframe().assign(idx=i)
                                   for i, track in enumerate(self.data)])
-            gdf_long['geometry'] = gdf_long.apply(lambda x: Point(x['lon'],x['lat']), axis=1)
+            gdf_long['lon'] = u_coord.lon_normalize(gdf_long['lon'].values.copy())
+            gdf_long['geometry'] = gdf_long.apply(lambda x: Point(x['lon'], x['lat']), axis=1)
             gdf_long = gdf_long.drop(columns=['lon', 'lat'])
             gdf_long = gpd.GeoDataFrame(gdf_long.reset_index().set_index('idx'),
-                                        geometry='geometry')
+                                        geometry='geometry', crs=DEF_CRS)
             gdf = gdf_long.join(gdf)
 
+        elif split_lines_antimeridian:
+            # enforce longitudes to be within [-180, 180] range
+            t_lons = [u_coord.lon_normalize(t.lon.values.copy()) for t in self.data]
+            t_lats = [t.lat.values for t in self.data]
+
+            # LineString only works with more than one lat/lon pair
+            gdf.geometry = gpd.GeoSeries([
+                LineString(np.c_[lons, lats]) if lons.size > 1
+                else Point(lons, lats)
+                for lons, lats in zip(t_lons, t_lats)
+            ])
+            gdf.crs = DEF_CRS
+
+            # for splitting, restrict to tracks that come close to the antimeridian
+            t_split_mask = np.asarray([
+                (lon > 170).any() and (lon < -170).any() and lon.size > 1
+                for lon in t_lons])
+
+            # note that tracks might be splitted at self-intersections as well:
+            # https://github.com/Toblerity/Shapely/issues/572
+            antimeridian = LineString([(180, -90), (180, 90)])
+            gdf.loc[t_split_mask, "geometry"] = gdf.geometry[t_split_mask] \
+                .to_crs({"proj": "longlat", "lon_wrap": 180}) \
+                .apply(lambda line: MultiLineString([
+                    LineString([(x - 360, y) for x, y in segment.coords])
+                    if any(x > 180 for x, y in segment.coords) else segment
+                    for segment in shapely.ops.split(line, antimeridian).geoms
+                ]))
         else:
             # LineString only works with more than one lat/lon pair
             gdf.geometry = gpd.GeoSeries([
@@ -1289,6 +1326,7 @@ class TCTracks():
                 else Point(track.lon.data, track.lat.data)
                 for track in self.data
             ])
+            gdf.crs = DEF_CRS
 
         return gdf
 
@@ -1931,3 +1969,4 @@ def set_category(max_sus_wind, wind_unit='kn', saffir_scale=None):
         return (np.argwhere(max_wind < saffir_scale) - 1)[0][0]
     except IndexError:
         return -1
+
