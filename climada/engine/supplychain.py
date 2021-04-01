@@ -134,10 +134,8 @@ class SupplyChain():
             LOGGER.info('Downloading WIOD table for year %s', year)
         mriot = pd.read_excel(file_loc, engine='pyxlsb')
 
-        col_iso3 = table_info_pos['col_iso3']
-        col_sectors = table_info_pos['col_sectors']
-        start_row, end_row = table_info_pos['range_rows']
-        start_col, end_col = table_info_pos['range_cols']
+        start_row, end_row = range_rows
+        start_col, end_col = range_cols
 
         self.sectors = mriot.iloc[start_row:end_row, col_sectors].unique()
         self.mriot_reg_names = mriot.iloc[start_row:end_row, col_iso3].unique()
