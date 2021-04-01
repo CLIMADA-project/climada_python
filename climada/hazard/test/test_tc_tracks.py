@@ -25,6 +25,7 @@ import numpy as np
 import netCDF4 as nc
 import pandas as pd
 import geopandas as gpd
+from shapely.geometry import Point, LineString, MultiLineString
 
 import climada.hazard.tc_tracks as tc
 from climada import CONFIG
@@ -42,6 +43,7 @@ TEST_TRACK_EMANUEL = DATA_DIR.joinpath('emanuel_test_tracks.mat')
 TEST_TRACK_EMANUEL_CORR = DATA_DIR.joinpath('temp_mpircp85cal_full.mat')
 TEST_TRACK_CHAZ = DATA_DIR.joinpath('chaz_test_tracks.nc')
 TEST_TRACK_STORM = DATA_DIR.joinpath('storm_test_tracks.txt')
+TEST_TRACKS_ANTIMERIDIAN = DATA_DIR.joinpath('tracks-antimeridian')
 
 
 class TestIbtracs(unittest.TestCase):
@@ -408,8 +410,7 @@ class TestIO(unittest.TestCase):
         self.assertEqual(len(tc_track.data), 0)
 
     def test_to_geodataframe_points(self):
-        """Conversion of TCTracks to GeoDataFrame using Points.
-        """
+        """Conversion of TCTracks to GeoDataFrame using Points."""
         tc_track = tc.TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK)
 
@@ -421,8 +422,7 @@ class TestIO(unittest.TestCase):
         self.assertIsInstance(gdf_points.iloc[0].time, pd._libs.tslibs.timestamps.Timestamp)
 
     def test_to_geodataframe_line(self):
-        """Conversion of TCTracks to GeoDataFrame using LineStrings.
-        """
+        """Conversion of TCTracks to GeoDataFrame using LineStrings."""
         tc_track = tc.TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK)
 
@@ -431,6 +431,34 @@ class TestIO(unittest.TestCase):
         self.assertEqual(gdf_line.size, 10)
         self.assertAlmostEqual(gdf_line.geometry[0].length, 54.0634224372971)
         self.assertIsInstance(gdf_line.bounds.minx, pd.core.series.Series)
+
+        anti_track = tc.TCTracks()
+        # test data set with two tracks:
+        # * 1980052S16155: crosses the antimeridian
+        # * 2018079S09162: close, but doesn't cross antimeridian; has self-intersections
+        anti_track.read_netcdf(TEST_TRACKS_ANTIMERIDIAN)
+
+        split = anti_track.to_geodataframe(split_lines_antimeridian=True)
+        split.set_index('sid', inplace=True)
+        self.assertIsInstance(split.loc['1980052S16155'].geometry, MultiLineString)
+        self.assertIsInstance(split.loc['2018079S09162'].geometry, LineString)
+        self.assertEqual(len(split.loc['1980052S16155'].geometry), 8)
+        self.assertFalse(split.loc['2018079S09162'].geometry.is_simple)
+
+        nosplit = anti_track.to_geodataframe(split_lines_antimeridian=False)
+        nosplit.set_index('sid', inplace=True)
+        self.assertIsInstance(nosplit.loc['1980052S16155'].geometry, LineString)
+        self.assertIsInstance(nosplit.loc['2018079S09162'].geometry, LineString)
+        self.assertFalse(nosplit.loc['2018079S09162'].geometry.is_simple)
+
+        np.testing.assert_array_almost_equal(
+            split.loc['1980052S16155'].geometry.bounds, (-180, -38.583244, 180, -17))
+        np.testing.assert_array_almost_equal(
+            nosplit.loc['1980052S16155'].geometry.bounds, (150.800003, -38.583244, 185, -17))
+        np.testing.assert_array_almost_equal(
+            split.loc['2018079S09162'].geometry.bounds, (148.600006, -22.41, 162.399994, -13.4))
+        np.testing.assert_array_almost_equal(
+            nosplit.loc['2018079S09162'].geometry.bounds, (148.600006, -22.41, 162.399994, -13.4))
 
 class TestFuncs(unittest.TestCase):
     """Test functions over TC tracks"""
