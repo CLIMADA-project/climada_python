@@ -82,7 +82,7 @@ def impact_yearset(event_impacts, sampled_years=None, sampling_dict=None, correc
         sampled_years = list(range(1, len(sampling_dict['selected_events'])+1))
 
     if sampling_dict and (
-            sum(sampling_dict['events_per_year']) != len(sampling_dict['selected_events'])):
+            np.sum(sampling_dict['events_per_year']) != len(sampling_dict['selected_events'])):
         raise ValueError("The sampling dictionary is faulty: the sum of selected events "
                          "does not correspond to the number of selected events.")
 
@@ -119,7 +119,7 @@ def impact_yearset(event_impacts, sampled_years=None, sampling_dict=None, correc
     annual_impacts.event_id = np.arange(1, n_sampled_years+1)
     annual_impacts.tag['annual_impacts object'] = True
     annual_impacts.date = u_dt.str_to_date([str(date) + '-01-01' for date in sampled_years])
-    annual_impacts.frequency = np.ones(n_sampled_years)*sum(sampling_dict['events_per_year']
+    annual_impacts.frequency = np.ones(n_sampled_years)*np.sum(sampling_dict['events_per_year']
                                                             )/n_sampled_years
 
 
@@ -153,7 +153,7 @@ def create_sampling_dict(n_sampled_years, n_annual_events, n_input_events):
     else:
         events_per_year = np.ones(len(n_sampled_years))
 
-    tot_n_events = sum(events_per_year)
+    tot_n_events = np.sum(events_per_year)
 
     selected_events = sample_events(tot_n_events, n_input_events)
 
