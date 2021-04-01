@@ -95,14 +95,6 @@ def impact_yearset(event_impacts, sampled_years=None, sampling_dict=None, correc
                        "and different frequencies are (not yet) taken into account.")
 
 
-    # INITIALISATION
-    # artificially generate a generic  annual impact set (by sampling the event impact set)
-    annual_impacts = copy.deepcopy(event_impacts)
-    annual_impacts.event_id = [] # to indicate not by event any more
-    annual_impacts.event_id = np.arange(1, n_sampled_years+1)
-    annual_impacts.frequency = [] # init, see below
-    annual_impacts.at_event = np.zeros([1, n_sampled_years+1])
-    annual_impacts.tag['annual_impacts object'] = True
 
     #create sampling dictionary if not given as input
     if not sampling_dict:
@@ -114,13 +106,18 @@ def impact_yearset(event_impacts, sampled_years=None, sampling_dict=None, correc
     #compute annual_impacts
     impact_per_year = compute_annual_impacts(event_impacts, sampling_dict)
 
+    #copy event_impacts object as basis for the annual_impacts object
+    annual_impacts = copy.deepcopy(event_impacts)
 
+    #save impact_per_year in annual_impacts
     if correction_fac: #adjust for sampling error
         correction_factor = calculate_correction_fac(impact_per_year, event_impacts)
         annual_impacts.at_event = impact_per_year / correction_factor
     else:
         annual_impacts.at_event = impact_per_year
 
+    annual_impacts.event_id = np.arange(1, n_sampled_years+1)
+    annual_impacts.tag['annual_impacts object'] = True
     annual_impacts.date = u_dt.str_to_date([str(date) + '-01-01' for date in sampled_years])
     annual_impacts.frequency = np.ones(n_sampled_years)*sum(sampling_dict['events_per_year']
                                                             )/n_sampled_years
