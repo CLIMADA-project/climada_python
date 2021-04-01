@@ -4,29 +4,28 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
 Test ImpactFuncSet class.
 """
-import os
 import unittest
 import numpy as np
 
+from climada import CONFIG
 from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet, ImpactFunc
 from climada.util.constants import ENT_TEMPLATE_XLS, ENT_DEMO_TODAY
 
-CURR_DIR = os.path.dirname(__file__)
-ENT_TEST_MAT = os.path.join(CURR_DIR, '../../exposures/test/data/demo_today.mat')
+ENT_TEST_MAT = CONFIG.exposures.test_data.dir().joinpath('demo_today.mat')
 
 class TestConstructor(unittest.TestCase):
     """Test impact function attributes."""
@@ -502,7 +501,7 @@ class TestReaderMat(unittest.TestCase):
         self.assertEqual(imp_funcs._data[hazard][second_id].paa[8], 1)
 
         # general information
-        self.assertEqual(imp_funcs.tag.file_name, ENT_TEST_MAT)
+        self.assertEqual(imp_funcs.tag.file_name, str(ENT_TEST_MAT))
         self.assertEqual(imp_funcs.tag.description, description)
 
 class TestReaderExcel(unittest.TestCase):
@@ -579,7 +578,7 @@ class TestReaderExcel(unittest.TestCase):
         self.assertEqual(imp_funcs._data[hazard][second_id].paa[8], 1)
 
         # general information
-        self.assertEqual(imp_funcs.tag.file_name, ENT_DEMO_TODAY)
+        self.assertEqual(imp_funcs.tag.file_name, str(ENT_DEMO_TODAY))
         self.assertEqual(imp_funcs.tag.description, description)
 
     def test_template_file_pass(self):
@@ -642,13 +641,13 @@ class TestWriter(unittest.TestCase):
         imp4.paa = np.ones(5)
         imp_funcs.append(imp4)
 
-        file_name = os.path.join(CURR_DIR, 'test_write.xlsx')
+        file_name = CONFIG.impact_funcs.test_data.dir().joinpath('test_write.xlsx')
         imp_funcs.write_excel(file_name)
 
         imp_res = ImpactFuncSet()
         imp_res.read_excel(file_name)
 
-        self.assertEqual(imp_res.tag.file_name, file_name)
+        self.assertEqual(imp_res.tag.file_name, str(file_name))
         self.assertEqual(imp_res.tag.description, '')
 
         # first function

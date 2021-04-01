@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -57,7 +57,7 @@ class HazardEmulator():
             will be smaller than 1 because the event set should be a good representation of TC
             distribution, but this is not necessary.
         pool : EventPool object, optional
-            If omitted, draws are made from the events that are used to calibrate the emulator.
+            If omitted, draws are made from `haz_events`.
         """
         self.pool = EventPool(haz_events) if pool is None else pool
         self.region = region
@@ -139,7 +139,7 @@ class HazardEmulator():
             LOGGER.info("Predicting statistics without climate index predictor...")
             self.stats_pred = self.stats[['year', 'intensity_mean', 'eventcount']]
             self.stats_pred["intensity_mean_residuals"] = self.stats["intensity_std"]
-            self.stats_pred["events_rediduals"] = 0
+            self.stats_pred["eventcount_residuals"] = 0
         elif reuse_indices:
             LOGGER.info("Predicting statistics with climate indices from calibration...")
             self.stats_pred = self.stats[['year'] + self.ci_cols]

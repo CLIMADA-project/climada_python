@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -102,7 +102,6 @@ def get_str_from_ref(file_name, var):
     obj = file[var]
     return get_string(obj)
 
-
 def get_list_str_from_ref(file_name, var):
     """Form list of strings from a reference HDF5 variable of the given file.
 
@@ -136,3 +135,19 @@ def get_sparse_csr_mat(mat_dict, shape):
 
     return sparse.csc_matrix((mat_dict['data'], mat_dict['ir'],
                               mat_dict['jc']), shape).tocsr()
+
+def to_string(str_or_bytes):
+    """converts a bytes object into a string if necessary
+
+    Parameters
+    ----------
+    str_or_bytes : str or bytes
+
+    Returns
+    -------
+    str
+        the original string if executed with a str object otherwise decoded bytes
+    """
+    # TODO: remove this method from the module and replace its use with the asstr() method
+    # of hdf5 datasets, as soon as the h5py version is high enough for that.
+    return str_or_bytes.decode() if isinstance(str_or_bytes, bytes) else str_or_bytes

@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -198,7 +198,7 @@ def normalize_seasonal_statistics(haz_stats, haz_stats_obs, freq_norm):
         idx = haz_stats.index[(haz_stats['year'] >= norm_period[0]) \
                             & (haz_stats['year'] <= norm_period[1])]
         col_data = haz_stats.loc[idx, col]
-        col_data_obs = haz_stats.loc[idx, f"{col}_obs"].fillna(0)
+        col_data_obs = haz_stats.loc[idx, f"{col}_obs"].dropna()
         if col == 'eventcount':
             fact = col_data_obs.sum() / col_data.sum()
         else:

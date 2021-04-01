@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -26,8 +26,8 @@ import datetime as dt
 import fnmatch
 import ftplib
 import logging
-import os
 import tempfile
+from pathlib import Path
 
 # additional libraries
 import numpy as np
@@ -56,10 +56,13 @@ BASINS = {
     'A': 'A - Arabian Sea (North Indian Ocean)',
     'B': 'B - Bay of Bengal (North Indian Ocean)',
     'U': 'U - Australia',
-    'S': 'S - South-West Indian Ocean'
+    'S': 'S - South-West Indian Ocean',
+    'X': 'X - Undefined Basin'
 }
 """Gleaned from the ECMWF wiki at
 https://confluence.ecmwf.int/display/FCST/Tropical+Cyclone+tracks+in+BUFR+-+including+genesis
+with added basin 'X' to deal with it appearing in operational forecasts
+(see e.g. years 2020 and 2021 in the sidebar at https://www.ecmwf.int/en/forecasts/charts/tcyclone/)
 and Wikipedia at https://en.wikipedia.org/wiki/Invest_(meteorology)
 """
 
@@ -156,7 +159,7 @@ class TCForecast(TCTracks):
             LOGGER.info('Fetching BUFR tracks:')
             for rfile in tqdm.tqdm(remotefiles, desc='Download', unit=' files'):
                 if target_dir:
-                    lfile = open(os.path.join(target_dir, rfile), 'w+b')
+                    lfile = Path(target_dir, rfile).open('w+b')
                 else:
                     lfile = tempfile.TemporaryFile(mode='w+b')
 
@@ -193,8 +196,8 @@ class TCForecast(TCTracks):
             bufr = decoder.process(file.read())
         elif hasattr(file, 'read_bytes'):
             bufr = decoder.process(file.read_bytes())
-        elif os.path.isfile(file):
-            with open(file, 'rb') as i:
+        elif Path(file).is_file():
+            with Path(file).open('rb') as i:
                 bufr = decoder.process(i.read())
         else:
             raise FileNotFoundError('Check file argument')
@@ -314,14 +317,20 @@ class TCForecast(TCTracks):
         # TODO use drop_vars after upgrading xarray
         track = track.drop('ts_int')
 
-        track['radius_max_wind'] = np.full_like(track.time, np.nan,
-                                                dtype=float)
-        track['environmental_pressure'] = np.full_like(
-            track.time, DEF_ENV_PRESSURE, dtype=float
+        track['radius_max_wind'] = (('time'), np.full_like(
+            track.time, np.nan, dtype=float)
+        )
+        track['environmental_pressure'] = (('time'), np.full_like(
+            track.time, DEF_ENV_PRESSURE, dtype=float)
         )
 
         # according to specs always num-num-letter
         track.attrs['basin'] = BASINS[sid[2]]
+
+        if sid[2] == 'X':
+            LOGGER.info(
+                'Undefined basin %s for track name %s ensemble no. %d',
+                sid[2], track.attrs['name'], track.attrs['ensemble_number'])
 
         cat_name = CAT_NAMES[set_category(
             max_sus_wind=track.max_sustained_wind.values,
