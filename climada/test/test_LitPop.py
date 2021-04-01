@@ -45,7 +45,7 @@ class TestLitPopExposure(unittest.TestCase):
         self.assertIn('Generating LitPop data at a resolution of 300 arcsec', cm.output[0])
         self.assertEqual(ent.gdf.region_id.min(), 756)
         self.assertEqual(ent.gdf.region_id.max(), 756)
-        self.assertEqual(np.int(ent.gdf.value.sum().round()), 3356545986884)
+        self.assertAlmostEqual(ent.gdf.value.sum()/3356545986884, 1.0)
         self.assertIn('LitPop for Switzerland at 300 as, year=2016', ent.tag.description)
         self.assertIn('financial mode=income_group', ent.tag.description)
         self.assertIn('GPW-year=2015', ent.tag.description)
@@ -108,7 +108,7 @@ class TestLitPopExposure(unittest.TestCase):
         # print(cm)
         self.assertIn('Generating LitPop data at a resolution of 300 arcsec', cm.output[0])
         self.assertEqual(np.around(ent.gdf.value.sum(), 0), np.around(comparison_total_val, 0))
-        self.assertEqual(np.int(ent.gdf.value.sum().round()), 2225854927260)
+        self.assertAlmostEqual(ent.gdf.value.sum()/2225854927260, 1.0)
 
     def test_switzerland300_pc2013_pass(self):
         """Create LitPop entity for Switzerland 2013 for produced capital:"""
@@ -169,7 +169,7 @@ class TestFunctionIntegration(unittest.TestCase):
                                       list(zip(lon, lat)), resolution, 0, conserve_cntrytotal=0,
                                       check_plot=0, masks_adm1=[], return_data=1)
         self.assertEqual(len(litpop_curr), 699)
-        self.assertAlmostEqual(max(litpop_curr), 80313679854.39496, places=2)
+        self.assertAlmostEqual(max(litpop_curr)/80313679854.39496, 1.0)
 
     def test_gpw_import(self):
         """test import of population data (Gridded Population of the World GWP)
