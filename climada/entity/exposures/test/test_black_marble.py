@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -250,8 +250,8 @@ class TestNightLight(unittest.TestCase):
 
         self.assertTrue(np.allclose(lat_ref[on_ref], lat_res))
         self.assertTrue(np.allclose(lon_ref[on_ref], lon_res))
-        self.assertAlmostEqual(nightlight_res[0], 0.1410256410256411)
-        self.assertAlmostEqual(nightlight_res[1], 0.3589743589743589)
+        self.assertAlmostEqual(nightlight_res[0], 0.1683201638775818)
+        self.assertAlmostEqual(nightlight_res[1], 0.33167983612241814)
 
 class TestEconIndices(unittest.TestCase):
     """Test functions to get economic indices."""
@@ -300,14 +300,17 @@ class TestEconIndices(unittest.TestCase):
         inc_grp = {'CHE': '', 'ZMB': 4}
         kwargs = {'gdp': gdp, 'inc_grp': inc_grp}
         fill_econ_indicators(ref_year, country_isos, SHP_FILE, **kwargs)
+        # GDP might change if worldbank input data changes,
+        # check magnitude and adjust value in country_isos_ref if test fails
         country_isos_ref = {'CHE': [1, 'Switzerland', 'che_geom', 2019, gdp['CHE'], 4],
-                            'ZMB': [2, 'Zambia', 'zmb_geom', 2019, 23064722446, inc_grp['ZMB']]
+                            'ZMB': [2, 'Zambia', 'zmb_geom', 2019, 23309773922, inc_grp['ZMB']]
                            }
         self.assertEqual(country_isos.keys(), country_isos_ref.keys())
         for country in country_isos_ref.keys():
             for i in [0, 1, 2, 3, 5]:  # test elements one by one:
                 self.assertEqual(country_isos[country][i],
                                  country_isos_ref[country][i])
+
             self.assertAlmostEqual(country_isos[country][4] * 1e-6,
                                    country_isos_ref[country][4] * 1e-6, places=0)
 

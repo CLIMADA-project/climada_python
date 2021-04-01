@@ -4,15 +4,17 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
+
+---
 
 Tests on LitPop exposures.
 """
@@ -27,7 +29,7 @@ from climada.entity.exposures import gpw_import
 from climada.util.finance import world_bank_wealth_account
 from climada.util.coordinates import equal_crs
 
-# ---------------------
+
 class TestLitPopExposure(unittest.TestCase):
     """Test LitPop exposure data model:"""
 
@@ -41,15 +43,15 @@ class TestLitPopExposure(unittest.TestCase):
             ent.set_country(country_name, res_arcsec=resolution, fin_mode=fin_mode)
         # print(cm)
         self.assertIn('Generating LitPop data at a resolution of 300 arcsec', cm.output[0])
-        self.assertEqual(ent.region_id.min(), 756)
-        self.assertEqual(ent.region_id.max(), 756)
-        self.assertEqual(np.int(ent.value.sum().round()), 3356545986884)
+        self.assertEqual(ent.gdf.region_id.min(), 756)
+        self.assertEqual(ent.gdf.region_id.max(), 756)
+        self.assertEqual(np.int(ent.gdf.value.sum().round()), 3356545986884)
         self.assertIn('LitPop for Switzerland at 300 as, year=2016', ent.tag.description)
         self.assertIn('financial mode=income_group', ent.tag.description)
         self.assertIn('GPW-year=2015', ent.tag.description)
         self.assertIn('BM-year=2016', ent.tag.description)
         self.assertIn('exp=[1, 1]', ent.tag.description)
-        self.assertTrue(equal_crs(ent.crs['init'], {'init': 'epsg:4326'}))
+        self.assertTrue(equal_crs(ent.crs, {'init': 'epsg:4326'}))
         self.assertEqual(ent.meta['width'], 54)
         self.assertEqual(ent.meta['height'], 23)
         self.assertTrue(equal_crs(ent.meta['crs'], {'init': 'epsg:4326'}))
@@ -72,9 +74,9 @@ class TestLitPopExposure(unittest.TestCase):
                             fin_mode=fin_mode, reference_year=2015)
         # print(cm)
         self.assertIn('Generating LitPop data at a resolution of 30 arcsec', cm.output[0])
-        self.assertEqual(ent.region_id.min(), 756)
-        self.assertEqual(ent.region_id.max(), 756)
-        self.assertEqual(np.int((1000 * ent.value.sum()).round()), 1000)
+        self.assertEqual(ent.gdf.region_id.min(), 756)
+        self.assertEqual(ent.gdf.region_id.max(), 756)
+        self.assertEqual(np.int((1000 * ent.gdf.value.sum()).round()), 1000)
 
     def test_suriname30_nfw_pass(self):
         """Create LitPop entity for Suriname for non-finanical wealth:"""
@@ -85,9 +87,9 @@ class TestLitPopExposure(unittest.TestCase):
             ent.set_country(country_name, reference_year=2016, fin_mode=fin_mode)
         # print(cm)
         self.assertIn('Generating LitPop data at a resolution of 30.0 arcsec', cm.output[0])
-        self.assertEqual(ent.region_id.min(), 740)
-        self.assertEqual(ent.region_id.max(), 740)
-        self.assertEqual(np.int(ent.value.sum().round()), 2304662017)
+        self.assertEqual(ent.gdf.region_id.min(), 740)
+        self.assertEqual(ent.gdf.region_id.max(), 740)
+        self.assertEqual(np.int(ent.gdf.value.sum().round()), 2304662017)
 
     def test_switzerland300_pc2016_pass(self):
         """Create LitPop entity for Switzerland 2016 with admin1 and produced capital:"""
@@ -105,8 +107,8 @@ class TestLitPopExposure(unittest.TestCase):
                             conserve_cntrytotal=cons, calc_admin1=adm1)
         # print(cm)
         self.assertIn('Generating LitPop data at a resolution of 300 arcsec', cm.output[0])
-        self.assertEqual(np.around(ent.value.sum(), 0), np.around(comparison_total_val, 0))
-        self.assertEqual(np.int(ent.value.sum().round()), 2225854927260)
+        self.assertEqual(np.around(ent.gdf.value.sum(), 0), np.around(comparison_total_val, 0))
+        self.assertEqual(np.int(ent.gdf.value.sum().round()), 2225854927260)
 
     def test_switzerland300_pc2013_pass(self):
         """Create LitPop entity for Switzerland 2013 for produced capital:"""
@@ -122,8 +124,8 @@ class TestLitPopExposure(unittest.TestCase):
                             reference_year=ref_year, fin_mode=fin_mode)
         # print(cm)
         self.assertIn('Generating LitPop data at a resolution of 300 arcsec', cm.output[0])
-        self.assertEqual(ent.value.sum(), comparison_total_val)
-        self.assertEqual(np.int(ent.value.sum().round()), 2296358085749)
+        self.assertEqual(ent.gdf.value.sum(), comparison_total_val)
+        self.assertEqual(np.int(ent.gdf.value.sum().round()), 2296358085749)
 
 class TestFunctionIntegration(unittest.TestCase):
     """Test the integration of major functions within the LitPop module"""
@@ -135,7 +137,7 @@ class TestFunctionIntegration(unittest.TestCase):
         cut_bbox = lp._get_country_shape(curr_country, 1)[0]
         all_coords = lp._litpop_box2coords(cut_bbox, resolution, 1)
         self.assertEqual(len(all_coords), 25)
-        self.assertTrue(22.08333333333333 in min(all_coords)) 
+        self.assertTrue(22.08333333333333 in min(all_coords))
         self.assertTrue(117.91666666666666 in min(all_coords))
         litpop_data = lp._get_litpop_box(cut_bbox, resolution, 0, 2016, [1, 1])
         self.assertEqual(len(litpop_data), 25)
@@ -205,10 +207,10 @@ class TestSetAdmin1(unittest.TestCase):
         ent = LitPop()
         ent.set_country(country_name, res_arcsec=resolution)
         ent = lp.exposure_set_admin1(ent, 600)
-        self.assertIn(5492, ent.admin1_ID.values)
-        self.assertIn('Chittagong', ent.admin1.values)
-        self.assertEqual(len(np.unique(ent.admin1_ID)), 7)
-        self.assertEqual(np.min(np.unique(ent.admin1_ID)), 1806.0)
+        self.assertIn(5492, ent.gdf.admin1_ID.values)
+        self.assertIn('Chittagong', ent.gdf.admin1.values)
+        self.assertEqual(len(np.unique(ent.gdf.admin1_ID)), 7)
+        self.assertEqual(np.min(np.unique(ent.gdf.admin1_ID)), 1806.0)
 
 # Execute Tests
 if __name__ == "__main__":

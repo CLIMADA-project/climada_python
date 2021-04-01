@@ -4,31 +4,32 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
 Test Impact class.
 """
-import os
 import unittest
 import numpy as np
-from climada.util.constants import DATA_DIR
+
+from climada import CONFIG
+from climada.util.constants import DEMO_DIR
 
 import climada.engine.impact_data as im_d
 
-DATA_FOLDER = os.path.join(os.path.dirname(__file__), 'data')
-EMDAT_TEST_CSV = os.path.join(DATA_FOLDER, 'emdat_testdata_BGD_USA_1970-2017.csv')
-EMDAT_TEST_CSV_FAKE = os.path.join(DATA_FOLDER, 'emdat_testdata_fake_2007-2011.csv')
-EMDAT_2020_CSV_DEMO = os.path.join(DATA_DIR, 'demo', 'demo_emdat_impact_data_2020.csv')
+DATA_DIR = CONFIG.engine.test_data.dir()
+EMDAT_TEST_CSV = DATA_DIR.joinpath('emdat_testdata_BGD_USA_1970-2017.csv')
+EMDAT_TEST_CSV_FAKE = DATA_DIR.joinpath('emdat_testdata_fake_2007-2011.csv')
+EMDAT_2020_CSV_DEMO = DEMO_DIR.joinpath('demo_emdat_impact_data_2020.csv')
 
 class TestEmdatImport(unittest.TestCase):
     """Test import of EM-DAT data (as CSV) for impact data analysis"""
@@ -104,7 +105,9 @@ class TestGDPScaling(unittest.TestCase):
                                                   [1999, 2005, 2015, 2000, 2000],
                                                   ['CZE', 'CZE', 'MEX', 'MEX', 'CZE'],
                                                   reference_year=2015)
-        self.assertListEqual(impact_scaled, [28, 137, 1000, 165, 303])
+        # scaled impact value might change if worldbank input data changes,
+        # check magnitude and adjust if test fails in the following line:
+        self.assertListEqual(impact_scaled, [28, 137, 1000, 165, 304])
 
 class TestEmdatProcessing(unittest.TestCase):
     def test_emdat_impact_event_2018(self):
@@ -121,8 +124,10 @@ class TestEmdatProcessing(unittest.TestCase):
                          df["impact"][1])
         self.assertEqual(df["Total damage ('000 US$)"][1], 2500000)
         self.assertEqual(df["Total damage ('000 US$)"][0], 1800000)
-        self.assertAlmostEqual(df["impact_scaled"][0] * 1e-5,
-                               1925085000. * 1e-5, places=0)
+        # scaled impact value might change if worldbank input data changes,
+        # check magnitude and adjust if test failes in the following 1 lines:
+        self.assertAlmostEqual(df["impact_scaled"][0] * 1e-7,
+                               192.7868, places=0)
         self.assertIn('USA', list(df['ISO']))
         self.assertIn('Drought', list(df['Disaster type']))
         self.assertEqual(2017, df['reference_year'].min())
@@ -141,8 +146,10 @@ class TestEmdatProcessing(unittest.TestCase):
                             df["impact"][1])
         self.assertEqual(df["Total Damages ('000 US$)"][1], 2500000)
         self.assertEqual(df["Total Damages ('000 US$)"][0], 1800000)
-        self.assertAlmostEqual(df["impact_scaled"][0] * 1e-5,
-                               1012894000. * 1e-5, places=0)
+        # scaled impact value might change if worldbank input data changes,
+        # check magnitude and adjust if test failes in the following line:
+        self.assertAlmostEqual(df["impact_scaled"][0] * 1e-6,
+                               1012.593, places=0)
         self.assertIn('USA', list(df['ISO']))
         self.assertIn('Drought', list(df['Disaster Type']))
         self.assertEqual(2000, df['reference_year'].min())
@@ -196,9 +203,9 @@ class TestEmdatToImpact(unittest.TestCase):
         #                 year_range=None, countries=None, hazard_type_emdat=None, \
         #                 reference_year=None, imp_str="Total Damages ('000 US$)")
         # =====================================================================
-        
+
         # file 1: version 2020
-        impact_emdat2020, countries2020 = im_d.emdat_to_impact(EMDAT_2020_CSV_DEMO, 'TC')
+        _impact_emdat2020, countries2020 = im_d.emdat_to_impact(EMDAT_2020_CSV_DEMO, 'TC')
         # file 2: version 2018
         impact_emdat, countries = im_d.emdat_to_impact(EMDAT_TEST_CSV, 'TC')
 
@@ -232,8 +239,10 @@ class TestEmdatToImpact(unittest.TestCase):
         self.assertEqual(1, len(impact_emdat.eai_exp))
         self.assertAlmostEqual(impact_emdat.aai_agg, impact_emdat.eai_exp[0])
         self.assertAlmostEqual(0.14285714, np.unique(impact_emdat.frequency)[0], places=3)
-        self.assertAlmostEqual(36925473, np.sum(impact_emdat.at_event * 1e-3), places=0)
-        self.assertAlmostEqual(5275067.57, impact_emdat.aai_agg * 1e-3, places=0)
+        # scaled impact value might change if worldbank input data changes,
+        # check magnitude and adjust if test failes in the following 2 lines:
+        self.assertAlmostEqual(369.25473, np.sum(impact_emdat.at_event * 1e-8), places=0)
+        self.assertAlmostEqual(527.7077, impact_emdat.aai_agg * 1e-7, places=0)
 
     def test_emdat_to_impact_fakedata(self):
         """test import TC EM-DAT to Impact() for all countries in CSV"""
@@ -260,7 +269,7 @@ class TestEmdatToImpact(unittest.TestCase):
         df2 = im_d.emdat_impact_event(EMDAT_2020_CSV_DEMO, countries='PHL', hazard='TC',
                                       year_range=(2013, 2013), reference_year=None,
                                       imp_str='Total Affected')
-        impact_emdat, countries = im_d.emdat_to_impact(EMDAT_2020_CSV_DEMO, 'TC',
+        impact_emdat, _countries = im_d.emdat_to_impact(EMDAT_2020_CSV_DEMO, 'TC',
                                                        countries='PHL',
                                                        year_range=(2013, 2013),
                                                        imp_str="Total Affected")

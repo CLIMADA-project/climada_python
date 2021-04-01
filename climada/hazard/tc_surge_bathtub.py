@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -29,7 +29,7 @@ import rasterio.warp
 import scipy.sparse as sp
 
 from climada.hazard.base import Hazard
-import climada.util.coordinates as coord_util
+import climada.util.coordinates as u_coord
 
 LOGGER = logging.getLogger(__name__)
 
@@ -85,7 +85,7 @@ class TCSurgeBathtub(Hazard):
         coastal_msk &= (np.abs(centroids.lat) <= MAX_LATITUDE)
 
         # Load elevation at coastal centroids
-        coastal_centroids_h = coord_util.read_raster_sample(
+        coastal_centroids_h = u_coord.read_raster_sample(
             topo_path, centroids.lat[coastal_msk], centroids.lon[coastal_msk])
 
         # Update selected coastal centroids to exclude high-lying locations
@@ -170,12 +170,12 @@ def _fraction_on_land(centroids, topo_path):
         shape = centroids.shape
         cen_trans = centroids.meta['transform']
     else:
-        shape[0], shape[1], cen_trans = coord_util.pts_to_raster_meta(
-            bounds, min(coord_util.get_resolution(centroids.lat, centroids.lon)))
+        shape[0], shape[1], cen_trans = u_coord.pts_to_raster_meta(
+            bounds, min(u_coord.get_resolution(centroids.lat, centroids.lon)))
 
     read_raster_buffer = 0.5 * max(np.abs(cen_trans[0]), np.abs(cen_trans[4]))
     bounds += read_raster_buffer * np.array([-1., -1., 1., 1.])
-    on_land, dem_trans = coord_util.read_raster_bounds(topo_path, bounds)
+    on_land, dem_trans = u_coord.read_raster_bounds(topo_path, bounds)
     on_land = (on_land > 0).astype(np.float64)
 
     with rasterio.open(topo_path, 'r') as src:

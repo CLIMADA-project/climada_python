@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -19,20 +19,16 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Test TropCyclone class with multiprocess
 """
 
-import os
 import unittest
-# from pathos.pools import ProcessPool as Pool
-# from scipy import sparse
 
-# from climada.hazard.tc_tracks import TCTracks
-# from climada.hazard.trop_cyclone import TropCyclone
+from climada import CONFIG
 from climada.hazard.centroids.centr import Centroids
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), os.pardir, 'hazard/test/data')
-TEST_TRACK = os.path.join(DATA_DIR, "trac_brb_test.csv")
+DATA_DIR = CONFIG.hazard.test_data.dir()
+TEST_TRACK = DATA_DIR.joinpath("trac_brb_test.csv")
 
 CENTR_TEST_BRB = Centroids()
-CENTR_TEST_BRB.read_mat(os.path.join(DATA_DIR, 'centr_brb_test.mat'))
+CENTR_TEST_BRB.read_mat(DATA_DIR.joinpath('centr_brb_test.mat'))
 
 class TestTCParallel(unittest.TestCase):
     """Test reading and model of TC from IBTrACS files"""

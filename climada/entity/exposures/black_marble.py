@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -25,8 +25,6 @@ import logging
 import math
 import numpy as np
 from numpy.polynomial.polynomial import polyval
-import pandas as pd
-import geopandas as gpd
 from scipy import ndimage
 import shapely.vectorized
 from cartopy.io import shapereader
@@ -34,8 +32,8 @@ from iso3166 import countries as iso_cntry
 
 from climada.entity.tag import Tag
 from climada.entity.exposures.base import Exposures, INDICATOR_IF
-from climada.util.constants import SYSTEM_DIR, DEF_CRS
 from climada.entity.exposures import nightlight as nl_utils
+from climada.util.constants import SYSTEM_DIR, DEF_CRS
 from climada.util.finance import gdp, income_group
 from climada.util.coordinates import pts_to_raster_meta
 
@@ -61,10 +59,6 @@ class BlackMarble(Exposures):
     - -1 for water
     """
 
-    @property
-    def _constructor(self):
-        return BlackMarble
-
     def set_countries(self, countries, ref_year=2016, res_km=None, from_hr=None,
                       admin_file='admin_0_countries', **kwargs):
         """ Model countries using values at reference year. If GDP or income
@@ -81,7 +75,7 @@ class BlackMarble(Exposures):
                 independently of its year of acquisition.
             admin_file (str): file name, admin_0_countries or admin_0_map_subunits
             kwargs (optional): 'gdp' and 'inc_grp' dictionaries with keys the
-                country ISO_alpha3 code. 'poly_val' polynomial transformation
+                country ISO_alpha3 code. 'poly_val' list of polynomial coefficients
                 [1,x,x^2,...] to apply to nightlight (DEF_POLY_VAL used if not
                 provided). If provided, these are used.
         """
@@ -100,29 +94,31 @@ class BlackMarble(Exposures):
         nightlight, coord_nl, fn_nl, res_fact, res_km = get_nightlight(
             ref_year, cntry_info, res_km, from_hr)
 
-        tag = Tag()
+        tag = Tag(file_name=fn_nl)
         bkmrbl_list = []
 
         for cntry_iso, cntry_val in cntry_info.items():
 
             bkmrbl_list.append(
                 self._set_one_country(cntry_val, nightlight, coord_nl, res_fact, res_km,
-                                      cntry_admin1[cntry_iso], **kwargs))
+                                      cntry_admin1[cntry_iso], **kwargs).gdf)
             tag.description += ("{} {:d} GDP: {:.3e} income group: {:d} \n").\
                 format(cntry_val[1], cntry_val[3], cntry_val[4], cntry_val[5])
 
-        Exposures.__init__(self, gpd.GeoDataFrame(
-            pd.concat(bkmrbl_list, ignore_index=True)), crs=DEF_CRS)
+        Exposures.__init__(
+            self,
+            data=Exposures.concat(bkmrbl_list).gdf,
+            crs=DEF_CRS,
+            ref_year=ref_year,
+            tag=tag,
+            value_unit='USD'
+        )
 
-        # set metadata
-        self.ref_year = ref_year
-        self.tag = tag
-        self.tag.file_name = fn_nl
-        self.value_unit = 'USD'
         rows, cols, ras_trans = pts_to_raster_meta(
-            (self.longitude.min(), self.latitude.min(),
-             self.longitude.max(), self.latitude.max()),
-            (coord_nl[0, 1], -coord_nl[0, 1]))
+            (self.gdf.longitude.min(), self.gdf.latitude.min(),
+             self.gdf.longitude.max(), self.gdf.latitude.max()),
+            (coord_nl[0, 1], -coord_nl[0, 1])
+        )
         self.meta = {'width': cols, 'height': rows, 'crs': self.crs, 'transform': ras_trans}
 
     @staticmethod
@@ -162,12 +158,13 @@ class BlackMarble(Exposures):
         nightlight_reg, lat_reg, lon_reg = _resample_land(geom, nightlight_reg,
                                                           lat_reg, lon_reg, res_fact, on_land)
 
-        exp_bkmrb = BlackMarble()
-        exp_bkmrb['value'] = np.asarray(nightlight_reg).reshape(-1,)
-        exp_bkmrb['latitude'] = lat_reg
-        exp_bkmrb['longitude'] = lon_reg
-        exp_bkmrb['region_id'] = np.ones(exp_bkmrb.value.size, int) * cntry_info[0]
-        exp_bkmrb[INDICATOR_IF] = np.ones(exp_bkmrb.value.size, int)
+        exp_bkmrb = BlackMarble(data={
+            'value': np.asarray(nightlight_reg).reshape(-1,),
+            'latitude': lat_reg,
+            'longitude': lon_reg,
+        })
+        exp_bkmrb.gdf['region_id'] = cntry_info[0]
+        exp_bkmrb.gdf[INDICATOR_IF] = 1
 
         return exp_bkmrb
 

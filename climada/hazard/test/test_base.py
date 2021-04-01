@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -19,21 +19,21 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Test Hazard base class.
 """
 
-import os
 import unittest
 import datetime as dt
 import numpy as np
 from scipy import sparse
+from pathos.pools import ProcessPool as Pool
 
+from climada import CONFIG
 from climada.hazard.base import Hazard
 from climada.hazard.centroids.centr import Centroids
 import climada.util.dates_times as u_dt
 from climada.util.constants import HAZ_TEMPLATE_XLS, HAZ_DEMO_FL
 from climada.util.coordinates import equal_crs
-from pathos.pools import ProcessPool as Pool
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
-HAZ_TEST_MAT = os.path.join(DATA_DIR, 'atl_prob_no_name.mat')
+DATA_DIR = CONFIG.hazard.test_data.dir()
+HAZ_TEST_MAT = DATA_DIR.joinpath('atl_prob_no_name.mat')
 
 def dummy_hazard():
     hazard = Hazard('TC')
@@ -954,7 +954,7 @@ class TestReaderMat(unittest.TestCase):
         self.assertFalse(hazard.orig[4818])
 
         # tag hazard
-        self.assertEqual(hazard.tag.file_name, HAZ_TEST_MAT)
+        self.assertEqual(hazard.tag.file_name, str(HAZ_TEST_MAT))
         self.assertEqual(hazard.tag.description,
                          ' TC hazard event set, generated 14-Nov-2017 10:09:05')
         self.assertEqual(hazard.tag.haz_type, 'TC')
@@ -964,7 +964,7 @@ class TestHDF5(unittest.TestCase):
 
     def test_write_read_pass(self):
         """Read a hazard mat file correctly."""
-        file_name = os.path.join(DATA_DIR, 'test_haz.h5')
+        file_name = str(DATA_DIR.joinpath('test_haz.h5'))
 
         # Read demo excel file
         hazard = Hazard('TC')
@@ -979,7 +979,7 @@ class TestHDF5(unittest.TestCase):
             haz_read = Hazard('TC')
             haz_read.read_hdf5(file_name)
 
-            self.assertEqual(hazard.tag.file_name, haz_read.tag.file_name)
+            self.assertEqual(str(hazard.tag.file_name), haz_read.tag.file_name)
             self.assertIsInstance(haz_read.tag.file_name, str)
             self.assertEqual(hazard.tag.haz_type, haz_read.tag.haz_type)
             self.assertIsInstance(haz_read.tag.haz_type, str)

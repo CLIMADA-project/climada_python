@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -21,7 +21,6 @@ Define impact functions for tropical cyclnes .
 
 __all__ = ['IFTropCyclone']
 
-import os
 import logging
 import numpy as np
 import pandas as pd
@@ -126,7 +125,7 @@ class IFSTropCyclone(ImpactFuncSet):
             df_calib_results = input_file_path
         else:
             df_calib_results = pd.read_csv(
-                os.path.join(SYSTEM_DIR,
+                SYSTEM_DIR.joinpath(
                              'tc_if_cal_v%02.0f_%s.csv' % (version, calibration_approach)),
                 encoding="ISO-8859-1", header=0)
 

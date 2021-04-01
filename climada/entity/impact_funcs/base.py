@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -25,7 +25,7 @@ import logging
 import numpy as np
 import matplotlib.pyplot as plt
 
-import climada.util.checker as check
+import climada.util.checker as u_check
 
 LOGGER = logging.getLogger(__name__)
 
@@ -104,8 +104,8 @@ class ImpactFunc():
             ValueError
         """
         num_exp = len(self.intensity)
-        check.size(num_exp, self.mdd, 'ImpactFunc.mdd')
-        check.size(num_exp, self.paa, 'ImpactFunc.paa')
+        u_check.size(num_exp, self.mdd, 'ImpactFunc.mdd')
+        u_check.size(num_exp, self.paa, 'ImpactFunc.paa')
 
         if num_exp == 0:
             LOGGER.warning("%s impact function with name '%s' (id=%s) has empty"
