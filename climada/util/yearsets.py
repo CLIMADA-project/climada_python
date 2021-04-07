@@ -205,8 +205,7 @@ def compute_annual_impacts(event_impacts, sampling_dict):
     impact_per_year = np.zeros(len(sampling_dict['events_per_year']))
 
     for idx_event, event in enumerate(sampling_dict['selected_events']):
-        impact_per_event[idx_event] = event_impacts.at_event[sampling_dict[
-            'selected_events'][event]]
+        impact_per_event[idx_event] = event_impacts.at_event[event]
 
     idx = 0
     for year in range(len(sampling_dict['events_per_year'])):
