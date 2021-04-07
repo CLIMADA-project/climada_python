@@ -75,7 +75,7 @@ def impact_yearset(event_impacts, sampled_years=None, sampling_dict=None, correc
         sampled_years = list(range(1, sampled_years+1))
     elif not sampled_years:
         sampled_years = list(range(1, len(sampling_dict['selected_events'])+1))
-    elif len(sampled_years) != len(sampling_dict['events_per_year']):
+    elif sampling_dict and (len(sampled_years) != len(sampling_dict['events_per_year'])):
         LOGGER.info("The number of sampled_years and the length of the list of events_per_year "
                     "in the sampling_dict differ. The number of years contained in the "
                     "sampling_dict are used as number of sampled_years.")
