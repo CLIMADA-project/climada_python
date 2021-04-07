@@ -34,7 +34,7 @@ def impact_yearset(event_impacts, sampled_years=None, sampling_dict=None, correc
                           to fit the eai of the events_impacts object that is used to generated it)
 
     Parameters:
-      event_impacts : impact object
+      event_impacts : climada.engine.Impact()
           impact object containing impacts per event
     Optional parameters:
         sampled_years : int or list
@@ -59,7 +59,7 @@ def impact_yearset(event_impacts, sampled_years=None, sampling_dict=None, correc
             equals the eai of the events_impacts
 
     Returns:
-      annual_impacts : impact object
+      annual_impacts : climada.engine.Impact()
           annual impacts for all sampled_years
       sampling_dict : dict
           the sampling dictionary containing two arrays:
@@ -129,7 +129,7 @@ def create_sampling_dict(n_sampled_years, event_impacts):
     Parameters:
         n_sampled_years : int
             The target number of years the impact yearset shall contain.
-        event_impacts : impact object
+        event_impacts : climada.engine.Impact()
             impact object containing impacts per event
 
     Returns:
@@ -189,7 +189,7 @@ def compute_annual_impacts(event_impacts, sampling_dict):
     """Sample annual impacts from the given event_impacts according to the sampling dictionary
 
     Parameters:
-        event_impacts : impact object
+        event_impacts : climada.engine.Impact()
             impact object containing impacts per event
         sampling_dict : dict
             The sampling dictionary containing two arrays:
@@ -224,7 +224,7 @@ def calculate_correction_fac(impact_per_year, event_impacts):
     Parameters:
         impact_per_year : array
             sampled annual_impacts
-        event_impacts : impact object
+        event_impacts : climada.engine.Impact()
             impact object containing impacts per event
 
     Returns:
