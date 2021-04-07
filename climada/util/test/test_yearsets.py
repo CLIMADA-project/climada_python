@@ -63,8 +63,9 @@ class TestYearSets(unittest.TestCase):
         """Test the sampling of 10 events out of a pool of 20 events."""
         tot_n_events = 10
         n_input_events = 20
-
-        selected_events = yearsets.sample_events(tot_n_events, n_input_events)
+        frequencies = np.array(np.ones(20)*0.2)
+        
+        selected_events = yearsets.sample_events(tot_n_events, n_input_events, frequencies)
 
         self.assertEqual(len(selected_events), tot_n_events)
         self.assertEqual(len(np.unique(selected_events)), tot_n_events)
@@ -76,7 +77,7 @@ class TestYearSets(unittest.TestCase):
         tot_n_events = 20
         n_input_events = 10
 
-        selected_events = yearsets.sample_events(tot_n_events, n_input_events)
+        selected_events = yearsets.sample_events(tot_n_events, n_input_events, EVENT_IMPACTS.frequency)
 
         self.assertEqual(len(selected_events), tot_n_events)
         self.assertEqual(len(np.unique(selected_events)), n_input_events)
@@ -85,9 +86,8 @@ class TestYearSets(unittest.TestCase):
     def test_sampling_dict(self):
         """Test generating a sampling dictionary with a mean of 2 events per year."""
         n_sampled_years = 100000
-        n_annual_events = 2
-        n_input_events = 10
-        sampling_dict = yearsets.create_sampling_dict(n_sampled_years, n_annual_events, n_input_events)
+        
+        sampling_dict = yearsets.create_sampling_dict(n_sampled_years, EVENT_IMPACTS)
         self.assertAlmostEqual(np.round(np.mean(sampling_dict['events_per_year'])), 2)
         self.assertTrue(len(np.unique(list(collections.Counter(sampling_dict['selected_events']).values()))), 2)
 

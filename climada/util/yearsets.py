@@ -98,10 +98,7 @@ def impact_yearset(event_impacts, sampled_years=None, sampling_dict=None, correc
 
     #create sampling dictionary if not given as input
     if not sampling_dict:
-        n_annual_events = np.sum(event_impacts.frequency)
-        n_input_events = len(event_impacts.event_id)
-        sampling_dict = create_sampling_dict(n_sampled_years, n_annual_events,
-                                             n_input_events)
+        sampling_dict = create_sampling_dict(n_sampled_years, event_impacts)
 
     #compute annual_impacts
     impact_per_year = compute_annual_impacts(event_impacts, sampling_dict)
@@ -125,27 +122,24 @@ def impact_yearset(event_impacts, sampled_years=None, sampling_dict=None, correc
 
     return annual_impacts, sampling_dict
 
-def create_sampling_dict(n_sampled_years, n_annual_events, n_input_events):
+def create_sampling_dict(n_sampled_years, event_impacts):
     """Create a sampling dictionary consisting of the amount of events per sample year and the
     index of the sampled events
 
     Parameters:
         n_sampled_years : int
             The target number of years the impact yearset shall contain.
-        n_annual_events : int
-            Number of events per year in given event_impacts object
-        n_input_events : int
-            Number of events contained in given event_impacts object
+        event_impacts : impact object
+            impact object containing impacts per event
 
     Returns:
         sampling_dict : dict
             The sampling dictionary containing two arrays:
                 selected_events (array): sampled events (len: total amount of sampled events)
                 events_per_year (array): events per sampled year
-        n_events_per_year : array
-            Number of events per sampled year
     """
-
+    n_annual_events = np.sum(event_impacts.frequency)
+    n_input_events = len(event_impacts.frequency)
     #sample number of events per year
     if n_annual_events != 1:
         events_per_year = np.round(np.random.poisson(lam=n_annual_events,
@@ -155,14 +149,14 @@ def create_sampling_dict(n_sampled_years, n_annual_events, n_input_events):
 
     tot_n_events = np.sum(events_per_year)
 
-    selected_events = sample_events(tot_n_events, n_input_events)
+    selected_events = sample_events(tot_n_events, n_input_events, event_impacts.frequency)
 
     sampling_dict = dict()
     sampling_dict = {'selected_events': selected_events, 'events_per_year': events_per_year}
 
     return sampling_dict
 
-def sample_events(tot_n_events, n_input_events):
+def sample_events(tot_n_events, n_input_events, freqs):
     """Sample events (length = tot_n_events) uniformely from an array (n_input_events)
     without replacement (if tot_n_events > n_input_events the input events are repeated
                          (tot_n_events/n_input_events) times).
@@ -171,7 +165,9 @@ def sample_events(tot_n_events, n_input_events):
         tot_n_events : int
             Number of events to be sampled
         n_input_events : int
-         Number of events contained in given event_impacts object
+            Number of events contained in given event_impacts object
+        freqs : array
+            Frequency of each event (length: n_input_events)
 
     Returns:
         selected_events : array
@@ -180,10 +176,11 @@ def sample_events(tot_n_events, n_input_events):
 
     repetitions = np.ceil(tot_n_events/n_input_events).astype('int')
     indices = np.tile(np.arange(n_input_events), repetitions)
+    probab_dis = np.tile(freqs, repetitions)/np.sum(np.tile(freqs, repetitions))
 
     rng = default_rng()
-    selected_events = rng.choice(indices, size=tot_n_events,
-                                 replace=False).astype('int')
+    selected_events = rng.choice(indices, size=tot_n_events, replace=False,
+                                 p=probab_dis).astype('int')
 
 
     return selected_events
