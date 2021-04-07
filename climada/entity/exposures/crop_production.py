@@ -29,12 +29,14 @@ import xarray as xr
 import pandas as pd
 import h5py
 from matplotlib import pyplot as plt
-from iso3166 import countries as iso_cntry
 
 from climada.entity.exposures.base import Exposures
 from climada.entity.tag import Tag
 import climada.util.coordinates as u_coord
-from climada.util.coordinates import pts_to_raster_meta, get_resolution, get_gridcellarea
+from climada.util.coordinates import (pts_to_raster_meta,
+                                      get_resolution,
+                                      get_gridcellarea,
+                                      country_to_iso)
 from climada import CONFIG
 
 
@@ -541,7 +543,7 @@ class CropProduction(Exposures):
         iso3alpha = list()
         for reg_id in self.gdf.region_id:
             try:
-                iso3alpha.append(iso_cntry.get(reg_id).alpha3)
+                iso3alpha.append(country_to_iso(reg_id, "alpha3"))
             except KeyError:
                 if reg_id in (0, -99):
                     iso3alpha.append('No country')

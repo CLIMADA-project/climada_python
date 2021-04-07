@@ -36,13 +36,13 @@ import pyproj
 import shapely
 from cartopy.io import shapereader
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from iso3166 import countries as iso_cntry
 
 from climada.engine import Impact
 import climada.util.plot as u_plot
 from climada.util.config import CONFIG
 from climada.util.files_handler import to_list
 from climada.util.coordinates import coord_on_land as u_coord_on_land
+from climada.util.coordinates import country_to_iso
 from climada.util.value_representation import \
     value_to_monetary_unit as u_value_to_monetary_unit
 
@@ -171,7 +171,7 @@ class Forecast():
         self.exposure = exposure
         if exposure_name is None:
             try:
-                self.exposure_name = iso_cntry.get(exposure.gdf.region_id.unique()[0]).name
+                self.exposure_name = country_to_iso(exposure.gdf.region_id.unique()[0], "name")
             except (KeyError, AttributeError):
                 self.exposure_name = 'custom'
         else:

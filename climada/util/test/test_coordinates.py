@@ -39,7 +39,9 @@ import climada.util.coordinates as u_coord
 from climada.util.coordinates import (convert_wgs_to_utm,
                                       coord_on_land,
                                       country_iso_alpha2numeric,
-                                      country_iso_numeric2alpha,
+                                      country_iso2natid,
+                                      country_natid2iso,
+                                      country_to_iso,
                                       dist_approx,
                                       dist_to_coast,
                                       dist_to_coast_nasa,
@@ -324,6 +326,39 @@ class TestFunc(unittest.TestCase):
                     coords, coords_to_assign, threshold=thresh)
                 np.testing.assert_array_equal(assigned_idx, result)
 
+    def test_country_to_iso(self):
+        name_list = [
+            '', 'United States', 'Argentina', 'Japan', 'Australia', 'Norway', 'Madagascar']
+        al2_list = ['', 'US', 'AR', 'JP', 'AU', 'NO', 'MG']
+        al3_list = ['', 'USA', 'ARG', 'JPN', 'AUS', 'NOR', 'MDG']
+        num_list = [0, 840, 32, 392, 36, 578, 450]
+        natid_list = [0, 217, 9, 104, 13, 154, 128]
+
+        # examples from docstring:
+        self.assertEqual(country_to_iso(840), "USA")
+        self.assertEqual(country_to_iso("United States", representation="alpha2"), "US")
+        self.assertEqual(country_to_iso(["United States of America", "SU"], "numeric"), [840, 810])
+        self.assertEqual(country_to_iso(["XK", "Dhekelia"], "numeric"), [983, 907])
+
+        # test cases:
+        iso_lists = [name_list, al2_list, al3_list, num_list]
+        for l1 in iso_lists:
+            for l2, representation in zip(iso_lists, ["name", "alpha2", "alpha3", "numeric"]):
+                self.assertEqual(country_to_iso(l1, representation), l2)
+
+        # deprecated API `country_iso_alpha2numeric`
+        self.assertEqual(country_iso_alpha2numeric(al3_list[-2]), num_list[-2])
+        self.assertEqual(country_iso_alpha2numeric(al3_list), num_list)
+
+        # conversion to/from ISIMIP natid
+        self.assertEqual(country_iso2natid(al3_list[2]), natid_list[2])
+        self.assertEqual(country_iso2natid(al3_list), natid_list)
+        self.assertEqual(country_natid2iso(natid_list, "numeric"), num_list)
+        self.assertEqual(country_natid2iso(natid_list, "alpha2"), al2_list)
+        self.assertEqual(country_natid2iso(natid_list, "alpha3"), al3_list)
+        self.assertEqual(country_natid2iso(natid_list), al3_list)
+        self.assertEqual(country_natid2iso(natid_list[1]), al3_list[1])
+
 class TestGetGeodata(unittest.TestCase):
     def test_nat_earth_resolution_pass(self):
         """Correct resolution."""
@@ -459,6 +494,7 @@ class TestGetGeodata(unittest.TestCase):
         iso_countries = ['NLD', 'VNM']
         res = get_country_geometries(iso_countries, resolution=110)
         self.assertIsInstance(res, gpd.geodataframe.GeoDataFrame)
+        self.assertEqual(res.shape[0], 2)
 
     def test_get_country_geometries_country_norway_pass(self):
         """test correct numeric ISO3 for country Norway"""
