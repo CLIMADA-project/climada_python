@@ -944,6 +944,35 @@ def country_iso_alpha2numeric(isos):
         nums.append(num)
     return nums[0] if return_int else nums
 
+def country_iso_numeric2alpha(isos_numeric):
+    """Convert ISO 3166-1 numeric-3codes to alpha-3
+    
+    Parameters
+    ----------
+    isos_numeric : int or list of int
+        ISO numeric-3 codes of countries (or single code).
+        
+    Returns
+    -------
+    isos : str or list of str
+        Will only return a list if the input is a list.
+    """
+    return_str = isinstance(isos_numeric, int)
+    isos_numeric = [isos_numeric] if return_str else isos_numeric
+    old_iso = {
+        0: '',  # Ocean or fill_value
+        530: "ANT", # Netherlands Antilles: split up since 2010
+        891: "SCG", # Serbia and Montenegro: split up since 2006
+    }
+    isos = []
+    for iso_numeric in isos_numeric:
+        if iso_numeric in old_iso:
+            iso = old_iso[iso_numeric]
+        else:
+            iso = iso_cntry.get(iso_numeric).alpha3
+        isos.append(iso)
+    return isos[0] if return_str else isos
+
 def country_natid2iso(natids):
     """Convert internal NatIDs to ISO 3166-1 alpha-3 codes
 
