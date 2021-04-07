@@ -22,7 +22,7 @@ import climada.util.dates_times as u_dt
 
 LOGGER = logging.getLogger(__name__)
 
-def impact_yearset(event_impacts, sampled_years=None, sampling_dict=None, correction_fac=True):
+def impact_yearset(event_impacts, sampled_years=None, sampling_vect=None, correction_fac=True):
 
     """Create an annual_impacts object containing a probabilistic impact for each year
       in the sampled_years list (or for a list of sampled_years generated with the length
@@ -42,15 +42,12 @@ def impact_yearset(event_impacts, sampled_years=None, sampling_dict=None, correc
             be sampled (labelled [0001,...,sampled_years]) or a list
             of years that shall be covered by the resulting annual_impacts.
             The default is a 1000 year-long list starting in the year 0001.
-        sampling_dict : dict
-            The sampling dictionary specifying how to sample the annual_impacts
-            It consists of two arrays:
-                selected_events: array
-                    indices of sampled events in event_impacts.at_event()
-                events_per_year: array
-                    number of events per sampled year
-            The sampling_dict needs to be obtained in a first call,
-            i.e. [annual_impacts, sampling_dict] = climada_yearsets.impact_yearset(...)
+        sampling_vect : array
+            The sampling vector specifies how to sample the annual_impacts, it consists of one
+            sub-array per sampled_year, which contains the event_ids of the events used to
+            calculate the annual impacts.
+            It needs to be obtained in a first call,
+            i.e. [annual_impacts, sampling_vect] = climada_yearsets.impact_yearset(...)
             and can then be provided in subsequent calls(s) to obtain the exact same sampling
             (also for a different event_impacts object)
         correction_fac : boolean
@@ -60,48 +57,38 @@ def impact_yearset(event_impacts, sampled_years=None, sampling_dict=None, correc
 
     Returns:
       annual_impacts : climada.engine.Impact()
-          annual impacts for all sampled_years
-      sampling_dict : dict
-          the sampling dictionary containing two arrays:
-              selected_events (array) : sampled events (len: total amount of sampled events)
-              events_per_year (array) : events per sampled year
-          Can be used to re-create the exact same annual_impacts yearset
+             annual impacts for all sampled_years
+        sampling_vect : array
+            The sampling vector specifies how to sample the annual_impacts, it consists of one
+            sub-array per sampled_year, which contains the event_ids of the events used to
+            calculate the annual impacts.
+            Can be used to re-create the exact same annual_impacts yearset
       """
 
-
-    if not sampled_years and not sampling_dict:
+    if not sampled_years and not sampling_vect:
         sampled_years = list(range(1, 1001))
     elif isinstance(sampled_years, int):
         sampled_years = list(range(1, sampled_years+1))
     elif not sampled_years:
-        sampled_years = list(range(1, len(sampling_dict['selected_events'])+1))
-    elif sampling_dict and (len(sampled_years) != len(sampling_dict['events_per_year'])):
+        sampled_years = list(range(1, len(sampling_vect)+1))
+    elif sampling_vect and (len(sampled_years) != len(sampling_vect)):
         LOGGER.info("The number of sampled_years and the length of the list of events_per_year "
-                    "in the sampling_dict differ. The number of years contained in the "
-                    "sampling_dict are used as number of sampled_years.")
-        sampled_years = list(range(1, len(sampling_dict['selected_events'])+1))
-
-    if sampling_dict and (
-            np.sum(sampling_dict['events_per_year']) != len(sampling_dict['selected_events'])):
-        raise ValueError("The sampling dictionary is faulty: the sum of selected events "
-                         "does not correspond to the number of selected events.")
+                    "in the sampling_vect differ. The number of years contained in the "
+                    "sampling_vect are used as number of sampled_years.")
+        sampled_years = list(range(1, len(sampling_vect)+1))
 
     n_sampled_years = len(sampled_years)
 
-    if len(np.unique(event_impacts.frequency)) > 1:
-        LOGGER.warning("The frequencies of the single events in the given event_impacts "
-                       "differ among each other. Please beware that this will influence "
-                       "the resulting annual_impacts as the events are sampled uniformaly "
-                       "and different frequencies are (not yet) taken into account.")
-
-
 
     #create sampling dictionary if not given as input
-    if not sampling_dict:
-        sampling_dict = create_sampling_dict(n_sampled_years, event_impacts)
+    if not sampling_vect:
+        sampling_vect = create_sampling_vect(n_sampled_years, event_impacts)
 
     #compute annual_impacts
-    impact_per_year = compute_annual_impacts(event_impacts, sampling_dict)
+    impact_per_year = np.zeros(len(sampling_vect))
+
+    for year, sampled_events in enumerate(sampling_vect):
+        impact_per_year[year] = np.sum(event_impacts.at_event[sampled_events])
 
     #copy event_impacts object as basis for the annual_impacts object
     annual_impacts = copy.deepcopy(event_impacts)
@@ -116,13 +103,12 @@ def impact_yearset(event_impacts, sampled_years=None, sampling_dict=None, correc
     annual_impacts.event_id = np.arange(1, n_sampled_years+1)
     annual_impacts.tag['annual_impacts object'] = True
     annual_impacts.date = u_dt.str_to_date([str(date) + '-01-01' for date in sampled_years])
-    annual_impacts.frequency = np.ones(n_sampled_years)*np.sum(sampling_dict['events_per_year']
-                                                            )/n_sampled_years
+    #annual_impacts.frequency = np.ones(n_sampled_years)*np.sum()/n_sampled_years
 
 
-    return annual_impacts, sampling_dict
+    return annual_impacts, sampling_vect
 
-def create_sampling_dict(n_sampled_years, event_impacts):
+def create_sampling_vect(n_sampled_years, event_impacts, lam=None):
     """Create a sampling dictionary consisting of the amount of events per sample year and the
     index of the sampled events
 
@@ -131,15 +117,18 @@ def create_sampling_dict(n_sampled_years, event_impacts):
             The target number of years the impact yearset shall contain.
         event_impacts : climada.engine.Impact()
             impact object containing impacts per event
+        lam: int
+            the applied Poisson distribution is centered around lam per year
 
     Returns:
-        sampling_dict : dict
-            The sampling dictionary containing two arrays:
-                selected_events (array): sampled events (len: total amount of sampled events)
-                events_per_year (array): events per sampled year
+        sampling_vect : array
+            The sampling vector specifies how to sample the annual_impacts, it consists of one
+            sub-array per sampled_year, which contains the event_ids of the events used to
+            calculate the annual impacts.
     """
-    n_annual_events = np.sum(event_impacts.frequency)
-    n_input_events = len(event_impacts.frequency)
+    if not lam:
+        n_annual_events = np.sum(event_impacts.frequency)
+
     #sample number of events per year
     if n_annual_events != 1:
         events_per_year = np.round(np.random.poisson(lam=n_annual_events,
@@ -147,16 +136,17 @@ def create_sampling_dict(n_sampled_years, event_impacts):
     else:
         events_per_year = np.ones(len(n_sampled_years))
 
-    tot_n_events = np.sum(events_per_year)
+    selected_events = sample_events(np.sum(events_per_year), event_impacts.frequency)
 
-    selected_events = sample_events(tot_n_events, n_input_events, event_impacts.frequency)
+    sampling_vect = []
+    idx = 0
+    for year in range(n_sampled_years):
+        sampling_vect.append(selected_events[idx:(idx+events_per_year[year])])
+        idx += idx+events_per_year[year]
 
-    sampling_dict = dict()
-    sampling_dict = {'selected_events': selected_events, 'events_per_year': events_per_year}
+    return sampling_vect
 
-    return sampling_dict
-
-def sample_events(tot_n_events, n_input_events, freqs):
+def sample_events(tot_n_events, freqs):
     """Sample events (length = tot_n_events) uniformely from an array (n_input_events)
     without replacement (if tot_n_events > n_input_events the input events are repeated
                          (tot_n_events/n_input_events) times).
@@ -164,16 +154,15 @@ def sample_events(tot_n_events, n_input_events, freqs):
     Parameters:
         tot_n_events : int
             Number of events to be sampled
-        n_input_events : int
-            Number of events contained in given event_impacts object
         freqs : array
-            Frequency of each event (length: n_input_events)
+            Frequency of each input event (length: n_input_events)
 
     Returns:
         selected_events : array
             Uniformaly sampled events (length: tot_n_events)
       """
 
+    n_input_events = len(freqs)
     repetitions = np.ceil(tot_n_events/n_input_events).astype('int')
     indices = np.tile(np.arange(n_input_events), repetitions)
     probab_dis = np.tile(freqs, repetitions)/np.sum(np.tile(freqs, repetitions))
@@ -182,39 +171,7 @@ def sample_events(tot_n_events, n_input_events, freqs):
     selected_events = rng.choice(indices, size=tot_n_events, replace=False,
                                  p=probab_dis).astype('int')
 
-
     return selected_events
-
-def compute_annual_impacts(event_impacts, sampling_dict):
-    """Sample annual impacts from the given event_impacts according to the sampling dictionary
-
-    Parameters:
-        event_impacts : climada.engine.Impact()
-            impact object containing impacts per event
-        sampling_dict : dict
-            The sampling dictionary containing two arrays:
-                selected_events (array) : sampled events (len: total amount of sampled events)
-                events_per_year (array) : events per sampled year
-
-    Returns:
-        impact_per_year: array
-            Sampled impact per year (length = n_sampled_years)
-      """
-
-    impact_per_event = np.zeros(np.sum(sampling_dict['events_per_year']))
-    impact_per_year = np.zeros(len(sampling_dict['events_per_year']))
-
-    for idx_event, event in enumerate(sampling_dict['selected_events']):
-        impact_per_event[idx_event] = event_impacts.at_event[event]
-
-    idx = 0
-    for year in range(len(sampling_dict['events_per_year'])):
-        impact_per_year[year] = np.sum(impact_per_event[idx:(idx+sampling_dict[
-            'events_per_year'][year])])
-        idx += sampling_dict['events_per_year'][year]
-
-    return impact_per_year
-
 
 def calculate_correction_fac(impact_per_year, event_impacts):
     """Calculate a correction factor that can be used to scale the annual_impacts in such

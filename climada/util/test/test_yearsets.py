@@ -32,9 +32,8 @@ EVENT_IMPACTS = Impact()
 EVENT_IMPACTS.at_event = np.arange(10,110,10)
 EVENT_IMPACTS.frequency = np.array(np.ones(10)*0.2)
 
-SAMPLING_DICT = dict()
-SAMPLING_DICT = {'selected_events': np.tile(np.arange(0,10),2),
-                  'events_per_year': np.array(np.ones(10, dtype=int)*2)}
+SAMPLING_VECT = [np.array([0,1]), np.array([2,3]), np.array([4,5]), np.array([6,7]), np.array([8,9]),
+                 np.array([0,1]), np.array([2,3]), np.array([4,5]), np.array([6,7]), np.array([8,9])]
 
 N_SAMPLED_YEARS = 10
 YEAR_LIST = list(range(2000, 2010))
@@ -45,7 +44,7 @@ class TestYearSets(unittest.TestCase):
         """Test computing an annual_impacts object for a given range of years (N_SAMPLED_YEARS)
         from an event_impacts object and a sampling dictionary"""
         annual_impacts, sampling_dict = yearsets.impact_yearset(EVENT_IMPACTS, N_SAMPLED_YEARS,
-                                                                SAMPLING_DICT, False)
+                                                                SAMPLING_VECT, False)
 
         self.assertEqual(annual_impacts.at_event[0], 30)
         self.assertEqual(annual_impacts.date[1], 366)
@@ -54,7 +53,7 @@ class TestYearSets(unittest.TestCase):
         """Test computing an annual_impacts object for a given list of years (YEAR_LIST)
         from an event_impacts object and a sampling dictionary"""
         annual_impacts, sampling_dict = yearsets.impact_yearset(EVENT_IMPACTS, YEAR_LIST,
-                                                                SAMPLING_DICT, False)
+                                                                SAMPLING_VECT, False)
 
         self.assertEqual(annual_impacts.at_event[0], 30)
         self.assertEqual(u_dt.date_to_str(annual_impacts.date)[0], '2000-01-01')
@@ -62,10 +61,9 @@ class TestYearSets(unittest.TestCase):
     def test_sample_events(self):
         """Test the sampling of 10 events out of a pool of 20 events."""
         tot_n_events = 10
-        n_input_events = 20
         frequencies = np.array(np.ones(20)*0.2)
         
-        selected_events = yearsets.sample_events(tot_n_events, n_input_events, frequencies)
+        selected_events = yearsets.sample_events(tot_n_events, frequencies)
 
         self.assertEqual(len(selected_events), tot_n_events)
         self.assertEqual(len(np.unique(selected_events)), tot_n_events)
@@ -77,32 +75,27 @@ class TestYearSets(unittest.TestCase):
         tot_n_events = 20
         n_input_events = 10
 
-        selected_events = yearsets.sample_events(tot_n_events, n_input_events, EVENT_IMPACTS.frequency)
+        selected_events = yearsets.sample_events(tot_n_events, EVENT_IMPACTS.frequency)
 
         self.assertEqual(len(selected_events), tot_n_events)
         self.assertEqual(len(np.unique(selected_events)), n_input_events)
         self.assertEqual(np.unique(list(collections.Counter(selected_events).values())), 2)
 
-    def test_sampling_dict(self):
-        """Test generating a sampling dictionary with a mean of 2 events per year."""
-        n_sampled_years = 100000
+    # def test_sampling_vect(self):
+    #     """Test generating a sampling dictionary with a mean of 2 events per year."""
+    #     n_sampled_years = 100000
         
-        sampling_dict = yearsets.create_sampling_dict(n_sampled_years, EVENT_IMPACTS)
-        self.assertAlmostEqual(np.round(np.mean(sampling_dict['events_per_year'])), 2)
-        self.assertTrue(len(np.unique(list(collections.Counter(sampling_dict['selected_events']).values()))), 2)
+    #     sampling_dict = yearsets.create_sampling_vect(n_sampled_years, EVENT_IMPACTS)
+        # self.assertAlmostEqual(np.round(np.mean(sampling_dict['events_per_year'])), 2)
+        # self.assertTrue(len(np.unique(list(collections.Counter(sampling_dict['selected_events']).values()))), 2)
 
-    def test_computing_annual_impacts(self):
-        """Test the calculation of annual impacts from a given sampling dictionary."""
-        impact_per_year = yearsets.compute_annual_impacts(EVENT_IMPACTS, SAMPLING_DICT)
-        self.assertEqual(impact_per_year[0], 30)
 
-    def test_correction_fac(self):
-        """Test the calculation of a correction factor as the ration of the expected annual
-        impact (eai) of the event_impacts and the eai of the annual_impacts"""
-        impact_per_year = yearsets.compute_annual_impacts(EVENT_IMPACTS, SAMPLING_DICT)
-        correction_factor = yearsets.calculate_correction_fac(impact_per_year, EVENT_IMPACTS)
+    # def test_correction_fac(self):
+    #     """Test the calculation of a correction factor as the ration of the expected annual
+    #     impact (eai) of the event_impacts and the eai of the annual_impacts"""
+    #     correction_factor = yearsets.calculate_correction_fac(impact_per_year, EVENT_IMPACTS)
 
-        self.assertAlmostEqual(correction_factor, 1)
+    #     self.assertAlmostEqual(correction_factor, 1)
 
 # Execute Tests
 if __name__ == "__main__":
