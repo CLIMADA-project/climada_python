@@ -42,7 +42,7 @@ def impact_yearset(event_impacts, sampled_years=None, sampling_vect=None, correc
             be sampled (labelled [0001,...,sampled_years]) or a list
             of years that shall be covered by the resulting annual_impacts.
             The default is a 1000 year-long list starting in the year 0001.
-        sampling_vect : array
+        sampling_vect : 2D array
             The sampling vector specifies how to sample the annual_impacts, it consists of one
             sub-array per sampled_year, which contains the event_ids of the events used to
             calculate the annual impacts.
@@ -58,7 +58,7 @@ def impact_yearset(event_impacts, sampled_years=None, sampling_vect=None, correc
     Returns:
       annual_impacts : climada.engine.Impact()
              annual impacts for all sampled_years
-        sampling_vect : array
+        sampling_vect : 2D array
             The sampling vector specifies how to sample the annual_impacts, it consists of one
             sub-array per sampled_year, which contains the event_ids of the events used to
             calculate the annual impacts.
@@ -79,8 +79,7 @@ def impact_yearset(event_impacts, sampled_years=None, sampling_vect=None, correc
 
     n_sampled_years = len(sampled_years)
 
-
-    #create sampling dictionary if not given as input
+    #create sampling vector if not given as input
     if not sampling_vect:
         sampling_vect = create_sampling_vect(n_sampled_years, event_impacts)
 
@@ -103,13 +102,13 @@ def impact_yearset(event_impacts, sampled_years=None, sampling_vect=None, correc
     annual_impacts.event_id = np.arange(1, n_sampled_years+1)
     annual_impacts.tag['annual_impacts object'] = True
     annual_impacts.date = u_dt.str_to_date([str(date) + '-01-01' for date in sampled_years])
-    #annual_impacts.frequency = np.ones(n_sampled_years)*np.sum()/n_sampled_years
-
+    annual_impacts.frequency = np.ones(n_sampled_years)*sum(len(row) for row in sampling_vect
+                                                            )/n_sampled_years
 
     return annual_impacts, sampling_vect
 
 def create_sampling_vect(n_sampled_years, event_impacts, lam=None):
-    """Create a sampling dictionary consisting of the amount of events per sample year and the
+    """Create a sampling vector consisting of the amount of events per sample year and the
     index of the sampled events
 
     Parameters:
@@ -121,7 +120,7 @@ def create_sampling_vect(n_sampled_years, event_impacts, lam=None):
             the applied Poisson distribution is centered around lam per year
 
     Returns:
-        sampling_vect : array
+        sampling_vect : 2D array
             The sampling vector specifies how to sample the annual_impacts, it consists of one
             sub-array per sampled_year, which contains the event_ids of the events used to
             calculate the annual impacts.
