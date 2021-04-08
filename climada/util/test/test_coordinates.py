@@ -37,6 +37,8 @@ from climada import CONFIG
 from climada.util.constants import HAZ_DEMO_FL, DEF_CRS
 from climada.util.coordinates import (convert_wgs_to_utm,
                                       coord_on_land,
+                                      country_iso_alpha2numeric,
+                                      country_iso_numeric2alpha,
                                       dist_approx,
                                       dist_to_coast,
                                       dist_to_coast_nasa,
@@ -72,7 +74,6 @@ DATA_DIR = CONFIG.util.test_data.dir()
 
 class TestFunc(unittest.TestCase):
     """Test auxiliary functions"""
-
     def test_lon_normalize(self):
         """Test the longitude normalization function"""
         data = np.array([-180, 20.1, -30, 190, -350])
@@ -295,6 +296,20 @@ class TestFunc(unittest.TestCase):
         self.assertEqual(out, 39)
         with self.assertRaises(ValueError):
             mapping_grid2flattened(4, 7, matrix.shape)
+            
+    def test_country_iso_alpha2numeric(self):
+        self.assertEqual(country_iso_alpha2numeric('NOR'), 578)  # 578 for Norway
+        
+        isos_list = ['', 'USA', 'ARG', 'JPN', 'AUS', 'NOR', 'MDG']
+        nums_list = [0, 840, 32, 392, 36, 578, 450]
+        self.assertEqual(country_iso_alpha2numeric(isos_list), nums_list)
+        
+    def test_country_iso_numeric2alpha(self):
+        self.assertEqual(country_iso_numeric2alpha(578), 'NOR')  # 578 for Norway
+        
+        isos_list = ['', 'USA', 'ARG', 'JPN', 'AUS', 'NOR', 'MDG']
+        nums_list = [0, 840, 32, 392, 36, 578, 450]
+        self.assertEqual(country_iso_numeric2alpha(nums_list), isos_list)
         
 class TestGetGeodata(unittest.TestCase):
     def test_nat_earth_resolution_pass(self):
