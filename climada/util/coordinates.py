@@ -938,11 +938,15 @@ def country_iso_alpha2numeric(iso_alpha):
     }
     iso_num = []
     for iso in iso_list:
-        if iso in old_iso:
-            num = old_iso[iso]
-        else:
-            num = int(iso_cntry.get(iso).numeric)
-        iso_num.append(num)
+        try:
+            if iso in old_iso:
+                num = old_iso[iso]
+            else:
+                num = int(iso_cntry.get(iso).numeric)
+            iso_num.append(num)
+        except ValueError as ver:
+            LOGGER.error('Unknown country ISO: %s', iso)
+            raise KeyError(f'Unknown country ISO: {iso}') from ver
     return iso_num[0] if return_int else iso_num
 
 def country_iso_numeric2alpha(iso_numeric):
@@ -967,12 +971,16 @@ def country_iso_numeric2alpha(iso_numeric):
         891: "SCG", # Serbia and Montenegro: split up since 2006
     }
     iso_list = []
-    for iso_num in iso_num_list:
-        if iso_num in old_iso:
-            iso = old_iso[iso_num]
-        else:
-            iso = iso_cntry.get(iso_num).alpha3
-        iso_list.append(iso)
+    for iso_num in iso_num_list:  
+        try:
+            if iso_num in old_iso:
+                iso = old_iso[iso_num]
+            else:
+                iso = iso_cntry.get(iso_num).alpha3
+            iso_list.append(iso)
+        except ValueError as ver:
+            LOGGER.error('Unknown country ISO: %s', iso)
+            raise KeyError(f'Unknown country ISO: {iso}') from ver
     return iso_list[0] if return_str else iso_list
 
 def country_natid2iso(natids):
