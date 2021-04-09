@@ -325,7 +325,7 @@ class Centroids():
             CRS. Default: DEF_CRS
         """
         self.__init__()
-        self.lat, self.lon, self.geometry = np.array(lat), np.array(lon), gpd.GeoSeries(crs=crs)
+        self.lat, self.lon, self.geometry = np.asarray(lat), np.asarray(lon), gpd.GeoSeries(crs=crs)
 
     def set_raster_file(self, file_name, band=[1], src_crs=None, window=False,
                         geometry=False, dst_crs=False, transform=None, width=None,
