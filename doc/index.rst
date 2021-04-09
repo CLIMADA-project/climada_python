@@ -43,7 +43,6 @@ Tutorials
    tutorial/climada_engine_impact_data
    tutorial/climada_engine_Forecast
    tutorial/climada_engine_SupplyChain
-   tutorial/climada_engine_uncertainty
    tutorial/climada_util_earth_engine
    tutorial/climada_util_yearsets
 
