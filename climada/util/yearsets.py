@@ -148,10 +148,10 @@ def create_sampling_vect(n_sampled_years, imp, lam=None):
         idx = 0
         for year in range(n_sampled_years):
             sampling_vect.append(selected_events[idx:(idx+events_per_year[year])])
-            idx += idx+events_per_year[year]
+            idx += events_per_year[year]
 
         y_unique_events = list(np.unique(row) for row in sampling_vect)
-        run += run +1
+        run += 1
 
     return sampling_vect
 
