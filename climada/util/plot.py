@@ -491,7 +491,7 @@ def add_shapes(axis):
     shp = shapereader.Reader(shp_file)
     for geometry in shp.geometries():
         axis.add_geometries([geometry], crs=ccrs.PlateCarree(), facecolor='none',
-                            edgecolor='black')
+                            edgecolor='dimgray')
 
 def add_populated_places(axis, extent, proj=ccrs.PlateCarree()):
     """
@@ -519,11 +519,11 @@ def add_populated_places(axis, extent, proj=ccrs.PlateCarree()):
         if ext_trans[2][0] < point.x <= ext_trans[0][0]:
             if ext_trans[0][1] < point.y <= ext_trans[1][1]:
                 place_name = _fix_place_names(rec.attributes['name'])
-                axis.plot(point.x, point.y, 'ko', markersize=7,
+                axis.plot(point.x, point.y, color='navy', marker='o', markersize=7,
                           transform=ccrs.PlateCarree(), markerfacecolor='None')
                 axis.text(point.x, point.y, place_name,
                           horizontalalignment='right', verticalalignment='bottom',
-                          transform=ccrs.PlateCarree(), fontsize=14)
+                          transform=ccrs.PlateCarree(), fontsize=14, color='navy')
 
 def add_cntry_names(axis, extent, proj=ccrs.PlateCarree()):
     """
