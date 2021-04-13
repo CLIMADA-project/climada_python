@@ -28,6 +28,8 @@ __all__ = ['geo_bin_from_array',
           ]
 
 import logging
+from textwrap import wrap
+
 from scipy.interpolate import griddata
 import numpy as np
 import matplotlib.pyplot as plt
@@ -225,7 +227,7 @@ def _plot_scattered_data(method, array_sub, geo_coord, var_name, title,
             'right', size="6.5%", pad=0.1, axes_class=plt.Axes)
         cbar = plt.colorbar(mappable, cax=cbax, orientation='vertical', extend=extend)
         cbar.set_label(name)
-        axis.set_title(tit)
+        axis.set_title("\n".join(wrap(tit)))
     return axes
 
 
@@ -320,7 +322,7 @@ def geo_im_from_array(array_sub, coord, var_name, title,
                               transform=proj, **kwargs)
         cbar = plt.colorbar(img, cax=cbax, orientation='vertical')
         cbar.set_label(name)
-        axis.set_title(tit)
+        axis.set_title("\n".join(wrap(tit)))
 
     return axes
 
