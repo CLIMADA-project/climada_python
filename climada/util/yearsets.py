@@ -135,17 +135,12 @@ def create_sampling_vect(n_sampled_years, event_impacts, lam=None):
     else:
         events_per_year = np.ones(len(n_sampled_years))
 
-    #crate a sampling vector
+    #create a sampling vector and check if an event occurs several times in one year
+    #if this is the case the sampling vector is created again
+    run = 0
     sampling_vect = []
-    selected_events = sample_events(np.sum(events_per_year), event_impacts.frequency)
-    idx = 0
-    for year in range(n_sampled_years):
-        sampling_vect.append(selected_events[idx:(idx+events_per_year[year])])
-        idx += idx+events_per_year[year]
-
-    #check if an event occurs several times in one year and sample again if this is the case
-    y_unique_events = list(np.unique(row) for row in sampling_vect)
-    while sum(len(row) for row in y_unique_events) != sum(len(row) for row in sampling_vect):
+    y_unique_events = []
+    while run<1 or sum(len(row) for row in y_unique_events) != sum(len(row) for row in sampling_vect):
         selected_events = sample_events(np.sum(events_per_year), event_impacts.frequency)
 
         idx = 0
@@ -154,7 +149,7 @@ def create_sampling_vect(n_sampled_years, event_impacts, lam=None):
             idx += idx+events_per_year[year]
 
         y_unique_events = list(np.unique(row) for row in sampling_vect)
-
+        run += run +1
 
     return sampling_vect
 
