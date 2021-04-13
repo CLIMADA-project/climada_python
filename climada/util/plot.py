@@ -248,7 +248,7 @@ def geo_scatter_from_array(array_sub, geo_coord, var_name, title,
         if pop_name:
             add_populated_places(axis, extent, proj)
 
-        hex_bin = axis.scatter(coord[:, 1], coord[:, 0], c=array_im,
+        scatter = axis.scatter(coord[:, 1], coord[:, 0], c=array_im,
                                transform=proj, **kwargs)
         
         # Create colorbar in this axis
@@ -256,7 +256,7 @@ def geo_scatter_from_array(array_sub, geo_coord, var_name, title,
                                                      size="6.5%", 
                                                      pad=0.1,
                                                      axes_class=plt.Axes)
-        cbar = plt.colorbar(hex_bin, cax=cbax, orientation='vertical',
+        cbar = plt.colorbar(scatter, cax=cbax, orientation='vertical',
                             extend=extend)
         cbar.set_label(name)
         axis.set_title(tit)
