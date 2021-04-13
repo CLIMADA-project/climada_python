@@ -1091,11 +1091,8 @@ class Impact():
         if coord_exp is None:
             sel_exp = []
         else:
-            sel_exp =  [
-                j
-                for j, coord in enumerate(self.coord_exp)
-                if coord in coord_exp
-                ]
+            coords_merged = pd.DataFrame(self.coord_exp).merge(pd.DataFrame(coord_exp), how='left', indicator=True)
+            sel_exp = np.where(coords_merged['_merge'] == 'both')[0]
             if not sel_exp:
                 LOGGER.warning("No exposure coordinates matches the selection.")
 
