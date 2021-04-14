@@ -137,7 +137,7 @@ def geo_scatter_from_array(array_sub, geo_coord, var_name, title,
         extend border colorbar with arrows.
         [ 'neither' | 'both' | 'min' | 'max' ], by default 'neither'
     proj : ccrs, optional
-        coordinate reference system if the given data, by default ccrs.PlateCarree()
+        coordinate reference system of the given data, by default ccrs.PlateCarree()
     shapes : bool, optional
         Overlay Earth's countries coastlines to matplotlib.pyplot axis.
         The default is True
