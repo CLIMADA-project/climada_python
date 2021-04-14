@@ -55,10 +55,10 @@ MAX_BINS = 2000
 """Maximum number of bins in geo_bin_from_array"""
 
 
-def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,
-                       buffer=BUFFER, extend='neither',
-                       proj=ccrs.PlateCarree(), axes=None, figsize=(9, 13),
-                       **kwargs):
+def geo_bin_from_array(array_sub, geo_coord, var_name, title,
+                       pop_name=True, buffer=BUFFER, extend='neither',
+                       proj=ccrs.PlateCarree(), shapes=True, axes=None,
+                       figsize=(9, 13), **kwargs):
     """Plot array values binned over input coordinates.
 
     Parameters
@@ -84,6 +84,9 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,
         [ 'neither' | 'both' | 'min' | 'max' ], by default 'neither'
     proj : ccrs, optional
         coordinate reference system of the given data, by default ccrs.PlateCarree()
+    shapes : bool, optional
+        Overlay Earth's countries coastlines to matplotlib.pyplot axis.
+        The default is True
     axes : Axes or ndarray(Axes), optional
         by default None
     figsize : tuple, optional
@@ -97,62 +100,13 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title, pop_name=True,
 
     Raises
     ------
-    ValueError
+    ValueError:
+        Input array size missmatch
     """
-
-    # Generate array of values used in each subplot
-    num_im, list_arr = _get_collection_arrays(array_sub)
-    list_tit = to_list(num_im, title, 'title')
-    list_name = to_list(num_im, var_name, 'var_name')
-    list_coord = to_list(num_im, geo_coord, 'geo_coord')
-
-    if 'cmap' not in kwargs:
-        kwargs['cmap'] = 'Wistia'
-
-    if axes is None:
-        proj_plot = proj
-        if isinstance(proj, ccrs.PlateCarree):
-            # use different projections for plot and data to shift the central lon in the plot
-            xmin, xmax = u_coord.lon_bounds(np.concatenate([c[:, 1] for c in list_coord]))
-            proj_plot = ccrs.PlateCarree(central_longitude=0.5 * (xmin + xmax))
-        _, axes = make_map(num_im, proj=proj_plot, figsize=figsize)
-
-    if not isinstance(axes, np.ndarray):
-        axes_iter = np.array([[axes]])
-
-    # Generate each subplot
-    for array_im, axis, tit, name, coord in \
-    zip(list_arr, axes_iter.flatten(), list_tit, list_name, list_coord):
-        if coord.shape[0] != array_im.size:
-            raise ValueError("Size mismatch in input array: %s != %s." %
-                             (coord.shape[0], array_im.size))
-
-
-        # Binned image with coastlines
-        if isinstance(proj, ccrs.PlateCarree):
-            xmin, ymin, xmax, ymax = u_coord.latlon_bounds(coord[:, 0], coord[:, 1], buffer=buffer)
-            extent = (xmin, xmax, ymin, ymax)
-        else:
-            extent = _get_borders(coord, buffer=buffer, proj_limits=proj.x_limits + proj.y_limits)
-        axis.set_extent((extent), proj)
-        add_shapes(axis)
-        if pop_name:
-            add_populated_places(axis, extent, proj)
-
-        if 'gridsize' not in kwargs:
-            kwargs['gridsize'] = min(int(array_im.size / 2), MAX_BINS)
-        hex_bin = axis.hexbin(coord[:, 1], coord[:, 0], C=array_im,
-                              transform=proj, **kwargs)
-
-        # Create colorbar in this axis
-        cbax = make_axes_locatable(axis).append_axes('right', size="6.5%",
-                                                     pad=0.1, axes_class=plt.Axes)
-        cbar = plt.colorbar(hex_bin, cax=cbax, orientation='vertical',
-                            extend=extend)
-        cbar.set_label(name)
-        axis.set_title(tit)
-
-    return axes
+    return _plot_scattered_data("hexbin", array_sub, geo_coord, var_name, title,
+                                pop_name=pop_name, buffer=buffer, extend=extend,
+                                proj=proj, shapes=shapes, axes=axes,
+                                figsize=figsize, **kwargs)
 
 
 def geo_scatter_from_array(array_sub, geo_coord, var_name, title,
@@ -173,8 +127,8 @@ def geo_scatter_from_array(array_sub, geo_coord, var_name, title,
         label to be shown in the colorbar. If one provided, the same is used for all subplots.
         Otherwise provide as many as subplots in array_sub.
     title : str or list(str)
-        subplot title. If one provided, the same is used for all subplots. Otherwise provide as
-        many as subplots in array_sub.
+        subplot title. If one provided, the same is used for all subplots.
+        Otherwise provide as many as subplots in array_sub.
     pop_name : bool, optional
         add names of the populated places, by default False
     buffer : float, optional
@@ -183,7 +137,7 @@ def geo_scatter_from_array(array_sub, geo_coord, var_name, title,
         extend border colorbar with arrows.
         [ 'neither' | 'both' | 'min' | 'max' ], by default 'neither'
     proj : ccrs, optional
-        coordinate reference system used in coordinates, by default ccrs.PlateCarree()
+        coordinate reference system if the given data, by default ccrs.PlateCarree()
     shapes : bool, optional
         Overlay Earth's countries coastlines to matplotlib.pyplot axis.
         The default is True
@@ -201,8 +155,21 @@ def geo_scatter_from_array(array_sub, geo_coord, var_name, title,
     Raises
     ------
     ValueError:
-        Input array size missmatch 
+        Input array size missmatch
     """
+    return _plot_scattered_data("scatter", array_sub, geo_coord, var_name, title,
+                                pop_name=pop_name, buffer=buffer, extend=extend,
+                                proj=proj, shapes=shapes, axes=axes,
+                                figsize=figsize, **kwargs)
+
+
+def _plot_scattered_data(method, array_sub, geo_coord, var_name, title,
+                         pop_name=False, buffer=BUFFER, extend='neither',
+                         proj=ccrs.PlateCarree(), shapes=True, axes=None,
+                         figsize=(9, 13), **kwargs):
+    """Function for internal use in `geo_scatter_from_array` (when called with method="scatter")
+    and `geo_bin_from_array` (when called with method="hexbin"). See the docstrings of the
+    respective functions for more information on the parameters."""
 
     # Generate array of values used in each subplot
     num_im, list_arr = _get_collection_arrays(array_sub)
@@ -224,40 +191,39 @@ def geo_scatter_from_array(array_sub, geo_coord, var_name, title,
     if not isinstance(axes, np.ndarray):
         axes_iter = np.array([[axes]])
 
-        
     # Generate each subplot
     for array_im, axis, tit, name, coord in \
     zip(list_arr, axes_iter.flatten(), list_tit, list_name, list_coord):
         if coord.shape[0] != array_im.size:
             raise ValueError("Size mismatch in input array: %s != %s." %
                              (coord.shape[0], array_im.size))
-            
+
         # Binned image with coastlines
         if isinstance(proj, ccrs.PlateCarree):
-            xmin, ymin, xmax, ymax = u_coord.latlon_bounds(coord[:, 0],
-                                                           coord[:, 1],
-                                                           buffer=buffer)
+            xmin, ymin, xmax, ymax = u_coord.latlon_bounds(coord[:, 0], coord[:, 1], buffer=buffer)
             extent = (xmin, xmax, ymin, ymax)
         else:
-            extent = _get_borders(coord, buffer=buffer,
-                                  proj_limits=proj.x_limits + proj.y_limits)
+            extent = _get_borders(coord, buffer=buffer, proj_limits=proj.x_limits + proj.y_limits)
         axis.set_extent((extent), proj)
-        
+
         if shapes:
             add_shapes(axis)
         if pop_name:
             add_populated_places(axis, extent, proj)
 
-        scatter = axis.scatter(coord[:, 1], coord[:, 0], c=array_im,
-                               transform=proj, **kwargs)
-        
+        if method == "hexbin":
+            if 'gridsize' not in kwargs:
+                kwargs['gridsize'] = min(int(array_im.size / 2), MAX_BINS)
+            mappable = axis.hexbin(coord[:, 1], coord[:, 0], C=array_im,
+                                   transform=proj, **kwargs)
+        else:
+            mappable = axis.scatter(coord[:, 1], coord[:, 0], c=array_im,
+                                    transform=proj, **kwargs)
+
         # Create colorbar in this axis
-        cbax = make_axes_locatable(axis).append_axes('right', 
-                                                     size="6.5%", 
-                                                     pad=0.1,
-                                                     axes_class=plt.Axes)
-        cbar = plt.colorbar(scatter, cax=cbax, orientation='vertical',
-                            extend=extend)
+        cbax = make_axes_locatable(axis).append_axes(
+            'right', size="6.5%", pad=0.1, axes_class=plt.Axes)
+        cbar = plt.colorbar(mappable, cax=cbax, orientation='vertical', extend=extend)
         cbar.set_label(name)
         axis.set_title(tit)
     return axes
