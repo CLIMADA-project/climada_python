@@ -34,7 +34,7 @@ from climada.entity.exposures.base import Exposures, INDICATOR_IF
 from climada.entity.exposures import nightlight as nl_utils
 from climada.util.constants import SYSTEM_DIR, DEF_CRS
 from climada.util.finance import gdp, income_group
-from climada.util.coordinates import pts_to_raster_meta, country_to_iso
+import climada.util.coordinates as u_coord
 
 LOGGER = logging.getLogger(__name__)
 
@@ -113,7 +113,7 @@ class BlackMarble(Exposures):
             value_unit='USD'
         )
 
-        rows, cols, ras_trans = pts_to_raster_meta(
+        rows, cols, ras_trans = u_coord.pts_to_raster_meta(
             (self.gdf.longitude.min(), self.gdf.latitude.min(),
              self.gdf.longitude.max(), self.gdf.latitude.max()),
             (coord_nl[0, 1], -coord_nl[0, 1])
@@ -219,7 +219,7 @@ def country_iso_geom(countries, shp_file, admin_key=['ADMIN', 'ADM0_A3']):
             raise ValueError
         iso3 = list_records[country_idx].attributes[admin_key[1]]
         try:
-            cntry_id = country_to_iso(iso3, "numeric")
+            cntry_id = u_coord.country_to_iso(iso3, "numeric")
         except KeyError:
             cntry_id = 0
         cntry_info[iso3] = [cntry_id, country_name.title(),

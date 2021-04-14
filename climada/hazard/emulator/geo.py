@@ -27,7 +27,7 @@ import shapely.vectorized
 from shapely.geometry import Polygon
 
 from climada.hazard import Centroids
-from climada.util.coordinates import get_country_geometries, NE_CRS
+import climada.util.coordinates as u_coord
 import climada.hazard.emulator.const as const
 
 LOGGER = logging.getLogger(__name__)
@@ -77,7 +77,7 @@ class HazRegion():
                 country = None
             elif not isinstance(country, list):
                 country = [country]
-            country_geom = get_country_geometries(country_names=country)
+            country_geom = u_coord.get_country_geometries(country_names=country)
             self.geometry = gpd.overlay(self.geometry, country_geom, how="intersection")
 
         if geometry is not None:

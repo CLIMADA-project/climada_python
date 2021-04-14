@@ -27,8 +27,7 @@ import pandas as pd
 import xarray as xr
 import scipy as sp
 from climada.entity.tag import Tag
-from climada.util.coordinates import pts_to_raster_meta
-from climada.util.coordinates import country_iso2natid, get_region_gridpoints, region2isos
+import climada.util.coordinates as u_coord
 from climada.util.constants import RIVER_FLOOD_REGIONS_CSV, SYSTEM_DIR
 from .base import Exposures, INDICATOR_IF
 
@@ -66,7 +65,7 @@ class GDP2Asset(Exposures):
 
             if not countries:
                 if reg:
-                    natISO = region2isos(reg)
+                    natISO = u_coord.region2isos(reg)
                     countries = np.array(natISO)
                 else:
                     LOGGER.error('set_countries requires countries or reg')
@@ -94,10 +93,9 @@ class GDP2Asset(Exposures):
         # set meta
         res = 0.0416666
 
-        rows, cols, ras_trans = pts_to_raster_meta((self.gdf.longitude.min(),
-                                                    self.gdf.latitude.min(),
-                                                    self.gdf.longitude.max(),
-                                                    self.gdf.latitude.max()), res)
+        rows, cols, ras_trans = u_coord.pts_to_raster_meta(
+            (self.gdf.longitude.min(), self.gdf.latitude.min(),
+             self.gdf.longitude.max(), self.gdf.latitude.max()), res)
         self.meta = {'width': cols, 'height': rows, 'crs': self.crs,
                      'transform': ras_trans}
 
@@ -116,10 +114,10 @@ class GDP2Asset(Exposures):
         Returns:
             GDP2Asset
         """
-        natID = country_iso2natid(countryISO)
+        natID = u_coord.country_iso2natid(countryISO)
         natID_info = pd.read_csv(RIVER_FLOOD_REGIONS_CSV)
         reg_id, if_rf = _fast_if_mapping(natID, natID_info)
-        lat, lon = get_region_gridpoints(countries=[natID], iso=False, basemap="isimip")
+        lat, lon = u_coord.get_region_gridpoints(countries=[natID], iso=False, basemap="isimip")
         coord = np.stack([lat, lon], axis=1)
         assets = _read_GDP(coord, ref_year, path)
         reg_id_info = np.full((len(assets),), reg_id)

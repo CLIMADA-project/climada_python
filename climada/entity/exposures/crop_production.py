@@ -33,10 +33,6 @@ from matplotlib import pyplot as plt
 from climada.entity.exposures.base import Exposures
 from climada.entity.tag import Tag
 import climada.util.coordinates as u_coord
-from climada.util.coordinates import (pts_to_raster_meta,
-                                      get_resolution,
-                                      get_gridcellarea,
-                                      country_to_iso)
 from climada import CONFIG
 
 
@@ -262,7 +258,7 @@ class CropProduction(Exposures):
                     int(yearrange[1] - yearchunk['startyear']))
 
         # The area covered by a grid cell is calculated depending on the latitude
-        area = get_gridcellarea(lat, resolution=0.5)
+        area = u_coord.get_gridcellarea(lat, resolution=0.5)
 
         # The area covered by a crop is calculated as the product of the fraction and
         # the grid cell size
@@ -356,10 +352,10 @@ class CropProduction(Exposures):
         self.crop = crop
         self.ref_year = yearrange
         try:
-            rows, cols, ras_trans = pts_to_raster_meta(
+            rows, cols, ras_trans = u_coord.pts_to_raster_meta(
                 (self.gdf.longitude.min(), self.gdf.latitude.min(),
                  self.gdf.longitude.max(), self.gdf.latitude.max()),
-                get_resolution(self.gdf.longitude, self.gdf.latitude))
+                u_coord.get_resolution(self.gdf.longitude, self.gdf.latitude))
             self.meta = {
                 'width': cols,
                 'height': rows,
@@ -543,7 +539,7 @@ class CropProduction(Exposures):
         iso3alpha = list()
         for reg_id in self.gdf.region_id:
             try:
-                iso3alpha.append(country_to_iso(reg_id, "alpha3"))
+                iso3alpha.append(u_coord.country_to_iso(reg_id, "alpha3"))
             except KeyError:
                 if reg_id in (0, -99):
                     iso3alpha.append('No country')

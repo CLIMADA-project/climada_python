@@ -29,7 +29,7 @@ import pandas as pd
 
 from climada import CONFIG
 from climada.util import files_handler as u_fh
-from climada.util.coordinates import country_to_iso
+import climada.util.coordinates as u_coord
 from climada.engine import Impact
 from climada.entity.exposures.base import Exposures
 
@@ -304,7 +304,7 @@ class SupplyChain():
         """
 
         if mriot_type == 'WIOD':
-            mriot_reg_name = country_to_iso(exp_regid, "alpha3")
+            mriot_reg_name = u_coord.country_to_iso(exp_regid, "alpha3")
             idx_country = np.where(self.mriot_reg_names == mriot_reg_name)[0]
 
             if not idx_country.size > 0.:

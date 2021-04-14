@@ -30,7 +30,7 @@ from climada.hazard.base import Hazard
 from climada.hazard.centroids.centr import Centroids
 import climada.util.dates_times as u_dt
 from climada.util.constants import HAZ_TEMPLATE_XLS, HAZ_DEMO_FL
-from climada.util.coordinates import equal_crs
+import climada.util.coordinates as u_coord
 
 DATA_DIR = CONFIG.hazard.test_data.dir()
 HAZ_TEST_MAT = DATA_DIR.joinpath('atl_prob_no_name.mat')
@@ -988,7 +988,7 @@ class TestHDF5(unittest.TestCase):
             self.assertEqual(hazard.units, haz_read.units)
             self.assertIsInstance(haz_read.units, str)
             self.assertTrue(np.array_equal(hazard.centroids.coord, haz_read.centroids.coord))
-            self.assertTrue(equal_crs(hazard.centroids.crs, haz_read.centroids.crs))
+            self.assertTrue(u_coord.equal_crs(hazard.centroids.crs, haz_read.centroids.crs))
             self.assertTrue(np.array_equal(hazard.event_id, haz_read.event_id))
             self.assertTrue(np.array_equal(hazard.frequency, haz_read.frequency))
             self.assertTrue(np.array_equal(hazard.event_name, haz_read.event_name))
@@ -1017,7 +1017,7 @@ class TestCentroids(unittest.TestCase):
         self.assertIsInstance(haz_fl.intensity, sparse.csr_matrix)
         self.assertIsInstance(haz_fl.fraction, sparse.csr_matrix)
         self.assertEqual(haz_fl.fraction.shape, (1, 1046408))
-        self.assertTrue(equal_crs(haz_fl.centroids.meta['crs'], {'init': 'epsg:2202'}))
+        self.assertTrue(u_coord.equal_crs(haz_fl.centroids.meta['crs'], {'init': 'epsg:2202'}))
         self.assertEqual(haz_fl.centroids.meta['width'], 968)
         self.assertEqual(haz_fl.centroids.meta['height'], 1081)
         self.assertEqual(haz_fl.fraction.min(), 0)
@@ -1049,7 +1049,7 @@ class TestCentroids(unittest.TestCase):
                                - meta_orig['transform'][0] / 2)
         self.assertAlmostEqual(haz_fl.centroids.lon.min(),
                                meta_orig['transform'][2] + meta_orig['transform'][0] / 2)
-        self.assertTrue(equal_crs(haz_fl.centroids.crs, meta_orig['crs']))
+        self.assertTrue(u_coord.equal_crs(haz_fl.centroids.crs, meta_orig['crs']))
         self.assertTrue(np.allclose(haz_fl.intensity.data, inten_orig.data))
         self.assertTrue(np.allclose(haz_fl.fraction.data, fract_orig.data))
 
@@ -1071,7 +1071,7 @@ class TestCentroids(unittest.TestCase):
                                     np.array([331585.4099637291, 696803.88, 1098649.44])))
         self.assertTrue(np.allclose(haz_fl.centroids.lon,
                                     np.array([11625664.37925186, 11939560.43, 12244857.13])))
-        self.assertTrue(equal_crs(haz_fl.centroids.crs, {'init': 'epsg:2202'}))
+        self.assertTrue(u_coord.equal_crs(haz_fl.centroids.crs, {'init': 'epsg:2202'}))
         self.assertTrue(np.allclose(haz_fl.intensity.toarray(), np.array([0.5, 0.2, 0.1])))
         self.assertTrue(np.allclose(haz_fl.fraction.toarray(), np.array([0.5, 0.2, 0.1]) / 2))
 
@@ -1089,7 +1089,7 @@ class TestCentroids(unittest.TestCase):
         haz_fl.check()
 
         haz_fl.vector_to_raster()
-        self.assertTrue(equal_crs(haz_fl.centroids.meta['crs'], {'init': 'epsg:4326'}))
+        self.assertTrue(u_coord.equal_crs(haz_fl.centroids.meta['crs'], {'init': 'epsg:4326'}))
         self.assertAlmostEqual(haz_fl.centroids.meta['transform'][0], 1.0)
         self.assertAlmostEqual(haz_fl.centroids.meta['transform'][1], 0)
         self.assertAlmostEqual(haz_fl.centroids.meta['transform'][2], 0.5)
