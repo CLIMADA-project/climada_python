@@ -299,13 +299,14 @@ class TestFunc(unittest.TestCase):
 
     def test_assign_coordinates(self):
         """Test assign_coordinates function"""
-        coords = np.array([(0.2, 2), (0, 0), (0, 2), (2.1, 3), (1, 1), (-1, 1)])
-        coords_to_assign = np.array([(2.1, 3), (0, 0), (0, 2), (0.9, 1.0)])
+        # note that the coordinates are in lat/lon
+        coords = np.array([(0.2, 2), (0, 0), (0, 2), (2.1, 3), (1, 1), (-1, 1), (0, 179.9)])
+        coords_to_assign = np.array([(2.1, 3), (0, 0), (0, 2), (0.9, 1.0), (0, -179.9)])
         expected_results = [
-            # test with different thresholds
-            (100, [2, 1, 2, 0, 3, -1]),
-            (20, [-1, 1, 2, 0, 3, -1]),
-            (0, [-1, 1, 2, 0, -1, -1]),
+            # test with different thresholds (in km)
+            (100, [2, 1, 2, 0, 3, -1, 4]),
+            (20, [-1, 1, 2, 0, 3, -1, -1]),
+            (0, [-1, 1, 2, 0, -1, -1, -1]),
         ]
 
         # make sure that it works for both float32 and float64

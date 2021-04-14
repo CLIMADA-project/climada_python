@@ -900,8 +900,13 @@ def assign_coordinates(coords, coords_to_assign, method="NN", distance="haversin
     is assigned.
 
     Currently, the nearest neighbor matching works with lat/lon coordinates only. However, you can
-    disable nearest neighbor matching by setting `threshold` to 0. In this case, only exactly
+    disable nearest neighbor matching by setting `threshold` to 0, in which case only exactly
     matching coordinates are assigned to each other.
+
+    Make sure that all coordinates are according to the same coordinate reference system. In case
+    of lat/lon coordinates, the "haversine" distance is able to correctly compute the distance
+    across the antimeridian. However, when exact matches are enforced with `threshold=0`, lat/lon
+    coordinates need to be given in the same longitudinal range (such as (-180, 180)).
 
     Parameters
     ----------
@@ -920,7 +925,7 @@ def assign_coordinates(coords, coords_to_assign, method="NN", distance="haversin
         `climada.util.interpolation.interpol_index`. Default: "haversine"
     threshold : float, optional
         If the distance to the nearest neighbor exceeds `threshold`, the index `-1` is assigned.
-        Set `threshold` to 0, to disable nearest neighbor matching. Default: 100
+        Set `threshold` to 0 to disable nearest neighbor matching. Default: 100 (km)
 
     Returns
     -------

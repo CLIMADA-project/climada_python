@@ -296,7 +296,7 @@ class Exposures():
             "approx", see `climada.util.interpolation.interpol_index`. Default: "haversine"
         threshold : float
             If the distance to the nearest neighbor exceeds `threshold`, the index `-1` is
-            assigned. Set `threshold` to 0, to disable nearest neighbor matching. Default: 100
+            assigned. Set `threshold` to 0, to disable nearest neighbor matching. Default: 100 (km)
         """
         LOGGER.info('Matching %s exposures with %s centroids.',
                     str(self.gdf.shape[0]), str(hazard.centroids.size))
