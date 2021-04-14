@@ -35,6 +35,7 @@ from rasterio.crs import CRS as RCRS
 
 from climada import CONFIG
 from climada.util.constants import HAZ_DEMO_FL, DEF_CRS
+import climada.util.coordinates as u_coord
 from climada.util.coordinates import (convert_wgs_to_utm,
                                       coord_on_land,
                                       dist_approx,
@@ -186,11 +187,11 @@ class TestFunc(unittest.TestCase):
 
     def test_get_gridcellarea(self):
         """Test get_gridcellarea function to calculate the gridcellarea from a given latitude"""
-        
+
         lat = np.array([54.75, 54.25])
         resolution = 0.5
         area = get_gridcellarea(lat, resolution)
-        
+
         self.assertAlmostEqual(area[0], 178159.73363005)
         self.assertAlmostEqual(area[1], 180352.82386516)
         self.assertEqual(lat.shape, area.shape)
@@ -272,21 +273,21 @@ class TestFunc(unittest.TestCase):
         geometry = Point(10,40)
         out = mapping_point2grid(geometry.x, geometry.y, 5, 50, res)
         self.assertEqual(out, (5, 20))
-        
+
         res = -0.5
         geometry = Point(10,40)
         out = mapping_point2grid(geometry.x, geometry.y, 5, 50,res)
         self.assertEqual(out, (10, 20))
-        
+
         res = 1
         geometry = Point(-10,-40)
         out = mapping_point2grid(geometry.x, geometry.y, -20,-30, res)
         self.assertEqual(out, (10, 10))
-        
+
         geometry = Point(-30,-40)
         with self.assertRaises(ValueError):
-            mapping_point2grid(geometry.x, geometry.y, -20,-30,  res) 
-        
+            mapping_point2grid(geometry.x, geometry.y, -20,-30,  res)
+
     def test_mapping_grid2flattened(self):
         matrix = np.ones((5,8))
         out = mapping_grid2flattened(0, 0, matrix.shape)
@@ -295,7 +296,27 @@ class TestFunc(unittest.TestCase):
         self.assertEqual(out, 39)
         with self.assertRaises(ValueError):
             mapping_grid2flattened(4, 7, matrix.shape)
-        
+
+    def test_assign_coordinates(self):
+        """Test assign_coordinates function"""
+        coords = np.array([(0.2, 2), (0, 0), (0, 2), (2.1, 3), (1, 1), (-1, 1)])
+        coords_to_assign = np.array([(2.1, 3), (0, 0), (0, 2), (0.9, 1.0)])
+        expected_results = [
+            # test with different thresholds
+            (100, [2, 1, 2, 0, 3, -1]),
+            (20, [-1, 1, 2, 0, 3, -1]),
+            (0, [-1, 1, 2, 0, -1, -1]),
+        ]
+
+        # make sure that it works for both float32 and float64
+        for test_dtype in [np.float64, np.float32]:
+            coords = coords.astype(test_dtype)
+            coords_to_assign = coords_to_assign.astype(test_dtype)
+            for thresh, result in expected_results:
+                assigned_idx = u_coord.assign_coordinates(
+                    coords, coords_to_assign, threshold=thresh)
+                np.testing.assert_array_equal(assigned_idx, result)
+
 class TestGetGeodata(unittest.TestCase):
     def test_nat_earth_resolution_pass(self):
         """Correct resolution."""

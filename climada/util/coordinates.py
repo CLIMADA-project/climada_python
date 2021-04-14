@@ -53,6 +53,7 @@ from climada.util.constants import (DEF_CRS, SYSTEM_DIR, ONE_LAT_KM,
                                     RIVER_FLOOD_REGIONS_CSV)
 from climada.util.files_handler import download_file
 import climada.util.hdf5_handler as u_hdf5
+import climada.util.interpolation as u_interp
 
 pd.options.mode.chained_assignment = None
 
@@ -890,6 +891,70 @@ def mapping_grid2flattened(col, row, matrix_shape):
         LOGGER.error('Indicated row  or column index larger than matrix')
         raise ValueError
     return row * matrix_shape[1] + col
+
+def assign_coordinates(coords, coords_to_assign, method="NN", distance="haversine", threshold=100):
+    """To each coordinate in `coords`, assign a matching coordinate in `coords_to_assign`
+
+    If there is no exact match for some entry, an attempt is made to assign the geographically
+    nearest neighbor. If the distance to the nearest neighbor exceeds `threshold`, the index `-1`
+    is assigned.
+
+    Currently, the nearest neighbor matching works with lat/lon coordinates only. However, you can
+    disable nearest neighbor matching by setting `threshold` to 0. In this case, only exactly
+    matching coordinates are assigned to each other.
+
+    Parameters
+    ----------
+    coords : np.array with two columns
+        Each row is a geographical coordinate pair. The result's size will match this array's
+        number of rows.
+    coords_to_assign : np.array with two columns
+        Each row is a geographical coordinate pair. The result will be an index into the
+        rows of this array. Make sure that these coordinates use the same coordinate reference
+        system as `coords`.
+    method : str, optional
+        Interpolation method to use for non-exact matching. Currently, "NN" (nearest neighbor)
+        is the only supported value, see `climada.util.interpolation.interpol_index`.
+    distance : str, optional
+        Distance to use for non-exact matching. Possible values are "haversine" and "approx", see
+        `climada.util.interpolation.interpol_index`. Default: "haversine"
+    threshold : float, optional
+        If the distance to the nearest neighbor exceeds `threshold`, the index `-1` is assigned.
+        Set `threshold` to 0, to disable nearest neighbor matching. Default: 100
+
+    Returns
+    -------
+    assigned_idx : np.array of size equal to the number of rows in `coords`
+        Index into `coords_to_assign`. Note that the value `-1` is used to indicate that no
+        matching coordinate has been found, even though `-1` is a valid index in NumPy!
+    """
+    coords = coords.astype('float64')
+    coords_to_assign = coords_to_assign.astype('float64')
+    if np.array_equal(coords, coords_to_assign):
+        assigned_idx = np.arange(coords.shape[0])
+    else:
+        # pairs of floats can be sorted (lexicographically) in NumPy
+        coords_view = coords.view(dtype='float64,float64').reshape(-1)
+        coords_to_assign_view = coords_to_assign.view(dtype='float64,float64').reshape(-1)
+
+        # assign each hazard coordsinate to an element in coords using searchsorted
+        coords_sorter = np.argsort(coords_view)
+        sort_assign_idx = np.fmin(coords_sorter.size - 1, np.searchsorted(
+            coords_view, coords_to_assign_view, side="left", sorter=coords_sorter))
+        sort_assign_idx = coords_sorter[sort_assign_idx]
+
+        # determine which of the assignements match exactly
+        exact_assign_idx = (coords_view[sort_assign_idx] == coords_to_assign_view).nonzero()[0]
+        assigned_idx = np.full_like(coords_sorter, -1)
+        assigned_idx[sort_assign_idx[exact_assign_idx]] = exact_assign_idx
+
+        # assign remaining coordsinates to their geographically nearest neighbor
+        if threshold > 0 and exact_assign_idx.size != coords_view.size:
+            not_assigned_idx_mask = (assigned_idx == -1)
+            assigned_idx[not_assigned_idx_mask] = u_interp.interpol_index(
+                coords_to_assign, coords[not_assigned_idx_mask],
+                method=method, distance=distance, threshold=threshold)
+    return assigned_idx
 
 def region2isos(regions):
     """Convert region names to ISO 3166 alpha-3 codes of countries

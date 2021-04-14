@@ -38,7 +38,6 @@ from climada.entity.tag import Tag
 import climada.util.hdf5_handler as u_hdf5
 from climada.util.constants import ONE_LAT_KM, DEF_CRS
 import climada.util.coordinates as u_coord
-from climada.util.interpolation import interpol_index
 import climada.util.plot as u_plot
 
 LOGGER = logging.getLogger(__name__)
@@ -285,15 +284,19 @@ class Exposures():
         -1 used for disatances > threshold in point distances. If raster hazard,
         -1 used for centroids outside raster.
 
-        Parameters:
-            hazard (Hazard): hazard to match (with raster or vector centroids)
-            method (str, optional): interpolation method to use in vector hazard.
-                Nearest neighbor (NN) default
-            distance (str, optional): distance to use in vector hazard. Haversine
-                default
-            threshold (float): distance threshold in km over which no neighbor
-                will be found in vector hazard. Those are assigned with a -1.
-                Default 100 km.
+        Parameters
+        ----------
+        hazard : Hazard
+            Hazard to match (with raster or vector centroids).
+        method : str, optional
+            Interpolation method to use in case of vector centroids. Currently, "NN" (nearest
+            neighbor) is the only supported value, see `climada.util.interpolation.interpol_index`.
+        distance : str, optional
+            Distance to use in case of vector centroids. Possible values are "haversine" and
+            "approx", see `climada.util.interpolation.interpol_index`. Default: "haversine"
+        threshold : float
+            If the distance to the nearest neighbor exceeds `threshold`, the index `-1` is
+            assigned. Set `threshold` to 0, to disable nearest neighbor matching. Default: 100
         """
         LOGGER.info('Matching %s exposures with %s centroids.',
                     str(self.gdf.shape[0]), str(hazard.centroids.size))
@@ -309,34 +312,9 @@ class Exposures():
             assigned[(x_i < 0) | (x_i >= hazard.centroids.meta['width'])] = -1
             assigned[(y_i < 0) | (y_i >= hazard.centroids.meta['height'])] = -1
         else:
-            coord = np.stack([self.gdf.latitude.values, self.gdf.longitude.values], axis=1).astype('float64')
-            haz_coord = hazard.centroids.coord.astype('float64')
-
-            if np.array_equal(coord, haz_coord):
-                assigned = np.arange(self.gdf.shape[0])
-            else:
-                # pairs of floats can be sorted (lexicographically) in NumPy
-                coord_view = coord.view(dtype='float64,float64').reshape(-1)
-                haz_coord_view = haz_coord.view(dtype='float64,float64').reshape(-1)
-
-                # assign each hazard coordinate to an element in coord using searchsorted
-                coord_sorter = np.argsort(coord_view)
-                haz_assign_idx = np.fmin(coord_sorter.size - 1, np.searchsorted(
-                    coord_view, haz_coord_view, side="left", sorter=coord_sorter))
-                haz_assign_idx = coord_sorter[haz_assign_idx]
-
-                # determine which of the assignements match exactly
-                haz_match_idx = (coord_view[haz_assign_idx] == haz_coord_view).nonzero()[0]
-                assigned = np.full_like(coord_sorter, -1)
-                assigned[haz_assign_idx[haz_match_idx]] = haz_match_idx
-
-                # assign remaining coordinates to their geographically nearest neighbor
-                if haz_match_idx.size != coord_view.size:
-                    not_assigned_mask = (assigned == -1)
-                    assigned[not_assigned_mask] = interpol_index(
-                        haz_coord, coord[not_assigned_mask],
-                        method=method, distance=distance, threshold=threshold)
-
+            assigned = u_coord.assign_coordinates(
+                np.stack([self.gdf.latitude.values, self.gdf.longitude.values], axis=1),
+                hazard.centroids.coord, method=method, distance=distance, threshold=threshold)
         self.gdf[INDICATOR_CENTR + hazard.tag.haz_type] = assigned
 
     def set_geometry_points(self, scheduler=None):
