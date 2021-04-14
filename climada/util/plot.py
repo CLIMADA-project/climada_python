@@ -408,7 +408,7 @@ def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
     kwargs['vmax'] = array_sub_n - 0.5
 
     # #create the axes
-    axes = geo_scatter_from_array(array_sub_cat, geo_coord, var_name,
+    axes = _plot_scattered_data("scatter", array_sub_cat, geo_coord, var_name,
                                   title, **kwargs)
 
     #add colorbar labels
