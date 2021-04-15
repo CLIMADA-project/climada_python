@@ -69,6 +69,7 @@ setup(
         'pillow',
         'pint',
         'pybufrkit',
+        'pycountry',
         'rasterio',
         'scikit-learn',
         'statsmodels',
