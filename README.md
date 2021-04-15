@@ -23,7 +23,7 @@ Documentation is available on Read the Docs:
 
 ## Citing CLIMADA
 
-If you use CLIMADA for academic work please cite:
+If you use CLIMADA please cite (in general, in particular for academic work) :
 
 Aznar-Siguan, G. and Bresch, D. N., 2019: CLIMADA v1: a global weather and climate risk assessment platform, Geosci. Model Dev. Discuss., https://doi.org/10.5194/gmd-12-3085-2019
 
