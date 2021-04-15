@@ -1022,11 +1022,11 @@ class Impact():
             return None
 
         if not isinstance(dates, list):
-            dates = list(dates)
+            dates = dates.tolist()
         if not isinstance(event_ids, list):
-            event_ids = list(event_ids)
+            event_ids = event_ids.tolist()
         if not isinstance(event_names, list):
-            event_names = list(event_names)
+            event_names = event_names.tolist()
 
         if (dates, event_ids, event_names) != (None, None, None):
             sel_ev = self._selected_events_idx(event_ids, event_names, dates, nb_events)
