@@ -892,6 +892,43 @@ def mapping_grid2flattened(col, row, matrix_shape):
         raise ValueError
     return row * matrix_shape[1] + col
 
+def assign_grid_points(x, y, grid_width, grid_height, grid_transform):
+    """To each coordinate in `x` and `y`, assign the closest centroid in the given raster grid
+
+    Make sure that your grid specification is relative to the same coordinate reference system as
+    the `x` and `y` coordinates. In case of lon/lat coordinates, make sure that the longitudinal
+    values are within the same longitudinal range (such as [-180, 180]).
+
+    If your grid is given by bounds instead of a transform, the functions
+    `rasterio.transform.from_bounds` and `pts_to_raster_meta` might be helpful.
+
+    Parameters
+    ----------
+    x, y : np.array
+        x- and y-coordinates of points to assign coordinates to.
+    grid_width : int
+        Width (number of columns) of the grid.
+    grid_height : int
+        Height (number of rows) of the grid.
+    grid_transform : affine.Affine
+        Affine transformation defining the grid raster.
+
+    Returns
+    -------
+    assigned_idx : np.array of size equal to the size of x and y
+        Index into the flattened `grid`. Note that the value `-1` is used to indicate that no
+        matching coordinate has been found, even though `-1` is a valid index in NumPy!
+    """
+    x, y = np.array(x), np.array(y)
+    xres, _, xmin, _, yres, ymin = grid_transform[:6]
+    xmin, ymin = xmin + 0.5 * xres, ymin + 0.5 * yres
+    x_i = np.round((x - xmin) / xres).astype(int)
+    y_i = np.round((y - ymin) / yres).astype(int)
+    assigned = y_i * grid_width + x_i
+    assigned[(x_i < 0) | (x_i >= grid_width)] = -1
+    assigned[(y_i < 0) | (y_i >= grid_height)] = -1
+    return assigned
+
 def assign_coordinates(coords, coords_to_assign, method="NN", distance="haversine", threshold=100):
     """To each coordinate in `coords`, assign a matching coordinate in `coords_to_assign`
 

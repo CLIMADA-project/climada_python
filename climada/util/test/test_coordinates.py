@@ -297,6 +297,28 @@ class TestFunc(unittest.TestCase):
         with self.assertRaises(ValueError):
             mapping_grid2flattened(4, 7, matrix.shape)
 
+    def test_assign_grid_points(self):
+        """Test assign_grid_points function"""
+        res = (1, -0.5)
+        pt_bounds = (5, 40, 10, 50)
+        height, width, transform = u_coord.pts_to_raster_meta(pt_bounds, res)
+        xy = np.array([[5, 50], [6, 50], [5, 49.5], [10, 40]])
+        out = u_coord.assign_grid_points(xy[:, 0], xy[:, 1], width, height, transform)
+        np.testing.assert_array_equal(out, [0, 1, 6, 125])
+
+        res = (0.5, -0.5)
+        height, width, transform = u_coord.pts_to_raster_meta(pt_bounds, res)
+        xy = np.array([[5.1, 49.95], [5.99, 50.05], [5, 49.6], [10.1, 39.8]])
+        out = u_coord.assign_grid_points(xy[:, 0], xy[:, 1], width, height, transform)
+        np.testing.assert_array_equal(out, [0, 2, 11, 230])
+
+        res = (1, -1)
+        pt_bounds = (-20, -40, -10, -30)
+        height, width, transform = u_coord.pts_to_raster_meta(pt_bounds, res)
+        xy = np.array([[-10, -40], [-30, -40]])
+        out = u_coord.assign_grid_points(xy[:, 0], xy[:, 1], width, height, transform)
+        np.testing.assert_array_equal(out, [120, -1])
+
     def test_assign_coordinates(self):
         """Test assign_coordinates function"""
         # note that the coordinates are in lat/lon

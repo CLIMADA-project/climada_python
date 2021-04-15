@@ -304,13 +304,10 @@ class Exposures():
             LOGGER.error('Set hazard and exposure to same CRS first!')
             raise ValueError
         if hazard.centroids.meta:
-            xres, _, xmin, _, yres, ymin = hazard.centroids.meta['transform'][:6]
-            xmin, ymin = xmin + 0.5 * xres, ymin + 0.5 * yres
-            x_i = np.round((self.gdf.longitude.values - xmin) / xres).astype(int)
-            y_i = np.round((self.gdf.latitude.values - ymin) / yres).astype(int)
-            assigned = y_i * hazard.centroids.meta['width'] + x_i
-            assigned[(x_i < 0) | (x_i >= hazard.centroids.meta['width'])] = -1
-            assigned[(y_i < 0) | (y_i >= hazard.centroids.meta['height'])] = -1
+            assigned = u_coord.assign_grid_points(
+                self.gdf.longitude.values, self.gdf.latitude.values,
+                hazard.centroids.meta['width'], hazard.centroids.meta['height'],
+                hazard.centroids.meta['transform'])
         else:
             assigned = u_coord.assign_coordinates(
                 np.stack([self.gdf.latitude.values, self.gdf.longitude.values], axis=1),
