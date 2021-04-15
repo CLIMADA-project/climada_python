@@ -414,9 +414,22 @@ class Exposures():
          Returns:
             cartopy.mpl.geoaxes.GeoAxesSubplot
         """
-        return self._plot_value_sum(self, mask, ignore_zero, pop_name,
-                                    buffer, extend, axis, figsize, 'scatter',
-                                    **kwargs)
+        crs_epsg, _ = u_plot.get_transformation(self.crs)
+        title = self.tag.description
+        cbar_label = 'Value (%s)' % self.value_unit
+        if mask is None:
+            mask = np.ones((self.gdf.shape[0],), dtype=bool)
+        if ignore_zero:
+            pos_vals = self.gdf.value[mask].values > 0
+        else:
+            pos_vals = np.ones((self.gdf.value[mask].values.size,), dtype=bool)
+        value = self.gdf.value[mask][pos_vals].values
+        coord = np.stack([self.gdf.latitude[mask][pos_vals].values,
+                          self.gdf.longitude[mask][pos_vals].values], axis=1)
+        return u_plot.geo_scatter_from_array(value, coord, cbar_label, title,
+                                             pop_name, buffer, extend,
+                                             proj=crs_epsg, axes=axis,
+                                             figsize=figsize, **kwargs)
 
     def plot_hexbin(self, mask=None, ignore_zero=False, pop_name=True,
                     buffer=0.0, extend='neither', axis=None, figsize=(9, 13),
@@ -440,21 +453,11 @@ class Exposures():
          Returns:
             cartopy.mpl.geoaxes.GeoAxesSubplot
         """
-
-        if 'reduce_C_function' not in kwargs:
-            kwargs['reduce_C_function'] = np.sum
-
-        return self._plot_value_sum(self, mask, ignore_zero, pop_name,
-                                    buffer, extend, axis, figsize, 'hexbin',
-                                    **kwargs)
-    
-    @staticmethod
-    def _plot_value_sum(self, mask, ignore_zero, pop_name,
-                     buffer, extend, axis, figsize, plotting_method,
-                     **kwargs):
         crs_epsg, _ = u_plot.get_transformation(self.crs)
         title = self.tag.description
         cbar_label = 'Value (%s)' % self.value_unit
+        if 'reduce_C_function' not in kwargs:
+            kwargs['reduce_C_function'] = np.sum
         if mask is None:
             mask = np.ones((self.gdf.shape[0],), dtype=bool)
         if ignore_zero:
@@ -465,9 +468,8 @@ class Exposures():
         coord = np.stack([self.gdf.latitude[mask][pos_vals].values,
                           self.gdf.longitude[mask][pos_vals].values], axis=1)
         return u_plot.geo_bin_from_array(value, coord, cbar_label, title,
-                                         pop_name, buffer, extend,
-                                         proj=crs_epsg, axes=axis,
-                                         figsize=figsize, plotting_method=plotting_method, **kwargs)
+                                         pop_name, buffer, extend, proj=crs_epsg,
+                                         axes=axis, figsize=figsize, **kwargs)
 
     def plot_raster(self, res=None, raster_res=None, save_tiff=None,
                     raster_f=lambda x: np.log10((np.fmax(x + 1, 1))),
