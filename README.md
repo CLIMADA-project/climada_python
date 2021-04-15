@@ -34,6 +34,8 @@ Please see all CLIMADA's related scientific publications in our [repository of s
 In presentations or other graphical material, please add the logo as follows:
 [[https://github.com/CLIMADA-project/climada_python/blob/main/doc/guide/img/CLIMADA_logo_QR.png|alt=CLIMADA logo]]
 
+![](https://github.com/davidnbresch/climada/blob/master/docs/wiki/Andrew_screenshot.png)
+
 [[https://github.com/davidnbresch/climada/blob/master/docs/wiki/Andrew_screenshot.png|alt=hurricane Andrew Florida]]
 
 ## Contributing
