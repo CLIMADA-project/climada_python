@@ -34,6 +34,8 @@ Please see all CLIMADA's related scientific publications in our [repository of s
 In presentations or other graphical material, as well as in reports etc., where applicable, please add the logo as follows:
 ![](https://github.com/CLIMADA-project/climada_python/blob/main/doc/guide/img/CLIMADA_logo_QR.png)
 
+AS key link, please use https://wcr.ethz.ch/research/climada.html, as it will last and provides a bit of an intro, especially for those not familiar with GitHub - plus a nice CLIMADA infographic towards the bottom of the page
+
 ## Contributing
 
 To contribute follow these steps:
