@@ -32,7 +32,7 @@ from climada.entity.exposures.base import Exposures, INDICATOR_IF, \
 from climada.entity.tag import Tag
 from climada.hazard.base import Hazard, Centroids
 from climada.util.constants import ENT_TEMPLATE_XLS, ONE_LAT_KM, DEF_CRS, HAZ_DEMO_FL
-from climada.util.coordinates import coord_on_land, equal_crs
+import climada.util.coordinates as u_coord
 
 DATA_DIR = CONFIG.exposures.test_data.dir()
 
@@ -86,7 +86,7 @@ class TestFuncs(unittest.TestCase):
         exp = Exposures()
         exp.set_from_raster(HAZ_DEMO_FL, window=Window(10, 20, 50, 60))
         exp.check()
-        self.assertTrue(equal_crs(exp.crs, DEF_CRS))
+        self.assertTrue(u_coord.equal_crs(exp.crs, DEF_CRS))
         self.assertAlmostEqual(exp.gdf['latitude'].max(),
                                10.248220966978932 - 0.009000000000000341 / 2)
         self.assertAlmostEqual(exp.gdf['latitude'].min(),
@@ -298,7 +298,7 @@ class TestAddSea(unittest.TestCase):
 
         on_sea_lat = exp_sea.gdf.latitude.values[11:]
         on_sea_lon = exp_sea.gdf.longitude.values[11:]
-        res_on_sea = coord_on_land(on_sea_lat, on_sea_lon)
+        res_on_sea = u_coord.coord_on_land(on_sea_lat, on_sea_lon)
         res_on_sea = ~res_on_sea
         self.assertTrue(np.all(res_on_sea))
 

@@ -58,7 +58,6 @@ setup(
         'geopandas',
         'h5py',
         'haversine',
-        'iso3166',
         'matplotlib',
         'netcdf4',
         'numba',

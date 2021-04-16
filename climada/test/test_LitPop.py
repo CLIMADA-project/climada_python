@@ -27,7 +27,7 @@ from climada.entity.exposures.litpop import LitPop
 from climada.entity.exposures import litpop as lp
 from climada.entity.exposures import gpw_import
 from climada.util.finance import world_bank_wealth_account
-from climada.util.coordinates import equal_crs
+import climada.util.coordinates as u_coord
 
 
 class TestLitPopExposure(unittest.TestCase):
@@ -51,10 +51,10 @@ class TestLitPopExposure(unittest.TestCase):
         self.assertIn('GPW-year=2015', ent.tag.description)
         self.assertIn('BM-year=2016', ent.tag.description)
         self.assertIn('exp=[1, 1]', ent.tag.description)
-        self.assertTrue(equal_crs(ent.crs, {'init': 'epsg:4326'}))
+        self.assertTrue(u_coord.equal_crs(ent.crs, {'init': 'epsg:4326'}))
         self.assertEqual(ent.meta['width'], 54)
         self.assertEqual(ent.meta['height'], 23)
-        self.assertTrue(equal_crs(ent.meta['crs'], {'init': 'epsg:4326'}))
+        self.assertTrue(u_coord.equal_crs(ent.meta['crs'], {'init': 'epsg:4326'}))
         self.assertAlmostEqual(ent.meta['transform'][0], 0.08333333333333333)
         self.assertAlmostEqual(ent.meta['transform'][1], 0)
         self.assertAlmostEqual(ent.meta['transform'][2], 5.9166666666666)

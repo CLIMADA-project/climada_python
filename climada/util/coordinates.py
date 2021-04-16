@@ -23,8 +23,9 @@ import ast
 import copy
 import logging
 import math
-from pathlib import Path
 from multiprocessing import cpu_count
+from pathlib import Path
+import re
 
 import zipfile
 
@@ -32,9 +33,9 @@ from cartopy.io import shapereader
 import dask.dataframe as dd
 from fiona.crs import from_epsg
 import geopandas as gpd
-from iso3166 import countries as iso_cntry
 import numpy as np
 import pandas as pd
+import pycountry
 import rasterio
 import rasterio.crs
 import rasterio.features
@@ -50,6 +51,7 @@ from climada.util.constants import (DEF_CRS, SYSTEM_DIR, ONE_LAT_KM,
                                     NATEARTH_CENTROIDS,
                                     ISIMIP_GPWV3_NATID_150AS,
                                     ISIMIP_NATID_TO_ISO,
+                                    NONISO_REGIONS,
                                     RIVER_FLOOD_REGIONS_CSV)
 from climada.util.files_handler import download_file
 import climada.util.hdf5_handler as u_hdf5
@@ -684,7 +686,7 @@ def get_country_geometries(country_names=None, extent=None, resolution=10):
     Parameters
     ----------
     country_names : list, optional
-        list with ISO3 names of countries, e.g ['ZWE', 'GBR', 'VNM', 'UZB']
+        list with ISO 3166 alpha-3 codes of countries, e.g ['ZWE', 'GBR', 'VNM', 'UZB']
     extent : tuple (min_lon, max_lon, min_lat, max_lat), optional
         Extent, assumed to be in the same CRS as the natural earth data.
     resolution : float, optional
@@ -710,15 +712,8 @@ def get_country_geometries(country_names=None, extent=None, resolution=10):
     nat_earth.loc[gap_mask, 'ISO_A3'] = nat_earth.loc[gap_mask, 'ADM0_A3']
 
     gap_mask = (nat_earth['ISO_N3'] == '-99')
-    for idx in nat_earth[gap_mask].index:
-        for col in ['ISO_A3', 'ADM0_A3', 'NAME']:
-            try:
-                num = iso_cntry.get(nat_earth.loc[idx, col]).numeric
-            except KeyError:
-                continue
-            else:
-                nat_earth.loc[idx, 'ISO_N3'] = num
-                break
+    for idx, country in nat_earth[gap_mask].iterrows():
+        nat_earth.loc[idx, "ISO_N3"] = f"{natearth_country_to_int(country):03d}"
 
     out = nat_earth
     if country_names:
@@ -790,10 +785,8 @@ def get_region_gridpoints(countries=None, regions=None, resolution=150,
         grid_shape = (dim_lat.size, dim_lon.size)
         region_id = hdf5_f['NatIdGrid'].reshape(grid_shape).astype(int)
         region_id[region_id < 0] = 0
-        natid2iso_alpha = country_natid2iso(list(range(231)))
-        natid2iso = country_iso_alpha2numeric(natid2iso_alpha)
-        natid2iso = np.array(natid2iso, dtype=int)
-        region_id = natid2iso[region_id]
+        natid2iso_numeric = np.array(country_natid2iso(list(range(231)), "numeric"), dtype=int)
+        region_id = natid2iso_numeric[region_id]
         lon, lat = np.meshgrid(dim_lon, dim_lat)
     else:
         raise ValueError(f"Unknown basemap: {basemap}")
@@ -809,7 +802,7 @@ def get_region_gridpoints(countries=None, regions=None, resolution=150,
     if not iso:
         countries = country_natid2iso(countries)
     countries += region2isos(regions)
-    countries = np.unique(country_iso_alpha2numeric(countries))
+    countries = np.unique(country_to_iso(countries, "numeric"))
 
     if len(countries) > 0:
         msk = np.isin(region_id, countries)
@@ -957,94 +950,104 @@ def region2isos(regions):
         isos += list(reg_info['ISO'][region_msk].values)
     return list(set(isos))
 
-def country_iso_alpha2numeric(iso_alpha):
-    """Convert ISO 3166-1 alpha-3 to numeric-3 codes
+def country_to_iso(countries, representation="alpha3", fillvalue=None):
+    """Determine ISO 3166 representation of countries
+
+    Example
+    -------
+    >>> country_to_iso(840)
+    'USA'
+    >>> country_to_iso("United States", representation="alpha2")
+    'US'
+    >>> country_to_iso(["United States of America", "SU"], "numeric")
+    [840, 810]
+
+    Some geopolitical areas that are not covered by ISO 3166 are added in the "user-assigned"
+    range of ISO 3166-compliant values:
+
+    >>> country_to_iso(["XK", "Dhekelia"], "numeric")  # XK for Kosovo
+    [983, 907]
 
     Parameters
     ----------
-    isos : str or list of str
-        ISO alpha-3 codes of countries (or single code).
+    countries : one of str, int, list of str, list of int
+        Country identifiers: name, official name, alpha-2, alpha-3 or numeric ISO codes.
+        Numeric representations may be specified as str or int.
+    representation : str (one of "alpha3", "alpha2", "numeric", "name"), optional
+        All countries are converted to this representation according to ISO 3166.
+        Default: "alpha3".
+    fillvalue : str or int or None, optional
+        The value to assign if a country is not recognized by the given identifier. By default,
+        a LookupError is raised. Default: None
 
     Returns
     -------
-    iso_num : int or list of int
-        ISO numeric-3 codes of countries. 
-        Will only return a list if the input is a list.
+    iso_list : one of str, int, list of str, list of int
+        ISO 3166 representation of countries. Will only return a list if the input is a list.
+        Numeric representations are returned as integers.
     """
-    return_int = isinstance(iso_alpha, str)
-    iso_list = [iso_alpha] if return_int else iso_alpha
-    old_iso = {
-        '': 0,  # Ocean or fill_value
-        "ANT": 530,  # Netherlands Antilles: split up since 2010
-        "SCG": 891,  # Serbia and Montenegro: split up since 2006
-    }
-    iso_num = []
-    for iso in iso_list:
-        try:
-            if iso in old_iso:
-                num = old_iso[iso]
-            else:
-                num = int(iso_cntry.get(iso).numeric)
-            iso_num.append(num)
-        except ValueError as ver:
-            raise KeyError(f'Unknown country ISO: {iso}') from ver
-    return iso_num[0] if return_int else iso_num
+    return_single = np.isscalar(countries)
+    countries = [countries] if return_single else countries
 
-def country_iso_numeric2alpha(iso_numeric):
-    """Convert ISO 3166-1 numeric-3codes to alpha-3
-    
-    Parameters
-    ----------
-    iso_numeric : int or list of int
-        ISO numeric-3 codes of countries (or single code).
-        
-    Returns
-    -------
-    iso_list : str or list of str
-        ISO alpha-3 codes of countries. 
-        Will only return a list if the input is a list.
-    """
-    return_str = isinstance(iso_numeric, int)
-    iso_num_list = [iso_numeric] if return_str else iso_numeric
-    old_iso = {
-        0: '',  # Ocean or fill_value
-        530: "ANT", # Netherlands Antilles: split up since 2010
-        891: "SCG", # Serbia and Montenegro: split up since 2006
-    }
+    if not re.match(r"(alpha[-_]?[23]|numeric|name)", representation):
+        raise ValueError(f"Unknown ISO representation: {representation}")
+    representation = re.sub(r"alpha-?([23])", r"alpha_\1", representation)
+
     iso_list = []
-    for iso_num in iso_num_list:  
+    for country in countries:
+        country = country if isinstance(country, str) else f"{int(country):03d}"
         try:
-            if iso_num in old_iso:
-                iso = old_iso[iso_num]
-            else:
-                iso = iso_cntry.get(iso_num).alpha3
-            iso_list.append(iso)
-        except ValueError as ver:
-            raise KeyError(f'Unknown country ISO: {iso}') from ver
-    return iso_list[0] if return_str else iso_list
+            match = pycountry.countries.lookup(country)
+        except LookupError:
+            try:
+                match = pycountry.historic_countries.lookup(country)
+            except LookupError:
+                match = next(filter(lambda c: country in c.values(), NONISO_REGIONS), None)
+                if match is not None:
+                    match = pycountry.db.Data(**match)
+                elif fillvalue is not None:
+                    match = pycountry.db.Data(**{representation: fillvalue})
+                else:
+                    raise LookupError(f'Unknown country identifier: {country}') from None
+        iso = getattr(match, representation)
+        if representation == "numeric":
+            iso = int(iso)
+        iso_list.append(iso)
+    return iso_list[0] if return_single else iso_list
 
-def country_natid2iso(natids):
+def country_iso_alpha2numeric(iso_alpha):
+    """Deprecated: Use `country_to_iso` with `representation="numeric"` instead"""
+    LOGGER.warning("country_iso_alpha2numeric is deprecated, use country_to_iso instead.")
+    return country_to_iso(iso_alpha, "numeric")
+
+def country_natid2iso(natids, representation="alpha3"):
     """Convert internal NatIDs to ISO 3166-1 alpha-3 codes
 
     Parameters
     ----------
     natids : int or list of int
-        Internal NatIDs of countries (or single ID).
+        NatIDs of countries (or single ID) as used in ISIMIP's version of the GPWv3
+        national identifier grid.
+    representation : str, one of "alpha3", "alpha2" or "numeric"
+        All countries are converted to this representation according to ISO 3166.
+        Default: "alpha3".
 
     Returns
     -------
-    isos : str or list of str
-        Will only return a list if the input is a list
+    iso_list : one of str, int, list of str, list of int
+        ISO 3166 representation of countries. Will only return a list if the input is a list.
+        Numeric representations are returned as integers.
     """
     return_str = isinstance(natids, int)
     natids = [natids] if return_str else natids
-    isos = []
+    iso_list = []
     for natid in natids:
         if natid < 0 or natid >= len(ISIMIP_NATID_TO_ISO):
-            LOGGER.error('Unknown country NatID: %s', natid)
-            raise KeyError
-        isos.append(ISIMIP_NATID_TO_ISO[natid])
-    return isos[0] if return_str else isos
+            raise LookupError('Unknown country NatID: %s', natid)
+        iso_list.append(ISIMIP_NATID_TO_ISO[natid])
+    if representation != "alpha3":
+        iso_list = country_to_iso(iso_list, representation)
+    return iso_list[0] if return_str else iso_list
 
 def country_iso2natid(isos):
     """Convert ISO 3166-1 alpha-3 codes to internal NatIDs
@@ -1066,29 +1069,8 @@ def country_iso2natid(isos):
         try:
             natids.append(ISIMIP_NATID_TO_ISO.index(iso))
         except ValueError as ver:
-            LOGGER.error('Unknown country ISO: %s', iso)
-            raise KeyError(f'Unknown country ISO: {iso}') from ver
+            raise LookupError(f'Unknown country ISO: {iso}') from ver
     return natids[0] if return_int else natids
-
-NATEARTH_AREA_NONISO_NUMERIC = {
-    "Akrotiri": 901,
-    "Baikonur": 902,
-    "Bajo Nuevo Bank": 903,
-    "Clipperton I.": 904,
-    "Coral Sea Is.": 905,
-    "Cyprus U.N. Buffer Zone": 906,
-    "Dhekelia": 907,
-    "Indian Ocean Ter.": 908,
-    "Kosovo": 983,  # Same as iso3166 package
-    "N. Cyprus": 910,
-    "Norway": 578,  # Bug in Natural Earth
-    "Scarborough Reef": 912,
-    "Serranilla Bank": 913,
-    "Siachen Glacier": 914,
-    "Somaliland": 915,
-    "Spratly Is.": 916,
-    "USNB Guantanamo Bay": 917,
-}
 
 def natearth_country_to_int(country):
     """Integer representation (ISO 3166, if possible) of Natural Earth GeoPandas country row
@@ -1096,7 +1078,7 @@ def natearth_country_to_int(country):
     Parameters
     ----------
     country : GeoSeries
-        Row from GeoDataFrame.
+        Row from Natural Earth GeoDataFrame.
 
     Returns
     -------
@@ -1105,7 +1087,7 @@ def natearth_country_to_int(country):
     """
     if country.ISO_N3 != '-99':
         return int(country.ISO_N3)
-    return NATEARTH_AREA_NONISO_NUMERIC[str(country.NAME)]
+    return country_to_iso(str(country.NAME), representation="numeric")
 
 def get_country_code(lat, lon, gridded=False):
     """Provide numeric (ISO 3166) code for every point.
@@ -1890,7 +1872,7 @@ def fao_code_def():
     faocode_list = list()
     for idx, iso in enumerate(fao_iso):
         if isinstance(iso, str):
-            iso_list.append(country_iso_alpha2numeric(iso))
+            iso_list.append(country_to_iso(iso, "numeric"))
             faocode_list.append(int(fao_code[idx]))
 
     return iso_list, faocode_list
