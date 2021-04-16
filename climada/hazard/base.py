@@ -730,8 +730,7 @@ class Hazard():
         if centr is not None:
             if isinstance(centr, tuple):
                 _, _, centr = self.centroids.get_closest_point(centr[0], centr[1])
-            return self._centr_plot(centr, self.intensity, col_label,
-                                        axis, **kwargs)
+            return self._centr_plot(centr, self.intensity, col_label, axis, **kwargs)
 
         LOGGER.error("Provide one event id or one centroid id.")
         raise ValueError
