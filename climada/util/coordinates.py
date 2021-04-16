@@ -53,6 +53,7 @@ from climada.util.constants import (DEF_CRS, SYSTEM_DIR, ONE_LAT_KM,
                                     RIVER_FLOOD_REGIONS_CSV)
 from climada.util.files_handler import download_file
 import climada.util.hdf5_handler as u_hdf5
+import climada.util.interpolation as u_interp
 
 pd.options.mode.chained_assignment = None
 
@@ -826,70 +827,111 @@ def get_region_gridpoints(countries=None, regions=None, resolution=150,
         lat, lon = [ar.ravel() for ar in [lat, lon]]
     return lat, lon
 
-def mapping_point2grid(x, y, xmin, ymax, res):
-    """Given the coordinates of a point, find the index of a grid cell from
-    a raster into which it falls.
+def assign_grid_points(x, y, grid_width, grid_height, grid_transform):
+    """To each coordinate in `x` and `y`, assign the closest centroid in the given raster grid
 
-    Note
-    ----
-    Coordinates of the point and of the raster need to have the same CRS (e.g.
-    both in lat/lon, EPSG:4326)
+    Make sure that your grid specification is relative to the same coordinate reference system as
+    the `x` and `y` coordinates. In case of lon/lat coordinates, make sure that the longitudinal
+    values are within the same longitudinal range (such as [-180, 180]).
 
-    Parameters
-    ---------
-    x : float
-        x-coordinate of point
-    y : float
-        y-coordinate of point
-    xmin: float
-        coords top left corner of raster file - x
-    ymax: float
-        coords of top left corner of raster file - y
-    res: float or tuple
-        resolution of raster file. Float if res_x=res_y else (res_x, res_y).
-
-    Returns
-    -------
-    col, row : tuple
-        column index and row index in grid matrix where point falls into
-
-    Raises
-    ------
-    ValueError if Point outside of top left corner of raster
-    """
-    if (isinstance(res, tuple) or isinstance(res, list)):
-        res_x, res_y = (abs(res) for res in res)
-    else:
-        res_x = res_y = abs(res)
-    col = int((x - xmin) / res_x)
-    row = int((ymax - y) / res_y)
-    if (col < 0 or row < 0):
-        LOGGER.error('Point not inside grid')
-        raise ValueError
-    return col, row
-
-def mapping_grid2flattened(col, row, matrix_shape):
-    """ given a col and row index and the initial 2D matrix shape,
-    return the 1-dimensional index of the same point in the flattened matrix
-    - assumes concatenation along the row-axis (x-direction)
+    If your grid is given by bounds instead of a transform, the functions
+    `rasterio.transform.from_bounds` and `pts_to_raster_meta` might be helpful.
 
     Parameters
     ----------
-    col : int
-        Column Index of an entry in the original matrix
-    row : int
-        Row index of an entry in the original matrix
-    matrix_shape: (int, int)
-        Shape of the matrix (n_rows, n_cols)
+    x, y : np.array
+        x- and y-coordinates of points to assign coordinates to.
+    grid_width : int
+        Width (number of columns) of the grid.
+    grid_height : int
+        Height (number of rows) of the grid.
+    grid_transform : affine.Affine
+        Affine transformation defining the grid raster.
 
     Returns
     -------
-    index (1D) of the point in the flattened array (int)
+    assigned_idx : np.array of size equal to the size of x and y
+        Index into the flattened `grid`. Note that the value `-1` is used to indicate that no
+        matching coordinate has been found, even though `-1` is a valid index in NumPy!
     """
-    if (row > matrix_shape[0] or col > matrix_shape[1]):
-        LOGGER.error('Indicated row  or column index larger than matrix')
-        raise ValueError
-    return row * matrix_shape[1] + col
+    x, y = np.array(x), np.array(y)
+    xres, _, xmin, _, yres, ymin = grid_transform[:6]
+    xmin, ymin = xmin + 0.5 * xres, ymin + 0.5 * yres
+    x_i = np.round((x - xmin) / xres).astype(int)
+    y_i = np.round((y - ymin) / yres).astype(int)
+    assigned = y_i * grid_width + x_i
+    assigned[(x_i < 0) | (x_i >= grid_width)] = -1
+    assigned[(y_i < 0) | (y_i >= grid_height)] = -1
+    return assigned
+
+def assign_coordinates(coords, coords_to_assign, method="NN", distance="haversine", threshold=100):
+    """To each coordinate in `coords`, assign a matching coordinate in `coords_to_assign`
+
+    If there is no exact match for some entry, an attempt is made to assign the geographically
+    nearest neighbor. If the distance to the nearest neighbor exceeds `threshold`, the index `-1`
+    is assigned.
+
+    Currently, the nearest neighbor matching works with lat/lon coordinates only. However, you can
+    disable nearest neighbor matching by setting `threshold` to 0, in which case only exactly
+    matching coordinates are assigned to each other.
+
+    Make sure that all coordinates are according to the same coordinate reference system. In case
+    of lat/lon coordinates, the "haversine" distance is able to correctly compute the distance
+    across the antimeridian. However, when exact matches are enforced with `threshold=0`, lat/lon
+    coordinates need to be given in the same longitudinal range (such as (-180, 180)).
+
+    Parameters
+    ----------
+    coords : np.array with two columns
+        Each row is a geographical coordinate pair. The result's size will match this array's
+        number of rows.
+    coords_to_assign : np.array with two columns
+        Each row is a geographical coordinate pair. The result will be an index into the
+        rows of this array. Make sure that these coordinates use the same coordinate reference
+        system as `coords`.
+    method : str, optional
+        Interpolation method to use for non-exact matching. Currently, "NN" (nearest neighbor)
+        is the only supported value, see `climada.util.interpolation.interpol_index`.
+    distance : str, optional
+        Distance to use for non-exact matching. Possible values are "haversine" and "approx", see
+        `climada.util.interpolation.interpol_index`. Default: "haversine"
+    threshold : float, optional
+        If the distance to the nearest neighbor exceeds `threshold`, the index `-1` is assigned.
+        Set `threshold` to 0 to disable nearest neighbor matching. Default: 100 (km)
+
+    Returns
+    -------
+    assigned_idx : np.array of size equal to the number of rows in `coords`
+        Index into `coords_to_assign`. Note that the value `-1` is used to indicate that no
+        matching coordinate has been found, even though `-1` is a valid index in NumPy!
+    """
+    coords = coords.astype('float64')
+    coords_to_assign = coords_to_assign.astype('float64')
+    if np.array_equal(coords, coords_to_assign):
+        assigned_idx = np.arange(coords.shape[0])
+    else:
+        # pairs of floats can be sorted (lexicographically) in NumPy
+        coords_view = coords.view(dtype='float64,float64').reshape(-1)
+        coords_to_assign_view = coords_to_assign.view(dtype='float64,float64').reshape(-1)
+
+        # assign each hazard coordsinate to an element in coords using searchsorted
+        coords_sorter = np.argsort(coords_view)
+        sort_assign_idx = np.fmin(coords_sorter.size - 1, np.searchsorted(
+            coords_view, coords_to_assign_view, side="left", sorter=coords_sorter))
+        sort_assign_idx = coords_sorter[sort_assign_idx]
+
+        # determine which of the assignements match exactly
+        exact_assign_idx = (coords_view[sort_assign_idx] == coords_to_assign_view).nonzero()[0]
+        assigned_idx = np.full_like(coords_sorter, -1)
+        assigned_idx[sort_assign_idx[exact_assign_idx]] = exact_assign_idx
+
+        # assign remaining coordsinates to their geographically nearest neighbor
+        if threshold > 0 and exact_assign_idx.size != coords_view.size:
+            not_assigned_idx_mask = (assigned_idx == -1)
+            assigned_idx[not_assigned_idx_mask] = u_interp.interpol_index(
+                coords_to_assign, coords[not_assigned_idx_mask],
+                method=method, distance=distance, threshold=threshold)
+    return assigned_idx
 
 def region2isos(regions):
     """Convert region names to ISO 3166 alpha-3 codes of countries
@@ -915,34 +957,71 @@ def region2isos(regions):
         isos += list(reg_info['ISO'][region_msk].values)
     return list(set(isos))
 
-def country_iso_alpha2numeric(isos):
+def country_iso_alpha2numeric(iso_alpha):
     """Convert ISO 3166-1 alpha-3 to numeric-3 codes
 
     Parameters
     ----------
     isos : str or list of str
-        ISO codes of countries (or single code).
+        ISO alpha-3 codes of countries (or single code).
 
     Returns
     -------
-    nums : int or list of int
+    iso_num : int or list of int
+        ISO numeric-3 codes of countries. 
         Will only return a list if the input is a list.
     """
-    return_int = isinstance(isos, str)
-    isos = [isos] if return_int else isos
+    return_int = isinstance(iso_alpha, str)
+    iso_list = [iso_alpha] if return_int else iso_alpha
     old_iso = {
         '': 0,  # Ocean or fill_value
         "ANT": 530,  # Netherlands Antilles: split up since 2010
         "SCG": 891,  # Serbia and Montenegro: split up since 2006
     }
-    nums = []
-    for iso in isos:
-        if iso in old_iso:
-            num = old_iso[iso]
-        else:
-            num = int(iso_cntry.get(iso).numeric)
-        nums.append(num)
-    return nums[0] if return_int else nums
+    iso_num = []
+    for iso in iso_list:
+        try:
+            if iso in old_iso:
+                num = old_iso[iso]
+            else:
+                num = int(iso_cntry.get(iso).numeric)
+            iso_num.append(num)
+        except ValueError as ver:
+            raise KeyError(f'Unknown country ISO: {iso}') from ver
+    return iso_num[0] if return_int else iso_num
+
+def country_iso_numeric2alpha(iso_numeric):
+    """Convert ISO 3166-1 numeric-3codes to alpha-3
+    
+    Parameters
+    ----------
+    iso_numeric : int or list of int
+        ISO numeric-3 codes of countries (or single code).
+        
+    Returns
+    -------
+    iso_list : str or list of str
+        ISO alpha-3 codes of countries. 
+        Will only return a list if the input is a list.
+    """
+    return_str = isinstance(iso_numeric, int)
+    iso_num_list = [iso_numeric] if return_str else iso_numeric
+    old_iso = {
+        0: '',  # Ocean or fill_value
+        530: "ANT", # Netherlands Antilles: split up since 2010
+        891: "SCG", # Serbia and Montenegro: split up since 2006
+    }
+    iso_list = []
+    for iso_num in iso_num_list:  
+        try:
+            if iso_num in old_iso:
+                iso = old_iso[iso_num]
+            else:
+                iso = iso_cntry.get(iso_num).alpha3
+            iso_list.append(iso)
+        except ValueError as ver:
+            raise KeyError(f'Unknown country ISO: {iso}') from ver
+    return iso_list[0] if return_str else iso_list
 
 def country_natid2iso(natids):
     """Convert internal NatIDs to ISO 3166-1 alpha-3 codes

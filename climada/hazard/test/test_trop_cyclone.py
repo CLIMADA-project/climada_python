@@ -102,7 +102,7 @@ class TestReader(unittest.TestCase):
             windfield_norms = np.linalg.norm(windfields, axis=-1).max(axis=0)
             intensity = tc_haz.intensity.toarray()[0, :]
             msk = (intensity > 0)
-            self.assertTrue(np.allclose(windfield_norms[msk], intensity[msk]))
+            np.testing.assert_array_equal(windfield_norms[msk], intensity[msk])
 
     def test_set_one_file_pass(self):
         """Test set function set_from_tracks with one input."""

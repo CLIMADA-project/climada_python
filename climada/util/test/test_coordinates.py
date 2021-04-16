@@ -35,8 +35,11 @@ from rasterio.crs import CRS as RCRS
 
 from climada import CONFIG
 from climada.util.constants import HAZ_DEMO_FL, DEF_CRS
+import climada.util.coordinates as u_coord
 from climada.util.coordinates import (convert_wgs_to_utm,
                                       coord_on_land,
+                                      country_iso_alpha2numeric,
+                                      country_iso_numeric2alpha,
                                       dist_approx,
                                       dist_to_coast,
                                       dist_to_coast_nasa,
@@ -52,8 +55,6 @@ from climada.util.coordinates import (convert_wgs_to_utm,
                                       latlon_bounds,
                                       latlon_to_geosph_vector,
                                       lon_normalize,
-                                      mapping_grid2flattened,
-                                      mapping_point2grid,
                                       nat_earth_resolution,
                                       points_to_raster,
                                       pts_to_raster_meta,
@@ -72,7 +73,6 @@ DATA_DIR = CONFIG.util.test_data.dir()
 
 class TestFunc(unittest.TestCase):
     """Test auxiliary functions"""
-
     def test_lon_normalize(self):
         """Test the longitude normalization function"""
         data = np.array([-180, 20.1, -30, 190, -350])
@@ -186,11 +186,11 @@ class TestFunc(unittest.TestCase):
 
     def test_get_gridcellarea(self):
         """Test get_gridcellarea function to calculate the gridcellarea from a given latitude"""
-        
+
         lat = np.array([54.75, 54.25])
         resolution = 0.5
         area = get_gridcellarea(lat, resolution)
-        
+
         self.assertAlmostEqual(area[0], 178159.73363005)
         self.assertAlmostEqual(area[1], 180352.82386516)
         self.assertEqual(lat.shape, area.shape)
@@ -267,35 +267,63 @@ class TestFunc(unittest.TestCase):
         with self.assertRaises(SyntaxError):
             to_crs_user_input('{init: epsg:4326, no_defs: True}')
 
-    def test_mapping_point2grid(self):
-        res = (-1, 0.5)
-        geometry = Point(10,40)
-        out = mapping_point2grid(geometry.x, geometry.y, 5, 50, res)
-        self.assertEqual(out, (5, 20))
-        
-        res = -0.5
-        geometry = Point(10,40)
-        out = mapping_point2grid(geometry.x, geometry.y, 5, 50,res)
-        self.assertEqual(out, (10, 20))
-        
-        res = 1
-        geometry = Point(-10,-40)
-        out = mapping_point2grid(geometry.x, geometry.y, -20,-30, res)
-        self.assertEqual(out, (10, 10))
-        
-        geometry = Point(-30,-40)
-        with self.assertRaises(ValueError):
-            mapping_point2grid(geometry.x, geometry.y, -20,-30,  res) 
-        
-    def test_mapping_grid2flattened(self):
-        matrix = np.ones((5,8))
-        out = mapping_grid2flattened(0, 0, matrix.shape)
-        self.assertEqual(out, 0)
-        out = mapping_grid2flattened(7, 4, matrix.shape)
-        self.assertEqual(out, 39)
-        with self.assertRaises(ValueError):
-            mapping_grid2flattened(4, 7, matrix.shape)
-        
+    def test_country_iso_alpha2numeric(self):
+        self.assertEqual(country_iso_alpha2numeric('NOR'), 578)  # 578 for Norway
+
+        isos_list = ['', 'USA', 'ARG', 'JPN', 'AUS', 'NOR', 'MDG']
+        nums_list = [0, 840, 32, 392, 36, 578, 450]
+        self.assertEqual(country_iso_alpha2numeric(isos_list), nums_list)
+
+    def test_country_iso_numeric2alpha(self):
+        self.assertEqual(country_iso_numeric2alpha(578), 'NOR')  # 578 for Norway
+
+        isos_list = ['', 'USA', 'ARG', 'JPN', 'AUS', 'NOR', 'MDG']
+        nums_list = [0, 840, 32, 392, 36, 578, 450]
+        self.assertEqual(country_iso_numeric2alpha(nums_list), isos_list)
+
+    def test_assign_grid_points(self):
+        """Test assign_grid_points function"""
+        res = (1, -0.5)
+        pt_bounds = (5, 40, 10, 50)
+        height, width, transform = u_coord.pts_to_raster_meta(pt_bounds, res)
+        xy = np.array([[5, 50], [6, 50], [5, 49.5], [10, 40]])
+        out = u_coord.assign_grid_points(xy[:, 0], xy[:, 1], width, height, transform)
+        np.testing.assert_array_equal(out, [0, 1, 6, 125])
+
+        res = (0.5, -0.5)
+        height, width, transform = u_coord.pts_to_raster_meta(pt_bounds, res)
+        xy = np.array([[5.1, 49.95], [5.99, 50.05], [5, 49.6], [10.1, 39.8]])
+        out = u_coord.assign_grid_points(xy[:, 0], xy[:, 1], width, height, transform)
+        np.testing.assert_array_equal(out, [0, 2, 11, 230])
+
+        res = (1, -1)
+        pt_bounds = (-20, -40, -10, -30)
+        height, width, transform = u_coord.pts_to_raster_meta(pt_bounds, res)
+        xy = np.array([[-10, -40], [-30, -40]])
+        out = u_coord.assign_grid_points(xy[:, 0], xy[:, 1], width, height, transform)
+        np.testing.assert_array_equal(out, [120, -1])
+
+    def test_assign_coordinates(self):
+        """Test assign_coordinates function"""
+        # note that the coordinates are in lat/lon
+        coords = np.array([(0.2, 2), (0, 0), (0, 2), (2.1, 3), (1, 1), (-1, 1), (0, 179.9)])
+        coords_to_assign = np.array([(2.1, 3), (0, 0), (0, 2), (0.9, 1.0), (0, -179.9)])
+        expected_results = [
+            # test with different thresholds (in km)
+            (100, [2, 1, 2, 0, 3, -1, 4]),
+            (20, [-1, 1, 2, 0, 3, -1, -1]),
+            (0, [-1, 1, 2, 0, -1, -1, -1]),
+        ]
+
+        # make sure that it works for both float32 and float64
+        for test_dtype in [np.float64, np.float32]:
+            coords = coords.astype(test_dtype)
+            coords_to_assign = coords_to_assign.astype(test_dtype)
+            for thresh, result in expected_results:
+                assigned_idx = u_coord.assign_coordinates(
+                    coords, coords_to_assign, threshold=thresh)
+                np.testing.assert_array_equal(assigned_idx, result)
+
 class TestGetGeodata(unittest.TestCase):
     def test_nat_earth_resolution_pass(self):
         """Correct resolution."""
