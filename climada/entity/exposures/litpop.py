@@ -32,7 +32,6 @@ from scipy import ndimage as nd
 from scipy import stats
 import shapefile
 from matplotlib import pyplot as plt
-from iso3166 import countries as iso_cntry
 from osgeo import gdal
 from cartopy.io import shapereader
 
@@ -44,7 +43,7 @@ from climada.entity.exposures import gpw_import
 from climada.util import ureg
 from climada.util.finance import gdp, income_group, wealth2gdp, world_bank_wealth_account
 from climada.util.constants import SYSTEM_DIR, DEF_CRS
-from climada.util.coordinates import pts_to_raster_meta, get_resolution
+import climada.util.coordinates as u_coord
 
 logging.root.setLevel(logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
@@ -260,10 +259,10 @@ class LitPop(Exposures):
             value_unit='USD'
         )
         try:
-            rows, cols, ras_trans = pts_to_raster_meta(
+            rows, cols, ras_trans = u_coord.pts_to_raster_meta(
                 (self.gdf.longitude.min(), self.gdf.latitude.min(),
                  self.gdf.longitude.max(), self.gdf.latitude.max()),
-                get_resolution(self.gdf.longitude, self.gdf.latitude))
+                u_coord.get_resolution(self.gdf.longitude, self.gdf.latitude))
             self.meta = {
                 'width': cols,
                 'height': rows,
@@ -300,9 +299,9 @@ class LitPop(Exposures):
             'longitude': lon
         })
         try:
-            lp_ent.gdf['region_id'] = int(iso_cntry.get(cntry_info[1]).numeric)
-        except KeyError:
-            lp_ent.gdf['region_id'] = int(iso_cntry.get(curr_country).numeric)
+            lp_ent.gdf['region_id'] = u_coord.country_to_iso(cntry_info[1], "numeric")
+        except LookupError:
+            lp_ent.gdf['region_id'] = u_coord.country_to_iso(curr_country, "numeric")
         lp_ent.gdf[INDICATOR_IF + DEF_HAZ_TYPE] = 1
         return lp_ent
 
@@ -1877,7 +1876,7 @@ def exposure_set_admin1(exposure, res_arcsec):
     exposure.gdf['admin1'] = pd.Series()
     exposure.gdf['admin1_ID'] = pd.Series()
     for cntry in np.unique(exposure.gdf.region_id):
-        _, admin1_info = _get_country_info(iso_cntry.get(cntry).alpha3)
+        _, admin1_info = _get_country_info(u_coord.country_to_iso(cntry, "alpha3"))
         for adm1_shp in admin1_info:
             LOGGER.debug('Extracting admin1 for %s.', adm1_shp[1]['name'])
             mask_adm1 = _mask_from_shape(

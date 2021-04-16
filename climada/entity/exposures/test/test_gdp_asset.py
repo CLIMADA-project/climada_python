@@ -36,9 +36,9 @@ class TestGDP2AssetClass(unittest.TestCase):
         with self.assertRaises(NameError):
             testGDP2A.set_countries(countries=['CHE'], ref_year=2000,
                                     path='non/existent/test')
-        with self.assertRaises(KeyError):
+        with self.assertRaises(LookupError):
             testGDP2A.set_countries(countries=['OYY'], path=DEMO_GDP2ASSET)
-        with self.assertRaises(KeyError):
+        with self.assertRaises(LookupError):
             testGDP2A.set_countries(countries=['DEU'], ref_year=2600,
                                     path=DEMO_GDP2ASSET)
         with self.assertRaises(ValueError):

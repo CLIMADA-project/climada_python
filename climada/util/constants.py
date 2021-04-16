@@ -162,8 +162,33 @@ ISIMIP_NATID_TO_ISO = [
     'TUN', 'TUR', 'TUV', 'TWN', 'TZA', 'UGA', 'UKR', 'URY', 'USA', 'UZB', 'VCT',
     'VEN', 'VGB', 'VIR', 'VNM', 'VUT', 'WLF', 'WSM', 'YEM', 'ZAF', 'ZMB', 'ZWE',
 ]
-"""ISO3166 alpha-3 codes of countries used in ISIMIP_GPWV3_NATID_150AS"""
+"""ISO 3166 alpha-3 codes of countries used in ISIMIP_GPWV3_NATID_150AS"""
 
+NONISO_REGIONS = [
+    # Dummy region for numeric 0 (or empty string), sometimes used for oceans
+    dict(name="", alpha_2="", alpha_3="", numeric="000"),
+    dict(name="Akrotiri", alpha_2="XA", alpha_3="XXA", numeric="901"),
+    dict(name="Baikonur", alpha_2="XB", alpha_3="XXB", numeric="902"),
+    dict(name="Bajo Nuevo Bank", alpha_2="XJ", alpha_3="XXJ", numeric="903"),
+    dict(name="Clipperton I.", alpha_2="XC", alpha_3="XXC", numeric="904"),
+    dict(name="Coral Sea Is.", alpha_2="XO", alpha_3="XXO", numeric="905"),
+    dict(name="Cyprus U.N. Buffer Zone", alpha_2="XU", alpha_3="XXU", numeric="906"),
+    dict(name="Dhekelia", alpha_2="XD", alpha_3="XXD", numeric="907"),
+    dict(name="Indian Ocean Ter.", alpha_2="XI", alpha_3="XXI", numeric="908"),
+    # For Kosovo, we follow the iso3166 package and the statistical office of Canada:
+    # https://www.statcan.gc.ca/eng/subjects/standard/sccai/2011/scountry-desc
+    dict(name="Kosovo", alpha_2="XK", alpha_3="XKO", numeric="983"),
+    dict(name="N. Cyprus", alpha_2="XY", alpha_3="XXY", numeric="910"),
+    dict(name="Scarborough Reef", alpha_2="XS", alpha_3="XXS", numeric="912"),
+    dict(name="Serranilla Bank", alpha_2="XR", alpha_3="XXR", numeric="913"),
+    dict(name="Siachen Glacier", alpha_2="XH", alpha_3="XXH", numeric="914"),
+    dict(name="Somaliland", alpha_2="XM", alpha_3="XXM", numeric="915"),
+    dict(name="Spratly Is.", alpha_2="XP", alpha_3="XXP", numeric="916"),
+    dict(name="USNB Guantanamo Bay", alpha_2="XG", alpha_3="XXG", numeric="917"),
+]
+"""Geopolitical areas that are not listed in the ISO 3166 standard, but might be relevant when
+working, e.g. with Natural Earth shape files. The alpha-2, alpha-3 and numeric representations are
+unofficial and for internal use only."""
 
 ONE_LAT_KM = 111.12
 """Mean one latitude (in degrees) to km"""

@@ -339,9 +339,8 @@ class TropCyclone(Hazard):
         """
         try:
             mod_id = MODEL_VANG[model]
-        except KeyError:
-            LOGGER.error('Model not implemented: %s.', model)
-            raise ValueError
+        except KeyError as err:
+            raise ValueError(f'Model not implemented: {model}.') from err
         ncentroids = centroids.coord.shape[0]
         coastal_centr = centroids.coord[coastal_idx]
         windfields, reachable_centr_idx = compute_windfields(track, coastal_centr, mod_id,
