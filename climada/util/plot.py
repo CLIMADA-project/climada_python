@@ -523,7 +523,7 @@ def add_populated_places(axis, extent, proj=ccrs.PlateCarree()):
                 # Fiona wrongly assumes latin-1 encoding by default:
                 # https://github.com/SciTools/cartopy/issues/1282
                 # As a workaround, we encode and decode again:
-                place_name = rec.attributes['NAME'].encode("latin-1").decode("utf-8")
+                place_name = rec.attributes['name'].encode("latin-1").decode("utf-8")
                 axis.plot(point.x, point.y, color='navy', marker='o', markersize=7,
                           transform=ccrs.PlateCarree(), markerfacecolor='None')
                 axis.text(point.x, point.y, place_name,
