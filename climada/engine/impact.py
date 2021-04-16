@@ -1021,15 +1021,11 @@ class Impact():
                            "method.")
             return None
 
-        if (dates, event_ids, event_names) != (None, None, None):
-            sel_ev = self._selected_events_idx(event_ids, event_names, dates, nb_events)
-        else:
-            sel_ev = None
-
         imp = copy.deepcopy(self)
 
         # apply event selection to impact attributes
-        if sel_ev:
+        sel_ev = self._selected_events_idx(event_ids, event_names, dates, nb_events)
+        if sel_ev is not None:
             # set all attributes that are 'per event', i.e. have a dimension
             # of length equal to the number of events (=nb_events)
             for attr in get_attributes_with_matching_dimension(imp, [nb_events]):
@@ -1081,6 +1077,9 @@ class Impact():
         return sel_exp
 
     def _selected_events_idx(self, event_ids, event_names, dates, nb_events):
+        if all(var is None for var in [dates, event_ids, event_names]):
+            return None
+
         # filter events by date
         if dates is None:
             mask_dt = np.zeros(nb_events, dtype=bool)
@@ -1095,35 +1094,30 @@ class Impact():
             if not np.any(mask_dt):
                 LOGGER.info('No impact event in given date range %s.', dates)
 
-        sel_dt = list(np.argwhere(mask_dt).reshape(-1)) # Convert bool to indices
+        sel_dt = mask_dt.nonzero()[0]  # Convert bool to indices
 
         # filter events by id
         if event_ids is None:
-            sel_id = []
+            sel_id = np.array([], dtype=int)
         else:
-            sel_id = [list(self.event_id).index(_id) for _id in event_ids]
-            if not sel_id:
-                LOGGER.info('No impact event with given ids %s found.',
-                            event_ids)
+            sel_id = np.isin(self.event_id, event_ids).nonzero()[0]
+            if sel_id.size == 0:
+                LOGGER.info('No impact event with given ids %s found.', event_ids)
 
         # filter events by name
         if event_names is None:
-            sel_na = []
+            sel_na = np.array([], dtype=int)
         else:
-            sel_na = [list(self.event_name).index(name) for name in event_names]
-            if not sel_na:
-                LOGGER.info('No impact event with given names %s found.',
-                            event_names)
+            sel_na = np.isin(self.event_name, event_names).nonzero()[0]
+            if sel_na.size == 0:
+                LOGGER.info('No impact event with given names %s found.', event_names)
 
+        # select events with machting id, name or date field.
+        sel_ev = np.unique(np.concatenate([sel_dt, sel_id, sel_na]))
 
-        #select events with machting id, name or date field.
-        sel_ev = [idx for idx in set(sel_dt + sel_id + sel_na)]
-
-        #if no event found matching ids, names or dates, return None
-        if (dates, event_ids, event_names) != (None, None, None)\
-            and not sel_ev:
+        # if no event found matching ids, names or dates, warn the user
+        if sel_ev.size == 0:
             LOGGER.warning("No event matches the selection. ")
-            return None
 
         return sel_ev
 
