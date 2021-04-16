@@ -220,7 +220,7 @@ def country_iso_geom(countries, shp_file, admin_key=['ADMIN', 'ADM0_A3']):
         iso3 = list_records[country_idx].attributes[admin_key[1]]
         try:
             cntry_id = u_coord.country_to_iso(iso3, "numeric")
-        except KeyError:
+        except LookupError:
             cntry_id = 0
         cntry_info[iso3] = [cntry_id, country_name.title(),
                             list_records[country_idx].geometry]

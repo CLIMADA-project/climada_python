@@ -68,8 +68,8 @@ class HazRegion():
         lon_min, lon_max, lat_min, lat_max = extent
         extent_poly = gpd.GeoSeries(Polygon([
             (lon_min, lat_min), (lon_min, lat_max), (lon_max, lat_max), (lon_max, lat_min)
-        ]), crs=NE_CRS)
-        self.geometry = gpd.GeoDataFrame({'geometry': extent_poly}, crs=NE_CRS)
+        ]), crs=u_coord.NE_CRS)
+        self.geometry = gpd.GeoDataFrame({'geometry': extent_poly}, crs=u_coord.NE_CRS)
 
         if country is not None:
             self.meta['country'] = country
@@ -190,5 +190,5 @@ def get_tc_basin_geometry(tc_basin):
             (lonmax, latmin)
         ]))
     polygons = shapely.ops.unary_union(polygons)
-    polygons = gpd.GeoSeries(polygons, crs=NE_CRS)
-    return gpd.GeoDataFrame({'geometry': polygons}, crs=NE_CRS)
+    polygons = gpd.GeoSeries(polygons, crs=u_coord.NE_CRS)
+    return gpd.GeoDataFrame({'geometry': polygons}, crs=u_coord.NE_CRS)

@@ -537,21 +537,17 @@ class CropProduction(Exposures):
 
         # create a list of the countries contained in the exposure
         iso3alpha = list()
-        for reg_id in self.gdf.region_id:
-            try:
-                iso3alpha.append(u_coord.country_to_iso(reg_id, "alpha3"))
-            except KeyError:
-                if reg_id in (0, -99):
-                    iso3alpha.append('No country')
-                else:
-                    iso3alpha.append('Other country')
+        self.gdf.region_id[self.gdf.region_id == -99] = 0
+        iso3alpha = np.asarray(u_coord.country_to_iso(
+            self.gdf.region_id, representation="alpha3", fillvalue='Other country'), dtype=object)
+        iso3alpha[iso3alpha == ""] = 'No country'
         list_countries = np.unique(iso3alpha)
 
         # iterate over all countries that are covered in the exposure, extract the according price
         # and calculate the crop production in USD/y
         area_price = np.zeros(self.gdf.value.size)
         for country in list_countries:
-            [idx_country] = np.where(np.asarray(iso3alpha) == country)
+            [idx_country] = (iso3alpha == country).nonzero()
             if country == 'Other country':
                 price = 0
                 area_price[idx_country] = self.gdf.value[idx_country] * price

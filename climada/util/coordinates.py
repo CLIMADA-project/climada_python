@@ -785,10 +785,8 @@ def get_region_gridpoints(countries=None, regions=None, resolution=150,
         grid_shape = (dim_lat.size, dim_lon.size)
         region_id = hdf5_f['NatIdGrid'].reshape(grid_shape).astype(int)
         region_id[region_id < 0] = 0
-        natid2iso_alpha = country_natid2iso(list(range(231)))
-        natid2iso = country_iso_alpha2numeric(natid2iso_alpha)
-        natid2iso = np.array(natid2iso, dtype=int)
-        region_id = natid2iso[region_id]
+        natid2iso_numeric = np.array(country_natid2iso(list(range(231)), "numeric"), dtype=int)
+        region_id = natid2iso_numeric[region_id]
         lon, lat = np.meshgrid(dim_lon, dim_lat)
     else:
         raise ValueError(f"Unknown basemap: {basemap}")
@@ -804,7 +802,7 @@ def get_region_gridpoints(countries=None, regions=None, resolution=150,
     if not iso:
         countries = country_natid2iso(countries)
     countries += region2isos(regions)
-    countries = np.unique(country_iso_alpha2numeric(countries))
+    countries = np.unique(country_to_iso(countries, "numeric"))
 
     if len(countries) > 0:
         msk = np.isin(region_id, countries)
@@ -952,7 +950,7 @@ def region2isos(regions):
         isos += list(reg_info['ISO'][region_msk].values)
     return list(set(isos))
 
-def country_to_iso(countries, representation="alpha3"):
+def country_to_iso(countries, representation="alpha3", fillvalue=None):
     """Determine ISO 3166 representation of countries
 
     Example
@@ -975,9 +973,12 @@ def country_to_iso(countries, representation="alpha3"):
     countries : one of str, int, list of str, list of int
         Country identifiers: name, official name, alpha-2, alpha-3 or numeric ISO codes.
         Numeric representations may be specified as str or int.
-    representation : str, one of "alpha3", "alpha2", "numeric", "name"
+    representation : str (one of "alpha3", "alpha2", "numeric", "name"), optional
         All countries are converted to this representation according to ISO 3166.
         Default: "alpha3".
+    fillvalue : str or int or None, optional
+        The value to assign if a country is not recognized by the given identifier. By default,
+        a LookupError is raised. Default: None
 
     Returns
     -------
@@ -985,7 +986,7 @@ def country_to_iso(countries, representation="alpha3"):
         ISO 3166 representation of countries. Will only return a list if the input is a list.
         Numeric representations are returned as integers.
     """
-    return_single = isinstance(countries, (str, int))
+    return_single = np.isscalar(countries)
     countries = [countries] if return_single else countries
 
     if not re.match(r"(alpha[-_]?[23]|numeric|name)", representation):
@@ -994,7 +995,7 @@ def country_to_iso(countries, representation="alpha3"):
 
     iso_list = []
     for country in countries:
-        country = f"{country:03d}" if isinstance(country, int) else country
+        country = country if isinstance(country, str) else f"{int(country):03d}"
         try:
             match = pycountry.countries.lookup(country)
         except LookupError:
@@ -1004,8 +1005,10 @@ def country_to_iso(countries, representation="alpha3"):
                 match = next(filter(lambda c: country in c.values(), NONISO_REGIONS), None)
                 if match is not None:
                     match = pycountry.db.Data(**match)
+                elif fillvalue is not None:
+                    match = pycountry.db.Data(**{representation: fillvalue})
                 else:
-                    raise LookupError(f'Unknown country identifier: {country}')
+                    raise LookupError(f'Unknown country identifier: {country}') from None
         iso = getattr(match, representation)
         if representation == "numeric":
             iso = int(iso)
@@ -1869,7 +1872,7 @@ def fao_code_def():
     faocode_list = list()
     for idx, iso in enumerate(fao_iso):
         if isinstance(iso, str):
-            iso_list.append(country_iso_alpha2numeric(iso))
+            iso_list.append(country_to_iso(iso, "numeric"))
             faocode_list.append(int(fao_code[idx]))
 
     return iso_list, faocode_list

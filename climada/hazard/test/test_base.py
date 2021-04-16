@@ -181,10 +181,9 @@ class TestLoader(unittest.TestCase):
         """Test event_id_to_name function."""
         haz = Hazard('TC')
         haz.read_excel(HAZ_TEMPLATE_XLS)
-        with self.assertLogs('climada.hazard.base', level='ERROR') as cm:
-            with self.assertRaises(ValueError):
-                haz.get_event_name(1050)
-        self.assertIn('No event with id: 1050', cm.output[0])
+        with self.assertRaises(ValueError) as cm:
+            haz.get_event_name(1050)
+        self.assertIn('No event with id: 1050', str(cm.exception))
 
     def test_get_date_strings_pass(self):
         haz = Hazard('TC')

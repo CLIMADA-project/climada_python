@@ -237,20 +237,6 @@ class TestFunc(unittest.TestCase):
         with self.assertRaises(SyntaxError):
             u_coord.to_crs_user_input('{init: epsg:4326, no_defs: True}')
 
-    def test_country_iso_alpha2numeric(self):
-        self.assertEqual(country_iso_alpha2numeric('NOR'), 578)  # 578 for Norway
-
-        isos_list = ['', 'USA', 'ARG', 'JPN', 'AUS', 'NOR', 'MDG']
-        nums_list = [0, 840, 32, 392, 36, 578, 450]
-        self.assertEqual(country_iso_alpha2numeric(isos_list), nums_list)
-
-    def test_country_iso_numeric2alpha(self):
-        self.assertEqual(country_iso_numeric2alpha(578), 'NOR')  # 578 for Norway
-
-        isos_list = ['', 'USA', 'ARG', 'JPN', 'AUS', 'NOR', 'MDG']
-        nums_list = [0, 840, 32, 392, 36, 578, 450]
-        self.assertEqual(country_iso_numeric2alpha(nums_list), isos_list)
-
     def test_assign_grid_points(self):
         """Test assign_grid_points function"""
         res = (1, -0.5)
@@ -318,6 +304,9 @@ class TestFunc(unittest.TestCase):
         # deprecated API `country_iso_alpha2numeric`
         self.assertEqual(u_coord.country_iso_alpha2numeric(al3_list[-2]), num_list[-2])
         self.assertEqual(u_coord.country_iso_alpha2numeric(al3_list), num_list)
+
+        # test fillvalue-parameter for unknown countries
+        self.assertEqual(u_coord.country_to_iso("ABC", fillvalue="XOT"), "XOT")
 
         # conversion to/from ISIMIP natid
         self.assertEqual(u_coord.country_iso2natid(al3_list[2]), natid_list[2])

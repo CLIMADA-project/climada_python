@@ -603,7 +603,7 @@ def emdat_countries_by_hazard(emdat_file_csv, hazard=None, year_range=None):
     for iso3a in countries_iso3a:
         try:
             countries_names.append(u_coord.country_to_iso(iso3a, "name"))
-        except KeyError:
+        except LookupError:
             countries_names.append('NA')
     return countries_iso3a, countries_names
 
@@ -764,7 +764,7 @@ def emdat_impact_event(emdat_file_csv, countries=None, hazard=None, year_range=N
         try:
             df_data.loc[df_data.ISO == country, 'region_id'] = \
                 u_coord.country_to_iso(country, "numeric")
-        except KeyError:
+        except LookupError:
             LOGGER.warning('ISO3alpha code not found in iso_country: %s', country)
     if '000 US' in imp_str:
         df_data['impact'] *= 1e3
@@ -898,8 +898,7 @@ def emdat_to_impact(emdat_file_csv, hazard_type_climada, year_range=None, countr
     for idx, cntry in enumerate(countries):
         try:
             cntry = u_coord.country_to_iso(cntry, "alpha3")
-        except KeyError:
-            print(cntry)
+        except LookupError:
             LOGGER.error('Country not found in iso_country: %s', cntry)
         cntry_boolean = False
         for rec_i, rec in enumerate(shp.records()):
@@ -915,7 +914,7 @@ def emdat_to_impact(emdat_file_csv, hazard_type_climada, year_range=None, countr
             countries_lon.append(np.nan)
         try:
             countries_reg_id.append(u_coord.country_to_iso(cntry, "numeric"))
-        except KeyError:
+        except LookupError:
             countries_reg_id.append(0)
         df_tmp = em_data[em_data[VARNAMES_EMDAT[
             max(VARNAMES_EMDAT.keys())]['ISO']].str.contains(cntry)]

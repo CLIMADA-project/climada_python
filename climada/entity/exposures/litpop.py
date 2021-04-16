@@ -300,7 +300,7 @@ class LitPop(Exposures):
         })
         try:
             lp_ent.gdf['region_id'] = u_coord.country_to_iso(cntry_info[1], "numeric")
-        except KeyError:
+        except LookupError:
             lp_ent.gdf['region_id'] = u_coord.country_to_iso(curr_country, "numeric")
         lp_ent.gdf[INDICATOR_IF + DEF_HAZ_TYPE] = 1
         return lp_ent
