@@ -958,7 +958,7 @@ def country_iso_numeric2alpha(iso_numeric):
         
     Returns
     -------
-    isos : str or list of str
+    iso_list : str or list of str
         ISO alpha-3 codes of countries. 
         Will only return a list if the input is a list.
     """
