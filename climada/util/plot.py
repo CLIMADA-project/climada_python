@@ -549,7 +549,10 @@ def add_cntry_names(axis, extent, proj=ccrs.PlateCarree()):
     ext_trans = [ccrs.PlateCarree().transform_point(pts[0], pts[1], proj)
                  for pts in ext_pts]
     for rec, point in zip(shp.records(), shp.geometries()):
-        place_name = _fix_place_names(rec.attributes['NAME'])
+        # Fiona wrongly assumes latin-1 encoding by default:
+        # https://github.com/SciTools/cartopy/issues/1282
+        # As a workaround, we encode and decode again:
+        place_name = rec.attributes['NAME'].encode("latin-1").decode("utf-8")
         point_x = point.centroid.xy[0][0]
         point_y = point.centroid.xy[1][0]
         if ext_trans[2][0] < point_x <= ext_trans[0][0]:
@@ -557,27 +560,6 @@ def add_cntry_names(axis, extent, proj=ccrs.PlateCarree()):
                 axis.text(point_x, point_y, place_name,
                           horizontalalignment='center', verticalalignment='center',
                           transform=ccrs.PlateCarree(), fontsize=14)
-
-def _fix_place_names(place_name):
-    undict = {'â€¦': '…', "â€ž": "„", 'â€“': '–', 'â€™': '’', "â€\x9d": "”",
-              "â€š": "„", "â€°": "‰",
-              'â€œ': '“', "â€”": '—', "Â\xad": " ", 'Ã©': "é", 'â‚¬': '€',
-              "â€˜": "‘", 'Â£': "£", "Ã¢": "â", "Â©": "©", 'Ã£': "ã", "Ãº": 'ú',
-              'Ã¤': 'ä', "â€¢": "•", 'Ã¡': 'á', 'Ã¼': 'ü', "Â¢": '¢', "Ã±": "ñ",
-              'Â½': 'Ž', 'Ã‰': 'É', 'Â¥': '¥', 'Ã§': 'ç', 'Ã´': '´', 'Â®': '®',
-              'Â¦': '¦', "Ã¯": "ï", 'Ã¶': 'ö', 'Â´': "´", "Ëœ": "˜", 'Â»': '»',
-              'Ã«': "ë", "Ã‡": "Ç", "Ã³": "ó", "Ãµ": "õ", "Ã®": "î", "Â¾": '¾',
-              "Â¼": "¼", "Â°": "°", "Ã–": "Ö", "Ã¥": 'å', "Ã¨": "è", "Â¯": "¯",
-              "Â¬": "¬", "Ã„": "Ä", "Â§": "§", "Ãœ": "Ì", "Â¤": "¤", "Â·": '·',
-              "Â±": "±", "Ã²": "ò", "Ãƒ": "Ã", "ÃŸ": "ß", "Ã’": "Ò",
-              "Â¡": "¡", "Ãª": "ê", "Â«": "«",
-              "Ã\x8d": "Í", "Ã\x81": 'Á', "Ã\xad": "í", "Ã¦": "æ", "Â¿": "¿", "Ã¸": "ø",
-              "Ã®": "î", "Ã½": "ý", "Ã»": "û", "Ã¹": "ù", "Å½": "Ž", "Â¨": "¨", "Âµ": "µ",
-              "Â²": "²", "Â³": "³", "Ã¨": "è", "Â¹": "¹", "â„¢": "™", "Ã¤": "ä", "Ã“": "Ó"}
-    for item in undict:
-        if item in place_name:
-            place_name = place_name.replace(item, undict[item])
-    return place_name
 
 def _get_collection_arrays(array_sub):
     """
