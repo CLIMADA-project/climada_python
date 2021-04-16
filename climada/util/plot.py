@@ -520,7 +520,10 @@ def add_populated_places(axis, extent, proj=ccrs.PlateCarree()):
     for rec, point in zip(shp.records(), shp.geometries()):
         if ext_trans[2][0] < point.x <= ext_trans[0][0]:
             if ext_trans[0][1] < point.y <= ext_trans[1][1]:
-                place_name = _fix_place_names(rec.attributes['name'])
+                # Fiona wrongly assumes latin-1 encoding by default:
+                # https://github.com/SciTools/cartopy/issues/1282
+                # As a workaround, we encode and decode again:
+                place_name = rec.attributes['NAME'].encode("latin-1").decode("utf-8")
                 axis.plot(point.x, point.y, color='navy', marker='o', markersize=7,
                           transform=ccrs.PlateCarree(), markerfacecolor='None')
                 axis.text(point.x, point.y, place_name,
