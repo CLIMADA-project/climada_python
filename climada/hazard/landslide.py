@@ -31,9 +31,7 @@ from scipy.stats import binom, poisson
 import shapely
 
 from climada.hazard.base import Hazard
-from climada.util.coordinates import (mapping_point2grid,
-                                      mapping_grid2flattened,
-                                      read_raster)
+import climada.util.coordinates as u_coord
 from climada.util.constants import DEF_CRS
 
 LOGGER = logging.getLogger(__name__)
@@ -150,14 +148,10 @@ class Landslide(Hazard):
 
         # assign lat-lon points of LS events to corresponding grid & flattened
         # grid-index
-        gdf_cropped = gdf_cropped.assign(row=np.nan, col=np.nan)
-        gdf_cropped[['col', 'row']] = gdf_cropped.apply(
-            lambda row: mapping_point2grid(row.geometry.x, row.geometry.y,
-                                           bbox[0], bbox[-1], res), axis = 1
-                                           ).tolist()
-        gdf_cropped['flat_ix'] = gdf_cropped.apply(
-            lambda row: mapping_grid2flattened(row.col, row.row,
-                                               self.centroids.shape), axis = 1)
+        grid_height, grid_width, grid_transform = u_coord.pts_to_raster_meta(bbox, (res, -res))
+        gdf_cropped['flat_ix'] = u_coord.assign_grid_points(
+            gdf_cropped.geometry.x, gdf_cropped.geometry.y,
+            grid_width, grid_height, grid_transform)
         self.intensity = sparse.csr_matrix(
             (np.ones(n_ev), (np.arange(n_ev), gdf_cropped.flat_ix)),
             shape=(n_ev, self.centroids.size))
@@ -237,8 +231,7 @@ class Landslide(Hazard):
 
         # raster with occurrence probs
         self.centroids.meta, prob_matrix = \
-        read_raster(path_sourcefile,
-                    geometry=[shapely.geometry.box(*bbox, ccw=True)])
+            u_coord.read_raster(path_sourcefile, geometry=[shapely.geometry.box(*bbox, ccw=True)])
         prob_matrix = sparse.csr_matrix(prob_matrix.squeeze()/corr_fact)
 
         # sample events from probabilities

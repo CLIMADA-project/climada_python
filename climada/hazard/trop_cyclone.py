@@ -360,10 +360,16 @@ class TropCyclone(Hazard):
         new_haz.tag = TagHazard(HAZ_TYPE, 'Name: ' + track.name)
         new_haz.intensity = intensity_sparse
         if store_windfields:
-            wf_full = np.zeros((npositions, ncentroids, 2))
-            wf_full[:, reachable_coastal_centr_idx, :] = windfields
-            new_haz.windfields = [
-                sparse.csr_matrix(wf_full.reshape(npositions, -1))]
+            n_reachable_coastal_centr = reachable_coastal_centr_idx.size
+            indices = np.zeros((npositions, n_reachable_coastal_centr, 2), dtype=np.int64)
+            indices[:, :, 0] = 2 * reachable_coastal_centr_idx[None]
+            indices[:, :, 1] = 2 * reachable_coastal_centr_idx[None] + 1
+            indices = indices.ravel()
+            indptr = np.arange(npositions + 1) * n_reachable_coastal_centr * 2
+            windfields_sparse = sparse.csr_matrix((windfields.ravel(), indices, indptr),
+                                                  shape=(npositions, ncentroids * 2))
+            windfields_sparse.eliminate_zeros()
+            new_haz.windfields = [windfields_sparse]
         new_haz.units = 'm/s'
         new_haz.centroids = centroids
         new_haz.event_id = np.array([1])

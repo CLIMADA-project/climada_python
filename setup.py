@@ -1,34 +1,30 @@
 """A setuptools based setup module.
 """
 
+from pathlib import Path
 from setuptools import setup, find_packages
-from codecs import open
-from os import path
-import os
 
-here = path.abspath(path.dirname(__file__))
+here = Path(__file__).parent.absolute()
 
 # Get the long description from the README file
-with open(path.join(here, 'README.md'), encoding='utf-8') as f:
+with open(here.joinpath('README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 # Get the data recursively from the data folder
 def package_files(directory):
-    paths = []
-    for (path, directories, filenames) in os.walk(directory):
-        for filename in filenames:
-            if filename != '.DS_Store':
-                paths.append(os.path.join('..', path, filename))
-    return paths
+    return [str(path_object)
+        for path_object in directory.glob('**/*')
+        if path_object.is_file() and path_object.name[0] != '.'
+    ]
 
-extra_files = package_files(here + '/data/')
+extra_files = package_files(here / 'data')
 # Add configuration files
-extra_files.append(here + '/climada/conf/defaults.conf')
+extra_files.append(str(here / 'climada/conf/climada.conf'))
 
 setup(
     name='climada',
 
-    version='2.0.0',
+    version='2.1.1',
 
     description='CLIMADA in Python',
 
@@ -73,6 +69,7 @@ setup(
         'pillow',
         'pint',
         'pybufrkit',
+        'pycountry',
         'rasterio',
         'scikit-learn',
         'statsmodels',
