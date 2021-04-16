@@ -945,7 +945,6 @@ def country_iso_alpha2numeric(iso_alpha):
                 num = int(iso_cntry.get(iso).numeric)
             iso_num.append(num)
         except ValueError as ver:
-            LOGGER.error('Unknown country ISO: %s', iso)
             raise KeyError(f'Unknown country ISO: {iso}') from ver
     return iso_num[0] if return_int else iso_num
 
