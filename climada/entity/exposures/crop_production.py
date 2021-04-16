@@ -29,12 +29,10 @@ import xarray as xr
 import pandas as pd
 import h5py
 from matplotlib import pyplot as plt
-from iso3166 import countries as iso_cntry
 
 from climada.entity.exposures.base import Exposures
 from climada.entity.tag import Tag
 import climada.util.coordinates as u_coord
-from climada.util.coordinates import pts_to_raster_meta, get_resolution, get_gridcellarea
 from climada import CONFIG
 
 
@@ -260,7 +258,7 @@ class CropProduction(Exposures):
                     int(yearrange[1] - yearchunk['startyear']))
 
         # The area covered by a grid cell is calculated depending on the latitude
-        area = get_gridcellarea(lat, resolution=0.5)
+        area = u_coord.get_gridcellarea(lat, resolution=0.5)
 
         # The area covered by a crop is calculated as the product of the fraction and
         # the grid cell size
@@ -354,10 +352,10 @@ class CropProduction(Exposures):
         self.crop = crop
         self.ref_year = yearrange
         try:
-            rows, cols, ras_trans = pts_to_raster_meta(
+            rows, cols, ras_trans = u_coord.pts_to_raster_meta(
                 (self.gdf.longitude.min(), self.gdf.latitude.min(),
                  self.gdf.longitude.max(), self.gdf.latitude.max()),
-                get_resolution(self.gdf.longitude, self.gdf.latitude))
+                u_coord.get_resolution(self.gdf.longitude, self.gdf.latitude))
             self.meta = {
                 'width': cols,
                 'height': rows,
@@ -539,21 +537,17 @@ class CropProduction(Exposures):
 
         # create a list of the countries contained in the exposure
         iso3alpha = list()
-        for reg_id in self.gdf.region_id:
-            try:
-                iso3alpha.append(iso_cntry.get(reg_id).alpha3)
-            except KeyError:
-                if reg_id in (0, -99):
-                    iso3alpha.append('No country')
-                else:
-                    iso3alpha.append('Other country')
+        self.gdf.region_id[self.gdf.region_id == -99] = 0
+        iso3alpha = np.asarray(u_coord.country_to_iso(
+            self.gdf.region_id, representation="alpha3", fillvalue='Other country'), dtype=object)
+        iso3alpha[iso3alpha == ""] = 'No country'
         list_countries = np.unique(iso3alpha)
 
         # iterate over all countries that are covered in the exposure, extract the according price
         # and calculate the crop production in USD/y
         area_price = np.zeros(self.gdf.value.size)
         for country in list_countries:
-            [idx_country] = np.where(np.asarray(iso3alpha) == country)
+            [idx_country] = (iso3alpha == country).nonzero()
             if country == 'Other country':
                 price = 0
                 area_price[idx_country] = self.gdf.value[idx_country] * price

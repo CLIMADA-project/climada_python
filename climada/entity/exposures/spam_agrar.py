@@ -24,13 +24,13 @@ import zipfile
 from pathlib import Path
 import pandas as pd
 import numpy as np
-from iso3166 import countries as iso_cntry
 
 from climada import CONFIG
 from climada.entity.tag import Tag
 from climada.entity.exposures.base import Exposures, INDICATOR_IF
 from climada.util.files_handler import download_file
 from climada.util.constants import SYSTEM_DIR
+import climada.util.coordinates as u_coord
 
 logging.root.setLevel(logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
@@ -163,11 +163,11 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
         country_id = data.loc[:, 'iso3']
         if country_id.unique().size == 1:
             region_id = np.ones(self.gdf.value.size, int)\
-                * int(iso_cntry.get(country_id.iloc[0]).numeric)
+                * u_coord.country_to_iso(country_id.iloc[0], "numeric")
         else:
             region_id = np.zeros(self.gdf.value.size, int)
             for i in range(0, self.gdf.value.size):
-                region_id[i] = int(iso_cntry.get(country_id.iloc[i]).numeric)
+                region_id[i] = u_coord.country_to_iso(country_id.iloc[i], "numeric")
         self.gdf['region_id'] = region_id
         self.ref_year = 2005
         self.tag = Tag()

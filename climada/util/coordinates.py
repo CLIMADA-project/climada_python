@@ -23,8 +23,9 @@ import ast
 import copy
 import logging
 import math
-from pathlib import Path
 from multiprocessing import cpu_count
+from pathlib import Path
+import re
 
 import zipfile
 
@@ -32,9 +33,9 @@ from cartopy.io import shapereader
 import dask.dataframe as dd
 from fiona.crs import from_epsg
 import geopandas as gpd
-from iso3166 import countries as iso_cntry
 import numpy as np
 import pandas as pd
+import pycountry
 import rasterio
 import rasterio.crs
 import rasterio.features
@@ -50,9 +51,11 @@ from climada.util.constants import (DEF_CRS, SYSTEM_DIR, ONE_LAT_KM,
                                     NATEARTH_CENTROIDS,
                                     ISIMIP_GPWV3_NATID_150AS,
                                     ISIMIP_NATID_TO_ISO,
+                                    NONISO_REGIONS,
                                     RIVER_FLOOD_REGIONS_CSV)
 from climada.util.files_handler import download_file
 import climada.util.hdf5_handler as u_hdf5
+import climada.util.interpolation as u_interp
 
 pd.options.mode.chained_assignment = None
 
@@ -683,7 +686,7 @@ def get_country_geometries(country_names=None, extent=None, resolution=10):
     Parameters
     ----------
     country_names : list, optional
-        list with ISO3 names of countries, e.g ['ZWE', 'GBR', 'VNM', 'UZB']
+        list with ISO 3166 alpha-3 codes of countries, e.g ['ZWE', 'GBR', 'VNM', 'UZB']
     extent : tuple (min_lon, max_lon, min_lat, max_lat), optional
         Extent, assumed to be in the same CRS as the natural earth data.
     resolution : float, optional
@@ -709,15 +712,8 @@ def get_country_geometries(country_names=None, extent=None, resolution=10):
     nat_earth.loc[gap_mask, 'ISO_A3'] = nat_earth.loc[gap_mask, 'ADM0_A3']
 
     gap_mask = (nat_earth['ISO_N3'] == '-99')
-    for idx in nat_earth[gap_mask].index:
-        for col in ['ISO_A3', 'ADM0_A3', 'NAME']:
-            try:
-                num = iso_cntry.get(nat_earth.loc[idx, col]).numeric
-            except KeyError:
-                continue
-            else:
-                nat_earth.loc[idx, 'ISO_N3'] = num
-                break
+    for idx, country in nat_earth[gap_mask].iterrows():
+        nat_earth.loc[idx, "ISO_N3"] = f"{natearth_country_to_int(country):03d}"
 
     out = nat_earth
     if country_names:
@@ -789,10 +785,8 @@ def get_region_gridpoints(countries=None, regions=None, resolution=150,
         grid_shape = (dim_lat.size, dim_lon.size)
         region_id = hdf5_f['NatIdGrid'].reshape(grid_shape).astype(int)
         region_id[region_id < 0] = 0
-        natid2iso_alpha = country_natid2iso(list(range(231)))
-        natid2iso = country_iso_alpha2numeric(natid2iso_alpha)
-        natid2iso = np.array(natid2iso, dtype=int)
-        region_id = natid2iso[region_id]
+        natid2iso_numeric = np.array(country_natid2iso(list(range(231)), "numeric"), dtype=int)
+        region_id = natid2iso_numeric[region_id]
         lon, lat = np.meshgrid(dim_lon, dim_lat)
     else:
         raise ValueError(f"Unknown basemap: {basemap}")
@@ -808,7 +802,7 @@ def get_region_gridpoints(countries=None, regions=None, resolution=150,
     if not iso:
         countries = country_natid2iso(countries)
     countries += region2isos(regions)
-    countries = np.unique(country_iso_alpha2numeric(countries))
+    countries = np.unique(country_to_iso(countries, "numeric"))
 
     if len(countries) > 0:
         msk = np.isin(region_id, countries)
@@ -826,70 +820,111 @@ def get_region_gridpoints(countries=None, regions=None, resolution=150,
         lat, lon = [ar.ravel() for ar in [lat, lon]]
     return lat, lon
 
-def mapping_point2grid(x, y, xmin, ymax, res):
-    """Given the coordinates of a point, find the index of a grid cell from
-    a raster into which it falls.
+def assign_grid_points(x, y, grid_width, grid_height, grid_transform):
+    """To each coordinate in `x` and `y`, assign the closest centroid in the given raster grid
 
-    Note
-    ----
-    Coordinates of the point and of the raster need to have the same CRS (e.g.
-    both in lat/lon, EPSG:4326)
+    Make sure that your grid specification is relative to the same coordinate reference system as
+    the `x` and `y` coordinates. In case of lon/lat coordinates, make sure that the longitudinal
+    values are within the same longitudinal range (such as [-180, 180]).
 
-    Parameters
-    ---------
-    x : float
-        x-coordinate of point
-    y : float
-        y-coordinate of point
-    xmin: float
-        coords top left corner of raster file - x
-    ymax: float
-        coords of top left corner of raster file - y
-    res: float or tuple
-        resolution of raster file. Float if res_x=res_y else (res_x, res_y).
-
-    Returns
-    -------
-    col, row : tuple
-        column index and row index in grid matrix where point falls into
-
-    Raises
-    ------
-    ValueError if Point outside of top left corner of raster
-    """
-    if (isinstance(res, tuple) or isinstance(res, list)):
-        res_x, res_y = (abs(res) for res in res)
-    else:
-        res_x = res_y = abs(res)
-    col = int((x - xmin) / res_x)
-    row = int((ymax - y) / res_y)
-    if (col < 0 or row < 0):
-        LOGGER.error('Point not inside grid')
-        raise ValueError
-    return col, row
-
-def mapping_grid2flattened(col, row, matrix_shape):
-    """ given a col and row index and the initial 2D matrix shape,
-    return the 1-dimensional index of the same point in the flattened matrix
-    - assumes concatenation along the row-axis (x-direction)
+    If your grid is given by bounds instead of a transform, the functions
+    `rasterio.transform.from_bounds` and `pts_to_raster_meta` might be helpful.
 
     Parameters
     ----------
-    col : int
-        Column Index of an entry in the original matrix
-    row : int
-        Row index of an entry in the original matrix
-    matrix_shape: (int, int)
-        Shape of the matrix (n_rows, n_cols)
+    x, y : np.array
+        x- and y-coordinates of points to assign coordinates to.
+    grid_width : int
+        Width (number of columns) of the grid.
+    grid_height : int
+        Height (number of rows) of the grid.
+    grid_transform : affine.Affine
+        Affine transformation defining the grid raster.
 
     Returns
     -------
-    index (1D) of the point in the flattened array (int)
+    assigned_idx : np.array of size equal to the size of x and y
+        Index into the flattened `grid`. Note that the value `-1` is used to indicate that no
+        matching coordinate has been found, even though `-1` is a valid index in NumPy!
     """
-    if (row > matrix_shape[0] or col > matrix_shape[1]):
-        LOGGER.error('Indicated row  or column index larger than matrix')
-        raise ValueError
-    return row * matrix_shape[1] + col
+    x, y = np.array(x), np.array(y)
+    xres, _, xmin, _, yres, ymin = grid_transform[:6]
+    xmin, ymin = xmin + 0.5 * xres, ymin + 0.5 * yres
+    x_i = np.round((x - xmin) / xres).astype(int)
+    y_i = np.round((y - ymin) / yres).astype(int)
+    assigned = y_i * grid_width + x_i
+    assigned[(x_i < 0) | (x_i >= grid_width)] = -1
+    assigned[(y_i < 0) | (y_i >= grid_height)] = -1
+    return assigned
+
+def assign_coordinates(coords, coords_to_assign, method="NN", distance="haversine", threshold=100):
+    """To each coordinate in `coords`, assign a matching coordinate in `coords_to_assign`
+
+    If there is no exact match for some entry, an attempt is made to assign the geographically
+    nearest neighbor. If the distance to the nearest neighbor exceeds `threshold`, the index `-1`
+    is assigned.
+
+    Currently, the nearest neighbor matching works with lat/lon coordinates only. However, you can
+    disable nearest neighbor matching by setting `threshold` to 0, in which case only exactly
+    matching coordinates are assigned to each other.
+
+    Make sure that all coordinates are according to the same coordinate reference system. In case
+    of lat/lon coordinates, the "haversine" distance is able to correctly compute the distance
+    across the antimeridian. However, when exact matches are enforced with `threshold=0`, lat/lon
+    coordinates need to be given in the same longitudinal range (such as (-180, 180)).
+
+    Parameters
+    ----------
+    coords : np.array with two columns
+        Each row is a geographical coordinate pair. The result's size will match this array's
+        number of rows.
+    coords_to_assign : np.array with two columns
+        Each row is a geographical coordinate pair. The result will be an index into the
+        rows of this array. Make sure that these coordinates use the same coordinate reference
+        system as `coords`.
+    method : str, optional
+        Interpolation method to use for non-exact matching. Currently, "NN" (nearest neighbor)
+        is the only supported value, see `climada.util.interpolation.interpol_index`.
+    distance : str, optional
+        Distance to use for non-exact matching. Possible values are "haversine" and "approx", see
+        `climada.util.interpolation.interpol_index`. Default: "haversine"
+    threshold : float, optional
+        If the distance to the nearest neighbor exceeds `threshold`, the index `-1` is assigned.
+        Set `threshold` to 0 to disable nearest neighbor matching. Default: 100 (km)
+
+    Returns
+    -------
+    assigned_idx : np.array of size equal to the number of rows in `coords`
+        Index into `coords_to_assign`. Note that the value `-1` is used to indicate that no
+        matching coordinate has been found, even though `-1` is a valid index in NumPy!
+    """
+    coords = coords.astype('float64')
+    coords_to_assign = coords_to_assign.astype('float64')
+    if np.array_equal(coords, coords_to_assign):
+        assigned_idx = np.arange(coords.shape[0])
+    else:
+        # pairs of floats can be sorted (lexicographically) in NumPy
+        coords_view = coords.view(dtype='float64,float64').reshape(-1)
+        coords_to_assign_view = coords_to_assign.view(dtype='float64,float64').reshape(-1)
+
+        # assign each hazard coordsinate to an element in coords using searchsorted
+        coords_sorter = np.argsort(coords_view)
+        sort_assign_idx = np.fmin(coords_sorter.size - 1, np.searchsorted(
+            coords_view, coords_to_assign_view, side="left", sorter=coords_sorter))
+        sort_assign_idx = coords_sorter[sort_assign_idx]
+
+        # determine which of the assignements match exactly
+        exact_assign_idx = (coords_view[sort_assign_idx] == coords_to_assign_view).nonzero()[0]
+        assigned_idx = np.full_like(coords_sorter, -1)
+        assigned_idx[sort_assign_idx[exact_assign_idx]] = exact_assign_idx
+
+        # assign remaining coordsinates to their geographically nearest neighbor
+        if threshold > 0 and exact_assign_idx.size != coords_view.size:
+            not_assigned_idx_mask = (assigned_idx == -1)
+            assigned_idx[not_assigned_idx_mask] = u_interp.interpol_index(
+                coords_to_assign, coords[not_assigned_idx_mask],
+                method=method, distance=distance, threshold=threshold)
+    return assigned_idx
 
 def region2isos(regions):
     """Convert region names to ISO 3166 alpha-3 codes of countries
@@ -915,57 +950,104 @@ def region2isos(regions):
         isos += list(reg_info['ISO'][region_msk].values)
     return list(set(isos))
 
-def country_iso_alpha2numeric(isos):
-    """Convert ISO 3166-1 alpha-3 to numeric-3 codes
+def country_to_iso(countries, representation="alpha3", fillvalue=None):
+    """Determine ISO 3166 representation of countries
+
+    Example
+    -------
+    >>> country_to_iso(840)
+    'USA'
+    >>> country_to_iso("United States", representation="alpha2")
+    'US'
+    >>> country_to_iso(["United States of America", "SU"], "numeric")
+    [840, 810]
+
+    Some geopolitical areas that are not covered by ISO 3166 are added in the "user-assigned"
+    range of ISO 3166-compliant values:
+
+    >>> country_to_iso(["XK", "Dhekelia"], "numeric")  # XK for Kosovo
+    [983, 907]
 
     Parameters
     ----------
-    isos : str or list of str
-        ISO codes of countries (or single code).
+    countries : one of str, int, list of str, list of int
+        Country identifiers: name, official name, alpha-2, alpha-3 or numeric ISO codes.
+        Numeric representations may be specified as str or int.
+    representation : str (one of "alpha3", "alpha2", "numeric", "name"), optional
+        All countries are converted to this representation according to ISO 3166.
+        Default: "alpha3".
+    fillvalue : str or int or None, optional
+        The value to assign if a country is not recognized by the given identifier. By default,
+        a LookupError is raised. Default: None
 
     Returns
     -------
-    nums : int or list of int
-        Will only return a list if the input is a list.
+    iso_list : one of str, int, list of str, list of int
+        ISO 3166 representation of countries. Will only return a list if the input is a list.
+        Numeric representations are returned as integers.
     """
-    return_int = isinstance(isos, str)
-    isos = [isos] if return_int else isos
-    old_iso = {
-        '': 0,  # Ocean or fill_value
-        "ANT": 530,  # Netherlands Antilles: split up since 2010
-        "SCG": 891,  # Serbia and Montenegro: split up since 2006
-    }
-    nums = []
-    for iso in isos:
-        if iso in old_iso:
-            num = old_iso[iso]
-        else:
-            num = int(iso_cntry.get(iso).numeric)
-        nums.append(num)
-    return nums[0] if return_int else nums
+    return_single = np.isscalar(countries)
+    countries = [countries] if return_single else countries
 
-def country_natid2iso(natids):
+    if not re.match(r"(alpha[-_]?[23]|numeric|name)", representation):
+        raise ValueError(f"Unknown ISO representation: {representation}")
+    representation = re.sub(r"alpha-?([23])", r"alpha_\1", representation)
+
+    iso_list = []
+    for country in countries:
+        country = country if isinstance(country, str) else f"{int(country):03d}"
+        try:
+            match = pycountry.countries.lookup(country)
+        except LookupError:
+            try:
+                match = pycountry.historic_countries.lookup(country)
+            except LookupError:
+                match = next(filter(lambda c: country in c.values(), NONISO_REGIONS), None)
+                if match is not None:
+                    match = pycountry.db.Data(**match)
+                elif fillvalue is not None:
+                    match = pycountry.db.Data(**{representation: fillvalue})
+                else:
+                    raise LookupError(f'Unknown country identifier: {country}') from None
+        iso = getattr(match, representation)
+        if representation == "numeric":
+            iso = int(iso)
+        iso_list.append(iso)
+    return iso_list[0] if return_single else iso_list
+
+def country_iso_alpha2numeric(iso_alpha):
+    """Deprecated: Use `country_to_iso` with `representation="numeric"` instead"""
+    LOGGER.warning("country_iso_alpha2numeric is deprecated, use country_to_iso instead.")
+    return country_to_iso(iso_alpha, "numeric")
+
+def country_natid2iso(natids, representation="alpha3"):
     """Convert internal NatIDs to ISO 3166-1 alpha-3 codes
 
     Parameters
     ----------
     natids : int or list of int
-        Internal NatIDs of countries (or single ID).
+        NatIDs of countries (or single ID) as used in ISIMIP's version of the GPWv3
+        national identifier grid.
+    representation : str, one of "alpha3", "alpha2" or "numeric"
+        All countries are converted to this representation according to ISO 3166.
+        Default: "alpha3".
 
     Returns
     -------
-    isos : str or list of str
-        Will only return a list if the input is a list
+    iso_list : one of str, int, list of str, list of int
+        ISO 3166 representation of countries. Will only return a list if the input is a list.
+        Numeric representations are returned as integers.
     """
     return_str = isinstance(natids, int)
     natids = [natids] if return_str else natids
-    isos = []
+    iso_list = []
     for natid in natids:
         if natid < 0 or natid >= len(ISIMIP_NATID_TO_ISO):
-            LOGGER.error('Unknown country NatID: %s', natid)
-            raise KeyError
-        isos.append(ISIMIP_NATID_TO_ISO[natid])
-    return isos[0] if return_str else isos
+            raise LookupError('Unknown country NatID: %s', natid)
+        iso_list.append(ISIMIP_NATID_TO_ISO[natid])
+    if representation != "alpha3":
+        iso_list = country_to_iso(iso_list, representation)
+    return iso_list[0] if return_str else iso_list
 
 def country_iso2natid(isos):
     """Convert ISO 3166-1 alpha-3 codes to internal NatIDs
@@ -987,29 +1069,8 @@ def country_iso2natid(isos):
         try:
             natids.append(ISIMIP_NATID_TO_ISO.index(iso))
         except ValueError as ver:
-            LOGGER.error('Unknown country ISO: %s', iso)
-            raise KeyError(f'Unknown country ISO: {iso}') from ver
+            raise LookupError(f'Unknown country ISO: {iso}') from ver
     return natids[0] if return_int else natids
-
-NATEARTH_AREA_NONISO_NUMERIC = {
-    "Akrotiri": 901,
-    "Baikonur": 902,
-    "Bajo Nuevo Bank": 903,
-    "Clipperton I.": 904,
-    "Coral Sea Is.": 905,
-    "Cyprus U.N. Buffer Zone": 906,
-    "Dhekelia": 907,
-    "Indian Ocean Ter.": 908,
-    "Kosovo": 983,  # Same as iso3166 package
-    "N. Cyprus": 910,
-    "Norway": 578,  # Bug in Natural Earth
-    "Scarborough Reef": 912,
-    "Serranilla Bank": 913,
-    "Siachen Glacier": 914,
-    "Somaliland": 915,
-    "Spratly Is.": 916,
-    "USNB Guantanamo Bay": 917,
-}
 
 def natearth_country_to_int(country):
     """Integer representation (ISO 3166, if possible) of Natural Earth GeoPandas country row
@@ -1017,7 +1078,7 @@ def natearth_country_to_int(country):
     Parameters
     ----------
     country : GeoSeries
-        Row from GeoDataFrame.
+        Row from Natural Earth GeoDataFrame.
 
     Returns
     -------
@@ -1026,7 +1087,7 @@ def natearth_country_to_int(country):
     """
     if country.ISO_N3 != '-99':
         return int(country.ISO_N3)
-    return NATEARTH_AREA_NONISO_NUMERIC[str(country.NAME)]
+    return country_to_iso(str(country.NAME), representation="numeric")
 
 def get_country_code(lat, lon, gridded=False):
     """Provide numeric (ISO 3166) code for every point.
@@ -1811,7 +1872,7 @@ def fao_code_def():
     faocode_list = list()
     for idx, iso in enumerate(fao_iso):
         if isinstance(iso, str):
-            iso_list.append(country_iso_alpha2numeric(iso))
+            iso_list.append(country_to_iso(iso, "numeric"))
             faocode_list.append(int(fao_code[idx]))
 
     return iso_list, faocode_list

@@ -814,9 +814,8 @@ class Hazard():
         try:
             return self.event_name[np.argwhere(
                 self.event_id == event_id)[0][0]]
-        except IndexError:
-            LOGGER.error("No event with id: %s", event_id)
-            raise ValueError
+        except IndexError as err:
+            raise ValueError(f"No event with id: {event_id}") from err
 
     def get_event_date(self, event=None):
         """Return list of date strings for given event or for all events,

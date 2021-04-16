@@ -32,11 +32,9 @@ import pandas as pd
 import geopandas as gpd
 from rasterio.warp import Resampling
 from climada.util.constants import RIVER_FLOOD_REGIONS_CSV
-from climada.util.coordinates import get_region_gridpoints,\
-                                     region2isos, country_iso2natid
+import climada.util.coordinates as u_coord
 from climada.hazard.base import Hazard
 from climada.hazard.centroids import Centroids
-from climada.util.coordinates import get_land_geometry, read_raster
 
 NATID_INFO = pd.read_csv(RIVER_FLOOD_REGIONS_CSV)
 
@@ -138,16 +136,16 @@ class RiverFlood(Hazard):
                 self.fraction = sp.sparse.csr_matrix(fraction)
             else:
                 if reg:
-                    iso_codes = region2isos(reg)
+                    iso_codes = u_coord.region2isos(reg)
                     # envelope containing counties
-                    cntry_geom = get_land_geometry(iso_codes)
+                    cntry_geom = u_coord.get_land_geometry(iso_codes)
                     self.set_raster(files_intensity=[dph_path],
                                     files_fraction=[frc_path],
                                     band=bands.tolist(),
                                     geometry=cntry_geom)
                     # self.centroids.set_meta_to_lat_lon()
                 else:
-                    cntry_geom = get_land_geometry(countries)
+                    cntry_geom = u_coord.get_land_geometry(countries)
                     self.set_raster(files_intensity=[dph_path],
                                     files_fraction=[frc_path],
                                     band=bands.tolist(),
@@ -183,8 +181,8 @@ class RiverFlood(Hazard):
             # else:
             if centroids.meta:
                 centroids.set_meta_to_lat_lon()
-            metafrc, fraction = read_raster(frc_path, band=bands.tolist())
-            metaint, intensity = read_raster(dph_path, band=bands.tolist())
+            metafrc, fraction = u_coord.read_raster(frc_path, band=bands.tolist())
+            metaint, intensity = u_coord.read_raster(dph_path, band=bands.tolist())
             x_i = ((centroids.lon - metafrc['transform'][2]) /
                    metafrc['transform'][0]).astype(int)
             y_i = ((centroids.lat - metafrc['transform'][5]) /
@@ -245,7 +243,7 @@ class RiverFlood(Hazard):
             LOGGER.error('Invalid ReturnLevel-file path %s', fld_trend_path)
             raise NameError
         else:
-            metafrc, trend_data = read_raster(fld_trend_path, band=[1])
+            metafrc, trend_data = u_coord.read_raster(fld_trend_path, band=[1])
             x_i = ((self.centroids.lon - metafrc['transform'][2]) /
                    metafrc['transform'][0]).astype(int)
             y_i = ((self.centroids.lat - metafrc['transform'][5]) /
@@ -280,7 +278,7 @@ class RiverFlood(Hazard):
             LOGGER.error('Invalid ReturnLevel-file path %s', frc_path)
             raise NameError
         else:
-            metafrc, fraction = read_raster(frc_path, band=[1])
+            metafrc, fraction = u_coord.read_raster(frc_path, band=[1])
             x_i = ((self.centroids.lon - metafrc['transform'][2]) /
                    metafrc['transform'][0]).astype(int)
             y_i = ((self.centroids.lat - metafrc['transform'][5]) /
@@ -357,15 +355,15 @@ class RiverFlood(Hazard):
         Returns:
             centroids
         """
-        lat, lon = get_region_gridpoints(countries=countries, regions=reg,
-                                         basemap="isimip", resolution=150)
+        lat, lon = u_coord.get_region_gridpoints(
+            countries=countries, regions=reg, basemap="isimip", resolution=150)
 
         if reg:
-            country_isos = region2isos(reg)
+            country_isos = u_coord.region2isos(reg)
         else:
             country_isos = countries if countries else []
 
-        natIDs = country_iso2natid(country_isos)
+        natIDs = u_coord.country_iso2natid(country_isos)
 
         centroids = Centroids()
         centroids.set_lat_lon(lat, lon)
