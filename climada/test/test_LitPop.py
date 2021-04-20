@@ -70,7 +70,7 @@ class TestLitPopExposure(unittest.TestCase):
         fin_mode = 'norm'
         ent = LitPop()
         with self.assertLogs('climada.entity.exposures.litpop', level='INFO') as cm:
-            ent.set_country(country_name, res_arcsec=resolution, exponent=exp,
+            ent.set_country(country_name, res_arcsec=resolution, exponents=exp,
                             fin_mode=fin_mode, reference_year=2015)
         # print(cm)
         self.assertIn('Generating LitPop data at a resolution of 30 arcsec', cm.output[0])
@@ -104,7 +104,7 @@ class TestLitPopExposure(unittest.TestCase):
         with self.assertLogs('climada.entity.exposures.litpop', level='INFO') as cm:
             ent.set_country(country_name, res_arcsec=resolution,
                             reference_year=ref_year, fin_mode=fin_mode,
-                            conserve_cntrytotal=cons, calc_admin1=adm1)
+                            conserve_cntrytotal=cons, admin1_calc=adm1)
         # print(cm)
         self.assertIn('Generating LitPop data at a resolution of 300 arcsec', cm.output[0])
         self.assertEqual(np.around(ent.gdf.value.sum(), 0), np.around(comparison_total_val, 0))
