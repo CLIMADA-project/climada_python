@@ -432,6 +432,10 @@ class Impact():
                          'instance with parameter save_mat=True')
             return []
 
+        if event_id not in self.event_id:
+            LOGGER.error('Event ID %s not found', str(event_id))
+            return []
+
         impact_at_events_exp = self._build_exp_event(event_id)
         axis = impact_at_events_exp.plot_basemap(mask, ignore_zero, pop_name,
                                                  buffer, extend, zoom, url, axis=axis, **kwargs)
@@ -911,7 +915,7 @@ class Impact():
         Parameters:
             event_id(int): id of the event
         """
-        ix = np.where(self.event_id == event_id)[0][0]
+        ix = np.isin(self.event_id, event_id).nonzero()[0]
         return Exposures(
             data={
                 'value': self.imp_mat[ix].toarray().ravel(),
