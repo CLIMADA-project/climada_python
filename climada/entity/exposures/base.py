@@ -67,8 +67,8 @@ DEF_VAR_MAT = {'sup_field_name': 'entity',
                             'uni': 'Value_unit',
                             'ass': 'centroid_index',
                             'ref': 'reference_year'
-                           }
-              }
+                            }
+               }
 """MATLAB variable names"""
 
 class Exposures():
@@ -449,7 +449,7 @@ class Exposures():
     def plot_raster(self, res=None, raster_res=None, save_tiff=None,
                     raster_f=lambda x: np.log10((np.fmax(x + 1, 1))),
                     label='value (log10)', scheduler=None, axis=None,
-                    figsize=(9, 13), **kwargs):
+                    figsize=(9, 13), fill=True, **kwargs):
         """Generate raster from points geometry and plot it using log10 scale:
         np.log10((np.fmax(raster+1, 1))).
 
@@ -466,6 +466,8 @@ class Exposures():
                 “synchronous” or “processes”
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             figsize (tuple, optional): figure size for plt.subplots
+            fill(bool, optional): If false, the areas with no data will be plotted
+                in white.
             kwargs (optional): arguments for imshow matplotlib function
 
         Returns:
@@ -509,6 +511,9 @@ class Exposures():
                                                         pad=0.1, axes_class=plt.Axes)
         axis.set_extent((xmin, xmax, ymin, ymax), crs=proj_data)
         u_plot.add_shapes(axis)
+        if not fill:
+            raster = np.where(raster == 0, np.nan, raster)
+            raster_f = lambda x: np.log10((np.maximum(x + 1, 1)))
         imag = axis.imshow(raster_f(raster), **kwargs, origin='upper',
                            extent=(xmin, xmax, ymin, ymax), transform=proj_data)
         plt.colorbar(imag, cax=cbar_ax, label=label)
@@ -702,7 +707,7 @@ class Exposures():
                 raise ValueError
             u_coord.write_raster(file_name, raster, self.meta)
         else:
-            raster, meta = u_coord.points_to_raster(self.gdf, [value_name], scheduler=scheduler)
+            raster, meta = u_coord.points_to_raster(self, [value_name], scheduler=scheduler)
             u_coord.write_raster(file_name, raster, meta)
 
     @staticmethod
@@ -808,7 +813,7 @@ def _read_mat_optional(exposures, data, var_names):
 
     try:
         exposures['category_id'] = \
-        np.squeeze(data[var_names['var_name']['cat']]).astype(int, copy=False)
+            np.squeeze(data[var_names['var_name']['cat']]).astype(int, copy=False)
     except KeyError:
         pass
 
