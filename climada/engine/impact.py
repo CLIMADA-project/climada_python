@@ -280,6 +280,9 @@ class Impact():
         Returns:
             cartopy.mpl.geoaxes.GeoAxesSubplot
         """
+        if 'cmap' not in kwargs:
+            kwargs['cmap'] = 'YlOrRd'
+
         eai_exp = self._build_exp()
         axis = eai_exp.plot_hexbin(mask, ignore_zero, pop_name, buffer,
                                    extend, axis=axis, **kwargs)
@@ -306,6 +309,9 @@ class Impact():
         Returns:
             cartopy.mpl.geoaxes.GeoAxesSubplot
         """
+        if 'cmap' not in kwargs:
+            kwargs['cmap'] = 'YlOrRd'
+
         eai_exp = self._build_exp()
         axis = eai_exp.plot_scatter(mask, ignore_zero, pop_name, buffer,
                                     extend, axis=axis, **kwargs)
@@ -361,6 +367,8 @@ class Impact():
         Returns:
             cartopy.mpl.geoaxes.GeoAxesSubplot
         """
+        if 'cmap' not in kwargs:
+            kwargs['cmap'] = 'YlOrRd'
         eai_exp = self._build_exp()
         axis = eai_exp.plot_basemap(mask, ignore_zero, pop_name, buffer,
                                     extend, zoom, url, axis=axis, **kwargs)
@@ -394,7 +402,8 @@ class Impact():
             LOGGER.error('attribute imp_mat is empty. Recalculate Impact'
                          'instance with parameter save_mat=True')
             return []
-
+        if 'cmap' not in kwargs:
+            kwargs['cmap'] = 'YlOrRd'
         impact_at_events_exp = self._build_exp_event(event_id)
         axis = impact_at_events_exp.plot_hexbin(mask, ignore_zero, pop_name,
                                                 buffer, extend, axis=axis, **kwargs)
@@ -431,7 +440,8 @@ class Impact():
             LOGGER.error('attribute imp_mat is empty. Recalculate Impact'
                          'instance with parameter save_mat=True')
             return []
-
+        if 'cmap' not in kwargs:
+            kwargs['cmap'] = 'YlOrRd'
         impact_at_events_exp = self._build_exp_event(event_id)
         axis = impact_at_events_exp.plot_basemap(mask, ignore_zero, pop_name,
                                                  buffer, extend, zoom, url, axis=axis, **kwargs)

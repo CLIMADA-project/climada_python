@@ -180,7 +180,10 @@ def _plot_scattered_data(method, array_sub, geo_coord, var_name, title,
     list_coord = to_list(num_im, geo_coord, 'geo_coord')
 
     if 'cmap' not in kwargs:
-        kwargs['cmap'] = 'Wistia'
+        cmap_list = np.array(
+            [np.array([247, 244, 249]), np.array([201, 148, 199]), np.array([231, 41, 138]), np.array([152, 0, 67]),
+             np.array([0, 0, 0])])
+        kwargs['cmap'] = mpl.colors.LinearSegmentedColormap.from_list('exposures_colormap', cmap_list / 256, N=256)
 
     if axes is None:
         proj_plot = proj
