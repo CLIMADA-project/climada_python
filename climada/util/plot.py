@@ -190,6 +190,7 @@ def _plot_scattered_data(method, array_sub, geo_coord, var_name, title,
             proj_plot = ccrs.PlateCarree(central_longitude=0.5 * (xmin + xmax))
         _, axes = make_map(num_im, proj=proj_plot, figsize=figsize)
 
+    axes_iter = axes
     if not isinstance(axes, np.ndarray):
         axes_iter = np.array([[axes]])
 
@@ -410,8 +411,7 @@ def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
     kwargs['vmax'] = array_sub_n - 0.5
 
     # #create the axes
-    axes = _plot_scattered_data("scatter", array_sub_cat, geo_coord, var_name,
-                                  title, **kwargs)
+    axes = _plot_scattered_data("scatter", array_sub_cat, geo_coord, var_name, title, **kwargs)
 
     #add colorbar labels
     if cat_name is None:
