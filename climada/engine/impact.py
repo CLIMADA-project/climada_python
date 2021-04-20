@@ -911,9 +911,10 @@ class Impact():
         Parameters:
             event_id(int): id of the event
         """
+        ix = np.where(self.event_id == event_id)[0][0]
         return Exposures(
             data={
-                'value': self.imp_mat[event_id - 1].toarray().ravel(),
+                'value': self.imp_mat[ix].toarray().ravel(),
                 'latitude': self.coord_exp[:, 0],
                 'longitude': self.coord_exp[:, 1],
             },
