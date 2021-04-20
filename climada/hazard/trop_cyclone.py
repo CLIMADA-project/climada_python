@@ -204,9 +204,9 @@ class TropCyclone(Hazard):
         Returns:
             TropCyclone
         """
-        criterion = get_knutson_criterion()
-        scale = calc_scale_knutson(ref_year, rcp_scenario)
-        haz_cc = self._apply_criterion(criterion, scale)
+        chg_int_freq = get_knutson_criterion()
+        scale_rcp_year  = calc_scale_knutson(ref_year, rcp_scenario)
+        haz_cc = self._apply_knutson_criterion(chg_int_freq, scale_rcp_year)
         haz_cc.tag.description = 'climate change scenario for year %s and RCP %s '\
         'from Knutson et al 2015.' % (str(ref_year), str(rcp_scenario))
         return haz_cc
@@ -387,7 +387,7 @@ class TropCyclone(Hazard):
         new_haz.basin = [track.basin]
         return new_haz
 
-    def _apply_criterion(self, criterion, scale):
+    def _apply_knutson_criterion(self, chg_int_freq, scaling_rcp_year):
         """Apply changes defined in criterion with a given scale
         Parameters:
             criterion (list(dict)): list of criteria
@@ -395,30 +395,61 @@ class TropCyclone(Hazard):
         Returns:
             TropCyclone
         """
-        haz_cc = copy.deepcopy(self)
-        for chg in criterion:
-            # filter criteria
-            select = np.ones(haz_cc.size, bool)
-            for var_name, cri_val in chg['criteria'].items():
-                var_val = getattr(haz_cc, var_name)
-                if isinstance(var_val, list):
-                    var_val = np.array(var_val)
-                tmp_select = np.logical_or.reduce([var_val == val for val in cri_val])
-                select = select & tmp_select
-            if chg['function'] == np.multiply:
-                change = 1 + (chg['change'] - 1) * scale
-            elif chg['function'] == np.add:
-                change = chg['change'] * scale
-            if select.any():
-                new_val = getattr(haz_cc, chg['variable'])
-                # 1d-masks like `select` are inefficient for indexing sparse matrices since
-                # they are broadcasted densely in the second dimension
-                if isinstance(new_val, sparse.csr_matrix):
-                    new_val = sparse.diags(np.where(select, change, 1)).dot(new_val)
-                else:
-                    new_val[select] *= change
-                setattr(haz_cc, chg['variable'], new_val)
-        return haz_cc
+        tc_cc = copy.deepcopy(self)
+        tc_cc_basin = np.array(tc_cc.basin)
+        
+        #criterion per basin
+        for basin in np.unique(tc_cc_basin):
+        
+            basin_chg = [chg for chg in chg_int_freq if chg['basin'] == basin]
+            bas_sel = (tc_cc_basin == basin)
+
+            #Apply intensity change
+            inten_chg = [chg
+                         for chg in basin_chg
+                         if chg['variable'] =='intensity'
+                         ]
+            for chg in inten_chg:
+                sel_cat_chg = np.isin(tc_cc.category, chg['category']) & bas_sel
+                inten_scaling = 1 + (chg['change'] - 1) * scaling_rcp_year
+                tc_cc.intensity = sparse.diags(
+                    np.where(sel_cat_chg, inten_scaling, 1)
+                    ).dot(tc_cc.intensity)
+            
+            #Apply frequency change
+            freq_chg = [chg 
+                        for chg in basin_chg
+                        if chg['variable']=='frequency'
+                        ]
+            freq_chg.sort(reverse = False, key = lambda x: len(x['category']))
+            
+
+            #Iteratively scale frequencies for each category such that 
+            #cumulative frequencies are scaled according to Knuston criterion.
+
+            cat_larger_list = []
+            for chg in freq_chg:
+                cat_chg_list = [cat 
+                                for cat in chg['category']
+                                if cat not in cat_larger_list
+                                ]
+                sel_cat_chg = np.isin(tc_cc.category, cat_chg_list) & bas_sel
+                if sel_cat_chg.any():
+                    freq_scaling = 1 + (chg['change'] - 1) * scaling_rcp_year
+                    sel_cat_all = (np.isin(tc_cc.category, chg['category']) 
+                                   & bas_sel)
+                    sel_cat_larger = (np.isin(tc_cc.category, cat_larger_list)
+                                      & bas_sel)
+                    freq_scaling_cor = (
+                        (np.sum(self.frequency[sel_cat_all]) * freq_scaling
+                         - np.sum(tc_cc.frequency[sel_cat_larger]))
+                        / np.sum(self.frequency[sel_cat_chg])
+                    )
+                    tc_cc.frequency[sel_cat_chg] *= freq_scaling_cor
+                cat_larger_list += cat_chg_list
+                
+        return tc_cc
+    
 
 def compute_windfields(track, centroids, model, metric="equirect"):
     """Compute 1-minute sustained winds (in m/s) at 10 meters above ground

@@ -39,77 +39,108 @@ def get_knutson_criterion():
     """
     criterion = list()
     # NA
-    tmp_chg = {'criteria': {'basin': ['NA'], 'category': [1, 2, 3, 4, 5]},
+    tmp_chg = {'basin': 'NA', 'category': [0, 1, 3, 4, 5],
+               'year': 2100, 'change': 1, 'variable': 'frequency', 'function': np.multiply}
+    criterion.append(tmp_chg)
+    tmp_chg = {'basin': 'NA', 'category': [1, 3, 4, 5],
+               'year': 2100, 'change': 1, 'variable': 'frequency', 'function': np.multiply}
+    criterion.append(tmp_chg)
+    tmp_chg = {'basin': 'NA', 'category': [3, 4, 5],
+               'year': 2100, 'change': 1, 'variable': 'frequency', 'function': np.multiply}
+    criterion.append(tmp_chg)
+    tmp_chg = {'basin': 'NA', 'category': [4, 5],
+               'year': 2100, 'change': 1, 'variable': 'frequency', 'function': np.multiply}
+    criterion.append(tmp_chg)
+    
+    tmp_chg = {'basin': 'NA', 'category': [1, 2, 3, 4, 5],
                'year': 2100, 'change': 1.045, 'variable': 'intensity', 'function': np.multiply}
     criterion.append(tmp_chg)
 
     # EP
-    tmp_chg = {'criteria': {'basin': ['EP'], 'category': [0]},
+    tmp_chg = {'basin': 'EP', 'category': [0, 1, 3, 4, 5],
                'year': 2100, 'change': 1.163, 'variable': 'frequency', 'function': np.multiply}
     criterion.append(tmp_chg)
-    tmp_chg = {'criteria': {'basin': ['EP'], 'category': [1, 2]},
+    tmp_chg = {'basin': 'EP', 'category': [1, 2, 3, 4, 5],
                'year': 2100, 'change': 1.193, 'variable': 'frequency', 'function': np.multiply}
     criterion.append(tmp_chg)
-    tmp_chg = {'criteria': {'basin': ['EP'], 'category': [3]},
+    tmp_chg = {'basin': 'EP', 'category': [3, 4, 5],
                'year': 2100, 'change': 1.837, 'variable': 'frequency', 'function': np.multiply}
     criterion.append(tmp_chg)
-    tmp_chg = {'criteria': {'basin': ['EP'], 'category': [4, 5]},
+    tmp_chg = {'basin': 'EP', 'category': [4, 5],
                'year': 2100, 'change': 3.375, 'variable': 'frequency', 'function': np.multiply}
     criterion.append(tmp_chg)
 
-    tmp_chg = {'criteria': {'basin': ['EP'], 'category': [0]},
+    tmp_chg = {'basin': 'EP', 'category': [0],
                'year': 2100, 'change': 1.082, 'variable': 'intensity', 'function': np.multiply}
     criterion.append(tmp_chg)
-    tmp_chg = {'criteria': {'basin': ['EP'], 'category': [1, 2, 3, 4, 5]},
+    tmp_chg = {'basin': 'EP', 'category': [1, 2, 3, 4, 5],
                'year': 2100, 'change': 1.078, 'variable': 'intensity', 'function': np.multiply}
     criterion.append(tmp_chg)
 
     # WP
-    tmp_chg = {'criteria': {'basin': ['WP'], 'category': [0]},
+    tmp_chg = {'basin': 'WP', 'category': [0, 1, 2, 3, 4, 5],
                'year': 2100, 'change': 1 - 0.345, 'variable': 'frequency', 'function': np.multiply}
     criterion.append(tmp_chg)
-    tmp_chg = {'criteria': {'basin': ['WP'], 'category': [1, 2]},
+    tmp_chg = {'basin': 'WP', 'category': [1, 2, 3, 4, 5],
                'year': 2100, 'change': 1 - 0.316, 'variable': 'frequency', 'function': np.multiply}
     criterion.append(tmp_chg)
-    tmp_chg = {'criteria': {'basin': ['WP'], 'category': [3, 4, 5]},
+    tmp_chg = {'basin': 'WP', 'category': [3, 4, 5],
                'year': 2100, 'change': 1 - 0.169, 'variable': 'frequency', 'function': np.multiply}
     criterion.append(tmp_chg)
+    tmp_chg = {'basin': 'WP', 'category': [4, 5],
+               'year': 2100, 'change': 1, 'variable': 'frequency', 'function': np.multiply}
+    criterion.append(tmp_chg)
 
-    tmp_chg = {'criteria': {'basin': ['WP'], 'category': [0]},
+    tmp_chg = {'basin': 'WP', 'category': [0],
                'year': 2100, 'change': 1.074, 'variable': 'intensity', 'function': np.multiply}
     criterion.append(tmp_chg)
-    tmp_chg = {'criteria': {'basin': ['WP'], 'category': [1, 2, 3, 4, 5]},
+    tmp_chg = {'basin': 'WP', 'category': [1, 2, 3, 4, 5],
                'year': 2100, 'change': 1.055, 'variable': 'intensity', 'function': np.multiply}
     criterion.append(tmp_chg)
 
     # NI
-    tmp_chg = {'criteria': {'basin': ['NI'], 'category': [1, 2, 3, 4, 5]},
+    tmp_chg = {'basin': 'NI', 'category': [0, 1, 2, 3, 4, 5],
+               'year': 2100, 'change': 1, 'variable': 'frequency', 'function': np.multiply}
+    criterion.append(tmp_chg)
+    tmp_chg = {'basin': 'NI', 'category': [1, 2, 3, 4, 5],
                'year': 2100, 'change': 1.256, 'variable': 'frequency', 'function': np.multiply}
+    criterion.append(tmp_chg)
+    tmp_chg = {'basin': 'NI', 'category': [3, 4, 5],
+               'year': 2100, 'change': 1, 'variable': 'frequency', 'function': np.multiply}
+    criterion.append(tmp_chg)
+    tmp_chg = {'basin': 'NI', 'category': [4, 5],
+               'year': 2100, 'change': 1, 'variable': 'frequency', 'function': np.multiply}
     criterion.append(tmp_chg)
 
     # SI
-    tmp_chg = {'criteria': {'basin': ['SI'], 'category': [0]},
+    tmp_chg = {'basin': 'SI', 'category': [0, 1, 2, 3, 4, 5],
                'year': 2100, 'change': 1 - 0.261, 'variable': 'frequency', 'function': np.multiply}
     criterion.append(tmp_chg)
-    tmp_chg = {'criteria': {'basin': ['SI'], 'category': [1, 2, 3, 4, 5]},
+    tmp_chg = {'basin': 'SI', 'category': [1, 2, 3, 4, 5],
                'year': 2100, 'change': 1 - 0.284, 'variable': 'frequency', 'function': np.multiply}
     criterion.append(tmp_chg)
+    tmp_chg = {'basin': 'SI', 'category': [3, 4, 5],
+               'year': 2100, 'change': 1, 'variable': 'frequency', 'function': np.multiply}
+    criterion.append(tmp_chg)
+    tmp_chg = {'basin': 'SI', 'category': [4, 5],
+               'year': 2100, 'change': 1, 'variable': 'frequency', 'function': np.multiply}
+    criterion.append(tmp_chg)
 
-    tmp_chg = {'criteria': {'basin': ['SI'], 'category': [1, 2, 3, 4, 5]},
+    tmp_chg = {'basin': 'SI', 'category': [1, 2, 3, 4, 5],
                'year': 2100, 'change': 1.033, 'variable': 'intensity', 'function': np.multiply}
     criterion.append(tmp_chg)
 
     # SP
-    tmp_chg = {'criteria': {'basin': ['SP'], 'category': [0]},
+    tmp_chg = {'basin': 'SP', 'category': [0, 1, 2, 3, 4, 5],
                'year': 2100, 'change': 1 - 0.366, 'variable': 'frequency', 'function': np.multiply}
     criterion.append(tmp_chg)
-    tmp_chg = {'criteria': {'basin': ['SP'], 'category': [1, 2]},
+    tmp_chg = {'basin': 'SP', 'category': [1, 2, 3, 4, 5],
                'year': 2100, 'change': 1 - 0.406, 'variable': 'frequency', 'function': np.multiply}
     criterion.append(tmp_chg)
-    tmp_chg = {'criteria': {'basin': ['SP'], 'category': [3]},
+    tmp_chg = {'basin': 'SP', 'category': [3, 4, 5],
                'year': 2100, 'change': 1 - 0.506, 'variable': 'frequency', 'function': np.multiply}
     criterion.append(tmp_chg)
-    tmp_chg = {'criteria': {'basin': ['SP'], 'category': [4, 5]},
+    tmp_chg = {'basin': 'SP', 'category': [4, 5],
                'year': 2100, 'change': 1 - 0.583, 'variable': 'frequency', 'function': np.multiply}
     criterion.append(tmp_chg)
 
