@@ -257,7 +257,7 @@ class TestClimateSce(unittest.TestCase):
     def test_apply_criterion_track(self):
         """Test _apply_criterion function."""
         criterion = list()
-        tmp_chg = {'criteria': {'basin': ['NA'], 'category': [1, 2, 3, 4, 5]},
+        tmp_chg = {'basin': 'NA', 'category': [1, 2, 3, 4, 5],
                    'year': 2100, 'change': 1.045, 'variable': 'intensity', 'function': np.multiply}
         criterion.append(tmp_chg)
         scale = 0.75
@@ -279,7 +279,7 @@ class TestClimateSce(unittest.TestCase):
         tc.category = np.array(ntiles * [2, 0, 4, 1])
         tc.event_id = np.arange(tc.intensity.shape[0])
 
-        tc_cc = tc._apply_criterion(criterion, scale)
+        tc_cc = tc._apply_knutson_criterion(criterion, scale)
         for i_tile in range(ntiles):
             offset = i_tile * 4
             # no factor applied because of category 0
@@ -299,14 +299,28 @@ class TestClimateSce(unittest.TestCase):
     def test_two_criterion_track(self):
         """Test _apply_criterion function with two criteria"""
         criterion = list()
-        tmp_chg = {'criteria': {'basin': ['NA'], 'category': [1, 2, 3, 4, 5]},
+        tmp_chg = {'basin': 'NA', 'category': [1, 2, 3, 4, 5],
                    'year': 2100, 'change': 1.045, 'variable': 'intensity', 'function': np.multiply}
         criterion.append(tmp_chg)
-        tmp_chg = {'criteria': {'basin': ['WP'], 'category': [1, 2, 3, 4, 5]},
+        tmp_chg = {'basin': 'WP', 'category': [1, 2, 3, 4, 5],
                    'year': 2100, 'change': 1.025, 'variable': 'intensity', 'function': np.multiply}
         criterion.append(tmp_chg)
-        tmp_chg = {'criteria': {'basin': ['WP'], 'category': [1, 2, 3, 4, 5]},
+        
+        tmp_chg = {'basin': 'WP', 'category': [1, 2, 3, 4, 5],
                    'year': 2100, 'change': 1.025, 'variable': 'frequency', 'function': np.multiply}
+        criterion.append(tmp_chg)
+        
+        tmp_chg = {'basin': 'NA', 'category': [0, 1, 2, 3, 4, 5],
+                    'year': 2100, 'change': 0.7, 'variable': 'frequency', 'function': np.multiply}
+        criterion.append(tmp_chg)
+        tmp_chg = {'basin': 'NA', 'category': [1, 2, 3, 4, 5],
+                    'year': 2100, 'change': 1, 'variable': 'frequency', 'function': np.multiply}
+        criterion.append(tmp_chg)
+        tmp_chg = {'basin': 'NA', 'category': [3, 4, 5],
+                    'year': 2100, 'change': 1, 'variable': 'frequency', 'function': np.multiply}
+        criterion.append(tmp_chg)
+        tmp_chg = {'basin': 'NA', 'category': [4, 5],
+                   'year': 2100, 'change': 2, 'variable': 'frequency', 'function': np.multiply}
         criterion.append(tmp_chg)
         scale = 0.75
 
@@ -323,7 +337,7 @@ class TestClimateSce(unittest.TestCase):
         tc.category = np.array([2, 0, 4, 1])
         tc.event_id = np.arange(4)
 
-        tc_cc = tc._apply_criterion(criterion, scale)
+        tc_cc = tc._apply_knutson_criterion(criterion, scale)
         self.assertTrue(np.allclose(tc.intensity[1, :].toarray(), tc_cc.intensity[1, :].toarray()))
         self.assertFalse(
             np.allclose(tc.intensity[3, :].toarray(), tc_cc.intensity[3, :].toarray()))
@@ -337,8 +351,12 @@ class TestClimateSce(unittest.TestCase):
             np.allclose(tc.intensity[2, :].toarray() * 1.03375, tc_cc.intensity[2, :].toarray()))
         self.assertTrue(
             np.allclose(tc.intensity[3, :].toarray() * 1.01875, tc_cc.intensity[3, :].toarray()))
+        
         res_frequency = np.ones(4) * 0.5
         res_frequency[3] = 0.5 * 1.01875
+        res_frequency[0] = 0.5 * 0.25
+        res_frequency[1] = 0.5 * 0.325
+        res_frequency[2] = 0.5 * 1.75
         self.assertTrue(np.allclose(tc_cc.frequency, res_frequency))
 
 if __name__ == "__main__":
