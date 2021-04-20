@@ -28,6 +28,8 @@ __all__ = ['geo_bin_from_array',
           ]
 
 import logging
+from textwrap import wrap
+
 from scipy.interpolate import griddata
 import numpy as np
 import matplotlib.pyplot as plt
@@ -226,7 +228,7 @@ def _plot_scattered_data(method, array_sub, geo_coord, var_name, title,
             'right', size="6.5%", pad=0.1, axes_class=plt.Axes)
         cbar = plt.colorbar(mappable, cax=cbax, orientation='vertical', extend=extend)
         cbar.set_label(name)
-        axis.set_title(tit)
+        axis.set_title("\n".join(wrap(tit)))
     return axes
 
 
@@ -321,7 +323,7 @@ def geo_im_from_array(array_sub, coord, var_name, title,
                               transform=proj, **kwargs)
         cbar = plt.colorbar(img, cax=cbax, orientation='vertical')
         cbar.set_label(name)
-        axis.set_title(tit)
+        axis.set_title("\n".join(wrap(tit)))
 
     return axes
 
@@ -491,7 +493,7 @@ def add_shapes(axis):
     shp = shapereader.Reader(shp_file)
     for geometry in shp.geometries():
         axis.add_geometries([geometry], crs=ccrs.PlateCarree(), facecolor='none',
-                            edgecolor='black')
+                            edgecolor='dimgray')
 
 def add_populated_places(axis, extent, proj=ccrs.PlateCarree()):
     """
@@ -518,11 +520,15 @@ def add_populated_places(axis, extent, proj=ccrs.PlateCarree()):
     for rec, point in zip(shp.records(), shp.geometries()):
         if ext_trans[2][0] < point.x <= ext_trans[0][0]:
             if ext_trans[0][1] < point.y <= ext_trans[1][1]:
-                axis.plot(point.x, point.y, 'ko', markersize=7,
+                # Fiona wrongly assumes latin-1 encoding by default:
+                # https://github.com/SciTools/cartopy/issues/1282
+                # As a workaround, we encode and decode again:
+                place_name = rec.attributes['name'].encode("latin-1").decode("utf-8")
+                axis.plot(point.x, point.y, color='navy', marker='o', markersize=7,
                           transform=ccrs.PlateCarree(), markerfacecolor='None')
-                axis.text(point.x, point.y, rec.attributes['name'],
+                axis.text(point.x, point.y, place_name,
                           horizontalalignment='right', verticalalignment='bottom',
-                          transform=ccrs.PlateCarree(), fontsize=14)
+                          transform=ccrs.PlateCarree(), fontsize=14, color='navy')
 
 def add_cntry_names(axis, extent, proj=ccrs.PlateCarree()):
     """
@@ -546,11 +552,15 @@ def add_cntry_names(axis, extent, proj=ccrs.PlateCarree()):
     ext_trans = [ccrs.PlateCarree().transform_point(pts[0], pts[1], proj)
                  for pts in ext_pts]
     for rec, point in zip(shp.records(), shp.geometries()):
+        # Fiona wrongly assumes latin-1 encoding by default:
+        # https://github.com/SciTools/cartopy/issues/1282
+        # As a workaround, we encode and decode again:
+        place_name = rec.attributes['NAME'].encode("latin-1").decode("utf-8")
         point_x = point.centroid.xy[0][0]
         point_y = point.centroid.xy[1][0]
         if ext_trans[2][0] < point_x <= ext_trans[0][0]:
             if ext_trans[0][1] < point_y <= ext_trans[1][1]:
-                axis.text(point_x, point_y, rec.attributes['NAME'],
+                axis.text(point_x, point_y, place_name,
                           horizontalalignment='center', verticalalignment='center',
                           transform=ccrs.PlateCarree(), fontsize=14)
 
