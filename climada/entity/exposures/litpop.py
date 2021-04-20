@@ -60,7 +60,6 @@ BM_FILENAMES = ['BlackMarble_%i_A1_geo_gray.tif',
                 'BlackMarble_%i_D2_geo_gray.tif']
 """Black Marble nightlight tile names, %i represents the Black Marble reference year"""
 
-
 BM_YEARS = [2016, 2012]
 """Years with Black Marble Tiles (https://earthobservatory.nasa.gov/features/NightLights/page3.php)
 Update if new years get available! Latest years come first."""
@@ -161,15 +160,14 @@ class LitPop(Exposures):
             country_list = countries
             for i, country in enumerate(country_list[::-1]):
                 country_new = _get_iso3(country)
-                country_list[list_len - 1 - i] =\
-                    country_new
+                country_list[list_len - 1 - i] = country_new
                 if country_new is None:
                     LOGGER.warning('The country %s could not be found.', country)
                     LOGGER.warning('Country %s is removed from the list.', country)
                     del country_list[list_len - 1 - i]
                 else:
-                    country_info[country_new], admin1_info[country_new] =\
-                        _get_country_info(country_new)
+                    country_info[country_new], admin1_info[country_new] = (
+                        _get_country_info(country_new))
                 del country_new
             if not country_list:
                 LOGGER.error('No valid country chosen. Operation aborted.')
@@ -188,12 +186,10 @@ class LitPop(Exposures):
                 LOGGER.error('Country %s could not be found.', countries)
                 raise ValueError
             cut_bbox = all_bbox
-            country_info[country_list[0]], admin1_info[country_list[0]]\
-                = _get_country_info(country_list[0])
+            country_info[country_list[0]], admin1_info[country_list[0]] = (
+                _get_country_info(country_list[0]))
         else:
-            LOGGER.error('Country parameter data type not recognised. \
-                         Operation aborted.')
-            raise TypeError
+            raise TypeError('Country parameter data type not recognised.')
         all_coords = _litpop_box2coords(cut_bbox, resolution, 1)
         # Get LitPop
         LOGGER.info('Generating LitPop data at a resolution of %s arcsec.', str(resolution))
@@ -350,8 +346,7 @@ class LitPop(Exposures):
                         c=self.gdf.value, marker=',', s=3,
                         norm=mpl_colors.LogNorm())
             plt.title('Logarithmic scale LitPop value')
-            if hasattr(self, 'country_data') and\
-                    self.country_data['shape'] != []:
+            if hasattr(self, 'country_data') and self.country_data['shape'] != []:
                 for idx, shp in enumerate(self.country_data['shape']):
                     _plot_shape_to_plot(shp)
                     if admin1_plot:
@@ -452,8 +447,7 @@ def _litpop_box2coords(box, resolution, point_format=False):
         If point_format is True, a tuple entry of the form (lon, lat) for each point is returned.
     """
     deg_per_pix = 1 / (3600 / resolution)
-    min_col, min_row, max_col, max_row =\
-        _litpop_coords_in_glb_grid(box, resolution)
+    min_col, min_row, max_col, max_row = _litpop_coords_in_glb_grid(box, resolution)
     lon = np.array(np.transpose([np.ones((max_row - min_row + 1,))
                                  * ((-180 + (deg_per_pix / 2)) + l_i * deg_per_pix)
                                  for l_i in range(min_col, (max_col + 1))]))
@@ -556,8 +550,8 @@ def _match_target_res(target_res='NA'):
     res_list = [30, 60, 120, 300, 600, 3600]
     out_res = min(res_list, key=lambda x: abs(x - target_res))
     if out_res != target_res:
-        LOGGER.warning('Not one of the legacy resoultions selected. Consider \
-                       adjusting it to %s arc-sec.', out_res)
+        LOGGER.warning('Not one of the legacy resoultions selected. '
+                       'Consider adjusting it to %s arc-sec.', out_res)
 
 def _shape_cutter(shape, resolution=30, check_enclaves=True, check_plot=False, shape_format="0.3",
                   enclave_format=None, return_mask=True, points2check=None, point_format=True):
@@ -610,8 +604,8 @@ def _shape_cutter(shape, resolution=30, check_enclaves=True, check_plot=False, s
     points2check = [] if points2check is None else points2check
 
     if (not hasattr(shape, 'points')) or (not hasattr(shape, 'parts')):
-        LOGGER.error('Not a valid shape. Please make sure, the shapefile is \
-                     of type from package "shapefile".')
+        LOGGER.error('Not a valid shape. Please make sure, the shapefile is '
+                     'of type from package "shapefile".')
     sub_shapes = len(shape.parts)
     all_coords_shape = [(x, y) for x, y in shape.points]
     LOGGER.debug('Extracting subshapes and detecting enclaves...')
@@ -627,12 +621,12 @@ def _shape_cutter(shape, resolution=30, check_enclaves=True, check_plot=False, s
             if i > 0 and check_enclaves:
                 temp_path = mpl_path.Path(all_coords_shape[shape.parts[i]:end_idx])
                 for val in sub_shape_path:
-                    if val.contains_point(temp_path.vertices[0]) and \
-                    len(temp_path.vertices) > 2 and \
-                    val.contains_point(temp_path.vertices[1]) and\
-                    val.contains_point(temp_path.vertices[2]):
-                        add2enclave = 1
-                        break
+                    if (val.contains_point(temp_path.vertices[0])
+                        and len(temp_path.vertices) > 2
+                        and val.contains_point(temp_path.vertices[1])
+                        and val.contains_point(temp_path.vertices[2])):
+                            add2enclave = 1
+                            break
                 if add2enclave == 1:
                     enclave_paths.append(temp_path)
                     temp_path = []
@@ -747,8 +741,8 @@ def _mask_from_shape(check_shape, resolution=30, check_enclaves=True, points2che
     points2check = [] if points2check is None else points2check
 
     if (not hasattr(check_shape, 'points')) or (not hasattr(check_shape, 'parts')):
-        LOGGER.error('Not a valid shape. Please make sure, the shapefile is \
-                     of type from package "shapefile".')
+        LOGGER.error('Not a valid shape. Please make sure, the shapefile is '
+                     'of type from package "shapefile".')
     sub_shapes = len(check_shape.parts)
     all_coords_shape = [(x, y) for x, y in check_shape.points]
     # LOGGER.debug('Extracting subshapes and detecting enclaves...')
@@ -764,14 +758,14 @@ def _mask_from_shape(check_shape, resolution=30, check_enclaves=True, points2che
             if i > 0 and check_enclaves:
                 temp_path = mpl_path.Path(all_coords_shape[check_shape.parts[i]:end_idx])
                 for val in sub_shape_path:
-                    if val.contains_point(temp_path.vertices[0]) and \
-                            len(temp_path.vertices) > 2 and \
-                            val.contains_point(temp_path.vertices[1]) and\
-                            val.contains_point(temp_path.vertices[2]):
-                        # Only check if the first three vertices of the new shape
-                        # is in any of the old shapes for speed
-                        add2enclave = 1
-                        break
+                    if (val.contains_point(temp_path.vertices[0])
+                        and len(temp_path.vertices) > 2
+                        and val.contains_point(temp_path.vertices[1])
+                        and val.contains_point(temp_path.vertices[2])):
+                            # Only check if the first three vertices of the new shape
+                            # is in any of the old shapes for speed
+                            add2enclave = 1
+                            break
                 if add2enclave == 1:
                     enclave_paths.append(temp_path)
                     temp_path = []
@@ -1010,11 +1004,9 @@ def _gsdp_read(country_iso3, admin1_shape_data, look_folder=None):
         # Now a second loop to detect empty ones
         for idx1, country_name in enumerate(out_dict.keys()):
             if out_dict[country_name] is None:
-                for idx2, subnat_xls\
-                in enumerate(admin1_xls_data['State_Province'].tolist()):
+                for idx2, subnat_xls in enumerate(admin1_xls_data['State_Province'].tolist()):
                     if _compare_strings_nospecchars(postals[idx1], subnat_xls):
-                        out_dict[country_name] =\
-                            admin1_xls_data['GSDP_ref'][idx2]
+                        out_dict[country_name] = admin1_xls_data['GSDP_ref'][idx2]
         return out_dict
     LOGGER.warning('No file for %s could be found in %s.', country_iso3, look_folder)
     LOGGER.warning('No admin1 data is calculated in this case.')
@@ -1205,9 +1197,8 @@ def _calc_admin1(curr_country, country_info, admin1_info, litpop_data,
                 temp_adm1['adm1_LitPop_share'].append(list(gsdp_data.values())[idx3])
                 # LitPop in the admin1-unit is scaled by ratio of admin
                 if shr_adm0 > 0:
-                    mult = country_info[3]\
-                        * country_info[4]\
-                        * gsdp_data[adm1_shp[1]['name']] / shr_adm0
+                    mult = (country_info[3] * country_info[4]
+                            * gsdp_data[adm1_shp[1]['name']] / shr_adm0)
                 else:
                     mult = 0
                 if return_data:
@@ -1262,9 +1253,6 @@ def _calc_admin1(curr_country, country_info, admin1_info, litpop_data,
                     LOGGER.warning('Only admin0 data is calculated in this case.')
             for idx5, _ in enumerate(admin1_info):
                 temp_adm1['adm1_LitPop_share'].append(list(gsdp_data.values())[idx5])
-                # LP_sum = sum(litpop_data.values)
-                # temp_adm1['adm1_LitPop_share'].append(sum(litpop_data.values\
-                #        [temp_adm1['mask'][idx5].values])/LP_sum)
         if adm1_scatter:
             pearsonr, spearmanr, rmse, rmsf = _litpop_scatter(temp_adm1['adm0_LitPop_share'],
                                                               temp_adm1['adm1_LitPop_share'],
@@ -1277,8 +1265,8 @@ def _calc_admin1(curr_country, country_info, admin1_info, litpop_data,
     if not return_data:
         litpop_data = []
     if adm1_scatter:
-        return litpop_data, [pearsonr, spearmanr, rmse, rmsf], \
-                temp_adm1['adm0_LitPop_share'], temp_adm1['adm1_LitPop_share']
+        return (litpop_data, [pearsonr, spearmanr, rmse, rmsf],
+                temp_adm1['adm0_LitPop_share'], temp_adm1['adm1_LitPop_share'])
     return litpop_data
 
 def _calc_admin0(litpop_data, total_asset_val, gdptoasset_factor):
@@ -1350,24 +1338,18 @@ def _check_bbox_country_cut_mode(country_cut_mode, cut_bbox, country_adm0):
         try:
             cut_bbox = np.array(cut_bbox)
             if not isinstance(cut_bbox, np.ndarray) and not np.size(cut_bbox) == 4:
-                LOGGER.warning('Invalid bounding box provided. \
-                               Bounding box ignored. Please ensure the \
-                               bounding box is an array like type of \
-                               dimension 1x4')
+                LOGGER.warning('Invalid bounding box provided. Bounding box ignored. '
+                               'Please ensure the bounding box is an array-like type of size 4')
                 cut_bbox = None
             else:
-                if (cut_bbox[0] > cut_bbox[2]) or \
-                                                (cut_bbox[1] > cut_bbox[3]):
-                    LOGGER.warning('Invalid bounding box provided. \
-                                   Bounding box ignored. Please make sure \
-                                   that the layout of the bounding box is \
-                                   (Min_Longitude, Min_Latitude, \
-                                    Max_Longitude, Max_Latitude).')
+                if cut_bbox[0] > cut_bbox[2] or cut_bbox[1] > cut_bbox[3]:
+                    LOGGER.warning('Invalid bounding box provided. Bounding box ignored. '
+                                   'Please make sure that the layout of the bounding box is '
+                                   '(Min_Longitude, Min_Latitude, Max_Longitude, Max_Latitude).')
                     cut_bbox = None
         except TypeError:
-            LOGGER.warning('Invalid bounding box provided. Bounding box \
-                           ignored. Please ensure the bounding box is an \
-                           array like type.')
+            LOGGER.warning('Invalid bounding box provided. Bounding box ignored. '
+                           'Please ensure the bounding box is an array like type.')
             cut_bbox = None
     return cut_bbox
 
@@ -1407,8 +1389,6 @@ def _litpop_scatter(adm0_data, adm1_data, adm1_info, check_plot=True):
     if check_plot:
         plt.figure()
         plt.scatter(adm1_data, adm0_data, c=(0.1, 0.1, 0.3))
-#        plt.suptitle('Comparison of admin0 and admin1 LitPop data for '\
-#                  + adm1_info[0].attributes['admin'])
         plt.plot([0, np.max([plt.gca().get_xlim()[1], plt.gca().get_ylim()[1]])],
                  [0, np.max([plt.gca().get_xlim()[1], plt.gca().get_ylim()[1]])],
                  ls="--", c=".3")
@@ -1517,8 +1497,6 @@ def get_bm(required_files=None, cut_bbox=None, country_adm0=None, country_crop_m
                     BM_FILENAMES[num_i * 2 + j] % min(BM_YEARS,
                                                       key=lambda x: abs(x - reference_year)))
                 if zoom_factor != 1:
-#                    LOGGER.debug('Resizing image according to chosen '\
-#                                + 'resolution')
                     arr1[j] = to_sparse_dataframe(nd.zoom(arr1[j], zoom_factor, order=1))
                 else:
                     arr1[j] = to_sparse_dataframe(arr1[j])
@@ -1527,8 +1505,7 @@ def get_bm(required_files=None, cut_bbox=None, country_adm0=None, country_crop_m
                 if file_count == 1:
                     # Now get the coordinates
                     geo_t = curr_file.GetGeoTransform()
-                    rastsize_x, rastsize_y = curr_file.RasterXSize,\
-                        curr_file.RasterYSize
+                    rastsize_x, rastsize_y = curr_file.RasterXSize, curr_file.RasterYSize
                     minlon = geo_t[0]
                     minlat = geo_t[3] + rastsize_x * geo_t[4] + rastsize_y * geo_t[5]
                     maxlon = geo_t[0] + rastsize_x * geo_t[1] + rastsize_y * geo_t[2]
@@ -1536,8 +1513,7 @@ def get_bm(required_files=None, cut_bbox=None, country_adm0=None, country_crop_m
                 else:
                     geo_t = curr_file.GetGeoTransform()
                     # Now get the coordinates
-                    rastsize_x, rastsize_y = curr_file.RasterXSize,\
-                        curr_file.RasterYSize
+                    rastsize_x, rastsize_y = curr_file.RasterXSize, curr_file.RasterYSize
                     minlon = min(minlon, geo_t[0])
                     # Only add if they extend the current bbox
                     minlat = min(minlat, geo_t[3] + rastsize_x * geo_t[4]
@@ -1604,27 +1580,28 @@ def _bm_bbox_cutter(bm_data, curr_file, bbox, resolution):
     fixed_source_resolution = resolution
     deg_per_pix = 1 / (3600 / fixed_source_resolution)
     minlat, maxlat, minlon, maxlon = bbox[1], bbox[3], bbox[0], bbox[2]
-    minlat_tile, maxlat_tile, minlon_tile, maxlon_tile =\
-        (-90) + (curr_file // 2 == curr_file / 2) * (90),\
-        0 + (curr_file // 2 == curr_file / 2) * 90,\
-        (-180) + (curr_file // 2) * 90, (-90) + (curr_file // 2) * 90
-    if minlat > maxlat_tile or maxlat < minlat_tile\
-            or minlon > maxlon_tile or maxlon < minlon_tile:
-        LOGGER.warning('This tile does not contain any relevant data. \
-                       Skipping file.')
-        return pd.DataFrame()
+    minlat_tile, maxlat_tile, minlon_tile, maxlon_tile = (
+        (-90) + (curr_file // 2 == curr_file / 2) * (90),
+        0 + (curr_file // 2 == curr_file / 2) * 90,
+        (-180) + (curr_file // 2) * 90,
+        (-90) + (curr_file // 2) * 90)
+    if (minlat > maxlat_tile
+        or maxlat < minlat_tile
+        or minlon > maxlon_tile
+        or maxlon < minlon_tile):
+            LOGGER.warning('This tile does not contain any relevant data. Skipping file.')
+            return pd.DataFrame()
     bbox_conv = np.array((minlon, minlat, maxlon, maxlat))
-    col_min, row_min, col_max, row_max = \
-        _litpop_coords_in_glb_grid(bbox_conv, resolution)
-    minrow_tile, maxrow_tile, mincol_tile, maxcol_tile =\
-        (curr_file // 2 != curr_file / 2) * 90 * (3600 / resolution),\
-        90 * (3600 / resolution) + (curr_file // 2 != curr_file / 2) * 90\
-        * (3600 / resolution), (curr_file // 2) * 90 * (3600 / resolution),\
-        (3600 / resolution) * 90 + (curr_file // 2) * 90 * (3600 / resolution)
-    row_min = max(row_min, minrow_tile) -\
-        (curr_file // 2 != curr_file / 2) * (90) * (3600 / resolution)
-    row_max = min(row_max, maxrow_tile) -\
-        (curr_file // 2 != curr_file / 2) * (90) * (3600 / resolution)
+    col_min, row_min, col_max, row_max = _litpop_coords_in_glb_grid(bbox_conv, resolution)
+    minrow_tile, maxrow_tile, mincol_tile, maxcol_tile = (
+        (curr_file // 2 != curr_file / 2) * 90 * (3600 / resolution),
+        90 * (3600 / resolution) + (curr_file // 2 != curr_file / 2) * 90 * (3600 / resolution),
+        (curr_file // 2) * 90 * (3600 / resolution),
+        (3600 / resolution) * 90 + (curr_file // 2) * 90 * (3600 / resolution))
+    row_min = max(row_min, minrow_tile) - (
+        (curr_file // 2 != curr_file / 2) * (90) * (3600 / resolution))
+    row_max = min(row_max, maxrow_tile) - (
+        (curr_file // 2 != curr_file / 2) * (90) * (3600 / resolution))
     col_min = max(col_min, mincol_tile) - (curr_file // 2) * (90) * (3600 / resolution)
     col_max = min(col_max, maxcol_tile) - (curr_file // 2) * (90) * (3600 / resolution)
 
@@ -1679,8 +1656,7 @@ def _get_box_blackmarble(cut_bbox, bm_path=None, resolution=30, return_coords=Fa
                                          dwnl_path=bm_path,
                                          year=min(BM_YEARS, key=lambda x: abs(x - reference_year)))
         except:
-            LOGGER.error('Could not download missing satellite data files. \
-                     Operation aborted.')
+            LOGGER.error('Could not download missing satellite data files. Operation aborted.')
             raise
     # Read corresponding files
     # LOGGER.debug('Reading and cropping necessary BM files.')
@@ -1742,8 +1718,8 @@ def admin1_validation(country, methods, exponents, res_km=1, res_arcsec=None, ch
         country_list[0] = country_new
         cut_bbox = _get_country_shape(country_list[0], 1)[0]
 
-        country_info[country_list[0]], admin1_info[country_list[0]]\
-            = _get_country_info(country_list[0])
+        country_info[country_list[0]], admin1_info[country_list[0]] = (
+            _get_country_info(country_list[0]))
     else:
         LOGGER.error('Country parameter data type not recognised. Operation aborted.')
         raise TypeError
@@ -1797,11 +1773,11 @@ def admin1_validation(country, methods, exponents, res_km=1, res_arcsec=None, ch
             _data = _LitPop_multiply(nightlights0, gpw, exponents=exponents[i])
         else:  # Pop is used, use Lit+1 in [1, 256]
             _data = _LitPop_multiply(nightlights1, gpw, exponents=exponents[i])
-        _, rho[i * n_scores:(i * n_scores) + n_scores], adm0[methods[i]], adm1[methods[i]] = \
+        _, rho[i * n_scores:(i * n_scores) + n_scores], adm0[methods[i]], adm1[methods[i]] = (
             _calc_admin1(country_list[0], country_info[country_list[0]],
                          admin1_info[country_list[0]], _data, list(zip(lon, lat)),
                          resolution, True, conserve_cntrytotal=0,
-                         check_plot=check_plot, masks_adm1=masks_adm1, return_data=0)
+                         check_plot=check_plot, masks_adm1=masks_adm1, return_data=0))
     return rho, adm0, adm1
 
 
