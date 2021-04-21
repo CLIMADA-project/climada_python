@@ -30,6 +30,7 @@ __all__ = ['geo_bin_from_array',
 import logging
 from textwrap import wrap
 
+import matplotlib
 from scipy.interpolate import griddata
 import numpy as np
 import matplotlib.pyplot as plt
@@ -56,6 +57,9 @@ BUFFER = 1.0
 MAX_BINS = 2000
 """Maximum number of bins in geo_bin_from_array"""
 
+matplotlib.rc('font', size=13)
+matplotlib.rc('axes', titlesize=15)
+"""Settings for matplotlib"""
 
 def geo_bin_from_array(array_sub, geo_coord, var_name, title,
                        pop_name=True, buffer=BUFFER, extend='neither',
@@ -527,11 +531,11 @@ def add_populated_places(axis, extent, proj=ccrs.PlateCarree()):
                 # https://github.com/SciTools/cartopy/issues/1282
                 # As a workaround, we encode and decode again:
                 place_name = rec.attributes['name'].encode("latin-1").decode("utf-8")
-                axis.plot(point.x, point.y, color='navy', marker='o', markersize=7,
+                axis.plot(point.x, point.y, color='navy', marker='o',
                           transform=ccrs.PlateCarree(), markerfacecolor='None')
                 axis.text(point.x, point.y, place_name,
                           horizontalalignment='right', verticalalignment='bottom',
-                          transform=ccrs.PlateCarree(), fontsize=14, color='navy')
+                          transform=ccrs.PlateCarree(), color='navy')
 
 def add_cntry_names(axis, extent, proj=ccrs.PlateCarree()):
     """
