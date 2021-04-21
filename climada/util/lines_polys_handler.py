@@ -22,7 +22,6 @@ import geopandas as gpd
 import logging
 
 from climada.entity.exposures.base import Exposures
-from climada.util.config import CONFIG
 from climada.util.interpolation import interpolate_lines, interpolate_polygons
 
 LOGGER = logging.getLogger(__name__)

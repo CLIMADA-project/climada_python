@@ -56,7 +56,7 @@ from climada.util.constants import (DEF_CRS, SYSTEM_DIR, ONE_LAT_KM,
                                     RIVER_FLOOD_REGIONS_CSV)
 from climada.util.files_handler import download_file
 import climada.util.hdf5_handler as u_hdf5
-import climada.util.interpolation as u_interp
+from climada.util.interpolation import interpol_index
 
 pd.options.mode.chained_assignment = None
 
@@ -972,7 +972,7 @@ def assign_coordinates(coords, coords_to_assign, method="NN", distance="haversin
         # assign remaining coordsinates to their geographically nearest neighbor
         if threshold > 0 and exact_assign_idx.size != coords_view.size:
             not_assigned_idx_mask = (assigned_idx == -1)
-            assigned_idx[not_assigned_idx_mask] = u_interp.interpol_index(
+            assigned_idx[not_assigned_idx_mask] = interpol_index(
                 coords_to_assign, coords[not_assigned_idx_mask],
                 method=method, distance=distance, threshold=threshold)
     return assigned_idx
