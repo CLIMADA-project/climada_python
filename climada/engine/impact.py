@@ -915,7 +915,7 @@ class Impact():
         Parameters:
             event_id(int): id of the event
         """
-        ix = np.isin(self.event_id, event_id).nonzero()[0]
+       [[ix]] = np.argwhere(self.event_id == event_id)
         return Exposures(
             data={
                 'value': self.imp_mat[ix].toarray().ravel(),
