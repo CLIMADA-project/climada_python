@@ -29,7 +29,6 @@ __all__ = ['geo_bin_from_array',
 
 import logging
 from textwrap import wrap
-
 import matplotlib
 from scipy.interpolate import griddata
 import numpy as np
@@ -57,7 +56,7 @@ BUFFER = 1.0
 MAX_BINS = 2000
 """Maximum number of bins in geo_bin_from_array"""
 
-matplotlib.rc('font', size=13)
+matplotlib.rc('font', size=14)
 matplotlib.rc('axes', titlesize=15)
 """Settings for matplotlib"""
 
