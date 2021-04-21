@@ -547,7 +547,7 @@ class TestRiskTrans(unittest.TestCase):
 def dummy_impact():
 
     imp = Impact()
-    imp.event_id = np.arange(6)
+    imp.event_id = np.arange(6) + 10
     imp.event_name = [0, 1, 'two', 'three', 30, 31]
     imp.date = np.arange(6)
     imp.coord_exp = np.array([[1, 2], [1.5, 2.5]])
@@ -570,12 +570,12 @@ class TestSelect(unittest.TestCase):
         """Test select by event id"""
 
         imp = dummy_impact()
-        sel_imp = imp.select(event_ids=[0, 1, 2])
+        sel_imp = imp.select(event_ids=[10, 11, 12])
 
         self.assertEqual(sel_imp.crs, imp.crs)
         self.assertEqual(sel_imp.unit, imp.unit)
 
-        self.assertTrue(np.array_equal(sel_imp.event_id, np.array([0, 1, 2])))
+        self.assertTrue(np.array_equal(sel_imp.event_id, np.array([10, 11, 12])))
         self.assertEqual(sel_imp.event_name, [0, 1, 'two'])
         self.assertTrue(np.array_equal(sel_imp.date, np.array([0, 1, 2])))
         self.assertTrue(np.allclose(sel_imp.frequency,
@@ -603,7 +603,7 @@ class TestSelect(unittest.TestCase):
         self.assertEqual(sel_imp.crs, imp.crs)
         self.assertEqual(sel_imp.unit, imp.unit)
 
-        self.assertTrue(np.array_equal(sel_imp.event_id, np.array([0, 1, 2])))
+        self.assertTrue(np.array_equal(sel_imp.event_id, np.array([10, 11, 12])))
         self.assertEqual(sel_imp.event_name, [0, 1, 'two'])
         self.assertTrue(np.array_equal(sel_imp.date, np.array([0, 1, 2])))
         self.assertTrue(np.allclose(sel_imp.frequency,
@@ -631,7 +631,7 @@ class TestSelect(unittest.TestCase):
         self.assertEqual(sel_imp.crs, imp.crs)
         self.assertEqual(sel_imp.unit, imp.unit)
 
-        self.assertTrue(np.array_equal(sel_imp.event_id, np.array([0, 1, 2])))
+        self.assertTrue(np.array_equal(sel_imp.event_id, np.array([10, 11, 12])))
         self.assertEqual(sel_imp.event_name, [0, 1, 'two'])
         self.assertTrue(np.array_equal(sel_imp.date, np.array([0, 1, 2])))
         self.assertTrue(np.allclose(sel_imp.frequency,
@@ -739,7 +739,7 @@ class TestSelect(unittest.TestCase):
         self.assertEqual(sel_imp.crs, imp.crs)
         self.assertEqual(sel_imp.unit, imp.unit)
 
-        self.assertTrue(np.array_equal(sel_imp.event_id, np.array([0, 1, 2])))
+        self.assertTrue(np.array_equal(sel_imp.event_id, np.array([10, 11, 12])))
         self.assertEqual(sel_imp.event_name, [0, 1, 'two'])
         self.assertTrue(np.array_equal(sel_imp.date, np.array([0, 1, 2])))
         self.assertTrue(np.allclose(sel_imp.frequency,
@@ -783,7 +783,7 @@ class TestSelect(unittest.TestCase):
         self.assertEqual(sel_imp.crs, imp.crs)
         self.assertEqual(sel_imp.unit, imp.unit)
 
-        self.assertTrue(np.array_equal(sel_imp.event_id, np.array([0, 1, 2])))
+        self.assertTrue(np.array_equal(sel_imp.event_id, np.array([10, 11, 12])))
         self.assertEqual(sel_imp.event_name, [0, 1, 'two'])
         self.assertTrue(np.array_equal(sel_imp.date, np.array([0, 1, 2])))
         self.assertTrue(np.allclose(sel_imp.frequency,
