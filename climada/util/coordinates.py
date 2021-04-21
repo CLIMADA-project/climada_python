@@ -35,6 +35,7 @@ from fiona.crs import from_epsg
 import geopandas as gpd
 import numpy as np
 import pandas as pd
+import pyproj
 import pycountry
 import rasterio
 import rasterio.crs
@@ -319,6 +320,56 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
         LOGGER.error("Unknown distance approximation method: %s", method)
         raise KeyError
     return (dist, vtan) if log else dist
+
+def dist_great_circle_allgeoms(gdf):
+    """Calculate the great circle (geodesic / spherical) lengths along any 
+    (complicated) geometry object, based on the pyproj.Geod implementation.
+    
+    
+    Parameters
+    ----------
+    gdf : gpd.GeoDataframe with geometrical shapes of which to compute the length
+    
+    Returns
+    -------
+    series : a pandas series (column) with the great circle lengths of the 
+        objects in metres.
+    
+    See also
+    --------
+    * dist_approx() which also offers haversine distance calculation options
+     between specific points (not along any geometries however).
+    * interpolation.interpolate_lines()
+    
+    Note
+    ----
+    This implementation relies on non-projected crs only, which results in 
+    sea-level distances and hence a certain (minor) level of distortion; cf. 
+    https://gis.stackexchange.com/questions/176442/what-is-the-real-distance-between-positions
+    """
+    # convert to non-projected crs
+    if not equal_crs(gdf.crs, DEF_CRS):
+        gdf = gdf.to_crs(DEF_CRS)
+
+    return gdf.apply(lambda row: pyproj.Geod(ellps='WGS84').geometry_length(
+        row.geometry), axis=1)
+
+def metres_to_degrees(lat, lon, dist=100):
+    """Get an exact estimate for converting distances in metres to degrees,
+    depending on the location on the globe
+    
+    Parameters
+    ----------
+    lat : (float) latitude (in degrees) of the representative location
+    lon : (float) longitude (in degrees) of the representative location
+    dist : (float) distance in metres which should be converted
+    
+    Returns
+    -------
+   (float) distance in degrees
+    """
+    _, lat_end, _ = pyproj.Geod(ellps='WGS84').fwd(lon, lat, 0, dist)
+    return abs(lat-lat_end)
 
 def get_gridcellarea(lat, resolution=0.5, unit='km2'):
     """The area covered by a grid cell is calculated depending on the latitude
