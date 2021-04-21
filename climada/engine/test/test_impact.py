@@ -29,6 +29,7 @@ from climada.entity.entity_def import Entity
 from climada.hazard.base import Hazard
 from climada.engine.impact import Impact
 from climada.util.constants import ENT_DEMO_TODAY, DEF_CRS
+from climada.entity import Exposures
 
 DATA_FOLDER = CONFIG.engine.test_data.dir()
 HAZ_TEST_MAT = CONFIG.hazard.test_data.dir().joinpath('atl_prob_no_name.mat')
@@ -808,6 +809,32 @@ class TestSelect(unittest.TestCase):
         imp.imp_mat = sparse.csr_matrix(np.empty((0, 0)))
         with self.assertRaises(ValueError):
             imp.select(event_ids=[0], event_names=[1, 'two'], dates=(0, 2))
+
+    def test__build_exp(self):
+        """Test that an impact set can be converted to an exposure"""
+
+        imp = dummy_impact()
+        exp = imp._build_exp()
+        self.assertTrue(np.array_equal(imp.eai_exp, exp.gdf['value']))
+        self.assertTrue(np.array_equal(imp.coord_exp[:, 0], exp.gdf['latitude']))
+        self.assertTrue(np.array_equal(imp.coord_exp[:, 1], exp.gdf['longitude']))
+        self.assertEqual(exp.crs, imp.crs)
+        self.assertEqual(exp.value_unit, imp.unit)
+        self.assertEqual(exp.ref_year, 0)
+
+    def test__exp_build_event(self):
+        """Test that a single events impact can be converted to an exposure"""
+
+        imp = dummy_impact()
+        event_id = imp.event_id[1]
+        exp = imp._build_exp_event(event_id=event_id)
+        self.assertTrue(np.array_equal(imp.imp_mat[1].todense().A1, exp.gdf['value']))
+        self.assertTrue(np.array_equal(imp.coord_exp[:, 0], exp.gdf['latitude']))
+        self.assertTrue(np.array_equal(imp.coord_exp[:, 1], exp.gdf['longitude']))
+        self.assertEqual(exp.crs, imp.crs)
+        self.assertEqual(exp.value_unit, imp.unit)
+        self.assertEqual(exp.ref_year, 0)
+
 
 # Execute Tests
 if __name__ == "__main__":
