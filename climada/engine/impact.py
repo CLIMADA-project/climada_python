@@ -1007,10 +1007,10 @@ class Impact():
         nb_exp = len(self.coord_exp)
 
         if self.imp_mat.shape != (nb_events, nb_exp):
-            raise ValueError("The impact matrix is missing or incomplete. " +
-                             "The eai_exp and aai_agg cannot be computed. " +
-                             "Please recompute impact.calc() with save_mat=True" +
-                             " before using impact.select()")
+            raise ValueError("The impact matrix is missing or incomplete. "
+                             "The eai_exp and aai_agg cannot be computed. "
+                             "Please recompute impact.calc() with save_mat=True "
+                             "before using impact.select()")
 
         if nb_events == nb_exp:
             LOGGER.warning("The number of events is equal to the number of "
@@ -1021,54 +1021,37 @@ class Impact():
                            "method.")
             return None
 
-
-        if (dates, event_ids, event_names) != (None, None, None):
-            sel_ev = self._selected_events_idx(event_ids, event_names,\
-                                          dates, nb_events)
-        else:
-            sel_ev = None
-
-        if coord_exp is not None:
-            sel_exp = self._selected_exposures_idx(coord_exp)
-        else:
-            sel_exp = None
-
-
         imp = copy.deepcopy(self)
 
-        #apply event selection to impact attributes
-        if sel_ev:
+        # apply event selection to impact attributes
+        sel_ev = self._selected_events_idx(event_ids, event_names, dates, nb_events)
+        if sel_ev is not None:
             # set all attributes that are 'per event', i.e. have a dimension
             # of length equal to the number of events (=nb_events)
             for attr in get_attributes_with_matching_dimension(imp, [nb_events]):
-
                 value = imp.__getattribute__(attr)
                 if isinstance(value, np.ndarray):
                     if value.ndim == 1:
                         setattr(imp, attr, value[sel_ev])
                     else:
                         LOGGER.warning("Found a multidimensional numpy array "
-                            " with one dimension matching the number of events. "
-                            " But multidimensional numpy arrays are not handled "
-                            " in impact.select")
-
+                                       "with one dimension matching the number of events. "
+                                       "But multidimensional numpy arrays are not handled "
+                                       "in impact.select")
                 elif isinstance(value, sparse.csr_matrix):
                     setattr(imp, attr, value[sel_ev, :])
-
                 elif isinstance(value, list) and value:
                     setattr(imp, attr, [value[idx] for idx in sel_ev])
-
                 else:
                     pass
 
             LOGGER.info("The eai_exp and aai_agg are computed for the "
-                    "selected subset of events WITHOUT modification of "
-                    "the frequencies.")
+                        "selected subset of events WITHOUT modification of "
+                        "the frequencies.")
 
-
-        #apply exposure selection to impact attributes
-        if sel_exp:
-
+        # apply exposure selection to impact attributes
+        if coord_exp is not None:
+            sel_exp = self._selected_exposures_idx(coord_exp)
             imp.coord_exp = imp.coord_exp[sel_exp]
             imp.imp_mat = imp.imp_mat[:, sel_exp]
 
@@ -1076,7 +1059,7 @@ class Impact():
             imp.at_event = imp.imp_mat.sum(axis=1).A1
             imp.tot_value = None
             LOGGER.info("The total value cannot be re-computed for a "
-                           "subset of exposures and is set to None.")
+                        "subset of exposures and is set to None.")
 
         # cast frequency vector into 2d array for sparse matrix multiplication
         freq_mat = imp.frequency.reshape(len(imp.frequency), 1)
@@ -1087,21 +1070,15 @@ class Impact():
         return imp
 
     def _selected_exposures_idx(self, coord_exp):
-
-        if coord_exp is None:
-            sel_exp = []
-        else:
-            sel_exp =  [
-                j
-                for j, coord in enumerate(self.coord_exp)
-                if coord in coord_exp
-                ]
-            if not sel_exp:
-                LOGGER.warning("No exposure coordinates matches the selection.")
-
+        assigned_idx = u_coord.assign_coordinates(self.coord_exp, coord_exp, threshold=0)
+        sel_exp = (assigned_idx >= 0).nonzero()[0]
+        if sel_exp.size == 0:
+            LOGGER.warning("No exposure coordinates match the selection.")
         return sel_exp
 
     def _selected_events_idx(self, event_ids, event_names, dates, nb_events):
+        if all(var is None for var in [dates, event_ids, event_names]):
+            return None
 
         # filter events by date
         if dates is None:
@@ -1117,35 +1094,30 @@ class Impact():
             if not np.any(mask_dt):
                 LOGGER.info('No impact event in given date range %s.', dates)
 
-        sel_dt = list(np.argwhere(mask_dt).reshape(-1)) # Convert bool to indices
+        sel_dt = mask_dt.nonzero()[0]  # Convert bool to indices
 
         # filter events by id
         if event_ids is None:
-            sel_id = []
+            sel_id = np.array([], dtype=int)
         else:
-            sel_id = [list(self.event_id).index(_id) for _id in event_ids]
-            if not sel_id:
-                LOGGER.info('No impact event with given ids %s found.',
-                            event_ids)
+            sel_id = np.isin(self.event_id, event_ids).nonzero()[0]
+            if sel_id.size == 0:
+                LOGGER.info('No impact event with given ids %s found.', event_ids)
 
         # filter events by name
         if event_names is None:
-            sel_na = []
+            sel_na = np.array([], dtype=int)
         else:
-            sel_na = [list(self.event_name).index(name) for name in event_names]
-            if not sel_na:
-                LOGGER.info('No impact event with given names %s found.',
-                            event_names)
+            sel_na = np.isin(self.event_name, event_names).nonzero()[0]
+            if sel_na.size == 0:
+                LOGGER.info('No impact event with given names %s found.', event_names)
 
+        # select events with machting id, name or date field.
+        sel_ev = np.unique(np.concatenate([sel_dt, sel_id, sel_na]))
 
-        #select events with machting id, name or date field.
-        sel_ev = [idx for idx in set(sel_dt + sel_id + sel_na)]
-
-        #if no event found matching ids, names or dates, return None
-        if (dates, event_ids, event_names) != (None, None, None)\
-            and not sel_ev:
+        # if no event found matching ids, names or dates, warn the user
+        if sel_ev.size == 0:
             LOGGER.warning("No event matches the selection. ")
-            return None
 
         return sel_ev
 

@@ -721,11 +721,12 @@ class Hazard():
         """
         self._set_coords_centroids()
         col_label = 'Intensity (%s)' % self.units
+        crs_epsg, _ = u_plot.get_transformation(self.centroids.geometry.crs)
         if event is not None:
             if isinstance(event, str):
                 event = self.get_event_id(event)
             return self._event_plot(event, self.intensity, col_label,
-                                    smooth, axis, **kwargs)
+                                    smooth, crs_epsg, axis, **kwargs)
         if centr is not None:
             if isinstance(centr, tuple):
                 _, _, centr = self.centroids.get_closest_point(centr[0], centr[1])
@@ -814,9 +815,8 @@ class Hazard():
         try:
             return self.event_name[np.argwhere(
                 self.event_id == event_id)[0][0]]
-        except IndexError:
-            LOGGER.error("No event with id: %s", event_id)
-            raise ValueError
+        except IndexError as err:
+            raise ValueError(f"No event with id: {event_id}") from err
 
     def get_event_date(self, event=None):
         """Return list of date strings for given event or for all events,
@@ -1096,7 +1096,7 @@ class Hazard():
             ev_set.add((ev_name, ev_date))
         return ev_set
 
-    def _event_plot(self, event_id, mat_var, col_name, smooth, axis=None,
+    def _event_plot(self, event_id, mat_var, col_name, smooth, crs_espg, axis=None,
                     figsize=(9, 13), **kwargs):
         """Plot an event of the input matrix.
 
@@ -1146,7 +1146,7 @@ class Hazard():
 
         return u_plot.geo_im_from_array(array_val, self.centroids.coord, col_name,
                                         l_title, smooth=smooth, axes=axis,
-                                        figsize=figsize, **kwargs)
+                                        figsize=figsize, proj=crs_espg, **kwargs)
 
     def _centr_plot(self, centr_idx, mat_var, col_name, axis=None, **kwargs):
         """Plot a centroid of the input matrix.

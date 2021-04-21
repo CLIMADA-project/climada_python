@@ -36,13 +36,12 @@ import pyproj
 import shapely
 from cartopy.io import shapereader
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from iso3166 import countries as iso_cntry
 
 from climada.engine import Impact
 import climada.util.plot as u_plot
 from climada.util.config import CONFIG
 from climada.util.files_handler import to_list
-from climada.util.coordinates import coord_on_land as u_coord_on_land
+import climada.util.coordinates as u_coord
 from climada.util.value_representation import \
     value_to_monetary_unit as u_value_to_monetary_unit
 
@@ -171,7 +170,8 @@ class Forecast():
         self.exposure = exposure
         if exposure_name is None:
             try:
-                self.exposure_name = iso_cntry.get(exposure.gdf.region_id.unique()[0]).name
+                self.exposure_name = u_coord.country_to_iso(
+                    exposure.gdf.region_id.unique()[0], "name")
             except (KeyError, AttributeError):
                 self.exposure_name = 'custom'
         else:
@@ -921,9 +921,9 @@ class Forecast():
 
         for geometry, _ in zip(shp.geometries(), shp.records()):
             geom2 = shapely.ops.transform(transformer.transform, geometry)
-            in_geom = u_coord_on_land(lat=self._impact[haz_ind].coord_exp[:, 0],
-                                      lon=self._impact[haz_ind].coord_exp[:, 1],
-                                      land_geom=geom2)
+            in_geom = u_coord.coord_on_land(lat=self._impact[haz_ind].coord_exp[:, 0],
+                                            lon=self._impact[haz_ind].coord_exp[:, 1],
+                                            land_geom=geom2)
             if not in_geom.any():
                 continue
             # decide warning level

@@ -26,10 +26,10 @@ import datetime as dt
 from tqdm import tqdm
 import numpy as np
 import pandas as pd
-from iso3166 import countries_by_numeric
 
 from climada import CONFIG
 from climada.util import files_handler as u_fh
+import climada.util.coordinates as u_coord
 from climada.engine import Impact
 from climada.entity.exposures.base import Exposures
 
@@ -300,11 +300,11 @@ class SupplyChain():
     def _map_exp_to_mriot(self, exp_regid, mriot_type):
         """
         Map regions names in exposure into Input-output regions names.
-        exp_regid must be conform to ISO3 country code format.
+        exp_regid must be according to ISO 3166 numeric country codes.
         """
 
         if mriot_type == 'WIOD':
-            mriot_reg_name = countries_by_numeric.get(str(exp_regid)).alpha3
+            mriot_reg_name = u_coord.country_to_iso(exp_regid, "alpha3")
             idx_country = np.where(self.mriot_reg_names == mriot_reg_name)[0]
 
             if not idx_country.size > 0.:

@@ -754,10 +754,24 @@ class TestSelect(unittest.TestCase):
         self.assertTrue(np.array_equal(sel_imp.coord_exp,
                                        np.array([[1, 2], [1.5, 2.5]])))
 
-
         self.assertIsInstance(sel_imp, Impact)
         self.assertIsInstance(sel_imp.imp_mat, sparse.csr_matrix)
 
+    def test_select_nothing(self):
+        """Test select with no matches"""
+        imp = dummy_impact()
+        sel_imp = imp.select(event_ids=[100])
+        self.assertIsInstance(sel_imp, Impact)
+        self.assertIsInstance(sel_imp.imp_mat, sparse.csr_matrix)
+        self.assertEqual(sel_imp.crs, imp.crs)
+        self.assertEqual(sel_imp.unit, imp.unit)
+        self.assertEqual(sel_imp.event_id.size, 0)
+        self.assertEqual(len(sel_imp.event_name), 0)
+        self.assertEqual(sel_imp.date.size, 0)
+        self.assertEqual(sel_imp.frequency.size, 0)
+        self.assertEqual(sel_imp.at_event.size, 0)
+        self.assertEqual(sel_imp.imp_mat.shape[0], 0)
+        self.assertEqual(sel_imp.aai_agg, 0)
 
     def test_select_id_name_dates_pass(self):
         """Test select by event ids, names, and dates"""
