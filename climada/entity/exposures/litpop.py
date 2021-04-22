@@ -268,8 +268,6 @@ class LitPop(Exposures):
             LOGGER.warning('Could not write attribute meta, because exposure'
                            ' has only 1 data point')
             self.meta = {}
-        if check_plot:
-            self.plot_log(admin1_plot=0)
         # self.set_geometry_points()
         self.check()
 
@@ -316,44 +314,6 @@ class LitPop(Exposures):
             self.country_data['ISO3'].append(cntry_iso3)
             self.country_data['name'].append(cntry_info[1])
             self.country_data['shape'].append(cntry_info[2])
-
-    def plot_log(self, admin1_plot=1):
-        """Plots the LitPop data with the color scale reprenting the values
-        in a logarithmic scale.
-
-        Parameters
-        ----------
-        admin1_plot : boolean
-            Whether admin1 borders should be plotted. Default: True
-        """
-        # TODO: plot subplots for the different countries instead of one global
-        # one. Countries can be identified by their region id, hence this
-        # can be implemented
-        if not self.gdf.value.sum() == 0:
-            plt.figure()
-#            countr_shape = _get_country_shape(country_iso, 0)
-            countr_bbox = np.array((min(self.gdf.coord[:, 1]),
-                                    min(self.gdf.coord[:, 0]),
-                                    max(self.gdf.coord[:, 1]),
-                                    max(self.gdf.coord[:, 0])))
-            plt.gca().set_xlim(countr_bbox[0]
-                               - 0.1 * (countr_bbox[2] - countr_bbox[0]), countr_bbox[2]
-                               + 0.1 * (countr_bbox[2] - countr_bbox[0]))
-            plt.gca().set_ylim(countr_bbox[1]
-                               - 0.1 * (countr_bbox[3] - countr_bbox[1]), countr_bbox[3]
-                               + 0.1 * (countr_bbox[3] - countr_bbox[1]))
-            plt.scatter(self.gdf.coord[:, 1], self.gdf.coord[:, 0],
-                        c=self.gdf.value, marker=',', s=3,
-                        norm=mpl_colors.LogNorm())
-            plt.title('Logarithmic scale LitPop value')
-            if hasattr(self, 'country_data') and self.country_data['shape'] != []:
-                for idx, shp in enumerate(self.country_data['shape']):
-                    _plot_shape_to_plot(shp)
-                    if admin1_plot:
-                        _plot_admin1_shapes(self.country_data['ISO3'][idx],
-                                            0.6)
-            plt.colorbar()
-            plt.show()
 
 def _get_litpop_box(cut_bbox, resolution, return_coords=False,
                     reference_year=2016, exponents=None):

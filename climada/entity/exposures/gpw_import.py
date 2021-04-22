@@ -162,7 +162,7 @@ def get_box_gpw(**parameters):
     year = YEARS_AVAILABLE[np.abs(YEARS_AVAILABLE - reference_year).argmin()]
 
     if year != reference_year:
-        LOGGER.info('Reference year: %i. Using nearest available year for GWP population data: %i',
+        LOGGER.info('Reference year: %i. Using nearest available year for GPW population data: %i',
                     reference_year, year)
     if (cut_bbox is None) & (return_coords == 0):
     # If we don't have any bbox by now and we need one, we just use the global
