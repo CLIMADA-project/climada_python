@@ -517,7 +517,7 @@ include $(CLAW)/clawutil/src/Makefile.common
                 self.read_gauge_data()
             except FileNotFoundError:
                 self.print_stdout()
-                LOGGER.info("Reading GeoClaw output failed (see output above).")
+                LOGGER.warning("Reading GeoClaw output failed (see output above).")
 
 
     def print_stdout(self):
@@ -534,8 +534,7 @@ include $(CLAW)/clawutil/src/Makefile.common
         fg_path = outdir.joinpath("fgmax0001.txt")
 
         if not fg_path.exists():
-            LOGGER.error("GeoClaw quit without creating fgmax data!")
-            raise FileNotFoundError
+            raise FileNotFoundError("GeoClaw quit without creating fgmax data!")
 
         fgmax_grid = fgmax_tools.FGmaxGrid()
         fg_fname = self.work_dir.joinpath("fgmax_grids.data")
@@ -917,9 +916,8 @@ def mean_max_sea_level(path, months, bounds):
         mask_time = np.any([(zos_ds.time.dt.year == m[0]) & (zos_ds.time.dt.month == m[1])
                            for m in months], axis=0)
         if np.count_nonzero(mask_time) != months.shape[0]:
-            LOGGER.error("The sea level data set doesn't contain the required months: %s",
-                         ", ".join(f"{m[0]:04d}-{m[1]:02d}" for m in months))
-            raise IndexError
+            raise IndexError("The sea level data set doesn't contain the required months: %s"
+                             % ", ".join(f"{m[0]:04d}-{m[1]:02d}" for m in months))
         zos_ds = zos_ds.sel(time=mask_time)
         zos_lon = u_coord.lon_normalize(
             zos_ds.lon.values, center=0.5 * (bounds[0] + bounds[2]))
@@ -927,9 +925,8 @@ def mean_max_sea_level(path, months, bounds):
         mask_lon = (bounds[0] <= zos_lon) & (zos_lon <= bounds[2]) & np.isfinite(zos_ds.lon)
         mask_bounds = (mask_lat & mask_lon)
         if not np.any(mask_bounds):
-            LOGGER.error("The sea level data set doesn't intersect the required bounds: %s",
-                         bounds)
-            raise IndexError
+            raise IndexError("The sea level data set doesn't intersect the required bounds: %s"
+                             % bounds)
         zos_ds = zos_ds.where(mask_bounds, drop=True)
         zos = zos_ds.zos.values[:]
     return np.nanmean(np.nanmax(zos, axis=(1, 2)))
@@ -1372,11 +1369,11 @@ def setup_clawpack(version=CLAWPACK_VERSION):
         try:
             subprocess.check_output(cmd, stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as exc:
-            logging.error("pip install failed with return code %d. stdout: %s",
-                          exc.returncode, exc.output)
-            logging.error("Make sure that a Fortran compiler (e.g. gfortran) is available on "
-                          "your machine before using tc_surge_geoclaw!")
-            raise exc
+            LOGGER.warning(f"pip install failed with return code {exc.returncode} and stdout:")
+            print(exc.output)
+            raise RuntimeError("pip install failed with return code %d (see output above)."
+                               "Make sure that a Fortran compiler (e.g. gfortran) is available on "
+                               "your machine before using tc_surge_geoclaw!") from exc
         importlib.reload(site)
         importlib.invalidate_caches()
 
