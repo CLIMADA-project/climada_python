@@ -433,8 +433,7 @@ class Impact():
             return []
 
         if event_id not in self.event_id:
-            LOGGER.error('Event ID %s not found', str(event_id))
-            return []
+            raise ValueError(f'Event ID {event_id} not found')
 
         impact_at_events_exp = self._build_exp_event(event_id)
         axis = impact_at_events_exp.plot_basemap(mask, ignore_zero, pop_name,
