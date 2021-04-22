@@ -127,22 +127,17 @@ class Centroids():
         for var_name, var_val in self.__dict__.items():
             if var_name in self.vars_check:
                 if var_val.size > 0 and var_val.size != n_centr:
-                    LOGGER.error('Wrong %s size: %s != %s.', var_name,
-                                 str(n_centr), str(var_val.size))
-                    raise ValueError
+                    raise ValueError(f'Wrong {var_name} size: {n_centr} != {var_val.size}.')
         if self.meta:
             for name in ['width', 'height', 'crs', 'transform']:
                 if name not in self.meta.keys():
-                    LOGGER.error('Missing meta information: %s', name)
-                    raise ValueError
+                    raise ValueError('Missing meta information: %s' % name)
             xres, xshear, xoff, yshear, yres, yoff = self.meta['transform'][:6]
             if xshear != 0 or yshear != 0:
-                LOGGER.error('Affine transformations with shearing components are not supported.')
-                raise ValueError
+                raise ValueError('Affine transformations with shearing components are not supported.')
             if yres > 0 or xres < 0:
-                LOGGER.error('Affine transformations with positive y-orientation '
-                             'or negative x-orientation are not supported.')
-                raise ValueError
+                raise ValueError('Affine transformations with positive y-orientation '
+                                 'or negative x-orientation are not supported.')
 
     def equal(self, centr):
         """Return True if two centroids equal, False otherwise
@@ -380,8 +375,7 @@ class Centroids():
                 or tmp_meta['transform'] != self.meta['transform']
                 or tmp_meta['height'] != self.meta['height']
                 or tmp_meta['width'] != self.meta['width']):
-            LOGGER.error('Raster data is inconsistent with contained raster.')
-            raise ValueError
+            raise ValueError('Raster data is inconsistent with contained raster.')
         return sparse.csr_matrix(inten)
 
     def set_vector_file(self, file_name, inten_name=['intensity'], dst_crs=None):
@@ -412,8 +406,7 @@ class Centroids():
         if not (u_coord.equal_crs(tmp_geometry.crs, self.geometry.crs)
                 and np.allclose(tmp_lat, self.lat)
                 and np.allclose(tmp_lon, self.lon)):
-            LOGGER.error('Vector data inconsistent with contained vector.')
-            raise ValueError
+            raise ValueError('Vector data inconsistent with contained vector.')
         return sparse.csr_matrix(inten)
 
     def read_mat(self, file_name, var_names=DEF_VAR_MAT):
@@ -460,8 +453,7 @@ class Centroids():
             except KeyError:
                 pass
         except KeyError as err:
-            LOGGER.error("Not existing variable: %s", str(err))
-            raise err
+            raise KeyError("Not existing variable: %s" % str(err)) from err
 
     def read_excel(self, file_name, var_names=DEF_VAR_EXCEL):
         """Read centroids from excel file with column names in var_names.
@@ -491,8 +483,7 @@ class Centroids():
                 pass
 
         except KeyError as err:
-            LOGGER.error("Not existing variable: %s", str(err))
-            raise err
+            raise KeyError("Not existing variable: %s" % str(err)) from err
 
     def clear(self):
         """Clear vector and raster data."""
@@ -510,12 +501,10 @@ class Centroids():
         if self.meta and centr.meta:
             LOGGER.debug('Appending raster')
             if centr.meta['crs'] != self.meta['crs']:
-                LOGGER.error('Different CRS not accepted.')
-                raise ValueError
+                raise ValueError('Different CRS not accepted.')
             if self.meta['transform'][0] != centr.meta['transform'][0] \
                or self.meta['transform'][4] != centr.meta['transform'][4]:
-                LOGGER.error('Different raster resolutions.')
-                raise ValueError
+                raise ValueError('Different raster resolutions.')
             left = min(self.total_bounds[0], centr.total_bounds[0])
             bottom = min(self.total_bounds[1], centr.total_bounds[1])
             right = max(self.total_bounds[2], centr.total_bounds[2])
@@ -535,8 +524,7 @@ class Centroids():
         else:
             LOGGER.debug('Appending points')
             if not u_coord.equal_crs(centr.geometry.crs, self.geometry.crs):
-                LOGGER.error('Different CRS not accepted.')
-                raise ValueError
+                raise ValueError('Different CRS not accepted.')
             self.lat = np.append(self.lat, centr.lat)
             self.lon = np.append(self.lon, centr.lon)
             self.meta = dict()
@@ -613,8 +601,7 @@ class Centroids():
                 return
             if abs(abs(self.meta['transform'].a) -
                    abs(self.meta['transform'].e)) > 1.0e-5:
-                LOGGER.error('Area can not be computed for not squared pixels.')
-                raise ValueError
+                raise ValueError('Area can not be computed for not squared pixels.')
             res = self.meta['transform'].a
         else:
             res = u_coord.get_resolution(self.lat, self.lon, min_resol=min_resol)
@@ -665,8 +652,7 @@ class Centroids():
         if area_approx.size == self.size:
             self.area_pixel = area_approx
         else:
-            LOGGER.error('Pixel area of points can not be computed.')
-            raise ValueError
+            raise ValueError('Pixel area of points can not be computed.')
 
     def set_elevation(self, topo_path):
         """Set elevation attribute for every pixel or point in meters.
@@ -865,8 +851,7 @@ class Centroids():
             self.set_lat_lon_to_meta()
         if abs(abs(self.meta['transform'].a) -
                abs(self.meta['transform'].e)) > 1.0e-5:
-            LOGGER.error('Area can not be computed for not squared pixels.')
-            raise ValueError
+            raise ValueError('Area can not be computed for not squared pixels.')
         self.set_geometry_points(scheduler)
         return self.geometry.buffer(self.meta['transform'].a / 2).envelope
 

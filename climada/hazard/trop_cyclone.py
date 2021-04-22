@@ -238,8 +238,7 @@ class TropCyclone(Hazard):
         # initialization
         track = tracks.get_track(track_name)
         if not track:
-            LOGGER.error('%s not found in track data.', track_name)
-            raise ValueError
+            raise ValueError('%s not found in track data.' % track_name)
         idx_plt = np.argwhere(
             (track.lon.values < centroids.total_bounds[2] + 1)
             & (centroids.total_bounds[0] - 1 < track.lon.values)

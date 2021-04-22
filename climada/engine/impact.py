@@ -187,8 +187,7 @@ class Impact():
         if_haz = INDICATOR_IF + hazard.tag.haz_type
         haz_imp = impact_funcs.get_func(hazard.tag.haz_type)
         if if_haz not in exposures.gdf and INDICATOR_IF not in exposures.gdf:
-            LOGGER.error('Missing exposures impact functions %s.', INDICATOR_IF)
-            raise ValueError
+            raise ValueError('Missing exposures impact functions %s.' % INDICATOR_IF)
         if if_haz not in exposures.gdf:
             LOGGER.info('Missing exposures impact functions for hazard %s. '
                         'Using impact functions in %s.', if_haz, INDICATOR_IF)
@@ -212,9 +211,8 @@ class Impact():
             tot_exp += exp_iimp.size
             exp_step = CONFIG.max_matrix_size.int() // num_events
             if not exp_step:
-                LOGGER.error('Increase max_matrix_size configuration parameter'
-                             ' to > %s', str(num_events))
-                raise ValueError
+                raise ValueError('Increase max_matrix_size configuration parameter to > %s'
+                                 % str(num_events))
             # separte in chunks
             chk = -1
             for chk in range(int(exp_iimp.size / exp_step)):
@@ -391,9 +389,8 @@ class Impact():
             matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
             """
         if not hasattr(self.imp_mat, "shape") or self.imp_mat.shape[1] == 0:
-            LOGGER.error('attribute imp_mat is empty. Recalculate Impact'
-                         'instance with parameter save_mat=True')
-            return []
+            raise ValueError('attribute imp_mat is empty. Recalculate Impact'
+                             'instance with parameter save_mat=True')
 
         impact_at_events_exp = self._build_exp_event(event_id)
         axis = impact_at_events_exp.plot_hexbin(mask, ignore_zero, pop_name,
@@ -428,9 +425,8 @@ class Impact():
             cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         if not hasattr(self.imp_mat, "shape") or self.imp_mat.shape[1] == 0:
-            LOGGER.error('attribute imp_mat is empty. Recalculate Impact'
-                         'instance with parameter save_mat=True')
-            return []
+            raise ValueError('attribute imp_mat is empty. Recalculate Impact'
+                             'instance with parameter save_mat=True')
 
         impact_at_events_exp = self._build_exp_event(event_id)
         axis = impact_at_events_exp.plot_basemap(mask, ignore_zero, pop_name,
@@ -562,17 +558,15 @@ class Impact():
                     return_periods)
         try:
             self.imp_mat.shape[1]
-        except AttributeError:
-            LOGGER.error('attribute imp_mat is empty. Recalculate Impact'
-                         'instance with parameter save_mat=True')
-            return []
+        except AttributeError as err:
+            raise ValueError('attribute imp_mat is empty. Recalculate Impact'
+                             'instance with parameter save_mat=True') from err
         num_cen = self.imp_mat.shape[1]
         imp_stats = np.zeros((len(return_periods), num_cen))
         cen_step = CONFIG.max_matrix_size.int() // self.imp_mat.shape[0]
         if not cen_step:
-            LOGGER.error('Increase max_matrix_size configuration parameter to'
-                         ' > %s', str(self.imp_mat.shape[0]))
-            raise ValueError
+            raise ValueError('Increase max_matrix_size configuration parameter to > %s'
+                             % str(self.imp_mat.shape[0]))
         # separte in chunks
         chk = -1
         for chk in range(int(num_cen / cen_step)):
@@ -603,9 +597,8 @@ class Impact():
         """
         imp_stats = self.local_exceedance_imp(np.array(return_periods))
         if imp_stats == []:
-            LOGGER.error('Error: Attribute imp_mat is empty. Recalculate Impact'
-                         'instance with parameter save_mat=True')
-            raise ValueError
+            raise ValueError('Error: Attribute imp_mat is empty. Recalculate Impact'
+                             'instance with parameter save_mat=True')
         if log10_scale:
             if np.min(imp_stats) < 0:
                 imp_stats_log = np.log10(abs(imp_stats) + 1)

@@ -68,9 +68,9 @@ class TestToStrList(unittest.TestCase):
         values = ['1', '2']
         val_name = 'values'
 
-        with self.assertLogs('climada.util.files_handler', level='ERROR') as cm:
+        with self.assertRaises(ValueError) as cm:
             to_list(num_exp, values, val_name)
-        self.assertIn("Provide one or 3 values.", cm.output[0])
+        self.assertIn("Provide one or 3 values.", str(cm.exception))
 
 
 class TestGetFileNames(unittest.TestCase):
@@ -112,8 +112,7 @@ class TestGetFileNames(unittest.TestCase):
                      for f in Path(file_name).iterdir()
                      if f.is_file() and not f.name.startswith('.')]
 
-        self.assertEqual(len(tmp_files), len(out))
-        self.assertEqual(sorted(tmp_files), sorted(out))
+        self.assertListEqual(sorted(tmp_files), sorted(out))
 
 
 class TestExtension(unittest.TestCase):
