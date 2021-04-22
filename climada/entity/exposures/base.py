@@ -612,7 +612,7 @@ class Exposures():
             _read_mat_obligatory(exposures, data, var_names)
             _read_mat_optional(exposures, data, var_names)
         except KeyError as var_err:
-            raise KeyError("Not existing variable: %s", str(var_err)) from var_err
+            raise KeyError(f"Variable not in MAT file: " + str(var_err)) from var_err
 
         self.gdf = GeoDataFrame(data=exposures, crs=self.crs)
         _read_mat_metadata(self, data, file_name, var_names)

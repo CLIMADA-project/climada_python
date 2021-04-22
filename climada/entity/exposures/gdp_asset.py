@@ -145,12 +145,12 @@ def _read_GDP(shp_exposures, ref_year, path=None):
         gdp_lon = gdp_file.lon.data
         gdp_lat = gdp_file.lat.data
         time = gdp_file.time.dt.year
-    except OSError:
-        raise OSError('Problems while reading %s check exposure_file specifications' % path)
+    except OSError as err:
+        raise OSError(f'Problems while reading {path} check exposure_file specifications') from err
     try:
         year_index = np.where(time == ref_year)[0][0]
-    except IndexError:
-        raise KeyError('No data available for year %s' % ref_year)
+    except IndexError as err:
+        raise KeyError(f'No data available for year {ref_year}') from err
     conv_lon = asset_converter.lon.data
     conv_lat = asset_converter.lat.data
     gridX, gridY = np.meshgrid(conv_lon, conv_lat)
@@ -222,6 +222,6 @@ def _fast_if_mapping(countryID, natID_info):
     try:
         reg_id = fancy_reg[countryID]
         if_rf = fancy_if[countryID]
-    except KeyError:
-        raise KeyError('Country ISO unknown')
+    except KeyError as err:
+        raise KeyError(f'Country ISO unknown: {countryID}') from err
     return reg_id, if_rf
