@@ -197,10 +197,9 @@ class TestChecker(unittest.TestCase):
         expo = good_exposures()
         expo.gdf.drop(['longitude'], inplace=True, axis=1)
 
-        with self.assertLogs('climada.entity.exposures.base', level='ERROR') as cm:
-            with self.assertRaises(ValueError):
-                expo.check()
-        self.assertIn('longitude missing', cm.output[0])
+        with self.assertRaises(ValueError) as cm:
+            expo.check()
+        self.assertIn('longitude missing', str(cm.exception))
 
     def test_error_geometry_fail(self):
         """Wrong exposures definition"""

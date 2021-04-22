@@ -241,7 +241,6 @@ class Exposures():
         # mandatory columns
         for var in self.vars_oblig:
             if var not in self.gdf.columns:
-                LOGGER.error("%s missing.", var)
                 raise ValueError(f"{var} missing in gdf")
 
         # computable columns except if_*
@@ -301,8 +300,7 @@ class Exposures():
         LOGGER.info('Matching %s exposures with %s centroids.',
                     str(self.gdf.shape[0]), str(hazard.centroids.size))
         if not u_coord.equal_crs(self.crs, hazard.centroids.crs):
-            LOGGER.error('Set hazard and exposure to same CRS first!')
-            raise ValueError
+            raise ValueError('Set hazard and exposure to same CRS first!')
         if hazard.centroids.meta:
             assigned = u_coord.assign_grid_points(
                 self.gdf.longitude.values, self.gdf.latitude.values,
@@ -478,8 +476,7 @@ class Exposures():
             if self.gdf.latitude.values[0] < self.gdf.latitude.values[-1]:
                 raster = np.flip(raster, axis=0)
             if self.gdf.longitude.values[0] > self.gdf.longitude.values[-1]:
-                LOGGER.error('Points are not ordered according to meta raster.')
-                raise ValueError
+                raise ValueError('Points are not ordered according to meta raster.')
         else:
             raster, meta = u_coord.points_to_raster(self.gdf, ['value'], res, raster_res, scheduler)
             raster = raster.reshape((meta['height'], meta['width']))
@@ -615,8 +612,7 @@ class Exposures():
             _read_mat_obligatory(exposures, data, var_names)
             _read_mat_optional(exposures, data, var_names)
         except KeyError as var_err:
-            LOGGER.error("Not existing variable: %s", str(var_err))
-            raise var_err
+            raise KeyError("Not existing variable: %s", str(var_err)) from var_err
 
         self.gdf = GeoDataFrame(data=exposures, crs=self.crs)
         _read_mat_metadata(self, data, file_name, var_names)
@@ -698,8 +694,7 @@ class Exposures():
             if self.gdf.latitude.values[0] < self.gdf.latitude.values[-1]:
                 raster = np.flip(raster, axis=0)
             if self.gdf.longitude.values[0] > self.gdf.longitude.values[-1]:
-                LOGGER.error('Points are not ordered according to meta raster.')
-                raise ValueError
+                raise ValueError('Points are not ordered according to meta raster.')
             u_coord.write_raster(file_name, raster, self.meta)
         else:
             raster, meta = u_coord.points_to_raster(self, [value_name], scheduler=scheduler)

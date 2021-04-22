@@ -38,7 +38,7 @@ from matplotlib.collections import LineCollection
 from matplotlib.colors import BoundaryNorm, ListedColormap
 from matplotlib.lines import Line2D
 import netCDF4 as nc
-from numba import jit
+import numba
 import numpy as np
 import pandas as pd
 import scipy.io.matlab as matlab
@@ -394,10 +394,9 @@ class TCTracks():
                 download_ftp(f'{IBTRACS_URL}/{IBTRACS_FILE}', IBTRACS_FILE)
                 shutil.move(IBTRACS_FILE, fn_nc)
             except ValueError as err:
-                LOGGER.error('Error while downloading %s. Try to download it '
-                             'manually and put the file in '
-                             'climada_python/data/system/', IBTRACS_URL)
-                raise err
+                raise ValueError(
+                    f'Error while downloading {IBTRACS_URL}. Try to download it manually and '
+                    f'put the file in {SYSTEM_DIR}') from err
 
         ibtracs_ds = xr.open_dataset(fn_nc)
         match = np.ones(ibtracs_ds.sid.shape[0], dtype=bool)
@@ -1317,7 +1316,7 @@ class TCTracks():
         return gdf
 
     @staticmethod
-    @jit(parallel=True, forceobj=True)
+    @numba.jit(forceobj=True)
     def _one_interp_data(track, time_step_h, land_geom=None):
         """Interpolate values of one track.
 
@@ -1664,8 +1663,7 @@ def ibtracs_fit_param(explained, explanatory, year_range=(1980, 2019), order=1):
     variables = explanatory + [explained]
     for var in variables:
         if var not in all_vars:
-            LOGGER.error("Unknown ibtracs variable: %s", var)
-            raise KeyError
+            raise KeyError("Unknown ibtracs variable: %s" % var)
 
     # load ibtracs dataset
     fn_nc = SYSTEM_DIR.joinpath('IBTrACS.ALL.v04r00.nc')
@@ -1866,8 +1864,7 @@ def _change_max_wind_unit(wind, unit_orig, unit_dest):
     elif unit_orig == 'km/h':
         ur_orig = ureg.kilometer / ureg.hour
     else:
-        LOGGER.error('Unit not recognised %s.', unit_orig)
-        raise ValueError
+        raise ValueError('Unit not recognised %s.' % unit_orig)
     if unit_dest in ('kn', 'kt'):
         ur_dest = ureg.knot
     elif unit_dest == 'mph':
@@ -1877,8 +1874,7 @@ def _change_max_wind_unit(wind, unit_orig, unit_dest):
     elif unit_dest == 'km/h':
         ur_dest = ureg.kilometer / ureg.hour
     else:
-        LOGGER.error('Unit not recognised %s.', unit_dest)
-        raise ValueError
+        raise ValueError('Unit not recognised %s.' % unit_dest)
     return (np.nanmax(wind) * ur_orig).to(ur_dest).magnitude
 
 def set_category(max_sus_wind, wind_unit='kn', saffir_scale=None):

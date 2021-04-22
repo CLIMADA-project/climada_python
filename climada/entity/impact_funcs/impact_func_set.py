@@ -109,8 +109,7 @@ class ImpactFuncSet():
             ValueError
         """
         if not isinstance(func, ImpactFunc):
-            LOGGER.error("Input value is not of type ImpactFunc.")
-            raise ValueError
+            raise ValueError("Input value is not of type ImpactFunc.")
         if not func.haz_type:
             LOGGER.warning("Input ImpactFunc's hazard type not set.")
         if not func.id:
@@ -247,13 +246,11 @@ class ImpactFuncSet():
         for key_haz, vul_dict in self._data.items():
             for fun_id, vul in vul_dict.items():
                 if (fun_id != vul.id) | (fun_id == ''):
-                    LOGGER.error("Wrong ImpactFunc.id: %s != %s.", fun_id,
-                                 vul.id)
-                    raise ValueError
+                    raise ValueError("Wrong ImpactFunc.id: %s != %s."
+                                     % (fun_id, vul.id))
                 if (key_haz != vul.haz_type) | (key_haz == ''):
-                    LOGGER.error("Wrong ImpactFunc.haz_type: %s != %s.",
-                                 key_haz, vul.haz_type)
-                    raise ValueError
+                    raise ValueError("Wrong ImpactFunc.haz_type: %s != %s."
+                                     % (key_haz, vul.haz_type))
                 vul.check()
 
     def extend(self, impact_funcs):
@@ -359,8 +356,7 @@ class ImpactFuncSet():
                 if prev_str == "":
                     prev_str = cur_str
                 elif prev_str != cur_str:
-                    LOGGER.error("Impact function with two different %s.", var_name)
-                    raise ValueError
+                    raise ValueError("Impact function with two different %s." % var_name)
             return prev_str
 
         imp = u_hdf5.read(file_name)
@@ -397,8 +393,7 @@ class ImpactFuncSet():
                 func.paa = np.take(imp[var_names['var_name']['paa']], imp_rows)
                 self.append(func)
         except KeyError as err:
-            LOGGER.error("Not existing variable: %s", str(err))
-            raise err
+            raise KeyError("Not existing variable: %s" % str(err)) from err
 
     def write_excel(self, file_name, var_names=DEF_VAR_EXCEL):
         """Write excel file following template.
@@ -480,5 +475,4 @@ class ImpactFuncSet():
                 self.append(func)
 
         except KeyError as err:
-            LOGGER.error("Not existing variable: %s", str(err))
-            raise err
+            raise KeyError("Not existing variable: %s" % str(err)) from err

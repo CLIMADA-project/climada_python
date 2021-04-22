@@ -36,10 +36,9 @@ class TestChecker(unittest.TestCase):
         disc_rate.rates = np.array([3, 4])
         disc_rate.years = np.array([1])
 
-        with self.assertLogs('climada.util.checker', level='ERROR') as cm:
-            with self.assertRaises(ValueError):
-                disc_rate.check()
-        self.assertIn('Invalid DiscRates.rates size: 1 != 2.', cm.output[0])
+        with self.assertRaises(ValueError) as cm:
+            disc_rate.check()
+        self.assertIn('Invalid DiscRates.rates size: 1 != 2.', str(cm.exception))
 
 class TestConstructor(unittest.TestCase):
     """Test discount rates attributes."""

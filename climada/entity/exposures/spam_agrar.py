@@ -126,7 +126,6 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
         # Test if parameters make sense:
         if spam_v not in ['A', 'H', 'P', 'Y', 'V_agg'] or \
         spam_t not in ['TA', 'TI', 'TH', 'TL', 'TS', 'TR']:
-            LOGGER.error('Invalid input parameter(s).')
             raise ValueError('Invalid input parameter(s).')
 
         # read data from CSV:
@@ -275,10 +274,8 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
 
             data = pd.read_csv(fname, sep=',', index_col=None, header=0, encoding='ISO-8859-1')
 
-        except:
-            LOGGER.error('Importing the SPAM agriculturer file failed. '
-                         'Operation aborted.')
-            raise
+        except Exception as err:
+            raise type(err)('Importing the SPAM agriculturer file failed: ' + str(err)) from err
         # remove data points with zero crop production: (works only for TA)
         # data = data[data.vp_crop_a != 0]
 
@@ -314,10 +311,8 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
             lat = concordance_data.loc[:, 'y']
             lon = concordance_data.loc[:, 'x']
 
-        except:
-            LOGGER.error('Importing the SPAM cell5m mapping file failed. '
-                         'Operation aborted.')
-            raise
+        except Exception as err:
+            raise type(err)('Importing the SPAM cell5m mapping file failed: ' + str(err)) from err
         return lat, lon
 
     @staticmethod
@@ -412,6 +407,5 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
             zip_ref.extractall(data_path)
             zip_ref.close()
             Path(path_dwn).unlink()
-        except:
-            LOGGER.error('Downloading SPAM data failed. Operation aborted.')
-            raise
+        except Exception as err:
+            raise type(err)('Downloading SPAM data failed: ' + str(err)) from err
