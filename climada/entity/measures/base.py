@@ -33,38 +33,52 @@ import climada.util.checker as u_check
 
 LOGGER = logging.getLogger(__name__)
 
-IF_ID_FACT = 1000
 """Factor internally used as id for impact functions when region selected."""
+IF_ID_FACT = 1000
 
-NULL_STR = 'nil'
 """String considered as no path in measures exposures_set and hazard_set or
 no string in imp_fun_map"""
+NULL_STR = 'nil'
+
 
 class Measure():
-    """Contains the definition of one measure.
+    """
+    Contains the definition of one measure.
 
-    Attributes:
-        name (str): name of the action
-        haz_type (str): related hazard type (peril), e.g. TC
-        color_rgb (np.array): integer array of size 3. Gives color code of
-            this measure in RGB
-        cost (float): discounted cost (in same units as assets)
-        hazard_set (str): file name of hazard to use (in h5 format)
-        hazard_freq_cutoff (float): hazard frequency cutoff
-        exposures_set (str): file name of exposure to use (in h5 format) or
-            Exposure instance
-        imp_fun_map (str): change of impact function id of exposures, e.g. '1to3'
-        hazard_inten_imp (tuple): parameter a and b of hazard intensity change
-        mdd_impact (tuple): parameter a and b of the impact over the mean
-            damage degree
-        paa_impact (tuple): parameter a and b of the impact over the
-            percentage of affected assets
-        exp_region_id (int): region id of the selected exposures to consider ALL
-            the previous parameters
-        risk_transf_attach (float): risk transfer attachment
-        risk_transf_cover (float): risk transfer cover
-        risk_transf_cost_factor (float): factor to multiply to resulting
-            insurance layer to get the total cost of risk transfer
+    Attributes
+    ----------
+    name : str
+        name of the measure
+    haz_type : str
+        related hazard type (peril), e.g. TC
+    color_rgb : np.array
+        integer array of size 3. Color code of this measure in RGB
+    cost : float
+        discounted cost (in same units as assets)
+    hazard_set : str
+        file name of hazard to use (in h5 format)
+    hazard_freq_cutoff : float
+        hazard frequency cutoff
+    exposures_set : str  or climada.entity.Exposure
+        file name of exposure to use (in h5 format) or Exposure instance
+    imp_fun_map : str
+        change of impact function id of exposures, e.g. '1to3'
+    hazard_inten_imp : tuple(float, float)
+        parameter a and b of hazard intensity change
+    mdd_impact : tuple(float, float)
+        parameter a and b of the impact over the mean damage degree
+    paa_impact : tuple(float, float)
+        parameter a and b of the impact over the percentage of affected assets
+    exp_region_id : int
+        region id of the selected exposures to consider ALL the previous
+        parameters
+    risk_transf_attach : float
+        risk transfer attachment
+    risk_transf_cover : float
+        risk transfer cover
+    risk_transf_cost_factor : float
+        factor to multiply to resulting insurance layer to get the total
+        cost of risk transfer
     """
 
     def __init__(self):
@@ -96,7 +110,8 @@ class Measure():
         self.risk_transf_cost_factor = 1
 
     def check(self):
-        """Check consistent instance data.
+        """
+        Check consistent instance data.
 
         Raises:
             ValueError
@@ -110,30 +125,48 @@ class Measure():
         u_check.size(2, self.paa_impact, 'Measure.paa_impact')
 
     def calc_impact(self, exposures, imp_fun_set, hazard):
-        """Apply measure and compute impact and risk transfer of measure
+        """
+        Apply measure and compute impact and risk transfer of measure
         implemented over inputs.
 
-        Parameters:
-            exposures (Exposures): exposures instance
-            imp_fun_set (ImpactFuncSet): impact functions instance
-            hazard (Hazard): hazard instance
+        Parameters
+        ----------
+        exposures : climada.entity.Exposures
+            exposures instance
+        imp_fun_set : climada.entity.ImpactFuncSet
+            impact function set instance
+        hazard : climada.hazard.Hazard
+            hazard instance
 
-        Returns:
-            Impact (resulting impact), Impact (insurance layer)
+        Returns
+        -------
+            : climada.engine.Impact
+            resulting impact and risk transfer of measure
         """
+        
         new_exp, new_ifs, new_haz = self.apply(exposures, imp_fun_set, hazard)
         return self._calc_impact(new_exp, new_ifs, new_haz)
 
     def apply(self, exposures, imp_fun_set, hazard):
-        """Implement measure with all its defined parameters.
+        """
+        Implement measure with all its defined parameters.
 
-        Parameters:
-            exposures (Exposures): exposures instance
-            imp_fun_set (ImpactFuncSet): impact functions instance
-            hazard (Hazard): hazard instance
+        Parameters
+        ----------
+        exposures : climada.entity.Exposures
+            exposures instance
+        imp_fun_set : climada.entity.ImpactFuncSet
+            impact function set instance
+        hazard : climada.hazard.Hazard
+            hazard instance
 
-        Returns:
-            Exposures, ImpactFuncSet, Hazard
+        Returns
+        -------
+        new_exp, new_ifs, new_haz : climada.entity.Exposure,
+                                    climada.entity.ImpactFuncSet,
+                                    climada.hazard.Hazard
+            Exposure, impact function set with implemented measure
+            with all defined parameters.
         """
         # change hazard
         new_haz = self._change_all_hazard(hazard)
