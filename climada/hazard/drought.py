@@ -177,10 +177,8 @@ class Drought(Hazard):
             LOGGER.debug('Importing %s', str(SPEI_FILE_NAME))
             dataset = xr.open_dataset(self.file_path)
 
-        except:
-            LOGGER.error('Importing the SPEI data file failed. '
-                         'Operation aborted.')
-            raise
+        except Exception as err:
+            raise type(err)('Importing the SPEI data file failed: ' + str(err)) from err
 
         spei_3d = self.__read_indices_spei(dataset)
         spei_2d = self.__traslate_matrix(spei_3d)

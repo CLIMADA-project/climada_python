@@ -73,9 +73,8 @@ def read(file_name, with_refs=False):
         contents = get_group(file)
         file.close()
         return contents
-    except OSError:
-        logger = logging.getLogger(__name__)
-        logger.error('Invalid file: %s', file_name)
+    except OSError as err:
+        raise OSError(f'Invalid file {file_name}: ' + str(err)) from err
 
 def get_string(array):
     """Form string from input array of unisgned integers.

@@ -123,20 +123,16 @@ class Entity(object):
         """Check input type before set"""
         if name == "exposures":
             if not isinstance(value, Exposures):
-                LOGGER.error("Input value is not (sub)class of Exposures.")
-                raise ValueError
+                raise ValueError("Input value is not (sub)class of Exposures.")
         elif name == "impact_funcs":
             if not isinstance(value, ImpactFuncSet):
-                LOGGER.error("Input value is not (sub)class of ImpactFuncSet.")
-                raise ValueError
+                raise ValueError("Input value is not (sub)class of ImpactFuncSet.")
         elif name == "measures":
             if not isinstance(value, MeasureSet):
-                LOGGER.error("Input value is not (sub)class of MeasureSet.")
-                raise ValueError
+                raise ValueError("Input value is not (sub)class of MeasureSet.")
         elif name == "disc_rates":
             if not isinstance(value, DiscRates):
-                LOGGER.error("Input value is not (sub)class of DiscRates.")
-                raise ValueError
+                raise ValueError("Input value is not (sub)class of DiscRates.")
         super().__setattr__(name, value)
 
     def __str__(self):

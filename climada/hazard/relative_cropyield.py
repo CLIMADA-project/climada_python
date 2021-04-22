@@ -155,8 +155,7 @@ class RelativeCropyield(Hazard):
             input_dir = INPUT_DIR
         input_dir = Path(input_dir)
         if not Path(input_dir).is_dir():
-            LOGGER.error('Input directory %s does not exist', input_dir)
-            raise NameError
+            raise NameError('Input directory %s does not exist' % input_dir)
 
         # The filename is set or other variables (cl_model, scenario) are extracted of the
         # specified filename
@@ -438,13 +437,11 @@ def set_multiple_rc_from_isimip(input_dir=None, output_dir=None, bbox=None,
     if isinstance(input_dir, str):
         input_dir = Path(input_dir)
     if not (isinstance(input_dir, Path) and input_dir.is_dir()):
-        LOGGER.error('input_dir needs to be valid directory given as str or Path instance')
-        raise NameError
+        raise NameError('input_dir needs to be valid directory given as str or Path instance')
     if isinstance(output_dir, str):
         output_dir = Path(output_dir)
     if not (isinstance(output_dir, Path) and output_dir.is_dir()):
-        LOGGER.error('output_dir needs to be valid directory given as str or Path instance')
-        raise NameError
+        raise NameError('output_dir needs to be valid directory given as str or Path instance')
 
     filenames = [f.name for f in input_dir.iterdir()
                  if f.is_file() and not f.name.startswith('.')]

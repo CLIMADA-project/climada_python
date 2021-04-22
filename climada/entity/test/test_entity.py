@@ -84,45 +84,39 @@ class TestCheck(unittest.TestCase):
         ent.read_excel(ENT_TEMPLATE_XLS)
         actions = ent.measures.get_measure('TC')
         actions[0].color_rgb = np.array([1, 2])
-        with self.assertLogs('climada.util.checker', level='ERROR') as cm:
-            with self.assertRaises(ValueError):
-                ent.check()
-        self.assertIn('Measure.color_rgb', cm.output[0])
+        with self.assertRaises(ValueError) as cm:
+            ent.check()
+        self.assertIn('Measure.color_rgb', str(cm.exception))
 
-        with self.assertLogs('climada.entity.entity_def', level='ERROR') as cm:
-            with self.assertRaises(ValueError):
-                ent.measures = Exposures()
-        self.assertIn('MeasureSet', cm.output[0])
+        with self.assertRaises(ValueError) as cm:
+            ent.measures = Exposures()
+        self.assertIn('MeasureSet', str(cm.exception))
 
     def test_wrongImpFun_fail(self):
         """Wrong impact functions"""
         ent = Entity()
         ent.read_excel(ENT_TEMPLATE_XLS)
         ent.impact_funcs.get_func('TC', 1).paa = np.array([1, 2])
-        with self.assertLogs('climada.util.checker', level='ERROR') as cm:
-            with self.assertRaises(ValueError):
-                ent.check()
-        self.assertIn('ImpactFunc.paa', cm.output[0])
+        with self.assertRaises(ValueError) as cm:
+            ent.check()
+        self.assertIn('ImpactFunc.paa', str(cm.exception))
 
-        with self.assertLogs('climada.entity.entity_def', level='ERROR') as cm:
-            with self.assertRaises(ValueError):
-                ent.impact_funcs = Exposures()
-        self.assertIn('ImpactFuncSet', cm.output[0])
+        with self.assertRaises(ValueError) as cm:
+            ent.impact_funcs = Exposures()
+        self.assertIn('ImpactFuncSet', str(cm.exception))
 
     def test_wrongDisc_fail(self):
         """Wrong discount rates"""
         ent = Entity()
         ent.read_excel(ENT_TEMPLATE_XLS)
         ent.disc_rates.rates = np.array([1, 2])
-        with self.assertLogs('climada.util.checker', level='ERROR') as cm:
-            with self.assertRaises(ValueError):
-                ent.check()
-        self.assertIn('DiscRates.rates', cm.output[0])
+        with self.assertRaises(ValueError) as cm:
+            ent.check()
+        self.assertIn('DiscRates.rates', str(cm.exception))
 
-        with self.assertLogs('climada.entity.entity_def', level='ERROR') as cm:
-            with self.assertRaises(ValueError):
-                ent.disc_rates = Exposures()
-        self.assertIn('DiscRates', cm.output[0])
+        with self.assertRaises(ValueError) as cm:
+            ent.disc_rates = Exposures()
+        self.assertIn('DiscRates', str(cm.exception))
 
 # Execute Tests
 if __name__ == "__main__":
