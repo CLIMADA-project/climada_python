@@ -14,15 +14,12 @@ PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
 You should have received a copy of the GNU Lesser General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
----
-
-define save functionalities
 """
 import geopandas as gpd
 import logging
 
 from climada.entity.exposures.base import Exposures
-from climada.util.interpolation import interpolate_lines, interpolate_polygons
+from climada.util.coordinates import interpolate_lines, interpolate_polygons
 
 LOGGER = logging.getLogger(__name__)
 
