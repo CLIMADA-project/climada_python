@@ -20,7 +20,7 @@ Define impact functions for AgriculturalDroughts.
 """
 
 
-__all__ = ['IFRelativeCropyield']
+__all__ = ['ImpfRelativeCropyield']
 
 import logging
 import numpy as np
@@ -28,7 +28,7 @@ from climada.entity.impact_funcs.base import ImpactFunc
 
 LOGGER = logging.getLogger(__name__)
 
-class IFRelativeCropyield(ImpactFunc):
+class ImpfRelativeCropyield(ImpactFunc):
     """Impact functions for agricultural droughts."""
 
     def __init__(self):

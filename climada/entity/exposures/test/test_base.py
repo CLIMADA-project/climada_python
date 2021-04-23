@@ -27,7 +27,7 @@ import rasterio
 from rasterio.windows import Window
 
 from climada import CONFIG
-from climada.entity.exposures.base import Exposures, INDICATOR_IF, \
+from climada.entity.exposures.base import Exposures, INDICATOR_IMPF, \
      INDICATOR_CENTR, add_sea, DEF_REF_YEAR, DEF_VALUE_UNIT
 from climada.entity.tag import Tag
 from climada.hazard.base import Hazard, Centroids
@@ -43,7 +43,7 @@ def good_exposures():
     data['longitude'] = np.array([2, 3, 4])
     data['value'] = np.array([1, 2, 3])
     data['deductible'] = np.array([1, 2, 3])
-    data[INDICATOR_IF + 'NA'] = np.array([1, 2, 3])
+    data[INDICATOR_IMPF + 'NA'] = np.array([1, 2, 3])
     data['category_id'] = np.array([1, 2, 3])
     data['region_id'] = np.array([1, 2, 3])
     data[INDICATOR_CENTR + 'TC'] = np.array([1, 2, 3])
@@ -318,7 +318,7 @@ class TestConcat(unittest.TestCase):
         exp.gdf['latitude'] = np.linspace(min_lat, max_lat, 10)
         exp.gdf['longitude'] = np.linspace(min_lon, max_lon, 10)
         exp.gdf['region_id'] = np.ones(10)
-        exp.gdf['if_TC'] = np.ones(10)
+        exp.gdf['impf_TC'] = np.ones(10)
         exp.ref_year = 2015
         exp.value_unit = 'XSD'
         self.dummy = exp

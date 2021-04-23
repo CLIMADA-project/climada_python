@@ -19,7 +19,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define impact functions for river flood .
 """
 
-__all__ = ['IFRiverFlood']
+__all__ = ['ImpfRiverFlood']
 import numpy as np
 import logging
 import pandas as pd
@@ -43,7 +43,7 @@ DEF_VAR_EXCEL = {'sheet_name': 'damagefunctions',
                  }
 
 
-class IFRiverFlood(ImpactFunc):
+class ImpfRiverFlood(ImpactFunc):
     """Impact functions for tropical cyclones."""
 
     def __init__(self):
@@ -52,7 +52,7 @@ class IFRiverFlood(ImpactFunc):
         self.intensity_unit = 'm'
         self.continent = ''
 
-    def set_RF_IF_Africa(self):
+    def set_RF_Impf_Africa(self):
         self.id = 1
         self.name = "Flood Africa JRC Residential noPAA"
         self.continent = 'Africa'
@@ -65,7 +65,7 @@ class IFRiverFlood(ImpactFunc):
 
         self.paa = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
 
-    def set_RF_IF_Asia(self):
+    def set_RF_Impf_Asia(self):
         self.id = 2
         self.name = "Flood Asia JRC Residential noPAA"
         self.continent = 'Asia'
@@ -79,7 +79,7 @@ class IFRiverFlood(ImpactFunc):
 
         self.paa = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
 
-    def set_RF_IF_Europe(self):
+    def set_RF_Impf_Europe(self):
         self.id = 3
         self.name = "Flood Europe JRC Residential noPAA"
         self.continent = 'Europe'
@@ -93,7 +93,7 @@ class IFRiverFlood(ImpactFunc):
 
         self.paa = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
 
-    def set_RF_IF_NorthAmerica(self):
+    def set_RF_Impf_NorthAmerica(self):
         self.id = 4
         self.name = "Flood North America JRC Residential noPAA"
         self.continent = 'NorthAmerica'
@@ -108,7 +108,7 @@ class IFRiverFlood(ImpactFunc):
 
         self.paa = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
 
-    def set_RF_IF_Oceania(self):
+    def set_RF_Impf_Oceania(self):
         self.id = 5
         self.name = "Flood Oceania JRC Residential noPAA"
         self.continent = 'Oceania'
@@ -122,7 +122,7 @@ class IFRiverFlood(ImpactFunc):
 
         self.paa = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
 
-    def set_RF_IF_SouthAmerica(self):
+    def set_RF_Impf_SouthAmerica(self):
         self.id = 6
         self.name = "Flood South America JRC Residential noPAA"
         self.continent = 'SouthAmerica'
@@ -139,36 +139,36 @@ class IFRiverFlood(ImpactFunc):
 def flood_imp_func_set():
     """Builds impact function set for river flood, using standard files"""
 
-    if_set = ImpactFuncSet()
+    Impf_set = ImpactFuncSet()
 
-    if_africa = IFRiverFlood()
-    if_africa.set_RF_IF_Africa()
-    if_set.append(if_africa)
+    Impf_africa = ImpfRiverFlood()
+    Impf_africa.set_RF_Impf_Africa()
+    Impf_set.append(Impf_africa)
 
-    if_asia = IFRiverFlood()
-    if_asia.set_RF_IF_Asia()
-    if_set.append(if_asia)
+    Impf_asia = ImpfRiverFlood()
+    Impf_asia.set_RF_Impf_Asia()
+    Impf_set.append(Impf_asia)
 
-    if_europe = IFRiverFlood()
-    if_europe.set_RF_IF_Europe()
-    if_set.append(if_europe)
+    Impf_europe = ImpfRiverFlood()
+    Impf_europe.set_RF_Impf_Europe()
+    Impf_set.append(Impf_europe)
 
-    if_na = IFRiverFlood()
-    if_na.set_RF_IF_NorthAmerica()
-    if_set.append(if_na)
+    Impf_na = ImpfRiverFlood()
+    Impf_na.set_RF_Impf_NorthAmerica()
+    Impf_set.append(Impf_na)
 
-    if_oceania = IFRiverFlood()
-    if_oceania.set_RF_IF_Oceania()
-    if_set.append(if_oceania)
+    Impf_oceania = ImpfRiverFlood()
+    Impf_oceania.set_RF_Impf_Oceania()
+    Impf_set.append(Impf_oceania)
 
-    if_sa = IFRiverFlood()
-    if_sa.set_RF_IF_SouthAmerica()
-    if_set.append(if_sa)
+    Impf_sa = ImpfRiverFlood()
+    Impf_sa.set_RF_Impf_SouthAmerica()
+    Impf_set.append(Impf_sa)
 
-    return if_set
+    return Impf_set
 
 
-def assign_if_simple(exposure, country):
+def assign_Impf_simple(exposure, country):
     info = pd.read_csv(RIVER_FLOOD_REGIONS_CSV)
-    if_id = info.loc[info['ISO'] == country, 'if_RF'].values[0]
-    exposure['if_RF'] = if_id
+    Impf_id = info.loc[info['ISO'] == country, 'Impf_RF'].values[0]
+    exposure['Impf_RF'] = Impf_id

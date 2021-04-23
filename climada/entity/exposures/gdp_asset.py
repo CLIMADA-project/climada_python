@@ -29,7 +29,7 @@ import scipy as sp
 from climada.entity.tag import Tag
 import climada.util.coordinates as u_coord
 from climada.util.constants import RIVER_FLOOD_REGIONS_CSV, SYSTEM_DIR
-from .base import Exposures, INDICATOR_IF
+from .base import Exposures, INDICATOR_IMPF
 
 LOGGER = logging.getLogger(__name__)
 
@@ -123,7 +123,7 @@ class GDP2Asset(Exposures):
         exp_gdpasset.gdf['value'] = assets
         exp_gdpasset.gdf['latitude'] = coord[:, 0]
         exp_gdpasset.gdf['longitude'] = coord[:, 1]
-        exp_gdpasset.gdf[INDICATOR_IF + DEF_HAZ_TYPE] = if_rf_info
+        exp_gdpasset.gdf[INDICATOR_IMPF + DEF_HAZ_TYPE] = if_rf_info
         exp_gdpasset.gdf['region_id'] = reg_id_info
         return exp_gdpasset
 

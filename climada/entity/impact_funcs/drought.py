@@ -19,7 +19,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define impact function for droughts.
 """
 
-__all__ = ['IFDrought']
+__all__ = ['ImpfDrought']
 
 import logging
 import numpy as np
@@ -28,7 +28,7 @@ from climada.entity.impact_funcs.base import ImpactFunc
 
 LOGGER = logging.getLogger(__name__)
 
-class IFDrought(ImpactFunc):
+class ImpfDrought(ImpactFunc):
     """Impact function for droughts."""
 
     def __init__(self):

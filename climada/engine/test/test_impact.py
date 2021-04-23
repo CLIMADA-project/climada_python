@@ -343,7 +343,7 @@ class TestIO(unittest.TestCase):
         imp_write = Impact()
         imp_write.tag = {'exp': Tag('file_exp.p', 'descr exp'),
                          'haz': TagHaz('TC', 'file_haz.p', 'descr haz'),
-                         'if_set': Tag()}
+                         'impf_set': Tag()}
         imp_write.event_id = np.arange(num_ev)
         imp_write.event_name = ['event_' + str(num) for num in imp_write.event_id]
         imp_write.date = np.ones(num_ev)
@@ -382,7 +382,7 @@ class TestIO(unittest.TestCase):
         imp_write = Impact()
         imp_write.tag = {'exp': Tag('file_exp.p', 'descr exp'),
                          'haz': TagHaz('TC', 'file_haz.p', 'descr haz'),
-                         'if_set': Tag()}
+                         'impf_set': Tag()}
         imp_write.event_id = np.arange(num_ev)
         imp_write.event_name = ['event_' + str(num) for num in imp_write.event_id]
         imp_write.date = np.ones(num_ev)

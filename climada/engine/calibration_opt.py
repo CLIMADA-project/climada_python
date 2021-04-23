@@ -29,7 +29,7 @@ from scipy.optimize import minimize
 import itertools
 
 from climada.engine import Impact
-from climada.entity import ImpactFuncSet, IFTropCyclone, impact_funcs
+from climada.entity import ImpactFuncSet, ImpfTropCyclone, impact_funcs
 from climada.engine.impact_data import emdat_impact_yearlysum, emdat_impact_event
 
 import logging
@@ -137,7 +137,7 @@ def init_if(if_name_or_instance, param_dict, df_out=pd.DataFrame(index=[0])):
     ImpactFunc_final = None
     if isinstance(if_name_or_instance, str):
         if if_name_or_instance == 'emanuel':
-            ImpactFunc_final = IFTropCyclone()
+            ImpactFunc_final = ImpfTropCyclone()
             ImpactFunc_final.set_emanuel_usa(**param_dict)
             ImpactFunc_final.haz_type = 'TC'
             ImpactFunc_final.id = 1

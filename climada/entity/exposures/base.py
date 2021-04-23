@@ -19,7 +19,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define Exposures class.
 """
 
-__all__ = ['Exposures', 'add_sea', 'INDICATOR_IF', 'INDICATOR_CENTR']
+__all__ = ['Exposures', 'add_sea', 'INDICATOR_IMPF', 'INDICATOR_CENTR']
 
 import logging
 import copy
@@ -42,7 +42,10 @@ import climada.util.plot as u_plot
 
 LOGGER = logging.getLogger(__name__)
 
-INDICATOR_IF = 'if_'
+INDICATOR_IMPF_OLD = 'if_'
+"""Previously used name of the column containing the impact functions id of specified hazard"""
+
+INDICATOR_IMPF = 'impf_'
 """Name of the column containing the impact functions id of specified hazard"""
 
 INDICATOR_CENTR = 'centr_'
@@ -61,7 +64,7 @@ DEF_VAR_MAT = {'sup_field_name': 'entity',
                             'val': 'Value',
                             'ded': 'Deductible',
                             'cov': 'Cover',
-                            'imp': 'DamageFunID',
+                            'impf': 'DamageFunID',
                             'cat': 'Category_ID',
                             'reg': 'Region_ID',
                             'uni': 'Value_unit',
@@ -83,9 +86,9 @@ class Exposures():
         longitude (pd.Series): longitude
         crs (dict or crs): CRS information inherent to GeoDataFrame.
         value (pd.Series): a value for each exposure
-        if_ (pd.Series, optional): e.g. if_TC. impact functions id for hazard TC.
-            There might be different hazards defined: if_TC, if_FL, ...
-            If not provided, set to default 'if_' with ids 1 in check().
+        impf_ (pd.Series, optional): e.g. impf_TC. impact functions id for hazard TC.
+            There might be different hazards defined: impf_TC, impf_FL, ...
+            If not provided, set to default 'impf_' with ids 1 in check().
         geometry (pd.Series, optional): geometry of type Point of each instance.
             Computed in method set_geometry_points().
         meta (dict): dictionary containing corresponding raster properties (if any):
@@ -105,7 +108,7 @@ class Exposures():
     vars_oblig = ['value', 'latitude', 'longitude']
     """Name of the variables needed to compute the impact."""
 
-    vars_def = [INDICATOR_IF]
+    vars_def = [INDICATOR_IMPF]
     """Name of variables that can be computed."""
 
     vars_opt = [INDICATOR_CENTR, 'deductible', 'cover', 'category_id',
@@ -235,7 +238,7 @@ class Exposures():
         """Check Exposures consistency.
 
         Reports missing columns in log messages.
-        If no if_* column is present in the dataframe, a default column 'if_' is added with
+        If no impf_* column is present in the dataframe, a default column 'impf_' is added with
         default impact function id 1.
         """
         # mandatory columns
@@ -243,18 +246,18 @@ class Exposures():
             if var not in self.gdf.columns:
                 raise ValueError(f"{var} missing in gdf")
 
-        # computable columns except if_*
-        for var in sorted(set(self.vars_def).difference([INDICATOR_IF])):
+        # computable columns except impf_*
+        for var in sorted(set(self.vars_def).difference([INDICATOR_IMPF])):
             if not var in self.gdf.columns:
                 LOGGER.info("%s not set.", var)
 
-        # special treatment for if_*
-        if INDICATOR_IF in self.gdf.columns:
-            LOGGER.info("Hazard type not set in %s", INDICATOR_IF)
+        # special treatment for impf_*
+        if INDICATOR_IMPF in self.gdf.columns:
+            LOGGER.info("Hazard type not set in %s", INDICATOR_IMPF)
 
-        elif not any([col.startswith(INDICATOR_IF) for col in self.gdf.columns]):
-            LOGGER.info("Setting %s to default impact functions ids 1.", INDICATOR_IF)
-            self.gdf[INDICATOR_IF] = 1
+        elif not any([col.startswith(INDICATOR_IMPF) for col in self.gdf.columns]):
+            LOGGER.info("Setting %s to default impact functions ids 1.", INDICATOR_IMPF)
+            self.gdf[INDICATOR_IMPF] = 1
 
         # optional columns except centr_*
         for var in sorted(set(self.vars_opt).difference([INDICATOR_CENTR])):
@@ -785,8 +788,8 @@ def _read_mat_obligatory(exposures, data, var_names):
     exposures['latitude'] = data[var_names['var_name']['lat']].reshape(-1)
     exposures['longitude'] = data[var_names['var_name']['lon']].reshape(-1)
 
-    exposures[INDICATOR_IF] = np.squeeze(
-        data[var_names['var_name']['imp']]).astype(int, copy=False)
+    exposures[INDICATOR_IMPF] = np.squeeze(
+        data[var_names['var_name']['impf']]).astype(int, copy=False)
 
 
 def _read_mat_optional(exposures, data, var_names):

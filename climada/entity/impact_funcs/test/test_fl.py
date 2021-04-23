@@ -35,8 +35,8 @@ class TestIFRiverFlood(unittest.TestCase):
 
     def test_set_RF_IF_Africa(self):
 
-        if_1 = fl.IFRiverFlood()
-        if_1.set_RF_IF_Africa()
+        if_1 = fl.ImpfRiverFlood()
+        if_1.set_RF_Impf_Africa()
 
         self.assertEqual(if_1.continent, 'Africa')
         self.assertEqual(if_1.name, 'Flood Africa JRC Residential noPAA')
@@ -55,8 +55,8 @@ class TestIFRiverFlood(unittest.TestCase):
 
     def test_set_RF_IF_Asia(self):
 
-        if_2 = fl.IFRiverFlood()
-        if_2.set_RF_IF_Asia()
+        if_2 = fl.ImpfRiverFlood()
+        if_2.set_RF_Impf_Asia()
         self.assertEqual(if_2.continent, 'Asia')
         self.assertEqual(if_2.name, 'Flood Asia JRC Residential noPAA')
         self.assertEqual(if_2.haz_type, 'RF')
@@ -73,8 +73,8 @@ class TestIFRiverFlood(unittest.TestCase):
 
     def test_set_RF_IF_Europe(self):
 
-        if_3 = fl.IFRiverFlood()
-        if_3.set_RF_IF_Europe()
+        if_3 = fl.ImpfRiverFlood()
+        if_3.set_RF_Impf_Europe()
         self.assertEqual(if_3.continent, 'Europe')
         self.assertEqual(if_3.name, 'Flood Europe JRC Residential noPAA')
         self.assertEqual(if_3.haz_type, 'RF')
@@ -91,8 +91,8 @@ class TestIFRiverFlood(unittest.TestCase):
 
     def test_set_RF_IF_NorthAmerica(self):
 
-        if_4 = fl.IFRiverFlood()
-        if_4.set_RF_IF_NorthAmerica()
+        if_4 = fl.ImpfRiverFlood()
+        if_4.set_RF_Impf_NorthAmerica()
 
         self.assertEqual(if_4.continent, 'NorthAmerica')
         self.assertEqual(if_4.name,
@@ -112,8 +112,8 @@ class TestIFRiverFlood(unittest.TestCase):
 
     def test_set_RF_IF_Oceania(self):
 
-        if_5 = fl.IFRiverFlood()
-        if_5.set_RF_IF_Oceania()
+        if_5 = fl.ImpfRiverFlood()
+        if_5.set_RF_Impf_Oceania()
         self.assertEqual(if_5.continent, 'Oceania')
         self.assertEqual(if_5.name, 'Flood Oceania JRC Residential noPAA')
         self.assertEqual(if_5.haz_type, 'RF')
@@ -130,8 +130,8 @@ class TestIFRiverFlood(unittest.TestCase):
 
     def test_set_RF_IF_SouthAmerica(self):
 
-        if_6 = fl.IFRiverFlood()
-        if_6.set_RF_IF_SouthAmerica()
+        if_6 = fl.ImpfRiverFlood()
+        if_6.set_RF_Impf_SouthAmerica()
         self.assertEqual(if_6.continent, 'SouthAmerica')
         self.assertEqual(if_6.name,
                          'Flood South America JRC Residential noPAA')
