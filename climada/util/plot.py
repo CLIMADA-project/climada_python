@@ -42,6 +42,7 @@ from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 from rasterio.crs import CRS
 import requests
 
+from climada.util.constants import CMAP_CONTINUOUS1, CMAP_CAT
 from climada.util.files_handler import to_list
 import climada.util.coordinates as u_coord
 
@@ -183,10 +184,7 @@ def _plot_scattered_data(method, array_sub, geo_coord, var_name, title,
     list_coord = to_list(num_im, geo_coord, 'geo_coord')
 
     if 'cmap' not in kwargs:
-        cmap_list = np.array(
-            [np.array([247, 244, 249]), np.array([201, 148, 199]), np.array([231, 41, 138]), np.array([152, 0, 67]),
-             np.array([0, 0, 0])])
-        kwargs['cmap'] = mpl.colors.LinearSegmentedColormap.from_list('exposures_colormap', cmap_list / 256, N=256)
+        kwargs['cmap'] = CMAP_CONTINUOUS1
 
     if axes is None:
         proj_plot = proj
@@ -249,7 +247,7 @@ def geo_im_from_array(array_sub, coord, var_name, title,
         Each array (in a row or in  the list) are values at each point in corresponding
         geo_coord that are ploted in one subplot.
     coord : 2d np.array
-        (lat, lon) for each point in a row. The same grid is used for all subplots.
+        (lat, lon) for each point in a row. The same grid is used for all subploplots.
     var_name : str or list(str)
         label to be shown in the colorbar. If one provided, the same is used for all subplots.
         Otherwise provide as many as subplots in array_sub.
@@ -296,6 +294,9 @@ def geo_im_from_array(array_sub, coord, var_name, title,
     axes_iter = axes
     if not isinstance(axes, np.ndarray):
         axes_iter = np.array([[axes]])
+
+    if 'cmap' not in kwargs:
+        kwargs['cmap'] = CMAP_CONTINUOUS1
 
     # Generate each subplot
     for array_im, axis, tit, name in zip(list_arr, axes_iter.flatten(), list_tit, list_name):
@@ -398,7 +399,7 @@ def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
             cmap_name = 'defined by the user'
     else:
         # default qualitative colormap
-        cmap_name = 'Dark2'
+        cmap_name = CMAP_CAT
         cmap = mpl.colors.ListedColormap(
             plt.get_cmap(cmap_name).colors[:array_sub_n]
             )

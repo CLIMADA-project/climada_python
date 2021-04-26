@@ -36,7 +36,7 @@ import cartopy.crs as ccrs
 
 from climada.entity.tag import Tag
 import climada.util.hdf5_handler as u_hdf5
-from climada.util.constants import ONE_LAT_KM, DEF_CRS
+from climada.util.constants import ONE_LAT_KM, DEF_CRS, CMAP_DIVERGING
 import climada.util.coordinates as u_coord
 import climada.util.plot as u_plot
 
@@ -514,6 +514,8 @@ class Exposures():
         if not fill:
             raster = np.where(raster == 0, np.nan, raster)
             raster_f = lambda x: np.log10((np.maximum(x + 1, 1)))
+        if 'cmap' not in kwargs:
+            kwargs['cmap'] = CMAP_DIVERGING
         imag = axis.imshow(raster_f(raster), **kwargs, origin='upper',
                            extent=(xmin, xmax, ymin, ymax), transform=proj_data)
         plt.colorbar(imag, cax=cbar_ax, label=label)
