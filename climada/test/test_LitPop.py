@@ -172,7 +172,7 @@ class TestFunctionIntegration(unittest.TestCase):
         self.assertAlmostEqual(max(litpop_curr)/80313679854.39496, 1.0)
 
     def test_gpw_import(self):
-        """test import of population data (Gridded Population of the World GWP)
+        """test import of population data (Gridded Population of the World GPW)
         via function gpw_import.get_box_gpw() for Swaziland"""
         bbox = [30.78291, -27.3164, 32.11741, -25.73600]
         gpw, lon, lat = gpw_import.get_box_gpw(cut_bbox=bbox, resolution=300,

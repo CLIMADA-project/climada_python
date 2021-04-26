@@ -89,9 +89,7 @@ def net_present_value(years, disc_rates, val_years):
         float
     """
     if years.size != disc_rates.size or years.size != val_years.size:
-        LOGGER.error('Wrong input sizes %s, %s, %s.', years.size,
-                     disc_rates.size, val_years.size)
-        raise ValueError
+        raise ValueError(f'Wrong input sizes {years.size}, {disc_rates.size}, {val_years.size}.')
 
     npv = val_years[-1]
     for val, disc in zip(val_years[-2::-1], disc_rates[-2::-1]):
@@ -146,12 +144,10 @@ def gdp(cntry_iso, ref_year, shp_file=None, per_capita=False):
             close_year, close_val = world_bank(cntry_iso, ref_year, 'NY.GDP.PCAP.CD')
         else:
             close_year, close_val = world_bank(cntry_iso, ref_year, 'NY.GDP.MKTP.CD')
-    except (ValueError, IndexError, requests.exceptions.ConnectionError) \
-    as err:
+    except (ValueError, IndexError, requests.exceptions.ConnectionError) as err:
         if isinstance(err, requests.exceptions.ConnectionError):
             LOGGER.warning('Internet connection failed while retrieving GDPs.')
-        close_year, close_val = nat_earth_adm0(cntry_iso, 'GDP_MD_EST',
-                                               'GDP_YEAR', shp_file)
+        close_year, close_val = nat_earth_adm0(cntry_iso, 'GDP_MD_EST', 'GDP_YEAR', shp_file)
     finally:
         LOGGER.info("GDP {} {:d}: {:.3e}.".format(cntry_iso, close_year,
                                                   close_val))
@@ -195,9 +191,8 @@ def world_bank(cntry_iso, ref_year, info_ind):
             dfr_wb = dfr_wb.replace(INCOME_GRP_WB_TABLE.keys(),
                                     INCOME_GRP_WB_TABLE.values())
         except (IOError, requests.exceptions.ConnectionError) as err:
-            LOGGER.error('Internet connection failed while downloading '
-                         'historical income groups.')
-            raise err
+            raise type(err)('Internet connection failed while downloading '
+                            'historical income groups: ' + str(err)) from err
 
         cntry_dfr = dfr_wb.loc[cntry_iso]
         close_val = cntry_dfr.iloc[np.abs(
@@ -238,8 +233,7 @@ def nat_earth_adm0(cntry_iso, info_name, year_name=None, shp_file=None):
             break
 
     if not close_val:
-        LOGGER.error("No GDP for country %s found.", cntry_iso)
-        raise ValueError
+        raise ValueError("No GDP for country %s found." % cntry_iso)
 
     if info_name == 'GDP_MD_EST':
         close_val *= 1e6
@@ -337,9 +331,9 @@ def world_bank_wealth_account(cntry_iso, ref_year, variable_name="NW.PCA.TO",
             LOGGER.debug('Download and unzip complete. Unzipping %s', str(data_file))
 
         data_wealth = pd.read_csv(data_file, sep=',', index_col=None, header=0)
-    except:
-        LOGGER.error('Downloading World Bank Wealth Accounting Data failed.')
-        raise
+    except Exception as err:
+        raise type(err)(
+            'Downloading World Bank Wealth Accounting Data failed: ' + str(err)) from err
 
     data_wealth = data_wealth[data_wealth['Country Code'].str.contains(cntry_iso)
                               & data_wealth['Indicator Code'].str.contains(variable_name)
@@ -386,9 +380,9 @@ def _gdp_twn(ref_year, per_capita=False):
     Returns:
         float
     """
-    if not SYSTEM_DIR.joinpath('GDP_TWN_IMF_WEO_data.csv').is_file():
-        LOGGER.error('File GDP_TWN_IMF_WEO_data.csv not found in SYSTEM_DIR')
-        return 0
+    fname = 'GDP_TWN_IMF_WEO_data.csv'
+    if not SYSTEM_DIR.joinpath(fname).is_file():
+        raise FileNotFoundError(f'File {fname} not found in SYSTEM_DIR')
     if per_capita:
         var_name = 'Gross domestic product per capita, current prices'
     else:

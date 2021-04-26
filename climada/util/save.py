@@ -51,12 +51,10 @@ def save(out_file_name, var):
         with out_file.open('wb') as flh:
             pickle.dump(var, flh, pickle.HIGHEST_PROTOCOL)
             LOGGER.info('Written file %s', out_file)
-    except FileNotFoundError:
-        LOGGER.error('Folder not found: %s', target_dir)
-        raise
+    except FileNotFoundError as err:
+        raise FileNotFoundError(f'Folder {target_dir} not found: ' + str(err)) from err
     except OSError as ose:
-        LOGGER.error('Data is probably too big. Try splitting it.')
-        raise ValueError from ose
+        raise ValueError('Data is probably too big. Try splitting it: ' + str(ose)) from ose
 
 
 def load(in_file_name):

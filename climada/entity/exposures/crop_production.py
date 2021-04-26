@@ -285,8 +285,7 @@ class CropProduction(Exposures):
             if not ('firr' in hist_mean.keys() or 'noirr' in hist_mean.keys()):
                 # as a dict hist_mean, needs to contain key 'firr' or 'noirr';
                 # if irr=='combined', both 'firr' and 'noirr' are required.
-                LOGGER.error('Invalid hist_mean provided: %s', hist_mean)
-                raise ValueError('invalid hist_mean.')
+                raise ValueError(f'Invalid hist_mean provided: {hist_mean}')
             hist_mean_dict = hist_mean
             lat_mean = self.gdf.latitude.values
         elif isinstance(hist_mean, np.ndarray) or isinstance(hist_mean, list):
@@ -304,8 +303,7 @@ class CropProduction(Exposures):
         elif Path(input_dir, hist_mean).is_file(): # file in input_dir
         # Hist_mean, lat_mean and lon_mean are extracted from the given file
             if len(irr_types) > 1:
-                LOGGER.error("For irr=='combined', hist_mean can not be single file. Aborting.")
-                raise ValueError('Wrong combination of parameters irr and hist_mean.')
+                raise ValueError("For irr=='combined', hist_mean cannot be a single file.")
             hist_mean = h5py.File(str(Path(input_dir, hist_mean)), 'r')
             hist_mean_dict[irr_types[0]] = hist_mean['mean'][()]
             lat_mean = hist_mean['lat'][()]
@@ -313,15 +311,13 @@ class CropProduction(Exposures):
         elif hist_mean.is_file(): # fall back: complete file path
         # Hist_mean, lat_mean and lon_mean are extracted from the given file
             if len(irr_types) > 1:
-                LOGGER.error("For irr=='combined', hist_mean can not be single file. Aborting.")
-                raise ValueError('Wrong combination of parameters irr and hist_mean.')
+                raise ValueError("For irr=='combined', hist_mean can not be single file.")
             hist_mean = h5py.File(str(Path(input_dir, hist_mean)), 'r')
             hist_mean_dict[irr_types[0]] = hist_mean['mean'][()]
             lat_mean = hist_mean['lat'][()]
             lon_mean = hist_mean['lon'][()]
         else:
-            LOGGER.error('Invalid hist_mean provided: %s', hist_mean)
-            raise ValueError('invalid hist_mean.')
+            raise ValueError(f"Invalid hist_mean provided: {hist_mean}")
 
         # The bbox is cut out of the hist_mean data file if needed
         if len(lat_mean) != len(self.gdf.latitude.values):

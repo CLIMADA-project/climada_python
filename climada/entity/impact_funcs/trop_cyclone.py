@@ -58,14 +58,11 @@ class IFTropCyclone(ImpactFunc):
             ValueError
         """
         if v_half <= v_thresh:
-            LOGGER.error('Shape parameters out of range: v_half <= v_thresh.')
-            raise ValueError
+            raise ValueError('Shape parameters out of range: v_half <= v_thresh.')
         if v_thresh < 0 or v_half < 0:
-            LOGGER.error('Negative shape parameter.')
-            raise ValueError
+            raise ValueError('Negative shape parameter.')
         if scale > 1 or scale <= 0:
-            LOGGER.error('Scale parameter out of range.')
-            raise ValueError
+            raise ValueError('Scale parameter out of range.')
 
         self.name = 'Emanuel 2011'
         self.id = if_id
@@ -110,11 +107,9 @@ class IFSTropCyclone(ImpactFuncSet):
         """
         calibration_approach = calibration_approach.upper()
         if calibration_approach not in ['TDR', 'TDR1.0', 'TDR1.5', 'RMSF', 'EDR']:
-            LOGGER.error('calibration_approach is invalid')
-            raise ValueError
+            raise ValueError('calibration_approach is invalid')
         if 'EDR' in calibration_approach and (q < 0. or q > 1.):
-            LOGGER.error('Quantile q out of range [0, 1]')
-            raise ValueError
+            raise ValueError('Quantile q out of range [0, 1]')
         if calibration_approach == 'TDR':
             calibration_approach = 'TDR1.0'
         # load calibration results depending on approach:

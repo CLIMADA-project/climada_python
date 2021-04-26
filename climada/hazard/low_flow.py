@@ -686,7 +686,7 @@ def _read_and_combine_nc(yearrange, input_dir, gh_model, cl_model, scenario,
         filepath = Path(input_dir,
             f'{gh_model}_{cl_model}_{bias_corr}_{scenario}_{soc}_{fn_str_var}_{yearchunk}.nc')
         if not filepath.is_file():
-            LOGGER.error('Netcdf file not found: %s', filepath)
+            raise FileNotFoundError(f'Netcdf file not found: {filepath}')
         if first_file:
             dis_xarray = _read_single_nc(filepath, yearrange, bbox)
             first_file = False
