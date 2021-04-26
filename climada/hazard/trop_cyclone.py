@@ -396,18 +396,17 @@ class TropCyclone(Hazard):
             TropCyclone
         """
         tc_cc = copy.deepcopy(self)
-        tc_cc_basin = np.array(tc_cc.basin)
-        
-        #criterion per basin
-        for basin in np.unique(tc_cc_basin):
-        
-            basin_chg = [chg for chg in chg_int_freq if chg['basin'] == basin]
-            bas_sel = (tc_cc_basin == basin)
 
-            #Apply intensity change
+        # Criterion per basin
+        for basin in np.unique(tc_cc.basin):
+
+            basin_chg = [chg for chg in chg_int_freq if chg['basin'] == basin]
+            bas_sel = (np.array(tc_cc.basin) == basin)
+
+            # Apply intensity change
             inten_chg = [chg
                          for chg in basin_chg
-                         if chg['variable'] =='intensity'
+                         if chg['variable'] == 'intensity'
                          ]
             for chg in inten_chg:
                 sel_cat_chg = np.isin(tc_cc.category, chg['category']) & bas_sel
@@ -415,28 +414,28 @@ class TropCyclone(Hazard):
                 tc_cc.intensity = sparse.diags(
                     np.where(sel_cat_chg, inten_scaling, 1)
                     ).dot(tc_cc.intensity)
-            
-            #Apply frequency change
-            freq_chg = [chg 
-                        for chg in basin_chg
-                        if chg['variable']=='frequency'
-                        ]
-            freq_chg.sort(reverse = False, key = lambda x: len(x['category']))
-            
 
-            #Iteratively scale frequencies for each category such that 
-            #cumulative frequencies are scaled according to Knuston criterion.
+            # Apply frequency change
+            freq_chg = [chg
+                        for chg in basin_chg
+                        if chg['variable'] == 'frequency'
+                        ]
+            freq_chg.sort(reverse=False, key=lambda x: len(x['category']))
+
+
+            # Iteratively scale frequencies for each category such that
+            # cumulative frequencies are scaled according to Knuston criterion.
 
             cat_larger_list = []
             for chg in freq_chg:
-                cat_chg_list = [cat 
+                cat_chg_list = [cat
                                 for cat in chg['category']
                                 if cat not in cat_larger_list
                                 ]
                 sel_cat_chg = np.isin(tc_cc.category, cat_chg_list) & bas_sel
                 if sel_cat_chg.any():
                     freq_scaling = 1 + (chg['change'] - 1) * scaling_rcp_year
-                    sel_cat_all = (np.isin(tc_cc.category, chg['category']) 
+                    sel_cat_all = (np.isin(tc_cc.category, chg['category'])
                                    & bas_sel)
                     sel_cat_larger = (np.isin(tc_cc.category, cat_larger_list)
                                       & bas_sel)
@@ -447,9 +446,9 @@ class TropCyclone(Hazard):
                     )
                     tc_cc.frequency[sel_cat_chg] *= freq_scaling_cor
                 cat_larger_list += cat_chg_list
-                
+
         return tc_cc
-    
+
 
 def compute_windfields(track, centroids, model, metric="equirect"):
     """Compute 1-minute sustained winds (in m/s) at 10 meters above ground
