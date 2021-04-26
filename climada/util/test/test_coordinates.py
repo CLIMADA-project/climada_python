@@ -150,14 +150,14 @@ class TestInterpIndex(unittest.TestCase):
 
     def test_wrong_method_fail(self):
         """Check exception is thrown when wrong method is given"""
-        with self.assertLogs('climada.util.interpolation', level='ERROR') as cm:
+        with self.assertLogs('climada.util.coordinates', level='ERROR') as cm:
             u_coord.interpol_index(np.ones((10, 2)), np.ones((7, 2)), 'method')
         self.assertIn('Interpolation using method with distance haversine is not supported.',
                       cm.output[0])
 
     def test_wrong_distance_fail(self):
         """Check exception is thrown when wrong distance is given"""
-        with self.assertLogs('climada.util.interpolation', level='ERROR') as cm:
+        with self.assertLogs('climada.util.coordinates', level='ERROR') as cm:
             u_coord.interpol_index(np.ones((10, 2)), np.ones((7, 2)),
                                     distance='distance')
         self.assertIn('Interpolation using NN with distance distance is not supported.',
@@ -209,7 +209,7 @@ class TestNN(unittest.TestCase):
 
         # Interpolate with lower threshold to raise warnings
         threshold = 50
-        with self.assertLogs('climada.util.interpolation', level='INFO') as cm:
+        with self.assertLogs('climada.util.coordinates', level='INFO') as cm:
             neighbors = u_coord.interpol_index(centroids, exposures, 'NN',
                                                 dist, threshold=threshold)
         self.assertIn("Distance to closest centroid", cm.output[0])
