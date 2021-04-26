@@ -95,7 +95,7 @@ not considered."""
 
 
 @jit(nopython=True, parallel=True)
-def dist_approx(lats1, lons1, cos_lats1, lats2, lons2):
+def dist_approx_interpol(lats1, lons1, cos_lats1, lats2, lons2):
     """Compute equirectangular approximation distance in km."""
     d_lon = lons1 - lons2
     d_lat = lats1 - lats2
