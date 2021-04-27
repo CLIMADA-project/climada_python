@@ -135,6 +135,11 @@ class TestDistance(unittest.TestCase):
         self.assertAlmostEqual(
             7709.827814738594,
             np.sqrt(u_coord._dist_sqr_approx(lats1, lons1, cos_lats1, lats2, lons2)) * ONE_LAT_KM)
+    
+    def test_dist_great_circle_allgeoms(self):
+        """Test dist_great_circle_allgeoms"""
+        # TODO: implement
+        pass
 
 class TestInterpIndex(unittest.TestCase):
     """Test interpol_index function's interface"""
@@ -171,6 +176,18 @@ class TestInterpIndex(unittest.TestCase):
         with self.assertRaises(ValueError):
             u_coord.interpol_index(np.ones((10, 2)), np.ones((7, 1)),
                                     distance='haversine')
+
+class TestInterpLP(unittest.TestCase):
+    """Test interpolation of lines and polygons"""
+    def test_interpolate_lines(self):
+        """Test interpolate_lines"""
+        # TODO: implement
+        pass
+    
+    def test_interpolate_polygons(self):
+        """Test interpolate_polygons"""
+        # TODO: implement
+        pass
 
 class TestNN(unittest.TestCase):
     """Test interpolator neareast neighbor with approximate distance"""
@@ -1068,7 +1085,8 @@ if __name__ == "__main__":
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestGetGeodata))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRasterMeta))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRasterIO))
-    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestNN)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestInterpLP))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestNN))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestInterpIndex))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestDistance))
     unittest.TextTestRunner(verbosity=2).run(TESTS)

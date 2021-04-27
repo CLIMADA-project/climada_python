@@ -18,10 +18,6 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Define functions to handle with coordinates
 """
-__all__ = ['interpol_index',
-           '_dist_sqr_approx',
-           'DIST_DEF',
-           'METHOD']
 
 import ast
 import copy
@@ -238,8 +234,8 @@ def interpolate_lines(gdf_lines, point_dist=5):
         
     See also
     --------
-    * coordinates.dist_great_circle_allgeoms()
-    * entity.exposure.base.point_exposure_from_lines()
+    * util.coordinates.dist_great_circle_allgeoms()
+    * util.lines_polys_handler.point_exposure_from_lines()
     """
 
     if not isinstance(gdf_lines, gpd.GeoDataFrame):
@@ -276,6 +272,11 @@ def interpolate_polygons(gdf_poly, area_point):
     -------
     (gpd.GeoDataFrame) with individual Point per row, retaining all other column infos
         belonging to its corresponding polygon
+    
+    See also
+    --------
+    * util.coordinates.dist_great_circle_allgeoms()
+    * util.lines_polys_handler.point_exposure_from_polygons()
     """
     
     metre_dist = math.sqrt(area_point)
