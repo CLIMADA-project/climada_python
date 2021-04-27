@@ -206,6 +206,11 @@ class TropCyclone(Hazard):
         applied to sufficiently large tropical cyclone event sets that
         approximate the reference years 1981 - 2008 used in Knutson et. al.
 
+        The frequency and intensity changes are applied independently from
+        one another. The mean intensity factors can thus slightly deviate
+        from the Knutson value (deviation was found to be less than 1%
+        for default IBTrACS event sets 1980-2020 for each basin).
+
         Parameters
         ----------
         ref_year : int
