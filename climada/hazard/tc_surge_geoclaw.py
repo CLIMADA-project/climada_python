@@ -783,8 +783,7 @@ def plot_dems(dems, track=None, path=None, centroids=None):
         # a bug (?) in cartopy breaks imshow with a transform different from `proj_ax`, so we
         # manually shift the central longitude in the `extent` attribute
         axes.imshow(heights, origin='lower', transform=proj_ax, cmap=cmap, norm=cnorm,
-                    extent=(bounds[0] - mid_lon, bounds[2] - mid_lon, bounds[1], bounds[3]),
-                    vmin=cnorm.values[0], vmax=cnorm.values[-1])
+                    extent=(bounds[0] - mid_lon, bounds[2] - mid_lon, bounds[1], bounds[3]))
         plot_bounds(axes, bounds, transform=proj_data, color='k', linewidth=0.5)
     axes.coastlines(resolution='10m', linewidth=0.5)
     if track is not None:
@@ -844,7 +843,7 @@ class LinearSegmentedNormalize(matplotlib.colors.Normalize):
         """
         self.vthresh = vthresh
         self.values = np.linspace(0, 1, len(self.vthresh))
-        matplotlib.colors.Normalize.__init__(self, vthresh[0], vthresh[1], False)
+        matplotlib.colors.Normalize.__init__(self, vmin=vthresh[0], vmax=vthresh[-1], clip=False)
 
     def __call__(self, value, clip=None):
         return np.ma.masked_array(np.interp(value, self.vthresh, self.values))
