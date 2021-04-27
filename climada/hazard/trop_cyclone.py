@@ -227,12 +227,6 @@ class TropCyclone(Hazard):
         haz_cc = self._apply_knutson_criterion(chg_int_freq, scale_rcp_year)
         haz_cc.tag.description = 'climate change scenario for year %s and RCP %s '\
         'from Knutson et al 2015.' % (str(ref_year), str(rcp_scenario))
-        if (haz_cc.frequency < 0).any():
-            raise ValueError("The application of the given climate scenario"
-                             "lead to negative frequencies. This is"
-                             "likely due to the use of a"
-                             "non-representative event set (too small, "
-                             "incorrect reference period, ...)")
         return haz_cc
 
     @staticmethod
@@ -480,6 +474,13 @@ class TropCyclone(Hazard):
                     )
                     tc_cc.frequency[sel_cat_chg] *= freq_scaling_cor
                 cat_larger_list += cat_chg_list
+
+        if (tc_cc.frequency < 0).any():
+            raise ValueError("The application of the given climate scenario"
+                         "resulted in at least one negative frequenciy."
+                         "This is likely due to the use of a"
+                         "non-representative event set (too small, "
+                         "incorrect reference period, ...)")
 
         return tc_cc
 

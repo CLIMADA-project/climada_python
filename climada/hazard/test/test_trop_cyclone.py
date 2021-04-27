@@ -37,7 +37,7 @@ TEST_TRACK = DATA_DIR.joinpath("trac_brb_test.csv")
 TEST_TRACK_SHORT = DATA_DIR.joinpath("trac_short_test.csv")
 
 CENTR_TEST_BRB = Centroids()
-CENTR_TEST_BRB.read_mat(DATA_DIR.joinpath('centr_brb_test.mat'))
+#CENTR_TEST_BRB.read_mat(DATA_DIR.joinpath('centr_brb_test.mat'))
 
 
 class TestReader(unittest.TestCase):
@@ -358,6 +358,25 @@ class TestClimateSce(unittest.TestCase):
         res_frequency[1] = 0.5 * 0.325
         res_frequency[2] = 0.5 * 1.75
         self.assertTrue(np.allclose(tc_cc.frequency, res_frequency))
+
+    def test_negative_freq_error(self):
+
+        criterion = [{'basin': 'NA', 'category': [0, 1],
+                      'year': 2100, 'change': 1.1,
+                      'variable': 'frequency'},
+                     {'basin': 'NA', 'category': [1],
+                      'year': 2100, 'change': 3,
+                      'variable': 'frequency'},
+                     ]
+
+        tc = TropCyclone()
+        tc.frequency = np.ones(2)
+        tc.basin = ['NA', 'NA']
+        tc.category = np.array([0, 1])
+        with self.assertRaises(ValueError):
+            tc._apply_knutson_criterion(criterion, 1)
+
+
 
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReader)
