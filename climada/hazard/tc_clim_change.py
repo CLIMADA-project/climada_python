@@ -39,10 +39,10 @@ def get_knutson_criterion():
     """
     criterion = list()
     # NA
-    tmp_chg = {'basin': 'NA', 'category': [0, 1, 3, 4, 5],
+    tmp_chg = {'basin': 'NA', 'category': [0, 1, 2, 3, 4, 5],
                'year': 2100, 'change': 1, 'variable': 'frequency', 'function': np.multiply}
     criterion.append(tmp_chg)
-    tmp_chg = {'basin': 'NA', 'category': [1, 3, 4, 5],
+    tmp_chg = {'basin': 'NA', 'category': [1, 2, 3, 4, 5],
                'year': 2100, 'change': 1, 'variable': 'frequency', 'function': np.multiply}
     criterion.append(tmp_chg)
     tmp_chg = {'basin': 'NA', 'category': [3, 4, 5],
@@ -51,13 +51,13 @@ def get_knutson_criterion():
     tmp_chg = {'basin': 'NA', 'category': [4, 5],
                'year': 2100, 'change': 1, 'variable': 'frequency', 'function': np.multiply}
     criterion.append(tmp_chg)
-    
+
     tmp_chg = {'basin': 'NA', 'category': [1, 2, 3, 4, 5],
                'year': 2100, 'change': 1.045, 'variable': 'intensity', 'function': np.multiply}
     criterion.append(tmp_chg)
 
     # EP
-    tmp_chg = {'basin': 'EP', 'category': [0, 1, 3, 4, 5],
+    tmp_chg = {'basin': 'EP', 'category': [0, 1, 2, 3, 4, 5],
                'year': 2100, 'change': 1.163, 'variable': 'frequency', 'function': np.multiply}
     criterion.append(tmp_chg)
     tmp_chg = {'basin': 'EP', 'category': [1, 2, 3, 4, 5],

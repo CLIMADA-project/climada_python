@@ -305,11 +305,11 @@ class TestClimateSce(unittest.TestCase):
         tmp_chg = {'basin': 'WP', 'category': [1, 2, 3, 4, 5],
                    'year': 2100, 'change': 1.025, 'variable': 'intensity', 'function': np.multiply}
         criterion.append(tmp_chg)
-        
+
         tmp_chg = {'basin': 'WP', 'category': [1, 2, 3, 4, 5],
                    'year': 2100, 'change': 1.025, 'variable': 'frequency', 'function': np.multiply}
         criterion.append(tmp_chg)
-        
+
         tmp_chg = {'basin': 'NA', 'category': [0, 1, 2, 3, 4, 5],
                     'year': 2100, 'change': 0.7, 'variable': 'frequency', 'function': np.multiply}
         criterion.append(tmp_chg)
@@ -351,7 +351,7 @@ class TestClimateSce(unittest.TestCase):
             np.allclose(tc.intensity[2, :].toarray() * 1.03375, tc_cc.intensity[2, :].toarray()))
         self.assertTrue(
             np.allclose(tc.intensity[3, :].toarray() * 1.01875, tc_cc.intensity[3, :].toarray()))
-        
+
         res_frequency = np.ones(4) * 0.5
         res_frequency[3] = 0.5 * 1.01875
         res_frequency[0] = 0.5 * 0.25

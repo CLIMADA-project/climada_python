@@ -388,25 +388,29 @@ class TropCyclone(Hazard):
         return new_haz
 
     def _apply_knutson_criterion(self, chg_int_freq, scaling_rcp_year):
-        """Apply changes defined in criterion with a given scale
+        """
+        Apply changes defined in criterion with a given scale.
+
         Parameters:
             criterion (list(dict)): list of criteria
             scale (float): scale parameter because of chosen year and RCP
         Returns:
             TropCyclone
         """
+
         tc_cc = copy.deepcopy(self)
 
         # Criterion per basin
         for basin in np.unique(tc_cc.basin):
 
-            basin_chg = [chg for chg in chg_int_freq if chg['basin'] == basin]
+            #basin_chg = [chg for chg in chg_int_freq if chg['basin'] == basin]
             bas_sel = (np.array(tc_cc.basin) == basin)
 
             # Apply intensity change
             inten_chg = [chg
-                         for chg in basin_chg
-                         if chg['variable'] == 'intensity'
+                         for chg in chg_int_freq
+                         if (chg['variable'] == 'intensity' and
+                             chg['basin'] == basin)
                          ]
             for chg in inten_chg:
                 sel_cat_chg = np.isin(tc_cc.category, chg['category']) & bas_sel
@@ -417,14 +421,14 @@ class TropCyclone(Hazard):
 
             # Apply frequency change
             freq_chg = [chg
-                        for chg in basin_chg
-                        if chg['variable'] == 'frequency'
+                        for chg in chg_int_freq
+                        if (chg['variable'] == 'frequency' and
+                            chg['basin'] == basin)
                         ]
             freq_chg.sort(reverse=False, key=lambda x: len(x['category']))
 
-
             # Iteratively scale frequencies for each category such that
-            # cumulative frequencies are scaled according to Knuston criterion.
+            # cumulative frequencies are scaled according to Knutson criterion.
 
             cat_larger_list = []
             for chg in freq_chg:
