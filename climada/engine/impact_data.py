@@ -122,20 +122,31 @@ def assign_hazard_to_emdat(certainty_level, intensity_path_haz, names_path_haz,
                            reg_id_path_haz, date_path_haz, emdat_data,
                            start_time, end_time, keep_checks=False):
     """assign_hazard_to_emdat: link EMdat event to hazard
-        Parameters:
-            input files (paths):
-                intensity: sparse matrix with hazards as rows and grid points as cols,
-                values only at location with impacts
-                names: identifier for each hazard (i.e. IBtracID) (rows of the matrix)
-                reg_id: ISO country ID of each grid point (cols of the matrix)
-                date: start date of each hazard (rows of the matrix)
-                emdat_data: pd.dataframe with EMdat data
-                start: start date of events to be assigned 'yyyy-mm-dd'
-                end: end date of events to be assigned 'yyyy-mm-dd'
-                disaster_subtype: EMdat disaster subtype
 
-    Returns:
-        pd.dataframe with EMdat entries linked to a hazard
+    Parameters
+    ----------
+    certainty_level : str
+        'high' or 'low'
+    intensity_path_haz : sparse matrix
+        with hazards as rows and grid points as cols,
+        values only at location with impacts
+    names_path_haz : str
+        identifier for each hazard (i.e. IBtracID) (rows of the matrix)
+    reg_id_path_haz : str
+        ISO country ID of each grid point (cols of the matrix)
+    date_path_haz : datetime.datetime
+        start date of each hazard (rows of the matrix)
+    emdat_data: pd.DataFrame
+        dataframe with EMdat data
+    start_time : datetime.datetime
+        start date of events to be assigned 'yyyy-mm-dd'
+    end_time : datetime.datetime
+        end date of events to be assigned 'yyyy-mm-dd'
+    keep_checks : bool, optional
+
+    Returns
+    -------
+    pd.dataframe with EMdat entries linked to a hazard
     """
     # check valid certainty level
     certainty_levels = ['high', 'low']
@@ -220,7 +231,8 @@ def assign_hazard_to_emdat(certainty_level, intensity_path_haz, names_path_haz,
 def hit_country_per_hazard(intensity_path, names_path, reg_id_path, date_path):
     """hit_country_per_hazard: create list of hit countries from hazard set
 
-        Parameters:
+        Parameters
+        ----------
             input files:
                 intensity: sparse matrix with hazards as rows and grid points
                 as cols, values only at location with impacts
