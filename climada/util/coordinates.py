@@ -19,7 +19,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define functions to handle with coordinates
 """
 __all__ = ['interpol_index',
-           'dist_sqr_approx',
+           '_dist_sqr_approx',
            'DIST_DEF',
            'METHOD']
 
@@ -95,14 +95,7 @@ not considered."""
 
 
 @jit(nopython=True, parallel=True)
-def dist_approx_interpol(lats1, lons1, cos_lats1, lats2, lons2):
-    """Compute equirectangular approximation distance in km."""
-    d_lon = lons1 - lons2
-    d_lat = lats1 - lats2
-    return np.sqrt(d_lon * d_lon * cos_lats1 * cos_lats1 + d_lat * d_lat) * ONE_LAT_KM
-
-@jit(nopython=True, parallel=True)
-def dist_sqr_approx(lats1, lons1, cos_lats1, lats2, lons2):
+def _dist_sqr_approx(lats1, lons1, cos_lats1, lats2, lons2):
     """Compute squared equirectangular approximation distance. Values need
     to be sqrt and multiplicated by ONE_LAT_KM to obtain distance in km."""
     d_lon = lons1 - lons2
@@ -168,7 +161,7 @@ def index_nn_aprox(centroids, coordinates, threshold=THRESHOLD):
     assigned = np.zeros(coordinates.shape[0], int)
     num_warn = 0
     for icoord, iidx in enumerate(idx):
-        dist = dist_sqr_approx(centroids[:, 0], centroids[:, 1],
+        dist = _dist_sqr_approx(centroids[:, 0], centroids[:, 1],
                                centr_cos_lat, coordinates[iidx, 0],
                                coordinates[iidx, 1])
         min_idx = dist.argmin()

@@ -124,15 +124,6 @@ def def_ref_50():
 
 class TestDistance(unittest.TestCase):
     """Test distance functions."""
-    def test_dist_approx_interpol_pass(self):
-        """Test against matlab reference."""
-        lats1 = 45.5
-        lons1 = -32.2
-        cos_lats1 = np.cos(np.radians(lats1))
-        lats2 = 14
-        lons2 = 56
-        self.assertAlmostEqual(7709.827814738594,
-                               u_coord.dist_approx_interpol(lats1, lons1, cos_lats1, lats2, lons2))
 
     def test_dist_sqr_approx_pass(self):
         """Test against matlab reference."""
@@ -143,7 +134,7 @@ class TestDistance(unittest.TestCase):
         lons2 = 56
         self.assertAlmostEqual(
             7709.827814738594,
-            np.sqrt(u_coord.dist_sqr_approx(lats1, lons1, cos_lats1, lats2, lons2)) * ONE_LAT_KM)
+            np.sqrt(u_coord._dist_sqr_approx(lats1, lons1, cos_lats1, lats2, lons2)) * ONE_LAT_KM)
 
 class TestInterpIndex(unittest.TestCase):
     """Test interpol_index function's interface"""
