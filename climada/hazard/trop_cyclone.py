@@ -195,20 +195,44 @@ class TropCyclone(Hazard):
         self.tag.description = description
 
     def set_climate_scenario_knu(self, ref_year=2050, rcp_scenario=45):
-        """Compute future events for given RCP scenario and year. RCP 4.5
-        from Knutson et al 2015.
-        Parameters:
-            ref_year (int): year between 2000 ad 2100. Default: 2050
-            rcp_scenario (int):  26 for RCP 2.6, 45 for RCP 4.5 (default),
-                60 for RCP 6.0 and 85 for RCP 8.5.
-        Returns:
-            TropCyclone
+        """
+        Compute future events for a given RCP scenario and year based on the
+        parametrized values derived from Table 3 in Knutson et al 2015.
+        https://doi.org/10.1175/JCLI-D-15-0129.1 . The scaling for different
+        years and RCP scenarios is obtained by linear interpolation.ß
+
+        Note: The parametrized values are derived from the overall changes
+        in statistical ensemble of tracks. Hence, this method should only be
+        applied to sufficiently large tropical cyclone event sets that
+        approximate the reference years 1981 - 2008 used in Knutson et. al.
+
+        Parameters
+        ----------
+        ref_year : int
+            year between 2000 ad 2100. Default: 2050
+        rcp_scenario : int
+            26 for RCP 2.6, 45 for RCP 4.5, 60 for RCP 6.0 and 85 for RCP 8.5.
+            The default is 45.
+
+        Returns
+        -------
+        haz_cc : climada.hazard.TropCyclone
+            Tropical cyclone with frequencies and intensity scaled according
+            to the Knutson criterion for the given year and RCP. Returns
+            a new instance of climada.hazard.TropCyclone, self is not
+            modified.
         """
         chg_int_freq = get_knutson_criterion()
         scale_rcp_year  = calc_scale_knutson(ref_year, rcp_scenario)
         haz_cc = self._apply_knutson_criterion(chg_int_freq, scale_rcp_year)
         haz_cc.tag.description = 'climate change scenario for year %s and RCP %s '\
         'from Knutson et al 2015.' % (str(ref_year), str(rcp_scenario))
+        if (haz_cc.frequency < 0).any():
+            raise ValueError("The application of the given climate scenario"
+                             "lead to negative frequencies. This is"
+                             "likely due to the use of a"
+                             "non-representative event set (too small, "
+                             "incorrect reference period, ...)")
         return haz_cc
 
     @staticmethod
@@ -389,13 +413,19 @@ class TropCyclone(Hazard):
 
     def _apply_knutson_criterion(self, chg_int_freq, scaling_rcp_year):
         """
-        Apply changes defined in criterion with a given scale.
+        Apply changes to intensities and cumulative frequencies.
 
-        Parameters:
-            criterion (list(dict)): list of criteria
-            scale (float): scale parameter because of chosen year and RCP
-        Returns:
-            TropCyclone
+        Parameters
+        ----------
+        criterion : list(dict))
+            list of criteria from climada.hazard.tc_clim_change
+        scale : float
+            scale parameter because of chosen year and RCP
+        Returns
+        -------
+        tc_cc : climada.hazard.TropCyclone
+            Tropical cyclone with frequency and intensity scaled according
+            to the Knutson criterion. Returns a new instance of TropCyclone.
         """
 
         tc_cc = copy.deepcopy(self)
