@@ -126,7 +126,7 @@ def get_knutson_criterion():
          'year': 2100, 'change': 1.033, 'variable': 'intensity'}
         ]
 
-    return na + ep + wp +sp + ni + si
+    return na + ep + wp + sp + ni + si
 
 def calc_scale_knutson(ref_year=2050, rcp_scenario=45):
     """
