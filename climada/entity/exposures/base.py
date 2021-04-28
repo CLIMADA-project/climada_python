@@ -367,7 +367,7 @@ class Exposures():
         self.gdf['longitude'] = x_grid.flatten()
         self.gdf['latitude'] = y_grid.flatten()
         self.gdf['value'] = value.reshape(-1)
-        if any(self.gdf.loc[:, self.gdf.columns.str.startswith('if_')]):
+        if any(self.gdf.columns.str.startswith('if_')):
             self._replace_if_by_impf()
         self.meta = meta
 
@@ -585,7 +585,7 @@ class Exposures():
         LOGGER.info('Reading %s', file_name)
         with pd.HDFStore(file_name) as store:
             self.__init__(store['exposures'])
-            if any(self.gdf.loc[:, self.gdf.columns.str.startswith('if_')]):
+            if any(self.gdf.columns.str.startswith('if_')):
                 self._replace_if_by_impf()
             metadata = store.get_storer('exposures').attrs.metadata
             for key, val in metadata.items():
@@ -622,7 +622,7 @@ class Exposures():
             raise KeyError(f"Variable not in MAT file: " + str(var_err)) from var_err
 
         self.gdf = GeoDataFrame(data=exposures, crs=self.crs)
-        if any(self.gdf.loc[:, self.gdf.columns.str.startswith('if_')]):
+        if any(self.gdf.columns.str.startswith('if_')):
             self._replace_if_by_impf()
         _read_mat_metadata(self, data, file_name, var_names)
 
@@ -710,9 +710,9 @@ class Exposures():
             u_coord.write_raster(file_name, raster, meta)
 
     def _replace_if_by_impf(self):
-        LOGGER.info('Replacing if_ by impf_ in Exposure geodataframe')
-        column_name = self.gdf.columns[self.gdf.columns.str.startswith('if_')][0]
-        self.gdf.rename(columns={column_name: column_name.replace("if", "impf")}, inplace=True)
+        LOGGER.warning(" 'if_'  was replaced by 'impf_' in the Exposure's GeoDataFrame. The name 'if_' is deprecated. ")
+        for column_name in self.gdf.columns[self.gdf.columns.str.startswith('if_')]:
+            self.gdf.rename(columns={column_name: column_name.replace("if", "impf")}, inplace=True)
 
     @staticmethod
     def concat(exposures_list):
