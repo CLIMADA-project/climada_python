@@ -37,7 +37,7 @@ TEST_TRACK = DATA_DIR.joinpath("trac_brb_test.csv")
 TEST_TRACK_SHORT = DATA_DIR.joinpath("trac_short_test.csv")
 
 CENTR_TEST_BRB = Centroids()
-#CENTR_TEST_BRB.read_mat(DATA_DIR.joinpath('centr_brb_test.mat'))
+CENTR_TEST_BRB.read_mat(DATA_DIR.joinpath('centr_brb_test.mat'))
 
 
 class TestReader(unittest.TestCase):
@@ -256,10 +256,9 @@ class TestClimateSce(unittest.TestCase):
 
     def test_apply_criterion_track(self):
         """Test _apply_criterion function."""
-        criterion = list()
-        tmp_chg = {'basin': 'NA', 'category': [1, 2, 3, 4, 5],
-                   'year': 2100, 'change': 1.045, 'variable': 'intensity', 'function': np.multiply}
-        criterion.append(tmp_chg)
+        criterion = [{'basin': 'NA', 'category': [1, 2, 3, 4, 5],
+                   'year': 2100, 'change': 1.045, 'variable': 'intensity'}
+                   ]
         scale = 0.75
 
         # artificially increase the size of the hazard by repeating (tiling) the data:
@@ -298,30 +297,22 @@ class TestClimateSce(unittest.TestCase):
 
     def test_two_criterion_track(self):
         """Test _apply_criterion function with two criteria"""
-        criterion = list()
-        tmp_chg = {'basin': 'NA', 'category': [1, 2, 3, 4, 5],
-                   'year': 2100, 'change': 1.045, 'variable': 'intensity', 'function': np.multiply}
-        criterion.append(tmp_chg)
-        tmp_chg = {'basin': 'WP', 'category': [1, 2, 3, 4, 5],
-                   'year': 2100, 'change': 1.025, 'variable': 'intensity', 'function': np.multiply}
-        criterion.append(tmp_chg)
-
-        tmp_chg = {'basin': 'WP', 'category': [1, 2, 3, 4, 5],
-                   'year': 2100, 'change': 1.025, 'variable': 'frequency', 'function': np.multiply}
-        criterion.append(tmp_chg)
-
-        tmp_chg = {'basin': 'NA', 'category': [0, 1, 2, 3, 4, 5],
-                    'year': 2100, 'change': 0.7, 'variable': 'frequency', 'function': np.multiply}
-        criterion.append(tmp_chg)
-        tmp_chg = {'basin': 'NA', 'category': [1, 2, 3, 4, 5],
-                    'year': 2100, 'change': 1, 'variable': 'frequency', 'function': np.multiply}
-        criterion.append(tmp_chg)
-        tmp_chg = {'basin': 'NA', 'category': [3, 4, 5],
-                    'year': 2100, 'change': 1, 'variable': 'frequency', 'function': np.multiply}
-        criterion.append(tmp_chg)
-        tmp_chg = {'basin': 'NA', 'category': [4, 5],
-                   'year': 2100, 'change': 2, 'variable': 'frequency', 'function': np.multiply}
-        criterion.append(tmp_chg)
+        criterion = [
+            {'basin': 'NA', 'category': [1, 2, 3, 4, 5],
+             'year': 2100, 'change': 1.045, 'variable': 'intensity'},
+            {'basin': 'WP', 'category': [1, 2, 3, 4, 5],
+             'year': 2100, 'change': 1.025, 'variable': 'intensity'},
+            {'basin': 'WP', 'category': [1, 2, 3, 4, 5],
+             'year': 2100, 'change': 1.025, 'variable': 'frequency'},
+            {'basin': 'NA', 'category': [0, 1, 2, 3, 4, 5],
+             'year': 2100, 'change': 0.7, 'variable': 'frequency'},
+            {'basin': 'NA', 'category': [1, 2, 3, 4, 5],
+             'year': 2100, 'change': 1, 'variable': 'frequency'},
+            {'basin': 'NA', 'category': [3, 4, 5],
+             'year': 2100, 'change': 1, 'variable': 'frequency'},
+            {'basin': 'NA', 'category': [4, 5],
+             'year': 2100, 'change': 2, 'variable': 'frequency'}
+            ]
         scale = 0.75
 
         tc = TropCyclone()
@@ -360,7 +351,7 @@ class TestClimateSce(unittest.TestCase):
         self.assertTrue(np.allclose(tc_cc.frequency, res_frequency))
 
     def test_negative_freq_error(self):
-
+        """Test _apply_knutson_criterion with infeasible input."""
         criterion = [{'basin': 'NA', 'category': [0, 1],
                       'year': 2100, 'change': 1.1,
                       'variable': 'frequency'},
@@ -375,7 +366,6 @@ class TestClimateSce(unittest.TestCase):
         tc.category = np.array([0, 1])
         with self.assertRaises(ValueError):
             tc._apply_knutson_criterion(criterion, 1)
-
 
 
 if __name__ == "__main__":

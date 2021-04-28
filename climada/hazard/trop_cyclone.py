@@ -432,7 +432,6 @@ class TropCyclone(Hazard):
         # Criterion per basin
         for basin in np.unique(tc_cc.basin):
 
-            #basin_chg = [chg for chg in chg_int_freq if chg['basin'] == basin]
             bas_sel = (np.array(tc_cc.basin) == basin)
 
             # Apply intensity change
@@ -482,10 +481,10 @@ class TropCyclone(Hazard):
 
         if (tc_cc.frequency < 0).any():
             raise ValueError("The application of the given climate scenario"
-                         "resulted in at least one negative frequenciy."
-                         "This is likely due to the use of a"
-                         "non-representative event set (too small, "
-                         "incorrect reference period, ...)")
+                             "resulted in at least one negative frequenciy."
+                             "This is likely due to the use of a"
+                             "non-representative event set (too small, "
+                             "incorrect reference period, ...)")
 
         return tc_cc
 
