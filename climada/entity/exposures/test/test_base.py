@@ -251,9 +251,9 @@ class TestIO(unittest.TestCase):
         self.assertTrue(np.array_equal(exp_df.gdf.cover.values,       exp_read.gdf.cover.values))
         self.assertTrue(np.array_equal(exp_df.gdf.region_id.values,   exp_read.gdf.region_id.values))
         self.assertTrue(np.array_equal(exp_df.gdf.category_id.values, exp_read.gdf.category_id.values))
-        self.assertTrue(np.array_equal(exp_df.gdf.if_TC.values,       exp_read.gdf.if_TC.values))
+        self.assertTrue(np.array_equal(exp_df.gdf.impf_TC.values,       exp_read.gdf.impf_TC.values))
         self.assertTrue(np.array_equal(exp_df.gdf.centr_TC.values,    exp_read.gdf.centr_TC.values))
-        self.assertTrue(np.array_equal(exp_df.gdf.if_FL.values,       exp_read.gdf.if_FL.values))
+        self.assertTrue(np.array_equal(exp_df.gdf.impf_FL.values,       exp_read.gdf.impf_FL.values))
         self.assertTrue(np.array_equal(exp_df.gdf.centr_FL.values,    exp_read.gdf.centr_FL.values))
 
         for point_df, point_read in zip(exp_df.gdf.geometry.values, exp_read.gdf.geometry.values):
@@ -271,7 +271,7 @@ class TestAddSea(unittest.TestCase):
         exp.gdf['latitude'] = np.linspace(min_lat, max_lat, 10)
         exp.gdf['longitude'] = np.linspace(min_lon, max_lon, 10)
         exp.gdf['region_id'] = np.ones(10)
-        exp.gdf['if_TC'] = np.ones(10)
+        exp.gdf['impf_TC'] = np.ones(10)
         exp.ref_year = 2015
         exp.value_unit = 'XSD'
         exp.check()
