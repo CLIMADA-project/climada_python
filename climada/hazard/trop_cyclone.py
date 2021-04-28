@@ -63,25 +63,30 @@ NM_TO_KM = (1.0 * ureg.nautical_mile).to(ureg.kilometer).magnitude
 """Unit conversion factors for JIT functions that can't use ureg"""
 
 class TropCyclone(Hazard):
-    """Contains tropical cyclone events.
-    Attributes:
-        category (np.array(int)): for every event, the TC category using the
-            Saffir-Simpson scale:
-                -1 tropical depression
-                 0 tropical storm
-                 1 Hurrican category 1
-                 2 Hurrican category 2
-                 3 Hurrican category 3
-                 4 Hurrican category 4
-                 5 Hurrican category 5
-        basin (list(str)): basin where every event starts
-            'NA' North Atlantic
-            'EP' Eastern North Pacific
-            'WP' Western North Pacific
-            'NI' North Indian
-            'SI' South Indian
-            'SP' Southern Pacific
-            'SA' South Atlantic
+    """
+    Contains tropical cyclone events.
+
+    Attributes
+    ----------
+    category : np.array(int)
+        for every event, the TC category using the
+        Saffir-Simpson scale:
+            -1 tropical depression
+             0 tropical storm
+             1 Hurrican category 1
+             2 Hurrican category 2
+             3 Hurrican category 3
+             4 Hurrican category 4
+             5 Hurrican category 5
+    basin : list(str)
+        basin where every event starts
+        'NA' North Atlantic
+        'EP' Eastern North Pacific
+        'WP' Western North Pacific
+        'NI' North Indian
+        'SI' South Indian
+        'SP' Southern Pacific
+        'SA' South Atlantic
     """
     intensity_thres = 17.5
     """intensity threshold for storage in m/s"""
@@ -103,7 +108,8 @@ class TropCyclone(Hazard):
     def set_from_tracks(self, tracks, centroids=None, description='',
                         model='H08', ignore_distance_to_coast=False,
                         store_windfields=False, metric="equirect"):
-        """Clear and fill with windfields from specified tracks.
+        """
+        Clear and fill with windfields from specified tracks.
 
         Parameters
         ----------
@@ -238,25 +244,35 @@ class TropCyclone(Hazard):
     def video_intensity(track_name, tracks, centroids, file_name=None,
                         writer=animation.PillowWriter(bitrate=500),
                         figsize=(9, 13), **kwargs):
-        """Generate video of TC wind fields node by node and returns its
+        """
+        Generate video of TC wind fields node by node and returns its
         corresponding TropCyclone instances and track pieces.
 
-        Parameters:
-            track_name (str): name of the track contained in tracks to record
-            tracks (TCTracks): tracks
-            centroids (Centroids): centroids where wind fields are mapped
-            file_name (str, optional): file name to save video, if provided
-            writer = (matplotlib.animation.*, optional): video writer. Default:
-                pillow with bitrate=500
-            figsize (tuple, optional): figure size for plt.subplots
-            kwargs (optional): arguments for pcolormesh matplotlib function
-                used in event plots
+        Parameters
+        ----------
+        track_name : str
+            name of the track contained in tracks to record
+        tracks : climada.hazard.TCTracks
+            tropical cyclone tracks
+        centroids : climada.hazard.Centroids
+            centroids where wind fields are mapped
+        file_name : str, optional
+            file name to save video (including full path and file extension)
+        writer : matplotlib.animation.*, optional
+            video writer. Default is pillow with bitrate=500
+        figsize : tuple, optional
+            figure size for plt.subplots
+        kwargs : optional
+            arguments for pcolormesh matplotlib function used in event plots
 
-        Returns:
-            list(TropCyclone), list(np.array)
+        Returns
+        -------
+        tc_list, tc_coord : list(TropCyclone), list(np.array)
 
-        Raises:
-            ValueError
+        Raises
+        ------
+        ValueError
+
         """
         # initialization
         track = tracks.get_track(track_name)
@@ -317,10 +333,12 @@ class TropCyclone(Hazard):
         return tc_list, tr_coord
 
     def frequency_from_tracks(self, tracks):
-        """Set hazard frequency from tracks data.
+        """
+        Set hazard frequency from tracks data.
 
-        Parameters:
-            tracks (list of xarray.Dataset)
+        Parameters
+        ----------
+        tracks : list of xarray.Dataset
         """
         if not tracks:
             return
@@ -333,7 +351,8 @@ class TropCyclone(Hazard):
 
     def _tc_from_track(self, track, centroids, coastal_idx, model='H08',
                        store_windfields=False, metric="equirect"):
-        """Generate windfield hazard from a single track dataset
+        """
+        Generate windfield hazard from a single track dataset
 
         Parameters
         ----------
@@ -691,7 +710,8 @@ def _vtrans(t_lat, t_lon, t_tstep, metric="equirect"):
     return v_trans_norm, v_trans
 
 def _bs_hol08(v_trans, penv, pcen, prepcen, lat, tint):
-    """Holland's 2008 b-value computation for sustained surface winds
+    """
+    Holland's 2008 b-value computation for sustained surface winds
 
     The parameter applies to 1-minute sustained winds at 10 meters above ground.
     It is taken from equation (11) in the following paper:
@@ -717,16 +737,24 @@ def _bs_hol08(v_trans, penv, pcen, prepcen, lat, tint):
     of the Coriolis term is 1 while wind speed is 50 (which changes away from the
     radius of maximum winds and as the TC moves away from the equator).
 
-    Parameters:
-        v_trans (float): translational wind (m/s)
-        penv (float): environmental pressure (hPa)
-        pcen (float): central pressure (hPa)
-        prepcen (float): previous central pressure (hPa)
-        lat (float): latitude (degrees)
-        tint (float): time step (h)
+    Parameters
+    ----------
+    v_trans : float
+        translational wind (m/s)
+    penv : float
+        environmental pressure (hPa)
+    pcen : float
+        central pressure (hPa)
+    prepcen : float
+        previous central pressure (hPa)
+    lat : float
+        latitude (degrees)
+    tint : float
+        time step (h)
 
-    Returns:
-        float
+    Returns
+    -------
+    b_s : float
     """
     hol_xx = 0.6 * (1. - (penv - pcen) / 215)
     hol_b = -4.4e-5 * (penv - pcen)**2 + 0.01 * (penv - pcen) + \
@@ -735,7 +763,8 @@ def _bs_hol08(v_trans, penv, pcen, prepcen, lat, tint):
     return np.clip(hol_b, 1, 2.5)
 
 def _stat_holland(d_centr, r_max, hol_b, penv, pcen, lat, close_centr):
-    """Holland symmetric and static wind field (in m/s)
+    """
+    Holland symmetric and static wind field (in m/s)
 
     This function applies the gradient wind model expressed in equation (4) (combined with
     equation (6)) from
