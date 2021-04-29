@@ -88,7 +88,7 @@ class Entity(object):
             ValueError
         """
         self.exposures = Exposures(pd.read_excel(file_name))
-        if any(self.exposures.gdf.columns.str.startswith('if_')):
+        if any(self.exposures.gdf.loc[:, self.exposures.gdf.columns.str.startswith('if_')]):
             self.exposures._replace_if_by_impf()
         self.exposures.tag = Tag()
         self.exposures.tag.file_name = str(file_name)
