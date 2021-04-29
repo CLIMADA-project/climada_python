@@ -19,9 +19,10 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define impact functions for tropical cyclnes .
 """
 
-__all__ = ['ImpfTropCyclone']
+__all__ = ['ImpfTropCyclone', 'IFTropCyclone']
 
 import logging
+from deprecation import deprecated
 import numpy as np
 import pandas as pd
 
@@ -271,3 +272,9 @@ class ImpfSetTropCyclone(ImpactFuncSet):
             return region_name, impf_id, iso3n, iso3a
 
         return region_name[region], impf_id[region], iso3n[region], iso3a[region]
+
+
+@deprecated(details="The class name IFTropCyclone is deprecated and won't be supported in a future "
+                   +"version. Use ImpfTropCyclone instead")
+class IFTropCyclone(ImpfTropCyclone):
+    """Is ImpfTropCyclone now"""

@@ -20,10 +20,12 @@ Define impact functions for AgriculturalDroughts.
 """
 
 
-__all__ = ['ImpfRelativeCropyield']
+__all__ = ['ImpfRelativeCropyield', 'IFRelativeCropyield']
 
 import logging
+from deprecation import deprecated
 import numpy as np
+
 from climada.entity.impact_funcs.base import ImpactFunc
 
 LOGGER = logging.getLogger(__name__)
@@ -52,3 +54,9 @@ class ImpfRelativeCropyield(ImpactFunc):
         self.mdr = (self.intensity)
         self.mdd = (self.intensity)
         self.paa = np.ones(len(self.intensity))
+
+
+@deprecated(details="The class name IFRelativeCropyield is deprecated and won't be supported in a future "
+                   +"version. Use ImpfRelativeCropyield instead")
+class IFRelativeCropyield(ImpfRelativeCropyield):
+    """Is ImpfRelativeCropyield now"""

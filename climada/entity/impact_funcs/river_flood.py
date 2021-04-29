@@ -19,9 +19,11 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define impact functions for river flood .
 """
 
-__all__ = ['ImpfRiverFlood']
-import numpy as np
+__all__ = ['ImpfRiverFlood', 'IFRiverFlood']
+
 import logging
+from deprecation import deprecated
+import numpy as np
 import pandas as pd
 
 from climada.util.constants import RIVER_FLOOD_REGIONS_CSV
@@ -136,39 +138,46 @@ class ImpfRiverFlood(ImpactFunc):
 
         self.paa = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
 
+
 def flood_imp_func_set():
     """Builds impact function set for river flood, using standard files"""
 
-    Impf_set = ImpactFuncSet()
+    impf_set = ImpactFuncSet()
 
-    Impf_africa = ImpfRiverFlood()
-    Impf_africa.set_RF_Impf_Africa()
-    Impf_set.append(Impf_africa)
+    impf_africa = ImpfRiverFlood()
+    impf_africa.set_RF_Impf_Africa()
+    impf_set.append(impf_africa)
 
-    Impf_asia = ImpfRiverFlood()
-    Impf_asia.set_RF_Impf_Asia()
-    Impf_set.append(Impf_asia)
+    impf_asia = ImpfRiverFlood()
+    impf_asia.set_RF_Impf_Asia()
+    impf_set.append(impf_asia)
 
-    Impf_europe = ImpfRiverFlood()
-    Impf_europe.set_RF_Impf_Europe()
-    Impf_set.append(Impf_europe)
+    impf_europe = ImpfRiverFlood()
+    impf_europe.set_RF_Impf_Europe()
+    impf_set.append(impf_europe)
 
-    Impf_na = ImpfRiverFlood()
-    Impf_na.set_RF_Impf_NorthAmerica()
-    Impf_set.append(Impf_na)
+    impf_na = ImpfRiverFlood()
+    impf_na.set_RF_Impf_NorthAmerica()
+    impf_set.append(impf_na)
 
-    Impf_oceania = ImpfRiverFlood()
-    Impf_oceania.set_RF_Impf_Oceania()
-    Impf_set.append(Impf_oceania)
+    impf_oceania = ImpfRiverFlood()
+    impf_oceania.set_RF_Impf_Oceania()
+    impf_set.append(impf_oceania)
 
-    Impf_sa = ImpfRiverFlood()
-    Impf_sa.set_RF_Impf_SouthAmerica()
-    Impf_set.append(Impf_sa)
+    impf_sa = ImpfRiverFlood()
+    impf_sa.set_RF_Impf_SouthAmerica()
+    impf_set.append(impf_sa)
 
-    return Impf_set
+    return impf_set
 
 
 def assign_Impf_simple(exposure, country):
     info = pd.read_csv(RIVER_FLOOD_REGIONS_CSV)
-    Impf_id = info.loc[info['ISO'] == country, 'Impf_RF'].values[0]
-    exposure['Impf_RF'] = Impf_id
+    impf_id = info.loc[info['ISO'] == country, 'Impf_RF'].values[0]
+    exposure['Impf_RF'] = impf_id
+
+
+@deprecated(details="The class name IFRiverFlood is deprecated and won't be supported in a future "
+                   +"version. Use ImpfRiverFlood instead")
+class IFRiverFlood(ImpfRiverFlood):
+    """Is ImpfRiverFlood now"""

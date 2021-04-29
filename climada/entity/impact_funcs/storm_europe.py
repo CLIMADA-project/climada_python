@@ -19,9 +19,10 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define impact functions for extratropical storms (mainly windstorms in Europe).
 """
 
-__all__ = ['ImpfStormEurope']
+__all__ = ['ImpfStormEurope', 'IFStormEurope']
 
 import logging
+from deprecation import deprecated
 import numpy as np
 
 from climada.entity.impact_funcs.base import ImpactFunc
@@ -74,6 +75,7 @@ class ImpfStormEurope(ImpactFunc):
         self.check()
 
 
-
-
-
+@deprecated(details="The class name IFStormEurope is deprecated and won't be supported in a future "
+                   +"version. Use ImpfStormEurope instead")
+class IFStormEurope(ImpfStormEurope):
+    """Is ImpfStormEurope now"""

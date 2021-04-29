@@ -37,6 +37,7 @@ dependencies:
   - xlsxwriter>=1.3
   - xmlrunner>=1.7
   - pip:
+    - deprecation>=2.1
     - pybufrkit>=0.2
     - overpy>=0.4
     - SALib>=1.3
