@@ -29,6 +29,7 @@ from climada.entity.entity_def import Entity
 from climada.hazard.base import Hazard
 from climada.engine.impact import Impact
 from climada.util.constants import ENT_DEMO_TODAY, DEF_CRS
+from climada.entity import Exposures
 
 DATA_FOLDER = CONFIG.engine.test_data.dir()
 HAZ_TEST_MAT = CONFIG.hazard.test_data.dir().joinpath('atl_prob_no_name.mat')
@@ -144,7 +145,7 @@ class TestOneExposure(unittest.TestCase):
         events_pos = hazard.intensity[:, ent.exposures.gdf.centr_TC[iexp]].nonzero()[0]
         res_exp = np.zeros((ent.exposures.gdf.shape[0]))
         res_exp[iexp] = np.sum(impact.at_event[events_pos] * hazard.frequency[events_pos])
-        self.assertTrue(np.array_equal(res_exp, impact.eai_exp))
+        np.testing.assert_array_equal(res_exp, impact.eai_exp)
 
         self.assertEqual(0, impact.at_event[12])
         # Check first 3 values
@@ -200,19 +201,15 @@ class TestCalc(unittest.TestCase):
         # impact.eai_exp == EDS.ED_at_centroid in MATLAB
         self.assertEqual(num_exp, len(impact.eai_exp))
         self.assertAlmostEqual(1.518553670803242e+08, impact.eai_exp[0])
-        self.assertAlmostEqual(1.373490457046383e+08,
-                               impact.eai_exp[int(num_exp / 2)], 6)
-        self.assertTrue(np.isclose(1.373490457046383e+08,
-                                   impact.eai_exp[int(num_exp / 2)]))
-        self.assertAlmostEqual(1.066837260150042e+08,
-                               impact.eai_exp[num_exp - 1], 6)
-        self.assertTrue(np.isclose(1.066837260150042e+08,
-                                   impact.eai_exp[int(num_exp - 1)]))
+        self.assertAlmostEqual(1.373490457046383e+08, impact.eai_exp[int(num_exp / 2)], 6)
+        self.assertAlmostEqual(1.373490457046383e+08, impact.eai_exp[int(num_exp / 2)], 5)
+        self.assertAlmostEqual(1.066837260150042e+08, impact.eai_exp[num_exp - 1], 6)
+        self.assertAlmostEqual(1.066837260150042e+08, impact.eai_exp[int(num_exp - 1)], 5)
         # impact.tot_value == EDS.Value in MATLAB
         # impact.aai_agg == EDS.ED in MATLAB
         self.assertAlmostEqual(6.570532945599105e+11, impact.tot_value)
         self.assertAlmostEqual(6.512201157564421e+09, impact.aai_agg, 5)
-        self.assertTrue(np.isclose(6.512201157564421e+09, impact.aai_agg))
+        self.assertAlmostEqual(6.512201157564421e+09, impact.aai_agg, 5)
 
     def test_calc_imp_mat_pass(self):
         """Test save imp_mat"""
@@ -232,17 +229,14 @@ class TestCalc(unittest.TestCase):
 
         # Compute the impact over the whole exposures
         impact.calc(ent.exposures, ent.impact_funcs, hazard, save_mat=True)
-        self.assertTrue(isinstance(impact.imp_mat, sparse.csr_matrix))
+        self.assertIsInstance(impact.imp_mat, sparse.csr_matrix)
         self.assertEqual(impact.imp_mat.shape, (hazard.event_id.size,
                                                 ent.exposures.gdf.value.size))
-        self.assertTrue(np.allclose(np.sum(impact.imp_mat, axis=1).reshape(-1),
-                                    impact.at_event))
-        self.assertTrue(
-            np.allclose(
-                np.array(np.sum(np.multiply(impact.imp_mat.toarray(),
-                                            impact.frequency.reshape(-1, 1)),
-                                axis=0)).reshape(-1),
-                impact.eai_exp))
+        np.testing.assert_array_almost_equal_nulp(
+            np.array(impact.imp_mat.sum(axis=1)).ravel(), impact.at_event, nulp=5)
+        np.testing.assert_array_almost_equal_nulp(
+            np.sum(impact.imp_mat.toarray() * impact.frequency[:, None], axis=0).reshape(-1),
+            impact.eai_exp)
 
     def test_calc_if_pass(self):
         """Execute when no if_HAZ present, but only if_"""
@@ -272,19 +266,15 @@ class TestCalc(unittest.TestCase):
         # impact.eai_exp == EDS.ED_at_centroid in MATLAB
         self.assertEqual(num_exp, len(impact.eai_exp))
         self.assertAlmostEqual(1.518553670803242e+08, impact.eai_exp[0])
-        self.assertAlmostEqual(1.373490457046383e+08,
-                               impact.eai_exp[int(num_exp / 2)], 6)
-        self.assertTrue(np.isclose(1.373490457046383e+08,
-                                   impact.eai_exp[int(num_exp / 2)]))
-        self.assertAlmostEqual(1.066837260150042e+08,
-                               impact.eai_exp[num_exp - 1], 6)
-        self.assertTrue(np.isclose(1.066837260150042e+08,
-                                   impact.eai_exp[int(num_exp - 1)]))
+        self.assertAlmostEqual(1.373490457046383e+08, impact.eai_exp[int(num_exp / 2)], 6)
+        self.assertAlmostEqual(1.373490457046383e+08, impact.eai_exp[int(num_exp / 2)], 5)
+        self.assertAlmostEqual(1.066837260150042e+08, impact.eai_exp[num_exp - 1], 6)
+        self.assertAlmostEqual(1.066837260150042e+08, impact.eai_exp[int(num_exp - 1)], 5)
         # impact.tot_value == EDS.Value in MATLAB
         # impact.aai_agg == EDS.ED in MATLAB
         self.assertAlmostEqual(6.570532945599105e+11, impact.tot_value)
         self.assertAlmostEqual(6.512201157564421e+09, impact.aai_agg, 5)
-        self.assertTrue(np.isclose(6.512201157564421e+09, impact.aai_agg))
+        self.assertAlmostEqual(6.512201157564421e+09, impact.aai_agg, 5)
 
 class TestImpactYearSet(unittest.TestCase):
     """Test calc_impact_year_set method"""
@@ -372,12 +362,12 @@ class TestIO(unittest.TestCase):
 
         imp_read = Impact()
         imp_read.read_csv(file_name)
-        self.assertTrue(np.array_equal(imp_write.event_id, imp_read.event_id))
-        self.assertTrue(np.array_equal(imp_write.date, imp_read.date))
-        self.assertTrue(np.array_equal(imp_write.coord_exp, imp_read.coord_exp))
-        self.assertTrue(np.array_equal(imp_write.eai_exp, imp_read.eai_exp))
-        self.assertTrue(np.array_equal(imp_write.at_event, imp_read.at_event))
-        self.assertTrue(np.array_equal(imp_write.frequency, imp_read.frequency))
+        np.testing.assert_array_equal(imp_write.event_id, imp_read.event_id)
+        np.testing.assert_array_equal(imp_write.date, imp_read.date)
+        np.testing.assert_array_equal(imp_write.coord_exp, imp_read.coord_exp)
+        np.testing.assert_array_equal(imp_write.eai_exp, imp_read.eai_exp)
+        np.testing.assert_array_equal(imp_write.at_event, imp_read.at_event)
+        np.testing.assert_array_equal(imp_write.frequency, imp_read.frequency)
         self.assertEqual(imp_write.tot_value, imp_read.tot_value)
         self.assertEqual(imp_write.aai_agg, imp_read.aai_agg)
         self.assertEqual(imp_write.unit, imp_read.unit)
@@ -411,12 +401,12 @@ class TestIO(unittest.TestCase):
 
         imp_read = Impact()
         imp_read.read_csv(file_name)
-        self.assertTrue(np.array_equal(imp_write.event_id, imp_read.event_id))
-        self.assertTrue(np.array_equal(imp_write.date, imp_read.date))
-        self.assertTrue(np.array_equal(imp_write.coord_exp, imp_read.coord_exp))
-        self.assertTrue(np.array_equal(imp_write.eai_exp, imp_read.eai_exp))
-        self.assertTrue(np.array_equal(imp_write.at_event, imp_read.at_event))
-        self.assertTrue(np.array_equal(imp_write.frequency, imp_read.frequency))
+        np.testing.assert_array_equal(imp_write.event_id, imp_read.event_id)
+        np.testing.assert_array_equal(imp_write.date, imp_read.date)
+        np.testing.assert_array_equal(imp_write.coord_exp, imp_read.coord_exp)
+        np.testing.assert_array_equal(imp_write.eai_exp, imp_read.eai_exp)
+        np.testing.assert_array_equal(imp_write.at_event, imp_read.at_event)
+        np.testing.assert_array_equal(imp_write.frequency, imp_read.frequency)
         self.assertEqual(imp_write.tot_value, imp_read.tot_value)
         self.assertEqual(imp_write.aai_agg, imp_read.aai_agg)
         self.assertEqual(imp_write.unit, imp_read.unit)
@@ -441,12 +431,12 @@ class TestIO(unittest.TestCase):
         imp_read = Impact()
         imp_read.read_excel(file_name)
 
-        self.assertTrue(np.array_equal(imp_write.event_id, imp_read.event_id))
-        self.assertTrue(np.array_equal(imp_write.date, imp_read.date))
-        self.assertTrue(np.array_equal(imp_write.coord_exp, imp_read.coord_exp))
-        self.assertTrue(np.allclose(imp_write.eai_exp, imp_read.eai_exp))
-        self.assertTrue(np.allclose(imp_write.at_event, imp_read.at_event))
-        self.assertTrue(np.array_equal(imp_write.frequency, imp_read.frequency))
+        np.testing.assert_array_equal(imp_write.event_id, imp_read.event_id)
+        np.testing.assert_array_equal(imp_write.date, imp_read.date)
+        np.testing.assert_array_equal(imp_write.coord_exp, imp_read.coord_exp)
+        np.testing.assert_array_almost_equal_nulp(imp_write.eai_exp, imp_read.eai_exp, nulp=5)
+        np.testing.assert_array_almost_equal_nulp(imp_write.at_event, imp_read.at_event, nulp=5)
+        np.testing.assert_array_equal(imp_write.frequency, imp_read.frequency)
         self.assertEqual(imp_write.tot_value, imp_read.tot_value)
         self.assertEqual(imp_write.aai_agg, imp_read.aai_agg)
         self.assertEqual(imp_write.unit, imp_read.unit)
@@ -469,9 +459,8 @@ class TestIO(unittest.TestCase):
         impact.write_sparse_csr(file_name)
         read_imp_mat = Impact().read_sparse_csr(f'{file_name}.npz')
         for irow in range(5):
-            self.assertTrue(
-                np.array_equal(np.array(read_imp_mat[irow, :].toarray()).reshape(-1),
-                               np.array(impact.imp_mat[irow, :].toarray()).reshape(-1)))
+            np.testing.assert_array_equal(
+                read_imp_mat[irow, :].toarray(), impact.imp_mat[irow, :].toarray())
 
 class TestRPmatrix(unittest.TestCase):
     """Test computation of impact per return period for whole exposure"""
@@ -494,7 +483,7 @@ class TestRPmatrix(unittest.TestCase):
         # Compute the impact per return period over the whole exposures
         impact_rp = impact.local_exceedance_imp(return_periods=(10, 40))
 
-        self.assertTrue(isinstance(impact_rp, np.ndarray))
+        self.assertIsInstance(impact_rp, np.ndarray)
         self.assertEqual(impact_rp.size, 2 * ent.exposures.gdf.value.size)
         self.assertAlmostEqual(np.max(impact_rp), 2916964966.388219, places=5)
         self.assertAlmostEqual(np.min(impact_rp), 444457580.131494, places=5)
@@ -521,32 +510,32 @@ class TestRiskTrans(unittest.TestCase):
         new_imp, imp_rt = imp.calc_risk_transfer(2, 10)
         self.assertEqual(new_imp.unit, imp.unit)
         self.assertEqual(new_imp.tot_value, imp.tot_value)
-        self.assertTrue((new_imp.imp_mat == imp.imp_mat).toarray().all())
+        np.testing.assert_array_equal(new_imp.imp_mat.toarray(), imp.imp_mat.toarray())
         self.assertEqual(new_imp.event_name, imp.event_name)
-        self.assertTrue(np.allclose(new_imp.event_id, imp.event_id))
-        self.assertTrue(np.allclose(new_imp.date, imp.date))
-        self.assertTrue(np.allclose(new_imp.frequency, imp.frequency))
-        self.assertTrue(np.allclose(new_imp.coord_exp, np.array([])))
-        self.assertTrue(np.allclose(new_imp.eai_exp, np.array([])))
-        self.assertTrue(np.allclose(new_imp.at_event, np.array([0, 1, 2, 2, 2, 2, 2, 2, 2, 5])))
+        np.testing.assert_array_almost_equal_nulp(new_imp.event_id, imp.event_id)
+        np.testing.assert_array_almost_equal_nulp(new_imp.date, imp.date)
+        np.testing.assert_array_almost_equal_nulp(new_imp.frequency, imp.frequency)
+        np.testing.assert_array_almost_equal_nulp(new_imp.coord_exp, [])
+        np.testing.assert_array_almost_equal_nulp(new_imp.eai_exp, [])
+        np.testing.assert_array_almost_equal_nulp(new_imp.at_event, [0, 1, 2, 2, 2, 2, 2, 2, 2, 5])
         self.assertAlmostEqual(new_imp.aai_agg, 4.0)
 
         self.assertEqual(imp_rt.unit, imp.unit)
         self.assertEqual(imp_rt.tot_value, imp.tot_value)
-        self.assertTrue((imp_rt.imp_mat == imp.imp_mat).toarray().all())
+        np.testing.assert_array_equal(imp_rt.imp_mat.toarray(), imp.imp_mat.toarray())
         self.assertEqual(imp_rt.event_name, imp.event_name)
-        self.assertTrue(np.allclose(imp_rt.event_id, imp.event_id))
-        self.assertTrue(np.allclose(imp_rt.date, imp.date))
-        self.assertTrue(np.allclose(imp_rt.frequency, imp.frequency))
-        self.assertTrue(np.allclose(imp_rt.coord_exp, np.array([])))
-        self.assertTrue(np.allclose(imp_rt.eai_exp, np.array([])))
-        self.assertTrue(np.allclose(imp_rt.at_event, np.array([0, 0, 0, 1, 2, 3, 4, 5, 6, 10])))
+        np.testing.assert_array_almost_equal_nulp(imp_rt.event_id, imp.event_id)
+        np.testing.assert_array_almost_equal_nulp(imp_rt.date, imp.date)
+        np.testing.assert_array_almost_equal_nulp(imp_rt.frequency, imp.frequency)
+        np.testing.assert_array_almost_equal_nulp(imp_rt.coord_exp, [])
+        np.testing.assert_array_almost_equal_nulp(imp_rt.eai_exp, [])
+        np.testing.assert_array_almost_equal_nulp(imp_rt.at_event, [0, 0, 0, 1, 2, 3, 4, 5, 6, 10])
         self.assertAlmostEqual(imp_rt.aai_agg, 6.2)
 
 def dummy_impact():
 
     imp = Impact()
-    imp.event_id = np.arange(6)
+    imp.event_id = np.arange(6) + 10
     imp.event_name = [0, 1, 'two', 'three', 30, 31]
     imp.date = np.arange(6)
     imp.coord_exp = np.array([[1, 2], [1.5, 2.5]])
@@ -569,26 +558,23 @@ class TestSelect(unittest.TestCase):
         """Test select by event id"""
 
         imp = dummy_impact()
-        sel_imp = imp.select(event_ids=[0, 1, 2])
+        sel_imp = imp.select(event_ids=[10, 11, 12])
 
         self.assertEqual(sel_imp.crs, imp.crs)
         self.assertEqual(sel_imp.unit, imp.unit)
 
-        self.assertTrue(np.array_equal(sel_imp.event_id, np.array([0, 1, 2])))
+        np.testing.assert_array_equal(sel_imp.event_id, [10, 11, 12])
         self.assertEqual(sel_imp.event_name, [0, 1, 'two'])
-        self.assertTrue(np.array_equal(sel_imp.date, np.array([0, 1, 2])))
-        self.assertTrue(np.allclose(sel_imp.frequency,
-                                       np.array([1/6, 1/6, 1])))
+        np.testing.assert_array_equal(sel_imp.date, [0, 1, 2])
+        np.testing.assert_array_almost_equal_nulp(sel_imp.frequency, [1/6, 1/6, 1])
 
-        self.assertTrue(np.array_equal(sel_imp.at_event, np.array([0, 2, 4])))
-        self.assertTrue(np.array_equal(sel_imp.imp_mat.todense(),
-                                        np.array([[0,0], [1,1], [2,2]])))
-        self.assertTrue(np.allclose(sel_imp.eai_exp, np.array([1/6+2, 1/6+2])))
+        np.testing.assert_array_equal(sel_imp.at_event, [0, 2, 4])
+        np.testing.assert_array_equal(sel_imp.imp_mat.todense(), [[0,0], [1,1], [2,2]])
+        np.testing.assert_array_almost_equal_nulp(sel_imp.eai_exp, [1/6+2, 1/6+2])
         self.assertEqual(sel_imp.aai_agg, 4+2/6)
 
         self.assertEqual(sel_imp.tot_value, 7)
-        self.assertTrue(np.array_equal(sel_imp.coord_exp,
-                                       np.array([[1, 2], [1.5, 2.5]])))
+        np.testing.assert_array_equal(sel_imp.coord_exp, [[1, 2], [1.5, 2.5]])
 
         self.assertIsInstance(sel_imp, Impact)
         self.assertIsInstance(sel_imp.imp_mat, sparse.csr_matrix)
@@ -602,21 +588,18 @@ class TestSelect(unittest.TestCase):
         self.assertEqual(sel_imp.crs, imp.crs)
         self.assertEqual(sel_imp.unit, imp.unit)
 
-        self.assertTrue(np.array_equal(sel_imp.event_id, np.array([0, 1, 2])))
+        np.testing.assert_array_equal(sel_imp.event_id, [10, 11, 12])
         self.assertEqual(sel_imp.event_name, [0, 1, 'two'])
-        self.assertTrue(np.array_equal(sel_imp.date, np.array([0, 1, 2])))
-        self.assertTrue(np.allclose(sel_imp.frequency,
-                                       np.array([1/6, 1/6, 1])))
+        np.testing.assert_array_equal(sel_imp.date, [0, 1, 2])
+        np.testing.assert_array_almost_equal_nulp(sel_imp.frequency, [1/6, 1/6, 1])
 
-        self.assertTrue(np.array_equal(sel_imp.at_event, np.array([0, 2, 4])))
-        self.assertTrue(np.array_equal(sel_imp.imp_mat.todense(),
-                                        np.array([[0,0], [1,1], [2,2]])))
-        self.assertTrue(np.allclose(sel_imp.eai_exp, np.array([1/6+2, 1/6+2])))
+        np.testing.assert_array_equal(sel_imp.at_event, [0, 2, 4])
+        np.testing.assert_array_equal(sel_imp.imp_mat.todense(), [[0,0], [1,1], [2,2]])
+        np.testing.assert_array_almost_equal_nulp(sel_imp.eai_exp, [1/6+2, 1/6+2])
         self.assertEqual(sel_imp.aai_agg, 4+2/6)
 
         self.assertEqual(sel_imp.tot_value, 7)
-        self.assertTrue(np.array_equal(sel_imp.coord_exp,
-                                       np.array([[1, 2], [1.5, 2.5]])))
+        np.testing.assert_array_equal(sel_imp.coord_exp, [[1, 2], [1.5, 2.5]])
 
         self.assertIsInstance(sel_imp, Impact)
         self.assertIsInstance(sel_imp.imp_mat, sparse.csr_matrix)
@@ -630,21 +613,18 @@ class TestSelect(unittest.TestCase):
         self.assertEqual(sel_imp.crs, imp.crs)
         self.assertEqual(sel_imp.unit, imp.unit)
 
-        self.assertTrue(np.array_equal(sel_imp.event_id, np.array([0, 1, 2])))
+        np.testing.assert_array_equal(sel_imp.event_id, [10, 11, 12])
         self.assertEqual(sel_imp.event_name, [0, 1, 'two'])
-        self.assertTrue(np.array_equal(sel_imp.date, np.array([0, 1, 2])))
-        self.assertTrue(np.allclose(sel_imp.frequency,
-                                       np.array([1/6, 1/6, 1])))
+        np.testing.assert_array_equal(sel_imp.date, [0, 1, 2])
+        np.testing.assert_array_almost_equal_nulp(sel_imp.frequency, [1/6, 1/6, 1])
 
-        self.assertTrue(np.array_equal(sel_imp.at_event, np.array([0, 2, 4])))
-        self.assertTrue(np.array_equal(sel_imp.imp_mat.todense(),
-                                        np.array([[0,0], [1,1], [2,2]])))
-        self.assertTrue(np.allclose(sel_imp.eai_exp, np.array([1/6+2, 1/6+2])))
+        np.testing.assert_array_equal(sel_imp.at_event, [0, 2, 4])
+        np.testing.assert_array_equal(sel_imp.imp_mat.todense(), [[0,0], [1,1], [2,2]])
+        np.testing.assert_array_almost_equal_nulp(sel_imp.eai_exp, [1/6+2, 1/6+2])
         self.assertEqual(sel_imp.aai_agg, 4+2/6)
 
         self.assertEqual(sel_imp.tot_value, 7)
-        self.assertTrue(np.array_equal(sel_imp.coord_exp,
-                                       np.array([[1, 2], [1.5, 2.5]])))
+        np.testing.assert_array_equal(sel_imp.coord_exp, [[1, 2], [1.5, 2.5]])
 
         self.assertIsInstance(sel_imp, Impact)
         self.assertIsInstance(sel_imp.imp_mat, sparse.csr_matrix)
@@ -658,21 +638,18 @@ class TestSelect(unittest.TestCase):
         self.assertEqual(sel_imp.crs, imp.crs)
         self.assertEqual(sel_imp.unit, imp.unit)
 
-        self.assertTrue(np.array_equal(sel_imp.event_id, imp.event_id))
+        np.testing.assert_array_equal(sel_imp.event_id, imp.event_id)
         self.assertEqual(sel_imp.event_name, imp.event_name)
-        self.assertTrue(np.array_equal(sel_imp.date, imp.date))
-        self.assertTrue(np.array_equal(sel_imp.frequency, imp.frequency))
+        np.testing.assert_array_equal(sel_imp.date, imp.date)
+        np.testing.assert_array_equal(sel_imp.frequency, imp.frequency)
 
-        self.assertTrue(np.array_equal(sel_imp.at_event,
-                                       np.array([0, 1, 2, 3, 30, 31])))
-        self.assertTrue(np.array_equal(sel_imp.imp_mat.todense(),
-                            np.array([[0], [1], [2], [3], [30], [31]])))
-        self.assertTrue(np.allclose(sel_imp.eai_exp, np.array([1/6+2+3+1+31/30])))
+        np.testing.assert_array_equal(sel_imp.at_event, [0, 1, 2, 3, 30, 31])
+        np.testing.assert_array_equal(sel_imp.imp_mat.todense(), [[0], [1], [2], [3], [30], [31]])
+        np.testing.assert_array_almost_equal_nulp(sel_imp.eai_exp, [1/6+2+3+1+31/30])
         self.assertEqual(sel_imp.aai_agg, 1/6+2+3+1+31/30)
 
         self.assertEqual(sel_imp.tot_value, None)
-        self.assertTrue(np.array_equal(sel_imp.coord_exp,
-                                       np.array([[1, 2]])))
+        np.testing.assert_array_equal(sel_imp.coord_exp, [[1, 2]])
 
         self.assertIsInstance(sel_imp, Impact)
         self.assertIsInstance(sel_imp.imp_mat, sparse.csr_matrix)
@@ -705,22 +682,18 @@ class TestSelect(unittest.TestCase):
         self.assertEqual(sel_imp.crs, imp.crs)
         self.assertEqual(sel_imp.unit, imp.unit)
 
-        self.assertTrue(np.array_equal(sel_imp.event_id, imp.event_id))
+        np.testing.assert_array_equal(sel_imp.event_id, imp.event_id)
         self.assertEqual(sel_imp.event_name, imp.event_name)
-        self.assertTrue(np.array_equal(sel_imp.date, imp.date))
-        self.assertTrue(np.array_equal(sel_imp.frequency, imp.frequency))
+        np.testing.assert_array_equal(sel_imp.date, imp.date)
+        np.testing.assert_array_equal(sel_imp.frequency, imp.frequency)
 
-        self.assertTrue(np.array_equal(sel_imp.at_event,
-                                       imp.at_event))
-        self.assertTrue(np.array_equal(sel_imp.imp_mat.todense(),
-                                       imp.imp_mat.todense()))
-        self.assertTrue(np.array_equal(sel_imp.eai_exp,
-                                       imp.eai_exp))
+        np.testing.assert_array_equal(sel_imp.at_event, imp.at_event)
+        np.testing.assert_array_equal(sel_imp.imp_mat.todense(), imp.imp_mat.todense())
+        np.testing.assert_array_equal(sel_imp.eai_exp, imp.eai_exp)
         self.assertAlmostEqual(round(sel_imp.aai_agg,5), round(imp.aai_agg,5))
 
         self.assertEqual(sel_imp.tot_value, imp.tot_value)
-        self.assertTrue(np.array_equal(sel_imp.coord_exp,
-                                       imp.coord_exp))
+        np.testing.assert_array_equal(sel_imp.coord_exp, imp.coord_exp)
 
         self.assertIsInstance(sel_imp, Impact)
         self.assertIsInstance(sel_imp.imp_mat, sparse.csr_matrix)
@@ -738,21 +711,18 @@ class TestSelect(unittest.TestCase):
         self.assertEqual(sel_imp.crs, imp.crs)
         self.assertEqual(sel_imp.unit, imp.unit)
 
-        self.assertTrue(np.array_equal(sel_imp.event_id, np.array([0, 1, 2])))
+        np.testing.assert_array_equal(sel_imp.event_id, [10, 11, 12])
         self.assertEqual(sel_imp.event_name, [0, 1, 'two'])
-        self.assertTrue(np.array_equal(sel_imp.date, np.array([0, 1, 2])))
-        self.assertTrue(np.allclose(sel_imp.frequency,
-                                       np.array([1/6, 1/6, 1])))
+        np.testing.assert_array_equal(sel_imp.date, [0, 1, 2])
+        np.testing.assert_array_almost_equal_nulp(sel_imp.frequency, [1/6, 1/6, 1])
 
-        self.assertTrue(np.array_equal(sel_imp.at_event, np.array([0, 2, 4])))
-        self.assertTrue(np.array_equal(sel_imp.imp_mat.todense(),
-                                        np.array([[0,0], [1,1], [2,2]])))
-        self.assertTrue(np.allclose(sel_imp.eai_exp, np.array([1/6+2, 1/6+2])))
+        np.testing.assert_array_equal(sel_imp.at_event, [0, 2, 4])
+        np.testing.assert_array_equal(sel_imp.imp_mat.todense(), [[0,0], [1,1], [2,2]])
+        np.testing.assert_array_almost_equal_nulp(sel_imp.eai_exp, [1/6+2, 1/6+2])
         self.assertEqual(sel_imp.aai_agg, 4+2/6)
 
         self.assertEqual(sel_imp.tot_value, 7)
-        self.assertTrue(np.array_equal(sel_imp.coord_exp,
-                                       np.array([[1, 2], [1.5, 2.5]])))
+        np.testing.assert_array_equal(sel_imp.coord_exp, [[1, 2], [1.5, 2.5]])
 
         self.assertIsInstance(sel_imp, Impact)
         self.assertIsInstance(sel_imp.imp_mat, sparse.csr_matrix)
@@ -782,21 +752,18 @@ class TestSelect(unittest.TestCase):
         self.assertEqual(sel_imp.crs, imp.crs)
         self.assertEqual(sel_imp.unit, imp.unit)
 
-        self.assertTrue(np.array_equal(sel_imp.event_id, np.array([0, 1, 2])))
+        np.testing.assert_array_equal(sel_imp.event_id, [10, 11, 12])
         self.assertEqual(sel_imp.event_name, [0, 1, 'two'])
-        self.assertTrue(np.array_equal(sel_imp.date, np.array([0, 1, 2])))
-        self.assertTrue(np.allclose(sel_imp.frequency,
-                                       np.array([1/6, 1/6, 1])))
+        np.testing.assert_array_equal(sel_imp.date, [0, 1, 2])
+        np.testing.assert_array_almost_equal_nulp(sel_imp.frequency, [1/6, 1/6, 1])
 
-        self.assertTrue(np.array_equal(sel_imp.at_event, np.array([0, 2, 4])))
-        self.assertTrue(np.array_equal(sel_imp.imp_mat.todense(),
-                                        np.array([[0,0], [1,1], [2,2]])))
-        self.assertTrue(np.allclose(sel_imp.eai_exp, np.array([1/6+2, 1/6+2])))
+        np.testing.assert_array_equal(sel_imp.at_event, [0, 2, 4])
+        np.testing.assert_array_equal(sel_imp.imp_mat.todense(), [[0,0], [1,1], [2,2]])
+        np.testing.assert_array_almost_equal_nulp(sel_imp.eai_exp, [1/6+2, 1/6+2])
         self.assertEqual(sel_imp.aai_agg, 4+2/6)
 
         self.assertEqual(sel_imp.tot_value, 7)
-        self.assertTrue(np.array_equal(sel_imp.coord_exp,
-                                       np.array([[1, 2], [1.5, 2.5]])))
+        np.testing.assert_array_equal(sel_imp.coord_exp, [[1, 2], [1.5, 2.5]])
 
         self.assertIsInstance(sel_imp, Impact)
         self.assertIsInstance(sel_imp.imp_mat, sparse.csr_matrix)
@@ -808,6 +775,32 @@ class TestSelect(unittest.TestCase):
         imp.imp_mat = sparse.csr_matrix(np.empty((0, 0)))
         with self.assertRaises(ValueError):
             imp.select(event_ids=[0], event_names=[1, 'two'], dates=(0, 2))
+
+    def test__build_exp(self):
+        """Test that an impact set can be converted to an exposure"""
+
+        imp = dummy_impact()
+        exp = imp._build_exp()
+        np.testing.assert_array_equal(imp.eai_exp, exp.gdf['value'])
+        np.testing.assert_array_equal(imp.coord_exp[:, 0], exp.gdf['latitude'])
+        np.testing.assert_array_equal(imp.coord_exp[:, 1], exp.gdf['longitude'])
+        self.assertEqual(exp.crs, imp.crs)
+        self.assertEqual(exp.value_unit, imp.unit)
+        self.assertEqual(exp.ref_year, 0)
+
+    def test__exp_build_event(self):
+        """Test that a single events impact can be converted to an exposure"""
+
+        imp = dummy_impact()
+        event_id = imp.event_id[1]
+        exp = imp._build_exp_event(event_id=event_id)
+        np.testing.assert_array_equal(imp.imp_mat[1].todense().A1, exp.gdf['value'])
+        np.testing.assert_array_equal(imp.coord_exp[:, 0], exp.gdf['latitude'])
+        np.testing.assert_array_equal(imp.coord_exp[:, 1], exp.gdf['longitude'])
+        self.assertEqual(exp.crs, imp.crs)
+        self.assertEqual(exp.value_unit, imp.unit)
+        self.assertEqual(exp.ref_year, 0)
+
 
 # Execute Tests
 if __name__ == "__main__":

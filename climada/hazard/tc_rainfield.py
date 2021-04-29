@@ -25,7 +25,7 @@ import itertools
 import logging
 import datetime as dt
 import numpy as np
-from numba import jit
+import numba
 from scipy import sparse
 
 from climada.hazard.base import Hazard
@@ -96,7 +96,7 @@ class TCRain(Hazard):
         self.tag.description = description
 
     @staticmethod
-    @jit(forceobj=True)
+    @numba.jit(forceobj=True)
     def _set_from_track(track, centroids, dist_degree=3, intensity=0.1):
         """Set hazard from track and centroids.
         Parameters:

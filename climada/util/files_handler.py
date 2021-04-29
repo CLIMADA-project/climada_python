@@ -84,13 +84,11 @@ def download_file(url, download_dir=None, overwrite=True):
     try:
         req_file = requests.get(url, stream=True)
     except IOError as ioe:
-        LOGGER.error('Connection error: check url and internet connection.')
-        raise ioe
+        raise type(ioe)('Check URL and internet connection: ' + str(ioe)) from ioe
     if req_file.status_code < 200 or req_file.status_code > 299:
-        LOGGER.error('Error loading page %s.', url)
         raise ValueError(f'Error loading page {url}\n'
-                         + f' Status: {req_file.status_code}\n'
-                         + f' Content: {req_file.content}')
+                         f' Status: {req_file.status_code}\n'
+                         f' Content: {req_file.content}')
 
     total_size = int(req_file.headers.get('content-length', 0))
     block_size = 1024
@@ -131,26 +129,20 @@ def to_list(num_exp, values, val_name):
     a list with num_exp repeated values.
 
     Parameters:
-        num_exp (int): number of expect list elements
+        num_exp (int): expected number of list elements
         values (object or list(object)): values to check and transform
         val_name (str): name of the variable values
 
     Returns:
         list
     """
-    val_list = list()
-    if isinstance(values, list):
-        if len(values) == num_exp:
-            val_list = values
-        elif len(values) == 1:
-            val_list = list()
-            val_list += num_exp * [values[0]]
-        else:
-            logger = logging.getLogger(__name__)
-            logger.error('Provide one or %s %s.', num_exp, val_name)
-    else:
-        val_list += num_exp * [values]
-    return val_list
+    if not isinstance(values, list):
+        return num_exp * [values]
+    if len(values) == num_exp:
+        return values
+    if len(values) == 1:
+        return num_exp * [values[0]]
+    raise ValueError(f'Provide one or {num_exp} {val_name}.')
 
 
 def get_file_names(file_name):
@@ -166,25 +158,19 @@ def get_file_names(file_name):
     Returns:
         list(str)
     """
-    file_list = list()
+    pattern_list = file_name if isinstance(file_name, list) else [file_name]
+    pattern_list = [Path(pattern) for pattern in pattern_list]
 
-    for pattern in file_name if isinstance(file_name, list) else [file_name]:
-        try:
-            if Path(pattern).is_file():
-                file_list.append(str(pattern))
-            elif Path(pattern).is_dir():
-                file_list.extend([
-                    str(fil) for fil in Path(pattern).iterdir() if fil.is_file()
-                ])
-            else:  # glob pattern
-                file_list.extend([
-                    str(Path(fil)) for fil in glob.glob(pattern)
-                ])
-        except OSError:
+    file_list = []
+    for pattern in pattern_list:
+        if pattern.is_file():
+            file_list.append(str(pattern))
+        elif pattern.is_dir():
+            file_list.extend([str(fil) for fil in pattern.iterdir() if fil.is_file()])
+        else:  # glob pattern
             file_list.extend([
-                str(Path(fil)) for fil in glob.glob(pattern)
+                fil for fil in glob.glob(str(pattern)) if Path(fil).is_file()
             ])
-
     return file_list
 
 

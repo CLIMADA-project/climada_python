@@ -471,8 +471,7 @@ def clean_emdat_df(emdat_file, countries=None, hazard=None, year_range=None,
     elif isinstance(emdat_file, pd.DataFrame):
         df_emdat = emdat_file
     else:
-        LOGGER.error('TypeError: emdat_file needs to be str or DataFrame')
-        return None
+        raise TypeError('emdat_file needs to be str or DataFrame')
     # drop rows with 9 or more NaN values (e.g. footer):
     df_emdat = df_emdat.dropna(thresh=9)
 
@@ -648,8 +647,7 @@ def scale_impact2refyear(impact_values, year_values, iso3a_values, reference_yea
         return list(impact_values)
     if not reference_year:
         return impact_values
-    LOGGER.error('Invalid reference_year')
-    return None
+    raise ValueError('Invalid reference_year')
 
 def emdat_impact_yearlysum(emdat_file_csv, countries=None, hazard=None, year_range=None,
                            reference_year=None, imp_str="Total Damages ('000 US$)",
@@ -899,7 +897,7 @@ def emdat_to_impact(emdat_file_csv, hazard_type_climada, year_range=None, countr
         try:
             cntry = u_coord.country_to_iso(cntry, "alpha3")
         except LookupError:
-            LOGGER.error('Country not found in iso_country: %s', cntry)
+            LOGGER.warning('Country not found in iso_country: %s', cntry)
         cntry_boolean = False
         for rec_i, rec in enumerate(shp.records()):
             if rec[9].casefold() == cntry.casefold():

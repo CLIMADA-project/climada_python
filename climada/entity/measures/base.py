@@ -101,10 +101,7 @@ class Measure():
         Raises:
             ValueError
         """
-        try:
-            u_check.size(3, self.color_rgb, 'Measure.color_rgb')
-        except ValueError:
-            u_check.size(4, self.color_rgb, 'Measure.color_rgb')
+        u_check.size([3, 4], self.color_rgb, 'Measure.color_rgb')
         u_check.size(2, self.hazard_inten_imp, 'Measure.hazard_inten_imp')
         u_check.size(2, self.mdd_impact, 'Measure.mdd_impact')
         u_check.size(2, self.paa_impact, 'Measure.paa_impact')
@@ -207,7 +204,6 @@ class Measure():
             new_exp = self.exposures_set.copy(deep=True)
             new_exp.check()
         else:
-            LOGGER.error('Wrong input exposures.')
             raise ValueError(f'{self.exposures_set} is neither a string nor an Exposures object')
 
         if not np.array_equal(np.unique(exposures.gdf.latitude.values),
