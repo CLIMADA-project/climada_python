@@ -108,7 +108,7 @@ class Exposures():
     vars_oblig = ['value', 'latitude', 'longitude']
     """Name of the variables needed to compute the impact."""
 
-    vars_def = [INDICATOR_IMPF]
+    vars_def = [INDICATOR_IMPF, INDICATOR_IMPF_OLD]
     """Name of variables that can be computed."""
 
     vars_opt = [INDICATOR_CENTR, 'deductible', 'cover', 'category_id',
@@ -247,15 +247,21 @@ class Exposures():
                 raise ValueError(f"{var} missing in gdf")
 
         # computable columns except impf_*
-        for var in sorted(set(self.vars_def).difference([INDICATOR_IMPF])):
+        for var in sorted(set(self.vars_def).difference([INDICATOR_IMPF, INDICATOR_IMPF_OLD])):
             if not var in self.gdf.columns:
                 LOGGER.info("%s not set.", var)
 
         # special treatment for impf_*
-        if INDICATOR_IMPF in self.gdf.columns:
-            LOGGER.info("Hazard type not set in %s", INDICATOR_IMPF)
+        default_impf_present = False
+        for var in [INDICATOR_IMPF, INDICATOR_IMPF_OLD]:
+            if var in self.gdf.columns:
+                LOGGER.info("Hazard type not set in %s", var)
+                default_impf_present = True
 
-        elif not any([col.startswith(INDICATOR_IMPF) for col in self.gdf.columns]):
+        if not default_impf_present and not [
+                col for col in self.gdf.columns
+                if col.startswith(INDICATOR_IMPF) or col.startswith(INDICATOR_IMPF_OLD)
+            ]:
             LOGGER.info("Setting %s to default impact functions ids 1.", INDICATOR_IMPF)
             self.gdf[INDICATOR_IMPF] = 1
 
@@ -655,7 +661,7 @@ class Exposures():
             _read_mat_obligatory(exposures, data, var_names)
             _read_mat_optional(exposures, data, var_names)
         except KeyError as var_err:
-            raise ValueError(f"Variable not in MAT file: {var_names.get('field_name')}")\
+            raise KeyError(f"Variable not in MAT file: {var_names.get('field_name')}")\
                 from var_err
 
         self.gdf = GeoDataFrame(data=exposures, crs=self.crs)
