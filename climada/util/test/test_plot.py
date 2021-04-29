@@ -88,22 +88,53 @@ class TestPlots(unittest.TestCase):
                         pop_name=False, cmap='tab20c')
         plt.close()
 
-    def test_geo_bin_from_array(self):
+    def test_geo_scatter_from_array(self):
         values = np.array([1, 2.0, 1, 1])
         coord = np.array([[-17, 178], [-10, 180], [-27, 175], [-16, 186]])
         var_name = 'test'
         title = 'test'
-        projection = ccrs.PlateCarree(central_longitude=180)
-        ax = u_plot.geo_bin_from_array(values, coord, var_name, title,
+        projection = ccrs.PlateCarree()
+        cmap = 'viridis'
+        ax = u_plot.geo_scatter_from_array(values, coord, var_name, title,
                                pop_name=True, buffer=BUFFER, extend='neither',
                                shapes=True, axes=None, proj=projection,
-                               figsize=(9, 13))
+                               figsize=(9, 13), cmap=cmap)
         self.assertEqual(var_name, ax.get_title())
-        self.assertEqual(np.max(values), ax.collections[0].colorbar.vmax)
-        self.assertEqual(np.min(values), ax.collections[0].colorbar.vmin)
-        self.assertAlmostEqual(float(np.min(coord, axis=0)[1]), ax.dataLim.min[0])
-        self.assertAlmostEqual(float(np.max(coord, axis=0)[1]), ax.dataLim.max[0])
-        plt.show()
+        self.assertAlmostEqual(np.max(values), ax.collections[0].colorbar.vmax)
+        self.assertAlmostEqual(np.min(values), ax.collections[0].colorbar.vmin)
+        self.assertEqual(cmap, ax.collections[0].cmap.name)
+        plt.close()
+
+    def test_geo_bin_from_array(self):
+        values = np.array([1, 2.0, 5, 1])
+        coord = np.array([[-10, 17], [-30, 20], [5, 75], [-16, 20]])
+        var_name = 'test'
+        title = 'test'
+        projection = ccrs.PlateCarree()
+        cmap = 'viridis'
+        ax = u_plot.geo_bin_from_array(values, coord, var_name, title,
+                                           pop_name=True, buffer=BUFFER, extend='neither',
+                                           shapes=True, axes=None, proj=projection,
+                                           figsize=(9, 13), cmap=cmap)
+        self.assertEqual(var_name, ax.get_title())
+        self.assertAlmostEqual(np.max(values), ax.collections[0].colorbar.vmax)
+        self.assertAlmostEqual(np.min(values), ax.collections[0].colorbar.vmin)
+        self.assertEqual(cmap, ax.collections[0].cmap.name)
+        plt.close()
+
+    def test_geo_im_from_array(self):
+        values = np.array([1, 2.0, 5, 1])
+        coord = np.array([[-17, 178], [-10, 180], [-27, 175], [-16, 186]])
+        var_name = 'test'
+        title = 'test'
+        projection = ccrs.PlateCarree()
+        cmap = 'viridis'
+        ax = u_plot.geo_im_from_array(values, coord, var_name, title,
+                      proj=projection, smooth=True, axes=None, figsize=(9, 13), cmap=cmap)
+        self.assertEqual(var_name, ax.get_title())
+        self.assertAlmostEqual(np.max(values), ax.collections[0].colorbar.vmax)
+        self.assertAlmostEqual(np.min(values), ax.collections[0].colorbar.vmin)
+        self.assertEqual(cmap, ax.collections[0].cmap.name)
         plt.close()
 
 
