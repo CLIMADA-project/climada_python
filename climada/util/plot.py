@@ -42,7 +42,7 @@ from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 from rasterio.crs import CRS
 import requests
 
-from climada.util.constants import CMAP_CONTINUOUS1, CMAP_CAT
+from climada.util.constants import CMAP_CONTINUOUS1, CMAP_CAT, CMAP_DIVERGING
 from climada.util.files_handler import to_list
 import climada.util.coordinates as u_coord
 
@@ -303,7 +303,7 @@ def geo_im_from_array(array_sub, coord, var_name, title,
         axes_iter = np.array([[axes]])
 
     if 'cmap' not in kwargs:
-        kwargs['cmap'] = CMAP_CONTINUOUS1
+        kwargs['cmap'] = CMAP_DIVERGING
 
     # Generate each subplot
     for array_im, axis, tit, name in zip(list_arr, axes_iter.flatten(), list_tit, list_name):
