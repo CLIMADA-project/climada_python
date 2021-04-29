@@ -280,6 +280,46 @@ class Exposures():
         except AttributeError:  # no geometry column
             pass
 
+    def get_impf_column(self, haz_type):
+        """Find the best matching column name in the exposures dataframe for a given hazard type,
+
+        Parameters
+        ----------
+        haz_type : str
+            hazard type, as in the hazard's tag.haz_type
+            or the HAZ_TYPE constant of the hazard's module
+
+        Returns
+        -------
+        str
+            a column name, the first of the following that is present in the exposures' dataframe:
+            - impf_[haz_type]
+            - if_[haz_type]
+            - impf_
+            - if_
+
+        Raises
+        ------
+        ValueError
+            if none of the above is found in the dataframe.
+        """
+        if INDICATOR_IMPF + haz_type in self.gdf.columns:
+            return INDICATOR_IMPF + haz_type
+        if INDICATOR_IMPF_OLD + haz_type in self.gdf.columns:
+            LOGGER.info("Impact function column name starting with 'if_' is depracated."
+                        " It's suggested to use 'impf_'  instead.")
+            return INDICATOR_IMPF_OLD + haz_type
+        if INDICATOR_IMPF in self.gdf.columns:
+            LOGGER.info("No specific impact function column found for hazard %s."
+                        " Using the anonymous 'impf_' column.", haz_type)
+            return INDICATOR_IMPF + haz_type
+        if INDICATOR_IMPF_OLD in self.gdf.columns:
+            LOGGER.info("No specific impact function column found for hazard %s."
+                        " Using the anonymous 'if_' column, which is depracated."
+                        " It's suggested to use 'impf_'  instead.", haz_type)
+            return INDICATOR_IMPF_OLD + haz_type
+        raise ValueError(f"Missing exposures impact functions {INDICATOR_IMPF}.")
+
     def assign_centroids(self, hazard, method='NN', distance='haversine',
                          threshold=100):
         """Assign for each exposure coordinate closest hazard coordinate.
@@ -615,7 +655,8 @@ class Exposures():
             _read_mat_obligatory(exposures, data, var_names)
             _read_mat_optional(exposures, data, var_names)
         except KeyError as var_err:
-            raise KeyError(f"Variable not in MAT file: " + str(var_err)) from var_err
+            raise ValueError(f"Variable not in MAT file: {var_names.get('field_name')}")\
+                from var_err
 
         self.gdf = GeoDataFrame(data=exposures, crs=self.crs)
         _read_mat_metadata(self, data, file_name, var_names)

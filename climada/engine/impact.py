@@ -21,7 +21,6 @@ Define Impact and ImpactFreqCurve classes.
 
 __all__ = ['ImpactFreqCurve', 'Impact']
 
-import ast
 import logging
 import copy
 import csv
@@ -38,7 +37,7 @@ from tqdm import tqdm
 
 
 from climada.entity import Exposures, Tag
-from climada.entity.exposures import INDICATOR_IMPF, INDICATOR_CENTR
+from climada.entity.exposures import INDICATOR_CENTR
 from climada.hazard import Tag as TagHaz
 import climada.util.plot as u_plot
 from climada import CONFIG
@@ -184,14 +183,8 @@ class Impact():
                     exp_idx.size, num_events)
 
         # Get damage functions for this hazard
-        impf_haz = INDICATOR_IMPF + hazard.tag.haz_type
+        impf_haz = exposures.get_impf_column(hazard.tag.haz_type)
         haz_imp = impact_funcs.get_func(hazard.tag.haz_type)
-        if impf_haz not in exposures.gdf and INDICATOR_IMPF not in exposures.gdf:
-            raise ValueError('Missing exposures impact functions %s.' % INDICATOR_IMPF)
-        if impf_haz not in exposures.gdf:
-            LOGGER.info('Missing exposures impact functions for hazard %s. '
-                        'Using impact functions in %s.', impf_haz, INDICATOR_IMPF)
-            impf_haz = INDICATOR_IMPF
 
         # Check if deductible and cover should be applied
         insure_flag = False
