@@ -312,12 +312,12 @@ class Exposures():
         if INDICATOR_IMPF in self.gdf.columns:
             LOGGER.info("No specific impact function column found for hazard %s."
                         " Using the anonymous 'impf_' column.", haz_type)
-            return INDICATOR_IMPF + haz_type
+            return INDICATOR_IMPF
         if INDICATOR_IMPF_OLD in self.gdf.columns:
             LOGGER.info("No specific impact function column found for hazard %s."
                         " Using the anonymous 'if_' column, which is depracated."
                         " It's suggested to use 'impf_'  instead.", haz_type)
-            return INDICATOR_IMPF_OLD + haz_type
+            return INDICATOR_IMPF_OLD
         raise ValueError(f"Missing exposures impact functions {INDICATOR_IMPF}.")
 
     def assign_centroids(self, hazard, method='NN', distance='haversine',
