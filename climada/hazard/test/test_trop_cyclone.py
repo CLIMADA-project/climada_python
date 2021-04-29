@@ -37,7 +37,7 @@ TEST_TRACK = DATA_DIR.joinpath("trac_brb_test.csv")
 TEST_TRACK_SHORT = DATA_DIR.joinpath("trac_short_test.csv")
 
 CENTR_TEST_BRB = Centroids()
-#CENTR_TEST_BRB.read_mat(DATA_DIR.joinpath('centr_brb_test.mat'))
+CENTR_TEST_BRB.read_mat(DATA_DIR.joinpath('centr_brb_test.mat'))
 
 
 class TestReader(unittest.TestCase):
