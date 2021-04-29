@@ -278,6 +278,8 @@ def geo_im_from_array(array_sub, coord, var_name, title,
     num_im, list_arr = _get_collection_arrays(array_sub)
     list_tit = to_list(num_im, title, 'title')
     list_name = to_list(num_im, var_name, 'var_name')
+    list_coord = to_list(num_im, coord, 'geo_coord')
+
 
     is_reg, height, width = u_coord.grid_is_regular(coord)
     extent = _get_borders(coord, proj_limits=(-360, 360, -90, 90))
@@ -290,7 +292,12 @@ def geo_im_from_array(array_sub, coord, var_name, title,
     if 'vmax' not in kwargs:
         kwargs['vmax'] = np.nanmax(array_sub)
     if axes is None:
-        _, axes = make_map(num_im, proj=proj, figsize=figsize)
+        if isinstance(proj, ccrs.PlateCarree):
+            # use different projections for plot and data to shift the central lon in the plot
+            xmin, xmax = u_coord.lon_bounds(np.concatenate([c[:, 1] for c in list_coord]))
+            proj_plot = ccrs.PlateCarree(central_longitude=0.5 * (xmin + xmax))
+        _, axes = make_map(num_im, proj=proj_plot, figsize=figsize)
+
     axes_iter = axes
     if not isinstance(axes, np.ndarray):
         axes_iter = np.array([[axes]])
