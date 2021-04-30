@@ -312,17 +312,18 @@ class Exposures():
         if INDICATOR_IMPF + haz_type in self.gdf.columns:
             return INDICATOR_IMPF + haz_type
         if INDICATOR_IMPF_OLD + haz_type in self.gdf.columns:
-            LOGGER.info("Impact function column name starting with 'if_' is depracated."
-                        " It's suggested to use 'impf_'  instead.")
+            LOGGER.info("Impact function column name 'if_%s' is not according to current"
+                        " naming conventions. It's suggested to use 'impf_%s' instead.",
+                        haz_type, haz_type)
             return INDICATOR_IMPF_OLD + haz_type
         if INDICATOR_IMPF in self.gdf.columns:
             LOGGER.info("No specific impact function column found for hazard %s."
                         " Using the anonymous 'impf_' column.", haz_type)
             return INDICATOR_IMPF
         if INDICATOR_IMPF_OLD in self.gdf.columns:
-            LOGGER.info("No specific impact function column found for hazard %s."
-                        " Using the anonymous 'if_' column, which is depracated."
-                        " It's suggested to use 'impf_'  instead.", haz_type)
+            LOGGER.info("No specific impact function column found for hazard %s. Using the"
+                        " anonymous 'if_' column, which is not according to current naming"
+                        " conventions. It's suggested to use 'impf_' instead.", haz_type)
             return INDICATOR_IMPF_OLD
         raise ValueError(f"Missing exposures impact functions {INDICATOR_IMPF}.")
 
