@@ -133,7 +133,7 @@ class TestOneExposure(unittest.TestCase):
         # Compute impact for 6th exposure
         iexp = 5
         # Take its impact function
-        imp_id = ent.exposures.gdf.if_TC[iexp]
+        imp_id = ent.exposures.gdf.impf_TC[iexp]
         imp_fun = ent.impact_funcs.get_func(hazard.tag.haz_type, imp_id)
         # Compute
         insure_flag = True
@@ -239,10 +239,12 @@ class TestCalc(unittest.TestCase):
             impact.eai_exp)
 
     def test_calc_if_pass(self):
-        """Execute when no if_HAZ present, but only if_"""
+        """Execute when no impf_HAZ present, but only if_"""
         ent = Entity()
         ent.read_excel(ENT_DEMO_TODAY)
-        ent.exposures.gdf.rename(columns={'if_TC': 'if_'}, inplace=True)
+        self.assertTrue('impf_TC' in ent.exposures.gdf.columns)
+        ent.exposures.gdf.rename(columns={'impf_TC': 'if_'}, inplace=True)
+        self.assertFalse('impf_TC' in ent.exposures.gdf.columns)
         ent.check()
 
         # Read default hazard file
