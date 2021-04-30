@@ -234,7 +234,7 @@ def interpolate_lines(gdf_lines, point_dist=5):
         
     See also
     --------
-    * util.coordinates.dist_great_circle_allgeoms()
+    * util.coordinates.compute_geodesic_lengths()
     * util.lines_polys_handler.point_exposure_from_lines()
     """
 
@@ -243,7 +243,7 @@ def interpolate_lines(gdf_lines, point_dist=5):
         
     gdf_points = gdf_lines.copy()
     gdf_points['length'] = np.ones(len(gdf_points))*point_dist
-    gdf_points['length_full'] = dist_great_circle_allgeoms(gdf_points)
+    gdf_points['length_full'] = compute_geodesic_lengths(gdf_points)
 
     # split line lengths into relative fractions acc to point_dist (e.g. 0, 0.5, 1)
     gdf_points['distance_vector'] = gdf_points.apply(
@@ -275,7 +275,7 @@ def interpolate_polygons(gdf_poly, area_point):
     
     See also
     --------
-    * util.coordinates.dist_great_circle_allgeoms()
+    * util.coordinates.compute_geodesic_lengths()
     * util.lines_polys_handler.point_exposure_from_polygons()
     """
     
@@ -570,7 +570,7 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
         raise KeyError("Unknown distance approximation method: %s" % method)
     return (dist, vtan) if log else dist
 
-def dist_great_circle_allgeoms(gdf):
+def compute_geodesic_lengths(gdf):
     """Calculate the great circle (geodesic / spherical) lengths along any 
     (complicated) geometry object, based on the pyproj.Geod implementation.
     
