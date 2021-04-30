@@ -92,8 +92,10 @@ not considered."""
 
 @jit(nopython=True, parallel=True)
 def _dist_sqr_approx(lats1, lons1, cos_lats1, lats2, lons2):
-    """Compute squared equirectangular approximation distance. Values need
-    to be sqrt and multiplicated by ONE_LAT_KM to obtain distance in km."""
+    """
+    Compute squared equirectangular approximation distance. Values need
+    to be sqrt and multiplicated by ONE_LAT_KM to obtain distance in km.
+    """
     d_lon = lons1 - lons2
     d_lat = lats1 - lats2
     return d_lon * d_lon * cos_lats1 * cos_lats1 + d_lat * d_lat
@@ -103,19 +105,26 @@ def interpol_index(centroids, coordinates, method=METHOD[0],
     """Returns for each coordinate the centroids indexes used for
     interpolation.
 
-    Parameters:
-        centroids (2d array): First column contains latitude, second
-            column contains longitude. Each row is a geographic point
-        coordinates (2d array): First column contains latitude, second
-            column contains longitude. Each row is a geographic point
-        method (str, optional): interpolation method to use. NN default.
-        distance (str, optional): distance to use. Haversine default
-        threshold (float): distance threshold in km over which no neighbor will
-            be found. Those are assigned with a -1 index
+    Parameters
+    ----------
+    centroids : 2d array
+        First column contains latitude, second column contains longitude. Each 
+        row is a geographic point
+    coordinates : 2d array 
+        First column contains latitude, second column contains longitude. Each
+        row is a geographic point
+    method : str, optional
+        interpolation method to use. NN default.
+    distance : str, optional
+        distance to use. Haversine default
+    threshold : float 
+        distance threshold in km over which no neighbor will be found. Those 
+        are assigned with a -1 index
 
-    Returns:
-        numpy array with so many rows as coordinates containing the
-            centroids indexes
+    Returns
+    -------
+    interp : numpy array 
+        with so many rows as coordinates containing the centroids indexes
     """
     if (method == METHOD[0]) & (distance == DIST_DEF[0]):
         # Compute for each coordinate the closest centroid
@@ -131,21 +140,27 @@ def interpol_index(centroids, coordinates, method=METHOD[0],
     return interp
 
 def index_nn_aprox(centroids, coordinates, threshold=THRESHOLD):
-    """Compute the nearest centroid for each coordinate using the
+    """
+    Compute the nearest centroid for each coordinate using the
     euclidian distance d = ((dlon)cos(lat))^2+(dlat)^2. For distant points
     (e.g. more than 100km apart) use the haversine distance.
 
-    Parameters:
-        centroids (2d array): First column contains latitude, second
-            column contains longitude. Each row is a geographic point
-        coordinates (2d array): First column contains latitude, second
-            column contains longitude. Each row is a geographic point
-        threshold (float): distance threshold in km over which no neighbor will
-            be found. Those are assigned with a -1 index
+    Parameters
+    ----------
+    centroids : 2d array
+        First column contains latitude, second column contains longitude. Each 
+        row is a geographic point
+    coordinates : 2d array 
+        First column contains latitude, second column contains longitude. Each
+        row is a geographic point
+    threshold : float 
+        distance threshold in km over which no neighbor will be found. Those 
+        are assigned with a -1 index
 
-    Returns:
-        array with so many rows as coordinates containing the centroids
-            indexes
+    Returns
+    -------
+    assigend: array 
+        with so many rows as coordinates containing the centroids indexes
     """
 
     # Compute only for the unique coordinates. Copy the results for the
@@ -180,17 +195,22 @@ def index_nn_haversine(centroids, coordinates, threshold=THRESHOLD):
     """Compute the neareast centroid for each coordinate using a Ball
     tree with haversine distance.
 
-    Parameters:
-        centroids (2d array): First column contains latitude, second
-            column contains longitude. Each row is a geographic point
-        coordinates (2d array): First column contains latitude, second
-            column contains longitude. Each row is a geographic point
-        threshold (float): distance threshold in km over which no neighbor will
-            be found. Those are assigned with a -1 index
+    Parameters
+    ----------
+    centroids : 2d array 
+        First column contains latitude, second column contains longitude. 
+        Each row is a geographic point
+    coordinates : 2d array
+        First column contains latitude, second column contains longitude. Each
+        row is a geographic point
+    threshold : float
+        distance threshold in km over which no neighbor will be found. Those 
+        are assigned with a -1 index
 
-    Returns:
-        array with so many rows as coordinates containing the centroids
-            indexes
+    Returns
+    -------
+    np.array 
+        with so many rows as coordinates containing the centroids indexes
     """
     # Construct tree from centroids
     tree = BallTree(np.radians(centroids), metric='haversine')
@@ -225,14 +245,15 @@ def interpolate_lines(gdf_lines, point_dist=5):
     
     Parameters
     ----------
-    gdf_lines (gpd.GeoDataframe or str) : Geodataframe or filepath from which
-        to read the GeoDataframe
-    point_dist (float) : Distance in metres apart from which the generated  
-        Points should be placed.
+    gdf_lines : gpd.GeoDataframe or str
+        Geodataframe or filepath from which to read the GeoDataframe
+    point_dist : float
+    Distance in metres apart from which the generated  Points should be placed.
     
     Returns
     -------
-    gdf_points with individual Point per row, retaining all other column infos
+    gdf_points : gpd.GeoDataFrame
+        with individual Point per row, retaining all other column infos
         belonging to its corresponding line (incl. line length of original geom.
         and multi-index referring to original indexing)
         
@@ -269,8 +290,10 @@ def interpolate_polygons(gdf_poly, area_point):
     
     Parameters
     ----------
-    gdf_poly : (gpd.GeoDataFrame) with polygons to be interpolated
-    area_point : area in m2 which one point should represent
+    gdf_poly : gpd.GeoDataFrame
+        with polygons to be interpolated
+    area_point : float
+        area in m2 which one point should represent
     
     Returns
     -------
