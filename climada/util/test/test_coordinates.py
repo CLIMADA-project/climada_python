@@ -137,7 +137,7 @@ class TestDistance(unittest.TestCase):
             np.sqrt(u_coord._dist_sqr_approx(lats1, lons1, cos_lats1, lats2, lons2)) * ONE_LAT_KM)
     
     def test_dist_great_circle_allgeoms(self):
-        """Test dist_great_circle_allgeoms"""
+        """Test compute_geodesic_lengths"""
         # TODO: implement
         pass
 

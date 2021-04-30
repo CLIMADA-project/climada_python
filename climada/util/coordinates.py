@@ -218,6 +218,10 @@ def interpolate_lines(gdf_lines, point_dist=5):
     """ Convert a GeoDataframe with LineString geometries to 
     Point geometries, where Points are placed at a specified distance along the
     original LineString 
+    Important remark: LineString.interpolate() used here performs interpolation 
+    in a Cartesian coordinate system. The result will be inaccurate for 
+    LineStrings whose defining points are spaced very far from each other 
+    (like end points in Zürich and NYC)
     
     Parameters
     ----------
@@ -280,51 +284,41 @@ def interpolate_polygons(gdf_poly, area_point):
     """
     
     metre_dist = math.sqrt(area_point)
+    gdf_points = gdf_poly.copy()
     
-    gdf_poly['degree_dist'] = gdf_poly.apply(lambda row: metres_to_degrees(
+    gdf_points['degree_dist'] = gdf_poly.apply(lambda row: metres_to_degrees(
         row.geometry.representative_point().x, 
         row.geometry.representative_point().y,
         metre_dist), axis=1)
     
     # get params to make an even grid with desired resolution 
     # over bounding boxes of polygons:
-    trans = gdf_poly.apply(lambda row: pts_to_raster_meta(
-        row.geometry.bounds, (row.degree_dist, -row.degree_dist)), axis=1)
-    gdf_poly['trans'] = pd.DataFrame(trans.tolist(), index=trans.index).iloc[:,2]
-   
-    gdf_poly['width'] = np.floor(abs(gdf_poly.geometry.bounds.minx-
-                                     gdf_poly.geometry.bounds.maxx)/
-                                 gdf_poly['degree_dist'])
-    gdf_poly['height'] = np.floor(abs(gdf_poly.geometry.bounds.miny-
-                                      gdf_poly.geometry.bounds.maxy)/
-                                  gdf_poly['degree_dist'])
+    gdf_points[['height','width','trans']] = gdf_points.apply(
+        lambda row: pts_to_raster_meta(row.geometry.bounds, 
+                                       (row.degree_dist, -row.degree_dist)), 
+        axis=1).tolist()
     
-    # make grid for each polygon-bbox
-    points = gdf_poly.apply(lambda row: raster_to_meshgrid(
-        row.trans, row.width, row.height), axis=1)
-    points = pd.DataFrame(points.tolist(), columns=['lon', 'lat'])
+    # make grid --> lon / lat for each polygon-bbox
+    gdf_points[['lon','lat']] = pd.DataFrame(gdf_points.apply(lambda row: 
+        raster_to_meshgrid(row.trans, row.width, row.height), axis=1).tolist())
+    
     for axis in ['lon', 'lat']:
-        points[axis] = points.apply(lambda row: row[axis].flatten(), axis=1)
-    
+        gdf_points[axis] = gdf_points.apply(lambda row: row[axis].flatten(), 
+                                            axis=1)
     # filter only centroids in actual polygons
-    for i, polygon in enumerate(gdf_poly.geometry):
-        in_geom = coord_on_land(lat=points['lat'].iloc[i], 
-                                lon=points['lon'].iloc[i],
+    for i, polygon in enumerate(gdf_points.geometry):
+        in_geom = coord_on_land(lat=gdf_points['lat'].iloc[i], 
+                                lon=gdf_points['lon'].iloc[i],
                                 land_geom=polygon)
         for axis in ['lon', 'lat']:
-            points[axis].iloc[i] = points[axis].iloc[i][in_geom]
+            gdf_points[axis].iloc[i] = gdf_points[axis].iloc[i][in_geom]
     
-    points['geometry'] = points.apply(lambda row: 
-                                      MultiPoint([(x, y) for x, y 
-                                                  in zip(row.lon, row.lat)]),
-                                      axis=1)
-        
-    points = pd.merge(points.drop(['lat', 'lon'], axis=1), 
-                      gdf_poly.drop(['geometry', 'trans', 'width', 'height', 
-                                     'degree_dist'], axis=1),
-                      left_index=True, right_index=True)
+    gdf_points['geometry'] = gdf_points.apply(
+        lambda row: MultiPoint([(x, y) for x, y in zip(row.lon, row.lat)]),
+        axis=1)
 
-    return gpd.GeoDataFrame(points).explode()
+    return gpd.GeoDataFrame(gdf_points.drop(['lon', 'lat', 'trans', 'width', 
+                                             'height', 'degree_dist'])).explode()
 
 #######################
 
