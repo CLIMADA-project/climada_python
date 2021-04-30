@@ -110,7 +110,7 @@ def calc_perturbed_trajectories(tracks,
         np.random.seed(seed)
 
     # ensure tracks have constant time steps
-    time_step_h = np.unique([np.unique(x['time_step']) for x in tracks.data])
+    time_step_h = np.unique(np.concatenate([np.unique(x['time_step']) for x in tracks.data]))
     if not np.allclose(time_step_h, time_step_h[0]):
         raise ValueError('Tracks have different temporal resolution. '
                          'Please ensure constant time steps by applying equal_timestep beforehand')
