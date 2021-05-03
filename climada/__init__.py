@@ -80,14 +80,14 @@ REPO_DATA = {
 }
 
 
-def setup_climada_data():
+def setup_climada_data(reload=False):
 
     for dirpath in [DEMO_DIR, SYSTEM_DIR, GSDP_DIR]:
         dirpath.mkdir(parents=True, exist_ok=True)
 
     for src_dir, path_list in REPO_DATA.items():
         for path in path_list:
-            if not path.exists():
+            if not path.exists() or reload:
                 src = Path(__file__).parent.parent.joinpath(src_dir, path.name)
                 copyfile(src, path)
 
