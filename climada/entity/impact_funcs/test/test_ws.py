@@ -16,7 +16,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
-Test IF_StormEurope class.
+Test Impf_StormEurope class.
 """
 
 import unittest

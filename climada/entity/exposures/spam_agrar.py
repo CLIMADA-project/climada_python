@@ -175,7 +175,7 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
 
         # if impact id variation iiv = 1, assign different damage function ID
         # per technology type.
-        self._set_if(spam_t, haz_type)
+        self._set_impf(spam_t, haz_type)
 
         self.tag.file_name = (FILENAME_SPAM + '_' + spam_v + '_' + spam_t + '.csv')
 #        self.tag.shape = cntry_info[2]
@@ -193,11 +193,11 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
             spam_v, spam_t, region, self.gdf.value.sum(), self.value_unit))
         self.check()
 
-    def _set_if(self, spam_t, haz_type):
+    def _set_impf(self, spam_t, haz_type):
         """Set impact function id depending on technology."""
         # hazard type drought is default.
         # TODO: review this method, for with iiv fixed to zero
-        #       there is no point in case distinction for if_* assignment
+        #       there is no point in case distinction for impf_* assignment
         iiv = 0
         if spam_t == 'TA':
             self.gdf[INDICATOR_IMPF + haz_type] = 1

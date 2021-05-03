@@ -238,12 +238,12 @@ class TestCalc(unittest.TestCase):
             np.sum(impact.imp_mat.toarray() * impact.frequency[:, None], axis=0).reshape(-1),
             impact.eai_exp)
 
-    def test_calc_if_pass(self):
-        """Execute when no impf_HAZ present, but only if_"""
+    def test_calc_impf_pass(self):
+        """Execute when no impf_HAZ present, but only impf_"""
         ent = Entity()
         ent.read_excel(ENT_DEMO_TODAY)
         self.assertTrue('impf_TC' in ent.exposures.gdf.columns)
-        ent.exposures.gdf.rename(columns={'impf_TC': 'if_'}, inplace=True)
+        ent.exposures.gdf.rename(columns={'impf_TC': 'impf_'}, inplace=True)
         self.assertFalse('impf_TC' in ent.exposures.gdf.columns)
         ent.check()
 

@@ -36,7 +36,7 @@ class ImpfDrought(ImpactFunc):
         """Empty initialization.
 
         Parameters:
-            if_id (int, optional): impact function id. Default: 1
+            impf_id (int, optional): impact function id. Default: 1
             intensity (np.array, optional): intensity array SPEI [-].
                 default: intensity defintion 1 (minimum)
                 default_sum: intensity definition 3 (sum over all drought months)

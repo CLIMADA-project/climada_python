@@ -26,7 +26,7 @@ from deprecation import deprecated
 import numpy as np
 
 from climada.entity.impact_funcs.base import ImpactFunc
-from climada.engine.calibration_opt import init_if
+from climada.engine.calibration_opt import init_impf
 
 
 LOGGER = logging.getLogger(__name__)
@@ -65,7 +65,7 @@ class ImpfStormEurope(ImpactFunc):
         temp_Impf = ImpfStormEurope()
         temp_Impf.set_schwierz()
         scaling_factor = {'paa_scale': 1.332518, 'mdd_scale': 1.332518}
-        temp_Impf = init_if(temp_Impf, scaling_factor)[0]
+        temp_Impf = init_impf(temp_Impf, scaling_factor)[0]
         self.name = 'Welker 2020'
         self.id = Impf_id
         self.intensity_unit = 'm/s'
