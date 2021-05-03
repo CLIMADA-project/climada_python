@@ -286,14 +286,14 @@ class Exposures():
         except AttributeError:  # no geometry column
             pass
 
-    def get_impf_column(self, haz_type):
+    def get_impf_column(self, haz_type=''):
         """Find the best matching column name in the exposures dataframe for a given hazard type,
 
         Parameters
         ----------
-        haz_type : str
+        haz_type : str or None
             hazard type, as in the hazard's tag.haz_type
-            or the HAZ_TYPE constant of the hazard's module
+            which is the HAZ_TYPE constant of the hazard's module
 
         Returns
         -------
