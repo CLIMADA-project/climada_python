@@ -81,8 +81,9 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title,
     title : str or list(str)
         subplot title. If one provided, the same is used for all subplots.
         Otherwise provide as many as subplots in array_sub.
-    pop_name : bool, optional
-        add names of the populated places, by default True
+    pop_name : bool or str, optional
+        add names of the populated places, by default True. If set to 'markers' only the points
+        will be shown, without a description.
     buffer : float, optional
         border to add to coordinates, by default BUFFER
     extend : str, optional
@@ -135,8 +136,9 @@ def geo_scatter_from_array(array_sub, geo_coord, var_name, title,
     title : str or list(str)
         subplot title. If one provided, the same is used for all subplots.
         Otherwise provide as many as subplots in array_sub.
-    pop_name : bool, optional
-        add names of the populated places, by default False
+    pop_name : bool or str, optional
+        add names of the populated places, by default True. If set to 'markers' only the points
+        will be shown, without a description.
     buffer : float, optional
         border to add to coordinates, by default BUFFER
     extend : str, optional
@@ -216,7 +218,7 @@ def _plot_scattered_data(method, array_sub, geo_coord, var_name, title,
         if shapes:
             add_shapes(axis)
         if pop_name:
-            add_populated_places(axis, extent, proj)
+            add_populated_places(axis, extent, proj, pop_name)
 
         if method == "hexbin":
             if 'gridsize' not in kwargs:
@@ -509,7 +511,7 @@ def add_shapes(axis):
         axis.add_geometries([geometry], crs=ccrs.PlateCarree(), facecolor='none',
                             edgecolor='dimgray')
 
-def add_populated_places(axis, extent, proj=ccrs.PlateCarree()):
+def add_populated_places(axis, extent, proj=ccrs.PlateCarree(), pop_name=True):
     """
     Add city names.
 
@@ -540,9 +542,10 @@ def add_populated_places(axis, extent, proj=ccrs.PlateCarree()):
                 place_name = rec.attributes['name'].encode("latin-1").decode("utf-8")
                 axis.plot(point.x, point.y, color='navy', marker='o',
                           transform=ccrs.PlateCarree(), markerfacecolor='None')
-                axis.text(point.x, point.y, place_name,
-                          horizontalalignment='right', verticalalignment='bottom',
-                          transform=ccrs.PlateCarree(), color='navy')
+                if pop_name != 'markers':
+                    axis.text(point.x, point.y, place_name,
+                              horizontalalignment='right', verticalalignment='bottom',
+                              transform=ccrs.PlateCarree(), color='navy')
 
 def add_cntry_names(axis, extent, proj=ccrs.PlateCarree()):
     """
