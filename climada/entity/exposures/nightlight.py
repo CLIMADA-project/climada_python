@@ -24,6 +24,7 @@ import tarfile
 import gzip
 import pickle
 import logging
+import rasterio
 from pathlib import Path
 import numpy as np
 import scipy.sparse as sparse
@@ -58,24 +59,24 @@ NOAA_BORDER = (-180, -65, 180, 75)
 NASA_SITE = 'https://www.nasa.gov/specials/blackmarble/*/tiles/georeferrenced/'
 """NASA nightlight web url."""
 
-BM_FILENAMES = ['BlackMarble_*_A1_geo_gray.tif',
-                'BlackMarble_*_A2_geo_gray.tif',
-                'BlackMarble_*_B1_geo_gray.tif',
-                'BlackMarble_*_B2_geo_gray.tif',
-                'BlackMarble_*_C1_geo_gray.tif',
-                'BlackMarble_*_C2_geo_gray.tif',
-                'BlackMarble_*_D1_geo_gray.tif',
-                'BlackMarble_*_D2_geo_gray.tif'
+BM_FILENAMES = ['BlackMarble_%i_A1_geo_gray.tif',
+                'BlackMarble_%i_A2_geo_gray.tif',
+                'BlackMarble_%i_B1_geo_gray.tif',
+                'BlackMarble_%i_B2_geo_gray.tif',
+                'BlackMarble_%i_C1_geo_gray.tif',
+                'BlackMarble_%i_C2_geo_gray.tif',
+                'BlackMarble_%i_D1_geo_gray.tif',
+                'BlackMarble_%i_D2_geo_gray.tif'
                ]
 """Nightlight NASA files which generate the whole earth when put together."""
 
-def check_required_nl_files(bbox, *coords):
+def check_required_nl_files(bounds, *coords):
     """Determines which of the satellite pictures are necessary for
         a certain bounding box (e.g. country)
 
     Parameters:
         either:
-            bbox (1x4 tuple): bounding box from shape (min_lon, min_lat,
+            bounds (1x4 tuple): bounding box from shape (min_lon, min_lat,
                  max_lon, max_lat)
         or:
             min_lon (float): (=min_lon) Western-most point in decimal degrees
@@ -91,17 +92,17 @@ def check_required_nl_files(bbox, *coords):
     try:
         if not coords:
             # check if bbox is valid
-            if (np.size(bbox) != 4) or (bbox[0] > bbox[2]) \
-            or (bbox[1] > bbox[3]):
+            if (np.size(bounds) != 4) or (bounds[0] > bounds[2]) \
+            or (bounds[1] > bounds[3]):
                 raise ValueError('Invalid bounding box supplied.')
             else:
-                min_lon, min_lat, max_lon, max_lat = bbox
+                min_lon, min_lat, max_lon, max_lat = bounds
         else:
-            if (len(coords) != 3) or (not coords[1] > bbox) \
+            if (len(coords) != 3) or (not coords[1] > bounds) \
             or (not coords[2] > coords[0]):
                 raise ValueError('Invalid coordinates supplied.')
             else:
-                min_lon = bbox
+                min_lon = bounds
                 min_lat, max_lon, max_lat = coords
     except Exception as exc:
         raise ValueError('Invalid coordinates supplied. Please either '
@@ -161,7 +162,7 @@ def check_nl_local_file_exists(required_files=np.ones(len(BM_FILENAMES),),
     for num_check, name_check in enumerate(BM_FILENAMES):
         if required_files[num_check] == 0:
             continue
-        curr_file = check_path.joinpath(name_check.replace('*', str(year)))
+        curr_file = check_path.joinpath(name_check %(year))
         if curr_file.is_file():
             files_exist[num_check] = 1
 
@@ -212,8 +213,7 @@ def download_nl_files(req_files=np.ones(len(BM_FILENAMES),),
                 if files_exist[num_files] == 1:
                     continue
                 else:
-                    curr_file = NASA_SITE + BM_FILENAMES[num_files]
-                    curr_file = curr_file.replace('*', str(year))
+                    curr_file = NASA_SITE + BM_FILENAMES[num_files] %(2016)
                     LOGGER.info('Attempting to download file from %s',
                                 curr_file)
                     download_file(curr_file, download_dir=dwnl_path)
@@ -221,6 +221,81 @@ def download_nl_files(req_files=np.ones(len(BM_FILENAMES),),
         raise RuntimeError('Download failed. Please check the network '
             'connection and whether filenames are still valid.') from exc
     return dwnl_path
+
+
+def load_nasa_single_tile_crop(shape, year, path=None): # TODO: manually tested but no tests exist yet
+    """Read nightlight data from single NASA BlackMarble tile
+    and crop to given shape(s).
+    
+    Parameters
+    ----------
+    shapes : shape to crop data to in degree lon/lat.
+        for example shapely.geometry.Polygon object or
+        from polygon defined in a shapefile.
+    year : int
+        nightlight year, e.g. 2016.
+    data_dir : Path (optional)
+        Path to directory with BlackMarble data.
+        The default is SYSTEM_DIR.
+
+
+    Returns
+    -------
+    results_array : list containing numpy array
+    meta : list containing meta data per array
+    """
+    if path is None:
+        path = SYSTEM_DIR
+
+    req_files = check_required_nl_files(shape.bounds)
+    print(req_files)
+    check_nl_local_file_exists(required_files=req_files, check_path=path,
+                               year=year)
+    req_files = np.where(req_files ==1)[0] # convert to sorted list of indices
+    results_array_even = list() # tiles A1, B1, C1, D1 (Nothern Hemisphere)
+    results_array_odd = list() # tiles A2, B2, C2, D2 (Southern Hemisphere)
+    transform = [None] * len(req_files) #int(sum(req_files))
+    
+    # loop through required tiles, load and crop data for each:
+    for idx, i_file in enumerate(req_files):
+        src = rasterio.open(path / (BM_FILENAMES[i_file] %(year)))
+
+        # read cropped data from  source file (src) to np.ndarray:
+        out_image, transform[idx] = rasterio.mask.mask(src, [shape], crop=True)
+        if i_file in [0,2,4,6]:
+            results_array_even.append(out_image[0,:,:])
+        elif i_file in [1,3,5,7]:
+            results_array_odd.append(out_image[0,:,:])
+        
+        # from first (top left) of required tiles, define origins in transform:
+        if idx == 0:
+            meta = src.meta
+            meta.update({"driver": "GTiff",
+                 "height": out_image.shape[1],
+                 "width": out_image.shape[2],
+                 "transform": transform[idx]})
+        src.close()
+
+    if idx == 0: # only 1 tile
+        return out_image[0,:,:], meta
+    # Combine data from multiple input files (BlackMarble tiles) -
+    # concatenate tiles from west to east and from north to south:
+    del out_image
+    if results_array_even: # northern hemisphere west to east
+        results_array_even = np.concatenate(results_array_even, axis=1)
+    if results_array_odd: # southern hemisphere west to east
+        results_array_odd = np.concatenate(results_array_odd, axis=1)
+    if isinstance(results_array_even, np.ndarray) and isinstance(results_array_odd, np.ndarray):
+        # north to south if both hemispheres are involved
+        results_array_even = np.concatenate([results_array_even, results_array_odd], axis=0)
+    elif isinstance(results_array_odd, np.ndarray): # only southern hemisphere
+        results_array_even = results_array_odd
+    del results_array_odd
+
+    meta.update({"height": results_array_even.shape[0],
+                 "width": results_array_even.shape[1]})
+    return results_array_even, meta
+
 
 def load_nightlight_nasa(bounds, req_files, year):
     """Get nightlight from NASA repository that contain input boundary.
@@ -254,7 +329,7 @@ def load_nightlight_nasa(bounds, req_files, year):
             continue
         extent = np.int64(np.clip(extent, 0, tile_size[None] - 1))
 
-        im_nl, _ = read_bm_file(SYSTEM_DIR, fname.replace('*', str(year)))
+        im_nl, _ = read_bm_file(SYSTEM_DIR, fname %(year))
         im_nl = np.flipud(im_nl)
         im_nl = sparse.csc.csc_matrix(im_nl)
         im_nl = im_nl[extent[0, 0]:extent[1, 0] + 1, extent[0, 1]:extent[1, 1] + 1]
