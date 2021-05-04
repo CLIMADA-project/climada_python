@@ -69,7 +69,7 @@ rasterio.warp.reproject(
                 destination=destination,
                 src_transform=meta_nl['transform'],
                 #src_crs=meta_nl['crs'],
-                src_crs=meta_pop['crs'],
+                src_crs=meta_pop['crs'], # why?
                 dst_transform=meta_pop['transform'],
                 dst_crs=meta_pop['crs'],
                 resampling=resampling,
