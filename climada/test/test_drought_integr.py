@@ -25,7 +25,7 @@ from climada.hazard.drought import Drought
 from climada.engine import Impact
 from climada.entity.exposures.spam_agrar import SpamAgrar
 from climada.entity.impact_funcs import ImpactFuncSet
-from climada.entity.impact_funcs.drought import IFDrought
+from climada.entity.impact_funcs.drought import ImpfDrought
 
 
 class TestIntegr(unittest.TestCase):
@@ -38,15 +38,15 @@ class TestIntegr(unittest.TestCase):
         hazard_set = drought.setup()
 
         imp_drought = Impact()
-        dr_if = ImpactFuncSet()
-        if_def = IFDrought()
-        if_def.set_default()
-        dr_if.append(if_def)
+        dr_impf = ImpactFuncSet()
+        impf_def = ImpfDrought()
+        impf_def.set_default()
+        dr_impf.append(impf_def)
 
         exposure_agrar = SpamAgrar()
         exposure_agrar.init_spam_agrar(country='CHE', haz_type='DR')
         exposure_agrar.assign_centroids(hazard_set)
-        imp_drought.calc(exposure_agrar, dr_if, hazard_set)
+        imp_drought.calc(exposure_agrar, dr_impf, hazard_set)
 
         index_event_start = imp_drought.event_name.index('2003')
         damages_drought = imp_drought.at_event[index_event_start]
