@@ -223,7 +223,42 @@ def download_nl_files(req_files=np.ones(len(BM_FILENAMES),),
     return dwnl_path
 
 
-def load_nasa_single_tile_crop(shape, year, path=None): # TODO: manually tested but no tests exist yet
+# TODO: LitPop 2.0
+def load_nasa_nl_shape_single_tile(shape, path, layer=0): # TODO: manually tested but no tests exist yet
+    """Read nightlight data from single NASA BlackMarble tile
+    and crop to given shape.
+
+    Parameters
+    ----------
+    shape : shape to crop data to in degree lon/lat.
+        for example shapely.geometry.Polygon object or
+        from polygon defined in a shapefile.
+    path : Path or str
+        full path to BlackMarble tif (including filename)
+    layer : int
+        TIF-layer to be returned. The default is 0.
+        BlackMarble usually comes with 3 layers.
+
+    Returns
+    -------
+    out_image[layer,:,:] : 2D numpy ndarray with cropped data
+    meta : dict containing meta data 
+    """
+    # open tif source file with raterio:
+    src = rasterio.open(path)
+
+    # read cropped data from  source file (src) to np.ndarray:
+    out_image, transform = rasterio.mask.mask(src, [shape], crop=True)
+    meta = src.meta
+    meta.update({"driver": "GTiff",
+                 "height": out_image.shape[1],
+                 "width": out_image.shape[2],
+                 "transform": transform})
+    src.close()
+    return out_image[layer,:,:], meta
+
+# TODO: LitPop 2.0
+def load_nasa_nl_shape(shape, year, path=None): # TODO: manually tested but no tests exist yet
     """Read nightlight data from single NASA BlackMarble tile
     and crop to given shape(s).
     
@@ -248,36 +283,29 @@ def load_nasa_single_tile_crop(shape, year, path=None): # TODO: manually tested 
         path = SYSTEM_DIR
 
     req_files = check_required_nl_files(shape.bounds)
-    print(req_files)
     check_nl_local_file_exists(required_files=req_files, check_path=path,
                                year=year)
     req_files = np.where(req_files ==1)[0] # convert to sorted list of indices
     results_array_even = list() # tiles A1, B1, C1, D1 (Nothern Hemisphere)
     results_array_odd = list() # tiles A2, B2, C2, D2 (Southern Hemisphere)
-    transform = [None] * len(req_files) #int(sum(req_files))
-    
+
     # loop through required tiles, load and crop data for each:
     for idx, i_file in enumerate(req_files):
-        src = rasterio.open(path / (BM_FILENAMES[i_file] %(year)))
 
         # read cropped data from  source file (src) to np.ndarray:
-        out_image, transform[idx] = rasterio.mask.mask(src, [shape], crop=True)
+        out_image, meta_tmp = load_nasa_nl_shape_single_tile(shape,
+                                        path / (BM_FILENAMES[i_file] %(year)))
         if i_file in [0,2,4,6]:
-            results_array_even.append(out_image[0,:,:])
+            results_array_even.append(out_image)
         elif i_file in [1,3,5,7]:
-            results_array_odd.append(out_image[0,:,:])
-        
-        # from first (top left) of required tiles, define origins in transform:
+            results_array_odd.append(out_image)
+
+        # from first (top left) of tiles, meta is initiated, incl. origin:
         if idx == 0:
-            meta = src.meta
-            meta.update({"driver": "GTiff",
-                 "height": out_image.shape[1],
-                 "width": out_image.shape[2],
-                 "transform": transform[idx]})
-        src.close()
+            meta = meta_tmp
 
     if idx == 0: # only 1 tile
-        return out_image[0,:,:], meta
+        return out_image, meta
     # Combine data from multiple input files (BlackMarble tiles) -
     # concatenate tiles from west to east and from north to south:
     del out_image
@@ -292,6 +320,7 @@ def load_nasa_single_tile_crop(shape, year, path=None): # TODO: manually tested 
         results_array_even = results_array_odd
     del results_array_odd
 
+    # update number of elements per axis in meta dictionary:
     meta.update({"height": results_array_even.shape[0],
                  "width": results_array_even.shape[1]})
     return results_array_even, meta
