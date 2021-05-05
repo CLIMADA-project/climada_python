@@ -27,7 +27,7 @@ import numpy as np
 
 from climada import CONFIG
 from climada.entity.tag import Tag
-from climada.entity.exposures.base import Exposures, INDICATOR_IF
+from climada.entity.exposures.base import Exposures, INDICATOR_IMPF
 from climada.util.files_handler import download_file
 from climada.util.constants import SYSTEM_DIR
 import climada.util.coordinates as u_coord
@@ -175,7 +175,7 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
 
         # if impact id variation iiv = 1, assign different damage function ID
         # per technology type.
-        self._set_if(spam_t, haz_type)
+        self._set_impf(spam_t, haz_type)
 
         self.tag.file_name = (FILENAME_SPAM + '_' + spam_v + '_' + spam_t + '.csv')
 #        self.tag.shape = cntry_info[2]
@@ -193,38 +193,38 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
             spam_v, spam_t, region, self.gdf.value.sum(), self.value_unit))
         self.check()
 
-    def _set_if(self, spam_t, haz_type):
+    def _set_impf(self, spam_t, haz_type):
         """Set impact function id depending on technology."""
         # hazard type drought is default.
         # TODO: review this method, for with iiv fixed to zero
-        #       there is no point in case distinction for if_* assignment
+        #       there is no point in case distinction for impf_* assignment
         iiv = 0
         if spam_t == 'TA':
-            self.gdf[INDICATOR_IF + haz_type] = 1
+            self.gdf[INDICATOR_IMPF + haz_type] = 1
             self.tag.description = self.tag.description + '. '\
             + 'all technologies together, ie complete crop'
         elif spam_t == 'TI':
-            self.gdf[INDICATOR_IF + haz_type] = 1 + iiv
+            self.gdf[INDICATOR_IMPF + haz_type] = 1 + iiv
             self.tag.description = self.tag.description + '. '\
             + 'irrigated portion of crop'
         elif spam_t == 'TH':
-            self.gdf[INDICATOR_IF + haz_type] = 1 + 2 * iiv
+            self.gdf[INDICATOR_IMPF + haz_type] = 1 + 2 * iiv
             self.tag.description = self.tag.description + '. '\
             + 'rainfed high inputs portion of crop'
         elif spam_t == 'TL':
-            self.gdf[INDICATOR_IF + haz_type] = 1 + 3 * iiv
+            self.gdf[INDICATOR_IMPF + haz_type] = 1 + 3 * iiv
             self.tag.description = self.tag.description + '. '\
             + 'rainfed low inputs portion of crop'
         elif spam_t == 'TS':
-            self.gdf[INDICATOR_IF + haz_type] = 1 + 4 * iiv
+            self.gdf[INDICATOR_IMPF + haz_type] = 1 + 4 * iiv
             self.tag.description = self.tag.description + '. '\
             + 'rainfed subsistence portion of crop'
         elif spam_t == 'TR':
-            self.gdf[INDICATOR_IF + haz_type] = 1 + 5 * iiv
+            self.gdf[INDICATOR_IMPF + haz_type] = 1 + 5 * iiv
             self.tag.description = self.tag.description + '. '\
             + 'rainfed portion of crop (= TA - TI)'
         else:
-            self.gdf[INDICATOR_IF + haz_type] = 1
+            self.gdf[INDICATOR_IMPF + haz_type] = 1
         self.set_geometry_points()
 
     def _read_spam_file(self, **parameters):

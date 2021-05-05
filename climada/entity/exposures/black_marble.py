@@ -30,7 +30,7 @@ import shapely.vectorized
 from cartopy.io import shapereader
 
 from climada.entity.tag import Tag
-from climada.entity.exposures.base import Exposures, INDICATOR_IF
+from climada.entity.exposures.base import Exposures, INDICATOR_IMPF
 from climada.entity.exposures import nightlight as nl_utils
 from climada.util.constants import SYSTEM_DIR, DEF_CRS
 from climada.util.finance import gdp, income_group
@@ -163,7 +163,7 @@ class BlackMarble(Exposures):
             'longitude': lon_reg,
         })
         exp_bkmrb.gdf['region_id'] = cntry_info[0]
-        exp_bkmrb.gdf[INDICATOR_IF] = 1
+        exp_bkmrb.gdf[INDICATOR_IMPF] = 1
 
         return exp_bkmrb
 

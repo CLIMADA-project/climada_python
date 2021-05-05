@@ -830,7 +830,7 @@ def emdat_to_impact(emdat_file_csv, hazard_type_climada, year_range=None, countr
                                         description='EM-DAT impact, direct import')
     impact_instance.tag['exp'] = Tag(file_name=emdat_file_csv,
                                      description='EM-DAT impact, direct import')
-    impact_instance.tag['if_set'] = Tag(file_name=None, description=None)
+    impact_instance.tag['impf_set'] = Tag(file_name=None, description=None)
 
 
     # Load EM-DAT impact data by event:

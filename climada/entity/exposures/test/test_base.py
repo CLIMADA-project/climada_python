@@ -27,7 +27,7 @@ import rasterio
 from rasterio.windows import Window
 
 from climada import CONFIG
-from climada.entity.exposures.base import Exposures, INDICATOR_IF, \
+from climada.entity.exposures.base import Exposures, INDICATOR_IMPF, \
      INDICATOR_CENTR, add_sea, DEF_REF_YEAR, DEF_VALUE_UNIT
 from climada.entity.tag import Tag
 from climada.hazard.base import Hazard, Centroids
@@ -43,7 +43,7 @@ def good_exposures():
     data['longitude'] = np.array([2, 3, 4])
     data['value'] = np.array([1, 2, 3])
     data['deductible'] = np.array([1, 2, 3])
-    data[INDICATOR_IF + 'NA'] = np.array([1, 2, 3])
+    data[INDICATOR_IMPF + 'NA'] = np.array([1, 2, 3])
     data['category_id'] = np.array([1, 2, 3])
     data['region_id'] = np.array([1, 2, 3])
     data[INDICATOR_CENTR + 'TC'] = np.array([1, 2, 3])
@@ -251,9 +251,9 @@ class TestIO(unittest.TestCase):
         self.assertTrue(np.array_equal(exp_df.gdf.cover.values,       exp_read.gdf.cover.values))
         self.assertTrue(np.array_equal(exp_df.gdf.region_id.values,   exp_read.gdf.region_id.values))
         self.assertTrue(np.array_equal(exp_df.gdf.category_id.values, exp_read.gdf.category_id.values))
-        self.assertTrue(np.array_equal(exp_df.gdf.if_TC.values,       exp_read.gdf.if_TC.values))
+        self.assertTrue(np.array_equal(exp_df.gdf.impf_TC.values,       exp_read.gdf.impf_TC.values))
         self.assertTrue(np.array_equal(exp_df.gdf.centr_TC.values,    exp_read.gdf.centr_TC.values))
-        self.assertTrue(np.array_equal(exp_df.gdf.if_FL.values,       exp_read.gdf.if_FL.values))
+        self.assertTrue(np.array_equal(exp_df.gdf.impf_FL.values,       exp_read.gdf.impf_FL.values))
         self.assertTrue(np.array_equal(exp_df.gdf.centr_FL.values,    exp_read.gdf.centr_FL.values))
 
         for point_df, point_read in zip(exp_df.gdf.geometry.values, exp_read.gdf.geometry.values):
@@ -271,7 +271,7 @@ class TestAddSea(unittest.TestCase):
         exp.gdf['latitude'] = np.linspace(min_lat, max_lat, 10)
         exp.gdf['longitude'] = np.linspace(min_lon, max_lon, 10)
         exp.gdf['region_id'] = np.ones(10)
-        exp.gdf['if_TC'] = np.ones(10)
+        exp.gdf['impf_TC'] = np.ones(10)
         exp.ref_year = 2015
         exp.value_unit = 'XSD'
         exp.check()
@@ -318,7 +318,7 @@ class TestConcat(unittest.TestCase):
         exp.gdf['latitude'] = np.linspace(min_lat, max_lat, 10)
         exp.gdf['longitude'] = np.linspace(min_lon, max_lon, 10)
         exp.gdf['region_id'] = np.ones(10)
-        exp.gdf['if_TC'] = np.ones(10)
+        exp.gdf['impf_TC'] = np.ones(10)
         exp.ref_year = 2015
         exp.value_unit = 'XSD'
         self.dummy = exp
@@ -399,6 +399,48 @@ class TestGeoDFFuncs(unittest.TestCase):
             expo['value'] = 3
         self.assertIn("CLIMADA 2", str(err.exception))
         self.assertIn("gdf", str(err.exception))
+
+
+class TestImpactFunctions(unittest.TestCase):
+    """Test impact function handling"""
+    def test_get_impf_column(self):
+        """Test the get_impf_column"""
+        expo = good_exposures()
+
+        # impf column is 'impf_NA'
+        self.assertEqual('impf_NA', expo.get_impf_column('NA'))
+        self.assertRaises(ValueError, expo.get_impf_column)
+        self.assertRaises(ValueError, expo.get_impf_column, 'HAZ')
+
+        # removed impf column
+        expo.gdf.drop(columns='impf_NA', inplace=True)
+        self.assertRaises(ValueError, expo.get_impf_column, 'NA')
+        self.assertRaises(ValueError, expo.get_impf_column)
+
+        # default (anonymous) impf column
+        expo.check()
+        self.assertEqual('impf_', expo.get_impf_column())
+        self.assertEqual('impf_', expo.get_impf_column('HAZ'))
+
+        # rename impf column to old style column name
+        expo.gdf.rename(columns={'impf_': 'if_'}, inplace=True)
+        expo.check()
+        self.assertEqual('if_', expo.get_impf_column())
+        self.assertEqual('if_', expo.get_impf_column('HAZ'))
+
+        # rename impf column to old style column name
+        expo.gdf.rename(columns={'if_': 'if_NA'}, inplace=True)
+        expo.check()
+        self.assertEqual('if_NA', expo.get_impf_column('NA'))
+        self.assertRaises(ValueError, expo.get_impf_column)
+        self.assertRaises(ValueError, expo.get_impf_column, 'HAZ')
+
+        # add anonymous impf column
+        expo.gdf['impf_'] = expo.gdf['region_id']
+        self.assertEqual('if_NA', expo.get_impf_column('NA'))
+        self.assertEqual('impf_', expo.get_impf_column())
+        self.assertEqual('impf_', expo.get_impf_column('HAZ'))
+
 
 # Execute Tests
 if __name__ == "__main__":

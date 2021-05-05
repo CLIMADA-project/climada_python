@@ -63,25 +63,30 @@ NM_TO_KM = (1.0 * ureg.nautical_mile).to(ureg.kilometer).magnitude
 """Unit conversion factors for JIT functions that can't use ureg"""
 
 class TropCyclone(Hazard):
-    """Contains tropical cyclone events.
-    Attributes:
-        category (np.array(int)): for every event, the TC category using the
-            Saffir-Simpson scale:
-                -1 tropical depression
-                 0 tropical storm
-                 1 Hurrican category 1
-                 2 Hurrican category 2
-                 3 Hurrican category 3
-                 4 Hurrican category 4
-                 5 Hurrican category 5
-        basin (list(str)): basin where every event starts
-            'NA' North Atlantic
-            'EP' Eastern North Pacific
-            'WP' Western North Pacific
-            'NI' North Indian
-            'SI' South Indian
-            'SP' Southern Pacific
-            'SA' South Atlantic
+    """
+    Contains tropical cyclone events.
+
+    Attributes
+    ----------
+    category : np.array(int)
+        for every event, the TC category using the
+        Saffir-Simpson scale:
+            -1 tropical depression
+             0 tropical storm
+             1 Hurrican category 1
+             2 Hurrican category 2
+             3 Hurrican category 3
+             4 Hurrican category 4
+             5 Hurrican category 5
+    basin : list(str)
+        basin where every event starts
+        'NA' North Atlantic
+        'EP' Eastern North Pacific
+        'WP' Western North Pacific
+        'NI' North Indian
+        'SI' South Indian
+        'SP' Southern Pacific
+        'SA' South Atlantic
     """
     intensity_thres = 17.5
     """intensity threshold for storage in m/s"""
@@ -103,7 +108,8 @@ class TropCyclone(Hazard):
     def set_from_tracks(self, tracks, centroids=None, description='',
                         model='H08', ignore_distance_to_coast=False,
                         store_windfields=False, metric="equirect"):
-        """Clear and fill with windfields from specified tracks.
+        """
+        Clear and fill with windfields from specified tracks.
 
         Parameters
         ----------
@@ -195,18 +201,41 @@ class TropCyclone(Hazard):
         self.tag.description = description
 
     def set_climate_scenario_knu(self, ref_year=2050, rcp_scenario=45):
-        """Compute future events for given RCP scenario and year. RCP 4.5
-        from Knutson et al 2015.
-        Parameters:
-            ref_year (int): year between 2000 ad 2100. Default: 2050
-            rcp_scenario (int):  26 for RCP 2.6, 45 for RCP 4.5 (default),
-                60 for RCP 6.0 and 85 for RCP 8.5.
-        Returns:
-            TropCyclone
         """
-        criterion = get_knutson_criterion()
-        scale = calc_scale_knutson(ref_year, rcp_scenario)
-        haz_cc = self._apply_criterion(criterion, scale)
+        Compute future events for a given RCP scenario and year based on the
+        parametrized values derived from Table 3 in Knutson et al 2015.
+        https://doi.org/10.1175/JCLI-D-15-0129.1 . The scaling for different
+        years and RCP scenarios is obtained by linear interpolation.ß
+
+        Note: The parametrized values are derived from the overall changes
+        in statistical ensemble of tracks. Hence, this method should only be
+        applied to sufficiently large tropical cyclone event sets that
+        approximate the reference years 1981 - 2008 used in Knutson et. al.
+
+        The frequency and intensity changes are applied independently from
+        one another. The mean intensity factors can thus slightly deviate
+        from the Knutson value (deviation was found to be less than 1%
+        for default IBTrACS event sets 1980-2020 for each basin).
+
+        Parameters
+        ----------
+        ref_year : int
+            year between 2000 ad 2100. Default: 2050
+        rcp_scenario : int
+            26 for RCP 2.6, 45 for RCP 4.5, 60 for RCP 6.0 and 85 for RCP 8.5.
+            The default is 45.
+
+        Returns
+        -------
+        haz_cc : climada.hazard.TropCyclone
+            Tropical cyclone with frequencies and intensity scaled according
+            to the Knutson criterion for the given year and RCP. Returns
+            a new instance of climada.hazard.TropCyclone, self is not
+            modified.
+        """
+        chg_int_freq = get_knutson_criterion()
+        scale_rcp_year  = calc_scale_knutson(ref_year, rcp_scenario)
+        haz_cc = self._apply_knutson_criterion(chg_int_freq, scale_rcp_year)
         haz_cc.tag.description = 'climate change scenario for year %s and RCP %s '\
         'from Knutson et al 2015.' % (str(ref_year), str(rcp_scenario))
         return haz_cc
@@ -215,25 +244,35 @@ class TropCyclone(Hazard):
     def video_intensity(track_name, tracks, centroids, file_name=None,
                         writer=animation.PillowWriter(bitrate=500),
                         figsize=(9, 13), **kwargs):
-        """Generate video of TC wind fields node by node and returns its
+        """
+        Generate video of TC wind fields node by node and returns its
         corresponding TropCyclone instances and track pieces.
 
-        Parameters:
-            track_name (str): name of the track contained in tracks to record
-            tracks (TCTracks): tracks
-            centroids (Centroids): centroids where wind fields are mapped
-            file_name (str, optional): file name to save video, if provided
-            writer = (matplotlib.animation.*, optional): video writer. Default:
-                pillow with bitrate=500
-            figsize (tuple, optional): figure size for plt.subplots
-            kwargs (optional): arguments for pcolormesh matplotlib function
-                used in event plots
+        Parameters
+        ----------
+        track_name : str
+            name of the track contained in tracks to record
+        tracks : climada.hazard.TCTracks
+            tropical cyclone tracks
+        centroids : climada.hazard.Centroids
+            centroids where wind fields are mapped
+        file_name : str, optional
+            file name to save video (including full path and file extension)
+        writer : matplotlib.animation.*, optional
+            video writer. Default is pillow with bitrate=500
+        figsize : tuple, optional
+            figure size for plt.subplots
+        kwargs : optional
+            arguments for pcolormesh matplotlib function used in event plots
 
-        Returns:
-            list(TropCyclone), list(np.array)
+        Returns
+        -------
+        tc_list, tc_coord : list(TropCyclone), list(np.array)
 
-        Raises:
-            ValueError
+        Raises
+        ------
+        ValueError
+
         """
         # initialization
         track = tracks.get_track(track_name)
@@ -293,10 +332,12 @@ class TropCyclone(Hazard):
         return tc_list, tr_coord
 
     def frequency_from_tracks(self, tracks):
-        """Set hazard frequency from tracks data.
+        """
+        Set hazard frequency from tracks data.
 
-        Parameters:
-            tracks (list of xarray.Dataset)
+        Parameters
+        ----------
+        tracks : list of xarray.Dataset
         """
         if not tracks:
             return
@@ -309,7 +350,8 @@ class TropCyclone(Hazard):
 
     def _tc_from_track(self, track, centroids, coastal_idx, model='H08',
                        store_windfields=False, metric="equirect"):
-        """Generate windfield hazard from a single track dataset
+        """
+        Generate windfield hazard from a single track dataset
 
         Parameters
         ----------
@@ -386,38 +428,84 @@ class TropCyclone(Hazard):
         new_haz.basin = [track.basin]
         return new_haz
 
-    def _apply_criterion(self, criterion, scale):
-        """Apply changes defined in criterion with a given scale
-        Parameters:
-            criterion (list(dict)): list of criteria
-            scale (float): scale parameter because of chosen year and RCP
-        Returns:
-            TropCyclone
+    def _apply_knutson_criterion(self, chg_int_freq, scaling_rcp_year):
         """
-        haz_cc = copy.deepcopy(self)
-        for chg in criterion:
-            # filter criteria
-            select = np.ones(haz_cc.size, bool)
-            for var_name, cri_val in chg['criteria'].items():
-                var_val = getattr(haz_cc, var_name)
-                if isinstance(var_val, list):
-                    var_val = np.array(var_val)
-                tmp_select = np.logical_or.reduce([var_val == val for val in cri_val])
-                select = select & tmp_select
-            if chg['function'] == np.multiply:
-                change = 1 + (chg['change'] - 1) * scale
-            elif chg['function'] == np.add:
-                change = chg['change'] * scale
-            if select.any():
-                new_val = getattr(haz_cc, chg['variable'])
-                # 1d-masks like `select` are inefficient for indexing sparse matrices since
-                # they are broadcasted densely in the second dimension
-                if isinstance(new_val, sparse.csr_matrix):
-                    new_val = sparse.diags(np.where(select, change, 1)).dot(new_val)
-                else:
-                    new_val[select] *= change
-                setattr(haz_cc, chg['variable'], new_val)
-        return haz_cc
+        Apply changes to intensities and cumulative frequencies.
+
+        Parameters
+        ----------
+        criterion : list(dict))
+            list of criteria from climada.hazard.tc_clim_change
+        scale : float
+            scale parameter because of chosen year and RCP
+        Returns
+        -------
+        tc_cc : climada.hazard.TropCyclone
+            Tropical cyclone with frequency and intensity scaled according
+            to the Knutson criterion. Returns a new instance of TropCyclone.
+        """
+
+        tc_cc = copy.deepcopy(self)
+
+        # Criterion per basin
+        for basin in np.unique(tc_cc.basin):
+
+            bas_sel = (np.array(tc_cc.basin) == basin)
+
+            # Apply intensity change
+            inten_chg = [chg
+                         for chg in chg_int_freq
+                         if (chg['variable'] == 'intensity' and
+                             chg['basin'] == basin)
+                         ]
+            for chg in inten_chg:
+                sel_cat_chg = np.isin(tc_cc.category, chg['category']) & bas_sel
+                inten_scaling = 1 + (chg['change'] - 1) * scaling_rcp_year
+                tc_cc.intensity = sparse.diags(
+                    np.where(sel_cat_chg, inten_scaling, 1)
+                    ).dot(tc_cc.intensity)
+
+            # Apply frequency change
+            freq_chg = [chg
+                        for chg in chg_int_freq
+                        if (chg['variable'] == 'frequency' and
+                            chg['basin'] == basin)
+                        ]
+            freq_chg.sort(reverse=False, key=lambda x: len(x['category']))
+
+            # Iteratively scale frequencies for each category such that
+            # cumulative frequencies are scaled according to Knutson criterion.
+
+            cat_larger_list = []
+            for chg in freq_chg:
+                cat_chg_list = [cat
+                                for cat in chg['category']
+                                if cat not in cat_larger_list
+                                ]
+                sel_cat_chg = np.isin(tc_cc.category, cat_chg_list) & bas_sel
+                if sel_cat_chg.any():
+                    freq_scaling = 1 + (chg['change'] - 1) * scaling_rcp_year
+                    sel_cat_all = (np.isin(tc_cc.category, chg['category'])
+                                   & bas_sel)
+                    sel_cat_larger = (np.isin(tc_cc.category, cat_larger_list)
+                                      & bas_sel)
+                    freq_scaling_cor = (
+                        (np.sum(self.frequency[sel_cat_all]) * freq_scaling
+                         - np.sum(tc_cc.frequency[sel_cat_larger]))
+                        / np.sum(self.frequency[sel_cat_chg])
+                    )
+                    tc_cc.frequency[sel_cat_chg] *= freq_scaling_cor
+                cat_larger_list += cat_chg_list
+
+        if (tc_cc.frequency < 0).any():
+            raise ValueError("The application of the given climate scenario"
+                             "resulted in at least one negative frequenciy."
+                             "This is likely due to the use of a"
+                             "non-representative event set (too small, "
+                             "incorrect reference period, ...)")
+
+        return tc_cc
+
 
 def compute_windfields(track, centroids, model, metric="equirect"):
     """Compute 1-minute sustained winds (in m/s) at 10 meters above ground
@@ -621,7 +709,8 @@ def _vtrans(t_lat, t_lon, t_tstep, metric="equirect"):
     return v_trans_norm, v_trans
 
 def _bs_hol08(v_trans, penv, pcen, prepcen, lat, tint):
-    """Holland's 2008 b-value computation for sustained surface winds
+    """
+    Holland's 2008 b-value computation for sustained surface winds
 
     The parameter applies to 1-minute sustained winds at 10 meters above ground.
     It is taken from equation (11) in the following paper:
@@ -647,16 +736,24 @@ def _bs_hol08(v_trans, penv, pcen, prepcen, lat, tint):
     of the Coriolis term is 1 while wind speed is 50 (which changes away from the
     radius of maximum winds and as the TC moves away from the equator).
 
-    Parameters:
-        v_trans (float): translational wind (m/s)
-        penv (float): environmental pressure (hPa)
-        pcen (float): central pressure (hPa)
-        prepcen (float): previous central pressure (hPa)
-        lat (float): latitude (degrees)
-        tint (float): time step (h)
+    Parameters
+    ----------
+    v_trans : float
+        translational wind (m/s)
+    penv : float
+        environmental pressure (hPa)
+    pcen : float
+        central pressure (hPa)
+    prepcen : float
+        previous central pressure (hPa)
+    lat : float
+        latitude (degrees)
+    tint : float
+        time step (h)
 
-    Returns:
-        float
+    Returns
+    -------
+    b_s : float
     """
     hol_xx = 0.6 * (1. - (penv - pcen) / 215)
     hol_b = -4.4e-5 * (penv - pcen)**2 + 0.01 * (penv - pcen) + \
@@ -665,7 +762,8 @@ def _bs_hol08(v_trans, penv, pcen, prepcen, lat, tint):
     return np.clip(hol_b, 1, 2.5)
 
 def _stat_holland(d_centr, r_max, hol_b, penv, pcen, lat, close_centr):
-    """Holland symmetric and static wind field (in m/s)
+    """
+    Holland symmetric and static wind field (in m/s)
 
     This function applies the gradient wind model expressed in equation (4) (combined with
     equation (6)) from
