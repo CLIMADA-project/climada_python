@@ -31,7 +31,7 @@ from cartopy.io import shapereader
 
 from climada.entity.tag import Tag
 from climada.entity.exposures.base import Exposures, INDICATOR_IMPF
-from climada.entity.exposures import nightlight as nl_utils
+from climada.entity.exposures.litpop import nightlight as nl_utils
 from climada.util.constants import SYSTEM_DIR, DEF_CRS
 from climada.util.finance import gdp, income_group
 import climada.util.coordinates as u_coord

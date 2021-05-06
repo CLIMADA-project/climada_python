@@ -21,7 +21,9 @@ Unit Tests for LitPop class.
 
 import numpy as np
 import unittest
-from climada.entity.exposures import litpop_new as lp # TODO: replace litpop_new
+from rasterio.crs import CRS
+from rasterio import Affine
+from climada.entity.exposures.litpop import litpop as lp # TODO: replace litpop_new
 
 
 def data_arrays_demo(number_of_arrays=2):
@@ -44,9 +46,114 @@ def data_arrays_demo(number_of_arrays=2):
         #  [0, 1, 10, 100]]
     return data_arrays
 
+def data_arrays_resampling_demo():
+    data_arrays = list()
+    # demo pop:
+    data_arrays.append(np.array([[0,1,2], [3,4,5]], dtype='float32'))
+    data_arrays.append(np.array([[0,1,2], [3,4,5]], dtype='float32'))
+        # array([[0, 1, 2],
+        #       [3, 4, 5]])
+    # demo nightlight:
+    data_arrays.append(np.array([[2,10,0, 0, 0, 0], [10,2,10, 0, 0, 0],
+                                 [0,0,0, 0, 1, 1], [1,0,0, 0, 1, 1]],
+                       dtype='float32'))
+        # array([[ 2., 10.,  0.,  0.,  0.,  0.],
+        #        [10.,  2., 10.,  0.,  0.,  0.],
+        #        [ 0.,  0.,  0.,  0.,  1.,  1.],
+        #        [ 1.,  0.,  0.,  0.,  1.,  1.]], dtype=float32)]
+
+    meta_list = [{'driver': 'GTiff',
+                  'dtype': 'float32',
+                  'nodata': -3.4028230607370965e+38,
+                  'width': 3,
+                  'height': 2,
+                  'count': 1,
+                  'crs': CRS.from_epsg(4326),
+                  'transform': Affine(1, 0.0, -10,
+                         0.0, -1, 40),
+                  },
+                 {'driver': 'GTiff',
+                  'dtype': 'float32',
+                  'nodata': -3.4028230607370965e+38,
+                  'width': 3,
+                  'height': 2,
+                  'count': 1,
+                  'crs': CRS.from_epsg(4326),
+                  'transform': Affine(1, 0.0, -10,
+                         0.0, -1, 41), # shifted by 1 degree latitude to the north
+                  },
+                 {'driver': 'GTiff',
+                  'dtype': 'float32',
+                  'nodata': None,
+                  'width': 6,
+                  'height': 4,
+                  'count': 1,
+                  'crs': CRS.from_epsg(32662),
+                  'transform': Affine(.5, 0.0, -10,
+                         0.0, -.5, 40), # higher resolution
+                  }]
+    return data_arrays, meta_list
+
 
 class TestLitPop(unittest.TestCase):
     """Test LitPop Class methods and functions"""
+
+    def test_resample_input_data_downsample(self):
+        """test function resample_input_data downsampling lit to pop grid"""
+        data_in, meta_list = data_arrays_resampling_demo()
+        #
+        data_out, meta_out = lp.resample_input_data(data_in, meta_list,
+                        i_ref=0,
+                        target_res_arcsec=None,
+                        global_origins=None,
+                        target_crs=None,
+                        resampling=None)
+        # test reference data unchanged:
+        np.testing.assert_array_equal(data_in[0], data_out[0])
+        # test northward shift:
+        np.testing.assert_array_equal(data_in[1][1,:], data_out[1][0,:])
+        # test resampled nl data:
+        reference_array = np.array([[5.020408  , 2.267857  , 0.12244898],
+                                    [1.1224489 , 0.6785714 , 0.7346939 ]], dtype='float32')
+        np.testing.assert_array_almost_equal_nulp(reference_array, data_out[2])
+
+    def test_resample_input_data_upsample(self):
+        """test function resample_input_data with upsampling"""
+        data_in, meta_list = data_arrays_resampling_demo()
+        #
+        data_out, meta_out = lp.resample_input_data(data_in, meta_list,
+                        i_ref=2, # high res data as reference
+                        target_res_arcsec=None,
+                        global_origins=None,
+                        target_crs=None,
+                        resampling=None)
+        # test reference data unchanged:
+        np.testing.assert_array_equal(data_in[2], data_out[2])
+        # test northward shift:
+        np.testing.assert_array_equal(data_out[0][2,:], data_out[1][0,:])
+        np.testing.assert_array_equal(data_out[0][3,:], data_out[1][1,:])
+        # test resampled nl data:
+        reference_array = np.array([[0.  , 0.25, 0.75, 1.25, 1.75, 2.  ],
+                                    [0.75, 1.  , 1.5 , 2.  , 2.5 , 2.75],
+                                    [2.25, 2.5 , 3.  , 3.5 , 4.  , 4.25],
+                                    [3.  , 3.25, 3.75, 4.25, 4.75, 5.  ]], dtype='float32')
+        np.testing.assert_array_equal(reference_array, data_out[0])
+
+    def test_resample_input_data_odd_downsample(self):
+        """test function resample_input_data with odd downsampling"""
+        data_in, meta_list = data_arrays_resampling_demo()
+        #
+        data_out, meta_out = lp.resample_input_data(data_in, meta_list,
+                        i_ref=0, # high res data as reference
+                        target_res_arcsec=6120, # 1.7 degree
+                        global_origins=None,
+                        target_crs=None,
+                        resampling=None)
+        self.assertEqual(1.7, meta_out['transform'][0]) # check resolution
+        reference_array = np.array([[0.425    , 1.7631578],
+                                    [3.425    , 4.763158 ]], dtype='float32')
+        np.testing.assert_array_equal(reference_array, data_out[0])
+
 
     def test_gridpoints_core_calc_input_errors(self):
         """test for ValueErrors and TypeErrors due to wrong input to function
