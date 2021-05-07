@@ -23,6 +23,7 @@ import numpy as np
 import rasterio
 
 import climada.util.coordinates as u_coord
+from climada.util.finance import gdp, income_group, wealth2gdp, world_bank_wealth_account
 from climada.entity.exposures.litpop import nightlight as nl_util
 from climada.entity.exposures.litpop import gpw_population as pop_util
 from climada.entity.exposures.base import Exposures
@@ -44,20 +45,21 @@ class LitPop(Exposures):
 
     def set_countries(par):
         return par
-
+        # if fin_mode .... value_unit='USD' 'persons''
 
 
 
         
-    # Alias method names:
+    # Alias method names for backward compatibility:
     set_country = set_countries
 
 
 def _set_one_country(country, res_arcsec=30, res_km=None, 
-                exponents=(1,1), fin_mode=None, admin1_calc=False,
+                exponents=(1,1), fin_mode=None, total_value=None,
+                admin1_calc=False,
                 conserve_cntrytotal=True,
                 reference_year=2020, gpw_version=None, data_dir=None,
-                **kwargs):
+                resample_first=True):
     """init LitPop exposure object for one single country
 
     Parameters
@@ -91,7 +93,7 @@ def _set_one_country(country, res_arcsec=30, res_km=None,
     total_value : numeric (optional)
         Total value to be disaggregated to grid in country.
         The default is None. If None, the total number is extracted from other
-        sources depending on the value of fin_mode
+        sources depending on the value of fin_mode.
     admin1_calc : boolean, optional
         If True, distribute admin1-level GDP (if available). Default: False
     conserve_cntrytotal : boolean, optional
@@ -103,6 +105,11 @@ def _set_one_country(country, res_arcsec=30, res_km=None,
         The default is None. If None, the default is set in gpw_population module.
     data_dir : Path (optional)
         redefines path to input data directory. The default is SYSTEM_DIR.
+    resample_first : boolean
+        First resample nightlight (Lit) and population (Pop) data to target
+        resolution before combining them as Lit^m * Pop^n?
+        The default is True. Warning: Setting this to False affects the
+        disaggregation results.
 
     Raises
     ------
@@ -121,6 +128,11 @@ def _set_one_country(country, res_arcsec=30, res_km=None,
         LOGGER.info('Resolution is set to %i arcsec.', res_arcsec)
     if fin_mode is None:
         fin_mode = 'pc'
+    # set nightlight offset (delta) to 1 in case n>0, c.f. delta in Eq. 1:
+    if exponents[1] == 0:
+        offsets = (0, 0)
+    else:
+        offsets = (1, 0)
 
     # Determine ISO 3166 representation of country and get geometry:
     try:
@@ -147,12 +159,102 @@ def _set_one_country(country, res_arcsec=30, res_km=None,
                                              data_dir=data_dir,
                                              )
 
+    # set total value for disaggregation if not provided:
+    if total_value is None: # default, no total value provided...
+        total_value = get_total_value_country(iso3n, fin_mode, reference_year, pop.sum())
+
+    if resample_first:
+        target_res_arcsec = res_arcsec
+    else: # resolution of pop (degree to arcsec)
+        target_res_arcsec = np.abs(meta_pop['transform'][0]) * 3600
+    # resample input data to same grid:
+    [pop, nl], meta_new = resample_input_data([pop, nl],
+                                              [meta_pop, meta_nl],
+                                              i_ref=0, # pop defines grid
+                                              target_res_arcsec=target_res_arcsec,
+                                              global_origins=(global_transform[2], # lon
+                                                              global_transform[5]), # lat
+                                              )
+
+    
+    # calculate Lit^m * Pop^n and disaggregate total value to grid:
+    litpop_array = gridpoints_core_calc([nl, pop],
+                                        offsets=offsets,
+                                        exponents=exponents,
+                                        total_val_rescale=total_value)
+    if not resample_first: # if calculation before resampling, resampling here:
+        [litpop_array], meta_new = resample_input_data([litpop_array],
+                                                         [meta_new],
+                                                         target_res_arcsec=res_arcsec,
+                                                         global_origins=(global_transform[2], # lon
+                                                                         global_transform[5]), # lat
+                                                         )
+
+def get_total_value_country(cntry_iso3a, fin_mode, reference_year, total_population=None):
+    """
+    Get total value for disaggregation, e.g., total asset value or population
+    for a country.
+
+    Parameters
+    ----------
+    cntry_iso3a : str
+        country iso3 code alphabetic, e.g. 'JPN' for Japan
+    fin_mode : str
+        Socio-economic value to be used as an asset base that is disaggregated
+        to the grid points within the country
+        * 'pc': produced capital (Source: World Bank), incl. manufactured or
+                built assets such as machinery, equipment, and physical structures
+                (pc is in constant 2014 USD)
+        * 'pop': population count (source: GPW, same as gridded population)
+        * 'gdp': gross-domestic product (Source: World Bank)
+        * 'income_group': gdp multiplied by country's income group+1
+        * 'nfw': non-financial wealth (Source: Credit Suisse, of households only)
+        * 'tw': total wealth (Source: Credit Suisse, of households only)
+        * 'norm': normalized by country
+        * 'none' or None: LitPop per pixel is returned unscaled
+    reference_year : int
+        reference year for data extraction
+    total_population : number, optional
+        total population number, only required for fin_mode 'pop'.
+        The default is None.
+
+    Returns
+    -------
+    total_value : float
+    """
+    if fin_mode == 'none' or fin_mode is None:
+        return None
+    elif fin_mode == 'pop':
+        return total_population
+    elif fin_mode == 'pc':
+        return(world_bank_wealth_account(cntry_iso3a, reference_year, no_land=True)[1])
+        # here, total_asset_val is Produced Capital "pc"
+        # no_land=True returns value w/o the mark-up of 24% for land value
+    elif fin_mode == 'norm':
+        return 1
+    else: # GDP based total values:
+        gdp_value = gdp(cntry_iso3a, reference_year)[1]
+        if fin_mode == 'income_group': # gdp * (income group + 1)
+
+            return gdp_value * (income_group(cntry_iso3a, reference_year)[1] + 1)
+        elif fin_mode in ('nfw', 'tw'):
+
+            wealthtogdp_factor = wealth2gdp(cntry_iso3a, fin_mode == 'nfw', reference_year)[1]
+            if np.isnan(wealthtogdp_factor):
+                LOGGER.warning("Missing wealth-to-gdp factor for country %s.", cntry_iso3a)
+                LOGGER.warning("Using GDP instead as total value.")
+                return gdp_value
+            return gdp_value * wealthtogdp_factor
+        else:
+            raise ValueError(f"Unsupported fin_mode: {fin_mode}")
+
 def resample_input_data(data_array_list, meta_list,
                         i_ref=0,
                         target_res_arcsec=None,
                         global_origins=(-180.0, 89.99999999999991),
                         target_crs=None,
-                        resampling=None):
+                        resampling=None,
+                        conserve=None):
     """
     Resamples all arrays in data_arrays to a given resolution –
     all based on the population data grid.
@@ -194,13 +296,15 @@ def resample_input_data(data_array_list, meta_list,
         The default is crs of reference data (CRS.from_epsg(4326) for GPW pop)
     resampling : resampling function (optional)
         The default is rasterio.warp.Resampling.bilinear
+    conserve_mean : str (optional), either 'mean' or 'sum'
+        Conserve mean or sum of data? The default is None (no conservation).
 
     Returns
     -------
     data_array_list : list
         contains resampled data sets
     meta : dict
-        contains meta data of new grid
+        contains meta data of new grid (same for all arrays)
     """
     if resampling is None:
         resampling = rasterio.warp.Resampling.bilinear
@@ -272,6 +376,10 @@ def resample_input_data(data_array_list, meta_list,
                         dst_crs=target_crs,
                         resampling=resampling,
                         )
+        if conserve == 'mean':
+            destination = (destination / destination.mean()) * data_array_list[idx].mean()
+        elif conserve == 'sum':
+            destination = (destination / destination.sum()) * data_array_list[idx].sum()
         # overwrite data array with resampled data in destination:
         data_out_list.append(destination)
         meta = {'width': dst_shape[1],
@@ -303,7 +411,7 @@ def gridpoints_core_calc(data_arrays, offsets=None, exponents=None,
     total_val_rescale : float or int (optional)
         Total value for optional rescaling of resulting array. All values in result_array
         are skaled so that the sum is equal to total_val_rescale.
-        The default (None) implies no rescaling (None).
+        The default (None) implies no rescaling.
     offsets: list or array containing N numbers >= 0 (optional)
         One numerical offset per array that is added (sum) to the
         corresponding array in data_arrays.
