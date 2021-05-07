@@ -19,31 +19,32 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define impact functions for extratropical storms (mainly windstorms in Europe).
 """
 
-__all__ = ['IFStormEurope']
+__all__ = ['ImpfStormEurope', 'IFStormEurope']
 
 import logging
+from deprecation import deprecated
 import numpy as np
 
 from climada.entity.impact_funcs.base import ImpactFunc
-from climada.engine.calibration_opt import init_if
+from climada.engine.calibration_opt import init_impf
 
 
 LOGGER = logging.getLogger(__name__)
 
-class IFStormEurope(ImpactFunc):
+class ImpfStormEurope(ImpactFunc):
     """Impact functions for tropical cyclones."""
 
     def __init__(self):
         ImpactFunc.__init__(self)
         self.haz_type = 'WS'
 
-    def set_schwierz(self, if_id=1):
+    def set_schwierz(self, impf_id=1):
         """
         Using the impact functions of Schwierz et al. 2011.
         """
 
         self.name = 'Schwierz 2011'
-        self.id = if_id
+        self.id = impf_id
         self.intensity_unit = 'm/s'
         self.intensity = np.array([0, 20, 25, 30, 35, 40, 45, 50, 55, 60, 80, 100])
         self.paa = np.array([0., 0., 0.001, 0.00676,
@@ -54,26 +55,27 @@ class IFStormEurope(ImpactFunc):
                              0.02370487, 0.037253, 0.037253, 0.037253])
         self.check()
 
-    def set_welker(self, if_id=1):
+    def set_welker(self, Impf_id=1):
         """
         Using the impact functions of Welker et al. 2020 (in submission).
         It is the schwierz function, calibrated with a simple multiplicative
         factor to minimize RMSE between modelled damages and reported damages.
         """
 
-        temp_if = IFStormEurope()
-        temp_if.set_schwierz()
+        temp_Impf = ImpfStormEurope()
+        temp_Impf.set_schwierz()
         scaling_factor = {'paa_scale': 1.332518, 'mdd_scale': 1.332518}
-        temp_if = init_if(temp_if, scaling_factor)[0]
+        temp_Impf = init_impf(temp_Impf, scaling_factor)[0]
         self.name = 'Welker 2020'
-        self.id = if_id
+        self.id = Impf_id
         self.intensity_unit = 'm/s'
-        self.intensity = temp_if.intensity
-        self.paa = temp_if.paa
-        self.mdd = temp_if.mdd
+        self.intensity = temp_Impf.intensity
+        self.paa = temp_Impf.paa
+        self.mdd = temp_Impf.mdd
         self.check()
 
 
-
-
-
+@deprecated(details="The class name IFStormEurope is deprecated and won't be supported in a future "
+                   +"version. Use ImpfStormEurope instead")
+class IFStormEurope(ImpfStormEurope):
+    """Is ImpfStormEurope now"""

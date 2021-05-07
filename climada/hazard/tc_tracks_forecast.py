@@ -173,8 +173,7 @@ class TCForecast(TCTracks):
 
         except ftplib.all_errors as err:
             con.quit()
-            LOGGER.error('Error while downloading BUFR TC tracks.')
-            raise err
+            raise type(err)('Error while downloading BUFR TC tracks: ' + str(err)) from err
 
         _ = con.quit()
 
@@ -354,7 +353,7 @@ class TCForecast(TCTracks):
         ]
 
         if len(delayed_replicators) != 1:
-            LOGGER.error('Could not find fcast_rep, please set manually.')
-            raise ValueError('More than one delayed replicator in BUFR file')
+            raise ValueError('Could not find fcast_rep, please set manually. '
+                             'More than one delayed replicator in BUFR file')
 
         return str(delayed_replicators[0])

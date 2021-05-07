@@ -31,7 +31,7 @@ import climada.hazard.tc_tracks as tc
 from climada import CONFIG
 from climada.util import ureg
 from climada.util.constants import TC_ANDREW_FL
-from climada.util.coordinates import coord_on_land, dist_to_coast
+import climada.util.coordinates as u_coord
 from climada.entity import Exposures
 
 DATA_DIR = CONFIG.hazard.test_data.dir()
@@ -659,15 +659,16 @@ class TestFuncs(unittest.TestCase):
         tc_track = tc.TCTracks()
         tc_track.read_processed_ibtracs_csv(TC_ANDREW_FL)
         track = tc_track.get_track()
-        track['on_land'] = ('time', coord_on_land(track.lat.values, track.lon.values))
+        track['on_land'] = ('time', u_coord.coord_on_land(track.lat.values, track.lon.values))
         track['dist_since_lf'] = ('time', tc._dist_since_lf(track))
 
         msk = ~track.on_land
         self.assertTrue(np.all(np.isnan(track.dist_since_lf.values[msk])))
         self.assertEqual(track.dist_since_lf.values[msk].size, 38)
 
-        self.assertGreater(track.dist_since_lf.values[-1],
-                           dist_to_coast(track.lat.values[-1], track.lon.values[-1]) / 1000)
+        self.assertGreater(
+            track.dist_since_lf.values[-1],
+            u_coord.dist_to_coast(track.lat.values[-1], track.lon.values[-1]) / 1000)
         self.assertEqual(1020.5431562223974, track['dist_since_lf'].values[-1])
 
         # check distances on land always increase, in second landfall

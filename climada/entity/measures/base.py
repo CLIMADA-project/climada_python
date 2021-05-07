@@ -28,12 +28,12 @@ import numpy as np
 import pandas as pd
 from geopandas import GeoDataFrame
 
-from climada.entity.exposures.base import Exposures, INDICATOR_IF, INDICATOR_CENTR
+from climada.entity.exposures.base import Exposures, INDICATOR_IMPF, INDICATOR_CENTR
 import climada.util.checker as u_check
 
 LOGGER = logging.getLogger(__name__)
 
-IF_ID_FACT = 1000
+IMPF_ID_FACT = 1000
 """Factor internally used as id for impact functions when region selected."""
 
 NULL_STR = 'nil'
@@ -101,10 +101,7 @@ class Measure():
         Raises:
             ValueError
         """
-        try:
-            u_check.size(3, self.color_rgb, 'Measure.color_rgb')
-        except ValueError:
-            u_check.size(4, self.color_rgb, 'Measure.color_rgb')
+        u_check.size([3, 4], self.color_rgb, 'Measure.color_rgb')
         u_check.size(2, self.hazard_inten_imp, 'Measure.hazard_inten_imp')
         u_check.size(2, self.mdd_impact, 'Measure.mdd_impact')
         u_check.size(2, self.paa_impact, 'Measure.paa_impact')
@@ -121,8 +118,8 @@ class Measure():
         Returns:
             Impact (resulting impact), Impact (insurance layer)
         """
-        new_exp, new_ifs, new_haz = self.apply(exposures, imp_fun_set, hazard)
-        return self._calc_impact(new_exp, new_ifs, new_haz)
+        new_exp, new_impfs, new_haz = self.apply(exposures, imp_fun_set, hazard)
+        return self._calc_impact(new_exp, new_impfs, new_haz)
 
     def apply(self, exposures, imp_fun_set, hazard):
         """Implement measure with all its defined parameters.
@@ -139,23 +136,23 @@ class Measure():
         new_haz = self._change_all_hazard(hazard)
         # change exposures
         new_exp = self._change_all_exposures(exposures)
-        new_exp = self._change_exposures_if(new_exp)
+        new_exp = self._change_exposures_impf(new_exp)
         # change impact functions
-        new_ifs = self._change_imp_func(imp_fun_set)
-        # cutoff events whose damage happen with high frequency (in region if specified)
-        new_haz = self._cutoff_hazard_damage(new_exp, new_ifs, new_haz)
+        new_impfs = self._change_imp_func(imp_fun_set)
+        # cutoff events whose damage happen with high frequency (in region impf specified)
+        new_haz = self._cutoff_hazard_damage(new_exp, new_impfs, new_haz)
         # apply all previous changes only to the selected exposures
-        new_exp, new_ifs, new_haz = self._filter_exposures(
-            exposures, imp_fun_set, hazard, new_exp, new_ifs, new_haz)
+        new_exp, new_impfs, new_haz = self._filter_exposures(
+            exposures, imp_fun_set, hazard, new_exp, new_impfs, new_haz)
 
-        return new_exp, new_ifs, new_haz
+        return new_exp, new_impfs, new_haz
 
-    def _calc_impact(self, new_exp, new_ifs, new_haz):
+    def _calc_impact(self, new_exp, new_impfs, new_haz):
         """Compute impact and risk transfer of measure implemented over inputs.
 
         Parameters:
             new_exp (Exposures): exposures once measure applied
-            new_ifs (ImpactFuncSet): impact functions once measure applied
+            new_impfs (ImpactFuncSet): impact functions once measure applied
             new_haz (Hazard): hazard once measure applied
 
         Returns:
@@ -163,7 +160,7 @@ class Measure():
         """
         from climada.engine.impact import Impact
         imp = Impact()
-        imp.calc(new_exp, new_ifs, new_haz)
+        imp.calc(new_exp, new_impfs, new_haz)
         return imp.calc_risk_transfer(self.risk_transf_attach, self.risk_transf_cover)
 
     def _change_all_hazard(self, hazard):
@@ -207,7 +204,6 @@ class Measure():
             new_exp = self.exposures_set.copy(deep=True)
             new_exp.check()
         else:
-            LOGGER.error('Wrong input exposures.')
             raise ValueError(f'{self.exposures_set} is neither a string nor an Exposures object')
 
         if not np.array_equal(np.unique(exposures.gdf.latitude.values),
@@ -218,7 +214,7 @@ class Measure():
 
         return new_exp
 
-    def _change_exposures_if(self, exposures):
+    def _change_exposures_impf(self, exposures):
         """Change exposures impact functions ids according to imp_fun_map.
 
         Parameters:
@@ -232,13 +228,13 @@ class Measure():
         from_id = int(self.imp_fun_map[0:self.imp_fun_map.find('to')])
         to_id = int(self.imp_fun_map[self.imp_fun_map.find('to') + 2:])
         try:
-            exp_change = np.argwhere(new_exp.gdf[INDICATOR_IF + self.haz_type].values == from_id).\
+            exp_change = np.argwhere(new_exp.gdf[INDICATOR_IMPF + self.haz_type].values == from_id).\
                 reshape(-1)
-            new_exp.gdf[INDICATOR_IF + self.haz_type].values[exp_change] = to_id
+            new_exp.gdf[INDICATOR_IMPF + self.haz_type].values[exp_change] = to_id
         except KeyError:
-            exp_change = np.argwhere(new_exp.gdf[INDICATOR_IF].values == from_id).\
+            exp_change = np.argwhere(new_exp.gdf[INDICATOR_IMPF].values == from_id).\
                 reshape(-1)
-            new_exp.gdf[INDICATOR_IF].values[exp_change] = to_id
+            new_exp.gdf[INDICATOR_IMPF].values[exp_change] = to_id
         return new_exp
 
     def _change_imp_func(self, imp_set):
@@ -269,7 +265,7 @@ class Measure():
 
         return new_imp_set
 
-    def _cutoff_hazard_damage(self, exposures, if_set, hazard):
+    def _cutoff_hazard_damage(self, exposures, impf_set, hazard):
         """Cutoff of hazard events which generate damage with a frequency higher
         than hazard_freq_cutoff.
 
@@ -295,7 +291,7 @@ class Measure():
 
         from climada.engine.impact import Impact
         imp = Impact()
-        imp.calc(exp_imp, if_set, hazard)
+        imp.calc(exp_imp, impf_set, hazard)
 
         LOGGER.debug('Cutting events whose damage have a frequency > %s.',
                      self.hazard_freq_cutoff)
@@ -310,7 +306,7 @@ class Measure():
         new_haz.intensity.eliminate_zeros()
         return new_haz
 
-    def _filter_exposures(self, exposures, imp_set, hazard, new_exp, new_ifs,
+    def _filter_exposures(self, exposures, imp_set, hazard, new_exp, new_impfs,
                           new_haz):
         """Incorporate changes of new elements to previous ones only for the
         selected exp_region_id. If exp_region_id is [], all new changes
@@ -321,31 +317,31 @@ class Measure():
             imp_set (ImpactFuncSet): old impact functions instance
             hazard (Hazard): old hazard instance
             new_exp (Exposures): new exposures instance
-            new_ifs (ImpactFuncSet): new impact functions instance
+            new_impfs (ImpactFuncSet): new impact functions instance
             new_haz (Hazard): new hazard instance
 
         Returns:
             Exposures, ImpactFuncSet, Hazard
         """
         if not self.exp_region_id:
-            return new_exp, new_ifs, new_haz
+            return new_exp, new_impfs, new_haz
 
         if exposures is new_exp:
             new_exp = exposures.copy(deep=True)
 
-        if imp_set is not new_ifs:
+        if imp_set is not new_impfs:
             # provide new impact functions ids to changed impact functions
-            fun_ids = list(new_ifs.get_func()[self.haz_type].keys())
+            fun_ids = list(new_impfs.get_func()[self.haz_type].keys())
             for key in fun_ids:
-                new_ifs.get_func()[self.haz_type][key].id = key + IF_ID_FACT
-                new_ifs.get_func()[self.haz_type][key + IF_ID_FACT] = \
-                    new_ifs.get_func()[self.haz_type][key]
+                new_impfs.get_func()[self.haz_type][key].id = key + IMPF_ID_FACT
+                new_impfs.get_func()[self.haz_type][key + IMPF_ID_FACT] = \
+                    new_impfs.get_func()[self.haz_type][key]
             try:
-                new_exp.gdf[INDICATOR_IF + self.haz_type] += IF_ID_FACT
+                new_exp.gdf[INDICATOR_IMPF + self.haz_type] += IMPF_ID_FACT
             except KeyError:
-                new_exp.gdf[INDICATOR_IF] += IF_ID_FACT
+                new_exp.gdf[INDICATOR_IMPF] += IMPF_ID_FACT
             # collect old impact functions as well (used by exposures)
-            new_ifs.get_func()[self.haz_type].update(imp_set.get_func()[self.haz_type])
+            new_impfs.get_func()[self.haz_type].update(imp_set.get_func()[self.haz_type])
 
         # get the indices for changing and inert regions
         chg_reg = exposures.gdf.region_id.isin(self.exp_region_id)
@@ -385,4 +381,4 @@ class Measure():
             new_haz_inten[:, centr] = hazard.intensity[:, centr]
             new_haz.intensity = new_haz_inten.tocsr()
 
-        return new_exp, new_ifs, new_haz
+        return new_exp, new_impfs, new_haz

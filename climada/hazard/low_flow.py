@@ -40,7 +40,7 @@ from scipy import sparse
 from climada.hazard.base import Hazard
 from climada.hazard.tag import Tag as TagHazard
 from climada.hazard.centroids import Centroids
-from climada.util.coordinates import get_resolution
+import climada.util.coordinates as u_coord
 
 LOGGER = logging.getLogger(__name__)
 
@@ -473,7 +473,7 @@ class LowFlow(Hazard):
             res_centr = abs(centroids.meta['transform'][4]), \
                         centroids.meta['transform'][0]
         else:
-            res_centr = np.abs(get_resolution(centroids.lat, centroids.lon))
+            res_centr = np.abs(u_coord.get_resolution(centroids.lat, centroids.lon))
         if np.abs(res_centr[0] - res_centr[1]) > 1.0e-6:
             LOGGER.warning('Centroids do not represent regular pixels %s.', str(res_centr))
             return (res_centr[0] + res_centr[1]) / 2
@@ -686,7 +686,7 @@ def _read_and_combine_nc(yearrange, input_dir, gh_model, cl_model, scenario,
         filepath = Path(input_dir,
             f'{gh_model}_{cl_model}_{bias_corr}_{scenario}_{soc}_{fn_str_var}_{yearchunk}.nc')
         if not filepath.is_file():
-            LOGGER.error('Netcdf file not found: %s', filepath)
+            raise FileNotFoundError(f'Netcdf file not found: {filepath}')
         if first_file:
             dis_xarray = _read_single_nc(filepath, yearrange, bbox)
             first_file = False

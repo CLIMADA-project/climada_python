@@ -24,12 +24,12 @@ from datetime import datetime
 from pathlib import Path
 import pandas as pd
 import numpy as np
-from iso3166 import countries as iso_cntry
 from cartopy.io import shapereader
 import shapefile
 
 from climada.util.finance import gdp
 from climada.util.constants import DEF_CRS
+import climada.util.coordinates as u_coord
 from climada.engine import Impact
 from climada.entity.tag import Tag
 from climada.hazard.tag import Tag as TagHaz
@@ -258,7 +258,7 @@ def hit_country_per_hazard(intensity_path, names_path, reg_id_path, date_path):
             # loop over hit_country
             for hit in range(0, len(all_hits[track])):
                 # Hit country ISO
-                ctry_iso = iso_cntry.get(all_hits[track][hit]).alpha3
+                ctry_iso = u_coord.country_to_iso(all_hits[track][hit], "alpha3")
                 # create entry for each country a hazard has hit
                 hit_countries = hit_countries.append({'hit_country': ctry_iso,
                                                       'Date_start': date[track],
@@ -471,8 +471,7 @@ def clean_emdat_df(emdat_file, countries=None, hazard=None, year_range=None,
     elif isinstance(emdat_file, pd.DataFrame):
         df_emdat = emdat_file
     else:
-        LOGGER.error('TypeError: emdat_file needs to be str or DataFrame')
-        return None
+        raise TypeError('emdat_file needs to be str or DataFrame')
     # drop rows with 9 or more NaN values (e.g. footer):
     df_emdat = df_emdat.dropna(thresh=9)
 
@@ -541,7 +540,7 @@ def clean_emdat_df(emdat_file, countries=None, hazard=None, year_range=None,
     if countries and isinstance(countries, list):
         for idx, country in enumerate(countries):
             # convert countries to iso3 alpha code:
-            countries[idx] = iso_cntry.get(country).alpha3
+            countries[idx] = u_coord.country_to_iso(country, "alpha3")
         df_data = df_data[df_data['ISO'].isin(countries)].reset_index(drop=True)
     # (3.2) Year range:
     if year_range:
@@ -602,8 +601,8 @@ def emdat_countries_by_hazard(emdat_file_csv, hazard=None, year_range=None):
     countries_names = list()
     for iso3a in countries_iso3a:
         try:
-            countries_names.append(iso_cntry.get(iso3a).name)
-        except KeyError:
+            countries_names.append(u_coord.country_to_iso(iso3a, "name"))
+        except LookupError:
             countries_names.append('NA')
     return countries_iso3a, countries_names
 
@@ -648,8 +647,7 @@ def scale_impact2refyear(impact_values, year_values, iso3a_values, reference_yea
         return list(impact_values)
     if not reference_year:
         return impact_values
-    LOGGER.error('Invalid reference_year')
-    return None
+    raise ValueError('Invalid reference_year')
 
 def emdat_impact_yearlysum(emdat_file_csv, countries=None, hazard=None, year_range=None,
                            reference_year=None, imp_str="Total Damages ('000 US$)",
@@ -693,7 +691,7 @@ def emdat_impact_yearlysum(emdat_file_csv, countries=None, hazard=None, year_ran
     out = pd.DataFrame(columns=['ISO', 'region_id', 'year', 'impact',
                                 'impact_scaled', 'reference_year'])
     for country in df_data.ISO.unique():
-        country = iso_cntry.get(country).alpha3
+        country = u_coord.country_to_iso(country, "alpha3")
         if not df_data.loc[df_data.ISO == country].size:
             continue
         all_years = np.arange(min(df_data.Year), max(df_data.Year) + 1)
@@ -704,7 +702,7 @@ def emdat_impact_yearlysum(emdat_file_csv, countries=None, hazard=None, year_ran
             data_out.loc[cnt, 'year'] = year
             data_out.loc[cnt, 'reference_year'] = reference_year
             data_out.loc[cnt, 'ISO'] = country
-            data_out.loc[cnt, 'region_id'] = int(iso_cntry.get(country).numeric)
+            data_out.loc[cnt, 'region_id'] = u_coord.country_to_iso(country, "numeric")
             data_out.loc[cnt, 'impact'] = \
                 np.nansum(df_country[df_country.Year.isin([year])][imp_str])
             data_out.loc[cnt, 'impact_scaled'] = \
@@ -763,8 +761,8 @@ def emdat_impact_event(emdat_file_csv, countries=None, hazard=None, year_range=N
     for country in df_data.ISO.unique():
         try:
             df_data.loc[df_data.ISO == country, 'region_id'] = \
-                int(iso_cntry.get(country).numeric)
-        except KeyError:
+                u_coord.country_to_iso(country, "numeric")
+        except LookupError:
             LOGGER.warning('ISO3alpha code not found in iso_country: %s', country)
     if '000 US' in imp_str:
         df_data['impact'] *= 1e3
@@ -832,7 +830,7 @@ def emdat_to_impact(emdat_file_csv, hazard_type_climada, year_range=None, countr
                                         description='EM-DAT impact, direct import')
     impact_instance.tag['exp'] = Tag(file_name=emdat_file_csv,
                                      description='EM-DAT impact, direct import')
-    impact_instance.tag['if_set'] = Tag(file_name=None, description=None)
+    impact_instance.tag['impf_set'] = Tag(file_name=None, description=None)
 
 
     # Load EM-DAT impact data by event:
@@ -897,10 +895,9 @@ def emdat_to_impact(emdat_file_csv, hazard_type_climada, year_range=None, countr
     impact_instance.eai_exp = np.zeros(len(countries))  # empty: damage at exposure
     for idx, cntry in enumerate(countries):
         try:
-            cntry = iso_cntry.get(cntry).alpha3
-        except KeyError:
-            print(cntry)
-            LOGGER.error('Country not found in iso_country: %s', cntry)
+            cntry = u_coord.country_to_iso(cntry, "alpha3")
+        except LookupError:
+            LOGGER.warning('Country not found in iso_country: %s', cntry)
         cntry_boolean = False
         for rec_i, rec in enumerate(shp.records()):
             if rec[9].casefold() == cntry.casefold():
@@ -914,8 +911,8 @@ def emdat_to_impact(emdat_file_csv, hazard_type_climada, year_range=None, countr
             countries_lat.append(np.nan)
             countries_lon.append(np.nan)
         try:
-            countries_reg_id.append(int(iso_cntry.get(cntry).numeric))
-        except KeyError:
+            countries_reg_id.append(u_coord.country_to_iso(cntry, "numeric"))
+        except LookupError:
             countries_reg_id.append(0)
         df_tmp = em_data[em_data[VARNAMES_EMDAT[
             max(VARNAMES_EMDAT.keys())]['ISO']].str.contains(cntry)]

@@ -32,7 +32,7 @@ from shapely.geometry.polygon import Polygon
 from climada import CONFIG
 from climada.hazard.centroids.centr import Centroids
 from climada.util.constants import HAZ_DEMO_FL, DEF_CRS
-from climada.util.coordinates import NE_EPSG, equal_crs
+import climada.util.coordinates as u_coord
 
 DATA_DIR = CONFIG.hazard.test_data.dir()
 
@@ -631,9 +631,9 @@ class TestReader(unittest.TestCase):
         centr = Centroids()
         inten = centr.set_vector_file(shp_file, ['pop_min', 'pop_max'])
 
-        self.assertEqual(CRS.from_user_input(centr.geometry.crs), CRS.from_epsg(NE_EPSG))
+        self.assertEqual(CRS.from_user_input(centr.geometry.crs), CRS.from_epsg(u_coord.NE_EPSG))
         self.assertEqual(centr.geometry.size, centr.lat.size)
-        self.assertEqual(CRS.from_user_input(centr.geometry.crs), CRS.from_epsg(NE_EPSG))
+        self.assertEqual(CRS.from_user_input(centr.geometry.crs), CRS.from_epsg(u_coord.NE_EPSG))
         self.assertAlmostEqual(centr.lon[0], 12.453386544971766)
         self.assertAlmostEqual(centr.lon[-1], 114.18306345846304)
         self.assertAlmostEqual(centr.lat[0], 41.903282179960115)
@@ -693,7 +693,7 @@ class TestReader(unittest.TestCase):
         self.assertAlmostEqual(centr_read.meta['transform'].d, centr.meta['transform'].d)
         self.assertAlmostEqual(centr_read.meta['transform'].e, centr.meta['transform'].e)
         self.assertAlmostEqual(centr_read.meta['transform'].f, centr.meta['transform'].f)
-        self.assertTrue(equal_crs(centr_read.meta['crs'], centr.meta['crs']))
+        self.assertTrue(u_coord.equal_crs(centr_read.meta['crs'], centr.meta['crs']))
 
     def test_write_read_points_h5(self):
         file_name = str(DATA_DIR.joinpath('test_centr.h5'))
@@ -710,7 +710,7 @@ class TestReader(unittest.TestCase):
         self.assertTrue(centr_read.lon.size)
         self.assertTrue(np.allclose(centr_read.lat, centr.lat))
         self.assertTrue(np.allclose(centr_read.lon, centr.lon))
-        self.assertTrue(equal_crs(centr_read.crs, centr.crs))
+        self.assertTrue(u_coord.equal_crs(centr_read.crs, centr.crs))
 
 class TestCentroidsFuncs(unittest.TestCase):
     """Test Centroids methods"""

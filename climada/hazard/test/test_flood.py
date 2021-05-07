@@ -32,7 +32,7 @@ class TestRiverFlood(unittest.TestCase):
     def test_wrong_iso3_fail(self):
 
         emptyFlood = RiverFlood()
-        with self.assertRaises(KeyError):
+        with self.assertRaises(LookupError):
             RiverFlood._select_exact_area(['OYY'])
         with self.assertRaises(AttributeError):
             emptyFlood.set_from_nc(years=[2600], dph_path=HAZ_DEMO_FLDDPH,

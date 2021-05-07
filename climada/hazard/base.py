@@ -224,9 +224,8 @@ class Hazard():
         if not band:
             band = [1]
         if files_fraction is not None and len(files_intensity) != len(files_fraction):
-            LOGGER.error('Number of intensity files differs from fraction files: %s != %s',
-                         len(files_intensity), len(files_fraction))
-            raise ValueError
+            raise ValueError('Number of intensity files differs from fraction files: %s != %s'
+                             % (len(files_intensity), len(files_fraction)))
         self.tag.file_name = str(files_intensity) + ' ; ' + str(files_fraction)
 
         self.centroids = Centroids()
@@ -319,9 +318,8 @@ class Hazard():
         if not frac_name:
             inten_name = ['fraction']
         if files_fraction is not None and len(files_intensity) != len(files_fraction):
-            LOGGER.error('Number of intensity files differs from fraction files: %s != %s',
-                         len(files_intensity), len(files_fraction))
-            raise ValueError
+            raise ValueError('Number of intensity files differs from fraction files: %s != %s'
+                             % (len(files_intensity), len(files_fraction)))
         self.tag.file_name = str(files_intensity) + ' ; ' + str(files_fraction)
 
         self.centroids = Centroids()
@@ -374,13 +372,11 @@ class Hazard():
                 function used for reprojection to dst_crs for fraction
         """
         if not self.centroids.meta:
-            LOGGER.error('Raster not set')
-            raise ValueError
+            raise ValueError('Raster not set')
         if not dst_crs:
             dst_crs = self.centroids.meta['crs']
         if transform and not width or transform and not height:
-            LOGGER.error('Provide width and height to given transformation.')
-            raise ValueError
+            raise ValueError('Provide width and height to given transformation.')
         if not transform:
             transform, width, height = calculate_default_transform(
                 self.centroids.meta['crs'], dst_crs, self.centroids.meta['width'],
@@ -495,8 +491,7 @@ class Hazard():
             self.centroids.read_mat(file_name, var_names=var_names['var_cent'])
             self._read_att_mat(data, file_name, var_names)
         except KeyError as var_err:
-            LOGGER.error("Not existing variable: %s", str(var_err))
-            raise var_err
+            raise KeyError("Variable not in MAT file: " + str(var_err)) from var_err
 
     def read_excel(self, file_name, description='', var_names=None):
         """Read climada hazard generate with the MATLAB code.
@@ -524,8 +519,7 @@ class Hazard():
             self.centroids.read_excel(file_name, var_names=var_names['col_centroids'])
             self._read_att_excel(file_name, var_names)
         except KeyError as var_err:
-            LOGGER.error("Not existing variable: %s", str(var_err))
-            raise var_err
+            raise KeyError("Variable not in Excel file: " + str(var_err)) from var_err
 
     def select(self, event_names=None, date=None, orig=None, reg_id=None, reset_frequency=False):
         """Select events matching provided criteria
@@ -643,9 +637,8 @@ class Hazard():
         inten_stats = np.zeros((len(return_periods), num_cen))
         cen_step = CONFIG.max_matrix_size.int() // self.intensity.shape[0]
         if not cen_step:
-            LOGGER.error('Increase max_matrix_size configuration parameter to'
-                         ' > %s', str(self.intensity.shape[0]))
-            raise ValueError
+            raise ValueError('Increase max_matrix_size configuration parameter to > %s'
+                             % str(self.intensity.shape[0]))
         # separte in chunks
         chk = -1
         for chk in range(int(num_cen / cen_step)):
@@ -721,18 +714,18 @@ class Hazard():
         """
         self._set_coords_centroids()
         col_label = 'Intensity (%s)' % self.units
+        crs_epsg, _ = u_plot.get_transformation(self.centroids.geometry.crs)
         if event is not None:
             if isinstance(event, str):
                 event = self.get_event_id(event)
             return self._event_plot(event, self.intensity, col_label,
-                                    smooth, axis, **kwargs)
+                                    smooth, crs_epsg, axis, **kwargs)
         if centr is not None:
             if isinstance(centr, tuple):
                 _, _, centr = self.centroids.get_closest_point(centr[0], centr[1])
             return self._centr_plot(centr, self.intensity, col_label, axis, **kwargs)
 
-        LOGGER.error("Provide one event id or one centroid id.")
-        raise ValueError
+        raise ValueError("Provide one event id or one centroid id.")
 
     def plot_fraction(self, event=None, centr=None, smooth=True, axis=None,
                       **kwargs):
@@ -773,8 +766,7 @@ class Hazard():
                 _, _, centr = self.centroids.get_closest_point(centr[0], centr[1])
             return self._centr_plot(centr, self.fraction, col_label, axis, **kwargs)
 
-        LOGGER.error("Provide one event id or one centroid id.")
-        raise ValueError
+        raise ValueError("Provide one event id or one centroid id.")
 
     def sanitize_event_ids(self):
         """Make sure that event ids are unique"""
@@ -795,8 +787,7 @@ class Hazard():
         list_id = self.event_id[[i_name for i_name, val_name in enumerate(self.event_name)
                                  if val_name == event_name]]
         if list_id.size == 0:
-            LOGGER.error("No event with name: %s", event_name)
-            raise ValueError
+            raise ValueError("No event with name: %s" % event_name)
         return list_id
 
     def get_event_name(self, event_id):
@@ -814,9 +805,8 @@ class Hazard():
         try:
             return self.event_name[np.argwhere(
                 self.event_id == event_id)[0][0]]
-        except IndexError:
-            LOGGER.error("No event with id: %s", event_id)
-            raise ValueError
+        except IndexError as err:
+            raise ValueError(f"No event with id: {event_id}") from err
 
     def get_event_date(self, event=None):
         """Return list of date strings for given event or for all events,
@@ -878,9 +868,8 @@ class Hazard():
         elif hazard.units == '':
             LOGGER.info("Appended hazard does not have units.")
         elif self.units != hazard.units:
-            LOGGER.error("Hazards with different units can't be appended: "
-                         "%s != %s.", self.units, hazard.units)
-            raise ValueError
+            raise ValueError("Hazards with different units can't be appended: "
+                             f"{self.units} != {hazard.units}.")
 
         centroids_equal = self.centroids.equal(hazard.centroids)
         if not centroids_equal:
@@ -1096,7 +1085,7 @@ class Hazard():
             ev_set.add((ev_name, ev_date))
         return ev_set
 
-    def _event_plot(self, event_id, mat_var, col_name, smooth, axis=None,
+    def _event_plot(self, event_id, mat_var, col_name, smooth, crs_espg, axis=None,
                     figsize=(9, 13), **kwargs):
         """Plot an event of the input matrix.
 
@@ -1123,9 +1112,8 @@ class Hazard():
             if ev_id > 0:
                 try:
                     event_pos = np.where(self.event_id == ev_id)[0][0]
-                except IndexError:
-                    LOGGER.error('Wrong event id: %s.', ev_id)
-                    raise ValueError from IndexError
+                except IndexError as err:
+                    raise ValueError(f'Wrong event id: {ev_id}.') from err
                 im_val = mat_var[event_pos, :].toarray().transpose()
                 title = 'Event ID %s: %s' % (str(self.event_id[event_pos]),
                                              self.event_name[event_pos])
@@ -1146,7 +1134,7 @@ class Hazard():
 
         return u_plot.geo_im_from_array(array_val, self.centroids.coord, col_name,
                                         l_title, smooth=smooth, axes=axis,
-                                        figsize=figsize, **kwargs)
+                                        figsize=figsize, proj=crs_espg, **kwargs)
 
     def _centr_plot(self, centr_idx, mat_var, col_name, axis=None, **kwargs):
         """Plot a centroid of the input matrix.
@@ -1170,9 +1158,8 @@ class Hazard():
         if centr_idx > 0:
             try:
                 centr_pos = centr_idx
-            except IndexError:
-                LOGGER.error('Wrong centroid id: %s.', centr_idx)
-                raise ValueError from IndexError
+            except IndexError as err:
+                raise ValueError(f'Wrong centroid id: {centr_idx}.') from err
             array_val = mat_var[:, centr_pos].toarray()
             title = 'Centroid %s: (%s, %s)' % (str(centr_idx),
                                                coord[centr_pos, 0],
@@ -1237,8 +1224,7 @@ class Hazard():
         num_ev = len(self.event_id)
         num_cen = self.centroids.size
         if np.unique(self.event_id).size != num_ev:
-            LOGGER.error("There are events with the same identifier.")
-            raise ValueError
+            raise ValueError("There are events with the same identifier.")
 
         u_check.check_oligatories(self.__dict__, self.vars_oblig, 'Hazard.',
                                 num_ev, num_ev, num_cen)
@@ -1251,8 +1237,7 @@ class Hazard():
         self.orig = u_check.array_default(num_ev, self.orig, 'Hazard.orig',
                                         np.zeros(self.event_id.shape, dtype=bool))
         if len(self._events_set()) != num_ev:
-            LOGGER.error("There are events with same date and name.")
-            raise ValueError
+            raise ValueError("There are events with same date and name.")
 
     @staticmethod
     def _cen_return_inten(inten, freq, inten_th, return_periods):
@@ -1302,14 +1287,12 @@ class Hazard():
             self.intensity = u_hdf5.get_sparse_csr_mat(
                 data[var_names['var_name']['inten']], (n_event, n_cen))
         except ValueError as err:
-            LOGGER.error('Size missmatch in intensity matrix.')
-            raise err
+            raise ValueError('Size missmatch in intensity matrix.') from err
         try:
             self.fraction = u_hdf5.get_sparse_csr_mat(
                 data[var_names['var_name']['frac']], (n_event, n_cen))
         except ValueError as err:
-            LOGGER.error('Size missmatch in fraction matrix.')
-            raise err
+            raise ValueError('Size missmatch in fraction matrix.') from err
         except KeyError:
             self.fraction = sparse.csr_matrix(np.ones(self.intensity.shape,
                                                       dtype=np.float))
@@ -1352,16 +1335,14 @@ class Hazard():
         # number of events (ignore centroid_ID column)
         # check the number of events is the same as the one in the frequency
         if dfr.shape[1] - 1 is not num_events:
-            LOGGER.error('Hazard intensity is given for a number of events '
-                         'different from the number of defined in its frequency: '
-                         '%s != %s', dfr.shape[1] - 1, num_events)
-            raise ValueError
+            raise ValueError('Hazard intensity is given for a number of events '
+                             'different from the number of defined in its frequency: '
+                             f'{dfr.shape[1] - 1} != {num_events}')
         # check number of centroids is the same as retrieved before
         if dfr.shape[0] is not self.centroids.size:
-            LOGGER.error('Hazard intensity is given for a number of centroids '
-                         'different from the number of centroids defined: %s != %s',
-                         dfr.shape[0], self.centroids.size)
-            raise ValueError
+            raise ValueError('Hazard intensity is given for a number of centroids '
+                             'different from the number of centroids defined: '
+                             f'{dfr.shape[0]} != {self.centroids.size}')
 
         self.intensity = sparse.csr_matrix(dfr.values[:, 1:num_events + 1].transpose())
         self.fraction = sparse.csr_matrix(np.ones(self.intensity.shape,
