@@ -205,6 +205,10 @@ def get_total_value_country(cntry_iso3a, fin_mode, reference_year, total_populat
         * 'pc': produced capital (Source: World Bank), incl. manufactured or
                 built assets such as machinery, equipment, and physical structures
                 (pc is in constant 2014 USD)
+        * 'pc_land': produced capital (Source: World Bank), incl. manufactured or
+                built assets such as machinery, equipment, physical structures,
+                and land value for built-up land.
+                (pc is in constant 2014 USD)
         * 'pop': population count (source: GPW, same as gridded population)
         * 'gdp': gross-domestic product (Source: World Bank)
         * 'income_group': gdp multiplied by country's income group+1
@@ -230,6 +234,10 @@ def get_total_value_country(cntry_iso3a, fin_mode, reference_year, total_populat
         return(world_bank_wealth_account(cntry_iso3a, reference_year, no_land=True)[1])
         # here, total_asset_val is Produced Capital "pc"
         # no_land=True returns value w/o the mark-up of 24% for land value
+    elif fin_mode == 'pc_land':
+        return(world_bank_wealth_account(cntry_iso3a, reference_year, no_land=False)[1])
+        # here, total_asset_val is Produced Capital "pc"
+        # no_land=False returns value incl. the mark-up of 24% for land value
     elif fin_mode == 'norm':
         return 1
     else: # GDP based total values:

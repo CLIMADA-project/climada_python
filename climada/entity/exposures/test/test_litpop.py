@@ -135,7 +135,7 @@ class TestLitPop(unittest.TestCase):
         np.testing.assert_array_equal(data_in[0], data_out[0])
         # test conserve sum:
         for i, _ in enumerate(data_in):
-            self.assertEqual(data_out[i].sum(), data_out[i].sum())
+            self.assertAlmostEqual(data_in[i].sum(), data_out[i].sum())
 
     def test_resample_input_data_downsample_conserve_mean(self):
         """test function resample_input_data downsampling with conservation of sum"""
@@ -152,7 +152,7 @@ class TestLitPop(unittest.TestCase):
         np.testing.assert_array_equal(data_in[1], data_out[1])
         # test conserve sum:
         for i, _ in enumerate(data_in):
-            self.assertEqual(data_out[i].mean(), data_out[i].mean())
+            self.assertAlmostEqual(data_in[i].mean(), data_out[i].mean())
 
     def test_resample_input_data_upsample(self):
         """test function resample_input_data with upsampling
