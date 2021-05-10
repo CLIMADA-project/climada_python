@@ -441,8 +441,8 @@ class TropCyclone(Hazard):
         Returns
         -------
         tc_cc : climada.hazard.TropCyclone
-            Tropical cyclone with frequency and intensity scaled according
-            to the Knutson criterion. Returns a new instance of TropCyclone.
+            Tropical cyclone with frequency and intensity scaled inspired by
+            the Knutson criterion. Returns a new instance of TropCyclone.
         """
 
         tc_cc = copy.deepcopy(self)
@@ -473,9 +473,7 @@ class TropCyclone(Hazard):
                         ]
             freq_chg.sort(reverse=False, key=lambda x: len(x['category']))
 
-            # Iteratively scale frequencies for each category such that
-            # cumulative frequencies are scaled according to Knutson criterion.
-
+            # Scale frequencies by category
             cat_larger_list = []
             for chg in freq_chg:
                 cat_chg_list = [cat
@@ -490,11 +488,7 @@ class TropCyclone(Hazard):
 
         if (tc_cc.frequency < 0).any():
             raise ValueError("The application of the given climate scenario"
-                             "resulted in at least one negative frequenciy."
-                             "This is likely due to the use of a "
-                             "non-representative event set (too small, "
-                             "incorrect reference period, ...)")
-
+                             "resulted in at least one negative frequency.")
 
         return tc_cc
 
