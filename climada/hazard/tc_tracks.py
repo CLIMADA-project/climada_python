@@ -418,7 +418,7 @@ class TCTracks():
 
         ibtracs_ds = xr.open_dataset(ibtracs_path)
         ibtracs_date = ibtracs_ds.attrs["date_created"]
-        if 180 < (np.datetime64('today') - np.datetime64(ibtracs_date)) / np.timedelta64(1, 'D'):
+        if 180 < (np.datetime64('today') - np.datetime64(ibtracs_date)).item().days:
             LOGGER.warning(f"The cached IBTrACS data set dates from {ibtracs_date} (older "
                            "than 180 days). Very likely, a more recent version is available. "
                            f"Consider manually removing the file {ibtracs_path} and re-running "
