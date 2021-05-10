@@ -292,7 +292,7 @@ class TCTracks():
 
 
     def read_ibtracs_netcdf(self, provider=None, rescale_windspeeds=True, storm_id=None,
-                            year_range=None, genesis_basin=None, basin=None,
+                            year_range=None, basin=None, genesis_basin=None,
                             interpolate_missing=True, estimate_missing=False, correct_pres=False,
                             file_name='IBTrACS.ALL.v04r00.nc'):
         """Read track data from IBTrACS databse.
@@ -348,6 +348,13 @@ class TCTracks():
             IBTrACS ID of the storm, e.g. 1988234N13299, [1988234N13299, 1989260N11316].
         year_range : tuple (min_year, max_year), optional
             Year range to filter track selection. Default: (1980, 2018)
+        basin : str, optional
+            If given, select storms that have at least one position in the specified basin. This
+            allows analysis of a given basin, but also means that basin-specific track sets should
+            not be combined across basins since some storms will be in more than one set. If you
+            would like to select storms by their (unique) genesis basin instead, use the parameter
+            `genesis_basin`. For possible values (basin abbreviations), see the parameter
+            `genesis_basin`. If None, this filter is not applied. Default: None.
         genesis_basin : str, optional
             The basin where a TC is formed is not defined in IBTrACS. However, this filter option
             allows to restrict to storms whose first valid eye position is in the specified basin,
@@ -358,13 +365,6 @@ class TCTracks():
             the Central Pacific region), 'WP'​ (Western North Pacific), 'SP'​ (South Pacific),
             'SI'​ (South Indian), 'NI'​ (North Indian). If None, this filter is not applied.
             Default: None.
-        basin : str, optional
-            If given, select storms that have at least one position in the specified basin. This
-            allows analysis of a given basin, but also means that basin-specific track sets should
-            not be combined across basins since some storms will be in more than one set. If you
-            would like to select storms by their (unique) genesis basin instead, use the parameter
-            `genesis_basin`. For possible values (basin abbreviations), see the parameter
-            `genesis_basin`. If None, this filter is not applied. Default: None.
         interpolate_missing : bool, optional
             If True, interpolate temporal reporting gaps within a variable (such as pressure, wind
             speed, or radius) linearly if possible. Temporal interpolation is with respect to the
@@ -418,10 +418,9 @@ class TCTracks():
 
         ibtracs_ds = xr.open_dataset(ibtracs_path)
         ibtracs_date = ibtracs_ds.attrs["date_created"]
-        LOGGER.info(f"The IBTrACS data set dates from {ibtracs_date}")
         if 180 < (np.datetime64('today') - np.datetime64(ibtracs_date)) / np.timedelta64(1, 'D'):
-            LOGGER.warning("The cached IBTrACS data set is older than 180 days. "
-                           "Very likely, a more recent version is available. "
+            LOGGER.warning(f"The cached IBTrACS data set dates from {ibtracs_date} (older "
+                           "than 180 days). Very likely, a more recent version is available. "
                            f"Consider manually removing the file {ibtracs_path} and re-running "
                            "this function, which will download the most recent version of the "
                            "IBTrACS data set from the official URL.")
@@ -450,7 +449,7 @@ class TCTracks():
             # time steps in the data.
             match &= (ibtracs_ds.basin == genesis_basin.encode()).any(dim='date_time')
             if np.count_nonzero(match) == 0:
-                LOGGER.info('No tracks in basin %s.', genesis_basin)
+                LOGGER.info('No tracks in genesis basin %s.', genesis_basin)
 
         if np.count_nonzero(match) == 0:
             LOGGER.info('There are no tracks matching the specified requirements.')
@@ -558,14 +557,14 @@ class TCTracks():
             tr_basin_penv = xr.apply_ufunc(basin_fun, track_ds.basin, vectorize=True)
             tr_genesis_basin = track_ds.basin.values[0].astype(str).item()
 
-            # Now that the valid time steps have been selected, we discard tracks that don't fit
-            # the specified basin definitions:
+            # Now that the valid time steps have been selected, we discard this track if it
+            # doesn't fit the specified basin definitions:
             if genesis_basin is not None and tr_genesis_basin != genesis_basin:
                 continue
             if basin is not None and basin.encode() not in track_ds.basin.values:
                 continue
 
-            # a track that crosses the antimeridian in IBTrACS might be truncated by `t_msk` in
+            # A track that crosses the antimeridian in IBTrACS might be truncated by `t_msk` in
             # such a way that the remaining part is not crossing the antimeridian:
             if (track_ds.lon.values > 180).all():
                 track_ds['lon'] -= 360
@@ -628,6 +627,10 @@ class TCTracks():
             }))
         if last_perc != 100:
             LOGGER.info("Progress: 100%")
+        if len(all_tracks) == 0:
+            # If all tracks have been discarded in the loop due to the basin filters:
+            LOGGER.info('There were no tracks left in the specified basin '
+                        'after discarding invalid track positions.')
         self.data = all_tracks
 
     def read_processed_ibtracs_csv(self, file_names):

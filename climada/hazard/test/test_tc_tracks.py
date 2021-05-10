@@ -268,7 +268,7 @@ class TestIbtracs(unittest.TestCase):
             year_range=(1994, 1994), genesis_basin="NI", estimate_missing=True)
         self.assertEqual(tc_track.size, 5)
         for tr in tc_track.data:
-            np.testing.assert_array_equal(tr.basin[0], "NI")
+            self.assertEqual(tr.basin[0], "NI")
 
         # genesis in EP, but crosses WP at some point
         tc_track = tc.TCTracks()
