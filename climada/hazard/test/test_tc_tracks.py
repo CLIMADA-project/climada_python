@@ -332,7 +332,7 @@ class TestIO(unittest.TestCase):
         self.assertTrue(np.all([np.all(d.basin == 'N') for d in tc_track.data]))
         self.assertEqual(tc_track.data[0].category, 3)
 
-        tc_track.read_simulations_emanuel(TEST_TRACK_EMANUEL_CORR)
+        tc_track.read_simulations_emanuel(TEST_TRACK_EMANUEL_CORR, hemisphere='S')
         self.assertEqual(len(tc_track.data), 2)
         self.assertTrue(np.all([np.all(d.basin == 'S') for d in tc_track.data]))
         self.assertEqual(tc_track.data[0].radius_max_wind[15], 102.49460043196545)
@@ -344,6 +344,10 @@ class TestIO(unittest.TestCase):
         self.assertEqual(tc_track.data[1].time.dt.year[256], 2009)
         self.assertEqual(tc_track.data[1].time.dt.year[257], 2010)
         self.assertEqual(tc_track.data[1].time.dt.year[-1], 2010)
+
+        tc_track.read_simulations_emanuel(TEST_TRACK_EMANUEL_CORR)
+        self.assertEqual(len(tc_track.data), 5)
+        self.assertTrue(np.all([np.all(d.basin == 'GB') for d in tc_track.data]))
 
     def test_read_one_gettelman(self):
         """Test reading and model of TC from Gettelman track files"""

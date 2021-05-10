@@ -646,16 +646,16 @@ class TCTracks():
         for file in all_file:
             self._read_ibtracs_csv_single(file)
 
-    def read_simulations_emanuel(self, file_names, hemisphere='S'):
+    def read_simulations_emanuel(self, file_names, hemisphere=None):
         """Fill from Kerry Emanuel tracks.
 
         Parameters
         ----------
         file_names : str or list of str
             Absolute file name(s) or folder name containing the files to read.
-        hemisphere : str, optional
+        hemisphere : str or None, optional
             For global data sets, restrict to northern ('N') or southern ('S') hemisphere.
-            Use 'both' to disable this restriction. Default: 'S'
+            Default: None (no restriction)
         """
         self.data = []
         for path in get_file_names(file_names):
@@ -663,16 +663,16 @@ class TCTracks():
             self._read_file_emanuel(path, hemisphere=hemisphere,
                                     rmw_corr=rmw_corr)
 
-    def _read_file_emanuel(self, path, hemisphere='S', rmw_corr=False):
+    def _read_file_emanuel(self, path, hemisphere=None, rmw_corr=False):
         """Append tracks from file containing Kerry Emanuel simulations.
 
         Parameters
         ----------
         path : str
             absolute path of file to read.
-        hemisphere : str, optional
+        hemisphere : str or None, optional
             For global data sets, restrict to northern ('N') or southern ('S') hemisphere.
-            Use 'both' to disable this restriction. Default: 'S'
+            Default: None (no restriction)
         rmw_corr : str, optional
             If True, multiply the radius of maximum wind by factor 2. Default: False.
         """
@@ -681,13 +681,16 @@ class TCTracks():
         basin = str(data_mat['bas'][0])
 
         hem_min, hem_max = -90, 90
-        if basin == "GB":
+        # for backwards compatibility, also check for value 'both'
+        if basin == "GB" and hemisphere != 'both' and hemisphere is not None:
             if hemisphere == 'S':
                 hem_min, hem_max = -90, 0
                 basin = "S"
             elif hemisphere == 'N':
                 hem_min, hem_max = 0, 90
                 basin = "N"
+            else:
+                raise ValueError(f"Unknown hemisphere: '{hemisphere}'. Use 'N' or 'S' or None.")
 
         lat = data_mat['latstore']
         ntracks, nnodes = lat.shape
@@ -708,7 +711,8 @@ class TCTracks():
         years = data_mat['yearstore'][0, hem_idx]
 
         ntracks, nnodes = lat.shape
-        LOGGER.info("Loading %s tracks on %s hemisphere.", ntracks, hemisphere)
+        LOGGER.info("Loading %s tracks%s.", ntracks,
+                    f" on {hemisphere} hemisphere" if hemisphere in ['N', 'S'] else "")
 
         # change lon format to -180 to 180
         lon[lon > 180] = lon[lon > 180] - 360
