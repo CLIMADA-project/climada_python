@@ -452,18 +452,12 @@ class TCTracks():
                 LOGGER.info('No tracks in genesis basin %s.', genesis_basin)
 
         if np.count_nonzero(match) == 0:
-            LOGGER.info('There are no tracks matching the specified requirements.')
+            LOGGER.info("IBTrACS doesn't contain any tracks matching the specified requirements.")
             self.data = []
             return
 
         ibtracs_ds = ibtracs_ds.sel(storm=match)
         ibtracs_ds['valid_t'] = ibtracs_ds.time.notnull()
-        valid_storms_mask = ibtracs_ds.valid_t.any(dim="date_time")
-        invalid_storms_idx = np.nonzero(~valid_storms_mask.data)[0]
-        if invalid_storms_idx.size > 0:
-            invalid_sids = ', '.join(ibtracs_ds.sid.sel(storm=invalid_storms_idx).astype(str).data)
-            LOGGER.warning('No valid timestamps found for %s.', invalid_sids)
-            ibtracs_ds = ibtracs_ds.sel(storm=valid_storms_mask)
 
         if rescale_windspeeds:
             for agency in IBTRACS_AGENCIES:
@@ -534,6 +528,13 @@ class TCTracks():
                            'have been found: %s%s', len(invalid_sids), ", ".join(invalid_sids[:5]),
                            ", ..." if len(invalid_sids) > 5  else ".")
             ibtracs_ds = ibtracs_ds.sel(storm=valid_storms_mask)
+
+        if ibtracs_ds.dims['storm'] == 0:
+            LOGGER.info('After discarding IBTrACS events without valid values by the selected '
+                        'reporting agencies, there are no tracks left that match the specified '
+                        'requirements.')
+            self.data = []
+            return
 
         max_wind = ibtracs_ds.wind.max(dim="date_time").data.ravel()
         category_test = (max_wind[:, None] < np.array(SAFFIR_SIM_CAT)[None])

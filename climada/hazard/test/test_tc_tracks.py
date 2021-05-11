@@ -225,6 +225,10 @@ class TestIbtracs(unittest.TestCase):
     def test_read_range(self):
         """Read several TCs."""
         tc_track = tc.TCTracks()
+        tc_track.read_ibtracs_netcdf(year_range=(2100, 2150))
+        self.assertEqual(tc_track.size, 0)
+
+        tc_track = tc.TCTracks()
         tc_track.read_ibtracs_netcdf(provider='usa', storm_id=None,
                                      year_range=(1915, 1916), basin='WP')
         self.assertEqual(tc_track.size, 0)
