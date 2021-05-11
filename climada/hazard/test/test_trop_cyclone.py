@@ -121,7 +121,7 @@ class TestReader(unittest.TestCase):
         self.assertEqual(tc_haz.event_id[0], 1)
         self.assertEqual(tc_haz.event_name, ['1951239N12334'])
         self.assertEqual(tc_haz.category, tc_track.data[0].category)
-        self.assertTrue(np.isnan(tc_haz.basin[0]))
+        self.assertEqual(tc_haz.basin[0], 'NA')
         self.assertIsInstance(tc_haz.basin, list)
         self.assertIsInstance(tc_haz.category, np.ndarray)
         self.assertTrue(np.array_equal(tc_haz.frequency, np.array([1])))
@@ -370,28 +370,24 @@ class TestClimateSce(unittest.TestCase):
             np.allclose(tc.intensity[3, :].toarray() * 1.01875, tc_cc.intensity[3, :].toarray()))
 
         res_frequency = np.ones(4) * 0.5
-        res_frequency[3] = 0.5 * 1.01875
-        res_frequency[0] = 0.5 * 0.25
-        res_frequency[1] = 0.5 * 0.325
-        res_frequency[2] = 0.5 * 1.75
+        res_frequency[1] = 0.5 * (1 + (0.7 - 1) * scale)
+        res_frequency[2] = 0.5 * (1 + (2 - 1) * scale)
+        res_frequency[3] = 0.5 * (1 + (1.025 - 1) * scale)
         self.assertTrue(np.allclose(tc_cc.frequency, res_frequency))
 
     def test_negative_freq_error(self):
         """Test _apply_knutson_criterion with infeasible input."""
-        criterion = [{'basin': 'NA', 'category': [0, 1],
-                      'year': 2100, 'change': 1.1,
-                      'variable': 'frequency'},
-                     {'basin': 'NA', 'category': [1],
-                      'year': 2100, 'change': 3,
-                      'variable': 'frequency'},
+        criterion = [{'basin': 'SP', 'category': [0, 1],
+                      'year': 2100, 'change': 0.5,
+                      'variable': 'frequency'}
                      ]
 
         tc = TropCyclone()
         tc.frequency = np.ones(2)
-        tc.basin = ['NA', 'NA']
+        tc.basin = ['SP', 'SP']
         tc.category = np.array([0, 1])
         with self.assertRaises(ValueError):
-            tc._apply_knutson_criterion(criterion, 1)
+            tc._apply_knutson_criterion(criterion, 3)
 
 
 if __name__ == "__main__":
