@@ -35,7 +35,7 @@ class IFWildfire(ImpactFunc):
         ImpactFunc.__init__(self)
         self.haz_type = 'WFsingle'
 
-    def set_default_FIRMS(self, i_half=535.8, if_id=1):
+    def set_default_FIRMS(self, i_half=295.01, if_id=1):
 
         """ This function sets the impact curve to a sigmoid type shape, as
         common in impact modelling. We adapted the function as proposed by
@@ -53,12 +53,17 @@ class IFWildfire(ImpactFunc):
         (295K) which leaves the steepness (i_half) the only parameter that
         needs to be calibrated.
 
-        Here, i_half is set to 523.8 as a result of the calibration
-        performed by Lüthi et al. (in prep).
+        Here, i_half is set to 295 K as a result of the calibration
+        performed by Lüthi et al. (in prep). This value is suited for an
+        exposure resolution of 1 km.
+        
+        Calibration was further performed for:
+            - 4 km: resulting i_half = 409.4 K
+            - 10 km: resulting i_half = 484.4 K
 
-        Calibration has been performed globally (using EMDAT data) on a 10 km
-        resolution. Thus, function is optimised to estimate impacts on 10 km.
-
+        Calibration has been performed globally (using EMDAT data) and is
+        based on 84 damage records since 2001.
+        
         Intensity range is set between 295 K and 500 K as this is the typical
         range of FIRMS intensities.
 
