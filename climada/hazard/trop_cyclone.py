@@ -111,6 +111,20 @@ class TropCyclone(Hazard):
         """
         Clear and fill with windfields from specified tracks.
 
+        This function sets the `TropCyclone.intensity` attribute to contain, for each centroid,
+        the maximum wind speed (1-minute sustained winds at 10 meters above ground) experienced
+        over the whole period of each TC event in m/s. The wind speed is set to 0 if it doesn't
+        exceed the threshold in `TropCyclone.intensity_thres`.
+
+        The `TropCyclone.category` attribute is set to the value of the `category`-attribute
+        of each of the given track data sets.
+
+        The `TropCyclone.basin` attribute is set to the genesis basin for each event, which
+        is the first value of the `basin`-variable in each of the given track data sets.
+
+        Optionally, the time dependent, vectorial winds can be stored using the `store_windfields`
+        function parameter (see below).
+
         Parameters
         ----------
         tracks : TCTracks
@@ -425,7 +439,7 @@ class TropCyclone(Hazard):
         ])
         new_haz.orig = np.array([track.orig_event_flag])
         new_haz.category = np.array([track.category])
-        new_haz.basin = [track.basin]
+        new_haz.basin = [str(track.basin.values[0])]
         return new_haz
 
     def _apply_knutson_criterion(self, chg_int_freq, scaling_rcp_year):
