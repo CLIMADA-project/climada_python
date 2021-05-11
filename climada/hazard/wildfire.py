@@ -852,6 +852,18 @@ class WildFire(Hazard):
 
     @staticmethod
     def _remove_empty_fires(bright_list, firms):
+        """ Removes instances which were identified as an eventbut which
+        contain no intensity. This happens for events which occur
+        outside of the defined centroids.
+
+        Parameters:
+            bright_list (list): idnividual wild fires
+            firms
+
+        Returns:
+            updated bright_list (list)
+            updated firms
+        """
         bright_list_nonzero = []
         event_id_new = 1
         for i, br_list in enumerate(bright_list):
@@ -1049,7 +1061,7 @@ class WildFire(Hazard):
 
         Parameters:
             self (bf): contains info of historical fires
-            n_blurr (int): blurr with around historical fires
+            n_blurr (int): blurr width around historical fires
 
         Assigns:
             self.centroids.fire_propa_matrix (np.array)
@@ -1132,6 +1144,19 @@ class WildFire(Hazard):
 
 @numba.njit
 def _fill_intensity_max(num_centr, ind, index_uni, lat_lon_cpy, fir_bright):
+    """ Assigns maximum intensity value for each centroid. This is required
+    as it can happen that several firms data points are mapped on to one
+    centroid.
+
+        Parameters:
+            num_centr (int): number of centroids
+            ind (np.array): index of closest centroid of each firms point
+            index_uni (np.array): unique index of each centroid
+            lat_lon_cpy (np.array): lat /lon information of each firms point
+            fir_bright (np.array): brightness of each firms data point
+        Returns:
+            brightness_ev (np.array): maximum brightness at each centroids
+    """
     brightness_ev = np.zeros((1, num_centr), dtype=numba.float64)
     for idx in range(index_uni.size):
         if ind[idx] != -1:
