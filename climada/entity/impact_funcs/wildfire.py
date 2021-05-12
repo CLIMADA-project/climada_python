@@ -19,7 +19,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define impact functions for WildFires.
 """
 
-__all__ = ['IFWildfire']
+__all__ = ['ImpfWildfire']
 
 import logging
 import numpy as np
@@ -28,14 +28,14 @@ from climada.entity.impact_funcs.base import ImpactFunc
 
 LOGGER = logging.getLogger(__name__)
 
-class IFWildfire(ImpactFunc):
+class ImpfWildfire(ImpactFunc):
     """Impact function for wildfire."""
 
     def __init__(self):
         ImpactFunc.__init__(self)
         self.haz_type = 'WFsingle'
 
-    def set_default_FIRMS(self, i_half=295.01, if_id=1):
+    def set_default_FIRMS(self, i_half=295.01, impf_id=1):
 
         """ This function sets the impact curve to a sigmoid type shape, as
         common in impact modelling. We adapted the function as proposed by
@@ -73,7 +73,7 @@ class IFWildfire(ImpactFunc):
             if_id (int, optional): impact function id. Default: 1
         """
 
-        self.id = if_id
+        self.id = impf_id
         self.name = "wildfire default 10 km"
         self.intensity_unit = "K"
         self.intensity = np.arange(295, 500, 5)
@@ -82,7 +82,7 @@ class IFWildfire(ImpactFunc):
         self.paa = i_n**3 / (1 + i_n**3)
         self.mdd = np.ones(len(self.intensity))
 
-    def set_step(self, threshold=295., if_id=1):
+    def set_step(self, threshold=295., impf_id=1):
 
         """ Step function type impact function. Everything is destroyed above
         threshold. Usefull for high resolution modelling.
@@ -99,14 +99,14 @@ class IFWildfire(ImpactFunc):
 
         """
 
-        self.id = if_id
+        self.id = impf_id
         self.name = "wildfire step"
         self.intensity_unit = "K"
         self.intensity = np.array([295, threshold, threshold, 500])
         self.mdd = np.array([0, 0, 1, 1])
         self.paa = np.array([1, 1, 1, 1])
 
-    def set_sigmoid(self, sig_mid=320, sig_shape=0.1, sig_max=1.0, if_id=1):
+    def set_sigmoid(self, sig_mid=320, sig_shape=0.1, sig_max=1.0, impf_id=1):
 
         """ Sigmoid type impact function hinging on three parameter. This type
         of impact function is very flexible for any sort of study/resolution.
@@ -123,7 +123,7 @@ class IFWildfire(ImpactFunc):
             sig_max (float, optional): "top", between 0. and 1.
             if_id (int, optional): impact function id. Default: 1
         """
-        self.id = if_id
+        self.id = impf_id
         self.name = "wildfire sigmoid"
         self.intensity_unit = "K"
         self.intensity = np.arange(295, 500, 5)
