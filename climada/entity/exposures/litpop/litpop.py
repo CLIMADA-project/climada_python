@@ -24,9 +24,10 @@ import rasterio
 
 import climada.util.coordinates as u_coord
 from climada.util.finance import gdp, income_group, wealth2gdp, world_bank_wealth_account
+from climada.entity.tag import Tag
 from climada.entity.exposures.litpop import nightlight as nl_util
 from climada.entity.exposures.litpop import gpw_population as pop_util
-from climada.entity.exposures.base import Exposures
+from climada.entity.exposures.base import Exposures, INDICATOR_IMPF
 
 LOGGER = logging.getLogger(__name__)
 
@@ -38,14 +39,62 @@ class LitPop(Exposures):
 
         Calling sequence example:
         ent = LitPop()
-        country_name = ['Switzerland', 'Austria']
-        ent.set_country(country_name)
+        country_names = ['CHE', 'Austria']
+        ent.set_countries(country_names)
         ent.plot()
     """
 
-    def set_countries(par):
-        return par
-        # if fin_mode .... value_unit='USD' 'persons''
+    def set_countries(self, countries, res_km=1, res_arcsec=None, check_plot=False,
+                    exponents=None, fin_mode='pc', admin1_calc=False, conserve_cntrytotal=True,
+                    reference_year=2020):
+
+        # value_unit is set depending on fin_mode:
+        if fin_mode in [None, 'none', 'norm']:
+            value_unit = ''
+        if fin_mode == 'pop':
+            value_unit='number of people'
+        else:
+            value_unit = 'USD'
+
+        tag = Tag()
+        litpop_list = list()
+        for country in countries:
+    
+            litpop_list.append(
+                self._set_one_country(cntry_val, nightlight, coord_nl, res_fact, res_km,
+                                      cntry_admin1[cntry_iso], **kwargs).gdf)
+            tag.description += ("{} {:d} GDP: {:.3e} income group: {:d} \n").\
+                format(cntry_val[1], cntry_val[3], cntry_val[4], cntry_val[5])
+
+
+
+        Exposures.__init__(
+            self,
+            data=Exposures.concat(lp_cntry).gdf,
+            crs=DEF_CRS,
+            ref_year=reference_year,
+            tag=tag,
+            value_unit=value_unit
+        )
+
+        try:
+            rows, cols, ras_trans = u_coord.pts_to_raster_meta(
+                (self.gdf.longitude.min(), self.gdf.latitude.min(),
+                 self.gdf.longitude.max(), self.gdf.latitude.max()),
+                u_coord.get_resolution(self.gdf.longitude, self.gdf.latitude))
+            self.meta = {
+                'width': cols,
+                'height': rows,
+                'crs': self.crs,
+                'transform': ras_trans,
+            }
+        except ValueError:
+            LOGGER.warning('Could not write attribute meta, because exposure'
+                           ' has only 1 data point')
+            self.meta = {}
+        # self.set_geometry_points()
+        self.check()
+
 
 
 
@@ -53,144 +102,152 @@ class LitPop(Exposures):
     # Alias method names for backward compatibility:
     set_country = set_countries
 
-
-def _set_one_country(country, res_arcsec=30, res_km=None, 
-                exponents=(1,1), fin_mode=None, total_value=None,
-                admin1_calc=False,
-                conserve_cntrytotal=True,
-                reference_year=2020, gpw_version=None, data_dir=None,
-                resample_first=True):
-    """init LitPop exposure object for one single country
-
-    Parameters
-    ----------
-    country : str or int
-        country identifier:
-        iso3alpha (e.g. 'JPN'), iso3num (e.g. 92) or name (e.g. 'Togo')
-    res_km : float (optional)
-        Approx. horizontal resolution in km. Default: 1
-    res_arcsec : float (optional)
-        Horizontal resolution in arc-sec. Overrides res_km if both are delivered.
-        The default 30 arcsec corresponds to roughly 1 km.
-    exponents : tuple of two integers, optional
-        Defining power with which lit (nightlights) and pop (gpw) go into LitPop. To get
-        nightlights^3 without population count: (3, 0). To use population count alone: (0, 1).
-        Default: (1, 1)
-    fin_mode : str, optional
-        Socio-economic value to be used as an asset base that is disaggregated
-        to the grid points within the country
-        * 'pc': produced capital (Source: World Bank), incl. manufactured or
-                built assets such as machinery, equipment, and physical structures
-                (pc is in constant 2014 USD)
-        * 'pop': population count (source: GPW, same as gridded population)
-        * 'gdp': gross-domestic product (Source: World Bank)
-        * 'income_group': gdp multiplied by country's income group+1
-        * 'nfw': non-financial wealth (Source: Credit Suisse, of households only)
-        * 'tw': total wealth (Source: Credit Suisse, of households only)
-        * 'norm': normalized by country
-        * 'none': LitPop per pixel is returned unchanged
-        The default is 'pc'.
-    total_value : numeric (optional)
-        Total value to be disaggregated to grid in country.
-        The default is None. If None, the total number is extracted from other
-        sources depending on the value of fin_mode.
-    admin1_calc : boolean, optional
-        If True, distribute admin1-level GDP (if available). Default: False
-    conserve_cntrytotal : boolean, optional
-        Given admin1_calc, conserve national total asset value. Default: True
-    reference_year : int, optional
-        Reference year for data sources. Default: 2020
-    gpw_version : int (optional)
-        Version number of GPW population data.
-        The default is None. If None, the default is set in gpw_population module.
-    data_dir : Path (optional)
-        redefines path to input data directory. The default is SYSTEM_DIR.
-    resample_first : boolean
-        First resample nightlight (Lit) and population (Pop) data to target
-        resolution before combining them as Lit^m * Pop^n?
-        The default is True. Warning: Setting this to False affects the
-        disaggregation results.
-
-    Raises
-    ------
-    ValueError
-
-    Returns
-    -------
-    """
-    LOGGER.info('Processing country %s.', country)
-    # set res_arcsec if not given:
-    if res_arcsec is None:
-        if res_km is None:
-            res_arcsec = 30
+    @staticmethod
+    def _set_one_country(country, res_arcsec=30, res_km=None, 
+                    exponents=(1,1), fin_mode=None, total_value=None,
+                    admin1_calc=False,
+                    conserve_cntrytotal=True,
+                    reference_year=2020, gpw_version=None, data_dir=None,
+                    resample_first=True):
+        """init LitPop exposure object for one single country
+    
+        Parameters
+        ----------
+        country : str or int
+            country identifier:
+            iso3alpha (e.g. 'JPN'), iso3num (e.g. 92) or name (e.g. 'Togo')
+        res_km : float (optional)
+            Approx. horizontal resolution in km. Default: 1
+        res_arcsec : float (optional)
+            Horizontal resolution in arc-sec. Overrides res_km if both are delivered.
+            The default 30 arcsec corresponds to roughly 1 km.
+        exponents : tuple of two integers, optional
+            Defining power with which lit (nightlights) and pop (gpw) go into LitPop. To get
+            nightlights^3 without population count: (3, 0). To use population count alone: (0, 1).
+            Default: (1, 1)
+        fin_mode : str, optional
+            Socio-economic value to be used as an asset base that is disaggregated
+            to the grid points within the country
+            * 'pc': produced capital (Source: World Bank), incl. manufactured or
+                    built assets such as machinery, equipment, and physical structures
+                    (pc is in constant 2014 USD)
+            * 'pop': population count (source: GPW, same as gridded population)
+            * 'gdp': gross-domestic product (Source: World Bank)
+            * 'income_group': gdp multiplied by country's income group+1
+            * 'nfw': non-financial wealth (Source: Credit Suisse, of households only)
+            * 'tw': total wealth (Source: Credit Suisse, of households only)
+            * 'norm': normalized by country
+            * 'none': LitPop per pixel is returned unchanged
+            The default is 'pc'.
+        total_value : numeric (optional)
+            Total value to be disaggregated to grid in country.
+            The default is None. If None, the total number is extracted from other
+            sources depending on the value of fin_mode.
+        admin1_calc : boolean, optional
+            If True, distribute admin1-level GDP (if available). Default: False
+        conserve_cntrytotal : boolean, optional
+            Given admin1_calc, conserve national total asset value. Default: True
+        reference_year : int, optional
+            Reference year for data sources. Default: 2020
+        gpw_version : int (optional)
+            Version number of GPW population data.
+            The default is None. If None, the default is set in gpw_population module.
+        data_dir : Path (optional)
+            redefines path to input data directory. The default is SYSTEM_DIR.
+        resample_first : boolean
+            First resample nightlight (Lit) and population (Pop) data to target
+            resolution before combining them as Lit^m * Pop^n?
+            The default is True. Warning: Setting this to False affects the
+            disaggregation results.
+    
+        Raises
+        ------
+        ValueError
+    
+        Returns
+        -------
+        """
+        LOGGER.info('Processing country %s.', country)
+        # set res_arcsec if not given:
+        if res_arcsec is None:
+            if res_km is None:
+                res_arcsec = 30
+            else:
+                res_arcsec = 30 * res_km
+            LOGGER.info('Resolution is set to %i arcsec.', res_arcsec)
+        if fin_mode is None:
+            fin_mode = 'pc'
+        # set nightlight offset (delta) to 1 in case n>0, c.f. delta in Eq. 1 of paper:
+        if exponents[1] == 0:
+            offsets = (0, 0)
         else:
-            res_arcsec = 30 * res_km
-        LOGGER.info('Resolution is set to %i arcsec.', res_arcsec)
-    if fin_mode is None:
-        fin_mode = 'pc'
-    # set nightlight offset (delta) to 1 in case n>0, c.f. delta in Eq. 1 of paper:
-    if exponents[1] == 0:
-        offsets = (0, 0)
-    else:
-        offsets = (1, 0)
+            offsets = (1, 0)
+    
+        # Determine ISO 3166 representation of country and get geometry:
+        try:
+            iso3a = u_coord.country_to_iso(country, representation="alpha3")
+            iso3n = u_coord.country_to_iso(country, representation="numeric")
+        except LookupError:
+            LOGGER.error('Country not identified: %s.', country)
+            return None
+        country_geometry = u_coord.get_land_geometry([iso3a])
+        if not country_geometry.bounds: # check for empty shape
+            LOGGER.error('No geometry found for country: %s.', country)
+            return None
+    
+        # import population data (2d array), meta data, and global grid info,
+        # global_transform defines the origin (corner points) of the global traget grid:
+        pop, meta_pop, global_transform = pop_util.load_gpw_pop_shape(country_geometry,
+                                                                      reference_year,
+                                                                      gpw_version=gpw_version,
+                                                                      data_dir=data_dir,
+                                                                      )
+    
+        # import nightlight data (2d array) and associated meta data:
+        nl, meta_nl = nl_util.load_nasa_nl_shape(country_geometry,
+                                                 reference_year,
+                                                 data_dir=data_dir,
+                                                 )
+    
+        # set total value for disaggregation if not provided:
+        if total_value is None: # default, no total value provided...
+            total_value = get_total_value_per_country(iso3n, fin_mode, reference_year, pop.sum())
+    
+        if resample_first: # default is True
+            # --> resampling to target res. before core calculation
+            target_res_arcsec = res_arcsec
+        else: # resolution of pop (degree to arcsec)
+            target_res_arcsec = np.abs(meta_pop['transform'][0]) * 3600
+        # resample Lit and Pop input data to same grid:
+        [pop, nl], meta_new = resample_input_data([pop, nl],
+                                                  [meta_pop, meta_nl],
+                                                  i_ref=0, # pop defines grid
+                                                  target_res_arcsec=target_res_arcsec,
+                                                  global_origins=(global_transform[2], # lon
+                                                                  global_transform[5]), # lat
+                                                  )
+    
+        # calculate Lit^m * Pop^n and disaggregate total value to grid:
+        litpop_array = gridpoints_core_calc([nl, pop],
+                                            offsets=offsets,
+                                            exponents=exponents,
+                                            total_val_rescale=total_value)
+        if not resample_first: 
+            # alternative option: resample to target resolution after core calc.:
+            [litpop_array], meta_new = resample_input_data([litpop_array],
+                                                           [meta_new],
+                                                           target_res_arcsec=res_arcsec,
+                                                           global_origins=(global_transform[2],
+                                                                           global_transform[5]),
+                                                           )
+        exp_country = LitPop()
+        exp_country.gdf['value'] = litpop_array.reshape(-1,)
+        exp_country.gdf['latitude'] = coord[:, 0]
+        exp_country.gdf['longitude'] = coord[:, 1]
+        exp_country.gdf[INDICATOR_IMPF] = 1
+        exp_country.gdf['region_id'] = iso3n
 
-    # Determine ISO 3166 representation of country and get geometry:
-    try:
-        iso3a = u_coord.country_to_iso(country, representation="alpha3")
-        iso3n = u_coord.country_to_iso(country, representation="numeric")
-    except LookupError:
-        LOGGER.error('Country not identified: %s.', country)
-        return None
-    country_geometry = u_coord.get_land_geometry([iso3a])
-    if not country_geometry.bounds: # check for empty shape
-        LOGGER.error('No geometry found for country: %s.', country)
-        return None
-
-    # import population data (2d array), meta data, and global grid info,
-    # global_transform defines the origin (corner points) of the global traget grid:
-    pop, meta_pop, global_transform = pop_util.load_gpw_pop_shape(country_geometry,
-                                                                  reference_year,
-                                                                  gpw_version=gpw_version,
-                                                                  data_dir=data_dir,
-                                                                  )
-
-    # import nightlight data (2d array) and associated meta data:
-    nl, meta_nl = nl_util.load_nasa_nl_shape(country_geometry,
-                                             reference_year,
-                                             data_dir=data_dir,
-                                             )
-
-    # set total value for disaggregation if not provided:
-    if total_value is None: # default, no total value provided...
-        total_value = get_total_value_per_country(iso3n, fin_mode, reference_year, pop.sum())
-
-    if resample_first: # default is True
-        # --> resampling to target res. before core calculation
-        target_res_arcsec = res_arcsec
-    else: # resolution of pop (degree to arcsec)
-        target_res_arcsec = np.abs(meta_pop['transform'][0]) * 3600
-    # resample Lit and Pop input data to same grid:
-    [pop, nl], meta_new = resample_input_data([pop, nl],
-                                              [meta_pop, meta_nl],
-                                              i_ref=0, # pop defines grid
-                                              target_res_arcsec=target_res_arcsec,
-                                              global_origins=(global_transform[2], # lon
-                                                              global_transform[5]), # lat
-                                              )
-
-    # calculate Lit^m * Pop^n and disaggregate total value to grid:
-    litpop_array = gridpoints_core_calc([nl, pop],
-                                        offsets=offsets,
-                                        exponents=exponents,
-                                        total_val_rescale=total_value)
-    if not resample_first: 
-        # alternative option: resample to target resolution after core calc.:
-        [litpop_array], meta_new = resample_input_data([litpop_array],
-                                                       [meta_new],
-                                                       target_res_arcsec=res_arcsec,
-                                                       global_origins=(global_transform[2],
-                                                                       global_transform[5]),
-                                                       )
+        return exp_gdpasset
 
 def get_total_value_per_country(cntry_iso3a, fin_mode, reference_year, total_population=None):
     """

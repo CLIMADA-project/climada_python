@@ -95,8 +95,8 @@ class LitPop(Exposures):
 
         Calling sequence example:
         ent = LitPop()
-        country_name = ['Switzerland', 'Austria']
-        ent.set_country(country_name)
+        country_names = ['Switzerland', 'Austria']
+        ent.set_countries(country_names)
         ent.plot()
     """
 
