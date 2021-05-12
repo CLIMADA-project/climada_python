@@ -128,7 +128,7 @@ def _set_one_country(country, res_arcsec=30, res_km=None,
         LOGGER.info('Resolution is set to %i arcsec.', res_arcsec)
     if fin_mode is None:
         fin_mode = 'pc'
-    # set nightlight offset (delta) to 1 in case n>0, c.f. delta in Eq. 1:
+    # set nightlight offset (delta) to 1 in case n>0, c.f. delta in Eq. 1 of paper:
     if exponents[1] == 0:
         offsets = (0, 0)
     else:
@@ -146,7 +146,8 @@ def _set_one_country(country, res_arcsec=30, res_km=None,
         LOGGER.error('No geometry found for country: %s.', country)
         return None
 
-    # import population data (2d array), meta data, and global grid info:
+    # import population data (2d array), meta data, and global grid info,
+    # global_transform defines the origin (corner points) of the global traget grid:
     pop, meta_pop, global_transform = pop_util.load_gpw_pop_shape(country_geometry,
                                                                   reference_year,
                                                                   gpw_version=gpw_version,
@@ -161,13 +162,14 @@ def _set_one_country(country, res_arcsec=30, res_km=None,
 
     # set total value for disaggregation if not provided:
     if total_value is None: # default, no total value provided...
-        total_value = get_total_value_country(iso3n, fin_mode, reference_year, pop.sum())
+        total_value = get_total_value_per_country(iso3n, fin_mode, reference_year, pop.sum())
 
-    if resample_first:
+    if resample_first: # default is True
+        # --> resampling to target res. before core calculation
         target_res_arcsec = res_arcsec
     else: # resolution of pop (degree to arcsec)
         target_res_arcsec = np.abs(meta_pop['transform'][0]) * 3600
-    # resample input data to same grid:
+    # resample Lit and Pop input data to same grid:
     [pop, nl], meta_new = resample_input_data([pop, nl],
                                               [meta_pop, meta_nl],
                                               i_ref=0, # pop defines grid
@@ -176,24 +178,24 @@ def _set_one_country(country, res_arcsec=30, res_km=None,
                                                               global_transform[5]), # lat
                                               )
 
-    
     # calculate Lit^m * Pop^n and disaggregate total value to grid:
     litpop_array = gridpoints_core_calc([nl, pop],
                                         offsets=offsets,
                                         exponents=exponents,
                                         total_val_rescale=total_value)
-    if not resample_first: # if calculation before resampling, resampling here:
+    if not resample_first: 
+        # alternative option: resample to target resolution after core calc.:
         [litpop_array], meta_new = resample_input_data([litpop_array],
-                                                         [meta_new],
-                                                         target_res_arcsec=res_arcsec,
-                                                         global_origins=(global_transform[2], # lon
-                                                                         global_transform[5]), # lat
-                                                         )
+                                                       [meta_new],
+                                                       target_res_arcsec=res_arcsec,
+                                                       global_origins=(global_transform[2],
+                                                                       global_transform[5]),
+                                                       )
 
-def get_total_value_country(cntry_iso3a, fin_mode, reference_year, total_population=None):
+def get_total_value_per_country(cntry_iso3a, fin_mode, reference_year, total_population=None):
     """
     Get total value for disaggregation, e.g., total asset value or population
-    for a country.
+    for a country, depending on unser choice (fin_mode).
 
     Parameters
     ----------
@@ -236,25 +238,21 @@ def get_total_value_country(cntry_iso3a, fin_mode, reference_year, total_populat
         # no_land=True returns value w/o the mark-up of 24% for land value
     elif fin_mode == 'pc_land':
         return(world_bank_wealth_account(cntry_iso3a, reference_year, no_land=False)[1])
-        # here, total_asset_val is Produced Capital "pc"
-        # no_land=False returns value incl. the mark-up of 24% for land value
+        # no_land=False returns pc value incl. the mark-up of 24% for land value
     elif fin_mode == 'norm':
         return 1
     else: # GDP based total values:
         gdp_value = gdp(cntry_iso3a, reference_year)[1]
         if fin_mode == 'income_group': # gdp * (income group + 1)
-
             return gdp_value * (income_group(cntry_iso3a, reference_year)[1] + 1)
         elif fin_mode in ('nfw', 'tw'):
-
             wealthtogdp_factor = wealth2gdp(cntry_iso3a, fin_mode == 'nfw', reference_year)[1]
             if np.isnan(wealthtogdp_factor):
                 LOGGER.warning("Missing wealth-to-gdp factor for country %s.", cntry_iso3a)
                 LOGGER.warning("Using GDP instead as total value.")
                 return gdp_value
             return gdp_value * wealthtogdp_factor
-        else:
-            raise ValueError(f"Unsupported fin_mode: {fin_mode}")
+    raise ValueError(f"Unsupported fin_mode: {fin_mode}")
 
 def resample_input_data(data_array_list, meta_list,
                         i_ref=0,
