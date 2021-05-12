@@ -40,7 +40,7 @@ import shapefile
 from climada import CONFIG
 from climada.entity.exposures import nightlight
 from climada.entity.tag import Tag
-from climada.entity.exposures.base import Exposures, INDICATOR_IF
+from climada.entity.exposures.base import Exposures, INDICATOR_IMPF
 from climada.entity.exposures import gpw_import
 from climada.util import ureg
 from climada.util.finance import gdp, income_group, wealth2gdp, world_bank_wealth_account
@@ -295,7 +295,7 @@ class LitPop(Exposures):
             lp_ent.gdf['region_id'] = u_coord.country_to_iso(cntry_info[1], "numeric")
         except LookupError:
             lp_ent.gdf['region_id'] = u_coord.country_to_iso(curr_country, "numeric")
-        lp_ent.gdf[INDICATOR_IF + DEF_HAZ_TYPE] = 1
+        lp_ent.gdf[INDICATOR_IMPF + DEF_HAZ_TYPE] = 1
         return lp_ent
 
     def _append_additional_info(self, cntries_info):

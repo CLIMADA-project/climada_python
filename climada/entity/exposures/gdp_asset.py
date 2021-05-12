@@ -29,7 +29,7 @@ import scipy as sp
 from climada.entity.tag import Tag
 import climada.util.coordinates as u_coord
 from climada.util.constants import RIVER_FLOOD_REGIONS_CSV, SYSTEM_DIR
-from .base import Exposures, INDICATOR_IF
+from .base import Exposures, INDICATOR_IMPF
 
 LOGGER = logging.getLogger(__name__)
 
@@ -112,18 +112,18 @@ class GDP2Asset(Exposures):
         """
         natID = u_coord.country_iso2natid(countryISO)
         natID_info = pd.read_csv(RIVER_FLOOD_REGIONS_CSV)
-        reg_id, if_rf = _fast_if_mapping(natID, natID_info)
+        reg_id, impf_rf = _fast_impf_mapping(natID, natID_info)
         lat, lon = u_coord.get_region_gridpoints(countries=[natID], iso=False, basemap="isimip")
         coord = np.stack([lat, lon], axis=1)
         assets = _read_GDP(coord, ref_year, path)
         reg_id_info = np.full((len(assets),), reg_id)
-        if_rf_info = np.full((len(assets),), if_rf)
+        impf_rf_info = np.full((len(assets),), impf_rf)
 
         exp_gdpasset = GDP2Asset()
         exp_gdpasset.gdf['value'] = assets
         exp_gdpasset.gdf['latitude'] = coord[:, 0]
         exp_gdpasset.gdf['longitude'] = coord[:, 1]
-        exp_gdpasset.gdf[INDICATOR_IF + DEF_HAZ_TYPE] = if_rf_info
+        exp_gdpasset.gdf[INDICATOR_IMPF + DEF_HAZ_TYPE] = impf_rf_info
         exp_gdpasset.gdf['region_id'] = reg_id_info
         return exp_gdpasset
 
@@ -200,7 +200,7 @@ def _test_gdp_centr_match(gdp_lat, gdp_lon, shp_exposures):
         raise IOError('Asset Data does not match selected country')
 
 
-def _fast_if_mapping(countryID, natID_info):
+def _fast_impf_mapping(countryID, natID_info):
     """Assign region-ID and impact function id.
         Parameters:
             countryID (int)
@@ -211,17 +211,17 @@ def _fast_if_mapping(countryID, natID_info):
             float,float
         """
     nat = natID_info['ID']
-    if_RF = natID_info['if_RF']
+    impf_RF = natID_info['impf_RF']
     reg_ID = natID_info['Reg_ID']
-    fancy_if = np.zeros((max(nat) + 1))
-    fancy_if[:] = np.nan
-    fancy_if[nat] = if_RF
+    fancy_impf = np.zeros((max(nat) + 1))
+    fancy_impf[:] = np.nan
+    fancy_impf[nat] = impf_RF
     fancy_reg = np.zeros((max(nat) + 1))
     fancy_reg[:] = np.nan
     fancy_reg[nat] = reg_ID
     try:
         reg_id = fancy_reg[countryID]
-        if_rf = fancy_if[countryID]
+        impf_rf = fancy_impf[countryID]
     except KeyError as err:
         raise KeyError(f'Country ISO unknown: {countryID}') from err
-    return reg_id, if_rf
+    return reg_id, impf_rf
