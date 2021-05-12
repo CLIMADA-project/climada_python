@@ -46,27 +46,52 @@ class LitPop(Exposures):
 
     def set_countries(self, countries, res_km=1, res_arcsec=None, check_plot=False,
                     exponents=None, fin_mode='pc', admin1_calc=False, conserve_cntrytotal=True,
-                    reference_year=2020):
+                    reference_year=2020, gpw_version=None, data_dir=None,
+                    resample_first=True):
 
         # value_unit is set depending on fin_mode:
         if fin_mode in [None, 'none', 'norm']:
             value_unit = ''
         if fin_mode == 'pop':
-            value_unit='number of people'
+            value_unit='people'
         else:
             value_unit = 'USD'
 
         tag = Tag()
+        litpop_list = \
+            [self._set_one_country(country,
+                                   res_arcsec=res_arcsec,
+                                   res_km=res_km,
+                                   exponents=exponents,
+                                   fin_mode=fin_mode,
+                                   total_value=None,
+                                   admin1_calc=admin1_calc,
+                                   conserve_cntrytotal=conserve_cntrytotal,
+                                   reference_year=reference_year,
+                                   gpw_version=gpw_version,
+                                   data_dir=data_dir,
+                                   resample_first=resample_first)
+             for country in countries]
+        countries_in = \
+            [country for i, country in enumerate(countries) if litpop_list[i] is not None]
+        countries_out = \
+            [country for i, country in enumerate(countries) if litpop_list[i] is None]
+        tag.description = ('LitPop for %s at %i as, year=%i, financial mode=%s, '
+                                'GPW-year=%i, BM-year=%i, exp=[%i, %i]'
+                                % (country_info[curr_country][1], resolution, reference_year,
+                                   fin_mode,
+                                   min(GPW_YEARS, key=lambda x: abs(x - reference_year)),
+                                   min(BM_YEARS, key=lambda x: abs(x - reference_year)),
+                                   exponents[0], exponents[1]))
+        # shape multipolygon explode --> loop over shapes
         litpop_list = list()
-        for country in countries:
+        for country in countries: # apply?
     
             litpop_list.append(
                 self._set_one_country(cntry_val, nightlight, coord_nl, res_fact, res_km,
                                       cntry_admin1[cntry_iso], **kwargs).gdf)
             tag.description += ("{} {:d} GDP: {:.3e} income group: {:d} \n").\
                 format(cntry_val[1], cntry_val[3], cntry_val[4], cntry_val[5])
-
-
 
         Exposures.__init__(
             self,
@@ -159,11 +184,11 @@ class LitPop(Exposures):
             resolution before combining them as Lit^m * Pop^n?
             The default is True. Warning: Setting this to False affects the
             disaggregation results.
-    
+
         Raises
         ------
         ValueError
-    
+
         Returns
         -------
         """
@@ -194,14 +219,23 @@ class LitPop(Exposures):
         if not country_geometry.bounds: # check for empty shape
             LOGGER.error('No geometry found for country: %s.', country)
             return None
-    
+
+        # set total value for disaggregation if not provided:
+        if total_value is None: # default, no total value provided...
+            total_value = get_total_value_per_country(iso3n, fin_mode, reference_year, pop.sum())
+        
+        # TODO: extra func, loop over list(country_geometry), treat each shape seperately until rescaling, take rescaling out of gridpoints_core_calc
+        # i.e. get total value later and rescale, afer loop through shapes. 
+        # in loop: extra functi that can go to u_coord later
+        
         # import population data (2d array), meta data, and global grid info,
         # global_transform defines the origin (corner points) of the global traget grid:
-        pop, meta_pop, global_transform = pop_util.load_gpw_pop_shape(country_geometry,
-                                                                      reference_year,
-                                                                      gpw_version=gpw_version,
-                                                                      data_dir=data_dir,
-                                                                      )
+        pop, meta_pop, global_transform = \
+            pop_util.load_gpw_pop_shape(country_geometry,
+                                        reference_year,
+                                        gpw_version=gpw_version,
+                                        data_dir=data_dir,
+                                        )
     
         # import nightlight data (2d array) and associated meta data:
         nl, meta_nl = nl_util.load_nasa_nl_shape(country_geometry,
@@ -209,10 +243,7 @@ class LitPop(Exposures):
                                                  data_dir=data_dir,
                                                  )
     
-        # set total value for disaggregation if not provided:
-        if total_value is None: # default, no total value provided...
-            total_value = get_total_value_per_country(iso3n, fin_mode, reference_year, pop.sum())
-    
+
         if resample_first: # default is True
             # --> resampling to target res. before core calculation
             target_res_arcsec = res_arcsec
@@ -240,10 +271,12 @@ class LitPop(Exposures):
                                                            global_origins=(global_transform[2],
                                                                            global_transform[5]),
                                                            )
+        
+        lon, lat = u_coord.raster_to_meshgrid(transform, width, height) # TODO
         exp_country = LitPop()
         exp_country.gdf['value'] = litpop_array.reshape(-1,)
-        exp_country.gdf['latitude'] = coord[:, 0]
-        exp_country.gdf['longitude'] = coord[:, 1]
+        exp_country.gdf['latitude'] = lat
+        exp_country.gdf['longitude'] = lon
         exp_country.gdf[INDICATOR_IMPF] = 1
         exp_country.gdf['region_id'] = iso3n
 
@@ -274,7 +307,8 @@ def get_total_value_per_country(cntry_iso3a, fin_mode, reference_year, total_pop
         * 'nfw': non-financial wealth (Source: Credit Suisse, of households only)
         * 'tw': total wealth (Source: Credit Suisse, of households only)
         * 'norm': normalized by country
-        * 'none' or None: LitPop per pixel is returned unscaled
+        * 'none': LitPop per pixel is returned unscaled
+        The default is 'pc'
     reference_year : int
         reference year for data extraction
     total_population : number, optional
@@ -285,7 +319,7 @@ def get_total_value_per_country(cntry_iso3a, fin_mode, reference_year, total_pop
     -------
     total_value : float
     """
-    if fin_mode == 'none' or fin_mode is None:
+    if fin_mode == 'none':
         return None
     elif fin_mode == 'pop':
         return total_population
@@ -356,10 +390,11 @@ def resample_input_data(data_array_list, meta_list,
             (-180.0, 89.99999999999991)
     target_crs : rasterio.crs.CRS
         destination CRS
-        The default is crs of reference data (CRS.from_epsg(4326) for GPW pop)
+        The default is None, implying crs of reference data is used
+        (e.g., CRS.from_epsg(4326) for GPW pop)
     resampling : resampling function (optional)
         The default is rasterio.warp.Resampling.bilinear
-    conserve_mean : str (optional), either 'mean' or 'sum'
+    conserve : str (optional), either 'mean' or 'sum'
         Conserve mean or sum of data? The default is None (no conservation).
 
     Returns
@@ -369,88 +404,162 @@ def resample_input_data(data_array_list, meta_list,
     meta : dict
         contains meta data of new grid (same for all arrays)
     """
-    if resampling is None:
-        resampling = rasterio.warp.Resampling.bilinear
-    if target_crs is None:
-        target_crs = meta_list[i_ref]['crs']
 
     # target resolution in degree lon,lat:
     if target_res_arcsec is None:
         res_degree = meta_list[i_ref]['transform'][0] # reference grid
     else:
         res_degree = target_res_arcsec / 3600 
-    # reference grid shape required to calculate destination grid:
-    ref_shape = data_array_list[i_ref].shape
-
-    # if reference resolution and target resolution are identical, use reference grid:
-    if (target_res_arcsec is None) or (np.round(meta_list[i_ref]['transform'][0],
-                                                decimals=7)==np.round(res_degree,
-                                                                      decimals=7)):
-        dst_transform = meta_list[i_ref]['transform']
-        dst_shape = ref_shape
-    else: # DEFINE DESTINATION GRID from target resolution and reference grid:
-        # Define origin coordinates for destination (dst) grid:
-        # Find largest longitude point on global grid that is "east" of ref. grid:
-        #   1. from original origin, find index of new origin on global grid:
-        buf = 0 # buffer of grid cells around destination grid
-        dst_orig_lon = int(np.floor((180 + meta_list[i_ref]['transform'][2]) / res_degree))-buf
-        #   2. get loingitude in degree from index
-        dst_orig_lon = -180 + np.max([0, dst_orig_lon]) * res_degree
-        # Find lowest latitude point on global grid that is "north" of ref. grid:
-        # (analogous process as for dst_orig_lon)
-        dst_orig_lat = int(np.floor((90 - meta_list[i_ref]['transform'][5]) / res_degree))-buf
-        dst_orig_lat = 90 - np.max([0, dst_orig_lat]) * res_degree
-    
-        # Calculate shape of destination grid based on reference shape and 
-        # ratio of reference and traget resolution:
-        dst_shape = (int(min([180/res_degree, # lat ( height))
-                              ref_shape[0] / (res_degree/meta_list[i_ref]['transform'][0])+1+2*buf])),
-                     int(min([360/res_degree, # lon (width))
-                              ref_shape[1] / (res_degree/meta_list[i_ref]['transform'][0])+1+2*buf])),
-                     )
-        # define transform for destination grid from values calculated above:
-        dst_transform = rasterio.Affine(res_degree, # new lon step
-                                        meta_list[i_ref]['transform'][1], # same as ref
-                                        dst_orig_lon, # new origin lon
-                                        meta_list[i_ref]['transform'][3], # same as ref
-                                        -res_degree, # new lat step
-                                        dst_orig_lat, # new origin lat
-                                        )
 
     # loop over data arrays, do transformation where required:
-    data_out_list = list()
+    data_out_list = [None] * len(data_array_list)
     for idx, data in enumerate(data_array_list):
         # if target resolution corresponds to reference data resolution,
         # the reference data is not transformed:
         if idx==i_ref and ((target_res_arcsec is None) or (np.round(meta_list[i_ref]['transform'][0],
                             decimals=7)==np.round(res_degree, decimals=7))):
-            data_out_list.append(data)
+            data_out_list[idx] = data
             continue
-
-        # init destination array:
-        destination = np.zeros(dst_shape, dtype=meta_list[idx]['dtype'])
-        # call resampling algorithm
-        rasterio.warp.reproject(
-                        source=data_array_list[idx],
-                        destination=destination,
-                        src_transform=meta_list[idx]['transform'],
-                        src_crs=meta_list[i_ref]['crs'], # why i_ref and not idx?
-                        dst_transform=dst_transform,
-                        dst_crs=target_crs,
-                        resampling=resampling,
-                        )
-        if conserve == 'mean':
-            destination = (destination / destination.mean()) * data_array_list[idx].mean()
-        elif conserve == 'sum':
-            destination = (destination / destination.sum()) * data_array_list[idx].sum()
-        # overwrite data array with resampled data in destination:
-        data_out_list.append(destination)
-        meta = {'width': dst_shape[1],
-                'height': dst_shape[0],
-                'crs': target_crs,
-                'transform': dst_transform
-                }
+        # reproject data grid:
+        data_out_list[idx], meta = \
+            reproject_2d_grid(data, meta_list[idx], meta_list[i_ref], 
+                              res_arcsec_out=target_res_arcsec,
+                              global_origins=global_origins,
+                              crs_out=target_crs,
+                              resampling=rasterio.warp.Resampling.bilinear,
+                              conserve=conserve,
+                              buf=0)
     return data_out_list, meta
+
+
+
+def reproject_2d_grid(data, meta_in, meta_out, 
+                      res_arcsec_out=None,
+                      global_origins=(-180.0, 90.0),
+                      crs_out=None,
+                      resampling=None,
+                      conserve=None,
+                      buf=0):
+    """
+    Resamples 2d data array to a grid –
+    target grid is defined from target_meta and (if provided) target_res_arcsec,
+    global_origins, and target_crs
+
+    Parameters
+    ----------
+    data : np.ndarray
+        2D-arrays t be reprojected
+    meta_in : dict
+        meta data dictionary of input grid
+        Required fields in meta are 'dtype,', 'width', 'height', 'crs', 'transform'.
+        Example:
+            {'driver': 'GTiff',
+             'dtype': 'float32',
+             'nodata': 0,
+             'width': 2702,
+             'height': 1939,
+             'count': 1,
+             'crs': CRS.from_epsg(4326),
+             'transform': Affine(0.00833333333333333, 0.0, -18.175000000000068,
+                                 0.0, -0.00833333333333333, 43.79999999999993)}
+    meta_out : dict
+        meta data dictionary of target grid, same structure as meta_in.
+        The meta data defining the reference grid.
+    res_arcsec_out : int (optional)
+        target resolution in arcsec. The default is None, i.e. same resolution
+        as target grid defined in meta_out.
+    global_origins : tuple with two numbers (lat, lon) (optional)
+        global lon and lat origins as basis for destination grid.
+        Only required if target_res_arcsec different than resolution in meta_out.
+        The default is the same as for GPW population data: (-180.0, 90)
+    crs_out : rasterio.crs.CRS
+        destination CRS
+        The default is crs provided in meta_out.
+    resampling : resampling function (optional)
+        The default is rasterio.warp.Resampling.bilinear
+    conserve_mean : str (optional), either 'mean' or 'sum'
+        Conserve mean or sum of data? The default is None (no conservation).
+    buf : int (optional)
+        buffer in number of grid cells around data in target grid
+        (only if resolution changes). The default is 0.
+
+    Returns
+    -------
+    data_out : np.ndarray
+        contains resampled data set
+    meta : dict
+        contains meta data of new grid 
+    """
+    if resampling is None:
+        resampling = rasterio.warp.Resampling.bilinear
+    if crs_out is None:
+        crs_out = meta_out['crs']
+
+    # target resolution in degree lon,lat:
+    if res_arcsec_out is None:
+        res_degree = meta_out['transform'][0] # reference grid
+    else:
+        res_degree = res_arcsec_out / 3600 
+    # reference grid shape required to calculate destination grid, (lat, lon):
+    ref_shape = (meta_out['height'], meta_out['width'])
+
+    # if reference resolution and target resolution are identical, use reference grid:
+    if (res_arcsec_out is None) or (np.round(meta_out['transform'][0],
+                                    decimals=7)==np.round(res_degree, decimals=7)):
+        dst_transform = meta_out['transform']
+        dst_shape = ref_shape
+    else: # DEFINE DESTINATION GRID from target resolution and reference grid:
+        # Define origin coordinates for destination (dst) grid:
+        # Find largest longitude point on global grid that is "east" of ref. grid:
+        #   1. from original origin, find index of new origin on global grid:
+        dst_orig_lon = int(np.floor((180 + meta_out['transform'][2]) / res_degree))-buf
+        #   2. get loingitude in degree from index
+        dst_orig_lon = -180 + np.max([0, dst_orig_lon]) * res_degree
+        # Find lowest latitude point on global grid that is "north" of ref. grid:
+        # (analogous process as for dst_orig_lon)
+        dst_orig_lat = int(np.floor((90 - meta_out['transform'][5]) / res_degree))-buf
+        dst_orig_lat = 90 - np.max([0, dst_orig_lat]) * res_degree
+    
+        # Calculate shape of destination grid based on reference shape and 
+        # ratio of reference and traget resolution:
+        dst_shape = (int(min([180/res_degree, # lat ( height))
+                              ref_shape[0] / (res_degree/meta_out['transform'][0])+1+2*buf])),
+                     int(min([360/res_degree, # lon (width))
+                              ref_shape[1] / (res_degree/meta_out['transform'][0])+1+2*buf])),
+                     )
+        # define transform for destination grid from values calculated above:
+        dst_transform = rasterio.Affine(res_degree, # new lon step
+                                        meta_out['transform'][1], # same as ref
+                                        dst_orig_lon, # new origin lon
+                                        meta_out['transform'][3], # same as ref
+                                        -res_degree, # new lat step
+                                        dst_orig_lat, # new origin lat
+                                        )
+
+    # init empty destination array with same data type as input:
+    data_out = np.zeros(dst_shape, dtype=meta_in['dtype'])
+    # call resampling algorithm
+    rasterio.warp.reproject(
+                    source=data,
+                    destination=data_out,
+                    src_transform=meta_in['transform'],
+                    src_crs=meta_out['crs'], # why meta_out and not meta_in?
+                    dst_transform=dst_transform,
+                    dst_crs=crs_out,
+                    resampling=resampling,
+                    )
+    if conserve == 'mean':
+        data_out = (data_out / data_out.mean()) * data.mean()
+    elif conserve == 'sum':
+        data_out = (data_out / data_out.sum()) * data.sum()
+
+    meta = {'width': dst_shape[1],
+            'height': dst_shape[0],
+            'crs': crs_out,
+            'transform': dst_transform
+            }
+    return data_out, meta
+
 
 
 def gridpoints_core_calc(data_arrays, offsets=None, exponents=None,

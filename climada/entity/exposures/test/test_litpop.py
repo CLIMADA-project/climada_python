@@ -181,12 +181,13 @@ class TestLitPop(unittest.TestCase):
         """test function resample_input_data with odd downsampling"""
         data_in, meta_list = data_arrays_resampling_demo()
         #
-        data_out, meta_out = lp.resample_input_data(data_in, meta_list,
-                        i_ref=0, # high res data as reference
-                        target_res_arcsec=6120, # 1.7 degree
-                        global_origins=None,
-                        target_crs=None,
-                        resampling=None)
+        data_out, meta_out = \
+            lp.resample_input_data(data_in, meta_list,
+                                   i_ref=0, # high res data as reference
+                                   target_res_arcsec=6120, # 1.7 degree
+                                   global_origins=None,
+                                   target_crs=None,
+                                   resampling=None)
         self.assertEqual(1.7, meta_out['transform'][0]) # check resolution
         reference_array = np.array([[0.425    , 1.7631578],
                                     [3.425    , 4.763158 ]], dtype='float32')
