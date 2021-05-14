@@ -41,7 +41,7 @@ from climada.entity.exposures import INDICATOR_CENTR
 from climada.hazard import Tag as TagHaz
 import climada.util.plot as u_plot
 from climada import CONFIG
-from climada.util.constants import DEF_CRS, CMAP_CONTINUOUS2
+from climada.util.constants import DEF_CRS, CMAP_SEQUENTIAL2
 import climada.util.coordinates as u_coord
 import climada.util.dates_times as u_dt
 from climada.util.select import get_attributes_with_matching_dimension
@@ -272,7 +272,7 @@ class Impact():
             cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         if 'cmap' not in kwargs:
-            kwargs['cmap'] = CMAP_CONTINUOUS2
+            kwargs['cmap'] = CMAP_SEQUENTIAL2
 
         eai_exp = self._build_exp()
         axis = eai_exp.plot_hexbin(mask, ignore_zero, pop_name, buffer,
@@ -301,7 +301,7 @@ class Impact():
             cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         if 'cmap' not in kwargs:
-            kwargs['cmap'] = CMAP_CONTINUOUS2
+            kwargs['cmap'] = CMAP_SEQUENTIAL2
 
         eai_exp = self._build_exp()
         axis = eai_exp.plot_scatter(mask, ignore_zero, pop_name, buffer,
@@ -359,7 +359,7 @@ class Impact():
             cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         if 'cmap' not in kwargs:
-            kwargs['cmap'] = CMAP_CONTINUOUS2
+            kwargs['cmap'] = CMAP_SEQUENTIAL2
         eai_exp = self._build_exp()
         axis = eai_exp.plot_basemap(mask, ignore_zero, pop_name, buffer,
                                     extend, zoom, url, axis=axis, **kwargs)
@@ -393,7 +393,7 @@ class Impact():
             raise ValueError('attribute imp_mat is empty. Recalculate Impact'
                              'instance with parameter save_mat=True')
         if 'cmap' not in kwargs:
-            kwargs['cmap'] = CMAP_CONTINUOUS2
+            kwargs['cmap'] = CMAP_SEQUENTIAL2
         impact_at_events_exp = self._build_exp_event(event_id)
         axis = impact_at_events_exp.plot_hexbin(mask, ignore_zero, pop_name,
                                                 buffer, extend, axis=axis, **kwargs)
@@ -433,7 +433,7 @@ class Impact():
         if event_id not in self.event_id:
             raise ValueError(f'Event ID {event_id} not found')
         if 'cmap' not in kwargs:
-            kwargs['cmap'] = CMAP_CONTINUOUS2
+            kwargs['cmap'] = CMAP_SEQUENTIAL2
         impact_at_events_exp = self._build_exp_event(event_id)
         axis = impact_at_events_exp.plot_basemap(mask, ignore_zero, pop_name,
                                                  buffer, extend, zoom, url, axis=axis, **kwargs)

@@ -42,7 +42,7 @@ from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 from rasterio.crs import CRS
 import requests
 
-from climada.util.constants import CMAP_CONTINUOUS1, CMAP_CAT, CMAP_DIVERGING
+from climada.util.constants import CMAP_SEQUENTIAL1, CMAP_CAT, CMAP_DIVERGING
 from climada.util.files_handler import to_list
 import climada.util.coordinates as u_coord
 
@@ -186,7 +186,7 @@ def _plot_scattered_data(method, array_sub, geo_coord, var_name, title,
     list_coord = to_list(num_im, geo_coord, 'geo_coord')
 
     if 'cmap' not in kwargs:
-        kwargs['cmap'] = CMAP_CONTINUOUS1
+        kwargs['cmap'] = CMAP_SEQUENTIAL1
 
     if axes is None:
         proj_plot = proj
