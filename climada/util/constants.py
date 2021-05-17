@@ -47,7 +47,6 @@ __all__ = ['SYSTEM_DIR',
 import numpy
 from fiona.crs import from_epsg
 import matplotlib as mpl
-import numpy as np
 from .config import CONFIG
 
 SYSTEM_DIR = CONFIG.local_data.system.dir(create=False)
@@ -721,9 +720,11 @@ cm_data2 = [[0.00000000, 0.00000000, 0.00000000],
            [1.00000000, 1.00000000, 1.00000000]]
 
 CMAP_EXPOSURES = mpl.colors.LinearSegmentedColormap.from_list('cmr.sunburst', cm_data1, N=256).reversed()
+CMAP_EXPOSURES.set_under('lightgray')
 CMAP_IMPACT = mpl.colors.LinearSegmentedColormap.from_list('cmr.flamingo', cm_data2, N=256).reversed()
+CMAP_IMPACT.set_under('lightgray')
 """Default sequential colormaps, taken from https://cmasher.readthedocs.io/index.html"""
 
-CMAP_RASTER = 'viridis'
+CMAP_RASTER = mpl.cm.get_cmap('viridis')
 
 CMAP_CAT = 'Dark2'
