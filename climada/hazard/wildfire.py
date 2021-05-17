@@ -63,7 +63,7 @@ BLURR_STEPS = 4
 
 class WildFire(Hazard):
 
-    """Contains wild fires.
+    """Contains wild fire events.
 
     Wildfires comprise the challange that the definition of an event is unclear.
     Reporting standards vary accross regions and over time. Hence, to have
@@ -75,9 +75,8 @@ class WildFire(Hazard):
     events can be displayed as single fires. In that case they have the tag
     'WFsingle'.
 
-
     Attributes:
-        date_end ((np.array): integer date corresponding to the proleptic
+        date_end (np.array): integer date corresponding to the proleptic
             Gregorian ordinal, where January 1 of year 1 has ordinal 1
             (ordinal format of datetime library))
 
@@ -116,12 +115,21 @@ class WildFire(Hazard):
         """ Parse FIRMS data and generate historical fires by temporal and spatial
         clustering.
 
-        Parameters:
-            csv_firms: csv file of the FIRMS data (https://firms.modaps.eosdis.nasa.gov/download/)
-                or pd.DataFrame of FIRMS data
-            centr_res_factor (int, optional): resolution factor with respect to
-                the satellite data to use for centroids creation. Default: 1
-            centroids (Centroids, optional): centroids in degrees to map data
+        Parameters
+        ----------
+            csv_firms : pd.DataFrame or str
+                 path to csv file of FIRMS data or FIRMS data as pd.Dataframe
+                (https://firms.modaps.eosdis.nasa.gov/download/)
+            centr_res_factor : int, optional, default=1
+                resolution factor with respect to the satellite data to use
+                for centroids creation
+            centroids : Centroids, optional
+                centroids in degrees to map data
+
+        Returns
+        -------
+            self : climada.hazard.WildFire instance
+
         """
         self.clear()
 
@@ -162,20 +170,32 @@ class WildFire(Hazard):
 
     def hull_burned_area(self, ev_id, alpha=100.87, return_plot=False):
         """Compute the burned area for a given fire.
+
         Please note: NASA advises against calculating burned area using the
         FIRMS data.
 
         Algorithm used: https://pypi.org/project/alphashape/
 
-        Parameters:
-            ev_id: id of the selected fire
-            alpha (float, optional): parameter used to compute the concave hull
-            return_plot (bool, optional): indicate if the output plot of the
-                concave hull algorithm should be returned
-            info
+        Parameters
+        ----------
+            ev_id : int
+                id of the selected fire
+            alpha : float, optional
+                parameter used to compute the concave hull
+            return_plot : bool, optional
+                indicate if the output plot of the concave hull algorithm
+                should be returned
 
-        Returns:
-            float
+        Returns
+        -------
+            burned area : float
+            plot : optional
+
+        See also
+        --------
+        climada.util.alpha_shape
+        https://towardsdatascience.com/the-concave-hull-c649795c0f0f
+        
         """
         ev_idx = np.argwhere(self.event_id == ev_id).reshape(-1)[0]
         if not ev_idx.size:
@@ -219,24 +239,38 @@ class WildFire(Hazard):
                                     year_start=None, year_end=None,
                                     keep_all_fires=False):
 
-        """ Parse FIRMS data and generate historical fire seasons. fires
-        are created using temporal and spatial clustering according to the
-        'set_hist_fire' method. fires are then summarized using max
-        intensity at each centroid for each year.
+        """ Parse FIRMS data and generate historical fire seasons.
+        
+        Individual fires are created using temporal and spatial clustering
+        according to the 'set_hist_fire' method. fires are then summarized
+        using max intensity at each centroid for each year.
 
-        Parameters:
-            csv_firms: csv file of the FIRMS data (https://firms.modaps.eosdis.nasa.gov/download/)
-                or pd.DataFrame of FIRMS data
-            centr_res_factor (int, optional): resolution factor with respect to
-                the satellite data to use for centroids creation. Default: 1
-            centroids (Centroids, optional): centroids in degrees to map data
-            hemisphere (str, optional): 'SHS' or 'NHS' to define fire seasons
-            year_start (int, optional): start year; FIRMS fires before that
-                are cut; no cut if not specified
-            year_end (int, optional): end year; FIRMS fires after that are cut;
-                no cut if not specified
-            keep_all_fires (bool, optional): keep detailed list of all fires;
-                default is False to save memory.
+        Parameters
+        ----------
+            csv_firms : pd.DataFrame or str
+                 path to csv file of FIRMS data or FIRMS data as pd.Dataframe
+                (https://firms.modaps.eosdis.nasa.gov/download/)
+            centr_res_factor : int, optional, default=1
+                resolution factor with respect to the satellite data to use
+                for centroids creation
+            centroids : Centroids, optional
+                centroids in degrees to map data
+            hemisphere : str, optional
+                'SHS' or 'NHS' to define fire seasons
+            year_start : int, optional
+                start year; FIRMS fires before that are cut; no cut if not
+                specified
+            year_end : int, optional
+                end year; FIRMS fires after that are cut; no cut if not
+                specified
+            keep_all_fires : bool, optional
+                keep detailed list of all fires; default is False to save
+                memory.
+
+        Returns
+        -------
+            self : climada.hazard.WildFire instance
+
         """
 
         LOGGER.info('Setting up historical fires for year set.')
@@ -319,10 +353,12 @@ class WildFire(Hazard):
 
     def set_proba_fire_seasons(self, n_fire_seasons=1, n_ignitions=None,
                                keep_all_fires=False):
-        """ Generate probabilistic fire seasons. Fire seasons
-        are created by running n probabilistic fires per year which are then
-        summarized into a probabilistic fire season by calculating the max
-        intensity at each centroid for each probabilistic fire season.
+        """ Generate probabilistic fire seasons.
+        
+        Fire seasons are created by running n probabilistic fires per year
+        which are then summarized into a probabilistic fire season by
+        calculating the max intensity at each centroid for each probabilistic
+        fire season.
         Probabilistic fires are created using the logic described in the
         method 'run_one_bushfire'.
 
@@ -332,14 +368,24 @@ class WildFire(Hazard):
         Intensities are drawn randomly from historic events. Thus, this method
         requires at least one fire to draw from.
 
-        Parameters:
-            self: must have calculated historic fire seasons before
-            n_event_years (int, optional): number of fire seasons to be generated
-            n_ignitions (array, optional) -> [min, max]: min/max of uniform
-                distribution to sample from, in order to determin n_fire per
-                probabilistic year set. If none, min/max is taken from hist.
-            keep_all_fires (bool, optional): keep detailed list of all fires;
-                default is False to save memory.
+        Parameters
+        ----------
+            self : climada.Hazard.WildFire
+                must have calculated historic fire seasons before
+            n_event_years : int, optional
+                number of fire seasons to be generated
+            n_ignitions : array, optional
+                [min, max]: min/max of uniform distribution to sample from,
+                in order to determin n_fire per probabilistic year set.
+                If none, min/max is taken from hist.
+            keep_all_fires : bool, optional
+                keep detailed list of all fires; default is False to save
+                memory.
+
+        Returns
+        -------
+            self : climada.hazard.WildFire instance
+
         """
         # min/max for uniform distribtion to sample for n_fires per year
         if n_ignitions is None:
@@ -382,17 +428,24 @@ class WildFire(Hazard):
 
     def combine_fires(self, event_id_merge=None, remove_rest=False,
                       probabilistic=False):
-        """ Combine events that are identified as different fires by the
-        clustering algorithms but need to be treated as one (i.e. due to impact
-        data reporting or for case studies). Orig fires are removed and a new
-        fire id created; max intensity at overlapping centroids is assigned.
+        """ Combine events that are identified as different fire to one event
+        
+        Orig fires are removed and a new fire id created; max intensity at
+        overlapping centroids is assigned.
 
-        Parameters:
-            event_id_merge (array of int, optional): events to be merged
-            remove_rest (bool, optional): if set to true, only the merged event
-                is returned.
-            probabilistic(bool, optional): differentiate, because probabilistic
-                events do not come with a date.
+        Parameters
+        ----------
+            event_id_merge : array of int, optional
+                events to be merged
+            remove_rest : bool, optional
+                if set to true, only the merged event is returned.
+            probabilistic : bool, optional
+                differentiate, because probabilistic events have no date.
+
+        Returns
+        -------
+            self : climada.hazard.WildFire instance
+
         """
 
         if probabilistic is False:
@@ -460,15 +513,23 @@ class WildFire(Hazard):
 
     def summarize_fires_to_seasons(self, year_start=None, year_end=None,
                                    hemisphere=None):
-        """ Summarize historic fires into fire seasons. Fires are summarized
-        by taking the maximum intensity at each grid point.
+        """ Summarize historic fires into fire seasons.
 
-        Parameters:
-            year_start (int, optional): start year; fires before that
-                are cut; no cut if not specified
-            year_end (int, optional): end year; fires after that are cut;
-                no cut if not specified
-            hemisphere (str, optional): 'SHS' or 'NHS' to define fire seasons
+        Fires are summarized by taking the max intensity at each grid point.
+
+        Parameters
+        ----------
+            year_start : int, optional
+                start year; fires before that are cut; no cut if not specified
+            year_end : int, optional
+                end year; fires after that are cut; no cut if not specified
+            hemisphere : str, optional
+                'SHS' or 'NHS' to define fire seasons
+
+        Returns
+        -------
+            self : climada.hazard.WildFire instance
+
         """
 
         # define hemisphere
@@ -534,11 +595,15 @@ class WildFire(Hazard):
             - VIIRS: remove data where confidence values are set to low (keep
                 nominal and high values)
 
-        Parameters:
-            csv_firms: csv file of the FIRMS data or pd.DataFrame of FIRMS data
+        Parameters
+        ----------
+            csv_firms : pd.DataFrame or str
+                 path to csv file of FIRMS data or FIRMS data as pd.Dataframe
 
-        Returns:
-            pd.DataFrame
+        Returns
+        -------
+            firms : pd.DataFrame
+
         """
         if isinstance(csv_firms, pd.DataFrame):
             firms = csv_firms
@@ -578,11 +643,16 @@ class WildFire(Hazard):
     def _firms_resolution(firms):
         """ Returns resolution of satellite used in FIRMS in degrees
 
-        Parameters:
-            firms (pd.DataFrame): FIRMS data
+        Parameters
+        ----------
+            csv_firms : pd.DataFrame or str
+                 path to csv file of FIRMS data or FIRMS data as pd.Dataframe
 
-        Returns:
-            float
+        Returns
+        -------
+            res_data/ONE_LAT_KM : float
+                resolution in degrees
+
         """
         # Resolution in km of the centroids depends on the data origin.
         if 'instrument' in firms.columns:
@@ -599,13 +669,18 @@ class WildFire(Hazard):
         """ Get centroids from the firms dataset and refactor them.
 
         Parameters:
-            firms (DataFrame): dataset obtained from FIRMS data
-            res_data (float): FIRMS instrument resolution in degrees
-            centr_res_factor (float): the factor applied to voluntarly decrease/increase
-                the centroids resolution
+            firms : pd.DataFrame
+                 FIRMS data
+            res_data : float
+                FIRMS instrument resolution in degrees
+            centr_res_factor : float
+                the factor applied to voluntarly decrease/increase the
+                centroids resolution
 
-        Returns:
-            centroids (Centroids)
+        Returns
+        -------
+            centroids : Centroids
+
         """
         centroids = Centroids()
         centroids.set_raster_from_pnt_bounds((firms['longitude'].min(), \
@@ -620,14 +695,19 @@ class WildFire(Hazard):
 
     def _firms_cons_days(self, firms):
         """ Compute clusters of consecutive days (temporal clusters).
+        
             An interruption of days_thresh is necessary to be set in two
             different temporal clusters.
 
-        Parameters:
-            firms (dataframe): dataset obtained from FIRMS data
+        Parameters
+        ----------
+            firms : pd.DataFrame
+                 FIRMS data
 
-        Returns:
-            firms
+        Returns
+        -------
+            firms : pd.DataFrame
+
         """
         LOGGER.debug('Computing clusters of consecutive days.')
         firms_iter = firms[firms['iter_ev']][['datenum', 'cons_id', 'event_id']]
@@ -663,15 +743,22 @@ class WildFire(Hazard):
 
     @staticmethod
     def _firms_clustering(firms, res_data, clus_thres):
-        """Compute geographic clusters and sort firms with ascending clus_id
+        """ Compute geographic clusters and sort firms with ascending clus_id
         for each cons_id.
 
-        Parameters:
-            firms (dataframe): dataset obtained from FIRMS data
-            res_data (float): FIRMS instrument resolution in degrees
+        Parameters
+        ----------
+            firms : pd.DataFrame
+                 FIRMS data
+            res_data : float
+                FIRMS instrument resolution in degrees
+            clus_thres : int
+                Clustering factor which multiplies instrument resolution
 
-        Returns:
-            firms
+        Returns
+        -------
+            firms : pd.DataFrame
+
         """
 
         LOGGER.debug('Computing geographic clusters in consecutive fires.')
@@ -703,14 +790,29 @@ class WildFire(Hazard):
     @numba.njit(parallel=True)
     def _firms_fire(days_thres, fir_cons_id, fir_clus_id, fir_ev_id, fir_iter,
                     fir_date):
-        """Creation of event_id for each dataset point.
+        """ Creation of event_id for each dataset point.
         A fire is characterized by a unique combination of 'cons_id' and 'clus_id'.
 
-        Parameters:
-            firms (dataframe)
+        Parameters
+        ----------
+            days_thres : int
+                Temporal threshold for clustering
 
-        Returns:
-            firms
+            fir_cons_id : array
+                information on points within the same temporal cluster
+            fir_clus_id : array
+                information on events within the same spatial cluster
+            fir_ev_id : array
+                information of already assigned event IDs
+            fit_iter : array
+                information on itration count
+            fir_date : array
+                date of each data point
+
+        Returns
+        -------
+            firms : pd.DataFrame
+
         """
         ev_id = 0
         for cons_id in np.unique(fir_cons_id):
@@ -732,12 +834,17 @@ class WildFire(Hazard):
         """Remove fires containg fewer FIRMS entries than threshold.
         A fire is characterized by a unique combination of 'cons_id' and 'clus_id'.
 
-        Parameters:
-            firms (dataframe)
-            minor_fires_thres(int)
+        Parameters
+        ----------
+            firms : pd.DataFrame
+                 FIRMS data
+            minor_fires_thres : int
+                threshold of FIRMS data points for an event
 
-        Returns:
-            firms
+        Returns
+        -------
+            firms : pd.DataFrame
+                 FIRMS data
         """
         for i in range(np.unique(firms.event_id).size):
             if (firms.event_id == i).sum() < minor_fires_thres:
@@ -754,15 +861,20 @@ class WildFire(Hazard):
 
     def _calc_brightness(self, firms, centroids, res_centr):
         """ Compute intensity matrix per fire with the maximum brightness at
-        each centroid and al other hazard attributes.
+        each centroid and all other hazard attributes.
 
-        Parameters:
-            firms (dataframe)
-            centroids (Centroids): centroids for the dataset
-            res_centr (float): centroids resolution in centroids unit
+        Parameters
+        ----------
+            firms : pd.DataFrame
+                 FIRMS data
+            centroids : Centroids
+            res_centr : float
+                centroids resolution in centroids unit
 
-        Returns:
-            brightness (Hazard)
+        Returns
+        -------
+            self : climada.hazard.WildFire instance
+
         """
         uni_ev = np.unique(firms['event_id'].values)
         num_ev = uni_ev.size
@@ -820,13 +932,18 @@ class WildFire(Hazard):
         """ For a given fire, fill in an intensity np.array with the maximum brightness
         at each centroid.
 
-        Parameters:
-            firms (dataframe)
-            centroids (Centroids): centroids for the dataset
-            ev_id (int): id of the selected event
+        Parameters
+        ----------
+            firms : pd.DataFrame
+                 FIRMS data
+            centroids : Centroids
+            ev_id : int
+                id of the selected event
 
-        Returns:
-            brightness_ev (np.array): maximum brightness at each centroids
+        Returns
+        -------
+            brightness_ev : lil_matrix
+                maximum brightness at each centroids
 
         """
         LOGGER.debug('Brightness corresponding to FIRMS event %s.', str(ev_id))
@@ -856,13 +973,20 @@ class WildFire(Hazard):
         contain no intensity. This happens for events which occur
         outside of the defined centroids.
 
-        Parameters:
-            bright_list (list): idnividual wild fires
-            firms
+        Parameters
+        ----------
+            bright_list : list
+                idnividual wild fires
+            firms : pd.DataFrame
+                 FIRMS data
 
-        Returns:
-            updated bright_list (list)
-            updated firms
+        Returns
+        -------
+            bright_list_nonzero : list
+                list with events that occured on the defined centroids
+            firms : pd.DataFrame
+                 FIRMS data (with data that occured on the defined centroids)
+
         """
         bright_list_nonzero = []
         event_id_new = 1
@@ -883,12 +1007,17 @@ class WildFire(Hazard):
     def _set_one_proba_fire_season(self, n_ignitions, seed=8):
         """ Generate a probabilistic fire season.
 
-        Parameters:
-            n_ignitions (int): number of wild fires
-            seed (int)
+        Parameters
+        ----------
+            n_ignitions : int
+                number of wild fires for the season
+            seed : int
 
-        Returns:
-            proba_fires (lil_matrix)
+        Returns
+        -------
+            proba_fires : lil_matrix
+                probablistic hazard
+
         """
         np.random.seed(seed)
         proba_fires = sparse.lil_matrix(np.zeros((n_ignitions, self.centroids.size)))
@@ -932,9 +1061,16 @@ class WildFire(Hazard):
             The initial version of this code was inspired by
             https://scipython.com/blog/the-forest-fire-model/
 
+        Parameters
+        ----------
+            self : climada.hazard.WildFire instance
+                needs to contain information of at least 1 historic wildfire
 
-        Returns:
-            centr_burned
+        Returns
+        -------
+            centr_burned : np.array
+                array indicating which centroids burned
+
         """
         # set fire propagation matrix if not already defined
         if not hasattr(self.centroids, 'fire_propa_matrix'):
@@ -992,20 +1128,29 @@ class WildFire(Hazard):
         """ Propagation of the fire in the 8 neighbouring cells around
         (centr_ix, centr_iy) according to propagation rules.
 
-        Parameters:
-            centr_shape(np.array): shape of centroids
-            fire_propa_matrix(np.array): fire proagation matrix
-            prop_proba(float): global propagation probability
-            centr_ix (int): x coordinates of the burning centroid in the
-                centroids matrix
-            centr_iy (int): y coordinates of the burning centroid in the
-                centroids matrix
-            centr_burned (np.array): array containing burned centroids
-            prob_array(np.array): array of random numbers to draw from for
-                random fire propagation
+        Parameters
+        ----------
+            centr_shape : np.array
+                shape of centroids array
+            fire_propa_matrix : np.array
+                fire proagation matrix indicating centroid specific fire
+                spread probability
+            prop_proba : float
+                global propagation probability
+            centr_ix : int
+                x coordinates of the burning centroid in the centroids matrix
+            centr_iy : int
+                y coordinates of the burning centroid in the centroids matrix
+            centr_burned : np.array
+                array containing information on burned centroids
+            prob_array: np.array
+                array of random numbers to draw from for random fire propagation
 
-        Returns:
-            centr_burned(np.array): updated centr_burned matrix
+        Returns
+        -------
+            centr_burned : np.array
+                updated centr_burned matrix
+
         """
         # Neighbourhood
         hood = ((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1))
@@ -1030,12 +1175,17 @@ class WildFire(Hazard):
         """ The intensity values are chosen randomly at every burned centroid
         from the intensity values of the historical fire
 
-        Parameters:
-            self (bf): contains info of historical fires
-            centr_burned (np.array): array containing burned centroids
+        Parameters
+        ----------
+            self : climada.hazard.WildFire instance
+            centr_burned : np.array
+                array indicating which centroids burned
 
-        Returns:
-            proba_intensity(lil_matrix): intensity of probabilistic fire
+        Returns
+        -------
+            proba_intensity : lil_matrix
+                hazard intensity matrix of generated probabilistic fire
+
         """
         # The brightness values are chosen randomly at every burned centroids
         # from the brightness values of the historical fire
@@ -1059,12 +1209,16 @@ class WildFire(Hazard):
         matrix that coresponds to the shape of the centroids and thus not have
         to be set this way.
 
-        Parameters:
-            self (bf): contains info of historical fires
-            n_blurr (int): blurr width around historical fires
+        Parameters
+        ----------
+            self : climada.hazard.WildFire instance
+            n_blurr : int
+                blurr width around historical fires
 
-        Assigns:
-            self.centroids.fire_propa_matrix (np.array)
+        Returns
+        -------
+            self.centroids.fire_propa_matrix : np.array
+
         """
         # historically burned centroids
         hist_burned = np.zeros(self.centroids.lat.shape, dtype=bool)
@@ -1097,9 +1251,15 @@ class WildFire(Hazard):
         """ Plots fire propagation probability matrix as contour plot.
         At this point just to check the matrix but could easily be improved to
         normal map.
+        
+        Parameters
+        ----------
+            self : climada.hazard.WildFire instance
 
-        Returns.
-            contour plot of fire_propa_matrix
+        Returns
+        -------
+            contour plot : plt
+                contour plot of fire_propa_matrix
         """
 
         lon = np.reshape(self.centroids.lon, self.centroids.fire_propa_matrix.shape)
@@ -1111,12 +1271,17 @@ class WildFire(Hazard):
         """ Selects data to create historic fire season. Need to
         differentiate between Northern & Souther hemisphere
 
-        Parameters:
-            firms (pd.dataframe)
-            year (int)
-            hemisphere (str, optional): 'NHS' or 'SHS'
-        Returns:
-            firms (pd.dataframe): all fire of the specified fire season
+        Parameters
+        ----------
+            firms : pd.DataFrame
+                 FIRMS data
+            year : int
+            hemisphere : str, optional
+                'NHS' or 'SHS'
+        Returns
+        -------
+            firms : pd.DataFrame
+                 FIRMS data for specified fire season
         """
 
         firms['date'] = firms['acq_date'].apply(pd.to_datetime)
@@ -1132,7 +1297,17 @@ class WildFire(Hazard):
         return firms
 
     def _set_frequency(self):
-        """Set hazard frequency from intensity matrix. """
+        """Set hazard frequency from intensity matrix.
+        
+        Parameters
+        ----------
+            self : climada.hazard.WildFire instance
+            
+        Returns
+        -------
+            self.frequency : np.array
+
+        """
         delta_time = date.fromordinal(int(np.max(self.date))).year - \
             date.fromordinal(int(np.min(self.date))).year + 1
         num_orig = self.orig.nonzero()[0].size
@@ -1148,14 +1323,24 @@ def _fill_intensity_max(num_centr, ind, index_uni, lat_lon_cpy, fir_bright):
     as it can happen that several firms data points are mapped on to one
     centroid.
 
-        Parameters:
-            num_centr (int): number of centroids
-            ind (np.array): index of closest centroid of each firms point
-            index_uni (np.array): unique index of each centroid
-            lat_lon_cpy (np.array): lat /lon information of each firms point
-            fir_bright (np.array): brightness of each firms data point
+        Parameters
+        ----------
+            num_centr : int
+                number of centroids
+            ind : np.array
+                index of closest centroid of each firms point
+            index_uni : np.array
+                unique index of each centroid
+            lat_lon_cpy : np.array
+                lat /lon information of each firms point
+            fir_bright : np.array
+                brightness of each firms data point
+
         Returns:
-            brightness_ev (np.array): maximum brightness at each centroids
+        -------
+            brightness_ev : np.array
+                maximum brightness at each centroids
+
     """
     brightness_ev = np.zeros((1, num_centr), dtype=numba.float64)
     for idx in range(index_uni.size):
