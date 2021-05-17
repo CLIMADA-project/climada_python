@@ -434,6 +434,10 @@ class Exposures():
                 [ 'neither' | 'both' | 'min' | 'max' ]
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             figsize (tuple, optional): figure size for plt.subplots
+            fontsize : str or int, optional
+                Either provide a fontsize or give value 'adapt' to adapt the size of the font
+                to the size of the figure. If None is given, the size of the fonts will be set
+                based on the matplotlib settings.
             kwargs (optional): arguments for scatter matplotlib function, e.g.
                 cmap='Greys'. Default: 'Wistia'
          Returns:
@@ -458,7 +462,7 @@ class Exposures():
 
     def plot_hexbin(self, mask=None, ignore_zero=False, pop_name=True,
                     buffer=0.0, extend='neither', axis=None, figsize=(9, 13),
-                    **kwargs):
+                    fontsize='adapt', **kwargs):
         """Plot exposures geometry's value sum binned over Earth's map.
         An other function for the bins can be set through the key reduce_C_function.
         The plot will we projected according to the current crs.
@@ -475,6 +479,10 @@ class Exposures():
                 [ 'neither' | 'both' | 'min' | 'max' ]
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             figsize (tuple): figure size for plt.subplots
+            fontsize : str or int, optional
+                Either provide a fontsize or give value 'adapt' to adapt the size of the font
+                to the size of the figure. If None is given, the size of the fonts will be set
+                based on the matplotlib settings.
             kwargs (optional): arguments for hexbin matplotlib function, e.g.
                 reduce_C_function=np.average. Default: reduce_C_function=np.sum
          Returns:
@@ -496,12 +504,13 @@ class Exposures():
                           self.gdf.longitude[mask][pos_vals].values], axis=1)
         return u_plot.geo_bin_from_array(value, coord, cbar_label, title,
                                          pop_name, buffer, extend, proj=crs_epsg,
-                                         axes=axis, figsize=figsize, **kwargs)
+                                         axes=axis, figsize=figsize, fontsize=fontsize,
+                                         **kwargs)
 
     def plot_raster(self, res=None, raster_res=None, save_tiff=None,
                     raster_f=lambda x: np.log10((np.fmax(x + 1, 1))),
                     label='value (log10)', scheduler=None, axis=None,
-                    figsize=(9, 13), fill=True, **kwargs):
+                    figsize=(9, 13), fill=True, fontsize='adapt', **kwargs):
         """Generate raster from points geometry and plot it using log10 scale:
         np.log10((np.fmax(raster+1, 1))).
 
@@ -520,6 +529,10 @@ class Exposures():
             figsize (tuple, optional): figure size for plt.subplots
             fill(bool, optional): If false, the areas with no data will be plotted
                 in white.
+            fontsize : str or int, optional
+                Either provide a fontsize or give value 'adapt' to adapt the size of the font
+                to the size of the figure. If None is given, the size of the fonts will be set
+                based on the matplotlib settings.
             kwargs (optional): arguments for imshow matplotlib function
 
         Returns:
@@ -556,7 +569,9 @@ class Exposures():
                                       self.gdf.longitude.max(), self.gdf.latitude.max())
 
         if not axis:
-            _, axis = u_plot.make_map(proj=proj_plot, figsize=figsize)
+            _, axis, fontsize = u_plot.make_map(proj=proj_plot, figsize=figsize, fontsize=fontsize)
+        elif fontsize == 'adapt':
+            fontsize=None
 
         cbar_ax = make_axes_locatable(axis).append_axes('right', size="6.5%",
                                                         pad=0.1, axes_class=plt.Axes)
@@ -569,8 +584,13 @@ class Exposures():
             kwargs['cmap'] = CMAP_DIVERGING
         imag = axis.imshow(raster_f(raster), **kwargs, origin='upper',
                            extent=(xmin, xmax, ymin, ymax), transform=proj_data)
-        plt.colorbar(imag, cax=cbar_ax, label=label)
+        cbar = plt.colorbar(imag, cax=cbar_ax, label=label)
         plt.draw()
+        if fontsize:
+            cbar.ax.tick_params(labelsize=fontsize)
+            cbar.ax.yaxis.get_offset_text().set_fontsize(fontsize)
+            for item in [axis.title, cbar.ax.xaxis.label, cbar.ax.yaxis.label]:
+                item.set_fontsize(fontsize)
         return axis
 
     def plot_basemap(self, mask=None, ignore_zero=False, pop_name=True,

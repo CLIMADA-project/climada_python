@@ -658,7 +658,7 @@ class Hazard():
         return inten_stats
 
     def plot_rp_intensity(self, return_periods=(25, 50, 100, 250),
-                          smooth=True, axis=None, figsize=(9, 13), **kwargs):
+                          smooth=True, axis=None, figsize=(9, 13), fontsize='adapt', **kwargs):
         """Compute and plot hazard exceedance intensity maps for different
         return periods. Calls local_exceedance_inten.
 
@@ -682,10 +682,10 @@ class Hazard():
             title.append('Return period: ' + str(ret) + ' years')
         axis = u_plot.geo_im_from_array(inten_stats, self.centroids.coord,
                                         colbar_name, title, smooth=smooth,
-                                        axes=axis, figsize=figsize, **kwargs)
+                                        axes=axis, figsize=figsize, fontsize=fontsize, **kwargs)
         return axis, inten_stats
 
-    def plot_intensity(self, event=None, centr=None, smooth=True, axis=None,
+    def plot_intensity(self, event=None, centr=None, smooth=True, axis=None, fontsize='adapt',
                        **kwargs):
         """Plot intensity values for a selected event or centroid.
 
@@ -719,7 +719,7 @@ class Hazard():
             if isinstance(event, str):
                 event = self.get_event_id(event)
             return self._event_plot(event, self.intensity, col_label,
-                                    smooth, crs_epsg, axis, **kwargs)
+                                    smooth, crs_epsg, axis, fontsize='adapt', **kwargs)
         if centr is not None:
             if isinstance(centr, tuple):
                 _, _, centr = self.centroids.get_closest_point(centr[0], centr[1])
@@ -1086,7 +1086,7 @@ class Hazard():
         return ev_set
 
     def _event_plot(self, event_id, mat_var, col_name, smooth, crs_espg, axis=None,
-                    figsize=(9, 13), **kwargs):
+                    figsize=(9, 13), fontsize='adapt', **kwargs):
         """Plot an event of the input matrix.
 
         Parameters:
@@ -1134,7 +1134,7 @@ class Hazard():
 
         return u_plot.geo_im_from_array(array_val, self.centroids.coord, col_name,
                                         l_title, smooth=smooth, axes=axis,
-                                        figsize=figsize, proj=crs_espg, **kwargs)
+                                        figsize=figsize, proj=crs_espg, fontsize=fontsize, **kwargs)
 
     def _centr_plot(self, centr_idx, mat_var, col_name, axis=None, **kwargs):
         """Plot a centroid of the input matrix.

@@ -1137,7 +1137,7 @@ class TCTracks():
         """Exact extent of trackset as tuple, no buffer."""
         return self.get_extent(deg_buffer=0.0)
 
-    def plot(self, axis=None, figsize=(9, 13), legend=True, **kwargs):
+    def plot(self, axis=None, figsize=(9, 13), legend=True, fontsize='adapt', **kwargs):
         """Track over earth. Historical events are blue, probabilistic black.
 
         Parameters
@@ -1171,7 +1171,7 @@ class TCTracks():
 
         if not axis:
             proj = ccrs.PlateCarree(central_longitude=mid_lon)
-            _, axis = u_plot.make_map(proj=proj, figsize=figsize)
+            _, axis = u_plot.make_map(proj=proj, figsize=figsize, fontsize=fontsize)
         axis.set_extent(extent, crs=kwargs['transform'])
         u_plot.add_shapes(axis)
 
