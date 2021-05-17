@@ -27,8 +27,6 @@ import cartopy.crs as ccrs
 
 import climada.util.plot as u_plot
 
-BUFFER = 1.0
-
 class TestFuncs(unittest.TestCase):
 
     def test_get_transform_4326_pass(self):
@@ -96,7 +94,7 @@ class TestPlots(unittest.TestCase):
         projection = ccrs.PlateCarree()
         cmap = 'viridis'
         ax = u_plot.geo_scatter_from_array(values, coord, var_name, title,
-                               pop_name=True, buffer=BUFFER, extend='neither',
+                               pop_name=True, extend='neither',
                                shapes=True, axes=None, proj=projection,
                                figsize=(9, 13), cmap=cmap)
         self.assertEqual(var_name, ax.get_title())
@@ -113,7 +111,7 @@ class TestPlots(unittest.TestCase):
         projection = ccrs.PlateCarree()
         cmap = 'viridis'
         ax = u_plot.geo_bin_from_array(values, coord, var_name, title,
-                                           pop_name=True, buffer=BUFFER, extend='neither',
+                                           pop_name=True, extend='neither',
                                            shapes=True, axes=None, proj=projection,
                                            figsize=(9, 13), cmap=cmap)
         self.assertEqual(var_name, ax.get_title())
