@@ -725,6 +725,6 @@ CMAP_IMPACT = mpl.colors.LinearSegmentedColormap.from_list('cmr.flamingo', cm_da
 CMAP_IMPACT.set_under('lightgray')
 """Default sequential colormaps, taken from https://cmasher.readthedocs.io/index.html"""
 
-CMAP_RASTER = mpl.cm.get_cmap('viridis')
+CMAP_RASTER = 'viridis'
 
 CMAP_CAT = 'Dark2'

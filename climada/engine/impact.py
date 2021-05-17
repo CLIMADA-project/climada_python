@@ -253,7 +253,7 @@ class Impact():
 
     def plot_hexbin_eai_exposure(self, mask=None, ignore_zero=True,
                                  pop_name=True, buffer=0.0, extend='neither',
-                                 axis=None, fontsize='adapt', **kwargs):
+                                 axis=None, adapt_fontsize=True, **kwargs):
         """Plot hexbin expected annual impact of each exposure.
 
         Parameters:
@@ -266,10 +266,9 @@ class Impact():
             extend (str, optional): extend border colorbar with arrows.
                 [ 'neither' | 'both' | 'min' | 'max' ]
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
-            fontsize : str or int, optional
-                Either provide a fontsize or give value 'adapt' to adapt the size of the font
-                to the size of the figure. If None is given, the size of the fonts will be set
-                based on the matplotlib settings.
+            adapt_fontsize : bool, optional
+                If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
+                the default matplotlib font size is used. Default is True.
             kwargs (optional): arguments for hexbin matplotlib function
 
         Returns:
@@ -280,13 +279,13 @@ class Impact():
 
         eai_exp = self._build_exp()
         axis = eai_exp.plot_hexbin(mask, ignore_zero, pop_name, buffer,
-                                   extend, axis=axis, fontsize=fontsize, **kwargs)
+                                   extend, axis=axis, adapt_fontsize=adapt_fontsize, **kwargs)
         axis.set_title('Expected annual impact')
         return axis
 
     def plot_scatter_eai_exposure(self, mask=None, ignore_zero=True,
                                   pop_name=True, buffer=0.0, extend='neither',
-                                  axis=None, fontsize='adapt', **kwargs):
+                                  axis=None, adapt_fontsize=True, **kwargs):
         """Plot scatter expected annual impact of each exposure.
 
         Parameters:
@@ -299,10 +298,9 @@ class Impact():
             extend (str, optional): extend border colorbar with arrows.
                 [ 'neither' | 'both' | 'min' | 'max' ]
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
-            fontsize : str or int, optional
-                Either provide a fontsize or give value 'adapt' to adapt the size of the font
-                to the size of the figure. If None is given, the size of the fonts will be set
-                based on the matplotlib settings.
+            adapt_fontsize : bool, optional
+                If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
+                the default matplotlib font size is used. Default is True.
             kwargs (optional): arguments for hexbin matplotlib function
 
         Returns:
@@ -313,13 +311,13 @@ class Impact():
 
         eai_exp = self._build_exp()
         axis = eai_exp.plot_scatter(mask, ignore_zero, pop_name, buffer,
-                                    extend, axis=axis, fontsize=fontsize, **kwargs)
+                                    extend, axis=axis, adapt_fontsize=adapt_fontsize, **kwargs)
         axis.set_title('Expected annual impact')
         return axis
 
     def plot_raster_eai_exposure(self, res=None, raster_res=None, save_tiff=None,
                                  raster_f=lambda x: np.log10((np.fmax(x + 1, 1))),
-                                 label='value (log10)', axis=None, fontsize='adapt',
+                                 label='value (log10)', axis=None, adapt_fontsize=True,
                                  **kwargs):
         """Plot raster expected annual impact of each exposure.
 
@@ -333,10 +331,9 @@ class Impact():
                 log10 adding 1.
             label (str): colorbar label
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
-            fontsize : str or int, optional
-                Either provide a fontsize or give value 'adapt' to adapt the size of the font
-                to the size of the figure. If None is given, the size of the fonts will be set
-                based on the matplotlib settings.
+            adapt_fontsize : bool, optional
+                If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
+                the default matplotlib font size is used. Default is True.
             kwargs (optional): arguments for imshow matplotlib function
 
         Returns:
@@ -344,7 +341,7 @@ class Impact():
         """
         eai_exp = self._build_exp()
         axis = eai_exp.plot_raster(res, raster_res, save_tiff, raster_f,
-                                   label, axis=axis, fontsize=fontsize, **kwargs)
+                                   label, axis=axis, adapt_fontsize=adapt_fontsize, **kwargs)
         axis.set_title('Expected annual impact')
         return axis
 
@@ -381,7 +378,7 @@ class Impact():
 
     def plot_hexbin_impact_exposure(self, event_id=1, mask=None, ignore_zero=True,
                                     pop_name=True, buffer=0.0, extend='neither',
-                                    axis=None, fontsize='adapt', **kwargs):
+                                    axis=None, adapt_fontsize=True, **kwargs):
         """Plot hexbin impact of an event at each exposure.
         Requires attribute imp_mat.
 
@@ -397,10 +394,9 @@ class Impact():
             extend (str, optional): extend border colorbar with arrows.
                 [ 'neither' | 'both' | 'min' | 'max' ]
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
-            fontsize : str or int, optional
-                Either provide a fontsize or give value 'adapt' to adapt the size of the font
-                to the size of the figure. If None is given, the size of the fonts will be set
-                based on the matplotlib settings.
+            adapt_fontsize : bool, optional
+                If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
+                the default matplotlib font size is used. Default is True.
             kwargs (optional): arguments for hexbin matplotlib function
 
 
@@ -414,7 +410,7 @@ class Impact():
             kwargs['cmap'] = CMAP_IMPACT
         impact_at_events_exp = self._build_exp_event(event_id)
         axis = impact_at_events_exp.plot_hexbin(mask, ignore_zero, pop_name,
-                                                buffer, extend, axis=axis, fontsize=fontsize,
+                                                buffer, extend, axis=axis, adapt_fontsize=adapt_fontsize,
                                                 **kwargs)
 
         return axis

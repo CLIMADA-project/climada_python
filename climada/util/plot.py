@@ -61,7 +61,7 @@ MAX_BINS = 2000
 def geo_bin_from_array(array_sub, geo_coord, var_name, title,
                        pop_name=True, buffer=BUFFER, extend='neither',
                        proj=ccrs.PlateCarree(), shapes=True, axes=None,
-                       figsize=(9, 13), fontsize='adapt', **kwargs):
+                       figsize=(9, 13), adapt_fontsize=True, **kwargs):
     """Plot array values binned over input coordinates.
 
     Parameters
@@ -95,10 +95,9 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title,
         by default None
     figsize : tuple, optional
         figure size for plt.subplots, by default (9, 13)
-    fontsize : str or int, optional
-        Either provide a fontsize or give value 'adapt' to adapt the size of the font
-        to the figure. If None is given, the size of the fonts will be set based on
-        the matplotlib settings. Default is 'adapt'.
+    adapt_fontsize : bool, optional
+        If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
+        the default matplotlib font size is used. Default is True.
 
     **kwargs
         arbitrary keyword arguments for hexbin matplotlib function
@@ -115,13 +114,13 @@ def geo_bin_from_array(array_sub, geo_coord, var_name, title,
     return _plot_scattered_data("hexbin", array_sub, geo_coord, var_name, title,
                                 pop_name=pop_name, buffer=buffer, extend=extend,
                                 proj=proj, shapes=shapes, axes=axes,
-                                figsize=figsize, fontsize=fontsize, **kwargs)
+                                figsize=figsize, adapt_fontsize=adapt_fontsize, **kwargs)
 
 
 def geo_scatter_from_array(array_sub, geo_coord, var_name, title,
                            pop_name=False, buffer=BUFFER, extend='neither',
                            proj=ccrs.PlateCarree(), shapes=True, axes=None,
-                           figsize=(9, 13), fontsize='adapt', **kwargs):
+                           figsize=(9, 13), adapt_fontsize=True, **kwargs):
     """Plot array values at input coordinates.
 
     Parameters
@@ -155,10 +154,9 @@ def geo_scatter_from_array(array_sub, geo_coord, var_name, title,
         by default None
     figsize : tuple, optional
         figure size for plt.subplots, by default (9, 13)
-    fontsize : str or int, optional
-        Either provide a fontsize or give value 'adapt' to adapt the size of the font
-        to the size of  figure. If None is given, the size of the fonts will be set
-        based on the matplotlib settings. Default is 'adapt'.
+    adapt_fontsize : bool, optional
+        If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
+        the default matplotlib font size is used. Default is True.
     **kwargs
         arbitrary keyword arguments for scatter matplotlib function
 
@@ -174,13 +172,13 @@ def geo_scatter_from_array(array_sub, geo_coord, var_name, title,
     return _plot_scattered_data("scatter", array_sub, geo_coord, var_name, title,
                                 pop_name=pop_name, buffer=buffer, extend=extend,
                                 proj=proj, shapes=shapes, axes=axes,
-                                figsize=figsize, fontsize=fontsize, **kwargs)
+                                figsize=figsize, adapt_fontsize=adapt_fontsize, **kwargs)
 
 
 def _plot_scattered_data(method, array_sub, geo_coord, var_name, title,
                          pop_name=False, buffer=BUFFER, extend='neither',
                          proj=ccrs.PlateCarree(), shapes=True, axes=None,
-                         figsize=(9, 13), fontsize='adapt', **kwargs):
+                         figsize=(9, 13), adapt_fontsize=True, **kwargs):
     """Function for internal use in `geo_scatter_from_array` (when called with method="scatter")
     and `geo_bin_from_array` (when called with method="hexbin"). See the docstrings of the
     respective functions for more information on the parameters."""
@@ -200,8 +198,8 @@ def _plot_scattered_data(method, array_sub, geo_coord, var_name, title,
             # use different projections for plot and data to shift the central lon in the plot
             xmin, xmax = u_coord.lon_bounds(np.concatenate([c[:, 1] for c in list_coord]))
             proj_plot = ccrs.PlateCarree(central_longitude=0.5 * (xmin + xmax))
-        _, axes, fontsize = make_map(num_im, proj=proj_plot, figsize=figsize, fontsize=fontsize)
-    elif fontsize == 'adapt':
+        _, axes, fontsize = make_map(num_im, proj=proj_plot, figsize=figsize, adapt_fontsize=adapt_fontsize)
+    else:
         fontsize=None
     axes_iter = axes
     if not isinstance(axes, np.ndarray):
@@ -251,7 +249,7 @@ def _plot_scattered_data(method, array_sub, geo_coord, var_name, title,
 
 
 def geo_im_from_array(array_sub, coord, var_name, title,
-                      proj=None, smooth=True, axes=None, figsize=(9, 13), fontsize='adapt',
+                      proj=None, smooth=True, axes=None, figsize=(9, 13), adapt_fontsize=True,
                       **kwargs):
     """Image(s) plot defined in array(s) over input coordinates.
 
@@ -276,10 +274,9 @@ def geo_im_from_array(array_sub, coord, var_name, title,
         by default None
     figsize : tuple, optional
         figure size for plt.subplots, by default (9, 13)
-    fontsize : str or int, optional
-        Either provide a fontsize or give value 'adapt' to adapt the size of the font
-        to the figure. If None is given, the size of the fonts will be set based on
-        the matplotlib settings. Default is 'adapt'.
+    adapt_fontsize : bool, optional
+        If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
+        the default matplotlib font size is used. Default is True.
     **kwargs
         arbitrary keyword arguments for pcolormesh matplotlib function
 
@@ -314,9 +311,9 @@ def geo_im_from_array(array_sub, coord, var_name, title,
             # use different projections for plot and data to shift the central lon in the plot
             xmin, xmax = u_coord.lon_bounds(np.concatenate([c[:, 1] for c in list_coord]))
             proj_plot = ccrs.PlateCarree(central_longitude=0.5 * (xmin + xmax))
-        _, axes, fontsize = make_map(num_im, proj=proj_plot, figsize=figsize, fontsize=fontsize)
-    elif fontsize == 'adapt':
-        fontsize=None
+        _, axes, fontsize = make_map(num_im, proj=proj_plot, figsize=figsize, adapt_fontsize=adapt_fontsize)
+    else:
+        fontsize = None
     axes_iter = axes
     if not isinstance(axes, np.ndarray):
         axes_iter = np.array([[axes]])
@@ -365,8 +362,9 @@ def geo_im_from_array(array_sub, coord, var_name, title,
 
     return axes
 
+
 def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
-                            cat_name=None, fontsize='adapt', **kwargs):
+                            cat_name=None, adapt_fontsize=True, **kwargs):
     """
     Map plots for categorical data defined in array(s) over input
     coordinates. The categories must be a finite set of unique values
@@ -405,10 +403,9 @@ def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
         Categories name for the colorbar labels.
         Keys are all the unique values in array_cub, values are their labels.
         The default is labels = unique values.
-    fontsize : str or int, optional
-        Either provide a fontsize or give value 'adapt' to adapt the size of the font
-        to the figure. If None is given, the size of the fonts will be set based on
-        the matplotlib settings. Default is 'adapt'.
+    adapt_fontsize : bool, optional
+        If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
+        the default matplotlib font size is used. Default is True.
     **kwargs
         Arbitrary keyword arguments for hexbin matplotlib function
 
@@ -453,7 +450,7 @@ def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
     kwargs['vmax'] = array_sub_n - 0.5
 
     # #create the axes
-    axes = _plot_scattered_data("scatter", array_sub_cat, geo_coord, var_name, title, fontsize=fontsize,
+    axes = _plot_scattered_data("scatter", array_sub_cat, geo_coord, var_name, title, adapt_fontsize=adapt_fontsize,
                                 **kwargs)
 
     #add colorbar labels
@@ -472,7 +469,7 @@ def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
     return axes
 
 
-def make_map(num_sub=1, figsize=(9, 13), proj=ccrs.PlateCarree(), fontsize='adapt'):
+def make_map(num_sub=1, figsize=(9, 13), proj=ccrs.PlateCarree(), adapt_fontsize=True):
     """
     Create map figure with cartopy.
 
@@ -486,10 +483,9 @@ def make_map(num_sub=1, figsize=(9, 13), proj=ccrs.PlateCarree(), fontsize='adap
     proj : cartopy.crs projection, optional
         geographical projection,
         The default is PlateCarree default.
-    fontsize : str or int, optional
-        Either provide a fontsize or give value 'adapt' to adapt the size of the font
-        to the size of the figure. If None is given, the size of the fonts will be set
-        based on the matplotlib settings. Default is 'adapt'.
+    adapt_fontsize : bool, optional
+        If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
+        the default matplotlib font size is used. Default is True.
 
     Returns
     -------
@@ -512,16 +508,22 @@ def make_map(num_sub=1, figsize=(9, 13), proj=ccrs.PlateCarree(), fontsize='adap
             grid.top_labels = grid.right_labels = False
             grid.xformatter = LONGITUDE_FORMATTER
             grid.yformatter = LATITUDE_FORMATTER
-            if fontsize == 'adapt':
-                fontsize = axis.bbox.width/40
-            grid.xlabel_style = {'size': fontsize}
-            grid.ylabel_style = {'size': fontsize}
+            if adapt_fontsize:
+                fontsize = axis.bbox.width/35
+                if fontsize < 10:
+                    fontsize = 10
+                grid.xlabel_style = {'size': fontsize}
+                grid.ylabel_style = {'size': fontsize}
+            else:
+                fontsize = None
         except TypeError:
             pass
 
     fig.tight_layout()
     if num_col > 1:
         fig.subplots_adjust(wspace=0.3)
+    if num_col > 2:
+        fig.subplots_adjust(wspace=0.5)
     if num_row > 1:
         fig.subplots_adjust(hspace=-0.5)
 
@@ -559,10 +561,9 @@ def add_populated_places(axis, extent, proj=ccrs.PlateCarree(), pop_name=True, f
     proj : cartopy.crs projection, optional
         geographical projection,
         The default is PlateCarree.
-    fontsize : str or int, optional
-        Either provide a fontsize or give value 'adapt' to adapt the size of the font
-        to the size of the figure. If None is given, the size of the fonts will be set
-        based on the matplotlib settings.
+    fontsize : int, optional
+        Size of the fonts. If set to None, the default matplotlib settings
+        are used.
 
     """
     shp_file = shapereader.natural_earth(resolution='50m', category='cultural',
@@ -599,10 +600,9 @@ def add_cntry_names(axis, extent, proj=ccrs.PlateCarree(), fontsize=None):
     proj : cartopy.crs projection, optional
         Geographical projection.
         The default is PlateCarree.
-    fontsize : str or int, optional
-        Either provide a fontsize or give value 'adapt' to adapt the size of the font
-        to the size of the figure. If None is given, the size of the fonts will be set
-        based on the matplotlib settings.
+     fontsize : int, optional
+            Size of the fonts. If set to None, the default matplotlib settings
+            are used.
     """
     shp_file = shapereader.natural_earth(resolution='10m', category='cultural',
                                          name='admin_0_countries')

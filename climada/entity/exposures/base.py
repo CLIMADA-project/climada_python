@@ -418,7 +418,7 @@ class Exposures():
 
     def plot_scatter(self, mask=None, ignore_zero=False, pop_name=True,
                      buffer=0.0, extend='neither', axis=None, figsize=(9, 13),
-                     **kwargs):
+                     adapt_fontsize=True, **kwargs):
         """Plot exposures geometry's value sum scattered over Earth's map.
         The plot will we projected according to the current crs.
 
@@ -434,10 +434,9 @@ class Exposures():
                 [ 'neither' | 'both' | 'min' | 'max' ]
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             figsize (tuple, optional): figure size for plt.subplots
-            fontsize : str or int, optional
-                Either provide a fontsize or give value 'adapt' to adapt the size of the font
-                to the size of the figure. If None is given, the size of the fonts will be set
-                based on the matplotlib settings.
+            adapt_fontsize : bool, optional
+                If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
+                the default matplotlib font size is used. Default is True.
             kwargs (optional): arguments for scatter matplotlib function, e.g.
                 cmap='Greys'. Default: 'Wistia'
          Returns:
@@ -458,11 +457,11 @@ class Exposures():
         return u_plot.geo_scatter_from_array(value, coord, cbar_label, title,
                                              pop_name, buffer, extend,
                                              proj=crs_epsg, axes=axis,
-                                             figsize=figsize, **kwargs)
+                                             figsize=figsize, adapt_fontsize=adapt_fontsize, **kwargs)
 
     def plot_hexbin(self, mask=None, ignore_zero=False, pop_name=True,
                     buffer=0.0, extend='neither', axis=None, figsize=(9, 13),
-                    fontsize='adapt', **kwargs):
+                    adapt_fontsize=True, **kwargs):
         """Plot exposures geometry's value sum binned over Earth's map.
         An other function for the bins can be set through the key reduce_C_function.
         The plot will we projected according to the current crs.
@@ -479,10 +478,9 @@ class Exposures():
                 [ 'neither' | 'both' | 'min' | 'max' ]
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             figsize (tuple): figure size for plt.subplots
-            fontsize : str or int, optional
-                Either provide a fontsize or give value 'adapt' to adapt the size of the font
-                to the size of the figure. If None is given, the size of the fonts will be set
-                based on the matplotlib settings.
+            adapt_fontsize : bool, optional
+                If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
+                the default matplotlib font size is used. Default is True.
             kwargs (optional): arguments for hexbin matplotlib function, e.g.
                 reduce_C_function=np.average. Default: reduce_C_function=np.sum
          Returns:
@@ -504,13 +502,13 @@ class Exposures():
                           self.gdf.longitude[mask][pos_vals].values], axis=1)
         return u_plot.geo_bin_from_array(value, coord, cbar_label, title,
                                          pop_name, buffer, extend, proj=crs_epsg,
-                                         axes=axis, figsize=figsize, fontsize=fontsize,
+                                         axes=axis, figsize=figsize, adapt_fontsize=adapt_fontsize,
                                          **kwargs)
 
     def plot_raster(self, res=None, raster_res=None, save_tiff=None,
                     raster_f=lambda x: np.log10((np.fmax(x + 1, 1))),
                     label='value (log10)', scheduler=None, axis=None,
-                    figsize=(9, 13), fill=True, fontsize='adapt', **kwargs):
+                    figsize=(9, 13), fill=True, adapt_fontsize=True, **kwargs):
         """Generate raster from points geometry and plot it using log10 scale:
         np.log10((np.fmax(raster+1, 1))).
 
@@ -529,10 +527,9 @@ class Exposures():
             figsize (tuple, optional): figure size for plt.subplots
             fill(bool, optional): If false, the areas with no data will be plotted
                 in white.
-            fontsize : str or int, optional
-                Either provide a fontsize or give value 'adapt' to adapt the size of the font
-                to the size of the figure. If None is given, the size of the fonts will be set
-                based on the matplotlib settings.
+            adapt_fontsize : bool, optional
+                If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
+                the default matplotlib font size is used. Default is True.
             kwargs (optional): arguments for imshow matplotlib function
 
         Returns:
@@ -569,10 +566,9 @@ class Exposures():
                                       self.gdf.longitude.max(), self.gdf.latitude.max())
 
         if not axis:
-            _, axis, fontsize = u_plot.make_map(proj=proj_plot, figsize=figsize, fontsize=fontsize)
-        elif fontsize == 'adapt':
-            fontsize=None
-
+            _, axis, fontsize = u_plot.make_map(proj=proj_plot, figsize=figsize, adapt_fontsize=adapt_fontsize)
+        else:
+            fontsize = None
         cbar_ax = make_axes_locatable(axis).append_axes('right', size="6.5%",
                                                         pad=0.1, axes_class=plt.Axes)
         axis.set_extent((xmin, xmax, ymin, ymax), crs=proj_data)

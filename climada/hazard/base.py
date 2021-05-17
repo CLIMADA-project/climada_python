@@ -658,7 +658,8 @@ class Hazard():
         return inten_stats
 
     def plot_rp_intensity(self, return_periods=(25, 50, 100, 250),
-                          smooth=True, axis=None, figsize=(9, 13), fontsize='adapt', **kwargs):
+                          smooth=True, axis=None, figsize=(9, 13), adapt_fontsize=True,
+                          **kwargs):
         """Compute and plot hazard exceedance intensity maps for different
         return periods. Calls local_exceedance_inten.
 
@@ -667,6 +668,9 @@ class Hazard():
             smooth (bool, optional): smooth plot to plot.RESOLUTIONxplot.RESOLUTION
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             figsize (tuple, optional): figure size for plt.subplots
+            adapt_fontsize : bool, optional
+                If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
+                the default matplotlib font size is used. Default is True.
             kwargs (optional): arguments for pcolormesh matplotlib function
                 used in event plots
 
@@ -682,10 +686,10 @@ class Hazard():
             title.append('Return period: ' + str(ret) + ' years')
         axis = u_plot.geo_im_from_array(inten_stats, self.centroids.coord,
                                         colbar_name, title, smooth=smooth,
-                                        axes=axis, figsize=figsize, fontsize=fontsize, **kwargs)
+                                        axes=axis, figsize=figsize, adapt_fontsize=adapt_fontsize, **kwargs)
         return axis, inten_stats
 
-    def plot_intensity(self, event=None, centr=None, smooth=True, axis=None, fontsize='adapt',
+    def plot_intensity(self, event=None, centr=None, smooth=True, axis=None, adapt_fontsize=True,
                        **kwargs):
         """Plot intensity values for a selected event or centroid.
 
@@ -703,6 +707,9 @@ class Hazard():
             smooth (bool, optional): Rescale data to RESOLUTIONxRESOLUTION pixels (see constant
                 in module `climada.util.plot`)
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
+            adapt_fontsize : bool, optional
+                If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
+                the default matplotlib font size is used. Default is True.
             kwargs (optional): arguments for pcolormesh matplotlib function
                 used in event plots or for plot function used in centroids plots
 
@@ -719,7 +726,7 @@ class Hazard():
             if isinstance(event, str):
                 event = self.get_event_id(event)
             return self._event_plot(event, self.intensity, col_label,
-                                    smooth, crs_epsg, axis, fontsize='adapt', **kwargs)
+                                    smooth, crs_epsg, axis, adapt_fontsize=adapt_fontsize, **kwargs)
         if centr is not None:
             if isinstance(centr, tuple):
                 _, _, centr = self.centroids.get_closest_point(centr[0], centr[1])
@@ -1086,7 +1093,7 @@ class Hazard():
         return ev_set
 
     def _event_plot(self, event_id, mat_var, col_name, smooth, crs_espg, axis=None,
-                    figsize=(9, 13), fontsize='adapt', **kwargs):
+                    figsize=(9, 13), adapt_fontsize=True, **kwargs):
         """Plot an event of the input matrix.
 
         Parameters:
@@ -1134,7 +1141,7 @@ class Hazard():
 
         return u_plot.geo_im_from_array(array_val, self.centroids.coord, col_name,
                                         l_title, smooth=smooth, axes=axis,
-                                        figsize=figsize, proj=crs_espg, fontsize=fontsize, **kwargs)
+                                        figsize=figsize, proj=crs_espg, adapt_fontsize=adapt_fontsize, **kwargs)
 
     def _centr_plot(self, centr_idx, mat_var, col_name, axis=None, **kwargs):
         """Plot a centroid of the input matrix.
