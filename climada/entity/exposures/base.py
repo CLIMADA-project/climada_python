@@ -119,7 +119,7 @@ class Exposures():
     def crs(self):
         """Coordinate Reference System, refers to the crs attribute of the inherent GeoDataFrame"""
         try:
-            return self.gdf.crs
+            return self.gdf.crs if self.gdf.crs is not None else self.meta.get('crs')
         except AttributeError:
             return self.meta.get('crs')
 
@@ -186,39 +186,37 @@ class Exposures():
                 else:
                     setattr(self, mda, None)
 
+        # crs (property) and geometry
+        data = args[0] if args else kwargs.get('data', {})
+
+        crs = kwargs['crs'] if 'crs' in kwargs \
+              else self.meta['crs'] if 'crs' in self.meta \
+              else data.crs if 'crs' in data \
+              else None
+        if 'crs' in self.meta and not u_coord.equal_crs(self.meta['crs'], crs):
+            raise ValueError("Inconsistent crs definition in meta")
+        try:
+            data_crs = data.crs
+        except AttributeError:
+            data_crs = None
+        if data_crs and not u_coord.equal_crs(data.crs, crs):
+            raise ValueError("Inconsistent crs definition in data")
+        if not crs:
+            crs = DEF_CRS
+            LOGGER.info('crs set to default value %s', crs)
+        if not self.meta.get('crs'):
+            self.meta['crs'] = crs
+
+        geometry = kwargs.get('geometry')
+        if geometry and isinstance(geometry, str):
+            raise ValueError("Exposures is not able to handle customized 'geometry' column names.")
+        if 'crs' in kwargs and not geometry and not 'geometry' in data:
+            kwargs.pop('crs')
+        if not 'crs' in kwargs and (geometry or 'geometry' in data):
+            kwargs['crs'] = crs
+
         # make the data frame
         self.gdf = GeoDataFrame(*args, **kwargs)
-
-        # align crs from gdf and meta data
-        if self.gdf.crs:
-            crs = self.gdf.crs
-        # With geopandas 3.1, the crs attribute is not conserved by the constructor
-        # without a geometry column. Therefore the conservation is done 'manually':
-        elif len(args) > 0:
-            try:
-                crs = args[0].crs
-            except AttributeError:
-                crs = None
-        elif 'data' in kwargs:
-            try:
-                crs = kwargs['data'].crs
-            except AttributeError:
-                crs = None
-        else:
-            crs = None
-        # store the crs in the meta dictionary
-        if crs:
-            if self.meta.get('crs') and not u_coord.equal_crs(self.meta.get('crs'), crs):
-                LOGGER.info('crs from `meta` argument ignored and overwritten by GeoDataFrame'
-                            ' crs: %s', self.gdf.crs)
-            self.meta['crs'] = crs
-            if not self.gdf.crs:
-                self.gdf.crs = crs
-        else:
-            if 'crs' not in self.meta:
-                LOGGER.info('crs set to default value: %s', DEF_CRS)
-                self.meta['crs'] = DEF_CRS
-            self.gdf.crs = self.meta['crs']
 
     def __str__(self):
         return '\n'.join(
@@ -371,7 +369,8 @@ class Exposures():
                 “synchronous” or “processes”
         """
         u_coord.set_df_geometry_points(self.gdf, scheduler)
-
+        self.gdf.set_crs(self.crs, inplace=True)
+        
     def set_lat_lon(self):
         """Set latitude and longitude attributes from geometry attribute."""
         LOGGER.info('Setting latitude and longitude attributes.')

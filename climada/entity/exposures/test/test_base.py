@@ -185,12 +185,7 @@ class TestChecker(unittest.TestCase):
         self.assertIn('geometry not set', cm.output[6])
 
         self.assertTrue(expo.crs is not None)
-        self.assertTrue(expo.gdf.crs is not None)
-        with self.assertLogs('climada.entity.exposures.base', level='INFO') as cm:
-            expo2 = Exposures(expo.gdf, meta={'crs': 4230})
-            expo2.check()
-            self.assertEqual(expo.crs, expo2.crs)
-        self.assertTrue(any(['ignored and overwritten' in line for line in cm.output]))
+        self.assertTrue(expo.gdf.crs is None)
 
     def test_error_logs_fail(self):
         """Wrong exposures definition"""
@@ -200,6 +195,15 @@ class TestChecker(unittest.TestCase):
         with self.assertRaises(ValueError) as cm:
             expo.check()
         self.assertIn('longitude missing', str(cm.exception))
+
+    def test_error_logs_wrong_crs(self):
+        """Ambiguous crs definition"""
+        expo = good_exposures()
+        expo.set_geometry_points()
+
+        with self.assertRaises(ValueError) as cm:
+            expo2 = Exposures(expo.gdf, meta={'crs':4230})
+        self.assertIn('Inconsistent crs definition in data', str(cm.exception))
 
     def test_error_geometry_fail(self):
         """Wrong exposures definition"""
