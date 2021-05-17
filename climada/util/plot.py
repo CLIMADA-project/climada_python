@@ -29,7 +29,6 @@ __all__ = ['geo_bin_from_array',
 
 import logging
 from textwrap import wrap
-import matplotlib
 from scipy.interpolate import griddata
 import numpy as np
 import matplotlib.pyplot as plt
@@ -259,7 +258,7 @@ def geo_im_from_array(array_sub, coord, var_name, title,
         Each array (in a row or in  the list) are values at each point in corresponding
         geo_coord that are ploted in one subplot.
     coord : 2d np.array
-        (lat, lon) for each point in a row. The same grid is used for all subploplots.
+        (lat, lon) for each point in a row. The same grid is used for all subplots.
     var_name : str or list(str)
         label to be shown in the colorbar. If one provided, the same is used for all subplots.
         Otherwise provide as many as subplots in array_sub.

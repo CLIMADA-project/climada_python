@@ -526,7 +526,8 @@ class Exposures():
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             figsize (tuple, optional): figure size for plt.subplots
             fill(bool, optional): If false, the areas with no data will be plotted
-                in white.
+                in white. If True, the areas with missing values are filled as 0s.
+                The default is True.
             adapt_fontsize : bool, optional
                 If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
                 the default matplotlib font size is used. Default is True.
