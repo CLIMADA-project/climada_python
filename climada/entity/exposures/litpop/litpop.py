@@ -21,6 +21,7 @@ Define LitPop class.
 import logging
 import numpy as np
 import rasterio
+import geopandas
 
 import climada.util.coordinates as u_coord
 from climada.util.finance import gdp, income_group, wealth2gdp, world_bank_wealth_account
@@ -135,7 +136,7 @@ class LitPop(Exposures):
                     reference_year=2020, gpw_version=None, data_dir=None,
                     resample_first=True):
         """init LitPop exposure object for one single country
-    
+
         Parameters
         ----------
         country : str or int
@@ -220,57 +221,80 @@ class LitPop(Exposures):
             LOGGER.error('No geometry found for country: %s.', country)
             return None
 
+        litpop_gdf = geopandas.GeoDataFrame()
+        total_population = 0
+        # loop over single polygons in country shape object:
+        for idx, polygon in enumerate(list(country_geometry)):
+            # get litpop data for each polygon and combine into GeoDataFrame:
+            _, meta_tmp, gdf_tmp = _get_litpop_single_polygon(polygon, reference_year,
+                                                    res_arcsec, data_dir,
+                                                    gpw_version, resample_first,
+                                                    offsets, exponents,
+                                                    return_gdf=True)
+            total_population += meta_tmp['total_population']
+            litpop_gdf = litpop_gdf.append(gdf_tmp)
+        litpop_gdf.crs = meta_tmp['crs']
         # set total value for disaggregation if not provided:
         if total_value is None: # default, no total value provided...
-            total_value = get_total_value_per_country(iso3n, fin_mode, reference_year, pop.sum())
+            total_value = get_total_value_per_country(iso3n, fin_mode,
+                                                      reference_year, total_population)
+
+        # disaggregate total value proportional to LitPop values:
+        if isinstance(total_value, float) or isinstance(total_value, int):
+            litpop_gdf['value'] = np.divide(litpop_gdf['value'],
+                                            litpop_gdf['value'].sum()) * total_value
+        elif total_value is not None:
+            raise TypeError("total_val_rescale must be int or float.")
         
-        # TODO: extra func, loop over list(country_geometry), treat each shape seperately until rescaling, take rescaling out of gridpoints_core_calc
+        # TODO: extra func, loop over list(country_geometry), treat each shape
+        # seperately until rescaling, take rescaling out of gridpoints_core_calc
         # i.e. get total value later and rescale, afer loop through shapes. 
         # in loop: extra functi that can go to u_coord later
         
-        # import population data (2d array), meta data, and global grid info,
-        # global_transform defines the origin (corner points) of the global traget grid:
-        pop, meta_pop, global_transform = \
-            pop_util.load_gpw_pop_shape(country_geometry,
-                                        reference_year,
-                                        gpw_version=gpw_version,
-                                        data_dir=data_dir,
-                                        )
+        
+        # # import population data (2d array), meta data, and global grid info,
+        # # global_transform defines the origin (corner points) of the global traget grid:
+        # pop, meta_pop, global_transform = \
+        #     pop_util.load_gpw_pop_shape(country_geometry,
+        #                                 reference_year,
+        #                                 gpw_version=gpw_version,
+        #                                 data_dir=data_dir,
+        #                                 )
     
-        # import nightlight data (2d array) and associated meta data:
-        nl, meta_nl = nl_util.load_nasa_nl_shape(country_geometry,
-                                                 reference_year,
-                                                 data_dir=data_dir,
-                                                 )
+        # # import nightlight data (2d array) and associated meta data:
+        # nl, meta_nl = nl_util.load_nasa_nl_shape(country_geometry,
+        #                                          reference_year,
+        #                                          data_dir=data_dir,
+        #                                          )
     
 
-        if resample_first: # default is True
-            # --> resampling to target res. before core calculation
-            target_res_arcsec = res_arcsec
-        else: # resolution of pop (degree to arcsec)
-            target_res_arcsec = np.abs(meta_pop['transform'][0]) * 3600
-        # resample Lit and Pop input data to same grid:
-        [pop, nl], meta_new = resample_input_data([pop, nl],
-                                                  [meta_pop, meta_nl],
-                                                  i_ref=0, # pop defines grid
-                                                  target_res_arcsec=target_res_arcsec,
-                                                  global_origins=(global_transform[2], # lon
-                                                                  global_transform[5]), # lat
-                                                  )
+        # if resample_first: # default is True
+        #     # --> resampling to target res. before core calculation
+        #     target_res_arcsec = res_arcsec
+        # else: # resolution of pop (degree to arcsec)
+        #     target_res_arcsec = np.abs(meta_pop['transform'][0]) * 3600
+        # # resample Lit and Pop input data to same grid:
+        # [pop, nl], meta_new = resample_input_data([pop, nl],
+        #                                           [meta_pop, meta_nl],
+        #                                           i_ref=0, # pop defines grid
+        #                                           target_res_arcsec=target_res_arcsec,
+        #                                           global_origins=(global_transform[2], # lon
+        #                                                           global_transform[5]), # lat
+        #                                           )
     
-        # calculate Lit^m * Pop^n and disaggregate total value to grid:
-        litpop_array = gridpoints_core_calc([nl, pop],
-                                            offsets=offsets,
-                                            exponents=exponents,
-                                            total_val_rescale=total_value)
-        if not resample_first: 
-            # alternative option: resample to target resolution after core calc.:
-            [litpop_array], meta_new = resample_input_data([litpop_array],
-                                                           [meta_new],
-                                                           target_res_arcsec=res_arcsec,
-                                                           global_origins=(global_transform[2],
-                                                                           global_transform[5]),
-                                                           )
+        # # calculate Lit^m * Pop^n and disaggregate total value to grid:
+        # litpop_array = gridpoints_core_calc([nl, pop],
+        #                                     offsets=offsets,
+        #                                     exponents=exponents,
+        #                                     total_val_rescale=total_value)
+        # if not resample_first: 
+        #     # alternative option: resample to target resolution after core calc.:
+        #     [litpop_array], meta_new = resample_input_data([litpop_array],
+        #                                                    [meta_new],
+        #                                                    target_res_arcsec=res_arcsec,
+        #                                                    global_origins=(global_transform[2],
+        #                                                                    global_transform[5]),
+        #                                                    )
         
         lon, lat = u_coord.raster_to_meshgrid(transform, width, height) # TODO
         exp_country = LitPop()
@@ -281,6 +305,103 @@ class LitPop(Exposures):
         exp_country.gdf['region_id'] = iso3n
 
         return exp_gdpasset
+
+def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
+                               gpw_version, resample_first, offsets, exponents,
+                               return_gdf=True):
+    """load nightlight (nl) and population (pop) data in rastered 2d arrays
+    and apply rescaling (resolution reprojection) and LitPop core calculation.
+
+    Parameters
+    ----------
+    polygon : Polygon object
+        single shape to be extracted
+    res_arcsec : float (optional)
+        Horizontal resolution in arc-seconds.
+    exponents : tuple of two integers, optional
+        Defining power with which lit (nightlights) and pop (gpw) go into LitPop. To get
+        nightlights^3 without population count: (3, 0). To use population count alone: (0, 1).
+    reference_year : int, optional
+        Reference year for data sources. Default: 2020
+    gpw_version : int (optional)
+        Version number of GPW population data.
+        The default is None. If None, the default is set in gpw_population module.
+    data_dir : Path (optional)
+        redefines path to input data directory. The default is SYSTEM_DIR.
+    resample_first : boolean
+        First resample nightlight (Lit) and population (Pop) data to target
+        resolution before combining them as Lit^m * Pop^n?
+        The default is True. Warning: Setting this to False affects the
+        disaggregation results.
+    offsets : tuple of numbers
+        offsets to be added to input data, required for LitPop core calculation
+
+    Returns
+    -------
+    litpop_array : 2d np.ndarray
+        resulting gridded data for Lit^m * Pop^n in bbox around polygon,
+        data points outside the polygon are set to zero.
+    meta_new : dict
+        raster meta info for gridded data in litpop_array, additionally the field
+        'total_population' contains the sum of population in the polygon.
+    litpop_gdf : GeoDataframe
+        resulting gridded data for Lit^m * Pop^n inside polygon,
+        data points outside the polygon and equal to zero are not returned.
+        litpop_gdf is None if return_gdf == False
+    """
+    # import population data (2d array), meta data, and global grid info,
+    # global_transform defines the origin (corner points) of the global traget grid:
+    pop, meta_pop, global_transform = \
+        pop_util.load_gpw_pop_shape(polygon,
+                                    reference_year,
+                                    gpw_version=gpw_version,
+                                    data_dir=data_dir,
+                                    )
+    total_population = pop.sum()
+    # import nightlight data (2d array) and associated meta data:
+    nl, meta_nl = nl_util.load_nasa_nl_shape(polygon,
+                                             reference_year,
+                                             data_dir=data_dir,
+                                             )
+
+    if resample_first: # default is True
+        # --> resampling to target res. before core calculation
+        target_res_arcsec = res_arcsec
+    else: # resolution of pop is used for first resampling (degree to arcsec)
+        target_res_arcsec = np.abs(meta_pop['transform'][0]) * 3600
+    # resample Lit and Pop input data to same grid:
+    [pop, nl], meta_new = resample_input_data([pop, nl],
+                                              [meta_pop, meta_nl],
+                                              i_ref=0, # pop defines grid
+                                              target_res_arcsec=target_res_arcsec,
+                                              global_origins=(global_transform[2], # lon
+                                                              global_transform[5]), # lat
+                                              )
+
+    # calculate Lit^m * Pop^n (but not yet disaggregating any total value to grid):
+    litpop_array = gridpoints_core_calc([nl, pop],
+                                        offsets=offsets,
+                                        exponents=exponents,
+                                        total_val_rescale=None)
+    if not resample_first: 
+        # alternative option: resample to target resolution after core calc.:
+        [litpop_array], meta_new = resample_input_data([litpop_array],
+                                                       [meta_new],
+                                                       target_res_arcsec=res_arcsec,
+                                                       global_origins=(global_transform[2],
+                                                                       global_transform[5]),
+                                                       )
+    meta_pop['total_population'] = total_population
+    if return_gdf:
+        lon, lat = u_coord.raster_to_meshgrid(meta_new['transform'],
+                                              meta_new['width'],
+                                              meta_new['height'])
+        gdf = geopandas.GeoDataFrame({'value': litpop_array.flatten()}, crs=meta_new['crs'],
+                                     geometry=geopandas.points_from_xy(lon.flatten(),
+                                                                       lat.flatten()))
+        return litpop_array, meta_new, gdf[gdf['value'] != 0]
+    return litpop_array, meta_new, None
+
 
 def get_total_value_per_country(cntry_iso3a, fin_mode, reference_year, total_population=None):
     """
