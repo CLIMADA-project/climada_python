@@ -1740,7 +1740,8 @@ def write_raster(file_name, data_matrix, meta, dtype=np.float32):
     with rasterio.open(file_name, 'w', **dst_meta) as dst:
         dst.write(data_matrix, indexes=np.arange(1, shape[0] + 1))
 
-def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, scheduler=None):
+def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, crs=DEF_CRS,
+                     scheduler=None):
     """Compute raster (as data and transform) from GeoDataFrame.
 
     Parameters
@@ -1755,6 +1756,8 @@ def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, schedul
         provided.
     raster_res : float, optional
         desired resolution of the raster
+    crs : object, optional
+        anything accepted by pyproj.CRS.from_user_input, default: None
     scheduler : str
         used for dask map_partitions. “threads”, “synchronous” or “processes”
 
@@ -1786,7 +1789,7 @@ def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, schedul
                                npartitions=cpu_count())
         df_poly['geometry'] = ddata.map_partitions(apply_box, meta=Polygon) \
                                    .compute(scheduler=scheduler)
-    df_poly.crs = points_df.crs
+    df_poly.set_crs(crs if crs else points_df.crs if points_df.crs else DEF_CRS, inplace=True)
 
     # renormalize longitude if necessary
     if df_poly.crs == DEF_CRS:
@@ -1814,7 +1817,7 @@ def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, schedul
             dtype=rasterio.float32)
 
     meta = {
-        'crs': points_df.crs,
+        'crs': df_poly.crs,
         'height': rows,
         'width': cols,
         'transform': ras_trans,
