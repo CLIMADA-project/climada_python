@@ -39,7 +39,7 @@ YEARS_AVAILABLE = np.array([2000, 2005, 2010, 2015, 2020])
 
 
 def load_gpw_pop_shape(geometry, reference_year, gpw_version=11, data_dir=None,
-                       layer=0): # TODO: manually tested but no tests exist yet
+                       layer=0, verbatim=True): # TODO: manually tested but no tests exist yet
     """Read gridded population data from GPW TIFF
     and crop to given shape(s).
     
@@ -60,6 +60,8 @@ def load_gpw_pop_shape(geometry, reference_year, gpw_version=11, data_dir=None,
         relevant data layer in input TIFF file to return.
         The default is 0 and should not be changed without understanding the
         different data layers in the given TIFF file.
+    verbatim : bool (optional):
+        if False, output in LOGGER is surpressed. Default is True.
 
     Returns
     -------
@@ -74,7 +76,8 @@ def load_gpw_pop_shape(geometry, reference_year, gpw_version=11, data_dir=None,
         global_transform is required for resampling on a globally consistent grid
     """
     # check whether GPW input file exists and get file path
-    file_path = get_gpw_file_path(gpw_version, reference_year, data_dir=data_dir)
+    file_path = get_gpw_file_path(gpw_version, reference_year, data_dir=data_dir,
+                                  verbatim=verbatim)
 
     # open TIFF and extract cropped data from input file:
     src = rasterio.open(file_path)
@@ -91,7 +94,7 @@ def load_gpw_pop_shape(geometry, reference_year, gpw_version=11, data_dir=None,
     src.close()
     return pop_data[layer,:,:], meta, global_transform
 
-def get_gpw_file_path(gpw_version, reference_year, data_dir=None):
+def get_gpw_file_path(gpw_version, reference_year, data_dir=None, verbatim=True):
     """Check available GPW population data versions and year closest to
     reference_year and return full path to TIFF file.
 
@@ -114,25 +117,32 @@ def get_gpw_file_path(gpw_version, reference_year, data_dir=None):
     -------
     pathlib.Path : path to input file with population data
     """
+    if gpw_version is None:
+        gpw_version = []
+    elif isinstance(gpw_version, int):
+        gpw_version = [gpw_version]
+
     if data_dir is None:
         data_dir = SYSTEM_DIR
     # find closest year to reference_year with data available:
     year = YEARS_AVAILABLE[np.abs(YEARS_AVAILABLE - reference_year).argmin()]
-    if year != reference_year:
+    if verbatim and (year != reference_year):
         LOGGER.warning('Reference year: %i. Using nearest available year for GPW population data: %i',
                     reference_year, year)
 
     # check if file is available for given or alternative other GPW version,
     # if available, return full path to file:
-    for ver in [gpw_version] + GPW_VERSIONS:
+    for ver in gpw_version + GPW_VERSIONS:
         file_path = data_dir / (FILENAME_GPW % (ver, year))
         if file_path.is_file():
-            LOGGER.info('GPW Version v4.%2i', ver)
+            if verbatim: 
+                LOGGER.info('GPW Version v4.%2i', ver)
             return file_path
         else:
             file_path = data_dir / (DIRNAME_GPW % (ver, year)) / (FILENAME_GPW % (ver, year))
             if file_path.is_file():
-                LOGGER.info('GPW Version v4.%2i', ver)
+                if verbatim: 
+                    LOGGER.info('GPW Version v4.%2i', ver)
                 return file_path
 
     # if no inoput file was found, FileExistsError is raised

@@ -45,11 +45,79 @@ class LitPop(Exposures):
         ent.plot()
     """
 
-    def set_countries(self, countries, res_km=1, res_arcsec=None, check_plot=False,
-                    exponents=None, fin_mode='pc', admin1_calc=False, conserve_cntrytotal=True,
+    def set_countries(self, countries, res_km=1, res_arcsec=None,
+                    exponents=(1,1), fin_mode='pc', total_values=None,
+                    admin1_calc=False, conserve_cntrytotal=True,
                     reference_year=2020, gpw_version=None, data_dir=None,
                     resample_first=True):
+        """init LitPop exposure object for a list of countries (admin 0).
+        Alias: set_country()
 
+        Parameters
+        ----------
+        countries : list with str or int
+            list containing country identifiers:
+            iso3alpha (e.g. 'JPN'), iso3num (e.g. 92) or name (e.g. 'Togo')
+        res_km : float (optional)
+            Approx. horizontal resolution in km. Default: 1
+        res_arcsec : float (optional)
+            Horizontal resolution in arc-sec. Overrides res_km if both are delivered.
+            The default 30 arcsec corresponds to roughly 1 km.
+        exponents : tuple of two integers, optional
+            Defining power with which lit (nightlights) and pop (gpw) go into LitPop. To get
+            nightlights^3 without population count: (3, 0). To use population count alone: (0, 1).
+            Default: (1, 1)
+        fin_mode : str, optional
+            Socio-economic value to be used as an asset base that is disaggregated
+            to the grid points within the country
+            * 'pc': produced capital (Source: World Bank), incl. manufactured or
+                    built assets such as machinery, equipment, and physical structures
+                    (pc is in constant 2014 USD)
+            * 'pop': population count (source: GPW, same as gridded population)
+            * 'gdp': gross-domestic product (Source: World Bank)
+            * 'income_group': gdp multiplied by country's income group+1
+            * 'nfw': non-financial wealth (Source: Credit Suisse, of households only)
+            * 'tw': total wealth (Source: Credit Suisse, of households only)
+            * 'norm': normalized by country
+            * 'none': LitPop per pixel is returned unchanged
+            The default is 'pc'.
+        total_values : list contaiuning numerics, same length as countries (optional)
+            Total values to be disaggregated to grid in each country.
+            The default is None. If None, the total number is extracted from other
+            sources depending on the value of fin_mode.
+        admin1_calc : boolean, optional
+            If True, distribute admin1-level GDP (if available). Default: False
+        conserve_cntrytotal : boolean, optional
+            Given admin1_calc, conserve national total asset value. Default: True
+        reference_year : int, optional
+            Reference year for data sources. Default: 2020
+        gpw_version : int (optional)
+            Version number of GPW population data.
+            The default is None. If None, the default is set in gpw_population module.
+        data_dir : Path (optional)
+            redefines path to input data directory. The default is SYSTEM_DIR.
+        resample_first : boolean
+            First resample nightlight (Lit) and population (Pop) data to target
+            resolution before combining them as Lit^m * Pop^n?
+            The default is True. Warning: Setting this to False affects the
+            disaggregation results - expert choice only
+
+        Raises
+        ------
+        ValueError
+        """
+        if isinstance(countries, str) or isinstance(countries, int):
+            countries = [countries] # for backward compatibility
+
+        # set res_arcsec if not given:
+        if res_arcsec is None:
+            if res_km is None:
+                res_arcsec = 30
+            else:
+                res_arcsec = 30 * res_km
+            LOGGER.info('Resolution is set to %i arcsec.', res_arcsec)
+        if fin_mode is None:
+            fin_mode = 'pc'
         # value_unit is set depending on fin_mode:
         if fin_mode in [None, 'none', 'norm']:
             value_unit = ''
@@ -57,47 +125,50 @@ class LitPop(Exposures):
             value_unit='people'
         else:
             value_unit = 'USD'
-
+        if total_values is None:
+            total_values = [None] * len(countries)
+        elif len(total_values) != len(countries):
+            LOGGER.error("'countries' and 'total_values' must be lists of same length")
+            raise ValueError("'countries' and 'total_values' must be lists of same length")
         tag = Tag()
+
+        # loop over countries: litpop is initiated for each individual polygon
+        # within each country and combined at the end.
         litpop_list = \
             [self._set_one_country(country,
                                    res_arcsec=res_arcsec,
-                                   res_km=res_km,
                                    exponents=exponents,
                                    fin_mode=fin_mode,
-                                   total_value=None,
+                                   total_value=total_values[idc],
                                    admin1_calc=admin1_calc,
                                    conserve_cntrytotal=conserve_cntrytotal,
                                    reference_year=reference_year,
                                    gpw_version=gpw_version,
                                    data_dir=data_dir,
                                    resample_first=resample_first)
-             for country in countries]
+             for idc, country in enumerate(countries)]
+        # identified countries and those ignored:
         countries_in = \
             [country for i, country in enumerate(countries) if litpop_list[i] is not None]
         countries_out = \
             [country for i, country in enumerate(countries) if litpop_list[i] is None]
-        tag.description = ('LitPop for %s at %i as, year=%i, financial mode=%s, '
-                                'GPW-year=%i, BM-year=%i, exp=[%i, %i]'
-                                % (country_info[curr_country][1], resolution, reference_year,
-                                   fin_mode,
-                                   min(GPW_YEARS, key=lambda x: abs(x - reference_year)),
-                                   min(BM_YEARS, key=lambda x: abs(x - reference_year)),
-                                   exponents[0], exponents[1]))
-        # shape multipolygon explode --> loop over shapes
-        litpop_list = list()
-        for country in countries: # apply?
-    
-            litpop_list.append(
-                self._set_one_country(cntry_val, nightlight, coord_nl, res_fact, res_km,
-                                      cntry_admin1[cntry_iso], **kwargs).gdf)
-            tag.description += ("{} {:d} GDP: {:.3e} income group: {:d} \n").\
-                format(cntry_val[1], cntry_val[3], cntry_val[4], cntry_val[5])
+        if not countries_in:
+            LOGGER.error('No valid country identified in %s, aborting.' % countries)
+            raise ValueError('No valid country identified in %s, aborting.' % countries)
+        if countries_out:
+            LOGGER.warning('Some countries could not be identified and are ignored: '
+                           '%s. Litpop only initiated for: %s'
+                           % (countries_out, countries_in))
+
+        tag.description = ('LitPop Exposure for %s at %i as, year: %i, financial mode: %s, '
+                           'exp: [%i, %i]'
+                           % (countries_in, res_arcsec, reference_year, fin_mode,
+                              exponents[0], exponents[1]))
 
         Exposures.__init__(
             self,
-            data=Exposures.concat(lp_cntry).gdf,
-            crs=DEF_CRS,
+            data=Exposures.concat(litpop_list).gdf,
+            crs=litpop_list[0].crs,
             ref_year=reference_year,
             tag=tag,
             value_unit=value_unit
@@ -118,23 +189,13 @@ class LitPop(Exposures):
             LOGGER.warning('Could not write attribute meta, because exposure'
                            ' has only 1 data point')
             self.meta = {}
-        # self.set_geometry_points()
         self.check()
 
-
-
-
-        
-    # Alias method names for backward compatibility:
-    set_country = set_countries
-
     @staticmethod
-    def _set_one_country(country, res_arcsec=30, res_km=None, 
-                    exponents=(1,1), fin_mode=None, total_value=None,
-                    admin1_calc=False,
-                    conserve_cntrytotal=True,
-                    reference_year=2020, gpw_version=None, data_dir=None,
-                    resample_first=True):
+    def _set_one_country(country, res_arcsec=30, exponents=(1,1), fin_mode=None,
+                         total_value=None, admin1_calc=False,  conserve_cntrytotal=True,
+                         reference_year=2020, gpw_version=None, data_dir=None,
+                         resample_first=True):
         """init LitPop exposure object for one single country
 
         Parameters
@@ -142,8 +203,6 @@ class LitPop(Exposures):
         country : str or int
             country identifier:
             iso3alpha (e.g. 'JPN'), iso3num (e.g. 92) or name (e.g. 'Togo')
-        res_km : float (optional)
-            Approx. horizontal resolution in km. Default: 1
         res_arcsec : float (optional)
             Horizontal resolution in arc-sec. Overrides res_km if both are delivered.
             The default 30 arcsec corresponds to roughly 1 km.
@@ -192,17 +251,8 @@ class LitPop(Exposures):
 
         Returns
         -------
+        LitPop Exposure instance
         """
-        LOGGER.info('Processing country %s.', country)
-        # set res_arcsec if not given:
-        if res_arcsec is None:
-            if res_km is None:
-                res_arcsec = 30
-            else:
-                res_arcsec = 30 * res_km
-            LOGGER.info('Resolution is set to %i arcsec.', res_arcsec)
-        if fin_mode is None:
-            fin_mode = 'pc'
         # set nightlight offset (delta) to 1 in case n>0, c.f. delta in Eq. 1 of paper:
         if exponents[1] == 0:
             offsets = (0, 0)
@@ -223,6 +273,10 @@ class LitPop(Exposures):
 
         litpop_gdf = geopandas.GeoDataFrame()
         total_population = 0
+
+        # for countries with multiple sperated shapes (e.g., islands), data
+        # is initiated for each shape seperately and 0 values (e.g. on sea)
+        # removed before combination, to save memory.
         # loop over single polygons in country shape object:
         for idx, polygon in enumerate(list(country_geometry)):
             # get litpop data for each polygon and combine into GeoDataFrame:
@@ -230,13 +284,15 @@ class LitPop(Exposures):
                                                     res_arcsec, data_dir,
                                                     gpw_version, resample_first,
                                                     offsets, exponents,
-                                                    return_gdf=True)
+                                                    return_gdf=True,
+                                                    verbatim=not bool(idx),
+                                                    )
             total_population += meta_tmp['total_population']
             litpop_gdf = litpop_gdf.append(gdf_tmp)
         litpop_gdf.crs = meta_tmp['crs']
         # set total value for disaggregation if not provided:
         if total_value is None: # default, no total value provided...
-            total_value = get_total_value_per_country(iso3n, fin_mode,
+            total_value = get_total_value_per_country(iso3a, fin_mode,
                                                       reference_year, total_population)
 
         # disaggregate total value proportional to LitPop values:
@@ -245,70 +301,20 @@ class LitPop(Exposures):
                                             litpop_gdf['value'].sum()) * total_value
         elif total_value is not None:
             raise TypeError("total_val_rescale must be int or float.")
-        
-        # TODO: extra func, loop over list(country_geometry), treat each shape
-        # seperately until rescaling, take rescaling out of gridpoints_core_calc
-        # i.e. get total value later and rescale, afer loop through shapes. 
-        # in loop: extra functi that can go to u_coord later
-        
-        
-        # # import population data (2d array), meta data, and global grid info,
-        # # global_transform defines the origin (corner points) of the global traget grid:
-        # pop, meta_pop, global_transform = \
-        #     pop_util.load_gpw_pop_shape(country_geometry,
-        #                                 reference_year,
-        #                                 gpw_version=gpw_version,
-        #                                 data_dir=data_dir,
-        #                                 )
-    
-        # # import nightlight data (2d array) and associated meta data:
-        # nl, meta_nl = nl_util.load_nasa_nl_shape(country_geometry,
-        #                                          reference_year,
-        #                                          data_dir=data_dir,
-        #                                          )
-    
 
-        # if resample_first: # default is True
-        #     # --> resampling to target res. before core calculation
-        #     target_res_arcsec = res_arcsec
-        # else: # resolution of pop (degree to arcsec)
-        #     target_res_arcsec = np.abs(meta_pop['transform'][0]) * 3600
-        # # resample Lit and Pop input data to same grid:
-        # [pop, nl], meta_new = resample_input_data([pop, nl],
-        #                                           [meta_pop, meta_nl],
-        #                                           i_ref=0, # pop defines grid
-        #                                           target_res_arcsec=target_res_arcsec,
-        #                                           global_origins=(global_transform[2], # lon
-        #                                                           global_transform[5]), # lat
-        #                                           )
-    
-        # # calculate Lit^m * Pop^n and disaggregate total value to grid:
-        # litpop_array = gridpoints_core_calc([nl, pop],
-        #                                     offsets=offsets,
-        #                                     exponents=exponents,
-        #                                     total_val_rescale=total_value)
-        # if not resample_first: 
-        #     # alternative option: resample to target resolution after core calc.:
-        #     [litpop_array], meta_new = resample_input_data([litpop_array],
-        #                                                    [meta_new],
-        #                                                    target_res_arcsec=res_arcsec,
-        #                                                    global_origins=(global_transform[2],
-        #                                                                    global_transform[5]),
-        #                                                    )
-        
-        lon, lat = u_coord.raster_to_meshgrid(transform, width, height) # TODO
         exp_country = LitPop()
-        exp_country.gdf['value'] = litpop_array.reshape(-1,)
-        exp_country.gdf['latitude'] = lat
-        exp_country.gdf['longitude'] = lon
+        exp_country.gdf = litpop_gdf
         exp_country.gdf[INDICATOR_IMPF] = 1
         exp_country.gdf['region_id'] = iso3n
 
-        return exp_gdpasset
+        return exp_country
+
+    # Alias method names for backward compatibility:
+    set_country = set_countries
 
 def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
                                gpw_version, resample_first, offsets, exponents,
-                               return_gdf=True):
+                               return_gdf=True, verbatim=False):
     """load nightlight (nl) and population (pop) data in rastered 2d arrays
     and apply rescaling (resolution reprojection) and LitPop core calculation.
 
@@ -341,7 +347,7 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
     litpop_array : 2d np.ndarray
         resulting gridded data for Lit^m * Pop^n in bbox around polygon,
         data points outside the polygon are set to zero.
-    meta_new : dict
+    meta_out : dict
         raster meta info for gridded data in litpop_array, additionally the field
         'total_population' contains the sum of population in the polygon.
     litpop_gdf : GeoDataframe
@@ -356,6 +362,7 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
                                     reference_year,
                                     gpw_version=gpw_version,
                                     data_dir=data_dir,
+                                    verbatim=verbatim,
                                     )
     total_population = pop.sum()
     # import nightlight data (2d array) and associated meta data:
@@ -370,7 +377,7 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
     else: # resolution of pop is used for first resampling (degree to arcsec)
         target_res_arcsec = np.abs(meta_pop['transform'][0]) * 3600
     # resample Lit and Pop input data to same grid:
-    [pop, nl], meta_new = resample_input_data([pop, nl],
+    [pop, nl], meta_out = resample_input_data([pop, nl],
                                               [meta_pop, meta_nl],
                                               i_ref=0, # pop defines grid
                                               target_res_arcsec=target_res_arcsec,
@@ -385,22 +392,24 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
                                         total_val_rescale=None)
     if not resample_first: 
         # alternative option: resample to target resolution after core calc.:
-        [litpop_array], meta_new = resample_input_data([litpop_array],
-                                                       [meta_new],
+        [litpop_array], meta_out = resample_input_data([litpop_array],
+                                                       [meta_out],
                                                        target_res_arcsec=res_arcsec,
                                                        global_origins=(global_transform[2],
                                                                        global_transform[5]),
                                                        )
-    meta_pop['total_population'] = total_population
+    meta_out['total_population'] = total_population
     if return_gdf:
-        lon, lat = u_coord.raster_to_meshgrid(meta_new['transform'],
-                                              meta_new['width'],
-                                              meta_new['height'])
-        gdf = geopandas.GeoDataFrame({'value': litpop_array.flatten()}, crs=meta_new['crs'],
+        lon, lat = u_coord.raster_to_meshgrid(meta_out['transform'],
+                                              meta_out['width'],
+                                              meta_out['height'])
+        gdf = geopandas.GeoDataFrame({'value': litpop_array.flatten()}, crs=meta_out['crs'],
                                      geometry=geopandas.points_from_xy(lon.flatten(),
                                                                        lat.flatten()))
-        return litpop_array, meta_new, gdf[gdf['value'] != 0]
-    return litpop_array, meta_new, None
+        gdf['latitude'] = lat.flatten()
+        gdf['longitude'] = lon.flatten()
+        return litpop_array, meta_out, gdf[gdf['value'] != 0]
+    return litpop_array, meta_out, None
 
 
 def get_total_value_per_country(cntry_iso3a, fin_mode, reference_year, total_population=None):

@@ -19,11 +19,24 @@ from climada.entity.exposures.litpop import gpw_population as pop_util
 
 from climada.util.constants import SYSTEM_DIR
 
-import_bm = True
-import_pop = True
+import_bm = False
+import_pop = False
+test_litpop = True
+
+cntry = ['USA']
+year = 2016
+
+if test_litpop:
+    from climada.entity.exposures.litpop import litpop as lp
+    exp = lp.LitPop()
+    exp.set_countries(cntry, res_arcsec=None,
+                    exponents=(1,1), fin_mode='pc', total_values=None,
+                    admin1_calc=False, conserve_cntrytotal=True,
+                    reference_year=2016, gpw_version=None, data_dir=None,
+                    resample_first=True)
+
 
 # Malta
-year = 2016
 bounds = (14.18, 35.78, 14.58, 36.09) # (14.18, 14.58, 35.78, 36.09) # (min_lon, max_lon, min_lat, max_lat)
 # bounds = (-85, -11, 5, 40)
 shape_cntry = Polygon([
@@ -33,7 +46,7 @@ shape_cntry = Polygon([
     (bounds[0], bounds[1])
     ])
 # Spain
-shape_cntry = u_coord.get_land_geometry(['ESP'])
+shape_cntry = u_coord.get_land_geometry([cntry])
 #shape_cntry = u_coord.get_land_geometry(['RUS'])
 #shape_cntry = u_coord.get_land_geometry(['CHE'])
 

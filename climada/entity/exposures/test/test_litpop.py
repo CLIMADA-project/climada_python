@@ -23,7 +23,7 @@ import numpy as np
 import unittest
 from rasterio.crs import CRS
 from rasterio import Affine
-from climada.entity.exposures.litpop import litpop as lp # TODO: replace litpop_new
+from climada.entity.exposures.litpop import litpop as lp
 
 
 def data_arrays_demo(number_of_arrays=2):
