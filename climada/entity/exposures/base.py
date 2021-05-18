@@ -140,6 +140,8 @@ class Exposures():
             Unit of the exposed value
         meta : dict
             Metadata dictionary
+        crs : object, anything accepted by pyproj.CRS.from_user_input
+            Metadata dictionary
         """
         # meta data
         try:
@@ -204,8 +206,6 @@ class Exposures():
         if not crs:
             crs = DEF_CRS
             LOGGER.info('crs set to default value %s', crs)
-        if not self.meta.get('crs'):
-            self.meta['crs'] = crs
 
         geometry = kwargs.get('geometry')
         if geometry and isinstance(geometry, str):
@@ -216,7 +216,7 @@ class Exposures():
             kwargs['crs'] = crs
 
         # make the data frame
-        self.gdf = GeoDataFrame(*args, **kwargs)
+        self.set_gdf(GeoDataFrame(*args, **kwargs), crs=crs)
 
     def __str__(self):
         return '\n'.join(
@@ -283,6 +283,39 @@ class Exposures():
                                  " longitude. Use set_geometry_points() or set_lat_lon().")
         except AttributeError:  # no geometry column
             pass
+
+    def set_crs(self, crs=None):
+        """Set the Coordinate Reference System.
+        If the epxosures GeoDataFrame has a 'geometry' column it will be updated too.
+
+        Parameters
+        ----------
+        crs : object, optional
+            anything anything accepted by pyproj.CRS.from_user_input
+            if omitted or None, the original stays unchanged and only the GeoDataFrame is updated.
+            if the original value is None it will be set to the default CRS.
+        """        
+        crs = crs if crs else self.crs if self.crs else DEF_CRS
+        # adjust the dataframe
+        if 'geometry' in self.gdf:
+            self.gdf.set_crs(crs, inplace=True)
+        # store the value
+        self.meta['crs'] = crs
+
+    def set_gdf(self, gdf:GeoDataFrame, crs=None):
+        """Set the `gdf` GeoDataFrame and update the CRS
+
+        Parameters
+        ----------
+        gdf : GeoDataFrame
+        crs : object, optional,
+            anything anything accepted by pyproj.CRS.from_user_input,
+            by default None, then `gdf.crs` applies or - if not set - the exposure's current crs
+        """        
+        # set the dataframe
+        self.gdf = gdf
+        # update the coordindate reference system
+        self.set_crs(crs)
 
     def get_impf_column(self, haz_type=''):
         """Find the best matching column name in the exposures dataframe for a given hazard type,
@@ -406,10 +439,11 @@ class Exposures():
         lry = uly + meta['height'] * yres
         x_grid, y_grid = np.meshgrid(np.arange(ulx + xres / 2, lrx, xres),
                                      np.arange(uly + yres / 2, lry, yres))
-        try:
-            self.gdf.crs = meta['crs'].to_dict()
-        except AttributeError:
-            self.gdf.crs = meta['crs']
+        if 'geometry' in self.gdf:
+            raise ValueError("there is already a geometry column defined in the GeoDataFrame")
+
+        if self.crs is None:
+            self.set_crs()
         self.gdf['longitude'] = x_grid.flatten()
         self.gdf['latitude'] = y_grid.flatten()
         self.gdf['value'] = value.reshape(-1)
@@ -585,7 +619,7 @@ class Exposures():
          Returns:
             matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
         """
-        if 'geometry' not in self.gdf.columns:
+        if 'geometry' not in self.gdf:
             self.set_geometry_points()
         crs_ori = self.crs
         self.to_crs(epsg=3857, inplace=True)
@@ -634,7 +668,7 @@ class Exposures():
                 if key in type(self)._metadata:
                     setattr(self, key, val)
                 if key == 'crs':
-                    self.gdf.crs = val
+                    self.set_crs(val)
 
     def read_mat(self, file_name, var_names=None):
         """Read MATLAB file and store variables in exposures.
@@ -664,7 +698,8 @@ class Exposures():
             raise KeyError(f"Variable not in MAT file: {var_names.get('field_name')}")\
                 from var_err
 
-        self.gdf = GeoDataFrame(data=exposures, crs=self.crs)
+        self.set_gdf(GeoDataFrame(data=exposures))
+
         _read_mat_metadata(self, data, file_name, var_names)
 
     #
@@ -769,10 +804,21 @@ class Exposures():
             ex.gdf if isinstance(ex, Exposures) else ex
             for ex in exposures_list
         ]
-        exp.gdf = GeoDataFrame(
-            pd.concat(df_list, ignore_index=True, sort=False),
-            crs=exp.crs
-        )
+        crss = [
+            ex.crs for ex in exposures_list
+            if isinstance(ex, (Exposures, GeoDataFrame)) and not ex.crs is None
+        ]
+        if crss:
+            crs = crss[0]
+            if any([not u_coord.equal_crs(c, crs) for c in crss[1:]]):
+                raise ValueError("concatenation of exposures with different crs")
+        else:
+            crs = None
+
+        exp.set_gdf(GeoDataFrame(
+            pd.concat(df_list, ignore_index=True, sort=False)
+        ), crs=crs)
+
         return exp
 
 
@@ -810,7 +856,7 @@ def add_sea(exposures, sea_res):
     sea_exp_gdf['longitude'] = lon_mgrid[on_land]
     sea_exp_gdf['region_id'] = np.zeros(sea_exp_gdf.latitude.size, int) - 1
 
-    if 'geometry' in exposures.gdf.columns:
+    if 'geometry' in exposures.gdf:
         u_coord.set_df_geometry_points(sea_exp_gdf)
 
     for var_name in exposures.gdf.columns:
@@ -872,7 +918,7 @@ def _read_mat_optional(exposures, data, var_names):
 
 
 def _read_mat_metadata(exposures, data, file_name, var_names):
-    """Fille metadata in DataFrame object"""
+    """Fill metadata in DataFrame object"""
     try:
         exposures.ref_year = int(np.squeeze(data[var_names['var_name']['ref']]))
     except KeyError:

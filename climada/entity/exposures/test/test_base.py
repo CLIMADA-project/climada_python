@@ -328,14 +328,14 @@ class TestConcat(unittest.TestCase):
         self.dummy = exp
 
     def test_concat_pass(self):
-        """Test condat function with fake data."""
+        """Test concat function with fake data."""
 
         self.dummy.check()
 
         catexp = Exposures.concat([self.dummy, self.dummy.gdf, pd.DataFrame(self.dummy.gdf.values, columns=self.dummy.gdf.columns), self.dummy])
         self.assertEqual(self.dummy.gdf.shape, (10,5))
         self.assertEqual(catexp.gdf.shape, (40,5))
-        self.assertEqual(catexp.gdf.crs, 'epsg:3395')
+        self.assertEqual(catexp.crs, 'epsg:3395')
 
     def test_concat_fail(self):
         """Test failing concat function with fake data."""

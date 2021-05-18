@@ -350,11 +350,13 @@ class Measure():
         LOGGER.debug('Number of changed exposures: %s', chg_reg.sum())
 
         # concatenate previous and new exposures
-        new_exp.gdf = GeoDataFrame(
-            pd.concat([
-                exposures.gdf[no_chg_reg],  # old values for inert regions
-                new_exp.gdf[chg_reg]        # new values for changing regions
-            ]).loc[exposures.gdf.index,:],  # re-establish old order
+        new_exp.set_gdf(
+            GeoDataFrame(
+                pd.concat([
+                    exposures.gdf[no_chg_reg],  # old values for inert regions
+                    new_exp.gdf[chg_reg]        # new values for changing regions
+                ]).loc[exposures.gdf.index,:],  # re-establish old order
+            ),
             crs=exposures.crs
         )
 
