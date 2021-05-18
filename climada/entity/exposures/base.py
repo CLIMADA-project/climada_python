@@ -188,18 +188,18 @@ class Exposures():
 
         # crs (property) and geometry
         data = args[0] if args else kwargs.get('data', {})
-
-        crs = kwargs['crs'] if 'crs' in kwargs \
-              else self.meta['crs'] if 'crs' in self.meta \
-              else data.crs if 'crs' in data \
-              else None
-        if 'crs' in self.meta and not u_coord.equal_crs(self.meta['crs'], crs):
-            raise ValueError("Inconsistent crs definition in meta")
         try:
             data_crs = data.crs
         except AttributeError:
             data_crs = None
-        if data_crs and not u_coord.equal_crs(data.crs, crs):
+
+        crs = kwargs['crs'] if 'crs' in kwargs \
+              else self.meta['crs'] if 'crs' in self.meta \
+              else data.crs if data_crs \
+              else None
+        if 'crs' in self.meta and not u_coord.equal_crs(self.meta['crs'], crs):
+            raise ValueError("Inconsistent crs definition in meta")
+        if data_crs and not u_coord.equal_crs(data_crs, crs):
             raise ValueError("Inconsistent crs definition in data")
         if not crs:
             crs = DEF_CRS
