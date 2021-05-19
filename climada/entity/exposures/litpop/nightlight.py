@@ -70,6 +70,8 @@ BM_FILENAMES = ['BlackMarble_%i_A1_geo_gray.tif',
                ]
 """Nightlight NASA files which generate the whole earth when put together."""
 
+BM_YEARS = [2016, 2012] # list of available years with data, please update.
+
 def check_required_nl_files(bounds, *coords):
     """Determines which of the satellite pictures are necessary for
         a certain bounding box (e.g. country)
@@ -258,7 +260,7 @@ def load_nasa_nl_shape_single_tile(geometry, path, layer=0): # TODO: manually te
     return out_image[layer,:,:], meta
 
 # TODO: LitPop 2.0
-def load_nasa_nl_shape(geometry, year, data_dir=None, dtype=None): # TODO: manually tested but no tests exist yet
+def load_nasa_nl_shape(geometry, reference_year, data_dir=None, dtype=None): # TODO: manually tested but no tests exist yet
     """Read nightlight data from NASA BlackMarble tiles
     cropped to given shape(s) and combine.
     
@@ -268,8 +270,8 @@ def load_nasa_nl_shape(geometry, year, data_dir=None, dtype=None): # TODO: manua
         for example shapely.geometry.Polygon(s) object or
         from polygon defined in a shapefile. The object should have
         attribute 'bounds'
-    year : int
-        nightlight year, e.g. 2016.
+    reference_year : int
+        target year for nightlight data, e.g. 2016.
     data_dir : Path (optional)
         Path to directory with BlackMarble data.
         The default is SYSTEM_DIR.
@@ -286,6 +288,9 @@ def load_nasa_nl_shape(geometry, year, data_dir=None, dtype=None): # TODO: manua
         data_dir = SYSTEM_DIR
     if dtype is None:
         dtype = 'float32'
+
+    # get closest available year from reference_year:
+    year = min(BM_YEARS, key=lambda x: abs(x - reference_year))
 
     req_files = check_required_nl_files(geometry.bounds)
     check_nl_local_file_exists(required_files=req_files, check_path=data_dir,

@@ -22,7 +22,11 @@ import logging
 import numpy as np
 import rasterio
 import geopandas
+import shapefile
 from shapely.geometry import Polygon, MultiPolygon
+from cartopy.io import shapereader
+from pathlib import Path
+import pandas as pd
 
 import climada.util.coordinates as u_coord
 from climada.util.finance import gdp, income_group, wealth2gdp, world_bank_wealth_account
@@ -30,7 +34,7 @@ from climada.entity.tag import Tag
 from climada.entity.exposures.litpop import nightlight as nl_util
 from climada.entity.exposures.litpop import gpw_population as pop_util
 from climada.entity.exposures.base import Exposures, INDICATOR_IMPF
-
+from climada.util.constants import SYSTEM_DIR
 LOGGER = logging.getLogger(__name__)
 
 class LitPop(Exposures):
@@ -134,21 +138,31 @@ class LitPop(Exposures):
             raise ValueError("'countries' and 'total_value' must be lists of same length")
         tag = Tag()
 
-        # loop over countries: litpop is initiated for each individual polygon
-        # within each country and combined at the end.
-        litpop_list = \
-            [self._set_one_country(country,
-                                   res_arcsec=res_arcsec,
-                                   exponents=exponents,
-                                   fin_mode=fin_mode,
-                                   total_value=total_value[idc],
-                                   admin1_calc=admin1_calc,
-                                   conserve_cntrytotal=conserve_cntrytotal,
-                                   reference_year=reference_year,
-                                   gpw_version=gpw_version,
-                                   data_dir=data_dir,
-                                   resample_first=resample_first)
-             for idc, country in enumerate(countries)]
+        if admin1_calc: # expert use only
+            litpop_list = []
+            for idc, country in enumerate(countries):
+                litpop_list.append(_calc_admin1(country, res_arcsec, exponents, # TODO : TEST
+                                                fin_mode, conserve_cntrytotal,
+                                                reference_year, gpw_version,
+                                                data_dir, resample_first)
+                                   )
+
+        else: # Default
+            # loop over countries: litpop is initiated for each individual polygon
+            # within each country and combined at the end.
+            litpop_list = \
+                [self._set_one_country(country,
+                                       res_arcsec=res_arcsec,
+                                       exponents=exponents,
+                                       fin_mode=fin_mode,
+                                       total_value=total_value[idc],
+                                       admin1_calc=admin1_calc,
+                                       conserve_cntrytotal=conserve_cntrytotal,
+                                       reference_year=reference_year,
+                                       gpw_version=gpw_version,
+                                       data_dir=data_dir,
+                                       resample_first=resample_first)
+                 for idc, country in enumerate(countries)]
         # identified countries and those ignored:
         countries_in = \
             [country for i, country in enumerate(countries) if litpop_list[i] is not None]
@@ -161,11 +175,13 @@ class LitPop(Exposures):
             LOGGER.warning('Some countries could not be identified and are ignored: '
                            '%s. Litpop only initiated for: %s'
                            % (countries_out, countries_in))
+        if admin1_calc:
+            litpop_list = ... # TODO flatten liost??
 
         tag.description = ('LitPop Exposure for %s at %i as, year: %i, financial mode: %s, '
-                           'exp: [%i, %i]'
+                           'exp: [%i, %i], admin1_calc: %s'
                            % (countries_in, res_arcsec, reference_year, fin_mode,
-                              exponents[0], exponents[1]))
+                              exponents[0], exponents[1], str(admin1_calc)))
 
         Exposures.__init__(
             self,
@@ -210,7 +226,7 @@ class LitPop(Exposures):
 
         Parameters
         ----------
-        shape : shapely.geometry.Polygon or MultiPolygon
+        shape : shapely.geometry.Polygon or MultiPolygon or list of shapes
             geographical shape for which LitPop Exposure is to be initaited
         res_arcsec : float (optional)
             Horizontal resolution in arc-sec.
@@ -268,10 +284,6 @@ class LitPop(Exposures):
         ------
         ValueError
         NotImplementedError
-
-        Returns
-        -------
-        LitPop Exposure instance
         """
         if total_value_abs is None and in_countries is None and fin_mode != 'pop':
             raise ValueError("Either total_value_abs or in_countries needs to "
@@ -317,7 +329,6 @@ class LitPop(Exposures):
             offsets = (0, 0)
         else:
             offsets = (1, 0)
-
         # init LitPop GeoDataFrame for shape:
         total_population = 0
         litpop_gdf = geopandas.GeoDataFrame()
@@ -405,7 +416,7 @@ class LitPop(Exposures):
 
     @staticmethod
     def _set_one_country(country, res_arcsec=30, exponents=(1,1), fin_mode=None,
-                         total_value=None, admin1_calc=False,  conserve_cntrytotal=True,
+                         total_value=None,
                          reference_year=2020, gpw_version=None, data_dir=None,
                          resample_first=True):
         """init LitPop exposure object for one single country
@@ -440,10 +451,6 @@ class LitPop(Exposures):
             Total value to be disaggregated to grid in country.
             The default is None. If None, the total number is extracted from other
             sources depending on the value of fin_mode.
-        admin1_calc : boolean, optional
-            If True, distribute admin1-level GDP (if available). Default: False
-        conserve_cntrytotal : boolean, optional
-            Given admin1_calc, conserve national total asset value. Default: True
         reference_year : int, optional
             Reference year for data sources. Default: 2020
         gpw_version : int (optional)
@@ -856,3 +863,165 @@ def gridpoints_core_calc(data_arrays, offsets=None, exponents=None,
         raise TypeError("total_val_rescale must be int or float.")
 
     return result_array
+
+""" The following functions are only required if calc_admin1 is True, not core LitPop.
+This is mainly for backward compatibility."""
+
+def _check_excel_exists(file_path, file_name, xlsx_before_xls=True):
+    """Checks if an Excel file with the name file_name in the folder file_path exists, checking for
+    both xlsx and xls files.
+
+    Parameters
+    ----------
+    file_path : string
+        path where to look for file
+    file_name : string
+        file name which is checked. Extension is ignored
+    xlsx_before_xls : boolean, optional
+        If True, xlsx files are priorised over xls files. Default: True.
+    """
+    try_ext = []
+    if xlsx_before_xls:
+        try_ext.append('.xlsx')
+        try_ext.append('.xls')
+    else:
+        try_ext.append('.xls')
+        try_ext.append('.xlsx')
+    path_name = Path(file_path, file_name).stem
+    for i in try_ext:
+        if Path(file_path, path_name + i).is_file():
+            return str(Path(file_path, path_name + i))
+    return None
+
+def _gsdp_read(country_iso3, admin1_shape_data, look_folder=None):
+    """Retrieves the GSDP data for a certain country. It requires an excel file in a subfolder
+    "GSDP" in climadas data folder (or in the specified folder). The excel file should bear the
+    name 'ISO3_GSDP.xlsx' (or .xls), where ISO3 is the three letter country code. In the excel
+    file, the first sheet should contain a row with the title "State_Province" with the name or
+    postal code (two letters) of the admin1 unit and a row "GSDP_ref" with either the GDP value of
+    the admin1 unit or its share in the national GDP.
+
+    Parameters
+    ----------
+    country_iso3 : str
+        three letter country code
+    admin1_shape_data : list
+        list containg all admin1 shapes of the country.
+    look_folder : str (optional)
+        path where to look for file
+
+    Returns
+    -------
+    out_dict : dictionary
+        GSDP for each admin1 unit name.
+    """
+    if look_folder is None:
+        look_folder = SYSTEM_DIR.joinpath('GSDP')
+    file_name = _check_excel_exists(look_folder, str(country_iso3 + '_GSDP'))
+    if file_name is not None:
+        admin1_xls_data = pd.read_excel(file_name)
+        if admin1_xls_data.get('State_Province') is None:
+            admin1_xls_data = admin1_xls_data.rename(
+                columns={admin1_xls_data.columns[0]: 'State_Province'})
+        if admin1_xls_data.get('GSDP_ref') is None:
+            admin1_xls_data = admin1_xls_data.rename(
+                columns={admin1_xls_data.columns[-1]: 'GSDP_ref'})
+
+        out_dict = dict.fromkeys([nam[1]['name'] for nam in admin1_shape_data])
+        postals = [nam[1]['postal'] for nam in admin1_shape_data]
+        for subnat_shape in out_dict.keys():
+            for idx, subnat_xls in enumerate(admin1_xls_data['State_Province'].tolist()):
+                
+                subnat_shape_str = [c for c in subnat_shape if c.isalpha() or c.isnumeric()]
+                subnat_xls_str = [c for c in subnat_xls if c.isalpha()]
+                if subnat_shape_str == subnat_xls_str:
+                    out_dict[subnat_shape] = admin1_xls_data['GSDP_ref'][idx]
+                    break
+        # Now a second loop to detect empty ones
+        for idx1, country_name in enumerate(out_dict.keys()):
+            if out_dict[country_name] is None:
+                for idx2, subnat_xls in enumerate(admin1_xls_data['State_Province'].tolist()):
+                    subnat_xls_str = [c for c in subnat_xls if c.isalpha()]
+                    postals_str = [c for c in postals[idx1] if c.isalpha()]
+                    if subnat_xls_str == postals_str:
+                        out_dict[country_name] = admin1_xls_data['GSDP_ref'][idx2]
+        return out_dict
+    LOGGER.warning('No file for %s could be found in %s.', country_iso3, look_folder)
+    LOGGER.warning('No admin1 data is calculated in this case.')
+    return None
+
+def _calc_admin1(country, res_arcsec, exponents, fin_mode, conserve_cntrytotal,
+                 reference_year, gpw_version, data_dir, resample_first):
+    """
+    Calculates the LitPop on admin1 level for provinces/states where such information are
+    available (i.e. GDP is distributed on a subnational instead of a national level). Requires
+    excel files in a subfolder "GSDP" in climadas data folder. The excel files should contain a row
+    with the title "State_Province" with the name or postal code (two letters) of the admin1 unit
+    and a row "GSDP_ref" with either the GDP value or the share of the state in the national GDP.
+    If only for certain states admin1 info is found, the rest of the country is assigned value
+    according to the admin0 method.
+    
+    See set_countries() for description of parameters.
+
+    Parameters
+    ----------
+    country : str
+    res_arcsec : int
+    exponents : tuple
+    fin_mode : str
+    conserve_cntrytotal : bool
+    reference_year : int
+    gpw_version: int
+    data_dir : Path
+    resample_first : bool
+
+    Returns
+    -------
+    list of Exposures
+
+    """
+    # Determine ISO 3166 representation of country and get geometry:
+    try:
+        iso3a = u_coord.country_to_iso(country, representation="alpha3")
+        iso3n = u_coord.country_to_iso(country, representation="numeric")
+    except LookupError:
+        LOGGER.error('Country not identified: %s.', country)
+        return None
+    # get shapes:
+    admin1_file = shapereader.natural_earth(resolution='10m',
+                                            category='cultural',
+                                            name='admin_1_states_provinces')
+    admin1_recs = shapefile.Reader(admin1_file)
+    country_admin1 = [] # will contain shapes and records for each province
+    for rec, rec_shp in zip(admin1_recs.records(), admin1_recs.shapes()):
+        if rec['adm0_a3'] == iso3a:
+            country_admin1.append([rec_shp, rec])
+    gsdp_data = _gsdp_read(iso3a, country_admin1, look_folder=data_dir.joinpath('GSDP'))
+    if gsdp_data is None:
+        raise ValueError("No subnational GDP data found for calc_admin1, aborting.")
+
+    # normalize values:
+    sum_vals = sum(filter(None, gsdp_data.values())) # get total
+    gsdp_data = {key: (value / sum_vals if value is not None else None)
+                 for (key, value) in gsdp_data.items()}
+
+    exp_list = []
+    for idx, adm1_shp in enumerate(country_admin1):
+        if gsdp_data[country_admin1[idx][1]['name']] is None:
+            continue
+        exp_list.append(LitPop()) # init exposure for province
+        # rel_value_share defines the share the province gets from total val
+        # total value is defined from country:
+        exp_list[-1].set_custom_shape([country_admin1[1][0]],
+                                      res_arcsec=res_arcsec,
+                                      exponents=exponents,
+                                      fin_mode=fin_mode,
+                                      total_value_abs=None,
+                                      rel_value_share=gsdp_data[country_admin1[idx][1]['name']],
+                                      in_countries=[iso3a],
+                                      region_id = [iso3n],
+                                      reference_year=reference_year,
+                                      gpw_version=gpw_version,
+                                      data_dir=data_dir,
+                                      resample_first=resample_first)
+    return exp_list

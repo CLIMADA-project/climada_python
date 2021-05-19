@@ -26,7 +26,7 @@ test_litpop = 0
 test_litpop_shape = True
 
 cntry = ['MEX', 'USA']
-year = 2016
+year = 2018
 
 if test_litpop:
 
