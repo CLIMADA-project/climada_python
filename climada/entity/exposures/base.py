@@ -559,6 +559,7 @@ class Exposures():
         imag = axis.imshow(raster_f(raster), **kwargs, origin='upper',
                            extent=(xmin, xmax, ymin, ymax), transform=proj_data)
         plt.colorbar(imag, cax=cbar_ax, label=label)
+        plt.tight_layout()
         plt.draw()
         return axis
 

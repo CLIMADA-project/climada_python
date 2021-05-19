@@ -341,6 +341,7 @@ class TropCyclone(Hazard):
             pbar = tqdm(total=idx_plt.size - 2)
             ani = animation.FuncAnimation(fig, run, frames=idx_plt.size - 2,
                                           interval=500, blit=False)
+            fig.tight_layout()
             ani.save(file_name, writer=writer)
             pbar.close()
         return tc_list, tr_coord

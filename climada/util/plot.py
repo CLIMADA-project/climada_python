@@ -229,6 +229,7 @@ def _plot_scattered_data(method, array_sub, geo_coord, var_name, title,
         cbar = plt.colorbar(mappable, cax=cbax, orientation='vertical', extend=extend)
         cbar.set_label(name)
         axis.set_title("\n".join(wrap(tit)))
+    plt.tight_layout()
     return axes
 
 
@@ -324,7 +325,7 @@ def geo_im_from_array(array_sub, coord, var_name, title,
         cbar = plt.colorbar(img, cax=cbax, orientation='vertical')
         cbar.set_label(name)
         axis.set_title("\n".join(wrap(tit)))
-
+    plt.tight_layout()
     return axes
 
 def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
@@ -468,7 +469,6 @@ def make_map(num_sub=1, figsize=(9, 13), proj=ccrs.PlateCarree()):
         except TypeError:
             pass
 
-    fig.tight_layout()
     if num_col > 1:
         fig.subplots_adjust(wspace=0.3)
     if num_row > 1:

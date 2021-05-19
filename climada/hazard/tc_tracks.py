@@ -38,6 +38,7 @@ import matplotlib.cm as cm_mp
 from matplotlib.collections import LineCollection
 from matplotlib.colors import BoundaryNorm, ListedColormap
 from matplotlib.lines import Line2D
+import matplotlib.pyplot as plt
 import netCDF4 as nc
 import numba
 import numpy as np
@@ -1268,7 +1269,7 @@ class TCTracks():
                 leg_names.append('Historical')
                 leg_names.append('Synthetic')
             axis.legend(leg_lines, leg_names, loc=0)
-
+        plt.tight_layout()
         return axis
 
     def write_netcdf(self, folder_name):
