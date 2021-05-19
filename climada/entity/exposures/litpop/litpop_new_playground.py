@@ -10,6 +10,7 @@ import shapefile
 from shapely.geometry import Polygon
 import rasterio
 from matplotlib import pyplot as plt
+from matplotlib import colors
 
 
 import climada.util.coordinates as u_coord
@@ -21,30 +22,85 @@ from climada.util.constants import SYSTEM_DIR
 
 import_bm = False
 import_pop = False
-test_litpop = True
+test_litpop = 0
+test_litpop_shape = True
 
-cntry = ['USA']
+cntry = ['MEX', 'USA']
 year = 2016
 
 if test_litpop:
+
     from climada.entity.exposures.litpop import litpop as lp
+    exp_lit = lp.LitPop()
+    exp_lit.set_countries(['CHE'], res_arcsec=None,
+                    exponents=(1,0), fin_mode='norm', total_values=None,
+                    admin1_calc=False, conserve_cntrytotal=True,
+                    reference_year=year, gpw_version=None, data_dir=None,
+                    resample_first=True)
+
+    exp_lit.plot_hexbin(ignore_zero=False)
+    print(exp_lit.gdf.value.sum())
+    exp_pop = lp.LitPop()
+    exp_pop.set_countries(['CHE'], res_arcsec=None,
+                    exponents=(0,1), fin_mode='pop', total_values=None,
+                    admin1_calc=False, conserve_cntrytotal=True,
+                    reference_year=year, gpw_version=None, data_dir=None,
+                    resample_first=True)
+    exp_pop.plot_hexbin(ignore_zero=True)
+
+    print(exp_pop.gdf.value.sum())
+
     exp = lp.LitPop()
     exp.set_countries(cntry, res_arcsec=None,
                     exponents=(1,1), fin_mode='pc', total_values=None,
                     admin1_calc=False, conserve_cntrytotal=True,
-                    reference_year=2016, gpw_version=None, data_dir=None,
+                    reference_year=year, gpw_version=None, data_dir=None,
                     resample_first=True)
 
+    exp.plot_hexbin(ignore_zero=False)
+    norm=colors.LogNorm(vmin=500, vmax=1e11)
+    exp.plot_hexbin(norm=norm)
 
 # Malta
 bounds = (14.18, 35.78, 14.58, 36.09) # (14.18, 14.58, 35.78, 36.09) # (min_lon, max_lon, min_lat, max_lat)
 # bounds = (-85, -11, 5, 40)
-shape_cntry = Polygon([
+shape_ = Polygon([
     (bounds[0], bounds[3]),
     (bounds[2], bounds[3]),
     (bounds[2], bounds[1]),
     (bounds[0], bounds[1])
     ])
+
+if test_litpop_shape:
+    from climada.entity.exposures.litpop import litpop as lp
+    exp_shape = lp.LitPop()
+    exp_shape.set_custom_shape(shape_, res_arcsec=30, exponents=(1,1), fin_mode=None,
+                         total_value_abs=101, rel_value_share=1., in_countries=None,
+                         region_id = None,
+                         reference_year=year, gpw_version=None, data_dir=None,
+                         resample_first=True)
+    print(exp_shape.gdf.value.sum())
+    exp_shape.plot_hexbin(ignore_zero=True)
+
+    exp_shape = lp.LitPop()
+    exp_shape.set_custom_shape(shape_, res_arcsec=30, exponents=(1,1), fin_mode=None,
+                         total_value_abs=None, rel_value_share=.1, in_countries='Malta',
+                         region_id = None,
+                         reference_year=year, gpw_version=None, data_dir=None,
+                         resample_first=True)
+    print(exp_shape.gdf.value.sum())
+    exp_shape.plot_hexbin(ignore_zero=True)
+    
+    exp_shape = lp.LitPop()
+    exp_shape.set_custom_shape(shape_, res_arcsec=30, exponents=(1,1), fin_mode='pop',
+                         total_value_abs=None, rel_value_share=.1, in_countries='Malta',
+                         region_id = None,
+                         reference_year=year, gpw_version=None, data_dir=None,
+                         resample_first=True)
+    print(exp_shape.gdf.value.sum())
+    exp_shape.plot_hexbin(ignore_zero=True)
+
+
 # Spain
 shape_cntry = u_coord.get_land_geometry([cntry])
 #shape_cntry = u_coord.get_land_geometry(['RUS'])
@@ -80,81 +136,82 @@ if import_bm:
     plt.show()
 
 
-destination = np.zeros(pop.shape, dtype=meta_nl['dtype'])
-
-resampling = rasterio.warp.Resampling.bilinear
-
-rasterio.warp.reproject(
-                source=nl,
-                destination=destination,
-                src_transform=meta_nl['transform'],
-                #src_crs=meta_nl['crs'],
-                src_crs=meta_pop['crs'], # why?
-                dst_transform=meta_pop['transform'],
-                dst_crs=meta_pop['crs'],
-                resampling=resampling,
-                )
-plt.imshow(destination, cmap='pink', filternorm=False)
-plt.show()
-
-
-res_arcsec = 1800
-res_degree = res_arcsec / 3600
-
-# calculate new longitude and latitude origins in destination grid
-# (for global consistency):
-buffer = 0
-dst_orig_lon = int(np.floor((180 + meta_pop['transform'][2]) / res_degree))-buffer
-dst_orig_lon = -180 + np.max([0, dst_orig_lon]) * res_degree
-
-dst_orig_lat = int(np.floor((90 - meta_pop['transform'][5]) / res_degree))-buffer
-dst_orig_lat = 90 - np.max([0, dst_orig_lat]) * res_degree
-
-dst_shape = (int(min([180/res_degree,
-                      pop.shape[0] / (res_degree/meta_pop['transform'][0])+1+2*buffer])),
-             int(min([360/res_degree,
-                      pop.shape[1] / (res_degree/meta_pop['transform'][0])+1+2*buffer])),
-             )
-
-dst_transform = rasterio.Affine(res_degree,
-                              global_transform[1],
-                              dst_orig_lon,
-                              global_transform[3],
-                              -res_degree, # pop_trafo_glb[4],
-                              dst_orig_lat,
-                              )
-
-dst_transform = rasterio.Affine(res_degree,
-                              0,
-                              dst_orig_lon,
-                              0,
-                              -res_degree, # pop_trafo_glb[4],
-                              dst_orig_lat,
-                              )
-
-destination_rough = np.zeros(dst_shape, dtype=meta_nl['dtype'])
-
-rasterio.warp.reproject(
-                source=nl,
-                destination=destination_rough,
-                src_transform=meta_nl['transform'],
-                # src_crs=meta_nl['crs'],
-                src_crs=meta_pop['crs'], # why?
-                dst_transform=dst_transform,
-                dst_crs=meta_pop['crs'],
-                resampling=resampling,
-                )
-plt.imshow(destination_rough, cmap='pink', filternorm=False)
-plt.show()
-
-
-
-data_out, meta_out = resample_input_data([pop, nl], [meta_pop, meta_nl],
-                        i_ref=0,
-                        target_res_arcsec=None,
-                        global_origins=(-180.0, 89.99999999999991),
-                        target_crs=None,
-                        resampling=None)
+    destination = np.zeros(pop.shape, dtype=meta_nl['dtype'])
+    
+    resampling = rasterio.warp.Resampling.bilinear
+    
+    rasterio.warp.reproject(
+                    source=nl,
+                    destination=destination,
+                    src_transform=meta_nl['transform'],
+                    #src_crs=meta_nl['crs'],
+                    src_crs=meta_pop['crs'], # why?
+                    dst_transform=meta_pop['transform'],
+                    dst_crs=meta_pop['crs'],
+                    resampling=resampling,
+                    )
+    plt.imshow(destination, cmap='pink', filternorm=False)
+    plt.show()
+    
+    
+    res_arcsec = 1800
+    res_degree = res_arcsec / 3600
+    
+    # calculate new longitude and latitude origins in destination grid
+    # (for global consistency):
+    buffer = 0
+    dst_orig_lon = int(np.floor((180 + meta_pop['transform'][2]) / res_degree))-buffer
+    dst_orig_lon = -180 + np.max([0, dst_orig_lon]) * res_degree
+    
+    dst_orig_lat = int(np.floor((90 - meta_pop['transform'][5]) / res_degree))-buffer
+    dst_orig_lat = 90 - np.max([0, dst_orig_lat]) * res_degree
+    
+    dst_shape = (int(min([180/res_degree,
+                          pop.shape[0] / (res_degree/meta_pop['transform'][0])+1+2*buffer])),
+                 int(min([360/res_degree,
+                          pop.shape[1] / (res_degree/meta_pop['transform'][0])+1+2*buffer])),
+                 )
+    
+    dst_transform = rasterio.Affine(res_degree,
+                                  global_transform[1],
+                                  dst_orig_lon,
+                                  global_transform[3],
+                                  -res_degree, # pop_trafo_glb[4],
+                                  dst_orig_lat,
+                                  )
+    
+    dst_transform = rasterio.Affine(res_degree,
+                                  0,
+                                  dst_orig_lon,
+                                  0,
+                                  -res_degree, # pop_trafo_glb[4],
+                                  dst_orig_lat,
+                                  )
+    
+    destination_rough = np.zeros(dst_shape, dtype=meta_nl['dtype'])
+    
+    rasterio.warp.reproject(
+                    source=nl,
+                    destination=destination_rough,
+                    src_transform=meta_nl['transform'],
+                    # src_crs=meta_nl['crs'],
+                    src_crs=meta_pop['crs'], # why?
+                    dst_transform=dst_transform,
+                    dst_crs=meta_pop['crs'],
+                    resampling=resampling,
+                    )
+    plt.imshow(destination_rough, cmap='pink', filternorm=False)
+    plt.show()
+    
+    
+    """
+    data_out, meta_out = resample_input_data([pop, nl], [meta_pop, meta_nl],
+                            i_ref=0,
+                            target_res_arcsec=None,
+                            global_origins=(-180.0, 89.99999999999991),
+                            target_crs=None,
+                            resampling=None)
+    """
 
 #rasterio.warp.reproject(
 #                source=rasterio.band(src, band),
