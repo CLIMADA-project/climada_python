@@ -50,9 +50,11 @@ class TestIbtracs(unittest.TestCase):
     """Test reading and model of TC from IBTrACS files"""
 
     def test_raw_ibtracs_empty_pass(self):
-        """Test reading TC from IBTrACS files"""
+        """Test reading empty/invalid/non-existing TC from IBTrACS files"""
         tc_track = tc.TCTracks()
-        tc_track.read_ibtracs_netcdf(provider='usa', storm_id='1988234N13299')
+        tc_track.read_ibtracs_netcdf(
+            provider='usa', storm_id=['1988234N13299', 'INVALID', '1988234N13298'])
+        self.assertEqual(tc_track.size, 0)
         self.assertEqual(tc_track.get_track(), [])
 
     def test_write_read_pass(self):

@@ -25,6 +25,7 @@ __all__ = ['CAT_NAMES', 'SAFFIR_SIM_CAT', 'TCTracks', 'set_category']
 import datetime as dt
 import itertools
 import logging
+import re
 import shutil
 import warnings
 from pathlib import Path
@@ -429,9 +430,23 @@ class TCTracks():
         if storm_id is not None:
             if not isinstance(storm_id, list):
                 storm_id = [storm_id]
-            match &= ibtracs_ds.sid.isin([i.encode() for i in storm_id])
-            if np.count_nonzero(match) == 0:
-                LOGGER.info('No tracks with given IDs %s.', storm_id)
+            invalid_mask = np.array(
+                [re.match(r"[12][0-9]{6}[NS][0-9]{5}", s) is None for s in storm_id])
+            if invalid_mask.any():
+                invalid_sids = list(np.array(storm_id)[invalid_mask])
+                LOGGER.warning("The following given IDs are invalid: %s%s",
+                               ", ".join(invalid_sids[:5]),
+                               ", ..." if len(invalid_sids) > 5  else ".")
+                storm_id = list(np.array(storm_id)[~invalid_mask])
+            storm_id_encoded = [i.encode() for i in storm_id]
+            non_existing_mask = ~np.isin(storm_id_encoded, ibtracs_ds.sid.values)
+            if np.count_nonzero(non_existing_mask) > 0:
+                non_existing_sids = list(np.array(storm_id)[non_existing_mask])
+                LOGGER.warning("The following given IDs are not in IBTrACS: %s%s",
+                               ", ".join(non_existing_sids[:5]),
+                               ", ..." if len(non_existing_sids) > 5  else ".")
+                storm_id_encoded = list(np.array(storm_id_encoded)[~non_existing_mask])
+            match &= ibtracs_ds.sid.isin(storm_id_encoded)
         else:
             year_range = year_range if year_range else (1980, 2018)
         if year_range is not None:
