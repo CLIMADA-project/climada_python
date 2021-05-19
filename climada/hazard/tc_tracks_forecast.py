@@ -173,8 +173,7 @@ class TCForecast(TCTracks):
 
         except ftplib.all_errors as err:
             con.quit()
-            LOGGER.error('Error while downloading BUFR TC tracks.')
-            raise err
+            raise type(err)('Error while downloading BUFR TC tracks: ' + str(err)) from err
 
         _ = con.quit()
 
@@ -314,8 +313,7 @@ class TCForecast(TCTracks):
         track['time_step'] = track.ts_int - \
             track.ts_int.shift({'time': 1}, fill_value=0)
 
-        # TODO use drop_vars after upgrading xarray
-        track = track.drop('ts_int')
+        track = track.drop_vars(['ts_int'])
 
         track['radius_max_wind'] = (('time'), np.full_like(
             track.time, np.nan, dtype=float)
@@ -325,7 +323,7 @@ class TCForecast(TCTracks):
         )
 
         # according to specs always num-num-letter
-        track.attrs['basin'] = BASINS[sid[2]]
+        track['basin'] = ('time', np.full_like(track.time, BASINS[sid[2]], dtype=object))
 
         if sid[2] == 'X':
             LOGGER.info(
@@ -354,7 +352,7 @@ class TCForecast(TCTracks):
         ]
 
         if len(delayed_replicators) != 1:
-            LOGGER.error('Could not find fcast_rep, please set manually.')
-            raise ValueError('More than one delayed replicator in BUFR file')
+            raise ValueError('Could not find fcast_rep, please set manually. '
+                             'More than one delayed replicator in BUFR file')
 
         return str(delayed_replicators[0])
