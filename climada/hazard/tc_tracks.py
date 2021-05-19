@@ -348,7 +348,7 @@ class TCTracks():
         storm_id : str or list of str, optional
             IBTrACS ID of the storm, e.g. 1988234N13299, [1988234N13299, 1989260N11316].
         year_range : tuple (min_year, max_year), optional
-            Year range to filter track selection. Default: (1980, 2018)
+            Year range to filter track selection. Default: None.
         basin : str, optional
             If given, select storms that have at least one position in the specified basin. This
             allows analysis of a given basin, but also means that basin-specific track sets should
@@ -447,8 +447,6 @@ class TCTracks():
                                  ", ..." if len(non_existing_sids) > 5  else ".")
                 storm_id_encoded = list(np.array(storm_id_encoded)[~non_existing_mask])
             match &= ibtracs_ds.sid.isin(storm_id_encoded)
-        else:
-            year_range = year_range if year_range else (1980, 2018)
         if year_range is not None:
             years = ibtracs_ds.sid.str.slice(0, 4).astype(int)
             match &= (years >= year_range[0]) & (years <= year_range[1])
