@@ -631,12 +631,12 @@ class TestRasterMeta(unittest.TestCase):
 
     def test_points_to_raster_pass(self):
         """Test points_to_raster"""
-        df_val = gpd.GeoDataFrame(crs={'init': 'epsg:2202'})
+        df_val = gpd.GeoDataFrame()
         x, y = np.meshgrid(np.linspace(0, 2, 5), np.linspace(40, 50, 10))
         df_val['latitude'] = y.flatten()
         df_val['longitude'] = x.flatten()
         df_val['value'] = np.ones(len(df_val)) * 10
-        _raster, meta = u_coord.points_to_raster(df_val, val_names=['value'])
+        _raster, meta = u_coord.points_to_raster(df_val, val_names=['value'], crs={'init': 'epsg:2202'})
         self.assertTrue(u_coord.equal_crs(meta['crs'], df_val.crs))
         self.assertAlmostEqual(meta['transform'][0], 0.5)
         self.assertAlmostEqual(meta['transform'][1], 0)
