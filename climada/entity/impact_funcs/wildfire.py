@@ -74,7 +74,7 @@ class ImpfWildfire(ImpactFunc):
         """
 
         self.id = impf_id
-        self.name = "wildfire default 10 km"
+        self.name = "wildfire default 1 km"
         self.intensity_unit = "K"
         self.intensity = np.arange(295, 500, 5)
         i_thresh = 295
