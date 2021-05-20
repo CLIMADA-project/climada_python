@@ -38,7 +38,7 @@ class TestImpfWildfire(unittest.TestCase):
         self.assertEqual(imp_fun.haz_type, 'WFsingle')
         self.assertEqual(imp_fun.id, 1)
         self.assertEqual(imp_fun.intensity_unit, 'K')
-        self.assertTrue(np.array_equal(imp_fun.intensity, np.arange(295,500,5)))
+        self.assertTrue(np.array_equal(imp_fun.intensity, np.arange(295, 500,  5)))
 
         i_thresh = 295
         i_half = i_half_check
