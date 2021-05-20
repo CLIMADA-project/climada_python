@@ -208,8 +208,7 @@ class WildFire(Hazard):
         """
         ev_idx = np.argwhere(self.event_id == ev_id).reshape(-1)[0]
         if not ev_idx.size:
-            LOGGER.error('No event with id %s', str(ev_id))
-            raise ValueError
+            raise ValueError(No event with id %d found', ev_id)
 
         if not self.centroids.lat.size:
             self.centroids.set_meta_to_lat_lon()
