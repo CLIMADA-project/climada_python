@@ -147,7 +147,7 @@ class WildFire(Hazard):
         if not centroids:
             centroids = self._firms_centroids_creation(firms, res_data, centr_res_factor)
         else:
-            if not centroids.coord.size:
+            if not centroids.lat.any():
                 centroids.set_meta_to_lat_lon()
         res_centr = self._centroids_resolution(centroids)
 
