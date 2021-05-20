@@ -120,9 +120,12 @@ class WildFire(Hazard):
             csv_firms : pd.DataFrame or str
                  path to csv file of FIRMS data or FIRMS data as pd.Dataframe
                 (https://firms.modaps.eosdis.nasa.gov/download/)
-            centr_res_factor : int, optional, default=1
+            centr_res_factor : float, optional, default=1
                 resolution factor with respect to the satellite data to use
-                for centroids creation
+                for centroids creation. Hence, if MODIS data (1 km res) is
+                used and centr_res_factor is set to 0.2, the grid spacing of
+                the generated centroids will equal 5 km (=1/0.2). If centroids
+                are defined, this parameter has no effect.
             centroids : Centroids, optional
                 centroids in degrees to map data
 
