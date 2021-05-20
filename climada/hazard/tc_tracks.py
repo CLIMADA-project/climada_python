@@ -564,7 +564,7 @@ class TCTracks():
                                ", ..." if len(invalid_sids) > 5  else ".")
                 ibtracs_ds = ibtracs_ds.sel(storm=valid_storms_mask)
 
-	if ibtracs_ds.dims['storm'] == 0:
+	    if ibtracs_ds.dims['storm'] == 0:
 		    LOGGER.info('After discarding IBTrACS events without valid values by the selected '
 		                'reporting agencies, there are no tracks left that match the specified '
 		                'requirements.')
