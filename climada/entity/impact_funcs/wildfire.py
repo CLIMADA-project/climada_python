@@ -85,7 +85,7 @@ class ImpfWildfire(ImpactFunc):
     def set_step(self, threshold=295., impf_id=1):
 
         """ Step function type impact function. Everything is destroyed above
-        threshold. Usefull for high resolution modelling.
+        threshold. Useful for high resolution modelling.
 
         Defaults are not calibrated
 
