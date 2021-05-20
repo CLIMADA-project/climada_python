@@ -50,12 +50,26 @@ class TestIbtracs(unittest.TestCase):
     """Test reading and model of TC from IBTrACS files"""
 
     def test_raw_ibtracs_empty_pass(self):
-        """Test reading empty/invalid/non-existing TC from IBTrACS files"""
+        """Test reading empty TC from IBTrACS files"""
         tc_track = tc.TCTracks()
         tc_track.read_ibtracs_netcdf(
-            provider='usa', storm_id=['1988234N13299', 'INVALID', '1988234N13298'])
+            provider='usa', storm_id='1988234N13299')
         self.assertEqual(tc_track.size, 0)
         self.assertEqual(tc_track.get_track(), [])
+
+    def test_raw_ibtracs_invalid_pass(self):
+        """Test reading invalid/non-existing TC from IBTrACS files"""
+        tc_track = tc.TCTracks()
+        with self.assertRaises(ValueError) as cm:
+            tc_track.read_ibtracs_netcdf(storm_id='INVALID')
+        self.assertIn("IDs are invalid", str(cm.exception))
+        self.assertIn("INVALID", str(cm.exception))
+
+        tc_track = tc.TCTracks()
+        with self.assertRaises(ValueError) as cm:
+            tc_track.read_ibtracs_netcdf(storm_id='1988234N13298')
+        self.assertIn("IDs are not in IBTrACS", str(cm.exception))
+        self.assertIn("1988234N13298", str(cm.exception))
 
     def test_write_read_pass(self):
         """Test writting and reading netcdf4 TCTracks instances"""

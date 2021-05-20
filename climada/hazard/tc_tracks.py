@@ -348,7 +348,7 @@ class TCTracks():
         storm_id : str or list of str, optional
             IBTrACS ID of the storm, e.g. 1988234N13299, [1988234N13299, 1989260N11316].
         year_range : tuple (min_year, max_year), optional
-            Year range to filter track selection. Default: (1980, 2018)
+            Year range to filter track selection. Default: None.
         basin : str, optional
             If given, select storms that have at least one position in the specified basin. This
             allows analysis of a given basin, but also means that basin-specific track sets should
@@ -434,21 +434,19 @@ class TCTracks():
                 [re.match(r"[12][0-9]{6}[NS][0-9]{5}", s) is None for s in storm_id])
             if invalid_mask.any():
                 invalid_sids = list(np.array(storm_id)[invalid_mask])
-                LOGGER.warning("The following given IDs are invalid: %s%s",
-                               ", ".join(invalid_sids[:5]),
-                               ", ..." if len(invalid_sids) > 5  else ".")
+                raise ValueError("The following given IDs are invalid: %s%s",
+                                 ", ".join(invalid_sids[:5]),
+                                 ", ..." if len(invalid_sids) > 5  else ".")
                 storm_id = list(np.array(storm_id)[~invalid_mask])
             storm_id_encoded = [i.encode() for i in storm_id]
             non_existing_mask = ~np.isin(storm_id_encoded, ibtracs_ds.sid.values)
             if np.count_nonzero(non_existing_mask) > 0:
                 non_existing_sids = list(np.array(storm_id)[non_existing_mask])
-                LOGGER.warning("The following given IDs are not in IBTrACS: %s%s",
-                               ", ".join(non_existing_sids[:5]),
-                               ", ..." if len(non_existing_sids) > 5  else ".")
+                raise ValueError("The following given IDs are not in IBTrACS: %s%s",
+                                 ", ".join(non_existing_sids[:5]),
+                                 ", ..." if len(non_existing_sids) > 5  else ".")
                 storm_id_encoded = list(np.array(storm_id_encoded)[~non_existing_mask])
             match &= ibtracs_ds.sid.isin(storm_id_encoded)
-        else:
-            year_range = year_range if year_range else (1980, 2018)
         if year_range is not None:
             years = ibtracs_ds.sid.str.slice(0, 4).astype(int)
             match &= (years >= year_range[0]) & (years <= year_range[1])
