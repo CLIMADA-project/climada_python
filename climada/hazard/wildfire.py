@@ -211,9 +211,7 @@ class WildFire(Hazard):
         fire_lon = self.centroids.lon[self.intensity[ev_idx, :].nonzero()[1]]
 
         # Creation of the geodataframe
-        fire = gpd.GeoDataFrame(crs=DEF_CRS)
-        fire['geometry'] = list(zip(fire_lon, fire_lat))
-        fire['geometry'] = fire['geometry'].apply(Point)
+        fire = gpd.GeoDataFrame({'geometry': gpd.points_from_xy(fire_lon,  fire_lat)}, crs=DEF_CRS)
         points = fire.geometry.values
 
         # Compute concave hull
