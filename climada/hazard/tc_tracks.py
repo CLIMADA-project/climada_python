@@ -564,12 +564,12 @@ class TCTracks():
                                ", ..." if len(invalid_sids) > 5  else ".")
                 ibtracs_ds = ibtracs_ds.sel(storm=valid_storms_mask)
 
-	    if ibtracs_ds.dims['storm'] == 0:
-		    LOGGER.info('After discarding IBTrACS events without valid values by the selected '
-		                'reporting agencies, there are no tracks left that match the specified '
-		                'requirements.')
-		    self.data = []
-		    return
+        if ibtracs_ds.dims['storm'] == 0:
+            LOGGER.info('After discarding IBTrACS events without valid values by the selected '
+                        'reporting agencies, there are no tracks left that match the specified '
+                        'requirements.')
+            self.data = []
+            return
 
         max_wind = ibtracs_ds.wind.max(dim="date_time").data.ravel()
         category_test = (max_wind[:, None] < np.array(SAFFIR_SIM_CAT)[None])
