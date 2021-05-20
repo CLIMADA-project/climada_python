@@ -39,7 +39,7 @@ class ImpfWildfire(ImpactFunc):
 
         """ This function sets the impact curve to a sigmoid type shape, as
         common in impact modelling. We adapted the function as proposed by
-        Emanuele (2011) which hinges on two parameters (intercept (i_thresh)
+        Emanuel et al. (2011) which hinges on two parameters (intercept (i_thresh)
         and steepness (i_half) of the sigmoid).
 
         .. math::
