@@ -24,7 +24,7 @@ import numpy as np
 
 from climada.entity.impact_funcs.wildfire import ImpfWildfire
 
-THRESH_step = 331
+thresh_step = 331
 i_half_check = 523.8
 
 class TestIFWildfire(unittest.TestCase):
@@ -34,7 +34,7 @@ class TestIFWildfire(unittest.TestCase):
         """Compute mdr interpolating values. For the calibrated function"""
         imp_fun = IFWildfire()
         imp_fun.set_default_FIRMS(i_half_check)
-        self.assertEqual(imp_fun.name, 'wildfire default 10 km')
+        self.assertEqual(imp_fun.name, 'wildfire default 1 km')
         self.assertEqual(imp_fun.haz_type, 'WFsingle')
         self.assertEqual(imp_fun.id, 1)
         self.assertEqual(imp_fun.intensity_unit, 'K')
@@ -49,18 +49,18 @@ class TestIFWildfire(unittest.TestCase):
         self.assertTrue(np.array_equal(imp_fun.mdd, np.ones(len(paa))))
 
 
-    def test_step_values_pass(self, threshold=THRESH_step):
+    def test_step_values_pass(self, threshold=thresh_step):
         """Compute mdr interpolating values. For the step function"""
         imp_fun = IFWildfire()
-        imp_fun.set_step(THRESH_step)
+        imp_fun.set_step(threshold)
         self.assertEqual(imp_fun.name, 'wildfire step')
         self.assertEqual(imp_fun.haz_type, 'WFsingle')
         self.assertEqual(imp_fun.id, 1)
         self.assertEqual(imp_fun.intensity_unit, 'K')
         self.assertTrue(np.array_equal(imp_fun.intensity,
-                            np.array([295, THRESH_step, THRESH_step, 500])))
-        self.assertTrue(np.array_equal(imp_fun.paa, np.array([1, 1, 1, 1])))
-        self.assertTrue(np.array_equal(imp_fun.mdd, np.array([0, 0, 1, 1])))
+                            np.array([295, threshold, threshold, 500])))
+        self.assertTrue(np.array_equal(imp_fun.mdd, np.array([1, 1, 1, 1])))
+        self.assertTrue(np.array_equal(imp_fun.paa, np.array([0, 0, 1, 1])))
 
 
 # Execute Tests
