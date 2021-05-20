@@ -66,7 +66,7 @@ class WildFire(Hazard):
 
     """Contains wild fire events.
 
-    Wildfires comprise the challange that the definition of an event is unclear.
+    Wildfires comprise the challenge that the definition of an event is unclear.
     Reporting standards vary accross regions and over time. Hence, to have
     consistency, we consider an event as a whole fire season. This allows
     consistent risk assessment across the global and over time. Events that
