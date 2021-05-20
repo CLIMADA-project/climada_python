@@ -18,32 +18,51 @@ from climada.entity.exposures.litpop import nightlight as nl_util
 # from climada.entity.exposures.litpop import gpw_import
 from climada.entity.exposures.litpop import gpw_population as pop_util
 
+#import climada
+#import importlib
+#importlib.reload(climada.entity.exposures.litpop)
+from climada.entity.exposures.litpop import litpop as lp
+
 from climada.util.constants import SYSTEM_DIR
 
 import_bm = False
 import_pop = False
-test_litpop = 0
-test_litpop_shape = True
+test_litpop = True
+test_litpop_admin1 = True
+test_litpop_shape = False
+test_lit = False
+test_pop = False
 
 cntry = ['MEX', 'USA']
 year = 2018
 
-if test_litpop:
 
-    from climada.entity.exposures.litpop import litpop as lp
+if test_lit:
     exp_lit = lp.LitPop()
-    exp_lit.set_countries(['CHE'], res_arcsec=None,
-                    exponents=(1,0), fin_mode='norm', total_values=None,
-                    admin1_calc=False, conserve_cntrytotal=True,
+    exp_lit.set_lit(countries='CHE')
+    exp_lit.plot_hexbin(ignore_zero=False)
+
+if test_pop:
+    exp_pop = lp.LitPop()
+    exp_pop.set_pop(countries='CHE')
+    exp_pop.plot_hexbin(ignore_zero=False)
+    print(exp_pop.gdf.value.sum())
+
+if test_litpop:
+    exp_lit2 = lp.LitPop()
+    exp_lit2.set_countries(['CHE'], res_arcsec=None,
+                    exponents=(1,1), fin_mode='gdp', total_values=None,
+                    admin1_calc=False,
                     reference_year=year, gpw_version=None, data_dir=None,
                     resample_first=True)
-
-    exp_lit.plot_hexbin(ignore_zero=False)
-    print(exp_lit.gdf.value.sum())
+    
+    exp_lit2.plot_hexbin(ignore_zero=False)
+    print(exp_lit2.gdf.value.sum())
+    """
     exp_pop = lp.LitPop()
     exp_pop.set_countries(['CHE'], res_arcsec=None,
                     exponents=(0,1), fin_mode='pop', total_values=None,
-                    admin1_calc=False, conserve_cntrytotal=True,
+                    admin1_calc=False,
                     reference_year=year, gpw_version=None, data_dir=None,
                     resample_first=True)
     exp_pop.plot_hexbin(ignore_zero=True)
@@ -53,13 +72,24 @@ if test_litpop:
     exp = lp.LitPop()
     exp.set_countries(cntry, res_arcsec=None,
                     exponents=(1,1), fin_mode='pc', total_values=None,
-                    admin1_calc=False, conserve_cntrytotal=True,
+                    admin1_calc=False,
                     reference_year=year, gpw_version=None, data_dir=None,
                     resample_first=True)
 
     exp.plot_hexbin(ignore_zero=False)
     norm=colors.LogNorm(vmin=500, vmax=1e11)
-    exp.plot_hexbin(norm=norm)
+    exp.plot_hexbin(norm=norm)"""
+
+if test_litpop_admin1:
+    exp_lit1 = lp.LitPop()
+    exp_lit1.set_countries(['CHE'], res_arcsec=30,
+                    exponents=(1,1), fin_mode='gdp', total_values=None,
+                    admin1_calc=True,
+                    reference_year=year, gpw_version=None, data_dir=None,
+                    resample_first=True)
+    
+    exp_lit1.plot_hexbin(ignore_zero=False)
+    print(exp_lit1.gdf.value.sum())
 
 # Malta
 bounds = (14.18, 35.78, 14.58, 36.09) # (14.18, 14.58, 35.78, 36.09) # (min_lon, max_lon, min_lat, max_lat)
@@ -72,7 +102,6 @@ shape_ = Polygon([
     ])
 
 if test_litpop_shape:
-    from climada.entity.exposures.litpop import litpop as lp
     exp_shape = lp.LitPop()
     exp_shape.set_custom_shape(shape_, res_arcsec=30, exponents=(1,1), fin_mode=None,
                          total_value_abs=101, rel_value_share=1., in_countries=None,
@@ -99,7 +128,6 @@ if test_litpop_shape:
                          resample_first=True)
     print(exp_shape.gdf.value.sum())
     exp_shape.plot_hexbin(ignore_zero=True)
-
 
 # Spain
 shape_cntry = u_coord.get_land_geometry([cntry])

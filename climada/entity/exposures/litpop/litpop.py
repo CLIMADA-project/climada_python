@@ -51,8 +51,8 @@ class LitPop(Exposures):
     """
 
     def set_countries(self, countries, res_km=1, res_arcsec=None,
-                    exponents=(1,1), fin_mode='pc', total_value=None,
-                    admin1_calc=False, conserve_cntrytotal=True,
+                    exponents=(1,1), fin_mode='pc', total_values=None,
+                    admin1_calc=False,
                     reference_year=2020, gpw_version=None, data_dir=None,
                     resample_first=True):
         """init LitPop exposure object for a list of countries (admin 0).
@@ -87,14 +87,12 @@ class LitPop(Exposures):
             * 'norm': normalized by country
             * 'none': LitPop per pixel is returned unchanged
             The default is 'pc'.
-        total_value : list contaiuning numerics, same length as countries (optional)
+        total_values : list contaiuning numerics, same length as countries (optional)
             Total values to be disaggregated to grid in each country.
             The default is None. If None, the total number is extracted from other
             sources depending on the value of fin_mode.
         admin1_calc : boolean, optional
             If True, distribute admin1-level GDP (if available). Default: False
-        conserve_cntrytotal : boolean, optional
-            Given admin1_calc, conserve national total asset value. Default: True
         reference_year : int, optional
             Reference year for data sources. Default: 2020
         gpw_version : int (optional)
@@ -131,23 +129,25 @@ class LitPop(Exposures):
             value_unit='people'
         else:
             value_unit = 'USD'
-        if total_value is None:
-            total_value = [None] * len(countries)
-        elif len(total_value) != len(countries):
-            LOGGER.error("'countries' and 'total_value' must be lists of same length")
-            raise ValueError("'countries' and 'total_value' must be lists of same length")
+        if total_values is None:
+            total_values = [None] * len(countries)
+        elif len(total_values) != len(countries):
+            raise ValueError("'countries' and 'total_values' must be lists of same length")
         tag = Tag()
 
-        if admin1_calc: # expert use only
-            litpop_list = []
-            for idc, country in enumerate(countries):
-                litpop_list.append(_calc_admin1(country, res_arcsec, exponents, # TODO : TEST
-                                                fin_mode, conserve_cntrytotal,
-                                                reference_year, gpw_version,
-                                                data_dir, resample_first)
-                                   )
+        # litpop_list, a list containing one Exposure instance per country and
+        # None for countries that could not be identified is produced:
+        if admin1_calc: # each admin 1 region initiated seperately,
+                        # with total value share based on subnational GDP share.
+                        # This requires GRP (Gross Regional Product) data in the
+                        # GSDP data folder.
+            litpop_list = [_calc_admin1(country, res_arcsec, exponents, fin_mode,
+                                        total_values[idc], reference_year, gpw_version,
+                                        data_dir, resample_first
+                                        )
+                           for idc, country in enumerate(countries)]
 
-        else: # Default
+        else: # else, as default, country is initiated as a whole:
             # loop over countries: litpop is initiated for each individual polygon
             # within each country and combined at the end.
             litpop_list = \
@@ -155,28 +155,23 @@ class LitPop(Exposures):
                                        res_arcsec=res_arcsec,
                                        exponents=exponents,
                                        fin_mode=fin_mode,
-                                       total_value=total_value[idc],
-                                       admin1_calc=admin1_calc,
-                                       conserve_cntrytotal=conserve_cntrytotal,
+                                       total_value=total_values[idc],
                                        reference_year=reference_year,
                                        gpw_version=gpw_version,
                                        data_dir=data_dir,
                                        resample_first=resample_first)
                  for idc, country in enumerate(countries)]
-        # identified countries and those ignored:
+        # make lists of countries with Exposure initaited and those ignored:
         countries_in = \
             [country for i, country in enumerate(countries) if litpop_list[i] is not None]
         countries_out = \
             [country for i, country in enumerate(countries) if litpop_list[i] is None]
         if not countries_in:
-            LOGGER.error('No valid country identified in %s, aborting.' % countries)
             raise ValueError('No valid country identified in %s, aborting.' % countries)
         if countries_out:
             LOGGER.warning('Some countries could not be identified and are ignored: '
                            '%s. Litpop only initiated for: %s'
                            % (countries_out, countries_in))
-        if admin1_calc:
-            litpop_list = ... # TODO flatten liost??
 
         tag.description = ('LitPop Exposure for %s at %i as, year: %i, financial mode: %s, '
                            'exp: [%i, %i], admin1_calc: %s'
@@ -235,17 +230,8 @@ class LitPop(Exposures):
             Defining power with which lit (nightlights) and pop (gpw) go into LitPop.
         fin_mode : str, optional
             Socio-economic value to be used as an asset base that is disaggregated
-            to the grid points within the country
-            * 'pc': produced capital (Source: World Bank), incl. manufactured or
-                    built assets such as machinery, equipment, and physical structures
-                    (pc is in constant 2014 USD)
-            * 'pop': population count (source: GPW, same as gridded population)
-            * 'gdp': gross-domestic product (Source: World Bank)
-            * 'income_group': gdp multiplied by country's income group+1
-            * 'nfw': non-financial wealth (Source: Credit Suisse, of households only)
-            * 'tw': total wealth (Source: Credit Suisse, of households only)
-            * 'norm': normalized by country
-            * 'none': LitPop per pixel is returned unchanged
+            to the grid points within the country.
+            See set_countries() for more details.
             The default is 'pc'.
         total_value_abs : numeric (optional)
             Total value to be disaggregated to grid in shape.
@@ -260,9 +246,10 @@ class LitPop(Exposures):
             The default is 1 (=100%)
         in_countries : str or list (optional)
             country or list of countries the shape is in or overlapping with.
-            Porvide countries as ISO3alpha code, e.g. 'JPN' for Japan.
-            If no total_value_abs is provided, total_value_abs is set as total 
-            value of these countries. Required if total_value_abs is None.
+            Provide countries as ISO3alpha code, e.g. 'JPN' for Japan.
+            If no total_value_abs is provided, total_value_abs is set as sum
+            of the total value(s) of these countries.
+            Thsi parameter is required if total_value_abs is None.
             The default is None.
         region_id : int (optional)
             if given, sets region_id of Exposure manually, overwrites countries_in
@@ -338,7 +325,6 @@ class LitPop(Exposures):
                                                     res_arcsec, data_dir,
                                                     gpw_version, resample_first,
                                                     offsets, exponents,
-                                                    return_gdf=True,
                                                     verbatim=not bool(idx),
                                                     )
             total_population += meta_tmp['total_population']
@@ -381,10 +367,12 @@ class LitPop(Exposures):
 
         litpop_gdf[INDICATOR_IMPF] = 1
         if region_id is not None:
-            litpop_gdf['region_id'] = region_id
+            litpop_gdf['region_id'] = \
+                region_id * np.ones(litpop_gdf.shape[0],dtype=int)
         elif len(iso3n) == 1:
             # single country
-            litpop_gdf['region_id'] = iso3n[0]
+            litpop_gdf['region_id'] = \
+                iso3n[0] * np.ones(litpop_gdf.shape[0], dtype=int)
         else:
             LOGGER.warning('region_id not set, please set manually')
 
@@ -414,55 +402,117 @@ class LitPop(Exposures):
             self.meta = {}
         self.check()
 
+    def set_lit(self, countries=None, shape=None, res_arcsec=15, exponent=1,
+                reference_year=2016, data_dir=None):
+        """
+        initiate Exposure with pure nightlight data
+
+        Parameters
+        ----------
+        countries : list or str (optional)
+            list containing country identifiers (name or iso3)
+        shape : Shape, Polygon or MultiPolygon, optional
+            shape to crop results to, overrules countries
+        res_arcsec : int, optional
+            Resolution in arc seconds. The default is 15.
+        exponent : int or float >= 0, optional
+            exponent m in Lit^m. The default is 1.
+        reference_year : int, optional
+            Target year, closest BlackMarble year is returned.
+            The default is 2016.
+        data_dir : Path, optional
+            data directory. The default is None.
+
+        Raises
+        ------
+        ValueError
+            Either countries or shape is required.
+        """
+
+        if countries is None and shape is None:
+            raise ValueError("Either countries or shape required. Aborting.")
+        if shape is None:
+            self.set_countries(countries, res_km=None, res_arcsec=res_arcsec,
+                               exponents=(exponent, 0), fin_mode='none', 
+                               reference_year=reference_year, gpw_version=None,
+                               data_dir=data_dir, resample_first=True)
+        elif countries is not None:
+            LOGGER.info("Using shape provided instead of countries' shapes. "
+                        "To use countries' shapes, set shape=None")
+        if shape is not None:
+            self.set_custom_shape(shape, res_arcsec=res_arcsec, exponents=(exponent,0),
+                                  fin_mode='none', in_countries=countries,
+                                  reference_year=reference_year,
+                                  gpw_version=None, data_dir=data_dir,
+                                  resample_first=True)
+
+    def set_pop(self, countries=None, shape=None, res_arcsec=30, exponent=1,
+                reference_year=2020, gpw_version=None, data_dir=None):
+        """
+        initiate Exposure with pure population data
+
+        Parameters
+        ----------
+        countries : list or str (optional)
+            list containing country identifiers (name or iso3)
+        shape : Shape, Polygon or MultiPolygon, optional
+            shape to crop results to, overrules countries
+        res_arcsec : int, optional
+            Resolution in arc seconds. The default is 30.
+        exponent : int or float >= 0, optional
+            exponent n in Pop^n. The default is 1.
+        reference_year : int, optional
+            Target year, closest GPW data year is returned.
+            The default is 2020.
+        gpw_version : int, optional
+            specify GPW data verison. The default is 11.
+        data_dir : Path, optional
+            data directory. The default is None.
+
+        Raises
+        ------
+        ValueError
+            Either countries or shape is required.
+        """
+
+        if countries is None and shape is None:
+            raise ValueError("Either countries or shape required. Aborting.")
+        if shape is None:
+            self.set_countries(countries, res_km=None, res_arcsec=res_arcsec,
+                               exponents=(0, exponent), fin_mode='pop', 
+                               reference_year=reference_year, gpw_version=gpw_version,
+                               data_dir=data_dir)
+        elif countries is not None:
+            LOGGER.info("Using shape provided instead of countries' shapes. "
+                        "To use countries' shapes, set shape=None")
+        if shape is not None:
+            self.set_custom_shape(shape, res_arcsec=res_arcsec, exponents=(0,1),
+                                  fin_mode='pop', in_countries=countries,
+                                  reference_year=reference_year,
+                                  gpw_version=gpw_version, data_dir=data_dir)
+
     @staticmethod
     def _set_one_country(country, res_arcsec=30, exponents=(1,1), fin_mode=None,
                          total_value=None,
                          reference_year=2020, gpw_version=None, data_dir=None,
                          resample_first=True):
         """init LitPop exposure object for one single country
-
+        See docstring of set_countries() for detailled description of parameters.
+        
         Parameters
         ----------
         country : str or int
-            country identifier:
-            iso3alpha (e.g. 'JPN'), iso3num (e.g. 92) or name (e.g. 'Togo')
+            country identifier as iso3alpha, iso3num or name.
         res_arcsec : float (optional)
-            Horizontal resolution in arc-sec.
-            The default 30 arcsec corresponds to roughly 1 km.
+            horizontal resolution in arc-sec.
         exponents : tuple of two integers, optional
-            Defining power with which lit (nightlights) and pop (gpw) go into LitPop. To get
-            nightlights^3 without population count: (3, 0). To use population count alone: (0, 1).
-            Default: (1, 1)
         fin_mode : str, optional
-            Socio-economic value to be used as an asset base that is disaggregated
-            to the grid points within the country
-            * 'pc': produced capital (Source: World Bank), incl. manufactured or
-                    built assets such as machinery, equipment, and physical structures
-                    (pc is in constant 2014 USD)
-            * 'pop': population count (source: GPW, same as gridded population)
-            * 'gdp': gross-domestic product (Source: World Bank)
-            * 'income_group': gdp multiplied by country's income group+1
-            * 'nfw': non-financial wealth (Source: Credit Suisse, of households only)
-            * 'tw': total wealth (Source: Credit Suisse, of households only)
-            * 'norm': normalized by country
-            * 'none': LitPop per pixel is returned unchanged
-            The default is 'pc'.
         total_value : numeric (optional)
-            Total value to be disaggregated to grid in country.
-            The default is None. If None, the total number is extracted from other
-            sources depending on the value of fin_mode.
         reference_year : int, optional
-            Reference year for data sources. Default: 2020
         gpw_version : int (optional)
-            Version number of GPW population data.
-            The default is None. If None, the default is set in gpw_population module.
         data_dir : Path (optional)
             redefines path to input data directory. The default is SYSTEM_DIR.
         resample_first : boolean
-            First resample nightlight (Lit) and population (Pop) data to target
-            resolution before combining them as Lit^m * Pop^n?
-            The default is True. Warning: Setting this to False affects the
-            disaggregation results.
 
         Raises
         ------
@@ -503,7 +553,6 @@ class LitPop(Exposures):
                                                     res_arcsec, data_dir,
                                                     gpw_version, resample_first,
                                                     offsets, exponents,
-                                                    return_gdf=True,
                                                     verbatim=not bool(idx),
                                                     )
             total_population += meta_tmp['total_population']
@@ -533,7 +582,7 @@ class LitPop(Exposures):
 
 def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
                                gpw_version, resample_first, offsets, exponents,
-                               return_gdf=True, verbatim=False):
+                               verbatim=False):
     """load nightlight (nl) and population (pop) data in rastered 2d arrays
     and apply rescaling (resolution reprojection) and LitPop core calculation.
 
@@ -572,7 +621,6 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
     litpop_gdf : GeoDataframe
         resulting gridded data for Lit^m * Pop^n inside polygon,
         data points outside the polygon and equal to zero are not returned.
-        litpop_gdf is None if return_gdf == False
     """
     # import population data (2d array), meta data, and global grid info,
     # global_transform defines the origin (corner points) of the global traget grid:
@@ -595,13 +643,23 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
         target_res_arcsec = res_arcsec
     else: # resolution of pop is used for first resampling (degree to arcsec)
         target_res_arcsec = np.abs(meta_pop['transform'][0]) * 3600
+
+    # if pop unused and resolution same as lit (15 as), set grid same as lit:
+    if exponents[1]==0 and target_res_arcsec==15:
+        i_ref = 1
+        global_origins = (meta_nl['transform'][2], # lon
+                          meta_nl['transform'][5]), # lat
+    else:
+        i_ref = 0
+        global_origins=(global_transform[2],
+                        global_transform[5])
+        
     # resample Lit and Pop input data to same grid:
     [pop, nl], meta_out = resample_input_data([pop, nl],
                                               [meta_pop, meta_nl],
-                                              i_ref=0, # pop defines grid
+                                              i_ref=i_ref, # pop defines grid
                                               target_res_arcsec=target_res_arcsec,
-                                              global_origins=(global_transform[2], # lon
-                                                              global_transform[5]), # lat
+                                              global_origins=global_origins,
                                               )
 
     # calculate Lit^m * Pop^n (but not yet disaggregating any total value to grid):
@@ -614,22 +672,21 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
         [litpop_array], meta_out = resample_input_data([litpop_array],
                                                        [meta_out],
                                                        target_res_arcsec=res_arcsec,
-                                                       global_origins=(global_transform[2],
-                                                                       global_transform[5]),
+                                                       global_origins=global_origins,
                                                        )
     meta_out['total_population'] = total_population
-    if return_gdf:
-        lon, lat = u_coord.raster_to_meshgrid(meta_out['transform'],
-                                              meta_out['width'],
-                                              meta_out['height'])
-        gdf = geopandas.GeoDataFrame({'value': litpop_array.flatten()}, crs=meta_out['crs'],
-                                     geometry=geopandas.points_from_xy(lon.flatten(),
-                                                                       lat.flatten()))
-        gdf['latitude'] = lat.flatten()
-        gdf['longitude'] = lon.flatten()
-        return litpop_array, meta_out, gdf[gdf['value'] != 0]
-    return litpop_array, meta_out, None
 
+    lon, lat = u_coord.raster_to_meshgrid(meta_out['transform'],
+                                          meta_out['width'],
+                                          meta_out['height'])
+    gdf = geopandas.GeoDataFrame({'value': litpop_array.flatten()}, crs=meta_out['crs'],
+                                 geometry=geopandas.points_from_xy(lon.flatten(),
+                                                                   lat.flatten()))
+    gdf['latitude'] = lat.flatten()
+    gdf['longitude'] = lon.flatten()
+    return litpop_array, meta_out, gdf[gdf['value'] != 0] # TODO don't replace 0, but cut shape with shapely
+#uk_mask = momdata.within(uk.loc[0, 'geometry'])
+#uk_momdata = momdata.loc[uk_mask]
 
 def get_total_value_per_country(cntry_iso3a, fin_mode, reference_year, total_population=None):
     """
@@ -683,7 +740,9 @@ def get_total_value_per_country(cntry_iso3a, fin_mode, reference_year, total_pop
         return 1
     else: # GDP based total values:
         gdp_value = gdp(cntry_iso3a, reference_year)[1]
-        if fin_mode == 'income_group': # gdp * (income group + 1)
+        if fin_mode == 'gdp':
+            return gdp_value
+        elif fin_mode == 'income_group': # gdp * (income group + 1)
             return gdp_value * (income_group(cntry_iso3a, reference_year)[1] + 1)
         elif fin_mode in ('nfw', 'tw'):
             wealthtogdp_factor = wealth2gdp(cntry_iso3a, fin_mode == 'nfw', reference_year)[1]
@@ -893,8 +952,9 @@ def _check_excel_exists(file_path, file_name, xlsx_before_xls=True):
             return str(Path(file_path, path_name + i))
     return None
 
-def _gsdp_read(country_iso3, admin1_shape_data, look_folder=None):
-    """Retrieves the GSDP data for a certain country. It requires an excel file in a subfolder
+def _grp_read(country_iso3, admin1_info, data_dir=None):
+    """Retrieves the Gross Regional Product (GRP) aka Gross State Domestic Product (GSDP)
+    data for a certain country. It requires an excel file in a subfolder
     "GSDP" in climadas data folder (or in the specified folder). The excel file should bear the
     name 'ISO3_GSDP.xlsx' (or .xls), where ISO3 is the three letter country code. In the excel
     file, the first sheet should contain a row with the title "State_Province" with the name or
@@ -904,21 +964,22 @@ def _gsdp_read(country_iso3, admin1_shape_data, look_folder=None):
     Parameters
     ----------
     country_iso3 : str
-        three letter country code
-    admin1_shape_data : list
-        list containg all admin1 shapes of the country.
-    look_folder : str (optional)
+        alphabetic three letter country code ISO3a
+    admin1_info : list
+        list containg all admin1 records for country.
+    data_dir : str (optional)
         path where to look for file
 
     Returns
     -------
     out_dict : dictionary
-        GSDP for each admin1 unit name.
+        GRP for each admin1 unit name.
     """
-    if look_folder is None:
-        look_folder = SYSTEM_DIR.joinpath('GSDP')
-    file_name = _check_excel_exists(look_folder, str(country_iso3 + '_GSDP'))
+    if data_dir is None:
+        data_dir = SYSTEM_DIR
+    file_name = _check_excel_exists(data_dir.joinpath('GSDP'), str(country_iso3 + '_GSDP'))
     if file_name is not None:
+        # open spreadsheet and identify relevant columns:
         admin1_xls_data = pd.read_excel(file_name)
         if admin1_xls_data.get('State_Province') is None:
             admin1_xls_data = admin1_xls_data.rename(
@@ -927,30 +988,32 @@ def _gsdp_read(country_iso3, admin1_shape_data, look_folder=None):
             admin1_xls_data = admin1_xls_data.rename(
                 columns={admin1_xls_data.columns[-1]: 'GSDP_ref'})
 
-        out_dict = dict.fromkeys([nam[1]['name'] for nam in admin1_shape_data])
-        postals = [nam[1]['postal'] for nam in admin1_shape_data]
-        for subnat_shape in out_dict.keys():
-            for idx, subnat_xls in enumerate(admin1_xls_data['State_Province'].tolist()):
-                
-                subnat_shape_str = [c for c in subnat_shape if c.isalpha() or c.isnumeric()]
-                subnat_xls_str = [c for c in subnat_xls if c.isalpha()]
+        # initiate dictionary with admin 1 names as keys:
+        out_dict = dict.fromkeys([record['name'] for record in admin1_info])
+        postals = [record['postal'] for record in admin1_info]
+        # first nested loop. outer loop over region names in admin1_info:
+        for record_name in out_dict.keys():
+            # inner loop over region names in spreadsheet, find matches
+            for idx, xls_name in enumerate(admin1_xls_data['State_Province'].tolist()):
+                subnat_shape_str = [c for c in record_name if c.isalpha() or c.isnumeric()]
+                subnat_xls_str = [c for c in xls_name if c.isalpha()]
                 if subnat_shape_str == subnat_xls_str:
-                    out_dict[subnat_shape] = admin1_xls_data['GSDP_ref'][idx]
+                    out_dict[record_name] = admin1_xls_data['GSDP_ref'][idx]
                     break
-        # Now a second loop to detect empty ones
+        # second nested loop to detect matched empty entries
         for idx1, country_name in enumerate(out_dict.keys()):
             if out_dict[country_name] is None:
-                for idx2, subnat_xls in enumerate(admin1_xls_data['State_Province'].tolist()):
-                    subnat_xls_str = [c for c in subnat_xls if c.isalpha()]
+                for idx2, xls_name in enumerate(admin1_xls_data['State_Province'].tolist()):
+                    subnat_xls_str = [c for c in xls_name if c.isalpha()]
                     postals_str = [c for c in postals[idx1] if c.isalpha()]
                     if subnat_xls_str == postals_str:
                         out_dict[country_name] = admin1_xls_data['GSDP_ref'][idx2]
         return out_dict
-    LOGGER.warning('No file for %s could be found in %s.', country_iso3, look_folder)
+    LOGGER.warning('No file for %s could be found in %s.', country_iso3, data_dir)
     LOGGER.warning('No admin1 data is calculated in this case.')
     return None
 
-def _calc_admin1(country, res_arcsec, exponents, fin_mode, conserve_cntrytotal,
+def _calc_admin1(country, res_arcsec, exponents, fin_mode, total_value,
                  reference_year, gpw_version, data_dir, resample_first):
     """
     Calculates the LitPop on admin1 level for provinces/states where such information are
@@ -969,7 +1032,7 @@ def _calc_admin1(country, res_arcsec, exponents, fin_mode, conserve_cntrytotal,
     res_arcsec : int
     exponents : tuple
     fin_mode : str
-    conserve_cntrytotal : bool
+    total_value :int or float
     reference_year : int
     gpw_version: int
     data_dir : Path
@@ -977,7 +1040,7 @@ def _calc_admin1(country, res_arcsec, exponents, fin_mode, conserve_cntrytotal,
 
     Returns
     -------
-    list of Exposures
+    Exposure instance
 
     """
     # Determine ISO 3166 representation of country and get geometry:
@@ -985,43 +1048,40 @@ def _calc_admin1(country, res_arcsec, exponents, fin_mode, conserve_cntrytotal,
         iso3a = u_coord.country_to_iso(country, representation="alpha3")
         iso3n = u_coord.country_to_iso(country, representation="numeric")
     except LookupError:
-        LOGGER.error('Country not identified: %s.', country)
+        LOGGER.error('Country not identified: %s. Skippig.', country)
         return None
-    # get shapes:
-    admin1_file = shapereader.natural_earth(resolution='10m',
-                                            category='cultural',
-                                            name='admin_1_states_provinces')
-    admin1_recs = shapefile.Reader(admin1_file)
-    country_admin1 = [] # will contain shapes and records for each province
-    for rec, rec_shp in zip(admin1_recs.records(), admin1_recs.shapes()):
-        if rec['adm0_a3'] == iso3a:
-            country_admin1.append([rec_shp, rec])
-    gsdp_data = _gsdp_read(iso3a, country_admin1, look_folder=data_dir.joinpath('GSDP'))
-    if gsdp_data is None:
-        raise ValueError("No subnational GDP data found for calc_admin1, aborting.")
-
-    # normalize values:
-    sum_vals = sum(filter(None, gsdp_data.values())) # get total
-    gsdp_data = {key: (value / sum_vals if value is not None else None)
-                 for (key, value) in gsdp_data.items()}
+    # get records and shapes on admin 1 level:
+    admin1_info, admin1_shapes = u_coord.get_admin1_info(iso3a)
+    admin1_info = admin1_info[iso3a]
+    admin1_shapes = admin1_shapes[iso3a] # TODO TEST
+    # get subnational Gross Regional Product (GRP) data for country:
+    grp_data = _grp_read(iso3a, admin1_info, data_dir=data_dir)
+    if grp_data is None:
+        LOGGER.error("No subnational GRP data found for calc_admin1"
+                         " for country %s. Skipping.", country)
+        return None
+    # normalize GRP values:
+    sum_vals = sum(filter(None, grp_data.values())) # get total
+    grp_data = {key: (value / sum_vals if value is not None else None)
+                 for (key, value) in grp_data.items()}
 
     exp_list = []
-    for idx, adm1_shp in enumerate(country_admin1):
-        if gsdp_data[country_admin1[idx][1]['name']] is None:
+    for idx, record in enumerate(admin1_info):
+        if grp_data[record['name']] is None:
             continue
         exp_list.append(LitPop()) # init exposure for province
         # rel_value_share defines the share the province gets from total val
         # total value is defined from country:
-        exp_list[-1].set_custom_shape([country_admin1[1][0]],
+        exp_list[-1].set_custom_shape([admin1_shapes[idx]],
                                       res_arcsec=res_arcsec,
                                       exponents=exponents,
                                       fin_mode=fin_mode,
-                                      total_value_abs=None,
-                                      rel_value_share=gsdp_data[country_admin1[idx][1]['name']],
+                                      total_value_abs=total_value,
+                                      rel_value_share=grp_data[record['name']],
                                       in_countries=[iso3a],
                                       region_id = [iso3n],
                                       reference_year=reference_year,
                                       gpw_version=gpw_version,
                                       data_dir=data_dir,
                                       resample_first=resample_first)
-    return exp_list
+    return Exposures.concat(exp_list)

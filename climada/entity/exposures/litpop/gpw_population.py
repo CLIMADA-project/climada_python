@@ -46,7 +46,7 @@ def load_gpw_pop_shape(geometry, reference_year, gpw_version=11, data_dir=None,
     Parameters
     ----------
     geometry : shape(s) to crop data to in degree lon/lat.
-        for example shapely.geometry.Polygon object or
+        for example shapely.geometry.(Multi)Polygon or shapefile.Shape
         from polygon(s) defined in a (country) shapefile.
     reference_year : int
         target year for data extraction

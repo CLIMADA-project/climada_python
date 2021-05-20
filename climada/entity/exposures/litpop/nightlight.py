@@ -30,6 +30,7 @@ import numpy as np
 import scipy.sparse as sparse
 import matplotlib.pyplot as plt
 from PIL import Image
+from shapefile import Shape
 
 from climada.util import ureg
 from climada.util.constants import SYSTEM_DIR
@@ -267,9 +268,9 @@ def load_nasa_nl_shape(geometry, reference_year, data_dir=None, dtype=None): # T
     Parameters
     ----------
     geometry : shape(s) to crop data to in degree lon/lat.
-        for example shapely.geometry.Polygon(s) object or
+        for example shapely.geometry.(Multi)Polygon or shapefile.Shape.
         from polygon defined in a shapefile. The object should have
-        attribute 'bounds'
+        attribute 'bounds' or 'points'
     reference_year : int
         target year for nightlight data, e.g. 2016.
     data_dir : Path (optional)
@@ -288,11 +289,15 @@ def load_nasa_nl_shape(geometry, reference_year, data_dir=None, dtype=None): # T
         data_dir = SYSTEM_DIR
     if dtype is None:
         dtype = 'float32'
+    if isinstance(geometry, Shape):
+        bounds = geometry.bbox
+    else:
+        bounds = geometry.bounds
 
     # get closest available year from reference_year:
     year = min(BM_YEARS, key=lambda x: abs(x - reference_year))
 
-    req_files = check_required_nl_files(geometry.bounds)
+    req_files = check_required_nl_files(bounds)
     check_nl_local_file_exists(required_files=req_files, check_path=data_dir,
                                year=year)
     req_files = np.where(req_files ==1)[0] # convert to sorted list of indices
