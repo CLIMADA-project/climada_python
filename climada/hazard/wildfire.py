@@ -26,6 +26,7 @@ import warnings
 import itertools
 from datetime import date
 from functools import partial
+
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
