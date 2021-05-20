@@ -65,5 +65,5 @@ class TestImpfWildfire(unittest.TestCase):
 
 # Execute Tests
 if __name__ == "__main__":
-    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestIFWildfire)
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestImpfWildfire)
     unittest.TextTestRunner(verbosity=2).run(TESTS)
