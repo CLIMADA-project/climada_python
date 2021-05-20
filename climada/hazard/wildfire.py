@@ -1075,7 +1075,7 @@ class WildFire(Hazard):
             The ignition point of a fire can be on any centroid, on which
             the propagation probability equals 1. The fire is then propagated
             with a cellular automat.
-            If the fire has not stoped bruning after a defined number of
+            If the fire has not stopped burning after a defined number of
             iterations (self.max_it_propa, default=500'000), the propagation
             is interrupted.
 
