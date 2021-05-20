@@ -103,8 +103,8 @@ class ImpfWildfire(ImpactFunc):
         self.name = "wildfire step"
         self.intensity_unit = "K"
         self.intensity = np.array([295, threshold, threshold, 500])
-        self.mdd = np.array([0, 0, 1, 1])
-        self.paa = np.array([1, 1, 1, 1])
+        self.mdd = np.array([1, 1, 1, 1])
+        self.paa = np.array([0, 0, 1, 1])
 
     def set_sigmoid(self, sig_mid=320, sig_shape=0.1, sig_max=1.0, impf_id=1):
 
