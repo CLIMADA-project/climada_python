@@ -736,6 +736,7 @@ class WildFire(Hazard):
         Returns
         -------
             firms : pd.DataFrame
+                FIRMS data including info on temporal cluster per point
 
         """
         LOGGER.debug('Computing clusters of consecutive days.')
@@ -773,7 +774,11 @@ class WildFire(Hazard):
     @staticmethod
     def _firms_clustering(firms, res_data, clus_thres):
         """ Compute geographic clusters and sort firms with ascending clus_id
-        for each cons_id.
+        for each cons_id. Geographic clusters are identified using sci-kit
+        learn's DBSCAN algorithm, which finds core samples of high density
+        and expands clusters from them.
+        
+        https://scikit-learn.org/stable/modules/generated/sklearn.cluster.DBSCAN.html
 
         Parameters
         ----------
@@ -787,6 +792,7 @@ class WildFire(Hazard):
         Returns
         -------
             firms : pd.DataFrame
+                FIRMS data including info on spacial cluster per point
 
         """
 
@@ -841,6 +847,7 @@ class WildFire(Hazard):
         Returns
         -------
             firms : pd.DataFrame
+                FIRMS data including info on final cluster (=event) per point
 
         """
         ev_id = 0
@@ -873,7 +880,7 @@ class WildFire(Hazard):
         Returns
         -------
             firms : pd.DataFrame
-                 FIRMS data
+                 FIRMS data excluding minor fire events
         """
         for i in range(np.unique(firms.event_id).size):
             if (firms.event_id == i).sum() < minor_fires_thres:
