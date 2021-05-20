@@ -179,7 +179,7 @@ class WildFire(Hazard):
         """Compute the burned area for a given fire.
 
         Please note: NASA advises against calculating burned area using the
-        FIRMS data.
+        FIRMS data. See: https://earthdata.nasa.gov/faq/firms-faq
 
         Algorithm used: https://pypi.org/project/alphashape/
 
