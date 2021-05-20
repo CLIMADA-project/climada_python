@@ -16,7 +16,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
-Test IFWildfire class.
+Test ImpfWildfire class.
 """
 
 import unittest
@@ -67,6 +67,5 @@ class TestIFWildfire(unittest.TestCase):
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestIFWildfire)
     unittest.TextTestRunner(verbosity=2).run(TESTS)
-
 
 
