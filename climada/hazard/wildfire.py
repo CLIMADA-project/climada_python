@@ -43,9 +43,8 @@ from climada.hazard.centroids.centr import Centroids
 from climada.hazard.base import Hazard
 from climada.hazard.tag import Tag as TagHazard
 from climada.util.constants import ONE_LAT_KM, DEF_CRS
-from climada.util.dates_times import str_to_date
-
-from climada.util.alpha_shape import alpha_shape, plot_polygon
+import climada.util.dates_times as u_dt
+import climada.util.alpha_shape as u_alpha
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 LOGGER = logging.getLogger(__name__)
@@ -215,7 +214,7 @@ class WildFire(Hazard):
         points = fire.geometry.values
 
         # Compute concave hull
-        concave_hull, _ = alpha_shape(points, alpha=alpha)
+        concave_hull, _ = u_alpha.alpha_shape(points, alpha=alpha)
 
         # Compute area concave hull in right projection
         project = partial(
@@ -228,7 +227,7 @@ class WildFire(Hazard):
 
         # Plot the polygone around the fire
         if return_plot:
-            plot_polygon(concave_hull)
+            u_alpha.plot_polygon(concave_hull)
             plt.plot(fire_lon, fire_lat, 'o', color='red', markersize=0.5)
 
         return area_hull_one_fire
@@ -635,7 +634,7 @@ class WildFire(Hazard):
         firms['cons_id'] = np.zeros(len(firms), int) - 1
         firms['event_id'] = np.zeros(len(firms), int)
         firms['clus_id'] = np.zeros(len(firms), int) - 1
-        firms['datenum'] = np.array(str_to_date(firms['acq_date'].values))
+        firms['datenum'] = np.array(u_dt.str_to_date(firms['acq_date'].values))
         return firms
 
     @staticmethod
