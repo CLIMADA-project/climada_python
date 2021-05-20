@@ -27,7 +27,7 @@ from climada.entity.impact_funcs.wildfire import ImpfWildfire
 thresh_step = 331
 i_half_check = 523.8
 
-class TestIFWildfire(unittest.TestCase):
+class TestImpfWildfire(unittest.TestCase):
 
     """Impact function test"""
     def test_default_values_FIRMS_pass(self):
@@ -67,4 +67,3 @@ class TestIFWildfire(unittest.TestCase):
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestIFWildfire)
     unittest.TextTestRunner(verbosity=2).run(TESTS)
-
