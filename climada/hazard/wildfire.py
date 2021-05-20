@@ -142,7 +142,7 @@ class WildFire(Hazard):
         else:
             if not centroids.coord.size:
                 centroids.set_meta_to_lat_lon()
-        res_centr = centroids._centroids_resolution(centroids)
+        res_centr = self._centroids_resolution(centroids)
 
         # fire identification
         while firms.iter_ev.any():
@@ -668,7 +668,8 @@ class WildFire(Hazard):
     def _firms_centroids_creation(firms, res_data, centr_res_factor):
         """ Get centroids from the firms dataset and refactor them.
 
-        Parameters:
+        Parameters
+        ----------
             firms : pd.DataFrame
                  FIRMS data
             res_data : float
@@ -692,6 +693,29 @@ class WildFire(Hazard):
         centroids.empty_geometry_points()
 
         return centroids
+
+    @staticmethod
+    def _centroids_resolution(centroids):
+        """ Return resolution of the centroids in their units
+
+        Parameters
+        ----------
+            centroids (Centroids): centroids instance
+
+        Returns
+        -------
+            res_centr : float
+                grid resolution of centroids
+        """
+        if centroids.meta:
+            res_centr = abs(centroids.meta['transform'][4]), \
+                centroids.meta['transform'][0]
+        else:
+            res_centr = u_coord.get_resolution(centroids.lat, centroids.lon)
+        if abs(abs(res_centr[0]) - abs(res_centr[1])) > 1.0e-6:
+            LOGGER.warning('Centroids do not represent regular pixels %s.', str(res_centr))
+            return (res_centr[0] + res_centr[1])/2
+        return res_centr[0]
 
     def _firms_cons_days(self, firms):
         """ Compute clusters of consecutive days (temporal clusters).
