@@ -44,7 +44,7 @@ class TestImpfWildfire(unittest.TestCase):
         i_half = i_half_check
         intensity = np.arange(295, 500,  5)
         i_n = (intensity-i_thresh)/(i_half-i_thresh)
-        paa = i_n**3/(1+i_n**3)
+        paa = i_n**3 / (1 + i_n**3)
         self.assertTrue(np.array_equal(imp_fun.paa, paa))
         self.assertTrue(np.array_equal(imp_fun.mdd, np.ones(len(paa))))
 
