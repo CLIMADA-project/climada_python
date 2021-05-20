@@ -187,9 +187,11 @@ class WildFire(Hazard):
         ----------
             ev_id : int
                 id of the selected fire
-            alpha : float, optional
-                parameter used to compute the concave hull
-            return_plot : bool, optional
+            alpha : float, optional, default=100.87
+                parameter used to compute the concave hull. Default is suited
+                for 1 km MODIS data and calibrated over California
+                (no reference)
+            return_plot : bool, optional, default=False
                 indicate if the output plot of the concave hull algorithm
                 should be returned
 
