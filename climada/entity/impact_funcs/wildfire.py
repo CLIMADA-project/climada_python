@@ -67,10 +67,16 @@ class ImpfWildfire(ImpactFunc):
         Intensity range is set between 295 K and 500 K as this is the typical
         range of FIRMS intensities.
 
-        Parameters:
-            i_half (float, optional): steepnes of the IF, [K] at which 50% of
-            max. damage is expected
-            if_id (int, optional): impact function id. Default: 1
+        Parameters
+        ----------
+            i_half : float, optional, default = 295.01
+                steepnes of the IF, [K] at which 50% of max. damage is expected
+            if_id : int, optional, default = 1
+                impact function id
+
+        Returns
+        -------
+            self : climada.entity.impact_funcs.ImpfWildfire instance
         """
 
         self.id = impf_id
@@ -92,11 +98,16 @@ class ImpfWildfire(ImpactFunc):
         Intensity range is set between 295 K and 500 K as this is the typical
         range of FIRMS intensities.
 
-        Parameters:
-            threshold (float, optional): threshold over which exposure is fully
-            destroyed
-            if_id (int, optional): impact function id. Default: 1
+        Parameters
+        ----------
+            threshold : float, optional, default = 295.01
+                threshold over which exposure is fully destroyed
+            if_id : int, optional, default = 1
+                impact function id
 
+        Returns
+        -------
+            self : climada.entity.impact_funcs.ImpfWildfire instance
         """
 
         self.id = impf_id
@@ -116,12 +127,21 @@ class ImpfWildfire(ImpactFunc):
         For more information: https://en.wikipedia.org/wiki/Logistic_function
 
         Default values are not calibrated.
+            
+        Parameters
+        ----------
+            sig_mid : float, optional, default = 320
+                "intercept"
+            sig_shape : float, optional, default = 0.1
+                "slope"
+            sig_max : float, optional, default = 1.0
+                "top", between 0. and 1.
+            if_id : int, optional, default = 1
+                impact function id
 
-        Parameters:
-            sig_mid (float, optional): "intercept"
-            sig_shape (float, optional): "slope"
-            sig_max (float, optional): "top", between 0. and 1.
-            if_id (int, optional): impact function id. Default: 1
+        Returns
+        -------
+            self : climada.entity.impact_funcs.ImpfWildfire instance
         """
         self.id = impf_id
         self.name = "wildfire sigmoid"
