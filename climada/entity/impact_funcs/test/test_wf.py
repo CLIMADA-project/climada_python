@@ -22,7 +22,7 @@ Test ImpfWildfire class.
 import unittest
 import numpy as np
 
-from climada.entity.impact_funcs.wildfire import IFWildfire
+from climada.entity.impact_funcs.wildfire import ImpfWildfire
 
 THRESH_step = 331
 i_half_check = 523.8
@@ -67,5 +67,4 @@ class TestIFWildfire(unittest.TestCase):
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestIFWildfire)
     unittest.TextTestRunner(verbosity=2).run(TESTS)
-
 
