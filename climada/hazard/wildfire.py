@@ -371,7 +371,7 @@ class WildFire(Hazard):
         ----------
             self : climada.Hazard.WildFire
                 must have calculated historic fire seasons before
-            n_event_years : int, optional
+            n_fire_seasons : int, optional
                 number of fire seasons to be generated
             n_ignitions : array, optional
                 [min, max]: min/max of uniform distribution to sample from,
