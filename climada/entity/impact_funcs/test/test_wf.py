@@ -51,7 +51,7 @@ class TestImpfWildfire(unittest.TestCase):
 
     def test_step_values_pass(self, threshold=thresh_step):
         """Compute mdr interpolating values. For the step function"""
-        imp_fun = IFWildfire()
+        imp_fun = ImpfWildfire()
         imp_fun.set_step(threshold)
         self.assertEqual(imp_fun.name, 'wildfire step')
         self.assertEqual(imp_fun.haz_type, 'WFsingle')
