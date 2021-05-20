@@ -359,7 +359,7 @@ class WildFire(Hazard):
         calculating the max intensity at each centroid for each probabilistic
         fire season.
         Probabilistic fires are created using the logic described in the
-        method 'run_one_bushfire'.
+        method '_run_one_bushfire'.
 
         The fire propagation matrix can be assigned separately, if that is not
         done it will be generated on the available historic fire (seasons).
