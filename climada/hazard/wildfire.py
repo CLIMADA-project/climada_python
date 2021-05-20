@@ -718,8 +718,8 @@ class WildFire(Hazard):
     def _firms_cons_days(self, firms):
         """ Compute clusters of consecutive days (temporal clusters).
         
-            An interruption of days_thresh is necessary to be set in two
-            different temporal clusters.
+            An interruption of self.days_thresh_firms is necessary to be set
+            in two different temporal clusters.
 
         Parameters
         ----------
