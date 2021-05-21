@@ -1820,64 +1820,7 @@ def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, schedul
         'transform': ras_trans,
     }
     return raster_out, meta
-#
-#def reproject_2d_grid(data, meta_in, meta_out, res_arcsec_out=None,
-#                      global_origins=(-180.0, 90.0), dst_crs=None, resampling=None,
-#                      conserve=None, buffer=0):
 
-
-    """
-    Reproject (up- or downsample) 2D np.ndarray to a grid using rasterio.
-    The destination (target) grid is defined from target_meta and optionally
-    target_res_arcsec, global_origins, and target_crs.
-    This function ensures that reprojected data with the same resolution and
-    global_origins are on the same global grid, i.e., no offset between 
-    destination grid points for different input grids that are projected to
-    the same resolution.
-
-    Parameters
-    ----------
-    data : np.ndarray
-        2D-array containing the values to be reprojected
-    meta_in : dict
-        meta data dictionary of input grid
-        Required fields in meta are 'dtype,', 'width', 'height', 'crs', 'transform'.
-        Example:
-            {'dtype': 'float32',
-             'width': 2702,
-             'height': 1939,
-             'crs': CRS.from_epsg(4326),
-             'transform': Affine(0.00833333333333333, 0.0, -18.175000000000068,
-                                 0.0, -0.00833333333333333, 43.79999999999993)}
-    meta_out : dict
-        meta data dictionary of target grid, same structure as meta_in.
-        meta_out defines the target (i.e. destination) grid.
-    res_arcsec_out : int (optional)
-        target resolution in arcsec, overrules resolution in meta_out['transform'].
-        The default is None, i.e. same resolution as target grid defined in meta_out.
-    global_origins : tuple with two numbers (lat, lon) (optional)
-        global lon and lat origins as basis for destination grid.
-        Only required if target_res_arcsec different than resolution in meta_out.
-        The default is (-180.0, 90).
-    dst_crs : rasterio.crs.CRS
-        destination CRS
-        The default is crs provided in meta_out.
-    resampling : resampling function (optional)
-        The default is rasterio.warp.Resampling.bilinear
-    conserve : str (optional), either 'mean' or 'sum' or 'norm'
-        Conserve mean or sum of data or normalize?
-        The default is None (no conservation).
-    buffer : int (optional)
-        number of grid cells added as buffer around data in target grid
-        (only applied if resolution changes). The default is 0.
-
-    Returns
-    -------
-    data_out : np.ndarray
-        contains resampled data set
-    meta : dict
-        contains meta data of new grid 
-    """
 def reproject_raster_data(source, src_crs, src_transform, dst_crs=None, dst_transform=None,
                       dst_shape=None, dst_resolution=None, dst_global_origin=None,
                       dst_global_extent=None,
@@ -1889,7 +1832,7 @@ def reproject_raster_data(source, src_crs, src_transform, dst_crs=None, dst_tran
     The destination (target) grid is defined from dst_transform and optionally
     dst_resolution, dst_global_origin, and dst_crs.
     This function ensures that reprojected data with the same dst_resolution and
-    dst_global_origins are on the same global grid, i.e., no offset between 
+    dst_global_origins are on the same global grid, i.e., no offset between
     destination grid points for different source grids that are projected to
     the same target resolution.
 
@@ -1985,8 +1928,8 @@ def reproject_raster_data(source, src_crs, src_transform, dst_crs=None, dst_tran
         dst_orig_lat = \
             int(np.floor((dst_global_origin[1] - dst_transform[5]) / dst_resolution))-dst_buffer
         dst_orig_lat = dst_global_origin[1] - np.max([0, dst_orig_lat]) * dst_resolution
-    
-        # Calculate shape of destination grid based on reference shape and 
+
+        # Calculate shape of destination grid based on reference shape and
         # ratio of reference and traget resolution:
         dst_shape = (int(min([dst_global_extent[0]/dst_resolution, # lat ( height))
                               dst_shape[0] /
