@@ -899,63 +899,114 @@ class TestRasterIO(unittest.TestCase):
         self.assertLess(transform[5] + z.shape[0] * transform[4], bounds[1])
         self.assertGreaterEqual(transform[5] + z.shape[0] * transform[4], bounds[1] + transform[4])
 
-    def test_reproject_2d_grid_shift(self):
-        """test function reproject_2d_grid for geographical shift"""
+    def test_reproject_raster_data_shift(self):
+        """test function reproject_raster_data for geographical shift"""
         data_in, meta_list = data_arrays_resampling_demo()
-        data_out, meta_out = u_coord.reproject_2d_grid(data_in[1], meta_list[1],
-                                                       meta_list[0])
+        i = 0 # dst
+        j = 1 # src
+        data_out, meta_out = u_coord.reproject_raster_data(data_in[j],
+                                                           meta_list[j]['crs'],
+                                                           meta_list[j]['transform'],
+                                                           dst_crs=meta_list[i]['crs'],
+                                                           dst_transform=meta_list[i]['transform'],
+                                                           dst_shape=(meta_list[i]['height'],
+                                                                      meta_list[i]['width']),
+                                                           dst_resolution=None,
+                                                           dst_global_origin=None,
+                                                           dst_global_extent=None,
+                                                           dst_buffer=None,
+                                                           resampling='bilinear',
+                                                           conserve=None,
+                                                           buffer=0)
         # test northward shift of box:
         np.testing.assert_array_equal(data_in[1][1,:], data_out[0,:])
         np.testing.assert_array_equal(np.array([0., 0., 0.], dtype='float32'),
                                       data_out[1,:])
 
-    def test_reproject_2d_grid_downsampling(self):
-        """test function reproject_2d_grid for downsampling"""
+    def test_reproject_raster_data_downsampling(self):
+        """test function reproject_raster_data for downsampling"""
         data_in, meta_list = data_arrays_resampling_demo()
-        data_out, meta_out = u_coord.reproject_2d_grid(data_in[2], meta_list[2],
-                                                       meta_list[0])
+        i = 0 # dst
+        j = 2 # src
+        data_out, meta_out = u_coord.reproject_raster_data(data_in[j],
+                                                           meta_list[j]['crs'],
+                                                           meta_list[j]['transform'],
+                                                           dst_crs=meta_list[i]['crs'],
+                                                           dst_transform=meta_list[i]['transform'],
+                                                           dst_shape=(meta_list[i]['height'],
+                                                                      meta_list[i]['width']),
+                                                           dst_resolution=None,
+                                                           dst_global_origin=None,
+                                                           dst_global_extent=None,
+                                                           dst_buffer=None,
+                                                           resampling='bilinear',
+                                                           conserve=None,
+                                                           )
         # test downsampled data:
         reference_array = np.array([[5.020408  , 2.267857  , 0.12244898],
                                     [1.1224489 , 0.6785714 , 0.7346939 ]], dtype='float32')
         np.testing.assert_array_almost_equal_nulp(reference_array, data_out)
 
-    def test_reproject_2d_grid_downsample_conserve(self):
-        """test function reproject_2d_grid downsampling with conservation
+    def test_reproject_raster_data_downsample_conserve(self):
+        """test function reproject_raster_data downsampling with conservation
         of mean and sum and normalization"""
         data_in, meta_list = data_arrays_resampling_demo()
-
+        i = 0 # dst
         # test conserve sum:
-        for i, data in enumerate(data_in):
-            data_out, meta_out = u_coord.reproject_2d_grid(data,
-                                                           meta_list[i],
-                                                           meta_list[0],
-                                                           conserve='sum')
-            self.assertAlmostEqual(data_in[i].sum(), data_out.sum(), places=4)
+        for j, data in enumerate(data_in): # src
+            data_out, meta_out = u_coord.reproject_raster_data(data_in[j],
+                                                               meta_list[j]['crs'],
+                                                               meta_list[j]['transform'],
+                                                               dst_crs=meta_list[i]['crs'],
+                                                               dst_transform=meta_list[i]['transform'],
+                                                               dst_shape=(meta_list[i]['height'],
+                                                                          meta_list[i]['width']),
+                                                               dst_resolution=None,
+                                                               dst_global_origin=None,
+                                                               dst_global_extent=None,
+                                                               dst_buffer=0,
+                                                               resampling='bilinear',
+                                                               conserve='sum',
+                                                               )
+            self.assertAlmostEqual(data_in[j].sum(), data_out.sum(), places=4)
         # test conserve mean:
-        for i, data in enumerate(data_in):
-            data_out, meta_out = u_coord.reproject_2d_grid(data,
-                                                           meta_list[i],
-                                                           meta_list[0],
-                                                           conserve='mean')
-            self.assertAlmostEqual(data_in[i].mean(), data_out.mean(), places=4)
-        # test normalize:
-        for i, data in enumerate(data_in):
-            data_out, meta_out = u_coord.reproject_2d_grid(data,
-                                                           meta_list[i],
-                                                           meta_list[0],
-                                                           conserve='norm')
-            self.assertAlmostEqual(1, data_out.sum(), places=4)
+        for j, data in enumerate(data_in):
+            data_out, meta_out = u_coord.reproject_raster_data(data_in[j],
+                                                               meta_list[j]['crs'],
+                                                               meta_list[j]['transform'],
+                                                               dst_crs=meta_list[i]['crs'],
+                                                               dst_transform=meta_list[i]['transform'],
+                                                               dst_shape=(meta_list[i]['height'],
+                                                                          meta_list[i]['width']),
+                                                               dst_resolution=None,
+                                                               dst_global_origin=None,
+                                                               dst_global_extent=None,
+                                                               dst_buffer=0,
+                                                               resampling='bilinear',
+                                                               conserve='mean',
+                                                               )
+            self.assertAlmostEqual(data_in[j].mean(), data_out.mean(), places=4)
 
-    def test_reproject_2d_grid_upsample(self):
-        """test function reproject_2d_grid with upsampling"""
+
+    def test_reproject_raster_data_upsample(self):
+        """test function reproject_raster_data with upsampling"""
         data_in, meta_list = data_arrays_resampling_demo()
         data_out = list()
-
-        for i in [0,1,2]:
-            data_out.append(u_coord.reproject_2d_grid(data_in[i],
-                                                      meta_list[i],
-                                                      meta_list[2],
-                                                      )[0]
+        i = 2 # dst
+        for j in [0,1,2]:
+            data_out.append(u_coord.reproject_raster_data(data_in[j],
+                                                          meta_list[j]['crs'],
+                                                          meta_list[j]['transform'],
+                                                          dst_crs=meta_list[i]['crs'],
+                                                          dst_transform=meta_list[i]['transform'],
+                                                          dst_shape=(meta_list[i]['height'],
+                                                                     meta_list[i]['width']),
+                                                          dst_resolution=None,
+                                                          dst_global_origin=None,
+                                                          dst_global_extent=None,
+                                                          dst_buffer=0,
+                                                          resampling='bilinear',
+                                                          )[0]
                             )
         # test reference data unchanged:
         np.testing.assert_array_equal(data_in[2], data_out[2])
@@ -969,14 +1020,24 @@ class TestRasterIO(unittest.TestCase):
                                     [3.  , 3.25, 3.75, 4.25, 4.75, 5.  ]], dtype='float32')
         np.testing.assert_array_equal(reference_array, data_out[0])
 
-    def test_reproject_2d_grid_odd_downsample(self):
+    def test_reproject_raster_data_odd_downsample(self):
         """test function resample_input_data with odd downsampling"""
         data_in, meta_list = data_arrays_resampling_demo()
-        data_out, meta_out = u_coord.reproject_2d_grid(data_in[0],
-                                                       meta_list[0],
-                                                       meta_list[0],
-                                                       res_arcsec_out=6120,
-                                                       )
+        i = 0
+        j = 0
+        data_out, meta_out = u_coord.reproject_raster_data(data_in[j],
+                                                           meta_list[j]['crs'],
+                                                           meta_list[j]['transform'],
+                                                           dst_crs=meta_list[i]['crs'],
+                                                           dst_transform=meta_list[i]['transform'],
+                                                           dst_shape=(meta_list[i]['height'],
+                                                                      meta_list[i]['width']),
+                                                           dst_resolution=1.7,
+                                                           dst_global_origin=None,
+                                                           dst_global_extent=None,
+                                                           dst_buffer=0,
+                                                           resampling='bilinear'
+                                                           )
 
         self.assertEqual(1.7, meta_out['transform'][0]) # check resolution
         reference_array = np.array([[0.425    , 1.7631578],

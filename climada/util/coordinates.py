@@ -1820,10 +1820,12 @@ def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, schedul
         'transform': ras_trans,
     }
     return raster_out, meta
+#
+#def reproject_2d_grid(data, meta_in, meta_out, res_arcsec_out=None,
+#                      global_origins=(-180.0, 90.0), dst_crs=None, resampling=None,
+#                      conserve=None, buffer=0):
 
-def reproject_2d_grid(data, meta_in, meta_out, res_arcsec_out=None,
-                      global_origins=(-180.0, 90.0), crs_out=None, resampling=None,
-                      conserve=None, buffer=0):
+
     """
     Reproject (up- or downsample) 2D np.ndarray to a grid using rasterio.
     The destination (target) grid is defined from target_meta and optionally
@@ -1857,7 +1859,7 @@ def reproject_2d_grid(data, meta_in, meta_out, res_arcsec_out=None,
         global lon and lat origins as basis for destination grid.
         Only required if target_res_arcsec different than resolution in meta_out.
         The default is (-180.0, 90).
-    crs_out : rasterio.crs.CRS
+    dst_crs : rasterio.crs.CRS
         destination CRS
         The default is crs provided in meta_out.
     resampling : resampling function (optional)
@@ -1876,84 +1878,159 @@ def reproject_2d_grid(data, meta_in, meta_out, res_arcsec_out=None,
     meta : dict
         contains meta data of new grid 
     """
+def reproject_raster_data(source, src_crs, src_transform, dst_crs=None, dst_transform=None,
+                      dst_shape=None, dst_resolution=None, dst_global_origin=None,
+                      dst_global_extent=None,
+                      dst_buffer=0, resampling=None, conserve=None,
+                      **kwargs):
+    """
+    Convenience wrapper function around rasterio.warp.reproject :
+    Reproject (up- or downsample) 2D np.ndarray to a grid using rasterio.
+    The destination (target) grid is defined from dst_transform and optionally
+    dst_resolution, dst_global_origin, and dst_crs.
+    This function ensures that reprojected data with the same dst_resolution and
+    dst_global_origins are on the same global grid, i.e., no offset between 
+    destination grid points for different source grids that are projected to
+    the same target resolution.
+
+    Parameters
+    ----------
+    source : np.ndarray
+        2D-array containing the values to be reprojected
+    src_crs : CRS
+        Source CRS
+    src_transform : Affine
+        Source transform, contains info on grid, e.g.:
+            Affine(0.00833333333333333, 0.0, -18.175000000000068,
+                                 0.0, -0.00833333333333333, 43.79999999999993)
+    dst_crs : CRS, optional
+        Destination CRS. The default is src_crs.
+    dst_transform : Affine, optional
+        Destination transform. The default is src_transform.
+    dst_shape : tuple with integers, optional
+        (height, width) of destination grid. The default is source.shape.
+        Note: Destination shape is changed if resolution changes
+    dst_resolution : number, optional
+        Destination resolution.
+        Overwrites resolution provided in dst_transform.
+        Unit of resolution depends on CRS;
+        Typically but not necessarily, the unit is degree lat, lon.
+        The default is dst_transform[0].
+    dst_global_origin : tuple of numbers, optional
+        global lon and lat origins as basis for destination grid.
+        Only required if dst_resolution different than dst_transform[0].
+        The default is (-180.0, 90), change dst_global_origin for different units.
+    dst_global_extent : tuple of numbers, optional
+        Extent of global grid in unit of resoution.
+        The default is (180, 360). Change for different units than degree lat, lon.
+    dst_buffer : int, optional
+        number of grid cells added as buffer around data in target grid
+        (only applied if resolution changes). The default is 0.
+    resampling : resampling function or str, optional
+        The default is rasterio.warp.Resampling.nearest.
+        strings 'nearest', 'bilinear', and 'cubic' are excepted as well.
+    conserve : str, optional
+        either 'mean' or 'sum' or 'norm'
+        Conserve mean or sum of data or normalize?
+        The default is None (no conservation).
+
+    **kwargs : **kwargs
+        extra arguments for rasterio.warp.reproject.
+
+    Returns
+    -------
+    destination
+        numpy array.
+    meta_dst : dict
+        meta dict of destination.
+
+    """
     # TODO: suggestion for further development:
     # option to reproject data in GeoDataFrame (gdf) instead of array for projection
-    if resampling is None:
+
+    if resampling is None or resampling=='nearest':
+        resampling = rasterio.warp.Resampling.nearest
+    elif resampling == 'bilinear':
         resampling = rasterio.warp.Resampling.bilinear
-    if crs_out is None:
-        crs_out = meta_out['crs']
+    elif resampling == 'cubic':
+        resampling = rasterio.warp.Resampling.cubic
+    if dst_crs is None:
+        dst_crs = src_crs
+    if dst_transform is None:
+        dst_transform = src_transform
+    if dst_shape is None:
+        dst_shape = source.shape
+    if dst_global_extent is None:
+        dst_global_extent = (180, 360)
+    if dst_global_origin is None:
+        dst_global_origin = (-180.0, 90)
 
-    # target resolution in degree lon,lat:
-    if res_arcsec_out is None:
-        res_degree = meta_out['transform'][0] # reference grid
-    else:
-        res_degree = res_arcsec_out / 3600 
-    # reference grid shape required to calculate destination grid, (lat, lon):
-    ref_shape = (meta_out['height'], meta_out['width'])
+    # target resolution in same unit as dst_transform[0], often degree lat, lon:
+    if dst_resolution is None:
+        dst_resolution = dst_transform[0] # res. of destination grid
 
-    # if reference resolution and target resolution are identical, use reference grid:
-    if (res_arcsec_out is None) or (np.round(meta_out['transform'][0],
-                                    decimals=7)==np.round(res_degree, decimals=7)):
-        dst_transform = meta_out['transform']
-        dst_shape = ref_shape
-    else: # DEFINE DESTINATION GRID from target resolution and reference grid:
+    # if dst_resolution and resolution in dst_transform are not identical,
+    # dst grid is defined with dst_resolution,
+    # based on dst_transform and dst_global_origin:
+    if np.round(dst_transform[0], decimals=7)!=np.round(dst_resolution, decimals=7):
         # Define origin coordinates for destination (dst) grid:
         # Find largest longitude point on global grid that is "east" of ref. grid:
         #   1. from original origin, find index of new origin on global grid:
         dst_orig_lon = \
-            int(np.floor((180 + meta_out['transform'][2]) / res_degree))-buffer
+            int(np.floor((dst_transform[2]-dst_global_origin[0]) / dst_resolution))-dst_buffer
         #   2. get loingitude in degree from index
-        dst_orig_lon = -180 + np.max([0, dst_orig_lon]) * res_degree
+        dst_orig_lon = dst_global_origin[0] + np.max([0, dst_orig_lon]) * dst_resolution
         # Find lowest latitude point on global grid that is "north" of ref. grid:
         # (analogous process as for dst_orig_lon)
         dst_orig_lat = \
-            int(np.floor((90 - meta_out['transform'][5]) / res_degree))-buffer
-        dst_orig_lat = 90 - np.max([0, dst_orig_lat]) * res_degree
+            int(np.floor((dst_global_origin[1] - dst_transform[5]) / dst_resolution))-dst_buffer
+        dst_orig_lat = dst_global_origin[1] - np.max([0, dst_orig_lat]) * dst_resolution
     
         # Calculate shape of destination grid based on reference shape and 
         # ratio of reference and traget resolution:
-        dst_shape = (int(min([180/res_degree, # lat ( height))
-                              ref_shape[0] /
-                              (res_degree/meta_out['transform'][0])+1+2*buffer])),
-                     int(min([360/res_degree, # lon (width))
-                              ref_shape[1] /
-                              (res_degree/meta_out['transform'][0])+1+2*buffer])),
+        dst_shape = (int(min([dst_global_extent[0]/dst_resolution, # lat ( height))
+                              dst_shape[0] /
+                              (dst_resolution/dst_transform[0])+1+2*dst_buffer])),
+                     int(min([dst_global_extent[1]/dst_resolution, # lon (width))
+                              dst_shape[1] /
+                              (dst_resolution/dst_transform[0])+1+2*dst_buffer])),
                      )
         # define transform for destination grid from values calculated above:
-        dst_transform = rasterio.Affine(res_degree, # new lon step
-                                        meta_out['transform'][1], # same as ref
+        dst_transform = rasterio.Affine(dst_resolution, # new lon step
+                                        dst_transform[1], # same as ref
                                         dst_orig_lon, # new origin lon
-                                        meta_out['transform'][3], # same as ref
-                                        -res_degree, # new lat step
+                                        dst_transform[3], # same as ref
+                                        -dst_resolution, # new lat step
                                         dst_orig_lat, # new origin lat
+                                        **kwargs,
                                         )
 
     # init empty destination array with same data type as input:
-    data_out = np.zeros(dst_shape, dtype=meta_in['dtype'])
-    # call resampling algorithm
+    destination = np.zeros(dst_shape, dtype=source.dtype)
+    # call core resampling algorithm
     rasterio.warp.reproject(
-                    source=data,
-                    destination=data_out,
-                    src_transform=meta_in['transform'],
-                    src_crs=meta_in['crs'],
+                    source=source,
+                    destination=destination,
+                    src_transform=src_transform,
+                    src_crs=src_crs,
                     dst_transform=dst_transform,
-                    dst_crs=crs_out,
+                    dst_crs=dst_crs,
                     resampling=resampling,
                     )
 
-    meta = {'width': dst_shape[1],
+    meta_dst = {'width': dst_shape[1],
             'height': dst_shape[0],
-            'crs': crs_out,
+            'crs': dst_crs,
             'transform': dst_transform
             }
     # apply conservation and return resulting data and meta
     if conserve == 'mean':
-        return (data_out / data_out.mean()) * data.mean(), meta
+        return (destination / destination.mean()) * source.mean(), meta_dst
     elif conserve == 'sum':
-        return (data_out / data_out.sum()) * data.sum(), meta
+        return (destination / destination.sum()) * source.sum(), meta_dst
     elif conserve == 'norm':
-        return data_out / data_out.sum(), meta
-    return data_out, meta
+        return destination / destination.sum(), meta_dst
+    return destination, meta_dst
 
 def set_df_geometry_points(df_val, scheduler=None):
     """Set given geometry to given dataframe using dask if scheduler.
