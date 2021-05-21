@@ -1837,7 +1837,7 @@ def reproject_2d_grid(data, meta_in, meta_out, res_arcsec_out=None,
     Parameters
     ----------
     data : np.ndarray
-        2D-array containing the data to be reprojected
+        2D-array containing the values to be reprojected
     meta_in : dict
         meta data dictionary of input grid
         Required fields in meta are 'dtype,', 'width', 'height', 'crs', 'transform'.
@@ -1879,7 +1879,8 @@ def reproject_2d_grid(data, meta_in, meta_out, res_arcsec_out=None,
     meta : dict
         contains meta data of new grid 
     """
-    # could be added: compatibility with GeoDataFrame gdf for projection
+    # suggestion for further development in the future:
+    # option to reproject data in GeoDataFrame (gdf) instead of array for projection
     if resampling is None:
         resampling = rasterio.warp.Resampling.bilinear
     if crs_out is None:
@@ -1937,7 +1938,7 @@ def reproject_2d_grid(data, meta_in, meta_out, res_arcsec_out=None,
                     source=data,
                     destination=data_out,
                     src_transform=meta_in['transform'],
-                    src_crs=meta_out['crs'], # 
+                    src_crs=meta_in['crs'], # TODO
                     dst_transform=dst_transform,
                     dst_crs=crs_out,
                     resampling=resampling,

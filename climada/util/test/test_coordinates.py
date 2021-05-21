@@ -82,7 +82,7 @@ def data_arrays_resampling_demo():
                   'width': 6,
                   'height': 4,
                   'count': 1,
-                  'crs': RCRS.from_epsg(32662),
+                  'crs': RCRS.from_epsg(4326),
                   'transform': Affine(.5, 0.0, -10,
                          0.0, -.5, 40), # higher resolution
                   }]

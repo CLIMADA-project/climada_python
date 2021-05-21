@@ -318,7 +318,8 @@ def load_nasa_nl_shape(geometry, reference_year, data_dir=None, dtype=None): # T
         # from first (top left) of tiles, meta is initiated, incl. origin:
         if idx == 0:
             meta = meta_tmp
-
+            # correct CRS from local tile's CRS to global WGS 84:
+            meta.update({"crs": rasterio.crs.CRS.from_epsg(4326)})
     if idx == 0: # only 1 tile
         return out_image, meta
     # Combine data from multiple input files (BlackMarble tiles) -

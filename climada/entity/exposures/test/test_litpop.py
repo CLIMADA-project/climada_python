@@ -71,6 +71,7 @@ def data_arrays_resampling_demo():
                   'height': 2,
                   'count': 1,
                   'crs': CRS.from_epsg(4326),
+                  #'crs': CRS.from_epsg(4326),
                   'transform': Affine(1, 0.0, -10,
                          0.0, -1, 40),
                   },
@@ -81,6 +82,7 @@ def data_arrays_resampling_demo():
                   'height': 2,
                   'count': 1,
                   'crs': CRS.from_epsg(4326),
+                  #'crs': CRS.from_epsg(4326),
                   'transform': Affine(1, 0.0, -10,
                          0.0, -1, 41), # shifted by 1 degree latitude to the north
                   },
@@ -90,7 +92,8 @@ def data_arrays_resampling_demo():
                   'width': 6,
                   'height': 4,
                   'count': 1,
-                  'crs': CRS.from_epsg(32662),
+                  'crs': CRS.from_epsg(4326),
+                  # 'crs': CRS.from_epsg(32662),
                   'transform': Affine(.5, 0.0, -10,
                          0.0, -.5, 40), # higher resolution
                   }]
