@@ -225,8 +225,6 @@ def download_nl_files(req_files=np.ones(len(BM_FILENAMES),),
             'connection and whether filenames are still valid.') from exc
     return dwnl_path
 
-
-# TODO: LitPop 2.0
 def load_nasa_nl_shape_single_tile(geometry, path, layer=0): # TODO: manually tested but no tests exist yet
     """Read nightlight data from single NASA BlackMarble tile
     and crop to given shape.
@@ -249,7 +247,6 @@ def load_nasa_nl_shape_single_tile(geometry, path, layer=0): # TODO: manually te
     """
     # open tif source file with raterio:
     src = rasterio.open(path)
-
     # read cropped data from  source file (src) to np.ndarray:
     out_image, transform = rasterio.mask.mask(src, [geometry], crop=True)
     meta = src.meta
@@ -261,7 +258,7 @@ def load_nasa_nl_shape_single_tile(geometry, path, layer=0): # TODO: manually te
     return out_image[layer,:,:], meta
 
 # TODO: LitPop 2.0
-def load_nasa_nl_shape(geometry, reference_year, data_dir=None, dtype=None): # TODO: manually tested but no tests exist yet
+def load_nasa_nl_shape(geometry, reference_year, data_dir=None, dtype=None):
     """Read nightlight data from NASA BlackMarble tiles
     cropped to given shape(s) and combine.
     

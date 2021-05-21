@@ -22,9 +22,9 @@ import logging
 import numpy as np
 import rasterio
 import geopandas
-import shapefile
+from shapefile import Shape
 from shapely.geometry import Polygon, MultiPolygon
-from cartopy.io import shapereader
+from shapely.ops import cascaded_union
 from pathlib import Path
 import pandas as pd
 
@@ -221,8 +221,10 @@ class LitPop(Exposures):
 
         Parameters
         ----------
-        shape : shapely.geometry.Polygon or MultiPolygon or list of shapes
-            geographical shape for which LitPop Exposure is to be initaited
+        shape : shapely.geometry.Polygon or MultiPolygon or Shape or list of
+            Polygon objects
+            geographical shape for which LitPop Exposure is
+            to be initaited
         res_arcsec : float (optional)
             Horizontal resolution in arc-sec.
             The default 30 arcsec corresponds to roughly 1 km.
@@ -275,12 +277,20 @@ class LitPop(Exposures):
         if total_value_abs is None and in_countries is None and fin_mode != 'pop':
             raise ValueError("Either total_value_abs or in_countries needs to "
                              "be provided (except if fin_mode is 'pop').")
-
-        if isinstance(shape, MultiPolygon):
+        if isinstance(shape, Shape): # convert to list of Polygon objects:
+            shape_list = [Polygon(shape.points[shape.parts[i]:part-1])
+                          for i, part in enumerate(list(shape.parts[1:])+[0])]
+        elif isinstance(shape, MultiPolygon):
             shape_list = list(shape)
         elif isinstance(shape, Polygon):
             shape_list = [shape]
         elif isinstance(shape, list):
+            if not isinstance(shape[0], Polygon):
+                raise NotImplementedError("The parameter 'shape' is allowed to be: "
+                                          "Polygon, MultiPolygon, or Shape instance, "
+                                          "or list of Polygon instances. Lists "
+                                          "with other content than Polygon are not "
+                                          "implemented.")
             shape_list = shape
 
         iso3a = list()
@@ -321,12 +331,13 @@ class LitPop(Exposures):
         litpop_gdf = geopandas.GeoDataFrame()
         for idx, polygon in enumerate(shape_list):
             # get litpop data for each polygon and combine into GeoDataFrame:
-            _, meta_tmp, gdf_tmp = _get_litpop_single_polygon(polygon, reference_year,
-                                                    res_arcsec, data_dir,
-                                                    gpw_version, resample_first,
-                                                    offsets, exponents,
-                                                    verbatim=not bool(idx),
-                                                    )
+            gdf_tmp, meta_tmp = \
+                _get_litpop_single_polygon(polygon, reference_year,
+                                           res_arcsec, data_dir,
+                                           gpw_version, resample_first,
+                                           offsets, exponents,
+                                           verbatim=not bool(idx),
+                                           )
             total_population += meta_tmp['total_population']
             litpop_gdf = litpop_gdf.append(gdf_tmp)
         litpop_gdf.crs = meta_tmp['crs']
@@ -549,12 +560,13 @@ class LitPop(Exposures):
         # loop over single polygons in country shape object:
         for idx, polygon in enumerate(list(country_geometry)):
             # get litpop data for each polygon and combine into GeoDataFrame:
-            _, meta_tmp, gdf_tmp = _get_litpop_single_polygon(polygon, reference_year,
-                                                    res_arcsec, data_dir,
-                                                    gpw_version, resample_first,
-                                                    offsets, exponents,
-                                                    verbatim=not bool(idx),
-                                                    )
+            gdf_tmp, meta_tmp, = \
+                _get_litpop_single_polygon(polygon, reference_year,
+                                           res_arcsec, data_dir,
+                                           gpw_version, resample_first,
+                                           offsets, exponents,
+                                           verbatim=not bool(idx),
+                                           )
             total_population += meta_tmp['total_population']
             litpop_gdf = litpop_gdf.append(gdf_tmp)
         litpop_gdf.crs = meta_tmp['crs']
@@ -589,7 +601,7 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
     Parameters
     ----------
     polygon : Polygon object
-        single shape to be extracted
+        single polygon to be extracted
     res_arcsec : float (optional)
         Horizontal resolution in arc-seconds.
     exponents : tuple of two integers, optional
@@ -612,15 +624,13 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
 
     Returns
     -------
-    litpop_array : 2d np.ndarray
-        resulting gridded data for Lit^m * Pop^n in bbox around polygon,
-        data points outside the polygon are set to zero.
-    meta_out : dict
-        raster meta info for gridded data in litpop_array, additionally the field
-        'total_population' contains the sum of population in the polygon.
     litpop_gdf : GeoDataframe
         resulting gridded data for Lit^m * Pop^n inside polygon,
         data points outside the polygon and equal to zero are not returned.
+    meta_out : dict
+        raster meta info for gridded data in litpop_array, additionally the field
+        'total_population' contains the sum of population in the polygon.
+
     """
     # import population data (2d array), meta data, and global grid info,
     # global_transform defines the origin (corner points) of the global traget grid:
@@ -684,9 +694,8 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
                                                                    lat.flatten()))
     gdf['latitude'] = lat.flatten()
     gdf['longitude'] = lon.flatten()
-    return litpop_array, meta_out, gdf[gdf['value'] != 0] # TODO don't replace 0, but cut shape with shapely
-#uk_mask = momdata.within(uk.loc[0, 'geometry'])
-#uk_momdata = momdata.loc[uk_mask]
+    # remove entries outside polygon:
+    return gdf.loc[gdf.within(polygon)], meta_out
 
 def get_total_value_per_country(cntry_iso3a, fin_mode, reference_year, total_population=None):
     """
@@ -1053,7 +1062,7 @@ def _calc_admin1(country, res_arcsec, exponents, fin_mode, total_value,
     # get records and shapes on admin 1 level:
     admin1_info, admin1_shapes = u_coord.get_admin1_info(iso3a)
     admin1_info = admin1_info[iso3a]
-    admin1_shapes = admin1_shapes[iso3a] # TODO TEST
+    admin1_shapes = admin1_shapes[iso3a]
     # get subnational Gross Regional Product (GRP) data for country:
     grp_data = _grp_read(iso3a, admin1_info, data_dir=data_dir)
     if grp_data is None:
@@ -1072,7 +1081,7 @@ def _calc_admin1(country, res_arcsec, exponents, fin_mode, total_value,
         exp_list.append(LitPop()) # init exposure for province
         # rel_value_share defines the share the province gets from total val
         # total value is defined from country:
-        exp_list[-1].set_custom_shape([admin1_shapes[idx]],
+        exp_list[-1].set_custom_shape(admin1_shapes[idx],
                                       res_arcsec=res_arcsec,
                                       exponents=exponents,
                                       fin_mode=fin_mode,

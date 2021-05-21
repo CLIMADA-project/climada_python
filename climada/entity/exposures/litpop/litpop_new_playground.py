@@ -27,7 +27,7 @@ from climada.util.constants import SYSTEM_DIR
 
 import_bm = False
 import_pop = False
-test_litpop = True
+test_litpop = False
 test_litpop_admin1 = True
 test_litpop_shape = False
 test_lit = False
@@ -82,8 +82,8 @@ if test_litpop:
 
 if test_litpop_admin1:
     exp_lit1 = lp.LitPop()
-    exp_lit1.set_countries(['CHE'], res_arcsec=30,
-                    exponents=(1,1), fin_mode='gdp', total_values=None,
+    exp_lit1.set_countries(['CHE'], res_arcsec=72,
+                    exponents=(.6,1.5), fin_mode='pc', total_values=None,
                     admin1_calc=True,
                     reference_year=year, gpw_version=None, data_dir=None,
                     resample_first=True)

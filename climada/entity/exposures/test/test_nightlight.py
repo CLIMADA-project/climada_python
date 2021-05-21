@@ -21,7 +21,7 @@ Test Nightlight module.
 import unittest
 import numpy as np
 
-from climada.entity.exposures import nightlight
+from climada.entity.exposures.litpop import nightlight
 from climada.util.constants import SYSTEM_DIR
 
 BM_FILENAMES = nightlight.BM_FILENAMES
