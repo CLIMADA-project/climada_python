@@ -24,7 +24,6 @@ import rasterio
 import geopandas
 from shapefile import Shape
 from shapely.geometry import Polygon, MultiPolygon
-from shapely.ops import cascaded_union
 from pathlib import Path
 import pandas as pd
 
@@ -37,7 +36,7 @@ from climada.entity.exposures.base import Exposures, INDICATOR_IMPF
 from climada.util.constants import SYSTEM_DIR
 LOGGER = logging.getLogger(__name__)
 
-class LitPop(Exposures):
+class LitPop(Exposures): # TODO tests nighlight (integ), gpw_population (integ) and litpop (integ)
     """Defines exposure values from nightlight intensity (NASA), Gridded Population
         data (SEDAC); distributing produced capital (World Bank), population count,
         GDP (World Bank), or non-financial wealth (Global Wealth Databook by Credit Suisse
