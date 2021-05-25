@@ -69,14 +69,15 @@ class ImpfWildfire(ImpactFunc):
 
         Parameters
         ----------
-            i_half : float, optional, default = 295.01
-                steepnes of the IF, [K] at which 50% of max. damage is expected
-            if_id : int, optional, default = 1
-                impact function id
+        i_half : float, optional, default = 295.01
+            steepnes of the IF, [K] at which 50% of max. damage is expected
+        if_id : int, optional, default = 1
+            impact function id
 
         Returns
         -------
-            self : climada.entity.impact_funcs.ImpfWildfire instance
+        self : climada.entity.impact_funcs.ImpfWildfire instance
+
         """
 
         self.id = impf_id
@@ -87,65 +88,3 @@ class ImpfWildfire(ImpactFunc):
         i_n = (self.intensity-i_thresh)/(i_half-i_thresh)
         self.paa = i_n**3 / (1 + i_n**3)
         self.mdd = np.ones(len(self.intensity))
-
-    def set_step(self, threshold=295., impf_id=1):
-
-        """ Step function type impact function. Everything is destroyed above
-        threshold. Useful for high resolution modelling.
-
-        Defaults are not calibrated
-
-        Intensity range is set between 295 K and 500 K as this is the typical
-        range of FIRMS intensities.
-
-        Parameters
-        ----------
-            threshold : float, optional, default = 295.01
-                threshold over which exposure is fully destroyed
-            if_id : int, optional, default = 1
-                impact function id
-
-        Returns
-        -------
-            self : climada.entity.impact_funcs.ImpfWildfire instance
-        """
-
-        self.id = impf_id
-        self.name = "wildfire step"
-        self.intensity_unit = "K"
-        self.intensity = np.array([295, threshold, threshold, 500])
-        self.mdd = np.array([1, 1, 1, 1])
-        self.paa = np.array([0, 0, 1, 1])
-
-    def set_sigmoid(self, sig_mid=320, sig_shape=0.1, sig_max=1.0, impf_id=1):
-
-        """ Sigmoid type impact function hinging on three parameter. This type
-        of impact function is very flexible for any sort of study/resolution.
-        Parameters can be thought of as intercept (sig_mid), slope (sig_shape)
-        and top (sig_max) of a sigmoid.
-
-        For more information: https://en.wikipedia.org/wiki/Logistic_function
-
-        Default values are not calibrated.
-            
-        Parameters
-        ----------
-            sig_mid : float, optional, default = 320
-                "intercept"
-            sig_shape : float, optional, default = 0.1
-                "slope"
-            sig_max : float, optional, default = 1.0
-                "top", between 0. and 1.
-            if_id : int, optional, default = 1
-                impact function id
-
-        Returns
-        -------
-            self : climada.entity.impact_funcs.ImpfWildfire instance
-        """
-        self.id = impf_id
-        self.name = "wildfire sigmoid"
-        self.intensity_unit = "K"
-        self.intensity = np.arange(295, 500, 5)
-        self.mdd = np.ones(len(self.intensity))
-        self.paa = sig_max / (1 + np.exp(-sig_shape * (self.intensity - sig_mid)))
