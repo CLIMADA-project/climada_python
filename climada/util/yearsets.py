@@ -81,13 +81,16 @@ def impact_yearset(imp, sampled_years=None, sampling_vect=None, correction_fac=T
 
     #create sampling vector if not given as input
     if not sampling_vect:
-        sampling_vect = create_sampling_vect(n_sampled_years, imp)
+        #create a sampling vector
+        events_per_year = sample_n_events(n_sampled_years, imp)
+        sampling_vect = sample_events(events_per_year, imp.frequency)
 
     #compute impact per sampled_year
     impact_per_year = np.zeros(len(sampling_vect))
 
     for year, sampled_events in enumerate(sampling_vect):
-        impact_per_year[year] = np.sum(imp.at_event[sampled_events])
+        if sampled_events.size > 0:
+            impact_per_year[year] = np.sum(imp.at_event[sampled_events])
 
     #copy imp object as basis for the yimp object
     yimp = copy.deepcopy(imp)
@@ -107,7 +110,7 @@ def impact_yearset(imp, sampled_years=None, sampling_vect=None, correction_fac=T
 
     return yimp, sampling_vect
 
-def create_sampling_vect(n_sampled_years, imp, lam=None):
+def sample_n_events(n_sampled_years, imp, lam=None):
     """Create a sampling vector consisting of a subarray for each sampled_year that
     contains the index of the sampled events for that year
 
@@ -120,10 +123,8 @@ def create_sampling_vect(n_sampled_years, imp, lam=None):
             the applied Poisson distribution is centered around lam events per year
 
     Returns:
-        sampling_vect : 2D array
-            The sampling vector specifies how to sample the yimp, it consists of one
-            sub-array per sampled_year, which contains the event_ids of the events used to
-            calculate the annual impacts.
+        events_per_year : array
+            Number of events per sampled year
     """
     if not lam:
         n_annual_events = np.sum(imp.frequency)
@@ -135,52 +136,73 @@ def create_sampling_vect(n_sampled_years, imp, lam=None):
     else:
         events_per_year = np.ones(len(n_sampled_years))
 
-    #create a sampling vector and check if an event occurs several times in one year
-    #if this is the case the sampling vector is created again
-    run = 0
-    sampling_vect = []
-    y_unique_events = []
-    while run<1 or (
-            sum(len(row) for row in y_unique_events) != sum(len(row) for row in sampling_vect)):
 
-        selected_events = sample_events(np.sum(events_per_year), imp.frequency)
+    return events_per_year
 
-        idx = 0
-        for year in range(n_sampled_years):
-            sampling_vect.append(selected_events[idx:(idx+events_per_year[year])])
-            idx += events_per_year[year]
-
-        y_unique_events = list(np.unique(row) for row in sampling_vect)
-        run += 1
-
-    return sampling_vect
-
-def sample_events(tot_n_events, freqs):
-    """Sample events (length = tot_n_events) uniformely from an array (n_input_events)
-    without replacement (if tot_n_events > n_input_events the input events are repeated
-                         (tot_n_events/n_input_events) times).
+def sample_events(events_per_year, freqs_orig):
+    """Sample events uniformely from an array (indices_orig) without replacement
+    (if sum(events_per_year) > n_input_events the input events are repeated
+     (tot_n_events/n_input_events) times, by ensuring that the same events doens't
+     occur more than once per sampled year).
 
     Parameters:
-        tot_n_events : int
-            Number of events to be sampled
-        freqs : array
-            Frequency of each input event (length: n_input_events)
+        events_per_year : array
+            Number of events per sampled year
+        freqs_orig : array
+            Frequency of each input event
 
     Returns:
-        selected_events : array
-            Uniformaly sampled events (length: tot_n_events)
+        sampling_vect : 2D array
+            The sampling vector specifies how to sample the yimp, it consists of one
+            sub-array per sampled_year, which contains the event_ids of the events used to
+            calculate the annual impacts.
       """
 
-    n_input_events = len(freqs)
-    repetitions = np.ceil(tot_n_events/n_input_events).astype('int')
-    indices = np.tile(np.arange(n_input_events), repetitions)
-    probab_dis = np.tile(freqs, repetitions)/np.sum(np.tile(freqs, repetitions))
+    sampling_vect = []
 
-    rng = default_rng()
-    selected_events = rng.choice(indices, size=tot_n_events, replace=False,
-                                 p=probab_dis).astype('int')
+    indices_orig = np.arange(len(freqs_orig))
 
-    return selected_events
+    freqs = freqs_orig
+    indices = indices_orig
+
+    #if check_doubling true: check that every event doesn't occur more than once per sampled year
+    check_doubling = False
+
+    #sample events for each sampled year
+    for idx_year, amount_events in enumerate(events_per_year):
+
+        probab_dis = freqs/np.sum(freqs)
+
+        rng = default_rng()
+        selected_events = rng.choice(indices, size=amount_events, replace=False,
+                                     p=probab_dis).astype('int')
+
+        if check_doubling: #check if an event occurs more than once in a year
+            unique_events = np.unique(selected_events)
+            #resample until each event occurs max. once per year
+            while len(unique_events) != len(selected_events):
+                rng = default_rng()
+                selected_events = rng.choice(indices, size=amount_events, replace=False,
+                                             p=probab_dis).astype('int')
+            check_doubling = False
+
+        idx_to_remove = [] #determine used events to remove them from sampling pool
+        for event in selected_events:
+            idx_to_remove.append(np.where(indices == event)[0][0])
+        indices = np.delete(indices, idx_to_remove)
+        freqs = np.delete(freqs, idx_to_remove)
+
+        #add the original indices and frequencies to the pool if there are less events
+        #in the pool than needed to fill the next sampled year
+        if (idx_year < (len(events_per_year)-1)) and (
+                len(indices) < events_per_year[idx_year+1]):
+            indices = np.append(indices, indices_orig)
+            freqs = np.append(freqs, freqs_orig)
+            check_doubling = True
+
+        sampling_vect.append(selected_events)
+
+    return sampling_vect
 
 def calculate_correction_fac(impact_per_year, imp):
     """Calculate a correction factor that can be used to scale the yimp in such
