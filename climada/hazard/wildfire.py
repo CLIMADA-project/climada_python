@@ -807,9 +807,8 @@ class WildFire(Hazard):
             FIRMS data excluding minor fire events
 
         """
-        for i in range(np.unique(firms.event_id).size):
-            if (firms.event_id == i).sum() < minor_fires_thres:
-                firms = firms.drop(firms[firms.event_id == i].index)
+       s_event_id = firms['event_id']
+        firms[s_event_id.replace(s_event_id.apply(pd.Series.value_counts)).gt(minor_fires_thres).all(1)]
         # assign new event IDs
         ids_left = np.unique(firms.event_id)
         new_id_dict = dict(zip(ids_left, list(range(len(ids_left)))))
