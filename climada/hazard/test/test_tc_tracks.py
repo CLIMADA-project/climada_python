@@ -836,7 +836,7 @@ class TestFuncs(unittest.TestCase):
         exp = Exposures(exp_world.gdf[exp_world.gdf.name=='Cuba'])
 
         # Compute tracks in exp
-        tracks_in_exp = tc_track.tracks_in_exp(exp.gdf, buffer=1.0)
+        tracks_in_exp = tc_track.tracks_in_exp(exp, buffer=1.0)
 
         self.assertTrue(tracks_in_exp.get_track(storms['in']))
         self.assertFalse(tracks_in_exp.get_track(storms['out']))

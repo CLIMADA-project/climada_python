@@ -276,11 +276,11 @@ class TCTracks():
         if buffer <= 0.0:
             raise ValueError(f"buffer={buffer} is invalid, must be above zero.")
         try:
-            exposure.geometry
+            exposure.gdf.geometry
         except AttributeError:
             exposure.set_geometry_points()
 
-        exp_buffer = exposure.buffer(distance=buffer, resolution=0)
+        exp_buffer = exposure.gdf.buffer(distance=buffer, resolution=0)
         exp_buffer = exp_buffer.unary_union
 
         tc_tracks_lines = self.to_geodataframe().buffer(distance=buffer)
@@ -1973,4 +1973,3 @@ def set_category(max_sus_wind, wind_unit='kn', saffir_scale=None):
         return (np.argwhere(max_wind < saffir_scale) - 1)[0][0]
     except IndexError:
         return -1
-
