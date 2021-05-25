@@ -98,14 +98,9 @@ class WildFire(Hazard):
     max_it_propa = 500000
     """ maximum propgation iterations for a probabilistic fire """
 
-    def __init__(self, pool=None):
+    def __init__(self):
         """Empty constructor. """
         Hazard.__init__(self, HAZ_TYPE)
-        if pool:
-            self.pool = pool
-            LOGGER.info('Using %s CPUs.', self.pool.ncpus)
-        else:
-            self.pool = None
 
     def set_hist_fire_FIRMS(self, csv_firms, centr_res_factor=1, centroids=None):
         """ Parse FIRMS data and generate historical fires by temporal and spatial
