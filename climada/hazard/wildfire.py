@@ -811,10 +811,9 @@ class WildFire(Hazard):
             if (firms.event_id == i).sum() < minor_fires_thres:
                 firms = firms.drop(firms[firms.event_id == i].index)
         # assign new event IDs
-        event_id_new = 1
-        for i in np.unique(firms.event_id):
-            firms.event_id[firms.event_id == i] = event_id_new
-            event_id_new = event_id_new + 1
+        ids_left = np.unique(firms.event_id)
+        new_id_dict = dict(zip(ids_left, list(range(len(ids_left)))))
+        firms = firms.replace({"event_id": new_id_dict})
 
         firms = firms.reset_index()
 
