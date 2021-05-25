@@ -54,9 +54,6 @@ HAZ_TYPE = 'WF'
 CLEAN_THRESH = 30
 """ Minimal confidence value for the data from MODIS instrument to be use as input"""
 
-RES_DATA = 1.0
-""" Resolution of the data if no data origin provided (km) """
-
 BLURR_STEPS = 4
 """ steps with exponential decay for fire propagation matrix """
 
@@ -599,8 +596,6 @@ class WildFire(Hazard):
                 res_data = 1.0
             else:
                 res_data = 0.375 # For VIIRS data
-        else:
-            res_data = RES_DATA # For undefined data origin, defined by user
         return res_data/ONE_LAT_KM
 
     @staticmethod
