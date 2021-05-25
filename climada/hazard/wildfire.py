@@ -44,7 +44,6 @@ from climada.hazard.base import Hazard
 from climada.hazard.tag import Tag as TagHazard
 from climada.util.constants import ONE_LAT_KM, DEF_CRS
 import climada.util.dates_times as u_dt
-import climada.util.alpha_shape as u_alpha
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 LOGGER = logging.getLogger(__name__)
@@ -173,72 +172,6 @@ class WildFire(Hazard):
         LOGGER.info('Computing intensity of %s fires.',
                     np.unique(firms.event_id).size)
         self._calc_brightness(firms, centroids, res_centr)
-
-
-    def hull_burned_area(self, ev_id, alpha=100.87, return_plot=False):
-        """Compute the burned area for a given fire.
-
-        Please note: NASA advises against calculating burned area using the
-        FIRMS data. See: https://earthdata.nasa.gov/faq/firms-faq
-
-        Algorithm used: https://pypi.org/project/alphashape/
-
-        Parameters
-        ----------
-        ev_id : int
-            id of the selected fire
-        alpha : float, optional, default=100.87
-            parameter used to compute the concave hull. Default is suited
-            for 1 km MODIS data and calibrated over California
-            (no reference)
-        return_plot : bool, optional, default=False
-            indicate if the output plot of the concave hull algorithm
-            should be returned
-
-        Returns
-        -------
-        burned area : float
-        plot : optional
-
-        See also
-        --------
-        climada.util.alpha_shape
-        https://towardsdatascience.com/the-concave-hull-c649795c0f0f
-        
-        """
-        ev_idx = np.argwhere(self.event_id == ev_id).reshape(-1)[0]
-        if not ev_idx.size:
-            raise ValueError('No event with id %d found', ev_id)
-
-        if not self.centroids.lat.size:
-            self.centroids.set_meta_to_lat_lon()
-
-        # Extract coordinates where intensity > 0 (for a given fire)
-        fire_lat = self.centroids.lat[self.intensity[ev_idx, :].nonzero()[1]]
-        fire_lon = self.centroids.lon[self.intensity[ev_idx, :].nonzero()[1]]
-
-        # Creation of the geodataframe
-        fire = gpd.GeoDataFrame({'geometry': gpd.points_from_xy(fire_lon,  fire_lat)}, crs=DEF_CRS)
-        points = fire.geometry.values
-
-        # Compute concave hull
-        concave_hull, _ = u_alpha.alpha_shape(points, alpha=alpha)
-
-        # Compute area concave hull in right projection
-        project = partial(
-            pyproj.transform,
-            pyproj.Proj(init=DEF_CRS['init']), # source coordinate system
-            pyproj.Proj(init='epsg:3310')) # destination coordinate system: albers california
-
-        concave_hull_m = transform(project, concave_hull)  # apply projection
-        area_hull_one_fire = concave_hull_m.area/10000
-
-        # Plot the polygone around the fire
-        if return_plot:
-            u_alpha.plot_polygon(concave_hull)
-            plt.plot(fire_lon, fire_lat, 'o', color='red', markersize=0.5)
-
-        return area_hull_one_fire
 
     def set_hist_fire_seasons_FIRMS(self, csv_firms, centr_res_factor=1,
                                     centroids=None, hemisphere=None,
