@@ -121,21 +121,21 @@ class WildFire(Hazard):
 
         Parameters
         ----------
-            csv_firms : pd.DataFrame or str
-                 path to csv file of FIRMS data or FIRMS data as pd.Dataframe
-                (https://firms.modaps.eosdis.nasa.gov/download/)
-            centr_res_factor : float, optional, default=1
-                resolution factor with respect to the satellite data to use
-                for centroids creation. Hence, if MODIS data (1 km res) is
-                used and centr_res_factor is set to 0.2, the grid spacing of
-                the generated centroids will equal 5 km (=1/0.2). If centroids
-                are defined, this parameter has no effect.
-            centroids : Centroids, optional
-                centroids in degrees to map data
+        csv_firms : pd.DataFrame or str
+            path to csv file of FIRMS data or FIRMS data as pd.Dataframe
+            (https://firms.modaps.eosdis.nasa.gov/download/)
+        centr_res_factor : float, optional, default=1
+            resolution factor with respect to the satellite data to use
+            for centroids creation. Hence, if MODIS data (1 km res) is
+            used and centr_res_factor is set to 0.2, the grid spacing of
+            the generated centroids will equal 5 km (=1/0.2). If centroids
+            are defined, this parameter has no effect.
+        centroids : Centroids, optional
+            centroids in degrees to map data
 
         Returns
         -------
-            self : climada.hazard.WildFire instance
+        self : climada.hazard.WildFire instance
 
         """
         self.clear()
@@ -185,20 +185,20 @@ class WildFire(Hazard):
 
         Parameters
         ----------
-            ev_id : int
-                id of the selected fire
-            alpha : float, optional, default=100.87
-                parameter used to compute the concave hull. Default is suited
-                for 1 km MODIS data and calibrated over California
-                (no reference)
-            return_plot : bool, optional, default=False
-                indicate if the output plot of the concave hull algorithm
-                should be returned
+        ev_id : int
+            id of the selected fire
+        alpha : float, optional, default=100.87
+            parameter used to compute the concave hull. Default is suited
+            for 1 km MODIS data and calibrated over California
+            (no reference)
+        return_plot : bool, optional, default=False
+            indicate if the output plot of the concave hull algorithm
+            should be returned
 
         Returns
         -------
-            burned area : float
-            plot : optional
+        burned area : float
+        plot : optional
 
         See also
         --------
@@ -253,29 +253,29 @@ class WildFire(Hazard):
 
         Parameters
         ----------
-            csv_firms : pd.DataFrame or str
-                 path to csv file of FIRMS data or FIRMS data as pd.Dataframe
-                (https://firms.modaps.eosdis.nasa.gov/download/)
-            centr_res_factor : int, optional, default=1
-                resolution factor with respect to the satellite data to use
-                for centroids creation
-            centroids : Centroids, optional
-                centroids in degrees to map data
-            hemisphere : str, optional
-                'SHS' or 'NHS' to define fire seasons
-            year_start : int, optional
-                start year; FIRMS fires before that are cut; no cut if not
-                specified
-            year_end : int, optional
-                end year; FIRMS fires after that are cut; no cut if not
-                specified
-            keep_all_fires : bool, optional
-                keep detailed list of all fires; default is False to save
-                memory.
+        csv_firms : pd.DataFrame or str
+            path to csv file of FIRMS data or FIRMS data as pd.Dataframe
+            (https://firms.modaps.eosdis.nasa.gov/download/)
+        centr_res_factor : int, optional, default=1
+            resolution factor with respect to the satellite data to use
+            for centroids creation
+        centroids : Centroids, optional
+            centroids in degrees to map data
+        hemisphere : str, optional
+            'SHS' or 'NHS' to define fire seasons
+        year_start : int, optional
+            start year; FIRMS fires before that are cut; no cut if not
+            specified
+        year_end : int, optional
+            end year; FIRMS fires after that are cut; no cut if not
+            specified
+        keep_all_fires : bool, optional
+            keep detailed list of all fires; default is False to save
+            memory.
 
         Returns
         -------
-            self : climada.hazard.WildFire instance
+        self : climada.hazard.WildFire instance
 
         """
 
@@ -376,21 +376,21 @@ class WildFire(Hazard):
 
         Parameters
         ----------
-            self : climada.Hazard.WildFire
-                must have calculated historic fire seasons before
-            n_fire_seasons : int, optional
-                number of fire seasons to be generated
-            n_ignitions : array, optional
-                [min, max]: min/max of uniform distribution to sample from,
-                in order to determin n_fire per probabilistic year set.
-                If none, min/max is taken from hist.
-            keep_all_fires : bool, optional
-                keep detailed list of all fires; default is False to save
-                memory.
+        self : climada.Hazard.WildFire
+            must have calculated historic fire seasons before
+        n_fire_seasons : int, optional
+            number of fire seasons to be generated
+        n_ignitions : array, optional
+            [min, max]: min/max of uniform distribution to sample from,
+            in order to determin n_fire per probabilistic year set.
+            If none, min/max is taken from hist.
+        keep_all_fires : bool, optional
+            keep detailed list of all fires; default is False to save
+            memory.
 
         Returns
         -------
-            self : climada.hazard.WildFire instance
+        self : climada.hazard.WildFire instance
 
         """
         # min/max for uniform distribtion to sample for n_fires per year
@@ -441,16 +441,16 @@ class WildFire(Hazard):
 
         Parameters
         ----------
-            event_id_merge : array of int, optional
-                events to be merged
-            remove_rest : bool, optional
-                if set to true, only the merged event is returned.
-            probabilistic : bool, optional
-                differentiate, because probabilistic events have no date.
+        event_id_merge : array of int, optional
+            events to be merged
+        remove_rest : bool, optional
+            if set to true, only the merged event is returned.
+        probabilistic : bool, optional
+            differentiate, because probabilistic events have no date.
 
         Returns
         -------
-            self : climada.hazard.WildFire instance
+        self : climada.hazard.WildFire instance
 
         """
 
@@ -525,16 +525,16 @@ class WildFire(Hazard):
 
         Parameters
         ----------
-            year_start : int, optional
-                start year; fires before that are cut; no cut if not specified
-            year_end : int, optional
-                end year; fires after that are cut; no cut if not specified
-            hemisphere : str, optional
-                'SHS' or 'NHS' to define fire seasons
+        year_start : int, optional
+            start year; fires before that are cut; no cut if not specified
+        year_end : int, optional
+            end year; fires after that are cut; no cut if not specified
+        hemisphere : str, optional
+            'SHS' or 'NHS' to define fire seasons
 
         Returns
         -------
-            self : climada.hazard.WildFire instance
+        self : climada.hazard.WildFire instance
 
         """
 
@@ -603,12 +603,12 @@ class WildFire(Hazard):
 
         Parameters
         ----------
-            csv_firms : pd.DataFrame or str
-                 path to csv file of FIRMS data or FIRMS data as pd.Dataframe
+        csv_firms : pd.DataFrame or str
+            path to csv file of FIRMS data or FIRMS data as pd.Dataframe
 
         Returns
         -------
-            firms : pd.DataFrame
+        firms : pd.DataFrame
 
         """
         if isinstance(csv_firms, pd.DataFrame):
@@ -651,13 +651,13 @@ class WildFire(Hazard):
 
         Parameters
         ----------
-            csv_firms : pd.DataFrame or str
-                 path to csv file of FIRMS data or FIRMS data as pd.Dataframe
+        csv_firms : pd.DataFrame or str
+            path to csv file of FIRMS data or FIRMS data as pd.Dataframe
 
         Returns
         -------
-            res_data/ONE_LAT_KM : float
-                resolution in degrees
+        res_data/ONE_LAT_KM : float
+            resolution in degrees
 
         """
         # Resolution in km of the centroids depends on the data origin.
@@ -676,17 +676,17 @@ class WildFire(Hazard):
 
         Parameters
         ----------
-            firms : pd.DataFrame
-                 FIRMS data
-            res_data : float
-                FIRMS instrument resolution in degrees
-            centr_res_factor : float
-                the factor applied to voluntarly decrease/increase the
-                centroids resolution
+        firms : pd.DataFrame
+            FIRMS data
+        res_data : float
+            FIRMS instrument resolution in degrees
+        centr_res_factor : float
+            the factor applied to voluntarly decrease/increase the
+            centroids resolution
 
         Returns
         -------
-            centroids : Centroids
+        centroids : Centroids
 
         """
         centroids = Centroids()
@@ -706,12 +706,13 @@ class WildFire(Hazard):
 
         Parameters
         ----------
-            centroids (Centroids): centroids instance
+        centroids (Centroids): centroids instance
 
         Returns
         -------
-            res_centr : float
-                grid resolution of centroids
+        res_centr : float
+            grid resolution of centroids
+
         """
         if centroids.meta:
             res_centr = abs(centroids.meta['transform'][4]), \
@@ -731,13 +732,13 @@ class WildFire(Hazard):
 
         Parameters
         ----------
-            firms : pd.DataFrame
-                 FIRMS data
+        firms : pd.DataFrame
+            FIRMS data
 
         Returns
         -------
-            firms : pd.DataFrame
-                FIRMS data including info on temporal cluster per point
+        firms : pd.DataFrame
+            FIRMS data including info on temporal cluster per point
 
         """
         LOGGER.debug('Computing clusters of consecutive days.')
@@ -783,17 +784,17 @@ class WildFire(Hazard):
 
         Parameters
         ----------
-            firms : pd.DataFrame
-                 FIRMS data
-            res_data : float
-                FIRMS instrument resolution in degrees
-            clus_thres : int
-                Clustering factor which multiplies instrument resolution
+        firms : pd.DataFrame
+            FIRMS data
+        res_data : float
+            FIRMS instrument resolution in degrees
+        clus_thres : int
+            Clustering factor which multiplies instrument resolution
 
         Returns
         -------
-            firms : pd.DataFrame
-                FIRMS data including info on spacial cluster per point
+        firms : pd.DataFrame
+            FIRMS data including info on spacial cluster per point
 
         """
 
@@ -831,24 +832,23 @@ class WildFire(Hazard):
 
         Parameters
         ----------
-            days_thres : int
-                Temporal threshold for clustering
-
-            fir_cons_id : array
-                information on points within the same temporal cluster
-            fir_clus_id : array
-                information on events within the same spatial cluster
-            fir_ev_id : array
-                information of already assigned event IDs
-            fit_iter : array
-                information on itration count
-            fir_date : array
-                date of each data point
+        days_thres : int
+            Temporal threshold for clustering
+        fir_cons_id : array
+            information on points within the same temporal cluster
+        fir_clus_id : array
+            information on events within the same spatial cluster
+        fir_ev_id : array
+            information of already assigned event IDs
+        fit_iter : array
+            information on itration count
+        fir_date : array
+            date of each data point
 
         Returns
         -------
-            firms : pd.DataFrame
-                FIRMS data including info on final cluster (=event) per point
+        firms : pd.DataFrame
+            FIRMS data including info on final cluster (=event) per point
 
         """
         ev_id = 0
@@ -873,15 +873,16 @@ class WildFire(Hazard):
 
         Parameters
         ----------
-            firms : pd.DataFrame
-                 FIRMS data
-            minor_fires_thres : int
-                threshold of FIRMS data points for an event
+        firms : pd.DataFrame
+            FIRMS data
+        minor_fires_thres : int
+            threshold of FIRMS data points for an event
 
         Returns
         -------
-            firms : pd.DataFrame
-                 FIRMS data excluding minor fire events
+        firms : pd.DataFrame
+            FIRMS data excluding minor fire events
+
         """
         for i in range(np.unique(firms.event_id).size):
             if (firms.event_id == i).sum() < minor_fires_thres:
@@ -902,15 +903,15 @@ class WildFire(Hazard):
 
         Parameters
         ----------
-            firms : pd.DataFrame
-                 FIRMS data
-            centroids : Centroids
-            res_centr : float
-                centroids resolution in centroids unit
+        firms : pd.DataFrame
+            FIRMS data
+        centroids : Centroids
+        res_centr : float
+            centroids resolution in centroids unit
 
         Returns
         -------
-            self : climada.hazard.WildFire instance
+        self : climada.hazard.WildFire instance
 
         """
         uni_ev = np.unique(firms['event_id'].values)
@@ -971,16 +972,16 @@ class WildFire(Hazard):
 
         Parameters
         ----------
-            firms : pd.DataFrame
-                 FIRMS data
-            centroids : Centroids
-            ev_id : int
-                id of the selected event
+        firms : pd.DataFrame
+            FIRMS data
+        centroids : Centroids
+        ev_id : int
+            id of the selected event
 
         Returns
         -------
-            brightness_ev : lil_matrix
-                maximum brightness at each centroids
+        brightness_ev : lil_matrix
+            maximum brightness at each centroids
 
         """
         LOGGER.debug('Brightness corresponding to FIRMS event %s.', str(ev_id))
@@ -1012,17 +1013,17 @@ class WildFire(Hazard):
 
         Parameters
         ----------
-            bright_list : list
-                idnividual wild fires
-            firms : pd.DataFrame
-                 FIRMS data
+        bright_list : list
+            idnividual wild fires
+        firms : pd.DataFrame
+            FIRMS data
 
         Returns
         -------
-            bright_list_nonzero : list
-                list with events that occured on the defined centroids
-            firms : pd.DataFrame
-                 FIRMS data (with data that occured on the defined centroids)
+        bright_list_nonzero : list
+            list with events that occured on the defined centroids
+        firms : pd.DataFrame
+            FIRMS data (with data that occured on the defined centroids)
 
         """
         bright_list_nonzero = []
@@ -1046,14 +1047,14 @@ class WildFire(Hazard):
 
         Parameters
         ----------
-            n_ignitions : int
-                number of wild fires for the season
-            seed : int
+        n_ignitions : int
+            number of wild fires for the season
+        seed : int
 
         Returns
         -------
-            proba_fires : lil_matrix
-                probablistic hazard
+        proba_fires : lil_matrix
+            probablistic hazard
 
         """
         np.random.seed(seed)
@@ -1100,13 +1101,13 @@ class WildFire(Hazard):
 
         Parameters
         ----------
-            self : climada.hazard.WildFire instance
-                needs to contain information of at least 1 historic wildfire
+        self : climada.hazard.WildFire instance
+            needs to contain information of at least 1 historic wildfire
 
         Returns
         -------
-            centr_burned : np.array
-                array indicating which centroids burned
+        centr_burned : np.array
+            array indicating which centroids burned
 
         """
         # set fire propagation matrix if not already defined
@@ -1167,26 +1168,26 @@ class WildFire(Hazard):
 
         Parameters
         ----------
-            centr_shape : np.array
-                shape of centroids array
-            fire_propa_matrix : np.array
-                fire proagation matrix indicating centroid specific fire
-                spread probability
-            prop_proba : float
-                global propagation probability
-            centr_ix : int
-                x coordinates of the burning centroid in the centroids matrix
-            centr_iy : int
-                y coordinates of the burning centroid in the centroids matrix
-            centr_burned : np.array
-                array containing information on burned centroids
-            prob_array: np.array
-                array of random numbers to draw from for random fire propagation
+        centr_shape : np.array
+            shape of centroids array
+        fire_propa_matrix : np.array
+            fire proagation matrix indicating centroid specific fire
+            spread probability
+        prop_proba : float
+            global propagation probability
+        centr_ix : int
+            x coordinates of the burning centroid in the centroids matrix
+        centr_iy : int
+            y coordinates of the burning centroid in the centroids matrix
+        centr_burned : np.array
+            array containing information on burned centroids
+        prob_array: np.array
+            array of random numbers to draw from for random fire propagation
 
         Returns
         -------
-            centr_burned : np.array
-                updated centr_burned matrix
+        centr_burned : np.array
+            updated centr_burned matrix
 
         """
         # Neighbourhood
@@ -1214,14 +1215,14 @@ class WildFire(Hazard):
 
         Parameters
         ----------
-            self : climada.hazard.WildFire instance
-            centr_burned : np.array
-                array indicating which centroids burned
+        self : climada.hazard.WildFire instance
+        centr_burned : np.array
+            array indicating which centroids burned
 
         Returns
         -------
-            proba_intensity : lil_matrix
-                hazard intensity matrix of generated probabilistic fire
+        proba_intensity : lil_matrix
+            hazard intensity matrix of generated probabilistic fire
 
         """
         # The brightness values are chosen randomly at every burned centroids
@@ -1248,13 +1249,13 @@ class WildFire(Hazard):
 
         Parameters
         ----------
-            self : climada.hazard.WildFire instance
-            n_blurr : int
-                blurr width around historical fires
+        self : climada.hazard.WildFire instance
+        n_blurr : int
+            blurr width around historical fires
 
         Returns
         -------
-            self.centroids.fire_propa_matrix : np.array
+        self.centroids.fire_propa_matrix : np.array
 
         """
         # historically burned centroids
@@ -1291,12 +1292,13 @@ class WildFire(Hazard):
         
         Parameters
         ----------
-            self : climada.hazard.WildFire instance
+        self : climada.hazard.WildFire instance
 
         Returns
         -------
-            contour plot : plt
-                contour plot of fire_propa_matrix
+        contour plot : plt
+            contour plot of fire_propa_matrix
+
         """
 
         lon = np.reshape(self.centroids.lon, self.centroids.fire_propa_matrix.shape)
@@ -1310,15 +1312,16 @@ class WildFire(Hazard):
 
         Parameters
         ----------
-            firms : pd.DataFrame
-                 FIRMS data
-            year : int
-            hemisphere : str, optional
-                'NHS' or 'SHS'
+        firms : pd.DataFrame
+            FIRMS data
+        year : int
+        hemisphere : str, optional
+            'NHS' or 'SHS'
         Returns
         -------
-            firms : pd.DataFrame
-                 FIRMS data for specified fire season
+        firms : pd.DataFrame
+            FIRMS data for specified fire season
+
         """
 
         firms['date'] = firms['acq_date'].apply(pd.to_datetime)
@@ -1338,11 +1341,11 @@ class WildFire(Hazard):
         
         Parameters
         ----------
-            self : climada.hazard.WildFire instance
-            
+        self : climada.hazard.WildFire instance
+
         Returns
         -------
-            self.frequency : np.array
+        self.frequency : np.array
 
         """
         delta_time = date.fromordinal(int(np.max(self.date))).year - \
@@ -1362,21 +1365,21 @@ def _fill_intensity_max(num_centr, ind, index_uni, lat_lon_cpy, fir_bright):
 
         Parameters
         ----------
-            num_centr : int
-                number of centroids
-            ind : np.array
-                index of closest centroid of each firms point
-            index_uni : np.array
-                unique index of each centroid
-            lat_lon_cpy : np.array
-                lat /lon information of each firms point
-            fir_bright : np.array
-                brightness of each firms data point
+        num_centr : int
+            number of centroids
+        ind : np.array
+            index of closest centroid of each firms point
+        index_uni : np.array
+            unique index of each centroid
+        lat_lon_cpy : np.array
+            lat /lon information of each firms point
+        fir_bright : np.array
+            brightness of each firms data point
 
         Returns:
         -------
-            brightness_ev : np.array
-                maximum brightness at each centroids
+        brightness_ev : np.array
+            maximum brightness at each centroids
 
     """
     brightness_ev = np.zeros((1, num_centr), dtype=numba.float64)
