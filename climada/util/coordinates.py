@@ -1833,10 +1833,14 @@ def set_df_geometry_points(df_val, scheduler=None):
     """
     LOGGER.info('Setting geometry points.')
     def apply_point(df_exp):
-        fun = lambda row: Point(row.longitude, row.latitude)
-        return df_exp.apply(fun, axis=1)
+        return df_exp.apply(lambda row: Point(row.longitude, row.latitude), axis=1)
     if not scheduler:
-        df_val['geometry'] = apply_point(df_val)
+        try:
+            crs = df_val.geometry.crs
+        except AttributeError:
+            crs = None
+        df_val['geometry'] = gpd.GeoSeries(
+            gpd.points_from_xy(df_val.longitude, df_val.latitude), crs=crs)
     else:
         ddata = dd.from_pandas(df_val, npartitions=cpu_count())
         df_val['geometry'] = ddata.map_partitions(apply_point, meta=Point) \

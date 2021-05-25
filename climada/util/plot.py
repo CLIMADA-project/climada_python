@@ -423,9 +423,11 @@ def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
     if not isinstance(axes, np.ndarray):
         axes = np.array([axes])
     for ax in axes.ravel():
-        cbar = ax.collections[-1].colorbar
-        cbar.set_ticks(np.arange(array_sub_n))
-        cbar.set_ticklabels([cat_name[str(val)] for val in array_sub_unique])
+        cbar = [coll.colorbar for coll in ax.collections if coll.colorbar is not None]
+        if len(cbar) > 0:
+            cbar = cbar[-1]
+            cbar.set_ticks(np.arange(array_sub_n))
+            cbar.set_ticklabels([cat_name[str(val)] for val in array_sub_unique])
 
     return axes
 
