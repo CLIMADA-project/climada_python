@@ -1846,16 +1846,18 @@ def reproject_raster_data(source, src_crs, src_transform, dst_crs=None, dst_tran
         Source transform, contains info on grid, e.g.:
             Affine(0.00833333333333333, 0.0, -18.175000000000068,
                                  0.0, -0.00833333333333333, 43.79999999999993)
+    dst_transform : Affine
+        Destination transform. The default is src_transform.
     dst_crs : CRS, optional
         Destination CRS. The default is src_crs.
-    dst_transform : Affine, optional
-        Destination transform. The default is src_transform.
     dst_shape : tuple with integers, optional
         (height, width) of destination grid. The default is source.shape.
         Note: Destination shape is changed if resolution changes
     dst_resolution : number, optional
-        Destination resolution.
-        Overwrites resolution provided in dst_transform.
+        Destination resolution, can be provided if destination resolution
+        is supposed to deviate from resolution defined in dst_transform.
+        (If provided, dst_transform is still used to define origins of destination
+        grid but not to set dst_resolution)
         Unit of resolution depends on CRS;
         Typically but not necessarily, the unit is degree lat, lon.
         The default is dst_transform[0].
@@ -1880,6 +1882,10 @@ def reproject_raster_data(source, src_crs, src_transform, dst_crs=None, dst_tran
     **kwargs : **kwargs
         extra arguments for rasterio.warp.reproject.
 
+    Raises
+    ------
+    ValueError
+
     Returns
     -------
     destination
@@ -1899,23 +1905,28 @@ def reproject_raster_data(source, src_crs, src_transform, dst_crs=None, dst_tran
         resampling = rasterio.warp.Resampling.cubic
     if dst_crs is None:
         dst_crs = src_crs
-    if dst_transform is None:
+    if dst_transform is None and dst_crs == src_crs:
         dst_transform = src_transform
+    elif dst_transform is None:
+        raise ValueError("dst_transform required  if dst_crs not equal to src_crs")
     if dst_shape is None:
         dst_shape = source.shape
 
     # target resolution in same unit as dst_transform[0], often degree lat, lon:
     if dst_resolution is None:
-        dst_resolution = dst_transform[0] # res. of destination grid
+        dst_resolution = dst_transform[0] # resolution of destination grid
 
     # if dst_resolution and resolution in dst_transform are not identical,
     # dst grid is defined with dst_resolution,
     # based on dst_transform and dst_global_origin:
-    if np.round(dst_transform[0], decimals=7)!=np.round(dst_resolution, decimals=7):
-        if (not dst_crs.is_geographic) and (dst_global_extent is None or dst_global_origin is None):
+    if np.round(dst_transform[0], decimals=7)!=np.round(dst_resolution, decimals=7) \
+        or dst_shape is None:
+        if (not dst_crs.is_geographic) and (dst_global_extent is None or \
+                                            dst_global_origin is None or \
+                                            dst_shape is None):
             raise ValueError("For non-geographic CRS (dst_crs) and change in resolution, "
-                             "both dst_global_extent and dst_global_origin need to "
-                             "be provided by user.")
+                             "both dst_global_extent and dst_global_origin and dst_shape "
+                             "need to be provided by user.")
         # else, missing info is set for geographic CRS 
         if dst_global_extent is None:
             dst_global_extent = (180, 360)
@@ -1937,44 +1948,53 @@ def reproject_raster_data(source, src_crs, src_transform, dst_crs=None, dst_tran
 
         # Calculate shape of destination grid based on reference shape and
         # ratio of reference and traget resolution:
-        dst_shape = (int(min([dst_global_extent[0]/dst_resolution, # lat ( height))
-                              dst_shape[0] /
-                              (dst_resolution/dst_transform[0])+1+2*dst_buffer])),
-                     int(min([dst_global_extent[1]/dst_resolution, # lon (width))
-                              dst_shape[1] /
-                              (dst_resolution/dst_transform[0])+1+2*dst_buffer])),
-                     )
+        if dst_shape is None:
+            dst_shape_newres = (int(dst_global_extent[0]/dst_resolution), # y, height
+                                     int(dst_global_extent[1]/dst_resolution)) # x, width
+        else:
+            dst_shape_newres = \
+                (int(min([dst_global_extent[0]/dst_resolution, # x (height)
+                          dst_shape[0] /
+                          (dst_resolution/dst_transform[0])+1+2*dst_buffer])),
+                 int(min([dst_global_extent[1]/dst_resolution, # y (width)
+                          dst_shape[1] /
+                          (dst_resolution/dst_transform[0])+1+2*dst_buffer])),
+                         )
         # define transform for destination grid from values calculated above:
-        dst_transform = rasterio.Affine(dst_resolution, # new lon step
-                                        dst_transform[1], # same as ref
-                                        dst_orig_lon, # new origin lon
-                                        dst_transform[3], # same as ref
-                                        -dst_resolution, # new lat step
-                                        dst_orig_lat, # new origin lat
-                                        **kwargs,
-                                        )
+        dst_transform_newres = \
+            rasterio.Affine(dst_resolution, # new lon step
+                            dst_transform[1], # same as reference
+                            dst_orig_lon, # new origin lon
+                            dst_transform[3], # same as reference
+                            -dst_resolution, # new lat step
+                            dst_orig_lat, # new origin lat
+                            **kwargs,
+                            )
+    else:
+        dst_shape_newres = dst_shape
+        dst_transform_newres = dst_transform
 
     # init empty destination array with same data type as input:
-    destination = np.zeros(dst_shape, dtype=source.dtype)
+    destination = np.zeros(dst_shape_newres, dtype=source.dtype)
     # call core resampling algorithm
     rasterio.warp.reproject(
                     source=source,
                     destination=destination,
                     src_transform=src_transform,
                     src_crs=src_crs,
-                    dst_transform=dst_transform,
+                    dst_transform=dst_transform_newres,
                     dst_crs=dst_crs,
                     resampling=resampling,
                     )
 
     # apply conservation and return resulting data and meta
     if conserve == 'mean':
-        return (destination / destination.mean()) * source.mean(), dst_transform
+        return (destination / destination.mean()) * source.mean(), dst_transform_newres
     elif conserve == 'sum':
-        return (destination / destination.sum()) * source.sum(), dst_transform
+        return (destination / destination.sum()) * source.sum(), dst_transform_newres
     elif conserve == 'norm':
-        return destination / destination.sum(), dst_transform
-    return destination, dst_transform
+        return destination / destination.sum(), dst_transform_newres
+    return destination, dst_transform_newres
 
 
 def set_df_geometry_points(df_val, scheduler=None, crs=None):
