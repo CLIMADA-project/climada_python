@@ -1975,7 +1975,7 @@ def reproject_raster_data(source, src_crs, src_transform, dst_crs=None, dst_tran
         return destination / destination.sum(), meta_dst
     return destination, meta_dst
 
-def set_df_geometry_points(df_val, scheduler=None):
+def set_df_geometry_points(df_val, scheduler=None, crs=None):
     """Set given geometry to given dataframe using dask if scheduler.
 
     Parameters
