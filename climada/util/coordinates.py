@@ -1903,10 +1903,6 @@ def reproject_raster_data(source, src_crs, src_transform, dst_crs=None, dst_tran
         dst_transform = src_transform
     if dst_shape is None:
         dst_shape = source.shape
-    if dst_global_extent is None:
-        dst_global_extent = (180, 360)
-    if dst_global_origin is None:
-        dst_global_origin = (-180.0, 90)
 
     # target resolution in same unit as dst_transform[0], often degree lat, lon:
     if dst_resolution is None:
