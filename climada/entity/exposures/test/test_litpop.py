@@ -196,7 +196,6 @@ class TestLitPop(unittest.TestCase):
                                     [3.425    , 4.763158 ]], dtype='float32')
         np.testing.assert_array_equal(reference_array, data_out[0])
 
-
     def test_gridpoints_core_calc_input_errors(self):
         """test for ValueErrors and TypeErrors due to wrong input to function
         gridpoints_core_calc"""
@@ -220,7 +219,6 @@ class TestLitPop(unittest.TestCase):
             lp.gridpoints_core_calc(data)
         with self.assertRaises(TypeError):
             lp.gridpoints_core_calc(777)
-
 
     def test_gridpoints_core_calc_default_1(self):
         """test function gridpoints_core_calc, i.e. core data combination
@@ -330,6 +328,47 @@ class TestLitPop(unittest.TestCase):
         self.assertEqual(result_array[1,2], results_check[1,2])
         np.testing.assert_array_almost_equal_nulp(result_array, results_check)
 
+    def test_grp_read_pass(self):
+        """test _grp_read() to pass and return either dict with admin1 values or None"""
+        result = lp._grp_read('JPN')
+        if result is not None:
+            self.assertIsInstance(result, dict)
+            self.assertIn('Fukuoka', result.keys())
+            self.assertIsInstance(result['Saga'], float)
+
+    def test_get_total_value_per_country_pop(self):
+        "test get_total_value_per_country return pop"
+        value = lp.get_total_value_per_country('XXX', 'pop', None, total_population=22)
+        self.assertEqual(value, 22)
+
+    def test_get_total_value_per_country_none(self):
+        "test get_total_value_per_country pass with None"
+        value = lp.get_total_value_per_country('XXX', 'none', None)
+        self.assertEqual(value, None)
+
+    def test_get_total_value_per_country_norm(self):
+        "test get_total_value_per_country pass with 1"
+        value = lp.get_total_value_per_country('XXX', 'norm', None)
+        self.assertEqual(value, 1)
+
+    def test_get_total_value_per_country_gdp(self):
+        "test get_total_value_per_country get number for gdp"
+        gdp_togo = lp.get_total_value_per_country('TGO', 'gdp', 2010)
+        gdp_switzerland = lp.get_total_value_per_country('CHE', 'gdp', 2222)
+        value_switzerland = lp.get_total_value_per_country('CHE', 'income_group', 2222)
+        self.assertIsInstance(gdp_togo, float)
+        # value for income_group = gdp * income group:
+        self.assertEqual(value_switzerland, 5*gdp_switzerland)
+
+    def test_get_total_value_per_country_pc(self):
+        "test get_total_value_per_country get number for pc of Poland"
+        value = lp.get_total_value_per_country('POL', 'pc', 2015)
+        self.assertIsInstance(value, float)
+
+    def test_get_total_value_per_country_nfw(self):
+        "test get_total_value_per_country get number for pc of Poland"
+        value = lp.get_total_value_per_country('POL', 'nfw', 2015)
+        self.assertIsInstance(value, float)
 
 
 if __name__ == "__main__":

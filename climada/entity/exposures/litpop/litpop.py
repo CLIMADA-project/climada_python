@@ -122,9 +122,9 @@ class LitPop(Exposures): # TODO tests nighlight (integ), gpw_population (integ) 
         if fin_mode is None:
             fin_mode = 'pc'
         # value_unit is set depending on fin_mode:
-        if fin_mode in [None, 'none', 'norm']:
+        if fin_mode in ['none', 'norm']:
             value_unit = ''
-        if fin_mode == 'pop':
+        elif fin_mode == 'pop':
             value_unit='people'
         else:
             value_unit = 'USD'
@@ -312,7 +312,7 @@ class LitPop(Exposures): # TODO tests nighlight (integ), gpw_population (integ) 
             in_countries = None
         if fin_mode is None:
             fin_mode = 'pc'
-        if fin_mode in [None, 'none', 'norm']:
+        if fin_mode in ['none', 'norm']:
             value_unit = ''
         elif fin_mode == 'pop':
             value_unit='people'
@@ -410,7 +410,6 @@ class LitPop(Exposures): # TODO tests nighlight (integ), gpw_population (integ) 
             LOGGER.warning('Could not write attribute meta, because exposure'
                            ' has only 1 data point')
             self.meta = {}
-        self.check()
 
     def set_lit(self, countries=None, shape=None, res_arcsec=15, exponent=1,
                 reference_year=2016, data_dir=None):
@@ -845,6 +844,7 @@ def resample_input_data(data_array_list, meta_list,
                               resampling=rasterio.warp.Resampling.bilinear,
                               conserve=conserve,
                               buffer=0)
+        meta['dtype'] = meta_list[i_ref]['dtype']
     return data_out_list, meta
 
 def gridpoints_core_calc(data_arrays, offsets=None, exponents=None,
@@ -960,7 +960,7 @@ def _check_excel_exists(file_path, file_name, xlsx_before_xls=True):
             return str(Path(file_path, path_name + i))
     return None
 
-def _grp_read(country_iso3, admin1_info, data_dir=None):
+def _grp_read(country_iso3, admin1_info=None, data_dir=None):
     """Retrieves the Gross Regional Product (GRP) aka Gross State Domestic Product (GSDP)
     data for a certain country. It requires an excel file in a subfolder
     "GSDP" in climadas data folder (or in the specified folder). The excel file should bear the
@@ -973,8 +973,9 @@ def _grp_read(country_iso3, admin1_info, data_dir=None):
     ----------
     country_iso3 : str
         alphabetic three letter country code ISO3a
-    admin1_info : list
+    admin1_info : list (optional)
         list containg all admin1 records for country.
+        if not provided, info is set retrieved automatically
     data_dir : str (optional)
         path where to look for file
 
@@ -983,6 +984,9 @@ def _grp_read(country_iso3, admin1_info, data_dir=None):
     out_dict : dictionary
         GRP for each admin1 unit name.
     """
+    if admin1_info is None:
+        admin1_info, admin1_shapes = u_coord.get_admin1_info(country_iso3)
+        admin1_info = admin1_info[country_iso3]
     if data_dir is None:
         data_dir = SYSTEM_DIR
     file_name = _check_excel_exists(data_dir.joinpath('GSDP'), str(country_iso3 + '_GSDP'))
@@ -1063,7 +1067,7 @@ def _calc_admin1(country, res_arcsec, exponents, fin_mode, total_value,
     admin1_info = admin1_info[iso3a]
     admin1_shapes = admin1_shapes[iso3a]
     # get subnational Gross Regional Product (GRP) data for country:
-    grp_data = _grp_read(iso3a, admin1_info, data_dir=data_dir)
+    grp_data = _grp_read(iso3a, admin1_info=admin1_info, data_dir=data_dir)
     if grp_data is None:
         LOGGER.error("No subnational GRP data found for calc_admin1"
                          " for country %s. Skipping.", country)
@@ -1077,6 +1081,7 @@ def _calc_admin1(country, res_arcsec, exponents, fin_mode, total_value,
     for idx, record in enumerate(admin1_info):
         if grp_data[record['name']] is None:
             continue
+        LOGGER.info(record['name'])
         exp_list.append(LitPop()) # init exposure for province
         # rel_value_share defines the share the province gets from total val
         # total value is defined from country:

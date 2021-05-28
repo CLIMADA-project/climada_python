@@ -30,7 +30,7 @@ import_pop = False
 test_litpop = False
 test_litpop_admin1 = True
 test_litpop_shape = False
-test_lit = False
+test_lit = True
 test_pop = False
 
 cntry = ['MEX', 'USA']
