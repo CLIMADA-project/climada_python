@@ -911,12 +911,7 @@ class TestRasterIO(unittest.TestCase):
                                                            dst_transform=meta_list[i]['transform'],
                                                            dst_shape=(meta_list[i]['height'],
                                                                       meta_list[i]['width']),
-                                                           dst_resolution=None,
-                                                           dst_global_origin=None,
-                                                           dst_global_extent=None,
-                                                           dst_buffer=None,
                                                            resampling='bilinear',
-                                                           conserve=None,
                                                            buffer=0)
         # test northward shift of box:
         np.testing.assert_array_equal(data_in[1][1,:], data_out[0,:])
@@ -935,12 +930,7 @@ class TestRasterIO(unittest.TestCase):
                                                            dst_transform=meta_list[i]['transform'],
                                                            dst_shape=(meta_list[i]['height'],
                                                                       meta_list[i]['width']),
-                                                           dst_resolution=None,
-                                                           dst_global_origin=None,
-                                                           dst_global_extent=None,
-                                                           dst_buffer=None,
                                                            resampling='bilinear',
-                                                           conserve=None,
                                                            )
         # test downsampled data:
         reference_array = np.array([[5.020408  , 2.267857  , 0.12244898],
@@ -961,10 +951,6 @@ class TestRasterIO(unittest.TestCase):
                                                                dst_transform=meta_list[i]['transform'],
                                                                dst_shape=(meta_list[i]['height'],
                                                                           meta_list[i]['width']),
-                                                               dst_resolution=None,
-                                                               dst_global_origin=None,
-                                                               dst_global_extent=None,
-                                                               dst_buffer=0,
                                                                resampling='bilinear',
                                                                conserve='sum',
                                                                )
@@ -979,10 +965,6 @@ class TestRasterIO(unittest.TestCase):
                                                                dst_transform=meta_list[i]['transform'],
                                                                dst_shape=(meta_list[i]['height'],
                                                                           meta_list[i]['width']),
-                                                               dst_resolution=None,
-                                                               dst_global_origin=None,
-                                                               dst_global_extent=None,
-                                                               dst_buffer=0,
                                                                resampling='bilinear',
                                                                conserve='mean',
                                                                )
@@ -1002,10 +984,6 @@ class TestRasterIO(unittest.TestCase):
                                                           dst_transform=meta_list[i]['transform'],
                                                           dst_shape=(meta_list[i]['height'],
                                                                      meta_list[i]['width']),
-                                                          dst_resolution=None,
-                                                          dst_global_origin=None,
-                                                          dst_global_extent=None,
-                                                          dst_buffer=0,
                                                           resampling='bilinear',
                                                           )[0]
                             )
@@ -1034,9 +1012,6 @@ class TestRasterIO(unittest.TestCase):
                                                            dst_shape=(meta_list[i]['height'],
                                                                       meta_list[i]['width']),
                                                            dst_resolution=1.7,
-                                                           dst_global_origin=None,
-                                                           dst_global_extent=None,
-                                                           dst_buffer=0,
                                                            resampling='bilinear'
                                                            )
 
