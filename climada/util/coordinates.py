@@ -1836,6 +1836,20 @@ def reproject_raster_data(source, src_crs, src_transform, dst_crs=None, dst_tran
     destination grid points for different source grids that are projected to
     the same target resolution.
 
+    Note:
+    The idea of this function is to reproject either to a given dst_resolution based
+    on the source grid (src_transform and dst_resolution are required input to
+    define the destination grid), reproject to a given grid (dst_transform defines
+    the destinatiion grid, no dst_resolution given), or reproject to a new resolution
+    on a grid that is globally consistent to the grid defined in dst_transform,
+    in this case both dst_transform and dst_resolution need to be provided.
+    This later case is for example used by LitPop, i.e. to project Lit-data
+    (source) to dst_resolution on a grid that is defined
+    consistently with the Pop-grid (defined in dst_transform).
+    Providing both dst_transform and dst_resolution makes sure there is no offset
+    between coordinates of two data grids (e.g., Lit and Pop) that are both reprojected
+    to the same dst_resolution.
+
     Parameters
     ----------
     source : np.ndarray
