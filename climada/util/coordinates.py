@@ -1821,7 +1821,7 @@ def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, schedul
     }
     return raster_out, meta
 
-def reproject_raster_data(source, src_crs, src_transform, dst_crs=None, dst_transform=None,
+def reproject_raster_data(source, src_crs, src_transform, dst_crs=None, ref_transform=None,
                       dst_shape=None, dst_resolution=None, dst_global_origin=None,
                       dst_global_extent=None,
                       dst_buffer=0, resampling=None, conserve=None,
@@ -1829,7 +1829,7 @@ def reproject_raster_data(source, src_crs, src_transform, dst_crs=None, dst_tran
     """
     Convenience wrapper function around rasterio.warp.reproject :
     Reproject (up- or downsample) 2D np.ndarray to a grid using rasterio.
-    The destination (target) grid is defined from dst_transform and optionally
+    The destination (target) grid is defined from ref_transform and optionally
     dst_resolution, dst_global_origin, and dst_crs.
     This function ensures that reprojected data with the same dst_resolution and
     dst_global_origins are on the same global grid, i.e., no offset between
@@ -1839,14 +1839,15 @@ def reproject_raster_data(source, src_crs, src_transform, dst_crs=None, dst_tran
     Note:
     The idea of this function is to reproject either to a given dst_resolution based
     on the source grid (src_transform and dst_resolution are required input to
-    define the destination grid), reproject to a given grid (dst_transform defines
-    the destinatiion grid, no dst_resolution given), or reproject to a new resolution
-    on a grid that is globally consistent to the grid defined in dst_transform,
-    in this case both dst_transform and dst_resolution need to be provided.
+    define the destination grid), reproject to a given grid (ref_transform is
+    set equal to ref_transform, no dst_resolution is provided),
+    or reproject to a new resolution on a grid that is globally consistent to
+    the grid defined in ref_transform, in this case both ref_transform and
+    dst_resolution need to be provided.
     This later case is for example used by LitPop, i.e. to project Lit-data
     (source) to dst_resolution on a grid that is defined
-    consistently with the Pop-grid (defined in dst_transform).
-    Providing both dst_transform and dst_resolution makes sure there is no offset
+    consistently with the Pop-grid (defined in ref_transform).
+    Providing both ref_transform and dst_resolution makes sure there is no offset
     between coordinates of two data grids (e.g., Lit and Pop) that are both reprojected
     to the same dst_resolution.
 
@@ -1860,8 +1861,9 @@ def reproject_raster_data(source, src_crs, src_transform, dst_crs=None, dst_tran
         Source transform, contains info on grid, e.g.:
             Affine(0.00833333333333333, 0.0, -18.175000000000068,
                                  0.0, -0.00833333333333333, 43.79999999999993)
-    dst_transform : Affine
-        Destination transform. The default is src_transform.
+    ref_transform : Affine
+        Reference transform, used to define dst_transform.
+        The default is src_transform.
     dst_crs : CRS, optional
         Destination CRS. The default is src_crs.
     dst_shape : tuple with integers, optional
@@ -1869,15 +1871,15 @@ def reproject_raster_data(source, src_crs, src_transform, dst_crs=None, dst_tran
         Note: Destination shape is changed if resolution changes
     dst_resolution : number, optional
         Destination resolution, can be provided if destination resolution
-        is supposed to deviate from resolution defined in dst_transform.
-        (If provided, dst_transform is still used to define origins of destination
+        is supposed to deviate from resolution defined in ref_transform.
+        (If provided, ref_transform is still used to define origins of destination
         grid but not to set dst_resolution)
         Unit of resolution depends on CRS;
         Typically but not necessarily, the unit is degree lat, lon.
-        The default is dst_transform[0].
+        The default is ref_transform[0].
     dst_global_origin : tuple of numbers, optional
         global lon and lat origins as basis for destination grid.
-        Only required if dst_resolution different than dst_transform[0].
+        Only required if dst_resolution different than ref_transform[0].
         The default is (-180.0, 90), change dst_global_origin for different units.
     dst_global_extent : tuple of numbers, optional
         Extent of global grid in unit of resoution.
@@ -1919,21 +1921,21 @@ def reproject_raster_data(source, src_crs, src_transform, dst_crs=None, dst_tran
         resampling = rasterio.warp.Resampling.cubic
     if dst_crs is None:
         dst_crs = src_crs
-    if dst_transform is None and dst_crs == src_crs:
-        dst_transform = src_transform
-    elif dst_transform is None:
-        raise ValueError("dst_transform required  if dst_crs not equal to src_crs")
+    if ref_transform is None and dst_crs == src_crs:
+        ref_transform = src_transform
+    elif ref_transform is None:
+        raise ValueError("ref_transform required  if dst_crs not equal to src_crs")
     if dst_shape is None:
         dst_shape = source.shape
 
-    # target resolution in same unit as dst_transform[0], often degree lat, lon:
+    # target resolution in same unit as ref_transform[0], often degree lat, lon:
     if dst_resolution is None:
-        dst_resolution = dst_transform[0] # resolution of destination grid
+        dst_resolution = ref_transform[0] # resolution of destination grid
 
-    # if dst_resolution and resolution in dst_transform are not identical,
+    # if dst_resolution and resolution in ref_transform are not identical,
     # dst grid is defined with dst_resolution,
-    # based on dst_transform and dst_global_origin:
-    if np.round(dst_transform[0], decimals=7)!=np.round(dst_resolution, decimals=7) \
+    # based on ref_transform and dst_global_origin:
+    if np.round(ref_transform[0], decimals=7)!=np.round(dst_resolution, decimals=7) \
         or dst_shape is None:
         if (not dst_crs.is_geographic) and (dst_global_extent is None or \
                                             dst_global_origin is None or \
@@ -1951,13 +1953,13 @@ def reproject_raster_data(source, src_crs, src_transform, dst_crs=None, dst_tran
         # Find largest longitude point on global grid that is "east" of ref. grid:
         #   1. from original origin, find index of new origin on global grid:
         dst_orig_lon = \
-            int(np.floor((dst_transform[2]-dst_global_origin[0]) / dst_resolution))-dst_buffer
+            int(np.floor((ref_transform[2]-dst_global_origin[0]) / dst_resolution))-dst_buffer
         #   2. get loingitude in degree from index
         dst_orig_lon = dst_global_origin[0] + np.max([0, dst_orig_lon]) * dst_resolution
         # Find lowest latitude point on global grid that is "north" of ref. grid:
         # (analogous process as for dst_orig_lon)
         dst_orig_lat = \
-            int(np.floor((dst_global_origin[1] - dst_transform[5]) / dst_resolution))-dst_buffer
+            int(np.floor((dst_global_origin[1] - ref_transform[5]) / dst_resolution))-dst_buffer
         dst_orig_lat = dst_global_origin[1] - np.max([0, dst_orig_lat]) * dst_resolution
 
         # Calculate shape of destination grid based on reference shape and
@@ -1969,24 +1971,24 @@ def reproject_raster_data(source, src_crs, src_transform, dst_crs=None, dst_tran
             dst_shape_newres = \
                 (int(min([dst_global_extent[0]/dst_resolution, # x (height)
                           dst_shape[0] /
-                          (dst_resolution/dst_transform[0])+1+2*dst_buffer])),
+                          (dst_resolution/ref_transform[0])+1+2*dst_buffer])),
                  int(min([dst_global_extent[1]/dst_resolution, # y (width)
                           dst_shape[1] /
-                          (dst_resolution/dst_transform[0])+1+2*dst_buffer])),
+                          (dst_resolution/ref_transform[0])+1+2*dst_buffer])),
                          )
         # define transform for destination grid from values calculated above:
-        dst_transform_newres = \
+        dst_transform = \
             rasterio.Affine(dst_resolution, # new lon step
-                            dst_transform[1], # same as reference
+                            ref_transform[1], # same as reference
                             dst_orig_lon, # new origin lon
-                            dst_transform[3], # same as reference
+                            ref_transform[3], # same as reference
                             -dst_resolution, # new lat step
                             dst_orig_lat, # new origin lat
                             **kwargs,
                             )
     else:
         dst_shape_newres = dst_shape
-        dst_transform_newres = dst_transform
+        dst_transform = ref_transform
 
     # init empty destination array with same data type as input:
     destination = np.zeros(dst_shape_newres, dtype=source.dtype)
@@ -1996,19 +1998,19 @@ def reproject_raster_data(source, src_crs, src_transform, dst_crs=None, dst_tran
                     destination=destination,
                     src_transform=src_transform,
                     src_crs=src_crs,
-                    dst_transform=dst_transform_newres,
+                    dst_transform=dst_transform,
                     dst_crs=dst_crs,
                     resampling=resampling,
                     )
 
     # apply conservation and return resulting data and meta
     if conserve == 'mean':
-        return (destination / destination.mean()) * source.mean(), dst_transform_newres
+        return (destination / destination.mean()) * source.mean(), dst_transform
     elif conserve == 'sum':
-        return (destination / destination.sum()) * source.sum(), dst_transform_newres
+        return (destination / destination.sum()) * source.sum(), dst_transform
     elif conserve == 'norm':
-        return destination / destination.sum(), dst_transform_newres
-    return destination, dst_transform_newres
+        return destination / destination.sum(), dst_transform
+    return destination, dst_transform
 
 
 def set_df_geometry_points(df_val, scheduler=None, crs=None):
