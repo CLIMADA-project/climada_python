@@ -1916,6 +1916,16 @@ def reproject_raster_data(source, src_crs, src_transform, dst_crs=None, dst_tran
     # dst grid is defined with dst_resolution,
     # based on dst_transform and dst_global_origin:
     if np.round(dst_transform[0], decimals=7)!=np.round(dst_resolution, decimals=7):
+        if (not dst_crs.is_geographic) and (dst_global_extent is None or dst_global_origin is None):
+            raise ValueError("For non-geographic CRS (dst_crs) and change in resolution, "
+                             "both dst_global_extent and dst_global_origin need to "
+                             "be provided by user.")
+        # else, missing info is set for geographic CRS 
+        if dst_global_extent is None:
+            dst_global_extent = (180, 360)
+        if dst_global_origin is None:
+            dst_global_origin = (-180.0, 90)
+
         # Define origin coordinates for destination (dst) grid:
         # Find largest longitude point on global grid that is "east" of ref. grid:
         #   1. from original origin, find index of new origin on global grid:
