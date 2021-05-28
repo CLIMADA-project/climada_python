@@ -38,6 +38,7 @@ import matplotlib.cm as cm_mp
 from matplotlib.collections import LineCollection
 from matplotlib.colors import BoundaryNorm, ListedColormap
 from matplotlib.lines import Line2D
+import matplotlib.pyplot as plt
 import netCDF4 as nc
 import numba
 import numpy as np
@@ -276,11 +277,11 @@ class TCTracks():
         if buffer <= 0.0:
             raise ValueError(f"buffer={buffer} is invalid, must be above zero.")
         try:
-            exposure.geometry
+            exposure.gdf.geometry
         except AttributeError:
             exposure.set_geometry_points()
 
-        exp_buffer = exposure.buffer(distance=buffer, resolution=0)
+        exp_buffer = exposure.gdf.buffer(distance=buffer, resolution=0)
         exp_buffer = exp_buffer.unary_union
 
         tc_tracks_lines = self.to_geodataframe().buffer(distance=buffer)
@@ -1266,7 +1267,7 @@ class TCTracks():
                 leg_names.append('Historical')
                 leg_names.append('Synthetic')
             axis.legend(leg_lines, leg_names, loc=0)
-
+        plt.tight_layout()
         return axis
 
     def write_netcdf(self, folder_name):
@@ -1973,4 +1974,3 @@ def set_category(max_sus_wind, wind_unit='kn', saffir_scale=None):
         return (np.argwhere(max_wind < saffir_scale) - 1)[0][0]
     except IndexError:
         return -1
-
