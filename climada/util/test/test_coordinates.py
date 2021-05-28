@@ -904,7 +904,7 @@ class TestRasterIO(unittest.TestCase):
         data_in, meta_list = data_arrays_resampling_demo()
         i = 0 # dst
         j = 1 # src
-        data_out, meta_out = u_coord.reproject_raster_data(data_in[j],
+        data_out, _ = u_coord.reproject_raster_data(data_in[j],
                                                            meta_list[j]['crs'],
                                                            meta_list[j]['transform'],
                                                            dst_crs=meta_list[i]['crs'],
@@ -928,7 +928,7 @@ class TestRasterIO(unittest.TestCase):
         data_in, meta_list = data_arrays_resampling_demo()
         i = 0 # dst
         j = 2 # src
-        data_out, meta_out = u_coord.reproject_raster_data(data_in[j],
+        data_out, _ = u_coord.reproject_raster_data(data_in[j],
                                                            meta_list[j]['crs'],
                                                            meta_list[j]['transform'],
                                                            dst_crs=meta_list[i]['crs'],
@@ -954,7 +954,7 @@ class TestRasterIO(unittest.TestCase):
         i = 0 # dst
         # test conserve sum:
         for j, data in enumerate(data_in): # src
-            data_out, meta_out = u_coord.reproject_raster_data(data_in[j],
+            data_out, dst_transform = u_coord.reproject_raster_data(data_in[j],
                                                                meta_list[j]['crs'],
                                                                meta_list[j]['transform'],
                                                                dst_crs=meta_list[i]['crs'],
@@ -968,10 +968,11 @@ class TestRasterIO(unittest.TestCase):
                                                                resampling='bilinear',
                                                                conserve='sum',
                                                                )
+            self.assertAlmostEqual(dst_transform[1], meta_list[i]['transform'][1])
             self.assertAlmostEqual(data_in[j].sum(), data_out.sum(), places=4)
         # test conserve mean:
         for j, data in enumerate(data_in):
-            data_out, meta_out = u_coord.reproject_raster_data(data_in[j],
+            data_out, _ = u_coord.reproject_raster_data(data_in[j],
                                                                meta_list[j]['crs'],
                                                                meta_list[j]['transform'],
                                                                dst_crs=meta_list[i]['crs'],
@@ -1025,7 +1026,7 @@ class TestRasterIO(unittest.TestCase):
         data_in, meta_list = data_arrays_resampling_demo()
         i = 0
         j = 0
-        data_out, meta_out = u_coord.reproject_raster_data(data_in[j],
+        data_out, dst_transform = u_coord.reproject_raster_data(data_in[j],
                                                            meta_list[j]['crs'],
                                                            meta_list[j]['transform'],
                                                            dst_crs=meta_list[i]['crs'],
@@ -1039,7 +1040,7 @@ class TestRasterIO(unittest.TestCase):
                                                            resampling='bilinear'
                                                            )
 
-        self.assertEqual(1.7, meta_out['transform'][0]) # check resolution
+        self.assertEqual(1.7, dst_transform[0]) # check resolution
         reference_array = np.array([[0.425    , 1.7631578],
                                     [3.425    , 4.763158 ]], dtype='float32')
         np.testing.assert_array_equal(reference_array, data_out)

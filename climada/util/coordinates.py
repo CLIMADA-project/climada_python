@@ -1884,8 +1884,8 @@ def reproject_raster_data(source, src_crs, src_transform, dst_crs=None, dst_tran
     -------
     destination
         numpy array.
-    meta_dst : dict
-        meta dict of destination.
+    dst_transform : Affine object
+        transform of destination.
 
     """
     # TODO: suggestion for further development:
@@ -1961,19 +1961,14 @@ def reproject_raster_data(source, src_crs, src_transform, dst_crs=None, dst_tran
                     resampling=resampling,
                     )
 
-    meta_dst = {'width': dst_shape[1],
-            'height': dst_shape[0],
-            'crs': dst_crs,
-            'transform': dst_transform
-            }
     # apply conservation and return resulting data and meta
     if conserve == 'mean':
-        return (destination / destination.mean()) * source.mean(), meta_dst
+        return (destination / destination.mean()) * source.mean(), dst_transform
     elif conserve == 'sum':
-        return (destination / destination.sum()) * source.sum(), meta_dst
+        return (destination / destination.sum()) * source.sum(), dst_transform
     elif conserve == 'norm':
-        return destination / destination.sum(), meta_dst
-    return destination, meta_dst
+        return destination / destination.sum(), dst_transform
+    return destination, dst_transform
 
 
 def set_df_geometry_points(df_val, scheduler=None, crs=None):
