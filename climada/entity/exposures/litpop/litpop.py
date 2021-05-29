@@ -600,25 +600,27 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
     ----------
     polygon : Polygon object
         single polygon to be extracted
-    res_arcsec : float (optional)
-        Horizontal resolution in arc-seconds.
-    exponents : tuple of two integers, optional
-        Defining power with which lit (nightlights) and pop (gpw) go into LitPop. To get
-        nightlights^3 without population count: (3, 0). To use population count alone: (0, 1).
     reference_year : int, optional
-        Reference year for data sources. Default: 2020
-    gpw_version : int (optional)
+        Reference year for data sources.
+    res_arcsec : float
+        Horizontal resolution in arc-seconds.
+    data_dir : Path
+        redefines path to input data directory. The default is SYSTEM_DIR.
+    gpw_version : int
         Version number of GPW population data.
         The default is None. If None, the default is set in gpw_population module.
-    data_dir : Path (optional)
-        redefines path to input data directory. The default is SYSTEM_DIR.
     resample_first : boolean
         First resample nightlight (Lit) and population (Pop) data to target
         resolution before combining them as Lit^m * Pop^n?
         The default is True. Warning: Setting this to False affects the
         disaggregation results.
+    exponents : tuple of two integers
+        Defining power with which lit (nightlights) and pop (gpw) go into LitPop. To get
+        nightlights^3 without population count: (3, 0). To use population count alone: (0, 1).
     offsets : tuple of numbers
         offsets to be added to input data, required for LitPop core calculation
+    verbatim : bool, optional
+        verbatim logging? Default is False.
 
     Returns
     -------
@@ -644,6 +646,7 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
     nl, meta_nl = nl_util.load_nasa_nl_shape(polygon,
                                              reference_year,
                                              data_dir=data_dir,
+                                             dtype=float
                                              )
 
     if resample_first: # default is True

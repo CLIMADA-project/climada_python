@@ -275,7 +275,7 @@ def load_nasa_nl_shape(geometry, reference_year, data_dir=None, dtype=None):
         The default is SYSTEM_DIR.
     dtype : dtype
         data type for output default 'float32', required for LitPop,
-        choose 'int64' for integer.
+        choose 'int8' for integer.
 
     Returns
     -------
@@ -316,9 +316,10 @@ def load_nasa_nl_shape(geometry, reference_year, data_dir=None, dtype=None):
         if idx == 0:
             meta = meta_tmp
             # correct CRS from local tile's CRS to global WGS 84:
-            meta.update({"crs": rasterio.crs.CRS.from_epsg(4326)})
+            meta.update({"crs": rasterio.crs.CRS.from_epsg(4326),
+                         "dtype": dtype})
     if idx == 0: # only 1 tile
-        return out_image, meta
+        return np.array(out_image, dtype=dtype), meta
     # Combine data from multiple input files (BlackMarble tiles) -
     # concatenate tiles from west to east and from north to south:
     del out_image
