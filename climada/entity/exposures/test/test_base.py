@@ -203,7 +203,8 @@ class TestChecker(unittest.TestCase):
 
         with self.assertRaises(ValueError) as cm:
             expo2 = Exposures(expo.gdf, meta={'crs':4230})
-        self.assertIn('Inconsistent crs definition in data', str(cm.exception))
+        self.assertIn('The GeoSeries already has a CRS which is not equal to the passed CRS.',
+                      str(cm.exception))
 
     def test_error_geometry_fail(self):
         """Wrong exposures definition"""
