@@ -899,20 +899,76 @@ class TestRasterIO(unittest.TestCase):
         self.assertLess(transform[5] + z.shape[0] * transform[4], bounds[1])
         self.assertGreaterEqual(transform[5] + z.shape[0] * transform[4], bounds[1] + transform[4])
 
+    def test_set_global_consistent_grid_pass(self):
+        """test function set_global_consistent_grid"""
+        _, meta_list = data_arrays_resampling_demo()
+        i = 2
+        dst_resolution = 1.
+        dst_transform, dst_shape = \
+            u_coord.set_global_consistent_grid(meta_list[i]['transform'],
+                                               dst_resolution,
+                                               src_shape = (meta_list[i]['width'],
+                                                            meta_list[i]['height']),
+                                               )
+        self.assertEqual(dst_shape, (4,3))
+        self.assertEqual(dst_resolution, dst_transform[0])
+        self.assertEqual(meta_list[i]['transform'][1], dst_transform[1])
+        self.assertEqual(meta_list[i]['transform'][2], dst_transform[2])
+        self.assertEqual(meta_list[i]['transform'][3], dst_transform[3])
+        self.assertEqual(-dst_resolution, dst_transform[4])
+        self.assertEqual(meta_list[i]['transform'][5], dst_transform[5])
+
+    def test_set_global_consistent_grid_no_shape(self):
+        """test function set_global_consistent_grid withput providing a src_shape"""
+        _, meta_list = data_arrays_resampling_demo()
+        i = 2
+        dst_resolution = 1.
+        dst_transform, dst_shape = \
+            u_coord.set_global_consistent_grid(meta_list[i]['transform'],
+                                               dst_resolution,
+                                               src_shape = None,
+                                               )
+        self.assertEqual(180 + dst_transform[2] + dst_shape[0], 360)
+        self.assertEqual(dst_shape[1] + 90 - dst_transform[5], 180)
+        self.assertEqual(dst_resolution, dst_transform[0])
+        self.assertEqual(meta_list[i]['transform'][1], dst_transform[1])
+        self.assertEqual(meta_list[i]['transform'][2], dst_transform[2])
+        self.assertEqual(meta_list[i]['transform'][3], dst_transform[3])
+        self.assertEqual(-dst_resolution, dst_transform[4])
+        self.assertEqual(meta_list[i]['transform'][5], dst_transform[5])
+
+    def test_set_global_consistent_grid_odd(self):
+        """test function set_global_consistent_grid for odd resolution change"""
+        _, meta_list = data_arrays_resampling_demo()
+        i = 1
+        dst_resolution = .15
+        dst_transform, dst_shape = \
+            u_coord.set_global_consistent_grid(meta_list[i]['transform'],
+                                               dst_resolution,
+                                               src_shape = (meta_list[i]['width'],
+                                                            meta_list[i]['height']),
+                                               )
+        self.assertEqual(dst_shape, (21,14))
+        self.assertEqual(dst_resolution, dst_transform[0])
+        self.assertEqual(meta_list[i]['transform'][1], dst_transform[1])
+        self.assertAlmostEqual(-10.05, dst_transform[2])
+        self.assertEqual(meta_list[i]['transform'][3], dst_transform[3])
+        self.assertEqual(-dst_resolution, dst_transform[4])
+        self.assertAlmostEqual(41.1, dst_transform[5])
+
     def test_reproject_raster_data_shift(self):
         """test function reproject_raster_data for geographical shift"""
         data_in, meta_list = data_arrays_resampling_demo()
         i = 0 # dst
         j = 1 # src
         data_out, _ = u_coord.reproject_raster_data(data_in[j],
-                                                           meta_list[j]['crs'],
-                                                           meta_list[j]['transform'],
-                                                           dst_crs=meta_list[i]['crs'],
-                                                           ref_transform=meta_list[i]['transform'],
-                                                           dst_shape=(meta_list[i]['height'],
-                                                                      meta_list[i]['width']),
-                                                           resampling='bilinear',
-                                                           buffer=0)
+                                                    meta_list[j]['crs'],
+                                                    meta_list[j]['transform'],
+                                                    dst_crs=meta_list[i]['crs'],
+                                                    ref_transform=meta_list[i]['transform'],
+                                                    ref_shape=(meta_list[i]['height'],
+                                                               meta_list[i]['width']),
+                                                    resampling='bilinear')
         # test northward shift of box:
         np.testing.assert_array_equal(data_in[1][1,:], data_out[0,:])
         np.testing.assert_array_equal(np.array([0., 0., 0.], dtype='float32'),
@@ -924,14 +980,14 @@ class TestRasterIO(unittest.TestCase):
         i = 0 # dst
         j = 2 # src
         data_out, _ = u_coord.reproject_raster_data(data_in[j],
-                                                           meta_list[j]['crs'],
-                                                           meta_list[j]['transform'],
-                                                           dst_crs=meta_list[i]['crs'],
-                                                           ref_transform=meta_list[i]['transform'],
-                                                           dst_shape=(meta_list[i]['height'],
-                                                                      meta_list[i]['width']),
-                                                           resampling='bilinear',
-                                                           )
+                                                    meta_list[j]['crs'],
+                                                    meta_list[j]['transform'],
+                                                    dst_crs=meta_list[i]['crs'],
+                                                    ref_transform=meta_list[i]['transform'],
+                                                    ref_shape=(meta_list[i]['height'],
+                                                               meta_list[i]['width']),
+                                                    resampling='bilinear',
+                                                    )
         # test downsampled data:
         reference_array = np.array([[5.020408  , 2.267857  , 0.12244898],
                                     [1.1224489 , 0.6785714 , 0.7346939 ]], dtype='float32')
@@ -949,7 +1005,7 @@ class TestRasterIO(unittest.TestCase):
                                                                meta_list[j]['transform'],
                                                                dst_crs=meta_list[i]['crs'],
                                                                ref_transform=meta_list[i]['transform'],
-                                                               dst_shape=(meta_list[i]['height'],
+                                                               ref_shape=(meta_list[i]['height'],
                                                                           meta_list[i]['width']),
                                                                resampling='bilinear',
                                                                conserve='sum',
@@ -963,7 +1019,7 @@ class TestRasterIO(unittest.TestCase):
                                                                meta_list[j]['transform'],
                                                                dst_crs=meta_list[i]['crs'],
                                                                ref_transform=meta_list[i]['transform'],
-                                                               dst_shape=(meta_list[i]['height'],
+                                                               ref_shape=(meta_list[i]['height'],
                                                                           meta_list[i]['width']),
                                                                resampling='bilinear',
                                                                conserve='mean',
@@ -982,7 +1038,7 @@ class TestRasterIO(unittest.TestCase):
                                                           meta_list[j]['transform'],
                                                           dst_crs=meta_list[i]['crs'],
                                                           ref_transform=meta_list[i]['transform'],
-                                                          dst_shape=(meta_list[i]['height'],
+                                                          ref_shape=(meta_list[i]['height'],
                                                                      meta_list[i]['width']),
                                                           resampling='bilinear',
                                                           )[0]
@@ -1009,7 +1065,7 @@ class TestRasterIO(unittest.TestCase):
                                                            meta_list[j]['transform'],
                                                            dst_crs=meta_list[i]['crs'],
                                                            ref_transform=meta_list[i]['transform'],
-                                                           dst_shape=(meta_list[i]['height'],
+                                                           ref_shape=(meta_list[i]['height'],
                                                                       meta_list[i]['width']),
                                                            dst_resolution=1.7,
                                                            resampling='bilinear'
