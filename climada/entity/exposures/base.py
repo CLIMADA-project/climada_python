@@ -401,9 +401,9 @@ class Exposures():
             scheduler (str): used for dask map_partitions. “threads”,
                 “synchronous” or “processes”
         """
-        u_coord.set_df_geometry_points(self.gdf, scheduler)
+        u_coord.set_df_geometry_points(self.gdf, scheduler=scheduler, crs=self.crs)
         self.gdf.set_crs(self.crs, inplace=True)
-        
+
     def set_lat_lon(self):
         """Set latitude and longitude attributes from geometry attribute."""
         LOGGER.info('Setting latitude and longitude attributes.')
@@ -592,6 +592,7 @@ class Exposures():
         imag = axis.imshow(raster_f(raster), **kwargs, origin='upper',
                            extent=(xmin, xmax, ymin, ymax), transform=proj_data)
         plt.colorbar(imag, cax=cbar_ax, label=label)
+        plt.tight_layout()
         plt.draw()
         return axis
 
@@ -856,8 +857,8 @@ def add_sea(exposures, sea_res):
     sea_exp_gdf['longitude'] = lon_mgrid[on_land]
     sea_exp_gdf['region_id'] = np.zeros(sea_exp_gdf.latitude.size, int) - 1
 
-    if 'geometry' in exposures.gdf:
-        u_coord.set_df_geometry_points(sea_exp_gdf)
+    if 'geometry' in exposures.gdf.columns:
+        u_coord.set_df_geometry_points(sea_exp_gdf, crs=exposures.crs)
 
     for var_name in exposures.gdf.columns:
         if var_name not in ('latitude', 'longitude', 'region_id', 'geometry'):

@@ -25,6 +25,7 @@ __all__ = ['CAT_NAMES', 'SAFFIR_SIM_CAT', 'TCTracks', 'set_category']
 import datetime as dt
 import itertools
 import logging
+import re
 import shutil
 import warnings
 from pathlib import Path
@@ -37,6 +38,7 @@ import matplotlib.cm as cm_mp
 from matplotlib.collections import LineCollection
 from matplotlib.colors import BoundaryNorm, ListedColormap
 from matplotlib.lines import Line2D
+import matplotlib.pyplot as plt
 import netCDF4 as nc
 import numba
 import numpy as np
@@ -275,11 +277,11 @@ class TCTracks():
         if buffer <= 0.0:
             raise ValueError(f"buffer={buffer} is invalid, must be above zero.")
         try:
-            exposure.geometry
+            exposure.gdf.geometry
         except AttributeError:
             exposure.set_geometry_points()
 
-        exp_buffer = exposure.buffer(distance=buffer, resolution=0)
+        exp_buffer = exposure.gdf.buffer(distance=buffer, resolution=0)
         exp_buffer = exp_buffer.unary_union
 
         tc_tracks_lines = self.to_geodataframe().buffer(distance=buffer)
@@ -347,7 +349,7 @@ class TCTracks():
         storm_id : str or list of str, optional
             IBTrACS ID of the storm, e.g. 1988234N13299, [1988234N13299, 1989260N11316].
         year_range : tuple (min_year, max_year), optional
-            Year range to filter track selection. Default: (1980, 2018)
+            Year range to filter track selection. Default: None.
         basin : str, optional
             If given, select storms that have at least one position in the specified basin. This
             allows analysis of a given basin, but also means that basin-specific track sets should
@@ -429,11 +431,23 @@ class TCTracks():
         if storm_id is not None:
             if not isinstance(storm_id, list):
                 storm_id = [storm_id]
-            match &= ibtracs_ds.sid.isin([i.encode() for i in storm_id])
-            if np.count_nonzero(match) == 0:
-                LOGGER.info('No tracks with given IDs %s.', storm_id)
-        else:
-            year_range = year_range if year_range else (1980, 2018)
+            invalid_mask = np.array(
+                [re.match(r"[12][0-9]{6}[NS][0-9]{5}", s) is None for s in storm_id])
+            if invalid_mask.any():
+                invalid_sids = list(np.array(storm_id)[invalid_mask])
+                raise ValueError("The following given IDs are invalid: %s%s",
+                                 ", ".join(invalid_sids[:5]),
+                                 ", ..." if len(invalid_sids) > 5  else ".")
+                storm_id = list(np.array(storm_id)[~invalid_mask])
+            storm_id_encoded = [i.encode() for i in storm_id]
+            non_existing_mask = ~np.isin(storm_id_encoded, ibtracs_ds.sid.values)
+            if np.count_nonzero(non_existing_mask) > 0:
+                non_existing_sids = list(np.array(storm_id)[non_existing_mask])
+                raise ValueError("The following given IDs are not in IBTrACS: %s%s",
+                                 ", ".join(non_existing_sids[:5]),
+                                 ", ..." if len(non_existing_sids) > 5  else ".")
+                storm_id_encoded = list(np.array(storm_id_encoded)[~non_existing_mask])
+            match &= ibtracs_ds.sid.isin(storm_id_encoded)
         if year_range is not None:
             years = ibtracs_ds.sid.str.slice(0, 4).astype(int)
             match &= (years >= year_range[0]) & (years <= year_range[1])
@@ -1253,7 +1267,7 @@ class TCTracks():
                 leg_names.append('Historical')
                 leg_names.append('Synthetic')
             axis.legend(leg_lines, leg_names, loc=0)
-
+        plt.tight_layout()
         return axis
 
     def write_netcdf(self, folder_name):
@@ -1960,4 +1974,3 @@ def set_category(max_sus_wind, wind_unit='kn', saffir_scale=None):
         return (np.argwhere(max_wind < saffir_scale) - 1)[0][0]
     except IndexError:
         return -1
-
