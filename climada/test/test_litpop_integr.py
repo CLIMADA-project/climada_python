@@ -28,6 +28,7 @@ from climada.entity.exposures.litpop import litpop as lp
 from climada.entity.exposures import gpw_import
 from climada.util.finance import world_bank_wealth_account, gdp
 import climada.util.coordinates as u_coord
+from climada.util.constants import SYSTEM_DIR
 
 
 class TestLitPopExposure(unittest.TestCase):
@@ -183,35 +184,16 @@ class TestFunctionIntegration(unittest.TestCase):
         self.assertAlmostEqual(ent.gdf.value.sum(), gdp('CHE', 2016)[1])
         self.assertEqual(ent.gdf.shape[0], 7949)
 
-
-
     def test_calc_admin1(self):
         """test function _calc_admin1 for Switzerland."""
         resolution = 300
-        curr_country = 'CHE'
-        country_info = dict()
-        admin1_info = dict()
-        country_info[curr_country], admin1_info[curr_country] = \
-            lp._get_country_info(curr_country)
-        curr_shp = lp._get_country_shape(curr_country, 0)
-        for cntry_iso, cntry_val in country_info.items():
-            _, total_asset_val = lp.gdp(cntry_iso, 2016, curr_shp)
-            cntry_val.append(total_asset_val)
-        lp._get_gdp2asset_factor(country_info, 2016, curr_shp, fin_mode='gdp')
-        cut_bbox = lp._get_country_shape(curr_country, 1)[0]
-        all_coords = lp._litpop_box2coords(cut_bbox, resolution, 1)
-        mask = lp._mask_from_shape(curr_shp, resolution=resolution,
-                                   points2check=all_coords)
-        litpop_data = lp._get_litpop_box(cut_bbox, resolution, 0, 2016, [3, 0])
-        litpop_curr = litpop_data[mask.sp_index.indices]
-        lon, lat = zip(*np.array(all_coords)[mask.sp_index.indices])
-        litpop_curr = lp._calc_admin1(curr_country, country_info[curr_country],
-                                      admin1_info[curr_country], litpop_curr,
-                                      list(zip(lon, lat)), resolution, 0, conserve_cntrytotal=0,
-                                      check_plot=0, masks_adm1=[], return_data=1)
-        self.assertEqual(len(litpop_curr), 699)
-        self.assertAlmostEqual(max(litpop_curr)/80313679854.39496, 1.0)
+        country = 'CHE'
+        ent = lp._calc_admin1(country, resolution, (2,1), 'pc', None,
+                 2016, 11, SYSTEM_DIR, False)
+        self.assertEqual(ent.gdf.shape[0], 711)
+        self.assertAlmostEqual(ent.gdf.latitude.max(), 47.708333333333336)
 
+    # TODO  test gpw_population
 
 
 # Execute Tests
