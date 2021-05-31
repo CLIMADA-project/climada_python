@@ -26,7 +26,7 @@ from shapely.geometry import Polygon
 
 from climada.entity.exposures.litpop import litpop as lp
 from climada.entity.exposures import gpw_import
-from climada.util.finance import world_bank_wealth_account
+from climada.util.finance import world_bank_wealth_account, gdp
 import climada.util.coordinates as u_coord
 
 
@@ -136,6 +136,9 @@ class TestLitPopExposure(unittest.TestCase):
         ent = lp.LitPop()
         ent.set_custom_shape(shape, res_arcsec=30, total_value_abs=1000)
         self.assertEqual(ent.gdf.value.sum(), 1000.0)
+        self.assertEqual(ent.gdf.value.min(), 0.0)
+        # index of largest value:
+        self.assertEqual(ent.gdf.loc[ent.gdf.value == ent.gdf.value.max()].index[0], 482)
         self.assertAlmostEqual(ent.gdf.latitude.min(), 47.20416666666661)
 
     def test_Liechtenstein_15_lit_pass(self):
@@ -167,11 +170,23 @@ class TestLitPopExposure(unittest.TestCase):
 class TestFunctionIntegration(unittest.TestCase):
     """Test the integration of major functions within the LitPop module"""
 
-    
+    def test_set_countries_calc_admin1_pass(self):
+        """test method set_countries with admin1_calc=True for Switzerland"""
+        country_name = "Switzerland"
+        resolution = 90
+        fin_mode = 'gdp'
+
+        ent = lp.LitPop()
+        ent.set_countries(country_name, res_arcsec=resolution, fin_mode=fin_mode,
+                        reference_year=2016, admin1_calc=True)
+
+        self.assertAlmostEqual(ent.gdf.value.sum(), gdp('CHE', 2016)[1])
+        self.assertEqual(ent.gdf.shape[0], 7949)
+
+
 
     def test_calc_admin1(self):
-        """test function _calc_admin1 for Switzerland.
-        All required functions are tested in unit tests"""
+        """test function _calc_admin1 for Switzerland."""
         resolution = 300
         curr_country = 'CHE'
         country_info = dict()
@@ -197,51 +212,10 @@ class TestFunctionIntegration(unittest.TestCase):
         self.assertEqual(len(litpop_curr), 699)
         self.assertAlmostEqual(max(litpop_curr)/80313679854.39496, 1.0)
 
-    def test_gpw_import(self):
-        """test import of population data (Gridded Population of the World GPW)
-        via function gpw_import.get_box_gpw() for Swaziland"""
-        bbox = [30.78291, -27.3164, 32.11741, -25.73600]
-        gpw, lon, lat = gpw_import.get_box_gpw(cut_bbox=bbox, resolution=300,
-                                               return_coords=1, reference_year=2015)
-        self.assertEqual(len(gpw), 323)
-        self.assertIn(np.around(max(gpw)), [103070.0, 137840.0])
-        self.assertEqual(type(gpw),
-                         type(pd.arrays.SparseArray(data=1, fill_value=0)))
-        self.assertAlmostEqual(lat[0], -27.3164)
-        self.assertAlmostEqual(lat[1], 0.083333333)
-        self.assertAlmostEqual(lon[0], 30.78291)
-        self.assertAlmostEqual(lon[1], 0.083333333)
 
-class TestValidation(unittest.TestCase):
-    """Test LitPop exposure data model:"""
-
-    def test_validation_switzerland30(self):
-        """Validation for Switzerland: two combinations of Lit and Pop,
-            checking Pearson correlation coefficient and RMSF"""
-        rho = lp.admin1_validation('CHE', ['LitPop', 'Lit5'], [[1, 1], [5, 0]],
-                                   res_arcsec=30, check_plot=False)[0]
-        self.assertEqual(np.int(round(rho[0] * 1e12)), 945416798729)
-        self.assertEqual(np.int(round(rho[-1] * 1e12)), 3246081648798)
-
-class TestSetAdmin1(unittest.TestCase):
-    """Test adding name and ID of Admin1-region to exposure"""
-
-    def test_exposure_set_admin1_BGD(self):
-        """Test function exposure_set_admin1 of litpop for Bangladesh"""
-        country_name = ['BGD']
-        resolution = 600
-        ent = lp.LitPop()
-        ent.set_country(country_name, res_arcsec=resolution)
-        ent = lp.exposure_set_admin1(ent, 600)
-        self.assertIn(5492, ent.gdf.admin1_ID.values)
-        self.assertIn('Chittagong', ent.gdf.admin1.values)
-        self.assertEqual(len(np.unique(ent.gdf.admin1_ID)), 7)
-        self.assertEqual(np.min(np.unique(ent.gdf.admin1_ID)), 1806.0)
 
 # Execute Tests
 if __name__ == "__main__":
-    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestValidation)
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestLitPopExposure)
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestFunctionIntegration))
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestLitPopExposure))
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestSetAdmin1))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
