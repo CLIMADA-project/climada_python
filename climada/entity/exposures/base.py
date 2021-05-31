@@ -397,12 +397,13 @@ class Exposures():
         """Set geometry attribute of GeoDataFrame with Points from latitude and
         longitude attributes.
 
-        Parameters:
-            scheduler (str): used for dask map_partitions. “threads”,
-                “synchronous” or “processes”
+        Parameters
+        ----------
+        scheduler : str, optional
+            used for dask map_partitions. 
+            “threads”, “synchronous” or “processes”
         """
         u_coord.set_df_geometry_points(self.gdf, scheduler=scheduler, crs=self.crs)
-        self.gdf.set_crs(self.crs, inplace=True)
 
     def set_lat_lon(self):
         """Set latitude and longitude attributes from geometry attribute."""
@@ -823,14 +824,21 @@ class Exposures():
         return exp
 
 
-def add_sea(exposures, sea_res):
+def add_sea(exposures, sea_res, scheduler=None):
     """Add sea to geometry's surroundings with given resolution. region_id
     set to -1 and other variables to 0.
 
-    Parameters:
-        sea_res (tuple): (sea_coast_km, sea_res_km), where first parameter
-            is distance from coast to fill with water and second parameter
-            is resolution between sea points
+    Parameters
+    ----------
+    exposures : Exposures
+        the Exposures object without sea surroundings.
+    sea_res : tuple (float,float)
+        (sea_coast_km, sea_res_km), where first parameter
+        is distance from coast to fill with water and second parameter
+        is resolution between sea points
+    scheduler : str, optional
+            used for dask map_partitions. 
+            “threads”, “synchronous” or “processes”
 
     Returns:
         Exposures
@@ -858,7 +866,7 @@ def add_sea(exposures, sea_res):
     sea_exp_gdf['region_id'] = np.zeros(sea_exp_gdf.latitude.size, int) - 1
 
     if 'geometry' in exposures.gdf.columns:
-        u_coord.set_df_geometry_points(sea_exp_gdf, crs=exposures.crs)
+        u_coord.set_df_geometry_points(sea_exp_gdf, crs=exposures.crs, scheduler=scheduler)
 
     for var_name in exposures.gdf.columns:
         if var_name not in ('latitude', 'longitude', 'region_id', 'geometry'):

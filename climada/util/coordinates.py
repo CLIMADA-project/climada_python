@@ -1824,6 +1824,7 @@ def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, crs=DEF
     }
     return raster_out, meta
 
+
 def set_df_geometry_points(df_val, scheduler=None, crs=None):
     """Set given geometry to given dataframe using dask if scheduler.
 
@@ -1835,9 +1836,18 @@ def set_df_geometry_points(df_val, scheduler=None, crs=None):
         used for dask map_partitions. “threads”, “synchronous” or “processes”
     """
     LOGGER.info('Setting geometry points.')
-    def apply_point(df_exp):
-        return df_exp.apply(lambda row: Point(row.longitude, row.latitude), axis=1)
-    if not scheduler:
+    # work in parallel
+    if scheduler:
+        def apply_point(df_exp):
+            return df_exp.apply(lambda row: Point(row.longitude, row.latitude), axis=1)
+    
+        ddata = dd.from_pandas(df_val, npartitions=cpu_count())
+        df_val['geometry'] = ddata.map_partitions(apply_point, meta=Point) \
+                                  .compute(scheduler=scheduler)
+        if crs:
+            df_val.set_crs(crs, inplace=True)
+    # single process
+    else:
         if crs is None:
             try:
                 crs = df_val.geometry.crs
@@ -1845,10 +1855,7 @@ def set_df_geometry_points(df_val, scheduler=None, crs=None):
                 crs = None
         df_val['geometry'] = gpd.GeoSeries(
             gpd.points_from_xy(df_val.longitude, df_val.latitude), crs=crs)
-    else:
-        ddata = dd.from_pandas(df_val, npartitions=cpu_count())
-        df_val['geometry'] = ddata.map_partitions(apply_point, meta=Point) \
-                                  .compute(scheduler=scheduler)
+
 
 def fao_code_def():
     """Generates list of FAO country codes and corresponding ISO numeric-3 codes.
