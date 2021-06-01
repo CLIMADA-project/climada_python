@@ -52,23 +52,36 @@ class Impact():
     """Impact definition. Compute from an entity (exposures and impact
     functions) and hazard.
 
-    Attributes:
-        tag (dict): dictionary of tags of exposures, impact functions set and
-            hazard: {'exp': Tag(), 'impf_set': Tag(), 'haz': TagHazard()}
-        event_id (np.array): id (>0) of each hazard event
-        event_name (list): name of each hazard event
-        date (np.array): date if events as integer date corresponding to the
-            proleptic Gregorian ordinal, where January 1 of year 1 has
-            ordinal 1 (ordinal format of datetime library)
-        coord_exp (np.ndarray): exposures coordinates [lat, lon] (in degrees)
-        eai_exp (np.array): expected annual impact for each exposure
-        at_event (np.array): impact for each hazard event
-        frequency (np.arrray): annual frequency of event
-        tot_value (float): total exposure value affected
-        aai_agg (float): average annual impact (aggregated)
-        unit (str): value unit used (given by exposures unit)
-        imp_mat (sparse.csr_matrix): matrix num_events x num_exp with impacts.
-            only filled if save_mat is True in calc()
+    Attributes
+    ----------
+    tag : dict
+        dictionary of tags of exposures, impact functions set and
+        hazard: {'exp': Tag(), 'impf_set': Tag(), 'haz': TagHazard()}
+    event_id :
+        np.array id (>0) of each hazard event
+    event_name :
+        list name of each hazard event
+    date : np.array
+        date if events as integer date corresponding to the
+        proleptic Gregorian ordinal, where January 1 of year 1 has
+        ordinal 1 (ordinal format of datetime library)
+    coord_exp : np.array
+        exposures coordinates [lat, lon] (in degrees)
+    eai_exp : np.array
+        expected annual impact for each exposure
+    at_event : np.array
+        impact for each hazard event
+    frequency : np.array
+        annual frequency of event
+    tot_value : float
+        total exposure value affected
+    aai_agg : float
+        average annual impact (aggregated)
+    unit : str
+        value unit used (given by exposures unit)
+    imp_mat : sparse.csr_matrix
+        matrix num_events x num_exp with impacts.
+        only filled if save_mat is True in calc()
     """
 
     def __init__(self):
@@ -90,11 +103,14 @@ class Impact():
     def calc_freq_curve(self, return_per=None):
         """Compute impact exceedance frequency curve.
 
-        Parameters:
-            return_per (np.array, optional): return periods where to compute
-                the exceedance impact. Use impact's frequencies if not provided
+        Parameters
+        ----------
+        return_per : np.array, optional
+            return periods where to compute
+            the exceedance impact. Use impact's frequencies if not provided
 
-        Returns:
+        Returns
+        -------
             ImpactFreqCurve
         """
         ifc = ImpactFreqCurve()
@@ -119,13 +135,17 @@ class Impact():
     def calc(self, exposures, impact_funcs, hazard, save_mat=False):
         """Compute impact of an hazard to exposures.
 
-        Parameters:
-            exposures (Exposures): exposures
-            impact_funcs (ImpactFuncSet): impact functions
-            hazard (Hazard): hazard
-            self_mat (bool): self impact matrix: events x exposures
+        Parameters
+        ----------
+        exposures : climada.entity.Exposures
+        impact_funcs : climada.entity.ImpactFuncSet
+            impact functions
+        hazard : climada.Hazard
+        save_mat : bool
+            self impact matrix: events x exposures
 
-        Examples:
+        Examples
+        --------
             Use Entity class:
 
             >>> haz = Hazard('TC') # Set hazard
@@ -227,12 +247,15 @@ class Impact():
         """Compute traaditional risk transfer over impact. Returns new impact
         with risk transfer applied and the insurance layer resulting Impact metrics.
 
-        Parameters:
-            attachment (float): attachment (deductible)
-            cover (float): cover
+        Parameters
+        ----------
+        attachment : float
+            (deductible)
+        cover : float
 
-        Returns:
-            Impact, Impact
+        Returns
+        -------
+        climada.engine.Impact
         """
         new_imp = copy.deepcopy(self)
         if attachment or cover:
@@ -256,19 +279,28 @@ class Impact():
                                  axis=None, **kwargs):
         """Plot hexbin expected annual impact of each exposure.
 
-        Parameters:
-            mask (np.array, optional): mask to apply to eai_exp plotted.
-            ignore_zero (bool, optional): flag to indicate if zero and negative
+        Parameters
+        ----------
+            mask : np.array, optional
+                mask to apply to eai_exp plotted.
+            ignore_zero : bool, optional
+                flag to indicate if zero and negative
                 values are ignored in plot. Default: False
-            pop_name (bool, optional): add names of the populated places
-            buffer (float, optional): border to add to coordinates.
+            pop_name : bool, optional
+                add names of the populated places
+            buffer : float, optional
+                border to add to coordinates.
                 Default: 1.0.
-            extend (str, optional): extend border colorbar with arrows.
+            extend : str, optional
+                extend border colorbar with arrows.
                 [ 'neither' | 'both' | 'min' | 'max' ]
-            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
-            kwargs (optional): arguments for hexbin matplotlib function
+            axis : matplotlib.axes._subplots.AxesSubplot, optional
+                axis to use
+            kwargs : optional
+                arguments for hexbin matplotlib function
 
-        Returns:
+        Returns
+        -------
             cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         eai_exp = self._build_exp()
@@ -282,19 +314,28 @@ class Impact():
                                   axis=None, **kwargs):
         """Plot scatter expected annual impact of each exposure.
 
-        Parameters:
-            mask (np.array, optional): mask to apply to eai_exp plotted.
-            ignore_zero (bool, optional): flag to indicate if zero and negative
-                values are ignored in plot. Default: False
-            pop_name (bool, optional): add names of the populated places
-            buffer (float, optional): border to add to coordinates.
-                Default: 1.0.
-            extend (str, optional): extend border colorbar with arrows.
-                [ 'neither' | 'both' | 'min' | 'max' ]
-            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
-            kwargs (optional): arguments for hexbin matplotlib function
+        Parameters
+        ----------
+        mask  : np.array, optional
+            mask to apply to eai_exp plotted.
+        ignore_zero : bool, optional
+            flag to indicate if zero and negative
+            values are ignored in plot. Default: False
+        pop_name : bool, optional
+            add names of the populated places
+        buffer : float, optional
+            border to add to coordinates.
+            Default: 1.0.
+        extend : str
+            optional extend border colorbar with arrows.
+            [ 'neither' | 'both' | 'min' | 'max' ]
+        axis  : matplotlib.axes._subplots.AxesSubplot, optional
+            axis to use
+        kwargs : optional
+            arguments for hexbin matplotlib function
 
-        Returns:
+        Returns
+        -------
             cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         eai_exp = self._build_exp()
@@ -308,20 +349,26 @@ class Impact():
                                  label='value (log10)', axis=None, **kwargs):
         """Plot raster expected annual impact of each exposure.
 
-        Parameters:
-            res (float, optional): resolution of current data in units of latitude
-                and longitude, approximated if not provided.
-            raster_res (float, optional): desired resolution of the raster
-            save_tiff (str, optional): file name to save the raster in tiff
-                format, if provided
-            raster_f (lambda function): transformation to use to data. Default:
-                log10 adding 1.
-            label (str): colorbar label
-            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
-            kwargs (optional): arguments for imshow matplotlib function
+        Parameters
+        ----------
+        res : float, optional
+            resolution of current data in units of latitude
+            and longitude, approximated if not provided.
+        raster_res : float, optional
+            desired resolution of the raster
+        save_tiff :  str, optional
+            file name to save the raster in tiff
+            format, if provided
+        raster_f : lambda function
+            transformation to use to data. Default: log10 adding 1.
+        label : str colorbar label
+        axis : matplotlib.axes._subplots.AxesSubplot, optional
+            axis to use
+        kwargs : optional
+            arguments for imshow matplotlib function
 
         Returns:
-            cartopy.mpl.geoaxes.GeoAxesSubplot
+        cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         eai_exp = self._build_exp()
         axis = eai_exp.plot_raster(res, raster_res, save_tiff, raster_f,
@@ -335,22 +382,33 @@ class Impact():
                                   axis=None, **kwargs):
         """Plot basemap expected annual impact of each exposure.
 
-        Parameters:
-            mask (np.array, optional): mask to apply to eai_exp plotted.
-            ignore_zero (bool, optional): flag to indicate if zero and negative
-                values are ignored in plot. Default: False
-            pop_name (bool, optional): add names of the populated places
-            buffer (float, optional): border to add to coordinates. Default: 0.0.
-            extend (str, optional): extend border colorbar with arrows.
-                [ 'neither' | 'both' | 'min' | 'max' ]
-            zoom (int, optional): zoom coefficient used in the satellite image
-            url (str, optional): image source, e.g. ctx.sources.OSM_C
-            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
-            kwargs (optional): arguments for scatter matplotlib function, e.g.
-                cmap='Greys'. Default: 'Wistia'
+        Parameters
+        ----------
+        mask  : np.array, optional
+            mask to apply to eai_exp plotted.
+        ignore_zero : bool, optional
+            flag to indicate if zero and negative
+            values are ignored in plot. Default: False
+        pop_name : bool, optional
+            add names of the populated places
+         buffer : float, optional
+            border to add to coordinates. Default: 0.0.
+        extend : str, optional
+            extend border colorbar with arrows.
+            [ 'neither' | 'both' | 'min' | 'max' ]
+        zoom : int, optional
+            zoom coefficient used in the satellite image
+        url : str, optional
+            image source, e.g. ctx.sources.OSM_C
+        axis : matplotlib.axes._subplots.AxesSubplot, optional
+            axis to use
+        kwargs : optional
+            arguments for scatter matplotlib function, e.g.
+            cmap='Greys'. Default: 'Wistia'
 
-        Returns:
-            cartopy.mpl.geoaxes.GeoAxesSubplot
+        Returns
+        -------
+        cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         eai_exp = self._build_exp()
         axis = eai_exp.plot_basemap(mask, ignore_zero, pop_name, buffer,
@@ -364,21 +422,31 @@ class Impact():
         """Plot hexbin impact of an event at each exposure.
         Requires attribute imp_mat.
 
-        Parameters:
-            event_id (int, optional): id of the event for which to plot the impact.
-                Default: 1.
-            mask (np.array, optional): mask to apply to impact plotted.
-            ignore_zero (bool, optional): flag to indicate if zero and negative
-                values are ignored in plot. Default: False
-            pop_name (bool, optional): add names of the populated places
-            buffer (float, optional): border to add to coordinates.
-                Default: 1.0.
-            extend (str, optional): extend border colorbar with arrows.
-                [ 'neither' | 'both' | 'min' | 'max' ]
-            kwargs (optional): arguments for hexbin matplotlib function
-            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
+        Parameters
+        ----------
+        event_id : int, optional
+            id of the event for which to plot the impact.
+            Default: 1.
+        mask  : np.array, optional
+            mask to apply to impact plotted.
+        ignore_zero : bool, optional
+            flag to indicate if zero and negative
+            values are ignored in plot. Default: False
+        pop_name : bool, optional
+            add names of the populated places
+         buffer : float, optional
+            border to add to coordinates.
+            Default: 1.0.
+        extend : str, optional
+            extend border colorbar with arrows.
+            [ 'neither' | 'both' | 'min' | 'max' ]
+        kwargs : optional
+            arguments for hexbin matplotlib function
+        axis  : matplotlib.axes._subplots.AxesSubplot
+            optional axis to use
 
-        Returns:
+        Returns
+        --------
             matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
             """
         if not hasattr(self.imp_mat, "shape") or self.imp_mat.shape[1] == 0:
@@ -398,24 +466,34 @@ class Impact():
         """Plot basemap impact of an event at each exposure.
         Requires attribute imp_mat.
 
-        Parameters:
-            event_id (int, optional): id of the event for which to plot the impact.
-                Default: 1.
-            mask (np.array, optional): mask to apply to impact plotted.
-            ignore_zero (bool, optional): flag to indicate if zero and negative
-                values are ignored in plot. Default: False
-            pop_name (bool, optional): add names of the populated places
-            buffer (float, optional): border to add to coordinates. Default: 0.0.
-            extend (str, optional): extend border colorbar with arrows.
-                [ 'neither' | 'both' | 'min' | 'max' ]
-            zoom (int, optional): zoom coefficient used in the satellite image
-            url (str, optional): image source, e.g. ctx.sources.OSM_C
-            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
-            kwargs (optional): arguments for scatter matplotlib function, e.g.
-                cmap='Greys'. Default: 'Wistia'
+        Parameters
+        ----------
+        event_id : int, optional
+            id of the event for which to plot the impact.
+            Default: 1.
+        mask  : np.array, optional
+            mask to apply to impact plotted.
+        ignore_zero : bool, optional
+            flag to indicate if zero and negative
+            values are ignored in plot. Default: False
+        pop_name : bool, optional
+            add names of the populated places
+        buffer : float, optional
+            border to add to coordinates. Default: 0.0.
+        extend : str, optional
+            extend border colorbar with arrows.
+            [ 'neither' | 'both' | 'min' | 'max' ]
+        zoom : int, optional
+            zoom coefficient used in the satellite image
+        url : str, optional
+            image source, e.g. ctx.sources.OSM_C
+        axis  : matplotlib.axes._subplots.AxesSubplot, optional axis to use
+        kwargs : optional arguments for scatter matplotlib function, e.g.
+            cmap='Greys'. Default: 'Wistia'
 
-        Returns:
-            cartopy.mpl.geoaxes.GeoAxesSubplot
+        Returns
+        -------
+        cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         if not hasattr(self.imp_mat, "shape") or self.imp_mat.shape[1] == 0:
             raise ValueError('attribute imp_mat is empty. Recalculate Impact'
@@ -433,8 +511,10 @@ class Impact():
     def write_csv(self, file_name):
         """Write data into csv file. imp_mat is not saved.
 
-        Parameters:
-            file_name (str): absolute path of the file
+        Parameters
+        ----------
+        file_name : str
+            absolute path of the file
         """
         LOGGER.info('Writing %s', file_name)
         with open(file_name, "w") as imp_file:
@@ -458,8 +538,10 @@ class Impact():
     def write_excel(self, file_name):
         """Write data into Excel file. imp_mat is not saved.
 
-        Parameters:
-            file_name (str): absolute path of the file
+        Parameters
+        ----------
+        file_name : str
+            absolute path of the file
         """
         LOGGER.info('Writing %s', file_name)
         def write_col(i_col, imp_ws, xls_data):
@@ -509,13 +591,17 @@ class Impact():
     def calc_impact_year_set(self, all_years=True, year_range=None):
         """Calculate yearly impact from impact data.
 
-        Parameters:
-            all_years (boolean): return values for all years between first and
+        Parameters
+        ----------
+        all_years : boolean
+            return values for all years between first and
             last year with event, including years without any events.
-            year_range (tuple or list with integers): start and end year
+        year_range : tuple or list with integers
+            start and end year
 
-        Returns:
-             Impact year set of type numpy.ndarray with summed impact per year.
+        Returns
+        -------
+        Impact year set of type numpy.ndarray with summed impact per year.
         """
         if year_range is None:
             year_range = []
@@ -544,11 +630,13 @@ class Impact():
         """Compute exceedance impact map for given return periods.
         Requires attribute imp_mat.
 
-        Parameters:
-            return_periods (np.array): return periods to consider
+        Parameters
+        ----------
+        return_periods : np.array return periods to consider
 
-        Returns:
-            np.array
+        Returns
+        -------
+        np.array
         """
         LOGGER.info('Computing exceedance impact map for return periods: %s',
                     return_periods)
@@ -580,16 +668,22 @@ class Impact():
         """Compute and plot exceedance impact maps for different return periods.
         Calls local_exceedance_imp.
 
-        Parameters:
-            return_periods (tuple(int), optional): return periods to consider
-            log10_scale (boolean, optional): plot impact as log10(impact)
-            smooth (bool, optional): smooth plot to plot.RESOLUTIONxplot.RESOLUTION
-            kwargs (optional): arguments for pcolormesh matplotlib function
-                used in event plots
+        Parameters
+        ----------
+        return_periods : tuple(int), optional
+            return periods to consider
+        log10_scale : boolean, optional
+            plot impact as log10(impact)
+        smooth : bool, optional
+            smooth plot to plot.RESOLUTIONxplot.RESOLUTION
+        kwargs : optional
+            arguments for pcolormesh matplotlib function
+            used in event plots
 
-        Returns:
-            matplotlib.axes._subplots.AxesSubplot,
-            np.ndarray (return_periods.size x num_centroids)
+        Returns
+        --------
+        matplotlib.axes._subplots.AxesSubplot,
+        np.ndarray (return_periods.size x num_centroids)
         """
         imp_stats = self.local_exceedance_imp(np.array(return_periods))
         if imp_stats == []:
@@ -620,11 +714,13 @@ class Impact():
     def read_sparse_csr(file_name):
         """Read imp_mat matrix from numpy's npz format.
 
-        Parameters:
-            file_name (str): file name
+        Parameters
+        ----------
+        file_name : str file name
 
-        Returns:
-            sparse.csr_matrix
+        Returns
+        -------
+        sparse.csr_matrix
         """
         LOGGER.info('Reading %s', file_name)
         loader = np.load(file_name)
@@ -634,8 +730,9 @@ class Impact():
     def read_csv(self, file_name):
         """Read csv file containing impact data generated by write_csv.
 
-        Parameters:
-            file_name (str): absolute path of the file
+        Parameters
+        ----------
+        file_name : str absolute path of the file
         """
         LOGGER.info('Reading %s', file_name)
         imp_df = pd.read_csv(file_name)
@@ -669,8 +766,9 @@ class Impact():
     def read_excel(self, file_name):
         """Read excel file containing impact data generated by write_excel.
 
-        Parameters:
-            file_name (str): absolute path of the file
+        Parameters
+        ----------
+        file_name : str absolute path of the file
         """
         LOGGER.info('Reading %s', file_name)
         dfr = pd.read_excel(file_name)
@@ -713,22 +811,31 @@ class Impact():
         Computes and generates video of accumulated impact per input events
         over exposure.
 
-        Parameters:
-            exp (Exposures): exposures instance, constant during all video
-            impf_set (ImpactFuncSet): impact functions
-            haz_list (list(Hazard)): every Hazard contains an event; all hazards
-                use the same centroids
-            file_name (str, optional): file name to save video, if provided
-            writer = (matplotlib.animation.*, optional): video writer. Default:
-                pillow with bitrate=500
-            imp_thresh (float): represent damages greater than threshold
-            args_exp (optional): arguments for scatter (points) or hexbin (raster)
-                matplotlib function used in exposures
-            args_imp (optional): arguments for scatter (points) or hexbin (raster)
-                matplotlib function used in impact
+        Parameters
+        ----------
+        exp : Exposures
+            exposures instance, constant during all video
+        impf_set : ImpactFuncSet
+            impact functions
+        haz_list : (list(Hazard))
+            every Hazard contains an event; all hazards
+            use the same centroids
+        file_name : str, optional
+            file name to save video, if provided
+        writer : matplotlib.animation.*, optional
+            video writer. Default: pillow with bitrate=500
+        imp_thresh : float
+            represent damages greater than threshold
+        args_exp : optional
+            arguments for scatter (points) or hexbin (raster)
+            matplotlib function used in exposures
+        args_imp : optional
+            arguments for scatter (points) or hexbin (raster)
+            matplotlib function used in impact
 
-        Returns:
-            list(Impact)
+        Returns
+        -------
+        list(Impact)
         """
         if args_exp is None:
             args_exp = dict()
@@ -815,12 +922,14 @@ class Impact():
     def _loc_return_imp(self, return_periods, imp, exc_imp):
         """Compute local exceedence impact for given return period.
 
-        Parameters:
-            return_periods (np.array): return periods to consider
-            cen_pos (int): centroid position
+        Parameters
+        ----------
+        return_periods : np.array return periods to consider
+        cen_pos (int): centroid position
 
-        Returns:
-            np.array
+        Returns
+        -------
+        np.array
         """
         # sorted impacts
         sort_pos = np.argsort(imp, axis=0)[::-1, :]
@@ -840,12 +949,15 @@ class Impact():
     def _exp_impact(self, exp_iimp, exposures, hazard, imp_fun, insure_flag):
         """Compute impact for inpute exposure indexes and impact function.
 
-        Parameters:
-            exp_iimp (np.array): exposures indexes
-            exposures (Exposures): exposures instance
-            hazard (Hazard): hazard instance
-            imp_fun (ImpactFunc): impact function instance
-            insure_flag (bool): consider deductible and cover of exposures
+        Parameters
+        ----------
+        exp_iimp : np.array exposures indexes
+        exposures: climada.entity.Exposures instance
+        hazard : climada.Hazard
+        imp_fun : climada.entity.ImpactFunc
+            impact function instance
+        insure_flag : bool
+            consider deductible and cover of exposures
         """
         if not exp_iimp.size:
             return
@@ -898,8 +1010,10 @@ class Impact():
     def _build_exp_event(self, event_id):
         """Write impact of an event as Exposures
 
-        Parameters:
-            event_id(int): id of the event
+        Parameters
+        ----------
+        event_id : int
+            id of the event
         """
         [[ix]] = (self.event_id == event_id).nonzero()
         return Exposures(
@@ -920,14 +1034,20 @@ class Impact():
         """From ordered impact and cummulative frequency at centroid, get
         exceedance impact at input return periods.
 
-        Parameters:
-            imp (np.array): sorted impact at centroid
-            freq (np.array): cummulative frequency at centroid
-            imp_th (float): impact threshold
-            return_periods (np.array): return periods
+        Parameters
+        ----------
+        imp : np.array
+            sorted impact at centroid
+        freq : np.array
+            cummulative frequency at centroid
+        imp_th : float
+            impact threshold
+        return_periods : np.array
+            return periods
 
-        Returns:
-            np.array
+        Returns
+        -------
+        np.array
         """
         imp_th = np.asarray(imp > imp_th).squeeze()
         imp_cen = imp[imp_th]
@@ -955,7 +1075,8 @@ class Impact():
         If multiple input variables are not None, it returns all the impacts
         matching at least one of the conditions.
 
-        Note:
+        Note
+        ----
             the frequencies are NOT adjusted. Method to adjust frequencies
         and obtain correct eai_exp:
             1- Select subset of impact according to your choice
@@ -977,7 +1098,7 @@ class Impact():
             than start-date and <= than end-date. Dates in same format
             as impact.date (ordinal format of datetime library)
             The default is None.
-        coord_exp : (np.ndarray), optional]
+        coord_exp : np.ndarray), optional
             Selection of exposures coordinates [lat, lon] (in degrees)
             The default is None.
 
@@ -1115,13 +1236,19 @@ class Impact():
 class ImpactFreqCurve():
     """Impact exceedence frequency curve.
 
-    Attributes:
-        tag (dict): dictionary of tags of exposures, impact functions set and
-            hazard: {'exp': Tag(), 'impf_set': Tag(), 'haz': TagHazard()}
-        return_per (np.array): return period
-        impact (np.array): impact exceeding frequency
-        unit (str): value unit used (given by exposures unit)
-        label (str): string describing source data
+    Attributes
+    ----------
+    tag : dict
+        dictionary of tags of exposures, impact functions set and
+        hazard: {'exp': Tag(), 'impf_set': Tag(), 'haz': TagHazard()}
+    return_per : np.array
+        return period
+    impact : np.array
+        impact exceeding frequency
+    unit : str
+        value unit used (given by exposures unit)
+    label : str
+        string describing source data
     """
     def __init__(self):
         self.tag = dict()
@@ -1133,13 +1260,18 @@ class ImpactFreqCurve():
     def plot(self, axis=None, log_frequency=False, **kwargs):
         """Plot impact frequency curve.
 
-        Parameters:
-            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
-            log_frequency (boolean): plot logarithmioc exceedance frequency on x-axis
-            kwargs (optional): arguments for plot matplotlib function, e.g. color='b'
+        Parameters
+        ----------
+        axis  : matplotlib.axes._subplots.AxesSubplot, optional
+            axis to use
+        log_frequency : boolean, optional
+            plot logarithmioc exceedance frequency on x-axis
+        kwargs : optional
+            arguments for plot matplotlib function, e.g. color='b'
 
-        Returns:
-            matplotlib.axes._subplots.AxesSubplot
+        Returns
+        -------
+        matplotlib.axes._subplots.AxesSubplot
         """
         if not axis:
             _, axis = plt.subplots(1, 1)

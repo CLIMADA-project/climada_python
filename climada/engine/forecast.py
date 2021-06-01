@@ -106,21 +106,21 @@ class Forecast():
 
     Attributes
     ----------
-    run_datetime: list of datetime.datetime
+    run_datetime : list of datetime.datetime
         initialization time of the forecast model run used to create the Hazard
     event_date: datetime.datetime
         Date on which the Hazard event takes place
-    hazard: list of CLIMADA Hazard
+    hazard : list of CLIMADA Hazard
         List of the hazard forecast with different lead times.
-    haz_model: str
+    haz_model : str
         Short string specifying the model used to create the hazard,
         if possible three big letters.
-    exposure: Exposure
+    exposure : Exposure
         an CLIMADA Exposures containg values at risk
-    exposure_name: str
+    exposure_name : str
         string specifying the exposure (e.g. 'EU'), which is used to
         name output files.
-    vulnerability: ImpactFuncSet
+    vulnerability : ImpactFuncSet
         Set of impact functions used in the impact calculation.
     """
 
@@ -134,7 +134,7 @@ class Forecast():
 
         Parameters
         ----------
-        hazard_dict: dict
+        hazard_dict : dict
             Dictionary of the format {run_datetime: Hazard} with run_datetime
             being the initialization time of a weather forecast run and Hazard
             being a CLIMADA Hazard derived from that forecast for one event.
@@ -142,13 +142,13 @@ class Forecast():
             as long as the attribute Hazard.date is the same for all
             events. Several run_datetime:Hazard combinations for the same
             event can be provided.
-        exposure: Exposure
-        impact_funcs: ImpactFuncSet
-        haz_model: str, optional
+        exposure : Exposure
+        impact_funcs : ImpactFuncSet
+        haz_model : str, optional
             Short string specifying the model used to create the hazard,
             if possible three big letters. Default is 'NWP' for numerical
             weather prediction.
-        exposure_name: str, optional
+        exposure_name : str, optional
             string specifying the exposure (e.g. 'EU'), which is used to
             name output files.
         """
@@ -185,7 +185,7 @@ class Forecast():
 
         Parameters
         ----------
-        run_datetime: datetime.datetime, optional
+        run_datetime : datetime.datetime, optional
             Select the used hazard by the run_datetime,
             default is first element of attribute run_datetime.
         Returns
@@ -202,7 +202,7 @@ class Forecast():
 
         Parameters
         ----------
-        run_datetime: datetime.datetime, optional
+        run_datetime : datetime.datetime, optional
             Select the used hazard by the run_datetime,
             default is first element of attribute run_datetime.
         Returns
@@ -219,7 +219,7 @@ class Forecast():
 
         Parameters
         ----------
-        run_datetime: datetime.datetime, optional
+        run_datetime : datetime.datetime, optional
             Select the used hazard by the run_datetime,
             default is first element of attribute run_datetime.
         Returns
@@ -265,7 +265,7 @@ class Forecast():
 
         Parameters
         ----------
-        run_datetime: datetime.datetime, optional
+        run_datetime : datetime.datetime, optional
             Select the used hazard by the run_datetime,
             default is first element of attribute run_datetime.
          Returns
@@ -284,7 +284,7 @@ class Forecast():
 
         Parameters
         ----------
-        force_reassign: bool, optional
+        force_reassign : bool, optional
             Reassign hazard centroids to the exposure for all hazards,
             default is false.
         """
@@ -310,27 +310,27 @@ class Forecast():
 
         Parameters
         ----------
-        run_datetime: datetime.datetime, optional
+        run_datetime : datetime.datetime, optional
             Select the used hazard by the run_datetime,
             default is first element of attribute run_datetime.
-        save_fig: bool, optional
+        save_fig : bool, optional
             Figure is saved if True, folder is within your configurable
             save_dir and filename is derived from the method summary_str()
             (for more details see class docstring).  Default is True.
-        close_fig: bool, optional
+        close_fig : bool, optional
             Figure not drawn if True. Default is False.
-        polygon_file: str, optional
+        polygon_file : str, optional
             Points to a .shp-file with polygons do be drawn as outlines on
             the plot, default is None to not draw the lines. please also
             specify the crs in the parameter polygon_file_crs.
-        polygon_file_crs: str, optional
+        polygon_file_crs : str, optional
             String of pattern <provider>:<code> specifying
             the crs. has to be readable by pyproj.Proj. Default is
             'epsg:4326'.
-        proj: ccrs
+        proj : ccrs
             coordinate reference system used in coordinates
             The default is ccrs.PlateCarree()
-        figsize: tuple
+        figsize : tuple
             figure size for plt.subplots, width, height in inches
             The default is (9, 13)
         Returns
@@ -482,21 +482,21 @@ class Forecast():
 
         Parameters
         ----------
-        run_datetime: datetime.datetime, optional
+        run_datetime : datetime.datetime, optional
             Select the used hazard by the run_datetime,
             default is first element of attribute run_datetime.
-        save_fig: bool, optional
+        save_fig : bool, optional
             Figure is saved if True, folder is within your configurable
             save_dir and filename is derived from the method summary_str()
             (for more details see class docstring).  Default is True.
-        close_fig: bool, optional
+        close_fig : bool, optional
             Figure is not drawn if True. Default is False.
-        figsize: tuple
+        figsize : tuple
             figure size for plt.subplots, width, height in inches
             The default is (9, 8)
         Returns
         -------
-        axes: matplotlib.axes.Axes
+        axes : matplotlib.axes.Axes
         """
         # select hazard with run_datetime
         if run_datetime is None:
@@ -592,7 +592,7 @@ class Forecast():
 
         Parameters
         ----------
-        number: int
+        number : int
 
         Returns
         -------
@@ -615,33 +615,33 @@ class Forecast():
 
         Parameters
         ----------
-        threshold: float
+        threshold : float
             Threshold of impact unit for which exceedence probability
             should be plotted.
-        explain_str: str, optional
+        explain_str : str, optional
             Short str which explains threshold, explain_str is included
             in the title of the figure.
-        run_datetime: datetime.datetime, optional
+        run_datetime : datetime.datetime, optional
             Select the used hazard by the run_datetime,
             default is first element of attribute run_datetime.
-        save_fig: bool, optional
+        save_fig : bool, optional
             Figure is saved if True, folder is within your configurable
             save_dir and filename is derived from the method summary_str()
             (for more details see class docstring).  Default is True.
-        close_fig: bool, optional
+        close_fig : bool, optional
             Figure not drawn if True. Default is False.
-        polygon_file: str, optional
+        polygon_file : str, optional
             Points to a .shp-file with polygons do be drawn as outlines on
             the plot, default is None to not draw the lines. please also
             specify the crs in the parameter polygon_file_crs.
-        polygon_file_crs: str, optional
+        polygon_file_crs : str, optional
             String of pattern <provider>:<code> specifying
             the crs. has to be readable by pyproj.Proj. Default is
             'epsg:4326'.
-        proj: ccrs
+        proj : ccrs
             coordinate reference system used in coordinates
             The default is ccrs.PlateCarree()
-        figsize: tuple
+        figsize : tuple
             figure size for plt.subplots, width, height in inches
             The default is (9, 13)
         Returns
@@ -791,45 +791,45 @@ class Forecast():
 
         Parameters
         ----------
-        polygon_file: str, optional
+        polygon_file : str, optional
             path to shp-file containing warning region polygons
-        polygon_file_crs: str, optional
+        polygon_file_crs : str, optional
             String of pattern <provider>:<code> specifying
             the crs. has to be readable by pyproj.Proj. Default is
             'epsg:4326'.
-        thresholds: list of 4 floats, optional
+        thresholds : list of 4 floats, optional
             Thresholds for coloring region in second, third, forth
             and fifth warning color.
-        decision_level: str, optional
+        decision_level : str, optional
             Either 'exposure_point'  or 'polygon'. Default value is
             'exposure_point'.
-        probability_aggregation: float or str, optional
+        probability_aggregation : float or str, optional
             Either a float between [0..1] spezifying a quantile
             or 'mean' or 'sum'. Default value is 0.5.
-        area_aggregation: float or str.
+        area_aggregation : float or str.
             Either a float between [0..1] specifying a quantile
             or 'mean' or 'sum'. Default value is 0.5.
-        run_datetime: datetime.datetime, optional
+        run_datetime : datetime.datetime, optional
             Select the used hazard by the run_datetime,
             default is first element of attribute run_datetime.
-        title: str, optional
+        title : str, optional
             Default is 'WARNINGS'.
-        explain_text: str, optional
+        explain_text : str, optional
             Defaut is 'warn level based on thresholds'.
-        proj: ccrs
+        proj : ccrs
             coordinate reference system used in coordinates
-        figsize: tuple
+        figsize : tuple
             figure size for plt.subplots, width, height in inches
             The default is (9, 13)
-        save_fig: bool, optional
+        save_fig : bool, optional
             Figure is saved if True, folder is within your configurable
             save_dir and filename is derived from the method summary_str()
             (for more details see class docstring).  Default is True.
-        close_fig: bool, optional
+        close_fig : bool, optional
             Figure is not drawn if True. The default is False.
         Returns
         -------
-        axes: cartopy.mpl.geoaxes.GeoAxesSubplot
+        axes : cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         # select hazard with run_datetime
         if thresholds == 'default':
@@ -1019,15 +1019,15 @@ class Forecast():
 
         Parameters
         ----------
-        run_datetime: datetime.datetime, optional
+        run_datetime : datetime.datetime, optional
             Select the used hazard by the run_datetime,
             default is first element of attribute run_datetime.
-        figsize: tuple
+        figsize : tuple
             figure size for plt.subplots, width, height in inches
             The default is (9, 13)
         Returns
         -------
-        axes: cartopy.mpl.geoaxes.GeoAxesSubplot
+        axes : cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         # select hazard with run_datetime
         if run_datetime is None:

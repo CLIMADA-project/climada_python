@@ -92,21 +92,32 @@ class Hazard():
     """Contains events of some hazard type defined at centroids. Loads from
     files with format defined in FILE_EXT.
 
-    Attributes:
-        tag (TagHazard): information about the source
-        units (str): units of the intensity
-        centroids (Centroids): centroids of the events
-        event_id (np.array): id (>0) of each event
-        event_name (list(str)): name of each event (default: event_id)
-        date (np.array): integer date corresponding to the proleptic
-            Gregorian ordinal, where January 1 of year 1 has ordinal 1
-            (ordinal format of datetime library)
-        orig (np.array): flags indicating historical events (True)
-            or probabilistic (False)
-        frequency (np.array): frequency of each event in years
-        intensity (sparse.csr_matrix): intensity of the events at centroids
-        fraction (sparse.csr_matrix): fraction of affected exposures for each
-            event at each centroid
+    Attributes
+    ----------
+    tag : TagHazard
+        information about the source
+    units : str
+        units of the intensity
+    centroids : Centroids
+        centroids of the events
+    event_id : np.array
+        id (>0) of each event
+    event_name : list(str)
+        name of each event (default: event_id)
+    date : np.array
+        integer date corresponding to the proleptic
+        Gregorian ordinal, where January 1 of year 1 has ordinal 1
+        (ordinal format of datetime library)
+    orig : np.array
+        flags indicating historical events (True)
+        or probabilistic (False)
+    frequency : np.array
+        frequency of each event in years
+    intensity : sparse.csr_matrix
+        intensity of the events at centroids
+    fraction : sparse.csr_matrix
+        fraction of affected exposures for each
+        event at each centroid
     """
     intensity_thres = 10
     """Intensity threshold per hazard used to filter lower intensities. To be
@@ -140,20 +151,23 @@ class Hazard():
     def __init__(self, haz_type='', pool=None):
         """Initialize values.
 
-        Parameters:
-            haz_type (str, optional): acronym of the hazard type (e.g. 'TC').
+        Parameters
+        ----------
+        haz_type : str, optional
+            acronym of the hazard type (e.g. 'TC').
 
-        Examples:
-            Fill hazard values by hand:
+        Examples
+        --------
+        Fill hazard values by hand:
 
-            >>> haz = Hazard('TC')
-            >>> haz.intensity = sparse.csr_matrix(np.zeros((2, 2)))
-            >>> ...
+        >>> haz = Hazard('TC')
+        >>> haz.intensity = sparse.csr_matrix(np.zeros((2, 2)))
+        >>> ...
 
-            Take hazard values from file:
+        Take hazard values from file:
 
-            >>> haz = Hazard('TC', HAZ_DEMO_MAT)
-            >>> haz.read_mat(HAZ_DEMO_MAT, 'demo')
+        >>> haz = Hazard('TC', HAZ_DEMO_MAT)
+        >>> haz.read_mat(HAZ_DEMO_MAT, 'demo')
 
         """
         self.tag = TagHazard()
@@ -188,8 +202,9 @@ class Hazard():
     def check(self):
         """Check dimension of attributes.
 
-        Raises:
-            ValueError
+        Raises
+        ------
+        ValueError
         """
         self.centroids.check()
         self._check_events()
@@ -203,21 +218,33 @@ class Hazard():
         Alternatively, CRS and/or transformation can be set using dst_crs and/or
         (transform, width and height).
 
-        Parameters:
-            files_intensity (list(str)): file names containing intensity
-            files_fraction (list(str)): file names containing fraction
-            attrs (dict, optional): name of Hazard attributes and their values
-            band (list(int), optional): bands to read (starting at 1), default [1]
-            src_crs (crs, optional): source CRS. Provide it if error without it.
-            window (rasterio.windows.Windows, optional): window where data is
-                extracted
-            geometry (shapely.geometry, optional): consider pixels only in shape
-            dst_crs (crs, optional): reproject to given crs
-            transform (rasterio.Affine): affine transformation to apply
-            wdith (float): number of lons for transform
-            height (float): number of lats for transform
-            resampling (rasterio.warp,.Resampling optional): resampling
-                function used for reprojection to dst_crs
+        Parameters
+        ----------
+        files_intensity : list(str)
+            file names containing intensity
+        files_fraction : list(str)
+            file names containing fraction
+        attrs : dict, optional
+            name of Hazard attributes and their values
+        band : list(int), optional
+            bands to read (starting at 1), default [1]
+        src_crs : crs, optional
+            source CRS. Provide it if error without it.
+        window : rasterio.windows.Windows, optional
+            window where data is
+            extracted
+        geometry : shapely.geometry, optional
+            consider pixels only in shape
+        dst_crs : crs, optional
+            reproject to given crs
+        transform : rasterio.Affine
+            affine transformation to apply
+        wdith : float, optional
+            number of lons for transform
+        height : float, optional
+            number of lats for transform
+        resampling : rasterio.warp,.Resampling, optional
+            resampling function used for reprojection to dst_crs
         """
         if not attrs:
             attrs = {}
@@ -299,17 +326,21 @@ class Hazard():
         """Read vector files format supported by fiona. Each intensity name is
         considered an event.
 
-        Parameters:
-            files_intensity (list(str)): file names containing intensity,
-                default: ['intensity']
-            files_fraction (list(str)): file names containing fraction,
-                default: ['fraction']
-            attrs (dict, optional): name of Hazard attributes and their values
-            inten_name (list(str), optional): name of variables containing
-                the intensities of each event
-            frac_name (list(str), optional): name of variables containing
-                the fractions of each event
-            dst_crs (crs, optional): reproject to given crs
+        Parameters
+        ----------
+        files_intensity : list(str)
+            file names containing intensity, default: ['intensity']
+        files_fraction (list(str)): file names containing fraction,
+            default: ['fraction']
+        attrs : dict, optional
+            name of Hazard attributes and their values
+        inten_name : list(str), optional
+            name of variables containing the intensities of each event
+        frac_name : list(str), optional
+            name of variables containing
+            the fractions of each event
+        dst_crs : crs, optional
+            reproject to given crs
         """
         if not attrs:
             attrs = {}
@@ -420,10 +451,13 @@ class Hazard():
     def reproject_vector(self, dst_crs, scheduler=None):
         """Change current point data to a a given projection
 
-        Parameters:
-            dst_crs (crs): reproject to given crs
-            scheduler (str, optional): used for dask map_partitions. “threads”,
-                “synchronous” or “processes”
+        Parameters
+        ----------
+        dst_crs : crs
+            reproject to given crs
+        scheduler : str, optional
+            used for dask map_partitions. “threads”,
+            “synchronous” or “processes”
         """
         self.centroids.set_geometry_points(scheduler)
         self.centroids.geometry = self.centroids.geometry.to_crs(dst_crs)
@@ -440,9 +474,11 @@ class Hazard():
     def vector_to_raster(self, scheduler=None):
         """Change current point data to a raster with same resolution
 
-        Parameters:
-            scheduler (str, optional): used for dask map_partitions. “threads”,
-                “synchronous” or “processes”
+        Parameters
+        ----------
+        scheduler : str, optional
+            used for dask map_partitions. “threads”,
+            “synchronous” or “processes”
         """
         points_df = gpd.GeoDataFrame(crs=self.centroids.geometry.crs)
         points_df['latitude'] = self.centroids.lat
@@ -464,14 +500,19 @@ class Hazard():
     def read_mat(self, file_name, description='', var_names=None):
         """Read climada hazard generate with the MATLAB code.
 
-        Parameters:
-            file_name (str): absolute file name
-            description (str, optional): description of the data
-            var_names (dict, default): name of the variables in the file,
-                default: DEF_VAR_MAT constant
+        Parameters
+        ----------
+        file_name : str
+            absolute file name
+        description : str, optional
+            description of the data
+        var_names : dict, optional
+            name of the variables in the file,
+            default: DEF_VAR_MAT constant
 
-        Raises:
-            KeyError
+        Raises
+        ------
+        KeyError
         """
         if not var_names:
             var_names = DEF_VAR_MAT
@@ -496,16 +537,21 @@ class Hazard():
     def read_excel(self, file_name, description='', var_names=None):
         """Read climada hazard generate with the MATLAB code.
 
-        Parameters:
-            file_name (str): absolute file name
-            description (str, optional): description of the data
-            centroids (Centroids, optional): provide centroids if not contained
-                in the file
-            var_names (dict, default): name of the variables in the file,
-                default: DEF_VAR_EXCEL constant
+        Parameters
+        ----------
+        file_name : str
+            absolute file name
+        description : str, optional
+            description of the data
+        centroids : Centroids, optional
+            provide centroids if not contained
+            in the file
+        var_names (dict, default): name of the variables in the file,
+            default: DEF_VAR_EXCEL constant
 
-        Raises:
-            KeyError
+        Raises
+        ------
+        KeyError
         """
         if not var_names:
             var_names = DEF_VAR_EXCEL
