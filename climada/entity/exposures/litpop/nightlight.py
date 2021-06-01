@@ -36,7 +36,6 @@ from climada.util import ureg
 from climada.util.constants import SYSTEM_DIR
 from climada.util.files_handler import download_file
 from climada.util.save import save
-from climada.entity.exposures.litpop_old import read_bm_file
 
 Image.MAX_IMAGE_PIXELS = 1e9
 
@@ -340,54 +339,6 @@ def load_nasa_nl_shape(geometry, reference_year, data_dir=None, dtype=None):
                  "dtype": dtype})
     return np.array(results_array_even, dtype=dtype), meta
 
-
-def load_nightlight_nasa(bounds, req_files, year):
-    """Get nightlight from NASA repository that contain input boundary.
-
-    Parameters:
-        bounds (tuple): min_lon, min_lat, max_lon, max_lat
-        req_files (np.array): array with flags for NASA files needed
-        year (int): nightlight year
-
-    Returns:
-        nightlight (sparse.csr_matrix), coord_nl (np.array)
-    """
-    # TODO: argument req_files is not used in this function
-
-    coord_min = np.array([-90, -180]) + NASA_RESOLUTION_DEG / 2
-    coord_h = np.full((2,), NASA_RESOLUTION_DEG)
-
-    min_lon, min_lat, max_lon, max_lat = bounds
-    bounds_mat = np.array([[min_lat, min_lon], [max_lat, max_lon]])
-    global_idx = (bounds_mat - coord_min[None]) / coord_h[None]
-    global_idx[0, :] = np.floor(global_idx[0, :])
-    global_idx[1, :] = np.ceil(global_idx[1, :])
-    tile_size = np.array(NASA_TILE_SIZE)
-
-    nightlight = []
-    for idx, fname in enumerate(BM_FILENAMES):
-        tile_coord = np.array([1 - idx % 2, idx // 2])
-        extent = global_idx - (tile_coord * tile_size)[None]
-        if np.any(extent[1, :] < 0) or np.any(extent[0, :] >= NASA_TILE_SIZE):
-            # this tile does not intersect the specified bounds
-            continue
-        extent = np.int64(np.clip(extent, 0, tile_size[None] - 1))
-
-        im_nl, _ = read_bm_file(SYSTEM_DIR, fname %(year))
-        im_nl = np.flipud(im_nl)
-        im_nl = sparse.csc.csc_matrix(im_nl)
-        im_nl = im_nl[extent[0, 0]:extent[1, 0] + 1, extent[0, 1]:extent[1, 1] + 1]
-        nightlight.append((tile_coord, im_nl))
-
-    tile_coords = np.array([n[0] for n in nightlight])
-    shape = tile_coords.max(axis=0) - tile_coords.min(axis=0) + 1
-    nightlight = np.array([n[1] for n in nightlight]).reshape(shape, order='F')
-    nightlight = sparse.bmat(np.flipud(nightlight), format='csr')
-
-    coord_nl = np.vstack([coord_min, coord_h]).T
-    coord_nl[:, 0] += global_idx[0, :] * coord_h[:]
-
-    return nightlight, coord_nl
 
 def unzip_tif_to_py(file_gz):
     """Unzip image file, read it, flip the x axis, save values as pickle
