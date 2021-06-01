@@ -112,10 +112,9 @@ class TestProvinces(unittest.TestCase):
         admin1_rec = list(ADM1_FILE.records())
 
         prov_list = ['Barcelona']
-        with self.assertRaises(ValueError):
-            with self.assertLogs('climada.entity.exposures.black_marble', level='ERROR') as cm:
-                _fill_admin1_geom(iso3, admin1_rec, prov_list)
-        self.assertIn('Barcelona not found. Possible provinces of CHE are: ', cm.output[0])
+        with self.assertRaises(ValueError) as cm:
+            _fill_admin1_geom(iso3, admin1_rec, prov_list)
+        self.assertIn('Barcelona not found. Possible provinces of CHE are: ', str(cm.exception))
 
     def test_country_iso_geom_pass(self):
         """Test country_iso_geom pass."""

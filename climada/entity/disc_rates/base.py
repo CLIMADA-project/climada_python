@@ -181,13 +181,11 @@ class DiscRates():
         """
         year_range = np.arange(ini_year, end_year + 1)
         if year_range.size != val_years.size:
-            LOGGER.error('Wrong size of yearly values.')
-            raise ValueError
+            raise ValueError('Wrong size of yearly values.')
         sel_disc = self.select(year_range)
         if sel_disc is None:
-            LOGGER.error('No information of discount rates for provided years:'
-                         ' %s - %s', ini_year, end_year)
-            raise ValueError
+            raise ValueError('No information of discount rates for provided years:'
+                             f' {ini_year} - {end_year}')
         return u_fin.net_present_value(sel_disc.years, sel_disc.rates,
                                        val_years)
 
@@ -250,8 +248,7 @@ class DiscRates():
                 astype(int, copy=False)
             self.rates = np.squeeze(disc[var_names['var_name']['disc']])
         except KeyError as err:
-            LOGGER.error("Not existing variable: %s", str(err))
-            raise err
+            raise KeyError("Not existing variable: %s" % str(err)) from err
 
     def read_excel(self, file_name, description='', var_names=DEF_VAR_EXCEL):
         """
@@ -278,8 +275,7 @@ class DiscRates():
                 astype(int, copy=False)
             self.rates = dfr[var_names['col_name']['disc']].values
         except KeyError as err:
-            LOGGER.error("Not existing variable: %s", str(err))
-            raise err
+            raise KeyError("Not existing variable: %s" % str(err)) from err
 
     def write_excel(self, file_name, var_names=DEF_VAR_EXCEL):
         """

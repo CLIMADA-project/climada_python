@@ -61,11 +61,9 @@ class TestContainer(unittest.TestCase):
             imp_fun.append(vulner_1)
         self.assertIn("Input ImpactFunc's id not set.", cm.output[0])
 
-        with self.assertLogs('climada.entity.impact_funcs.impact_func_set',
-                             level='ERROR') as cm:
-            with self.assertRaises(ValueError):
-                imp_fun.append(45)
-        self.assertIn("Input value is not of type ImpactFunc.", cm.output[0])
+        with self.assertRaises(ValueError) as cm:
+            imp_fun.append(45)
+        self.assertIn("Input value is not of type ImpactFunc.", str(cm.exception))
 
     def test_remove_func_pass(self):
         """Test remove_func removes ImpactFunc of ImpactFuncSet correcty."""
@@ -314,10 +312,9 @@ class TestChecker(unittest.TestCase):
         vulner.paa = np.array([1, 2])
         imp_fun.append(vulner)
 
-        with self.assertLogs('climada.util.checker', level='ERROR') as cm:
-            with self.assertRaises(ValueError):
-                imp_fun.check()
-        self.assertIn('Invalid ImpactFunc.paa size: 3 != 2.', cm.output[0])
+        with self.assertRaises(ValueError) as cm:
+            imp_fun.check()
+        self.assertIn('Invalid ImpactFunc.paa size: 3 != 2.', str(cm.exception))
 
     def test_check_wrongMDD_fail(self):
         """Wrong MDD definition"""
@@ -330,10 +327,9 @@ class TestChecker(unittest.TestCase):
         vulner.paa = np.array([1, 2, 3])
         imp_fun.append(vulner)
 
-        with self.assertLogs('climada.util.checker', level='ERROR') as cm:
-            with self.assertRaises(ValueError):
-                imp_fun.check()
-        self.assertIn('Invalid ImpactFunc.mdd size: 3 != 2.', cm.output[0])
+        with self.assertRaises(ValueError) as cm:
+            imp_fun.check()
+        self.assertIn('Invalid ImpactFunc.mdd size: 3 != 2.', str(cm.exception))
 
 class TestExtend(unittest.TestCase):
     """Check extend function"""

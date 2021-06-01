@@ -43,9 +43,9 @@ REPO_DATA = {
         SYSTEM_DIR.joinpath('GDP_TWN_IMF_WEO_data.csv'),
         SYSTEM_DIR.joinpath('FAOSTAT_data_country_codes.csv'),
         SYSTEM_DIR.joinpath('rcp_db.xls'),
-        SYSTEM_DIR.joinpath('tc_if_cal_v01_TDR1.0.csv'),
-        SYSTEM_DIR.joinpath('tc_if_cal_v01_EDR.csv'),
-        SYSTEM_DIR.joinpath('tc_if_cal_v01_RMSF.csv'),
+        SYSTEM_DIR.joinpath('tc_impf_cal_v01_TDR1.0.csv'),
+        SYSTEM_DIR.joinpath('tc_impf_cal_v01_EDR.csv'),
+        SYSTEM_DIR.joinpath('tc_impf_cal_v01_RMSF.csv'),
     ],
     'data/system/GSDP': [
         GSDP_DIR.joinpath(f'{cc}_GSDP.xls')
@@ -80,14 +80,14 @@ REPO_DATA = {
 }
 
 
-def setup_climada_data():
+def setup_climada_data(reload=False):
 
     for dirpath in [DEMO_DIR, SYSTEM_DIR, GSDP_DIR]:
         dirpath.mkdir(parents=True, exist_ok=True)
 
     for src_dir, path_list in REPO_DATA.items():
         for path in path_list:
-            if not path.exists():
+            if not path.exists() or reload:
                 src = Path(__file__).parent.parent.joinpath(src_dir, path.name)
                 copyfile(src, path)
 

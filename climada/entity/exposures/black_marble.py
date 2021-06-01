@@ -30,7 +30,7 @@ import shapely.vectorized
 from cartopy.io import shapereader
 
 from climada.entity.tag import Tag
-from climada.entity.exposures.base import Exposures, INDICATOR_IF
+from climada.entity.exposures.base import Exposures, INDICATOR_IMPF
 from climada.entity.exposures import nightlight as nl_utils
 from climada.util.constants import SYSTEM_DIR, DEF_CRS
 from climada.util.finance import gdp, income_group
@@ -163,7 +163,7 @@ class BlackMarble(Exposures):
             'longitude': lon_reg,
         })
         exp_bkmrb.gdf['region_id'] = cntry_info[0]
-        exp_bkmrb.gdf[INDICATOR_IF] = 1
+        exp_bkmrb.gdf[INDICATOR_IMPF] = 1
 
         return exp_bkmrb
 
@@ -214,9 +214,8 @@ def country_iso_geom(countries, shp_file, admin_key=['ADMIN', 'ADM0_A3']):
                        if country_name.title() in country_opt]
             if not options:
                 options = list(countries_shp.keys())
-            LOGGER.error('Country %s not found. Possible options: %s',
-                         country_name, options)
-            raise ValueError
+            raise ValueError('Country %s not found. Possible options: %s'
+                             % (country_name, options))
         iso3 = list_records[country_idx].attributes[admin_key[1]]
         try:
             cntry_id = u_coord.country_to_iso(iso3, "numeric")
@@ -336,9 +335,8 @@ def _fill_admin1_geom(iso3, admin1_rec, prov_list):
         if not found:
             options = [rec.attributes['name'] for rec in admin1_rec
                        if rec.attributes['adm0_a3'] == iso3]
-            LOGGER.error('%s not found. Possible provinces of %s are: %s',
-                         prov, iso3, options)
-            raise ValueError
+            raise ValueError('%s not found. Possible provinces of %s are: %s'
+                             % (prov, iso3, options))
 
     return prov_geom
 

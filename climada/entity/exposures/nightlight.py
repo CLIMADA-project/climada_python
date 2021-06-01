@@ -93,15 +93,13 @@ def check_required_nl_files(bbox, *coords):
             # check if bbox is valid
             if (np.size(bbox) != 4) or (bbox[0] > bbox[2]) \
             or (bbox[1] > bbox[3]):
-                LOGGER.error('Invalid bounding box supplied.')
-                raise ValueError
+                raise ValueError('Invalid bounding box supplied.')
             else:
                 min_lon, min_lat, max_lon, max_lat = bbox
         else:
             if (len(coords) != 3) or (not coords[1] > bbox) \
             or (not coords[2] > coords[0]):
-                LOGGER.error('Invalid coordinates supplied.')
-                raise ValueError
+                raise ValueError('Invalid coordinates supplied.')
             else:
                 min_lon = bbox
                 min_lat, max_lon, max_lat = coords
@@ -316,16 +314,14 @@ def untar_noaa_stable_nightlight(f_tar_ini):
     extract_name = [name for name in tar_file.getnames()
                     if name.endswith('stable_lights.avg_vis.tif.gz')]
     if len(extract_name) == 0:
-        msg = f'No stable light intensities for selected year and satellite in file {f_tar_ini}'
-        LOGGER.error(msg)
-        raise ValueError(msg)
+        raise ValueError('No stable light intensities for selected year and satellite '
+                         f'in file {f_tar_ini}')
     if len(extract_name) > 1:
         LOGGER.warning('found more than one potential intensity file in %s %s', f_tar_ini, extract_name)
     try:
         tar_file.extract(extract_name[0], SYSTEM_DIR)
     except tarfile.TarError as err:
-        LOGGER.error(str(err))
-        raise err
+        raise
     finally:
         tar_file.close()
     f_tif_gz = SYSTEM_DIR.joinpath(extract_name[0])
@@ -371,17 +367,15 @@ def load_nightlight_noaa(ref_year=2013, sat_name=None):
                 except ValueError:
                     pass
             if 'file_down' not in locals():
-                LOGGER.error('Nightlight for reference year %s not available. '
-                             'Try an other year.', ref_year)
-                raise ValueError
+                raise ValueError(f'Nightlight for reference year {ref_year} not available. '
+                                 'Try a different year.')
         else:
             url = NOAA_SITE + sat_name + str(ref_year) + '.v4.tar'
             try:
                 file_down = download_file(url, download_dir=SYSTEM_DIR)
-            except ValueError:
-                LOGGER.error('Nightlight intensities for year %s and satellite'
-                             ' %s do not exist.', ref_year, sat_name)
-                raise
+            except ValueError as err:
+                raise ValueError(f'Nightlight intensities for year {ref_year} and satellite'
+                                 f' {sat_name} do not exist.') from err
         fn_light = untar_noaa_stable_nightlight(file_down)
         fn_light, nightlight = unzip_tif_to_py(fn_light)
 

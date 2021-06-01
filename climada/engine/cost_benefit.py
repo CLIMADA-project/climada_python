@@ -455,8 +455,7 @@ class CostBenefit():
         matplotlib.axes._subplots.AxesSubplot
         """
         if not self.imp_meas_future:
-            LOGGER.error('Compute CostBenefit.calc() first')
-            raise ValueError
+            raise ValueError('Compute CostBenefit.calc() first')
         if not axis:
             _, axis = plt.subplots(1, 1)
         avert_rp = dict()
@@ -520,8 +519,7 @@ class CostBenefit():
         matplotlib.axes._subplots.AxesSubplot
         """
         if ent_future.exposures.ref_year == entity.exposures.ref_year:
-            LOGGER.error('Same reference years for future and present entities.')
-            raise ValueError
+            raise ValueError('Same reference years for future and present entities.')
         present_year = entity.exposures.ref_year
         future_year = ent_future.exposures.ref_year
 
@@ -669,11 +667,9 @@ class CostBenefit():
             matplotlib.axes._subplots.AxesSubplot
         """
         if not self.imp_meas_future or not self.imp_meas_present:
-            LOGGER.error('Compute CostBenefit.calc() first')
-            raise ValueError
+            raise ValueError('Compute CostBenefit.calc() first')
         if ent_future.exposures.ref_year == entity.exposures.ref_year:
-            LOGGER.error('Same reference years for future and present entities.')
-            raise ValueError
+            raise ValueError('Same reference years for future and present entities.')
 
         self.present_year = entity.exposures.ref_year
         self.future_year = ent_future.exposures.ref_year
@@ -804,13 +800,11 @@ class CostBenefit():
                     str(self.present_year), str(self.future_year))
 
         if self.future_year - self.present_year + 1 <= 0:
-            LOGGER.error('Wrong year range: %s - %s.', str(self.present_year),
-                         str(self.future_year))
-            raise ValueError
+            raise ValueError('Wrong year range: %s - %s.'
+                             % (str(self.present_year), str(self.future_year)))
 
         if not self.imp_meas_future:
-            LOGGER.error('Compute first _calc_impact_measures')
-            raise ValueError
+            raise ValueError('Compute first _calc_impact_measures')
 
         time_dep = self._time_dependency_array(imp_time_depen)
 

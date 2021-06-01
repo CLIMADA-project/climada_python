@@ -90,24 +90,17 @@ def download_icon_grib(run_datetime,
             try:
                 download_file(url + file_name_i,
                               download_dir=download_dir)
-            except ValueError as err:
+            except Exception as err:
+                err_msg = ""
                 if run_datetime > (dt.datetime.utcnow()-dt.timedelta(hours=6)):
-                    LOGGER.error('Forecast file %s might not yet be available'
-                                 ' on %s. Wait a few hours. Error while '
-                                 'downloading %s.',
-                                 file_name_i,
-                                 url,
-                                 url + file_name_i)
+                    err_msg += (f'Forecast file {file_name_i} might not yet be available '
+                                f'on {url}. Wait a few hours. ')
                 elif run_datetime < (dt.datetime.utcnow()
                                      -dt.timedelta(hours=24)):
-                    LOGGER.error('Forecast file %s might no longer be '
-                                 'available on %s. Files are only openly '
-                                 'available for 24 hours. Error while '
-                                 'downloading %s.',
-                                 file_name_i,
-                                 url,
-                                 url + file_name_i)
-                raise err
+                    err_msg += (f'Forecast file {file_name_i} might no longer be available '
+                                 f'on {url}. Files are only openly available for 24 hours. ')
+                err_msg += f"Error while downloading {url + file_name_i}: "
+                raise type(err)(err_msg + str(err)) from err
         file_names.append(str(bz2_pathfile_i))
     return file_names
 
@@ -190,11 +183,9 @@ def _create_icon_grib_name(run_datetime,
                                      np.arange(78, 121, 6)
                                      ))
     else:
-        LOGGER.error(('Download for model ' + model_name +
-                      ' and parameter ' + parameter_name +
-                      ' is not yet implemented. Please define ' +
-                      'the default values in the code first.'))
-        raise ValueError
+        raise ValueError(f'Download for model {model_name} and parameter {parameter_name} '
+                         'is not yet implemented. '
+                         'Please define the default values in the code first.')
 
     # create the url for download
     url = ('https://opendata.dwd.de/weather/nwp/' +
@@ -256,10 +247,9 @@ def download_icon_centroids_file(model_name='icon-eu-eps',
     elif model_name == 'test':
         file_name = 'test_storm_europe_icon_grid.nc.bz2'
     else:
-        LOGGER.error(('Creation of centroids for the icon model ' +
-                      model_name + 'is not yet implemented. Please define ' +
-                      'the default values in the code first.'))
-        raise ValueError
+        raise ValueError(f'Creation of centroids for the icon model {model_name} '
+                         'is not yet implemented. Please define '
+                         'the default values in the code first.')
     download_path = CONFIG.local_data.save_dir.dir() if download_dir is None else Path(download_dir)
     bz2_pathfile = download_path.absolute().joinpath(file_name)
     nc_pathfile = bz2_pathfile.with_suffix('')
@@ -271,8 +261,7 @@ def download_icon_centroids_file(model_name='icon-eu-eps',
                 download_file(url + file_name,
                               download_dir=download_path)
             except ValueError as err:
-                LOGGER.error('Error while downloading %s.', url + file_name)
-                raise err
+                raise ValueError('Error while downloading %s.' % (url + file_name))
         with open(bz2_pathfile, 'rb') as source, open(nc_pathfile, 'wb') as dest:
             dest.write(bz2.decompress(source.read()))
         bz2_pathfile.unlink()
