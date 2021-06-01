@@ -565,6 +565,7 @@ class LitPop(Exposures): # TODO tests nighlight (integ), gpw_population (integ) 
                                            offsets, exponents,
                                            verbatim=not bool(idx),
                                            )
+            LOGGER.info('GDF cropped and returned') # TODO remove
             total_population += meta_tmp['total_population']
             litpop_gdf = litpop_gdf.append(gdf_tmp)
         litpop_gdf.crs = meta_tmp['crs']
@@ -577,6 +578,7 @@ class LitPop(Exposures): # TODO tests nighlight (integ), gpw_population (integ) 
         if isinstance(total_value, float) or isinstance(total_value, int):
             litpop_gdf['value'] = np.divide(litpop_gdf['value'],
                                             litpop_gdf['value'].sum()) * total_value
+            LOGGER.info('Total value disaggregated') # TODO remove
         elif total_value is not None:
             raise TypeError("total_val_rescale must be int or float.")
 
@@ -584,7 +586,7 @@ class LitPop(Exposures): # TODO tests nighlight (integ), gpw_population (integ) 
         exp_country.gdf = litpop_gdf
         exp_country.gdf[INDICATOR_IMPF] = 1
         exp_country.gdf['region_id'] = iso3n
-
+        LOGGER.info('country exposure initiated') # TODO remove
         return exp_country
 
     # Alias method names for backward compatibility:
@@ -648,7 +650,7 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
                                              data_dir=data_dir,
                                              dtype=float
                                              )
-
+    LOGGER.info('input data loaded') # TODO remove
     if resample_first: # default is True
         # --> resampling to target res. before core calculation
         target_res_arcsec = res_arcsec
@@ -672,12 +674,13 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
                                               target_res_arcsec=target_res_arcsec,
                                               global_origins=global_origins,
                                               )
-
+    LOGGER.info('reprojection done') # TODO remove
     # calculate Lit^m * Pop^n (but not yet disaggregating any total value to grid):
     litpop_array = gridpoints_core_calc([nl, pop],
                                         offsets=offsets,
                                         exponents=exponents,
                                         total_val_rescale=None)
+    LOGGER.info('core calc done') # TODO remove
     if not resample_first: 
         # alternative option: resample to target resolution after core calc.:
         [litpop_array], meta_out = resample_input_data([litpop_array],
@@ -695,7 +698,9 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
                                                                    lat.flatten()))
     gdf['latitude'] = lat.flatten()
     gdf['longitude'] = lon.flatten()
-    # remove entries outside polygon:
+    LOGGER.info('GDF initiated') # TODO remove
+    # remove entries outside polygon and return:
+    ### Note:  the step gdf.loc[gdf.within(polygon)] is still too slow for large polygons.
     return gdf.loc[gdf.within(polygon)], meta_out
 
 def get_total_value_per_country(cntry_iso3a, fin_mode, reference_year, total_population=None):
