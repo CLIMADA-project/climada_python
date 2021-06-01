@@ -95,28 +95,30 @@ class Hazard():
 
     Attributes
     ----------
-    tag: TagHazard
+    tag : TagHazard
         information about the source
-    units: str
+    units : str
         units of the intensity
-    centroids: climada.hazard.Centroids
+    centroids : Centroids
         centroids of the events
-    event_id: np.ndarray
+    event_id : np.array
         id (>0) of each event
-    event_name: list(str)
-        name of each event. Default: event_id
-    date: np.ndarray
-        Integer date corresponding to the proleptic
+    event_name : list(str)
+        name of each event (default: event_id)
+    date : np.array
+        integer date corresponding to the proleptic
         Gregorian ordinal, where January 1 of year 1 has ordinal 1
         (ordinal format of datetime library)
-    orig: np.ndarray
-        flags indicating historical events (True) or probabilistic (False)
-    frequency: np.ndarray
+    orig : np.array
+        flags indicating historical events (True)
+        or probabilistic (False)
+    frequency : np.array
         frequency of each event in years
-    intensity: sparse.csr_matrix
+    intensity : sparse.csr_matrix
         intensity of the events at centroids
-    fraction: sparse.csr_matrix
-        fraction of affected exposures for each event at each centroid
+    fraction : sparse.csr_matrix
+        fraction of affected exposures for each
+        event at each centroid
     """
     intensity_thres = 10
     """Intensity threshold per hazard used to filter lower intensities. To be
@@ -153,8 +155,8 @@ class Hazard():
 
         Parameters
         ----------
-        haz_type: str, optional
-            acronym of the hazard type (e.g. 'TC'). Default is ''.
+        haz_type : str, optional
+            acronym of the hazard type (e.g. 'TC').
 
         Examples
         --------
@@ -221,29 +223,30 @@ class Hazard():
 
         Parameters
         ----------
-        files_intensity: list(str)
+        files_intensity : list(str)
             file names containing intensity
-        files_fraction: list(str)
+        files_fraction : list(str)
             file names containing fraction
-        attrs: dict, optional
-            name of Hazard attributes and their values. Default {}.
-        band: list(int), optional
+        attrs : dict, optional
+            name of Hazard attributes and their values
+        band : list(int), optional
             bands to read (starting at 1), default [1]
-        src_crs: crs, optional
+        src_crs : crs, optional
             source CRS. Provide it if error without it.
-        window: rasterio.windows.Windows, optional
-            window where data is extracted
-        geometry: shapely.geometry, optional
+        window : rasterio.windows.Windows, optional
+            window where data is
+            extracted
+        geometry : shapely.geometry, optional
             consider pixels only in shape
-        dst_crs: crs, optional
+        dst_crs : crs, optional
             reproject to given crs
-        transform: rasterio.Affine
+        transform : rasterio.Affine
             affine transformation to apply
-        wdith: float
+        wdith : float, optional
             number of lons for transform
-        height: float
+        height : float, optional
             number of lats for transform
-        resampling: rasterio.warp,.Resampling optional
+        resampling : rasterio.warp,.Resampling, optional
             resampling function used for reprojection to dst_crs
         """
         if not attrs:
@@ -328,17 +331,18 @@ class Hazard():
 
         Parameters
         ----------
-        files_intensity: list(str)
+        files_intensity : list(str)
             file names containing intensity, default: ['intensity']
-        files_fraction: list(str)
-            file names containing fraction, default: ['fraction']
-        attrs: dict, optional
+        files_fraction (list(str)): file names containing fraction,
+            default: ['fraction']
+        attrs : dict, optional
             name of Hazard attributes and their values
-        inten_name: list(str), optional
+        inten_name : list(str), optional
             name of variables containing the intensities of each event
-        frac_name: list(str), optional
-            name of variables containing the fractions of each event
-        dst_crs: crs, optional
+        frac_name : list(str), optional
+            name of variables containing
+            the fractions of each event
+        dst_crs : crs, optional
             reproject to given crs
         """
         if not attrs:
@@ -457,11 +461,11 @@ class Hazard():
 
         Parameters
         ----------
-        dst_crs: crs
+        dst_crs : crs
             reproject to given crs
-        scheduler: str, optional
-            used for dask map_partitions. “threads”, “synchronous”
-            or “processes”
+        scheduler : str, optional
+            used for dask map_partitions. “threads”,
+            “synchronous” or “processes”
         """
         self.centroids.set_geometry_points(scheduler)
         self.centroids.geometry = self.centroids.geometry.to_crs(dst_crs)
@@ -480,9 +484,9 @@ class Hazard():
 
         Parameters
         ----------
-        scheduler: str, optional
-            used for dask map_partitions. “threads”, “synchronous”
-            or “processes”
+        scheduler : str, optional
+            used for dask map_partitions. “threads”,
+            “synchronous” or “processes”
         """
         points_df = gpd.GeoDataFrame(crs=self.centroids.geometry.crs)
         points_df['latitude'] = self.centroids.lat
@@ -506,12 +510,13 @@ class Hazard():
 
         Parameters
         ----------
-        file_name: str
+        file_name : str
             absolute file name
-        description: str, optional
+        description : str, optional
             description of the data
-        var_names: dict, default
-            name of the variables in the file, default: DEF_VAR_MAT constant
+        var_names : dict, optional
+            name of the variables in the file,
+            default: DEF_VAR_MAT constant
 
         Raises
         ------
@@ -542,14 +547,15 @@ class Hazard():
 
         Parameters
         ----------
-        file_name: str
+        file_name : str
             absolute file name
-        description: str, optional
+        description : str, optional
             description of the data
-        centroids: Centroids, optional
-            provide centroids if not contained in the file
-        var_names: dict, default
-            name of the variables in the file, default: DEF_VAR_EXCEL constant
+        centroids : Centroids, optional
+            provide centroids if not contained
+            in the file
+        var_names (dict, default): name of the variables in the file,
+            default: DEF_VAR_EXCEL constant
 
         Raises
         ------
