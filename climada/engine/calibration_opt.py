@@ -157,11 +157,11 @@ def init_impf(impf_name_or_instance, param_dict, df_out=pd.DataFrame(index=[0]))
 
 def change_impf(impf_instance, param_dict):
     """apply a shifting or a scaling defined in param_dict to the impact
-    function in if_istance and return it as a new ImpactFunc object.
+    function in impf_istance and return it as a new ImpactFunc object.
 
     Parameters
     ----------
-    if_instance : ImpactFunc
+    impf_instance : ImpactFunc
         an instance of ImpactFunc
     param_dict : dict
         dict of parameter_names and values (interpreted as
@@ -305,13 +305,13 @@ def calib_cost_calc(df_out, cost_function):
 def calib_all(hazard, exposure, impf_name_or_instance, param_full_dict,
               impact_data_source, year_range, yearly_impact=True):
     """portrait the difference between modelled and reported impacts for all
-    impact functions described in param_full_dict and if_name_or_instance
+    impact functions described in param_full_dict and impf_name_or_instance
     Parameters
     ----------
     hazard : list or Hazard
     exposure : list or Exposures
         list or instance of exposure of full countries
-    if_name_or_instance: string or ImpactFunc
+    impf_name_or_instance: string or ImpactFunc
         the name of a parameterisation or an instance of class
         ImpactFunc e.g. 'emanuel'
     param_full_dict : dict
@@ -362,19 +362,19 @@ def calib_optimize(hazard, exposure, impf_name_or_instance, param_dict,
                    impact_data_source, year_range, yearly_impact=True,
                    cost_fucntion='R2', show_details=False):
     """portrait the difference between modelled and reported impacts for all
-    impact functions described in param_full_dict and if_name_or_instance
+    impact functions described in param_full_dict and impf_name_or_instance
 
     Parameters
     ----------
     hazard: list or Hazard
     exposure: list or Exposures
         list or instance of exposure of full countries
-    if_name_or_instance: string or ImpactFunc
+    impf_name_or_instance: string or ImpactFunc
         the name of a parameterisation or an instance of class
         ImpactFunc e.g. 'emanuel'
     param_dict : dict
         a dict containing keys used for
-        if_name_or_instance and one set of values
+        impf_name_or_instance and one set of values
         e.g. {'v_thresh': 25.7, 'v_half': 70, 'scale': 1}
     impact_data_source : dict or pd. dataframe
         with name of impact data source and file location or dataframe

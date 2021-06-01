@@ -56,7 +56,7 @@ class Impact():
     ----------
     tag : dict
         dictionary of tags of exposures, impact functions set and
-        hazard: {'exp': Tag(), 'if_set': Tag(), 'haz': TagHazard()}
+        hazard: {'exp': Tag(), 'impf_set': Tag(), 'haz': TagHazard()}
     event_id :
         np.array id (>0) of each hazard event
     event_name :
@@ -1240,7 +1240,7 @@ class ImpactFreqCurve():
     ----------
     tag : dict
         dictionary of tags of exposures, impact functions set and
-        hazard: {'exp': Tag(), 'if_set': Tag(), 'haz': TagHazard()}
+        hazard: {'exp': Tag(), 'impf_set': Tag(), 'haz': TagHazard()}
     return_per : np.array
         return period
     impact : np.array
