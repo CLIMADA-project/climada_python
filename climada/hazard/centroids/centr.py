@@ -944,9 +944,9 @@ class Centroids():
 
     @property
     def size(self):
-        """Get size of pixels or points."""
+        """Get number of pixels or points."""
         if self.meta:
-            return self.meta['height'] * self.meta['width']
+            return int(self.meta['height'] * self.meta['width'])
         return self.lat.size
 
     @property
