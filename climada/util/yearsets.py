@@ -88,7 +88,7 @@ def impact_yearset(imp, sampled_years=None, sampling_vect=None, lam= None,
         sampling_vect = sample_events(events_per_year, imp.frequency)
 
     #compute impact per sampled_year
-    imp_per_year = compute_impacts_per_year(imp, sampling_vect)
+    imp_per_year = compute_imp_per_year(imp, sampling_vect)
 
     #copy imp object as basis for the yimp object
     yimp = copy.deepcopy(imp)
@@ -203,7 +203,7 @@ def sample_events(events_per_year, freqs_orig):
 
     return sampling_vect
 
-def compute_impacts_per_year(imp, sampling_vect):
+def compute_imp_per_year(imp, sampling_vect):
     """Sample annual impacts from the given event_impacts according to the sampling dictionary
     Parameters:
         imp : climada.engine.Impact()
