@@ -92,13 +92,6 @@ class TestYearSets(unittest.TestCase):
         correction_factor = yearsets.calculate_correction_fac(imp_per_year, IMP)
 
         self.assertAlmostEqual(correction_factor, 1.42857143)
-    
-    # def test_correction_fac(self):
-    #     """Test the calculation of a correction factor as the ration of the expected annual
-    #     impact (eai) of the event_impacts and the eai of the annual_impacts"""
-    #     correction_factor = yearsets.calculate_correction_fac(IMP.at_event, IMP)
-
-    #     self.assertAlmostEqual(correction_factor, 2)
 
 # Execute Tests
 if __name__ == "__main__":
