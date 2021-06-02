@@ -47,9 +47,9 @@ class TestYearSets(unittest.TestCase):
         annual_impacts, sampling_dict = yearsets.impact_yearset(EVENT_IMPACTS, N_SAMPLED_YEARS,
                                                                 SAMPLING_VECT, False)
 
-        self.assertEqual(annual_impacts.at_event[3], 340)
+        self.assertAlmostEqual(annual_impacts.at_event[3], 238)
         self.assertEqual(annual_impacts.date[3], 1096)
-        self.assertEqual(np.sum(annual_impacts.at_event), 770)
+        self.assertAlmostEqual(np.sum(annual_impacts.at_event), 539)
 
     def test_impact_yearset_yearlist(self):
         """Test computing an annual_impacts object for a given list of years (YEAR_LIST)
@@ -57,16 +57,17 @@ class TestYearSets(unittest.TestCase):
         annual_impacts, sampling_dict = yearsets.impact_yearset(EVENT_IMPACTS, YEAR_LIST,
                                                                 SAMPLING_VECT, False)
 
-        self.assertEqual(annual_impacts.at_event[3], 340)
+        self.assertAlmostEqual(annual_impacts.at_event[3], 238)
         self.assertEqual(u_dt.date_to_str(annual_impacts.date)[0], '2000-01-01')
-        self.assertEqual(np.sum(annual_impacts.at_event), 770)
+        self.assertAlmostEqual(np.sum(annual_impacts.at_event), 539)
 
     def test_sample_n_events(self):
         """Test sampling amount of events per year."""
+        n_sample_years = 1000
+        events_per_year = yearsets.sample_n_events(n_sample_years, EVENT_IMPACTS)
 
-        events_per_year = yearsets.sample_n_events(N_SAMPLED_YEARS, EVENT_IMPACTS)
-
-        self.assertEqual(events_per_year.size, N_SAMPLED_YEARS)
+        self.assertEqual(events_per_year.size, n_sample_years)
+        self.assertAlmostEqual(np.round(np.mean(events_per_year)), 2)
 
     def test_sample_events(self):
         """Test the sampling of 34 events out of a pool of 20 events."""
