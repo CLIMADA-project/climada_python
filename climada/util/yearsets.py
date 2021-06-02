@@ -22,7 +22,8 @@ import climada.util.dates_times as u_dt
 
 LOGGER = logging.getLogger(__name__)
 
-def impact_yearset(imp, sampled_years=None, sampling_vect=None, correction_fac=True):
+def impact_yearset(imp, sampled_years=None, sampling_vect=None, lam= None,
+                   correction_fac=True):
 
     """Create an yearset of impacts (yimp) containing a probabilistic impact for each year
       in the sampled_years list (or for a list of sampled_years generated with the length
@@ -50,6 +51,8 @@ def impact_yearset(imp, sampled_years=None, sampling_vect=None, correction_fac=T
             i.e. [yimp, sampling_vect] = climada_yearsets.impact_yearset(...)
             and can then be provided in subsequent calls(s) to obtain the exact same sampling
             (also for a different imp object)
+        lam: int
+            the applied Poisson distribution is centered around lam events per year
         correction_fac : boolean
             If True a correction factor is applied to the resulting yimp. It is
             scaled in such a way that the expected annual impact (eai) of the yimp
@@ -81,13 +84,11 @@ def impact_yearset(imp, sampled_years=None, sampling_vect=None, correction_fac=T
 
     #create sampling vector if not given as input
     if not sampling_vect:
-        #create a sampling vector
-        events_per_year = sample_n_events(n_sampled_years, imp)
+        events_per_year = sample_n_events(n_sampled_years, imp, lam)
         sampling_vect = sample_events(events_per_year, imp.frequency)
 
     #compute impact per sampled_year
     impact_per_year = np.zeros(len(sampling_vect))
-
     for year, sampled_events in enumerate(sampling_vect):
         if sampled_events.size > 0:
             impact_per_year[year] = np.sum(imp.at_event[sampled_events])
@@ -102,6 +103,7 @@ def impact_yearset(imp, sampled_years=None, sampling_vect=None, correction_fac=T
     else:
         yimp.at_event = impact_per_year
 
+    #save calculations in yimp
     yimp.event_id = np.arange(1, n_sampled_years+1)
     yimp.tag['yimp object'] = True
     yimp.date = u_dt.str_to_date([str(date) + '-01-01' for date in sampled_years])
