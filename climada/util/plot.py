@@ -661,7 +661,7 @@ def get_transformation(crs_in):
     units : str
     """
     try:
-        if CRS.from_user_input(crs_in) == CRS.from_user_input({'init': 'epsg:3395'}):
+        if CRS.from_user_input(crs_in) == CRS.from_user_input('EPSG:3395'):
             crs_epsg = ccrs.Mercator()
         else:
             crs_epsg = ccrs.epsg(CRS.from_user_input(crs_in).to_epsg())
