@@ -43,25 +43,28 @@ def calib_instance(hazard, exposure, impact_func, df_out=pd.DataFrame(),
     """calculate one impact instance for the calibration algorithm and write
         to given DataFrame
 
-        Parameters:
-            hazard: hazard set instance
-            exposure: exposure set instance
-            impact_func: impact function instance
+        Parameters
+        ----------
+        hazard : Hazard
+        exposure : Exposure
+        impact_func : ImpactFunc
+        df_out : Dataframe, optional
+            Output DataFrame with headers of columns defined and optionally with
+            first row (index=0) defined with values. If columns "impact",
+            "event_id", or "year" are not included, they are created here.
+            Data like reported impacts or impact function parameters can be
+            given here; values are preserved.
+        yearly_impact : boolean, optional
+            if set True, impact is returned per year, not per event
+        return_cost : str, optional
+            if not 'False' but any of 'R2', 'logR2',
+            cost is returned instead of df_out
 
-        Optional Parameters:
-            df_out: Output DataFrame with headers of columns defined and optionally with
-                first row (index=0) defined with values. If columns "impact",
-                "event_id", or "year" are not included, they are created here.
-                Data like reported impacts or impact function parameters can be
-                given here; values are preserved.
-            yearly_impact (boolean): if set True, impact is returned per year,
-                not per event
-            return_cost: if not 'False' but any of 'R2', 'logR2',
-                cost is returned instead of df_out
-
-        Returns:
-            df_out: DataFrame with modelled impact written to rows for each year
-                or event.
+        Returns
+        -------
+        df_out: DataFrame
+            DataFrame with modelled impact written to rows for each year
+            or event.
     """
     IFS = ImpactFuncSet()
     IFS.append(impact_func)
@@ -121,7 +124,8 @@ def init_impf(impf_name_or_instance, param_dict, df_out=pd.DataFrame(index=[0]))
     impf_name_or_instance : str or ImpactFunc
         method of impact function parameterisation e.g. 'emanuel' or an
         instance of ImpactFunc
-    param_dict: dict of parameter_names and values
+    param_dict : dict, optional
+        dict of parameter_names and values
         e.g. {'v_thresh': 25.7, 'v_half': 70, 'scale': 1}
         or {'mdd_shift': 1.05, 'mdd_scale': 0.8, 'paa_shift': 1, paa_scale': 1}
 
@@ -154,14 +158,20 @@ def init_impf(impf_name_or_instance, param_dict, df_out=pd.DataFrame(index=[0]))
 def change_impf(impf_instance, param_dict):
     """apply a shifting or a scaling defined in param_dict to the impact
     function in impf_istance and return it as a new ImpactFunc object.
-    Parameters:
-            impf_instance (ImpactFunc): an instance of ImpactFunc
-            param_dict: dict of parameter_names and values (interpreted as
-            factors, 1 = neutral)
-                    e.g. {'mdd_shift': 1.05, 'mdd_scale': 0.8,
-                          'paa_shift': 1, paa_scale': 1}
-    Returns:
-        ImpactFunc: The Impact function based on the parameterisation
+
+    Parameters
+    ----------
+    impf_instance : ImpactFunc
+        an instance of ImpactFunc
+    param_dict : dict
+        dict of parameter_names and values (interpreted as
+        factors, 1 = neutral)
+        e.g. {'mdd_shift': 1.05, 'mdd_scale': 0.8,
+        'paa_shift': 1, paa_scale': 1}
+
+    Returns
+    -------
+    ImpactFunc : The Impact function based on the parameterisation
     """
     ImpactFunc_new = copy.deepcopy(impf_instance)
     # create higher resolution impact functions (intensity, mdd ,paa)
@@ -221,19 +231,29 @@ def init_impact_data(hazard_type,
                      yearly_impact=True):
     """creates a dataframe containing the recorded impact data for one hazard
     type and one area (countries, country or local split)
-    Parameters:
-            hazard_type: default = 'TC', type of hazard 'WS','FL' etc.
-            region_ids: name the region_ids or country names
-            year_range (list): list containting start and end year.
-                    e.g. [1980, 2017]
-            reference_year: impacts will be scaled to this year
-            impact_data_source: default 'emdat', others maybe possible
-    Optional Parameters:
-            yearly_impact (boolean): if set True, impact is returned per year,
-                not per event
-    Returns:
-            df_out: DataFrame with recorded impact written to rows for each year
-                or event.
+
+    Parameters
+    ----------
+    hazard_type : str
+        default = 'TC', type of hazard 'WS','FL' etc.
+    region_ids : str
+        name the region_ids or country names
+    year_range : list
+        list containting start and end year.
+        e.g. [1980, 2017]
+    source_file : str
+    reference_year : int
+        impacts will be scaled to this year
+    impact_data_source : str, optional
+        default 'emdat', others maybe possible
+    yearly_impact : bool, optional
+        if set True, impact is returned per year, not per event
+
+    Returns
+    -------
+    df_out : pd.DataFrame
+        Dataframe with recorded impact written to rows for each year
+        or event.
     """
     if impact_data_source == 'emdat':
         if yearly_impact:
@@ -253,12 +273,19 @@ def init_impact_data(hazard_type,
 def calib_cost_calc(df_out, cost_function):
     """calculate the cost function of the modelled impact impact_CLIMADA and
         the reported impact impact_scaled in df_out
-        Parameters:
-            df_out (pd.Dataframe): DataFrame as created in calib_instance
-            cost_function (str): chooses the cost function e.g. 'R2' or 'logR2'
-        Returns:
-            cost: the results of the cost function when comparing modelled and
-                    reported impact
+
+    Parameters
+    ----------
+    df_out : pd.Dataframe
+        DataFrame as created in calib_instance
+    cost_function : str
+        chooses the cost function e.g. 'R2' or 'logR2'
+
+    Returns
+    -------
+    cost : float
+        The results of the cost function when comparing modelled and
+        reported impact
     """
     if cost_function == 'R2':
         cost = np.sum((pd.to_numeric(df_out['impact_scaled']) -
@@ -279,22 +306,27 @@ def calib_all(hazard, exposure, impf_name_or_instance, param_full_dict,
               impact_data_source, year_range, yearly_impact=True):
     """portrait the difference between modelled and reported impacts for all
     impact functions described in param_full_dict and impf_name_or_instance
-    Parameters:
-        hazard: list or instance of hazard
-        exposure: list or instance of exposure of full countries
-        impf_name_or_instance (string or ImpactFunc): the name of a
-            parameterisation or an instance of class ImpactFunc
-            e.g. 'emanuel'
-        param_full_dict (dict): a dict containing keys used for
-            impf_name_or_instance and values which are iterable (lists)
-            e.g. {'v_thresh': [25.7, 20], 'v_half': [70], 'scale': [1, 0.8]}
-        impact_data_source (dict or dataframe): with name of impact data source
-            and file location or dataframe
-        year_range
-        yearly_impact
-    Returns:
-            df_result: DataFrame with modelled impact written to rows for each year
-                or event.
+    Parameters
+    ----------
+    hazard : list or Hazard
+    exposure : list or Exposures
+        list or instance of exposure of full countries
+    impf_name_or_instance: string or ImpactFunc
+        the name of a parameterisation or an instance of class
+        ImpactFunc e.g. 'emanuel'
+    param_full_dict : dict
+        a dict containing keys used for
+        f_name_or_instance and values which are iterable (lists)
+        e.g. {'v_thresh' : [25.7, 20], 'v_half': [70], 'scale': [1, 0.8]}
+    impact_data_source : dict or pd.Dataframe
+        with name of impact data source and file location or dataframe
+    year_range : list
+    yearly_impact : bool, optional
+
+    Returns
+    -------
+    df_result : pd.DataFrame
+        df with modelled impact written to rows for each year or event.
     """
     df_result = None  # init return variable
 
@@ -331,28 +363,35 @@ def calib_optimize(hazard, exposure, impf_name_or_instance, param_dict,
                    cost_fucntion='R2', show_details=False):
     """portrait the difference between modelled and reported impacts for all
     impact functions described in param_full_dict and impf_name_or_instance
-    Parameters:
-        hazard: list or instance of hazard
-        exposure: list or instance of exposure of full countries
-        impf_name_or_instance (string or ImpactFunc): the name of a
-            parameterisation or an instance of class ImpactFunc
-            e.g. 'emanuel'
-        param_dict (dict): a dict containing keys used for
-            impf_name_or_instance and one set of values
-            e.g. {'v_thresh': 25.7, 'v_half': 70, 'scale': 1}
-        impact_data_source (dict or dataframe): with name of impact data source
-            and file location or dataframe
-        year_range
-        yearly_impact
-        cost_function (string): the argument for function calib_cost_calc,
-            default 'R2'
-        show_details (bool): if True, return a tuple with the parameters AND
-            the details of the optimization like success,
-            status, number of iterations etc
 
-    Returns:
-            param_dict_result: the parameters with the best calibration results
-                (or a tuple with (1) the parameters and (2) the optimization output)
+    Parameters
+    ----------
+    hazard: list or Hazard
+    exposure: list or Exposures
+        list or instance of exposure of full countries
+    impf_name_or_instance: string or ImpactFunc
+        the name of a parameterisation or an instance of class
+        ImpactFunc e.g. 'emanuel'
+    param_dict : dict
+        a dict containing keys used for
+        impf_name_or_instance and one set of values
+        e.g. {'v_thresh': 25.7, 'v_half': 70, 'scale': 1}
+    impact_data_source : dict or pd. dataframe
+        with name of impact data source and file location or dataframe
+    year_range : list
+    yearly_impact : bool, optional
+    cost_function : str, optional
+        the argument for function calib_cost_calc, default 'R2'
+    show_details : bool, optional
+        if True, return a tuple with the parameters AND
+        the details of the optimization like success,
+        status, number of iterations etc
+
+    Returns
+    -------
+    param_dict_result : dict or tuple
+        the parameters with the best calibration results
+        (or a tuple with (1) the parameters and (2) the optimization output)
     """
     param_dict_result = param_dict
 
