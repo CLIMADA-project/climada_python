@@ -80,12 +80,25 @@ class TestYearSets(unittest.TestCase):
         self.assertEqual(len(np.concatenate(sampling_vect).ravel()), np.sum(events_per_year))
         self.assertEqual(len(np.unique(list(collections.Counter(np.concatenate(sampling_vect).ravel()).values()))), 2)
 
+    def test_computing_imp_per_year(self):
+        """Test the calculation of impacts per year from a given sampling dictionary."""
+        imp_per_year = yearsets.compute_imp_per_year(IMP, SAMPLING_VECT)
+        self.assertEqual(imp_per_year[0], 10)
+
     def test_correction_fac(self):
         """Test the calculation of a correction factor as the ration of the expected annual
         impact (eai) of the event_impacts and the eai of the annual_impacts"""
-        correction_factor = yearsets.calculate_correction_fac(IMP.at_event, IMP)
+        imp_per_year = yearsets.compute_imp_per_year(IMP, SAMPLING_VECT)
+        correction_factor = yearsets.calculate_correction_fac(imp_per_year, IMP)
 
-        self.assertAlmostEqual(correction_factor, 2)
+        self.assertAlmostEqual(correction_factor, 1.42857143)
+    
+    # def test_correction_fac(self):
+    #     """Test the calculation of a correction factor as the ration of the expected annual
+    #     impact (eai) of the event_impacts and the eai of the annual_impacts"""
+    #     correction_factor = yearsets.calculate_correction_fac(IMP.at_event, IMP)
+
+    #     self.assertAlmostEqual(correction_factor, 2)
 
 # Execute Tests
 if __name__ == "__main__":
