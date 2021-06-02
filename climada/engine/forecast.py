@@ -479,7 +479,8 @@ class Forecast():
                             color=color[t_i],
                             ha=left_right[t_i])
 
-            plt.subplots_adjust(top=0.8)
+        fig.tight_layout()
+        fig.subplots_adjust(top=0.8)
         return fig, axis_sub
 
     def plot_hist(self, run_datetime=None, save_fig=True, close_fig=False,
@@ -778,7 +779,7 @@ class Forecast():
                             ha=left_right[t_i])
             extent = u_plot._get_borders(coord)
             axis.set_extent((extent), ccrs.PlateCarree())
-
+        fig.tight_layout()
         return fig, axis_sub
 
     def plot_warn_map(self, polygon_file=None,
@@ -1021,6 +1022,7 @@ class Forecast():
 
         extent = u_plot._get_borders(self._impact[haz_ind].coord_exp)
         axis.set_extent((extent), ccrs.PlateCarree())
+        fig.tight_layout()
         return fig, axis
 
     def plot_hexbin_ei_exposure(self, run_datetime=None,

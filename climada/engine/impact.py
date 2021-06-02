@@ -831,6 +831,7 @@ class Impact():
             ani = animation.FuncAnimation(fig, run, frames=len(haz_list),
                                           interval=500, blit=False)
             pbar = tqdm(total=len(haz_list))
+            fig.tight_layout()
             ani.save(file_name, writer=writer)
             pbar.close()
 

@@ -111,6 +111,20 @@ class TropCyclone(Hazard):
         """
         Clear and fill with windfields from specified tracks.
 
+        This function sets the `TropCyclone.intensity` attribute to contain, for each centroid,
+        the maximum wind speed (1-minute sustained winds at 10 meters above ground) experienced
+        over the whole period of each TC event in m/s. The wind speed is set to 0 if it doesn't
+        exceed the threshold in `TropCyclone.intensity_thres`.
+
+        The `TropCyclone.category` attribute is set to the value of the `category`-attribute
+        of each of the given track data sets.
+
+        The `TropCyclone.basin` attribute is set to the genesis basin for each event, which
+        is the first value of the `basin`-variable in each of the given track data sets.
+
+        Optionally, the time dependent, vectorial winds can be stored using the `store_windfields`
+        function parameter (see below).
+
         Parameters
         ----------
         tracks : TCTracks
@@ -331,6 +345,7 @@ class TropCyclone(Hazard):
             pbar = tqdm(total=idx_plt.size - 2)
             ani = animation.FuncAnimation(fig, run, frames=idx_plt.size - 2,
                                           interval=500, blit=False)
+            fig.tight_layout()
             ani.save(file_name, writer=writer)
             pbar.close()
         return tc_list, tr_coord
@@ -429,7 +444,7 @@ class TropCyclone(Hazard):
         ])
         new_haz.orig = np.array([track.orig_event_flag])
         new_haz.category = np.array([track.category])
-        new_haz.basin = [track.basin]
+        new_haz.basin = [str(track.basin.values[0])]
         return new_haz
 
     def _apply_knutson_criterion(self, chg_int_freq, scaling_rcp_year):
@@ -445,8 +460,8 @@ class TropCyclone(Hazard):
         Returns
         -------
         tc_cc : climada.hazard.TropCyclone
-            Tropical cyclone with frequency and intensity scaled according
-            to the Knutson criterion. Returns a new instance of TropCyclone.
+            Tropical cyclone with frequency and intensity scaled inspired by
+            the Knutson criterion. Returns a new instance of TropCyclone.
         """
 
         tc_cc = copy.deepcopy(self)
@@ -477,9 +492,7 @@ class TropCyclone(Hazard):
                         ]
             freq_chg.sort(reverse=False, key=lambda x: len(x['category']))
 
-            # Iteratively scale frequencies for each category such that
-            # cumulative frequencies are scaled according to Knutson criterion.
-
+            # Scale frequencies by category
             cat_larger_list = []
             for chg in freq_chg:
                 cat_chg_list = [cat
@@ -489,24 +502,12 @@ class TropCyclone(Hazard):
                 sel_cat_chg = np.isin(tc_cc.category, cat_chg_list) & bas_sel
                 if sel_cat_chg.any():
                     freq_scaling = 1 + (chg['change'] - 1) * scaling_rcp_year
-                    sel_cat_all = (np.isin(tc_cc.category, chg['category'])
-                                   & bas_sel)
-                    sel_cat_larger = (np.isin(tc_cc.category, cat_larger_list)
-                                      & bas_sel)
-                    freq_scaling_cor = (
-                        (np.sum(self.frequency[sel_cat_all]) * freq_scaling
-                         - np.sum(tc_cc.frequency[sel_cat_larger]))
-                        / np.sum(self.frequency[sel_cat_chg])
-                    )
-                    tc_cc.frequency[sel_cat_chg] *= freq_scaling_cor
+                    tc_cc.frequency[sel_cat_chg] *= freq_scaling
                 cat_larger_list += cat_chg_list
 
         if (tc_cc.frequency < 0).any():
             raise ValueError("The application of the given climate scenario"
-                             "resulted in at least one negative frequenciy."
-                             "This is likely due to the use of a"
-                             "non-representative event set (too small, "
-                             "incorrect reference period, ...)")
+                             "resulted in at least one negative frequency.")
 
         return tc_cc
 

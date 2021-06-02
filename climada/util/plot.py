@@ -29,6 +29,7 @@ __all__ = ['geo_bin_from_array',
 
 import logging
 from textwrap import wrap
+
 from scipy.interpolate import griddata
 import numpy as np
 import matplotlib.pyplot as plt
@@ -244,6 +245,7 @@ def _plot_scattered_data(method, array_sub, geo_coord, var_name, title,
             cbar.ax.yaxis.get_offset_text().set_fontsize(fontsize)
             for item in [axis.title, cbar.ax.xaxis.label, cbar.ax.yaxis.label]:
                 item.set_fontsize(fontsize)
+    plt.tight_layout()
     return axes
 
 
@@ -359,6 +361,7 @@ def geo_im_from_array(array_sub, coord, var_name, title,
             for item in [axis.title, cbar.ax.xaxis.label, cbar.ax.yaxis.label]:
                 item.set_fontsize(fontsize)
 
+    plt.tight_layout()
     return axes
 
 
@@ -461,9 +464,11 @@ def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
     if not isinstance(axes, np.ndarray):
         axes = np.array([axes])
     for ax in axes.ravel():
-        cbar = ax.collections[-1].colorbar
-        cbar.set_ticks(np.arange(array_sub_n))
-        cbar.set_ticklabels([cat_name[str(val)] for val in array_sub_unique])
+        cbar = [coll.colorbar for coll in ax.collections if coll.colorbar is not None]
+        if len(cbar) > 0:
+            cbar = cbar[-1]
+            cbar.set_ticks(np.arange(array_sub_n))
+            cbar.set_ticklabels([cat_name[str(val)] for val in array_sub_unique])
 
     return axes
 
@@ -518,7 +523,6 @@ def make_map(num_sub=1, figsize=(9, 13), proj=ccrs.PlateCarree(), adapt_fontsize
         except TypeError:
             pass
 
-    fig.tight_layout()
     if num_col > 1:
         fig.subplots_adjust(wspace=0.3)
     if num_col > 2:
