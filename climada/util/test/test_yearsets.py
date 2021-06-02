@@ -28,9 +28,9 @@ from climada.engine import Impact
 import climada.util.dates_times as u_dt
 
 
-EVENT_IMPACTS = Impact()
-EVENT_IMPACTS.at_event = np.arange(10,110,10)
-EVENT_IMPACTS.frequency = np.array(np.ones(10)*0.2)
+IMP = Impact()
+IMP.at_event = np.arange(10,110,10)
+IMP.frequency = np.array(np.ones(10)*0.2)
 
 SAMPLING_VECT = [np.array([0]), np.array([4]), np.array([1]), np.array([2, 5, 7, 9, 6]),
                  np.array([8]), np.array([3]), np.array([2, 6]), np.array([1]),
@@ -42,29 +42,29 @@ YEAR_LIST = list(range(2000, 2010))
 class TestYearSets(unittest.TestCase):
     """Test yearset functions"""
     def test_impact_yearset(self):
-        """Test computing an annual_impacts object for a given range of years (N_SAMPLED_YEARS)
-        from an event_impacts object and a sampling dictionary"""
-        annual_impacts, sampling_dict = yearsets.impact_yearset(EVENT_IMPACTS, N_SAMPLED_YEARS,
+        """Test computing a yearly impact (yimp) for a given range of years (N_SAMPLED_YEARS)
+        from an impact (IMP) and a sampling vector (SAMPLING_VECT)"""
+        yimp, sampling_dict = yearsets.impact_yearset(IMP, N_SAMPLED_YEARS,
                                                                 SAMPLING_VECT, False)
 
-        self.assertAlmostEqual(annual_impacts.at_event[3], 238)
-        self.assertEqual(annual_impacts.date[3], 1096)
-        self.assertAlmostEqual(np.sum(annual_impacts.at_event), 539)
+        self.assertAlmostEqual(yimp.at_event[3], 238)
+        self.assertEqual(yimp.date[3], 1096)
+        self.assertAlmostEqual(np.sum(yimp.at_event), 539)
 
     def test_impact_yearset_yearlist(self):
-        """Test computing an annual_impacts object for a given list of years (YEAR_LIST)
-        from an event_impacts object and a sampling dictionary"""
-        annual_impacts, sampling_dict = yearsets.impact_yearset(EVENT_IMPACTS, YEAR_LIST,
+        """Test computing a yearly impact (yimp) for a given list of years (YEAR_LIST)
+        from an impact (IMP) and a sampling vector (SAMPLING_VECT)"""
+        yimp, sampling_vect = yearsets.impact_yearset(IMP, YEAR_LIST,
                                                                 SAMPLING_VECT, False)
 
-        self.assertAlmostEqual(annual_impacts.at_event[3], 238)
-        self.assertEqual(u_dt.date_to_str(annual_impacts.date)[0], '2000-01-01')
-        self.assertAlmostEqual(np.sum(annual_impacts.at_event), 539)
+        self.assertAlmostEqual(yimp.at_event[3], 238)
+        self.assertEqual(u_dt.date_to_str(yimp.date)[0], '2000-01-01')
+        self.assertAlmostEqual(np.sum(yimp.at_event), 539)
 
     def test_sample_n_events(self):
         """Test sampling amount of events per year."""
         n_sample_years = 1000
-        events_per_year = yearsets.sample_n_events(n_sample_years, EVENT_IMPACTS)
+        events_per_year = yearsets.sample_n_events(n_sample_years, IMP)
 
         self.assertEqual(events_per_year.size, n_sample_years)
         self.assertAlmostEqual(np.round(np.mean(events_per_year)), 2)
@@ -83,7 +83,7 @@ class TestYearSets(unittest.TestCase):
     def test_correction_fac(self):
         """Test the calculation of a correction factor as the ration of the expected annual
         impact (eai) of the event_impacts and the eai of the annual_impacts"""
-        correction_factor = yearsets.calculate_correction_fac(EVENT_IMPACTS.at_event, EVENT_IMPACTS)
+        correction_factor = yearsets.calculate_correction_fac(IMP.at_event, IMP)
 
         self.assertAlmostEqual(correction_factor, 2)
 
