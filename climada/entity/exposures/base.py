@@ -215,7 +215,7 @@ class Exposures():
             raise ValueError("Exposures is not able to handle customized 'geometry' column names.")
         if 'crs' in kwargs and not geometry and not 'geometry' in data:
             kwargs.pop('crs')
-        if not 'crs' in kwargs and (geometry or 'geometry' in data):
+        if 'crs' not in kwargs and (geometry or 'geometry' in data):
             kwargs['crs'] = crs
 
         # make the data frame
@@ -413,7 +413,7 @@ class Exposures():
         Parameters
         ----------
         scheduler : str, optional
-            used for dask map_partitions. 
+            used for dask map_partitions.
             “threads”, “synchronous” or “processes”
         """
         u_coord.set_df_geometry_points(self.gdf, scheduler=scheduler, crs=self.crs)
@@ -850,7 +850,7 @@ def add_sea(exposures, sea_res, scheduler=None):
         is distance from coast to fill with water and second parameter
         is resolution between sea points
     scheduler : str, optional
-            used for dask map_partitions. 
+            used for dask map_partitions.
             “threads”, “synchronous” or “processes”
 
     Returns:
