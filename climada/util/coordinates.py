@@ -1832,20 +1832,20 @@ def set_df_geometry_points(df_val, scheduler=None, crs=None):
     ----------
     df_val : DataFrame or GeoDataFrame
         contains latitude and longitude columns
-    scheduler : str
+    scheduler : str, optional
         used for dask map_partitions. “threads”, “synchronous” or “processes”
+    crs : object (anything readable by pyproj4.CRS.from_user_input), optional
+        Coordinate Reference System, if omitted or None: df_val.geometry.crs
     """
     LOGGER.info('Setting geometry points.')
     # work in parallel
     if scheduler:
         def apply_point(df_exp):
             return df_exp.apply(lambda row: Point(row.longitude, row.latitude), axis=1)
-    
+
         ddata = dd.from_pandas(df_val, npartitions=cpu_count())
         df_val['geometry'] = ddata.map_partitions(apply_point, meta=Point) \
                                   .compute(scheduler=scheduler)
-        if crs:
-            df_val.set_crs(crs, inplace=True)
     # single process
     else:
         if crs is None:
@@ -1855,6 +1855,9 @@ def set_df_geometry_points(df_val, scheduler=None, crs=None):
                 crs = None
         df_val['geometry'] = gpd.GeoSeries(
             gpd.points_from_xy(df_val.longitude, df_val.latitude), crs=crs)
+
+    if crs:
+        df_val.set_crs(crs, inplace=True)
 
 
 def fao_code_def():
