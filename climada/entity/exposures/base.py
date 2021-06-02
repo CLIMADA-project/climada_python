@@ -119,7 +119,10 @@ class Exposures():
     def crs(self):
         """Coordinate Reference System, refers to the crs attribute of the inherent GeoDataFrame"""
         try:
-            return self.gdf.crs if self.gdf.crs is not None else self.meta.get('crs')
+            # it is very well possible that gdf.crs is None while the geometry columns has a crs
+            return self.gdf.crs if self.gdf.crs else \
+                   self.gdf.geometry.crs if 'geometry' in self.gdf and self.gdf.geometry.crs else \
+                   self.meta.get('crs')
         except AttributeError:
             return self.meta.get('crs')
 
@@ -292,13 +295,20 @@ class Exposures():
         ----------
         crs : object, optional
             anything anything accepted by pyproj.CRS.from_user_input
-            if omitted or None, the original stays unchanged and only the GeoDataFrame is updated.
             if the original value is None it will be set to the default CRS.
-        """        
+        """
+        # clear the meta dictionary entry
+        if 'crs' in self.meta:
+            old_crs = self.meta.pop('crs')
         crs = crs if crs else self.crs if self.crs else DEF_CRS
         # adjust the dataframe
-        if 'geometry' in self.gdf:
-            self.gdf.set_crs(crs, inplace=True)
+        if 'geometry' in self.gdf.columns:
+            try:
+                self.gdf.set_crs(crs, inplace=True)
+            except ValueError:
+                # restore popped crs and leave
+                self.meta['crs'] = old_crs
+                raise
         # store the value
         self.meta['crs'] = crs
 
@@ -311,10 +321,13 @@ class Exposures():
         crs : object, optional,
             anything anything accepted by pyproj.CRS.from_user_input,
             by default None, then `gdf.crs` applies or - if not set - the exposure's current crs
-        """        
+        """
+        # check argument type
+        if not isinstance(gdf, GeoDataFrame):
+            raise ValueError("gdf is not a GeoDataFrame")
         # set the dataframe
         self.gdf = gdf
-        # update the coordindate reference system
+        # update the coordinate reference system
         self.set_crs(crs)
 
     def get_impf_column(self, haz_type=''):

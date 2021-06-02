@@ -19,6 +19,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Test Exposure base class.
 """
 import unittest
+from geopandas.geodataframe import GeoDataFrame
 import numpy as np
 import pandas as pd
 import geopandas as gpd
@@ -405,6 +406,53 @@ class TestGeoDFFuncs(unittest.TestCase):
         self.assertIn("CLIMADA 2", str(err.exception))
         self.assertIn("gdf", str(err.exception))
 
+    def test_set_gdf(self):
+        """Test setting the GeoDataFrame"""
+        empty_gdf = GeoDataFrame()
+        gdf_without_geometry = good_exposures().gdf
+        good_exp = good_exposures()
+        good_exp.set_crs(crs='epsg:3395')
+        good_exp.set_geometry_points()
+        gdf_with_geometry = good_exp.gdf
+
+        probe = Exposures()
+        self.assertRaises(ValueError, probe.set_gdf, pd.DataFrame())
+
+        probe.set_gdf(empty_gdf)
+        self.assertTrue(probe.gdf.equals(GeoDataFrame()))
+        self.assertTrue(u_coord.equal_crs(DEF_CRS, probe.crs))
+        self.assertIsNone(probe.gdf.crs)
+
+        probe.set_gdf(gdf_with_geometry)
+        self.assertTrue(probe.gdf.equals(gdf_with_geometry))
+        self.assertTrue(u_coord.equal_crs('epsg:3395', probe.crs))
+        self.assertTrue(u_coord.equal_crs('epsg:3395', probe.gdf.crs))
+
+        probe.set_gdf(gdf_without_geometry)
+        self.assertTrue(probe.gdf.equals(good_exposures().gdf))
+        self.assertTrue(u_coord.equal_crs(DEF_CRS, probe.crs))
+        self.assertIsNone(probe.gdf.crs)
+
+    def test_set_crs(self):
+        """Test setting the CRS"""
+        empty_gdf = GeoDataFrame()
+        gdf_without_geometry = good_exposures().gdf
+        good_exp = good_exposures()
+        good_exp.set_geometry_points()
+        gdf_with_geometry = good_exp.gdf
+
+        probe = Exposures(gdf_without_geometry)
+        self.assertTrue(u_coord.equal_crs(DEF_CRS, probe.crs))
+        probe.set_crs('epsg:3395')
+        self.assertTrue(u_coord.equal_crs('epsg:3395', probe.crs))
+
+        probe = Exposures(gdf_with_geometry)
+        self.assertTrue(u_coord.equal_crs(DEF_CRS, probe.crs))
+        probe.set_crs(DEF_CRS)
+        self.assertTrue(u_coord.equal_crs(DEF_CRS, probe.crs))
+        self.assertRaises(ValueError, probe.set_crs, 'epsg:3395')
+        self.assertEqual('EPSG:4326', probe.meta.get('crs'))
+
 
 class TestImpactFunctions(unittest.TestCase):
     """Test impact function handling"""
@@ -449,9 +497,11 @@ class TestImpactFunctions(unittest.TestCase):
 
 # Execute Tests
 if __name__ == "__main__":
-    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestChecker)
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestFuncs))
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestFuncs)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestChecker))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestIO))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAddSea))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestConcat))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestGeoDFFuncs))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestImpactFunctions))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
