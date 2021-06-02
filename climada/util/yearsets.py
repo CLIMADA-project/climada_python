@@ -88,17 +88,17 @@ def impact_yearset(imp, sampled_years=None, sampling_vect=None, lam= None,
         sampling_vect = sample_events(events_per_year, imp.frequency)
 
     #compute impact per sampled_year
-    impact_per_year = compute_impacts_per_year(imp, sampling_vect)
+    imp_per_year = compute_impacts_per_year(imp, sampling_vect)
 
     #copy imp object as basis for the yimp object
     yimp = copy.deepcopy(imp)
 
-    #save impact_per_year in yimp
+    #save imp_per_year in yimp
     if correction_fac: #adjust for sampling error
-        correction_factor = calculate_correction_fac(impact_per_year, imp)
-        yimp.at_event = impact_per_year / correction_factor
+        correction_factor = calculate_correction_fac(imp_per_year, imp)
+        yimp.at_event = imp_per_year / correction_factor
     else:
-        yimp.at_event = impact_per_year
+        yimp.at_event = imp_per_year
 
     #save calculations in yimp
     yimp.event_id = np.arange(1, n_sampled_years+1)
@@ -213,24 +213,24 @@ def compute_impacts_per_year(imp, sampling_vect):
             sub-array per sampled_year, which contains the event_ids of the events used to
             calculate the annual impacts.
     Returns:
-        impact_per_year: array
+        imp_per_year: array
             Sampled impact per year (length = sampled_years)
       """
 
-    impact_per_year = np.zeros(len(sampling_vect))
+    imp_per_year = np.zeros(len(sampling_vect))
     for year, sampled_events in enumerate(sampling_vect):
         if sampled_events.size > 0:
-            impact_per_year[year] = np.sum(imp.at_event[sampled_events])
+            imp_per_year[year] = np.sum(imp.at_event[sampled_events])
 
-    return impact_per_year
+    return imp_per_year
 
-def calculate_correction_fac(impact_per_year, imp):
+def calculate_correction_fac(imp_per_year, imp):
     """Calculate a correction factor that can be used to scale the yimp in such
     a way that the expected annual impact (eai) of the yimp amounts to the eai
     of the input imp
 
     Parameters:
-        impact_per_year : array
+        imp_per_year : array
             sampled yimp
         imp : climada.engine.Impact()
             impact object containing impacts per event
@@ -240,7 +240,7 @@ def calculate_correction_fac(impact_per_year, imp):
             The correction factor is calculated as imp_eai/yimp_eai
     """
 
-    yimp_eai = np.sum(impact_per_year)/len(impact_per_year)
+    yimp_eai = np.sum(imp_per_year)/len(imp_per_year)
     imp_eai = np.sum(imp.frequency*imp.at_event)
     correction_factor = imp_eai/yimp_eai
     LOGGER.info("The correction factor amounts to %s", (correction_factor-1)*100)
