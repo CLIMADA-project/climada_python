@@ -126,11 +126,11 @@ def sample_n_events(n_sampled_years, imp, lam=None):
             Number of events per sampled year
     """
     if not lam:
-        n_annual_events = np.sum(imp.frequency)
+        lam = np.sum(imp.frequency)
 
     #sample number of events per year
-    if n_annual_events != 1:
-        events_per_year = np.round(np.random.poisson(lam=n_annual_events,
+    if lam != 1:
+        events_per_year = np.round(np.random.poisson(lam=lam,
                                                      size=n_sampled_years)).astype('int')
     else:
         events_per_year = np.ones(len(n_sampled_years))
