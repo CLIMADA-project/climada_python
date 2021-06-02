@@ -88,10 +88,7 @@ def impact_yearset(imp, sampled_years=None, sampling_vect=None, lam= None,
         sampling_vect = sample_events(events_per_year, imp.frequency)
 
     #compute impact per sampled_year
-    impact_per_year = np.zeros(len(sampling_vect))
-    for year, sampled_events in enumerate(sampling_vect):
-        if sampled_events.size > 0:
-            impact_per_year[year] = np.sum(imp.at_event[sampled_events])
+    impact_per_year = compute_impacts_per_year(imp, sampling_vect)
 
     #copy imp object as basis for the yimp object
     yimp = copy.deepcopy(imp)
@@ -205,6 +202,27 @@ def sample_events(events_per_year, freqs_orig):
         sampling_vect.append(selected_events)
 
     return sampling_vect
+
+def compute_impacts_per_year(imp, sampling_vect):
+    """Sample annual impacts from the given event_impacts according to the sampling dictionary
+    Parameters:
+        imp : climada.engine.Impact()
+            impact object containing impacts per event
+        sampling_vect : 2D array
+            The sampling vector specifies how to sample the yimp, it consists of one
+            sub-array per sampled_year, which contains the event_ids of the events used to
+            calculate the annual impacts.
+    Returns:
+        impact_per_year: array
+            Sampled impact per year (length = sampled_years)
+      """
+
+    impact_per_year = np.zeros(len(sampling_vect))
+    for year, sampled_events in enumerate(sampling_vect):
+        if sampled_events.size > 0:
+            impact_per_year[year] = np.sum(imp.at_event[sampled_events])
+
+    return impact_per_year
 
 def calculate_correction_fac(impact_per_year, imp):
     """Calculate a correction factor that can be used to scale the yimp in such
