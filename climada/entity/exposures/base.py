@@ -815,6 +815,10 @@ class Exposures():
             with the metadata of the first item in the list and the dataframes concatenated.
         """
         exp = exposures_list[0].copy(deep=False)
+        if not isinstance(exp, Exposures):
+            exp = Exposures(exp)
+            exp.check()
+
         df_list = [
             ex.gdf if isinstance(ex, Exposures) else ex
             for ex in exposures_list
