@@ -645,8 +645,7 @@ class WildFire(Hazard):
 
         """
         if centroids.meta:
-            res_centr = abs(centroids.meta['transform'][4]), \
-                centroids.meta['transform'][0]
+            res_centr = abs(centroids.meta['transform'][4])
         else:
             res_centr = u_coord.get_resolution(centroids.lat, centroids.lon)
         if abs(abs(res_centr[0]) - abs(res_centr[1])) > 1.0e-6:
