@@ -236,7 +236,7 @@ class WildFire(Hazard):
         # define years
         year_i  = year_start if year_start is not None else date.fromordinal(firms.datenum.min()).year
         year_e  = year_end if year_end is not None else date.fromordinal(firms.datenum.max()).year
-        years = np.arange(year_i, year_f+1)
+        years = np.arange(year_i, year_e+1)
 
         # make fire seasons
         hist_fire_seasons = [] # list to save fire seasons
