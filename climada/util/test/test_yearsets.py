@@ -40,16 +40,22 @@ YEAR_LIST = list(range(2000, 2010))
 
 class TestYearSets(unittest.TestCase):
     """Test yearset functions"""
-
-    def test_impact_yearset_yearlist(self):
+    
+    def test_impact_yearset(self):
         """Test computing a yearly impact (yimp) for a given list of years (YEAR_LIST)
         from an impact (IMP) and a sampling vector (SAMPLING_VECT)"""
-        yimp, sampling_vect = yearsets.impact_yearset(IMP, YEAR_LIST,
-                                                                SAMPLING_VECT, False)
+        yimp, sampling_vect = yearsets.impact_yearset(IMP, YEAR_LIST, correction_fac=False)
 
-        self.assertAlmostEqual(yimp.at_event[3], 238)
+        self.assertAlmostEqual(len(sampling_vect), len(YEAR_LIST))
+    
+    def test_impact_yearset_sampling_vect(self):
+        """Test computing a yearly impact (yimp) for a given list of years (YEAR_LIST)
+        from an impact (IMP) and a sampling vector (SAMPLING_VECT)"""
+        yimp = yearsets.impact_yearset_from_sampling_vect(IMP, YEAR_LIST, SAMPLING_VECT, False)
+
+        self.assertAlmostEqual(yimp.at_event[3], 340)
         self.assertEqual(u_dt.date_to_str(yimp.date)[0], '2000-01-01')
-        self.assertAlmostEqual(np.sum(yimp.at_event), 539)
+        self.assertAlmostEqual(np.sum(yimp.at_event), 770)
 
     def test_sample_from_poisson(self):
         """Test sampling amount of events per year."""
