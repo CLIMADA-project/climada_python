@@ -165,7 +165,7 @@ class TestMethodsFirms(unittest.TestCase):
         firms_ori = wf._firms_cons_days(firms_ori)
         firms_ori = wf._firms_clustering(firms_ori, 0.375/2/15)
         firms = firms_ori.copy()
-        wf._firms_fire(2, firms)
+        wf._firms_fire(firms)
         self.assertEqual(len(firms), 9325)
         self.assertTrue(np.allclose(np.unique(firms.event_id), np.arange(7)))
         self.assertTrue(np.allclose(firms.event_id[-4:], np.ones(4)*6))
@@ -195,23 +195,19 @@ class TestMethodsFirms(unittest.TestCase):
 
     def test_iter_events_pass(self):
         """ Test identification of events """
-        ori_thres = WildFire.days_thres_firms
         wf = WildFire()
         firms = wf._clean_firms_csv(TEST_FIRMS)
         firms['datenum'].values[100] = 7000
         i_iter = 0
-        WildFire.days_thres_firms = 3
         while firms.iter_ev.any():
             # Compute cons_id: consecutive events in current iteration
             wf._firms_cons_days(firms)
             # Compute clus_id: cluster identifier inside cons_id
             wf._firms_clustering(firms, 0.375)
             # compute event_id
-            WildFire.days_thres_firms = 2
-            wf._firms_fire(WildFire.days_thres_firms, firms)
+            wf._firms_fire(firms)
             i_iter += 1
-        self.assertEqual(i_iter, 2)
-        WildFire.days_thres_firms = ori_thres
+        self.assertEqual(i_iter, 1)
 
 
     def test_calc_bright_pass(self):
@@ -223,7 +219,7 @@ class TestMethodsFirms(unittest.TestCase):
         firms['datenum'].values[100] = 7000
         firms = wf._firms_cons_days(firms)
         firms = wf._firms_clustering(firms, DEF_CENTROIDS[1]/2/15)
-        wf._firms_fire(2, firms)
+        wf._firms_fire(firms)
         firms.latitude[8169] = firms.loc[16]['latitude']
         firms.longitude[8169] = firms.loc[16]['longitude']
         wf._calc_brightness(firms, DEF_CENTROIDS[0], DEF_CENTROIDS[1])

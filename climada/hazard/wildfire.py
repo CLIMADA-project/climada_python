@@ -152,7 +152,7 @@ class WildFire(Hazard):
             # Compute clus_id: cluster identifier inside cons_id
             self._firms_clustering(firms, res_data)
             # compute event_id
-            self._firms_fire(self.days_thres_firms, firms)
+            self._firms_fire(firms)
             LOGGER.info('Remaining fires to identify: %s.', str(np.argwhere(\
             firms.iter_ev.values).size))
 
@@ -747,7 +747,7 @@ class WildFire(Hazard):
 
         return firms
     
-    def _firms_fire(self, days_thres, firms):
+    def _firms_fire(self, firms):
         """ Creation of event_id for each dataset point.
         A fire is characterized by a unique combination of 'cons_id' and 'clus_id'.
 
@@ -774,7 +774,7 @@ class WildFire(Hazard):
 
         for ev_id in np.unique(firms.event_id.values):
             date_ord = np.sort(firms.datenum.values[firms.event_id.values == ev_id])
-            if (np.diff(date_ord) < days_thres).all():
+            if (np.diff(date_ord) < self.days_thres_firms).all():
                 firms.iter_ev.values[firms.event_id.values == ev_id] = False
             else:
                 firms.iter_ev.values[firms.event_id.values == ev_id] = True
