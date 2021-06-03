@@ -234,12 +234,9 @@ class WildFire(Hazard):
                 hemisphere = 'SHS'
 
         # define years
-        years = np.arange(date.fromordinal(firms.datenum.min()).year,
-                          date.fromordinal(firms.datenum.max()).year+1)
-        if year_start is not None:
-            years = np.delete(years, np.argwhere(years < year_start))
-        if year_end is not None:
-            years = np.delete(years, np.argwhere(years > year_end))
+        year_i  = year_start if year_start is not None else date.fromordinal(firms.datenum.min()).year
+        year_e  = year_end if year_end is not None else date.fromordinal(firms.datenum.max()).year
+        years = np.arange(year_i, year_f+1)
 
         # make fire seasons
         hist_fire_seasons = [] # list to save fire seasons
