@@ -24,12 +24,11 @@ LOGGER = logging.getLogger(__name__)
 
 def impact_yearset(imp, sampled_years=None, sampling_vect=None, lam=None,
                    correction_fac=True):
-
     """Create a yearset of impacts (yimp) containing a probabilistic impact for each year
       in the sampled_years list (or for a list of sampled_years generated with the length
                                  of given sampled_years)
       by sampling events from the impact received as input with a Poisson distribution
-      centered around n_events per year (n_events = sum(imp.frequency)).
+      centered around n_events per year (lam = sum(imp.frequency)).
       In contrast to the expected annual impact (eai) yimp contains impact values that
       differ among years. When correction factor is true, the yimp are scaled such
       that the average over all years is equal to the eai.
