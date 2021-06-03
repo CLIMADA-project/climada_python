@@ -253,10 +253,8 @@ def compute_imp_per_year(imp, sampling_vect):
             Sampled impact per year (length = sampled_years)
       """
 
-    imp_per_year = np.zeros(len(sampling_vect))
-    for year, sampled_events in enumerate(sampling_vect):
-        if sampled_events.size > 0:
-            imp_per_year[year] = np.sum(imp.at_event[sampled_events])
+    imp_per_year = [np.sum(imp.at_event[list(sampled_events)]) for sampled_events in
+                    sampling_vect]
 
     return imp_per_year
 
