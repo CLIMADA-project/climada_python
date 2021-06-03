@@ -63,7 +63,8 @@ class WildFire(Hazard):
 
     Wildfires comprise the challenge that the definition of an event is unclear.
     Reporting standards vary accross regions and over time. Hence, to have
-    consistency, we consider an event as a whole fire season. This allows
+    consistency, we consider an event as a whole fire season. A fire season
+    is defined as a whole year (Jan-Dec in the NHS, Jul-Jun in SHS). This allows
     consistent risk assessment across the global and over time. Events that
     refer to a fire season have the tag 'WFseason'.
 
@@ -807,12 +808,15 @@ class WildFire(Hazard):
             FIRMS data excluding minor fire events
 
         """
-       s_event_id = firms['event_id']
-        firms[s_event_id.replace(s_event_id.apply(pd.Series.value_counts)).gt(minor_fires_thres).all(1)]
+        # drop minor fires
+        for i in range(np.unique(firms.event_id).size):
+            if (firms.event_id == i).sum() < minor_fires_thres:
+                firms = firms.drop(firms[firms.event_id == i].index)
         # assign new event IDs
-        ids_left = np.unique(firms.event_id)
-        new_id_dict = dict(zip(ids_left, list(range(len(ids_left)))))
-        firms = firms.replace({"event_id": new_id_dict})
+        event_id_new = 1
+        for i in np.unique(firms.event_id):
+            firms.event_id[firms.event_id == i] = event_id_new
+            event_id_new = event_id_new + 1
 
         firms = firms.reset_index()
 
