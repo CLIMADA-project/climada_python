@@ -1555,7 +1555,7 @@ def concatenate_hazard(haz_list, centroids=None):
         attr_val_list = [getattr(haz, attr_name) for haz in haz_list]
         if isinstance(attr_val_list[0], sparse.csr.csr_matrix):
             matrix = (
-                map_matrix_to_centroids(matrix,
+                _map_matrix_to_centroids(matrix,
                                         centroids,
                                         cent_idx
                                         )
@@ -1575,7 +1575,7 @@ def concatenate_hazard(haz_list, centroids=None):
 
     return haz_concat
 
-def map_matrix_to_centroids(sp_matrix, centroids, cent_idx):
+def _map_matrix_to_centroids(sp_matrix, centroids, cent_idx):
     """
     Map a sparse matrix (e.g. hazard intensity or fraction) onto centroids.
 
