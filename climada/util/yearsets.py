@@ -34,7 +34,8 @@ def impact_yearset(imp, sampled_years=None, sampling_vect=None, lam= None,
       differ among years. When correction factor is true, the yimp are scaled such
       that the average over all years is equal to the eai.
 
-    Parameters:
+    Parameters
+    -----------
       imp : climada.engine.Impact()
           impact object containing impacts per event
     Optional parameters:
