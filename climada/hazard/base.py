@@ -1219,7 +1219,7 @@ class Hazard():
         Parameters
         ----------
         centr_id: int
-        If centr_id > 0, plot mat_var
+            If centr_id > 0, plot mat_var
             of all events at centroid with id = centr_id. If centr_id = 0,
             plot maximum mat_var of each event. If centr_id < 0,
             plot abs(centr_id)-largest centroid where highest mat_var
