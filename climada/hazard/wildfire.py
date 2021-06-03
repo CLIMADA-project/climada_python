@@ -25,7 +25,6 @@ import logging
 import warnings
 import itertools
 from datetime import date
-from functools import partial
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -34,10 +33,6 @@ from scipy import sparse
 from sklearn.neighbors import BallTree
 from sklearn.cluster import DBSCAN
 import numba
-import geopandas as gpd
-from shapely.geometry import Point
-from shapely.ops import transform
-import pyproj
 
 from climada.hazard.centroids.centr import Centroids
 from climada.hazard.base import Hazard
@@ -107,11 +102,21 @@ class WildFire(Hazard):
 
     def set_hist_fire_FIRMS(self, csv_firms, centr_res_factor=1.0, centroids=None):
         """ Parse FIRMS data and generate historical fires by temporal and spatial
-        clustering.
-        
-        This sets the attributes self.n_fires, self.date_end, in addition to all attributes required by the hazard class.
-         
-        This creates a centroids raster if centroids=None with resolution given by centr_res_factor. The centroids can be retrieved from Wildfire.centroids()
+        clustering. Single fire events are defined as a set of data points
+        that are geographically close and/or have consecutive dates. The
+        unique identification is made in two steps. First a temporal
+        clustering is applied to cleaned data obtained from FIRMS. Data points
+        with acquisition dates more than self.days_thres_firms days apart are
+        in different temporal clusters. Second, for each temporal cluster,
+        unique event are identified by performing a spatial clustering. This
+        is done iteratively until all firms data points are assigned to an event.
+
+        This method sets the attributes self.n_fires, self.date_end, in
+        addition to all attributes required by the hazard class.
+
+        This method creates a centroids raster if centroids=None with
+        resolution given by centr_res_factor. The centroids can be retrieved
+        from Wildfire.centroids()
 
         Parameters
         ----------
@@ -172,10 +177,10 @@ class WildFire(Hazard):
                                     keep_all_fires=False):
 
         """ Parse FIRMS data and generate historical fire seasons.
-        
+
         Individual fires are created using temporal and spatial clustering
-        according to the 'set_hist_fire' method. fires are then summarized
-        using max intensity at each centroid for each year.
+        according to the 'set_hist_fire_FIRMS' method. single fires are then
+        summarized to seasons using max intensity at each centroid for each year.
 
         Parameters
         ----------
@@ -286,7 +291,7 @@ class WildFire(Hazard):
     def set_proba_fire_seasons(self, n_fire_seasons=1, n_ignitions=None,
                                keep_all_fires=False):
         """ Generate probabilistic fire seasons.
-        
+
         Fire seasons are created by running n probabilistic fires per year
         which are then summarized into a probabilistic fire season by
         calculating the max intensity at each centroid for each probabilistic
@@ -361,7 +366,7 @@ class WildFire(Hazard):
     def combine_fires(self, event_id_merge=None, remove_rest=False,
                       probabilistic=False):
         """ Combine events that are identified as different fire to one event
-        
+
         Orig fires are removed and a new fire id created; max intensity at
         overlapping centroids is assigned.
 
@@ -650,9 +655,9 @@ class WildFire(Hazard):
 
     def _firms_cons_days(self, firms):
         """ Compute clusters of consecutive days (temporal clusters).
-        
-            An interruption of self.days_thresh_firms is necessary to be set
-            in two different temporal clusters.
+
+        An interruption of self.days_thresh_firms is necessary to be set
+        in two different temporal clusters.
 
         Parameters
         ----------
@@ -696,13 +701,13 @@ class WildFire(Hazard):
 
         firms.cons_id.values[firms['iter_ev'].values] = firms_iter.cons_id.values
         return firms
-    
+
     def _firms_clustering(self, firms, res_data):
         """ Compute geographic clusters and sort firms with ascending clus_id
         for each cons_id. Geographic clusters are identified using sci-kit
         learn's DBSCAN algorithm, which finds core samples of high density
         and expands clusters from them.
-        
+
         https://scikit-learn.org/stable/modules/generated/sklearn.cluster.DBSCAN.html
 
         Parameters
@@ -746,7 +751,7 @@ class WildFire(Hazard):
         firms.clus_id.values[firms['iter_ev'].values] = firms_iter.clus_id.values
 
         return firms
-    
+
     def _firms_fire(self, firms):
         """ Creation of event_id for each dataset point.
         A fire is characterized by a unique combination of 'cons_id' and 'clus_id'.
@@ -778,7 +783,7 @@ class WildFire(Hazard):
                 firms.iter_ev.values[firms.event_id.values == ev_id] = False
             else:
                 firms.iter_ev.values[firms.event_id.values == ev_id] = True
-    
+
     def _firms_remove_minor_fires(self, firms, minor_fires_thres):
         """Remove fires containg fewer FIRMS entries than threshold.
         A fire is characterized by a unique combination of 'cons_id' and 'clus_id'.
@@ -1202,7 +1207,7 @@ class WildFire(Hazard):
         """ Plots fire propagation probability matrix as contour plot.
         At this point just to check the matrix but could easily be improved to
         normal map.
-        
+
         Parameters
         ----------
         self : climada.hazard.WildFire instance
@@ -1251,7 +1256,7 @@ class WildFire(Hazard):
 
     def _set_frequency(self):
         """Set hazard frequency from intensity matrix.
-        
+
         Parameters
         ----------
         self : climada.hazard.WildFire instance
