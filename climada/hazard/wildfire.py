@@ -65,7 +65,7 @@ class WildFire(Hazard):
     Reporting standards vary accross regions and over time. Hence, to have
     consistency, we consider an event as a whole fire season. A fire season
     is defined as a whole year (Jan-Dec in the NHS, Jul-Jun in SHS). This allows
-    consistent risk assessment across the global and over time. Hazard for
+    consistent risk assessment across the globe and over time. Hazard for
     which events refer to a fire season have the tag 'WFseason'.
 
     In order to perform concrete case studies or calibrate impact functions,
@@ -73,11 +73,13 @@ class WildFire(Hazard):
     'WFsingle'.
 
     Attributes:
-        date_end (np.array): integer date corresponding to the proleptic
-            Gregorian ordinal, where January 1 of year 1 has ordinal 1
-            (ordinal format of datetime library))
-
-        n_fires (np.array): number of single fires in a fire season
+        date_end : array
+            integer date corresponding to the proleptic Gregorian ordinal,
+            where January 1 of year 1 has ordinal 1 (ordinal format of
+            datetime library). Represents last day of a wild fire instance
+            where the fire was still active.
+        n_fires : array
+            number of single fires in a fire season
 
     """
 
