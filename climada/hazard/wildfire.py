@@ -130,7 +130,8 @@ class WildFire(Hazard):
             the generated centroids will equal 5 km (=1/0.2). If centroids
             are defined, this parameter has no effect.
         centroids : Centroids, optional
-            centroids in degrees to map data
+            centroids in degrees to map data, centroids need to be on a
+            regular grid in order for the clustrering to work.
 
         Returns
         -------
@@ -171,7 +172,7 @@ class WildFire(Hazard):
                     np.unique(firms.event_id).size)
         self._calc_brightness(firms, centroids, res_centr)
 
-    def set_hist_fire_seasons_FIRMS(self, csv_firms, centr_res_factor=1,
+    def set_hist_fire_seasons_FIRMS(self, csv_firms, centr_res_factor=1.0,
                                     centroids=None, hemisphere=None,
                                     year_start=None, year_end=None,
                                     keep_all_fires=False):
@@ -187,13 +188,15 @@ class WildFire(Hazard):
         csv_firms : pd.DataFrame or str
             path to csv file of FIRMS data or FIRMS data as pd.Dataframe
             (https://firms.modaps.eosdis.nasa.gov/download/)
-        centr_res_factor : int, optional, default=1
+        centr_res_factor : float, optional, default=1.0
             resolution factor with respect to the satellite data to use
             for centroids creation
         centroids : Centroids, optional
-            centroids in degrees to map data
+            centroids in degrees to map data, centroids need to be on a
+            regular grid in order for the clustrering to work.
         hemisphere : str, optional
-            'SHS' or 'NHS' to define fire seasons
+            'SHS' or 'NHS' to define fire seasons. The hemisphere parameter
+            is only used for the definition of the start of the fire season
         year_start : int, optional
             start year; FIRMS fires before that are cut; no cut if not
             specified
@@ -201,8 +204,8 @@ class WildFire(Hazard):
             end year; FIRMS fires after that are cut; no cut if not
             specified
         keep_all_fires : bool, optional
-            keep detailed list of all fires; default is False to save
-            memory.
+            keep list of all individual fires; default is False to save
+            memory. If set to true, fires are stored in self.hist_fire_seasons
 
         Returns
         -------
