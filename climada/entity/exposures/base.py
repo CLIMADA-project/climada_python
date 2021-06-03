@@ -118,15 +118,20 @@ class Exposures():
     @property
     def crs(self):
         """Coordinate Reference System, refers to the crs attribute of the inherent GeoDataFrame"""
-        try:
-            # it is very well possible that gdf.crs is None while the geometry columns has a crs
-            return self.gdf.crs if self.gdf.crs else \
-                   self.gdf.geometry.crs if 'geometry' in self.gdf and self.gdf.geometry.crs else \
-                   self.meta.get('crs')
-        except AttributeError:
-            return self.meta.get('crs')
+        if hasattr(self.gdf, "crs") and self.gdf.crs:
+            return self.gdf.crs
+        # it is very well possible that gdf.crs is None while the geometry columns has a crs
+        if "geometry" in self.gdf and hasattr(self.gdf.geometry, "crs") and self.gdf.geometry.crs:
+            return self.gdf.geometry.crs
+        return self.meta.get('crs')
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args,
+                 meta=None,
+                 tag=None,
+                 ref_year=DEF_REF_YEAR,
+                 value_unit=DEF_VALUE_UNIT,
+                 crs=None,
+                 **kwargs):
         """Creates an Exposures object from a GeoDataFrame
 
         Parameters
@@ -135,53 +140,28 @@ class Exposures():
             Arguments of the GeoDataFrame constructor
         **kwargs :
             Named arguments of the GeoDataFrame constructor, additionally
-        tag : climada.entity.exposures.tag.Tag
-            Exopusres tag
-        ref_year : int
-            Reference Year
-        value_unit : str
-            Unit of the exposed value
-        meta : dict
-            Metadata dictionary
+        meta : dict, optional
+            Metadata dictionary. Default: {} (empty dictionary)
+        tag : climada.entity.exposures.tag.Tag, optional
+            Exposures tag. Defaults to the entry of the same name in `meta` or an empty Tag object.
+        ref_year : int, optional
+            Reference Year. Defaults to the entry of the same name in `meta` or 2018.
+        value_unit : str, optional
+            Unit of the exposed value. Defaults to the entry of the same name in `meta` or 'USD'.
         crs : object, anything accepted by pyproj.CRS.from_user_input
-            Metadata dictionary
+            Coordinate reference system. Defaults to the entry of the same name in `meta`, or to
+            the CRS of the GeoDataFrame (if provided) or to 'epsg:4326'.
         """
         # meta data
-        try:
-            self.meta = kwargs.pop('meta')
-            if self.meta is None:
-                self.meta = {}
-            if not isinstance(self.meta, dict):
-                raise ValueError("meta must be a dictionary")
-        except KeyError:
-            self.meta = {}
-            LOGGER.info('meta set to default value %s', self.meta)
+        self.meta = {} if meta is None else meta
+        if not isinstance(self.meta, dict):
+            raise ValueError("meta must be a dictionary")
+        self.tag = self.meta.get('tag', Tag()) if tag is None else tag
+        self.ref_year = self.meta.get('ref_year', DEF_REF_YEAR) if ref_year is None else ref_year
+        self.value_unit = (self.meta.get('value_unit', DEF_VALUE_UNIT)
+                           if value_unit is None else value_unit)
 
-        # tag
-        try:
-            self.tag = kwargs.pop('tag')
-        except KeyError:
-            self.tag = self.meta.get('tag', Tag())
-            if 'tag' not in self.meta:
-                LOGGER.info('tag set to default value %s', self.tag)
-
-        # reference year
-        try:
-            self.ref_year = kwargs.pop('ref_year')
-        except KeyError:
-            self.ref_year = self.meta.get('ref_year', DEF_REF_YEAR)
-            if 'ref_year' not in self.meta:
-                LOGGER.info('ref_year set to default value %s', self.ref_year)
-
-        # value unit
-        try:
-            self.value_unit = kwargs.pop('value_unit')
-        except KeyError:
-            self.value_unit = self.meta.get('ref_year', DEF_VALUE_UNIT)
-            if 'value_unit' not in self.meta:
-                LOGGER.info('value_unit set to default value %s', self.value_unit)
-
-        # remaining generic attributes
+        # remaining generic attributes from derived classes
         for mda in type(self)._metadata:
             if mda not in Exposures._metadata:
                 if mda in kwargs:
@@ -197,28 +177,23 @@ class Exposures():
             data_crs = data.geometry.crs
         except AttributeError:
             data_crs = None
-        if data_crs and data.crs and data_crs != data.crs:
+        if data_crs and data.crs and not u_coord.equal_crs(data_crs, data.crs):
             raise ValueError("Inconsistent crs definition in data and data.geometry")
 
-        crs = kwargs['crs'] if 'crs' in kwargs \
-              else self.meta['crs'] if 'crs' in self.meta \
-              else data_crs if data_crs \
-              else None
+        crs = (crs if crs is not None
+               else self.meta['crs'] if 'crs' in self.meta
+               else data_crs if data_crs
+               else None)
         if 'crs' in self.meta and not u_coord.equal_crs(self.meta['crs'], crs):
-            raise ValueError("Inconsistent crs definition, crs and meta arguments don't match")
+            raise ValueError("Inconsistent CRS definition, crs and meta arguments don't match")
         if data_crs and not u_coord.equal_crs(data_crs, crs):
-            raise ValueError("Inconsistent crs definition, data doesn't match meta or crs argument")
+            raise ValueError("Inconsistent CRS definition, data doesn't match meta or crs argument")
         if not crs:
             crs = DEF_CRS
-            LOGGER.info('crs set to default value %s', crs)
 
         geometry = kwargs.get('geometry')
         if geometry and isinstance(geometry, str):
             raise ValueError("Exposures is not able to handle customized 'geometry' column names.")
-        if 'crs' in kwargs and not geometry and not 'geometry' in data:
-            kwargs.pop('crs')
-        if 'crs' not in kwargs and (geometry or 'geometry' in data):
-            kwargs['crs'] = crs
 
         # make the data frame
         self.set_gdf(GeoDataFrame(*args, **kwargs), crs=crs)
@@ -445,6 +420,8 @@ class Exposures():
             resampling (rasterio.warp,.Resampling optional): resampling
                 function used for reprojection to dst_crs
         """
+        if 'geometry' in self.gdf:
+            raise ValueError("there is already a geometry column defined in the GeoDataFrame")
         self.tag = Tag()
         self.tag.file_name = str(file_name)
         meta, value = u_coord.read_raster(file_name, [band], src_crs, window,
@@ -455,8 +432,6 @@ class Exposures():
         lry = uly + meta['height'] * yres
         x_grid, y_grid = np.meshgrid(np.arange(ulx + xres / 2, lrx, xres),
                                      np.arange(uly + yres / 2, lry, yres))
-        if 'geometry' in self.gdf:
-            raise ValueError("there is already a geometry column defined in the GeoDataFrame")
 
         if self.crs is None:
             self.set_crs()
@@ -831,7 +806,7 @@ class Exposures():
         ]
         if crss:
             crs = crss[0]
-            if any([not u_coord.equal_crs(c, crs) for c in crss[1:]]):
+            if any(not u_coord.equal_crs(c, crs) for c in crss[1:]):
                 raise ValueError("concatenation of exposures with different crs")
         else:
             crs = None
@@ -856,8 +831,8 @@ def add_sea(exposures, sea_res, scheduler=None):
         is distance from coast to fill with water and second parameter
         is resolution between sea points
     scheduler : str, optional
-            used for dask map_partitions.
-            “threads”, “synchronous” or “processes”
+        used for dask map_partitions.
+        “threads”, “synchronous” or “processes”
 
     Returns:
         Exposures

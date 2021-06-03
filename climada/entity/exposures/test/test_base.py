@@ -19,7 +19,6 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Test Exposure base class.
 """
 import unittest
-from geopandas.geodataframe import GeoDataFrame
 import numpy as np
 import pandas as pd
 import geopandas as gpd
@@ -172,22 +171,6 @@ class TestFuncs(unittest.TestCase):
 class TestChecker(unittest.TestCase):
     """Test logs of check function"""
 
-    def test_info_logs_pass(self):
-        """Correct exposures definition"""
-        with self.assertLogs('climada.entity.exposures.base', level='INFO') as cm:
-            expo = good_exposures()
-            expo.check()
-        self.assertIn('meta set to default value', cm.output[0])
-        self.assertIn('tag set to default value', cm.output[1])
-        self.assertIn('ref_year set to default value', cm.output[2])
-        self.assertIn('value_unit set to default value', cm.output[3])
-        self.assertIn('crs set to default value', cm.output[4])
-        self.assertIn('cover not set', cm.output[5])
-        self.assertIn('geometry not set', cm.output[6])
-
-        self.assertTrue(expo.crs is not None)
-        self.assertTrue(expo.gdf.crs is None)
-
     def test_error_logs_fail(self):
         """Wrong exposures definition"""
         expo = good_exposures()
@@ -207,17 +190,17 @@ class TestChecker(unittest.TestCase):
 
         with self.assertRaises(ValueError) as cm:
             _expo = Exposures(expo.gdf, meta={'crs':4230}, crs=4326)
-        self.assertIn("Inconsistent crs definition, crs and meta arguments don't match",
+        self.assertIn("Inconsistent CRS definition, crs and meta arguments don't match",
                       str(cm.exception))
 
         with self.assertRaises(ValueError) as cm:
             _expo = Exposures(expo.gdf, meta={'crs':4230})
-        self.assertIn("Inconsistent crs definition, data doesn't match meta or crs argument",
+        self.assertIn("Inconsistent CRS definition, data doesn't match meta or crs argument",
                       str(cm.exception))
 
         with self.assertRaises(ValueError) as cm:
             _expo = Exposures(expo.gdf, crs='epsg:4230')
-        self.assertIn("Inconsistent crs definition, data doesn't match meta or crs argument",
+        self.assertIn("Inconsistent CRS definition, data doesn't match meta or crs argument",
                       str(cm.exception))
 
     def test_error_geometry_fail(self):
@@ -421,7 +404,7 @@ class TestGeoDFFuncs(unittest.TestCase):
 
     def test_set_gdf(self):
         """Test setting the GeoDataFrame"""
-        empty_gdf = GeoDataFrame()
+        empty_gdf = gpd.GeoDataFrame()
         gdf_without_geometry = good_exposures().gdf
         good_exp = good_exposures()
         good_exp.set_crs(crs='epsg:3395')
@@ -432,7 +415,7 @@ class TestGeoDFFuncs(unittest.TestCase):
         self.assertRaises(ValueError, probe.set_gdf, pd.DataFrame())
 
         probe.set_gdf(empty_gdf)
-        self.assertTrue(probe.gdf.equals(GeoDataFrame()))
+        self.assertTrue(probe.gdf.equals(gpd.GeoDataFrame()))
         self.assertTrue(u_coord.equal_crs(DEF_CRS, probe.crs))
         self.assertIsNone(probe.gdf.crs)
 
@@ -448,7 +431,7 @@ class TestGeoDFFuncs(unittest.TestCase):
 
     def test_set_crs(self):
         """Test setting the CRS"""
-        empty_gdf = GeoDataFrame()
+        empty_gdf = gpd.GeoDataFrame()
         gdf_without_geometry = good_exposures().gdf
         good_exp = good_exposures()
         good_exp.set_geometry_points()

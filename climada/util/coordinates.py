@@ -1756,8 +1756,10 @@ def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, crs=DEF
         provided.
     raster_res : float, optional
         desired resolution of the raster
-    crs : object, optional
-        anything accepted by pyproj.CRS.from_user_input, default: None
+    crs : object (anything accepted by pyproj.CRS.from_user_input), optional
+        If given, overwrites the CRS information given in `points_df`. If no CRS is explicitly
+        given and there is no CRS information in `points_df`, the CRS is assumed to be EPSG:4326
+        (lat/lon). Default: None
     scheduler : str
         used for dask map_partitions. “threads”, “synchronous” or “processes”
 
