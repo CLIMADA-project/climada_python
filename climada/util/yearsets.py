@@ -31,8 +31,8 @@ def impact_yearset(imp, sampled_years=None, sampling_vect=None, lam= None,
       by sampling events from the impact received as input with a Poisson distribution
       centered around n_events per year (n_events = sum(imp.frequency)).
       In contrast to the expected annual impact (eai) yimp contains impact values that
-      differ among years (the correction factor can however be used to scale the yimp
-                          to fit the eai of the impact that is used to generated it)
+      differ among years. When correction factor is true, the yimp are scaled such
+      that the average over all years is equal to the eai.
 
     Parameters:
       imp : climada.engine.Impact()
