@@ -39,11 +39,8 @@ def impact_yearset(imp, sampled_years=None, sampling_vect=None, lam=None,
       imp : climada.engine.Impact()
           impact object containing impacts per event
     Optional parameters:
-        sampled_years : int or list
-            Either an integer specifying the number of years to
-            be sampled (labelled [0001,...,sampled_years]) or a list
-            of years that shall be covered by the resulting yimp.
-            The default is a 1000 year-long list starting in the year 0001.
+        sampled_years : list
+            A list of years that shall be covered by the resulting yimp.
         sampling_vect : 2D array
             The sampling vector specifies how to sample the yimp, it consists of one
             sub-array per sampled_year, which contains the event_ids of the events used to
@@ -72,8 +69,6 @@ def impact_yearset(imp, sampled_years=None, sampling_vect=None, lam=None,
 
     if not sampled_years and not sampling_vect:
         sampled_years = list(range(1, 1001))
-    elif isinstance(sampled_years, int):
-        sampled_years = list(range(1, sampled_years+1))
     elif not sampled_years:
         sampled_years = list(range(1, len(sampling_vect)+1))
     elif sampling_vect and (len(sampled_years) != len(sampling_vect)):

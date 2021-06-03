@@ -36,20 +36,10 @@ SAMPLING_VECT = [np.array([0]), np.array([4]), np.array([1]), np.array([2, 5, 7,
                  np.array([8]), np.array([3]), np.array([2, 6]), np.array([1]),
                  np.array([3,5]), np.array([])]
 
-N_SAMPLED_YEARS = 10
 YEAR_LIST = list(range(2000, 2010))
 
 class TestYearSets(unittest.TestCase):
     """Test yearset functions"""
-    def test_impact_yearset(self):
-        """Test computing a yearly impact (yimp) for a given range of years (N_SAMPLED_YEARS)
-        from an impact (IMP) and a sampling vector (SAMPLING_VECT)"""
-        yimp, sampling_dict = yearsets.impact_yearset(IMP, N_SAMPLED_YEARS,
-                                                                SAMPLING_VECT, False)
-
-        self.assertAlmostEqual(yimp.at_event[3], 238)
-        self.assertEqual(yimp.date[3], 1096)
-        self.assertAlmostEqual(np.sum(yimp.at_event), 539)
 
     def test_impact_yearset_yearlist(self):
         """Test computing a yearly impact (yimp) for a given list of years (YEAR_LIST)
