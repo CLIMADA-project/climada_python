@@ -152,9 +152,7 @@ class WildFire(Hazard):
             # Compute clus_id: cluster identifier inside cons_id
             self._firms_clustering(firms, res_data, self.clus_thres_firms)
             # compute event_id
-            self._firms_fire(self.days_thres_firms, firms.cons_id.values, \
-                             firms.clus_id.values, firms.event_id.values, \
-                             firms.iter_ev.values, firms.datenum.values)
+            self._firms_fire(self.days_thres_firms, firms)
             LOGGER.info('Remaining fires to identify: %s.', str(np.argwhere(\
             firms.iter_ev.values).size))
 
@@ -750,9 +748,7 @@ class WildFire(Hazard):
         return firms
 
     @staticmethod
-    @numba.njit(parallel=True)
-    def _firms_fire(days_thres, fir_cons_id, fir_clus_id, fir_ev_id, fir_iter,
-                    fir_date):
+    def _firms_fire(days_thres, firms):
         """ Creation of event_id for each dataset point.
         A fire is characterized by a unique combination of 'cons_id' and 'clus_id'.
 
@@ -760,16 +756,8 @@ class WildFire(Hazard):
         ----------
         days_thres : int
             Temporal threshold for clustering
-        fir_cons_id : array
-            information on points within the same temporal cluster
-        fir_clus_id : array
-            information on events within the same spatial cluster
-        fir_ev_id : array
-            information of already assigned event IDs
-        fit_iter : array
-            information on itration count
-        fir_date : array
-            date of each data point
+        firms : pd.DataFrame
+            FIRMS data including info on temporal and spatial cluster per point
 
         Returns
         -------
@@ -778,20 +766,20 @@ class WildFire(Hazard):
 
         """
         ev_id = 0
-        for cons_id in np.unique(fir_cons_id):
-            firms_cons = fir_clus_id[fir_cons_id == cons_id]
+        for cons_id in np.unique(firms.cons_id.values):
+            firms_cons = firms.clus_id.values[firms.cons_id.values == cons_id]
             for clus_id in np.unique(firms_cons):
-                fir_ev_id[np.logical_and(fir_cons_id == cons_id, \
-                fir_clus_id == clus_id)] = ev_id
+                firms.event_id.values[np.logical_and(firms.cons_id.values == cons_id, \
+                firms.clus_id.values == clus_id)] = ev_id
                 ev_id += 1
 
-        for ev_id in np.unique(fir_ev_id):
-            date_ord = np.sort(fir_date[fir_ev_id == ev_id])
+        for ev_id in np.unique(firms.event_id.values):
+            date_ord = np.sort(firms.datenum.values[firms.event_id.values == ev_id])
             if (np.diff(date_ord) < days_thres).all():
-                fir_iter[fir_ev_id == ev_id] = False
+                firms.iter_ev.values[firms.event_id.values == ev_id] = False
             else:
-                fir_iter[fir_ev_id == ev_id] = True
-
+                firms.iter_ev.values[firms.event_id.values == ev_id] = True
+    
     @staticmethod
     def _firms_remove_minor_fires(firms, minor_fires_thres):
         """Remove fires containg fewer FIRMS entries than threshold.

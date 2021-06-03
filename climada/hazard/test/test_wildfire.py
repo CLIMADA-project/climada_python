@@ -165,8 +165,7 @@ class TestMethodsFirms(unittest.TestCase):
         firms_ori = wf._firms_cons_days(firms_ori)
         firms_ori = wf._firms_clustering(firms_ori, 0.375/2/15, 15)
         firms = firms_ori.copy()
-        wf._firms_fire(2, firms.cons_id.values, firms.clus_id.values,
-            firms.event_id.values, firms.iter_ev.values, firms.datenum.values)
+        wf._firms_fire(2, firms)
         self.assertEqual(len(firms), 9325)
         self.assertTrue(np.allclose(np.unique(firms.event_id), np.arange(7)))
         self.assertTrue(np.allclose(firms.event_id[-4:], np.ones(4)*6))
@@ -209,8 +208,7 @@ class TestMethodsFirms(unittest.TestCase):
             wf._firms_clustering(firms, 0.375, 15)
             # compute event_id
             WildFire.days_thres_firms = 2
-            wf._firms_fire(WildFire.days_thres_firms, firms.cons_id.values, firms.clus_id.values,
-                firms.event_id.values, firms.iter_ev.values, firms.datenum.values)
+            wf._firms_fire(WildFire.days_thres_firms, firms)
             i_iter += 1
         self.assertEqual(i_iter, 2)
         WildFire.days_thres_firms = ori_thres
@@ -225,8 +223,7 @@ class TestMethodsFirms(unittest.TestCase):
         firms['datenum'].values[100] = 7000
         firms = wf._firms_cons_days(firms)
         firms = wf._firms_clustering(firms, DEF_CENTROIDS[1]/2/15, 15)
-        wf._firms_fire(2, firms.cons_id.values, firms.clus_id.values,
-            firms.event_id.values, firms.iter_ev.values, firms.datenum.values)
+        wf._firms_fire(2, firms)
         firms.latitude[8169] = firms.loc[16]['latitude']
         firms.longitude[8169] = firms.loc[16]['longitude']
         wf._calc_brightness(firms, DEF_CENTROIDS[0], DEF_CENTROIDS[1])
