@@ -647,8 +647,7 @@ class WildFire(Hazard):
         else:
             res_centr = u_coord.get_resolution(centroids.lat, centroids.lon)
         if abs(abs(res_centr[0]) - abs(res_centr[1])) > 1.0e-6:
-            LOGGER.warning('Centroids do not represent regular pixels %s.', str(res_centr))
-            return (res_centr[0] + res_centr[1])/2
+            raise ValueError('Centroids are not a regular raster')
         return res_centr[0]
 
     def _firms_cons_days(self, firms):
