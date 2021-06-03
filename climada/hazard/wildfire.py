@@ -39,6 +39,7 @@ from climada.hazard.base import Hazard
 from climada.hazard.tag import Tag as TagHazard
 from climada.util.constants import ONE_LAT_KM, DEF_CRS
 import climada.util.dates_times as u_dt
+import climada.util.coordinates as u_coord
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 LOGGER = logging.getLogger(__name__)
