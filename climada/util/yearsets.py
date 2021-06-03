@@ -22,7 +22,7 @@ import climada.util.dates_times as u_dt
 
 LOGGER = logging.getLogger(__name__)
 
-def impact_yearset(imp, sampled_years=None, sampling_vect=None, lam= None,
+def impact_yearset(imp, sampled_years=None, sampling_vect=None, lam=None,
                    correction_fac=True):
 
     """Create a yearset of impacts (yimp) containing a probabilistic impact for each year
@@ -59,7 +59,8 @@ def impact_yearset(imp, sampled_years=None, sampling_vect=None, lam= None,
             scaled in such a way that the expected annual impact (eai) of the yimp
             equals the eai of the input impact
 
-    Returns:
+    Returns
+    -------
         yimp : climada.engine.Impact()
              yearset of impacts containing annual impacts for all sampled_years
         sampling_vect : 2D array
@@ -114,7 +115,8 @@ def sample_n_events(n_sampled_years, imp, lam=None):
     """Create a sampling vector consisting of a subarray for each sampled_year that
     contains the index of the sampled events for that year
 
-    Parameters:
+    Parameters
+    -----------
         n_sampled_years : int
             The target number of years the impact yearset shall contain.
         imp : climada.engine.Impact()
@@ -122,7 +124,8 @@ def sample_n_events(n_sampled_years, imp, lam=None):
         lam: int
             the applied Poisson distribution is centered around lam events per year
 
-    Returns:
+    Returns
+    -------
         events_per_year : array
             Number of events per sampled year
     """
@@ -145,13 +148,15 @@ def sample_events(events_per_year, freqs_orig):
      (tot_n_events/n_input_events) times, by ensuring that the same events doens't
      occur more than once per sampled year).
 
-    Parameters:
+    Parameters
+    -----------
         events_per_year : array
             Number of events per sampled year
         freqs_orig : array
             Frequency of each input event
 
-    Returns:
+    Returns
+    -------
         sampling_vect : 2D array
             The sampling vector specifies how to sample the yimp, it consists of one
             sub-array per sampled_year, which contains the event_ids of the events used to
@@ -206,14 +211,18 @@ def sample_events(events_per_year, freqs_orig):
 
 def compute_imp_per_year(imp, sampling_vect):
     """Sample annual impacts from the given event_impacts according to the sampling dictionary
-    Parameters:
+
+    Parameters
+    -----------
         imp : climada.engine.Impact()
             impact object containing impacts per event
         sampling_vect : 2D array
             The sampling vector specifies how to sample the yimp, it consists of one
             sub-array per sampled_year, which contains the event_ids of the events used to
             calculate the annual impacts.
-    Returns:
+
+    Returns
+    -------
         imp_per_year: array
             Sampled impact per year (length = sampled_years)
       """
@@ -230,13 +239,15 @@ def calculate_correction_fac(imp_per_year, imp):
     a way that the expected annual impact (eai) of the yimp amounts to the eai
     of the input imp
 
-    Parameters:
+    Parameters
+    -----------
         imp_per_year : array
             sampled yimp
         imp : climada.engine.Impact()
             impact object containing impacts per event
 
-    Returns:
+    Returns
+    -------
         correction_factor: int
             The correction factor is calculated as imp_eai/yimp_eai
     """
