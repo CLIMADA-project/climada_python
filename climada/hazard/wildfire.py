@@ -150,7 +150,7 @@ class WildFire(Hazard):
             # Compute cons_id: consecutive fires in current iteration
             self._firms_cons_days(firms)
             # Compute clus_id: cluster identifier inside cons_id
-            self._firms_clustering(firms, res_data, self.clus_thres_firms)
+            self._firms_clustering(firms, res_data)
             # compute event_id
             self._firms_fire(self.days_thres_firms, firms)
             LOGGER.info('Remaining fires to identify: %s.', str(np.argwhere(\
@@ -696,9 +696,8 @@ class WildFire(Hazard):
 
         firms.cons_id.values[firms['iter_ev'].values] = firms_iter.cons_id.values
         return firms
-
-    @staticmethod
-    def _firms_clustering(firms, res_data, clus_thres):
+    
+    def _firms_clustering(self, firms, res_data):
         """ Compute geographic clusters and sort firms with ascending clus_id
         for each cons_id. Geographic clusters are identified using sci-kit
         learn's DBSCAN algorithm, which finds core samples of high density
@@ -736,7 +735,8 @@ class WildFire(Hazard):
                 temp = np.argwhere(firms_cons['cons_id'].values == cons_id).reshape(-1,)
                 lat_lon = firms_cons.iloc[temp][['latitude', 'longitude']].values
                 lat_lon_uni, lat_lon_cpy = np.unique(lat_lon, return_inverse=True, axis=0)
-                cluster_id = DBSCAN(eps=res_data*clus_thres, min_samples=1).\
+                cluster_id = DBSCAN(eps=res_data * self.clus_thres_firms,
+                                    min_samples=1).\
                                     fit(lat_lon_uni).labels_
                 cluster_id = cluster_id[lat_lon_cpy]
                 firms_cons.clus_id.values[temp] = cluster_id
@@ -746,9 +746,8 @@ class WildFire(Hazard):
         firms.clus_id.values[firms['iter_ev'].values] = firms_iter.clus_id.values
 
         return firms
-
-    @staticmethod
-    def _firms_fire(days_thres, firms):
+    
+    def _firms_fire(self, days_thres, firms):
         """ Creation of event_id for each dataset point.
         A fire is characterized by a unique combination of 'cons_id' and 'clus_id'.
 
@@ -780,8 +779,7 @@ class WildFire(Hazard):
             else:
                 firms.iter_ev.values[firms.event_id.values == ev_id] = True
     
-    @staticmethod
-    def _firms_remove_minor_fires(firms, minor_fires_thres):
+    def _firms_remove_minor_fires(self, firms, minor_fires_thres):
         """Remove fires containg fewer FIRMS entries than threshold.
         A fire is characterized by a unique combination of 'cons_id' and 'clus_id'.
 
