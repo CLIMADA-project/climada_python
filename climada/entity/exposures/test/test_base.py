@@ -200,11 +200,24 @@ class TestChecker(unittest.TestCase):
     def test_error_logs_wrong_crs(self):
         """Ambiguous crs definition"""
         expo = good_exposures()
-        expo.set_geometry_points()
+        expo.set_geometry_points()  # sets crs to 4326
+
+        # all good
+        _expo = Exposures(expo.gdf, meta={'crs':4326}, crs=DEF_CRS)
 
         with self.assertRaises(ValueError) as cm:
-            expo2 = Exposures(expo.gdf, meta={'crs':4230})
-        self.assertIn('The GeoSeries already has a CRS which is not equal to the passed CRS.',
+            _expo = Exposures(expo.gdf, meta={'crs':4230}, crs=4326)
+        self.assertIn("Inconsistent crs definition, crs and meta arguments don't match",
+                      str(cm.exception))
+
+        with self.assertRaises(ValueError) as cm:
+            _expo = Exposures(expo.gdf, meta={'crs':4230})
+        self.assertIn("Inconsistent crs definition, data doesn't match meta or crs argument",
+                      str(cm.exception))
+
+        with self.assertRaises(ValueError) as cm:
+            _expo = Exposures(expo.gdf, crs='epsg:4230')
+        self.assertIn("Inconsistent crs definition, data doesn't match meta or crs argument",
                       str(cm.exception))
 
     def test_error_geometry_fail(self):

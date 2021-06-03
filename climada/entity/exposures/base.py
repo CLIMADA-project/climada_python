@@ -205,9 +205,9 @@ class Exposures():
               else data_crs if data_crs \
               else None
         if 'crs' in self.meta and not u_coord.equal_crs(self.meta['crs'], crs):
-            raise ValueError("Inconsistent crs definition in meta")
+            raise ValueError("Inconsistent crs definition, crs and meta arguments don't match")
         if data_crs and not u_coord.equal_crs(data_crs, crs):
-            raise ValueError("Inconsistent crs definition in data")
+            raise ValueError("Inconsistent crs definition, data doesn't match meta or crs argument")
         if not crs:
             crs = DEF_CRS
             LOGGER.info('crs set to default value %s', crs)
