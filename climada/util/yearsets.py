@@ -22,7 +22,7 @@ import climada.util.dates_times as u_dt
 
 LOGGER = logging.getLogger(__name__)
 
-def impact_yearset(imp, sampled_years=None, sampling_vect=None, lam=None,
+def impact_yearset(imp, sampled_years, sampling_vect=None, lam=None,
                    correction_fac=True):
     """Create a yearset of impacts (yimp) containing a probabilistic impact for each year
       in the sampled_years list (or for a list of sampled_years generated with the length
@@ -37,9 +37,10 @@ def impact_yearset(imp, sampled_years=None, sampling_vect=None, lam=None,
     -----------
       imp : climada.engine.Impact()
           impact object containing impacts per event
-    Optional parameters:
         sampled_years : list
             A list of years that shall be covered by the resulting yimp.
+
+    Optional parameters
         sampling_vect : 2D array
             The sampling vector specifies how to sample the yimp, it consists of one
             sub-array per sampled_year, which contains the event_ids of the events used to
@@ -65,16 +66,6 @@ def impact_yearset(imp, sampled_years=None, sampling_vect=None, lam=None,
             calculate the annual impacts.
             Can be used to re-create the exact same yimp
       """
-
-    if not sampled_years and not sampling_vect:
-        sampled_years = list(range(1, 1001))
-    elif not sampled_years:
-        sampled_years = list(range(1, len(sampling_vect)+1))
-    elif sampling_vect and (len(sampled_years) != len(sampling_vect)):
-        LOGGER.info("The number of sampled_years and the length of the list of events_per_year "
-                    "in the sampling_vect differ. The number of years contained in the "
-                    "sampling_vect are used as number of sampled_years.")
-        sampled_years = list(range(1, len(sampling_vect)+1))
 
     n_sampled_years = len(sampled_years)
 
