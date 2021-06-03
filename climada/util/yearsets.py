@@ -25,7 +25,7 @@ LOGGER = logging.getLogger(__name__)
 def impact_yearset(imp, sampled_years=None, sampling_vect=None, lam= None,
                    correction_fac=True):
 
-    """Create an yearset of impacts (yimp) containing a probabilistic impact for each year
+    """Create a yearset of impacts (yimp) containing a probabilistic impact for each year
       in the sampled_years list (or for a list of sampled_years generated with the length
                                  of given sampled_years)
       by sampling events from the impact received as input with a Poisson distribution
