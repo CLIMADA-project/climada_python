@@ -39,7 +39,8 @@ def impact_yearset(imp, sampled_years, lam=None, correction_fac=True):
 
     Optional parameters
         lam: int
-            the applied Poisson distribution is centered around lam events per year
+            The applied Poisson distribution is centered around lam events per year.
+            If no lambda value is given, the default lam = sum(imp.frequency) is used.
         correction_fac : boolean
             If True a correction factor is applied to the resulting yimp. It is
             scaled in such a way that the expected annual impact (eai) of the yimp
