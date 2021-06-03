@@ -109,9 +109,9 @@ class WildFire(Hazard):
         """ Parse FIRMS data and generate historical fires by temporal and spatial
         clustering.
         
-         This sets the attributes self.n_fires, self.date_end, in addition to all attributes required by the hazard class.
+        This sets the attributes self.n_fires, self.date_end, in addition to all attributes required by the hazard class.
          
-         This creates a centroids raster if centroids=None with resolution given by centr_res_factor. The centroids can be retrieved from Wildfire.centroids()
+        This creates a centroids raster if centroids=None with resolution given by centr_res_factor. The centroids can be retrieved from Wildfire.centroids()
 
         Parameters
         ----------
