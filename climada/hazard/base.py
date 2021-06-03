@@ -1474,6 +1474,34 @@ class Hazard():
             )
 
 
+def join_centroids(haz_list):
+    """
+    Find centroids comon to all.
+
+    Centroids of all hazards must either all be rasters with the same
+    resolution, or all be points.
+
+    The centroids of all hazards are combined together. If points,
+    all points are combined. If rasters, a global raster is defined.
+
+    Parameters
+    ----------
+    haz_list : list(climada.hazard.Hazard())
+        List of hazard with centroids to join
+
+    Returns
+    -------
+    centroids : climada.hazard.Centroids()
+        Centroids containing the centroids of all hazards.
+
+    """
+    centroids = copy.deepcopy(haz_list[0].centroids)
+    for haz in haz_list[1:]:
+        if not centroids.equal(haz.centroids):
+            centroids.append(haz.centroids)
+    centroids.remove_duplicate_points()
+    return centroids
+
 def concatenate_hazard(haz_list, centroids=None):
     """
     Concatenate events of several hazards of same type.
@@ -1510,11 +1538,7 @@ def concatenate_hazard(haz_list, centroids=None):
 
     #Define comon centroids
     if centroids is None:
-        centroids = copy.deepcopy(haz_list[0].centroids)
-        for haz in haz_list[1:]:
-            if not centroids.equal(haz.centroids):
-                centroids.append(haz.centroids)
-        centroids.remove_duplicate_points()
+        centroids = join_centroids(haz_list)
 
     haz_concat = Hazard()
     haz_concat.units = haz_list[0].units
