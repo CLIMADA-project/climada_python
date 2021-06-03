@@ -127,13 +127,12 @@ def impact_yearset_from_sampling_vect(imp, sampled_years, sampling_vect, correct
     #copy imp object as basis for the yimp object
     yimp = copy.deepcopy(imp)
 
-    #save imp_per_year in yimp
+
     if correction_fac: #adjust for sampling error
         imp_per_year = imp_per_year / calculate_correction_fac(imp_per_year, imp)
-    else:
-        yimp.at_event = imp_per_year
 
     #save calculations in yimp
+    yimp.at_event = imp_per_year
     n_sampled_years = len(sampled_years)
     yimp.event_id = np.arange(1, n_sampled_years+1)
     yimp.tag['yimp object'] = True
