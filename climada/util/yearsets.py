@@ -72,8 +72,7 @@ def impact_yearset(imp, sampled_years, lam=None, correction_fac=True):
 
     #save imp_per_year in yimp
     if correction_fac: #adjust for sampling error
-        correction_factor = calculate_correction_fac(imp_per_year, imp)
-        yimp.at_event = imp_per_year / correction_factor
+        imp_per_year = imp_per_year / calculate_correction_fac(imp_per_year, imp)
     else:
         yimp.at_event = imp_per_year
 
@@ -130,8 +129,7 @@ def impact_yearset_from_sampling_vect(imp, sampled_years, sampling_vect, correct
 
     #save imp_per_year in yimp
     if correction_fac: #adjust for sampling error
-        correction_factor = calculate_correction_fac(imp_per_year, imp)
-        yimp.at_event = imp_per_year / correction_factor
+        imp_per_year = imp_per_year / calculate_correction_fac(imp_per_year, imp)
     else:
         yimp.at_event = imp_per_year
 
