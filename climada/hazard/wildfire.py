@@ -105,7 +105,7 @@ class WildFire(Hazard):
         """Empty constructor. """
         Hazard.__init__(self, HAZ_TYPE)
 
-    def set_hist_fire_FIRMS(self, csv_firms, centr_res_factor=1, centroids=None):
+    def set_hist_fire_FIRMS(self, csv_firms, centr_res_factor=1.0, centroids=None):
         """ Parse FIRMS data and generate historical fires by temporal and spatial
         clustering.
         
@@ -118,7 +118,7 @@ class WildFire(Hazard):
         csv_firms : pd.DataFrame or str
             path to csv file of FIRMS data or FIRMS data as pd.Dataframe
             (https://firms.modaps.eosdis.nasa.gov/download/)
-        centr_res_factor : float, optional, default=1
+        centr_res_factor : float, optional, default=1.0
             resolution factor with respect to the satellite data to use
             for centroids creation. Hence, if MODIS data (1 km res) is
             used and centr_res_factor is set to 0.2, the grid spacing of
@@ -598,7 +598,7 @@ class WildFire(Hazard):
 
     @staticmethod
     def _firms_centroids_creation(firms, res_data, centr_res_factor):
-        """ Get centroids from the firms dataset and refactor them.
+        """ Create centroids according to the extent of the firms data.
 
         Parameters
         ----------
@@ -608,7 +608,8 @@ class WildFire(Hazard):
             FIRMS instrument resolution in degrees
         centr_res_factor : float
             the factor applied to voluntarly decrease/increase the
-            centroids resolution
+            centroids resolution. Hence, in order to set hazard resolution
+            of MODIS data to 4 km, a centr_res_factor of 0.25 is applied.
 
         Returns
         -------
