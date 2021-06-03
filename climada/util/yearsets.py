@@ -186,9 +186,8 @@ def sample_events(events_per_year, freqs_orig):
                                              p=probab_dis).astype('int')
             check_doubling = False
 
-        idx_to_remove = [] #determine used events to remove them from sampling pool
-        for event in selected_events:
-            idx_to_remove.append(np.where(indices == event)[0][0])
+        idx_to_remove = [np.where(indices == event)[0][0] for event in selected_events]
+        #determine used events to remove them from sampling pool
         indices = np.delete(indices, idx_to_remove)
         freqs = np.delete(freqs, idx_to_remove)
 
