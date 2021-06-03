@@ -51,10 +51,11 @@ class TestYearSets(unittest.TestCase):
         self.assertEqual(u_dt.date_to_str(yimp.date)[0], '2000-01-01')
         self.assertAlmostEqual(np.sum(yimp.at_event), 539)
 
-    def test_sample_n_events(self):
+    def test_sample_from_poisson(self):
         """Test sampling amount of events per year."""
         n_sample_years = 1000
-        events_per_year = yearsets.sample_n_events(n_sample_years, IMP)
+        lam = np.sum(IMP.frequency)
+        events_per_year = yearsets.sample_from_poisson(n_sample_years, lam)
 
         self.assertEqual(events_per_year.size, n_sample_years)
         self.assertAlmostEqual(np.round(np.mean(events_per_year)), 2)

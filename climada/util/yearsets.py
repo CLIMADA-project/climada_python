@@ -80,7 +80,9 @@ def impact_yearset(imp, sampled_years=None, sampling_vect=None, lam=None,
 
     #create sampling vector if not given as input
     if not sampling_vect:
-        events_per_year = sample_n_events(n_sampled_years, imp, lam)
+        if not lam:
+            lam = np.sum(imp.frequency)
+        events_per_year = sample_from_poisson(n_sampled_years, lam)
         sampling_vect = sample_events(events_per_year, imp.frequency)
 
     #compute impact per sampled_year
@@ -105,28 +107,22 @@ def impact_yearset(imp, sampled_years=None, sampling_vect=None, lam=None,
 
     return yimp, sampling_vect
 
-def sample_n_events(n_sampled_years, imp, lam=None):
-    """Create a sampling vector consisting of a subarray for each sampled_year that
-    contains the index of the sampled events for that year
+def sample_from_poisson(n_sampled_years, lam):
+    """Sample the number of events for n_sampled_years
 
     Parameters
     -----------
         n_sampled_years : int
             The target number of years the impact yearset shall contain.
-        imp : climada.engine.Impact()
-            impact object containing impacts per event
         lam: int
-            the applied Poisson distribution is centered around lam events per year
+            the applied Poisson distribution is centered around lambda events per year
 
     Returns
     -------
         events_per_year : array
             Number of events per sampled year
     """
-    if not lam:
-        lam = np.sum(imp.frequency)
 
-    #sample number of events per year
     if lam != 1:
         events_per_year = np.round(np.random.poisson(lam=lam,
                                                      size=n_sampled_years)).astype('int')
