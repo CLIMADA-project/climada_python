@@ -198,7 +198,7 @@ def sample_events(events_per_year, freqs_orig):
     indices = indices_orig
 
     #sample events for each sampled year
-    for _, amount_events in enumerate(events_per_year):
+    for amount_events in events_per_year:
 
         #add the original indices and frequencies to the pool if there are less events
         #in the pool than needed to fill the year one is sampling for
