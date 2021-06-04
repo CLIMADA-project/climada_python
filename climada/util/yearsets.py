@@ -198,7 +198,13 @@ def sample_events(events_per_year, freqs_orig):
     indices = indices_orig
 
     #sample events for each sampled year
-    for idx_year, amount_events in enumerate(events_per_year):
+    for _, amount_events in enumerate(events_per_year):
+
+        #add the original indices and frequencies to the pool if there are less events
+        #in the pool than needed to fill the year one is sampling for
+        if len(np.unique(indices)) < amount_events:
+            indices = np.append(indices, indices_orig)
+            freqs = np.append(freqs, freqs_orig)
 
         #ensure that each event only occurs once per sampled year
         unique_events = np.unique(indices, return_index=True)[0]
@@ -215,13 +221,7 @@ def sample_events(events_per_year, freqs_orig):
         indices = np.delete(indices, idx_to_remove)
         freqs = np.delete(freqs, idx_to_remove)
 
-        #add the original indices and frequencies to the pool if there are less events
-        #in the pool than needed to fill the next sampled year
-        if (idx_year < (len(events_per_year)-1)) and (
-                len(np.unique(indices)) < events_per_year[idx_year+1]):
-            indices = np.append(indices, indices_orig)
-            freqs = np.append(freqs, freqs_orig)
-
+        #save sampled events in sampling vector
         sampling_vect.append(selected_events)
 
     return sampling_vect
