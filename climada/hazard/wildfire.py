@@ -233,6 +233,10 @@ class WildFire(Hazard):
                 hemisphere = 'NHS'
             elif centroids.lat[0] < 0:
                 hemisphere = 'SHS'
+        if not all(i >= 0 for i in centroids.lat) or \
+            all(i <= 0 for i in centroids.lat):
+                LOGGER.warning('Not all centroids are on the same hemisphere. \
+                               Hemisphere is set to: %s.', hemisphere)
 
         # define years
         year_i  = year_start if year_start is not None else date.fromordinal(df_firms.datenum.min()).year
@@ -476,7 +480,11 @@ class WildFire(Hazard):
                 hemisphere = 'NHS'
             elif self.centroids.lat[0] < 0:
                 hemisphere = 'SHS'
-
+        if not all(i >= 0 for i in self.centroids.lat) or \
+            all(i <= 0 for i in self.centroids.lat):
+                LOGGER.warning('Not all centroids are on the same hemisphere. \
+                               Hemisphere is set to: %s.', hemisphere)
+                               
         # define years
         fire_years = np.array([date.fromordinal(i).year for i in self.date])
         years = np.arange(np.min(fire_years), np.max(fire_years)+1)
