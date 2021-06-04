@@ -337,7 +337,8 @@ class Forecast():
         adapt_fontsize : bool, optional
             If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
             the default matplotlib font size is used. Default is True.
-            Returns
+
+        Returns
         -------
         axes: cartopy.mpl.geoaxes.GeoAxesSubplot
         """
@@ -650,6 +651,10 @@ class Forecast():
         figsize : tuple
             figure size for plt.subplots, width, height in inches
             The default is (9, 13)
+        adapt_fontsize : bool, optional
+            If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
+            the default matplotlib font size is used. Default is True.
+
         Returns
         -------
         axes: cartopy.mpl.geoaxes.GeoAxesSubplot
@@ -836,6 +841,7 @@ class Forecast():
         adapt_fontsize : bool, optional
             If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
             the default matplotlib font size is used. Default is True.
+
         Returns
         -------
         axes : cartopy.mpl.geoaxes.GeoAxesSubplot
