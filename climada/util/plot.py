@@ -622,7 +622,7 @@ def add_cntry_names(axis, extent, proj=ccrs.PlateCarree(), fontsize=None):
             if ext_trans[0][1] < point_y <= ext_trans[1][1]:
                 axis.text(point_x, point_y, place_name,
                           horizontalalignment='center', verticalalignment='center',
-                          transform=ccrs.PlateCarree(), fontsize=fontsize)
+                          transform=ccrs.PlateCarree(), fontsize=fontsize, color='navy')
 
 def _get_collection_arrays(array_sub):
     """
