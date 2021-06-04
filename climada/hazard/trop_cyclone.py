@@ -257,7 +257,7 @@ class TropCyclone(Hazard):
     @staticmethod
     def video_intensity(track_name, tracks, centroids, file_name=None,
                         writer=animation.PillowWriter(bitrate=500),
-                        figsize=(9, 13), **kwargs):
+                        figsize=(9, 13), adapt_fontsize=True, **kwargs):
         """
         Generate video of TC wind fields node by node and returns its
         corresponding TropCyclone instances and track pieces.
@@ -276,6 +276,9 @@ class TropCyclone(Hazard):
             video writer. Default is pillow with bitrate=500
         figsize : tuple, optional
             figure size for plt.subplots
+        adapt_fontsize : bool, optional
+            If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
+            the default matplotlib font size is used. Default is True.
         kwargs : optional
             arguments for pcolormesh matplotlib function used in event plots
 
@@ -337,7 +340,7 @@ class TropCyclone(Hazard):
 
         if file_name:
             LOGGER.info('Generating video %s', file_name)
-            fig, axis = u_plot.make_map(figsize=figsize)
+            fig, axis, fontsize = u_plot.make_map(figsize=figsize, adapt_fontsize=adapt_fontsize)
             pbar = tqdm(total=idx_plt.size - 2)
             ani = animation.FuncAnimation(fig, run, frames=idx_plt.size - 2,
                                           interval=500, blit=False)

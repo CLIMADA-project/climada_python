@@ -36,7 +36,7 @@ import cartopy.crs as ccrs
 
 from climada.entity.tag import Tag
 import climada.util.hdf5_handler as u_hdf5
-from climada.util.constants import ONE_LAT_KM, DEF_CRS
+from climada.util.constants import ONE_LAT_KM, DEF_CRS, CMAP_RASTER
 import climada.util.coordinates as u_coord
 import climada.util.plot as u_plot
 
@@ -418,7 +418,7 @@ class Exposures():
 
     def plot_scatter(self, mask=None, ignore_zero=False, pop_name=True,
                      buffer=0.0, extend='neither', axis=None, figsize=(9, 13),
-                     **kwargs):
+                     adapt_fontsize=True, **kwargs):
         """Plot exposures geometry's value sum scattered over Earth's map.
         The plot will we projected according to the current crs.
 
@@ -426,12 +426,16 @@ class Exposures():
             mask (np.array, optional): mask to apply to eai_exp plotted.
             ignore_zero (bool, optional): flag to indicate if zero and negative
                 values are ignored in plot. Default: False
-            pop_name (bool, optional): add names of the populated places
+            pop_name : bool, optional
+                add names of the populated places, by default True.
             buffer (float, optional): border to add to coordinates. Default: 0.0.
             extend (str, optional): extend border colorbar with arrows.
                 [ 'neither' | 'both' | 'min' | 'max' ]
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             figsize (tuple, optional): figure size for plt.subplots
+            adapt_fontsize : bool, optional
+                If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
+                the default matplotlib font size is used. Default is True.
             kwargs (optional): arguments for scatter matplotlib function, e.g.
                 cmap='Greys'. Default: 'Wistia'
          Returns:
@@ -452,11 +456,11 @@ class Exposures():
         return u_plot.geo_scatter_from_array(value, coord, cbar_label, title,
                                              pop_name, buffer, extend,
                                              proj=crs_epsg, axes=axis,
-                                             figsize=figsize, **kwargs)
+                                             figsize=figsize, adapt_fontsize=adapt_fontsize, **kwargs)
 
     def plot_hexbin(self, mask=None, ignore_zero=False, pop_name=True,
                     buffer=0.0, extend='neither', axis=None, figsize=(9, 13),
-                    **kwargs):
+                    adapt_fontsize=True, **kwargs):
         """Plot exposures geometry's value sum binned over Earth's map.
         An other function for the bins can be set through the key reduce_C_function.
         The plot will we projected according to the current crs.
@@ -465,12 +469,16 @@ class Exposures():
             mask (np.array, optional): mask to apply to eai_exp plotted.
             ignore_zero (bool, optional): flag to indicate if zero and negative
                 values are ignored in plot. Default: False
-            pop_name (bool, optional): add names of the populated places
+            pop_name : bool, optional
+                add names of the populated places, by default True.
             buffer (float, optional): border to add to coordinates. Default: 0.0.
             extend (str, optional): extend border colorbar with arrows.
                 [ 'neither' | 'both' | 'min' | 'max' ]
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             figsize (tuple): figure size for plt.subplots
+            adapt_fontsize : bool, optional
+                If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
+                the default matplotlib font size is used. Default is True.
             kwargs (optional): arguments for hexbin matplotlib function, e.g.
                 reduce_C_function=np.average. Default: reduce_C_function=np.sum
          Returns:
@@ -492,12 +500,13 @@ class Exposures():
                           self.gdf.longitude[mask][pos_vals].values], axis=1)
         return u_plot.geo_bin_from_array(value, coord, cbar_label, title,
                                          pop_name, buffer, extend, proj=crs_epsg,
-                                         axes=axis, figsize=figsize, **kwargs)
+                                         axes=axis, figsize=figsize, adapt_fontsize=adapt_fontsize,
+                                         **kwargs)
 
     def plot_raster(self, res=None, raster_res=None, save_tiff=None,
                     raster_f=lambda x: np.log10((np.fmax(x + 1, 1))),
                     label='value (log10)', scheduler=None, axis=None,
-                    figsize=(9, 13), **kwargs):
+                    figsize=(9, 13), fill=True, adapt_fontsize=True, **kwargs):
         """Generate raster from points geometry and plot it using log10 scale:
         np.log10((np.fmax(raster+1, 1))).
 
@@ -514,6 +523,12 @@ class Exposures():
                 “synchronous” or “processes”
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             figsize (tuple, optional): figure size for plt.subplots
+            fill(bool, optional): If false, the areas with no data will be plotted
+                in white. If True, the areas with missing values are filled as 0s.
+                The default is True.
+            adapt_fontsize : bool, optional
+                If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
+                the default matplotlib font size is used. Default is True.
             kwargs (optional): arguments for imshow matplotlib function
 
         Returns:
@@ -550,17 +565,29 @@ class Exposures():
                                       self.gdf.longitude.max(), self.gdf.latitude.max())
 
         if not axis:
-            _, axis = u_plot.make_map(proj=proj_plot, figsize=figsize)
-
+            _, axis, fontsize = u_plot.make_map(proj=proj_plot, figsize=figsize, adapt_fontsize=adapt_fontsize)
+        else:
+            fontsize = None
         cbar_ax = make_axes_locatable(axis).append_axes('right', size="6.5%",
                                                         pad=0.1, axes_class=plt.Axes)
         axis.set_extent((xmin, xmax, ymin, ymax), crs=proj_data)
         u_plot.add_shapes(axis)
+        if not fill:
+            raster = np.where(raster == 0, np.nan, raster)
+            raster_f = lambda x: np.log10((np.maximum(x + 1, 1)))
+        if 'cmap' not in kwargs:
+            kwargs['cmap'] = CMAP_RASTER
         imag = axis.imshow(raster_f(raster), **kwargs, origin='upper',
                            extent=(xmin, xmax, ymin, ymax), transform=proj_data)
+        cbar = plt.colorbar(imag, cax=cbar_ax, label=label)
         plt.colorbar(imag, cax=cbar_ax, label=label)
         plt.tight_layout()
         plt.draw()
+        if fontsize:
+            cbar.ax.tick_params(labelsize=fontsize)
+            cbar.ax.yaxis.get_offset_text().set_fontsize(fontsize)
+            for item in [axis.title, cbar.ax.xaxis.label, cbar.ax.yaxis.label]:
+                item.set_fontsize(fontsize)
         return axis
 
     def plot_basemap(self, mask=None, ignore_zero=False, pop_name=True,
@@ -574,7 +601,8 @@ class Exposures():
                 size of the exposures, only the selected indexes will be plot.
             ignore_zero (bool, optional): flag to indicate if zero and negative
                 values are ignored in plot. Default: False
-            pop_name (bool, optional): add names of the populated places
+            pop_name : bool, optional
+                add names of the populated places, by default True.
             buffer (float, optional): border to add to coordinates. Default: 0.0.
             extend (str, optional): extend border colorbar with arrows.
                 [ 'neither' | 'both' | 'min' | 'max' ]
@@ -855,7 +883,7 @@ def _read_mat_optional(exposures, data, var_names):
 
     try:
         exposures['category_id'] = \
-        np.squeeze(data[var_names['var_name']['cat']]).astype(int, copy=False)
+            np.squeeze(data[var_names['var_name']['cat']]).astype(int, copy=False)
     except KeyError:
         pass
 
