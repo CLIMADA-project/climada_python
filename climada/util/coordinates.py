@@ -1832,7 +1832,7 @@ def set_df_geometry_points(df_val, scheduler=None, crs=None):
 
     Parameters
     ----------
-    df_val : DataFrame or GeoDataFrame
+    df_val : GeoDataFrame
         contains latitude and longitude columns
     scheduler : str, optional
         used for dask map_partitions. “threads”, “synchronous” or “processes”
@@ -1840,6 +1840,14 @@ def set_df_geometry_points(df_val, scheduler=None, crs=None):
         Coordinate Reference System, if omitted or None: df_val.geometry.crs
     """
     LOGGER.info('Setting geometry points.')
+
+    # keep the original crs if any
+    if crs is None:
+        try:
+            crs = df_val.geometry.crs
+        except AttributeError:
+            crs = None
+
     # work in parallel
     if scheduler:
         def apply_point(df_exp):
@@ -1850,14 +1858,10 @@ def set_df_geometry_points(df_val, scheduler=None, crs=None):
                                   .compute(scheduler=scheduler)
     # single process
     else:
-        if crs is None:
-            try:
-                crs = df_val.geometry.crs
-            except AttributeError:
-                crs = None
         df_val['geometry'] = gpd.GeoSeries(
-            gpd.points_from_xy(df_val.longitude, df_val.latitude), crs=crs)
+            gpd.points_from_xy(df_val.longitude, df_val.latitude), index=df_val.index, crs=crs)
 
+    # set crs
     if crs:
         df_val.set_crs(crs, inplace=True)
 
