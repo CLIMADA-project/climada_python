@@ -23,6 +23,7 @@ Test Wild fire class
 from pathlib import Path
 import unittest
 import numpy as np
+import pandas as pd
 from scipy import sparse
 
 from climada.hazard.wildfire import WildFire
@@ -30,7 +31,7 @@ from climada.hazard.centroids.centr import Centroids
 from climada.util.constants import ONE_LAT_KM
 
 DATA_DIR = (Path(__file__).parent).joinpath('data')
-TEST_FIRMS = Path.joinpath(DATA_DIR, "California_firms_Soberanes_2016_viirs.csv")
+TEST_FIRMS = pd.read_csv(Path.joinpath(DATA_DIR, "California_firms_Soberanes_2016_viirs.csv"))
 
 
 description = ''
@@ -58,15 +59,15 @@ def def_ori_centroids(firms, centr_res_factor):
     centroids.empty_geometry_points()
     return centroids, res_data
 
-DEF_CENTROIDS = def_ori_centroids(WildFire._clean_firms_csv(TEST_FIRMS), 1/2)
+DEF_CENTROIDS = def_ori_centroids(WildFire._clean_firms_df(TEST_FIRMS), 1/2)
 
 class TestMethodsFirms(unittest.TestCase):
     """Test loading functions from the WildFire class"""
 
     def test_clean_firms_pass(self):
-        """ Test _clean_firms_csv """
+        """ Test _clean_firms_df """
         wf = WildFire()
-        firms = wf._clean_firms_csv(TEST_FIRMS)
+        firms = wf._clean_firms_df(TEST_FIRMS)
 
         self.assertEqual(firms['latitude'][0], 36.46245)
         self.assertEqual(firms['longitude'][0], -121.8989)
@@ -80,7 +81,7 @@ class TestMethodsFirms(unittest.TestCase):
     def test_firms_cons_days_1_pass(self):
         """ Test _firms_cons_days """
         wf = WildFire()
-        firms_ori = wf._clean_firms_csv(TEST_FIRMS)
+        firms_ori = wf._clean_firms_df(TEST_FIRMS)
         firms = wf._firms_cons_days(firms_ori.copy())
         self.assertEqual(len(firms), 9325)
         cons_id = np.zeros(9325, int)
@@ -97,7 +98,7 @@ class TestMethodsFirms(unittest.TestCase):
     def test_firms_cons_days_2_pass(self):
         """ Test _firms_cons_days """
         wf = WildFire()
-        firms_ori = wf._clean_firms_csv(TEST_FIRMS)
+        firms_ori = wf._clean_firms_df(TEST_FIRMS)
         firms_ori['datenum'].values[100] = 7000
         firms = wf._firms_cons_days(firms_ori.copy())
         self.assertEqual(len(firms), 9325)
@@ -118,7 +119,7 @@ class TestMethodsFirms(unittest.TestCase):
         ori_thres = WildFire.days_thres_firms
         WildFire.days_thres_firms = 3
         wf = WildFire()
-        firms_ori = wf._clean_firms_csv(TEST_FIRMS)
+        firms_ori = wf._clean_firms_df(TEST_FIRMS)
         firms = wf._firms_cons_days(firms_ori.copy())
         self.assertEqual(len(firms), 9325)
         cons_id = np.zeros(9325, int)
@@ -135,7 +136,7 @@ class TestMethodsFirms(unittest.TestCase):
     def test_firms_cluster_pass(self):
         """ Test _firms_clustering """
         wf = WildFire()
-        firms_ori = wf._clean_firms_csv(TEST_FIRMS)
+        firms_ori = wf._clean_firms_df(TEST_FIRMS)
         firms_ori['datenum'].values[100] = 7000
         firms_ori = wf._firms_cons_days(firms_ori)
         firms = wf._firms_clustering(firms_ori.copy(), 0.375/2/15)
@@ -160,7 +161,7 @@ class TestMethodsFirms(unittest.TestCase):
     def test_firms_fire_pass(self):
         """ Test _firms_fire """
         wf = WildFire()
-        firms_ori = wf._clean_firms_csv(TEST_FIRMS)
+        firms_ori = wf._clean_firms_df(TEST_FIRMS)
         firms_ori['datenum'].values[100] = 7000
         firms_ori = wf._firms_cons_days(firms_ori)
         firms_ori = wf._firms_clustering(firms_ori, 0.375/2/15)
@@ -196,7 +197,7 @@ class TestMethodsFirms(unittest.TestCase):
     def test_iter_events_pass(self):
         """ Test identification of events """
         wf = WildFire()
-        firms = wf._clean_firms_csv(TEST_FIRMS)
+        firms = wf._clean_firms_df(TEST_FIRMS)
         firms['datenum'].values[100] = 7000
         i_iter = 0
         while firms.iter_ev.any():
@@ -215,7 +216,7 @@ class TestMethodsFirms(unittest.TestCase):
 #        from pathos.pools import ProcessPool as Pool
 #        pool = Pool()
         wf = WildFire()
-        firms = wf._clean_firms_csv(TEST_FIRMS)
+        firms = wf._clean_firms_df(TEST_FIRMS)
         firms['datenum'].values[100] = 7000
         firms = wf._firms_cons_days(firms)
         firms = wf._firms_clustering(firms, DEF_CENTROIDS[1]/2/15)
@@ -272,7 +273,7 @@ class TestMethodsFirms(unittest.TestCase):
     def test_centroids_pass(self):
         """ Test _firms_centroids_creation """
         wf = WildFire()
-        firms = wf._clean_firms_csv(TEST_FIRMS)
+        firms = wf._clean_firms_df(TEST_FIRMS)
         centroids = wf._firms_centroids_creation(firms, 0.375/ONE_LAT_KM, 1/2)
         self.assertEqual(centroids.meta['width'], 144)
         self.assertEqual(centroids.meta['height'], 138)
@@ -293,7 +294,7 @@ class TestMethodsFirms(unittest.TestCase):
     def test_firms_resolution_pass(self):
         """ Test _firms_resolution """
         wf = WildFire()
-        firms = wf._clean_firms_csv(TEST_FIRMS)
+        firms = wf._clean_firms_df(TEST_FIRMS)
         self.assertAlmostEqual(wf._firms_resolution(firms), 0.375/ONE_LAT_KM)
         firms['instrument'][0] = 'MODIS'
         self.assertAlmostEqual(wf._firms_resolution(firms), 1.0/ONE_LAT_KM)

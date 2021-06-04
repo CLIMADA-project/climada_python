@@ -101,7 +101,7 @@ class WildFire(Hazard):
         """Empty constructor. """
         Hazard.__init__(self, HAZ_TYPE)
 
-    def set_hist_fire_FIRMS(self, csv_firms, centr_res_factor=1.0, centroids=None):
+    def set_hist_fire_FIRMS(self, df_firms, centr_res_factor=1.0, centroids=None):
         """ Parse FIRMS data and generate historical fires by temporal and spatial
         clustering. Single fire events are defined as a set of data points
         that are geographically close and/or have consecutive dates. The
@@ -121,8 +121,8 @@ class WildFire(Hazard):
 
         Parameters
         ----------
-        csv_firms : pd.DataFrame or str
-            path to csv file of FIRMS data or FIRMS data as pd.Dataframe
+        df_firms : pd.DataFrame
+            FIRMS data as pd.Dataframe
             (https://firms.modaps.eosdis.nasa.gov/download/)
         centr_res_factor : float, optional, default=1.0
             resolution factor with respect to the satellite data to use
@@ -142,7 +142,7 @@ class WildFire(Hazard):
         self.clear()
 
         # read and initialize data
-        df_firms = self._clean_firms_csv(csv_firms)
+        df_firms = self._clean_firms_df(df_firms)
         # compute centroids
         res_data = self._firms_resolution(df_firms)
         if not centroids:
@@ -173,7 +173,7 @@ class WildFire(Hazard):
                     np.unique(df_firms.event_id).size)
         self._calc_brightness(df_firms, centroids, res_centr)
 
-    def set_hist_fire_seasons_FIRMS(self, csv_firms, centr_res_factor=1.0,
+    def set_hist_fire_seasons_FIRMS(self, df_firms, centr_res_factor=1.0,
                                     centroids=None, hemisphere=None,
                                     year_start=None, year_end=None,
                                     keep_all_fires=False):
@@ -186,8 +186,8 @@ class WildFire(Hazard):
 
         Parameters
         ----------
-        csv_firms : pd.DataFrame or str
-            path to csv file of FIRMS data or FIRMS data as pd.Dataframe
+        df_firms : pd.DataFrame
+            FIRMS data as pd.Dataframe
             (https://firms.modaps.eosdis.nasa.gov/download/)
         centr_res_factor : float, optional, default=1.0
             resolution factor with respect to the satellite data to use
@@ -218,7 +218,7 @@ class WildFire(Hazard):
         self.clear()
 
         # read and initialize data
-        df_firms = self._clean_firms_csv(csv_firms)
+        df_firms = self._clean_firms_df(df_firms)
         # compute centroids
         res_data = self._firms_resolution(df_firms)
         if not centroids:
@@ -527,7 +527,7 @@ class WildFire(Hazard):
 
 
     @staticmethod
-    def _clean_firms_csv(csv_firms):
+    def _clean_firms_df(df_firms):
         """Read and remove low confidence data from firms:
             - MODIS: remove data where confidence values are lower than CLEAN_THRESH
             - VIIRS: remove data where confidence values are set to low (keep
@@ -535,18 +535,14 @@ class WildFire(Hazard):
 
         Parameters
         ----------
-        csv_firms : pd.DataFrame or str
-            path to csv file of FIRMS data or FIRMS data as pd.Dataframe
+        df_firms : pd.DataFrame
+            FIRMS data as pd.Dataframe
 
         Returns
         -------
         df_firms : pd.DataFrame
 
         """
-        if isinstance(csv_firms, pd.DataFrame):
-            df_firms = csv_firms
-        else:
-            df_firms = pd.read_csv(csv_firms)
         # Check for the type of instrument (MODIS vs VIIRS)
         # Remove data with low confidence interval
         # Uniformize the name of the birghtness columns between VIIRS and MODIS
