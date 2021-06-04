@@ -197,39 +197,30 @@ def sample_events(events_per_year, freqs_orig):
     freqs = freqs_orig
     indices = indices_orig
 
-    #if check_doubling true: check that every event doesn't occur more than once per sampled year
-    check_doubling = False
-
     #sample events for each sampled year
     for idx_year, amount_events in enumerate(events_per_year):
 
-        probab_dis = freqs/np.sum(freqs)
+        #ensure that each event only occurs once per sampled year
+        unique_events = np.unique(indices, return_index=True)[0]
+        probab_dis = freqs[np.unique(indices, return_index=True)[1]]/(
+            np.sum(freqs[np.unique(indices, return_index=True)[1]]))
 
+        #sample events
         rng = default_rng()
-        selected_events = rng.choice(indices, size=amount_events, replace=False,
+        selected_events = rng.choice(unique_events, size=amount_events, replace=False,
                                      p=probab_dis).astype('int')
 
-        if check_doubling: #check if an event occurs more than once in a year
-            unique_events = np.unique(selected_events)
-            #resample until each event occurs max. once per year
-            while len(unique_events) != len(selected_events):
-                rng = default_rng()
-                selected_events = rng.choice(indices, size=amount_events, replace=False,
-                                             p=probab_dis).astype('int')
-            check_doubling = False
-
-        idx_to_remove = [np.where(indices == event)[0][0] for event in selected_events]
         #determine used events to remove them from sampling pool
+        idx_to_remove = [np.where(indices == event)[0][0] for event in selected_events]
         indices = np.delete(indices, idx_to_remove)
         freqs = np.delete(freqs, idx_to_remove)
 
         #add the original indices and frequencies to the pool if there are less events
         #in the pool than needed to fill the next sampled year
         if (idx_year < (len(events_per_year)-1)) and (
-                len(indices) < events_per_year[idx_year+1]):
+                len(np.unique(indices)) < events_per_year[idx_year+1]):
             indices = np.append(indices, indices_orig)
             freqs = np.append(freqs, freqs_orig)
-            check_doubling = True
 
         sampling_vect.append(selected_events)
 
