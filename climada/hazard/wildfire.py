@@ -130,7 +130,7 @@ class WildFire(Hazard):
             are defined, this parameter has no effect.
         centroids : Centroids, optional
             centroids in degrees to map data, centroids need to be on a
-            regular grid in order for the clustrering to work.
+            regular raster grid in order for the clustrering to work.
 
         Returns
         -------
@@ -659,8 +659,8 @@ class WildFire(Hazard):
     def _firms_cons_days(self, df_firms):
         """ Compute clusters of consecutive days (temporal clusters).
 
-        An interruption of self.days_thresh_firms is necessary to be set
-        in two different temporal clusters.
+        An interruption of n days (as defined in self.days_thresh_firms) is
+        necessary to be set in two different temporal clusters.
 
         Parameters
         ----------
