@@ -306,7 +306,7 @@ class Forecast():
                      polygon_file_crs='epsg:4326',
                      proj=ccrs.PlateCarree(),
                      figsize=(9, 13),
-                     fontsize='adapt'):
+                     adapt_fontsize=True):
         """ plot a map of the impacts
 
         Parameters
@@ -334,11 +334,10 @@ class Forecast():
         figsize : tuple
             figure size for plt.subplots, width, height in inches
             The default is (9, 13)
-        fontsize : str or int, optional
-            Either provide a fontsize or give value 'adapt' to adapt the size of the font
-            to the size of the figure. If None is given, the size of the fonts will be set
-            based on the matplotlib settings. Default is 'adapt'.
-        Returns
+        adapt_fontsize : bool, optional
+            If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
+            the default matplotlib font size is used. Default is True.
+            Returns
         -------
         axes: cartopy.mpl.geoaxes.GeoAxesSubplot
         """
@@ -369,7 +368,7 @@ class Forecast():
                              polygon_file_crs=polygon_file_crs,
                              proj=proj,
                              figsize=figsize,
-                             fontsize=fontsize
+                             adapt_fontsize=adapt_fontsize
                              )
         if save_fig:
             fig.savefig(map_file_name_full)
@@ -381,7 +380,7 @@ class Forecast():
     def _plot_imp_map(self, run_datetime, title, cbar_label,
                       polygon_file=None,polygon_file_crs='epsg:4326',
                       proj=ccrs.PlateCarree(), figsize=(9, 13),
-                      fontsize='adapt'):
+                      adapt_fontsize=True):
         # select hazard with run_datetime
         if run_datetime is None:
             run_datetime = self.run_datetime[0]
@@ -417,7 +416,7 @@ class Forecast():
             )
 
         # Generate each subplot
-        fig, axis_sub, fontsize = u_plot.make_map(num_im, proj=proj, figsize=figsize, fontsize=fontsize)
+        fig, axis_sub, fontsize = u_plot.make_map(num_im, proj=proj, figsize=figsize, adapt_fontsize=adapt_fontsize)
         if not isinstance(axis_sub, np.ndarray):
             axis_sub = np.array([[axis_sub]])
         fig.set_size_inches(9, 8)
@@ -617,7 +616,7 @@ class Forecast():
     def plot_exceedence_prob(self, threshold, explain_str=None,
                              run_datetime=None, save_fig=True, close_fig=False,
                              polygon_file=None, polygon_file_crs='epsg:4326',
-                             proj=ccrs.PlateCarree(), figsize=(9, 13), fontsize='adapt'):
+                             proj=ccrs.PlateCarree(), figsize=(9, 13), adapt_fontsize=True):
         """ plot exceedence map
 
         Parameters
@@ -680,7 +679,7 @@ class Forecast():
                                         cbar_label, proj,
                                         polygon_file=polygon_file,
                                         polygon_file_crs=polygon_file_crs,
-                                        figsize=figsize, fontsize=fontsize)
+                                        figsize=figsize, adapt_fontsize=adapt_fontsize)
         if save_fig:
             plt.savefig(wind_map_file_name_full)
         if close_fig:
@@ -691,7 +690,7 @@ class Forecast():
     def _plot_exc_prob(self, run_datetime, threshold, title, cbar_label,
                        proj=ccrs.PlateCarree(), polygon_file=None,
                        polygon_file_crs='epsg:4326', mask=None,
-                       figsize=(9, 13), fontsize='adapt'):
+                       figsize=(9, 13), adapt_fontsize=True):
         """  plot the probability of reaching a threshold """
         # select hazard with run_datetime
         if run_datetime is None:
@@ -727,7 +726,7 @@ class Forecast():
         kwargs['norm'] = BoundaryNorm(np.linspace(0,1,11), CMAP_WARNPROB.N, clip=True)
 
         # Generate each subplot
-        fig, axis_sub, fontsize = u_plot.make_map(num_im, proj=proj, figsize=figsize, fontsize=fontsize)
+        fig, axis_sub, fontsize = u_plot.make_map(num_im, proj=proj, figsize=figsize, adapt_fontsize=adapt_fontsize)
         if not isinstance(axis_sub, np.ndarray):
             axis_sub = np.array([[axis_sub]])
         fig.set_size_inches(9, 8)
@@ -792,7 +791,7 @@ class Forecast():
                       run_datetime=None,
                       proj=ccrs.PlateCarree(),
                       figsize=(9, 13),
-                      save_fig=True, close_fig=False, fontsize='adapt'):
+                      save_fig=True, close_fig=False, adapt_fontsize=True):
         """ plot map colored with 5 warning colors for all regions in provided
         shape file.
 
@@ -834,10 +833,9 @@ class Forecast():
             (for more details see class docstring).  Default is True.
         close_fig : bool, optional
             Figure is not drawn if True. The default is False.
-        fontsize : str or int, optional
-            Either provide a fontsize or give value 'adapt' to adapt the size of the font
-            to the size of the figure. If None is given, the size of the fonts will be set
-            based on the matplotlib settings. Default is 'adapt'.
+        adapt_fontsize : bool, optional
+            If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
+            the default matplotlib font size is used. Default is True.
         Returns
         -------
         axes : cartopy.mpl.geoaxes.GeoAxesSubplot
@@ -870,7 +868,7 @@ class Forecast():
                                 title_dict,
                                 proj,
                                 figsize=figsize,
-                                fontsize=fontsize)
+                                adapt_fontsize=adapt_fontsize)
         if save_fig:
             plt.savefig(warn_map_file_name_full)
         if close_fig:
@@ -882,7 +880,7 @@ class Forecast():
                    decision_level, decision_dict,
                    polygon_file, polygon_file_crs,
                    title, proj=ccrs.PlateCarree(),
-                   figsize=(9, 13), fontsize='adapt'):
+                   figsize=(9, 13), adapt_fontsize=True):
         """ plotting the warning level of each warning region based on thresholds """
         # select hazard with run_datetime
         if run_datetime is None:
@@ -897,7 +895,7 @@ class Forecast():
                                       CMAP_WARNPROB.N, clip=True)
 
         # Generate each subplot
-        fig, axis, fontsize = u_plot.make_map(1, proj=proj, figsize=figsize, fontsize=fontsize)
+        fig, axis, fontsize = u_plot.make_map(1, proj=proj, figsize=figsize, adapt_fontsize=adapt_fontsize)
         if isinstance(axis, np.ndarray):
             axis = axis[0]
         tit = title
