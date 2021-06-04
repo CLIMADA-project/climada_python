@@ -137,7 +137,7 @@ def geo_scatter_from_array(array_sub, geo_coord, var_name, title,
         subplot title. If one provided, the same is used for all subplots.
         Otherwise provide as many as subplots in array_sub.
     pop_name : bool, optional
-        add names of the populated places, by default True.
+        add names of the populated places, by default False.
     buffer : float, optional
         border to add to coordinates, by default BUFFER
     extend : str, optional
