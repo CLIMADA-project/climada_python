@@ -635,7 +635,7 @@ class WildFire(Hazard):
 
     @staticmethod
     def _centroids_resolution(centroids):
-        """ Return resolution of the centroids in their units
+        """ Return resolution of the scalar grid of the centroids
 
         Parameters
         ----------
