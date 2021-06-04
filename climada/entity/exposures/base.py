@@ -118,10 +118,11 @@ class Exposures():
     @property
     def crs(self):
         """Coordinate Reference System, refers to the crs attribute of the inherent GeoDataFrame"""
-        if hasattr(self.gdf, "crs") and self.gdf.crs:
+        if getattr(self.gdf, "crs", None):
             return self.gdf.crs
-        # it is very well possible that gdf.crs is None while the geometry columns has a crs
-        if "geometry" in self.gdf and hasattr(self.gdf.geometry, "crs") and self.gdf.geometry.crs:
+        # Due to a bug, the CRS of a GeoDataFrame and its geometry column might be out of sync:
+        # https://github.com/geopandas/geopandas/issues/1960
+        if "geometry" in self.gdf and getattr(self.gdf.geometry, "crs", None):
             return self.gdf.geometry.crs
         return self.meta.get('crs')
 
