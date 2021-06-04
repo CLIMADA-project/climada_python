@@ -426,9 +426,8 @@ class Exposures():
             mask (np.array, optional): mask to apply to eai_exp plotted.
             ignore_zero (bool, optional): flag to indicate if zero and negative
                 values are ignored in plot. Default: False
-            pop_name : bool or str, optional
-                add names of the populated places, by default True. If set to 'markers' only the points
-                will be shown without a description.
+            pop_name : bool, optional
+                add names of the populated places, by default True.
             buffer (float, optional): border to add to coordinates. Default: 0.0.
             extend (str, optional): extend border colorbar with arrows.
                 [ 'neither' | 'both' | 'min' | 'max' ]
@@ -470,9 +469,8 @@ class Exposures():
             mask (np.array, optional): mask to apply to eai_exp plotted.
             ignore_zero (bool, optional): flag to indicate if zero and negative
                 values are ignored in plot. Default: False
-            pop_name : bool or str, optional
-                add names of the populated places, by default True. If set to 'markers' only the points
-                will be shown without a description.
+            pop_name : bool, optional
+                add names of the populated places, by default True.
             buffer (float, optional): border to add to coordinates. Default: 0.0.
             extend (str, optional): extend border colorbar with arrows.
                 [ 'neither' | 'both' | 'min' | 'max' ]
@@ -603,9 +601,8 @@ class Exposures():
                 size of the exposures, only the selected indexes will be plot.
             ignore_zero (bool, optional): flag to indicate if zero and negative
                 values are ignored in plot. Default: False
-            pop_name : bool or str, optional
-                add names of the populated places, by default True. If set to 'markers' only the points
-                will be shown without a description.
+            pop_name : bool, optional
+                add names of the populated places, by default True.
             buffer (float, optional): border to add to coordinates. Default: 0.0.
             extend (str, optional): extend border colorbar with arrows.
                 [ 'neither' | 'both' | 'min' | 'max' ]
