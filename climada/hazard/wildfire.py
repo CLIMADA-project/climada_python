@@ -37,7 +37,7 @@ import numba
 from climada.hazard.centroids.centr import Centroids
 from climada.hazard.base import Hazard
 from climada.hazard.tag import Tag as TagHazard
-from climada.util.constants import ONE_LAT_KM, DEF_CRS
+from climada.util.constants import ONE_LAT_KM
 import climada.util.dates_times as u_dt
 import climada.util.coordinates as u_coord
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -142,36 +142,36 @@ class WildFire(Hazard):
         self.clear()
 
         # read and initialize data
-        firms = self._clean_firms_csv(csv_firms)
+        df_firms = self._clean_firms_csv(csv_firms)
         # compute centroids
-        res_data = self._firms_resolution(firms)
+        res_data = self._firms_resolution(df_firms)
         if not centroids:
-            centroids = self._firms_centroids_creation(firms, res_data, centr_res_factor)
+            centroids = self._firms_centroids_creation(df_firms, res_data, centr_res_factor)
         else:
             if not centroids.lat.any():
                 centroids.set_meta_to_lat_lon()
         res_centr = self._centroids_resolution(centroids)
 
         # fire identification
-        while firms.iter_ev.any():
+        while df_firms.iter_ev.any():
             # Compute cons_id: consecutive fires in current iteration
-            self._firms_cons_days(firms)
+            self._firms_cons_days(df_firms)
             # Compute clus_id: cluster identifier inside cons_id
-            self._firms_clustering(firms, res_data)
+            self._firms_clustering(df_firms, res_data)
             # compute event_id
-            self._firms_fire(firms)
+            self._firms_fire(df_firms)
             LOGGER.info('Remaining fires to identify: %s.', str(np.argwhere(\
-            firms.iter_ev.values).size))
+            df_firms.iter_ev.values).size))
 
         # remove minor fires
         if self.remove_minor_fires_firms:
-            firms = self._firms_remove_minor_fires(firms,
+            df_firms = self._firms_remove_minor_fires(df_firms,
                                                    self.minor_fire_thres_firms)
 
         # compute brightness and fill class attributes
         LOGGER.info('Computing intensity of %s fires.',
-                    np.unique(firms.event_id).size)
-        self._calc_brightness(firms, centroids, res_centr)
+                    np.unique(df_firms.event_id).size)
+        self._calc_brightness(df_firms, centroids, res_centr)
 
     def set_hist_fire_seasons_FIRMS(self, csv_firms, centr_res_factor=1.0,
                                     centroids=None, hemisphere=None,
@@ -218,11 +218,11 @@ class WildFire(Hazard):
         self.clear()
 
         # read and initialize data
-        firms = self._clean_firms_csv(csv_firms)
+        df_firms = self._clean_firms_csv(csv_firms)
         # compute centroids
-        res_data = self._firms_resolution(firms)
+        res_data = self._firms_resolution(df_firms)
         if not centroids:
-            centroids = self._firms_centroids_creation(firms, res_data, centr_res_factor)
+            centroids = self._firms_centroids_creation(df_firms, res_data, centr_res_factor)
         else:
             if not centroids.coord.size:
                 centroids.set_meta_to_lat_lon()
@@ -235,8 +235,8 @@ class WildFire(Hazard):
                 hemisphere = 'SHS'
 
         # define years
-        year_i  = year_start if year_start is not None else date.fromordinal(firms.datenum.min()).year
-        year_e  = year_end if year_end is not None else date.fromordinal(firms.datenum.max()).year
+        year_i  = year_start if year_start is not None else date.fromordinal(df_firms.datenum.min()).year
+        year_e  = year_end if year_end is not None else date.fromordinal(df_firms.datenum.max()).year
         years = np.arange(year_i, year_e+1)
 
         # make fire seasons
@@ -244,7 +244,7 @@ class WildFire(Hazard):
 
         for year in years:
             LOGGER.info('Setting up historical fire seasons %s.', str(year))
-            firms_temp = self._select_fire_season(firms, year, hemisphere=hemisphere)
+            firms_temp = self._select_fire_season(df_firms, year, hemisphere=hemisphere)
             # calculate historic fire seasons
             wf_year = WildFire()
             wf_year.set_hist_fire_FIRMS(firms_temp, centroids=centroids)
@@ -540,45 +540,45 @@ class WildFire(Hazard):
 
         Returns
         -------
-        firms : pd.DataFrame
+        df_firms : pd.DataFrame
 
         """
         if isinstance(csv_firms, pd.DataFrame):
-            firms = csv_firms
+            df_firms = csv_firms
         else:
-            firms = pd.read_csv(csv_firms)
+            df_firms = pd.read_csv(csv_firms)
         # Check for the type of instrument (MODIS vs VIIRS)
         # Remove data with low confidence interval
         # Uniformize the name of the birghtness columns between VIIRS and MODIS
         temp = pd.DataFrame()
-        if 'instrument' in firms.columns:
-            if firms.instrument.any() == 'MODIS' or firms.instrument.any() == 'VIIRS':
-                firms_modis = firms.drop(firms[firms.instrument == 'VIIRS'].index)
-                firms_modis.confidence = np.array(
-                    list(map(int, firms_modis.confidence.values.tolist())))
-                firms_modis = firms_modis.drop(firms_modis[ \
-                    firms_modis.confidence < CLEAN_THRESH].index)
-                temp = firms_modis
-                firms_viirs = firms.drop(firms[firms.instrument == 'MODIS'].index)
-                if firms_viirs.size:
-                    firms_viirs = firms_viirs.drop(firms_viirs[firms_viirs.confidence == 'l'].index)
-                    firms_viirs = firms_viirs.rename(columns={'bright_ti4':'brightness'})
-                    temp = temp.append(firms_viirs, sort=True)
+        if 'instrument' in df_firms.columns:
+            if df_firms.instrument.any() == 'MODIS' or df_firms.instrument.any() == 'VIIRS':
+                df_firms_modis = df_firms.drop(df_firms[df_firms.instrument == 'VIIRS'].index)
+                df_firms_modis.confidence = np.array(
+                    list(map(int, df_firms_modis.confidence.values.tolist())))
+                df_firms_modis = df_firms_modis.drop(df_firms_modis[ \
+                    df_firms_modis.confidence < CLEAN_THRESH].index)
+                temp = df_firms_modis
+                df_firms_viirs = df_firms.drop(df_firms[df_firms.instrument == 'MODIS'].index)
+                if df_firms_viirs.size:
+                    df_firms_viirs = df_firms_viirs.drop(df_firms_viirs[df_firms_viirs.confidence == 'l'].index)
+                    df_firms_viirs = df_firms_viirs.rename(columns={'bright_ti4':'brightness'})
+                    temp = temp.append(df_firms_viirs, sort=True)
                     temp = temp.drop(columns=['bright_ti4'])
 
-            firms = temp
-            firms = firms.reset_index()
-            firms = firms.drop(columns=['index'])
+            df_firms = temp
+            df_firms = df_firms.reset_index()
+            df_firms = df_firms.drop(columns=['index'])
 
-        firms['iter_ev'] = np.ones(len(firms), bool)
-        firms['cons_id'] = np.zeros(len(firms), int) - 1
-        firms['event_id'] = np.zeros(len(firms), int)
-        firms['clus_id'] = np.zeros(len(firms), int) - 1
-        firms['datenum'] = np.array(u_dt.str_to_date(firms['acq_date'].values))
-        return firms
+        df_firms['iter_ev'] = np.ones(len(df_firms), bool)
+        df_firms['cons_id'] = np.zeros(len(df_firms), int) - 1
+        df_firms['event_id'] = np.zeros(len(df_firms), int)
+        df_firms['clus_id'] = np.zeros(len(df_firms), int) - 1
+        df_firms['datenum'] = np.array(u_dt.str_to_date(df_firms['acq_date'].values))
+        return df_firms
 
     @staticmethod
-    def _firms_resolution(firms):
+    def _firms_resolution(df_firms):
         """ Returns resolution of satellite used in FIRMS in degrees
 
         Parameters
@@ -593,20 +593,20 @@ class WildFire(Hazard):
 
         """
         # Resolution in km of the centroids depends on the data origin.
-        if 'instrument' in firms.columns:
-            if firms['instrument'].any() == 'MODIS':
+        if 'instrument' in df_firms.columns:
+            if df_firms['instrument'].any() == 'MODIS':
                 res_data = 1.0
             else:
                 res_data = 0.375 # For VIIRS data
         return res_data/ONE_LAT_KM
 
     @staticmethod
-    def _firms_centroids_creation(firms, res_data, centr_res_factor):
+    def _firms_centroids_creation(df_firms, res_data, centr_res_factor):
         """ Create centroids according to the extent of the firms data.
 
         Parameters
         ----------
-        firms : pd.DataFrame
+        df_firms : pd.DataFrame
             FIRMS data
         res_data : float
             FIRMS instrument resolution in degrees
@@ -621,9 +621,9 @@ class WildFire(Hazard):
 
         """
         centroids = Centroids()
-        centroids.set_raster_from_pnt_bounds((firms['longitude'].min(), \
-            firms['latitude'].min(), firms['longitude'].max(), \
-            firms['latitude'].max()), res=res_data/centr_res_factor)
+        centroids.set_raster_from_pnt_bounds((df_firms['longitude'].min(), \
+            df_firms['latitude'].min(), df_firms['longitude'].max(), \
+            df_firms['latitude'].max()), res=res_data/centr_res_factor)
         centroids.set_meta_to_lat_lon()
         centroids.set_area_approx()
         centroids.set_on_land()
@@ -654,7 +654,7 @@ class WildFire(Hazard):
             raise ValueError('Centroids are not a regular raster')
         return res_centr[0]
 
-    def _firms_cons_days(self, firms):
+    def _firms_cons_days(self, df_firms):
         """ Compute clusters of consecutive days (temporal clusters).
 
         An interruption of self.days_thresh_firms is necessary to be set
@@ -662,18 +662,18 @@ class WildFire(Hazard):
 
         Parameters
         ----------
-        firms : pd.DataFrame
+        df_firms : pd.DataFrame
             FIRMS data
 
         Returns
         -------
-        firms : pd.DataFrame
+        df_firms : pd.DataFrame
             FIRMS data including info on temporal cluster per point
 
         """
         LOGGER.debug('Computing clusters of consecutive days.')
-        firms_iter = firms[firms['iter_ev']][['datenum', 'cons_id', 'event_id']]
-        max_cons_id = firms.cons_id.max() + 1
+        firms_iter = df_firms[df_firms['iter_ev']][['datenum', 'cons_id', 'event_id']]
+        max_cons_id = df_firms.cons_id.max() + 1
         for event_id in np.unique(firms_iter.event_id.values):
 
             firms_cons = firms_iter[firms_iter.event_id == event_id].reset_index()
@@ -700,10 +700,10 @@ class WildFire(Hazard):
                 re_order[order] = data
             firms_iter.cons_id.values[firms_iter.event_id == event_id] = re_order
 
-        firms.cons_id.values[firms['iter_ev'].values] = firms_iter.cons_id.values
-        return firms
+        df_firms.cons_id.values[df_firms['iter_ev'].values] = firms_iter.cons_id.values
+        return df_firms
 
-    def _firms_clustering(self, firms, res_data):
+    def _firms_clustering(self, df_firms, res_data):
         """ Compute geographic clusters and sort firms with ascending clus_id
         for each cons_id. Geographic clusters are identified using sci-kit
         learn's DBSCAN algorithm, which finds core samples of high density
@@ -713,7 +713,7 @@ class WildFire(Hazard):
 
         Parameters
         ----------
-        firms : pd.DataFrame
+        df_firms : pd.DataFrame
             FIRMS data
         res_data : float
             FIRMS instrument resolution in degrees
@@ -722,13 +722,13 @@ class WildFire(Hazard):
 
         Returns
         -------
-        firms : pd.DataFrame
+        df_firms : pd.DataFrame
             FIRMS data including info on spacial cluster per point
 
         """
 
         LOGGER.debug('Computing geographic clusters in consecutive fires.')
-        firms_iter = firms[firms['iter_ev']][['latitude', 'longitude', 'cons_id',
+        firms_iter = df_firms[df_firms['iter_ev']][['latitude', 'longitude', 'cons_id',
                                               'clus_id', 'event_id']]
 
         for event_id in np.unique(firms_iter.event_id.values):
@@ -749,11 +749,11 @@ class WildFire(Hazard):
                 firms_iter.clus_id.values[firms_iter.event_id == event_id] = \
                     firms_cons.clus_id.values
 
-        firms.clus_id.values[firms['iter_ev'].values] = firms_iter.clus_id.values
+        df_firms.clus_id.values[df_firms['iter_ev'].values] = firms_iter.clus_id.values
 
-        return firms
+        return df_firms
 
-    def _firms_fire(self, firms):
+    def _firms_fire(self, df_firms):
         """ Creation of event_id for each dataset point.
         A fire is characterized by a unique combination of 'cons_id' and 'clus_id'.
 
@@ -761,68 +761,68 @@ class WildFire(Hazard):
         ----------
         days_thres : int
             Temporal threshold for clustering
-        firms : pd.DataFrame
+        df_firms : pd.DataFrame
             FIRMS data including info on temporal and spatial cluster per point
 
         Returns
         -------
-        firms : pd.DataFrame
+        df_firms : pd.DataFrame
             FIRMS data including info on final cluster (=event) per point
 
         """
         ev_id = 0
-        for cons_id in np.unique(firms.cons_id.values):
-            firms_cons = firms.clus_id.values[firms.cons_id.values == cons_id]
+        for cons_id in np.unique(df_firms.cons_id.values):
+            firms_cons = df_firms.clus_id.values[df_firms.cons_id.values == cons_id]
             for clus_id in np.unique(firms_cons):
-                firms.event_id.values[np.logical_and(firms.cons_id.values == cons_id, \
-                firms.clus_id.values == clus_id)] = ev_id
+                df_firms.event_id.values[np.logical_and(df_firms.cons_id.values == cons_id, \
+                df_firms.clus_id.values == clus_id)] = ev_id
                 ev_id += 1
 
-        for ev_id in np.unique(firms.event_id.values):
-            date_ord = np.sort(firms.datenum.values[firms.event_id.values == ev_id])
+        for ev_id in np.unique(df_firms.event_id.values):
+            date_ord = np.sort(df_firms.datenum.values[df_firms.event_id.values == ev_id])
             if (np.diff(date_ord) < self.days_thres_firms).all():
-                firms.iter_ev.values[firms.event_id.values == ev_id] = False
+                df_firms.iter_ev.values[df_firms.event_id.values == ev_id] = False
             else:
-                firms.iter_ev.values[firms.event_id.values == ev_id] = True
+                df_firms.iter_ev.values[df_firms.event_id.values == ev_id] = True
 
-    def _firms_remove_minor_fires(self, firms, minor_fires_thres):
+    def _firms_remove_minor_fires(self, df_firms, minor_fires_thres):
         """Remove fires containg fewer FIRMS entries than threshold.
         A fire is characterized by a unique combination of 'cons_id' and 'clus_id'.
 
         Parameters
         ----------
-        firms : pd.DataFrame
+        df_firms : pd.DataFrame
             FIRMS data
         minor_fires_thres : int
             threshold of FIRMS data points for an event
 
         Returns
         -------
-        firms : pd.DataFrame
+        df_firms : pd.DataFrame
             FIRMS data excluding minor fire events
 
         """
         # drop minor fires
-        for i in range(np.unique(firms.event_id).size):
-            if (firms.event_id == i).sum() < minor_fires_thres:
-                firms = firms.drop(firms[firms.event_id == i].index)
+        for i in range(np.unique(df_firms.event_id).size):
+            if (df_firms.event_id == i).sum() < minor_fires_thres:
+                df_firms = df_firms.drop(df_firms[df_firms.event_id == i].index)
         # assign new event IDs
         event_id_new = 1
-        for i in np.unique(firms.event_id):
-            firms.event_id[firms.event_id == i] = event_id_new
+        for i in np.unique(df_firms.event_id):
+            df_firms.event_id[df_firms.event_id == i] = event_id_new
             event_id_new = event_id_new + 1
 
-        firms = firms.reset_index()
+        df_firms = df_firms.reset_index()
 
-        return firms
+        return df_firms
 
-    def _calc_brightness(self, firms, centroids, res_centr):
+    def _calc_brightness(self, df_firms, centroids, res_centr):
         """ Compute intensity matrix per fire with the maximum brightness at
         each centroid and all other hazard attributes.
 
         Parameters
         ----------
-        firms : pd.DataFrame
+        df_firms : pd.DataFrame
             FIRMS data
         centroids : Centroids
         res_centr : float
@@ -833,7 +833,7 @@ class WildFire(Hazard):
         self : climada.hazard.WildFire instance
 
         """
-        uni_ev = np.unique(firms['event_id'].values)
+        uni_ev = np.unique(df_firms['event_id'].values)
         num_ev = uni_ev.size
         num_centr = centroids.size
 
@@ -844,7 +844,7 @@ class WildFire(Hazard):
         if self.pool:
             chunksize = min(num_ev//self.pool.ncpus, 1000)
             bright_list = self.pool.map(self._brightness_one_fire,
-                                        itertools.repeat(firms, num_ev),
+                                        itertools.repeat(df_firms, num_ev),
                                         itertools.repeat(tree_centr, num_ev),
                                         uni_ev, itertools.repeat(res_centr),
                                         itertools.repeat(num_centr),
@@ -852,12 +852,12 @@ class WildFire(Hazard):
         else:
             bright_list = []
             for ev_id in uni_ev:
-                bright_list.append(self._brightness_one_fire(firms, tree_centr, \
+                bright_list.append(self._brightness_one_fire(df_firms, tree_centr, \
                 ev_id, res_centr, num_centr))
 
-        bright_list, firms = self._remove_empty_fires(bright_list, firms)
+        bright_list, df_firms = self._remove_empty_fires(bright_list, df_firms)
 
-        uni_ev = np.unique(firms['event_id'].values)
+        uni_ev = np.unique(df_firms['event_id'].values)
         num_ev = uni_ev.size
 
         # save
@@ -871,8 +871,8 @@ class WildFire(Hazard):
         self.date = np.zeros(num_ev, int)
         self.date_end = np.zeros(num_ev, int)
         for ev_idx, ev_id in enumerate(uni_ev):
-            self.date[ev_idx] = firms[firms.event_id == ev_id].datenum.min()
-            self.date_end[ev_idx] = firms[firms.event_id == ev_id].datenum.max()
+            self.date[ev_idx] = df_firms[df_firms.event_id == ev_id].datenum.min()
+            self.date_end[ev_idx] = df_firms[df_firms.event_id == ev_id].datenum.max()
         self.orig = np.ones(num_ev, bool)
         self._set_frequency()
 
@@ -885,13 +885,13 @@ class WildFire(Hazard):
         self.fraction.data.fill(1.0)
 
     @staticmethod
-    def _brightness_one_fire(firms, tree_centr, ev_id, res_centr, num_centr):
+    def _brightness_one_fire(df_firms, tree_centr, ev_id, res_centr, num_centr):
         """ For a given fire, fill in an intensity np.array with the maximum brightness
         at each centroid.
 
         Parameters
         ----------
-        firms : pd.DataFrame
+        df_firms : pd.DataFrame
             FIRMS data
         centroids : Centroids
         ev_id : int
@@ -904,8 +904,8 @@ class WildFire(Hazard):
 
         """
         LOGGER.debug('Brightness corresponding to FIRMS event %s.', str(ev_id))
-        temp_firms = firms.reindex(
-            index=(np.argwhere(firms['event_id'].values == ev_id).reshape(-1,)),
+        temp_firms = df_firms.reindex(
+            index=(np.argwhere(df_firms['event_id'].values == ev_id).reshape(-1,)),
             columns=['latitude', 'longitude', 'brightness', 'datenum'])
 
         # Identifies the unique (lat,lon) points of the firms dataframe -> lat_lon_uni
@@ -925,7 +925,7 @@ class WildFire(Hazard):
         return sparse.lil_matrix(brightness_ev)
 
     @staticmethod
-    def _remove_empty_fires(bright_list, firms):
+    def _remove_empty_fires(bright_list, df_firms):
         """ Removes instances which were identified as an eventbut which
         contain no intensity. This happens for events which occur
         outside of the defined centroids.
@@ -950,16 +950,16 @@ class WildFire(Hazard):
         for i, br_list in enumerate(bright_list):
             if br_list.count_nonzero() > 0:
                 bright_list_nonzero.append(br_list)
-                firms.event_id.values[firms.event_id == i+1] = event_id_new
+                df_firms.event_id.values[df_firms.event_id == i+1] = event_id_new
                 event_id_new = event_id_new + 1
             else:
-                firms = firms.drop(firms[firms.event_id == i].index)
+                df_firms = df_firms.drop(df_firms[df_firms.event_id == i].index)
 
-        firms = firms.reset_index()
+        df_firms = df_firms.reset_index()
         LOGGER.info('Returning %s fires that impacted the defined centroids.',
                     len(bright_list_nonzero))
 
-        return bright_list_nonzero, firms
+        return bright_list_nonzero, df_firms
 
     def _set_one_proba_fire_season(self, n_ignitions, seed=8):
         """ Generate a probabilistic fire season.
@@ -1225,7 +1225,7 @@ class WildFire(Hazard):
         plt.contourf(lon, lat, self.centroids.fire_propa_matrix)
 
     @staticmethod
-    def _select_fire_season(firms, year, hemisphere='SHS'):
+    def _select_fire_season(df_firms, year, hemisphere='SHS'):
         """ Selects data to create historic fire season. Need to
         differentiate between Northern & Souther hemisphere
 
@@ -1243,7 +1243,7 @@ class WildFire(Hazard):
 
         """
 
-        firms['date'] = firms['acq_date'].apply(pd.to_datetime)
+        df_firms['date'] = df_firms['acq_date'].apply(pd.to_datetime)
         if hemisphere == 'NHS':
             start = pd.Timestamp(year, 1, 1)
             end = pd.Timestamp(year+1, 1, 1)
@@ -1251,9 +1251,9 @@ class WildFire(Hazard):
             start = pd.Timestamp(year, 7, 1)
             end = pd.Timestamp(year+1, 7, 1)
 
-        firms = firms[(firms['date'] > start) & (firms['date'] < end)]
-        firms = firms.drop('date', axis=1)
-        return firms
+        df_firms = df_firms[(df_firms['date'] > start) & (df_firms['date'] < end)]
+        df_firms = df_firms.drop('date', axis=1)
+        return df_firms
 
     def _set_frequency(self):
         """Set hazard frequency from intensity matrix.
