@@ -420,7 +420,7 @@ class TCTracks():
 
         ibtracs_ds = xr.open_dataset(ibtracs_path)
         ibtracs_date = ibtracs_ds.attrs["date_created"]
-        if 180 < (np.datetime64('today') - np.datetime64(ibtracs_date)).item().days:
+        if (np.datetime64('today') - np.datetime64(ibtracs_date)).item().days > 180:
             LOGGER.warning(f"The cached IBTrACS data set dates from {ibtracs_date} (older "
                            "than 180 days). Very likely, a more recent version is available. "
                            f"Consider manually removing the file {ibtracs_path} and re-running "
@@ -435,17 +435,17 @@ class TCTracks():
                 [re.match(r"[12][0-9]{6}[NS][0-9]{5}", s) is None for s in storm_id])
             if invalid_mask.any():
                 invalid_sids = list(np.array(storm_id)[invalid_mask])
-                raise ValueError("The following given IDs are invalid: %s%s",
+                raise ValueError("The following given IDs are invalid: %s%s" % (
                                  ", ".join(invalid_sids[:5]),
-                                 ", ..." if len(invalid_sids) > 5  else ".")
+                                 ", ..." if len(invalid_sids) > 5  else "."))
                 storm_id = list(np.array(storm_id)[~invalid_mask])
             storm_id_encoded = [i.encode() for i in storm_id]
             non_existing_mask = ~np.isin(storm_id_encoded, ibtracs_ds.sid.values)
             if np.count_nonzero(non_existing_mask) > 0:
                 non_existing_sids = list(np.array(storm_id)[non_existing_mask])
-                raise ValueError("The following given IDs are not in IBTrACS: %s%s",
+                raise ValueError("The following given IDs are not in IBTrACS: %s%s" % (
                                  ", ".join(non_existing_sids[:5]),
-                                 ", ..." if len(non_existing_sids) > 5  else ".")
+                                 ", ..." if len(non_existing_sids) > 5  else "."))
                 storm_id_encoded = list(np.array(storm_id_encoded)[~non_existing_mask])
             match &= ibtracs_ds.sid.isin(storm_id_encoded)
         if year_range is not None:

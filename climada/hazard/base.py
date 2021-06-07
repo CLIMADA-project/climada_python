@@ -480,7 +480,7 @@ class Hazard():
             used for dask map_partitions. “threads”,
             “synchronous” or “processes”
         """
-        points_df = gpd.GeoDataFrame(crs=self.centroids.geometry.crs)
+        points_df = gpd.GeoDataFrame()
         points_df['latitude'] = self.centroids.lat
         points_df['longitude'] = self.centroids.lon
         val_names = ['val' + str(i_ev) for i_ev in range(2 * self.size)]
@@ -490,7 +490,9 @@ class Hazard():
             else:
                 points_df[inten_name] = np.asarray(self.fraction[i_ev - self.size, :].toarray()).\
                 reshape(-1)
-        raster, meta = u_coord.points_to_raster(points_df, val_names, scheduler=scheduler)
+        raster, meta = u_coord.points_to_raster(points_df, val_names,
+                                                crs=self.centroids.geometry.crs,
+                                                scheduler=scheduler)
         self.intensity = sparse.csr_matrix(raster[:self.size, :, :].reshape(self.size, -1))
         self.fraction = sparse.csr_matrix(raster[self.size:, :, :].reshape(self.size, -1))
         self.centroids = Centroids()
