@@ -26,6 +26,7 @@ from pathlib import Path
 import cartopy.crs as ccrs
 import geopandas as gpd
 import h5py
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from pyproj.crs import CRS
@@ -828,11 +829,12 @@ class Centroids():
                                       self.lon.max() + pad, self.lat.max() + pad)
 
         if not axis:
-            _, axis = u_plot.make_map(proj=proj_plot, figsize=figsize)
+            _, axis, fontsize = u_plot.make_map(proj=proj_plot, figsize=figsize)
 
         axis.set_extent((xmin, xmax, ymin, ymax), crs=proj_data)
         u_plot.add_shapes(axis)
         axis.scatter(self.lon, self.lat, transform=proj_data, **kwargs)
+        plt.tight_layout()
         return axis
 
     def calc_pixels_polygons(self, scheduler=None):

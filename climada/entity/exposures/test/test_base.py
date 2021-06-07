@@ -171,27 +171,6 @@ class TestFuncs(unittest.TestCase):
 class TestChecker(unittest.TestCase):
     """Test logs of check function"""
 
-    def test_info_logs_pass(self):
-        """Correct exposures definition"""
-        with self.assertLogs('climada.entity.exposures.base', level='INFO') as cm:
-            expo = good_exposures()
-            expo.check()
-        self.assertIn('meta set to default value', cm.output[0])
-        self.assertIn('tag set to default value', cm.output[1])
-        self.assertIn('ref_year set to default value', cm.output[2])
-        self.assertIn('value_unit set to default value', cm.output[3])
-        self.assertIn('crs set to default value', cm.output[4])
-        self.assertIn('cover not set', cm.output[5])
-        self.assertIn('geometry not set', cm.output[6])
-
-        self.assertTrue(expo.crs is not None)
-        self.assertTrue(expo.gdf.crs is not None)
-        with self.assertLogs('climada.entity.exposures.base', level='INFO') as cm:
-            expo2 = Exposures(expo.gdf, meta={'crs': 4230})
-            expo2.check()
-            self.assertEqual(expo.crs, expo2.crs)
-        self.assertTrue(any(['ignored and overwritten' in line for line in cm.output]))
-
     def test_error_logs_fail(self):
         """Wrong exposures definition"""
         expo = good_exposures()
@@ -200,6 +179,29 @@ class TestChecker(unittest.TestCase):
         with self.assertRaises(ValueError) as cm:
             expo.check()
         self.assertIn('longitude missing', str(cm.exception))
+
+    def test_error_logs_wrong_crs(self):
+        """Ambiguous crs definition"""
+        expo = good_exposures()
+        expo.set_geometry_points()  # sets crs to 4326
+
+        # all good
+        _expo = Exposures(expo.gdf, meta={'crs':4326}, crs=DEF_CRS)
+
+        with self.assertRaises(ValueError) as cm:
+            _expo = Exposures(expo.gdf, meta={'crs':4230}, crs=4326)
+        self.assertIn("Inconsistent CRS definition, crs and meta arguments don't match",
+                      str(cm.exception))
+
+        with self.assertRaises(ValueError) as cm:
+            _expo = Exposures(expo.gdf, meta={'crs':4230})
+        self.assertIn("Inconsistent CRS definition, data doesn't match meta or crs argument",
+                      str(cm.exception))
+
+        with self.assertRaises(ValueError) as cm:
+            _expo = Exposures(expo.gdf, crs='epsg:4230')
+        self.assertIn("Inconsistent CRS definition, data doesn't match meta or crs argument",
+                      str(cm.exception))
 
     def test_error_geometry_fail(self):
         """Wrong exposures definition"""
@@ -324,14 +326,14 @@ class TestConcat(unittest.TestCase):
         self.dummy = exp
 
     def test_concat_pass(self):
-        """Test condat function with fake data."""
+        """Test concat function with fake data."""
 
         self.dummy.check()
 
         catexp = Exposures.concat([self.dummy, self.dummy.gdf, pd.DataFrame(self.dummy.gdf.values, columns=self.dummy.gdf.columns), self.dummy])
         self.assertEqual(self.dummy.gdf.shape, (10,5))
         self.assertEqual(catexp.gdf.shape, (40,5))
-        self.assertEqual(catexp.gdf.crs, 'epsg:3395')
+        self.assertEqual(catexp.crs, 'epsg:3395')
 
     def test_concat_fail(self):
         """Test failing concat function with fake data."""
@@ -400,6 +402,53 @@ class TestGeoDFFuncs(unittest.TestCase):
         self.assertIn("CLIMADA 2", str(err.exception))
         self.assertIn("gdf", str(err.exception))
 
+    def test_set_gdf(self):
+        """Test setting the GeoDataFrame"""
+        empty_gdf = gpd.GeoDataFrame()
+        gdf_without_geometry = good_exposures().gdf
+        good_exp = good_exposures()
+        good_exp.set_crs(crs='epsg:3395')
+        good_exp.set_geometry_points()
+        gdf_with_geometry = good_exp.gdf
+
+        probe = Exposures()
+        self.assertRaises(ValueError, probe.set_gdf, pd.DataFrame())
+
+        probe.set_gdf(empty_gdf)
+        self.assertTrue(probe.gdf.equals(gpd.GeoDataFrame()))
+        self.assertTrue(u_coord.equal_crs(DEF_CRS, probe.crs))
+        self.assertIsNone(probe.gdf.crs)
+
+        probe.set_gdf(gdf_with_geometry)
+        self.assertTrue(probe.gdf.equals(gdf_with_geometry))
+        self.assertTrue(u_coord.equal_crs('epsg:3395', probe.crs))
+        self.assertTrue(u_coord.equal_crs('epsg:3395', probe.gdf.crs))
+
+        probe.set_gdf(gdf_without_geometry)
+        self.assertTrue(probe.gdf.equals(good_exposures().gdf))
+        self.assertTrue(u_coord.equal_crs(DEF_CRS, probe.crs))
+        self.assertIsNone(probe.gdf.crs)
+
+    def test_set_crs(self):
+        """Test setting the CRS"""
+        empty_gdf = gpd.GeoDataFrame()
+        gdf_without_geometry = good_exposures().gdf
+        good_exp = good_exposures()
+        good_exp.set_geometry_points()
+        gdf_with_geometry = good_exp.gdf
+
+        probe = Exposures(gdf_without_geometry)
+        self.assertTrue(u_coord.equal_crs(DEF_CRS, probe.crs))
+        probe.set_crs('epsg:3395')
+        self.assertTrue(u_coord.equal_crs('epsg:3395', probe.crs))
+
+        probe = Exposures(gdf_with_geometry)
+        self.assertTrue(u_coord.equal_crs(DEF_CRS, probe.crs))
+        probe.set_crs(DEF_CRS)
+        self.assertTrue(u_coord.equal_crs(DEF_CRS, probe.crs))
+        self.assertRaises(ValueError, probe.set_crs, 'epsg:3395')
+        self.assertEqual('EPSG:4326', probe.meta.get('crs'))
+
 
 class TestImpactFunctions(unittest.TestCase):
     """Test impact function handling"""
@@ -444,9 +493,11 @@ class TestImpactFunctions(unittest.TestCase):
 
 # Execute Tests
 if __name__ == "__main__":
-    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestChecker)
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestFuncs))
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestFuncs)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestChecker))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestIO))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAddSea))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestConcat))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestGeoDFFuncs))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestImpactFunctions))
     unittest.TextTestRunner(verbosity=2).run(TESTS)

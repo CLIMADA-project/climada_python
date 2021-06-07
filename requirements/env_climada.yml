@@ -8,7 +8,7 @@ dependencies:
   - cfgrib>=0.9.7
   - contextily>=1.0
   - dask>=2.25
-  - geopandas>=0.6,<0.9
+  - geopandas>=0.8
   - h5py>=2.10
   - haversine>=2.3
   - matplotlib>=3.2
