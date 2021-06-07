@@ -126,13 +126,8 @@ class Exposures():
             return self.gdf.geometry.crs
         return self.meta.get('crs')
 
-    def __init__(self, *args,
-                 meta=None,
-                 tag=None,
-                 ref_year=DEF_REF_YEAR,
-                 value_unit=DEF_VALUE_UNIT,
-                 crs=None,
-                 **kwargs):
+    def __init__(self, *args, meta=None, tag=None, ref_year=DEF_REF_YEAR,
+                 value_unit=DEF_VALUE_UNIT, crs=None, **kwargs):
         """Creates an Exposures object from a GeoDataFrame
 
         Parameters
