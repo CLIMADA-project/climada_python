@@ -227,8 +227,7 @@ class TestIO(unittest.TestCase):
 
     def test_io_hdf5_pass(self):
         """write and read hdf5"""
-        exp_df = Exposures(pd.read_excel(ENT_TEMPLATE_XLS))
-        exp_df.set_crs("epsg:32632")
+        exp_df = Exposures(pd.read_excel(ENT_TEMPLATE_XLS), crs="epsg:32632")
         exp_df.set_geometry_points()
         exp_df.check()
         # set metadata
