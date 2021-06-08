@@ -203,6 +203,13 @@ class TestChecker(unittest.TestCase):
         self.assertIn("Inconsistent CRS definition, data doesn't match meta or crs argument",
                       str(cm.exception))
 
+        _expo = Exposures(expo.gdf)
+        _expo.meta['crs'] = 'epsg:4230'
+        with self.assertRaises(ValueError) as cm:
+            _expo.check()
+        self.assertIn("Inconsistent CRS definition, gdf (EPSG:4326) attribute doesn't match "
+                      "meta (epsg:4230) attribute.", str(cm.exception))
+
     def test_error_geometry_fail(self):
         """Wrong exposures definition"""
         expo = good_exposures()
@@ -243,7 +250,9 @@ class TestIO(unittest.TestCase):
 
         self.assertEqual(exp_df.ref_year, exp_read.ref_year)
         self.assertEqual(exp_df.value_unit, exp_read.value_unit)
+        self.assertDictEqual(exp_df.meta, exp_read.meta)
         self.assertEqual(exp_df.crs, exp_read.crs)
+        self.assertEqual(exp_df.gdf.crs, exp_read.gdf.crs)
         self.assertEqual(exp_df.tag.file_name, exp_read.tag.file_name)
         self.assertEqual(exp_df.tag.description, exp_read.tag.description)
         np.testing.assert_array_equal(exp_df.gdf.latitude.values, exp_read.gdf.latitude.values)

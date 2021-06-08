@@ -251,6 +251,11 @@ class Exposures():
         elif not any([col.startswith(INDICATOR_CENTR) for col in self.gdf.columns]):
             LOGGER.info("%s not set.", INDICATOR_CENTR)
 
+        # check if CRS is consistent
+        if self.crs != self.meta.get('crs'):
+            raise ValueError(f"Inconsistent CRS definition, gdf ({self.crs}) attribute doesn't "
+                             f"match meta ({self.meta.get('crs')}) attribute.")
+
         # check whether geometry corresponds to lat/lon
         try:
             if (self.gdf.geometry.values[0].x != self.gdf.longitude.values[0] or
