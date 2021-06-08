@@ -167,7 +167,7 @@ class UncVar():
                 ax.remove()
                 continue
             (param_name, distr) = name_distr
-            x = np.linspace(distr.ppf(0.001), distr.ppf(0.999), 100)
+            x = np.linspace(distr.ppf(1e10), distr.ppf(1-1e10), 100)
             ax.plot(x, distr.pdf(x), label=param_name)
             ax.legend()
         return axes
