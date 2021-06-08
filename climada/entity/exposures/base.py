@@ -679,11 +679,10 @@ class Exposures():
         LOGGER.info('Reading %s', file_name)
         with pd.HDFStore(file_name) as store:
             metadata = store.get_storer('exposures').attrs.metadata
-            crs = None
-            if 'crs' in metadata:
-                crs = metadata['crs']
-            elif 'meta' in metadata and 'crs' in metadata['meta']:
-                crs = metadata['meta']['crs']
+            # in previous versions of CLIMADA and/or geopandas, the CRS was stored in '_crs'/'crs'
+            crs = metadata.get('crs', metadata.get('_crs'))
+            if crs is None and 'meta' in metadata:
+                crs = metadata['meta'].get('crs')
             self.__init__(store['exposures'], crs=crs)
             for key, val in metadata.items():
                 if key in type(self)._metadata:
