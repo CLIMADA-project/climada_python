@@ -83,9 +83,10 @@ class TCSurgeGeoClaw(Hazard):
     ----------
     gauge_data : list of lists of dicts
         For each storm and each gauge, a dict containing the `location` of the gauge, and
-        (for each surge event) `base_sea_level`, `topo_height`, `time` and `height_above_geoid`
+        (for each landfall event) `base_sea_level`, `topo_height`, `time` and `height_above_geoid`
         information.
-        Due to this format, it can't be written to HDF5.
+        Due to this format, this data will NOT be stored when using `write_hdf5`. However, you
+        can manually pickle it in a separate file if needed.
     """
     def __init__(self):
         Hazard.__init__(self, HAZ_TYPE)
@@ -106,12 +107,14 @@ class TCSurgeGeoClaw(Hazard):
         topo_path : str
             Path to raster file containing gridded elevation data.
         centroids : Centroids, optional
-            Centroids where to model TC. Default: global centroids.
+            Centroids where to measure maximum surge heights. By default, a centroids grid of
+            30 arc-seconds resolution is generated in a bounding box around the given tracks.
         description : str, optional
             String description of the tropical cyclone events.
         gauges : list of pairs (lat, lon), optional
             The locations of tide gauges where to measure temporal changes in sea level height.
-            This is used mostly for validation purposes.
+            This is used mostly for validation purposes. The result is stored in the `gauge_data`
+            attribute.
         node_max_dist_deg : float, optional
             Maximum distance from a TC track node in degrees for a centroid to be considered
             as potentially affected. Default: 5.5
@@ -126,6 +129,10 @@ class TCSurgeGeoClaw(Hazard):
             solver for a single landfall event is using OpenMP multiprocessing capabilities
             already. You will only benefit from processing these OpenMP tasks in parallel if a
             sufficient number of CPUs is available, e.g. with MPI multitasking on a cluster.
+
+        Returns
+        -------
+        haz : TCSurgeGeoClaw object
         """
         if tracks.size == 0:
             raise ValueError("The given TCTracks object doesn't contain any tracks.")
@@ -150,7 +157,6 @@ class TCSurgeGeoClaw(Hazard):
         haz.tag.description = description
         return haz
 
-
     @staticmethod
     def from_xr_track(track, centroids, coastal_idx, zos_path, topo_path,
                       node_max_dist_deg=5.5, gauges=None, pool=None):
@@ -173,7 +179,8 @@ class TCSurgeGeoClaw(Hazard):
             as potentially affected. Default: 5.5
         gauges : list of pairs (lat, lon), optional
             The locations of tide gauges where to measure temporal changes in sea level height.
-            This is used mostly for validation purposes.
+            This is used mostly for validation purposes. The result is stored in the `gauge_data`
+            attribute.
         pool : an object with `map` functionality, optional
             If given, landfall events are processed in parallel.
 
@@ -207,7 +214,6 @@ class TCSurgeGeoClaw(Hazard):
         new_haz.category = np.array([track.category])
         new_haz.basin = [track.basin]
         return new_haz
-
 
     def write_hdf5(self, *args, **kwargs):
         gauge_data = self.gauge_data
@@ -358,7 +364,6 @@ def geoclaw_surge_from_track(track, centroids, zos_path, topo_path, gauges=None,
     LOGGER.info("Determine georegions and temporal periods of landfall events...")
     events = TCSurgeEvents(track, track_centr)
     events.plot_areas(path=work_dir.joinpath("event_areas.pdf"))
-
 
     gauge_data = [{'location': g, 'base_sea_level': [], 'topo_height': [],
                    'time': [], 'height_above_geoid': []} for g in gauges]
@@ -806,6 +811,14 @@ def colormap_coastal_dem(axes=None):
     ----------
     axes : matplotlib.axes.Axes, optional
         If given, add a colorbar to the right of it. Default: None
+
+    Returns
+    -------
+    cmap : matplotlib.colors.LinearSegmentedColormap
+        A colormap ranging from dark and light blue over yellow and light and dark green to brown.
+    cnorm : LinearSegmentedNormalize
+        A nonlinear normalize class ranging from -8000 till 1000 that makes sure that small values
+        around 0 (coastal areas) are better distinguished.
     """
     cmap_terrain = [
         (0, 0, 0),
