@@ -228,6 +228,7 @@ class TestIO(unittest.TestCase):
     def test_io_hdf5_pass(self):
         """write and read hdf5"""
         exp_df = Exposures(pd.read_excel(ENT_TEMPLATE_XLS))
+        exp_df.set_crs("epsg:32632")
         exp_df.set_geometry_points()
         exp_df.check()
         # set metadata
@@ -246,17 +247,17 @@ class TestIO(unittest.TestCase):
         self.assertEqual(exp_df.crs, exp_read.crs)
         self.assertEqual(exp_df.tag.file_name, exp_read.tag.file_name)
         self.assertEqual(exp_df.tag.description, exp_read.tag.description)
-        self.assertTrue(np.array_equal(exp_df.gdf.latitude.values,    exp_read.gdf.latitude.values))
-        self.assertTrue(np.array_equal(exp_df.gdf.longitude.values,   exp_read.gdf.longitude.values))
-        self.assertTrue(np.array_equal(exp_df.gdf.value.values,       exp_read.gdf.value.values))
-        self.assertTrue(np.array_equal(exp_df.gdf.deductible.values,  exp_read.gdf.deductible.values))
-        self.assertTrue(np.array_equal(exp_df.gdf.cover.values,       exp_read.gdf.cover.values))
-        self.assertTrue(np.array_equal(exp_df.gdf.region_id.values,   exp_read.gdf.region_id.values))
+        self.assertTrue(np.array_equal(exp_df.gdf.latitude.values, exp_read.gdf.latitude.values))
+        self.assertTrue(np.array_equal(exp_df.gdf.longitude.values, exp_read.gdf.longitude.values))
+        self.assertTrue(np.array_equal(exp_df.gdf.value.values, exp_read.gdf.value.values))
+        self.assertTrue(np.array_equal(exp_df.gdf.deductible.values, exp_read.gdf.deductible.values))
+        self.assertTrue(np.array_equal(exp_df.gdf.cover.values, exp_read.gdf.cover.values))
+        self.assertTrue(np.array_equal(exp_df.gdf.region_id.values, exp_read.gdf.region_id.values))
         self.assertTrue(np.array_equal(exp_df.gdf.category_id.values, exp_read.gdf.category_id.values))
-        self.assertTrue(np.array_equal(exp_df.gdf.impf_TC.values,       exp_read.gdf.impf_TC.values))
-        self.assertTrue(np.array_equal(exp_df.gdf.centr_TC.values,    exp_read.gdf.centr_TC.values))
-        self.assertTrue(np.array_equal(exp_df.gdf.impf_FL.values,       exp_read.gdf.impf_FL.values))
-        self.assertTrue(np.array_equal(exp_df.gdf.centr_FL.values,    exp_read.gdf.centr_FL.values))
+        self.assertTrue(np.array_equal(exp_df.gdf.impf_TC.values, exp_read.gdf.impf_TC.values))
+        self.assertTrue(np.array_equal(exp_df.gdf.centr_TC.values, exp_read.gdf.centr_TC.values))
+        self.assertTrue(np.array_equal(exp_df.gdf.impf_FL.values, exp_read.gdf.impf_FL.values))
+        self.assertTrue(np.array_equal(exp_df.gdf.centr_FL.values, exp_read.gdf.centr_FL.values))
 
         for point_df, point_read in zip(exp_df.gdf.geometry.values, exp_read.gdf.geometry.values):
             self.assertEqual(point_df.x, point_read.x)

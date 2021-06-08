@@ -678,13 +678,16 @@ class Exposures():
         """
         LOGGER.info('Reading %s', file_name)
         with pd.HDFStore(file_name) as store:
-            self.__init__(store['exposures'])
             metadata = store.get_storer('exposures').attrs.metadata
+            crs = None
+            if 'crs' in metadata:
+                crs = metadata['crs']
+            elif 'meta' in metadata and 'crs' in metadata['meta']:
+                crs = metadata['meta']['crs']
+            self.__init__(store['exposures'], crs=crs)
             for key, val in metadata.items():
                 if key in type(self)._metadata:
                     setattr(self, key, val)
-                if key == 'crs':
-                    self.set_crs(val)
 
     def read_mat(self, file_name, var_names=None):
         """Read MATLAB file and store variables in exposures.
