@@ -28,6 +28,7 @@ import ftplib
 import logging
 import tempfile
 from pathlib import Path
+import collections
 
 # additional libraries
 import numpy as np
@@ -35,6 +36,7 @@ import pandas as pd
 import pybufrkit
 import tqdm
 import xarray as xr
+import eccodes as ec
 
 # climada dependencies
 from climada.hazard.tc_tracks import (
@@ -74,6 +76,8 @@ SIG_CENTRE = 1
 
 LOGGER = logging.getLogger(__name__)
 
+MISSING_DOUBLE = ec.CODES_MISSING_DOUBLE
+"""Missing double in ecCodes """
 
 class TCForecast(TCTracks):
     """An extension of the TCTracks construct adapted to forecast tracks
@@ -188,67 +192,178 @@ class TCForecast(TCTracks):
             fcast_rep (int): Of the form 1xx000, indicating the delayed
                 replicator containing the forecast values; optional.
         """
-
-        decoder = pybufrkit.decoder.Decoder()
-
-        if hasattr(file, 'read'):
-            bufr = decoder.process(file.read())
-        elif hasattr(file, 'read_bytes'):
-            bufr = decoder.process(file.read_bytes())
-        elif Path(file).is_file():
-            with Path(file).open('rb') as i:
-                bufr = decoder.process(i.read())
+        
+        # Open the bufr file
+        f = open(file, 'rb')
+        bufr = ec.codes_bufr_new_from_file(f)
+        # we need to instruct ecCodes to expand all the descriptors
+        # i.e. unpack the data values
+        ec.codes_set(bufr, 'unpack', 1)
+        
+        ##### need error message if the bufr file is not correct. #####
+        
+        # get the forcast time
+        timestamp_origin = dt.datetime(
+            ec.codes_get(bufr, 'year'), ec.codes_get(bufr, 'month'),
+            ec.codes_get(bufr, 'day'), ec.codes_get(bufr, 'hour'),
+            ec.codes_get(bufr, 'minute'),
+        )
+        timestamp_origin = np.datetime64(timestamp_origin)
+        
+        # number of timestep
+        n_timestep = 0
+        while True:
+            n_timestep = n_timestep + 1
+            try:
+                ec.codes_get_array(bufr, "#%d#timePeriod" % n_timestep)
+            except ec.CodesInternalError:
+                LOGGER.error('ecCodes Internal Error')
+                break
+            
+        # ensemble members number
+        ens_no = ec.codes_get_array(bufr, "ensembleMemberNumber")
+        
+        # initiate a data dictionary to hold values
+        latitude = collections.defaultdict(dict)
+        longitude = collections.defaultdict(dict)
+        pressure = collections.defaultdict(dict)
+        max_wind = collections.defaultdict(dict)
+        
+        # values at timestep 0
+        lat_init = ec.codes_get_array(bufr, '#2#latitude')
+        lon_init = ec.codes_get_array(bufr, '#2#longitude')
+        pre_init = ec.codes_get_array(bufr, '#1#pressureReducedToMeanSeaLevel')
+        max_wind_init = ec.codes_get_array(bufr, '#1#windSpeedAt10M')
+        
+        if len(lat_init) == len(ens_no) and len(max_wind_init) == len(ens_no):
+            for ind_ens in range(len(ens_no)):
+                latitude[ind_ens] = np.array(lat_init[ind_ens])
+                longitude[ind_ens] = np.array(lon_init[ind_ens])
+                pressure[ind_ens] = np.array(pre_init[ind_ens])
+                max_wind[ind_ens] = np.array(max_wind_init[ind_ens])
         else:
-            raise FileNotFoundError('Check file argument')
+            for ind_ens in range(len(ens_no)):
+                latitude[ind_ens] = np.array(lat_init[0])
+                longitude[ind_ens] = np.array(lon_init[0])
+                pressure[ind_ens] = np.array(pre_init[ind_ens])
+                max_wind[ind_ens] = np.array(max_wind_init[ind_ens])
+                
+        ######## check if the dictionary is None? ##########
+        
+        # getting the forecasted storms
+        timesteps_int = [0 for x in range(n_timestep)]
+        for ind_timestep in range(1, n_timestep):
+            rank1 = ind_timestep * 2 + 2
+            rank3 = ind_timestep * 2 + 3
+            
+            timestep = ec.codes_get_array(bufr, "#%d#timePeriod" % ind_timestep)
+            if len(timestep) == 1:
+                timesteps_int[ind_timestep] = timestep[0]
+            else:
+                for i in range(len(timestep)):
+                    if timestep[i] != ec.CODES_MISSING_LONG:
+                        timesteps_int[ind_timestep] = timestep[i]
+                        break
+            
+            # Location of the storm
+            sig_values = ec.codes_get_array(bufr, "#%d#meteorologicalAttributeSignificance" % rank1)
+            if len(sig_values) == 1:
+                significance = sig_values[0]
+            else:
+                for j in range(len(sig_values)):
+                    if sig_values[j] != ec.CODES_MISSING_LONG:
+                        significance = sig_values[j]
+                        break
+            # get lat, lon, and pre of all ensemble members at ind_timestep        
+            if significance == 1:
+                lat = ec.codes_get_array(bufr, "#%d#latitude" % rank1)
+                lon = ec.codes_get_array(bufr, "#%d#longitude" % rank1)
+                pre = ec.codes_get_array(bufr, "#%d#pressureReducedToMeanSeaLevel" % (ind_timestep + 1))
+            else:
+                raise ValueError('unexpected meteorologicalAttributeSignificance=', significance)
+                
+            # Location of max wind
+            sig_values = ec.codes_get_array(bufr, "#%d#meteorologicalAttributeSignificance" % rank3)
+            if len(sig_values) == 1:
+                significanceWind = sig_values[0]
+            else:
+                for j in range(len(sig_values)):
+                    if sig_values[j] != ec.CODES_MISSING_LONG:
+                        significanceWind = sig_values[j]
+                        break
+            # max_wind of all ensemble members at ind_timestep    
+            if significanceWind == 3:
+                wnd = ec.codes_get_array(bufr, "#%d#windSpeedAt10M" % (ind_timestep + 1))
+            else:
+                raise ValueError('unexpected meteorologicalAttributeSignificance=', significance)
+                
+            for ind_ens in range(len(ens_no)):
+                latitude[ind_ens] = np.append(latitude[ind_ens], lat[ind_ens])
+                longitude[ind_ens] = np.append(longitude[ind_ens], lon[ind_ens])
+                pressure[ind_ens] = np.append(pressure[ind_ens], pre[ind_ens])
+                max_wind[ind_ens] = np.append(max_wind[ind_ens], wnd[ind_ens])
+        
 
-        # setup parsers and querents
-        npparser = pybufrkit.dataquery.NodePathParser()
-        data_query = pybufrkit.dataquery.DataQuerent(npparser).query
+        # decoder = pybufrkit.decoder.Decoder()
 
-        meparser = pybufrkit.mdquery.MetadataExprParser()
-        meta_query = pybufrkit.mdquery.MetadataQuerent(meparser).query
+        # if hasattr(file, 'read'):
+        #     bufr = decoder.process(file.read())
+        # elif hasattr(file, 'read_bytes'):
+        #     bufr = decoder.process(file.read_bytes())
+        # elif Path(file).is_file():
+        #     with Path(file).open('rb') as i:
+        #         bufr = decoder.process(i.read())
+        # else:
+        #     raise FileNotFoundError('Check file argument')
 
-        if fcast_rep is None:
-            fcast_rep = self._find_delayed_replicator(
-                meta_query(bufr, '%unexpanded_descriptors')
-            )
+        # # setup parsers and querents
+        # npparser = pybufrkit.dataquery.NodePathParser()
+        # data_query = pybufrkit.dataquery.DataQuerent(npparser).query
+
+        # meparser = pybufrkit.mdquery.MetadataExprParser()
+        # meta_query = pybufrkit.mdquery.MetadataQuerent(meparser).query
+
+        # if fcast_rep is None:
+        #     fcast_rep = self._find_delayed_replicator(
+        #         meta_query(bufr, '%unexpanded_descriptors')
+        #     )
 
         # query the bufr message
         msg = {
             # subset forecast data
-            'significance': data_query(bufr, fcast_rep + '> 008005'),
-            'latitude': data_query(bufr, fcast_rep + '> 005002'),
-            'longitude': data_query(bufr, fcast_rep + '> 006002'),
-            'wind_10m': data_query(bufr, fcast_rep + '> 011012'),
-            'pressure': data_query(bufr, fcast_rep + '> 010051'),
-            'timestamp': data_query(bufr, fcast_rep + '> 004024'),
+#            'significance': data_query(bufr, fcast_rep + '> 008005'),
+            'latitude': latitude,
+            'longitude': longitude,
+            'wind_10m': max_wind,
+            'pressure': pressure,
+            'timestamp': timesteps_int,
 
             # subset metadata
-            'wmo_longname': data_query(bufr, '/001027'),
-            'storm_id': data_query(bufr, '/001025'),
-            'ens_type': data_query(bufr, '/001092'),
-            'ens_number': data_query(bufr, '/001091'),
+            'wmo_longname': ec.codes_get(bufr, 'longStormName').strip(),
+            'storm_id': ec.codes_get(bufr, 'stormIdentifier').strip(),
+            'ens_type': ec.codes_get_array(bufr, 'ensembleForecastType'),
+            'ens_number': ec.codes_get_array(bufr, "ensembleMemberNumber"),
         }
 
-        timestamp_origin = dt.datetime(
-            meta_query(bufr, '%year'), meta_query(bufr, '%month'),
-            meta_query(bufr, '%day'), meta_query(bufr, '%hour'),
-            meta_query(bufr, '%minute'),
-        )
-        timestamp_origin = np.datetime64(timestamp_origin)
+        # timestamp_origin = dt.datetime(
+        #     meta_query(bufr, '%year'), meta_query(bufr, '%month'),
+        #     meta_query(bufr, '%day'), meta_query(bufr, '%hour'),
+        #     meta_query(bufr, '%minute'),
+        # )
+        # timestamp_origin = np.datetime64(timestamp_origin)
 
         if id_no is None:
             id_no = timestamp_origin.item().strftime('%Y%m%d%H') + \
                     str(np.random.randint(1e3, 1e4))
 
-        orig_centre = meta_query(bufr, '%originating_centre')
+        orig_centre = ec.codes_get(bufr, 'centre')
         if orig_centre == 98:
             provider = 'ECMWF'
         else:
             provider = 'BUFR code ' + str(orig_centre)
 
         for i in msg['significance'].subset_indices():
-            name = msg['wmo_longname'].get_values(i)[0].decode().strip()
+            name = msg['wmo_longname']
             track = self._subset_to_track(
                 msg, i, provider, timestamp_origin, name, id_no
             )
@@ -260,15 +375,21 @@ class TCForecast(TCTracks):
     @staticmethod
     def _subset_to_track(msg, index, provider, timestamp_origin, name, id_no):
         """Subroutine to process one BUFR subset into one xr.Dataset"""
-        sig = np.array(msg['significance'].get_values(index), dtype='int')
-        lat = np.array(msg['latitude'].get_values(index), dtype='float')
-        lon = np.array(msg['longitude'].get_values(index), dtype='float')
-        wnd = np.array(msg['wind_10m'].get_values(index), dtype='float')
-        pre = np.array(msg['pressure'].get_values(index), dtype='float')
+#        sig = np.array(msg['significance'].get_values(index), dtype='int')
+        lat = np.array(msg['latitude'][index], dtype='float')
+        lon = np.array(msg['longitude'][index], dtype='float')
+        wnd = np.array(msg['wind_10m'][index], dtype='float')
+        pre = np.array(msg['pressure'][index], dtype='float')
+        
+        # replace missing values with NaN
+        lat[lat==MISSING_DOUBLE] = np.nan
+        lon[lon==MISSING_DOUBLE] = np.nan
+        wnd[wnd==MISSING_DOUBLE] = np.nan
+        pre[pre==MISSING_DOUBLE] = np.nan
 
-        sid = msg['storm_id'].get_values(index)[0].decode().strip()
+        sid = msg['storm_id'].strip()
 
-        timestep_int = np.array(msg['timestamp'].get_values(index)).squeeze()
+        timestep_int = np.array(msg['timestamp']).squeeze()
         timestamp = timestamp_origin + timestep_int.astype('timedelta64[h]')
 
         try:
@@ -277,8 +398,8 @@ class TCForecast(TCTracks):
                     'max_sustained_wind': ('time', np.squeeze(wnd)),
                     'central_pressure': ('time', np.squeeze(pre)/100),
                     'ts_int': ('time', timestep_int),
-                    'lat': ('time', lat[sig == 1]),
-                    'lon': ('time', lon[sig == 1]),
+                    'lat': ('time', lat),
+                    'lon': ('time', lon),
                 },
                 coords={
                     'time': timestamp,
@@ -291,8 +412,8 @@ class TCForecast(TCTracks):
                     'orig_event_flag': False,
                     'data_provider': provider,
                     'id_no': (int(id_no) + index / 100),
-                    'ensemble_number': msg['ens_number'].get_values(index)[0],
-                    'is_ensemble': msg['ens_type'].get_values(index)[0] != 0,
+                    'ensemble_number': msg['ens_number'][index],
+                    'is_ensemble': msg['ens_type'][index] != 0,
                     'forecast_time': timestamp_origin,
                 }
             )
@@ -338,21 +459,21 @@ class TCForecast(TCTracks):
         track.attrs['category'] = cat_name
         return track
 
-    @staticmethod
-    def _find_delayed_replicator(descriptors):
-        """The current bufr tc tracks only use one delayed replicator,
-        enclosing all forecast values. This finds it.
+    # @staticmethod
+    # def _find_delayed_replicator(descriptors):
+    #     """The current bufr tc tracks only use one delayed replicator,
+    #     enclosing all forecast values. This finds it.
 
-        Parameters:
-            bufr_message: An in-memory pybufrkit BUFR message
-        """
-        delayed_replicators = [
-            d for d in descriptors
-            if 100000 < d < 200000 and d % 1000 == 0
-        ]
+    #     Parameters:
+    #         bufr_message: An in-memory pybufrkit BUFR message
+    #     """
+    #     delayed_replicators = [
+    #         d for d in descriptors
+    #         if 100000 < d < 200000 and d % 1000 == 0
+    #     ]
 
-        if len(delayed_replicators) != 1:
-            raise ValueError('Could not find fcast_rep, please set manually. '
-                             'More than one delayed replicator in BUFR file')
+    #     if len(delayed_replicators) != 1:
+    #         raise ValueError('Could not find fcast_rep, please set manually. '
+    #                          'More than one delayed replicator in BUFR file')
 
-        return str(delayed_replicators[0])
+    #     return str(delayed_replicators[0])
