@@ -33,7 +33,6 @@ import collections
 # additional libraries
 import numpy as np
 import pandas as pd
-import pybufrkit
 import tqdm
 import xarray as xr
 import eccodes as ec
