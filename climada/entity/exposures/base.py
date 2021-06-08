@@ -251,6 +251,11 @@ class Exposures():
         elif not any([col.startswith(INDICATOR_CENTR) for col in self.gdf.columns]):
             LOGGER.info("%s not set.", INDICATOR_CENTR)
 
+        # check if CRS is consistent
+        if self.crs != self.meta.get('crs'):
+            raise ValueError(f"Inconsistent CRS definition, gdf ({self.crs}) attribute doesn't "
+                             f"match meta ({self.meta.get('crs')}) attribute.")
+
         # check whether geometry corresponds to lat/lon
         try:
             if (self.gdf.geometry.values[0].x != self.gdf.longitude.values[0] or
@@ -678,13 +683,15 @@ class Exposures():
         """
         LOGGER.info('Reading %s', file_name)
         with pd.HDFStore(file_name) as store:
-            self.__init__(store['exposures'])
             metadata = store.get_storer('exposures').attrs.metadata
+            # in previous versions of CLIMADA and/or geopandas, the CRS was stored in '_crs'/'crs'
+            crs = metadata.get('crs', metadata.get('_crs'))
+            if crs is None and 'meta' in metadata:
+                crs = metadata['meta'].get('crs')
+            self.__init__(store['exposures'], crs=crs)
             for key, val in metadata.items():
                 if key in type(self)._metadata:
                     setattr(self, key, val)
-                if key == 'crs':
-                    self.set_crs(val)
 
     def read_mat(self, file_name, var_names=None):
         """Read MATLAB file and store variables in exposures.

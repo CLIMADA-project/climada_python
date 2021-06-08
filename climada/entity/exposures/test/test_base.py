@@ -149,8 +149,8 @@ class TestFuncs(unittest.TestCase):
         haz = Hazard('FL')
         haz.set_raster([HAZ_DEMO_FL], window=Window(10, 20, 50, 60))
         exp.assign_centroids(haz)
-        self.assertTrue(np.array_equal(exp.gdf[INDICATOR_CENTR + 'FL'].values,
-                                       np.arange(haz.centroids.size, dtype=int)))
+        np.testing.assert_array_equal(exp.gdf[INDICATOR_CENTR + 'FL'].values,
+                                      np.arange(haz.centroids.size, dtype=int))
 
     def test_assign_large_hazard_subset_pass(self):
         """Test assign_centroids with raster hazard"""
@@ -203,6 +203,13 @@ class TestChecker(unittest.TestCase):
         self.assertIn("Inconsistent CRS definition, data doesn't match meta or crs argument",
                       str(cm.exception))
 
+        _expo = Exposures(expo.gdf)
+        _expo.meta['crs'] = 'epsg:4230'
+        with self.assertRaises(ValueError) as cm:
+            _expo.check()
+        self.assertIn("Inconsistent CRS definition, gdf (EPSG:4326) attribute doesn't match "
+                      "meta (epsg:4230) attribute.", str(cm.exception))
+
     def test_error_geometry_fail(self):
         """Wrong exposures definition"""
         expo = good_exposures()
@@ -227,7 +234,7 @@ class TestIO(unittest.TestCase):
 
     def test_io_hdf5_pass(self):
         """write and read hdf5"""
-        exp_df = Exposures(pd.read_excel(ENT_TEMPLATE_XLS))
+        exp_df = Exposures(pd.read_excel(ENT_TEMPLATE_XLS), crs="epsg:32632")
         exp_df.set_geometry_points()
         exp_df.check()
         # set metadata
@@ -243,20 +250,22 @@ class TestIO(unittest.TestCase):
 
         self.assertEqual(exp_df.ref_year, exp_read.ref_year)
         self.assertEqual(exp_df.value_unit, exp_read.value_unit)
+        self.assertDictEqual(exp_df.meta, exp_read.meta)
         self.assertEqual(exp_df.crs, exp_read.crs)
+        self.assertEqual(exp_df.gdf.crs, exp_read.gdf.crs)
         self.assertEqual(exp_df.tag.file_name, exp_read.tag.file_name)
         self.assertEqual(exp_df.tag.description, exp_read.tag.description)
-        self.assertTrue(np.array_equal(exp_df.gdf.latitude.values,    exp_read.gdf.latitude.values))
-        self.assertTrue(np.array_equal(exp_df.gdf.longitude.values,   exp_read.gdf.longitude.values))
-        self.assertTrue(np.array_equal(exp_df.gdf.value.values,       exp_read.gdf.value.values))
-        self.assertTrue(np.array_equal(exp_df.gdf.deductible.values,  exp_read.gdf.deductible.values))
-        self.assertTrue(np.array_equal(exp_df.gdf.cover.values,       exp_read.gdf.cover.values))
-        self.assertTrue(np.array_equal(exp_df.gdf.region_id.values,   exp_read.gdf.region_id.values))
-        self.assertTrue(np.array_equal(exp_df.gdf.category_id.values, exp_read.gdf.category_id.values))
-        self.assertTrue(np.array_equal(exp_df.gdf.impf_TC.values,       exp_read.gdf.impf_TC.values))
-        self.assertTrue(np.array_equal(exp_df.gdf.centr_TC.values,    exp_read.gdf.centr_TC.values))
-        self.assertTrue(np.array_equal(exp_df.gdf.impf_FL.values,       exp_read.gdf.impf_FL.values))
-        self.assertTrue(np.array_equal(exp_df.gdf.centr_FL.values,    exp_read.gdf.centr_FL.values))
+        np.testing.assert_array_equal(exp_df.gdf.latitude.values, exp_read.gdf.latitude.values)
+        np.testing.assert_array_equal(exp_df.gdf.longitude.values, exp_read.gdf.longitude.values)
+        np.testing.assert_array_equal(exp_df.gdf.value.values, exp_read.gdf.value.values)
+        np.testing.assert_array_equal(exp_df.gdf.deductible.values, exp_read.gdf.deductible.values)
+        np.testing.assert_array_equal(exp_df.gdf.cover.values, exp_read.gdf.cover.values)
+        np.testing.assert_array_equal(exp_df.gdf.region_id.values, exp_read.gdf.region_id.values)
+        np.testing.assert_array_equal(exp_df.gdf.category_id.values, exp_read.gdf.category_id.values)
+        np.testing.assert_array_equal(exp_df.gdf.impf_TC.values, exp_read.gdf.impf_TC.values)
+        np.testing.assert_array_equal(exp_df.gdf.centr_TC.values, exp_read.gdf.centr_TC.values)
+        np.testing.assert_array_equal(exp_df.gdf.impf_FL.values, exp_read.gdf.impf_FL.values)
+        np.testing.assert_array_equal(exp_df.gdf.centr_FL.values, exp_read.gdf.centr_FL.values)
 
         for point_df, point_read in zip(exp_df.gdf.geometry.values, exp_read.gdf.geometry.values):
             self.assertEqual(point_df.x, point_read.x)
@@ -293,7 +302,7 @@ class TestAddSea(unittest.TestCase):
         max_lon = max_lon + sea_coast
         self.assertEqual(np.min(exp_sea.gdf.latitude), min_lat)
         self.assertEqual(np.min(exp_sea.gdf.longitude), min_lon)
-        self.assertTrue(np.array_equal(exp_sea.gdf.value.values[:10], np.arange(0, 1.0e6, 1.0e5)))
+        np.testing.assert_array_equal(exp_sea.gdf.value.values[:10], np.arange(0, 1.0e6, 1.0e5))
         self.assertEqual(exp_sea.ref_year, exp.ref_year)
         self.assertEqual(exp_sea.value_unit, exp.value_unit)
 
@@ -355,8 +364,8 @@ class TestGeoDFFuncs(unittest.TestCase):
         self.assertEqual(exp_copy.value_unit, exp.value_unit)
         self.assertEqual(exp_copy.tag.description, exp.tag.description)
         self.assertEqual(exp_copy.tag.file_name, exp.tag.file_name)
-        self.assertTrue(np.array_equal(exp_copy.gdf.latitude.values, exp.gdf.latitude.values))
-        self.assertTrue(np.array_equal(exp_copy.gdf.longitude.values, exp.gdf.longitude.values))
+        np.testing.assert_array_equal(exp_copy.gdf.latitude.values, exp.gdf.latitude.values)
+        np.testing.assert_array_equal(exp_copy.gdf.longitude.values, exp.gdf.longitude.values)
 
     def test_to_crs_inplace_pass(self):
         """Test to_crs function inplace."""
@@ -392,7 +401,7 @@ class TestGeoDFFuncs(unittest.TestCase):
         in_gpd.ref_year = 2015
         in_exp = Exposures(in_gpd, ref_year=2015)
         self.assertEqual(in_exp.ref_year, 2015)
-        self.assertTrue(np.array_equal(in_exp.gdf.value, np.zeros(10)))
+        np.testing.assert_array_equal(in_exp.gdf.value, np.zeros(10))
 
     def test_error_on_access_item(self):
         """Test error output when trying to access items as in CLIMADA 1.x"""
