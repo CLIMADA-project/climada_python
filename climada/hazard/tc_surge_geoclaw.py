@@ -43,6 +43,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 import numpy as np
 import pandas as pd
+import rasterio
 import scipy.sparse as sp
 import xarray as xr
 
@@ -948,7 +949,10 @@ def load_topography(path, bounds, res_as):
 
     LOGGER.info("Load elevation data [%s, %s] from %s", res_as, bounds, path)
     res = res_as / (60 * 60)
-    zvalues, transform = u_coord.read_raster_bounds(path, bounds, res=res, bands=[1])
+    with rasterio.Env(VRT_SHARED_SOURCE=0):
+        # without this env-setting, reading might crash in a multi-threaded environment:
+        # https://gdal.org/drivers/raster/vrt.html#multi-threading-issues
+        zvalues, transform = u_coord.read_raster_bounds(path, bounds, res=res, bands=[1])
     zvalues = zvalues[0]
     xres, _, xmin, _, yres, ymin = transform[:6]
     xmax, ymax = xmin + zvalues.shape[1] * xres, ymin + zvalues.shape[0] * yres
