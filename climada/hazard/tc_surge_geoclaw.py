@@ -28,6 +28,7 @@ import importlib
 import logging
 import re
 import pathlib
+import pickle
 import site
 import subprocess
 import sys
@@ -87,7 +88,7 @@ class TCSurgeGeoClaw(Hazard):
         (for each landfall event) `base_sea_level`, `topo_height`, `time` and `height_above_geoid`
         information.
         Due to this format, this data will NOT be stored when using `write_hdf5`. However, you
-        can manually pickle it in a separate file if needed.
+        can manually pickle it in a separate file using the `write_gauge_data` method.
     """
     def __init__(self):
         Hazard.__init__(self, HAZ_TYPE)
@@ -103,9 +104,9 @@ class TCSurgeGeoClaw(Hazard):
         ----------
         tracks : TCTracks
             Tracks of tropical cyclone events.
-        zos_path : str
+        zos_path : Path or str
             Path to NetCDF file containing gridded monthly sea level data.
-        topo_path : str
+        topo_path : Path or str
             Path to raster file containing gridded elevation data.
         centroids : Centroids, optional
             Centroids where to measure maximum surge heights. By default, a centroids grid of
@@ -173,9 +174,9 @@ class TCSurgeGeoClaw(Hazard):
             Centroids instance.
         coastal_idx : np.array
             Indices of centroids close to coast.
-        zos_path : str
+        zos_path : Path or str
             Path to NetCDF file containing gridded monthly sea level data.
-        topo_path : str
+        topo_path : Path or str
             Path to raster file containing gridded elevation data.
         node_max_dist_deg : float, optional
             Maximum distance from a TC track node in degrees for a centroid to be considered
@@ -224,6 +225,28 @@ class TCSurgeGeoClaw(Hazard):
         Hazard.write_hdf5(self, *args, **kwargs)
         self.gauge_data = gauge_data
 
+    def write_gauge_data(self, file_name):
+        """Write this object's gauge_data attribute to a file in pickle format
+
+        Parameters
+        ----------
+        file_name : Path or str
+            Full path, including file name, to the output file where pickled data is written.
+        """
+        with open(file_name, "wb") as fp:
+            pickle.dump(self.gauge_data, fp)
+
+    def read_gauge_data(self, file_name):
+        """Overwrite this object's gauge_data attribute by data from a file
+
+        Parameters
+        ----------
+        file_name : Path or str
+            Full path, including file name, to the file where pickled data is stored.
+        """
+        with open(file_name, "rb") as fp:
+            self.gauge_data = pickle.load(fp)
+
 
 def get_coastal_centroids_idx(centroids, max_dist_coast_km, max_latitude=90):
     """Get indices of coastal centroids
@@ -269,9 +292,9 @@ def geoclaw_surge_from_track(track, centroids, zos_path, topo_path, gauges=None,
         Single tropical cyclone track.
     centroids : 2d np.array
         Points for which to record the maximum height of inundation. Each row is a lat-lon point.
-    zos_path : str
+    zos_path : Path or str
         Path to NetCDF file containing gridded monthly sea level data.
-    topo_path : str
+    topo_path : Path or str
         Path to raster file containing gridded elevation data.
     gauges : list of pairs (lat, lon), optional
         The locations of tide gauges where to measure temporal changes in sea level height.
@@ -312,9 +335,12 @@ def geoclaw_surge_from_track(track, centroids, zos_path, topo_path, gauges=None,
     track_centr_idx = track_centr_msk.nonzero()[0]
 
     # exclude centroids at too low/high topographic altitude
-    centroids_height = u_coord.read_raster_sample(
-        topo_path, centroids[track_centr_msk, 0], centroids[track_centr_msk, 1],
-        intermediate_res=0.008)
+    with rasterio.Env(VRT_SHARED_SOURCE=0):
+        # without this env-setting, reading might crash in a multi-threaded environment:
+        # https://gdal.org/drivers/raster/vrt.html#multi-threading-issues
+        centroids_height = u_coord.read_raster_sample(
+            topo_path, centroids[track_centr_msk, 0], centroids[track_centr_msk, 1],
+            intermediate_res=0.008)
     track_centr_idx = track_centr_idx[(centroids_height > -10) & (centroids_height < 10)]
     track_centr_msk.fill(False)
     track_centr_msk[track_centr_idx] = True
@@ -405,9 +431,9 @@ class GeoclawRunner():
         centroids : np.array
             Points for which to record the maximum height of inundation.
             Each row is a lat-lon point.
-        zos_path : str
+        zos_path : Path or str
             Path to NetCDF file containing gridded monthly sea level data.
-        topo_path : str
+        topo_path : Path or str
             Path to raster file containing gridded elevation data.
         gauges : list of pairs (lat, lon), optional
             The locations of tide gauges where to measure temporal changes in sea level height.
@@ -722,7 +748,7 @@ def plot_dems(dems, track=None, path=None, centroids=None):
     ----------
     dems : list of pairs
         pairs (bounds, heights)
-    path : str or None
+    path : Path or str or None
         If given, save plot in this location. Default: None
     track : xr.Dataset
         If given, overlay the tropical cyclone track. Default: None
@@ -873,7 +899,7 @@ def mean_max_sea_level(path, months, bounds):
 
     Parameters
     ----------
-    path : str
+    path : Path or str
         Path to NetCDF file containing monthly sea level data.
     months : np.array
         each row is a tuple (year, month)
@@ -930,7 +956,7 @@ def load_topography(path, bounds, res_as):
 
     Parameters
     ----------
-    path : str
+    path : Path or str
         Path to raster file containing elevation data above reference geoid.
     bounds : tuple
         Bounds (lon_min, lat_min, lon_max, lat_max) of region of interest.
@@ -1186,7 +1212,7 @@ class TCSurgeEvents():
 
         Parameters
         ----------
-        path : str, optional
+        path : Path or str, optional
             If given, save the plots to the given location. Default: None
         """
         total_bounds = (min(self.centroids[:, 1].min(), self.track.lon.min()) - 0.1,
@@ -1315,7 +1341,7 @@ def clawpack_info():
 
     Returns
     -------
-    path : str or None
+    path : Path or str or None
         If the python package clawpack is not available, None is returned.
         Otherwise, the CLAW source path is returned.
     decorators : tuple of str
