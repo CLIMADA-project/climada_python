@@ -560,6 +560,7 @@ include $(CLAW)/clawutil/src/Makefile.common
             gauge['base_sea_level'] = self.rundata.geo_data.sea_level
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", category=UserWarning)
+                # suppress warnings about empty gauge files (which is not a problem for us)
                 g = GaugeSolution(gauge_id=i_gauge + 1, path=outdir)
             if g.t is None:
                 continue
