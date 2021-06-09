@@ -47,7 +47,7 @@ import scipy.sparse as sp
 import xarray as xr
 
 from climada import CONFIG
-from climada.hazard import Centroids, Hazard, Tag as TagHazard, TropCyclone
+from climada.hazard import Hazard, Tag as TagHazard, TropCyclone
 from climada.hazard.tc_tracks import estimate_rmw, estimate_roci
 from climada.util import ureg
 import climada.util.coordinates as u_coord
@@ -72,12 +72,12 @@ GEOCLAW_WORK_DIR = CONFIG.hazard.tc_surge_geoclaw.geoclaw_work_dir.dir()
 KN_TO_MS = (1.0 * ureg.knot).to(ureg.meter / ureg.second).magnitude
 NM_TO_KM = (1.0 * ureg.nautical_mile).to(ureg.kilometer).magnitude
 MBAR_TO_PA = (1.0 * ureg.mbar).to(ureg.pascal).magnitude
-KM_TO_DEG = 1.0 / (60 * NM_TO_KM)
+KM_TO_DEG_EQUATOR = 1.0 / (60 * NM_TO_KM)
 """Unit conversion factors."""
 
 
 class TCSurgeGeoClaw(Hazard):
-    """TC storm surge heights in m, modeled using GeoClaw.
+    """TC storm surge heights in meters (m), modeled using GeoClaw.
 
     Attributes
     ----------
@@ -108,7 +108,8 @@ class TCSurgeGeoClaw(Hazard):
             Path to raster file containing gridded elevation data.
         centroids : Centroids, optional
             Centroids where to measure maximum surge heights. By default, a centroids grid of
-            30 arc-seconds resolution is generated in a bounding box around the given tracks.
+            30 arc-seconds resolution is generated in a bounding box around the given tracks using
+            the method `TCTracks.generate_centroids`.
         description : str, optional
             String description of the tropical cyclone events.
         gauges : list of pairs (lat, lon), optional
@@ -119,9 +120,9 @@ class TCSurgeGeoClaw(Hazard):
             Maximum distance from a TC track node in degrees for a centroid to be considered
             as potentially affected. Default: 5.5
         inland_max_dist_km : float, optional
-            Maximum inland distance of the centroids in km. Default: 50
+            Maximum inland distance of the centroids in kilometers. Default: 50
         offshore_max_dist_km : float, optional
-            Maximum offshore distance of the centroids in km. Default: 10
+            Maximum offshore distance of the centroids in kilometers. Default: 10
         max_latitude : float, optional
             Maximum latitude of potentially affected centroids. Default: 61
         pool : an object with `map` functionality, optional
@@ -139,7 +140,8 @@ class TCSurgeGeoClaw(Hazard):
         setup_clawpack()
 
         if centroids is None:
-            centroids = get_centroids_from_tracks(tracks, 30 / (60 * 60), node_max_dist_deg)
+            centroids = tracks.generate_centroids(res_deg=30 / (60 * 60),
+                                                  buffer_deg=node_max_dist_deg)
 
         max_dist_coast_km = (offshore_max_dist_km, inland_max_dist_km)
         coastal_idx = get_coastal_centroids_idx(centroids, max_dist_coast_km,
@@ -220,32 +222,6 @@ class TCSurgeGeoClaw(Hazard):
         delattr(self, "gauge_data")
         Hazard.write_hdf5(self, *args, **kwargs)
         self.gauge_data = gauge_data
-
-
-def get_centroids_from_tracks(tracks, res_deg, buffer_deg):
-    """Generate gridded centroids within padded bounds of tracks
-
-    Parameters
-    ----------
-    tracks : TCTracks
-        Tracks of tropical cyclone events.
-    res_deg : float
-        Resolution in degrees.
-    buffer_deg : float
-        Buffer around tracks in degrees.
-
-    Returns
-    -------
-    centroids : Centroids
-        Centroids instance.
-    """
-    bounds = tracks.get_bounds(deg_buffer=buffer_deg)
-    lat = np.arange(bounds[1] + 0.5 * res_deg, bounds[3], res_deg)
-    lon = np.arange(bounds[0] + 0.5 * res_deg, bounds[2], res_deg)
-    lon, lat = [ar.ravel() for ar in np.meshgrid(lon, lat)]
-    centroids = Centroids()
-    centroids.set_lat_lon(lat, lon)
-    return centroids
 
 
 def get_coastal_centroids_idx(centroids, max_dist_coast_km, max_latitude=90):
@@ -1178,7 +1154,7 @@ class TCSurgeEvents():
             if points.shape[0] > 0:
                 pt_bounds = list(points.min(axis=0)) + list(points.max(axis=0))
                 pt_size = (pt_bounds[2] - pt_bounds[0]) * (pt_bounds[3] - pt_bounds[1])
-                if pt_size < (2 * lf_radii.max() * KM_TO_DEG)**2:
+                if pt_size < (2 * lf_radii.max() * KM_TO_DEG_EQUATOR)**2:
                     small_bounds = [pt_bounds]
                 else:
                     small_bounds, pt_size = boxcover_points_along_axis(points, 3)
