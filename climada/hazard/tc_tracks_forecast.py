@@ -76,7 +76,8 @@ SIG_CENTRE = 1
 LOGGER = logging.getLogger(__name__)
 
 MISSING_DOUBLE = ec.CODES_MISSING_DOUBLE
-"""Missing double in ecCodes """
+MISSING_LONG = ec.CODES_MISSING_LONG
+"""Missing double and integers in ecCodes """
 
 class TCForecast(TCTracks):
     """An extension of the TCTracks construct adapted to forecast tracks
@@ -193,8 +194,8 @@ class TCForecast(TCTracks):
         """
         
         # Open the bufr file
-        f = open(file, 'rb')
-        bufr = ec.codes_bufr_new_from_file(f)
+#        f = open(file, 'rb')
+        bufr = ec.codes_bufr_new_from_file(file)
         # we need to instruct ecCodes to expand all the descriptors
         # i.e. unpack the data values
         ec.codes_set(bufr, 'unpack', 1)
@@ -241,11 +242,13 @@ class TCForecast(TCTracks):
                 pressure[ind_ens] = np.array(pre_init[ind_ens])
                 max_wind[ind_ens] = np.array(max_wind_init[ind_ens])
         else:
+            print('pressure', pre_init)
+            print('max_wind', max_wind_init)
             for ind_ens in range(len(ens_no)):
                 latitude[ind_ens] = np.array(lat_init[0])
                 longitude[ind_ens] = np.array(lon_init[0])
-                pressure[ind_ens] = np.array(pre_init[ind_ens])
-                max_wind[ind_ens] = np.array(max_wind_init[ind_ens])
+                pressure[ind_ens] = np.array(pre_init[0])
+                max_wind[ind_ens] = np.array(max_wind_init[0])
                 
         ######## check if the dictionary is None? ##########
         
@@ -260,7 +263,7 @@ class TCForecast(TCTracks):
                 timesteps_int[ind_timestep] = timestep[0]
             else:
                 for i in range(len(timestep)):
-                    if timestep[i] != ec.CODES_MISSING_LONG:
+                    if timestep[i] != MISSING_LONG:
                         timesteps_int[ind_timestep] = timestep[i]
                         break
             
@@ -295,12 +298,21 @@ class TCForecast(TCTracks):
                 wnd = ec.codes_get_array(bufr, "#%d#windSpeedAt10M" % (ind_timestep + 1))
             else:
                 raise ValueError('unexpected meteorologicalAttributeSignificance=', significance)
-                
-            for ind_ens in range(len(ens_no)):
-                latitude[ind_ens] = np.append(latitude[ind_ens], lat[ind_ens])
-                longitude[ind_ens] = np.append(longitude[ind_ens], lon[ind_ens])
-                pressure[ind_ens] = np.append(pressure[ind_ens], pre[ind_ens])
-                max_wind[ind_ens] = np.append(max_wind[ind_ens], wnd[ind_ens])
+            
+            if len(lat) == len(ens_no) and len(wnd) == len(ens_no):
+                for ind_ens in range(len(ens_no)):
+                    latitude[ind_ens] = np.append(latitude[ind_ens], lat[ind_ens])
+                    longitude[ind_ens] = np.append(longitude[ind_ens], lon[ind_ens])
+                    pressure[ind_ens] = np.append(pressure[ind_ens], pre[ind_ens])
+                    max_wind[ind_ens] = np.append(max_wind[ind_ens], wnd[ind_ens])
+            elif len(lat) == 1 and len(wnd) == 1:
+                for ind_ens in range(len(ens_no)):
+                    latitude[ind_ens] = np.append(latitude[ind_ens], MISSING_DOUBLE)
+                    longitude[ind_ens] = np.append(longitude[ind_ens], MISSING_DOUBLE)
+                    pressure[ind_ens] = np.append(pressure[ind_ens], MISSING_DOUBLE)
+                    max_wind[ind_ens] = np.append(max_wind[ind_ens], MISSING_DOUBLE) 
+            else:
+                raise ValueError('Funny data structure from ensemble tracks')
         
 
         # decoder = pybufrkit.decoder.Decoder()
@@ -361,7 +373,7 @@ class TCForecast(TCTracks):
         else:
             provider = 'BUFR code ' + str(orig_centre)
 
-        for i in msg['significance'].subset_indices():
+        for i in range(len(msg['ens_number'])):
             name = msg['wmo_longname']
             track = self._subset_to_track(
                 msg, i, provider, timestamp_origin, name, id_no
@@ -390,8 +402,16 @@ class TCForecast(TCTracks):
 
         timestep_int = np.array(msg['timestamp']).squeeze()
         timestamp = timestamp_origin + timestep_int.astype('timedelta64[h]')
+        
+        try:
+            ens_bool = msg['ens_type'][index] != 0
+        except LookupError as err:
+            ens_bool = msg['ens_type'][0] != 0
+            LOGGER.warning('Single value in ens_type array, error: %s', err)
+            return None
 
         try:
+            test_no = msg['ens_number'][index]
             track = xr.Dataset(
                 data_vars={
                     'max_sustained_wind': ('time', np.squeeze(wnd)),
@@ -412,7 +432,7 @@ class TCForecast(TCTracks):
                     'data_provider': provider,
                     'id_no': (int(id_no) + index / 100),
                     'ensemble_number': msg['ens_number'][index],
-                    'is_ensemble': msg['ens_type'][index] != 0,
+                    'is_ensemble': ens_bool,
                     'forecast_time': timestamp_origin,
                 }
             )
