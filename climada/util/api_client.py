@@ -18,113 +18,215 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Data API client
 """
-import base64
-import io
 import json
+from urllib.parse import quote, unquote
+
 import requests
 
-import affine
+from climada import CONFIG
 
-from scipy import sparse
-from numpy import ndarray, frombuffer
-
-from climada.entity import BlackMarble
-from climada.entity import Tag as EntTag
-
-from climada.hazard import TropCyclone
-from climada.hazard import Tag as HazTag
-from climada.hazard import Centroids
+class AmbiguousResult(Exception):
+    """Custom Exception for Non-Unique Query Result"""
 
 
-def deserialize_ndarray(data: dict) -> ndarray:
+class NoResult(Exception):
+    """Custom Exception for No Query Result"""
 
-    return frombuffer(base64.b64decode(data['bytes']), data['dtype'])
+class Client():
+    """Python wrapper around REST calls to the CLIMADA data API server.
+    """
+    def __init__(self):
+        """Constructor of Client.
+        
+        Data API host and chunk_size (for download) are configurable values.
+        Default values are 'climada.ethz.ch' and 8096 respectively.
+        """
+        self.headers = {"accept": "application/json"}
+        self.host = CONFIG.data_api.host.str().rstrip("/")
+        self.chunk_size = CONFIG.data_api.chunk_size.int()
 
+    @staticmethod
+    def _passes(cds, parameters):
+        if parameters:
+            obj_parameters = cds['parameters']
+            for key, val in parameters.items():
+                if val != obj_parameters.get(key, ''):
+                    return False
+        return True
 
-def deserialize_csr_matrix(data: str) -> sparse.csr_matrix:
-    byt = base64.b64decode(data)
-    with io.BytesIO(byt) as bio:
-        return sparse.load_npz(bio)
+    @staticmethod
+    def _request_200(url, **kwargs):
+        page = requests.get(url, **kwargs)
+        if page.status_code == 200:
+            return json.loads(page.content.decode())
+        raise NoResult(page.content.decode())
 
+    def get_datasets(self, data_type=None, name=None, version=None, properties=None, status='active'):
+        """Find all datasets matching the given parameters.
 
-def tc_from_jsonble(jo: dict) -> TropCyclone:
-    jo = jo['hazard']
-    assert jo['type'] == 'TropCyclone'
+        Parameters
+        ----------
+        data_type : str, optional
+            data_type of the dataset, e.g., 'litpop' or 'draught'
+        name : str, optional
+            the name of the dataset
+        version : str, optional
+            the version of the dataset
+        properties : dict, optional
+            search parameters for dataset properties, by default None
+        status : str, optional
+            valid values are 'preliminary', 'active', 'expired', and 'test_dataset',
+            by default 'active'
 
-    tc = TropCyclone()
+        Returns
+        -------
+        list
+            each item representing a dataset as a dictionary
+        """
+        url = f'{self.host}/rest/datasets'
+        params = {
+            'data_type': data_type,
+            'name': name,
+            'version': version,
+            'status': '' if status is None else status,
+        }.update(properties)
 
-    for ak, av in jo['attributes'].items():
-        if ak == 'tag':
-            tc.tag = tag_from_jsonble(av)
-        else:
-            setattr(tc, ak, av)
+        page = requests.get(url, params=params)
+        jarr = json.loads(page.content.decode())
 
-    tc.centroids = centroids_from_jsonble(jo['data']['centroids'])
-    for lst in ['event_name', 'basin']:
-        setattr(tc, lst, jo['data'][lst].split(','))
-    for nda in ['event_id', 'frequency', 'date', 'orig', 'category']:
-        setattr(tc, nda, deserialize_ndarray(jo['data'][nda]))
-    for csr in ['intensity', 'fraction']:
-        setattr(tc, csr, deserialize_csr_matrix(jo['data'][csr]))
-    return tc
+        if name:
+            jarr = [jo for jo in jarr if jo['name'] == name]
+        if version:
+            jarr = [jo for jo in jarr if jo['version'] == version]
 
+        return jarr
 
-def meta_from_jsonble(jo: dict) -> dict:
-    meta = dict()
-    meta.update(jo)
-    meta['transform'] = affine.Affine(**jo['transform'])
-    return meta
+    def get_dataset(self, data_type=None, name=None, version=None, properties=None):
+        """Find the one (active) dataset that matches the given parameters.
 
+        Parameters
+        ----------
+        data_type : str, optional
+            data_type of the dataset, e.g., 'litpop' or 'draught'
+        name : str, optional
+            the name of the dataset
+        version : str, optional
+            the version of the dataset
+        properties : dict, optional
+            search parameters for dataset properties, by default None
 
-def tag_from_jsonble(jo: dict) -> HazTag:
-    return HazTag(**jo)
+        Returns
+        -------
+        dict
+            the dataset json object, as returned from the api server
 
+        Raises
+        ------
+        AmbiguousResult
+            when there is more than one dataset matching the search parameters
+        NoResult
+            when there is no dataset matching the search parameters
+        """
+        jarr = self.get_datasets(data_type=data_type, name=name, version=version,
+                                 properties=properties, status='')
+        jarr = [jo for jo in jarr if Client._passes(jo, properties)]
+        if len(jarr) > 1:
+            raise AmbiguousResult(f"there are several datasets meeting the requirements: {jarr}")
+        if len(jarr) < 1:
+            raise NoResult("there is no dataset meeting the requirements")
+        return jarr[0]
 
-def centroids_from_jsonble(jo: dict) -> Centroids:
-    c = Centroids()
-    setattr(c, 'meta', meta_from_jsonble(jo['meta']))
-    for attr in ['lat', 'lon', 'area_pixel', 'dist_coast', 'on_land', 'region_id', 'elevation']:
-        setattr(c, attr, deserialize_ndarray(jo[attr]))
-    # setattr(c, 'geometry', ...)
-    return c
+    def get_dataset_by_uuid(self, uuid):
+        """[summary]
 
+        Parameters
+        ----------
+        uuid : [type]
+            [description]
 
-def black_marble_from_jsonble(jo: dict) -> BlackMarble:
+        Returns
+        -------
+        [type]
+            [description]
 
-    jo = jo['exposure']
-    assert jo['type'] == 'BlackMarble'
+        Raises
+        ------
+        NoResult
+            [description]
+        """
+        url = f'{self.host}/rest/dataset/{uuid}'
+        return Client._request_200(url)
 
-    bm = BlackMarble(dict([
-        (k, deserialize_ndarray(v))
-        for (k, v) in jo['data'].items()
-    ]))
-    for ak, av in jo['attributes'].items():
-        setattr(bm, ak, av)
-    bm.tag = EntTag(**bm.tag)
-    bm.meta['transform'] = affine.Affine(**bm.meta['transform'])
-    return bm
+    def get_data_types(self, data_type_group=None):
+        """[summary]
 
+        Parameters
+        ----------
+        data_type_group : [type], optional
+            [description], by default None
 
-class DataApiClient(object):
-    def __init__(self, host='https://climada.ethz.ch'):
-        self.host = host
+        Returns
+        -------
+        [type]
+            [description]
+        """
+        url = f'{self.host}/rest/data_types'
+        params = {'data_type_group': data_type_group} \
+            if data_type_group else {}
+        return Client._request_200(url, params=params)
 
-    def get_trop_cyclone(self, **kwargs):
+    def get_data_type(self, data_type):
+        """[summary]
 
-        url = f'{self.host}/rest/hazard/tropcyclone?' \
-            + "&".join([f'{k}={v}' for (k, v) in kwargs.items()])
+        Parameters
+        ----------
+        data_type : str
+            [description]
 
-        w = requests.get(url)
-        jo = json.loads(w.content.decode())
+        Returns
+        -------
+        [type]
+            [description]
 
-        return tc_from_jsonble(jo)
+        Raises
+        ------
+        NoResult
+            [description]
+        """
+        url = f'{self.host}/rest/data_type/{quote(data_type)}'
+        return Client._request_200(url)
 
-    def get_black_marble(self, **kwargs):
+    def download(self, url, path, replace=False):
+        """Downloads a file from the given url to a specified location.
 
-        url = f'{self.host}/rest/exposure/blackmarble?' \
-            + "&".join([f'{k}={v}' for (k, v) in kwargs.items()])
+        Parameters
+        ----------
+        url : str
+            the link to the file to be downloaded
+        path : Path
+            download path, if it's a directory the original file name is kept
+        replace : bool, optional
+            flag to indicate whether a present file with the same name should
+            be replaced
 
-        w = requests.get(url)
-        jo = json.loads(w.content.decode())
+        Returns
+        -------
+        Path
+            Path to the downloaded file
 
-        return black_marble_from_jsonble(jo)
+        Raises
+        ------
+        FileExistsError
+            in case there is already a file present at the given location
+            and replace is False
+        """
+        if path.is_dir():
+            path /= unquote(url.split('/')[-1])
+        if path.is_file() and not replace:
+            raise FileExistsError(path)
+        with requests.get(url, stream=True) as stream:
+            stream.raise_for_status()
+            with open(path, 'wb') as dump:
+                for chunk in stream.iter_content(chunk_size=self.chunk_size):
+                    dump.write(chunk)
+        return path
