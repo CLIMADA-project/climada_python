@@ -25,7 +25,7 @@ from climada.util.constants import DEMO_DIR as INPUT_DIR
 from climada.hazard.relative_cropyield import (RelativeCropyield, init_hazard_sets_isimip,
                                                calc_his_haz_isimip)
 from climada.entity.exposures.crop_production import CropProduction
-from climada.entity import ImpactFuncSet, IFRelativeCropyield
+from climada.entity import ImpactFuncSet, ImpfRelativeCropyield
 from climada.engine import Impact
 
 FN_STR_DEMO = 'annual_FR_DE_DEMO'
@@ -54,16 +54,16 @@ class TestIntegr(unittest.TestCase):
         exp.set_value_to_usd(INPUT_DIR, yearrange=(2000, 2018))
         exp.assign_centroids(haz, threshold=20)
 
-        if_cp = ImpactFuncSet()
-        if_def = IFRelativeCropyield()
-        if_def.set_relativeyield()
-        if_cp.append(if_def)
-        if_cp.check()
+        impf_cp = ImpactFuncSet()
+        impf_def = ImpfRelativeCropyield()
+        impf_def.set_relativeyield()
+        impf_cp.append(impf_def)
+        impf_cp.check()
 
         impact = Impact()
         reg_sel = exp.copy()
         reg_sel.gdf = reg_sel.gdf[reg_sel.gdf.region_id == 276]
-        impact.calc(reg_sel, if_cp, haz.select(['2002']), save_mat=True)
+        impact.calc(reg_sel, impf_cp, haz.select(['2002']), save_mat=True)
 
         exp_manual = reg_sel.gdf.value
         impact_manual = haz.select(event_names=['2002'], reg_id=276).intensity.multiply(exp_manual)
@@ -98,14 +98,14 @@ class TestIntegr(unittest.TestCase):
                                               scenario='flexible', unit='t/y', crop='whe', irr='firr')
         exp.assign_centroids(haz, threshold=20)
 
-        if_cp = ImpactFuncSet()
-        if_def = IFRelativeCropyield()
-        if_def.set_relativeyield()
-        if_cp.append(if_def)
-        if_cp.check()
+        impf_cp = ImpactFuncSet()
+        impf_def = ImpfRelativeCropyield()
+        impf_def.set_relativeyield()
+        impf_cp.append(impf_def)
+        impf_cp.check()
 
         impact = Impact()
-        impact.calc(exp, if_cp, haz, save_mat=True)
+        impact.calc(exp, impf_cp, haz, save_mat=True)
 
         exp_nan = CropProduction()
         exp_nan.set_from_isimip_netcdf(input_dir=INPUT_DIR, filename=FILENAME_LU, hist_mean=FILENAME_MEAN,
@@ -115,7 +115,7 @@ class TestIntegr(unittest.TestCase):
         exp_nan.assign_centroids(haz, threshold=20)
 
         impact_nan = Impact()
-        impact_nan.calc(exp_nan, if_cp, haz, save_mat=True)
+        impact_nan.calc(exp_nan, impf_cp, haz, save_mat=True)
         self.assertListEqual(list(impact.at_event), list(impact_nan.at_event))
         self.assertAlmostEqual(12.056545220060798, impact_nan.aai_agg)
         self.assertAlmostEqual(12.056545220060798 , impact.aai_agg)

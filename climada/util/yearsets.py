@@ -22,223 +22,254 @@ import climada.util.dates_times as u_dt
 
 LOGGER = logging.getLogger(__name__)
 
-def impact_yearset(event_impacts, sampled_years=None, sampling_dict=None, correction_fac=True):
+def impact_yearset(imp, sampled_years, lam=None, correction_fac=True):
+    """Create a yearset of impacts (yimp) containing a probabilistic impact for each year
+      in the sampled_years list by sampling events from the impact received as input with a
+      Poisson distribution centered around lam per year (lam = sum(imp.frequency)).
+      In contrast to the expected annual impact (eai) yimp contains impact values that
+      differ among years. When correction factor is true, the yimp are scaled such
+      that the average over all years is equal to the eai.
 
-    """Create an annual_impacts object containing a probabilistic impact for each year
-      in the sampled_years list (or for a list of sampled_years generated with the length
-                                 of given sampled_years)
-      by sampling events from the existing input event_impacts with a Poisson distribution
-      centered around n_events per year (n_events = sum(event_impacts.frequency)).
-      In contrast to the expected annual impact (eai) annual_impacts contains impact values that
-      differ among years (the correction factor can however be used to scale the annual_impacts
-                          to fit the eai of the events_impacts object that is used to generated it)
-
-    Parameters:
-      event_impacts : impact object
+    Parameters
+    -----------
+      imp : climada.engine.Impact()
           impact object containing impacts per event
-    Optional parameters:
-        sampled_years : int or list
-            Either an integer specifying the number of years to
-            be sampled (labelled [0001,...,sampled_years]) or a list
-            of years that shall be covered by the resulting annual_impacts.
-            The default is a 1000 year-long list starting in the year 0001.
-        sampling_dict : dict
-            The sampling dictionary specifying how to sample the annual_impacts
-            It consists of two arrays:
-                selected_events: array
-                    indices of sampled events in event_impacts.at_event()
-                events_per_year: array
-                    number of events per sampled year
-            The sampling_dict needs to be obtained in a first call,
-            i.e. [annual_impacts, sampling_dict] = climada_yearsets.impact_yearset(...)
-            and can then be provided in subsequent calls(s) to obtain the exact same sampling
-            (also for a different event_impacts object)
+      sampled_years : list
+            A list of years that shall be covered by the resulting yimp.
+
+    Optional parameters
+        lam: int
+            The applied Poisson distribution is centered around lam events per year.
+            If no lambda value is given, the default lam = sum(imp.frequency) is used.
         correction_fac : boolean
-            If True a correction factor is applied to the resulting annual_impacts. They are
-            scaled in such a way that the expected annual impact (eai) of the annual_impacts
-            equals the eai of the events_impacts
+            If True a correction factor is applied to the resulting yimp. It is
+            scaled in such a way that the expected annual impact (eai) of the yimp
+            equals the eai of the input impact
 
-    Returns:
-      annual_impacts : impact object
-          annual impacts for all sampled_years
-      sampling_dict : dict
-          the sampling dictionary containing two arrays:
-              selected_events (array) : sampled events (len: total amount of sampled events)
-              events_per_year (array) : events per sampled year
-          Can be used to re-create the exact same annual_impacts yearset
+    Returns
+    -------
+        yimp : climada.engine.Impact()
+             yearset of impacts containing annual impacts for all sampled_years
+        sampling_vect : 2D array
+            The sampling vector specifies how to sample the yimp, it consists of one
+            sub-array per sampled_year, which contains the event_ids of the events used to
+            calculate the annual impacts.
+            Can be used to re-create the exact same yimp.
       """
-
-
-    if not sampled_years and not sampling_dict:
-        sampled_years = list(range(1, 1001))
-    elif isinstance(sampled_years, int):
-        sampled_years = list(range(1, sampled_years+1))
-    elif not sampled_years:
-        sampled_years = list(range(1, len(sampling_dict['selected_events'])+1))
-    elif len(sampled_years) != len(sampling_dict['events_per_year']):
-        LOGGER.info("The number of sampled_years and the length of the list of events_per_year "
-                    "in the sampling_dict differ. The number of years contained in the "
-                    "sampling_dict are used as number of sampled_years.")
-        sampled_years = list(range(1, len(sampling_dict['selected_events'])+1))
-
-    if sampling_dict and (
-            np.sum(sampling_dict['events_per_year']) != len(sampling_dict['selected_events'])):
-        raise ValueError("The sampling dictionary is faulty: the sum of selected events "
-                         "does not correspond to the number of selected events.")
 
     n_sampled_years = len(sampled_years)
 
-    if len(np.unique(event_impacts.frequency)) > 1:
-        LOGGER.warning("The frequencies of the single events in the given event_impacts "
-                       "differ among each other. Please beware that this will influence "
-                       "the resulting annual_impacts as the events are sampled uniformaly "
-                       "and different frequencies are (not yet) taken into account.")
+    #create sampling vector
+    if not lam:
+        lam = np.sum(imp.frequency)
+    events_per_year = sample_from_poisson(n_sampled_years, lam)
+    sampling_vect = sample_events(events_per_year, imp.frequency)
 
+    #compute impact per sampled_year
+    imp_per_year = compute_imp_per_year(imp, sampling_vect)
 
+    #copy imp object as basis for the yimp object
+    yimp = copy.deepcopy(imp)
 
-    #create sampling dictionary if not given as input
-    if not sampling_dict:
-        n_annual_events = np.sum(event_impacts.frequency)
-        n_input_events = len(event_impacts.event_id)
-        sampling_dict = create_sampling_dict(n_sampled_years, n_annual_events,
-                                             n_input_events)
-
-    #compute annual_impacts
-    impact_per_year = compute_annual_impacts(event_impacts, sampling_dict)
-
-    #copy event_impacts object as basis for the annual_impacts object
-    annual_impacts = copy.deepcopy(event_impacts)
-
-    #save impact_per_year in annual_impacts
+    #save imp_per_year in yimp
     if correction_fac: #adjust for sampling error
-        correction_factor = calculate_correction_fac(impact_per_year, event_impacts)
-        annual_impacts.at_event = impact_per_year / correction_factor
+        imp_per_year = imp_per_year / calculate_correction_fac(imp_per_year, imp)
     else:
-        annual_impacts.at_event = impact_per_year
+        yimp.at_event = imp_per_year
 
-    annual_impacts.event_id = np.arange(1, n_sampled_years+1)
-    annual_impacts.tag['annual_impacts object'] = True
-    annual_impacts.date = u_dt.str_to_date([str(date) + '-01-01' for date in sampled_years])
-    annual_impacts.frequency = np.ones(n_sampled_years)*np.sum(sampling_dict['events_per_year']
+    #save calculations in yimp
+    yimp.event_id = np.arange(1, n_sampled_years+1)
+    yimp.tag['yimp object'] = True
+    yimp.date = u_dt.str_to_date([str(date) + '-01-01' for date in sampled_years])
+    yimp.frequency = np.ones(n_sampled_years)*sum(len(row) for row in sampling_vect
                                                             )/n_sampled_years
 
+    return yimp, sampling_vect
 
-    return annual_impacts, sampling_dict
+def impact_yearset_from_sampling_vect(imp, sampled_years, sampling_vect, correction_fac=True):
+    """Create a yearset of impacts (yimp) containing a probabilistic impact for each year
+      in the sampled_years list by sampling events from the impact received as input following
+      the sampling vector provided.
+      In contrast to the expected annual impact (eai) yimp contains impact values that
+      differ among years. When correction factor is true, the yimp are scaled such
+      that the average over all years is equal to the eai.
 
-def create_sampling_dict(n_sampled_years, n_annual_events, n_input_events):
-    """Create a sampling dictionary consisting of the amount of events per sample year and the
-    index of the sampled events
+    Parameters
+    -----------
+      imp : climada.engine.Impact()
+          impact object containing impacts per event
+      sampled_years : list
+            A list of years that shall be covered by the resulting yimp.
+      sampling_vect : 2D array
+            The sampling vector specifies how to sample the yimp, it consists of one
+            sub-array per sampled_year, which contains the event_ids of the events used to
+            calculate the annual impacts.
+            It needs to be obtained in a first call,
+            i.e. [yimp, sampling_vect] = climada_yearsets.impact_yearset(...)
+            and can then be provided in this function to obtain the exact same sampling
+            (also for a different imp object)
 
-    Parameters:
+    Optional parameter
+        correction_fac : boolean
+            If True a correction factor is applied to the resulting yimp. It is
+            scaled in such a way that the expected annual impact (eai) of the yimp
+            equals the eai of the input impact
+
+    Returns
+    -------
+        yimp : climada.engine.Impact()
+             yearset of impacts containing annual impacts for all sampled_years
+
+      """
+
+    #compute impact per sampled_year
+    imp_per_year = compute_imp_per_year(imp, sampling_vect)
+
+    #copy imp object as basis for the yimp object
+    yimp = copy.deepcopy(imp)
+
+
+    if correction_fac: #adjust for sampling error
+        imp_per_year = imp_per_year / calculate_correction_fac(imp_per_year, imp)
+
+    #save calculations in yimp
+    yimp.at_event = imp_per_year
+    n_sampled_years = len(sampled_years)
+    yimp.event_id = np.arange(1, n_sampled_years+1)
+    yimp.tag['yimp object'] = True
+    yimp.date = u_dt.str_to_date([str(date) + '-01-01' for date in sampled_years])
+    yimp.frequency = np.ones(n_sampled_years)*sum(len(row) for row in sampling_vect
+                                                            )/n_sampled_years
+
+    return yimp
+
+
+def sample_from_poisson(n_sampled_years, lam):
+    """Sample the number of events for n_sampled_years
+
+    Parameters
+    -----------
         n_sampled_years : int
             The target number of years the impact yearset shall contain.
-        n_annual_events : int
-            Number of events per year in given event_impacts object
-        n_input_events : int
-            Number of events contained in given event_impacts object
+        lam: int
+            the applied Poisson distribution is centered around lambda events per year
 
-    Returns:
-        sampling_dict : dict
-            The sampling dictionary containing two arrays:
-                selected_events (array): sampled events (len: total amount of sampled events)
-                events_per_year (array): events per sampled year
-        n_events_per_year : array
+    Returns
+    -------
+        events_per_year : array
             Number of events per sampled year
     """
 
-    #sample number of events per year
-    if n_annual_events != 1:
-        events_per_year = np.round(np.random.poisson(lam=n_annual_events,
+    if lam != 1:
+        events_per_year = np.round(np.random.poisson(lam=lam,
                                                      size=n_sampled_years)).astype('int')
     else:
         events_per_year = np.ones(len(n_sampled_years))
 
-    tot_n_events = np.sum(events_per_year)
 
-    selected_events = sample_events(tot_n_events, n_input_events)
+    return events_per_year
 
-    sampling_dict = dict()
-    sampling_dict = {'selected_events': selected_events, 'events_per_year': events_per_year}
+def sample_events(events_per_year, freqs_orig):
+    """Sample events uniformely from an array (indices_orig) without replacement
+    (if sum(events_per_year) > n_input_events the input events are repeated
+     (tot_n_events/n_input_events) times, by ensuring that the same events doens't
+     occur more than once per sampled year).
 
-    return sampling_dict
+    Parameters
+    -----------
+        events_per_year : array
+            Number of events per sampled year
+        freqs_orig : array
+            Frequency of each input event
 
-def sample_events(tot_n_events, n_input_events):
-    """Sample events (length = tot_n_events) uniformely from an array (n_input_events)
-    without replacement (if tot_n_events > n_input_events the input events are repeated
-                         (tot_n_events/n_input_events) times).
-
-    Parameters:
-        tot_n_events : int
-            Number of events to be sampled
-        n_input_events : int
-         Number of events contained in given event_impacts object
-
-    Returns:
-        selected_events : array
-            Uniformaly sampled events (length: tot_n_events)
+    Returns
+    -------
+        sampling_vect : 2D array
+            The sampling vector specifies how to sample the yimp, it consists of one
+            sub-array per sampled_year, which contains the event_ids of the events used to
+            calculate the annual impacts.
       """
 
-    repetitions = np.ceil(tot_n_events/n_input_events).astype('int')
-    indices = np.tile(np.arange(n_input_events), repetitions)
+    sampling_vect = []
 
-    rng = default_rng()
-    selected_events = rng.choice(indices, size=tot_n_events,
-                                 replace=False).astype('int')
+    indices_orig = np.arange(len(freqs_orig))
 
+    freqs = freqs_orig
+    indices = indices_orig
 
-    return selected_events
+    #sample events for each sampled year
+    for amount_events in events_per_year:
 
-def compute_annual_impacts(event_impacts, sampling_dict):
+        #add the original indices and frequencies to the pool if there are less events
+        #in the pool than needed to fill the year one is sampling for
+        if len(np.unique(indices)) < amount_events:
+            indices = np.append(indices, indices_orig)
+            freqs = np.append(freqs, freqs_orig)
+
+        #ensure that each event only occurs once per sampled year
+        unique_events = np.unique(indices, return_index=True)[0]
+        probab_dis = freqs[np.unique(indices, return_index=True)[1]]/(
+            np.sum(freqs[np.unique(indices, return_index=True)[1]]))
+
+        #sample events
+        rng = default_rng()
+        selected_events = rng.choice(unique_events, size=amount_events, replace=False,
+                                     p=probab_dis).astype('int')
+
+        #determine used events to remove them from sampling pool
+        idx_to_remove = [np.where(indices == event)[0][0] for event in selected_events]
+        indices = np.delete(indices, idx_to_remove)
+        freqs = np.delete(freqs, idx_to_remove)
+
+        #save sampled events in sampling vector
+        sampling_vect.append(selected_events)
+
+    return sampling_vect
+
+def compute_imp_per_year(imp, sampling_vect):
     """Sample annual impacts from the given event_impacts according to the sampling dictionary
 
-    Parameters:
-        event_impacts : impact object
+    Parameters
+    -----------
+        imp : climada.engine.Impact()
             impact object containing impacts per event
-        sampling_dict : dict
-            The sampling dictionary containing two arrays:
-                selected_events (array) : sampled events (len: total amount of sampled events)
-                events_per_year (array) : events per sampled year
+        sampling_vect : 2D array
+            The sampling vector specifies how to sample the yimp, it consists of one
+            sub-array per sampled_year, which contains the event_ids of the events used to
+            calculate the annual impacts.
 
-    Returns:
-        impact_per_year: array
-            Sampled impact per year (length = n_sampled_years)
+    Returns
+    -------
+        imp_per_year: array
+            Sampled impact per year (length = sampled_years)
       """
 
-    impact_per_event = np.zeros(np.sum(sampling_dict['events_per_year']))
-    impact_per_year = np.zeros(len(sampling_dict['events_per_year']))
+    imp_per_year = [np.sum(imp.at_event[list(sampled_events)]) for sampled_events in
+                    sampling_vect]
 
-    for idx_event, event in enumerate(sampling_dict['selected_events']):
-        impact_per_event[idx_event] = event_impacts.at_event[sampling_dict[
-            'selected_events'][event]]
+    return imp_per_year
 
-    idx = 0
-    for year in range(len(sampling_dict['events_per_year'])):
-        impact_per_year[year] = np.sum(impact_per_event[idx:(idx+sampling_dict[
-            'events_per_year'][year])])
-        idx += sampling_dict['events_per_year'][year]
+def calculate_correction_fac(imp_per_year, imp):
+    """Calculate a correction factor that can be used to scale the yimp in such
+    a way that the expected annual impact (eai) of the yimp amounts to the eai
+    of the input imp
 
-    return impact_per_year
-
-
-def calculate_correction_fac(impact_per_year, event_impacts):
-    """Calculate a correction factor that can be used to scale the annual_impacts in such
-    a way that the expected annual impact (eai) of the annual_impacts amounts to the eai
-    of the input event_impacts
-
-    Parameters:
-        impact_per_year : array
-            sampled annual_impacts
-        event_impacts : impact object
+    Parameters
+    -----------
+        imp_per_year : array
+            sampled yimp
+        imp : climada.engine.Impact()
             impact object containing impacts per event
 
-    Returns:
+    Returns
+    -------
         correction_factor: int
-            The correction factor is calculated as event_impacts_eai/annual_impacts_eai
+            The correction factor is calculated as imp_eai/yimp_eai
     """
 
-    annual_impacts_eai = np.sum(impact_per_year)/len(impact_per_year)
-    event_impacts_eai = np.sum(event_impacts.frequency*event_impacts.at_event)
-    correction_factor = event_impacts_eai/annual_impacts_eai
+    yimp_eai = np.sum(imp_per_year)/len(imp_per_year)
+    imp_eai = np.sum(imp.frequency*imp.at_event)
+    correction_factor = imp_eai/yimp_eai
     LOGGER.info("The correction factor amounts to %s", (correction_factor-1)*100)
 
     # if correction_factor > 0.1:

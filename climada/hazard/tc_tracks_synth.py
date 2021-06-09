@@ -25,7 +25,7 @@ import logging
 import matplotlib.cm as cm_mp
 from matplotlib.lines import Line2D
 import matplotlib.pyplot as plt
-from numba import jit
+import numba
 import numpy as np
 
 from climada import CONFIG
@@ -110,11 +110,10 @@ def calc_perturbed_trajectories(tracks,
         np.random.seed(seed)
 
     # ensure tracks have constant time steps
-    time_step_h = np.unique([np.unique(x['time_step']) for x in tracks.data])
+    time_step_h = np.unique(np.concatenate([np.unique(x['time_step']) for x in tracks.data]))
     if not np.allclose(time_step_h, time_step_h[0]):
-        LOGGER.error('Tracks have different temporal resolution. '
-                     'Please ensure constant time steps by applying equal_timestep beforehand')
-        raise ValueError('Tracks have different temporal resolution.')
+        raise ValueError('Tracks have different temporal resolution. '
+                         'Please ensure constant time steps by applying equal_timestep beforehand')
     time_step_h = time_step_h[0]
 
     # number of random value per synthetic track:
@@ -163,8 +162,9 @@ def calc_perturbed_trajectories(tracks,
             except ValueError:
                 LOGGER.info('No land decay coefficients could be applied.')
         else:
-            LOGGER.error('No historical tracks contained. '
-                         'Historical tracks are needed for land decay.')
+            LOGGER.warning('No historical tracks contained. '
+                           'Historical tracks are needed for land decay. '
+                           'No land decay coefficients could be applied.')
 
 
 def _one_rnd_walk(track, nb_synth_tracks, max_shift_ini, max_dspeed_rel, max_ddirection, rnd_vec):
@@ -292,7 +292,7 @@ def _random_uniform_ac(n_ts, autocorr, time_step_h):
     return x_ts
 
 
-@jit
+@numba.njit
 def _h_ac(x, y, theta):
     """
     Generate next random number from current number for autocorrelated uniform series
@@ -321,7 +321,7 @@ def _h_ac(x, y, theta):
     return x_next
 
 
-@jit
+@numba.njit
 def _f_ac(z, theta):
     """
     F transform for autocorrelated random uniform series generation
@@ -360,7 +360,7 @@ def _f_ac(z, theta):
     return res
 
 
-@jit
+@numba.njit
 def _get_bearing_angle(lon, lat):
     """
     Compute bearing angle of great circle paths defined by consecutive points
@@ -402,7 +402,7 @@ def _get_bearing_angle(lon, lat):
     return np.degrees(earth_ang_fix)
 
 
-@jit
+@numba.njit
 def _get_destination_points(lon, lat, bearing, angular_distance):
     """
     Get coordinates of endpoints from a given locations with the provided bearing and distance
@@ -501,9 +501,8 @@ def _apply_land_decay(tracks, v_rel, p_rel, land_geom, s_rel=True,
     """
     sy_tracks = [track for track in tracks if not track.orig_event_flag]
     if not sy_tracks:
-        LOGGER.error('No synthetic tracks contained. Synthetic tracks'
-                     ' are needed.')
-        raise ValueError
+        raise ValueError('No synthetic tracks contained. Synthetic tracks'
+                         ' are needed.')
 
     if not v_rel or not p_rel:
         LOGGER.info('No decay coefficients.')

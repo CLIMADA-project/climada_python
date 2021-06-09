@@ -37,7 +37,6 @@ TEST_TRACK_SHORT = DATA_DIR.joinpath("trac_short_test.csv")
 CENTR_TEST_BRB = Centroids()
 CENTR_TEST_BRB.read_mat(DATA_DIR.joinpath('centr_brb_test.mat'))
 
-
 class TestReader(unittest.TestCase):
     """Test loading funcions from the TCRain class"""
 
@@ -91,7 +90,7 @@ class TestReader(unittest.TestCase):
         self.assertEqual(tc_haz.event_id[0], 1)
         self.assertEqual(tc_haz.event_name, ['1951239N12334'])
         self.assertEqual(tc_haz.category, tc_track.data[0].category)
-        self.assertTrue(np.isnan(tc_haz.basin[0]))
+        self.assertEqual(tc_haz.basin[0], "NA")
         self.assertIsInstance(tc_haz.basin, list)
         self.assertIsInstance(tc_haz.category, np.ndarray)
         self.assertTrue(np.array_equal(tc_haz.frequency, np.array([1])))
@@ -147,6 +146,28 @@ class TestModel(unittest.TestCase):
         self.assertAlmostEqual(rainfall[0, 0], 66.801702386)
         self.assertAlmostEqual(rainfall[0, 130], 43.290917792)
         self.assertAlmostEqual(rainfall[0, 200], 76.315923838)
+
+    def test_rainfield_diff_time_steps(self):
+        tc_track = TCTracks()
+        tc_track.read_processed_ibtracs_csv(TEST_TRACK)
+
+        train_org = TCRain()
+        train_org.set_from_tracks(tc_track)
+
+        tc_track.equal_timestep(time_step_h=1)
+        train_1h = TCRain()
+        train_1h.set_from_tracks(tc_track)
+
+        tc_track.equal_timestep(time_step_h=0.5)
+        train_05h = TCRain()
+        train_05h.set_from_tracks(tc_track)
+
+        np.testing.assert_allclose(train_org.intensity.sum(),
+                                   train_1h.intensity.sum(), rtol=1e-1)
+        np.testing.assert_allclose(train_org.intensity.sum(),
+                                   train_05h.intensity.sum(), rtol=1e-1)
+        np.testing.assert_allclose(train_05h.intensity.sum(),
+                                   train_1h.intensity.sum(), rtol=1e-1)
 
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReader)

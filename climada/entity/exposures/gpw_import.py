@@ -162,7 +162,7 @@ def get_box_gpw(**parameters):
     year = YEARS_AVAILABLE[np.abs(YEARS_AVAILABLE - reference_year).argmin()]
 
     if year != reference_year:
-        LOGGER.info('Reference year: %i. Using nearest available year for GWP population data: %i',
+        LOGGER.info('Reference year: %i. Using nearest available year for GPW population data: %i',
                     reference_year, year)
     if (cut_bbox is None) & (return_coords == 0):
     # If we don't have any bbox by now and we need one, we just use the global
@@ -216,9 +216,7 @@ def get_box_gpw(**parameters):
                 tile_temp = _gpw_bbox_cutter(tile_temp, cut_bbox, resolution,
                                              arr1_shape=arr1.shape)
         else:
-            LOGGER.error('Error: Matrix has an invalid number of dimensions \
-                         (more than 2). Could not continue operation.')
-            raise TypeError
+            raise TypeError('Error: Matrix has an invalid number of dimensions (more than 2).')
         tile_temp = pd.arrays.SparseArray(
             tile_temp.reshape((tile_temp.size,), order='F'),
             fill_value=0)
@@ -230,6 +228,5 @@ def get_box_gpw(**parameters):
 
         return tile_temp
 
-    except:
-        LOGGER.error('Importing the GPW population density file failed.')
-        raise
+    except Exception as err:
+        raise type(err)('Importing the GPW population density file failed: ' + str(err)) from err

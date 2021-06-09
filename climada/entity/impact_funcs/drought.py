@@ -19,23 +19,24 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define impact function for droughts.
 """
 
-__all__ = ['IFDrought']
+__all__ = ['ImpfDrought', 'IFDrought']
 
 import logging
+from deprecation import deprecated
 import numpy as np
 
 from climada.entity.impact_funcs.base import ImpactFunc
 
 LOGGER = logging.getLogger(__name__)
 
-class IFDrought(ImpactFunc):
+class ImpfDrought(ImpactFunc):
     """Impact function for droughts."""
 
     def __init__(self):
         """Empty initialization.
 
         Parameters:
-            if_id (int, optional): impact function id. Default: 1
+            impf_id (int, optional): impact function id. Default: 1
             intensity (np.array, optional): intensity array SPEI [-].
                 default: intensity defintion 1 (minimum)
                 default_sum: intensity definition 3 (sum over all drought months)
@@ -81,3 +82,8 @@ class IFDrought(ImpactFunc):
         self.mdd = np.ones(self.intensity.size)
         self.paa = np.ones(self.mdd.size)
 
+
+@deprecated(details="The class name IFDrought is deprecated and won't be supported in a future "
+                   +"version. Use ImpfDrought instead")
+class IFDrought(ImpfDrought):
+    """Is ImpfDrought now"""
