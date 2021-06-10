@@ -1492,35 +1492,6 @@ class Hazard():
             concatenate_hazard(haz_src, centroids).__dict__
             )
 
-
-def join_centroids(haz_list):
-    """
-    Create the union of centroids from the inputs.
-
-    Centroids of all hazards must either all be rasters with the same
-    resolution, or all be points.
-
-    The centroids of all hazards are combined together. If points,
-    all points are combined. If rasters, a global raster is defined.
-
-    Parameters
-    ----------
-    haz_list : list(climada.hazard.Hazard())
-        List of hazard with centroids to join
-
-    Returns
-    -------
-    centroids : climada.hazard.Centroids()
-        Centroids containing the centroids of all hazards.
-
-    """
-    centroids = copy.deepcopy(haz_list[0].centroids)
-    for haz in haz_list[1:]:
-        if not centroids.equal(haz.centroids):
-            centroids.append(haz.centroids)
-    centroids.remove_duplicate_points()
-    return centroids
-
 def concatenate_hazard(haz_list, centroids=None, threshold=100):
     """
     Concatenate events of several hazards of same type.
@@ -1566,7 +1537,9 @@ def concatenate_hazard(haz_list, centroids=None, threshold=100):
 
     #Define comon centroids
     if centroids is None:
-        centroids = join_centroids(haz_list)
+        centroids = Centroids.join_centroids([haz.centroids
+                                              for haz in haz_list
+                                              ])
 
     haz_concat = Hazard()
     haz_concat.units = haz_list[0].units
@@ -1580,10 +1553,10 @@ def concatenate_hazard(haz_list, centroids=None, threshold=100):
         ]
 
     if any([-1 in idx_list for idx_list in hazcent_in_cent_idx_list]):
-        raise ValueError("At least one hazard centroid is beyond the given"
-                "threshold %f from the given centroids. To perform the"
-                "concatenation please choose a larger threshold or enlarge"
-                "the centroids", threshold)
+        raise ValueError("At least one hazard centroid is at a larger distance"
+                "than the given threshold %f from the given centroids. "
+                "To perform the concatenation please choose a larger "
+                "threshold or enlarge the centroids", threshold)
 
 
     #Concatenate attributes - hazards are assumed to have the same attributes

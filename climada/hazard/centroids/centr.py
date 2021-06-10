@@ -538,6 +538,35 @@ class Centroids():
                 setattr(self, var_name, np.append(var_val, centr_val).
                         astype(var_val.dtype, copy=False))
 
+    @staticmethod
+    def join_centroid(centroids_list):
+        """
+        Create the union of centroids from the inputs.
+
+        Centroids must either all be rasters with the same
+        resolution, or all be points.
+
+        The centroids are combined together. If points,
+        all points are combined. If rasters, a global raster is defined.
+
+        Parameters
+        ----------
+        centroids_list : list(climada.hazard.Centroids())
+            List of centroids to join
+
+        Returns
+        -------
+        centroids : climada.hazard.Centroids()
+            Centroids containing the centroids of all centroids in the input list
+
+        """
+        centroids = copy.deepcopy(centroids_list[0])
+        for cent in centroids_list[1:]:
+            if not centroids.equal(cent):
+                centroids.append(cent)
+        centroids.remove_duplicate_points()
+        return centroids
+
     def get_closest_point(self, x_lon, y_lat, scheduler=None):
         """Returns closest centroid and its index to a given point.
 
