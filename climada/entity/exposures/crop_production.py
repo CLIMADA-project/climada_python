@@ -378,8 +378,7 @@ class CropProduction(Exposures):
                                     i_crop_area, bbox=BBOX,
                                     input_dir=INPUT_DIR,
                                     filename_yield=None, filename_area=None,
-                                    yield_var=None, area_var=None,
-                                    reference_year=None):
+                                    yield_var=None, area_var=None):
         """
         set crop_production exposure from cultivated area [ha] and 
         yield [t/ha/year] saved in two netcdf files with the same grid.
@@ -414,8 +413,6 @@ class CropProduction(Exposures):
              e.g. 'cultivated area rainfed', 'cultivated area irrigated',
              'cultivated area all'. The default is 'cultivated area all', corresponding
              to total cultivated area in the default area file.
-        reference_year : int, optional
-            Reference year of input data. The default is None.
         """
         if isinstance(input_dir, str):
             input_dir = Path(input_dir)
@@ -461,9 +458,7 @@ class CropProduction(Exposures):
                                 "and " + yield_var + " for " + self.crop +
                                 "from files " + filename_area + " and " +
                                 filename_yield)
-        self.value_unit = 't/y' # input unit, will be reset below if required by user
-        if reference_year is not None:
-            self.ref_year = reference_year
+        self.value_unit = 't/y'
         try:
             rows, cols, ras_trans = u_coord.pts_to_raster_meta(
                 (self.gdf.longitude.min(), self.gdf.latitude.min(),
