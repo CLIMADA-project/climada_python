@@ -1443,12 +1443,26 @@ class Hazard():
         self.fraction = sparse.csr_matrix(np.ones(self.intensity.shape,
                                                   dtype=np.float))
 
-    def concatenate(self, haz_src, append=False, centroids=None):
+    def concatenate(self, haz_src, append=False, centroids=None,
+                    threshold=100):
         """
         Concatenate events of several hazards of same type.
 
         This is a wrapper method for hazard.base.concatenate_hazard
         to ensure backwards compatibility.
+
+        Centroids of all hazards must either all be rasters with the same
+        resolution, or all be points.
+
+        By default, the centroids of all hazards are combined together.
+        If points, all points are combined. If rasters, a global raster
+        is defined.
+
+        If centroids is not None, all hazards are defined on these centroids.
+        Centoids of hazards in haz_src not in centroids are mapped onto the
+        nearest point. If a point is further than threshold from the closet
+        centroid, the concatenation fails.
+
 
         Parameters
         ----------
@@ -1461,6 +1475,11 @@ class Hazard():
         centroids: climada.hazard.Centroids(), optional
             Centroids instance on which to map the concatenated hazard.
             Default is None.
+        threshold: int or float
+            Threshold for mapping centoids of hazards in haz_list not in
+            centroids.
+            Argument is passed to climada.util.coordinates.assign_coordinates.
+            Default is 100.
 
         Returns
         -------
@@ -1526,12 +1545,17 @@ def concatenate_hazard(haz_list, centroids=None, threshold=100):
         Default is None.
     threshold: int or float
         Threshold for mapping centoids of hazards in haz_list not in centroids.
-        Argument passe to climada.util.coordinates.assign_coordinates.
+        Argument is passed to climada.util.coordinates.assign_coordinates.
         Default is 100.
+
     Returns
     -------
     haz_concat: climada.hazard.Hazard()
         Concatenated hazard.
+
+    Raises
+    ------
+    ValueError
     """
     #Check units consistency among hazards
     units = {haz.units for haz in haz_list}
