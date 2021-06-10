@@ -1579,7 +1579,7 @@ def concatenate_hazard(haz_list, centroids=None, threshold=100):
         for haz in haz_list
         ]
 
-    if -1 in hazcent_in_cent_idx_list:
+    if any([-1 in idx_list for idx_list in hazcent_in_cent_idx_list]):
         raise ValueError("At least one hazard centroid is beyond the given"
                 "threshold %f from the given centroids. To perform the"
                 "concatenation please choose a larger threshold or enlarge"
