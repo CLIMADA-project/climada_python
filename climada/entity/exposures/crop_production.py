@@ -42,7 +42,7 @@ LOGGER = logging.getLogger(__name__)
 DEF_HAZ_TYPE = 'RC'
 """Default hazard type used in impact functions id."""
 
-BBOX = [-180, -85, 180, 85]  # [Lon min, lat min, lon max, lat max]
+BBOX = (-180, -85, 180, 85)  # [Lon min, lat min, lon max, lat max]
 """"Default geographical bounding box of the total global agricultural land extent"""
 
 #ISIMIP input data specific global variables
@@ -115,9 +115,9 @@ KCAL_PER_TON['drymatter'] = {'mai': 3.56e6 / (1-.12),
                              'whe': 3.34e6 / (1-.12),
                              }
 
-
 # Default folder structure for ISIMIP data:
-#   deposit the landuse and FAO files in the directory: {CONFIG.exposures.crop_production.local_data}/Input/Exposure
+#   deposit the landuse and FAO files in the directory:
+#   {CONFIG.exposures.crop_production.local_data}/Input/Exposure
 # The FAO files need to be downloaded and renamed
 #   FAO_FILE: contains producer prices per crop, country and year
 #               (http://www.fao.org/faostat/en/#data/PP)
@@ -372,8 +372,113 @@ class CropProduction(Exposures):
             # for dry matter, not biomass:
             self.set_value_to_kcal(biomass=False)
         self.check()
-
         return self
+
+    def set_from_area_and_yield_nc4(self, crop_type, i_crop_yield,
+                                    i_crop_area, bbox=BBOX,
+                                    input_dir=INPUT_DIR,
+                                    filename_yield=None, filename_area=None,
+                                    yield_var=None, area_var=None,
+                                    reference_year=None):
+        """
+        set crop_production exposure from cultivated area [ha] and 
+        yield [t/ha/year] saved in two netcdf files with the same grid.
+
+        Parameters
+        ----------
+        crop_type : str
+            Crop type, e.g. 'mai' for maize.
+        i_crop_yield : int
+            crop layer in yield input data set. Index typically starts with 1.
+        i_crop_area : int
+            crop layer in area input data set. Index typically starts with 1.
+        bbox (list of four floats): bounding box:
+                [lon min, lat min, lon max, lat max]
+        input_dir : Path, optional
+            directory where input data is found. The default is
+            {CONFIG.exposures.crop_production.local_data}/Input/Exposure.
+        filename_yield : str, optional
+            Name of netcdf-file containing gridded yield data.
+            Requires coordinates 'lon', 'lat', and 'crop'.
+            The default is 'spam_ray_yields.nc4'.
+        filename_area : TYPE, optional
+            Name of netcdf-file containing gridded cultivated area.
+            Requires coordinates 'lon', 'lat', and 'crop'.
+            The default is 'cultivated_area_MIRCA_GGCMI.nc4'.
+        yield_var : str, optional
+             variable name to be extracted from yield file, e.g. 'yield.rf',
+             'yield.ir', 'yield.tot'. The default is 'yield.tot', corresponding
+             to total yield in the default yield file.
+        area_var : str, optional
+             variable name to be extracted from area file,
+             e.g. 'cultivated area rainfed', 'cultivated area irrigated',
+             'cultivated area all'. The default is 'cultivated area all', corresponding
+             to total cultivated area in the default area file.
+        reference_year : int, optional
+            Reference year of input data. The default is None.
+        """
+        if isinstance(input_dir, str):
+            input_dir = Path(input_dir)
+        if filename_yield is None:
+            filename_yield = 'spam_ray_yields.nc4'
+        if filename_area is None:
+            filename_area = 'cultivated_area_MIRCA_GGCMI.nc4'
+        if yield_var is None:
+            yield_var = 'yield.tot'
+        if area_var is None:
+            area_var = 'cultivated area all'
+        [lonmin, latmin, lonmax, latmax] = bbox
+
+        # extract yield data to xarray.DataArray:
+        data_set_tmp = xr.open_dataset(input_dir / filename_yield, decode_times=False)
+        yield_data = data_set_tmp.sel(lon=slice(lonmin, lonmax),
+                                      lat=slice(latmax, latmin),
+                                      crop=i_crop_yield
+                                      )[yield_var]
+        # extract cultivated area data to xarray.DataArray:
+        data_set_tmp = xr.open_dataset(input_dir / filename_area, decode_times=False)
+        area_data = data_set_tmp.sel(lon=slice(lonmin, lonmax),
+                                     lat=slice(latmax, latmin),
+                                     crop=i_crop_area
+                                     )[area_var]
+        del data_set_tmp
+
+        # The latitude and longitude are set; the region_id is determined
+        lon, lat = np.meshgrid(area_data.lon.values, area_data.lat.values)
+
+        # initiate coordinates and values in GeoDatFrame:
+        self.gdf['latitude'] = lat.flatten()
+        self.gdf['longitude'] = lon.flatten()
+        self.gdf['region_id'] = u_coord.get_country_code(self.gdf.latitude,
+                                                         self.gdf.longitude)
+        # calc annual crop production, [t/y] = [ha] * [t/ha/y]:
+        self.gdf['value'] = np.multiply(area_data.values, yield_data.values).flatten()
+        self.gdf['value'] = np.nan_to_num(self.gdf.value) # replace NaN by 0.0
+        self.crop = crop_type
+        self.tag = Tag()
+
+        self.tag.description = ("Annual crop production from " + area_var +
+                                "and " + yield_var + " for " + self.crop +
+                                "from files " + filename_area + " and " +
+                                filename_yield)
+        self.value_unit = 't/y' # input unit, will be reset below if required by user
+        if reference_year is not None:
+            self.ref_year = reference_year
+        try:
+            rows, cols, ras_trans = u_coord.pts_to_raster_meta(
+                (self.gdf.longitude.min(), self.gdf.latitude.min(),
+                 self.gdf.longitude.max(), self.gdf.latitude.max()),
+                u_coord.get_resolution(self.gdf.longitude, self.gdf.latitude))
+            self.meta = {
+                'width': cols,
+                'height': rows,
+                'crs': self.crs,
+                'transform': ras_trans,
+            }
+        except ValueError:
+            LOGGER.warning('Could not write attribute meta, because exposure'
+                           ' has only 1 data point')
+            self.meta = {}
 
     def set_mean_of_several_isimip_models(self, input_dir=None, hist_mean=None, bbox=None,
                                           yearrange=None, cl_model=None, scenario=None,
