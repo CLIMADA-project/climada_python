@@ -785,7 +785,7 @@ class Uncertainty():
             metric_list = ['aai_agg', 'freq_curve', 'tot_climate_risk',
                            'tot_value', 'benefit', 'cost_ben_ratio',
                            'imp_meas_present', 'imp_meas_future', 'tot_value']
-            metric_list = list(set(metric_list) & set(self.metrics.keys()))
+        metric_list = list(set(metric_list) & set(self.metrics.keys()))
 
 
         nplots = len(metric_list)
@@ -830,6 +830,115 @@ class Uncertainty():
 
         return axes
 
+    def plot_sensitivity2d(self, salib_si='S2', metric_list=None, figsize=None):
+        """Plot second order sensitivity indices as matrix.
+
+        This requires that a senstivity analysis was already performed with
+        a method that returns second-order sensitivity indices.
+
+        The sensitivity indices or their confidence interval can be shown.
+
+        E.g. For the sensitivity analysis method 'sobol', the choices
+        are ['S2', 'S2_conf'].
+
+        For more information see the SAlib documentation:
+        https://salib.readthedocs.io/en/latest/basics.html
+
+        Parameters
+        ----------
+        salib_si: string, optional
+            The second order (one value per metric output) sensitivity index
+            to plot. This must be a key of the sensitivity dictionaries in
+            self.sensitivity[metric] for each metric in metric_list.
+            The default is S2.
+        metric_list: list of strings, optional
+            List of metrics to plot the sensitivity. If a metric is not found
+            in self.sensitivity, it is ignored. For a metric with submetrics,
+            e.g. 'freq_curve', all sumetrics (e.g. 'rp5') are plotted on
+            separate axis. Submetrics (e.g. 'rp5') are also valid choices.
+            The default is all metrics and their submetrics from Impact.calc
+            or CostBenefit.calc:
+            ['aai_agg', 'freq_curve', 'tot_climate_risk', 'benefit',
+             'cost_ben_ratio', 'imp_meas_present', 'imp_meas_future',
+             'tot_value']
+        figsize: tuple(int or float, int or float), optional
+            The figsize argument of matplotlib.pyplot.subplots()
+            The default is derived from the total number of plots (nplots) as:
+                nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
+                figsize = (ncols * 5, nrows * 5)
+
+        Raises
+        ------
+        ValueError
+            If no sensitivity is available the plot cannot be made.
+
+        Returns
+        -------
+        axes: matplotlib.pyplot.axes
+            The axes handle of the plot.
+
+        """
+
+        if not self.metrics:
+            raise ValueError("No sensitivity present for this metrics. "
+                    "Please run a sensitivity analysis first.")
+
+        if metric_list is None:
+            metric_list = ['aai_agg', 'freq_curve', 'tot_climate_risk',
+                           'tot_value', 'benefit', 'cost_ben_ratio',
+                           'imp_meas_present', 'imp_meas_future', 'tot_value']
+
+        #all the lowest level metrics (e.g. rp10) directly or as
+        #submetrics of the metrics in metrics_list
+        submetric_list = []
+        for metric_name, metric_dict in self.sensitivity.items():
+            if metric_name in metric_list:
+                submetric_list.append(list(metric_dict.keys())[0])
+            submetric_list += [submetric_name
+             for submetric_name, submetric_dict in metric_dict.items()
+             if submetric_name in metric_list
+             ]
+        #remove duplicate
+        submetric_list = list(set(submetric_list))
+
+        nplots = len(submetric_list)
+        nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
+        if not figsize:
+            figsize = (ncols * 5, nrows * 5)
+        _fig, axes = plt.subplots(nrows = nrows,
+                                 ncols = ncols,
+                                 figsize = figsize)
+        if nplots > 1:
+            flat_axes = axes.flatten()
+        else:
+            flat_axes = np.array([axes])
+
+        #dictionnary of sensitivity indices of all lowest level metrics
+        si_dict = {}
+        for metric_dict in self.sensitivity.values():
+            si_dict.update(metric_dict)
+
+        for ax, submetric in zip_longest(flat_axes, submetric_list,
+                                         fillvalue=None):
+            if submetric is None:
+                ax.remove()
+                continue
+            #Make matrix symmetric
+            s2_matrix = np.triu(np.asmatrix(si_dict[submetric]['S2']))
+            s2_matrix = s2_matrix + s2_matrix.T - np.diag(np.diag(s2_matrix))
+            ax.matshow(s2_matrix, cmap='OrRd')
+            for i in range(len(s2_matrix)):
+                for j in range(len(s2_matrix)):
+                    text = ax.text(j, i, round(s2_matrix[i, j], 2),
+                                   ha="center", va="center",
+                                   color="k", fontsize='medium')
+            ax.set_title(salib_si + ' - ' + submetric, fontsize=18)
+            labels = self.param_labels
+            ax.set_xticklabels(labels, fontsize=16)
+            ax.set_yticklabels(labels, fontsize=16)
+        plt.tight_layout()
+
+        return axes
 
     def save_samples_df(self, filename=None):
         """
