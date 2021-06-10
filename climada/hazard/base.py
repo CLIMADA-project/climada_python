@@ -1458,7 +1458,7 @@ class Hazard():
             If True, append the haz_src to current object. If False,
             replace all attributes from current objects by concatenated
             hazards from haz_src. The default is False.
-        centtroids: climada.hazard.Centroids(), optional
+        centroids: climada.hazard.Centroids(), optional
             Centroids instance on which to map the concatenated hazard.
             Default is None.
 
