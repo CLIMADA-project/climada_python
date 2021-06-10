@@ -306,7 +306,7 @@ class UncImpact(Uncertainty):
         return ax
 
 
-    def plot_sensitivity_map(self, exp, salib_si='S1', figsize=(8, 6)):
+    def plot_sensitivity_map(self, exp=None, salib_si='S1', figsize=(8, 6)):
         """
         Plot a map of the largest sensitivity index in each exposure point
 
@@ -345,6 +345,12 @@ class UncImpact(Uncertainty):
                   " impact.eai_exp. Please compute sensitivity first using"
                   " UncImpact.calc_sensitivity(calc_eai_exp=True)"
                   ) from verr
+
+        if exp is None:
+            exp_input_vals = self.sampled_df.loc[0][
+                self.unc_vars['exp'].labels
+                ].to_dict()
+            exp = self.unc_vars['exp'].uncvar_func(**exp_input_vals)
 
         plot_val = np.array([eai_max_si_idx]).astype(float)
         coord = np.array([exp.gdf.latitude, exp.gdf.longitude]).transpose()
