@@ -1502,7 +1502,7 @@ def join_centroids(haz_list):
     centroids.remove_duplicate_points()
     return centroids
 
-def concatenate_hazard(haz_list, centroids=None):
+def concatenate_hazard(haz_list, centroids=None, threshold=100):
     """
     Concatenate events of several hazards of same type.
 
@@ -1514,7 +1514,8 @@ def concatenate_hazard(haz_list, centroids=None):
 
     If centroids is not None, all hazards are defined on these centroids.
     Centoids of hazards in haz_list not in centroids are mapped onto the
-    nearest point.
+    nearest point. If a point is further than threshold from the closet
+    centroid, the concatenation fails.
 
     Parameters
     ----------
@@ -1523,7 +1524,10 @@ def concatenate_hazard(haz_list, centroids=None):
     centtroids: climada.hazard.Centroids(), optional
         Centroids instance on which to map the concatenated hazard.
         Default is None.
-
+    threshold: int or float
+        Threshold for mapping centoids of hazards in haz_list not in centroids.
+        Argument passe to climada.util.coordinates.assign_coordinates.
+        Default is 100.
     Returns
     -------
     haz_concat: climada.hazard.Hazard()
@@ -1546,9 +1550,17 @@ def concatenate_hazard(haz_list, centroids=None):
 
     #Indices for mapping matrices onto common centroids
     hazcent_in_cent_idx_list = [
-        u_coord.assign_coordinates(haz.centroids.coord, centroids.coord)
+        u_coord.assign_coordinates(haz.centroids.coord, centroids.coord,
+                                   threshold=threshold)
         for haz in haz_list
         ]
+
+    if -1 in hazcent_in_cent_idx_list:
+        raise ValueError("At least one hazard centroid is beyond the given"
+                "threshold %f from the given centroids. To perform the"
+                "concatenation please choose a larger threshold or enlarge"
+                "the centroids", threshold)
+
 
     #Concatenate attributes - hazards are assumed to have the same attributes
     for attr_name in vars(haz_list[0]).keys():
