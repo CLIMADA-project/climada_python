@@ -381,7 +381,7 @@ class CropProduction(Exposures):
                                     yield_var=None, area_var=None):
         """
         set crop_production exposure from cultivated area [ha] and 
-        yield [t/ha/year] saved in two netcdf files with the same grid.
+        yield [t/ha/year] provided in two netcdf files with the same grid.
 
         Parameters
         ----------
