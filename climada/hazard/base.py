@@ -1617,17 +1617,18 @@ def _map_matrix_to_centroids(sp_matrix, centroids, cent_idx):
 
     Parameters
     ----------
-    matrix: scipy.sparse.crs_matrix()
-        Input hazard. haz.centroids must be a subset of centroids
+    sp_matrix: scipy.sparse.crs_matrix()
+        Input sparse matrix
     centroids: climada.hazard.Centroids()
-        Centroids on which to map the haz.intensity matrix
+        Centroids on which to map the sp_matrix
     cent_idx: numpy.ndarray
         Array of indices for sp_matrix centroids.
 
     Returns
     -------
     mapped_matrix: scipy.sparse.csr_matrix()
-        Sparse fraction matrix of dimension haz.size X centroids.size
+        Sparse matrix of dimension nrows X centroids.size for a sp_matrix
+        with nrows.
     """
     n_events = sp_matrix.shape[0]
     chunks = min(int(n_events / 100), 1000)
