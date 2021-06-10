@@ -450,13 +450,13 @@ class CropProduction(Exposures):
                                                          self.gdf.longitude)
         # calc annual crop production, [t/y] = [ha] * [t/ha/y]:
         self.gdf['value'] = np.multiply(area_data.values, yield_data.values).flatten()
-        self.gdf['value'] = np.nan_to_num(self.gdf.value) # replace NaN by 0.0
+
         self.crop = crop_type
         self.tag = Tag()
 
         self.tag.description = ("Annual crop production from " + area_var +
                                 "and " + yield_var + " for " + self.crop +
-                                "from files " + filename_area + " and " +
+                                " from files " + filename_area + " and " +
                                 filename_yield)
         self.value_unit = 't/y'
         try:
