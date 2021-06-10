@@ -1495,7 +1495,7 @@ class Hazard():
 
 def join_centroids(haz_list):
     """
-    Find centroids comon to all.
+    Create the union of centroids from the inputs.
 
     Centroids of all hazards must either all be rasters with the same
     resolution, or all be points.
