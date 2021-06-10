@@ -455,7 +455,7 @@ class CropProduction(Exposures):
         self.tag = Tag()
 
         self.tag.description = ("Annual crop production from " + area_var +
-                                "and " + yield_var + " for " + self.crop +
+                                " and " + yield_var + " for " + self.crop +
                                 " from files " + filename_area + " and " +
                                 filename_yield)
         self.value_unit = 't/y'
