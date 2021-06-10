@@ -43,7 +43,7 @@ METRICS_2D = ['eai_exp', 'at_event']
 
 DATA_DIR = CONFIG.engine.uncertainty.local_data.user_data.dir()
 
-FIG_W, FIG_H = 5, 6 #default figize width/heigh column/work multiplicators
+FIG_W, FIG_H = 8, 5 #default figize width/heigh column/work multiplicators
 
 
 class UncVar():
@@ -167,7 +167,7 @@ class UncVar():
                 ax.remove()
                 continue
             (param_name, distr) = name_distr
-            x = np.linspace(distr.ppf(1e10), distr.ppf(1-1e10), 100)
+            x = np.linspace(distr.ppf(1e-10), distr.ppf(1-1e-10), 100)
             ax.plot(x, distr.pdf(x), label=param_name)
             ax.legend()
         return axes
@@ -590,86 +590,100 @@ class Uncertainty():
         return sensitivity_dict
 
 
-    def plot_distribution(self, metric_list=None, figsize=None):
-        """
-        Plot the distribution of values.
+    def plot_distribution(self, metric_list=None, figsize=None, log=False):
+     """
+     Plot the distribution of values.
 
-        Parameters
-        ----------
-        metric_list: list, optional
-            List of metrics to plot the distribution.
-            The default is None.
-        figsize: tuple(int or float, int or float), optional
-            The figsize argument of matplotlib.pyplot.subplots()
-            The default is derived from the total number of plots (nplots) as:
-                nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
-                figsize = (ncols * FIG_W, nrows * FIG_H)
+     Parameters
+     ----------
+     metric_list: list, optional
+         List of metrics to plot the distribution.
+         The default is None.
+     figsize: tuple(int or float, int or float), optional
+         The figsize argument of matplotlib.pyplot.subplots()
+         The default is derived from the total number of plots (nplots) as:
+             nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
+             figsize = (ncols * FIG_W, nrows * FIG_H)
+     log: boolean
+         Use log10 scale for x axis. Default is False
 
-        Raises
-        ------
-        ValueError
-            If no metric distribution was computed the plot cannot be made.
+     Raises
+     ------
+     ValueError
+         If no metric distribution was computed the plot cannot be made.
 
-        Returns
-        -------
-        axes: matplotlib.pyplot.axes
-            The axes handle of the plot.
+     Returns
+     -------
+     axes: matplotlib.pyplot.axes
+         The axes handle of the plot.
 
-        """
+     """
+     fontsize = 18 #default label fontsize
 
-        if not self.metrics:
-            raise ValueError("No uncertainty data present for these metrics. "+
-                    "Please run an uncertainty analysis first.")
+     if not self.metrics:
+         raise ValueError("No uncertainty data present for these metrics. "+
+                 "Please run an uncertainty analysis first.")
 
-        if metric_list is None:
-            metric_list = list(self.metrics.keys())
+     if metric_list is None:
+         metric_list = list(self.metrics.keys())
 
-        df_values = pd.DataFrame()
-        for metric in metric_list:
-            if metric not in METRICS_2D:
-                df_values = df_values.append(self.metrics[metric])
+     df_values = pd.DataFrame()
+     for metric in metric_list:
+         if metric not in METRICS_2D:
+             df_values = df_values.append(self.metrics[metric])
 
-        df_values_log = df_values.apply(np.log10).copy()
-        df_values_log = df_values_log.replace([np.inf, -np.inf], np.nan)
-        cols = df_values_log.columns
-        nplots = len(cols)
-        nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
-        if not figsize:
-            figsize = (ncols * FIG_W, nrows * FIG_H)
-        _fig, axes = plt.subplots(nrows = nrows,
-                                 ncols = ncols,
-                                 figsize = figsize,
-                                 sharex = True,
-                                 sharey = True)
-        if nplots > 1:
-            flat_axes = axes.flatten()
-        else:
-            flat_axes = np.array([axes])
+     if log:
+         df_values_plt = df_values.apply(np.log10).copy()
+         df_values_plt = df_values_plt.replace([np.inf, -np.inf], np.nan)
+     else:
+         df_values_plt = df_values.copy()
 
-        for ax, col in zip_longest(flat_axes, cols, fillvalue=None):
-            if col is None:
-                ax.remove()
-                continue
-            data = df_values_log[col]
-            if data.empty:
-                ax.remove()
-                continue
-            data.hist(ax=ax,  bins=100, density=True, histtype='step')
-            avg = df_values[col].mean()
-            std = df_values[col].std()
-            ax.plot([np.log10(avg), np.log10(avg)], [0, 1],
-                    color='red', linestyle='dashed',
-                    label="avg=%.2f%s" %u_vtm(avg))
-            ax.plot([np.log10(avg) - np.log10(std) / 2,
-                     np.log10(avg) + np.log10(std) / 2],
-                    [0.3, 0.3], color='red',
-                    label="std=%.2f%s" %u_vtm(std))
-            ax.set_title(col)
-            ax.set_xlabel('value [log10]')
-            ax.set_ylabel('density of events')
-            ax.legend()
+     cols = df_values_plt.columns
+     nplots = len(cols)
+     nrows, ncols = int(np.ceil(nplots / 2)), min(nplots, 2)
+     if not figsize:
+         figsize = (ncols * FIG_W, nrows * FIG_H)
+     _fig, axes = plt.subplots(nrows = nrows,
+                              ncols = ncols,
+                              figsize = figsize)
+     if nplots > 1:
+         flat_axes = axes.flatten()
+     else:
+         flat_axes = np.array([axes])
 
-        return axes
+     for ax, col in zip_longest(flat_axes, cols, fillvalue=None):
+         if col is None:
+             ax.remove()
+             continue
+         data = df_values_plt[col]
+         if data.empty:
+             ax.remove()
+             continue
+         data.hist(ax=ax, bins=30, density=True, histtype='bar',
+                   color='lightsteelblue', edgecolor='black')
+         data.plot.kde(ax=ax, color='darkblue', linewidth=4, label='')
+         avg = df_values[col].mean()
+         std = df_values[col].std()
+         ax.axvline(np.log10(avg), color='darkorange', linestyle='dashed', linewidth=2,
+                 label="avg=%.2f%s" %u_vtm(avg))
+         ax.plot([np.log10(avg) - np.log10(std) / 2,
+                  np.log10(avg) + np.log10(std) / 2],
+                 [0.3, 0.3], color='black',
+                 label="std=%.2f%s" %u_vtm(std))
+         ax.set_title(col)
+         if log:
+             ax.set_xlabel('value [log10]')
+         else:
+             ax.set_xlabel('value')
+         ax.set_ylabel('density of events')
+         ax.legend(fontsize=fontsize-2)
+
+         ax.tick_params(labelsize=fontsize)
+         for item in [ax.title, ax.xaxis.label, ax.yaxis.label]:
+             item.set_fontsize(fontsize)
+     plt.tight_layout()
+
+     return axes
 
 
     def plot_sample(self, figsize=None):
