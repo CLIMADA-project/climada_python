@@ -1027,6 +1027,8 @@ class Hazard():
         hf_data = h5py.File(file_name, 'w')
         str_dt = h5py.special_dtype(vlen=str)
         for (var_name, var_val) in self.__dict__.items():
+            if not var_val:
+                LOGGER.info("skip %s because it contains no data: %s", var_name, var_val)
             if var_name == 'centroids':
                 self.centroids.write_hdf5(hf_data.create_group(var_name))
             elif var_name == 'tag':
