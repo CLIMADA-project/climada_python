@@ -513,7 +513,7 @@ class Centroids():
                                                              copy=False)
                         )
             if isinstance(var_val, gpd.GeoSeries):
-                setattr(new_centr, var_val.append(centr_val))
+                setattr(new_centr, var_name, var_val.append(centr_val))
 
         self.meta = dict()
 
