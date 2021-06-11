@@ -538,8 +538,7 @@ class Centroids():
                 setattr(self, var_name, np.append(var_val, centr_val).
                         astype(var_val.dtype, copy=False))
 
-    @staticmethod
-    def join_centroid(centroids_list):
+    def union(self, *centroids_list):
         """
         Create the union of centroids from the inputs.
 
@@ -551,13 +550,14 @@ class Centroids():
 
         Parameters
         ----------
-        centroids_list : list(climada.hazard.Centroids())
-            List of centroids to join
+        centroids_list : iterable(climada.hazard.Centroids())
+            Iterable of centroids to form the union with
 
         Returns
         -------
         centroids : climada.hazard.Centroids()
-            Centroids containing the centroids of all centroids in the input list
+            Centroids containing the union of the current centroids and the
+            centroids in centroids_list.
 
         """
         centroids = copy.deepcopy(centroids_list[0])
