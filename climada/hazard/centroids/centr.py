@@ -515,7 +515,8 @@ class Centroids():
             if isinstance(var_val, gpd.GeoSeries):
                 setattr(new_centr, var_name, var_val.append(centr_val))
 
-        self.meta = dict()
+        new_centr.meta = dict()
+        new_centr = new_centr.remove_duplicate_points()
 
         return new_centr
 
