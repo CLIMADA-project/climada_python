@@ -517,7 +517,7 @@ class Centroids():
 
         self.meta = dict()
 
-        return
+        return new_centr
 
     def union(self, *centroids_list):
         """
