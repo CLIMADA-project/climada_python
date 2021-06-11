@@ -380,17 +380,32 @@ class CropProduction(Exposures):
                                     filename_yield=None, filename_area=None,
                                     yield_var=None, area_var=None):
         """
-        set crop_production exposure from cultivated area [ha] and 
+        Set crop_production exposure from cultivated area [ha] and 
         yield [t/ha/year] provided in two netcdf files with the same grid.
+
+        Both input files need to be netcdf format and come with the dimensions:
+        'lon', 'lat' and 'crop'. The information which crop type is saved in which
+        crop layer in each input files needs to be provided manually via
+        the parameters 'i_crop_*'.
+        
+        The default input files are based on the public yield data from
+        SPAM2005 with gaps filled based on Ray et.al (2121); and cultivated area
+        from MIRCA2000, both as post-processed by Jägermeyr et al. 2020; See 
+        https://doi.org/10.1073/pnas.1919049117 for more information and cite
+        when using this data for publication.
 
         Parameters
         ----------
         crop_type : str
-            Crop type, e.g. 'mai' for maize.
+            Crop type, e.g. 'mai' for maize, or 'ric', 'whe', 'soy', etc.
         i_crop_yield : int
             crop layer in yield input data set. Index typically starts with 1.
+            In the default yield input file, the crop indices are as follows:
+            1: maize, 2: wheat, 3: rice(!), 4: soybean(!).
         i_crop_area : int
             crop layer in area input data set. Index typically starts with 1.
+            In the default area input file, the crop indices are as follows:
+            1: maize, 2: wheat, 3: soybean(!), 4: rice(!).
         bbox (list of four floats): bounding box:
                 [lon min, lat min, lon max, lat max]
         input_dir : Path, optional
