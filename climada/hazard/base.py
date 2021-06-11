@@ -1537,9 +1537,8 @@ def concatenate_hazard(haz_list, centroids=None, threshold=100):
 
     #Define comon centroids
     if centroids is None:
-        centroids = Centroids.union([haz.centroids
-                                     for haz in haz_list
-                                     ])
+        centroids = Centroids().union([haz.centroids
+                                       for haz in haz_list])
 
     haz_concat = Hazard()
     haz_concat.units = haz_list[0].units
