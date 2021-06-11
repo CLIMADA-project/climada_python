@@ -383,13 +383,13 @@ class CropProduction(Exposures):
         Set crop_production exposure from cultivated area [ha] and 
         yield [t/ha/year] provided in two netcdf files with the same grid.
 
-        Both input files need to be netcdf format and come with the dimensions:
+        Both input files need to be netcdf format and come with dimensions
         'lon', 'lat' and 'crop'. The information which crop type is saved in which
         crop layer in each input files needs to be provided manually via
         the parameters 'i_crop_*'.
         
         The default input files are based on the public yield data from
-        SPAM2005 with gaps filled based on Ray et.al (2121); and cultivated area
+        SPAM2005 with gaps filled based on Ray et.al (2012); and cultivated area
         from MIRCA2000, both as post-processed by Jägermeyr et al. 2020; See 
         https://doi.org/10.1073/pnas.1919049117 for more information and cite
         when using this data for publication.
