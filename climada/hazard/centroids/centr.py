@@ -491,52 +491,33 @@ class Centroids():
         self.__init__()
 
     def append(self, centr):
-        """Append raster or points.
+        """Append centroids points.
+
+        If centr is raster please convert to points first using
+        Centroids.set_meta_to_lat_lon. Raster information will be lost.
 
         Parameters
         ----------
         centr : Centroids
-            If it's a raster, it needs to have the same `meta` attribute.
-            If it's of non-raster form, it's geometry needs to have the same CRS.
+            Centroids to append. The centroids need to have the same CRS.
         """
-        if self.meta and centr.meta:
-            LOGGER.debug('Appending raster')
-            if centr.meta['crs'] != self.meta['crs']:
-                raise ValueError('Different CRS not accepted.')
-            if self.meta['transform'][0] != centr.meta['transform'][0] \
-               or self.meta['transform'][4] != centr.meta['transform'][4]:
-                raise ValueError('Different raster resolutions.')
-            left = min(self.total_bounds[0], centr.total_bounds[0])
-            bottom = min(self.total_bounds[1], centr.total_bounds[1])
-            right = max(self.total_bounds[2], centr.total_bounds[2])
-            top = max(self.total_bounds[3], centr.total_bounds[3])
-            crs = self.meta['crs']
-            width = (right - left) / self.meta['transform'][0]
-            height = (bottom - top) / self.meta['transform'][4]
-            self.meta = {
-                'dtype': 'float32',
-                'width': width,
-                'height': height,
-                'crs': crs,
-                'transform': rasterio.Affine(self.meta['transform'][0], 0.0, left,
-                                             0.0, self.meta['transform'][4], top),
-            }
-            self.lat, self.lon = np.array([]), np.array([])
-        else:
-            LOGGER.debug('Appending points')
-            if not u_coord.equal_crs(centr.geometry.crs, self.geometry.crs):
-                raise ValueError('Different CRS not accepted.')
-            self.lat = np.append(self.lat, centr.lat)
-            self.lon = np.append(self.lon, centr.lon)
-            self.meta = dict()
-
+        new_centr = Centroids()
+        if not u_coord.equal_crs(centr.geometry.crs, self.geometry.crs):
+            raise ValueError('Different CRS not accepted.')
         # append all 1-dim variables
         for (var_name, var_val), centr_val in zip(self.__dict__.items(),
                                                   centr.__dict__.values()):
-            if isinstance(var_val, np.ndarray) and var_val.ndim == 1 and \
-            var_name not in ('lat', 'lon'):
-                setattr(self, var_name, np.append(var_val, centr_val).
-                        astype(var_val.dtype, copy=False))
+            if isinstance(var_val, np.ndarray) and var_val.ndim == 1:
+                setattr(new_centr, var_name,
+                        np.append(var_val, centr_val).astype(var_val.dtype,
+                                                             copy=False)
+                        )
+            if isinstance(var_val, gpd.GeoSeries):
+                setattr(new_centr, var_val.append(centr_val))
+
+        self.meta = dict()
+
+        return
 
     def union(self, *centroids_list):
         """
