@@ -1443,35 +1443,29 @@ class Hazard():
         self.fraction = sparse.csr_matrix(np.ones(self.intensity.shape,
                                                   dtype=np.float))
 
-    def concatenate(self, haz_src, append=False, centroids=None,
-                    threshold=100):
+    def extend(self, haz_src, centroids=None, threshold=100):
         """
-        Concatenate events of several hazards of same type.
+        Extends hazard with events of same type.
 
-        This is a wrapper method for hazard.base.concatenate_hazard
-        to ensure backwards compatibility.
+        Centroids of all hazards must have the same CRS.
 
-        Centroids of all hazards must either all be rasters with the same
-        resolution, or all be points.
-
-        By default, the centroids of all hazards are combined together.
-        If points, all points are combined. If rasters, a global raster
-        is defined.
+        By default (centroids=None), the centroids of all hazards
+        are combined together. All raster centroids are converted
+        to points and raster data is discarded.
 
         If centroids is not None, all hazards are defined on these centroids.
         Centoids of hazards in haz_src not in centroids are mapped onto the
         nearest point. If a point is further than threshold from the closet
         centroid, the concatenation fails.
 
+        Note: centroids is modified in place and raster information is
+        destroyed.
+
 
         Parameters
         ----------
         haz_src: list(climada.hazard.Hazard())
             Hazard instances of the same hazard type
-        append : bool, optional
-            If True, append the haz_src to current object. If False,
-            replace all attributes from current objects by concatenated
-            hazards from haz_src. The default is False.
         centroids: climada.hazard.Centroids(), optional
             Centroids instance on which to map the concatenated hazard.
             Default is None.
@@ -1486,100 +1480,101 @@ class Hazard():
         None.
 
         """
-        if append:
-            haz_src = [self] + haz_src
-        self.__dict__ = copy.deepcopy(
-            concatenate_hazard(haz_src, centroids).__dict__
-            )
 
-def concatenate_hazard(haz_list, centroids=None, threshold=100):
-    """
-    Concatenate events of several hazards of same type.
+        haz_src = [self] + haz_src
+        self.__dict__ = self.concatenate_hazard(haz_src,
+                                                centroids,
+                                                threshold).__dict__
 
-    Centroids of all hazards must either all be rasters with the same
-    resolution, or all be points.
+    @staticmethod
+    def concatenate_hazard(haz_list, centroids=None, threshold=100):
+        """
+        Concatenate events of several hazards of same type.
 
-    By default, the centroids of all hazards are combined together. If points,
-    all points are combined. If rasters, a global raster is defined.
+        Centroids of all hazards must either all be rasters with the same
+        resolution, or all be points.
 
-    If centroids is not None, all hazards are defined on these centroids.
-    Centoids of hazards in haz_list not in centroids are mapped onto the
-    nearest point. If a point is further than threshold from the closet
-    centroid, the concatenation fails.
+        By default, the centroids of all hazards are combined together. If points,
+        all points are combined. If rasters, a global raster is defined.
 
-    Parameters
-    ----------
-    haz_list: list(climada.hazard.Hazard())
-        Hazard instances of the same hazard type
-    centtroids: climada.hazard.Centroids(), optional
-        Centroids instance on which to map the concatenated hazard.
-        Default is None.
-    threshold: int or float
-        Threshold for mapping centoids of hazards in haz_list not in centroids.
-        Argument is passed to climada.util.coordinates.assign_coordinates.
-        Default is 100.
+        If centroids is not None, all hazards are defined on these centroids.
+        Centoids of hazards in haz_list not in centroids are mapped onto the
+        nearest point. If a point is further than threshold from the closet
+        centroid, the concatenation fails.
 
-    Returns
-    -------
-    haz_concat: climada.hazard.Hazard()
-        Concatenated hazard.
+        Parameters
+        ----------
+        haz_list: list(climada.hazard.Hazard())
+            Hazard instances of the same hazard type
+        centtroids: climada.hazard.Centroids(), optional
+            Centroids instance on which to map the concatenated hazard.
+            Default is None.
+        threshold: int or float
+            Threshold for mapping centoids of hazards in haz_list not in centroids.
+            Argument is passed to climada.util.coordinates.assign_coordinates.
+            Default is 100.
 
-    Raises
-    ------
-    ValueError
-    """
-    #Check units consistency among hazards
-    units = {haz.units for haz in haz_list}
-    if len(units) > 1:
-        raise TypeError("The haz_list contains hazards with different"
-                        "units %f. The hazards are incompatible and"
-                        "cannot be concatenated.", units)
+        Returns
+        -------
+        haz_concat: climada.hazard.Hazard()
+            Concatenated hazard.
 
-    #Define comon centroids
-    if centroids is None:
-        centroids = Centroids().union([haz.centroids
-                                       for haz in haz_list])
+        Raises
+        ------
+        ValueError
+        """
+        #Check units consistency among hazards
+        units = {haz.units for haz in haz_list}
+        if len(units) > 1:
+            raise TypeError("The haz_list contains hazards with different"
+                            "units %f. The hazards are incompatible and"
+                            "cannot be concatenated.", units)
 
-    haz_concat = Hazard()
-    haz_concat.units = haz_list[0].units
-    haz_concat.centroids = centroids
+        #Define comon centroids
+        if centroids is None:
+            centroids = Centroids().union([haz.centroids
+                                           for haz in haz_list])
 
-    #Indices for mapping matrices onto common centroids
-    hazcent_in_cent_idx_list = [
-        u_coord.assign_coordinates(haz.centroids.coord, centroids.coord,
-                                   threshold=threshold)
-        for haz in haz_list
-        ]
+        haz_concat = Hazard()
+        haz_concat.units = haz_list[0].units
+        haz_concat.centroids = centroids
 
-    if any([-1 in idx_list for idx_list in hazcent_in_cent_idx_list]):
-        raise ValueError("At least one hazard centroid is at a larger distance"
-                "than the given threshold %f from the given centroids. "
-                "To perform the concatenation please choose a larger "
-                "threshold or enlarge the centroids", threshold)
+        #Indices for mapping matrices onto common centroids
+        hazcent_in_cent_idx_list = [
+            u_coord.assign_coordinates(haz.centroids.coord, centroids.coord,
+                                       threshold=threshold)
+            for haz in haz_list
+            ]
+
+        if any([-1 in idx_list for idx_list in hazcent_in_cent_idx_list]):
+            raise ValueError("At least one hazard centroid is at a larger distance"
+                    "than the given threshold %f from the given centroids. "
+                    "To perform the concatenation please choose a larger "
+                    "threshold or enlarge the centroids", threshold)
 
 
-    #Concatenate attributes - hazards are assumed to have the same attributes
-    for attr_name in vars(haz_list[0]).keys():
-        attr_val_list = [getattr(haz, attr_name) for haz in haz_list]
-        if isinstance(attr_val_list[0], sparse.csr.csr_matrix):
-            #Map sparse matrix onto centroids.
-            matrix = (
-                sparse.csr_matrix(
-                    (matrix.data, cent_idx[matrix.indices], matrix.indptr),
-                    shape=(matrix.shape[0], centroids.size)
+        #Concatenate attributes - hazards are assumed to have the same attributes
+        for attr_name in vars(haz_list[0]).keys():
+            attr_val_list = [getattr(haz, attr_name) for haz in haz_list]
+            if isinstance(attr_val_list[0], sparse.csr.csr_matrix):
+                #Map sparse matrix onto centroids.
+                matrix = (
+                    sparse.csr_matrix(
+                        (matrix.data, cent_idx[matrix.indices], matrix.indptr),
+                        shape=(matrix.shape[0], centroids.size)
+                        )
+                    for matrix, cent_idx in zip(attr_val_list, hazcent_in_cent_idx_list)
                     )
-                for matrix, cent_idx in zip(attr_val_list, hazcent_in_cent_idx_list)
-                )
-            setattr(haz_concat, attr_name, sparse.vstack(matrix, format='csr'))
-        elif (isinstance(attr_val_list[0], np.ndarray)
-              and attr_val_list[0].ndim == 1):
-            setattr(haz_concat, attr_name, np.hstack(attr_val_list))
-        elif isinstance(attr_val_list[0], list):
-            setattr(haz_concat, attr_name, sum(attr_val_list, []))
-        elif isinstance(attr_val_list[0], TagHazard):
-            for tag in attr_val_list:
-                if tag is not haz_concat.tag: haz_concat.tag.append(tag)
+                setattr(haz_concat, attr_name, sparse.vstack(matrix, format='csr'))
+            elif (isinstance(attr_val_list[0], np.ndarray)
+                  and attr_val_list[0].ndim == 1):
+                setattr(haz_concat, attr_name, np.hstack(attr_val_list))
+            elif isinstance(attr_val_list[0], list):
+                setattr(haz_concat, attr_name, sum(attr_val_list, []))
+            elif isinstance(attr_val_list[0], TagHazard):
+                for tag in attr_val_list:
+                    if tag is not haz_concat.tag: haz_concat.tag.append(tag)
 
-    haz_concat.sanitize_event_ids()
+        haz_concat.sanitize_event_ids()
 
-    return haz_concat
+        return haz_concat
