@@ -30,7 +30,7 @@ import pandas as pd
 import h5py
 from matplotlib import pyplot as plt
 
-from climada.entity.exposures.base import Exposures
+from .base import Exposures, INDICATOR_IMPF
 from climada.entity.tag import Tag
 import climada.util.coordinates as u_coord
 from climada import CONFIG
@@ -463,6 +463,8 @@ class CropProduction(Exposures):
         self.gdf['longitude'] = lon.flatten()
         self.gdf['region_id'] = u_coord.get_country_code(self.gdf.latitude,
                                                          self.gdf.longitude)
+        self.gdf[INDICATOR_IMPF + DEF_HAZ_TYPE] = 1
+        self.gdf[INDICATOR_IMPF] = 1
         # calc annual crop production, [t/y] = [ha] * [t/ha/y]:
         self.gdf['value'] = np.multiply(area_data.values, yield_data.values).flatten()
 
