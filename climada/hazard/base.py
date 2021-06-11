@@ -1563,11 +1563,12 @@ def concatenate_hazard(haz_list, centroids=None, threshold=100):
     for attr_name in vars(haz_list[0]).keys():
         attr_val_list = [getattr(haz, attr_name) for haz in haz_list]
         if isinstance(attr_val_list[0], sparse.csr.csr_matrix):
+            #Map sparse matrix onto centroids.
             matrix = (
-                _map_matrix_to_centroids(matrix,
-                                        centroids,
-                                        cent_idx
-                                        )
+                sparse.csr_matrix(
+                    (matrix.data, cent_idx[matrix.indices], matrix.indptr),
+                    shape=(matrix.shape[0], centroids.size)
+                    )
                 for matrix, cent_idx in zip(attr_val_list, hazcent_in_cent_idx_list)
                 )
             setattr(haz_concat, attr_name, sparse.vstack(matrix, format='csr'))
@@ -1583,36 +1584,3 @@ def concatenate_hazard(haz_list, centroids=None, threshold=100):
     haz_concat.sanitize_event_ids()
 
     return haz_concat
-
-def _map_matrix_to_centroids(sp_matrix, centroids, cent_idx):
-    """
-    Map a sparse matrix (e.g. hazard intensity or fraction) onto centroids.
-
-    Parameters
-    ----------
-    sp_matrix: scipy.sparse.crs_matrix()
-        Input sparse matrix
-    centroids: climada.hazard.Centroids()
-        Centroids on which to map the sp_matrix
-    cent_idx: numpy.ndarray
-        Array of indices for sp_matrix centroids.
-
-    Returns
-    -------
-    mapped_matrix: scipy.sparse.csr_matrix()
-        Sparse matrix of dimension nrows X centroids.size for a sp_matrix
-        with nrows.
-    """
-    n_events = sp_matrix.shape[0]
-    chunks = min(int(n_events / 100), 1000)
-    counter = np.array_split(np.arange(n_events), chunks + 1)
-    mapped_matrix = sparse.csr_matrix([])
-    events = []
-
-    for row in counter:
-        for n in row:
-            ar = np.zeros(int(centroids.size))
-            ar[cent_idx] = sp_matrix.getrow(n).todense()
-            events.append(sparse.csr_matrix(ar))
-        mapped_matrix = sparse.vstack(events)
-    return mapped_matrix
