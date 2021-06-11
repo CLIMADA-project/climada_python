@@ -493,42 +493,46 @@ class Centroids():
     def append(self, centr):
         """Append centroids points.
 
-        If centr is raster please convert to points first using
+        If centr is raster it is converted to points first using
         Centroids.set_meta_to_lat_lon. Raster information will be lost.
+
+        Note: self is modified in-place, and meta is set to {}.
 
         Parameters
         ----------
         centr : Centroids
             Centroids to append. The centroids need to have the same CRS.
         """
-        new_centr = Centroids()
+
+        if self.meta:
+            self.set_meta_to_lat_lon()
+        if centr.meta:
+            centr.set_meta_to_lat_lon()
+
         if not u_coord.equal_crs(centr.geometry.crs, self.geometry.crs):
             raise ValueError('Different CRS not accepted.')
         # append all 1-dim variables
         for (var_name, var_val), centr_val in zip(self.__dict__.items(),
                                                   centr.__dict__.values()):
             if isinstance(var_val, np.ndarray) and var_val.ndim == 1:
-                setattr(new_centr, var_name,
+                setattr(self, var_name,
                         np.append(var_val, centr_val).astype(var_val.dtype,
                                                              copy=False)
                         )
             if isinstance(var_val, gpd.GeoSeries):
-                setattr(new_centr, var_name, var_val.append(centr_val))
+                setattr(self, var_name, var_val.append(centr_val))
 
-        new_centr.meta = dict()
-        new_centr = new_centr.remove_duplicate_points()
+        self.meta = dict()
+        self.__dict__.update(self.remove_duplicate_points().__dict__)
 
-        return new_centr
-
-    def union(self, *centroids_list):
+    @staticmethod
+    def union(centroids_list):
         """
         Create the union of centroids from the inputs.
 
-        Centroids must either all be rasters with the same
-        resolution, or all be points.
-
-        The centroids are combined together. If points,
-        all points are combined. If rasters, a global raster is defined.
+        The centroids are combined together point by point.
+        Rasters are converted to points and raster information is lost.
+        All centroids must have the same CRS.
 
         Parameters
         ----------
@@ -538,16 +542,14 @@ class Centroids():
         Returns
         -------
         centroids : climada.hazard.Centroids()
-            Centroids containing the union of the current centroids and the
-            centroids in centroids_list.
+            Centroids containing the union of the centroids in centroids_list.
 
         """
         centroids = copy.deepcopy(centroids_list[0])
         for cent in centroids_list[1:]:
             if not centroids.equal(cent):
                 centroids.append(cent)
-        centroids.remove_duplicate_points()
-        return centroids
+        return centroids.remove_duplicate_points()
 
     def get_closest_point(self, x_lon, y_lat, scheduler=None):
         """Returns closest centroid and its index to a given point.
