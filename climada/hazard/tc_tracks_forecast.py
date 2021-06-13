@@ -87,7 +87,8 @@ class TCForecast(TCTracks):
         data (list(xarray.Dataset)): Same as in parent class, adding the
             following attributes
                 - ensemble_member (int)
-                - is_ensemble (bool)
+                - is_ensemble (bool; if True, the simulation is a high resolution
+                               deterministic run)
     """
 
     def fetch_ecmwf(self, path=None, files=None):
@@ -183,24 +184,18 @@ class TCForecast(TCTracks):
 
         return localfiles
 
-    def read_one_bufr_tc(self, file, id_no=None, fcast_rep=None):
+    def read_one_bufr_tc(self, file, id_no=None):
         """ Read a single BUFR TC track file.
 
         Parameters:
             file (str, filelike): Path object, string, or file-like object
             id_no (int): Numerical ID; optional. Else use date + random int.
-            fcast_rep (int): Of the form 1xx000, indicating the delayed
-                replicator containing the forecast values; optional.
-        """
-        
+        """     
         # Open the bufr file
-#        f = open(file, 'rb')
         bufr = ec.codes_bufr_new_from_file(file)
         # we need to instruct ecCodes to expand all the descriptors
         # i.e. unpack the data values
         ec.codes_set(bufr, 'unpack', 1)
-        
-        ##### need error message if the bufr file is not correct. #####
         
         # get the forcast time
         timestamp_origin = dt.datetime(
@@ -217,7 +212,7 @@ class TCForecast(TCTracks):
             try:
                 ec.codes_get_array(bufr, "#%d#timePeriod" % n_timestep)
             except ec.CodesInternalError:
-                LOGGER.error('ecCodes Internal Error')
+                LOGGER.info('Key values not found: end of the time period')
                 break
             
         # ensemble members number
@@ -249,8 +244,6 @@ class TCForecast(TCTracks):
                 longitude[ind_ens] = np.array(lon_init[0])
                 pressure[ind_ens] = np.array(pre_init[0])
                 max_wind[ind_ens] = np.array(max_wind_init[0])
-                
-        ######## check if the dictionary is None? ##########
         
         # getting the forecasted storms
         timesteps_int = [0 for x in range(n_timestep)]
@@ -278,9 +271,9 @@ class TCForecast(TCTracks):
                         break
             # get lat, lon, and pre of all ensemble members at ind_timestep        
             if significance == 1:
-                lat = ec.codes_get_array(bufr, "#%d#latitude" % rank1)
-                lon = ec.codes_get_array(bufr, "#%d#longitude" % rank1)
-                pre = ec.codes_get_array(bufr, "#%d#pressureReducedToMeanSeaLevel" % (ind_timestep + 1))
+                lat_temp = ec.codes_get_array(bufr, "#%d#latitude" % rank1)
+                lon_temp = ec.codes_get_array(bufr, "#%d#longitude" % rank1)
+                pre_temp = ec.codes_get_array(bufr, "#%d#pressureReducedToMeanSeaLevel" % (ind_timestep + 1))
             else:
                 raise ValueError('unexpected meteorologicalAttributeSignificance=', significance)
                 
@@ -295,54 +288,27 @@ class TCForecast(TCTracks):
                         break
             # max_wind of all ensemble members at ind_timestep    
             if significanceWind == 3:
-                wnd = ec.codes_get_array(bufr, "#%d#windSpeedAt10M" % (ind_timestep + 1))
+                wnd_temp = ec.codes_get_array(bufr, "#%d#windSpeedAt10M" % (ind_timestep + 1))
             else:
                 raise ValueError('unexpected meteorologicalAttributeSignificance=', significance)
+                
+            # check dimention of the variables, and replace missing value with NaN
+            lat = self._check_variable(lat_temp, ens_no)
+            lon = self._check_variable(lon_temp, ens_no)
+            pre = self._check_variable(pre_temp, ens_no)
+            wnd = self._check_variable(wnd_temp, ens_no)
             
-            if len(lat) == len(ens_no) and len(wnd) == len(ens_no):
-                for ind_ens in range(len(ens_no)):
-                    latitude[ind_ens] = np.append(latitude[ind_ens], lat[ind_ens])
-                    longitude[ind_ens] = np.append(longitude[ind_ens], lon[ind_ens])
-                    pressure[ind_ens] = np.append(pressure[ind_ens], pre[ind_ens])
-                    max_wind[ind_ens] = np.append(max_wind[ind_ens], wnd[ind_ens])
-            elif len(lat) == 1 and len(wnd) == 1:
-                for ind_ens in range(len(ens_no)):
-                    latitude[ind_ens] = np.append(latitude[ind_ens], MISSING_DOUBLE)
-                    longitude[ind_ens] = np.append(longitude[ind_ens], MISSING_DOUBLE)
-                    pressure[ind_ens] = np.append(pressure[ind_ens], MISSING_DOUBLE)
-                    max_wind[ind_ens] = np.append(max_wind[ind_ens], MISSING_DOUBLE) 
-            else:
-                raise ValueError('Funny data structure from ensemble tracks')
+            # appending values
+            for ind_ens in range(len(ens_no)):
+                latitude[ind_ens] = np.append(latitude[ind_ens], lat[ind_ens])
+                longitude[ind_ens] = np.append(longitude[ind_ens], lon[ind_ens])
+                pressure[ind_ens] = np.append(pressure[ind_ens], pre[ind_ens])
+                max_wind[ind_ens] = np.append(max_wind[ind_ens], wnd[ind_ens])
+
         
-
-        # decoder = pybufrkit.decoder.Decoder()
-
-        # if hasattr(file, 'read'):
-        #     bufr = decoder.process(file.read())
-        # elif hasattr(file, 'read_bytes'):
-        #     bufr = decoder.process(file.read_bytes())
-        # elif Path(file).is_file():
-        #     with Path(file).open('rb') as i:
-        #         bufr = decoder.process(i.read())
-        # else:
-        #     raise FileNotFoundError('Check file argument')
-
-        # # setup parsers and querents
-        # npparser = pybufrkit.dataquery.NodePathParser()
-        # data_query = pybufrkit.dataquery.DataQuerent(npparser).query
-
-        # meparser = pybufrkit.mdquery.MetadataExprParser()
-        # meta_query = pybufrkit.mdquery.MetadataQuerent(meparser).query
-
-        # if fcast_rep is None:
-        #     fcast_rep = self._find_delayed_replicator(
-        #         meta_query(bufr, '%unexpanded_descriptors')
-        #     )
-
-        # query the bufr message
+        # storing information into a dictionary
         msg = {
             # subset forecast data
-#            'significance': data_query(bufr, fcast_rep + '> 008005'),
             'latitude': latitude,
             'longitude': longitude,
             'wind_10m': max_wind,
@@ -355,13 +321,6 @@ class TCForecast(TCTracks):
             'ens_type': ec.codes_get_array(bufr, 'ensembleForecastType'),
             'ens_number': ec.codes_get_array(bufr, "ensembleMemberNumber"),
         }
-
-        # timestamp_origin = dt.datetime(
-        #     meta_query(bufr, '%year'), meta_query(bufr, '%month'),
-        #     meta_query(bufr, '%day'), meta_query(bufr, '%hour'),
-        #     meta_query(bufr, '%minute'),
-        # )
-        # timestamp_origin = np.datetime64(timestamp_origin)
 
         if id_no is None:
             id_no = timestamp_origin.item().strftime('%Y%m%d%H') + \
@@ -386,32 +345,26 @@ class TCForecast(TCTracks):
     @staticmethod
     def _subset_to_track(msg, index, provider, timestamp_origin, name, id_no):
         """Subroutine to process one BUFR subset into one xr.Dataset"""
-#        sig = np.array(msg['significance'].get_values(index), dtype='int')
         lat = np.array(msg['latitude'][index], dtype='float')
         lon = np.array(msg['longitude'][index], dtype='float')
         wnd = np.array(msg['wind_10m'][index], dtype='float')
         pre = np.array(msg['pressure'][index], dtype='float')
-        
-        # replace missing values with NaN
-        lat[lat==MISSING_DOUBLE] = np.nan
-        lon[lon==MISSING_DOUBLE] = np.nan
-        wnd[wnd==MISSING_DOUBLE] = np.nan
-        pre[pre==MISSING_DOUBLE] = np.nan
 
         sid = msg['storm_id'].strip()
 
         timestep_int = np.array(msg['timestamp']).squeeze()
         timestamp = timestamp_origin + timestep_int.astype('timedelta64[h]')
         
+        # some weak storms have only perturbed analysis, which gives a 
+        # size 1 array with value 4
         try:
             ens_bool = msg['ens_type'][index] != 0
         except LookupError as err:
             ens_bool = msg['ens_type'][0] != 0
             LOGGER.warning('Single value in ens_type array, error: %s', err)
             return None
-
+        
         try:
-            test_no = msg['ens_number'][index]
             track = xr.Dataset(
                 data_vars={
                     'max_sustained_wind': ('time', np.squeeze(wnd)),
@@ -478,21 +431,18 @@ class TCForecast(TCTracks):
         track.attrs['category'] = cat_name
         return track
 
-    # @staticmethod
-    # def _find_delayed_replicator(descriptors):
-    #     """The current bufr tc tracks only use one delayed replicator,
-    #     enclosing all forecast values. This finds it.
-
-    #     Parameters:
-    #         bufr_message: An in-memory pybufrkit BUFR message
-    #     """
-    #     delayed_replicators = [
-    #         d for d in descriptors
-    #         if 100000 < d < 200000 and d % 1000 == 0
-    #     ]
-
-    #     if len(delayed_replicators) != 1:
-    #         raise ValueError('Could not find fcast_rep, please set manually. '
-    #                          'More than one delayed replicator in BUFR file')
-
-    #     return str(delayed_replicators[0])
+    @staticmethod
+    def _check_variable(var, ens_no):
+        """Check the value and dimension of variable"""
+        if len(var) == len(ens_no):
+            var[var==MISSING_DOUBLE] = np.nan
+            return var
+        elif len(var) == 1 and var[0] == MISSING_DOUBLE:
+            return np.repeat(np.nan, len(ens_no))
+        elif len(var) == 1 and var[0] != MISSING_DOUBLE:
+            return np.repeat(var[0], len(ens_no))
+            LOGGER.warning('Only 1 variable value for %d ensble members, duplicate value to all members',
+                           len(ens_no))
+        else:
+            raise ValueError
+            
