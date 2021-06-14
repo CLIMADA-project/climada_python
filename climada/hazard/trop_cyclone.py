@@ -742,25 +742,27 @@ def _bs_hol08(v_trans, penv, pcen, prepcen, lat, tint):
 
     Parameters
     ----------
-    v_trans : float
+    v_trans : np.array
         translational wind (m/s)
-    penv : float
+    penv : np.array
         environmental pressure (hPa)
-    pcen : float
+    pcen : np.array
         central pressure (hPa)
-    prepcen : float
-        previous central pressure (hPa)
-    lat : float
+    prepcen : np.array
+        central pressure (hPa) at previous track position
+    lat : np.array
         latitude (degrees)
-    tint : float
+    tint : np.array
         time step (h)
 
     Returns
     -------
-    b_s : float
+    b_s : np.array
+        Holland b-value
     """
-    hol_xx = 0.6 * (1. - (penv - pcen) / 215)
-    hol_b = -4.4e-5 * (penv - pcen)**2 + 0.01 * (penv - pcen) + \
+    pdelta = penv - pcen
+    hol_xx = 0.6 * (1. - pdelta / 215)
+    hol_b = -4.4e-5 * pdelta**2 + 0.01 * pdelta + \
         0.03 * (pcen - prepcen) / tint - 0.014 * abs(lat) + \
         0.15 * v_trans**hol_xx + 1.0
     return np.clip(hol_b, 1, 2.5)
