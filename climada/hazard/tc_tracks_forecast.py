@@ -87,7 +87,7 @@ class TCForecast(TCTracks):
         data (list(xarray.Dataset)): Same as in parent class, adding the
             following attributes
                 - ensemble_member (int)
-                - is_ensemble (bool; if True, the simulation is a high resolution
+                - is_ensemble (bool; if False, the simulation is a high resolution
                                deterministic run)
     """
 
