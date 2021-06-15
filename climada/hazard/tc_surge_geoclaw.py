@@ -646,7 +646,7 @@ include $(CLAW)/clawutil/src/Makefile.common
     def set_rundata_geo(self):
         """Set geo-related rundata attributes."""
         geodata = self.rundata.geo_data
-        topodata = self. rundata.topo_data
+        topodata = self.rundata.topo_data
 
         # lat-lon coordinate system
         geodata.coordinate_system = 2
