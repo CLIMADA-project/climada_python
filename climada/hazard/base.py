@@ -1443,7 +1443,7 @@ class Hazard():
         self.fraction = sparse.csr_matrix(np.ones(self.intensity.shape,
                                                   dtype=np.float))
 
-    def extend(self, haz_src, centroids=None, threshold=100):
+    def extend(self, haz_list, centroids=None, threshold=100):
         """
         Extends hazard with events of same type.
 
@@ -1464,7 +1464,7 @@ class Hazard():
 
         Parameters
         ----------
-        haz_src: list(climada.hazard.Hazard())
+        haz_list: list(climada.hazard.Hazard())
             Hazard instances of the same hazard type
         centroids: climada.hazard.Centroids(), optional
             Centroids instance on which to map the concatenated hazard.
@@ -1481,8 +1481,8 @@ class Hazard():
 
         """
 
-        haz_src = [self] + haz_src
-        self.__dict__ = self.concatenate_hazard(haz_src,
+        haz_list = [self] + haz_list
+        self.__dict__ = self.concatenate_hazard(haz_list,
                                                 centroids,
                                                 threshold).__dict__
 
@@ -1524,11 +1524,11 @@ class Hazard():
         ValueError
         """
         #Check units consistency among hazards
-        units = {haz.units for haz in haz_list}
+        units = {haz.units for haz in haz_list if haz.units != ''}
         if len(units) > 1:
-            raise TypeError("The haz_list contains hazards with different"
-                            "units %f. The hazards are incompatible and"
-                            "cannot be concatenated.", units)
+            raise TypeError("The haz_list contains hazards with different "
+                            "units %f. The hazards are incompatible and "
+                            "cannot be concatenated.", str(units))
 
         #Define comon centroids
         if centroids is None:
