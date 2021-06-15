@@ -384,7 +384,7 @@ class CropProduction(Exposures):
         Both input files need to be netcdf format and come with dimensions
         'lon', 'lat' and 'crop'. The information which crop type is saved in which
         crop layer in each input files needs to be provided manually via
-        the parameters 'i_crop_*'.
+        the parameters 'layer_*'.
 
         A convenience wrapper around this expert method is provided with
         set_from_spam_ray_mirca().
