@@ -30,11 +30,10 @@ import pandas as pd
 import h5py
 from matplotlib import pyplot as plt
 
-from .base import Exposures, INDICATOR_IMPF
 from climada.entity.tag import Tag
 import climada.util.coordinates as u_coord
 from climada import CONFIG
-
+from .base import Exposures, INDICATOR_IMPF
 
 logging.root.setLevel(logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
@@ -378,14 +377,14 @@ class CropProduction(Exposures):
                                     filename_yield, filename_area, yield_var,
                                     area_var, bbox=BBOX, input_dir=INPUT_DIR):
         """
-        Set crop_production exposure from cultivated area [ha] and 
+        Set crop_production exposure from cultivated area [ha] and
         yield [t/ha/year] provided in two netcdf files with the same grid.
 
         Both input files need to be netcdf format and come with dimensions
         'lon', 'lat' and 'crop'. The information which crop type is saved in which
         crop layer in each input files needs to be provided manually via
         the parameters 'i_crop_*'.
-        
+
         A convenience wrapper around this expert method is provided with
         set_from_spam_ray_mirca().
 
@@ -479,12 +478,12 @@ class CropProduction(Exposures):
                                 bbox=BBOX, input_dir=INPUT_DIR):
         """
         Wrapper method around set_from_area_and_yield_nc4().
-        
-        Set crop_production exposure from cultivated area [ha] and 
+
+        Set crop_production exposure from cultivated area [ha] and
         yield [t/ha/year] provided in default input files.
         The default input files are based on the public yield data from
         SPAM2005 with gaps filled based on Ray et.al (2012); and cultivated area
-        from MIRCA2000, both as post-processed by Jägermeyr et al. 2020; See 
+        from MIRCA2000, both as post-processed by Jägermeyr et al. 2020; See
         https://doi.org/10.1073/pnas.1919049117 for more information and cite
         when using this data for publication.
 
