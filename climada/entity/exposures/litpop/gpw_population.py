@@ -94,7 +94,7 @@ def load_gpw_pop_shape(geometry, reference_year, gpw_version=11, data_dir=None,
     src.close()
     return pop_data[layer,:,:], meta, global_transform
 
-def get_gpw_file_path(gpw_version, reference_year, data_dir=None, verbatim=True):
+def get_gpw_file_path(gpw_version, reference_year, data_dir=SYSTEM_DIR, verbatim=True):
     """Check available GPW population data versions and year closest to
     reference_year and return full path to TIFF file.
 
