@@ -422,14 +422,6 @@ class CropProduction(Exposures):
         """
         if isinstance(input_dir, str):
             input_dir = Path(input_dir)
-        if filename_yield is None:
-            filename_yield = 'spam_ray_yields.nc4'
-        if filename_area is None:
-            filename_area = 'cultivated_area_MIRCA_GGCMI.nc4'
-        if yield_var is None:
-            yield_var = 'yield.tot'
-        if area_var is None:
-            area_var = 'cultivated area all'
         [lonmin, latmin, lonmax, latmax] = bbox
 
         # extract yield data to xarray.DataArray:
@@ -446,7 +438,7 @@ class CropProduction(Exposures):
                                      )[area_var]
         del data_set_tmp
 
-        # The latitude and longitude are set; the region_id is determined
+        # The latitude and longitude are set; region_id is determined
         lon, lat = np.meshgrid(area_data.lon.values, area_data.lat.values)
 
         # initiate coordinates and values in GeoDatFrame:
@@ -461,7 +453,6 @@ class CropProduction(Exposures):
 
         self.crop = crop_type
         self.tag = Tag()
-
         self.tag.description = ("Annual crop production from " + area_var +
                                 " and " + yield_var + " for " + self.crop +
                                 " from files " + filename_area + " and " +
