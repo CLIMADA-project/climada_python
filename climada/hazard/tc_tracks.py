@@ -157,21 +157,22 @@ class TCTracks():
             - lon (coords)
             - time_step (in hours)
             - radius_max_wind (in nautical miles)
-            - max_sustained_wind
-            - central_pressure
-            - environmental_pressure
+            - radius_oci (in nautical miles)
+            - max_sustained_wind (in knots)
+            - central_pressure (in hPa/mbar)
+            - environmental_pressure (in hPa/mbar)
+            - basin (for each track position)
             - max_sustained_wind_unit (attrs)
             - central_pressure_unit (attrs)
             - name (attrs)
             - sid (attrs)
             - orig_event_flag (attrs)
             - data_provider (attrs)
-            - basin (attrs)
             - id_no (attrs)
             - category (attrs)
         Computed during processing:
-            - on_land
-            - dist_since_lf
+            - on_land (bool for each track position)
+            - dist_since_lf (in km)
     """
     def __init__(self, pool=None):
         """Empty constructor. Read csv IBTrACS files if provided."""
@@ -1646,14 +1647,14 @@ def estimate_roci(roci, cen_pres):
     Parameters
     ----------
     roci : array-like
-        ROCI values along track in km.
+        ROCI values along track in nautical miles (nm).
     cen_pres : array-like
         Central pressure values along track in hPa (mbar).
 
     Returns
     -------
     roci_estimated : np.array
-        Estimated ROCI values in km.
+        Estimated ROCI values in nautical miles (nm).
     """
     roci = np.where(np.isnan(roci), -1, roci)
     cen_pres = np.where(np.isnan(cen_pres), -1, cen_pres)
@@ -1681,14 +1682,14 @@ def estimate_rmw(rmw, cen_pres):
     Parameters
     ----------
     rmw : array-like
-        RMW values along track in km.
+        RMW values along track in nautical miles (nm).
     cen_pres : array-like
         Central pressure values along track in hPa (mbar).
 
     Returns
     -------
     rmw : np.array
-        Estimated RMW values in km.
+        Estimated RMW values in nautical miles (nm).
     """
     rmw = np.where(np.isnan(rmw), -1, rmw)
     cen_pres = np.where(np.isnan(cen_pres), -1, cen_pres)
