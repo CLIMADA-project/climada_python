@@ -122,8 +122,6 @@ def get_gpw_file_path(gpw_version, reference_year, data_dir=SYSTEM_DIR, verbatim
     elif isinstance(gpw_version, int):
         gpw_version = [gpw_version]
 
-    if data_dir is None:
-        data_dir = SYSTEM_DIR
     # find closest year to reference_year with data available:
     year = YEARS_AVAILABLE[np.abs(YEARS_AVAILABLE - reference_year).argmin()]
     if verbatim and (year != reference_year):
