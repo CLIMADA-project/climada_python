@@ -1821,6 +1821,69 @@ def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, schedul
     }
     return raster_out, meta
 
+
+def subraster_from_bounds(src_transform, src_shape, dst_resolution, src_crs,
+                          dst_crs, global_origin=(-180.0, 90),
+                          global_transform=None, dst_bounds=None):
+    """
+    Transform subraster to new resolution and CRS, on consistent global grid
+    defined by dst_resolution global_origin, dst_crs and global_transform
+
+    Parameters
+    ----------
+    src_transform : rasterio.Affine instance
+        Source transform.
+    src_shape : tuple
+        Source shape (height, width), i.e. np.ndarray.shape
+    dst_resolution : tuple or number
+        Destination resolution, either (x, y) or delta.
+    src_crs : CRS
+        Source coordinate reference system
+    dst_crs : CRS
+        Destination coordinate reference system
+    global_origin : tuple, optional
+        Global origin of destination grid. The default is (-180.0, 90).
+    global_transform : rasterio.Affine instance, optional
+        Global transform of destination grid.
+        As default, this is dervied from global_origin and dst_resolution.
+    dst_bounds : tuple of numbers, optional
+        Destination bounds in format (x_min, y_min, x_max, y_max).
+        Provide dst_bounds for full consistency between 
+        subrasters projected to same destination grid!
+        As a default, dst_bounds is derived from src_shape and src_transform.
+
+    Returns
+    -------
+    dst_transform : rasterio.Affine instance
+        Destination transform.
+    dst_shape : tuple
+        Destination shape (height, width)
+
+    """
+    if isinstance(dst_resolution, float) or isinstance(dst_resolution, int):
+        dst_resolution = (dst_resolution, dst_resolution)
+    # 1. Set global_transform
+    # (make sure that dst_resolution is a pair of floats for x and y resolution).
+    # Alternatively, you can directly require this as an input parameter.
+    if global_transform is None:
+        global_transform = rasterio.transform.from_origin(*global_origin, *dst_resolution)
+    # 2. If dst_bounds is given, skip the next two steps and continue with (5).
+    if dst_bounds is None:
+        # 3. Get the bounds of the source raster in the source CRS:
+        src_bounds = rasterio.transform.array_bounds(*src_shape, src_transform)
+        # 4. Translate the bounds of the source raster to the target CRS:
+        dst_bounds = rasterio.warp.transform_bounds(src_crs, dst_crs, *src_bounds)
+    # 5.set dst_window and to align the window to the global raster:
+    dst_window = rasterio.windows.from_bounds(*dst_bounds, global_transform)
+    dst_window = rasterio.windows.Window(np.round(dst_window.col_off),
+                                         np.round(dst_window.row_off),
+                                         np.ceil(dst_window.width),
+                                         np.ceil(dst_window.height))
+    dst_transform = rasterio.windows.transform(dst_window, global_transform)
+    dst_shape = (int(dst_window.height), int(dst_window.width))
+    return dst_transform, dst_shape
+
+
 def set_global_consistent_grid(src_transform, dst_resolution,
                                src_shape=None, crs=None,
                                dst_global_origin=None, dst_global_extent=None,

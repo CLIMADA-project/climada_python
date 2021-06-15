@@ -32,6 +32,7 @@ from rasterio.windows import Window
 from rasterio.warp import Resampling
 from rasterio import Affine
 from rasterio.crs import CRS as RCRS
+from rasterio.transform import array_bounds
 
 from climada import CONFIG
 from climada.util.constants import HAZ_DEMO_FL, DEF_CRS
@@ -899,37 +900,17 @@ class TestRasterIO(unittest.TestCase):
         self.assertLess(transform[5] + z.shape[0] * transform[4], bounds[1])
         self.assertGreaterEqual(transform[5] + z.shape[0] * transform[4], bounds[1] + transform[4])
 
-    def test_set_global_consistent_grid_pass(self):
-        """test function set_global_consistent_grid"""
+    def test_subraster_from_bounds_pass(self):
+        """test function subraster_from_bounds"""
         _, meta_list = data_arrays_resampling_demo()
         i = 2
-        dst_resolution = 1.
+        dst_resolution = (1., 1.)
         dst_transform, dst_shape = \
-            u_coord.set_global_consistent_grid(meta_list[i]['transform'],
-                                               dst_resolution,
-                                               src_shape = (meta_list[i]['width'],
-                                                            meta_list[i]['height']),
-                                               )
-        self.assertEqual(dst_shape, (4,3))
-        self.assertEqual(dst_resolution, dst_transform[0])
-        self.assertEqual(meta_list[i]['transform'][1], dst_transform[1])
-        self.assertEqual(meta_list[i]['transform'][2], dst_transform[2])
-        self.assertEqual(meta_list[i]['transform'][3], dst_transform[3])
-        self.assertEqual(-dst_resolution, dst_transform[4])
-        self.assertEqual(meta_list[i]['transform'][5], dst_transform[5])
-
-    def test_set_global_consistent_grid_no_shape(self):
-        """test function set_global_consistent_grid withput providing a src_shape"""
-        _, meta_list = data_arrays_resampling_demo()
-        i = 2
-        dst_resolution = 1.
-        dst_transform, dst_shape = \
-            u_coord.set_global_consistent_grid(meta_list[i]['transform'],
-                                               dst_resolution,
-                                               src_shape = None,
-                                               )
-        self.assertEqual(180 + dst_transform[2] + dst_shape[0], 360)
-        self.assertEqual(dst_shape[1] + 90 - dst_transform[5], 180)
+            u_coord.subraster_from_bounds(meta_list[i]['transform'],
+                                          (meta_list[i]['height'], meta_list[i]['width']),
+                                          dst_resolution, meta_list[i]['crs'],
+                                          meta_list[0]['crs'])
+        self.assertEqual(dst_shape, (meta_list[0]['height'],meta_list[0]['width']))
         self.assertEqual(dst_resolution, dst_transform[0])
         self.assertEqual(meta_list[i]['transform'][1], dst_transform[1])
         self.assertEqual(meta_list[i]['transform'][2], dst_transform[2])
@@ -942,13 +923,15 @@ class TestRasterIO(unittest.TestCase):
         _, meta_list = data_arrays_resampling_demo()
         i = 1
         dst_resolution = .15
+        dst_bounds = array_bounds(meta_list[0]['height'], meta_list[0]['width'],
+                                  meta_list[0]['transform'])
         dst_transform, dst_shape = \
-            u_coord.set_global_consistent_grid(meta_list[i]['transform'],
-                                               dst_resolution,
-                                               src_shape = (meta_list[i]['width'],
-                                                            meta_list[i]['height']),
-                                               )
-        self.assertEqual(dst_shape, (21,14))
+            u_coord.subraster_from_bounds(meta_list[i]['transform'],
+                                          (meta_list[i]['height'], meta_list[i]['width']),
+                                          dst_resolution, meta_list[i]['crs'],
+                                          meta_list[0]['crs'],
+                                          dst_bounds=dst_bounds)
+        self.assertEqual(dst_shape, (14,20))
         self.assertEqual(dst_resolution, dst_transform[0])
         self.assertEqual(meta_list[i]['transform'][1], dst_transform[1])
         self.assertAlmostEqual(-10.05, dst_transform[2])
