@@ -52,6 +52,7 @@ from climada import CONFIG
 from climada.hazard import Hazard, Tag as TagHazard, TropCyclone
 from climada.hazard.tc_tracks import estimate_rmw, estimate_roci
 from climada.util import ureg
+from climada.util.constants import ONE_LAT_KM
 import climada.util.coordinates as u_coord
 
 LOGGER = logging.getLogger(__name__)
@@ -74,7 +75,6 @@ GEOCLAW_WORK_DIR = CONFIG.hazard.tc_surge_geoclaw.geoclaw_work_dir.dir()
 KN_TO_MS = (1.0 * ureg.knot).to(ureg.meter / ureg.second).magnitude
 NM_TO_KM = (1.0 * ureg.nautical_mile).to(ureg.kilometer).magnitude
 MBAR_TO_PA = (1.0 * ureg.mbar).to(ureg.pascal).magnitude
-KM_TO_DEG_EQUATOR = 1.0 / (60 * NM_TO_KM)
 """Unit conversion factors."""
 
 
@@ -1184,7 +1184,7 @@ class TCSurgeEvents():
             if points.shape[0] > 0:
                 pt_bounds = list(points.min(axis=0)) + list(points.max(axis=0))
                 pt_size = (pt_bounds[2] - pt_bounds[0]) * (pt_bounds[3] - pt_bounds[1])
-                if pt_size < (2 * lf_radii.max() * KM_TO_DEG_EQUATOR)**2:
+                if pt_size < (2 * lf_radii.max() / ONE_LAT_KM)**2:
                     small_bounds = [pt_bounds]
                 else:
                     small_bounds, pt_size = boxcover_points_along_axis(points, 3)
