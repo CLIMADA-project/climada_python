@@ -141,10 +141,10 @@ class LitPop(Exposures): # TODO tests nighlight (integ), gpw_population (integ) 
                         # This requires GRP (Gross Regional Product) data in the
                         # GSDP data folder.
             litpop_list = [_calc_admin1(country, res_arcsec, exponents, fin_mode,
-                                        total_values[idc], reference_year, gpw_version,
+                                        tot_value, reference_year, gpw_version,
                                         data_dir, resample_first
                                         )
-                           for idc, country in enumerate(countries)]
+                           for tot_value, country in zip(total_values, countries)]
 
         else: # else, as default, country is initiated as a whole:
             # loop over countries: litpop is initiated for each individual polygon
