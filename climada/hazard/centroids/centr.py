@@ -546,7 +546,9 @@ class Centroids():
 
         """
         centroids = copy.deepcopy(centroids_list[0])
+        centroids.set_geometry_points()
         for cent in centroids_list[1:]:
+            cent.set_geometry_points()
             if not centroids.equal(cent):
                 centroids.append(cent)
         return centroids.remove_duplicate_points()
