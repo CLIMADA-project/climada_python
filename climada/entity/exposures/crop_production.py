@@ -394,11 +394,8 @@ class CropProduction(Exposures):
             Crop type, e.g. 'mai' for maize, or 'ric', 'whe', 'soy', etc.
         i_crop_yield : int
             crop layer in yield input data set. Index typically starts with 1.
-
         i_crop_area : int
             crop layer in area input data set. Index typically starts with 1.
-            In the default area input file, the crop indices are as follows:
-            1: maize, 2: wheat, 3: soybean(!), 4: rice(!).
         filename_yield : str
             Name of netcdf-file containing gridded yield data.
             Requires coordinates 'lon', 'lat', and 'crop'.
@@ -509,6 +506,7 @@ class CropProduction(Exposures):
         # crop layers and variable names in default input files:
         crop_idx_yield = {'mai': 1, 'whe': 2, 'soy': 4, 'ric': 3}
         crop_idx_area = {'mai': 1, 'whe': 2, 'soy': 3, 'ric': 4}
+        # Note: layer numbers fo rice and soybean differ between input files.
         varnames_yield = {'noirr': 'yield.rf',
                          'firr': 'yield.ir',
                          'all': 'yield.tot'}
