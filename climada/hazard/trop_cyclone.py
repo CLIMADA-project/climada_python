@@ -209,7 +209,7 @@ class TropCyclone(Hazard):
             if last_perc < 100:
                 LOGGER.info("Progress: 100%")
         LOGGER.debug('Append events.')
-        self.concatenate(tc_haz)
+        self.extend(tc_haz)
         LOGGER.debug('Compute frequency.')
         self.frequency_from_tracks(tracks.data)
         self.tag.description = description
