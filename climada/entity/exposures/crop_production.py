@@ -373,9 +373,10 @@ class CropProduction(Exposures):
         self.check()
         return self
 
-    def set_from_area_and_yield_nc4(self, crop_type, i_crop_yield, i_crop_area,
-                                    filename_yield, filename_area, yield_var,
-                                    area_var, bbox=BBOX, input_dir=INPUT_DIR):
+    def set_from_area_and_yield_nc4(self, crop_type, layer_yield, layer_area,
+                                    filename_yield, filename_area, var_yield,
+                                    var_area, bbox=BBOX, input_dir=INPUT_DIR):
+        
         """
         Set crop_production exposure from cultivated area [ha] and
         yield [t/ha/year] provided in two netcdf files with the same grid.
@@ -392,9 +393,9 @@ class CropProduction(Exposures):
         ----------
         crop_type : str
             Crop type, e.g. 'mai' for maize, or 'ric', 'whe', 'soy', etc.
-        i_crop_yield : int
+        layer_yield : int
             crop layer in yield input data set. Index typically starts with 1.
-        i_crop_area : int
+        layer_area : int
             crop layer in area input data set. Index typically starts with 1.
         filename_yield : str
             Name of netcdf-file containing gridded yield data.
@@ -402,10 +403,10 @@ class CropProduction(Exposures):
         filename_area : str
             Name of netcdf-file containing gridded cultivated area.
             Requires coordinates 'lon', 'lat', and 'crop'.
-        yield_var : str
+        var_yield : str
              variable name to be extracted from yield file, e.g. 'yield.rf',
              'yield.ir', 'yield.tot', or depending on netcdf structure.
-        area_var : str
+        var_area : str
              variable name to be extracted from area file,
              e.g. 'cultivated area rainfed', 'cultivated area irrigated',
              'cultivated area all', or depending on netcdf structure.
@@ -422,20 +423,20 @@ class CropProduction(Exposures):
 
         # extract yield data to xarray.DataArray:
         data_set_tmp = xr.open_dataset(input_dir / filename_yield, decode_times=False)
-        yield_data = data_set_tmp.sel(lon=slice(lonmin, lonmax),
+        data_yield = data_set_tmp.sel(lon=slice(lonmin, lonmax),
                                       lat=slice(latmax, latmin),
-                                      crop=i_crop_yield
-                                      )[yield_var]
+                                      crop=layer_yield
+                                      )[var_yield]
         # extract cultivated area data to xarray.DataArray:
         data_set_tmp = xr.open_dataset(input_dir / filename_area, decode_times=False)
-        area_data = data_set_tmp.sel(lon=slice(lonmin, lonmax),
+        data_area = data_set_tmp.sel(lon=slice(lonmin, lonmax),
                                      lat=slice(latmax, latmin),
-                                     crop=i_crop_area
-                                     )[area_var]
+                                     crop=layer_area
+                                     )[var_area]
         del data_set_tmp
 
         # The latitude and longitude are set; region_id is determined
-        lon, lat = np.meshgrid(area_data.lon.values, area_data.lat.values)
+        lon, lat = np.meshgrid(data_area.lon.values, data_area.lat.values)
 
         # initiate coordinates and values in GeoDatFrame:
         self.gdf['latitude'] = lat.flatten()
@@ -445,12 +446,12 @@ class CropProduction(Exposures):
         self.gdf[INDICATOR_IMPF + DEF_HAZ_TYPE] = 1
         self.gdf[INDICATOR_IMPF] = 1
         # calc annual crop production, [t/y] = [ha] * [t/ha/y]:
-        self.gdf['value'] = np.multiply(area_data.values, yield_data.values).flatten()
+        self.gdf['value'] = np.multiply(data_area.values, data_yield.values).flatten()
 
         self.crop = crop_type
         self.tag = Tag()
-        self.tag.description = ("Annual crop production from " + area_var +
-                                " and " + yield_var + " for " + self.crop +
+        self.tag.description = ("Annual crop production from " + var_area +
+                                " and " + var_yield + " for " + self.crop +
                                 " from files " + filename_area + " and " +
                                 filename_yield)
         self.value_unit = 't/y'
@@ -504,8 +505,8 @@ class CropProduction(Exposures):
         filename_area = 'cultivated_area_MIRCA_GGCMI.nc4'
 
         # crop layers and variable names in default input files:
-        crop_idx_yield = {'mai': 1, 'whe': 2, 'soy': 4, 'ric': 3}
-        crop_idx_area = {'mai': 1, 'whe': 2, 'soy': 3, 'ric': 4}
+        layers_yield = {'mai': 1, 'whe': 2, 'soy': 4, 'ric': 3}
+        layers_area = {'mai': 1, 'whe': 2, 'soy': 3, 'ric': 4}
         # Note: layer numbers fo rice and soybean differ between input files.
         varnames_yield = {'noirr': 'yield.rf',
                          'firr': 'yield.ir',
@@ -515,8 +516,8 @@ class CropProduction(Exposures):
                          'all': 'cultivated area all'}
 
         # set exposure from netcdf files:
-        self.set_from_area_and_yield_nc4(crop_type, crop_idx_yield[crop_type],
-                                         crop_idx_area[crop_type],
+        self.set_from_area_and_yield_nc4(crop_type, layers_yield[crop_type],
+                                         layers_area[crop_type],
                                          filename_yield, filename_area,
                                          varnames_yield[irrigation_type],
                                          varnames_area[irrigation_type],
