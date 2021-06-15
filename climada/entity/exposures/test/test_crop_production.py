@@ -36,9 +36,10 @@ class TestCropProduction(unittest.TestCase):
         data extracted from netcdf test data for Switzerland"""
         exp = CropProduction()
         exp.set_from_area_and_yield_nc4('whe', 2, 2,
-                                    input_dir=INPUT_DIR,
-                                    filename_yield=FILENAME_YIELD,
-                                    filename_area=FILENAME_AREA)
+                                        FILENAME_YIELD, FILENAME_AREA,
+                                        'yield.tot', 'cultivated area all',
+                                        input_dir=INPUT_DIR)
+
         self.assertEqual(exp.crop, 'whe')
         self.assertEqual(exp.gdf.shape[0], 55)
         self.assertEqual(exp.meta['width'] * exp.meta['height'], 55)

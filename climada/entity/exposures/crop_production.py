@@ -374,11 +374,9 @@ class CropProduction(Exposures):
         self.check()
         return self
 
-    def set_from_area_and_yield_nc4(self, crop_type, i_crop_yield,
-                                    i_crop_area, bbox=BBOX,
-                                    input_dir=INPUT_DIR,
-                                    filename_yield=None, filename_area=None,
-                                    yield_var=None, area_var=None):
+    def set_from_area_and_yield_nc4(self, crop_type, i_crop_yield, i_crop_area,
+                                    filename_yield, filename_area, yield_var,
+                                    area_var, bbox=BBOX, input_dir=INPUT_DIR):
         """
         Set crop_production exposure from cultivated area [ha] and 
         yield [t/ha/year] provided in two netcdf files with the same grid.
@@ -388,11 +386,8 @@ class CropProduction(Exposures):
         crop layer in each input files needs to be provided manually via
         the parameters 'i_crop_*'.
         
-        The default input files are based on the public yield data from
-        SPAM2005 with gaps filled based on Ray et.al (2012); and cultivated area
-        from MIRCA2000, both as post-processed by Jägermeyr et al. 2020; See 
-        https://doi.org/10.1073/pnas.1919049117 for more information and cite
-        when using this data for publication.
+        A convenience wrapper around this expert method is provided with
+        set_from_spam_ray_mirca().
 
         Parameters
         ----------
@@ -400,34 +395,30 @@ class CropProduction(Exposures):
             Crop type, e.g. 'mai' for maize, or 'ric', 'whe', 'soy', etc.
         i_crop_yield : int
             crop layer in yield input data set. Index typically starts with 1.
-            In the default yield input file, the crop indices are as follows:
-            1: maize, 2: wheat, 3: rice(!), 4: soybean(!).
+
         i_crop_area : int
             crop layer in area input data set. Index typically starts with 1.
             In the default area input file, the crop indices are as follows:
             1: maize, 2: wheat, 3: soybean(!), 4: rice(!).
-        bbox (list of four floats): bounding box:
-                [lon min, lat min, lon max, lat max]
-        input_dir : Path, optional
-            directory where input data is found. The default is
-            {CONFIG.exposures.crop_production.local_data}/Input/Exposure.
-        filename_yield : str, optional
+        filename_yield : str
             Name of netcdf-file containing gridded yield data.
             Requires coordinates 'lon', 'lat', and 'crop'.
-            The default is 'spam_ray_yields.nc4'.
-        filename_area : TYPE, optional
+        filename_area : str
             Name of netcdf-file containing gridded cultivated area.
             Requires coordinates 'lon', 'lat', and 'crop'.
-            The default is 'cultivated_area_MIRCA_GGCMI.nc4'.
-        yield_var : str, optional
+        yield_var : str
              variable name to be extracted from yield file, e.g. 'yield.rf',
-             'yield.ir', 'yield.tot'. The default is 'yield.tot', corresponding
-             to total yield in the default yield file.
-        area_var : str, optional
+             'yield.ir', 'yield.tot', or depending on netcdf structure.
+        area_var : str
              variable name to be extracted from area file,
              e.g. 'cultivated area rainfed', 'cultivated area irrigated',
-             'cultivated area all'. The default is 'cultivated area all', corresponding
-             to total cultivated area in the default area file.
+             'cultivated area all', or depending on netcdf structure.
+        bbox (tuple of four floats): bounding box:
+             bounding box to be extracted: (lon min, lat min, lon max, lat max).
+             The default is (-180, -85, 180, 85).
+        input_dir : Path, optional
+             directory where input data is found. The default is
+             {CONFIG.exposures.crop_production.local_data}/Input/Exposure.
         """
         if isinstance(input_dir, str):
             input_dir = Path(input_dir)
@@ -491,6 +482,57 @@ class CropProduction(Exposures):
             LOGGER.warning('Could not write attribute meta, because exposure'
                            ' has only 1 data point')
             self.meta = {}
+
+
+    def set_from_spam_ray_mirca(self, crop_type, irrigation_type='all',
+                                bbox=BBOX, input_dir=INPUT_DIR):
+        """
+        Wrapper method around set_from_area_and_yield_nc4().
+        
+        Set crop_production exposure from cultivated area [ha] and 
+        yield [t/ha/year] provided in default input files.
+        The default input files are based on the public yield data from
+        SPAM2005 with gaps filled based on Ray et.al (2012); and cultivated area
+        from MIRCA2000, both as post-processed by Jägermeyr et al. 2020; See 
+        https://doi.org/10.1073/pnas.1919049117 for more information and cite
+        when using this data for publication.
+
+        Parameters
+        ----------
+        crop_type : str
+            Crop type, e.g. 'mai' for maize, or 'ric', 'whe', 'soy', etc.
+        irrigation_type : str, optional
+            irrigation type to be extracted, the options are:
+            'all' : total crop production, i.e. irrigated + rainfed
+            'firr' : fully irrigated
+            'noirr' : not irrigated, i.e., rainfed
+            The default is 'all'
+        bbox (list of four floats): bounding box:
+                [lon min, lat min, lon max, lat max]
+        input_dir : Path, optional
+            directory where input data is found. The default is
+            {CONFIG.exposures.crop_production.local_data}/Input/Exposure.
+        """
+        filename_yield = 'spam_ray_yields.nc4'
+        filename_area = 'cultivated_area_MIRCA_GGCMI.nc4'
+
+        # crop layers and variable names in default input files:
+        crop_idx_yield = {'mai': 1, 'whe': 2, 'soy': 4, 'ric': 3}
+        crop_idx_area = {'mai': 1, 'whe': 2, 'soy': 3, 'ric': 4}
+        varnames_yield = {'noirr': 'yield.rf',
+                         'firr': 'yield.ir',
+                         'all': 'yield.tot'}
+        varnames_area = {'noirr': 'cultivated area rainfed',
+                         'firr': 'cultivated area irrigated',
+                         'all': 'cultivated area all'}
+
+        # set exposure from netcdf files:
+        self.set_from_area_and_yield_nc4(crop_type, crop_idx_yield[crop_type],
+                                         crop_idx_area[crop_type],
+                                         filename_yield, filename_area,
+                                         varnames_yield[irrigation_type],
+                                         varnames_area[irrigation_type],
+                                         bbox=bbox, input_dir=input_dir)
 
     def set_mean_of_several_isimip_models(self, input_dir=None, hist_mean=None, bbox=None,
                                           yearrange=None, cl_model=None, scenario=None,
