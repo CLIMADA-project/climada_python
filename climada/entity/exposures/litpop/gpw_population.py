@@ -25,24 +25,20 @@ import rasterio
 import numpy as np
 
 from climada.util.constants import SYSTEM_DIR
+from climada import CONFIG
 
 LOGGER = logging.getLogger(__name__)
 
-FILENAME_GPW = 'gpw_v4_population_count_rev%02i_%04i_30_sec.tif'
-DIRNAME_GPW = 'gpw-v4-population-count-rev%02i_%04i_30_sec_tif'
-GPW_VERSIONS = [11, 10, 12, 13]
 
-YEARS_AVAILABLE = np.array([2000, 2005, 2010, 2015, 2020])
+def load_gpw_pop_shape(geometry, reference_year, gpw_version,
+                       data_dir=SYSTEM_DIR, layer=0, verbatim=True):
+    """Read gridded population data from TIFF and crop to given shape(s).
 
-def load_gpw_pop_shape(geometry, reference_year, gpw_version=11, data_dir=None,
-                       layer=0, verbatim=True): # TODO: manually tested but no tests exist yet
-    """Read gridded population data from GPW TIFF
-    and crop to given shape(s).
     Note: A (free) NASA Earthdata login is necessary to download the data.
     Data can be downloaded e.g. for gpw_version=11 from
     https://sedac.ciesin.columbia.edu/downloads/data/gpw-v4/
     gpw-v4-population-count-rev11/gpw-v4-population-count-rev11_2015_30_sec_tif.zip
-    
+
     Parameters
     ----------
     geometry : shape(s) to crop data to in degree lon/lat.
@@ -50,13 +46,13 @@ def load_gpw_pop_shape(geometry, reference_year, gpw_version=11, data_dir=None,
         from polygon(s) defined in a (country) shapefile.
     reference_year : int
         target year for data extraction
-    gpw_version : int (optional)
-        Version number of GPW population data.
-        The default is 11
-    data_dir : Path (optional)
-        Path to directory with GPW data.
+    gpw_version : int
+        Version number of GPW population data, i.e. 11 for v4.11.
+        The default is CONFIG.exposures.litpop.gpw_population.gpw_version.int()
+    data_dir : Path, optional
+        Path to data directory holding GPW data folders.
         The default is SYSTEM_DIR.
-    layer : int (optional)
+    layer : int, optional
         relevant data layer in input TIFF file to return.
         The default is 0 and should not be changed without understanding the
         different data layers in the given TIFF file.
@@ -75,6 +71,7 @@ def load_gpw_pop_shape(geometry, reference_year, gpw_version=11, data_dir=None,
         contains six numbers, providing transform info for global GWP grid.
         global_transform is required for resampling on a globally consistent grid
     """
+
     # check whether GPW input file exists and get file path
     file_path = get_gpw_file_path(gpw_version, reference_year, data_dir=data_dir,
                                   verbatim=verbatim)
@@ -96,13 +93,12 @@ def load_gpw_pop_shape(geometry, reference_year, gpw_version=11, data_dir=None,
 
 def get_gpw_file_path(gpw_version, reference_year, data_dir=SYSTEM_DIR, verbatim=True):
     """Check available GPW population data versions and year closest to
-    reference_year and return full path to TIFF file.
+    `reference_year` and return full path to TIFF file.
 
     Parameters
     ----------
     gpw_version : int (optional)
-        Version number of population data.
-        The default is 11
+        Version number of GPW population data, i.e. 11 for v4.11.
     reference_year : int (optional)
         Data year is selected as close to reference_year as possible.
         The default is 2020.
@@ -117,33 +113,33 @@ def get_gpw_file_path(gpw_version, reference_year, data_dir=SYSTEM_DIR, verbatim
     -------
     pathlib.Path : path to input file with population data
     """
-    if gpw_version is None:
-        gpw_version = []
-    elif isinstance(gpw_version, int):
-        gpw_version = [gpw_version]
-
+    # get years available un GPW data from CONFIG and convert to array:
+    years_available = np.array([year.int() for year in \
+                                CONFIG.exposures.litpop.gpw_population.years_available.list()
+                               ])
     # find closest year to reference_year with data available:
-    year = YEARS_AVAILABLE[np.abs(YEARS_AVAILABLE - reference_year).argmin()]
+    year = years_available[np.abs(years_available - reference_year).argmin()]
     if verbatim and (year != reference_year):
         LOGGER.warning('Reference year: %i. Using nearest available year for GPW population data: %i',
                     reference_year, year)
 
-    # check if file is available for given or alternative other GPW version,
+    # check if file is available for given GPW version,
     # if available, return full path to file:
-    for ver in gpw_version + GPW_VERSIONS:
-        file_path = data_dir / (FILENAME_GPW % (ver, year))
+    file_path = data_dir / \
+        (CONFIG.exposures.litpop.gpw_population.filename_gpw.str() % (gpw_version, year))
+    if file_path.is_file():
+        if verbatim: 
+            LOGGER.info('GPW Version v4.%2i', gpw_version)
+        return file_path
+    else:
+        file_path = data_dir / \
+            (CONFIG.exposures.litpop.gpw_population.dirname_gpw.str() % (gpw_version, year)) / \
+            (CONFIG.exposures.litpop.gpw_population.filename_gpw.str() % (gpw_version, year))
         if file_path.is_file():
             if verbatim: 
-                LOGGER.info('GPW Version v4.%2i', ver)
+                LOGGER.info('GPW Version v4.%2i', gpw_version)
             return file_path
-        else:
-            file_path = data_dir / (DIRNAME_GPW % (ver, year)) / (FILENAME_GPW % (ver, year))
-            if file_path.is_file():
-                if verbatim: 
-                    LOGGER.info('GPW Version v4.%2i', ver)
-                return file_path
-
-    # if no inoput file was found, FileExistsError is raised
+    # if no input file was found, FileExistsError is raised
     if SYSTEM_DIR.joinpath('GPW_help.pdf').is_file():
         subprocess.Popen([str(SYSTEM_DIR.joinpath('GPW_help.pdf'))], shell=True)
         raise FileExistsError(f'The file {file_path} could not '
@@ -159,8 +155,8 @@ def get_gpw_file_path(gpw_version, reference_year, data_dir=SYSTEM_DIR, verbatim
                               + 'The data can be downloaded from '
                               + 'http://sedac.ciesin.columbia.edu/'
                               + 'data/collection/gpw-v4/sets/browse, '
-                              + 'e.g., https://sedac.ciesin.columbia.edu/'
-                              + 'data/set/gpw-v4-population-count-rev11/'
+                              + 'e.g., https://sedac.ciesin.columbia.edu/data/'
+                              + f'set/gpw-v4-population-count-rev{gpw_version}/'
                               + 'data-download'
                               + '(Free NASA Earthdata login required). '
                               )

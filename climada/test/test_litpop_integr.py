@@ -25,7 +25,6 @@ import pandas as pd
 from shapely.geometry import Polygon
 
 from climada.entity.exposures.litpop import litpop as lp
-from climada.entity.exposures import gpw_import
 from climada.util.finance import world_bank_wealth_account, gdp
 import climada.util.coordinates as u_coord
 from climada.util.constants import SYSTEM_DIR

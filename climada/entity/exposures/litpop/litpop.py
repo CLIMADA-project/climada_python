@@ -34,7 +34,10 @@ from climada.entity.exposures.litpop import nightlight as nl_util
 from climada.entity.exposures.litpop import gpw_population as pop_util
 from climada.entity.exposures.base import Exposures, INDICATOR_IMPF
 from climada.util.constants import SYSTEM_DIR
+from climada import CONFIG
 LOGGER = logging.getLogger(__name__)
+
+GPW_VERSION = CONFIG.exposures.litpop.gpw_population.gpw_version.int()
 
 class LitPop(Exposures): # TODO tests nighlight (integ), gpw_population (integ) and litpop (integ)
     """Defines exposure values from nightlight intensity (NASA), Gridded Population
@@ -52,7 +55,7 @@ class LitPop(Exposures): # TODO tests nighlight (integ), gpw_population (integ) 
     def set_countries(self, countries, res_km=1, res_arcsec=None,
                     exponents=(1,1), fin_mode='pc', total_values=None,
                     admin1_calc=False,
-                    reference_year=2020, gpw_version=None, data_dir=None,
+                    reference_year=2020, gpw_version=GPW_VERSION, data_dir=SYSTEM_DIR,
                     resample_first=True):
         """init LitPop exposure object for a list of countries (admin 0).
         Alias: set_country()
@@ -206,7 +209,7 @@ class LitPop(Exposures): # TODO tests nighlight (integ), gpw_population (integ) 
     def set_custom_shape(self, shape, res_arcsec=30, exponents=(1,1), fin_mode=None,
                          total_value_abs=None, rel_value_share=1., in_countries=None,
                          region_id = None,
-                         reference_year=2020, gpw_version=None, data_dir=None,
+                         reference_year=2020, gpw_version=GPW_VERSION, data_dir=SYSTEM_DIR,
                          resample_first=True):
         """init LitPop exposure object for a custom shape.
         Requires user input regarding total value, either absolute ore relative
@@ -412,7 +415,7 @@ class LitPop(Exposures): # TODO tests nighlight (integ), gpw_population (integ) 
             self.meta = {}
 
     def set_lit(self, countries=None, shape=None, res_arcsec=15, exponent=1,
-                reference_year=2016, data_dir=None):
+                reference_year=2016, data_dir=SYSTEM_DIR):
         """
         initiate Exposure with pure nightlight data
 
@@ -443,7 +446,7 @@ class LitPop(Exposures): # TODO tests nighlight (integ), gpw_population (integ) 
         if shape is None:
             self.set_countries(countries, res_km=None, res_arcsec=res_arcsec,
                                exponents=(exponent, 0), fin_mode='none', 
-                               reference_year=reference_year, gpw_version=None,
+                               reference_year=reference_year, gpw_version=GPW_VERSION,
                                data_dir=data_dir, resample_first=True)
         elif countries is not None:
             LOGGER.info("Using shape provided instead of countries' shapes. "
@@ -452,11 +455,11 @@ class LitPop(Exposures): # TODO tests nighlight (integ), gpw_population (integ) 
             self.set_custom_shape(shape, res_arcsec=res_arcsec, exponents=(exponent,0),
                                   fin_mode='none', in_countries=countries,
                                   reference_year=reference_year,
-                                  gpw_version=None, data_dir=data_dir,
+                                  gpw_version=GPW_VERSION, data_dir=data_dir,
                                   resample_first=True)
 
     def set_pop(self, countries=None, shape=None, res_arcsec=30, exponent=1,
-                reference_year=2020, gpw_version=None, data_dir=None):
+                reference_year=2020, gpw_version=GPW_VERSION, data_dir=SYSTEM_DIR):
         """
         initiate Exposure with pure population data
 
@@ -503,7 +506,7 @@ class LitPop(Exposures): # TODO tests nighlight (integ), gpw_population (integ) 
     @staticmethod
     def _set_one_country(country, res_arcsec=30, exponents=(1,1), fin_mode=None,
                          total_value=None,
-                         reference_year=2020, gpw_version=None, data_dir=None,
+                         reference_year=2020, gpw_version=GPW_VERSION, data_dir=SYSTEM_DIR,
                          resample_first=True):
         """init LitPop exposure object for one single country
         See docstring of set_countries() for detailled description of parameters.
@@ -979,7 +982,7 @@ def _check_excel_exists(file_path, file_name, xlsx_before_xls=True):
             return str(Path(file_path, path_name + i))
     return None
 
-def _grp_read(country_iso3, admin1_info=None, data_dir=None):
+def _grp_read(country_iso3, admin1_info=None, data_dir=SYSTEM_DIR):
     """Retrieves the Gross Regional Product (GRP) aka Gross State Domestic Product (GSDP)
     data for a certain country. It requires an excel file in a subfolder
     "GSDP" in climadas data folder (or in the specified folder). The excel file should bear the
@@ -1006,8 +1009,6 @@ def _grp_read(country_iso3, admin1_info=None, data_dir=None):
     if admin1_info is None:
         admin1_info, admin1_shapes = u_coord.get_admin1_info(country_iso3)
         admin1_info = admin1_info[country_iso3]
-    if data_dir is None:
-        data_dir = SYSTEM_DIR
     file_name = _check_excel_exists(data_dir.joinpath('GSDP'), str(country_iso3 + '_GSDP'))
     if file_name is not None:
         # open spreadsheet and identify relevant columns:
