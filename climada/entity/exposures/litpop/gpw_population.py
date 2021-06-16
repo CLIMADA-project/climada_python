@@ -26,17 +26,13 @@ import numpy as np
 
 from climada.util.constants import SYSTEM_DIR
 
-logging.root.setLevel(logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
 
 FILENAME_GPW = 'gpw_v4_population_count_rev%02i_%04i_30_sec.tif'
 DIRNAME_GPW = 'gpw-v4-population-count-rev%02i_%04i_30_sec_tif'
 GPW_VERSIONS = [11, 10, 12, 13]
-# FILENAME_GPW1 = '_30_sec.tif'
-YEARS_AVAILABLE = np.array([2000, 2005, 2010, 2015, 2020])
-# BUFFER_VAL = -340282306073709652508363335590014353408
-# Hard coded value which is used for NANs in original GPW data
 
+YEARS_AVAILABLE = np.array([2000, 2005, 2010, 2015, 2020])
 
 def load_gpw_pop_shape(geometry, reference_year, gpw_version=11, data_dir=None,
                        layer=0, verbatim=True): # TODO: manually tested but no tests exist yet
