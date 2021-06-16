@@ -788,8 +788,9 @@ class WildFire(Hazard):
                 df_firms.iter_ev.values[df_firms.event_id.values == ev_id] = True
 
     def _firms_remove_minor_fires(self, df_firms, minor_fires_thres):
-        """Remove fires containg fewer FIRMS entries than threshold.
-        A fire is characterized by a unique combination of 'cons_id' and 'clus_id'.
+        """ Remove fires containg fewer FIRMS entries than threshold.
+        A fire is characterized by a unique combination of 'cons_id' and
+        'clus_id'. This function modifies the df_firms in place.
 
         Parameters
         ----------
