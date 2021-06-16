@@ -22,20 +22,22 @@ Define Hazard.
 __all__ = ['Hazard']
 
 import copy
+import datetime as dt
 import itertools
 import logging
-import datetime as dt
+import pathlib
 import warnings
+
+import geopandas as gpd
+import h5py
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import geopandas as gpd
-from scipy import sparse
-import matplotlib.pyplot as plt
-import h5py
+from pathos.pools import ProcessPool as Pool
 import rasterio
 from rasterio.features import rasterize
 from rasterio.warp import reproject, Resampling, calculate_default_transform
-from pathos.pools import ProcessPool as Pool
+from scipy import sparse
 
 from climada.hazard.tag import Tag as TagHazard
 from climada.hazard.centroids.centr import Centroids
@@ -213,10 +215,12 @@ class Hazard():
                    band=None, src_crs=None, window=False, geometry=False,
                    dst_crs=False, transform=None, width=None, height=None,
                    resampling=Resampling.nearest):
-        """Append intensity and fraction from raster file. 0s put to the masked
-        values. File can be partially read using window OR geometry.
-        Alternatively, CRS and/or transformation can be set using dst_crs and/or
-        (transform, width and height).
+        """Set intensity and fraction to values from raster files
+
+        If raster files are masked, the masked values are set to 0.
+
+        Files can be partially read using either window or geometry. Additionally, the data is
+        reprojected when custom dst_crs and/or transform, width and height are specified.
 
         Parameters
         ----------
@@ -243,9 +247,13 @@ class Hazard():
             number of lons for transform
         height : float, optional
             number of lats for transform
-        resampling : rasterio.warp,.Resampling, optional
+        resampling : rasterio.warp.Resampling, optional
             resampling function used for reprojection to dst_crs
         """
+        if isinstance(files_intensity, (str, pathlib.Path)):
+            files_intensity = [files_intensity]
+        if isinstance(files_fraction, (str, pathlib.Path)):
+            files_fraction = [files_fraction]
         if not attrs:
             attrs = {}
         if not band:
