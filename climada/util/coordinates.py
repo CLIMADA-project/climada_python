@@ -1821,97 +1821,74 @@ def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, schedul
     }
     return raster_out, meta
 
-def subraster_from_bounds(src_transform, src_shape, dst_resolution, src_crs,
-                          dst_crs, global_origin=(-180.0, 90), dst_bounds=None):
-    """
-    Transform subraster to new resolution and CRS, on consistent global grid
-    defined by dst_resolution global_origin, dst_crs and global_transform
+def subraster_from_bounds(transform, bounds):
+    """Compute a subraster definition from a given reference transform and bounds.
 
     Parameters
     ----------
-    src_transform : rasterio.Affine instance
-        Source transform.
-    src_shape : tuple
-        Source shape (height, width), i.e. np.ndarray.shape
-    dst_resolution : tuple or number
-        Destination resolution, either (x, y) or delta.
-    src_crs : CRS
-        Source coordinate reference system
-    dst_crs : CRS
-        Destination coordinate reference system
-    global_origin : tuple, optional
-        Global origin of destination grid. The default is (-180.0, 90).
-    dst_bounds : tuple of numbers, optional
-        Destination bounds in format (x_min, y_min, x_max, y_max).
-        Provide dst_bounds for full consistency between
-        subrasters projected to same destination grid!
-        As a default, dst_bounds is derived from src_shape and src_transform.
+    transform : rasterio.Affine
+        Affine transformation defining the reference grid.
+    bounds : tuple of floats (xmin, ymin, xmax, ymax)
+        Bounds of the subraster in units and CRS of the reference grid.
 
     Returns
     -------
-    dst_transform : rasterio.Affine instance
-        Destination transform.
-    dst_shape : tuple
-        Destination shape (height, width)
+    dst_transform : rasterio.Affine
+        Subraster affine transformation.
+    dst_shape : tuple of ints (height, width)
+        Number of pixels of subraster in vertical and horizontal direction.
     """
-    if isinstance(dst_resolution, (float, int)):
-        dst_resolution = (dst_resolution, dst_resolution)
-    # 1. Set global_transform from origin and resolution:
-    global_transform = rasterio.transform.from_origin(*global_origin, *dst_resolution)
-    if dst_bounds is None:
-        # 3. Get the bounds of the source raster in the source CRS:
-        src_bounds = rasterio.transform.array_bounds(*src_shape, src_transform)
-        # 4. Translate the bounds of the source raster to the target CRS:
-        dst_bounds = rasterio.warp.transform_bounds(src_crs, dst_crs, *src_bounds)
-    # 5.set dst_window and to align the window to the global raster:
-    dst_window = rasterio.windows.from_bounds(*dst_bounds, global_transform)
-    dst_window = rasterio.windows.Window(np.round(dst_window.col_off),
-                                         np.round(dst_window.row_off),
-                                         np.ceil(dst_window.width),
-                                         np.ceil(dst_window.height))
-    dst_transform = rasterio.windows.transform(dst_window, global_transform)
-    dst_shape = (int(dst_window.height), int(dst_window.width))
+    window = rasterio.windows.from_bounds(*bounds, transform)
+
+    # align the window bounds to the raster by rounding
+    col_min, col_max = np.round(window.col_off), np.round(window.col_off + window.width)
+    row_min, row_max = np.round(window.row_off), np.round(window.row_off + window.height)
+    window = rasterio.windows.Window(col_min, row_min, col_max - col_min, row_max - row_min)
+
+    dst_transform = rasterio.windows.transform(window, transform)
+    dst_shape = (int(window.height), int(window.width))
     return dst_transform, dst_shape
 
-def reproject_raster_data(source, src_crs, src_transform, dst_resolution=None,
-                          dst_bounds=None, dst_crs=None, global_origin=(-180, 90),
-                          resampling=None, conserve=None, **kwargs):
-    """
-    Convenience wrapper function around rasterio.warp.reproject:
-    Reproject (up- or downsample) equidistant 2D np.ndarray using rasterio.
-    The destination subraster is defined from dst_crs, dst_bounds,
-    dst_resolution, global_origin, and dst_crs.
-    This ensures that reprojected data with the same dst_resolution and
-    dst_global_origins are on the same global grid, i.e., no offset between
-    destination grid points for different source grids that are projected to
-    the same target resolution.
+def align_raster_data(source, src_crs, src_transform, dst_crs=None, dst_resolution=None,
+                      dst_bounds=None, global_origin=(-180, 90), resampling=None, conserve=None,
+                      **kwargs):
+    """Reproject 2D np.ndarray to be aligned to a reference grid.
+
+    This function ensures that reprojected data with the same dst_resolution and global_origins are
+    aligned to the same global grid, i.e., no offset between destination grid points for different
+    source grids that are projected to the same target resolution.
+
+    Note that the origin is required to be in the upper left corner. The result is always oriented
+    left to right (west to east) and top to bottom (north to south).
 
     Parameters
     ----------
     source : np.ndarray
-        2D-array containing the values to be reprojected
-    src_crs : CRS
-        Source CRS
-    src_transform : rasterio.Affine instance
-        Source transform, contains info on grid, e.g.:
-            Affine(0.0083333, 0.0, -18.175, 0.0, -0.00833333, 43.79999)
-    dst_resolution : float or tuple, optional
-        Destination resolution, either (x, y) or delta.
-        The default is src_transform[0].
+        The source is a 2D ndarray containing the values to be reprojected.
+    src_crs : CRS or dict
+        Source coordinate reference system, in rasterio dict format.
+    src_transform : rasterio.Affine
+        Source affine transformation.
     dst_crs : CRS, optional
-        Destination CRS. The default is src_crs.
-    global_origin : tuple of numbers, optional
-        global origin coordinates (x, y) as basis for destination grid.
-        The default is (-180, 90), change global_origin for non-geographical CRS!
-    resampling : resampling function or str, optional
-        The default is rasterio.warp.Resampling.nearest.
-        strings 'nearest', 'bilinear', and 'cubic' are excepted as well.
+        Target coordinate reference system, in rasterio dict format. Default: `src_crs`
+    dst_resolution : tuple (x_resolution, y_resolution) or float, optional
+        Target resolution (positive pixel sizes) in units of the target CRS.
+        Default: `(abs(src_transform[0]), abs(src_transform[4]))`
+    dst_bounds : tuple of floats (xmin, ymin, xmax, ymax), optional
+        Bounds of the target raster in units of the target CRS. By default, the source's bounds
+        are reprojected to the target CRS.
+    global_origin : tuple (west, north) of floats, optional
+        Coordinates of the reference grid's upper left corner. Default: (-180, 90). Make sure to
+        change `global_origin` for non-geographical CRS!
+    resampling : int, rasterio.enums.Resampling or str, optional
+        Resampling method to use. String values like `"nearest"` or `"bilinear"` are resolved to
+        attributes of `rasterio.enums.Resampling. Default: `rasterio.enums.Resampling.nearest`
     conserve : str, optional
-        either 'mean' or 'sum' or 'norm'
-        If provided, the mean or sum of data is conserved or destination is normalized.
-        The default is None (no conservation).
-    **kwargs : **kwargs
-        additional arguments for rasterio.warp.reproject.
+        If provided, conserve the source array's 'mean' or 'sum' in the transformed data or
+        normalize the values of the transformed data ndarray ('norm').
+        Default: None (no conservation)
+    kwargs : dict, optional
+        Additional arguments passed to `rasterio.warp.reproject`.
 
     Raises
     ------
@@ -1919,55 +1896,49 @@ def reproject_raster_data(source, src_crs, src_transform, dst_resolution=None,
 
     Returns
     -------
-    destination
-        numpy array with values reprojected from input data to destination grid
-    dst_transform : Affine object
-        transform of destination.
+    destination : np.ndarray with same dtype as `source`
+        The transformed 2D ndarray.
+    dst_transform : rasterio.Affine
+        Destination affine transformation.
     """
-    # TODO: suggestion for further development:
-    # option to reproject data in GeoDataFrame (gdf) instead of array for projection
-
     if dst_crs is None:
         dst_crs = src_crs
-    if (not dst_crs.is_geographic) and global_origin==(-180, 90):
+    if (not dst_crs.is_geographic) and global_origin == (-180, 90):
         LOGGER.warning("Non-geographic destination CRS. Check global_origin!")
     if dst_resolution is None:
-        dst_resolution = src_transform[0]
+        dst_resolution = (np.abs(src_transform[0]), np.abs(src_transform[4]))
+    if np.isscalar(dst_resolution):
+        dst_resolution = (dst_resolution, dst_resolution)
+    if isinstance(resampling, str):
+        resampling = getattr(rasterio.warp.Resampling, resampling)
 
-    if resampling is None or resampling=='nearest':
-        resampling = rasterio.warp.Resampling.nearest
-    elif resampling == 'bilinear':
-        resampling = rasterio.warp.Resampling.bilinear
-    elif resampling == 'cubic':
-        resampling = rasterio.warp.Resampling.cubic
+    # determine well-aligned subraster
+    global_transform = rasterio.transform.from_origin(*global_origin, *dst_resolution)
+    if dst_bounds is None:
+        src_bounds = rasterio.transform.array_bounds(*source.shape, src_transform)
+        dst_bounds = rasterio.warp.transform_bounds(src_crs, dst_crs, *src_bounds)
+    dst_transform, dst_shape = subraster_from_bounds(global_transform, dst_bounds)
 
-    # define globally consistent subraster with new resolution:
-    dst_transform, dst_shape = \
-        subraster_from_bounds(src_transform, source.shape, dst_resolution, src_crs,
-                              dst_crs, global_origin=global_origin, dst_bounds=dst_bounds)
+    destination = np.zeros(dst_shape, dtype=source.dtype)
+    rasterio.warp.reproject(source=source,
+                            destination=destination,
+                            src_transform=src_transform,
+                            src_crs=src_crs,
+                            dst_transform=dst_transform,
+                            dst_crs=dst_crs,
+                            resampling=resampling,
+                            **kwargs)
 
-    # init empty destination array with same data type as input:
-    destination = np.zeros((dst_shape[0], dst_shape[1]), # height, width
-                           dtype=source.dtype)
-    # reproject data to destination:
-    rasterio.warp.reproject(
-                    source=source,
-                    destination=destination,
-                    src_transform=src_transform,
-                    src_crs=src_crs,
-                    dst_transform=dst_transform,
-                    dst_crs=dst_crs,
-                    resampling=resampling,
-                    **kwargs)
-
-    # conserve values if applicable and return results:
     if conserve == 'mean':
-        return (destination / destination.mean()) * source.mean(), dst_transform
-    if conserve == 'sum':
-        return (destination / destination.sum()) * source.sum(), dst_transform
-    if conserve == 'norm':
-        return destination / destination.sum(), dst_transform
+        destination *= source.mean() / destination.mean()
+    elif conserve == 'sum':
+        destination *= source.sum() / destination.sum()
+    elif conserve == 'norm':
+        destination *= 1.0 / destination.sum()
+    elif conserve is not None:
+        raise ValueError(f"Invalid value for conserve: {conserve}")
     return destination, dst_transform
+
 
 def set_df_geometry_points(df_val, scheduler=None, crs=None):
     """Set given geometry to given dataframe using dask if scheduler.

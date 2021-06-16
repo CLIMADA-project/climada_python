@@ -32,7 +32,7 @@ from rasterio.windows import Window
 from rasterio.warp import Resampling
 from rasterio import Affine
 from rasterio.crs import CRS as RCRS
-from rasterio.transform import array_bounds
+import rasterio.transform
 
 from climada import CONFIG
 from climada.util.constants import HAZ_DEMO_FL, DEF_CRS
@@ -42,20 +42,16 @@ DATA_DIR = CONFIG.util.test_data.dir()
 
 def data_arrays_resampling_demo():
     """init demo data arrays (2d) and meta data for resampling"""
-    data_arrays = list()
-    # demo pop:
-    data_arrays.append(np.array([[0,1,2], [3,4,5]], dtype='float32'))
-    data_arrays.append(np.array([[0,1,2], [3,4,5]], dtype='float32'))
-        # array([[0, 1, 2],
-        #       [3, 4, 5]])
-    # demo nightlight:
-    data_arrays.append(np.array([[2,10,0, 0, 0, 0], [10,2,10, 0, 0, 0],
-                                 [0,0,0, 0, 1, 1], [1,0,0, 0, 1, 1]],
-                       dtype='float32'))
-        # array([[ 2., 10.,  0.,  0.,  0.,  0.],
-        #        [10.,  2., 10.,  0.,  0.,  0.],
-        #        [ 0.,  0.,  0.,  0.,  1.,  1.],
-        #        [ 1.,  0.,  0.,  0.,  1.,  1.]], dtype=float32)]
+    data_arrays = [
+        # demo pop:
+        np.array([[0, 1, 2], [3, 4, 5]], dtype='float32'),
+        np.array([[0, 1, 2], [3, 4, 5]], dtype='float32'),
+        # demo nightlight:
+        np.array([[2, 10, 0, 0, 0, 0],
+                  [10, 2, 10, 0, 0, 0],
+                  [0, 0, 0, 0, 1, 1],
+                  [1, 0, 0, 0, 1, 1]], dtype='float32'),
+    ]
 
     meta_list = [{'driver': 'GTiff',
                   'dtype': 'float32',
@@ -64,8 +60,7 @@ def data_arrays_resampling_demo():
                   'height': 2,
                   'count': 1,
                   'crs': RCRS.from_epsg(4326),
-                  'transform': Affine(1, 0.0, -10,
-                         0.0, -1, 40),
+                  'transform': Affine(1, 0.0, -10, 0.0, -1, 40),
                   },
                  {'driver': 'GTiff',
                   'dtype': 'float32',
@@ -74,8 +69,8 @@ def data_arrays_resampling_demo():
                   'height': 2,
                   'count': 1,
                   'crs': RCRS.from_epsg(4326),
-                  'transform': Affine(1, 0.0, -10,
-                         0.0, -1, 41), # shifted by 1 degree latitude to the north
+                  # shifted by 1 degree latitude to the north:
+                  'transform': Affine(1, 0.0, -10, 0.0, -1, 41),
                   },
                  {'driver': 'GTiff',
                   'dtype': 'float32',
@@ -84,8 +79,8 @@ def data_arrays_resampling_demo():
                   'height': 4,
                   'count': 1,
                   'crs': RCRS.from_epsg(4326),
-                  'transform': Affine(.5, 0.0, -10,
-                         0.0, -.5, 40), # higher resolution
+                  # higher resolution:
+                  'transform': Affine(.5, 0.0, -10, 0.0, -.5, 40),
                   }]
     return data_arrays, meta_list
 
@@ -900,172 +895,152 @@ class TestRasterIO(unittest.TestCase):
         self.assertLess(transform[5] + z.shape[0] * transform[4], bounds[1])
         self.assertGreaterEqual(transform[5] + z.shape[0] * transform[4], bounds[1] + transform[4])
 
-    def test_subraster_from_bounds_pass(self):
-        """test function subraster_from_bounds"""
+    def test_subraster_from_bounds(self):
+        """test subraster_from_bounds function"""
+        transform = rasterio.transform.from_origin(-10, 10, 0.5, 0.5)
+        bounds = (-3.4, 1.2, 0.6, 4.26)
+        dst_transform, dst_shape = u_coord.subraster_from_bounds(transform, bounds)
+        self.assertEqual(dst_shape, (7, 8))
+        self.assertEqual(dst_transform[:6], (0.5, 0, -3.5, 0, -0.5, 4.5))
+
+        # test for more complicated input data:
         _, meta_list = data_arrays_resampling_demo()
         i = 2
         dst_resolution = (1., .2)
-        dst_transform, dst_shape = \
-            u_coord.subraster_from_bounds(meta_list[i]['transform'],
-                                          (meta_list[i]['height'], meta_list[i]['width']),
-                                          dst_resolution, meta_list[i]['crs'],
-                                          meta_list[0]['crs'])
-        self.assertEqual(dst_shape, (meta_list[0]['height']/dst_resolution[1],
-                                     meta_list[0]['width']/dst_resolution[0]))
+        bounds = rasterio.transform.array_bounds(
+            meta_list[i]['height'], meta_list[i]['width'], meta_list[i]['transform'])
+        transform = rasterio.transform.from_origin(-180, 90, *dst_resolution)
+        dst_transform, dst_shape = u_coord.subraster_from_bounds(transform, bounds)
+        self.assertEqual(dst_shape, (meta_list[0]['height'] / dst_resolution[1],
+                                     meta_list[0]['width'] / dst_resolution[0]))
         self.assertEqual(dst_resolution, (dst_transform[0], -dst_transform[4]))
         self.assertEqual(meta_list[i]['transform'][1], dst_transform[1])
         self.assertEqual(meta_list[i]['transform'][2], dst_transform[2])
         self.assertEqual(meta_list[i]['transform'][3], dst_transform[3])
         self.assertEqual(meta_list[i]['transform'][5], dst_transform[5])
 
-    def test_subraster_from_bounds_odd(self):
-        """test function set_global_consistent_grid for odd resolution change"""
-        _, meta_list = data_arrays_resampling_demo()
-        i = 1
-        dst_resolution = .15
-        dst_bounds = array_bounds(meta_list[0]['height'], meta_list[0]['width'],
-                                  meta_list[0]['transform'])
-        dst_transform, dst_shape = \
-            u_coord.subraster_from_bounds(meta_list[i]['transform'],
-                                          (meta_list[i]['height'], meta_list[i]['width']),
-                                          dst_resolution, meta_list[i]['crs'],
-                                          meta_list[0]['crs'],
-                                          dst_bounds=dst_bounds)
-        self.assertEqual(dst_shape, (14,20))
-        self.assertEqual(dst_resolution, dst_transform[0])
-        self.assertEqual(meta_list[i]['transform'][1], dst_transform[1])
+        # test for odd resolution change:
+        i = 0
+        dst_resolution = (.15, .15)
+        bounds = rasterio.transform.array_bounds(
+            meta_list[i]['height'], meta_list[i]['width'], meta_list[i]['transform'])
+        transform = rasterio.transform.from_origin(-180, 90, *dst_resolution)
+        dst_transform, dst_shape = u_coord.subraster_from_bounds(transform, bounds)
+        self.assertEqual(dst_shape, (14, 20))
+        self.assertEqual(transform[0], dst_transform[0])
+        self.assertEqual(transform[4], dst_transform[4])
         self.assertAlmostEqual(-10.05, dst_transform[2])
-        self.assertEqual(meta_list[i]['transform'][3], dst_transform[3])
-        self.assertEqual(-dst_resolution, dst_transform[4])
         self.assertAlmostEqual(40.05, dst_transform[5])
 
-    def test_reproject_raster_data_shift(self):
-        """test function reproject_raster_data for geographical shift"""
+    def test_align_raster_data_shift(self):
+        """test function align_raster_data for geographical shift"""
         data_in, meta_list = data_arrays_resampling_demo()
-        i = 0 # dst
-        j = 1 # src
+        i = 0  # dst
+        j = 1  # src
 
         dst_resolution=meta_list[i]['transform'][0]
-        dst_bounds = array_bounds(meta_list[i]['height'], meta_list[i]['width'],
-                                  meta_list[i]['transform'])
-        data_out, dst_transform = u_coord.reproject_raster_data(data_in[j],
-                                                    meta_list[j]['crs'],
-                                                    meta_list[j]['transform'],
-                                                    dst_resolution=dst_resolution,
-                                                    dst_bounds=dst_bounds,
-                                                    dst_crs=meta_list[i]['crs'],
-                                                    resampling='bilinear')
+        dst_bounds = rasterio.transform.array_bounds(
+            meta_list[i]['height'], meta_list[i]['width'], meta_list[i]['transform'])
+        data_out, dst_transform = u_coord.align_raster_data(
+            data_in[j], meta_list[j]['crs'], meta_list[j]['transform'],
+            dst_crs=meta_list[i]['crs'], dst_resolution=dst_resolution, dst_bounds=dst_bounds,
+            resampling='bilinear')
 
         # test northward shift of box:
         np.testing.assert_array_equal(data_in[1][1,:], data_out[0,:])
-        np.testing.assert_array_equal(np.array([0., 0., 0.], dtype='float32'),
-                                      data_out[1,:])
+        np.testing.assert_array_equal(np.array([0., 0., 0.], dtype='float32'), data_out[1,:])
         self.assertEqual(meta_list[i]['transform'][5], dst_transform[5])
 
-    def test_reproject_raster_data_downsampling(self):
-        """test function reproject_raster_data for downsampling"""
+    def test_align_raster_data_downsampling(self):
+        """test function align_raster_data for downsampling"""
         data_in, meta_list = data_arrays_resampling_demo()
-        i = 0 # dst
-        j = 2 # src
+        i = 0  # dst
+        j = 2  # src
+
         dst_resolution=meta_list[i]['transform'][0]
-        dst_bounds = array_bounds(meta_list[i]['height'], meta_list[i]['width'],
-                                  meta_list[i]['transform'])
-        data_out, dst_transform = u_coord.reproject_raster_data(data_in[j],
-                                                    meta_list[j]['crs'],
-                                                    meta_list[j]['transform'],
-                                                    dst_resolution=dst_resolution,
-                                                    dst_bounds=dst_bounds,
-                                                    dst_crs=meta_list[i]['crs'],
-                                                    resampling='bilinear')
+        dst_bounds = rasterio.transform.array_bounds(
+            meta_list[i]['height'], meta_list[i]['width'], meta_list[i]['transform'])
+        data_out, dst_transform = u_coord.align_raster_data(
+            data_in[j], meta_list[j]['crs'], meta_list[j]['transform'],
+            dst_crs=meta_list[i]['crs'], dst_resolution=dst_resolution, dst_bounds=dst_bounds,
+            resampling='bilinear')
+
         # test downsampled data:
-        reference_array = np.array([[5.020408  , 2.267857  , 0.12244898],
-                                    [1.1224489 , 0.6785714 , 0.7346939 ]], dtype='float32')
+        reference_array = np.array([[5.0204080, 2.2678570, 0.12244898],
+                                    [1.1224489, 0.6785714, 0.73469390]], dtype='float32')
         np.testing.assert_array_almost_equal_nulp(reference_array, data_out)
         self.assertEqual(dst_resolution, dst_transform[0])
 
-    def test_reproject_raster_data_downsample_conserve(self):
-        """test function reproject_raster_data downsampling with conservation
+    def test_align_raster_data_downsample_conserve(self):
+        """test function align_raster_data downsampling with conservation
         of mean and sum and normalization"""
         data_in, meta_list = data_arrays_resampling_demo()
-        i = 0 # dst
+        i = 0  # dst
+
         dst_resolution=meta_list[i]['transform'][0]
-        dst_bounds = array_bounds(meta_list[i]['height'], meta_list[i]['width'],
-                                  meta_list[i]['transform'])
+        dst_bounds = rasterio.transform.array_bounds(
+            meta_list[i]['height'], meta_list[i]['width'], meta_list[i]['transform'])
+
         # test conserve sum:
         for j, data in enumerate(data_in): # src
-            data_out, _ = u_coord.reproject_raster_data(data_in[j],
-                                                        meta_list[j]['crs'],
-                                                        meta_list[j]['transform'],
-                                                        dst_resolution=dst_resolution,
-                                                        dst_bounds=dst_bounds,
-                                                        dst_crs=meta_list[i]['crs'],
-                                                        resampling='bilinear',
-                                                        conserve='sum',
-                                                        )
+            data_out, _ = u_coord.align_raster_data(
+                data_in[j], meta_list[j]['crs'], meta_list[j]['transform'],
+                dst_crs=meta_list[i]['crs'], dst_resolution=dst_resolution, dst_bounds=dst_bounds,
+                resampling='bilinear', conserve='sum')
             self.assertAlmostEqual(data_in[j].sum(), data_out.sum(), places=4)
+
         # test conserve mean:
         for j, data in enumerate(data_in):
-            data_out, _ = u_coord.reproject_raster_data(data_in[j],
-                                                        meta_list[j]['crs'],
-                                                        meta_list[j]['transform'],
-                                                        dst_resolution=dst_resolution,
-                                                        dst_bounds=dst_bounds,
-                                                        dst_crs=meta_list[i]['crs'],
-                                                        resampling='bilinear',
-                                                        conserve='mean',
-                                                        )
+            data_out, _ = u_coord.align_raster_data(
+                data_in[j], meta_list[j]['crs'], meta_list[j]['transform'],
+                dst_crs=meta_list[i]['crs'], dst_resolution=dst_resolution, dst_bounds=dst_bounds,
+                resampling='bilinear', conserve='mean')
             self.assertAlmostEqual(data_in[j].mean(), data_out.mean(), places=4)
 
-    def test_reproject_raster_data_upsample(self):
-        """test function reproject_raster_data with upsampling"""
+    def test_align_raster_data_upsample(self):
+        """test function align_raster_data with upsampling"""
         data_in, meta_list = data_arrays_resampling_demo()
         data_out = list()
-        i = 2 # dst
-        dst_resolution=meta_list[i]['transform'][0]
-        dst_bounds = array_bounds(meta_list[i]['height'], meta_list[i]['width'],
-                                  meta_list[i]['transform'])
+        i = 2  # dst
+
+        dst_resolution = meta_list[i]['transform'][0]
+        dst_bounds = rasterio.transform.array_bounds(
+            meta_list[i]['height'], meta_list[i]['width'], meta_list[i]['transform'])
         for j in [0,1,2]:
-            data_out.append(u_coord.reproject_raster_data(data_in[j],
-                                                          meta_list[j]['crs'],
-                                                          meta_list[j]['transform'],
-                                                          dst_resolution=dst_resolution,
-                                                          dst_bounds=dst_bounds,
-                                                          dst_crs=meta_list[i]['crs'],
-                                                          resampling='bilinear',
-                                                          )[0]
-                            )
+            data_out.append(u_coord.align_raster_data(
+                data_in[j], meta_list[j]['crs'], meta_list[j]['transform'],
+                dst_crs=meta_list[i]['crs'], dst_resolution=dst_resolution,
+                dst_bounds=dst_bounds, resampling='bilinear')[0])
+
         # test reference data unchanged:
         np.testing.assert_array_equal(data_in[2], data_out[2])
         # test northward shift:
         np.testing.assert_array_equal(data_out[0][2,:], data_out[1][0,:])
         np.testing.assert_array_equal(data_out[0][3,:], data_out[1][1,:])
         # test upsampled data:
-        reference_array = np.array([[0.  , 0.25, 0.75, 1.25, 1.75, 2.  ],
-                                    [0.75, 1.  , 1.5 , 2.  , 2.5 , 2.75],
-                                    [2.25, 2.5 , 3.  , 3.5 , 4.  , 4.25],
-                                    [3.  , 3.25, 3.75, 4.25, 4.75, 5.  ]], dtype='float32')
+        reference_array = np.array([[0.00, 0.25, 0.75, 1.25, 1.75, 2.00],
+                                    [0.75, 1.00, 1.50, 2.00, 2.50, 2.75],
+                                    [2.25, 2.50, 3.00, 3.50, 4.00, 4.25],
+                                    [3.00, 3.25, 3.75, 4.25, 4.75, 5.00]], dtype='float32')
         np.testing.assert_array_equal(reference_array, data_out[0])
 
-    def test_reproject_raster_data_odd_downsample(self):
+    def test_align_raster_data_odd_downsample(self):
         """test function resample_input_data with odd downsampling"""
         data_in, meta_list = data_arrays_resampling_demo()
         i = 0
         j = 0
-        dst_resolution=1.7
-        dst_bounds = array_bounds(meta_list[i]['height'], meta_list[i]['width'],
-                                  meta_list[i]['transform'])
-        data_out, dst_transform = u_coord.reproject_raster_data(data_in[j],
-                                                                meta_list[j]['crs'],
-                                                                meta_list[j]['transform'],
-                                                                dst_resolution=dst_resolution,
-                                                                dst_bounds=dst_bounds,
-                                                                dst_crs=meta_list[i]['crs'],
-                                                                resampling='bilinear',
-                                                                )
 
-        self.assertEqual(dst_resolution, dst_transform[0]) # check resolution
-        reference_array = np.array([[0.425    , 1.7631578],
-                                    [3.425    , 4.763158 ]], dtype='float32')
+        dst_resolution = 1.7
+        dst_bounds = rasterio.transform.array_bounds(
+            meta_list[i]['height'], meta_list[i]['width'], meta_list[i]['transform'])
+        data_out, dst_transform = u_coord.align_raster_data(
+            data_in[j], meta_list[j]['crs'], meta_list[j]['transform'],
+            dst_crs=meta_list[i]['crs'], dst_resolution=dst_resolution, dst_bounds=dst_bounds,
+            resampling='bilinear')
+
+        self.assertEqual(dst_resolution, dst_transform[0])
+        reference_array = np.array([[0.425, 1.7631578],
+                                    [3.425, 4.763158 ]], dtype='float32')
         np.testing.assert_array_equal(reference_array, data_out)
 
 # Execute Tests
