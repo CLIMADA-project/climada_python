@@ -42,6 +42,10 @@ def load_gpw_pop_shape(geometry, reference_year, gpw_version=11, data_dir=None,
                        layer=0, verbatim=True): # TODO: manually tested but no tests exist yet
     """Read gridded population data from GPW TIFF
     and crop to given shape(s).
+    Note: A (free) NASA Earthdata login is necessary to download the data.
+    Data can be downloaded e.g. for gpw_version=11 from
+    https://sedac.ciesin.columbia.edu/downloads/data/gpw-v4/
+    gpw-v4-population-count-rev11/gpw-v4-population-count-rev11_2015_30_sec_tif.zip
     
     Parameters
     ----------
@@ -158,5 +162,10 @@ def get_gpw_file_path(gpw_version, reference_year, data_dir=SYSTEM_DIR, verbatim
                               + 'first or choose a different folder. '
                               + 'The data can be downloaded from '
                               + 'http://sedac.ciesin.columbia.edu/'
-                              + 'data/collection/gpw-v4/sets/browse')
+                              + 'data/collection/gpw-v4/sets/browse, '
+                              + 'e.g., https://sedac.ciesin.columbia.edu/'
+                              + 'data/set/gpw-v4-population-count-rev11/'
+                              + 'data-download'
+                              + '(Free NASA Earthdata login required). '
+                              )
     return None
