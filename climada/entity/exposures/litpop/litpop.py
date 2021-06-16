@@ -668,7 +668,7 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
                         global_transform[5])
         
     # resample Lit and Pop input data to same grid:
-    [pop, nl], meta_out = resample_input_data([pop, nl],
+    [pop, nl], meta_out = reproject_input_data([pop, nl],
                                               [meta_pop, meta_nl],
                                               i_ref=i_ref, # pop defines grid
                                               target_res_arcsec=target_res_arcsec,
@@ -683,7 +683,7 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
     LOGGER.info('core calc done') # TODO remove
     if not resample_first: 
         # alternative option: resample to target resolution after core calc.:
-        [litpop_array], meta_out = resample_input_data([litpop_array],
+        [litpop_array], meta_out = reproject_input_data([litpop_array],
                                                        [meta_out],
                                                        target_res_arcsec=res_arcsec,
                                                        global_origins=global_origins,
@@ -768,15 +768,15 @@ def get_total_value_per_country(cntry_iso3a, fin_mode, reference_year, total_pop
             return gdp_value * wealthtogdp_factor
     raise ValueError(f"Unsupported fin_mode: {fin_mode}")
 
-def resample_input_data(data_array_list, meta_list,
+def reproject_input_data(data_array_list, meta_list,
                         i_ref=0,
                         target_res_arcsec=None,
                         global_origins=(-180.0, 89.99999999999991),
-                        target_crs=None,
+                        dst_crs=None,
                         resampling=None,
                         conserve=None):
     """
-    Resamples all arrays in data_arrays to a given resolution –
+    Reprojects all arrays in data_arrays to a given resolution –
     all based on the population data grid.
 
     Parameters
@@ -811,7 +811,7 @@ def resample_input_data(data_array_list, meta_list,
         global lon and lat origins as basis for destination grid.
         The default is the same as for GPW population data:
             (-180.0, 89.99999999999991)
-    target_crs : rasterio.crs.CRS
+    dst_crs : rasterio.crs.CRS
         destination CRS
         The default is None, implying crs of reference data is used
         (e.g., CRS.from_epsg(4326) for GPW pop)
@@ -833,9 +833,15 @@ def resample_input_data(data_array_list, meta_list,
         res_degree = meta_list[i_ref]['transform'][0] # reference grid
     else:
         res_degree = target_res_arcsec / 3600 
+    if dst_crs is None:
+        dst_crs = meta_list[i_ref]['crs']
 
     # loop over data arrays, do transformation where required:
     data_out_list = [None] * len(data_array_list)
+    meta = {'dtype': meta_list[i_ref]['dtype'],
+            'nodata': meta_list[i_ref]['dtype'],
+            'crs': dst_crs}
+
     for idx, data in enumerate(data_array_list):
         # if target resolution corresponds to reference data resolution,
         # the reference data is not transformed:
@@ -844,15 +850,20 @@ def resample_input_data(data_array_list, meta_list,
             data_out_list[idx] = data
             continue
         # reproject data grid:
-        data_out_list[idx], meta = \
-            u_coord.reproject_2d_grid(data, meta_list[idx], meta_list[i_ref], 
-                              res_arcsec_out=target_res_arcsec,
-                              global_origins=global_origins,
-                              crs_out=target_crs,
-                              resampling=rasterio.warp.Resampling.bilinear,
-                              conserve=conserve,
-                              buffer=0)
-        meta['dtype'] = meta_list[i_ref]['dtype']
+        dst_bounds = rasterio.transform.array_bounds(meta_list[i_ref]['height'],
+                                                     meta_list[i_ref]['width'],
+                                                     meta_list[i_ref]['transform'])
+        data_out_list[idx], meta['transform'] = \
+            u_coord.align_raster_data(data_array_list[idx], meta_list[idx]['crs'],
+                                      meta_list[idx]['transform'],
+                                      dst_crs=dst_crs,
+                                      dst_resolution=(res_degree, res_degree),
+                                      dst_bounds=dst_bounds,
+                                      global_origin=global_origins,
+                                      resampling=rasterio.warp.Resampling.bilinear,
+                                      conserve=conserve)
+    meta['height'] = data_out_list[idx].shape[0]
+    meta['width'] = data_out_list[idx].shape[1]
     return data_out_list, meta
 
 def gridpoints_core_calc(data_arrays, offsets=None, exponents=None,

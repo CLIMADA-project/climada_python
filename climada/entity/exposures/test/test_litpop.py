@@ -103,16 +103,16 @@ def data_arrays_resampling_demo():
 class TestLitPop(unittest.TestCase):
     """Test LitPop Class methods and functions"""
 
-    def test_resample_input_data_downsample(self):
-        """test function resample_input_data downsampling lit to pop grid
+    def test_reproject_input_data_downsample(self):
+        """test function reproject_input_data downsampling lit to pop grid
         (default resampling for LitPop)"""
         data_in, meta_list = data_arrays_resampling_demo()
         #
-        data_out, meta_out = lp.resample_input_data(data_in, meta_list,
+        data_out, meta_out = lp.reproject_input_data(data_in, meta_list,
                         i_ref=0,
                         target_res_arcsec=None,
-                        global_origins=None,
-                        target_crs=None,
+                        global_origins=(-180, 90),
+                        dst_crs=None,
                         resampling=None)
         # test reference data unchanged:
         np.testing.assert_array_equal(data_in[0], data_out[0])
@@ -123,15 +123,15 @@ class TestLitPop(unittest.TestCase):
                                     [1.1224489 , 0.6785714 , 0.7346939 ]], dtype='float32')
         np.testing.assert_array_almost_equal_nulp(reference_array, data_out[2])
 
-    def test_resample_input_data_downsample_conserve_sum(self):
-        """test function resample_input_data downsampling with conservation of sum"""
+    def test_reproject_input_data_downsample_conserve_sum(self):
+        """test function reproject_input_data downsampling with conservation of sum"""
         data_in, meta_list = data_arrays_resampling_demo()
         #
-        data_out, meta_out = lp.resample_input_data(data_in, meta_list,
+        data_out, meta_out = lp.reproject_input_data(data_in, meta_list,
                         i_ref=0,
                         target_res_arcsec=None,
-                        global_origins=None,
-                        target_crs=None,
+                        global_origins=(-180, 90),
+                        dst_crs=None,
                         resampling=None,
                         conserve='sum')
         # test reference data unchanged:
@@ -140,33 +140,33 @@ class TestLitPop(unittest.TestCase):
         for i, _ in enumerate(data_in):
             self.assertAlmostEqual(data_in[i].sum(), data_out[i].sum())
 
-    def test_resample_input_data_downsample_conserve_mean(self):
-        """test function resample_input_data downsampling with conservation of sum"""
+    def test_reproject_input_data_downsample_conserve_mean(self):
+        """test function reproject_input_data downsampling with conservation of sum"""
         data_in, meta_list = data_arrays_resampling_demo()
         #
-        data_out, meta_out = lp.resample_input_data(data_in, meta_list,
+        data_out, meta_out = lp.reproject_input_data(data_in, meta_list,
                         i_ref=1,
                         target_res_arcsec=None,
-                        global_origins=None,
-                        target_crs=None,
+                        global_origins=(-180, 90),
+                        dst_crs=None,
                         resampling=None,
                         conserve='mean')
         # test reference data unchanged:
         np.testing.assert_array_equal(data_in[1], data_out[1])
         # test conserve sum:
         for i, _ in enumerate(data_in):
-            self.assertAlmostEqual(data_in[i].mean(), data_out[i].mean())
+            self.assertAlmostEqual(data_in[i].mean(), data_out[i].mean(), places=5)
 
-    def test_resample_input_data_upsample(self):
-        """test function resample_input_data with upsampling
+    def test_reproject_input_data_upsample(self):
+        """test function reproject_input_data with upsampling
         (usually not required for LitPop)"""
         data_in, meta_list = data_arrays_resampling_demo()
         #
-        data_out, meta_out = lp.resample_input_data(data_in, meta_list,
+        data_out, meta_out = lp.reproject_input_data(data_in, meta_list,
                         i_ref=2, # high res data as reference
                         target_res_arcsec=None,
-                        global_origins=None,
-                        target_crs=None,
+                        global_origins=(-180, 90),
+                        dst_crs=None,
                         resampling=None)
         # test reference data unchanged:
         np.testing.assert_array_equal(data_in[2], data_out[2])
@@ -180,16 +180,16 @@ class TestLitPop(unittest.TestCase):
                                     [3.  , 3.25, 3.75, 4.25, 4.75, 5.  ]], dtype='float32')
         np.testing.assert_array_equal(reference_array, data_out[0])
 
-    def test_resample_input_data_odd_downsample(self):
-        """test function resample_input_data with odd downsampling"""
+    def test_reproject_input_data_odd_downsample(self):
+        """test function reproject_input_data with odd downsampling"""
         data_in, meta_list = data_arrays_resampling_demo()
         #
         data_out, meta_out = \
-            lp.resample_input_data(data_in, meta_list,
+            lp.reproject_input_data(data_in, meta_list,
                                    i_ref=0, # high res data as reference
                                    target_res_arcsec=6120, # 1.7 degree
-                                   global_origins=None,
-                                   target_crs=None,
+                                   global_origins=(-180, 90),
+                                   dst_crs=None,
                                    resampling=None)
         self.assertEqual(1.7, meta_out['transform'][0]) # check resolution
         reference_array = np.array([[0.425    , 1.7631578],
