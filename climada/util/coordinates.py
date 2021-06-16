@@ -1740,7 +1740,8 @@ def write_raster(file_name, data_matrix, meta, dtype=np.float32):
     with rasterio.open(file_name, 'w', **dst_meta) as dst:
         dst.write(data_matrix, indexes=np.arange(1, shape[0] + 1))
 
-def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, scheduler=None):
+def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, crs=DEF_CRS,
+                     scheduler=None):
     """Compute raster (as data and transform) from GeoDataFrame.
 
     Parameters
@@ -1755,6 +1756,10 @@ def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, schedul
         provided.
     raster_res : float, optional
         desired resolution of the raster
+    crs : object (anything accepted by pyproj.CRS.from_user_input), optional
+        If given, overwrites the CRS information given in `points_df`. If no CRS is explicitly
+        given and there is no CRS information in `points_df`, the CRS is assumed to be EPSG:4326
+        (lat/lon). Default: None
     scheduler : str
         used for dask map_partitions. “threads”, “synchronous” or “processes”
 
@@ -1786,7 +1791,7 @@ def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, schedul
                                npartitions=cpu_count())
         df_poly['geometry'] = ddata.map_partitions(apply_box, meta=Polygon) \
                                    .compute(scheduler=scheduler)
-    df_poly.crs = points_df.crs
+    df_poly.set_crs(crs if crs else points_df.crs if points_df.crs else DEF_CRS, inplace=True)
 
     # renormalize longitude if necessary
     if df_poly.crs == DEF_CRS:
@@ -1814,7 +1819,7 @@ def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, schedul
             dtype=rasterio.float32)
 
     meta = {
-        'crs': points_df.crs,
+        'crs': df_poly.crs,
         'height': rows,
         'width': cols,
         'transform': ras_trans,
@@ -1939,32 +1944,44 @@ def align_raster_data(source, src_crs, src_transform, dst_crs=None, dst_resoluti
         raise ValueError(f"Invalid value for conserve: {conserve}")
     return destination, dst_transform
 
-
 def set_df_geometry_points(df_val, scheduler=None, crs=None):
     """Set given geometry to given dataframe using dask if scheduler.
 
     Parameters
     ----------
-    df_val : DataFrame or GeoDataFrame
+    df_val : GeoDataFrame
         contains latitude and longitude columns
-    scheduler : str
+    scheduler : str, optional
         used for dask map_partitions. “threads”, “synchronous” or “processes”
+    crs : object (anything readable by pyproj4.CRS.from_user_input), optional
+        Coordinate Reference System, if omitted or None: df_val.geometry.crs
     """
     LOGGER.info('Setting geometry points.')
-    def apply_point(df_exp):
-        return df_exp.apply(lambda row: Point(row.longitude, row.latitude), axis=1)
-    if not scheduler:
-        if crs is None:
-            try:
-                crs = df_val.geometry.crs
-            except AttributeError:
-                crs = None
-        df_val['geometry'] = gpd.GeoSeries(
-            gpd.points_from_xy(df_val.longitude, df_val.latitude), crs=crs)
-    else:
+
+    # keep the original crs if any
+    if crs is None:
+        try:
+            crs = df_val.geometry.crs
+        except AttributeError:
+            crs = None
+
+    # work in parallel
+    if scheduler:
+        def apply_point(df_exp):
+            return df_exp.apply(lambda row: Point(row.longitude, row.latitude), axis=1)
+
         ddata = dd.from_pandas(df_val, npartitions=cpu_count())
         df_val['geometry'] = ddata.map_partitions(apply_point, meta=Point) \
                                   .compute(scheduler=scheduler)
+    # single process
+    else:
+        df_val['geometry'] = gpd.GeoSeries(
+            gpd.points_from_xy(df_val.longitude, df_val.latitude), index=df_val.index, crs=crs)
+
+    # set crs
+    if crs:
+        df_val.set_crs(crs, inplace=True)
+
 
 def fao_code_def():
     """Generates list of FAO country codes and corresponding ISO numeric-3 codes.

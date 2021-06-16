@@ -676,13 +676,15 @@ class TestRasterMeta(unittest.TestCase):
 
     def test_points_to_raster_pass(self):
         """Test points_to_raster"""
-        df_val = gpd.GeoDataFrame(crs={'init': 'epsg:2202'})
+        df_val = gpd.GeoDataFrame()
         x, y = np.meshgrid(np.linspace(0, 2, 5), np.linspace(40, 50, 10))
         df_val['latitude'] = y.flatten()
         df_val['longitude'] = x.flatten()
         df_val['value'] = np.ones(len(df_val)) * 10
-        _raster, meta = u_coord.points_to_raster(df_val, val_names=['value'])
-        self.assertTrue(u_coord.equal_crs(meta['crs'], df_val.crs))
+        crs = {'init': 'epsg:2202'}
+        _raster, meta = u_coord.points_to_raster(df_val, val_names=['value'], crs=crs)
+        self.assertIsNone(df_val.crs)  # points_to_raster must not modify df_val
+        self.assertTrue(u_coord.equal_crs(meta['crs'], crs))
         self.assertAlmostEqual(meta['transform'][0], 0.5)
         self.assertAlmostEqual(meta['transform'][1], 0)
         self.assertAlmostEqual(meta['transform'][2], -0.25)
@@ -693,13 +695,13 @@ class TestRasterMeta(unittest.TestCase):
         self.assertEqual(meta['width'], 5)
 
         # test for values crossing antimeridian
-        df_val = gpd.GeoDataFrame(crs=DEF_CRS)
+        df_val = gpd.GeoDataFrame()
         df_val['latitude'] = [1, 0, 1, 0]
         df_val['longitude'] = [178, -179.0, 181, -180]
         df_val['value'] = np.arange(4)
         r_data, meta = u_coord.points_to_raster(
             df_val, val_names=['value'], res=0.5, raster_res=1.0)
-        self.assertTrue(u_coord.equal_crs(meta['crs'], df_val.crs))
+        self.assertTrue(u_coord.equal_crs(meta['crs'], DEF_CRS))
         self.assertAlmostEqual(meta['transform'][0], 1.0)
         self.assertAlmostEqual(meta['transform'][1], 0)
         self.assertAlmostEqual(meta['transform'][2], 177.5)

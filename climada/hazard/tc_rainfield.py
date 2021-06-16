@@ -178,7 +178,7 @@ def rainfield_from_track(track, centroids, dist_degree=3, intensity=0.1):
             fradius_km[pos] = np.sqrt(dd) * 111.12
 
             rainsum += _RCLIPER(track.max_sustained_wind.values[node],
-                                inreach, fradius_km)
+                                inreach, fradius_km) * track.time_step.values[node]
 
     rainsum[rainsum < intensity] = 0
 
