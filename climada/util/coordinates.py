@@ -1944,6 +1944,41 @@ def align_raster_data(source, src_crs, src_transform, dst_crs=None, dst_resoluti
         raise ValueError(f"Invalid value for conserve: {conserve}")
     return destination, dst_transform
 
+def mask_raster_with_geometry(raster, transform, shapes, nodata=None, **kwargs):
+    """
+    Wrapper for rasterio.mask.mask to allow for in-memory processing.
+
+    This is done via first writing to memfile and then reading from it before the
+    function call to rasterio.mask.mask().
+    The MemoryFile will be discarded after exiting the with statement.
+
+    Parameters
+    ----------
+    raster : numpy.ndarray
+        raster to be masked with dim: [H, W].
+    transform : affine.Affine
+         the transform of the raster.
+    shapes, nodata, **kwargs: passed to rasterio.mask.mask
+
+    Returns
+    -------
+    masked: numpy.ndarray or numpy.ma.MaskedArray
+        raster with dim: [H, W] and points outside shapes set to `nodata`
+    """
+    with rasterio.io.MemoryFile() as memfile:
+        with memfile.open(
+            driver='GTiff',
+            height=raster.shape[0],
+            width=raster.shape[1],
+            count=1,
+            dtype=raster.dtype,
+            transform=transform,
+        ) as dataset:
+            dataset.write(raster, 1)
+        with memfile.open() as dataset:
+            output, _ = rasterio.mask.mask(dataset, shapes, nodata=nodata, **kwargs)
+    return output.squeeze(0)
+
 def set_df_geometry_points(df_val, scheduler=None, crs=None):
     """Set given geometry to given dataframe using dask if scheduler.
 
