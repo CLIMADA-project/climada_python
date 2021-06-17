@@ -1303,6 +1303,13 @@ class TCTracks():
                 continue
             track = xr.open_dataset(file)
             track.attrs['orig_event_flag'] = bool(track.orig_event_flag)
+            if "basin" in track.attrs:
+                LOGGER.warning("Track data comes with legacy basin attribute. "
+                               "We assume that the track remains in that basin during its "
+                               "whole life time.")
+                basin = track.basin
+                del track.attrs['basin']
+                track['basin'] = ("time", np.full(track.time.size, basin))
             self.data.append(track)
 
 
