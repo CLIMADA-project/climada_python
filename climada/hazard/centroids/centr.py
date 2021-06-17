@@ -503,16 +503,6 @@ class Centroids():
         centr : Centroids
             Centroids to append. The centroids need to have the same CRS.
         """
-
-        if self.meta and not self.lat.any():
-            self.set_meta_to_lat_lon()
-        if centr.meta and not centr.lat.any():
-            centr.set_meta_to_lat_lon()
-
-        if not u_coord.equal_crs(centr.geometry.crs, self.geometry.crs):
-            raise ValueError('Different CRS not accepted.')
-
-        self.meta = dict()
         self.__dict__.update(self.union(centr).__dict__)
 
 
