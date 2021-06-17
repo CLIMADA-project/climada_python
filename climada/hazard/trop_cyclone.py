@@ -443,6 +443,8 @@ class TropCyclone(Hazard):
         ])
         new_haz.orig = np.array([track.orig_event_flag])
         new_haz.category = np.array([track.category])
+        # users that pickle TCTracks objects might still have data with the legacy basin attribute,
+        # so we have to deal with it here
         new_haz.basin = [track.basin if isinstance(track.basin, str)
                          else str(track.basin.values[0])]
         return new_haz
