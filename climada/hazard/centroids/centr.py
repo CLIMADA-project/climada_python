@@ -735,6 +735,8 @@ class Centroids():
         cen : Centroids
             Sub-selection of this object.
         """
+        if not self.lat.any() and not self.meta:
+            return self
         self.set_geometry_points(scheduler)
         geom_wkb = self.geometry.apply(lambda geom: geom.wkb)
         sel_cen = geom_wkb.drop_duplicates().index
