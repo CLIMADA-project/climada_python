@@ -111,6 +111,65 @@ class TestCentroidsReader(unittest.TestCase):
         self.assertIsInstance(centroids.geometry, gpd.GeoSeries)
         self.assertIsInstance(centroids.geometry.total_bounds, np.ndarray)
 
+    def test_union(self):
+        cent1 = Centroids()
+        cent1.set_raster_from_pnt_bounds((-85, 19, -80, 23), res=1)
+        cent1.set_meta_to_lat_lon()
+
+        cent2 = Centroids()
+        cent2.set_raster_from_pnt_bounds((-80, 19, -70, 23), res=1)
+        cent2.set_meta_to_lat_lon()
+
+        cent = cent1.union(cent2)
+        cent = cent1.union(cent1, cent2)
+
+    def test_union_meta_latlon(self):
+        cent1 = Centroids()
+        cent1.set_raster_from_pnt_bounds((-85, 19, -80, 23), res=1)
+        cent1.set_meta_to_lat_lon()
+        cent1.meta = {}
+
+        cent2 = Centroids()
+        cent2.set_raster_from_pnt_bounds((-80, 19, -70, 23), res=1)
+
+        cent = cent1.union(cent2)
+        cent = cent1.union(cent1, cent2)
+
+
+    def test_union_empty(self):
+        cent1 = Centroids()
+        cent1.set_raster_from_pnt_bounds((-85, 19, -80, 23), res=1)
+        cent1.set_meta_to_lat_lon()
+
+        cent2 = Centroids()
+        cent2.set_raster_from_pnt_bounds((-80, 19, -70, 23), res=1)
+        cent2.set_meta_to_lat_lon()
+        cent = Centroids().union(cent1)
+        cent = Centroids().union(cent1, cent2)
+
+    def test_union_meta(self):
+        cent1 = Centroids()
+        cent1.set_raster_from_pnt_bounds((-85, 19, -80, 23), res=1)
+
+        cent2 = Centroids()
+        cent2.set_raster_from_pnt_bounds((-80, 19, -70, 23), res=1)
+
+        cent = cent1.union(cent2)
+        cent = cent1.union(cent1, cent2)
+
+    def test_union_latlon(self):
+        cent1 = Centroids()
+        cent1.set_raster_from_pnt_bounds((-85, 19, -80, 23), res=1)
+        cent1.set_meta_to_lat_lon()
+        cent1.meta = {}
+
+        cent2 = Centroids()
+        cent2.set_raster_from_pnt_bounds((-80, 19, -70, 23), res=1)
+        cent2.set_meta_to_lat_lon()
+        cent2.meta = {}
+
+        cent = cent1.union(cent2)
+        cent = cent1.union(cent1, cent2)
 
 # Execute Tests
 if __name__ == "__main__":
