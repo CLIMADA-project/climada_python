@@ -1532,7 +1532,7 @@ class Hazard():
 
         #Define comon centroids
         if centroids is None:
-            centroids = Centroids().union([haz.centroids
+            centroids = Centroids().union(*[haz.centroids
                                            for haz in haz_list])
 
         haz_concat = Hazard()
