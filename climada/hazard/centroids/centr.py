@@ -110,7 +110,7 @@ class Centroids():
     def __init__(self):
         """Initialize to None raster and vector"""
         self.meta = dict()
-        self.geometry = gpd.GeoSeries()
+        self.geometry = gpd.GeoSeries(crs=DEF_CRS)
         self.lat = np.array([])
         self.lon = np.array([])
         self.area_pixel = np.array([])
@@ -157,7 +157,7 @@ class Centroids():
                     and self.meta['height'] == centr.meta['height']
                     and self.meta['width'] == centr.meta['width']
                     and self.meta['transform'] == centr.meta['transform'])
-        return (u_coord.equal_crs(self.geometry.crs, centr.geometry.crs)
+        return (u_coord.equal_crs(self.crs, centr.crs)
                 and self.lat.shape == centr.lat.shape
                 and self.lon.shape == centr.lon.shape
                 and np.allclose(self.lat, centr.lat)
@@ -539,8 +539,7 @@ class Centroids():
             if cent.meta and not cent.lat.any():
                 cent.set_meta_to_lat_lon()
             cent.set_geometry_points()
-            if not u_coord.equal_crs(cent.geometry.crs,
-                                      centroids.geometry.crs):
+            if not u_coord.equal_crs(cent.crs, centroids.crs):
                     raise ValueError('Different CRS are not accepted.')
             if not centroids.equal(cent):
                 # append all 1-dim variables
