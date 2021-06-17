@@ -205,24 +205,19 @@ class TCForecast(TCTracks):
         )
         timestamp_origin = np.datetime64(timestamp_origin)
         
-        # number of timestep
-        n_timestep = 0
-        while True:
-            n_timestep = n_timestep + 1
-            try:
-                ec.codes_get_array(bufr, "#%d#timePeriod" % n_timestep)
-            except ec.CodesInternalError:
-                LOGGER.info('Key values not found: end of the time period')
-                break
+        # get storm identifier
+        sid = ec.codes_get(bufr, 'stormIdentifier').strip()
+        
+        # number of timestep (size of the forecast time + initial timestep)
+        try:
+            n_timestep = ec.codes_get_size(bufr, 'timePeriod') + 1
+        except ec.CodesInternalError:
+            LOGGER.warning("Track %s has no defined timePeriod."
+                            "Track is discarded.", sid)
+            return None
             
         # ensemble members number
         ens_no = ec.codes_get_array(bufr, "ensembleMemberNumber")
-        
-        # initiate a data dictionary to hold values
-        latitude = collections.defaultdict(dict)
-        longitude = collections.defaultdict(dict)
-        pressure = collections.defaultdict(dict)
-        max_wind = collections.defaultdict(dict)
         
         # values at timestep 0
         lat_init = ec.codes_get_array(bufr, '#2#latitude')
@@ -231,25 +226,21 @@ class TCForecast(TCTracks):
         max_wind_init = ec.codes_get_array(bufr, '#1#windSpeedAt10M')
         
         if len(lat_init) == len(ens_no) and len(max_wind_init) == len(ens_no):
-            for ind_ens in range(len(ens_no)):
-                latitude[ind_ens] = np.array(lat_init[ind_ens])
-                longitude[ind_ens] = np.array(lon_init[ind_ens])
-                pressure[ind_ens] = np.array(pre_init[ind_ens])
-                max_wind[ind_ens] = np.array(max_wind_init[ind_ens])
+            latitude = {ind_ens: np.array(lat_init[ind_ens]) for ind_ens in range(len(ens_no))}
+            longitude = {ind_ens: np.array(lon_init[ind_ens]) for ind_ens in range(len(ens_no))}
+            pressure = {ind_ens: np.array(pre_init[ind_ens]) for ind_ens in range(len(ens_no))}
+            max_wind = {ind_ens: np.array(max_wind_init[ind_ens]) for ind_ens in range(len(ens_no))}
         else:
-            print('pressure', pre_init)
-            print('max_wind', max_wind_init)
-            for ind_ens in range(len(ens_no)):
-                latitude[ind_ens] = np.array(lat_init[0])
-                longitude[ind_ens] = np.array(lon_init[0])
-                pressure[ind_ens] = np.array(pre_init[0])
-                max_wind[ind_ens] = np.array(max_wind_init[0])
+            latitude = {ind_ens: np.array(lat_init[0]) for ind_ens in range(len(ens_no))}
+            longitude = {ind_ens: np.array(lon_init[0]) for ind_ens in range(len(ens_no))}
+            pressure = {ind_ens: np.array(pre_init[0]) for ind_ens in range(len(ens_no))}
+            max_wind = {ind_ens: np.array(max_wind_init[0]) for ind_ens in range(len(ens_no))}
         
         # getting the forecasted storms
         timesteps_int = [0 for x in range(n_timestep)]
         for ind_timestep in range(1, n_timestep):
-            rank1 = ind_timestep * 2 + 2
-            rank3 = ind_timestep * 2 + 3
+            rank1 = ind_timestep * 2 + 2 # rank for getting storm centre information
+            rank3 = ind_timestep * 2 + 3 # rank for getting max wind information
             
             timestep = ec.codes_get_array(bufr, "#%d#timePeriod" % ind_timestep)
             if len(timestep) == 1:
