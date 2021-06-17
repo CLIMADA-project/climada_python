@@ -504,29 +504,19 @@ class Centroids():
             Centroids to append. The centroids need to have the same CRS.
         """
 
-        if self.meta:
+        if self.meta and not self.lat.any():
             self.set_meta_to_lat_lon()
-        if centr.meta:
+        if centr.meta and not centr.lat.any():
             centr.set_meta_to_lat_lon()
 
         if not u_coord.equal_crs(centr.geometry.crs, self.geometry.crs):
             raise ValueError('Different CRS not accepted.')
-        # append all 1-dim variables
-        for (var_name, var_val), centr_val in zip(self.__dict__.items(),
-                                                  centr.__dict__.values()):
-            if isinstance(var_val, np.ndarray) and var_val.ndim == 1:
-                setattr(self, var_name,
-                        np.append(var_val, centr_val).astype(var_val.dtype,
-                                                             copy=False)
-                        )
-            if isinstance(var_val, gpd.GeoSeries):
-                setattr(self, var_name, var_val.append(centr_val))
 
         self.meta = dict()
-        self.__dict__.update(self.remove_duplicate_points().__dict__)
+        self.__dict__.update(self.union(centr).__dict__)
 
-    @staticmethod
-    def union(centroids_list):
+
+    def union(self, *others):
         """
         Create the union of centroids from the inputs.
 
@@ -536,8 +526,8 @@ class Centroids():
 
         Parameters
         ----------
-        centroids_list : iterable(climada.hazard.Centroids())
-            Iterable of centroids to form the union with
+        others : any number of climada.hazard.Centroids()
+            Centroids to form the union with
 
         Returns
         -------
@@ -545,12 +535,38 @@ class Centroids():
             Centroids containing the union of the centroids in centroids_list.
 
         """
-        centroids = copy.deepcopy(centroids_list[0])
+
+        if self.lat.any() or self.meta:
+            centroids = copy.deepcopy(self)
+        else:
+            centroids = copy.deepcopy(others[0])
+            others = others[1:]
+        if centroids.meta and not centroids.lat.any():
+            centroids.set_meta_to_lat_lon()
+
         centroids.set_geometry_points()
-        for cent in centroids_list[1:]:
+        for cent in others:
+            if cent.meta and not cent.lat.any():
+                cent.set_meta_to_lat_lon()
             cent.set_geometry_points()
+            if not u_coord.equal_crs(cent.geometry.crs,
+                                      centroids.geometry.crs):
+                    raise ValueError('Different CRS are not accepted.')
             if not centroids.equal(cent):
-                centroids.append(cent)
+                # append all 1-dim variables
+                for (var_name, var_val), centr_val in \
+                    zip(centroids.__dict__.items(), centroids.__dict__.values()):
+                    if isinstance(var_val, np.ndarray) and var_val.ndim == 1:
+                        setattr(centroids, var_name,
+                                np.append(var_val, centr_val).astype(
+                                    var_val.dtype, copy=False
+                                    )
+                                )
+                    if isinstance(var_val, gpd.GeoSeries):
+                        setattr(centroids, var_name, var_val.append(centr_val))
+
+                centroids.meta = dict()
+
         return centroids.remove_duplicate_points()
 
     def get_closest_point(self, x_lon, y_lat, scheduler=None):
@@ -1006,7 +1022,7 @@ class Centroids():
             return df_exp.apply((lambda row: Point(row.longitude, row.latitude)), axis=1)
         if not self.geometry.size:
             LOGGER.info('Convert centroids to GeoSeries of Point shapes.')
-            if not self.lat.size or not self.lon.size:
+            if (not self.lat.any() or not self.lon.any()) and self.meta:
                 self.set_meta_to_lat_lon()
             if not scheduler:
                 self.geometry = gpd.GeoSeries(
