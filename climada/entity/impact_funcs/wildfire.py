@@ -31,9 +31,11 @@ LOGGER = logging.getLogger(__name__)
 class ImpfWildfire(ImpactFunc):
     """Impact function for wildfire."""
 
-    def __init__(self):
+    def __init__(self, haz_type = 'WFsingle'):
         ImpactFunc.__init__(self)
-        self.haz_type = 'WFsingle'
+        self.haz_type = haz_type
+        LOGGER.warning('haz_type is set to %s.', self.haz_type)
+        
 
     def set_default_FIRMS(self, i_half=295.01, impf_id=1):
 
