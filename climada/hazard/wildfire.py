@@ -116,7 +116,7 @@ class WildFire(Hazard):
         This method creates a centroids raster if centroids=None with
         resolution given by centr_res_factor. The centroids can be retrieved
         from Wildfire.centroids()
-
+        
         Parameters
         ----------
         df_firms : pd.DataFrame
@@ -131,10 +131,6 @@ class WildFire(Hazard):
         centroids : Centroids, optional
             centroids in degrees to map data, centroids need to be on a
             regular raster grid in order for the clustrering to work.
-
-        Returns
-        -------
-        self : climada.hazard.WildFire instance
 
         """
         self.clear()
@@ -181,6 +177,13 @@ class WildFire(Hazard):
         Individual fires are created using temporal and spatial clustering
         according to the 'set_hist_fire_FIRMS' method. single fires are then
         summarized to seasons using max intensity at each centroid for each year.
+        
+        This method sets the attributes self.n_fires, self.date_end, in
+        addition to all attributes required by the hazard class.
+
+        This method creates a centroids raster if centroids=None with
+        resolution given by centr_res_factor. The centroids can be retrieved
+        from Wildfire.centroids()
 
         Parameters
         ----------
@@ -205,10 +208,6 @@ class WildFire(Hazard):
         keep_all_fires : bool, optional
             keep list of all individual fires; default is False to save
             memory. If set to true, fires are stored in self.hist_fire_seasons
-
-        Returns
-        -------
-        self : climada.hazard.WildFire instance
 
         """
 
@@ -307,6 +306,9 @@ class WildFire(Hazard):
 
         Intensities are drawn randomly from historic events. Thus, this method
         requires at least one fire to draw from.
+        
+        This method modifies self (climada.hazard.WildFire instance)
+        by adding probabilistic wildfire seasons.
 
         Parameters
         ----------
@@ -321,10 +323,6 @@ class WildFire(Hazard):
         keep_all_fires : bool, optional
             keep detailed list of all fires; default is False to save
             memory.
-
-        Returns
-        -------
-        self : climada.hazard.WildFire instance
 
         """
         # min/max for uniform distribtion to sample for n_fires per year
@@ -372,6 +370,9 @@ class WildFire(Hazard):
 
         Orig fires are removed and a new fire id created; max intensity at
         overlapping centroids is assigned.
+        
+        This method modifies self (climada.hazard.WildFire instance) by
+        combining single fires.
 
         Parameters
         ----------
@@ -381,10 +382,6 @@ class WildFire(Hazard):
             if set to true, only the merged event is returned.
         probabilistic : bool, optional
             differentiate, because probabilistic events have no date.
-
-        Returns
-        -------
-        self : climada.hazard.WildFire instance
 
         """
 
@@ -456,6 +453,9 @@ class WildFire(Hazard):
         """ Summarize historic fires into fire seasons.
 
         Fires are summarized by taking the max intensity at each grid point.
+        
+        This method modifies self (climada.hazard.WildFire instance) by
+        summarizing individual fires into seasons.
 
         Parameters
         ----------
@@ -465,10 +465,6 @@ class WildFire(Hazard):
             end year; fires after that are cut; no cut if not specified
         hemisphere : str, optional
             'SHS' or 'NHS' to define fire seasons
-
-        Returns
-        -------
-        self : climada.hazard.WildFire instance
 
         """
 
@@ -822,6 +818,9 @@ class WildFire(Hazard):
     def _calc_brightness(self, df_firms, centroids, res_centr):
         """ Compute intensity matrix per fire with the maximum brightness at
         each centroid and all other hazard attributes.
+        
+        This method modifies self (climada.hazard.WildFire instance) by
+        assigning values to the intensity matrix.
 
         Parameters
         ----------
@@ -830,10 +829,6 @@ class WildFire(Hazard):
         centroids : Centroids
         res_centr : float
             centroids resolution in centroids unit
-
-        Returns
-        -------
-        self : climada.hazard.WildFire instance
 
         """
         uni_ev = np.unique(df_firms['event_id'].values)
@@ -1168,16 +1163,15 @@ class WildFire(Hazard):
         Alternatively, the fire propagation probability matrix can be any
         matrix that coresponds to the shape of the centroids and thus not have
         to be set this way.
+        
+        This method modifies self (climada.hazard.WildFire instance) by
+        populating self.centroids.fire_propa_matrix as np.array
 
         Parameters
         ----------
         self : climada.hazard.WildFire instance
         n_blurr : int
             blurr width around historical fires
-
-        Returns
-        -------
-        self.centroids.fire_propa_matrix : np.array
 
         """
         # historically burned centroids
