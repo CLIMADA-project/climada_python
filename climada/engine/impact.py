@@ -41,7 +41,7 @@ from climada.entity.exposures import INDICATOR_CENTR
 from climada.hazard import Tag as TagHaz
 import climada.util.plot as u_plot
 from climada import CONFIG
-from climada.util.constants import DEF_CRS
+from climada.util.constants import DEF_CRS, CMAP_IMPACT
 import climada.util.coordinates as u_coord
 import climada.util.dates_times as u_dt
 from climada.util.select import get_attributes_with_matching_dimension
@@ -276,7 +276,7 @@ class Impact():
 
     def plot_hexbin_eai_exposure(self, mask=None, ignore_zero=True,
                                  pop_name=True, buffer=0.0, extend='neither',
-                                 axis=None, **kwargs):
+                                 axis=None, adapt_fontsize=True, **kwargs):
         """Plot hexbin expected annual impact of each exposure.
 
         Parameters
@@ -303,15 +303,18 @@ class Impact():
         -------
             cartopy.mpl.geoaxes.GeoAxesSubplot
         """
+        if 'cmap' not in kwargs:
+            kwargs['cmap'] = CMAP_IMPACT
+
         eai_exp = self._build_exp()
         axis = eai_exp.plot_hexbin(mask, ignore_zero, pop_name, buffer,
-                                   extend, axis=axis, **kwargs)
+                                   extend, axis=axis, adapt_fontsize=adapt_fontsize, **kwargs)
         axis.set_title('Expected annual impact')
         return axis
 
     def plot_scatter_eai_exposure(self, mask=None, ignore_zero=True,
                                   pop_name=True, buffer=0.0, extend='neither',
-                                  axis=None, **kwargs):
+                                  axis=None, adapt_fontsize=True, **kwargs):
         """Plot scatter expected annual impact of each exposure.
 
         Parameters
@@ -331,6 +334,9 @@ class Impact():
             [ 'neither' | 'both' | 'min' | 'max' ]
         axis  : matplotlib.axes._subplots.AxesSubplot, optional
             axis to use
+        adapt_fontsize : bool, optional
+                If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
+                the default matplotlib font size is used. Default is True.
         kwargs : optional
             arguments for hexbin matplotlib function
 
@@ -338,15 +344,19 @@ class Impact():
         -------
             cartopy.mpl.geoaxes.GeoAxesSubplot
         """
+        if 'cmap' not in kwargs:
+            kwargs['cmap'] = CMAP_IMPACT
+
         eai_exp = self._build_exp()
         axis = eai_exp.plot_scatter(mask, ignore_zero, pop_name, buffer,
-                                    extend, axis=axis, **kwargs)
+                                    extend, axis=axis, adapt_fontsize=adapt_fontsize, **kwargs)
         axis.set_title('Expected annual impact')
         return axis
 
     def plot_raster_eai_exposure(self, res=None, raster_res=None, save_tiff=None,
                                  raster_f=lambda x: np.log10((np.fmax(x + 1, 1))),
-                                 label='value (log10)', axis=None, **kwargs):
+                                 label='value (log10)', axis=None, adapt_fontsize=True,
+                                 **kwargs):
         """Plot raster expected annual impact of each exposure.
 
         Parameters
@@ -364,6 +374,9 @@ class Impact():
         label : str colorbar label
         axis : matplotlib.axes._subplots.AxesSubplot, optional
             axis to use
+        adapt_fontsize : bool, optional
+                If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
+                the default matplotlib font size is used. Default is True.
         kwargs : optional
             arguments for imshow matplotlib function
 
@@ -372,7 +385,7 @@ class Impact():
         """
         eai_exp = self._build_exp()
         axis = eai_exp.plot_raster(res, raster_res, save_tiff, raster_f,
-                                   label, axis=axis, **kwargs)
+                                   label, axis=axis, adapt_fontsize=adapt_fontsize, **kwargs)
         axis.set_title('Expected annual impact')
         return axis
 
@@ -410,6 +423,8 @@ class Impact():
         -------
         cartopy.mpl.geoaxes.GeoAxesSubplot
         """
+        if 'cmap' not in kwargs:
+            kwargs['cmap'] = CMAP_IMPACT
         eai_exp = self._build_exp()
         axis = eai_exp.plot_basemap(mask, ignore_zero, pop_name, buffer,
                                     extend, zoom, url, axis=axis, **kwargs)
@@ -418,7 +433,7 @@ class Impact():
 
     def plot_hexbin_impact_exposure(self, event_id=1, mask=None, ignore_zero=True,
                                     pop_name=True, buffer=0.0, extend='neither',
-                                    axis=None, **kwargs):
+                                    axis=None, adapt_fontsize=True, **kwargs):
         """Plot hexbin impact of an event at each exposure.
         Requires attribute imp_mat.
 
@@ -444,6 +459,9 @@ class Impact():
             arguments for hexbin matplotlib function
         axis  : matplotlib.axes._subplots.AxesSubplot
             optional axis to use
+        adapt_fontsize : bool, optional
+                If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
+                the default matplotlib font size is used. Default is True.
 
         Returns
         --------
@@ -452,10 +470,12 @@ class Impact():
         if not hasattr(self.imp_mat, "shape") or self.imp_mat.shape[1] == 0:
             raise ValueError('attribute imp_mat is empty. Recalculate Impact'
                              'instance with parameter save_mat=True')
-
+        if 'cmap' not in kwargs:
+            kwargs['cmap'] = CMAP_IMPACT
         impact_at_events_exp = self._build_exp_event(event_id)
         axis = impact_at_events_exp.plot_hexbin(mask, ignore_zero, pop_name,
-                                                buffer, extend, axis=axis, **kwargs)
+                                                buffer, extend, axis=axis, adapt_fontsize=adapt_fontsize,
+                                                **kwargs)
 
         return axis
 
@@ -501,7 +521,8 @@ class Impact():
 
         if event_id not in self.event_id:
             raise ValueError(f'Event ID {event_id} not found')
-
+        if 'cmap' not in kwargs:
+            kwargs['cmap'] = CMAP_IMPACT
         impact_at_events_exp = self._build_exp_event(event_id)
         axis = impact_at_events_exp.plot_basemap(mask, ignore_zero, pop_name,
                                                  buffer, extend, zoom, url, axis=axis, **kwargs)

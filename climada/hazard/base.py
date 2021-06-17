@@ -22,20 +22,22 @@ Define Hazard.
 __all__ = ['Hazard']
 
 import copy
+import datetime as dt
 import itertools
 import logging
-import datetime as dt
+import pathlib
 import warnings
+
+import geopandas as gpd
+import h5py
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import geopandas as gpd
-from scipy import sparse
-import matplotlib.pyplot as plt
-import h5py
+from pathos.pools import ProcessPool as Pool
 import rasterio
 from rasterio.features import rasterize
 from rasterio.warp import reproject, Resampling, calculate_default_transform
-from pathos.pools import ProcessPool as Pool
+from scipy import sparse
 
 from climada.hazard.tag import Tag as TagHazard
 from climada.hazard.centroids.centr import Centroids
@@ -215,11 +217,12 @@ class Hazard():
                    band=None, src_crs=None, window=False, geometry=False,
                    dst_crs=False, transform=None, width=None, height=None,
                    resampling=Resampling.nearest):
-        """
-        Append intensity and fraction from raster file. 0s put to the masked
-        values. File can be partially read using window OR geometry.
-        Alternatively, CRS and/or transformation can be set using dst_crs and/or
-        (transform, width and height).
+        """Set intensity and fraction to values from raster files
+
+        If raster files are masked, the masked values are set to 0.
+
+        Files can be partially read using either window or geometry. Additionally, the data is
+        reprojected when custom dst_crs and/or transform, width and height are specified.
 
         Parameters
         ----------
@@ -246,9 +249,13 @@ class Hazard():
             number of lons for transform
         height : float, optional
             number of lats for transform
-        resampling : rasterio.warp,.Resampling, optional
+        resampling : rasterio.warp.Resampling, optional
             resampling function used for reprojection to dst_crs
         """
+        if isinstance(files_intensity, (str, pathlib.Path)):
+            files_intensity = [files_intensity]
+        if isinstance(files_fraction, (str, pathlib.Path)):
+            files_fraction = [files_fraction]
         if not attrs:
             attrs = {}
         if not band:
@@ -488,7 +495,7 @@ class Hazard():
             used for dask map_partitions. “threads”,
             “synchronous” or “processes”
         """
-        points_df = gpd.GeoDataFrame(crs=self.centroids.geometry.crs)
+        points_df = gpd.GeoDataFrame()
         points_df['latitude'] = self.centroids.lat
         points_df['longitude'] = self.centroids.lon
         val_names = ['val' + str(i_ev) for i_ev in range(2 * self.size)]
@@ -498,7 +505,9 @@ class Hazard():
             else:
                 points_df[inten_name] = np.asarray(self.fraction[i_ev - self.size, :].toarray()).\
                 reshape(-1)
-        raster, meta = u_coord.points_to_raster(points_df, val_names, scheduler=scheduler)
+        raster, meta = u_coord.points_to_raster(points_df, val_names,
+                                                crs=self.centroids.geometry.crs,
+                                                scheduler=scheduler)
         self.intensity = sparse.csr_matrix(raster[:self.size, :, :].reshape(self.size, -1))
         self.fraction = sparse.csr_matrix(raster[self.size:, :, :].reshape(self.size, -1))
         self.centroids = Centroids()
@@ -715,7 +724,8 @@ class Hazard():
         return inten_stats
 
     def plot_rp_intensity(self, return_periods=(25, 50, 100, 250),
-                          smooth=True, axis=None, figsize=(9, 13), **kwargs):
+                          smooth=True, axis=None, figsize=(9, 13), adapt_fontsize=True,
+                          **kwargs):
         """Compute and plot hazard exceedance intensity maps for different
         return periods. Calls local_exceedance_inten.
 
@@ -745,10 +755,10 @@ class Hazard():
             title.append('Return period: ' + str(ret) + ' years')
         axis = u_plot.geo_im_from_array(inten_stats, self.centroids.coord,
                                         colbar_name, title, smooth=smooth,
-                                        axes=axis, figsize=figsize, **kwargs)
+                                        axes=axis, figsize=figsize, adapt_fontsize=adapt_fontsize, **kwargs)
         return axis, inten_stats
 
-    def plot_intensity(self, event=None, centr=None, smooth=True, axis=None,
+    def plot_intensity(self, event=None, centr=None, smooth=True, axis=None, adapt_fontsize=True,
                        **kwargs):
         """Plot intensity values for a selected event or centroid.
 
@@ -790,7 +800,7 @@ class Hazard():
             if isinstance(event, str):
                 event = self.get_event_id(event)
             return self._event_plot(event, self.intensity, col_label,
-                                    smooth, crs_epsg, axis, **kwargs)
+                                    smooth, crs_epsg, axis, adapt_fontsize=adapt_fontsize, **kwargs)
         if centr is not None:
             if isinstance(centr, tuple):
                 _, _, centr = self.centroids.get_closest_point(centr[0], centr[1])
@@ -1094,7 +1104,7 @@ class Hazard():
             elif isinstance(var_val, str):
                 hf_str = hf_data.create_dataset(var_name, (1,), dtype=str_dt)
                 hf_str[0] = var_val
-            elif isinstance(var_val, list) and isinstance(var_val[0], str):
+            elif isinstance(var_val, list) and var_val and isinstance(var_val[0], str):
                 hf_str = hf_data.create_dataset(var_name, (len(var_val),), dtype=str_dt)
                 for i_ev, var_ev in enumerate(var_val):
                     hf_str[i_ev] = var_ev
@@ -1154,7 +1164,7 @@ class Hazard():
         return ev_set
 
     def _event_plot(self, event_id, mat_var, col_name, smooth, crs_espg, axis=None,
-                    figsize=(9, 13), **kwargs):
+                    figsize=(9, 13), adapt_fontsize=True, **kwargs):
         """Plot an event of the input matrix.
 
         Parameters
@@ -1211,7 +1221,7 @@ class Hazard():
 
         return u_plot.geo_im_from_array(array_val, self.centroids.coord, col_name,
                                         l_title, smooth=smooth, axes=axis,
-                                        figsize=figsize, proj=crs_espg, **kwargs)
+                                        figsize=figsize, proj=crs_espg, adapt_fontsize=adapt_fontsize, **kwargs)
 
     def _centr_plot(self, centr_idx, mat_var, col_name, axis=None, **kwargs):
         """Plot a centroid of the input matrix.
