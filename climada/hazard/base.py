@@ -1490,8 +1490,8 @@ class Hazard():
         None.
 
         """
-
-        haz_list = [self] + haz_list
+        if self.event_id.any():
+            haz_list =  [self] + haz_list
         self.__dict__ = self.concatenate_hazard(haz_list,
                                                 centroids,
                                                 threshold).__dict__
