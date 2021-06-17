@@ -890,6 +890,9 @@ def assign_coordinates(coords, coords_to_assign, method="NN", distance="haversin
         Index into `coords_to_assign`. Note that the value `-1` is used to indicate that no
         matching coordinate has been found, even though `-1` is a valid index in NumPy!
     """
+
+    if not coords.any() or not coords_to_assign.any():
+        return np.array([])
     coords = coords.astype('float64')
     coords_to_assign = coords_to_assign.astype('float64')
     if np.array_equal(coords, coords_to_assign):
