@@ -72,6 +72,90 @@ BM_FILENAMES = ['BlackMarble_%i_A1_geo_gray.tif',
 
 BM_YEARS = [2016, 2012] # list of available years with data, please update.
 
+def load_nasa_nl_shape(geometry, year, data_dir=SYSTEM_DIR, dtype='float32'):
+    """Read nightlight data from NASA BlackMarble tiles
+    cropped to given shape(s) and combine arrays from each tile.
+
+    Parameters
+    ----------
+    geometry : shape(s) to crop data to in degree lon/lat.
+        for example shapely.geometry.(Multi)Polygon or shapefile.Shape.
+        from polygon defined in a shapefile. The object should have
+        attribute 'bounds' or 'points'
+    year : int
+        target year for nightlight data, e.g. 2016.
+        Closest availble year is selected.
+    data_dir : Path (optional)
+        Path to directory with BlackMarble data.
+        The default is SYSTEM_DIR.
+    dtype : dtype
+        data type for output default 'float32', required for LitPop,
+        choose 'int8' for integer.
+
+    Returns
+    -------
+    results_array : numpy array
+        extracted and combined nightlight data for bounding box around shape
+    meta : dict
+        rasterio meta data for results_array
+    """
+    if isinstance(geometry, Shape):
+        bounds = geometry.bbox
+    else:
+        bounds = geometry.bounds
+
+    # get closest available year from year:
+    year = min(BM_YEARS, key=lambda x: abs(x - year))
+    # determin black marble tiles with coordinates containing the bounds:
+    req_files = get_required_nl_files(bounds)
+    # check wether required files exist locally:
+    check_nl_local_file_exists(required_files=req_files, check_path=data_dir,
+                               year=year)
+    # convert `req_files` to sorted list of indices:
+    req_files = np.where(req_files ==1)[0]
+    # init empty lists for tiles depending on position in global grid:
+    results_array_north = list() # tiles A1, B1, C1, D1 (Nothern Hemisphere)
+    results_array_south = list() # tiles A2, B2, C2, D2 (Southern Hemisphere)
+
+    # loop through required files, load and crop data for each:
+    for idx, i_file in enumerate(req_files):
+        # read cropped data from  source file (src) to np.ndarray:
+        out_image, meta_tmp = load_nasa_nl_shape_single_tile(geometry,
+                                        data_dir / (BM_FILENAMES[i_file] %(year)))
+        # sort indicies to northenr and southern hemisphere:
+        if i_file in [0,2,4,6]: # indicies of northern hemisphere files
+            results_array_north.append(out_image)
+        elif i_file in [1,3,5,7]: # indicies of southern hemisphere files
+            results_array_south.append(out_image)
+
+        # from first (top left) of tiles, meta is initiated, incl. origin:
+        if idx == 0:
+            meta = meta_tmp
+            # set correct CRS from local tile's CRS to global WGS 84:
+            meta.update({"crs": rasterio.crs.CRS.from_epsg(4326),
+                         "dtype": dtype})
+    if idx == 0: # only 1 tile required:
+        return np.array(out_image, dtype=dtype), meta
+    # Else, combine data from multiple input files (BlackMarble tiles) -
+    # concatenate arrays from west to east and from north to south:
+    del out_image
+    if results_array_north: # northern hemisphere west to east
+        results_array_north = np.concatenate(results_array_north, axis=1)
+    if results_array_south: # southern hemisphere west to east
+        results_array_south = np.concatenate(results_array_south, axis=1)
+    if isinstance(results_array_north, np.ndarray) and isinstance(results_array_south, np.ndarray):
+        # north to south if both hemispheres are involved
+        results_array_north = np.concatenate([results_array_north, results_array_south], axis=0)
+    elif isinstance(results_array_south, np.ndarray): # only southern hemisphere
+        results_array_north = results_array_south
+    del results_array_south
+
+    # update number of elements per axis in meta dictionary:
+    meta.update({"height": results_array_north.shape[0],
+                 "width": results_array_north.shape[1],
+                 "dtype": dtype})
+    return np.array(results_array_north, dtype=dtype), meta
+
 def get_required_nl_files(bounds, *coords):
     """Determines which of the satellite pictures are necessary for
         a certain bounding box (e.g. country)
@@ -224,7 +308,7 @@ def download_nl_files(req_files=np.ones(len(BM_FILENAMES),),
             'connection and whether filenames are still valid.') from exc
     return dwnl_path
 
-def load_nasa_nl_shape_single_tile(geometry, path, layer=0): # TODO: manually tested but no tests exist yet
+def load_nasa_nl_shape_single_tile(geometry, path, layer=0):
     """Read nightlight data from single NASA BlackMarble tile
     and crop to given shape.
 
@@ -255,92 +339,6 @@ def load_nasa_nl_shape_single_tile(geometry, path, layer=0): # TODO: manually te
                  "transform": transform})
     src.close()
     return out_image[layer,:,:], meta
-
-# TODO: LitPop 2.0
-def load_nasa_nl_shape(geometry, reference_year, data_dir=None, dtype=None):
-    """Read nightlight data from NASA BlackMarble tiles
-    cropped to given shape(s) and combine.
-    
-    Parameters
-    ----------
-    geometry : shape(s) to crop data to in degree lon/lat.
-        for example shapely.geometry.(Multi)Polygon or shapefile.Shape.
-        from polygon defined in a shapefile. The object should have
-        attribute 'bounds' or 'points'
-    reference_year : int
-        target year for nightlight data, e.g. 2016.
-    data_dir : Path (optional)
-        Path to directory with BlackMarble data.
-        The default is SYSTEM_DIR.
-    dtype : dtype
-        data type for output default 'float32', required for LitPop,
-        choose 'int8' for integer.
-
-    Returns
-    -------
-    results_array : list containing numpy array
-    meta : list containing meta data per array
-    """
-    if data_dir is None:
-        data_dir = SYSTEM_DIR
-    if dtype is None:
-        dtype = 'float32'
-    if isinstance(geometry, Shape):
-        bounds = geometry.bbox
-    else:
-        bounds = geometry.bounds
-
-    # get closest available year from reference_year:
-    year = min(BM_YEARS, key=lambda x: abs(x - reference_year))
-    # determin black marble tiles with coordinates containing the bounds:
-    req_files = get_required_nl_files(bounds)
-    # check wether required files exist locally:
-    check_nl_local_file_exists(required_files=req_files, check_path=data_dir,
-                               year=year)
-    # convert `req_files` to sorted list of indices:
-    req_files = np.where(req_files ==1)[0]
-    # init empty lists for tiles depending on position in global grid:
-    results_array_north = list() # tiles A1, B1, C1, D1 (Nothern Hemisphere)
-    results_array_south = list() # tiles A2, B2, C2, D2 (Southern Hemisphere)
-
-    # loop through required files, load and crop data for each:
-    for idx, i_file in enumerate(req_files):
-        # read cropped data from  source file (src) to np.ndarray:
-        out_image, meta_tmp = load_nasa_nl_shape_single_tile(geometry,
-                                        data_dir / (BM_FILENAMES[i_file] %(year)))
-        # sort indicies to northenr and southern hemisphere:
-        if i_file in [0,2,4,6]: # indicies of northern hemisphere files
-            results_array_north.append(out_image)
-        elif i_file in [1,3,5,7]: # indicies of southern hemisphere files
-            results_array_south.append(out_image)
-
-        # from first (top left) of tiles, meta is initiated, incl. origin:
-        if idx == 0:
-            meta = meta_tmp
-            # set correct CRS from local tile's CRS to global WGS 84:
-            meta.update({"crs": rasterio.crs.CRS.from_epsg(4326),
-                         "dtype": dtype})
-    if idx == 0: # only 1 tile required:
-        return np.array(out_image, dtype=dtype), meta
-    # Else, combine data from multiple input files (BlackMarble tiles) -
-    # concatenate arrays from west to east and from north to south:
-    del out_image
-    if results_array_north: # northern hemisphere west to east
-        results_array_north = np.concatenate(results_array_north, axis=1)
-    if results_array_south: # southern hemisphere west to east
-        results_array_south = np.concatenate(results_array_south, axis=1)
-    if isinstance(results_array_north, np.ndarray) and isinstance(results_array_south, np.ndarray):
-        # north to south if both hemispheres are involved
-        results_array_north = np.concatenate([results_array_north, results_array_south], axis=0)
-    elif isinstance(results_array_south, np.ndarray): # only southern hemisphere
-        results_array_north = results_array_south
-    del results_array_south
-
-    # update number of elements per axis in meta dictionary:
-    meta.update({"height": results_array_north.shape[0],
-                 "width": results_array_north.shape[1],
-                 "dtype": dtype})
-    return np.array(results_array_north, dtype=dtype), meta
 
 def unzip_tif_to_py(file_gz):
     """Unzip image file, read it, flip the x axis, save values as pickle
