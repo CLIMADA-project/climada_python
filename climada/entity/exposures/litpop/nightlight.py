@@ -75,6 +75,11 @@ BM_YEARS = [2016, 2012] # list of available years with data, please update.
 def load_nasa_nl_shape(geometry, year, data_dir=SYSTEM_DIR, dtype='float32'):
     """Read nightlight data from NASA BlackMarble tiles
     cropped to given shape(s) and combine arrays from each tile.
+    1) check and download required blackmarble files
+    2) read and crop data from each file required in a bounding box around shape
+    3) combine data from all input files into one array. this array then
+    contains all data in the bounds around the shape.
+    4) return array with nightlight data
 
     Parameters
     ----------
