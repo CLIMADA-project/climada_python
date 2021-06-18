@@ -59,7 +59,7 @@ def def_ori_centroids(firms, centr_res_factor):
     centroids.empty_geometry_points()
     return centroids, res_data
 
-DEF_CENTROIDS = def_ori_centroids(WildFire._clean_firms_df(TEST_FIRMS), 1/2)
+DEF_CENTROIDS = def_ori_centroids(WildFire._clean_firms_df(WildFire, TEST_FIRMS), 1/2)
 
 class TestMethodsFirms(unittest.TestCase):
     """Test loading functions from the WildFire class"""
@@ -116,14 +116,15 @@ class TestMethodsFirms(unittest.TestCase):
 
     def test_firms_cons_days_3_pass(self):
         """ Test _firms_cons_days """
-        ori_thres = WildFire.days_thres_firms
-        WildFire.days_thres_firms = 3
+        ori_thres = WildFire.FirmsParams.days_thres_firms
+        WildFire.FirmsParams.days_thres_firms = 3
         wf = WildFire()
         firms_ori = wf._clean_firms_df(TEST_FIRMS)
         firms = wf._firms_cons_days(firms_ori.copy())
         self.assertEqual(len(firms), 9325)
         cons_id = np.zeros(9325, int)
-        cons_id[-4:] = 1
+        cons_id[8176:9321] = 1
+        cons_id[-4:] = 2
         self.assertTrue(np.allclose(firms.cons_id.values, cons_id))
         for col_name in firms.columns:
             if col_name not in ('cons_id', 'acq_date', 'confidence', 'instrument', 'satellite'):
@@ -131,7 +132,7 @@ class TestMethodsFirms(unittest.TestCase):
             elif col_name != 'cons_id':
                 for elem_l, elem_r in zip(firms[col_name].values, firms_ori[col_name].values):
                     self.assertEqual(elem_l, elem_r)
-        WildFire.days_thres_firms = ori_thres
+        WildFire.FirmsParams.days_thres_firms = ori_thres
 
     def test_firms_cluster_pass(self):
         """ Test _firms_clustering """

@@ -23,6 +23,7 @@ __all__ = ['WildFire']
 
 import logging
 import itertools
+from dataclasses import dataclass
 from datetime import date
 
 import numpy as np
@@ -45,12 +46,6 @@ LOGGER = logging.getLogger(__name__)
 HAZ_TYPE = 'WF'
 """ Hazard type acronym for Wild Fire, might be changed to WFseason or WFsingle """
 
-CLEAN_THRESH = 30
-""" Minimal confidence value for the data from MODIS instrument to be use as input"""
-
-BLURR_STEPS = 4
-""" steps with exponential decay for fire propagation matrix """
-
 class WildFire(Hazard):
 
     """Contains wild fire events.
@@ -67,37 +62,66 @@ class WildFire(Hazard):
     'WFsingle'.
 
     Attributes:
-        date_end : array
-            integer date corresponding to the proleptic Gregorian ordinal,
-            where January 1 of year 1 has ordinal 1 (ordinal format of
-            datetime library). Represents last day of a wild fire instance
-            where the fire was still active.
-        n_fires : array
-            number of single fires in a fire season
+    ----------
+    date_end : array
+        integer date corresponding to the proleptic Gregorian ordinal,
+        where January 1 of year 1 has ordinal 1 (ordinal format of
+        datetime library). Represents last day of a wild fire instance
+        where the fire was still active.
+    n_fires : array
+        number of single fires in a fire season
 
     """
 
-    days_thres_firms = 2
-    """ Minimum number of days to consider different fires """
+    @dataclass
+    class FirmsParams():
+        """ DataClass as container for firms parameters.
 
-    clus_thres_firms = 15
-    """ Clustering factor which multiplies instrument resolution """
+        Attributes:
+        ----------
+        clean_thresh : int, default = 30
+            Minimal confidence value for the data from MODIS instrument
+            to be use as input
+        days_thres_firms : int, default = 2
+            Minimum number of days to consider different fires
+        clus_thres_firms : int, default = 15
+            Clustering factor which multiplies instrument resolution
+        remove_minor_fires_firms : bool, default = True
+            removes FIRMS fires below defined theshold of entries
+        minor_fire_thres_firms : int, default = 3
+            number of FIRMS entries required to be considered a fire
 
-    remove_minor_fires_firms = True
-    """ removes FIRMS fires below defined theshold of entries"""
+        """
+        clean_thresh: int = 30
+        days_thres_firms: int = 2
+        clus_thres_firms: int = 15
+        remove_minor_fires_firms: bool = True
+        minor_fire_thres_firms: int = 3
+        
+    @dataclass
+    class ProbaParams():
+        """ DataClass as container for parameters for generation of
+        probabilistic events.
+        
+        PLEASE BE AWARE: Parameter values did not undergo any calibration.
+        
+        Attributes:
+        ----------
+        blurr_steps : int, default = 4
+            steps with exponential decay for fire propagation matrix
+        prop_proba : float, default = 0.21
+        max_it_propa : float, default = 500000
 
-    minor_fire_thres_firms = 3
-    """ number of FIRMS entries required to be considered a fire """
-
-    prop_proba = 0.21
-    """ probability of fire propagation """
-
-    max_it_propa = 500000
-    """ maximum propgation iterations for a probabilistic fire """
+        """
+        blurr_steps: int = 4
+        prop_proba: float = 0.21
+        max_it_propa: int = 500000
 
     def __init__(self):
         """Empty constructor. """
         Hazard.__init__(self, HAZ_TYPE)
+        self.FirmsParams = self.FirmsParams()
+        self.ProbaParams = self.ProbaParams()
 
     def set_hist_fire_FIRMS(self, df_firms, centr_res_factor=1.0, centroids=None):
         """ Parse FIRMS data and generate historical fires by temporal and spatial
@@ -105,7 +129,7 @@ class WildFire(Hazard):
         that are geographically close and/or have consecutive dates. The
         unique identification is made in two steps. First a temporal
         clustering is applied to cleaned data obtained from FIRMS. Data points
-        with acquisition dates more than self.days_thres_firms days apart are
+        with acquisition dates more than days_thres_firms days apart are
         in different temporal clusters. Second, for each temporal cluster,
         unique event are identified by performing a spatial clustering. This
         is done iteratively until all firms data points are assigned to an event.
@@ -116,7 +140,7 @@ class WildFire(Hazard):
         This method creates a centroids raster if centroids=None with
         resolution given by centr_res_factor. The centroids can be retrieved
         from Wildfire.centroids()
-        
+
         Parameters
         ----------
         df_firms : pd.DataFrame
@@ -158,9 +182,9 @@ class WildFire(Hazard):
             df_firms.iter_ev.values).size))
 
         # remove minor fires
-        if self.remove_minor_fires_firms:
+        if self.FirmsParams.remove_minor_fires_firms:
             df_firms = self._firms_remove_minor_fires(df_firms,
-                                                   self.minor_fire_thres_firms)
+                                    self.FirmsParams.minor_fire_thres_firms)
 
         # compute brightness and fill class attributes
         LOGGER.info('Computing intensity of %s fires.',
@@ -177,7 +201,7 @@ class WildFire(Hazard):
         Individual fires are created using temporal and spatial clustering
         according to the 'set_hist_fire_FIRMS' method. single fires are then
         summarized to seasons using max intensity at each centroid for each year.
-        
+
         This method sets the attributes self.n_fires, self.date_end, in
         addition to all attributes required by the hazard class.
 
@@ -232,12 +256,14 @@ class WildFire(Hazard):
                 hemisphere = 'SHS'
         if not all(i >= 0 for i in centroids.lat) or \
             all(i <= 0 for i in centroids.lat):
-                LOGGER.warning('Not all centroids are on the same hemisphere. \
-                               Hemisphere is set to: %s.', hemisphere)
+            LOGGER.warning('Not all centroids are on the same hemisphere. \
+                        Hemisphere is set to: %s.', hemisphere)
 
         # define years
-        year_i  = year_start if year_start is not None else date.fromordinal(df_firms.datenum.min()).year
-        year_e  = year_end if year_end is not None else date.fromordinal(df_firms.datenum.max()).year
+        year_i  = year_start if year_start is not None else \
+            date.fromordinal(df_firms.datenum.min()).year
+        year_e  = year_end if year_end is not None else \
+            date.fromordinal(df_firms.datenum.max()).year
         years = np.arange(year_i, year_e+1)
 
         # make fire seasons
@@ -306,7 +332,7 @@ class WildFire(Hazard):
 
         Intensities are drawn randomly from historic events. Thus, this method
         requires at least one fire to draw from.
-        
+
         This method modifies self (climada.hazard.WildFire instance)
         by adding probabilistic wildfire seasons.
 
@@ -370,7 +396,7 @@ class WildFire(Hazard):
 
         Orig fires are removed and a new fire id created; max intensity at
         overlapping centroids is assigned.
-        
+
         This method modifies self (climada.hazard.WildFire instance) by
         combining single fires.
 
@@ -453,7 +479,7 @@ class WildFire(Hazard):
         """ Summarize historic fires into fire seasons.
 
         Fires are summarized by taking the max intensity at each grid point.
-        
+
         This method modifies self (climada.hazard.WildFire instance) by
         summarizing individual fires into seasons.
 
@@ -476,9 +502,9 @@ class WildFire(Hazard):
                 hemisphere = 'SHS'
         if not all(i >= 0 for i in self.centroids.lat) or \
             all(i <= 0 for i in self.centroids.lat):
-                LOGGER.warning('Not all centroids are on the same hemisphere. \
-                               Hemisphere is set to: %s.', hemisphere)
-                               
+            LOGGER.warning('Not all centroids are on the same hemisphere. \
+                        Hemisphere is set to: %s.', hemisphere)
+
         # define years
         fire_years = np.array([date.fromordinal(i).year for i in self.date])
         years = np.arange(np.min(fire_years), np.max(fire_years)+1)
@@ -528,10 +554,10 @@ class WildFire(Hazard):
         self.fraction.data.fill(1.0)
 
 
-    @staticmethod
-    def _clean_firms_df(df_firms):
+    #@staticmethod
+    def _clean_firms_df(self, df_firms):
         """Read and remove low confidence data from firms:
-            - MODIS: remove data where confidence values are lower than CLEAN_THRESH
+            - MODIS: remove data where confidence values are lower than clean_thresh
             - VIIRS: remove data where confidence values are set to low (keep
                 nominal and high values)
 
@@ -555,11 +581,12 @@ class WildFire(Hazard):
                 df_firms_modis.confidence = np.array(
                     list(map(int, df_firms_modis.confidence.values.tolist())))
                 df_firms_modis = df_firms_modis.drop(df_firms_modis[ \
-                    df_firms_modis.confidence < CLEAN_THRESH].index)
+                    df_firms_modis.confidence < self.FirmsParams.clean_thresh].index)
                 temp = df_firms_modis
                 df_firms_viirs = df_firms.drop(df_firms[df_firms.instrument == 'MODIS'].index)
                 if df_firms_viirs.size:
-                    df_firms_viirs = df_firms_viirs.drop(df_firms_viirs[df_firms_viirs.confidence == 'l'].index)
+                    df_firms_viirs = df_firms_viirs.drop(df_firms_viirs[ \
+                        df_firms_viirs.confidence == 'l'].index)
                     df_firms_viirs = df_firms_viirs.rename(columns={'bright_ti4':'brightness'})
                     temp = temp.append(df_firms_viirs, sort=True)
                     temp = temp.drop(columns=['bright_ti4'])
@@ -655,7 +682,7 @@ class WildFire(Hazard):
     def _firms_cons_days(self, df_firms):
         """ Compute clusters of consecutive days (temporal clusters).
 
-        An interruption of n days (as defined in self.days_thresh_firms) is
+        An interruption of n days (as defined in FirmsParams) is
         necessary to be set in two different temporal clusters.
 
         Parameters
@@ -687,7 +714,7 @@ class WildFire(Hazard):
             max_cons_id += 1
             for index in range(1, len(firms_cons)):
                 if abs((firms_cons.at[index, 'datenum'] - firms_cons.at[index-1, 'datenum'])) \
-                >= self.days_thres_firms:
+                >= self.FirmsParams.days_thres_firms:
                     firms_cons.at[index, 'cons_id'] = max_cons_id
                     max_cons_id += 1
                 else:
@@ -739,7 +766,7 @@ class WildFire(Hazard):
                 temp = np.argwhere(firms_cons['cons_id'].values == cons_id).reshape(-1,)
                 lat_lon = firms_cons.iloc[temp][['latitude', 'longitude']].values
                 lat_lon_uni, lat_lon_cpy = np.unique(lat_lon, return_inverse=True, axis=0)
-                cluster_id = DBSCAN(eps=res_data * self.clus_thres_firms,
+                cluster_id = DBSCAN(eps=res_data * self.FirmsParams.clus_thres_firms,
                                     min_samples=1).\
                                     fit(lat_lon_uni).labels_
                 cluster_id = cluster_id[lat_lon_cpy]
@@ -757,8 +784,6 @@ class WildFire(Hazard):
 
         Parameters
         ----------
-        days_thres : int
-            Temporal threshold for clustering
         df_firms : pd.DataFrame
             FIRMS data including info on temporal and spatial cluster per point
 
@@ -778,12 +803,13 @@ class WildFire(Hazard):
 
         for ev_id in np.unique(df_firms.event_id.values):
             date_ord = np.sort(df_firms.datenum.values[df_firms.event_id.values == ev_id])
-            if (np.diff(date_ord) < self.days_thres_firms).all():
+            if (np.diff(date_ord) < self.FirmsParams.days_thres_firms).all():
                 df_firms.iter_ev.values[df_firms.event_id.values == ev_id] = False
             else:
                 df_firms.iter_ev.values[df_firms.event_id.values == ev_id] = True
 
-    def _firms_remove_minor_fires(self, df_firms, minor_fires_thres):
+    @staticmethod
+    def _firms_remove_minor_fires(df_firms, minor_fires_thres):
         """ Remove fires containg fewer FIRMS entries than threshold.
         A fire is characterized by a unique combination of 'cons_id' and
         'clus_id'. This function modifies the df_firms in place.
@@ -818,7 +844,7 @@ class WildFire(Hazard):
     def _calc_brightness(self, df_firms, centroids, res_centr):
         """ Compute intensity matrix per fire with the maximum brightness at
         each centroid and all other hazard attributes.
-        
+
         This method modifies self (climada.hazard.WildFire instance) by
         assigning values to the intensity matrix.
 
@@ -994,17 +1020,17 @@ class WildFire(Hazard):
             the propagation probability equals 1. The fire is then propagated
             with a cellular automat.
             If the fire has not stopped burning after a defined number of
-            iterations (self.max_it_propa, default=500'000), the propagation
-            is interrupted.
+            iterations (self.ProbaParams.max_it_propa, default=500'000),
+            the propagation is interrupted.
 
             Propagation rules:
                 1. select a burning centroid (at the start there is only one,
                     afterwards select one randomly)
                 2. every adjunct centroid to the selected centroid can start
                     burning with a probability of the overall propagation
-                    probability (self.prop_proba) times the centroid specific
-                    propagation probability (which is defined on the
-                    fire_propa_matrix).
+                    probability (self.ProbaParams.prop_proba) times the
+                    centroid specific propagation probability (which is
+                    defined on the fire_propa_matrix).
                 3. the selected burning centroid becomes an ember centroid
                     which can not start burning again and thus no longer
                     propagate any fire.
@@ -1055,7 +1081,7 @@ class WildFire(Hazard):
         centr_burned[centr_ix, centr_iy] = 1
         # Iterate the fire according to the propagation rules
         count_it = 0
-        while np.any(centr_burned == 1) and count_it < self.max_it_propa:
+        while np.any(centr_burned == 1) and count_it < self.ProbaParams.max_it_propa:
             count_it += 1
             # Select randomly one of the burning centroids
             # and propagate throught its neighborhood
@@ -1064,14 +1090,14 @@ class WildFire(Hazard):
                 centr_ix, centr_iy = burned[np.random.randint(0, len(burned))]
             elif len(burned) == 1:
                 centr_ix, centr_iy = burned[0]
-            if not count_it % (self.max_it_propa-1):
+            if not count_it % (self.ProbaParams.max_it_propa-1):
                 LOGGER.warning('Fire propagation not converging at iteration %s.',
                                count_it)
             if 1 <= centr_ix < self.centroids.shape[0]-1 and \
             1 <= centr_iy < self.centroids.shape[1]-1 and \
             self.centroids.on_land[(centr_ix*self.centroids.shape[1] + centr_iy)]:
                 centr_burned = self._fire_propagation_on_matrix(self.centroids.shape, \
-                    self.centroids.fire_propa_matrix, self.prop_proba, \
+                    self.centroids.fire_propa_matrix, self.ProbaParams.prop_proba, \
                     centr_ix, centr_iy, centr_burned, np.random.random(500))
 
         return centr_burned
@@ -1153,25 +1179,24 @@ class WildFire(Hazard):
 
         return proba_intensity
 
-    def _set_fire_propa_matrix(self, n_blurr=BLURR_STEPS):
+    def _set_fire_propa_matrix(self):
 
         """ sets fire propagation matrix which is used to propagate
         probabilistic fires. The matrix is set so that burn probability on
         centroids which burned historically is set to 1. A blurr with
         exponential decay of burn probabilities is set around these
-        centroids.
+        centroids. The blurr width is defined within self.ProbaParams
+
         Alternatively, the fire propagation probability matrix can be any
         matrix that coresponds to the shape of the centroids and thus not have
         to be set this way.
-        
+
         This method modifies self (climada.hazard.WildFire instance) by
         populating self.centroids.fire_propa_matrix as np.array
 
         Parameters
         ----------
         self : climada.hazard.WildFire instance
-        n_blurr : int
-            blurr width around historical fires
 
         """
         # historically burned centroids
@@ -1180,15 +1205,15 @@ class WildFire(Hazard):
         self.centroids.hist_burned = hist_burned
 
         fire_propa_matrix = hist_burned.reshape(self.centroids.shape).astype(float)
-        blurr_lvl = np.ones(n_blurr)
+        blurr_lvl = np.ones(self.ProbaParams.blurr_steps)
         # exponential decay of fire propagation on cell level
-        for i in range(n_blurr):
+        for i in range(self.ProbaParams.blurr_steps):
             blurr_lvl[i] = 2.**(-i)
         # Neighbourhood
         hood = ((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1))
 
         # loop over matrix to create blurr around historical fires
-        for blurr in range(n_blurr-1):
+        for blurr in range(self.ProbaParams.blurr_steps-1):
             for i in range(fire_propa_matrix.shape[0]):
                 for j in range(fire_propa_matrix.shape[1]):
                     if fire_propa_matrix[i, j] == blurr_lvl[blurr]:
