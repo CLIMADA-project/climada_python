@@ -156,44 +156,32 @@ def load_nasa_nl_shape(geometry, year, data_dir=SYSTEM_DIR, dtype='float32'):
                  "dtype": dtype})
     return np.array(results_array_north, dtype=dtype), meta
 
-def get_required_nl_files(bounds, *coords):
+def get_required_nl_files(bounds):
     """Determines which of the satellite pictures are necessary for
         a certain bounding box (e.g. country)
 
-    Parameters:
-        either:
-            bounds (1x4 tuple): bounding box from shape (min_lon, min_lat,
-                 max_lon, max_lat)
-        or:
-            min_lon (float): (=min_lon) Western-most point in decimal degrees
-            min_lat (float): Southern-most point in decimal degrees
-            max_lon (float): Eastern-most point in decimal degrees
-            max_lat (float): Northern-most point in decimal degrees
+    Parameters
+    ----------
+    bounds : 1x4 tuple
+        bounding box from shape (min_lon, min_lat, max_lon, max_lat).
 
-    Returns:
-        req_files (array): Array indicating the required files for the current
-            operation with a Boolean value (1: file is required, 0: file is not
-            required).
+    Raises
+    ------
+    ValueError
+        invalid `bounds`
+
+    Returns
+    -------
+    req_files : numpy array
+        Array indicating the required files for the current operation with a
+        boolean value (1: file is required, 0: file is not required).
     """
-    try:
-        if not coords:
-            # check if bbox is valid
-            if (np.size(bounds) != 4) or (bounds[0] > bounds[2]) \
-            or (bounds[1] > bounds[3]):
-                raise ValueError('Invalid bounding box supplied.')
-            else:
-                min_lon, min_lat, max_lon, max_lat = bounds
-        else:
-            if (len(coords) != 3) or (not coords[1] > bounds) \
-            or (not coords[2] > coords[0]):
-                raise ValueError('Invalid coordinates supplied.')
-            else:
-                min_lon = bounds
-                min_lat, max_lon, max_lat = coords
-    except Exception as exc:
-        raise ValueError('Invalid coordinates supplied. Please either '
-                         ' deliver a bounding box or the coordinates defining the '
-                         ' bounding box separately.') from exc
+    # check if bounds are valid:
+    if (np.size(bounds) != 4) or (bounds[0] > bounds[2]) or (bounds[1] > bounds[3]):
+        raise ValueError('Invalid bounds supplied. `bounds` must be tuple'+
+                         ' with (min_lon, min_lat, max_lon, max_lat).')
+    else:
+        min_lon, min_lat, max_lon, max_lat = bounds
 
     # longitude first. The width of all tiles is 90 degrees
     tile_width = 90
@@ -217,7 +205,6 @@ def get_required_nl_files(bounds, *coords):
         else:
             continue
     return req_files
-
 
 def check_nl_local_file_exists(required_files=np.ones(len(BM_FILENAMES),),
                                check_path=SYSTEM_DIR, year=2016):
