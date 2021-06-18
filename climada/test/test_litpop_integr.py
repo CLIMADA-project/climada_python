@@ -18,14 +18,12 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Tests on LitPop exposures.
 """
-
 import unittest
 import numpy as np
-import pandas as pd
 from shapely.geometry import Polygon
 
 from climada.entity.exposures.litpop import litpop as lp
-from climada.util.finance import world_bank_wealth_account, gdp
+from climada.util.finance import world_bank_wealth_account, gdp, income_group
 import climada.util.coordinates as u_coord
 from climada.util.constants import SYSTEM_DIR
 
@@ -42,14 +40,16 @@ class TestLitPopExposure(unittest.TestCase):
         with self.assertLogs('climada.entity.exposures.litpop', level='INFO') as cm:
             ent.set_country(country_name, res_arcsec=resolution, fin_mode=fin_mode,
                             reference_year=2016)
-        # print(cm)
+
         self.assertIn('LitPop: Init Exposure for country: CHE, 756', cm.output[0])
         self.assertEqual(ent.gdf.region_id.min(), 756)
         self.assertEqual(ent.gdf.region_id.max(), 756)
-        self.assertAlmostEqual(ent.gdf.value.sum()/3356545987390.9, 1.0)
+        # confirm that the total value is equal to GDP * (income_group+1):
+        self.assertAlmostEqual(ent.gdf.value.sum()/gdp('CHE', 2016)[1],
+                               (income_group('CHE', 2016)[1] + 1))
         self.assertIn("LitPop Exposure for ['CHE'] at 300 as, year: 2016", ent.tag.description)
-        self.assertIn('financial mode=income_group', ent.tag.description)
-        self.assertIn('exp=[1, 1]', ent.tag.description)
+        self.assertIn('income_group', ent.tag.description)
+        self.assertIn('[1, 1]', ent.tag.description)
         self.assertTrue(u_coord.equal_crs(ent.crs, {'init': 'epsg:4326'}))
         self.assertEqual(ent.meta['width'], 54)
         self.assertEqual(ent.meta['height'], 23)
@@ -88,7 +88,7 @@ class TestLitPopExposure(unittest.TestCase):
         self.assertEqual(ent.gdf.region_id.max(), 740)
         self.assertEqual(np.int(ent.gdf.value.sum().round()), 2304662017)
 
-    def test_switzerland300_pc2016_pass(self):
+    def test_switzerland300_admin1_pc2016_pass(self):
         """Create LitPop entity for Switzerland 2016 with admin1 and produced capital:"""
         country_name = ['CHE']
         fin_mode = 'pc'
@@ -180,8 +180,7 @@ class TestFunctionIntegration(unittest.TestCase):
         ent.set_countries(country_name, res_arcsec=resolution, fin_mode=fin_mode,
                         reference_year=2016, admin1_calc=True)
 
-        self.assertAlmostEqual(ent.gdf.value.sum(), gdp('CHE', 2016)[1])
-        self.assertEqual(ent.gdf.shape[0], 7949)
+        self.assertEqual(ent.gdf.shape[0], 7964)
 
     def test_calc_admin1(self):
         """test function _calc_admin1 for Switzerland."""
@@ -189,7 +188,7 @@ class TestFunctionIntegration(unittest.TestCase):
         country = 'CHE'
         ent = lp._calc_admin1(country, resolution, (2,1), 'pc', None,
                  2016, 11, SYSTEM_DIR, False)
-        self.assertEqual(ent.gdf.shape[0], 711)
+        self.assertEqual(ent.gdf.shape[0], 717)
         self.assertAlmostEqual(ent.gdf.latitude.max(), 47.708333333333336)
 
     # TODO  test gpw_population

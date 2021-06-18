@@ -38,8 +38,9 @@ from climada import CONFIG
 LOGGER = logging.getLogger(__name__)
 
 GPW_VERSION = CONFIG.exposures.litpop.gpw_population.gpw_version.int()
+"""Version of Gridded Population of the World (GPW) input data. Check for updates."""
 
-class LitPop(Exposures): # TODO tests nighlight (integ), gpw_population (integ) and litpop (integ)
+class LitPop(Exposures):
     """Defines exposure values from nightlight intensity (NASA), Gridded Population
         data (SEDAC); distributing produced capital (World Bank), population count,
         GDP (World Bank), or non-financial wealth (Global Wealth Databook by Credit Suisse
@@ -54,9 +55,8 @@ class LitPop(Exposures): # TODO tests nighlight (integ), gpw_population (integ) 
 
     def set_countries(self, countries, res_km=1, res_arcsec=None,
                     exponents=(1,1), fin_mode='pc', total_values=None,
-                    admin1_calc=False,
-                    reference_year=2020, gpw_version=GPW_VERSION, data_dir=SYSTEM_DIR,
-                    resample_first=True):
+                    admin1_calc=False, reference_year=2020, gpw_version=GPW_VERSION,
+                    data_dir=SYSTEM_DIR, resample_first=True):
         """init LitPop exposure object for a list of countries (admin 0).
         Alias: set_country()
 
@@ -122,8 +122,6 @@ class LitPop(Exposures): # TODO tests nighlight (integ), gpw_population (integ) 
             else:
                 res_arcsec = 30 * res_km
             LOGGER.info('Resolution is set to %i arcsec.', res_arcsec)
-        if fin_mode is None:
-            fin_mode = 'pc'
         # value_unit is set depending on fin_mode:
         if fin_mode in ['none', 'norm']:
             value_unit = ''
@@ -131,15 +129,15 @@ class LitPop(Exposures): # TODO tests nighlight (integ), gpw_population (integ) 
             value_unit='people'
         else:
             value_unit = 'USD'
-        if total_values is None:
+        if total_values is None: # init list with total values per countries
             total_values = [None] * len(countries)
         elif len(total_values) != len(countries):
             raise ValueError("'countries' and 'total_values' must be lists of same length")
         tag = Tag()
 
-        # litpop_list, a list containing one Exposure instance per country and
-        # None for countries that could not be identified is produced:
-        if admin1_calc: # each admin 1 region initiated seperately,
+        # litpop_list is initiated, a list containing one Exposure instance per
+        # country and None for countries that could not be identified:
+        if admin1_calc: # each admin 1 region is initiated seperately,
                         # with total value share based on subnational GDP share.
                         # This requires GRP (Gross Regional Product) data in the
                         # GSDP data folder.
@@ -206,7 +204,7 @@ class LitPop(Exposures): # TODO tests nighlight (integ), gpw_population (integ) 
             self.meta = {}
         self.check()
 
-    def set_custom_shape(self, shape, res_arcsec=30, exponents=(1,1), fin_mode=None,
+    def set_custom_shape(self, shape, res_arcsec=30, exponents=(1,1), fin_mode='pc',
                          total_value_abs=None, rel_value_share=1., in_countries=None,
                          region_id = None,
                          reference_year=2020, gpw_version=GPW_VERSION, data_dir=SYSTEM_DIR,
@@ -313,8 +311,6 @@ class LitPop(Exposures): # TODO tests nighlight (integ), gpw_population (integ) 
             LOGGER.info('total_value_abs is provided. Thus, in_countries is ignored '
                         'for calculation of total_value.')
             in_countries = None
-        if fin_mode is None:
-            fin_mode = 'pc'
         if fin_mode in ['none', 'norm']:
             value_unit = ''
         elif fin_mode == 'pop':
@@ -340,10 +336,13 @@ class LitPop(Exposures): # TODO tests nighlight (integ), gpw_population (integ) 
                                            offsets, exponents,
                                            verbatim=not bool(idx),
                                            )
+            if gdf_tmp is None:
+                LOGGER.warning(f'Skipping polygon with index {idx}' +
+                               ' : no data point within this polygon.')
+                continue
             total_population += meta_tmp['total_population']
             litpop_gdf = litpop_gdf.append(gdf_tmp)
-        litpop_gdf.crs = meta_tmp['crs']
-
+            litpop_gdf.crs = meta_tmp['crs']
 
         if fin_mode == 'pop' and total_value_abs is None:
             LOGGER.info('Total population in shape is extracted directly'
@@ -449,8 +448,8 @@ class LitPop(Exposures): # TODO tests nighlight (integ), gpw_population (integ) 
                                reference_year=reference_year, gpw_version=GPW_VERSION,
                                data_dir=data_dir, resample_first=True)
         elif countries is not None:
-            LOGGER.info("Using shape provided instead of countries' shapes. "
-                        "To use countries' shapes, set shape=None")
+            LOGGER.info("Using `shape` provided instead of countries' shapes. "
+                        "To use countries' shapes, set `shape`=None")
         if shape is not None:
             self.set_custom_shape(shape, res_arcsec=res_arcsec, exponents=(exponent,0),
                                   fin_mode='none', in_countries=countries,
@@ -568,6 +567,10 @@ class LitPop(Exposures): # TODO tests nighlight (integ), gpw_population (integ) 
                                            offsets, exponents,
                                            verbatim=not bool(idx),
                                            )
+            if gdf_tmp is None:
+                LOGGER.warning(f'Skipping polygon with index {idx} for' +
+                               f' country {iso3a}: no data point within shape.')
+                continue
             total_population += meta_tmp['total_population']
             litpop_gdf = litpop_gdf.append(gdf_tmp)
         litpop_gdf.crs = meta_tmp['crs']
@@ -665,14 +668,17 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
         i_ref = 0
         global_origins=(global_transform[2],
                         global_transform[5])
-        
     # resample Lit and Pop input data to same grid:
-    [pop, nl], meta_out = reproject_input_data([pop, nl],
-                                              [meta_pop, meta_nl],
-                                              i_ref=i_ref, # pop defines grid
-                                              target_res_arcsec=target_res_arcsec,
-                                              global_origins=global_origins,
-                                              )
+    try:
+        [pop, nl], meta_out = reproject_input_data([pop, nl],
+                                                  [meta_pop, meta_nl],
+                                                  i_ref=i_ref, # pop defines grid
+                                                  target_res_arcsec=target_res_arcsec,
+                                                  global_origins=global_origins,
+                                                  )
+    except ValueError as err:
+        LOGGER.warning("reprojection for shape raised ValueError: " + err.args[0])
+        return None, None
     # calculate Lit^m * Pop^n (but not yet disaggregating any total value to grid):
     litpop_array = gridpoints_core_calc([nl, pop],
                                         offsets=offsets,
@@ -680,11 +686,15 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
                                         total_val_rescale=None)
     if not resample_first: 
         # alternative option: resample to target resolution after core calc.:
-        [litpop_array], meta_out = reproject_input_data([litpop_array],
+        try:
+            [litpop_array], meta_out = reproject_input_data([litpop_array],
                                                        [meta_out],
                                                        target_res_arcsec=res_arcsec,
                                                        global_origins=global_origins,
                                                        )
+        except ValueError as err:
+            LOGGER.warning("reprojection for shape raised ValueError: " + err.args[0])
+            return None, None
     # mask entries outside polygon (set to NaN):
     litpop_array = u_coord.mask_raster_with_geometry(litpop_array, meta_out['transform'],
                                                      [polygon], nodata=np.nan)
