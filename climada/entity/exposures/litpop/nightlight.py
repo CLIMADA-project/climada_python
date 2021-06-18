@@ -24,8 +24,9 @@ import tarfile
 import gzip
 import pickle
 import logging
-import rasterio
 from pathlib import Path
+import rasterio
+
 import numpy as np
 import scipy.sparse as sparse
 import matplotlib.pyplot as plt
@@ -36,13 +37,11 @@ from climada.util import ureg
 from climada.util.constants import SYSTEM_DIR
 from climada.util.files_handler import download_file
 from climada.util.save import save
+from climada import CONFIG
 
 Image.MAX_IMAGE_PIXELS = 1e9
 
 LOGGER = logging.getLogger(__name__)
-
-NOAA_SITE = "https://ngdc.noaa.gov/eog/data/web_data/v4composites/"
-"""NOAA's URL used to retrieve nightlight satellite images."""
 
 NOAA_RESOLUTION_DEG = (30 * ureg.arc_second).to(ureg.deg).magnitude
 """NOAA nightlights coordinates resolution in degrees."""
@@ -56,9 +55,6 @@ NASA_TILE_SIZE = (21600, 21600)
 NOAA_BORDER = (-180, -65, 180, 75)
 """NOAA nightlights border (min_lon, min_lat, max_lon, max_lat)"""
 
-NASA_SITE = 'https://www.nasa.gov/specials/blackmarble/*/tiles/georeferrenced/'
-"""NASA nightlight web url."""
-
 BM_FILENAMES = ['BlackMarble_%i_A1_geo_gray.tif',
                 'BlackMarble_%i_A2_geo_gray.tif',
                 'BlackMarble_%i_B1_geo_gray.tif',
@@ -70,15 +66,14 @@ BM_FILENAMES = ['BlackMarble_%i_A1_geo_gray.tif',
                ]
 """Nightlight NASA files which generate the whole earth when put together."""
 
-BM_YEARS = [2016, 2012] # list of available years with data, please update.
-
 def load_nasa_nl_shape(geometry, year, data_dir=SYSTEM_DIR, dtype='float32'):
     """Read nightlight data from NASA BlackMarble tiles
     cropped to given shape(s) and combine arrays from each tile.
     1) check and download required blackmarble files
-    2) read and crop data from each file required in a bounding box around shape
+    2) read and crop data from each file required in a bounding box around
+        the given `geometry`.
     3) combine data from all input files into one array. this array then
-    contains all data in the bounds around the shape.
+        contains all data in the geographic bounding box around `geometry`.
     4) return array with nightlight data
 
     Parameters
@@ -109,8 +104,12 @@ def load_nasa_nl_shape(geometry, year, data_dir=SYSTEM_DIR, dtype='float32'):
     else:
         bounds = geometry.bounds
 
-    # get closest available year from year:
-    year = min(BM_YEARS, key=lambda x: abs(x - year))
+    # get years available in BlackMarble data from CONFIG and convert to array:
+    years_available = [year.int() for year in \
+                       CONFIG.exposures.litpop.nightlights.blackmarble_years.list()
+                       ]
+    # get year closest to year with BlackMarble data available:
+    year = min(years_available, key=lambda x: abs(x - year))
     # determin black marble tiles with coordinates containing the bounds:
     req_files = get_required_nl_files(bounds)
     # check wether required files exist locally:
@@ -141,8 +140,8 @@ def load_nasa_nl_shape(geometry, year, data_dir=SYSTEM_DIR, dtype='float32'):
             # set correct CRS from local tile's CRS to global WGS 84:
             meta.update({"crs": rasterio.crs.CRS.from_epsg(4326),
                          "dtype": dtype})
-    if idx == 0: # only 1 tile required:
-        return np.array(out_image, dtype=dtype), meta
+            if len(req_files) == 1: # only one tile required:
+                return np.array(out_image, dtype=dtype), meta
     # Else, combine data from multiple input files (BlackMarble tiles) -
     # concatenate arrays from west to east and from north to south:
     del out_image
@@ -187,8 +186,7 @@ def get_required_nl_files(bounds):
     if (np.size(bounds) != 4) or (bounds[0] > bounds[2]) or (bounds[1] > bounds[3]):
         raise ValueError('Invalid bounds supplied. `bounds` must be tuple'+
                          ' with (min_lon, min_lat, max_lon, max_lat).')
-    else:
-        min_lon, min_lat, max_lon, max_lat = bounds
+    min_lon, min_lat, max_lon, max_lat = bounds
 
     # longitude first. The width of all tiles is 90 degrees
     tile_width = 90
@@ -305,16 +303,12 @@ def download_nl_files(req_files=np.ones(len(BM_FILENAMES),),
         return dwnl_path
     try:
         for num_files in range(0, np.count_nonzero(BM_FILENAMES)):
-            if req_files[num_files] == 0:
+            if req_files[num_files] == 0 or files_exist[num_files] == 1:
                 continue
-            else:
-                if files_exist[num_files] == 1:
-                    continue
-                else:
-                    curr_file = NASA_SITE + BM_FILENAMES[num_files] %(year)
-                    LOGGER.info('Attempting to download file from %s',
-                                curr_file)
-                    download_file(curr_file, download_dir=dwnl_path)
+            curr_file = CONFIG.exposures.litpop.nightlights.nasa_url.str() + \
+                BM_FILENAMES[num_files] %(year)
+            LOGGER.info('Attempting to download file from %s', curr_file)
+            download_file(curr_file, download_dir=dwnl_path)
     except Exception as exc:
         raise RuntimeError('Download failed. Please check the network '
             'connection and whether filenames are still valid.') from exc
@@ -326,19 +320,21 @@ def load_nasa_nl_shape_single_tile(geometry, path, layer=0):
 
     Parameters
     ----------
-    geometry : shape(s) to crop data to in degree lon/lat.
-        for example shapely.geometry.Polygon(s) object or
-        from polygon defined in a shapefile.
+    geometry : shape or geometry object
+        shape(s) to crop data to in degree lon/lat. for example
+        shapely.geometry.Polygon object or from polygon defined in a shapefile.
     path : Path or str
         full path to BlackMarble tif (including filename)
-    layer : int
-        TIF-layer to be returned. The default is 0.
+    layer : int, optional
+        TIFF-layer to be returned. The default is 0.
         BlackMarble usually comes with 3 layers.
 
     Returns
     -------
-    out_image[layer,:,:] : 2D numpy ndarray with cropped data
-    meta : dict containing meta data 
+    out_image[layer,:,:] : 2D numpy ndarray
+        2d array with data cropped to bounding box of shape
+    meta : dict
+        rasterio meta
     """
     # open tif source file with raterio:
     src = rasterio.open(path)
@@ -383,10 +379,12 @@ def untar_noaa_stable_nightlight(f_tar_ini):
     Returns absolute path of stable light file in format tif.gz.
 
     Parameters:
-        f_tar_ini (str): absolute path of file
+        f_tar_ini : str
+            absolute path of file
 
     Returns:
-        f_tif_gz (str)
+        f_tif_gz : str
+            path of stable light file
     """
     # move to SYSTEM_DIR
     f_tar_dest = SYSTEM_DIR.joinpath(Path(f_tar_ini).name)
@@ -399,7 +397,8 @@ def untar_noaa_stable_nightlight(f_tar_ini):
         raise ValueError('No stable light intensities for selected year and satellite '
                          f'in file {f_tar_ini}')
     if len(extract_name) > 1:
-        LOGGER.warning('found more than one potential intensity file in %s %s', f_tar_ini, extract_name)
+        LOGGER.warning('found more than one potential intensity file in' +
+                       ' %s %s', f_tar_ini, extract_name)
     try:
         tar_file.extract(extract_name[0], SYSTEM_DIR)
     except tarfile.TarError as err:
@@ -416,13 +415,18 @@ def load_nightlight_noaa(ref_year=2013, sat_name=None):
     has been flipped).
 
     Parameters:
-        ref_year (int): reference year
-        sat_name (str, optional): satellite provider (e.g. 'F10', 'F18', ...)
+        ref_year : int, optional
+            reference year. The default is 2013.
+        sat_name : str, optional
+            satellite provider (e.g. 'F10', 'F18', ...)
 
     Returns:
-        nightlight (sparse.csr_matrix), coord_nl (np.array),
-        fn_light (str)
+        nightlight : sparse.csr_matrix)
+        coord_nl : np.array
+        fn_light : str
     """
+    # NOAA's URL used to retrieve nightlight satellite images:
+    noaa_url = CONFIG.exposures.litpop.nightlights.noaa_url.str()
     if sat_name is None:
         fn_light = str(SYSTEM_DIR.joinpath('*' +
                              str(ref_year) + '*.stable_lights.avg_vis'))
@@ -442,7 +446,7 @@ def load_nightlight_noaa(ref_year=2013, sat_name=None):
         if sat_name is None:
             ini_pre, end_pre = 18, 9
             for pre_i in np.arange(ini_pre, end_pre, -1):
-                url = NOAA_SITE + 'F' + str(pre_i) + str(ref_year) + '.v4.tar'
+                url = noaa_url + 'F' + str(pre_i) + str(ref_year) + '.v4.tar'
                 try:
                     file_down = download_file(url, download_dir=SYSTEM_DIR)
                     break
@@ -452,7 +456,7 @@ def load_nightlight_noaa(ref_year=2013, sat_name=None):
                 raise ValueError(f'Nightlight for reference year {ref_year} not available. '
                                  'Try a different year.')
         else:
-            url = NOAA_SITE + sat_name + str(ref_year) + '.v4.tar'
+            url = noaa_url + sat_name + str(ref_year) + '.v4.tar'
             try:
                 file_down = download_file(url, download_dir=SYSTEM_DIR)
             except ValueError as err:

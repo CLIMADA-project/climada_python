@@ -113,7 +113,7 @@ def get_gpw_file_path(gpw_version, reference_year, data_dir=SYSTEM_DIR, verbatim
     -------
     pathlib.Path : path to input file with population data
     """
-    # get years available un GPW data from CONFIG and convert to array:
+    # get years available in GPW data from CONFIG and convert to array:
     years_available = np.array([year.int() for year in \
                                 CONFIG.exposures.litpop.gpw_population.years_available.list()
                                ])
