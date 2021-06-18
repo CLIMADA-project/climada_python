@@ -154,7 +154,7 @@ class BMFuncs(unittest.TestCase):
                 bounds = info.bounds
 
         req_files = nl_utils.get_required_nl_files(bounds)
-        files_exist, _ = nl_utils.check_nl_local_file_exists(req_files)
+        files_exist = nl_utils.check_nl_local_file_exists(req_files)
         nl_utils.download_nl_files(req_files, files_exist)
 
         try:

@@ -261,7 +261,7 @@ if import_bm:
 
 
 """
-req_files = nl_utils.check_required_nl_files(bounds)
+req_files = nl_utils.get_required_nl_files(bounds)
 print(req_files)
 
 

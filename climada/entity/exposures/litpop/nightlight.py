@@ -206,23 +206,29 @@ def get_required_nl_files(bounds):
             continue
     return req_files
 
-def check_nl_local_file_exists(required_files=np.ones(len(BM_FILENAMES),),
-                               check_path=SYSTEM_DIR, year=2016):
+def check_nl_local_file_exists(required_files=None, check_path=SYSTEM_DIR,
+                               year=2016):
     """Checks if BM Satellite files are avaialbe and returns a vector
     denoting the missing files.
 
     Parameters:
-        check_path (str or Path): absolute path where files are stored.
-            Default: SYSTEM_DIR
-        required_files (array): Boolean array of dimension (8,) with which
+        required_files : numpy array, optional
+            boolean array of dimension (8,) with which
             some files can be skipped. Only files with value 1 are checked,
-            with value zero are skipped
-        year (int): year of the image
+            with value zero are skipped.
+            The default is np.ones(len(BM_FILENAMES),)
+        check_path : str or Path
+            absolute path where files are stored.
+            Default: SYSTEM_DIR
+        year : int
+            year of the image, e.g. 2016
 
     Returns:
-        files_exist (array): Denotes if the all required files exist
-            (Boolean values)
+        files_exist : numpy array
+            Boolean array that denotes if the required files exist.
     """
+    if required_files is None:
+        required_files = np.ones(len(BM_FILENAMES),)
     if np.size(required_files) < np.count_nonzero(BM_FILENAMES):
         required_files = np.ones(np.count_nonzero(BM_FILENAMES),)
         LOGGER.warning('The parameter \'required_files\' was too short and '
@@ -249,7 +255,7 @@ def check_nl_local_file_exists(required_files=np.ones(len(BM_FILENAMES),),
                      'Found %d out of %d required files in %s',
                      int(sum(files_exist)), int(sum(required_files)), check_path)
 
-    return (files_exist, check_path)
+    return files_exist
 
 def download_nl_files(req_files=np.ones(len(BM_FILENAMES),),
                       files_exist=np.zeros(len(BM_FILENAMES),),
