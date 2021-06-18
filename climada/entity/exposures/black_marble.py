@@ -286,7 +286,7 @@ def get_nightlight(ref_year, cntry_info, res_km=None, from_hr=None):
         res_fact = DEF_RES_NASA_KM / res_km
         geom = [info[2] for info in cntry_info.values()]
         geom = shapely.ops.cascaded_union(geom)
-        req_files = nl_utils.check_required_nl_files(geom.bounds)
+        req_files = nl_utils.get_required_nl_files(geom.bounds)
         files_exist, _ = nl_utils.check_nl_local_file_exists(req_files,
                                                              SYSTEM_DIR, nl_year)
         nl_utils.download_nl_files(req_files, files_exist, SYSTEM_DIR, nl_year)

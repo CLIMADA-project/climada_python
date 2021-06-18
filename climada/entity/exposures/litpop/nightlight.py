@@ -72,7 +72,7 @@ BM_FILENAMES = ['BlackMarble_%i_A1_geo_gray.tif',
 
 BM_YEARS = [2016, 2012] # list of available years with data, please update.
 
-def check_required_nl_files(bounds, *coords):
+def get_required_nl_files(bounds, *coords):
     """Determines which of the satellite pictures are necessary for
         a certain bounding box (e.g. country)
 
@@ -292,53 +292,55 @@ def load_nasa_nl_shape(geometry, reference_year, data_dir=None, dtype=None):
 
     # get closest available year from reference_year:
     year = min(BM_YEARS, key=lambda x: abs(x - reference_year))
-
-    req_files = check_required_nl_files(bounds)
+    # determin black marble tiles with coordinates containing the bounds:
+    req_files = get_required_nl_files(bounds)
+    # check wether required files exist locally:
     check_nl_local_file_exists(required_files=req_files, check_path=data_dir,
                                year=year)
-    req_files = np.where(req_files ==1)[0] # convert to sorted list of indices
-    results_array_even = list() # tiles A1, B1, C1, D1 (Nothern Hemisphere)
-    results_array_odd = list() # tiles A2, B2, C2, D2 (Southern Hemisphere)
+    # convert `req_files` to sorted list of indices:
+    req_files = np.where(req_files ==1)[0]
+    # init empty lists for tiles depending on position in global grid:
+    results_array_north = list() # tiles A1, B1, C1, D1 (Nothern Hemisphere)
+    results_array_south = list() # tiles A2, B2, C2, D2 (Southern Hemisphere)
 
-    # loop through required tiles, load and crop data for each:
+    # loop through required files, load and crop data for each:
     for idx, i_file in enumerate(req_files):
-
         # read cropped data from  source file (src) to np.ndarray:
         out_image, meta_tmp = load_nasa_nl_shape_single_tile(geometry,
                                         data_dir / (BM_FILENAMES[i_file] %(year)))
-        if i_file in [0,2,4,6]:
-            results_array_even.append(out_image)
-        elif i_file in [1,3,5,7]:
-            results_array_odd.append(out_image)
+        # sort indicies to northenr and southern hemisphere:
+        if i_file in [0,2,4,6]: # indicies of northern hemisphere files
+            results_array_north.append(out_image)
+        elif i_file in [1,3,5,7]: # indicies of southern hemisphere files
+            results_array_south.append(out_image)
 
         # from first (top left) of tiles, meta is initiated, incl. origin:
         if idx == 0:
             meta = meta_tmp
-            # correct CRS from local tile's CRS to global WGS 84:
+            # set correct CRS from local tile's CRS to global WGS 84:
             meta.update({"crs": rasterio.crs.CRS.from_epsg(4326),
                          "dtype": dtype})
-    if idx == 0: # only 1 tile
+    if idx == 0: # only 1 tile required:
         return np.array(out_image, dtype=dtype), meta
-    # Combine data from multiple input files (BlackMarble tiles) -
-    # concatenate tiles from west to east and from north to south:
+    # Else, combine data from multiple input files (BlackMarble tiles) -
+    # concatenate arrays from west to east and from north to south:
     del out_image
-    if results_array_even: # northern hemisphere west to east
-        results_array_even = np.concatenate(results_array_even, axis=1)
-    if results_array_odd: # southern hemisphere west to east
-        results_array_odd = np.concatenate(results_array_odd, axis=1)
-    if isinstance(results_array_even, np.ndarray) and isinstance(results_array_odd, np.ndarray):
+    if results_array_north: # northern hemisphere west to east
+        results_array_north = np.concatenate(results_array_north, axis=1)
+    if results_array_south: # southern hemisphere west to east
+        results_array_south = np.concatenate(results_array_south, axis=1)
+    if isinstance(results_array_north, np.ndarray) and isinstance(results_array_south, np.ndarray):
         # north to south if both hemispheres are involved
-        results_array_even = np.concatenate([results_array_even, results_array_odd], axis=0)
-    elif isinstance(results_array_odd, np.ndarray): # only southern hemisphere
-        results_array_even = results_array_odd
-    del results_array_odd
+        results_array_north = np.concatenate([results_array_north, results_array_south], axis=0)
+    elif isinstance(results_array_south, np.ndarray): # only southern hemisphere
+        results_array_north = results_array_south
+    del results_array_south
 
     # update number of elements per axis in meta dictionary:
-    meta.update({"height": results_array_even.shape[0],
-                 "width": results_array_even.shape[1],
+    meta.update({"height": results_array_north.shape[0],
+                 "width": results_array_north.shape[1],
                  "dtype": dtype})
-    return np.array(results_array_even, dtype=dtype), meta
-
+    return np.array(results_array_north, dtype=dtype), meta
 
 def unzip_tif_to_py(file_gz):
     """Unzip image file, read it, flip the x axis, save values as pickle

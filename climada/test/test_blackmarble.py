@@ -153,7 +153,7 @@ class BMFuncs(unittest.TestCase):
             if info.attributes['ADM0_A3'] == 'AIA':
                 bounds = info.bounds
 
-        req_files = nl_utils.check_required_nl_files(bounds)
+        req_files = nl_utils.get_required_nl_files(bounds)
         files_exist, _ = nl_utils.check_nl_local_file_exists(req_files)
         nl_utils.download_nl_files(req_files, files_exist)
 
