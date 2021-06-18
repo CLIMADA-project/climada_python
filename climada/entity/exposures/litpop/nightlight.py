@@ -109,8 +109,10 @@ def load_nasa_nl_shape(geometry, year, data_dir=SYSTEM_DIR, dtype='float32'):
     # determin black marble tiles with coordinates containing the bounds:
     req_files = get_required_nl_files(bounds)
     # check wether required files exist locally:
-    check_nl_local_file_exists(required_files=req_files, check_path=data_dir,
-                               year=year)
+    files_exist = check_nl_local_file_exists(required_files=req_files,
+                                             check_path=data_dir, year=year)
+    # download data that is missing:
+    download_nl_files(req_files, files_exist, data_dir, year)
     # convert `req_files` to sorted list of indices:
     req_files = np.where(req_files ==1)[0]
     # init empty lists for tiles depending on position in global grid:
@@ -262,18 +264,31 @@ def download_nl_files(req_files=np.ones(len(BM_FILENAMES),),
                       dwnl_path=SYSTEM_DIR, year=2016):
     """Attempts to download nightlight files from NASA webpage.
 
-    Parameters:
-        req_files (array): Boolean array which indicates the files
-            required for the current operation (0-> skip, 1-> download).
-            Can be obtained by check_required_nightlight_files
-        files_exists (array): Boolean array which indicates if the files already
+    Parameters
+    ----------
+    req_files : numpy array, optional
+        Boolean array which indicates the files required (0-> skip, 1-> download).
+            The default is np.ones(len(BM_FILENAMES),).
+    files_exist : numpy array, optional
+        Boolean array which indicates if the files already
             exist locally and should not be downloaded (0-> download, 1-> skip).
-            Can be obtained by function check_nightlight_local_file_exists
-        dwnl_path (str):
+            The default is np.zeros(len(BM_FILENAMES),).
+    dwnl_path : str or path, optional
+        Download directory path. The default is SYSTEM_DIR.
+    year : int, optional
+        Data year to be downloaded. The default is 2016.
 
-    Returns:
-        path_str (Path): Path to download directory.
+    Raises
+    ------
+    ValueError
+    RuntimeError
+
+    Returns
+    -------
+    dwnl_path : str or path
+        Download directory path.
     """
+
     if (len(req_files) != len(files_exist)) or (len(req_files) != len(BM_FILENAMES)):
         raise ValueError('The given arguments are invalid. req_files and '
                          'files_exist must both be as long as there are files to download'
@@ -281,8 +296,7 @@ def download_nl_files(req_files=np.ones(len(BM_FILENAMES),),
     if not Path(dwnl_path).is_dir():
         raise ValueError(f'The folder {dwnl_path} does not exist. Operation aborted.')
     if np.all(req_files == files_exist):
-        LOGGER.debug('All required files already exist. '
-                     'No downloads necessary.')
+        LOGGER.debug('All required files already exist. No downloads necessary.')
         return dwnl_path
     try:
         for num_files in range(0, np.count_nonzero(BM_FILENAMES)):
@@ -292,7 +306,7 @@ def download_nl_files(req_files=np.ones(len(BM_FILENAMES),),
                 if files_exist[num_files] == 1:
                     continue
                 else:
-                    curr_file = NASA_SITE + BM_FILENAMES[num_files] %(2016)
+                    curr_file = NASA_SITE + BM_FILENAMES[num_files] %(year)
                     LOGGER.info('Attempting to download file from %s',
                                 curr_file)
                     download_file(curr_file, download_dir=dwnl_path)
