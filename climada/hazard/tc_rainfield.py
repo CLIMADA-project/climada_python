@@ -90,7 +90,7 @@ class TCRain(Hazard):
                                                    dist_degree=dist_degree,
                                                    intensity=self.intensity_thres))
         LOGGER.debug('Append events.')
-        self.concatenate(tc_haz)
+        self.extend(tc_haz)
         LOGGER.debug('Compute frequency.')
         TropCyclone.frequency_from_tracks(self, tracks.data)
         self.tag.description = description
