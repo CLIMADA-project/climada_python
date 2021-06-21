@@ -677,8 +677,12 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
                                                   global_origins=global_origins,
                                                   )
     except ValueError as err:
-        LOGGER.warning("reprojection for shape raised ValueError: " + err.args[0])
-        return None, None
+        if "height must be > 0" in err.args[0] or "width must be > 0" in err.args[0]:
+            # no grid point within shape after reprojection, None is returned.
+            return None, None
+        else:
+            raise err
+
     # calculate Lit^m * Pop^n (but not yet disaggregating any total value to grid):
     litpop_array = gridpoints_core_calc([nl, pop],
                                         offsets=offsets,
