@@ -113,63 +113,54 @@ class TestCentroidsReader(unittest.TestCase):
 
     def test_union(self):
         cent1 = Centroids()
-        cent1.set_raster_from_pnt_bounds((-85, 19, -80, 23), res=1)
-        cent1.set_meta_to_lat_lon()
+        cent1.lat, cent1.lon = np.array([0, 1]), np.array([0, -1])
+        cent1.on_land = np.array([True, True])
 
         cent2 = Centroids()
-        cent2.set_raster_from_pnt_bounds((-80, 19, -70, 23), res=1)
-        cent2.set_meta_to_lat_lon()
+        cent2.lat, cent2.lon = np.array([2, 3]), np.array([-2, 3])
+        cent2.on_land = np.array([False, False])
+
+        cent3 = Centroids()
+        cent3.lat, cent3.lon = np.array([-1, -2]), np.array([1, 2])
 
         cent = cent1.union(cent2)
+        np.testing.assert_array_equal(cent.lat, [0, 1, 2, 3])
+        np.testing.assert_array_equal(cent.lon, [0, -1, -2, 3])
+        np.testing.assert_array_equal(cent.on_land, [True, True, False, False])
+
         cent = cent1.union(cent1, cent2)
+        np.testing.assert_array_equal(cent.lat, [0, 1, 2, 3])
+        np.testing.assert_array_equal(cent.lon, [0, -1, -2, 3])
+        np.testing.assert_array_equal(cent.on_land, [True, True, False, False])
 
-    def test_union_meta_latlon(self):
-        cent1 = Centroids()
-        cent1.set_raster_from_pnt_bounds((-85, 19, -80, 23), res=1)
-        cent1.set_meta_to_lat_lon()
-        cent1.meta = {}
-
-        cent2 = Centroids()
-        cent2.set_raster_from_pnt_bounds((-80, 19, -70, 23), res=1)
-
-        cent = cent1.union(cent2)
-        cent = cent1.union(cent1, cent2)
-
-
-    def test_union_empty(self):
-        cent1 = Centroids()
-        cent1.set_raster_from_pnt_bounds((-85, 19, -80, 23), res=1)
-        cent1.set_meta_to_lat_lon()
-
-        cent2 = Centroids()
-        cent2.set_raster_from_pnt_bounds((-80, 19, -70, 23), res=1)
-        cent2.set_meta_to_lat_lon()
         cent = Centroids().union(cent1)
-        cent = Centroids().union(cent1, cent2)
+        np.testing.assert_array_equal(cent.lat, [0, 1])
+        np.testing.assert_array_equal(cent.lon, [0, -1])
+        np.testing.assert_array_equal(cent.on_land, [True, True])
+
+        cent = Centroids().union(cent1, cent2, cent3)
+        np.testing.assert_array_equal(cent.lat, [0, 1, 2, 3, -1, -2])
+        np.testing.assert_array_equal(cent.lon, [0, -1, -2, 3, 1, 2])
+
 
     def test_union_meta(self):
         cent1 = Centroids()
-        cent1.set_raster_from_pnt_bounds((-85, 19, -80, 23), res=1)
+        cent1.set_raster_from_pnt_bounds((-1, -1, 0, 0), res=1)
 
         cent2 = Centroids()
-        cent2.set_raster_from_pnt_bounds((-80, 19, -70, 23), res=1)
+        cent2.set_raster_from_pnt_bounds((0, 0, 1, 1), res=1)
+
+        cent3 = Centroids()
+        cent3.lat, cent3.lon = np.array([1]), np.array([1])
 
         cent = cent1.union(cent2)
-        cent = cent1.union(cent1, cent2)
+        np.testing.assert_array_equal(cent.lat, [0,  0, -1, -1,  1,  1,  0])
+        np.testing.assert_array_equal(cent.lon, [-1,  0, -1,  0,  0,  1,  1])
 
-    def test_union_latlon(self):
-        cent1 = Centroids()
-        cent1.set_raster_from_pnt_bounds((-85, 19, -80, 23), res=1)
-        cent1.set_meta_to_lat_lon()
-        cent1.meta = {}
+        cent = cent3.union(cent1)
+        np.testing.assert_array_equal(cent.lat, [1,  0,  0, -1, -1])
+        np.testing.assert_array_equal(cent.lon, [1, -1,  0, -1,  0])
 
-        cent2 = Centroids()
-        cent2.set_raster_from_pnt_bounds((-80, 19, -70, 23), res=1)
-        cent2.set_meta_to_lat_lon()
-        cent2.meta = {}
-
-        cent = cent1.union(cent2)
-        cent = cent1.union(cent1, cent2)
 
 # Execute Tests
 if __name__ == "__main__":
