@@ -699,6 +699,8 @@ class Centroids():
         scheduler : str
             Used for dask map_partitions. "threads", "synchronous" or "processes"
         """
+        if (not self.lat.size or not self.lon.size) and not self.meta:
+            return None
         if precomputed:
             if not self.lat.size or not self.lon.size:
                 self.set_meta_to_lat_lon()
