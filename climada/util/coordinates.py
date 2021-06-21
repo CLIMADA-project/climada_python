@@ -898,6 +898,9 @@ def assign_coordinates(coords, coords_to_assign, method="NN", distance="haversin
     if np.array_equal(coords, coords_to_assign):
         assigned_idx = np.arange(coords.shape[0])
     else:
+        LOGGER.info("No exact centroid match found. Reprojecting coordinates "
+                    "to nearest neighbor closer than the threshold = %s",
+                    threshold)
         # pairs of floats can be sorted (lexicographically) in NumPy
         coords_view = coords.view(dtype='float64,float64').reshape(-1)
         coords_to_assign_view = coords_to_assign.view(dtype='float64,float64').reshape(-1)
