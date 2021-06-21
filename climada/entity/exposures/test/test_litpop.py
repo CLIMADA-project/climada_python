@@ -370,6 +370,13 @@ class TestLitPop(unittest.TestCase):
         value = lp.get_total_value_per_country('POL', 'nfw', 2015)
         self.assertIsInstance(value, float)
 
+    def test_get_value_unit_pass(self):
+        """test get_value_unit pass"""
+        self.assertEqual(lp.get_value_unit('pop'), 'people')
+        self.assertEqual(lp.get_value_unit('gdp'), 'USD')
+        self.assertEqual(lp.get_value_unit('pc'), 'USD')
+        self.assertEqual(lp.get_value_unit('nfw'), 'USD')
+        self.assertEqual(lp.get_value_unit('none'), '')
 
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestLitPop)

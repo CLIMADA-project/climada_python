@@ -140,9 +140,33 @@ class TestLitPopExposure(unittest.TestCase):
         self.assertEqual(ent.gdf.value.min(), 0.0)
         self.assertEqual(ent.gdf.region_id.min(), 756)
         self.assertEqual(ent.gdf.region_id.max(), 756)
-        # index of largest value:
-        self.assertEqual(ent.gdf.loc[ent.gdf.value == ent.gdf.value.max()].index[0], 482)
         self.assertAlmostEqual(ent.gdf.latitude.min(), 47.20416666666661)
+        # index and coord. of largest value:
+        self.assertEqual(ent.gdf.loc[ent.gdf.value == ent.gdf.value.max()].index[0], 482)
+        self.assertEAlmostEqual(ent.gdf.loc[ent.gdf.value == ent.gdf.value.max()].latitude.values[0], 47.34583333333325)
+        self.assertEAlmostEqual(ent.gdf.loc[ent.gdf.value == ent.gdf.value.max()].longiude.values[0], 8.529166666666658)
+
+    def test_set_custom_shape_from_country_zurich_pass(self):
+        """test initiating LitPop for custom shape (square around Zurich City)
+        with set_custom_shape_from_country()"""
+        bounds = (8.41, 47.2, 8.70, 47.45) # (min_lon, max_lon, min_lat, max_lat)
+        # bounds = (-85, -11, 5, 40)
+        shape = Polygon([
+            (bounds[0], bounds[3]),
+            (bounds[2], bounds[3]),
+            (bounds[2], bounds[1]),
+            (bounds[0], bounds[1])
+            ])
+        ent = lp.LitPop()
+        ent.set_custom_shape_from_country(shape, 'Switzerland', res_arcsec=30)
+        self.assertEqual(ent.gdf.value.min(), 0.0)
+        self.assertEqual(ent.gdf.region_id.min(), 756)
+        self.assertEqual(ent.gdf.region_id.max(), 756)
+        self.assertAlmostEqual(ent.gdf.latitude.min(), 47.20416666666661)
+        # coord of largest value:
+        self.assertEqual(ent.gdf.loc[ent.gdf.value == ent.gdf.value.max()].index[0], 434)
+        self.assertEAlmostEqual(ent.gdf.loc[ent.gdf.value == ent.gdf.value.max()].latitude.values[0], 47.34583333333325)
+        self.assertEAlmostEqual(ent.gdf.loc[ent.gdf.value == ent.gdf.value.max()].longiude.values[0], 8.529166666666658)
 
     def test_Liechtenstein_15_lit_pass(self):
         """Create Nightlights entity for Liechtenstein 2016:"""

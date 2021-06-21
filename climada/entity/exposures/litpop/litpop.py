@@ -227,6 +227,62 @@ class LitPop(Exposures):
                                       admin1_calc=False, reference_year=2020,
                                       gpw_version=GPW_VERSION,
                                       data_dir=SYSTEM_DIR, reproject_first=True):
+        """
+        create LitPop exposure for `country` and then crop to given shape.
+
+        Parameters
+        ----------
+        shape : shapely.geometry.Polygon or MultiPolygon or Shape or list of
+            Polygon objects.
+            Geographical shape for which LitPop Exposure is to be initiated.
+        countries : list with str or int
+            list containing country identifiers:
+            iso3alpha (e.g. 'JPN'), iso3num (e.g. 92) or name (e.g. 'Togo')
+        res_arcsec : float (optional)
+            Horizontal resolution in arc-sec.
+            The default is 30 arcsec, this corresponds to roughly 1 km.
+        exponents : tuple of two integers, optional
+            Defining power with which lit (nightlights) and pop (gpw) go into LitPop.
+            Default: (1, 1)
+        fin_mode : str, optional
+            Socio-economic value to be used as an asset base that is disaggregated
+            to the grid points within the country
+            * 'pc': produced capital (Source: World Bank), incl. manufactured or
+                    built assets such as machinery, equipment, and physical structures
+                    (pc is in constant 2014 USD)
+            * 'pop': population count (source: GPW, same as gridded population)
+            * 'gdp': gross-domestic product (Source: World Bank)
+            * 'income_group': gdp multiplied by country's income group+1
+            * 'nfw': non-financial wealth (Source: Credit Suisse, of households only)
+            * 'tw': total wealth (Source: Credit Suisse, of households only)
+            * 'norm': normalized by country
+            * 'none': LitPop per pixel is returned unchanged
+            The default is 'pc'.
+        admin1_calc : boolean, optional
+            If True, distribute admin1-level GDP (if available). Default: False
+        reference_year : int, optional
+            Reference year for data sources. Default: 2020
+        gpw_version : int, optional
+            Version number of GPW population data.
+            The default is GPW_VERSION
+        data_dir : Path, optional
+            redefines path to input data directory. The default is SYSTEM_DIR.
+        reproject_first : boolean, optional
+            First reproject nightlight (Lit) and population (Pop) data to target
+            resolution before combining them as Lit^m * Pop^n?
+            The default is True. Warning: Setting this to False affects the
+            disaggregation results - expert choice only
+
+        Raises
+        ------
+        NotImplementedError
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        """
         if isinstance(shape, Shape): # convert to list of Polygon objects:
             shape_list = [Polygon(shape.points[shape.parts[i]:part-1])
                           for i, part in enumerate(list(shape.parts[1:])+[0])]
@@ -266,7 +322,7 @@ class LitPop(Exposures):
 
         Exposures.__init__(
             self,
-            data=gdf,
+            data=gdf.reset_index(),
             crs=exp.crs,
             ref_year=reference_year,
             tag=tag,
@@ -315,9 +371,8 @@ class LitPop(Exposures):
         Parameters
         ----------
         shape : shapely.geometry.Polygon or MultiPolygon or Shape or list of
-            Polygon objects
-            geographical shape for which LitPop Exposure is
-            to be initaited
+            Polygon objects.
+            Geographical shape for which LitPop Exposure is to be initiated.
         total_value : int or float
             Total value to be disaggregated to grid in shape.
             The default is None. If None, the total number is extracted from other
