@@ -157,6 +157,9 @@ class LitPop(Exposures):
                         # with total value share based on subnational GDP share.
                         # This requires GRP (Gross Regional Product) data in the
                         # GSDP data folder.
+            if fin_mode == 'pop':
+                raise NotImplementedError('`admin1_calc` not implemented for '+
+                                          "`fin_mode` == 'pop'")
             litpop_list = [_calc_admin1_one_country(country, res_arcsec, exponents,
                                                     fin_mode, tot_value, reference_year,
                                                     gpw_version, data_dir, reproject_first
@@ -226,13 +229,12 @@ class LitPop(Exposures):
             self.meta = {}
         self.check()
 
-    def set_custom_shape(self, shape, res_arcsec=30, exponents=(1,1), fin_mode='pc',
-                         total_value_abs=None, rel_value_share=1., in_countries=None,
-                         region_id = None, reference_year=2020, gpw_version=GPW_VERSION,
-                         data_dir=SYSTEM_DIR, reproject_first=True):
+    def set_custom_shape(self, shape, total_value, res_arcsec=30, exponents=(1,1),
+                         value_unit='USD', reference_year=2020,
+                         gpw_version=GPW_VERSION, data_dir=SYSTEM_DIR,
+                         reproject_first=True):
         """init LitPop exposure object for a custom shape.
-        Requires user input regarding total value, either absolute ore relative
-        combined with info which countries it is in or overlapping with.
+        Requires user input regarding the total value to be disaggregated.
 
         Sets attributes `ref_year`, `tag`, `crs`, `value`, `geometry`, `meta`,
         `value_unit`, `exponents`,`fin_mode`, `gpw_version`, `reproject_first`,
@@ -240,9 +242,9 @@ class LitPop(Exposures):
 
         This method can be used to initiated LitPop Exposure for sub-national
         regions such as states, districts, cantons, cities, ... but shapes
-        and info regarding total value need to be provided manually.
+        and total value need to be provided manually.
         If these required input parameters are not known / available,
-        initiate Exposure for entire country and extract shape afterwards.
+        better initiate Exposure for entire country and extract shape afterwards.
 
         Parameters
         ----------
@@ -250,42 +252,22 @@ class LitPop(Exposures):
             Polygon objects
             geographical shape for which LitPop Exposure is
             to be initaited
-        res_arcsec : float (optional)
+        total_value : int or float
+            Total value to be disaggregated to grid in shape.
+            The default is None. If None, the total number is extracted from other
+            sources depending on the value of fin_mode and in_countries.
+        res_arcsec : float, optional
             Horizontal resolution in arc-sec.
             The default 30 arcsec corresponds to roughly 1 km.
         exponents : tuple of two integers, optional
             Defining power with which lit (nightlights) and pop (gpw) go into LitPop.
-        fin_mode : str, optional
-            Socio-economic value to be used as an asset base that is disaggregated
-            to the grid points within the country.
-            See set_countries() for more details.
-            The default is 'pc'.
-        total_value_abs : numeric (optional)
-            Total value to be disaggregated to grid in shape.
-            The default is None. If None, the total number is extracted from other
-            sources depending on the value of fin_mode and in_countries.
-        rel_value_share : float between 0. and 1. (optional)
-            the relative share of the total value within the shape.
-            e.g. if total_value_abs = 1000 and rel_value_share = 0.2, the total
-            value that is disagreggated within the shape is 200 (= 1000 * 0.2).
-            Important: This should be set manually by the user if total_value_abs
-            is extracted from in_countries.
-            The default is 1 (=100%)
-        in_countries : str or list (optional)
-            country or list of countries the shape is in or overlapping with.
-            Provide countries as ISO3alpha code, e.g. 'JPN' for Japan.
-            If no total_value_abs is provided, total_value_abs is set as sum
-            of the total value(s) of these countries.
-            Thsi parameter is required if total_value_abs is None.
-            The default is None.
-        region_id : int (optional)
-            if given, sets region_id of Exposure manually, overwrites countries_in
-            The default is None.
+        value_unit : str
+            Unit of exposure values. The default is USD.
         reference_year : int, optional
             Reference year for data sources. Default: 2020
-        gpw_version : int (optional)
+        gpw_version : int, optional
             Version number of GPW population data.
-            The default is None. If None, the default is set in gpw_population module.
+            The default is set in CONFIG.
         data_dir : Path (optional)
             redefines path to input data directory. The default is SYSTEM_DIR.
         reproject_first : boolean
@@ -296,12 +278,141 @@ class LitPop(Exposures):
 
         Raises
         ------
-        ValueError
         NotImplementedError
+        ValueError
+        TypeError
         """
-        if total_value_abs is None and in_countries is None and fin_mode != 'pop':
-            raise ValueError("Either total_value_abs or in_countries needs to "
-                             "be provided (except if fin_mode is 'pop').")
+
+        if isinstance(shape, Shape): # convert to list of Polygon objects:
+            shape_list = [Polygon(shape.points[shape.parts[i]:part-1])
+                          for i, part in enumerate(list(shape.parts[1:])+[0])]
+        elif isinstance(shape, MultiPolygon):
+            shape_list = list(shape)
+        elif isinstance(shape, Polygon):
+            shape_list = [shape]
+        elif isinstance(shape, list):
+            if not isinstance(shape[0], Polygon):
+                raise NotImplementedError("The parameter `shape` is allowed to be: "
+                                          "Polygon, MultiPolygon, or Shape instance, "
+                                          "or list of Polygon instances. Lists "
+                                          "with other content than Polygon are not "
+                                          "implemented.")
+            shape_list = shape
+
+        tag = Tag()
+        # set nightlight offset (delta) to 1 in case n>0, c.f. delta in Eq. 1 of paper:
+        if exponents[1] == 0:
+            offsets = (0, 0)
+        else:
+            offsets = (1, 0)
+        # init LitPop GeoDataFrame for shape:
+        litpop_gdf = geopandas.GeoDataFrame()
+        for idx, polygon in enumerate(shape_list):
+            # get litpop data for each polygon and combine into GeoDataFrame:
+            gdf_tmp, meta_tmp = \
+                _get_litpop_single_polygon(polygon, reference_year,
+                                           res_arcsec, data_dir,
+                                           gpw_version, reproject_first,
+                                           offsets, exponents,
+                                           verbatim=not bool(idx),
+                                           )
+            if gdf_tmp is None:
+                LOGGER.warning(f'Skipping polygon with index {idx}.')
+                continue
+            litpop_gdf = litpop_gdf.append(gdf_tmp)
+            litpop_gdf.crs = meta_tmp['crs']
+
+
+        # disaggregate total value proportional to LitPop values:
+        if isinstance(total_value, (float, int)):
+            litpop_gdf['value'] = np.divide(litpop_gdf['value'],
+                                            litpop_gdf['value'].sum()) * total_value
+        else:
+            raise TypeError("total_value must be int or float.")
+
+        tag.description = ('LitPop Exposure for custom shape at %i as, year: %i, '
+                           'exp: [%i, %i]'
+                           % (res_arcsec, reference_year, exponents[0], exponents[1]))
+
+        litpop_gdf[INDICATOR_IMPF] = 1
+
+        Exposures.__init__(
+            self,
+            data=litpop_gdf,
+            crs=litpop_gdf.crs,
+            ref_year=reference_year,
+            tag=tag,
+            value_unit=value_unit,
+            exponents = exponents,
+            gpw_version = gpw_version,
+            fin_mode = None,
+            reproject_first = reproject_first,
+            admin1_calc = False
+            )
+
+        try:
+            rows, cols, ras_trans = u_coord.pts_to_raster_meta(
+                (self.gdf.longitude.min(), self.gdf.latitude.min(),
+                 self.gdf.longitude.max(), self.gdf.latitude.max()),
+                u_coord.get_resolution(self.gdf.longitude, self.gdf.latitude))
+            self.meta = {
+                'width': cols,
+                'height': rows,
+                'crs': self.crs,
+                'transform': ras_trans,
+            }
+        except ValueError:
+            LOGGER.warning('Could not write attribute meta, because exposure'
+                           ' has only 1 data point')
+            self.meta = {}
+
+    def set_custom_shape_population(self, shape, res_arcsec=30, exponents=(0,1),
+                                    reference_year=2020, gpw_version=GPW_VERSION,
+                                    data_dir=SYSTEM_DIR, reproject_first=True):
+        """init LitPop exposure object for a custom shape with total value
+        equal to population in GPW data within shape..
+
+        Sets attributes `ref_year`, `tag`, `crs`, `value`, `geometry`, `meta`,
+        `value_unit`, `exponents`,`fin_mode`, `gpw_version`, `reproject_first`,
+        and `admin1_calc`.
+
+        This method can be used to initiated Population Exposure for sub-national
+        regions such as states, districts, cantons, cities, ... but shapes
+        need to be provided manually.
+        If these required input parameters are not known / available,
+        better initiate Exposure for entire country and extract shape afterwards.
+
+        Parameters
+        ----------
+        shape : shapely.geometry.Polygon or MultiPolygon or Shape or list of
+            Polygon objects
+            geographical shape for which LitPop Exposure is
+            to be initaited
+        res_arcsec : float, optional
+            Horizontal resolution in arc-sec.
+            The default 30 arcsec corresponds to roughly 1 km.
+        exponents : tuple of two integers, optional
+            Defining power with which lit (nightlights) and pop (gpw) go into LitPop.
+        reference_year : int, optional
+            Reference year for data sources. Default: 2020
+        gpw_version : int, optional
+            Version number of GPW population data.
+            The default is set in CONFIG.
+        data_dir : Path (optional)
+            redefines path to input data directory. The default is SYSTEM_DIR.
+        reproject_first : boolean
+            First reproject nightlight (Lit) and population (Pop) data to target
+            resolution before combining them as Lit^m * Pop^n?
+            The default is True. Warning: Setting this to False affects the
+            disaggregation results.
+
+        Raises
+        ------
+        NotImplementedError
+        ValueError
+        TypeError
+        """
+
         if isinstance(shape, Shape): # convert to list of Polygon objects:
             shape_list = [Polygon(shape.points[shape.parts[i]:part-1])
                           for i, part in enumerate(list(shape.parts[1:])+[0])]
@@ -317,31 +428,6 @@ class LitPop(Exposures):
                                           "with other content than Polygon are not "
                                           "implemented.")
             shape_list = shape
-
-        iso3a = list()
-        iso3n = list()
-        if isinstance(in_countries, str) or isinstance(in_countries, int):
-            in_countries = [in_countries]
-        if isinstance(in_countries, list):
-            for country in in_countries:
-                # Determine ISO 3166 representation of countries
-                try:
-                    iso3a.append(u_coord.country_to_iso(country, representation="alpha3"))
-                    iso3n.append(u_coord.country_to_iso(country, representation="numeric"))
-                except LookupError:
-                    LOGGER.warning('Country not identified (ignored): %s.', country)
-                    iso3n.append(0)
-
-        if (total_value_abs is not None) and (in_countries is not None):
-            LOGGER.info('total_value_abs is provided. Thus, in_countries is ignored '
-                        'for calculation of total_value.')
-            in_countries = None
-        if fin_mode in ['none', 'norm']:
-            value_unit = ''
-        elif fin_mode == 'pop':
-            value_unit='people'
-        else:
-            value_unit = 'USD'
 
         tag = Tag()
         # set nightlight offset (delta) to 1 in case n>0, c.f. delta in Eq. 1 of paper:
@@ -368,49 +454,15 @@ class LitPop(Exposures):
             litpop_gdf = litpop_gdf.append(gdf_tmp)
             litpop_gdf.crs = meta_tmp['crs']
 
-        if fin_mode == 'pop' and total_value_abs is None:
-            LOGGER.info('Total population in shape is extracted directly'
-                        ' from pop data. Thus, in_countries is ignored.')
-            in_countries = None
-            total_value_abs = total_population
-            if rel_value_share != 1:
-                LOGGER.warning('Total population in shape is extracted directly'
-                        ' from pop data. Thus, rel_value_share != 1 could be unintended(?)')
-        # if required, total value is extracted for countries:
-        elif isinstance(in_countries, list):
-            total_value_abs = 0
-            for country in iso3a:
-                # add up total value of countries
-                total_value_abs += \
-                    get_total_value_per_country(country, fin_mode,
-                                                    reference_year, 0)
-
-        # the total value for disaggregation is computed by multiplying
-        # absolute value and relative share – be careful setting rel_value_share:
-        total_value = total_value_abs * rel_value_share
-
         # disaggregate total value proportional to LitPop values:
-        if isinstance(total_value, float) or isinstance(total_value, int):
-            litpop_gdf['value'] = np.divide(litpop_gdf['value'],
-                                            litpop_gdf['value'].sum()) * total_value
-        elif total_value is not None:
-            raise TypeError("total_val_rescale must be int or float.")
+        litpop_gdf['value'] = np.divide(litpop_gdf['value'],
+                                        litpop_gdf['value'].sum()) * total_population
 
-        tag.description = ('LitPop Exposure for custom shape at %i as, year: %i, financial mode: %s, '
+        tag.description = ('Population Exposure for custom shape at %i as, year: %i, '
                            'exp: [%i, %i]'
-                           % (res_arcsec, reference_year, fin_mode,
-                              exponents[0], exponents[1]))
+                           % (res_arcsec, reference_year, exponents[0], exponents[1]))
 
         litpop_gdf[INDICATOR_IMPF] = 1
-        if region_id is not None:
-            litpop_gdf['region_id'] = \
-                region_id * np.ones(litpop_gdf.shape[0],dtype=int)
-        elif len(iso3n) == 1:
-            # single country
-            litpop_gdf['region_id'] = \
-                iso3n[0] * np.ones(litpop_gdf.shape[0], dtype=int)
-        else:
-            LOGGER.warning('region_id not set, please set manually')
 
         Exposures.__init__(
             self,
@@ -418,10 +470,10 @@ class LitPop(Exposures):
             crs=litpop_gdf.crs,
             ref_year=reference_year,
             tag=tag,
-            value_unit=value_unit,
+            value_unit='people',
             exponents = exponents,
             gpw_version = gpw_version,
-            fin_mode = fin_mode,
+            fin_mode = None,
             reproject_first = reproject_first,
             admin1_calc = False
             )
@@ -442,49 +494,30 @@ class LitPop(Exposures):
                            ' has only 1 data point')
             self.meta = {}
 
-    def set_lit(self, countries=None, shape=None, res_arcsec=15, exponent=1,
+
+    def set_lit(self, countries, res_arcsec=15, exponent=1,
                 reference_year=2016, data_dir=SYSTEM_DIR):
         """
-        initiate Exposure with pure nightlight data
+        initiate country exposures from pure nightlight data
 
         Parameters
         ----------
         countries : list or str (optional)
             list containing country identifiers (name or iso3)
-        shape : Shape, Polygon or MultiPolygon, optional
-            shape to crop results to, overrules countries
         res_arcsec : int, optional
             Resolution in arc seconds. The default is 15.
         exponent : int or float >= 0, optional
             exponent m in Lit^m. The default is 1.
         reference_year : int, optional
-            Target year, closest BlackMarble year is returned.
-            The default is 2016.
+            Target year. The default is 2020.
         data_dir : Path, optional
             data directory. The default is None.
-
-        Raises
-        ------
-        ValueError
-            Either countries or shape is required.
         """
+        self.set_countries(countries, res_arcsec=res_arcsec,
+                           exponents=(exponent, 0), fin_mode='none', 
+                           reference_year=reference_year, gpw_version=GPW_VERSION,
+                           data_dir=data_dir, reproject_first=True)
 
-        if countries is None and shape is None:
-            raise ValueError("Either countries or shape required. Aborting.")
-        if shape is None:
-            self.set_countries(countries, res_km=None, res_arcsec=res_arcsec,
-                               exponents=(exponent, 0), fin_mode='none', 
-                               reference_year=reference_year, gpw_version=GPW_VERSION,
-                               data_dir=data_dir, reproject_first=True)
-        elif countries is not None:
-            LOGGER.info("Using `shape` provided instead of countries' shapes. "
-                        "To use countries' shapes, set `shape`=None")
-        if shape is not None:
-            self.set_custom_shape(shape, res_arcsec=res_arcsec, exponents=(exponent,0),
-                                  fin_mode='none', in_countries=countries,
-                                  reference_year=reference_year,
-                                  gpw_version=GPW_VERSION, data_dir=data_dir,
-                                  reproject_first=True)
 
     def set_pop(self, countries=None, shape=None, res_arcsec=30, exponent=1,
                 reference_year=2020, gpw_version=GPW_VERSION, data_dir=SYSTEM_DIR):
@@ -518,7 +551,7 @@ class LitPop(Exposures):
         if countries is None and shape is None:
             raise ValueError("Either countries or shape required. Aborting.")
         if shape is None:
-            self.set_countries(countries, res_km=None, res_arcsec=res_arcsec,
+            self.set_countries(countries, res_arcsec=res_arcsec,
                                exponents=(0, exponent), fin_mode='pop', 
                                reference_year=reference_year, gpw_version=gpw_version,
                                data_dir=data_dir)
@@ -526,10 +559,10 @@ class LitPop(Exposures):
             if countries is not None:
                 LOGGER.info("Using shape provided instead of countries' shapes. "
                             "To use countries' shapes, set shape=None")
-            self.set_custom_shape(shape, res_arcsec=res_arcsec, exponents=(0,1),
-                                  fin_mode='pop', in_countries=countries,
-                                  reference_year=reference_year,
-                                  gpw_version=gpw_version, data_dir=data_dir)
+            self.set_custom_shape_population(shape, res_arcsec=res_arcsec,
+                                             exponents=(0,exponent),
+                                             reference_year=reference_year,
+                                             gpw_version=gpw_version, data_dir=data_dir)
 
     @staticmethod
     def _set_one_country(country, res_arcsec=30, exponents=(1,1), fin_mode=None,
@@ -595,6 +628,7 @@ class LitPop(Exposures):
                                            gpw_version, reproject_first,
                                            offsets, exponents,
                                            verbatim=not bool(idx),
+                                           region_id=iso3n
                                            )
             if gdf_tmp is None:
                 LOGGER.warning(f'Skipping polygon with index {idx} for' +
@@ -618,7 +652,6 @@ class LitPop(Exposures):
         exp_country = LitPop()
         exp_country.gdf = litpop_gdf
         exp_country.gdf[INDICATOR_IMPF] = 1
-        exp_country.gdf['region_id'] = iso3n
         return exp_country
 
     # Alias method names for backward compatibility:
@@ -626,7 +659,7 @@ class LitPop(Exposures):
 
 def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
                                gpw_version, reproject_first, offsets, exponents,
-                               verbatim=False):
+                               region_id=None, verbatim=False):
     """load nightlight (nl) and population (pop) data in rastered 2d arrays
     and apply rescaling (resolution reprojection) and LitPop core calculation.
 
@@ -653,6 +686,9 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
         nightlights^3 without population count: (3, 0). To use population count alone: (0, 1).
     offsets : tuple of numbers
         offsets to be added to input data, required for LitPop core calculation
+    region_id : int, optional
+        if provided, region_id of gdf is set to value.
+        The default is None, this implies that region_id is not set.
     verbatim : bool, optional
         verbatim logging? Default is False.
 
@@ -746,6 +782,10 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
                                                                    lat.flatten()))
     gdf['latitude'] = lat.flatten()
     gdf['longitude'] = lon.flatten()
+    if region_id is not None:
+        gdf['region_id'] = region_id
+    else:
+        gdf['region_id'] = u_coord.get_country_code(gdf.latitude, gdf.longitude)
     # remove entries outside polygon and return:
     return gdf.dropna(), meta_out
 
@@ -1124,7 +1164,6 @@ def _calc_admin1_one_country(country, res_arcsec, exponents, fin_mode, total_val
     # Determine ISO 3166 representation of country and get geometry:
     try:
         iso3a = u_coord.country_to_iso(country, representation="alpha3")
-        iso3n = u_coord.country_to_iso(country, representation="numeric")
     except LookupError:
         LOGGER.error('Country not identified: %s. Skippig.', country)
         return None
@@ -1133,34 +1172,32 @@ def _calc_admin1_one_country(country, res_arcsec, exponents, fin_mode, total_val
     admin1_info = admin1_info[iso3a]
     admin1_shapes = admin1_shapes[iso3a]
     # get subnational Gross Regional Product (GRP) data for country:
-    grp_data = _grp_read(iso3a, admin1_info=admin1_info, data_dir=data_dir)
-    if grp_data is None:
+    grp_values = _grp_read(iso3a, admin1_info=admin1_info, data_dir=data_dir)
+    if grp_values is None:
         LOGGER.error("No subnational GRP data found for calc_admin1"
                          " for country %s. Skipping.", country)
         return None
     # normalize GRP values:
-    sum_vals = sum(filter(None, grp_data.values())) # get total
-    grp_data = {key: (value / sum_vals if value is not None else None)
-                 for (key, value) in grp_data.items()}
+    sum_vals = sum(filter(None, grp_values.values())) # get total
+    grp_values = {key: (value / sum_vals if value is not None else None)
+                 for (key, value) in grp_values.items()}
 
+    # get total value of country:
+    total_value = get_total_value_per_country(iso3a, fin_mode, reference_year, 0)
     exp_list = []
     for idx, record in enumerate(admin1_info):
-        if grp_data[record['name']] is None:
+        if grp_values[record['name']] is None:
             continue
         LOGGER.info(record['name'])
         exp_list.append(LitPop()) # init exposure for province
-        # rel_value_share defines the share the province gets from total val
-        # total value is defined from country:
+        # total value is defined from country multiplied by grp_share:
         exp_list[-1].set_custom_shape(admin1_shapes[idx],
+                                      total_value * grp_values[record['name']],
                                       res_arcsec=res_arcsec,
                                       exponents=exponents,
-                                      fin_mode=fin_mode,
-                                      total_value_abs=total_value,
-                                      rel_value_share=grp_data[record['name']],
-                                      in_countries=[iso3a],
-                                      region_id = [iso3n],
                                       reference_year=reference_year,
                                       gpw_version=gpw_version,
                                       data_dir=data_dir,
                                       reproject_first=reproject_first)
+
     return Exposures.concat(exp_list)

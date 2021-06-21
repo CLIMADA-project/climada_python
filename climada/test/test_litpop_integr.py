@@ -126,6 +126,7 @@ class TestLitPopExposure(unittest.TestCase):
         """test initiating LitPop for custom shape (square around Zurich City)
         Distributing an imaginary total value of 1000 USD"""
         bounds = (8.41, 47.2, 8.70, 47.45) # (min_lon, max_lon, min_lat, max_lat)
+        total_value=1000
         # bounds = (-85, -11, 5, 40)
         shape = Polygon([
             (bounds[0], bounds[3]),
@@ -134,9 +135,11 @@ class TestLitPopExposure(unittest.TestCase):
             (bounds[0], bounds[1])
             ])
         ent = lp.LitPop()
-        ent.set_custom_shape(shape, res_arcsec=30, total_value_abs=1000)
+        ent.set_custom_shape(shape, total_value, res_arcsec=30)
         self.assertEqual(ent.gdf.value.sum(), 1000.0)
         self.assertEqual(ent.gdf.value.min(), 0.0)
+        self.assertEqual(ent.gdf.region_id.min(), 756)
+        self.assertEqual(ent.gdf.region_id.max(), 756)
         # index of largest value:
         self.assertEqual(ent.gdf.loc[ent.gdf.value == ent.gdf.value.max()].index[0], 482)
         self.assertAlmostEqual(ent.gdf.latitude.min(), 47.20416666666661)
@@ -183,16 +186,14 @@ class TestFunctionIntegration(unittest.TestCase):
         self.assertEqual(ent.gdf.shape[0], 7964)
 
     def test_calc_admin1(self):
-        """test function _calc_admin1 for Switzerland."""
+        """test function _calc_admin1_one_country for Switzerland."""
         resolution = 300
         country = 'CHE'
-        ent = lp._calc_admin1(country, resolution, (2,1), 'pc', None,
+        ent = lp._calc_admin1_one_country(country, resolution, (2,1), 'pc', None,
                  2016, 11, SYSTEM_DIR, False)
         self.assertEqual(ent.gdf.shape[0], 717)
+        self.assertEqual(ent.gdf.region_id[88], 756)
         self.assertAlmostEqual(ent.gdf.latitude.max(), 47.708333333333336)
-
-    # TODO  test gpw_population
-
 
 # Execute Tests
 if __name__ == "__main__":
