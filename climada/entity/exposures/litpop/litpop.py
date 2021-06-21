@@ -522,10 +522,10 @@ class LitPop(Exposures):
                                exponents=(0, exponent), fin_mode='pop', 
                                reference_year=reference_year, gpw_version=gpw_version,
                                data_dir=data_dir)
-        elif countries is not None:
-            LOGGER.info("Using shape provided instead of countries' shapes. "
-                        "To use countries' shapes, set shape=None")
-        if shape is not None:
+        else:
+            if countries is not None:
+                LOGGER.info("Using shape provided instead of countries' shapes. "
+                            "To use countries' shapes, set shape=None")
             self.set_custom_shape(shape, res_arcsec=res_arcsec, exponents=(0,1),
                                   fin_mode='pop', in_countries=countries,
                                   reference_year=reference_year,
