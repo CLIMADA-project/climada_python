@@ -958,46 +958,7 @@ class Hazard():
             ValueError
         """
         hazard._check_events()
-        if self.event_id.size == 0:
-            for key in hazard.__dict__:
-                try:
-                    self.__dict__[key] = copy.deepcopy(hazard.__dict__[key])
-                except TypeError:
-                    self.__dict__[key] = copy.copy(hazard.__dict__[key])
-            return
-
-        if (self.units == '') and (hazard.units != ''):
-            LOGGER.info("Initial hazard does not have units.")
-            self.units = hazard.units
-        elif hazard.units == '':
-            LOGGER.info("Appended hazard does not have units.")
-        elif self.units != hazard.units:
-            raise ValueError("Hazards with different units can't be appended: "
-                             f"{self.units} != {hazard.units}.")
-
-        centroids_equal = self.centroids.equal(hazard.centroids)
-        if not centroids_equal:
-            self.centroids.append(hazard.centroids)
-
-        # n_ini_ev = self.event_id.size
-        for var_name in vars(self).keys():
-            var_old = getattr(self, var_name)
-            var_new = getattr(hazard, var_name)
-            var_combined = [var_old, var_new]
-            if isinstance(var_new, sparse.csr.csr_matrix):
-                if centroids_equal:
-                    var_combined = sparse.vstack(var_combined, format='csr')
-                else:
-                    var_combined = sparse.block_diag(var_combined, format='csr')
-                setattr(self, var_name, var_combined)
-            elif isinstance(var_new, np.ndarray) and var_new.ndim == 1:
-                setattr(self, var_name, np.hstack(var_combined))
-            elif isinstance(var_new, list):
-                setattr(self, var_name, sum(var_combined, []))
-            elif isinstance(var_new, TagHazard):
-                var_old.append(var_new)
-
-        self.sanitize_event_ids()
+        self.extend([hazard])
 
     def remove_duplicates(self):
         """Remove duplicate events (events with same name and date)."""
@@ -1537,7 +1498,7 @@ class Hazard():
         #Check units consistency among hazards
         units = {haz.units for haz in haz_list if haz.units != ''}
         if len(units) > 1:
-            raise TypeError("The haz_list contains hazards with different "
+            raise ValueError("The haz_list contains hazards with different "
                             "units %f. The hazards are incompatible and "
                             "cannot be concatenated.", str(units))
         elif len(units) == 0:
