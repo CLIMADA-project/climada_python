@@ -111,6 +111,20 @@ class TropCyclone(Hazard):
         """
         Clear and fill with windfields from specified tracks.
 
+        This function sets the `TropCyclone.intensity` attribute to contain, for each centroid,
+        the maximum wind speed (1-minute sustained winds at 10 meters above ground) experienced
+        over the whole period of each TC event in m/s. The wind speed is set to 0 if it doesn't
+        exceed the threshold in `TropCyclone.intensity_thres`.
+
+        The `TropCyclone.category` attribute is set to the value of the `category`-attribute
+        of each of the given track data sets.
+
+        The `TropCyclone.basin` attribute is set to the genesis basin for each event, which
+        is the first value of the `basin`-variable in each of the given track data sets.
+
+        Optionally, the time dependent, vectorial winds can be stored using the `store_windfields`
+        function parameter (see below).
+
         Parameters
         ----------
         tracks : TCTracks
@@ -243,7 +257,7 @@ class TropCyclone(Hazard):
     @staticmethod
     def video_intensity(track_name, tracks, centroids, file_name=None,
                         writer=animation.PillowWriter(bitrate=500),
-                        figsize=(9, 13), **kwargs):
+                        figsize=(9, 13), adapt_fontsize=True, **kwargs):
         """
         Generate video of TC wind fields node by node and returns its
         corresponding TropCyclone instances and track pieces.
@@ -262,6 +276,9 @@ class TropCyclone(Hazard):
             video writer. Default is pillow with bitrate=500
         figsize : tuple, optional
             figure size for plt.subplots
+        adapt_fontsize : bool, optional
+            If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
+            the default matplotlib font size is used. Default is True.
         kwargs : optional
             arguments for pcolormesh matplotlib function used in event plots
 
@@ -323,10 +340,11 @@ class TropCyclone(Hazard):
 
         if file_name:
             LOGGER.info('Generating video %s', file_name)
-            fig, axis = u_plot.make_map(figsize=figsize)
+            fig, axis, fontsize = u_plot.make_map(figsize=figsize, adapt_fontsize=adapt_fontsize)
             pbar = tqdm(total=idx_plt.size - 2)
             ani = animation.FuncAnimation(fig, run, frames=idx_plt.size - 2,
                                           interval=500, blit=False)
+            fig.tight_layout()
             ani.save(file_name, writer=writer)
             pbar.close()
         return tc_list, tr_coord
@@ -419,13 +437,16 @@ class TropCyclone(Hazard):
         new_haz.fraction.data.fill(1)
         # store first day of track as date
         new_haz.date = np.array([
-            dt.datetime(track.time.dt.year[0],
-                        track.time.dt.month[0],
-                        track.time.dt.day[0]).toordinal()
+            dt.datetime(track.time.dt.year.values[0],
+                        track.time.dt.month.values[0],
+                        track.time.dt.day.values[0]).toordinal()
         ])
         new_haz.orig = np.array([track.orig_event_flag])
         new_haz.category = np.array([track.category])
-        new_haz.basin = [track.basin]
+        # users that pickle TCTracks objects might still have data with the legacy basin attribute,
+        # so we have to deal with it here
+        new_haz.basin = [track.basin if isinstance(track.basin, str)
+                         else str(track.basin.values[0])]
         return new_haz
 
     def _apply_knutson_criterion(self, chg_int_freq, scaling_rcp_year):
@@ -441,8 +462,8 @@ class TropCyclone(Hazard):
         Returns
         -------
         tc_cc : climada.hazard.TropCyclone
-            Tropical cyclone with frequency and intensity scaled according
-            to the Knutson criterion. Returns a new instance of TropCyclone.
+            Tropical cyclone with frequency and intensity scaled inspired by
+            the Knutson criterion. Returns a new instance of TropCyclone.
         """
 
         tc_cc = copy.deepcopy(self)
@@ -473,9 +494,7 @@ class TropCyclone(Hazard):
                         ]
             freq_chg.sort(reverse=False, key=lambda x: len(x['category']))
 
-            # Iteratively scale frequencies for each category such that
-            # cumulative frequencies are scaled according to Knutson criterion.
-
+            # Scale frequencies by category
             cat_larger_list = []
             for chg in freq_chg:
                 cat_chg_list = [cat
@@ -485,24 +504,12 @@ class TropCyclone(Hazard):
                 sel_cat_chg = np.isin(tc_cc.category, cat_chg_list) & bas_sel
                 if sel_cat_chg.any():
                     freq_scaling = 1 + (chg['change'] - 1) * scaling_rcp_year
-                    sel_cat_all = (np.isin(tc_cc.category, chg['category'])
-                                   & bas_sel)
-                    sel_cat_larger = (np.isin(tc_cc.category, cat_larger_list)
-                                      & bas_sel)
-                    freq_scaling_cor = (
-                        (np.sum(self.frequency[sel_cat_all]) * freq_scaling
-                         - np.sum(tc_cc.frequency[sel_cat_larger]))
-                        / np.sum(self.frequency[sel_cat_chg])
-                    )
-                    tc_cc.frequency[sel_cat_chg] *= freq_scaling_cor
+                    tc_cc.frequency[sel_cat_chg] *= freq_scaling
                 cat_larger_list += cat_chg_list
 
         if (tc_cc.frequency < 0).any():
             raise ValueError("The application of the given climate scenario"
-                             "resulted in at least one negative frequenciy."
-                             "This is likely due to the use of a"
-                             "non-representative event set (too small, "
-                             "incorrect reference period, ...)")
+                             "resulted in at least one negative frequency.")
 
         return tc_cc
 
@@ -738,25 +745,27 @@ def _bs_hol08(v_trans, penv, pcen, prepcen, lat, tint):
 
     Parameters
     ----------
-    v_trans : float
+    v_trans : np.array
         translational wind (m/s)
-    penv : float
+    penv : np.array
         environmental pressure (hPa)
-    pcen : float
+    pcen : np.array
         central pressure (hPa)
-    prepcen : float
-        previous central pressure (hPa)
-    lat : float
+    prepcen : np.array
+        central pressure (hPa) at previous track position
+    lat : np.array
         latitude (degrees)
-    tint : float
+    tint : np.array
         time step (h)
 
     Returns
     -------
-    b_s : float
+    b_s : np.array
+        Holland b-value
     """
-    hol_xx = 0.6 * (1. - (penv - pcen) / 215)
-    hol_b = -4.4e-5 * (penv - pcen)**2 + 0.01 * (penv - pcen) + \
+    pdelta = penv - pcen
+    hol_xx = 0.6 * (1. - pdelta / 215)
+    hol_b = -4.4e-5 * pdelta**2 + 0.01 * pdelta + \
         0.03 * (pcen - prepcen) / tint - 0.014 * abs(lat) + \
         0.15 * v_trans**hol_xx + 1.0
     return np.clip(hol_b, 1, 2.5)

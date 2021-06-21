@@ -122,20 +122,31 @@ def assign_hazard_to_emdat(certainty_level, intensity_path_haz, names_path_haz,
                            reg_id_path_haz, date_path_haz, emdat_data,
                            start_time, end_time, keep_checks=False):
     """assign_hazard_to_emdat: link EMdat event to hazard
-        Parameters:
-            input files (paths):
-                intensity: sparse matrix with hazards as rows and grid points as cols,
-                values only at location with impacts
-                names: identifier for each hazard (i.e. IBtracID) (rows of the matrix)
-                reg_id: ISO country ID of each grid point (cols of the matrix)
-                date: start date of each hazard (rows of the matrix)
-                emdat_data: pd.dataframe with EMdat data
-                start: start date of events to be assigned 'yyyy-mm-dd'
-                end: end date of events to be assigned 'yyyy-mm-dd'
-                disaster_subtype: EMdat disaster subtype
 
-    Returns:
-        pd.dataframe with EMdat entries linked to a hazard
+    Parameters
+    ----------
+    certainty_level : str
+        'high' or 'low'
+    intensity_path_haz : sparse matrix
+        with hazards as rows and grid points as cols,
+        values only at location with impacts
+    names_path_haz : str
+        identifier for each hazard (i.e. IBtracID) (rows of the matrix)
+    reg_id_path_haz : str
+        ISO country ID of each grid point (cols of the matrix)
+    date_path_haz : str
+        start date of each hazard (rows of the matrix)
+    emdat_data: pd.DataFrame
+        dataframe with EMdat data
+    start_time : str
+        start date of events to be assigned 'yyyy-mm-dd'
+    end_time : str
+        end date of events to be assigned 'yyyy-mm-dd'
+    keep_checks : bool, optional
+
+    Returns
+    -------
+    pd.dataframe with EMdat entries linked to a hazard
     """
     # check valid certainty level
     certainty_levels = ['high', 'low']
@@ -220,15 +231,21 @@ def assign_hazard_to_emdat(certainty_level, intensity_path_haz, names_path_haz,
 def hit_country_per_hazard(intensity_path, names_path, reg_id_path, date_path):
     """hit_country_per_hazard: create list of hit countries from hazard set
 
-        Parameters:
-            input files:
-                intensity: sparse matrix with hazards as rows and grid points
-                as cols, values only at location with impacts
-                names: identifier for each hazard (i.e. IBtracID) (rows of the matrix)
-                reg_id: ISO country ID of each grid point (cols of the matrix)
-                date: start date of each hazard (rows of the matrix)
-    Returns:
-        pd.dataframe with all hit countries per hazard
+    Parameters
+    ----------
+    intensity_path : str
+        Path to file containing sparse matrix with hazards as rows and grid points
+        as cols, values only at location with impacts
+    names_path : str
+        Path to file with identifier for each hazard (i.e. IBtracID) (rows of the matrix)
+    reg_id_path : str
+        Path to file with ISO country ID of each grid point (cols of the matrix)
+    date_path : str
+        Path to file with start date of each hazard (rows of the matrix)
+
+    Returns
+    -------
+        pd.DataFrame with all hit countries per hazard
     """
     with open(intensity_path, 'rb') as filef:
         inten = pickle.load(filef)
@@ -270,13 +287,20 @@ def hit_country_per_hazard(intensity_path, names_path, reg_id_path, date_path):
 def create_lookup(emdat_data, start, end, disaster_subtype='Tropical cyclone'):
     """create_lookup: prepare a lookup table of EMdat events to which hazards can be assigned
 
-        Parameters:
-                emdat_data: pd.dataframe with EMdat data
-                start: start date of events to be assigned 'yyyy-mm-dd'
-                end: end date of events to be assigned 'yyyy-mm-dd'
-                disaster_subtype: EMdat disaster subtype
-        Returns:
-            pd.dataframe lookup
+        Parameters
+        ----------
+        emdat_data: pd.DataFrame
+            with EMdat data
+        start : str
+            start date of events to be assigned 'yyyy-mm-dd'
+        end : str
+            end date of events to be assigned 'yyyy-mm-dd'
+        disaster_subtype : str
+            EMdat disaster subtype
+
+        Returns
+        -------
+        pd.DataFrame
         """
     data = emdat_data[emdat_data['Disaster_subtype'] == disaster_subtype]
     lookup = pd.DataFrame(columns=['hit_country', 'Date_start_EM',
@@ -308,17 +332,18 @@ def create_lookup(emdat_data, start, end, disaster_subtype='Tropical cyclone'):
 def emdat_possible_hit(lookup, hit_countries, delta_t):
     """relate EM disaster to hazard using hit countries and time
 
-        Parameters:
-            input files:
-                lookup: pd.dataframe to relate EMdatID to hazard
-                tracks: pd.dataframe with all hit countries per hazard
-                delta_t: max time difference of start of EMdat event and hazard
-                hit_countries:
-                start: start date of events to be assigned
-                end: end date of events to be assigned
-                disaster_subtype: EMdat disaster subtype
-        Returns:
-            list with possible hits
+    Parameters
+    ----------
+    lookup : pd.DataFrame
+        to relate EMdatID to hazard
+    delta_t :
+        max time difference of start of EMdat event and hazard
+    hit_countries:
+
+
+    Returns
+    -------
+    list with possible hits
     """
     # lookup: PD dataframe that relates EMdatID to an IBtracsID
     # tracks: processed IBtracks with info which track hit which country
@@ -342,12 +367,17 @@ def emdat_possible_hit(lookup, hit_countries, delta_t):
 def match_em_id(lookup, poss_hit):
     """function to check if EM_ID has been assigned already and combine possible hits
 
-        Parameters:
-            lookup: pd.dataframe to relate EMdatID to hazard
-            poss_hit: list with possible hits
+        Parameters
+        ----------
+        lookup : pd.dataframe
+            to relate EMdatID to hazard
+        poss_hit : list
+            with possible hits
 
-        Returns:
-            list with all possible hits per EMdat ID
+        Returns
+        -------
+        list
+            with all possible hits per EMdat ID
         """
     possible_hit_all = []
     for i in range(0, len(lookup.EM_ID.values)):
@@ -371,13 +401,21 @@ def assign_track_to_em(lookup, possible_tracks_1, possible_tracks_2, level):
         tracks in possible_tracks_2.
         The confidence can be expressed with a certainty level
 
-        Parameters:
-            lookup: pd.dataframe to relate EMdatID to hazard
-            possible_tracks_1: list of possible hits with smaller time horizon
-            possible_tracks_2: list of possible hits with larger time horizon
-            level: level of confidence
-        Returns:
-            pd.dataframe lookup with assigend tracks and possible hits
+        Parameters
+        ----------
+        lookup : pd.DataFrame
+            to relate EMdatID to hazard
+        possible_tracks_1 : list
+            list of possible hits with smaller time horizon
+        possible_tracks_2 : list
+            list of possible hits with larger time horizon
+        level : int
+            level of confidence
+
+        Returns
+        -------
+        pd.DataFrame
+            lookup with assigend tracks and possible hits
     """
 
     for i, _ in enumerate(possible_tracks_1):
@@ -406,11 +444,16 @@ def assign_track_to_em(lookup, possible_tracks_1, possible_tracks_2, level):
 def check_assigned_track(lookup, checkset):
     """compare lookup with assigned tracks to a set with checked sets
 
-        Parameters:
-            lookup: pd.dataframe to relate EMdatID to hazard
-            checkset: pd.dataframe with already checked hazards
-        Returns:
-            error scores
+        Parameters
+        ----------
+        lookup: pd.DataFrame
+            dataframe to relate EMdatID to hazard
+        checkset: pd.DataFrame
+            dataframe with already checked hazards
+
+        Returns
+        -------
+        error scores
     """
     # merge checkset and lookup
     check = pd.merge(checkset, lookup[['hit_country', 'EM_ID', 'ibtracsID']],
@@ -436,27 +479,33 @@ def clean_emdat_df(emdat_file, countries=None, hazard=None, year_range=None,
     (2) handle version, clean up, and add columns, and
     (3) filter by country, hazard type and year range (if any given)
 
-    Parameters:
-        emdat_file (str, Path, or DataFrame): Either string with full path to CSV-file or
-            pandas.DataFrame loaded from EM-DAT CSV
+    Parameters
+    ----------
+    emdat_file : str, Path, or DataFrame
+        Either string with full path to CSV-file or
+        pandas.DataFrame loaded from EM-DAT CSV
+    countries : list of str
+        country ISO3-codes or names, e.g. ['JAM', 'CUB'].
+        countries=None for all countries (default)
+    hazard : list or str
+        List of Disaster (sub-)type accordung EMDAT terminology, i.e.:
+        Animal accident, Drought, Earthquake, Epidemic, Extreme temperature,
+        Flood, Fog, Impact, Insect infestation, Landslide, Mass movement (dry),
+        Storm, Volcanic activity, Wildfire;
+        Coastal Flooding, Convective Storm, Riverine Flood, Tropical cyclone,
+        Tsunami, etc.;
+        OR CLIMADA hazard type abbreviations, e.g. TC, BF, etc.
+    year_range : list or tuple
+        Year range to be extracted, e.g. (2000, 2015);
+        (only min and max are considered)
+    target_version : int
+        required EM-DAT data format version (i.e. year of download),
+        changes naming of columns/variables (default: 2020)
 
-    Optional parameters:
-        countries (list of str): country ISO3-codes or names, e.g. ['JAM', 'CUB'].
-            countries=None for all countries (default)
-        hazard (list or str): List of Disaster (sub-)type accordung EMDAT terminology, i.e.:
-            Animal accident, Drought, Earthquake, Epidemic, Extreme temperature,
-            Flood, Fog, Impact, Insect infestation, Landslide, Mass movement (dry),
-            Storm, Volcanic activity, Wildfire;
-            Coastal Flooding, Convective Storm, Riverine Flood, Tropical cyclone,
-            Tsunami, etc.;
-            OR CLIMADA hazard type abbreviations, e.g. TC, BF, etc.
-        year_range (list or tuple): Year range to be extracted, e.g. (2000, 2015);
-            (only min and max are considered)
-        target_version (int): required EM-DAT data format version (i.e. year of download),
-            changes naming of columns/variables (default: 2020)
-
-    Returns:
-        df_data (pandas.DataFrame): DataFrame containing cleaned and filtered EM-DAT impact data
+    Returns
+    -------
+    df_data : pd.DataFrame
+        DataFrame containing cleaned and filtered EM-DAT impact data
     """
     # (1) load EM-DAT data from CSV to DataFrame, skipping the header:
     if isinstance(emdat_file, (str, Path)):
@@ -575,26 +624,29 @@ def emdat_countries_by_hazard(emdat_file_csv, hazard=None, year_range=None):
     """return list of all countries exposed to a chosen hazard type
     from EMDAT data as CSV.
 
-    Parameters:
-        emdat_file (str or DataFrame): Either string with full path to CSV-file or
-            pandas.DataFrame loaded from EM-DAT CSV
-    Optional Parameters:
-        hazard (list or str): List of Disaster (sub-)type accordung EMDAT terminology, i.e.:
-            Animal accident, Drought, Earthquake, Epidemic, Extreme temperature,
-            Flood, Fog, Impact, Insect infestation, Landslide, Mass movement (dry),
-            Storm, Volcanic activity, Wildfire;
-            Coastal Flooding, Convective Storm, Riverine Flood, Tropical cyclone,
-            Tsunami, etc.;
-            OR CLIMADA hazard type abbreviations, e.g. TC, BF, etc.:
-        year_range (tuple of integers or None):
-            range of years to consider, i.e. (1950, 2000)
-            default is None, i.e. consider all years
+    Parameters
+    ----------
+    emdat_file : str, Path, or DataFrame
+        Either string with full path to CSV-file or
+        pandas.DataFrame loaded from EM-DAT CSV
+    hazard : list or str
+        List of Disaster (sub-)type accordung EMDAT terminology, i.e.:
+        Animal accident, Drought, Earthquake, Epidemic, Extreme temperature,
+        Flood, Fog, Impact, Insect infestation, Landslide, Mass movement (dry),
+        Storm, Volcanic activity, Wildfire;
+        Coastal Flooding, Convective Storm, Riverine Flood, Tropical cyclone,
+        Tsunami, etc.;
+        OR CLIMADA hazard type abbreviations, e.g. TC, BF, etc.
+    year_range : list or tuple
+        Year range to be extracted, e.g. (2000, 2015);
+        (only min and max are considered)
 
-    Returns:
-        countries_iso3a : list
-            List of ISO3-codes of countries impacted by the disaster (sub-)types
-        countries_names : list
-            List of names of countries impacted by the disaster (sub-)types
+    Returns
+    -------
+    countries_iso3a : list
+        List of ISO3-codes of countries impacted by the disaster (sub-)types
+    countries_names : list
+        List of names of countries impacted by the disaster (sub-)types
     """
     df_data = clean_emdat_df(emdat_file_csv, hazard=hazard, year_range=year_range)
     countries_iso3a = list(df_data.ISO.unique())
@@ -611,18 +663,20 @@ def scale_impact2refyear(impact_values, year_values, iso3a_values, reference_yea
     """Scale give impact values proportional to GDP to the according value in a reference year
     (for normalization of monetary values)
 
-    Parameters:
-        impact_values (list or array):
-            Impact values to be scaled.
-        year_values (list or array):
-            Year of each impact (same length as impact_values)
-        iso3a_values (list or array):
-            ISO3alpha code of country for each impact (same length as impact_values)
+    Parameters
+    ----------
+    impact_values : list or array
+        Impact values to be scaled.
+    year_values : list or array
+        Year of each impact (same length as impact_values)
+    iso3a_values : list or array
+        ISO3alpha code of country for each impact (same length as impact_values)
 
-    Optional Parameters:
-        reference_year (int):
-            Impact is scaled proportional to GDP to the value of the reference year.
-            No scaling for reference_year=None (default)
+    Optional Parameters
+    -------------------
+    reference_year : int
+        Impact is scaled proportional to GDP to the value of the reference year.
+        No scaling for reference_year=None (default)
         """
     impact_values = np.array(impact_values)
     year_values = np.array(year_values)
@@ -653,33 +707,35 @@ def emdat_impact_yearlysum(emdat_file_csv, countries=None, hazard=None, year_ran
                            reference_year=None, imp_str="Total Damages ('000 US$)",
                            version=2020):
     """function to load EM-DAT data and sum impact per year
-    Parameters:
-        emdat_file (str or DataFrame): Either string with full path to CSV-file or
-            pandas.DataFrame loaded from EM-DAT CSV
 
-    Optional parameters:
-        countries (list of str): country ISO3-codes or names, e.g. ['JAM', 'CUB'].
-            countries=None for all countries (default)
-        hazard (list or str): List of Disaster (sub-)type accordung EMDAT terminology, i.e.:
-            Animal accident, Drought, Earthquake, Epidemic, Extreme temperature,
-            Flood, Fog, Impact, Insect infestation, Landslide, Mass movement (dry),
-            Storm, Volcanic activity, Wildfire;
-            Coastal Flooding, Convective Storm, Riverine Flood, Tropical cyclone,
-            Tsunami, etc.;
-            OR CLIMADA hazard type abbreviations, e.g. TC, BF, etc.
-        year_range (list or tuple): Year range to be extracted, e.g. (2000, 2015);
-            (only min and max are considered)
-        version (int): given EM-DAT data format version (i.e. year of download),
-            changes naming of columns/variables (default: 2020)
-        reference_year (int): reference year of exposures. Impact is scaled
-            proportional to GDP to the value of the reference year. No scaling
-            for 0 (default)
-        imp_str (str): Column name of impact metric in EMDAT CSV,
-            default = "Total Damages ('000 US$)"
+    Parameters
+    ----------
+     emdat_file_csv : str or DataFrame
+        Either string with full path to CSV-file or
+        pandas.DataFrame loaded from EM-DAT CSV
+    countries : list of str
+        country ISO3-codes or names, e.g. ['JAM', 'CUB'].
+        countries=None for all countries (default)
+    hazard : list or str
+        List of Disaster (sub-)type accordung EMDAT terminology, i.e.:
+        Animal accident, Drought, Earthquake, Epidemic, Extreme temperature,
+        Flood, Fog, Impact, Insect infestation, Landslide, Mass movement (dry),
+        Storm, Volcanic activity, Wildfire;
+        Coastal Flooding, Convective Storm, Riverine Flood, Tropical cyclone,
+        Tsunami, etc.;
+        OR CLIMADA hazard type abbreviations, e.g. TC, BF, etc.
+    year_range : list or tuple
+        Year range to be extracted, e.g. (2000, 2015);
+        (only min and max are considered)
+    version : int
+        required EM-DAT data format version (i.e. year of download),
+        changes naming of columns/variables (default: 2020)
 
-    Returns:
-        out (pd.DataFrame): DataFrame with summed impact and scaled impact per
-            year and country.
+    Returns
+    -------
+    out : pd.DataFrame
+        DataFrame with summed impact and scaled impact per
+        year and country.
     """
     imp_str = VARNAMES_EMDAT[version][imp_str]
     df_data = clean_emdat_df(emdat_file_csv, countries=countries, hazard=hazard,
@@ -719,34 +775,41 @@ def emdat_impact_event(emdat_file_csv, countries=None, hazard=None, year_range=N
                        version=2020):
     """function to load EM-DAT data return impact per event
 
-    Parameters:
-        emdat_file_csv (str): Full path to EMDAT-file (CSV), i.e.:
-            emdat_file_csv = SYSTEM_DIR.joinpath('emdat_201810.csv')
+    Parameters
+    ----------
+     emdat_file_csv : str or DataFrame
+        Either string with full path to CSV-file or
+        pandas.DataFrame loaded from EM-DAT CSV
+    countries : list of str
+        country ISO3-codes or names, e.g. ['JAM', 'CUB'].
+        default: countries=None for all countries
+    hazard : list or str
+        List of Disaster (sub-)type accordung EMDAT terminology, i.e.:
+        Animal accident, Drought, Earthquake, Epidemic, Extreme temperature,
+        Flood, Fog, Impact, Insect infestation, Landslide, Mass movement (dry),
+        Storm, Volcanic activity, Wildfire;
+        Coastal Flooding, Convective Storm, Riverine Flood, Tropical cyclone,
+        Tsunami, etc.;
+        OR CLIMADA hazard type abbreviations, e.g. TC, BF, etc.
+    year_range : list or tuple
+        Year range to be extracted, e.g. (2000, 2015);
+        (only min and max are considered)
+    reference_year : int reference year of exposures. Impact is scaled
+        proportional to GDP to the value of the reference year. Default: No scaling
+        for 0
+    imp_str : str
+        Column name of impact metric in EMDAT CSV,
+        default = "Total Damages ('000 US$)"
+    version : int
+        EM-DAT version to take variable/column names from (defaul: 2020)
 
-    Optional parameters:
-        countries (list of str): country ISO3-codes or names, e.g. ['JAM', 'CUB'].
-            countries=None for all countries (default)
-        hazard (list or str): List of Disaster (sub-)type accordung EMDAT terminology, i.e.:
-            Animal accident, Drought, Earthquake, Epidemic, Extreme temperature,
-            Flood, Fog, Impact, Insect infestation, Landslide, Mass movement (dry),
-            Storm, Volcanic activity, Wildfire;
-            Coastal Flooding, Convective Storm, Riverine Flood, Tropical cyclone,
-            Tsunami, etc.;
-            OR CLIMADA hazard type abbreviations, e.g. TC, BF, etc.
-        year_range (list or tuple): Year range to be extracted, e.g. (2000, 2015);
-            (only min and max are considered)
-        reference_year (int): reference year of exposures. Impact is scaled
-            proportional to GDP to the value of the reference year. No scaling
-            for 0 (default)
-        imp_str (str): Column name of impact metric in EMDAT CSV,
-            default = "Total Damages ('000 US$)"
-        version (int): EM-DAT version to take variable/column names from (defaul: 2020)
-
-    Returns:
-        out (pandas DataFrame): EMDAT DataFrame with new columns "year",
-            "region_id", and "impact" and +impact_scaled" total impact per event with
-            same unit as chosen impact, but multiplied by 1000 if impact is given
-            as 1000 US$ (e.g. imp_str="Total Damages ('000 US$) scaled").
+    Returns
+    -------
+    out : pd.DataFrame
+        EMDAT DataFrame with new columns "year",
+        "region_id", and "impact" and +impact_scaled" total impact per event with
+        same unit as chosen impact, but multiplied by 1000 if impact is given
+        as 1000 US$ (e.g. imp_str="Total Damages ('000 US$) scaled").
     """
     imp_str = VARNAMES_EMDAT[version][imp_str]
     df_data = clean_emdat_df(emdat_file_csv, hazard=hazard, year_range=year_range,
@@ -774,41 +837,42 @@ def emdat_to_impact(emdat_file_csv, hazard_type_climada, year_range=None, countr
                     reference_year=None, imp_str="Total Damages"):
     """function to load EM-DAT data return impact per event
 
-    Parameters:
-        emdat_file_csv (str): Full path to EMDAT-file (CSV), i.e.:
-            emdat_file_csv = SYSTEM_DIR.joinpath('emdat_201810.csv')
-        hazard_type_climada (str): Hazard type CLIMADA abbreviation,
-            i.e. 'TC' for tropical cyclone
+    Parameters
+    ----------
+     emdat_file_csv : str or pd.DataFrame
+        Either string with full path to CSV-file or
+        pandas.DataFrame loaded from EM-DAT CSV
+    countries : list of str
+        country ISO3-codes or names, e.g. ['JAM', 'CUB'].
+        default: countries=None for all countries
+    hazard_type_climada : list or str
+        List of Disaster (sub-)type accordung EMDAT terminology, i.e.:
+        Animal accident, Drought, Earthquake, Epidemic, Extreme temperature,
+        Flood, Fog, Impact, Insect infestation, Landslide, Mass movement (dry),
+        Storm, Volcanic activity, Wildfire;
+        Coastal Flooding, Convective Storm, Riverine Flood, Tropical cyclone,
+        Tsunami, etc.;
+        OR CLIMADA hazard type abbreviations, e.g. TC, BF, etc.
+    year_range : list or tuple
+        Year range to be extracted, e.g. (2000, 2015);
+        (only min and max are considered)
+    reference_year : int reference year of exposures. Impact is scaled
+        proportional to GDP to the value of the reference year. Default: No scaling
+        for 0
+    imp_str : str
+        Column name of impact metric in EMDAT CSV,
+        default = "Total Damages ('000 US$)"
 
-    Optional parameters:
-        hazard_type_emdat (list or str): List of Disaster (sub-)type accordung
-            EMDAT terminology, e.g.:
-            Animal accident, Drought, Earthquake, Epidemic, Extreme temperature,
-            Flood, Fog, Impact, Insect infestation, Landslide, Mass movement (dry),
-            Storm, Volcanic activity, Wildfire;
-            Coastal Flooding, Convective Storm, Riverine Flood, Tropical cyclone,
-            Tsunami, etc.;
-            OR CLIMADA hazard type abbreviations, e.g. TC, BF, etc.
-            If not given, it is deducted from hazard_type_climada
-        year_range (list with 2 integers): start and end year e.g. [1980, 2017]
-            default: None --> take year range from EM-DAT file
-        countries (list of str): country ISO3-codes or names, e.g. ['JAM'].
-            Set to None or ['all'] for all countries (default)
-        reference_year (int): reference year of exposures. Impact is scaled
-            proportional to GDP to the value of the reference year. No scaling
-            for reference_year=0 (default)
-        imp_str (str): Column name of impact metric in EMDAT CSV,
-            default = "Total Damages ('000 US$)"
-
-    Returns:
-        impact_instance (instance of climada.engine.Impact):
-            impact object of same format as output from CLIMADA
-            impact computation.
-            Values scaled with GDP to reference_year if reference_year is given.
-            i.e. current US$ for imp_str="Total Damages ('000 US$) scaled" (factor 1000 is applied)
-            impact_instance.eai_exp holds expected annual impact for each country.
-            impact_instance.coord_exp holds rough central coordinates for each country.
-        countries (list): ISO3-codes of countries in same order as in impact_instance.eai_exp
+    Returns
+    -------
+    impact_instance : instance of climada.engine.Impact
+    impact object of same format as output from CLIMADA
+    impact computation.
+    Values scaled with GDP to reference_year if reference_year is given.
+    i.e. current US$ for imp_str="Total Damages ('000 US$) scaled" (factor 1000 is applied)
+    impact_instance.eai_exp holds expected annual impact for each country.
+    impact_instance.coord_exp holds rough central coordinates for each country.
+    countries (list): ISO3-codes of countries in same order as in impact_instance.eai_exp
     """
     if "Total Damages" in imp_str:
         imp_str = "Total Damages ('000 US$)"

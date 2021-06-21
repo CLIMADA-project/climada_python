@@ -127,7 +127,7 @@ class TCRain(Hazard):
             track.time.dt.day[0]).toordinal()])
         new_haz.orig = np.array([track.orig_event_flag])
         new_haz.category = np.array([track.category])
-        new_haz.basin = [track.basin]
+        new_haz.basin = [str(track.basin.values[0])]
         return new_haz
 
 def rainfield_from_track(track, centroids, dist_degree=3, intensity=0.1):
@@ -178,7 +178,7 @@ def rainfield_from_track(track, centroids, dist_degree=3, intensity=0.1):
             fradius_km[pos] = np.sqrt(dd) * 111.12
 
             rainsum += _RCLIPER(track.max_sustained_wind.values[node],
-                                inreach, fradius_km)
+                                inreach, fradius_km) * track.time_step.values[node]
 
     rainsum[rainsum < intensity] = 0
 
