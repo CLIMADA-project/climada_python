@@ -1044,7 +1044,6 @@ class TestRasterIO(unittest.TestCase):
         reference_array = np.array([[0.425, 1.7631578],
                                     [3.425, 4.763158 ]], dtype='float32')
         np.testing.assert_array_equal(reference_array, data_out)
-<<<<<<< HEAD
 
     def test_mask_raster_with_geometry(self):
         """test function mask_raster_with_geometry"""
@@ -1059,8 +1058,7 @@ class TestRasterIO(unittest.TestCase):
                             ], dtype=np.float32)
         np.testing.assert_array_equal(
             u_coord.mask_raster_with_geometry(raster, transform, shapes), expected)
-=======
->>>>>>> develop
+
 
 # Execute Tests
 if __name__ == "__main__":

@@ -1944,7 +1944,6 @@ def align_raster_data(source, src_crs, src_transform, dst_crs=None, dst_resoluti
         raise ValueError(f"Invalid value for conserve: {conserve}")
     return destination, dst_transform
 
-<<<<<<< HEAD
 def mask_raster_with_geometry(raster, transform, shapes, nodata=None, **kwargs):
     """
     Wrapper for rasterio.mask.mask to allow for in-memory processing.
@@ -1980,8 +1979,6 @@ def mask_raster_with_geometry(raster, transform, shapes, nodata=None, **kwargs):
             output, _ = rasterio.mask.mask(dataset, shapes, nodata=nodata, **kwargs)
     return output.squeeze(0)
 
-=======
->>>>>>> develop
 def set_df_geometry_points(df_val, scheduler=None, crs=None):
     """Set given geometry to given dataframe using dask if scheduler.
 
