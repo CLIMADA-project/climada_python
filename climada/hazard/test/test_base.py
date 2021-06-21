@@ -581,8 +581,6 @@ class TestAppend(unittest.TestCase):
         haz2.units = 'km/h'
         with self.assertRaises(ValueError) as cm:
             haz1.append(haz2)
-        self.assertIn("Hazards with different units can't be appended: m/s != km/h.",
-                      str(cm.exception))
 
     def test_all_different_extend(self):
         """Append totally different hazard."""
