@@ -728,7 +728,7 @@ class TestAppend(unittest.TestCase):
         haz_2.units = 'm/s'
 
         haz = Hazard('TC')
-        haz.concatenate([haz_1, haz_2])
+        haz.extend([haz_1, haz_2])
 
 
         hres_frac = sparse.csr_matrix([[0.02, 0.03, 0.04],
