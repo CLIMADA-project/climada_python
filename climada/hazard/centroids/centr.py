@@ -813,11 +813,12 @@ class Centroids():
 
     def set_meta_to_lat_lon(self):
         """Compute lat and lon of every pixel center from meta raster."""
-        xgrid, ygrid = u_coord.raster_to_meshgrid(
-            self.meta['transform'], self.meta['width'], self.meta['height'])
-        self.lon = xgrid.flatten()
-        self.lat = ygrid.flatten()
-        self.geometry = gpd.GeoSeries(crs=self.meta['crs'])
+        if self.meta:
+            xgrid, ygrid = u_coord.raster_to_meshgrid(
+                self.meta['transform'], self.meta['width'], self.meta['height'])
+            self.lon = xgrid.flatten()
+            self.lat = ygrid.flatten()
+            self.geometry = gpd.GeoSeries(crs=self.meta['crs'])
 
     def plot(self, axis=None, figsize=(9, 13), **kwargs):
         """Plot centroids scatter points over earth.
