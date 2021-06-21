@@ -1490,8 +1490,8 @@ class Hazard():
         None.
 
         """
-        if self.event_id.any():
-            haz_list =  [self] + haz_list
+        if self.event_id.any(): #if self is not empty, concatenate with self.
+            haz_list = [self] + haz_list
         self.__dict__ = self.concatenate_hazard(haz_list,
                                                 centroids,
                                                 threshold).__dict__
@@ -1533,12 +1533,15 @@ class Hazard():
         ------
         ValueError
         """
+
         #Check units consistency among hazards
         units = {haz.units for haz in haz_list if haz.units != ''}
         if len(units) > 1:
             raise TypeError("The haz_list contains hazards with different "
                             "units %f. The hazards are incompatible and "
                             "cannot be concatenated.", str(units))
+        elif len(units) == 0:
+            units = {''}
 
         #Define comon centroids
         if centroids is None:
@@ -1546,7 +1549,7 @@ class Hazard():
                                            for haz in haz_list])
 
         haz_concat = Hazard()
-        haz_concat.units = haz_list[0].units
+        haz_concat.units = units.pop()
         haz_concat.centroids = centroids
 
         #Indices for mapping matrices onto common centroids
