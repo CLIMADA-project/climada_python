@@ -229,6 +229,27 @@ class LitPop(Exposures):
             self.meta = {}
         self.check()
 
+    def set_custom_shape_from_country(self, shape, country, res_arcsec=30,
+                                      exponents=(1,1), fin_mode='pc', total_values=None,
+                                      admin1_calc=False, reference_year=2020,
+                                      gpw_version=GPW_VERSION,
+                                      data_dir=SYSTEM_DIR, reproject_first=True):
+        if isinstance(shape, Shape): # convert to list of Polygon objects:
+            shape_list = [Polygon(shape.points[shape.parts[i]:part-1])
+                          for i, part in enumerate(list(shape.parts[1:])+[0])]
+        elif isinstance(shape, MultiPolygon):
+            shape_list = list(shape)
+        elif isinstance(shape, Polygon):
+            shape_list = [shape]
+        elif isinstance(shape, list):
+            if not isinstance(shape[0], Polygon):
+                raise NotImplementedError("The parameter `shape` is allowed to be: "
+                                          "Polygon, MultiPolygon, or Shape instance, "
+                                          "or list of Polygon instances. Lists "
+                                          "with other content than Polygon are not "
+                                          "implemented.")
+            shape_list = shape
+
     def set_custom_shape(self, shape, total_value, res_arcsec=30, exponents=(1,1),
                          value_unit='USD', reference_year=2020,
                          gpw_version=GPW_VERSION, data_dir=SYSTEM_DIR,
@@ -300,11 +321,7 @@ class LitPop(Exposures):
             shape_list = shape
 
         tag = Tag()
-        # set nightlight offset (delta) to 1 in case n>0, c.f. delta in Eq. 1 of paper:
-        if exponents[1] == 0:
-            offsets = (0, 0)
-        else:
-            offsets = (1, 0)
+
         # init LitPop GeoDataFrame for shape:
         litpop_gdf = geopandas.GeoDataFrame()
         for idx, polygon in enumerate(shape_list):
@@ -313,7 +330,7 @@ class LitPop(Exposures):
                 _get_litpop_single_polygon(polygon, reference_year,
                                            res_arcsec, data_dir,
                                            gpw_version, reproject_first,
-                                           offsets, exponents,
+                                           exponents,
                                            verbatim=not bool(idx),
                                            )
             if gdf_tmp is None:
@@ -430,11 +447,6 @@ class LitPop(Exposures):
             shape_list = shape
 
         tag = Tag()
-        # set nightlight offset (delta) to 1 in case n>0, c.f. delta in Eq. 1 of paper:
-        if exponents[1] == 0:
-            offsets = (0, 0)
-        else:
-            offsets = (1, 0)
         # init LitPop GeoDataFrame for shape:
         total_population = 0
         litpop_gdf = geopandas.GeoDataFrame()
@@ -444,7 +456,7 @@ class LitPop(Exposures):
                 _get_litpop_single_polygon(polygon, reference_year,
                                            res_arcsec, data_dir,
                                            gpw_version, reproject_first,
-                                           offsets, exponents,
+                                           exponents,
                                            verbatim=not bool(idx),
                                            )
             if gdf_tmp is None:
@@ -595,12 +607,6 @@ class LitPop(Exposures):
         -------
         LitPop Exposure instance
         """
-        # set nightlight offset (delta) to 1 in case n>0, c.f. delta in Eq. 1 of paper:
-        if exponents[1] == 0:
-            offsets = (0, 0)
-        else:
-            offsets = (1, 0)
-    
         # Determine ISO 3166 representation of country and get geometry:
         try:
             iso3a = u_coord.country_to_iso(country, representation="alpha3")
@@ -626,7 +632,7 @@ class LitPop(Exposures):
                 _get_litpop_single_polygon(polygon, reference_year,
                                            res_arcsec, data_dir,
                                            gpw_version, reproject_first,
-                                           offsets, exponents,
+                                           exponents,
                                            verbatim=not bool(idx),
                                            region_id=iso3n
                                            )
@@ -658,7 +664,7 @@ class LitPop(Exposures):
     set_country = set_countries
 
 def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
-                               gpw_version, reproject_first, offsets, exponents,
+                               gpw_version, reproject_first, exponents,
                                region_id=None, verbatim=False):
     """load nightlight (nl) and population (pop) data in rastered 2d arrays
     and apply rescaling (resolution reprojection) and LitPop core calculation.
@@ -684,8 +690,6 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
     exponents : tuple of two integers
         Defining power with which lit (nightlights) and pop (gpw) go into LitPop. To get
         nightlights^3 without population count: (3, 0). To use population count alone: (0, 1).
-    offsets : tuple of numbers
-        offsets to be added to input data, required for LitPop core calculation
     region_id : int, optional
         if provided, region_id of gdf is set to value.
         The default is None, this implies that region_id is not set.
@@ -702,6 +706,11 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
         'total_population' contains the sum of population in the polygon.
 
     """
+    # set nightlight offset (delta) to 1 in case n>0, c.f. delta in Eq. 1 of paper:
+    if exponents[1] == 0:
+        offsets = (0, 0)
+    else:
+        offsets = (1, 0)
     # import population data (2d array), meta data, and global grid info,
     # global_transform defines the origin (corner points) of the global traget grid:
     pop, meta_pop, global_transform = \
