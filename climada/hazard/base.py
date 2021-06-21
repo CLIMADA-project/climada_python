@@ -1508,7 +1508,7 @@ class Hazard():
         if centroids is None:
             centroids = Centroids().union(*[haz.centroids
                                            for haz in haz_list])
-
+        #Define empty concatenate hazard
         haz_concat = Hazard()
         haz_concat.units = units.pop()
         haz_concat.centroids = centroids

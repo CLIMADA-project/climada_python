@@ -532,12 +532,19 @@ class Centroids():
             cent_list =  [self] + list(others)
 
         #Set attributes to centroids if missing in one but defined in other
-        is_geom = np.any([cent.geometry.any() for cent in cent_list]) and not np.all([cent.geometry.any() for cent in cent_list])
-        is_area_pixel = np.any([cent.area_pixel.any() for cent in cent_list]) and not np.all([cent.area_pixel.any() for cent in cent_list])
-        is_dist_coast = np.any([cent.dist_coast.any() for cent in cent_list]) and not np.all([cent.dist_coast.any() for cent in cent_list])
-        is_on_land = np.any([len(cent.on_land) > 0 for cent in cent_list]) and not np.all([len(cent.on_land) > 0 for cent in cent_list])
-        is_region_id = np.any([cent.region_id.any() for cent in cent_list]) and not np.all([cent.region_id.any() for cent in cent_list])
-        is_elevation = np.any([cent.elevation.any() for cent in cent_list]) and not np.all([cent.elevation.any() for cent in cent_list])
+        is_geom = np.any([cent.geometry.any() for cent in cent_list]) \
+            and not np.all([cent.geometry.any() for cent in cent_list])
+        is_area_pixel = np.any([cent.area_pixel.any() for cent in cent_list]) \
+            and not np.all([cent.area_pixel.any() for cent in cent_list])
+        is_dist_coast = np.any([cent.dist_coast.any() for cent in cent_list]) \
+            and not np.all([cent.dist_coast.any() for cent in cent_list])
+        is_on_land = np.any([len(cent.on_land) > 0 for cent in cent_list]) \
+            and not np.all([len(cent.on_land) > 0 for cent in cent_list])
+        is_region_id = np.any([cent.region_id.any() for cent in cent_list]) \
+            and not np.all([cent.region_id.any() for cent in cent_list])
+        is_elevation = np.any([cent.elevation.any() for cent in cent_list]) \
+            and not np.all([cent.elevation.any() for cent in cent_list])
+
         for cent in cent_list:
             if cent.meta and not cent.lat.any():
                 cent.set_meta_to_lat_lon()
