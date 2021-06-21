@@ -138,13 +138,6 @@ class LitPop(Exposures):
         if isinstance(countries, str) or isinstance(countries, int):
             countries = [countries] # for backward compatibility
 
-        # value_unit is set depending on fin_mode:
-        if fin_mode in ['none', 'norm']:
-            value_unit = ''
-        elif fin_mode == 'pop':
-            value_unit='people'
-        else:
-            value_unit = 'USD'
         if total_values is None: # init list with total values per countries
             total_values = [None] * len(countries)
         elif len(total_values) != len(countries):
@@ -204,7 +197,7 @@ class LitPop(Exposures):
             crs=litpop_list[0].crs,
             ref_year=reference_year,
             tag=tag,
-            value_unit=value_unit,
+            value_unit=get_value_unit(fin_mode),
             exponents = exponents,
             gpw_version = gpw_version,
             fin_mode = fin_mode,
@@ -230,7 +223,7 @@ class LitPop(Exposures):
         self.check()
 
     def set_custom_shape_from_country(self, shape, country, res_arcsec=30,
-                                      exponents=(1,1), fin_mode='pc', total_values=None,
+                                      exponents=(1,1), fin_mode='pc',
                                       admin1_calc=False, reference_year=2020,
                                       gpw_version=GPW_VERSION,
                                       data_dir=SYSTEM_DIR, reproject_first=True):
@@ -249,6 +242,58 @@ class LitPop(Exposures):
                                           "with other content than Polygon are not "
                                           "implemented.")
             shape_list = shape
+
+        # init country exposure:
+        exp = self._set_one_country(country, res_arcsec=res_arcsec, exponents=exponents,
+                               fin_mode=fin_mode, total_value=None,
+                               reference_year=reference_year,
+                               gpw_version=gpw_version, data_dir=data_dir,
+                               reproject_first=reproject_first)
+        # loop over shapes and cut out exposure GDFs within each shape, combine:
+        for idx, shape in enumerate(shape_list):
+            if idx==0:
+                gdf = exp.gdf.loc[exp.gdf.geometry.within(shape)]
+            else:
+                gdf.append(exp.gdf.loc[exp.gdf.geometry.within(shape)],
+                               ignore_index=True)
+
+        tag = Tag()
+        tag.description = ('LitPop Exposure for custom shape in %s at %i as, '
+                           'year: %i, financial mode: %s, '
+                           'exp: [%i, %i], admin1_calc: %s'
+                           % (country, res_arcsec, reference_year, fin_mode,
+                              exponents[0], exponents[1], str(admin1_calc)))
+
+        Exposures.__init__(
+            self,
+            data=gdf,
+            crs=exp.crs,
+            ref_year=reference_year,
+            tag=tag,
+            value_unit=get_value_unit(fin_mode),
+            exponents = exponents,
+            gpw_version = gpw_version,
+            fin_mode = fin_mode,
+            reproject_first = reproject_first,
+            admin1_calc = admin1_calc
+        )
+
+        try:
+            rows, cols, ras_trans = u_coord.pts_to_raster_meta(
+                (self.gdf.longitude.min(), self.gdf.latitude.min(),
+                 self.gdf.longitude.max(), self.gdf.latitude.max()),
+                u_coord.get_resolution(self.gdf.longitude, self.gdf.latitude))
+            self.meta = {
+                'width': cols,
+                'height': rows,
+                'crs': self.crs,
+                'transform': ras_trans,
+            }
+        except ValueError:
+            LOGGER.warning('Could not write attribute meta, because exposure'
+                           ' has only 1 data point')
+            self.meta = {}
+        self.check()
 
     def set_custom_shape(self, shape, total_value, res_arcsec=30, exponents=(1,1),
                          value_unit='USD', reference_year=2020,
@@ -482,7 +527,7 @@ class LitPop(Exposures):
             crs=litpop_gdf.crs,
             ref_year=reference_year,
             tag=tag,
-            value_unit='people',
+            value_unit=get_value_unit('pop'),
             exponents = exponents,
             gpw_version = gpw_version,
             fin_mode = None,
@@ -797,6 +842,24 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
         gdf['region_id'] = u_coord.get_country_code(gdf.latitude, gdf.longitude)
     # remove entries outside polygon and return:
     return gdf.dropna(), meta_out
+
+def get_value_unit(fin_mode):
+    """get `value_unit` depending on `fin_mode`
+
+    Parameters
+    ----------
+    fin_mode : Socio-economic value to be used as an asset base
+
+    Returns
+    -------
+    value_unit : str
+
+    """
+    if fin_mode in ['none', 'norm']:
+        return('')
+    if fin_mode == 'pop':
+        return('people')
+    return('USD')
 
 def get_total_value_per_country(cntry_iso3a, fin_mode, reference_year, total_population=None):
     """
