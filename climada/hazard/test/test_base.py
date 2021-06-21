@@ -765,8 +765,8 @@ class TestAppend(unittest.TestCase):
         haz = dummy_hazard()
         haz.new_var = np.ones(haz.size)
 
-        app_haz = dummy_hazard()
-        app_haz.concatenate([haz])
+        app_haz = Hazard()
+        app_haz.extend([haz])
         self.assertIn('new_var', app_haz.__dict__)
 
 class TestStats(unittest.TestCase):
