@@ -526,35 +526,45 @@ class Centroids():
 
         """
 
-        if self.lat.any() or self.meta:
-            centroids = copy.deepcopy(self)
+        if not self.lat.any() and not self.meta:
+            cent_list = list(others)
         else:
-            centroids = copy.deepcopy(others[0])
-            others = others[1:]
-        if centroids.meta and not centroids.lat.any():
-            centroids.set_meta_to_lat_lon()
+            cent_list =  [self] + list(others)
 
-        centroids.set_geometry_points()
-        for cent in others:
+        #Set attributes to centroids if missing in one but defined in other
+        is_geom = np.any([cent.geometry.any() for cent in cent_list]) and not np.all([cent.geometry.any() for cent in cent_list])
+        is_area_pixel = np.any([cent.area_pixel.any() for cent in cent_list]) and not np.all([cent.area_pixel.any() for cent in cent_list])
+        is_dist_coast = np.any([cent.dist_coast.any() for cent in cent_list]) and not np.all([cent.dist_coast.any() for cent in cent_list])
+        is_on_land = np.any([len(cent.on_land) > 0 for cent in cent_list]) and not np.all([len(cent.on_land) > 0 for cent in cent_list])
+        is_region_id = np.any([cent.region_id.any() for cent in cent_list]) and not np.all([cent.region_id.any() for cent in cent_list])
+        is_elevation = np.any([cent.elevation.any() for cent in cent_list]) and not np.all([cent.elevation.any() for cent in cent_list])
+        for cent in cent_list:
             if cent.meta and not cent.lat.any():
                 cent.set_meta_to_lat_lon()
-            cent.set_geometry_points()
-            if not u_coord.equal_crs(cent.crs, centroids.crs):
-                    raise ValueError('Different CRS are not accepted.')
-            if not centroids.equal(cent):
-                # append all 1-dim variables
-                for (var_name, var_val), centr_val in \
-                    zip(centroids.__dict__.items(), centroids.__dict__.values()):
-                    if isinstance(var_val, np.ndarray) and var_val.ndim == 1:
-                        setattr(centroids, var_name,
-                                np.append(var_val, centr_val).astype(
-                                    var_val.dtype, copy=False
-                                    )
-                                )
-                    if isinstance(var_val, gpd.GeoSeries):
-                        setattr(centroids, var_name, var_val.append(centr_val))
+            if is_geom:
+                cent.set_geometry_points()
+                if not u_coord.equal_crs(cent.crs, self.crs):
+                        raise ValueError('Different CRS are not accepted.')
+            if is_area_pixel: cent.set_area_pixel()
+            if is_dist_coast: cent.set_dist_coast()
+            if is_on_land: cent.set_on_land()
+            if is_region_id: cent.set_region_id()
+            if is_elevation: cent.set_elevation()
 
-                centroids.meta = dict()
+        #concatenate attributes
+        centroids= Centroids()
+        for attr_name in vars(self).keys():
+            attr_val_list = [getattr(cent, attr_name) for cent in cent_list]
+            #concatenate numpy arrays
+            if (isinstance(attr_val_list[0], np.ndarray)
+                  and attr_val_list[0].ndim == 1):
+                setattr(centroids, attr_name, np.hstack(attr_val_list))
+            # concatenate geoseries
+            if isinstance(attr_val_list[0], gpd.GeoSeries):
+                setattr(centroids, attr_name, pd.concat(attr_val_list,
+                                                        ignore_index=True))
+
+        centroids.meta = dict()
 
         return centroids.remove_duplicate_points()
 
