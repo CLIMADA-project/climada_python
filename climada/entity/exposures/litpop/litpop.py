@@ -157,10 +157,10 @@ class LitPop(Exposures):
                         # with total value share based on subnational GDP share.
                         # This requires GRP (Gross Regional Product) data in the
                         # GSDP data folder.
-            litpop_list = [_calc_admin1(country, res_arcsec, exponents, fin_mode,
-                                        tot_value, reference_year, gpw_version,
-                                        data_dir, reproject_first
-                                        )
+            litpop_list = [_calc_admin1_one_country(country, res_arcsec, exponents,
+                                                    fin_mode, tot_value, reference_year,
+                                                    gpw_version, data_dir, reproject_first
+                                                    )
                            for tot_value, country in zip(total_values, countries)]
 
         else: # else, as default, country is initiated as a whole:
@@ -228,9 +228,8 @@ class LitPop(Exposures):
 
     def set_custom_shape(self, shape, res_arcsec=30, exponents=(1,1), fin_mode='pc',
                          total_value_abs=None, rel_value_share=1., in_countries=None,
-                         region_id = None,
-                         reference_year=2020, gpw_version=GPW_VERSION, data_dir=SYSTEM_DIR,
-                         reproject_first=True):
+                         region_id = None, reference_year=2020, gpw_version=GPW_VERSION,
+                         data_dir=SYSTEM_DIR, reproject_first=True):
         """init LitPop exposure object for a custom shape.
         Requires user input regarding total value, either absolute ore relative
         combined with info which countries it is in or overlapping with.
@@ -1092,7 +1091,7 @@ def _grp_read(country_iso3, admin1_info=None, data_dir=SYSTEM_DIR):
     LOGGER.warning('No admin1 data is calculated in this case.')
     return None
 
-def _calc_admin1(country, res_arcsec, exponents, fin_mode, total_value,
+def _calc_admin1_one_country(country, res_arcsec, exponents, fin_mode, total_value,
                  reference_year, gpw_version, data_dir, reproject_first):
     """
     Calculates the LitPop on admin1 level for provinces/states where such information are
