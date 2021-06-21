@@ -74,11 +74,15 @@ class LitPop(Exposures):
     _metadata = Exposures._metadata + ['exponents', 'fin_mode', 'gpw_version',
                                        'reproject_first', 'admin1_calc']
 
-    def set_countries(self, countries, res_km=1, res_arcsec=None,
+    def set_countries(self, countries, res_arcsec=30,
                     exponents=(1,1), fin_mode='pc', total_values=None,
                     admin1_calc=False, reference_year=2020, gpw_version=GPW_VERSION,
                     data_dir=SYSTEM_DIR, reproject_first=True):
         """init LitPop exposure object for a list of countries (admin 0).
+        Sets attributes `ref_year`, `tag`, `crs`, `value`, `geometry`, `meta`,
+        `value_unit`, `exponents`,`fin_mode`, `gpw_version`, `reproject_first`,
+        and `admin1_calc`.
+
         Alias: set_country()
 
         Parameters
@@ -86,11 +90,9 @@ class LitPop(Exposures):
         countries : list with str or int
             list containing country identifiers:
             iso3alpha (e.g. 'JPN'), iso3num (e.g. 92) or name (e.g. 'Togo')
-        res_km : float (optional)
-            Approx. horizontal resolution in km. Default: 1
         res_arcsec : float (optional)
-            Horizontal resolution in arc-sec. Overrides res_km if both are provided.
-            The default 30 arcsec corresponds to roughly 1 km.
+            Horizontal resolution in arc-sec.
+            The default is 30 arcsec, this corresponds to roughly 1 km.
         exponents : tuple of two integers, optional
             Defining power with which lit (nightlights) and pop (gpw) go into LitPop. To get
             nightlights^3 without population count: (3, 0).
@@ -136,13 +138,6 @@ class LitPop(Exposures):
         if isinstance(countries, str) or isinstance(countries, int):
             countries = [countries] # for backward compatibility
 
-        # set res_arcsec if not given:
-        if res_arcsec is None:
-            if res_km is None:
-                res_arcsec = 30
-            else:
-                res_arcsec = 30 * res_km
-            LOGGER.info('Resolution is set to %i arcsec.', res_arcsec)
         # value_unit is set depending on fin_mode:
         if fin_mode in ['none', 'norm']:
             value_unit = ''
@@ -189,6 +184,7 @@ class LitPop(Exposures):
             [country for i, country in enumerate(countries) if litpop_list[i] is None]
         if not countries_in:
             raise ValueError('No valid country identified in %s, aborting.' % countries)
+        litpop_list = [exp for exp in litpop_list if exp is not None]
         if countries_out:
             LOGGER.warning('Some countries could not be identified and are ignored: '
                            '%s. Litpop only initiated for: %s'
@@ -238,6 +234,10 @@ class LitPop(Exposures):
         """init LitPop exposure object for a custom shape.
         Requires user input regarding total value, either absolute ore relative
         combined with info which countries it is in or overlapping with.
+
+        Sets attributes `ref_year`, `tag`, `crs`, `value`, `geometry`, `meta`,
+        `value_unit`, `exponents`,`fin_mode`, `gpw_version`, `reproject_first`,
+        and `admin1_calc`.
 
         This method can be used to initiated LitPop Exposure for sub-national
         regions such as states, districts, cantons, cities, ... but shapes
