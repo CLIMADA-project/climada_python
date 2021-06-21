@@ -105,7 +105,7 @@ class TestLitPopExposure(unittest.TestCase):
         self.assertEqual(ent.value_unit, 'USD')
 
 
-    def test_switzerland300_resample_first_false_pass(self):
+    def test_switzerland300_reproject_first_false_pass(self):
         """Create LitPop entity for Switzerland 2013 for produced capital
         and resampling after combining Lit and Pop:"""
         country_name = ['CHE']
@@ -117,7 +117,7 @@ class TestLitPopExposure(unittest.TestCase):
         ent = lp.LitPop()
         ent.set_countries(country_name, res_arcsec=resolution,
                         reference_year=ref_year, fin_mode=fin_mode,
-                        resample_first=False)
+                        reproject_first=False)
 
         self.assertEqual(ent.gdf.value.sum(), comparison_total_val)
         self.assertEqual(ent.value_unit, 'USD')

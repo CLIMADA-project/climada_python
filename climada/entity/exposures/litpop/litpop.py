@@ -28,7 +28,8 @@ from pathlib import Path
 import pandas as pd
 
 import climada.util.coordinates as u_coord
-from climada.util.finance import gdp, income_group, wealth2gdp, world_bank_wealth_account
+import climada.util.finance as u_fin
+
 from climada.entity.tag import Tag
 from climada.entity.exposures.litpop import nightlight as nl_util
 from climada.entity.exposures.litpop import gpw_population as pop_util
@@ -41,22 +42,42 @@ GPW_VERSION = CONFIG.exposures.litpop.gpw_population.gpw_version.int()
 """Version of Gridded Population of the World (GPW) input data. Check for updates."""
 
 class LitPop(Exposures):
-    """Defines exposure values from nightlight intensity (NASA), Gridded Population
-        data (SEDAC); distributing produced capital (World Bank), population count,
-        GDP (World Bank), or non-financial wealth (Global Wealth Databook by Credit Suisse
-        Research Institute.)
-
-        Calling sequence example:
-        ent = LitPop()
-        country_names = ['CHE', 'Austria']
-        ent.set_countries(country_names)
-        ent.plot()
     """
+    Holds geopandas GeoDataFrame with metada and columns (pd.Series) defined in
+    Attributes of Exposures class.
+    LitPop exposure values are disaggregated proportional to a combination of
+    nightlight intensity (NASA) and Gridded Population data (SEDAC).
+    Total asset values can be produced capital, population count,
+    GDP, or non-financial wealth.
+
+    Calling sequence example:
+    exp = LitPop()
+    country_names = ['CHE', 'Austria']
+    exp.set_countries(country_names)
+    exp.plot()
+        
+    Attributes:
+        exponents : tuple of two integers
+            Defining powers (m, n) with which lit (nightlights) and pop (gpw)
+            go into Lit**m * Pop**n.
+        fin_mode : str, optional
+            Socio-economic value to be used as an asset base that is disaggregated
+        gpw_version : int (optional)
+            Version number of GPW population data, e.g. 11 for v4.11
+        reproject_first : boolean
+            If True, nightlight (Lit) and population (Pop) data is first
+            reprojected to target resolution before combining them.
+        admin1_calc : boolean
+            If True, admin1-level GDP is used fo intermediate disaggregation.
+        
+    """
+    _metadata = Exposures._metadata + ['exponents', 'fin_mode', 'gpw_version',
+                                       'reproject_first', 'admin1_calc']
 
     def set_countries(self, countries, res_km=1, res_arcsec=None,
                     exponents=(1,1), fin_mode='pc', total_values=None,
                     admin1_calc=False, reference_year=2020, gpw_version=GPW_VERSION,
-                    data_dir=SYSTEM_DIR, resample_first=True):
+                    data_dir=SYSTEM_DIR, reproject_first=True):
         """init LitPop exposure object for a list of countries (admin 0).
         Alias: set_country()
 
@@ -89,7 +110,7 @@ class LitPop(Exposures):
             * 'norm': normalized by country
             * 'none': LitPop per pixel is returned unchanged
             The default is 'pc'.
-        total_values : list contaiuning numerics, same length as countries (optional)
+        total_values : list containing numerics, same length as countries, optional
             Total values to be disaggregated to grid in each country.
             The default is None. If None, the total number is extracted from other
             sources depending on the value of fin_mode.
@@ -97,13 +118,13 @@ class LitPop(Exposures):
             If True, distribute admin1-level GDP (if available). Default: False
         reference_year : int, optional
             Reference year for data sources. Default: 2020
-        gpw_version : int (optional)
+        gpw_version : int, optional
             Version number of GPW population data.
-            The default is None. If None, the default is set in gpw_population module.
-        data_dir : Path (optional)
+            The default is GPW_VERSION
+        data_dir : Path, optional
             redefines path to input data directory. The default is SYSTEM_DIR.
-        resample_first : boolean
-            First resample nightlight (Lit) and population (Pop) data to target
+        reproject_first : boolean, optional
+            First reproject nightlight (Lit) and population (Pop) data to target
             resolution before combining them as Lit^m * Pop^n?
             The default is True. Warning: Setting this to False affects the
             disaggregation results - expert choice only
@@ -143,7 +164,7 @@ class LitPop(Exposures):
                         # GSDP data folder.
             litpop_list = [_calc_admin1(country, res_arcsec, exponents, fin_mode,
                                         tot_value, reference_year, gpw_version,
-                                        data_dir, resample_first
+                                        data_dir, reproject_first
                                         )
                            for tot_value, country in zip(total_values, countries)]
 
@@ -159,7 +180,7 @@ class LitPop(Exposures):
                                        reference_year=reference_year,
                                        gpw_version=gpw_version,
                                        data_dir=data_dir,
-                                       resample_first=resample_first)
+                                       reproject_first=reproject_first)
                  for idc, country in enumerate(countries)]
         # make lists of countries with Exposure initaited and those ignored:
         countries_in = \
@@ -184,7 +205,12 @@ class LitPop(Exposures):
             crs=litpop_list[0].crs,
             ref_year=reference_year,
             tag=tag,
-            value_unit=value_unit
+            value_unit=value_unit,
+            exponents = exponents,
+            gpw_version = gpw_version,
+            fin_mode = fin_mode,
+            reproject_first = reproject_first,
+            admin1_calc = admin1_calc
         )
 
         try:
@@ -208,7 +234,7 @@ class LitPop(Exposures):
                          total_value_abs=None, rel_value_share=1., in_countries=None,
                          region_id = None,
                          reference_year=2020, gpw_version=GPW_VERSION, data_dir=SYSTEM_DIR,
-                         resample_first=True):
+                         reproject_first=True):
         """init LitPop exposure object for a custom shape.
         Requires user input regarding total value, either absolute ore relative
         combined with info which countries it is in or overlapping with.
@@ -263,8 +289,8 @@ class LitPop(Exposures):
             The default is None. If None, the default is set in gpw_population module.
         data_dir : Path (optional)
             redefines path to input data directory. The default is SYSTEM_DIR.
-        resample_first : boolean
-            First resample nightlight (Lit) and population (Pop) data to target
+        reproject_first : boolean
+            First reproject nightlight (Lit) and population (Pop) data to target
             resolution before combining them as Lit^m * Pop^n?
             The default is True. Warning: Setting this to False affects the
             disaggregation results.
@@ -332,7 +358,7 @@ class LitPop(Exposures):
             gdf_tmp, meta_tmp = \
                 _get_litpop_single_polygon(polygon, reference_year,
                                            res_arcsec, data_dir,
-                                           gpw_version, resample_first,
+                                           gpw_version, reproject_first,
                                            offsets, exponents,
                                            verbatim=not bool(idx),
                                            )
@@ -393,8 +419,13 @@ class LitPop(Exposures):
             crs=litpop_gdf.crs,
             ref_year=reference_year,
             tag=tag,
-            value_unit=value_unit
-        )
+            value_unit=value_unit,
+            exponents = exponents,
+            gpw_version = gpw_version,
+            fin_mode = fin_mode,
+            reproject_first = reproject_first,
+            admin1_calc = False
+            )
 
         try:
             rows, cols, ras_trans = u_coord.pts_to_raster_meta(
@@ -445,7 +476,7 @@ class LitPop(Exposures):
             self.set_countries(countries, res_km=None, res_arcsec=res_arcsec,
                                exponents=(exponent, 0), fin_mode='none', 
                                reference_year=reference_year, gpw_version=GPW_VERSION,
-                               data_dir=data_dir, resample_first=True)
+                               data_dir=data_dir, reproject_first=True)
         elif countries is not None:
             LOGGER.info("Using `shape` provided instead of countries' shapes. "
                         "To use countries' shapes, set `shape`=None")
@@ -454,7 +485,7 @@ class LitPop(Exposures):
                                   fin_mode='none', in_countries=countries,
                                   reference_year=reference_year,
                                   gpw_version=GPW_VERSION, data_dir=data_dir,
-                                  resample_first=True)
+                                  reproject_first=True)
 
     def set_pop(self, countries=None, shape=None, res_arcsec=30, exponent=1,
                 reference_year=2020, gpw_version=GPW_VERSION, data_dir=SYSTEM_DIR):
@@ -505,7 +536,7 @@ class LitPop(Exposures):
     def _set_one_country(country, res_arcsec=30, exponents=(1,1), fin_mode=None,
                          total_value=None,
                          reference_year=2020, gpw_version=GPW_VERSION, data_dir=SYSTEM_DIR,
-                         resample_first=True):
+                         reproject_first=True):
         """init LitPop exposure object for one single country
         See docstring of set_countries() for detailled description of parameters.
         
@@ -522,7 +553,7 @@ class LitPop(Exposures):
         gpw_version : int (optional)
         data_dir : Path (optional)
             redefines path to input data directory. The default is SYSTEM_DIR.
-        resample_first : boolean
+        reproject_first : boolean
 
         Raises
         ------
@@ -562,7 +593,7 @@ class LitPop(Exposures):
             gdf_tmp, meta_tmp, = \
                 _get_litpop_single_polygon(polygon, reference_year,
                                            res_arcsec, data_dir,
-                                           gpw_version, resample_first,
+                                           gpw_version, reproject_first,
                                            offsets, exponents,
                                            verbatim=not bool(idx),
                                            )
@@ -595,7 +626,7 @@ class LitPop(Exposures):
     set_country = set_countries
 
 def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
-                               gpw_version, resample_first, offsets, exponents,
+                               gpw_version, reproject_first, offsets, exponents,
                                verbatim=False):
     """load nightlight (nl) and population (pop) data in rastered 2d arrays
     and apply rescaling (resolution reprojection) and LitPop core calculation.
@@ -613,8 +644,8 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
     gpw_version : int
         Version number of GPW population data.
         The default is None. If None, the default is set in gpw_population module.
-    resample_first : boolean
-        First resample nightlight (Lit) and population (Pop) data to target
+    reproject_first : boolean
+        First reproject nightlight (Lit) and population (Pop) data to target
         resolution before combining them as Lit^m * Pop^n?
         The default is True. Warning: Setting this to False affects the
         disaggregation results.
@@ -652,7 +683,7 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
                                              data_dir=data_dir,
                                              dtype=float
                                              )
-    if resample_first: # default is True
+    if reproject_first: # default is True
         # --> resampling to target res. before core calculation
         target_res_arcsec = res_arcsec
     else: # resolution of pop is used for first resampling (degree to arcsec)
@@ -667,7 +698,7 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
         i_ref = 0
         global_origins=(global_transform[2],
                         global_transform[5])
-    # resample Lit and Pop input data to same grid:
+    # reproject Lit and Pop input data to same grid:
     try:
         [pop, nl], meta_out = reproject_input_data([pop, nl],
                                                   [meta_pop, meta_nl],
@@ -688,8 +719,8 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
                                         offsets=offsets,
                                         exponents=exponents,
                                         total_val_rescale=None)
-    if not resample_first: 
-        # alternative option: resample to target resolution after core calc.:
+    if not reproject_first: 
+        # alternative option: reproject to target resolution after core calc.:
         try:
             [litpop_array], meta_out = reproject_input_data([litpop_array],
                                                        [meta_out],
@@ -761,22 +792,25 @@ def get_total_value_per_country(cntry_iso3a, fin_mode, reference_year, total_pop
     elif fin_mode == 'pop':
         return total_population
     elif fin_mode == 'pc':
-        return(world_bank_wealth_account(cntry_iso3a, reference_year, no_land=True)[1])
+        return(u_fin.world_bank_wealth_account(cntry_iso3a, reference_year,
+                                               no_land=True)[1])
         # here, total_asset_val is Produced Capital "pc"
         # no_land=True returns value w/o the mark-up of 24% for land value
     elif fin_mode == 'pc_land':
-        return(world_bank_wealth_account(cntry_iso3a, reference_year, no_land=False)[1])
+        return(u_fin.world_bank_wealth_account(cntry_iso3a, reference_year,
+                                               no_land=False)[1])
         # no_land=False returns pc value incl. the mark-up of 24% for land value
     elif fin_mode == 'norm':
         return 1
     else: # GDP based total values:
-        gdp_value = gdp(cntry_iso3a, reference_year)[1]
+        gdp_value = u_fin.gdp(cntry_iso3a, reference_year)[1]
         if fin_mode == 'gdp':
             return gdp_value
         elif fin_mode == 'income_group': # gdp * (income group + 1)
-            return gdp_value * (income_group(cntry_iso3a, reference_year)[1] + 1)
+            return gdp_value*(u_fin.income_group(cntry_iso3a, reference_year)[1]+1)
         elif fin_mode in ('nfw', 'tw'):
-            wealthtogdp_factor = wealth2gdp(cntry_iso3a, fin_mode == 'nfw', reference_year)[1]
+            wealthtogdp_factor = u_fin.wealth2gdp(cntry_iso3a, fin_mode == 'nfw',
+                                                  reference_year)[1]
             if np.isnan(wealthtogdp_factor):
                 LOGGER.warning("Missing wealth-to-gdp factor for country %s.", cntry_iso3a)
                 LOGGER.warning("Using GDP instead as total value.")
@@ -798,7 +832,7 @@ def reproject_input_data(data_array_list, meta_list,
     Parameters
     ----------
     data_array_list : list or array of numpy arrays containing numbers
-        Data to be resampled, i.e. list containing N (min. 1) 2D-arrays.
+        Data to be reprojected, i.e. list containing N (min. 1) 2D-arrays.
         The data with the reference grid used to define the global destination
         grid should be first in the list, e.g., pop (GPW population data)
         for LitPop.
@@ -839,7 +873,7 @@ def reproject_input_data(data_array_list, meta_list,
     Returns
     -------
     data_array_list : list
-        contains resampled data sets
+        contains reprojected data sets
     meta : dict
         contains meta data of new grid (same for all arrays)
     """
@@ -1059,7 +1093,7 @@ def _grp_read(country_iso3, admin1_info=None, data_dir=SYSTEM_DIR):
     return None
 
 def _calc_admin1(country, res_arcsec, exponents, fin_mode, total_value,
-                 reference_year, gpw_version, data_dir, resample_first):
+                 reference_year, gpw_version, data_dir, reproject_first):
     """
     Calculates the LitPop on admin1 level for provinces/states where such information are
     available (i.e. GDP is distributed on a subnational instead of a national level). Requires
@@ -1081,7 +1115,7 @@ def _calc_admin1(country, res_arcsec, exponents, fin_mode, total_value,
     reference_year : int
     gpw_version: int
     data_dir : Path
-    resample_first : bool
+    reproject_first : bool
 
     Returns
     -------
@@ -1129,5 +1163,5 @@ def _calc_admin1(country, res_arcsec, exponents, fin_mode, total_value,
                                       reference_year=reference_year,
                                       gpw_version=gpw_version,
                                       data_dir=data_dir,
-                                      resample_first=resample_first)
+                                      reproject_first=reproject_first)
     return Exposures.concat(exp_list)

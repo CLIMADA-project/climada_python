@@ -118,7 +118,7 @@ class TestLitPop(unittest.TestCase):
         np.testing.assert_array_equal(data_in[0], data_out[0])
         # test northward shift:
         np.testing.assert_array_equal(data_in[1][1,:], data_out[1][0,:])
-        # test resampled nl data:
+        # test reprojected nl data:
         reference_array = np.array([[5.020408  , 2.267857  , 0.12244898],
                                     [1.1224489 , 0.6785714 , 0.7346939 ]], dtype='float32')
         np.testing.assert_array_almost_equal_nulp(reference_array, data_out[2])
@@ -173,7 +173,7 @@ class TestLitPop(unittest.TestCase):
         # test northward shift:
         np.testing.assert_array_equal(data_out[0][2,:], data_out[1][0,:])
         np.testing.assert_array_equal(data_out[0][3,:], data_out[1][1,:])
-        # test resampled nl data:
+        # test reprojected nl data:
         reference_array = np.array([[0.  , 0.25, 0.75, 1.25, 1.75, 2.  ],
                                     [0.75, 1.  , 1.5 , 2.  , 2.5 , 2.75],
                                     [2.25, 2.5 , 3.  , 3.5 , 4.  , 4.25],
