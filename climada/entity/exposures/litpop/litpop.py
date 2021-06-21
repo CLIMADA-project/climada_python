@@ -337,8 +337,7 @@ class LitPop(Exposures):
                                            verbatim=not bool(idx),
                                            )
             if gdf_tmp is None:
-                LOGGER.warning(f'Skipping polygon with index {idx}' +
-                               ' : no data point within this polygon.')
+                LOGGER.warning(f'Skipping polygon with index {idx}.')
                 continue
             total_population += meta_tmp['total_population']
             litpop_gdf = litpop_gdf.append(gdf_tmp)
@@ -569,7 +568,7 @@ class LitPop(Exposures):
                                            )
             if gdf_tmp is None:
                 LOGGER.warning(f'Skipping polygon with index {idx} for' +
-                               f' country {iso3a}: no data point within shape.')
+                               f' country {iso3a}.')
                 continue
             total_population += meta_tmp['total_population']
             litpop_gdf = litpop_gdf.append(gdf_tmp)
@@ -679,6 +678,7 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
     except ValueError as err:
         if "height must be > 0" in err.args[0] or "width must be > 0" in err.args[0]:
             # no grid point within shape after reprojection, None is returned.
+            LOGGER.info('No data point on destination grid within polygon.')
             return None, None
         else:
             raise err
@@ -697,8 +697,12 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
                                                        global_origins=global_origins,
                                                        )
         except ValueError as err:
-            LOGGER.warning("reprojection for shape raised ValueError: " + err.args[0])
-            return None, None
+            if "height must be > 0" in err.args[0] or "width must be > 0" in err.args[0]:
+                # no grid point within shape after reprojection, None is returned.
+                LOGGER.info('No data point on destination grid within polygon.')
+                return None, None
+            else:
+                raise err
     # mask entries outside polygon (set to NaN):
     litpop_array = u_coord.mask_raster_with_geometry(litpop_array, meta_out['transform'],
                                                      [polygon], nodata=np.nan)
