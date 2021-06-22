@@ -60,23 +60,23 @@ class TestDecay(unittest.TestCase):
     def test_apply_decay_pass(self):
         """Test _apply_land_decay against MATLAB reference."""
         v_rel = {
-            6: 0.0038950967656296597,
+            4: 0.0038950967656296597,
+            -1: 0.0038950967656296597,
+            0: 0.0038950967656296597,
             1: 0.0038950967656296597,
             2: 0.0038950967656296597,
             3: 0.0038950967656296597,
-            4: 0.0038950967656296597,
-            5: 0.0038950967656296597,
-            7: 0.0038950967656296597
+            5: 0.0038950967656296597
         }
 
         p_rel = {
-            6: (1.0499941, 0.007978940084158488),
+            4: (1.0499941, 0.007978940084158488),
+            -1: (1.0499941, 0.007978940084158488),
+            0: (1.0499941, 0.007978940084158488),
             1: (1.0499941, 0.007978940084158488),
             2: (1.0499941, 0.007978940084158488),
             3: (1.0499941, 0.007978940084158488),
-            4: (1.0499941, 0.007978940084158488),
-            5: (1.0499941, 0.007978940084158488),
-            7: (1.0499941, 0.007978940084158488)
+            5: (1.0499941, 0.007978940084158488)
         }
 
         tc_track = tc.TCTracks()
@@ -175,6 +175,7 @@ class TestDecay(unittest.TestCase):
         """Test _calc_land_decay with no historical tracks with landfall"""
         tc_track = tc.TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK_SHORT)
+        expected_warning = 'only %s historical tracks were provided. ' % len(tc_track.data)
         extent = tc_track.get_extent()
         land_geom = climada.util.coordinates.get_land_geometry(
             extent=extent, resolution=10
@@ -182,7 +183,8 @@ class TestDecay(unittest.TestCase):
         tc.track_land_params(tc_track.data[0], land_geom)
         with self.assertLogs('climada.hazard.tc_tracks_synth', level='INFO') as cm:
             tc_synth._calc_land_decay(tc_track.data, land_geom)
-        self.assertIn('No historical track with landfall.', cm.output[0])
+        self.assertIn(expected_warning, cm.output[0])
+        self.assertIn('No historical track with landfall.', cm.output[1])
 
     def test_calc_land_decay_pass(self):
         """Test _calc_land_decay with environmental pressure function."""
@@ -198,13 +200,13 @@ class TestDecay(unittest.TestCase):
         self.assertEqual(7, len(v_rel))
         for i, val in enumerate(v_rel.values()):
             self.assertAlmostEqual(val, 0.0038894834)
-            self.assertTrue(i + 1 in v_rel.keys())
+            self.assertTrue(i - 1 in v_rel.keys())
 
         self.assertEqual(7, len(p_rel))
         for i, val in enumerate(p_rel.values()):
             self.assertAlmostEqual(val[0], 1.0598491)
             self.assertAlmostEqual(val[1], 0.0041949237)
-            self.assertTrue(i + 1 in p_rel.keys())
+            self.assertTrue(i - 1 in p_rel.keys())
 
     def test_decay_values_andrew_pass(self):
         """Test _decay_values with central pressure function."""
@@ -218,7 +220,7 @@ class TestDecay(unittest.TestCase):
         tc.track_land_params(tc_track.data[0], land_geom)
         v_lf, p_lf, x_val = tc_synth._decay_values(tc_track.data[0], land_geom, s_rel)
 
-        ss_category = 6
+        ss_category = 4
         s_cell_1 = 1 * [1.0149413347244263]
         s_cell_2 = 8 * [1.047120451927185]
         s_cell = s_cell_1 + s_cell_2
@@ -251,7 +253,7 @@ class TestDecay(unittest.TestCase):
     def test_decay_calc_coeff(self):
         """Test _decay_calc_coeff against MATLAB"""
         x_val = {
-            6: np.array([
+            4: np.array([
                 53.57314960249573, 142.97903059281566, 224.76733726289183,
                 312.14621544207563, 426.6757021862584, 568.9358305779094,
                 748.3713215157885, 1016.9904230811956
@@ -259,7 +261,7 @@ class TestDecay(unittest.TestCase):
         }
 
         v_lf = {
-            6: np.array([
+            4: np.array([
                 0.6666666666666666, 0.4166666666666667, 0.2916666666666667,
                 0.250000000000000, 0.250000000000000, 0.20833333333333334,
                 0.16666666666666666, 0.16666666666666666
@@ -267,7 +269,7 @@ class TestDecay(unittest.TestCase):
         }
 
         p_lf = {
-            6: (8 * [1.0471204188481675],
+            4: (8 * [1.0471204188481675],
                 np.array([
                     1.018848167539267, 1.037696335078534, 1.0418848167539267,
                     1.043979057591623, 1.0450261780104713, 1.0460732984293193,
@@ -280,12 +282,12 @@ class TestDecay(unittest.TestCase):
 
         for i, val in enumerate(v_rel.values()):
             self.assertAlmostEqual(val, 0.004222091151737)
-            self.assertTrue(i + 1 in v_rel.keys())
+            self.assertTrue(i - 1 in v_rel.keys())
 
         for i, val in enumerate(p_rel.values()):
             self.assertAlmostEqual(val[0], 1.047120418848168)
             self.assertAlmostEqual(val[1], 0.008871782287614)
-            self.assertTrue(i + 1 in v_rel.keys())
+            self.assertTrue(i - 1 in v_rel.keys())
 
     def test_wrong_decay_pass(self):
         """Test decay not implemented when coefficient < 1"""
@@ -327,22 +329,22 @@ class TestDecay(unittest.TestCase):
         ])
 
         v_rel = {
-            3: 0.002249541544102336,
-            1: 0.00046889526284203036,
-            4: 0.002649273787364977,
-            2: 0.0016426186150461349,
-            5: 0.00246400811445618,
-            7: 0.0030442198547309075,
-            6: 0.002346537842810565,
+            1: 0.002249541544102336,
+            -1: 0.00046889526284203036,
+            2: 0.002649273787364977,
+            0: 0.0016426186150461349,
+            3: 0.00246400811445618,
+            5: 0.0030442198547309075,
+            4: 0.002346537842810565,
         }
         p_rel = {
-            3: (1.028420239620591, 0.003174733355067952),
-            1: (1.0046803184177564, 0.0007997633912500546),
-            4: (1.0498749735343516, 0.0034665588904747515),
-            2: (1.0140127424090262, 0.002131858515233042),
-            5: (1.0619445995372885, 0.003467268426139696),
-            7: (1.0894914184297835, 0.004315034379018768),
-            6: (1.0714354641894077, 0.002783787561718677),
+            1: (1.028420239620591, 0.003174733355067952),
+            -1: (1.0046803184177564, 0.0007997633912500546),
+            2: (1.0498749735343516, 0.0034665588904747515),
+            0: (1.0140127424090262, 0.002131858515233042),
+            3: (1.0619445995372885, 0.003467268426139696),
+            5: (1.0894914184297835, 0.004315034379018768),
+            4: (1.0714354641894077, 0.002783787561718677),
         }
         track_gen.attrs['orig_event_flag'] = False
 
@@ -380,9 +382,11 @@ class TestSynth(unittest.TestCase):
         """Test calc_perturbed_trajectories with decay and no historical tracks with landfall"""
         tc_track = tc.TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK_SHORT)
+        expected_warning = 'only %s historical tracks were provided. ' % len(tc_track.data)
         with self.assertLogs('climada.hazard.tc_tracks_synth', level='INFO') as cm:
-            tc_track.calc_perturbed_trajectories()
-        self.assertIn('No historical track with landfall.', cm.output[1])
+            tc_track.calc_perturbed_trajectories(use_global_decay_params=False)
+        self.assertIn(expected_warning, cm.output[1])
+        self.assertIn('No historical track with landfall.', cm.output[2])
 
     def test_random_walk_ref_pass(self):
         """Test against MATLAB reference."""
@@ -430,20 +434,21 @@ class TestSynth(unittest.TestCase):
         tc_track.read_processed_ibtracs_csv(TC_ANDREW_FL)
         nb_synth_tracks = 2
         with self.assertLogs('climada.hazard.tc_tracks_synth', level='DEBUG') as cm:
-            tc_track.calc_perturbed_trajectories(nb_synth_tracks=nb_synth_tracks, seed=25, decay=True)
+            tc_track.calc_perturbed_trajectories(nb_synth_tracks=nb_synth_tracks, seed=25, decay=True,
+                                                 use_global_decay_params=False)
         self.assertIn('No historical track of category Tropical Depression '
-                      'with landfall.', cm.output[1])
+                      'with landfall.', cm.output[2])
         self.assertIn('Decay parameters from category Hurricane Cat. 4 taken.',
-                      cm.output[2])
+                      cm.output[3])
         self.assertIn('No historical track of category Hurricane Cat. 1 with '
-                      'landfall.', cm.output[3])
+                      'landfall.', cm.output[4])
         self.assertIn('Decay parameters from category Hurricane Cat. 4 taken.',
-                      cm.output[4])
+                      cm.output[5])
         self.assertIn('No historical track of category Hurricane Cat. 3 with '
                       'landfall. Decay parameters from category Hurricane Cat. '
-                      '4 taken.', cm.output[5])
+                      '4 taken.', cm.output[6])
         self.assertIn('No historical track of category Hurricane Cat. 5 with '
-                      'landfall.', cm.output[6])
+                      'landfall.', cm.output[7])
 
     def test_random_walk_identical_pass(self):
         """Test 0 perturbation leads to identical tracks."""
