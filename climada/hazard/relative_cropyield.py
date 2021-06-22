@@ -904,7 +904,7 @@ def read_wheat_mask_isimip3(input_dir=None, filename=None, bbox=None):
     if input_dir is None:
         input_dir = Path(INPUT_DIR)
     if filename is None:
-        filename = 'winter_and_spring_wheat_areas_phase3.nc4'
+        filename = CONFIG.hazard.relative_cropyield.filename_wheat_mask.str()
     if bbox is None:
         bbox = BBOX
 
