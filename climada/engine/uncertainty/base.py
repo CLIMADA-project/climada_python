@@ -494,14 +494,15 @@ class Uncertainty():
         time_one_run = u_sig_dig(time_one_run, n_sig_dig=3)
         if time_one_run > 5:
             LOGGER.warning("Computation time for one set of parameters is "
-                "%.2fs. This is suspiciously long. Possible "
-                "Potential reasons: unc_vars are loading data, centroids not"
-                " assigned to exp before defining unc_var, ..."
+                "%.2fs. This is rather long."
+                "Potential reasons: unc_vars are loading data, centroids have "
+                "been assigned to exp before defining unc_var, ..."
                 "\n If computation cannot be reduced, consider using"
                 " a surrogate model https://www.uqlab.com/", time_one_run)
 
         ncpus = pool.ncpus if pool else 1
         total_time = self.n_samples * time_one_run / ncpus
+        LOGGER.info("Estimated computaion time: %s", dt.timedelta(total_time))
 
         return total_time
 
