@@ -222,6 +222,76 @@ class LitPop(Exposures):
             self.meta = {}
         self.check()
 
+    def set_lit(self, countries, res_arcsec=15, exponent=1, fin_mode='none',
+                reference_year=2016, data_dir=SYSTEM_DIR):
+        """
+        initiate country exposures from pure nightlight data
+
+        Parameters
+        ----------
+        countries : list or str (optional)
+            list containing country identifiers (name or iso3)
+        res_arcsec : int, optional
+            Resolution in arc seconds. The default is 15.
+        exponent : int or float >= 0, optional
+            exponent m in Lit^m. The default is 1.
+        fin_mode : str
+            c.f. `set_countries`, here, the default is 'none', i.e.
+            pure nightlight**exponent is returned.
+        reference_year : int, optional
+            Target year. The default is 2020.
+        data_dir : Path, optional
+            data directory. The default is None.
+        """
+        self.set_countries(countries, res_arcsec=res_arcsec,
+                           exponents=(exponent, 0), fin_mode=fin_mode, 
+                           reference_year=reference_year, gpw_version=GPW_VERSION,
+                           data_dir=data_dir, reproject_first=True)
+
+    def set_pop(self, countries=None, shape=None, res_arcsec=30, exponent=1,
+                reference_year=2020, gpw_version=GPW_VERSION, data_dir=SYSTEM_DIR):
+        """
+        initiate Exposure with pure population data
+
+        Parameters
+        ----------
+        countries : list or str (optional)
+            list containing country identifiers (name or iso3)
+        shape : Shape, Polygon or MultiPolygon, optional
+            shape to crop results to, overrules countries
+        res_arcsec : int, optional
+            Resolution in arc seconds. The default is 30.
+        exponent : int or float >= 0, optional
+            exponent n in Pop^n. The default is 1.
+        reference_year : int, optional
+            Target year, closest GPW data year is returned.
+            The default is 2020.
+        gpw_version : int, optional
+            specify GPW data verison. The default is 11.
+        data_dir : Path, optional
+            data directory. The default is None.
+
+        Raises
+        ------
+        ValueError
+            Either countries or shape is required.
+        """
+
+        if countries is None and shape is None:
+            raise ValueError("Either countries or shape required. Aborting.")
+        if shape is None:
+            self.set_countries(countries, res_arcsec=res_arcsec,
+                               exponents=(0, exponent), fin_mode='pop', 
+                               reference_year=reference_year, gpw_version=gpw_version,
+                               data_dir=data_dir)
+        else:
+            if countries is not None:
+                LOGGER.info("Using shape provided instead of countries' shapes. "
+                            "To use countries' shapes, set shape=None")
+            self.set_custom_shape_population(shape, res_arcsec=res_arcsec,
+                                             exponents=(0,exponent),
+                                             reference_year=reference_year,
+                                             gpw_version=gpw_version, data_dir=data_dir)
     def set_custom_shape_from_country(self, shape, country, res_arcsec=30,
                                       exponents=(1,1), fin_mode='pc',
                                       admin1_calc=False, reference_year=2020,
@@ -433,7 +503,7 @@ class LitPop(Exposures):
                                            verbatim=not bool(idx),
                                            )
             if gdf_tmp is None:
-                LOGGER.warning(f'Skipping polygon with index {idx}.')
+                LOGGER.debug(f'Skipping polygon with index {idx}.')
                 continue
             litpop_gdf = litpop_gdf.append(gdf_tmp)
             litpop_gdf.crs = meta_tmp['crs']
@@ -486,7 +556,7 @@ class LitPop(Exposures):
                                     reference_year=2020, gpw_version=GPW_VERSION,
                                     data_dir=SYSTEM_DIR, reproject_first=True):
         """init LitPop exposure object for a custom shape with total value
-        equal to population in GPW data within shape..
+        equal to population in GPW data within shape.
 
         Sets attributes `ref_year`, `tag`, `crs`, `value`, `geometry`, `meta`,
         `value_unit`, `exponents`,`fin_mode`, `gpw_version`, `reproject_first`,
@@ -559,7 +629,7 @@ class LitPop(Exposures):
                                            verbatim=not bool(idx),
                                            )
             if gdf_tmp is None:
-                LOGGER.warning(f'Skipping polygon with index {idx}.')
+                LOGGER.debug(f'Skipping polygon with index {idx}.')
                 continue
             total_population += meta_tmp['total_population']
             litpop_gdf = litpop_gdf.append(gdf_tmp)
@@ -604,76 +674,6 @@ class LitPop(Exposures):
             LOGGER.warning('Could not write attribute meta, because exposure'
                            ' has only 1 data point')
             self.meta = {}
-
-
-    def set_lit(self, countries, res_arcsec=15, exponent=1,
-                reference_year=2016, data_dir=SYSTEM_DIR):
-        """
-        initiate country exposures from pure nightlight data
-
-        Parameters
-        ----------
-        countries : list or str (optional)
-            list containing country identifiers (name or iso3)
-        res_arcsec : int, optional
-            Resolution in arc seconds. The default is 15.
-        exponent : int or float >= 0, optional
-            exponent m in Lit^m. The default is 1.
-        reference_year : int, optional
-            Target year. The default is 2020.
-        data_dir : Path, optional
-            data directory. The default is None.
-        """
-        self.set_countries(countries, res_arcsec=res_arcsec,
-                           exponents=(exponent, 0), fin_mode='none', 
-                           reference_year=reference_year, gpw_version=GPW_VERSION,
-                           data_dir=data_dir, reproject_first=True)
-
-
-    def set_pop(self, countries=None, shape=None, res_arcsec=30, exponent=1,
-                reference_year=2020, gpw_version=GPW_VERSION, data_dir=SYSTEM_DIR):
-        """
-        initiate Exposure with pure population data
-
-        Parameters
-        ----------
-        countries : list or str (optional)
-            list containing country identifiers (name or iso3)
-        shape : Shape, Polygon or MultiPolygon, optional
-            shape to crop results to, overrules countries
-        res_arcsec : int, optional
-            Resolution in arc seconds. The default is 30.
-        exponent : int or float >= 0, optional
-            exponent n in Pop^n. The default is 1.
-        reference_year : int, optional
-            Target year, closest GPW data year is returned.
-            The default is 2020.
-        gpw_version : int, optional
-            specify GPW data verison. The default is 11.
-        data_dir : Path, optional
-            data directory. The default is None.
-
-        Raises
-        ------
-        ValueError
-            Either countries or shape is required.
-        """
-
-        if countries is None and shape is None:
-            raise ValueError("Either countries or shape required. Aborting.")
-        if shape is None:
-            self.set_countries(countries, res_arcsec=res_arcsec,
-                               exponents=(0, exponent), fin_mode='pop', 
-                               reference_year=reference_year, gpw_version=gpw_version,
-                               data_dir=data_dir)
-        else:
-            if countries is not None:
-                LOGGER.info("Using shape provided instead of countries' shapes. "
-                            "To use countries' shapes, set shape=None")
-            self.set_custom_shape_population(shape, res_arcsec=res_arcsec,
-                                             exponents=(0,exponent),
-                                             reference_year=reference_year,
-                                             gpw_version=gpw_version, data_dir=data_dir)
 
     @staticmethod
     def _set_one_country(country, res_arcsec=30, exponents=(1,1), fin_mode=None,
@@ -736,7 +736,7 @@ class LitPop(Exposures):
                                            region_id=iso3n
                                            )
             if gdf_tmp is None:
-                LOGGER.warning(f'Skipping polygon with index {idx} for' +
+                LOGGER.debug(f'Skipping polygon with index {idx} for' +
                                f' country {iso3a}.')
                 continue
             total_population += meta_tmp['total_population']
@@ -852,7 +852,8 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
     except ValueError as err:
         if "height must be > 0" in err.args[0] or "width must be > 0" in err.args[0]:
             # no grid point within shape after reprojection, None is returned.
-            LOGGER.info('No data point on destination grid within polygon.')
+            if verbatim:
+                LOGGER.info('No data point on destination grid within polygon.')
             return None, None
         else:
             raise err
