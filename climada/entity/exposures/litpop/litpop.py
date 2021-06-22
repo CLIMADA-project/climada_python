@@ -276,7 +276,6 @@ class LitPop(Exposures):
         Raises
         ------
         NotImplementedError
-            DESCRIPTION.
 
         Returns
         -------
