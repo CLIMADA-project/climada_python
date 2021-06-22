@@ -477,12 +477,6 @@ class TCTracks():
 
         ibtracs_ds = ibtracs_ds.sel(storm=match)
         ibtracs_ds['valid_t'] = ibtracs_ds.time.notnull()
-        valid_storms_mask = ibtracs_ds.valid_t.any(dim="date_time")
-        invalid_storms_idx = np.nonzero(~valid_storms_mask.data)[0]
-        if invalid_storms_idx.size > 0:
-            invalid_sids = ', '.join(ibtracs_ds.sid.sel(storm=invalid_storms_idx).astype(str).data)
-            LOGGER.warning('No valid timestamps found for %s.', invalid_sids)
-            ibtracs_ds = ibtracs_ds.sel(storm=valid_storms_mask)
 
         if rescale_windspeeds:
             for agency in IBTRACS_AGENCIES:
@@ -1469,7 +1463,8 @@ class TCTracks():
             File name of CSV file.
         """
         LOGGER.info('Reading %s', file_name)
-        dfr = pd.read_csv(file_name)
+        # keep_default_na=False avoids interpreting the North Atlantic ('NA') basin as a NaN-value
+        dfr = pd.read_csv(file_name, keep_default_na=False)
         name = dfr['ibtracsID'].values[0]
 
         datetimes = list()
@@ -1502,8 +1497,8 @@ class TCTracks():
         tr_ds['radius_max_wind'] = ('time', dfr['rmax'].values.astype('float'))
         tr_ds['max_sustained_wind'] = ('time', max_sus_wind)
         tr_ds['central_pressure'] = ('time', cen_pres)
-        tr_ds['environmental_pressure'] = ('time',
-                                           dfr['penv'].values.astype('float'))
+        tr_ds['environmental_pressure'] = ('time', dfr['penv'].values.astype('float'))
+        tr_ds['basin'] = ('time', dfr['gen_basin'].values.astype('<U2'))
         tr_ds.attrs['max_sustained_wind_unit'] = max_sus_wind_unit
         tr_ds.attrs['central_pressure_unit'] = 'mb'
         tr_ds.attrs['name'] = name
