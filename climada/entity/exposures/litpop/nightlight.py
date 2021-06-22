@@ -304,11 +304,23 @@ def download_nl_files(req_files=np.ones(len(BM_FILENAMES),),
     try:
         for num_files in range(0, np.count_nonzero(BM_FILENAMES)):
             if req_files[num_files] == 0 or files_exist[num_files] == 1:
+                continue # file already available or not required
+            path_check = False
+            # loop through different possible URLs defined in CONFIG:
+            for url in CONFIG.exposures.litpop.nightlights.nasa_sites.list():
+                try: # control for ValueError due to wrong URL
+                    curr_file = url.str() + BM_FILENAMES[num_files] %(year)
+                    LOGGER.info('Attempting to download file from %s', curr_file)
+                    path_check = download_file(curr_file, download_dir=dwnl_path)
+                    continue # leaf loop if sucessful
+                except ValueError as err:
+                    value_err = err
+            if path_check: # download succesful
                 continue
-            curr_file = CONFIG.exposures.litpop.nightlights.nasa_url.str() + \
-                BM_FILENAMES[num_files] %(year)
-            LOGGER.info('Attempting to download file from %s', curr_file)
-            download_file(curr_file, download_dir=dwnl_path)
+            raise ValueError("Download failed, check URLs in " +
+                             "CONFIG.exposures.litpop.nightlights.nasa_sites! \n Last " +
+                             "error message: \n" + value_err.args[0])
+
     except Exception as exc:
         raise RuntimeError('Download failed. Please check the network '
             'connection and whether filenames are still valid.') from exc
