@@ -22,20 +22,22 @@ Define Hazard.
 __all__ = ['Hazard']
 
 import copy
+import datetime as dt
 import itertools
 import logging
-import datetime as dt
+import pathlib
 import warnings
+
+import geopandas as gpd
+import h5py
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import geopandas as gpd
-from scipy import sparse
-import matplotlib.pyplot as plt
-import h5py
+from pathos.pools import ProcessPool as Pool
 import rasterio
 from rasterio.features import rasterize
 from rasterio.warp import reproject, Resampling, calculate_default_transform
-from pathos.pools import ProcessPool as Pool
+from scipy import sparse
 
 from climada.hazard.tag import Tag as TagHazard
 from climada.hazard.centroids.centr import Centroids
@@ -92,21 +94,32 @@ class Hazard():
     """Contains events of some hazard type defined at centroids. Loads from
     files with format defined in FILE_EXT.
 
-    Attributes:
-        tag (TagHazard): information about the source
-        units (str): units of the intensity
-        centroids (Centroids): centroids of the events
-        event_id (np.array): id (>0) of each event
-        event_name (list(str)): name of each event (default: event_id)
-        date (np.array): integer date corresponding to the proleptic
-            Gregorian ordinal, where January 1 of year 1 has ordinal 1
-            (ordinal format of datetime library)
-        orig (np.array): flags indicating historical events (True)
-            or probabilistic (False)
-        frequency (np.array): frequency of each event in years
-        intensity (sparse.csr_matrix): intensity of the events at centroids
-        fraction (sparse.csr_matrix): fraction of affected exposures for each
-            event at each centroid
+    Attributes
+    ----------
+    tag : TagHazard
+        information about the source
+    units : str
+        units of the intensity
+    centroids : Centroids
+        centroids of the events
+    event_id : np.array
+        id (>0) of each event
+    event_name : list(str)
+        name of each event (default: event_id)
+    date : np.array
+        integer date corresponding to the proleptic
+        Gregorian ordinal, where January 1 of year 1 has ordinal 1
+        (ordinal format of datetime library)
+    orig : np.array
+        flags indicating historical events (True)
+        or probabilistic (False)
+    frequency : np.array
+        frequency of each event in years
+    intensity : sparse.csr_matrix
+        intensity of the events at centroids
+    fraction : sparse.csr_matrix
+        fraction of affected exposures for each
+        event at each centroid
     """
     intensity_thres = 10
     """Intensity threshold per hazard used to filter lower intensities. To be
@@ -140,20 +153,23 @@ class Hazard():
     def __init__(self, haz_type='', pool=None):
         """Initialize values.
 
-        Parameters:
-            haz_type (str, optional): acronym of the hazard type (e.g. 'TC').
+        Parameters
+        ----------
+        haz_type : str, optional
+            acronym of the hazard type (e.g. 'TC').
 
-        Examples:
-            Fill hazard values by hand:
+        Examples
+        --------
+        Fill hazard values by hand:
 
-            >>> haz = Hazard('TC')
-            >>> haz.intensity = sparse.csr_matrix(np.zeros((2, 2)))
-            >>> ...
+        >>> haz = Hazard('TC')
+        >>> haz.intensity = sparse.csr_matrix(np.zeros((2, 2)))
+        >>> ...
 
-            Take hazard values from file:
+        Take hazard values from file:
 
-            >>> haz = Hazard('TC', HAZ_DEMO_MAT)
-            >>> haz.read_mat(HAZ_DEMO_MAT, 'demo')
+        >>> haz = Hazard('TC', HAZ_DEMO_MAT)
+        >>> haz.read_mat(HAZ_DEMO_MAT, 'demo')
 
         """
         self.tag = TagHazard()
@@ -188,8 +204,9 @@ class Hazard():
     def check(self):
         """Check dimension of attributes.
 
-        Raises:
-            ValueError
+        Raises
+        ------
+        ValueError
         """
         self.centroids.check()
         self._check_events()
@@ -198,27 +215,45 @@ class Hazard():
                    band=None, src_crs=None, window=False, geometry=False,
                    dst_crs=False, transform=None, width=None, height=None,
                    resampling=Resampling.nearest):
-        """Append intensity and fraction from raster file. 0s put to the masked
-        values. File can be partially read using window OR geometry.
-        Alternatively, CRS and/or transformation can be set using dst_crs and/or
-        (transform, width and height).
+        """Set intensity and fraction to values from raster files
 
-        Parameters:
-            files_intensity (list(str)): file names containing intensity
-            files_fraction (list(str)): file names containing fraction
-            attrs (dict, optional): name of Hazard attributes and their values
-            band (list(int), optional): bands to read (starting at 1), default [1]
-            src_crs (crs, optional): source CRS. Provide it if error without it.
-            window (rasterio.windows.Windows, optional): window where data is
-                extracted
-            geometry (shapely.geometry, optional): consider pixels only in shape
-            dst_crs (crs, optional): reproject to given crs
-            transform (rasterio.Affine): affine transformation to apply
-            wdith (float): number of lons for transform
-            height (float): number of lats for transform
-            resampling (rasterio.warp,.Resampling optional): resampling
-                function used for reprojection to dst_crs
+        If raster files are masked, the masked values are set to 0.
+
+        Files can be partially read using either window or geometry. Additionally, the data is
+        reprojected when custom dst_crs and/or transform, width and height are specified.
+
+        Parameters
+        ----------
+        files_intensity : list(str)
+            file names containing intensity
+        files_fraction : list(str)
+            file names containing fraction
+        attrs : dict, optional
+            name of Hazard attributes and their values
+        band : list(int), optional
+            bands to read (starting at 1), default [1]
+        src_crs : crs, optional
+            source CRS. Provide it if error without it.
+        window : rasterio.windows.Windows, optional
+            window where data is
+            extracted
+        geometry : shapely.geometry, optional
+            consider pixels only in shape
+        dst_crs : crs, optional
+            reproject to given crs
+        transform : rasterio.Affine
+            affine transformation to apply
+        wdith : float, optional
+            number of lons for transform
+        height : float, optional
+            number of lats for transform
+        resampling : rasterio.warp.Resampling, optional
+            resampling function used for reprojection to dst_crs
         """
+        if isinstance(files_intensity, (str, pathlib.Path)):
+            files_intensity = [files_intensity]
+        if isinstance(files_fraction, (str, pathlib.Path)):
+            files_fraction = [files_fraction]
         if not attrs:
             attrs = {}
         if not band:
@@ -299,17 +334,21 @@ class Hazard():
         """Read vector files format supported by fiona. Each intensity name is
         considered an event.
 
-        Parameters:
-            files_intensity (list(str)): file names containing intensity,
-                default: ['intensity']
-            files_fraction (list(str)): file names containing fraction,
-                default: ['fraction']
-            attrs (dict, optional): name of Hazard attributes and their values
-            inten_name (list(str), optional): name of variables containing
-                the intensities of each event
-            frac_name (list(str), optional): name of variables containing
-                the fractions of each event
-            dst_crs (crs, optional): reproject to given crs
+        Parameters
+        ----------
+        files_intensity : list(str)
+            file names containing intensity, default: ['intensity']
+        files_fraction (list(str)): file names containing fraction,
+            default: ['fraction']
+        attrs : dict, optional
+            name of Hazard attributes and their values
+        inten_name : list(str), optional
+            name of variables containing the intensities of each event
+        frac_name : list(str), optional
+            name of variables containing
+            the fractions of each event
+        dst_crs : crs, optional
+            reproject to given crs
         """
         if not attrs:
             attrs = {}
@@ -420,10 +459,13 @@ class Hazard():
     def reproject_vector(self, dst_crs, scheduler=None):
         """Change current point data to a a given projection
 
-        Parameters:
-            dst_crs (crs): reproject to given crs
-            scheduler (str, optional): used for dask map_partitions. “threads”,
-                “synchronous” or “processes”
+        Parameters
+        ----------
+        dst_crs : crs
+            reproject to given crs
+        scheduler : str, optional
+            used for dask map_partitions. “threads”,
+            “synchronous” or “processes”
         """
         self.centroids.set_geometry_points(scheduler)
         self.centroids.geometry = self.centroids.geometry.to_crs(dst_crs)
@@ -440,11 +482,13 @@ class Hazard():
     def vector_to_raster(self, scheduler=None):
         """Change current point data to a raster with same resolution
 
-        Parameters:
-            scheduler (str, optional): used for dask map_partitions. “threads”,
-                “synchronous” or “processes”
+        Parameters
+        ----------
+        scheduler : str, optional
+            used for dask map_partitions. “threads”,
+            “synchronous” or “processes”
         """
-        points_df = gpd.GeoDataFrame(crs=self.centroids.geometry.crs)
+        points_df = gpd.GeoDataFrame()
         points_df['latitude'] = self.centroids.lat
         points_df['longitude'] = self.centroids.lon
         val_names = ['val' + str(i_ev) for i_ev in range(2 * self.size)]
@@ -454,7 +498,9 @@ class Hazard():
             else:
                 points_df[inten_name] = np.asarray(self.fraction[i_ev - self.size, :].toarray()).\
                 reshape(-1)
-        raster, meta = u_coord.points_to_raster(points_df, val_names, scheduler=scheduler)
+        raster, meta = u_coord.points_to_raster(points_df, val_names,
+                                                crs=self.centroids.geometry.crs,
+                                                scheduler=scheduler)
         self.intensity = sparse.csr_matrix(raster[:self.size, :, :].reshape(self.size, -1))
         self.fraction = sparse.csr_matrix(raster[self.size:, :, :].reshape(self.size, -1))
         self.centroids = Centroids()
@@ -464,14 +510,19 @@ class Hazard():
     def read_mat(self, file_name, description='', var_names=None):
         """Read climada hazard generate with the MATLAB code.
 
-        Parameters:
-            file_name (str): absolute file name
-            description (str, optional): description of the data
-            var_names (dict, default): name of the variables in the file,
-                default: DEF_VAR_MAT constant
+        Parameters
+        ----------
+        file_name : str
+            absolute file name
+        description : str, optional
+            description of the data
+        var_names : dict, optional
+            name of the variables in the file,
+            default: DEF_VAR_MAT constant
 
-        Raises:
-            KeyError
+        Raises
+        ------
+        KeyError
         """
         if not var_names:
             var_names = DEF_VAR_MAT
@@ -496,16 +547,21 @@ class Hazard():
     def read_excel(self, file_name, description='', var_names=None):
         """Read climada hazard generate with the MATLAB code.
 
-        Parameters:
-            file_name (str): absolute file name
-            description (str, optional): description of the data
-            centroids (Centroids, optional): provide centroids if not contained
-                in the file
-            var_names (dict, default): name of the variables in the file,
-                default: DEF_VAR_EXCEL constant
+        Parameters
+        ----------
+        file_name : str
+            absolute file name
+        description : str, optional
+            description of the data
+        centroids : Centroids, optional
+            provide centroids if not contained
+            in the file
+        var_names (dict, default): name of the variables in the file,
+            default: DEF_VAR_EXCEL constant
 
-        Raises:
-            KeyError
+        Raises
+        ------
+        KeyError
         """
         if not var_names:
             var_names = DEF_VAR_EXCEL
@@ -658,7 +714,8 @@ class Hazard():
         return inten_stats
 
     def plot_rp_intensity(self, return_periods=(25, 50, 100, 250),
-                          smooth=True, axis=None, figsize=(9, 13), **kwargs):
+                          smooth=True, axis=None, figsize=(9, 13), adapt_fontsize=True,
+                          **kwargs):
         """Compute and plot hazard exceedance intensity maps for different
         return periods. Calls local_exceedance_inten.
 
@@ -667,6 +724,9 @@ class Hazard():
             smooth (bool, optional): smooth plot to plot.RESOLUTIONxplot.RESOLUTION
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             figsize (tuple, optional): figure size for plt.subplots
+            adapt_fontsize : bool, optional
+                If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
+                the default matplotlib font size is used. Default is True.
             kwargs (optional): arguments for pcolormesh matplotlib function
                 used in event plots
 
@@ -682,10 +742,10 @@ class Hazard():
             title.append('Return period: ' + str(ret) + ' years')
         axis = u_plot.geo_im_from_array(inten_stats, self.centroids.coord,
                                         colbar_name, title, smooth=smooth,
-                                        axes=axis, figsize=figsize, **kwargs)
+                                        axes=axis, figsize=figsize, adapt_fontsize=adapt_fontsize, **kwargs)
         return axis, inten_stats
 
-    def plot_intensity(self, event=None, centr=None, smooth=True, axis=None,
+    def plot_intensity(self, event=None, centr=None, smooth=True, axis=None, adapt_fontsize=True,
                        **kwargs):
         """Plot intensity values for a selected event or centroid.
 
@@ -703,6 +763,9 @@ class Hazard():
             smooth (bool, optional): Rescale data to RESOLUTIONxRESOLUTION pixels (see constant
                 in module `climada.util.plot`)
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
+            adapt_fontsize : bool, optional
+                If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
+                the default matplotlib font size is used. Default is True.
             kwargs (optional): arguments for pcolormesh matplotlib function
                 used in event plots or for plot function used in centroids plots
 
@@ -719,7 +782,7 @@ class Hazard():
             if isinstance(event, str):
                 event = self.get_event_id(event)
             return self._event_plot(event, self.intensity, col_label,
-                                    smooth, crs_epsg, axis, **kwargs)
+                                    smooth, crs_epsg, axis, adapt_fontsize=adapt_fontsize, **kwargs)
         if centr is not None:
             if isinstance(centr, tuple):
                 _, _, centr = self.centroids.get_closest_point(centr[0], centr[1])
@@ -993,7 +1056,7 @@ class Hazard():
             elif isinstance(var_val, str):
                 hf_str = hf_data.create_dataset(var_name, (1,), dtype=str_dt)
                 hf_str[0] = var_val
-            elif isinstance(var_val, list) and isinstance(var_val[0], str):
+            elif isinstance(var_val, list) and var_val and isinstance(var_val[0], str):
                 hf_str = hf_data.create_dataset(var_name, (len(var_val),), dtype=str_dt)
                 for i_ev, var_ev in enumerate(var_val):
                     hf_str[i_ev] = var_ev
@@ -1086,7 +1149,7 @@ class Hazard():
         return ev_set
 
     def _event_plot(self, event_id, mat_var, col_name, smooth, crs_espg, axis=None,
-                    figsize=(9, 13), **kwargs):
+                    figsize=(9, 13), adapt_fontsize=True, **kwargs):
         """Plot an event of the input matrix.
 
         Parameters:
@@ -1134,7 +1197,7 @@ class Hazard():
 
         return u_plot.geo_im_from_array(array_val, self.centroids.coord, col_name,
                                         l_title, smooth=smooth, axes=axis,
-                                        figsize=figsize, proj=crs_espg, **kwargs)
+                                        figsize=figsize, proj=crs_espg, adapt_fontsize=adapt_fontsize, **kwargs)
 
     def _centr_plot(self, centr_idx, mat_var, col_name, axis=None, **kwargs):
         """Plot a centroid of the input matrix.

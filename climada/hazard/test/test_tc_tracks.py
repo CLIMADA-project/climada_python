@@ -50,26 +50,26 @@ class TestIbtracs(unittest.TestCase):
     """Test reading and model of TC from IBTrACS files"""
 
     def test_raw_ibtracs_empty_pass(self):
-        """Test reading empty/invalid/non-existing TC from IBTrACS files"""
+        """Test reading empty TC from IBTrACS files"""
         tc_track = tc.TCTracks()
         tc_track.read_ibtracs_netcdf(
-            provider='usa', storm_id=['1988234N13299', 'INVALID', '1988234N13298'])
+            provider='usa', storm_id='1988234N13299')
         self.assertEqual(tc_track.size, 0)
         self.assertEqual(tc_track.get_track(), [])
 
-    def test_write_read_pass(self):
-        """Test writting and reading netcdf4 TCTracks instances"""
-        path = DATA_DIR.joinpath("tc_tracks_nc")
-        path.mkdir(exist_ok=True)
+    def test_raw_ibtracs_invalid_pass(self):
+        """Test reading invalid/non-existing TC from IBTrACS files"""
         tc_track = tc.TCTracks()
-        tc_track.read_ibtracs_netcdf(provider='usa', storm_id='1988234N13299',
-                                     estimate_missing=True)
-        tc_track.write_netcdf(str(path))
+        with self.assertRaises(ValueError) as cm:
+            tc_track.read_ibtracs_netcdf(storm_id='INVALID')
+        self.assertIn("IDs are invalid", str(cm.exception))
+        self.assertIn("INVALID", str(cm.exception))
 
-        tc_read = tc.TCTracks()
-        tc_read.read_netcdf(str(path))
-
-        self.assertEqual(tc_track.get_track().sid, tc_read.get_track().sid)
+        tc_track = tc.TCTracks()
+        with self.assertRaises(ValueError) as cm:
+            tc_track.read_ibtracs_netcdf(storm_id='1988234N13298')
+        self.assertIn("IDs are not in IBTrACS", str(cm.exception))
+        self.assertIn("1988234N13298", str(cm.exception))
 
     def test_penv_rmax_penv_pass(self):
         """read_ibtracs_netcdf"""
@@ -286,6 +286,31 @@ class TestIbtracs(unittest.TestCase):
 
 class TestIO(unittest.TestCase):
     """Test reading of tracks from files of different formats"""
+    def test_write_read_netcdf(self):
+        """Test writting and reading netcdf4 TCTracks instances"""
+        path = DATA_DIR.joinpath("tc_tracks_nc")
+        path.mkdir(exist_ok=True)
+        tc_track = tc.TCTracks()
+        tc_track.read_ibtracs_netcdf(provider='usa', storm_id='1988234N13299',
+                                     estimate_missing=True)
+        tc_track.write_netcdf(str(path))
+
+        tc_read = tc.TCTracks()
+        tc_read.read_netcdf(str(path))
+
+        self.assertEqual(tc_track.get_track().sid, tc_read.get_track().sid)
+
+    def test_read_legacy_netcdf(self):
+        """Test reading from NetCDF files with legacy basin attributes"""
+        anti_track = tc.TCTracks()
+        # test data set with two tracks:
+        # * 1980052S16155: crosses the antimeridian
+        # * 2018079S09162: close, but doesn't cross antimeridian; has self-intersections
+        anti_track.read_netcdf(TEST_TRACKS_ANTIMERIDIAN)
+
+        for tr in anti_track.data:
+            self.assertEqual(tr.basin.shape, tr.time.shape)
+            np.testing.assert_array_equal(tr.basin, "SP")
 
     def test_read_processed_ibtracs_csv(self):
         tc_track = tc.TCTracks()
@@ -822,7 +847,7 @@ class TestFuncs(unittest.TestCase):
         exp = Exposures(exp_world.gdf[exp_world.gdf.name=='Cuba'])
 
         # Compute tracks in exp
-        tracks_in_exp = tc_track.tracks_in_exp(exp.gdf, buffer=1.0)
+        tracks_in_exp = tc_track.tracks_in_exp(exp, buffer=1.0)
 
         self.assertTrue(tracks_in_exp.get_track(storms['in']))
         self.assertFalse(tracks_in_exp.get_track(storms['out']))
