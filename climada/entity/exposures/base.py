@@ -19,7 +19,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define Exposures class.
 """
 
-__all__ = ['Exposures', 'add_sea', 'INDICATOR_IF', 'INDICATOR_CENTR']
+__all__ = ['Exposures', 'add_sea', 'INDICATOR_IMPF', 'INDICATOR_CENTR']
 
 import logging
 import copy
@@ -42,7 +42,10 @@ import climada.util.plot as u_plot
 
 LOGGER = logging.getLogger(__name__)
 
-INDICATOR_IF = 'if_'
+INDICATOR_IMPF_OLD = 'if_'
+"""Previously used name of the column containing the impact functions id of specified hazard"""
+
+INDICATOR_IMPF = 'impf_'
 """Name of the column containing the impact functions id of specified hazard"""
 
 INDICATOR_CENTR = 'centr_'
@@ -61,7 +64,7 @@ DEF_VAR_MAT = {'sup_field_name': 'entity',
                             'val': 'Value',
                             'ded': 'Deductible',
                             'cov': 'Cover',
-                            'imp': 'DamageFunID',
+                            'impf': 'DamageFunID',
                             'cat': 'Category_ID',
                             'reg': 'Region_ID',
                             'uni': 'Value_unit',
@@ -83,9 +86,9 @@ class Exposures():
         longitude (pd.Series): longitude
         crs (dict or crs): CRS information inherent to GeoDataFrame.
         value (pd.Series): a value for each exposure
-        if_ (pd.Series, optional): e.g. if_TC. impact functions id for hazard TC.
-            There might be different hazards defined: if_TC, if_FL, ...
-            If not provided, set to default 'if_' with ids 1 in check().
+        impf_ (pd.Series, optional): e.g. impf_TC. impact functions id for hazard TC.
+            There might be different hazards defined: impf_TC, impf_FL, ...
+            If not provided, set to default 'impf_' with ids 1 in check().
         geometry (pd.Series, optional): geometry of type Point of each instance.
             Computed in method set_geometry_points().
         meta (dict): dictionary containing corresponding raster properties (if any):
@@ -105,7 +108,7 @@ class Exposures():
     vars_oblig = ['value', 'latitude', 'longitude']
     """Name of the variables needed to compute the impact."""
 
-    vars_def = [INDICATOR_IF]
+    vars_def = [INDICATOR_IMPF, INDICATOR_IMPF_OLD]
     """Name of variables that can be computed."""
 
     vars_opt = [INDICATOR_CENTR, 'deductible', 'cover', 'category_id',
@@ -235,27 +238,32 @@ class Exposures():
         """Check Exposures consistency.
 
         Reports missing columns in log messages.
-        If no if_* column is present in the dataframe, a default column 'if_' is added with
+        If no impf_* column is present in the dataframe, a default column 'impf_' is added with
         default impact function id 1.
         """
         # mandatory columns
         for var in self.vars_oblig:
             if var not in self.gdf.columns:
-                LOGGER.error("%s missing.", var)
                 raise ValueError(f"{var} missing in gdf")
 
-        # computable columns except if_*
-        for var in sorted(set(self.vars_def).difference([INDICATOR_IF])):
+        # computable columns except impf_*
+        for var in sorted(set(self.vars_def).difference([INDICATOR_IMPF, INDICATOR_IMPF_OLD])):
             if not var in self.gdf.columns:
                 LOGGER.info("%s not set.", var)
 
-        # special treatment for if_*
-        if INDICATOR_IF in self.gdf.columns:
-            LOGGER.info("Hazard type not set in %s", INDICATOR_IF)
+        # special treatment for impf_*
+        default_impf_present = False
+        for var in [INDICATOR_IMPF, INDICATOR_IMPF_OLD]:
+            if var in self.gdf.columns:
+                LOGGER.info("Hazard type not set in %s", var)
+                default_impf_present = True
 
-        elif not any([col.startswith(INDICATOR_IF) for col in self.gdf.columns]):
-            LOGGER.info("Setting %s to default impact functions ids 1.", INDICATOR_IF)
-            self.gdf[INDICATOR_IF] = 1
+        if not default_impf_present and not [
+                col for col in self.gdf.columns
+                if col.startswith(INDICATOR_IMPF) or col.startswith(INDICATOR_IMPF_OLD)
+            ]:
+            LOGGER.info("Setting %s to default impact functions ids 1.", INDICATOR_IMPF)
+            self.gdf[INDICATOR_IMPF] = 1
 
         # optional columns except centr_*
         for var in sorted(set(self.vars_opt).difference([INDICATOR_CENTR])):
@@ -277,6 +285,47 @@ class Exposures():
                                  " longitude. Use set_geometry_points() or set_lat_lon().")
         except AttributeError:  # no geometry column
             pass
+
+    def get_impf_column(self, haz_type=''):
+        """Find the best matching column name in the exposures dataframe for a given hazard type,
+
+        Parameters
+        ----------
+        haz_type : str or None
+            hazard type, as in the hazard's tag.haz_type
+            which is the HAZ_TYPE constant of the hazard's module
+
+        Returns
+        -------
+        str
+            a column name, the first of the following that is present in the exposures' dataframe:
+            - impf_[haz_type]
+            - if_[haz_type]
+            - impf_
+            - if_
+
+        Raises
+        ------
+        ValueError
+            if none of the above is found in the dataframe.
+        """
+        if INDICATOR_IMPF + haz_type in self.gdf.columns:
+            return INDICATOR_IMPF + haz_type
+        if INDICATOR_IMPF_OLD + haz_type in self.gdf.columns:
+            LOGGER.info("Impact function column name 'if_%s' is not according to current"
+                        " naming conventions. It's suggested to use 'impf_%s' instead.",
+                        haz_type, haz_type)
+            return INDICATOR_IMPF_OLD + haz_type
+        if INDICATOR_IMPF in self.gdf.columns:
+            LOGGER.info("No specific impact function column found for hazard %s."
+                        " Using the anonymous 'impf_' column.", haz_type)
+            return INDICATOR_IMPF
+        if INDICATOR_IMPF_OLD in self.gdf.columns:
+            LOGGER.info("No specific impact function column found for hazard %s. Using the"
+                        " anonymous 'if_' column, which is not according to current naming"
+                        " conventions. It's suggested to use 'impf_' instead.", haz_type)
+            return INDICATOR_IMPF_OLD
+        raise ValueError(f"Missing exposures impact functions {INDICATOR_IMPF}.")
 
     def assign_centroids(self, hazard, method='NN', distance='haversine',
                          threshold=100):
@@ -301,8 +350,7 @@ class Exposures():
         LOGGER.info('Matching %s exposures with %s centroids.',
                     str(self.gdf.shape[0]), str(hazard.centroids.size))
         if not u_coord.equal_crs(self.crs, hazard.centroids.crs):
-            LOGGER.error('Set hazard and exposure to same CRS first!')
-            raise ValueError
+            raise ValueError('Set hazard and exposure to same CRS first!')
         if hazard.centroids.meta:
             assigned = u_coord.assign_grid_points(
                 self.gdf.longitude.values, self.gdf.latitude.values,
@@ -478,8 +526,7 @@ class Exposures():
             if self.gdf.latitude.values[0] < self.gdf.latitude.values[-1]:
                 raster = np.flip(raster, axis=0)
             if self.gdf.longitude.values[0] > self.gdf.longitude.values[-1]:
-                LOGGER.error('Points are not ordered according to meta raster.')
-                raise ValueError
+                raise ValueError('Points are not ordered according to meta raster.')
         else:
             raster, meta = u_coord.points_to_raster(self.gdf, ['value'], res, raster_res, scheduler)
             raster = raster.reshape((meta['height'], meta['width']))
@@ -615,8 +662,8 @@ class Exposures():
             _read_mat_obligatory(exposures, data, var_names)
             _read_mat_optional(exposures, data, var_names)
         except KeyError as var_err:
-            LOGGER.error("Not existing variable: %s", str(var_err))
-            raise var_err
+            raise KeyError(f"Variable not in MAT file: {var_names.get('field_name')}")\
+                from var_err
 
         self.gdf = GeoDataFrame(data=exposures, crs=self.crs)
         _read_mat_metadata(self, data, file_name, var_names)
@@ -698,8 +745,7 @@ class Exposures():
             if self.gdf.latitude.values[0] < self.gdf.latitude.values[-1]:
                 raster = np.flip(raster, axis=0)
             if self.gdf.longitude.values[0] > self.gdf.longitude.values[-1]:
-                LOGGER.error('Points are not ordered according to meta raster.')
-                raise ValueError
+                raise ValueError('Points are not ordered according to meta raster.')
             u_coord.write_raster(file_name, raster, self.meta)
         else:
             raster, meta = u_coord.points_to_raster(self, [value_name], scheduler=scheduler)
@@ -790,8 +836,8 @@ def _read_mat_obligatory(exposures, data, var_names):
     exposures['latitude'] = data[var_names['var_name']['lat']].reshape(-1)
     exposures['longitude'] = data[var_names['var_name']['lon']].reshape(-1)
 
-    exposures[INDICATOR_IF] = np.squeeze(
-        data[var_names['var_name']['imp']]).astype(int, copy=False)
+    exposures[INDICATOR_IMPF] = np.squeeze(
+        data[var_names['var_name']['impf']]).astype(int, copy=False)
 
 
 def _read_mat_optional(exposures, data, var_names):

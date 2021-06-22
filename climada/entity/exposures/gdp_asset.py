@@ -29,7 +29,7 @@ import scipy as sp
 from climada.entity.tag import Tag
 import climada.util.coordinates as u_coord
 from climada.util.constants import RIVER_FLOOD_REGIONS_CSV, SYSTEM_DIR
-from .base import Exposures, INDICATOR_IF
+from .base import Exposures, INDICATOR_IMPF
 
 LOGGER = logging.getLogger(__name__)
 
@@ -55,12 +55,10 @@ class GDP2Asset(Exposures):
         tag = Tag()
 
         if path is None:
-            LOGGER.error('No path for exposure data set')
-            raise NameError
+            raise NameError('No path for exposure data set')
 
         if not Path(path).is_file():
-            LOGGER.error('Invalid path %s', path)
-            raise NameError
+            raise NameError('Invalid path %s' % path)
         try:
 
             if not countries:
@@ -68,18 +66,16 @@ class GDP2Asset(Exposures):
                     natISO = u_coord.region2isos(reg)
                     countries = np.array(natISO)
                 else:
-                    LOGGER.error('set_countries requires countries or reg')
-                    raise ValueError
+                    raise ValueError('set_countries requires countries or reg')
 
             for cntr_ind in range(len(countries)):
                 gdp2a_list.append(self._set_one_country(countries[cntr_ind],
                                                         ref_year, path))
                 tag.description += ("{} GDP2Asset \n").\
                     format(countries[cntr_ind])
-        except KeyError:
-            LOGGER.error('Exposure countries: %s or reg %s could not be set, check ISO3 or'
-                         ' reference year %s', countries, reg, ref_year)
-            raise
+        except KeyError as err:
+            raise KeyError(f'Exposure countries: {countries} or reg {reg} could not be set, '
+                           f'check ISO3 or reference year {ref_year}') from err
 
         tag.description += 'GDP2Asset ' + str(self.ref_year)
         Exposures.__init__(
@@ -116,18 +112,18 @@ class GDP2Asset(Exposures):
         """
         natID = u_coord.country_iso2natid(countryISO)
         natID_info = pd.read_csv(RIVER_FLOOD_REGIONS_CSV)
-        reg_id, if_rf = _fast_if_mapping(natID, natID_info)
+        reg_id, impf_rf = _fast_impf_mapping(natID, natID_info)
         lat, lon = u_coord.get_region_gridpoints(countries=[natID], iso=False, basemap="isimip")
         coord = np.stack([lat, lon], axis=1)
         assets = _read_GDP(coord, ref_year, path)
         reg_id_info = np.full((len(assets),), reg_id)
-        if_rf_info = np.full((len(assets),), if_rf)
+        impf_rf_info = np.full((len(assets),), impf_rf)
 
         exp_gdpasset = GDP2Asset()
         exp_gdpasset.gdf['value'] = assets
         exp_gdpasset.gdf['latitude'] = coord[:, 0]
         exp_gdpasset.gdf['longitude'] = coord[:, 1]
-        exp_gdpasset.gdf[INDICATOR_IF + DEF_HAZ_TYPE] = if_rf_info
+        exp_gdpasset.gdf[INDICATOR_IMPF + DEF_HAZ_TYPE] = impf_rf_info
         exp_gdpasset.gdf['region_id'] = reg_id_info
         return exp_gdpasset
 
@@ -149,14 +145,12 @@ def _read_GDP(shp_exposures, ref_year, path=None):
         gdp_lon = gdp_file.lon.data
         gdp_lat = gdp_file.lat.data
         time = gdp_file.time.dt.year
-    except OSError:
-        LOGGER.error('Problems while reading %s check exposure_file specifications', path)
-        raise OSError
+    except OSError as err:
+        raise OSError(f'Problems while reading {path} check exposure_file specifications') from err
     try:
         year_index = np.where(time == ref_year)[0][0]
-    except IndexError:
-        LOGGER.error('No data available for year %s', ref_year)
-        raise KeyError
+    except IndexError as err:
+        raise KeyError(f'No data available for year {ref_year}') from err
     conv_lon = asset_converter.lon.data
     conv_lat = asset_converter.lat.data
     gridX, gridY = np.meshgrid(conv_lon, conv_lat)
@@ -203,11 +197,10 @@ def _test_gdp_centr_match(gdp_lat, gdp_lon, shp_exposures):
            (min(gdp_lat) - 0.5 > min(shp_exposures[:, 0])) or\
            (min(gdp_lon) - 0.5 > min(shp_exposures[:, 1])):
 
-        LOGGER.error('Asset Data does not match selected country')
-        raise IOError
+        raise IOError('Asset Data does not match selected country')
 
 
-def _fast_if_mapping(countryID, natID_info):
+def _fast_impf_mapping(countryID, natID_info):
     """Assign region-ID and impact function id.
         Parameters:
             countryID (int)
@@ -218,18 +211,17 @@ def _fast_if_mapping(countryID, natID_info):
             float,float
         """
     nat = natID_info['ID']
-    if_RF = natID_info['if_RF']
+    impf_RF = natID_info['impf_RF']
     reg_ID = natID_info['Reg_ID']
-    fancy_if = np.zeros((max(nat) + 1))
-    fancy_if[:] = np.nan
-    fancy_if[nat] = if_RF
+    fancy_impf = np.zeros((max(nat) + 1))
+    fancy_impf[:] = np.nan
+    fancy_impf[nat] = impf_RF
     fancy_reg = np.zeros((max(nat) + 1))
     fancy_reg[:] = np.nan
     fancy_reg[nat] = reg_ID
     try:
         reg_id = fancy_reg[countryID]
-        if_rf = fancy_if[countryID]
-    except KeyError:
-        LOGGER.error('Country ISO unknown')
-        raise KeyError
-    return reg_id, if_rf
+        impf_rf = fancy_impf[countryID]
+    except KeyError as err:
+        raise KeyError(f'Country ISO unknown: {countryID}') from err
+    return reg_id, impf_rf

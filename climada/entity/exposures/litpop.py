@@ -40,7 +40,7 @@ import shapefile
 from climada import CONFIG
 from climada.entity.exposures import nightlight
 from climada.entity.tag import Tag
-from climada.entity.exposures.base import Exposures, INDICATOR_IF
+from climada.entity.exposures.base import Exposures, INDICATOR_IMPF
 from climada.entity.exposures import gpw_import
 from climada.util import ureg
 from climada.util.finance import gdp, income_group, wealth2gdp, world_bank_wealth_account
@@ -170,8 +170,7 @@ class LitPop(Exposures):
                         _get_country_info(country_new))
                 del country_new
             if not country_list:
-                LOGGER.error('No valid country chosen. Operation aborted.')
-                raise ValueError
+                raise ValueError('No valid country chosen. Operation aborted.')
             else:
                 all_bbox = [_get_country_shape(countr, 1)[0] for countr in country_list]
                 cut_bbox = _bbox_union(all_bbox)
@@ -183,8 +182,7 @@ class LitPop(Exposures):
             if not _get_country_shape(country_list[0], 1) is None:
                 all_bbox = _get_country_shape(country_list[0], 1)[0]
             else:
-                LOGGER.error('Country %s could not be found.', countries)
-                raise ValueError
+                raise ValueError('Country %s could not be found.' % countries)
             cut_bbox = all_bbox
             country_info[country_list[0]], admin1_info[country_list[0]] = (
                 _get_country_info(country_list[0]))
@@ -268,8 +266,6 @@ class LitPop(Exposures):
             LOGGER.warning('Could not write attribute meta, because exposure'
                            ' has only 1 data point')
             self.meta = {}
-        if check_plot:
-            self.plot_log(admin1_plot=0)
         # self.set_geometry_points()
         self.check()
 
@@ -299,7 +295,7 @@ class LitPop(Exposures):
             lp_ent.gdf['region_id'] = u_coord.country_to_iso(cntry_info[1], "numeric")
         except LookupError:
             lp_ent.gdf['region_id'] = u_coord.country_to_iso(curr_country, "numeric")
-        lp_ent.gdf[INDICATOR_IF + DEF_HAZ_TYPE] = 1
+        lp_ent.gdf[INDICATOR_IMPF + DEF_HAZ_TYPE] = 1
         return lp_ent
 
     def _append_additional_info(self, cntries_info):
@@ -316,44 +312,6 @@ class LitPop(Exposures):
             self.country_data['ISO3'].append(cntry_iso3)
             self.country_data['name'].append(cntry_info[1])
             self.country_data['shape'].append(cntry_info[2])
-
-    def plot_log(self, admin1_plot=1):
-        """Plots the LitPop data with the color scale reprenting the values
-        in a logarithmic scale.
-
-        Parameters
-        ----------
-        admin1_plot : boolean
-            Whether admin1 borders should be plotted. Default: True
-        """
-        # TODO: plot subplots for the different countries instead of one global
-        # one. Countries can be identified by their region id, hence this
-        # can be implemented
-        if not self.gdf.value.sum() == 0:
-            plt.figure()
-#            countr_shape = _get_country_shape(country_iso, 0)
-            countr_bbox = np.array((min(self.gdf.coord[:, 1]),
-                                    min(self.gdf.coord[:, 0]),
-                                    max(self.gdf.coord[:, 1]),
-                                    max(self.gdf.coord[:, 0])))
-            plt.gca().set_xlim(countr_bbox[0]
-                               - 0.1 * (countr_bbox[2] - countr_bbox[0]), countr_bbox[2]
-                               + 0.1 * (countr_bbox[2] - countr_bbox[0]))
-            plt.gca().set_ylim(countr_bbox[1]
-                               - 0.1 * (countr_bbox[3] - countr_bbox[1]), countr_bbox[3]
-                               + 0.1 * (countr_bbox[3] - countr_bbox[1]))
-            plt.scatter(self.gdf.coord[:, 1], self.gdf.coord[:, 0],
-                        c=self.gdf.value, marker=',', s=3,
-                        norm=mpl_colors.LogNorm())
-            plt.title('Logarithmic scale LitPop value')
-            if hasattr(self, 'country_data') and self.country_data['shape'] != []:
-                for idx, shp in enumerate(self.country_data['shape']):
-                    _plot_shape_to_plot(shp)
-                    if admin1_plot:
-                        _plot_admin1_shapes(self.country_data['ISO3'][idx],
-                                            0.6)
-            plt.colorbar()
-            plt.show()
 
 def _get_litpop_box(cut_bbox, resolution, return_coords=False,
                     reference_year=2016, exponents=None):
@@ -604,8 +562,8 @@ def _shape_cutter(shape, resolution=30, check_enclaves=True, check_plot=False, s
     points2check = [] if points2check is None else points2check
 
     if (not hasattr(shape, 'points')) or (not hasattr(shape, 'parts')):
-        LOGGER.error('Not a valid shape. Please make sure, the shapefile is '
-                     'of type from package "shapefile".')
+        raise TypeError('Not a valid shape. Please make sure, the shapefile is '
+                        'of type from package "shapefile".')
     sub_shapes = len(shape.parts)
     all_coords_shape = [(x, y) for x, y in shape.points]
     LOGGER.debug('Extracting subshapes and detecting enclaves...')
@@ -741,8 +699,8 @@ def _mask_from_shape(check_shape, resolution=30, check_enclaves=True, points2che
     points2check = [] if points2check is None else points2check
 
     if (not hasattr(check_shape, 'points')) or (not hasattr(check_shape, 'parts')):
-        LOGGER.error('Not a valid shape. Please make sure, the shapefile is '
-                     'of type from package "shapefile".')
+        raise TypeError('Not a valid shape. Please make sure, the shapefile is '
+                        'of type from package "shapefile".')
     sub_shapes = len(check_shape.parts)
     all_coords_shape = [(x, y) for x, y in check_shape.points]
     # LOGGER.debug('Extracting subshapes and detecting enclaves...')
@@ -959,7 +917,7 @@ def _get_gdp2asset_factor(cntry_info, ref_year, shp_file, fin_mode='income_group
                 wealthtogdp_factor = 1
             cntry_val.append(wealthtogdp_factor)
     else:
-        LOGGER.error("invalid fin_mode")
+        raise ValueError(f"Unknown fin_mode: {fin_mode}")
 
 def _gsdp_read(country_iso3, admin1_shape_data, look_folder=None):
     """Retrieves the GSDP data for a certain country. It requires an excel file in a subfolder
@@ -1305,9 +1263,8 @@ def _normalise_litpop(litpop_data):
         The litpop_data the sum of which corresponds to one.
     """
     if not isinstance(litpop_data, pd.arrays.SparseArray):
-        LOGGER.error('LitPop data is not of expected type (Pandas '
-                     'SparseArray). Operation aborted.')
-        raise TypeError
+        raise TypeError('LitPop data is not of expected type (Pandas '
+                        'SparseArray). Operation aborted.')
 
     sum_all = sum(litpop_data.sp_values)
     return litpop_data / sum_all
@@ -1419,16 +1376,16 @@ def read_bm_file(bm_path, filename):
     curr_file : gdal GeoTiff File
         Additional info from which coordinates can be calculated.
     """
+    path = Path(bm_path, filename)
     try:
-        LOGGER.debug('Importing %s.', Path(bm_path, filename))
-        curr_file = gdal.Open(str(Path(bm_path, filename)))
+        LOGGER.debug('Importing %s.', path)
+        curr_file = gdal.Open(str(path))
         band1 = curr_file.GetRasterBand(1)
         arr1 = band1.ReadAsArray()
         del band1
         return arr1, curr_file
-    except:
-        LOGGER.error('Failed: Importing %s', str(curr_file))
-        raise
+    except Exception as err:
+        raise type(err)(f"Failed to import {path}" + str(err)) from err
 
 def get_bm(required_files=None, cut_bbox=None, country_adm0=None, country_crop_mode=1,
            file_path=None, resolution=30, return_coords=False, reference_year=2016):
@@ -1655,9 +1612,8 @@ def _get_box_blackmarble(cut_bbox, bm_path=None, resolution=30, return_coords=Fa
             nightlight.download_nl_files(req_sat_files, files_exist,
                                          dwnl_path=bm_path,
                                          year=min(BM_YEARS, key=lambda x: abs(x - reference_year)))
-        except:
-            LOGGER.error('Could not download missing satellite data files. Operation aborted.')
-            raise
+        except Exception as err:
+            raise type(err)('Could not download satellite data files: ' + str(err)) from err
     # Read corresponding files
     # LOGGER.debug('Reading and cropping necessary BM files.')
     nightlight_intensity = get_bm(req_sat_files, resolution=resolution,
@@ -1709,8 +1665,7 @@ def admin1_validation(country, methods, exponents, res_km=1, res_arcsec=None, ch
     LOGGER.info('Preparing coordinates, nightlights, and gpw data at %s arcsec.',
                 str(resolution))
     if isinstance(country, list):  # multiple countries
-        LOGGER.error('No valid country chosen. Give country as string.')
-        raise TypeError
+        raise TypeError('No valid country chosen. Give country as string.')
     elif isinstance(country, str):  # One country
         country_list = []
         country_list.append(country)
@@ -1721,8 +1676,7 @@ def admin1_validation(country, methods, exponents, res_km=1, res_arcsec=None, ch
         country_info[country_list[0]], admin1_info[country_list[0]] = (
             _get_country_info(country_list[0]))
     else:
-        LOGGER.error('Country parameter data type not recognised. Operation aborted.')
-        raise TypeError
+        raise TypeError('Country parameter data type not recognised. Operation aborted.')
     shp_file = shapereader.natural_earth(resolution='10m',
                                          category='cultural',
                                          name='admin_0_countries')

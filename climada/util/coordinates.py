@@ -283,8 +283,7 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
     elif units == "degree":
         unit_factor = 1
     else:
-        LOGGER.error('Unknown distance unit: %s', units)
-        raise KeyError
+        raise KeyError('Unknown distance unit: %s' % units)
 
     if method == "equirect":
         if normalize:
@@ -316,8 +315,7 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
             vtan = fact[..., None] * (vec2[:, None] - scal[..., None] * vec1[:, :, None])
             vtan = np.einsum('nkli,nkji->nklj', vtan, vbasis)
     else:
-        LOGGER.error("Unknown distance approximation method: %s", method)
-        raise KeyError
+        raise KeyError("Unknown distance approximation method: %s" % method)
     return (dist, vtan) if log else dist
 
 def get_gridcellarea(lat, resolution=0.5, unit='km2'):
@@ -475,22 +473,19 @@ def dist_to_coast(coord_lat, lon=None, signed=False):
     """
     if isinstance(coord_lat, (gpd.GeoDataFrame, gpd.GeoSeries)):
         if not equal_crs(coord_lat.crs, NE_CRS):
-            LOGGER.error('Input CRS is not %s', str(NE_CRS))
-            raise ValueError
+            raise ValueError('Input CRS is not %s' % str(NE_CRS))
         geom = coord_lat
     else:
         if lon is None:
             if isinstance(coord_lat, np.ndarray) and coord_lat.shape[1] == 2:
                 lat, lon = coord_lat[:, 0], coord_lat[:, 1]
             else:
-                LOGGER.error('Missing longitude values.')
-                raise ValueError
+                raise ValueError('Missing longitude values.')
         else:
             lat, lon = [np.asarray(v).reshape(-1) for v in [coord_lat, lon]]
             if lat.size != lon.size:
-                LOGGER.error('Mismatching input coordinates size: %s != %s',
-                             lat.size, lon.size)
-                raise ValueError
+                raise ValueError('Mismatching input coordinates size: %s != %s'
+                                 % (lat.size, lon.size))
         geom = gpd.GeoDataFrame(geometry=gpd.points_from_xy(lon, lat), crs=NE_CRS)
 
     pad = 20
@@ -637,9 +632,8 @@ def coord_on_land(lat, lon, land_geom=None):
         Entries are True if corresponding coordinate is on land and False otherwise.
     """
     if lat.size != lon.size:
-        LOGGER.error('Wrong size input coordinates: %s != %s.', lat.size,
-                     lon.size)
-        raise ValueError
+        raise ValueError('Wrong size input coordinates: %s != %s.'
+                         % (lat.size, lon.size))
     delta_deg = 1
     if land_geom is None:
         land_geom = get_land_geometry(
@@ -669,9 +663,7 @@ def nat_earth_resolution(resolution):
     """
     avail_res = [10, 50, 110]
     if resolution not in avail_res:
-        LOGGER.error('Natural Earth does not accept resolution %s m.',
-                     resolution)
-        raise ValueError
+        raise ValueError('Natural Earth does not accept resolution %s m.' % resolution)
     return str(resolution) + 'm'
 
 def get_country_geometries(country_names=None, extent=None, resolution=10):
@@ -945,8 +937,7 @@ def region2isos(regions):
     for region in regions:
         region_msk = (reg_info['Reg_name'] == region)
         if not any(region_msk):
-            LOGGER.error('Unknown region name: %s', region)
-            raise KeyError
+            raise KeyError('Unknown region name: %s' % region)
         isos += list(reg_info['ISO'][region_msk].values)
     return list(set(isos))
 
@@ -1043,7 +1034,7 @@ def country_natid2iso(natids, representation="alpha3"):
     iso_list = []
     for natid in natids:
         if natid < 0 or natid >= len(ISIMIP_NATID_TO_ISO):
-            raise LookupError('Unknown country NatID: %s', natid)
+            raise LookupError('Unknown country NatID: %s' % natid)
         iso_list.append(ISIMIP_NATID_TO_ISO[natid])
     if representation != "alpha3":
         iso_list = country_to_iso(iso_list, representation)

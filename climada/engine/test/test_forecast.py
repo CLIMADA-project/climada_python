@@ -29,9 +29,9 @@ from cartopy.io import shapereader
 
 from climada import CONFIG
 from climada.hazard.storm_europe import StormEurope
-from climada.entity.exposures.base import Exposures, INDICATOR_IF
+from climada.entity.exposures.base import Exposures, INDICATOR_IMPF
 from climada.entity import ImpactFuncSet
-from climada.entity.impact_funcs.storm_europe import IFStormEurope
+from climada.entity.impact_funcs.storm_europe import ImpfStormEurope
 from climada.engine.forecast import Forecast
 from climada.util.constants import WS_DEMO_NC
 
@@ -53,12 +53,12 @@ class TestCalc(unittest.TestCase):
         data['longitude'] = haz.centroids.lon
         data['value'] = np.ones_like(data['latitude']) * 100000
         data['deductible'] = np.zeros_like(data['latitude'])
-        data[INDICATOR_IF + 'WS'] = np.ones_like(data['latitude'])
+        data[INDICATOR_IMPF + 'WS'] = np.ones_like(data['latitude'])
         data['region_id'] = np.ones_like(data['latitude'],dtype=int) * 756
         expo = Exposures(gpd.GeoDataFrame(data=data))
         #vulnerability
         #generate vulnerability
-        impact_function = IFStormEurope()
+        impact_function = ImpfStormEurope()
         impact_function.set_welker()
         impact_function_set = ImpactFuncSet()
         impact_function_set.append(impact_function)
@@ -90,7 +90,7 @@ class TestCalc(unittest.TestCase):
         data['longitude'] = np.array([1, 2, 3])
         data['value'] = np.ones_like(data['latitude']) * 100000
         data['deductible'] = np.zeros_like(data['latitude'])
-        data[INDICATOR_IF + 'WS'] = np.ones_like(data['latitude'])
+        data[INDICATOR_IMPF + 'WS'] = np.ones_like(data['latitude'])
         data['region_id'] = np.ones_like(data['latitude'],dtype=int) * 756
         expo = Exposures(gpd.GeoDataFrame(data=data))
         #vulnerability
@@ -126,12 +126,12 @@ class TestPlot(unittest.TestCase):
         data['longitude'] = haz1.centroids.lon
         data['value'] = np.ones_like(data['latitude']) * 100000
         data['deductible'] = np.zeros_like(data['latitude'])
-        data[INDICATOR_IF + 'WS'] = np.ones_like(data['latitude'])
+        data[INDICATOR_IMPF + 'WS'] = np.ones_like(data['latitude'])
         data['region_id'] = np.ones_like(data['latitude'],dtype=int) * 756
         expo = Exposures(gpd.GeoDataFrame(data=data))
         #vulnerability
         #generate vulnerability
-        impact_function = IFStormEurope()
+        impact_function = ImpfStormEurope()
         impact_function.set_welker()
         impact_function_set = ImpactFuncSet()
         impact_function_set.append(impact_function)

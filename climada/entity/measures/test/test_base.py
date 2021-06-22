@@ -25,11 +25,11 @@ import numpy as np
 from climada import CONFIG
 from climada.hazard.base import Hazard
 from climada.entity.entity_def import Entity
-from climada.entity.exposures.base import Exposures, INDICATOR_IF
+from climada.entity.exposures.base import Exposures, INDICATOR_IMPF
 from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
 from climada.entity.impact_funcs.base import ImpactFunc
 from climada.entity.measures.measure_set import MeasureSet
-from climada.entity.measures.base import Measure, IF_ID_FACT
+from climada.entity.measures.base import Measure, IMPF_ID_FACT
 from climada.util.constants import EXP_DEMO_H5, HAZ_DEMO_H5
 
 DATA_DIR = CONFIG.measures.test_data.dir()
@@ -80,7 +80,7 @@ class TestApply(unittest.TestCase):
         haz.read_mat(HAZ_TEST_MAT)
         exp = Exposures()
         exp.read_mat(ENT_TEST_MAT)
-        exp.gdf.rename(columns={'if_': 'if_TC'}, inplace=True)
+        exp.gdf.rename(columns={'impf': 'impf_TC'}, inplace=True)
         exp.check()
 
         imp_set = ImpactFuncSet()
@@ -144,8 +144,8 @@ class TestApply(unittest.TestCase):
         for i_ev in pos_null:
             self.assertEqual(new_haz.intensity[i_ev, centr_null].max(), 0)
 
-    def test_change_exposures_if_pass(self):
-        """Test _change_exposures_if"""
+    def test_change_exposures_impf_pass(self):
+        """Test _change_exposures_impf"""
         meas = Measure()
         meas.imp_fun_map = '1to3'
         meas.haz_type = 'TC'
@@ -168,7 +168,7 @@ class TestApply(unittest.TestCase):
 
         exp = Exposures()
         exp.read_hdf5(EXP_DEMO_H5)
-        new_exp = meas._change_exposures_if(exp)
+        new_exp = meas._change_exposures_impf(exp)
 
         self.assertEqual(new_exp.ref_year, exp.ref_year)
         self.assertEqual(new_exp.value_unit, exp.value_unit)
@@ -177,8 +177,8 @@ class TestApply(unittest.TestCase):
         self.assertTrue(np.array_equal(new_exp.gdf.value.values, exp.gdf.value.values))
         self.assertTrue(np.array_equal(new_exp.gdf.latitude.values, exp.gdf.latitude.values))
         self.assertTrue(np.array_equal(new_exp.gdf.longitude.values, exp.gdf.longitude.values))
-        self.assertTrue(np.array_equal(exp.gdf[INDICATOR_IF + 'TC'].values, np.ones(new_exp.gdf.shape[0])))
-        self.assertTrue(np.array_equal(new_exp.gdf[INDICATOR_IF + 'TC'].values, np.ones(new_exp.gdf.shape[0]) * 3))
+        self.assertTrue(np.array_equal(exp.gdf[INDICATOR_IMPF + 'TC'].values, np.ones(new_exp.gdf.shape[0])))
+        self.assertTrue(np.array_equal(new_exp.gdf[INDICATOR_IMPF + 'TC'].values, np.ones(new_exp.gdf.shape[0]) * 3))
 
     def test_change_all_hazard_pass(self):
         """Test _change_all_hazard method"""
@@ -231,14 +231,14 @@ class TestApply(unittest.TestCase):
         haz = Hazard('TC')
 
         new_exp = Exposures()
-        new_ifs = ImpactFuncSet()
+        new_impfs = ImpactFuncSet()
         new_haz = Hazard('TC')
 
         res_exp, res_ifs, res_haz = meas._filter_exposures(exp, imp_set, haz,
-            new_exp, new_ifs, new_haz)
+                                                           new_exp, new_impfs, new_haz)
 
         self.assertTrue(res_exp is new_exp)
-        self.assertTrue(res_ifs is new_ifs)
+        self.assertTrue(res_ifs is new_impfs)
         self.assertTrue(res_haz is new_haz)
 
         self.assertTrue(res_exp is not exp)
@@ -253,7 +253,7 @@ class TestApply(unittest.TestCase):
 
         exp = Exposures()
         exp.read_mat(ENT_TEST_MAT)
-        exp.gdf.rename(columns={'if_': 'if_TC', 'centr_': 'centr_TC'}, inplace=True)
+        exp.gdf.rename(columns={'impf_': 'impf_TC', 'centr_': 'centr_TC'}, inplace=True)
         exp.gdf['region_id'] = np.ones(exp.gdf.shape[0])
         exp.gdf.region_id.values[:exp.gdf.shape[0] // 2] = 3
         exp.gdf.region_id[0] = 4
@@ -268,9 +268,9 @@ class TestApply(unittest.TestCase):
 
         new_exp = copy.deepcopy(exp)
         new_exp.gdf['value'] *= 3
-        new_exp.gdf['if_TC'].values[:20] = 2
-        new_exp.gdf['if_TC'].values[20:40] = 3
-        new_exp.gdf['if_TC'].values[40:] = 1
+        new_exp.gdf['impf_TC'].values[:20] = 2
+        new_exp.gdf['impf_TC'].values[20:40] = 3
+        new_exp.gdf['impf_TC'].values[40:] = 1
 
         new_ifs = copy.deepcopy(imp_set)
         new_ifs.get_func('TC')[1].intensity += 1
@@ -298,14 +298,14 @@ class TestApply(unittest.TestCase):
         # changed exposures
         self.assertTrue(np.array_equal(res_exp.gdf.value.values[:25], new_exp.gdf.value.values[:25]))
         self.assertTrue(np.all(np.not_equal(res_exp.gdf.value.values[:25], exp.gdf.value.values[:25])))
-        self.assertTrue(np.all(np.not_equal(res_exp.gdf.if_TC.values[:25], new_exp.gdf.if_TC.values[:25])))
+        self.assertTrue(np.all(np.not_equal(res_exp.gdf.impf_TC.values[:25], new_exp.gdf.impf_TC.values[:25])))
         self.assertTrue(np.array_equal(res_exp.gdf.latitude.values[:25], new_exp.gdf.latitude.values[:25]))
         self.assertTrue(np.array_equal(res_exp.gdf.longitude.values[:25], new_exp.gdf.longitude.values[:25]))
 
         # unchanged exposures
         self.assertTrue(np.array_equal(res_exp.gdf.value.values[25:], exp.gdf.value.values[25:]))
         self.assertTrue(np.all(np.not_equal(res_exp.gdf.value.values[25:], new_exp.gdf.value.values[25:])))
-        self.assertTrue(np.array_equal(res_exp.gdf.if_TC.values[25:], exp.gdf.if_TC.values[25:]))
+        self.assertTrue(np.array_equal(res_exp.gdf.impf_TC.values[25:], exp.gdf.impf_TC.values[25:]))
         self.assertTrue(np.array_equal(res_exp.gdf.latitude.values[25:], exp.gdf.latitude.values[25:]))
         self.assertTrue(np.array_equal(res_exp.gdf.longitude.values[25:], exp.gdf.longitude.values[25:]))
 
@@ -319,17 +319,17 @@ class TestApply(unittest.TestCase):
                                        imp_set.get_func()[meas.haz_type][3].intensity))
 
         # changed impact functions
-        self.assertTrue(np.array_equal(res_ifs.get_func()[meas.haz_type][1 + IF_ID_FACT].intensity,
+        self.assertTrue(np.array_equal(res_ifs.get_func()[meas.haz_type][1 + IMPF_ID_FACT].intensity,
                         ref_ifs.get_func()[meas.haz_type][1].intensity))
-        self.assertTrue(np.array_equal(res_ifs.get_func()[meas.haz_type][1 + IF_ID_FACT].paa,
+        self.assertTrue(np.array_equal(res_ifs.get_func()[meas.haz_type][1 + IMPF_ID_FACT].paa,
                         ref_ifs.get_func()[meas.haz_type][1].paa))
-        self.assertTrue(np.array_equal(res_ifs.get_func()[meas.haz_type][1 + IF_ID_FACT].mdd,
+        self.assertTrue(np.array_equal(res_ifs.get_func()[meas.haz_type][1 + IMPF_ID_FACT].mdd,
                         ref_ifs.get_func()[meas.haz_type][1].mdd))
-        self.assertTrue(np.array_equal(res_ifs.get_func()[meas.haz_type][3 + IF_ID_FACT].intensity,
+        self.assertTrue(np.array_equal(res_ifs.get_func()[meas.haz_type][3 + IMPF_ID_FACT].intensity,
                         ref_ifs.get_func()[meas.haz_type][3].intensity))
-        self.assertTrue(np.array_equal(res_ifs.get_func()[meas.haz_type][3 + IF_ID_FACT].paa,
+        self.assertTrue(np.array_equal(res_ifs.get_func()[meas.haz_type][3 + IMPF_ID_FACT].paa,
                         ref_ifs.get_func()[meas.haz_type][3].paa))
-        self.assertTrue(np.array_equal(res_ifs.get_func()[meas.haz_type][3 + IF_ID_FACT].mdd,
+        self.assertTrue(np.array_equal(res_ifs.get_func()[meas.haz_type][3 + IMPF_ID_FACT].mdd,
                         ref_ifs.get_func()[meas.haz_type][3].mdd))
 
         # unchanged hazard
@@ -390,7 +390,7 @@ class TestApply(unittest.TestCase):
 
         entity = Entity()
         entity.read_mat(ENT_TEST_MAT)
-        entity.exposures.gdf.rename(columns={'if_': 'if_TC'}, inplace=True)
+        entity.exposures.gdf.rename(columns={'impf': 'impf_TC'}, inplace=True)
         entity.measures._data['TC'] = entity.measures._data.pop('XX')
         entity.measures.get_measure(name='Mangroves', haz_type='TC').haz_type = 'TC'
         for meas in entity.measures.get_measure('TC'):
@@ -417,7 +417,7 @@ class TestApply(unittest.TestCase):
         self.assertEqual(imp.event_name, hazard.event_name)
         self.assertEqual(imp.tag['exp'].file_name, entity.exposures.tag.file_name)
         self.assertEqual(imp.tag['haz'].file_name, hazard.tag.file_name)
-        self.assertEqual(imp.tag['if_set'].file_name, entity.impact_funcs.tag.file_name)
+        self.assertEqual(imp.tag['impf_set'].file_name, entity.impact_funcs.tag.file_name)
         self.assertEqual(risk_transf.aai_agg, 0)
 
 
@@ -429,7 +429,7 @@ class TestApply(unittest.TestCase):
 
         entity = Entity()
         entity.read_mat(ENT_TEST_MAT)
-        entity.exposures.gdf.rename(columns={'if_': 'if_TC'}, inplace=True)
+        entity.exposures.gdf.rename(columns={'impf': 'impf_TC'}, inplace=True)
         entity.measures._data['TC'] = entity.measures._data.pop('XX')
         for meas in entity.measures.get_measure('TC'):
             meas.haz_type = 'TC'
@@ -460,7 +460,7 @@ class TestApply(unittest.TestCase):
         self.assertEqual(imp.event_name, hazard.event_name)
         self.assertEqual(imp.tag['exp'].file_name, entity.exposures.tag.file_name)
         self.assertEqual(imp.tag['haz'].file_name, hazard.tag.file_name)
-        self.assertEqual(imp.tag['if_set'].file_name, entity.impact_funcs.tag.file_name)
+        self.assertEqual(imp.tag['impf_set'].file_name, entity.impact_funcs.tag.file_name)
         self.assertEqual(risk_transf.aai_agg, 2.3139691495470852e+08)
 
 # Execute Tests

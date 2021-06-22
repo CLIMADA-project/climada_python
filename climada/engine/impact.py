@@ -21,7 +21,6 @@ Define Impact and ImpactFreqCurve classes.
 
 __all__ = ['ImpactFreqCurve', 'Impact']
 
-import ast
 import logging
 import copy
 import csv
@@ -38,7 +37,7 @@ from tqdm import tqdm
 
 
 from climada.entity import Exposures, Tag
-from climada.entity.exposures import INDICATOR_IF, INDICATOR_CENTR
+from climada.entity.exposures import INDICATOR_CENTR
 from climada.hazard import Tag as TagHaz
 import climada.util.plot as u_plot
 from climada import CONFIG
@@ -55,7 +54,7 @@ class Impact():
 
     Attributes:
         tag (dict): dictionary of tags of exposures, impact functions set and
-            hazard: {'exp': Tag(), 'if_set': Tag(), 'haz': TagHazard()}
+            hazard: {'exp': Tag(), 'impf_set': Tag(), 'haz': TagHazard()}
         event_id (np.array): id (>0) of each hazard event
         event_name (list): name of each hazard event
         date (np.array): date if events as integer date corresponding to the
@@ -170,7 +169,7 @@ class Impact():
         self.frequency = hazard.frequency
         self.at_event = np.zeros(hazard.intensity.shape[0])
         self.eai_exp = np.zeros(exposures.gdf.value.size)
-        self.tag = {'exp': exposures.tag, 'if_set': impact_funcs.tag,
+        self.tag = {'exp': exposures.tag, 'impf_set': impact_funcs.tag,
                     'haz': hazard.tag}
         self.crs = exposures.crs
 
@@ -184,15 +183,8 @@ class Impact():
                     exp_idx.size, num_events)
 
         # Get damage functions for this hazard
-        if_haz = INDICATOR_IF + hazard.tag.haz_type
+        impf_haz = exposures.get_impf_column(hazard.tag.haz_type)
         haz_imp = impact_funcs.get_func(hazard.tag.haz_type)
-        if if_haz not in exposures.gdf and INDICATOR_IF not in exposures.gdf:
-            LOGGER.error('Missing exposures impact functions %s.', INDICATOR_IF)
-            raise ValueError
-        if if_haz not in exposures.gdf:
-            LOGGER.info('Missing exposures impact functions for hazard %s. '
-                        'Using impact functions in %s.', if_haz, INDICATOR_IF)
-            if_haz = INDICATOR_IF
 
         # Check if deductible and cover should be applied
         insure_flag = False
@@ -208,13 +200,12 @@ class Impact():
         tot_exp = 0
         for imp_fun in haz_imp:
             # get indices of all the exposures with this impact function
-            exp_iimp = np.where(exposures.gdf[if_haz].values[exp_idx] == imp_fun.id)[0]
+            exp_iimp = np.where(exposures.gdf[impf_haz].values[exp_idx] == imp_fun.id)[0]
             tot_exp += exp_iimp.size
             exp_step = CONFIG.max_matrix_size.int() // num_events
             if not exp_step:
-                LOGGER.error('Increase max_matrix_size configuration parameter'
-                             ' to > %s', str(num_events))
-                raise ValueError
+                raise ValueError('Increase max_matrix_size configuration parameter to > %s'
+                                 % str(num_events))
             # separte in chunks
             chk = -1
             for chk in range(int(exp_iimp.size / exp_step)):
@@ -391,9 +382,8 @@ class Impact():
             matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
             """
         if not hasattr(self.imp_mat, "shape") or self.imp_mat.shape[1] == 0:
-            LOGGER.error('attribute imp_mat is empty. Recalculate Impact'
-                         'instance with parameter save_mat=True')
-            return []
+            raise ValueError('attribute imp_mat is empty. Recalculate Impact'
+                             'instance with parameter save_mat=True')
 
         impact_at_events_exp = self._build_exp_event(event_id)
         axis = impact_at_events_exp.plot_hexbin(mask, ignore_zero, pop_name,
@@ -428,9 +418,11 @@ class Impact():
             cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         if not hasattr(self.imp_mat, "shape") or self.imp_mat.shape[1] == 0:
-            LOGGER.error('attribute imp_mat is empty. Recalculate Impact'
-                         'instance with parameter save_mat=True')
-            return []
+            raise ValueError('attribute imp_mat is empty. Recalculate Impact'
+                             'instance with parameter save_mat=True')
+
+        if event_id not in self.event_id:
+            raise ValueError(f'Event ID {event_id} not found')
 
         impact_at_events_exp = self._build_exp_event(event_id)
         axis = impact_at_events_exp.plot_basemap(mask, ignore_zero, pop_name,
@@ -454,7 +446,7 @@ class Impact():
             csv_data = [[[self.tag['haz'].haz_type], [self.tag['haz'].file_name],
                          [self.tag['haz'].description]],
                         [[self.tag['exp'].file_name], [self.tag['exp'].description]],
-                        [[self.tag['if_set'].file_name], [self.tag['if_set'].description]],
+                        [[self.tag['impf_set'].file_name], [self.tag['impf_set'].description]],
                         [self.unit], [self.tot_value], [self.aai_agg],
                         self.event_id, self.event_name, self.date,
                         self.frequency, self.at_event,
@@ -491,7 +483,7 @@ class Impact():
         write_col(0, imp_ws, data)
         data = [str(self.tag['exp'].file_name), str(self.tag['exp'].description)]
         write_col(1, imp_ws, data)
-        data = [str(self.tag['if_set'].file_name), str(self.tag['if_set'].description)]
+        data = [str(self.tag['impf_set'].file_name), str(self.tag['impf_set'].description)]
         write_col(2, imp_ws, data)
         write_col(3, imp_ws, [self.unit])
         write_col(4, imp_ws, [self.tot_value])
@@ -562,17 +554,15 @@ class Impact():
                     return_periods)
         try:
             self.imp_mat.shape[1]
-        except AttributeError:
-            LOGGER.error('attribute imp_mat is empty. Recalculate Impact'
-                         'instance with parameter save_mat=True')
-            return []
+        except AttributeError as err:
+            raise ValueError('attribute imp_mat is empty. Recalculate Impact'
+                             'instance with parameter save_mat=True') from err
         num_cen = self.imp_mat.shape[1]
         imp_stats = np.zeros((len(return_periods), num_cen))
         cen_step = CONFIG.max_matrix_size.int() // self.imp_mat.shape[0]
         if not cen_step:
-            LOGGER.error('Increase max_matrix_size configuration parameter to'
-                         ' > %s', str(self.imp_mat.shape[0]))
-            raise ValueError
+            raise ValueError('Increase max_matrix_size configuration parameter to > %s'
+                             % str(self.imp_mat.shape[0]))
         # separte in chunks
         chk = -1
         for chk in range(int(num_cen / cen_step)):
@@ -603,9 +593,8 @@ class Impact():
         """
         imp_stats = self.local_exceedance_imp(np.array(return_periods))
         if imp_stats == []:
-            LOGGER.error('Error: Attribute imp_mat is empty. Recalculate Impact'
-                         'instance with parameter save_mat=True')
-            raise ValueError
+            raise ValueError('Error: Attribute imp_mat is empty. Recalculate Impact'
+                             'instance with parameter save_mat=True')
         if log10_scale:
             if np.min(imp_stats) < 0:
                 imp_stats_log = np.log10(abs(imp_stats) + 1)
@@ -674,7 +663,7 @@ class Impact():
                                  str(imp_df.tag_hazard[2]))
         self.tag['exp'] = Tag(str(imp_df.tag_exposure[0]),
                               str(imp_df.tag_exposure[1]))
-        self.tag['if_set'] = Tag(str(imp_df.tag_impact_func[0]),
+        self.tag['impf_set'] = Tag(str(imp_df.tag_impact_func[0]),
                                  str(imp_df.tag_impact_func[1]))
 
     def read_excel(self, file_name):
@@ -693,9 +682,9 @@ class Impact():
         self.tag['exp'] = Tag()
         self.tag['exp'].file_name = dfr['tag_exposure'][0]
         self.tag['exp'].description = dfr['tag_exposure'][1]
-        self.tag['if_set'] = Tag()
-        self.tag['if_set'].file_name = dfr['tag_impact_func'][0]
-        self.tag['if_set'].description = dfr['tag_impact_func'][1]
+        self.tag['impf_set'] = Tag()
+        self.tag['impf_set'].file_name = dfr['tag_impact_func'][0]
+        self.tag['impf_set'].description = dfr['tag_impact_func'][1]
 
         self.unit = dfr.unit[0]
         self.tot_value = dfr.tot_value[0]
@@ -717,7 +706,7 @@ class Impact():
             self.crs = DEF_CRS
 
     @staticmethod
-    def video_direct_impact(exp, if_set, haz_list, file_name='',
+    def video_direct_impact(exp, impf_set, haz_list, file_name='',
                             writer=animation.PillowWriter(bitrate=500),
                             imp_thresh=0, args_exp=None, args_imp=None):
         """
@@ -726,7 +715,7 @@ class Impact():
 
         Parameters:
             exp (Exposures): exposures instance, constant during all video
-            if_set (ImpactFuncSet): impact functions
+            impf_set (ImpactFuncSet): impact functions
             haz_list (list(Hazard)): every Hazard contains an event; all hazards
                 use the same centroids
             file_name (str, optional): file name to save video, if provided
@@ -750,7 +739,7 @@ class Impact():
         imp_arr = np.zeros(len(exp.gdf))
         for i_time, _ in enumerate(haz_list):
             imp_tmp = Impact()
-            imp_tmp.calc(exp, if_set, haz_list[i_time])
+            imp_tmp.calc(exp, impf_set, haz_list[i_time])
             imp_arr = np.maximum(imp_arr, imp_tmp.eai_exp)
             # remove not impacted exposures
             save_exp = imp_arr > imp_thresh
@@ -911,9 +900,10 @@ class Impact():
         Parameters:
             event_id(int): id of the event
         """
+        [[ix]] = (self.event_id == event_id).nonzero()
         return Exposures(
             data={
-                'value': self.imp_mat[event_id - 1].toarray().ravel(),
+                'value': self.imp_mat[ix].toarray().ravel(),
                 'latitude': self.coord_exp[:, 0],
                 'longitude': self.coord_exp[:, 1],
             },
@@ -1126,7 +1116,7 @@ class ImpactFreqCurve():
 
     Attributes:
         tag (dict): dictionary of tags of exposures, impact functions set and
-            hazard: {'exp': Tag(), 'if_set': Tag(), 'haz': TagHazard()}
+            hazard: {'exp': Tag(), 'impf_set': Tag(), 'haz': TagHazard()}
         return_per (np.array): return period
         impact (np.array): impact exceeding frequency
         unit (str): value unit used (given by exposures unit)
