@@ -683,7 +683,6 @@ class Uncertainty():
          _, ymax = ax.get_ylim()
          if log:
              avg_plot, std_plot = np.log10(avg), np.log10(std)
-             ymax = np.log10(ymax)
          else:
              avg_plot, std_plot = avg, std
          ax.axvline(avg_plot, color='darkorange', linestyle='dashed', linewidth=2,
