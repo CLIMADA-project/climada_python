@@ -683,11 +683,11 @@ class Uncertainty():
          if log:
              avg_plot, std_plot = np.log10(avg), np.log10(std)
          else:
-             avg_plot, std_lot = avg, std
+             avg_plot, std_plot = avg, std
          ax.axvline(avg_plot, color='darkorange', linestyle='dashed', linewidth=2,
                  label="avg=%.2f%s" %u_vtm(avg))
-         ax.plot([avg_plot - std_lot / 2,
-                  avg_plot + std_lot / 2],
+         ax.plot([avg_plot - std_plot / 2,
+                  avg_plot + std_plot / 2],
                  [0.3, 0.3], color='black',
                  label="std=%.2f%s" %u_vtm(std))
          ax.set_title(col)
@@ -956,6 +956,8 @@ class Uncertainty():
                                    color="k", fontsize='medium')
             ax.set_title(salib_si + ' - ' + submetric, fontsize=18)
             labels = self.param_labels
+            ax.set_xticks(np.arange(len(labels)))
+            ax.set_yticks(np.arange(len(labels)))
             ax.set_xticklabels(labels, fontsize=16)
             ax.set_yticklabels(labels, fontsize=16)
         plt.tight_layout()
