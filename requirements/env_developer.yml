@@ -7,7 +7,6 @@ dependencies:
   - sphinx>=2.0
   - pip
   - pip:
-    - astroid==2.4  # 2.5: false positive E1136
     - coverage>=4.5
     - descartes
     - nbformat
