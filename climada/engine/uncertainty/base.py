@@ -895,7 +895,8 @@ class Uncertainty():
         submetric_list = []
         for metric_name, metric_dict in self.sensitivity.items():
             if metric_name in metric_list:
-                submetric_list.append(list(metric_dict.keys())[0])
+                if metric_dict:
+                    submetric_list.append(list(metric_dict.keys())[0])
             submetric_list += [submetric_name
              for submetric_name, submetric_dict in metric_dict.items()
              if submetric_name in metric_list
