@@ -24,10 +24,10 @@ __all__ = ['UncVar', 'Uncertainty']
 import logging
 import json
 
-from datetime import datetime as dt
 from itertools import zip_longest
 from pathlib import Path
 
+import datetime as dt
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -831,7 +831,8 @@ class Uncertainty():
 
         return axes
 
-    def plot_sensitivity2d(self, salib_si='S2', metric_list=None, figsize=None):
+    def plot_sensitivity2d(self, salib_si='S2', metric_list=None,
+                           figsize=None):
         """Plot second order sensitivity indices as matrix.
 
         This requires that a senstivity analysis was already performed with
@@ -880,7 +881,7 @@ class Uncertainty():
 
         """
 
-        if not self.metrics:
+        if not self.sensitivity:
             raise ValueError("No sensitivity present for this metrics. "
                     "Please run a sensitivity analysis first.")
 
@@ -1005,7 +1006,7 @@ class Uncertainty():
         """
 
         if filename is None:
-            filename = "metrics" + dt.now().strftime("%Y-%m-%d-%H%M%S")
+            filename = "metrics" + dt.datetime.now().strftime("%Y-%m-%d-%H%M%S")
             filename = Path(DATA_DIR) / Path(filename)
         save_path = Path(filename).with_suffix('.json')
         with open(save_path, 'w') as f:
@@ -1054,7 +1055,9 @@ class Uncertainty():
         """
 
         if filename is None:
-            filename = "sensitivity" + dt.now().strftime("%Y-%m-%d-%H%M%S")
+            filename = "sensitivity" + dt.datetime.now().strftime(
+                                                            "%Y-%m-%d-%H%M%S"
+                                                            )
             filename = Path(DATA_DIR) / Path(filename)
         save_path = Path(filename).with_suffix('.json')
         with open(save_path, 'w') as f:
