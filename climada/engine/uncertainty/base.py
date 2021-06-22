@@ -680,15 +680,17 @@ class Uncertainty():
          except np.linalg.LinAlgError:
              pass
          avg, std = df_values[col].mean(), df_values[col].std()
+         _, ymax = ax.get_ylim()
          if log:
              avg_plot, std_plot = np.log10(avg), np.log10(std)
+             ymax = np.log10(ymax)
          else:
              avg_plot, std_plot = avg, std
          ax.axvline(avg_plot, color='darkorange', linestyle='dashed', linewidth=2,
                  label="avg=%.2f%s" %u_vtm(avg))
          ax.plot([avg_plot - std_plot / 2,
                   avg_plot + std_plot / 2],
-                 [0.3, 0.3], color='black',
+                 [0.3 * ymax, 0.3 * ymax], color='black',
                  label="std=%.2f%s" %u_vtm(std))
          ax.set_title(col)
          if log:
