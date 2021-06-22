@@ -959,7 +959,9 @@ class Uncertainty():
 
         """
         if filename is None:
-            filename = "samples_df" + dt.now().strftime("%Y-%m-%d-%H%M%S")
+            filename = "samples_df" + dt.datetime.now().strftime(
+                                                            "%Y-%m-%d-%H%M%S"
+                                                            )
             filename = Path(DATA_DIR) / Path(filename)
         save_path = Path(filename)
         save_path = save_path.with_suffix('.csv')
