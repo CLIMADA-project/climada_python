@@ -679,12 +679,15 @@ class Uncertainty():
              data.plot.kde(ax=ax, color='darkblue', linewidth=4, label='')
          except np.linalg.LinAlgError:
              pass
-         avg = df_values[col].mean()
-         std = df_values[col].std()
-         ax.axvline(np.log10(avg), color='darkorange', linestyle='dashed', linewidth=2,
+         avg, std = df_values[col].mean(), df_values[col].std()
+         if log:
+             avg_plot, std_plot = np.log10(avg), np.log10(std)
+         else:
+             avg_plot, std_lot = avg, std
+         ax.axvline(avg_plot, color='darkorange', linestyle='dashed', linewidth=2,
                  label="avg=%.2f%s" %u_vtm(avg))
-         ax.plot([np.log10(avg) - np.log10(std) / 2,
-                  np.log10(avg) + np.log10(std) / 2],
+         ax.plot([avg_plot - std_lot / 2,
+                  avg_plot + std_lot / 2],
                  [0.3, 0.3], color='black',
                  label="std=%.2f%s" %u_vtm(std))
          ax.set_title(col)
