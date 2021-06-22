@@ -93,13 +93,22 @@ class TestGetFileNames(unittest.TestCase):
         Folder names are not contained."""
         file_name = DEMO_DIR
         out = get_file_names(file_name)
+        self.assertGreater(len(out), 0)
         for file in out:
-            self.assertEqual('.', Path(file).suffix[0])
+            self.assertTrue(Path(file).is_file())
+    
+    def test_wrong_argument(self):
+        """If the input contains a non-existing file, an empyt directory or a pattern that is not
+        matched, the method should raise a ValueError."""
+        empty_dir = DEMO_DIR.parent
+        with self.assertRaises(ValueError) as ve:
+            get_file_names(str(empty_dir))
+        self.assertIn("no files", str(ve.exception))
 
-        file_name = DEMO_DIR.parent
-        out = get_file_names(file_name)
-        for file in out:
-            self.assertNotEqual('', Path(file).suffix)
+        no_file = 'this is not a file'
+        with self.assertRaises(ValueError) as ve:
+            get_file_names(no_file)
+        self.assertIn("cannot find", str(ve.exception))
 
     def test_globbing(self):
         """If input is a glob pattern, return a list of matching visible

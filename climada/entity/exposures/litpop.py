@@ -217,6 +217,9 @@ class LitPop(Exposures):
             curr_shp = _get_country_shape(curr_country, 0)
             mask = _mask_from_shape(curr_shp, resolution=resolution,
                                     points2check=all_coords)
+            if mask.sum() == 0:
+                LOGGER.warning("No pixels within shape of %s", curr_country)
+                continue
             litpop_curr = litpop_data[mask.sp_index.indices]
             lon, lat = zip(*np.array(all_coords)[mask.sp_index.indices])
             if fin_mode == 'none':
