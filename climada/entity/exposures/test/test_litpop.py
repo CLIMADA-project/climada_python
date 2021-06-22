@@ -111,9 +111,8 @@ class TestLitPop(unittest.TestCase):
         data_out, meta_out = lp.reproject_input_data(data_in, meta_list,
                         i_ref=0,
                         target_res_arcsec=None,
-                        global_origins=(-180, 90),
-                        dst_crs=None,
-                        resampling=None)
+                        global_origins=(-180, 90)
+                        )
         # test reference data unchanged:
         np.testing.assert_array_equal(data_in[0], data_out[0])
         # test northward shift:
@@ -131,8 +130,6 @@ class TestLitPop(unittest.TestCase):
                         i_ref=0,
                         target_res_arcsec=None,
                         global_origins=(-180, 90),
-                        dst_crs=None,
-                        resampling=None,
                         conserve='sum')
         # test reference data unchanged:
         np.testing.assert_array_equal(data_in[0], data_out[0])
@@ -148,8 +145,6 @@ class TestLitPop(unittest.TestCase):
                         i_ref=1,
                         target_res_arcsec=None,
                         global_origins=(-180, 90),
-                        dst_crs=None,
-                        resampling=None,
                         conserve='mean')
         # test reference data unchanged:
         np.testing.assert_array_equal(data_in[1], data_out[1])
@@ -165,9 +160,8 @@ class TestLitPop(unittest.TestCase):
         data_out, meta_out = lp.reproject_input_data(data_in, meta_list,
                         i_ref=2, # high res data as reference
                         target_res_arcsec=None,
-                        global_origins=(-180, 90),
-                        dst_crs=None,
-                        resampling=None)
+                        global_origins=(-180, 90)
+                        )
         # test reference data unchanged:
         np.testing.assert_array_equal(data_in[2], data_out[2])
         # test northward shift:
@@ -189,8 +183,7 @@ class TestLitPop(unittest.TestCase):
                                    i_ref=0, # high res data as reference
                                    target_res_arcsec=6120, # 1.7 degree
                                    global_origins=(-180, 90),
-                                   dst_crs=None,
-                                   resampling=None)
+                                   )
         self.assertEqual(1.7, meta_out['transform'][0]) # check resolution
         reference_array = np.array([[0.425    , 1.7631578],
                                     [3.425    , 4.763158 ]], dtype='float32')

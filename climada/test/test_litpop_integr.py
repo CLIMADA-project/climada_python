@@ -41,7 +41,7 @@ class TestLitPopExposure(unittest.TestCase):
             ent.set_country(country_name, res_arcsec=resolution, fin_mode=fin_mode,
                             reference_year=2016)
 
-        self.assertIn('LitPop: Init Exposure for country: CHE, 756', cm.output[0])
+        self.assertIn('LitPop: Init Exposure for country: CHE', cm.output[0])
         self.assertEqual(ent.gdf.region_id.min(), 756)
         self.assertEqual(ent.gdf.region_id.max(), 756)
         # confirm that the total value is equal to GDP * (income_group+1):
@@ -72,7 +72,7 @@ class TestLitPopExposure(unittest.TestCase):
             ent.set_country(country_name, res_arcsec=resolution, exponents=exp,
                             fin_mode=fin_mode, reference_year=2015)
         # print(cm)
-        self.assertIn('LitPop: Init Exposure for country: CHE, 756', cm.output[0])
+        self.assertIn('LitPop: Init Exposure for country: CHE', cm.output[0])
         self.assertEqual(ent.gdf.region_id.min(), 756)
         self.assertEqual(ent.gdf.region_id.max(), 756)
         self.assertEqual(ent.gdf.value.sum(), 1.0)
@@ -127,7 +127,6 @@ class TestLitPopExposure(unittest.TestCase):
         Distributing an imaginary total value of 1000 USD"""
         bounds = (8.41, 47.2, 8.70, 47.45) # (min_lon, max_lon, min_lat, max_lat)
         total_value=1000
-        # bounds = (-85, -11, 5, 40)
         shape = Polygon([
             (bounds[0], bounds[3]),
             (bounds[2], bounds[3]),
@@ -143,14 +142,13 @@ class TestLitPopExposure(unittest.TestCase):
         self.assertAlmostEqual(ent.gdf.latitude.min(), 47.20416666666661)
         # index and coord. of largest value:
         self.assertEqual(ent.gdf.loc[ent.gdf.value == ent.gdf.value.max()].index[0], 482)
-        self.assertEAlmostEqual(ent.gdf.loc[ent.gdf.value == ent.gdf.value.max()].latitude.values[0], 47.34583333333325)
-        self.assertEAlmostEqual(ent.gdf.loc[ent.gdf.value == ent.gdf.value.max()].longiude.values[0], 8.529166666666658)
+        self.assertAlmostEqual(ent.gdf.loc[ent.gdf.value == ent.gdf.value.max()].latitude.values[0], 47.34583333333325)
+        self.assertAlmostEqual(ent.gdf.loc[ent.gdf.value == ent.gdf.value.max()].longitude.values[0], 8.529166666666658)
 
     def test_set_custom_shape_from_country_zurich_pass(self):
         """test initiating LitPop for custom shape (square around Zurich City)
         with set_custom_shape_from_country()"""
         bounds = (8.41, 47.2, 8.70, 47.45) # (min_lon, max_lon, min_lat, max_lat)
-        # bounds = (-85, -11, 5, 40)
         shape = Polygon([
             (bounds[0], bounds[3]),
             (bounds[2], bounds[3]),
@@ -165,8 +163,8 @@ class TestLitPopExposure(unittest.TestCase):
         self.assertAlmostEqual(ent.gdf.latitude.min(), 47.20416666666661)
         # coord of largest value:
         self.assertEqual(ent.gdf.loc[ent.gdf.value == ent.gdf.value.max()].index[0], 434)
-        self.assertEAlmostEqual(ent.gdf.loc[ent.gdf.value == ent.gdf.value.max()].latitude.values[0], 47.34583333333325)
-        self.assertEAlmostEqual(ent.gdf.loc[ent.gdf.value == ent.gdf.value.max()].longiude.values[0], 8.529166666666658)
+        self.assertAlmostEqual(ent.gdf.loc[ent.gdf.value == ent.gdf.value.max()].latitude.values[0], 47.34583333333325)
+        self.assertAlmostEqual(ent.gdf.loc[ent.gdf.value == ent.gdf.value.max()].longitude.values[0], 8.529166666666658)
 
     def test_Liechtenstein_15_lit_pass(self):
         """Create Nightlights entity for Liechtenstein 2016:"""

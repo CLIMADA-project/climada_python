@@ -19,12 +19,13 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define LitPop class.
 """
 import logging
+from pathlib import Path
 import numpy as np
 import rasterio
 import geopandas
 from shapefile import Shape
 from shapely.geometry import Polygon, MultiPolygon
-from pathlib import Path
+
 import pandas as pd
 
 import climada.util.coordinates as u_coord
@@ -55,7 +56,7 @@ class LitPop(Exposures):
     country_names = ['CHE', 'Austria']
     exp.set_countries(country_names)
     exp.plot()
-        
+
     Attributes:
         exponents : tuple of two integers
             Defining powers (m, n) with which lit (nightlights) and pop (gpw)
@@ -69,7 +70,6 @@ class LitPop(Exposures):
             reprojected to target resolution before combining them.
         admin1_calc : boolean
             If True, admin1-level GDP is used fo intermediate disaggregation.
-        
     """
     _metadata = Exposures._metadata + ['exponents', 'fin_mode', 'gpw_version',
                                        'reproject_first', 'admin1_calc']
@@ -182,9 +182,8 @@ class LitPop(Exposures):
             raise ValueError('No valid country identified in %s, aborting.' % countries)
         litpop_list = [exp for exp in litpop_list if exp is not None]
         if countries_out:
-            LOGGER.warning('Some countries could not be identified and are ignored: '
-                           '%s. Litpop only initiated for: %s'
-                           % (countries_out, countries_in))
+            LOGGER.warning('Some countries could not be identified and are ignored: ' +
+                           '%s. Litpop only initiated for: %s', countries_out, countries_in)
 
         tag.description = ('LitPop Exposure for %s at %i as, year: %i, financial mode: %s, '
                            'exp: [%i, %i], admin1_calc: %s'
@@ -244,7 +243,7 @@ class LitPop(Exposures):
             data directory. The default is None.
         """
         self.set_countries(countries, res_arcsec=res_arcsec,
-                           exponents=(exponent, 0), fin_mode=fin_mode, 
+                           exponents=(exponent, 0), fin_mode=fin_mode,
                            reference_year=reference_year, gpw_version=GPW_VERSION,
                            data_dir=data_dir, reproject_first=True)
 
@@ -281,7 +280,7 @@ class LitPop(Exposures):
             raise ValueError("Either countries or shape required. Aborting.")
         if shape is None:
             self.set_countries(countries, res_arcsec=res_arcsec,
-                               exponents=(0, exponent), fin_mode='pop', 
+                               exponents=(0, exponent), fin_mode='pop',
                                reference_year=reference_year, gpw_version=gpw_version,
                                data_dir=data_dir)
         else:
@@ -375,11 +374,11 @@ class LitPop(Exposures):
                                gpw_version=gpw_version, data_dir=data_dir,
                                reproject_first=reproject_first)
         # loop over shapes and cut out exposure GDFs within each shape, combine:
-        for idx, shape in enumerate(shape_list):
+        for idx, shp in enumerate(shape_list):
             if idx==0:
-                gdf = exp.gdf.loc[exp.gdf.geometry.within(shape)]
+                gdf = exp.gdf.loc[exp.gdf.geometry.within(shp)]
             else:
-                gdf.append(exp.gdf.loc[exp.gdf.geometry.within(shape)],
+                gdf.append(exp.gdf.loc[exp.gdf.geometry.within(shp)],
                                ignore_index=True)
 
         tag = Tag()
@@ -503,7 +502,7 @@ class LitPop(Exposures):
                                            verbatim=not bool(idx),
                                            )
             if gdf_tmp is None:
-                LOGGER.debug(f'Skipping polygon with index {idx}.')
+                LOGGER.debug('Skipping polygon with index %i.', idx)
                 continue
             litpop_gdf = litpop_gdf.append(gdf_tmp)
             litpop_gdf.crs = meta_tmp['crs']
@@ -629,7 +628,7 @@ class LitPop(Exposures):
                                            verbatim=not bool(idx),
                                            )
             if gdf_tmp is None:
-                LOGGER.debug(f'Skipping polygon with index {idx}.')
+                LOGGER.debug('Skipping polygon with index %i.', idx)
                 continue
             total_population += meta_tmp['total_population']
             litpop_gdf = litpop_gdf.append(gdf_tmp)
@@ -682,7 +681,7 @@ class LitPop(Exposures):
                          reproject_first=True):
         """init LitPop exposure object for one single country
         See docstring of set_countries() for detailled description of parameters.
-        
+
         Parameters
         ----------
         country : str or int
@@ -717,7 +716,8 @@ class LitPop(Exposures):
         if not country_geometry.bounds: # check for empty shape
             LOGGER.error('No geometry found for country: %s.', country)
             return None
-        LOGGER.info('LitPop: Init Exposure for country: %s, %i ...\n ' %(iso3a, iso3n))
+        LOGGER.info('\n LitPop: Init Exposure for country: %s (%i)...\n',
+                    iso3a, iso3n)
         litpop_gdf = geopandas.GeoDataFrame()
         total_population = 0
 
@@ -748,7 +748,7 @@ class LitPop(Exposures):
                                                       reference_year, total_population)
 
         # disaggregate total value proportional to LitPop values:
-        if isinstance(total_value, float) or isinstance(total_value, int):
+        if isinstance(total_value, (float, int)):
             litpop_gdf['value'] = np.divide(litpop_gdf['value'],
                                             litpop_gdf['value'].sum()) * total_value
         elif total_value is not None:
@@ -821,11 +821,11 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
                                     )
     total_population = pop.sum()
     # import nightlight data (2d array) and associated meta data:
-    nl, meta_nl = nl_util.load_nasa_nl_shape(polygon,
-                                             reference_year,
-                                             data_dir=data_dir,
-                                             dtype=float
-                                             )
+    nlight, meta_nl = nl_util.load_nasa_nl_shape(polygon,
+                                                 reference_year,
+                                                 data_dir=data_dir,
+                                                 dtype=float
+                                                 )
     if reproject_first: # default is True
         # --> resampling to target res. before core calculation
         target_res_arcsec = res_arcsec
@@ -843,7 +843,7 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
                         global_transform[5])
     # reproject Lit and Pop input data to same grid:
     try:
-        [pop, nl], meta_out = reproject_input_data([pop, nl],
+        [pop, nlight], meta_out = reproject_input_data([pop, nlight],
                                                   [meta_pop, meta_nl],
                                                   i_ref=i_ref, # pop defines grid
                                                   target_res_arcsec=target_res_arcsec,
@@ -859,11 +859,11 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
             raise err
 
     # calculate Lit^m * Pop^n (but not yet disaggregating any total value to grid):
-    litpop_array = gridpoints_core_calc([nl, pop],
+    litpop_array = gridpoints_core_calc([nlight, pop],
                                         offsets=offsets,
                                         exponents=exponents,
                                         total_val_rescale=None)
-    if not reproject_first: 
+    if not reproject_first:
         # alternative option: reproject to target resolution after core calc.:
         try:
             [litpop_array], meta_out = reproject_input_data([litpop_array],
@@ -876,8 +876,7 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
                 # no grid point within shape after reprojection, None is returned.
                 LOGGER.info('No data point on destination grid within polygon.')
                 return None, None
-            else:
-                raise err
+            raise err
     # mask entries outside polygon (set to NaN):
     litpop_array = u_coord.mask_raster_with_geometry(litpop_array, meta_out['transform'],
                                                      [polygon], nodata=np.nan)
@@ -911,10 +910,10 @@ def get_value_unit(fin_mode):
 
     """
     if fin_mode in ['none', 'norm']:
-        return('')
+        return ''
     if fin_mode == 'pop':
-        return('people')
-    return('USD')
+        return 'people'
+    return 'USD'
 
 def get_total_value_per_country(cntry_iso3a, fin_mode, reference_year, total_population=None):
     """
@@ -955,33 +954,33 @@ def get_total_value_per_country(cntry_iso3a, fin_mode, reference_year, total_pop
     """
     if fin_mode == 'none':
         return None
-    elif fin_mode == 'pop':
+    if fin_mode == 'pop':
         return total_population
-    elif fin_mode == 'pc':
+    if fin_mode == 'pc':
         return(u_fin.world_bank_wealth_account(cntry_iso3a, reference_year,
                                                no_land=True)[1])
         # here, total_asset_val is Produced Capital "pc"
         # no_land=True returns value w/o the mark-up of 24% for land value
-    elif fin_mode == 'pc_land':
+    if fin_mode == 'pc_land':
         return(u_fin.world_bank_wealth_account(cntry_iso3a, reference_year,
                                                no_land=False)[1])
         # no_land=False returns pc value incl. the mark-up of 24% for land value
-    elif fin_mode == 'norm':
+    if fin_mode == 'norm':
         return 1
-    else: # GDP based total values:
-        gdp_value = u_fin.gdp(cntry_iso3a, reference_year)[1]
-        if fin_mode == 'gdp':
+    # GDP based total values:
+    gdp_value = u_fin.gdp(cntry_iso3a, reference_year)[1]
+    if fin_mode == 'gdp':
+        return gdp_value
+    if fin_mode == 'income_group': # gdp * (income group + 1)
+        return gdp_value*(u_fin.income_group(cntry_iso3a, reference_year)[1]+1)
+    if fin_mode in ('nfw', 'tw'):
+        wealthtogdp_factor = u_fin.wealth2gdp(cntry_iso3a, fin_mode == 'nfw',
+                                              reference_year)[1]
+        if np.isnan(wealthtogdp_factor):
+            LOGGER.warning("Missing wealth-to-gdp factor for country %s.", cntry_iso3a)
+            LOGGER.warning("Using GDP instead as total value.")
             return gdp_value
-        elif fin_mode == 'income_group': # gdp * (income group + 1)
-            return gdp_value*(u_fin.income_group(cntry_iso3a, reference_year)[1]+1)
-        elif fin_mode in ('nfw', 'tw'):
-            wealthtogdp_factor = u_fin.wealth2gdp(cntry_iso3a, fin_mode == 'nfw',
-                                                  reference_year)[1]
-            if np.isnan(wealthtogdp_factor):
-                LOGGER.warning("Missing wealth-to-gdp factor for country %s.", cntry_iso3a)
-                LOGGER.warning("Using GDP instead as total value.")
-                return gdp_value
-            return gdp_value * wealthtogdp_factor
+        return gdp_value * wealthtogdp_factor
     raise ValueError(f"Unsupported fin_mode: {fin_mode}")
 
 def reproject_input_data(data_array_list, meta_list,
@@ -989,7 +988,7 @@ def reproject_input_data(data_array_list, meta_list,
                         target_res_arcsec=None,
                         global_origins=(-180.0, 89.99999999999991),
                         dst_crs=None,
-                        resampling=None,
+                        resampling=rasterio.warp.Resampling.bilinear,
                         conserve=None):
     """
     Reprojects all arrays in data_arrays to a given resolution –
@@ -1048,7 +1047,7 @@ def reproject_input_data(data_array_list, meta_list,
     if target_res_arcsec is None:
         res_degree = meta_list[i_ref]['transform'][0] # reference grid
     else:
-        res_degree = target_res_arcsec / 3600 
+        res_degree = target_res_arcsec / 3600
     if dst_crs is None:
         dst_crs = meta_list[i_ref]['crs']
 
@@ -1061,7 +1060,8 @@ def reproject_input_data(data_array_list, meta_list,
     for idx, data in enumerate(data_array_list):
         # if target resolution corresponds to reference data resolution,
         # the reference data is not transformed:
-        if idx==i_ref and ((target_res_arcsec is None) or (np.round(meta_list[i_ref]['transform'][0],
+        if idx==i_ref and ((target_res_arcsec is None) or \
+                           (np.round(meta_list[i_ref]['transform'][0],
                             decimals=7)==np.round(res_degree, decimals=7))):
             data_out_list[idx] = data
             continue
@@ -1076,10 +1076,10 @@ def reproject_input_data(data_array_list, meta_list,
                                       dst_resolution=(res_degree, res_degree),
                                       dst_bounds=dst_bounds,
                                       global_origin=global_origins,
-                                      resampling=rasterio.warp.Resampling.bilinear,
+                                      resampling=resampling,
                                       conserve=conserve)
-    meta['height'] = data_out_list[idx].shape[0]
-    meta['width'] = data_out_list[idx].shape[1]
+    meta['height'] = data_out_list[-1].shape[0]
+    meta['width'] = data_out_list[-1].shape[1]
     return data_out_list, meta
 
 def gridpoints_core_calc(data_arrays, offsets=None, exponents=None,
@@ -1133,9 +1133,9 @@ def gridpoints_core_calc(data_arrays, offsets=None, exponents=None,
                 data_arrays[i_arr+1] = np.array(data_arrays[i_arr+1])
             if data_arrays[i_arr].shape != data_arrays[i_arr+1].shape:
                 raise ValueError("Elements in data_arrays don't agree in shape.")
-                
+
     except AttributeError as err:
-            raise TypeError("data_arrays or contained elements have wrong type.") from err
+        raise TypeError("data_arrays or contained elements have wrong type.") from err
 
     # if None, defaults for offsets and exponents are set:
     if offsets is None:
@@ -1159,16 +1159,14 @@ def gridpoints_core_calc(data_arrays, offsets=None, exponents=None,
 
     # Steps 4+5: if total value for rescaling is provided, result_array is normalized and
     # scaled with this total value (total_val_rescale):
-    if isinstance(total_val_rescale, float) or isinstance(total_val_rescale, int):
+    if isinstance(total_val_rescale, (float, int)):
         return np.divide(result_array, result_array.sum()) * total_val_rescale
-    elif total_val_rescale is not None:
+    if total_val_rescale is not None:
         raise TypeError("total_val_rescale must be int or float.")
-
     return result_array
 
-""" The following functions are only required if calc_admin1 is True, not core LitPop.
-This is mainly for backward compatibility."""
-
+# The following functions are only required if calc_admin1 is True,
+# not for core LitPop. They are maintained here mainly for backward compatibility
 def _check_excel_exists(file_path, file_name, xlsx_before_xls=True):
     """Checks if an Excel file with the name file_name in the folder file_path exists, checking for
     both xlsx and xls files.
@@ -1181,6 +1179,10 @@ def _check_excel_exists(file_path, file_name, xlsx_before_xls=True):
         file name which is checked. Extension is ignored
     xlsx_before_xls : boolean, optional
         If True, xlsx files are priorised over xls files. Default: True.
+    
+    Returns
+    -------
+    path: Path instance
     """
     try_ext = []
     if xlsx_before_xls:
@@ -1220,7 +1222,7 @@ def _grp_read(country_iso3, admin1_info=None, data_dir=SYSTEM_DIR):
         GRP for each admin1 unit name.
     """
     if admin1_info is None:
-        admin1_info, admin1_shapes = u_coord.get_admin1_info(country_iso3)
+        admin1_info, _ = u_coord.get_admin1_info(country_iso3)
         admin1_info = admin1_info[country_iso3]
     file_name = _check_excel_exists(data_dir.joinpath('GSDP'), str(country_iso3 + '_GSDP'))
     if file_name is not None:
@@ -1237,7 +1239,7 @@ def _grp_read(country_iso3, admin1_info=None, data_dir=SYSTEM_DIR):
         out_dict = dict.fromkeys([record['name'] for record in admin1_info])
         postals = [record['postal'] for record in admin1_info]
         # first nested loop. outer loop over region names in admin1_info:
-        for record_name in out_dict.keys():
+        for record_name in out_dict:
             # inner loop over region names in spreadsheet, find matches
             for idx, xls_name in enumerate(admin1_xls_data['State_Province'].tolist()):
                 subnat_shape_str = [c for c in record_name if c.isalpha() or c.isnumeric()]
@@ -1268,7 +1270,7 @@ def _calc_admin1_one_country(country, res_arcsec, exponents, fin_mode, total_val
     and a row "GSDP_ref" with either the GDP value or the share of the state in the national GDP.
     If only for certain states admin1 info is found, the rest of the country is assigned value
     according to the admin0 method.
-    
+
     See set_countries() for description of parameters.
 
     Parameters
