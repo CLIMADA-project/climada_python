@@ -364,6 +364,18 @@ class TestUncertainty(unittest.TestCase):
         unc.plot_sensitivity()
         plt.close()
 
+    def test_plot_sensitivity_2d(self):
+
+        exp_unc, impf_unc, _ = make_imp_uncs()
+        haz = haz_dem()
+        unc = UncImpact(exp_unc, impf_unc, haz)
+        unc.make_sample(N=1)
+
+        unc.calc_distribution()
+        unc.calc_sensitivity()
+        unc.plot_sensitivity2d()
+        plt.close()
+
 
     def test_plot_distribution(self):
 
