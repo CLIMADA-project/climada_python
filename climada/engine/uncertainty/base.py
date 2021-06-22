@@ -383,6 +383,19 @@ class Uncertainty():
             'bounds' : [[0, 1]]*len(self.param_labels)
             }
 
+    @property
+    def metric_names(self):
+        """
+        Return the names of the metrics
+
+        Returns
+        -------
+        list(str)
+            List with names of metrics
+
+        """
+        return list(self.metrics.keys())
+
 
     def make_sample(self, N, sampling_method='saltelli',
                           sampling_kwargs=None):
@@ -626,7 +639,7 @@ class Uncertainty():
                  "Please run an uncertainty analysis first.")
 
      if metric_list is None:
-         metric_list = list(self.metrics.keys())
+         metric_list = self.metric_names
 
      df_values = pd.DataFrame()
      for metric in metric_list:
@@ -662,7 +675,10 @@ class Uncertainty():
              continue
          data.hist(ax=ax, bins=30, density=True, histtype='bar',
                    color='lightsteelblue', edgecolor='black')
-         data.plot.kde(ax=ax, color='darkblue', linewidth=4, label='')
+         try:
+             data.plot.kde(ax=ax, color='darkblue', linewidth=4, label='')
+         except np.linalg.LinAlgError:
+             pass
          avg = df_values[col].mean()
          std = df_values[col].std()
          ax.axvline(np.log10(avg), color='darkorange', linestyle='dashed', linewidth=2,
