@@ -66,8 +66,7 @@ class LitPop(Exposures):
         gpw_version : int (optional)
             Version number of GPW population data, e.g. 11 for v4.11
     """
-    _metadata = Exposures._metadata + ['exponents', 'fin_mode', 'gpw_version',
-                                       'reproject_first', 'admin1_calc']
+    _metadata = Exposures._metadata + ['exponents', 'fin_mode', 'gpw_version']
 
     def set_countries(self, countries, res_arcsec=30,
                     exponents=(1,1), fin_mode='pc', total_values=None,
