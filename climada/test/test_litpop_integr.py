@@ -23,9 +23,11 @@ import numpy as np
 from shapely.geometry import Polygon
 
 from climada.entity.exposures.litpop import litpop as lp
+from climada.entity.exposures.litpop import gpw_population
 from climada.util.finance import world_bank_wealth_account, gdp, income_group
 import climada.util.coordinates as u_coord
 from climada.util.constants import SYSTEM_DIR
+from climada import CONFIG
 
 
 class TestLitPopExposure(unittest.TestCase):
@@ -171,7 +173,7 @@ class TestLitPopExposure(unittest.TestCase):
         country_name = 'Liechtenstein'
         ref_year = 2016
         ent = lp.LitPop()
-        ent.set_lit(country_name, reference_year=ref_year)
+        ent.set_nightlights(country_name, reference_year=ref_year)
 
         self.assertEqual(ent.gdf.value.sum(), 36469.0)
         self.assertEqual(ent.gdf.region_id[1], 438)
@@ -184,7 +186,7 @@ class TestLitPopExposure(unittest.TestCase):
         country_name = 'Liechtenstein'
         ref_year = 2015
         ent = lp.LitPop()
-        ent.set_pop(country_name, reference_year=ref_year)
+        ent.set_population(country_name, reference_year=ref_year)
 
         self.assertEqual(ent.gdf.value.sum(), 30068.970703125)
         self.assertEqual(ent.gdf.region_id[1], 438)
@@ -192,8 +194,8 @@ class TestLitPopExposure(unittest.TestCase):
         self.assertAlmostEqual(ent.gdf.latitude.max(), 47.2541666666666)
         self.assertAlmostEqual(ent.meta['transform'][0], 30/3600)
 
-class TestFunctionIntegration(unittest.TestCase):
-    """Test the integration of major functions within the LitPop module"""
+class TestAdmin1(unittest.TestCase):
+    """Test the admin1 functionalities within the LitPop module"""
 
     def test_set_countries_calc_admin1_pass(self):
         """test method set_countries with admin1_calc=True for Switzerland"""
@@ -217,8 +219,43 @@ class TestFunctionIntegration(unittest.TestCase):
         self.assertEqual(ent.gdf.region_id[88], 756)
         self.assertAlmostEqual(ent.gdf.latitude.max(), 47.708333333333336)
 
+class TestGPWPopulation(unittest.TestCase):
+    """Test gpw_population submodule"""
+
+    def test_get_gpw_file_path_pass(self):
+        """test method gpw_population.get_gpw_file_path"""
+        gpw_version = CONFIG.exposures.litpop.gpw_population.gpw_version.int()
+        try:
+            path = gpw_population.get_gpw_file_path(gpw_version, 2020, verbatim=False)
+            self.assertIn('gpw_v4_population', str(path))
+        except FileExistsError as err:
+            self.assertIn('lease download', err.args[0])
+            self.skipTest('GPW input data for GPW v4.%i not found.' %(gpw_version))
+
+    def test_load_gpw_pop_shape_pass(self):
+        """test method gpw_population.load_gpw_pop_shape"""
+        gpw_version = CONFIG.exposures.litpop.gpw_population.gpw_version.int()
+        bounds = (8.41, 47.2, 8.70, 47.45) # (min_lon, max_lon, min_lat, max_lat)
+        shape = Polygon([
+            (bounds[0], bounds[3]),
+            (bounds[2], bounds[3]),
+            (bounds[2], bounds[1]),
+            (bounds[0], bounds[1])
+            ])
+        try:
+            data, meta, glb_transform = \
+                gpw_population.load_gpw_pop_shape(shape, 2020, gpw_version,
+                                                  verbatim=False)
+            self.assertEqual(data.shape, (31, 36))
+            self.assertAlmostEqual(meta['transform'][0], 0.00833333333333333)
+            self.assertAlmostEqual(meta['transform'][0], glb_transform[0])
+
+        except FileExistsError as err:
+            self.assertIn('lease download', err.args[0])
+            self.skipTest('GPW input data for GPW v4.%i not found.' %(gpw_version))
+
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestLitPopExposure)
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestFunctionIntegration))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAdmin1))
     unittest.TextTestRunner(verbosity=2).run(TESTS)

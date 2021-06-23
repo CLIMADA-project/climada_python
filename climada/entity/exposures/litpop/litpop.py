@@ -15,7 +15,7 @@ You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
-
+f
 Define LitPop class.
 """
 import logging
@@ -221,47 +221,58 @@ class LitPop(Exposures):
             self.meta = {}
         self.check()
 
-    def set_lit(self, countries, res_arcsec=15, exponent=1, fin_mode='none',
-                reference_year=2016, data_dir=SYSTEM_DIR):
+    def set_nightlights(self, countries=None, shape=None, res_arcsec=15,
+                        reference_year=2016, data_dir=SYSTEM_DIR):
         """
-        initiate country exposures from pure nightlight data
+        Initiate exposures instance with value equal to nightlight intensity.
+        Provide either `countries` or `shape`.
+
+        Convenience wrapper around `set_countries` / `set_custom_shape`.
 
         Parameters
         ----------
-        countries : list or str (optional)
+        countries : list or str, optional
             list containing country identifiers (name or iso3)
+        shape : Shape, Polygon or MultiPolygon, optional
+            geographical shape of target region, alternative to `countries`.
         res_arcsec : int, optional
             Resolution in arc seconds. The default is 15.
-        exponent : int or float >= 0, optional
-            exponent m in Lit^m. The default is 1.
-        fin_mode : str
-            c.f. `set_countries`, here, the default is 'none', i.e.
-            pure nightlight**exponent is returned.
         reference_year : int, optional
             Target year. The default is 2020.
         data_dir : Path, optional
             data directory. The default is None.
         """
-        self.set_countries(countries, res_arcsec=res_arcsec,
-                           exponents=(exponent, 0), fin_mode=fin_mode,
-                           reference_year=reference_year, gpw_version=GPW_VERSION,
-                           data_dir=data_dir, reproject_first=True)
+        if countries is None and shape is None:
+            raise ValueError("Either `countries` or `shape` required. Aborting.")
+        if countries is not None and shape is not None:
+            raise ValueError("Not allowed to set both `countries` and `shape`. Aborting.")
+        if countries is not None:
+            self.set_countries(countries, res_arcsec=res_arcsec,
+                               exponents=(1,0), fin_mode='none',
+                               reference_year=reference_year, gpw_version=GPW_VERSION,
+                               data_dir=data_dir)
+        else:
+            self.set_custom_shape(shape, None, res_arcsec=res_arcsec,
+                                  exponents=(1,0), value_unit='',
+                                  reference_year=reference_year,
+                                  gpw_version=GPW_VERSION, data_dir=SYSTEM_DIR)
 
-    def set_pop(self, countries=None, shape=None, res_arcsec=30, exponent=1,
-                reference_year=2020, gpw_version=GPW_VERSION, data_dir=SYSTEM_DIR):
+    def set_population(self, countries=None, shape=None, res_arcsec=30,
+                       reference_year=2020, gpw_version=GPW_VERSION, data_dir=SYSTEM_DIR):
         """
-        initiate Exposure with pure population data
+        Initiate exposures instance with value equal to GPW population count.
+        Provide either `countries` or `shape`.
+
+        Convenience wrapper around `set_countries` / `set_custom_shape`.
 
         Parameters
         ----------
         countries : list or str (optional)
             list containing country identifiers (name or iso3)
         shape : Shape, Polygon or MultiPolygon, optional
-            shape to crop results to, overrules countries
+            geographical shape of target region, alternative to `countries`.
         res_arcsec : int, optional
             Resolution in arc seconds. The default is 30.
-        exponent : int or float >= 0, optional
-            exponent n in Pop^n. The default is 1.
         reference_year : int, optional
             Target year, closest GPW data year is returned.
             The default is 2020.
@@ -275,22 +286,20 @@ class LitPop(Exposures):
         ValueError
             Either countries or shape is required.
         """
-
         if countries is None and shape is None:
-            raise ValueError("Either countries or shape required. Aborting.")
-        if shape is None:
+            raise ValueError("Either `countries` or `shape` required. Aborting.")
+        if countries is not None and shape is not None:
+            raise ValueError("Not allowed to set both `countries` and `shape`. Aborting.")
+        if countries is not None:
             self.set_countries(countries, res_arcsec=res_arcsec,
-                               exponents=(0, exponent), fin_mode='pop',
+                               exponents=(0,1), fin_mode='pop',
                                reference_year=reference_year, gpw_version=gpw_version,
                                data_dir=data_dir)
         else:
-            if countries is not None:
-                LOGGER.info("Using shape provided instead of countries' shapes. "
-                            "To use countries' shapes, set shape=None")
-            self.set_custom_shape_population(shape, res_arcsec=res_arcsec,
-                                             exponents=(0,exponent),
-                                             reference_year=reference_year,
-                                             gpw_version=gpw_version, data_dir=data_dir)
+            self.set_custom_shape(shape, None, res_arcsec=res_arcsec, exponents=(0,1),
+                                  value_unit='people', reference_year=reference_year,
+                                  gpw_version=gpw_version, data_dir=data_dir)
+
     def set_custom_shape_from_country(self, shape, country, res_arcsec=30,
                                       exponents=(1,1), fin_mode='pc',
                                       admin1_calc=False, reference_year=2020,
@@ -351,22 +360,7 @@ class LitPop(Exposures):
         None.
 
         """
-        if isinstance(shape, Shape): # convert to list of Polygon objects:
-            shape_list = [Polygon(shape.points[shape.parts[i]:part-1])
-                          for i, part in enumerate(list(shape.parts[1:])+[0])]
-        elif isinstance(shape, MultiPolygon):
-            shape_list = list(shape)
-        elif isinstance(shape, Polygon):
-            shape_list = [shape]
-        elif isinstance(shape, list):
-            if not isinstance(shape[0], Polygon):
-                raise NotImplementedError("The parameter `shape` is allowed to be: "
-                                          "Polygon, MultiPolygon, or Shape instance, "
-                                          "or list of Polygon instances. Lists "
-                                          "with other content than Polygon are not "
-                                          "implemented.")
-            shape_list = shape
-
+        shape_list = _shape_to_list(shape)
         # init country exposure:
         exp = self._set_one_country(country, res_arcsec=res_arcsec, exponents=exponents,
                                fin_mode=fin_mode, total_value=None,
@@ -441,10 +435,9 @@ class LitPop(Exposures):
         shape : shapely.geometry.Polygon or MultiPolygon or Shape or list of
             Polygon objects.
             Geographical shape for which LitPop Exposure is to be initiated.
-        total_value : int or float
+        total_value : int, float or None type
             Total value to be disaggregated to grid in shape.
-            The default is None. If None, the total number is extracted from other
-            sources depending on the value of fin_mode and in_countries.
+            If None, no value is disaggregated.
         res_arcsec : float, optional
             Horizontal resolution in arc-sec.
             The default 30 arcsec corresponds to roughly 1 km.
@@ -471,22 +464,7 @@ class LitPop(Exposures):
         ValueError
         TypeError
         """
-
-        if isinstance(shape, Shape): # convert to list of Polygon objects:
-            shape_list = [Polygon(shape.points[shape.parts[i]:part-1])
-                          for i, part in enumerate(list(shape.parts[1:])+[0])]
-        elif isinstance(shape, MultiPolygon):
-            shape_list = list(shape)
-        elif isinstance(shape, Polygon):
-            shape_list = [shape]
-        elif isinstance(shape, list):
-            if not isinstance(shape[0], Polygon):
-                raise NotImplementedError("The parameter `shape` is allowed to be: "
-                                          "Polygon, MultiPolygon, or Shape instance, "
-                                          "or list of Polygon instances. Lists "
-                                          "with other content than Polygon are not "
-                                          "implemented.")
-            shape_list = shape
+        shape_list = _shape_to_list(shape)
 
         tag = Tag()
 
@@ -507,13 +485,12 @@ class LitPop(Exposures):
             litpop_gdf = litpop_gdf.append(gdf_tmp)
             litpop_gdf.crs = meta_tmp['crs']
 
-
         # disaggregate total value proportional to LitPop values:
         if isinstance(total_value, (float, int)):
             litpop_gdf['value'] = np.divide(litpop_gdf['value'],
                                             litpop_gdf['value'].sum()) * total_value
-        else:
-            raise TypeError("total_value must be int or float.")
+        elif total_value is not None:
+            raise TypeError("total_value must be int, float or None.")
 
         tag.description = ('LitPop Exposure for custom shape at %i as, year: %i, '
                            'exp: [%i, %i]'
@@ -528,129 +505,6 @@ class LitPop(Exposures):
             ref_year=reference_year,
             tag=tag,
             value_unit=value_unit,
-            exponents = exponents,
-            gpw_version = gpw_version,
-            fin_mode = None,
-            reproject_first = reproject_first,
-            admin1_calc = False
-            )
-
-        try:
-            rows, cols, ras_trans = u_coord.pts_to_raster_meta(
-                (self.gdf.longitude.min(), self.gdf.latitude.min(),
-                 self.gdf.longitude.max(), self.gdf.latitude.max()),
-                u_coord.get_resolution(self.gdf.longitude, self.gdf.latitude))
-            self.meta = {
-                'width': cols,
-                'height': rows,
-                'crs': self.crs,
-                'transform': ras_trans,
-            }
-        except ValueError:
-            LOGGER.warning('Could not write attribute meta, because exposure'
-                           ' has only 1 data point')
-            self.meta = {}
-
-    def set_custom_shape_population(self, shape, res_arcsec=30, exponents=(0,1),
-                                    reference_year=2020, gpw_version=GPW_VERSION,
-                                    data_dir=SYSTEM_DIR, reproject_first=True):
-        """init LitPop exposure object for a custom shape with total value
-        equal to population in GPW data within shape.
-
-        Sets attributes `ref_year`, `tag`, `crs`, `value`, `geometry`, `meta`,
-        `value_unit`, `exponents`,`fin_mode`, `gpw_version`, `reproject_first`,
-        and `admin1_calc`.
-
-        This method can be used to initiated Population Exposure for sub-national
-        regions such as states, districts, cantons, cities, ... but shapes
-        need to be provided manually.
-        If these required input parameters are not known / available,
-        better initiate Exposure for entire country and extract shape afterwards.
-
-        Parameters
-        ----------
-        shape : shapely.geometry.Polygon or MultiPolygon or Shape or list of
-            Polygon objects
-            geographical shape for which LitPop Exposure is
-            to be initaited
-        res_arcsec : float, optional
-            Horizontal resolution in arc-sec.
-            The default 30 arcsec corresponds to roughly 1 km.
-        exponents : tuple of two integers, optional
-            Defining power with which lit (nightlights) and pop (gpw) go into LitPop.
-        reference_year : int, optional
-            Reference year for data sources. Default: 2020
-        gpw_version : int, optional
-            Version number of GPW population data.
-            The default is set in CONFIG.
-        data_dir : Path (optional)
-            redefines path to input data directory. The default is SYSTEM_DIR.
-        reproject_first : boolean
-            First reproject nightlight (Lit) and population (Pop) data to target
-            resolution before combining them as Lit^m * Pop^n?
-            The default is True. Warning: Setting this to False affects the
-            disaggregation results.
-
-        Raises
-        ------
-        NotImplementedError
-        ValueError
-        TypeError
-        """
-
-        if isinstance(shape, Shape): # convert to list of Polygon objects:
-            shape_list = [Polygon(shape.points[shape.parts[i]:part-1])
-                          for i, part in enumerate(list(shape.parts[1:])+[0])]
-        elif isinstance(shape, MultiPolygon):
-            shape_list = list(shape)
-        elif isinstance(shape, Polygon):
-            shape_list = [shape]
-        elif isinstance(shape, list):
-            if not isinstance(shape[0], Polygon):
-                raise NotImplementedError("The parameter 'shape' is allowed to be: "
-                                          "Polygon, MultiPolygon, or Shape instance, "
-                                          "or list of Polygon instances. Lists "
-                                          "with other content than Polygon are not "
-                                          "implemented.")
-            shape_list = shape
-
-        tag = Tag()
-        # init LitPop GeoDataFrame for shape:
-        total_population = 0
-        litpop_gdf = geopandas.GeoDataFrame()
-        for idx, polygon in enumerate(shape_list):
-            # get litpop data for each polygon and combine into GeoDataFrame:
-            gdf_tmp, meta_tmp = \
-                _get_litpop_single_polygon(polygon, reference_year,
-                                           res_arcsec, data_dir,
-                                           gpw_version, reproject_first,
-                                           exponents,
-                                           verbatim=not bool(idx),
-                                           )
-            if gdf_tmp is None:
-                LOGGER.debug('Skipping polygon with index %i.', idx)
-                continue
-            total_population += meta_tmp['total_population']
-            litpop_gdf = litpop_gdf.append(gdf_tmp)
-            litpop_gdf.crs = meta_tmp['crs']
-
-        # disaggregate total value proportional to LitPop values:
-        litpop_gdf['value'] = np.divide(litpop_gdf['value'],
-                                        litpop_gdf['value'].sum()) * total_population
-
-        tag.description = ('Population Exposure for custom shape at %i as, year: %i, '
-                           'exp: [%i, %i]'
-                           % (res_arcsec, reference_year, exponents[0], exponents[1]))
-
-        litpop_gdf[INDICATOR_IMPF] = 1
-
-        Exposures.__init__(
-            self,
-            data=litpop_gdf,
-            crs=litpop_gdf.crs,
-            ref_year=reference_year,
-            tag=tag,
-            value_unit=get_value_unit('pop'),
             exponents = exponents,
             gpw_version = gpw_version,
             fin_mode = None,
@@ -1164,6 +1018,38 @@ def gridpoints_core_calc(data_arrays, offsets=None, exponents=None,
     if total_val_rescale is not None:
         raise TypeError("total_val_rescale must be int or float.")
     return result_array
+
+def _shape_to_list(shape):
+    """check `shape` type and convert to list.
+
+    Parameters
+    ----------
+    shape : Polygon, MultiPolygon, Shape or list
+        The parameter `shape` is allowed to be: Polygon, MultiPolygon, or Shape,
+        or list of Polygon instances. C.f. shapefile.Shape, 
+        shapely.geometry.Polygon and shapely.geometry.MultiPolygon.
+
+    Raises
+    ------
+    TypeError
+
+    Returns
+    -------
+    shape_list : list
+        list containing single shape or Polygon instances
+"""
+    if isinstance(shape, Shape):
+        return [Polygon(shape.points[shape.parts[i]:part-1])
+                for i, part in enumerate(list(shape.parts[1:])+[0])]
+    if isinstance(shape, MultiPolygon):
+        return list(shape)
+    if isinstance(shape, Polygon):
+        return [shape]
+    if isinstance(shape, list) and isinstance(shape[0], Polygon):
+        return shape
+    raise TypeError("The parameter `shape` is allowed to be: Polygon, MultiPolygon,"
+                    " Shape instance, or list of Polygon instances.")
+
 
 # The following functions are only required if calc_admin1 is True,
 # not for core LitPop. They are maintained here mainly for backward compatibility
