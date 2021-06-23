@@ -65,11 +65,6 @@ class LitPop(Exposures):
             Socio-economic value to be used as an asset base that is disaggregated
         gpw_version : int (optional)
             Version number of GPW population data, e.g. 11 for v4.11
-        reproject_first : boolean
-            If True, nightlight (Lit) and population (Pop) data is first
-            reprojected to target resolution before combining them.
-        admin1_calc : boolean
-            If True, admin1-level GDP is used fo intermediate disaggregation.
     """
     _metadata = Exposures._metadata + ['exponents', 'fin_mode', 'gpw_version',
                                        'reproject_first', 'admin1_calc']
@@ -200,8 +195,6 @@ class LitPop(Exposures):
             exponents = exponents,
             gpw_version = gpw_version,
             fin_mode = fin_mode,
-            reproject_first = reproject_first,
-            admin1_calc = admin1_calc
         )
 
         try:
@@ -392,8 +385,6 @@ class LitPop(Exposures):
             exponents = exponents,
             gpw_version = gpw_version,
             fin_mode = fin_mode,
-            reproject_first = reproject_first,
-            admin1_calc = admin1_calc
         )
 
         try:
@@ -508,8 +499,6 @@ class LitPop(Exposures):
             exponents = exponents,
             gpw_version = gpw_version,
             fin_mode = None,
-            reproject_first = reproject_first,
-            admin1_calc = False
             )
 
         try:
