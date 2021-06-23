@@ -696,8 +696,7 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
             if verbatim:
                 LOGGER.info('No data point on destination grid within polygon.')
             return None, None
-        else:
-            raise err
+        raise err
 
     # calculate Lit^m * Pop^n (but not yet disaggregating any total value to grid):
     litpop_array = gridpoints_core_calc([nlight, pop],
@@ -1013,7 +1012,7 @@ def _shape_to_list(shape):
     ----------
     shape : Polygon, MultiPolygon, Shape or list
         The parameter `shape` is allowed to be: Polygon, MultiPolygon, or Shape,
-        or list of Polygon instances. C.f. shapefile.Shape, 
+        or list of Polygon instances. C.f. shapefile.Shape,
         shapely.geometry.Polygon and shapely.geometry.MultiPolygon.
 
     Raises
@@ -1052,7 +1051,7 @@ def _check_excel_exists(file_path, file_name, xlsx_before_xls=True):
         file name which is checked. Extension is ignored
     xlsx_before_xls : boolean, optional
         If True, xlsx files are priorised over xls files. Default: True.
-    
+
     Returns
     -------
     path: Path instance
