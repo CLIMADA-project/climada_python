@@ -514,6 +514,13 @@ class Centroids():
         Rasters are converted to points and raster information is lost.
         All centroids must have the same CRS.
 
+        In any case, the attribute .geometry is computed for all centroids.
+        When at least one centroids has one of the following property
+        defined, it is also computed for all others.
+        .area_pixel, .dist_coast, .on_land, .region_id, .elevetaion'
+        Caution: the input objects are modified in place. Missing properties
+        are added, existing ones are not overwritten.
+
         Parameters
         ----------
         others : any number of climada.hazard.Centroids()
@@ -532,8 +539,6 @@ class Centroids():
             cent_list =  [self] + list(others)
 
         #Set attributes to centroids if missing in one but defined in other
-        is_geom = np.any([cent.geometry.any() for cent in cent_list]) \
-            and not np.all([cent.geometry.any() for cent in cent_list])
         is_area_pixel = np.any([cent.area_pixel.any() for cent in cent_list]) \
             and not np.all([cent.area_pixel.any() for cent in cent_list])
         is_dist_coast = np.any([cent.dist_coast.any() for cent in cent_list]) \
@@ -548,15 +553,19 @@ class Centroids():
         for cent in cent_list:
             if cent.meta and not cent.lat.any():
                 cent.set_meta_to_lat_lon()
-            if is_geom:
-                cent.set_geometry_points()
-                if not u_coord.equal_crs(cent.crs, self.crs):
-                        raise ValueError('Different CRS are not accepted.')
-            if is_area_pixel: cent.set_area_pixel()
-            if is_dist_coast: cent.set_dist_coast()
-            if is_on_land: cent.set_on_land()
-            if is_region_id: cent.set_region_id()
-            if is_elevation: cent.set_elevation()
+            cent.set_geometry_points()
+            if not u_coord.equal_crs(cent.crs, self.crs):
+                    raise ValueError('Different CRS are not accepted.')
+            if is_area_pixel and not cent.area_pixel.any():
+                cent.set_area_pixel()
+            if is_dist_coast and not cent.dist_coast.any():
+                cent.set_dist_coast()
+            if is_on_land and not len(cent.on_land) > 0:
+                cent.set_on_land()
+            if is_region_id and not cent.region_id.any():
+                cent.set_region_id()
+            if is_elevation and not cent.elevation.any():
+                cent.set_elevation()
 
         #concatenate attributes
         centroids= Centroids()
