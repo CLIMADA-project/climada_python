@@ -529,7 +529,7 @@ class Centroids():
         Returns
         -------
         centroids : climada.hazard.Centroids()
-            Centroids containing the union of the centroids in centroids_list.
+            Centroids containing the union of the centroids in others.
 
         """
 
