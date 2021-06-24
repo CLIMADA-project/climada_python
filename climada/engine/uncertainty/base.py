@@ -34,9 +34,11 @@ import matplotlib.pyplot as plt
 
 from climada.util.value_representation import value_to_monetary_unit as u_vtm
 from climada.util.value_representation import sig_dig as u_sig_dig
+from climada.util.config import setup_logging as u_setup_logging
 from climada import CONFIG
 
 LOGGER = logging.getLogger(__name__)
+u_setup_logging()
 
 # Metrics that are multi-dimensional
 METRICS_2D = ['eai_exp', 'at_event']

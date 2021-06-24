@@ -32,8 +32,10 @@ from climada.engine import Impact
 from climada.engine.uncertainty.base import Uncertainty, UncVar
 from climada.util import log_level
 from climada.util import plot as u_plot
+from climada.util.config import setup_logging as u_setup_logging
 
 LOGGER = logging.getLogger(__name__)
+u_setup_logging()
 
 
 class UncImpact(Uncertainty):
