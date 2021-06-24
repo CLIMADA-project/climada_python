@@ -33,6 +33,7 @@ from climada.util import ureg
 from climada.util.constants import TC_ANDREW_FL
 import climada.util.coordinates as u_coord
 from climada.entity import Exposures
+from datetime import datetime as dt
 
 DATA_DIR = CONFIG.hazard.test_data.dir()
 TEST_TRACK = DATA_DIR.joinpath("trac_brb_test.csv")
@@ -283,6 +284,23 @@ class TestIbtracs(unittest.TestCase):
         for tr in tc_track.data:
             self.assertEqual(tr.basin[0], "EP")
             self.assertIn("WP", tr.basin)
+    
+    def test_discard_single_points(self):
+        """Check discard_single_points option"""
+        tc_track_singlept = tc.TCTracks()
+        passed = False
+        for year in range(1951, 1981):
+            tc_track_singlept.read_ibtracs_netcdf(provider='usa',
+                                         year_range=(year,year),
+                                         discard_single_points=False)
+            n_singlepts = np.sum([x.time.size == 1 for x in tc_track_singlept.data])
+            if n_singlepts > 0:
+                tc_track = tc.TCTracks()
+                tc_track.read_ibtracs_netcdf(provider='usa', year_range=(year,year))
+                if tc_track.size == tc_track_singlept.size - n_singlepts:
+                    passed = True
+                    break
+        self.assertTrue(passed)
 
 class TestIO(unittest.TestCase):
     """Test reading of tracks from files of different formats"""
@@ -851,6 +869,42 @@ class TestFuncs(unittest.TestCase):
 
         self.assertTrue(tracks_in_exp.get_track(storms['in']))
         self.assertFalse(tracks_in_exp.get_track(storms['out']))
+    
+    def test_get_landfall_idx(self):
+        """Test identification of landfalls"""
+        tr_ds = xr.Dataset()
+        datetimes = list()
+        for h in range(0, 21, 3):
+            datetimes.append(dt(2000, 1, 1, h))
+        tr_ds.coords['time'] = ('time', datetimes)
+        # no landfall
+        tr_ds['on_land'] = np.repeat(np.array([False]), 8)
+        sea_land_idx, land_sea_idx = tc._get_landfall_idx(tr_ds)
+        self.assertEqual([len(sea_land_idx), len(land_sea_idx)], [0,0])
+        # single landfall
+        tr_ds['on_land'] = np.array([False, False, True, True, True, False, False, False])
+        sea_land_idx, land_sea_idx = tc._get_landfall_idx(tr_ds)
+        self.assertEqual([len(sea_land_idx), len(land_sea_idx)], [1,1])
+        self.assertEqual([sea_land_idx, land_sea_idx], [2, 5])
+        # single landfall from starting point
+        tr_ds['on_land'] = np.array([True, True, True, True, True, False, False, False])
+        sea_land_idx, land_sea_idx = tc._get_landfall_idx(tr_ds)
+        self.assertEqual([len(sea_land_idx), len(land_sea_idx)], [0,0])
+        sea_land_idx, land_sea_idx = tc._get_landfall_idx(tr_ds, include_starting_landfall=True)
+        self.assertEqual([sea_land_idx, land_sea_idx], [0, 5])
+        # two landfalls
+        tr_ds['on_land'] = np.array([False, True, True, False, False, False, True, True])
+        sea_land_idx, land_sea_idx = tc._get_landfall_idx(tr_ds)
+        self.assertEqual([len(sea_land_idx), len(land_sea_idx)], [2,2])
+        self.assertEqual(sea_land_idx.tolist(), [1,6])
+        self.assertEqual(land_sea_idx.tolist(), [3,7])
+        # two landfalls, starting on land
+        tr_ds['on_land'] = np.array([True, True, False, False, True, True, False, False])
+        sea_land_idx, land_sea_idx = tc._get_landfall_idx(tr_ds)
+        self.assertEqual([sea_land_idx, land_sea_idx], [4, 6])
+        sea_land_idx, land_sea_idx = tc._get_landfall_idx(tr_ds, include_starting_landfall=True)
+        self.assertEqual(sea_land_idx.tolist(), [0,4])
+        self.assertEqual(land_sea_idx.tolist(), [2,6])
 
 
 # Execute Tests
