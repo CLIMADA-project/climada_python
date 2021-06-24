@@ -1615,7 +1615,7 @@ def _get_landfall_idx(track, include_starting_landfall=False):
     if track.on_land[0]:
         # track starts over land: remove first land-to-sea transition (not a landfall)?
         if include_starting_landfall:
-            sea_land_idx = np.append(1, sea_land_idx)
+            sea_land_idx = np.append(0, sea_land_idx)
         else:
             land_sea_idx = land_sea_idx[1:]
     if land_sea_idx.size != sea_land_idx.size:
