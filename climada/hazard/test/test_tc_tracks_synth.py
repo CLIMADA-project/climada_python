@@ -433,6 +433,15 @@ class TestSynth(unittest.TestCase):
         assert TC_ANDREW_FL.is_file()
         tc_track.read_processed_ibtracs_csv(TC_ANDREW_FL)
         nb_synth_tracks = 2
+        # should work if using global parameters
+        with self.assertLogs('climada.hazard.tc_tracks_synth', level='DEBUG') as cm0:
+            tc_track.calc_perturbed_trajectories(nb_synth_tracks=nb_synth_tracks, seed=25, decay=True,
+                                                 use_global_decay_params=True)
+        self.assertEqual(len(cm0), 2)
+        self.assertEqual(tc_track.size, 3)
+        # but alert the user otherwise
+        tc_track = tc.TCTracks()
+        tc_track.read_processed_ibtracs_csv(TC_ANDREW_FL)
         with self.assertLogs('climada.hazard.tc_tracks_synth', level='DEBUG') as cm:
             tc_track.calc_perturbed_trajectories(nb_synth_tracks=nb_synth_tracks, seed=25, decay=True,
                                                  use_global_decay_params=False)
@@ -465,6 +474,34 @@ class TestSynth(unittest.TestCase):
                             "central_pressure", "environmental_pressure"]:
                 np.testing.assert_array_equal(orig_track[varname].values,
                                               syn_track[varname].values)
+
+    def test_random_walk_single_point(self):
+        tc_track = tc.TCTracks()
+        found = False
+        for year in range(1951, 1981):
+            tc_track.read_ibtracs_netcdf(provider='usa',
+                                         year_range=(year,year),
+                                         discard_single_points=False)
+            singlept = np.where([x.time.size == 1 for x in tc_track.data])[0]
+            found = len(singlept) > 0
+            if found:
+                # found a case with a single-point track, keep max three tracks for efficiency
+                tc_track.data = tc_track.data[max(0, singlept[0]-1):singlept[0]+2]
+                n_tr = tc_track.size
+                tc_track.equal_timestep()
+                tc_track.calc_perturbed_trajectories(nb_synth_tracks=2)
+                self.assertEqual((2+1)*n_tr, tc_track.size)
+                break
+        self.assertTrue(found)
+
+    def test_cutoff_tracks(self):
+        tc_track = tc.TCTracks()
+        tc_track.read_ibtracs_netcdf(storm_id='1986226N30276')
+        tc_track.equal_timestep()
+        with self.assertLogs('climada.hazard.tc_tracks_synth', level='DEBUG') as cm:
+            tc_track.calc_perturbed_trajectories(nb_synth_tracks=10)
+        self.assertIn('The following generated synthetic tracks moved beyond '
+                      'the range of [-70, 70] degrees latitude', cm.output[1])
 
 # Execute Tests
 if __name__ == "__main__":

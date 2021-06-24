@@ -874,7 +874,7 @@ class TestFuncs(unittest.TestCase):
         """Test identification of landfalls"""
         tr_ds = xr.Dataset()
         datetimes = list()
-        for h in range(0, 21, 3):
+        for h in range(0, 24, 3):
             datetimes.append(dt(2000, 1, 1, h))
         tr_ds.coords['time'] = ('time', datetimes)
         # no landfall
@@ -897,7 +897,7 @@ class TestFuncs(unittest.TestCase):
         sea_land_idx, land_sea_idx = tc._get_landfall_idx(tr_ds)
         self.assertEqual([len(sea_land_idx), len(land_sea_idx)], [2,2])
         self.assertEqual(sea_land_idx.tolist(), [1,6])
-        self.assertEqual(land_sea_idx.tolist(), [3,7])
+        self.assertEqual(land_sea_idx.tolist(), [3,8])
         # two landfalls, starting on land
         tr_ds['on_land'] = np.array([True, True, False, False, True, True, False, False])
         sea_land_idx, land_sea_idx = tc._get_landfall_idx(tr_ds)
