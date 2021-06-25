@@ -494,7 +494,7 @@ class Centroids():
         """Append centroids points.
 
         If centr is raster it is converted to points first using
-        Centroids.set_meta_to_lat_lon. Raster information will be lost.
+        Centroids.set_meta_to_lat_lon. Raster information in self will be lost.
 
         Note: self is modified in-place, and meta is set to {}.
 
