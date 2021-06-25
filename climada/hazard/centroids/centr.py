@@ -493,15 +493,20 @@ class Centroids():
     def append(self, centr):
         """Append centroids points.
 
-        If centr is raster it is converted to points first using
-        Centroids.set_meta_to_lat_lon. Raster information in self will be lost.
+        If centr or self are rasters they are converted to points first using
+        Centroids.set_meta_to_lat_lon. Note that self is modified in-place,
+        and meta is set to {}. Thus, raster information in self is lost.
 
-        Note: self is modified in-place, and meta is set to {}.
+        Note: this is a wrapper for centroids.union.
 
         Parameters
         ----------
         centr : Centroids
             Centroids to append. The centroids need to have the same CRS.
+
+        See Also
+        --------
+        union : Union of Centroid objects.
         """
         self.__dict__.update(self.union(centr).__dict__)
 
