@@ -1477,7 +1477,7 @@ class Hazard():
         ----------
         haz_list: list(climada.hazard.Hazard())
             Hazard instances of the same hazard type
-        centtroids: climada.hazard.Centroids(), optional
+        centroids: climada.hazard.Centroids(), optional
             Centroids instance on which to map the concatenated hazard.
             Default is None.
         threshold: int or float
