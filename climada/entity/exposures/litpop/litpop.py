@@ -33,7 +33,7 @@ import climada.util.finance as u_fin
 from climada.entity.tag import Tag
 from climada.entity.exposures.litpop import nightlight as nl_util
 from climada.entity.exposures.litpop import gpw_population as pop_util
-from climada.entity.exposures.base import Exposures, INDICATOR_IMPF
+from climada.entity.exposures.base import Exposures, INDICATOR_IMPF, DEF_REF_YEAR
 from climada.util.constants import SYSTEM_DIR
 from climada import CONFIG
 LOGGER = logging.getLogger(__name__)
@@ -67,10 +67,10 @@ class LitPop(Exposures):
     """
     _metadata = Exposures._metadata + ['exponents', 'fin_mode', 'gpw_version']
 
-    def set_countries(self, countries, res_arcsec=30,
-                    exponents=(1,1), fin_mode='pc', total_values=None,
-                    admin1_calc=False, reference_year=2020, gpw_version=GPW_VERSION,
-                    data_dir=SYSTEM_DIR, reproject_first=True):
+    def set_countries(self, countries, res_arcsec=30, exponents=(1,1),
+                      fin_mode='pc', total_values=None, admin1_calc=False,
+                      reference_year=DEF_REF_YEAR, gpw_version=GPW_VERSION,
+                      data_dir=SYSTEM_DIR, reproject_first=True):
         """init LitPop exposure object for a list of countries (admin 0).
         Sets attributes `ref_year`, `tag`, `crs`, `value`, `geometry`, `meta`,
         `value_unit`, `exponents`,`fin_mode`, `gpw_version`, `reproject_first`,
@@ -112,7 +112,7 @@ class LitPop(Exposures):
         admin1_calc : boolean, optional
             If True, distribute admin1-level GDP (if available). Default: False
         reference_year : int, optional
-            Reference year for data sources. Default: 2020
+            Reference year. Default: CONFIG.exposures.def_ref_year.
         gpw_version : int, optional
             Version number of GPW population data.
             The default is GPW_VERSION
@@ -213,7 +213,7 @@ class LitPop(Exposures):
         self.check()
 
     def set_nightlights(self, countries=None, shape=None, res_arcsec=15,
-                        reference_year=2016, data_dir=SYSTEM_DIR):
+                        reference_year=DEF_REF_YEAR, data_dir=SYSTEM_DIR):
         """
         Initiate exposures instance with value equal to nightlight intensity.
         Provide either `countries` or `shape`.
@@ -229,7 +229,7 @@ class LitPop(Exposures):
         res_arcsec : int, optional
             Resolution in arc seconds. The default is 15.
         reference_year : int, optional
-            Target year. The default is 2020.
+            Reference year. The default is CONFIG.exposures.def_ref_year.
         data_dir : Path, optional
             data directory. The default is None.
         """
@@ -249,7 +249,8 @@ class LitPop(Exposures):
                                   gpw_version=GPW_VERSION, data_dir=SYSTEM_DIR)
 
     def set_population(self, countries=None, shape=None, res_arcsec=30,
-                       reference_year=2020, gpw_version=GPW_VERSION, data_dir=SYSTEM_DIR):
+                       reference_year=DEF_REF_YEAR, gpw_version=GPW_VERSION,
+                       data_dir=SYSTEM_DIR):
         """
         Initiate exposures instance with value equal to GPW population count.
         Provide either `countries` or `shape`.
@@ -265,8 +266,8 @@ class LitPop(Exposures):
         res_arcsec : int, optional
             Resolution in arc seconds. The default is 30.
         reference_year : int, optional
-            Target year, closest GPW data year is returned.
-            The default is 2020.
+            Reference year (closest available GPW data year is used)
+            The default is CONFIG.exposures.def_ref_year.
         gpw_version : int, optional
             specify GPW data verison. The default is 11.
         data_dir : Path, optional
@@ -293,7 +294,7 @@ class LitPop(Exposures):
 
     def set_custom_shape_from_country(self, shape, country, res_arcsec=30,
                                       exponents=(1,1), fin_mode='pc',
-                                      admin1_calc=False, reference_year=2020,
+                                      admin1_calc=False, reference_year=DEF_REF_YEAR,
                                       gpw_version=GPW_VERSION,
                                       data_dir=SYSTEM_DIR, reproject_first=True):
         """
@@ -403,7 +404,7 @@ class LitPop(Exposures):
         self.check()
 
     def set_custom_shape(self, shape, total_value, res_arcsec=30, exponents=(1,1),
-                         value_unit='USD', reference_year=2020,
+                         value_unit='USD', reference_year=DEF_REF_YEAR,
                          gpw_version=GPW_VERSION, data_dir=SYSTEM_DIR,
                          reproject_first=True):
         """init LitPop exposure object for a custom shape.
@@ -435,7 +436,7 @@ class LitPop(Exposures):
         value_unit : str
             Unit of exposure values. The default is USD.
         reference_year : int, optional
-            Reference year for data sources. Default: 2020
+            Reference year for data sources. Default: CONFIG.exposures.def_ref_year
         gpw_version : int, optional
             Version number of GPW population data.
             The default is set in CONFIG.
@@ -517,8 +518,8 @@ class LitPop(Exposures):
 
     @staticmethod
     def _set_one_country(country, res_arcsec=30, exponents=(1,1), fin_mode=None,
-                         total_value=None,
-                         reference_year=2020, gpw_version=GPW_VERSION, data_dir=SYSTEM_DIR,
+                         total_value=None, reference_year=DEF_REF_YEAR,
+                         gpw_version=GPW_VERSION, data_dir=SYSTEM_DIR,
                          reproject_first=True):
         """init LitPop exposure object for one single country
         See docstring of set_countries() for detailled description of parameters.
