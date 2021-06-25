@@ -110,7 +110,7 @@ class Centroids():
     def __init__(self):
         """Initialize to None raster and vector"""
         self.meta = dict()
-        self.geometry = gpd.GeoSeries(crs=DEF_CRS)
+        self.geometry = gpd.GeoSeries()
         self.lat = np.array([])
         self.lon = np.array([])
         self.area_pixel = np.array([])
@@ -558,6 +558,8 @@ class Centroids():
         for cent in cent_list:
             if cent.meta and not cent.lat.any():
                 cent.set_meta_to_lat_lon()
+            if cent.crs is None:
+                cent.geometry = cent.geometry.set_crs(DEF_CRS)
             cent.set_geometry_points()
             if not u_coord.equal_crs(cent.crs, cent_list[0].crs):
                     raise ValueError('Different CRS are not accepted.')
