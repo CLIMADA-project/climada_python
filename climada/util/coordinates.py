@@ -1321,6 +1321,8 @@ def equal_crs(crs_one, crs_two):
     equal : bool
         Whether the two specified CRS are equal according tho rasterio.crs.CRS.from_user_input
     """
+    if crs_one is None:
+        return crs_two is None
     return rasterio.crs.CRS.from_user_input(crs_one) == rasterio.crs.CRS.from_user_input(crs_two)
 
 def _read_raster_reproject(src, src_crs, dst_meta, band=None, geometry=None, dst_crs=None,
