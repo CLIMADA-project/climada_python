@@ -292,7 +292,7 @@ class LitPop(Exposures):
                                   value_unit='people', reference_year=reference_year,
                                   gpw_version=gpw_version, data_dir=data_dir)
 
-    def set_custom_shape_from_country(self, shape, country, res_arcsec=30,
+    def set_custom_shape_from_country(self, shape, countries, res_arcsec=30,
                                       exponents=(1,1), fin_mode='pc',
                                       admin1_calc=False, reference_year=DEF_REF_YEAR,
                                       gpw_version=GPW_VERSION,
@@ -353,31 +353,31 @@ class LitPop(Exposures):
 
         """
         shape_list = _shape_to_list(shape)
-        # init country exposure:
-        exp = self._set_one_country(country, res_arcsec=res_arcsec, exponents=exponents,
-                               fin_mode=fin_mode, total_value=None,
-                               reference_year=reference_year,
-                               gpw_version=gpw_version, data_dir=data_dir,
-                               reproject_first=reproject_first)
+        # init countries' exposure:
+        self.set_countries(countries, res_arcsec=res_arcsec, exponents=exponents,
+                           fin_mode=fin_mode, reference_year=reference_year,
+                           gpw_version=gpw_version, data_dir=data_dir,
+                           reproject_first=reproject_first)
+
         # loop over shapes and cut out exposure GDFs within each shape, combine:
         for idx, shp in enumerate(shape_list):
             if idx==0:
-                gdf = exp.gdf.loc[exp.gdf.geometry.within(shp)]
+                gdf = self.gdf.loc[self.gdf.geometry.within(shp)]
             else:
-                gdf.append(exp.gdf.loc[exp.gdf.geometry.within(shp)],
+                gdf.append(self.gdf.loc[self.gdf.geometry.within(shp)],
                                ignore_index=True)
 
         tag = Tag()
         tag.description = ('LitPop Exposure for custom shape in %s at %i as, '
                            'year: %i, financial mode: %s, '
                            'exp: [%i, %i], admin1_calc: %s'
-                           % (country, res_arcsec, reference_year, fin_mode,
+                           % (countries, res_arcsec, reference_year, fin_mode,
                               exponents[0], exponents[1], str(admin1_calc)))
 
         Exposures.__init__(
             self,
             data=gdf.reset_index(),
-            crs=exp.crs,
+            crs=self.crs,
             ref_year=reference_year,
             tag=tag,
             value_unit=get_value_unit(fin_mode),
