@@ -292,7 +292,7 @@ class LitPop(Exposures):
                                   value_unit='people', reference_year=reference_year,
                                   gpw_version=gpw_version, data_dir=data_dir)
 
-    def set_custom_shape_from_country(self, shape, countries, res_arcsec=30,
+    def set_custom_shape_from_countries (self, shape, countries, res_arcsec=30,
                                       exponents=(1,1), fin_mode='pc',
                                       admin1_calc=False, reference_year=DEF_REF_YEAR,
                                       gpw_version=GPW_VERSION,

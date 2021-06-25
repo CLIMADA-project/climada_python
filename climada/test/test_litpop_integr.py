@@ -149,9 +149,9 @@ class TestLitPopExposure(unittest.TestCase):
         self.assertAlmostEqual(ent.gdf.loc[ent.gdf.value == ent.gdf.value.max()].latitude.values[0], 47.34583333333325)
         self.assertAlmostEqual(ent.gdf.loc[ent.gdf.value == ent.gdf.value.max()].longitude.values[0], 8.529166666666658)
 
-    def test_set_custom_shape_from_country_zurich_pass(self):
+    def test_set_custom_shape_from_countries_zurich_pass(self):
         """test initiating LitPop for custom shape (square around Zurich City)
-        with set_custom_shape_from_country()"""
+        with set_custom_shape_from_countries()"""
         bounds = (8.41, 47.2, 8.70, 47.45) # (min_lon, max_lon, min_lat, max_lat)
         shape = Polygon([
             (bounds[0], bounds[3]),
@@ -160,7 +160,7 @@ class TestLitPopExposure(unittest.TestCase):
             (bounds[0], bounds[1])
             ])
         ent = lp.LitPop()
-        ent.set_custom_shape_from_country(shape, 'Switzerland', res_arcsec=30)
+        ent.set_custom_shape_from_countries(shape, 'Switzerland', res_arcsec=30)
         self.assertEqual(ent.gdf.value.min(), 0.0)
         self.assertEqual(ent.gdf.region_id.min(), 756)
         self.assertEqual(ent.gdf.region_id.max(), 756)
