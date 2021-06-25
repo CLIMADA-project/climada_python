@@ -25,6 +25,7 @@ import requests
 
 from climada import CONFIG
 
+
 class AmbiguousResult(Exception):
     """Custom Exception for Non-Unique Query Result"""
 
@@ -32,12 +33,13 @@ class AmbiguousResult(Exception):
 class NoResult(Exception):
     """Custom Exception for No Query Result"""
 
+
 class Client():
     """Python wrapper around REST calls to the CLIMADA data API server.
     """
     def __init__(self):
         """Constructor of Client.
-        
+
         Data API host and chunk_size (for download) are configurable values.
         Default values are 'climada.ethz.ch' and 8096 respectively.
         """
@@ -46,22 +48,21 @@ class Client():
         self.chunk_size = CONFIG.data_api.chunk_size.int()
 
     @staticmethod
-    def _passes(cds, parameters):
-        if parameters:
-            obj_parameters = cds['parameters']
-            for key, val in parameters.items():
-                if val != obj_parameters.get(key, ''):
-                    return False
-        return True
-
-    @staticmethod
     def _request_200(url, **kwargs):
+        """Helper method, triaging successfull and failing requests.
+
+        Raises
+        ------
+        NoResult
+            if the response status code is different from 200
+        """
         page = requests.get(url, **kwargs)
         if page.status_code == 200:
             return json.loads(page.content.decode())
         raise NoResult(page.content.decode())
 
-    def get_datasets(self, data_type=None, name=None, version=None, properties=None, status='active'):
+    def get_datasets(self, data_type=None, name=None, version=None, properties=None,
+                     status='active'):
         """Find all datasets matching the given parameters.
 
         Parameters
@@ -91,15 +92,7 @@ class Client():
             'status': '' if status is None else status,
         }.update(properties)
 
-        page = requests.get(url, params=params)
-        jarr = json.loads(page.content.decode())
-
-        if name:
-            jarr = [jo for jo in jarr if jo['name'] == name]
-        if version:
-            jarr = [jo for jo in jarr if jo['version'] == version]
-
-        return jarr
+        return Client._request_200(url, params=params)
 
     def get_dataset(self, data_type=None, name=None, version=None, properties=None):
         """Find the one (active) dataset that matches the given parameters.
@@ -129,7 +122,6 @@ class Client():
         """
         jarr = self.get_datasets(data_type=data_type, name=name, version=version,
                                  properties=properties, status='')
-        jarr = [jo for jo in jarr if Client._passes(jo, properties)]
         if len(jarr) > 1:
             raise AmbiguousResult(f"there are several datasets meeting the requirements: {jarr}")
         if len(jarr) < 1:
