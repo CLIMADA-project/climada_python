@@ -559,7 +559,7 @@ class Centroids():
             if cent.meta and not cent.lat.any():
                 cent.set_meta_to_lat_lon()
             cent.set_geometry_points()
-            if not u_coord.equal_crs(cent.crs, self.crs):
+            if not u_coord.equal_crs(cent.crs, cent_list[0].crs):
                     raise ValueError('Different CRS are not accepted.')
             if is_area_pixel and not cent.area_pixel.any():
                 cent.set_area_pixel()
