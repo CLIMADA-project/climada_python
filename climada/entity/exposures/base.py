@@ -686,7 +686,7 @@ class Exposures():
             metadata = store.get_storer('exposures').attrs.metadata
             # in previous versions of CLIMADA and/or geopandas, the CRS was stored in '_crs'/'crs'
             crs = metadata.get('crs', metadata.get('_crs'))
-            if crs is None and 'meta' in metadata:
+            if crs is None and metadata.get('meta'):
                 crs = metadata['meta'].get('crs')
             self.__init__(store['exposures'], crs=crs)
             for key, val in metadata.items():
