@@ -516,15 +516,19 @@ class Centroids():
         Create the union of centroids from the inputs.
 
         The centroids are combined together point by point.
-        Rasters are converted to points and raster information is lost.
-        All centroids must have the same CRS.
+        Rasters are converted to points and raster information is lost
+        in the output. All centroids must have the same CRS.
 
         In any case, the attribute .geometry is computed for all centroids.
+        This requires a CRS to be defined. If Centroids.crs is None, the
+        default DEF_CRS is set for all centroids (self and others).
+
         When at least one centroids has one of the following property
         defined, it is also computed for all others.
         .area_pixel, .dist_coast, .on_land, .region_id, .elevetaion'
-        Caution: the input objects are modified in place. Missing properties
-        are added, existing ones are not overwritten.
+
+        !Caution!: the input objects (self and others) are modified in place.
+        Missing properties are added, existing ones are not overwritten.
 
         Parameters
         ----------
