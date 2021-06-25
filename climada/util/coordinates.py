@@ -1946,10 +1946,11 @@ def align_raster_data(source, src_crs, src_transform, dst_crs=None, dst_resoluti
 
 def mask_raster_with_geometry(raster, transform, shapes, nodata=None, **kwargs):
     """
-    Wrapper for rasterio.mask.mask to allow for in-memory processing.
-
-    This is done via first writing to memfile and then reading from it before the
-    function call to rasterio.mask.mask().
+    Change values in `raster` that are outside of given `shapes` to `nodata`.
+    
+    This function is a wrapper for rasterio.mask.mask to allow for
+    in-memory processing. This is done by first writing data to memfile and then
+    reading from it before the function call to rasterio.mask.mask().
     The MemoryFile will be discarded after exiting the with statement.
 
     Parameters
@@ -1958,7 +1959,13 @@ def mask_raster_with_geometry(raster, transform, shapes, nodata=None, **kwargs):
         raster to be masked with dim: [H, W].
     transform : affine.Affine
          the transform of the raster.
-    shapes, nodata, **kwargs: passed to rasterio.mask.mask
+    shapes : GeoJSON-like dict or an object that implements the Python geo
+        interface protocol (such as a Shapely Polygon)
+        Passed to rasterio.mask.mask
+    nodata : int or float, optional
+        Passed to rasterio.mask.mask:
+        Data points outside `shapes` are set to `nodata`.
+    **kwargs : Passed to rasterio.mask.mask, optional
 
     Returns
     -------
