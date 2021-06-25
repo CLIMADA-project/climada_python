@@ -215,12 +215,8 @@ class TestUncertainty(unittest.TestCase):
         unc_imp.load_samples_df(filename)
 
         unc_imp.calc_distribution()
-        filename = unc.save_metrics()
-        unc_imp.load_metrics(filename)
-
         unc_imp.calc_sensitivity()
-        filename = unc.save_sensitivity()
-        unc_imp.load_sensitivity(filename)
+
 
     def test_make_sample_pass(self):
 
