@@ -517,7 +517,7 @@ class Uncertainty():
 
         ncpus = pool.ncpus if pool else 1
         total_time = self.n_samples * time_one_run / ncpus
-        LOGGER.info("Estimated computaion time: %s",
+        LOGGER.info("\n\nEstimated computaion time: %s\n",
                     dt.timedelta(seconds=total_time))
 
         return total_time

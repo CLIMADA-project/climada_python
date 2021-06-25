@@ -176,7 +176,6 @@ class UncImpact(Uncertainty):
          eai_exp_list, at_event_list, tot_value_list] = list(zip(*imp_metrics))
         elapsed_time = (time.time() - start)
         est_com_time = self.est_comp_time(elapsed_time, pool)
-        LOGGER.info("\n\nEstimated computation time: %.2f s\n", est_com_time)
 
         #Compute impact distributions
         with log_level(level='ERROR', name_prefix='climada'):

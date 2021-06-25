@@ -159,7 +159,6 @@ class UncCostBenefit(Uncertainty):
          cost_ben_ratio] = list(zip(*cb_metrics))
         elapsed_time = (time.time() - start)
         est_com_time = self.est_comp_time(elapsed_time, pool)
-        LOGGER.info("\n\nEstimated computation time: %.2fs\n", est_com_time)
 
         #Compute impact distributions
         with log_level(level='ERROR', name_prefix='climada'):
