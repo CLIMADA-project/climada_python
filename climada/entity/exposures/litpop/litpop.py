@@ -128,7 +128,7 @@ class LitPop(Exposures):
         ------
         ValueError
         """
-        if isinstance(countries, str) or isinstance(countries, int):
+        if isinstance(countries, (int, str)):
             countries = [countries] # for backward compatibility
 
         if total_values is None: # init list with total values per countries
@@ -828,7 +828,6 @@ def reproject_input_data(data_array_list, meta_list,
                         i_ref=0,
                         target_res_arcsec=None,
                         global_origins=(-180.0, 89.99999999999991),
-                        dst_crs=None,
                         resampling=rasterio.warp.Resampling.bilinear,
                         conserve=None):
     """
@@ -867,10 +866,6 @@ def reproject_input_data(data_array_list, meta_list,
         global lon and lat origins as basis for destination grid.
         The default is the same as for GPW population data:
             (-180.0, 89.99999999999991)
-    dst_crs : rasterio.crs.CRS
-        destination CRS
-        The default is None, implying crs of reference data is used
-        (e.g., CRS.from_epsg(4326) for GPW pop)
     resampling : resampling function (optional)
         The default is rasterio.warp.Resampling.bilinear
     conserve : str (optional), either 'mean' or 'sum'
@@ -889,9 +884,8 @@ def reproject_input_data(data_array_list, meta_list,
         res_degree = meta_list[i_ref]['transform'][0] # reference grid
     else:
         res_degree = target_res_arcsec / 3600
-    if dst_crs is None:
-        dst_crs = meta_list[i_ref]['crs']
 
+    dst_crs = meta_list[i_ref]['crs']
     # loop over data arrays, do transformation where required:
     data_out_list = [None] * len(data_array_list)
     meta = {'dtype': meta_list[i_ref]['dtype'],
