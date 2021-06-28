@@ -65,7 +65,7 @@ def load_gpw_pop_shape(geometry, reference_year, gpw_version,
         contains extracted population count data per grid point in shape
         first dimension is lat, second dimension is lon.
     meta : dict
-        contains meta data per array, including "transform" with 
+        contains meta data per array, including "transform" with
         meta data on coordinates.
     global_transform : Affine instance
         contains six numbers, providing transform info for global GWP grid.
@@ -120,7 +120,7 @@ def get_gpw_file_path(gpw_version, reference_year, data_dir=SYSTEM_DIR, verbatim
     # find closest year to reference_year with data available:
     year = years_available[np.abs(years_available - reference_year).argmin()]
     if verbatim and (year != reference_year):
-        LOGGER.warning('Reference year: %i. Using nearest available year for GPW population data: %i',
+        LOGGER.warning('Reference year: %i. Using nearest available year for GPW data: %i',
                     reference_year, year)
 
     # check if file is available for given GPW version,
@@ -128,17 +128,17 @@ def get_gpw_file_path(gpw_version, reference_year, data_dir=SYSTEM_DIR, verbatim
     file_path = data_dir / \
         (CONFIG.exposures.litpop.gpw_population.filename_gpw.str() % (gpw_version, year))
     if file_path.is_file():
-        if verbatim: 
+        if verbatim:
             LOGGER.info('GPW Version v4.%2i', gpw_version)
         return file_path
-    else:
-        file_path = data_dir / \
-            (CONFIG.exposures.litpop.gpw_population.dirname_gpw.str() % (gpw_version, year)) / \
-            (CONFIG.exposures.litpop.gpw_population.filename_gpw.str() % (gpw_version, year))
-        if file_path.is_file():
-            if verbatim: 
-                LOGGER.info('GPW Version v4.%2i', gpw_version)
-            return file_path
+    # try to construct GPW file path from CONFIG:
+    file_path = data_dir / \
+        (CONFIG.exposures.litpop.gpw_population.dirname_gpw.str() % (gpw_version, year)) / \
+        (CONFIG.exposures.litpop.gpw_population.filename_gpw.str() % (gpw_version, year))
+    if file_path.is_file():
+        if verbatim:
+            LOGGER.info('GPW Version v4.%2i', gpw_version)
+        return file_path
     # if no input file was found, FileExistsError is raised
     if SYSTEM_DIR.joinpath('GPW_help.pdf').is_file():
         subprocess.Popen([str(SYSTEM_DIR.joinpath('GPW_help.pdf'))], shell=True)
@@ -148,16 +148,14 @@ def get_gpw_file_path(gpw_version, reference_year, data_dir=SYSTEM_DIR, verbatim
                               + 'Instructions on how to download the '
                               + 'file has been openend in your PDF '
                               + 'viewer.')
-    else:
-        raise FileExistsError(f'The file {file_path} could not '
-                              + 'be found. Please download the file '
-                              + 'first or choose a different folder. '
-                              + 'The data can be downloaded from '
-                              + 'http://sedac.ciesin.columbia.edu/'
-                              + 'data/collection/gpw-v4/sets/browse, '
-                              + 'e.g., https://sedac.ciesin.columbia.edu/data/'
-                              + f'set/gpw-v4-population-count-rev{gpw_version}/'
-                              + 'data-download'
-                              + '(Free NASA Earthdata login required). '
-                              )
-    return None
+    raise FileExistsError(f'The file {file_path} could not '
+                          + 'be found. Please download the file '
+                          + 'first or choose a different folder. '
+                          + 'The data can be downloaded from '
+                          + 'http://sedac.ciesin.columbia.edu/'
+                          + 'data/collection/gpw-v4/sets/browse, '
+                          + 'e.g., https://sedac.ciesin.columbia.edu/data/'
+                          + f'set/gpw-v4-population-count-rev{gpw_version}/'
+                          + 'data-download'
+                          + '(Free NASA Earthdata login required). '
+                          )
