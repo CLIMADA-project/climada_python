@@ -692,9 +692,9 @@ class Uncertainty():
          ax.axvline(avg_plot, color='darkorange', linestyle='dashed', linewidth=2,
                  label="avg=%.2f%s" %u_vtm(avg))
          if log:
-             std_m, std_p = np.log10(avg - std/2), np.log10(avg + std/2)
+             std_m, std_p = np.log10(avg - std), np.log10(avg + std)
          else:
-             std_m, std_p = avg - std/2, avg + std/2
+             std_m, std_p = avg - std, avg + std
          ax.plot([std_m, std_p],
                  [0.3 * ymax, 0.3 * ymax], color='black',
                  label="std=%.2f%s" %u_vtm(std))
