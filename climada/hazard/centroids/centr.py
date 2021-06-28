@@ -108,9 +108,9 @@ class Centroids():
     """Variables whose size will be checked"""
 
     def __init__(self):
-        """Initialize to None raster and vector"""
+        """Initialize to None raster and vector. Default crs=DEF_CRS"""
         self.meta = dict()
-        self.geometry = gpd.GeoSeries()
+        self.geometry = gpd.GeoSeries(crs=DEF_CRS)
         self.lat = np.array([])
         self.lon = np.array([])
         self.area_pixel = np.array([])
