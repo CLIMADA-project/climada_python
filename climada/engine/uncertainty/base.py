@@ -953,12 +953,23 @@ class Uncertainty():
             #Make matrix symmetric
             s2_matrix = np.triu(np.asmatrix(si_dict[submetric]['S2']))
             s2_matrix = s2_matrix + s2_matrix.T - np.diag(np.diag(s2_matrix))
-            ax.matshow(s2_matrix, cmap='OrRd')
+            ax.matshow(s2_matrix, cmap='coolwarm')
+            s2_conf_matrix = np.triu(np.asmatrix(si_dict[submetric]['S2_conf']))
+            s2_conf_matrix = s2_conf_matrix + s2_conf_matrix.T - \
+                np.diag(np.diag(s2_conf_matrix))
             for i in range(len(s2_matrix)):
                 for j in range(len(s2_matrix)):
-                    text = ax.text(j, i, round(s2_matrix[i, j], 2),
-                                   ha="center", va="center",
-                                   color="k", fontsize='medium')
+                    if np.isnan(s2_matrix[i, j]):
+                        ax.text(j, i, np.nan,
+                           ha="center", va="center",
+                           color="k", fontsize='medium')
+                    else:
+                        ax.text(j, i,
+                           str(round(s2_matrix[i, j], 2)) + u'\n\u00B1' +  #\u00B1 = +-
+                           str(round(s2_conf_matrix[i, j], 2)),
+                           ha="center", va="center",
+                           color="k", fontsize='medium')
+
             ax.set_title(salib_si + ' - ' + submetric, fontsize=18)
             labels = self.param_labels
             ax.set_xticks(np.arange(len(labels)))
