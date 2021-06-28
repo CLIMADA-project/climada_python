@@ -262,8 +262,8 @@ class TestEconIndices(unittest.TestCase):
                         'ZMB': [2, 'Zambia', 'zmb_geom']
                        }
         fill_econ_indicators(ref_year, country_isos, SHP_FILE)
-        country_isos_ref = {'CHE': [1, 'Switzerland', 'che_geom', 2015, 496300e6, 4],
-                            'ZMB': [2, 'Zambia', 'zmb_geom', 2015, 65170e6, 2]
+        country_isos_ref = {'CHE': [1, 'Switzerland', 'che_geom', 2015, 679832.3e6, 4],
+                            'ZMB': [2, 'Zambia', 'zmb_geom', 2015, 21243.3e6, 2]
                            }
         self.assertEqual(country_isos.keys(), country_isos_ref.keys())
         for country in country_isos_ref.keys():
