@@ -609,7 +609,8 @@ class Uncertainty():
 
     def plot_distribution(self, metric_list=None, figsize=None, log=False):
      """
-     Plot the distribution of values.
+     Plot the distribution of values of the risk metrics over the sampled
+     input parameters (i.e. plot the "uncertainty" distributions).
 
      Parameters
      ----------
