@@ -19,6 +19,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 init exposures
 """
 from .base import *
+from .black_marble import *
 from .gdp_asset import *
 from .litpop import *
 
