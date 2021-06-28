@@ -686,13 +686,16 @@ class Uncertainty():
          avg, std = df_values[col].mean(), df_values[col].std()
          _, ymax = ax.get_ylim()
          if log:
-             avg_plot, std_plot = np.log10(avg), np.log10(std)
+             avg_plot = np.log10(avg)
          else:
-             avg_plot, std_plot = avg, std
+             avg_plot = avg
          ax.axvline(avg_plot, color='darkorange', linestyle='dashed', linewidth=2,
                  label="avg=%.2f%s" %u_vtm(avg))
-         ax.plot([avg_plot - std_plot / 2,
-                  avg_plot + std_plot / 2],
+         if log:
+             std_m, std_p = np.log10(avg - std/2), np.log10(avg + std/2)
+         else:
+             std_m, std_p = avg - std/2, avg + std/2
+         ax.plot([std_m, std_p],
                  [0.3 * ymax, 0.3 * ymax], color='black',
                  label="std=%.2f%s" %u_vtm(std))
          ax.set_title(col)
