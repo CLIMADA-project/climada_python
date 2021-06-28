@@ -855,7 +855,7 @@ class Uncertainty():
 
         return axes
 
-    def plot_sensitivity2d(self, salib_si='S2', metric_list=None,
+    def plot_sensitivity_second_order(self, salib_si='S2', metric_list=None,
                            figsize=None):
         """Plot second order sensitivity indices as matrix.
 
