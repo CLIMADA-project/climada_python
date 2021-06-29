@@ -1453,7 +1453,7 @@ class Hazard():
         """
         if self.event_id.any(): #if self is not empty, concatenate with self.
             haz_list = [self] + haz_list
-        self.__dict__ = self.concatenate_hazard(haz_list,
+        self.__dict__ = Hazard.concatenate_hazard(haz_list,
                                                 centroids,
                                                 threshold).__dict__
 
