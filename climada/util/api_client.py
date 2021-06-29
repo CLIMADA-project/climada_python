@@ -22,6 +22,7 @@ from dataclasses import dataclass
 from datetime import datetime
 import json
 import logging
+from pathlib import Path
 from urllib.parse import quote, unquote
 import time
 
@@ -30,8 +31,72 @@ import requests
 
 
 from climada import CONFIG
+from climada.util.constants import SYSTEM_DIR
 
 LOGGER = logging.getLogger(__name__)
+
+DB = SqliteDatabase(Path(CONFIG.data_api.cache_db.str()).expanduser())
+
+
+class Download(Model):
+    """Database entry keeping track of downloaded files from the CLIMADA data API"""
+    url = CharField()
+    path = CharField(unique=True)
+    startdownload = DateTimeField()
+    enddownload = DateTimeField(null=True)
+
+    class Meta:
+        """SQL database and table definition."""
+        database = DB
+
+    class Failed(Exception):
+        """The download failed for some reason."""
+
+    @staticmethod
+    def checksize(local_path, fileinfo):
+        """Checks sanity of downloaded file simply by comparing actual and registered size.
+
+        Parameters
+        ----------
+        local_path : Path
+            the downloaded file
+        filinfo : FileInfo
+            file information from CLIMADA data API
+
+        Raises
+        ------
+        Download.Failed
+            if the file is not what it's supposed to be
+        """
+        if not local_path.is_file():
+            raise Download.Failed(f"{str(local_path)} is not a file")
+        if local_path.stat().st_size != fileinfo.file_size:
+            raise Download.Failed(f"{str(local_path)} has the wrong size:"
+                f"{local_path.stat().st_size} instead of {fileinfo.file_size}")
+
+    @staticmethod
+    def checkhash(local_path, fileinfo):
+        """Checks sanity of downloaded file by comparing actual and registered check sum.
+
+        Parameters
+        ----------
+        local_path : Path
+            the downloaded file
+        filinfo : FileInfo
+            file information from CLIMADA data API
+
+        Raises
+        ------
+        Download.Failed
+            if the file is not what it's supposed to be
+        """
+        raise NotImplementedError("sanity check by hash sum needs to be implemented yet")
+
+
+DB.connect()
+DB.create_tables([Download])
+
+
 
 class AmbiguousResult(Exception):
     """Custom Exception for Non-Unique Query Result"""
@@ -41,30 +106,14 @@ class NoResult(Exception):
     """Custom Exception for No Query Result"""
 
 
-class Download(Model):
-    """Database entry keeping track of downloaded files from the CLIMADA data API"""
-    url = CharField()
-    path = CharField()
-    startdownload = DateTimeField()
-    enddownload = DateTimeField(null=True)
-
-    class Meta:
-        """SQL database and table definition."""
-        database = SqliteDatabase(CONFIG.data_api.cache_db.str())
-        indexes = (
-            (('url', 'path'), True),
-        )
-
-    @staticmethod
-    def checksize(local_path, filinfo):
-        return True
-
-    @staticmethod
-    def checkhash(local_path, fileinfo):
-        return True
-
-    class Failed(Exception):
-        """The download failed for some reason."""
+@dataclass
+class FileInfo():
+    """file data from CLIMADA data API."""
+    url:str
+    file_name:str
+    file_format:str
+    file_size:int
+    check_sum:str
 
 
 @dataclass
@@ -90,20 +139,30 @@ class DatasetInfo():
     activation_date:str
     expiration_date:str
 
+    @staticmethod
+    def from_json(jsono):
+        """creates a DatasetInfo object from the json object returned by the 
+        CLIMADA data api server.
 
-@dataclass
-class FileInfo():
-    """file data from CLIMADA data API."""
-    url:str
-    file_name:str
-    file_format:str
-    file_size:int
-    check_sum:str
+        Parameters
+        ----------
+        jsono : dict
+
+        Returns
+        -------
+        DatasetInfo
+        """
+        dataset = DatasetInfo(**jsono)
+        dataset.data_type = DataTypeInfo(**dataset.data_type)
+        dataset.files = [FileInfo(**filo) for filo in dataset.files]
+        return dataset
 
 
 class Client():
     """Python wrapper around REST calls to the CLIMADA data API server.
     """
+    MAX_WAITING_PERIOD = 6
+
     def __init__(self):
         """Constructor of Client.
 
@@ -117,6 +176,11 @@ class Client():
     @staticmethod
     def _request_200(url, **kwargs):
         """Helper method, triaging successfull and failing requests.
+
+        Returns
+        -------
+        dict
+            loaded from the json object of a successful request.
 
         Raises
         ------
@@ -148,8 +212,7 @@ class Client():
 
         Returns
         -------
-        list
-            each item representing a dataset as a dictionary
+        list of DatasetInfo
         """
         url = f'{self.host}/rest/datasets'
         params = {
@@ -159,14 +222,11 @@ class Client():
             'status': '' if status is None else status,
         }
         params.update(properties if properties else dict())
-        datasets = [DatasetInfo(**ds) for ds in Client._request_200(url, params=params)]
-        for dataset in datasets:
-            dataset.data_type = DataTypeInfo(**dataset.data_type)
-            dataset.files = [FileInfo(**filo) for filo in dataset.files]
-        return datasets
+        return [DatasetInfo.from_json(ds) for ds in Client._request_200(url, params=params)]
 
-    def get_dataset(self, data_type=None, name=None, version=None, properties=None):
-        """Find the one (active) dataset that matches the given parameters.
+    def get_dataset(self, data_type=None, name=None, version=None, properties=None,
+                    status=None):
+        """Find the one dataset that matches the given parameters.
 
         Parameters
         ----------
@@ -178,11 +238,13 @@ class Client():
             the version of the dataset
         properties : dict, optional
             search parameters for dataset properties, by default None
+        status : str, optional
+            valid values are 'preliminary', 'active', 'expired', and 'test_dataset',
+            by default None
 
         Returns
         -------
-        dict
-            the dataset json object, as returned from the api server
+        DatasetInfo
 
         Raises
         ------
@@ -192,7 +254,7 @@ class Client():
             when there is no dataset matching the search parameters
         """
         jarr = self.get_datasets(data_type=data_type, name=name, version=version,
-                                 properties=properties, status='')
+                                 properties=properties, status=status)
         if len(jarr) > 1:
             raise AmbiguousResult(f"there are several datasets meeting the requirements: {jarr}")
         if len(jarr) < 1:
@@ -200,38 +262,37 @@ class Client():
         return jarr[0]
 
     def get_dataset_by_uuid(self, uuid):
-        """[summary]
+        """Returns the data from 'https://climada/rest/dataset/{uuid}' as DatasetInfo object.
 
         Parameters
         ----------
-        uuid : [type]
-            [description]
+        uuid : str
+            the universal unique identifier of the dataset
 
         Returns
         -------
-        [type]
-            [description]
+        DatasetInfo
 
         Raises
         ------
         NoResult
-            [description]
+            if the uuid is not valid
         """
         url = f'{self.host}/rest/dataset/{uuid}'
-        return Client._request_200(url)
+        return DatasetInfo.from_json(Client._request_200(url))
 
     def get_data_types(self, data_type_group=None):
-        """[summary]
+        """Returns all data types from the climada data API
+        belonging to a given data type group.
 
         Parameters
         ----------
-        data_type_group : [type], optional
-            [description], by default None
+        data_type_group : str, optional
+            name of the data type group, by default None
 
         Returns
         -------
-        [type]
-            [description]
+        list of DataTypeInfo
         """
         url = f'{self.host}/rest/data_types'
         params = {'data_type_group': data_type_group} \
@@ -239,27 +300,27 @@ class Client():
         return [DataTypeInfo(**jobj) for jobj in Client._request_200(url, params=params)]
 
     def get_data_type(self, data_type):
-        """[summary]
+        """Returns the data type from the climada data API
+        with a given name.
 
         Parameters
         ----------
         data_type : str
-            [description]
+            data type name
 
         Returns
         -------
-        [type]
-            [description]
+        DataTypeInfo
 
         Raises
         ------
         NoResult
-            [description]
+            if there is no such data type registered
         """
         url = f'{self.host}/rest/data_type/{quote(data_type)}'
         return DataTypeInfo(**Client._request_200(url))
 
-    def download(self, url, path, replace=False):
+    def _download(self, url, path, replace=False):
         """Downloads a file from the given url to a specified location.
 
         Parameters
@@ -302,23 +363,24 @@ class Client():
             dlf = Download.create(url=remote_url, path=path_as_str, startdownload=datetime.utcnow())
         except IntegrityError:
             return Download.get((Download.url==remote_url)
-                              & (Download.path==path_as_str)).enddownload
+                              & (Download.path==path_as_str))
         try:
-            self.download(url=remote_url, path=path_as_str, replace=True)
+            self._download(url=remote_url, path=local_path, replace=True)
             dlf.enddownload = datetime.utcnow()
             dlf.save()
         except Exception:
             dlf.delete_instance()
             raise
-        return Download.get((Download.url==remote_url) & (Download.path==path_as_str)).enddownload
+        return Download.get((Download.url==remote_url) & (Download.path==path_as_str))
 
-    def cached_download(self, local_path, fileinfo, check=Download.checksize, retries=3):
+    def download_file(self, local_path, fileinfo, check=Download.checksize, retries=3):
         """Download a file if it is not already present at the target destination.
 
         Parameters
         ----------
         local_path : Path
-            target destination
+            target destination,
+            if it is a directory the original filename (fileinfo.filen_name) is kept
         fileinfo : FileInfo
             file object as retrieved from the data api
         check : function, optional
@@ -332,19 +394,66 @@ class Client():
             when number of retries was exceeded or when a download is already running
         """
         try:
+            if local_path.is_dir():
+                local_path /= fileinfo.file_name
             downloaded = self._tracked_download(remote_url=fileinfo.url, local_path=local_path)
-            if not downloaded:
-                raise Exception("Download seems to be in progress, please try again later"
-                                " or remove cache entry by calling purge_cache the database!")
-            check(local_path, fileinfo)
+            if not downloaded.enddownload:
+                raise Download.Failed("Download seems to be in progress, please try again later"
+                    " or remove cache entry by calling purge_cache the database!")
+            try:
+                check(local_path, fileinfo)
+            except Download.Failed as dlf:
+                local_path.unlink(missing_ok=True)
+                self.purge_cache(local_path, fileinfo)
+                raise dlf
+            return local_path
         except Download.Failed as dle:
-            if retries > 0:
-                LOGGER.warning("Download failed, retrying...")
-                time.sleep(6/retries)
-                self.cached_download(local_path=local_path, fileinfo=fileinfo, check=check,
-                                     retries=retries - 1)
-            else:
-                raise Exception("Download failed, won't retry") from dle
+            if retries < 1:
+                raise dle
+            LOGGER.warning("Download failed: %s, retrying...", dle)
+            time.sleep(self.MAX_WAITING_PERIOD/retries)
+            return self.download_file(local_path=local_path, fileinfo=fileinfo, check=check,
+                                      retries=retries - 1)
+
+    def download_dataset(self, dataset, target_dir=SYSTEM_DIR, organize_path=True,
+                         check=Download.checksize):
+        """Download all files from a given dataset to a given directory.
+
+        Parameters
+        ----------
+        dataset : DatasetInfo
+            the dataset
+        target_dir : Path, optional
+            target directory for download, by default `climada.util.constants.SYSTEM_DIR`
+        organize_path: bool, optional
+            if set to True the files will end up in subdirectories of target_dir:
+            [target_dir]/[data_type_group]/[data_type]/[name]/[version]
+            by default True
+        check : function, optional
+            how to check download success for each file, by default Download.checksize
+
+        Raises
+        ------
+        Exception
+            when one of the files cannot be downloaded
+        """
+        if not target_dir.is_dir():
+            raise ValueError(f"{target_dir} is not a directory")
+
+        if organize_path:
+            if dataset.data_type.data_type_group:
+                target_dir /= dataset.data_type.data_type_group
+            if dataset.data_type.data_type_group != dataset.data_type.data_type:
+                target_dir /= dataset.data_type.data_type
+            target_dir /= dataset.name
+            if dataset.version:
+                target_dir /= dataset.version
+            target_dir.mkdir(exist_ok=True, parents=True)
+
+        return [
+            self.download_file(local_path=target_dir, fileinfo=dsfile, check=check)
+            for dsfile in dataset.files
+        ]
 
     def purge_cache(self, local_path, fileinfo):
         """Removes entry from the sqlite database that keeps track of files downloaded by
