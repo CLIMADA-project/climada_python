@@ -289,7 +289,7 @@ class TestIbtracs(unittest.TestCase):
         """Check discard_single_points option"""
         tc_track_singlept = tc.TCTracks()
         passed = False
-        for year in range(1951, 1981):
+        for year in range(1863, 1981):
             tc_track_singlept.read_ibtracs_netcdf(provider='usa',
                                          year_range=(year,year),
                                          discard_single_points=False)
