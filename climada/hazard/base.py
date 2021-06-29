@@ -945,21 +945,6 @@ class Hazard():
             orig_yearset[year] = self.event_id[self.orig][orig_year == year]
         return orig_yearset
 
-    def append(self, hazard):
-        """Append events and centroids in hazard.
-
-        Parameters
-        ----------
-        hazard: Hazard
-            Hazard instance to append to current
-
-        Raises
-        ------
-            ValueError
-        """
-        hazard._check_events()
-        self.extend([hazard])
-
     def remove_duplicates(self):
         """Remove duplicate events (events with same name and date)."""
         events = list(zip(self.event_name, self.date))
@@ -1413,6 +1398,21 @@ class Hazard():
         self.intensity = sparse.csr_matrix(dfr.values[:, 1:num_events + 1].transpose())
         self.fraction = sparse.csr_matrix(np.ones(self.intensity.shape,
                                                   dtype=np.float))
+
+    def append(self, hazard):
+        """Append events and centroids in hazard.
+
+        Parameters
+        ----------
+        hazard: Hazard
+            Hazard instance to append to current
+
+        Raises
+        ------
+            ValueError
+        """
+        hazard._check_events()
+        self.extend([hazard])
 
     def extend(self, haz_list, centroids=None, threshold=100):
         """
