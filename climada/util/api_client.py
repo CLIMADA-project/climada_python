@@ -52,58 +52,9 @@ class Download(Model):
     class Failed(Exception):
         """The download failed for some reason."""
 
-    @staticmethod
-    def checksize(local_path, fileinfo):
-        """Checks sanity of downloaded file simply by comparing actual and registered size.
-
-        Parameters
-        ----------
-        local_path : Path
-            the downloaded file
-        filinfo : FileInfo
-            file information from CLIMADA data API
-
-        Raises
-        ------
-        Download.Failed
-            if the file is not what it's supposed to be
-        """
-        if not local_path.is_file():
-            raise Download.Failed(f"{str(local_path)} is not a file")
-        if local_path.stat().st_size != fileinfo.file_size:
-            raise Download.Failed(f"{str(local_path)} has the wrong size:"
-                f"{local_path.stat().st_size} instead of {fileinfo.file_size}")
-
-    @staticmethod
-    def checkhash(local_path, fileinfo):
-        """Checks sanity of downloaded file by comparing actual and registered check sum.
-
-        Parameters
-        ----------
-        local_path : Path
-            the downloaded file
-        filinfo : FileInfo
-            file information from CLIMADA data API
-
-        Raises
-        ------
-        Download.Failed
-            if the file is not what it's supposed to be
-        """
-        raise NotImplementedError("sanity check by hash sum needs to be implemented yet")
-
 
 DB.connect()
 DB.create_tables([Download])
-
-
-
-class AmbiguousResult(Exception):
-    """Custom Exception for Non-Unique Query Result"""
-
-
-class NoResult(Exception):
-    """Custom Exception for No Query Result"""
 
 
 @dataclass
@@ -141,7 +92,7 @@ class DatasetInfo():
 
     @staticmethod
     def from_json(jsono):
-        """creates a DatasetInfo object from the json object returned by the 
+        """creates a DatasetInfo object from the json object returned by the
         CLIMADA data api server.
 
         Parameters
@@ -158,10 +109,56 @@ class DatasetInfo():
         return dataset
 
 
+def checksize(local_path, fileinfo):
+    """Checks sanity of downloaded file simply by comparing actual and registered size.
+
+    Parameters
+    ----------
+    local_path : Path
+        the downloaded file
+    filinfo : FileInfo
+        file information from CLIMADA data API
+
+    Raises
+    ------
+    Download.Failed
+        if the file is not what it's supposed to be
+    """
+    if not local_path.is_file():
+        raise Download.Failed(f"{str(local_path)} is not a file")
+    if local_path.stat().st_size != fileinfo.file_size:
+        raise Download.Failed(f"{str(local_path)} has the wrong size:"
+            f"{local_path.stat().st_size} instead of {fileinfo.file_size}")
+
+
+def checkhash(local_path, fileinfo):
+    """Checks sanity of downloaded file by comparing actual and registered check sum.
+
+    Parameters
+    ----------
+    local_path : Path
+        the downloaded file
+    filinfo : FileInfo
+        file information from CLIMADA data API
+
+    Raises
+    ------
+    Download.Failed
+        if the file is not what it's supposed to be
+    """
+    raise NotImplementedError("sanity check by hash sum needs to be implemented yet")
+
+
 class Client():
     """Python wrapper around REST calls to the CLIMADA data API server.
     """
     MAX_WAITING_PERIOD = 6
+
+    class AmbiguousResult(Exception):
+        """Custom Exception for Non-Unique Query Result"""
+
+    class NoResult(Exception):
+        """Custom Exception for No Query Result"""
 
     def __init__(self):
         """Constructor of Client.
@@ -190,7 +187,7 @@ class Client():
         page = requests.get(url, **kwargs)
         if page.status_code == 200:
             return json.loads(page.content.decode())
-        raise NoResult(page.content.decode())
+        raise Client.NoResult(page.content.decode())
 
     def get_datasets(self, data_type=None, name=None, version=None, properties=None,
                      status='active'):
@@ -256,9 +253,10 @@ class Client():
         jarr = self.get_datasets(data_type=data_type, name=name, version=version,
                                  properties=properties, status=status)
         if len(jarr) > 1:
-            raise AmbiguousResult(f"there are several datasets meeting the requirements: {jarr}")
+            raise Client.AmbiguousResult("there are several datasets meeting the requirements:"
+                                        f" {jarr}")
         if len(jarr) < 1:
-            raise NoResult("there is no dataset meeting the requirements")
+            raise Client.NoResult("there is no dataset meeting the requirements")
         return jarr[0]
 
     def get_dataset_by_uuid(self, uuid):
@@ -361,9 +359,12 @@ class Client():
         path_as_str = str(local_path.absolute())
         try:
             dlf = Download.create(url=remote_url, path=path_as_str, startdownload=datetime.utcnow())
-        except IntegrityError:
-            return Download.get((Download.url==remote_url)
-                              & (Download.path==path_as_str))
+        except IntegrityError as ierr:
+            dlf = Download.get(Download.path==path_as_str)
+            if dlf.url != remote_url:
+                raise Exception("this file has been downloaded from another url, "
+                    "please purge the entry from data base before trying again") from ierr
+            return dlf
         try:
             self._download(url=remote_url, path=local_path, replace=True)
             dlf.enddownload = datetime.utcnow()
@@ -371,9 +372,9 @@ class Client():
         except Exception:
             dlf.delete_instance()
             raise
-        return Download.get((Download.url==remote_url) & (Download.path==path_as_str))
+        return Download.get(Download.path==path_as_str)
 
-    def download_file(self, local_path, fileinfo, check=Download.checksize, retries=3):
+    def download_file(self, local_path, fileinfo, check=checksize, retries=3):
         """Download a file if it is not already present at the target destination.
 
         Parameters
@@ -384,7 +385,7 @@ class Client():
         fileinfo : FileInfo
             file object as retrieved from the data api
         check : function, optional
-            how to check download success, by default Download.checksize
+            how to check download success, by default checksize
         retries : int, optional
             how many times one should retry in case of failure, by default 3
 
@@ -404,7 +405,7 @@ class Client():
                 check(local_path, fileinfo)
             except Download.Failed as dlf:
                 local_path.unlink(missing_ok=True)
-                self.purge_cache(local_path, fileinfo)
+                self.purge_cache(local_path)
                 raise dlf
             return local_path
         except Download.Failed as dle:
@@ -416,7 +417,7 @@ class Client():
                                       retries=retries - 1)
 
     def download_dataset(self, dataset, target_dir=SYSTEM_DIR, organize_path=True,
-                         check=Download.checksize):
+                         check=checksize):
         """Download all files from a given dataset to a given directory.
 
         Parameters
@@ -455,7 +456,7 @@ class Client():
             for dsfile in dataset.files
         ]
 
-    def purge_cache(self, local_path, fileinfo):
+    def purge_cache(self, local_path):
         """Removes entry from the sqlite database that keeps track of files downloaded by
         `cached_download`. This may be necessary in case a previous attempt has failed
         in an uncontroled way (power outage or the like).
@@ -467,6 +468,5 @@ class Client():
         fileinfo : FileInfo
             file object as retrieved from the data api
         """
-        dlf = Download.get((Download.url==fileinfo.url)
-                         & (Download.path==str(local_path.absolute())))
+        dlf = Download.get(Download.path==str(local_path.absolute()))
         dlf.delete_instance()
