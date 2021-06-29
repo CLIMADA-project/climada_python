@@ -1496,6 +1496,15 @@ class Hazard():
         """
 
         #Check units consistency among hazards
+        haz_types = {haz.tag.haz_type
+                    for haz in haz_list
+                    if haz.tag.haz_type != ''
+                    }
+        if len(haz_types) > 1:
+            raise ValueError("The haz_list contains hazards of different "
+                            "types %f. The hazards are incompatible and "
+                            "cannot be concatenated.", str(haz_types))
+
         units = {haz.units for haz in haz_list if haz.units != ''}
         if len(units) > 1:
             raise ValueError("The haz_list contains hazards with different "

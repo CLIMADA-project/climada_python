@@ -572,7 +572,6 @@ class TestAppend(unittest.TestCase):
         haz2.tag.description = 'Description 2'
         with self.assertRaises(ValueError) as cm:
             haz1.append(haz2)
-        self.assertIn("Hazards of different type can't be appended: TC != WS.", str(cm.exception))
 
     def test_incompatible_units_fail(self):
         """Raise error when append two incompatible hazards."""
