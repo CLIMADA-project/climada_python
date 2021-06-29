@@ -24,26 +24,28 @@ __all__ = ['UncVar', 'Uncertainty']
 import logging
 import json
 
-from datetime import datetime as dt
 from itertools import zip_longest
 from pathlib import Path
 
+import datetime as dt
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
 from climada.util.value_representation import value_to_monetary_unit as u_vtm
 from climada.util.value_representation import sig_dig as u_sig_dig
+from climada.util.config import setup_logging as u_setup_logging
 from climada import CONFIG
 
 LOGGER = logging.getLogger(__name__)
+u_setup_logging()
 
 # Metrics that are multi-dimensional
 METRICS_2D = ['eai_exp', 'at_event']
 
 DATA_DIR = CONFIG.engine.uncertainty.local_data.user_data.dir()
 
-FIG_W, FIG_H = 5, 6 #default figize width/heigh column/work multiplicators
+FIG_W, FIG_H = 8, 5 #default figize width/heigh column/work multiplicators
 
 
 class UncVar():
@@ -167,7 +169,7 @@ class UncVar():
                 ax.remove()
                 continue
             (param_name, distr) = name_distr
-            x = np.linspace(distr.ppf(0.001), distr.ppf(0.999), 100)
+            x = np.linspace(distr.ppf(1e-10), distr.ppf(1-1e-10), 100)
             ax.plot(x, distr.pdf(x), label=param_name)
             ax.legend()
         return axes
@@ -383,6 +385,19 @@ class Uncertainty():
             'bounds' : [[0, 1]]*len(self.param_labels)
             }
 
+    @property
+    def metric_names(self):
+        """
+        Return the names of the metrics
+
+        Returns
+        -------
+        list(str)
+            List with names of metrics
+
+        """
+        return list(self.metrics.keys())
+
 
     def make_sample(self, N, sampling_method='saltelli',
                           sampling_kwargs=None):
@@ -494,14 +509,16 @@ class Uncertainty():
         time_one_run = u_sig_dig(time_one_run, n_sig_dig=3)
         if time_one_run > 5:
             LOGGER.warning("Computation time for one set of parameters is "
-                "%.2fs. This is suspiciously long. Possible "
-                "Potential reasons: unc_vars are loading data, centroids not"
-                " assigned to exp before defining unc_var, ..."
+                "%.2fs. This is rather long."
+                "Potential reasons: unc_vars are loading data, centroids have "
+                "been assigned to exp before defining unc_var, ..."
                 "\n If computation cannot be reduced, consider using"
                 " a surrogate model https://www.uqlab.com/", time_one_run)
 
         ncpus = pool.ncpus if pool else 1
         total_time = self.n_samples * time_one_run / ncpus
+        LOGGER.info("\n\nEstimated computaion time: %s\n",
+                    dt.timedelta(seconds=total_time))
 
         return total_time
 
@@ -590,86 +607,111 @@ class Uncertainty():
         return sensitivity_dict
 
 
-    def plot_distribution(self, metric_list=None, figsize=None):
-        """
-        Plot the distribution of values.
+    def plot_distribution(self, metric_list=None, figsize=None, log=False):
+     """
+     Plot the distribution of values of the risk metrics over the sampled
+     input parameters (i.e. plot the "uncertainty" distributions).
 
-        Parameters
-        ----------
-        metric_list: list, optional
-            List of metrics to plot the distribution.
-            The default is None.
-        figsize: tuple(int or float, int or float), optional
-            The figsize argument of matplotlib.pyplot.subplots()
-            The default is derived from the total number of plots (nplots) as:
-                nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
-                figsize = (ncols * FIG_W, nrows * FIG_H)
+     Parameters
+     ----------
+     metric_list: list, optional
+         List of metrics to plot the distribution.
+         The default is None.
+     figsize: tuple(int or float, int or float), optional
+         The figsize argument of matplotlib.pyplot.subplots()
+         The default is derived from the total number of plots (nplots) as:
+             nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
+             figsize = (ncols * FIG_W, nrows * FIG_H)
+     log: boolean
+         Use log10 scale for x axis. Default is False
 
-        Raises
-        ------
-        ValueError
-            If no metric distribution was computed the plot cannot be made.
+     Raises
+     ------
+     ValueError
+         If no metric distribution was computed the plot cannot be made.
 
-        Returns
-        -------
-        axes: matplotlib.pyplot.axes
-            The axes handle of the plot.
+     Returns
+     -------
+     axes: matplotlib.pyplot.axes
+         The axes handle of the plot.
 
-        """
+     """
+     fontsize = 18 #default label fontsize
 
-        if not self.metrics:
-            raise ValueError("No uncertainty data present for these metrics. "+
-                    "Please run an uncertainty analysis first.")
+     if not self.metrics:
+         raise ValueError("No uncertainty data present for these metrics. "+
+                 "Please run an uncertainty analysis first.")
 
-        if metric_list is None:
-            metric_list = list(self.metrics.keys())
+     if metric_list is None:
+         metric_list = self.metric_names
 
-        df_values = pd.DataFrame()
-        for metric in metric_list:
-            if metric not in METRICS_2D:
-                df_values = df_values.append(self.metrics[metric])
+     df_values = pd.DataFrame()
+     for metric in metric_list:
+         if metric not in METRICS_2D:
+             df_values = df_values.append(self.metrics[metric])
 
-        df_values_log = df_values.apply(np.log10).copy()
-        df_values_log = df_values_log.replace([np.inf, -np.inf], np.nan)
-        cols = df_values_log.columns
-        nplots = len(cols)
-        nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
-        if not figsize:
-            figsize = (ncols * FIG_W, nrows * FIG_H)
-        _fig, axes = plt.subplots(nrows = nrows,
-                                 ncols = ncols,
-                                 figsize = figsize,
-                                 sharex = True,
-                                 sharey = True)
-        if nplots > 1:
-            flat_axes = axes.flatten()
-        else:
-            flat_axes = np.array([axes])
+     if log:
+         df_values_plt = df_values.apply(np.log10).copy()
+         df_values_plt = df_values_plt.replace([np.inf, -np.inf], np.nan)
+     else:
+         df_values_plt = df_values.copy()
 
-        for ax, col in zip_longest(flat_axes, cols, fillvalue=None):
-            if col is None:
-                ax.remove()
-                continue
-            data = df_values_log[col]
-            if data.empty:
-                ax.remove()
-                continue
-            data.hist(ax=ax,  bins=100, density=True, histtype='step')
-            avg = df_values[col].mean()
-            std = df_values[col].std()
-            ax.plot([np.log10(avg), np.log10(avg)], [0, 1],
-                    color='red', linestyle='dashed',
-                    label="avg=%.2f%s" %u_vtm(avg))
-            ax.plot([np.log10(avg) - np.log10(std) / 2,
-                     np.log10(avg) + np.log10(std) / 2],
-                    [0.3, 0.3], color='red',
-                    label="std=%.2f%s" %u_vtm(std))
-            ax.set_title(col)
-            ax.set_xlabel('value [log10]')
-            ax.set_ylabel('density of events')
-            ax.legend()
+     cols = df_values_plt.columns
+     nplots = len(cols)
+     nrows, ncols = int(np.ceil(nplots / 2)), min(nplots, 2)
+     if not figsize:
+         figsize = (ncols * FIG_W, nrows * FIG_H)
+     _fig, axes = plt.subplots(nrows = nrows,
+                              ncols = ncols,
+                              figsize = figsize)
+     if nplots > 1:
+         flat_axes = axes.flatten()
+     else:
+         flat_axes = np.array([axes])
 
-        return axes
+     for ax, col in zip_longest(flat_axes, cols, fillvalue=None):
+         if col is None:
+             ax.remove()
+             continue
+         data = df_values_plt[col]
+         if data.empty:
+             ax.remove()
+             continue
+         data.hist(ax=ax, bins=30, density=True, histtype='bar',
+                   color='lightsteelblue', edgecolor='black')
+         try:
+             data.plot.kde(ax=ax, color='darkblue', linewidth=4, label='')
+         except np.linalg.LinAlgError:
+             pass
+         avg, std = df_values[col].mean(), df_values[col].std()
+         _, ymax = ax.get_ylim()
+         if log:
+             avg_plot = np.log10(avg)
+         else:
+             avg_plot = avg
+         ax.axvline(avg_plot, color='darkorange', linestyle='dashed', linewidth=2,
+                 label="avg=%.2f%s" %u_vtm(avg))
+         if log:
+             std_m, std_p = np.log10(avg - std), np.log10(avg + std)
+         else:
+             std_m, std_p = avg - std, avg + std
+         ax.plot([std_m, std_p],
+                 [0.3 * ymax, 0.3 * ymax], color='black',
+                 label="std=%.2f%s" %u_vtm(std))
+         ax.set_title(col)
+         if log:
+             ax.set_xlabel('value [log10]')
+         else:
+             ax.set_xlabel('value')
+         ax.set_ylabel('density of events')
+         ax.legend(fontsize=fontsize-2)
+
+         ax.tick_params(labelsize=fontsize)
+         for item in [ax.title, ax.xaxis.label, ax.yaxis.label]:
+             item.set_fontsize(fontsize)
+     plt.tight_layout()
+
+     return axes
 
 
     def plot_sample(self, figsize=None):
@@ -771,7 +813,7 @@ class Uncertainty():
             metric_list = ['aai_agg', 'freq_curve', 'tot_climate_risk',
                            'tot_value', 'benefit', 'cost_ben_ratio',
                            'imp_meas_present', 'imp_meas_future', 'tot_value']
-            metric_list = list(set(metric_list) & set(self.metrics.keys()))
+        metric_list = list(set(metric_list) & set(self.metric_names))
 
 
         nplots = len(metric_list)
@@ -816,6 +858,130 @@ class Uncertainty():
 
         return axes
 
+    def plot_sensitivity_second_order(self, salib_si='S2', metric_list=None,
+                           figsize=None):
+        """Plot second order sensitivity indices as matrix.
+
+        This requires that a senstivity analysis was already performed with
+        a method that returns second-order sensitivity indices.
+
+        The sensitivity indices or their confidence interval can be shown.
+
+        E.g. For the sensitivity analysis method 'sobol', the choices
+        are ['S2', 'S2_conf'].
+
+        For more information see the SAlib documentation:
+        https://salib.readthedocs.io/en/latest/basics.html
+
+        Parameters
+        ----------
+        salib_si: string, optional
+            The second order (one value per metric output) sensitivity index
+            to plot. This must be a key of the sensitivity dictionaries in
+            self.sensitivity[metric] for each metric in metric_list.
+            The default is S2.
+        metric_list: list of strings, optional
+            List of metrics to plot the sensitivity. If a metric is not found
+            in self.sensitivity, it is ignored. For a metric with submetrics,
+            e.g. 'freq_curve', all sumetrics (e.g. 'rp5') are plotted on
+            separate axis. Submetrics (e.g. 'rp5') are also valid choices.
+            The default is all metrics and their submetrics from Impact.calc
+            or CostBenefit.calc:
+            ['aai_agg', 'freq_curve', 'tot_climate_risk', 'benefit',
+             'cost_ben_ratio', 'imp_meas_present', 'imp_meas_future',
+             'tot_value']
+        figsize: tuple(int or float, int or float), optional
+            The figsize argument of matplotlib.pyplot.subplots()
+            The default is derived from the total number of plots (nplots) as:
+                nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
+                figsize = (ncols * 5, nrows * 5)
+
+        Raises
+        ------
+        ValueError
+            If no sensitivity is available the plot cannot be made.
+
+        Returns
+        -------
+        axes: matplotlib.pyplot.axes
+            The axes handle of the plot.
+
+        """
+
+        if not self.sensitivity:
+            raise ValueError("No sensitivity present for this metrics. "
+                    "Please run a sensitivity analysis first.")
+
+        if metric_list is None:
+            metric_list = ['aai_agg', 'freq_curve', 'tot_climate_risk',
+                           'tot_value', 'benefit', 'cost_ben_ratio',
+                           'imp_meas_present', 'imp_meas_future', 'tot_value']
+
+        #all the lowest level metrics (e.g. rp10) directly or as
+        #submetrics of the metrics in metrics_list
+        submetric_list = []
+        for metric_name, metric_dict in self.sensitivity.items():
+            if metric_name in metric_list:
+                if metric_dict:
+                    submetric_list.append(list(metric_dict.keys())[0])
+            submetric_list += [submetric_name
+             for submetric_name, submetric_dict in metric_dict.items()
+             if submetric_name in metric_list
+             ]
+        #remove duplicate
+        submetric_list = list(set(submetric_list))
+
+        nplots = len(submetric_list)
+        nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
+        if not figsize:
+            figsize = (ncols * 5, nrows * 5)
+        _fig, axes = plt.subplots(nrows = nrows,
+                                 ncols = ncols,
+                                 figsize = figsize)
+        if nplots > 1:
+            flat_axes = axes.flatten()
+        else:
+            flat_axes = np.array([axes])
+
+        #dictionnary of sensitivity indices of all lowest level metrics
+        si_dict = {}
+        for metric_dict in self.sensitivity.values():
+            si_dict.update(metric_dict)
+
+        for ax, submetric in zip_longest(flat_axes, submetric_list,
+                                         fillvalue=None):
+            if submetric is None:
+                ax.remove()
+                continue
+            #Make matrix symmetric
+            s2_matrix = np.triu(np.asmatrix(si_dict[submetric]['S2']))
+            s2_matrix = s2_matrix + s2_matrix.T - np.diag(np.diag(s2_matrix))
+            ax.matshow(s2_matrix, cmap='coolwarm')
+            s2_conf_matrix = np.triu(np.asmatrix(si_dict[submetric]['S2_conf']))
+            s2_conf_matrix = s2_conf_matrix + s2_conf_matrix.T - \
+                np.diag(np.diag(s2_conf_matrix))
+            for i in range(len(s2_matrix)):
+                for j in range(len(s2_matrix)):
+                    if np.isnan(s2_matrix[i, j]):
+                        ax.text(j, i, np.nan,
+                           ha="center", va="center",
+                           color="k", fontsize='medium')
+                    else:
+                        ax.text(j, i,
+                           str(round(s2_matrix[i, j], 2)) + u'\n\u00B1' +  #\u00B1 = +-
+                           str(round(s2_conf_matrix[i, j], 2)),
+                           ha="center", va="center",
+                           color="k", fontsize='medium')
+
+            ax.set_title(salib_si + ' - ' + submetric, fontsize=18)
+            labels = self.param_labels
+            ax.set_xticks(np.arange(len(labels)))
+            ax.set_yticks(np.arange(len(labels)))
+            ax.set_xticklabels(labels, fontsize=16)
+            ax.set_yticklabels(labels, fontsize=16)
+        plt.tight_layout()
+
+        return axes
 
     def save_samples_df(self, filename=None):
         """
@@ -835,7 +1001,9 @@ class Uncertainty():
 
         """
         if filename is None:
-            filename = "samples_df" + dt.now().strftime("%Y-%m-%d-%H%M%S")
+            filename = "samples_df" + dt.datetime.now().strftime(
+                                                            "%Y-%m-%d-%H%M%S"
+                                                            )
             filename = Path(DATA_DIR) / Path(filename)
         save_path = Path(filename)
         save_path = save_path.with_suffix('.csv')
@@ -861,104 +1029,6 @@ class Uncertainty():
 
         self.samples_df = pd.read_csv(Path(filename).with_suffix('.csv'))
         return self.samples_df
-
-    def save_metrics(self, filename=None):
-        """
-        Save the metrics dictionary to .json
-
-        Parameters
-        filename : str or pathlib.Path, optional
-            The filename with absolute or relative path.
-            The default name is "metrics + datetime.now() + .json" and
-            the default path is taken from climada.config
-
-        Returns
-        -------
-        save_path : pathlib.Path
-            Path to the saved file
-        """
-
-        if filename is None:
-            filename = "metrics" + dt.now().strftime("%Y-%m-%d-%H%M%S")
-            filename = Path(DATA_DIR) / Path(filename)
-        save_path = Path(filename).with_suffix('.json')
-        with open(save_path, 'w') as f:
-            json.dump(self.metrics, f)
-        return save_path
-
-    def load_metrics(self, filename, directory=None):
-        """
-        Load a metrics from .json file
-
-        Parameters
-        ----------
-        filename : str or pathlib.Path
-            The filename.
-        directory : str or pathlib.Path, optional
-            The directory path. The default is taken from
-            climada.config
-
-        Returns
-        -------
-        metrics : dict
-            The loaded metrics dictionary
-
-        """
-        if directory is None:
-            directory = DATA_DIR
-        load_path = Path(filename).with_suffix('.json')
-        with open(load_path, 'r') as f:
-            self.metrics = json.load(f)
-        return self.metrics
-
-    def save_sensitivity(self, filename=None):
-        """
-        Save the sensitivity dictionary to .json
-
-        Parameters
-        filename : str or pathlib.Path, optional
-            The filename with absolute or relative path.
-            The default name is "sensitivity + datetime.now() + .json" and
-            the default path is taken from climada.config
-
-        Returns
-        -------
-        save_path : pathlib.Path
-            Path to the saved file
-        """
-
-        if filename is None:
-            filename = "sensitivity" + dt.now().strftime("%Y-%m-%d-%H%M%S")
-            filename = Path(DATA_DIR) / Path(filename)
-        save_path = Path(filename).with_suffix('.json')
-        with open(save_path, 'w') as f:
-            json.dump(self.sensitivity, f)
-        return save_path
-
-    def load_sensitivity(self, filename):
-        """
-        Load a sensitivity from .json file
-
-        Parameters
-        ----------
-        filename : str or pathlib.Path
-            The filename
-        directory : str or pathlib.Path, optional
-            The directory path. The default is taken from
-            climada.config
-
-        Returns
-        -------
-        sensitivity : dict
-            The loaded sensitivity dictionary
-
-        """
-
-        load_path = Path(filename).with_suffix('.json')
-        with open(load_path, 'r') as f:
-            self.sensitivity = json.load(f)
-        return self.sensitivity
-
 
 SALIB_COMPATIBILITY = {
     'fast': ['fast_sampler'],
