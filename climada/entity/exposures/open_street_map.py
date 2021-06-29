@@ -38,7 +38,7 @@ import pyproj
 import overpy
 
 from climada.entity import Exposures
-from climada.entity.exposures.litpop import LitPop
+from climada.entity import LitPop
 
 LOGGER = logging.getLogger(__name__)
 
