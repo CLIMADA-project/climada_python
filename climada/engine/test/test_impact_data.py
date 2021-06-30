@@ -148,8 +148,8 @@ class TestEmdatProcessing(unittest.TestCase):
         self.assertEqual(df["Total Damages ('000 US$)"][0], 1800000)
         # scaled impact value might change if worldbank input data changes,
         # check magnitude and adjust if test failes in the following line:
-        self.assertAlmostEqual(df["impact_scaled"][0] * 1e-6,
-                               1012.593, places=0)
+        self.assertAlmostEqual(df["impact_scaled"][0] * 1e-9,
+                               1.012, places=0)
         self.assertIn('USA', list(df['ISO']))
         self.assertIn('Drought', list(df['Disaster Type']))
         self.assertEqual(2000, df['reference_year'].min())
@@ -241,8 +241,8 @@ class TestEmdatToImpact(unittest.TestCase):
         self.assertAlmostEqual(0.14285714, np.unique(impact_emdat.frequency)[0], places=3)
         # scaled impact value might change if worldbank input data changes,
         # check magnitude and adjust if test failes in the following 2 lines:
-        self.assertAlmostEqual(369.25473, np.sum(impact_emdat.at_event * 1e-8), places=0)
-        self.assertAlmostEqual(527.7077, impact_emdat.aai_agg * 1e-7, places=0)
+        self.assertAlmostEqual(3.69, np.sum(impact_emdat.at_event * 1e-10), places=0)
+        self.assertAlmostEqual(5.28, impact_emdat.aai_agg * 1e-9, places=0)
 
     def test_emdat_to_impact_fakedata(self):
         """test import TC EM-DAT to Impact() for all countries in CSV"""

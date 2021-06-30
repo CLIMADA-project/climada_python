@@ -113,7 +113,7 @@ class TestOSMlongUnitTests(unittest.TestCase):
         country = 'CHE'
         highValueArea = geopandas.read_file(DATA_DIR.joinpath('High_Value_Area_47_8.shp'))
         # Execute function
-        exp_sub = OSM._get_litpop_bbox(country, highValueArea)
+        exp_sub = OSM._get_litpop_bbox(country, highValueArea, reference_year=2016)
         self.assertTrue(
             math.isclose(min(exp_sub.gdf.latitude), highValueArea.bounds.miny, rel_tol=1e-2))
         self.assertTrue(
@@ -124,7 +124,7 @@ class TestOSMlongUnitTests(unittest.TestCase):
         # Define and load parameters:
         country = 'CHE'  # this takes too long for unit test probably
         highValueArea = geopandas.read_file(DATA_DIR.joinpath('High_Value_Area_47_8.shp'))
-        exp_sub = OSM._get_litpop_bbox(country, highValueArea)
+        exp_sub = OSM._get_litpop_bbox(country, highValueArea, reference_year=2016)
         High_Value_Area_gdf = geopandas.read_file(DATA_DIR.joinpath('High_Value_Area_47_8.shp'))
         # execute function
         for mode in {'proportional', 'even'}:
@@ -147,7 +147,8 @@ class TestOSMlongUnitTests(unittest.TestCase):
         mode = 'LitPop'     # mode LitPop takes too long for unit test, moved to integration test
         country = 'CHE'
         # Execute function
-        High_Value_Area_gdf = OSM._assign_values_exposure(building_gdf, mode, country)
+        High_Value_Area_gdf = OSM._assign_values_exposure(building_gdf, mode,
+                                                          country, reference_year=2016)
         self.assertGreater(
             High_Value_Area_gdf.loc[random.randint(0, len(High_Value_Area_gdf))].value,
             0)
