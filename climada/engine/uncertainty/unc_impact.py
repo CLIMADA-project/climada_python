@@ -348,7 +348,7 @@ class UncImpact(Uncertainty):
                   ) from verr
 
         if exp is None:
-            exp_input_vals = self.sampled_df.loc[0][
+            exp_input_vals = self.samples_df.loc[0][
                 self.unc_vars['exp'].labels
                 ].to_dict()
             exp = self.unc_vars['exp'].uncvar_func(**exp_input_vals)
