@@ -29,8 +29,10 @@ import pandas as pd
 from climada.engine.uncertainty.base import Uncertainty, UncVar
 from climada.engine.cost_benefit import CostBenefit
 from climada.util import log_level
+from climada.util.config import setup_logging as u_setup_logging
 
 LOGGER = logging.getLogger(__name__)
+u_setup_logging()
 
 # Future planed features:
 # - Add 'efc' (frequency curve) to UncCostBenenfit
@@ -157,7 +159,6 @@ class UncCostBenefit(Uncertainty):
          cost_ben_ratio] = list(zip(*cb_metrics))
         elapsed_time = (time.time() - start)
         est_com_time = self.est_comp_time(elapsed_time, pool)
-        LOGGER.info("\n\nEstimated computation time: %.2fs\n", est_com_time)
 
         #Compute impact distributions
         with log_level(level='ERROR', name_prefix='climada'):

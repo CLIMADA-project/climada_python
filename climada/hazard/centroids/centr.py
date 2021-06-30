@@ -1004,6 +1004,7 @@ class Centroids():
                                  .map_partitions(apply_point, meta=Point)
                                  .compute(scheduler=scheduler))
 
+    
     def _ne_crs_geom(self, scheduler=None):
         """Return `geometry` attribute in the CRS of Natural Earth.
 

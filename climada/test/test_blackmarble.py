@@ -24,10 +24,9 @@ import numpy as np
 from cartopy.io import shapereader
 
 from climada.entity.exposures.black_marble import BlackMarble
-from climada.entity.exposures.nightlight import load_nightlight_nasa, \
-                                                load_nightlight_noaa, \
-                                                NOAA_BORDER
-from climada.entity.exposures import nightlight as nl_utils
+from climada.entity.exposures.litpop.nightlight import load_nightlight_nasa, \
+    load_nightlight_noaa, NOAA_BORDER
+from climada.entity.exposures.litpop import nightlight as nl_utils
 import climada.util.coordinates as u_coord
 
 class Test2013(unittest.TestCase):
@@ -153,12 +152,13 @@ class BMFuncs(unittest.TestCase):
             if info.attributes['ADM0_A3'] == 'AIA':
                 bounds = info.bounds
 
-        req_files = nl_utils.check_required_nl_files(bounds)
-        files_exist, _ = nl_utils.check_nl_local_file_exists(req_files)
+        req_files = nl_utils.get_required_nl_files(bounds)
+        files_exist = nl_utils.check_nl_local_file_exists(req_files)
         nl_utils.download_nl_files(req_files, files_exist)
 
         try:
-            nightlight, coord_nl = load_nightlight_nasa(bounds, req_files, 2016)
+            nightlight, coord_nl = nl_utils.load_nightlight_nasa(bounds,
+                                                                 req_files, 2016)
         except TypeError:
             print('MemoryError caught')
             return
@@ -170,7 +170,7 @@ class BMFuncs(unittest.TestCase):
 
     def test_load_noaa_pass(self):
         """Test load_nightlight_noaa function."""
-        nightlight, coord_nl, fn_nl = load_nightlight_noaa(2013)
+        nightlight, coord_nl, fn_nl = nl_utils.load_nightlight_noaa(2013)
 
         self.assertEqual(coord_nl[0, 0], NOAA_BORDER[1])
         self.assertEqual(coord_nl[1, 0], NOAA_BORDER[0])

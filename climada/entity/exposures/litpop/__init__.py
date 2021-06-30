@@ -16,15 +16,9 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
-init hazard
+init litpop
 """
-from .centroids import *
-from .base import *
-from .tag import *
-from .trop_cyclone import *
-from .tc_tracks import *
-from .tc_tracks_forecast import *
-from .tc_rainfield import *
-from .tc_surge_bathtub import *
-from .storm_europe import *
-from .wildfire import *
+from .litpop import *
+from .gpw_population import *
+from .nightlight import *
+
