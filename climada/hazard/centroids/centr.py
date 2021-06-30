@@ -571,7 +571,8 @@ class Centroids():
                 cent.geometry = cent.geometry.set_crs(DEF_CRS)
             cent.set_geometry_points()
             if not u_coord.equal_crs(cent.crs, cent_list[0].crs):
-                    raise ValueError('Different CRS are not accepted.')
+                    raise ValueError(f'Different CRS {cent.crs}!='
+                                     f'{cent_list[0].crs} are not accepted.')
             if is_area_pixel and not cent.area_pixel.any():
                 cent.set_area_pixel()
             if is_dist_coast and not cent.dist_coast.any():
