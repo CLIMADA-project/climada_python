@@ -398,7 +398,7 @@ class Centroids():
         inten : scipy.sparse.csr_matrix
             Sparse intensity array of shape (len(inten_name), len(geometry)).
         """
-        if not self.geometry.crs:
+        if not self.geometry.any():
             self.lat, self.lon, self.geometry, inten = u_coord.read_vector(
                 file_name, inten_name, dst_crs)
             return sparse.csr_matrix(inten)
