@@ -694,7 +694,7 @@ class TestAppend(unittest.TestCase):
         self.assertEqual(haz1.tag.description,
                          [haz1_ori.tag.description, haz2.tag.description])
 
-    def test_concatenate_pass(self):
+    def test_concat_pass(self):
         """Test concatenate function."""
         haz_1 = Hazard('TC')
         haz_1.tag.file_name = 'file1.mat'
@@ -757,14 +757,39 @@ class TestAppend(unittest.TestCase):
         app_haz.append(haz)
         self.assertIn('new_var', app_haz.__dict__)
 
-    def test_concatenate_new_var_pass(self):
-        """New variable appears."""
-        haz = dummy_hazard()
-        haz.new_var = np.ones(haz.size)
+    def test_change_centroids_pass(self):
+        """Set new new centroids for hazard"""
+        cent1 = Centroids()
+        cent1.lat, cent1.lon = np.array([0, 1]), np.array([0, -1])
+        cent1.on_land = np.array([True, True])
 
-        app_haz = Hazard()
-        app_haz.append(haz)
-        self.assertIn('new_var', app_haz.__dict__)
+        haz_1 = Hazard('TC')
+        haz_1.tag.file_name = 'file1.mat'
+        haz_1.tag.description = 'Description 1'
+        haz_1.centroids = cent1
+        haz_1.event_id = np.array([1])
+        haz_1.event_name = ['ev1']
+        haz_1.date = np.array([1])
+        haz_1.orig = np.array([True])
+        haz_1.frequency = np.array([1.0])
+        haz_1.fraction = sparse.csr_matrix([[0.02, 0.03]])
+        haz_1.intensity = sparse.csr_matrix([[0.2, 0.3]])
+        haz_1.units = 'm/s'
+
+        cent2 = Centroids()
+        cent2.lat, cent2.lon = np.array([0, 1, 3]), np.array([0, -1, 3])
+        cent2.on_land = np.array([True, True, False])
+
+        haz_2 = haz_1.change_centroids(cent2)
+
+        self.assertTrue(np.array_equal(haz_2.intensity.toarray(),
+                               np.array([[0.2, 0.3, 0.]])))
+        self.assertTrue(np.array_equal(haz_2.fraction.toarray(),
+                               np.array([[0.02, 0.03, 0.]])))
+        self.assertTrue(np.array_equal(haz_2.event_id, np.array([1])))
+        self.assertTrue(np.array_equal(haz_2.event_name, ['ev1']))
+        self.assertTrue(np.array_equal(haz_2.orig, [True]))
+        self.assertEqual(haz_2.tag.description, 'Description 1')
 
 class TestStats(unittest.TestCase):
     """Test return period statistics"""
