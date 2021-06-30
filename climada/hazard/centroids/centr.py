@@ -540,12 +540,17 @@ class Centroids():
         centroids : climada.hazard.Centroids()
             Centroids containing the union of the centroids in others.
 
+        Raises
+        ------
+            ValueError
         """
-
         if not self.lat.any() and not self.meta:
             cent_list = list(others)
         else:
             cent_list =  [self] + list(others)
+
+        if np.all([cent_list[0].equal(cent) for cent in cent_list[1:]]):
+            return copy.deepcopy(cent_list[-1])
 
         #Set attributes to centroids if missing in one but defined in other
         is_area_pixel = np.any([cent.area_pixel.any() for cent in cent_list]) \
