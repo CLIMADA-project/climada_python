@@ -757,6 +757,29 @@ class TestAppend(unittest.TestCase):
         app_haz.append(haz)
         self.assertIn('new_var', app_haz.__dict__)
 
+    def test_append_raise_type_error(self):
+        """Raise error if hazards of different class"""
+        haz1 = Hazard('TC')
+        haz1.units = 'm/s'
+        from climada.hazard import TropCyclone
+        haz2 = TropCyclone()
+        with self.assertRaises(TypeError):
+            haz1.append(haz2)
+
+    def test_concat_raise_value_error(self):
+        """Raise error if hazards with different units of type"""
+
+        haz1 = Hazard('TC')
+        haz1.units = 'm/s'
+        haz3 = Hazard('EQ')
+        with self.assertRaises(ValueError):
+             Hazard.concat([haz1, haz3])
+
+        haz4 = Hazard('TC')
+        haz4.units = 'cm'
+        with self.assertRaises(ValueError):
+             Hazard.concat([haz1, haz4])
+
     def test_change_centroids_pass(self):
         """Set new new centroids for hazard"""
         cent1 = Centroids()
