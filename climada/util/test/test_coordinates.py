@@ -325,6 +325,20 @@ class TestFunc(unittest.TestCase):
                     coords, coords_to_assign, threshold=thresh)
                 np.testing.assert_array_equal(assigned_idx, result)
 
+        #test empty coords_to_assign
+        coords_to_assign = np.array([])
+        result = [-1, -1, -1, -1, -1, -1, -1]
+        assigned_idx = u_coord.assign_coordinates(
+                    coords, coords_to_assign, threshold=thresh)
+        np.testing.assert_array_equal(assigned_idx, result)
+
+        #test empty coords
+        coords = np.array([])
+        result = np.array([])
+        assigned_idx = u_coord.assign_coordinates(
+                    coords, coords_to_assign, threshold=thresh)
+        np.testing.assert_array_equal(assigned_idx, result)
+
     def test_country_to_iso(self):
         name_list = [
             '', 'United States', 'Argentina', 'Japan', 'Australia', 'Norway', 'Madagascar']
