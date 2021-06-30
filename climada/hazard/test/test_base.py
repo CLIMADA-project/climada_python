@@ -725,7 +725,7 @@ class TestAppend(unittest.TestCase):
         haz_2.units = 'm/s'
 
         haz = Hazard('TC')
-        haz.extend([haz_1, haz_2])
+        haz = haz.concat([haz, haz_1, haz_2])
 
 
         hres_frac = sparse.csr_matrix([[0.02, 0.03, 0.04],
@@ -763,7 +763,7 @@ class TestAppend(unittest.TestCase):
         haz.new_var = np.ones(haz.size)
 
         app_haz = Hazard()
-        app_haz.extend([haz])
+        app_haz.append(haz)
         self.assertIn('new_var', app_haz.__dict__)
 
 class TestStats(unittest.TestCase):

@@ -1402,6 +1402,16 @@ class Hazard():
     def append(self, hazard):
         """Append events and centroids in hazard.
 
+        Hazard must be of same type as self.
+        Centroids of all hazards must have the same CRS.
+
+        Tthe centroids of both hazards are combined together.
+        All raster centroids are converted to points and raster data
+        is discarded.
+
+        Note: centroids of hazard is modified in place and raster information
+        is destroyed.
+
         Parameters
         ----------
         hazard: Hazard
@@ -1412,78 +1422,70 @@ class Hazard():
             ValueError
         """
         hazard._check_events()
-        self.extend([hazard])
-
-    def extend(self, haz_list, centroids=None, threshold=100):
-        """
-        Extends hazard with events of same type.
-
-        Centroids of all hazards must have the same CRS.
-
-        By default (centroids=None), the centroids of all hazards
-        are combined together. All raster centroids are converted
-        to points and raster data is discarded.
-
-        If centroids is not None, all hazards are defined on these centroids.
-        Centoids of hazards in haz_src not in centroids are mapped onto the
-        nearest point. If a point is further than threshold from the closet
-        centroid, the concatenation fails.
-
-        Note: centroids is modified in place and raster information is
-        destroyed.
+        if not self.event_id.any(): #if self is empty, replace self with hazard
+            self.__dict__ = hazard.__dict__
+        else:
+            self.__dict__ = Hazard.concat([self, hazard]).__dict__
 
 
-        Parameters
-        ----------
-        haz_list: list(climada.hazard.Hazard())
-            Hazard instances of the same hazard type
-        centroids: climada.hazard.Centroids(), optional
-            Centroids instance on which to map the concatenated hazard.
-            Default is None.
-        threshold: int or float
-            Threshold for mapping centoids of hazards in haz_list not in
-            centroids.
-            Argument is passed to climada.util.coordinates.assign_coordinates.
-            Default is 100.
+    # def extend(self, haz_list, centroids=None, threshold=100):
+    #     """
+    #     Extends hazard with events of same type.
 
-        Returns
-        -------
-        None.
+    #     Centroids of all hazards must have the same CRS.
 
-        """
-        if self.event_id.any(): #if self is not empty, concatenate with self.
-            haz_list = [self] + haz_list
-        self.__dict__ = Hazard.concatenate_hazard(haz_list,
-                                                centroids,
-                                                threshold).__dict__
+    #     By default (centroids=None), the centroids of all hazards
+    #     are combined together. All raster centroids are converted
+    #     to points and raster data is discarded.
+
+    #     If centroids is not None, all hazards are defined on these centroids.
+    #     Centoids of hazards in haz_src not in centroids are mapped onto the
+    #     nearest point. If a point is further than threshold from the closet
+    #     centroid, the concatenation fails.
+
+    #     Note: centroids is modified in place and raster information is
+    #     destroyed.
+
+
+    #     Parameters
+    #     ----------
+    #     haz_list: list(climada.hazard.Hazard())
+    #         Hazard instances of the same hazard type
+    #     centroids: climada.hazard.Centroids(), optional
+    #         Centroids instance on which to map the concatenated hazard.
+    #         Default is None.
+    #     threshold: int or float
+    #         Threshold for mapping centoids of hazards in haz_list not in
+    #         centroids.
+    #         Argument is passed to climada.util.coordinates.assign_coordinates.
+    #         Default is 100.
+
+    #     Returns
+    #     -------
+    #     None.
+
+    #     """
+    #     if self.event_id.any(): #if self is not empty, concatenate with self.
+    #         haz_list = [self] + haz_list
+    #     self.__dict__ = Hazard.concatenate_hazard(haz_list,
+    #                                             centroids,
+    #                                             threshold).__dict__
 
     @staticmethod
-    def concatenate_hazard(haz_list, centroids=None, threshold=100):
+    def concat(haz_list):
         """
         Concatenate events of several hazards of same type.
 
         Centroids of all hazards must either all be rasters with the same
         resolution, or all be points.
 
-        By default, the centroids of all hazards are combined together. If points,
+        The centroids of all hazards are combined together. If points,
         all points are combined. If rasters, a global raster is defined.
-
-        If centroids is not None, all hazards are defined on these centroids.
-        Centoids of hazards in haz_list not in centroids are mapped onto the
-        nearest point. If a point is further than threshold from the closet
-        centroid, the concatenation fails.
 
         Parameters
         ----------
         haz_list: list(climada.hazard.Hazard())
             Hazard instances of the same hazard type
-        centroids: climada.hazard.Centroids(), optional
-            Centroids instance on which to map the concatenated hazard.
-            Default is None.
-        threshold: int or float
-            Threshold for mapping centoids of hazards in haz_list not in centroids.
-            Argument is passed to climada.util.coordinates.assign_coordinates.
-            Default is 100.
 
         Returns
         -------
@@ -1494,7 +1496,6 @@ class Hazard():
         ------
         ValueError
         """
-
         #Check units consistency among hazards
         haz_types = {haz.tag.haz_type
                     for haz in haz_list
@@ -1514,8 +1515,7 @@ class Hazard():
             units = {''}
 
         #Define comon centroids
-        if centroids is None:
-            centroids = Centroids().union(*[haz.centroids
+        centroids = Centroids().union(*[haz.centroids
                                            for haz in haz_list])
         #Define empty concatenate hazard
         haz_concat = Hazard()
@@ -1525,16 +1525,9 @@ class Hazard():
         #Indices for mapping matrices onto common centroids
         hazcent_in_cent_idx_list = [
             u_coord.assign_coordinates(haz.centroids.coord, centroids.coord,
-                                       threshold=threshold)
+                                       threshold=0)
             for haz in haz_list
             ]
-
-        if any([-1 in idx_list for idx_list in hazcent_in_cent_idx_list]):
-            raise ValueError("At least one hazard centroid is at a larger distance"
-                    "than the given threshold %f from the given centroids. "
-                    "To perform the concatenation please choose a larger "
-                    "threshold or enlarge the centroids", threshold)
-
 
         #Concatenate attributes - hazards are assumed to have the same attributes
         for attr_name in vars(haz_list[0]).keys():
@@ -1561,3 +1554,76 @@ class Hazard():
         haz_concat.sanitize_event_ids()
 
         return haz_concat
+
+    def change_centroids(self, centroids, threshold=100):
+        """
+        Assign new centroids to hazard.
+
+        Centoids of the hazard not in centroids are mapped onto the nearest
+        point. Fails if a point is further than threshold from the closest
+        centroid.
+
+        The centroids must have the same CRS as self.centroids.
+
+        Parameters
+        ----------
+        haz: climada.hazard.Hazard()
+            Hazard instance
+        centroids: climada.hazard.Centroids()
+            Centroids instance on which to map the hazard.
+        threshold: int or float
+            Threshold for mapping haz.centroids not in centroids.
+            Argument is passed to climada.util.coordinates.assign_coordinates.
+            Default is 100.
+
+        Returns
+        -------
+        haz_new_cent: climada.hazard.Hazard()
+            Hazard projected onto centroids
+
+        Raises
+        ------
+        ValueError
+
+        See Also
+        --------
+        util.coordinates.assign_coordinates: algorithm to match centroids.
+
+        """
+
+        #Define empty concatenate hazard
+        haz_new_cent = Hazard()
+        haz_new_cent.units = self.units
+        haz_new_cent.centroids = centroids
+
+        #Indices for mapping matrices onto common centroids
+        new_cent_idx = u_coord.assign_coordinates(
+            self.centroids.coord, centroids.coord, threshold=threshold
+            )
+
+        if -1 in new_cent_idx:
+            raise ValueError("At least one hazard centroid is at a larger "
+                    "distance than the given threshold %f from the given "
+                    "centroids. Please choose a "
+                    "larger threshold or enlarge the centroids", threshold)
+
+
+        #Re-assign attributes intensity and fraction
+        matrix = self.intensity
+        new_int = (
+            sparse.csr_matrix(
+                (matrix.data, new_cent_idx[matrix.indices], matrix.indptr),
+                shape=(matrix.shape[0], centroids.size)
+                )
+            )
+        setattr(haz_new_cent, "intensity", new_int)
+        matrix = self.fraction
+        new_frac = (
+            sparse.csr_matrix(
+                (matrix.data, new_cent_idx[matrix.indices], matrix.indptr),
+                shape=(matrix.shape[0], centroids.size)
+                )
+            )
+        setattr(haz_new_cent, "fraction", new_frac)
+
+        return haz_new_cent
