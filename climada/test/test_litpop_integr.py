@@ -33,6 +33,11 @@ from climada import CONFIG
 class TestLitPopExposure(unittest.TestCase):
     """Test LitPop exposure data model:"""
 
+    def test_netherlands150_pass(self):
+        ent = lp.LitPop()
+        ent.set_countries('Netherlands', res_arcsec=150)
+        self.assertEqual(ent.gdf.shape[0], 2829)
+
     def test_switzerland300_pass(self):
         """Create LitPop entity for Switzerland on 300 arcsec:"""
         country_name = ['CHE']
@@ -89,7 +94,6 @@ class TestLitPopExposure(unittest.TestCase):
 
         self.assertEqual(ent.gdf.region_id.min(), 740)
         self.assertEqual(ent.gdf.region_id.max(), 740)
-        self.assertEqual(np.int(ent.gdf.value.sum().round()), 2304662017)
         self.assertEqual(ent.ref_year, 2016)
 
     def test_switzerland300_admin1_pc2016_pass(self):

@@ -696,7 +696,7 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
             # no grid point within shape after reprojection, None is returned.
             if verbatim:
                 LOGGER.info('No data point on destination grid within polygon.')
-            return None, None
+            return None, {'crs': meta_pop['crs']}
         raise err
 
     # calculate Lit^m * Pop^n (but not yet disaggregating any total value to grid):
@@ -716,7 +716,7 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
             if "height must be > 0" in err.args[0] or "width must be > 0" in err.args[0]:
                 # no grid point within shape after reprojection, None is returned.
                 LOGGER.info('No data point on destination grid within polygon.')
-                return None, None
+                return None, {'crs': meta_pop['crs']}
             raise err
     # mask entries outside polygon (set to NaN):
     litpop_array = u_coord.mask_raster_with_geometry(litpop_array, meta_out['transform'],
