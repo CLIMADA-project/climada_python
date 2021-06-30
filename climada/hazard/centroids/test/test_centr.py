@@ -111,6 +111,8 @@ class TestCentroidsReader(unittest.TestCase):
         self.assertIsInstance(centroids.geometry, gpd.GeoSeries)
         self.assertIsInstance(centroids.geometry.total_bounds, np.ndarray)
 
+class TestCentroidsMethods(unittest.TestCase):
+
     def test_union(self):
         cent1 = Centroids()
         cent1.lat, cent1.lon = np.array([0, 1]), np.array([0, -1])
@@ -134,6 +136,11 @@ class TestCentroidsReader(unittest.TestCase):
         np.testing.assert_array_equal(cent.on_land, [True, True, False, False])
 
         cent = Centroids().union(cent1)
+        np.testing.assert_array_equal(cent.lat, [0, 1])
+        np.testing.assert_array_equal(cent.lon, [0, -1])
+        np.testing.assert_array_equal(cent.on_land, [True, True])
+
+        cent = cent1.union(cent1)
         np.testing.assert_array_equal(cent.lat, [0, 1])
         np.testing.assert_array_equal(cent.lon, [0, -1])
         np.testing.assert_array_equal(cent.on_land, [True, True])
@@ -165,4 +172,5 @@ class TestCentroidsReader(unittest.TestCase):
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestCentroidsReader)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCentroidsMethods))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
