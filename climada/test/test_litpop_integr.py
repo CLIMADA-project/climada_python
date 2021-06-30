@@ -34,9 +34,22 @@ class TestLitPopExposure(unittest.TestCase):
     """Test LitPop exposure data model:"""
 
     def test_netherlands150_pass(self):
+        """Test set_countries for Netherlands at 150 arcsec, first shape is empty"""
         ent = lp.LitPop()
         ent.set_countries('Netherlands', res_arcsec=150)
         self.assertEqual(ent.gdf.shape[0], 2829)
+
+    def test_BLM150_pass(self):
+        """Test set_countries for BLM at 150 arcsec, 2 data points"""
+        ent = lp.LitPop()
+        ent.set_countries('BLM', res_arcsec=150)
+        self.assertEqual(ent.gdf.shape[0], 2)
+
+    def test_Monaco150_pass(self):
+        """Test set_countries for Moncao at 150 arcsec, 1 data point"""
+        ent = lp.LitPop()
+        ent.set_countries('Monaco', res_arcsec=150)
+        self.assertEqual(ent.gdf.shape[0], 1)
 
     def test_switzerland300_pass(self):
         """Create LitPop entity for Switzerland on 300 arcsec:"""

@@ -209,7 +209,7 @@ class LitPop(Exposures):
         except ValueError:
             LOGGER.warning('Could not write attribute meta, because exposure'
                            ' has only 1 data point')
-            self.meta = {}
+            self.meta = {'crs': self.crs}
         self.check()
 
     def set_nightlights(self, countries=None, shape=None, res_arcsec=15,
@@ -400,7 +400,7 @@ class LitPop(Exposures):
         except ValueError:
             LOGGER.warning('Could not write attribute meta, because exposure'
                            ' has only 1 data point')
-            self.meta = {}
+            self.meta = {'crs': self.crs}
         self.check()
 
     def set_custom_shape(self, shape, total_value, res_arcsec=30, exponents=(1,1),
@@ -514,7 +514,7 @@ class LitPop(Exposures):
         except ValueError:
             LOGGER.warning('Could not write attribute meta, because exposure'
                            ' has only 1 data point')
-            self.meta = {}
+            self.meta = {'crs': self.crs}
 
     @staticmethod
     def _set_one_country(country, res_arcsec=30, exponents=(1,1), fin_mode=None,
