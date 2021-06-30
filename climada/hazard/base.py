@@ -1400,7 +1400,7 @@ class Hazard():
                                                   dtype=np.float))
 
     def append(self, hazard):
-        """Append events and centroids in hazard.
+        """Append the events and centroids in hazard.
 
         Hazard must be of same type as self.
         Centroids of all hazards must have the same CRS.
@@ -1411,6 +1411,9 @@ class Hazard():
 
         Note: centroids of self is modified in place and raster information
         is destroyed.
+
+        It is recommended to use the static method `hazard.concatenate_hazard`
+        which concatenates a list of hazards into a new object.
 
         Parameters
         ----------
