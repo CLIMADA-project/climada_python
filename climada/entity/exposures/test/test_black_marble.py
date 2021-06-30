@@ -262,7 +262,7 @@ class TestEconIndices(unittest.TestCase):
                         'ZMB': [2, 'Zambia', 'zmb_geom']
                        }
         fill_econ_indicators(ref_year, country_isos, SHP_FILE)
-        country_isos_ref = {'CHE': [1, 'Switzerland', 'che_geom', 2015, 679832.3e6, 4],
+        country_isos_ref = {'CHE': [1, 'Switzerland', 'che_geom', 2015, 702149.0e6, 4],
                             'ZMB': [2, 'Zambia', 'zmb_geom', 2015, 21243.3e6, 2]
                            }
         self.assertEqual(country_isos.keys(), country_isos_ref.keys())
@@ -270,8 +270,8 @@ class TestEconIndices(unittest.TestCase):
             for i in [0, 1, 2, 3, 5]:  # test elements one by one:
                 self.assertEqual(country_isos[country][i],
                                  country_isos_ref[country][i])
-            self.assertAlmostEqual(country_isos[country][4] * 1e-6,
-                                   country_isos_ref[country][4] * 1e-6, places=0)
+            self.assertAlmostEqual(country_isos[country][4] * 1e-12,
+                                   country_isos_ref[country][4] * 1e-12, places=0)
 
     def test_fill_econ_indicators_kwargs_pass(self):
         """Test fill_econ_indicators with kwargs inputs."""
