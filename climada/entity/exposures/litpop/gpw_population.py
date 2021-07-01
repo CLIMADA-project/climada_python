@@ -77,18 +77,17 @@ def load_gpw_pop_shape(geometry, reference_year, gpw_version,
                                   verbatim=verbatim)
 
     # open TIFF and extract cropped data from input file:
-    src = rasterio.open(file_path)
-    global_transform = src.transform
-    pop_data, out_transform = rasterio.mask.mask(src, [geometry], crop=True,
-                                                  nodata=0)
+    with rasterio.open(file_path, 'r') as src:
+        global_transform = src.transform
+        pop_data, out_transform = rasterio.mask.mask(src, [geometry], crop=True,
+                                                    nodata=0)
 
-    # extract and update meta data for cropped data and close src:
-    meta = src.meta
-    meta.update({"driver": "GTiff",
-                 "height": pop_data.shape[1],
-                 "width": pop_data.shape[2],
-                 "transform": out_transform})
-    src.close()
+        # extract and update meta data for cropped data and close src:
+        meta = src.meta
+        meta.update({"driver": "GTiff",
+                    "height": pop_data.shape[1],
+                    "width": pop_data.shape[2],
+                    "transform": out_transform})
     return pop_data[layer,:,:], meta, global_transform
 
 def get_gpw_file_path(gpw_version, reference_year, data_dir=SYSTEM_DIR, verbatim=True):
