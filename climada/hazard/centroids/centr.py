@@ -133,9 +133,10 @@ class Centroids():
             for name in ['width', 'height', 'crs', 'transform']:
                 if name not in self.meta.keys():
                     raise ValueError('Missing meta information: %s' % name)
-            xres, xshear, xoff, yshear, yres, yoff = self.meta['transform'][:6]
+            xres, xshear, _xoff, yshear, yres, _yoff = self.meta['transform'][:6]
             if xshear != 0 or yshear != 0:
-                raise ValueError('Affine transformations with shearing components are not supported.')
+                raise ValueError('Affine transformations with shearing components are not '
+                                 'supported.')
             if yres > 0 or xres < 0:
                 raise ValueError('Affine transformations with positive y-orientation '
                                  'or negative x-orientation are not supported.')
@@ -323,7 +324,7 @@ class Centroids():
         self.__init__()
         self.lat, self.lon, self.geometry = np.asarray(lat), np.asarray(lon), gpd.GeoSeries(crs=crs)
 
-    def set_raster_file(self, file_name, band=[1], src_crs=None, window=False,
+    def set_raster_file(self, file_name, band=None, src_crs=None, window=False,
                         geometry=False, dst_crs=False, transform=None, width=None,
                         height=None, resampling=Resampling.nearest):
         """Read raster of bands and set 0 values to the masked ones.
@@ -335,8 +336,8 @@ class Centroids():
         ----------
         file_pth : str
             path of the file
-        band : int, optional
-            band number to read. Default: 1
+        band : list(int), optional
+            band number to read. Default: [1]
         src_crs : crs, optional
             source CRS. Provide it if error without it.
         window : rasterio.windows.Window, optional
@@ -363,6 +364,9 @@ class Centroids():
         inten : scipy.sparse.csr_matrix
             Each row is an event.
         """
+        if band is None:
+            band = [1]
+
         if not self.meta:
             self.meta, inten = u_coord.read_raster(
                 file_name, band, src_crs, window, geometry, dst_crs,
@@ -379,7 +383,7 @@ class Centroids():
             raise ValueError('Raster data is inconsistent with contained raster.')
         return sparse.csr_matrix(inten)
 
-    def set_vector_file(self, file_name, inten_name=['intensity'], dst_crs=None):
+    def set_vector_file(self, file_name, inten_name=None, dst_crs=None):
         """Read vector file format supported by fiona.
 
         Each intensity name is considered an event.
@@ -388,8 +392,9 @@ class Centroids():
         ----------
         file_name : str
             vector file with format supported by fiona and 'geometry' field.
-        inten_name : list(str)
+        inten_name : list(str), optional
             list of names of the columns of the intensity of each event.
+            default: ['intensity']
         dst_crs : crs, optional
             reproject to given crs
 
@@ -398,26 +403,32 @@ class Centroids():
         inten : scipy.sparse.csr_matrix
             Sparse intensity array of shape (len(inten_name), len(geometry)).
         """
+        if inten_name is None:
+            inten_name = ['intensity']
+
         if not self.geometry.any():
             self.lat, self.lon, self.geometry, inten = u_coord.read_vector(
                 file_name, inten_name, dst_crs)
             return sparse.csr_matrix(inten)
+
         tmp_lat, tmp_lon, tmp_geometry, inten = u_coord.read_vector(
             file_name, inten_name, dst_crs)
+
         if not (u_coord.equal_crs(tmp_geometry.crs, self.geometry.crs)
                 and np.allclose(tmp_lat, self.lat)
                 and np.allclose(tmp_lon, self.lon)):
             raise ValueError('Vector data inconsistent with contained vector.')
+
         return sparse.csr_matrix(inten)
 
-    def read_mat(self, file_name, var_names=DEF_VAR_MAT):
+    def read_mat(self, file_name, var_names=None):
         """Read centroids from CLIMADA's MATLAB version.
 
         Parameters
         ----------
         file_name : str
             absolute or relative file name
-        var_names : dict, default
+        var_names : dict, optional
             name of the variables
 
         Raises
@@ -456,7 +467,7 @@ class Centroids():
         except KeyError as err:
             raise KeyError("Not existing variable: %s" % str(err)) from err
 
-    def read_excel(self, file_name, var_names=DEF_VAR_EXCEL):
+    def read_excel(self, file_name, var_names=None):
         """Read centroids from excel file with column names in var_names.
 
         Parameters
@@ -544,10 +555,9 @@ class Centroids():
         ------
             ValueError
         """
-        if not self.lat.any() and not self.meta:
-            cent_list = list(others)
-        else:
-            cent_list =  [self] + list(others)
+        cent_list = list(others)
+        if self.lat.any() or self.meta:
+            cent_list.insert(0, self)
 
         if np.all([cent_list[0].equal(cent) for cent in cent_list[1:]]):
             return copy.deepcopy(cent_list[-1])
@@ -571,8 +581,8 @@ class Centroids():
                 cent.geometry = cent.geometry.set_crs(DEF_CRS)
             cent.set_geometry_points()
             if not u_coord.equal_crs(cent.crs, cent_list[0].crs):
-                    raise ValueError(f'Different CRS {cent.crs}!='
-                                     f'{cent_list[0].crs} are not accepted.')
+                raise ValueError(f'Different CRS {cent.crs}!='
+                                 f'{cent_list[0].crs} are not accepted.')
             if is_area_pixel and not cent.area_pixel.any():
                 cent.set_area_pixel()
             if is_dist_coast and not cent.dist_coast.any():
@@ -743,7 +753,8 @@ class Centroids():
             Used for dask map_partitions. "threads", "synchronous" or "processes"
         """
         if (not self.lat.size or not self.lon.size) and not self.meta:
-            return None
+            LOGGER.warning('No lat/lon, no meta, nothing to do!')
+            return
         if precomputed:
             if not self.lat.size or not self.lon.size:
                 self.set_meta_to_lat_lon()
@@ -897,7 +908,7 @@ class Centroids():
                                       self.lon.max() + pad, self.lat.max() + pad)
 
         if not axis:
-            _, axis, fontsize = u_plot.make_map(proj=proj_plot, figsize=figsize)
+            _, axis, _fontsize = u_plot.make_map(proj=proj_plot, figsize=figsize)
 
         axis.set_extent((xmin, xmax, ymin, ymax), crs=proj_data)
         u_plot.add_shapes(axis)
@@ -1072,7 +1083,6 @@ class Centroids():
                                  .map_partitions(apply_point, meta=Point)
                                  .compute(scheduler=scheduler))
 
-    
     def _ne_crs_geom(self, scheduler=None):
         """Return `geometry` attribute in the CRS of Natural Earth.
 
