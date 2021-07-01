@@ -394,7 +394,7 @@ def load_nightlight_nasa(bounds, req_files, year):
             continue
         extent = np.int64(np.clip(extent, 0, tile_size[None] - 1))
 
-        im_nl, _ = read_bm_file(SYSTEM_DIR, fname.replace('*', str(year)))
+        im_nl, _ = read_bm_file(SYSTEM_DIR, fname %(year))
         im_nl = np.flipud(im_nl)
         im_nl = sparse.csc.csc_matrix(im_nl)
         im_nl = im_nl[extent[0, 0]:extent[1, 0] + 1, extent[0, 1]:extent[1, 1] + 1]
@@ -438,8 +438,7 @@ def read_bm_file(bm_path, filename):
         del band1
         return arr1, curr_file
     except Exception as err:
-        raise type(err)(f"Failed to import {path}" + str(err)) from err
-
+        raise type(err)(f"Failed to import {path} " + str(err)) from err
 
 def unzip_tif_to_py(file_gz):
     """Unzip image file, read it, flip the x axis, save values as pickle
