@@ -350,15 +350,14 @@ def load_nasa_nl_shape_single_tile(geometry, path, layer=0):
         rasterio meta
     """
     # open tif source file with raterio:
-    src = rasterio.open(path)
-    # read cropped data from  source file (src) to np.ndarray:
-    out_image, transform = rasterio.mask.mask(src, [geometry], crop=True)
-    meta = src.meta
-    meta.update({"driver": "GTiff",
-                 "height": out_image.shape[1],
-                 "width": out_image.shape[2],
-                 "transform": transform})
-    src.close()
+    with rasterio.open(path, 'r') as src:
+        # read cropped data from  source file (src) to np.ndarray:
+        out_image, transform = rasterio.mask.mask(src, [geometry], crop=True)
+        meta = src.meta
+        meta.update({"driver": "GTiff",
+                    "height": out_image.shape[1],
+                    "width": out_image.shape[2],
+                    "transform": transform})
     return out_image[layer,:,:], meta
 
 def load_nightlight_nasa(bounds, req_files, year):
