@@ -1433,7 +1433,7 @@ class Hazard():
             raise TypeError(f"hazard is of class {type(self)} which is "
                             f" different from {type(hazard)}")
 
-        if not self.event_id.any(): #if self is empty, replace self with hazard
+        if len(self.event_id) == 0: #if self is empty, replace self with hazard
             self.__dict__ = hazard.__dict__
         else:
             self.__dict__ = Hazard.concat([self, hazard]).__dict__
