@@ -574,9 +574,8 @@ class WildFire(Hazard):
         # Check for the type of instrument (MODIS vs VIIRS)
         # Remove data with low confidence interval
         # Uniformize the name of the birghtness columns between VIIRS and MODIS
-        temp = pd.DataFrame()
         if 'instrument' in df_firms.columns:
-            if df_firms.instrument.any() == 'MODIS' or df_firms.instrument.any() == 'VIIRS':
+            if (df_firms.instrument == 'MODIS').any() or (df_firms.instrument == 'VIIRS').any():
                 df_firms_modis = df_firms.drop(df_firms[df_firms.instrument == 'VIIRS'].index)
                 df_firms_modis.confidence = np.array(
                     list(map(int, df_firms_modis.confidence.values.tolist())))
@@ -591,9 +590,9 @@ class WildFire(Hazard):
                     temp = temp.append(df_firms_viirs, sort=True)
                     temp = temp.drop(columns=['bright_ti4'])
 
-            df_firms = temp
-            df_firms = df_firms.reset_index()
-            df_firms = df_firms.drop(columns=['index'])
+                df_firms = temp
+                df_firms = df_firms.reset_index()
+                df_firms = df_firms.drop(columns=['index'])
 
         df_firms['iter_ev'] = np.ones(len(df_firms), bool)
         df_firms['cons_id'] = np.zeros(len(df_firms), int) - 1
@@ -619,7 +618,7 @@ class WildFire(Hazard):
         """
         # Resolution in km of the centroids depends on the data origin.
         if 'instrument' in df_firms.columns:
-            if df_firms['instrument'].any() == 'MODIS':
+            if (df_firms['instrument'] == 'MODIS').any():
                 res_data = 1.0
             else:
                 res_data = 0.375 # For VIIRS data
