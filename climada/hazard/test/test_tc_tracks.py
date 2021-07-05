@@ -33,6 +33,7 @@ from climada.util import ureg
 from climada.util.constants import TC_ANDREW_FL
 import climada.util.coordinates as u_coord
 from climada.entity import Exposures
+from datetime import datetime as dt
 
 DATA_DIR = CONFIG.hazard.test_data.dir()
 TEST_TRACK = DATA_DIR.joinpath("trac_brb_test.csv")
@@ -70,20 +71,6 @@ class TestIbtracs(unittest.TestCase):
             tc_track.read_ibtracs_netcdf(storm_id='1988234N13298')
         self.assertIn("IDs are not in IBTrACS", str(cm.exception))
         self.assertIn("1988234N13298", str(cm.exception))
-
-    def test_write_read_pass(self):
-        """Test writting and reading netcdf4 TCTracks instances"""
-        path = DATA_DIR.joinpath("tc_tracks_nc")
-        path.mkdir(exist_ok=True)
-        tc_track = tc.TCTracks()
-        tc_track.read_ibtracs_netcdf(provider='usa', storm_id='1988234N13299',
-                                     estimate_missing=True)
-        tc_track.write_netcdf(str(path))
-
-        tc_read = tc.TCTracks()
-        tc_read.read_netcdf(str(path))
-
-        self.assertEqual(tc_track.get_track().sid, tc_read.get_track().sid)
 
     def test_penv_rmax_penv_pass(self):
         """read_ibtracs_netcdf"""
@@ -297,9 +284,51 @@ class TestIbtracs(unittest.TestCase):
         for tr in tc_track.data:
             self.assertEqual(tr.basin[0], "EP")
             self.assertIn("WP", tr.basin)
+    
+    def test_discard_single_points(self):
+        """Check discard_single_points option"""
+        tc_track_singlept = tc.TCTracks()
+        passed = False
+        for year in range(1863, 1981):
+            tc_track_singlept.read_ibtracs_netcdf(provider='usa',
+                                         year_range=(year,year),
+                                         discard_single_points=False)
+            n_singlepts = np.sum([x.time.size == 1 for x in tc_track_singlept.data])
+            if n_singlepts > 0:
+                tc_track = tc.TCTracks()
+                tc_track.read_ibtracs_netcdf(provider='usa', year_range=(year,year))
+                if tc_track.size == tc_track_singlept.size - n_singlepts:
+                    passed = True
+                    break
+        self.assertTrue(passed)
 
 class TestIO(unittest.TestCase):
     """Test reading of tracks from files of different formats"""
+    def test_write_read_netcdf(self):
+        """Test writting and reading netcdf4 TCTracks instances"""
+        path = DATA_DIR.joinpath("tc_tracks_nc")
+        path.mkdir(exist_ok=True)
+        tc_track = tc.TCTracks()
+        tc_track.read_ibtracs_netcdf(provider='usa', storm_id='1988234N13299',
+                                     estimate_missing=True)
+        tc_track.write_netcdf(str(path))
+
+        tc_read = tc.TCTracks()
+        tc_read.read_netcdf(str(path))
+
+        self.assertEqual(tc_track.get_track().sid, tc_read.get_track().sid)
+
+    def test_read_legacy_netcdf(self):
+        """Test reading from NetCDF files with legacy basin attributes"""
+        anti_track = tc.TCTracks()
+        # test data set with two tracks:
+        # * 1980052S16155: crosses the antimeridian
+        # * 2018079S09162: close, but doesn't cross antimeridian; has self-intersections
+        anti_track.read_netcdf(TEST_TRACKS_ANTIMERIDIAN)
+
+        for tr in anti_track.data:
+            self.assertEqual(tr.basin.shape, tr.time.shape)
+            np.testing.assert_array_equal(tr.basin, "SP")
 
     def test_read_processed_ibtracs_csv(self):
         tc_track = tc.TCTracks()
@@ -854,6 +883,42 @@ class TestFuncs(unittest.TestCase):
 
         self.assertTrue(tracks_in_exp.get_track(storms['in']))
         self.assertFalse(tracks_in_exp.get_track(storms['out']))
+    
+    def test_get_landfall_idx(self):
+        """Test identification of landfalls"""
+        tr_ds = xr.Dataset()
+        datetimes = list()
+        for h in range(0, 24, 3):
+            datetimes.append(dt(2000, 1, 1, h))
+        tr_ds.coords['time'] = ('time', datetimes)
+        # no landfall
+        tr_ds['on_land'] = np.repeat(np.array([False]), 8)
+        sea_land_idx, land_sea_idx = tc._get_landfall_idx(tr_ds)
+        self.assertEqual([len(sea_land_idx), len(land_sea_idx)], [0,0])
+        # single landfall
+        tr_ds['on_land'] = np.array([False, False, True, True, True, False, False, False])
+        sea_land_idx, land_sea_idx = tc._get_landfall_idx(tr_ds)
+        self.assertEqual([len(sea_land_idx), len(land_sea_idx)], [1,1])
+        self.assertEqual([sea_land_idx, land_sea_idx], [2, 5])
+        # single landfall from starting point
+        tr_ds['on_land'] = np.array([True, True, True, True, True, False, False, False])
+        sea_land_idx, land_sea_idx = tc._get_landfall_idx(tr_ds)
+        self.assertEqual([len(sea_land_idx), len(land_sea_idx)], [0,0])
+        sea_land_idx, land_sea_idx = tc._get_landfall_idx(tr_ds, include_starting_landfall=True)
+        self.assertEqual([sea_land_idx, land_sea_idx], [0, 5])
+        # two landfalls
+        tr_ds['on_land'] = np.array([False, True, True, False, False, False, True, True])
+        sea_land_idx, land_sea_idx = tc._get_landfall_idx(tr_ds)
+        self.assertEqual([len(sea_land_idx), len(land_sea_idx)], [2,2])
+        self.assertEqual(sea_land_idx.tolist(), [1,6])
+        self.assertEqual(land_sea_idx.tolist(), [3,8])
+        # two landfalls, starting on land
+        tr_ds['on_land'] = np.array([True, True, False, False, True, True, False, False])
+        sea_land_idx, land_sea_idx = tc._get_landfall_idx(tr_ds)
+        self.assertEqual([sea_land_idx, land_sea_idx], [4, 6])
+        sea_land_idx, land_sea_idx = tc._get_landfall_idx(tr_ds, include_starting_landfall=True)
+        self.assertEqual(sea_land_idx.tolist(), [0,4])
+        self.assertEqual(land_sea_idx.tolist(), [2,6])
 
 
 # Execute Tests

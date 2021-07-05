@@ -202,14 +202,12 @@ class TropCyclone(Hazard):
                 if perc - last_perc >= 10:
                     LOGGER.info("Progress: %d%%", perc)
                     last_perc = perc
-                tc_haz.append(
+                self.append(
                     self._tc_from_track(track, centroids, coastal_idx,
                                         model=model, store_windfields=store_windfields,
                                         metric=metric))
             if last_perc < 100:
                 LOGGER.info("Progress: 100%")
-        LOGGER.debug('Append events.')
-        self.concatenate(tc_haz)
         LOGGER.debug('Compute frequency.')
         self.frequency_from_tracks(tracks.data)
         self.tag.description = description
@@ -443,7 +441,10 @@ class TropCyclone(Hazard):
         ])
         new_haz.orig = np.array([track.orig_event_flag])
         new_haz.category = np.array([track.category])
-        new_haz.basin = [str(track.basin.values[0])]
+        # users that pickle TCTracks objects might still have data with the legacy basin attribute,
+        # so we have to deal with it here
+        new_haz.basin = [track.basin if isinstance(track.basin, str)
+                         else str(track.basin.values[0])]
         return new_haz
 
     def _apply_knutson_criterion(self, chg_int_freq, scaling_rcp_year):
