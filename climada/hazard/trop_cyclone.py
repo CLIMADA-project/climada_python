@@ -16,7 +16,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
-Define TropCyclone class.
+Define TC wind hazard (TropCyclone class).
 """
 
 __all__ = ['TropCyclone']
@@ -58,10 +58,15 @@ MODEL_VANG = {'H08': 0, 'H1980': 1, 'H10': 2}
 """Enumerate different symmetric wind field models."""
 
 RHO_AIR = 1.15
-"""Air density."""
+"""Air density. Assumed constant, following Holland 1980."""
 
 GRADIENT_LEVEL_TO_SURFACE_WINDS = 0.9
-"""Conversion factor from gradient-level to surface winds."""
+"""Gradient-to-surface wind reduction factor according to the 90%-rule:
+
+Franklin, J.L., Black, M.L., Valde, K. (2003): GPS Dropwindsonde Wind Profiles in Hurricanes and
+Their Operational Implications. Weather and Forecasting 18(1): 32–44.
+https://doi.org/10.1175/1520-0434(2003)018<0032:GDWPIH>2.0.CO;2
+"""
 
 KMH_TO_MS = (1.0 * ureg.km / ureg.hour).to(ureg.meter / ureg.second).magnitude
 KN_TO_MS = (1.0 * ureg.knot).to(ureg.meter / ureg.second).magnitude
@@ -140,8 +145,9 @@ class TropCyclone(Hazard):
         description : str, optional
             Description of the event set. Default: "".
         model : str, optional
-            Model to compute gust. Currently only 'H08' is supported for the one implemented in
-            `_stat_holland` according to Greg Holland. Default: "H08".
+            Parametric wind field model to use: one of "H1980" (the prominent Holland 1980 model),
+            "H08" (Holland 1980 with b-value from Holland 2008), or "H10" (Holland et al. 2010).
+            Default: "H08".
         ignore_distance_to_coast : boolean, optional
             If True, centroids far from coast are not ignored. Default: False.
         store_windfields : boolean, optional
@@ -384,7 +390,9 @@ class TropCyclone(Hazard):
         coastal_idx : np.array
             Indices of centroids close to coast.
         model : str, optional
-            Windfield model. Default: H08.
+            Parametric wind field model, one of "H1980" (the prominent Holland 1980 model),
+            "H08" (Holland 1980 with b-value from Holland 2008), or "H10" (Holland et al. 2010).
+            Default: "H08".
         store_windfields : boolean, optional
             If True, store windfields. Default: False.
         metric : str, optional
