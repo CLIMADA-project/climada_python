@@ -202,14 +202,12 @@ class TropCyclone(Hazard):
                 if perc - last_perc >= 10:
                     LOGGER.info("Progress: %d%%", perc)
                     last_perc = perc
-                tc_haz.append(
+                self.append(
                     self._tc_from_track(track, centroids, coastal_idx,
                                         model=model, store_windfields=store_windfields,
                                         metric=metric))
             if last_perc < 100:
                 LOGGER.info("Progress: 100%")
-        LOGGER.debug('Append events.')
-        self.concatenate(tc_haz)
         LOGGER.debug('Compute frequency.')
         self.frequency_from_tracks(tracks.data)
         self.tag.description = description
@@ -437,13 +435,16 @@ class TropCyclone(Hazard):
         new_haz.fraction.data.fill(1)
         # store first day of track as date
         new_haz.date = np.array([
-            dt.datetime(track.time.dt.year[0],
-                        track.time.dt.month[0],
-                        track.time.dt.day[0]).toordinal()
+            dt.datetime(track.time.dt.year.values[0],
+                        track.time.dt.month.values[0],
+                        track.time.dt.day.values[0]).toordinal()
         ])
         new_haz.orig = np.array([track.orig_event_flag])
         new_haz.category = np.array([track.category])
-        new_haz.basin = [str(track.basin.values[0])]
+        # users that pickle TCTracks objects might still have data with the legacy basin attribute,
+        # so we have to deal with it here
+        new_haz.basin = [track.basin if isinstance(track.basin, str)
+                         else str(track.basin.values[0])]
         return new_haz
 
     def _apply_knutson_criterion(self, chg_int_freq, scaling_rcp_year):
@@ -742,25 +743,27 @@ def _bs_hol08(v_trans, penv, pcen, prepcen, lat, tint):
 
     Parameters
     ----------
-    v_trans : float
+    v_trans : np.array
         translational wind (m/s)
-    penv : float
+    penv : np.array
         environmental pressure (hPa)
-    pcen : float
+    pcen : np.array
         central pressure (hPa)
-    prepcen : float
-        previous central pressure (hPa)
-    lat : float
+    prepcen : np.array
+        central pressure (hPa) at previous track position
+    lat : np.array
         latitude (degrees)
-    tint : float
+    tint : np.array
         time step (h)
 
     Returns
     -------
-    b_s : float
+    b_s : np.array
+        Holland b-value
     """
-    hol_xx = 0.6 * (1. - (penv - pcen) / 215)
-    hol_b = -4.4e-5 * (penv - pcen)**2 + 0.01 * (penv - pcen) + \
+    pdelta = penv - pcen
+    hol_xx = 0.6 * (1. - pdelta / 215)
+    hol_b = -4.4e-5 * pdelta**2 + 0.01 * pdelta + \
         0.03 * (pcen - prepcen) / tint - 0.014 * abs(lat) + \
         0.15 * v_trans**hol_xx + 1.0
     return np.clip(hol_b, 1, 2.5)

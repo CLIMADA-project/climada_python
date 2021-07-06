@@ -66,6 +66,8 @@ REPO_DATA = {
         DEMO_DIR.joinpath('demo_emdat_impact_data_2020.csv'),
         DEMO_DIR.joinpath('histsoc_landuse-15crops_annual_FR_DE_DEMO_2001_2005.nc'),
         DEMO_DIR.joinpath('hist_mean_mai-firr_1976-2005_DE_FR.hdf5'),
+        DEMO_DIR.joinpath('crop_production_demo_data_yields_CHE.nc4'),
+        DEMO_DIR.joinpath('crop_production_demo_data_cultivated_area_CHE.nc4'),
         DEMO_DIR.joinpath('FAOSTAT_data_producer_prices.csv'),
         DEMO_DIR.joinpath('FAOSTAT_data_production_quantity.csv'),
         DEMO_DIR.joinpath('lpjml_ipsl-cm5a-lr_ewembi_historical_2005soc_co2_yield-whe-noirr_annual_FR_DE_DEMO_1861_2005.nc'),

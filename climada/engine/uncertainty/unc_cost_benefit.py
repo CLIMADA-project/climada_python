@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -29,8 +29,10 @@ import pandas as pd
 from climada.engine.uncertainty.base import Uncertainty, UncVar
 from climada.engine.cost_benefit import CostBenefit
 from climada.util import log_level
+from climada.util.config import setup_logging as u_setup_logging
 
 LOGGER = logging.getLogger(__name__)
+u_setup_logging()
 
 # Future planed features:
 # - Add 'efc' (frequency curve) to UncCostBenenfit
@@ -157,7 +159,6 @@ class UncCostBenefit(Uncertainty):
          cost_ben_ratio] = list(zip(*cb_metrics))
         elapsed_time = (time.time() - start)
         est_com_time = self.est_comp_time(elapsed_time, pool)
-        LOGGER.info("\n\nEstimated computation time: %.2fs\n", est_com_time)
 
         #Compute impact distributions
         with log_level(level='ERROR', name_prefix='climada'):

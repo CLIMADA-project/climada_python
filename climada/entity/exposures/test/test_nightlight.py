@@ -21,7 +21,7 @@ Test Nightlight module.
 import unittest
 import numpy as np
 
-from climada.entity.exposures import nightlight
+from climada.entity.exposures.litpop import nightlight
 from climada.util.constants import SYSTEM_DIR
 
 BM_FILENAMES = nightlight.BM_FILENAMES
@@ -30,65 +30,42 @@ class TestNightLight(unittest.TestCase):
     """Test nightlight functions."""
 
     def test_required_files(self):
-        """Test check_required_nl_files function with various countries."""
+        """Test get_required_nl_files function with various countries."""
         # Switzerland
-        bbox = [5.954809204000128, 45.82071848599999, 10.466626831000013, 47.801166077000076]
-        min_lon, min_lat, max_lon, max_lat = bbox
-
-        np.testing.assert_array_equal(nightlight.check_required_nl_files(bbox),
+        bbox = (5.954809204000128, 45.82071848599999, 10.466626831000013, 47.801166077000076)
+        # min_lon, min_lat, max_lon, max_lat = bbox
+        np.testing.assert_array_equal(nightlight.get_required_nl_files(bbox),
                                       [0., 0., 0., 0., 1., 0., 0., 0.])
-        np.testing.assert_array_equal(
-            nightlight.check_required_nl_files(min_lon, min_lat, max_lon, max_lat),
-            [0., 0., 0., 0., 1., 0., 0., 0.])
 
         # UK
-        bbox = [-13.69131425699993, 49.90961334800005, 1.7711694670000497, 60.84788646000004]
-        min_lon, min_lat, max_lon, max_lat = bbox
-
-        np.testing.assert_array_equal(nightlight.check_required_nl_files(bbox),
+        bbox = (-13.69131425699993, 49.90961334800005, 1.7711694670000497, 60.84788646000004)
+        np.testing.assert_array_equal(nightlight.get_required_nl_files(bbox),
                                       [0., 0., 1., 0., 1., 0., 0., 0.])
-        np.testing.assert_array_equal(
-            nightlight.check_required_nl_files(min_lon, min_lat, max_lon, max_lat),
-            [0., 0., 1., 0., 1., 0., 0., 0.])
 
         # entire world
-        bbox = [-180, -90, 180, 90]
-        min_lon, min_lat, max_lon, max_lat = bbox
-
-        np.testing.assert_array_equal(nightlight.check_required_nl_files(bbox),
+        bbox = (-180, -90, 180, 90)
+        np.testing.assert_array_equal(nightlight.get_required_nl_files(bbox),
                                       [1., 1., 1., 1., 1., 1., 1., 1.])
-        np.testing.assert_array_equal(
-            nightlight.check_required_nl_files(min_lon, min_lat, max_lon, max_lat),
-            [1., 1., 1., 1., 1., 1., 1., 1.])
 
-        # Not enough coordinates
-        bbox = [-180, -90, 180, 90]
-        min_lon, min_lat, max_lon, max_lat = bbox
-
-        self.assertRaises(ValueError, nightlight.check_required_nl_files,
-                          min_lon, min_lat, max_lon)
-
-        # Invalid coordinate order
-        bbox = [-180, -90, 180, 90]
-        min_lon, min_lat, max_lon, max_lat = bbox
-
-        self.assertRaises(ValueError, nightlight.check_required_nl_files,
-                          max_lon, min_lat, min_lon, max_lat)
-        self.assertRaises(ValueError, nightlight.check_required_nl_files,
-                          min_lon, max_lat, max_lon, min_lat)
+        # Invalid coordinate order or bbox length
+        self.assertRaises(ValueError, nightlight.get_required_nl_files,
+                          (-180, 90, 180, -90))
+        self.assertRaises(ValueError, nightlight.get_required_nl_files,
+                          (180, -90, -180, 90))
+        self.assertRaises(ValueError, nightlight.get_required_nl_files,
+                          (-90, 90))
 
     def test_check_files_exist(self):
         """Test check_nightlight_local_file_exists"""
         # If invalid directory is supplied it has to fail
         try:
-            _ = nightlight.check_nl_local_file_exists(
+            nightlight.check_nl_local_file_exists(
                 np.ones(np.count_nonzero(BM_FILENAMES)), 'Invalid/path')[0]
             raise Exception("if the path is not valid, check_nl_local_file_exists should fail")
         except ValueError:
             pass
-        files_exist, _check_path = nightlight.check_nl_local_file_exists(
-            np.ones(np.count_nonzero(BM_FILENAMES)), SYSTEM_DIR
-        )
+        files_exist = nightlight.check_nl_local_file_exists(
+            np.ones(np.count_nonzero(BM_FILENAMES)), SYSTEM_DIR)
         self.assertTrue(
             files_exist.sum() > 0,
             f'{files_exist} {BM_FILENAMES}'

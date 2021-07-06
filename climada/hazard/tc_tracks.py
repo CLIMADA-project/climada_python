@@ -157,21 +157,22 @@ class TCTracks():
             - lon (coords)
             - time_step (in hours)
             - radius_max_wind (in nautical miles)
-            - max_sustained_wind
-            - central_pressure
-            - environmental_pressure
+            - radius_oci (in nautical miles)
+            - max_sustained_wind (in knots)
+            - central_pressure (in hPa/mbar)
+            - environmental_pressure (in hPa/mbar)
+            - basin (for each track position)
             - max_sustained_wind_unit (attrs)
             - central_pressure_unit (attrs)
             - name (attrs)
             - sid (attrs)
             - orig_event_flag (attrs)
             - data_provider (attrs)
-            - basin (attrs)
             - id_no (attrs)
             - category (attrs)
         Computed during processing:
-            - on_land
-            - dist_since_lf
+            - on_land (bool for each track position)
+            - dist_since_lf (in km)
     """
     def __init__(self, pool=None):
         """Empty constructor. Read csv IBTrACS files if provided."""
@@ -296,6 +297,7 @@ class TCTracks():
     def read_ibtracs_netcdf(self, provider=None, rescale_windspeeds=True, storm_id=None,
                             year_range=None, basin=None, genesis_basin=None,
                             interpolate_missing=True, estimate_missing=False, correct_pres=False,
+                            discard_single_points=True,
                             file_name='IBTrACS.ALL.v04r00.nc'):
         """Read track data from IBTrACS databse.
 
@@ -396,6 +398,9 @@ class TCTracks():
         correct_pres : bool, optional
             For backwards compatibility, alias for `estimate_missing`.
             This is deprecated, use `estimate_missing` instead!
+        discard_single_points : bool, optional
+            Whether to discard tracks that consists of a single point. Recommended for full
+            compatiblity with other functions such as `equal_timesteps`. Default: True.
         file_name : str, optional
             Name of NetCDF file to be dowloaded or located at climada/data/system.
             Default: 'IBTrACS.ALL.v04r00.nc'
@@ -542,6 +547,16 @@ class TCTracks():
                            'have been found: %s%s', len(invalid_sids), ", ".join(invalid_sids[:5]),
                            ", ..." if len(invalid_sids) > 5  else ".")
             ibtracs_ds = ibtracs_ds.sel(storm=valid_storms_mask)
+            
+        if discard_single_points:
+            valid_storms_mask = ibtracs_ds.valid_t.sum(dim="date_time") > 1
+            invalid_storms_idx = np.nonzero(~valid_storms_mask.data)[0]
+            if invalid_storms_idx.size > 0:
+                invalid_sids = list(ibtracs_ds.sid.sel(storm=invalid_storms_idx).astype(str).data)
+                LOGGER.warning('%d storm events are discarded because only one valid timestep '
+                               'has been found: %s%s', len(invalid_sids), ", ".join(invalid_sids[:5]),
+                               ", ..." if len(invalid_sids) > 5  else ".")
+                ibtracs_ds = ibtracs_ds.sel(storm=valid_storms_mask)
 
         if ibtracs_ds.dims['storm'] == 0:
             LOGGER.info('After discarding IBTrACS events without valid values by the selected '
@@ -1302,6 +1317,13 @@ class TCTracks():
                 continue
             track = xr.open_dataset(file)
             track.attrs['orig_event_flag'] = bool(track.orig_event_flag)
+            if "basin" in track.attrs:
+                LOGGER.warning("Track data comes with legacy basin attribute. "
+                               "We assume that the track remains in that basin during its "
+                               "whole life time.")
+                basin = track.basin
+                del track.attrs['basin']
+                track['basin'] = ("time", np.full(track.time.size, basin))
             self.data.append(track)
 
 
@@ -1524,20 +1546,23 @@ def _dist_since_lf(track):
     dist_since_lf = np.zeros(track.time.values.shape)
 
     # Index in sea that follows a land index
-    sea_land_idx = np.where(np.diff(track.on_land.astype(int)) == 1)[0]
+    sea_land_idx, land_sea_idx = _get_landfall_idx(track, True)
     if not sea_land_idx.size:
         return (dist_since_lf + 1) * np.nan
-
-    # Index in sea that comes from previous land index
-    land_sea_idx = np.where(np.diff(track.on_land.astype(int)) == -1)[0] + 1
-    if track.on_land[-1]:
-        land_sea_idx = np.append(land_sea_idx, track.time.size)
+    
     orig_lf = np.empty((sea_land_idx.size, 2))
     for i_lf, lf_point in enumerate(sea_land_idx):
-        orig_lf[i_lf][0] = track.lat[lf_point] + \
-            (track.lat[lf_point + 1] - track.lat[lf_point]) / 2
-        orig_lf[i_lf][1] = track.lon[lf_point] + \
-            (track.lon[lf_point + 1] - track.lon[lf_point]) / 2
+        if lf_point > 0:
+            # Assume the landfall started between this and the previous point
+            orig_lf[i_lf][0] = track.lat[lf_point - 1] + \
+                (track.lat[lf_point] - track.lat[lf_point - 1]) / 2
+            orig_lf[i_lf][1] = track.lon[lf_point - 1] + \
+                (track.lon[lf_point] - track.lon[lf_point - 1]) / 2
+        else:
+            # track starts over land, assume first 'landfall' starts here
+            orig_lf[i_lf][0] = track.lat[lf_point]
+            orig_lf[i_lf][1] = track.lon[lf_point]
+
 
     dist = DistanceMetric.get_metric('haversine')
     nodes1 = np.radians(np.array([track.lat.values[1:],
@@ -1546,18 +1571,56 @@ def _dist_since_lf(track):
                                   track.lon.values[:-1]]).transpose())
     dist_since_lf[1:] = dist.pairwise(nodes1, nodes0).diagonal()
     dist_since_lf[~track.on_land.values] = 0.0
-    nodes1 = np.array([track.lat.values[sea_land_idx + 1],
-                       track.lon.values[sea_land_idx + 1]]).transpose() / 180 * np.pi
-    dist_since_lf[sea_land_idx + 1] = \
+    nodes1 = np.array([track.lat.values[sea_land_idx],
+                       track.lon.values[sea_land_idx]]).transpose() / 180 * np.pi
+    dist_since_lf[sea_land_idx] = \
         dist.pairwise(nodes1, orig_lf / 180 * np.pi).diagonal()
     for sea_land, land_sea in zip(sea_land_idx, land_sea_idx):
-        dist_since_lf[sea_land + 1:land_sea] = \
-            np.cumsum(dist_since_lf[sea_land + 1:land_sea])
+        dist_since_lf[sea_land:land_sea] = \
+            np.cumsum(dist_since_lf[sea_land:land_sea])
 
     dist_since_lf *= EARTH_RADIUS_KM
     dist_since_lf[~track.on_land.values] = np.nan
 
     return dist_since_lf
+
+def _get_landfall_idx(track, include_starting_landfall=False):
+    """Get the position of the start and end of landfalls for a TC track.
+
+    Parameters
+    ----------
+    track : xr.Dataset
+        track (variable 'on_land' must exist, if not present they can be added with
+               climada.hazard.tc_tracks.track_land_params(track, land_geom))
+    include_starting_landfall : bool
+        If the track starts over land, whether to include the track segment before
+        reaching the ocean as a landfall. Default: False.
+        
+
+    Returns
+    -------
+    sea_land_idx : numpy.ndarray of dtype int
+        Indexes of the first point over land for each landfall
+    land_sea_idx : numpy.ndarrat of dtype int
+        Indexes of first point over the ocean after each landfall. If the track
+        ends over land, the last value is set to track.time.size.
+    """
+    # Index in land that comes from previous sea index
+    sea_land_idx = np.where(np.diff(track.on_land.astype(int)) == 1)[0] + 1
+    # Index in sea that comes from previous land index
+    land_sea_idx = np.where(np.diff(track.on_land.astype(int)) == -1)[0] + 1
+    if track.on_land[-1]:
+        # track ends over land: add last track point as the end of that landfall
+        land_sea_idx = np.append(land_sea_idx, track.time.size)
+    if track.on_land[0]:
+        # track starts over land: remove first land-to-sea transition (not a landfall)?
+        if include_starting_landfall:
+            sea_land_idx = np.append(0, sea_land_idx)
+        else:
+            land_sea_idx = land_sea_idx[1:]
+    if land_sea_idx.size != sea_land_idx.size:
+        raise ValueError('Mismatch')
+    return sea_land_idx,land_sea_idx
 
 def _estimate_pressure(cen_pres, lat, lon, v_max):
     """Replace missing pressure values with statistical estimate.
@@ -1646,14 +1709,14 @@ def estimate_roci(roci, cen_pres):
     Parameters
     ----------
     roci : array-like
-        ROCI values along track in km.
+        ROCI values along track in nautical miles (nm).
     cen_pres : array-like
         Central pressure values along track in hPa (mbar).
 
     Returns
     -------
     roci_estimated : np.array
-        Estimated ROCI values in km.
+        Estimated ROCI values in nautical miles (nm).
     """
     roci = np.where(np.isnan(roci), -1, roci)
     cen_pres = np.where(np.isnan(cen_pres), -1, cen_pres)
@@ -1681,14 +1744,14 @@ def estimate_rmw(rmw, cen_pres):
     Parameters
     ----------
     rmw : array-like
-        RMW values along track in km.
+        RMW values along track in nautical miles (nm).
     cen_pres : array-like
         Central pressure values along track in hPa (mbar).
 
     Returns
     -------
     rmw : np.array
-        Estimated RMW values in km.
+        Estimated RMW values in nautical miles (nm).
     """
     rmw = np.where(np.isnan(rmw), -1, rmw)
     cen_pres = np.where(np.isnan(cen_pres), -1, cen_pres)

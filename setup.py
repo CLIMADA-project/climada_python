@@ -55,6 +55,7 @@ setup(
         'cfgrib',
         'contextily',
         'dask',
+        'deprecation',
         'geopandas',
         'h5py',
         'haversine',

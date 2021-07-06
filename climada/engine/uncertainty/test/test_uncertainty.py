@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -174,6 +174,7 @@ class TestUncertainty(unittest.TestCase):
     """Test the Uncertainty class"""
 
     def test_init_pass(self):
+        """Test initiliazation uncertainty"""
 
         exp_unc, impf_unc, haz_unc = make_imp_uncs()
 
@@ -203,6 +204,8 @@ class TestUncertainty(unittest.TestCase):
         self.assertDictEqual(unc.sensitivity, {})
 
     def test_save_pass(self):
+        """Test save samples"""
+
         exp_unc, impf_unc, haz_unc = make_imp_uncs()
 
         unc = Uncertainty({'exp': exp_unc,
@@ -215,14 +218,11 @@ class TestUncertainty(unittest.TestCase):
         unc_imp.load_samples_df(filename)
 
         unc_imp.calc_distribution()
-        filename = unc.save_metrics()
-        unc_imp.load_metrics(filename)
-
         unc_imp.calc_sensitivity()
-        filename = unc.save_sensitivity()
-        unc_imp.load_sensitivity(filename)
+
 
     def test_make_sample_pass(self):
+        """Test generate sample"""
 
         exp_unc, _ , haz_unc = make_imp_uncs()
 
@@ -255,6 +255,7 @@ class TestUncertainty(unittest.TestCase):
         self.assertListEqual(list(unc.samples_df['x_haz']), [2.0])
 
     def test_plot_sample_pass(self):
+        """Test plot sample"""
 
         exp_unc, _, haz_unc = make_imp_uncs()
 
@@ -266,6 +267,7 @@ class TestUncertainty(unittest.TestCase):
         plt.close()
 
     def test_est_comp_time_pass(self):
+        """Test estimate computation time"""
 
         exp_unc, _, haz_unc = make_imp_uncs()
 
@@ -284,6 +286,7 @@ class TestUncertainty(unittest.TestCase):
         pool.clear()
 
     def test_calc_sensitivty_pass(self):
+        """Test compute sensitivity default"""
 
         exp_unc, _, haz_unc = make_imp_uncs()
         samples = pd.DataFrame({'x_exp': [1, 2, 3, 4],
@@ -312,6 +315,8 @@ class TestUncertainty(unittest.TestCase):
             )
 
     def test_calc_sensitivty_XY_pass(self):
+        """Test compute sensitvity method rbd_fast (variables names different
+        from default)"""
 
         exp_unc, _, haz_unc = make_imp_uncs()
         samples = pd.DataFrame({'x_exp': [1, 2, 3, 4],
@@ -341,6 +346,7 @@ class TestUncertainty(unittest.TestCase):
 
 
     def test_plot_sensitivity(self):
+        """Test plot sensitivity indices first oder"""
 
         exp_unc, _, haz_unc = make_imp_uncs()
         samples = pd.DataFrame({'x_exp': [1, 2, 3, 4],
@@ -364,8 +370,22 @@ class TestUncertainty(unittest.TestCase):
         unc.plot_sensitivity()
         plt.close()
 
+    def plot_sensitivity_second_order(self):
+        """Test plot sensitivity indices 2nd order"""
+
+        exp_unc, impf_unc, _ = make_imp_uncs()
+        haz = haz_dem()
+        unc = UncImpact(exp_unc, impf_unc, haz)
+        unc.make_sample(N=1)
+
+        unc.calc_distribution()
+        unc.calc_sensitivity()
+        unc.plot_sensitivity2d()
+        plt.close()
+
 
     def test_plot_distribution(self):
+        """Test plot metrics distribution"""
 
         exp_unc, _, haz_unc = make_imp_uncs()
         samples = pd.DataFrame({'x_exp': [1, 2, 3, 4],
@@ -387,6 +407,7 @@ class TestUncImpact(unittest.TestCase):
     """Test the UncImpact class"""
 
     def test_init_pass(self):
+        """Test impact initialization"""
 
         exp_unc, impf_unc, _ = make_imp_uncs()
         haz = haz_dem()
@@ -399,6 +420,7 @@ class TestUncImpact(unittest.TestCase):
         self.assertSetEqual(set(unc.unc_vars.keys()), {'exp', 'impf', 'haz'})
 
     def test_calc_distribution_pass(self):
+        """Test compute the uncertainty distribution for an impact"""
 
         exp_unc, impf_unc, _ = make_imp_uncs()
         haz = haz_dem()
@@ -437,6 +459,7 @@ class TestUncImpact(unittest.TestCase):
         self.assertTrue(unc.metrics['at_event'].empty)
 
     def test_plot_distribution_pass(self):
+        """Test plot the distribution (uncertainty) of the impact metrics)"""
 
         exp_unc, impf_unc, _ = make_imp_uncs()
         haz = haz_dem()
@@ -447,6 +470,7 @@ class TestUncImpact(unittest.TestCase):
         plt.close()
 
     def test_plot_sensitivity_map_pass(self):
+        """Test plot the map of the largest sensitivity index for eai_exp"""
 
         exp_unc, impf_unc, _ = make_imp_uncs()
         haz = haz_dem()
@@ -472,6 +496,7 @@ class TestUncCostBenefit(unittest.TestCase):
     """Test the UncCostBenefit class"""
 
     def test_init_pass(self):
+        """Test cost benefit initialization"""
 
         haz = haz_dem()
         ent = ent_dem()
@@ -488,6 +513,7 @@ class TestUncCostBenefit(unittest.TestCase):
                                                        'haz_fut', 'ent_fut'})
 
     def test_calc_distribution_pass(self):
+        """Test plot the distribution (uncertainty) of the impact metrics)"""
 
         haz_fut = haz_dem
         haz_distr = {"x_haz": sp.stats.uniform(1, 3),

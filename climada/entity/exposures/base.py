@@ -39,6 +39,7 @@ import climada.util.hdf5_handler as u_hdf5
 from climada.util.constants import ONE_LAT_KM, DEF_CRS, CMAP_RASTER
 import climada.util.coordinates as u_coord
 import climada.util.plot as u_plot
+from climada import CONFIG
 
 LOGGER = logging.getLogger(__name__)
 
@@ -51,7 +52,7 @@ INDICATOR_IMPF = 'impf_'
 INDICATOR_CENTR = 'centr_'
 """Name of the column containing the centroids id of specified hazard"""
 
-DEF_REF_YEAR = 2018
+DEF_REF_YEAR = CONFIG.exposures.def_ref_year.int()
 """Default reference year"""
 
 DEF_VALUE_UNIT = 'USD'
@@ -686,7 +687,7 @@ class Exposures():
             metadata = store.get_storer('exposures').attrs.metadata
             # in previous versions of CLIMADA and/or geopandas, the CRS was stored in '_crs'/'crs'
             crs = metadata.get('crs', metadata.get('_crs'))
-            if crs is None and 'meta' in metadata:
+            if crs is None and metadata.get('meta'):
                 crs = metadata['meta'].get('crs')
             self.__init__(store['exposures'], crs=crs)
             for key, val in metadata.items():
