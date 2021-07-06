@@ -97,14 +97,14 @@ class WildFire(Hazard):
         clus_thres_firms: int = 15
         remove_minor_fires_firms: bool = True
         minor_fire_thres_firms: int = 3
-        
+
     @dataclass
     class ProbaParams():
         """ DataClass as container for parameters for generation of
         probabilistic events.
-        
+
         PLEASE BE AWARE: Parameter values did not undergo any calibration.
-        
+
         Attributes:
         ----------
         blurr_steps : int, default = 4

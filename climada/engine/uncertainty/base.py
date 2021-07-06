@@ -22,8 +22,6 @@ Define Uncertainty class.
 __all__ = ['UncVar', 'Uncertainty']
 
 import logging
-import json
-
 from itertools import zip_longest
 from pathlib import Path
 
