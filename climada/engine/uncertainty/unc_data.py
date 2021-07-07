@@ -426,21 +426,21 @@ class UncData():
 
     def get_sensitivity(self, metric_list, salib_si):
         df_all = pd.DataFrame([])
+        df_meta = pd.DataFrame([])
         for metric in metric_list:
             try:
                 submetric_df = getattr(self, metric)
             except AttributeError:
                 continue
             if not submetric_df.empty:
+                submetric_df = submetric_df[submetric_df['si'] == salib_si]
                 df_all = pd.concat(
-                    [df_all, submetric_df[submetric_df['si'] == salib_si]],
+                    [df_all, submetric_df.select_dtypes('number')],
                     axis=1
                     )
-            params, si = submetric_df['param'], submetric_df['si']
-        df_all = df_all.drop(columns=['param', 'si'])
-        df_all['param'] = params
-        df_all['si'] = si
-        return df_all
+                if df_meta.empty:
+                    df_meta = submetric_df.drop(submetric_df.select_dtypes('number').columns, axis=1)
+        return pd.concat([df_meta, df_all], axis=1)
 
 
     def plot_sample(self, figsize=None):
@@ -721,7 +721,7 @@ class UncData():
             if metric is None:
                 ax.remove()
                 continue
-            df_S = self.get_sensitivity([metric], salib_si)
+            df_S = self.get_sensitivity([metric], salib_si).select_dtypes('number')
             if df_S.empty:
                 ax.remove()
                 continue
@@ -798,8 +798,8 @@ class UncData():
 
         #all the lowest level metrics (e.g. rp10) directly or as
         #submetrics of the metrics in metrics_list
-        df_S = self.get_sensitivity(metric_list, salib_si).drop(columns=['param', 'si'])
-        df_S_conf = self.get_sensitivity(metric_list, salib_si + '_conf').drop(columns=['param', 'si'])
+        df_S = self.get_sensitivity(metric_list, salib_si).select_dtypes('number')
+        df_S_conf = self.get_sensitivity(metric_list, salib_si + '_conf').select_dtypes('number')
 
         nplots = len(df_S.columns)
         nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
@@ -815,10 +815,20 @@ class UncData():
 
         for ax, submetric in zip(flat_axes, df_S.columns):
             #Make matrix symmetric
-            s2_matrix = np.triu(np.stack(df_S[submetric].to_numpy()))
+            s2_matrix = np.triu(
+                np.reshape(
+                    df_S[submetric].to_numpy(),
+                    (len(self.param_labels), -1)
+                    )
+                )
             s2_matrix = s2_matrix + s2_matrix.T - np.diag(np.diag(s2_matrix))
             ax.matshow(s2_matrix, cmap='coolwarm')
-            s2_conf_matrix = np.triu(np.stack(df_S_conf[submetric]))
+            s2_conf_matrix = np.triu(
+                np.reshape(
+                    df_S_conf[submetric].to_numpy(),
+                    (len(self.param_labels), -1)
+                    )
+                )
             s2_conf_matrix = s2_conf_matrix + s2_conf_matrix.T - \
                 np.diag(np.diag(s2_conf_matrix))
             for i in range(len(s2_matrix)):
@@ -872,8 +882,8 @@ class UncData():
         """
 
         try:
-            si_eai_df = self.get_sensitivity(['eai_exp_sens_df'], salib_si)
-            eai_max_si_idx = si_eai_df.drop(columns=['param', 'si']).astype('float').idxmax().to_numpy()
+            si_eai_df = self.get_sensitivity(['eai_exp_sens_df'], salib_si).select_dtypes('number')
+            eai_max_si_idx = si_eai_df.idxmax().to_numpy()
 
         except KeyError as verr:
             raise ValueError("No sensitivity indices found for"

@@ -240,32 +240,65 @@ class UncCalc():
         X = unc_data.samples_df.to_numpy() if 'X' in salib_kwargs else None
 
         for metric_name in self.metric_names:
-            sens_dict = {}
+            sens_first_order_dict = {}
+            sens_second_order_dict = {}
             for (submetric_name, metric_unc) in getattr(unc_data, metric_name + '_unc_df').iteritems():
                 Y = metric_unc.to_numpy()
                 if X is not None:
-                    sens_index = method.analyze(unc_data.problem_sa, X, Y,
+                    sens_indices = method.analyze(unc_data.problem_sa, X, Y,
                                                             **sensitivity_kwargs)
                 else:
-                    sens_index = method.analyze(unc_data.problem_sa, Y,
+                    sens_indices = method.analyze(unc_data.problem_sa, Y,
                                                             **sensitivity_kwargs)
-                sens_list = [
-                    list(si_val_array)
-                    for si_val_array in sens_index.values()
-                    ]
-                #flatten list
-                sens_dict[submetric_name] = list(itertools.chain(*sens_list))
+                sens_first_order = np.array([
+                    si_val_array
+                    for si_val_array in sens_indices.values()
+                    if si_val_array.ndim == 1
+                    ]).ravel()
+                sens_first_order_dict[submetric_name] = sens_first_order
 
-                si_name_list = [
-                    si_name
-                    for si_name in sens_index.keys()
-                    ]
+                sens_second_order = np.array([
+                    si_val_array
+                    for si_val_array in sens_indices.values()
+                    if si_val_array.ndim == 2
+                    ]).ravel()
+                sens_second_order_dict[submetric_name] = sens_second_order
+
+            si_name_first_order_list = [
+                key
+                for key, array in sens_indices.items()
+                if array.ndim == 1
+                ]
             n_params  = len(unc_data.param_labels)
-            si_idx = [si for si in si_name_list for _ in range(n_params)]
-            param_idx = unc_data.param_labels * len(si_name_list)
-            sens_df = pd.DataFrame(sens_dict)
-            sens_df['param'] = param_idx
-            sens_df['si'] = si_idx
+            si_names_first_order = [si for si in si_name_first_order_list for _ in range(n_params)]
+            param_names_first_order = unc_data.param_labels * len(si_name_first_order_list)
+
+            si_name_second_order_list = [
+                key
+                for key, array in sens_indices.items()
+                if array.ndim == 2
+                ]
+            si_names_second_order = [si for si in si_name_second_order_list for _ in range(n_params**2)]
+            param_names_second_order_2 = unc_data.param_labels * len(si_name_second_order_list) * n_params
+            param_names_second_order = [
+                param
+                for param in unc_data.param_labels
+                for _ in range(n_params)
+                ] * len(si_name_second_order_list)
+
+
+            sens_first_order_df = pd.DataFrame(sens_first_order_dict, dtype=np.number)
+            sens_first_order_df.insert(0, 'si', si_names_first_order)
+            sens_first_order_df.insert(1, 'param', param_names_first_order)
+            sens_first_order_df.insert(2, 'param2', None)
+
+            sens_second_order_df = pd.DataFrame(sens_second_order_dict, dtype=np.number)
+            sens_second_order_df.insert(0, 'si', si_names_second_order,)
+            sens_second_order_df.insert(1, 'param', param_names_second_order)
+            sens_second_order_df.insert(2, 'param2', param_names_second_order_2)
+
+            sens_df = pd.concat([sens_first_order_df, sens_second_order_df])
+
             setattr(unc_data, metric_name + '_sens_df', sens_df)
 
         unc_data.sensitivity_metrics = tuple(
