@@ -202,7 +202,8 @@ def sample_events(events_per_year, freqs_orig):
 
         #add the original indices and frequencies to the pool if there are less events
         #in the pool than needed to fill the year one is sampling for
-        if len(np.unique(indices)) < amount_events:
+        #or if the pool is empty (not covered in case amount_events is 0)
+        if len(np.unique(indices)) < amount_events or len(indices) == 0:
             indices = np.append(indices, indices_orig)
             freqs = np.append(freqs, freqs_orig)
 
