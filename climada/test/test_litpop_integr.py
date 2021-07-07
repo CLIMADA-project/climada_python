@@ -33,6 +33,24 @@ from climada import CONFIG
 class TestLitPopExposure(unittest.TestCase):
     """Test LitPop exposure data model:"""
 
+    def test_netherlands150_pass(self):
+        """Test set_countries for Netherlands at 150 arcsec, first shape is empty"""
+        ent = lp.LitPop()
+        ent.set_countries('Netherlands', res_arcsec=150, reference_year=2016)
+        self.assertEqual(ent.gdf.shape[0], 2829)
+
+    def test_BLM150_pass(self):
+        """Test set_countries for BLM at 150 arcsec, 2 data points"""
+        ent = lp.LitPop()
+        ent.set_countries('BLM', res_arcsec=150, reference_year=2016)
+        self.assertEqual(ent.gdf.shape[0], 2)
+
+    def test_Monaco150_pass(self):
+        """Test set_countries for Moncao at 150 arcsec, 1 data point"""
+        ent = lp.LitPop()
+        ent.set_countries('Monaco', res_arcsec=150, reference_year=2016)
+        self.assertEqual(ent.gdf.shape[0], 1)
+
     def test_switzerland300_pass(self):
         """Create LitPop entity for Switzerland on 300 arcsec:"""
         country_name = ['CHE']
@@ -72,13 +90,13 @@ class TestLitPopExposure(unittest.TestCase):
         ent = lp.LitPop()
         with self.assertLogs('climada.entity.exposures.litpop', level='INFO') as cm:
             ent.set_country(country_name, res_arcsec=resolution, exponents=exp,
-                            fin_mode=fin_mode)
+                            fin_mode=fin_mode, reference_year=2015)
         # print(cm)
         self.assertIn('LitPop: Init Exposure for country: CHE', cm.output[0])
         self.assertEqual(ent.gdf.region_id.min(), 756)
         self.assertEqual(ent.gdf.region_id.max(), 756)
         self.assertEqual(ent.gdf.value.sum(), 1.0)
-        self.assertEqual(ent.ref_year, CONFIG.exposures.def_ref_year.int())
+        self.assertEqual(ent.ref_year, 2015)
 
     def test_suriname30_nfw_pass(self):
         """Create LitPop entity for Suriname for non-finanical wealth in 2016:"""
@@ -89,7 +107,6 @@ class TestLitPopExposure(unittest.TestCase):
 
         self.assertEqual(ent.gdf.region_id.min(), 740)
         self.assertEqual(ent.gdf.region_id.max(), 740)
-        self.assertEqual(np.int(ent.gdf.value.sum().round()), 2304662017)
         self.assertEqual(ent.ref_year, 2016)
 
     def test_switzerland300_admin1_pc2016_pass(self):
@@ -105,7 +122,8 @@ class TestLitPopExposure(unittest.TestCase):
                         reference_year=ref_year, fin_mode=fin_mode,
                         admin1_calc=adm1)
 
-        self.assertEqual(np.around(ent.gdf.value.sum(), 0), np.around(comparison_total_val, 0))
+        self.assertAlmostEqual(np.around(ent.gdf.value.sum()*1e-9, 0),
+                         np.around(comparison_total_val*1e-9, 0), places=0)
         self.assertEqual(ent.value_unit, 'USD')
 
 
@@ -138,7 +156,8 @@ class TestLitPopExposure(unittest.TestCase):
             (bounds[0], bounds[1])
             ])
         ent = lp.LitPop()
-        ent.set_custom_shape(shape, total_value, res_arcsec=30)
+        ent.set_custom_shape(shape, total_value, res_arcsec=30,
+                             reference_year=2016)
         self.assertEqual(ent.gdf.value.sum(), 1000.0)
         self.assertEqual(ent.gdf.value.min(), 0.0)
         self.assertEqual(ent.gdf.region_id.min(), 756)
@@ -160,7 +179,8 @@ class TestLitPopExposure(unittest.TestCase):
             (bounds[0], bounds[1])
             ])
         ent = lp.LitPop()
-        ent.set_custom_shape_from_countries(shape, 'Switzerland', res_arcsec=30)
+        ent.set_custom_shape_from_countries(shape, 'Switzerland', res_arcsec=30,
+                                            reference_year=2016)
         self.assertEqual(ent.gdf.value.min(), 0.0)
         self.assertEqual(ent.gdf.region_id.min(), 756)
         self.assertEqual(ent.gdf.region_id.max(), 756)

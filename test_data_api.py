@@ -20,19 +20,17 @@ Test files_handler module.
 """
 
 from pathlib import Path
+from sys import dont_write_bytecode
 import pandas as pd
 import unittest
-import urllib
 import xmlrunner
 import datetime as dt
 
-# solve version problem in pandas-datareader-0.6.0. see:
-# https://stackoverflow.com/questions/50394873/import-pandas-datareader-gives-
-# importerror-cannot-import-name-is-list-like
-pd.core.common.is_list_like = pd.api.types.is_list_like
+import numpy as np
 from pandas_datareader import wb
 
-from climada.entity.exposures.nightlight import NOAA_SITE, NASA_SITE, BM_FILENAMES
+from climada import CONFIG
+from climada.entity.exposures.litpop.nightlight import BM_FILENAMES, download_nl_files
 from climada.hazard.tc_tracks import IBTRACS_URL, IBTRACS_FILE
 from climada.hazard.tc_tracks_forecast import TCForecast
 from climada.util.finance import WORLD_BANK_WEALTH_ACC, WORLD_BANK_INC_GRP
@@ -46,14 +44,20 @@ class TestDataAvail(unittest.TestCase):
 
     def test_noaa_nl_pass(self):
         """Test NOAA nightlights used in BlackMarble."""
-        file_down = download_file(NOAA_SITE + 'F101992.v4.tar')
+        file_down = download_file(f'{CONFIG.exposures.litpop.nightlights.noaa_url.str()}/F101992.v4.tar')
         Path(file_down).unlink()
 
     def test_nasa_nl_pass(self):
         """Test NASA nightlights used in BlackMarble and LitPop."""
-        url = NASA_SITE + BM_FILENAMES[0]
-        file_down = download_file(url.replace('*', str(2016)))
-        Path(file_down).unlink()
+        req_files = np.zeros(len(BM_FILENAMES))
+        req_files[0] = 1
+        year = 2016
+        dwnl_path = CONFIG.local_data.save_dir.dir()
+        dwnl_file = dwnl_path.joinpath(BM_FILENAMES[0] % year)
+        self.assertFalse(dwnl_file.is_file())
+        download_nl_files(req_files=req_files, dwnl_path=dwnl_path, year=year)
+        self.assertTrue(dwnl_file.is_file())
+        dwnl_file.unlink()
 
     def test_wb_wealth_pass(self):
         """Test world bank's wealth data"""

@@ -526,23 +526,6 @@ class TestRaster(unittest.TestCase):
         self.assertEqual(centr_bis.meta['height'], 60)
         self.assertEqual(centr_bis.meta['width'], 50)
 
-    def test_append_diff_pass(self):
-        """Append raster"""
-        centr_ras = Centroids()
-        centr_ras.set_raster_file(HAZ_DEMO_FL, window=Window(0, 0, 50, 60))
-        centr_bis = Centroids()
-        centr_bis.set_raster_file(HAZ_DEMO_FL, window=Window(51, 61, 10, 10))
-        centr_bis.append(centr_ras)
-        self.assertAlmostEqual(centr_bis.meta['crs'], DEF_CRS)
-        self.assertAlmostEqual(centr_bis.meta['transform'].c, -69.33714959699981)
-        self.assertAlmostEqual(centr_bis.meta['transform'].a, 0.009000000000000341)
-        self.assertAlmostEqual(centr_bis.meta['transform'].b, 0.0)
-        self.assertAlmostEqual(centr_bis.meta['transform'].f, 10.42822096697894)
-        self.assertAlmostEqual(centr_bis.meta['transform'].d, 0.0)
-        self.assertAlmostEqual(centr_bis.meta['transform'].e, -0.009000000000000341)
-        self.assertEqual(centr_bis.meta['height'], 71)
-        self.assertEqual(centr_bis.meta['width'], 61)
-
     def test_equal_pass(self):
         """Test equal"""
         centr_ras = Centroids()

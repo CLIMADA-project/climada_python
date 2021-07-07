@@ -91,7 +91,8 @@ DEF_VAR_MAT = {'field_name': 'hazard',
 """MATLAB variable names"""
 
 class Hazard():
-    """Contains events of some hazard type defined at centroids. Loads from
+    """
+    Contains events of some hazard type defined at centroids. Loads from
     files with format defined in FILE_EXT.
 
     Attributes
@@ -151,7 +152,8 @@ class Hazard():
     scalar, string, list, 1dim np.array of size num_events."""
 
     def __init__(self, haz_type='', pool=None):
-        """Initialize values.
+        """
+        Initialize values.
 
         Parameters
         ----------
@@ -400,15 +402,20 @@ class Hazard():
                          resampl_inten=Resampling.nearest, resampl_fract=Resampling.nearest):
         """Change current raster data to other CRS and/or transformation
 
-        Parameters:
-            dst_crs (crs, optional): reproject to given crs
-            transform (rasterio.Affine): affine transformation to apply
-            wdith (float): number of lons for transform
-            height (float): number of lats for transform
-            resampl_inten (rasterio.warp,.Resampling optional): resampling
-                function used for reprojection to dst_crs for intensity
-            resampl_fract (rasterio.warp,.Resampling optional): resampling
-                function used for reprojection to dst_crs for fraction
+        Parameters
+        ----------
+        dst_crs: crs, optional
+            reproject to given crs
+        transform: rasterio.Affine
+            affine transformation to apply
+        wdith: float
+            number of lons for transform
+        height: float
+            number of lats for transform
+        resampl_inten: rasterio.warp,.Resampling optional
+            resampling function used for reprojection to dst_crs for intensity
+        resampl_fract: rasterio.warp,.Resampling optional
+            resampling function used for reprojection to dst_crs for fraction
         """
         if not self.centroids.meta:
             raise ValueError('Raster not set')
@@ -677,11 +684,14 @@ class Hazard():
     def local_exceedance_inten(self, return_periods=(25, 50, 100, 250)):
         """Compute exceedance intensity map for given return periods.
 
-        Parameters:
-            return_periods (np.array): return periods to consider
+        Parameters
+        ----------
+        return_periods : np.array
+            return periods to consider
 
-        Returns:
-            np.array
+        Returns
+        -------
+        inten_stats: np.array
         """
         # warn if return period is above return period of rarest event:
         for period in return_periods:
@@ -719,20 +729,23 @@ class Hazard():
         """Compute and plot hazard exceedance intensity maps for different
         return periods. Calls local_exceedance_inten.
 
-        Parameters:
-            return_periods (tuple(int), optional): return periods to consider
-            smooth (bool, optional): smooth plot to plot.RESOLUTIONxplot.RESOLUTION
-            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
-            figsize (tuple, optional): figure size for plt.subplots
-            adapt_fontsize : bool, optional
-                If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
-                the default matplotlib font size is used. Default is True.
-            kwargs (optional): arguments for pcolormesh matplotlib function
-                used in event plots
+        Parameters
+        ----------
+        return_periods: tuple(int), optional
+            return periods to consider
+        smooth: bool, optional
+            smooth plot to plot.RESOLUTIONxplot.RESOLUTION
+        axis: matplotlib.axes._subplots.AxesSubplot, optional
+            axis to use
+        figsize: tuple, optional
+            figure size for plt.subplots
+        kwargs: optional
+            arguments for pcolormesh matplotlib function used in event plots
 
-        Returns:
-            matplotlib.axes._subplots.AxesSubplot,
-            np.ndarray (return_periods.size x num_centroids)
+        Returns
+        -------
+        axis, inten_stats:  matplotlib.axes._subplots.AxesSubplot, np.ndarray
+            intenstats is return_periods.size x num_centroids
         """
         self._set_coords_centroids()
         inten_stats = self.local_exceedance_inten(np.array(return_periods))
@@ -749,30 +762,35 @@ class Hazard():
                        **kwargs):
         """Plot intensity values for a selected event or centroid.
 
-        Parameters:
-            event (int or str, optional): If event > 0, plot intensities of
-                event with id = event. If event = 0, plot maximum intensity in
-                each centroid. If event < 0, plot abs(event)-largest event. If
-                event is string, plot events with that name.
-            centr (int or tuple, optional): If centr > 0, plot intensity
-                of all events at centroid with id = centr. If centr = 0,
-                plot maximum intensity of each event. If centr < 0,
-                plot abs(centr)-largest centroid where higher intensities
-                are reached. If tuple with (lat, lon) plot intensity of nearest
-                centroid.
-            smooth (bool, optional): Rescale data to RESOLUTIONxRESOLUTION pixels (see constant
-                in module `climada.util.plot`)
-            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
-            adapt_fontsize : bool, optional
-                If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
-                the default matplotlib font size is used. Default is True.
-            kwargs (optional): arguments for pcolormesh matplotlib function
-                used in event plots or for plot function used in centroids plots
+        Parameters
+        ----------
+        event: int or str, optional
+            If event > 0, plot intensities of
+            event with id = event. If event = 0, plot maximum intensity in
+            each centroid. If event < 0, plot abs(event)-largest event. If
+            event is string, plot events with that name.
+        centr: int or tuple, optional
+            If centr > 0, plot intensity
+            of all events at centroid with id = centr. If centr = 0,
+            plot maximum intensity of each event. If centr < 0,
+            plot abs(centr)-largest centroid where higher intensities
+            are reached. If tuple with (lat, lon) plot intensity of nearest
+            centroid.
+        smooth: bool, optional
+            Rescale data to RESOLUTIONxRESOLUTION pixels (see constant
+            in module `climada.util.plot`)
+        axis: matplotlib.axes._subplots.AxesSubplot, optional
+            axis to use
+        kwargs: optional
+            arguments for pcolormesh matplotlib function
+            used in event plots or for plot function used in centroids plots
 
-        Returns:
+        Returns
+        -------
             matplotlib.axes._subplots.AxesSubplot
 
-        Raises:
+        Raises
+        ------
             ValueError
         """
         self._set_coords_centroids()
@@ -794,27 +812,35 @@ class Hazard():
                       **kwargs):
         """Plot fraction values for a selected event or centroid.
 
-        Parameters:
-            event (int or str, optional): If event > 0, plot fraction of event
-                with id = event. If event = 0, plot maximum fraction in each
-                centroid. If event < 0, plot abs(event)-largest event. If event
-                is string, plot events with that name.
-            centr (int or tuple, optional): If centr > 0, plot fraction
-                of all events at centroid with id = centr. If centr = 0,
-                plot maximum fraction of each event. If centr < 0,
-                plot abs(centr)-largest centroid where highest fractions
-                are reached. If tuple with (lat, lon) plot fraction of nearest
-                centroid.
-            smooth (bool, optional): Rescale data to RESOLUTIONxRESOLUTION pixels (see constant
-                in module `climada.util.plot`)
-            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
-            kwargs (optional): arguments for pcolormesh matplotlib function
-                used in event plots or for plot function used in centroids plots
+        Parameters
+        ----------
+        event: int or str, optional
+            If event > 0, plot fraction of event
+            with id = event. If event = 0, plot maximum fraction in each
+            centroid. If event < 0, plot abs(event)-largest event. If event
+            is string, plot events with that name.
+        centr: int or tuple, optional
+            If centr > 0, plot fraction
+            of all events at centroid with id = centr. If centr = 0,
+            plot maximum fraction of each event. If centr < 0,
+            plot abs(centr)-largest centroid where highest fractions
+            are reached. If tuple with (lat, lon) plot fraction of nearest
+            centroid.
+        smooth: bool, optional
+            Rescale data to RESOLUTIONxRESOLUTION pixels (see constant
+            in module `climada.util.plot`)
+        axis: matplotlib.axes._subplots.AxesSubplot, optional
+            axis to use
+        kwargs: optional
+            arguments for pcolormesh matplotlib function
+            used in event plots or for plot function used in centroids plots
 
-        Returns:
+        Returns
+        -------
             matplotlib.axes._subplots.AxesSubplot
 
-        Raises:
+        Raises
+        ------
             ValueError
         """
         self._set_coords_centroids()
@@ -841,11 +867,14 @@ class Hazard():
         """Get an event id from its name. Several events might have the same
         name.
 
-        Parameters:
-            event_name (str): Event name
+        Parameters
+        ----------
+        event_name: str
+            Event name
 
-        Returns:
-            np.array(int)
+        Returns
+        -------
+        list_id: np.array(int)
         """
         list_id = self.event_id[[i_name for i_name, val_name in enumerate(self.event_name)
                                  if val_name == event_name]]
@@ -856,13 +885,17 @@ class Hazard():
     def get_event_name(self, event_id):
         """Get the name of an event id.
 
-        Parameters:
-            event_id (int): id of the event
+        Parameters
+        ----------
+        event_id: int
+            id of the event
 
-        Returns:
+        Returns
+        -------
             str
 
-        Raises:
+        Raises
+        ------
             ValueError
         """
         try:
@@ -875,11 +908,14 @@ class Hazard():
         """Return list of date strings for given event or for all events,
         if no event provided.
 
-        Parameters:
-            event (str or int, optional): event name or id.
+        Parameters
+        ----------
+        event: str or int, optional
+            event name or id.
 
-        Returns:
-            list(str)
+        Returns
+        -------
+        l_dates: list(str)
         """
         if event is None:
             l_dates = [u_dt.date_to_str(date) for date in self.date]
@@ -896,8 +932,10 @@ class Hazard():
     def calc_year_set(self):
         """From the dates of the original events, get number yearly events.
 
-        Returns:
-            dict: key are years, values array with event_ids of that year
+        Returns
+        -------
+        orig_yearset: dict
+            key are years, values array with event_ids of that year
 
         """
         orig_year = np.array([dt.datetime.fromordinal(date).year
@@ -906,57 +944,6 @@ class Hazard():
         for year in np.unique(orig_year):
             orig_yearset[year] = self.event_id[self.orig][orig_year == year]
         return orig_yearset
-
-    def append(self, hazard):
-        """Append events and centroids in hazard.
-
-        Parameters:
-            hazard (Hazard): Hazard instance to append to current
-
-        Raises:
-            ValueError
-        """
-        hazard._check_events()
-        if self.event_id.size == 0:
-            for key in hazard.__dict__:
-                try:
-                    self.__dict__[key] = copy.deepcopy(hazard.__dict__[key])
-                except TypeError:
-                    self.__dict__[key] = copy.copy(hazard.__dict__[key])
-            return
-
-        if (self.units == '') and (hazard.units != ''):
-            LOGGER.info("Initial hazard does not have units.")
-            self.units = hazard.units
-        elif hazard.units == '':
-            LOGGER.info("Appended hazard does not have units.")
-        elif self.units != hazard.units:
-            raise ValueError("Hazards with different units can't be appended: "
-                             f"{self.units} != {hazard.units}.")
-
-        centroids_equal = self.centroids.equal(hazard.centroids)
-        if not centroids_equal:
-            self.centroids.append(hazard.centroids)
-
-        # n_ini_ev = self.event_id.size
-        for var_name in vars(self).keys():
-            var_old = getattr(self, var_name)
-            var_new = getattr(hazard, var_name)
-            var_combined = [var_old, var_new]
-            if isinstance(var_new, sparse.csr.csr_matrix):
-                if centroids_equal:
-                    var_combined = sparse.vstack(var_combined, format='csr')
-                else:
-                    var_combined = sparse.block_diag(var_combined, format='csr')
-                setattr(self, var_name, var_combined)
-            elif isinstance(var_new, np.ndarray) and var_new.ndim == 1:
-                setattr(self, var_name, np.hstack(var_combined))
-            elif isinstance(var_new, list):
-                setattr(self, var_name, sum(var_combined, []))
-            elif isinstance(var_new, TagHazard):
-                var_old.append(var_new)
-
-        self.sanitize_event_ids()
 
     def remove_duplicates(self):
         """Remove duplicate events (events with same name and date)."""
@@ -976,10 +963,12 @@ class Hazard():
     def set_frequency(self, yearrange=None):
         """Set hazard frequency from yearrange or intensity matrix.
 
-        Optional parameters:
-            yearrange (tuple or list): year range to be used to compute frequency
-                per event. If yearrange is not given (None), the year range is
-                derived from self.date
+        Parameters
+        ----------
+        yearrange: tuple or list, optional
+            year range to be used to compute frequency
+            per event. If yearrange is not given (None), the year range is
+            derived from self.date
         """
         if not yearrange:
             delta_time = dt.datetime.fromordinal(int(np.max(self.date))).year - \
@@ -995,15 +984,18 @@ class Hazard():
 
     @property
     def size(self):
-        """Returns number of events"""
+        """Return number of events."""
         return self.event_id.size
 
     def write_raster(self, file_name, intensity=True):
         """Write intensity or fraction as GeoTIFF file. Each band is an event
 
-        Parameters:
-            file_name (str): file name to write in tif format
-            intensity (bool): if True, write intensity, otherwise write fraction
+        Parameters
+        ----------
+        file_name: str
+            file name to write in tif format
+        intensity: bool
+            if True, write intensity, otherwise write fraction
         """
         variable = self.intensity
         if not intensity:
@@ -1028,8 +1020,10 @@ class Hazard():
     def write_hdf5(self, file_name, todense=False):
         """Write hazard in hdf5 format.
 
-        Parameters:
-            file_name (str): file name to write, with h5 format
+        Parameters
+        ----------
+        file_name: str
+            file name to write, with h5 format
         """
         LOGGER.info('Writing %s', file_name)
         hf_data = h5py.File(file_name, 'w')
@@ -1067,8 +1061,10 @@ class Hazard():
     def read_hdf5(self, file_name):
         """Read hazard in hdf5 format.
 
-        Parameters:
-            file_name (str): file name to read, with h5 format
+        Parameters
+        ----------
+        file_name: str
+            file name to read, with h5 format
         """
         LOGGER.info('Reading %s', file_name)
         self.clear()
@@ -1101,41 +1097,6 @@ class Hazard():
 
         hf_data.close()
 
-    def concatenate(self, haz_src, append=False):
-        """Concatenate events of several hazards
-
-        Parameters:
-            haz_src (list): Hazard instances with same centroids and units
-            append (bool): If True, append the concatenated hazards to this
-                instance, otherwise replace all data in this instance by the
-                concatenated data. Default: False.
-        """
-        if append:
-            haz_src = [self] + haz_src
-        else:
-            self.clear()
-            self.centroids = copy.deepcopy(haz_src[-1].centroids)
-            self.units = haz_src[-1].units
-
-        # check for new variables
-        for key_new in vars(haz_src[-1]).keys():
-            if not hasattr(self, key_new):
-                setattr(self, key_new, getattr(haz_src[-1], key_new))
-
-        for var_name in vars(self).keys():
-            var_src = [getattr(haz, var_name) for haz in haz_src]
-            if isinstance(var_src[-1], sparse.csr.csr_matrix):
-                setattr(self, var_name, sparse.vstack(var_src, format='csr'))
-            elif isinstance(var_src[-1], np.ndarray) and var_src[-1].ndim == 1:
-                setattr(self, var_name, np.hstack(var_src))
-            elif isinstance(var_src[-1], list):
-                setattr(self, var_name, sum(var_src, []))
-            elif isinstance(var_src[-1], TagHazard):
-                tag_dst = getattr(self, var_name)
-                [tag_dst.append(tag) for tag in var_src if tag is not tag_dst]
-
-        self.sanitize_event_ids()
-
     def _set_coords_centroids(self):
         """If centroids are raster, set lat and lon coordinates"""
         if self.centroids.meta and not self.centroids.coord.size:
@@ -1152,19 +1113,28 @@ class Hazard():
                     figsize=(9, 13), adapt_fontsize=True, **kwargs):
         """Plot an event of the input matrix.
 
-        Parameters:
-            event_id (int or np.array(int)): If event_id > 0, plot mat_var of
-                event with id = event_id. If event_id = 0, plot maximum
-                mat_var in each centroid. If event_id < 0, plot
-                abs(event_id)-largest event.
-            mat_var (sparse matrix): Sparse matrix where each row is an event
-            col_name (sparse matrix): Colorbar label
-            smooth (bool, optional): smooth plot to plot.RESOLUTIONxplot.RESOLUTION
-            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
-            figsize (tuple, optional): figure size for plt.subplots
-            kwargs (optional): arguments for pcolormesh matplotlib function
+        Parameters
+        ----------
+        event_id: int or np.array(int)
+            If event_id > 0, plot mat_var of
+            event with id = event_id. If event_id = 0, plot maximum
+            mat_var in each centroid. If event_id < 0, plot
+            abs(event_id)-largest event.
+        mat_var: sparse matrix
+            Sparse matrix where each row is an event
+        col_name: sparse matrix
+            Colorbar label
+        smooth: bool, optional
+            smooth plot to plot.RESOLUTIONxplot.RESOLUTION
+        axis: matplotlib.axes._subplots.AxesSubplot, optional
+            axis to use
+        figsize: tuple, optional
+            figure size for plt.subplots
+        kwargs: optional
+            arguments for pcolormesh matplotlib function
 
-        Returns:
+        Returns
+        -------
             matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot
         """
         if not isinstance(event_id, np.ndarray):
@@ -1202,19 +1172,26 @@ class Hazard():
     def _centr_plot(self, centr_idx, mat_var, col_name, axis=None, **kwargs):
         """Plot a centroid of the input matrix.
 
-        Parameters:
-            centr_id (int): If centr_id > 0, plot mat_var
-                of all events at centroid with id = centr_id. If centr_id = 0,
-                plot maximum mat_var of each event. If centr_id < 0,
-                plot abs(centr_id)-largest centroid where highest mat_var
-                are reached.
-            mat_var (sparse matrix): Sparse matrix where each column represents
-                a centroid
-            col_name (sparse matrix): Colorbar label
-            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
-            kwargs (optional): arguments for plot matplotlib function
+        Parameters
+        ----------
+        centr_id: int
+            If centr_id > 0, plot mat_var
+            of all events at centroid with id = centr_id. If centr_id = 0,
+            plot maximum mat_var of each event. If centr_id < 0,
+            plot abs(centr_id)-largest centroid where highest mat_var
+            are reached.
+        mat_var: sparse matrix
+            Sparse matrix where each column represents
+            a centroid
+        col_name: sparse matrix
+            Colorbar label
+        axis: matplotlib.axes._subplots.AxesSubplot, optional
+            axis to use
+        kwargs: optional
+            arguments for plot matplotlib function
 
-        Returns:
+        Returns
+        -------
             matplotlib.figure.Figure, matplotlib.axes._subplots.AxesSubplot
         """
         coord = self.centroids.coord
@@ -1254,11 +1231,15 @@ class Hazard():
     def _loc_return_inten(self, return_periods, inten, exc_inten):
         """Compute local exceedence intensity for given return period.
 
-        Parameters:
-            return_periods (np.array): return periods to consider
-            cen_pos (int): centroid position
+        Parameters
+        ----------
+        return_periods: np.array
+            return periods to consider
+        cen_pos: int
+            centroid position
 
-        Returns:
+        Returns
+        -------
             np.array
         """
         # sorted intensity
@@ -1281,7 +1262,8 @@ class Hazard():
         Put default date, event_name and orig if not provided. Check not
         repeated events (i.e. with same date and name)
 
-        Raises:
+        Raises
+        ------
             ValueError
         """
         num_ev = len(self.event_id)
@@ -1307,13 +1289,19 @@ class Hazard():
         """From ordered intensity and cummulative frequency at centroid, get
         exceedance intensity at input return periods.
 
-        Parameters:
-            inten (np.array): sorted intensity at centroid
-            freq (np.array): cummulative frequency at centroid
-            inten_th (float): intensity threshold
-            return_periods (np.array): return periods
+        Parameters
+        ----------
+        inten: np.array
+            sorted intensity at centroid
+        freq: np.array
+            cummulative frequency at centroid
+        inten_th: float
+            intensity threshold
+        return_periods: np.array
+            return periods
 
-        Returns:
+        Returns
+        -------
             np.array
         """
         inten_th = np.asarray(inten > inten_th).squeeze()
@@ -1410,3 +1398,204 @@ class Hazard():
         self.intensity = sparse.csr_matrix(dfr.values[:, 1:num_events + 1].transpose())
         self.fraction = sparse.csr_matrix(np.ones(self.intensity.shape,
                                                   dtype=np.float))
+
+    def append(self, hazard):
+        """Append the events and centroids in hazard.
+
+        Hazard must be of same type as self.
+        Centroids of all hazards must have the same CRS.
+
+        Tthe centroids of both hazards are combined together.
+        All raster centroids are converted to points and raster data
+        is discarded.
+
+        Note: centroids of self is modified in place and raster information
+        is destroyed.
+
+        It is recommended to use the static method `hazard.concatenate_hazard`
+        which concatenates a list of hazards into a new object.
+
+        Parameters
+        ----------
+        hazard: climada.hazard.Hazard()
+            Hazard instance to append to self
+
+        Raises
+        ------
+            TypeError
+
+        See Also
+        --------
+        hazard.concat: concatenate 2 or more hazards
+        """
+        hazard._check_events()
+        if type(self) != type(hazard):
+            raise TypeError(f"hazard is of class {type(self)} which is "
+                            f" different from {type(hazard)}")
+
+        if len(self.event_id) == 0: #if self is empty, replace self with hazard
+            self.__dict__ = hazard.__dict__
+        else:
+            self.__dict__ = Hazard.concat([self, hazard]).__dict__
+
+
+    @staticmethod
+    def concat(haz_list):
+        """
+        Concatenate events of several hazards of same type.
+
+        Centroids of all hazards must either all be rasters with the same
+        resolution, or all be points.
+
+        The centroids of all hazards are combined together.
+        All raster centroids are converted to points and raster data
+        is discarded.
+
+        Parameters
+        ----------
+        haz_list: list(climada.hazard.Hazard())
+            Hazard instances of the same hazard type
+
+        Returns
+        -------
+        haz_concat: climada.hazard.Hazard()
+            Concatenated hazard.
+
+        Raises
+        ------
+        ValueError
+
+        See Also
+        --------
+        hazard.centroids.union: combine centroids
+        """
+        #Check units consistency among hazards
+        haz_types = {haz.tag.haz_type
+                    for haz in haz_list
+                    if haz.tag.haz_type != ''
+                    }
+        if len(haz_types) > 1:
+            raise ValueError("The haz_list contains hazards of different "
+                            f"types {haz_types}. The hazards are incompatible "
+                            "and cannot be concatenated.")
+
+        units = {haz.units for haz in haz_list if haz.units != ''}
+        if len(units) > 1:
+            raise ValueError("The haz_list contains hazards with different "
+                            f"units {units}. The hazards are incompatible and "
+                            "cannot be concatenated.")
+        elif len(units) == 0:
+            units = {''}
+
+        #Define comon centroids
+        centroids = Centroids().union(*[haz.centroids
+                                           for haz in haz_list])
+        #Define empty concatenate hazard
+        haz_concat = Hazard()
+        haz_concat.units = units.pop()
+        haz_concat.centroids = centroids
+
+        #Indices for mapping matrices onto common centroids
+        hazcent_in_cent_idx_list = [
+            u_coord.assign_coordinates(haz.centroids.coord, centroids.coord,
+                                       threshold=0)
+            for haz in haz_list
+            ]
+
+        #Concatenate attributes - hazards are assumed to have the same attributes
+        for attr_name in vars(haz_list[0]).keys():
+            attr_val_list = [getattr(haz, attr_name) for haz in haz_list]
+            if isinstance(attr_val_list[0], sparse.csr.csr_matrix):
+                #Map sparse matrix onto centroids.
+                matrix = (
+                    sparse.csr_matrix(
+                        (matrix.data, cent_idx[matrix.indices], matrix.indptr),
+                        shape=(matrix.shape[0], centroids.size)
+                        )
+                    for matrix, cent_idx in zip(attr_val_list, hazcent_in_cent_idx_list)
+                    )
+                setattr(haz_concat, attr_name, sparse.vstack(matrix, format='csr'))
+            elif (isinstance(attr_val_list[0], np.ndarray)
+                  and attr_val_list[0].ndim == 1):
+                setattr(haz_concat, attr_name, np.hstack(attr_val_list))
+            elif isinstance(attr_val_list[0], list):
+                setattr(haz_concat, attr_name, sum(attr_val_list, []))
+            elif isinstance(attr_val_list[0], TagHazard):
+                for tag in attr_val_list:
+                    if tag is not haz_concat.tag: haz_concat.tag.append(tag)
+
+        haz_concat.sanitize_event_ids()
+
+        return haz_concat
+
+    def change_centroids(self, centroids, threshold=100):
+        """
+        Assign (new) centroids to hazard.
+
+        Centoids of the hazard not in centroids are mapped onto the nearest
+        point. Fails if a point is further than threshold from the closest
+        centroid.
+
+        The centroids must have the same CRS as self.centroids.
+
+        Parameters
+        ----------
+        haz: climada.hazard.Hazard()
+            Hazard instance
+        centroids: climada.hazard.Centroids()
+            Centroids instance on which to map the hazard.
+        threshold: int or float
+            Threshold for mapping haz.centroids not in centroids.
+            Argument is passed to climada.util.coordinates.assign_coordinates.
+            Default is 100.
+
+        Returns
+        -------
+        haz_new_cent: climada.hazard.Hazard()
+            Hazard projected onto centroids
+
+        Raises
+        ------
+        ValueError
+
+
+        See Also
+        --------
+        util.coordinates.assign_coordinates: algorithm to match centroids.
+
+        """
+        #Define empty hazard
+        haz_new_cent = copy.deepcopy(self)
+        haz_new_cent.centroids = centroids
+
+        #Indices for mapping matrices onto common centroids
+        new_cent_idx = u_coord.assign_coordinates(
+            self.centroids.coord, centroids.coord, threshold=threshold
+            )
+
+        if -1 in new_cent_idx:
+            raise ValueError("At least one hazard centroid is at a larger "
+                    f"distance than the given threshold {threshold} "
+                    "from the given centroids. Please choose a "
+                    "larger threshold or enlarge the centroids")
+
+
+        #Re-assign attributes intensity and fraction
+        matrix = self.intensity
+        new_int = (
+            sparse.csr_matrix(
+                (matrix.data, new_cent_idx[matrix.indices], matrix.indptr),
+                shape=(matrix.shape[0], centroids.size)
+                )
+            )
+        setattr(haz_new_cent, "intensity", new_int)
+        matrix = self.fraction
+        new_frac = (
+            sparse.csr_matrix(
+                (matrix.data, new_cent_idx[matrix.indices], matrix.indptr),
+                shape=(matrix.shape[0], centroids.size)
+                )
+            )
+        setattr(haz_new_cent, "fraction", new_frac)
+
+        return haz_new_cent

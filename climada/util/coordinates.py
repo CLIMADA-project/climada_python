@@ -890,11 +890,19 @@ def assign_coordinates(coords, coords_to_assign, method="NN", distance="haversin
         Index into `coords_to_assign`. Note that the value `-1` is used to indicate that no
         matching coordinate has been found, even though `-1` is a valid index in NumPy!
     """
+
+    if not coords.any():
+        return np.array([])
+    elif not coords_to_assign.any():
+        return -np.ones(coords.shape[0]).astype(int)
     coords = coords.astype('float64')
     coords_to_assign = coords_to_assign.astype('float64')
     if np.array_equal(coords, coords_to_assign):
         assigned_idx = np.arange(coords.shape[0])
     else:
+        LOGGER.info("No exact centroid match found. Reprojecting coordinates "
+                    "to nearest neighbor closer than the threshold = %s",
+                    threshold)
         # pairs of floats can be sorted (lexicographically) in NumPy
         coords_view = coords.view(dtype='float64,float64').reshape(-1)
         coords_to_assign_view = coords_to_assign.view(dtype='float64,float64').reshape(-1)
@@ -1313,6 +1321,8 @@ def equal_crs(crs_one, crs_two):
     equal : bool
         Whether the two specified CRS are equal according tho rasterio.crs.CRS.from_user_input
     """
+    if crs_one is None:
+        return crs_two is None
     return rasterio.crs.CRS.from_user_input(crs_one) == rasterio.crs.CRS.from_user_input(crs_two)
 
 def _read_raster_reproject(src, src_crs, dst_meta, band=None, geometry=None, dst_crs=None,

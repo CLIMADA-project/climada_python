@@ -16,16 +16,5 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
-Define Uncertainty Robustness class
+Test uncertainty module
 """
-
-# Future planed features:
-# - Make the Robustness class for generic noise robustness tests
-
-class UncRobustness():
-    """
-    Compute variance from multiplicative Gaussian noise
-    """
-
-    def __init__(self):
-        raise NotImplementedError()

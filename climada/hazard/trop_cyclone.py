@@ -202,14 +202,12 @@ class TropCyclone(Hazard):
                 if perc - last_perc >= 10:
                     LOGGER.info("Progress: %d%%", perc)
                     last_perc = perc
-                tc_haz.append(
+                self.append(
                     self._tc_from_track(track, centroids, coastal_idx,
                                         model=model, store_windfields=store_windfields,
                                         metric=metric))
             if last_perc < 100:
                 LOGGER.info("Progress: 100%")
-        LOGGER.debug('Append events.')
-        self.concatenate(tc_haz)
         LOGGER.debug('Compute frequency.')
         self.frequency_from_tracks(tracks.data)
         self.tag.description = description
