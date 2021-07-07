@@ -199,6 +199,10 @@ def sample_events(events_per_year, freqs_orig):
 
     #sample events for each sampled year
     for amount_events in events_per_year:
+        #if there are not enough input events, choice with no replace will fail
+        if amount_events > len(freqs_orig):
+            raise ValueError(f"cannot sample {amount_events} distinct events for a single year"
+                             f" when there are only {len(freqs_orig)} input events")
 
         #add the original indices and frequencies to the pool if there are less events
         #in the pool than needed to fill the year one is sampling for
