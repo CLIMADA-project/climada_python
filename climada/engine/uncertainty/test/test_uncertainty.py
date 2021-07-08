@@ -35,7 +35,7 @@ from climada.entity.entity_def import Entity
 from climada.entity import Exposures
 from climada.util.constants import EXP_DEMO_H5, HAZ_DEMO_H5, ENT_DEMO_TODAY, ENT_DEMO_FUTURE
 from climada.hazard import Hazard
-from climada.engine.uncertainty import UncVar, UncCalcImpact, UncData
+from climada.engine.uncertainty import UncVar, UncCalcImpact, UncData, UncCalcCostBenefit
 
 
 def impf_dem(x_paa=1, x_mdd=1):
@@ -179,6 +179,7 @@ class TestCalcImpact(unittest.TestCase):
         exp_unc, impf_unc, haz_unc = make_imp_uncs()
         unc_calc = UncCalcImpact(exp_unc, impf_unc, haz_unc)
         unc_calc.make_sample(unc_data, 2)
+        print(unc_data.samples_df)
         # self.assertDictEqual(unc.metrics, {})
         # self.assertDictEqual(unc.sensitivity, {})
 
@@ -308,6 +309,23 @@ class TestCalcImpact(unittest.TestCase):
         #         np.array([0.66666667, 1.33333333])
         #         )
         #     )
+    def test_calc_cb(self):
+        haz_fut = haz_dem
+        haz_distr = {"x_haz": sp.stats.uniform(1, 3),
+                      }
+        haz_fut_unc = UncVar(haz_fut, haz_distr)
+        haz = haz_dem(x_haz=10)
+
+        ent = ent_dem()
+        ent_fut = ent_fut_dem()
+
+        unc_data = UncData()
+        unc = UncCalcCostBenefit(haz_unc_var=haz, ent_unc_var=ent,
+                              haz_fut_unc_var=haz_fut_unc, ent_fut_unc_var=ent_fut)
+
+        unc.make_sample(unc_data, N=1)
+        unc.calc_uncertainty(unc_data)
+        unc_data.plot_uncertainty()
 
     def test_save_pass(self):
         """Test save samples"""

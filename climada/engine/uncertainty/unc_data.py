@@ -278,6 +278,7 @@ class UncData():
         #MetaData
         self.sensitivity_method = ''
         self.sensitivity_kwargs = ()
+        self.cost_benefit_kwargs = ()
         #Sample
         self.samples_df = pd.DataFrame()
         self.samples_df.attrs['sampling_method'] = ''

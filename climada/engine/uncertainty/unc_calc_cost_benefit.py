@@ -23,11 +23,12 @@ __all__ = ['UncCalcCostBenefit']
 
 import logging
 import time
+
 from functools import partial
 import pandas as pd
 
-from climada.engine.uncertainty import UncCalc, UncVar
 from climada.engine.cost_benefit import CostBenefit
+from climada.engine.uncertainty import UncCalc, UncVar
 from climada.util import log_level
 from climada.util.config import setup_logging as u_setup_logging
 
@@ -78,17 +79,17 @@ class UncCalcCostBenefit(UncCalc):
         UncCalc.__init__(self)
         self.unc_var_names =('haz_unc_var', 'ent_unc_var',
                              'haz_fut_unc_var', 'ent_fut_unc_var')
-        self.haz_unc_var = haz_unc_var
-        self.ent_unc_vat = ent_unc_var
-        self.haz_fut_unc_var = haz_fut_unc_var
-        self.ent_fut_unc_vat = ent_fut_unc_var
+        self.haz_unc_var = UncVar.var_to_uncvar(haz_unc_var)
+        self.ent_unc_var = UncVar.var_to_uncvar(ent_unc_var)
+        self.haz_fut_unc_var = UncVar.var_to_uncvar(haz_fut_unc_var)
+        self.ent_fut_unc_var = UncVar.var_to_uncvar(ent_fut_unc_var)
         self.metric_names = ('tot_climate_risk', 'benefit',
                              'cost_ben_ratio',
                              'imp_meas_present', 'imp_meas_future')
 
 
 
-    def calc_uncertainty(self, unc_data, pool=None, **kwargs):
+    def calc_uncertainty(self, unc_data, pool=None, **cost_benefit_kwargs):
         """
         Computes the cost benefit for each of the parameters set defined in
         uncertainty.samples.
@@ -126,19 +127,19 @@ class UncCalcCostBenefit(UncCalc):
          benefit,
          cost_ben_ratio] = list(zip(*cb_metrics))
         elapsed_time = (time.time() - start)
-        est_com_time = self.est_comp_time(elapsed_time, pool)
+        est_com_time = self.est_comp_time(unc_data.n_samples, elapsed_time, pool)
 
         #Compute impact distributions
         with log_level(level='ERROR', name_prefix='climada'):
             if pool:
                 LOGGER.info('Using %s CPUs.', pool.ncpus)
                 chunksize = min(unc_data.n_samples // pool.ncpus, 100)
-                cb_metrics = pool.map(partial(self._map_costben_calc, **kwargs),
+                cb_metrics = pool.map(partial(self._map_costben_calc, **cost_benefit_kwargs),
                                                unc_data.samples_df.iterrows(),
                                                chunsize = chunksize)
 
             else:
-                cb_metrics = map(partial(self._map_costben_calc, **kwargs),
+                cb_metrics = map(partial(self._map_costben_calc, **cost_benefit_kwargs),
                                  unc_data.samples_df.iterrows())
 
         #Perform the actual computation
@@ -150,12 +151,11 @@ class UncCalcCostBenefit(UncCalc):
              cost_ben_ratio] = list(zip(*cb_metrics)) #Transpose list of list
 
         # Assign computed impact distribution data to self
-        unc_data.uncertainty_metrics = self.metric_names
-        unc_data.tot_climate_risk_unc = \
+        unc_data.tot_climate_risk_unc_df = \
             pd.DataFrame(tot_climate_risk, columns = ['tot_climate_risk'])
 
-        unc_data.benefit_unc = pd.DataFrame(benefit)
-        unc_data.cost_ben_ratio_unc = pd.DataFrame(cost_ben_ratio)
+        unc_data.benefit_unc_df = pd.DataFrame(benefit)
+        unc_data.cost_ben_ratio_unc_df = pd.DataFrame(cost_ben_ratio)
 
         imp_metric_names = ['risk', 'risk_transf', 'cost_meas',
                             'cost_ins']
@@ -176,9 +176,11 @@ class UncCalcCostBenefit(UncCalc):
                                     }
                         met_dic.update(dic_tmp)
                     df_imp_meas = df_imp_meas.append(pd.DataFrame(met_dic))
-            setattr(unc_data, name + '_unc', df_imp_meas)
-
-
+            setattr(unc_data, name + '_unc_df', df_imp_meas)
+        cost_benefit_kwargs = {
+            key: str(val)
+            for key, val in cost_benefit_kwargs.items()}
+        unc_data.cost_benefit_kwargs = tuple(cost_benefit_kwargs.items())
 
     def _map_costben_calc(self, param_sample, **kwargs):
         """
