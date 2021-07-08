@@ -101,6 +101,8 @@ class UncCalc():
                              "content of unc_data.samples_df before making "
                              "new samples")
 
+        sampling_kwargs = {} if sampling_kwargs is None else sampling_kwargs
+
         distr_dict = dict()
         for var in self.unc_vars:
             distr_dict.update(var.distr_dict)
@@ -120,9 +122,9 @@ class UncCalc():
             df_samples[param] = df_samples[param].apply(
                 self.distr_dict[param].ppf
                 )
+        df_samples.attrs['sampling_method'] = sampling_method
+        df_samples.attrs['sampling_kwargs'] = tuple(sampling_kwargs.items())
         unc_data.samples_df = df_samples
-        unc_data.sampling_method = sampling_method
-        unc_data.sampling_kwargs = sampling_kwargs
         LOGGER.info("Effective number of made samples: %d", unc_data.n_samples)
 
     def _make_uniform_base_sample(self, N, problem_sa, sampling_method,
@@ -301,9 +303,5 @@ class UncCalc():
 
             setattr(unc_data, metric_name + '_sens_df', sens_df)
 
-        unc_data.sensitivity_metrics = tuple(
-            metric_name + '_sens_df'
-            for metric_name in self.metric_names
-            )
         unc_data.sensitivity_method = sensitivity_method
-        unc_data.sensitivity_kwargs = sensitivity_kwargs
+        unc_data.sensitivity_kwargs = tuple(sensitivity_kwargs.items())

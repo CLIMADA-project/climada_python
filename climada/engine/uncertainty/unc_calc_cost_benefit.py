@@ -178,7 +178,6 @@ class UncCalcCostBenefit(UncCalc):
                     df_imp_meas = df_imp_meas.append(pd.DataFrame(met_dic))
             setattr(unc_data, name + '_unc', df_imp_meas)
 
-        unc_data.check()
 
 
     def _map_costben_calc(self, param_sample, **kwargs):

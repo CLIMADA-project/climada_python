@@ -435,7 +435,6 @@ class UncData():
                     df_meta = submetric_df.drop(submetric_df.select_dtypes('number').columns, axis=1)
         return pd.concat([df_meta, df_all], axis=1)
 
-
     def plot_sample(self, figsize=None):
         """
         Plot the sample distributions of the uncertainty parameters.
@@ -940,27 +939,31 @@ class UncData():
         store = pd.HDFStore(save_path)
         for (var_name, var_val) in self.__dict__.items():
             if isinstance(var_val, pd.DataFrame):
-                store.append(var_name, var_val)
+                store.put(var_name, var_val, format='fixed', complevel=9)
+        store.get_storer('/samples_df').attrs.metadata = self.samples_df.attrs
         store.close()
 
         return save_path
 
 
-    # def load_hdf5(self, filename):
-    #     """
-    #     Load a samples_df from .csv file
+    def load_hdf5(self, filename):
+        """
+        Load a samples_df from .csv file
 
-    #     Parameters
-    #     ----------
-    #     filename : str or pathlib.Path
-    #         The filename with absolute or relative path.
+        Parameters
+        ----------
+        filename : str or pathlib.Path
+            The filename with absolute or relative path.
 
-    #     Returns
-    #     -------
-    #     samples_df : pandas.DataFrame
-    #         The loaded samples_df
-    #     """
+        Returns
+        -------
+        samples_df : pandas.DataFrame
+            The loaded samples_df
+        """
 
-    #     self.samples_df = pd.read_csv(Path(filename).with_suffix('.csv'))
-    #     return self.samples_df
-
+        LOGGER.info('Reading %s', filename)
+        store = pd.HDFStore(filename)
+        for var_name in store.keys():
+            setattr(self, var_name[1:], store.get(var_name))
+        self.samples_df.attrs = store.get_storer('/samples_df').attrs.metadata
+        store.close()

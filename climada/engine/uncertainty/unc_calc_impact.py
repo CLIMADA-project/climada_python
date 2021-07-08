@@ -163,7 +163,6 @@ class UncCalcImpact(UncCalc):
 
 
         # Assign computed impact distribution data to self
-        unc_data.uncertainty_metrics = tuple(metric + '_unc_df' for metric in self.metric_names)
         unc_data.aai_agg_unc_df  = pd.DataFrame(aai_agg_list,
                                                 columns = ['aai_agg'])
         unc_data.freq_curve_unc_df = pd.DataFrame(freq_curve_list,
@@ -172,7 +171,6 @@ class UncCalcImpact(UncCalc):
         unc_data.at_event_unc_df = pd.DataFrame(at_event_list)
         unc_data.tot_value_unc_df = pd.DataFrame(tot_value_list,
                                                  columns = ['tot_value'])
-        unc_data.check()
 
 
     def _map_impact_calc(self, sample_iterrows):

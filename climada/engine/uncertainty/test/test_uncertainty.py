@@ -171,14 +171,14 @@ class TestUncVar(unittest.TestCase):
 class TestCalcImpact(unittest.TestCase):
     """Test the Uncertainty class"""
 
-    # def test_init_pass(self):
-    #     """Test initiliazation uncertainty"""
+    def test_init_pass(self):
+        """Test initiliazation uncertainty"""
 
-    #     unc_data = UncData()
+        unc_data = UncData()
 
-    #     exp_unc, impf_unc, haz_unc = make_imp_uncs()
-    #     unc_calc = UncCalcImpact(exp_unc, impf_unc, haz_unc)
-    #     unc_calc.make_sample(1, unc_data)
+        exp_unc, impf_unc, haz_unc = make_imp_uncs()
+        unc_calc = UncCalcImpact(exp_unc, impf_unc, haz_unc)
+        unc_calc.make_sample(unc_data, 1)
         # self.assertDictEqual(unc.metrics, {})
         # self.assertDictEqual(unc.sensitivity, {})
 
@@ -308,6 +308,33 @@ class TestCalcImpact(unittest.TestCase):
         #         np.array([0.66666667, 1.33333333])
         #         )
         #     )
+
+    def test_save_pass(self):
+        """Test save samples"""
+
+        exp_unc, impf_unc, _ = make_imp_uncs()
+        haz = haz_dem()
+        unc_data_save = UncData()
+        unc_calc = UncCalcImpact(exp_unc, impf_unc, haz)
+        unc_calc.make_sample(unc_data_save , N=1, sampling_kwargs={'calc_second_order': True})
+        unc_calc.calc_uncertainty(unc_data_save, calc_eai_exp=True,
+                                  calc_at_event=False)
+        unc_calc.calc_sensitivity(
+            unc_data_save,
+            sensitivity_kwargs = {'calc_second_order': True}
+            )
+
+        filename = unc_data_save .save_hdf5()
+
+        unc_data_load = UncData()
+        unc_data_load.load_hdf5(filename)
+
+        for attr_save, val_save in unc_data_save.__dict__.items():
+            if isinstance(val_save, pd.DataFrame):
+                df_load = getattr(unc_data_load, attr_save)
+                self.assertTrue(df_load.equals(val_save))
+        self.assertEqual(unc_data_load.sampling_method, unc_data_save.sampling_method)
+        self.assertEqual(unc_data_load.sampling_kwargs, unc_data_save.sampling_kwargs)
 
 # class TestUncertainty(unittest.TestCase):
 #     """Test the Uncertainty class"""
