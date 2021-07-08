@@ -37,6 +37,7 @@ from climada.util.value_representation import value_to_monetary_unit as u_vtm
 from climada.util.value_representation import sig_dig as u_sig_dig
 from climada.util import plot as u_plot
 from climada.util.config import setup_logging as u_setup_logging
+import climada.util.hdf5_handler as u_hdf5
 from climada import CONFIG
 
 LOGGER = logging.getLogger(__name__)
@@ -943,6 +944,13 @@ class UncData():
         store.get_storer('/samples_df').attrs.metadata = self.samples_df.attrs
         store.close()
 
+        str_dt = h5py.special_dtype(vlen=str)
+        with h5py.File(save_path, 'a') as fh:
+            fh['sensitivity_method'] = [self.sensitivity_method]
+            grp = fh.create_group("sensitivity_kwargs")
+            for key, value in dict(self.sensitivity_kwargs).items():
+                ds = grp.create_dataset(key, (1,), dtype=str_dt)
+                ds[0] = str(value)
         return save_path
 
 
@@ -967,3 +975,12 @@ class UncData():
             setattr(self, var_name[1:], store.get(var_name))
         self.samples_df.attrs = store.get_storer('/samples_df').attrs.metadata
         store.close()
+        with h5py.File(filename, 'r') as fh:
+            self.sensitivity_method = fh.get('sensitivity_method')[0].decode('UTF-8')
+            grp = fh["sensitivity_kwargs"]
+            sens_kwargs = {
+                key: u_hdf5.to_string(grp.get(key)[0])
+                for key in grp.keys()
+                }
+            self.sensitivity_kwargs = tuple(sens_kwargs.items())
+

@@ -122,6 +122,11 @@ class UncCalc():
             df_samples[param] = df_samples[param].apply(
                 self.distr_dict[param].ppf
                 )
+
+        sampling_kwargs = {
+            key: str(val)
+            for key, val in sampling_kwargs.items()
+            }
         df_samples.attrs['sampling_method'] = sampling_method
         df_samples.attrs['sampling_kwargs'] = tuple(sampling_kwargs.items())
         unc_data.samples_df = df_samples
@@ -288,7 +293,6 @@ class UncCalc():
                 for _ in range(n_params)
                 ] * len(si_name_second_order_list)
 
-
             sens_first_order_df = pd.DataFrame(sens_first_order_dict, dtype=np.number)
             sens_first_order_df.insert(0, 'si', si_names_first_order)
             sens_first_order_df.insert(1, 'param', param_names_first_order)
@@ -302,6 +306,8 @@ class UncCalc():
             sens_df = pd.concat([sens_first_order_df, sens_second_order_df])
 
             setattr(unc_data, metric_name + '_sens_df', sens_df)
-
+        sensitivity_kwargs = {
+            key: str(val)
+            for key, val in sensitivity_kwargs.items()}
         unc_data.sensitivity_method = sensitivity_method
         unc_data.sensitivity_kwargs = tuple(sensitivity_kwargs.items())
