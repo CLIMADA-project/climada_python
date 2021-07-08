@@ -597,7 +597,7 @@ class LitPop(Exposures):
             raise TypeError("total_val_rescale must be int or float.")
 
         exp_country = LitPop()
-        exp_country.gdf = litpop_gdf
+        exp_country.set_gdf(litpop_gdf)
         exp_country.gdf[INDICATOR_IMPF] = 1
         return exp_country
 
