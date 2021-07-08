@@ -754,9 +754,12 @@ class Exposures():
             None if inplace is True
             else a transformed copy of the exposures object
         """
+        if crs and epsg:
+            raise ValueError("one of crs or epsg must be None")
+
         if inplace:
             self.gdf.to_crs(crs, epsg, True)
-            self.meta['crs'] = crs
+            self.meta['crs'] = crs or f'EPSG:{epsg}'
             self.set_lat_lon()
             return None
 

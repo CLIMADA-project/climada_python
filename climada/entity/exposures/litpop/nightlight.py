@@ -313,7 +313,7 @@ def download_nl_files(req_files=np.ones(len(BM_FILENAMES),),
                     curr_file = url.str() + BM_FILENAMES[num_files] %(year)
                     LOGGER.info('Attempting to download file from %s', curr_file)
                     path_check = download_file(curr_file, download_dir=dwnl_path)
-                    continue # leaf loop if sucessful
+                    break # leave loop if sucessful
                 except ValueError as err:
                     value_err = err
             if path_check: # download succesful
