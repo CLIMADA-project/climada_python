@@ -51,6 +51,7 @@ DATA_DIR = CONFIG.engine.uncertainty.local_data.user_data.dir()
 FIG_W, FIG_H = 8, 5 #default figize width/heigh column/work multiplicators
 
 #Table of recommended pairing between salib sampling and sensitivity methods
+# NEEDS TO BE UPDATED REGULARLY!!
 SALIB_COMPATIBILITY = {
     'fast': ['fast_sampler'],
     'rbd_fast': ['latin'] ,
@@ -273,14 +274,13 @@ class UncData():
             parameter.
             The default is {}.
         """
-
-        self.samples_df = pd.DataFrame()
-        self.sampling_method = ''
-        self.sampling_kwargs = {}
+        #MetaData
         self.sensitivity_method = ''
-        self.sensitivity_kwargs = {}
-        self.uncertainty_metrics = ()
-        self.sensitivity_metrics = ()
+        self.sensitivity_kwargs = ()
+        #Sample
+        self.samples_df = pd.DataFrame()
+        self.samples_df.attrs['sampling_method'] = ''
+        self.samples_df.attrs['sampling_kwargs'] = ()
         #Imact
         self.aai_agg_unc_df = pd.DataFrame()
         self.freq_curve_unc_df = pd.DataFrame()
@@ -303,38 +303,6 @@ class UncData():
         self.cost_ben_ratio_sens_df = pd.DataFrame()
         self.imp_meas_present_sens_df = pd.DataFrame()
         self.imp_meas_future_sens_df = pd.DataFrame()
-
-
-    def check(self):
-        """
-        Check if the data variables are consistent
-
-        Returns
-        -------
-        check: boolean
-            True if data is consistent.
-
-        """
-        check = True
-        # check &= (self.param_labels == self.samples_df.columns.to_list())
-        # if not check:
-        #     raise ValueError("Parameter names from unc_vars do not "
-        #                      "correspond to parameters names of sample")
-        # for metric, df_distr in self.metrics.items():
-        #     if not df_distr.empty:
-        #         check &= (len(df_distr) == self.n_samples)
-        #         if not check:
-        #             raise ValueError(f"Metric f{metric} has less values than"
-        #                      " the number of samples {self.n_samples}")
-
-        #         if df_distr.isnull().values.any():
-        #             LOGGER.warning("At least one metric evaluated to Nan for "
-        #                 "one cominbation of uncertainty parameters containend "
-        #                 "in sample. Note that the sensitivity analysis will "
-        #                 "then return Nan. "
-        #                 "See https://github.com/SALib/SALib/issues/237")
-        return check
-
 
     def check_salib(self, sensitivity_method):
         """
@@ -365,6 +333,14 @@ class UncData():
                 )
             return False
         return True
+
+    @property
+    def sampling_method(self):
+        return self.samples_df.attrs['sampling_method']
+
+    @property
+    def sampling_kwargs(self):
+        return self.samples_df.attrs['sampling_kwargs']
 
     @property
     def n_samples(self):
@@ -411,6 +387,23 @@ class UncData():
             'names' : self.param_labels,
             'bounds' : [[0, 1]]*len(self.param_labels)
             }
+    @property
+    def uncertainty_metrics(self):
+        unc_metric_list = []
+        for attr_name, attr_value in self.__dict__.items():
+            if isinstance(attr_value, pd.DataFrame):
+                if not attr_value.empty and 'unc' in attr_name:
+                    unc_metric_list.append(attr_name)
+        return unc_metric_list
+
+    @property
+    def sensitivity_metrics(self):
+        sens_metric_list = []
+        for attr_name, attr_value in self.__dict__.items():
+            if isinstance(attr_value, pd.DataFrame):
+                if not attr_value.empty and 'sens' in attr_name:
+                    sens_metric_list.append(attr_name)
+        return sens_metric_list
 
     def get_uncertainty(self, metric_list=None):
         if metric_list is None:
