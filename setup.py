@@ -66,6 +66,7 @@ setup(
         'pandas',
         'pandas-datareader',
         'pathos',
+        'peewee',
         'pillow',
         'pint',
         'pybufrkit',

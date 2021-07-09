@@ -31,7 +31,7 @@ class TestStormEuropeDefault(unittest.TestCase):
         """Compute mdr interpolating values."""
         imp_fun = ImpfStormEurope()
         imp_fun.set_schwierz()
-        self.assertEqual(imp_fun.name, 'Schwierz 2011')
+        self.assertEqual(imp_fun.name, 'Schwierz 2010')
         self.assertEqual(imp_fun.haz_type, 'WS')
         self.assertEqual(imp_fun.id, 1)
         self.assertEqual(imp_fun.intensity_unit, 'm/s')

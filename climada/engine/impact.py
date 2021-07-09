@@ -930,7 +930,7 @@ class Impact():
 
         if file_name:
             LOGGER.info('Generating video %s', file_name)
-            fig, axis = u_plot.make_map()
+            fig, axis, _fontsize = u_plot.make_map()
             ani = animation.FuncAnimation(fig, run, frames=len(haz_list),
                                           interval=500, blit=False)
             pbar = tqdm(total=len(haz_list))
