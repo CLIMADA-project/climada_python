@@ -57,3 +57,11 @@ climada\.entity\.impact\_funcs\.trop\_cyclone module
     :undoc-members:
     :show-inheritance:
 
+climada\.entity\.impact\_funcs\.wildfire module
+-----------------------------------------------
+
+.. automodule:: climada.entity.impact_funcs.wildfire
+    :members:
+    :undoc-members:
+    :show-inheritance:
+

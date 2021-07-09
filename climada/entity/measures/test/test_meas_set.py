@@ -58,10 +58,9 @@ class TestContainer(unittest.TestCase):
             meas.append(act_1)
         self.assertIn("Input Measure's hazard type not set.", cm.output[0])
 
-        with self.assertLogs('climada.entity.measures.measure_set', level='ERROR') as cm:
-            with self.assertRaises(ValueError):
-                meas.append(45)
-        self.assertIn("Input value is not of type Measure.", cm.output[0])
+        with self.assertRaises(ValueError) as cm:
+            meas.append(45)
+        self.assertIn("Input value is not of type Measure.", str(cm.exception))
 
     def test_remove_measure_pass(self):
         """Test remove_measure removes Measure of MeasureSet correcty."""
@@ -161,11 +160,9 @@ class TestChecker(unittest.TestCase):
         act_1.paa_impact = (1, 2)
         meas.append(act_1)
 
-        with self.assertLogs('climada.util.checker', level='ERROR') as cm:
-            with self.assertRaises(ValueError):
-                meas.check()
-        self.assertIn('Invalid Measure.hazard_inten_imp size: 2 != 3.',
-                         cm.output[0])
+        with self.assertRaises(ValueError) as cm:
+            meas.check()
+        self.assertIn('Invalid Measure.hazard_inten_imp size: 2 != 3.', str(cm.exception))
 
     def test_check_wrongColor_fail(self):
         """Wrong measures definition"""
@@ -179,10 +176,9 @@ class TestChecker(unittest.TestCase):
         act_1.hazard_inten_imp = (1, 2)
         meas.append(act_1)
 
-        with self.assertLogs('climada.util.checker', level='ERROR') as cm:
-            with self.assertRaises(ValueError):
-                meas.check()
-        self.assertIn('Invalid Measure.color_rgb size: 3 != 2.', cm.output[0])
+        with self.assertRaises(ValueError) as cm:
+            meas.check()
+        self.assertIn('Invalid Measure.color_rgb size: 2 not in [3, 4].', str(cm.exception))
 
     def test_check_wrongMDD_fail(self):
         """Wrong measures definition"""
@@ -196,10 +192,9 @@ class TestChecker(unittest.TestCase):
         act_1.hazard_inten_imp = (1, 2)
         meas.append(act_1)
 
-        with self.assertLogs('climada.util.checker', level='ERROR') as cm:
-            with self.assertRaises(ValueError):
-                meas.check()
-        self.assertIn('Measure.mdd_impact has wrong dimensions.', cm.output[0])
+        with self.assertRaises(ValueError) as cm:
+            meas.check()
+        self.assertIn('Measure.mdd_impact has wrong size.', str(cm.exception))
 
     def test_check_wrongPAA_fail(self):
         """Wrong measures definition"""
@@ -213,10 +208,9 @@ class TestChecker(unittest.TestCase):
         act_1.hazard_inten_imp = (1, 2)
         meas.append(act_1)
 
-        with self.assertLogs('climada.util.checker', level='ERROR') as cm:
-            with self.assertRaises(ValueError):
-                meas.check()
-        self.assertIn('Invalid Measure.paa_impact size: 2 != 4.', cm.output[0])
+        with self.assertRaises(ValueError) as cm:
+            meas.check()
+        self.assertIn('Invalid Measure.paa_impact size: 2 != 4.', str(cm.exception))
 
     def test_check_name_fail(self):
         """Wrong measures definition"""
@@ -227,10 +221,9 @@ class TestChecker(unittest.TestCase):
         meas._data['FL'] = dict()
         meas._data['FL']['LoLo'] = act_1
 
-        with self.assertLogs('climada.entity.measures.measure_set', level='ERROR') as cm:
-            with self.assertRaises(ValueError):
-                meas.check()
-        self.assertIn('Wrong Measure.name: LoLo != LaLa', cm.output[0])
+        with self.assertRaises(ValueError) as cm:
+            meas.check()
+        self.assertIn('Wrong Measure.name: LoLo != LaLa', str(cm.exception))
 
     def test_def_color(self):
         """Test default grey scale used when no color set"""

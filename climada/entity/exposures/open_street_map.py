@@ -38,7 +38,7 @@ import pyproj
 import overpy
 
 from climada.entity import Exposures
-from climada.entity.exposures.litpop import LitPop
+from climada.entity import LitPop
 
 LOGGER = logging.getLogger(__name__)
 
@@ -389,9 +389,8 @@ def get_highValueArea(bbox, save_path=None, Low_Value_gdf=None, check_plot=1):
             'OSM_features_gdf_combined_' + str(int(bbox[0])) + '_' + str(int(bbox[1])) + '.shp')
         try:
             Low_Value_gdf = geopandas.read_file(filepath)
-        except:
-            LOGGER.error('No Low-Value-Union found with name %s. \n Please add.', filepath)
-            raise
+        except Exception as err:
+            raise type(err)(f'No Low-Value-Union found with name {filepath}: ' + str(err)) from err
     else:
         Low_Value_gdf = geopandas.read_file(Low_Value_gdf)
 
@@ -502,7 +501,7 @@ def _split_exposure_highlow(exp_sub, mode, High_Value_Area_gdf):
               "Please choose either 'nearest', 'even' or 'proportional'.")
 
     exp = exp_sub.copy(deep=False)
-    exp.gdf = exp_sub_high
+    exp.set_gdf(exp_sub_high)
     return exp
 
 def get_osmstencil_litpop(bbox, country, mode, highValueArea=None,
@@ -541,9 +540,9 @@ def get_osmstencil_litpop(bbox, country, mode, highValueArea=None,
             filepath = str(Path.cwd().joinpath(
                 'High_Value_Area_' + str(int(bbox[0])) + '_' + str(int(bbox[1])) + ".shp"))
             High_Value_Area_gdf = geopandas.read_file(filepath)
-        except:
-            LOGGER.error('No file found of form %s. Please add or specify path.', filepath)
-            raise
+        except Exception as err:
+            raise type(err)(f'No file found of form {filepath}. '
+                            'Please add or specify path: ' + str(err)) from err
     else:
         High_Value_Area_gdf = geopandas.read_file(highValueArea)
 

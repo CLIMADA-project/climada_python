@@ -32,7 +32,7 @@ class TestRiverFlood(unittest.TestCase):
     def test_wrong_iso3_fail(self):
 
         emptyFlood = RiverFlood()
-        with self.assertRaises(KeyError):
+        with self.assertRaises(LookupError):
             RiverFlood._select_exact_area(['OYY'])
         with self.assertRaises(AttributeError):
             emptyFlood.set_from_nc(years=[2600], dph_path=HAZ_DEMO_FLDDPH,
@@ -220,7 +220,6 @@ class TestRiverFlood(unittest.TestCase):
                               frc_path=HAZ_DEMO_FLDFRC, ISINatIDGrid=True)
         years = [2000, 2001, 2002]
         manipulated_dates = [730303, 730669, 731034]
-        testRFaddset = []
         for i in range(len(years)):
             testRFaddset = RiverFlood()
             testRFaddset.set_from_nc(countries=['DEU', 'CHE'],

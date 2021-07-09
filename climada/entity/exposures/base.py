@@ -19,7 +19,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define Exposures class.
 """
 
-__all__ = ['Exposures', 'add_sea', 'INDICATOR_IF', 'INDICATOR_CENTR']
+__all__ = ['Exposures', 'add_sea', 'INDICATOR_IMPF', 'INDICATOR_CENTR']
 
 import logging
 import copy
@@ -36,20 +36,23 @@ import cartopy.crs as ccrs
 
 from climada.entity.tag import Tag
 import climada.util.hdf5_handler as u_hdf5
-from climada.util.constants import ONE_LAT_KM, DEF_CRS
+from climada.util.constants import ONE_LAT_KM, DEF_CRS, CMAP_RASTER
 import climada.util.coordinates as u_coord
-from climada.util.interpolation import interpol_index
 import climada.util.plot as u_plot
+from climada import CONFIG
 
 LOGGER = logging.getLogger(__name__)
 
-INDICATOR_IF = 'if_'
+INDICATOR_IMPF_OLD = 'if_'
+"""Previously used name of the column containing the impact functions id of specified hazard"""
+
+INDICATOR_IMPF = 'impf_'
 """Name of the column containing the impact functions id of specified hazard"""
 
 INDICATOR_CENTR = 'centr_'
 """Name of the column containing the centroids id of specified hazard"""
 
-DEF_REF_YEAR = 2018
+DEF_REF_YEAR = CONFIG.exposures.def_ref_year.int()
 """Default reference year"""
 
 DEF_VALUE_UNIT = 'USD'
@@ -62,7 +65,7 @@ DEF_VAR_MAT = {'sup_field_name': 'entity',
                             'val': 'Value',
                             'ded': 'Deductible',
                             'cov': 'Cover',
-                            'imp': 'DamageFunID',
+                            'impf': 'DamageFunID',
                             'cat': 'Category_ID',
                             'reg': 'Region_ID',
                             'uni': 'Value_unit',
@@ -84,9 +87,9 @@ class Exposures():
         longitude (pd.Series): longitude
         crs (dict or crs): CRS information inherent to GeoDataFrame.
         value (pd.Series): a value for each exposure
-        if_ (pd.Series, optional): e.g. if_TC. impact functions id for hazard TC.
-            There might be different hazards defined: if_TC, if_FL, ...
-            If not provided, set to default 'if_' with ids 1 in check().
+        impf_ (pd.Series, optional): e.g. impf_TC. impact functions id for hazard TC.
+            There might be different hazards defined: impf_TC, impf_FL, ...
+            If not provided, set to default 'impf_' with ids 1 in check().
         geometry (pd.Series, optional): geometry of type Point of each instance.
             Computed in method set_geometry_points().
         meta (dict): dictionary containing corresponding raster properties (if any):
@@ -106,7 +109,7 @@ class Exposures():
     vars_oblig = ['value', 'latitude', 'longitude']
     """Name of the variables needed to compute the impact."""
 
-    vars_def = [INDICATOR_IF]
+    vars_def = [INDICATOR_IMPF, INDICATOR_IMPF_OLD]
     """Name of variables that can be computed."""
 
     vars_opt = [INDICATOR_CENTR, 'deductible', 'cover', 'category_id',
@@ -116,12 +119,16 @@ class Exposures():
     @property
     def crs(self):
         """Coordinate Reference System, refers to the crs attribute of the inherent GeoDataFrame"""
-        try:
+        if getattr(self.gdf, "crs", None):
             return self.gdf.crs
-        except AttributeError:
-            return self.meta.get('crs')
+        # Due to a bug, the CRS of a GeoDataFrame and its geometry column might be out of sync:
+        # https://github.com/geopandas/geopandas/issues/1960
+        if "geometry" in self.gdf and getattr(self.gdf.geometry, "crs", None):
+            return self.gdf.geometry.crs
+        return self.meta.get('crs')
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, meta=None, tag=None, ref_year=DEF_REF_YEAR,
+                 value_unit=DEF_VALUE_UNIT, crs=None, **kwargs):
         """Creates an Exposures object from a GeoDataFrame
 
         Parameters
@@ -130,51 +137,28 @@ class Exposures():
             Arguments of the GeoDataFrame constructor
         **kwargs :
             Named arguments of the GeoDataFrame constructor, additionally
-        tag : climada.entity.exposures.tag.Tag
-            Exopusres tag
-        ref_year : int
-            Reference Year
-        value_unit : str
-            Unit of the exposed value
-        meta : dict
-            Metadata dictionary
+        meta : dict, optional
+            Metadata dictionary. Default: {} (empty dictionary)
+        tag : climada.entity.exposures.tag.Tag, optional
+            Exposures tag. Defaults to the entry of the same name in `meta` or an empty Tag object.
+        ref_year : int, optional
+            Reference Year. Defaults to the entry of the same name in `meta` or 2018.
+        value_unit : str, optional
+            Unit of the exposed value. Defaults to the entry of the same name in `meta` or 'USD'.
+        crs : object, anything accepted by pyproj.CRS.from_user_input
+            Coordinate reference system. Defaults to the entry of the same name in `meta`, or to
+            the CRS of the GeoDataFrame (if provided) or to 'epsg:4326'.
         """
         # meta data
-        try:
-            self.meta = kwargs.pop('meta')
-            if self.meta is None:
-                self.meta = {}
-            if not isinstance(self.meta, dict):
-                raise ValueError("meta must be a dictionary")
-        except KeyError:
-            self.meta = {}
-            LOGGER.info('meta set to default value %s', self.meta)
+        self.meta = {} if meta is None else meta
+        if not isinstance(self.meta, dict):
+            raise ValueError("meta must be a dictionary")
+        self.tag = self.meta.get('tag', Tag()) if tag is None else tag
+        self.ref_year = self.meta.get('ref_year', DEF_REF_YEAR) if ref_year is None else ref_year
+        self.value_unit = (self.meta.get('value_unit', DEF_VALUE_UNIT)
+                           if value_unit is None else value_unit)
 
-        # tag
-        try:
-            self.tag = kwargs.pop('tag')
-        except KeyError:
-            self.tag = self.meta.get('tag', Tag())
-            if 'tag' not in self.meta:
-                LOGGER.info('tag set to default value %s', self.tag)
-
-        # reference year
-        try:
-            self.ref_year = kwargs.pop('ref_year')
-        except KeyError:
-            self.ref_year = self.meta.get('ref_year', DEF_REF_YEAR)
-            if 'ref_year' not in self.meta:
-                LOGGER.info('ref_year set to default value %s', self.ref_year)
-
-        # value unit
-        try:
-            self.value_unit = kwargs.pop('value_unit')
-        except KeyError:
-            self.value_unit = self.meta.get('ref_year', DEF_VALUE_UNIT)
-            if 'value_unit' not in self.meta:
-                LOGGER.info('value_unit set to default value %s', self.value_unit)
-
-        # remaining generic attributes
+        # remaining generic attributes from derived classes
         for mda in type(self)._metadata:
             if mda not in Exposures._metadata:
                 if mda in kwargs:
@@ -184,39 +168,32 @@ class Exposures():
                 else:
                     setattr(self, mda, None)
 
-        # make the data frame
-        self.gdf = GeoDataFrame(*args, **kwargs)
+        # crs (property) and geometry
+        data = args[0] if args else kwargs.get('data', {})
+        try:
+            data_crs = data.geometry.crs
+        except AttributeError:
+            data_crs = None
+        if data_crs and data.crs and not u_coord.equal_crs(data_crs, data.crs):
+            raise ValueError("Inconsistent crs definition in data and data.geometry")
 
-        # align crs from gdf and meta data
-        if self.gdf.crs:
-            crs = self.gdf.crs
-        # With geopandas 3.1, the crs attribute is not conserved by the constructor
-        # without a geometry column. Therefore the conservation is done 'manually':
-        elif len(args) > 0:
-            try:
-                crs = args[0].crs
-            except AttributeError:
-                crs = None
-        elif 'data' in kwargs:
-            try:
-                crs = kwargs['data'].crs
-            except AttributeError:
-                crs = None
-        else:
-            crs = None
-        # store the crs in the meta dictionary
-        if crs:
-            if self.meta.get('crs') and not u_coord.equal_crs(self.meta.get('crs'), crs):
-                LOGGER.info('crs from `meta` argument ignored and overwritten by GeoDataFrame'
-                            ' crs: %s', self.gdf.crs)
-            self.meta['crs'] = crs
-            if not self.gdf.crs:
-                self.gdf.crs = crs
-        else:
-            if 'crs' not in self.meta:
-                LOGGER.info('crs set to default value: %s', DEF_CRS)
-                self.meta['crs'] = DEF_CRS
-            self.gdf.crs = self.meta['crs']
+        crs = (crs if crs is not None
+               else self.meta['crs'] if 'crs' in self.meta
+               else data_crs if data_crs
+               else None)
+        if 'crs' in self.meta and not u_coord.equal_crs(self.meta['crs'], crs):
+            raise ValueError("Inconsistent CRS definition, crs and meta arguments don't match")
+        if data_crs and not u_coord.equal_crs(data_crs, crs):
+            raise ValueError("Inconsistent CRS definition, data doesn't match meta or crs argument")
+        if not crs:
+            crs = DEF_CRS
+
+        geometry = kwargs.get('geometry')
+        if geometry and isinstance(geometry, str):
+            raise ValueError("Exposures is not able to handle customized 'geometry' column names.")
+
+        # make the data frame
+        self.set_gdf(GeoDataFrame(*args, **kwargs), crs=crs)
 
     def __str__(self):
         return '\n'.join(
@@ -236,27 +213,32 @@ class Exposures():
         """Check Exposures consistency.
 
         Reports missing columns in log messages.
-        If no if_* column is present in the dataframe, a default column 'if_' is added with
+        If no impf_* column is present in the dataframe, a default column 'impf_' is added with
         default impact function id 1.
         """
         # mandatory columns
         for var in self.vars_oblig:
             if var not in self.gdf.columns:
-                LOGGER.error("%s missing.", var)
                 raise ValueError(f"{var} missing in gdf")
 
-        # computable columns except if_*
-        for var in sorted(set(self.vars_def).difference([INDICATOR_IF])):
+        # computable columns except impf_*
+        for var in sorted(set(self.vars_def).difference([INDICATOR_IMPF, INDICATOR_IMPF_OLD])):
             if not var in self.gdf.columns:
                 LOGGER.info("%s not set.", var)
 
-        # special treatment for if_*
-        if INDICATOR_IF in self.gdf.columns:
-            LOGGER.info("Hazard type not set in %s", INDICATOR_IF)
+        # special treatment for impf_*
+        default_impf_present = False
+        for var in [INDICATOR_IMPF, INDICATOR_IMPF_OLD]:
+            if var in self.gdf.columns:
+                LOGGER.info("Hazard type not set in %s", var)
+                default_impf_present = True
 
-        elif not any([col.startswith(INDICATOR_IF) for col in self.gdf.columns]):
-            LOGGER.info("Setting %s to default impact functions ids 1.", INDICATOR_IF)
-            self.gdf[INDICATOR_IF] = 1
+        if not default_impf_present and not [
+                col for col in self.gdf.columns
+                if col.startswith(INDICATOR_IMPF) or col.startswith(INDICATOR_IMPF_OLD)
+            ]:
+            LOGGER.info("Setting %s to default impact functions ids 1.", INDICATOR_IMPF)
+            self.gdf[INDICATOR_IMPF] = 1
 
         # optional columns except centr_*
         for var in sorted(set(self.vars_opt).difference([INDICATOR_CENTR])):
@@ -270,6 +252,11 @@ class Exposures():
         elif not any([col.startswith(INDICATOR_CENTR) for col in self.gdf.columns]):
             LOGGER.info("%s not set.", INDICATOR_CENTR)
 
+        # check if CRS is consistent
+        if self.crs != self.meta.get('crs'):
+            raise ValueError(f"Inconsistent CRS definition, gdf ({self.crs}) attribute doesn't "
+                             f"match meta ({self.meta.get('crs')}) attribute.")
+
         # check whether geometry corresponds to lat/lon
         try:
             if (self.gdf.geometry.values[0].x != self.gdf.longitude.values[0] or
@@ -279,75 +266,136 @@ class Exposures():
         except AttributeError:  # no geometry column
             pass
 
+    def set_crs(self, crs=None):
+        """Set the Coordinate Reference System.
+        If the epxosures GeoDataFrame has a 'geometry' column it will be updated too.
+
+        Parameters
+        ----------
+        crs : object, optional
+            anything anything accepted by pyproj.CRS.from_user_input
+            if the original value is None it will be set to the default CRS.
+        """
+        # clear the meta dictionary entry
+        if 'crs' in self.meta:
+            old_crs = self.meta.pop('crs')
+        crs = crs if crs else self.crs if self.crs else DEF_CRS
+        # adjust the dataframe
+        if 'geometry' in self.gdf.columns:
+            try:
+                self.gdf.set_crs(crs, inplace=True)
+            except ValueError:
+                # restore popped crs and leave
+                self.meta['crs'] = old_crs
+                raise
+        # store the value
+        self.meta['crs'] = crs
+
+    def set_gdf(self, gdf:GeoDataFrame, crs=None):
+        """Set the `gdf` GeoDataFrame and update the CRS
+
+        Parameters
+        ----------
+        gdf : GeoDataFrame
+        crs : object, optional,
+            anything anything accepted by pyproj.CRS.from_user_input,
+            by default None, then `gdf.crs` applies or - if not set - the exposure's current crs
+        """
+        # check argument type
+        if not isinstance(gdf, GeoDataFrame):
+            raise ValueError("gdf is not a GeoDataFrame")
+        # set the dataframe
+        self.gdf = gdf
+        # update the coordinate reference system
+        self.set_crs(crs)
+
+    def get_impf_column(self, haz_type=''):
+        """Find the best matching column name in the exposures dataframe for a given hazard type,
+
+        Parameters
+        ----------
+        haz_type : str or None
+            hazard type, as in the hazard's tag.haz_type
+            which is the HAZ_TYPE constant of the hazard's module
+
+        Returns
+        -------
+        str
+            a column name, the first of the following that is present in the exposures' dataframe:
+            - impf_[haz_type]
+            - if_[haz_type]
+            - impf_
+            - if_
+
+        Raises
+        ------
+        ValueError
+            if none of the above is found in the dataframe.
+        """
+        if INDICATOR_IMPF + haz_type in self.gdf.columns:
+            return INDICATOR_IMPF + haz_type
+        if INDICATOR_IMPF_OLD + haz_type in self.gdf.columns:
+            LOGGER.info("Impact function column name 'if_%s' is not according to current"
+                        " naming conventions. It's suggested to use 'impf_%s' instead.",
+                        haz_type, haz_type)
+            return INDICATOR_IMPF_OLD + haz_type
+        if INDICATOR_IMPF in self.gdf.columns:
+            LOGGER.info("No specific impact function column found for hazard %s."
+                        " Using the anonymous 'impf_' column.", haz_type)
+            return INDICATOR_IMPF
+        if INDICATOR_IMPF_OLD in self.gdf.columns:
+            LOGGER.info("No specific impact function column found for hazard %s. Using the"
+                        " anonymous 'if_' column, which is not according to current naming"
+                        " conventions. It's suggested to use 'impf_' instead.", haz_type)
+            return INDICATOR_IMPF_OLD
+        raise ValueError(f"Missing exposures impact functions {INDICATOR_IMPF}.")
+
     def assign_centroids(self, hazard, method='NN', distance='haversine',
                          threshold=100):
         """Assign for each exposure coordinate closest hazard coordinate.
         -1 used for disatances > threshold in point distances. If raster hazard,
         -1 used for centroids outside raster.
 
-        Parameters:
-            hazard (Hazard): hazard to match (with raster or vector centroids)
-            method (str, optional): interpolation method to use in vector hazard.
-                Nearest neighbor (NN) default
-            distance (str, optional): distance to use in vector hazard. Haversine
-                default
-            threshold (float): distance threshold in km over which no neighbor
-                will be found in vector hazard. Those are assigned with a -1.
-                Default 100 km.
+        Parameters
+        ----------
+        hazard : Hazard
+            Hazard to match (with raster or vector centroids).
+        method : str, optional
+            Interpolation method to use in case of vector centroids. Currently, "NN" (nearest
+            neighbor) is the only supported value, see `climada.util.interpolation.interpol_index`.
+        distance : str, optional
+            Distance to use in case of vector centroids. Possible values are "haversine" and
+            "approx", see `climada.util.interpolation.interpol_index`. Default: "haversine"
+        threshold : float
+            If the distance to the nearest neighbor exceeds `threshold`, the index `-1` is
+            assigned. Set `threshold` to 0, to disable nearest neighbor matching. Default: 100 (km)
         """
         LOGGER.info('Matching %s exposures with %s centroids.',
                     str(self.gdf.shape[0]), str(hazard.centroids.size))
         if not u_coord.equal_crs(self.crs, hazard.centroids.crs):
-            LOGGER.error('Set hazard and exposure to same CRS first!')
-            raise ValueError
+            raise ValueError('Set hazard and exposure to same CRS first!')
         if hazard.centroids.meta:
-            xres, _, xmin, _, yres, ymin = hazard.centroids.meta['transform'][:6]
-            xmin, ymin = xmin + 0.5 * xres, ymin + 0.5 * yres
-            x_i = np.round((self.gdf.longitude.values - xmin) / xres).astype(int)
-            y_i = np.round((self.gdf.latitude.values - ymin) / yres).astype(int)
-            assigned = y_i * hazard.centroids.meta['width'] + x_i
-            assigned[(x_i < 0) | (x_i >= hazard.centroids.meta['width'])] = -1
-            assigned[(y_i < 0) | (y_i >= hazard.centroids.meta['height'])] = -1
+            assigned = u_coord.assign_grid_points(
+                self.gdf.longitude.values, self.gdf.latitude.values,
+                hazard.centroids.meta['width'], hazard.centroids.meta['height'],
+                hazard.centroids.meta['transform'])
         else:
-            coord = np.stack([self.gdf.latitude.values, self.gdf.longitude.values], axis=1).astype('float64')
-            haz_coord = hazard.centroids.coord.astype('float64')
-
-            if np.array_equal(coord, haz_coord):
-                assigned = np.arange(self.gdf.shape[0])
-            else:
-                # pairs of floats can be sorted (lexicographically) in NumPy
-                coord_view = coord.view(dtype='float64,float64').reshape(-1)
-                haz_coord_view = haz_coord.view(dtype='float64,float64').reshape(-1)
-
-                # assign each hazard coordinate to an element in coord using searchsorted
-                coord_sorter = np.argsort(coord_view)
-                haz_assign_idx = np.fmin(coord_sorter.size - 1, np.searchsorted(
-                    coord_view, haz_coord_view, side="left", sorter=coord_sorter))
-                haz_assign_idx = coord_sorter[haz_assign_idx]
-
-                # determine which of the assignements match exactly
-                haz_match_idx = (coord_view[haz_assign_idx] == haz_coord_view).nonzero()[0]
-                assigned = np.full_like(coord_sorter, -1)
-                assigned[haz_assign_idx[haz_match_idx]] = haz_match_idx
-
-                # assign remaining coordinates to their geographically nearest neighbor
-                if haz_match_idx.size != coord_view.size:
-                    not_assigned_mask = (assigned == -1)
-                    assigned[not_assigned_mask] = interpol_index(
-                        haz_coord, coord[not_assigned_mask],
-                        method=method, distance=distance, threshold=threshold)
-
+            assigned = u_coord.assign_coordinates(
+                np.stack([self.gdf.latitude.values, self.gdf.longitude.values], axis=1),
+                hazard.centroids.coord, method=method, distance=distance, threshold=threshold)
         self.gdf[INDICATOR_CENTR + hazard.tag.haz_type] = assigned
 
     def set_geometry_points(self, scheduler=None):
         """Set geometry attribute of GeoDataFrame with Points from latitude and
         longitude attributes.
 
-        Parameters:
-            scheduler (str): used for dask map_partitions. “threads”,
-                “synchronous” or “processes”
+        Parameters
+        ----------
+        scheduler : str, optional
+            used for dask map_partitions.
+            “threads”, “synchronous” or “processes”
         """
-        u_coord.set_df_geometry_points(self.gdf, scheduler)
+        u_coord.set_df_geometry_points(self.gdf, scheduler=scheduler, crs=self.crs)
 
     def set_lat_lon(self):
         """Set latitude and longitude attributes from geometry attribute."""
@@ -374,6 +422,8 @@ class Exposures():
             resampling (rasterio.warp,.Resampling optional): resampling
                 function used for reprojection to dst_crs
         """
+        if 'geometry' in self.gdf:
+            raise ValueError("there is already a geometry column defined in the GeoDataFrame")
         self.tag = Tag()
         self.tag.file_name = str(file_name)
         meta, value = u_coord.read_raster(file_name, [band], src_crs, window,
@@ -384,10 +434,9 @@ class Exposures():
         lry = uly + meta['height'] * yres
         x_grid, y_grid = np.meshgrid(np.arange(ulx + xres / 2, lrx, xres),
                                      np.arange(uly + yres / 2, lry, yres))
-        try:
-            self.gdf.crs = meta['crs'].to_dict()
-        except AttributeError:
-            self.gdf.crs = meta['crs']
+
+        if self.crs is None:
+            self.set_crs()
         self.gdf['longitude'] = x_grid.flatten()
         self.gdf['latitude'] = y_grid.flatten()
         self.gdf['value'] = value.reshape(-1)
@@ -395,7 +444,7 @@ class Exposures():
 
     def plot_scatter(self, mask=None, ignore_zero=False, pop_name=True,
                      buffer=0.0, extend='neither', axis=None, figsize=(9, 13),
-                     **kwargs):
+                     adapt_fontsize=True, **kwargs):
         """Plot exposures geometry's value sum scattered over Earth's map.
         The plot will we projected according to the current crs.
 
@@ -403,12 +452,16 @@ class Exposures():
             mask (np.array, optional): mask to apply to eai_exp plotted.
             ignore_zero (bool, optional): flag to indicate if zero and negative
                 values are ignored in plot. Default: False
-            pop_name (bool, optional): add names of the populated places
+            pop_name : bool, optional
+                add names of the populated places, by default True.
             buffer (float, optional): border to add to coordinates. Default: 0.0.
             extend (str, optional): extend border colorbar with arrows.
                 [ 'neither' | 'both' | 'min' | 'max' ]
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             figsize (tuple, optional): figure size for plt.subplots
+            adapt_fontsize : bool, optional
+                If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
+                the default matplotlib font size is used. Default is True.
             kwargs (optional): arguments for scatter matplotlib function, e.g.
                 cmap='Greys'. Default: 'Wistia'
          Returns:
@@ -429,11 +482,11 @@ class Exposures():
         return u_plot.geo_scatter_from_array(value, coord, cbar_label, title,
                                              pop_name, buffer, extend,
                                              proj=crs_epsg, axes=axis,
-                                             figsize=figsize, **kwargs)
+                                             figsize=figsize, adapt_fontsize=adapt_fontsize, **kwargs)
 
     def plot_hexbin(self, mask=None, ignore_zero=False, pop_name=True,
                     buffer=0.0, extend='neither', axis=None, figsize=(9, 13),
-                    **kwargs):
+                    adapt_fontsize=True, **kwargs):
         """Plot exposures geometry's value sum binned over Earth's map.
         An other function for the bins can be set through the key reduce_C_function.
         The plot will we projected according to the current crs.
@@ -442,12 +495,16 @@ class Exposures():
             mask (np.array, optional): mask to apply to eai_exp plotted.
             ignore_zero (bool, optional): flag to indicate if zero and negative
                 values are ignored in plot. Default: False
-            pop_name (bool, optional): add names of the populated places
+            pop_name : bool, optional
+                add names of the populated places, by default True.
             buffer (float, optional): border to add to coordinates. Default: 0.0.
             extend (str, optional): extend border colorbar with arrows.
                 [ 'neither' | 'both' | 'min' | 'max' ]
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             figsize (tuple): figure size for plt.subplots
+            adapt_fontsize : bool, optional
+                If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
+                the default matplotlib font size is used. Default is True.
             kwargs (optional): arguments for hexbin matplotlib function, e.g.
                 reduce_C_function=np.average. Default: reduce_C_function=np.sum
          Returns:
@@ -469,12 +526,13 @@ class Exposures():
                           self.gdf.longitude[mask][pos_vals].values], axis=1)
         return u_plot.geo_bin_from_array(value, coord, cbar_label, title,
                                          pop_name, buffer, extend, proj=crs_epsg,
-                                         axes=axis, figsize=figsize, **kwargs)
+                                         axes=axis, figsize=figsize, adapt_fontsize=adapt_fontsize,
+                                         **kwargs)
 
     def plot_raster(self, res=None, raster_res=None, save_tiff=None,
                     raster_f=lambda x: np.log10((np.fmax(x + 1, 1))),
                     label='value (log10)', scheduler=None, axis=None,
-                    figsize=(9, 13), **kwargs):
+                    figsize=(9, 13), fill=True, adapt_fontsize=True, **kwargs):
         """Generate raster from points geometry and plot it using log10 scale:
         np.log10((np.fmax(raster+1, 1))).
 
@@ -491,6 +549,12 @@ class Exposures():
                 “synchronous” or “processes”
             axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
             figsize (tuple, optional): figure size for plt.subplots
+            fill(bool, optional): If false, the areas with no data will be plotted
+                in white. If True, the areas with missing values are filled as 0s.
+                The default is True.
+            adapt_fontsize : bool, optional
+                If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
+                the default matplotlib font size is used. Default is True.
             kwargs (optional): arguments for imshow matplotlib function
 
         Returns:
@@ -503,8 +567,7 @@ class Exposures():
             if self.gdf.latitude.values[0] < self.gdf.latitude.values[-1]:
                 raster = np.flip(raster, axis=0)
             if self.gdf.longitude.values[0] > self.gdf.longitude.values[-1]:
-                LOGGER.error('Points are not ordered according to meta raster.')
-                raise ValueError
+                raise ValueError('Points are not ordered according to meta raster.')
         else:
             raster, meta = u_coord.points_to_raster(self.gdf, ['value'], res, raster_res, scheduler)
             raster = raster.reshape((meta['height'], meta['width']))
@@ -528,16 +591,29 @@ class Exposures():
                                       self.gdf.longitude.max(), self.gdf.latitude.max())
 
         if not axis:
-            _, axis = u_plot.make_map(proj=proj_plot, figsize=figsize)
-
+            _, axis, fontsize = u_plot.make_map(proj=proj_plot, figsize=figsize, adapt_fontsize=adapt_fontsize)
+        else:
+            fontsize = None
         cbar_ax = make_axes_locatable(axis).append_axes('right', size="6.5%",
                                                         pad=0.1, axes_class=plt.Axes)
         axis.set_extent((xmin, xmax, ymin, ymax), crs=proj_data)
         u_plot.add_shapes(axis)
+        if not fill:
+            raster = np.where(raster == 0, np.nan, raster)
+            raster_f = lambda x: np.log10((np.maximum(x + 1, 1)))
+        if 'cmap' not in kwargs:
+            kwargs['cmap'] = CMAP_RASTER
         imag = axis.imshow(raster_f(raster), **kwargs, origin='upper',
                            extent=(xmin, xmax, ymin, ymax), transform=proj_data)
+        cbar = plt.colorbar(imag, cax=cbar_ax, label=label)
         plt.colorbar(imag, cax=cbar_ax, label=label)
+        plt.tight_layout()
         plt.draw()
+        if fontsize:
+            cbar.ax.tick_params(labelsize=fontsize)
+            cbar.ax.yaxis.get_offset_text().set_fontsize(fontsize)
+            for item in [axis.title, cbar.ax.xaxis.label, cbar.ax.yaxis.label]:
+                item.set_fontsize(fontsize)
         return axis
 
     def plot_basemap(self, mask=None, ignore_zero=False, pop_name=True,
@@ -551,7 +627,8 @@ class Exposures():
                 size of the exposures, only the selected indexes will be plot.
             ignore_zero (bool, optional): flag to indicate if zero and negative
                 values are ignored in plot. Default: False
-            pop_name (bool, optional): add names of the populated places
+            pop_name : bool, optional
+                add names of the populated places, by default True.
             buffer (float, optional): border to add to coordinates. Default: 0.0.
             extend (str, optional): extend border colorbar with arrows.
                 [ 'neither' | 'both' | 'min' | 'max' ]
@@ -564,7 +641,7 @@ class Exposures():
          Returns:
             matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
         """
-        if 'geometry' not in self.gdf.columns:
+        if 'geometry' not in self.gdf:
             self.set_geometry_points()
         crs_ori = self.crs
         self.to_crs(epsg=3857, inplace=True)
@@ -607,13 +684,15 @@ class Exposures():
         """
         LOGGER.info('Reading %s', file_name)
         with pd.HDFStore(file_name) as store:
-            self.__init__(store['exposures'])
             metadata = store.get_storer('exposures').attrs.metadata
+            # in previous versions of CLIMADA and/or geopandas, the CRS was stored in '_crs'/'crs'
+            crs = metadata.get('crs', metadata.get('_crs'))
+            if crs is None and metadata.get('meta'):
+                crs = metadata['meta'].get('crs')
+            self.__init__(store['exposures'], crs=crs)
             for key, val in metadata.items():
                 if key in type(self)._metadata:
                     setattr(self, key, val)
-                if key == 'crs':
-                    self.gdf.crs = val
 
     def read_mat(self, file_name, var_names=None):
         """Read MATLAB file and store variables in exposures.
@@ -640,10 +719,11 @@ class Exposures():
             _read_mat_obligatory(exposures, data, var_names)
             _read_mat_optional(exposures, data, var_names)
         except KeyError as var_err:
-            LOGGER.error("Not existing variable: %s", str(var_err))
-            raise var_err
+            raise KeyError(f"Variable not in MAT file: {var_names.get('field_name')}")\
+                from var_err
 
-        self.gdf = GeoDataFrame(data=exposures, crs=self.crs)
+        self.set_gdf(GeoDataFrame(data=exposures))
+
         _read_mat_metadata(self, data, file_name, var_names)
 
     #
@@ -674,9 +754,12 @@ class Exposures():
             None if inplace is True
             else a transformed copy of the exposures object
         """
+        if crs and epsg:
+            raise ValueError("one of crs or epsg must be None")
+
         if inplace:
             self.gdf.to_crs(crs, epsg, True)
-            self.meta['crs'] = crs
+            self.meta['crs'] = crs or f'EPSG:{epsg}'
             self.set_lat_lon()
             return None
 
@@ -723,8 +806,7 @@ class Exposures():
             if self.gdf.latitude.values[0] < self.gdf.latitude.values[-1]:
                 raster = np.flip(raster, axis=0)
             if self.gdf.longitude.values[0] > self.gdf.longitude.values[-1]:
-                LOGGER.error('Points are not ordered according to meta raster.')
-                raise ValueError
+                raise ValueError('Points are not ordered according to meta raster.')
             u_coord.write_raster(file_name, raster, self.meta)
         else:
             raster, meta = u_coord.points_to_raster(self, [value_name], scheduler=scheduler)
@@ -745,25 +827,47 @@ class Exposures():
             with the metadata of the first item in the list and the dataframes concatenated.
         """
         exp = exposures_list[0].copy(deep=False)
+        if not isinstance(exp, Exposures):
+            exp = Exposures(exp)
+            exp.check()
+
         df_list = [
             ex.gdf if isinstance(ex, Exposures) else ex
             for ex in exposures_list
         ]
-        exp.gdf = GeoDataFrame(
-            pd.concat(df_list, ignore_index=True, sort=False),
-            crs=exp.crs
-        )
+        crss = [
+            ex.crs for ex in exposures_list
+            if isinstance(ex, (Exposures, GeoDataFrame)) and not ex.crs is None
+        ]
+        if crss:
+            crs = crss[0]
+            if any(not u_coord.equal_crs(c, crs) for c in crss[1:]):
+                raise ValueError("concatenation of exposures with different crs")
+        else:
+            crs = None
+
+        exp.set_gdf(GeoDataFrame(
+            pd.concat(df_list, ignore_index=True, sort=False)
+        ), crs=crs)
+
         return exp
 
 
-def add_sea(exposures, sea_res):
+def add_sea(exposures, sea_res, scheduler=None):
     """Add sea to geometry's surroundings with given resolution. region_id
     set to -1 and other variables to 0.
 
-    Parameters:
-        sea_res (tuple): (sea_coast_km, sea_res_km), where first parameter
-            is distance from coast to fill with water and second parameter
-            is resolution between sea points
+    Parameters
+    ----------
+    exposures : Exposures
+        the Exposures object without sea surroundings.
+    sea_res : tuple (float,float)
+        (sea_coast_km, sea_res_km), where first parameter
+        is distance from coast to fill with water and second parameter
+        is resolution between sea points
+    scheduler : str, optional
+        used for dask map_partitions.
+        “threads”, “synchronous” or “processes”
 
     Returns:
         Exposures
@@ -791,7 +895,7 @@ def add_sea(exposures, sea_res):
     sea_exp_gdf['region_id'] = np.zeros(sea_exp_gdf.latitude.size, int) - 1
 
     if 'geometry' in exposures.gdf.columns:
-        u_coord.set_df_geometry_points(sea_exp_gdf)
+        u_coord.set_df_geometry_points(sea_exp_gdf, crs=exposures.crs, scheduler=scheduler)
 
     for var_name in exposures.gdf.columns:
         if var_name not in ('latitude', 'longitude', 'region_id', 'geometry'):
@@ -815,8 +919,8 @@ def _read_mat_obligatory(exposures, data, var_names):
     exposures['latitude'] = data[var_names['var_name']['lat']].reshape(-1)
     exposures['longitude'] = data[var_names['var_name']['lon']].reshape(-1)
 
-    exposures[INDICATOR_IF] = np.squeeze(
-        data[var_names['var_name']['imp']]).astype(int, copy=False)
+    exposures[INDICATOR_IMPF] = np.squeeze(
+        data[var_names['var_name']['impf']]).astype(int, copy=False)
 
 
 def _read_mat_optional(exposures, data, var_names):
@@ -833,7 +937,7 @@ def _read_mat_optional(exposures, data, var_names):
 
     try:
         exposures['category_id'] = \
-        np.squeeze(data[var_names['var_name']['cat']]).astype(int, copy=False)
+            np.squeeze(data[var_names['var_name']['cat']]).astype(int, copy=False)
     except KeyError:
         pass
 
@@ -852,7 +956,7 @@ def _read_mat_optional(exposures, data, var_names):
 
 
 def _read_mat_metadata(exposures, data, file_name, var_names):
-    """Fille metadata in DataFrame object"""
+    """Fill metadata in DataFrame object"""
     try:
         exposures.ref_year = int(np.squeeze(data[var_names['var_name']['ref']]))
     except KeyError:

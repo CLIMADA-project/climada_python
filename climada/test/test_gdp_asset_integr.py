@@ -28,14 +28,12 @@ class TestGDP2AssetClassCountries(unittest.TestCase):
         """Wrong ISO3 code"""
         testGDP2A = ga.GDP2Asset()
 
-        with self.assertRaises(KeyError):
+        with self.assertRaises(LookupError):
             testGDP2A.set_countries(countries=['OYY'], path=DEMO_GDP2ASSET)
-        with self.assertRaises(KeyError):
-            testGDP2A.set_countries(countries=['DEU'], ref_year=2600,
-                                    path=DEMO_GDP2ASSET)
-        with self.assertRaises(KeyError):
-            testGDP2A.set_countries(countries=['DEU'], ref_year=2600,
-                                    path=DEMO_GDP2ASSET)
+        with self.assertRaises(LookupError):
+            testGDP2A.set_countries(countries=['DEU'], ref_year=2600, path=DEMO_GDP2ASSET)
+        with self.assertRaises(LookupError):
+            testGDP2A.set_countries(countries=['DEU'], ref_year=2600, path=DEMO_GDP2ASSET)
         with self.assertRaises(ValueError):
             testGDP2A.set_countries(path=DEMO_GDP2ASSET)
         with self.assertRaises(IOError):

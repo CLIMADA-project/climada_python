@@ -130,8 +130,7 @@ class MeasureSet():
             ValueError
         """
         if not isinstance(meas, Measure):
-            LOGGER.error("Input value is not of type Measure.")
-            raise ValueError
+            raise ValueError("Input value is not of type Measure.")
         if not meas.haz_type:
             LOGGER.warning("Input Measure's hazard type not set.")
         if not meas.name:
@@ -275,13 +274,11 @@ class MeasureSet():
             def_color = plt.cm.get_cmap('Greys', len(meas_dict))
             for i_meas, (name, meas) in enumerate(meas_dict.items()):
                 if (name != meas.name) | (name == ''):
-                    LOGGER.error("Wrong Measure.name: %s != %s.", name,
-                                 meas.name)
-                    raise ValueError
+                    raise ValueError("Wrong Measure.name: %s != %s."
+                                     % (name, meas.name))
                 if key_haz != meas.haz_type:
-                    LOGGER.error("Wrong Measure.haz_type: %s != %s.",
-                                 key_haz, meas.haz_type)
-                    raise ValueError
+                    raise ValueError("Wrong Measure.haz_type: %s != %s."
+                                     % (key_haz, meas.haz_type))
                 # set default color if not set
                 if np.array_equal(meas.color_rgb, np.zeros(3)):
                     meas.color_rgb = def_color(i_meas)
@@ -374,8 +371,7 @@ class MeasureSet():
             data = data[var_names['field_name']]
             read_att_mat(self, data, file_name, var_names)
         except KeyError as var_err:
-            LOGGER.error("Not existing variable %s", str(var_err))
-            raise var_err
+            raise KeyError("Variable not in MAT file: " + str(var_err)) from var_err
 
     def read_excel(self, file_name, description='', var_names=DEF_VAR_EXCEL):
         """Read excel file following template and store variables.
@@ -439,8 +435,7 @@ class MeasureSet():
         try:
             read_att_excel(self, dfr, var_names)
         except KeyError as var_err:
-            LOGGER.error("Not existing variable: %s", str(var_err))
-            raise var_err
+            raise KeyError("Variable not in Excel file: " + str(var_err)) from var_err
 
     def write_excel(self, file_name, var_names=DEF_VAR_EXCEL):
         """Write excel file following template.

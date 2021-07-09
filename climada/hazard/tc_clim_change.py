@@ -29,106 +29,126 @@ TOT_RADIATIVE_FORCE = SYSTEM_DIR.joinpath('rcp_db.xls')
 generated: 2018-07-04 10:47:59."""
 
 def get_knutson_criterion():
-    """Fill changes in TCs according to Knutson et al. 2015 Global projections
+    """
+    Fill changes in TCs according to Knutson et al. 2015 Global projections
     of intense tropical cyclone activity for the late twenty-first century from
     dynamical downscaling of CMIP5/RCP4.5 scenarios.
 
-    Returns:
-        list(dict) with items 'criteria' (dict with variable_name and list(possible values)),
-        'year' (int), 'change' (float), 'variable' (str), 'function' (np function)
+    Returns
+    -------
+    criterion : list(dict)
+        list of the criterion dictionary for frequency and intensity change
+        per basin, per category taken from the Table 3 in Knutson et al. 2015.
+        with items 'basin' (str), 'category' (list(int)), 'year' (int),
+        'change' (float), 'variable' ('intensity' or 'frequency')
     """
-    criterion = list()
     # NA
-    tmp_chg = {'criteria': {'basin': ['NA'], 'category': [1, 2, 3, 4, 5]},
-               'year': 2100, 'change': 1.045, 'variable': 'intensity', 'function': np.multiply}
-    criterion.append(tmp_chg)
+    na = [
+        {'basin': 'NA', 'category': [0, 1, 2, 3, 4, 5],
+         'year': 2100, 'change': 1, 'variable': 'frequency'},
+        {'basin': 'NA', 'category': [1, 2, 3, 4, 5],
+         'year': 2100, 'change': 1, 'variable': 'frequency'},
+        {'basin': 'NA', 'category': [3, 4, 5],
+         'year': 2100, 'change': 1, 'variable': 'frequency'},
+        {'basin': 'NA', 'category': [4, 5],
+         'year': 2100, 'change': 1, 'variable': 'frequency'},
+        {'basin': 'NA', 'category': [1, 2, 3, 4, 5],
+         'year': 2100, 'change': 1.045, 'variable': 'intensity'}
+        ]
 
     # EP
-    tmp_chg = {'criteria': {'basin': ['EP'], 'category': [0]},
-               'year': 2100, 'change': 1.163, 'variable': 'frequency', 'function': np.multiply}
-    criterion.append(tmp_chg)
-    tmp_chg = {'criteria': {'basin': ['EP'], 'category': [1, 2]},
-               'year': 2100, 'change': 1.193, 'variable': 'frequency', 'function': np.multiply}
-    criterion.append(tmp_chg)
-    tmp_chg = {'criteria': {'basin': ['EP'], 'category': [3]},
-               'year': 2100, 'change': 1.837, 'variable': 'frequency', 'function': np.multiply}
-    criterion.append(tmp_chg)
-    tmp_chg = {'criteria': {'basin': ['EP'], 'category': [4, 5]},
-               'year': 2100, 'change': 3.375, 'variable': 'frequency', 'function': np.multiply}
-    criterion.append(tmp_chg)
-
-    tmp_chg = {'criteria': {'basin': ['EP'], 'category': [0]},
-               'year': 2100, 'change': 1.082, 'variable': 'intensity', 'function': np.multiply}
-    criterion.append(tmp_chg)
-    tmp_chg = {'criteria': {'basin': ['EP'], 'category': [1, 2, 3, 4, 5]},
-               'year': 2100, 'change': 1.078, 'variable': 'intensity', 'function': np.multiply}
-    criterion.append(tmp_chg)
+    ep = [
+        {'basin': 'EP', 'category': [0, 1, 2, 3, 4, 5],
+         'year': 2100, 'change': 1.163, 'variable': 'frequency'},
+        {'basin': 'EP', 'category': [1, 2, 3, 4, 5],
+         'year': 2100, 'change': 1.193, 'variable': 'frequency'},
+        {'basin': 'EP', 'category': [3, 4, 5],
+         'year': 2100, 'change': 1.837, 'variable': 'frequency'},
+        {'basin': 'EP', 'category': [4, 5],
+         'year': 2100, 'change': 3.375, 'variable': 'frequency'},
+        {'basin': 'EP', 'category': [0],
+         'year': 2100, 'change': 1.082, 'variable': 'intensity'},
+        {'basin': 'EP', 'category': [1, 2, 3, 4, 5],
+         'year': 2100, 'change': 1.078, 'variable': 'intensity'}
+        ]
 
     # WP
-    tmp_chg = {'criteria': {'basin': ['WP'], 'category': [0]},
-               'year': 2100, 'change': 1 - 0.345, 'variable': 'frequency', 'function': np.multiply}
-    criterion.append(tmp_chg)
-    tmp_chg = {'criteria': {'basin': ['WP'], 'category': [1, 2]},
-               'year': 2100, 'change': 1 - 0.316, 'variable': 'frequency', 'function': np.multiply}
-    criterion.append(tmp_chg)
-    tmp_chg = {'criteria': {'basin': ['WP'], 'category': [3, 4, 5]},
-               'year': 2100, 'change': 1 - 0.169, 'variable': 'frequency', 'function': np.multiply}
-    criterion.append(tmp_chg)
-
-    tmp_chg = {'criteria': {'basin': ['WP'], 'category': [0]},
-               'year': 2100, 'change': 1.074, 'variable': 'intensity', 'function': np.multiply}
-    criterion.append(tmp_chg)
-    tmp_chg = {'criteria': {'basin': ['WP'], 'category': [1, 2, 3, 4, 5]},
-               'year': 2100, 'change': 1.055, 'variable': 'intensity', 'function': np.multiply}
-    criterion.append(tmp_chg)
-
-    # NI
-    tmp_chg = {'criteria': {'basin': ['NI'], 'category': [1, 2, 3, 4, 5]},
-               'year': 2100, 'change': 1.256, 'variable': 'frequency', 'function': np.multiply}
-    criterion.append(tmp_chg)
-
-    # SI
-    tmp_chg = {'criteria': {'basin': ['SI'], 'category': [0]},
-               'year': 2100, 'change': 1 - 0.261, 'variable': 'frequency', 'function': np.multiply}
-    criterion.append(tmp_chg)
-    tmp_chg = {'criteria': {'basin': ['SI'], 'category': [1, 2, 3, 4, 5]},
-               'year': 2100, 'change': 1 - 0.284, 'variable': 'frequency', 'function': np.multiply}
-    criterion.append(tmp_chg)
-
-    tmp_chg = {'criteria': {'basin': ['SI'], 'category': [1, 2, 3, 4, 5]},
-               'year': 2100, 'change': 1.033, 'variable': 'intensity', 'function': np.multiply}
-    criterion.append(tmp_chg)
+    wp = [
+        {'basin': 'WP', 'category': [0, 1, 2, 3, 4, 5],
+         'year': 2100, 'change': 1 - 0.345, 'variable': 'frequency'},
+        {'basin': 'WP', 'category': [1, 2, 3, 4, 5],
+         'year': 2100, 'change': 1 - 0.316, 'variable': 'frequency'},
+        {'basin': 'WP', 'category': [3, 4, 5],
+         'year': 2100, 'change': 1 - 0.169, 'variable': 'frequency'},
+        {'basin': 'WP', 'category': [4, 5],
+         'year': 2100, 'change': 1, 'variable': 'frequency'},
+        {'basin': 'WP', 'category': [0],
+         'year': 2100, 'change': 1.074, 'variable': 'intensity'},
+        {'basin': 'WP', 'category': [1, 2, 3, 4, 5],
+         'year': 2100, 'change': 1.055, 'variable': 'intensity'},
+        ]
 
     # SP
-    tmp_chg = {'criteria': {'basin': ['SP'], 'category': [0]},
-               'year': 2100, 'change': 1 - 0.366, 'variable': 'frequency', 'function': np.multiply}
-    criterion.append(tmp_chg)
-    tmp_chg = {'criteria': {'basin': ['SP'], 'category': [1, 2]},
-               'year': 2100, 'change': 1 - 0.406, 'variable': 'frequency', 'function': np.multiply}
-    criterion.append(tmp_chg)
-    tmp_chg = {'criteria': {'basin': ['SP'], 'category': [3]},
-               'year': 2100, 'change': 1 - 0.506, 'variable': 'frequency', 'function': np.multiply}
-    criterion.append(tmp_chg)
-    tmp_chg = {'criteria': {'basin': ['SP'], 'category': [4, 5]},
-               'year': 2100, 'change': 1 - 0.583, 'variable': 'frequency', 'function': np.multiply}
-    criterion.append(tmp_chg)
+    sp = [
+        {'basin': 'SP', 'category': [0, 1, 2, 3, 4, 5],
+         'year': 2100, 'change': 1 - 0.366, 'variable': 'frequency'},
+        {'basin': 'SP', 'category': [1, 2, 3, 4, 5],
+         'year': 2100, 'change': 1 - 0.406, 'variable': 'frequency'},
+        {'basin': 'SP', 'category': [3, 4, 5],
+         'year': 2100, 'change': 1 - 0.506, 'variable': 'frequency'},
+        {'basin': 'SP', 'category': [4, 5],
+         'year': 2100, 'change': 1 - 0.583, 'variable': 'frequency'}
+        ]
 
-    return criterion
+    # NI
+    ni = [
+        {'basin': 'NI', 'category': [0, 1, 2, 3, 4, 5],
+         'year': 2100, 'change': 1, 'variable': 'frequency'},
+        {'basin': 'NI', 'category': [1, 2, 3, 4, 5],
+         'year': 2100, 'change': 1.256, 'variable': 'frequency'},
+        {'basin': 'NI', 'category': [3, 4, 5],
+         'year': 2100, 'change': 1, 'variable': 'frequency'},
+        {'basin': 'NI', 'category': [4, 5],
+         'year': 2100, 'change': 1, 'variable': 'frequency'}
+        ]
+
+    # SI
+    si = [
+        {'basin': 'SI', 'category': [0, 1, 2, 3, 4, 5],
+         'year': 2100, 'change': 1 - 0.261, 'variable': 'frequency'},
+        {'basin': 'SI', 'category': [1, 2, 3, 4, 5],
+         'year': 2100, 'change': 1 - 0.284, 'variable': 'frequency'},
+        {'basin': 'SI', 'category': [3, 4, 5],
+         'year': 2100, 'change': 1, 'variable': 'frequency'},
+        {'basin': 'SI', 'category': [4, 5],
+         'year': 2100, 'change': 1, 'variable': 'frequency'},
+        {'basin': 'SI', 'category': [1, 2, 3, 4, 5],
+         'year': 2100, 'change': 1.033, 'variable': 'intensity'}
+        ]
+
+    return na + ep + wp + sp + ni + si
+
 
 def calc_scale_knutson(ref_year=2050, rcp_scenario=45):
-    """Comparison 2081-2100 (i.e., late twenty-first century) and 2001-20
+    """
+    Comparison 2081-2100 (i.e., late twenty-first century) and 2001-20
     (i.e., present day). Late twenty-first century effects on intensity and
     frequency per Saffir-Simpson-category and ocean basin is scaled to target
-    year and target RCP proportional to total radiative forcing of the respective
-    RCP and year.
+    year and target RCP proportional to total radiative forcing of the
+    respective RCP and year.
 
-    Parameters:
-        ref_year (int): year between 2000 ad 2100. Default: 2050
-        rcp_scenario (int):  26 for RCP 2.6, 45 for RCP 4.5 (default),
-            60 for RCP 6.0 and 85 for RCP 8.5.
+    Parameters
+    ----------
+    ref_year : int, optional
+        year between 2000 ad 2100. Default: 2050
+    rcp_scenario: int, optional
+        26 for RCP 2.6, 45 for RCP 4.5. The default is 45
+        60 for RCP 6.0 and 85 for RCP 8.5.
 
-    Returns:
-        float
+    Returns
+    -------
+    factor : float
+        factor to scale Knutson parameters to the give RCP and year
     """
     # Parameters used in Knutson et al 2015
     base_knu = np.arange(2001, 2021)

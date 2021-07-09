@@ -24,13 +24,13 @@ import zipfile
 from pathlib import Path
 import pandas as pd
 import numpy as np
-from iso3166 import countries as iso_cntry
 
 from climada import CONFIG
 from climada.entity.tag import Tag
-from climada.entity.exposures.base import Exposures, INDICATOR_IF
+from climada.entity.exposures.base import Exposures, INDICATOR_IMPF
 from climada.util.files_handler import download_file
 from climada.util.constants import SYSTEM_DIR
+import climada.util.coordinates as u_coord
 
 logging.root.setLevel(logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
@@ -126,7 +126,6 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
         # Test if parameters make sense:
         if spam_v not in ['A', 'H', 'P', 'Y', 'V_agg'] or \
         spam_t not in ['TA', 'TI', 'TH', 'TL', 'TS', 'TR']:
-            LOGGER.error('Invalid input parameter(s).')
             raise ValueError('Invalid input parameter(s).')
 
         # read data from CSV:
@@ -163,11 +162,11 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
         country_id = data.loc[:, 'iso3']
         if country_id.unique().size == 1:
             region_id = np.ones(self.gdf.value.size, int)\
-                * int(iso_cntry.get(country_id.iloc[0]).numeric)
+                * u_coord.country_to_iso(country_id.iloc[0], "numeric")
         else:
             region_id = np.zeros(self.gdf.value.size, int)
             for i in range(0, self.gdf.value.size):
-                region_id[i] = int(iso_cntry.get(country_id.iloc[i]).numeric)
+                region_id[i] = u_coord.country_to_iso(country_id.iloc[i], "numeric")
         self.gdf['region_id'] = region_id
         self.ref_year = 2005
         self.tag = Tag()
@@ -176,7 +175,7 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
 
         # if impact id variation iiv = 1, assign different damage function ID
         # per technology type.
-        self._set_if(spam_t, haz_type)
+        self._set_impf(spam_t, haz_type)
 
         self.tag.file_name = (FILENAME_SPAM + '_' + spam_v + '_' + spam_t + '.csv')
 #        self.tag.shape = cntry_info[2]
@@ -194,38 +193,38 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
             spam_v, spam_t, region, self.gdf.value.sum(), self.value_unit))
         self.check()
 
-    def _set_if(self, spam_t, haz_type):
+    def _set_impf(self, spam_t, haz_type):
         """Set impact function id depending on technology."""
         # hazard type drought is default.
         # TODO: review this method, for with iiv fixed to zero
-        #       there is no point in case distinction for if_* assignment
+        #       there is no point in case distinction for impf_* assignment
         iiv = 0
         if spam_t == 'TA':
-            self.gdf[INDICATOR_IF + haz_type] = 1
+            self.gdf[INDICATOR_IMPF + haz_type] = 1
             self.tag.description = self.tag.description + '. '\
             + 'all technologies together, ie complete crop'
         elif spam_t == 'TI':
-            self.gdf[INDICATOR_IF + haz_type] = 1 + iiv
+            self.gdf[INDICATOR_IMPF + haz_type] = 1 + iiv
             self.tag.description = self.tag.description + '. '\
             + 'irrigated portion of crop'
         elif spam_t == 'TH':
-            self.gdf[INDICATOR_IF + haz_type] = 1 + 2 * iiv
+            self.gdf[INDICATOR_IMPF + haz_type] = 1 + 2 * iiv
             self.tag.description = self.tag.description + '. '\
             + 'rainfed high inputs portion of crop'
         elif spam_t == 'TL':
-            self.gdf[INDICATOR_IF + haz_type] = 1 + 3 * iiv
+            self.gdf[INDICATOR_IMPF + haz_type] = 1 + 3 * iiv
             self.tag.description = self.tag.description + '. '\
             + 'rainfed low inputs portion of crop'
         elif spam_t == 'TS':
-            self.gdf[INDICATOR_IF + haz_type] = 1 + 4 * iiv
+            self.gdf[INDICATOR_IMPF + haz_type] = 1 + 4 * iiv
             self.tag.description = self.tag.description + '. '\
             + 'rainfed subsistence portion of crop'
         elif spam_t == 'TR':
-            self.gdf[INDICATOR_IF + haz_type] = 1 + 5 * iiv
+            self.gdf[INDICATOR_IMPF + haz_type] = 1 + 5 * iiv
             self.tag.description = self.tag.description + '. '\
             + 'rainfed portion of crop (= TA - TI)'
         else:
-            self.gdf[INDICATOR_IF + haz_type] = 1
+            self.gdf[INDICATOR_IMPF + haz_type] = 1
         self.set_geometry_points()
 
     def _read_spam_file(self, **parameters):
@@ -275,10 +274,8 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
 
             data = pd.read_csv(fname, sep=',', index_col=None, header=0, encoding='ISO-8859-1')
 
-        except:
-            LOGGER.error('Importing the SPAM agriculturer file failed. '
-                         'Operation aborted.')
-            raise
+        except Exception as err:
+            raise type(err)('Importing the SPAM agriculturer file failed: ' + str(err)) from err
         # remove data points with zero crop production: (works only for TA)
         # data = data[data.vp_crop_a != 0]
 
@@ -314,10 +311,8 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
             lat = concordance_data.loc[:, 'y']
             lon = concordance_data.loc[:, 'x']
 
-        except:
-            LOGGER.error('Importing the SPAM cell5m mapping file failed. '
-                         'Operation aborted.')
-            raise
+        except Exception as err:
+            raise type(err)('Importing the SPAM cell5m mapping file failed: ' + str(err)) from err
         return lat, lon
 
     @staticmethod
@@ -412,6 +407,5 @@ https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DHXBJX
             zip_ref.extractall(data_path)
             zip_ref.close()
             Path(path_dwn).unlink()
-        except:
-            LOGGER.error('Downloading SPAM data failed. Operation aborted.')
-            raise
+        except Exception as err:
+            raise type(err)('Downloading SPAM data failed: ' + str(err)) from err

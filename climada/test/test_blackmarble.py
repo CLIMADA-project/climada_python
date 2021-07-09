@@ -24,11 +24,10 @@ import numpy as np
 from cartopy.io import shapereader
 
 from climada.entity.exposures.black_marble import BlackMarble
-from climada.entity.exposures.nightlight import load_nightlight_nasa, \
-                                                load_nightlight_noaa, \
-                                                NOAA_BORDER
-from climada.entity.exposures import nightlight as nl_utils
-from climada.util.coordinates import equal_crs
+from climada.entity.exposures.litpop.nightlight import load_nightlight_nasa, \
+    load_nightlight_noaa, NOAA_BORDER
+from climada.entity.exposures.litpop import nightlight as nl_utils
+import climada.util.coordinates as u_coord
 
 class Test2013(unittest.TestCase):
     """Test black marble of previous in 2013."""
@@ -48,10 +47,10 @@ class Test2013(unittest.TestCase):
         self.assertIn("Processing country Spain.", cm.output[1])
         self.assertIn("Generating resolution of approx 1 km.", cm.output[2])
         self.assertTrue(np.isclose(ent.gdf.value.sum(), 1.355e+12 * (4 + 1), 0.001))
-        self.assertTrue(equal_crs(ent.crs, 'epsg:4326'))
+        self.assertTrue(u_coord.equal_crs(ent.crs, 'epsg:4326'))
         self.assertEqual(ent.meta['width'], 2699)
         self.assertEqual(ent.meta['height'], 1938)
-        self.assertTrue(equal_crs(ent.meta['crs'], 'epsg:4326'))
+        self.assertTrue(u_coord.equal_crs(ent.meta['crs'], 'epsg:4326'))
         self.assertAlmostEqual(ent.meta['transform'][0], 0.008333333333333333)
         self.assertAlmostEqual(ent.meta['transform'][1], 0)
         self.assertAlmostEqual(ent.meta['transform'][2], -18.1625000000000)
@@ -66,7 +65,7 @@ class Test2013(unittest.TestCase):
             ent.set_countries(country_name, 2013, res_km=0.2)
         self.assertIn('GDP SXM 2013: 1.023e+09.', cm.output[0])
         self.assertIn('Income group SXM 2013: 4.', cm.output[1])
-        self.assertTrue(equal_crs(ent.crs, 'epsg:4326'))
+        self.assertTrue(u_coord.equal_crs(ent.crs, 'epsg:4326'))
 
         with self.assertLogs('climada.entity.exposures.black_marble', level='INFO') as cm:
             ent.set_countries(country_name, 2013, res_km=0.2)
@@ -75,7 +74,7 @@ class Test2013(unittest.TestCase):
         self.assertIn("Processing country Sint Maarten.", cm.output[1])
         self.assertIn("Generating resolution of approx 0.2 km.", cm.output[2])
         self.assertTrue(np.isclose(ent.gdf.value.sum(), 1.023e+09 * (4 + 1), 0.001))
-        self.assertTrue(equal_crs(ent.crs, 'epsg:4326'))
+        self.assertTrue(u_coord.equal_crs(ent.crs, 'epsg:4326'))
 
     def test_anguilla_pass(self):
         country_name = ['Anguilla']
@@ -84,7 +83,7 @@ class Test2013(unittest.TestCase):
         self.assertEqual(ent.ref_year, 2013)
         self.assertIn("Anguilla 2013 GDP: 1.754e+08 income group: 3", ent.tag.description)
         self.assertAlmostEqual(ent.gdf.value.sum(), 1.754e+08 * (3 + 1))
-        self.assertTrue(equal_crs(ent.crs, 'epsg:4326'))
+        self.assertTrue(u_coord.equal_crs(ent.crs, 'epsg:4326'))
 
 class Test1968(unittest.TestCase):
     """Test black marble of previous years to 1992."""
@@ -103,7 +102,7 @@ class Test1968(unittest.TestCase):
         self.assertTrue("Processing country Switzerland." in cm.output[-2])
         self.assertTrue("Generating resolution of approx 0.5 km." in cm.output[-1])
         self.assertTrue(np.isclose(ent.gdf.value.sum(), 1.894e+10 * (4 + 1), 4))
-        self.assertTrue(equal_crs(ent.crs, 'epsg:4326'))
+        self.assertTrue(u_coord.equal_crs(ent.crs, 'epsg:4326'))
 
 class Test2012(unittest.TestCase):
     """Test year 2012 flags."""
@@ -138,7 +137,7 @@ class Test2012(unittest.TestCase):
         self.assertTrue(np.isclose(ent.gdf.value.sum(), 8.740e+11 * (3 + 1), 4))
         size3 = ent.gdf.value.size
         self.assertEqual(size1, size3)
-        self.assertTrue(equal_crs(ent.crs, 'epsg:4326'))
+        self.assertTrue(u_coord.equal_crs(ent.crs, 'epsg:4326'))
 
 class BMFuncs(unittest.TestCase):
     """Test plot functions."""
@@ -153,12 +152,13 @@ class BMFuncs(unittest.TestCase):
             if info.attributes['ADM0_A3'] == 'AIA':
                 bounds = info.bounds
 
-        req_files = nl_utils.check_required_nl_files(bounds)
-        files_exist, _ = nl_utils.check_nl_local_file_exists(req_files)
+        req_files = nl_utils.get_required_nl_files(bounds)
+        files_exist = nl_utils.check_nl_local_file_exists(req_files)
         nl_utils.download_nl_files(req_files, files_exist)
 
         try:
-            nightlight, coord_nl = load_nightlight_nasa(bounds, req_files, 2016)
+            nightlight, coord_nl = nl_utils.load_nightlight_nasa(bounds,
+                                                                 req_files, 2016)
         except TypeError:
             print('MemoryError caught')
             return
@@ -170,7 +170,7 @@ class BMFuncs(unittest.TestCase):
 
     def test_load_noaa_pass(self):
         """Test load_nightlight_noaa function."""
-        nightlight, coord_nl, fn_nl = load_nightlight_noaa(2013)
+        nightlight, coord_nl, fn_nl = nl_utils.load_nightlight_noaa(2013)
 
         self.assertEqual(coord_nl[0, 0], NOAA_BORDER[1])
         self.assertEqual(coord_nl[1, 0], NOAA_BORDER[0])

@@ -1,6 +1,10 @@
 climada\.entity\.exposures package
 ==================================
 
+.. toctree::
+
+    climada.entity.exposures.litpop
+
 climada\.entity\.exposures\.base module
 ---------------------------------------
 
@@ -29,30 +33,6 @@ climada\.entity\.exposures\.gdp\_asset module
 ---------------------------------------------
 
 .. automodule:: climada.entity.exposures.gdp_asset
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-climada\.entity\.exposures\.gpw\_import module
-----------------------------------------------
-
-.. automodule:: climada.entity.exposures.gpw_import
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-climada\.entity\.exposures\.litpop module
------------------------------------------
-
-.. automodule:: climada.entity.exposures.litpop
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-climada\.entity\.exposures\.nightlight module
----------------------------------------------
-
-.. automodule:: climada.entity.exposures.nightlight
     :members:
     :undoc-members:
     :show-inheritance:

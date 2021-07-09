@@ -155,8 +155,7 @@ class RelativeCropyield(Hazard):
             input_dir = INPUT_DIR
         input_dir = Path(input_dir)
         if not Path(input_dir).is_dir():
-            LOGGER.error('Input directory %s does not exist', input_dir)
-            raise NameError
+            raise NameError('Input directory %s does not exist' % input_dir)
 
         # The filename is set or other variables (cl_model, scenario) are extracted of the
         # specified filename
@@ -438,16 +437,14 @@ def set_multiple_rc_from_isimip(input_dir=None, output_dir=None, bbox=None,
     if isinstance(input_dir, str):
         input_dir = Path(input_dir)
     if not (isinstance(input_dir, Path) and input_dir.is_dir()):
-        LOGGER.error('input_dir needs to be valid directory given as str or Path instance')
-        raise NameError
+        raise NameError('input_dir needs to be valid directory given as str or Path instance')
     if isinstance(output_dir, str):
         output_dir = Path(output_dir)
     if not (isinstance(output_dir, Path) and output_dir.is_dir()):
-        LOGGER.error('output_dir needs to be valid directory given as str or Path instance')
-        raise NameError
+        raise NameError('output_dir needs to be valid directory given as str or Path instance')
 
     filenames = [f.name for f in input_dir.iterdir()
-                 if f.is_file() and not f.name.startswith('.')]
+                 if f.is_file() and not f.name.startswith('.') and not f.name.startswith('mask')]
 
     # generate output directories if they do not exist yet
     Path(output_dir, 'Hazard').mkdir(parents=True, exist_ok=True)
@@ -907,7 +904,7 @@ def read_wheat_mask_isimip3(input_dir=None, filename=None, bbox=None):
     if input_dir is None:
         input_dir = Path(INPUT_DIR)
     if filename is None:
-        filename = 'winter_and_spring_wheat_areas_phase3.nc4'
+        filename = CONFIG.hazard.relative_cropyield.filename_wheat_mask.str()
     if bbox is None:
         bbox = BBOX
 

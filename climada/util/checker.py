@@ -85,13 +85,13 @@ def size(exp_len, var, var_name):
             ValueError
     """
     try:
-        if exp_len != len(var):
-            LOGGER.error("Invalid %s size: %s != %s.", var_name, exp_len,
-                         len(var))
-            raise ValueError
-    except TypeError:
-        LOGGER.error("%s has wrong dimensions.", var_name)
-        raise ValueError
+        if isinstance(exp_len, int):
+            if exp_len != len(var):
+                raise ValueError(f"Invalid {var_name} size: {str(exp_len)} != {len(var)}.")
+        elif len(var) not in exp_len:
+            raise ValueError(f"Invalid {var_name} size: {len(var)} not in {str(exp_len)}.")
+    except TypeError as err:
+        raise ValueError(f"{var_name} has wrong size.") from err
 
 def shape(exp_row, exp_col, var, var_name):
     """Check if the length of a variable is the expected one.
@@ -101,16 +101,11 @@ def shape(exp_row, exp_col, var, var_name):
     """
     try:
         if exp_row != var.shape[0]:
-            LOGGER.error("Invalid %s row size: %s != %s.", var_name, exp_row,
-                         var.shape[0])
-            raise ValueError
+            raise ValueError(f"Invalid {var_name} row size: {exp_row} != {var.shape[0]}.")
         if exp_col != var.shape[1]:
-            LOGGER.error("Invalid %s column size: %s != %s.", var_name,
-                         exp_col, var.shape[1])
-            raise ValueError
-    except TypeError:
-        LOGGER.error("%s has wrong dimensions.", var_name)
-        raise ValueError
+            raise ValueError(f"Invalid {var_name} column size: {exp_col} != {var.shape[1]}.")
+    except TypeError as err:
+        raise ValueError("%s has wrong dimensions." % var_name) from err
 
 
 def array_optional(exp_len, var, var_name):

@@ -4,14 +4,14 @@ This file is part of CLIMADA.
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
 CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU Lesser General Public License as published by the Free
+terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
 CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU Lesser General Public License along
+You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
@@ -36,13 +36,12 @@ import pyproj
 import shapely
 from cartopy.io import shapereader
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from iso3166 import countries as iso_cntry
 
 from climada.engine import Impact
 import climada.util.plot as u_plot
 from climada.util.config import CONFIG
 from climada.util.files_handler import to_list
-from climada.util.coordinates import coord_on_land as u_coord_on_land
+import climada.util.coordinates as u_coord
 from climada.util.value_representation import \
     value_to_monetary_unit as u_value_to_monetary_unit
 
@@ -107,21 +106,21 @@ class Forecast():
 
     Attributes
     ----------
-    run_datetime: list of datetime.datetime
+    run_datetime : list of datetime.datetime
         initialization time of the forecast model run used to create the Hazard
     event_date: datetime.datetime
         Date on which the Hazard event takes place
-    hazard: list of CLIMADA Hazard
+    hazard : list of CLIMADA Hazard
         List of the hazard forecast with different lead times.
-    haz_model: str
+    haz_model : str
         Short string specifying the model used to create the hazard,
         if possible three big letters.
-    exposure: Exposure
+    exposure : Exposure
         an CLIMADA Exposures containg values at risk
-    exposure_name: str
+    exposure_name : str
         string specifying the exposure (e.g. 'EU'), which is used to
         name output files.
-    vulnerability: ImpactFuncSet
+    vulnerability : ImpactFuncSet
         Set of impact functions used in the impact calculation.
     """
 
@@ -135,7 +134,7 @@ class Forecast():
 
         Parameters
         ----------
-        hazard_dict: dict
+        hazard_dict : dict
             Dictionary of the format {run_datetime: Hazard} with run_datetime
             being the initialization time of a weather forecast run and Hazard
             being a CLIMADA Hazard derived from that forecast for one event.
@@ -143,13 +142,13 @@ class Forecast():
             as long as the attribute Hazard.date is the same for all
             events. Several run_datetime:Hazard combinations for the same
             event can be provided.
-        exposure: Exposure
-        impact_funcs: ImpactFuncSet
-        haz_model: str, optional
+        exposure : Exposure
+        impact_funcs : ImpactFuncSet
+        haz_model : str, optional
             Short string specifying the model used to create the hazard,
             if possible three big letters. Default is 'NWP' for numerical
             weather prediction.
-        exposure_name: str, optional
+        exposure_name : str, optional
             string specifying the exposure (e.g. 'EU'), which is used to
             name output files.
         """
@@ -171,7 +170,8 @@ class Forecast():
         self.exposure = exposure
         if exposure_name is None:
             try:
-                self.exposure_name = iso_cntry.get(exposure.gdf.region_id.unique()[0]).name
+                self.exposure_name = u_coord.country_to_iso(
+                    exposure.gdf.region_id.unique()[0], "name")
             except (KeyError, AttributeError):
                 self.exposure_name = 'custom'
         else:
@@ -185,7 +185,7 @@ class Forecast():
 
         Parameters
         ----------
-        run_datetime: datetime.datetime, optional
+        run_datetime : datetime.datetime, optional
             Select the used hazard by the run_datetime,
             default is first element of attribute run_datetime.
         Returns
@@ -202,7 +202,7 @@ class Forecast():
 
         Parameters
         ----------
-        run_datetime: datetime.datetime, optional
+        run_datetime : datetime.datetime, optional
             Select the used hazard by the run_datetime,
             default is first element of attribute run_datetime.
         Returns
@@ -219,7 +219,7 @@ class Forecast():
 
         Parameters
         ----------
-        run_datetime: datetime.datetime, optional
+        run_datetime : datetime.datetime, optional
             Select the used hazard by the run_datetime,
             default is first element of attribute run_datetime.
         Returns
@@ -265,7 +265,7 @@ class Forecast():
 
         Parameters
         ----------
-        run_datetime: datetime.datetime, optional
+        run_datetime : datetime.datetime, optional
             Select the used hazard by the run_datetime,
             default is first element of attribute run_datetime.
          Returns
@@ -284,7 +284,7 @@ class Forecast():
 
         Parameters
         ----------
-        force_reassign: bool, optional
+        force_reassign : bool, optional
             Reassign hazard centroids to the exposure for all hazards,
             default is false.
         """
@@ -305,34 +305,39 @@ class Forecast():
                      polygon_file=None,
                      polygon_file_crs='epsg:4326',
                      proj=ccrs.PlateCarree(),
-                     figsize=(9, 13)):
+                     figsize=(9, 13),
+                     adapt_fontsize=True):
         """ plot a map of the impacts
 
         Parameters
         ----------
-        run_datetime: datetime.datetime, optional
+        run_datetime : datetime.datetime, optional
             Select the used hazard by the run_datetime,
             default is first element of attribute run_datetime.
-        save_fig: bool, optional
+        save_fig : bool, optional
             Figure is saved if True, folder is within your configurable
             save_dir and filename is derived from the method summary_str()
             (for more details see class docstring).  Default is True.
-        close_fig: bool, optional
+        close_fig : bool, optional
             Figure not drawn if True. Default is False.
-        polygon_file: str, optional
+        polygon_file : str, optional
             Points to a .shp-file with polygons do be drawn as outlines on
             the plot, default is None to not draw the lines. please also
             specify the crs in the parameter polygon_file_crs.
-        polygon_file_crs: str, optional
+        polygon_file_crs : str, optional
             String of pattern <provider>:<code> specifying
             the crs. has to be readable by pyproj.Proj. Default is
             'epsg:4326'.
-        proj: ccrs
+        proj : ccrs
             coordinate reference system used in coordinates
             The default is ccrs.PlateCarree()
-        figsize: tuple
+        figsize : tuple
             figure size for plt.subplots, width, height in inches
             The default is (9, 13)
+        adapt_fontsize : bool, optional
+            If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
+            the default matplotlib font size is used. Default is True.
+
         Returns
         -------
         axes: cartopy.mpl.geoaxes.GeoAxesSubplot
@@ -363,7 +368,8 @@ class Forecast():
                              polygon_file=polygon_file,
                              polygon_file_crs=polygon_file_crs,
                              proj=proj,
-                             figsize=figsize
+                             figsize=figsize,
+                             adapt_fontsize=adapt_fontsize
                              )
         if save_fig:
             fig.savefig(map_file_name_full)
@@ -374,7 +380,8 @@ class Forecast():
 
     def _plot_imp_map(self, run_datetime, title, cbar_label,
                       polygon_file=None,polygon_file_crs='epsg:4326',
-                      proj=ccrs.PlateCarree(),figsize=(9, 13)):
+                      proj=ccrs.PlateCarree(), figsize=(9, 13),
+                      adapt_fontsize=True):
         # select hazard with run_datetime
         if run_datetime is None:
             run_datetime = self.run_datetime[0]
@@ -410,7 +417,7 @@ class Forecast():
             )
 
         # Generate each subplot
-        fig, axis_sub = u_plot.make_map(num_im, proj=proj, figsize=figsize)
+        fig, axis_sub, fontsize = u_plot.make_map(num_im, proj=proj, figsize=figsize, adapt_fontsize=adapt_fontsize)
         if not isinstance(axis_sub, np.ndarray):
             axis_sub = np.array([[axis_sub]])
         fig.set_size_inches(9, 8)
@@ -472,7 +479,8 @@ class Forecast():
                             color=color[t_i],
                             ha=left_right[t_i])
 
-            plt.subplots_adjust(top=0.8)
+        fig.tight_layout()
+        fig.subplots_adjust(top=0.8)
         return fig, axis_sub
 
     def plot_hist(self, run_datetime=None, save_fig=True, close_fig=False,
@@ -481,21 +489,21 @@ class Forecast():
 
         Parameters
         ----------
-        run_datetime: datetime.datetime, optional
+        run_datetime : datetime.datetime, optional
             Select the used hazard by the run_datetime,
             default is first element of attribute run_datetime.
-        save_fig: bool, optional
+        save_fig : bool, optional
             Figure is saved if True, folder is within your configurable
             save_dir and filename is derived from the method summary_str()
             (for more details see class docstring).  Default is True.
-        close_fig: bool, optional
+        close_fig : bool, optional
             Figure is not drawn if True. Default is False.
-        figsize: tuple
+        figsize : tuple
             figure size for plt.subplots, width, height in inches
             The default is (9, 8)
         Returns
         -------
-        axes: matplotlib.axes.Axes
+        axes : matplotlib.axes.Axes
         """
         # select hazard with run_datetime
         if run_datetime is None:
@@ -591,7 +599,7 @@ class Forecast():
 
         Parameters
         ----------
-        number: int
+        number : int
 
         Returns
         -------
@@ -609,40 +617,44 @@ class Forecast():
     def plot_exceedence_prob(self, threshold, explain_str=None,
                              run_datetime=None, save_fig=True, close_fig=False,
                              polygon_file=None, polygon_file_crs='epsg:4326',
-                             proj=ccrs.PlateCarree(), figsize=(9, 13)):
+                             proj=ccrs.PlateCarree(), figsize=(9, 13), adapt_fontsize=True):
         """ plot exceedence map
 
         Parameters
         ----------
-        threshold: float
+        threshold : float
             Threshold of impact unit for which exceedence probability
             should be plotted.
-        explain_str: str, optional
+        explain_str : str, optional
             Short str which explains threshold, explain_str is included
             in the title of the figure.
-        run_datetime: datetime.datetime, optional
+        run_datetime : datetime.datetime, optional
             Select the used hazard by the run_datetime,
             default is first element of attribute run_datetime.
-        save_fig: bool, optional
+        save_fig : bool, optional
             Figure is saved if True, folder is within your configurable
             save_dir and filename is derived from the method summary_str()
             (for more details see class docstring).  Default is True.
-        close_fig: bool, optional
+        close_fig : bool, optional
             Figure not drawn if True. Default is False.
-        polygon_file: str, optional
+        polygon_file : str, optional
             Points to a .shp-file with polygons do be drawn as outlines on
             the plot, default is None to not draw the lines. please also
             specify the crs in the parameter polygon_file_crs.
-        polygon_file_crs: str, optional
+        polygon_file_crs : str, optional
             String of pattern <provider>:<code> specifying
             the crs. has to be readable by pyproj.Proj. Default is
             'epsg:4326'.
-        proj: ccrs
+        proj : ccrs
             coordinate reference system used in coordinates
             The default is ccrs.PlateCarree()
-        figsize: tuple
+        figsize : tuple
             figure size for plt.subplots, width, height in inches
             The default is (9, 13)
+        adapt_fontsize : bool, optional
+            If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
+            the default matplotlib font size is used. Default is True.
+
         Returns
         -------
         axes: cartopy.mpl.geoaxes.GeoAxesSubplot
@@ -672,7 +684,7 @@ class Forecast():
                                         cbar_label, proj,
                                         polygon_file=polygon_file,
                                         polygon_file_crs=polygon_file_crs,
-                                        figsize=figsize)
+                                        figsize=figsize, adapt_fontsize=adapt_fontsize)
         if save_fig:
             plt.savefig(wind_map_file_name_full)
         if close_fig:
@@ -683,7 +695,7 @@ class Forecast():
     def _plot_exc_prob(self, run_datetime, threshold, title, cbar_label,
                        proj=ccrs.PlateCarree(), polygon_file=None,
                        polygon_file_crs='epsg:4326', mask=None,
-                       figsize=(9, 13)):
+                       figsize=(9, 13), adapt_fontsize=True):
         """  plot the probability of reaching a threshold """
         # select hazard with run_datetime
         if run_datetime is None:
@@ -719,7 +731,7 @@ class Forecast():
         kwargs['norm'] = BoundaryNorm(np.linspace(0,1,11), CMAP_WARNPROB.N, clip=True)
 
         # Generate each subplot
-        fig, axis_sub = u_plot.make_map(num_im, proj=proj, figsize=figsize)
+        fig, axis_sub, fontsize = u_plot.make_map(num_im, proj=proj, figsize=figsize, adapt_fontsize=adapt_fontsize)
         if not isinstance(axis_sub, np.ndarray):
             axis_sub = np.array([[axis_sub]])
         fig.set_size_inches(9, 8)
@@ -771,7 +783,7 @@ class Forecast():
                             ha=left_right[t_i])
             extent = u_plot._get_borders(coord)
             axis.set_extent((extent), ccrs.PlateCarree())
-
+        fig.tight_layout()
         return fig, axis_sub
 
     def plot_warn_map(self, polygon_file=None,
@@ -784,51 +796,55 @@ class Forecast():
                       run_datetime=None,
                       proj=ccrs.PlateCarree(),
                       figsize=(9, 13),
-                      save_fig=True, close_fig=False):
+                      save_fig=True, close_fig=False, adapt_fontsize=True):
         """ plot map colored with 5 warning colors for all regions in provided
         shape file.
 
         Parameters
         ----------
-        polygon_file: str, optional
+        polygon_file : str, optional
             path to shp-file containing warning region polygons
-        polygon_file_crs: str, optional
+        polygon_file_crs : str, optional
             String of pattern <provider>:<code> specifying
             the crs. has to be readable by pyproj.Proj. Default is
             'epsg:4326'.
-        thresholds: list of 4 floats, optional
+        thresholds : list of 4 floats, optional
             Thresholds for coloring region in second, third, forth
             and fifth warning color.
-        decision_level: str, optional
+        decision_level : str, optional
             Either 'exposure_point'  or 'polygon'. Default value is
             'exposure_point'.
-        probability_aggregation: float or str, optional
+        probability_aggregation : float or str, optional
             Either a float between [0..1] spezifying a quantile
             or 'mean' or 'sum'. Default value is 0.5.
-        area_aggregation: float or str.
+        area_aggregation : float or str.
             Either a float between [0..1] specifying a quantile
             or 'mean' or 'sum'. Default value is 0.5.
-        run_datetime: datetime.datetime, optional
+        run_datetime : datetime.datetime, optional
             Select the used hazard by the run_datetime,
             default is first element of attribute run_datetime.
-        title: str, optional
+        title : str, optional
             Default is 'WARNINGS'.
-        explain_text: str, optional
+        explain_text : str, optional
             Defaut is 'warn level based on thresholds'.
-        proj: ccrs
+        proj : ccrs
             coordinate reference system used in coordinates
-        figsize: tuple
+        figsize : tuple
             figure size for plt.subplots, width, height in inches
             The default is (9, 13)
-        save_fig: bool, optional
+        save_fig : bool, optional
             Figure is saved if True, folder is within your configurable
             save_dir and filename is derived from the method summary_str()
             (for more details see class docstring).  Default is True.
-        close_fig: bool, optional
+        close_fig : bool, optional
             Figure is not drawn if True. The default is False.
+        adapt_fontsize : bool, optional
+            If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
+            the default matplotlib font size is used. Default is True.
+
         Returns
         -------
-        axes: cartopy.mpl.geoaxes.GeoAxesSubplot
+        axes : cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         # select hazard with run_datetime
         if thresholds == 'default':
@@ -857,7 +873,8 @@ class Forecast():
                                 polygon_file_crs,
                                 title_dict,
                                 proj,
-                                figsize=figsize)
+                                figsize=figsize,
+                                adapt_fontsize=adapt_fontsize)
         if save_fig:
             plt.savefig(warn_map_file_name_full)
         if close_fig:
@@ -869,7 +886,7 @@ class Forecast():
                    decision_level, decision_dict,
                    polygon_file, polygon_file_crs,
                    title, proj=ccrs.PlateCarree(),
-                   figsize=(9, 13)):
+                   figsize=(9, 13), adapt_fontsize=True):
         """ plotting the warning level of each warning region based on thresholds """
         # select hazard with run_datetime
         if run_datetime is None:
@@ -884,7 +901,7 @@ class Forecast():
                                       CMAP_WARNPROB.N, clip=True)
 
         # Generate each subplot
-        fig, axis = u_plot.make_map(1, proj=proj, figsize=figsize)
+        fig, axis, fontsize = u_plot.make_map(1, proj=proj, figsize=figsize, adapt_fontsize=adapt_fontsize)
         if isinstance(axis, np.ndarray):
             axis = axis[0]
         tit = title
@@ -921,9 +938,9 @@ class Forecast():
 
         for geometry, _ in zip(shp.geometries(), shp.records()):
             geom2 = shapely.ops.transform(transformer.transform, geometry)
-            in_geom = u_coord_on_land(lat=self._impact[haz_ind].coord_exp[:, 0],
-                                      lon=self._impact[haz_ind].coord_exp[:, 1],
-                                      land_geom=geom2)
+            in_geom = u_coord.coord_on_land(lat=self._impact[haz_ind].coord_exp[:, 0],
+                                            lon=self._impact[haz_ind].coord_exp[:, 1],
+                                            land_geom=geom2)
             if not in_geom.any():
                 continue
             # decide warning level
@@ -1009,6 +1026,7 @@ class Forecast():
 
         extent = u_plot._get_borders(self._impact[haz_ind].coord_exp)
         axis.set_extent((extent), ccrs.PlateCarree())
+        fig.tight_layout()
         return fig, axis
 
     def plot_hexbin_ei_exposure(self, run_datetime=None,
@@ -1017,15 +1035,15 @@ class Forecast():
 
         Parameters
         ----------
-        run_datetime: datetime.datetime, optional
+        run_datetime : datetime.datetime, optional
             Select the used hazard by the run_datetime,
             default is first element of attribute run_datetime.
-        figsize: tuple
+        figsize : tuple
             figure size for plt.subplots, width, height in inches
             The default is (9, 13)
         Returns
         -------
-        axes: cartopy.mpl.geoaxes.GeoAxesSubplot
+        axes : cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         # select hazard with run_datetime
         if run_datetime is None:
