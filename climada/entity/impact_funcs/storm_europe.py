@@ -40,10 +40,10 @@ class ImpfStormEurope(ImpactFunc):
 
     def set_schwierz(self, impf_id=1):
         """
-        Using the impact functions of Schwierz et al. 2011.
+        Using the impact functions of Schwierz et al. 2010, doi:10.1007/s10584-009-9712-1
         """
 
-        self.name = 'Schwierz 2011'
+        self.name = 'Schwierz 2010'
         self.id = impf_id
         self.intensity_unit = 'm/s'
         self.intensity = np.array([0, 20, 25, 30, 35, 40, 45, 50, 55, 60, 80, 100])
@@ -57,8 +57,8 @@ class ImpfStormEurope(ImpactFunc):
 
     def set_welker(self, Impf_id=1):
         """
-        Using the impact functions of Welker et al. 2020 (in submission).
-        It is the schwierz function, calibrated with a simple multiplicative
+        Using the impact functions of Welker et al. 2020, doi:10.5194/nhess-21-279-2021
+        It is the Schwierz function, calibrated with a simple multiplicative
         factor to minimize RMSE between modelled damages and reported damages.
         """
 
