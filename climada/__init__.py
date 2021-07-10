@@ -80,6 +80,7 @@ REPO_DATA = {
         DEMO_DIR.joinpath('WS_Europe.xls'),
         DEMO_DIR.joinpath('Portugal_firms_June_2017.csv'),
         DEMO_DIR.joinpath('Portugal_firms_2016_17_18_MODIS.csv'),
+        DEMO_DIR.joinpath('SRTM15+V2.0_sample.tiff').
     ] + WS_DEMO_NC
 }
 
