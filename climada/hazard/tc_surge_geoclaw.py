@@ -640,7 +640,6 @@ include $(CLAW)/clawutil/src/Makefile.common
         refinedata.speed_tolerance = list(np.arange(1.0, maxlevel))
         refinedata.variable_dt_refinement_ratios = True
         refinedata.wave_tolerance = 1.0
-        refinedata.deep_depth = 1e3
 
 
     def set_rundata_geo(self):
@@ -689,9 +688,7 @@ include $(CLAW)/clawutil/src/Makefile.common
             tt3_fname = 'topo_{}s_{}.tt3'.format(res_as, bounds_to_str(bounds))
             tt3_fname = self.work_dir.joinpath(tt3_fname)
             topo.write(tt3_fname)
-            topodata.topofiles.append([3, 1, self.rundata.amrdata.amr_levels_max,
-                                       self.rundata.clawdata.t0, self.rundata.clawdata.tfinal,
-                                       tt3_fname])
+            topodata.topofiles.append([3, tt3_fname])
             dems_for_plot.append((bounds, topo.Z))
         plot_dems(dems_for_plot, track=self.track, centroids=self.centroids,
                   path=self.work_dir.joinpath("dems.pdf"))
