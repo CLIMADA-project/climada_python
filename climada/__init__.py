@@ -78,6 +78,9 @@ REPO_DATA = {
         DEMO_DIR.joinpath('pepic_miroc5_ewembi_historical_2005soc_co2_yield-whe-noirr_global_annual_DEMO_TJANJIN_1861_2005.nc'),
         DEMO_DIR.joinpath('WS_ERA40_sample.mat'),
         DEMO_DIR.joinpath('WS_Europe.xls'),
+        DEMO_DIR.joinpath('Portugal_firms_June_2017.csv'),
+        DEMO_DIR.joinpath('Portugal_firms_2016_17_18_MODIS.csv'),
+        DEMO_DIR.joinpath('SRTM15+V2.0_sample.tiff'),
     ] + WS_DEMO_NC
 }
 

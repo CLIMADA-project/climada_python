@@ -1,6 +1,14 @@
 climada\.util package
 =====================
 
+climada\.util\.api\_client module
+---------------------------------
+
+.. automodule:: climada.util.api_client
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 climada\.util\.checker module
 -----------------------------
 
