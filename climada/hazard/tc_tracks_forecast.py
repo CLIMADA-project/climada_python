@@ -350,9 +350,9 @@ class TCForecast(TCTracks):
         # size 1 array with value 4
         try:
             ens_bool = msg['ens_type'][index] != 0
-        except LookupError as err:
+        except LookupError:
             ens_bool = msg['ens_type'][0] != 0
-            LOGGER.warning('Single value in ens_type array, error: %s', err)
+            LOGGER.info('All tracks has the same ensemble type')
             return None
         
         try:
