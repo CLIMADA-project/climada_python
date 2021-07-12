@@ -100,8 +100,8 @@ class UncCalc():
             raise ValueError("Samples already present. Please delete the "
                              "content of unc_data.samples_df before making "
                              "new samples")
-
-        sampling_kwargs = {} if sampling_kwargs is None else sampling_kwargs
+        if sampling_kwargs is None :
+            sampling_kwargs = {"skip_values":  int(np.floor(np.log2(N+1)))}
 
         distr_dict = dict()
         for var in self.unc_vars:
