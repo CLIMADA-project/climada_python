@@ -151,8 +151,7 @@ class TCSurgeGeoClaw(Hazard):
 
         LOGGER.info('Computing TC surge of %s tracks on %s centroids.',
                     str(tracks.size), str(coastal_idx.size))
-        haz = TCSurgeGeoClaw()
-        haz.concatenate(
+        haz = TCSurgeGeoClaw.concat(
             [TCSurgeGeoClaw.from_xr_track(t, centroids, coastal_idx, zos_path, topo_path,
                                           node_max_dist_deg=node_max_dist_deg,
                                           gauges=gauges, pool=pool)
