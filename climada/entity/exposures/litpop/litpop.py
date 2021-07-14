@@ -122,7 +122,7 @@ class LitPop(Exposures):
             First reproject nightlight (Lit) and population (Pop) data to target
             resolution before combining them as Lit^m * Pop^n?
             The default is True. Warning: Setting this to False affects the
-            disaggregation results - expert choice only
+            disaggregation results - expert choice only.
 
         Raises
         ------
