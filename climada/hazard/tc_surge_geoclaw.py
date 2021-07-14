@@ -93,6 +93,8 @@ class TCSurgeGeoClaw(Hazard):
     def __init__(self):
         Hazard.__init__(self, HAZ_TYPE)
         self.gauge_data = []
+        self.category = np.array([], int)
+        self.basin = list()
 
     @staticmethod
     def from_tc_tracks(tracks, zos_path, topo_path, centroids=None, description='', gauges=None,
@@ -215,7 +217,7 @@ class TCSurgeGeoClaw(Hazard):
         ])
         new_haz.orig = np.array([track.orig_event_flag])
         new_haz.category = np.array([track.category])
-        new_haz.basin = [track.basin]
+        new_haz.basin = [str(track.basin.values[0])]
         return new_haz
 
     def write_hdf5(self, *args, **kwargs):
