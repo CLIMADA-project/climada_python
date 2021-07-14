@@ -316,6 +316,10 @@ def geoclaw_surge_from_track(track, centroids, zos_path, topo_path, gauges=None,
     """
     gauges = [] if gauges is None else gauges
 
+    # initialize gauge data
+    gauge_data = [{'location': g, 'base_sea_level': [], 'topo_height': [],
+                   'time': [], 'height_above_geoid': []} for g in gauges]
+
     # initialize intensity
     intensity = np.zeros(centroids.shape[0])
 
@@ -349,7 +353,7 @@ def geoclaw_surge_from_track(track, centroids, zos_path, topo_path, gauges=None,
 
     if track_centr.shape[0] == 0:
         LOGGER.info("No centroids within reach of this storm track.")
-        return intensity
+        return intensity, gauge_data
 
     # make sure that radius information is available
     if 'radius_oci' not in track.coords:
@@ -369,8 +373,6 @@ def geoclaw_surge_from_track(track, centroids, zos_path, topo_path, gauges=None,
     events = TCSurgeEvents(track, track_centr)
     events.plot_areas(path=work_dir.joinpath("event_areas.pdf"))
 
-    gauge_data = [{'location': g, 'base_sea_level': [], 'topo_height': [],
-                   'time': [], 'height_above_geoid': []} for g in gauges]
     if len(events) == 0:
         LOGGER.info("This storm doesn't affect any coastal areas.")
     else:
