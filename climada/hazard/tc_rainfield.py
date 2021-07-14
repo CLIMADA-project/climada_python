@@ -84,12 +84,11 @@ class TCRain(Hazard):
                                    itertools.repeat(self.intensity_thres, num_tracks),
                                    chunksize=chunksize)
         else:
-            tc_haz = list()
-            for track in tracks.data:
-                self.append(self._set_from_track(track, centroids,
-                                                   dist_degree=dist_degree,
-                                                   intensity=self.intensity_thres))
+            tc_haz = [self._set_from_track(track, centroids, dist_degree=dist_degree,
+                                           intensity=self.intensity_thres)
+                      for track in tracks.data]
         LOGGER.debug('Append events.')
+        self.__dict__ = TCRain.concat([self] + tc_haz).__dict__
         LOGGER.debug('Compute frequency.')
         TropCyclone.frequency_from_tracks(self, tracks.data)
         self.tag.description = description

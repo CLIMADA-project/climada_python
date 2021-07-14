@@ -555,60 +555,48 @@ class Centroids():
         ------
             ValueError
         """
-        cent_list = list(others)
-        if self.lat.any() or self.meta:
-            cent_list.insert(0, self)
+        # restrict to non-empty centroids
+        cent_list = [c for c in (self,) + others if c.size > 0 or c.meta]
+        if len(cent_list) == 0 or len(others) == 0:
+            return copy.deepcopy(self)
+        self = cent_list[0]
 
-        if np.all([cent_list[0].equal(cent) for cent in cent_list[1:]]):
-            return copy.deepcopy(cent_list[-1])
+        # check if all centroids agree
+        if all([self.equal(cent) for cent in cent_list[1:]]):
+            return copy.deepcopy(self)
 
-        #Set attributes to centroids if missing in one but defined in other
-        is_area_pixel = np.any([cent.area_pixel.any() for cent in cent_list]) \
-            and not np.all([cent.area_pixel.any() for cent in cent_list])
-        is_dist_coast = np.any([cent.dist_coast.any() for cent in cent_list]) \
-            and not np.all([cent.dist_coast.any() for cent in cent_list])
-        is_on_land = np.any([len(cent.on_land) > 0 for cent in cent_list]) \
-            and not np.all([len(cent.on_land) > 0 for cent in cent_list])
-        is_region_id = np.any([cent.region_id.any() for cent in cent_list]) \
-            and not np.all([cent.region_id.any() for cent in cent_list])
-        is_elevation = np.any([cent.elevation.any() for cent in cent_list]) \
-            and not np.all([cent.elevation.any() for cent in cent_list])
-
+        # convert all raster centroids to point centroids
         for cent in cent_list:
             if cent.meta and not cent.lat.any():
                 cent.set_meta_to_lat_lon()
+
+        # make sure that all Centroids have the same CRS
+        for cent in cent_list:
             if cent.crs is None:
                 cent.geometry = cent.geometry.set_crs(DEF_CRS)
-            cent.set_geometry_points()
-            if not u_coord.equal_crs(cent.crs, cent_list[0].crs):
-                raise ValueError(f'Different CRS {cent.crs}!='
-                                 f'{cent_list[0].crs} are not accepted.')
-            if is_area_pixel and not cent.area_pixel.any():
-                cent.set_area_pixel()
-            if is_dist_coast and not cent.dist_coast.any():
-                cent.set_dist_coast()
-            if is_on_land and not len(cent.on_land) > 0:
-                cent.set_on_land()
-            if is_region_id and not cent.region_id.any():
-                cent.set_region_id()
-            if is_elevation and not cent.elevation.any():
-                cent.set_elevation()
+            if not u_coord.equal_crs(cent.crs, self.crs):
+                raise ValueError('In a union, all Centroids need to have the same CRS: '
+                                 f'{cent.crs} != {cent_list[0].crs}')
 
-        #concatenate attributes
-        centroids= Centroids()
-        for attr_name in vars(self).keys():
+        # set attributes that are missing in some but defined in others
+        for attr in ["geometry", "area_pixel", "dist_coast", "on_land", "region_id", "elevation"]:
+            if np.any([getattr(cent, attr).size > 0 for cent in cent_list]):
+                for cent in cent_list:
+                    if not getattr(cent, attr).size > 0:
+                        fun_name = f"set_{attr}{'_points' if attr == 'geometry' else ''}"
+                        getattr(Centroids, fun_name)(cent)
+
+        # create new Centroids object and set concatenated attributes
+        centroids = Centroids()
+        centroids.meta = {}
+        for attr_name, attr_val in vars(self).items():
             attr_val_list = [getattr(cent, attr_name) for cent in cent_list]
-            #concatenate numpy arrays
-            if (isinstance(attr_val_list[0], np.ndarray)
-                  and attr_val_list[0].ndim == 1):
+            if (isinstance(attr_val, np.ndarray) and attr_val.ndim == 1):
                 setattr(centroids, attr_name, np.hstack(attr_val_list))
-            # concatenate geoseries
-            if isinstance(attr_val_list[0], gpd.GeoSeries):
-                setattr(centroids, attr_name, pd.concat(attr_val_list,
-                                                        ignore_index=True))
+            if isinstance(attr_val, gpd.GeoSeries):
+                setattr(centroids, attr_name, pd.concat(attr_val_list, ignore_index=True))
 
-        centroids.meta = dict()
-
+        # finally, remove duplicate points
         return centroids.remove_duplicate_points()
 
     def get_closest_point(self, x_lon, y_lat, scheduler=None):
@@ -793,9 +781,12 @@ class Centroids():
         """
         if not self.lat.any() and not self.meta:
             return self
-        self.set_geometry_points(scheduler)
-        geom_wkb = self.geometry.apply(lambda geom: geom.wkb)
-        sel_cen = geom_wkb.drop_duplicates().index
+        if self.lat.size > 0:
+            coords_view = self.coord.astype(np.float64).view(dtype='float64,float64')
+            sel_cen = np.sort(np.unique(coords_view, return_index=True)[1])
+        else:
+            geom_wkb = self.geometry.apply(lambda geom: geom.wkb)
+            sel_cen = geom_wkb.drop_duplicates().index
         return self.select(sel_cen=sel_cen)
 
     def select(self, reg_id=None, extent=None, sel_cen=None):
@@ -1055,7 +1046,7 @@ class Centroids():
 
     @property
     def coord(self):
-        """Get [lat, lon] array. Might take some time."""
+        """Get [lat, lon] array."""
         return np.stack([self.lat, self.lon], axis=1)
 
     def set_geometry_points(self, scheduler=None):

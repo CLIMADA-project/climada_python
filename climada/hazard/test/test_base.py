@@ -1168,6 +1168,7 @@ class TestClear(unittest.TestCase):
         haz1.check()
         haz1.clear()
         self.assertEqual(haz1.pool, pool)
+        pool.close()
 
 
 # Execute Tests
