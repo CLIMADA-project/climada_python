@@ -155,14 +155,21 @@ class UncCalcCostBenefit(UncCalc):
             pd.DataFrame(tot_climate_risk, columns = ['tot_climate_risk'])
 
         unc_data.benefit_unc_df = pd.DataFrame(benefit)
+        unc_data.benefit_unc_df.columns = [
+            column + ' Benef'
+            for column in unc_data.benefit_unc_df.columns]
         unc_data.cost_ben_ratio_unc_df = pd.DataFrame(cost_ben_ratio)
+        unc_data.cost_ben_ratio_unc_df.columns = [
+            column + ' CostBen'
+            for column in unc_data.cost_ben_ratio_unc_df.columns]
 
         imp_metric_names = ['risk', 'risk_transf', 'cost_meas',
                             'cost_ins']
 
-        for imp_meas, name in zip([imp_meas_present, imp_meas_future],
-                                  ['imp_meas_present', 'imp_meas_future']):
+        for imp_meas, period in zip([imp_meas_present, imp_meas_future],
+                                  ['present', 'future']):
             df_imp_meas = pd.DataFrame()
+            name = 'imp_meas_' + period
             if imp_meas[0]:
                 for imp in imp_meas:
                     met_dic = {}
@@ -170,12 +177,14 @@ class UncCalcCostBenefit(UncCalc):
                         metrics = [imp_dic['risk'],
                                    imp_dic['risk_transf'],
                                    *imp_dic['cost']]
-                        dic_tmp = {meas + '-' + m_name: [m_value]
+                        dic_tmp = {meas + ' - ' + m_name + ' - ' + period: [m_value]
                                    for m_name, m_value
                                    in zip(imp_metric_names, metrics)
                                     }
                         met_dic.update(dic_tmp)
-                    df_imp_meas = df_imp_meas.append(pd.DataFrame(met_dic))
+                    df_imp_meas = df_imp_meas.append(
+                        pd.DataFrame(met_dic), ignore_index=True
+                        )
             setattr(unc_data, name + '_unc_df', df_imp_meas)
         cost_benefit_kwargs = {
             key: str(val)
