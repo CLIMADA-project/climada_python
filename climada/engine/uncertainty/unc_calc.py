@@ -100,8 +100,8 @@ class UncCalc():
             raise ValueError("Samples already present. Please delete the "
                              "content of unc_data.samples_df before making "
                              "new samples")
-        if sampling_kwargs is None :
-            sampling_kwargs = {"skip_values":  int(np.floor(np.log2(N+1)))}
+        if sampling_kwargs is None:
+            sampling_kwargs = {}
 
         distr_dict = dict()
         for var in self.unc_vars:
@@ -258,32 +258,33 @@ class UncCalc():
                     sens_indices = method.analyze(unc_data.problem_sa, Y,
                                                             **sensitivity_kwargs)
                 sens_first_order = np.array([
-                    si_val_array
-                    for si_val_array in sens_indices.values()
-                    if si_val_array.ndim == 1
+                    np.array(si_val_array)
+                    for si, si_val_array in sens_indices.items()
+                    if (np.array(si_val_array).ndim == 1 and si!='names') #dirty trick due to Salib incoherent output
                     ]).ravel()
                 sens_first_order_dict[submetric_name] = sens_first_order
 
                 sens_second_order = np.array([
-                    si_val_array
+                    np.array(si_val_array)
                     for si_val_array in sens_indices.values()
-                    if si_val_array.ndim == 2
+                    if np.array(si_val_array).ndim == 2
                     ]).ravel()
                 sens_second_order_dict[submetric_name] = sens_second_order
+
+            n_params  = len(unc_data.param_labels)
 
             si_name_first_order_list = [
                 key
                 for key, array in sens_indices.items()
-                if array.ndim == 1
+                if (np.array(array).ndim == 1 and key!='names') #dirty trick due to Salib incoherent output
                 ]
-            n_params  = len(unc_data.param_labels)
             si_names_first_order = [si for si in si_name_first_order_list for _ in range(n_params)]
             param_names_first_order = unc_data.param_labels * len(si_name_first_order_list)
 
             si_name_second_order_list = [
                 key
                 for key, array in sens_indices.items()
-                if array.ndim == 2
+                if np.array(array).ndim == 2
                 ]
             si_names_second_order = [si for si in si_name_second_order_list for _ in range(n_params**2)]
             param_names_second_order_2 = unc_data.param_labels * len(si_name_second_order_list) * n_params
@@ -298,12 +299,15 @@ class UncCalc():
             sens_first_order_df.insert(1, 'param', param_names_first_order)
             sens_first_order_df.insert(2, 'param2', None)
 
-            sens_second_order_df = pd.DataFrame(sens_second_order_dict, dtype=np.number)
+
+            sens_second_order_df = pd.DataFrame(sens_second_order_dict)
             sens_second_order_df.insert(0, 'si', si_names_second_order,)
             sens_second_order_df.insert(1, 'param', param_names_second_order)
             sens_second_order_df.insert(2, 'param2', param_names_second_order_2)
 
             sens_df = pd.concat([sens_first_order_df, sens_second_order_df])
+
+
 
             setattr(unc_data, metric_name + '_sens_df', sens_df)
         sensitivity_kwargs = {
