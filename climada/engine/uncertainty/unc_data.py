@@ -276,12 +276,14 @@ class UncData():
             The default is {}.
         """
         #MetaData
-        # self.sensitivity_method = ''
-        # self.sensitivity_kwargs = ()
+        #Sensitivity
+        self.sensitivity_method = 'sobol'
+        self.sensitivity_kwargs = ()
+        #CostBenefit
         # self.cost_benefit_kwargs = ()
         #Sample
         self.samples_df = pd.DataFrame()
-        self.samples_df.attrs['sampling_method'] = ''
+        self.samples_df.attrs['sampling_method'] = 'saltelli'
         self.samples_df.attrs['sampling_kwargs'] = ()
         #Imact
         # self.aai_agg_unc_df = pd.DataFrame()
@@ -916,7 +918,7 @@ class UncData():
 
     def save_hdf5(self, filename=None):
         """
-        Save the samples_df dataframe to .csv
+        Save the samples_df dataframe to .hdf5
 
         Parameters
         ----------
