@@ -276,35 +276,35 @@ class UncData():
             The default is {}.
         """
         #MetaData
-        self.sensitivity_method = ''
-        self.sensitivity_kwargs = ()
-        self.cost_benefit_kwargs = ()
+        # self.sensitivity_method = ''
+        # self.sensitivity_kwargs = ()
+        # self.cost_benefit_kwargs = ()
         #Sample
         self.samples_df = pd.DataFrame()
         self.samples_df.attrs['sampling_method'] = ''
         self.samples_df.attrs['sampling_kwargs'] = ()
         #Imact
-        self.aai_agg_unc_df = pd.DataFrame()
-        self.freq_curve_unc_df = pd.DataFrame()
-        self.at_event_unc_df = pd.DataFrame()
-        self.eai_exp_unc_df =pd.DataFrame()
-        self.tot_value_unc_df = pd.DataFrame()
-        self.aai_agg_sens_df = pd.DataFrame()
-        self.freq_curve_sens_df = pd.DataFrame()
-        self.at_event_sens_df = pd.DataFrame()
-        self.eai_exp_sens_df = pd.DataFrame()
-        self.tot_value_sens_df = pd.DataFrame()
+        # self.aai_agg_unc_df = pd.DataFrame()
+        # self.freq_curve_unc_df = pd.DataFrame()
+        # self.at_event_unc_df = pd.DataFrame()
+        # self.eai_exp_unc_df =pd.DataFrame()
+        # self.tot_value_unc_df = pd.DataFrame()
+        # self.aai_agg_sens_df = pd.DataFrame()
+        # self.freq_curve_sens_df = pd.DataFrame()
+        # self.at_event_sens_df = pd.DataFrame()
+        # self.eai_exp_sens_df = pd.DataFrame()
+        # self.tot_value_sens_df = pd.DataFrame()
         #CostBenefit
-        self.tot_climate_risk_unc_df = pd.DataFrame()
-        self.benefit_unc_df = pd.DataFrame()
-        self.cost_ben_ratio_unc_df = pd.DataFrame()
-        self.imp_meas_present_unc_df = pd.DataFrame()
-        self.imp_meas_future_unc_df = pd.DataFrame()
-        self.tot_climate_risk_sens_df = pd.DataFrame()
-        self.benefit_sens_df = pd.DataFrame()
-        self.cost_ben_ratio_sens_df = pd.DataFrame()
-        self.imp_meas_present_sens_df = pd.DataFrame()
-        self.imp_meas_future_sens_df = pd.DataFrame()
+        # self.tot_climate_risk_unc_df = pd.DataFrame()
+        # self.benefit_unc_df = pd.DataFrame()
+        # self.cost_ben_ratio_unc_df = pd.DataFrame()
+        # self.imp_meas_present_unc_df = pd.DataFrame()
+        # self.imp_meas_future_unc_df = pd.DataFrame()
+        # self.tot_climate_risk_sens_df = pd.DataFrame()
+        # self.benefit_sens_df = pd.DataFrame()
+        # self.cost_ben_ratio_sens_df = pd.DataFrame()
+        # self.imp_meas_present_sens_df = pd.DataFrame()
+        # self.imp_meas_future_sens_df = pd.DataFrame()
 
     def check_salib(self, sensitivity_method):
         """
@@ -721,7 +721,7 @@ class UncData():
             if df_S.empty:
                 ax.remove()
                 continue
-            df_S_conf = self.get_sensitivity([metric], salib_conf)
+            df_S_conf = self.get_sensitivity([metric], salib_si_conf)
             if df_S_conf.empty:
                 df_S.plot(ax=ax, kind='bar')
             df_S.plot(ax=ax, kind='bar', yerr=df_S_conf)
