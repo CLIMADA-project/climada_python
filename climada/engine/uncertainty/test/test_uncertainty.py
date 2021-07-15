@@ -179,7 +179,7 @@ class TestCalcImpact(unittest.TestCase):
         exp_unc, impf_unc, haz_unc = make_imp_uncs()
         unc_calc = UncCalcImpact(exp_unc, impf_unc, haz_unc)
         unc_calc.make_sample(unc_data, 2)
-        print(unc_data.samples_df)
+
         # self.assertDictEqual(unc.metrics, {})
         # self.assertDictEqual(unc.sensitivity, {})
 
@@ -291,6 +291,7 @@ class TestCalcImpact(unittest.TestCase):
 
         unc_data.plot_uncertainty()
         unc_data.plot_rp_uncertainty()
+        plt.close()
 
         unc_calc.calc_sensitivity(
             unc_data,
@@ -299,7 +300,24 @@ class TestCalcImpact(unittest.TestCase):
         unc_data.plot_sensitivity()
         unc_data.plot_sensitivity_second_order()
         unc_data.plot_sensitivity_map(exp=exp_unc.uncvar_func(1))
+        plt.close()
 
+    def test_calc_sensitivity_morris_pass(self):
+        """Test compute sensitivity default"""
+
+        exp_unc, impf_unc, _ = make_imp_uncs()
+        haz = haz_dem()
+        unc_data = UncData()
+        unc_calc = UncCalcImpact(exp_unc, impf_unc, haz)
+        unc_calc.make_sample(unc_data, N=4, sampling_method='morris')
+        unc_calc.calc_uncertainty(unc_data)
+
+        unc_calc.calc_sensitivity(
+            unc_data,
+            sensitivity_method='morris'
+            )
+
+        unc_data.plot_sensitivity(salib_si='mu')
         # self.assertSetEqual(set(sens.keys()), {'rp'})
         # self.assertSetEqual(set(sens['rp'].keys()), {'rp100', 'rp250'})
         # self.assertSetEqual(set(sens['rp']['rp100'].keys()), {'S1', 'S1_conf',
@@ -326,6 +344,7 @@ class TestCalcImpact(unittest.TestCase):
         unc.make_sample(unc_data, N=1)
         unc.calc_uncertainty(unc_data)
         unc_data.plot_uncertainty()
+        plt.close()
 
     def test_save_pass(self):
         """Test save samples"""
