@@ -389,6 +389,7 @@ class UncData():
             'names' : self.param_labels,
             'bounds' : [[0, 1]]*len(self.param_labels)
             }
+
     @property
     def uncertainty_metrics(self):
         unc_metric_list = []
@@ -642,7 +643,8 @@ class UncData():
         return ax
 
 
-    def plot_sensitivity(self, salib_si='S1', metric_list=None, figsize=None):
+    def plot_sensitivity(self, salib_si='S1', salib_si_conf='S1_conf',
+                         metric_list=None, figsize=None):
         """
         Plot one of the first order sensitivity indices of the chosen
         metric(s). This requires that a senstivity analysis was already
@@ -719,7 +721,7 @@ class UncData():
             if df_S.empty:
                 ax.remove()
                 continue
-            df_S_conf = self.get_sensitivity([metric], salib_si + '_conf')
+            df_S_conf = self.get_sensitivity([metric], salib_conf)
             if df_S_conf.empty:
                 df_S.plot(ax=ax, kind='bar')
             df_S.plot(ax=ax, kind='bar', yerr=df_S_conf)
@@ -729,8 +731,8 @@ class UncData():
 
         return axes
 
-    def plot_sensitivity_second_order(self, salib_si='S2', metric_list=None,
-                           figsize=None):
+    def plot_sensitivity_second_order(self, salib_si='S2', salib_si_conf='S2_conf',
+                                      metric_list=None, figsize=None):
         """Plot second order sensitivity indices as matrix.
 
         This requires that a senstivity analysis was already performed with
@@ -793,7 +795,7 @@ class UncData():
         #all the lowest level metrics (e.g. rp10) directly or as
         #submetrics of the metrics in metrics_list
         df_S = self.get_sensitivity(metric_list, salib_si).select_dtypes('number')
-        df_S_conf = self.get_sensitivity(metric_list, salib_si + '_conf').select_dtypes('number')
+        df_S_conf = self.get_sensitivity(metric_list, salib_si_conf).select_dtypes('number')
 
         nplots = len(df_S.columns)
         nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
