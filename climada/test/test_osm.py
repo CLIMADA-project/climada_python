@@ -61,7 +61,9 @@ class TestOpenStreetMapModule(unittest.TestCase):
             self.assertIsInstance(exposure_high_47_8, Exposures)
             self.assertEqual(len(exposure_high_47_8.gdf.columns), 8)
             self.assertGreater(
-                exposure_high_47_8.gdf.iloc[random.randint(0, len(exposure_high_47_8.gdf))].value,
+                exposure_high_47_8.gdf.iloc[
+                    random.randint(0, len(exposure_high_47_8.gdf) - 1)
+                ].value,
                 0)
 
     def test_make_osmexposure(self):
