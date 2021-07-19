@@ -27,8 +27,9 @@ from scipy import sparse
 from climada import CONFIG
 from climada.util import ureg
 from climada.hazard.tc_tracks import TCTracks
-from climada.hazard.trop_cyclone import TropCyclone,\
-     _bs_hol08, _close_centroids, _stat_holland, _vtrans
+from climada.hazard.trop_cyclone import (
+    TropCyclone, _close_centroids, _vtrans, _B_holland_1980, _bs_holland_2008,
+    _v_max_s_holland_2008, _x_holland_2010, _stat_holland_1980, _stat_holland_2010)
 from climada.hazard.centroids.centr import Centroids
 
 DATA_DIR = CONFIG.hazard.test_data.dir()
@@ -91,11 +92,11 @@ class TestReader(unittest.TestCase):
             self.assertEqual(tc_haz.intensity.shape, (1, 296))
             self.assertEqual(np.nonzero(tc_haz.intensity)[0].size, 280)
 
+            np.testing.assert_array_almost_equal(
+                tc_haz.intensity[0, intensity_idx].toarray()[0], intensity_values[metric])
             for idx, val in zip(intensity_idx, intensity_values[metric]):
                 if val == 0:
                     self.assertEqual(tc_haz.intensity[0, idx], 0)
-                else:
-                    self.assertAlmostEqual(tc_haz.intensity[0, idx], val)
 
             windfields = tc_haz.windfields[0].toarray()
             windfields = windfields.reshape(windfields.shape[0], -1, 2)
@@ -103,6 +104,34 @@ class TestReader(unittest.TestCase):
             intensity = tc_haz.intensity.toarray()[0, :]
             msk = (intensity > 0)
             np.testing.assert_array_equal(windfield_norms[msk], intensity[msk])
+
+    def test_windfield_models(self):
+        """Test _tc_from_track function with different wind field models."""
+        intensity_idx = [0, 1, 2,  3,  80, 100, 120, 200, 220, 250, 260, 295]
+        intensity_values = {
+            "H08": [25.60778909, 26.90887264, 28.26624642, 25.54092386, 31.21941738, 36.16596567,
+                    21.11399856, 28.01452136, 32.65076804, 31.33884098, 0, 40.27002104],
+            "H10": [27.477252, 28.626236, 29.829914, 27.393616, 32.495186, 37.113324,
+                    23.573216, 29.552127, 33.767067, 32.530964, 19.656737, 41.014578],
+            # Holland 1980 is the only model that uses recorded wind speeds, while the above use
+            # pressure values only. That's why the results for Holland 1980 are so different:
+            "H1980": [20.291397, 22.678914, 25.428598, 20.44718 , 31.868592, 41.920317,
+                      0, 25.715983, 38.351686, 35.591153,  0, 46.873912],
+        }
+
+        tc_track = TCTracks()
+        tc_track.read_processed_ibtracs_csv(TEST_TRACK)
+        tc_track.equal_timestep()
+        tc_track.data = tc_track.data[:1]
+
+        for model in ["H08", "H10", "H1980"]:
+            tc_haz = TropCyclone()
+            tc_haz.set_from_tracks(tc_track, centroids=CENTR_TEST_BRB, model=model)
+            np.testing.assert_array_almost_equal(
+                tc_haz.intensity[0, intensity_idx].toarray()[0], intensity_values[model])
+            for idx, val in zip(intensity_idx, intensity_values[model]):
+                if val == 0:
+                    self.assertEqual(tc_haz.intensity[0, idx], 0)
 
     def test_set_one_file_pass(self):
         """Test set function set_from_tracks with one input."""
@@ -181,59 +210,78 @@ class TestWindfieldHelpers(unittest.TestCase):
         mask = _close_centroids(t_lat, t_lon, centroids, buffer=5)
         np.testing.assert_equal(mask, test_mask)
 
-    def test_bs_hol08_pass(self):
-        """Test _bs_hol08 function. Compare to MATLAB reference."""
-        v_trans = 5.241999541820597
-        penv = 1010
-        pcen = 1005.263333333329
-        prepcen = 1005.258500000000
-        lat = 12.299999504631343
-        tint = 1
-        _bs_res = _bs_hol08(v_trans, penv, pcen, prepcen, lat, tint)
-        self.assertAlmostEqual(_bs_res, 1.270856908796045)
+    def test_B_holland_1980_pass(self):
+        """Test _B_holland_1980 function."""
+        gradient_winds = np.array([35, 40])
+        penv = np.array([1010, 1010])
+        pcen = np.array([995, 980])
+        _B_res = _B_holland_1980(gradient_winds, penv, pcen)
+        np.testing.assert_array_almost_equal(_B_res, [2.5, 1.667213])
 
-        v_trans = 5.123882725120426
-        penv = 1010
-        pcen = 1005.268166666671
-        prepcen = 1005.263333333329
-        lat = 12.299999279463769
-        tint = 1
-        _bs_res = _bs_hol08(v_trans, penv, pcen, prepcen, lat, tint)
-        self.assertAlmostEqual(_bs_res, 1.265551666104679)
+    def test_bs_holland_2008_pass(self):
+        """Test _bs_holland_2008 function. Compare to MATLAB reference."""
+        v_trans = np.array([5.241999541820597, 5.123882725120426])
+        penv = np.array([1010, 1010])
+        pcen = np.array([1005.263333333329, 1005.268166666671])
+        prepcen = np.array([1005.258500000000, 1005.263333333329])
+        lat = np.array([12.299999504631343, 12.299999279463769])
+        tint = np.array([1.0, 1.0])
+        _bs_res = _bs_holland_2008(v_trans, penv, pcen, prepcen, lat, tint)
+        np.testing.assert_array_almost_equal(_bs_res, [1.270856908796045, 1.265551666104679])
 
-    def test_stat_holland(self):
-        """Test _stat_holland function. Compare to MATLAB reference."""
-        d_centr = np.array([[293.6067129546862, 298.2652319413182]])
-        r_max = np.array([75.547902916671745])
-        hol_b = np.array([1.265551666104679])
-        penv = np.array([1010.0])
-        pcen = np.array([1005.268166666671])
-        lat = np.array([12.299999279463769])
-        mask = np.ones_like(d_centr, dtype=bool)
+    def test_v_max_s_holland_2008_pass(self):
+        """Test _v_max_s_holland_2008 function."""
+        # Numbers analogous to test_B_holland_1980_pass
+        penv = np.array([1010, 1010])
+        pcen = np.array([995, 980])
+        b_s = np.array([2.5, 1.67])
+        v_max_s = _v_max_s_holland_2008(penv, pcen, b_s)
+        np.testing.assert_array_almost_equal(v_max_s, [34.635341, 40.033421])
 
-        _v_arr = _stat_holland(d_centr, r_max, hol_b, penv, pcen, lat, mask)[0]
-        self.assertAlmostEqual(_v_arr[0], 5.384115724400597)
-        self.assertAlmostEqual(_v_arr[1], 5.281356766052531)
+    def test_holland_2010_pass(self):
+        """Test Holland et al. 2010 wind field model."""
+        # test at centroids within and outside of radius of max wind
+        d_centr = np.array([[35e3, 75e3, 220e3], [30e3, 1000e3, 300e3]])
+        r_max = np.array([75e3, 40e3])
+        v_max_s = np.array([35.0, 40.0])
+        hol_b = np.array([1.80, 2.5])
+        mask = np.array([[True, True, True], [True, False, True]], dtype=bool)
+        hol_x = _x_holland_2010(d_centr, r_max, v_max_s, hol_b, mask)
+        np.testing.assert_array_almost_equal(hol_x, [[0.5, 0.5, 0.47273], [0.5, 0, 0.211602]])
 
-        d_centr = np.array([[]])
-        mask = np.ones_like(d_centr, dtype=bool)
-        _v_arr = _stat_holland(d_centr, r_max, hol_b, penv, pcen, lat, mask)[0]
-        self.assertTrue(np.array_equal(_v_arr, np.array([])))
+        # test exactly at radius of maximum wind (35 m/s) and at peripheral radius (17 m/s)
+        v_ang_norm = _stat_holland_2010(d_centr, v_max_s, r_max, hol_b, mask, hol_x)
+        np.testing.assert_array_almost_equal(v_ang_norm,
+            [[15.957853, 35.0, 20.99411], [33.854826, 0, 17.0]])
 
+    def test_stat_holland_1980(self):
+        """Test _stat_holland_1980 function. Compare to MATLAB reference."""
         d_centr = np.array([
-                [299.4501244109841, 291.0737897183741, 292.5441003235722]
+            [299.4501244109841, 291.0737897183741, 292.5441003235722, 40.665454622610511],
+            [293.6067129546862, 1000.0, 298.2652319413182, 70.0],
         ])
-        r_max = np.array([40.665454622610511])
-        hol_b = np.array([1.486076257880692])
-        penv = np.array([1010.0])
-        pcen = np.array([970.8727666672957])
-        lat = np.array([14.089110370469488])
-        mask = np.ones_like(d_centr, dtype=bool)
+        r_max = np.array([40.665454622610511, 75.547902916671745])
+        hol_b = np.array([1.486076257880692, 1.265551666104679])
+        penv = np.array([1010.0, 1010.0])
+        pcen = np.array([970.8727666672957, 1005.268166666671])
+        lat = np.array([-14.089110370469488, 12.299999279463769])
+        mask = np.array([[True, True, True, True], [True, False, True, True]], dtype=bool)
+        v_ang_norm = _stat_holland_1980(d_centr, r_max, hol_b, penv, pcen, lat, mask)
+        np.testing.assert_array_almost_equal(v_ang_norm,
+            [[11.279764005440288, 11.682978583939310, 11.610940769149384, 42.412845],
+             [5.384115724400597, 0, 5.281356766052531, 12.763087]])
 
-        _v_arr = _stat_holland(d_centr, r_max, hol_b, penv, pcen, lat, mask)[0]
-        self.assertAlmostEqual(_v_arr[0], 11.279764005440288)
-        self.assertAlmostEqual(_v_arr[1], 11.682978583939310)
-        self.assertAlmostEqual(_v_arr[2], 11.610940769149384)
+        # without Coriolis force, values are higher, esp. far away from the center:
+        v_ang_norm = _stat_holland_1980(d_centr, r_max, hol_b, penv, pcen, lat, mask,
+                                        cyclostrophic=True)
+        np.testing.assert_array_almost_equal(v_ang_norm,
+            [[15.719924, 16.037052, 15.980323, 43.128461],
+             [8.836768,  0,  8.764678, 13.807452]])
+
+        d_centr = np.array([[], []])
+        mask = np.ones_like(d_centr, dtype=bool)
+        v_ang_norm = _stat_holland_1980(d_centr, r_max, hol_b, penv, pcen, lat, mask)
+        np.testing.assert_array_equal(v_ang_norm, np.array([[], []]))
 
     def test_vtrans_pass(self):
         """Test _vtrans function. Compare to MATLAB reference."""
