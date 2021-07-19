@@ -54,7 +54,7 @@ class NotebookTest(unittest.TestCase):
 
             # create namespace with IPython standards
             namespace = dict()
-            exec('from IPython import display', namespace)
+            exec('from IPython.display import display', namespace)
 
             # run all cells
             i = 0
