@@ -13,11 +13,3 @@ climada\.entity\.exposures\.base module
     :undoc-members:
     :show-inheritance:
 
-climada\.entity\.exposures\.black\_marble module
-------------------------------------------------
-
-.. automodule:: climada.entity.exposures.black_marble
-    :members:
-    :undoc-members:
-    :show-inheritance:
-

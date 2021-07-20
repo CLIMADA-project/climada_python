@@ -19,6 +19,5 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 init exposures
 """
 from .base import *
-from .black_marble import *
 from .litpop import *
 
