@@ -284,6 +284,7 @@ class UncData():
             The default is {}.
         """
         #MetaData
+        self.unit = ''
         #Sensitivity
         self.sensitivity_method = 'sobol'
         self.sensitivity_kwargs = ()
@@ -430,9 +431,11 @@ class UncData():
             return pd.DataFrame([])
         return unc_df
 
-    def get_sensitivity(self, metric_list, salib_si):
+    def get_sensitivity(self, salib_si, metric_list=None):
         df_all = pd.DataFrame([])
         df_meta = pd.DataFrame([])
+        if metric_list is None:
+            metric_list = self.sensitivity_metrics
         for metric in metric_list:
             try:
                 submetric_df = getattr(self, metric)
@@ -632,9 +635,11 @@ class UncData():
 
         unc_df = self.freq_curve_unc_df
 
-        _fig, ax = plt.subplots(figsize=figsize)
+        _fig, axes = plt.subplots(figsize=figsize, nrows=1, ncols=2)
 
         min_l, max_l = unc_df.min().min(), unc_df.max().max()
+
+        ax = axes[0]
 
         for n, (_name, values) in enumerate(unc_df.iteritems()):
             count, division = np.histogram(values, bins=10)
@@ -650,7 +655,24 @@ class UncData():
         ax.set_yticks(np.arange(0, 2*(n+1), 2))
         ax.set_yticklabels(unc_df.columns)
 
-        return ax
+        ax = axes[1]
+
+        high = self.get_uncertainty(['freq_curve_unc_df']).quantile(0.95)
+        middle = self.get_uncertainty(['freq_curve_unc_df']).quantile(0.5)
+        low = self.get_uncertainty(['freq_curve_unc_df']).quantile(0.05)
+
+        x = [float(rp[2:]) for rp in middle.keys()]
+        ax.plot(x, high.values, linestyle='--', color = 'blue', alpha=0.5)
+        ax.plot(x, high.values, linestyle='--', color = 'blue',
+                alpha=0.5, label='0.95')
+        ax.plot(x, middle.values, label='0.5')
+        ax.plot(x, low.values, linestyle='dotted', color='blue',
+                alpha=0.5, label='0.05')
+        ax.fill_between(x, low.values, high.values, alpha=0.2)
+        ax.set_xlabel('Return period (year)')
+        ax.set_ylabel('Impact (' + self.unit + ')')
+
+        return axes
 
 
     def plot_sensitivity(self, salib_si='S1', salib_si_conf='S1_conf',
@@ -727,11 +749,11 @@ class UncData():
             if metric is None:
                 ax.remove()
                 continue
-            df_S = self.get_sensitivity([metric], salib_si).select_dtypes('number')
+            df_S = self.get_sensitivity(salib_si, [metric]).select_dtypes('number')
             if df_S.empty:
                 ax.remove()
                 continue
-            df_S_conf = self.get_sensitivity([metric], salib_si_conf)
+            df_S_conf = self.get_sensitivity(salib_si_conf, [metric])
             if df_S_conf.empty:
                 df_S.plot(ax=ax, kind='bar')
             df_S.plot(ax=ax, kind='bar', yerr=df_S_conf)
@@ -804,8 +826,8 @@ class UncData():
 
         #all the lowest level metrics (e.g. rp10) directly or as
         #submetrics of the metrics in metrics_list
-        df_S = self.get_sensitivity(metric_list, salib_si).select_dtypes('number')
-        df_S_conf = self.get_sensitivity(metric_list, salib_si_conf).select_dtypes('number')
+        df_S = self.get_sensitivity(salib_si, metric_list).select_dtypes('number')
+        df_S_conf = self.get_sensitivity(salib_si_conf, metric_list).select_dtypes('number')
 
         nplots = len(df_S.columns)
         nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
@@ -888,7 +910,7 @@ class UncData():
         """
 
         try:
-            si_eai_df = self.get_sensitivity(['eai_exp_sens_df'], salib_si).select_dtypes('number')
+            si_eai_df = self.get_sensitivity(salib_si, ['eai_exp_sens_df']).select_dtypes('number')
             eai_max_si_idx = si_eai_df.idxmax().to_numpy()
 
         except KeyError as verr:
