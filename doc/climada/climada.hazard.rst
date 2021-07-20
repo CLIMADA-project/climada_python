@@ -22,14 +22,6 @@ climada\.hazard\.isimip\_data module
     :undoc-members:
     :show-inheritance:
 
-climada\.hazard\.low\_flow module
----------------------------------
-
-.. automodule:: climada.hazard.low_flow
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 climada\.hazard\.storm\_europe module
 -------------------------------------
 
