@@ -29,11 +29,3 @@ climada\.entity\.exposures\.crop\_production module
     :undoc-members:
     :show-inheritance:
 
-climada\.entity\.exposures\.gdp\_asset module
----------------------------------------------
-
-.. automodule:: climada.entity.exposures.gdp_asset
-    :members:
-    :undoc-members:
-    :show-inheritance:
-

@@ -46,14 +46,6 @@ climada\.hazard\.relative\_cropyield module
     :undoc-members:
     :show-inheritance:
 
-climada\.hazard\.river\_flood module
-------------------------------------
-
-.. automodule:: climada.hazard.river_flood
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 climada\.hazard\.storm\_europe module
 -------------------------------------
 

@@ -25,14 +25,6 @@ climada\.entity\.impact\_funcs\.relative\_cropyield module
     :undoc-members:
     :show-inheritance:
 
-climada\.entity\.impact\_funcs\.river\_flood module
----------------------------------------------------
-
-.. automodule:: climada.entity.impact_funcs.river_flood
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 climada\.entity\.impact\_funcs\.storm\_europe module
 ----------------------------------------------------
 
