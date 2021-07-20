@@ -497,7 +497,8 @@ class UncData():
 
         return axes
 
-    def plot_uncertainty(self, metric_list=None, figsize=None, log=False):
+    def plot_uncertainty(self, metric_list=None, figsize=None,
+                         log=False, axes=None):
      """
      Plot the distribution of values of the risk metrics over the sampled
      input parameters (i.e. plot the "uncertainty" distributions).
@@ -550,20 +551,18 @@ class UncData():
      cols = unc_df_plt.columns
      nplots = len(cols)
      nrows, ncols = int(np.ceil(nplots / 2)), min(nplots, 2)
-     if not figsize:
-         figsize = (ncols * FIG_W, nrows * FIG_H)
-     _fig, axes = plt.subplots(nrows = nrows,
-                              ncols = ncols,
-                              figsize = figsize)
+     if axes is None:
+         if not figsize:
+             figsize = (ncols * FIG_W, nrows * FIG_H)
+         _fig, axes = plt.subplots(nrows = nrows,
+                                  ncols = ncols,
+                                  figsize = figsize)
      if nplots > 1:
          flat_axes = axes.flatten()
      else:
          flat_axes = np.array([axes])
 
-     for ax, col in zip_longest(flat_axes, cols, fillvalue=None):
-         if col is None:
-             ax.remove()
-             continue
+     for ax, col in zip(flat_axes, cols):
          data = unc_df_plt[col]
          if data.empty:
              ax.remove()
@@ -676,7 +675,8 @@ class UncData():
 
 
     def plot_sensitivity(self, salib_si='S1', salib_si_conf='S1_conf',
-                         metric_list=None, figsize=None):
+                         metric_list=None, figsize=None, axes=None,
+                         **kwargs):
         """
         Plot one of the first order sensitivity indices of the chosen
         metric(s). This requires that a senstivity analysis was already
@@ -733,22 +733,20 @@ class UncData():
 
         nplots = len(metric_list)
         nrows, ncols = int(np.ceil(nplots / 2)), min(nplots, 2)
-        if not figsize:
-            figsize = (ncols * FIG_W, nrows * FIG_H)
-        _fig, axes = plt.subplots(nrows = nrows,
-                                 ncols = ncols,
-                                 figsize = figsize,
-                                 sharex = True,
-                                 sharey = True)
+        if axes is None:
+            if not figsize:
+                figsize = (ncols * FIG_W, nrows * FIG_H)
+            _fig, axes = plt.subplots(nrows = nrows,
+                                     ncols = ncols,
+                                     figsize = figsize,
+                                     sharex = True,
+                                     sharey = True)
         if nplots > 1:
             flat_axes = axes.flatten()
         else:
             flat_axes = np.array([axes])
 
-        for ax, metric in zip_longest(flat_axes, metric_list, fillvalue=None):
-            if metric is None:
-                ax.remove()
-                continue
+        for ax, metric in zip(flat_axes, metric_list):
             df_S = self.get_sensitivity(salib_si, [metric]).select_dtypes('number')
             if df_S.empty:
                 ax.remove()
@@ -756,7 +754,7 @@ class UncData():
             df_S_conf = self.get_sensitivity(salib_si_conf, [metric])
             if df_S_conf.empty:
                 df_S.plot(ax=ax, kind='bar')
-            df_S.plot(ax=ax, kind='bar', yerr=df_S_conf)
+            df_S.plot(ax=ax, kind='bar', yerr=df_S_conf, **kwargs)
             ax.set_xticklabels(self.param_labels, rotation=0)
             ax.set_title(salib_si + ' - ' + metric.replace('_sens_df', ''))
         plt.tight_layout()
@@ -764,7 +762,8 @@ class UncData():
         return axes
 
     def plot_sensitivity_second_order(self, salib_si='S2', salib_si_conf='S2_conf',
-                                      metric_list=None, figsize=None):
+                                      metric_list=None, figsize=None, axes=None,
+                                      **kwargs):
         """Plot second order sensitivity indices as matrix.
 
         This requires that a senstivity analysis was already performed with
@@ -824,6 +823,10 @@ class UncData():
                 if metric not in METRICS_2D
                 ]
 
+
+        if 'cmap' not in kwargs.keys():
+            kwargs['cmap'] = 'coolwarm'
+
         #all the lowest level metrics (e.g. rp10) directly or as
         #submetrics of the metrics in metrics_list
         df_S = self.get_sensitivity(salib_si, metric_list).select_dtypes('number')
@@ -831,11 +834,13 @@ class UncData():
 
         nplots = len(df_S.columns)
         nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
-        if not figsize:
-            figsize = (ncols * 5, nrows * 5)
-        _fig, axes = plt.subplots(nrows = nrows,
-                                 ncols = ncols,
-                                 figsize = figsize)
+        if axes is None:
+            if not figsize:
+                figsize = (ncols * 5, nrows * 5)
+            _fig, axes = plt.subplots(nrows = nrows,
+                                     ncols = ncols,
+                                     figsize = figsize)
+
         if nplots > 1:
             flat_axes = axes.flatten()
         else:
@@ -850,7 +855,7 @@ class UncData():
                     )
                 )
             s2_matrix = s2_matrix + s2_matrix.T - np.diag(np.diag(s2_matrix))
-            ax.matshow(s2_matrix, cmap='coolwarm')
+            ax.matshow(s2_matrix, **kwargs)
             s2_conf_matrix = np.triu(
                 np.reshape(
                     df_S_conf[submetric].to_numpy(),
