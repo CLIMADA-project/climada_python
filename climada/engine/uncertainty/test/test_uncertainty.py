@@ -116,9 +116,11 @@ class TestUncVar(unittest.TestCase):
     def test_evaluate_pass(self):
 
         impf = impf_dem
-        distr_dict = {"x_impf": sp.stats.uniform(0.8, 1.2),
-              }
+        distr_dict = {"x_paa": sp.stats.beta(0.5, 1),
+                      "x_mdd": sp.stats.uniform(0.8, 0.4)
+                      }
         impf_unc = UncVar(impf, distr_dict)
+
         impf_eval = impf_unc.uncvar_func(**{'x_paa': 0.8, 'x_mdd': 1.1})
         impf_true = impf_dem(x_paa=0.8, x_mdd=1.1)
         self.assertEqual(impf_eval.size(), impf_true.size())
@@ -144,6 +146,59 @@ class TestUncVar(unittest.TestCase):
             )
         self.assertEqual(impf_func1.id, impf_func2.id)
         self.assertEqual(impf_func1.haz_type, impf_func2.haz_type)
+
+        impf_eval = impf_unc.evaluate(x_paa=0.8, x_mdd=1.1)
+        impf_true = impf_dem(x_paa=0.8, x_mdd=1.1)
+        self.assertEqual(impf_eval.size(), impf_true.size())
+        impf_func1 = impf_eval.get_func()['TC'][1]
+        impf_func2 = impf_true.get_func()['TC'][1]
+        self.assertTrue(
+            np.array_equal(
+                impf_func1.intensity,
+                impf_func2.intensity
+                )
+            )
+        self.assertTrue(
+            np.array_equal(
+                impf_func1.mdd,
+                impf_func2.mdd
+                )
+            )
+        self.assertTrue(
+            np.array_equal(
+                impf_func1.paa,
+                impf_func2.paa
+                )
+            )
+        self.assertEqual(impf_func1.id, impf_func2.id)
+        self.assertEqual(impf_func1.haz_type, impf_func2.haz_type)
+
+        impf_eval = impf_unc.evaluate()
+        impf_true = impf_dem(x_paa=0.3333333333333333, x_mdd=1.0)
+        self.assertEqual(impf_eval.size(), impf_true.size())
+        impf_func1 = impf_eval.get_func()['TC'][1]
+        impf_func2 = impf_true.get_func()['TC'][1]
+        self.assertTrue(
+            np.array_equal(
+                impf_func1.intensity,
+                impf_func2.intensity
+                )
+            )
+        self.assertTrue(
+            np.array_equal(
+                impf_func1.mdd,
+                impf_func2.mdd
+                )
+            )
+        self.assertTrue(
+            np.array_equal(
+                impf_func1.paa,
+                impf_func2.paa
+                )
+            )
+        self.assertEqual(impf_func1.id, impf_func2.id)
+        self.assertEqual(impf_func1.haz_type, impf_func2.haz_type)
+
 
     def test_plot_pass(self):
         impf = impf_dem()
@@ -248,6 +303,7 @@ class TestCalcImpact(unittest.TestCase):
         unc_calc.make_sample(unc_data, N=2)
         unc_calc.calc_uncertainty(unc_data, calc_eai_exp=False, calc_at_event=False)
 
+        self.assertEqual(unc_data.unit, exp_dem().value_unit)
         self.assertListEqual(unc_calc.rp, [5, 10, 20, 50, 100, 250])
         self.assertEqual(unc_calc.calc_eai_exp, False)
         self.assertEqual(unc_calc.calc_at_event, False)
@@ -340,9 +396,9 @@ class TestCalcImpact(unittest.TestCase):
         unc_data = UncData()
         unc = UncCalcCostBenefit(haz_unc_var=haz, ent_unc_var=ent,
                               haz_fut_unc_var=haz_fut_unc, ent_fut_unc_var=ent_fut)
-
         unc.make_sample(unc_data, N=1)
         unc.calc_uncertainty(unc_data)
+        self.assertEqual(unc_data.unit, exp_dem().value_unit)
         unc_data.plot_uncertainty()
         plt.close()
 
