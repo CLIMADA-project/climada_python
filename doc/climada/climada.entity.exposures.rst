@@ -37,11 +37,3 @@ climada\.entity\.exposures\.gdp\_asset module
     :undoc-members:
     :show-inheritance:
 
-climada\.entity\.exposures\.open\_street\_map module
-----------------------------------------------------
-
-.. automodule:: climada.entity.exposures.open_street_map
-    :members:
-    :undoc-members:
-    :show-inheritance:
-

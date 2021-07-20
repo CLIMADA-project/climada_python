@@ -30,7 +30,6 @@ Tutorials
    tutorial/climada_entity_DiscRates
    tutorial/climada_entity_Exposures_polygons_lines
    tutorial/climada_entity_MeasureSet
-   tutorial/climada_entity_openstreetmap
    tutorial/climada_hazard_Hazard
    tutorial/climada_hazard_TropCyclone
    tutorial/climada_hazard_Landslide
