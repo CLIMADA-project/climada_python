@@ -604,7 +604,7 @@ class UncData():
      return axes
 
 
-    def plot_rp_uncertainty(self, figsize=(8, 6)):
+    def plot_rp_uncertainty(self, figsize=(16, 6), axes=None):
         """
         Plot the distribution of return period values.
 
@@ -633,8 +633,8 @@ class UncData():
 
 
         unc_df = self.freq_curve_unc_df
-
-        _fig, axes = plt.subplots(figsize=figsize, nrows=1, ncols=2)
+        if  axes is  None:
+            _fig, axes = plt.subplots(figsize=figsize, nrows=1, ncols=2)
 
         min_l, max_l = unc_df.min().min(), unc_df.max().max()
 
@@ -663,13 +663,14 @@ class UncData():
         x = [float(rp[2:]) for rp in middle.keys()]
         ax.plot(x, high.values, linestyle='--', color = 'blue', alpha=0.5)
         ax.plot(x, high.values, linestyle='--', color = 'blue',
-                alpha=0.5, label='0.95')
-        ax.plot(x, middle.values, label='0.5')
+                alpha=0.5, label='0.95 percentile')
+        ax.plot(x, middle.values, label='0.5 percentile')
         ax.plot(x, low.values, linestyle='dotted', color='blue',
-                alpha=0.5, label='0.05')
+                alpha=0.5, label='0.05 percentile')
         ax.fill_between(x, low.values, high.values, alpha=0.2)
-        ax.set_xlabel('Return period (year)')
-        ax.set_ylabel('Impact (' + self.unit + ')')
+        ax.set_xlabel('Return period [year]')
+        ax.set_ylabel('Impact [' + self.unit + ']')
+        ax.legend()
 
         return axes
 
@@ -751,9 +752,9 @@ class UncData():
             if df_S.empty:
                 ax.remove()
                 continue
-            df_S_conf = self.get_sensitivity(salib_si_conf, [metric])
+            df_S_conf = self.get_sensitivity(salib_si_conf, [metric]).select_dtypes('number')
             if df_S_conf.empty:
-                df_S.plot(ax=ax, kind='bar')
+                df_S.plot(ax=ax, kind='bar', **kwargs)
             df_S.plot(ax=ax, kind='bar', yerr=df_S_conf, **kwargs)
             ax.set_xticklabels(self.param_labels, rotation=0)
             ax.set_title(salib_si + ' - ' + metric.replace('_sens_df', ''))
@@ -825,7 +826,7 @@ class UncData():
 
 
         if 'cmap' not in kwargs.keys():
-            kwargs['cmap'] = 'coolwarm'
+            kwargs['cmap'] = 'summer'
 
         #all the lowest level metrics (e.g. rp10) directly or as
         #submetrics of the metrics in metrics_list
@@ -855,7 +856,7 @@ class UncData():
                     )
                 )
             s2_matrix = s2_matrix + s2_matrix.T - np.diag(np.diag(s2_matrix))
-            ax.matshow(s2_matrix, **kwargs)
+            ax.imshow(s2_matrix, **kwargs)
             s2_conf_matrix = np.triu(
                 np.reshape(
                     df_S_conf[submetric].to_numpy(),
@@ -986,6 +987,7 @@ class UncData():
 
         str_dt = h5py.special_dtype(vlen=str)
         with h5py.File(save_path, 'a') as fh:
+            fh['unit'] = [self.unit]
             fh['sensitivity_method'] = [self.sensitivity_method]
             grp = fh.create_group("sensitivity_kwargs")
             for key, value in dict(self.sensitivity_kwargs).items():
@@ -1016,6 +1018,7 @@ class UncData():
         self.samples_df.attrs = store.get_storer('/samples_df').attrs.metadata
         store.close()
         with h5py.File(filename, 'r') as fh:
+            # self.unit = fh.get('unit')[0].decode('UTF-8')
             self.sensitivity_method = fh.get('sensitivity_method')[0].decode('UTF-8')
             grp = fh["sensitivity_kwargs"]
             sens_kwargs = {
