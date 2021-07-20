@@ -4,7 +4,6 @@ climada\.hazard package
 .. toctree::
 
     climada.hazard.centroids
-    climada.hazard.emulator
 
 climada\.hazard\.base module
 ----------------------------
