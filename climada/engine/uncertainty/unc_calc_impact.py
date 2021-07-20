@@ -77,6 +77,7 @@ class UncCalcImpact(UncCalc):
         self.haz_unc_var =  UncVar.var_to_uncvar(haz_unc_var)
         self.metric_names = ('aai_agg', 'freq_curve', 'at_event',
                              'eai_exp', 'tot_value')
+        self.value_unit = exp_unc_var.evaluate().value_unit
 
 
     def calc_uncertainty(self,
@@ -126,6 +127,8 @@ class UncCalcImpact(UncCalc):
         if unc_data.samples_df.empty:
             raise ValueError("No sample was found. Please create one first"
                              "using UncImpact.make_sample(N)")
+
+        unc_data.unit = self.value_unit
 
         if rp is None:
             rp=[5, 10, 20, 50, 100, 250]

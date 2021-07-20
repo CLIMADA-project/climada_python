@@ -86,6 +86,7 @@ class UncCalcCostBenefit(UncCalc):
         self.metric_names = ('tot_climate_risk', 'benefit',
                              'cost_ben_ratio',
                              'imp_meas_present', 'imp_meas_future')
+        self.value_unit = ent_unc_var.evaluate().exposures.value_unit
 
 
 
@@ -113,6 +114,7 @@ class UncCalcCostBenefit(UncCalc):
         if unc_data.samples_df.empty:
             raise ValueError("No sample was found. Please create one first" +
                         "using UncImpact.make_sample(N)")
+        unc_data.unit = self.value_unit
 
         LOGGER.info("The freq_curve is not saved. Please "
                     "change the risk_func if return period information "
