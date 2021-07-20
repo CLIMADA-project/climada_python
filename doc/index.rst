@@ -32,7 +32,6 @@ Tutorials
    tutorial/climada_entity_MeasureSet
    tutorial/climada_hazard_Hazard
    tutorial/climada_hazard_TropCyclone
-   tutorial/climada_hazard_Landslide
    tutorial/climada_hazard_RiverFlood
    tutorial/climada_hazard_StormEurope
    tutorial/climada_hazard_entity_Crop

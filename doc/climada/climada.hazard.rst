@@ -22,14 +22,6 @@ climada\.hazard\.isimip\_data module
     :undoc-members:
     :show-inheritance:
 
-climada\.hazard\.landslide module
----------------------------------
-
-.. automodule:: climada.hazard.landslide
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 climada\.hazard\.low\_flow module
 ---------------------------------
 
