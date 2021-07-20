@@ -21,11 +21,3 @@ climada\.entity\.exposures\.black\_marble module
     :undoc-members:
     :show-inheritance:
 
-climada\.entity\.exposures\.crop\_production module
----------------------------------------------------
-
-.. automodule:: climada.entity.exposures.crop_production
-    :members:
-    :undoc-members:
-    :show-inheritance:
-

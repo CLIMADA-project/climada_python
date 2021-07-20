@@ -38,14 +38,6 @@ climada\.hazard\.low\_flow module
     :undoc-members:
     :show-inheritance:
 
-climada\.hazard\.relative\_cropyield module
--------------------------------------------
-
-.. automodule:: climada.hazard.relative_cropyield
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 climada\.hazard\.storm\_europe module
 -------------------------------------
 
