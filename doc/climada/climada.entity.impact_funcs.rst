@@ -9,14 +9,6 @@ climada\.entity\.impact\_funcs\.base module
     :undoc-members:
     :show-inheritance:
 
-climada\.entity\.impact\_funcs\.drought module
-----------------------------------------------
-
-.. automodule:: climada.entity.impact_funcs.drought
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 climada\.entity\.impact\_funcs\.impact\_func\_set module
 --------------------------------------------------------
 

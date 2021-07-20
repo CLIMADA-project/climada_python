@@ -45,11 +45,3 @@ climada\.entity\.exposures\.open\_street\_map module
     :undoc-members:
     :show-inheritance:
 
-climada\.entity\.exposures\.spam\_agrar module
-----------------------------------------------
-
-.. automodule:: climada.entity.exposures.spam_agrar
-    :members:
-    :undoc-members:
-    :show-inheritance:
-

@@ -14,14 +14,6 @@ climada\.hazard\.base module
     :undoc-members:
     :show-inheritance:
 
-climada\.hazard\.drought module
--------------------------------
-
-.. automodule:: climada.hazard.drought
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 climada\.hazard\.isimip\_data module
 ------------------------------------
 
