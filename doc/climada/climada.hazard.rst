@@ -93,11 +93,3 @@ climada\.hazard\.trop\_cyclone module
     :undoc-members:
     :show-inheritance:
 
-climada\.hazard\.wildfire module
---------------------------------
-
-.. automodule:: climada.hazard.wildfire
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
