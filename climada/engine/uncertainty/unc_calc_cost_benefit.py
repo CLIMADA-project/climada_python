@@ -86,7 +86,7 @@ class UncCalcCostBenefit(UncCalc):
         self.metric_names = ('tot_climate_risk', 'benefit',
                              'cost_ben_ratio',
                              'imp_meas_present', 'imp_meas_future')
-        self.value_unit = ent_unc_var.evaluate().exposures.value_unit
+        self.value_unit = self.ent_unc_var.evaluate().exposures.value_unit
 
 
 

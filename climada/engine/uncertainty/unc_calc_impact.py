@@ -77,7 +77,7 @@ class UncCalcImpact(UncCalc):
         self.haz_unc_var =  UncVar.var_to_uncvar(haz_unc_var)
         self.metric_names = ('aai_agg', 'freq_curve', 'at_event',
                              'eai_exp', 'tot_value')
-        self.value_unit = exp_unc_var.evaluate().value_unit
+        self.value_unit = self.exp_unc_var.evaluate().value_unit
 
 
     def calc_uncertainty(self,

@@ -148,13 +148,13 @@ class UncVar():
         self.distr_dict = distr_dict
         self.uncvar_func = uncvar_func
 
-    def evalutate(self, **params):
-        if params.empty():
+    def evaluate(self, **params):
+        if not params:
             params = {
                 param: distr.mean()
                 for param, distr in self.distr_dict.items()
                 }
-        return self.unvar_func(**params)
+        return self.uncvar_func(**params)
 
 
     def plot(self, figsize=None):
