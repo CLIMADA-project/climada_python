@@ -117,8 +117,8 @@ class UncCalcCostBenefit(UncCalc):
         unc_data.unit = self.value_unit
 
         LOGGER.info("The freq_curve is not saved. Please "
-                    "change the risk_func if return period information "
-                    "needed")
+                    "change the risk_func (see climada.engine.cost_benefit) "
+                    "if return period information is needed")
 
         start = time.time()
         one_sample = unc_data.samples_df.iloc[0:1].iterrows()
