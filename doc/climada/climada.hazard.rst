@@ -69,14 +69,6 @@ climada\.hazard\.tc\_tracks module
     :undoc-members:
     :show-inheritance:
 
-climada\.hazard\.tc\_tracks\_forecast module
---------------------------------------------
-
-.. automodule:: climada.hazard.tc_tracks_forecast
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 climada\.hazard\.tc\_tracks\_synth module
 -----------------------------------------
 
