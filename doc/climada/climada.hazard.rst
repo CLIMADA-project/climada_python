@@ -45,14 +45,6 @@ climada\.hazard\.tc\_clim\_change module
     :undoc-members:
     :show-inheritance:
 
-climada\.hazard\.tc\_rainfield module
--------------------------------------
-
-.. automodule:: climada.hazard.tc_rainfield
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 climada\.hazard\.tc\_tracks module
 ----------------------------------
 
