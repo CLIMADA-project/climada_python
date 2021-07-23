@@ -57,12 +57,9 @@ REPO_DATA = {
         ENT_DEMO_FUTURE,
         EXP_DEMO_H5,
         HAZ_DEMO_FL,
-        HAZ_DEMO_FLDDPH,
-        HAZ_DEMO_FLDFRC,
         HAZ_DEMO_MAT,
         HAZ_DEMO_H5,
         TC_ANDREW_FL,
-        DEMO_GDP2ASSET,
         DEMO_DIR.joinpath('demo_emdat_impact_data_2020.csv'),
         DEMO_DIR.joinpath('histsoc_landuse-15crops_annual_FR_DE_DEMO_2001_2005.nc'),
         DEMO_DIR.joinpath('hist_mean_mai-firr_1976-2005_DE_FR.hdf5'),
@@ -80,6 +77,7 @@ REPO_DATA = {
         DEMO_DIR.joinpath('WS_Europe.xls'),
         DEMO_DIR.joinpath('Portugal_firms_June_2017.csv'),
         DEMO_DIR.joinpath('Portugal_firms_2016_17_18_MODIS.csv'),
+        DEMO_DIR.joinpath('SRTM15+V2.0_sample.tiff'),
     ] + WS_DEMO_NC
 }
 
