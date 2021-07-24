@@ -25,8 +25,6 @@ __all__ = ['SYSTEM_DIR',
            'ENT_DEMO_FUTURE',
            'HAZ_DEMO_MAT',
            'HAZ_DEMO_FL',
-           'HAZ_DEMO_FLDDPH',
-           'HAZ_DEMO_FLDFRC',
            'ENT_TEMPLATE_XLS',
            'HAZ_TEMPLATE_XLS',
            'ONE_LAT_KM',
@@ -35,7 +33,6 @@ __all__ = ['SYSTEM_DIR',
            'GLB_CENTROIDS_NC',
            'ISIMIP_GPWV3_NATID_150AS',
            'NATEARTH_CENTROIDS',
-           'DEMO_GDP2ASSET',
            'RIVER_FLOOD_REGIONS_CSV',
            'TC_ANDREW_FL',
            'HAZ_DEMO_H5',
@@ -96,12 +93,6 @@ RIVER_FLOOD_REGIONS_CSV = SYSTEM_DIR.joinpath('NatRegIDs.csv')
 HAZ_DEMO_FL = DEMO_DIR.joinpath('SC22000_VE__M1.grd.gz')
 """Raster file of flood over Venezuela. Model from GAR2015"""
 
-HAZ_DEMO_FLDDPH = DEMO_DIR.joinpath('flddph_2000_DEMO.nc')
-"""NetCDF4 Flood depth from isimip simulations"""
-
-HAZ_DEMO_FLDFRC = DEMO_DIR.joinpath('fldfrc_2000_DEMO.nc')
-"""NetCDF4 Flood fraction from isimip simulations"""
-
 HAZ_DEMO_MAT = DEMO_DIR.joinpath('atl_prob_nonames.mat')
 """
 Hazard demo from climada in MATLAB: hurricanes from 1851 to 2011 over Florida with 100 centroids.
@@ -111,9 +102,6 @@ HAZ_DEMO_H5 = DEMO_DIR.joinpath('tc_fl_1990_2004.h5')
 """
 Hazard demo in hdf5 format: IBTrACS from 1990 to 2004 over Florida with 2500 centroids.
 """
-
-DEMO_GDP2ASSET = DEMO_DIR.joinpath('gdp2asset_CHE_exposure.nc')
-"""Exposure demo file for GDP2Asset"""
 
 WS_DEMO_NC = [DEMO_DIR.joinpath('fp_lothar_crop-test.nc'),
               DEMO_DIR.joinpath('fp_xynthia_crop-test.nc')]

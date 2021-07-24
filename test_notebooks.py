@@ -52,11 +52,17 @@ class NotebookTest(unittest.TestCase):
             # parse the string with nbformat.reads
             cells = nbformat.reads(content, 4)['cells']
 
+            # create namespace with IPython standards
             namespace = dict()
-            for i, c in enumerate(cells):
+            exec('from IPython.display import display', namespace)
+
+            # run all cells
+            i = 0
+            for c in cells:
 
                 # skip markdown cells
                 if c['cell_type'] != 'code': continue
+                i += 1
 
                 # skip deliberately failing cells
                 if BOUND_TO_FAIL in c['source']: continue
