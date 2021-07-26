@@ -696,7 +696,13 @@ class TestAppend(unittest.TestCase):
 
     def test_concat_pass(self):
         """Test concatenate function."""
-        haz_1 = Hazard('TC')
+        class TCHazard(Hazard):
+            # derived class of Hazard for testing purposes
+            def __init__(self):
+                # only define hazard type
+                Hazard.__init__(self, 'TC')
+
+        haz_1 = TCHazard()
         haz_1.tag.file_name = 'file1.mat'
         haz_1.tag.description = 'Description 1'
         haz_1.centroids = Centroids()
@@ -710,7 +716,7 @@ class TestAppend(unittest.TestCase):
         haz_1.intensity = sparse.csr_matrix([[0.2, 0.3, 0.4]])
         haz_1.units = 'm/s'
 
-        haz_2 = Hazard('TC')
+        haz_2 = TCHazard()
         haz_2.tag.file_name = 'file2.mat'
         haz_2.tag.description = 'Description 2'
         haz_2.centroids = Centroids()
@@ -724,15 +730,14 @@ class TestAppend(unittest.TestCase):
         haz_2.intensity = sparse.csr_matrix([[1.2, 1.3, 1.4]])
         haz_2.units = 'm/s'
 
-        haz = Hazard('TC')
-        haz = haz.concat([haz, haz_1, haz_2])
-
+        haz = TCHazard.concat([haz_1, haz_2])
 
         hres_frac = sparse.csr_matrix([[0.02, 0.03, 0.04],
                                        [1.02, 1.03, 1.04]])
         hres_inten = sparse.csr_matrix([[0.2, 0.3, 0.4],
                                         [1.2, 1.3, 1.4]])
 
+        self.assertIsInstance(haz, TCHazard)
         self.assertTrue(sparse.isspmatrix_csr(haz.intensity))
         self.assertTrue(np.array_equal(haz.intensity.toarray(), hres_inten.toarray()))
         self.assertTrue(sparse.isspmatrix_csr(haz.fraction))
