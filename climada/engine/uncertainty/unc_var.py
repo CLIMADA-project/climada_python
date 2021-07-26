@@ -21,10 +21,13 @@ Define Uncertainty class.
 
 import copy
 from functools import partial
+from itertools import zip_longest
 
 import scipy as sp
 import numpy as np
 import matplotlib.pyplot as plt
+
+from climada.entity import Entity, DiscRates
 
 __all__ = ['UncVar']
 
@@ -200,22 +203,46 @@ class UncVar():
             _haz_unc_dict(bounds_ev, bounds_int, bounds_freq)
             )
 
-    def exp_unc(exp, bounds_totval, bounds_noise):
-        kwargs = {'exp': exp}
+    def exp_unc(exp, bounds_totval=None, bounds_noise=None):
+        kwargs = {'exp': exp, 'bounds_noise': bounds_noise}
         if bounds_noise is None:
             kwargs['EN'] = None
+        if bounds_totval is None:
+            kwargs['ET'] = None
         return UncVar(
             partial(_exp_uncfunc, **kwargs),
             _exp_unc_dict(bounds_totval, bounds_noise)
             )
 
-    def impfset_unc(impf_set, bounds_impf, haz_type, fun_id=1):
+    def impfset_unc(impf_set, bounds_impf=None, haz_type='TC', fun_id=1):
+        kwargs = {}
+        if bounds_impf is None:
+            kwargs['IF'] = None
         return UncVar(
-            partial(_impfset_unc_func, impf_set=impf_set, haz_type=haz_type, fun_id=fun_id),
+            partial(_impfset_uncfunc, impf_set=impf_set, haz_type=haz_type, fun_id=fun_id, **kwargs),
             _impfset_unc_dict(bounds_impf)
         )
 
+    def ent_unc(bounds_disk, bounds_cost, bounds_totval, bounds_noise,
+                bounds_impf, impf_set, disc_rate,
+                exp, meas_set):
+        return UncVar(
+            partial(_ent_unc_func, bounds_noise=bounds_noise, impf_set=impf_set, disc_rate=disc_rate,
+                     exp=exp, meas_set=meas_set),
+            _ent_unc_dict(bounds_totval, bounds_noise, bounds_impf, bounds_disk, bounds_cost)
+        )
 
+    def entfut_unc(bounds_cost, bounds_eg, bounds_noise,
+                bounds_impf, impf_set, exp, meas_set):
+        return UncVar(
+            partial(_entfut_unc_func, bounds_noise=bounds_noise, impf_set=impf_set,
+                     exp=exp, meas_set=meas_set),
+            _entfut_unc_dict(bounds_eg, bounds_noise, bounds_impf, bounds_cost)
+        )
+
+
+
+#Hazard
 def _haz_uncfunc(HE, HI, HF, haz):
     haz_tmp = copy.deepcopy(haz)
     if HE is not None:
@@ -232,15 +259,16 @@ def _haz_unc_dict(bounds_ev, bounds_int, bounds_freq):
     hud = {}
     if bounds_ev is not None:
         emin, edelta = bounds_ev[0], bounds_ev[1] - bounds_ev[0]
-        hud['HE'] = sp.stat.uniform(emin, edelta)
+        hud['HE'] = sp.stats.uniform(emin, edelta)
     if bounds_int is not None:
         imin, idelta = bounds_int[0], bounds_int[1] - bounds_int[0]
-        hud['HI'] = sp.stat.uniform(imin, idelta)
+        hud['HI'] = sp.stats.uniform(imin, idelta)
     if bounds_freq is not None:
         fmin, fdelta = bounds_freq[0], bounds_freq[1] - bounds_freq[0]
-        hud['HF'] = sp.stat.uniform(fmin, fdelta)
+        hud['HF'] = sp.stats.uniform(fmin, fdelta)
     return hud
 
+#Exposure
 def _exp_uncfunc(EN, ET, exp, bounds_noise):
     exp_tmp = exp.copy(deep=True)
     if EN is not None:
@@ -259,12 +287,101 @@ def _exp_unc_dict(bounds_totval, bounds_noise):
         eud['EN'] = sp.stats.uniform(0, 1)
     return eud
 
-def _impfset_unc_func(IF, impf_set, haz_type='TC', fun_id=1):
+#Impact function set
+def _impfset_uncfunc(IF, impf_set, haz_type='TC', fun_id=1):
     impf_set_tmp = copy.deepcopy(impf_set)
-    new_mdd = np.minimum(impf_set_tmp.get_func(haz_type=haz_type, fun_id=fun_id).mdd * IF, 1.0)
-    impf_set_tmp.get_func(haz_type=haz_type, fun_id=fun_id).mdd = new_mdd
+    if IF is not None:
+        new_mdd = np.minimum(impf_set_tmp.get_func(haz_type=haz_type, fun_id=fun_id).mdd * IF, 1.0)
+        impf_set_tmp.get_func(haz_type=haz_type, fun_id=fun_id).mdd = new_mdd
     return impf_set_tmp
 
 def _impfset_unc_dict(bounds_impf):
-    xmin, xdelta = bounds_impf[0], bounds_impf[1] - bounds_impf[0]
-    return {'IF' : sp.stats.uniform(xmin, xdelta)}
+    iud = {}
+    if bounds_impf is not None:
+        xmin, xdelta = bounds_impf[0], bounds_impf[1] - bounds_impf[0]
+        iud['IF'] = sp.stats.uniform(xmin, xdelta)
+    return iud
+
+#Entity
+def _disc_uncfunc(DR, disc_rate):
+    disc = copy.deepcopy(disc_rate)
+    disc.rates = np.ones(disc.years.size) * DR
+    return disc
+
+def _disc_unc_dict(bounds_disk):
+    dmin, ddelta = bounds_disk[0], bounds_disk[1] - bounds_disk[0]
+    return  {'DR': sp.stats.uniform(dmin, ddelta)}
+
+def _meas_set_uncfunc(CO, meas_set):
+    meas_set_tmp = copy.deepcopy(meas_set)
+    for haz_type in meas_set_tmp.get_hazard_types():
+        for meas in meas_set_tmp.get_measure(haz_type=haz_type):
+            meas.cost *= CO
+    return meas_set_tmp
+
+def _meas_set_unc_dict(bounds_cost):
+    cmin, cdelta = bounds_cost[0], bounds_cost[1] - bounds_cost[0]
+    return {'CO': sp.stats.uniform(cmin, cdelta)}
+
+
+def _ent_unc_func(EN, ET, IF, CO, DR, bounds_noise,
+                 impf_set, disc_rate, exp, meas_set):
+    ent = Entity()
+    if EN is None or ET is None:
+        ent.exposures = exp
+    else:
+        ent.exposures = _exp_uncfunc(EN, ET, exp, bounds_noise)
+    if IF is None:
+        ent.impact_func = impf_set
+    else:
+        ent.impact_funcs = _impfset_uncfunc(IF, impf_set=impf_set)
+    if CO is None:
+        ent.measures = meas_set
+    else:
+        ent.measures = _meas_set_uncfunc(CO, meas_set=meas_set)
+    if DR is None:
+        ent.disc_rates = disc_rate
+    else:
+        ent.disc_rates = _disc_uncfunc(DR, disc_rate)
+    return ent
+
+def _ent_unc_dict(bounds_totval, bounds_noise, bounds_impf, bounds_disk, bounds_cost):
+    ent_unc_dict = _exp_unc_dict(bounds_totval, bounds_noise)
+    ent_unc_dict.update(_impfset_unc_dict(bounds_impf))
+    ent_unc_dict.update(_disc_unc_dict(bounds_disk))
+    ent_unc_dict.update(_meas_set_unc_dict(bounds_cost))
+    return  ent_unc_dict
+
+def _entfut_unc_func(ENf, EG, IFf, CO, bounds_noise,
+                 impf_set, exp, meas_set):
+    ent = Entity()
+    if ENf is None or EG is None:
+        ent.exposures = exp
+    else:
+        ent.exposures = _exp_uncfunc(EN=ENf, ET=EG, exp=exp, bounds_noise=bounds_noise)
+    if IFf is None:
+        ent.impact_func = impf_set
+    else:
+        ent.impact_funcs = _impfset_uncfunc(IFf, impf_set=impf_set)
+    if CO is None:
+        ent.measures = meas_set
+    else:
+        ent.measures = _meas_set_uncfunc(CO, meas_set=meas_set)
+    ent.disc_rates = DiscRates() #Disc rate of future entity ignored in cost_benefit.calc()
+    return ent
+
+def _entfut_unc_dict(bounds_eg=None, bounds_noise=None, bounds_impf=None,
+                     bounds_cost=None):
+    eud = {}
+    if bounds_eg is not None:
+        gmin, gmax = bounds_eg[0], bounds_eg[1] - bounds_eg[0]
+        eud['EG'] = sp.stats.uniform(gmin, gmax)
+    if bounds_noise is not None:
+        eud['ENf'] = sp.stats.uniform(0, 1)
+    if bounds_impf  is  not  None:
+        xmin, xdelta = bounds_impf[0], bounds_impf[1] - bounds_impf[0]
+        eud.update({'IFf' : sp.stats.uniform(xmin, xdelta)})
+    if bounds_cost is not None:
+        eud.update(_meas_set_unc_dict(bounds_cost))
+    return  eud
+
