@@ -109,7 +109,8 @@ class TropCyclone(Hazard):
         """Empty constructor."""
         Hazard.__init__(self, HAZ_TYPE)
         self.category = np.array([], int)
-        self.basin = list()
+        self.basin = []
+        self.windfields = []
         if pool:
             self.pool = pool
             LOGGER.info('Using %s CPUs.', self.pool.ncpus)
@@ -214,12 +215,14 @@ class TropCyclone(Hazard):
                 if perc - last_perc >= 10:
                     LOGGER.info("Progress: %d%%", perc)
                     last_perc = perc
-                self.append(
+                tc_haz.append(
                     self._tc_from_track(track, centroids, coastal_idx,
                                         model=model, store_windfields=store_windfields,
                                         metric=metric))
             if last_perc < 100:
                 LOGGER.info("Progress: 100%")
+        LOGGER.debug('Append events.')
+        self.__dict__ = TropCyclone.concat([self] + tc_haz).__dict__
         LOGGER.debug('Compute frequency.')
         self.frequency_from_tracks(tracks.data)
         self.tag.description = description

@@ -135,7 +135,7 @@ class TestCentroidsMethods(unittest.TestCase):
         np.testing.assert_array_equal(cent.lon, [0, -1, -2, 3])
         np.testing.assert_array_equal(cent.on_land, [True, True, False, False])
 
-        cent = Centroids().union(cent1)
+        cent = Centroids.union(cent1)
         np.testing.assert_array_equal(cent.lat, [0, 1])
         np.testing.assert_array_equal(cent.lon, [0, -1])
         np.testing.assert_array_equal(cent.on_land, [True, True])
@@ -145,7 +145,7 @@ class TestCentroidsMethods(unittest.TestCase):
         np.testing.assert_array_equal(cent.lon, [0, -1])
         np.testing.assert_array_equal(cent.on_land, [True, True])
 
-        cent = Centroids().union(cent1, cent2, cent3)
+        cent = Centroids.union(cent1, cent2, cent3)
         np.testing.assert_array_equal(cent.lat, [0, 1, 2, 3, -1, -2])
         np.testing.assert_array_equal(cent.lon, [0, -1, -2, 3, 1, 2])
 

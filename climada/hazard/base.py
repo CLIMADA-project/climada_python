@@ -1487,10 +1487,7 @@ class Hazard():
         elif len(units) == 0:
             units = {''}
 
-        #Define comon centroids
-        centroids = Centroids().union(*[haz.centroids
-                                           for haz in haz_list])
-        #Define empty concatenate hazard
+        centroids = Centroids.union(*[haz.centroids for haz in haz_list])
         haz_concat = Hazard()
         haz_concat.units = units.pop()
         haz_concat.centroids = centroids
