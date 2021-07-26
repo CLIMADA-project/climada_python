@@ -18,6 +18,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 """
 
 from .unc_data import *
+from .unc_var import *
 from .unc_calc import *
 from .unc_calc_impact import *
 from .unc_calc_cost_benefit import *
