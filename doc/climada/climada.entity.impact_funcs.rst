@@ -9,14 +9,6 @@ climada\.entity\.impact\_funcs\.base module
     :undoc-members:
     :show-inheritance:
 
-climada\.entity\.impact\_funcs\.drought module
-----------------------------------------------
-
-.. automodule:: climada.entity.impact_funcs.drought
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 climada\.entity\.impact\_funcs\.impact\_func\_set module
 --------------------------------------------------------
 
@@ -33,14 +25,6 @@ climada\.entity\.impact\_funcs\.relative\_cropyield module
     :undoc-members:
     :show-inheritance:
 
-climada\.entity\.impact\_funcs\.river\_flood module
----------------------------------------------------
-
-.. automodule:: climada.entity.impact_funcs.river_flood
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 climada\.entity\.impact\_funcs\.storm\_europe module
 ----------------------------------------------------
 
@@ -53,14 +37,6 @@ climada\.entity\.impact\_funcs\.trop\_cyclone module
 ----------------------------------------------------
 
 .. automodule:: climada.entity.impact_funcs.trop_cyclone
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-climada\.entity\.impact\_funcs\.wildfire module
------------------------------------------------
-
-.. automodule:: climada.entity.impact_funcs.wildfire
     :members:
     :undoc-members:
     :show-inheritance:
