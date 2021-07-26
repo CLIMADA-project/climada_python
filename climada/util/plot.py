@@ -401,7 +401,7 @@ def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
         array_sub.
     cat_name : dict, optional
         Categories name for the colorbar labels.
-        Keys are all the unique values in array_cub, values are their labels.
+        Keys are all the unique values in array_sub, values are their labels.
         The default is labels = unique values.
     adapt_fontsize : bool, optional
         If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
