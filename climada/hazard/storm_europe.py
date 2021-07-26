@@ -241,7 +241,7 @@ class StormEurope(Hazard):
 
         # read intensity from file
         ncdf = xr.open_dataset(fp_file)
-        ncdf = ncdf.assign_coords(date=('time',ncdf["time"].dt.floor("D")))
+        ncdf = ncdf.assign_coords(date=('time',ncdf["time"].dt.floor("D").values))
 
         if event_date:
             try:
@@ -362,7 +362,8 @@ class StormEurope(Hazard):
                 stacked = xr.concat([stacked,ds_i], 'valid_time')
 
         # create intensity matrix with max for each full day
-        stacked = stacked.assign_coords(date=('valid_time',stacked["valid_time"].dt.floor("D")))
+        stacked = stacked.assign_coords(
+            date=('valid_time', stacked["valid_time"].dt.floor("D").values))
         if event_date:
             try:
                 stacked = stacked.sel(valid_time=event_date.strftime('%Y-%m-%d')).groupby('date').max()
@@ -836,12 +837,12 @@ class StormEurope(Hazard):
         return intensity_out[:, sel_cen], ssi
 
 
-def generate_WS_forecast_hazard(run_datetime = dt.datetime.today().replace(hour=0, 
-                                                                           minute=0, 
-                                                                           second=0, 
+def generate_WS_forecast_hazard(run_datetime = dt.datetime.today().replace(hour=0,
+                                                                           minute=0,
+                                                                           second=0,
                                                                            microsecond=0),
-                                event_date = (dt.datetime.today().replace(hour=0, 
-                                                                          minute=0, 
+                                event_date = (dt.datetime.today().replace(hour=0,
+                                                                          minute=0,
                                                                           second=0,
                                                                           microsecond=0)
                                               + dt.timedelta(days=2)),
@@ -851,7 +852,7 @@ def generate_WS_forecast_hazard(run_datetime = dt.datetime.today().replace(hour=
     """ use the initialization time (run_datetime), the date of the event and
     specify the forecast model (haz_model) to generate a Hazard from forecast
     data either by download or through reading from existing file.
-    
+
     Parameters
     ----------
     run_datetime: datetime.datetime, optional
@@ -874,7 +875,7 @@ def generate_WS_forecast_hazard(run_datetime = dt.datetime.today().replace(hour=
         Default None resolves to "cosmoe_forecast_{}_vmax.nc" in
         CONFIG.hazard.storm_europe.forecast_dir
     save_haz: bool, optional
-        flag if resulting hazard should be saved in 
+        flag if resulting hazard should be saved in
         CONFIG.hazard.storm_europe.forecast_dir, default is True.
     Returns
     -------
@@ -904,17 +905,17 @@ def generate_WS_forecast_hazard(run_datetime = dt.datetime.today().replace(hour=
                                               '_event' +
                                               event_date.strftime('%Y%m%d')
                                               +
-                                              '.hdf5')   
+                                              '.hdf5')
         if haz_file_name.exists():
-            LOGGER.info('Loading hazard from ' + 
-                        str(haz_file_name) + 
+            LOGGER.info('Loading hazard from ' +
+                        str(haz_file_name) +
                         '.')
             hazard = StormEurope()
             hazard.read_hdf5(haz_file_name)
         else:
-            LOGGER.info('Generating ' + 
-                        haz_model + 
-                        ' hazard.')  
+            LOGGER.info('Generating ' +
+                        haz_model +
+                        ' hazard.')
             if not haz_raw_storage:
                 haz_raw_storage = Path(FORECAST_DIR) / "cosmoe_forecast_{}_vmax.nc"
             fp_file = Path(
@@ -924,7 +925,7 @@ def generate_WS_forecast_hazard(run_datetime = dt.datetime.today().replace(hour=
                 )
             hazard = StormEurope()
             hazard.read_cosmoe_file(
-                fp_file, 
+                fp_file,
                 event_date=event_date,
                 run_datetime=run_datetime,
                 model_name=full_model_name_temp
@@ -941,17 +942,17 @@ def generate_WS_forecast_hazard(run_datetime = dt.datetime.today().replace(hour=
                                               '_event' +
                                               event_date.strftime('%Y%m%d')
                                               +
-                                              '.hdf5')   
+                                              '.hdf5')
         if haz_file_name.exists():
-            LOGGER.info('Loading hazard from ' + 
-                        str(haz_file_name) + 
+            LOGGER.info('Loading hazard from ' +
+                        str(haz_file_name) +
                         '.')
             hazard = StormEurope()
             hazard.read_hdf5(haz_file_name)
         else:
-            LOGGER.info('Generating ' + 
-                        haz_model + 
-                        ' hazard.')                    
+            LOGGER.info('Generating ' +
+                        haz_model +
+                        ' hazard.')
             hazard = StormEurope()
             hazard.read_icon_grib(
                 run_datetime,
