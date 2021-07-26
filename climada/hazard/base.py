@@ -957,7 +957,7 @@ class Hazard():
                 setattr(self, var_name, var_val[unique_pos, :])
             elif isinstance(var_val, np.ndarray) and var_val.ndim == 1:
                 setattr(self, var_name, var_val[unique_pos])
-            elif isinstance(var_val, list):
+            elif isinstance(var_val, list) and len(var_val) > 0:
                 setattr(self, var_name, [var_val[p] for p in unique_pos])
 
     def set_frequency(self, yearrange=None):
