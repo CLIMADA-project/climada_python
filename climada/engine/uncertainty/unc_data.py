@@ -888,7 +888,7 @@ class UncData():
 
         return axes
 
-    def plot_sensitivity_map(self, exp, salib_si='S1', figsize=(8, 6)):
+    def plot_sensitivity_map(self, exp, salib_si='S1', **kwargs):
         """
         Plot a map of the largest sensitivity index in each exposure point
 
@@ -918,12 +918,12 @@ class UncData():
         try:
             si_eai_df = self.get_sensitivity(salib_si, ['eai_exp_sens_df']).select_dtypes('number')
             eai_max_si_idx = si_eai_df.idxmax().to_numpy()
-
         except KeyError as verr:
             raise ValueError("No sensitivity indices found for"
                   " impact.eai_exp. Please compute sensitivity first using"
                   " UncCalcImpact.calc_sensitivity(unc_data, calc_eai_exp=True)"
                   ) from verr
+
         if len(eai_max_si_idx) != len(exp.gdf):
             LOGGER.error("The length of the sensitivity data "
                   "%d does not match the number "
@@ -934,20 +934,25 @@ class UncData():
                   )
             return None
 
-        if exp is None:
-            exp_input_vals = self.samples_df.loc[0][
-                self.unc_vars['exp'].labels
-                ].to_dict()
-            exp = self.unc_vars['exp'].uncvar_func(**exp_input_vals)
-
+        eai_max_si_idx = np.nan_to_num(eai_max_si_idx + 1) # Set np.nan values to 0
+        labels = {
+            float(idx+1): label
+            for idx, label in enumerate(self.param_labels)}
+        if 0 in eai_max_si_idx:
+            labels[0.0] = 'None'
         plot_val = np.array([eai_max_si_idx]).astype(float)
         coord = np.array([exp.gdf.latitude, exp.gdf.longitude]).transpose()
+        if 'var_name' not in kwargs:
+            kwargs['var_name'] = 'Largest sensitivity index ' + salib_si
+        if 'title' not in kwargs:
+            kwargs['title'] = 'Sensitivity map'
+        if 'cat_name' not in kwargs:
+            kwargs['cat_name'] = labels
+        if 'figsize' not in kwargs:
+            kwargs['figsize'] = (8,6)
         ax = u_plot.geo_scatter_categorical(
                 plot_val, coord,
-                var_name='Largest sensitivity index ' + salib_si,
-                title='Sensitivity map',
-                cat_name= self.param_labels,
-                figsize=figsize
+                **kwargs
                 )
 
         return ax
