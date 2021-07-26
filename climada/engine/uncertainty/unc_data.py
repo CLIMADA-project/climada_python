@@ -24,14 +24,17 @@ __all__ = ['UncVar', 'UncData']
 import logging
 import json
 import h5py
+import copy
 
 from itertools import zip_longest
 from pathlib import Path
+from functools import partial
 
 import datetime as dt
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import scipy as sp
 
 from climada.util.value_representation import value_to_monetary_unit as u_vtm
 from climada.util.value_representation import sig_dig as u_sig_dig
@@ -219,6 +222,73 @@ class UncVar():
             return var
 
         return UncVar(uncvar_func=lambda: var, distr_dict={})
+
+
+# def _haz_uncfunc(HE, HI, HF, haz):
+#     haz_tmp = copy.deepcopy(haz)
+#     if HE is not None:
+#         nb = int(np.round(haz_tmp.size * HE))
+#         event_names = np.random.choice(haz_tmp.event_name, nb)
+#         haz_tmp = haz_tmp.select(event_names=event_names)
+#     if HI is not None:
+#         haz_tmp.intensity = haz_tmp.intensity.multiply(HI)
+#     if HF is not None:
+#         haz_tmp.frequency = np.multiply(haz_tmp.frequency, HF)
+#     return haz_tmp
+
+# def _haz_unc_dict(bounds_ev, bounds_int, bounds_freq):
+#     hud = {}
+#     if bounds_ev is not None:
+#         emin, edelta = bounds_ev[0], bounds_ev[1] - bounds_ev[0]
+#         hud['HE'] = sp.stat.uniform(emin, edelta)
+#     if bounds_int is not None:
+#         imin, idelta = bounds_int[0], bounds_int[1] - bounds_int[0]
+#         hud['HI'] = sp.stat.uniform(imin, idelta)
+#     if bounds_freq is not None:
+#         fmin, fdelta = bounds_freq[0], bounds_freq[1] - bounds_freq[0]
+#         hud['HF'] = sp.stat.uniform(fmin, fdelta)
+#     return hud
+
+# def haz_unc(haz, bounds_ev=None, bounds_int=None, bounds_freq=None):
+#     kwargs = {'haz': haz}
+#     if bounds_ev is None:
+#         kwargs['HE'] = None
+#     if bounds_int is None:
+#         kwargs['HI'] = None
+#     if bounds_freq is None:
+#         kwargs['HF'] = None
+#     return UncVar(
+#         partial(self._haz_uncfunc, **kwargs),
+#         self._haz_unc_dict(bounds_ev, bounds_int, bounds_freq)
+#         )
+
+
+# def _exp_uncfunc(EN, ET, exp, bounds_noise):
+#     exp_tmp = exp.copy(deep=True)
+#     if EN is not None:
+#         rnd_vals = np.random.uniform(bounds_noise[0], bounds_noise[1], size = len(exp_tmp.gdf))
+#         exp_tmp.gdf.value *= rnd_vals
+#     if ET is not None:
+#         exp_tmp.gdf.value *= ET
+#     return exp_tmp
+
+# def _exp_unc_dict(bounds_totval, bounds_noise):
+#     eud = {}
+#     if bounds_totval is not None:
+#         tmin, tmax = bounds_totval[0], bounds_totval[1] - bounds_totval[0]
+#         eud['ET'] = sp.stats.uniform(tmin, tmax)
+#     if bounds_noise is not None:
+#         eud['EN'] = sp.stats.uniform(0, 1)
+#     return eud
+
+# def exp_unc(exp, bounds_totval, bounds_noise):
+#     kwargs = {'exp': exp}
+#     if bounds_noise is None:
+#         kwargs['EN'] = None
+#     return UncVar(
+#         partial(self._exp_uncfunc, **kwargs),
+#         self._exp_unc_dict(bounds_totval, bounds_noise)
+#         )
 
 
 class UncData():
