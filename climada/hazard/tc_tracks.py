@@ -547,7 +547,7 @@ class TCTracks():
                            'have been found: %s%s', len(invalid_sids), ", ".join(invalid_sids[:5]),
                            ", ..." if len(invalid_sids) > 5  else ".")
             ibtracs_ds = ibtracs_ds.sel(storm=valid_storms_mask)
-            
+
         if discard_single_points:
             valid_storms_mask = ibtracs_ds.valid_t.sum(dim="date_time") > 1
             invalid_storms_idx = np.nonzero(~valid_storms_mask.data)[0]
@@ -1549,7 +1549,7 @@ def _dist_since_lf(track):
     sea_land_idx, land_sea_idx = _get_landfall_idx(track, True)
     if not sea_land_idx.size:
         return (dist_since_lf + 1) * np.nan
-    
+
     orig_lf = np.empty((sea_land_idx.size, 2))
     for i_lf, lf_point in enumerate(sea_land_idx):
         if lf_point > 0:
@@ -1595,7 +1595,7 @@ def _get_landfall_idx(track, include_starting_landfall=False):
     include_starting_landfall : bool
         If the track starts over land, whether to include the track segment before
         reaching the ocean as a landfall. Default: False.
-        
+
 
     Returns
     -------

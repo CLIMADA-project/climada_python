@@ -45,11 +45,3 @@ climada\.engine\.impact\_data module
     :undoc-members:
     :show-inheritance:
 
-climada\.engine\.supplychain module
------------------------------------
-
-.. automodule:: climada.engine.supplychain
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
