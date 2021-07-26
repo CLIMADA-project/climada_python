@@ -305,9 +305,7 @@ class UncCalc():
             sens_second_order_df.insert(1, 'param', param_names_second_order)
             sens_second_order_df.insert(2, 'param2', param_names_second_order_2)
 
-            sens_df = pd.concat([sens_first_order_df, sens_second_order_df])
-
-
+            sens_df = pd.concat([sens_first_order_df, sens_second_order_df]).reset_index(drop=True)
 
             setattr(unc_data, metric_name + '_sens_df', sens_df)
         sensitivity_kwargs = {

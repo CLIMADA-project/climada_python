@@ -449,7 +449,7 @@ class UncData():
                     )
                 if df_meta.empty:
                     df_meta = submetric_df.drop(submetric_df.select_dtypes('number').columns, axis=1)
-        return pd.concat([df_meta, df_all], axis=1)
+        return pd.concat([df_meta, df_all], axis=1).reset_index(drop=True)
 
     def plot_sample(self, figsize=None):
         """
