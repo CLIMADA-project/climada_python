@@ -32,7 +32,6 @@ from pandas_datareader import wb
 from climada import CONFIG
 from climada.entity.exposures.litpop.nightlight import BM_FILENAMES, download_nl_files
 from climada.hazard.tc_tracks import IBTRACS_URL, IBTRACS_FILE
-from climada.hazard.tc_tracks_forecast import TCForecast
 from climada.util.finance import WORLD_BANK_WEALTH_ACC, WORLD_BANK_INC_GRP
 from climada.util.dwd_icon_loader import (download_icon_grib,
                                           delete_icon_grib,
@@ -84,11 +83,6 @@ class TestDataAvail(unittest.TestCase):
     def test_ibtracs_pass(self):
         download_ftp("/".join([IBTRACS_URL, IBTRACS_FILE]), IBTRACS_FILE)
         Path(IBTRACS_FILE).unlink()
-
-    def test_ecmwf_tc_bufr(self):
-        """Test availability ECMWF essentials TC forecast."""
-        fcast = TCForecast.fetch_bufr_ftp()
-        [f.close() for f in fcast]
 
     def test_icon_forecast_download(self):
         """Test availability of DWD icon forecast."""

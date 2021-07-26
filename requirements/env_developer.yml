@@ -3,6 +3,7 @@ channels:
   - conda-forge
   - defaults
 dependencies:
+  - ipython
   - mccabe>=0.6
   - sphinx>=2.0
   - pip
