@@ -559,11 +559,10 @@ class Centroids():
         cent_list = [c for c in (self,) + others if c.size > 0 or c.meta]
         if len(cent_list) == 0 or len(others) == 0:
             return copy.deepcopy(self)
-        self = cent_list[0]
 
         # check if all centroids agree
-        if all([self.equal(cent) for cent in cent_list[1:]]):
-            return copy.deepcopy(self)
+        if all([cent_list[0].equal(cent) for cent in cent_list[1:]]):
+            return copy.deepcopy(cent_list[0])
 
         # convert all raster centroids to point centroids
         for cent in cent_list:
@@ -574,7 +573,7 @@ class Centroids():
         for cent in cent_list:
             if cent.crs is None:
                 cent.geometry = cent.geometry.set_crs(DEF_CRS)
-            if not u_coord.equal_crs(cent.crs, self.crs):
+            if not u_coord.equal_crs(cent.crs, cent_list[0].crs):
                 raise ValueError('In a union, all Centroids need to have the same CRS: '
                                  f'{cent.crs} != {cent_list[0].crs}')
 
@@ -589,7 +588,7 @@ class Centroids():
         # create new Centroids object and set concatenated attributes
         centroids = Centroids()
         centroids.meta = {}
-        for attr_name, attr_val in vars(self).items():
+        for attr_name, attr_val in vars(cent_list[0]).items():
             attr_val_list = [getattr(cent, attr_name) for cent in cent_list]
             if (isinstance(attr_val, np.ndarray) and attr_val.ndim == 1):
                 setattr(centroids, attr_name, np.hstack(attr_val_list))
