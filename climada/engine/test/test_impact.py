@@ -133,7 +133,7 @@ class TestOneExposure(unittest.TestCase):
         # Compute impact for 6th exposure
         iexp = 5
         # Take its impact function
-        imp_id = ent.exposures.gdf.if_TC[iexp]
+        imp_id = ent.exposures.gdf.impf_TC[iexp]
         imp_fun = ent.impact_funcs.get_func(hazard.tag.haz_type, imp_id)
         # Compute
         insure_flag = True
@@ -238,11 +238,13 @@ class TestCalc(unittest.TestCase):
             np.sum(impact.imp_mat.toarray() * impact.frequency[:, None], axis=0).reshape(-1),
             impact.eai_exp)
 
-    def test_calc_if_pass(self):
-        """Execute when no if_HAZ present, but only if_"""
+    def test_calc_impf_pass(self):
+        """Execute when no impf_HAZ present, but only impf_"""
         ent = Entity()
         ent.read_excel(ENT_DEMO_TODAY)
-        ent.exposures.gdf.rename(columns={'if_TC': 'if_'}, inplace=True)
+        self.assertTrue('impf_TC' in ent.exposures.gdf.columns)
+        ent.exposures.gdf.rename(columns={'impf_TC': 'impf_'}, inplace=True)
+        self.assertFalse('impf_TC' in ent.exposures.gdf.columns)
         ent.check()
 
         # Read default hazard file
@@ -343,7 +345,7 @@ class TestIO(unittest.TestCase):
         imp_write = Impact()
         imp_write.tag = {'exp': Tag('file_exp.p', 'descr exp'),
                          'haz': TagHaz('TC', 'file_haz.p', 'descr haz'),
-                         'if_set': Tag()}
+                         'impf_set': Tag()}
         imp_write.event_id = np.arange(num_ev)
         imp_write.event_name = ['event_' + str(num) for num in imp_write.event_id]
         imp_write.date = np.ones(num_ev)
@@ -382,7 +384,7 @@ class TestIO(unittest.TestCase):
         imp_write = Impact()
         imp_write.tag = {'exp': Tag('file_exp.p', 'descr exp'),
                          'haz': TagHaz('TC', 'file_haz.p', 'descr haz'),
-                         'if_set': Tag()}
+                         'impf_set': Tag()}
         imp_write.event_id = np.arange(num_ev)
         imp_write.event_name = ['event_' + str(num) for num in imp_write.event_id]
         imp_write.date = np.ones(num_ev)

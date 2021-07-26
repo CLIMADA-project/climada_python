@@ -220,7 +220,6 @@ class TestRiverFlood(unittest.TestCase):
                               frc_path=HAZ_DEMO_FLDFRC, ISINatIDGrid=True)
         years = [2000, 2001, 2002]
         manipulated_dates = [730303, 730669, 731034]
-        testRFaddset = []
         for i in range(len(years)):
             testRFaddset = RiverFlood()
             testRFaddset.set_from_nc(countries=['DEU', 'CHE'],

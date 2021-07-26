@@ -33,11 +33,14 @@ class TestKnutson(unittest.TestCase):
         for crit_val in criterion:
             self.assertTrue('year' in crit_val)
             self.assertTrue('change' in crit_val)
-            self.assertTrue('criteria' in crit_val)
             self.assertTrue('variable' in crit_val)
-            self.assertTrue('function' in crit_val)
-        self.assertEqual(criterion[0]['change'], 1.045)
-        self.assertEqual(criterion[-1]['change'], 1 - 0.583)
+        self.assertEqual(criterion[0]['variable'], "frequency")
+        self.assertEqual(criterion[0]['change'], 1)
+        self.assertEqual(criterion[4]['variable'], "intensity")
+        self.assertEqual(criterion[4]['change'], 1.045)
+        self.assertEqual(criterion[-10]['basin'], "SP")
+        self.assertEqual(criterion[-10]['variable'], "frequency")
+        self.assertEqual(criterion[-10]['change'], 1 - 0.583)
 
     def test_scale_pass(self):
         """Test calc_scale_knutson function."""

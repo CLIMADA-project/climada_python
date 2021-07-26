@@ -19,9 +19,10 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define impact functions for tropical cyclnes .
 """
 
-__all__ = ['IFTropCyclone']
+__all__ = ['ImpfTropCyclone', 'IFTropCyclone']
 
 import logging
+from deprecation import deprecated
 import numpy as np
 import pandas as pd
 
@@ -31,19 +32,19 @@ from climada.util.constants import SYSTEM_DIR
 
 LOGGER = logging.getLogger(__name__)
 
-class IFTropCyclone(ImpactFunc):
+class ImpfTropCyclone(ImpactFunc):
     """Impact functions for tropical cyclones."""
 
     def __init__(self):
         ImpactFunc.__init__(self)
         self.haz_type = 'TC'
 
-    def set_emanuel_usa(self, if_id=1, intensity=np.arange(0, 121, 5),
+    def set_emanuel_usa(self, impf_id=1, intensity=np.arange(0, 121, 5),
                         v_thresh=25.7, v_half=74.7, scale=1.0):
         """Using the formula of Emanuele 2011.
 
         Parameters:
-            if_id (int, optional): impact function id. Default: 1
+            impf_id (int, optional): impact function id. Default: 1
             intensity (np.array, optional): intensity array in m/s. Default:
                 5 m/s step array from 0 to 120m/s
             v_thresh (float, optional): first shape parameter, wind speed in
@@ -65,7 +66,7 @@ class IFTropCyclone(ImpactFunc):
             raise ValueError('Scale parameter out of range.')
 
         self.name = 'Emanuel 2011'
-        self.id = if_id
+        self.id = impf_id
         self.intensity_unit = 'm/s'
         self.intensity = intensity
         self.paa = np.ones(intensity.shape)
@@ -74,14 +75,14 @@ class IFTropCyclone(ImpactFunc):
         self.mdd = v_temp**3 / (1 + v_temp**3)
         self.mdd *= scale
 
-class IFSTropCyclone(ImpactFuncSet):
-    """Impact function set (IFS) for tropical cyclones."""
+class ImpfSetTropCyclone(ImpactFuncSet):
+    """Impact function set (ImpfS) for tropical cyclones."""
 
     def __init__(self):
         ImpactFuncSet.__init__(self)
 
-    def set_calibrated_regional_IFs(self, calibration_approach='TDR', q=.5,
-                                    input_file_path=None, version=1):
+    def set_calibrated_regional_ImpfSet(self, calibration_approach='TDR', q=.5,
+                                        input_file_path=None, version=1):
         """ initiate TC wind impact functions based on Eberenz et al. (2020)
 
         Optional Parameters:
@@ -100,7 +101,7 @@ class IFSTropCyclone(ImpactFuncSet):
                     (expert users only)
 
         Returns:
-            v_half (dict): IF slope parameter v_half per region¨
+            v_half (dict): Impf slope parameter v_half per region¨
 
         Raises:
             ValueError
@@ -121,7 +122,7 @@ class IFSTropCyclone(ImpactFuncSet):
         else:
             df_calib_results = pd.read_csv(
                 SYSTEM_DIR.joinpath(
-                             'tc_if_cal_v%02.0f_%s.csv' % (version, calibration_approach)),
+                             'tc_impf_cal_v%02.0f_%s.csv' % (version, calibration_approach)),
                 encoding="ISO-8859-1", header=0)
 
         # define regions and parameters:
@@ -159,11 +160,11 @@ class IFSTropCyclone(ImpactFuncSet):
             reg_v_half[regions_short[-1]] = np.round(df_reg['v_half'].values[0], 5)
 
         for idx, region in enumerate(regions_short):
-            if_tc = IFTropCyclone()
-            if_tc.set_emanuel_usa(if_id=int(idx + 1), v_thresh=v_0, v_half=reg_v_half[region],
+            impf_tc = ImpfTropCyclone()
+            impf_tc.set_emanuel_usa(impf_id=int(idx + 1), v_thresh=v_0, v_half=reg_v_half[region],
                                   scale=scale)
-            if_tc.name = regions_long[region]
-            self.append(if_tc)
+            impf_tc.name = regions_long[region]
+            self.append(impf_tc)
         return reg_v_half
 
     @staticmethod
@@ -180,7 +181,7 @@ class IFSTropCyclone(ImpactFuncSet):
 
         Returns:
             [0] region_name (dict or str): long name per region
-            [1] if_id (dict or int): impact function ID per region
+            [1] impf_id (dict or int): impact function ID per region
             [2] iso3n (dict or list): numerical ISO3codes (=region_id) per region
             [3] iso3a (dict or list): numerical ISO3codes (=region_id) per region
         """
@@ -254,7 +255,7 @@ class IFSTropCyclone(ImpactFuncSet):
                          'SVK', 'SVN', 'SGS', 'SSD', 'ESP', 'SDN', 'SJM', 'SWE',
                          'CHE', 'TGO', 'TUN', 'TUR', 'UKR', 'GBR', 'UMI', 'ESH',
                          'ZMB', 'ALA']}
-        if_id = {'NA1': 1, 'NA2': 2, 'NI': 3, 'OC': 4, 'SI': 5,
+        impf_id = {'NA1': 1, 'NA2': 2, 'NI': 3, 'OC': 4, 'SI': 5,
                  'WP1': 6, 'WP2': 7, 'WP3': 8, 'WP4': 9, 'ROW': 10}
         region_name = dict()
         region_name['NA1'] = 'Caribbean and Mexico'
@@ -268,6 +269,12 @@ class IFSTropCyclone(ImpactFuncSet):
         region_name['WP4'] = 'North West Pacific'
 
         if region == 'all':
-            return region_name, if_id, iso3n, iso3a
+            return region_name, impf_id, iso3n, iso3a
 
-        return region_name[region], if_id[region], iso3n[region], iso3a[region]
+        return region_name[region], impf_id[region], iso3n[region], iso3a[region]
+
+
+@deprecated(details="The class name IFTropCyclone is deprecated and won't be supported in a future "
+                   +"version. Use ImpfTropCyclone instead")
+class IFTropCyclone(ImpfTropCyclone):
+    """Is ImpfTropCyclone now"""

@@ -54,10 +54,10 @@ class TestReader(unittest.TestCase):
         self.assertEqual(expo.gdf.cover[0], 13927504367.680632)
         self.assertEqual(expo.gdf.cover[n_expos - 1], 12624818493.687229)
 
-        self.assertIn('int', str(expo.gdf.if_.dtype))
-        self.assertEqual(expo.gdf.if_.shape, (n_expos,))
-        self.assertEqual(expo.gdf.if_[0], 1)
-        self.assertEqual(expo.gdf.if_[n_expos - 1], 1)
+        self.assertIn('int', str(expo.gdf.impf_.dtype))
+        self.assertEqual(expo.gdf.impf_.shape, (n_expos,))
+        self.assertEqual(expo.gdf.impf_[0], 1)
+        self.assertEqual(expo.gdf.impf_[n_expos - 1], 1)
 
         self.assertIn('int', str(expo.gdf.category_id.dtype))
         self.assertEqual(expo.gdf.category_id.shape, (n_expos,))
@@ -95,7 +95,7 @@ class TestObligatories(unittest.TestCase):
     def test_no_impact_fail(self):
         """Error if no impact ids."""
         new_var_names = copy.deepcopy(DEF_VAR_MAT)
-        new_var_names['var_name']['imp'] = 'no valid value'
+        new_var_names['var_name']['impf'] = 'no valid value'
         exp = Exposures()
         with self.assertRaises(KeyError):
             exp.read_mat(ENT_TEST_MAT, var_names=new_var_names)

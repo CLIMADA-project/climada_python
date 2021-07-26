@@ -402,7 +402,7 @@ class ImpactFuncSet():
             file_name (str): absolute file name to write
             var_names (dict, optional): name of the variables in the file
         """
-        def write_if(row_ini, imp_ws, xls_data):
+        def write_impf(row_ini, imp_ws, xls_data):
             """Write one impact function"""
             for icol, col_dat in enumerate(xls_data):
                 for irow, data in enumerate(col_dat, row_ini):
@@ -425,7 +425,7 @@ class ImpactFuncSet():
                             fun.paa, repeat(fun_haz_id, n_inten),
                             repeat(fun.intensity_unit, n_inten),
                             repeat(fun.name, n_inten)]
-                write_if(row_ini, imp_ws, xls_data)
+                write_impf(row_ini, imp_ws, xls_data)
                 row_ini += n_inten
         imp_wb.close()
 

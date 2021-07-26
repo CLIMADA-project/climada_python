@@ -38,7 +38,7 @@ import pyproj
 import overpy
 
 from climada.entity import Exposures
-from climada.entity.exposures.litpop import LitPop
+from climada.entity import LitPop
 
 LOGGER = logging.getLogger(__name__)
 
@@ -501,7 +501,7 @@ def _split_exposure_highlow(exp_sub, mode, High_Value_Area_gdf):
               "Please choose either 'nearest', 'even' or 'proportional'.")
 
     exp = exp_sub.copy(deep=False)
-    exp.gdf = exp_sub_high
+    exp.set_gdf(exp_sub_high)
     return exp
 
 def get_osmstencil_litpop(bbox, country, mode, highValueArea=None,

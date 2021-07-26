@@ -101,17 +101,17 @@ class TestGDP2AssetFunctions(unittest.TestCase):
         self.assertAlmostEqual(exp_test.iloc[0, 4], 11.0)
         self.assertAlmostEqual(exp_test.iloc[12, 4], 11.0)
 
-    def test_fast_if_mapping(self):
+    def test_fast_impf_mapping(self):
 
         testIDs = pd.read_csv(RIVER_FLOOD_REGIONS_CSV)
-        self.assertAlmostEqual(ga._fast_if_mapping(36, testIDs)[0], 11.0)
-        self.assertAlmostEqual(ga._fast_if_mapping(36, testIDs)[1], 3.0)
+        self.assertAlmostEqual(ga._fast_impf_mapping(36, testIDs)[0], 11.0)
+        self.assertAlmostEqual(ga._fast_impf_mapping(36, testIDs)[1], 3.0)
 
-        self.assertAlmostEqual(ga._fast_if_mapping(118, testIDs)[0], 11.0)
-        self.assertAlmostEqual(ga._fast_if_mapping(118, testIDs)[1], 3.0)
+        self.assertAlmostEqual(ga._fast_impf_mapping(118, testIDs)[0], 11.0)
+        self.assertAlmostEqual(ga._fast_impf_mapping(118, testIDs)[1], 3.0)
 
-        self.assertAlmostEqual(ga._fast_if_mapping(124, testIDs)[0], 0.0)
-        self.assertAlmostEqual(ga._fast_if_mapping(124, testIDs)[1], 2.0)
+        self.assertAlmostEqual(ga._fast_impf_mapping(124, testIDs)[0], 0.0)
+        self.assertAlmostEqual(ga._fast_impf_mapping(124, testIDs)[1], 2.0)
 
     def test_read_GDP(self):
 

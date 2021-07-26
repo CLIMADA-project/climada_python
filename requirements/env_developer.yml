@@ -3,13 +3,13 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - astroid>=2.3
+  - ipython
   - mccabe>=0.6
-  - pylint>=2.7
   - sphinx>=2.0
   - pip
   - pip:
     - coverage>=4.5
     - descartes
     - nbformat
+    - pylint==2.7.1  # 2.7.2 and higher: false positive E1136 and E1137
     - readthedocs-sphinx-ext>=2.1

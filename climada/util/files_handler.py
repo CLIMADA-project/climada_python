@@ -63,6 +63,7 @@ def download_file(url, download_dir=None, overwrite=True):
         url containing data to download
     download_dir : Path or str, optional
         the parent directory of the eventually downloaded file
+        default: local_data.save_dir as defined in climada.conf
     overwrite : bool, optional
         whether or not an alredy existing file at the target location should be overwritten,
         by default True
@@ -166,11 +167,15 @@ def get_file_names(file_name):
         if pattern.is_file():
             file_list.append(str(pattern))
         elif pattern.is_dir():
-            file_list.extend([str(fil) for fil in pattern.iterdir() if fil.is_file()])
+            extension = [str(fil) for fil in pattern.iterdir() if fil.is_file()]
+            if not extension:
+                raise ValueError(f'there are no files in directory "{pattern}"')
+            file_list.extend(extension)
         else:  # glob pattern
-            file_list.extend([
-                fil for fil in glob.glob(str(pattern)) if Path(fil).is_file()
-            ])
+            extension = [fil for fil in glob.glob(str(pattern)) if Path(fil).is_file()]
+            if not extension:
+                raise ValueError(f'cannot find the file "{pattern}"')
+            file_list.extend(extension)
     return file_list
 
 

@@ -26,11 +26,30 @@ from climada.util.constants import DEMO_DIR
 INPUT_DIR = DEMO_DIR
 FILENAME = 'histsoc_landuse-15crops_annual_FR_DE_DEMO_2001_2005.nc'
 FILENAME_MEAN = 'hist_mean_mai-firr_1976-2005_DE_FR.hdf5'
+FILENAME_AREA = 'crop_production_demo_data_cultivated_area_CHE.nc4'
+FILENAME_YIELD = 'crop_production_demo_data_yields_CHE.nc4'
 
 class TestCropProduction(unittest.TestCase):
-    """Test Cropyield_Isimip Class methods"""
-    def test_load_central_EU(self):
-        """Test defining crop_production Exposure from complete demo file (Central Europe)"""
+    """Test CropProduction Class methods"""
+    def test_set_from_area_and_yield_nc4(self):
+        """Test defining crop_production Exposure from area and yield
+        data extracted from netcdf test data for Switzerland"""
+        exp = CropProduction()
+        exp.set_from_area_and_yield_nc4('whe', 2, 2,
+                                        FILENAME_YIELD, FILENAME_AREA,
+                                        'yield.tot', 'cultivated area all',
+                                        input_dir=INPUT_DIR)
+
+        self.assertEqual(exp.crop, 'whe')
+        self.assertEqual(exp.gdf.shape[0], 55)
+        self.assertEqual(exp.meta['width'] * exp.meta['height'], 55)
+        self.assertIn(756, exp.gdf.region_id.values)
+        self.assertIn(380, exp.gdf.region_id.values)
+        self.assertAlmostEqual(exp.gdf['value'].max(), 253225.66611428373)
+
+    def test_isimip_load_central_EU(self):
+        """Test defining crop_production Exposure from complete demo file
+        (Central Europe), isimip approach"""
         exp = CropProduction()
         exp.set_from_isimip_netcdf(input_dir=INPUT_DIR, filename=FILENAME, hist_mean=FILENAME_MEAN,
                                       bbox=[-5, 42, 16, 55], yearrange=np.array([2001, 2005]),

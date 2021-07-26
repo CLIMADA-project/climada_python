@@ -54,28 +54,28 @@ new_haz = d.setup()
 # new_haz.plot_intensity_drought(event='2003')
 
 """Initialize Impact function"""
-dr_if = ImpactFuncSet()
-if_def = IFDrought()
+dr_impf = ImpactFuncSet()
+impf_def = IFDrought()
 """set impact function: for min: set_default; for sum-thr: set_default_sumthr; for sum: set_default_sum"""
-#if_def.set_default()
-#if_def.set_default_sumthr()
-if_def.set_default_sum()
-dr_if.append(if_def)
+#impf_def.set_default()
+#impf_def.set_default_sumthr()
+impf_def.set_default_sum()
+dr_impf.append(impf_def)
 
 """Initialize Exposure"""
 exposure_agrar = SpamAgrar()
 exposure_agrar.init_spam_agrar(country='CHE')
 
 """If intensity def is not default, exposure has to be adapted"""
-"""In case of sum-thr: 'if_DR_sumthr', in case of sum:'if_DR_sum'"""
-#exposure_agrar['if_DR_sumthr'] = np.ones(exposure_agrar.shape[0])
-exposure_agrar['if_DR_sum'] = np.ones(exposure_agrar.shape[0])
+"""In case of sum-thr: 'impf_DR_sumthr', in case of sum:'impf_DR_sum'"""
+#exposure_agrar['impf_DR_sumthr'] = np.ones(exposure_agrar.shape[0])
+exposure_agrar['impf_DR_sum'] = np.ones(exposure_agrar.shape[0])
 
 """Initialize impact of the drought"""
 imp_drought = Impact()
 
 """Calculate Damage for a specific event"""
-imp_drought.calc(exposure_agrar, dr_if, new_haz)
+imp_drought.calc(exposure_agrar, dr_impf, new_haz)
 index_event_start = imp_drought.event_name.index('2003')
 damages_drought = np.asarray([imp_drought.at_event[index_event_start]])
 print(damages_drought)

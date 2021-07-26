@@ -16,22 +16,22 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
-Test IF_TropCycl class.
+Test impf_TropCycl class.
 """
 
 import unittest
 import numpy as np
 import pandas as pd
 
-from climada.entity.impact_funcs.trop_cyclone import IFTropCyclone
-from climada.entity.impact_funcs.trop_cyclone import IFSTropCyclone
+from climada.entity.impact_funcs.trop_cyclone import ImpfTropCyclone
+from climada.entity.impact_funcs.trop_cyclone import ImpfSetTropCyclone
 
 class TestEmanuelFormula(unittest.TestCase):
     """Impact function interpolation test"""
 
     def test_default_values_pass(self):
         """Compute mdr interpolating values."""
-        imp_fun = IFTropCyclone()
+        imp_fun = ImpfTropCyclone()
         imp_fun.set_emanuel_usa()
         self.assertEqual(imp_fun.name, 'Emanuel 2011')
         self.assertEqual(imp_fun.haz_type, 'TC')
@@ -58,8 +58,8 @@ class TestEmanuelFormula(unittest.TestCase):
 
     def test_values_pass(self):
         """Compute mdr interpolating values."""
-        imp_fun = IFTropCyclone()
-        imp_fun.set_emanuel_usa(if_id=5, intensity=np.arange(0, 6, 1), v_thresh=2,
+        imp_fun = ImpfTropCyclone()
+        imp_fun.set_emanuel_usa(impf_id=5, intensity=np.arange(0, 6, 1), v_thresh=2,
                  v_half=5, scale=0.5)
         self.assertEqual(imp_fun.name, 'Emanuel 2011')
         self.assertEqual(imp_fun.haz_type, 'TC')
@@ -74,78 +74,78 @@ class TestEmanuelFormula(unittest.TestCase):
 
     def test_wrong_shape(self):
         """Set shape parameters."""
-        imp_fun = IFTropCyclone()
+        imp_fun = ImpfTropCyclone()
         with self.assertRaises(ValueError):
-            imp_fun.set_emanuel_usa(if_id=5, v_thresh=2, v_half=1,
+            imp_fun.set_emanuel_usa(impf_id=5, v_thresh=2, v_half=1,
                                     intensity=np.arange(0, 6, 1))
 
     def test_wrong_scale(self):
         """Set shape parameters."""
-        imp_fun = IFTropCyclone()
+        imp_fun = ImpfTropCyclone()
         with self.assertRaises(ValueError):
-            imp_fun.set_emanuel_usa(if_id=5, scale=2, intensity=np.arange(0, 6, 1))
+            imp_fun.set_emanuel_usa(impf_id=5, scale=2, intensity=np.arange(0, 6, 1))
 
-class TestCalibratedIFS(unittest.TestCase):
+class TestCalibratedImpfSet(unittest.TestCase):
     """Test inititation of IFS with regional calibrated TC IFs
         based on Eberenz et al. (2020)"""
 
     def test_default_values_pass(self):
         """Test return TDR optimized IFs (TDR=1)"""
-        ifs = IFSTropCyclone()
-        v_halfs = ifs.set_calibrated_regional_IFs()
+        impfs = ImpfSetTropCyclone()
+        v_halfs = impfs.set_calibrated_regional_ImpfSet()
         # extract IF for region WP4
-        if_wp4 = ifs.get_func(fun_id=9)[0]
-        self.assertIn('TC', ifs.get_ids().keys())
-        self.assertEqual(ifs.size(), 10)
-        self.assertEqual(ifs.get_ids()['TC'], [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
-        self.assertEqual(if_wp4.intensity_unit, 'm/s')
-        self.assertEqual(if_wp4.name, 'North West Pacific (WP4)')
+        impf_wp4 = impfs.get_func(fun_id=9)[0]
+        self.assertIn('TC', impfs.get_ids().keys())
+        self.assertEqual(impfs.size(), 10)
+        self.assertEqual(impfs.get_ids()['TC'], [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+        self.assertEqual(impf_wp4.intensity_unit, 'm/s')
+        self.assertEqual(impf_wp4.name, 'North West Pacific (WP4)')
         self.assertAlmostEqual(v_halfs['WP2'], 188.4, places=7)
         self.assertAlmostEqual(v_halfs['ROW'], 110.1, places=7)
-        self.assertListEqual(list(if_wp4.intensity), list(np.arange(0, 121, 5)))
-        self.assertEqual(if_wp4.paa.min(), 1.)
-        self.assertEqual(if_wp4.mdd.min(), 0.0)
-        self.assertAlmostEqual(if_wp4.mdd.max(), 0.15779133833203, places=5)
-        self.assertAlmostEqual(if_wp4.calc_mdr(75), 0.02607326527808, places=5)
+        self.assertListEqual(list(impf_wp4.intensity), list(np.arange(0, 121, 5)))
+        self.assertEqual(impf_wp4.paa.min(), 1.)
+        self.assertEqual(impf_wp4.mdd.min(), 0.0)
+        self.assertAlmostEqual(impf_wp4.mdd.max(), 0.15779133833203, places=5)
+        self.assertAlmostEqual(impf_wp4.calc_mdr(75), 0.02607326527808, places=5)
 
     def test_RMSF_pass(self):
         """Test return RMSF optimized IFs (RMSF=minimum)"""
-        ifs = IFSTropCyclone()
-        v_halfs = ifs.set_calibrated_regional_IFs('RMSF')
+        ifs = ImpfSetTropCyclone()
+        v_halfs = ifs.set_calibrated_regional_ImpfSet('RMSF')
         # extract IF for region NA1
-        if_na1 = ifs.get_func(fun_id=1)[0]
+        impf_na1 = ifs.get_func(fun_id=1)[0]
         self.assertEqual(ifs.size(), 10)
         self.assertEqual(ifs.get_ids()['TC'], [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
-        self.assertEqual(if_na1.intensity_unit, 'm/s')
-        self.assertEqual(if_na1.name, 'Caribbean and Mexico (NA1)')
+        self.assertEqual(impf_na1.intensity_unit, 'm/s')
+        self.assertEqual(impf_na1.name, 'Caribbean and Mexico (NA1)')
         self.assertAlmostEqual(v_halfs['NA1'], 59.6, places=7)
         self.assertAlmostEqual(v_halfs['ROW'], 73.4, places=7)
-        self.assertListEqual(list(if_na1.intensity), list(np.arange(0, 121, 5)))
-        self.assertEqual(if_na1.mdd.min(), 0.0)
-        self.assertAlmostEqual(if_na1.mdd.max(), 0.95560418241669, places=5)
-        self.assertAlmostEqual(if_na1.calc_mdr(75), 0.7546423895457, places=5)
+        self.assertListEqual(list(impf_na1.intensity), list(np.arange(0, 121, 5)))
+        self.assertEqual(impf_na1.mdd.min(), 0.0)
+        self.assertAlmostEqual(impf_na1.mdd.max(), 0.95560418241669, places=5)
+        self.assertAlmostEqual(impf_na1.calc_mdr(75), 0.7546423895457, places=5)
 
     def test_quantile_pass(self):
         """Test return IFs from quantile of inidividual event fitting (EDR=1)"""
-        ifs = IFSTropCyclone()
-        ifs.set_calibrated_regional_IFs('EDR')
-        ifs_p10 = IFSTropCyclone()
-        ifs_p10.set_calibrated_regional_IFs('EDR', q=.1)
+        ifs = ImpfSetTropCyclone()
+        ifs.set_calibrated_regional_ImpfSet('EDR')
+        ifs_p10 = ImpfSetTropCyclone()
+        ifs_p10.set_calibrated_regional_ImpfSet('EDR', q=.1)
         # extract IF for region SI
-        if_si = ifs.get_func(fun_id=5)[0]
-        if_si_p10 = ifs_p10.get_func(fun_id=5)[0]
+        impf_si = ifs.get_func(fun_id=5)[0]
+        impf_si_p10 = ifs_p10.get_func(fun_id=5)[0]
         self.assertEqual(ifs.size(), 10)
         self.assertEqual(ifs_p10.size(), 10)
-        self.assertEqual(if_si.intensity_unit, 'm/s')
-        self.assertEqual(if_si_p10.name, 'South Indian (SI)')
-        self.assertAlmostEqual(if_si_p10.mdd.max(), 0.99999999880, places=5)
-        self.assertAlmostEqual(if_si.calc_mdr(30), 0.01620503041, places=5)
-        intensity = np.random.randint(26, if_si.intensity.max())
-        self.assertTrue(if_si.calc_mdr(intensity) < if_si_p10.calc_mdr(intensity))
+        self.assertEqual(impf_si.intensity_unit, 'm/s')
+        self.assertEqual(impf_si_p10.name, 'South Indian (SI)')
+        self.assertAlmostEqual(impf_si_p10.mdd.max(), 0.99999999880, places=5)
+        self.assertAlmostEqual(impf_si.calc_mdr(30), 0.01620503041, places=5)
+        intensity = np.random.randint(26, impf_si.intensity.max())
+        self.assertTrue(impf_si.calc_mdr(intensity) < impf_si_p10.calc_mdr(intensity))
 
     def test_get_countries_per_region(self):
         """Test static get_countries_per_region()"""
-        ifs = IFSTropCyclone()
+        ifs = ImpfSetTropCyclone()
         out = ifs.get_countries_per_region('NA2')
         self.assertEqual(out[0], 'USA and Canada')
         self.assertEqual(out[1], 2)
@@ -155,5 +155,5 @@ class TestCalibratedIFS(unittest.TestCase):
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestEmanuelFormula)
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCalibratedIFS))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCalibratedImpfSet))
     unittest.TextTestRunner(verbosity=2).run(TESTS)

@@ -105,7 +105,7 @@ def scale_bar(ax, length=None, location=(0.5, 0.05), linewidth=3):
 def plot_exposure_ss(exposures, point=None):
     if point is not None:
         fig, ax = plt.subplots(figsize=(15, 15), subplot_kw=dict(projection=ccrs.Mercator()))
-        ax.scatter(exposures[point:point+1].geometry[:].x, exposures[point:point+1].geometry[:].y, c='k',
+        ax.scatter(exposures.gdf[point:point+1].geometry[:].x, exposures.gdf[point:point+1].geometry[:].y, c='k',
                    marker='+', s=800)
         ax.set_xlim(-9931038.907412536, -9926684.253858147)
         ax.set_ylim(1536680.51725147, 1539512.429812354)
@@ -125,8 +125,8 @@ def plot_exposure_ss(exposures, point=None):
         bounds_viv = np.array([7500, 11000, 16500, 33000, 56300])
         norm_viv = mpl.colors.BoundaryNorm(bounds_viv, cmap_viv.N)
 
-        exp_merc_aup = exposures[exposures.category==1]
-        exp_merc_house = exposures[exposures.category==2]
+        exp_merc_aup = exposures.gdf[exposures.gdf.category==1]
+        exp_merc_house = exposures.gdf[exposures.gdf.category==2]
 
         fig, ax = plt.subplots(figsize=(15, 15), subplot_kw=dict(projection=ccrs.Mercator()))
         clr_1 = ax.scatter(exp_merc_aup.geometry[:].x, exp_merc_aup.geometry[:].y, c=exp_merc_aup.value.values,

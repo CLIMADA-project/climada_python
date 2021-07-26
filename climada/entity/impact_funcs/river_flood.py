@@ -19,9 +19,11 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define impact functions for river flood .
 """
 
-__all__ = ['IFRiverFlood']
-import numpy as np
+__all__ = ['ImpfRiverFlood', 'IFRiverFlood']
+
 import logging
+from deprecation import deprecated
+import numpy as np
 import pandas as pd
 
 from climada.util.constants import RIVER_FLOOD_REGIONS_CSV
@@ -43,7 +45,7 @@ DEF_VAR_EXCEL = {'sheet_name': 'damagefunctions',
                  }
 
 
-class IFRiverFlood(ImpactFunc):
+class ImpfRiverFlood(ImpactFunc):
     """Impact functions for tropical cyclones."""
 
     def __init__(self):
@@ -52,7 +54,7 @@ class IFRiverFlood(ImpactFunc):
         self.intensity_unit = 'm'
         self.continent = ''
 
-    def set_RF_IF_Africa(self):
+    def set_RF_Impf_Africa(self):
         self.id = 1
         self.name = "Flood Africa JRC Residential noPAA"
         self.continent = 'Africa'
@@ -65,7 +67,7 @@ class IFRiverFlood(ImpactFunc):
 
         self.paa = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
 
-    def set_RF_IF_Asia(self):
+    def set_RF_Impf_Asia(self):
         self.id = 2
         self.name = "Flood Asia JRC Residential noPAA"
         self.continent = 'Asia'
@@ -79,7 +81,7 @@ class IFRiverFlood(ImpactFunc):
 
         self.paa = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
 
-    def set_RF_IF_Europe(self):
+    def set_RF_Impf_Europe(self):
         self.id = 3
         self.name = "Flood Europe JRC Residential noPAA"
         self.continent = 'Europe'
@@ -93,7 +95,7 @@ class IFRiverFlood(ImpactFunc):
 
         self.paa = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
 
-    def set_RF_IF_NorthAmerica(self):
+    def set_RF_Impf_NorthAmerica(self):
         self.id = 4
         self.name = "Flood North America JRC Residential noPAA"
         self.continent = 'NorthAmerica'
@@ -108,7 +110,7 @@ class IFRiverFlood(ImpactFunc):
 
         self.paa = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
 
-    def set_RF_IF_Oceania(self):
+    def set_RF_Impf_Oceania(self):
         self.id = 5
         self.name = "Flood Oceania JRC Residential noPAA"
         self.continent = 'Oceania'
@@ -122,7 +124,7 @@ class IFRiverFlood(ImpactFunc):
 
         self.paa = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
 
-    def set_RF_IF_SouthAmerica(self):
+    def set_RF_Impf_SouthAmerica(self):
         self.id = 6
         self.name = "Flood South America JRC Residential noPAA"
         self.continent = 'SouthAmerica'
@@ -136,39 +138,46 @@ class IFRiverFlood(ImpactFunc):
 
         self.paa = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
 
+
 def flood_imp_func_set():
     """Builds impact function set for river flood, using standard files"""
 
-    if_set = ImpactFuncSet()
+    impf_set = ImpactFuncSet()
 
-    if_africa = IFRiverFlood()
-    if_africa.set_RF_IF_Africa()
-    if_set.append(if_africa)
+    impf_africa = ImpfRiverFlood()
+    impf_africa.set_RF_Impf_Africa()
+    impf_set.append(impf_africa)
 
-    if_asia = IFRiverFlood()
-    if_asia.set_RF_IF_Asia()
-    if_set.append(if_asia)
+    impf_asia = ImpfRiverFlood()
+    impf_asia.set_RF_Impf_Asia()
+    impf_set.append(impf_asia)
 
-    if_europe = IFRiverFlood()
-    if_europe.set_RF_IF_Europe()
-    if_set.append(if_europe)
+    impf_europe = ImpfRiverFlood()
+    impf_europe.set_RF_Impf_Europe()
+    impf_set.append(impf_europe)
 
-    if_na = IFRiverFlood()
-    if_na.set_RF_IF_NorthAmerica()
-    if_set.append(if_na)
+    impf_na = ImpfRiverFlood()
+    impf_na.set_RF_Impf_NorthAmerica()
+    impf_set.append(impf_na)
 
-    if_oceania = IFRiverFlood()
-    if_oceania.set_RF_IF_Oceania()
-    if_set.append(if_oceania)
+    impf_oceania = ImpfRiverFlood()
+    impf_oceania.set_RF_Impf_Oceania()
+    impf_set.append(impf_oceania)
 
-    if_sa = IFRiverFlood()
-    if_sa.set_RF_IF_SouthAmerica()
-    if_set.append(if_sa)
+    impf_sa = ImpfRiverFlood()
+    impf_sa.set_RF_Impf_SouthAmerica()
+    impf_set.append(impf_sa)
 
-    return if_set
+    return impf_set
 
 
-def assign_if_simple(exposure, country):
+def assign_Impf_simple(exposure, country):
     info = pd.read_csv(RIVER_FLOOD_REGIONS_CSV)
-    if_id = info.loc[info['ISO'] == country, 'if_RF'].values[0]
-    exposure['if_RF'] = if_id
+    impf_id = info.loc[info['ISO'] == country, 'Impf_RF'].values[0]
+    exposure['Impf_RF'] = impf_id
+
+
+@deprecated(details="The class name IFRiverFlood is deprecated and won't be supported in a future "
+                   +"version. Use ImpfRiverFlood instead")
+class IFRiverFlood(ImpfRiverFlood):
+    """Is ImpfRiverFlood now"""

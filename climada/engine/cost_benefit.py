@@ -45,22 +45,28 @@ NO_MEASURE = 'no measure'
 def risk_aai_agg(impact):
     """Risk measurement as average annual impact aggregated.
 
-    Parameters:
-        impact (Impact): an Impact instance
+    Parameters
+    ----------
+    impact : climada.engine.Impact
+        an Impact instance
 
-    Returns:
-        float
+    Returns
+    -------
+    float
     """
     return impact.aai_agg
 
 def risk_rp_100(impact):
     """Risk measurement as exceedance impact at 100 years return period.
 
-    Parameters:
-        impact (Impact): an Impact instance
+    Parameters
+    ----------
+    impact : climada.engine.Impact
+        an Impact instance
 
-    Returns:
-        float
+    Returns
+    -------
+    float
     """
     if impact.at_event.size > 0:
         efc = impact.calc_freq_curve([100])
@@ -70,11 +76,14 @@ def risk_rp_100(impact):
 def risk_rp_250(impact):
     """Risk measurement as exceedance impact at 250 years return period.
 
-    Parameters:
-        impact (Impact): an Impact instance
+    Parameters
+    ----------
+    impact : climada.engine.Impact
+        an Impact instance
 
-    Returns:
-        float
+    Returns
+    -------
+    float
     """
     if impact.at_event.size > 0:
         efc = impact.calc_freq_curve([250])
@@ -85,38 +94,44 @@ class CostBenefit():
     """Impact definition. Compute from an entity (exposures and impact
     functions) and hazard.
 
-    Attributes:
-        present_year (int): present reference year
-        future_year (int): future year
-
-        tot_climate_risk (float): total climate risk without measures
-        unit (str): unit used for impact
-
-        color_rgb (dict): color code RGB for each measure.
-            Key: measure name ('no measure' used for case without measure),
-            Value: np.array
-
-        benefit (dict): benefit of each measure. Key: measure name, Value:
-            float benefit
-        cost_ben_ratio (dict): cost benefit ratio of each measure. Key: measure
-            name, Value: float cost benefit ratio
-
-        imp_meas_future (dict): impact of each measure at future or default.
-            Key: measure name ('no measure' used for case without measure),
-            Value: dict with:
-                             'cost' (tuple): (cost measure, cost factor insurance),
-                             'risk' (float): risk measurement,
-                             'risk_transf' (float): annual expected risk transfer,
-                             'efc'  (ImpactFreqCurve): impact exceedance freq
-                (optional)   'impact' (Impact): impact instance
-        imp_meas_present (dict): impact of each measure at present.
-            Key: measure name ('no measure' used for case without measure),
-            Value: dict with:
-                             'cost' (tuple): (cost measure, cost factor insurance),
-                             'risk' (float): risk measurement,
-                             'risk_transf' (float): annual expected risk transfer,
-                             'efc'  (ImpactFreqCurve): impact exceedance freq
-                (optional)   'impact' (Impact): impact instance
+    Attributes
+    ----------
+    present_year : int
+        present reference year
+    future_year : int
+        future year
+    tot_climate_risk : float
+        total climate risk without measures
+    unit : str
+        unit used for impact
+    color_rgb : dict
+        color code RGB for each measure.
+    Key : str
+        measure name ('no measure' used for case without measure),
+    Value : np.array
+    benefit : dict
+        benefit of each measure. Key: measure name, Value: float benefit
+    cost_ben_ratio : dict
+        cost benefit ratio of each measure. Key: measure
+        name, Value: float cost benefit ratio
+    imp_meas_future : dict
+        impact of each measure at future or default.
+        Key: measure name ('no measure' used for case without measure),
+        Value: dict with:
+        'cost' (tuple): (cost measure, cost factor insurance),
+        'risk' (float): risk measurement,
+        'risk_transf' (float): annual expected risk transfer,
+        'efc'  (ImpactFreqCurve): impact exceedance freq (optional)
+        'impact' (Impact): impact instance
+    imp_meas_present : dict
+        impact of each measure at present.
+        Key: measure name ('no measure' used for case without measure),
+        Value: dict with:
+        'cost' (tuple): (cost measure, cost factor insurance),
+        'risk' (float): risk measurement,
+        'risk_transf' (float): annual expected risk transfer,
+        'efc'  (ImpactFreqCurve): impact exceedance freq (optional)
+        'impact' (Impact): impact instance
     """
 
     def __init__(self):
@@ -150,26 +165,31 @@ class CostBenefit():
         If future entity provided, only the costs of the measures
         of the future and the discount rates of the present will be used.
 
-        Parameters:
-            hazard (Hazard): hazard
-            entity (Entity): entity
-            haz_future (Hazard, optional): hazard in the future (future year provided at
-                ent_future)
-            ent_future (Entity, optional): entity in the future
-            future_year (int, optional): future year to consider if no ent_future
-                provided. The benefits are added from the entity.exposures.ref_year until
-                ent_future.exposures.ref_year, or until future_year if no ent_future given.
-                Default: entity.exposures.ref_year+1
-            risk_func (func, optional): function describing risk measure to use
-                to compute the annual benefit from the Impact. Default: average
-                annual impact (aggregated).
-            imp_time_depen (float, optional): parameter which represents time
-                evolution of impact (super- or sublinear). If None: all years
-                count the same when there is no future hazard nor entity and 1
-                (linear annual change) when there is future hazard or entity.
-                Default: None.
-            save_imp (bool, optional): True if Impact of each measure is saved.
-                Default: False.
+        Parameters
+        ----------
+        hazard : climada.Hazard
+        entity : climada.entity
+        haz_future : climada.Hazard, optional
+            hazard in the future (future year provided at ent_future)
+        ent_future : Entity, optional
+            entity in the future. Default is None
+        future_year : int, optional
+            future year to consider if no ent_future. Default is None
+            provided. The benefits are added from the entity.exposures.ref_year until
+            ent_future.exposures.ref_year, or until future_year if no ent_future given.
+            Default: entity.exposures.ref_year+1
+        risk_func : func optional
+            function describing risk measure to use
+            to compute the annual benefit from the Impact.
+            Default: average annual impact (aggregated).
+        imp_time_depen : float, optional
+            parameter which represents time
+            evolution of impact (super- or sublinear). If None: all years
+            count the same when there is no future hazard nor entity and 1
+            (linear annual change) when there is future hazard or entity.
+            Default is None.
+        save_imp : bool, optional)
+        True if Impact of each measure is saved. Default is False.
         """
         # Present year given in entity. Future year in ent_future if provided.
         self.present_year = entity.exposures.ref_year
@@ -221,22 +241,29 @@ class CostBenefit():
         measures per event are added. To combine with risk transfer options use
         apply_risk_transfer.
 
-        Parameters:
-            in_meas_names (list(str)): list with names of measures to combine
-            new_name (str): name to give to the new resulting measure
+        Parameters
+        ----------
+        in_meas_names : list(str)
+        list with names of measures to combine
+        new_name :  str
+            name to give to the new resulting measure
             new_color (np.array): color code RGB for new measure, e.g.
-                np.array([0.1, 0.1, 0.1])
-            disc_rates (DiscRates): discount rates instance
-            imp_time_depen (float, optional): parameter which represents time
-                evolution of impact (super- or sublinear). If None: all years
-                count the same when there is no future hazard nor entity and 1
-                (linear annual change) when there is future hazard or entity.
-                Default: None.
-            risk_func (func, optional): function describing risk measure given
-                an Impact. Default: average annual impact (aggregated).
+            np.array([0.1, 0.1, 0.1])
+        disc_rates : DiscRates
+            discount rates instance
+        imp_time_depen : float, optional
+            parameter which represents time
+            evolution of impact (super- or sublinear). If None: all years
+            count the same when there is no future hazard nor entity and 1
+            (linear annual change) when there is future hazard or entity.
+            Default is None.
+        risk_func : func, optional
+            function describing risk measure given
+            an Impact. Default: average annual impact (aggregated).
 
-        Returns:
-            CostBenefit
+        Returns
+        -------
+        climada.CostBenefit
         """
         new_cb = CostBenefit()
         new_cb.present_year = self.present_year
@@ -270,21 +297,28 @@ class CostBenefit():
         impact and compares it to when no measure is applied. Appended to
         dictionaries of measures.
 
-        Paramters:
-            meas_name (str): name of measure where to apply risk transfer
-            attachment (float): risk transfer values attachment (deductible)
-            cover (float): risk transfer cover
-            cost_fix (float): fixed cost of implemented innsurance, e.g.
-                transaction costs
-            cost_factor (float): factor to which to multiply the insurance layer
-                to compute its cost. Default: 1
-            imp_time_depen (float, optional): parameter which represents time
-                evolution of impact (super- or sublinear). If None: all years
-                count the same when there is no future hazard nor entity and 1
-                (linear annual change) when there is future hazard or entity.
-                Default: None.
-            risk_func (func, optional): function describing risk measure given
-                an Impact. Default: average annual impact (aggregated).
+        Parameters
+        ----------
+        meas_name : str
+            name of measure where to apply risk transfer
+        attachment : float
+            risk transfer values attachment (deductible)
+        cover : float
+            risk transfer cover
+        cost_fix : float
+            fixed cost of implemented innsurance, e.g. transaction costs
+        cost_factor : float, optional
+            factor to which to multiply the insurance layer
+            to compute its cost. Default is 1
+        imp_time_depen : float, optional
+            parameter which represents time
+            evolution of impact (super- or sublinear). If None: all years
+            count the same when there is no future hazard nor entity and 1
+            (linear annual change) when there is future hazard or entity.
+            Default is None.
+        risk_func : func, optional
+            function describing risk measure given
+            an Impact. Default: average annual impact (aggregated).
         """
         m_transf_name = 'risk transfer (' + meas_name + ')'
         self.color_rgb[m_transf_name] = np.maximum(np.minimum(self.color_rgb[meas_name] -
@@ -339,8 +373,10 @@ class CostBenefit():
     def remove_measure(self, meas_name):
         """Remove computed values of given measure
 
-        Parameters:
-            meas_name (str): name of measure to remove
+        Parameters
+        ----------
+        meas_name : str
+            name of measure to remove
         """
         del self.color_rgb[meas_name]
         del self.benefit[meas_name]
@@ -352,15 +388,20 @@ class CostBenefit():
     def plot_cost_benefit(self, cb_list=None, axis=None, **kwargs):
         """Plot cost-benefit graph. Call after calc().
 
-        Parameters:
-            cb_list (list(CostBenefit), optional): if other CostBenefit
-                provided, overlay them all. Used for uncertainty visualization.
-            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
-            kwargs (optional): arguments for Rectangle matplotlib, e.g. alpha=0.5
-                (color is set by measures color attribute)
+        Parameters
+        ----------
+        cb_list : list(CostBenefit), optional
+            if other CostBenefit
+            provided, overlay them all. Used for uncertainty visualization.
+        axis : matplotlib.axes._subplots.AxesSubplot, optional
+            axis to use
+        kwargs : optional
+            arguments for Rectangle matplotlib, e.g. alpha=0.5
+            (color is set by measures color attribute)
 
-        Returns:
-            matplotlib.axes._subplots.AxesSubplot
+        Returns
+        -------
+        matplotlib.axes._subplots.AxesSubplot
         """
         if cb_list:
             if 'alpha' not in kwargs:
@@ -399,14 +440,19 @@ class CostBenefit():
     def plot_event_view(self, return_per=(10, 25, 100), axis=None, **kwargs):
         """Plot averted damages for return periods. Call after calc().
 
-        Parameters:
-            return_per (list, optional): years to visualize. Default 10, 25, 100
-            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
-            kwargs (optional): arguments for bar matplotlib function, e.g. alpha=0.5
-                (color is set by measures color attribute)
+        Parameters
+        ----------
+        return_per : list, optional
+            years to visualize. Default 10, 25, 100
+        axis : matplotlib.axes._subplots.AxesSubplot, optional
+            axis to use
+        kwargs : optional
+            arguments for bar matplotlib function, e.g. alpha=0.5
+            (color is set by measures color attribute)
 
-        Returns:
-            matplotlib.axes._subplots.AxesSubplot
+        Returns
+        -------
+        matplotlib.axes._subplots.AxesSubplot
         """
         if not self.imp_meas_future:
             raise ValueError('Compute CostBenefit.calc() first')
@@ -452,19 +498,25 @@ class CostBenefit():
         """Plot waterfall graph at future with given risk metric. Can be called
         before and after calc().
 
-        Parameters:
-            hazard (Hazard): hazard
-            entity (Entity): entity
-            haz_future (Hazard): hazard in the future (future year provided at
-                ent_future)
-            ent_future (Entity): entity in the future
-            risk_func (func, optional): function describing risk measure given
-                an Impact. Default: average annual impact (aggregated).
-            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
-            kwargs (optional): arguments for bar matplotlib function, e.g. alpha=0.5
+        Parameters
+        ----------
+        hazard : climada.Hazard
+        entity : climada.Entity
+        haz_future : Hazard
+            hazard in the future (future year provided at ent_future)
+        ent_future : climada.Entity
+            entity in the future
+        risk_func : func, optional
+            function describing risk measure given
+            an Impact. Default: average annual impact (aggregated).
+        axis : matplotlib.axes._subplots.AxesSubplot, optional
+            axis to use
+        kwargs : optional
+            arguments for bar matplotlib function, e.g. alpha=0.5
 
-        Returns:
-            matplotlib.axes._subplots.AxesSubplot
+        Returns
+        -------
+        matplotlib.axes._subplots.AxesSubplot
         """
         if ent_future.exposures.ref_year == entity.exposures.ref_year:
             raise ValueError('Same reference years for future and present entities.')
@@ -531,21 +583,30 @@ class CostBenefit():
         """Plot waterfall graph with accumulated values from present to future
         year. Call after calc() with save_imp=True.
 
-        Parameters:
-            axis (matplotlib.axes._subplots.AxesSubplot): axis from plot_waterfall
-                or plot_waterfall_accumulated where arrow will be added to last bar
-            in_meas_names (list(str), optional): list with names of measures to
-                represented total averted damage. Default: all measures
-            accumulate (bool, optional): accumulated averted damage (True) or averted
-                damage in future (False). Default: False
-            combine (bool, optional): use combine_measures to compute total averted
-                damage (True) or just add benefits (False). Default: False
-            risk_func (func, optional): function describing risk measure given
-                an Impact used in combine_measures. Default: average annual impact (aggregated).
-            disc_rates (DiscRates, optional): discount rates used in combine_measures
-            imp_time_depen (float, optional): parameter which represent time
-                evolution of impact used in combine_measures. Default: 1 (linear).
-            kwargs (optional): arguments for bar matplotlib function, e.g. alpha=0.5
+        Parameters
+        ----------
+        axis : matplotlib.axes._subplots.AxesSubplot
+            axis from plot_waterfall
+            or plot_waterfall_accumulated where arrow will be added to last bar
+        in_meas_names : list(str), optional
+            list with names of measures to
+            represented total averted damage. Default: all measures
+        accumulate : bool, optional)
+            accumulated averted damage (True) or averted
+            damage in future (False). Default: False
+        combine : bool, optional
+            use combine_measures to compute total averted
+            damage (True) or just add benefits (False). Default: False
+        risk_func : func, optional
+            function describing risk measure given
+            an Impact used in combine_measures. Default: average annual impact (aggregated).
+        disc_rates : DiscRates, optional
+            discount rates used in combine_measures
+        imp_time_depen : float, optional
+            parameter which represent time
+            evolution of impact used in combine_measures. Default: 1 (linear).
+        kwargs : optional
+            arguments for bar matplotlib function, e.g. alpha=0.5
         """
         if not in_meas_names:
             in_meas_names = list(self.benefit.keys())
@@ -584,18 +645,25 @@ class CostBenefit():
         """Plot waterfall graph with accumulated values from present to future
         year. Call after calc() with save_imp=True. Provide same inputs as in calc.
 
-        Parameters:
-            hazard (Hazard): hazard
-            entity (Entity): entity
-            ent_future (Entity): entity in the future
-            risk_func (func, optional): function describing risk measure given
-                an Impact. Default: average annual impact (aggregated).
-            imp_time_depen (float, optional): parameter which represent time
-                evolution of impact. Default: 1 (linear).
-            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
-            kwargs (optional): arguments for bar matplotlib function, e.g. alpha=0.5
+        Parameters
+        ----------
+        hazard : climada.Hazard
+        entity : climada.Entity
+        ent_future : climada.Entity
+            entity in the future
+        risk_func : func, optional
+            function describing risk measure given an Impact.
+            Default: average annual impact (aggregated).
+        imp_time_depen : float, optional
+            parameter which represent time
+            evolution of impact used in combine_measures. Default: 1 (linear).
+        axis : matplotlib.axes._subplots.AxesSubplot, optional
+            axis to use
+        kwargs : optional
+            arguments for bar matplotlib function, e.g. alpha=0.5
 
-        Returns:
+        Returns
+        -------
             matplotlib.axes._subplots.AxesSubplot
         """
         if not self.imp_meas_future or not self.imp_meas_present:
@@ -668,17 +736,23 @@ class CostBenefit():
         """Compute impact of each measure and transform it to input risk
         measurement. Set reference year from exposures value.
 
-        Parameters:
-            hazard (Hazard): hazard.
-            exposures (Exposures): exposures.
-            meas_set (MeasureSet): set of measures.
-            imp_fun_set (ImpactFuncSet): set of impact functions.
-            when (str, optional): 'present' or 'future'. The conditions that
-                are being considered.
-            risk_func (function, optional): function used to transform impact
-                to a risk measurement.
-            save_imp (bool, optional): activate if Impact of each measure is
-                saved. Default: False.
+        Parameters
+        ----------
+        hazard : climada.Hazard
+        exposures : climada.entity.Exposures
+        meas_set : climada.MeasureSet
+            set of measures.
+        imp_fun_set : ImpactFuncSet
+            set of impact functions.
+        when : str, optional
+            'present' or 'future'. The conditions that
+            are being considered.
+        risk_func : func, optional
+            function describing risk measure given an Impact.
+            Default: average annual impact (aggregated).
+        save_imp : bool, optional
+            activate if Impact of each measure is
+            saved. Default: False.
         """
         impact_meas = dict()
 
@@ -715,10 +789,12 @@ class CostBenefit():
     def _calc_cost_benefit(self, disc_rates, imp_time_depen=None):
         """Compute discounted impact from present year to future year
 
-        Parameters:
-            disc_rates (DiscRates): discount rates instance
-            imp_time_depen (float, optional): parameter which represent time
-                evolution of impact
+        Parameters
+        ----------
+        disc_rates : DiscRates
+            discount rates instance
+        imp_time_depen : float, optional
+            parameter which represent time evolution of impact
         """
         LOGGER.info('Computing cost benefit from years %s to %s.',
                     str(self.present_year), str(self.future_year))
@@ -752,14 +828,20 @@ class CostBenefit():
                       ini_state=NO_MEASURE):
         """Compute cost and benefit for given measure with time dependency
 
-        Parameters:
-            meas_name (str): name of measure
-            meas_val (dict): contains measure's cost, risk, efc, risk_trans and
-                optionally impact at future
-            disc_rates (DiscRates): discount rates instance
-            time_dep (np.array): time dependency array
-            ini_state (str): name of the measure to which to compute benefit.
-                Default: 'no measure'
+        Parameters
+        ----------
+        meas_name : str
+            name of measure
+        meas_val : dict
+            contains measure's cost, risk, efc, risk_trans and
+            optionally impact at future
+        disc_rates : DiscRates
+            discount rates instance
+        time_dep : np.array
+            time dependency array
+        ini_state : str, optional
+            name of the measure to which to compute benefit.
+            Default: 'no measure'
         """
         fut_benefit = self.imp_meas_future[ini_state]['risk'] - meas_val['risk']
         fut_risk_tr = meas_val['risk_transf']
@@ -789,12 +871,14 @@ class CostBenefit():
         representing the rate of damage difference achieved that year, according
         to the growth represented by parameter imp_time_depen.
 
-        Parameters:
-            imp_time_depen (float, optional): parameter which represent time
-                evolution of impact. Time array is all ones if not provided
+        Parameters
+        ----------
+         imp_time_depen : float, optional
+            parameter which represent time evolution of impact
 
-        Returns:
-            np.array
+        Returns
+        -------
+        np.array
         """
         n_years = self.future_year - self.present_year + 1
         if imp_time_depen:
@@ -808,12 +892,16 @@ class CostBenefit():
                               risk_present=None):
         """Net present value of total unaverted damages
 
-        Parameters:
-            risk_future (float): risk under future situation
-            disc_rates (DiscRates): discount rates object
-            time_dep (np.array): values in 0-1 indicating impact growth at each
-                year
-            risk_present (float): risk under current situation
+        Parameters
+        ----------
+        risk_future : float
+            risk under future situation
+        disc_rates : climada.DiscRates
+            discount rates object
+        time_dep : np.array
+            values in 0-1 indicating impact growth at each year
+        risk_present : float
+            risk under current situation
 
         Returns:
             float
@@ -835,13 +923,19 @@ class CostBenefit():
         the dictionary imp_meas_future if when='future' and imp_meas_present
         if when='present'.
 
-        Parameters:
-            in_meas_names (list(str)): list with names of measures to combine
-            new_name (str): name to give to the new resulting measure
-            risk_func (func, optional): function describing risk measure given
-                an Impact. Default: average annual impact (aggregated).
-            when (str): 'present' or 'future' making reference to which dictionary
-                to fill (imp_meas_present or imp_meas_future respectively)
+        Parameters
+        ----------
+        in_meas_names : list(str)
+            list with names of measures to combine
+        new_name : str
+            name to give to the new resulting measure
+        risk_func : func, optional
+            function describing risk measure given
+            an Impact. Default: average annual impact (aggregated).
+        when : str, optional
+            'present' or 'future' making reference to which dictionary
+            to fill (imp_meas_present or imp_meas_future respectively)
+            default: 'future'
         """
         if when == 'future':
             imp_dict = self.imp_meas_future
@@ -903,14 +997,19 @@ class CostBenefit():
     def _plot_list_cost_ben(cb_list, axis=None, **kwargs):
         """Overlay cost-benefit bars for every measure
 
-        Parameters:
-            cb_list (list): list of CostBenefit instances with filled values
-            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
-            kwargs (optional): arguments for Rectangle matplotlib, e.g. alpha=0.5
-                (color is set by measures color attribute)
+        Parameters
+        ----------
+        cb_list : list
+            list of CostBenefit instances with filled values
+        axis : matplotlib.axes._subplots.AxesSubplot, optional
+            axis to use
+        kwargs : optional
+            arguments for Rectangle matplotlib, e.g. alpha=0.5
+            (color is set by measures color attribute)
 
-        Returns:
-            matplotlib.axes._subplots.AxesSubplot
+        Returns
+        -------
+        matplotlib.axes._subplots.AxesSubplot
         """
         if 'alpha' not in kwargs:
             kwargs['alpha'] = 0.5
@@ -962,13 +1061,20 @@ class CostBenefit():
         """Plot arrow inn fourth bar of total averted damage by implementing
         all the measures.
 
-        Parameters:
-            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
-            bar_4 (matplotlib.container.BarContainer): bar where arrow is plotted
-            tot_benefit (float): arrow length
-            risk_tot (float): total risk
-            norm_fact (float): normalization factor
-            kwargs (optional): arguments for bar matplotlib function, e.g. alpha=0.5
+        Parameters
+        ----------
+        axis : matplotlib.axes._subplots.AxesSubplot, optional
+            axis to use
+        bar_4 : matplotlib.container.BarContainer
+            bar where arrow is plotted
+        tot_benefit : float
+            arrow length
+        risk_tot : float
+            total risk
+        norm_fact : float
+            normalization factor
+        kwargs : optional
+            arguments for bar matplotlib function, e.g. alpha=0.5
         """
         bar_bottom, bar_top = bar_4.get_bbox().get_points()
         axis.text(bar_top[0] - (bar_top[0] - bar_bottom[0]) / 2, bar_top[1],
@@ -989,9 +1095,12 @@ class CostBenefit():
     def _print_risk_transfer(self, layer, layer_no, cost_fix, cost_factor):
         """Print comparative of risk transfer with and without measure
 
-        Parameters:
-            layer (float): expected insurance layer with measure
-            layer_on (float): expected insurance layer without measure
+        Parameters
+        ----------
+        layer : float
+            expected insurance layer with measure
+        layer_on : float
+            expected insurance layer without measure
         """
         norm_fact, norm_name = _norm_values(np.array(list(self.benefit.values())).max())
         norm_name = '(' + self.unit + ' ' + norm_name + ')'
@@ -1012,11 +1121,14 @@ class CostBenefit():
 def _norm_values(value):
     """Compute normalization value and name
 
-    Parameters:
-        value (float): value to normalize
+    Parameters
+    ----------
+    value : float
+        value to normalize
 
-    Returns:
-        norm_fact, norm_name
+    Returns :
+    norm_fact: float
+    norm_name: float
     """
     norm_fact = 1.
     norm_name = ''
