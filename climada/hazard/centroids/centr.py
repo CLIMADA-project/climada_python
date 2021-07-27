@@ -553,7 +553,7 @@ class Centroids():
 
         Raises
         ------
-            ValueError
+        ValueError
         """
         # restrict to non-empty centroids
         cent_list = [c for c in (self,) + others if c.size > 0 or c.meta]
@@ -1010,7 +1010,9 @@ class Centroids():
         """Get CRS of raster or vector."""
         if self.meta:
             return self.meta['crs']
-        return self.geometry.crs
+        elif self.geometry.crs:
+            return self.geometry.crs
+        return DEF_CRS
 
     @property
     def size(self):
