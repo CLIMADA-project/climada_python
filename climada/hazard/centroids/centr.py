@@ -589,10 +589,11 @@ class Centroids():
         centroids = Centroids()
         centroids.meta = {}
         for attr_name, attr_val in vars(cent_list[0]).items():
-            attr_val_list = [getattr(cent, attr_name) for cent in cent_list]
-            if (isinstance(attr_val, np.ndarray) and attr_val.ndim == 1):
+            if isinstance(attr_val, np.ndarray) and attr_val.ndim == 1:
+                attr_val_list = [getattr(cent, attr_name) for cent in cent_list]
                 setattr(centroids, attr_name, np.hstack(attr_val_list))
-            if isinstance(attr_val, gpd.GeoSeries):
+            elif isinstance(attr_val, gpd.GeoSeries):
+                attr_val_list = [getattr(cent, attr_name) for cent in cent_list]
                 setattr(centroids, attr_name, pd.concat(attr_val_list, ignore_index=True))
 
         # finally, remove duplicate points
