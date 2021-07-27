@@ -819,6 +819,14 @@ class TestAppend(unittest.TestCase):
         self.assertTrue(np.array_equal(haz_2.orig, [True]))
         self.assertEqual(haz_2.tag.description, 'Description 1')
 
+        cent3 = Centroids()
+        cent3.lat, cent3.lon = np.array([0.5, 3]), np.array([-0.5, 3])
+        cent3.on_land = np.array([True, True, False])
+
+        with self.assertRaises(ValueError) as cm:
+            haz_1.change_centroids(cent3, threshold=100)
+        self.assertIn('two hazard centroids are mapped to the same centroids', str(cm.exception))
+
 class TestStats(unittest.TestCase):
     """Test return period statistics"""
 

@@ -1551,7 +1551,7 @@ class Hazard():
 
         Returns
         -------
-        haz_new_cent: climada.hazard.Hazard()
+        haz_new_cent: climada.hazard.Hazard object
             Hazard projected onto centroids
 
         Raises
@@ -1564,38 +1564,34 @@ class Hazard():
         util.coordinates.assign_coordinates: algorithm to match centroids.
 
         """
-        #Define empty hazard
+        # define empty hazard
         haz_new_cent = copy.deepcopy(self)
         haz_new_cent.centroids = centroids
 
-        #Indices for mapping matrices onto common centroids
+        # indices for mapping matrices onto common centroids
         new_cent_idx = u_coord.assign_coordinates(
             self.centroids.coord, centroids.coord, threshold=threshold
             )
 
         if -1 in new_cent_idx:
             raise ValueError("At least one hazard centroid is at a larger "
-                    f"distance than the given threshold {threshold} "
-                    "from the given centroids. Please choose a "
-                    "larger threshold or enlarge the centroids")
+                             f"distance than the given threshold {threshold} "
+                             "from the given centroids. Please choose a "
+                             "larger threshold or enlarge the centroids")
 
+        if np.unique(new_cent_idx).size < new_cent_idx.size:
+            raise ValueError("At least two hazard centroids are mapped to the same "
+                             "centroids. Please make sure that the given centroids "
+                             "cover the same area like the original centroids and "
+                             "are not of lower resolution.")
 
-        #Re-assign attributes intensity and fraction
-        matrix = self.intensity
-        new_int = (
-            sparse.csr_matrix(
-                (matrix.data, new_cent_idx[matrix.indices], matrix.indptr),
-                shape=(matrix.shape[0], centroids.size)
-                )
-            )
-        setattr(haz_new_cent, "intensity", new_int)
-        matrix = self.fraction
-        new_frac = (
-            sparse.csr_matrix(
-                (matrix.data, new_cent_idx[matrix.indices], matrix.indptr),
-                shape=(matrix.shape[0], centroids.size)
-                )
-            )
-        setattr(haz_new_cent, "fraction", new_frac)
+        # re-assign attributes intensity and fraction
+        for attr_name in ["intensity", "fraction"]:
+            matrix = getattr(self, attr_name)
+            setattr(haz_new_cent, attr_name,
+                    sparse.csr_matrix(
+                        (matrix.data, new_cent_idx[matrix.indices], matrix.indptr),
+                        shape=(matrix.shape[0], centroids.size)
+                        ))
 
         return haz_new_cent
