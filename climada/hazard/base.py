@@ -1417,12 +1417,12 @@ class Hazard():
 
         Parameters
         ----------
-        hazard: climada.hazard.Hazard()
+        hazard: climada.hazard.Hazard object
             Hazard instance to append to self
 
         Raises
         ------
-            TypeError
+        TypeError
 
         See Also
         --------
@@ -1453,13 +1453,13 @@ class Hazard():
 
         Parameters
         ----------
-        haz_list: list(climada.hazard.Hazard())
-            Hazard instances of the same hazard type
+        haz_list: list of climada.hazard.Hazard objects
+            Hazard instances of the same hazard type (subclass).
 
         Returns
         -------
-        haz_concat: climada.hazard.Hazard()
-            Concatenated hazard.
+        haz_concat: instance of climada.hazard.Hazard
+            This will be of the same type (subclass) as all the hazards in `haz_list`.
 
         Raises
         ------
@@ -1467,21 +1467,24 @@ class Hazard():
 
         See Also
         --------
-        hazard.centroids.union: combine centroids
+        hazard.centroids.Centroids.union: combine centroids
         """
-        # check units consistency among hazards
-        haz_types = {haz.tag.haz_type
-                    for haz in haz_list
-                    if haz.tag.haz_type != ''
-                    }
+        # check type and unit consistency among hazards
+        haz_types = {haz.tag.haz_type for haz in haz_list if haz.tag.haz_type != ''}
         if len(haz_types) > 1:
-            raise ValueError("The haz_list contains hazards of different "
-                            f"types {haz_types}. The hazards are incompatible "
+            raise ValueError("haz_list contains hazards of different "
+                            f"types: {haz_types}. The hazards are incompatible "
+                            "and cannot be concatenated.")
+
+        haz_types = {type(haz) for haz in haz_list}
+        if len(haz_types) > 1:
+            raise ValueError("haz_list contains hazards of different "
+                            f"types: {haz_types}. The hazards are incompatible "
                             "and cannot be concatenated.")
 
         units = {haz.units for haz in haz_list if haz.units != ''}
         if len(units) > 1:
-            raise ValueError("The haz_list contains hazards with different "
+            raise ValueError("haz_list contains hazards with different "
                             f"units {units}. The hazards are incompatible and "
                             "cannot be concatenated.")
         elif len(units) == 0:

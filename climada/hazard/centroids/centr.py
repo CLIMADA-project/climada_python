@@ -560,7 +560,7 @@ class Centroids():
         if len(cent_list) == 0 or len(others) == 0:
             return copy.deepcopy(self)
 
-        # check if all centroids agree
+        # check if all centroids are identical
         if all([cent_list[0].equal(cent) for cent in cent_list[1:]]):
             return copy.deepcopy(cent_list[0])
 
