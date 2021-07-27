@@ -56,6 +56,7 @@ import climada.util.coordinates as u_coord
 from climada.util.constants import EARTH_RADIUS_KM, SYSTEM_DIR, DEF_CRS
 from climada.util.files_handler import get_file_names, download_ftp
 import climada.util.plot as u_plot
+from climada.hazard import Centroids
 import climada.hazard.tc_tracks_synth
 
 LOGGER = logging.getLogger(__name__)
@@ -1214,6 +1215,29 @@ class TCTracks():
     def extent(self):
         """Exact extent of trackset as tuple, no buffer."""
         return self.get_extent(deg_buffer=0.0)
+
+    def generate_centroids(self, res_deg, buffer_deg):
+        """Generate gridded centroids within padded bounds of tracks
+
+        Parameters
+        ----------
+        res_deg : float
+            Resolution in degrees.
+        buffer_deg : float
+            Buffer around tracks in degrees.
+
+        Returns
+        -------
+        centroids : Centroids
+            Centroids instance.
+        """
+        bounds = self.get_bounds(deg_buffer=buffer_deg)
+        lat = np.arange(bounds[1] + 0.5 * res_deg, bounds[3], res_deg)
+        lon = np.arange(bounds[0] + 0.5 * res_deg, bounds[2], res_deg)
+        lon, lat = [ar.ravel() for ar in np.meshgrid(lon, lat)]
+        centroids = Centroids()
+        centroids.set_lat_lon(lat, lon)
+        return centroids
 
     def plot(self, axis=None, figsize=(9, 13), legend=True, adapt_fontsize=True, **kwargs):
         """Track over earth. Historical events are blue, probabilistic black.

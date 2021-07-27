@@ -1070,6 +1070,8 @@ class Hazard():
         self.clear()
         hf_data = h5py.File(file_name, 'r')
         for (var_name, var_val) in self.__dict__.items():
+            if var_name != 'tag' and var_name not in hf_data.keys():
+                continue
             if var_name == 'centroids':
                 self.centroids.read_hdf5(hf_data.get(var_name))
             elif var_name == 'tag':
