@@ -1272,15 +1272,14 @@ class Hazard():
             raise ValueError("There are events with the same identifier.")
 
         u_check.check_oligatories(self.__dict__, self.vars_oblig, 'Hazard.',
-                                num_ev, num_ev, num_cen)
+                                  num_ev, num_ev, num_cen)
         u_check.check_optionals(self.__dict__, self.vars_opt, 'Hazard.', num_ev)
         self.event_name = u_check.array_default(num_ev, self.event_name,
-                                              'Hazard.event_name',
-                                              list(self.event_id))
+                                                'Hazard.event_name', list(self.event_id))
         self.date = u_check.array_default(num_ev, self.date, 'Hazard.date',
-                                        np.ones(self.event_id.shape, dtype=int))
+                                          np.ones(self.event_id.shape, dtype=int))
         self.orig = u_check.array_default(num_ev, self.orig, 'Hazard.orig',
-                                        np.zeros(self.event_id.shape, dtype=bool))
+                                          np.zeros(self.event_id.shape, dtype=bool))
         if len(self._events_set()) != num_ev:
             raise ValueError("There are events with same date and name.")
 
@@ -1326,7 +1325,7 @@ class Hazard():
         self.frequency = np.squeeze(data[var_names['var_name']['freq']])
         self.orig = np.squeeze(data[var_names['var_name']['orig']]).astype(bool)
         self.event_id = np.squeeze(
-            data[var_names['var_name']['even_id']].astype(np.int, copy=False))
+            data[var_names['var_name']['even_id']].astype(int, copy=False))
         try:
             self.units = u_hdf5.get_string(data[var_names['var_name']['unit']])
         except KeyError:
@@ -1345,8 +1344,7 @@ class Hazard():
         except ValueError as err:
             raise ValueError('Size missmatch in fraction matrix.') from err
         except KeyError:
-            self.fraction = sparse.csr_matrix(np.ones(self.intensity.shape,
-                                                      dtype=np.float))
+            self.fraction = sparse.csr_matrix(np.ones(self.intensity.shape, dtype=float))
         # Event names: set as event_id if no provided
         try:
             self.event_name = u_hdf5.get_list_str_from_ref(
@@ -1396,29 +1394,25 @@ class Hazard():
                              f'{dfr.shape[0]} != {self.centroids.size}')
 
         self.intensity = sparse.csr_matrix(dfr.values[:, 1:num_events + 1].transpose())
-        self.fraction = sparse.csr_matrix(np.ones(self.intensity.shape,
-                                                  dtype=np.float))
+        self.fraction = sparse.csr_matrix(np.ones(self.intensity.shape, dtype=float))
 
-    def append(self, hazard):
-        """Append the events and centroids in hazard.
+    def append(self, *haz_list):
+        """Append the events and centroids to this hazard object.
 
-        Hazard must be of same type as self.
-        Centroids of all hazards must have the same CRS.
+        All of the given hazards must be of the same type as self.
+        The centroids of all hazards must have the same CRS.
 
-        Tthe centroids of both hazards are combined together.
+        The centroids of all hazards are combined together.
         All raster centroids are converted to points and raster data
         is discarded.
 
-        Note: centroids of self is modified in place and raster information
+        Note: `self.centroids` is modified in place and centroid raster information (meta)
         is destroyed.
-
-        It is recommended to use the static method `hazard.concatenate_hazard`
-        which concatenates a list of hazards into a new object.
 
         Parameters
         ----------
-        hazard: climada.hazard.Hazard object
-            Hazard instance to append to self
+        haz_list : one or more climada.hazard.Hazard objects
+            Hazard instances to append to self
 
         Raises
         ------
@@ -1426,17 +1420,73 @@ class Hazard():
 
         See Also
         --------
-        hazard.concat: concatenate 2 or more hazards
+        Hazard.concat: concatenate 2 or more hazards
         """
-        hazard._check_events()
-        if type(self) != type(hazard):
-            raise TypeError(f"hazard is of class {type(self)} which is "
-                            f" different from {type(hazard)}")
+        if len(haz_list) == 0:
+            return
+        haz_list = (self,) + haz_list
+        haz_list_nonempty = [haz for haz in haz_list if haz.size > 0]
 
-        if len(self.event_id) == 0: #if self is empty, replace self with hazard
-            self.__dict__ = hazard.__dict__
-        else:
-            self.__dict__ = Hazard.concat([self, hazard]).__dict__
+        for haz in haz_list:
+            haz._check_events()
+
+        # check type, unit, and attribute consistency among hazards
+        haz_types = {haz.tag.haz_type for haz in haz_list if haz.tag.haz_type != ''}
+        if len(haz_types) > 1:
+            raise ValueError(f"The given hazards are of different types: {haz_types}. "
+                             "The hazards are incompatible and cannot be concatenated.")
+        self.tag.haz_type = haz_types.pop()
+
+        haz_classes = {type(haz) for haz in haz_list}
+        if len(haz_classes) > 1:
+            raise TypeError(f"The given hazards of different classes: {haz_classes}. "
+                             "The hazards are incompatible and cannot be concatenated.")
+
+        units = {haz.units for haz in haz_list if haz.units != ''}
+        if len(units) > 1:
+            raise ValueError(f"The hazards use different units: {units}. "
+                             "The hazards are incompatible and cannot be concatenated.")
+        elif len(units) == 0:
+            units = {''}
+        self.units = units.pop()
+
+        attributes = sorted(set.union(*[set(vars(haz).keys()) for haz in haz_list]))
+        for attr_name in attributes:
+            if not all(hasattr(haz, attr_name) for haz in haz_list_nonempty):
+                raise ValueError(f"Attribute {attr_name} is not shared by all hazards. "
+                                 "The hazards are incompatible and cannot be concatenated.")
+
+        # append all tags (to keep track of input files and descriptions)
+        for haz in haz_list:
+            if haz.tag is not self.tag:
+                self.tag.append(haz.tag)
+
+        # map individual centroids objects to union
+        centroids = Centroids.union(*[haz.centroids for haz in haz_list])
+        hazcent_in_cent_idx_list = [
+            u_coord.assign_coordinates(haz.centroids.coord, centroids.coord, threshold=0)
+            for haz in haz_list_nonempty
+            ]
+
+        # concatenate array and list attributes of non-empty hazards
+        for attr_name in attributes:
+            attr_val_list = [getattr(haz, attr_name) for haz in haz_list_nonempty]
+            if isinstance(attr_val_list[0], sparse.csr.csr_matrix):
+                # map sparse matrix onto centroids
+                setattr(self, attr_name, sparse.vstack([
+                    sparse.csr_matrix(
+                        (matrix.data, cent_idx[matrix.indices], matrix.indptr),
+                        shape=(matrix.shape[0], centroids.size)
+                        )
+                    for matrix, cent_idx in zip(attr_val_list, hazcent_in_cent_idx_list)
+                    ], format='csr'))
+            elif isinstance(attr_val_list[0], np.ndarray) and attr_val_list[0].ndim == 1:
+                setattr(self, attr_name, np.hstack(attr_val_list))
+            elif isinstance(attr_val_list[0], list):
+                setattr(self, attr_name, sum(attr_val_list, []))
+
+        self.centroids = centroids
+        self.sanitize_event_ids()
 
 
     @staticmethod
@@ -1469,63 +1519,10 @@ class Hazard():
         --------
         hazard.centroids.Centroids.union: combine centroids
         """
-        # check type and unit consistency among hazards
-        haz_types = {haz.tag.haz_type for haz in haz_list if haz.tag.haz_type != ''}
-        if len(haz_types) > 1:
-            raise ValueError("haz_list contains hazards of different "
-                            f"types: {haz_types}. The hazards are incompatible "
-                            "and cannot be concatenated.")
-
-        haz_types = {type(haz) for haz in haz_list}
-        if len(haz_types) > 1:
-            raise ValueError("haz_list contains hazards of different "
-                            f"types: {haz_types}. The hazards are incompatible "
-                            "and cannot be concatenated.")
-
-        units = {haz.units for haz in haz_list if haz.units != ''}
-        if len(units) > 1:
-            raise ValueError("haz_list contains hazards with different "
-                            f"units {units}. The hazards are incompatible and "
-                            "cannot be concatenated.")
-        elif len(units) == 0:
-            units = {''}
-
-        centroids = Centroids.union(*[haz.centroids for haz in haz_list])
         haz_concat = haz_list[0].__class__()
-        haz_concat.units = units.pop()
-        haz_concat.centroids = centroids
-
-        # indices for mapping matrices onto common centroids
-        hazcent_in_cent_idx_list = [
-            u_coord.assign_coordinates(haz.centroids.coord, centroids.coord,
-                                       threshold=0)
-            for haz in haz_list
-            ]
-
-        # concatenate attributes - hazards are assumed to have the same attributes
-        for attr_name in vars(haz_list[0]).keys():
-            attr_val_list = [getattr(haz, attr_name) for haz in haz_list]
-            if isinstance(attr_val_list[0], sparse.csr.csr_matrix):
-                # map sparse matrix onto centroids.
-                matrix = (
-                    sparse.csr_matrix(
-                        (matrix.data, cent_idx[matrix.indices], matrix.indptr),
-                        shape=(matrix.shape[0], centroids.size)
-                        )
-                    for matrix, cent_idx in zip(attr_val_list, hazcent_in_cent_idx_list)
-                    )
-                setattr(haz_concat, attr_name, sparse.vstack(matrix, format='csr'))
-            elif (isinstance(attr_val_list[0], np.ndarray)
-                  and attr_val_list[0].ndim == 1):
-                setattr(haz_concat, attr_name, np.hstack(attr_val_list))
-            elif isinstance(attr_val_list[0], list):
-                setattr(haz_concat, attr_name, sum(attr_val_list, []))
-            elif isinstance(attr_val_list[0], TagHazard):
-                for tag in attr_val_list:
-                    if tag is not haz_concat.tag: haz_concat.tag.append(tag)
-
-        haz_concat.sanitize_event_ids()
-
+        haz_concat.tag.haz_type = haz_list[0].tag.haz_type
+        haz_concat.units = haz_list[0].units
+        haz_concat.append(*haz_list)
         return haz_concat
 
     def change_centroids(self, centroids, threshold=100):
