@@ -17,14 +17,6 @@ climada\.entity\.impact\_funcs\.impact\_func\_set module
     :undoc-members:
     :show-inheritance:
 
-climada\.entity\.impact\_funcs\.relative\_cropyield module
-----------------------------------------------------------
-
-.. automodule:: climada.entity.impact_funcs.relative_cropyield
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 climada\.entity\.impact\_funcs\.storm\_europe module
 ----------------------------------------------------
 
