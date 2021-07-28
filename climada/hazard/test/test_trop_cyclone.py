@@ -65,9 +65,8 @@ class TestReader(unittest.TestCase):
         tc_track.data = tc_track.data[:1]
 
         for metric in ["equirect", "geosphere"]:
-            tc_haz = TropCyclone()
-            tc_haz.set_from_tracks(tc_track, centroids=CENTR_TEST_BRB, model='H08',
-                                   store_windfields=True, metric=metric)
+            tc_haz = TropCyclone.from_tracks(tc_track, centroids=CENTR_TEST_BRB, model='H08',
+                                             store_windfields=True, metric=metric)
 
             self.assertEqual(tc_haz.tag.haz_type, 'TC')
             self.assertEqual(tc_haz.tag.description, '')
@@ -125,8 +124,7 @@ class TestReader(unittest.TestCase):
         tc_track.data = tc_track.data[:1]
 
         for model in ["H08", "H10", "H1980"]:
-            tc_haz = TropCyclone()
-            tc_haz.set_from_tracks(tc_track, centroids=CENTR_TEST_BRB, model=model)
+            tc_haz = TropCyclone.from_tracks(tc_track, centroids=CENTR_TEST_BRB, model=model)
             np.testing.assert_array_almost_equal(
                 tc_haz.intensity[0, intensity_idx].toarray()[0], intensity_values[model])
             for idx, val in zip(intensity_idx, intensity_values[model]):
@@ -134,11 +132,10 @@ class TestReader(unittest.TestCase):
                     self.assertEqual(tc_haz.intensity[0, idx], 0)
 
     def test_set_one_file_pass(self):
-        """Test set function set_from_tracks with one input."""
+        """Test from_tracks with one input."""
         tc_track = TCTracks()
         tc_track.read_processed_ibtracs_csv(TEST_TRACK_SHORT)
-        tc_haz = TropCyclone()
-        tc_haz.set_from_tracks(tc_track, CENTR_TEST_BRB)
+        tc_haz = TropCyclone.from_tracks(tc_track, centroids=CENTR_TEST_BRB)
         tc_haz.check()
 
         self.assertEqual(tc_haz.tag.haz_type, 'TC')
@@ -163,11 +160,10 @@ class TestReader(unittest.TestCase):
         self.assertEqual(tc_haz.intensity.nonzero()[0].size, 0)
 
     def test_two_files_pass(self):
-        """Test set function set_from_tracks with two ibtracs."""
+        """Test from_tracks with two ibtracs."""
         tc_track = TCTracks()
         tc_track.read_processed_ibtracs_csv([TEST_TRACK_SHORT, TEST_TRACK_SHORT])
-        tc_haz = TropCyclone()
-        tc_haz.set_from_tracks(tc_track, CENTR_TEST_BRB)
+        tc_haz = TropCyclone.from_tracks(tc_track, centroids=CENTR_TEST_BRB)
         tc_haz.remove_duplicates()
         tc_haz.check()
 

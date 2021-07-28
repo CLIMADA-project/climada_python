@@ -54,6 +54,9 @@ CENTR_NODE_MAX_DIST_KM = 300
 CENTR_NODE_MAX_DIST_DEG = 5.5
 """Maximum distance between centroid and TC track node in degrees"""
 
+DEF_INTENSITY_THRES = 17.5
+"""Wind speeds (in m/s) below this threshold are stored as 0 if no other threshold is specified."""
+
 MODEL_VANG = {'H08': 0, 'H1980': 1, 'H10': 2}
 """Enumerate different symmetric wind field models."""
 
@@ -99,7 +102,7 @@ class TropCyclone(Hazard):
         'SP' Southern Pacific
         'SA' South Atlantic
     """
-    intensity_thres = 17.5
+    intensity_thres = DEF_INTENSITY_THRES
     """intensity threshold for storage in m/s"""
 
     vars_opt = Hazard.vars_opt.union({'category'})
@@ -117,9 +120,19 @@ class TropCyclone(Hazard):
         else:
             self.pool = None
 
-    def set_from_tracks(self, tracks, centroids=None, description='',
-                        model='H08', ignore_distance_to_coast=False,
-                        store_windfields=False, metric="equirect"):
+    def set_from_tracks(self, *args, **kwargs):
+        """This function is deprecated, use TropCyclone.from_tracks instead."""
+        LOGGER.warning("The use of TropCyclone.set_from_tracks is deprecated."
+                       "Use TropCyclone.from_tracks instead.")
+        if "intensity_thres" not in kwargs:
+            # some users modify the threshold attribute before calling `set_from_tracks`
+            kwargs["intensity_thres"] = self.intensity_thres
+        self.__dict__ = TropCyclone.from_tracks(*args, **kwargs).__dict__
+
+    @staticmethod
+    def from_tracks(tracks, centroids=None, pool=None, description='', model='H08',
+                    ignore_distance_to_coast=False, store_windfields=False, metric="equirect",
+                    intensity_thres=DEF_INTENSITY_THRES):
         """
         Clear and fill with windfields from specified tracks.
 
@@ -162,6 +175,8 @@ class TropCyclone(Hazard):
               large distances and high latitudes.
             * "geosphere": Exact spherical distance. Much more accurate at all distances, but slow.
             Default: "equirect".
+        intensity_thres : float, optional
+            Wind speeds (in m/s) below this threshold are stored as 0. Default: 17.5
 
         Raises
         ------
@@ -197,15 +212,16 @@ class TropCyclone(Hazard):
 
         LOGGER.info('Mapping %s tracks to %s coastal centroids.', str(tracks.size),
                     str(coastal_idx.size))
-        if self.pool:
-            chunksize = min(num_tracks // self.pool.ncpus, 1000)
-            tc_haz = self.pool.map(
-                self._tc_from_track, tracks.data,
+        if pool:
+            chunksize = min(num_tracks // pool.ncpus, 1000)
+            tc_haz = pool.map(
+                TropCyclone.from_single_track, tracks.data,
                 itertools.repeat(centroids, num_tracks),
                 itertools.repeat(coastal_idx, num_tracks),
                 itertools.repeat(model, num_tracks),
                 itertools.repeat(store_windfields, num_tracks),
                 itertools.repeat(metric, num_tracks),
+                itertools.repeat(intensity_thres, num_tracks),
                 chunksize=chunksize)
         else:
             last_perc = 0
@@ -216,16 +232,20 @@ class TropCyclone(Hazard):
                     LOGGER.info("Progress: %d%%", perc)
                     last_perc = perc
                 tc_haz.append(
-                    self._tc_from_track(track, centroids, coastal_idx,
-                                        model=model, store_windfields=store_windfields,
-                                        metric=metric))
+                    TropCyclone.from_single_track(track, centroids, coastal_idx,
+                                                  model=model, store_windfields=store_windfields,
+                                                  metric=metric, intensity_thres=intensity_thres))
             if last_perc < 100:
                 LOGGER.info("Progress: 100%")
-        LOGGER.debug('Append events.')
-        self.__dict__ = TropCyclone.concat([self] + tc_haz).__dict__
+
+        LOGGER.debug('Concatenate events.')
+        haz = TropCyclone.concat(tc_haz)
+        haz.pool = pool
+        haz.intensity_thres = intensity_thres
         LOGGER.debug('Compute frequency.')
-        self.frequency_from_tracks(tracks.data)
-        self.tag.description = description
+        haz.frequency_from_tracks(tracks.data)
+        haz.tag.description = description
+        return haz
 
     def set_climate_scenario_knu(self, ref_year=2050, rcp_scenario=45):
         """
@@ -327,8 +347,7 @@ class TropCyclone(Hazard):
             tr_coord['lat'].append(tr_sel.data[0].lat.values[:-1])
             tr_coord['lon'].append(tr_sel.data[0].lon.values[:-1])
 
-            tc_tmp = TropCyclone()
-            tc_tmp.set_from_tracks(tr_sel, centroids)
+            tc_tmp = TropCyclone.from_tracks(tr_sel, centroids=centroids)
             tc_tmp.event_name = [
                 track.name + ' ' + time.strftime(
                     "%d %h %Y %H:%M",
@@ -379,8 +398,10 @@ class TropCyclone(Hazard):
         ens_size = (self.event_id.size / num_orig) if num_orig > 0 else 1
         self.frequency = np.ones(self.event_id.size) / (year_delta * ens_size)
 
-    def _tc_from_track(self, track, centroids, coastal_idx, model='H08',
-                       store_windfields=False, metric="equirect"):
+    @staticmethod
+    def from_single_track(track, centroids, coastal_idx, model='H08',
+                          store_windfields=False, metric="equirect",
+                          intensity_thres=DEF_INTENSITY_THRES):
         """
         Generate windfield hazard from a single track dataset
 
@@ -402,6 +423,8 @@ class TropCyclone(Hazard):
             Specify an approximation method to use for earth distances: "equirect" (faster) or
             "geosphere" (more accurate). See `dist_approx` function in `climada.util.coordinates`.
             Default: "equirect".
+        intensity_thres : float, optional
+            Wind speeds (in m/s) below this threshold are stored as 0. Default: 17.5
 
         Raises
         ------
@@ -423,7 +446,7 @@ class TropCyclone(Hazard):
         npositions = windfields.shape[0]
 
         intensity = np.linalg.norm(windfields, axis=-1).max(axis=0)
-        intensity[intensity < self.intensity_thres] = 0
+        intensity[intensity < intensity_thres] = 0
         intensity_sparse = sparse.csr_matrix(
             (intensity, reachable_coastal_centr_idx, [0, intensity.size]),
             shape=(1, ncentroids))
@@ -431,6 +454,7 @@ class TropCyclone(Hazard):
 
         new_haz = TropCyclone()
         new_haz.tag = TagHazard(HAZ_TYPE, 'Name: ' + track.name)
+        new_haz.intensity_thres = intensity_thres
         new_haz.intensity = intensity_sparse
         if store_windfields:
             n_reachable_coastal_centr = reachable_coastal_centr_idx.size
