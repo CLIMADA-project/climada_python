@@ -159,6 +159,8 @@ class Hazard():
         ----------
         haz_type : str, optional
             acronym of the hazard type (e.g. 'TC').
+        pool : pathos.pool, optional
+            Pool that will be used for parallel computation when applicable. Default: None
 
         Examples
         --------

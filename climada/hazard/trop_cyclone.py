@@ -109,16 +109,17 @@ class TropCyclone(Hazard):
     """Name of the variables that aren't need to compute the impact."""
 
     def __init__(self, pool=None):
-        """Empty constructor."""
-        Hazard.__init__(self, HAZ_TYPE)
+        """Initialize values.
+
+        Parameters
+        ----------
+        pool : pathos.pool, optional
+            Pool that will be used for parallel computation when applicable. Default: None
+        """
+        Hazard.__init__(self, haz_type=HAZ_TYPE, pool=pool)
         self.category = np.array([], int)
         self.basin = []
         self.windfields = []
-        if pool:
-            self.pool = pool
-            LOGGER.info('Using %s CPUs.', self.pool.ncpus)
-        else:
-            self.pool = None
 
     def set_from_tracks(self, *args, **kwargs):
         """This function is deprecated, use TropCyclone.from_tracks instead."""
@@ -127,6 +128,8 @@ class TropCyclone(Hazard):
         if "intensity_thres" not in kwargs:
             # some users modify the threshold attribute before calling `set_from_tracks`
             kwargs["intensity_thres"] = self.intensity_thres
+        if self.pool is not None and 'pool' not in kwargs:
+            kwargs['pool'] = self.pool
         self.__dict__ = TropCyclone.from_tracks(*args, **kwargs).__dict__
 
     @staticmethod
@@ -156,6 +159,8 @@ class TropCyclone(Hazard):
             Tracks of storm events.
         centroids : Centroids, optional
             Centroids where to model TC. Default: global centroids at 360 arc-seconds resolution.
+        pool : pathos.pool, optional
+            Pool that will be used for parallel computation of wind fields. Default: None
         description : str, optional
             Description of the event set. Default: "".
         model : str, optional
@@ -214,7 +219,7 @@ class TropCyclone(Hazard):
                     str(coastal_idx.size))
         if pool:
             chunksize = min(num_tracks // pool.ncpus, 1000)
-            tc_haz = pool.map(
+            tc_haz_list = pool.map(
                 TropCyclone.from_single_track, tracks.data,
                 itertools.repeat(centroids, num_tracks),
                 itertools.repeat(coastal_idx, num_tracks),
@@ -225,13 +230,13 @@ class TropCyclone(Hazard):
                 chunksize=chunksize)
         else:
             last_perc = 0
-            tc_haz = []
+            tc_haz_list = []
             for track in tracks.data:
-                perc = 100 * len(tc_haz) / len(tracks.data)
+                perc = 100 * len(tc_haz_list) / len(tracks.data)
                 if perc - last_perc >= 10:
                     LOGGER.info("Progress: %d%%", perc)
                     last_perc = perc
-                tc_haz.append(
+                tc_haz_list.append(
                     TropCyclone.from_single_track(track, centroids, coastal_idx,
                                                   model=model, store_windfields=store_windfields,
                                                   metric=metric, intensity_thres=intensity_thres))
@@ -239,7 +244,7 @@ class TropCyclone(Hazard):
                 LOGGER.info("Progress: 100%")
 
         LOGGER.debug('Concatenate events.')
-        haz = TropCyclone.concat(tc_haz)
+        haz = TropCyclone.concat(tc_haz_list)
         haz.pool = pool
         haz.intensity_thres = intensity_thres
         LOGGER.debug('Compute frequency.')
