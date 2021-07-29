@@ -1396,22 +1396,23 @@ class Hazard():
         self.intensity = sparse.csr_matrix(dfr.values[:, 1:num_events + 1].transpose())
         self.fraction = sparse.csr_matrix(np.ones(self.intensity.shape, dtype=float))
 
-    def append(self, *haz_list):
+    def append(self, *others):
         """Append the events and centroids to this hazard object.
 
-        All of the given hazards must be of the same type as self.
-        The centroids of all hazards must have the same CRS.
+        All of the given hazards must be of the same type as self. The centroids of all hazards
+        must have the same CRS.
 
-        The centroids of all hazards are combined together.
-        All raster centroids are converted to points and raster data
-        is discarded.
+        The centroids of all hazards are combined together. All raster centroids are converted to
+        points and raster data is discarded.
 
-        Note: `self.centroids` is modified in place and centroid raster information (meta)
-        is destroyed.
+        Note: Each of the hazard's `centroids` attributes might be modified in place in the sense
+        that missing properties are added, but existing ones are not overwritten. In case of raster
+        centroids, conversion to point centroids is applied so that raster information (meta) is
+        lost.
 
         Parameters
         ----------
-        haz_list : one or more climada.hazard.Hazard objects
+        others : one or more climada.hazard.Hazard objects
             Hazard instances to append to self
 
         Raises
@@ -1422,9 +1423,9 @@ class Hazard():
         --------
         Hazard.concat: concatenate 2 or more hazards
         """
-        if len(haz_list) == 0:
+        if len(others) == 0:
             return
-        haz_list = (self,) + haz_list
+        haz_list = [self] + list(others)
         haz_list_nonempty = [haz for haz in haz_list if haz.size > 0]
 
         for haz in haz_list:
