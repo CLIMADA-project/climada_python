@@ -1439,8 +1439,8 @@ class Hazard():
 
         haz_classes = {type(haz) for haz in haz_list}
         if len(haz_classes) > 1:
-            raise TypeError(f"The given hazards of different classes: {haz_classes}. "
-                             "The hazards are incompatible and cannot be concatenated.")
+            raise TypeError(f"The given hazards are of different classes: {haz_classes}. "
+                            "The hazards are incompatible and cannot be concatenated.")
 
         units = {haz.units for haz in haz_list if haz.units != ''}
         if len(units) > 1:
