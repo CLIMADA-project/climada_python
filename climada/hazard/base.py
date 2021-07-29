@@ -957,7 +957,7 @@ class Hazard():
                 setattr(self, var_name, var_val[unique_pos, :])
             elif isinstance(var_val, np.ndarray) and var_val.ndim == 1:
                 setattr(self, var_name, var_val[unique_pos])
-            elif isinstance(var_val, list):
+            elif isinstance(var_val, list) and len(var_val) > 0:
                 setattr(self, var_name, [var_val[p] for p in unique_pos])
 
     def set_frequency(self, yearrange=None):
@@ -1419,12 +1419,12 @@ class Hazard():
 
         Parameters
         ----------
-        hazard: climada.hazard.Hazard()
+        hazard: climada.hazard.Hazard object
             Hazard instance to append to self
 
         Raises
         ------
-            TypeError
+        TypeError
 
         See Also
         --------
@@ -1455,13 +1455,13 @@ class Hazard():
 
         Parameters
         ----------
-        haz_list: list(climada.hazard.Hazard())
-            Hazard instances of the same hazard type
+        haz_list: list of climada.hazard.Hazard objects
+            Hazard instances of the same hazard type (subclass).
 
         Returns
         -------
-        haz_concat: climada.hazard.Hazard()
-            Concatenated hazard.
+        haz_concat: instance of climada.hazard.Hazard
+            This will be of the same type (subclass) as all the hazards in `haz_list`.
 
         Raises
         ------
@@ -1469,46 +1469,46 @@ class Hazard():
 
         See Also
         --------
-        hazard.centroids.union: combine centroids
+        hazard.centroids.Centroids.union: combine centroids
         """
-        #Check units consistency among hazards
-        haz_types = {haz.tag.haz_type
-                    for haz in haz_list
-                    if haz.tag.haz_type != ''
-                    }
+        # check type and unit consistency among hazards
+        haz_types = {haz.tag.haz_type for haz in haz_list if haz.tag.haz_type != ''}
         if len(haz_types) > 1:
-            raise ValueError("The haz_list contains hazards of different "
-                            f"types {haz_types}. The hazards are incompatible "
+            raise ValueError("haz_list contains hazards of different "
+                            f"types: {haz_types}. The hazards are incompatible "
+                            "and cannot be concatenated.")
+
+        haz_types = {type(haz) for haz in haz_list}
+        if len(haz_types) > 1:
+            raise ValueError("haz_list contains hazards of different "
+                            f"types: {haz_types}. The hazards are incompatible "
                             "and cannot be concatenated.")
 
         units = {haz.units for haz in haz_list if haz.units != ''}
         if len(units) > 1:
-            raise ValueError("The haz_list contains hazards with different "
+            raise ValueError("haz_list contains hazards with different "
                             f"units {units}. The hazards are incompatible and "
                             "cannot be concatenated.")
         elif len(units) == 0:
             units = {''}
 
-        #Define comon centroids
-        centroids = Centroids().union(*[haz.centroids
-                                           for haz in haz_list])
-        #Define empty concatenate hazard
-        haz_concat = Hazard()
+        centroids = Centroids.union(*[haz.centroids for haz in haz_list])
+        haz_concat = haz_list[0].__class__()
         haz_concat.units = units.pop()
         haz_concat.centroids = centroids
 
-        #Indices for mapping matrices onto common centroids
+        # indices for mapping matrices onto common centroids
         hazcent_in_cent_idx_list = [
             u_coord.assign_coordinates(haz.centroids.coord, centroids.coord,
                                        threshold=0)
             for haz in haz_list
             ]
 
-        #Concatenate attributes - hazards are assumed to have the same attributes
+        # concatenate attributes - hazards are assumed to have the same attributes
         for attr_name in vars(haz_list[0]).keys():
             attr_val_list = [getattr(haz, attr_name) for haz in haz_list]
             if isinstance(attr_val_list[0], sparse.csr.csr_matrix):
-                #Map sparse matrix onto centroids.
+                # map sparse matrix onto centroids.
                 matrix = (
                     sparse.csr_matrix(
                         (matrix.data, cent_idx[matrix.indices], matrix.indptr),
@@ -1553,7 +1553,7 @@ class Hazard():
 
         Returns
         -------
-        haz_new_cent: climada.hazard.Hazard()
+        haz_new_cent: climada.hazard.Hazard object
             Hazard projected onto centroids
 
         Raises
@@ -1566,38 +1566,34 @@ class Hazard():
         util.coordinates.assign_coordinates: algorithm to match centroids.
 
         """
-        #Define empty hazard
+        # define empty hazard
         haz_new_cent = copy.deepcopy(self)
         haz_new_cent.centroids = centroids
 
-        #Indices for mapping matrices onto common centroids
+        # indices for mapping matrices onto common centroids
         new_cent_idx = u_coord.assign_coordinates(
             self.centroids.coord, centroids.coord, threshold=threshold
             )
 
         if -1 in new_cent_idx:
             raise ValueError("At least one hazard centroid is at a larger "
-                    f"distance than the given threshold {threshold} "
-                    "from the given centroids. Please choose a "
-                    "larger threshold or enlarge the centroids")
+                             f"distance than the given threshold {threshold} "
+                             "from the given centroids. Please choose a "
+                             "larger threshold or enlarge the centroids")
 
+        if np.unique(new_cent_idx).size < new_cent_idx.size:
+            raise ValueError("At least two hazard centroids are mapped to the same "
+                             "centroids. Please make sure that the given centroids "
+                             "cover the same area like the original centroids and "
+                             "are not of lower resolution.")
 
-        #Re-assign attributes intensity and fraction
-        matrix = self.intensity
-        new_int = (
-            sparse.csr_matrix(
-                (matrix.data, new_cent_idx[matrix.indices], matrix.indptr),
-                shape=(matrix.shape[0], centroids.size)
-                )
-            )
-        setattr(haz_new_cent, "intensity", new_int)
-        matrix = self.fraction
-        new_frac = (
-            sparse.csr_matrix(
-                (matrix.data, new_cent_idx[matrix.indices], matrix.indptr),
-                shape=(matrix.shape[0], centroids.size)
-                )
-            )
-        setattr(haz_new_cent, "fraction", new_frac)
+        # re-assign attributes intensity and fraction
+        for attr_name in ["intensity", "fraction"]:
+            matrix = getattr(self, attr_name)
+            setattr(haz_new_cent, attr_name,
+                    sparse.csr_matrix(
+                        (matrix.data, new_cent_idx[matrix.indices], matrix.indptr),
+                        shape=(matrix.shape[0], centroids.size)
+                        ))
 
         return haz_new_cent
