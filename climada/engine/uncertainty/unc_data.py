@@ -834,7 +834,7 @@ class UncData():
 
         str_dt = h5py.special_dtype(vlen=str)
         with h5py.File(save_path, 'a') as fh:
-            fh['unit'] = [self.unit]
+            fh['impact_unit'] = [self.unit]
             fh['sensitivity_method'] = [self.sensitivity_method]
             grp = fh.create_group("sensitivity_kwargs")
             for key, value in dict(self.sensitivity_kwargs).items():
@@ -865,7 +865,7 @@ class UncData():
         self.samples_df.attrs = store.get_storer('/samples_df').attrs.metadata
         store.close()
         with h5py.File(filename, 'r') as fh:
-            # self.unit = fh.get('unit')[0].decode('UTF-8')
+            self.unit = fh.get('impact_unit')[0].decode('UTF-8')
             self.sensitivity_method = fh.get('sensitivity_method')[0].decode('UTF-8')
             grp = fh["sensitivity_kwargs"]
             sens_kwargs = {
