@@ -1511,6 +1511,9 @@ class Hazard():
         and then applies the `append` method. Please refer to the docs of `Hazard.append` for
         caveats and limitations of the concatenation procedure.
 
+        For centroids, tags, lists, arrays and sparse matrices, the remarks in `Hazard.append`
+        apply. All other attributes are copied from the first object in `haz_list`.
+
         Parameters
         ----------
         haz_list : list of climada.hazard.Hazard objects
@@ -1528,7 +1531,11 @@ class Hazard():
         """
         haz_concat = haz_list[0].__class__()
         haz_concat.tag.haz_type = haz_list[0].tag.haz_type
-        haz_concat.units = haz_list[0].units
+        for attr_name, attr_val in vars(haz_list[0]).items():
+            # only copy simple attributes like "units" to save memory
+            if not (isinstance(attr_val, (list, np.ndarray, sparse.csr.csr_matrix))
+                    or attr_name in ["tag", "centroids"]):
+                setattr(haz_concat, attr_name, copy.deepcopy(attr_val))
         haz_concat.append(*haz_list)
         return haz_concat
 
