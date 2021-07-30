@@ -159,7 +159,8 @@ class ImpactFunc():
         """ Sigmoid type impact function hinging on three parameter. This type
         of impact function is very flexible for any sort of study/resolution.
         Parameters can be thought of as intercept (sig_mid), slope (sig_shape)
-        and top (sig_max) of a sigmoid.
+        and top (sig_max) of a sigmoid. More precisely, sig_mid refers to the
+        intensity value where MDD equals 50% of sig_max.
 
         For more information: https://en.wikipedia.org/wiki/Logistic_function
 
