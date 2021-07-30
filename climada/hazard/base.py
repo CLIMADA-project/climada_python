@@ -1399,16 +1399,27 @@ class Hazard():
     def append(self, *others):
         """Append the events and centroids to this hazard object.
 
-        All of the given hazards must be of the same type as self. The centroids of all hazards
-        must have the same CRS.
+        All of the given hazards must be of the same type and use the same units as self. The
+        centroids of all hazards must have the same CRS.
 
-        The centroids of all hazards are combined together. All raster centroids are converted to
-        points and raster data is discarded.
+        The following kinds of object attributes are processed:
+
+        - All centroids are combined together using `Centroids.union`.
+
+        - Lists, 1-dimensional arrays (NumPy) and sparse CSR matrices (SciPy) are concatenated.
+        Sparse matrices are concatenated along the first (vertical) axis.
+
+        - All `tag` attributes are appended to `self.tag`.
+
+        For any other type of attribute: A ValueError is raised if an attribute of that name is
+        not defined in all of the non-empty hazards at least. However, there is no check that the
+        attribute value is identical among the given hazard objects. The initial attribute value of
+        `self` will not be modified.
 
         Note: Each of the hazard's `centroids` attributes might be modified in place in the sense
         that missing properties are added, but existing ones are not overwritten. In case of raster
         centroids, conversion to point centroids is applied so that raster information (meta) is
-        lost.
+        lost. For more information, see `Centroids.union`.
 
         Parameters
         ----------
@@ -1417,11 +1428,12 @@ class Hazard():
 
         Raises
         ------
-        TypeError
+        TypeError, ValueError
 
         See Also
         --------
-        Hazard.concat: concatenate 2 or more hazards
+        Hazard.concat : concatenate 2 or more hazards
+        Centroids.union : combine centroids
         """
         if len(others) == 0:
             return
@@ -1495,30 +1507,24 @@ class Hazard():
         """
         Concatenate events of several hazards of same type.
 
-        Centroids of all hazards must either all be rasters with the same
-        resolution, or all be points.
-
-        The centroids of all hazards are combined together.
-        All raster centroids are converted to points and raster data
-        is discarded.
+        This function creates a new hazard of the same class as the first hazard in the given list
+        and then applies the `append` method. Please refer to the docs of `Hazard.append` for
+        caveats and limitations of the concatenation procedure.
 
         Parameters
         ----------
-        haz_list: list of climada.hazard.Hazard objects
+        haz_list : list of climada.hazard.Hazard objects
             Hazard instances of the same hazard type (subclass).
 
         Returns
         -------
-        haz_concat: instance of climada.hazard.Hazard
+        haz_concat : instance of climada.hazard.Hazard
             This will be of the same type (subclass) as all the hazards in `haz_list`.
-
-        Raises
-        ------
-        ValueError
 
         See Also
         --------
-        hazard.centroids.Centroids.union: combine centroids
+        Hazard.append : append hazards to a hazard in place
+        Centroids.union : combine centroids
         """
         haz_concat = haz_list[0].__class__()
         haz_concat.tag.haz_type = haz_list[0].tag.haz_type
