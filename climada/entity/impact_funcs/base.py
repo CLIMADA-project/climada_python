@@ -96,7 +96,7 @@ class ImpactFunc():
         axis.set_xlim((self.intensity.min(), self.intensity.max()))
         axis.legend()
         return axis
-
+    
     def check(self):
         """Check consistent instance data.
 
@@ -127,4 +127,29 @@ class ImpactFunc():
                            'origin of the intensity scale. In impact.calc '
                            'the impact is always null at intensity = 0.')
 
+    def set_step_ImpF(self, threshold, inten_min, inten_max, if_id=1):
+
+        """ Step function type impact function. Everything is destroyed above
+        threshold. Usefull for high resolution modelling.
+        
+        This method modifies self (climada.entity.impact_funcs instance)
+        by assining an id, intensity, mdd and paa to the impact function.
+        
+        Parameters
+        ----------
+            threshold : float
+                threshold over which exposure is fully destroyed
+            inten_min : float
+                minimum value of intensity range
+            inten_min : float
+                maximum value of intensity range
+            if_id : int, optional, default=1
+                impact function id
+
+        """
+
+        self.id = if_id
+        self.intensity = np.array([inten_min, threshold, threshold, inten_max])
+        self.paa = np.array([1, 1, 1, 1])
+        self.mdd = np.array([0, 0, 1, 1])
 
