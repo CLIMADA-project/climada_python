@@ -548,6 +548,68 @@ def _impfset_unc_dict(bounds_impf):
         iud['IF'] = sp.stats.uniform(xmin, xdelta)
     return iud
 
+
+# #Impact function set
+# def _impfset_uncfunc(IFi, MDD, PAA, impf_set, haz_type='TC', fun_id=1):
+#     """
+
+
+#     Parameters
+#     ----------
+#     IF : TYPE
+#         DESCRIPTION.
+#     impf_set : TYPE
+#         DESCRIPTION.
+#     haz_type : TYPE, optional
+#         DESCRIPTION. The default is 'TC'.
+#     fun_id : TYPE, optional
+#         DESCRIPTION. The default is 1.
+
+#     Returns
+#     -------
+#     impf_set_tmp : TYPE
+#         DESCRIPTION.
+
+#     """
+#     impf_set_tmp = copy.deepcopy(impf_set)
+#     if MDD is not None:
+#         new_mdd = np.minimum(impf_set_tmp.get_func(haz_type=haz_type, fun_id=fun_id).mdd * MDD, 1.0)
+#         impf_set_tmp.get_func(haz_type=haz_type, fun_id=fun_id).mdd = new_mdd
+#     if PAA is not None:
+#         new_paa = np.minimum(impf_set_tmp.get_func(haz_type=haz_type, fun_id=fun_id).paa * PAA, 1.0)
+#         impf_set_tmp.get_func(haz_type=haz_type, fun_id=fun_id).paa = new_paa
+#     if IFi is not None:
+#         new_int = np.maximumm(impf_set_tmp.get_func(haz_type=haz_type, fun_id=fun_id).intensity + IFi, 0.0)
+#         impf_set_tmp.get_func(haz_type=haz_type, fun_id=fun_id).intensity = new_int
+#     return impf_set_tmp
+
+# def _impfset_unc_dict(bounds_impfi, bounds_mdd, bounds_paa):
+#     """
+
+
+#     Parameters
+#     ----------
+#     bounds_impf : TYPE
+#         DESCRIPTION.
+
+#     Returns
+#     -------
+#     iud : TYPE
+#         DESCRIPTION.
+
+#     """
+#     iud = {}
+#     if bounds_impfi is not None:
+#         xmin, xdelta = bounds_impfi[0], bounds_impfi[1] - bounds_impfi[0]
+#         iud['IFi'] = sp.stats.uniform(xmin, xdelta)
+#     if bounds_paa is not None:
+#         xmin, xdelta = bounds_paa[0], bounds_paa[1] - bounds_paa[0]
+#         iud['PAA'] = sp.stats.uniform(xmin, xdelta)
+#     if bounds_mdd is not None:
+#         xmin, xdelta = bounds_mdd[0], bounds_mdd[1] - bounds_mdd[0]
+#         iud['MDD'] = sp.stats.uniform(xmin, xdelta)
+#     return iud
+
 #Entity
 def _disc_uncfunc(DR, disc_rate):
     """
