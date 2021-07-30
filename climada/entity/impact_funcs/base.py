@@ -153,3 +153,38 @@ class ImpactFunc():
         self.paa = np.array([1, 1, 1, 1])
         self.mdd = np.array([0, 0, 1, 1])
 
+    def set_sigmoid_ImpF(self, sig_mid, sig_shape, sig_max,
+                    inten_min, inten_max, inten_step=5, if_id=1):
+
+        """ Sigmoid type impact function hinging on three parameter. This type
+        of impact function is very flexible for any sort of study/resolution.
+        Parameters can be thought of as intercept (sig_mid), slope (sig_shape)
+        and top (sig_max) of a sigmoid.
+
+        For more information: https://en.wikipedia.org/wiki/Logistic_function
+
+        This method modifies self (climada.entity.impact_funcs instance)
+        by assining an id, intensity, mdd and paa to the impact function.
+
+        Parameters
+        ----------
+            sig_mid : float
+                "intercept" of sigmoid
+            sig_shape : float
+                "slope" of sigmoid
+            sig_max : float
+                "top" of sigmoid
+            inten_min : float
+                minimum value of intensity range
+            inten_min : float
+                maximum value of intensity range
+            inten_step : float, optional, default=5
+                Spacing between intensity values
+            if_id : int, optional, default=1
+                impact function id
+
+        """
+        self.id = if_id
+        self.intensity = np.arange(inten_min, inten_max, inten_step)
+        self.paa = np.ones(len(self.intensity))
+        self.mdd = sig_max / (1 + np.exp(-sig_shape * (self.intensity - sig_mid)))
