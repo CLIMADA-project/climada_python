@@ -1457,7 +1457,7 @@ class Hazard():
 
         units = {haz.units for haz in haz_list if haz.units != ''}
         if len(units) > 1:
-            raise ValueError(f"The hazards use different units: {units}. "
+            raise ValueError(f"The given hazards use different units: {units}. "
                              "The hazards are incompatible and cannot be concatenated.")
         elif len(units) == 0:
             units = {''}
@@ -1502,8 +1502,8 @@ class Hazard():
         self.sanitize_event_ids()
 
 
-    @staticmethod
-    def concat(haz_list):
+    @classmethod
+    def concat(cls, haz_list):
         """
         Concatenate events of several hazards of same type.
 
@@ -1513,6 +1513,12 @@ class Hazard():
 
         For centroids, tags, lists, arrays and sparse matrices, the remarks in `Hazard.append`
         apply. All other attributes are copied from the first object in `haz_list`.
+
+        Note that `Hazard.concat` can be used to concatenate hazards of a subclass. The result's
+        type will be the subclass. However, calling `concat([])` (with an empty list) is equivalent
+        to instantiation without init parameters. So, `Hazard.concat([])` is equivalent to
+        `Hazard()`. If `HazardB` is a subclass of `Hazard`, then `HazardB.concat([])` is equivalent
+        to `HazardB()` (unless `HazardB` overrides the `concat` method).
 
         Parameters
         ----------
@@ -1529,6 +1535,8 @@ class Hazard():
         Hazard.append : append hazards to a hazard in place
         Centroids.union : combine centroids
         """
+        if len(haz_list) == 0:
+            return cls()
         haz_concat = haz_list[0].__class__()
         haz_concat.tag.haz_type = haz_list[0].tag.haz_type
         for attr_name, attr_val in vars(haz_list[0]).items():
