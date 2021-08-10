@@ -30,6 +30,7 @@ import numpy as np
 from climada.engine import Impact
 from climada.engine.uncertainty import UncCalc, UncVar
 from climada.util import log_level
+
 from climada.util.config import setup_logging as u_setup_logging
 
 LOGGER = logging.getLogger(__name__)
@@ -40,7 +41,7 @@ class UncCalcImpact(UncCalc):
     """
     Impact uncertainty analysis class.
 
-    This is the base class to perform uncertainty analysis on the outputs of a
+    This is the class to perform uncertainty analysis on the outputs of a
     climada.engine.impact.Impact() object.
 
     Attributes
@@ -51,27 +52,41 @@ class UncCalcImpact(UncCalc):
         Compute eai_exp or not
     calc_at_event : bool
         Compute eai_exp or not
-    unc_vars : dict(UncVar)
-        Dictonnary of the required uncertainty variables ['exp',
-        'impf', 'haz'] and values are the corresponding UncVar.
+    metric_names : tuple(str)
+        Names of the impact output metris
+        ('aai_agg', 'freq_curve', 'at_event', 'eai_exp', 'tot_value')
+    value_unit : str
+        Unit of the exposures value
+    unc_var_names : tuple(str)
+        Names of the required uncertainty variables
+        ('exp_unc_var', 'impf_unc_var', 'haz_unc_var')
+    exp_unc_var : climada.engine.uncertainty.unc_var.UncVar
+        Exposure uncertainty variable
+    impf_unc_var : climada.engine.uncertainty.unc_var.UncVar
+        Impact function set uncertainty variable
+    haz_unc_var: climada.engine.uncertainty.unc_var.UncVar
+        Hazard uncertainty variable
     """
 
     def __init__(self, exp_unc_var, impf_unc_var, haz_unc_var):
-        """Initialize UncImpact
+        """Initialize UncCalcImpact
+
+        Sets the uncertainty variables, the impact metric_names, and the
+        units.
 
         Parameters
         ----------
-        exp_unc : climada.engine.uncertainty.UncVar or climada.entity.Exposure
+        exp_unc_var : climada.engine.uncertainty.unc_var.UncVar or climada.entity.Exposure
             Exposure uncertainty variable or Exposure
-        impf_unc : climada.engine.uncertainty.UncVar or climada.entity.ImpactFuncSet
-            Impactfunction uncertainty variable or Impact function
-        haz_unc : climada.engine.uncertainty.UncVar or climada.hazard.Hazard
+        impf_unc_var : climada.engine.uncertainty.unc_var.UncVar or climada.entity.ImpactFuncSet
+            Impact function set uncertainty variable or Impact function set
+        haz_unc_var : climada.engine.uncertainty.unc_var.UncVar or climada.hazard.Hazard
             Hazard uncertainty variable or Hazard
 
         """
 
         UncCalc.__init__(self)
-        self.unc_var_names =('exp_unc_var', 'impf_unc_var', 'haz_unc_var')
+        self.unc_var_names = ('exp_unc_var', 'impf_unc_var', 'haz_unc_var')
         self.exp_unc_var =  UncVar.var_to_uncvar(exp_unc_var)
         self.impf_unc_var =  UncVar.var_to_uncvar(impf_unc_var)
         self.haz_unc_var =  UncVar.var_to_uncvar(haz_unc_var)
@@ -88,21 +103,30 @@ class UncCalcImpact(UncCalc):
                          pool=None
                          ):
         """
-        Computes the impact for each of the parameters set defined in
-        uncertainty.samples.
+        Computes the impact for each sample in unc_data.sample_df.
 
         By default, the aggregated average annual impact
         (impact.aai_agg) and the excees impact at return periods rp
         (imppact.calc_freq_curve(self.rp).impact) is computed.
         Optionally, eai_exp and at_event is computed (this may require
-        a larger amount of memory if n_samples and/or the number of centroids
-        is large).
+        a larger amount of memory if the number of samples and/or the number
+        of centroids and/or exposures points is large).
 
         This sets the attributes self.rp, self.calc_eai_exp,
         self.calc_at_event, self.metrics.
 
+        This sets the attributes:
+        unc_data.aai_agg_unc_df,
+        unc_data.freq_curve_unc_df
+        unc_data.eai_exp_unc_df
+        unc_data.at_event_unc_df
+        unc_data.tot_value_unc_df
+        unc_data.unit
+
         Parameters
         ----------
+        unc_data : climada.engine.uncertainty.unc_data.UncData()
+            Uncertainty data object in which to store the impact outputs
         rp : list(int), optional
             Return periods in years to be computed.
             The default is [5, 10, 20, 50, 100, 250].
@@ -113,7 +137,7 @@ class UncCalcImpact(UncCalc):
             Toggle computation of the impact for each event.
             The default is False.
         pool : pathos.pools.ProcessPool, optional
-            Pool of CPUs for parralel computations. Default is None.
+            Pool of CPUs for parralel computations.
             The default is None.
 
         Raises
@@ -143,7 +167,7 @@ class UncCalcImpact(UncCalc):
         [aai_agg_list, freq_curve_list,
          eai_exp_list, at_event_list, tot_value_list] = list(zip(*imp_metrics))
         elapsed_time = (time.time() - start)
-        est_com_time = self.est_comp_time(unc_data.n_samples, elapsed_time, pool)
+        self.est_comp_time(unc_data.n_samples, elapsed_time, pool)
 
         #Compute impact distributions
         with log_level(level='ERROR', name_prefix='climada'):

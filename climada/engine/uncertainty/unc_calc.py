@@ -16,7 +16,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
-Define Uncertainty class.
+Define UncCalc (uncertainty calculate) class.
 """
 
 import logging
@@ -35,23 +35,37 @@ u_setup_logging()
 class UncCalc():
 
     def __init__(self):
+        """
+        Empty constructor to be overwritten by subclasses
+        """
         self.unc_var_names = ()
         self.metrics_names = ()
 
     @property
     def unc_vars(self):
+        """
+        Uncertainty variables
+
+        Returns
+        -------
+        tuple(UncVar)
+            All uncertainty variables associated with the calculation
+
+        """
         return (getattr(self, var) for var in self.unc_var_names)
 
     @property
     def distr_dict(self):
         """
-        Dictionary of the distribution of all the parameters of all variables
-        listed in self.unc_vars
+        Dictionary of the input variable distribution
+
+        Probabilitiy density distribution of all the parameters of all the
+        uncertainty variables listed in self.unc_vars
 
         Returns
         -------
         distr_dict : dict( sp.stats objects )
-            Dictionary of all distributions.
+            Dictionary of all probability density distributions.
 
         """
 
@@ -67,6 +81,8 @@ class UncCalc():
 
         Parameters
         ----------
+        n_samples : int/float
+            The total number of samples
         time_one_run : int/float
             Estimated computation time for one parameter set in seconds
         pool : pathos.pool, optional
@@ -97,15 +113,44 @@ class UncCalc():
     def make_sample(self, unc_data, N, sampling_method='saltelli',
                     sampling_kwargs = None):
         """
-        Make a sample for all parameters with their respective
+        Make samples of input variables
+
+        For all input parameters, sample from their respective
         distributions using the chosen sampling_method from SALib.
         https://salib.readthedocs.io/en/latest/api.html
 
+        This sets the attribute unc_data.samples_df, unc_data.sampling_method
+        and unc_data.sampling_kwargs.
+
         Parameters
         ----------
+        unc_data : climada.engine.uncertainty.unc_data.UncData()
+            Uncertainty data object in which to store the samples
+        N : int
+            Number of samples as used in the sampling method from SALib
+        sampling_method : str, optional
+            The sampling method as defined in SALib. Possible choices:
+            'saltelli', 'fast_sampler', 'latin', 'morris', 'dgsm', 'ff'
+            https://salib.readthedocs.io/en/latest/api.html
+            The default is 'saltelli'.
+        sampling_kwargs : kwargs, optional
+            Optional keyword arguments passed on to the SALib sampling_method.
+            The default is None.
+
+        Raises
+        ------
+        ValueError
+            Error if trying to override existing sample in unc_data
 
         Returns
         -------
+        None.
+
+
+        See Also
+        --------
+        SALib.sample: sampling methods from SALib SALib.sample
+            https://salib.readthedocs.io/en/latest/api.html
 
         """
         if not unc_data.samples_df.empty:
@@ -154,16 +199,19 @@ class UncCalc():
 
         Parameters
         ----------
-        N:
+        N: int
             Number of samples as defined for the SALib sample method.
             Note that the effective number of created samples might be
             larger (c.f. SALib)
+        problem_sa: dict()
+            Description of input variables. Is used as argument for the
+            SALib sampling method.
         sampling_method: string
             The sampling method as defined in SALib. Possible choices:
             'saltelli', 'fast_sampler', 'latin', 'morris', 'dgsm', 'ff'
             https://salib.readthedocs.io/en/latest/api.html
         sampling_kwargs: dict()
-            Optional keyword arguments of the chosen SALib sampling method.
+            Optional keyword arguments passed on to the SALib sampling method.
 
         Returns
         -------
@@ -192,31 +240,32 @@ class UncCalc():
     def calc_sensitivity(self, unc_data, sensitivity_method = 'sobol',
                          sensitivity_kwargs = None):
         """
-        Compute the sensitivity indices using SALib. Prior to doing this
-        sensitivity analysis, one must compute the uncertainty (distribution)
-        of the output values (i.e. self.metrics is defined) for all the parameter
-        samples (rows of self.samples_df).
+        Compute the sensitivity indices using SALib.
+
+        Prior to doing the sensitivity analysis, one must compute the
+        uncertainty (distribution) of the output values
+        (i.e. self.uncertainty_metricsis defined) for all the samples
+        (rows of self.samples_df).
 
         According to Wikipedia, sensitivity analysis is “the study of how the
         uncertainty in the output of a mathematical model or system (numerical
         or otherwise) can be apportioned to different sources of uncertainty
         in its inputs.” The sensitivity of each input is often represented by
         a numeric value, called the sensitivity index. Sensitivity indices
-        come in several forms:
+        come in several forms.
 
-        First-order indices: measures the contribution to the output variance
-        by a single model input alone.
-        Second-order indices: measures the contribution to the output variance
-        caused by the interaction of two model inputs.
-        Total-order index: measures the contribution to the output variance
-        caused by a model input, including both its first-order effects
-        (the input varying alone) and all higher-order interactions.
-
-        This sets the attribute self.sensitivity.
-
+        This sets the attribute unc_data.sensistivity_method and
+        unc_data.sensitivity_kwargs. For each climada
+        metric xxx, an attribute unc_data.xxx_sens_df is set.
+        Metrics:
+            impact: aai_agg, freq_curve, at_event, eai_exp, tot_value)
+            cost benefit: tot_climate_risk, benefit, cost_ben_ratio,
+                imp_meas_present, imp_meas_future
 
         Parameters
         ----------
+        unc_data : climada.engine.uncertainty.unc_data.UncData()
+            Uncertainty data object in which to store the sensitivity indices
         sensitivity_method : str
             sensitivity analysis method from SALib.analyse
             Possible choices:

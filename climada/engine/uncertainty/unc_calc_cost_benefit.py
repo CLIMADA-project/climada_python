@@ -47,29 +47,49 @@ class UncCalcCostBenefit(UncCalc):
 
     Attributes
     ----------
+    metric_names : tuple(str)
+        Names of the cost benefit output metris
+        ('tot_climate_risk', 'benefit', 'cost_ben_ratio',
+         'imp_meas_present', 'imp_meas_future')
+    value_unit : str
+        Unit of the exposures value
+    unc_var_names : tuple(str)
+        Names of the required uncertainty variables
+        ('haz_unc_var', 'ent_unc_var', 'haz_fut_unc_var', 'ent_fut_unc_var')
+    haz_unc_var : climada.engine.uncertainty.unc_var.UncVar
+        Present Hazard uncertainty variable
+    ent_unc_var : climada.engine.uncertainty.unc_var.UncVar
+        Present Entity uncertainty variable
+    haz_unc_fut_Var: climada.engine.uncertainty.unc_var.UncVar
+        Future Hazard uncertainty variable
+    ent_fut_unc_var : climada.engine.uncertainty.unc_var.UncVar
+        Future Entity uncertainty variable
 
     """
 
     def __init__(self, haz_unc_var, ent_unc_var,
                  haz_fut_unc_var=None, ent_fut_unc_var=None):
-        """Initialize UncCostBenefit
+        """Initialize UncCalcCostBenefit
+
+        Sets the uncertainty variables, the cost benefit metric_names, and the
+        units.
 
         Parameters
         ----------
-        haz_unc : climada.engine.uncertainty.UncVar
+        haz_unc : climada.engine.uncertainty.unc_var.UncVar
                   or climada.hazard.Hazard
             Hazard uncertainty variable or Hazard for the present Hazard
             in climada.engine.CostBenefit.calc
-        ent_unc : climada.engine.uncertainty.UncVar
+        ent_unc : climada.engine.uncertainty.unc_var.UncVar
                   or climada.entity.Entity
-            Entity uncertainty variable or Entity for the future Entity
+            Entity uncertainty variable or Entity for the present Entity
             in climada.engine.CostBenefit.calc
-        haz_unc_fut: climada.engine.uncertainty.UncVar
+        haz_unc_fut_var: climada.engine.uncertainty.unc_var.UncVar
                      or climada.hazard.Hazard, optional
             Hazard uncertainty variable or Hazard for the future Hazard
             in climada.engine.CostBenefit.calc
             The Default is None.
-        ent_fut_unc : climada.engine.uncertainty.UncVar
+        ent_fut_unc_var : climada.engine.uncertainty.unc_var.UncVar
                       or climada.entity.Entity, optional
             Entity uncertainty variable or Entity for the future Entity
             in climada.engine.CostBenefit.calc
@@ -77,7 +97,7 @@ class UncCalcCostBenefit(UncCalc):
         """
 
         UncCalc.__init__(self)
-        self.unc_var_names =('haz_unc_var', 'ent_unc_var',
+        self.unc_var_names = ('haz_unc_var', 'ent_unc_var',
                              'haz_fut_unc_var', 'ent_fut_unc_var')
         self.haz_unc_var = UncVar.var_to_uncvar(haz_unc_var)
         self.ent_unc_var = UncVar.var_to_uncvar(ent_unc_var)
@@ -92,23 +112,35 @@ class UncCalcCostBenefit(UncCalc):
 
     def calc_uncertainty(self, unc_data, pool=None, **cost_benefit_kwargs):
         """
-        Computes the cost benefit for each of the parameters set defined in
-        uncertainty.samples.
+        Computes the cost benefit for each sample in unc_data.sample_df.
 
         By default, imp_meas_present, imp_meas_future, tot_climate_risk,
         benefit, cost_ben_ratio are computed.
 
-        This sets the attribute self.metrics.
+        This sets the attributes:
+        unc_data.imp_meas_present_unc_df,
+        unc_data.imp_meas_future_unc_df
+        unc_data.tot_climate_risk_unc_df
+        unc_data.benefit_unc_df
+        unc_data.cost_ben_ratio_unc_df
+        unc_data.unit
+        unc_data.cost_benefit_kwargs
 
         Parameters
         ----------
+        unc_data : climada.engine.uncertainty.unc_data.UncData()
+            Uncertainty data object in which to store the cost benefit outputs
         pool : pathos.pools.ProcessPool, optional
             Pool of CPUs for parralel computations. Default is None.
             The default is None.
-        **kwargs : keyword arguments
-            Any keyword arguments of climada.engine.CostBenefit.calc()
-            EXCEPT: haz, ent, haz_fut, ent_fut
+        cost_benefit_kwargs : keyword arguments
+            Keyword arguments passed on to climada.engine.CostBenefit.calc()
 
+        Raises
+        ------
+        ValueError:
+            If no sampling parameters defined, the uncertainty distribution
+            cannot be computed.
         """
 
         if unc_data.samples_df.empty:
@@ -129,7 +161,7 @@ class UncCalcCostBenefit(UncCalc):
          benefit,
          cost_ben_ratio] = list(zip(*cb_metrics))
         elapsed_time = (time.time() - start)
-        est_com_time = self.est_comp_time(unc_data.n_samples, elapsed_time, pool)
+        self.est_comp_time(unc_data.n_samples, elapsed_time, pool)
 
         #Compute impact distributions
         with log_level(level='ERROR', name_prefix='climada'):
@@ -201,10 +233,12 @@ class UncCalcCostBenefit(UncCalc):
         ----------
         param_sample : pd.DataFrame.iterrows()
             Generator of the parameter samples
+        kwargs :
+            Keyword arguments passed on to climada.engine.CostBenefit.calc()
 
         Returns
         -------
-         : list
+        list
             icost benefit metrics list for all samples containing
             imp_meas_present, imp_meas_future, tot_climate_risk,
             benefit, cost_ben_ratio
