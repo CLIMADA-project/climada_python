@@ -163,7 +163,7 @@ class TestPlot(unittest.TestCase):
                          '_impact_map' +
                          '.jpeg')
         map_file_name_full = Path(FORECAST_PLOT_DIR) / map_file_name
-        map_file_name_full.unlink()
+        map_file_name_full.absolute().unlink(missing_ok=True)
         forecast.plot_hist(run_datetime=dt.datetime(2017,12,31),
                            save_fig=False,close_fig=True)
         forecast.plot_exceedence_prob(run_datetime=dt.datetime(2017,12,31),
