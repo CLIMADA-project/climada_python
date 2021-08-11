@@ -24,7 +24,6 @@ __all__ = ['UncData']
 import logging
 import h5py
 
-
 from itertools import zip_longest
 from pathlib import Path
 
@@ -33,12 +32,12 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
+from climada import CONFIG
+
 from climada.util.value_representation import value_to_monetary_unit as u_vtm
-from climada.util.value_representation import sig_dig as u_sig_dig
 from climada.util import plot as u_plot
 from climada.util.config import setup_logging as u_setup_logging
 import climada.util.hdf5_handler as u_hdf5
-from climada import CONFIG
 
 LOGGER = logging.getLogger(__name__)
 u_setup_logging()
@@ -52,7 +51,7 @@ DATA_DIR = CONFIG.engine.uncertainty.local_data.user_data.dir()
 FIG_W, FIG_H = 8, 5 #default figize width/heigh column/work multiplicators
 
 #Table of recommended pairing between salib sampling and sensitivity methods
-# NEEDS TO BE UPDATED REGULARLY!!
+# NEEDS TO BE UPDATED REGULARLY!! https://salib.readthedocs.io/en/latest/api.html
 SALIB_COMPATIBILITY = {
     'fast': ['fast_sampler'],
     'rbd_fast': ['latin'] ,
@@ -65,11 +64,11 @@ SALIB_COMPATIBILITY = {
 
 class UncData():
     """
-    Uncertainty analysis class
+    Class to store and plot uncertainty and sensitivity data
 
-    This is the base class to perform uncertainty analysis on the outputs of a
-    climada.engine.impact.Impact() or climada.engine.costbenefit.CostBenefit()
-    object.
+    This is the base class to store uncertainty and sensitivity outputs of an
+    analysis  done on climada.engine.impact.Impact() or
+    climada.engine.costbenefit.CostBenefit() object.
 
     Attributes
     ----------
@@ -97,77 +96,24 @@ class UncData():
 
     def __init__(self):
         """
-        Initialize Uncertainty
+        Initialize Uncertainty Data object.
 
-        Parameters
-        ----------
-        unc_vars : dict
-            keys are names and values are climade.engine.uncertainty.UncVar
-        samples : pd.DataFrame, optional
-            DataFrame of sampled parameter values. Column names must be
-            parameter names (all labels) from all unc_vars.
-            The default is pd.DataFrame().
-        metrics : dict(), optional
-            dictionary of the CLIMADA metrics (outputs from
-            Impact.calc() or CostBenefits.calcl()) for which the uncertainty
-            distribution (and optionally the sensitivity) will be computed.
-            For each sample (row of samples), each metric must have a definite
-            value.
-            Metrics are named directly after their defining attributes:
-                Impact: ['aai_agg', 'freq_curve', 'eai_exp', 'at_event']
-                CostBenefits: ['tot_climate_risk', 'benefit', 'cost_ben_ratio',
-                               'imp_meas_present', 'imp_meas_future']
-            Keys are metric names and values are pd.DataFrame with values
-            for each parameter sample (one row per sample).
-            The default is {}.
-        sensitivity: dict(), optional
-            dictionary of the sensitivity analysis for each uncertainty
-            parameter.
-            The default is {}.
+        Empty initialization. The only base attribute set is samples_df.
         """
-        #MetaData
-        self.unit = ''
-        #Sensitivity
-        self.sensitivity_method = 'sobol'
-        self.sensitivity_kwargs = ()
-        #CostBenefit
-        # self.cost_benefit_kwargs = ()
-        #Sample
+
+        #Data
         self.samples_df = pd.DataFrame()
-        self.samples_df.attrs['sampling_method'] = 'saltelli'
-        self.samples_df.attrs['sampling_kwargs'] = ()
-        #Imact
-        # self.aai_agg_unc_df = pd.DataFrame()
-        # self.freq_curve_unc_df = pd.DataFrame()
-        # self.at_event_unc_df = pd.DataFrame()
-        # self.eai_exp_unc_df =pd.DataFrame()
-        # self.tot_value_unc_df = pd.DataFrame()
-        # self.aai_agg_sens_df = pd.DataFrame()
-        # self.freq_curve_sens_df = pd.DataFrame()
-        # self.at_event_sens_df = pd.DataFrame()
-        # self.eai_exp_sens_df = pd.DataFrame()
-        # self.tot_value_sens_df = pd.DataFrame()
-        #CostBenefit
-        # self.tot_climate_risk_unc_df = pd.DataFrame()
-        # self.benefit_unc_df = pd.DataFrame()
-        # self.cost_ben_ratio_unc_df = pd.DataFrame()
-        # self.imp_meas_present_unc_df = pd.DataFrame()
-        # self.imp_meas_future_unc_df = pd.DataFrame()
-        # self.tot_climate_risk_sens_df = pd.DataFrame()
-        # self.benefit_sens_df = pd.DataFrame()
-        # self.cost_ben_ratio_sens_df = pd.DataFrame()
-        # self.imp_meas_present_sens_df = pd.DataFrame()
-        # self.imp_meas_future_sens_df = pd.DataFrame()
 
     def check_salib(self, sensitivity_method):
         """
-        Checks whether the chosen salib sampling method and sensitivity method
-        respect the pairing recommendation by the salib package.
+        Checks whether the chosen sensitivity method and the sampling
+        method used to generated self.samples_df
+        respect the pairing recommendation by the SALib package.
+
+        https://salib.readthedocs.io/en/latest/api.html
 
         Parameters
         ----------
-        sampling_method : str
-            Name of the sampling method.
         sensitivity_method : str
             Name of the sensitivity analysis method.
 
@@ -191,10 +137,29 @@ class UncData():
 
     @property
     def sampling_method(self):
+        """
+        Returns the sampling method used to generate self.samples_df
+
+        Returns
+        -------
+        str :
+            Sampling method name
+
+        """
         return self.samples_df.attrs['sampling_method']
 
     @property
     def sampling_kwargs(self):
+        """
+        Returns the kwargs of the sampling method that generate self.samples_df
+
+
+        Returns
+        -------
+        dict
+            Dictionary of arguments for SALib sampling method
+
+        """
         return self.samples_df.attrs['sampling_kwargs']
 
     @property
@@ -204,7 +169,7 @@ class UncData():
 
         Returns
         -------
-        n_samples: int
+        int :
             effective number of samples
 
         """
@@ -214,12 +179,12 @@ class UncData():
     @property
     def param_labels(self):
         """
-        Labels of all uncertainty parameters.
+        Labels of all uncertainty input parameters.
 
         Returns
         -------
-        param_labels: list of strings
-            Labels of all uncertainty parameters.
+        [str]
+            Labels of all uncertainty input parameters.
 
         """
         return list(self.samples_df)
@@ -233,7 +198,7 @@ class UncData():
 
         Returns
         -------
-        problem_sa : dict
+        dict :
             Salib problem dictionary.
 
         """
@@ -245,6 +210,15 @@ class UncData():
 
     @property
     def uncertainty_metrics(self):
+        """
+        Retrieve all uncertainty output metrics names
+
+        Returns
+        -------
+        unc_metric_list : [str]
+            List of names of attributes containing metrics uncertainty values
+
+        """
         unc_metric_list = []
         for attr_name, attr_value in self.__dict__.items():
             if isinstance(attr_value, pd.DataFrame):
@@ -254,6 +228,15 @@ class UncData():
 
     @property
     def sensitivity_metrics(self):
+        """
+        Retrieve all sensitivity output metrics names
+
+        Returns
+        -------
+        sens_metric_list : [str]
+            List of names of attributes containing metrics sensitivity values
+
+        """
         sens_metric_list = []
         for attr_name, attr_value in self.__dict__.items():
             if isinstance(attr_value, pd.DataFrame):
@@ -262,6 +245,20 @@ class UncData():
         return sens_metric_list
 
     def get_uncertainty(self, metric_list=None):
+        """
+
+
+        Parameters
+        ----------
+        metric_list : TYPE, optional
+            DESCRIPTION. The default is None.
+
+        Returns
+        -------
+        TYPE
+            DESCRIPTION.
+
+        """
         if metric_list is None:
             metric_list = self.uncertainty_metrics
         try:

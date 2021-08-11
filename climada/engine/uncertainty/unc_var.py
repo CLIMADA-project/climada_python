@@ -56,8 +56,8 @@ class UncVar():
 
     Notes
     -----
-    A few default Variables are defined for Hazards, Exposures and
-    Impact Fucntions.
+    A few default Variables are defined for Hazards, Exposures,
+    Impact Fucntions, Measures and Entities.
 
 
     Examples
@@ -128,8 +128,8 @@ class UncVar():
 
         Parameters
         ----------
-        **params : all input parameters from self.unc_var
-            Params will be passed to self.unc_func.
+        **params : optional
+            Input parameters will be passed to self.uncvar_func.
 
         Returns
         -------
@@ -209,174 +209,174 @@ class UncVar():
 
         return UncVar(uncvar_func=lambda: var, distr_dict={})
 
-    def haz_unc(haz, bounds_ev=None, bounds_int=None, bounds_freq=None):
-        """
-        Default hazard uncertainty variable
+def haz_unc(haz, bounds_ev=None, bounds_int=None, bounds_freq=None):
+    """
+    Default hazard uncertainty variable
 
-        Three types of uncertainty can be added:
-            1- sub-sampling events from the total event set
-            2- scale the intensity of all events (homogeneously)
-            3- scale the frequency of all events (homogeneously)
+    Three types of uncertainty can be added:
+        1- sub-sampling events from the total event set
+        2- scale the intensity of all events (homogeneously)
+        3- scale the frequency of all events (homogeneously)
 
-        Parameters
-        ----------
-        haz : climada.hazard
-            The base hazard
-        bounds_ev : TYPE, optional
-            DESCRIPTION. The default is None.
-        bounds_int : TYPE, optional
-            DESCRIPTION. The default is None.
-        bounds_freq : TYPE, optional
-            DESCRIPTION. The default is None.
+    Parameters
+    ----------
+    haz : climada.hazard
+        The base hazard
+    bounds_ev : TYPE, optional
+        DESCRIPTION. The default is None.
+    bounds_int : TYPE, optional
+        DESCRIPTION. The default is None.
+    bounds_freq : TYPE, optional
+        DESCRIPTION. The default is None.
 
-        Returns
-        -------
-        unc_var
-            Uncertainty variable for a hazard object.
+    Returns
+    -------
+    unc_var
+        Uncertainty variable for a hazard object.
 
-        """
-        kwargs = {'haz': haz}
-        if bounds_ev is None:
-            kwargs['HE'] = None
-        if bounds_int is None:
-            kwargs['HI'] = None
-        if bounds_freq is None:
-            kwargs['HF'] = None
-        return UncVar(
-            partial(_haz_uncfunc, **kwargs),
-            _haz_unc_dict(bounds_ev, bounds_int, bounds_freq)
-            )
-
-    def exp_unc(exp, bounds_totval=None, bounds_noise=None):
-        """
-
-
-        Parameters
-        ----------
-        exp : TYPE
-            DESCRIPTION.
-        bounds_totval : TYPE, optional
-            DESCRIPTION. The default is None.
-        bounds_noise : TYPE, optional
-            DESCRIPTION. The default is None.
-
-        Returns
-        -------
-        TYPE
-            DESCRIPTION.
-
-        """
-        kwargs = {'exp': exp, 'bounds_noise': bounds_noise}
-        if bounds_noise is None:
-            kwargs['EN'] = None
-        if bounds_totval is None:
-            kwargs['ET'] = None
-        return UncVar(
-            partial(_exp_uncfunc, **kwargs),
-            _exp_unc_dict(bounds_totval, bounds_noise)
-            )
-
-    def impfset_unc(impf_set, bounds_impf=None, haz_type='TC', fun_id=1):
-        """
-
-
-        Parameters
-        ----------
-        impf_set : TYPE
-            DESCRIPTION.
-        bounds_impf : TYPE, optional
-            DESCRIPTION. The default is None.
-        haz_type : TYPE, optional
-            DESCRIPTION. The default is 'TC'.
-        fun_id : TYPE, optional
-            DESCRIPTION. The default is 1.
-
-        Returns
-        -------
-        TYPE
-            DESCRIPTION.
-
-        """
-        kwargs = {}
-        if bounds_impf is None:
-            kwargs['IF'] = None
-        return UncVar(
-            partial(_impfset_uncfunc, impf_set=impf_set, haz_type=haz_type, fun_id=fun_id, **kwargs),
-            _impfset_unc_dict(bounds_impf)
+    """
+    kwargs = {'haz': haz}
+    if bounds_ev is None:
+        kwargs['HE'] = None
+    if bounds_int is None:
+        kwargs['HI'] = None
+    if bounds_freq is None:
+        kwargs['HF'] = None
+    return UncVar(
+        partial(_haz_uncfunc, **kwargs),
+        _haz_unc_dict(bounds_ev, bounds_int, bounds_freq)
         )
 
-    def ent_unc(bounds_disk, bounds_cost, bounds_totval, bounds_noise,
-                bounds_impf, impf_set, disc_rate,
-                exp, meas_set):
-        """
+def exp_unc(exp, bounds_totval=None, bounds_noise=None):
+    """
 
 
-        Parameters
-        ----------
-        bounds_disk : TYPE
-            DESCRIPTION.
-        bounds_cost : TYPE
-            DESCRIPTION.
-        bounds_totval : TYPE
-            DESCRIPTION.
-        bounds_noise : TYPE
-            DESCRIPTION.
-        bounds_impf : TYPE
-            DESCRIPTION.
-        impf_set : TYPE
-            DESCRIPTION.
-        disc_rate : TYPE
-            DESCRIPTION.
-        exp : TYPE
-            DESCRIPTION.
-        meas_set : TYPE
-            DESCRIPTION.
+    Parameters
+    ----------
+    exp : TYPE
+        DESCRIPTION.
+    bounds_totval : TYPE, optional
+        DESCRIPTION. The default is None.
+    bounds_noise : TYPE, optional
+        DESCRIPTION. The default is None.
 
-        Returns
-        -------
-        TYPE
-            DESCRIPTION.
+    Returns
+    -------
+    TYPE
+        DESCRIPTION.
 
-        """
-        return UncVar(
-            partial(_ent_unc_func, bounds_noise=bounds_noise, impf_set=impf_set, disc_rate=disc_rate,
-                     exp=exp, meas_set=meas_set),
-            _ent_unc_dict(bounds_totval, bounds_noise, bounds_impf, bounds_disk, bounds_cost)
+    """
+    kwargs = {'exp': exp, 'bounds_noise': bounds_noise}
+    if bounds_noise is None:
+        kwargs['EN'] = None
+    if bounds_totval is None:
+        kwargs['ET'] = None
+    return UncVar(
+        partial(_exp_uncfunc, **kwargs),
+        _exp_unc_dict(bounds_totval, bounds_noise)
         )
 
-    def entfut_unc(bounds_cost, bounds_eg, bounds_noise,
-                bounds_impf, impf_set, exp, meas_set):
-        """
+def impfset_unc(impf_set, bounds_impf=None, haz_type='TC', fun_id=1):
+    """
 
 
-        Parameters
-        ----------
-        bounds_cost : TYPE
-            DESCRIPTION.
-        bounds_eg : TYPE
-            DESCRIPTION.
-        bounds_noise : TYPE
-            DESCRIPTION.
-        bounds_impf : TYPE
-            DESCRIPTION.
-        impf_set : TYPE
-            DESCRIPTION.
-        exp : TYPE
-            DESCRIPTION.
-        meas_set : TYPE
-            DESCRIPTION.
+    Parameters
+    ----------
+    impf_set : TYPE
+        DESCRIPTION.
+    bounds_impf : TYPE, optional
+        DESCRIPTION. The default is None.
+    haz_type : TYPE, optional
+        DESCRIPTION. The default is 'TC'.
+    fun_id : TYPE, optional
+        DESCRIPTION. The default is 1.
 
-        Returns
-        -------
-        TYPE
-            DESCRIPTION.
+    Returns
+    -------
+    TYPE
+        DESCRIPTION.
 
-        """
-        return UncVar(
-            partial(_entfut_unc_func, bounds_noise=bounds_noise, impf_set=impf_set,
-                     exp=exp, meas_set=meas_set),
-            _entfut_unc_dict(bounds_eg, bounds_noise, bounds_impf, bounds_cost)
-        )
+    """
+    kwargs = {}
+    if bounds_impf is None:
+        kwargs['IF'] = None
+    return UncVar(
+        partial(_impfset_uncfunc, impf_set=impf_set, haz_type=haz_type, fun_id=fun_id, **kwargs),
+        _impfset_unc_dict(bounds_impf)
+    )
+
+def ent_unc(bounds_disk, bounds_cost, bounds_totval, bounds_noise,
+            bounds_impf, impf_set, disc_rate,
+            exp, meas_set):
+    """
+
+
+    Parameters
+    ----------
+    bounds_disk : TYPE
+        DESCRIPTION.
+    bounds_cost : TYPE
+        DESCRIPTION.
+    bounds_totval : TYPE
+        DESCRIPTION.
+    bounds_noise : TYPE
+        DESCRIPTION.
+    bounds_impf : TYPE
+        DESCRIPTION.
+    impf_set : TYPE
+        DESCRIPTION.
+    disc_rate : TYPE
+        DESCRIPTION.
+    exp : TYPE
+        DESCRIPTION.
+    meas_set : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    TYPE
+        DESCRIPTION.
+
+    """
+    return UncVar(
+        partial(_ent_unc_func, bounds_noise=bounds_noise, impf_set=impf_set, disc_rate=disc_rate,
+                 exp=exp, meas_set=meas_set),
+        _ent_unc_dict(bounds_totval, bounds_noise, bounds_impf, bounds_disk, bounds_cost)
+    )
+
+def entfut_unc(bounds_cost, bounds_eg, bounds_noise,
+            bounds_impf, impf_set, exp, meas_set):
+    """
+
+
+    Parameters
+    ----------
+    bounds_cost : TYPE
+        DESCRIPTION.
+    bounds_eg : TYPE
+        DESCRIPTION.
+    bounds_noise : TYPE
+        DESCRIPTION.
+    bounds_impf : TYPE
+        DESCRIPTION.
+    impf_set : TYPE
+        DESCRIPTION.
+    exp : TYPE
+        DESCRIPTION.
+    meas_set : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    TYPE
+        DESCRIPTION.
+
+    """
+    return UncVar(
+        partial(_entfut_unc_func, bounds_noise=bounds_noise, impf_set=impf_set,
+                 exp=exp, meas_set=meas_set),
+        _entfut_unc_dict(bounds_eg, bounds_noise, bounds_impf, bounds_cost)
+    )
 
 
 
