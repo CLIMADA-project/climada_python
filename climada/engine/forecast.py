@@ -51,7 +51,7 @@ DATA_DIR = CONFIG.local_data.save_dir.str()
 
 FORECAST_DIR = CONFIG.engine.forecast.local_data.str()
 
-FORECAST_PLOT_DIR = CONFIG.engine.forecast.plot_dir.str()
+FORECAST_PLOT_DIR = str(CONFIG.engine.forecast.plot_dir.dir())
 
 # defining colormaps
 # The colors are in line the european meteoalarm colors http://www.meteoalarm.info/
