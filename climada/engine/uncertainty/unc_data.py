@@ -842,35 +842,41 @@ class UncData():
                 ds[0] = str(value)
         return save_path
 
+@staticmethod
+def from_hdf5(filename):
+    """
+    Load a uncertainty data from .hdf5 file
 
-    def load_hdf5(self, filename):
-        """
-        Load a samples_df from .csv file
+    Parameters
+    ----------
+    filename : str or pathlib.Path
+        The filename with absolute or relative path.
 
-        Parameters
-        ----------
-        filename : str or pathlib.Path
-            The filename with absolute or relative path.
+    Returns
+    -------
+    unc_data : climada.engine.uncertainty.unc_data.UncData
+        Uncertainty data loaded from .hdf5 file.
+    """
+    if not filename.exists():
+        LOGGER.info('File not found')
+        return None
 
-        Returns
-        -------
-        samples_df : pandas.DataFrame
-            The loaded samples_df
-        """
+    unc_data = UncData()
 
-        LOGGER.info('Reading %s', filename)
-        store = pd.HDFStore(filename)
-        for var_name in store.keys():
-            setattr(self, var_name[1:], store.get(var_name))
-        self.samples_df.attrs = store.get_storer('/samples_df').attrs.metadata
-        store.close()
-        with h5py.File(filename, 'r') as fh:
-            self.unit = fh.get('impact_unit')[0].decode('UTF-8')
-            self.sensitivity_method = fh.get('sensitivity_method')[0].decode('UTF-8')
-            grp = fh["sensitivity_kwargs"]
-            sens_kwargs = {
-                key: u_hdf5.to_string(grp.get(key)[0])
-                for key in grp.keys()
-                }
-            self.sensitivity_kwargs = tuple(sens_kwargs.items())
+    LOGGER.info('Reading %s', filename)
+    store = pd.HDFStore(filename)
+    for var_name in store.keys():
+        setattr(unc_data, var_name[1:], store.get(var_name))
+    unc_data.samples_df.attrs = store.get_storer('/samples_df').attrs.metadata
+    store.close()
+    with h5py.File(filename, 'r') as fh:
+        unc_data.unit = fh.get('impact_unit')[0].decode('UTF-8')
+        unc_data.sensitivity_method = fh.get('sensitivity_method')[0].decode('UTF-8')
+        grp = fh["sensitivity_kwargs"]
+        sens_kwargs = {
+            key: u_hdf5.to_string(grp.get(key)[0])
+            for key in grp.keys()
+            }
+        unc_data.sensitivity_kwargs = tuple(sens_kwargs.items())
+    return unc_data
 
