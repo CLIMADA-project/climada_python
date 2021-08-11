@@ -51,7 +51,7 @@ DATA_DIR = CONFIG.local_data.save_dir.str()
 
 FORECAST_DIR = CONFIG.engine.forecast.local_data.str()
 
-FORECAST_PLOT_DIR = CONFIG.engine.forecast.plot_dir.str()
+FORECAST_PLOT_DIR = str(CONFIG.engine.forecast.plot_dir.dir())
 
 # defining colormaps
 # The colors are in line the european meteoalarm colors http://www.meteoalarm.info/
@@ -444,7 +444,7 @@ class Forecast():
                     geom2 = shapely.ops.transform(transformer.transform, geometry)
                     axis.add_geometries([geom2],
                                         crs=ccrs.PlateCarree(),
-                                        facecolor='',
+                                        facecolor='none',
                                         edgecolor='gray')
             else: # add country boundaries
                 u_plot.add_shapes(axis)
@@ -753,7 +753,7 @@ class Forecast():
                                                           always_xy=True)
                 for geometry, _ in zip(shp.geometries(), shp.records()):
                     geom2 = shapely.ops.transform(transformer.transform, geometry)
-                    axis.add_geometries([geom2], crs=ccrs.PlateCarree(), facecolor='', \
+                    axis.add_geometries([geom2], crs=ccrs.PlateCarree(), facecolor='none', \
                                         edgecolor='gray')
 
             # Create colorbar in this axis
