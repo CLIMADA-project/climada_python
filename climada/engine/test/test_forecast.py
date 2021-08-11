@@ -26,13 +26,14 @@ import geopandas as gpd
 import matplotlib.pyplot as plt
 import fiona
 from cartopy.io import shapereader
+from pathlib import Path
 
 from climada import CONFIG
 from climada.hazard.storm_europe import StormEurope
 from climada.entity.exposures.base import Exposures, INDICATOR_IMPF
 from climada.entity import ImpactFuncSet
 from climada.entity.impact_funcs.storm_europe import ImpfStormEurope
-from climada.engine.forecast import Forecast
+from climada.engine.forecast import Forecast, FORECAST_PLOT_DIR
 from climada.util.constants import WS_DEMO_NC
 
 HAZ_DIR = CONFIG.hazard.test_data.dir()
@@ -143,7 +144,12 @@ class TestPlot(unittest.TestCase):
         forecast.calc()
         #test plotting functions
         forecast.plot_imp_map(run_datetime=dt.datetime(2017,12,31),
-                              save_fig=False,close_fig=True)
+                              save_fig=True,close_fig=True)
+        map_file_name = (forecast.summary_str(dt.datetime(2017,12,31)) +
+                         '_impact_map' +
+                         '.jpeg')
+        map_file_name_full = Path(FORECAST_PLOT_DIR) / map_file_name
+        map_file_name_full.unlink()
         forecast.plot_hist(run_datetime=dt.datetime(2017,12,31),
                            save_fig=False,close_fig=True)
         forecast.plot_exceedence_prob(run_datetime=dt.datetime(2017,12,31),
