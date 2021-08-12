@@ -51,7 +51,7 @@ DATA_DIR = CONFIG.local_data.save_dir.str()
 
 FORECAST_DIR = CONFIG.engine.forecast.local_data.str()
 
-FORECAST_PLOT_DIR = str(CONFIG.engine.forecast.plot_dir.dir())
+FORECAST_PLOT_DIR = CONFIG.engine.forecast.plot_dir.dir()
 
 # defining colormaps
 # The colors are in line the european meteoalarm colors http://www.meteoalarm.info/
@@ -350,7 +350,7 @@ class Forecast():
         map_file_name = (self.summary_str(run_datetime) +
                          '_impact_map' +
                          '.jpeg')
-        map_file_name_full = Path(FORECAST_PLOT_DIR) / map_file_name
+        map_file_name_full = FORECAST_PLOT_DIR / map_file_name
         lead_time_str = '{:.0f}'.format(self.lead_time(run_datetime).days +
                                         self.lead_time(run_datetime).seconds/60/60/24)
         title_dict = {'event_day': self.event_date.strftime('%a %d %b %Y 00-24UTC'),
@@ -513,7 +513,7 @@ class Forecast():
         histbin_file_name = (self.summary_str(run_datetime) +
                              '_histbin' +
                              '.svg')
-        histbin_file_name_full = Path(FORECAST_PLOT_DIR) / histbin_file_name
+        histbin_file_name_full = FORECAST_PLOT_DIR / histbin_file_name
         lower_bound = np.max([np.floor(
             np.log10(np.max([np.min(self._impact[haz_ind].at_event), 0.1]))
             ), 0])
@@ -605,7 +605,7 @@ class Forecast():
         -------
         str
         """
-        number_names = {0:'',
+        number_names = {1:'',
                         1000: 'thousand',
                         1000000: 'million',
                         1000000000: 'billion',
@@ -667,7 +667,7 @@ class Forecast():
                  '_exceed_' +
                  str(threshold) +
                  '_map.jpeg')
-        wind_map_file_name_full = Path(FORECAST_PLOT_DIR) / wind_map_file_name
+        wind_map_file_name_full = FORECAST_PLOT_DIR / wind_map_file_name
         lead_time_str = '{:.0f}'.format(self.lead_time(run_datetime).days +
                                         self.lead_time(run_datetime).seconds/60/60/24)
         title_dict = {'event_day': self.event_date.strftime('%a %d %b %Y 00-24UTC'),
@@ -853,7 +853,7 @@ class Forecast():
             run_datetime = self.run_datetime[0]
         warn_map_file_name = (self.summary_str(run_datetime) +
                               '_warn_map.jpeg')
-        warn_map_file_name_full = Path(FORECAST_PLOT_DIR) / warn_map_file_name
+        warn_map_file_name_full = FORECAST_PLOT_DIR / warn_map_file_name
         decision_dict = {'probability_aggregation': probability_aggregation,
                          'area_aggregation': area_aggregation}
         lead_time_str = '{:.0f}'.format(self.lead_time(run_datetime).days +
