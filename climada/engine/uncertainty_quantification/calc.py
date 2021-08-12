@@ -16,7 +16,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
-Define UncCalc (uncertainty calculate) class.
+Define Calc (uncertainty calculate) class.
 """
 
 import logging
@@ -32,17 +32,17 @@ LOGGER = logging.getLogger(__name__)
 u_setup_logging()
 
 
-class UncCalc():
+class Calc():
 
     def __init__(self):
         """
         Empty constructor to be overwritten by subclasses
         """
-        self.unc_var_names = ()
+        self.input_var_names = ()
         self.metrics_names = ()
 
     @property
-    def unc_vars(self):
+    def input_var(self):
         """
         Uncertainty variables
 
@@ -52,7 +52,7 @@ class UncCalc():
             All uncertainty variables associated with the calculation
 
         """
-        return (getattr(self, var) for var in self.unc_var_names)
+        return tuple(getattr(self, var) for var in self.input_var_names)
 
     @property
     def distr_dict(self):
@@ -60,7 +60,7 @@ class UncCalc():
         Dictionary of the input variable distribution
 
         Probabilitiy density distribution of all the parameters of all the
-        uncertainty variables listed in self.unc_vars
+        uncertainty variables listed in self.InputVars
 
         Returns
         -------
@@ -70,8 +70,8 @@ class UncCalc():
         """
 
         distr_dict = dict()
-        for unc_var in self.unc_vars:
-            distr_dict.update(unc_var.distr_dict)
+        for input_var in self.input_var:
+            distr_dict.update(input_var.distr_dict)
         return distr_dict
 
 
@@ -98,8 +98,8 @@ class UncCalc():
         if time_one_run > 5:
             LOGGER.warning("Computation time for one set of parameters is "
                 "%.2fs. This is rather long."
-                "Potential reasons: unc_vars are loading data, centroids have "
-                "been assigned to exp before defining unc_var, ..."
+                "Potential reasons: InputVars are loading data, centroids have "
+                "been assigned to exp before defining input_var, ..."
                 "\n If computation cannot be reduced, consider using"
                 " a surrogate model https://www.uqlab.com/", time_one_run)
 
@@ -110,21 +110,23 @@ class UncCalc():
 
         return total_time
 
-    def make_sample(self, unc_data, N, sampling_method='saltelli',
+    def make_sample(self, unc_output, N, sampling_method='saltelli',
                     sampling_kwargs = None):
         """
-        Make samples of input variables
+        Make samples of the input variables
 
         For all input parameters, sample from their respective
         distributions using the chosen sampling_method from SALib.
         https://salib.readthedocs.io/en/latest/api.html
 
-        This sets the attribute unc_data.samples_df, unc_data.sampling_method
-        and unc_data.sampling_kwargs.
+        This sets the attributes
+        unc_output.samples_df,
+        unc_output.sampling_method,
+        unc_output.sampling_kwargs.
 
         Parameters
         ----------
-        unc_data : climada.engine.uncertainty.unc_data.UncData()
+        unc_output : climada.engine.uncertainty.unc_output.UncOutput()
             Uncertainty data object in which to store the samples
         N : int
             Number of samples as used in the sampling method from SALib
@@ -153,15 +155,15 @@ class UncCalc():
             https://salib.readthedocs.io/en/latest/api.html
 
         """
-        if not unc_data.samples_df.empty:
+        if not unc_output.samples_df.empty:
             raise ValueError("Samples already present. Please delete the "
-                             "content of unc_data.samples_df before making "
+                             "content of unc_output.samples_df before making "
                              "new samples")
         if sampling_kwargs is None:
             sampling_kwargs = {}
 
         distr_dict = dict()
-        for var in self.unc_vars:
+        for var in self.input_var:
             distr_dict.update(var.distr_dict)
 
         param_labels = list(distr_dict.keys())
@@ -186,8 +188,8 @@ class UncCalc():
             }
         df_samples.attrs['sampling_method'] = sampling_method
         df_samples.attrs['sampling_kwargs'] = tuple(sampling_kwargs.items())
-        unc_data.samples_df = df_samples
-        LOGGER.info("Effective number of made samples: %d", unc_data.n_samples)
+        unc_output.samples_df = df_samples
+        LOGGER.info("Effective number of made samples: %d", unc_output.n_samples)
 
     def _make_uniform_base_sample(self, N, problem_sa, sampling_method,
                                   sampling_kwargs):
@@ -237,7 +239,7 @@ class UncCalc():
             problem = problem_sa, N = N, **sampling_kwargs)
         return sample_uniform
 
-    def calc_sensitivity(self, unc_data, sensitivity_method = 'sobol',
+    def sensitivity(self, unc_output, sensitivity_method = 'sobol',
                          sensitivity_kwargs = None):
         """
         Compute the sensitivity indices using SALib.
@@ -264,7 +266,7 @@ class UncCalc():
 
         Parameters
         ----------
-        unc_data : climada.engine.uncertainty.unc_data.UncData()
+        unc_output : climada.engine.uncertainty.unc_output.UncOutput()
             Uncertainty data object in which to store the sensitivity indices
         sensitivity_method : str
             sensitivity analysis method from SALib.analyse
@@ -290,7 +292,7 @@ class UncCalc():
             sensitivity_kwargs = {}
 
         #Check compatibility of sampling and sensitivity methods
-        unc_data.check_salib(sensitivity_method)
+        unc_output.check_salib(sensitivity_method)
 
         #Import the named submodule from the SALib analyse module
         #From the workings of __import__ the use of 'from_list' is necessary
@@ -305,18 +307,18 @@ class UncCalc():
         #Certaint Salib method required model input (X) and output (Y), others
         #need only ouput (Y)
         salib_kwargs = method.analyze.__code__.co_varnames #obtain all kwargs of the salib method
-        X = unc_data.samples_df.to_numpy() if 'X' in salib_kwargs else None
+        X = unc_output.samples_df.to_numpy() if 'X' in salib_kwargs else None
 
         for metric_name in self.metric_names:
             sens_first_order_dict = {}
             sens_second_order_dict = {}
-            for (submetric_name, metric_unc) in getattr(unc_data, metric_name + '_unc_df').iteritems():
+            for (submetric_name, metric_unc) in getattr(unc_output, metric_name + '_unc_df').iteritems():
                 Y = metric_unc.to_numpy()
                 if X is not None:
-                    sens_indices = method.analyze(unc_data.problem_sa, X, Y,
+                    sens_indices = method.analyze(unc_output.problem_sa, X, Y,
                                                             **sensitivity_kwargs)
                 else:
-                    sens_indices = method.analyze(unc_data.problem_sa, Y,
+                    sens_indices = method.analyze(unc_output.problem_sa, Y,
                                                             **sensitivity_kwargs)
                 sens_first_order = np.array([
                     np.array(si_val_array)
@@ -332,7 +334,7 @@ class UncCalc():
                     ]).ravel()
                 sens_second_order_dict[submetric_name] = sens_second_order
 
-            n_params  = len(unc_data.param_labels)
+            n_params  = len(unc_output.param_labels)
 
             si_name_first_order_list = [
                 key
@@ -340,7 +342,7 @@ class UncCalc():
                 if (np.array(array).ndim == 1 and key!='names') #dirty trick due to Salib incoherent output
                 ]
             si_names_first_order = [si for si in si_name_first_order_list for _ in range(n_params)]
-            param_names_first_order = unc_data.param_labels * len(si_name_first_order_list)
+            param_names_first_order = unc_output.param_labels * len(si_name_first_order_list)
 
             si_name_second_order_list = [
                 key
@@ -348,10 +350,10 @@ class UncCalc():
                 if np.array(array).ndim == 2
                 ]
             si_names_second_order = [si for si in si_name_second_order_list for _ in range(n_params**2)]
-            param_names_second_order_2 = unc_data.param_labels * len(si_name_second_order_list) * n_params
+            param_names_second_order_2 = unc_output.param_labels * len(si_name_second_order_list) * n_params
             param_names_second_order = [
                 param
-                for param in unc_data.param_labels
+                for param in unc_output.param_labels
                 for _ in range(n_params)
                 ] * len(si_name_second_order_list)
 
@@ -368,9 +370,9 @@ class UncCalc():
 
             sens_df = pd.concat([sens_first_order_df, sens_second_order_df]).reset_index(drop=True)
 
-            setattr(unc_data, metric_name + '_sens_df', sens_df)
+            setattr(unc_output, metric_name + '_sens_df', sens_df)
         sensitivity_kwargs = {
             key: str(val)
             for key, val in sensitivity_kwargs.items()}
-        unc_data.sensitivity_method = sensitivity_method
-        unc_data.sensitivity_kwargs = tuple(sensitivity_kwargs.items())
+        unc_output.sensitivity_method = sensitivity_method
+        unc_output.sensitivity_kwargs = tuple(sensitivity_kwargs.items())

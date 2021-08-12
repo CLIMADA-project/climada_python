@@ -16,7 +16,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
-Define UncVar class.
+Define InputVar class.
 """
 
 import copy
@@ -29,16 +29,16 @@ import matplotlib.pyplot as plt
 
 from climada.entity import Entity, DiscRates
 
-__all__ = ['UncVar']
+__all__ = ['InputVar']
 
 FIG_W, FIG_H = 8, 5 #default figize width/heigh column/work multiplicators
 
-class UncVar():
+class InputVar():
     """
-    Uncertainty variable
+    Input variable for the uncertainty analysis
 
-    An uncertainty variable requires a single or multi-parameter function.
-    The parameters must follow a given distribution. The uncertainty
+    An uncertainty input variable requires a single or multi-parameter function.
+    The parameters must follow a given distribution. The uncertainty input
     variables are the input parameters of the model.
 
     Attributes
@@ -50,9 +50,9 @@ class UncVar():
         https://docs.scipy.org/doc/scipy/reference/stats.html
     labels : list
         Names of the uncertainty parameters (keys of distr_dict)
-    uncvar_func : function
+    func : function
         User defined python fucntion with the uncertainty parameters
-        as input kwargs and which returns a climada object.
+        as keyword arguements and which returns a climada object.
 
     Notes
     -----
@@ -73,7 +73,7 @@ class UncVar():
             'm': sp.stats.randint(low=0, high=5),
             'n': sp.stats.randint(low=0, high=5)
             }
-        unc_var_cat = UncVar(uncvar_func=litpop_cat, distr_dict=distr_dict)
+        iv_cat = InputVar(func=litpop_cat, distr_dict=distr_dict)
 
     Continuous variable function: Impact function for TC
         import scipy as sp
@@ -95,22 +95,22 @@ class UncVar():
               "vmin": sp.stats.norm(loc=15, scale=30),
               "k": sp.stats.randint(low=1, high=9)
               }
-        unc_var_cont = UncVar(uncvar_func=imp_fun_tc, distr_dict=distr_dict)
+        iv_cont = InputVar(func=imp_fun_tc, distr_dict=distr_dict)
 
     """
 
-    def __init__(self, uncvar_func, distr_dict):
+    def __init__(self, func, distr_dict):
         """
-        Initialize UncVar
+        Initialize InputVar
 
         Parameters
         ----------
-        uncvar_func : function
+        func : function
             Variable defined as a function of the uncertainty parameters
         distr_dict : dict
             Dictionary of the probability density distributions of the
             uncertainty parameters, with keys matching the keyword
-            arguments (i.e. uncertainty parameters) of the uncvar_func
+            arguments (i.e. uncertainty parameters) of the func
             function.
             The distribution must be of type scipy.stats
             https://docs.scipy.org/doc/scipy/reference/stats.html
@@ -118,18 +118,18 @@ class UncVar():
         """
         self.labels = list(distr_dict.keys())
         self.distr_dict = distr_dict
-        self.uncvar_func = uncvar_func
+        self.func = func
 
     def evaluate(self, **params):
         """
-        Return the value of uncertainty cariable.
+        Return the value of uncertainty input variable.
 
         By default, the value of the average is returned.
 
         Parameters
         ----------
         **params : optional
-            Input parameters will be passed to self.uncvar_func.
+            Input parameters will be passed to self.InputVar_func.
 
         Returns
         -------
@@ -143,7 +143,7 @@ class UncVar():
                 param: distr.mean()
                 for param, distr in self.distr_dict.items()
                 }
-        return self.uncvar_func(**params)
+        return self.func(**params)
 
 
     def plot(self, figsize=None):
@@ -188,26 +188,26 @@ class UncVar():
 
 
     @staticmethod
-    def var_to_uncvar(var):
+    def var_to_inputvar(var):
         """
         Returns an uncertainty variable with no distribution if var is not
-        an UncVar. Else, returns var.
+        an InputVar. Else, returns var.
 
         Parameters
         ----------
-        var : climada.uncertainty.UncVar or any other CLIMADA object
+        var : climada.uncertainty.InputVar or any other CLIMADA object
 
         Returns
         -------
-        UncVar
-            var if var is UncVar, else UncVar with var and no distribution.
+        InputVar
+            var if var is InputVar, else InputVar with var and no distribution.
 
         """
 
-        if isinstance(var, UncVar):
+        if isinstance(var, InputVar):
             return var
 
-        return UncVar(uncvar_func=lambda: var, distr_dict={})
+        return InputVar(func=lambda: var, distr_dict={})
 
 def haz_unc(haz, bounds_ev=None, bounds_int=None, bounds_freq=None):
     """
@@ -242,7 +242,7 @@ def haz_unc(haz, bounds_ev=None, bounds_int=None, bounds_freq=None):
         kwargs['HI'] = None
     if bounds_freq is None:
         kwargs['HF'] = None
-    return UncVar(
+    return InputVar(
         partial(_haz_uncfunc, **kwargs),
         _haz_unc_dict(bounds_ev, bounds_int, bounds_freq)
         )
@@ -271,7 +271,7 @@ def exp_unc(exp, bounds_totval=None, bounds_noise=None):
         kwargs['EN'] = None
     if bounds_totval is None:
         kwargs['ET'] = None
-    return UncVar(
+    return InputVar(
         partial(_exp_uncfunc, **kwargs),
         _exp_unc_dict(bounds_totval, bounds_noise)
         )
@@ -300,7 +300,7 @@ def impfset_unc(impf_set, bounds_impf=None, haz_type='TC', fun_id=1):
     kwargs = {}
     if bounds_impf is None:
         kwargs['IF'] = None
-    return UncVar(
+    return InputVar(
         partial(_impfset_uncfunc, impf_set=impf_set, haz_type=haz_type, fun_id=fun_id, **kwargs),
         _impfset_unc_dict(bounds_impf)
     )
@@ -338,7 +338,7 @@ def ent_unc(bounds_disk, bounds_cost, bounds_totval, bounds_noise,
         DESCRIPTION.
 
     """
-    return UncVar(
+    return InputVar(
         partial(_ent_unc_func, bounds_noise=bounds_noise, impf_set=impf_set, disc_rate=disc_rate,
                  exp=exp, meas_set=meas_set),
         _ent_unc_dict(bounds_totval, bounds_noise, bounds_impf, bounds_disk, bounds_cost)
@@ -372,7 +372,7 @@ def entfut_unc(bounds_cost, bounds_eg, bounds_noise,
         DESCRIPTION.
 
     """
-    return UncVar(
+    return InputVar(
         partial(_entfut_unc_func, bounds_noise=bounds_noise, impf_set=impf_set,
                  exp=exp, meas_set=meas_set),
         _entfut_unc_dict(bounds_eg, bounds_noise, bounds_impf, bounds_cost)

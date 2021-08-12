@@ -19,7 +19,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define Uncertainty class.
 """
 
-__all__ = ['UncData']
+__all__ = ['UncOutput']
 
 import logging
 import h5py
@@ -62,9 +62,9 @@ SALIB_COMPATIBILITY = {
     'ff' : ['ff'],
     }
 
-class UncData():
+class UncOutput():
     """
-    Class to store and plot uncertainty and sensitivity data
+    Class to store and plot uncertainty and sensitivity analysis output data
 
     This is the base class to store uncertainty and sensitivity outputs of an
     analysis  done on climada.engine.impact.Impact() or
@@ -814,7 +814,7 @@ class UncData():
 
         """
         if filename is None:
-            filename = "unc_data" + dt.datetime.now().strftime(
+            filename = "unc_output" + dt.datetime.now().strftime(
                                                             "%Y-%m-%d-%H%M%S"
                                                             )
             filename = Path(DATA_DIR) / Path(filename)
@@ -839,41 +839,41 @@ class UncData():
                 ds[0] = str(value)
         return save_path
 
-@staticmethod
-def from_hdf5(filename):
-    """
-    Load a uncertainty data from .hdf5 file
+    @staticmethod
+    def from_hdf5(filename):
+        """
+        Load a uncertainty data from .hdf5 file
 
-    Parameters
-    ----------
-    filename : str or pathlib.Path
-        The filename with absolute or relative path.
+        Parameters
+        ----------
+        filename : str or pathlib.Path
+            The filename with absolute or relative path.
 
-    Returns
-    -------
-    unc_data : climada.engine.uncertainty.unc_data.UncData
-        Uncertainty data loaded from .hdf5 file.
-    """
-    if not filename.exists():
-        LOGGER.info('File not found')
-        return None
+        Returns
+        -------
+        unc_data : climada.engine.uncertainty.unc_data.UncData
+            Uncertainty data loaded from .hdf5 file.
+        """
+        if not filename.exists():
+            LOGGER.info('File not found')
+            return None
 
-    unc_data = UncData()
+        unc_data = UncOutput()
 
-    LOGGER.info('Reading %s', filename)
-    store = pd.HDFStore(filename)
-    for var_name in store.keys():
-        setattr(unc_data, var_name[1:], store.get(var_name))
-    unc_data.samples_df.attrs = store.get_storer('/samples_df').attrs.metadata
-    store.close()
-    with h5py.File(filename, 'r') as fh:
-        unc_data.unit = fh.get('impact_unit')[0].decode('UTF-8')
-        unc_data.sensitivity_method = fh.get('sensitivity_method')[0].decode('UTF-8')
-        grp = fh["sensitivity_kwargs"]
-        sens_kwargs = {
-            key: u_hdf5.to_string(grp.get(key)[0])
-            for key in grp.keys()
-            }
-        unc_data.sensitivity_kwargs = tuple(sens_kwargs.items())
-    return unc_data
+        LOGGER.info('Reading %s', filename)
+        store = pd.HDFStore(filename)
+        for var_name in store.keys():
+            setattr(unc_data, var_name[1:], store.get(var_name))
+        unc_data.samples_df.attrs = store.get_storer('/samples_df').attrs.metadata
+        store.close()
+        with h5py.File(filename, 'r') as fh:
+            unc_data.unit = fh.get('impact_unit')[0].decode('UTF-8')
+            unc_data.sensitivity_method = fh.get('sensitivity_method')[0].decode('UTF-8')
+            grp = fh["sensitivity_kwargs"]
+            sens_kwargs = {
+                key: u_hdf5.to_string(grp.get(key)[0])
+                for key in grp.keys()
+                }
+            unc_data.sensitivity_kwargs = tuple(sens_kwargs.items())
+        return unc_data
 

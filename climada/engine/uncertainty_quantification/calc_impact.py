@@ -19,7 +19,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define Uncertainty Impact class
 """
 
-__all__ = ['UncCalcImpact']
+__all__ = ['CalcImpact']
 
 import logging
 import time
@@ -28,7 +28,7 @@ import pandas as pd
 import numpy as np
 
 from climada.engine import Impact
-from climada.engine.uncertainty import UncCalc, UncVar
+from climada.engine.uncertainty_quantification import Calc, InputVar
 from climada.util import log_level
 
 from climada.util.config import setup_logging as u_setup_logging
@@ -37,7 +37,7 @@ LOGGER = logging.getLogger(__name__)
 u_setup_logging()
 
 
-class UncCalcImpact(UncCalc):
+class CalcImpact(Calc):
     """
     Impact uncertainty analysis class.
 
@@ -57,18 +57,18 @@ class UncCalcImpact(UncCalc):
         ('aai_agg', 'freq_curve', 'at_event', 'eai_exp', 'tot_value')
     value_unit : str
         Unit of the exposures value
-    unc_var_names : tuple(str)
-        Names of the required uncertainty variables
-        ('exp_unc_var', 'impf_unc_var', 'haz_unc_var')
-    exp_unc_var : climada.engine.uncertainty.unc_var.UncVar
+    input_var_names : tuple(str)
+        Names of the required uncertainty input variables
+        ('exp_input_var', 'impf_input_var', 'haz_input_var')
+    exp_input_var : climada.engine.uncertainty.input_var.InputVar
         Exposure uncertainty variable
-    impf_unc_var : climada.engine.uncertainty.unc_var.UncVar
+    impf_input_var : climada.engine.uncertainty.input_var.InputVar
         Impact function set uncertainty variable
-    haz_unc_var: climada.engine.uncertainty.unc_var.UncVar
+    haz_input_var: climada.engine.uncertainty.input_var.InputVar
         Hazard uncertainty variable
     """
 
-    def __init__(self, exp_unc_var, impf_unc_var, haz_unc_var):
+    def __init__(self, exp_input_var, impf_input_var, haz_input_var):
         """Initialize UncCalcImpact
 
         Sets the uncertainty variables, the impact metric_names, and the
@@ -76,32 +76,32 @@ class UncCalcImpact(UncCalc):
 
         Parameters
         ----------
-        exp_unc_var : climada.engine.uncertainty.unc_var.UncVar or climada.entity.Exposure
+        exp_input_var : climada.engine.uncertainty.input_var.InputVar or climada.entity.Exposure
             Exposure uncertainty variable or Exposure
-        impf_unc_var : climada.engine.uncertainty.unc_var.UncVar or climada.entity.ImpactFuncSet
+        impf_input_var : climada.engine.uncertainty.input_var.InputVar or climada.entity.ImpactFuncSet
             Impact function set uncertainty variable or Impact function set
-        haz_unc_var : climada.engine.uncertainty.unc_var.UncVar or climada.hazard.Hazard
+        haz_input_var : climada.engine.uncertainty.input_var.InputVar or climada.hazard.Hazard
             Hazard uncertainty variable or Hazard
 
         """
 
-        UncCalc.__init__(self)
-        self.unc_var_names = ('exp_unc_var', 'impf_unc_var', 'haz_unc_var')
-        self.exp_unc_var =  UncVar.var_to_uncvar(exp_unc_var)
-        self.impf_unc_var =  UncVar.var_to_uncvar(impf_unc_var)
-        self.haz_unc_var =  UncVar.var_to_uncvar(haz_unc_var)
+        Calc.__init__(self)
+        self.input_var_names = ('exp_input_var', 'impf_input_var', 'haz_input_var')
+        self.exp_input_var =  InputVar.var_to_inputvar(exp_input_var)
+        self.impf_input_var =  InputVar.var_to_inputvar(impf_input_var)
+        self.haz_input_var =  InputVar.var_to_inputvar(haz_input_var)
         self.metric_names = ('aai_agg', 'freq_curve', 'at_event',
                              'eai_exp', 'tot_value')
-        self.value_unit = self.exp_unc_var.evaluate().value_unit
+        self.value_unit = self.exp_input_var.evaluate().value_unit
 
 
-    def calc_uncertainty(self,
-                         unc_data,
-                         rp=None,
-                         calc_eai_exp=False,
-                         calc_at_event=False,
-                         pool=None
-                         ):
+    def uncertainty(self,
+                    unc_output,
+                    rp=None,
+                    calc_eai_exp=False,
+                    calc_at_event=False,
+                    pool=None
+                    ):
         """
         Computes the impact for each sample in unc_data.sample_df.
 
@@ -116,16 +116,16 @@ class UncCalcImpact(UncCalc):
         self.calc_at_event, self.metrics.
 
         This sets the attributes:
-        unc_data.aai_agg_unc_df,
-        unc_data.freq_curve_unc_df
-        unc_data.eai_exp_unc_df
-        unc_data.at_event_unc_df
-        unc_data.tot_value_unc_df
-        unc_data.unit
+        unc_output.aai_agg_unc_df,
+        unc_output.freq_curve_unc_df
+        unc_output.eai_exp_unc_df
+        unc_output.at_event_unc_df
+        unc_output.tot_value_unc_df
+        unc_output.unit
 
         Parameters
         ----------
-        unc_data : climada.engine.uncertainty.unc_data.UncData()
+        unc_output : climada.engine.uncertainty.unc_output.UncOutput()
             Uncertainty data object in which to store the impact outputs
         rp : list(int), optional
             Return periods in years to be computed.
@@ -148,11 +148,11 @@ class UncCalcImpact(UncCalc):
 
         """
 
-        if unc_data.samples_df.empty:
+        if unc_output.samples_df.empty:
             raise ValueError("No sample was found. Please create one first"
                              "using UncImpact.make_sample(N)")
 
-        unc_data.unit = self.value_unit
+        unc_output.unit = self.value_unit
 
         if rp is None:
             rp=[5, 10, 20, 50, 100, 250]
@@ -162,25 +162,25 @@ class UncCalcImpact(UncCalc):
         self.calc_at_event = calc_at_event
 
         start = time.time()
-        one_sample = unc_data.samples_df.iloc[0:1].iterrows()
+        one_sample = unc_output.samples_df.iloc[0:1].iterrows()
         imp_metrics = map(self._map_impact_calc, one_sample)
         [aai_agg_list, freq_curve_list,
          eai_exp_list, at_event_list, tot_value_list] = list(zip(*imp_metrics))
         elapsed_time = (time.time() - start)
-        self.est_comp_time(unc_data.n_samples, elapsed_time, pool)
+        self.est_comp_time(unc_output.n_samples, elapsed_time, pool)
 
         #Compute impact distributions
         with log_level(level='ERROR', name_prefix='climada'):
             if pool:
                 LOGGER.info('Using %s CPUs.', pool.ncpus)
-                chunksize = min(unc_data.n_samples // pool.ncpus, 100)
+                chunksize = min(unc_output.n_samples // pool.ncpus, 100)
                 imp_metrics = pool.map(self._map_impact_calc,
-                                        unc_data.samples_df.iterrows(),
+                                        unc_output.samples_df.iterrows(),
                                         chunsize = chunksize)
 
             else:
                 imp_metrics = map(self._map_impact_calc,
-                                  unc_data.samples_df.iterrows())
+                                  unc_output.samples_df.iterrows())
 
         #Perform the actual computation
         with log_level(level='ERROR', name_prefix='climada'):
@@ -190,13 +190,13 @@ class UncCalcImpact(UncCalc):
 
 
         # Assign computed impact distribution data to self
-        unc_data.aai_agg_unc_df  = pd.DataFrame(aai_agg_list,
+        unc_output.aai_agg_unc_df  = pd.DataFrame(aai_agg_list,
                                                 columns = ['aai_agg'])
-        unc_data.freq_curve_unc_df = pd.DataFrame(freq_curve_list,
+        unc_output.freq_curve_unc_df = pd.DataFrame(freq_curve_list,
                                     columns=['rp' + str(n) for n in rp])
-        unc_data.eai_exp_unc_df =  pd.DataFrame(eai_exp_list)
-        unc_data.at_event_unc_df = pd.DataFrame(at_event_list)
-        unc_data.tot_value_unc_df = pd.DataFrame(tot_value_list,
+        unc_output.eai_exp_unc_df =  pd.DataFrame(eai_exp_list)
+        unc_output.at_event_unc_df = pd.DataFrame(at_event_list)
+        unc_output.tot_value_unc_df = pd.DataFrame(tot_value_list,
                                                  columns = ['tot_value'])
 
 
@@ -219,13 +219,13 @@ class UncCalcImpact(UncCalc):
         """
 
         # [1] only the rows of the dataframe passed by pd.DataFrame.iterrows()
-        exp_samples = sample_iterrows[1][self.exp_unc_var.labels].to_dict()
-        impf_samples = sample_iterrows[1][self.impf_unc_var.labels].to_dict()
-        haz_samples = sample_iterrows[1][self.haz_unc_var.labels].to_dict()
+        exp_samples = sample_iterrows[1][self.exp_input_var.labels].to_dict()
+        impf_samples = sample_iterrows[1][self.impf_input_var.labels].to_dict()
+        haz_samples = sample_iterrows[1][self.haz_input_var.labels].to_dict()
 
-        exp = self.exp_unc_var.uncvar_func(**exp_samples)
-        impf = self.impf_unc_var.uncvar_func(**impf_samples)
-        haz = self.haz_unc_var.uncvar_func(**haz_samples)
+        exp = self.exp_input_var.evaluate(**exp_samples)
+        impf = self.impf_input_var.evaluate(**impf_samples)
+        haz = self.haz_input_var.evaluate(**haz_samples)
 
         imp = Impact()
 

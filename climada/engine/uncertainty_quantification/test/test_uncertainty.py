@@ -35,7 +35,7 @@ from climada.entity.entity_def import Entity
 from climada.entity import Exposures
 from climada.util.constants import EXP_DEMO_H5, HAZ_DEMO_H5, ENT_DEMO_TODAY, ENT_DEMO_FUTURE
 from climada.hazard import Hazard
-from climada.engine.uncertainty import UncVar, UncCalcImpact, UncData, UncCalcCostBenefit
+from climada.engine.uncertainty_quantification import InputVar, CalcImpact, UncOutput, CalcCostBenefit
 
 
 def impf_dem(x_paa=1, x_mdd=1):
@@ -69,18 +69,18 @@ def make_imp_uncs():
     exp = exp_dem
     exp_distr = {"x_exp": sp.stats.uniform(0.8,2),
                   }
-    exp_unc = UncVar(exp, exp_distr)
+    exp_unc = InputVar(exp, exp_distr)
 
     impf = impf_dem
     impf_distr = {"x_paa": sp.stats.beta(0.5, 1),
                   "x_mdd": sp.stats.uniform(0.8, 1.2)
               }
-    impf_unc = UncVar(impf, impf_distr)
+    impf_unc = InputVar(impf, impf_distr)
 
     haz = haz_dem
     haz_distr = {"x_haz": sp.stats.poisson(1),
                   }
-    haz_unc = UncVar(haz, haz_distr)
+    haz_unc = InputVar(haz, haz_distr)
 
     return exp_unc, impf_unc, haz_unc
 
@@ -109,7 +109,7 @@ class TestUncVar(unittest.TestCase):
         distr_dict = {"x_paa": sp.stats.beta(0.5, 1),
                       "x_mdd": sp.stats.uniform(0.8, 1.2)
                       }
-        impf_unc = UncVar(impf, distr_dict)
+        impf_unc = InputVar(impf, distr_dict)
         self.assertListEqual(impf_unc.labels, ['x_paa', 'x_mdd'])
         self.assertTrue(isinstance(impf_unc.distr_dict, dict))
 
@@ -119,9 +119,9 @@ class TestUncVar(unittest.TestCase):
         distr_dict = {"x_paa": sp.stats.beta(0.5, 1),
                       "x_mdd": sp.stats.uniform(0.8, 0.4)
                       }
-        impf_unc = UncVar(impf, distr_dict)
+        impf_unc = InputVar(impf, distr_dict)
 
-        impf_eval = impf_unc.uncvar_func(**{'x_paa': 0.8, 'x_mdd': 1.1})
+        impf_eval = impf_unc.func(**{'x_paa': 0.8, 'x_mdd': 1.1})
         impf_true = impf_dem(x_paa=0.8, x_mdd=1.1)
         self.assertEqual(impf_eval.size(), impf_true.size())
         impf_func1 = impf_eval.get_func()['TC'][1]
@@ -205,7 +205,7 @@ class TestUncVar(unittest.TestCase):
         distr_dict = {"x_paa": sp.stats.beta(0.5, 1),
                       "x_mdd": sp.stats.uniform(0.8, 1.2)
               }
-        impf_unc = UncVar(impf, distr_dict)
+        impf_unc = InputVar(impf, distr_dict)
         self.assertIsNotNone(impf_unc.plot())
         plt.close()
 
@@ -215,13 +215,13 @@ class TestUncVar(unittest.TestCase):
         distr_dict = {"x_exp": sp.stats.uniform(0.8,1.2)
               }
 
-        var = UncVar.var_to_uncvar(exp)
+        var = InputVar.var_to_inputvar(exp)
         self.assertDictEqual(var.distr_dict, {})
-        self.assertTrue(isinstance(var.uncvar_func(), Exposures))
+        self.assertTrue(isinstance(var.func(), Exposures))
 
-        unc_var = UncVar.var_to_uncvar(UncVar(exp, distr_dict))
+        unc_var = InputVar.var_to_inputvar(InputVar(exp, distr_dict))
         self.assertDictEqual(unc_var.distr_dict, distr_dict)
-        self.assertTrue(isinstance(var.uncvar_func(), Exposures))
+        self.assertTrue(isinstance(var.func(), Exposures))
 
 class TestCalcImpact(unittest.TestCase):
     """Test the Uncertainty class"""
@@ -229,10 +229,10 @@ class TestCalcImpact(unittest.TestCase):
     def test_init_pass(self):
         """Test initiliazation uncertainty"""
 
-        unc_data = UncData()
+        unc_data = UncOutput()
 
         exp_unc, impf_unc, haz_unc = make_imp_uncs()
-        unc_calc = UncCalcImpact(exp_unc, impf_unc, haz_unc)
+        unc_calc = CalcImpact(exp_unc, impf_unc, haz_unc)
         unc_calc.make_sample(unc_data, 2)
 
         # self.assertDictEqual(unc.metrics, {})
@@ -263,8 +263,8 @@ class TestCalcImpact(unittest.TestCase):
         exp_unc, _ , haz_unc = make_imp_uncs()
         impf = impf_dem()
 
-        unc_data = UncData()
-        unc_calc = UncCalcImpact(exp_unc, impf, haz_unc)
+        unc_data = UncOutput()
+        unc_calc = CalcImpact(exp_unc, impf, haz_unc)
 
         #default sampling saltelli
         unc_calc.make_sample(unc_data, N=2, sampling_kwargs = {'calc_second_order': True})
@@ -280,7 +280,7 @@ class TestCalcImpact(unittest.TestCase):
         #                       [0.0, 0.0, 1.0, 1.0, 0.0, 1.0])
 
         # #latin sampling
-        unc_data = UncData()
+        unc_data = UncOutput()
         unc_calc.make_sample(unc_data, N=1, sampling_method='latin',
                         sampling_kwargs = {'seed': 11245})
         self.assertEqual(unc_data.n_samples, 1)
@@ -298,10 +298,10 @@ class TestCalcImpact(unittest.TestCase):
 
         exp_unc, impf_unc, _ = make_imp_uncs()
         haz = haz_dem()
-        unc_data = UncData()
-        unc_calc = UncCalcImpact(exp_unc, impf_unc, haz)
+        unc_data = UncOutput()
+        unc_calc = CalcImpact(exp_unc, impf_unc, haz)
         unc_calc.make_sample(unc_data, N=2)
-        unc_calc.calc_uncertainty(unc_data, calc_eai_exp=False, calc_at_event=False)
+        unc_calc.uncertainty(unc_data, calc_eai_exp=False, calc_at_event=False)
 
         self.assertEqual(unc_data.unit, exp_dem().value_unit)
         self.assertListEqual(unc_calc.rp, [5, 10, 20, 50, 100, 250])
@@ -338,24 +338,24 @@ class TestCalcImpact(unittest.TestCase):
 
         exp_unc, impf_unc, _ = make_imp_uncs()
         haz = haz_dem()
-        unc_data = UncData()
-        unc_calc = UncCalcImpact(exp_unc, impf_unc, haz)
+        unc_data = UncOutput()
+        unc_calc = CalcImpact(exp_unc, impf_unc, haz)
         unc_calc.make_sample(unc_data, N=4, sampling_kwargs={'calc_second_order': True})
         unc_data.plot_sample()
-        unc_calc.calc_uncertainty(unc_data, calc_eai_exp=True,
+        unc_calc.uncertainty(unc_data, calc_eai_exp=True,
                                   calc_at_event=False)
 
         unc_data.plot_uncertainty()
         unc_data.plot_rp_uncertainty()
         plt.close()
 
-        unc_calc.calc_sensitivity(
+        unc_calc.sensitivity(
             unc_data,
             sensitivity_kwargs = {'calc_second_order': True}
             )
         unc_data.plot_sensitivity()
         unc_data.plot_sensitivity_second_order()
-        unc_data.plot_sensitivity_map(exp=exp_unc.uncvar_func(1))
+        unc_data.plot_sensitivity_map(exp=exp_unc.func(1))
         plt.close()
 
     def test_calc_sensitivity_morris_pass(self):
@@ -363,12 +363,12 @@ class TestCalcImpact(unittest.TestCase):
 
         exp_unc, impf_unc, _ = make_imp_uncs()
         haz = haz_dem()
-        unc_data = UncData()
-        unc_calc = UncCalcImpact(exp_unc, impf_unc, haz)
+        unc_data = UncOutput()
+        unc_calc = CalcImpact(exp_unc, impf_unc, haz)
         unc_calc.make_sample(unc_data, N=4, sampling_method='morris')
-        unc_calc.calc_uncertainty(unc_data)
+        unc_calc.uncertainty(unc_data)
 
-        unc_calc.calc_sensitivity(
+        unc_calc.sensitivity(
             unc_data,
             sensitivity_method='morris'
             )
@@ -387,15 +387,15 @@ class TestCalcImpact(unittest.TestCase):
         haz_fut = haz_dem
         haz_distr = {"x_haz": sp.stats.uniform(1, 3),
                       }
-        haz_fut_unc = UncVar(haz_fut, haz_distr)
+        haz_fut_unc = InputVar(haz_fut, haz_distr)
         haz = haz_dem(x_haz=10)
 
         ent = ent_dem()
         ent_fut = ent_fut_dem()
 
-        unc_data = UncData()
-        unc = UncCalcCostBenefit(haz_unc_var=haz, ent_unc_var=ent,
-                              haz_fut_unc_var=haz_fut_unc, ent_fut_unc_var=ent_fut)
+        unc_data = UncOutput()
+        unc = CalcCostBenefit(haz_input_var=haz, ent_input_var=ent,
+                              haz_fut_input_var=haz_fut_unc, ent_fut_input_var=ent_fut)
         unc.make_sample(unc_data, N=1)
         unc.calc_uncertainty(unc_data)
         self.assertEqual(unc_data.unit, exp_dem().value_unit)
@@ -407,20 +407,19 @@ class TestCalcImpact(unittest.TestCase):
 
         exp_unc, impf_unc, _ = make_imp_uncs()
         haz = haz_dem()
-        unc_data_save = UncData()
-        unc_calc = UncCalcImpact(exp_unc, impf_unc, haz)
+        unc_data_save = UncOutput()
+        unc_calc = CalcImpact(exp_unc, impf_unc, haz)
         unc_calc.make_sample(unc_data_save , N=2, sampling_kwargs={'calc_second_order': True})
-        unc_calc.calc_uncertainty(unc_data_save, calc_eai_exp=True,
+        unc_calc.uncertainty(unc_data_save, calc_eai_exp=True,
                                   calc_at_event=False)
-        unc_calc.calc_sensitivity(
+        unc_calc.sensitivity(
             unc_data_save,
             sensitivity_kwargs = {'calc_second_order': True}
             )
 
         filename = unc_data_save.save_hdf5()
 
-        unc_data_load = UncData()
-        unc_data_load.load_hdf5(filename)
+        unc_data_load = UncOutput.from_hdf5(filename)
 
         for attr_save, val_save in unc_data_save.__dict__.items():
             if isinstance(val_save, pd.DataFrame):
