@@ -903,8 +903,8 @@ class TCTracks():
 
         # construct xarray
         tr_ds = xr.Dataset.from_dataframe(tr_df.set_index('time'))
-        tr_ds.coords['lat'] = ('time', tr_ds.lat)
-        tr_ds.coords['lon'] = ('time', tr_ds.lon)
+        tr_ds.coords['lat'] = ('time', tr_ds.lat.values)
+        tr_ds.coords['lon'] = ('time', tr_ds.lon.values)
         tr_ds.attrs = {'max_sustained_wind_unit': 'kn',
                        'central_pressure_unit': 'mb',
                        'sid': sid,
@@ -1007,16 +1007,16 @@ class TCTracks():
                 track_ds = chaz_ds.sel(id=i_track.id.item())
                 track_ds = track_ds.sel(lifelength=track_ds.valid_t.data)
                 self.data.append(xr.Dataset({
-                    'time_step': ('time', track_ds.time_step),
-                    'max_sustained_wind': ('time', track_ds.Mwspd.data),
-                    'central_pressure': ('time', track_ds.pres.data),
-                    'radius_max_wind': ('time', track_ds.radius_max_wind.data),
-                    'environmental_pressure': ('time', track_ds.environmental_pressure.data),
+                    'time_step': ('time', track_ds.time_step.values),
+                    'max_sustained_wind': ('time', track_ds.Mwspd.values),
+                    'central_pressure': ('time', track_ds.pres.values),
+                    'radius_max_wind': ('time', track_ds.radius_max_wind.values),
+                    'environmental_pressure': ('time', track_ds.environmental_pressure.values),
                     'basin': ('time', np.full(track_ds.time.size, "GB")),
                 }, coords={
-                    'time': track_ds.time.data,
-                    'lat': ('time', track_ds.latitude.data),
-                    'lon': ('time', track_ds.longitude.data),
+                    'time': track_ds.time.values,
+                    'lat': ('time', track_ds.latitude.values),
+                    'lon': ('time', track_ds.longitude.values),
                 }, attrs={
                     'max_sustained_wind_unit': 'kn',
                     'central_pressure_unit': 'mb',
