@@ -605,7 +605,7 @@ class Forecast():
         -------
         str
         """
-        number_names = {0:'',
+        number_names = {1:'',
                         1000: 'thousand',
                         1000000: 'million',
                         1000000000: 'billion',
