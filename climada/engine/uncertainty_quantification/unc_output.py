@@ -246,17 +246,23 @@ class UncOutput():
 
     def get_uncertainty(self, metric_list=None):
         """
-
+        Returns uncertainty dataframe with values for each sample
 
         Parameters
         ----------
-        metric_list : TYPE, optional
-            DESCRIPTION. The default is None.
+        metric_list : [str], optional
+            List of uncertainty metrics to consider.
+            The default returns all uncertainty metrics at once.
 
         Returns
         -------
-        TYPE
-            DESCRIPTION.
+        pandas.DataFrame
+            Joint dataframe of all uncertainty values for all metrics in
+            the metric_list.
+
+        See Also
+        --------
+        uncertainty_metrics: list of all available uncertainty metrics
 
         """
         if metric_list is None:
@@ -271,6 +277,34 @@ class UncOutput():
         return unc_df
 
     def get_sensitivity(self, salib_si, metric_list=None):
+        """
+        Returns sensitivity index
+
+        E.g. For the sensitivity analysis method 'sobol', the choices
+        are ['S1', 'ST'], for 'delta' the  choices are ['delta', 'S1'].
+
+        For more information see the SAlib documentation:
+        https://salib.readthedocs.io/en/latest/basics.html
+
+        Parameters
+        ----------
+        salib_si : str
+            Sensitivity index
+        metric_list :[str], optional
+            List of sensitivity metrics to consider.
+            The default returns all sensitivity indices at once.
+
+        Returns
+        -------
+        pandas.DataFrame
+            Joint dataframe of the sensitvity indices for all metrics in
+            the metric_list
+
+        See Also
+        --------
+        sensitvity_metrics: list of all available sensitivity metrics
+
+        """
         df_all = pd.DataFrame([])
         df_meta = pd.DataFrame([])
         if metric_list is None:
@@ -287,16 +321,20 @@ class UncOutput():
                     axis=1
                     )
                 if df_meta.empty:
-                    df_meta = submetric_df.drop(submetric_df.select_dtypes('number').columns, axis=1)
+                    df_meta = submetric_df.drop(
+                        submetric_df.select_dtypes('number').columns, axis=1)
         return pd.concat([df_meta, df_all], axis=1).reset_index(drop=True)
 
     def plot_sample(self, figsize=None):
         """
-        Plot the sample distributions of the uncertainty parameters.
+        Plot the sample distributions of the uncertainty input parameters
+
+        For each uncertainty input variable, the sample distributions is shown
+        in a separate axes.
 
         Parameters
         ---------
-        figsize: tuple(int or float, int or float), optional
+        figsize : tuple(int or float, int or float), optional
             The figsize argument of matplotlib.pyplot.subplots()
             The default is derived from the total number of plots (nplots) as:
                 nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
@@ -339,21 +377,26 @@ class UncOutput():
     def plot_uncertainty(self, metric_list=None, figsize=None,
                          log=False, axes=None):
      """
-     Plot the distribution of values of the risk metrics over the sampled
-     input parameters (i.e. plot the "uncertainty" distributions).
+     Plot the  uncertainty distribution
+
+     For each risk metric, a separate axes is used to plot the uncertainty
+     distribution of the output values obtained over the sampled
+     input parameters.
 
      Parameters
      ----------
-     metric_list: list, optional
+     metric_list : list[str], optional
          List of metrics to plot the distribution.
          The default is None.
-     figsize: tuple(int or float, int or float), optional
+     figsize : tuple(int or float, int or float), optional
          The figsize argument of matplotlib.pyplot.subplots()
          The default is derived from the total number of plots (nplots) as:
-             nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
-             figsize = (ncols * FIG_W, nrows * FIG_H)
-     log: boolean
-         Use log10 scale for x axis. Default is False
+         nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
+         figsize = (ncols * FIG_W, nrows * FIG_H)
+     log : boolean, optional
+         Use log10 scale for x axis. Default is False.
+     axes : matplotlib.pyplot.axes, optional
+         Axes handles to use for the plot. The default is None.
 
      Raises
      ------
@@ -362,8 +405,12 @@ class UncOutput():
 
      Returns
      -------
-     axes: matplotlib.pyplot.axes
+     axes : matplotlib.pyplot.axes
          The axes handle of the plot.
+
+     See Also
+     --------
+     uncertainty_metrics : list of all available uncertainty metrics
 
      """
      fontsize = 18 #default label fontsize
@@ -445,13 +492,15 @@ class UncOutput():
 
     def plot_rp_uncertainty(self, figsize=(16, 6), axes=None):
         """
-        Plot the distribution of return period values.
+        Plot the distribution of return period uncertainty
 
         Parameters
         ----------
-        figsize: tuple(int or float, int or float), optional
+        figsize : tuple(int or float, int or float), optional
             The figsize argument of matplotlib.pyplot.subplots()
             The default is (8, 6)
+        axes: matplotlib.pyplot.axes, optional
+            Axes handles to use for the plot. The default is None.
 
         Raises
         ------
@@ -460,7 +509,7 @@ class UncOutput():
 
         Returns
         -------
-        ax: matplotlib.pyplot.axes
+        ax : matplotlib.pyplot.axes
             The axis handle of the plot.
 
         """
@@ -518,45 +567,60 @@ class UncOutput():
                          metric_list=None, figsize=None, axes=None,
                          **kwargs):
         """
-        Plot one of the first order sensitivity indices of the chosen
-        metric(s). This requires that a senstivity analysis was already
+        Bar plot of a first order sensitivity index
+
+        For each metric, the sensitivity indices are plotted in a
+        separate axes.
+
+        This requires that a senstivity analysis was already
         performed.
 
         E.g. For the sensitivity analysis method 'sobol', the choices
         are ['S1', 'ST'], for 'delta' the  choices are ['delta', 'S1'].
+
+        Note that not all sensitivity indices have a confidence interval.
 
         For more information see the SAlib documentation:
         https://salib.readthedocs.io/en/latest/basics.html
 
         Parameters
         ----------
-        salib_si: string, optional
+        salib_si : string, optional
             The first order (one value per metric output) sensitivity index
-            to plot. This must be a key of the sensitivity dictionaries in
-            self.sensitivity[metric] for each metric in metric_list.
+            to plot.
             The default is S1.
-        metric_list: list of strings, optional
+        salib_si_conf : string, optional
+            The  confidence value for the first order sensitivity index
+            to plot.
+            The default is S1_conf.
+        metric_list : list of strings, optional
             List of metrics to plot the sensitivity. If a metric is not found
-            in self.sensitivity, it is ignored.
-            The default is all metrics from Impact.calc or CostBenefit.calc:
-            ['aai_agg', 'freq_curve', 'tot_climate_risk', 'benefit',
-             'cost_ben_ratio', 'imp_meas_present', 'imp_meas_future',
-             'tot_value']
-        figsize: tuple(int or float, int or float), optional
+            it is ignored.
+        figsize : tuple(int or float, int or float), optional
             The figsize argument of matplotlib.pyplot.subplots()
             The default is derived from the total number of plots (nplots) as:
                 nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
                 figsize = (ncols * FIG_W, nrows * FIG_H)
+        axes : matplotlib.pyplot.axes, optional
+            Axes handles to use for the plot. The default is None.
+        kwargs :
+            Keyword arguments passed on to
+            pandas.DataFrame.plot(kind='bar')
 
         Raises
         ------
-        ValueError
+        ValueError :
             If no sensitivity is available the plot cannot be made.
 
         Returns
         -------
-        axes: matplotlib.pyplot.axes
+        axes : matplotlib.pyplot.axes
             The axes handle of the plot.
+
+        See Also
+        --------
+        sensitvity_metrics :
+            list of all available sensitivity metrics
 
         """
 
@@ -604,51 +668,56 @@ class UncOutput():
     def plot_sensitivity_second_order(self, salib_si='S2', salib_si_conf='S2_conf',
                                       metric_list=None, figsize=None, axes=None,
                                       **kwargs):
-        """Plot second order sensitivity indices as matrix.
+        """
+        Plot second order sensitivity indices as matrix.
 
-        This requires that a senstivity analysis was already performed with
-        a method that returns second-order sensitivity indices.
-
-        The sensitivity indices or their confidence interval can be shown.
+        For each metric, the sensitivity indices are plotted in a
+        separate axes.
 
         E.g. For the sensitivity analysis method 'sobol', the choices
         are ['S2', 'S2_conf'].
+
+        Note that not all sensitivity indices have a confidence interval.
 
         For more information see the SAlib documentation:
         https://salib.readthedocs.io/en/latest/basics.html
 
         Parameters
         ----------
-        salib_si: string, optional
-            The second order (one value per metric output) sensitivity index
-            to plot. This must be a key of the sensitivity dictionaries in
-            self.sensitivity[metric] for each metric in metric_list.
+        salib_si : string, optional
+            The second order sensitivity indexto plot.
             The default is S2.
-        metric_list: list of strings, optional
+        salib_si_conf : string, optional
+            The  confidence value for thesensitivity index salib_si
+            to plot.
+            The default is S2_conf.
+        metric_list : list of strings, optional
             List of metrics to plot the sensitivity. If a metric is not found
-            in self.sensitivity, it is ignored. For a metric with submetrics,
-            e.g. 'freq_curve', all submetrics (e.g. 'rp5') are plotted on
-            separate axis. Submetrics (e.g. 'rp5') are also valid choices.
-            The default is all metrics and their submetrics from Impact.calc
-            or CostBenefit.calc:
-            ['aai_agg', 'freq_curve', 'tot_climate_risk', 'benefit',
-             'cost_ben_ratio', 'imp_meas_present', 'imp_meas_future',
-             'tot_value']
-        figsize: tuple(int or float, int or float), optional
+            it is ignored.
+        figsize : tuple(int or float, int or float), optional
             The figsize argument of matplotlib.pyplot.subplots()
             The default is derived from the total number of plots (nplots) as:
                 nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
                 figsize = (ncols * 5, nrows * 5)
+        axes : matplotlib.pyplot.axes, optional
+            Axes handles to use for the plot. The default is None.
+        kwargs :
+            Keyword arguments passed on to matplotlib.pyplot.imshow()
 
         Raises
         ------
-        ValueError
+        ValueError :
             If no sensitivity is available the plot cannot be made.
 
         Returns
         -------
-        axes: matplotlib.pyplot.axes
+        axes:  matplotlib.pyplot.axes
             The axes handle of the plot.
+
+        See Also
+        --------
+        sensitvity_metrics :
+            list of all available sensitivity metrics
 
         """
 
@@ -731,26 +800,33 @@ class UncOutput():
         """
         Plot a map of the largest sensitivity index in each exposure point
 
+        Requires the uncertainty distribution for eai_exp.
+
         Parameters
         ----------
         exp : climada.exposure
-            The exposure from which to take the coordinates
+            The exposure from which to take the coordinates.
         salib_si : str, optional
             The name of the sensitivity index to plot.
             The default is 'S1'.
-        figsize: tuple(int or float, int or float), optional
-            The figsize argument of matplotlib.pyplot.subplots()
-            The default is (8, 6)
+        kwargs :
+            Keyword arguments passed on to
+            climada.util.plot.geo_scatter_categorical
 
         Raises
         ------
-        ValueError
+        ValueError :
             If no sensitivity data is found, raise error.
 
         Returns
         -------
         ax: matplotlib.pyplot.axes
             The axis handle of the plot.
+
+        See Also
+        --------
+        climada.util.plot.geo_scatter_categorical :
+            geographical plot for categorical variable
 
         """
 
@@ -798,13 +874,13 @@ class UncOutput():
 
     def save_hdf5(self, filename=None):
         """
-        Save the samples_df dataframe to .hdf5
+        Save output to .hdf5
 
         Parameters
         ----------
         filename : str or pathlib.Path, optional
             The filename with absolute or relative path.
-            The default name is "unc_data + datetime.now() + .csv" and
+            The default name is "unc_output + datetime.now() + .hdf5" and
             the default path is taken from climada.config
 
         Returns
@@ -842,7 +918,7 @@ class UncOutput():
     @staticmethod
     def from_hdf5(filename):
         """
-        Load a uncertainty data from .hdf5 file
+        Load a uncertainty and uncertainty output data from .hdf5 file
 
         Parameters
         ----------
@@ -851,8 +927,8 @@ class UncOutput():
 
         Returns
         -------
-        unc_data : climada.engine.uncertainty.unc_data.UncData
-            Uncertainty data loaded from .hdf5 file.
+        unc_output: climada.engine.uncertainty.unc_output.UncOutput
+            Uncertainty and sensitivity data loaded from .hdf5 file.
         """
         if not filename.exists():
             LOGGER.info('File not found')

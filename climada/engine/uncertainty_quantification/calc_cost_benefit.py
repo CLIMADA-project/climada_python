@@ -40,9 +40,9 @@ u_setup_logging()
 
 class CalcCostBenefit(Calc):
     """
-    Cost Benefit Uncertainty analysis class
+    Cost Benefit uncertainty analysis class
 
-    This is the base class to perform uncertainty analysis on the outputs of a
+    This is the base class to perform uncertainty analysis on the outputs of
     climada.engine.costbenefit.CostBenefit().
 
     Attributes
@@ -71,26 +71,25 @@ class CalcCostBenefit(Calc):
                  haz_fut_input_var=None, ent_fut_input_var=None):
         """Initialize UncCalcCostBenefit
 
-        Sets the uncertainty variables, the cost benefit metric_names, and the
-        units.
+        Sets the uncertainty input variables, the cost benefit metric_names,
+        and the units.
 
         Parameters
         ----------
-        haz_unc : climada.engine.uncertainty.input_var.InputVar
-                  or climada.hazard.Hazard
+        haz_input_var : climada.engine.uncertainty.input_var.InputVar
+                        or climada.hazard.Hazard
             Hazard uncertainty variable or Hazard for the present Hazard
             in climada.engine.CostBenefit.calc
-        ent_unc : climada.engine.uncertainty.input_var.InputVar
-                  or climada.entity.Entity
+        ent_input_var : climada.engine.uncertainty.input_var.InputVar
+                        or climada.entity.Entity
             Entity uncertainty variable or Entity for the present Entity
             in climada.engine.CostBenefit.calc
-        haz_unc_fut_var: climada.engine.uncertainty.input_var.InputVar
-                     or climada.hazard.Hazard, optional
+        haz_fut_input_var: climada.engine.uncertainty.input_var.InputVar
+                           or climada.hazard.Hazard, optional
             Hazard uncertainty variable or Hazard for the future Hazard
-            in climada.engine.CostBenefit.calc
             The Default is None.
         ent_fut_input_var : climada.engine.uncertainty.input_var.InputVar
-                      or climada.entity.Entity, optional
+                            or climada.entity.Entity, optional
             Entity uncertainty variable or Entity for the future Entity
             in climada.engine.CostBenefit.calc
 
@@ -110,7 +109,7 @@ class CalcCostBenefit(Calc):
 
 
 
-    def calc_uncertainty(self, unc_output, pool=None, **cost_benefit_kwargs):
+    def uncertainty(self, unc_output, pool=None, **cost_benefit_kwargs):
         """
         Computes the cost benefit for each sample in unc_output.sample_df.
 
@@ -141,6 +140,12 @@ class CalcCostBenefit(Calc):
         ValueError:
             If no sampling parameters defined, the uncertainty distribution
             cannot be computed.
+
+        See Also
+        --------
+        climada.engine.cost_benefit:
+            Compute risk and adptation option cost benefits.
+
         """
 
         if unc_output.samples_df.empty:

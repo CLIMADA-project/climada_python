@@ -39,7 +39,7 @@ u_setup_logging()
 
 class CalcImpact(Calc):
     """
-    Impact uncertainty analysis class.
+    Impact uncertainty caclulation class.
 
     This is the class to perform uncertainty analysis on the outputs of a
     climada.engine.impact.Impact() object.
@@ -71,7 +71,7 @@ class CalcImpact(Calc):
     def __init__(self, exp_input_var, impf_input_var, haz_input_var):
         """Initialize UncCalcImpact
 
-        Sets the uncertainty variables, the impact metric_names, and the
+        Sets the uncertainty input variables, the impact metric_names, and the
         units.
 
         Parameters
@@ -145,6 +145,10 @@ class CalcImpact(Calc):
         ValueError:
             If no sampling parameters defined, the distribution cannot
             be computed.
+
+        See Also
+        --------
+        climada.engine.impact: Compute risk.
 
         """
 
