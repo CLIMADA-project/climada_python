@@ -46,7 +46,7 @@ class InputVar():
     distr_dict : dict
         Distribution of the uncertainty parameters. Keys are uncertainty
         parameters names and Values are probability density distribution
-        from scipy.stats package
+        from the scipy.stats package
         https://docs.scipy.org/doc/scipy/reference/stats.html
     labels : list
         Names of the uncertainty parameters (keys of distr_dict)
@@ -209,199 +209,259 @@ class InputVar():
 
         return InputVar(func=lambda: var, distr_dict={})
 
-def haz_unc(haz, bounds_ev=None, bounds_int=None, bounds_freq=None):
-    """
-    Default hazard uncertainty variable
+    @staticmethod
+    def haz(haz, bounds_ev=None, bounds_int=None, bounds_freq=None):
+        """
+        Helper wrapper for basic hazard uncertainty input variable
 
-    Three types of uncertainty can be added:
-        1- sub-sampling events from the total event set
-        2- scale the intensity of all events (homogeneously)
-        3- scale the frequency of all events (homogeneously)
+        Three types of uncertainties can be added:
+        1) sub-sampling events from the total event set
+            The number of events in each sub-sample is sampled
+            uniformly from a distribution with (min, max) = bounds_ev
+        2) scale the intensity of all events (homogeneously)
+            The instensity of all events is multiplied by a number
+            sampled uniformly from a distribution with (min, max) = bounds_int
+        3) scale the frequency of all events (homogeneously)
+            The frequency of all events is multiplied by a number
+            sampled uniformly from a distribution with (min, max) = bounds_freq
 
-    Parameters
-    ----------
-    haz : climada.hazard
-        The base hazard
-    bounds_ev : TYPE, optional
-        DESCRIPTION. The default is None.
-    bounds_int : TYPE, optional
-        DESCRIPTION. The default is None.
-    bounds_freq : TYPE, optional
-        DESCRIPTION. The default is None.
+        If a bounds is None, this parameter is assumed to have no uncertainty.
 
-    Returns
-    -------
-    unc_var
-        Uncertainty variable for a hazard object.
+        Parameters
+        ----------
+        haz : climada.hazard.Hazard
+            The base hazard
+        bounds_ev : (min, max), optional
+            Bounds of the uniform distribution for the number of events
+            to be sampled per sample. The default is None.
+        bounds_int : (min, max), optional
+            Bounds of the uniform distribution for the homogeneous intensity
+            scaling. The default is None.
+        bounds_freq : TYPE, optional
+            Bounds of the uniform distribution for the homogeneous frequency
+            scaling. The default is None.
 
-    """
-    kwargs = {'haz': haz}
-    if bounds_ev is None:
-        kwargs['HE'] = None
-    if bounds_int is None:
-        kwargs['HI'] = None
-    if bounds_freq is None:
-        kwargs['HF'] = None
-    return InputVar(
-        partial(_haz_uncfunc, **kwargs),
-        _haz_unc_dict(bounds_ev, bounds_int, bounds_freq)
+        Returns
+        -------
+        climada.engine.uncertainty_quantification.input_var.InputVar
+            Uncertainty input variable for a hazard object.
+
+        """
+        kwargs = {'haz': haz}
+        if bounds_ev is None:
+            kwargs['HE'] = None
+        if bounds_int is None:
+            kwargs['HI'] = None
+        if bounds_freq is None:
+            kwargs['HF'] = None
+        return InputVar(
+            partial(_haz_uncfunc, **kwargs),
+            _haz_unc_dict(bounds_ev, bounds_int, bounds_freq)
+            )
+
+    @staticmethod
+    def exp(exp, bounds_totval=None, bounds_noise=None):
+        """
+        Helper wrapper for basic exposure uncertainty input variable
+
+        Two types of uncertainties can be added:
+        1) scale the total value (homogeneously)
+            The value at each exposure point is multiplied by a number
+            sampled uniformly from a distribution with
+            (min, max) = bounds_totvalue
+        2) mutliplicative noise (inhomogeneous)
+            The value of each exposure point is independently multiplied by
+            a random number sampled uniformly from a distribution
+            with (min, max) = bounds_noise
+
+        If a bounds is None, this parameter is assumed to have no uncertainty.
+
+        Parameters
+        ----------
+        exp : climada.entity.exposures.Exposures
+            The base exposure.
+        bounds_totval : (min, max), optional
+            Bounds of the uniform distribution for the homogeneous total value
+            scaling.. The default is None.
+        bounds_noise : (min, max), optional
+            Bounds of the uniform distribution to scale each exposure point
+            independently. The default is None.
+
+        Returns
+        -------
+        climada.engine.uncertainty_quantification.input_var.InputVar
+            Uncertainty input variable for an exposure object.
+
+        """
+        kwargs = {'exp': exp, 'bounds_noise': bounds_noise}
+        if bounds_noise is None:
+            kwargs['EN'] = None
+        if bounds_totval is None:
+            kwargs['ET'] = None
+        return InputVar(
+            partial(_exp_uncfunc, **kwargs),
+            _exp_unc_dict(bounds_totval, bounds_noise)
+            )
+
+    @staticmethod
+    def impfset_unc(impf_set, bounds_mdd=None, bounds_paa=None,
+                    bounds_int=None, haz_type='TC', fun_id=1):
+        """
+        Helper wrapper for basic impact function set uncertainty input variable.
+
+        One impact function (chosen with haz_type and fun_id) is characterized.
+
+        Three types of uncertainties can be added:
+        1) scale the mdd (homogeneously)
+            The value of mdd at each intensity is multiplied by a number
+            sampled uniformly from a distribution with
+            (min, max) = bounds_mdd
+        2) scale the paa (homogeneously)
+            The value of paa at each intensity is multiplied by a number
+            sampled uniformly from a distribution with
+            (min, max) = bounds_paa
+        3) shift the intensity (homogeneously)
+            The value intensity are all summed with a random number
+            sampled uniformly from a distribution with
+            (min, max) = bounds_int
+
+        If a bounds is None, this parameter is assumed to have no uncertainty.
+
+        Parameters
+        ----------
+        impf_set : climada.entity.impact_funcs.impact_func_set.ImpactFuncSet
+            The base impact function set.
+        bounds_mdd : (min, max), optional
+            Bounds of the uniform distribution for the homogeneous mdd
+            scaling. The default is None.
+        bounds_paa : (min, max), optional
+            Bounds of the uniform distribution for the homogeneous paa
+            scaling. The default is None.
+        bounds_int : (min, max), optional
+            Bounds of the uniform distribution for the homogeneous shift
+            of intensity. The default is None.
+        haz_type : str, optional
+            The hazard type of the impact function. The default is 'TC'.
+        fun_id : int, optional
+            The id of the impact function. The default is 1.
+
+        Returns
+        -------
+        climada.engine.uncertainty_quantification.input_var.InputVar
+            DESCRIPTION.
+
+        """
+        kwargs = {}
+        if bounds_mdd is None:
+            kwargs['MDD'] = None
+        if bounds_paa is None:
+            kwargs['PAA'] = None
+        if bounds_int is None:
+            kwargs['IFi'] = None
+        return InputVar(
+            partial(_impfset_uncfunc, impf_set=impf_set, haz_type=haz_type, fun_id=fun_id, **kwargs),
+            _impfset_unc_dict(**kwargs)
         )
 
-def exp_unc(exp, bounds_totval=None, bounds_noise=None):
-    """
+    @staticmethod
+    def ent_unc(bounds_disc, bounds_cost, bounds_totval, bounds_noise,
+                bounds_mdd, bounds_paa, bounds_int, impf_set, disc_rate,
+                exp, meas_set):
+        """
+        Helper wrapper for basic entity set uncertainty input variable.
+
+        Seven types of uncertainties can be added:
+        1) scale the discount rates (homogeneously)
+            The value of the discounts in each year is multiplied by a number
+            sampled uniformly from a distribution with
+            (min, max) = bounds_disc
+        2) scale the cost (homogeneously)
+            The cost of all measures is multiplied by the same number
+            sampled uniformly from a distribution with
+            (min, max) = bounds_cost
+        3) scale the total value (homogeneously)
+            The value at each exposure point is multiplied by a number
+            sampled uniformly from a distribution with
+            (min, max) = bounds_totvalue
+        4) mutliplicative noise (inhomogeneous)
+            The value of each exposure point is independently multiplied by
+            a random number sampled uniformly from a distribution
+            with (min, max) = bounds_noise
+        5) scale the mdd (homogeneously)
+            The value of mdd at each intensity is multiplied by a number
+            sampled uniformly from a distribution with
+            (min, max) = bounds_mdd
+        6) scale the paa (homogeneously)
+            The value of paa at each intensity is multiplied by a number
+            sampled uniformly from a distribution with
+            (min, max) = bounds_paa
+        7) shift the intensity (homogeneously)
+            The value intensity are all summed with a random number
+            sampled uniformly from a distribution with
+            (min, max) = bounds_int
 
 
-    Parameters
-    ----------
-    exp : TYPE
-        DESCRIPTION.
-    bounds_totval : TYPE, optional
-        DESCRIPTION. The default is None.
-    bounds_noise : TYPE, optional
-        DESCRIPTION. The default is None.
+        If a bounds is None, this parameter is assumed to have no uncertainty.
 
-    Returns
-    -------
-    TYPE
-        DESCRIPTION.
 
-    """
-    kwargs = {'exp': exp, 'bounds_noise': bounds_noise}
-    if bounds_noise is None:
-        kwargs['EN'] = None
-    if bounds_totval is None:
-        kwargs['ET'] = None
-    return InputVar(
-        partial(_exp_uncfunc, **kwargs),
-        _exp_unc_dict(bounds_totval, bounds_noise)
+        Parameters
+        ----------
+        bounds_disk : (min, max), optional
+            Bounds of the uniform distribution for the homogeneous discount
+            rate scaling. The default is None.
+        bounds_cost :(min, max), optional
+            Bounds of the uniform distribution for the homogeneous cost
+            of all measures scaling. The default is None.
+        bounds_totval : (min, max), optional
+            Bounds of the uniform distribution for the homogeneous total
+            exposure value scaling. The default is None.
+        bounds_noise : (min, max), optional
+            Bounds of the uniform distribution to scale each exposure point
+            independently. The default is None.
+        bounds_mdd : (min, max), optional
+            Bounds of the uniform distribution for the homogeneous mdd
+            scaling. The default is None.
+        bounds_paa : (min, max), optional
+            Bounds of the uniform distribution for the homogeneous paa
+            scaling. The default is None.
+        bounds_int : (min, max), optional
+            Bounds of the uniform distribution for the homogeneous shift
+            of intensity. The default is None.
+        impf_set : climada.engine.impact_funcs.impact_func_set.ImpactFuncSet
+            The base impact function set.
+        disc_rate : climada.entity.disc_rates.base.DiscRates
+            The base discount rates.
+        exp : climada.entity.exposures.base.Exposure
+            The base exposure.
+        meas_set : climada.entity.measures.measure_set.MeasureSet
+            The base measures.
+
+        Returns
+        -------
+        climada.engine.uncertainty_quantification.input_var.InputVar
+            DESCRIPTION.
+
+        """
+        return InputVar(
+            partial(_ent_unc_func, bounds_noise=bounds_noise, impf_set=impf_set,
+                    disc_rate=disc_rate, exp=exp, meas_set=meas_set),
+            _ent_unc_dict(bounds_totval, bounds_noise, bounds_int, bounds_mdd,
+                          bounds_paa, bounds_disc, bounds_cost)
         )
 
-def impfset_unc(impf_set, bounds_impf=None, haz_type='TC', fun_id=1):
-    """
-
-
-    Parameters
-    ----------
-    impf_set : TYPE
-        DESCRIPTION.
-    bounds_impf : TYPE, optional
-        DESCRIPTION. The default is None.
-    haz_type : TYPE, optional
-        DESCRIPTION. The default is 'TC'.
-    fun_id : TYPE, optional
-        DESCRIPTION. The default is 1.
-
-    Returns
-    -------
-    TYPE
-        DESCRIPTION.
-
-    """
-    kwargs = {}
-    if bounds_impf is None:
-        kwargs['IF'] = None
-    return InputVar(
-        partial(_impfset_uncfunc, impf_set=impf_set, haz_type=haz_type, fun_id=fun_id, **kwargs),
-        _impfset_unc_dict(bounds_impf)
-    )
-
-def ent_unc(bounds_disk, bounds_cost, bounds_totval, bounds_noise,
-            bounds_impf, impf_set, disc_rate,
-            exp, meas_set):
-    """
-
-
-    Parameters
-    ----------
-    bounds_disk : TYPE
-        DESCRIPTION.
-    bounds_cost : TYPE
-        DESCRIPTION.
-    bounds_totval : TYPE
-        DESCRIPTION.
-    bounds_noise : TYPE
-        DESCRIPTION.
-    bounds_impf : TYPE
-        DESCRIPTION.
-    impf_set : TYPE
-        DESCRIPTION.
-    disc_rate : TYPE
-        DESCRIPTION.
-    exp : TYPE
-        DESCRIPTION.
-    meas_set : TYPE
-        DESCRIPTION.
-
-    Returns
-    -------
-    TYPE
-        DESCRIPTION.
-
-    """
-    return InputVar(
-        partial(_ent_unc_func, bounds_noise=bounds_noise, impf_set=impf_set, disc_rate=disc_rate,
-                 exp=exp, meas_set=meas_set),
-        _ent_unc_dict(bounds_totval, bounds_noise, bounds_impf, bounds_disk, bounds_cost)
-    )
-
-def entfut_unc(bounds_cost, bounds_eg, bounds_noise,
-            bounds_impf, impf_set, exp, meas_set):
-    """
-
-
-    Parameters
-    ----------
-    bounds_cost : TYPE
-        DESCRIPTION.
-    bounds_eg : TYPE
-        DESCRIPTION.
-    bounds_noise : TYPE
-        DESCRIPTION.
-    bounds_impf : TYPE
-        DESCRIPTION.
-    impf_set : TYPE
-        DESCRIPTION.
-    exp : TYPE
-        DESCRIPTION.
-    meas_set : TYPE
-        DESCRIPTION.
-
-    Returns
-    -------
-    TYPE
-        DESCRIPTION.
-
-    """
-    return InputVar(
-        partial(_entfut_unc_func, bounds_noise=bounds_noise, impf_set=impf_set,
-                 exp=exp, meas_set=meas_set),
-        _entfut_unc_dict(bounds_eg, bounds_noise, bounds_impf, bounds_cost)
-    )
-
+    @staticmethod
+    def entfut(bounds_cost, bounds_eg, bounds_noise,
+                bounds_impf, impf_set, exp, meas_set):
+        return InputVar(
+            partial(_entfut_unc_func, bounds_noise=bounds_noise, impf_set=impf_set,
+                     exp=exp, meas_set=meas_set),
+            _entfut_unc_dict(bounds_eg, bounds_noise, bounds_impf, bounds_cost)
+        )
 
 
 #Hazard
 def _haz_uncfunc(HE, HI, HF, haz):
-    """
 
-
-    Parameters
-    ----------
-    HE : TYPE
-        DESCRIPTION.
-    HI : TYPE
-        DESCRIPTION.
-    HF : TYPE
-        DESCRIPTION.
-    haz : TYPE
-        DESCRIPTION.
-
-    Returns
-    -------
-    haz_tmp : TYPE
-        DESCRIPTION.
-
-    """
     haz_tmp = copy.deepcopy(haz)
     if HE is not None:
         nb = int(np.round(haz_tmp.size * HE))
@@ -414,24 +474,7 @@ def _haz_uncfunc(HE, HI, HF, haz):
     return haz_tmp
 
 def _haz_unc_dict(bounds_ev, bounds_int, bounds_freq):
-    """
 
-
-    Parameters
-    ----------
-    bounds_ev : TYPE
-        DESCRIPTION.
-    bounds_int : TYPE
-        DESCRIPTION.
-    bounds_freq : TYPE
-        DESCRIPTION.
-
-    Returns
-    -------
-    hud : TYPE
-        DESCRIPTION.
-
-    """
     hud = {}
     if bounds_ev is not None:
         emin, edelta = bounds_ev[0], bounds_ev[1] - bounds_ev[0]
@@ -446,26 +489,7 @@ def _haz_unc_dict(bounds_ev, bounds_int, bounds_freq):
 
 #Exposure
 def _exp_uncfunc(EN, ET, exp, bounds_noise):
-    """
 
-
-    Parameters
-    ----------
-    EN : TYPE
-        DESCRIPTION.
-    ET : TYPE
-        DESCRIPTION.
-    exp : TYPE
-        DESCRIPTION.
-    bounds_noise : TYPE
-        DESCRIPTION.
-
-    Returns
-    -------
-    exp_tmp : TYPE
-        DESCRIPTION.
-
-    """
     exp_tmp = exp.copy(deep=True)
     if EN is not None:
         rnd_vals = np.random.uniform(bounds_noise[0], bounds_noise[1], size = len(exp_tmp.gdf))
@@ -475,22 +499,7 @@ def _exp_uncfunc(EN, ET, exp, bounds_noise):
     return exp_tmp
 
 def _exp_unc_dict(bounds_totval, bounds_noise):
-    """
 
-
-    Parameters
-    ----------
-    bounds_totval : TYPE
-        DESCRIPTION.
-    bounds_noise : TYPE
-        DESCRIPTION.
-
-    Returns
-    -------
-    eud : TYPE
-        DESCRIPTION.
-
-    """
     eud = {}
     if bounds_totval is not None:
         tmin, tmax = bounds_totval[0], bounds_totval[1] - bounds_totval[0]
@@ -551,26 +560,7 @@ def _exp_unc_dict(bounds_totval, bounds_noise):
 
 #Impact function set
 def _impfset_uncfunc(IFi, MDD, PAA, impf_set, haz_type='TC', fun_id=1):
-    """
 
-
-    Parameters
-    ----------
-    IF : TYPE
-        DESCRIPTION.
-    impf_set : TYPE
-        DESCRIPTION.
-    haz_type : TYPE, optional
-        DESCRIPTION. The default is 'TC'.
-    fun_id : TYPE, optional
-        DESCRIPTION. The default is 1.
-
-    Returns
-    -------
-    impf_set_tmp : TYPE
-        DESCRIPTION.
-
-    """
     impf_set_tmp = copy.deepcopy(impf_set)
     if MDD is not None:
         new_mdd = np.minimum(impf_set_tmp.get_func(haz_type=haz_type, fun_id=fun_id).mdd * MDD, 1.0)
@@ -584,20 +574,7 @@ def _impfset_uncfunc(IFi, MDD, PAA, impf_set, haz_type='TC', fun_id=1):
     return impf_set_tmp
 
 def _impfset_unc_dict(bounds_impfi, bounds_mdd, bounds_paa):
-    """
 
-
-    Parameters
-    ----------
-    bounds_impf : TYPE
-        DESCRIPTION.
-
-    Returns
-    -------
-    iud : TYPE
-        DESCRIPTION.
-
-    """
     iud = {}
     if bounds_impfi is not None:
         xmin, xdelta = bounds_impfi[0], bounds_impfi[1] - bounds_impfi[0]
@@ -612,61 +589,18 @@ def _impfset_unc_dict(bounds_impfi, bounds_mdd, bounds_paa):
 
 #Entity
 def _disc_uncfunc(DR, disc_rate):
-    """
 
-
-    Parameters
-    ----------
-    DR : TYPE
-        DESCRIPTION.
-    disc_rate : TYPE
-        DESCRIPTION.
-
-    Returns
-    -------
-    disc : TYPE
-        DESCRIPTION.
-
-    """
     disc = copy.deepcopy(disc_rate)
     disc.rates = np.ones(disc.years.size) * DR
     return disc
 
 def _disc_unc_dict(bounds_disk):
-    """
 
-
-    Parameters
-    ----------
-    bounds_disk : TYPE
-        DESCRIPTION.
-
-    Returns
-    -------
-    dict
-        DESCRIPTION.
-
-    """
     dmin, ddelta = bounds_disk[0], bounds_disk[1] - bounds_disk[0]
     return  {'DR': sp.stats.uniform(dmin, ddelta)}
 
 def _meas_set_uncfunc(CO, meas_set):
-    """
 
-
-    Parameters
-    ----------
-    CO : TYPE
-        DESCRIPTION.
-    meas_set : TYPE
-        DESCRIPTION.
-
-    Returns
-    -------
-    meas_set_tmp : TYPE
-        DESCRIPTION.
-
-    """
     meas_set_tmp = copy.deepcopy(meas_set)
     for haz_type in meas_set_tmp.get_hazard_types():
         for meas in meas_set_tmp.get_measure(haz_type=haz_type):
@@ -674,35 +608,21 @@ def _meas_set_uncfunc(CO, meas_set):
     return meas_set_tmp
 
 def _meas_set_unc_dict(bounds_cost):
-    """
 
-
-    Parameters
-    ----------
-    bounds_cost : TYPE
-        DESCRIPTION.
-
-    Returns
-    -------
-    dict
-        DESCRIPTION.
-
-    """
     cmin, cdelta = bounds_cost[0], bounds_cost[1] - bounds_cost[0]
     return {'CO': sp.stats.uniform(cmin, cdelta)}
 
-
-def _ent_unc_func(EN, ET, IF, CO, DR, bounds_noise,
+def _ent_unc_func(EN, ET, IFi, MDD, PAA, CO, DR, bounds_noise,
                  impf_set, disc_rate, exp, meas_set):
     ent = Entity()
-    if EN is None or ET is None:
+    if EN is None and ET is None:
         ent.exposures = exp
     else:
         ent.exposures = _exp_uncfunc(EN, ET, exp, bounds_noise)
-    if IF is None:
+    if MDD is None and PAA is None and IFi is None:
         ent.impact_func = impf_set
     else:
-        ent.impact_funcs = _impfset_uncfunc(IF, impf_set=impf_set)
+        ent.impact_funcs = _impfset_uncfunc(IFi, MDD, PAA, impf_set=impf_set)
     if CO is None:
         ent.measures = meas_set
     else:
@@ -713,65 +633,18 @@ def _ent_unc_func(EN, ET, IF, CO, DR, bounds_noise,
         ent.disc_rates = _disc_uncfunc(DR, disc_rate)
     return ent
 
-def _ent_unc_dict(bounds_totval, bounds_noise, bounds_impf, bounds_disk, bounds_cost):
-    """
+def _ent_unc_dict(bounds_totval, bounds_noise, bounds_int, bounds_mdd,
+                  bounds_paa, bounds_disk, bounds_cost):
 
-
-    Parameters
-    ----------
-    bounds_totval : TYPE
-        DESCRIPTION.
-    bounds_noise : TYPE
-        DESCRIPTION.
-    bounds_impf : TYPE
-        DESCRIPTION.
-    bounds_disk : TYPE
-        DESCRIPTION.
-    bounds_cost : TYPE
-        DESCRIPTION.
-
-    Returns
-    -------
-    ent_unc_dict : TYPE
-        DESCRIPTION.
-
-    """
     ent_unc_dict = _exp_unc_dict(bounds_totval, bounds_noise)
-    ent_unc_dict.update(_impfset_unc_dict(bounds_impf))
+    ent_unc_dict.update(_impfset_unc_dict(bounds_int, bounds_mdd, bounds_paa))
     ent_unc_dict.update(_disc_unc_dict(bounds_disk))
     ent_unc_dict.update(_meas_set_unc_dict(bounds_cost))
     return  ent_unc_dict
 
 def _entfut_unc_func(ENf, EG, IFf, CO, bounds_noise,
                  impf_set, exp, meas_set):
-    """
 
-
-    Parameters
-    ----------
-    ENf : TYPE
-        DESCRIPTION.
-    EG : TYPE
-        DESCRIPTION.
-    IFf : TYPE
-        DESCRIPTION.
-    CO : TYPE
-        DESCRIPTION.
-    bounds_noise : TYPE
-        DESCRIPTION.
-    impf_set : TYPE
-        DESCRIPTION.
-    exp : TYPE
-        DESCRIPTION.
-    meas_set : TYPE
-        DESCRIPTION.
-
-    Returns
-    -------
-    ent : TYPE
-        DESCRIPTION.
-
-    """
     ent = Entity()
     if ENf is None or EG is None:
         ent.exposures = exp
@@ -790,26 +663,7 @@ def _entfut_unc_func(ENf, EG, IFf, CO, bounds_noise,
 
 def _entfut_unc_dict(bounds_eg=None, bounds_noise=None, bounds_impf=None,
                      bounds_cost=None):
-    """
 
-
-    Parameters
-    ----------
-    bounds_eg : TYPE, optional
-        DESCRIPTION. The default is None.
-    bounds_noise : TYPE, optional
-        DESCRIPTION. The default is None.
-    bounds_impf : TYPE, optional
-        DESCRIPTION. The default is None.
-    bounds_cost : TYPE, optional
-        DESCRIPTION. The default is None.
-
-    Returns
-    -------
-    eud : TYPE
-        DESCRIPTION.
-
-    """
     eud = {}
     if bounds_eg is not None:
         gmin, gmax = bounds_eg[0], bounds_eg[1] - bounds_eg[0]
