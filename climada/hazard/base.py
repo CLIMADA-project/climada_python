@@ -1072,6 +1072,8 @@ class Hazard():
         self.clear()
         hf_data = h5py.File(file_name, 'r')
         for (var_name, var_val) in self.__dict__.items():
+            if var_name != 'tag' and var_name not in hf_data.keys():
+                continue
             if var_name == 'centroids':
                 self.centroids.read_hdf5(hf_data.get(var_name))
             elif var_name == 'tag':
@@ -1542,7 +1544,8 @@ class Hazard():
         haz_concat = haz_list[0].__class__()
         haz_concat.tag.haz_type = haz_list[0].tag.haz_type
         for attr_name, attr_val in vars(haz_list[0]).items():
-            # only copy simple attributes like "units" to save memory
+            # to save memory, only copy simple attributes like
+            # "units" that are not explicitly handled by Hazard.append
             if not (isinstance(attr_val, (list, np.ndarray, sparse.csr.csr_matrix))
                     or attr_name in ["tag", "centroids"]):
                 setattr(haz_concat, attr_name, copy.deepcopy(attr_val))
