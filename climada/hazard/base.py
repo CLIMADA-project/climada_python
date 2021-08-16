@@ -159,6 +159,8 @@ class Hazard():
         ----------
         haz_type : str, optional
             acronym of the hazard type (e.g. 'TC').
+        pool : pathos.pool, optional
+            Pool that will be used for parallel computation when applicable. Default: None
 
         Examples
         --------
@@ -1543,7 +1545,7 @@ class Hazard():
         haz_concat.tag.haz_type = haz_list[0].tag.haz_type
         for attr_name, attr_val in vars(haz_list[0]).items():
             # to save memory, only copy simple attributes like
-            # "units" that are not explicitly handled by Hazard.append 
+            # "units" that are not explicitly handled by Hazard.append
             if not (isinstance(attr_val, (list, np.ndarray, sparse.csr.csr_matrix))
                     or attr_name in ["tag", "centroids"]):
                 setattr(haz_concat, attr_name, copy.deepcopy(attr_val))

@@ -1454,7 +1454,7 @@ class TCTracks():
                 lon[lon < 0] += 360
 
             time_step = pd.tseries.frequencies.to_offset(pd.Timedelta(hours=time_step_h)).freqstr
-            track_int = track.resample(time=time_step, keep_attrs=True, skipna=True)\
+            track_int = track.resample(time=time_step, skipna=True)\
                              .interpolate('linear')
             track_int['basin'] = track.basin.resample(time=time_step).nearest()
             track_int['time_step'][:] = time_step_h
