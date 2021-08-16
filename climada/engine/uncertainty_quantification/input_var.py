@@ -304,8 +304,8 @@ class InputVar():
             )
 
     @staticmethod
-    def impfset_unc(impf_set, bounds_mdd=None, bounds_paa=None,
-                    bounds_int=None, haz_type='TC', fun_id=1):
+    def impfset(impf_set, bounds_mdd=None, bounds_paa=None,
+                    bounds_impfi=None, haz_type='TC', fun_id=1):
         """
         Helper wrapper for basic impact function set uncertainty input variable.
 
@@ -337,7 +337,7 @@ class InputVar():
         bounds_paa : (min, max), optional
             Bounds of the uniform distribution for the homogeneous paa
             scaling. The default is None.
-        bounds_int : (min, max), optional
+        bounds_impfi : (min, max), optional
             Bounds of the uniform distribution for the homogeneous shift
             of intensity. The default is None.
         haz_type : str, optional
@@ -356,17 +356,18 @@ class InputVar():
             kwargs['MDD'] = None
         if bounds_paa is None:
             kwargs['PAA'] = None
-        if bounds_int is None:
+        if bounds_impfi is None:
             kwargs['IFi'] = None
         return InputVar(
             partial(_impfset_uncfunc, impf_set=impf_set, haz_type=haz_type, fun_id=fun_id, **kwargs),
-            _impfset_unc_dict(**kwargs)
+            _impfset_unc_dict(bounds_impfi, bounds_mdd, bounds_paa)
         )
 
     @staticmethod
-    def ent_unc(bounds_disc, bounds_cost, bounds_totval, bounds_noise,
-                bounds_mdd, bounds_paa, bounds_int, impf_set, disc_rate,
-                exp, meas_set):
+    def ent(impf_set, disc_rate, exp, meas_set,
+            bounds_disc=None, bounds_cost=None, bounds_totval=None,
+            bounds_noise=None, bounds_mdd=None, bounds_paa=None,
+            bounds_impfi=None):
         """
         Helper wrapper for basic entity set uncertainty input variable.
 
@@ -439,23 +440,126 @@ class InputVar():
         Returns
         -------
         climada.engine.uncertainty_quantification.input_var.InputVar
-            DESCRIPTION.
+            Entity uncertainty input variable
 
         """
+        kwargs = {}
+        if bounds_mdd is None:
+            kwargs['MDD'] = None
+        if bounds_paa is None:
+            kwargs['PAA'] = None
+        if bounds_impfi is None:
+            kwargs['IFi'] = None
+        if bounds_disc is None:
+            kwargs['DR'] = None
+        if bounds_cost is None:
+            kwargs['CO'] = None
+        if bounds_totval is None:
+            kwargs['ET'] = None
+        if bounds_noise is None:
+            kwargs['EN'] = None
+
+
         return InputVar(
-            partial(_ent_unc_func, bounds_noise=bounds_noise, impf_set=impf_set,
-                    disc_rate=disc_rate, exp=exp, meas_set=meas_set),
-            _ent_unc_dict(bounds_totval, bounds_noise, bounds_int, bounds_mdd,
+            partial(_ent_unc_func, impf_set=impf_set, disc_rate=disc_rate,
+                    bounds_noise=bounds_noise,
+                    exp=exp, meas_set=meas_set, **kwargs),
+            _ent_unc_dict(bounds_totval, bounds_noise, bounds_impfi, bounds_mdd,
                           bounds_paa, bounds_disc, bounds_cost)
         )
 
     @staticmethod
-    def entfut(bounds_cost, bounds_eg, bounds_noise,
-                bounds_impf, impf_set, exp, meas_set):
+    def entfut(impf_set, exp, meas_set,
+               bounds_cost=None, bounds_eg=None, bounds_noise=None,
+                bounds_impfi=None, bounds_mdd=None, bounds_paa=None
+                ):
+        """
+        Helper wrapper for basic future entity set uncertainty input variable.
+
+        Seven types of uncertainties can be added:
+        1) scale the cost (homogeneously)
+            The cost of all measures is multiplied by the same number
+            sampled uniformly from a distribution with
+            (min, max) = bounds_cost
+        3) scale the economic growth (homogeneously)
+            The value at each exposure point is multiplied by a number
+            sampled uniformly from a distribution with
+            (min, max) = bounds_eg
+        4) mutliplicative noise (inhomogeneous)
+            The value of each exposure point is independently multiplied by
+            a random number sampled uniformly from a distribution
+            with (min, max) = bounds_noise
+        5) scale the mdd (homogeneously)
+            The value of mdd at each intensity is multiplied by a number
+            sampled uniformly from a distribution with
+            (min, max) = bounds_mdd
+        6) scale the paa (homogeneously)
+            The value of paa at each intensity is multiplied by a number
+            sampled uniformly from a distribution with
+            (min, max) = bounds_paa
+        7) shift the impact function intensity (homogeneously)
+            The value intensity are all summed with a random number
+            sampled uniformly from a distribution with
+            (min, max) = bounds_impfi
+
+
+        If a bounds is None, this parameter is assumed to have no uncertainty.
+
+
+        Parameters
+        ----------
+        bounds_cost :(min, max), optional
+            Bounds of the uniform distribution for the homogeneous cost
+            of all measures scaling. The default is None.
+        bounds_eg : (min, max), optional
+            Bounds of the uniform distribution for the homogeneous total
+            exposure growth scaling. The default is None.
+        bounds_noise : (min, max), optional
+            Bounds of the uniform distribution to scale each exposure point
+            independently. The default is None.
+        bounds_mdd : (min, max), optional
+            Bounds of the uniform distribution for the homogeneous mdd
+            scaling. The default is None.
+        bounds_paa : (min, max), optional
+            Bounds of the uniform distribution for the homogeneous paa
+            scaling. The default is None.
+        bounds_impfi : (min, max), optional
+            Bounds of the uniform distribution for the homogeneous shift
+            of intensity. The default is None.
+        impf_set : climada.engine.impact_funcs.impact_func_set.ImpactFuncSet
+            The base impact function set.
+        exp : climada.entity.exposures.base.Exposure
+            The base exposure.
+        meas_set : climada.entity.measures.measure_set.MeasureSet
+            The base measures.
+
+        Returns
+        -------
+        climada.engine.uncertainty_quantification.input_var.InputVar
+            Entity uncertainty input variable
+
+        """
+
+        kwargs = {}
+        if bounds_mdd is None:
+            kwargs['MDD'] = None
+        if bounds_paa is None:
+            kwargs['PAA'] = None
+        if bounds_impfi is None:
+            kwargs['IFi'] = None
+        if bounds_cost is None:
+            kwargs['CO'] = None
+        if bounds_eg is None:
+            kwargs['EG'] = None
+        if bounds_noise is None:
+            kwargs['ENf'] = None
+
         return InputVar(
             partial(_entfut_unc_func, bounds_noise=bounds_noise, impf_set=impf_set,
-                     exp=exp, meas_set=meas_set),
-            _entfut_unc_dict(bounds_eg, bounds_noise, bounds_impf, bounds_cost)
+                     exp=exp, meas_set=meas_set, **kwargs),
+            _entfut_unc_dict(bounds_eg=bounds_eg, bounds_noise=bounds_noise,
+                             bounds_impfi=bounds_impfi, bounds_paa=bounds_paa,
+                             bounds_mdd=bounds_mdd, bounds_cost=bounds_cost)
         )
 
 
@@ -507,56 +611,6 @@ def _exp_unc_dict(bounds_totval, bounds_noise):
     if bounds_noise is not None:
         eud['EN'] = sp.stats.uniform(0, 1)
     return eud
-
-#Impact function set
-# def _impfset_uncfunc(IF, impf_set, haz_type='TC', fun_id=1):
-#     """
-
-
-#     Parameters
-#     ----------
-#     IF : TYPE
-#         DESCRIPTION.
-#     impf_set : TYPE
-#         DESCRIPTION.
-#     haz_type : TYPE, optional
-#         DESCRIPTION. The default is 'TC'.
-#     fun_id : TYPE, optional
-#         DESCRIPTION. The default is 1.
-
-#     Returns
-#     -------
-#     impf_set_tmp : TYPE
-#         DESCRIPTION.
-
-#     """
-#     impf_set_tmp = copy.deepcopy(impf_set)
-#     if IF is not None:
-#         new_mdd = np.minimum(impf_set_tmp.get_func(haz_type=haz_type, fun_id=fun_id).mdd * IF, 1.0)
-#         impf_set_tmp.get_func(haz_type=haz_type, fun_id=fun_id).mdd = new_mdd
-#     return impf_set_tmp
-
-# def _impfset_unc_dict(bounds_impf):
-#     """
-
-
-#     Parameters
-#     ----------
-#     bounds_impf : TYPE
-#         DESCRIPTION.
-
-#     Returns
-#     -------
-#     iud : TYPE
-#         DESCRIPTION.
-
-#     """
-#     iud = {}
-#     if bounds_impf is not None:
-#         xmin, xdelta = bounds_impf[0], bounds_impf[1] - bounds_impf[0]
-#         iud['IF'] = sp.stats.uniform(xmin, xdelta)
-#     return iud
-
 
 #Impact function set
 def _impfset_uncfunc(IFi, MDD, PAA, impf_set, haz_type='TC', fun_id=1):
@@ -633,27 +687,27 @@ def _ent_unc_func(EN, ET, IFi, MDD, PAA, CO, DR, bounds_noise,
         ent.disc_rates = _disc_uncfunc(DR, disc_rate)
     return ent
 
-def _ent_unc_dict(bounds_totval, bounds_noise, bounds_int, bounds_mdd,
+def _ent_unc_dict(bounds_totval, bounds_noise, bounds_impfi, bounds_mdd,
                   bounds_paa, bounds_disk, bounds_cost):
 
     ent_unc_dict = _exp_unc_dict(bounds_totval, bounds_noise)
-    ent_unc_dict.update(_impfset_unc_dict(bounds_int, bounds_mdd, bounds_paa))
+    ent_unc_dict.update(_impfset_unc_dict(bounds_impfi, bounds_mdd, bounds_paa))
     ent_unc_dict.update(_disc_unc_dict(bounds_disk))
     ent_unc_dict.update(_meas_set_unc_dict(bounds_cost))
     return  ent_unc_dict
 
-def _entfut_unc_func(ENf, EG, IFf, CO, bounds_noise,
+def _entfut_unc_func(ENf, EG, IFi, MDD, PAA, CO, bounds_noise,
                  impf_set, exp, meas_set):
 
     ent = Entity()
-    if ENf is None or EG is None:
+    if ENf is None and EG is None:
         ent.exposures = exp
     else:
         ent.exposures = _exp_uncfunc(EN=ENf, ET=EG, exp=exp, bounds_noise=bounds_noise)
-    if IFf is None:
+    if IFi is None and PAA is None and MDD is None:
         ent.impact_func = impf_set
     else:
-        ent.impact_funcs = _impfset_uncfunc(IFf, impf_set=impf_set)
+        ent.impact_funcs = _impfset_uncfunc(IFi, MDD, PAA, impf_set=impf_set)
     if CO is None:
         ent.measures = meas_set
     else:
@@ -661,8 +715,9 @@ def _entfut_unc_func(ENf, EG, IFf, CO, bounds_noise,
     ent.disc_rates = DiscRates() #Disc rate of future entity ignored in cost_benefit.calc()
     return ent
 
-def _entfut_unc_dict(bounds_eg=None, bounds_noise=None, bounds_impf=None,
-                     bounds_cost=None):
+def _entfut_unc_dict(bounds_impfi, bounds_mdd,
+                  bounds_paa, bounds_eg, bounds_noise,
+                  bounds_cost):
 
     eud = {}
     if bounds_eg is not None:
@@ -670,10 +725,8 @@ def _entfut_unc_dict(bounds_eg=None, bounds_noise=None, bounds_impf=None,
         eud['EG'] = sp.stats.uniform(gmin, gmax)
     if bounds_noise is not None:
         eud['ENf'] = sp.stats.uniform(0, 1)
-    if bounds_impf  is  not  None:
-        xmin, xdelta = bounds_impf[0], bounds_impf[1] - bounds_impf[0]
-        eud.update({'IFf' : sp.stats.uniform(xmin, xdelta)})
+    eud.update(_impfset_unc_dict(bounds_impfi, bounds_mdd, bounds_paa))
     if bounds_cost is not None:
         eud.update(_meas_set_unc_dict(bounds_cost))
-    return  eud
+    return eud
 
