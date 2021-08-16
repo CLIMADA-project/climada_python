@@ -925,15 +925,15 @@ class TestReaderExcel(unittest.TestCase):
         self.assertEqual(hazard.event_name[50], 'event051')
         self.assertEqual(hazard.event_name[-1], 'event100')
 
-        self.assertEqual(hazard.frequency.dtype, np.float)
+        self.assertEqual(hazard.frequency.dtype, float)
         self.assertEqual(hazard.frequency.shape, (n_events,))
         self.assertEqual(hazard.frequency[0], 0.01)
         self.assertEqual(hazard.frequency[n_events - 2], 0.001)
 
-        self.assertEqual(hazard.intensity.dtype, np.float)
+        self.assertEqual(hazard.intensity.dtype, float)
         self.assertEqual(hazard.intensity.shape, (n_events, n_centroids))
 
-        self.assertEqual(hazard.fraction.dtype, np.float)
+        self.assertEqual(hazard.fraction.dtype, float)
         self.assertEqual(hazard.fraction.shape, (n_events, n_centroids))
         self.assertEqual(hazard.fraction[0, 0], 1)
         self.assertEqual(hazard.fraction[10, 19], 1)
@@ -966,15 +966,15 @@ class TestReaderMat(unittest.TestCase):
         self.assertEqual(hazard.event_id.dtype, int)
         self.assertEqual(hazard.event_id.shape, (n_events,))
 
-        self.assertEqual(hazard.frequency.dtype, np.float)
+        self.assertEqual(hazard.frequency.dtype, float)
         self.assertEqual(hazard.frequency.shape, (n_events,))
 
-        self.assertEqual(hazard.intensity.dtype, np.float)
+        self.assertEqual(hazard.intensity.dtype, float)
         self.assertEqual(hazard.intensity.shape, (n_events, n_centroids))
         self.assertEqual(hazard.intensity[12, 46], 12.071393519949979)
         self.assertEqual(hazard.intensity[13676, 49], 17.228323602220616)
 
-        self.assertEqual(hazard.fraction.dtype, np.float)
+        self.assertEqual(hazard.fraction.dtype, float)
         self.assertEqual(hazard.fraction.shape, (n_events, n_centroids))
         self.assertEqual(hazard.fraction[8454, 98], 1)
         self.assertEqual(hazard.fraction[85, 54], 0)
