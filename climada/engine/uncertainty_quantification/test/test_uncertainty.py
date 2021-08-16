@@ -397,7 +397,7 @@ class TestCalcImpact(unittest.TestCase):
         unc = CalcCostBenefit(haz_input_var=haz, ent_input_var=ent,
                               haz_fut_input_var=haz_fut_unc, ent_fut_input_var=ent_fut)
         unc.make_sample(unc_data, N=1)
-        unc.calc_uncertainty(unc_data)
+        unc.uncertainty(unc_data)
         self.assertEqual(unc_data.unit, exp_dem().value_unit)
         unc_data.plot_uncertainty()
         plt.close()
