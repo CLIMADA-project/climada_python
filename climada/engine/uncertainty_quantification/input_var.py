@@ -552,7 +552,7 @@ class InputVar():
         if bounds_eg is None:
             kwargs['EG'] = None
         if bounds_noise is None:
-            kwargs['ENf'] = None
+            kwargs['EN'] = None
 
         return InputVar(
             partial(_entfut_unc_func, bounds_noise=bounds_noise, impf_set=impf_set,
@@ -643,13 +643,14 @@ def _impfset_unc_dict(bounds_impfi, bounds_mdd, bounds_paa):
 
 #Entity
 def _disc_uncfunc(DR, disc_rate):
-
     disc = copy.deepcopy(disc_rate)
-    disc.rates = np.ones(disc.years.size) * DR
+    if DR is not None:
+        disc.rates = np.ones(disc.years.size) * DR
     return disc
 
 def _disc_unc_dict(bounds_disk):
-
+    if bounds_disk is None:
+        return {}
     dmin, ddelta = bounds_disk[0], bounds_disk[1] - bounds_disk[0]
     return  {'DR': sp.stats.uniform(dmin, ddelta)}
 
@@ -674,7 +675,7 @@ def _ent_unc_func(EN, ET, IFi, MDD, PAA, CO, DR, bounds_noise,
     else:
         ent.exposures = _exp_uncfunc(EN, ET, exp, bounds_noise)
     if MDD is None and PAA is None and IFi is None:
-        ent.impact_func = impf_set
+        ent.impact_funcs = impf_set
     else:
         ent.impact_funcs = _impfset_uncfunc(IFi, MDD, PAA, impf_set=impf_set)
     if CO is None:
@@ -696,16 +697,16 @@ def _ent_unc_dict(bounds_totval, bounds_noise, bounds_impfi, bounds_mdd,
     ent_unc_dict.update(_meas_set_unc_dict(bounds_cost))
     return  ent_unc_dict
 
-def _entfut_unc_func(ENf, EG, IFi, MDD, PAA, CO, bounds_noise,
+def _entfut_unc_func(EN, EG, IFi, MDD, PAA, CO, bounds_noise,
                  impf_set, exp, meas_set):
 
     ent = Entity()
-    if ENf is None and EG is None:
+    if EN is None and EG is None:
         ent.exposures = exp
     else:
-        ent.exposures = _exp_uncfunc(EN=ENf, ET=EG, exp=exp, bounds_noise=bounds_noise)
+        ent.exposures = _exp_uncfunc(EN=EN, ET=EG, exp=exp, bounds_noise=bounds_noise)
     if IFi is None and PAA is None and MDD is None:
-        ent.impact_func = impf_set
+        ent.impact_funcs = impf_set
     else:
         ent.impact_funcs = _impfset_uncfunc(IFi, MDD, PAA, impf_set=impf_set)
     if CO is None:
@@ -724,7 +725,7 @@ def _entfut_unc_dict(bounds_impfi, bounds_mdd,
         gmin, gmax = bounds_eg[0], bounds_eg[1] - bounds_eg[0]
         eud['EG'] = sp.stats.uniform(gmin, gmax)
     if bounds_noise is not None:
-        eud['ENf'] = sp.stats.uniform(0, 1)
+        eud['EN'] = sp.stats.uniform(0, 1)
     eud.update(_impfset_unc_dict(bounds_impfi, bounds_mdd, bounds_paa))
     if bounds_cost is not None:
         eud.update(_meas_set_unc_dict(bounds_cost))
