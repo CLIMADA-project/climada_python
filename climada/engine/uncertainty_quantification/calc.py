@@ -21,8 +21,9 @@ Define Calc (uncertainty calculate) class.
 
 import logging
 
-import pandas as pd
 import datetime as dt
+
+import pandas as pd
 import numpy as np
 
 from climada.util.value_representation import sig_dig as u_sig_dig
@@ -33,7 +34,13 @@ u_setup_logging()
 
 
 class Calc():
+    """
+    Base class for uncertainty quantification
 
+    Contains the generic sampling and sensitivity methods. For computing
+    the uncertainty distribution for specific CLIMADA outputs see
+    the subclass CalcImpact and CalcCostBenefit.
+    """
     def __init__(self):
         """
         Empty constructor to be overwritten by subclasses
@@ -341,7 +348,11 @@ class Calc():
                 for key, array in sens_indices.items()
                 if (np.array(array).ndim == 1 and key!='names') #dirty trick due to Salib incoherent output
                 ]
-            si_names_first_order = [si for si in si_name_first_order_list for _ in range(n_params)]
+            si_names_first_order = [
+                si
+                for si in si_name_first_order_list
+                for _ in range(n_params)
+                ]
             param_names_first_order = unc_output.param_labels * len(si_name_first_order_list)
 
             si_name_second_order_list = [
@@ -349,8 +360,13 @@ class Calc():
                 for key, array in sens_indices.items()
                 if np.array(array).ndim == 2
                 ]
-            si_names_second_order = [si for si in si_name_second_order_list for _ in range(n_params**2)]
-            param_names_second_order_2 = unc_output.param_labels * len(si_name_second_order_list) * n_params
+            si_names_second_order = [
+                si
+                for si in si_name_second_order_list
+                for _ in range(n_params**2)
+                ]
+            param_names_second_order_2 = unc_output.param_labels \
+                * len(si_name_second_order_list) * n_params
             param_names_second_order = [
                 param
                 for param in unc_output.param_labels
@@ -368,7 +384,9 @@ class Calc():
             sens_second_order_df.insert(1, 'param', param_names_second_order)
             sens_second_order_df.insert(2, 'param2', param_names_second_order_2)
 
-            sens_df = pd.concat([sens_first_order_df, sens_second_order_df]).reset_index(drop=True)
+            sens_df = pd.concat(
+                [sens_first_order_df, sens_second_order_df]
+                ).reset_index(drop=True)
 
             setattr(unc_output, metric_name + '_sens_df', sens_df)
         sensitivity_kwargs = {
