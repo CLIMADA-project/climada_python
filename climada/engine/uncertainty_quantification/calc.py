@@ -309,7 +309,7 @@ class Calc():
         salib_kwargs = method.analyze.__code__.co_varnames #obtain all kwargs of the salib method
         X = unc_output.samples_df.to_numpy() if 'X' in salib_kwargs else None
 
-        for metric_name in self.metric_names:
+        for metric_name in self.metrics_names:
             sens_first_order_dict = {}
             sens_second_order_dict = {}
             for (submetric_name, metric_unc) in getattr(unc_output, metric_name + '_unc_df').iteritems():
