@@ -359,7 +359,10 @@ class InputVar():
         if bounds_impfi is None:
             kwargs['IFi'] = None
         return InputVar(
-            partial(_impfset_uncfunc, impf_set=impf_set, haz_type=haz_type, fun_id=fun_id, **kwargs),
+            partial(
+                _impfset_uncfunc, impf_set=impf_set, haz_type=haz_type,
+                fun_id=fun_id, **kwargs
+                ),
             _impfset_unc_dict(bounds_impfi, bounds_mdd, bounds_paa)
         )
 
@@ -612,13 +615,22 @@ def _exp_unc_dict(bounds_totval, bounds_noise):
 def _impfset_uncfunc(IFi, MDD, PAA, impf_set, haz_type='TC', fun_id=1):
     impf_set_tmp = copy.deepcopy(impf_set)
     if MDD is not None:
-        new_mdd = np.minimum(impf_set_tmp.get_func(haz_type=haz_type, fun_id=fun_id).mdd * MDD, 1.0)
+        new_mdd = np.minimum(
+            impf_set_tmp.get_func(haz_type=haz_type, fun_id=fun_id).mdd * MDD,
+            1.0
+            )
         impf_set_tmp.get_func(haz_type=haz_type, fun_id=fun_id).mdd = new_mdd
     if PAA is not None:
-        new_paa = np.minimum(impf_set_tmp.get_func(haz_type=haz_type, fun_id=fun_id).paa * PAA, 1.0)
+        new_paa = np.minimum(
+            impf_set_tmp.get_func(haz_type=haz_type, fun_id=fun_id).paa * PAA,
+            1.0
+            )
         impf_set_tmp.get_func(haz_type=haz_type, fun_id=fun_id).paa = new_paa
     if IFi is not None:
-        new_int = np.maximumm(impf_set_tmp.get_func(haz_type=haz_type, fun_id=fun_id).intensity + IFi, 0.0)
+        new_int = np.maximumm(
+            impf_set_tmp.get_func(haz_type=haz_type, fun_id=fun_id).intensity + IFi,
+            0.0
+            )
         impf_set_tmp.get_func(haz_type=haz_type, fun_id=fun_id).intensity = new_int
     return impf_set_tmp
 
@@ -719,4 +731,3 @@ def _entfut_unc_dict(bounds_impfi, bounds_mdd,
     if bounds_cost is not None:
         eud.update(_meas_set_unc_dict(bounds_cost))
     return eud
-

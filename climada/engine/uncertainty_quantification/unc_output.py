@@ -22,12 +22,13 @@ Define Uncertainty class.
 __all__ = ['UncOutput']
 
 import logging
-import h5py
+import datetime as dt
 
 from itertools import zip_longest
 from pathlib import Path
 
-import datetime as dt
+
+import h5py
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -376,118 +377,118 @@ class UncOutput():
 
     def plot_uncertainty(self, metric_list=None, figsize=None,
                          log=False, axes=None):
-     """
-     Plot the  uncertainty distribution
+        """
+        Plot the  uncertainty distribution
 
-     For each risk metric, a separate axes is used to plot the uncertainty
-     distribution of the output values obtained over the sampled
-     input parameters.
+        For each risk metric, a separate axes is used to plot the uncertainty
+        distribution of the output values obtained over the sampled
+        input parameters.
 
-     Parameters
-     ----------
-     metric_list : list[str], optional
-         List of metrics to plot the distribution.
-         The default is None.
-     figsize : tuple(int or float, int or float), optional
-         The figsize argument of matplotlib.pyplot.subplots()
-         The default is derived from the total number of plots (nplots) as:
-         nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
-         figsize = (ncols * FIG_W, nrows * FIG_H)
-     log : boolean, optional
-         Use log10 scale for x axis. Default is False.
-     axes : matplotlib.pyplot.axes, optional
-         Axes handles to use for the plot. The default is None.
+        Parameters
+        ----------
+        metric_list : list[str], optional
+            List of metrics to plot the distribution.
+            The default is None.
+        figsize : tuple(int or float, int or float), optional
+            The figsize argument of matplotlib.pyplot.subplots()
+            The default is derived from the total number of plots (nplots) as:
+            nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
+            figsize = (ncols * FIG_W, nrows * FIG_H)
+        log : boolean, optional
+            Use log10 scale for x axis. Default is False.
+        axes : matplotlib.pyplot.axes, optional
+            Axes handles to use for the plot. The default is None.
 
-     Raises
-     ------
-     ValueError
-         If no metric distribution was computed the plot cannot be made.
+        Raises
+        ------
+        ValueError
+            If no metric distribution was computed the plot cannot be made.
 
-     Returns
-     -------
-     axes : matplotlib.pyplot.axes
-         The axes handle of the plot.
+        Returns
+        -------
+        axes : matplotlib.pyplot.axes
+            The axes handle of the plot.
 
-     See Also
-     --------
-     uncertainty_metrics : list of all available uncertainty metrics
+        See Also
+        --------
+        uncertainty_metrics : list of all available uncertainty metrics
 
-     """
-     fontsize = 18 #default label fontsize
+        """
+        fontsize = 18 #default label fontsize
 
-     if not self.uncertainty_metrics:
-         raise ValueError("No uncertainty data present for these metrics. "+
-                 "Please run an uncertainty analysis first.")
+        if not self.uncertainty_metrics:
+            raise ValueError("No uncertainty data present for these metrics. "+
+                    "Please run an uncertainty analysis first.")
 
-     if metric_list is None:
-         metric_list = [
-             metric
-             for metric in self.uncertainty_metrics
-             if metric not in METRICS_2D
-             ]
+        if metric_list is None:
+            metric_list = [
+                metric
+                for metric in self.uncertainty_metrics
+                if metric not in METRICS_2D
+                ]
 
-     unc_df = self.get_uncertainty(metric_list)
+        unc_df = self.get_uncertainty(metric_list)
 
-     if log:
-         unc_df_plt = unc_df.apply(np.log10).copy()
-         unc_df_plt = unc_df_plt.replace([np.inf, -np.inf], np.nan)
-     else:
-         unc_df_plt = unc_df.copy()
+        if log:
+            unc_df_plt = unc_df.apply(np.log10).copy()
+            unc_df_plt = unc_df_plt.replace([np.inf, -np.inf], np.nan)
+        else:
+            unc_df_plt = unc_df.copy()
 
-     cols = unc_df_plt.columns
-     nplots = len(cols)
-     nrows, ncols = int(np.ceil(nplots / 2)), min(nplots, 2)
-     if axes is None:
-         if not figsize:
-             figsize = (ncols * FIG_W, nrows * FIG_H)
-         _fig, axes = plt.subplots(nrows = nrows,
-                                  ncols = ncols,
-                                  figsize = figsize)
-     if nplots > 1:
-         flat_axes = axes.flatten()
-     else:
-         flat_axes = np.array([axes])
+        cols = unc_df_plt.columns
+        nplots = len(cols)
+        nrows, ncols = int(np.ceil(nplots / 2)), min(nplots, 2)
+        if axes is None:
+            if not figsize:
+                figsize = (ncols * FIG_W, nrows * FIG_H)
+            _fig, axes = plt.subplots(nrows = nrows,
+                                     ncols = ncols,
+                                     figsize = figsize)
+        if nplots > 1:
+            flat_axes = axes.flatten()
+        else:
+            flat_axes = np.array([axes])
 
-     for ax, col in zip(flat_axes, cols):
-         data = unc_df_plt[col]
-         if data.empty:
-             ax.remove()
-             continue
-         data.hist(ax=ax, bins=30, density=True, histtype='bar',
-                   color='lightsteelblue', edgecolor='black')
-         try:
-             data.plot.kde(ax=ax, color='darkblue', linewidth=4, label='')
-         except np.linalg.LinAlgError:
-             pass
-         avg, std = unc_df[col].mean(), unc_df[col].std()
-         _, ymax = ax.get_ylim()
-         if log:
-             avg_plot = np.log10(avg)
-         else:
-             avg_plot = avg
-         ax.axvline(avg_plot, color='darkorange', linestyle='dashed', linewidth=2,
-                 label="avg=%.2f%s" %u_vtm(avg))
-         if log:
-             std_m, std_p = np.log10(avg - std), np.log10(avg + std)
-         else:
-             std_m, std_p = avg - std, avg + std
-         ax.plot([std_m, std_p],
-                 [0.3 * ymax, 0.3 * ymax], color='black',
-                 label="std=%.2f%s" %u_vtm(std))
-         ax.set_title(col)
-         if log:
-             ax.set_xlabel('value [log10]')
-         else:
-             ax.set_xlabel('value')
-         ax.set_ylabel('density of events')
-         ax.legend(fontsize=fontsize-2)
+        for ax, col in zip(flat_axes, cols):
+            data = unc_df_plt[col]
+            if data.empty:
+                ax.remove()
+                continue
+            data.hist(ax=ax, bins=30, density=True, histtype='bar',
+                      color='lightsteelblue', edgecolor='black')
+            try:
+                data.plot.kde(ax=ax, color='darkblue', linewidth=4, label='')
+            except np.linalg.LinAlgError:
+                pass
+            avg, std = unc_df[col].mean(), unc_df[col].std()
+            _, ymax = ax.get_ylim()
+            if log:
+                avg_plot = np.log10(avg)
+            else:
+                avg_plot = avg
+            ax.axvline(avg_plot, color='darkorange', linestyle='dashed', linewidth=2,
+                    label="avg=%.2f%s" %u_vtm(avg))
+            if log:
+                std_m, std_p = np.log10(avg - std), np.log10(avg + std)
+            else:
+                std_m, std_p = avg - std, avg + std
+            ax.plot([std_m, std_p],
+                    [0.3 * ymax, 0.3 * ymax], color='black',
+                    label="std=%.2f%s" %u_vtm(std))
+            ax.set_title(col)
+            if log:
+                ax.set_xlabel('value [log10]')
+            else:
+                ax.set_xlabel('value')
+            ax.set_ylabel('density of events')
+            ax.legend(fontsize=fontsize-2)
 
-         ax.tick_params(labelsize=fontsize)
-         for item in [ax.title, ax.xaxis.label, ax.yaxis.label]:
-             item.set_fontsize(fontsize)
-     plt.tight_layout()
+            ax.tick_params(labelsize=fontsize)
+            for item in [ax.title, ax.xaxis.label, ax.yaxis.label]:
+                item.set_fontsize(fontsize)
+        plt.tight_layout()
 
-     return axes
+        return axes
 
 
     def plot_rp_uncertainty(self, figsize=(16, 6), axes=None):
@@ -535,12 +536,12 @@ class UncOutput():
             ax.plot([min_l, max_l], [2*n, 2*n], color='k', alpha=0.5)
             ax.fill_between(losses, count + 2*n, 2*n)
 
-        ax.set_xlim(min_l, max_l)
-        ax.set_ylim(0, 2*(n+1))
-        ax.set_xlabel('impact')
-        ax.set_ylabel('return period [years]')
-        ax.set_yticks(np.arange(0, 2*(n+1), 2))
-        ax.set_yticklabels(unc_df.columns)
+            ax.set_xlim(min_l, max_l)
+            ax.set_ylim(0, 2*(n+1))
+            ax.set_xlabel('impact')
+            ax.set_ylabel('return period [years]')
+            ax.set_yticks(np.arange(0, 2*(n+1), 2))
+            ax.set_yticklabels(unc_df.columns)
 
         ax = axes[1]
 
@@ -952,4 +953,3 @@ class UncOutput():
                 }
             unc_data.sensitivity_kwargs = tuple(sens_kwargs.items())
         return unc_data
-

@@ -249,6 +249,3 @@ class CalcImpact(Calc):
             at_event = np.array([])
 
         return [imp.aai_agg, freq_curve, eai_exp, at_event, imp.tot_value]
-
-
-
