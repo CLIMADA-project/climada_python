@@ -214,14 +214,14 @@ class InputVar():
         """
         Helper wrapper for basic hazard uncertainty input variable
 
-        Three types of uncertainties can be added:
-        1) sub-sampling events from the total event set
+        The following types of uncertainties can be added:
+        HE: sub-sampling events from the total event set
             The number of events in each sub-sample is sampled
             uniformly from a distribution with (min, max) = bounds_ev
-        2) scale the intensity of all events (homogeneously)
+        HI: scale the intensity of all events (homogeneously)
             The instensity of all events is multiplied by a number
             sampled uniformly from a distribution with (min, max) = bounds_int
-        3) scale the frequency of all events (homogeneously)
+        HF: scale the frequency of all events (homogeneously)
             The frequency of all events is multiplied by a number
             sampled uniformly from a distribution with (min, max) = bounds_freq
 
@@ -264,12 +264,12 @@ class InputVar():
         """
         Helper wrapper for basic exposure uncertainty input variable
 
-        Two types of uncertainties can be added:
-        1) scale the total value (homogeneously)
+        The following types of uncertainties can be added:
+        ET: scale the total value (homogeneously)
             The value at each exposure point is multiplied by a number
             sampled uniformly from a distribution with
             (min, max) = bounds_totvalue
-        2) mutliplicative noise (inhomogeneous)
+        EN: mutliplicative noise (inhomogeneous)
             The value of each exposure point is independently multiplied by
             a random number sampled uniformly from a distribution
             with (min, max) = bounds_noise
@@ -311,16 +311,16 @@ class InputVar():
 
         One impact function (chosen with haz_type and fun_id) is characterized.
 
-        Three types of uncertainties can be added:
-        1) scale the mdd (homogeneously)
+        The following types of uncertainties can be added:
+        MDD: scale the mdd (homogeneously)
             The value of mdd at each intensity is multiplied by a number
             sampled uniformly from a distribution with
             (min, max) = bounds_mdd
-        2) scale the paa (homogeneously)
+        PAA: scale the paa (homogeneously)
             The value of paa at each intensity is multiplied by a number
             sampled uniformly from a distribution with
             (min, max) = bounds_paa
-        3) shift the intensity (homogeneously)
+        IFi: shift the intensity (homogeneously)
             The value intensity are all summed with a random number
             sampled uniformly from a distribution with
             (min, max) = bounds_int
@@ -371,32 +371,32 @@ class InputVar():
         """
         Helper wrapper for basic entity set uncertainty input variable.
 
-        Seven types of uncertainties can be added:
-        1) scale the discount rates (homogeneously)
+        The following types of uncertainties can be added:
+        DR: scale the discount rates (homogeneously)
             The value of the discounts in each year is multiplied by a number
             sampled uniformly from a distribution with
             (min, max) = bounds_disc
-        2) scale the cost (homogeneously)
+        CO: scale the cost (homogeneously)
             The cost of all measures is multiplied by the same number
             sampled uniformly from a distribution with
             (min, max) = bounds_cost
-        3) scale the total value (homogeneously)
+        ET: scale the total value (homogeneously)
             The value at each exposure point is multiplied by a number
             sampled uniformly from a distribution with
             (min, max) = bounds_totvalue
-        4) mutliplicative noise (inhomogeneous)
+        EN: mutliplicative noise (inhomogeneous)
             The value of each exposure point is independently multiplied by
             a random number sampled uniformly from a distribution
             with (min, max) = bounds_noise
-        5) scale the mdd (homogeneously)
+        MDD: scale the mdd (homogeneously)
             The value of mdd at each intensity is multiplied by a number
             sampled uniformly from a distribution with
             (min, max) = bounds_mdd
-        6) scale the paa (homogeneously)
+        PAA: scale the paa (homogeneously)
             The value of paa at each intensity is multiplied by a number
             sampled uniformly from a distribution with
             (min, max) = bounds_paa
-        7) shift the intensity (homogeneously)
+        IFi: shift the intensity (homogeneously)
             The value intensity are all summed with a random number
             sampled uniformly from a distribution with
             (min, max) = bounds_int
@@ -476,28 +476,28 @@ class InputVar():
         """
         Helper wrapper for basic future entity set uncertainty input variable.
 
-        Seven types of uncertainties can be added:
-        1) scale the cost (homogeneously)
+        The following types of uncertainties can be added:
+        CO: scale the cost (homogeneously)
             The cost of all measures is multiplied by the same number
             sampled uniformly from a distribution with
             (min, max) = bounds_cost
-        3) scale the economic growth (homogeneously)
+        EG: scale the exposures growth (homogeneously)
             The value at each exposure point is multiplied by a number
             sampled uniformly from a distribution with
             (min, max) = bounds_eg
-        4) mutliplicative noise (inhomogeneous)
+        EN: mutliplicative noise (inhomogeneous)
             The value of each exposure point is independently multiplied by
             a random number sampled uniformly from a distribution
             with (min, max) = bounds_noise
-        5) scale the mdd (homogeneously)
+        MDD: scale the mdd (homogeneously)
             The value of mdd at each intensity is multiplied by a number
             sampled uniformly from a distribution with
             (min, max) = bounds_mdd
-        6) scale the paa (homogeneously)
+        PAA: scale the paa (homogeneously)
             The value of paa at each intensity is multiplied by a number
             sampled uniformly from a distribution with
             (min, max) = bounds_paa
-        7) shift the impact function intensity (homogeneously)
+        IFi: shift the impact function intensity (homogeneously)
             The value intensity are all summed with a random number
             sampled uniformly from a distribution with
             (min, max) = bounds_impfi
@@ -565,7 +565,6 @@ class InputVar():
 
 #Hazard
 def _haz_uncfunc(HE, HI, HF, haz):
-
     haz_tmp = copy.deepcopy(haz)
     if HE is not None:
         nb = int(np.round(haz_tmp.size * HE))
@@ -578,7 +577,6 @@ def _haz_uncfunc(HE, HI, HF, haz):
     return haz_tmp
 
 def _haz_unc_dict(bounds_ev, bounds_int, bounds_freq):
-
     hud = {}
     if bounds_ev is not None:
         emin, edelta = bounds_ev[0], bounds_ev[1] - bounds_ev[0]
@@ -593,7 +591,6 @@ def _haz_unc_dict(bounds_ev, bounds_int, bounds_freq):
 
 #Exposure
 def _exp_uncfunc(EN, ET, exp, bounds_noise):
-
     exp_tmp = exp.copy(deep=True)
     if EN is not None:
         rnd_vals = np.random.uniform(bounds_noise[0], bounds_noise[1], size = len(exp_tmp.gdf))
@@ -603,7 +600,6 @@ def _exp_uncfunc(EN, ET, exp, bounds_noise):
     return exp_tmp
 
 def _exp_unc_dict(bounds_totval, bounds_noise):
-
     eud = {}
     if bounds_totval is not None:
         tmin, tmax = bounds_totval[0], bounds_totval[1] - bounds_totval[0]
@@ -614,7 +610,6 @@ def _exp_unc_dict(bounds_totval, bounds_noise):
 
 #Impact function set
 def _impfset_uncfunc(IFi, MDD, PAA, impf_set, haz_type='TC', fun_id=1):
-
     impf_set_tmp = copy.deepcopy(impf_set)
     if MDD is not None:
         new_mdd = np.minimum(impf_set_tmp.get_func(haz_type=haz_type, fun_id=fun_id).mdd * MDD, 1.0)
@@ -628,7 +623,6 @@ def _impfset_uncfunc(IFi, MDD, PAA, impf_set, haz_type='TC', fun_id=1):
     return impf_set_tmp
 
 def _impfset_unc_dict(bounds_impfi, bounds_mdd, bounds_paa):
-
     iud = {}
     if bounds_impfi is not None:
         xmin, xdelta = bounds_impfi[0], bounds_impfi[1] - bounds_impfi[0]
@@ -655,7 +649,6 @@ def _disc_unc_dict(bounds_disk):
     return  {'DR': sp.stats.uniform(dmin, ddelta)}
 
 def _meas_set_uncfunc(CO, meas_set):
-
     meas_set_tmp = copy.deepcopy(meas_set)
     for haz_type in meas_set_tmp.get_hazard_types():
         for meas in meas_set_tmp.get_measure(haz_type=haz_type):
@@ -663,7 +656,6 @@ def _meas_set_uncfunc(CO, meas_set):
     return meas_set_tmp
 
 def _meas_set_unc_dict(bounds_cost):
-
     cmin, cdelta = bounds_cost[0], bounds_cost[1] - bounds_cost[0]
     return {'CO': sp.stats.uniform(cmin, cdelta)}
 
@@ -690,7 +682,6 @@ def _ent_unc_func(EN, ET, IFi, MDD, PAA, CO, DR, bounds_noise,
 
 def _ent_unc_dict(bounds_totval, bounds_noise, bounds_impfi, bounds_mdd,
                   bounds_paa, bounds_disk, bounds_cost):
-
     ent_unc_dict = _exp_unc_dict(bounds_totval, bounds_noise)
     ent_unc_dict.update(_impfset_unc_dict(bounds_impfi, bounds_mdd, bounds_paa))
     ent_unc_dict.update(_disc_unc_dict(bounds_disk))
@@ -699,7 +690,6 @@ def _ent_unc_dict(bounds_totval, bounds_noise, bounds_impfi, bounds_mdd,
 
 def _entfut_unc_func(EN, EG, IFi, MDD, PAA, CO, bounds_noise,
                  impf_set, exp, meas_set):
-
     ent = Entity()
     if EN is None and EG is None:
         ent.exposures = exp
@@ -719,7 +709,6 @@ def _entfut_unc_func(EN, EG, IFi, MDD, PAA, CO, bounds_noise,
 def _entfut_unc_dict(bounds_impfi, bounds_mdd,
                   bounds_paa, bounds_eg, bounds_noise,
                   bounds_cost):
-
     eud = {}
     if bounds_eg is not None:
         gmin, gmax = bounds_eg[0], bounds_eg[1] - bounds_eg[0]
