@@ -46,7 +46,7 @@ class Calc():
         Empty constructor to be overwritten by subclasses
         """
         self.input_var_names = ()
-        self.metrics_names = ()
+        self.metric_names = ()
 
     @property
     def input_var(self):
@@ -316,7 +316,7 @@ class Calc():
         salib_kwargs = method.analyze.__code__.co_varnames #obtain all kwargs of the salib method
         X = unc_output.samples_df.to_numpy() if 'X' in salib_kwargs else None
 
-        for metric_name in self.metrics_names:
+        for metric_name in self.metric_names:
             sens_first_order_dict = {}
             sens_second_order_dict = {}
             for (submetric_name, metric_unc) in getattr(unc_output, metric_name + '_unc_df').iteritems():
@@ -374,15 +374,17 @@ class Calc():
                 ] * len(si_name_second_order_list)
 
             sens_first_order_df = pd.DataFrame(sens_first_order_dict, dtype=np.number)
-            sens_first_order_df.insert(0, 'si', si_names_first_order)
-            sens_first_order_df.insert(1, 'param', param_names_first_order)
-            sens_first_order_df.insert(2, 'param2', None)
+            if not sens_first_order_df.empty:
+                sens_first_order_df.insert(0, 'si', si_names_first_order)
+                sens_first_order_df.insert(1, 'param', param_names_first_order)
+                sens_first_order_df.insert(2, 'param2', None)
 
 
             sens_second_order_df = pd.DataFrame(sens_second_order_dict)
-            sens_second_order_df.insert(0, 'si', si_names_second_order,)
-            sens_second_order_df.insert(1, 'param', param_names_second_order)
-            sens_second_order_df.insert(2, 'param2', param_names_second_order_2)
+            if not sens_second_order_df.empty:
+                sens_second_order_df.insert(0, 'si', si_names_second_order,)
+                sens_second_order_df.insert(1, 'param', param_names_second_order)
+                sens_second_order_df.insert(2, 'param2', param_names_second_order_2)
 
             sens_df = pd.concat(
                 [sens_first_order_df, sens_second_order_df]
