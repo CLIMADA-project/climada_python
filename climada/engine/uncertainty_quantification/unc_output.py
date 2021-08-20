@@ -536,12 +536,12 @@ class UncOutput():
             ax.plot([min_l, max_l], [2*n, 2*n], color='k', alpha=0.5)
             ax.fill_between(losses, count + 2*n, 2*n)
 
-            ax.set_xlim(min_l, max_l)
-            ax.set_ylim(0, 2*(n+1))
-            ax.set_xlabel('impact')
-            ax.set_ylabel('return period [years]')
-            ax.set_yticks(np.arange(0, 2*(n+1), 2))
-            ax.set_yticklabels(unc_df.columns)
+        ax.set_xlim(min_l, max_l)
+        ax.set_ylim(0, 2*(n+1))
+        ax.set_xlabel('impact')
+        ax.set_ylabel('return period [years]')
+        ax.set_yticks(np.arange(0, 2*(n+1), 2))
+        ax.set_yticklabels(unc_df.columns)
 
         ax = axes[1]
 
@@ -873,7 +873,7 @@ class UncOutput():
 
         return ax
 
-    def save_hdf5(self, filename=None):
+    def to_hdf5(self, filename=None):
         """
         Save output to .hdf5
 
