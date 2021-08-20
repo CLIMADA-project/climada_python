@@ -627,7 +627,7 @@ def _impfset_uncfunc(IFi, MDD, PAA, impf_set, haz_type='TC', fun_id=1):
             )
         impf_set_tmp.get_func(haz_type=haz_type, fun_id=fun_id).paa = new_paa
     if IFi is not None:
-        new_int = np.maximumm(
+        new_int = np.maximum(
             impf_set_tmp.get_func(haz_type=haz_type, fun_id=fun_id).intensity + IFi,
             0.0
             )
