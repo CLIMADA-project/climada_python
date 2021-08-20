@@ -231,13 +231,13 @@ class InputVar():
         ----------
         haz : climada.hazard.Hazard
             The base hazard
-        bounds_ev : (min, max), optional
+        bounds_ev : (float, float), optional
             Bounds of the uniform distribution for the number of events
             to be sampled per sample. The default is None.
-        bounds_int : (min, max), optional
+        bounds_int : (float, float), optional
             Bounds of the uniform distribution for the homogeneous intensity
             scaling. The default is None.
-        bounds_freq : TYPE, optional
+        bounds_freq : (float, float), optional
             Bounds of the uniform distribution for the homogeneous frequency
             scaling. The default is None.
 
@@ -280,10 +280,10 @@ class InputVar():
         ----------
         exp : climada.entity.exposures.Exposures
             The base exposure.
-        bounds_totval : (min, max), optional
+        bounds_totval : (float, float), optional
             Bounds of the uniform distribution for the homogeneous total value
             scaling.. The default is None.
-        bounds_noise : (min, max), optional
+        bounds_noise : (float, float), optional
             Bounds of the uniform distribution to scale each exposure point
             independently. The default is None.
 
@@ -331,13 +331,13 @@ class InputVar():
         ----------
         impf_set : climada.entity.impact_funcs.impact_func_set.ImpactFuncSet
             The base impact function set.
-        bounds_mdd : (min, max), optional
+        bounds_mdd : (float, float), optional
             Bounds of the uniform distribution for the homogeneous mdd
             scaling. The default is None.
-        bounds_paa : (min, max), optional
+        bounds_paa : (float, float), optional
             Bounds of the uniform distribution for the homogeneous paa
             scaling. The default is None.
-        bounds_impfi : (min, max), optional
+        bounds_impfi : (float, float), optional
             Bounds of the uniform distribution for the homogeneous shift
             of intensity. The default is None.
         haz_type : str, optional
@@ -410,25 +410,25 @@ class InputVar():
 
         Parameters
         ----------
-        bounds_disk : (min, max), optional
+        bounds_disk : (float, float), optional
             Bounds of the uniform distribution for the homogeneous discount
             rate scaling. The default is None.
-        bounds_cost :(min, max), optional
+        bounds_cost :(float, float), optional
             Bounds of the uniform distribution for the homogeneous cost
             of all measures scaling. The default is None.
-        bounds_totval : (min, max), optional
+        bounds_totval : (float, float), optional
             Bounds of the uniform distribution for the homogeneous total
             exposure value scaling. The default is None.
-        bounds_noise : (min, max), optional
+        bounds_noise : (float, float), optional
             Bounds of the uniform distribution to scale each exposure point
             independently. The default is None.
-        bounds_mdd : (min, max), optional
+        bounds_mdd : (float, float), optional
             Bounds of the uniform distribution for the homogeneous mdd
             scaling. The default is None.
-        bounds_paa : (min, max), optional
+        bounds_paa : (float, float), optional
             Bounds of the uniform distribution for the homogeneous paa
             scaling. The default is None.
-        bounds_int : (min, max), optional
+        bounds_int : (float, float), optional
             Bounds of the uniform distribution for the homogeneous shift
             of intensity. The default is None.
         impf_set : climada.engine.impact_funcs.impact_func_set.ImpactFuncSet
@@ -511,22 +511,22 @@ class InputVar():
 
         Parameters
         ----------
-        bounds_cost :(min, max), optional
+        bounds_cost :(float, float), optional
             Bounds of the uniform distribution for the homogeneous cost
             of all measures scaling. The default is None.
-        bounds_eg : (min, max), optional
+        bounds_eg : (float, float), optional
             Bounds of the uniform distribution for the homogeneous total
             exposure growth scaling. The default is None.
-        bounds_noise : (min, max), optional
+        bounds_noise : (float, float), optional
             Bounds of the uniform distribution to scale each exposure point
             independently. The default is None.
-        bounds_mdd : (min, max), optional
+        bounds_mdd : (float, float), optional
             Bounds of the uniform distribution for the homogeneous mdd
             scaling. The default is None.
-        bounds_paa : (min, max), optional
+        bounds_paa : (float, float), optional
             Bounds of the uniform distribution for the homogeneous paa
             scaling. The default is None.
-        bounds_impfi : (min, max), optional
+        bounds_impfi : (float, float), optional
             Bounds of the uniform distribution for the homogeneous shift
             of intensity. The default is None.
         impf_set : climada.engine.impact_funcs.impact_func_set.ImpactFuncSet
