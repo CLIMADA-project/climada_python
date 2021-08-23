@@ -134,8 +134,6 @@ class Calc():
 
         Parameters
         ----------
-        unc_output : climada.engine.uncertainty.unc_output.UncOutput()
-            Uncertainty data object in which to store the samples
         N : int
             Number of samples as used in the sampling method from SALib
         sampling_method : str, optional
@@ -149,7 +147,8 @@ class Calc():
 
         Returns
         -------
-        None.
+        unc_output : climada.engine.uncertainty.unc_output.UncOutput()
+            Uncertainty data object with the samples
 
         See Also
         --------

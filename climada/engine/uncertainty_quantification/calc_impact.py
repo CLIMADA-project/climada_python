@@ -23,6 +23,7 @@ __all__ = ['CalcImpact']
 
 import logging
 import time
+import copy
 
 import pandas as pd
 import numpy as np
@@ -96,7 +97,7 @@ class CalcImpact(Calc):
 
 
     def uncertainty(self,
-                    unc_output,
+                    unc_sample,
                     rp=None,
                     calc_eai_exp=False,
                     calc_at_event=False,
@@ -125,8 +126,8 @@ class CalcImpact(Calc):
 
         Parameters
         ----------
-        unc_output : climada.engine.uncertainty.unc_output.UncOutput()
-            Uncertainty data object in which to store the impact outputs
+        unc_sample : climada.engine.uncertainty.unc_output.UncOutput()
+            Uncertainty data object with a sample
         rp : list(int), optional
             Return periods in years to be computed.
             The default is [5, 10, 20, 50, 100, 250].
@@ -140,6 +141,11 @@ class CalcImpact(Calc):
             Pool of CPUs for parralel computations.
             The default is None.
 
+        Returns
+        -------
+        unc_output : climada.engine.uncertainty.unc_output.UncOutput()
+            Uncertainty data object with the impact outputs
+
         Raises
         ------
         ValueError:
@@ -152,9 +158,11 @@ class CalcImpact(Calc):
 
         """
 
-        if unc_output.samples_df.empty:
+        if unc_sample.samples_df.empty:
             raise ValueError("No sample was found. Please create one first"
                              "using UncImpact.make_sample(N)")
+
+        unc_output = copy.deepcopy(unc_sample)
 
         unc_output.unit = self.value_unit
 
@@ -208,6 +216,8 @@ class CalcImpact(Calc):
         unc_output.at_event_unc_df = df_at_event
         unc_output.tot_value_unc_df = pd.DataFrame(tot_value_list,
                                                  columns = ['tot_value'])
+
+        return unc_output
 
 
     def _map_impact_calc(self, sample_iterrows):

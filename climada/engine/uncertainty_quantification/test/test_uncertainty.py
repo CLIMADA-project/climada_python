@@ -285,7 +285,7 @@ class TestCalcImpact(unittest.TestCase):
         haz = haz_dem()
         unc_calc = CalcImpact(exp_unc, impf_unc, haz)
         unc_data = unc_calc.make_sample( N=2)
-        unc_calc.uncertainty(unc_data, calc_eai_exp=False, calc_at_event=False)
+        unc_data = unc_calc.uncertainty(unc_data, calc_eai_exp=False, calc_at_event=False)
 
         self.assertEqual(unc_data.unit, exp_dem().value_unit)
         self.assertListEqual(unc_calc.rp, [5, 10, 20, 50, 100, 250])
@@ -317,7 +317,7 @@ class TestCalcImpact(unittest.TestCase):
         unc_data = unc_calc.make_sample(N=2)
 
         pool = Pool(nodes=2)
-        unc_calc.uncertainty(unc_data, calc_eai_exp=False,
+        unc_data = unc_calc.uncertainty(unc_data, calc_eai_exp=False,
                              calc_at_event=False, pool=pool)
         pool.close()
         pool.join()
@@ -351,7 +351,7 @@ class TestCalcImpact(unittest.TestCase):
         haz = haz_dem()
         unc_calc = CalcImpact(exp_unc, impf_unc, haz)
         unc_data = unc_calc.make_sample(N=4, sampling_kwargs={'calc_second_order': True})
-        unc_calc.uncertainty(unc_data, calc_eai_exp=False,
+        unc_data = unc_calc.uncertainty(unc_data, calc_eai_exp=False,
                                   calc_at_event=False)
 
         unc_calc.sensitivity(
@@ -393,7 +393,7 @@ class TestCalcImpact(unittest.TestCase):
         unc_calc = CalcImpact(exp_unc, impf_unc, haz)
         unc_data = unc_calc.make_sample(N=4,
                              sampling_method='latin')
-        unc_calc.uncertainty(unc_data, calc_eai_exp=True,
+        unc_data = unc_calc.uncertainty(unc_data, calc_eai_exp=True,
                                   calc_at_event=True)
 
         unc_calc.sensitivity(
@@ -438,7 +438,7 @@ class TestCalcImpact(unittest.TestCase):
         haz = haz_dem()
         unc_calc = CalcImpact(exp_unc, impf_unc, haz)
         unc_data_save = unc_calc.make_sample(N=2, sampling_kwargs={'calc_second_order': True})
-        unc_calc.uncertainty(unc_data_save, calc_eai_exp=True,
+        unc_data_save = unc_calc.uncertainty(unc_data_save, calc_eai_exp=True,
                                   calc_at_event=False)
         unc_calc.sensitivity(
             unc_data_save,
