@@ -931,6 +931,7 @@ class UncOutput():
         unc_output: climada.engine.uncertainty.unc_output.UncOutput
             Uncertainty and sensitivity data loaded from .hdf5 file.
         """
+        filename = Path(filename)
         if not filename.exists():
             LOGGER.info('File not found')
             return None
