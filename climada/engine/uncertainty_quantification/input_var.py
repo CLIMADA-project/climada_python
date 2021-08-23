@@ -210,14 +210,13 @@ class InputVar():
         return InputVar(func=lambda: var, distr_dict={})
 
     @staticmethod
-    def haz(haz, bounds_ev=None, bounds_int=None, bounds_freq=None):
+    def haz(haz, n_ev=None, bounds_int=None, bounds_freq=None):
         """
         Helper wrapper for basic hazard uncertainty input variable
 
         The following types of uncertainties can be added:
         HE: sub-sampling events from the total event set
-            The number of events in each sub-sample is sampled
-            uniformly from a distribution with (min, max) = bounds_ev
+            For each sub-sample, n_ev events are sampled with replacement.
         HI: scale the intensity of all events (homogeneously)
             The instensity of all events is multiplied by a number
             sampled uniformly from a distribution with (min, max) = bounds_int
@@ -231,9 +230,9 @@ class InputVar():
         ----------
         haz : climada.hazard.Hazard
             The base hazard
-        bounds_ev : (float, float), optional
-            Bounds of the uniform distribution for the number of events
-            to be sampled per sample. The default is None.
+        n_ev : int, optional
+            Number of events to be subsampled per sample. Can be equal or
+            larger than haz.size. The default is None.
         bounds_int : (float, float), optional
             Bounds of the uniform distribution for the homogeneous intensity
             scaling. The default is None.
@@ -248,7 +247,7 @@ class InputVar():
 
         """
         kwargs = {'haz': haz}
-        if bounds_ev is None:
+        if n_ev is None:
             kwargs['HE'] = None
         if bounds_int is None:
             kwargs['HI'] = None
@@ -256,7 +255,7 @@ class InputVar():
             kwargs['HF'] = None
         return InputVar(
             partial(_haz_uncfunc, **kwargs),
-            _haz_unc_dict(bounds_ev, bounds_int, bounds_freq)
+            _haz_unc_dict(n_ev, bounds_int, bounds_freq)
             )
 
     @staticmethod
@@ -570,7 +569,7 @@ class InputVar():
 def _haz_uncfunc(HE, HI, HF, haz):
     haz_tmp = copy.deepcopy(haz)
     if HE is not None:
-        nb = int(np.round(haz_tmp.size * HE))
+        nb = int(HE)
         event_names = np.random.choice(haz_tmp.event_name, nb)
         haz_tmp = haz_tmp.select(event_names=event_names)
     if HI is not None:
@@ -579,11 +578,10 @@ def _haz_uncfunc(HE, HI, HF, haz):
         haz_tmp.frequency = np.multiply(haz_tmp.frequency, HF)
     return haz_tmp
 
-def _haz_unc_dict(bounds_ev, bounds_int, bounds_freq):
+def _haz_unc_dict(n_ev, bounds_int, bounds_freq):
     hud = {}
-    if bounds_ev is not None:
-        emin, edelta = bounds_ev[0], bounds_ev[1] - bounds_ev[0]
-        hud['HE'] = sp.stats.uniform(emin, edelta)
+    if n_ev is not None:
+        hud['HE'] = sp.stats.uniform(0, 1)
     if bounds_int is not None:
         imin, idelta = bounds_int[0], bounds_int[1] - bounds_int[0]
         hud['HI'] = sp.stats.uniform(imin, idelta)
