@@ -28,6 +28,7 @@ import numpy as np
 
 from climada.util.value_representation import sig_dig as u_sig_dig
 from climada.util.config import setup_logging as u_setup_logging
+from climada.engine.uncertainty_quantification import UncOutput
 
 LOGGER = logging.getLogger(__name__)
 u_setup_logging()
@@ -117,7 +118,7 @@ class Calc():
 
         return total_time
 
-    def make_sample(self, unc_output, N, sampling_method='saltelli',
+    def make_sample(self, N, sampling_method='saltelli',
                     sampling_kwargs = None):
         """
         Make samples of the input variables
@@ -146,15 +147,9 @@ class Calc():
             Optional keyword arguments passed on to the SALib sampling_method.
             The default is None.
 
-        Raises
-        ------
-        ValueError
-            Error if trying to override existing sample in unc_data
-
         Returns
         -------
         None.
-
 
         See Also
         --------
@@ -162,10 +157,7 @@ class Calc():
             https://salib.readthedocs.io/en/latest/api.html
 
         """
-        if not unc_output.samples_df.empty:
-            raise ValueError("Samples already present. Please delete the "
-                             "content of unc_output.samples_df before making "
-                             "new samples")
+
         if sampling_kwargs is None:
             sampling_kwargs = {}
 
@@ -195,8 +187,11 @@ class Calc():
             }
         df_samples.attrs['sampling_method'] = sampling_method
         df_samples.attrs['sampling_kwargs'] = tuple(sampling_kwargs.items())
+
+        unc_output = UncOutput()
         unc_output.samples_df = df_samples
         LOGGER.info("Effective number of made samples: %d", unc_output.n_samples)
+        return unc_output
 
     def _make_uniform_base_sample(self, N, problem_sa, sampling_method,
                                   sampling_kwargs):

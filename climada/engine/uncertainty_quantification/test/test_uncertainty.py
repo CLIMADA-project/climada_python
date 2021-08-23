@@ -256,11 +256,10 @@ class TestCalcImpact(unittest.TestCase):
         exp_unc, _ , haz_unc = make_input_vars()
         impf = impf_dem()
 
-        unc_data = UncOutput()
         unc_calc = CalcImpact(exp_unc, impf, haz_unc)
 
         #default sampling saltelli
-        unc_calc.make_sample(unc_data, N=2, sampling_kwargs = {'calc_second_order': True})
+        unc_data = unc_calc.make_sample(N=2, sampling_kwargs = {'calc_second_order': True})
         self.assertEqual(unc_data.n_samples, 2*(2*2+2)) # N * (2 * D + 2)
         self.assertTrue(isinstance(unc_data.samples_df, pd.DataFrame))
         np.testing.assert_array_equal(
@@ -269,8 +268,7 @@ class TestCalcImpact(unittest.TestCase):
             )
 
         # #latin sampling
-        unc_data = UncOutput()
-        unc_calc.make_sample(unc_data, N=1, sampling_method='latin',
+        unc_data = unc_calc.make_sample(N=1, sampling_method='latin',
                         sampling_kwargs = {'seed': 11245})
         self.assertEqual(unc_data.n_samples, 1)
         self.assertTrue(isinstance(unc_data.samples_df, pd.DataFrame))
@@ -285,9 +283,8 @@ class TestCalcImpact(unittest.TestCase):
 
         exp_unc, impf_unc, _ = make_input_vars()
         haz = haz_dem()
-        unc_data = UncOutput()
         unc_calc = CalcImpact(exp_unc, impf_unc, haz)
-        unc_calc.make_sample(unc_data, N=2)
+        unc_data = unc_calc.make_sample( N=2)
         unc_calc.uncertainty(unc_data, calc_eai_exp=False, calc_at_event=False)
 
         self.assertEqual(unc_data.unit, exp_dem().value_unit)
@@ -316,9 +313,8 @@ class TestCalcImpact(unittest.TestCase):
 
         exp_unc, impf_unc, _ = make_input_vars()
         haz = haz_dem()
-        unc_data = UncOutput()
         unc_calc = CalcImpact(exp_unc, impf_unc, haz)
-        unc_calc.make_sample(unc_data, N=2)
+        unc_data = unc_calc.make_sample(N=2)
 
         pool = Pool(nodes=2)
         unc_calc.uncertainty(unc_data, calc_eai_exp=False,
@@ -353,9 +349,8 @@ class TestCalcImpact(unittest.TestCase):
 
         exp_unc, impf_unc, _ = make_input_vars()
         haz = haz_dem()
-        unc_data = UncOutput()
         unc_calc = CalcImpact(exp_unc, impf_unc, haz)
-        unc_calc.make_sample(unc_data, N=4, sampling_kwargs={'calc_second_order': True})
+        unc_data = unc_calc.make_sample(N=4, sampling_kwargs={'calc_second_order': True})
         unc_calc.uncertainty(unc_data, calc_eai_exp=False,
                                   calc_at_event=False)
 
@@ -395,9 +390,8 @@ class TestCalcImpact(unittest.TestCase):
 
         exp_unc, impf_unc, _ = make_input_vars()
         haz = haz_dem()
-        unc_data = UncOutput()
         unc_calc = CalcImpact(exp_unc, impf_unc, haz)
-        unc_calc.make_sample(unc_data, N=4,
+        unc_data = unc_calc.make_sample(N=4,
                              sampling_method='latin')
         unc_calc.uncertainty(unc_data, calc_eai_exp=True,
                                   calc_at_event=True)
@@ -442,9 +436,8 @@ class TestCalcImpact(unittest.TestCase):
 
         exp_unc, impf_unc, _ = make_input_vars()
         haz = haz_dem()
-        unc_data_save = UncOutput()
         unc_calc = CalcImpact(exp_unc, impf_unc, haz)
-        unc_calc.make_sample(unc_data_save , N=2, sampling_kwargs={'calc_second_order': True})
+        unc_data_save = unc_calc.make_sample(N=2, sampling_kwargs={'calc_second_order': True})
         unc_calc.uncertainty(unc_data_save, calc_eai_exp=True,
                                   calc_at_event=False)
         unc_calc.sensitivity(
