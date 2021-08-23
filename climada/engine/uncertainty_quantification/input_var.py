@@ -246,7 +246,7 @@ class InputVar():
             Uncertainty input variable for a hazard object.
 
         """
-        kwargs = {'haz': haz}
+        kwargs = {'haz': haz, 'n_ev': n_ev}
         if n_ev is None:
             kwargs['HE'] = None
         if bounds_int is None:
@@ -566,11 +566,10 @@ class InputVar():
 
 
 #Hazard
-def _haz_uncfunc(HE, HI, HF, haz):
+def _haz_uncfunc(HE, HI, HF, haz, n_ev):
     haz_tmp = copy.deepcopy(haz)
     if HE is not None:
-        nb = int(HE)
-        event_names = np.random.choice(haz_tmp.event_name, nb)
+        event_names = list(np.random.choice(haz_tmp.event_name, int(n_ev)))
         haz_tmp = haz_tmp.select(event_names=event_names)
     if HI is not None:
         haz_tmp.intensity = haz_tmp.intensity.multiply(HI)
