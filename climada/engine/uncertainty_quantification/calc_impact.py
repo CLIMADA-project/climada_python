@@ -127,7 +127,7 @@ class CalcImpact(Calc):
         Parameters
         ----------
         unc_sample : climada.engine.uncertainty.unc_output.UncOutput()
-            Uncertainty data object with a sample
+            Uncertainty data object with the input parameters samples
         rp : list(int), optional
             Return periods in years to be computed.
             The default is [5, 10, 20, 50, 100, 250].
@@ -144,7 +144,7 @@ class CalcImpact(Calc):
         Returns
         -------
         unc_output : climada.engine.uncertainty.unc_output.UncOutput()
-            Uncertainty data object with the impact outputs
+            Uncertainty data object with the impact outputs for each sample
 
         Raises
         ------

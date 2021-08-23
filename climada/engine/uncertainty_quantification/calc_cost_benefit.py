@@ -23,6 +23,7 @@ __all__ = ['CalcCostBenefit']
 
 import logging
 import time
+import copy
 
 from functools import partial
 import pandas as pd
@@ -109,7 +110,7 @@ class CalcCostBenefit(Calc):
 
 
 
-    def uncertainty(self, unc_output, pool=None, **cost_benefit_kwargs):
+    def uncertainty(self, unc_data, pool=None, **cost_benefit_kwargs):
         """
         Computes the cost benefit for each sample in unc_output.sample_df.
 
@@ -127,13 +128,19 @@ class CalcCostBenefit(Calc):
 
         Parameters
         ----------
-        unc_output : climada.engine.uncertainty.unc_output.UncOutput()
-            Uncertainty data object in which to store the cost benefit outputs
+        unc_data : climada.engine.uncertainty.unc_output.UncOutput()
+            Uncertainty data object with the input parameters samples
         pool : pathos.pools.ProcessPool, optional
             Pool of CPUs for parralel computations. Default is None.
             The default is None.
         cost_benefit_kwargs : keyword arguments
             Keyword arguments passed on to climada.engine.CostBenefit.calc()
+
+        Returns
+        -------
+        unc_output : climada.engine.uncertainty.unc_output.UncOutput()
+            Uncertainty data object in with the cost benefit outputs for each
+            sample
 
         Raises
         ------
@@ -148,9 +155,11 @@ class CalcCostBenefit(Calc):
 
         """
 
-        if unc_output.samples_df.empty:
+        if unc_data.samples_df.empty:
             raise ValueError("No sample was found. Please create one first" +
                         "using UncImpact.make_sample(N)")
+
+        unc_output = copy.deepcopy(unc_data)
         unc_output.unit = self.value_unit
 
         LOGGER.info("The freq_curve is not saved. Please "
@@ -229,6 +238,8 @@ class CalcCostBenefit(Calc):
             key: str(val)
             for key, val in cost_benefit_kwargs.items()}
         unc_output.cost_benefit_kwargs = tuple(cost_benefit_kwargs.items())
+
+        return unc_output
 
     def _map_costben_calc(self, param_sample, **kwargs):
         """
