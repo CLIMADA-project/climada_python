@@ -354,7 +354,7 @@ class TestCalcImpact(unittest.TestCase):
         unc_data = unc_calc.uncertainty(unc_data, calc_eai_exp=False,
                                   calc_at_event=False)
 
-        unc_calc.sensitivity(
+        unc_data = unc_calc.sensitivity(
             unc_data,
             sensitivity_kwargs = {'calc_second_order': True}
             )
@@ -396,7 +396,7 @@ class TestCalcImpact(unittest.TestCase):
         unc_data = unc_calc.uncertainty(unc_data, calc_eai_exp=True,
                                   calc_at_event=True)
 
-        unc_calc.sensitivity(
+        unc_data = unc_calc.sensitivity(
             unc_data,
             sensitivity_method = 'morris'
             )
@@ -440,7 +440,7 @@ class TestCalcImpact(unittest.TestCase):
         unc_data_save = unc_calc.make_sample(N=2, sampling_kwargs={'calc_second_order': True})
         unc_data_save = unc_calc.uncertainty(unc_data_save, calc_eai_exp=True,
                                   calc_at_event=False)
-        unc_calc.sensitivity(
+        unc_data_save = unc_calc.sensitivity(
             unc_data_save,
             sensitivity_kwargs = {'calc_second_order': True}
             )

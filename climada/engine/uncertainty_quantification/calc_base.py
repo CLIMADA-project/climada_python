@@ -20,6 +20,7 @@ Define Calc (uncertainty calculate) class.
 """
 
 import logging
+import copy
 
 import datetime as dt
 
@@ -247,7 +248,7 @@ class Calc():
 
         Prior to doing the sensitivity analysis, one must compute the
         uncertainty (distribution) of the output values
-        (i.e. self.uncertainty_metricsis defined) for all the samples
+        (with self.uncertainty()) for all the samples
         (rows of self.samples_df).
 
         According to Wikipedia, sensitivity analysis is “the study of how the
@@ -257,13 +258,10 @@ class Calc():
         a numeric value, called the sensitivity index. Sensitivity indices
         come in several forms.
 
-        This sets the attribute unc_data.sensistivity_method and
-        unc_data.sensitivity_kwargs. For each climada
-        metric xxx, an attribute unc_data.xxx_sens_df is set.
-        Metrics:
-            impact: aai_agg, freq_curve, at_event, eai_exp, tot_value)
-            cost benefit: tot_climate_risk, benefit, cost_ben_ratio,
-                imp_meas_present, imp_meas_future
+        This sets the attributes:
+        sens_output.sensistivity_method
+        sens_output.sensitivity_kwargs
+        sens_output.xxx_sens_df for each metric unc_output.xxx_unc_df
 
         Parameters
         ----------
@@ -280,12 +278,12 @@ class Calc():
         sensitivity_kwargs: dict(), optional
             Keyword arguments of the chosen SALib analyse method.
             The default is to use SALib's default arguments.
+
         Returns
         -------
-        sensitivity_dict : dict
-            dictionary of the sensitivity indices. Keys are the
-            metrics names, values the sensitivity indices dictionary
-            as returned by SALib.
+        sens_output : climada.engine.uncertainty.unc_output.UncOutput()
+            Uncertainty data object with all the sensitivity indices,
+            and all the uncertainty data copied over from unc_output.
 
         """
 
@@ -304,6 +302,8 @@ class Calc():
                        ),
             sensitivity_method
             )
+
+        sens_output = copy.deepcopy(unc_output)
 
         #Certaint Salib method required model input (X) and output (Y), others
         #need only ouput (Y)
@@ -384,9 +384,11 @@ class Calc():
                 [sens_first_order_df, sens_second_order_df]
                 ).reset_index(drop=True)
 
-            setattr(unc_output, metric_name + '_sens_df', sens_df)
+            setattr(sens_output, metric_name + '_sens_df', sens_df)
         sensitivity_kwargs = {
             key: str(val)
             for key, val in sensitivity_kwargs.items()}
-        unc_output.sensitivity_method = sensitivity_method
-        unc_output.sensitivity_kwargs = tuple(sensitivity_kwargs.items())
+        sens_output.sensitivity_method = sensitivity_method
+        sens_output.sensitivity_kwargs = tuple(sensitivity_kwargs.items())
+
+        return sens_output
