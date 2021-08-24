@@ -140,7 +140,7 @@ class CalcCostBenefit(Calc):
         -------
         unc_output : climada.engine.uncertainty.unc_output.UncOutput()
             Uncertainty data object in with the cost benefit outputs for each
-            sample
+            sample and all the sample data copied over from unc_sample.
 
         Raises
         ------

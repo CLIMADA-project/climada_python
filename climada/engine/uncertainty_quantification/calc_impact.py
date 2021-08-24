@@ -145,6 +145,7 @@ class CalcImpact(Calc):
         -------
         unc_output : climada.engine.uncertainty.unc_output.UncOutput()
             Uncertainty data object with the impact outputs for each sample
+            and all the sample data copied over from unc_sample.
 
         Raises
         ------
