@@ -84,7 +84,7 @@ class UncOutput():
     param_labels : list
         Name of all the uncertainty parameters
     distr_dict : dict
-        Comon flattened dictionary of all the distr_dic list in unc_vars.
+        Comon flattened dictionary of all the distr_dict of all input variables.
         It represents the distribution of all the uncertainty parameters.
     problem_sa : dict
         The description of the uncertainty variables and their
