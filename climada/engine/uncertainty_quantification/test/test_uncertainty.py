@@ -214,7 +214,36 @@ class TestOutput(unittest.TestCase):
 
     def test_init_pass(self):
         unc_out = UncOutput()
-        self.asserTrue(self.samples_df.empty)
+        self.assertTrue(unc_out.samples_df.empty)
+
+    def test_save_load_pass(self):
+        """Test save and load output data"""
+
+        exp_unc, impf_unc, _ = make_input_vars()
+        haz = haz_dem()
+        unc_calc = CalcImpact(exp_unc, impf_unc, haz)
+        unc_data_save = unc_calc.make_sample(N=2, sampling_kwargs={'calc_second_order': True})
+        unc_data_save = unc_calc.uncertainty(unc_data_save, calc_eai_exp=True,
+                                  calc_at_event=False)
+        unc_data_save = unc_calc.sensitivity(
+            unc_data_save,
+            sensitivity_kwargs = {'calc_second_order': True}
+            )
+
+        filename = unc_data_save.to_hdf5()
+
+        unc_data_load = UncOutput.from_hdf5(filename)
+
+        for attr_save, val_save in unc_data_save.__dict__.items():
+            if isinstance(val_save, pd.DataFrame):
+                df_load = getattr(unc_data_load, attr_save)
+                self.assertTrue(df_load.equals(val_save))
+        self.assertEqual(unc_data_load.sampling_method, unc_data_save.sampling_method)
+        self.assertEqual(unc_data_load.sampling_kwargs, unc_data_save.sampling_kwargs)
+        self.assertEqual(unc_data_load.sensitivity_method, unc_data_save.sensitivity_method)
+        self.assertEqual(unc_data_load.sensitivity_kwargs, unc_data_save.sensitivity_kwargs)
+
+        filename.unlink()
 
 class TestCalcImpact(unittest.TestCase):
     """Test the calcluate impact uncertainty class"""
@@ -430,35 +459,6 @@ class TestCalcImpact(unittest.TestCase):
                     self.assertEqual(len(attr),
                                      len(unc_data.param_labels) * 4
                                      )
-
-    def test_save_load_pass(self):
-        """Test save samples"""
-
-        exp_unc, impf_unc, _ = make_input_vars()
-        haz = haz_dem()
-        unc_calc = CalcImpact(exp_unc, impf_unc, haz)
-        unc_data_save = unc_calc.make_sample(N=2, sampling_kwargs={'calc_second_order': True})
-        unc_data_save = unc_calc.uncertainty(unc_data_save, calc_eai_exp=True,
-                                  calc_at_event=False)
-        unc_data_save = unc_calc.sensitivity(
-            unc_data_save,
-            sensitivity_kwargs = {'calc_second_order': True}
-            )
-
-        filename = unc_data_save.to_hdf5()
-
-        unc_data_load = UncOutput.from_hdf5(filename)
-
-        for attr_save, val_save in unc_data_save.__dict__.items():
-            if isinstance(val_save, pd.DataFrame):
-                df_load = getattr(unc_data_load, attr_save)
-                self.assertTrue(df_load.equals(val_save))
-        self.assertEqual(unc_data_load.sampling_method, unc_data_save.sampling_method)
-        self.assertEqual(unc_data_load.sampling_kwargs, unc_data_save.sampling_kwargs)
-        self.assertEqual(unc_data_load.sensitivity_method, unc_data_save.sensitivity_method)
-        self.assertEqual(unc_data_load.sensitivity_kwargs, unc_data_save.sensitivity_kwargs)
-
-        filename.unlink()
 
 
     # def test_calc_cb(self):
@@ -1118,7 +1118,7 @@ class TestCalcImpact(unittest.TestCase):
 
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestInputVar)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestOutput))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCalcImpact))
-    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestUncImpact))
     # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestUncCostBenefit))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
