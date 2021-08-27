@@ -38,7 +38,6 @@ REPO_DATA = {
         RIVER_FLOOD_REGIONS_CSV,
         NATEARTH_CENTROIDS[150],
         NATEARTH_CENTROIDS[360],
-        SYSTEM_DIR.joinpath('GDP2Asset_converter_2.5arcmin.nc'),
         SYSTEM_DIR.joinpath('WEALTH2GDP_factors_CRI_2016.csv'),
         SYSTEM_DIR.joinpath('GDP_TWN_IMF_WEO_data.csv'),
         SYSTEM_DIR.joinpath('FAOSTAT_data_country_codes.csv'),
