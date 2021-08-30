@@ -78,7 +78,6 @@ DEM_NODATA = -9999
 MAX_DEM_TILES_DOWN = 300
 """Maximum DEM tiles to dowload"""
 
-######### copied over from interpolation module #####################
 DIST_DEF = ['approx', 'haversine']
 """Distances"""
 
@@ -245,10 +244,10 @@ def interpolate_lines(gdf_lines, point_dist=5):
     
     Parameters
     ----------
-    gdf_lines : gpd.GeoDataframe or str
-        Geodataframe or filepath from which to read the GeoDataframe
+    gdf_lines : gpd.GeoDataframe
+        Geodataframe with line geometries
     point_dist : float
-    Distance in metres apart from which the generated  Points should be placed.
+        Distance in metres apart from which the generated Points should be placed.
     
     Returns
     -------
@@ -263,87 +262,81 @@ def interpolate_lines(gdf_lines, point_dist=5):
     * util.lines_polys_handler.point_exposure_from_lines()
     """
 
-    if not isinstance(gdf_lines, gpd.GeoDataFrame):
-        gdf_lines = gpd.read_file(gdf_lines)
-        
     gdf_points = gdf_lines.copy()
-    gdf_points['length'] = np.ones(len(gdf_points))*point_dist
-    gdf_points['length_full'] = compute_geodesic_lengths(gdf_points)
-
-    # split line lengths into relative fractions acc to point_dist (e.g. 0, 0.5, 1)
-    gdf_points['distance_vector'] = gdf_points.apply(
-        lambda row: np.linspace(0, 1, num=int(np.ceil(row.length_full/
-                                                      row.length)+1)), axis=1)
-
-    # create MultiPoints along the line for every position in distance_vector
-    gdf_points['geometry'] = gdf_points.apply(
-        lambda row: MultiPoint(
-            [row.geometry.interpolate(dist, normalized=True) 
-             for dist in row.distance_vector]), axis=1)
     
-    # expand gdf from MultiPoint entries to single Points per row
-    return gdf_points.explode().drop(['distance_vector', 'length_full'], axis=1)
+    line_lengths = compute_geodesic_lengths(gdf_points)
+    
+    # split line lengths into relative fractions acc to point_dist (e.g. 0, 0.5, 1)
+    dist_vectors = [np.linspace(0, 1, 
+                                num=int(np.ceil(line_length/point_dist)+1))
+                    for line_length in line_lengths]
+    
+    gdf_points['geometry'] = [MultiPoint(
+        [line.interpolate(dist, normalized=True) for dist in dist_vector])
+        for line, dist_vector in zip(gdf_lines.geometry, dist_vectors)]
+    gdf_points = gdf_points.explode()
+    gdf_points['lat'] = gdf_points.geometry.y
+    gdf_points['lon'] = gdf_points.geometry.x
 
-def interpolate_polygons(gdf_poly, area_point):
+    return gdf_points
+
+def _interpolate_one_polygon(poly, m_per_point):
+        
+    res_x, res_y = metres_to_degrees(poly.representative_point().y, 
+                                     m_per_point)
+
+    height, width, trafo = pts_to_raster_meta(poly.bounds, (res_x, res_y))
+    
+    lons, lats = raster_to_meshgrid(trafo, width, height)
+    
+    in_geom = coord_on_land(lat=lats.flatten(), 
+                            lon=lons.flatten(),
+                            land_geom=poly)
+    if sum(in_geom) > 1:
+        return MultiPoint([(x, y) for x, y in 
+                            zip(lons.flatten()[in_geom],lats.flatten()[in_geom])])
+    else:
+        LOGGER.info('''Chosen resolution too coarse for polygon. 
+                    Assigning one representative point instead''')
+        return MultiPoint([poly.representative_point()])
+
+def interpolate_polygons(gdf_poly, area_per_point):
     """For a GeoDataFrame with polygons, get equally distributed lat/lon pairs
-    throughout the geometries, at a user-specified area distance
+    throughout the geometries, at a user-specified resolution (in terms of 
+    m2 area per point) 
     
     Parameters
     ----------
     gdf_poly : gpd.GeoDataFrame
         with polygons to be interpolated
-    area_point : float
+    area_per_point : float
         area in m2 which one point should represent
     
     Returns
     -------
-    (gpd.GeoDataFrame) with individual Point per row, retaining all other column infos
+    gdf_points : gpd.GeoDataFrame
+        with multiindex: first level represents initial polygons, second level
+        individual Point per row, retaining all other column infos
         belonging to its corresponding polygon
     
     See also
     --------
-    * util.coordinates.compute_geodesic_lengths()
     * util.lines_polys_handler.point_exposure_from_polygons()
     """
     
-    metre_dist = math.sqrt(area_point)
+    m_per_point = math.sqrt(area_per_point)
+    
+    if gdf_poly.crs != "EPSG:4326":
+        raise Exception('''Expected a geographic CRS. 
+                        Please re-project to EPSG:4326 first.''')
     gdf_points = gdf_poly.copy()
+    gdf_points['geometry'] = gdf_poly.apply(
+        lambda row: _interpolate_one_polygon(row.geometry,m_per_point), axis=1)
+    gdf_points = gdf_points.explode()
+    gdf_points['lat'] = gdf_points.geometry.y
+    gdf_points['lon'] = gdf_points.geometry.x
     
-    gdf_points['degree_dist'] = gdf_poly.apply(lambda row: metres_to_degrees(
-        row.geometry.representative_point().x, 
-        row.geometry.representative_point().y,
-        metre_dist), axis=1)
-    
-    # get params to make an even grid with desired resolution 
-    # over bounding boxes of polygons:
-    gdf_points[['height','width','trans']] = gdf_points.apply(
-        lambda row: pts_to_raster_meta(row.geometry.bounds, 
-                                       (row.degree_dist, -row.degree_dist)), 
-        axis=1).tolist()
-    
-    # make grid --> lon / lat for each polygon-bbox
-    gdf_points[['lon','lat']] = pd.DataFrame(gdf_points.apply(lambda row: 
-        raster_to_meshgrid(row.trans, row.width, row.height), axis=1).tolist())
-    
-    for axis in ['lon', 'lat']:
-        gdf_points[axis] = gdf_points.apply(lambda row: row[axis].flatten(), 
-                                            axis=1)
-    # filter only centroids in actual polygons
-    for i, polygon in enumerate(gdf_points.geometry):
-        in_geom = coord_on_land(lat=gdf_points['lat'].iloc[i], 
-                                lon=gdf_points['lon'].iloc[i],
-                                land_geom=polygon)
-        for axis in ['lon', 'lat']:
-            gdf_points[axis].iloc[i] = gdf_points[axis].iloc[i][in_geom]
-    
-    gdf_points['geometry'] = gdf_points.apply(
-        lambda row: MultiPoint([(x, y) for x, y in zip(row.lon, row.lat)]),
-        axis=1)
-
-    return gpd.GeoDataFrame(gdf_points.drop(['lon', 'lat', 'trans', 'width', 
-                                             'height', 'degree_dist'])).explode()
-
-#######################
+    return gdf_points
 
 def latlon_to_geosph_vector(lat, lon, rad=False, basis=False):
     """Convert lat/lon coodinates to radial vectors (on geosphere)
@@ -620,22 +613,28 @@ def compute_geodesic_lengths(gdf):
     return gdf.apply(lambda row: pyproj.Geod(ellps='WGS84').geometry_length(
         row.geometry), axis=1)
 
-def metres_to_degrees(lat, lon, dist=100):
-    """Get an exact estimate for converting distances in metres to degrees,
+def metres_to_degrees(lat, dist):
+    """
+    Get an exact estimate for converting grid resolutions in metres to degrees,
     depending on the location on the globe
     
     Parameters
     ----------
-    lat : (float) latitude (in degrees) of the representative location
-    lon : (float) longitude (in degrees) of the representative location
-    dist : (float) distance in metres which should be converted
+    lat : (float) 
+        latitude (in degrees) of the representative location
+    dist : (float) 
+        distance in metres which should be converted to degrees lat & lon
     
     Returns
     -------
-   (float) distance in degrees
+    res_x, res_y resolutions in degrees
     """
-    _, lat_end, _ = pyproj.Geod(ellps='WGS84').fwd(lon, lat, 0, dist)
-    return abs(lat-lat_end)
+    
+    m_per_onelon = 40075000*np.cos(lat)/360
+    res_y = dist/m_per_onelon
+    res_x = (dist/1000) / ONE_LAT_KM
+    
+    return res_x, res_y
 
 def get_gridcellarea(lat, resolution=0.5, unit='km2'):
     """The area covered by a grid cell is calculated depending on the latitude
