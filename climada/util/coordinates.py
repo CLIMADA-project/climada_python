@@ -274,11 +274,9 @@ def interpolate_lines(gdf_lines, point_dist=5):
     gdf_points['geometry'] = [MultiPoint(
         [line.interpolate(dist, normalized=True) for dist in dist_vector])
         for line, dist_vector in zip(gdf_lines.geometry, dist_vectors)]
-    gdf_points = gdf_points.explode()
-    gdf_points['lat'] = gdf_points.geometry.y
-    gdf_points['lon'] = gdf_points.geometry.x
+    
+    return gdf_points.explode()
 
-    return gdf_points
 
 def _interpolate_one_polygon(poly, m_per_point):
         
@@ -331,11 +329,8 @@ def interpolate_polygons(gdf_poly, area_per_point):
     gdf_points = gdf_poly.copy()
     gdf_points['geometry'] = gdf_poly.apply(
         lambda row: _interpolate_one_polygon(row.geometry,m_per_point), axis=1)
-    gdf_points = gdf_points.explode()
-    gdf_points['lat'] = gdf_points.geometry.y
-    gdf_points['lon'] = gdf_points.geometry.x
     
-    return gdf_points
+    return gdf_points.explode()
 
 def latlon_to_geosph_vector(lat, lon, rad=False, basis=False):
     """Convert lat/lon coodinates to radial vectors (on geosphere)

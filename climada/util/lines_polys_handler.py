@@ -18,62 +18,8 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 import geopandas as gpd
 import logging
 
-from climada.entity.exposures.base import Exposures
-from climada.util.coordinates import interpolate_lines, interpolate_polygons
-
 LOGGER = logging.getLogger(__name__)
 
-def point_exposure_from_lines(gdf_lines, point_dist=5, value_method='fixed', 
-                              metre_value=1):
-    """ Create a climada point exposure from a GeoDataframe with LineString 
-    geometries 
-    
-    Parameters
-    ----------
-    gdf_lines  : 
-    point_dist : 
-    value_method :
-    metre_value : 
-    
-    Returns
-    -------
-    exp
-    """
-    gdf_points = interpolate_lines(gdf_lines, point_dist)
-    exp = Exposures(gdf_points)
-    if value_method == 'fixed':
-        exp.gdf['value'] = metre_value*point_dist
-    else:
-        LOGGER.warning("No other method for valuation yet implemented")
-    exp.set_lat_lon()
-    exp.check()
-    return exp
-
-def point_exposure_from_polygons(gdf_polygons, point_area=5, 
-                                 value_method='fixed', metre2_value=1):
-    """ Create a climada point exposure from a GeoDataframe with Polygon 
-    geometries 
-    
-    Parameters
-    ----------
-    gdf_polygons  : 
-    point_area : 
-    value_method :
-    metre2_value : 
-    
-    Returns
-    -------
-    exp
-    """
-    gdf_points = interpolate_polygons(gdf_polygons, point_area)
-    exp = Exposures(gdf_points)
-    if value_method == 'fixed':
-        exp.gdf['value'] = metre2_value*point_area
-    else:
-        LOGGER.warning("No other method for valuation yet implemented")
-    exp.set_lat_lon()
-    exp.check()
-    return exp
 
 def agg_point_impact_to_lines(gdf_lines, exp_points, imp_points, 
                               agg_mode='length'):

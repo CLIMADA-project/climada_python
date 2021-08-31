@@ -442,6 +442,14 @@ class Exposures():
         self.gdf['value'] = value.reshape(-1)
         self.meta = meta
 
+    def set_from_lines(self, point_dist):
+        self.gdf = u_coord.interpolate_lines(self.gdf, point_dist)
+        self.set_lat_lon()
+        
+    def set_from_polygons(self, area_per_point):
+        self.gdf = u_coord.interpolate_polygons(self.gdf, area_per_point)
+        self.set_lat_lon() 
+        
     def plot_scatter(self, mask=None, ignore_zero=False, pop_name=True,
                      buffer=0.0, extend='neither', axis=None, figsize=(9, 13),
                      adapt_fontsize=True, **kwargs):
