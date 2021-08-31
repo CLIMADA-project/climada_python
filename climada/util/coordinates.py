@@ -289,12 +289,11 @@ def _interpolate_one_polygon(poly, m_per_point):
     
     lons, lats = raster_to_meshgrid(trafo, width, height)
     
-    in_geom = coord_on_land(lat=lats.flatten(), 
-                            lon=lons.flatten(),
-                            land_geom=poly)
-    if sum(in_geom) > 1:
+    in_geom = shapely.vectorized.contains(poly, lons, lats)
+    
+    if sum(in_geom.flatten()) > 1:
         return MultiPoint([(x, y) for x, y in 
-                            zip(lons.flatten()[in_geom],lats.flatten()[in_geom])])
+                            zip(lons[in_geom],lats[in_geom])])
     else:
         LOGGER.info('''Chosen resolution too coarse for polygon. 
                     Assigning one representative point instead''')
