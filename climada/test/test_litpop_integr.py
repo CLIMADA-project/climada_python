@@ -69,7 +69,7 @@ class TestLitPopExposure(unittest.TestCase):
                                (income_group('CHE', 2016)[1] + 1))
         self.assertIn("LitPop Exposure for ['CHE'] at 300 as, year: 2016", ent.tag.description)
         self.assertIn('income_group', ent.tag.description)
-        self.assertIn('[1, 1]', ent.tag.description)
+        self.assertIn('1, 1', ent.tag.description)
         self.assertTrue(u_coord.equal_crs(ent.crs, {'init': 'epsg:4326'}))
         self.assertEqual(ent.meta['width'], 54)
         self.assertEqual(ent.meta['height'], 23)
