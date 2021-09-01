@@ -590,7 +590,7 @@ class LitPop(Exposures):
         litpop_gdf.crs = meta_tmp['crs']
         # set total value for disaggregation if not provided:
         if total_value is None: # default, no total value provided...
-            total_value = get_total_value_per_country(iso3a, fin_mode,
+            total_value = _get_total_value_per_country(iso3a, fin_mode,
                                                       reference_year, total_population)
 
         # disaggregate total value proportional to LitPop values:
@@ -598,7 +598,7 @@ class LitPop(Exposures):
             litpop_gdf['value'] = np.divide(litpop_gdf['value'],
                                             litpop_gdf['value'].sum()) * total_value
         elif total_value is not None:
-            raise TypeError("total_val_rescale must be int or float.")
+            raise TypeError("total_value must be int or float.")
 
         exp_country = LitPop()
         exp_country.set_gdf(litpop_gdf)
@@ -760,7 +760,7 @@ def get_value_unit(fin_mode):
         return 'people'
     return 'USD'
 
-def get_total_value_per_country(cntry_iso3a, fin_mode, reference_year, total_population=None):
+def _get_total_value_per_country(cntry_iso3a, fin_mode, reference_year, total_population=None):
     """
     Get total value for disaggregation, e.g., total asset value or population
     for a country, depending on unser choice (fin_mode).
@@ -1185,7 +1185,7 @@ def _calc_admin1_one_country(country, res_arcsec, exponents, fin_mode, total_val
                  for (key, value) in grp_values.items()}
 
     # get total value of country:
-    total_value = get_total_value_per_country(iso3a, fin_mode, reference_year, 0)
+    total_value = _get_total_value_per_country(iso3a, fin_mode, reference_year, 0)
     exp_list = []
     for idx, record in enumerate(admin1_info):
         if grp_values[record['name']] is None:
