@@ -98,14 +98,15 @@ class LitPop(Exposures):
             to the grid points within the country
             * 'pc': produced capital (Source: World Bank), incl. manufactured or
                     built assets such as machinery, equipment, and physical structures
-                    (pc is in constant 2014 USD)
-            * 'pop': population count (source: GPW, same as gridded population)
-            * 'gdp': gross-domestic product (Source: World Bank)
-            * 'income_group': gdp multiplied by country's income group+1
-            * 'nfw': non-financial wealth (Source: Credit Suisse, of households only)
-            * 'tw': total wealth (Source: Credit Suisse, of households only)
-            * 'norm': normalized by country
-            * 'none': LitPop per pixel is returned unchanged
+                    `pc` is in constant 2014 USD.
+            * 'pop': population count (source: GPW, same as gridded population).
+                    The unit is 'people'.
+            * 'gdp': gross-domestic product (Source: World Bank) [USD]
+            * 'income_group': gdp multiplied by country's income group+1 [USD]
+            * 'nfw': non-financial wealth (Source: Credit Suisse, of households only) [USD]
+            * 'tw': total wealth (Source: Credit Suisse, of households only) [USD]
+            * 'norm': normalized by country (no unit)
+            * 'none': LitPop per pixel is returned unchanged (no unit)
             The default is 'pc'.
         total_values : list containing numerics, same length as countries, optional
             Total values to be disaggregated to grid in each country.
