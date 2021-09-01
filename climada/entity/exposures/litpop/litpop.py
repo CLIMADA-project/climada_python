@@ -102,7 +102,8 @@ class LitPop(Exposures):
             * 'pop': population count (source: GPW, same as gridded population).
                     The unit is 'people'.
             * 'gdp': gross-domestic product (Source: World Bank) [USD]
-            * 'income_group': gdp multiplied by country's income group+1 [USD]
+            * 'income_group': gdp multiplied by country's income group+1 [USD].
+                Income groups are 1 (low) to 4 (high income).
             * 'nfw': non-financial wealth (Source: Credit Suisse, of households only) [USD]
             * 'tw': total wealth (Source: Credit Suisse, of households only) [USD]
             * 'norm': normalized by country (no unit)
@@ -327,6 +328,7 @@ class LitPop(Exposures):
                 The unit is 'people'.
             * 'gdp': gross-domestic product (Source: World Bank) [USD]
             * 'income_group': gdp multiplied by country's income group+1 [USD]
+                Income groups are 1 (low) to 4 (high income).
             * 'nfw': non-financial wealth (Source: Credit Suisse, of households only) [USD]
             * 'tw': total wealth (Source: Credit Suisse, of households only) [USD]
             * 'norm': normalized by country
@@ -783,6 +785,7 @@ def get_total_value_per_country(cntry_iso3a, fin_mode, reference_year, total_pop
             The unit is 'people'.
         * 'gdp': gross-domestic product (Source: World Bank) [USD]
         * 'income_group': gdp multiplied by country's income group+1 [USD]
+            Income groups are 1 (low) to 4 (high income).
         * 'nfw': non-financial wealth (Source: Credit Suisse, of households only) [USD]
         * 'tw': total wealth (Source: Credit Suisse, of households only) [USD]
         * 'norm': normalized by country
