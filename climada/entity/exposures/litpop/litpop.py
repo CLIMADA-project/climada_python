@@ -837,6 +837,8 @@ def reproject_input_data(data_array_list, meta_list,
                         resampling=rasterio.warp.Resampling.bilinear,
                         conserve=None):
     """
+    LitPop-sepcific wrapper around u_coord.align_raster_data.
+
     Reprojects all arrays in data_arrays to a given resolution –
     all based on the population data grid.
 
@@ -964,17 +966,12 @@ def gridpoints_core_calc(data_arrays, offsets=None, exponents=None,
     result_array : np.array of same shape as arrays in data_arrays
         Results from calculation described above.
     """
-    # convert input data to arrays if proivided as lists
+    # convert input data to arrays
     # check integrity of data_array input (length and type):
     try:
-        if isinstance(data_arrays[0], list):
-            data_arrays[0] = np.array(data_arrays[0])
-        for i_arr in np.arange(len(data_arrays)-1):
-            if isinstance(data_arrays[i_arr+1], list):
-                data_arrays[i_arr+1] = np.array(data_arrays[i_arr+1])
-            if data_arrays[i_arr].shape != data_arrays[i_arr+1].shape:
-                raise ValueError("Elements in data_arrays don't agree in shape.")
-
+        data_arrays = [np.array(data) for data in data_arrays]
+        if len(list(set([data.shape for data in data_arrays]))) > 1:
+            raise ValueError("Elements in data_arrays don't agree in shape.")
     except AttributeError as err:
         raise TypeError("data_arrays or contained elements have wrong type.") from err
 

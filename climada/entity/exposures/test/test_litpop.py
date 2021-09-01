@@ -208,7 +208,7 @@ class TestLitPop(unittest.TestCase):
         with self.assertRaises(TypeError):
             lp.gridpoints_core_calc(data, exponents=['a', 'b'])
         data.append('hello i am a string')
-        with self.assertRaises(TypeError):
+        with self.assertRaises(ValueError):
             lp.gridpoints_core_calc(data)
         with self.assertRaises(TypeError):
             lp.gridpoints_core_calc(777)
