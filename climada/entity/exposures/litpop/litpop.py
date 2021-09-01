@@ -143,7 +143,7 @@ class LitPop(Exposures):
 
         # litpop_list is initiated, a list containing one Exposure instance per
         # country and None for countries that could not be identified:
-        if admin1_calc: # each admin 1 region is initiated seperately,
+        if admin1_calc: # each admin 1 region is initiated separately,
                         # with total value share based on subnational GDP share.
                         # This requires GRP (Gross Regional Product) data in the
                         # GSDP data folder.
@@ -570,7 +570,7 @@ class LitPop(Exposures):
         total_population = 0
 
         # for countries with multiple sperated shapes (e.g., islands), data
-        # is initiated for each shape seperately and 0 values (e.g. on sea)
+        # is initiated for each shape separately and 0 values (e.g. on sea)
         # removed before combination, to save memory.
         # loop over single polygons in country shape object:
         for idx, polygon in enumerate(list(country_geometry)):
