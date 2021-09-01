@@ -172,9 +172,9 @@ class LitPop(Exposures):
                  for idc, country in enumerate(countries)]
         # make lists of countries with Exposure initaited and those ignored:
         countries_in = \
-            [country for i, country in enumerate(countries) if litpop_list[i] is not None]
+            [country for lp, country in zip(litpop_list, countries) if lp is not None]
         countries_out = \
-            [country for i, country in enumerate(countries) if litpop_list[i] is None]
+            [country for lp, country in zip(litpop_list, countries) if lp is None]
         if not countries_in:
             raise ValueError('No valid country identified in %s, aborting.' % countries)
         litpop_list = [exp for exp in litpop_list if exp is not None]
