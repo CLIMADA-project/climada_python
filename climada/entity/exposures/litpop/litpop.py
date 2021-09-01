@@ -85,7 +85,7 @@ class LitPop(Exposures):
         countries : list with str or int
             list containing country identifiers:
             iso3alpha (e.g. 'JPN'), iso3num (e.g. 92) or name (e.g. 'Togo')
-        res_arcsec : float (optional)
+        res_arcsec : float, optional
             Horizontal resolution in arc-sec.
             The default is 30 arcsec, this corresponds to roughly 1 km.
         exponents : tuple of two integers, optional
@@ -262,7 +262,7 @@ class LitPop(Exposures):
 
         Parameters
         ----------
-        countries : list or str (optional)
+        countries : list or str, optional
             list containing country identifiers (name or iso3)
         shape : Shape, Polygon or MultiPolygon, optional
             geographical shape of target region, alternative to `countries`.
@@ -311,7 +311,7 @@ class LitPop(Exposures):
         countries : list with str or int
             list containing country identifiers:
             iso3alpha (e.g. 'JPN'), iso3num (e.g. 92) or name (e.g. 'Togo')
-        res_arcsec : float (optional)
+        res_arcsec : float, optional
             Horizontal resolution in arc-sec.
             The default is 30 arcsec, this corresponds to roughly 1 km.
         exponents : tuple of two integers, optional
@@ -443,7 +443,7 @@ class LitPop(Exposures):
         gpw_version : int, optional
             Version number of GPW population data.
             The default is set in CONFIG.
-        data_dir : Path (optional)
+        data_dir : Path, optional
             redefines path to input data directory. The default is SYSTEM_DIR.
         reproject_first : boolean
             First reproject nightlight (Lit) and population (Pop) data to target
@@ -532,14 +532,14 @@ class LitPop(Exposures):
         ----------
         country : str or int
             country identifier as iso3alpha, iso3num or name.
-        res_arcsec : float (optional)
+        res_arcsec : float, optional
             horizontal resolution in arc-sec.
         exponents : tuple of two integers, optional
         fin_mode : str, optional
-        total_value : numeric (optional)
+        total_value : numeric, optional
         reference_year : int, optional
-        gpw_version : int (optional)
-        data_dir : Path (optional)
+        gpw_version : int, optional
+        data_dir : Path, optional
             redefines path to input data directory. The default is SYSTEM_DIR.
         reproject_first : boolean
 
@@ -864,19 +864,19 @@ def reproject_input_data(data_array_list, meta_list,
                                  0.0, -0.00833333333333333, 43.79999999999993)}
         The meta data with the reference grid used to define the global destination
         grid should be first in the list, e.g., GPW population data for LitPop.
-    i_ref : int (optional)
+    i_ref : int, optional
         Index/Position of data set used to define the reference grid.
         The default is 0.
-    target_res_arcsec : int (optional)
+    target_res_arcsec : int, optional
         target resolution in arcsec. The default is None, i.e. same resolution
         as reference data.
-    global_origins : tuple with two numbers (lat, lon) (optional)
+    global_origins : tuple with two numbers (lat, lon), optional
         global lon and lat origins as basis for destination grid.
         The default is the same as for GPW population data:
             (-180.0, 89.99999999999991)
-    resampling : resampling function (optional)
+    resampling : resampling function, optional
         The default is rasterio.warp.Resampling.bilinear
-    conserve : str (optional), either 'mean' or 'sum'
+    conserve : str, optional, either 'mean' or 'sum'
         Conserve mean or sum of data? The default is None (no conservation).
 
     Returns
@@ -943,15 +943,15 @@ def gridpoints_core_calc(data_arrays, offsets=None, exponents=None,
     ----------
     data_arrays : list or array of numpy arrays containing numbers
         Data to be combined, i.e. list containing N (min. 1) arrays of same shape.
-    total_val_rescale : float or int (optional)
+    total_val_rescale : float or int, optional
         Total value for optional rescaling of resulting array. All values in result_array
         are skaled so that the sum is equal to total_val_rescale.
         The default (None) implies no rescaling.
-    offsets: list or array containing N numbers >= 0 (optional)
+    offsets: list or array containing N numbers >= 0, optional
         One numerical offset per array that is added (sum) to the
         corresponding array in data_arrays.
         The default (None) corresponds to np.zeros(N).
-    exponents: list or array containing N numbers >= 0 (optional)
+    exponents: list or array containing N numbers >= 0, optional
         One exponent per array used as power for the corresponding array.
         The default (None) corresponds to np.ones(N).
 
@@ -1080,10 +1080,10 @@ def _grp_read(country_iso3, admin1_info=None, data_dir=SYSTEM_DIR):
     ----------
     country_iso3 : str
         alphabetic three letter country code ISO3a
-    admin1_info : list (optional)
+    admin1_info : list, optional
         list containg all admin1 records for country.
         if not provided, info is set retrieved automatically
-    data_dir : str (optional)
+    data_dir : str, optional
         path where to look for file
 
     Returns
