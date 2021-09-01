@@ -323,11 +323,12 @@ class LitPop(Exposures):
             * 'pc': produced capital (Source: World Bank), incl. manufactured or
                     built assets such as machinery, equipment, and physical structures
                     (pc is in constant 2014 USD)
-            * 'pop': population count (source: GPW, same as gridded population)
-            * 'gdp': gross-domestic product (Source: World Bank)
-            * 'income_group': gdp multiplied by country's income group+1
-            * 'nfw': non-financial wealth (Source: Credit Suisse, of households only)
-            * 'tw': total wealth (Source: Credit Suisse, of households only)
+            * 'pop': population count (source: GPW, same as gridded population).
+                The unit is 'people'.
+            * 'gdp': gross-domestic product (Source: World Bank) [USD]
+            * 'income_group': gdp multiplied by country's income group+1 [USD]
+            * 'nfw': non-financial wealth (Source: Credit Suisse, of households only) [USD]
+            * 'tw': total wealth (Source: Credit Suisse, of households only) [USD]
             * 'norm': normalized by country
             * 'none': LitPop per pixel is returned unchanged
             The default is 'pc'.
@@ -779,10 +780,11 @@ def get_total_value_per_country(cntry_iso3a, fin_mode, reference_year, total_pop
                 and land value for built-up land.
                 (pc is in constant 2014 USD)
         * 'pop': population count (source: GPW, same as gridded population)
-        * 'gdp': gross-domestic product (Source: World Bank)
-        * 'income_group': gdp multiplied by country's income group+1
-        * 'nfw': non-financial wealth (Source: Credit Suisse, of households only)
-        * 'tw': total wealth (Source: Credit Suisse, of households only)
+            The unit is 'people'.
+        * 'gdp': gross-domestic product (Source: World Bank) [USD]
+        * 'income_group': gdp multiplied by country's income group+1 [USD]
+        * 'nfw': non-financial wealth (Source: Credit Suisse, of households only) [USD]
+        * 'tw': total wealth (Source: Credit Suisse, of households only) [USD]
         * 'norm': normalized by country
         * 'none': LitPop per pixel is returned unscaled
         The default is 'pc'
