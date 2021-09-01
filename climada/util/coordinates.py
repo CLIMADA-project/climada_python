@@ -1957,7 +1957,7 @@ def align_raster_data(source, src_crs, src_transform, dst_crs=None, dst_resoluti
 def mask_raster_with_geometry(raster, transform, shapes, nodata=None, **kwargs):
     """
     Change values in `raster` that are outside of given `shapes` to `nodata`.
-    
+
     This function is a wrapper for rasterio.mask.mask to allow for
     in-memory processing. This is done by first writing data to memfile and then
     reading from it before the function call to rasterio.mask.mask().
