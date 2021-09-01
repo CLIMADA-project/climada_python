@@ -680,18 +680,18 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
 
     # if pop unused and resolution same as lit (15 as), set grid same as lit:
     if exponents[1]==0 and target_res_arcsec==15:
-        i_ref = 1
+        i_align = 1
         global_origins = (meta_nl['transform'][2], # lon
                           meta_nl['transform'][5]) # lat
     else:
-        i_ref = 0
+        i_align = 0
         global_origins=(global_transform[2],
                         global_transform[5])
     # reproject Lit and Pop input data to same grid:
     try:
         [pop, nlight], meta_out = reproject_input_data([pop, nlight],
                                                   [meta_pop, meta_nl],
-                                                  i_ref=i_ref, # pop defines grid
+                                                  i_align=i_align, # pop defines grid
                                                   target_res_arcsec=target_res_arcsec,
                                                   global_origins=global_origins,
                                                   )
@@ -831,7 +831,7 @@ def _get_total_value_per_country(cntry_iso3a, fin_mode, reference_year, total_po
     raise ValueError(f"Unsupported fin_mode: {fin_mode}")
 
 def reproject_input_data(data_array_list, meta_list,
-                        i_ref=0,
+                        i_align=0,
                         target_res_arcsec=None,
                         global_origins=(-180.0, 89.99999999999991),
                         resampling=rasterio.warp.Resampling.bilinear,
@@ -846,9 +846,9 @@ def reproject_input_data(data_array_list, meta_list,
     ----------
     data_array_list : list or array of numpy arrays containing numbers
         Data to be reprojected, i.e. list containing N (min. 1) 2D-arrays.
-        The data with the reference grid used to define the global destination
-        grid should be first in the list, e.g., pop (GPW population data)
-        for LitPop.
+        The data with the reference grid used to align the global destination
+        grid to should be first data_array_list[i_align],
+        e.g., pop (GPW population data) for LitPop.
     meta_list : list of dicts
         meta data dictionaries of data arrays in same order as data_array_list.
         Required fields in each dict are 'dtype,', 'width', 'height', 'crs', 'transform'.
@@ -864,8 +864,9 @@ def reproject_input_data(data_array_list, meta_list,
                                  0.0, -0.00833333333333333, 43.79999999999993)}
         The meta data with the reference grid used to define the global destination
         grid should be first in the list, e.g., GPW population data for LitPop.
-    i_ref : int, optional
-        Index/Position of data set used to define the reference grid.
+    i_align : int, optional
+        Index/Position of meta in meta_list to which the global grid of the destination
+        is to be aligned to (c.f. u_coord.align_raster_data)
         The default is 0.
     target_res_arcsec : int, optional
         target resolution in arcsec. The default is None, i.e. same resolution
@@ -883,36 +884,36 @@ def reproject_input_data(data_array_list, meta_list,
     -------
     data_array_list : list
         contains reprojected data sets
-    meta : dict
+    meta_out : dict
         contains meta data of new grid (same for all arrays)
     """
 
     # target resolution in degree lon,lat:
     if target_res_arcsec is None:
-        res_degree = meta_list[i_ref]['transform'][0] # reference grid
+        res_degree = meta_list[i_align]['transform'][0] # reference grid
     else:
         res_degree = target_res_arcsec / 3600
 
-    dst_crs = meta_list[i_ref]['crs']
+    dst_crs = meta_list[i_align]['crs']
     # loop over data arrays, do transformation where required:
     data_out_list = [None] * len(data_array_list)
-    meta = {'dtype': meta_list[i_ref]['dtype'],
-            'nodata': meta_list[i_ref]['dtype'],
-            'crs': dst_crs}
+    meta_out = {'dtype': meta_list[i_align]['dtype'],
+                'nodata': meta_list[i_align]['dtype'],
+                'crs': dst_crs}
 
     for idx, data in enumerate(data_array_list):
         # if target resolution corresponds to reference data resolution,
         # the reference data is not transformed:
-        if idx==i_ref and ((target_res_arcsec is None) or \
-                           (np.round(meta_list[i_ref]['transform'][0],
+        if idx==i_align and ((target_res_arcsec is None) or \
+                           (np.round(meta_list[i_align]['transform'][0],
                             decimals=7)==np.round(res_degree, decimals=7))):
             data_out_list[idx] = data
             continue
         # reproject data grid:
-        dst_bounds = rasterio.transform.array_bounds(meta_list[i_ref]['height'],
-                                                     meta_list[i_ref]['width'],
-                                                     meta_list[i_ref]['transform'])
-        data_out_list[idx], meta['transform'] = \
+        dst_bounds = rasterio.transform.array_bounds(meta_list[i_align]['height'],
+                                                     meta_list[i_align]['width'],
+                                                     meta_list[i_align]['transform'])
+        data_out_list[idx], meta_out['transform'] = \
             u_coord.align_raster_data(data_array_list[idx], meta_list[idx]['crs'],
                                       meta_list[idx]['transform'],
                                       dst_crs=dst_crs,
@@ -921,9 +922,9 @@ def reproject_input_data(data_array_list, meta_list,
                                       global_origin=global_origins,
                                       resampling=resampling,
                                       conserve=conserve)
-    meta['height'] = data_out_list[-1].shape[0]
-    meta['width'] = data_out_list[-1].shape[1]
-    return data_out_list, meta
+    meta_out['height'] = data_out_list[-1].shape[0]
+    meta_out['width'] = data_out_list[-1].shape[1]
+    return data_out_list, meta_out
 
 def gridpoints_core_calc(data_arrays, offsets=None, exponents=None,
                          total_val_rescale=None):

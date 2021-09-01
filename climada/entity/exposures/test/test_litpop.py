@@ -109,7 +109,7 @@ class TestLitPop(unittest.TestCase):
         data_in, meta_list = data_arrays_resampling_demo()
         #
         data_out, meta_out = lp.reproject_input_data(data_in, meta_list,
-                        i_ref=0,
+                        i_align=0,
                         target_res_arcsec=None,
                         global_origins=(-180, 90)
                         )
@@ -127,7 +127,7 @@ class TestLitPop(unittest.TestCase):
         data_in, meta_list = data_arrays_resampling_demo()
         #
         data_out, meta_out = lp.reproject_input_data(data_in, meta_list,
-                        i_ref=0,
+                        i_align=0,
                         target_res_arcsec=None,
                         global_origins=(-180, 90),
                         conserve='sum')
@@ -142,7 +142,7 @@ class TestLitPop(unittest.TestCase):
         data_in, meta_list = data_arrays_resampling_demo()
         #
         data_out, meta_out = lp.reproject_input_data(data_in, meta_list,
-                        i_ref=1,
+                        i_align=1,
                         target_res_arcsec=None,
                         global_origins=(-180, 90),
                         conserve='mean')
@@ -158,7 +158,7 @@ class TestLitPop(unittest.TestCase):
         data_in, meta_list = data_arrays_resampling_demo()
         #
         data_out, meta_out = lp.reproject_input_data(data_in, meta_list,
-                        i_ref=2, # high res data as reference
+                        i_align=2, # high res data as reference
                         target_res_arcsec=None,
                         global_origins=(-180, 90)
                         )
@@ -180,7 +180,7 @@ class TestLitPop(unittest.TestCase):
         #
         data_out, meta_out = \
             lp.reproject_input_data(data_in, meta_list,
-                                   i_ref=0, # high res data as reference
+                                   i_align=0, # high res data as reference
                                    target_res_arcsec=6120, # 1.7 degree
                                    global_origins=(-180, 90),
                                    )
