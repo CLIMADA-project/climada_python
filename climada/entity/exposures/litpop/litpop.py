@@ -503,7 +503,8 @@ class LitPop(Exposures):
             fin_mode = None,
             )
 
-        try:
+        if min(len(self.gdf.latitude.unique()), len(self.gdf.longitude.unique())) > 1:
+        #if self.gdf.shape[0] > 1 and len(self.gdf.latitude.unique()) > 1:
             rows, cols, ras_trans = u_coord.pts_to_raster_meta(
                 (self.gdf.longitude.min(), self.gdf.latitude.min(),
                  self.gdf.longitude.max(), self.gdf.latitude.max()),
@@ -514,9 +515,9 @@ class LitPop(Exposures):
                 'crs': self.crs,
                 'transform': ras_trans,
             }
-        except ValueError:
-            LOGGER.warning('Could not write attribute meta, because exposure'
-                           ' has only 1 data point')
+        else:
+            LOGGER.warning('Could not write attribute meta because coordinates'
+                           'are either only one point or do not extend in lat and lon')
             self.meta = {'crs': self.crs}
 
     @staticmethod
