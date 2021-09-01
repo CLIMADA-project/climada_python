@@ -218,10 +218,10 @@ class LitPop(Exposures):
     def set_nightlights(self, countries=None, shape=None, res_arcsec=15,
                         reference_year=DEF_REF_YEAR, data_dir=SYSTEM_DIR):
         """
+        Wrapper around `set_countries` / `set_custom_shape`.
+
         Initiate exposures instance with value equal to nightlight intensity.
         Provide either `countries` or `shape`.
-
-        Convenience wrapper around `set_countries` / `set_custom_shape`.
 
         Parameters
         ----------
@@ -255,10 +255,10 @@ class LitPop(Exposures):
                        reference_year=DEF_REF_YEAR, gpw_version=GPW_VERSION,
                        data_dir=SYSTEM_DIR):
         """
+        Wrapper around `set_countries` / `set_custom_shape`.
+
         Initiate exposures instance with value equal to GPW population count.
         Provide either `countries` or `shape`.
-
-        Convenience wrapper around `set_countries` / `set_custom_shape`.
 
         Parameters
         ----------
