@@ -16,76 +16,65 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 """
 import geopandas as gpd
+import pandas as pd
 import logging
 
 LOGGER = logging.getLogger(__name__)
 
 
-def agg_point_impact_to_lines(gdf_lines, exp_points, imp_points, 
-                              agg_mode='length'):
+def agg_to_lines(exp_pnts, impact_pnts, agg_mode='sum'):
+    
+    # TODO: make a method of Impact(), go via saving entire impact matrix
+    # TODO: think about how to include multi-index instead of requiring entire exp?
+    
     """given an original line geometry, a converted point exposure and a 
     resultingly calculated point impact, aggregate impacts back to shapes in
-    original lines geodataframe.
+    original lines geodataframe outline.
     
     Parameters
     ----------
-    gdf_lines, 
-    exp_points, 
-    imp_points, 
-    agg_mode : str
-        'length' or 'value': whether the impact should be
     
     Returns
     -------
-   agg_impact : gpd.GeoDataFrame of same height as gdf_lines with 'imp_frac' and 
-        'imp_abs', referring to affected fraction of the line's total length / value
-        and the absolute length / value impacted.
+   
     """
-    agg_impact = gpd.GeoDataFrame()
+    impact_line = pd.DataFrame(index=exp_pnts.gdf.index, 
+                               data=impact_pnts.eai_exp, columns=['eai_exp'])
     
-    if agg_mode == 'length':
-        exp_points.gdf['affected'] = imp_points.eai_exp>0     
-        agg_impact['imp_frac_l'] = (exp_points.gdf[exp_points.gdf.affected==True
-                                                ].groupby(level=0)[agg_mode].sum() / 
-                                 exp_points.gdf.groupby(level=0)[agg_mode].sum()
-                                 ).fillna(0)
-        agg_impact['imp_abs_l'] = exp_points.gdf[exp_points.gdf.affected==True
-                                              ].groupby(level=0)[agg_mode].sum()
-        agg_impact['imp_abs_l'] = agg_impact.imp_abs_l.fillna(0)
-    elif agg_mode == 'value':
-        exp_points.gdf['impact'] = imp_points.eai_exp
-        agg_impact['imp_frac_v'] = (exp_points.gdf.groupby(level=0).impact.sum() / 
-                                 exp_points.gdf.groupby(level=0)[agg_mode].sum())
-        agg_impact['imp_abs_v'] = exp_points.gdf.groupby(level=0).impact.sum()
+    if agg_mode == 'sum':
+        return impact_line.groupby(level=0).eai_exp.sum()
+    
+    elif agg_mode == 'fraction':
+        return impact_line.groupby(level=0).eai_exp.sum()/exp_pnts.groupby(level=0).value.sum()
+    
+    else:
+        raise NotImplementedError
 
-    return agg_impact
+def agg_to_polygons(exp_pnts, impact_pnts, agg_mode='sum'):
+    
+    # TODO: make a method of Impact(), go via saving entire impact matrix
+    # TODO: think about how to include multi-index instead of requiring entire exp?
 
-def agg_point_impact_to_polygons(gdf_polygons, exp_points, imp_points, 
-                              agg_mode='length'):
     """given an original polygon geometry, a converted point exposure and a 
     resultingly calculated point impact, aggregate impacts back to shapes in
-    original polygons geodataframe.
+    original polygons geodataframe outline.
     
     Parameters
     ----------
-    gdf_polygons, 
-    exp_points, 
-    imp_points, 
-    agg_mode : str
-        'length' or 'value': whether the impact should be
-    
+   
     Returns
     -------
-    tuple of pandas.Series of same height as gdf_polygons with columns 'imp_frac' and 
-        'imp_abs', referring to affected fraction of the line's total length / value
-        and the absolute length / value impacted.
+    
     """
-    #TODO: implement
-    if agg_mode == 'length':
-        pass
+    impact_poly = pd.DataFrame(index=exp_pnts.gdf.index, 
+                               data=impact_pnts.eai_exp, columns=['eai_exp'])
+    if agg_mode == 'sum':
+        return impact_poly.groupby(level=0).eai_exp.sum()
+    
+    elif agg_mode == 'fraction':
+        return impact_poly.groupby(level=0).eai_exp.sum()/exp_pnts.groupby(level=0).value.sum()
+   
+    else:
+        raise NotImplementedError
 
-    elif agg_mode == 'value':
-        pass
-
-    #return (imp_frac, imp_abs)
         

@@ -442,12 +442,42 @@ class Exposures():
         self.gdf['value'] = value.reshape(-1)
         self.meta = meta
 
-    def set_from_lines(self, point_dist):
-        self.gdf = u_coord.interpolate_lines(self.gdf, point_dist)
+    def set_from_lines(self, gdf_lines, m_per_point, disagg_values=None):
+        
+        self.gdf = u_coord.interpolate_lines(gdf_lines, m_per_point)
+        
+        # divide line values equally onto points
+        # TODO: refactor. same functionality in set_from_polygons.
+        if disagg_values=='cnst':
+            group = self.gdf.groupby(axis=0, level=0)
+            val_per_point = group.value.mean()/group.count().iloc[:,0]
+            for ix, val in zip(np.unique(self.gdf.index.get_level_values(0)),
+                               val_per_point):
+                self.gdf.at[ix, 'value']= val
+        
+        # TODO: any other disaggregation option?
+        elif disagg_values:
+            raise NotImplementedError
+            
         self.set_lat_lon()
         
-    def set_from_polygons(self, area_per_point):
-        self.gdf = u_coord.interpolate_polygons(self.gdf, area_per_point)
+    def set_from_polygons(self, gdf_polys, m2_per_point, disagg_values=None):
+        
+        self.gdf = u_coord.interpolate_polygons(gdf_polys, m2_per_point)
+        
+        # divide polygon values equally onto points
+        if disagg_values=='cnst':
+            group = self.gdf.groupby(axis=0, level=0)
+            val_per_point = group.value.mean()/group.count().iloc[:,0]
+            for ix, val in zip(np.unique(self.gdf.index.get_level_values(0)),
+                               val_per_point):
+                self.gdf.at[ix, 'value']= val
+        
+        # TODO: cf. tutorial implementation - divide polygon value proportional 
+        # to litpop output
+        elif disagg_values=='litpop':
+            raise NotImplementedError
+                
         self.set_lat_lon() 
         
     def plot_scatter(self, mask=None, ignore_zero=False, pop_name=True,
