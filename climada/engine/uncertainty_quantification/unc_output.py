@@ -96,17 +96,19 @@ class UncOutput():
     _metadata = ['sampling_method', 'sampling_kwargs', 'sensitivity_method',
                  'sensitivity_kwargs']
 
-    def __init__(self, samples_df):
+    def __init__(self, samples_df, unit=None):
         """
         Initialize Uncertainty Data object.
 
         Parameters
         ----------
         samples_df: pandas.Dataframe
+        unit: str
 
         """
         #Data
         self.samples_df = samples_df
+        self.unit = unit
 
     def check_salib(self, sensitivity_method):
         """
@@ -959,3 +961,27 @@ class UncOutput():
                 }
             unc_data.sensitivity_kwargs = tuple(sens_kwargs.items())
         return unc_data
+
+
+class UncImpactOutput(UncOutput):
+    def __init__(self, samples_df, aai_agg_unc_df, freq_curve_unc_df, eai_exp_unc_df,
+                 at_event_unc_df, tot_value_unc_df, unit):
+        super().__init__(samples_df, unit)
+        self.aai_agg_unc_df = aai_agg_unc_df
+        self.freq_curve_unc_df = freq_curve_unc_df
+        self.eai_exp_unc_df = eai_exp_unc_df
+        self.at_event_unc_df = at_event_unc_df
+        self.tot_value_unc_df = tot_value_unc_df
+
+
+class UncCostBenefitOutput(UncOutput):
+    def __init__(self, samples_df, imp_meas_present_unc_df, imp_meas_future_unc_df,
+                 tot_climate_risk_unc_df, benefit_unc_df, cost_ben_ratio_unc_df, unit,
+                 cost_benefit_kwargs):
+        super().__init__(samples_df, unit)
+        self.imp_meas_present_unc_df= imp_meas_present_unc_df
+        self.imp_meas_future_unc_df= imp_meas_future_unc_df
+        self.tot_climate_risk_unc_df = tot_climate_risk_unc_df
+        self.benefit_unc_df = benefit_unc_df
+        self.cost_ben_ratio_unc_df = cost_ben_ratio_unc_df
+        self.cost_benefit_kwargs = cost_benefit_kwargs

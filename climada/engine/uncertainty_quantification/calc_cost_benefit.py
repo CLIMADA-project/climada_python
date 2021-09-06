@@ -21,6 +21,7 @@ Define Uncertainty Cost Benefit class
 
 __all__ = ['CalcCostBenefit']
 
+from climada.engine.uncertainty_quantification.unc_output import UncCostBenefitOutput
 import logging
 import time
 import copy
@@ -159,15 +160,15 @@ class CalcCostBenefit(Calc):
             raise ValueError("No sample was found. Please create one first" +
                         "using UncImpact.make_sample(N)")
 
-        unc_output = copy.deepcopy(unc_data)
-        unc_output.unit = self.value_unit
+        samples_df = unc_data.samples_df.copy(deep=True)
+        unit = self.value_unit
 
         LOGGER.info("The freq_curve is not saved. Please "
                     "change the risk_func (see climada.engine.cost_benefit) "
                     "if return period information is needed")
 
         start = time.time()
-        one_sample = unc_output.samples_df.iloc[0:1].iterrows()
+        one_sample = samples_df.iloc[0:1].iterrows()
         cb_metrics = map(self._map_costben_calc, one_sample)
         [imp_meas_present,
          imp_meas_future,
@@ -175,20 +176,20 @@ class CalcCostBenefit(Calc):
          benefit,
          cost_ben_ratio] = list(zip(*cb_metrics))
         elapsed_time = (time.time() - start)
-        self.est_comp_time(unc_output.n_samples, elapsed_time, pool)
+        self.est_comp_time(unc_data.n_samples, elapsed_time, pool)
 
         #Compute impact distributions
         with log_level(level='ERROR', name_prefix='climada'):
             if pool:
                 LOGGER.info('Using %s CPUs.', pool.ncpus)
-                chunksize = min(unc_output.n_samples // pool.ncpus, 100)
+                chunksize = min(unc_data.n_samples // pool.ncpus, 100)
                 cb_metrics = pool.map(partial(self._map_costben_calc, **cost_benefit_kwargs),
-                                               unc_output.samples_df.iterrows(),
+                                               samples_df.iterrows(),
                                                chunsize = chunksize)
 
             else:
                 cb_metrics = map(partial(self._map_costben_calc, **cost_benefit_kwargs),
-                                 unc_output.samples_df.iterrows())
+                                 samples_df.iterrows())
 
         #Perform the actual computation
         with log_level(level='ERROR', name_prefix='climada'):
@@ -199,21 +200,22 @@ class CalcCostBenefit(Calc):
              cost_ben_ratio] = list(zip(*cb_metrics)) #Transpose list of list
 
         # Assign computed impact distribution data to self
-        unc_output.tot_climate_risk_unc_df = \
+        tot_climate_risk_unc_df = \
             pd.DataFrame(tot_climate_risk, columns = ['tot_climate_risk'])
 
-        unc_output.benefit_unc_df = pd.DataFrame(benefit)
-        unc_output.benefit_unc_df.columns = [
+        benefit_unc_df = pd.DataFrame(benefit)
+        benefit_unc_df.columns = [
             column + ' Benef'
-            for column in unc_output.benefit_unc_df.columns]
-        unc_output.cost_ben_ratio_unc_df = pd.DataFrame(cost_ben_ratio)
-        unc_output.cost_ben_ratio_unc_df.columns = [
+            for column in benefit_unc_df.columns]
+        cost_ben_ratio_unc_df = pd.DataFrame(cost_ben_ratio)
+        cost_ben_ratio_unc_df.columns = [
             column + ' CostBen'
-            for column in unc_output.cost_ben_ratio_unc_df.columns]
+            for column in cost_ben_ratio_unc_df.columns]
 
         imp_metric_names = ['risk', 'risk_transf', 'cost_meas',
                             'cost_ins']
 
+        im_periods = dict()
         for imp_meas, period in zip([imp_meas_present, imp_meas_future],
                                   ['present', 'future']):
             df_imp_meas = pd.DataFrame()
@@ -233,13 +235,20 @@ class CalcCostBenefit(Calc):
                     df_imp_meas = df_imp_meas.append(
                         pd.DataFrame(met_dic), ignore_index=True
                         )
-            setattr(unc_output, name + '_unc_df', df_imp_meas)
+            im_periods[name + '_unc_df'] = df_imp_meas
         cost_benefit_kwargs = {
             key: str(val)
             for key, val in cost_benefit_kwargs.items()}
-        unc_output.cost_benefit_kwargs = tuple(cost_benefit_kwargs.items())
+        cost_benefit_kwargs = tuple(cost_benefit_kwargs.items())
 
-        return unc_output
+        return UncCostBenefitOutput(samples_df=samples_df,
+                                    imp_meas_present_unc_df=im_periods['imp_meas_present_unc_df'],
+                                    imp_meas_future_unc_df=im_periods['imp_meas_future_unc_df'],
+                                    tot_climate_risk_unc_df=tot_climate_risk_unc_df,
+                                    cost_ben_ratio_unc_df=cost_ben_ratio_unc_df,
+                                    benefit_unc_df=benefit_unc_df,
+                                    unit=unit,
+                                    cost_benefit_kwargs=cost_benefit_kwargs)
 
     def _map_costben_calc(self, param_sample, **kwargs):
         """

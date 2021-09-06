@@ -21,6 +21,7 @@ Define Uncertainty Impact class
 
 __all__ = ['CalcImpact']
 
+from climada.engine.uncertainty_quantification.unc_output import UncImpactOutput
 import logging
 import time
 import copy
@@ -163,9 +164,9 @@ class CalcImpact(Calc):
             raise ValueError("No sample was found. Please create one first"
                              "using UncImpact.make_sample(N)")
 
-        unc_output = copy.deepcopy(unc_sample)
+        samples_df = unc_sample.samples_df.copy(deep=True)
 
-        unc_output.unit = self.value_unit
+        unit = self.value_unit
 
         if rp is None:
             rp=[5, 10, 20, 50, 100, 250]
@@ -175,25 +176,25 @@ class CalcImpact(Calc):
         self.calc_at_event = calc_at_event
 
         start = time.time()
-        one_sample = unc_output.samples_df.iloc[0:1].iterrows()
+        one_sample = samples_df.iloc[0:1].iterrows()
         imp_metrics = map(self._map_impact_calc, one_sample)
         [aai_agg_list, freq_curve_list,
          eai_exp_list, at_event_list, tot_value_list] = list(zip(*imp_metrics))
         elapsed_time = (time.time() - start)
-        self.est_comp_time(unc_output.n_samples, elapsed_time, pool)
+        self.est_comp_time(unc_sample.n_samples, elapsed_time, pool)
 
         #Compute impact distributions
         with log_level(level='ERROR', name_prefix='climada'):
             if pool:
                 LOGGER.info('Using %s CPUs.', pool.ncpus)
-                chunksize = min(unc_output.n_samples // pool.ncpus, 100)
+                chunksize = min(unc_sample.n_samples // pool.ncpus, 100)
                 imp_metrics = pool.map(self._map_impact_calc,
-                                        unc_output.samples_df.iterrows(),
+                                        samples_df.iterrows(),
                                         chunsize = chunksize)
 
             else:
                 imp_metrics = map(self._map_impact_calc,
-                                  unc_output.samples_df.iterrows())
+                                  samples_df.iterrows())
 
         #Perform the actual computation
         with log_level(level='ERROR', name_prefix='climada'):
@@ -201,24 +202,29 @@ class CalcImpact(Calc):
              eai_exp_list, at_event_list,
              tot_value_list] = list(zip(*imp_metrics))
 
-
         # Assign computed impact distribution data to self
-        unc_output.aai_agg_unc_df  = pd.DataFrame(aai_agg_list,
+        aai_agg_unc_df  = pd.DataFrame(aai_agg_list,
                                                 columns = ['aai_agg'])
-        unc_output.freq_curve_unc_df = pd.DataFrame(freq_curve_list,
+        freq_curve_unc_df = pd.DataFrame(freq_curve_list,
                                     columns=['rp' + str(n) for n in rp])
         df_eai_exp =  pd.DataFrame(eai_exp_list)
         # if np.count_nonzero(df_eai_exp.to_numpy()) / df_eai_exp.size < 0.5:
         #     df_eai_exp = df_eai_exp.astype(pd.SparseDtype("float", 0.0))
-        unc_output.eai_exp_unc_df = df_eai_exp
+        eai_exp_unc_df = df_eai_exp
         df_at_event = pd.DataFrame(at_event_list)
         # if np.count_nonzero(df_at_event.to_numpy()) / df_at_event.size < 0.5:
         #     df_at_event = df_at_event.astype(pd.SparseDtype("float", 0.0))
-        unc_output.at_event_unc_df = df_at_event
-        unc_output.tot_value_unc_df = pd.DataFrame(tot_value_list,
+        at_event_unc_df = df_at_event
+        tot_value_unc_df = pd.DataFrame(tot_value_list,
                                                  columns = ['tot_value'])
 
-        return unc_output
+        return UncImpactOutput(samples_df=samples_df,
+                               aai_agg_unc_df=aai_agg_unc_df,
+                               freq_curve_unc_df=freq_curve_unc_df,
+                               eai_exp_unc_df=eai_exp_unc_df,
+                               at_event_unc_df=at_event_unc_df,
+                               tot_value_unc_df=tot_value_unc_df,
+                               unit=unit)
 
 
     def _map_impact_calc(self, sample_iterrows):
