@@ -85,6 +85,7 @@ class Calc():
                     raise ValueError("cannot combine distr_dicts unless input variable names are"
                                      " unique throughtout input_vars")
                 distr_dict[input_var_name] = input_var_key
+        return distr_dict
 
     def est_comp_time(self, n_samples, time_one_run, pool=None):
         """
@@ -163,7 +164,7 @@ class Calc():
         if sampling_kwargs is None:
             sampling_kwargs = {}
 
-        param_labels = list(self.combined_distr_dict.keys())
+        param_labels = list(self.distr_dict.keys())
         problem_sa = {
             'num_vars' : len(param_labels),
             'names' : param_labels,
