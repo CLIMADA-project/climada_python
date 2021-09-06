@@ -51,7 +51,7 @@ class Calc():
         self.metric_names = ()
 
     @property
-    def input_var(self):
+    def input_vars(self):
         """
         Uncertainty variables
 
@@ -79,10 +79,12 @@ class Calc():
         """
 
         distr_dict = dict()
-        for input_var in self.input_var:
-            distr_dict.update(input_var.distr_dict)
-        return distr_dict
-
+        for input_var in self.input_vars:
+            for input_var_name, input_var_key in input_var.distr_dict.items():
+                if input_var_name in distr_dict:
+                    raise ValueError("cannot combine distr_dicts unless input variable names are"
+                                     " unique throughtout input_vars")
+                distr_dict[input_var_name] = input_var_key
 
     def est_comp_time(self, n_samples, time_one_run, pool=None):
         """
@@ -161,11 +163,7 @@ class Calc():
         if sampling_kwargs is None:
             sampling_kwargs = {}
 
-        distr_dict = dict()
-        for var in self.input_var:
-            distr_dict.update(var.distr_dict)
-
-        param_labels = list(distr_dict.keys())
+        param_labels = list(self.combined_distr_dict.keys())
         problem_sa = {
             'num_vars' : len(param_labels),
             'names' : param_labels,
