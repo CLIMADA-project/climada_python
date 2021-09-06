@@ -186,8 +186,7 @@ class Calc():
         df_samples.attrs['sampling_method'] = sampling_method
         df_samples.attrs['sampling_kwargs'] = tuple(sampling_kwargs.items())
 
-        unc_output = UncOutput()
-        unc_output.samples_df = df_samples
+        unc_output = UncOutput(df_samples)
         LOGGER.info("Effective number of made samples: %d", unc_output.n_samples)
         return unc_output
 

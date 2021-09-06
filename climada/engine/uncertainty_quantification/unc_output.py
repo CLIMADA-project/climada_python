@@ -25,6 +25,7 @@ import logging
 import datetime as dt
 
 from itertools import zip_longest
+from os import access
 from pathlib import Path
 
 
@@ -95,15 +96,17 @@ class UncOutput():
     _metadata = ['sampling_method', 'sampling_kwargs', 'sensitivity_method',
                  'sensitivity_kwargs']
 
-    def __init__(self):
+    def __init__(self, samples_df):
         """
         Initialize Uncertainty Data object.
 
-        Empty initialization. The only base attribute set is samples_df.
-        """
+        Parameters
+        ----------
+        samples_df: pandas.Dataframe
 
+        """
         #Data
-        self.samples_df = pd.DataFrame()
+        self.samples_df = samples_df
 
     def check_salib(self, sensitivity_method):
         """
@@ -515,13 +518,15 @@ class UncOutput():
 
         """
 
-        if self.freq_curve_unc_df.empty:
+        try:
+            unc_df = self.freq_curve_unc_df
+        except AttributeError:
+            unc_df = None
+        if not unc_df or unc_df.empty:
             raise ValueError("No return period uncertainty data present "
                     "Please run an uncertainty analysis with the desired "
                     "return period specified.")
 
-
-        unc_df = self.freq_curve_unc_df
         if  axes is  None:
             _fig, axes = plt.subplots(figsize=figsize, nrows=1, ncols=2)
 
@@ -936,7 +941,7 @@ class UncOutput():
             LOGGER.info('File not found')
             return None
 
-        unc_data = UncOutput()
+        unc_data = UncOutput(pd.DataFrame())
 
         LOGGER.info('Reading %s', filename)
         store = pd.HDFStore(filename)

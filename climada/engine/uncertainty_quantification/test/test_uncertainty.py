@@ -213,7 +213,7 @@ class TestOutput(unittest.TestCase):
     """Test the output class"""
 
     def test_init_pass(self):
-        unc_out = UncOutput()
+        unc_out = UncOutput(pd.DataFrame())
         self.assertTrue(unc_out.samples_df.empty)
 
     def test_save_load_pass(self):
