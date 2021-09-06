@@ -231,12 +231,8 @@ class Calc():
         #Import the named submodule from the SALib sample module
         #From the workings of __import__ the use of 'from_list' is necessary
         #c.f. https://stackoverflow.com/questions/2724260/why-does-pythons-import-require-fromlist
-        salib_sampling_method = getattr(
-            __import__('SALib.sample',
-                       fromlist=[sampling_method]
-                       ),
-            sampling_method
-            )
+        import importlib
+        salib_sampling_method = importlib.import_module(f'SALib.sample.{sampling_method}')
         sample_uniform = salib_sampling_method.sample(
             problem = problem_sa, N = N, **sampling_kwargs)
         return sample_uniform
