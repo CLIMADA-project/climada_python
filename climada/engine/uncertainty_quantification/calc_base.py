@@ -161,11 +161,7 @@ class Calc():
         if sampling_kwargs is None:
             sampling_kwargs = {}
 
-        distr_dict = dict()
-        for var in self.input_var:
-            distr_dict.update(var.distr_dict)
-
-        param_labels = list(distr_dict.keys())
+        param_labels = list(self.distr_dict.keys())
         problem_sa = {
             'num_vars' : len(param_labels),
             'names' : param_labels,
