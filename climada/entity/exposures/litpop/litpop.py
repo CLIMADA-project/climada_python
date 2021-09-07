@@ -305,8 +305,7 @@ class LitPop(Exposures):
 
         Parameters
         ----------
-        shape : shapely.geometry.Polygon or MultiPolygon or Shape or list of
-            Polygon objects.
+        shape : shapely.geometry.Polygon or MultiPolygon or shapereader.Shape.
             Geographical shape for which LitPop Exposure is to be initiated.
         countries : list with str or int
             list containing country identifiers:
@@ -357,20 +356,25 @@ class LitPop(Exposures):
         None.
 
         """
-        shape_list = _shape_to_list(shape)
         # init countries' exposure:
         self.set_countries(countries, res_arcsec=res_arcsec, exponents=exponents,
                            fin_mode=fin_mode, reference_year=reference_year,
                            gpw_version=gpw_version, data_dir=data_dir,
                            reproject_first=reproject_first)
 
-        # loop over shapes and cut out exposure GDFs within each shape, combine:
-        for idx, shp in enumerate(shape_list):
-            if idx==0:
-                gdf = self.gdf.loc[self.gdf.geometry.within(shp)]
-            else:
-                gdf.append(self.gdf.loc[self.gdf.geometry.within(shp)],
-                               ignore_index=True)
+        if isinstance(shape, Shape):
+            # get gdf with geometries of points within shape:
+            shape_gdf, _ = _get_litpop_single_polygon(shape, reference_year,
+                                                      res_arcsec, data_dir,
+                                                      gpw_version, reproject_first,
+                                                      exponents,
+                                                      )
+            shape_gdf = shape_gdf.drop(
+                columns=shape_gdf.columns[shape_gdf.columns != 'geometry'])
+            # extract gdf with data points within shape:
+            gdf = geopandas.sjoin(self.gdf, shape_gdf, how='right')
+        else: # works if shape is Polygon or MultiPolygon
+            gdf = self.gdf.loc[self.gdf.geometry.within(shape)]
 
         tag = Tag()
         tag.description = f'LitPop Exposure for custom shape in {countries} at ' \
@@ -425,8 +429,7 @@ class LitPop(Exposures):
 
         Parameters
         ----------
-        shape : shapely.geometry.Polygon or MultiPolygon or Shape or list of
-            Polygon objects.
+        shape : shapely.geometry.Polygon or MultiPolygon or shapereader.Shape.
             Geographical shape for which LitPop Exposure is to be initiated.
         total_value : int, float or None type
             Total value to be disaggregated to grid in shape.
@@ -457,26 +460,13 @@ class LitPop(Exposures):
         ValueError
         TypeError
         """
-        shape_list = _shape_to_list(shape)
 
         tag = Tag()
-
-        # init LitPop GeoDataFrame for shape:
-        litpop_gdf = geopandas.GeoDataFrame()
-        for idx, polygon in enumerate(shape_list):
-            # get litpop data for each polygon and combine into GeoDataFrame:
-            gdf_tmp, meta_tmp = \
-                _get_litpop_single_polygon(polygon, reference_year,
-                                           res_arcsec, data_dir,
-                                           gpw_version, reproject_first,
-                                           exponents,
-                                           verbatim=not bool(idx),
-                                           )
-            if gdf_tmp is None:
-                LOGGER.debug('Skipping polygon with index %i.', idx)
-                continue
-            litpop_gdf = litpop_gdf.append(gdf_tmp)
-            litpop_gdf.crs = meta_tmp['crs']
+        litpop_gdf, meta_tmp = _get_litpop_single_polygon(shape, reference_year,
+                                                          res_arcsec, data_dir,
+                                                          gpw_version, reproject_first,
+                                                          exponents,
+                                                          )
 
         # disaggregate total value proportional to LitPop values:
         if isinstance(total_value, (float, int)):
@@ -731,10 +721,13 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
                                           meta_out['width'],
                                           meta_out['height'])
     gdf = geopandas.GeoDataFrame({'value': litpop_array.flatten()}, crs=meta_out['crs'],
-                                 geometry=geopandas.points_from_xy(lon.flatten(),
-                                                                   lat.flatten()))
-    gdf['latitude'] = lat.flatten()
-    gdf['longitude'] = lon.flatten()
+                                 geometry=geopandas.points_from_xy(
+                                     np.round_(lon.flatten(), decimals = 8, out = None),
+                                     np.round_(lat.flatten(), decimals = 8, out = None)
+                                     )
+                                 )
+    gdf['latitude'] = np.round_(lat.flatten(), decimals = 8, out = None)
+    gdf['longitude'] = np.round_(lon.flatten(), decimals = 8, out = None)
     if region_id is not None:
         gdf['region_id'] = region_id
     else:
@@ -1003,38 +996,6 @@ def gridpoints_core_calc(data_arrays, offsets=None, exponents=None,
     if total_val_rescale is not None:
         raise TypeError("total_val_rescale must be int or float.")
     return result_array
-
-def _shape_to_list(shape):
-    """check `shape` type and convert to list.
-
-    Parameters
-    ----------
-    shape : Polygon, MultiPolygon, Shape or list
-        The parameter `shape` is allowed to be: Polygon, MultiPolygon, or Shape,
-        or list of Polygon instances. C.f. shapefile.Shape,
-        shapely.geometry.Polygon and shapely.geometry.MultiPolygon.
-
-    Raises
-    ------
-    TypeError
-
-    Returns
-    -------
-    shape_list : list
-        list containing single shape or Polygon instances
-"""
-    if isinstance(shape, Shape):
-        return [Polygon(shape.points[shape.parts[i]:part-1])
-                for i, part in enumerate(list(shape.parts[1:])+[0])]
-    if isinstance(shape, MultiPolygon):
-        return list(shape)
-    if isinstance(shape, Polygon):
-        return [shape]
-    if isinstance(shape, list) and isinstance(shape[0], Polygon):
-        return shape
-    raise TypeError("The parameter `shape` is allowed to be: Polygon, MultiPolygon,"
-                    " Shape instance, or list of Polygon instances.")
-
 
 # The following functions are only required if calc_admin1 is True,
 # not for core LitPop. They are maintained here mainly for backward compatibility
