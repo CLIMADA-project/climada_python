@@ -127,7 +127,7 @@ class CalcCostBenefit(Calc):
 
         Parameters
         ----------
-        unc_data : climada.engine.uncertainty.unc_output.UncOutput()
+        unc_data : climada.engine.uncertainty.unc_output.UncOutput
             Uncertainty data object with the input parameters samples
         pool : pathos.pools.ProcessPool, optional
             Pool of CPUs for parralel computations. Default is None.
@@ -137,7 +137,7 @@ class CalcCostBenefit(Calc):
 
         Returns
         -------
-        unc_output : climada.engine.uncertainty.unc_output.UncOutput()
+        unc_output : climada.engine.uncertainty.unc_output.UncCostBenefitOutput
             Uncertainty data object in with the cost benefit outputs for each
             sample and all the sample data copied over from unc_sample.
 

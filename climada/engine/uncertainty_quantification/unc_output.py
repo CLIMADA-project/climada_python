@@ -101,9 +101,10 @@ class UncOutput():
 
         Parameters
         ----------
-        samples_df: pandas.Dataframe
-        unit: str
-
+        samples_df : pandas.DataFrame
+            input parameters samples
+        unit : str, optional
+            value unit
         """
         #Data
         self.samples_df = samples_df
@@ -158,7 +159,6 @@ class UncOutput():
         """
         Returns the kwargs of the sampling method that generate self.samples_df
 
-
         Returns
         -------
         dict
@@ -178,7 +178,6 @@ class UncOutput():
             effective number of samples
 
         """
-
         return self.samples_df.shape[0]
 
     @property
@@ -188,7 +187,7 @@ class UncOutput():
 
         Returns
         -------
-        [str]
+        list of str :
             Labels of all uncertainty input parameters.
 
         """
@@ -963,8 +962,29 @@ class UncOutput():
 
 
 class UncImpactOutput(UncOutput):
+    """Extension of UncOutput specific for CalcImpact, returned by the  uncertainty() method.
+    """
     def __init__(self, samples_df, aai_agg_unc_df, freq_curve_unc_df, eai_exp_unc_df,
                  at_event_unc_df, tot_value_unc_df, unit):
+        """Constructor
+
+        Parameters
+        ----------
+        samples_df : pandas.DataFrame
+            input parameters samples
+        unit : str
+            value unit
+        aai_agg_unc_df : pandas.DataFrame
+
+        freq_curve_unc_df : pandas.DataFrame
+            impact exceedence frequency curve
+        eai_exp_unc_df : pandas.DataFrame
+
+        at_event_unc_df : pandas.DataFrame
+
+        tot_value_unc_df : pandas.DataFrame
+
+        """
         super().__init__(samples_df, unit)
         self.aai_agg_unc_df = aai_agg_unc_df
         self.freq_curve_unc_df = freq_curve_unc_df
@@ -974,9 +994,32 @@ class UncImpactOutput(UncOutput):
 
 
 class UncCostBenefitOutput(UncOutput):
-    def __init__(self, samples_df, imp_meas_present_unc_df, imp_meas_future_unc_df,
-                 tot_climate_risk_unc_df, benefit_unc_df, cost_ben_ratio_unc_df, unit,
+    """Extension of UncOutput specific for CalcCostBenefit, returned by the uncertainty() method.
+    """
+    def __init__(self, samples_df, unit, imp_meas_present_unc_df, imp_meas_future_unc_df,
+                 tot_climate_risk_unc_df, benefit_unc_df, cost_ben_ratio_unc_df,
                  cost_benefit_kwargs):
+        """Constructor
+
+        Parameters
+        ----------
+        samples_df : pandas.DataFrame
+            input parameters samples
+        unit : str
+            value unit
+        imp_meas_present_unc_df : pandas.DataFrame
+
+        imp_meas_future_unc_df : pandas.DataFrame
+
+        tot_climate_risk_unc_df : pandas.DataFrame
+
+        benefit_unc_df : pandas.DataFrame
+
+        cost_ben_ratio_unc_df : pandas.DataFrame
+
+        cost_benefit_kwargs : pandas.DataFrame
+
+        """
         super().__init__(samples_df, unit)
         self.imp_meas_present_unc_df= imp_meas_present_unc_df
         self.imp_meas_future_unc_df= imp_meas_future_unc_df
