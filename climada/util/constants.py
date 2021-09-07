@@ -685,10 +685,12 @@ cm_data2 = [[0.00000000, 0.00000000, 0.00000000],
            ]
 
 CMAP_EXPOSURES = mpl.colors.LinearSegmentedColormap.from_list('cmr.sunburst', cm_data1, N=256).reversed()
-CMAP_EXPOSURES.set_under('lightgray')
-CMAP_IMPACT = mpl.colors.LinearSegmentedColormap.from_list('cmr.flamingo', cm_data2, N=256).reversed()
-CMAP_IMPACT.set_under('lightgray')
 """Default sequential colormaps, taken from https://cmasher.readthedocs.io/index.html"""
+CMAP_EXPOSURES.set_under('lightgray')
+
+CMAP_IMPACT = mpl.colors.LinearSegmentedColormap.from_list('cmr.flamingo', cm_data2, N=256).reversed()
+"""Default sequential colormaps, taken from https://cmasher.readthedocs.io/index.html"""
+CMAP_IMPACT.set_under('lightgray')
 
 CMAP_RASTER = 'viridis'
 

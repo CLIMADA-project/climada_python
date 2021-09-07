@@ -65,7 +65,7 @@ def download_file(url, download_dir=None, overwrite=True):
         the parent directory of the eventually downloaded file
         default: local_data.save_dir as defined in climada.conf
     overwrite : bool, optional
-        whether or not an alredy existing file at the target location should be overwritten,
+        whether or not an already existing file at the target location should be overwritten,
         by default True
 
     Returns

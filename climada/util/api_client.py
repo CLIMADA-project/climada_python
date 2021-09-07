@@ -87,6 +87,7 @@ class DatasetInfo():
     files:list  # of FileInfo
     doi:str
     description:str
+    license: str
     activation_date:str
     expiration_date:str
 

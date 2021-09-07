@@ -140,8 +140,6 @@ class Measure():
             resulting impact and risk transfer of measure
         """
 
-        new_exp, new_ifs, new_haz = self.apply(exposures, imp_fun_set, hazard)
-        return self._calc_impact(new_exp, new_ifs, new_haz)
         new_exp, new_impfs, new_haz = self.apply(exposures, imp_fun_set, hazard)
         return self._calc_impact(new_exp, new_impfs, new_haz)
 
