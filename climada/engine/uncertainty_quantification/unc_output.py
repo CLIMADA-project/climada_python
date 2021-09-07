@@ -19,13 +19,12 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define Uncertainty class.
 """
 
-__all__ = ['UncOutput']
+__all__ = ['UncOutput', 'UncCostBenefitOutput', 'UncImpactOutput']
 
 import logging
 import datetime as dt
 
 from itertools import zip_longest
-from os import access
 from pathlib import Path
 
 

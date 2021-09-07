@@ -21,16 +21,14 @@ Define Uncertainty Cost Benefit class
 
 __all__ = ['CalcCostBenefit']
 
-from climada.engine.uncertainty_quantification.unc_output import UncCostBenefitOutput
 import logging
 import time
-import copy
 
 from functools import partial
 import pandas as pd
 
 from climada.engine.cost_benefit import CostBenefit
-from climada.engine.uncertainty_quantification import Calc, InputVar
+from climada.engine.uncertainty_quantification import Calc, InputVar, UncCostBenefitOutput
 from climada.util import log_level
 from climada.util.config import setup_logging as u_setup_logging
 

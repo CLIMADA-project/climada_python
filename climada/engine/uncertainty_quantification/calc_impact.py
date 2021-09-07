@@ -21,16 +21,14 @@ Define Uncertainty Impact class
 
 __all__ = ['CalcImpact']
 
-from climada.engine.uncertainty_quantification.unc_output import UncImpactOutput
 import logging
 import time
-import copy
 
 import pandas as pd
 import numpy as np
 
 from climada.engine import Impact
-from climada.engine.uncertainty_quantification import Calc, InputVar
+from climada.engine.uncertainty_quantification import Calc, InputVar, UncImpactOutput
 from climada.util import log_level
 
 from climada.util.config import setup_logging as u_setup_logging
