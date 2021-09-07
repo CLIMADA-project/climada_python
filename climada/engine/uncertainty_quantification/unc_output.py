@@ -968,6 +968,8 @@ class UncImpactOutput(UncOutput):
                  at_event_unc_df, tot_value_unc_df, unit):
         """Constructor
 
+        Uncertainty output values from impact.calc for each sample
+
         Parameters
         ----------
         samples_df : pandas.DataFrame
@@ -975,15 +977,20 @@ class UncImpactOutput(UncOutput):
         unit : str
             value unit
         aai_agg_unc_df : pandas.DataFrame
-
+            Each row contains the value of aai_aag for one sample (row of
+            samples_df)
         freq_curve_unc_df : pandas.DataFrame
-            impact exceedence frequency curve
+            Each row contains the values of the impact exceedence frequency
+            curve for one sample (row of samples_df)
         eai_exp_unc_df : pandas.DataFrame
-
+            Each row contains the values of eai_exp for one sample (row of
+            samples_df)
         at_event_unc_df : pandas.DataFrame
-
+            Each row contains the values of at_event for one sample (row of
+            samples_df)
         tot_value_unc_df : pandas.DataFrame
-
+            Each row contains the value of tot_value for one sample (row of
+            samples_df)
         """
         super().__init__(samples_df, unit)
         self.aai_agg_unc_df = aai_agg_unc_df
@@ -1001,6 +1008,8 @@ class UncCostBenefitOutput(UncOutput):
                  cost_benefit_kwargs):
         """Constructor
 
+        Uncertainty output values from cost_benefit.calc for each sample
+
         Parameters
         ----------
         samples_df : pandas.DataFrame
@@ -1008,16 +1017,23 @@ class UncCostBenefitOutput(UncOutput):
         unit : str
             value unit
         imp_meas_present_unc_df : pandas.DataFrame
-
+            Each row contains the values of imp_meas_present for one sample
+            (row of samples_df)
         imp_meas_future_unc_df : pandas.DataFrame
-
+            Each row contains the values of imp_meas_future for one sample
+            (row of samples_df)
         tot_climate_risk_unc_df : pandas.DataFrame
-
+            Each row contains the values of tot_cliamte_risk for one sample
+            (row of samples_df)
         benefit_unc_df : pandas.DataFrame
-
+            Each row contains the values of benefit for one sample
+            (row of samples_df)
         cost_ben_ratio_unc_df : pandas.DataFrame
-
+            Each row contains the values of cost_ben_ratio for one sample
+            (row of samples_df)
         cost_benefit_kwargs : pandas.DataFrame
+            Each row contains the value of cost_benefit for one sample
+            (row of samples_df)
 
         """
         super().__init__(samples_df, unit)
