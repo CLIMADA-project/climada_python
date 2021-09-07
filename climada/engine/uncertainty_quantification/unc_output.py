@@ -524,7 +524,7 @@ class UncOutput():
             unc_df = self.freq_curve_unc_df
         except AttributeError:
             unc_df = None
-        if not unc_df or unc_df.empty:
+        if unc_df is None or unc_df.empty:
             raise ValueError("No return period uncertainty data present "
                     "Please run an uncertainty analysis with the desired "
                     "return period specified.")
