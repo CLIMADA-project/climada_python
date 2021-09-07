@@ -271,7 +271,8 @@ class InputVar():
         EN: mutliplicative noise (inhomogeneous)
             The value of each exposure point is independently multiplied by
             a random number sampled uniformly from a distribution
-            with (min, max) = bounds_noise
+            with (1-x, 1+x), where x i sampled uniformaly
+            from (min, max) = bounds_noise. EN is the 'strength' of the noise.
 
         If a bounds is None, this parameter is assumed to have no uncertainty.
 
@@ -283,8 +284,8 @@ class InputVar():
             Bounds of the uniform distribution for the homogeneous total value
             scaling.. The default is None.
         bounds_noise : (float, float), optional
-            Bounds of the uniform distribution to scale each exposure point
-            independently. The default is None.
+            Bounds of the uniform distribution to set the bounds for the
+            uniform noise on each exposure point. The default is None.
 
         Returns
         -------
@@ -593,7 +594,7 @@ def _haz_unc_dict(n_ev, bounds_int, bounds_freq):
 def _exp_uncfunc(EN, ET, exp, bounds_noise):
     exp_tmp = exp.copy(deep=True)
     if EN is not None:
-        rnd_vals = np.random.uniform(bounds_noise[0], bounds_noise[1], size = len(exp_tmp.gdf))
+        rnd_vals = np.random.uniform(1 - EN, 1 + EN, size = len(exp_tmp.gdf))
         exp_tmp.gdf.value *= rnd_vals
     if ET is not None:
         exp_tmp.gdf.value *= ET
@@ -605,7 +606,8 @@ def _exp_unc_dict(bounds_totval, bounds_noise):
         tmin, tmax = bounds_totval[0], bounds_totval[1] - bounds_totval[0]
         eud['ET'] = sp.stats.uniform(tmin, tmax)
     if bounds_noise is not None:
-        eud['EN'] = sp.stats.uniform(0, 1)
+        nmin, nmax = bounds_noise[0], bounds_noise[1] - bounds_noise[0]
+        eud['EN'] = sp.stats.uniform(nmin, nmax)
     return eud
 
 #Impact function set
