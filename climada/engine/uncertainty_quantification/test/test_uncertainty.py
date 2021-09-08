@@ -195,7 +195,7 @@ class TestInputVar(unittest.TestCase):
         self.assertIsNotNone(impf_iv.plot())
         plt.close()
 
-    def test_vac_to_inputvar(self):
+    def test_var_to_inputvar(self):
 
         exp = exp_dem()
         distr_dict = {"x_exp": sp.stats.uniform(0.8,1.2)
