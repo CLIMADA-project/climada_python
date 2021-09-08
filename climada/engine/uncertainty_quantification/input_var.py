@@ -188,7 +188,10 @@ class InputVar():
                 x = np.linspace(low, high, n)
                 ax.plot(x, distr.pdf(x), label=param_name)
             except AttributeError:
-                x = np.arange(low, high, int((high-low) / n))
+                if (high - low) > n:
+                    x = np.arange(low, high, int((high-low) / n))
+                else:
+                    x = np.arange(low, high+1)
                 ax.vlines(x, 0, distr.pmf(x), label=param_name)
             ax.legend()
         return axes
