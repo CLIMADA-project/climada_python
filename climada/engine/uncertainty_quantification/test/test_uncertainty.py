@@ -223,18 +223,36 @@ class TestOutput(unittest.TestCase):
         exp_unc, impf_unc, _ = make_input_vars()
         haz = haz_dem()
         unc_calc = CalcImpact(exp_unc, impf_unc, haz)
+
         unc_data_save = unc_calc.make_sample(N=2, sampling_kwargs={'calc_second_order': True})
+        filename = unc_data_save.to_hdf5()
+        unc_data_load = UncOutput.from_hdf5(filename)
+        for attr_save, val_save in unc_data_save.__dict__.items():
+            if isinstance(val_save, pd.DataFrame):
+                df_load = getattr(unc_data_load, attr_save)
+                self.assertTrue(df_load.equals(val_save))
+        self.assertEqual(unc_data_load.sampling_method, unc_data_save.sampling_method)
+        self.assertEqual(unc_data_load.sampling_kwargs, unc_data_save.sampling_kwargs)
+        filename.unlink()
+
         unc_data_save = unc_calc.uncertainty(unc_data_save, calc_eai_exp=True,
                                   calc_at_event=False)
+        filename = unc_data_save.to_hdf5()
+        unc_data_load = UncOutput.from_hdf5(filename)
+        for attr_save, val_save in unc_data_save.__dict__.items():
+            if isinstance(val_save, pd.DataFrame):
+                df_load = getattr(unc_data_load, attr_save)
+                self.assertTrue(df_load.equals(val_save))
+        self.assertEqual(unc_data_load.sampling_method, unc_data_save.sampling_method)
+        self.assertEqual(unc_data_load.sampling_kwargs, unc_data_save.sampling_kwargs)
+        filename.unlink()
+
         unc_data_save = unc_calc.sensitivity(
             unc_data_save,
             sensitivity_kwargs = {'calc_second_order': True}
             )
-
         filename = unc_data_save.to_hdf5()
-
         unc_data_load = UncOutput.from_hdf5(filename)
-
         for attr_save, val_save in unc_data_save.__dict__.items():
             if isinstance(val_save, pd.DataFrame):
                 df_load = getattr(unc_data_load, attr_save)
@@ -243,7 +261,6 @@ class TestOutput(unittest.TestCase):
         self.assertEqual(unc_data_load.sampling_kwargs, unc_data_save.sampling_kwargs)
         self.assertEqual(unc_data_load.sensitivity_method, unc_data_save.sensitivity_method)
         self.assertEqual(unc_data_load.sensitivity_kwargs, unc_data_save.sensitivity_kwargs)
-
         filename.unlink()
 
 class TestCalcImpact(unittest.TestCase):
