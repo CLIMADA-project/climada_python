@@ -189,7 +189,8 @@ class TestInputVar(unittest.TestCase):
     def test_plot_pass(self):
         impf = impf_dem()
         distr_dict = {"x_paa": sp.stats.beta(0.5, 1),
-                      "x_mdd": sp.stats.uniform(0.8, 1.2)
+                      "x_mdd": sp.stats.uniform(0.8, 1.2),
+                      "x_lit": sp.stats.randint(0, 10)
               }
         impf_iv = InputVar(impf, distr_dict)
         self.assertIsNotNone(impf_iv.plot())
