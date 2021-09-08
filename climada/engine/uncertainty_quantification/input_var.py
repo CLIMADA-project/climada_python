@@ -181,8 +181,15 @@ class InputVar():
                 ax.remove()
                 continue
             (param_name, distr) = name_distr
-            x = np.linspace(distr.ppf(1e-10), distr.ppf(1-1e-10), 100)
-            ax.plot(x, distr.pdf(x), label=param_name)
+            low = distr.ppf(1e-10)
+            high = distr.ppf(1-1e-10)
+            n = 100
+            try:
+                x = np.linspace(low, high, n)
+                ax.plot(x, distr.pdf(x), label=param_name)
+            except AttributeError:
+                x = np.arange(low, high, int((high-low) / n))
+                ax.vlines(x, 0, distr.pmf(x), label=param_name)
             ax.legend()
         return axes
 
@@ -271,8 +278,7 @@ class InputVar():
         EN: mutliplicative noise (inhomogeneous)
             The value of each exposure point is independently multiplied by
             a random number sampled uniformly from a distribution
-            with (1-x, 1+x), where x i sampled uniformaly
-            from (min, max) = bounds_noise. EN is the 'strength' of the noise.
+            with (min, max) = bounds_noise
 
         If a bounds is None, this parameter is assumed to have no uncertainty.
 
@@ -284,8 +290,8 @@ class InputVar():
             Bounds of the uniform distribution for the homogeneous total value
             scaling.. The default is None.
         bounds_noise : (float, float), optional
-            Bounds of the uniform distribution to set the bounds for the
-            uniform noise on each exposure point. The default is None.
+            Bounds of the uniform distribution to scale each exposure point
+            independently. The default is None.
 
         Returns
         -------
@@ -570,7 +576,8 @@ class InputVar():
 def _haz_uncfunc(HE, HI, HF, haz, n_ev):
     haz_tmp = copy.deepcopy(haz)
     if HE is not None:
-        event_names = list(np.random.choice(haz_tmp.event_name, int(n_ev)))
+        rng = np.random.RandomState(int(HE))
+        event_names = list(rng.choice(haz_tmp.event_name, int(n_ev)))
         haz_tmp = haz_tmp.select(event_names=event_names)
     if HI is not None:
         haz_tmp.intensity = haz_tmp.intensity.multiply(HI)
@@ -581,7 +588,7 @@ def _haz_uncfunc(HE, HI, HF, haz, n_ev):
 def _haz_unc_dict(n_ev, bounds_int, bounds_freq):
     hud = {}
     if n_ev is not None:
-        hud['HE'] = sp.stats.uniform(0, 1)
+        hud['HE'] = sp.stats.randint(0, 2**32 - 1) #seed for rnd generator
     if bounds_int is not None:
         imin, idelta = bounds_int[0], bounds_int[1] - bounds_int[0]
         hud['HI'] = sp.stats.uniform(imin, idelta)
@@ -594,7 +601,8 @@ def _haz_unc_dict(n_ev, bounds_int, bounds_freq):
 def _exp_uncfunc(EN, ET, exp, bounds_noise):
     exp_tmp = exp.copy(deep=True)
     if EN is not None:
-        rnd_vals = np.random.uniform(1 - EN, 1 + EN, size = len(exp_tmp.gdf))
+        rng = np.random.RandomState(int(EN))
+        rnd_vals = rng.uniform(bounds_noise[0], bounds_noise[1], size = len(exp_tmp.gdf))
         exp_tmp.gdf.value *= rnd_vals
     if ET is not None:
         exp_tmp.gdf.value *= ET
@@ -606,8 +614,7 @@ def _exp_unc_dict(bounds_totval, bounds_noise):
         tmin, tmax = bounds_totval[0], bounds_totval[1] - bounds_totval[0]
         eud['ET'] = sp.stats.uniform(tmin, tmax)
     if bounds_noise is not None:
-        nmin, nmax = bounds_noise[0], bounds_noise[1] - bounds_noise[0]
-        eud['EN'] = sp.stats.uniform(nmin, nmax)
+        eud['EN'] = sp.stats.randint(0, 2**32 - 1) #seed for rnd generator
     return eud
 
 #Impact function set
