@@ -88,7 +88,7 @@ class DiscRates():
 
     def clear(self):
         """Reinitialize attributes."""
-        
+
         self.tag = Tag()
         # Following values are given for each defined year
         self.years = np.array([], int)
@@ -98,8 +98,9 @@ class DiscRates():
         """
         Check attributes consistency.
 
-        Raises:
-            ValueError
+        Raises
+        ------
+        ValueError
         """
         u_check.size(len(self.years), self.rates, 'DiscRates.rates')
 
@@ -137,8 +138,9 @@ class DiscRates():
         disc_rates: climada.entity.DiscRates
             DiscRates instance to append
 
-        Raises:
-            ValueError
+        Raises
+        ------
+        ValueError
         """
         disc_rates.check()
         if self.years.size == 0:
@@ -172,12 +174,12 @@ class DiscRates():
             end year
         val_years: np.array
             cash flow at each year btw ini_year and end_year (both included)
-            
+
         Returns
         -------
             net_present_value: float
                 net present value between present year and future year.
-            
+
         """
         year_range = np.arange(ini_year, end_year + 1)
         if year_range.size != val_years.size:
@@ -201,7 +203,7 @@ class DiscRates():
             size of the figure. The default is (6,8)
         kwargs: optional
             keyword arguments  passed to plotting function axis.plot
-            
+
         Returns
         -------
         axis: matplotlib.axes._subplots.AxesSubplot
@@ -228,11 +230,11 @@ class DiscRates():
         description: str, optional
             description of the data. The default is ''
         var_names: dict, optional
-            name of the variables in the file. The Default is 
+            name of the variables in the file. The Default is
             DEF_VAR_MAT = {'sup_field_name': 'entity', 'field_name': 'discount',
                'var_name': {'year': 'year', 'disc': 'discount_rate'}}
         """
-        
+
         disc = u_hdf5.read(file_name)
         self.clear()
         self.tag.file_name = str(file_name)
@@ -261,11 +263,11 @@ class DiscRates():
         description: str, optional
             description of the data. The default is ''
         var_names: dict, optional
-            name of the variables in the file. The Default is 
-            DEF_VAR_EXCEL = {'sheet_name': 'discount', 
+            name of the variables in the file. The Default is
+            DEF_VAR_EXCEL = {'sheet_name': 'discount',
                'col_name': {'year': 'year', 'disc': 'discount_rate'}}
         """
-        
+
         dfr = pd.read_excel(file_name, var_names['sheet_name'])
         self.clear()
         self.tag.file_name = str(file_name)
@@ -283,14 +285,14 @@ class DiscRates():
 
         Parameters
         ----------
-        file_name: str 
+        file_name: str
             filename including path and extension
         var_names: dict, optional
-            name of the variables in the file. The Default is 
-            DEF_VAR_EXCEL = {'sheet_name': 'discount', 
+            name of the variables in the file. The Default is
+            DEF_VAR_EXCEL = {'sheet_name': 'discount',
                'col_name': {'year': 'year', 'disc': 'discount_rate'}}
         """
-        
+
         disc_wb = xlsxwriter.Workbook(file_name)
         disc_ws = disc_wb.add_worksheet(var_names['sheet_name'])
 

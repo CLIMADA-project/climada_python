@@ -35,14 +35,20 @@ bbox_world = [-85, 85, -180, 180]
 def _read_one_nc(file_name, bbox=None, years=None):
     """Reads 1 ISIMIP output NETCDF file data within a certain bounding box and time period
 
-        Parameters:
-            file_name (str): Absolute or relative path to *.nc
-            bbox (array): bounding box containing [Lon min, lat min, lon max, lat max]
-            years (array): start and end year of the time series that shall be extracted
+    Parameters
+    ----------
+    file_name : str
+        Absolute or relative path to *.nc
+    bbox : array
+        bounding box containing [Lon min, lat min, lon max, lat max]
+    years : array
+        start and end year of the time series that shall be extracted
 
-        Returns:
-            data (dataset): Contains data in the specified bounding box and for the
-                                specified time period
+    Returns
+    -------
+    data : dataset
+        Contains data in the specified bounding box and for the
+        specified time period
     """
     data = xr.open_dataset(file_name, decode_times=False)
     if not bbox:

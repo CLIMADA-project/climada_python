@@ -43,8 +43,9 @@ def check_oligatories(var_dict, var_obl, name_prefix, n_size, n_row, n_col):
         n_row (int): number of rows expected in 2D arrays
         n_col (int): number of columns expected in 2D arrays
 
-    Raises:
-        ValueError
+    Raises
+    ------
+    ValueError
     """
     for var_name, var_val in var_dict.items():
         if var_name in var_obl:
@@ -65,8 +66,9 @@ def check_optionals(var_dict, var_opt, name_prefix, n_size):
         name_prefix (str): name to add in the error log, e.g. the class name
         n_size (int): size expected from arrays and lists
 
-    Raises:
-        ValueError
+    Raises
+    ------
+    ValueError
     """
     for var_name, var_val in var_dict.items():
         if var_name in var_opt:
@@ -81,8 +83,9 @@ def empty_optional(var, var_name):
 def size(exp_len, var, var_name):
     """Check if the length of a variable is the expected one.
 
-        Raises:
-            ValueError
+        Raises
+        ------
+        ValueError
     """
     try:
         if isinstance(exp_len, int):
@@ -96,8 +99,9 @@ def size(exp_len, var, var_name):
 def shape(exp_row, exp_col, var, var_name):
     """Check if the length of a variable is the expected one.
 
-        Raises:
-            ValueError
+        Raises
+        ------
+        ValueError
     """
     try:
         if exp_row != var.shape[0]:
@@ -111,13 +115,18 @@ def shape(exp_row, exp_col, var, var_name):
 def array_optional(exp_len, var, var_name):
     """Check if array has right size. Warn if array empty. Call check_size.
 
-        Parameters:
-            exp_len (str): expected array size
-            var (np.array): numpy array to check
-            var_name (str): name of the variable. Used in error/warning msg
+        Parameters
+        ----------
+        exp_len : str
+            expected array size
+        var : np.array
+            numpy array to check
+        var_name : str
+            name of the variable. Used in error/warning msg
 
-        Raises:
-            ValueError
+        Raises
+        ------
+        ValueError
     """
     if len(var) == 0 and exp_len > 0:
         LOGGER.debug("%s not set. ", var_name)
@@ -127,17 +136,24 @@ def array_optional(exp_len, var, var_name):
 def array_default(exp_len, var, var_name, def_val):
     """Check array has right size. Set default value if empty. Call check_size.
 
-        Parameters:
-            exp_len (str): expected array size
-            var (np.array): numpy array to check
-            var_name (str): name of the variable. Used in error/warning msg
-            def_val (np.array): nump array used as default value
+        Parameters
+        ----------
+        exp_len : str
+            expected array size
+        var : np.array
+            numpy array to check
+        var_name : str
+            name of the variable. Used in error/warning msg
+        def_val : np.array
+            nump array used as default value
 
-        Raises:
-            ValueError
+        Raises
+        ------
+        ValueError
 
-        Returns:
-            Filled array
+        Returns
+        -------
+        Filled array
     """
     res = var
     if len(var) == 0 and exp_len > 0:

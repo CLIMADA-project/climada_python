@@ -56,14 +56,15 @@ class LitPop(Exposures):
     exp.set_countries(country_names)
     exp.plot()
 
-    Attributes:
-        exponents : tuple of two integers
-            Defining powers (m, n) with which lit (nightlights) and pop (gpw)
-            go into Lit**m * Pop**n.
-        fin_mode : str, optional
-            Socio-economic value to be used as an asset base that is disaggregated
-        gpw_version : int (optional)
-            Version number of GPW population data, e.g. 11 for v4.11
+    Attributes
+    ----------
+    exponents : tuple of two integers
+        Defining powers (m, n) with which lit (nightlights) and pop (gpw)
+        go into Lit**m * Pop**n.
+    fin_mode : str, optional
+        Socio-economic value to be used as an asset base that is disaggregated
+    gpw_version : int (optional)
+        Version number of GPW population data, e.g. 11 for v4.11
     """
     _metadata = Exposures._metadata + ['exponents', 'fin_mode', 'gpw_version']
 

@@ -35,10 +35,12 @@ def save(out_file_name, var):
     """Save variable with provided file name. Uses configuration save_dir folder
     if no absolute path provided.
 
-    Parameters:
-        out_file_name (str): file name (absolute path or relative to configured
-            save_dir)
-        var (object): variable to save in pickle format
+    Parameters
+    ----------
+    out_file_name : str
+        file name (absolute path or relative to configured save_dir)
+    var : object
+        variable to save in pickle format
     """
     out_file = Path(out_file_name) if Path(out_file_name).is_absolute() \
         else CONFIG.local_data.save_dir.dir().joinpath(out_file_name)
@@ -61,11 +63,14 @@ def load(in_file_name):
     """Load variable contained in file. Uses configuration save_dir folder
     if no absolute path provided.
 
-    Parameters:
-        in_file_name (str)
+    Parameters
+    ----------
+    in_file_name : str
+        file name
 
-    Returns:
-        object
+    Returns
+    -------
+    object
     """
     in_file = Path(in_file_name) if Path(in_file_name).is_absolute() \
         else CONFIG.local_data.save_dir.dir().joinpath(in_file_name)

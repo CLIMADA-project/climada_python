@@ -32,17 +32,25 @@ LOGGER = logging.getLogger(__name__)
 class ImpactFunc():
     """Contains the definition of one impact function.
 
-    Attributes:
-        haz_type (str): hazard type acronym (e.g. 'TC')
-        id (int or str): id of the impact function. Exposures of the same type
-            will refer to the same impact function id
-        name (str): name of the ImpactFunc
-        intensity_unit (str): unit of the intensity
-        intensity (np.array): intensity values
-        mdd (np.array): mean damage (impact) degree for each intensity (numbers
-            in [0,1])
-        paa (np.array): percentage of affected assets (exposures) for each
-            intensity (numbers in [0,1])
+    Attributes
+    ----------
+    haz_type : str
+        hazard type acronym (e.g. 'TC')
+    id : int or str
+        id of the impact function. Exposures of the same type
+        will refer to the same impact function id
+    name : str
+        name of the ImpactFunc
+    intensity_unit : str
+        unit of the intensity
+    intensity : np.array
+        intensity values
+    mdd : np.array
+        mean damage (impact) degree for each intensity (numbers
+        in [0,1])
+    paa : np.array
+        percentage of affected assets (exposures) for each
+        intensity (numbers in [0,1])
     """
     def __init__(self):
         """Empty initialization."""
@@ -58,12 +66,15 @@ class ImpactFunc():
     def calc_mdr(self, inten):
         """Interpolate impact function to a given intensity.
 
-        Parameters:
-            inten (float or np.array): intensity, the x-coordinate of the
-                interpolated values.
+        Parameters
+        ----------
+        inten : float or np.array
+            intensity, the x-coordinate of the
+            interpolated values.
 
-        Returns:
-            np.array
+        Returns
+        -------
+        np.array
         """
 #        return np.interp(inten, self.intensity, self.mdd * self.paa)
         return np.interp(inten, self.intensity, self.paa) * \
@@ -73,12 +84,16 @@ class ImpactFunc():
         """Plot the impact functions MDD, MDR and PAA in one graph, where
         MDR = PAA * MDD.
 
-        Parameters:
-            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
-            kwargs (optional): arguments for plot matplotlib function, e.g. marker='x'
+        Parameters
+        ----------
+        axis : matplotlib.axes._subplots.AxesSubplot, optional
+            axis to use
+        kwargs : optional
+            arguments for plot matplotlib function, e.g. marker='x'
 
-        Returns:
-            matplotlib.axes._subplots.AxesSubplot
+        Returns
+        -------
+        matplotlib.axes._subplots.AxesSubplot
         """
         if not axis:
             _, axis = plt.subplots(1, 1)
@@ -100,8 +115,9 @@ class ImpactFunc():
     def check(self):
         """Check consistent instance data.
 
-        Raises:
-            ValueError
+        Raises
+        ------
+        ValueError
         """
         num_exp = len(self.intensity)
         u_check.size(num_exp, self.mdd, 'ImpactFunc.mdd')

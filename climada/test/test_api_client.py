@@ -50,7 +50,7 @@ class TestClient(unittest.TestCase):
     def test_dataset(self):
         """"""
         client = Client()
-        
+
         dataset = client.get_dataset(name='FAOSTAT_data_producer_prices')
         self.assertEqual(dataset.version, 'v1')
         self.assertEqual(len(dataset.files), 1)

@@ -80,13 +80,18 @@ def _nat_earth_shp(resolution='10m', category='cultural',
 def net_present_value(years, disc_rates, val_years):
     """Compute net present value.
 
-    Parameters:
-        years (np.array): array with the sequence of years to consider.
-        disc_rates (np.array): discount rate for every year in years.
-        val_years (np.array): chash flow at each year.
+    Parameters
+    ----------
+    years : np.array
+        array with the sequence of years to consider.
+    disc_rates : np.array
+        discount rate for every year in years.
+    val_years : np.array
+        chash flow at each year.
 
-    Returns:
-        float
+    Returns
+    -------
+    float
     """
     if years.size != disc_rates.size or years.size != val_years.size:
         raise ValueError(f'Wrong input sizes {years.size}, {disc_rates.size}, {val_years.size}.')
@@ -101,12 +106,16 @@ def income_group(cntry_iso, ref_year, shp_file=None):
     """Get country's income group from World Bank's data at a given year,
     or closest year value. If no data, get the natural earth's approximation.
 
-    Parameters:
-        cntry_iso (str): key = ISO alpha_3 country
-        ref_year (int): reference year
-        shp_file (cartopy.io.shapereader.Reader, optional): shape file with
-            INCOME_GRP attribute for every country. Load Natural Earth admin0
-            if not provided.
+    Parameters
+    ----------
+    cntry_iso : str
+        key = ISO alpha_3 country
+    ref_year : int
+        reference year
+    shp_file : cartopy.io.shapereader.Reader, optional
+        shape file with
+        INCOME_GRP attribute for every country. Load Natural Earth admin0
+        if not provided.
     """
     try:
         close_year, close_val = world_bank(cntry_iso, ref_year, 'INC_GRP')
@@ -123,16 +132,22 @@ def gdp(cntry_iso, ref_year, shp_file=None, per_capita=False):
     """Get country's (current value) GDP from World Bank's data at a given year, or
     closest year value. If no data, get the natural earth's approximation.
 
-    Parameters:
-        cntry_iso (str): key = ISO alpha_3 country
-        ref_year (int): reference year
-        shp_file (cartopy.io.shapereader.Reader, optional): shape file with
-            INCOME_GRP attribute for every country. Load Natural Earth admin0
-            if not provided.
-        per_capita (boolean, optional): If True, GDP is returned per capita
+    Parameters
+    ----------
+    cntry_iso : str
+        key = ISO alpha_3 country
+    ref_year : int
+        reference year
+    shp_file : cartopy.io.shapereader.Reader, optional
+        shape file with
+        INCOME_GRP attribute for every country. Load Natural Earth admin0
+        if not provided.
+    per_capita : boolean, optional
+        If True, GDP is returned per capita
 
-    Returns:
-        float
+    Returns
+    -------
+    float
     """
     if cntry_iso == 'TWN':
         LOGGER.warning('GDP data for TWN is not provided by World Bank. \
@@ -158,17 +173,23 @@ def world_bank(cntry_iso, ref_year, info_ind):
     """Get country's GDP from World Bank's data at a given year, or
     closest year value. If no data, get the natural earth's approximation.
 
-    Parameters:
-        cntry_iso (str): key = ISO alpha_3 country
-        ref_year (int): reference year
-        info_ind (str): indicator of World Bank, e.g. 'NY.GDP.MKTP.CD'. If
-            'INC_GRP', historical income groups from excel file used.
+    Parameters
+    ----------
+    cntry_iso : str
+        key = ISO alpha_3 country
+    ref_year : int
+        reference year
+    info_ind : str
+        indicator of World Bank, e.g. 'NY.GDP.MKTP.CD'. If
+        'INC_GRP', historical income groups from excel file used.
 
-    Returns:
-        int, float
+    Returns
+    -------
+    int, float
 
-    Raises:
-        IOError, KeyError, IndexError
+    Raises
+    ------
+    IOError, KeyError, IndexError
     """
     if info_ind != 'INC_GRP':
         with warnings.catch_warnings():
@@ -205,20 +226,27 @@ def world_bank(cntry_iso, ref_year, info_ind):
 def nat_earth_adm0(cntry_iso, info_name, year_name=None, shp_file=None):
     """Get country's parameter from natural earth's admin0 shape file.
 
-    Parameters:
-        cntry_iso (str): key = ISO alpha_3 country
-        info_name (str): attribute to get, e.g. 'GDP_MD_EST', 'INCOME_GRP'.
-        year_name (str, optional): year name of the info_name in shape file,
-            e.g. 'GDP_YEAR'
-        shp_file (cartopy.io.shapereader.Reader, optional): shape file with
-            INCOME_GRP attribute for every country. Load Natural Earth admin0
-            if not provided.
+    Parameters
+    ----------
+    cntry_iso : str
+        key = ISO alpha_3 country
+    info_name : str
+        attribute to get, e.g. 'GDP_MD_EST', 'INCOME_GRP'.
+    year_name : str, optional
+        year name of the info_name in shape file,
+        e.g. 'GDP_YEAR'
+    shp_file : cartopy.io.shapereader.Reader, optional
+        shape file with
+        INCOME_GRP attribute for every country. Load Natural Earth admin0
+        if not provided.
 
-    Returns:
-        int, float
+    Returns
+    -------
+    int, float
 
-    Raises:
-        ValueError
+    Raises
+    ------
+    ValueError
     """
     if not shp_file:
         shp_file = _nat_earth_shp('10m', 'cultural', 'admin_0_countries')
@@ -247,13 +275,20 @@ def wealth2gdp(cntry_iso, non_financial=True, ref_year=2016,
     """Get country's wealth-to-GDP factor from the
         Credit Suisse's Global Wealth Report 2017 (household wealth).
         Missing value: returns NaN.
-        Parameters:
-            cntry_iso (str): key = ISO alpha_3 country
-            non_financial (boolean): use non-financial wealth (True)
-                                     use total wealth (False)
-            ref_year (int): reference year
-        Returns:
-            float
+
+    Parameters
+    ----------
+    cntry_iso : str
+        key = ISO alpha_3 country
+    non_financial : boolean
+        use non-financial wealth (True)
+        use total wealth (False)
+    ref_year : int
+        reference year
+
+    Returns
+    -------
+    float
     """
     fname = SYSTEM_DIR.joinpath(file_name)
     factors_all_countries = pd.read_csv(fname, sep=',', index_col=None,
@@ -287,34 +322,39 @@ def world_bank_wealth_account(cntry_iso, ref_year, variable_name="NW.PCA.TO",
     from World Bank (https://datacatalog.worldbank.org/dataset/wealth-accounting).
     Return requested variable for a country (cntry_iso) and a year (ref_year).
 
-    Inputs:
-        cntry_iso (str): ISO3-code of country, i.e. "CHN" for China
-        ref_year (int): reference year
-                         - available in data: 1995, 2000, 2005, 2010, 2014
-                         - other years between 1995 and 2014 are interpolated
-                         - for years outside range, indicator is scaled
-                             proportionally to GDP
-        variable_name (str): select one variable, i.e.:
-            'NW.PCA.TO': Produced capital stock of country
-                         incl. manufactured or built assets such as machinery,
-                         equipment, and physical structures
-                         and value of built-up urban land (24% mark-up)
-            'NW.PCA.PC': Produced capital stock per capita
-                         incl. manufactured or built assets such as machinery,
-                         equipment, and physical structures
-                         and value of built-up urban land (24% mark-up)
-            'NW.NCA.TO': Total natural capital of country. Natural capital
-                        includes the valuation of fossil fuel energy (oil, gas,
-                        hard and soft coal) and minerals (bauxite, copper, gold,
-                        iron ore, lead, nickel, phosphate, silver, tin, and zinc),
-                        agricultural land (cropland and pastureland),
-                        forests (timber and some nontimber forest products), and
-                        protected areas.
-            'NW.TOW.TO': Total wealth of country.
-            Note: Values are measured at market exchange rates in constant 2014 US dollars,
-                        using a country-specific GDP deflator.
-        no_land (boolean): If True, return produced capital without built-up land value
-                        (applies to 'NW.PCA.*' only). Default = True.
+    Parameters
+    ----------
+    cntry_iso : str
+        ISO3-code of country, i.e. "CHN" for China
+    ref_year : int
+        reference year
+        - available in data: 1995, 2000, 2005, 2010, 2014
+        - other years between 1995 and 2014 are interpolated
+        - for years outside range, indicator is scaled
+          proportionally to GDP
+    variable_name : str
+        select one variable, i.e.:
+        'NW.PCA.TO': Produced capital stock of country
+            incl. manufactured or built assets such as machinery,
+            equipment, and physical structures
+            and value of built-up urban land (24% mark-up)
+        'NW.PCA.PC': Produced capital stock per capita
+            incl. manufactured or built assets such as machinery,
+            equipment, and physical structures
+            and value of built-up urban land (24% mark-up)
+        'NW.NCA.TO': Total natural capital of country. Natural capital
+            includes the valuation of fossil fuel energy (oil, gas,
+            hard and soft coal) and minerals (bauxite, copper, gold,
+            iron ore, lead, nickel, phosphate, silver, tin, and zinc),
+            agricultural land (cropland and pastureland),
+            forests (timber and some nontimber forest products), and
+            protected areas.
+        'NW.TOW.TO': Total wealth of country.
+        Note: Values are measured at market exchange rates in constant 2014 US dollars,
+            using a country-specific GDP deflator.
+    no_land : boolean
+        If True, return produced capital without built-up land value
+        (applies to 'NW.PCA.*' only). Default: True.
     """
     try:
         data_file = SYSTEM_DIR.joinpath(FILE_WORLD_BANK_WEALTH_ACC)
@@ -374,11 +414,17 @@ def _gdp_twn(ref_year, per_capita=False):
         https://www.imf.org/external/pubs/ft/weo/2019/02/weodata/index.aspx
         https://www.imf.org/external/pubs/ft/weo/2019/02/weodata/weorept.aspx?sy=1980&ey=2024&scsm=1&ssd=1&sic=1&sort=country&ds=.&br=1&pr1.x=42&pr1.y=10&c=528&s=NGDPD%2CNGDP_D%2CNGDPDPC&grp=0&a=
         (saved as CSV with name GDP_TWN_IMF_WEO_data in SYSTEM_DIR)
-    Input:
-        ref_year (int): reference year, i.e. the year for which a GDP value is required
-        per_capita (boolean): return GDP per capita? Default False.
-    Returns:
-        float
+
+    Parameters
+    ----------
+    ref_year : int
+        reference year, i.e. the year for which a GDP value is required
+    per_capita : boolean
+        return GDP per capita? Default False.
+
+    Returns
+    -------
+    float
     """
     fname = 'GDP_TWN_IMF_WEO_data.csv'
     if not SYSTEM_DIR.joinpath(fname).is_file():

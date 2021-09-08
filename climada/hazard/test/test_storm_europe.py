@@ -215,7 +215,7 @@ class TestReader(unittest.TestCase):
                                     grib_dir=CONFIG.hazard.test_data.str(),
                                     delete_raw_data=False)
             mock_logger.assert_called_once()
-            
+
     def test_generate_forecast(self):
         """ testing generating a forecast """
         hazard, haz_model, run_datetime, event_date = generate_WS_forecast_hazard(
