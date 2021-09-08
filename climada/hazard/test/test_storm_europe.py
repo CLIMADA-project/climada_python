@@ -184,7 +184,7 @@ class TestReader(unittest.TestCase):
         # instead, we download it as a test dataset through the climada data api
         apiclient = Client()
         ds = apiclient.get_dataset(name='test_storm_europe_icon_2021012800')
-        dsdir = apiclient.download_dataset(ds)[0].parent
+        dsdir, _ = apiclient.download_dataset(ds)
         haz.read_icon_grib(dt.datetime(2021, 1, 28),
                            dt.datetime(2021, 1, 28),
                            model_name='test',
