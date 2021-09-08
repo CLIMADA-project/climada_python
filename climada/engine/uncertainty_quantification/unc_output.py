@@ -913,12 +913,17 @@ class UncOutput():
 
         str_dt = h5py.special_dtype(vlen=str)
         with h5py.File(save_path, 'a') as fh:
-            fh['impact_unit'] = [self.unit]
-            fh['sensitivity_method'] = [self.sensitivity_method]
-            grp = fh.create_group("sensitivity_kwargs")
-            for key, value in dict(self.sensitivity_kwargs).items():
-                ds = grp.create_dataset(key, (1,), dtype=str_dt)
-                ds[0] = str(value)
+            if getattr(self, 'unit'):
+                fh['impact_unit'] = [self.unit]
+            if hasattr(self, 'sensitivity_method'):
+                if self.sensitivity_method:
+                    fh['sensitivity_method'] = [self.sensitivity_method]
+            if hasattr(self, 'sensitivity_kwargs'):
+                if self.sensitivity_kwargs:
+                    grp = fh.create_group("sensitivity_kwargs")
+                    for key, value in dict(self.sensitivity_kwargs).items():
+                        ds = grp.create_dataset(key, (1,), dtype=str_dt)
+                        ds[0] = str(value)
         return save_path
 
     @staticmethod
@@ -950,14 +955,18 @@ class UncOutput():
         unc_data.samples_df.attrs = store.get_storer('/samples_df').attrs.metadata
         store.close()
         with h5py.File(filename, 'r') as fh:
-            unc_data.unit = fh.get('impact_unit')[0].decode('UTF-8')
-            unc_data.sensitivity_method = fh.get('sensitivity_method')[0].decode('UTF-8')
-            grp = fh["sensitivity_kwargs"]
-            sens_kwargs = {
-                key: u_hdf5.to_string(grp.get(key)[0])
-                for key in grp.keys()
-                }
-            unc_data.sensitivity_kwargs = tuple(sens_kwargs.items())
+            if 'impact_unit' in list(fh.keys()):
+                unc_data.unit = fh.get('impact_unit')[0].decode('UTF-8')
+            if 'sensitivity_method' in list(fh.keys()):
+                unc_data.sensitivity_method = \
+                    fh.get('sensitivity_method')[0].decode('UTF-8')
+            if 'sensitivity_kwargs' in list(fh.keys()):
+                grp = fh["sensitivity_kwargs"]
+                sens_kwargs = {
+                    key: u_hdf5.to_string(grp.get(key)[0])
+                    for key in grp.keys()
+                    }
+                unc_data.sensitivity_kwargs = tuple(sens_kwargs.items())
         return unc_data
 
 
