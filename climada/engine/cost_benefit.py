@@ -903,8 +903,9 @@ class CostBenefit():
         risk_present : float
             risk under current situation
 
-        Returns:
-            float
+        Returns
+        -------
+        float
         """
         if risk_present:
             tot_climate_risk = risk_present + (risk_future - risk_present) * time_dep

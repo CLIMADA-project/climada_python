@@ -634,6 +634,8 @@ def coord_on_land(lat, lon, land_geom=None):
     if lat.size != lon.size:
         raise ValueError('Wrong size input coordinates: %s != %s.'
                          % (lat.size, lon.size))
+    if lat.size == 0:
+        return np.empty((0,), dtype=bool)
     delta_deg = 1
     if land_geom is None:
         land_geom = get_land_geometry(
@@ -1109,6 +1111,8 @@ def get_country_code(lat, lon, gridded=False):
         Numeric code for each point.
     """
     lat, lon = [np.asarray(ar).ravel() for ar in [lat, lon]]
+    if lat.size == 0:
+        return np.empty((0,), dtype=int)
     LOGGER.info('Setting region_id %s points.', str(lat.size))
     if gridded:
         base_file = u_hdf5.read(NATEARTH_CENTROIDS[150])
@@ -1975,7 +1979,8 @@ def mask_raster_with_geometry(raster, transform, shapes, nodata=None, **kwargs):
     nodata : int or float, optional
         Passed to rasterio.mask.mask:
         Data points outside `shapes` are set to `nodata`.
-    **kwargs : Passed to rasterio.mask.mask, optional
+    kwargs : optional
+        Passed to rasterio.mask.mask.
 
     Returns
     -------

@@ -696,7 +696,13 @@ class TestAppend(unittest.TestCase):
 
     def test_concat_pass(self):
         """Test concatenate function."""
-        haz_1 = Hazard('TC')
+        class TCHazard(Hazard):
+            # derived class of Hazard for testing purposes
+            def __init__(self):
+                # only define hazard type
+                Hazard.__init__(self, 'TC')
+
+        haz_1 = TCHazard()
         haz_1.tag.file_name = 'file1.mat'
         haz_1.tag.description = 'Description 1'
         haz_1.centroids = Centroids()
@@ -710,7 +716,7 @@ class TestAppend(unittest.TestCase):
         haz_1.intensity = sparse.csr_matrix([[0.2, 0.3, 0.4]])
         haz_1.units = 'm/s'
 
-        haz_2 = Hazard('TC')
+        haz_2 = TCHazard()
         haz_2.tag.file_name = 'file2.mat'
         haz_2.tag.description = 'Description 2'
         haz_2.centroids = Centroids()
@@ -724,15 +730,14 @@ class TestAppend(unittest.TestCase):
         haz_2.intensity = sparse.csr_matrix([[1.2, 1.3, 1.4]])
         haz_2.units = 'm/s'
 
-        haz = Hazard('TC')
-        haz = haz.concat([haz, haz_1, haz_2])
-
+        haz = TCHazard.concat([haz_1, haz_2])
 
         hres_frac = sparse.csr_matrix([[0.02, 0.03, 0.04],
                                        [1.02, 1.03, 1.04]])
         hres_inten = sparse.csr_matrix([[0.2, 0.3, 0.4],
                                         [1.2, 1.3, 1.4]])
 
+        self.assertIsInstance(haz, TCHazard)
         self.assertTrue(sparse.isspmatrix_csr(haz.intensity))
         self.assertTrue(np.array_equal(haz.intensity.toarray(), hres_inten.toarray()))
         self.assertTrue(sparse.isspmatrix_csr(haz.fraction))
@@ -813,6 +818,14 @@ class TestAppend(unittest.TestCase):
         self.assertTrue(np.array_equal(haz_2.event_name, ['ev1']))
         self.assertTrue(np.array_equal(haz_2.orig, [True]))
         self.assertEqual(haz_2.tag.description, 'Description 1')
+
+        cent3 = Centroids()
+        cent3.lat, cent3.lon = np.array([0.5, 3]), np.array([-0.5, 3])
+        cent3.on_land = np.array([True, True, False])
+
+        with self.assertRaises(ValueError) as cm:
+            haz_1.change_centroids(cent3, threshold=100)
+        self.assertIn('two hazard centroids are mapped to the same centroids', str(cm.exception))
 
 class TestStats(unittest.TestCase):
     """Test return period statistics"""
@@ -912,15 +925,15 @@ class TestReaderExcel(unittest.TestCase):
         self.assertEqual(hazard.event_name[50], 'event051')
         self.assertEqual(hazard.event_name[-1], 'event100')
 
-        self.assertEqual(hazard.frequency.dtype, np.float)
+        self.assertEqual(hazard.frequency.dtype, float)
         self.assertEqual(hazard.frequency.shape, (n_events,))
         self.assertEqual(hazard.frequency[0], 0.01)
         self.assertEqual(hazard.frequency[n_events - 2], 0.001)
 
-        self.assertEqual(hazard.intensity.dtype, np.float)
+        self.assertEqual(hazard.intensity.dtype, float)
         self.assertEqual(hazard.intensity.shape, (n_events, n_centroids))
 
-        self.assertEqual(hazard.fraction.dtype, np.float)
+        self.assertEqual(hazard.fraction.dtype, float)
         self.assertEqual(hazard.fraction.shape, (n_events, n_centroids))
         self.assertEqual(hazard.fraction[0, 0], 1)
         self.assertEqual(hazard.fraction[10, 19], 1)
@@ -953,15 +966,15 @@ class TestReaderMat(unittest.TestCase):
         self.assertEqual(hazard.event_id.dtype, int)
         self.assertEqual(hazard.event_id.shape, (n_events,))
 
-        self.assertEqual(hazard.frequency.dtype, np.float)
+        self.assertEqual(hazard.frequency.dtype, float)
         self.assertEqual(hazard.frequency.shape, (n_events,))
 
-        self.assertEqual(hazard.intensity.dtype, np.float)
+        self.assertEqual(hazard.intensity.dtype, float)
         self.assertEqual(hazard.intensity.shape, (n_events, n_centroids))
         self.assertEqual(hazard.intensity[12, 46], 12.071393519949979)
         self.assertEqual(hazard.intensity[13676, 49], 17.228323602220616)
 
-        self.assertEqual(hazard.fraction.dtype, np.float)
+        self.assertEqual(hazard.fraction.dtype, float)
         self.assertEqual(hazard.fraction.shape, (n_events, n_centroids))
         self.assertEqual(hazard.fraction[8454, 98], 1)
         self.assertEqual(hazard.fraction[85, 54], 0)
@@ -1168,6 +1181,9 @@ class TestClear(unittest.TestCase):
         haz1.check()
         haz1.clear()
         self.assertEqual(haz1.pool, pool)
+        pool.close()
+        pool.join()
+        pool.clear()
 
 
 # Execute Tests

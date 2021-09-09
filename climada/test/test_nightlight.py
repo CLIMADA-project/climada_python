@@ -29,7 +29,7 @@ from climada.entity.exposures.litpop import nightlight as nl_utils
 from climada.util.constants import SYSTEM_DIR
 
 def init_test_shape():
-    bounds = (14.18, 35.78, 14.58, 36.09) 
+    bounds = (14.18, 35.78, 14.58, 36.09)
     # (min_lon, max_lon, min_lat, max_lat)
 
     return bounds, Polygon([

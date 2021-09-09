@@ -65,12 +65,15 @@ class StormEurope(Hazard):
     from the COSMO-Consortium http://www.cosmo-model.org/ can be read with
     read_cosmoe_file().
 
-    Attributes:
-        ssi_wisc (np.array, float): Storm Severity Index (SSI) as recorded in
-            the footprint files; apparently not reproducible from the footprint
-            values only.
-        ssi (np.array, float): SSI as set by set_ssi; uses the Dawkins
-            definition by default.
+    Attributes
+    ----------
+    ssi_wisc : np.array, float
+        Storm Severity Index (SSI) as recorded in
+        the footprint files; apparently not reproducible from the footprint
+        values only.
+    ssi : np.array, float
+        SSI as set by set_ssi; uses the Dawkins
+        definition by default.
     """
 
     intensity_thres = 14.7
@@ -96,26 +99,33 @@ class StormEurope(Hazard):
         all footprints have the same coordinates as the first file listed/first
         file in dir.
 
-        Parameters:
-            path (str, list(str)): A location in the filesystem. Either a
-                path to a single netCDF WISC footprint, or a folder
-                containing only footprints, or a globbing pattern to one or
-                more footprints.
-            description (str, optional): description of the events, defaults
-                to 'WISC historical hazard set'
-            ref_raster (str, optional): Reference netCDF file from which to
-                construct a new barebones Centroids instance. Defaults to
-                the first file in path.
-            centroids (Centroids, optional): A Centroids struct, overriding
-                ref_raster
-            files_omit (str, list(str), optional): List of files to omit;
-                defaults to one duplicate storm present in the WISC set as
-                of 2018-09-10.
-            combine_threshold (int, optional): threshold for combining events
-                in number of days. if the difference of the dates (self.date)
-                of two events is smaller or equal to this threshold, the two
-                events are combined into one.
-                Default is None, Advised for WISC is 2
+        Parameters
+        ----------
+        path : str, list(str)
+            A location in the filesystem. Either a
+            path to a single netCDF WISC footprint, or a folder
+            containing only footprints, or a globbing pattern to one or
+            more footprints.
+        description : str, optional
+            description of the events, defaults
+            to 'WISC historical hazard set'
+        ref_raster : str, optional
+            Reference netCDF file from which to
+            construct a new barebones Centroids instance. Defaults to
+            the first file in path.
+        centroids : Centroids, optional
+            A Centroids struct, overriding
+            ref_raster
+        files_omit : str, list(str), optional
+            List of files to omit;
+            defaults to one duplicate storm present in the WISC set as
+            of 2018-09-10.
+        combine_threshold : int, optional
+            threshold for combining events
+            in number of days. if the difference of the dates (self.date)
+            of two events is smaller or equal to this threshold, the two
+            events are combined into one.
+            Default is None, Advised for WISC is 2
         """
 
         self.clear()
@@ -171,13 +181,18 @@ class StormEurope(Hazard):
         Omits a footprint if another file with the same timestamp has already
         been read.
 
-        Parameters:
-            file_name (str): Absolute or relative path to *.nc
-            centroids (Centroids): Centr. instance that matches the
-                coordinates used in the *.nc, only validated by size.
+        Parameters
+        ----------
+        file_name : str
+            Absolute or relative path to *.nc
+        centroids : Centroids
+            Centr. instance that matches the
+            coordinates used in the *.nc, only validated by size.
 
-        Returns:
-            new_haz (StormEurope): Hazard instance for one single storm.
+        Returns
+        -------
+        new_haz : StormEurope
+            Hazard instance for one single storm.
        """
         ncdf = xr.open_dataset(file_name)
 
@@ -224,16 +239,22 @@ class StormEurope(Hazard):
         COSMO-1E (11 members, resolution 1.1 km, forecast period 33-45 hours)
         COSMO-2E (21 members, resolution 2.2 km, forecast period 5 days)
 
-        Parameters:
-            fp_file (str): string directing to one netcdf file
-            run_datetime (datetime): The starting timepoint of the forecast run
-                of the cosmo model
-            event_date (datetime, optional): one day within the forecast
-                period, only this day (00H-24H) will be included in the hazard
-            model_name (str,optional): provide the name of the COSMO model,
-                for the description (e.g., 'COSMO-1E', 'COSMO-2E')
-            description (str, optional): description of the events, defaults
-                to a combination of model_name and run_datetime
+        Parameters
+        ----------
+        fp_file : str
+            string directing to one netcdf file
+        run_datetime : datetime
+            The starting timepoint of the forecast run
+            of the cosmo model
+        event_date : datetime, optional
+            one day within the forecast
+            period, only this day (00H-24H) will be included in the hazard
+        model_name : str,optional
+            provide the name of the COSMO model,
+            for the description (e.g., 'COSMO-1E', 'COSMO-2E')
+        description : str, optional
+            description of the events, defaults
+            to a combination of model_name and run_datetime
         """
         self.clear()
         # create centroids
@@ -241,7 +262,7 @@ class StormEurope(Hazard):
 
         # read intensity from file
         ncdf = xr.open_dataset(fp_file)
-        ncdf = ncdf.assign_coords(date=('time',ncdf["time"].dt.floor("D")))
+        ncdf = ncdf.assign_coords(date=('time',ncdf["time"].dt.floor("D").values))
 
         if event_date:
             try:
@@ -321,21 +342,28 @@ class StormEurope(Hazard):
         because of the given file structure with 1-hour, 3-hour and
         6-hour maxima provided.
 
-        Parameters:
-            run_datetime (datetime): The starting timepoint of the forecast run
-                of the icon model
-            event_date (datetime, optional): one day within the forecast
-                period, only this day (00H-24H) will be included in the hazard
-            model_name (str,optional): select the name of the icon model to
-                be downloaded. Must match the url on https://opendata.dwd.de
-                (see download_icon_grib for further info)
-            description (str, optional): description of the events, defaults
-                to a combination of model_name and run_datetime
-            grib_dir (str, optional): path to folder, where grib files are
-                or should be stored
-            delete_raw_data (bool,optional): select if downloaded raw data in
-                .grib.bz2 file format should be stored on the computer or
-                removed
+        Parameters
+        ----------
+        run_datetime : datetime
+            The starting timepoint of the forecast run
+            of the icon model
+        event_date : datetime, optional
+            one day within the forecast
+            period, only this day (00H-24H) will be included in the hazard
+        model_name : str,optional
+            select the name of the icon model to
+            be downloaded. Must match the url on https://opendata.dwd.de
+            (see download_icon_grib for further info)
+        description : str, optional
+            description of the events, defaults
+            to a combination of model_name and run_datetime
+        grib_dir : str, optional
+            path to folder, where grib files are
+            or should be stored
+        delete_raw_data : bool,optional
+            select if downloaded raw data in
+            .grib.bz2 file format should be stored on the computer or
+            removed
         """
         self.clear()
         if not (run_datetime.hour == 0 or run_datetime.hour == 12):
@@ -362,7 +390,8 @@ class StormEurope(Hazard):
                 stacked = xr.concat([stacked,ds_i], 'valid_time')
 
         # create intensity matrix with max for each full day
-        stacked = stacked.assign_coords(date=('valid_time',stacked["valid_time"].dt.floor("D")))
+        stacked = stacked.assign_coords(
+            date=('valid_time', stacked["valid_time"].dt.floor("D").values))
         if event_date:
             try:
                 stacked = stacked.sel(valid_time=event_date.strftime('%Y-%m-%d')).groupby('date').max()
@@ -491,8 +520,10 @@ class StormEurope(Hazard):
 
         the event_ids must be consecutive for the event_name field to behave correctly
 
-        Parameters:
-            event_ids (array): two consecutive event ids
+        Parameters
+        ----------
+        event_ids : array
+            two consecutive event ids
         """
         select_event_ids = np.isin(self.event_id, event_ids)
         select_other_events = np.invert(select_event_ids)
@@ -544,20 +575,28 @@ class StormEurope(Hazard):
         also be due to differing definitions of what lies on land (i.e. Syria,
         Russia, Northern Africa and Greenland are exempt).
 
-        Parameters:
-            method (str): Either 'dawkins' or 'wisc_gust'
-            intensity (scipy.sparse.csr): Intensity matrix; defaults to
-                self.intensity
-            on_land (bool): Only calculate the SSI for areas on land,
-                ignoring the intensities at sea. Defaults to true, whereas
-                the MATLAB version did not.
-            threshold (float, optional): Intensity threshold used in index
-                definition. Cannot be lower than the read-in value.
-            sel_cen (np.array, bool): A boolean vector selecting centroids.
-                Takes precendence over on_land.
+        Parameters
+        ----------
+        method : str
+            Either 'dawkins' or 'wisc_gust'
+        intensity : scipy.sparse.csr
+            Intensity matrix; defaults to
+            self.intensity
+        on_land : bool
+            Only calculate the SSI for areas on land,
+            ignoring the intensities at sea. Defaults to true, whereas
+            the MATLAB version did not.
+        threshold : float, optional
+            Intensity threshold used in index
+            definition. Cannot be lower than the read-in value.
+        sel_cen : np.array, bool
+            A boolean vector selecting centroids.
+            Takes precendence over on_land.
 
-        Attributes:
-            self.ssi_dawkins (np.array): SSI per event
+        Attributes
+        ----------
+        self.ssi_dawkins : np.array
+            SSI per event
         """
         if intensity is not None:
             if not isinstance(intensity, sparse.csr_matrix):
@@ -603,11 +642,15 @@ class StormEurope(Hazard):
     def set_ssi(self, **kwargs):
         """Wrapper around calc_ssi for setting the self.ssi attribute.
 
-        Parameters:
-            **kwargs: passed on to calc_ssi
+        Parameters
+        ----------
+        kwargs :
+            passed on to calc_ssi
 
-        Attributes:
-            ssi (np.array): SSI per event
+        Attributes
+        ----------
+        ssi : np.array
+            SSI per event
         """
         self.ssi = self.calc_ssi(**kwargs)
 
@@ -615,9 +658,10 @@ class StormEurope(Hazard):
         """Plot the distribution of SSIs versus their cumulative exceedance
             frequencies, highlighting historical storms in red.
 
-        Returns:
-            fig (matplotlib.figure.Figure)
-            ax (matplotlib.axes._subplots.AxesSubplot)
+        Returns
+        -------
+        fig : matplotlib.figure.Figure
+        ax : matplotlib.axes._subplots.AxesSubplot
         """
         if full_area:
             ssi = self.ssi_full_area
@@ -669,18 +713,25 @@ class StormEurope(Hazard):
             - Can only use numeric region_id for country selection
             - Drops event names as provided by WISC
 
-        Parameters:
-            region_id (int, list of ints, or None): iso_n3 code of the
-                countries we want the generated hazard set to be returned for.
-            spatial_shift (int): amount of raster pixels to shift by
-            ssi_args (dict): A dictionary of arguments passed to calc_ssi
-            **kwargs: keyword arguments passed on to self._hist2prob()
+        Parameters
+        ----------
+        region_id : int, list of ints, or None
+            iso_n3 code of the
+            countries we want the generated hazard set to be returned for.
+        spatial_shift : int
+            amount of raster pixels to shift by
+        ssi_args : dict
+            A dictionary of arguments passed to calc_ssi
+        kwargs :
+            keyword arguments passed on to self._hist2prob()
 
-        Returns:
-            new_haz (StormEurope): A new hazard set for the given country.
-                Centroid attributes are preserved. self.orig attribute is set
-                to True for original storms (event_id ending in 00). Also
-                contains a ssi_prob attribute,
+        Returns
+        -------
+        new_haz : StormEurope
+            A new hazard set for the given country.
+            Centroid attributes are preserved. self.orig attribute is set
+            to True for original storms (event_id ending in 00). Also
+            contains a ssi_prob attribute,
         """
         # bool vector selecting the targeted centroids
         if reg_id is not None:
@@ -836,12 +887,12 @@ class StormEurope(Hazard):
         return intensity_out[:, sel_cen], ssi
 
 
-def generate_WS_forecast_hazard(run_datetime = dt.datetime.today().replace(hour=0, 
-                                                                           minute=0, 
-                                                                           second=0, 
+def generate_WS_forecast_hazard(run_datetime = dt.datetime.today().replace(hour=0,
+                                                                           minute=0,
+                                                                           second=0,
                                                                            microsecond=0),
-                                event_date = (dt.datetime.today().replace(hour=0, 
-                                                                          minute=0, 
+                                event_date = (dt.datetime.today().replace(hour=0,
+                                                                          minute=0,
                                                                           second=0,
                                                                           microsecond=0)
                                               + dt.timedelta(days=2)),
@@ -851,7 +902,7 @@ def generate_WS_forecast_hazard(run_datetime = dt.datetime.today().replace(hour=
     """ use the initialization time (run_datetime), the date of the event and
     specify the forecast model (haz_model) to generate a Hazard from forecast
     data either by download or through reading from existing file.
-    
+
     Parameters
     ----------
     run_datetime: datetime.datetime, optional
@@ -874,7 +925,7 @@ def generate_WS_forecast_hazard(run_datetime = dt.datetime.today().replace(hour=
         Default None resolves to "cosmoe_forecast_{}_vmax.nc" in
         CONFIG.hazard.storm_europe.forecast_dir
     save_haz: bool, optional
-        flag if resulting hazard should be saved in 
+        flag if resulting hazard should be saved in
         CONFIG.hazard.storm_europe.forecast_dir, default is True.
     Returns
     -------
@@ -904,17 +955,17 @@ def generate_WS_forecast_hazard(run_datetime = dt.datetime.today().replace(hour=
                                               '_event' +
                                               event_date.strftime('%Y%m%d')
                                               +
-                                              '.hdf5')   
+                                              '.hdf5')
         if haz_file_name.exists():
-            LOGGER.info('Loading hazard from ' + 
-                        str(haz_file_name) + 
+            LOGGER.info('Loading hazard from ' +
+                        str(haz_file_name) +
                         '.')
             hazard = StormEurope()
             hazard.read_hdf5(haz_file_name)
         else:
-            LOGGER.info('Generating ' + 
-                        haz_model + 
-                        ' hazard.')  
+            LOGGER.info('Generating ' +
+                        haz_model +
+                        ' hazard.')
             if not haz_raw_storage:
                 haz_raw_storage = Path(FORECAST_DIR) / "cosmoe_forecast_{}_vmax.nc"
             fp_file = Path(
@@ -924,7 +975,7 @@ def generate_WS_forecast_hazard(run_datetime = dt.datetime.today().replace(hour=
                 )
             hazard = StormEurope()
             hazard.read_cosmoe_file(
-                fp_file, 
+                fp_file,
                 event_date=event_date,
                 run_datetime=run_datetime,
                 model_name=full_model_name_temp
@@ -941,17 +992,17 @@ def generate_WS_forecast_hazard(run_datetime = dt.datetime.today().replace(hour=
                                               '_event' +
                                               event_date.strftime('%Y%m%d')
                                               +
-                                              '.hdf5')   
+                                              '.hdf5')
         if haz_file_name.exists():
-            LOGGER.info('Loading hazard from ' + 
-                        str(haz_file_name) + 
+            LOGGER.info('Loading hazard from ' +
+                        str(haz_file_name) +
                         '.')
             hazard = StormEurope()
             hazard.read_hdf5(haz_file_name)
         else:
-            LOGGER.info('Generating ' + 
-                        haz_model + 
-                        ' hazard.')                    
+            LOGGER.info('Generating ' +
+                        haz_model +
+                        ' hazard.')
             hazard = StormEurope()
             hazard.read_icon_grib(
                 run_datetime,

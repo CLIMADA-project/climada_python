@@ -36,12 +36,18 @@ class Entity(object):
     """Collects exposures, impact functions, measures and discount rates.
     Default values set when empty constructor.
 
-    Attributes:
-        exposures (Exposures): exposures
-        impact_funcs (ImpactFucs): impact functions
-        measures (MeasureSet): measures
-        disc_rates (DiscRates): discount rates
-        def_file (str): Default file from configuration file
+    Attributes
+    ----------
+    exposures : Exposures
+        exposures
+    impact_funcs : ImpactFucs
+        impact functions
+    measures : MeasureSet
+        measures
+    disc_rates : DiscRates
+        discount rates
+    def_file : str
+        Default file from configuration file
     """
 
     def __init__(self):
@@ -54,14 +60,18 @@ class Entity(object):
     def read_mat(self, file_name, description=''):
         """Read MATLAB file of climada.
 
-        Parameters:
-            file_name (str, optional): file name(s) or folder name
-                containing the files to read
-            description (str or list(str), optional): one description of the
-                data or a description of each data file
+        Parameters
+        ----------
+        file_name : str, optional
+            file name(s) or folder name
+            containing the files to read
+        description : str or list(str), optional
+            one description of the
+            data or a description of each data file
 
-        Raises:
-            ValueError
+        Raises
+        ------
+        ValueError
         """
         self.exposures = Exposures()
         self.exposures.read_mat(file_name)
@@ -78,14 +88,18 @@ class Entity(object):
     def read_excel(self, file_name, description=''):
         """Read csv or xls or xlsx file following climada's template.
 
-        Parameters:
-            file_name (str, optional): file name(s) or folder name
-                containing the files to read
-            description (str or list(str), optional): one description of the
-                data or a description of each data file
+        Parameters
+        ----------
+        file_name : str, optional
+            file name(s) or folder name
+            containing the files to read
+        description : str or list(str), optional
+            one description of the
+            data or a description of each data file
 
-        Raises:
-            ValueError
+        Raises
+        ------
+        ValueError
         """
         self.exposures = Exposures(pd.read_excel(file_name))
         self.exposures.tag = Tag()
@@ -111,8 +125,9 @@ class Entity(object):
     def check(self):
         """Check instance attributes.
 
-        Raises:
-            ValueError
+        Raises
+        ------
+        ValueError
         """
         self.disc_rates.check()
         self.exposures.check()

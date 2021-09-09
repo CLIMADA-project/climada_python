@@ -56,6 +56,7 @@ import climada.util.coordinates as u_coord
 from climada.util.constants import EARTH_RADIUS_KM, SYSTEM_DIR, DEF_CRS
 from climada.util.files_handler import get_file_names, download_ftp
 import climada.util.plot as u_plot
+from climada.hazard import Centroids
 import climada.hazard.tc_tracks_synth
 
 LOGGER = logging.getLogger(__name__)
@@ -903,8 +904,8 @@ class TCTracks():
 
         # construct xarray
         tr_ds = xr.Dataset.from_dataframe(tr_df.set_index('time'))
-        tr_ds.coords['lat'] = ('time', tr_ds.lat)
-        tr_ds.coords['lon'] = ('time', tr_ds.lon)
+        tr_ds.coords['lat'] = ('time', tr_ds.lat.values)
+        tr_ds.coords['lon'] = ('time', tr_ds.lon.values)
         tr_ds.attrs = {'max_sustained_wind_unit': 'kn',
                        'central_pressure_unit': 'mb',
                        'sid': sid,
@@ -1007,16 +1008,16 @@ class TCTracks():
                 track_ds = chaz_ds.sel(id=i_track.id.item())
                 track_ds = track_ds.sel(lifelength=track_ds.valid_t.data)
                 self.data.append(xr.Dataset({
-                    'time_step': ('time', track_ds.time_step),
-                    'max_sustained_wind': ('time', track_ds.Mwspd.data),
-                    'central_pressure': ('time', track_ds.pres.data),
-                    'radius_max_wind': ('time', track_ds.radius_max_wind.data),
-                    'environmental_pressure': ('time', track_ds.environmental_pressure.data),
+                    'time_step': ('time', track_ds.time_step.values),
+                    'max_sustained_wind': ('time', track_ds.Mwspd.values),
+                    'central_pressure': ('time', track_ds.pres.values),
+                    'radius_max_wind': ('time', track_ds.radius_max_wind.values),
+                    'environmental_pressure': ('time', track_ds.environmental_pressure.values),
                     'basin': ('time', np.full(track_ds.time.size, "GB")),
                 }, coords={
-                    'time': track_ds.time.data,
-                    'lat': ('time', track_ds.latitude.data),
-                    'lon': ('time', track_ds.longitude.data),
+                    'time': track_ds.time.values,
+                    'lat': ('time', track_ds.latitude.values),
+                    'lon': ('time', track_ds.longitude.values),
                 }, attrs={
                     'max_sustained_wind_unit': 'kn',
                     'central_pressure_unit': 'mb',
@@ -1214,6 +1215,29 @@ class TCTracks():
     def extent(self):
         """Exact extent of trackset as tuple, no buffer."""
         return self.get_extent(deg_buffer=0.0)
+
+    def generate_centroids(self, res_deg, buffer_deg):
+        """Generate gridded centroids within padded bounds of tracks
+
+        Parameters
+        ----------
+        res_deg : float
+            Resolution in degrees.
+        buffer_deg : float
+            Buffer around tracks in degrees.
+
+        Returns
+        -------
+        centroids : Centroids
+            Centroids instance.
+        """
+        bounds = self.get_bounds(deg_buffer=buffer_deg)
+        lat = np.arange(bounds[1] + 0.5 * res_deg, bounds[3], res_deg)
+        lon = np.arange(bounds[0] + 0.5 * res_deg, bounds[2], res_deg)
+        lon, lat = [ar.ravel() for ar in np.meshgrid(lon, lat)]
+        centroids = Centroids()
+        centroids.set_lat_lon(lat, lon)
+        return centroids
 
     def plot(self, axis=None, figsize=(9, 13), legend=True, adapt_fontsize=True, **kwargs):
         """Track over earth. Historical events are blue, probabilistic black.
@@ -1430,7 +1454,7 @@ class TCTracks():
                 lon[lon < 0] += 360
 
             time_step = pd.tseries.frequencies.to_offset(pd.Timedelta(hours=time_step_h)).freqstr
-            track_int = track.resample(time=time_step, keep_attrs=True, skipna=True)\
+            track_int = track.resample(time=time_step, skipna=True)\
                              .interpolate('linear')
             track_int['basin'] = track.basin.resample(time=time_step).nearest()
             track_int['time_step'][:] = time_step_h

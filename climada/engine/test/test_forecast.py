@@ -26,13 +26,14 @@ import geopandas as gpd
 import matplotlib.pyplot as plt
 import fiona
 from cartopy.io import shapereader
+from pathlib import Path
 
 from climada import CONFIG
 from climada.hazard.storm_europe import StormEurope
 from climada.entity.exposures.base import Exposures, INDICATOR_IMPF
 from climada.entity import ImpactFuncSet
 from climada.entity.impact_funcs.storm_europe import ImpfStormEurope
-from climada.engine.forecast import Forecast
+from climada.engine.forecast import Forecast, FORECAST_PLOT_DIR
 from climada.util.constants import WS_DEMO_NC
 
 HAZ_DIR = CONFIG.hazard.test_data.dir()
@@ -114,7 +115,7 @@ class TestPlot(unittest.TestCase):
         haz1.centroids.lat += 0.6
         haz1.centroids.lon -= 1.2
         haz2 = StormEurope()
-        
+
         haz2.read_cosmoe_file(HAZ_DIR.joinpath('storm_europe_cosmoe_forecast_vmax_testfile.nc'),
                               run_datetime=dt.datetime(2018,1,1),
                               event_date=dt.datetime(2018,1,3))
@@ -141,14 +142,6 @@ class TestPlot(unittest.TestCase):
                             expo,
                             impact_function_set)
         forecast.calc()
-        #test plotting functions
-        forecast.plot_imp_map(run_datetime=dt.datetime(2017,12,31),
-                              save_fig=False,close_fig=True)
-        forecast.plot_hist(run_datetime=dt.datetime(2017,12,31),
-                           save_fig=False,close_fig=True)
-        forecast.plot_exceedence_prob(run_datetime=dt.datetime(2017,12,31),
-                                      threshold=5000, save_fig=False, close_fig=True)
-
         #create a file containing the polygons of Swiss cantons using natural earth
         cantons_file = CONFIG.local_data.save_dir.dir() / 'CHE_cantons.shp'
         adm1_shape_file = shapereader.natural_earth(resolution='10m',
@@ -162,6 +155,21 @@ class TestPlot(unittest.TestCase):
                     for f in source:
                         if f['properties']['adm0_a3'] == 'CHE':
                             sink.write(f)
+        #test plotting functions
+        forecast.plot_imp_map(run_datetime=dt.datetime(2017,12,31),
+                              polygon_file=str(cantons_file),
+                              save_fig=True, close_fig=True)
+        map_file_name = (forecast.summary_str(dt.datetime(2017,12,31)) +
+                         '_impact_map' +
+                         '.jpeg')
+        map_file_name_full = Path(FORECAST_PLOT_DIR) / map_file_name
+        map_file_name_full.absolute().unlink(missing_ok=False)
+        forecast.plot_hist(run_datetime=dt.datetime(2017,12,31),
+                           save_fig=False, close_fig=True)
+        forecast.plot_exceedence_prob(run_datetime=dt.datetime(2017,12,31),
+                                      threshold=5000, save_fig=False, close_fig=True)
+
+
         forecast.plot_warn_map(str(cantons_file),
                                decision_level = 'polygon',
                                thresholds=[100000,500000,

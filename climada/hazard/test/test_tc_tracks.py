@@ -284,7 +284,7 @@ class TestIbtracs(unittest.TestCase):
         for tr in tc_track.data:
             self.assertEqual(tr.basin[0], "EP")
             self.assertIn("WP", tr.basin)
-    
+
     def test_discard_single_points(self):
         """Check discard_single_points option"""
         tc_track_singlept = tc.TCTracks()
@@ -575,6 +575,20 @@ class TestFuncs(unittest.TestCase):
         np.testing.assert_array_almost_equal(tc_track.bounds, bounds)
         np.testing.assert_array_almost_equal(tc_track.get_bounds(deg_buffer=0.1), bounds_buf)
         np.testing.assert_array_almost_equal(tc_track.extent, extent)
+
+    def test_generate_centroids(self):
+        """Test centroids generation feature."""
+        storms = ['1988169N14259', '2002073S16161', '2002143S07157']
+        tc_track = tc.TCTracks()
+        tc_track.read_ibtracs_netcdf(storm_id=storms, provider=["usa", "bom"])
+        cen = tc_track.generate_centroids(10, 1)
+        cen_bounds = (157.585022, -19.200001, 257.585022, 10.799999)
+        self.assertEqual(cen.size, 44)
+        self.assertEqual(np.unique(cen.lat).size, 4)
+        self.assertEqual(np.unique(cen.lon).size, 11)
+        np.testing.assert_array_equal(np.diff(np.unique(cen.lat)), 10)
+        np.testing.assert_array_equal(np.diff(np.unique(cen.lon)), 10)
+        np.testing.assert_array_almost_equal(cen.total_bounds, cen_bounds)
 
     def test_interp_track_pass(self):
         """Interpolate track to min_time_step. Compare to MATLAB reference."""
@@ -869,7 +883,7 @@ class TestFuncs(unittest.TestCase):
 
         self.assertTrue(tracks_in_exp.get_track(storms['in']))
         self.assertFalse(tracks_in_exp.get_track(storms['out']))
-    
+
     def test_get_landfall_idx(self):
         """Test identification of landfalls"""
         tr_ds = xr.Dataset()

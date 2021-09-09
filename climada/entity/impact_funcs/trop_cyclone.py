@@ -43,20 +43,27 @@ class ImpfTropCyclone(ImpactFunc):
                         v_thresh=25.7, v_half=74.7, scale=1.0):
         """Using the formula of Emanuele 2011.
 
-        Parameters:
-            impf_id (int, optional): impact function id. Default: 1
-            intensity (np.array, optional): intensity array in m/s. Default:
-                5 m/s step array from 0 to 120m/s
-            v_thresh (float, optional): first shape parameter, wind speed in
-                m/s below which there is no damage. Default: 25.7(Emanuel 2011)
-            v_half (float, optional): second shape parameter, wind speed in m/s
-                at which 50% of max. damage is expected. Default:
-                v_threshold + 49 m/s (mean value of Sealy & Strobl 2017)
-            scale (float, optional): scale parameter, linear scaling of MDD.
-                0<=scale<=1. Default: 1.0
+        Parameters
+        ----------
+        impf_id : int, optional
+            impact function id. Default: 1
+        intensity : np.array, optional
+            intensity array in m/s. Default:
+            5 m/s step array from 0 to 120m/s
+        v_thresh : float, optional
+            first shape parameter, wind speed in
+            m/s below which there is no damage. Default: 25.7(Emanuel 2011)
+        v_half : float, optional
+            second shape parameter, wind speed in m/s
+            at which 50% of max. damage is expected. Default:
+            v_threshold + 49 m/s (mean value of Sealy & Strobl 2017)
+        scale : float, optional
+            scale parameter, linear scaling of MDD.
+            0<=scale<=1. Default: 1.0
 
-        Raises:
-            ValueError
+        Raises
+        ------
+        ValueError
         """
         if v_half <= v_thresh:
             raise ValueError('Shape parameters out of range: v_half <= v_thresh.')
@@ -85,26 +92,32 @@ class ImpfSetTropCyclone(ImpactFuncSet):
                                         input_file_path=None, version=1):
         """ initiate TC wind impact functions based on Eberenz et al. (2020)
 
-        Optional Parameters:
-                calibration_approach (str):
-                    'TDR' (default): Total damage ratio (TDR) optimization with
-                        TDR=1.0 (simulated damage = reported damage from EM-DAT)
-                    'TDR1.5' : Total damage ratio (TDR) optimization with
-                        TDR=1.5 (simulated damage = 1.5*reported damage from EM-DAT)
-                    'RMSF': Root-mean-squared fraction (RMSF) optimization
-                    'EDR': quantile from individually fitted v_half per event,
-                        i.e. v_half fitted to get EDR=1.0 for each event
-                q (float): quantile between 0 and 1.0 to select
-                    (EDR only, default=0.5, i.e. median v_half)
-                input_file_path (str or DataFrame): full path to calibration
-                    result file to be used instead of default file in repository
-                    (expert users only)
+        Parameters
+        ----------
+        calibration_approach : str
+            'TDR' (default): Total damage ratio (TDR) optimization with
+                TDR=1.0 (simulated damage = reported damage from EM-DAT)
+            'TDR1.5' : Total damage ratio (TDR) optimization with
+                TDR=1.5 (simulated damage = 1.5*reported damage from EM-DAT)
+            'RMSF': Root-mean-squared fraction (RMSF) optimization
+            'EDR': quantile from individually fitted v_half per event,
+                i.e. v_half fitted to get EDR=1.0 for each event
+        q : float
+            quantile between 0 and 1.0 to select
+            (EDR only, default=0.5, i.e. median v_half)
+        input_file_path : str or DataFrame
+            full path to calibration
+            result file to be used instead of default file in repository
+            (expert users only)
 
-        Returns:
-            v_half (dict): Impf slope parameter v_half per region¨
+        Returns
+        -------
+        v_half : dict
+            Impf slope parameter v_half per region¨
 
-        Raises:
-            ValueError
+        Raises
+        ------
+        ValueError
         """
         calibration_approach = calibration_approach.upper()
         if calibration_approach not in ['TDR', 'TDR1.0', 'TDR1.5', 'RMSF', 'EDR']:
@@ -174,16 +187,23 @@ class ImpfSetTropCyclone(ImpactFuncSet):
         Only contains countries that were affected by tropical cyclones
         between 1980 and 2017 according to EM-DAT.
 
-        Optional Parameters:
-            region (str): regional abbreviation (default='all'),
-                either 'NA1', 'NA2', 'NI', 'OC', 'SI', 'WP1', 'WP2',
-                        'WP3', 'WP4', or 'all'.
+        Parameters
+        ----------
+        region : str
+            regional abbreviation (default='all'),
+            either 'NA1', 'NA2', 'NI', 'OC', 'SI', 'WP1', 'WP2',
+            'WP3', 'WP4', or 'all'.
 
-        Returns:
-            [0] region_name (dict or str): long name per region
-            [1] impf_id (dict or int): impact function ID per region
-            [2] iso3n (dict or list): numerical ISO3codes (=region_id) per region
-            [3] iso3a (dict or list): numerical ISO3codes (=region_id) per region
+        Returns
+        -------
+        region_name : dict or str
+            long name per region
+        impf_id : dict or int
+            impact function ID per region
+        iso3n : dict or list
+            numerical ISO3codes (=region_id) per region
+        iso3a : dict or list
+            numerical ISO3codes (=region_id) per region
         """
         if not region:
             region = 'all'
