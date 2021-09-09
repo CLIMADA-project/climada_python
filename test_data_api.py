@@ -76,7 +76,7 @@ class TestDataAvail(unittest.TestCase):
 
     def test_ne_api_pass(self):
         """Test Natural Earth API"""
-        url = 'http://naciscdn.org/naturalearth/10m/cultural/ne_10m_admin_0_countries.zip'
+        url = 'https://naturalearth.s3.amazonaws.com/10m_cultural/ne_10m_admin_0_countries.zip'
         file_down = download_file(url)
         Path(file_down).unlink()
 
