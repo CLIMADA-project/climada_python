@@ -229,7 +229,7 @@ class TestAdmin1(unittest.TestCase):
         ent.set_countries(country_name, res_arcsec=resolution, fin_mode=fin_mode,
                         reference_year=2016, admin1_calc=True)
 
-        self.assertEqual(ent.gdf.shape[0], 7964)
+        self.assertEqual(ent.gdf.shape[0], 7800)
 
     def test_calc_admin1(self):
         """test function _calc_admin1_one_country for Switzerland."""
@@ -237,7 +237,7 @@ class TestAdmin1(unittest.TestCase):
         country = 'CHE'
         ent = lp._calc_admin1_one_country(country, resolution, (2,1), 'pc', None,
                  2016, 11, SYSTEM_DIR, False)
-        self.assertEqual(ent.gdf.shape[0], 717)
+        self.assertEqual(ent.gdf.shape[0], 699)
         self.assertEqual(ent.gdf.region_id[88], 756)
         self.assertAlmostEqual(ent.gdf.latitude.max(), 47.708333333333336)
 
