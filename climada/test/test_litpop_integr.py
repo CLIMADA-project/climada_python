@@ -221,25 +221,68 @@ class TestAdmin1(unittest.TestCase):
 
     def test_set_countries_calc_admin1_pass(self):
         """test method set_countries with admin1_calc=True for Switzerland"""
-        country_name = "Switzerland"
+        country = "Switzerland"
         resolution = 90
         fin_mode = 'gdp'
 
         ent = lp.LitPop()
-        ent.set_countries(country_name, res_arcsec=resolution, fin_mode=fin_mode,
+        ent.set_countries(country, res_arcsec=resolution, fin_mode=fin_mode,
                         reference_year=2016, admin1_calc=True)
-
+        ent_adm0 = lp.LitPop()
+        ent_adm0.set_countries(country, res_arcsec=resolution, fin_mode=fin_mode,
+                        reference_year=2016, admin1_calc=False)
+        # shape must be same as with admin1_calc = False, otherwise there
+        # is a problem with handling of the admin1 shapes:
         self.assertEqual(ent.gdf.shape[0], 7800)
+        self.assertTupleEqual(ent.gdf.shape, ent_adm0.gdf.shape)
 
     def test_calc_admin1(self):
         """test function _calc_admin1_one_country for Switzerland."""
         resolution = 300
         country = 'CHE'
         ent = lp._calc_admin1_one_country(country, resolution, (2,1), 'pc', None,
-                 2016, 11, SYSTEM_DIR, False)
+                 2016, lp.GPW_VERSION, SYSTEM_DIR, False)
+
         self.assertEqual(ent.gdf.shape[0], 699)
         self.assertEqual(ent.gdf.region_id[88], 756)
         self.assertAlmostEqual(ent.gdf.latitude.max(), 47.708333333333336)
+        # shape must be same as with admin1_calc = False, otherwise there
+        # is a problem with handling of the admin1 shapes:
+        ent_adm0 = lp.LitPop()
+        ent_adm0.set_countries(country, res_arcsec=resolution, fin_mode='pc',
+                        reference_year=2016, admin1_calc=False)
+        self.assertTupleEqual(ent.gdf.shape, ent_adm0.gdf.shape)
+
+    def test_brandenburg(self):
+        """test functions set_custom_shape_from_countries and set_custom_shape
+        for admin1 shape of Brandenburg"""
+        reslution_arcsec = 120 
+        country = 'DEU'
+        state_name = 'Brandenburg'
+        # get the shape of Brandenburg:
+        admin1_info, admin1_shapes = u_coord.get_admin1_info(country)
+        admin1_info = admin1_info[country]
+        admin1_shapes = admin1_shapes[country]
+        admin1_names = [record['name'] for record in admin1_info]
+        print(admin1_names)
+        for idx, name in enumerate(admin1_names):
+            if admin1_names[idx]==state_name:
+                break
+
+        # init LitPop for Brandenburg
+        exp_bra2 = lp.LitPop()
+        exp_bra2.set_custom_shape_from_countries(admin1_shapes[idx], country,
+                                                 res_arcsec=reslution_arcsec, reference_year=2016)
+        exp_bra = lp.LitPop()
+        exp_bra.set_custom_shape(admin1_shapes[idx], 1000, res_arcsec=reslution_arcsec,
+                                 reference_year=2016)
+        self.assertAlmostEqual(exp_bra.gdf.value.sum(), 1000)
+        # compare number of data points:
+        self.assertEqual(exp_bra.gdf.shape[0], exp_bra2.gdf.shape[0])
+        self.assertEqual(exp_bra.gdf.shape[0], 3566)
+        # check for double entries:
+        self.assertEqual(len(exp_bra.gdf.geometry.unique()), len(exp_bra.gdf.geometry))
+        self.assertEqual(len(exp_bra.gdf.geometry.unique()), 3566)
 
 class TestGPWPopulation(unittest.TestCase):
     """Test gpw_population submodule"""

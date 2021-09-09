@@ -374,6 +374,7 @@ class LitPop(Exposures):
                 columns=shape_gdf.columns[shape_gdf.columns != 'geometry'])
             # extract gdf with data points within shape:
             gdf = geopandas.sjoin(self.gdf, shape_gdf, how='right')
+            gdf = gdf.drop(columns=['index_left'])
         else: # works if shape is Polygon or MultiPolygon
             gdf = self.gdf.loc[self.gdf.geometry.within(shape)]
 
