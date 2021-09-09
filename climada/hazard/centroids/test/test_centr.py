@@ -19,6 +19,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Test CentroidsVector and CentroidsRaster classes.
 """
 import unittest
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -27,9 +28,9 @@ import geopandas as gpd
 from climada import CONFIG
 from climada.hazard.centroids.centr import Centroids
 from climada.util.constants import GLB_CENTROIDS_MAT, HAZ_TEMPLATE_XLS
+import climada.hazard.test as hazard_test
 
-HAZ_DIR = CONFIG.hazard.test_data.dir()
-HAZ_TEST_MAT = HAZ_DIR.joinpath('atl_prob_no_name.mat')
+HAZ_TEST_MAT = Path(hazard_test.__file__).parent / 'data' / 'atl_prob_no_name.mat'
 
 
 class TestCentroidsReader(unittest.TestCase):

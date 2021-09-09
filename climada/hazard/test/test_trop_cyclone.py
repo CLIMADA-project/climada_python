@@ -21,18 +21,20 @@ Test TropCyclone class
 
 import unittest
 import datetime as dt
+from pathlib import Path
 import numpy as np
 from scipy import sparse
 
-from climada import CONFIG
 from climada.util import ureg
 from climada.hazard.tc_tracks import TCTracks
 from climada.hazard.trop_cyclone import (
     TropCyclone, _close_centroids, _vtrans, _B_holland_1980, _bs_holland_2008,
     _v_max_s_holland_2008, _x_holland_2010, _stat_holland_1980, _stat_holland_2010)
 from climada.hazard.centroids.centr import Centroids
+import climada.hazard.test as hazard_test
 
-DATA_DIR = CONFIG.hazard.test_data.dir()
+DATA_DIR = Path(hazard_test.__file__).parent.joinpath('data')
+
 HAZ_TEST_MAT = DATA_DIR.joinpath('atl_prob_no_name.mat')
 TEST_TRACK = DATA_DIR.joinpath("trac_brb_test.csv")
 TEST_TRACK_SHORT = DATA_DIR.joinpath("trac_short_test.csv")

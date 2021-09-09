@@ -19,6 +19,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Test Impact class.
 """
 import unittest
+from pathlib import Path
 import numpy as np
 from scipy import sparse
 
@@ -29,10 +30,10 @@ from climada.entity.entity_def import Entity
 from climada.hazard.base import Hazard
 from climada.engine.impact import Impact
 from climada.util.constants import ENT_DEMO_TODAY, DEF_CRS
-from climada.entity import Exposures
+import climada.hazard.test as hazard_test
 
 DATA_FOLDER = CONFIG.engine.test_data.dir()
-HAZ_TEST_MAT = CONFIG.hazard.test_data.dir().joinpath('atl_prob_no_name.mat')
+HAZ_TEST_MAT = Path(hazard_test.__file__).parent.joinpath('data', 'atl_prob_no_name.mat')
 
 class TestFreqCurve(unittest.TestCase):
     """Test exceedence frequency curve computation"""

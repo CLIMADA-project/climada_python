@@ -25,12 +25,11 @@ import numpy as np
 
 import climada.hazard.test as hazard_test
 import climada.entity.exposures.test as exposures_test
-from climada import CONFIG
 from climada.entity.entity_def import Entity
 from climada.entity.disc_rates import DiscRates
 from climada.hazard.base import Hazard
 from climada.engine.cost_benefit import CostBenefit, risk_aai_agg, \
-risk_rp_100, risk_rp_250, _norm_values
+        risk_rp_100, risk_rp_250, _norm_values
 from climada.engine import Impact
 from climada.util.constants import ENT_DEMO_FUTURE, ENT_DEMO_TODAY
 
