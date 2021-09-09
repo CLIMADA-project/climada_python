@@ -977,9 +977,11 @@ def gridpoints_core_calc(data_arrays, offsets=None, exponents=None,
     if exponents is None:
         exponents = np.ones(len(data_arrays))
     if np.min(offsets) < 0:
-        raise ValueError("offset values < 0 not are allowed.")
+        raise ValueError("offset values < 0 are not allowed, because negative offset "
+                         "values produce undesired negative disaggregation values.")
     if np.min(exponents) < 0:
-        raise ValueError("exponents < 0 not are allowed.")
+        raise ValueError("exponents < 0 are not allowed, because negative exponents "
+                         "produce 'inf' values where the initial value is 0.")
     # Steps 1-3: arrays are multiplied after application of offets and exponents:
     #       (arrays are converted to float to prevent ValueError:
     #       "Integers to negative integer powers are not allowed.")
