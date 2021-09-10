@@ -329,10 +329,10 @@ class TestLitPop(unittest.TestCase):
             self.assertIn('Fukuoka', result.keys())
             self.assertIsInstance(result['Saga'], float)
 
-    def test_get_total_value_per_country_pop(self):
-        "test _get_total_value_per_country return pop"
-        value = lp._get_total_value_per_country('XXX', 'pop', None, total_population=22)
-        self.assertEqual(value, 22)
+    def test_fail_get_total_value_per_country_pop(self):
+        "test _get_total_value_per_country fails for pop"
+        with self.assertRaises(NotImplementedError):
+            lp._get_total_value_per_country('XXX', 'pop', None)
 
     def test_get_total_value_per_country_none(self):
         "test _get_total_value_per_country pass with None"
