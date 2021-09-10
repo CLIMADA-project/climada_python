@@ -227,6 +227,8 @@ class InputVar():
         The following types of uncertainties can be added:
         HE: sub-sampling events from the total event set
             For each sub-sample, n_ev events are sampled with replacement.
+            HE is the value of the seed
+            for  the uniform random number generator.
         HI: scale the intensity of all events (homogeneously)
             The instensity of all events is multiplied by a number
             sampled uniformly from a distribution with (min, max) = bounds_int
@@ -281,7 +283,8 @@ class InputVar():
         EN: mutliplicative noise (inhomogeneous)
             The value of each exposure point is independently multiplied by
             a random number sampled uniformly from a distribution
-            with (min, max) = bounds_noise
+            with (min, max) = bounds_noise. EN is the value of the seed
+            for  the uniform random number generator.
 
         If a bounds is None, this parameter is assumed to have no uncertainty.
 
@@ -399,7 +402,8 @@ class InputVar():
         EN: mutliplicative noise (inhomogeneous)
             The value of each exposure point is independently multiplied by
             a random number sampled uniformly from a distribution
-            with (min, max) = bounds_noise
+            with (min, max) = bounds_noise. EN is the value of the seed
+            for  the uniform random number generator.
         MDD: scale the mdd (homogeneously)
             The value of mdd at each intensity is multiplied by a number
             sampled uniformly from a distribution with
@@ -500,7 +504,8 @@ class InputVar():
         EN: mutliplicative noise (inhomogeneous)
             The value of each exposure point is independently multiplied by
             a random number sampled uniformly from a distribution
-            with (min, max) = bounds_noise
+            with (min, max) = bounds_noise. EN is the value of the seed
+            for  the uniform random number generator.
         MDD: scale the mdd (homogeneously)
             The value of mdd at each intensity is multiplied by a number
             sampled uniformly from a distribution with
