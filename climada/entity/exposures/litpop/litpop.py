@@ -581,9 +581,10 @@ class LitPop(Exposures):
             litpop_gdf = litpop_gdf.append(gdf_tmp)
         litpop_gdf.crs = meta_tmp['crs']
         # set total value for disaggregation if not provided:
-        if total_value is None: # default, no total value provided...
-            total_value = _get_total_value_per_country(iso3a, fin_mode,
-                                                      reference_year, total_population)
+        if total_value is None and fin_mode == 'pop':
+            total_value = total_population # population count is taken from pop-data.
+        elif total_value is None:
+            total_value = _get_total_value_per_country(iso3a, fin_mode, reference_year)
 
         # disaggregate total value proportional to LitPop values:
         if isinstance(total_value, (float, int)):
@@ -754,9 +755,9 @@ def get_value_unit(fin_mode):
         return 'people'
     return 'USD'
 
-def _get_total_value_per_country(cntry_iso3a, fin_mode, reference_year, total_population=None):
+def _get_total_value_per_country(cntry_iso3a, fin_mode, reference_year):
     """
-    Get total value for disaggregation, e.g., total asset value or population
+    Get total value for disaggregation, e.g., total asset value
     for a country, depending on unser choice (fin_mode).
 
     Parameters
@@ -773,8 +774,7 @@ def _get_total_value_per_country(cntry_iso3a, fin_mode, reference_year, total_po
                 built assets such as machinery, equipment, physical structures,
                 and land value for built-up land.
                 (pc is in constant 2014 USD)
-        * 'pop': population count (source: GPW, same as gridded population)
-            The unit is 'people'.
+
         * 'gdp': gross-domestic product (Source: World Bank) [USD]
         * 'income_group': gdp multiplied by country's income group+1 [USD]
             Income groups are 1 (low) to 4 (high income).
@@ -785,9 +785,6 @@ def _get_total_value_per_country(cntry_iso3a, fin_mode, reference_year, total_po
         The default is 'pc'
     reference_year : int
         reference year for data extraction
-    total_population : number, optional
-        total population number, only required for fin_mode 'pop'.
-        The default is None.
 
     Returns
     -------
@@ -796,7 +793,8 @@ def _get_total_value_per_country(cntry_iso3a, fin_mode, reference_year, total_po
     if fin_mode == 'none':
         return None
     if fin_mode == 'pop':
-        return total_population
+        raise NotImplementedError("`_get_total_value_per_country` is not "
+                                  "implemented for `fin_mode` == 'pop'.")
     if fin_mode == 'pc':
         return(u_fin.world_bank_wealth_account(cntry_iso3a, reference_year,
                                                no_land=True)[1])
