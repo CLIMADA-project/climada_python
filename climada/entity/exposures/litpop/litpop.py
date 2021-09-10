@@ -23,7 +23,6 @@ import numpy as np
 import rasterio
 import geopandas
 from shapefile import Shape
-from shapely.geometry import Polygon, MultiPolygon
 
 import pandas as pd
 
@@ -148,9 +147,6 @@ class LitPop(Exposures):
                         # with total value share based on subnational GDP share.
                         # This requires GRP (Gross Regional Product) data in the
                         # GSDP data folder.
-            if fin_mode == 'pop':
-                raise NotImplementedError('`admin1_calc` not implemented for '+
-                                          "`fin_mode` == 'pop'")
             litpop_list = [_calc_admin1_one_country(country, res_arcsec, exponents,
                                                     fin_mode, tot_value, reference_year,
                                                     gpw_version, data_dir, reproject_first
@@ -464,7 +460,7 @@ class LitPop(Exposures):
         """
 
         tag = Tag()
-        litpop_gdf, meta_tmp = _get_litpop_single_polygon(shape, reference_year,
+        litpop_gdf, _ = _get_litpop_single_polygon(shape, reference_year,
                                                           res_arcsec, data_dir,
                                                           gpw_version, reproject_first,
                                                           exponents,
@@ -1123,6 +1119,9 @@ def _calc_admin1_one_country(country, res_arcsec, exponents, fin_mode, total_val
     Exposure instance
 
     """
+    if fin_mode == 'pop':
+        raise NotImplementedError('`_calc_admin1_one_country` not implemented for '+
+                                          "`fin_mode` == 'pop'.")
     # Determine ISO 3166 representation of country and get geometry:
     try:
         iso3a = u_coord.country_to_iso(country, representation="alpha3")
@@ -1145,7 +1144,7 @@ def _calc_admin1_one_country(country, res_arcsec, exponents, fin_mode, total_val
                  for (key, value) in grp_values.items()}
 
     # get total value of country:
-    total_value = _get_total_value_per_country(iso3a, fin_mode, reference_year, 0)
+    total_value = _get_total_value_per_country(iso3a, fin_mode, reference_year)
     exp_list = []
     for idx, record in enumerate(admin1_info):
         if grp_values[record['name']] is None:

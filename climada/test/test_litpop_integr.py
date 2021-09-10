@@ -234,7 +234,7 @@ class TestAdmin1(unittest.TestCase):
         # shape must be same as with admin1_calc = False, otherwise there
         # is a problem with handling of the admin1 shapes:
         self.assertEqual(ent.gdf.shape[0], 7800)
-        self.assertTupleEqual(ent.gdf.shape, ent_adm0.gdf.shape)
+        self.assertEqual(ent.gdf.shape[0], ent_adm0.gdf.shape[0])
 
     def test_calc_admin1(self):
         """test function _calc_admin1_one_country for Switzerland."""
@@ -251,7 +251,7 @@ class TestAdmin1(unittest.TestCase):
         ent_adm0 = lp.LitPop()
         ent_adm0.set_countries(country, res_arcsec=resolution, fin_mode='pc',
                         reference_year=2016, admin1_calc=False)
-        self.assertTupleEqual(ent.gdf.shape, ent_adm0.gdf.shape)
+        self.assertEqual(ent.gdf.shape[0], ent_adm0.gdf.shape[0])
 
     def test_brandenburg(self):
         """test functions set_custom_shape_from_countries and set_custom_shape
