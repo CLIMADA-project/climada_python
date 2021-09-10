@@ -599,7 +599,6 @@ class LitPop(Exposures):
 
     # Alias method names for backward compatibility:
     set_country = set_countries
-
 def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
                                gpw_version, reproject_first, exponents,
                                region_id=None, verbatim=False):
@@ -1164,5 +1163,6 @@ def _calc_admin1_one_country(country, res_arcsec, exponents, fin_mode, total_val
                                       gpw_version=gpw_version,
                                       data_dir=data_dir,
                                       reproject_first=reproject_first)
+        exp_list[-1].gdf['admin1'] = record['name']
 
     return Exposures.concat(exp_list)
