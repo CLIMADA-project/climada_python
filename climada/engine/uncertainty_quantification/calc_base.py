@@ -49,6 +49,29 @@ class Calc():
         """
         self.input_var_names = ()
         self.metric_names = ()
+        self.check_distr()
+
+    def check_distr(self):
+        """
+        Log warning if input parameters repeated among input variables
+
+        Returns
+        -------
+        None.
+
+        """
+# Add check if input params have same distribution
+        distr_dict = dict()
+        for input_var in self.input_vars:
+            for input_param_name, input_param_func in input_var.distr_dict.items():
+                if input_param_name in distr_dict:
+                    LOGGER.warning(
+                        "The input parameter %s is shared " %input_param_name +
+                        "among at least 2 input variables. Their uncertainty is " +
+                        "thus computed with the same samples for this " +
+                        "input paramter.")
+                    distr_dict[input_param_name] = input_param_func
+
 
     @property
     def input_vars(self):
@@ -80,11 +103,7 @@ class Calc():
 
         distr_dict = dict()
         for input_var in self.input_vars:
-            for input_var_name, input_var_key in input_var.distr_dict.items():
-                if input_var_name in distr_dict:
-                    raise ValueError("cannot combine distr_dicts unless input variable names are"
-                                     " unique throughtout input_vars")
-                distr_dict[input_var_name] = input_var_key
+            distr_dict.update(input_var.distr_dict)
         return distr_dict
 
     def est_comp_time(self, n_samples, time_one_run, pool=None):
