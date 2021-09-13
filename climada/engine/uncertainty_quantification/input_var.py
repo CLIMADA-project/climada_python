@@ -382,9 +382,12 @@ class InputVar():
     def ent(impf_set, disc_rate, exp, meas_set,
             bounds_disc=None, bounds_cost=None, bounds_totval=None,
             bounds_noise=None, bounds_mdd=None, bounds_paa=None,
-            bounds_impfi=None):
+            bounds_impfi=None, haz_type='TC', fun_id=1):
         """
         Helper wrapper for basic entity set uncertainty input variable.
+
+        Important: only the impact function defined by haz_type and
+        fun_id will be affected by bounds_impfi, bounds_mdd, bounds_paa.
 
         The following types of uncertainties can be added:
         DR: scale the discount rates (homogeneously)
@@ -478,7 +481,7 @@ class InputVar():
 
         return InputVar(
             partial(_ent_unc_func, impf_set=impf_set, disc_rate=disc_rate,
-                    bounds_noise=bounds_noise,
+                    bounds_noise=bounds_noise, haz_type=haz_type, fun_id=fun_id,
                     exp=exp, meas_set=meas_set, **kwargs),
             _ent_unc_dict(bounds_totval, bounds_noise, bounds_impfi, bounds_mdd,
                           bounds_paa, bounds_disc, bounds_cost)
@@ -487,10 +490,14 @@ class InputVar():
     @staticmethod
     def entfut(impf_set, exp, meas_set,
                bounds_cost=None, bounds_eg=None, bounds_noise=None,
-                bounds_impfi=None, bounds_mdd=None, bounds_paa=None
+                bounds_impfi=None, bounds_mdd=None, bounds_paa=None,
+                haz_type='TC', fun_id=1
                 ):
         """
         Helper wrapper for basic future entity set uncertainty input variable.
+
+        Important: only the impact function defined by haz_type and
+        fun_id will be affected by bounds_impfi, bounds_mdd, bounds_paa.
 
         The following types of uncertainties can be added:
         CO: scale the cost (homogeneously)
@@ -573,7 +580,7 @@ class InputVar():
 
         return InputVar(
             partial(_entfut_unc_func, bounds_noise=bounds_noise, impf_set=impf_set,
-                     exp=exp, meas_set=meas_set, **kwargs),
+                     exp=exp, meas_set=meas_set, haz_type=haz_type, fun_id=fun_id, **kwargs),
             _entfut_unc_dict(bounds_eg=bounds_eg, bounds_noise=bounds_noise,
                              bounds_impfi=bounds_impfi, bounds_paa=bounds_paa,
                              bounds_mdd=bounds_mdd, bounds_cost=bounds_cost)
@@ -686,7 +693,7 @@ def _meas_set_unc_dict(bounds_cost):
     return {'CO': sp.stats.uniform(cmin, cdelta)}
 
 def _ent_unc_func(EN, ET, IFi, MDD, PAA, CO, DR, bounds_noise,
-                 impf_set, disc_rate, exp, meas_set):
+                 impf_set, haz_type, fun_id, disc_rate, exp, meas_set):
     ent = Entity()
     if EN is None and ET is None:
         ent.exposures = exp
@@ -695,7 +702,8 @@ def _ent_unc_func(EN, ET, IFi, MDD, PAA, CO, DR, bounds_noise,
     if MDD is None and PAA is None and IFi is None:
         ent.impact_funcs = impf_set
     else:
-        ent.impact_funcs = _impfset_uncfunc(IFi, MDD, PAA, impf_set=impf_set)
+        ent.impact_funcs = _impfset_uncfunc(IFi, MDD, PAA, impf_set=impf_set,
+                                            haz_type=haz_type, fun_id=fun_id)
     if CO is None:
         ent.measures = meas_set
     else:
@@ -715,7 +723,7 @@ def _ent_unc_dict(bounds_totval, bounds_noise, bounds_impfi, bounds_mdd,
     return  ent_unc_dict
 
 def _entfut_unc_func(EN, EG, IFi, MDD, PAA, CO, bounds_noise,
-                 impf_set, exp, meas_set):
+                 impf_set, haz_type, fun_id, exp, meas_set):
     ent = Entity()
     if EN is None and EG is None:
         ent.exposures = exp
@@ -724,7 +732,8 @@ def _entfut_unc_func(EN, EG, IFi, MDD, PAA, CO, bounds_noise,
     if IFi is None and PAA is None and MDD is None:
         ent.impact_funcs = impf_set
     else:
-        ent.impact_funcs = _impfset_uncfunc(IFi, MDD, PAA, impf_set=impf_set)
+        ent.impact_funcs = _impfset_uncfunc(IFi, MDD, PAA, impf_set=impf_set,
+                                            haz_type=haz_type, fun_id=fun_id)
     if CO is None:
         ent.measures = meas_set
     else:
