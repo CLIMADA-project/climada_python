@@ -749,7 +749,7 @@ def _entfut_unc_dict(bounds_impfi, bounds_mdd,
         gmin, gmax = bounds_eg[0], bounds_eg[1] - bounds_eg[0]
         eud['EG'] = sp.stats.uniform(gmin, gmax)
     if bounds_noise is not None:
-        eud['EN'] = sp.stats.uniform(0, 1)
+        eud['EN'] = sp.stats.randint(0, 2**32 - 1) #seed for rnd generator
     eud.update(_impfset_unc_dict(bounds_impfi, bounds_mdd, bounds_paa))
     if bounds_cost is not None:
         eud.update(_meas_set_unc_dict(bounds_cost))
