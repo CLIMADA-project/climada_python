@@ -326,7 +326,7 @@ class Calc():
         for metric_name in self.metric_names:
             sens_first_order_dict = {}
             sens_second_order_dict = {}
-            for (submetric_name, metric_unc) in getattr(unc_output, metric_name + '_unc_df').iteritems():
+            for (submetric_name, metric_unc) in unc_output.get_unc_df(metric_name).iteritems():
                 Y = metric_unc.to_numpy()
                 if X is not None:
                     sens_indices = method.analyze(unc_output.problem_sa, X, Y,
@@ -397,7 +397,7 @@ class Calc():
                 [sens_first_order_df, sens_second_order_df]
                 ).reset_index(drop=True)
 
-            setattr(sens_output, metric_name + '_sens_df', sens_df)
+            sens_output.set_sens_df(metric_name, sens_df)
         sensitivity_kwargs = {
             key: str(val)
             for key, val in sensitivity_kwargs.items()}
