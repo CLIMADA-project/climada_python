@@ -44,8 +44,7 @@ LOGGER = logging.getLogger(__name__)
 u_setup_logging()
 
 # Metrics that are multi-dimensional
-METRICS_2D = ['eai_exp_unc_df', 'eai_exp_sens_df',
-              'at_event_unc_df', 'at_event_sens_df']
+METRICS_2D = ['eai_exp', 'at_event']
 
 DATA_DIR = CONFIG.engine.uncertainty.local_data.user_data.dir()
 
@@ -109,6 +108,18 @@ class UncOutput():
         #Data
         self.samples_df = samples_df
         self.unit = unit
+
+    def get_unc_df(self, metric_name):
+        return getattr(self, f'{metric_name}_unc_df')
+
+    def set_unc_df(self, metric_name, unc_df):
+        setattr(self, f'{metric_name}_unc_df', unc_df)
+
+    def get_sens_df(self, metric_name):
+        return getattr(self, f'{metric_name}_sens_df')
+
+    def set_sens_df(self, metric_name, sens_df):
+        setattr(self, f'{metric_name}_sens_df', sens_df)
 
     def check_salib(self, sensitivity_method):
         """
@@ -220,14 +231,15 @@ class UncOutput():
         Returns
         -------
         unc_metric_list : [str]
-            List of names of attributes containing metrics uncertainty values
+            List of names of attributes containing metrics uncertainty values,
+            without the trailing '_unc_df'
 
         """
         unc_metric_list = []
         for attr_name, attr_value in self.__dict__.items():
             if isinstance(attr_value, pd.DataFrame):
-                if not attr_value.empty and 'unc' in attr_name:
-                    unc_metric_list.append(attr_name)
+                if not attr_value.empty and attr_name.endswith("_unc_df"):
+                    unc_metric_list.append(attr_name[:-7])
         return unc_metric_list
 
     @property
@@ -238,14 +250,15 @@ class UncOutput():
         Returns
         -------
         sens_metric_list : [str]
-            List of names of attributes containing metrics sensitivity values
+            List of names of attributes containing metrics sensitivity values,
+            without the trailing '_sens_df'
 
         """
         sens_metric_list = []
         for attr_name, attr_value in self.__dict__.items():
             if isinstance(attr_value, pd.DataFrame):
-                if not attr_value.empty and 'sens' in attr_name:
-                    sens_metric_list.append(attr_name)
+                if not attr_value.empty and attr_name.endswith("_sens_df"):
+                    sens_metric_list.append(attr_name[:-8])
         return sens_metric_list
 
     def get_uncertainty(self, metric_list=None):
@@ -268,12 +281,12 @@ class UncOutput():
         --------
         uncertainty_metrics: list of all available uncertainty metrics
 
-        """
+        """    
         if metric_list is None:
             metric_list = self.uncertainty_metrics
         try:
             unc_df = pd.concat(
-                [getattr(self, metric) for metric in metric_list],
+                [self.get_unc_df(metric) for metric in metric_list],
                 axis=1
                 )
         except AttributeError:
@@ -311,13 +324,11 @@ class UncOutput():
         """
         df_all = pd.DataFrame([])
         df_meta = pd.DataFrame([])
+    
         if metric_list is None:
             metric_list = self.sensitivity_metrics
         for metric in metric_list:
-            try:
-                submetric_df = getattr(self, metric)
-            except AttributeError:
-                continue
+            submetric_df = self.get_sens_df(metric)
             if not submetric_df.empty:
                 submetric_df = submetric_df[submetric_df['si'] == salib_si]
                 df_all = pd.concat(
@@ -550,9 +561,9 @@ class UncOutput():
 
         ax = axes[1]
 
-        high = self.get_uncertainty(['freq_curve_unc_df']).quantile(0.95)
-        middle = self.get_uncertainty(['freq_curve_unc_df']).quantile(0.5)
-        low = self.get_uncertainty(['freq_curve_unc_df']).quantile(0.05)
+        high = self.get_unc_df('freq_curve').quantile(0.95)
+        middle = self.get_unc_df('freq_curve').quantile(0.5)
+        low = self.get_unc_df('freq_curve').quantile(0.05)
 
         x = [float(rp[2:]) for rp in middle.keys()]
         ax.plot(x, high.values, linestyle='--', color = 'blue', alpha=0.5)
@@ -837,7 +848,7 @@ class UncOutput():
         """
 
         try:
-            si_eai_df = self.get_sensitivity(salib_si, ['eai_exp_sens_df']).select_dtypes('number')
+            si_eai_df = self.get_sensitivity(salib_si, ['eai_exp']).select_dtypes('number')
             eai_max_si_idx = si_eai_df.idxmax().to_numpy()
         except KeyError as verr:
             raise ValueError("No sensitivity indices found for"
@@ -973,8 +984,8 @@ class UncOutput():
 class UncImpactOutput(UncOutput):
     """Extension of UncOutput specific for CalcImpact, returned by the  uncertainty() method.
     """
-    def __init__(self, samples_df, aai_agg_unc_df, freq_curve_unc_df, eai_exp_unc_df,
-                 at_event_unc_df, tot_value_unc_df, unit):
+    def __init__(self, samples_df, unit, aai_agg_unc_df, freq_curve_unc_df, eai_exp_unc_df,
+                 at_event_unc_df, tot_value_unc_df):
         """Constructor
 
         Uncertainty output values from impact.calc for each sample
@@ -1003,10 +1014,15 @@ class UncImpactOutput(UncOutput):
         """
         super().__init__(samples_df, unit)
         self.aai_agg_unc_df = aai_agg_unc_df
+        self.aai_agg_sens_df = None
         self.freq_curve_unc_df = freq_curve_unc_df
+        self.freq_curve_sens_df = None
         self.eai_exp_unc_df = eai_exp_unc_df
+        self.eai_exp_sens_df = None
         self.at_event_unc_df = at_event_unc_df
+        self.at_event_sens_df = None
         self.tot_value_unc_df = tot_value_unc_df
+        self.tot_value_sens_df = None
 
 
 class UncCostBenefitOutput(UncOutput):
@@ -1047,8 +1063,13 @@ class UncCostBenefitOutput(UncOutput):
         """
         super().__init__(samples_df, unit)
         self.imp_meas_present_unc_df= imp_meas_present_unc_df
+        self.imp_meas_present_sens_df = None
         self.imp_meas_future_unc_df= imp_meas_future_unc_df
+        self.imp_meas_future_sens_df = None
         self.tot_climate_risk_unc_df = tot_climate_risk_unc_df
+        self.tot_climate_risk_sens_df = None
         self.benefit_unc_df = benefit_unc_df
+        self.benefit_sens_df = None
         self.cost_ben_ratio_unc_df = cost_ben_ratio_unc_df
+        self.cost_ben_ratio_sens_df = None
         self.cost_benefit_kwargs = cost_benefit_kwargs
