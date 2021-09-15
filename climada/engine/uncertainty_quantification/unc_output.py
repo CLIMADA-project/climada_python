@@ -324,7 +324,7 @@ class UncOutput():
         """
         df_all = pd.DataFrame([])
         df_meta = pd.DataFrame([])
-    
+
         if metric_list is None:
             metric_list = self.sensitivity_metrics
         for metric in metric_list:
