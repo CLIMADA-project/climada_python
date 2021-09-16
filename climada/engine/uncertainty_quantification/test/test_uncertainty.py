@@ -101,6 +101,35 @@ def ent_fut_dem():
     entity.check()
     return entity
 
+def make_costben_iv():
+
+    entdem = ent_dem()
+    ent_iv = InputVar.ent(
+        impf_set = entdem.impact_funcs,
+        disc_rate = entdem.disc_rates,
+        exp = entdem.exposures,
+        meas_set = entdem.measures,
+        bounds_noise=[0.3, 1.9],
+        bounds_cost=[0.5, 1.5],
+        bounds_impfi=[-2, 5],
+        haz_type='TC',
+        fun_id=1
+        )
+
+    entfutdem = ent_fut_dem()
+    entfut_iv = InputVar.entfut(
+        impf_set = entfutdem.impact_funcs,
+        exp = entfutdem.exposures,
+        meas_set = entfutdem.measures,
+        bounds_eg=[0.8, 1.5],
+        bounds_mdd=[0.7, 0.9],
+        bounds_paa=[1.3, 2],
+        haz_type='TC',
+        fun_id=1
+        )
+
+    return ent_iv, entfut_iv
+
 
 class TestInputVar(unittest.TestCase):
     """ Test UncVar class """
@@ -477,6 +506,291 @@ class TestCalcImpact(unittest.TestCase):
                     self.assertEqual(len(attr),
                                      len(unc_data.param_labels) * 4
                                      )
+
+class TestCalcCostBenefit(unittest.TestCase):
+    """Test the calcluate impact uncertainty class"""
+
+    def test_init_pass(self):
+        """Test initiliazation uncertainty"""
+
+        ent_iv, ent_fut_iv = make_costben_iv()
+        _, _, haz_iv = make_input_vars()
+
+        unc_calc = CalcCostBenefit(haz_iv, ent_iv)
+
+        self.assertTupleEqual(
+            unc_calc.input_var_names,
+            ('haz_input_var', 'ent_input_var',
+              'haz_fut_input_var', 'ent_fut_input_var')
+            )
+        self.assertTupleEqual(
+            unc_calc.metric_names,
+            ('tot_climate_risk', 'benefit', 'cost_ben_ratio',
+            'imp_meas_present', 'imp_meas_future')
+            )
+        self.assertEqual(unc_calc.value_unit, ent_dem().exposures.value_unit)
+        self.assertTrue(
+            unc_calc.ent_input_var.evaluate(CO=None, IFi=None, EN=None).exposures.gdf.equals(
+                ent_dem().exposures.gdf)
+            )
+
+        haz1 = unc_calc.haz_input_var.evaluate(x_haz=1)
+        haz2 = haz_dem(1)
+        self.assertListEqual(
+            haz1.event_name, haz2.event_name
+            )
+
+        unc_calc = CalcCostBenefit(haz_iv, ent_iv, haz_iv, ent_fut_iv)
+
+        self.assertTupleEqual(
+            unc_calc.input_var_names,
+            ('haz_input_var', 'ent_input_var',
+              'haz_fut_input_var', 'ent_fut_input_var')
+            )
+        self.assertTupleEqual(
+            unc_calc.metric_names,
+            ('tot_climate_risk', 'benefit', 'cost_ben_ratio',
+            'imp_meas_present', 'imp_meas_future')
+            )
+        self.assertEqual(unc_calc.value_unit, ent_dem().exposures.value_unit)
+        self.assertTrue(
+            unc_calc.ent_input_var.evaluate(CO=None, IFi=None, EN=None).exposures.gdf.equals(
+                ent_dem().exposures.gdf)
+            )
+        self.assertTrue(
+            unc_calc.ent_fut_input_var.evaluate(EG=None, MDD=None, PAA=None).exposures.gdf.equals(
+                ent_fut_dem().exposures.gdf)
+            )
+
+        haz1 = unc_calc.haz_input_var.evaluate(x_haz=1)
+        haz2 = haz_dem(1)
+        self.assertListEqual(
+            haz1.event_name, haz2.event_name
+            )
+
+        haz3 = unc_calc.haz_fut_input_var.evaluate(x_haz=1)
+        self.assertListEqual(
+            haz3.event_name, haz2.event_name
+            )
+
+    def test_make_sample_pass(self):
+        """Test generate sample"""
+
+        ent_iv, ent_fut_iv = make_costben_iv()
+        _, _, haz_iv = make_input_vars()
+
+        unc_calc = CalcCostBenefit(haz_iv, ent_iv)
+
+        #default sampling saltelli
+        unc_data = unc_calc.make_sample(N=2, sampling_kwargs = {'calc_second_order': True})
+        self.assertEqual(unc_data.n_samples, 2*(2*4+2)) # N * (2 * D + 2)
+        self.assertTrue(isinstance(unc_data.samples_df, pd.DataFrame))
+        np.testing.assert_array_equal(
+            unc_data.samples_df.columns.values,
+            np.array(['x_haz', 'EN', 'IFi', 'CO'])
+            )
+
+        # #latin sampling
+        unc_data = unc_calc.make_sample(N=1, sampling_method='latin',
+                        sampling_kwargs = {'seed': 11245})
+        self.assertEqual(unc_data.n_samples, 1)
+        self.assertTrue(isinstance(unc_data.samples_df, pd.DataFrame))
+        np.testing.assert_array_equal(
+            unc_data.samples_df.columns.values,
+            np.array(['x_haz', 'EN', 'IFi', 'CO'])
+            )
+
+
+        unc_calc = CalcCostBenefit(haz_iv, ent_iv, haz_iv, ent_fut_iv)
+
+        #default sampling saltelli
+        unc_data = unc_calc.make_sample(N=2, sampling_kwargs = {'calc_second_order': True})
+        self.assertEqual(unc_data.n_samples, 2*(2*7+2)) # N * (2 * D + 2)
+        self.assertTrue(isinstance(unc_data.samples_df, pd.DataFrame))
+        np.testing.assert_array_equal(
+            unc_data.samples_df.columns.values,
+            np.array(['x_haz', 'EN', 'IFi', 'CO', 'EG', 'PAA', 'MDD'])
+            )
+
+        # #latin sampling
+        unc_data = unc_calc.make_sample(N=1, sampling_method='latin',
+                        sampling_kwargs = {'seed': 11245})
+        self.assertEqual(unc_data.n_samples, 1)
+        self.assertTrue(isinstance(unc_data.samples_df, pd.DataFrame))
+        np.testing.assert_array_equal(
+            unc_data.samples_df.columns.values,
+            np.array(['x_haz', 'EN', 'IFi', 'CO', 'EG', 'PAA', 'MDD'])
+            )
+
+
+    def test_calc_uncertainty_pass(self):
+        """Test compute the uncertainty distribution for an impact"""
+
+        ent_iv, ent_fut_iv = make_costben_iv()
+        _, _, haz_iv = make_input_vars()
+        unc_calc = CalcCostBenefit(haz_iv, ent_iv)
+        unc_data = unc_calc.make_sample( N=2)
+        unc_data = unc_calc.uncertainty(unc_data)
+
+        self.assertEqual(unc_data.unit, ent_dem().exposures.value_unit)
+
+        self.assertEqual(
+            unc_data.tot_climate_risk_unc_df.size,
+            unc_data.n_samples
+            )
+        self.assertEqual(
+            unc_data.cost_ben_ratio_unc_df.size,
+            unc_data.n_samples * 4 #number of measures
+            )
+        self.assertEqual(
+            unc_data.imp_meas_present_unc_df.size,
+            0
+            )
+        self.assertEqual(
+            unc_data.imp_meas_future_unc_df.size,
+            unc_data.n_samples * 4 * 5 #All measures 4 and risks/benefits 5
+            )
+
+        unc_calc = CalcCostBenefit(haz_iv, ent_iv, haz_iv, ent_fut_iv)
+        unc_data = unc_calc.make_sample( N=2)
+        unc_data = unc_calc.uncertainty(unc_data)
+
+        self.assertEqual(unc_data.unit, ent_dem().exposures.value_unit)
+
+        self.assertEqual(
+            unc_data.tot_climate_risk_unc_df.size,
+            unc_data.n_samples
+            )
+        self.assertEqual(
+            unc_data.cost_ben_ratio_unc_df.size,
+            unc_data.n_samples * 4 #number of measures
+            )
+        self.assertEqual(
+            unc_data.imp_meas_present_unc_df.size,
+            unc_data.n_samples * 4 * 5 #All measures 4 and risks/benefits 5
+            )
+        self.assertEqual(
+            unc_data.imp_meas_future_unc_df.size,
+            unc_data.n_samples * 4 * 5 #All measures 4 and risks/benefits 5
+            )
+
+    def test_calc_uncertainty_pool_pass(self):
+        """Test compute the uncertainty distribution for an impact"""
+
+        ent_iv, ent_fut_iv = make_costben_iv()
+        _, _, haz_iv = make_input_vars()
+        unc_calc = CalcCostBenefit(haz_iv, ent_iv)
+        unc_data = unc_calc.make_sample( N=2)
+
+        pool = Pool(n=2)
+        unc_data = unc_calc.uncertainty(unc_data, pool=pool)
+        pool.close()
+        pool.join()
+        pool.clear()
+
+        self.assertEqual(unc_data.unit, ent_dem().exposures.value_unit)
+
+        self.assertEqual(
+            unc_data.tot_climate_risk_unc_df.size,
+            unc_data.n_samples
+            )
+        self.assertEqual(
+            unc_data.cost_ben_ratio_unc_df.size,
+            unc_data.n_samples * 4 #number of measures
+            )
+        self.assertEqual(
+            unc_data.imp_meas_present_unc_df.size,
+            0
+            )
+        self.assertEqual(
+            unc_data.imp_meas_future_unc_df.size,
+            unc_data.n_samples * 4 * 5 #All measures 4 and risks/benefits 5
+            )
+
+    def test_calc_sensitivity_pass(self):
+        """Test compute sensitivity default"""
+
+        ent_iv, ent_fut_iv = make_costben_iv()
+        _, _, haz_iv = make_input_vars()
+        unc_calc = CalcCostBenefit(haz_iv, ent_iv)
+        unc_data = unc_calc.make_sample(N=4, sampling_kwargs={'calc_second_order': True})
+        unc_data = unc_calc.uncertainty(unc_data)
+
+        unc_data = unc_calc.sensitivity(
+            unc_data,
+            sensitivity_kwargs = {'calc_second_order': True}
+            )
+
+        self.assertEqual(unc_data.sensitivity_method, 'sobol')
+        self.assertTupleEqual(unc_data.sensitivity_kwargs,
+                              tuple({'calc_second_order': 'True'}.items())
+                              )
+
+        for name, attr in unc_data.__dict__.items():
+            if 'sens_df' in name:
+                if 'imp_meas_present' in name:
+                    self.assertTrue(attr.empty)
+                else:
+                    np.testing.assert_array_equal(
+                        attr.param.unique(),
+                        np.array(['x_haz', 'EN', 'IFi', 'CO'])
+                        )
+
+                    np.testing.assert_array_equal(
+                        attr.si.unique(),
+                        np.array(['S1', 'S1_conf', 'ST', 'ST_conf', 'S2', 'S2_conf'])
+                        )
+
+                    self.assertEqual(len(attr),
+                                      len(unc_data.param_labels) * (4 + 4 + 4)
+                                      )
+
+    # def test_calc_sensitivity_morris_pass(self):
+    #     """Test compute sensitivity default"""
+
+    #     exp_unc, impf_unc, _ = make_input_vars()
+    #     haz = haz_dem()
+    #     unc_calc = CalcImpact(exp_unc, impf_unc, haz)
+    #     unc_data = unc_calc.make_sample(N=4,
+    #                           sampling_method='latin')
+    #     unc_data = unc_calc.uncertainty(unc_data, calc_eai_exp=True,
+    #                               calc_at_event=True)
+
+    #     unc_data = unc_calc.sensitivity(
+    #         unc_data,
+    #         sensitivity_method = 'morris'
+    #         )
+
+    #     self.assertEqual(unc_data.sensitivity_method, 'morris')
+    #     self.assertTupleEqual(unc_data.sensitivity_kwargs,
+    #                           tuple({}.items())
+    #                           )
+
+    #     for name, attr in unc_data.__dict__.items():
+    #         if 'sens_df' in name:
+    #             np.testing.assert_array_equal(
+    #                 attr.param.unique(),
+    #                 np.array(['x_exp', 'x_paa', 'x_mdd'])
+    #                 )
+    #             np.testing.assert_array_equal(
+    #                 attr.si.unique(),
+    #                 np.array(['mu', 'mu_star', 'sigma', 'mu_star_conf'])
+    #                 )
+    #             if 'eai' in name:
+    #                 self.assertEqual(
+    #                     attr.size,
+    #                     len(unc_data.param_labels)*4*(len(exp_unc.evaluate().gdf) + 3)
+    #                     )
+    #             elif 'at_event' in name:
+    #                 self.assertEqual(
+    #                     attr.size,
+    #                     len(unc_data.param_labels) * 4 * (haz.size + 3)
+    #                     )
+    #             else:
+    #                 self.assertEqual(len(attr),
+    #                                   len(unc_data.param_labels) * 4
+
+
 
 
     # def test_calc_cb(self):
@@ -1138,5 +1452,5 @@ if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestInputVar)
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestOutput))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCalcImpact))
-    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestUncCostBenefit))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCalcCostBenefit))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
