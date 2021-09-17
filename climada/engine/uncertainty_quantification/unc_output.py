@@ -432,6 +432,10 @@ class UncOutput():
 
         unc_df = self.get_uncertainty(metric_list)
 
+        if unc_df.empty:
+            raise AttributeError(f"The listed metrics {metric_list} either "
+                 "do not exist or have no uncertainty values.")
+
         if log:
             unc_df_plt = unc_df.apply(np.log10).copy()
             unc_df_plt = unc_df_plt.replace([np.inf, -np.inf], np.nan)
