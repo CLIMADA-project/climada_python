@@ -281,7 +281,7 @@ class UncOutput():
         --------
         uncertainty_metrics: list of all available uncertainty metrics
 
-        """    
+        """
         if metric_list is None:
             metric_list = self.uncertainty_metrics
         try:
@@ -389,7 +389,7 @@ class UncOutput():
 
         return axes
 
-    def plot_uncertainty(self, metric_list=None, figsize=None,
+    def plot_uncertainty(self, metric_list=None, orig_list=None, figsize=None,
                          log=False, axes=None):
         """
         Plot the  uncertainty distribution
@@ -402,6 +402,10 @@ class UncOutput():
         ----------
         metric_list : list[str], optional
             List of metrics to plot the distribution.
+            The default is None.
+        orig_list : list[float], optional
+            List of the original (without uncertainty) values for each
+            sub-metric of the mtrics in metric_list. The ordering is identical.
             The default is None.
         figsize : tuple(int or float, int or float), optional
             The figsize argument of matplotlib.pyplot.subplots()
@@ -433,6 +437,9 @@ class UncOutput():
         if not self.uncertainty_metrics:
             raise ValueError("No uncertainty data present for these metrics. "+
                     "Please run an uncertainty analysis first.")
+
+        if orig_list is None:
+            orig_list = []
 
         if metric_list is None:
             metric_list = [
@@ -467,7 +474,11 @@ class UncOutput():
         else:
             flat_axes = np.array([axes])
 
-        for ax, col in zip(flat_axes, cols):
+        for ax, col, orig_val in zip_longest(flat_axes, cols, orig_list, fillvalue=None):
+            if col is None:
+                if ax is not None:
+                    ax.remove()
+                continue
             data = unc_df_plt[col]
             if data.empty:
                 ax.remove()
@@ -486,6 +497,13 @@ class UncOutput():
                 avg_plot = avg
             ax.axvline(avg_plot, color='darkorange', linestyle='dashed', linewidth=2,
                     label="avg=%.2f%s" %u_vtm(avg))
+            if orig_val is not None:
+                if log:
+                    orig_plot = np.log10(orig_val)
+                else:
+                    orig_plot = orig_val
+                ax.axvline(orig_plot, color='green', linestyle='dotted', linewidth=2,
+                 label="orig=%.2f%s" %u_vtm(orig_plot));
             if log:
                 std_m, std_p = np.log10(avg - std), np.log10(avg + std)
             else:
@@ -498,12 +516,13 @@ class UncOutput():
                 ax.set_xlabel('value [log10]')
             else:
                 ax.set_xlabel('value')
-            ax.set_ylabel('density of events')
+            ax.set_ylabel('density of samples')
             ax.legend(fontsize=fontsize-2)
 
             ax.tick_params(labelsize=fontsize)
             for item in [ax.title, ax.xaxis.label, ax.yaxis.label]:
                 item.set_fontsize(fontsize)
+            ax.set_xlim([data.min(), data.max()])
         plt.tight_layout()
 
         return axes
@@ -550,7 +569,7 @@ class UncOutput():
         ax = axes[0]
 
         for n, (_name, values) in enumerate(unc_df.iteritems()):
-            count, division = np.histogram(values, bins=10)
+            count, division = np.histogram(values, bins=100)
             count = count / count.max()
             losses = [(bin_i + bin_f )/2 for (bin_i, bin_f) in zip(division[:-1], division[1:])]
             ax.plot([min_l, max_l], [2*n, 2*n], color='k', alpha=0.5)
