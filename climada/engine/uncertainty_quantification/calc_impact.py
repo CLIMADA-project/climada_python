@@ -206,10 +206,12 @@ class CalcImpact(Calc):
         freq_curve_unc_df = pd.DataFrame(freq_curve_list,
                                     columns=['rp' + str(n) for n in rp])
         df_eai_exp =  pd.DataFrame(eai_exp_list)
+        # Setting to sparse dataframes is not compatible with .to_hdf5
         # if np.count_nonzero(df_eai_exp.to_numpy()) / df_eai_exp.size < 0.5:
         #     df_eai_exp = df_eai_exp.astype(pd.SparseDtype("float", 0.0))
         eai_exp_unc_df = df_eai_exp
         df_at_event = pd.DataFrame(at_event_list)
+        # Setting to sparse dataframes is not compatible with .to_hdf5
         # if np.count_nonzero(df_at_event.to_numpy()) / df_at_event.size < 0.5:
         #     df_at_event = df_at_event.astype(pd.SparseDtype("float", 0.0))
         at_event_unc_df = df_at_event
