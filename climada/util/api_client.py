@@ -74,6 +74,7 @@ class DataTypeInfo():
     data_type:str
     data_type_group:str
     description:str
+    properties:list = None
 
 
 @dataclass
