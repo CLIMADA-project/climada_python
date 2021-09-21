@@ -169,7 +169,7 @@ class LitPop(Exposures):
             raise ValueError('No valid country identified in %s, aborting.' % countries)
         litpop_list = [exp for exp in litpop_list if exp is not None]
         if countries_out:
-            LOGGER.warning('Some countries could not be identified and are ignored: ' +
+            LOGGER.warning('Some countries could not be identified and are ignored: '
                            '%s. Litpop only initiated for: %s', countries_out, countries_in)
 
         tag.description = f'LitPop Exposure for {countries_in} at {res_arcsec} as, ' \
@@ -920,7 +920,7 @@ def gridpoints_core_calc(data_arrays, offsets=None, exponents=None,
     # check integrity of data_array input (length and type):
     try:
         data_arrays = [np.array(data) for data in data_arrays]
-        if len(list(set([data.shape for data in data_arrays]))) > 1:
+        if len(list({data.shape for data in data_arrays})) > 1:
             raise ValueError("Elements in data_arrays don't agree in shape.")
     except AttributeError as err:
         raise TypeError("data_arrays or contained elements have wrong type.") from err
