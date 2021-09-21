@@ -212,12 +212,14 @@ class LitPop(Exposures):
             self.meta = {'crs': self.crs}
         self.check()
 
-    def set_nightlights(self, countries=None, shape=None, res_arcsec=15,
+    def set_nightlight_intensity(self, countries=None, shape=None, res_arcsec=15,
                         reference_year=DEF_REF_YEAR, data_dir=SYSTEM_DIR):
         """
         Wrapper around `set_countries` / `set_custom_shape`.
 
-        Initiate exposures instance with value equal to nightlight intensity.
+        Initiate exposures instance with value equal to the original BlackMarble
+        nightlight intensity resampled to the target resolution `res_arcsec`.
+
         Provide either `countries` or `shape`.
 
         Parameters

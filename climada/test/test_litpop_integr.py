@@ -195,7 +195,7 @@ class TestLitPopExposure(unittest.TestCase):
         country_name = 'Liechtenstein'
         ref_year = 2016
         ent = lp.LitPop()
-        ent.set_nightlights(country_name, reference_year=ref_year)
+        ent.set_nightlight_intensity(country_name, reference_year=ref_year)
 
         self.assertEqual(ent.gdf.value.sum(), 36469.0)
         self.assertEqual(ent.gdf.region_id[1], 438)
