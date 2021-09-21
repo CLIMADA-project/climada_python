@@ -691,7 +691,7 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
         gdf['region_id'] = region_id
     else:
         gdf['region_id'] = u_coord.get_country_code(gdf.latitude, gdf.longitude)
-    # remove entries outside polygon and return:
+    # remove entries outside polygon with `dropna` and return GeoDataFrame:
     return gdf.dropna(), meta_out
 
 def get_value_unit(fin_mode):
