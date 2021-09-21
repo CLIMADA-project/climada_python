@@ -126,24 +126,6 @@ class TestLitPopExposure(unittest.TestCase):
                          np.around(comparison_total_val*1e-9, 0), places=0)
         self.assertEqual(ent.value_unit, 'USD')
 
-
-    def test_switzerland300_reproject_first_false_pass(self):
-        """Create LitPop entity for Switzerland 2013 for produced capital
-        and resampling after combining Lit and Pop:"""
-        country_name = ['CHE']
-        fin_mode = 'pc'
-        resolution = 300
-        ref_year = 2016
-        comparison_total_val = world_bank_wealth_account(country_name[0],
-                                                         ref_year, no_land=1)[1]
-        ent = lp.LitPop()
-        ent.set_countries(country_name, res_arcsec=resolution,
-                        reference_year=ref_year, fin_mode=fin_mode,
-                        reproject_first=False)
-
-        self.assertEqual(ent.gdf.value.sum(), comparison_total_val)
-        self.assertEqual(ent.value_unit, 'USD')
-
     def test_set_custom_shape_zurich_pass(self):
         """test initiating LitPop for custom shape (square around Zurich City)
         Distributing an imaginary total value of 1000 USD"""
@@ -241,7 +223,7 @@ class TestAdmin1(unittest.TestCase):
         resolution = 300
         country = 'CHE'
         ent = lp._calc_admin1_one_country(country, resolution, (2,1), 'pc', None,
-                 2016, lp.GPW_VERSION, SYSTEM_DIR, False)
+                 2016, lp.GPW_VERSION, SYSTEM_DIR)
 
         self.assertEqual(ent.gdf.shape[0], 699)
         self.assertEqual(ent.gdf.region_id[88], 756)

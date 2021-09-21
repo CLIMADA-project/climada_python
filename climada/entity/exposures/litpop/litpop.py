@@ -72,11 +72,10 @@ class LitPop(Exposures):
     def set_countries(self, countries, res_arcsec=30, exponents=(1,1),
                       fin_mode='pc', total_values=None, admin1_calc=False,
                       reference_year=DEF_REF_YEAR, gpw_version=GPW_VERSION,
-                      data_dir=SYSTEM_DIR, reproject_first=True):
+                      data_dir=SYSTEM_DIR):
         """init LitPop exposure object for a list of countries (admin 0).
         Sets attributes `ref_year`, `tag`, `crs`, `value`, `geometry`, `meta`,
-        `value_unit`, `exponents`,`fin_mode`, `gpw_version`, `reproject_first`,
-        and `admin1_calc`.
+        `value_unit`, `exponents`,`fin_mode`, `gpw_version`, and `admin1_calc`.
 
         Alias: set_country()
 
@@ -122,11 +121,6 @@ class LitPop(Exposures):
             The default is GPW_VERSION
         data_dir : Path, optional
             redefines path to input data directory. The default is SYSTEM_DIR.
-        reproject_first : boolean, optional
-            First reproject nightlight (Lit) and population (Pop) data to target
-            resolution before combining them as Lit^m * Pop^n?
-            The default is True. Warning: Setting this to False affects the
-            disaggregation results - expert choice only
 
         Raises
         ------
@@ -149,7 +143,7 @@ class LitPop(Exposures):
                         # GSDP data folder.
             litpop_list = [_calc_admin1_one_country(country, res_arcsec, exponents,
                                                     fin_mode, tot_value, reference_year,
-                                                    gpw_version, data_dir, reproject_first
+                                                    gpw_version, data_dir,
                                                     )
                            for tot_value, country in zip(total_values, countries)]
 
@@ -164,8 +158,7 @@ class LitPop(Exposures):
                                        total_value=total_values[idc],
                                        reference_year=reference_year,
                                        gpw_version=gpw_version,
-                                       data_dir=data_dir,
-                                       reproject_first=reproject_first)
+                                       data_dir=data_dir)
                  for idc, country in enumerate(countries)]
         # make lists of countries with Exposure initaited and those ignored:
         countries_in = \
@@ -297,8 +290,7 @@ class LitPop(Exposures):
     def set_custom_shape_from_countries (self, shape, countries, res_arcsec=30,
                                       exponents=(1,1), fin_mode='pc',
                                       admin1_calc=False, reference_year=DEF_REF_YEAR,
-                                      gpw_version=GPW_VERSION,
-                                      data_dir=SYSTEM_DIR, reproject_first=True):
+                                      gpw_version=GPW_VERSION, data_dir=SYSTEM_DIR):
         """
         create LitPop exposure for `country` and then crop to given shape.
 
@@ -340,11 +332,6 @@ class LitPop(Exposures):
             The default is GPW_VERSION
         data_dir : Path, optional
             redefines path to input data directory. The default is SYSTEM_DIR.
-        reproject_first : boolean, optional
-            First reproject nightlight (Lit) and population (Pop) data to target
-            resolution before combining them as Lit^m * Pop^n?
-            The default is True. Warning: Setting this to False affects the
-            disaggregation results - expert choice only
 
         Raises
         ------
@@ -358,15 +345,13 @@ class LitPop(Exposures):
         # init countries' exposure:
         self.set_countries(countries, res_arcsec=res_arcsec, exponents=exponents,
                            fin_mode=fin_mode, reference_year=reference_year,
-                           gpw_version=gpw_version, data_dir=data_dir,
-                           reproject_first=reproject_first)
+                           gpw_version=gpw_version, data_dir=data_dir)
 
         if isinstance(shape, Shape):
             # get gdf with geometries of points within shape:
             shape_gdf, _ = _get_litpop_single_polygon(shape, reference_year,
                                                       res_arcsec, data_dir,
-                                                      gpw_version, reproject_first,
-                                                      exponents,
+                                                      gpw_version, exponents,
                                                       )
             shape_gdf = shape_gdf.drop(
                 columns=shape_gdf.columns[shape_gdf.columns != 'geometry'])
@@ -412,14 +397,12 @@ class LitPop(Exposures):
 
     def set_custom_shape(self, shape, total_value, res_arcsec=30, exponents=(1,1),
                          value_unit='USD', reference_year=DEF_REF_YEAR,
-                         gpw_version=GPW_VERSION, data_dir=SYSTEM_DIR,
-                         reproject_first=True):
+                         gpw_version=GPW_VERSION, data_dir=SYSTEM_DIR):
         """init LitPop exposure object for a custom shape.
         Requires user input regarding the total value to be disaggregated.
 
         Sets attributes `ref_year`, `tag`, `crs`, `value`, `geometry`, `meta`,
-        `value_unit`, `exponents`,`fin_mode`, `gpw_version`, `reproject_first`,
-        and `admin1_calc`.
+        `value_unit`, `exponents`,`fin_mode`, `gpw_version`, and `admin1_calc`.
 
         This method can be used to initiated LitPop Exposure for sub-national
         regions such as states, districts, cantons, cities, ... but shapes
@@ -448,11 +431,6 @@ class LitPop(Exposures):
             The default is set in CONFIG.
         data_dir : Path, optional
             redefines path to input data directory. The default is SYSTEM_DIR.
-        reproject_first : boolean
-            First reproject nightlight (Lit) and population (Pop) data to target
-            resolution before combining them as Lit^m * Pop^n?
-            The default is True. Warning: Setting this to False affects the
-            disaggregation results.
 
         Raises
         ------
@@ -464,8 +442,7 @@ class LitPop(Exposures):
         tag = Tag()
         litpop_gdf, _ = _get_litpop_single_polygon(shape, reference_year,
                                                           res_arcsec, data_dir,
-                                                          gpw_version, reproject_first,
-                                                          exponents,
+                                                          gpw_version, exponents,
                                                           )
 
         # disaggregate total value proportional to LitPop values:
@@ -513,8 +490,7 @@ class LitPop(Exposures):
     @staticmethod
     def _set_one_country(country, res_arcsec=30, exponents=(1,1), fin_mode=None,
                          total_value=None, reference_year=DEF_REF_YEAR,
-                         gpw_version=GPW_VERSION, data_dir=SYSTEM_DIR,
-                         reproject_first=True):
+                         gpw_version=GPW_VERSION, data_dir=SYSTEM_DIR):
         """init LitPop exposure object for one single country
         See docstring of set_countries() for detailled description of parameters.
 
@@ -531,7 +507,6 @@ class LitPop(Exposures):
         gpw_version : int, optional
         data_dir : Path, optional
             redefines path to input data directory. The default is SYSTEM_DIR.
-        reproject_first : boolean
 
         Raises
         ------
@@ -566,8 +541,7 @@ class LitPop(Exposures):
             gdf_tmp, meta_tmp, = \
                 _get_litpop_single_polygon(polygon, reference_year,
                                            res_arcsec, data_dir,
-                                           gpw_version, reproject_first,
-                                           exponents,
+                                           gpw_version, exponents,
                                            verbatim=not bool(idx),
                                            region_id=iso3n
                                            )
@@ -578,6 +552,7 @@ class LitPop(Exposures):
             total_population += meta_tmp['total_population']
             litpop_gdf = litpop_gdf.append(gdf_tmp)
         litpop_gdf.crs = meta_tmp['crs']
+
         # set total value for disaggregation if not provided:
         if total_value is None and fin_mode == 'pop':
             total_value = total_population # population count is taken from pop-data.
@@ -598,11 +573,15 @@ class LitPop(Exposures):
 
     # Alias method names for backward compatibility:
     set_country = set_countries
+
 def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
-                               gpw_version, reproject_first, exponents,
-                               region_id=None, verbatim=False):
+                               gpw_version, exponents, region_id=None, verbatim=False):
     """load nightlight (nl) and population (pop) data in rastered 2d arrays
-    and apply rescaling (resolution reprojection) and LitPop core calculation.
+    and apply rescaling (resolution reprojection) and LitPop core calculation,
+    i.e. combination of nl and pop per grid cell.
+
+    NB: In this method, there is no disaggregation taking place, yet. This is
+    done in a subsequent step outside this method.
 
     Parameters
     ----------
@@ -617,11 +596,6 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
     gpw_version : int
         Version number of GPW population data.
         The default is None. If None, the default is set in gpw_population module.
-    reproject_first : boolean
-        First reproject nightlight (Lit) and population (Pop) data to target
-        resolution before combining them as Lit^m * Pop^n?
-        The default is True. Warning: Setting this to False affects the
-        disaggregation results.
     exponents : tuple of two integers
         Defining power with which lit (nightlights) and pop (gpw) go into LitPop. To get
         nightlights^3 without population count: (3, 0). To use population count alone: (0, 1).
@@ -662,27 +636,23 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
                                                  data_dir=data_dir,
                                                  dtype=float
                                                  )
-    if reproject_first: # default is True
-        # --> resampling to target res. before core calculation
-        target_res_arcsec = res_arcsec
-    else: # resolution of pop is used for first resampling (degree to arcsec)
-        target_res_arcsec = np.abs(meta_pop['transform'][0]) * 3600
 
-    # if pop unused and resolution same as lit (15 as), set grid same as lit:
-    if exponents[1]==0 and target_res_arcsec==15:
+    # if resolution is the same as for lit (15 arcsec), set grid same as lit:
+    if res_arcsec==15:
         i_align = 1
         global_origins = (meta_nl['transform'][2], # lon
                           meta_nl['transform'][5]) # lat
-    else:
+    else: # align grid for resampling to grid of population data (pop)
         i_align = 0
         global_origins=(global_transform[2],
                         global_transform[5])
-    # reproject Lit and Pop input data to same grid:
+
+    # reproject Lit and Pop input data to aligned grid with target resolution:
     try:
         [pop, nlight], meta_out = reproject_input_data([pop, nlight],
                                                   [meta_pop, meta_nl],
                                                   i_align=i_align, # pop defines grid
-                                                  target_res_arcsec=target_res_arcsec,
+                                                  target_res_arcsec=res_arcsec,
                                                   global_origins=global_origins,
                                                   )
     except ValueError as err:
@@ -693,33 +663,22 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
             return None, {'crs': meta_pop['crs']}
         raise err
 
-    # calculate Lit^m * Pop^n (but not yet disaggregating any total value to grid):
+    # calculate Lit^m * Pop^n (but not yet disaggregate any total value to grid):
     litpop_array = gridpoints_core_calc([nlight, pop],
                                         offsets=offsets,
                                         exponents=exponents,
                                         total_val_rescale=None)
-    if not reproject_first:
-        # alternative option: reproject to target resolution after core calc.:
-        try:
-            [litpop_array], meta_out = reproject_input_data([litpop_array],
-                                                       [meta_out],
-                                                       target_res_arcsec=res_arcsec,
-                                                       global_origins=global_origins,
-                                                       )
-        except ValueError as err:
-            if "height must be > 0" in err.args[0] or "width must be > 0" in err.args[0]:
-                # no grid point within shape after reprojection, None is returned.
-                LOGGER.info('No data point on destination grid within polygon.')
-                return None, {'crs': meta_pop['crs']}
-            raise err
-    # mask entries outside polygon (set to NaN):
+
+    # mask entries outside polygon (set to NaN) and set total population:
     litpop_array = u_coord.mask_raster_with_geometry(litpop_array, meta_out['transform'],
                                                      [polygon], nodata=np.nan)
     meta_out['total_population'] = total_population
 
+    # extract coordinates as meshgrid arrays:
     lon, lat = u_coord.raster_to_meshgrid(meta_out['transform'],
                                           meta_out['width'],
                                           meta_out['height'])
+    # init GeoDataFrame from data and coordinates:
     gdf = geopandas.GeoDataFrame({'value': litpop_array.flatten()}, crs=meta_out['crs'],
                                  geometry=geopandas.points_from_xy(
                                      np.round_(lon.flatten(), decimals = 8, out = None),
@@ -728,7 +687,7 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
                                  )
     gdf['latitude'] = np.round_(lat.flatten(), decimals = 8, out = None)
     gdf['longitude'] = np.round_(lon.flatten(), decimals = 8, out = None)
-    if region_id is not None:
+    if region_id is not None: # set region_id
         gdf['region_id'] = region_id
     else:
         gdf['region_id'] = u_coord.get_country_code(gdf.latitude, gdf.longitude)
@@ -1092,7 +1051,7 @@ def _grp_read(country_iso3, admin1_info=None, data_dir=SYSTEM_DIR):
     return None
 
 def _calc_admin1_one_country(country, res_arcsec, exponents, fin_mode, total_value,
-                 reference_year, gpw_version, data_dir, reproject_first):
+                 reference_year, gpw_version, data_dir):
     """
     Calculates the LitPop on admin1 level for provinces/states where such information are
     available (i.e. GDP is distributed on a subnational instead of a national level). Requires
@@ -1114,7 +1073,6 @@ def _calc_admin1_one_country(country, res_arcsec, exponents, fin_mode, total_val
     reference_year : int
     gpw_version: int
     data_dir : Path
-    reproject_first : bool
 
     Returns
     -------
@@ -1160,8 +1118,7 @@ def _calc_admin1_one_country(country, res_arcsec, exponents, fin_mode, total_val
                                       exponents=exponents,
                                       reference_year=reference_year,
                                       gpw_version=gpw_version,
-                                      data_dir=data_dir,
-                                      reproject_first=reproject_first)
+                                      data_dir=data_dir)
         exp_list[-1].gdf['admin1'] = record['name']
 
     return Exposures.concat(exp_list)
