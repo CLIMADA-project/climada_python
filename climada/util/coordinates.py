@@ -1482,10 +1482,12 @@ def read_raster(file_name, band=None, src_crs=None, window=None, geometry=None,
 
     return dst_meta, intensity.reshape(dst_shape)
 
-def read_raster_bounds(path, bounds, res=None, bands=None):
+def read_raster_bounds(path, bounds, res=None, bands=None, resampling=None, global_origin=None):
     """Read raster file within given bounds and refine to given resolution
 
-    Makes sure that the extent of pixel centers covers the specified regions
+    The procedure makes sure that the extent of pixel centers covers the specified region.
+
+    The axis orientations (e.g. north to south, west to east) of the input data set are preserved.
 
     Parameters
     ----------
@@ -1493,10 +1495,18 @@ def read_raster_bounds(path, bounds, res=None, bands=None):
         Path to raster file to open with rasterio.
     bounds : tuple
         (xmin, ymin, xmax, ymax)
-    res : float, optional
-        Resolution of output. Default: Resolution of input raster file.
+    res : float or pair of floats, optional
+        Resolution of output. Note that the orientation (sign) of these is overwritten by the input
+        data set's axis orientations (e.g. north to south, west to east)
+        Default: Resolution of input raster file.
     bands : list of int, optional
         Bands to read from the input raster file. Default: [1]
+    resampling : int, rasterio.enums.Resampling or str, optional
+        Resampling method to use. String values like `"nearest"` or `"bilinear"` are resolved to
+        attributes of `rasterio.enums.Resampling. Default: `rasterio.enums.Resampling.nearest`
+    global_origin : pair of floats, optional
+        If given, align the output raster to a global reference raster with this origin.
+        By default, the data set's origin (according to it's transform) is used.
 
     Returns
     -------
@@ -1506,11 +1516,14 @@ def read_raster_bounds(path, bounds, res=None, bands=None):
     transform : rasterio.Affine
         Affine transformation defining the output raster data.
     """
+    if resampling is None:
+        resampling = "nearest"
+    if isinstance(resampling, str):
+        resampling = getattr(rasterio.warp.Resampling, resampling)
     if Path(path).suffix == '.gz':
         path = '/vsigzip/' + str(path)
     if not bands:
         bands = [1]
-    resampling = rasterio.warp.Resampling.bilinear
     with rasterio.open(path, 'r') as src:
         if res:
             if not isinstance(res, tuple):
@@ -1519,20 +1532,16 @@ def read_raster_bounds(path, bounds, res=None, bands=None):
             res = (src.transform[0], src.transform[4])
         res = (np.abs(res[0]), np.abs(res[1]))
 
-        width, height = bounds[2] - bounds[0], bounds[3] - bounds[1]
-        shape = (int(np.ceil(height / res[1]) + 1),
-                 int(np.ceil(width / res[0]) + 1))
+        # make sure that the extent of pixel centers covers the specified region
+        bounds = (bounds[0] - res[0], bounds[1] - res[1], bounds[2] + res[0], bounds[3] + res[1])
 
-        # make sure that the extent of pixel centers covers the specified regions
-        extra = (0.5 * ((shape[1] - 1) * res[0] - width),
-                 0.5 * ((shape[0] - 1) * res[1] - height))
-        bounds = (bounds[0] - extra[0] - 0.5 * res[0], bounds[1] - extra[1] - 0.5 * res[1],
-                  bounds[2] + extra[0] + 0.5 * res[0], bounds[3] + extra[1] + 0.5 * res[1])
+        if global_origin is None:
+            global_origin = (src.transform[2], src.transform[5])
+        res = (np.sign(src.transform[0]) * res[0], np.sign(src.transform[4]) * res[1])
+        global_transform = rasterio.transform.from_origin(*global_origin, res[0], -res[1])
+        transform, shape = subraster_from_bounds(global_transform, bounds)
 
         data = np.zeros((len(bands),) + shape, dtype=src.dtypes[0])
-        res = (np.sign(src.transform[0]) * res[0], np.sign(src.transform[4]) * res[1])
-        transform = rasterio.Affine(res[0], 0, bounds[0] if res[0] > 0 else bounds[2],
-                                    0, res[1], bounds[1] if res[1] > 0 else bounds[3])
         crs = DEF_CRS if src.crs is None else src.crs
         for iband, band in enumerate(bands):
             rasterio.warp.reproject(
@@ -1843,6 +1852,9 @@ def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, crs=DEF
 def subraster_from_bounds(transform, bounds):
     """Compute a subraster definition from a given reference transform and bounds.
 
+    The axis orientations (sign of resolution step sizes) in `transform` are not required to be
+    north to south and west to east. The given orientation is preserved in the result.
+
     Parameters
     ----------
     transform : rasterio.Affine
@@ -1853,10 +1865,15 @@ def subraster_from_bounds(transform, bounds):
     Returns
     -------
     dst_transform : rasterio.Affine
-        Subraster affine transformation.
+        Subraster affine transformation. The axis orientations of the input transform (e.g. north
+        to south, west to east) are preserved.
     dst_shape : tuple of ints (height, width)
         Number of pixels of subraster in vertical and horizontal direction.
     """
+    if np.sign(transform[0]) != np.sign(bounds[2] - bounds[0]):
+        bounds = (bounds[2], bounds[1], bounds[0], bounds[3])
+    if np.sign(transform[4]) != np.sign(bounds[1] - bounds[3]):
+        bounds = (bounds[0], bounds[3], bounds[2], bounds[1])
     window = rasterio.windows.from_bounds(*bounds, transform)
 
     # align the window bounds to the raster by rounding
@@ -1928,6 +1945,8 @@ def align_raster_data(source, src_crs, src_transform, dst_crs=None, dst_resoluti
         dst_resolution = (np.abs(src_transform[0]), np.abs(src_transform[4]))
     if np.isscalar(dst_resolution):
         dst_resolution = (dst_resolution, dst_resolution)
+    if resampling is None:
+        resampling = "nearest"
     if isinstance(resampling, str):
         resampling = getattr(rasterio.warp.Resampling, resampling)
 
