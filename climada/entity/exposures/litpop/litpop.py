@@ -244,8 +244,8 @@ class LitPop(Exposures):
                                   gpw_version=GPW_VERSION, data_dir=SYSTEM_DIR)
         LOGGER.warning("Note: set_nightlight_intensity sets values to raw nightlight intensity, "
                        "not to USD. "
-                       "To disaggregate asset value proportionally to nightlights, "
-                       "call set_countries or set_custom_shape with exponents=(N,0).")
+                       "To disaggregate asset value proportionally to nightlights^m, "
+                       "call set_countries or set_custom_shape with exponents=(m,0).")
 
     def set_population(self, countries=None, shape=None, res_arcsec=30,
                        reference_year=DEF_REF_YEAR, gpw_version=GPW_VERSION,
