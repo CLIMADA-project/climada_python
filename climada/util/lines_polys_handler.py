@@ -19,7 +19,6 @@ import pandas as pd
 import numpy as np
 import logging
 from shapely.ops import unary_union
-from climada.entity.exposures import litpop as lp
 
 LOGGER = logging.getLogger(__name__)
 
@@ -103,6 +102,7 @@ def disaggregate_cnstly(gdf_interpol):
     return gdf_interpol
 
 def disaggregate_litpop(gdf_interpol, gdf_shapes, countries):
+
     """
     disaggregate the values of an interpolated exposure gdf
     according to the litpop values contained within the initial shapes
@@ -115,18 +115,23 @@ def disaggregate_litpop(gdf_interpol, gdf_shapes, countries):
     
     
     """
-    
-    # LitPop Exposure for the original shapeas
+    # TODO. hotfix for current circular import exp.base <-> exp.litpop if put on top of module 
+    from climada.entity.exposures import litpop as lp
     exp = lp.LitPop()
-    exp.set_custom_shape_from_countries(gdf_shapes.geometry, countries, 
-                                        res_arcsec=30, reference_year=2020)
+    # TODO: Don't hard-code kwargs for exposure!
+    exp.set_countries(countries,res_arcsec=30, reference_year=2015) 
     
+    # extract LitPop asset values for each shape
+    shape_values = []
+    for shape in gdf_shapes.geometry:
+        shape_values.append(
+            exp.gdf.loc[exp.gdf.geometry.within(shape)].value.values.sum())
+            
     # evenly spread value per shape onto interpolated points
     group = gdf_interpol.groupby(axis=0, level=0)
-    val_per_point = exp.gdf.values/group.count().iloc[:,0]
-    
+    val_per_point = shape_values/group.count().iloc[:,0]   
     for ix, val in zip(np.unique(gdf_interpol.index.get_level_values(0)),
-                       val_per_point):
+                        val_per_point):
         gdf_interpol.at[ix, 'value']= val
 
     return gdf_interpol

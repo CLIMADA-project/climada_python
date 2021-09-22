@@ -484,7 +484,8 @@ class Exposures():
             
         self.set_lat_lon()
         
-    def set_from_polygons(self, gdf_polys, m2_per_point, disagg_values=None):
+    def set_from_polygons(self, gdf_polys, m2_per_point, disagg_values=None,
+                          countries=None):
         
         self.gdf = u_coord.interpolate_polygons(gdf_polys, m2_per_point)
         
@@ -495,7 +496,8 @@ class Exposures():
         # TODO: cf. tutorial implementation - divide polygon value proportional 
         # to litpop output
         elif disagg_values=='litpop':
-           self.gdf = u_lp_handler.disaggregate_litpop(self.gdf, gdf_polys)
+           self.gdf = u_lp_handler.disaggregate_litpop(
+               self.gdf, gdf_polys, countries)
         
         else:
             raise NotImplementedError
