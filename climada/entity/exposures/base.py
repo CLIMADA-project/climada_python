@@ -39,6 +39,7 @@ import climada.util.hdf5_handler as u_hdf5
 from climada.util.constants import ONE_LAT_KM, DEF_CRS, CMAP_RASTER
 import climada.util.coordinates as u_coord
 import climada.util.plot as u_plot
+import climada.util.lines_polys_handler as u_lp_handler
 from climada import CONFIG
 
 LOGGER = logging.getLogger(__name__)
@@ -474,13 +475,8 @@ class Exposures():
         self.gdf = u_coord.interpolate_lines(gdf_lines, m_per_point)
         
         # divide line values equally onto points
-        # TODO: refactor. same functionality in set_from_polygons.
         if disagg_values=='cnst':
-            group = self.gdf.groupby(axis=0, level=0)
-            val_per_point = group.value.mean()/group.count().iloc[:,0]
-            for ix, val in zip(np.unique(self.gdf.index.get_level_values(0)),
-                               val_per_point):
-                self.gdf.at[ix, 'value']= val
+            self.gdf = u_lp_handler.disaggregate_cnstly(self.gdf)
         
         # TODO: any other disaggregation option?
         elif disagg_values:
@@ -494,17 +490,16 @@ class Exposures():
         
         # divide polygon values equally onto points
         if disagg_values=='cnst':
-            group = self.gdf.groupby(axis=0, level=0)
-            val_per_point = group.value.mean()/group.count().iloc[:,0]
-            for ix, val in zip(np.unique(self.gdf.index.get_level_values(0)),
-                               val_per_point):
-                self.gdf.at[ix, 'value']= val
+            self.gdf = u_lp_handler.disaggregate_cnstly(self.gdf)
         
         # TODO: cf. tutorial implementation - divide polygon value proportional 
         # to litpop output
         elif disagg_values=='litpop':
+           self.gdf = u_lp_handler.disaggregate_litpop(self.gdf, gdf_polys)
+        
+        else:
             raise NotImplementedError
-                
+            
         self.set_lat_lon() 
         
     def plot_scatter(self, mask=None, ignore_zero=False, pop_name=True,

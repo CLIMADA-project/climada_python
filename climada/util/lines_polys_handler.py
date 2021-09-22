@@ -15,9 +15,11 @@ You should have received a copy of the GNU Lesser General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 """
-import geopandas as gpd
 import pandas as pd
+import numpy as np
 import logging
+from shapely.ops import unary_union
+from climada.entity.exposures import litpop as lp
 
 LOGGER = logging.getLogger(__name__)
 
@@ -77,4 +79,73 @@ def agg_to_polygons(exp_pnts, impact_pnts, agg_mode='sum'):
     else:
         raise NotImplementedError
 
+def disaggregate_cnstly(gdf_interpol):
+    """
+    Disaggregate the values of an interpolated exposure gdf 
+    constantly among all points belonging to the initial shape.
+    
+    Note
+    ----
+    Requires that the initial shapes from which the gdf was interpolated
+    had a value column.
+    
+    Parameters
+    ----------
+    gdf_interpol : gpd.GeoDataFrame
+    """
+    
+    group = gdf_interpol.groupby(axis=0, level=0)
+    val_per_point = group.value.mean()/group.count().iloc[:,0]
+    for ix, val in zip(np.unique(gdf_interpol.index.get_level_values(0)),
+                       val_per_point):
+        gdf_interpol.at[ix, 'value']= val
         
+    return gdf_interpol
+
+def disaggregate_litpop(gdf_interpol, gdf_shapes, countries):
+    """
+    disaggregate the values of an interpolated exposure gdf
+    according to the litpop values contained within the initial shapes
+    
+    This loads the litpop exposure(s) of the countries into memory and cuts out
+    those all the values within the original gdf_shapes.
+    
+    In a second step, the values of the original shapes are then disaggregated
+    constantly onto the interpolated points within each shape.
+    
+    
+    """
+    
+    # LitPop Exposure for the original shapeas
+    exp = lp.LitPop()
+    exp.set_custom_shape_from_countries(gdf_shapes.geometry, countries, 
+                                        res_arcsec=30, reference_year=2020)
+    
+    # evenly spread value per shape onto interpolated points
+    group = gdf_interpol.groupby(axis=0, level=0)
+    val_per_point = exp.gdf.values/group.count().iloc[:,0]
+    
+    for ix, val in zip(np.unique(gdf_interpol.index.get_level_values(0)),
+                       val_per_point):
+        gdf_interpol.at[ix, 'value']= val
+
+    return gdf_interpol
+
+def _make_union(gdf):
+    """
+    Solve issue of invalid geometries in MultiPolygons, which prevents that
+    shapes can be combined into one unary union, save the respective Union
+    """
+    
+    union1 = gdf[gdf.geometry.type == 'Polygon'].unary_union
+    union2 = gdf[gdf.geometry.type != 'Polygon'].geometry.buffer(0).unary_union
+    union_all = unary_union([union1, union2])
+    
+    return union_all
+
+def invert_shapes(gdf_cutout, shape_outer):
+    """ 
+    given an outer shape and a gdf with geometries that are to be cut out,
+    return the remaining multipolygon
+    """
+    return shape_outer - _make_union(gdf_cutout)
