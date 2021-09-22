@@ -36,13 +36,18 @@ def obtain_image_landsat_composite(landsat_collection, time_range, area):
     """Selection of Landsat cloud-free composites in the Earth Engine library
     See also: https://developers.google.com/earth-engine/landsat
 
-    Parameters:
-        collection (): name of the collection
-        time_range (['YYYY-MT-DY','YYYY-MT-DY']): must be inside the available data
-        area (ee.geometry.Geometry): area of interest
+    Parameters
+    ----------
+    collection :
+        name of the collection
+    time_range : ['YYYY-MT-DY','YYYY-MT-DY']
+        must be inside the available data
+    area : ee.geometry.Geometry
+        area of interest
 
-    Returns:
-        image_composite (ee.image.Image)
+    Returns
+    -------
+    image_composite : ee.image.Image
      """
     collection = ee.ImageCollection(landsat_collection)
 
@@ -56,13 +61,18 @@ def obtain_image_median(collection, time_range, area):
     """Selection of median from a collection of images in the Earth Engine library
     See also: https://developers.google.com/earth-engine/reducers_image_collection
 
-    Parameters:
-        collection (): name of the collection
-        time_range (['YYYY-MT-DY','YYYY-MT-DY']): must be inside the available data
-        area (ee.geometry.Geometry): area of interest
+    Parameters
+    ----------
+    collection :
+        name of the collection
+    time_range : ['YYYY-MT-DY','YYYY-MT-DY']
+        must be inside the available data
+    area : ee.geometry.Geometry
+        area of interest
 
-    Returns:
-        image_median (ee.image.Image)
+    Returns
+    -------
+    image_median : ee.image.Image
      """
     collection = ee.ImageCollection(collection)
 
@@ -76,13 +86,18 @@ def obtain_image_sentinel(sentinel_collection, time_range, area):
     """Selection of median, cloud-free image from a collection of images in the Sentinel 2 dataset
     See also: https://developers.google.com/earth-engine/datasets/catalog/COPERNICUS_S2
 
-    Parameters:
-        collection (): name of the collection
-        time_range (['YYYY-MT-DY','YYYY-MT-DY']): must be inside the available data
-        area (ee.geometry.Geometry): area of interest
+    Parameters
+    ----------
+    collection :
+        name of the collection
+    time_range : ['YYYY-MT-DY','YYYY-MT-DY']
+        must be inside the available data
+    area : ee.geometry.Geometry
+        area of interest
 
-    Returns:
-        sentinel_median (ee.image.Image)
+    Returns
+    -------
+    sentinel_median : ee.image.Image
      """
 # First, method to remove cloud from the image
     def maskclouds(image):
@@ -105,11 +120,14 @@ def obtain_image_sentinel(sentinel_collection, time_range, area):
 def get_region(geom):
     """Get the region of a given geometry, needed for exporting tasks.
 
-    Parameters:
-        geom (ee.Geometry, ee.Feature, ee.Image): region of interest
+    Parameters
+    ----------
+    geom : ee.Geometry, ee.Feature, ee.Image
+        region of interest
 
-    Returns:
-        region (list)
+    Returns
+    -------
+    region : list
     """
     if isinstance(geom, ee.Geometry):
         region = geom.getInfo()["coordinates"]
@@ -126,14 +144,20 @@ def get_url(name, image, scale, region):
     If additional parameters are needed, see also:
     https://github.com/google/earthengine-api/blob/master/python/ee/image.py
 
-    Parameters:
-        name (str): name of the created folder
-        image (ee.image.Image): image to export
-        scale (int): resolution of export in meters (e.g: 30 for Landsat)
-        region (list): region of interest
+    Parameters
+    ----------
+    name : str
+        name of the created folder
+    image : ee.image.Image
+        image to export
+    scale : int
+        resolution of export in meters (e.g: 30 for Landsat)
+    region : list
+        region of interest
 
-    Returns:
-        path (str)
+    Returns
+    -------
+    path : str
      """
     path = image.getDownloadURL({
         'name': (name),

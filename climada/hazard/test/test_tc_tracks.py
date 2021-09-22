@@ -284,7 +284,7 @@ class TestIbtracs(unittest.TestCase):
         for tr in tc_track.data:
             self.assertEqual(tr.basin[0], "EP")
             self.assertIn("WP", tr.basin)
-    
+
     def test_discard_single_points(self):
         """Check discard_single_points option"""
         tc_track_singlept = tc.TCTracks()
@@ -883,7 +883,7 @@ class TestFuncs(unittest.TestCase):
 
         self.assertTrue(tracks_in_exp.get_track(storms['in']))
         self.assertFalse(tracks_in_exp.get_track(storms['out']))
-    
+
     def test_get_landfall_idx(self):
         """Test identification of landfalls"""
         tr_ds = xr.Dataset()

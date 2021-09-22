@@ -24,17 +24,23 @@ __all__ = ['Tag']
 class Tag():
     """Source data tag for Exposures, DiscRates, ImpactFuncSet, MeasureSet.
 
-    Attributes:
-        file_name (str): name of the source file
-        description (str): description of the data
+    Attributes
+    ----------
+    file_name : str
+        name of the source file
+    description : str
+        description of the data
     """
 
     def __init__(self, file_name='', description=''):
         """Initialize values.
 
-        Parameters:
-            file_name (str, optional): file name to read
-            description (str, optional): description of the data
+        Parameters
+        ----------
+        file_name : str, optional
+            file name to read
+        description : str, optional
+            description of the data
         """
         self.file_name = str(file_name)
         self.description = description

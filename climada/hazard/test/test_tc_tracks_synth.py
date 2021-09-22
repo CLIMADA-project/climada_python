@@ -368,7 +368,7 @@ class TestDecay(unittest.TestCase):
         # this track was generated without applying landfall decay
         # (i.e. with decay=False in tc_synth.calc_perturbed_trajectories)
         tracks_synth_nodecay_example.read_netcdf(TEST_TRACK_DECAY_END_OCEAN)
-        
+
         # apply landfall decay
         extent = tracks_synth_nodecay_example.get_extent()
         land_geom = climada.util.coordinates.get_land_geometry(
@@ -380,12 +380,12 @@ class TestDecay(unittest.TestCase):
             tc_synth.LANDFALL_DECAY_P,
             land_geom)
         track = tracks_synth_nodecay_example.data[0]
-        
+
         # read its corresponding historical track
         track_hist = tc.TCTracks()
         track_hist.read_netcdf(TEST_TRACK_DECAY_END_OCEAN_HIST)
         track_hist = track_hist.data[0]
-        
+
         # Part 1: is landfall applied after going back to the ocean?
         # get that last strip over the ocean
         lf_idx = tc._get_landfall_idx(track)
@@ -420,7 +420,7 @@ class TestDecay(unittest.TestCase):
         # this track was generated without applying landfall decay
         # (i.e. with decay=False in tc_synth.calc_perturbed_trajectories)
         tracks_synth_nodecay_example.read_netcdf(TEST_TRACK_DECAY_PENV_GT_PCEN)
-        
+
         # apply landfall decay
         extent = tracks_synth_nodecay_example.get_extent()
         land_geom = climada.util.coordinates.get_land_geometry(
@@ -437,12 +437,12 @@ class TestDecay(unittest.TestCase):
         track_hist = tc.TCTracks()
         track_hist.read_netcdf(TEST_TRACK_DECAY_PENV_GT_PCEN_HIST)
         track_hist = track_hist.data[0]
-        
+
         # Part 1: is landfall applied after going back to the ocean?
         # get that last strip over the ocean
         lf_idx = tc._get_landfall_idx(track)
         start_lf_idx, end_lf_idx = lf_idx[0][0], lf_idx[1][0]
-        
+
         # check pressure and wind values
         p_hist_end = track_hist.central_pressure.values[end_lf_idx:]
         p_synth_end = track.central_pressure.values[end_lf_idx:]
@@ -452,7 +452,7 @@ class TestDecay(unittest.TestCase):
         self.assertTrue(np.all(v_synth_end < v_hist_end))
 
         # Part 2: is landfall applied in all landfalls?
-        
+
         # central pressure
         p_hist_lf = track_hist.central_pressure.values[start_lf_idx:end_lf_idx]
         p_synth_lf = track.central_pressure.values[start_lf_idx:end_lf_idx]
@@ -464,7 +464,7 @@ class TestDecay(unittest.TestCase):
         # but for this track is should be higher towards the end
         self.assertTrue(np.any(p_synth_lf > p_hist_lf))
         self.assertTrue(np.all(p_synth_lf >= p_hist_lf))
-        
+
         # wind speed
         v_hist_lf = track_hist.max_sustained_wind.values[start_lf_idx:end_lf_idx]
         v_synth_lf = track.max_sustained_wind.values[start_lf_idx:end_lf_idx]
@@ -478,7 +478,7 @@ class TestDecay(unittest.TestCase):
         # finally, central minus env pressure cannot increase during this landfall
         p_env_lf = track.central_pressure.values[start_lf_idx:end_lf_idx]
         self.assertTrue(np.all(np.diff(p_env_lf - p_synth_lf) <= 0))
-        
+
 class TestSynth(unittest.TestCase):
     def test_angle_funs_pass(self):
         """Test functions used by random walk code"""

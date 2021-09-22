@@ -139,7 +139,7 @@ class UncCostBenefit(Uncertainty):
         pool : pathos.pools.ProcessPool, optional
             Pool of CPUs for parralel computations. Default is None.
             The default is None.
-        **kwargs : keyword arguments
+        kwargs : keyword arguments
             Any keyword arguments of climada.engine.CostBenefit.calc()
             EXCEPT: haz, ent, haz_fut, ent_fut
 

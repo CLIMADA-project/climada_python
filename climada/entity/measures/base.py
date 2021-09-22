@@ -112,8 +112,9 @@ class Measure():
         """
         Check consistent instance data.
 
-        Raises:
-            ValueError
+        Raises
+        ------
+        ValueError
         """
         u_check.size([3, 4], self.color_rgb, 'Measure.color_rgb')
         u_check.size(2, self.hazard_inten_imp, 'Measure.hazard_inten_imp')
@@ -140,8 +141,6 @@ class Measure():
             resulting impact and risk transfer of measure
         """
 
-        new_exp, new_ifs, new_haz = self.apply(exposures, imp_fun_set, hazard)
-        return self._calc_impact(new_exp, new_ifs, new_haz)
         new_exp, new_impfs, new_haz = self.apply(exposures, imp_fun_set, hazard)
         return self._calc_impact(new_exp, new_impfs, new_haz)
 
