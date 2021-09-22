@@ -470,13 +470,15 @@ class Exposures():
         self.gdf['value'] = value.reshape(-1)
         self.meta = meta
 
-    def set_from_lines(self, gdf_lines, m_per_point, disagg_values=None):
+    def set_from_lines(self, gdf_lines, m_per_point, disagg_values=None, 
+                       m_value=None):
         
         self.gdf = u_coord.interpolate_lines(gdf_lines, m_per_point)
         
         # divide line values equally onto points
         if disagg_values=='cnst':
-            self.gdf = u_lp_handler.disaggregate_cnstly(self.gdf)
+            val_per_point = m_value*m_per_point
+            self.gdf = u_lp_handler.disaggregate_cnstly(self.gdf, val_per_point)
         
         # TODO: any other disaggregation option?
         elif disagg_values:
@@ -485,13 +487,14 @@ class Exposures():
         self.set_lat_lon()
         
     def set_from_polygons(self, gdf_polys, m2_per_point, disagg_values=None,
-                          countries=None):
+                          countries=None, m2_value=None):
         
         self.gdf = u_coord.interpolate_polygons(gdf_polys, m2_per_point)
         
         # divide polygon values equally onto points
         if disagg_values=='cnst':
-            self.gdf = u_lp_handler.disaggregate_cnstly(self.gdf)
+            val_per_point = m2_value*m2_per_point
+            self.gdf = u_lp_handler.disaggregate_cnstly(self.gdf, val_per_point)
         
         # TODO: cf. tutorial implementation - divide polygon value proportional 
         # to litpop output

@@ -78,23 +78,23 @@ def agg_to_polygons(exp_pnts, impact_pnts, agg_mode='sum'):
     else:
         raise NotImplementedError
 
-def disaggregate_cnstly(gdf_interpol):
+def disaggregate_cnstly(gdf_interpol, val_per_point=None):
     """
     Disaggregate the values of an interpolated exposure gdf 
     constantly among all points belonging to the initial shape.
     
-    Note
-    ----
-    Requires that the initial shapes from which the gdf was interpolated
-    had a value column.
     
     Parameters
     ----------
     gdf_interpol : gpd.GeoDataFrame
+    val_per_point : float, optional
+        value per interpolated point, in case no total value column given in 
+        gdf_interpol
     """
+    if not val_per_point:
+        group = gdf_interpol.groupby(axis=0, level=0)
+        val_per_point = group.value.mean()/group.count().iloc[:,0]
     
-    group = gdf_interpol.groupby(axis=0, level=0)
-    val_per_point = group.value.mean()/group.count().iloc[:,0]
     for ix, val in zip(np.unique(gdf_interpol.index.get_level_values(0)),
                        val_per_point):
         gdf_interpol.at[ix, 'value']= val
