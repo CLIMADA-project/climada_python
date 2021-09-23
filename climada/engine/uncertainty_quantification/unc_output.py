@@ -387,6 +387,8 @@ class UncOutput():
             ax.set_xlabel('value')
             ax.set_ylabel('Sample count')
 
+        plt.tight_layout()
+
         return axes
 
     def plot_uncertainty(self, metric_list=None, orig_list=None, figsize=None,
