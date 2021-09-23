@@ -93,6 +93,7 @@ class CalcImpact(Calc):
         self.metric_names = ('aai_agg', 'freq_curve', 'at_event',
                              'eai_exp', 'tot_value')
         self.value_unit = self.exp_input_var.evaluate().value_unit
+        self.check_distr()
 
 
     def uncertainty(self,

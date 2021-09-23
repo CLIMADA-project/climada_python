@@ -106,6 +106,7 @@ class CalcCostBenefit(Calc):
                              'cost_ben_ratio',
                              'imp_meas_present', 'imp_meas_future')
         self.value_unit = self.ent_input_var.evaluate().exposures.value_unit
+        self.check_distr()
 
 
 
