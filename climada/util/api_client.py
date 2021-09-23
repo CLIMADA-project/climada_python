@@ -18,6 +18,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Data API client
 """
+import os.path
 from dataclasses import dataclass
 from datetime import datetime
 import json
@@ -26,16 +27,22 @@ from pathlib import Path
 from urllib.parse import quote, unquote
 import time
 
+import numpy as np
 from peewee import CharField, DateTimeField, IntegrityError, Model, SqliteDatabase
 import requests
 
 
 from climada import CONFIG
+from climada.entity import Exposures
+from climada.hazard import Hazard
 from climada.util.constants import SYSTEM_DIR
 
 LOGGER = logging.getLogger(__name__)
 
 DB = SqliteDatabase(Path(CONFIG.data_api.cache_db.str()).expanduser())
+
+HAZ_TYPES = ['river_flood', 'tropical_cyclone', 'storm_europe']
+EXP_TYPES = ['litpop', 'crop_production']
 
 
 class Download(Model):
@@ -486,3 +493,143 @@ class Client():
         """
         dlf = Download.get(Download.path==str(local_path.absolute()))
         dlf.delete_instance()
+
+    def get_hazard(self, hazard_type=None, data_dir=SYSTEM_DIR):
+        """Provides options to chose a hazard dataset, saves the file locally and opens it as a hazard.
+        Several countries can be given, creating a hazard combining the single countries
+
+        Parameters
+        ----------
+        hazard_type : str
+            Type of climada Hazard. If None, options of available hazard types are given
+        data_dir : str
+            directory where the files should be downoladed. Default: SYSTEM_DIR
+        """
+        if not hazard_type:
+            while True:
+                hazard_type = input("The following data types are available: "
+                                    + ", ".join(HAZ_TYPES) + ". Which one do you want to get?")
+                if hazard_type in HAZ_TYPES:
+                    break
+                else:
+                    LOGGER.error('Please give a valid value from the list provided.')
+        datasets = self._get_data(hazard_type)
+
+        hazard_list = []
+        for dataset in datasets:
+            if os.path.isfile(os.path.join(data_dir, dataset.files[0].file_name)):
+                LOGGER.info('The file already exists and it was not downloaded again.')
+            else:
+                self.download_file(data_dir, dataset.files[0])
+            hazard = Hazard()
+            hazard.read_hdf5(os.path.join(data_dir, dataset.files[0].file_name))
+            hazard_list.append(hazard)
+        hazard_concat = Hazard()
+        hazard_concat = hazard_concat.concat(hazard_list)
+        return hazard_concat
+
+    def get_exposures(self, exposures_type=None, data_dir=SYSTEM_DIR):
+        """Provides options to chose a exposures dataset, saves the file locally and opens it as a climada Exposures.
+        Several countries can be given, creating an exposure combining the single countries
+        Parameters
+        ----------
+        exposures_type : str
+            Type of climada Exposures. If None, options of available exposures types are given
+        data_dir : str
+            directory where the files should be downoladed. Default: SYSTEM_DIR
+        """
+        if not exposures_type:
+            while True:
+                exposures_type = input("The following exposures types are available: "
+                                       + ", ".join(EXP_TYPES) + ". Which one would you like to get?")
+                if exposures_type in EXP_TYPES:
+                    break
+                else:
+                    LOGGER.error('Please give a valid value from the list provided.')
+        datasets = self._get_data(exposures_type)
+        exposures_list = []
+        for dataset in datasets:
+            self.download_file(data_dir, dataset.files[0])
+            if os.path.isfile(os.path.join(data_dir, dataset.files[0].file_name)):
+                LOGGER.info('The file already exists and it was not downloaded again.')
+            exposures = Exposures()
+            exposures.read_hdf5(os.path.join(data_dir, dataset.files[0].file_name))
+            exposures_list.append(exposures)
+        exposures_concat = Exposures()
+        exposures_concat = exposures_concat.concat(exposures_list)
+        return exposures_concat
+
+    def get_litpot_default(self, country=None, data_dir=SYSTEM_DIR):
+        """Get a LitPop instance on a 150arcsec grid with the default parameters: exponents:(1,1) and fin_mode='pc'.
+          Parameters
+          ----------
+          country : list
+              List of country for which to create the LitPop object. If None is given, a global LitPop instance
+              is created
+          data_dir : str
+              directory where the files should be downoladed. Default: SYSTEM_DIR
+          """
+        if not country:
+            datasets = [self.get_datasets(data_type='litpop', properties={'exponents': '(1,1)', 'fin_mode': 'pc'})]
+        if country:
+            country = list(country)
+            datasets = [self.get_datasets(data_type='litpop', properties={'exponents': '(1,1)', 'fin_mode': 'pc',
+                                                                             'country_iso3alpha': c}) for c in country]
+        exposures_list = []
+        for dataset in datasets:
+            if os.path.isfile(os.path.join(data_dir, dataset.files[0])):
+                LOGGER.info('The file already exists and it was not downloaded again.')
+            self.download_file(data_dir, dataset.files[0])
+            exposures = Exposures()
+            exposures.read_hdf5(os.path.join(data_dir, dataset.files[0].file_name))
+            exposures_list.append(exposures)
+        exposures_concat = Exposures()
+        exposures_concat = exposures_concat.concat(exposures_list)
+        return exposures_concat
+
+    def _get_data(self, type):
+        datasets = self.get_datasets(data_type=type)
+        properties_keys = np.unique([dataset.properties.keys() for dataset in datasets])
+        properties_keys = set(properties_keys[0]).intersection(*properties_keys)
+        user_properties_input = {}
+        user_properties_input = self._select_properties(datasets, properties_keys, user_properties_input)
+        datasets = self.get_datasets(data_type=type, properties=user_properties_input)
+        properties_keys2 = set(np.unique([dataset.properties.keys() for dataset in datasets])[0]) - properties_keys
+        user_properties_input.update(self._select_properties(datasets, properties_keys2, user_properties_input))
+        try: # make a list of properties to get several datasets in case several countries are given
+            user_properties_input['country_name']
+            datasets_properties = []
+            for country in user_properties_input['country_name']:
+                properties = user_properties_input.copy()
+                properties['country_name'] = country
+                datasets_properties.append(properties)
+
+        except:
+            datasets_properties = [user_properties_input]
+        datasets = [self.get_dataset(data_type=type, properties=properties) for properties in datasets_properties]
+        return datasets
+
+    def _select_properties(self, datasets, properties_keys, user_properties_input):
+        for property_key in properties_keys:
+            property_values = list(np.unique([dataset.properties[property_key] for dataset in datasets]))
+            if property_key == 'date_creation' or  property_key == 'climada_version' \
+                    or property_key == 'country_iso3alpha':
+                continue
+            if len(property_values) <= 1:
+                continue
+            while True:
+                if property_key == 'country_name':
+                    user_properties_input[property_key] = input(
+                        "The following " + property_key + " are available: "
+                        + ", ".join(property_values) + ". Which one(s) would you like to get? You can also provide "
+                                                       "a list of countries separated by a coma").split(',')
+                else:
+                    user_properties_input[property_key] = [input(
+                        "The following " + property_key + " are available: "
+                        + ", ".join(property_values) + ". Which one would you like to get?")]
+
+                if set(user_properties_input[property_key]).issubset(property_values):
+                    break
+                else:
+                    LOGGER.error('Please give a valid value from the list provided.')
+        return user_properties_input
