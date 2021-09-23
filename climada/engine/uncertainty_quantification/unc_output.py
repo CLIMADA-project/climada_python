@@ -109,6 +109,9 @@ class UncOutput():
         self.samples_df = samples_df
         self.unit = unit
 
+    def get_samples_df(self):
+        return getattr(self, 'samples_df')
+
     def get_unc_df(self, metric_name):
         return getattr(self, f'{metric_name}_unc_df')
 
