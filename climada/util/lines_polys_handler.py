@@ -91,7 +91,12 @@ def disaggregate_cnstly(gdf_interpol, val_per_point=None):
         value per interpolated point, in case no total value column given in 
         gdf_interpol
     """
-    if not val_per_point:
+    primary_indices = np.unique(gdf_interpol.index.get_level_values(0))
+    
+    if val_per_point:
+        val_per_point = val_per_point*np.ones(len(primary_indices))
+    
+    else:
         group = gdf_interpol.groupby(axis=0, level=0)
         val_per_point = group.value.mean()/group.count().iloc[:,0]
     

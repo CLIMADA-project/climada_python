@@ -486,7 +486,7 @@ class Exposures():
             
         self.set_lat_lon()
         
-    def set_from_polygons(self, gdf_polys, m2_per_point, disagg_values=None,
+    def set_from_polygons(self, gdf_polys, m2_per_point, disagg_values='cnst',
                           countries=None, m2_value=None):
         
         self.gdf = u_coord.interpolate_polygons(gdf_polys, m2_per_point)
@@ -500,7 +500,7 @@ class Exposures():
         # to litpop output
         elif disagg_values=='litpop':
            self.gdf = u_lp_handler.disaggregate_litpop(
-               self.gdf, gdf_polys, countries)
+               self.gdf, gdf_polys[~gdf_polys.geometry.is_empty], countries)
         
         else:
             raise NotImplementedError

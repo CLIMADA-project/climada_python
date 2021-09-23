@@ -280,13 +280,14 @@ def interpolate_lines(gdf_lines, point_dist=5):
 
 def _interpolate_one_polygon(poly, m_per_point):
         
+    if poly.is_empty:
+        LOGGER.info('Got an empty geometry. Returning None.')
+        return MultiPoint([])
+    
     res_x, res_y = metres_to_degrees(poly.representative_point().y, 
                                      m_per_point)
-
-    height, width, trafo = pts_to_raster_meta(poly.bounds, (res_x, res_y))
-    
-    lons, lats = raster_to_meshgrid(trafo, width, height)
-    
+    height, width, trafo = pts_to_raster_meta(poly.bounds, (res_x, res_y)) 
+    lons, lats = raster_to_meshgrid(trafo, width, height) 
     in_geom = shapely.vectorized.contains(poly, lons, lats)
     
     if sum(in_geom.flatten()) > 1:
@@ -326,7 +327,12 @@ def interpolate_polygons(gdf_poly, area_per_point):
     if gdf_poly.crs != "EPSG:4326":
         raise Exception('''Expected a geographic CRS. 
                         Please re-project to EPSG:4326 first.''')
-    gdf_points = gdf_poly.copy()
+    
+    if gdf_poly.geometry.is_empty.any():
+        LOGGER.info("Empty geometries encountered. Skipping those.")
+        
+    gdf_points = gdf_poly[~gdf_poly.geometry.is_empty].copy()
+    
     gdf_points['geometry'] = gdf_poly.apply(
         lambda row: _interpolate_one_polygon(row.geometry,m_per_point), axis=1)
     
