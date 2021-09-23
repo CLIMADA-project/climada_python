@@ -495,7 +495,7 @@ class Client():
         dlf.delete_instance()
 
     def get_hazard(self, hazard_type=None, data_dir=SYSTEM_DIR):
-        """Provides options to chose a hazard dataset, saves the file locally and opens it as a hazard.
+        """Provides options to choose a hazard dataset, saves the file locally and open it as a hazard.
         Several countries can be given, creating a hazard combining the single countries
 
         Parameters
@@ -529,14 +529,14 @@ class Client():
         return hazard_concat
 
     def get_exposures(self, exposures_type=None, data_dir=SYSTEM_DIR):
-        """Provides options to chose a exposures dataset, saves the file locally and opens it as a climada Exposures.
+        """Provides options to chose an exposures dataset, saves the file locally and open it as a climada Exposures.
         Several countries can be given, creating an exposure combining the single countries
         Parameters
         ----------
         exposures_type : str
             Type of climada Exposures. If None, options of available exposures types are given
         data_dir : str
-            directory where the files should be downoladed. Default: SYSTEM_DIR
+            directory where the files should be downloaded. Default: SYSTEM_DIR
         """
         if not exposures_type:
             while True:
@@ -590,20 +590,22 @@ class Client():
     def _get_data(self, type):
         datasets = self.get_datasets(data_type=type)
         properties_keys = np.unique([dataset.properties.keys() for dataset in datasets])
+        # find common properties between "groups" of datasets:
         properties_keys = set(properties_keys[0]).intersection(*properties_keys)
         user_properties_input = {}
+        # get user input to differentiate between these groups
         user_properties_input = self._select_properties(datasets, properties_keys, user_properties_input)
         datasets = self.get_datasets(data_type=type, properties=user_properties_input)
+        # find remaining properties to be chosen (usually countries:)
         properties_keys2 = set(np.unique([dataset.properties.keys() for dataset in datasets])[0]) - properties_keys
         user_properties_input.update(self._select_properties(datasets, properties_keys2, user_properties_input))
-        try: # make a list of properties to get several datasets in case several countries are given
+        try: # make a list of properties and get a list of datasets in case several countries are given
             user_properties_input['country_name']
             datasets_properties = []
             for country in user_properties_input['country_name']:
                 properties = user_properties_input.copy()
                 properties['country_name'] = country
                 datasets_properties.append(properties)
-
         except:
             datasets_properties = [user_properties_input]
         datasets = [self.get_dataset(data_type=type, properties=properties) for properties in datasets_properties]
@@ -622,7 +624,7 @@ class Client():
                     user_properties_input[property_key] = input(
                         "The following " + property_key + " are available: "
                         + ", ".join(property_values) + ". Which one(s) would you like to get? You can also provide "
-                                                       "a list of countries separated by a coma").split(',')
+                                                       "a list of countries separated by comas").split(',')
                 else:
                     user_properties_input[property_key] = [input(
                         "The following " + property_key + " are available: "
