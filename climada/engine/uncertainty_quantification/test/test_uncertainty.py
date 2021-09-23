@@ -80,7 +80,7 @@ def make_input_vars():
     impf_unc = InputVar(impf, impf_distr)
 
     haz = haz_dem
-    haz_distr = {"x_haz": sp.stats.poisson(1),
+    haz_distr = {"x_haz": sp.stats.alpha(a=2, loc=1, scale=1),
                   }
     haz_unc = InputVar(haz, haz_distr)
 
@@ -243,8 +243,49 @@ class TestOutput(unittest.TestCase):
     """Test the output class"""
 
     def test_init_pass(self):
+        """Test initialization"""
         unc_out = UncOutput(pd.DataFrame())
         self.assertTrue(unc_out.samples_df.empty)
+
+    def test_plot_unc_imp(self):
+        """Test all impact plots"""
+        unc_output = UncOutput.from_hdf5('test_unc_output_impact')
+        plt_s = unc_output.plot_sample()
+        self.assertIsNotNone(plt_s)
+        plt.close()
+        plt_u = unc_output.plot_uncertainty()
+        self.assertIsNotNone(plt_u)
+        plt.close()
+        plt_rp = unc_output.plot_rp_uncertainty()
+        self.assertIsNotNone(plt_rp)
+        plt.close()
+        plt_sens = unc_output.plot_rp_uncertainty()
+        self.assertIsNotNone(plt_sens)
+        plt.close()
+        plt_sens_2 = unc_output.plot_sensitivity_second_order(salib_si='S1')
+        self.assertIsNotNone(plt_sens_2)
+        plt.close()
+        plt_map = unc_output.plot_sensitivity_map(exp)
+        self.assertIsNotNone(plt_map)
+        plt.close()
+
+    def test_plot_unc_cb(self):
+        """Test all cost benefit plots"""
+        unc_output = UncOutput.from_hdf5("test_unc_output_costben")
+        plt_s = unc_output.plot_sample()
+        self.assertIsNotNone(plt_s)
+        plt.close()
+        plt_u = unc_output.plot_uncertainty()
+        self.assertIsNotNone(plt_u)
+        plt.close()
+        with self.assertRaises(ValueError):
+            unc_output.plot_rp_uncertainty()
+        plt_sens = unc_output.plot_sensitivity()
+        self.assertIsNotNone(plt_sens)
+        plt.close()
+        plt_sens_2 = unc_output.plot_sensitivity_second_order(salib_si='S1')
+        self.assertIsNotNone(plt_sens_2)
+        plt.close()
 
     def test_save_load_pass(self):
         """Test save and load output data"""
@@ -291,6 +332,7 @@ class TestOutput(unittest.TestCase):
         self.assertEqual(unc_data_load.sensitivity_method, unc_data_save.sensitivity_method)
         self.assertEqual(unc_data_load.sensitivity_kwargs, unc_data_save.sensitivity_kwargs)
         filename.unlink()
+
 
 class TestCalcImpact(unittest.TestCase):
     """Test the calcluate impact uncertainty class"""
