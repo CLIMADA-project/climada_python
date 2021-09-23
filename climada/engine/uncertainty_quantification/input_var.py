@@ -390,8 +390,8 @@ class InputVar():
         fun_id will be affected by bounds_impfi, bounds_mdd, bounds_paa.
 
         The following types of uncertainties can be added:
-        DR: scale the discount rates (homogeneously)
-            The value of the discounts in each year is multiplied by a number
+        DR: value of constant discount rate (homogeneously)
+            The value of the discounts in each year is
             sampled uniformly from a distribution with
             (min, max) = bounds_disc
         CO: scale the cost (homogeneously)
@@ -401,7 +401,7 @@ class InputVar():
         ET: scale the total value (homogeneously)
             The value at each exposure point is multiplied by a number
             sampled uniformly from a distribution with
-            (min, max) = bounds_totvalue
+            (min, max) = bounds_totval
         EN: mutliplicative noise (inhomogeneous)
             The value of each exposure point is independently multiplied by
             a random number sampled uniformly from a distribution
