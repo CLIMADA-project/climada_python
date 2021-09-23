@@ -23,7 +23,7 @@ import numpy as np
 import rasterio
 import geopandas
 from shapefile import Shape
-
+import shapely
 import pandas as pd
 
 import climada.util.coordinates as u_coord
@@ -300,7 +300,8 @@ class LitPop(Exposures):
 
         Parameters
         ----------
-        shape : shapely.geometry.Polygon or MultiPolygon or shapereader.Shape.
+        shape : shapely.geometry.Polygon, MultiPolygon, shapereader.Shape,
+            or GeoSeries or list containg either Polygons or Multipolygons.
             Geographical shape for which LitPop Exposure is to be initiated.
         countries : list with str or int
             list containing country identifiers:
@@ -362,8 +363,20 @@ class LitPop(Exposures):
             # extract gdf with data points within shape:
             gdf = geopandas.sjoin(self.gdf, shape_gdf, how='right')
             gdf = gdf.drop(columns=['index_left'])
-        else: # works if shape is Polygon or MultiPolygon
+        elif isinstance(shape, (shapely.geometry.MultiPolygon, shapely.geometry.Polygon)):
+            # works if shape is Polygon or MultiPolygon
             gdf = self.gdf.loc[self.gdf.geometry.within(shape)]
+        elif isinstance(shape, (geopandas.GeoSeries, list)):
+            gdf = geopandas.GeoDataFrame(columns=self.gdf.columns)
+            for shp in shape:
+                if isinstance(shp, (shapely.geometry.MultiPolygon,
+                                    shapely.geometry.Polygon)):
+                    gdf = gdf.append(self.gdf.loc[self.gdf.geometry.within(shp)])
+                else:
+                    raise NotImplementedError('Not implemented for list or GeoSeries containing '
+                                              f'objects of type {type(shp)} as `shape`')
+        else:
+            raise NotImplementedError('Not implemented for `shape` of type {type(shape)}')
 
         tag = Tag()
         tag.description = f'LitPop Exposure for custom shape in {countries} at ' \
@@ -393,9 +406,9 @@ class LitPop(Exposures):
                 'crs': self.crs,
                 'transform': ras_trans,
             }
-        except ValueError:
-            LOGGER.warning('Could not write attribute meta, because exposure'
-                           ' has only 1 data point')
+        except ValueError as err:
+            LOGGER.warning('Could not write attribute meta with ValueError: ')
+            LOGGER.warning(err.args[0])
             self.meta = {'crs': self.crs}
         self.check()
 
@@ -442,6 +455,9 @@ class LitPop(Exposures):
         ValueError
         TypeError
         """
+        if isinstance(shape, (geopandas.GeoSeries, list)):
+            raise NotImplementedError('Not implemented for `shape` of type list or '
+                                      'GeoSeries. Loop over elements of series outside method.')
 
         tag = Tag()
         litpop_gdf, _ = _get_litpop_single_polygon(shape, reference_year,
