@@ -505,7 +505,7 @@ class UncOutput():
                 else:
                     orig_plot = orig_val
                 ax.axvline(orig_plot, color='green', linestyle='dotted', linewidth=2,
-                 label="orig=%.2f%s" %u_vtm(orig_plot));
+                 label="orig=%.2f%s" %u_vtm(orig_val));
             if log:
                 std_m, std_p = np.log10(avg - std), np.log10(avg + std)
             else:
