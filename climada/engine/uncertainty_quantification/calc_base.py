@@ -57,20 +57,31 @@ class Calc():
 
         Returns
         -------
-        None.
+        True.
 
         """
-# Add check if input params have same distribution
+
         distr_dict = dict()
         for input_var in self.input_vars:
             for input_param_name, input_param_func in input_var.distr_dict.items():
+                print(input_param_name)
                 if input_param_name in distr_dict:
+                    func = distr_dict[input_param_name]
+                    x = np.linspace(func.ppf(0.01), func.ppf(0.99), 100)
+                    if not np.all(func.pdf(x) == input_param_func.pdf(x)):
+                        raise ValueError(
+                            "The input parameter %s" %input_param_name +
+                            " is shared amond two input variables with "
+                            "different distributions."
+                            )
                     LOGGER.warning(
-                        "The input parameter %s is shared " %input_param_name +
+                        "\n\nThe input parameter %s is shared " %input_param_name +
                         "among at least 2 input variables. Their uncertainty is " +
                         "thus computed with the same samples for this " +
-                        "input paramter.")
-                    distr_dict[input_param_name] = input_param_func
+                        "input paramter.\n\n"
+                        )
+                distr_dict[input_param_name] = input_param_func
+        return True
 
 
     @property
@@ -325,7 +336,7 @@ class Calc():
 
         for metric_name in self.metric_names:
             unc_df = unc_output.get_unc_df(metric_name)
-            sens_df = _calc_sens_df(method, unc_output.problem_sa, sensitivity_kwargs, 
+            sens_df = _calc_sens_df(method, unc_output.problem_sa, sensitivity_kwargs,
                                     unc_output.param_labels, X, unc_df)
             sens_output.set_sens_df(metric_name, sens_df)
         sensitivity_kwargs = {
