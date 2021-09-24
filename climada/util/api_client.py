@@ -559,7 +559,7 @@ class Client():
         exposures_concat = exposures_concat.concat(exposures_list)
         return exposures_concat
 
-    def get_litpot_default(self, country=None, data_dir=SYSTEM_DIR):
+    def get_litpop_default(self, country=None, data_dir=SYSTEM_DIR):
         """Get a LitPop instance on a 150arcsec grid with the default parameters: exponents:(1,1) and fin_mode='pc'.
           Parameters
           ----------
@@ -572,12 +572,12 @@ class Client():
         if not country:
             datasets = [self.get_datasets(data_type='litpop', properties={'exponents': '(1,1)', 'fin_mode': 'pc'})]
         if country:
-            country = list(country)
-            datasets = [self.get_datasets(data_type='litpop', properties={'exponents': '(1,1)', 'fin_mode': 'pc',
-                                                                             'country_iso3alpha': c}) for c in country]
+            country = [country]
+            datasets = [self.get_dataset(data_type='litpop', properties={'exponents': '(1,1)', 'fin_mode': 'pc',
+                                                                             'country_name': c}) for c in country]
         exposures_list = []
         for dataset in datasets:
-            if os.path.isfile(os.path.join(data_dir, dataset.files[0])):
+            if os.path.isfile(os.path.join(data_dir, dataset.files[0].file_name)):
                 LOGGER.info('The file already exists and it was not downloaded again.')
             self.download_file(data_dir, dataset.files[0])
             exposures = Exposures()
