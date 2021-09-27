@@ -64,7 +64,6 @@ class Calc():
         distr_dict = dict()
         for input_var in self.input_vars:
             for input_param_name, input_param_func in input_var.distr_dict.items():
-                print(input_param_name)
                 if input_param_name in distr_dict:
                     func = distr_dict[input_param_name]
                     x = np.linspace(func.ppf(0.01), func.ppf(0.99), 100)
