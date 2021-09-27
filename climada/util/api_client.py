@@ -571,7 +571,7 @@ class Client():
           """
         if not country:
             datasets = self.get_datasets(data_type='litpop', properties={'exponents': '(1,1)', 'fin_mode': 'pc',
-                                                                         'geographical_scale':'global'})
+                                                                         'geographical_scale': 'global'})
         if country:
             country = [country]
             datasets = [self.get_dataset(data_type='litpop', properties={'exponents': '(1,1)', 'fin_mode': 'pc',
@@ -596,7 +596,7 @@ class Client():
         user_properties_input = {}
         # get user input to differentiate between these groups
         user_properties_input = self._select_properties(datasets, properties_keys, user_properties_input)
-        datasets = self.get_datasets(data_type=type, properties=user_properties_input)
+        datasets = [dataset for dataset in datasets if all((key in dataset.properties.items() for key in user_properties_input.items()))]
         # find remaining properties to be chosen (usually countries:)
         properties_keys2 = set(np.unique([dataset.properties.keys() for dataset in datasets])[0]) - properties_keys
         user_properties_input.update(self._select_properties(datasets, properties_keys2, user_properties_input))
@@ -626,13 +626,18 @@ class Client():
                         "The following " + property_key + " are available: "
                         + ", ".join(property_values) + ". Which one(s) would you like to get? You can also provide "
                                                        "a list of countries separated by comas").split(',')
+                    is_subset = set(user_properties_input[property_key]).issubset(property_values)
                 else:
-                    user_properties_input[property_key] = [input(
+                    user_properties_input[property_key] = input(
                         "The following " + property_key + " are available: "
-                        + ", ".join(property_values) + ". Which one would you like to get?")]
+                        + ", ".join(property_values) + ". Which one would you like to get?")
 
-                if set(user_properties_input[property_key]).issubset(property_values):
+                    is_subset = set([user_properties_input[property_key]]).issubset(property_values)
+                if is_subset:
                     break
                 else:
                     LOGGER.error('Please give a valid value from the list provided.')
+            # only select datasets that furfill the preoperties:
+            datasets = [dataset for dataset in datasets if any(item in
+                                    list(dataset.properties.values()) for item in [user_properties_input[property_key]])]
         return user_properties_input
