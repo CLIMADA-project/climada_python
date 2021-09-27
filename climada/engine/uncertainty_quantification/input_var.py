@@ -316,8 +316,8 @@ class InputVar():
             )
 
     @staticmethod
-    def impfset(impf_set, bounds_mdd=None, bounds_paa=None,
-                    bounds_impfi=None, haz_id_dict= None):
+    def impfset(impf_set, haz_id_dict= None, bounds_mdd=None, bounds_paa=None,
+                    bounds_impfi=None):
         """
         Helper wrapper for basic impact function set uncertainty input variable.
 
@@ -382,10 +382,10 @@ class InputVar():
         )
 
     @staticmethod
-    def ent(impf_set, disc_rate, exp, meas_set,
+    def ent(impf_set, disc_rate, exp, meas_set, haz_id_dict= None,
             bounds_disc=None, bounds_cost=None, bounds_totval=None,
             bounds_noise=None, bounds_mdd=None, bounds_paa=None,
-            bounds_impfi=None, haz_type='TC', fun_id=1):
+            bounds_impfi=None):
         """
         Helper wrapper for basic entity set uncertainty input variable.
 
@@ -458,6 +458,11 @@ class InputVar():
             The base exposure.
         meas_set : climada.entity.measures.measure_set.MeasureSet
             The base measures.
+        haz_id_dict : dict(), optional
+            Dictionary of the impact functions affected by uncertainty.
+            Keys are hazard types (str), values are a list of impact
+            function id (int).
+            The default is {'TC': [1]}
 
         Returns
         -------
@@ -481,20 +486,21 @@ class InputVar():
         if bounds_noise is None:
             kwargs['EN'] = None
 
+        if haz_id_dict is None:
+            {'TC': [1]}
 
         return InputVar(
-            partial(_ent_unc_func, impf_set=impf_set, disc_rate=disc_rate,
-                    bounds_noise=bounds_noise, haz_type=haz_type, fun_id=fun_id,
+            partial(_ent_unc_func, impf_set=impf_set, haz_id_dict=haz_id_dict,
+                    disc_rate=disc_rate, bounds_noise=bounds_noise,
                     exp=exp, meas_set=meas_set, **kwargs),
             _ent_unc_dict(bounds_totval, bounds_noise, bounds_impfi, bounds_mdd,
                           bounds_paa, bounds_disc, bounds_cost)
         )
 
     @staticmethod
-    def entfut(impf_set, exp, meas_set,
+    def entfut(impf_set, exp, meas_set, haz_id_dict=None,
                bounds_cost=None, bounds_eg=None, bounds_noise=None,
                 bounds_impfi=None, bounds_mdd=None, bounds_paa=None,
-                haz_type='TC', fun_id=1
                 ):
         """
         Helper wrapper for basic future entity set uncertainty input variable.
@@ -559,6 +565,11 @@ class InputVar():
             The base exposure.
         meas_set : climada.entity.measures.measure_set.MeasureSet
             The base measures.
+        haz_id_dict : dict(), optional
+            Dictionary of the impact functions affected by uncertainty.
+            Keys are hazard types (str), values are a list of impact
+            function id (int).
+            The default is {'TC': [1]}
 
         Returns
         -------
@@ -581,9 +592,13 @@ class InputVar():
         if bounds_noise is None:
             kwargs['EN'] = None
 
+        if haz_id_dict is None:
+            {'TC': [1]}
+
         return InputVar(
-            partial(_entfut_unc_func, bounds_noise=bounds_noise, impf_set=impf_set,
-                     exp=exp, meas_set=meas_set, haz_type=haz_type, fun_id=fun_id, **kwargs),
+            partial(_entfut_unc_func, haz_id_dict=haz_id_dict,
+                    bounds_noise=bounds_noise, impf_set=impf_set,
+                    exp=exp, meas_set=meas_set, **kwargs),
             _entfut_unc_dict(bounds_eg=bounds_eg, bounds_noise=bounds_noise,
                              bounds_impfi=bounds_impfi, bounds_paa=bounds_paa,
                              bounds_mdd=bounds_mdd, bounds_cost=bounds_cost)
@@ -698,7 +713,7 @@ def _meas_set_unc_dict(bounds_cost):
     return {'CO': sp.stats.uniform(cmin, cdelta)}
 
 def _ent_unc_func(EN, ET, IFi, MDD, PAA, CO, DR, bounds_noise,
-                 impf_set, haz_type, fun_id, disc_rate, exp, meas_set):
+                 impf_set, haz_id_dict, disc_rate, exp, meas_set):
     ent = Entity()
     if EN is None and ET is None:
         ent.exposures = exp
@@ -708,7 +723,7 @@ def _ent_unc_func(EN, ET, IFi, MDD, PAA, CO, DR, bounds_noise,
         ent.impact_funcs = impf_set
     else:
         ent.impact_funcs = _impfset_uncfunc(IFi, MDD, PAA, impf_set=impf_set,
-                                            haz_type=haz_type, fun_id=fun_id)
+                                            haz_id_dict=haz_id_dict)
     if CO is None:
         ent.measures = meas_set
     else:
@@ -728,7 +743,7 @@ def _ent_unc_dict(bounds_totval, bounds_noise, bounds_impfi, bounds_mdd,
     return  ent_unc_dict
 
 def _entfut_unc_func(EN, EG, IFi, MDD, PAA, CO, bounds_noise,
-                 impf_set, haz_type, fun_id, exp, meas_set):
+                 impf_set, haz_id_dict, exp, meas_set):
     ent = Entity()
     if EN is None and EG is None:
         ent.exposures = exp
@@ -738,7 +753,7 @@ def _entfut_unc_func(EN, EG, IFi, MDD, PAA, CO, bounds_noise,
         ent.impact_funcs = impf_set
     else:
         ent.impact_funcs = _impfset_uncfunc(IFi, MDD, PAA, impf_set=impf_set,
-                                            haz_type=haz_type, fun_id=fun_id)
+                                            haz_id_dict=haz_id_dict)
     if CO is None:
         ent.measures = meas_set
     else:

@@ -112,8 +112,7 @@ def make_costben_iv():
         bounds_noise=[0.3, 1.9],
         bounds_cost=[0.5, 1.5],
         bounds_impfi=[-2, 5],
-        haz_type='TC',
-        fun_id=1
+        haz_id_dict={'TC': [1]}
         )
 
     entfutdem = ent_fut_dem()
@@ -124,8 +123,7 @@ def make_costben_iv():
         bounds_eg=[0.8, 1.5],
         bounds_mdd=[0.7, 0.9],
         bounds_paa=[1.3, 2],
-        haz_type='TC',
-        fun_id=1
+        haz_id_dict={'TC': [1]}
         )
 
     return ent_iv, entfut_iv
