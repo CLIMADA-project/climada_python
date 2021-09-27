@@ -570,7 +570,8 @@ class Client():
               directory where the files should be downoladed. Default: SYSTEM_DIR
           """
         if not country:
-            datasets = [self.get_datasets(data_type='litpop', properties={'exponents': '(1,1)', 'fin_mode': 'pc'})]
+            datasets = self.get_datasets(data_type='litpop', properties={'exponents': '(1,1)', 'fin_mode': 'pc',
+                                                                         'geographical_scale':'global'})
         if country:
             country = [country]
             datasets = [self.get_dataset(data_type='litpop', properties={'exponents': '(1,1)', 'fin_mode': 'pc',
