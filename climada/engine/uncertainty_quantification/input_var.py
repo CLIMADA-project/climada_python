@@ -317,7 +317,7 @@ class InputVar():
 
     @staticmethod
     def impfset(impf_set, bounds_mdd=None, bounds_paa=None,
-                    bounds_impfi=None, haz_type='TC', fun_id=1):
+                    bounds_impfi=None, haz_id_dict= None):
         """
         Helper wrapper for basic impact function set uncertainty input variable.
 
@@ -352,10 +352,11 @@ class InputVar():
         bounds_impfi : (float, float), optional
             Bounds of the uniform distribution for the homogeneous shift
             of intensity. The default is None.
-        haz_type : str, optional
-            The hazard type of the impact function. The default is 'TC'.
-        fun_id : int, optional
-            The id of the impact function. The default is 1.
+        haz_id_dict : dict(), optional
+            Dictionary of the impact functions affected by uncertainty.
+            Keys are hazard types (str), values are a list of impact
+            function id (int).
+            The default is {'TC': [1]}
 
         Returns
         -------
@@ -370,10 +371,12 @@ class InputVar():
             kwargs['PAA'] = None
         if bounds_impfi is None:
             kwargs['IFi'] = None
+        if haz_id_dict is None:
+            haz_id_dict = {'TC': [1]}
         return InputVar(
             partial(
-                _impfset_uncfunc, impf_set=impf_set, haz_type=haz_type,
-                fun_id=fun_id, **kwargs
+                _impfset_uncfunc, impf_set=impf_set, haz_id_dict=haz_id_dict,
+                **kwargs
                 ),
             _impfset_unc_dict(bounds_impfi, bounds_mdd, bounds_paa)
         )
@@ -633,26 +636,28 @@ def _exp_unc_dict(bounds_totval, bounds_noise):
     return eud
 
 #Impact function set
-def _impfset_uncfunc(IFi, MDD, PAA, impf_set, haz_type='TC', fun_id=1):
+def _impfset_uncfunc(IFi, MDD, PAA, impf_set, haz_id_dict):
     impf_set_tmp = copy.deepcopy(impf_set)
-    if MDD is not None:
-        new_mdd = np.minimum(
-            impf_set_tmp.get_func(haz_type=haz_type, fun_id=fun_id).mdd * MDD,
-            1.0
-            )
-        impf_set_tmp.get_func(haz_type=haz_type, fun_id=fun_id).mdd = new_mdd
-    if PAA is not None:
-        new_paa = np.minimum(
-            impf_set_tmp.get_func(haz_type=haz_type, fun_id=fun_id).paa * PAA,
-            1.0
-            )
-        impf_set_tmp.get_func(haz_type=haz_type, fun_id=fun_id).paa = new_paa
-    if IFi is not None:
-        new_int = np.maximum(
-            impf_set_tmp.get_func(haz_type=haz_type, fun_id=fun_id).intensity + IFi,
-            0.0
-            )
-        impf_set_tmp.get_func(haz_type=haz_type, fun_id=fun_id).intensity = new_int
+    for haz_type, fun_id_list in haz_id_dict.items():
+        for fun_id in fun_id_list:
+            if MDD is not None:
+                new_mdd = np.minimum(
+                    impf_set_tmp.get_func(haz_type=haz_type, fun_id=fun_id).mdd * MDD,
+                    1.0
+                    )
+                impf_set_tmp.get_func(haz_type=haz_type, fun_id=fun_id).mdd = new_mdd
+            if PAA is not None:
+                new_paa = np.minimum(
+                    impf_set_tmp.get_func(haz_type=haz_type, fun_id=fun_id).paa * PAA,
+                    1.0
+                    )
+                impf_set_tmp.get_func(haz_type=haz_type, fun_id=fun_id).paa = new_paa
+            if IFi is not None:
+                new_int = np.maximum(
+                    impf_set_tmp.get_func(haz_type=haz_type, fun_id=fun_id).intensity + IFi,
+                    0.0
+                    )
+                impf_set_tmp.get_func(haz_type=haz_type, fun_id=fun_id).intensity = new_int
     return impf_set_tmp
 
 def _impfset_unc_dict(bounds_impfi, bounds_mdd, bounds_paa):
