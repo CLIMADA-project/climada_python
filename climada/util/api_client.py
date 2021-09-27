@@ -30,7 +30,7 @@ import time
 import numpy as np
 from peewee import CharField, DateTimeField, IntegrityError, Model, SqliteDatabase
 import requests
-
+import pycountry
 
 from climada import CONFIG
 from climada.entity import Exposures
@@ -526,6 +526,8 @@ class Client():
             hazard_list.append(hazard)
         hazard_concat = Hazard()
         hazard_concat = hazard_concat.concat(hazard_list)
+        hazard_concat.sanitize_event_ids()
+        hazard.check()
         return hazard_concat
 
     def get_exposures(self, exposures_type=None, data_dir=SYSTEM_DIR):
@@ -557,6 +559,7 @@ class Client():
             exposures_list.append(exposures)
         exposures_concat = Exposures()
         exposures_concat = exposures_concat.concat(exposures_list)
+        exposures_concat.check()
         return exposures_concat
 
     def get_litpop_default(self, country=None, data_dir=SYSTEM_DIR):
@@ -564,18 +567,21 @@ class Client():
           Parameters
           ----------
           country : list
-              List of country for which to create the LitPop object. If None is given, a global LitPop instance
-              is created
+              List of country name or iso3 codes for which to create the LitPop object.
+              If None is given, a global LitPop instance is created. Defaut is None
           data_dir : str
               directory where the files should be downoladed. Default: SYSTEM_DIR
           """
         if not country:
             datasets = self.get_datasets(data_type='litpop', properties={'exponents': '(1,1)', 'fin_mode': 'pc',
                                                                          'geographical_scale': 'global'})
-        if country:
+        else:
             country = [country]
+            country2 = [pycountry.countries.get(name=c) for c in country]
+            if not country2[0]:
+                country2 = [pycountry.countries.get(alpha_3=c) for c in country]
             datasets = [self.get_dataset(data_type='litpop', properties={'exponents': '(1,1)', 'fin_mode': 'pc',
-                                                                             'country_name': c}) for c in country]
+                                                                             'country_name': c.name}) for c in country2]
         exposures_list = []
         for dataset in datasets:
             if os.path.isfile(os.path.join(data_dir, dataset.files[0].file_name)):
@@ -624,9 +630,17 @@ class Client():
                 if property_key == 'country_name':
                     user_properties_input[property_key] = input(
                         "The following " + property_key + " are available: "
-                        + ", ".join(property_values) + ". Which one(s) would you like to get? You can also provide "
-                                                       "a list of countries separated by comas").split(',')
+                        + ", ".join(property_values) + ". Which one(s) would you like to get "
+                                                       "(the values can also be provided as ISO 3166-1 alpha-3 codes)? "
+                                                       "You can finally provide"
+                                                       "a list of countries separated by comas.").split(',')
                     is_subset = set(user_properties_input[property_key]).issubset(property_values)
+                    if not is_subset:
+                        country_iso3alpha = list(np.unique([dataset.properties["country_iso3alpha"] for dataset in datasets]))
+                        is_subset = set(user_properties_input[property_key]).issubset(country_iso3alpha)
+                        user_properties_input["country_iso3alpha"] = user_properties_input["country_name"]
+                        user_properties_input.pop("country_name")
+                        property_key = "country_iso3alpha"
                 else:
                     user_properties_input[property_key] = input(
                         "The following " + property_key + " are available: "
