@@ -28,6 +28,7 @@ from urllib.parse import quote, unquote
 import time
 
 import numpy as np
+import pandas as pd
 from peewee import CharField, DateTimeField, IntegrityError, Model, SqliteDatabase
 import requests
 import pycountry
@@ -199,6 +200,25 @@ class Client():
             return json.loads(page.content.decode())
         raise Client.NoResult(page.content.decode())
 
+    @staticmethod
+    def _divide_straight_from_multi(properties):
+        straights, multis = dict(), dict()
+        for k, v in properties.items():
+            if isinstance(v, str):
+                straights[k] = v
+            elif isinstance(v, list):
+                multis[k] = v
+            else:
+                raise ValueError("properties must be a string or a list of strings")
+        return straights, multis
+
+    @staticmethod
+    def _filter_datasets(datasets, multi_props):
+        dsf = pd.DataFrame(datasets)
+        for prop, selection in multi_props.items():
+            dsf = dsf[dsf[prop].str.isin(selection)]
+        return [DatasetInfo(row) for row in dsf.iterrows()]
+
     def get_datasets(self, data_type=None, name=None, version=None, properties=None,
                      status='active'):
         """Find all datasets matching the given parameters.
@@ -213,6 +233,7 @@ class Client():
             the version of the dataset
         properties : dict, optional
             search parameters for dataset properties, by default None
+            any property has a string for key and can be a string or a list of strings for value
         status : str, optional
             valid values are 'preliminary', 'active', 'expired', and 'test_dataset',
             by default 'active'
@@ -228,8 +249,17 @@ class Client():
             'version': version,
             'status': '' if status is None else status,
         }
-        params.update(properties if properties else dict())
-        return [DatasetInfo.from_json(ds) for ds in Client._request_200(url, params=params)]
+
+        straight_props, multi_props = self._divide_straight_from_multi(properties) \
+                                      if properties else None, None
+        if straight_props:
+            params.update(straight_props)
+
+        datasets = [DatasetInfo.from_json(ds) for ds in Client._request_200(url, params=params)]
+
+        if multi_props:
+            return self._filter_datasets(datasets, multi_props)
+        return datasets
 
     def get_dataset(self, data_type=None, name=None, version=None, properties=None,
                     status=None):
@@ -245,6 +275,7 @@ class Client():
             the version of the dataset
         properties : dict, optional
             search parameters for dataset properties, by default None
+            any property has a string for key and can be a string or a list of strings for value
         status : str, optional
             valid values are 'preliminary', 'active', 'expired', and 'test_dataset',
             by default None
@@ -564,35 +595,65 @@ class Client():
         hazard.check()
         return hazard_concat
 
-    def get_exposures(self, exposures_type=None, properties={}, data_dir=SYSTEM_DIR):
-        """Provides options to chose an exposures dataset, saves the file locally and open it as a climada Exposures.
-        Several countries can be given, creating an exposure combining the single countries
+    def get_exposures(self, exposure_type, dump_dir=SYSTEM_DIR, **kwargs):
+        """Queries the data api for exposures datasets of the given type, downloads associated
+        hdf5 files and turns them into a climada.entity.exposures.Exposures object.
+
         Parameters
         ----------
-        exposures_type : str
-            Type of climada Exposures. If None, options of available exposures types are given
-        data_dir : str
-            directory where the files should be downloaded. Default: SYSTEM_DIR
-        properties : known properties can also be given, countries can also be given as lists.
+        hazard_type : str
+            Type of climada exposures.
+        dump_dir : str, optional
+            Directory where the files should be downoladed. Default: SYSTEM_DIR
+            If the directory is the SYSTEM_DIR, the eventual target directory is organized into
+            dump_dir > hazard_type > dataset name > version
+        **kwargs :
+            additional parameters passed on to `Client.get_datasets`
+
+        Returns
+        -------
+        climada.entity.exposures.Exposures
+            The combined exposures object
         """
-        if not exposures_type:
-            while True:
-                exposures_type = input("The following exposures types are available: "
-                                       + ", ".join(EXP_TYPES) + ". Which one would you like to get?")
-                if exposures_type in EXP_TYPES:
-                    break
-                else:
-                    LOGGER.error('Please give a valid value from the list provided.')
-        datasets = self._get_data(exposures_type, properties=properties)
+        if 'data_type' in kwargs:
+            raise ValueError("data_type is already given as hazard_type")
+        if not exposure_type in EXP_TYPES:
+            raise ValueError("Valid exposures types are a subset of CLIMADA exposures types."
+                             f" Currently these types are supported: {EXP_TYPES}")
+        datasets = self.get_datasets(data_type=exposure_type, **kwargs)
+
+        return self.to_exposures(datasets, dump_dir)
+
+    def to_exposures(self, datasets, dump_dir=SYSTEM_DIR):
+        """Downloads hdf5 files belonging to the given datasets reads them into Exposures and
+        concatenates them into a single climada.Exposures object.
+
+        Parameters
+        ----------
+        datasets : list of DatasetInfo
+            Datasets to download and read into climada.Exposures objects.
+        dump_dir : str, optional
+            Directory where the files should be downoladed. Default: SYSTEM_DIR
+            If the directory is the SYSTEM_DIR, the eventual target directory is organized into
+            dump_dir > exposures_type > dataset name > version
+
+        Returns
+        -------
+        climada.entity.exposures.Exposures
+            The combined exposures object
+        """
         exposures_list = []
         for dataset in datasets:
-            self.download_file(data_dir, dataset.files[0])
-            if os.path.isfile(os.path.join(data_dir, dataset.files[0].file_name)):
-                LOGGER.info('The file already exists and it was not downloaded again.')
-            exposures = Exposures()
-            exposures.read_hdf5(os.path.join(data_dir, dataset.files[0].file_name))
-            exposures_list.append(exposures)
-        exposures_concat = Exposures()
+            target_dir = self._organize_path(dataset, dump_dir) \
+                         if dump_dir == SYSTEM_DIR else dump_dir
+            for dsf in dataset.files:
+                if dsf.file_format == 'hdf5':
+                    exposures_file = self.download_file(target_dir, dsf)
+                    exposures = Exposures()
+                    exposures.read_hdf5(exposures_file)
+                    exposures_list.append(exposures)
+
+        exposures_concat = Hazard()
         exposures_concat = exposures_concat.concat(exposures_list)
         exposures_concat.check()
         return exposures_concat
