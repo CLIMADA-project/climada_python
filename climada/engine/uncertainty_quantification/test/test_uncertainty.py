@@ -19,8 +19,6 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Test uncertainty module.
 """
 
-
-
 import unittest
 import copy
 
@@ -34,10 +32,19 @@ from pathos.pools import ProcessPool as Pool
 from climada.entity import ImpactFunc, ImpactFuncSet
 from climada.entity.entity_def import Entity
 from climada.entity import Exposures
-from climada.util.constants import EXP_DEMO_H5, HAZ_DEMO_H5, ENT_DEMO_TODAY, ENT_DEMO_FUTURE
 from climada.hazard import Hazard
 from climada.engine.uncertainty_quantification import InputVar, CalcImpact, UncOutput, CalcCostBenefit
 
+from climada.util.constants import EXP_DEMO_H5, HAZ_DEMO_H5, ENT_DEMO_TODAY, ENT_DEMO_FUTURE
+from climada.util.constants import  TEST_UNC_OUTPUT_IMPACT, TEST_UNC_OUTPUT_COSTBEN
+from climada.util.api_client import Client
+
+apiclient = Client()
+ds = apiclient.get_dataset(name=TEST_UNC_OUTPUT_IMPACT)
+[test_unc_output_impact] = apiclient.download_dataset(ds)
+
+ds = apiclient.get_dataset(name=TEST_UNC_OUTPUT_COSTBEN)
+[test_unc_output_costben] = apiclient.download_dataset(ds)
 
 def impf_dem(x_paa=1, x_mdd=1):
     impf = ImpactFunc()
@@ -247,7 +254,7 @@ class TestOutput(unittest.TestCase):
 
     def test_plot_unc_imp(self):
         """Test all impact plots"""
-        unc_output = UncOutput.from_hdf5('test_unc_output_impact')
+        unc_output = UncOutput.from_hdf5(test_unc_output_impact)
         plt_s = unc_output.plot_sample()
         self.assertIsNotNone(plt_s)
         plt.close()
@@ -269,7 +276,7 @@ class TestOutput(unittest.TestCase):
 
     def test_plot_unc_cb(self):
         """Test all cost benefit plots"""
-        unc_output = UncOutput.from_hdf5("test_unc_output_costben")
+        unc_output = UncOutput.from_hdf5(test_unc_output_costben)
         plt_s = unc_output.plot_sample()
         self.assertIsNotNone(plt_s)
         plt.close()
