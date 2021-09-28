@@ -131,6 +131,35 @@ class TestClient(unittest.TestCase):
         self.assertEqual(np.unique(litpop.gdf.region_id), 442)
         self.assertTrue('[1, 1]' in litpop.tag.description)
         self.assertTrue('pc' in litpop.tag.description)
+    
+    def test_multi_filter(self):
+        client = Client()
+        testds = client.get_datasets(status='test_dataset')
+
+        # assert no systemic loss in filtering
+        still = client._filter_datasets(testds, dict())
+        for o, r in zip(testds, still):
+            self.assertEqual(o, r)
+
+        # assert filter is effective
+        p = 'country_name'
+        a, b = 'Antigua', 'Barbados'
+        less = client._filter_datasets(testds, {p:[a, b]})
+        self.assertLess(len(less), len(testds))
+        only = client._filter_datasets(testds, {p:[a]})
+        self.assertLess(len(only), len(less))
+        self.assertLess(0, len(only))
+
+    def test_multiplicity_split(self):
+        properties = {
+            'a': ['x', 'y', 'z'],
+            'b': '1'
+        }
+        # assert split matches expectations
+        straight, multi = Client._divide_straight_from_multi(properties)
+        self.assertEqual(straight, {'b': '1'})
+        self.assertEqual(multi, {'a': ['x', 'y', 'z']})
+
 
 def rm_empty_dir(folder):
     for subfolder in folder.iterdir():
