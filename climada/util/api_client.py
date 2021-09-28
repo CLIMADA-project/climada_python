@@ -465,21 +465,27 @@ class Client():
             raise ValueError(f"{target_dir} is not a directory")
 
         if organize_path:
-            if dataset.data_type.data_type_group:
-                target_dir /= dataset.data_type.data_type_group
-            if dataset.data_type.data_type_group != dataset.data_type.data_type:
-                target_dir /= dataset.data_type.data_type
-            target_dir /= dataset.name
-            if dataset.version:
-                target_dir /= dataset.version
-            target_dir.mkdir(exist_ok=True, parents=True)
+            target_dir = self._organize_path(dataset, target_dir)
 
         return target_dir, [
             self.download_file(local_path=target_dir, fileinfo=dsfile, check=check)
             for dsfile in dataset.files
         ]
 
-    def purge_cache(self, local_path):
+    @staticmethod
+    def _organize_path(dataset, target_dir):
+        if dataset.data_type.data_type_group:
+            target_dir /= dataset.data_type.data_type_group
+        if dataset.data_type.data_type_group != dataset.data_type.data_type:
+            target_dir /= dataset.data_type.data_type
+        target_dir /= dataset.name
+        if dataset.version:
+            target_dir /= dataset.version
+        target_dir.mkdir(exist_ok=True, parents=True)
+        return target_dir
+
+    @staticmethod
+    def purge_cache(local_path):
         """Removes entry from the sqlite database that keeps track of files downloaded by
         `cached_download`. This may be necessary in case a previous attempt has failed
         in an uncontroled way (power outage or the like).
@@ -494,38 +500,64 @@ class Client():
         dlf = Download.get(Download.path==str(local_path.absolute()))
         dlf.delete_instance()
 
-    def get_hazard(self, hazard_type=None, properties={}, data_dir=SYSTEM_DIR):
-        """Provides options to choose a hazard dataset, saves the file locally and open it as a hazard.
-        Several countries can be given, creating a hazard combining the single countries
+    def get_hazard(self, hazard_type, dump_dir=SYSTEM_DIR, **kwargs):
+        """Queries the data api for hazard datasets of the given type, downloads associated
+        hdf5 files and turns them into a climada.hazard.Hazard object.
 
         Parameters
         ----------
         hazard_type : str
-            Type of climada Hazard. If None, options of available hazard types are given
-        data_dir : str
-            directory where the files should be downoladed. Default: SYSTEM_DIR
-        properties : known properties can also be given, countries can also be given as lists.
+            Type of climada hazard.
+        dump_dir : str, optional
+            Directory where the files should be downoladed. Default: SYSTEM_DIR
+            If the directory is the SYSTEM_DIR, the eventual target directory is organized into
+            dump_dir > hazard_type > dataset name > version
+        **kwargs :
+            additional parameters passed on to get_datasets
 
+        Returns
+        -------
+        climada.hazard.Hazard
+            The combined hazard object
         """
-        if not hazard_type:
-            while True:
-                hazard_type = input("The following data types are available: "
-                                    + ", ".join(HAZ_TYPES) + ". Which one do you want to get?")
-                if hazard_type in HAZ_TYPES:
-                    break
-                else:
-                    LOGGER.error('Please give a valid value from the list provided.')
-        datasets = self._get_data(hazard_type, properties)
+        if 'data_type' in kwargs:
+            raise ValueError("data_type is already given as hazard_type")
+        if not hazard_type in HAZ_TYPES:
+            raise ValueError("Valid hazard types are a subset of CLIMADA hazard types."
+                             f" Currently these types are supported: {HAZ_TYPES}")
+        datasets = self.get_datasets(data_type=hazard_type, **kwargs)
 
+        return self.to_hazard(datasets, dump_dir)
+
+    def to_hazard(self, datasets, dump_dir=SYSTEM_DIR):
+        """Downloads hdf5 files belonging to the given datasets reads them into Hazards and
+        concatenates them into a single climada.Hazard object.
+
+        Parameters
+        ----------
+        datasets : list of DatasetInfo
+            Datasets to download and read into climada.Hazard objects.
+        dump_dir : str, optional
+            Directory where the files should be downoladed. Default: SYSTEM_DIR
+            If the directory is the SYSTEM_DIR, the eventual target directory is organized into
+            dump_dir > hazard_type > dataset name > version
+
+        Returns
+        -------
+        climada.hazard.Hazard
+            The combined hazard object
+        """
         hazard_list = []
         for dataset in datasets:
-            if os.path.isfile(os.path.join(data_dir, dataset.files[0].file_name)):
-                LOGGER.info('The file already exists and it was not downloaded again.')
-            else:
-                self.download_file(data_dir, dataset.files[0])
-            hazard = Hazard()
-            hazard.read_hdf5(os.path.join(data_dir, dataset.files[0].file_name))
-            hazard_list.append(hazard)
+            target_dir = self._organize_path(dataset, dump_dir) \
+                         if dump_dir == SYSTEM_DIR else dump_dir
+            for dsf in dataset.files:
+                if dsf.file_format == 'hdf5':
+                    hazard_file = self.download_file(target_dir, dsf)
+                    hazard = Hazard()
+                    hazard.read_hdf5(hazard_file)
+                    hazard_list.append(hazard)
+
         hazard_concat = Hazard()
         hazard_concat = hazard_concat.concat(hazard_list)
         hazard_concat.sanitize_event_ids()
