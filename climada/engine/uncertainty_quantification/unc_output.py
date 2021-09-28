@@ -877,6 +877,7 @@ class UncOutput():
 
         try:
             si_eai_df = self.get_sensitivity(salib_si, ['eai_exp']).select_dtypes('number')
+            si_eai_df[si_eai_df<0.001] = 0 #remove noise whenn all si are 0
             eai_max_si_idx = si_eai_df.idxmax().to_numpy()
         except KeyError as verr:
             raise ValueError("No sensitivity indices found for"
