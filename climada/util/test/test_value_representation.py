@@ -62,7 +62,7 @@ class TestDigits(unittest.TestCase):
             money, names = value_to_monetary_unit(nb_in)
             self.assertEqual(money[0], nb_out)
             self.assertEqual(names, names_out[j])
-            
+
     def test_value_to_monetary_unit_0inf_pass(self):
         """Test money_unit function"""
         nbs_in = [-math.inf, 0, 1e-10, 1e-5, math.inf]
@@ -73,15 +73,15 @@ class TestDigits(unittest.TestCase):
             money, names = value_to_monetary_unit(nb_in)
             self.assertEqual(money[0], nb_out)
             self.assertEqual(names, names_out[j])
-            
+
     def test_value_to_monetary_unit_nan_pass(self):
         """Test money_unit function"""
         nb_in = math.nan
         money, name = value_to_monetary_unit(nb_in)
         self.assertTrue(math.isnan(money[0]))
         self.assertEqual(name, '')
-            
-            
+
+
     def test_value_to_monetary_unit_sigdig_pass(self):
         """Test money_unit function with significant digits"""
         nbs_in = [-1e10*1.2345, -1e6*1.2345, -1e2*1.2345, 0, 1e3*1.2345,
@@ -108,7 +108,7 @@ class TestDigits(unittest.TestCase):
         money, name = value_to_monetary_unit(nbs_in, n_sig_dig=3)
         self.assertTrue(np.array_equal(money, nbs_out))
         self.assertEqual(name, name_out)
-        
+
     def test_value_to_monetary_unit_list_0inf_pass(self):
         """Test money_unit function with list of numbers"""
         nbs_in = [-1e10*1.2345, -1e9*1.2345, 0, math.inf]
@@ -123,7 +123,7 @@ class TestDigits(unittest.TestCase):
         money, name = value_to_monetary_unit(nbs_in, n_sig_dig=3)
         self.assertTrue(np.array_equal(money, nbs_out))
         self.assertEqual(name, name_out)
-        
+
     def test_value_to_monetary_unit_list_nan_pass(self):
         """Test money_unit function with list of numbers"""
         nbs_in = [-1e10*1.2345, -1e9*1.2345, math.nan]

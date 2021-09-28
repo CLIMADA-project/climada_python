@@ -217,21 +217,23 @@ def check_nl_local_file_exists(required_files=None, check_path=SYSTEM_DIR,
     """Checks if BM Satellite files are avaialbe and returns a vector
     denoting the missing files.
 
-    Parameters:
-        required_files : numpy array, optional
-            boolean array of dimension (8,) with which
-            some files can be skipped. Only files with value 1 are checked,
-            with value zero are skipped.
-            The default is np.ones(len(BM_FILENAMES),)
-        check_path : str or Path
-            absolute path where files are stored.
-            Default: SYSTEM_DIR
-        year : int
-            year of the image, e.g. 2016
+    Parameters
+    ----------
+    required_files : numpy array, optional
+        boolean array of dimension (8,) with which
+        some files can be skipped. Only files with value 1 are checked,
+        with value zero are skipped.
+        The default is np.ones(len(BM_FILENAMES),)
+    check_path : str or Path
+        absolute path where files are stored.
+        Default: SYSTEM_DIR
+    year : int
+        year of the image, e.g. 2016
 
-    Returns:
-        files_exist : numpy array
-            Boolean array that denotes if the required files exist.
+    Returns
+    -------
+    files_exist : numpy array
+        Boolean array that denotes if the required files exist.
     """
     if required_files is None:
         required_files = np.ones(len(BM_FILENAMES),)
@@ -365,12 +367,19 @@ def load_nightlight_nasa(bounds, req_files, year):
 
     Note: Legacy for BlackMarble, not required for litpop module
 
-    Parameters:
-        bounds (tuple): min_lon, min_lat, max_lon, max_lat
-        req_files (np.array): array with flags for NASA files needed
-        year (int): nightlight year
-    Returns:
-        nightlight (sparse.csr_matrix), coord_nl (np.array)
+    Parameters
+    ----------
+    bounds : tuple
+        min_lon, min_lat, max_lon, max_lat
+    req_files : np.array
+        array with flags for NASA files needed
+    year : int
+        nightlight year
+
+    Returns
+    -------
+    nightlight : sparse.csr_matrix
+    coord_nl : np.array
     """
     # TODO: argument req_files is not used in this function
 
@@ -412,15 +421,16 @@ def load_nightlight_nasa(bounds, req_files, year):
 
 def read_bm_file(bm_path, filename):
     """Reads a single NASA BlackMarble GeoTiff and returns the data. Run all required checks first.
-    Parameters
 
     Note: Legacy for BlackMarble, not required for litpop module
 
+    Parameters
     ----------
     bm_path : str
         absolute path where files are stored.
     filename : str
         filename of the file to be read.
+
     Returns
     -------
     arr1 : array
@@ -443,12 +453,16 @@ def unzip_tif_to_py(file_gz):
     """Unzip image file, read it, flip the x axis, save values as pickle
     and remove tif.
 
-    Parameters:
-        file_gz (str): file fith .gz format to unzip
+    Parameters
+    ----------
+    file_gz : str
+        file fith .gz format to unzip
 
-    Returns:
-        str (file_name of unzipped file)
-        sparse.csr_matrix (nightlight)
+    Returns
+    -------
+    fname : str
+        file_name of unzipped file
+    nightlight : sparse.csr_matrix
     """
     LOGGER.info("Unzipping file %s.", file_gz)
     file_name = Path(Path(file_gz).stem)
@@ -469,13 +483,15 @@ def untar_noaa_stable_nightlight(f_tar_ini):
     """Move input tar file to SYSTEM_DIR and extract stable light file.
     Returns absolute path of stable light file in format tif.gz.
 
-    Parameters:
-        f_tar_ini : str
-            absolute path of file
+    Parameters
+    ----------
+    f_tar_ini : str
+        absolute path of file
 
-    Returns:
-        f_tif_gz : str
-            path of stable light file
+    Returns
+    -------
+    f_tif_gz : str
+        path of stable light file
     """
     # move to SYSTEM_DIR
     f_tar_dest = SYSTEM_DIR.joinpath(Path(f_tar_ini).name)
@@ -505,16 +521,18 @@ def load_nightlight_noaa(ref_year=2013, sat_name=None):
     such that nightlight[1][0] corresponds to lat[1], lon[0] point (the image
     has been flipped).
 
-    Parameters:
-        ref_year : int, optional
-            reference year. The default is 2013.
-        sat_name : str, optional
-            satellite provider (e.g. 'F10', 'F18', ...)
+    Parameters
+    ----------
+    ref_year : int, optional
+        reference year. The default is 2013.
+    sat_name : str, optional
+        satellite provider (e.g. 'F10', 'F18', ...)
 
-    Returns:
-        nightlight : sparse.csr_matrix)
-        coord_nl : np.array
-        fn_light : str
+    Returns
+    -------
+    nightlight : sparse.csr_matrix
+    coord_nl : np.array
+    fn_light : str
     """
     # NOAA's URL used to retrieve nightlight satellite images:
     noaa_url = CONFIG.exposures.litpop.nightlights.noaa_url.str()

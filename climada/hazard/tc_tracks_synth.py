@@ -153,7 +153,7 @@ def calc_perturbed_trajectories(tracks,
         landfall decay applied depends on the tracks passed as an input and may
         not be robust if few historical tracks make landfall in this object.
         Default: True.
-    """    
+    """
     LOGGER.info('Computing %s synthetic tracks.', nb_synth_tracks * tracks.size)
 
     if seed >= 0:
@@ -545,18 +545,25 @@ def _calc_land_decay(hist_tracks, land_geom, s_rel=True, check_plot=False,
         - wind decay = exp(-x*A)
         - pressure decay = S-(S-1)*exp(-x*B)
 
-    Parameters:
-        hist_tracks (list): List of xarray Datasets describing TC tracks.
-        land_geom (shapely.geometry.multipolygon.MultiPolygon): land geometry
-        s_rel (bool, optional): use environmental presure to calc S value
-            (true) or central presure (false)
-        check_plot (bool, optional): visualize computed coefficients.
-            Default: False
+    Parameters
+    ----------
+    hist_tracks : list
+        List of xarray Datasets describing TC tracks.
+    land_geom : shapely.geometry.multipolygon.MultiPolygon
+        land geometry
+    s_rel : bool, optional
+        use environmental presure to calc S value
+        (true) or central presure (false)
+    check_plot : bool, optional
+        visualize computed coefficients.
+        Default: False
 
-    Returns:
-        v_rel (dict(category: A)), p_rel (dict(category: (S, B)))
+    Returns
+    -------
+    v_rel : dict(category: A)
+    p_rel : dict(category: (S, B))
     """
-    
+
     if len(hist_tracks) < 100:
         LOGGER.warning('For the calibration of the landfall decay '
                        'it is recommended to provide as many historical '
@@ -601,14 +608,20 @@ def _apply_land_decay(tracks, v_rel, p_rel, land_geom, s_rel=True,
                       check_plot=False, pool=None):
     """Compute wind and pressure decay due to landfall in synthetic tracks.
 
-    Parameters:
-        v_rel (dict): {category: A}, where wind decay = exp(-x*A)
-        p_rel (dict): (category: (S, B)}, where pressure decay
-            = S-(S-1)*exp(-x*B)
-        land_geom (shapely.geometry.multipolygon.MultiPolygon): land geometry
-        s_rel (bool, optional): use environmental presure to calc S value
-            (true) or central presure (false)
-        check_plot (bool, optional): visualize computed changes
+    Parameters
+    ----------
+    v_rel : dict
+        {category: A}, where wind decay = exp(-x*A)
+    p_rel : dict
+        (category: (S, B)}, where pressure decay
+        = S-(S-1)*exp(-x*B)
+    land_geom : shapely.geometry.multipolygon.MultiPolygon
+        land geometry
+    s_rel : bool, optional
+        use environmental presure to calc S value
+        (true) or central presure (false)
+    check_plot : bool, optional
+        visualize computed changes
     """
     sy_tracks = [track for track in tracks if not track.orig_event_flag]
     if not sy_tracks:
@@ -713,18 +726,24 @@ def _decay_calc_coeff(x_val, v_lf, p_lf):
     - wind decay = exp(-x*A)
     - pressure decay = S-(S-1)*exp(-x*A)
 
-    Parameters:
-        x_val (dict): key is Saffir-Simpson scale, values are lists with
-            the values used as "x" in the coefficient fitting, the
-            distance since landfall
-        v_lf (dict): key is Saffir-Simpson scale, values are lists of
-            wind/wind at landfall
-        p_lf (dict): key is Saffir-Simpson scale, values are tuples with
-            first value the S parameter, second value list of central
-            pressure/central pressure at landfall
+    Parameters
+    ----------
+    x_val : dict
+        key is Saffir-Simpson scale, values are lists with
+        the values used as "x" in the coefficient fitting, the
+        distance since landfall
+    v_lf : dict
+        key is Saffir-Simpson scale, values are lists of
+        wind/wind at landfall
+    p_lf : dict
+        key is Saffir-Simpson scale, values are tuples with
+        first value the S parameter, second value list of central
+        pressure/central pressure at landfall
 
-    Returns:
-        v_rel (dict()), p_rel (dict())
+    Returns
+    -------
+    v_rel : dict
+    p_rel : dict
     """
     np.warnings.filterwarnings('ignore')
     v_rel = dict()
@@ -821,17 +840,24 @@ def _apply_decay_coeffs(track, v_rel, p_rel, land_geom, s_rel):
     """Change track's max sustained wind and central pressure using the land
     decay coefficients.
 
-    Parameters:
-        track (xr.Dataset): TC track
-        v_rel (dict): {category: A}, where wind decay = exp(-x*A)
-        p_rel (dict): (category: (S, B)},
-            where pressure decay = S-(S-1)*exp(-x*B)
-        land_geom (shapely.geometry.multipolygon.MultiPolygon): land geometry
-        s_rel (bool): use environmental presure for S value (true) or
-            central presure (false)
+    Parameters
+    ----------
+    track : xr.Dataset
+        TC track
+    v_rel : dict
+        {category: A}, where wind decay = exp(-x*A)
+    p_rel : dict
+        (category: (S, B)},
+        where pressure decay = S-(S-1)*exp(-x*B)
+    land_geom : shapely.geometry.multipolygon.MultiPolygon
+        land geometry
+    s_rel : bool
+        use environmental presure for S value (true) or
+        central presure (false)
 
-    Returns:
-        xr.Dataset
+    Returns
+    -------
+    xr.Dataset
     """
     # return if historical track
     if track.orig_event_flag:

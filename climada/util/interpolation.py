@@ -63,19 +63,25 @@ def interpol_index(centroids, coordinates, method=METHOD[0],
     """Returns for each coordinate the centroids indexes used for
     interpolation.
 
-    Parameters:
-        centroids (2d array): First column contains latitude, second
-            column contains longitude. Each row is a geographic point
-        coordinates (2d array): First column contains latitude, second
-            column contains longitude. Each row is a geographic point
-        method (str, optional): interpolation method to use. NN default.
-        distance (str, optional): distance to use. Haversine default
-        threshold (float): distance threshold in km over which no neighbor will
-            be found. Those are assigned with a -1 index
+    Parameters
+    ----------
+    centroids : 2d array
+        First column contains latitude, second
+        column contains longitude. Each row is a geographic point
+    coordinates : 2d array
+        First column contains latitude, second
+        column contains longitude. Each row is a geographic point
+    method : str, optional
+        interpolation method to use. NN default.
+    distance : str, optional
+        distance to use. Haversine default
+    threshold : float
+        distance threshold in km over which no neighbor will
+        be found. Those are assigned with a -1 index
 
-    Returns:
-        numpy array with so many rows as coordinates containing the
-            centroids indexes
+    Returns
+    -------
+    numpy array with so many rows as coordinates containing the centroids indexes
     """
     if (method == METHOD[0]) & (distance == DIST_DEF[0]):
         # Compute for each coordinate the closest centroid
@@ -94,17 +100,21 @@ def index_nn_aprox(centroids, coordinates, threshold=THRESHOLD):
     euclidian distance d = ((dlon)cos(lat))^2+(dlat)^2. For distant points
     (e.g. more than 100km apart) use the haversine distance.
 
-    Parameters:
-        centroids (2d array): First column contains latitude, second
-            column contains longitude. Each row is a geographic point
-        coordinates (2d array): First column contains latitude, second
-            column contains longitude. Each row is a geographic point
-        threshold (float): distance threshold in km over which no neighbor will
-            be found. Those are assigned with a -1 index
+    Parameters
+    ----------
+    centroids : 2d array
+        First column contains latitude, second
+        column contains longitude. Each row is a geographic point
+    coordinates : 2d array
+        First column contains latitude, second
+        column contains longitude. Each row is a geographic point
+    threshold : float
+        distance threshold in km over which no neighbor will
+        be found. Those are assigned with a -1 index
 
-    Returns:
-        array with so many rows as coordinates containing the centroids
-            indexes
+    Returns
+    -------
+    array with so many rows as coordinates containing the centroids indexes
     """
 
     # Compute only for the unique coordinates. Copy the results for the
@@ -139,17 +149,21 @@ def index_nn_haversine(centroids, coordinates, threshold=THRESHOLD):
     """Compute the neareast centroid for each coordinate using a Ball
     tree with haversine distance.
 
-    Parameters:
-        centroids (2d array): First column contains latitude, second
-            column contains longitude. Each row is a geographic point
-        coordinates (2d array): First column contains latitude, second
-            column contains longitude. Each row is a geographic point
-        threshold (float): distance threshold in km over which no neighbor will
-            be found. Those are assigned with a -1 index
+    Parameters
+    ----------
+    centroids : 2d array
+        First column contains latitude, second
+        column contains longitude. Each row is a geographic point
+    coordinates : 2d array
+        First column contains latitude, second
+        column contains longitude. Each row is a geographic point
+    threshold : float
+        distance threshold in km over which no neighbor will
+        be found. Those are assigned with a -1 index
 
-    Returns:
-        array with so many rows as coordinates containing the centroids
-            indexes
+    Returns
+    -------
+    array with so many rows as coordinates containing the centroids indexes
     """
     # Construct tree from centroids
     tree = BallTree(np.radians(centroids), metric='haversine')

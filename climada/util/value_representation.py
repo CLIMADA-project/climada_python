@@ -91,7 +91,7 @@ def sig_dig_list(iterable, n_sig_dig=16):
 
 def value_to_monetary_unit(values, n_sig_dig=None, abbreviations=None):
     """
-    Converts list of values to closest common monetary unit 
+    Converts list of values to closest common monetary unit
     0, Nan and inf have not unit.
 
     Parameters
@@ -118,7 +118,7 @@ def value_to_monetary_unit(values, n_sig_dig=None, abbreviations=None):
         Array of values in monetary unit
     name : string
         Monetary unit
-        
+
     Examples
     --------
     values = [1e6, 2*1e6, 4.5*1e7, 0, Nan, inf] ->

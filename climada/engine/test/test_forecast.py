@@ -115,7 +115,7 @@ class TestPlot(unittest.TestCase):
         haz1.centroids.lat += 0.6
         haz1.centroids.lon -= 1.2
         haz2 = StormEurope()
-        
+
         haz2.read_cosmoe_file(HAZ_DIR.joinpath('storm_europe_cosmoe_forecast_vmax_testfile.nc'),
                               run_datetime=dt.datetime(2018,1,1),
                               event_date=dt.datetime(2018,1,3))
@@ -169,7 +169,7 @@ class TestPlot(unittest.TestCase):
         forecast.plot_exceedence_prob(run_datetime=dt.datetime(2017,12,31),
                                       threshold=5000, save_fig=False, close_fig=True)
 
-        
+
         forecast.plot_warn_map(str(cantons_file),
                                decision_level = 'polygon',
                                thresholds=[100000,500000,

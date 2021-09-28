@@ -21,6 +21,7 @@ Test Hazard base class.
 
 import unittest
 import datetime as dt
+from pathlib import Path
 import numpy as np
 from scipy import sparse
 from pathos.pools import ProcessPool as Pool
@@ -31,9 +32,10 @@ from climada.hazard.centroids.centr import Centroids
 import climada.util.dates_times as u_dt
 from climada.util.constants import HAZ_TEMPLATE_XLS, HAZ_DEMO_FL
 import climada.util.coordinates as u_coord
+import climada.hazard.test as hazard_test
 
 DATA_DIR = CONFIG.hazard.test_data.dir()
-HAZ_TEST_MAT = DATA_DIR.joinpath('atl_prob_no_name.mat')
+HAZ_TEST_MAT = Path(hazard_test.__file__).parent.joinpath('data', 'atl_prob_no_name.mat')
 
 def dummy_hazard():
     hazard = Hazard('TC')

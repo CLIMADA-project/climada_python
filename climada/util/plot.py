@@ -592,7 +592,8 @@ def add_cntry_names(axis, extent, proj=ccrs.PlateCarree(), fontsize=None):
     """
     Add country names.
 
-    Parameters:
+    Parameters
+    ----------
     axis : cartopy.mpl.geoaxes.GeoAxesSubplot
         Cartopy axis.
     extent : list
@@ -601,8 +602,8 @@ def add_cntry_names(axis, extent, proj=ccrs.PlateCarree(), fontsize=None):
         Geographical projection.
         The default is PlateCarree.
      fontsize : int, optional
-            Size of the fonts. If set to None, the default matplotlib settings
-            are used.
+        Size of the fonts. If set to None, the default matplotlib settings
+        are used.
     """
     shp_file = shapereader.natural_earth(resolution='10m', category='cultural',
                                          name='admin_0_countries')
@@ -693,9 +694,9 @@ def _get_borders(geo_coord, buffer=0, proj_limits=(-180, 180, -90, 90)):
         limits of geographical projection (lon_min, lon_max, lat_min, lat_max)
         The default is (-180, 180, -90, 90)
 
-    Returns:
-    [min_lon, max_lon, min_lat, max_lat] : list
-
+    Returns
+    -------
+    extent : list [min_lon, max_lon, min_lat, max_lat]
     """
     min_lon = max(np.min(geo_coord[:, 1]) - buffer, proj_limits[0])
     max_lon = min(np.max(geo_coord[:, 1]) + buffer, proj_limits[1])

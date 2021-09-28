@@ -60,6 +60,7 @@ DB.create_tables([Download])
 @dataclass
 class FileInfo():
     """file data from CLIMADA data API."""
+    uuid:str
     url:str
     file_name:str
     file_format:str
@@ -73,6 +74,7 @@ class DataTypeInfo():
     data_type:str
     data_type_group:str
     description:str
+    properties:list = None
 
 
 @dataclass
@@ -106,7 +108,7 @@ class DatasetInfo():
         """
         dataset = DatasetInfo(**jsono)
         dataset.data_type = DataTypeInfo(**dataset.data_type)
-        dataset.files = [FileInfo(**filo) for filo in dataset.files]
+        dataset.files = [FileInfo(uuid=dataset.uuid, **filo) for filo in dataset.files]
         return dataset
 
 
@@ -390,6 +392,11 @@ class Client():
         retries : int, optional
             how many times one should retry in case of failure, by default 3
 
+        Returns
+        -------
+        Path
+            the path to the downloaded file
+
         Raises
         ------
         Exception
@@ -434,6 +441,14 @@ class Client():
         check : function, optional
             how to check download success for each file, by default Download.checksize
 
+        Returns
+        -------
+        download_dir : Path
+            the path to the directory containing the downloaded files,
+            will be created if organize_path is True
+        downloaded_files : list of Path
+            the downloaded files themselves
+
         Raises
         ------
         Exception
@@ -452,7 +467,7 @@ class Client():
                 target_dir /= dataset.version
             target_dir.mkdir(exist_ok=True, parents=True)
 
-        return [
+        return target_dir, [
             self.download_file(local_path=target_dir, fileinfo=dsfile, check=check)
             for dsfile in dataset.files
         ]

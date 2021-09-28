@@ -112,8 +112,9 @@ class Measure():
         """
         Check consistent instance data.
 
-        Raises:
-            ValueError
+        Raises
+        ------
+        ValueError
         """
         u_check.size([3, 4], self.color_rgb, 'Measure.color_rgb')
         u_check.size(2, self.hazard_inten_imp, 'Measure.hazard_inten_imp')

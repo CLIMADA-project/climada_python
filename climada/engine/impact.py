@@ -380,7 +380,8 @@ class Impact():
         kwargs : optional
             arguments for imshow matplotlib function
 
-        Returns:
+        Returns
+        -------
         cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         eai_exp = self._build_exp()

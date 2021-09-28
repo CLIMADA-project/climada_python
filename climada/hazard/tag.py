@@ -29,20 +29,27 @@ LOGGER = logging.getLogger(__name__)
 class Tag(object):
     """Contain information used to tag a Hazard.
 
-    Attributes:
-        file_name (str or list(str)): name of the source file(s)
-        haz_type (str): acronym defining the hazard type (e.g. 'TC')
-        description (str or list(str)): description(s) of the data
+    Attributes
+    ----------
+    file_name : str or list(str)
+        name of the source file(s)
+    haz_type : str
+        acronym defining the hazard type (e.g. 'TC')
+    description : str or list(str)
+        description(s) of the data
     """
 
     def __init__(self, haz_type='', file_name='', description=''):
         """Initialize values.
 
-        Parameters:
-            haz_type (str, optional): acronym of the hazard type (e.g. 'TC').
-            file_name (str or list(str), optional): file name(s) to read
-            description (str or list(str), optional): description of the data
-
+        Parameters
+        ----------
+        haz_type : str, optional
+            acronym of the hazard type (e.g. 'TC').
+        file_name : str or list(str), optional
+            file name(s) to read
+        description : str or list(str), optional
+            description of the data
         """
         self.haz_type = haz_type
         self.file_name = file_name

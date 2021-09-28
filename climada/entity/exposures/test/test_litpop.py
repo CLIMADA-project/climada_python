@@ -109,7 +109,7 @@ class TestLitPop(unittest.TestCase):
         data_in, meta_list = data_arrays_resampling_demo()
         #
         data_out, meta_out = lp.reproject_input_data(data_in, meta_list,
-                        i_ref=0,
+                        i_align=0,
                         target_res_arcsec=None,
                         global_origins=(-180, 90)
                         )
@@ -127,7 +127,7 @@ class TestLitPop(unittest.TestCase):
         data_in, meta_list = data_arrays_resampling_demo()
         #
         data_out, meta_out = lp.reproject_input_data(data_in, meta_list,
-                        i_ref=0,
+                        i_align=0,
                         target_res_arcsec=None,
                         global_origins=(-180, 90),
                         conserve='sum')
@@ -142,7 +142,7 @@ class TestLitPop(unittest.TestCase):
         data_in, meta_list = data_arrays_resampling_demo()
         #
         data_out, meta_out = lp.reproject_input_data(data_in, meta_list,
-                        i_ref=1,
+                        i_align=1,
                         target_res_arcsec=None,
                         global_origins=(-180, 90),
                         conserve='mean')
@@ -158,7 +158,7 @@ class TestLitPop(unittest.TestCase):
         data_in, meta_list = data_arrays_resampling_demo()
         #
         data_out, meta_out = lp.reproject_input_data(data_in, meta_list,
-                        i_ref=2, # high res data as reference
+                        i_align=2, # high res data as reference
                         target_res_arcsec=None,
                         global_origins=(-180, 90)
                         )
@@ -180,7 +180,7 @@ class TestLitPop(unittest.TestCase):
         #
         data_out, meta_out = \
             lp.reproject_input_data(data_in, meta_list,
-                                   i_ref=0, # high res data as reference
+                                   i_align=0, # high res data as reference
                                    target_res_arcsec=6120, # 1.7 degree
                                    global_origins=(-180, 90),
                                    )
@@ -208,7 +208,7 @@ class TestLitPop(unittest.TestCase):
         with self.assertRaises(TypeError):
             lp.gridpoints_core_calc(data, exponents=['a', 'b'])
         data.append('hello i am a string')
-        with self.assertRaises(TypeError):
+        with self.assertRaises(ValueError):
             lp.gridpoints_core_calc(data)
         with self.assertRaises(TypeError):
             lp.gridpoints_core_calc(777)
@@ -329,38 +329,38 @@ class TestLitPop(unittest.TestCase):
             self.assertIn('Fukuoka', result.keys())
             self.assertIsInstance(result['Saga'], float)
 
-    def test_get_total_value_per_country_pop(self):
-        "test get_total_value_per_country return pop"
-        value = lp.get_total_value_per_country('XXX', 'pop', None, total_population=22)
-        self.assertEqual(value, 22)
+    def test_fail_get_total_value_per_country_pop(self):
+        "test _get_total_value_per_country fails for pop"
+        with self.assertRaises(NotImplementedError):
+            lp._get_total_value_per_country('XXX', 'pop', None)
 
     def test_get_total_value_per_country_none(self):
-        "test get_total_value_per_country pass with None"
-        value = lp.get_total_value_per_country('XXX', 'none', None)
+        "test _get_total_value_per_country pass with None"
+        value = lp._get_total_value_per_country('XXX', 'none', None)
         self.assertEqual(value, None)
 
     def test_get_total_value_per_country_norm(self):
-        "test get_total_value_per_country pass with 1"
-        value = lp.get_total_value_per_country('XXX', 'norm', None)
+        "test _get_total_value_per_country pass with 1"
+        value = lp._get_total_value_per_country('XXX', 'norm', None)
         self.assertEqual(value, 1)
 
     def test_get_total_value_per_country_gdp(self):
-        "test get_total_value_per_country get number for gdp"
-        gdp_togo = lp.get_total_value_per_country('TGO', 'gdp', 2010)
-        gdp_switzerland = lp.get_total_value_per_country('CHE', 'gdp', 2222)
-        value_switzerland = lp.get_total_value_per_country('CHE', 'income_group', 2222)
+        "test _get_total_value_per_country get number for gdp"
+        gdp_togo = lp._get_total_value_per_country('TGO', 'gdp', 2010)
+        gdp_switzerland = lp._get_total_value_per_country('CHE', 'gdp', 2222)
+        value_switzerland = lp._get_total_value_per_country('CHE', 'income_group', 2222)
         self.assertIsInstance(gdp_togo, float)
         # value for income_group = gdp * income group:
         self.assertEqual(value_switzerland, 5*gdp_switzerland)
 
     def test_get_total_value_per_country_pc(self):
-        "test get_total_value_per_country get number for pc of Poland"
-        value = lp.get_total_value_per_country('POL', 'pc', 2015)
+        "test _get_total_value_per_country get number for pc of Poland"
+        value = lp._get_total_value_per_country('POL', 'pc', 2015)
         self.assertIsInstance(value, float)
 
     def test_get_total_value_per_country_nfw(self):
-        "test get_total_value_per_country get number for pc of Poland"
-        value = lp.get_total_value_per_country('POL', 'nfw', 2015)
+        "test _get_total_value_per_country get number for pc of Poland"
+        value = lp._get_total_value_per_country('POL', 'nfw', 2015)
         self.assertIsInstance(value, float)
 
     def test_get_value_unit_pass(self):
