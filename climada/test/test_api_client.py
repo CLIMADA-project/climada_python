@@ -22,6 +22,8 @@ from pathlib import Path
 import unittest
 from shutil import rmtree
 
+import numpy as np
+
 from climada import CONFIG
 from climada.util.api_client import Client, Download
 
@@ -100,6 +102,35 @@ class TestClient(unittest.TestCase):
             download.unlink()
         rm_empty_dir(download.parent.parent.parent)
 
+    def test_get_exposures(self):
+        client = Client()
+        exposures = client.get_exposures(exposures_type='litpop', properties={'country_name': ['CHE', 'AUT'],
+                                                            'fin_mode': 'pop', 'exponents': '(0,1)'}, data_dir=DATA_DIR)
+        self.assertEqual(len(exposures.gdf), 8583)
+        self.assertEqual(np.min(exposures.gdf.region_id), 40)
+        self.assertEqual(np.max(exposures.gdf.region_id), 756)
+        self.assertTrue('[0, 1]' in exposures.tag.description)
+        self.assertTrue('pop' in exposures.tag.description)
+        exposures
+
+    def test_get_hazard(self):
+        client = Client()
+        hazard = client.get_hazard(hazard_type='river_flood', properties={'country_name': ['Switzerland', 'Austria'],
+                                                    'year_range': '2010_2030', 'rcp': 'rcp26'}, data_dir=DATA_DIR)
+        self.assertEqual(np.shape(hazard.intensity), (960, 8601))
+        self.assertEqual(np.min(hazard.centroids.region_id), 40)
+        self.assertEqual(np.max(hazard.centroids.region_id), 756)
+        self.assertEqual(np.unique(hazard.date).size, 20)
+        self.assertEqual(hazard.tag.haz_type, 'RF')
+        hazard
+
+    def test_get_litpop_default(self):
+        client = Client()
+        litpop = client.get_litpop_default(country='LUX', data_dir=DATA_DIR)
+        self.assertEqual(len(litpop.gdf), 188)
+        self.assertEqual(np.unique(litpop.gdf.region_id), 442)
+        self.assertTrue('[1, 1]' in litpop.tag.description)
+        self.assertTrue('pc' in litpop.tag.description)
 
 def rm_empty_dir(folder):
     for subfolder in folder.iterdir():
