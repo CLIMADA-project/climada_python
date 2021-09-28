@@ -41,10 +41,10 @@ from climada.util.api_client import Client
 
 apiclient = Client()
 ds = apiclient.get_dataset(name=TEST_UNC_OUTPUT_IMPACT)
-[test_unc_output_impact] = apiclient.download_dataset(ds)
+_target_dir, [test_unc_output_impact] = apiclient.download_dataset(ds)
 
 ds = apiclient.get_dataset(name=TEST_UNC_OUTPUT_COSTBEN)
-[test_unc_output_costben] = apiclient.download_dataset(ds)
+_target_dir, [test_unc_output_costben] = apiclient.download_dataset(ds)
 
 def impf_dem(x_paa=1, x_mdd=1):
     impf = ImpactFunc()
