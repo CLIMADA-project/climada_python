@@ -494,7 +494,7 @@ class Client():
         dlf = Download.get(Download.path==str(local_path.absolute()))
         dlf.delete_instance()
 
-    def get_hazard(self, hazard_type=None, data_dir=SYSTEM_DIR):
+    def get_hazard(self, hazard_type=None, properties={}, data_dir=SYSTEM_DIR):
         """Provides options to choose a hazard dataset, saves the file locally and open it as a hazard.
         Several countries can be given, creating a hazard combining the single countries
 
@@ -504,6 +504,8 @@ class Client():
             Type of climada Hazard. If None, options of available hazard types are given
         data_dir : str
             directory where the files should be downoladed. Default: SYSTEM_DIR
+        properties : known properties can also be given, countries can also be given as lists.
+
         """
         if not hazard_type:
             while True:
@@ -513,7 +515,7 @@ class Client():
                     break
                 else:
                     LOGGER.error('Please give a valid value from the list provided.')
-        datasets = self._get_data(hazard_type)
+        datasets = self._get_data(hazard_type, properties)
 
         hazard_list = []
         for dataset in datasets:
@@ -530,7 +532,7 @@ class Client():
         hazard.check()
         return hazard_concat
 
-    def get_exposures(self, exposures_type=None, data_dir=SYSTEM_DIR):
+    def get_exposures(self, exposures_type=None, properties={}, data_dir=SYSTEM_DIR):
         """Provides options to chose an exposures dataset, saves the file locally and open it as a climada Exposures.
         Several countries can be given, creating an exposure combining the single countries
         Parameters
@@ -539,6 +541,7 @@ class Client():
             Type of climada Exposures. If None, options of available exposures types are given
         data_dir : str
             directory where the files should be downloaded. Default: SYSTEM_DIR
+        properties : known properties can also be given, countries can also be given as lists.
         """
         if not exposures_type:
             while True:
@@ -548,7 +551,7 @@ class Client():
                     break
                 else:
                     LOGGER.error('Please give a valid value from the list provided.')
-        datasets = self._get_data(exposures_type)
+        datasets = self._get_data(exposures_type, properties=properties)
         exposures_list = []
         for dataset in datasets:
             self.download_file(data_dir, dataset.files[0])
@@ -576,7 +579,8 @@ class Client():
             datasets = self.get_datasets(data_type='litpop', properties={'exponents': '(1,1)', 'fin_mode': 'pc',
                                                                          'geographical_scale': 'global'})
         else:
-            country = [country]
+            if not isinstance(country, list):
+                country = [country]
             country2 = [pycountry.countries.get(name=c) for c in country]
             if not country2[0]:
                 country2 = [pycountry.countries.get(alpha_3=c) for c in country]
@@ -594,32 +598,54 @@ class Client():
         exposures_concat = exposures_concat.concat(exposures_list)
         return exposures_concat
 
-    def _get_data(self, type):
-        datasets = self.get_datasets(data_type=type)
+    def _get_data(self, type, properties):
+        try: # check if countries were given
+            properties['country_name']
+            countries = [pycountry.countries.get(name=c) for c in properties['country_name']]
+            if not countries[0]:
+                countries = [pycountry.countries.get(alpha_3=c) for c in properties['country_name']]
+            countries = [c.name for c in countries]
+            properties.pop('country_name')
+            properties['geographical_scale'] = 'country'
+            ignore_countries=True
+        except:
+            ignore_countries = False
+            pass
+        datasets = self.get_datasets(data_type=type, properties=properties)
         properties_keys = np.unique([dataset.properties.keys() for dataset in datasets])
         # find common properties between "groups" of datasets:
         properties_keys = set(properties_keys[0]).intersection(*properties_keys)
-        user_properties_input = {}
         # get user input to differentiate between these groups
-        user_properties_input = self._select_properties(datasets, properties_keys, user_properties_input)
-        datasets = [dataset for dataset in datasets if all((key in dataset.properties.items() for key in user_properties_input.items()))]
-        # find remaining properties to be chosen (usually countries:)
-        properties_keys2 = set(np.unique([dataset.properties.keys() for dataset in datasets])[0]) - properties_keys
-        user_properties_input.update(self._select_properties(datasets, properties_keys2, user_properties_input))
+        properties = self._select_properties(datasets, properties_keys, properties, ignore_countries)
+        # Get subset of datasets based on input
+        datasets = [dataset for dataset in datasets if all((key in dataset.properties.items() for key in properties.items()))]
+        try: # test if countries have already been defined
+            properties['country_name'] = countries
+        except:
+            properties_keys2 = set(np.unique([dataset.properties.keys() for dataset in datasets])[0]) - properties_keys
+            properties.update(self._select_properties(datasets, properties_keys2, properties, ignore_countries=False))
+            pass
         try: # make a list of properties and get a list of datasets in case several countries are given
-            user_properties_input['country_name']
+            properties['country_name']
+            if not isinstance(properties['country_name'], list):
+                properties['country_name'] = [properties['country_name']]
             datasets_properties = []
-            for country in user_properties_input['country_name']:
-                properties = user_properties_input.copy()
+            for country in properties['country_name']:
+                properties = properties.copy()
                 properties['country_name'] = country
                 datasets_properties.append(properties)
         except:
-            datasets_properties = [user_properties_input]
-        datasets = [self.get_dataset(data_type=type, properties=properties) for properties in datasets_properties]
-        return datasets
+            datasets_properties = [properties]
+        datasets_list = []
+        for dataset_properties in datasets_properties:
+            datasets_list.extend([dataset for dataset in datasets if all((key in dataset.properties.items()
+                                                            for key in dataset_properties.items()))])
+        return datasets_list
 
-    def _select_properties(self, datasets, properties_keys, user_properties_input):
+    def _select_properties(self, datasets, properties_keys, user_properties_input, ignore_countries):
         for property_key in properties_keys:
+            if property_key == 'country_name' and ignore_countries == True:
+                continue
             property_values = list(np.unique([dataset.properties[property_key] for dataset in datasets]))
             if property_key == 'date_creation' or  property_key == 'climada_version' \
                     or property_key == 'country_iso3alpha':
@@ -640,7 +666,7 @@ class Client():
                         is_subset = set(user_properties_input[property_key]).issubset(country_iso3alpha)
                         user_properties_input["country_iso3alpha"] = user_properties_input["country_name"]
                         user_properties_input.pop("country_name")
-                        property_key = "country_iso3alpha"
+                        property_valuesproperty_key = "country_iso3alpha"
                 else:
                     user_properties_input[property_key] = input(
                         "The following " + property_key + " are available: "
@@ -648,10 +674,11 @@ class Client():
 
                     is_subset = set([user_properties_input[property_key]]).issubset(property_values)
                 if is_subset:
+                    # only select datasets that furfill the preoperties:
+                    datasets = [dataset for dataset in datasets if any(item in
+                                                                       list(dataset.properties.values()) for item in
+                                                                       [user_properties_input[property_key]])]
                     break
                 else:
                     LOGGER.error('Please give a valid value from the list provided.')
-            # only select datasets that furfill the preoperties:
-            datasets = [dataset for dataset in datasets if any(item in
-                                    list(dataset.properties.values()) for item in [user_properties_input[property_key]])]
         return user_properties_input
