@@ -130,7 +130,7 @@ class TestClient(unittest.TestCase):
 
     def test_get_litpop_default(self):
         client = Client()
-        litpop = client.get_litpop_default(country='LUX', data_dir=DATA_DIR)
+        litpop = client.get_litpop_default(country='LUX', dump_dir=DATA_DIR)
         self.assertEqual(len(litpop.gdf), 188)
         self.assertEqual(np.unique(litpop.gdf.region_id), 442)
         self.assertTrue('[1, 1]' in litpop.tag.description)

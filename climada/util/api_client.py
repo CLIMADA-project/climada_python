@@ -667,120 +667,32 @@ class Client():
         exposures_concat.check()
         return exposures_concat
 
-    def get_litpop_default(self, country=None, data_dir=SYSTEM_DIR):
+    def get_litpop_default(self, country=None, dump_dir=SYSTEM_DIR):
         """Get a LitPop instance on a 150arcsec grid with the default parameters: exponents:(1,1) and fin_mode='pc'.
-          Parameters
-          ----------
-          country : list
-              List of country name or iso3 codes for which to create the LitPop object.
-              If None is given, a global LitPop instance is created. Defaut is None
-          data_dir : str
-              directory where the files should be downoladed. Default: SYSTEM_DIR
-          """
-        if not country:
-            datasets = self.get_datasets(data_type='litpop', properties={'exponents': '(1,1)', 'fin_mode': 'pc',
-                                                                         'geographical_scale': 'global'})
+
+        Parameters
+        ----------
+        country : str or list, optional
+            List of country name or iso3 codes for which to create the LitPop object.
+            If None is given, a global LitPop instance is created. Defaut is None
+        dump_dir : str
+            directory where the files should be downoladed. Default: SYSTEM_DIR
+
+        Returns
+        -------
+        climada.entity.exposures.Exposures
+            default litpop Exposures object
+        """
+        properties = {
+            'exponents': '(1,1)',
+            'fin_mode': 'pc'
+        }
+        if country is None:
+            properties['geographical_scale'] = 'global'
+        elif isinstance(country, str):
+            properties['country_name'] = pycountry.countries.lookup(country).name
+        elif isinstance(country, list):
+            properties['country_name'] = [pycountry.countries.lookup(country).name for c in country]
         else:
-            if not isinstance(country, list):
-                country = [country]
-            country2 = [pycountry.countries.get(name=c) for c in country]
-            if not country2[0]:
-                country2 = [pycountry.countries.get(alpha_3=c) for c in country]
-            datasets = [self.get_dataset(data_type='litpop', properties={'exponents': '(1,1)', 'fin_mode': 'pc',
-                                                                             'country_name': c.name}) for c in country2]
-        exposures_list = []
-        for dataset in datasets:
-            if os.path.isfile(os.path.join(data_dir, dataset.files[0].file_name)):
-                LOGGER.info('The file already exists and it was not downloaded again.')
-            self.download_file(data_dir, dataset.files[0])
-            exposures = Exposures()
-            exposures.read_hdf5(os.path.join(data_dir, dataset.files[0].file_name))
-            exposures_list.append(exposures)
-        exposures_concat = Exposures()
-        exposures_concat = exposures_concat.concat(exposures_list)
-        return exposures_concat
-
-    def _get_data(self, type, properties):
-        try: # check if countries were given
-            properties['country_name']
-            countries = [pycountry.countries.get(name=c) for c in properties['country_name']]
-            if not countries[0]:
-                countries = [pycountry.countries.get(alpha_3=c) for c in properties['country_name']]
-            countries = [c.name for c in countries]
-            properties.pop('country_name')
-            properties['geographical_scale'] = 'country'
-            ignore_countries=True
-        except:
-            ignore_countries = False
-            pass
-        datasets = self.get_datasets(data_type=type, properties=properties)
-        properties_keys = np.unique([dataset.properties.keys() for dataset in datasets])
-        # find common properties between "groups" of datasets:
-        properties_keys = set(properties_keys[0]).intersection(*properties_keys)
-        # get user input to differentiate between these groups
-        properties = self._select_properties(datasets, properties_keys, properties, ignore_countries)
-        # Get subset of datasets based on input
-        datasets = [dataset for dataset in datasets if all((key in dataset.properties.items() for key in properties.items()))]
-        try: # test if countries have already been defined
-            properties['country_name'] = countries
-        except:
-            properties_keys2 = set(np.unique([dataset.properties.keys() for dataset in datasets])[0]) - properties_keys
-            properties.update(self._select_properties(datasets, properties_keys2, properties, ignore_countries=False))
-            pass
-        try: # make a list of properties and get a list of datasets in case several countries are given
-            properties['country_name']
-            if not isinstance(properties['country_name'], list):
-                properties['country_name'] = [properties['country_name']]
-            datasets_properties = []
-            for country in properties['country_name']:
-                properties = properties.copy()
-                properties['country_name'] = country
-                datasets_properties.append(properties)
-        except:
-            datasets_properties = [properties]
-        datasets_list = []
-        for dataset_properties in datasets_properties:
-            datasets_list.extend([dataset for dataset in datasets if all((key in dataset.properties.items()
-                                                            for key in dataset_properties.items()))])
-        return datasets_list
-
-    def _select_properties(self, datasets, properties_keys, user_properties_input, ignore_countries):
-        for property_key in properties_keys:
-            if property_key == 'country_name' and ignore_countries == True:
-                continue
-            property_values = list(np.unique([dataset.properties[property_key] for dataset in datasets]))
-            if property_key == 'date_creation' or  property_key == 'climada_version' \
-                    or property_key == 'country_iso3alpha':
-                continue
-            if len(property_values) <= 1:
-                continue
-            while True:
-                if property_key == 'country_name':
-                    user_properties_input[property_key] = input(
-                        "The following " + property_key + " are available: "
-                        + ", ".join(property_values) + ". Which one(s) would you like to get "
-                                                       "(the values can also be provided as ISO 3166-1 alpha-3 codes)? "
-                                                       "You can finally provide"
-                                                       "a list of countries separated by comas.").split(',')
-                    is_subset = set(user_properties_input[property_key]).issubset(property_values)
-                    if not is_subset:
-                        country_iso3alpha = list(np.unique([dataset.properties["country_iso3alpha"] for dataset in datasets]))
-                        is_subset = set(user_properties_input[property_key]).issubset(country_iso3alpha)
-                        user_properties_input["country_iso3alpha"] = user_properties_input["country_name"]
-                        user_properties_input.pop("country_name")
-                        property_valuesproperty_key = "country_iso3alpha"
-                else:
-                    user_properties_input[property_key] = input(
-                        "The following " + property_key + " are available: "
-                        + ", ".join(property_values) + ". Which one would you like to get?")
-
-                    is_subset = set([user_properties_input[property_key]]).issubset(property_values)
-                if is_subset:
-                    # only select datasets that furfill the preoperties:
-                    datasets = [dataset for dataset in datasets if any(item in
-                                                                       list(dataset.properties.values()) for item in
-                                                                       [user_properties_input[property_key]])]
-                    break
-                else:
-                    LOGGER.error('Please give a valid value from the list provided.')
-        return user_properties_input
+            raise ValueError("country must be string or list of strings")
+        return self.get_exposures(exposures_type='litpop', dump_dir=dump_dir, properties=properties)
