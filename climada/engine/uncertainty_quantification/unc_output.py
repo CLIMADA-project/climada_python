@@ -373,7 +373,7 @@ class UncOutput():
         max_si_val = si_df_num.max().to_numpy()
 
         #get parameter of max index
-        max_si_idx = np.nan_to_num(max_si_idx + 1) # Set np.nan values to 0
+        max_si_idx = np.nan_to_num(max_si_idx + 1).astype(int) # Set np.nan values to 0
         param = np.concatenate((['None'], si_df['param']))
         param_max_si = [param[idx] for idx in max_si_idx]
         param2 = np.concatenate((['None'], si_df['param2']))
