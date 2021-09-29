@@ -104,8 +104,10 @@ class TestClient(unittest.TestCase):
 
     def test_get_exposures(self):
         client = Client()
-        exposures = client.get_exposures(exposures_type='litpop', properties={'country_name': ['CHE', 'AUT'],
-                                                            'fin_mode': 'pop', 'exponents': '(0,1)'}, data_dir=DATA_DIR)
+        exposures = client.get_exposures(exposures_type='litpop',
+                                         properties={'country_iso3alpha': ['CHE', 'AUT'],
+                                                     'fin_mode': 'pop', 'exponents': '(0,1)'},
+                                         dump_dir=DATA_DIR)
         self.assertEqual(len(exposures.gdf), 8583)
         self.assertEqual(np.min(exposures.gdf.region_id), 40)
         self.assertEqual(np.max(exposures.gdf.region_id), 756)
@@ -115,8 +117,10 @@ class TestClient(unittest.TestCase):
 
     def test_get_hazard(self):
         client = Client()
-        hazard = client.get_hazard(hazard_type='river_flood', properties={'country_name': ['Switzerland', 'Austria'],
-                                                    'year_range': '2010_2030', 'rcp': 'rcp26'}, data_dir=DATA_DIR)
+        hazard = client.get_hazard(hazard_type='river_flood', 
+                                   properties={'country_name': ['Switzerland', 'Austria'],
+                                               'year_range': '2010_2030', 'rcp': 'rcp26'},
+                                   dump_dir=DATA_DIR)
         self.assertEqual(np.shape(hazard.intensity), (960, 8601))
         self.assertEqual(np.min(hazard.centroids.region_id), 40)
         self.assertEqual(np.max(hazard.centroids.region_id), 756)
@@ -134,7 +138,7 @@ class TestClient(unittest.TestCase):
     
     def test_multi_filter(self):
         client = Client()
-        testds = client.get_datasets(status='test_dataset')
+        testds = client.get_datasets(data_type='storm_europe')
 
         # assert no systemic loss in filtering
         still = client._filter_datasets(testds, dict())
@@ -143,7 +147,7 @@ class TestClient(unittest.TestCase):
 
         # assert filter is effective
         p = 'country_name'
-        a, b = 'Antigua', 'Barbados'
+        a, b = 'Germany', 'Netherlands'
         less = client._filter_datasets(testds, {p:[a, b]})
         self.assertLess(len(less), len(testds))
         only = client._filter_datasets(testds, {p:[a]})

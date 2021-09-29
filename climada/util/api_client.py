@@ -214,10 +214,10 @@ class Client():
 
     @staticmethod
     def _filter_datasets(datasets, multi_props):
-        dsf = pd.DataFrame(datasets)
+        pdf = pd.DataFrame([ds.properties for ds in datasets])
         for prop, selection in multi_props.items():
-            dsf = dsf[dsf[prop].str.isin(selection)]
-        return [DatasetInfo(row) for row in dsf.iterrows()]
+            pdf = pdf[pdf[prop].isin(selection)]
+        return [datasets[i] for i in pdf.index]
 
     def get_datasets(self, data_type=None, name=None, version=None, properties=None,
                      status='active'):
@@ -250,8 +250,11 @@ class Client():
             'status': '' if status is None else status,
         }
 
-        straight_props, multi_props = self._divide_straight_from_multi(properties) \
-                                      if properties else None, None
+        if properties:
+            straight_props, multi_props = self._divide_straight_from_multi(properties)
+        else:
+            straight_props, multi_props = None, None
+
         if straight_props:
             params.update(straight_props)
 
@@ -557,7 +560,8 @@ class Client():
             raise ValueError("Valid hazard types are a subset of CLIMADA hazard types."
                              f" Currently these types are supported: {HAZ_TYPES}")
         datasets = self.get_datasets(data_type=hazard_type, **kwargs)
-
+        if not datasets:
+            raise ValueError("no datasets found meeting the requirements")
         return self.to_hazard(datasets, dump_dir)
 
     def to_hazard(self, datasets, dump_dir=SYSTEM_DIR):
@@ -588,6 +592,8 @@ class Client():
                     hazard = Hazard()
                     hazard.read_hdf5(hazard_file)
                     hazard_list.append(hazard)
+        if not hazard_list:
+            raise ValueError("no hazard files found in datasets")
 
         hazard_concat = Hazard()
         hazard_concat = hazard_concat.concat(hazard_list)
@@ -595,7 +601,7 @@ class Client():
         hazard.check()
         return hazard_concat
 
-    def get_exposures(self, exposure_type, dump_dir=SYSTEM_DIR, **kwargs):
+    def get_exposures(self, exposures_type, dump_dir=SYSTEM_DIR, **kwargs):
         """Queries the data api for exposures datasets of the given type, downloads associated
         hdf5 files and turns them into a climada.entity.exposures.Exposures object.
 
@@ -617,11 +623,12 @@ class Client():
         """
         if 'data_type' in kwargs:
             raise ValueError("data_type is already given as hazard_type")
-        if not exposure_type in EXP_TYPES:
+        if not exposures_type in EXP_TYPES:
             raise ValueError("Valid exposures types are a subset of CLIMADA exposures types."
                              f" Currently these types are supported: {EXP_TYPES}")
-        datasets = self.get_datasets(data_type=exposure_type, **kwargs)
-
+        datasets = self.get_datasets(data_type=exposures_type, **kwargs)
+        if not datasets:
+            raise ValueError("no datasets found meeting the requirements")
         return self.to_exposures(datasets, dump_dir)
 
     def to_exposures(self, datasets, dump_dir=SYSTEM_DIR):
@@ -652,8 +659,10 @@ class Client():
                     exposures = Exposures()
                     exposures.read_hdf5(exposures_file)
                     exposures_list.append(exposures)
+        if not exposures_list:
+            raise ValueError("no exposures files found in datasets")
 
-        exposures_concat = Hazard()
+        exposures_concat = Exposures()
         exposures_concat = exposures_concat.concat(exposures_list)
         exposures_concat.check()
         return exposures_concat
