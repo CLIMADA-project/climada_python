@@ -343,6 +343,50 @@ class UncOutput():
                         submetric_df.select_dtypes('number').columns, axis=1)
         return pd.concat([df_meta, df_all], axis=1).reset_index(drop=True)
 
+    def get_largest_si(self, salib_si, metric_list=None):
+        """
+        Get largest si per metric
+
+        Parameters
+        ----------
+        salib_si : str
+            The name of the sensitivity index to plot.
+        metric_list : list of strings, optional
+            List of metrics to plot the sensitivity.
+            Default is None.
+        Returns
+        -------
+        max_si_df : pandas.dataframe
+            Dataframe with the largest si and its value per metric
+
+        """
+
+        if metric_list is None:
+            metric_list = self.sensitivity_metrics
+
+        si_df = self.get_sensitivity(salib_si, metric_list)
+
+        #get max index
+        si_df_num = si_df.select_dtypes('number')
+        si_df_num[si_df_num<0.001] = 0 #remove noise whenn all si are 0
+        max_si_idx = si_df_num.idxmax().to_numpy()
+        max_si_val = si_df_num.max().to_numpy()
+
+        #get parameter of max index
+        max_si_idx = np.nan_to_num(max_si_idx + 1) # Set np.nan values to 0
+        param = np.concatenate((['None'], si_df['param']))
+        param_max_si = [param[idx] for idx in max_si_idx]
+        param2 = np.concatenate((['None'], si_df['param2']))
+        param2_max_si = [param2[idx] for idx in max_si_idx]
+
+        max_si_df = pd.DataFrame([])
+        max_si_df['metric'] = si_df_num.columns
+        max_si_df['param'] = param_max_si
+        max_si_df['param2'] = param2_max_si
+        max_si_df['si'] = max_si_val
+
+        return max_si_df
+
     def plot_sample(self, figsize=None):
         """
         Plot the sample distributions of the uncertainty input parameters
@@ -738,7 +782,7 @@ class UncOutput():
             The default is S2_conf.
         metric_list : list of strings, optional
             List of metrics to plot the sensitivity. If a metric is not found
-            it is ignored.
+            it is ignored. Default is all 1D metrics.
         figsize : tuple(int or float, int or float), optional
             The figsize argument of matplotlib.pyplot.subplots()
             The default is derived from the total number of plots (nplots) as:
@@ -875,40 +919,23 @@ class UncOutput():
 
         """
 
-        try:
-            si_eai_df = self.get_sensitivity(salib_si, ['eai_exp']).select_dtypes('number')
-            si_eai_df[si_eai_df<0.001] = 0 #remove noise whenn all si are 0
-            eai_max_si_idx = si_eai_df.idxmax().to_numpy()
-        except KeyError as verr:
-            raise ValueError("No sensitivity indices found for"
-                  " impact.eai_exp. Please compute sensitivity first using"
-                  " UncCalcImpact.calc_sensitivity(unc_data, calc_eai_exp=True)"
-                  ) from verr
-
-        if len(eai_max_si_idx) != len(exp.gdf):
+        eai_max_si_df = self.get_largest_si(salib_si, metric_list=['eai_exp'])
+        if len(eai_max_si_df) != len(exp.gdf):
             LOGGER.error("The length of the sensitivity data "
                   "%d does not match the number "
                   "of points %d in the given exposure. "
                   "Please check the exposure or recompute the sensitivity  "
                   "using UncCalcImpact.calc_sensitivity(calc_eai_exp=True)",
-                  len(eai_max_si_idx), len(exp.gdf)
+                  len(eai_max_si_df), len(exp.gdf)
                   )
             return None
 
-        eai_max_si_idx = np.nan_to_num(eai_max_si_idx + 1) # Set np.nan values to 0
-        labels = {
-            float(idx+1): label
-            for idx, label in enumerate(self.param_labels)}
-        if 0 in eai_max_si_idx:
-            labels[0.0] = 'None'
-        plot_val = np.array([eai_max_si_idx]).astype(float)
+        plot_val = eai_max_si_df['param']
         coord = np.array([exp.gdf.latitude, exp.gdf.longitude]).transpose()
         if 'var_name' not in kwargs:
             kwargs['var_name'] = 'Largest sensitivity index ' + salib_si
         if 'title' not in kwargs:
             kwargs['title'] = 'Sensitivity map'
-        if 'cat_name' not in kwargs:
-            kwargs['cat_name'] = labels
         if 'figsize' not in kwargs:
             kwargs['figsize'] = (8,6)
         ax = u_plot.geo_scatter_categorical(
