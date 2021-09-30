@@ -127,31 +127,36 @@ class ImpactFunc():
                            'origin of the intensity scale. In impact.calc '
                            'the impact is always null at intensity = 0.')
 
-    def set_step_ImpF(self, threshold, inten_min, inten_max, if_id=1):
+    def set_step_ImpF(self, intensity, mdd=(0, 1), paa=(1, 1), impf_id=1):
 
-        """ Step function type impact function. Everything is destroyed above
-        threshold. Usefull for high resolution modelling.
+        """ Step function type impact function. 
+        
+        By default, everything is destroyed above the step.
+        Useful for high resolution modelling.
         
         This method modifies self (climada.entity.impact_funcs instance)
-        by assining an id, intensity, mdd and paa to the impact function.
+        by assigning an id, intensity, mdd and paa to the impact function.
         
         Parameters
         ----------
-            threshold : float
-                threshold over which exposure is fully destroyed
-            inten_min : float
-                minimum value of intensity range
-            inten_min : float
-                maximum value of intensity range
-            if_id : int, optional, default=1
-                impact function id
+        intensity: tuple(float, float, float)
+            tuple of 3-intensity numbers: (minimum, threshold, maximum)
+        mdd: tuple(float, float)
+            (min, max) mdd values. The default is (0, 1)
+        paa: tuple(float, float)
+            (min, max) paa values. The default is (1, 1)
+        impf_id : int, optional, default=1
+            impact function id
 
         """
 
-        self.id = if_id
+        self.id = impf_id
+        inten_min, threshold, inten_max = intensity
         self.intensity = np.array([inten_min, threshold, threshold, inten_max])
-        self.paa = np.array([1, 1, 1, 1])
-        self.mdd = np.array([0, 0, 1, 1])
+        paa_min, paa_max = paa
+        self.paa = np.array([paa_min, paa_min, paa_max, paa_max])
+        mdd_min, mdd_max = mdd
+        self.mdd = np.array([mdd_min, mdd_min, mdd_max, mdd_max])
 
     def set_sigmoid_ImpF(self, sig_mid, sig_shape, sig_max,
                     inten_min, inten_max, inten_step=5, if_id=1):
