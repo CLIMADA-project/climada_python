@@ -158,15 +158,15 @@ class ImpactFunc():
         mdd_min, mdd_max = mdd
         self.mdd = np.array([mdd_min, mdd_min, mdd_max, mdd_max])
 
-    def set_sigmoid_impf(self, sig_mid, sig_shape, sig_max,
-                    inten_min, inten_max, inten_step=5, if_id=1):
+    def set_sigmoid_impf(self, intensity, L, k, x0, if_id=1):
 
         """ Sigmoid type impact function hinging on three parameter. 
         
-        This type of impact function is very flexible for any sort of study/resolution.
-        Parameters can be thought of as intercept (sig_mid), slope (sig_shape)
-        and top (sig_max) of a sigmoid. More precisely, sig_mid refers to the
-        intensity value where MDD equals 50% of sig_max.
+        This type of impact function is very flexible for any sort of study, 
+        hazard and resolution. The sigmoid is defined as:
+        
+        .. math::
+            f(x) = \frac{L}{1+exp^{-k(x-x0)}}
 
         For more information: https://en.wikipedia.org/wiki/Logistic_function
 
@@ -175,23 +175,20 @@ class ImpactFunc():
 
         Parameters
         ----------
-            sig_mid : float
-                "intercept" of sigmoid
-            sig_shape : float
-                "slope" of sigmoid
-            sig_max : float
+            intensity: tuple(float, float, float)
+                tuple of 3 intensity numbers along np.arange(min, max, step)
+            L : float
                 "top" of sigmoid
-            inten_min : float
-                minimum value of intensity range
-            inten_min : float
-                maximum value of intensity range
-            inten_step : float, optional, default=5
-                Spacing between intensity values
+            k : float
+                "slope" of sigmoid
+            x0 : float
+                intensity value where f(x)==L/2
             if_id : int, optional, default=1
                 impact function id
 
         """
         self.id = if_id
+        inten_min, inten_max, inten_step = intensity
         self.intensity = np.arange(inten_min, inten_max, inten_step)
         self.paa = np.ones(len(self.intensity))
-        self.mdd = sig_max / (1 + np.exp(-sig_shape * (self.intensity - sig_mid)))
+        self.mdd = L / (1 + np.exp(-k * (self.intensity - x0)))
