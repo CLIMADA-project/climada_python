@@ -96,7 +96,7 @@ class ImpactFunc():
         axis.set_xlim((self.intensity.min(), self.intensity.max()))
         axis.legend()
         return axis
-    
+
     def check(self):
         """Check consistent instance data.
 
@@ -129,14 +129,14 @@ class ImpactFunc():
 
     def set_step_impf(self, intensity, mdd=(0, 1), paa=(1, 1), impf_id=1):
 
-        """ Step function type impact function. 
-        
+        """ Step function type impact function.
+
         By default, everything is destroyed above the step.
         Useful for high resolution modelling.
-        
+
         This method modifies self (climada.entity.impact_funcs instance)
         by assigning an id, intensity, mdd and paa to the impact function.
-        
+
         Parameters
         ----------
         intensity: tuple(float, float, float)
@@ -160,11 +160,11 @@ class ImpactFunc():
 
     def set_sigmoid_impf(self, intensity, L, k, x0, if_id=1):
 
-        """ Sigmoid type impact function hinging on three parameter. 
-        
-        This type of impact function is very flexible for any sort of study, 
+        """ Sigmoid type impact function hinging on three parameter.
+
+        This type of impact function is very flexible for any sort of study,
         hazard and resolution. The sigmoid is defined as:
-        
+
         .. math::
             f(x) = \frac{L}{1+exp^{-k(x-x0)}}
 
