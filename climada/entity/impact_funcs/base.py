@@ -143,4 +143,68 @@ class ImpactFunc():
                            'origin of the intensity scale. In impact.calc '
                            'the impact is always null at intensity = 0.')
 
+    def set_step_impf(self, intensity, mdd=(0, 1), paa=(1, 1), impf_id=1):
 
+        """ Step function type impact function.
+
+        By default, everything is destroyed above the step.
+        Useful for high resolution modelling.
+
+        This method modifies self (climada.entity.impact_funcs instance)
+        by assigning an id, intensity, mdd and paa to the impact function.
+
+        Parameters
+        ----------
+        intensity: tuple(float, float, float)
+            tuple of 3-intensity numbers: (minimum, threshold, maximum)
+        mdd: tuple(float, float)
+            (min, max) mdd values. The default is (0, 1)
+        paa: tuple(float, float)
+            (min, max) paa values. The default is (1, 1)
+        impf_id : int, optional, default=1
+            impact function id
+
+        """
+
+        self.id = impf_id
+        inten_min, threshold, inten_max = intensity
+        self.intensity = np.array([inten_min, threshold, threshold, inten_max])
+        paa_min, paa_max = paa
+        self.paa = np.array([paa_min, paa_min, paa_max, paa_max])
+        mdd_min, mdd_max = mdd
+        self.mdd = np.array([mdd_min, mdd_min, mdd_max, mdd_max])
+
+    def set_sigmoid_impf(self, intensity, L, k, x0, if_id=1):
+
+        """ Sigmoid type impact function hinging on three parameter.
+
+        This type of impact function is very flexible for any sort of study,
+        hazard and resolution. The sigmoid is defined as:
+
+        .. math::
+            f(x) = \frac{L}{1+exp^{-k(x-x0)}}
+
+        For more information: https://en.wikipedia.org/wiki/Logistic_function
+
+        This method modifies self (climada.entity.impact_funcs instance)
+        by assining an id, intensity, mdd and paa to the impact function.
+
+        Parameters
+        ----------
+            intensity: tuple(float, float, float)
+                tuple of 3 intensity numbers along np.arange(min, max, step)
+            L : float
+                "top" of sigmoid
+            k : float
+                "slope" of sigmoid
+            x0 : float
+                intensity value where f(x)==L/2
+            if_id : int, optional, default=1
+                impact function id
+
+        """
+        self.id = if_id
+        inten_min, inten_max, inten_step = intensity
+        self.intensity = np.arange(inten_min, inten_max, inten_step)
+        self.paa = np.ones(len(self.intensity))
+        self.mdd = L / (1 + np.exp(-k * (self.intensity - x0)))
