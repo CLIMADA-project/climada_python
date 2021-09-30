@@ -95,7 +95,7 @@ class ImpactFunc():
         -------
         matplotlib.axes._subplots.AxesSubplot
         """
-        if not axis:
+        if axis is None:
             _, axis = plt.subplots(1, 1)
 
         title = '%s %s' % (self.haz_type, str(self.id))
