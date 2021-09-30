@@ -161,8 +161,9 @@ class ImpactFunc():
     def set_sigmoid_impf(self, sig_mid, sig_shape, sig_max,
                     inten_min, inten_max, inten_step=5, if_id=1):
 
-        """ Sigmoid type impact function hinging on three parameter. This type
-        of impact function is very flexible for any sort of study/resolution.
+        """ Sigmoid type impact function hinging on three parameter. 
+        
+        This type of impact function is very flexible for any sort of study/resolution.
         Parameters can be thought of as intercept (sig_mid), slope (sig_shape)
         and top (sig_max) of a sigmoid. More precisely, sig_mid refers to the
         intensity value where MDD equals 50% of sig_max.
