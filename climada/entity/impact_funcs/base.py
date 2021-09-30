@@ -127,7 +127,7 @@ class ImpactFunc():
                            'origin of the intensity scale. In impact.calc '
                            'the impact is always null at intensity = 0.')
 
-    def set_step_ImpF(self, intensity, mdd=(0, 1), paa=(1, 1), impf_id=1):
+    def set_step_impf(self, intensity, mdd=(0, 1), paa=(1, 1), impf_id=1):
 
         """ Step function type impact function. 
         
@@ -158,7 +158,7 @@ class ImpactFunc():
         mdd_min, mdd_max = mdd
         self.mdd = np.array([mdd_min, mdd_min, mdd_max, mdd_max])
 
-    def set_sigmoid_ImpF(self, sig_mid, sig_shape, sig_max,
+    def set_sigmoid_impf(self, sig_mid, sig_shape, sig_max,
                     inten_min, inten_max, inten_step=5, if_id=1):
 
         """ Sigmoid type impact function hinging on three parameter. This type
