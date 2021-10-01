@@ -42,7 +42,7 @@ DB = SqliteDatabase(Path(CONFIG.data_api.cache_db.str()).expanduser())
 
 HAZ_TYPES = [ht.str() for ht in CONFIG.data_api.supported_hazard_types.list()]
 EXP_TYPES = [et.str() for et in CONFIG.data_api.supported_exposures_types.list()]
-MULTI_SELECTION_ENABLED = [ms.str() for ms in CONFIG.data_api.multi_selection_enabled.list()]
+MUTUAL_PROPS = [ms.str() for ms in CONFIG.data_api.mutual_properties.list()]
 
 
 class Download(Model):
@@ -206,8 +206,6 @@ class Client():
             if isinstance(_v, str):
                 straights[k] = _v
             elif isinstance(_v, list):
-                if not k in MULTI_SELECTION_ENABLED:
-                    raise ValueError(f"for the {k} property only single values are allowed")
                 multis[k] = _v
             else:
                 raise ValueError("properties must be a string or a list of strings")
@@ -450,7 +448,7 @@ class Client():
             downloaded = self._tracked_download(remote_url=fileinfo.url, local_path=local_path)
             if not downloaded.enddownload:
                 raise Download.Failed("Download seems to be in progress, please try again later"
-                    " or remove cache entry by calling purge_cache the database!")
+                    f" or remove cache entry by calling `purge_cache(Path('{local_path}'))`!")
             try:
                 check(local_path, fileinfo)
             except Download.Failed as dlf:
@@ -535,6 +533,36 @@ class Client():
         dlf = Download.get(Download.path==str(local_path.absolute()))
         dlf.delete_instance()
 
+    @staticmethod
+    def _multi_version(datasets):
+        ddf = pd.DataFrame(datasets)
+        gdf = ddf.groupby('name').agg({'version': 'nunique'})
+        return list(gdf[gdf.version > 1].index)
+
+    @staticmethod
+    def _multi_selection(datasets):
+        pdf = pd.DataFrame([ds.properties for ds in datasets]).nunique()
+        return list(pdf[pdf > 1].index)
+
+    @staticmethod
+    def _check_datasets_for_concatenation(datasets, max_datasets):
+        if not datasets:
+            raise ValueError("no datasets found meeting the requirements")
+        if 0 < max_datasets < len(datasets):
+            raise ValueError(f"There are {len(datasets)} datasets matching the query"
+                             f" and the limit is set to {max_datasets}."
+                             " You can force download by increasing max_datasets or"
+                             " setting it to a value <= 0")
+        not_supported = [msd for msd in Client._multi_selection(datasets)
+                         if msd in MUTUAL_PROPS]
+        if not_supported:
+            raise ValueError("Cannot combine datasets, there are distinct values for these"
+                             f" properties in your selection: {not_supported}")
+        ambiguous_ds_names = Client._multi_version(datasets)
+        if ambiguous_ds_names:
+            raise ValueError("There are datasets with multiple versions in your selection:"
+                             f" {ambiguous_ds_names}")
+
     def get_hazard(self, hazard_type, dump_dir=SYSTEM_DIR, max_datasets=10, **kwargs):
         """Queries the data api for hazard datasets of the given type, downloads associated
         hdf5 files and turns them into a climada.hazard.Hazard object.
@@ -565,13 +593,9 @@ class Client():
             raise ValueError("Valid hazard types are a subset of CLIMADA hazard types."
                              f" Currently these types are supported: {HAZ_TYPES}")
         datasets = self.get_datasets(data_type=hazard_type, **kwargs)
-        if not datasets:
-            raise ValueError("no datasets found meeting the requirements")
-        if 0 < max_datasets < len(datasets):
-            raise ValueError(f"There are {len(datasets)} datasets matching the query"
-                             f" and the limit is set to {max_datasets}."
-                             " You can force download by increasing max_datasets or"
-                             " setting it to a value <= 0")
+
+        self._check_datasets_for_concatenation(datasets, max_datasets)
+
         return self.to_hazard(datasets, dump_dir)
 
     def to_hazard(self, datasets, dump_dir=SYSTEM_DIR):
@@ -641,13 +665,9 @@ class Client():
             raise ValueError("Valid exposures types are a subset of CLIMADA exposures types."
                              f" Currently these types are supported: {EXP_TYPES}")
         datasets = self.get_datasets(data_type=exposures_type, **kwargs)
-        if not datasets:
-            raise ValueError("no datasets found meeting the requirements")
-        if 0 < max_datasets < len(datasets):
-            raise ValueError(f"There are {len(datasets)} datasets matching the query"
-                             f" and the limit is set to {max_datasets}."
-                             " You can force download by increasing max_datasets or"
-                             " setting it to a value <= 0")
+
+        self._check_datasets_for_concatenation(datasets, max_datasets)
+
         return self.to_exposures(datasets, dump_dir)
 
     def to_exposures(self, datasets, dump_dir=SYSTEM_DIR):
@@ -712,7 +732,7 @@ class Client():
         elif isinstance(country, str):
             properties['country_name'] = pycountry.countries.lookup(country).name
         elif isinstance(country, list):
-            properties['country_name'] = [pycountry.countries.lookup(country).name for c in country]
+            properties['country_name'] = [pycountry.countries.lookup(c).name for c in country]
         else:
             raise ValueError("country must be string or list of strings")
         return self.get_exposures(exposures_type='litpop', dump_dir=dump_dir, properties=properties)
