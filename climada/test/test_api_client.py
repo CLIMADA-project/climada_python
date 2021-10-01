@@ -115,6 +115,16 @@ class TestClient(unittest.TestCase):
         self.assertTrue('pop' in exposures.tag.description)
         exposures
 
+    def test_get_exposures_fails(self):
+        client = Client()
+        with self.assertRaises(ValueError) as cm:
+            client.get_exposures(exposures_type='river_flood', 
+                                 properties={'country_iso3alpha': ['CHE', 'AUT'],
+                                             'fin_mode': 'pop', 'exponents': '(0,1)'},
+                                 dump_dir=DATA_DIR)
+        self.assertIn('Valid exposures types are a subset of CLIMADA exposures types. Currently',
+                      str(cm.exception))
+
     def test_get_hazard(self):
         client = Client()
         hazard = client.get_hazard(hazard_type='river_flood', 
@@ -127,6 +137,24 @@ class TestClient(unittest.TestCase):
         self.assertEqual(np.unique(hazard.date).size, 20)
         self.assertEqual(hazard.tag.haz_type, 'RF')
         hazard
+
+    def test_get_hazard_fails(self):
+        client = Client()
+        with self.assertRaises(ValueError) as cm:
+            client.get_hazard(hazard_type='litpop', 
+                              properties={'country_name': ['Switzerland', 'Austria'],
+                                          'year_range': '2010_2030', 'rcp': 'rcp26'},
+                              dump_dir=DATA_DIR)
+        self.assertIn('Valid hazard types are a subset of CLIMADA hazard types. Currently',
+                      str(cm.exception))
+
+        with self.assertRaises(ValueError) as cm:
+            client.get_hazard(hazard_type='river_flood', 
+                              properties={'country_name': ['Switzerland', 'Austria'],
+                                          'year_range': '2010_2030', 'rcp': ['rcp26', 'rcp32']},
+                              dump_dir=DATA_DIR)
+        self.assertIn('for the rcp property only single values are allowed',
+                      str(cm.exception))
 
     def test_get_litpop_default(self):
         client = Client()
@@ -156,13 +184,13 @@ class TestClient(unittest.TestCase):
 
     def test_multiplicity_split(self):
         properties = {
-            'a': ['x', 'y', 'z'],
+            'country_name': ['x', 'y', 'z'],
             'b': '1'
         }
         # assert split matches expectations
         straight, multi = Client._divide_straight_from_multi(properties)
         self.assertEqual(straight, {'b': '1'})
-        self.assertEqual(multi, {'a': ['x', 'y', 'z']})
+        self.assertEqual(multi, {'country_name': ['x', 'y', 'z']})
 
 
 def rm_empty_dir(folder):

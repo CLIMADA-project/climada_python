@@ -27,7 +27,6 @@ from pathlib import Path
 from urllib.parse import quote, unquote
 import time
 
-import numpy as np
 import pandas as pd
 from peewee import CharField, DateTimeField, IntegrityError, Model, SqliteDatabase
 import requests
@@ -42,8 +41,9 @@ LOGGER = logging.getLogger(__name__)
 
 DB = SqliteDatabase(Path(CONFIG.data_api.cache_db.str()).expanduser())
 
-HAZ_TYPES = ['river_flood', 'tropical_cyclone', 'storm_europe']
-EXP_TYPES = ['litpop', 'crop_production']
+HAZ_TYPES = [ht.str() for ht in CONFIG.data_api.supported_hazard_types.list()]
+EXP_TYPES = [et.str() for et in CONFIG.data_api.supported_exposures_types.list()]
+MULTI_SELECTION_ENABLED = [ms.str() for ms in CONFIG.data_api.multi_selection_enabled.list()]
 
 
 class Download(Model):
@@ -207,6 +207,8 @@ class Client():
             if isinstance(v, str):
                 straights[k] = v
             elif isinstance(v, list):
+                if not k in MULTI_SELECTION_ENABLED:
+                    raise ValueError(f"for the {k} property only single values are allowed")
                 multis[k] = v
             else:
                 raise ValueError("properties must be a string or a list of strings")
