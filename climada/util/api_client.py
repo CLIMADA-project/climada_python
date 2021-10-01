@@ -736,3 +736,22 @@ class Client():
         else:
             raise ValueError("country must be string or list of strings")
         return self.get_exposures(exposures_type='litpop', dump_dir=dump_dir, properties=properties)
+
+    def get_datasets_as_df(self, *args, **kwargs):
+        """Convenience function providing a DataFrame of datasets with properties
+        the datasets are collected from the method `self.get_datasets(*args, **kwargs),
+        with the given arguments just passed over.
+
+        Returns
+        -------
+        pandas.DataFrame
+            of datasets with properties as found in query by arguments
+        """
+        datasets = self.get_datasets(*args, **kwargs)
+        dsdf = pd.DataFrame(datasets)
+        ppdf = pd.DataFrame([ds.properties for ds in datasets])
+        dtdf = pd.DataFrame([pd.Series(dt) for dt in dsdf.data_type])
+
+        return dtdf.loc[:, [c for c in dtdf.columns if c not in ['description', 'properties']]].join(
+               dsdf.loc[:, [c for c in dsdf.columns if c not in ['data_type', 'properties', 'files']]]).join(
+               ppdf)
