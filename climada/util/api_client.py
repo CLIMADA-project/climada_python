@@ -18,7 +18,6 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Data API client
 """
-import os.path
 from dataclasses import dataclass
 from datetime import datetime
 import json
@@ -203,13 +202,13 @@ class Client():
     @staticmethod
     def _divide_straight_from_multi(properties):
         straights, multis = dict(), dict()
-        for k, v in properties.items():
-            if isinstance(v, str):
-                straights[k] = v
-            elif isinstance(v, list):
+        for k, _v in properties.items():
+            if isinstance(_v, str):
+                straights[k] = _v
+            elif isinstance(_v, list):
                 if not k in MULTI_SELECTION_ENABLED:
                     raise ValueError(f"for the {k} property only single values are allowed")
-                multis[k] = v
+                multis[k] = _v
             else:
                 raise ValueError("properties must be a string or a list of strings")
         return straights, multis
@@ -536,7 +535,7 @@ class Client():
         dlf = Download.get(Download.path==str(local_path.absolute()))
         dlf.delete_instance()
 
-    def get_hazard(self, hazard_type, dump_dir=SYSTEM_DIR, **kwargs):
+    def get_hazard(self, hazard_type, dump_dir=SYSTEM_DIR, max_datasets=10, **kwargs):
         """Queries the data api for hazard datasets of the given type, downloads associated
         hdf5 files and turns them into a climada.hazard.Hazard object.
 
@@ -548,6 +547,10 @@ class Client():
             Directory where the files should be downoladed. Default: SYSTEM_DIR
             If the directory is the SYSTEM_DIR, the eventual target directory is organized into
             dump_dir > hazard_type > dataset name > version
+        max_datasets : int, optional
+            Download limit for datasets. If a query matches is matched by more datasets than this
+            number, a ValueError is raised. Setting it to 0 or a negative number inactivates the
+            limit. Default is 10.
         **kwargs :
             additional parameters passed on to get_datasets
 
@@ -564,6 +567,11 @@ class Client():
         datasets = self.get_datasets(data_type=hazard_type, **kwargs)
         if not datasets:
             raise ValueError("no datasets found meeting the requirements")
+        if 0 < max_datasets < len(datasets):
+            raise ValueError(f"There are {len(datasets)} datasets matching the query"
+                             f" and the limit is set to {max_datasets}."
+                             " You can force download by increasing max_datasets or"
+                             " setting it to a value <= 0")
         return self.to_hazard(datasets, dump_dir)
 
     def to_hazard(self, datasets, dump_dir=SYSTEM_DIR):
@@ -603,7 +611,7 @@ class Client():
         hazard.check()
         return hazard_concat
 
-    def get_exposures(self, exposures_type, dump_dir=SYSTEM_DIR, **kwargs):
+    def get_exposures(self, exposures_type, dump_dir=SYSTEM_DIR, max_datasets=10, **kwargs):
         """Queries the data api for exposures datasets of the given type, downloads associated
         hdf5 files and turns them into a climada.entity.exposures.Exposures object.
 
@@ -615,6 +623,10 @@ class Client():
             Directory where the files should be downoladed. Default: SYSTEM_DIR
             If the directory is the SYSTEM_DIR, the eventual target directory is organized into
             dump_dir > hazard_type > dataset name > version
+        max_datasets : int, optional
+            Download limit for datasets. If a query matches is matched by more datasets than this
+            number, a ValueError is raised. Setting it to 0 or a negative number inactivates the
+            limit. Default is 10.
         **kwargs :
             additional parameters passed on to `Client.get_datasets`
 
@@ -631,6 +643,11 @@ class Client():
         datasets = self.get_datasets(data_type=exposures_type, **kwargs)
         if not datasets:
             raise ValueError("no datasets found meeting the requirements")
+        if 0 < max_datasets < len(datasets):
+            raise ValueError(f"There are {len(datasets)} datasets matching the query"
+                             f" and the limit is set to {max_datasets}."
+                             " You can force download by increasing max_datasets or"
+                             " setting it to a value <= 0")
         return self.to_exposures(datasets, dump_dir)
 
     def to_exposures(self, datasets, dump_dir=SYSTEM_DIR):
@@ -670,7 +687,8 @@ class Client():
         return exposures_concat
 
     def get_litpop_default(self, country=None, dump_dir=SYSTEM_DIR):
-        """Get a LitPop instance on a 150arcsec grid with the default parameters: exponents:(1,1) and fin_mode='pc'.
+        """Get a LitPop instance on a 150arcsec grid with the default parameters:
+        exponents = (1,1) and fin_mode = 'pc'.
 
         Parameters
         ----------

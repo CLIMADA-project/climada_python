@@ -125,6 +125,13 @@ class TestClient(unittest.TestCase):
         self.assertIn('Valid exposures types are a subset of CLIMADA exposures types. Currently',
                       str(cm.exception))
 
+        with self.assertRaises(ValueError) as cm:
+            client.get_exposures(exposures_type='litpop', 
+                                 properties={'fin_mode': 'pop', 'exponents': '(0,1)'},
+                                 dump_dir=DATA_DIR)
+        self.assertIn(' datasets matching the query and the limit is set to 10. You can force ',
+                      str(cm.exception))
+
     def test_get_hazard(self):
         client = Client()
         hazard = client.get_hazard(hazard_type='river_flood', 
