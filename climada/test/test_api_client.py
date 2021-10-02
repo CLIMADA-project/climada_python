@@ -22,6 +22,8 @@ from pathlib import Path
 import unittest
 from shutil import rmtree
 
+import numpy as np
+
 from climada import CONFIG
 from climada.util.api_client import Client, Download
 
@@ -99,6 +101,104 @@ class TestClient(unittest.TestCase):
             self.assertEqual(download.parent, download_dir)
             download.unlink()
         rm_empty_dir(download.parent.parent.parent)
+
+    def test_get_exposures(self):
+        client = Client()
+        exposures = client.get_exposures(exposures_type='litpop',
+                                         properties={'country_iso3alpha': ['CHE', 'AUT'],
+                                                     'fin_mode': 'pop', 'exponents': '(0,1)'},
+                                         dump_dir=DATA_DIR)
+        self.assertEqual(len(exposures.gdf), 8583)
+        self.assertEqual(np.min(exposures.gdf.region_id), 40)
+        self.assertEqual(np.max(exposures.gdf.region_id), 756)
+        self.assertTrue('[0, 1]' in exposures.tag.description)
+        self.assertTrue('pop' in exposures.tag.description)
+        exposures
+
+    def test_get_exposures_fails(self):
+        client = Client()
+        with self.assertRaises(ValueError) as cm:
+            client.get_exposures(exposures_type='river_flood', 
+                                 properties={'country_iso3alpha': ['CHE', 'AUT'],
+                                             'fin_mode': 'pop', 'exponents': '(0,1)'},
+                                 dump_dir=DATA_DIR)
+        self.assertIn('Valid exposures types are a subset of CLIMADA exposures types. Currently',
+                      str(cm.exception))
+
+        with self.assertRaises(ValueError) as cm:
+            client.get_exposures(exposures_type='litpop', 
+                                 properties={'fin_mode': 'pop', 'exponents': '(0,1)'},
+                                 dump_dir=DATA_DIR)
+        self.assertIn(' datasets matching the query and the limit is set to 10. You can force ',
+                      str(cm.exception))
+
+    def test_get_hazard(self):
+        client = Client()
+        hazard = client.get_hazard(hazard_type='river_flood', 
+                                   properties={'country_name': ['Switzerland', 'Austria'],
+                                               'year_range': '2010_2030', 'rcp': 'rcp26'},
+                                   dump_dir=DATA_DIR)
+        self.assertEqual(np.shape(hazard.intensity), (960, 8601))
+        self.assertEqual(np.min(hazard.centroids.region_id), 40)
+        self.assertEqual(np.max(hazard.centroids.region_id), 756)
+        self.assertEqual(np.unique(hazard.date).size, 20)
+        self.assertEqual(hazard.tag.haz_type, 'RF')
+        hazard
+
+    def test_get_hazard_fails(self):
+        client = Client()
+        with self.assertRaises(ValueError) as cm:
+            client.get_hazard(hazard_type='litpop', 
+                              properties={'country_name': ['Switzerland', 'Austria'],
+                                          'year_range': '2010_2030', 'rcp': 'rcp26'},
+                              dump_dir=DATA_DIR)
+        self.assertIn('Valid hazard types are a subset of CLIMADA hazard types. Currently',
+                      str(cm.exception))
+
+        with self.assertRaises(ValueError) as cm:
+            client.get_hazard(hazard_type='river_flood', 
+                              properties={'country_name': ['Switzerland', 'Austria'],
+                                          'year_range': '2010_2030', 'rcp': ['rcp26', 'rcp85']},
+                              dump_dir=DATA_DIR)
+        self.assertEqual("Cannot combine datasets, there are distinct values for these properties"
+                         " in your selection: ['rcp']",
+                      str(cm.exception))
+
+    def test_get_litpop_default(self):
+        client = Client()
+        litpop = client.get_litpop_default(country='LUX', dump_dir=DATA_DIR)
+        self.assertEqual(len(litpop.gdf), 188)
+        self.assertEqual(np.unique(litpop.gdf.region_id), 442)
+        self.assertTrue('[1, 1]' in litpop.tag.description)
+        self.assertTrue('pc' in litpop.tag.description)
+    
+    def test_multi_filter(self):
+        client = Client()
+        testds = client.get_datasets(data_type='storm_europe')
+
+        # assert no systemic loss in filtering
+        still = client._filter_datasets(testds, dict())
+        for o, r in zip(testds, still):
+            self.assertEqual(o, r)
+
+        # assert filter is effective
+        p = 'country_name'
+        a, b = 'Germany', 'Netherlands'
+        less = client._filter_datasets(testds, {p:[a, b]})
+        self.assertLess(len(less), len(testds))
+        only = client._filter_datasets(testds, {p:[a]})
+        self.assertLess(len(only), len(less))
+        self.assertLess(0, len(only))
+
+    def test_multiplicity_split(self):
+        properties = {
+            'country_name': ['x', 'y', 'z'],
+            'b': '1'
+        }
+        # assert split matches expectations
+        straight, multi = Client._divide_straight_from_multi(properties)
+        self.assertEqual(straight, {'b': '1'})
+        self.assertEqual(multi, {'country_name': ['x', 'y', 'z']})
 
 
 def rm_empty_dir(folder):
