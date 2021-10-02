@@ -158,9 +158,10 @@ class TestClient(unittest.TestCase):
         with self.assertRaises(ValueError) as cm:
             client.get_hazard(hazard_type='river_flood', 
                               properties={'country_name': ['Switzerland', 'Austria'],
-                                          'year_range': '2010_2030', 'rcp': ['rcp26', 'rcp32']},
+                                          'year_range': '2010_2030', 'rcp': ['rcp26', 'rcp85']},
                               dump_dir=DATA_DIR)
-        self.assertIn('for the rcp property only single values are allowed',
+        self.assertEqual("Cannot combine datasets, there are distinct values for these properties"
+                         " in your selection: ['rcp']",
                       str(cm.exception))
 
     def test_get_litpop_default(self):
