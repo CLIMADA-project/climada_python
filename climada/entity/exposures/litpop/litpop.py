@@ -50,9 +50,8 @@ class LitPop(Exposures):
     GDP, or non-financial wealth.
 
     Calling sequence example:
-    exp = LitPop()
     country_names = ['CHE', 'Austria']
-    exp.set_countries(country_names)
+    exp = LitPop.from_countries(country_names)
     exp.plot()
 
     Attributes
@@ -69,15 +68,20 @@ class LitPop(Exposures):
     """
     _metadata = Exposures._metadata + ['exponents', 'fin_mode', 'gpw_version']
 
-    def set_countries(self, countries, res_arcsec=30, exponents=(1,1),
-                      fin_mode='pc', total_values=None, admin1_calc=False,
-                      reference_year=DEF_REF_YEAR, gpw_version=GPW_VERSION,
-                      data_dir=SYSTEM_DIR):
-        """init LitPop exposure object for a list of countries (admin 0).
+    def set_countries(self, *args, **kwargs):
+        """This function is deprecated, use LitPop.from_countries instead."""
+        LOGGER.warning("The use of LitPop.set_countries is deprecated."
+                       "Use LitPop.from_countries instead.")
+        self.__dict__ = LitPop.from_countries(*args, **kwargs).__dict__
+
+    @classmethod
+    def from_countries(cls, countries, res_arcsec=30, exponents=(1,1),
+                       fin_mode='pc', total_values=None, admin1_calc=False,
+                       reference_year=DEF_REF_YEAR, gpw_version=GPW_VERSION,
+                       data_dir=SYSTEM_DIR):
+        """Init new LitPop exposure object for a list of countries (admin 0).
         Sets attributes `ref_year`, `tag`, `crs`, `value`, `geometry`, `meta`,
         `value_unit`, `exponents`,`fin_mode`, `gpw_version`, and `admin1_calc`.
-
-        Alias: set_country()
 
         Parameters
         ----------
@@ -125,6 +129,10 @@ class LitPop(Exposures):
         Raises
         ------
         ValueError
+
+        Returns
+        -------
+        LitPop
         """
         if isinstance(countries, (int, str)):
             countries = [countries] # for backward compatibility
@@ -151,14 +159,14 @@ class LitPop(Exposures):
             # loop over countries: litpop is initiated for each individual polygon
             # within each country and combined at the end.
             litpop_list = \
-                [self._set_one_country(country,
-                                       res_arcsec=res_arcsec,
-                                       exponents=exponents,
-                                       fin_mode=fin_mode,
-                                       total_value=total_values[idc],
-                                       reference_year=reference_year,
-                                       gpw_version=gpw_version,
-                                       data_dir=data_dir)
+                [cls._from_country(country,
+                                   res_arcsec=res_arcsec,
+                                   exponents=exponents,
+                                   fin_mode=fin_mode,
+                                   total_value=total_values[idc],
+                                   reference_year=reference_year,
+                                   gpw_version=gpw_version,
+                                   data_dir=data_dir)
                  for idc, country in enumerate(countries)]
         # make lists of countries with Exposure initaited and those ignored:
         countries_in = \
@@ -176,8 +184,7 @@ class LitPop(Exposures):
                           f'year: {reference_year}, financial mode: {fin_mode}, ' \
                           f'exp: {exponents}, admin1_calc: {admin1_calc}'
 
-        Exposures.__init__(
-            self,
+        exp = cls(
             data=Exposures.concat(litpop_list).gdf,
             crs=litpop_list[0].crs,
             ref_year=reference_year,
@@ -190,25 +197,26 @@ class LitPop(Exposures):
 
         try:
             rows, cols, ras_trans = u_coord.pts_to_raster_meta(
-                (self.gdf.longitude.min(), self.gdf.latitude.min(),
-                 self.gdf.longitude.max(), self.gdf.latitude.max()),
-                u_coord.get_resolution(self.gdf.longitude, self.gdf.latitude))
-            self.meta = {
+                (exp.gdf.longitude.min(), exp.gdf.latitude.min(),
+                 exp.gdf.longitude.max(), exp.gdf.latitude.max()),
+                u_coord.get_resolution(exp.gdf.longitude, exp.gdf.latitude))
+            exp.meta = {
                 'width': cols,
                 'height': rows,
-                'crs': self.crs,
+                'crs': exp.crs,
                 'transform': ras_trans,
             }
         except ValueError:
             LOGGER.warning('Could not write attribute meta, because exposure'
                            ' has only 1 data point')
-            self.meta = {'crs': self.crs}
-        self.check()
+            exp.meta = {'crs': exp.crs}
+        exp.check()
+        return exp
 
     def set_nightlight_intensity(self, countries=None, shape=None, res_arcsec=15,
                         reference_year=DEF_REF_YEAR, data_dir=SYSTEM_DIR):
         """
-        Wrapper around `set_countries` / `set_custom_shape`.
+        Wrapper around `from_countries` / `set_custom_shape`.
 
         Initiate exposures instance with value equal to the original BlackMarble
         nightlight intensity resampled to the target resolution `res_arcsec`.
@@ -233,6 +241,7 @@ class LitPop(Exposures):
         if countries is not None and shape is not None:
             raise ValueError("Not allowed to set both `countries` and `shape`. Aborting.")
         if countries is not None:
+            # TODO: replace with LitPop.from_countries
             self.set_countries(countries, res_arcsec=res_arcsec,
                                exponents=(1,0), fin_mode='none',
                                reference_year=reference_year, gpw_version=GPW_VERSION,
@@ -245,13 +254,13 @@ class LitPop(Exposures):
         LOGGER.warning("Note: set_nightlight_intensity sets values to raw nightlight intensity, "
                        "not to USD. "
                        "To disaggregate asset value proportionally to nightlights^m, "
-                       "call set_countries or set_custom_shape with exponents=(m,0).")
+                       "call from_countries or set_custom_shape with exponents=(m,0).")
 
     def set_population(self, countries=None, shape=None, res_arcsec=30,
                        reference_year=DEF_REF_YEAR, gpw_version=GPW_VERSION,
                        data_dir=SYSTEM_DIR):
         """
-        Wrapper around `set_countries` / `set_custom_shape`.
+        Wrapper around `from_countries` / `set_custom_shape`.
 
         Initiate exposures instance with value equal to GPW population count.
         Provide either `countries` or `shape`.
@@ -282,6 +291,7 @@ class LitPop(Exposures):
         if countries is not None and shape is not None:
             raise ValueError("Not allowed to set both `countries` and `shape`. Aborting.")
         if countries is not None:
+            # TODO: replace with LitPop.from_countries
             self.set_countries(countries, res_arcsec=res_arcsec,
                                exponents=(0,1), fin_mode='pop',
                                reference_year=reference_year, gpw_version=gpw_version,
@@ -348,6 +358,7 @@ class LitPop(Exposures):
 
         """
         # init countries' exposure:
+        # TODO: replace with LitPop.from_countries
         self.set_countries(countries, res_arcsec=res_arcsec, exponents=exponents,
                            fin_mode=fin_mode, reference_year=reference_year,
                            gpw_version=gpw_version, data_dir=data_dir)
@@ -508,11 +519,11 @@ class LitPop(Exposures):
             self.meta = {'crs': self.crs}
 
     @staticmethod
-    def _set_one_country(country, res_arcsec=30, exponents=(1,1), fin_mode=None,
+    def _from_country(country, res_arcsec=30, exponents=(1,1), fin_mode=None,
                          total_value=None, reference_year=DEF_REF_YEAR,
                          gpw_version=GPW_VERSION, data_dir=SYSTEM_DIR):
         """init LitPop exposure object for one single country
-        See docstring of set_countries() for detailled description of parameters.
+        See docstring of from_countries() for detailled description of parameters.
 
         Parameters
         ----------
@@ -1081,7 +1092,7 @@ def _calc_admin1_one_country(country, res_arcsec, exponents, fin_mode, total_val
     If only for certain states admin1 info is found, the rest of the country is assigned value
     according to the admin0 method.
 
-    See set_countries() for description of parameters.
+    See from_countries() for description of parameters.
 
     Parameters
     ----------

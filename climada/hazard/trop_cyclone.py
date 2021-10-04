@@ -132,22 +132,22 @@ class TropCyclone(Hazard):
             kwargs['pool'] = self.pool
         self.__dict__ = TropCyclone.from_tracks(*args, **kwargs).__dict__
 
-    @staticmethod
-    def from_tracks(tracks, centroids=None, pool=None, description='', model='H08',
+    @classmethod
+    def from_tracks(cls, tracks, centroids=None, pool=None, description='', model='H08',
                     ignore_distance_to_coast=False, store_windfields=False, metric="equirect",
                     intensity_thres=DEF_INTENSITY_THRES):
         """
-        Clear and fill with windfields from specified tracks.
+        Create new TropCyclone instance that contains windfields from the specified tracks.
 
-        This function sets the `TropCyclone.intensity` attribute to contain, for each centroid,
+        This function sets the `intensity` attribute to contain, for each centroid,
         the maximum wind speed (1-minute sustained winds at 10 meters above ground) experienced
         over the whole period of each TC event in m/s. The wind speed is set to 0 if it doesn't
-        exceed the threshold in `TropCyclone.intensity_thres`.
+        exceed the threshold `intensity_thres`.
 
-        The `TropCyclone.category` attribute is set to the value of the `category`-attribute
+        The `category` attribute is set to the value of the `category`-attribute
         of each of the given track data sets.
 
-        The `TropCyclone.basin` attribute is set to the genesis basin for each event, which
+        The `basin` attribute is set to the genesis basin for each event, which
         is the first value of the `basin`-variable in each of the given track data sets.
 
         Optionally, the time dependent, vectorial winds can be stored using the `store_windfields`
@@ -186,6 +186,10 @@ class TropCyclone(Hazard):
         Raises
         ------
         ValueError
+
+        Returns
+        -------
+        TropCyclone
         """
         num_tracks = tracks.size
         if centroids is None:
@@ -220,7 +224,7 @@ class TropCyclone(Hazard):
         if pool:
             chunksize = min(num_tracks // pool.ncpus, 1000)
             tc_haz_list = pool.map(
-                TropCyclone.from_single_track, tracks.data,
+                cls.from_single_track, tracks.data,
                 itertools.repeat(centroids, num_tracks),
                 itertools.repeat(coastal_idx, num_tracks),
                 itertools.repeat(model, num_tracks),
@@ -237,14 +241,14 @@ class TropCyclone(Hazard):
                     LOGGER.info("Progress: %d%%", perc)
                     last_perc = perc
                 tc_haz_list.append(
-                    TropCyclone.from_single_track(track, centroids, coastal_idx,
-                                                  model=model, store_windfields=store_windfields,
-                                                  metric=metric, intensity_thres=intensity_thres))
+                    cls.from_single_track(track, centroids, coastal_idx,
+                                          model=model, store_windfields=store_windfields,
+                                          metric=metric, intensity_thres=intensity_thres))
             if last_perc < 100:
                 LOGGER.info("Progress: 100%")
 
         LOGGER.debug('Concatenate events.')
-        haz = TropCyclone.concat(tc_haz_list)
+        haz = cls.concat(tc_haz_list)
         haz.pool = pool
         haz.intensity_thres = intensity_thres
         LOGGER.debug('Compute frequency.')
@@ -292,8 +296,8 @@ class TropCyclone(Hazard):
         'from Knutson et al 2015.' % (str(ref_year), str(rcp_scenario))
         return haz_cc
 
-    @staticmethod
-    def video_intensity(track_name, tracks, centroids, file_name=None,
+    @classmethod
+    def video_intensity(cls, track_name, tracks, centroids, file_name=None,
                         writer=animation.PillowWriter(bitrate=500),
                         figsize=(9, 13), adapt_fontsize=True, **kwargs):
         """
@@ -352,7 +356,7 @@ class TropCyclone(Hazard):
             tr_coord['lat'].append(tr_sel.data[0].lat.values[:-1])
             tr_coord['lon'].append(tr_sel.data[0].lon.values[:-1])
 
-            tc_tmp = TropCyclone.from_tracks(tr_sel, centroids=centroids)
+            tc_tmp = cls.from_tracks(tr_sel, centroids=centroids)
             tc_tmp.event_name = [
                 track.name + ' ' + time.strftime(
                     "%d %h %Y %H:%M",
@@ -403,8 +407,8 @@ class TropCyclone(Hazard):
         ens_size = (self.event_id.size / num_orig) if num_orig > 0 else 1
         self.frequency = np.ones(self.event_id.size) / (year_delta * ens_size)
 
-    @staticmethod
-    def from_single_track(track, centroids, coastal_idx, model='H08',
+    @classmethod
+    def from_single_track(cls, track, centroids, coastal_idx, model='H08',
                           store_windfields=False, metric="equirect",
                           intensity_thres=DEF_INTENSITY_THRES):
         """
@@ -457,7 +461,7 @@ class TropCyclone(Hazard):
             shape=(1, ncentroids))
         intensity_sparse.eliminate_zeros()
 
-        new_haz = TropCyclone()
+        new_haz = cls()
         new_haz.tag = TagHazard(HAZ_TYPE, 'Name: ' + track.name)
         new_haz.intensity_thres = intensity_thres
         new_haz.intensity = intensity_sparse

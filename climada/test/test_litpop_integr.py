@@ -34,21 +34,18 @@ class TestLitPopExposure(unittest.TestCase):
     """Test LitPop exposure data model:"""
 
     def test_netherlands150_pass(self):
-        """Test set_countries for Netherlands at 150 arcsec, first shape is empty"""
-        ent = lp.LitPop()
-        ent.set_countries('Netherlands', res_arcsec=150, reference_year=2016)
+        """Test from_countries for Netherlands at 150 arcsec, first shape is empty"""
+        ent = lp.LitPop.from_countries('Netherlands', res_arcsec=150, reference_year=2016)
         self.assertEqual(ent.gdf.shape[0], 2829)
 
     def test_BLM150_pass(self):
-        """Test set_countries for BLM at 150 arcsec, 2 data points"""
-        ent = lp.LitPop()
-        ent.set_countries('BLM', res_arcsec=150, reference_year=2016)
+        """Test from_countries for BLM at 150 arcsec, 2 data points"""
+        ent = lp.LitPop.from_countries('BLM', res_arcsec=150, reference_year=2016)
         self.assertEqual(ent.gdf.shape[0], 2)
 
     def test_Monaco150_pass(self):
-        """Test set_countries for Moncao at 150 arcsec, 1 data point"""
-        ent = lp.LitPop()
-        ent.set_countries('Monaco', res_arcsec=150, reference_year=2016)
+        """Test from_countries for Moncao at 150 arcsec, 1 data point"""
+        ent = lp.LitPop.from_countries('Monaco', res_arcsec=150, reference_year=2016)
         self.assertEqual(ent.gdf.shape[0], 1)
 
     def test_switzerland300_pass(self):
@@ -56,10 +53,9 @@ class TestLitPopExposure(unittest.TestCase):
         country_name = ['CHE']
         resolution = 300
         fin_mode = 'income_group'
-        ent = lp.LitPop()
         with self.assertLogs('climada.entity.exposures.litpop', level='INFO') as cm:
-            ent.set_country(country_name, res_arcsec=resolution, fin_mode=fin_mode,
-                            reference_year=2016)
+            ent = lp.LitPop.from_countries(country_name, res_arcsec=resolution, fin_mode=fin_mode,
+                                           reference_year=2016)
 
         self.assertIn('LitPop: Init Exposure for country: CHE', cm.output[0])
         self.assertEqual(ent.gdf.region_id.min(), 756)
@@ -87,10 +83,9 @@ class TestLitPopExposure(unittest.TestCase):
         resolution = 30
         exp = [0, 1]
         fin_mode = 'norm'
-        ent = lp.LitPop()
         with self.assertLogs('climada.entity.exposures.litpop', level='INFO') as cm:
-            ent.set_country(country_name, res_arcsec=resolution, exponents=exp,
-                            fin_mode=fin_mode, reference_year=2015)
+            ent = lp.LitPop.from_countries(country_name, res_arcsec=resolution, exponents=exp,
+                                           fin_mode=fin_mode, reference_year=2015)
         # print(cm)
         self.assertIn('LitPop: Init Exposure for country: CHE', cm.output[0])
         self.assertEqual(ent.gdf.region_id.min(), 756)
@@ -102,8 +97,7 @@ class TestLitPopExposure(unittest.TestCase):
         """Create LitPop entity for Suriname for non-finanical wealth in 2016:"""
         country_name = ['SUR']
         fin_mode = 'nfw'
-        ent = lp.LitPop()
-        ent.set_country(country_name, reference_year=2016, fin_mode=fin_mode)
+        ent = lp.LitPop.from_countries(country_name, reference_year=2016, fin_mode=fin_mode)
 
         self.assertEqual(ent.gdf.region_id.min(), 740)
         self.assertEqual(ent.gdf.region_id.max(), 740)
@@ -117,10 +111,9 @@ class TestLitPopExposure(unittest.TestCase):
         ref_year = 2016
         adm1 = True
         comparison_total_val = world_bank_wealth_account(country_name[0], ref_year, no_land=1)[1]
-        ent = lp.LitPop()
-        ent.set_country(country_name, res_arcsec=resolution,
-                        reference_year=ref_year, fin_mode=fin_mode,
-                        admin1_calc=adm1)
+        ent = lp.LitPop.from_countries(country_name, res_arcsec=resolution,
+                                       reference_year=ref_year, fin_mode=fin_mode,
+                                       admin1_calc=adm1)
 
         self.assertAlmostEqual(np.around(ent.gdf.value.sum()*1e-9, 0),
                          np.around(comparison_total_val*1e-9, 0), places=0)
@@ -201,18 +194,16 @@ class TestLitPopExposure(unittest.TestCase):
 class TestAdmin1(unittest.TestCase):
     """Test the admin1 functionalities within the LitPop module"""
 
-    def test_set_countries_calc_admin1_pass(self):
-        """test method set_countries with admin1_calc=True for Switzerland"""
+    def test_from_countries_calc_admin1_pass(self):
+        """test method from_countries with admin1_calc=True for Switzerland"""
         country = "Switzerland"
         resolution = 90
         fin_mode = 'gdp'
 
-        ent = lp.LitPop()
-        ent.set_countries(country, res_arcsec=resolution, fin_mode=fin_mode,
-                        reference_year=2016, admin1_calc=True)
-        ent_adm0 = lp.LitPop()
-        ent_adm0.set_countries(country, res_arcsec=resolution, fin_mode=fin_mode,
-                        reference_year=2016, admin1_calc=False)
+        ent = lp.LitPop.from_countries(country, res_arcsec=resolution, fin_mode=fin_mode,
+                                       reference_year=2016, admin1_calc=True)
+        ent_adm0 = lp.LitPop.from_countries(country, res_arcsec=resolution, fin_mode=fin_mode,
+                                            reference_year=2016, admin1_calc=False)
         # shape must be same as with admin1_calc = False, otherwise there
         # is a problem with handling of the admin1 shapes:
         self.assertEqual(ent.gdf.shape[0], 7800)
@@ -230,15 +221,14 @@ class TestAdmin1(unittest.TestCase):
         self.assertAlmostEqual(ent.gdf.latitude.max(), 47.708333333333336)
         # shape must be same as with admin1_calc = False, otherwise there
         # is a problem with handling of the admin1 shapes:
-        ent_adm0 = lp.LitPop()
-        ent_adm0.set_countries(country, res_arcsec=resolution, fin_mode='pc',
-                        reference_year=2016, admin1_calc=False)
+        ent_adm0 = lp.LitPop.from_countries(country, res_arcsec=resolution, fin_mode='pc',
+                                            reference_year=2016, admin1_calc=False)
         self.assertEqual(ent.gdf.shape[0], ent_adm0.gdf.shape[0])
 
     def test_brandenburg(self):
         """test functions set_custom_shape_from_countries and set_custom_shape
         for admin1 shape of Brandenburg"""
-        reslution_arcsec = 120 
+        reslution_arcsec = 120
         country = 'DEU'
         state_name = 'Brandenburg'
         # get the shape of Brandenburg:
