@@ -69,7 +69,7 @@ class TestLitPopExposure(unittest.TestCase):
                                (income_group('CHE', 2016)[1] + 1))
         self.assertIn("LitPop Exposure for ['CHE'] at 300 as, year: 2016", ent.tag.description)
         self.assertIn('income_group', ent.tag.description)
-        self.assertIn('[1, 1]', ent.tag.description)
+        self.assertIn('1, 1', ent.tag.description)
         self.assertTrue(u_coord.equal_crs(ent.crs, {'init': 'epsg:4326'}))
         self.assertEqual(ent.meta['width'], 54)
         self.assertEqual(ent.meta['height'], 23)
@@ -126,24 +126,6 @@ class TestLitPopExposure(unittest.TestCase):
                          np.around(comparison_total_val*1e-9, 0), places=0)
         self.assertEqual(ent.value_unit, 'USD')
 
-
-    def test_switzerland300_reproject_first_false_pass(self):
-        """Create LitPop entity for Switzerland 2013 for produced capital
-        and resampling after combining Lit and Pop:"""
-        country_name = ['CHE']
-        fin_mode = 'pc'
-        resolution = 300
-        ref_year = 2016
-        comparison_total_val = world_bank_wealth_account(country_name[0],
-                                                         ref_year, no_land=1)[1]
-        ent = lp.LitPop()
-        ent.set_countries(country_name, res_arcsec=resolution,
-                        reference_year=ref_year, fin_mode=fin_mode,
-                        reproject_first=False)
-
-        self.assertEqual(ent.gdf.value.sum(), comparison_total_val)
-        self.assertEqual(ent.value_unit, 'USD')
-
     def test_set_custom_shape_zurich_pass(self):
         """test initiating LitPop for custom shape (square around Zurich City)
         Distributing an imaginary total value of 1000 USD"""
@@ -195,7 +177,7 @@ class TestLitPopExposure(unittest.TestCase):
         country_name = 'Liechtenstein'
         ref_year = 2016
         ent = lp.LitPop()
-        ent.set_nightlights(country_name, reference_year=ref_year)
+        ent.set_nightlight_intensity(country_name, reference_year=ref_year)
 
         self.assertEqual(ent.gdf.value.sum(), 36469.0)
         self.assertEqual(ent.gdf.region_id[1], 438)
@@ -221,25 +203,68 @@ class TestAdmin1(unittest.TestCase):
 
     def test_set_countries_calc_admin1_pass(self):
         """test method set_countries with admin1_calc=True for Switzerland"""
-        country_name = "Switzerland"
+        country = "Switzerland"
         resolution = 90
         fin_mode = 'gdp'
 
         ent = lp.LitPop()
-        ent.set_countries(country_name, res_arcsec=resolution, fin_mode=fin_mode,
+        ent.set_countries(country, res_arcsec=resolution, fin_mode=fin_mode,
                         reference_year=2016, admin1_calc=True)
-
-        self.assertEqual(ent.gdf.shape[0], 7964)
+        ent_adm0 = lp.LitPop()
+        ent_adm0.set_countries(country, res_arcsec=resolution, fin_mode=fin_mode,
+                        reference_year=2016, admin1_calc=False)
+        # shape must be same as with admin1_calc = False, otherwise there
+        # is a problem with handling of the admin1 shapes:
+        self.assertEqual(ent.gdf.shape[0], 7800)
+        self.assertEqual(ent.gdf.shape[0], ent_adm0.gdf.shape[0])
 
     def test_calc_admin1(self):
         """test function _calc_admin1_one_country for Switzerland."""
         resolution = 300
         country = 'CHE'
         ent = lp._calc_admin1_one_country(country, resolution, (2,1), 'pc', None,
-                 2016, 11, SYSTEM_DIR, False)
-        self.assertEqual(ent.gdf.shape[0], 717)
+                 2016, lp.GPW_VERSION, SYSTEM_DIR)
+
+        self.assertEqual(ent.gdf.shape[0], 699)
         self.assertEqual(ent.gdf.region_id[88], 756)
         self.assertAlmostEqual(ent.gdf.latitude.max(), 47.708333333333336)
+        # shape must be same as with admin1_calc = False, otherwise there
+        # is a problem with handling of the admin1 shapes:
+        ent_adm0 = lp.LitPop()
+        ent_adm0.set_countries(country, res_arcsec=resolution, fin_mode='pc',
+                        reference_year=2016, admin1_calc=False)
+        self.assertEqual(ent.gdf.shape[0], ent_adm0.gdf.shape[0])
+
+    def test_brandenburg(self):
+        """test functions set_custom_shape_from_countries and set_custom_shape
+        for admin1 shape of Brandenburg"""
+        reslution_arcsec = 120 
+        country = 'DEU'
+        state_name = 'Brandenburg'
+        # get the shape of Brandenburg:
+        admin1_info, admin1_shapes = u_coord.get_admin1_info(country)
+        admin1_info = admin1_info[country]
+        admin1_shapes = admin1_shapes[country]
+        admin1_names = [record['name'] for record in admin1_info]
+        print(admin1_names)
+        for idx, name in enumerate(admin1_names):
+            if admin1_names[idx]==state_name:
+                break
+
+        # init LitPop for Brandenburg
+        exp_bra2 = lp.LitPop()
+        exp_bra2.set_custom_shape_from_countries(admin1_shapes[idx], country,
+                                                 res_arcsec=reslution_arcsec, reference_year=2016)
+        exp_bra = lp.LitPop()
+        exp_bra.set_custom_shape(admin1_shapes[idx], 1000, res_arcsec=reslution_arcsec,
+                                 reference_year=2016)
+        self.assertAlmostEqual(exp_bra.gdf.value.sum(), 1000)
+        # compare number of data points:
+        self.assertEqual(exp_bra.gdf.shape[0], exp_bra2.gdf.shape[0])
+        self.assertEqual(exp_bra.gdf.shape[0], 3566)
+        # check for double entries:
+        self.assertEqual(len(exp_bra.gdf.geometry.unique()), len(exp_bra.gdf.geometry))
+        self.assertEqual(len(exp_bra.gdf.geometry.unique()), 3566)
 
 class TestGPWPopulation(unittest.TestCase):
     """Test gpw_population submodule"""

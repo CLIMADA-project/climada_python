@@ -20,6 +20,8 @@ Test MeasureSet and Measure classes.
 """
 import unittest
 import copy
+from pathlib import Path
+
 import numpy as np
 
 from climada import CONFIG
@@ -31,11 +33,13 @@ from climada.entity.impact_funcs.base import ImpactFunc
 from climada.entity.measures.measure_set import MeasureSet
 from climada.entity.measures.base import Measure, IMPF_ID_FACT
 from climada.util.constants import EXP_DEMO_H5, HAZ_DEMO_H5
+import climada.hazard.test as hazard_test
+import climada.entity.exposures.test as exposures_test
 
 DATA_DIR = CONFIG.measures.test_data.dir()
 
-HAZ_TEST_MAT = CONFIG.hazard.test_data.dir().joinpath('atl_prob_no_name.mat')
-ENT_TEST_MAT = CONFIG.exposures.test_data.dir().joinpath('demo_today.mat')
+HAZ_TEST_MAT = Path(hazard_test.__file__).parent / 'data' / 'atl_prob_no_name.mat'
+ENT_TEST_MAT = Path(exposures_test.__file__).parent / 'data' / 'demo_today.mat'
 
 class TestApply(unittest.TestCase):
     """Test implement measures functions."""

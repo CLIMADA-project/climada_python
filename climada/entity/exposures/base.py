@@ -79,30 +79,46 @@ class Exposures():
     """geopandas GeoDataFrame with metada and columns (pd.Series) defined in
     Attributes.
 
-    Attributes:
-        tag (Tag): metada - information about the source data
-        ref_year (int): metada - reference year
-        value_unit (str): metada - unit of the exposures values
-        latitude (pd.Series): latitude
-        longitude (pd.Series): longitude
-        crs (dict or crs): CRS information inherent to GeoDataFrame.
-        value (pd.Series): a value for each exposure
-        impf_ (pd.Series, optional): e.g. impf_TC. impact functions id for hazard TC.
-            There might be different hazards defined: impf_TC, impf_FL, ...
-            If not provided, set to default 'impf_' with ids 1 in check().
-        geometry (pd.Series, optional): geometry of type Point of each instance.
-            Computed in method set_geometry_points().
-        meta (dict): dictionary containing corresponding raster properties (if any):
-            width, height, crs and transform must be present at least (transform needs
-            to contain upper left corner!). Exposures might not contain all the points
-            of the corresponding raster. Not used in internal computations.
-        deductible (pd.Series, optional): deductible value for each exposure
-        cover (pd.Series, optional): cover value for each exposure
-        category_id (pd.Series, optional): category id for each exposure
-        region_id (pd.Series, optional): region id for each exposure
-        centr_ (pd.Series, optional): e.g. centr_TC. centroids index for hazard
-            TC. There might be different hazards defined: centr_TC, centr_FL, ...
-            Computed in method assign_centroids().
+    Attributes
+    ----------
+    tag : Tag
+        metada - information about the source data
+    ref_year : int
+        metada - reference year
+    value_unit : str
+        metada - unit of the exposures values
+    latitude : pd.Series
+        latitude
+    longitude : pd.Series
+        longitude
+    crs : dict or crs
+        CRS information inherent to GeoDataFrame.
+    value : pd.Series
+        a value for each exposure
+    impf_ : pd.Series, optional
+        e.g. impf_TC. impact functions id for hazard TC.
+        There might be different hazards defined: impf_TC, impf_FL, ...
+        If not provided, set to default 'impf_' with ids 1 in check().
+    geometry : pd.Series, optional
+        geometry of type Point of each instance.
+        Computed in method set_geometry_points().
+    meta : dict
+        dictionary containing corresponding raster properties (if any):
+        width, height, crs and transform must be present at least (transform needs
+        to contain upper left corner!). Exposures might not contain all the points
+        of the corresponding raster. Not used in internal computations.
+    deductible : pd.Series, optional
+        deductible value for each exposure
+    cover : pd.Series, optional
+        cover value for each exposure
+    category_id : pd.Series, optional
+        category id for each exposure
+    region_id : pd.Series, optional
+        region id for each exposure
+    centr_ : pd.Series, optional
+        e.g. centr_TC. centroids index for hazard
+        TC. There might be different hazards defined: centr_TC, centr_FL, ...
+        Computed in method assign_centroids().
     """
     _metadata = ['tag', 'ref_year', 'value_unit', 'meta']
 
@@ -133,9 +149,9 @@ class Exposures():
 
         Parameters
         ----------
-        *args :
+        args :
             Arguments of the GeoDataFrame constructor
-        **kwargs :
+        kwargs :
             Named arguments of the GeoDataFrame constructor, additionally
         meta : dict, optional
             Metadata dictionary. Default: {} (empty dictionary)
@@ -408,19 +424,30 @@ class Exposures():
                         width=None, height=None, resampling=Resampling.nearest):
         """Read raster data and set latitude, longitude, value and meta
 
-        Parameters:
-            file_name (str): file name containing values
-            band (int, optional): bands to read (starting at 1)
-            src_crs (crs, optional): source CRS. Provide it if error without it.
-            window (rasterio.windows.Windows, optional): window where data is
-                extracted
-            geometry (shapely.geometry, optional): consider pixels only in shape
-            dst_crs (crs, optional): reproject to given crs
-            transform (rasterio.Affine): affine transformation to apply
-            wdith (float): number of lons for transform
-            height (float): number of lats for transform
-            resampling (rasterio.warp,.Resampling optional): resampling
-                function used for reprojection to dst_crs
+        Parameters
+        ----------
+        file_name : str
+            file name containing values
+        band : int, optional
+            bands to read (starting at 1)
+        src_crs : crs, optional
+            source CRS. Provide it if error without it.
+        window : rasterio.windows.Windows, optional
+            window where data is
+            extracted
+        geometry : shapely.geometry, optional
+            consider pixels only in shape
+        dst_crs : crs, optional
+            reproject to given crs
+        transform : rasterio.Affine
+            affine transformation to apply
+        wdith : float
+            number of lons for transform
+        height : float
+            number of lats for transform
+        resampling : rasterio.warp,.Resampling optional
+            resampling
+            function used for reprojection to dst_crs
         """
         if 'geometry' in self.gdf:
             raise ValueError("there is already a geometry column defined in the GeoDataFrame")
@@ -448,24 +475,34 @@ class Exposures():
         """Plot exposures geometry's value sum scattered over Earth's map.
         The plot will we projected according to the current crs.
 
-        Parameters:
-            mask (np.array, optional): mask to apply to eai_exp plotted.
-            ignore_zero (bool, optional): flag to indicate if zero and negative
-                values are ignored in plot. Default: False
-            pop_name : bool, optional
-                add names of the populated places, by default True.
-            buffer (float, optional): border to add to coordinates. Default: 0.0.
-            extend (str, optional): extend border colorbar with arrows.
-                [ 'neither' | 'both' | 'min' | 'max' ]
-            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
-            figsize (tuple, optional): figure size for plt.subplots
-            adapt_fontsize : bool, optional
-                If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
-                the default matplotlib font size is used. Default is True.
-            kwargs (optional): arguments for scatter matplotlib function, e.g.
-                cmap='Greys'. Default: 'Wistia'
-         Returns:
-            cartopy.mpl.geoaxes.GeoAxesSubplot
+        Parameters
+        ----------
+        mask : np.array, optional
+            mask to apply to eai_exp plotted.
+        ignore_zero : bool, optional
+            flag to indicate if zero and negative
+            values are ignored in plot. Default: False
+        pop_name : bool, optional
+            add names of the populated places, by default True.
+        buffer : float, optional
+            border to add to coordinates. Default: 0.0.
+        extend : str, optional
+            extend border colorbar with arrows.
+            [ 'neither' | 'both' | 'min' | 'max' ]
+        axis : matplotlib.axes._subplots.AxesSubplot, optional
+            axis to use
+        figsize : tuple, optional
+            figure size for plt.subplots
+        adapt_fontsize : bool, optional
+            If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
+            the default matplotlib font size is used. Default is True.
+        kwargs : optional
+            arguments for scatter matplotlib function, e.g.
+            cmap='Greys'. Default: 'Wistia'
+
+        Returns
+        -------
+        cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         crs_epsg, _ = u_plot.get_transformation(self.crs)
         title = self.tag.description
@@ -491,24 +528,34 @@ class Exposures():
         An other function for the bins can be set through the key reduce_C_function.
         The plot will we projected according to the current crs.
 
-        Parameters:
-            mask (np.array, optional): mask to apply to eai_exp plotted.
-            ignore_zero (bool, optional): flag to indicate if zero and negative
-                values are ignored in plot. Default: False
-            pop_name : bool, optional
-                add names of the populated places, by default True.
-            buffer (float, optional): border to add to coordinates. Default: 0.0.
-            extend (str, optional): extend border colorbar with arrows.
-                [ 'neither' | 'both' | 'min' | 'max' ]
-            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
-            figsize (tuple): figure size for plt.subplots
-            adapt_fontsize : bool, optional
-                If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
-                the default matplotlib font size is used. Default is True.
-            kwargs (optional): arguments for hexbin matplotlib function, e.g.
-                reduce_C_function=np.average. Default: reduce_C_function=np.sum
-         Returns:
-            cartopy.mpl.geoaxes.GeoAxesSubplot
+        Parameters
+        ----------
+        mask : np.array, optional
+            mask to apply to eai_exp plotted.
+        ignore_zero : bool, optional
+            flag to indicate if zero and negative
+            values are ignored in plot. Default: False
+        pop_name : bool, optional
+            add names of the populated places, by default True.
+        buffer : float, optional
+            border to add to coordinates. Default: 0.0.
+        extend : str, optional
+            extend border colorbar with arrows.
+            [ 'neither' | 'both' | 'min' | 'max' ]
+        axis : matplotlib.axes._subplots.AxesSubplot, optional
+            axis to use
+        figsize : tuple
+            figure size for plt.subplots
+        adapt_fontsize : bool, optional
+            If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
+            the default matplotlib font size is used. Default is True.
+        kwargs : optional
+            arguments for hexbin matplotlib function, e.g.
+            reduce_C_function=np.average. Default: reduce_C_function=np.sum
+
+        Returns
+        -------
+        cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         crs_epsg, _ = u_plot.get_transformation(self.crs)
         title = self.tag.description
@@ -536,29 +583,41 @@ class Exposures():
         """Generate raster from points geometry and plot it using log10 scale:
         np.log10((np.fmax(raster+1, 1))).
 
-        Parameters:
-            res (float, optional): resolution of current data in units of latitude
-                and longitude, approximated if not provided.
-            raster_res (float, optional): desired resolution of the raster
-            save_tiff (str, optional): file name to save the raster in tiff
-                format, if provided
-            raster_f (lambda function): transformation to use to data. Default:
-                log10 adding 1.
-            label (str): colorbar label
-            scheduler (str): used for dask map_partitions. “threads”,
-                “synchronous” or “processes”
-            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
-            figsize (tuple, optional): figure size for plt.subplots
-            fill(bool, optional): If false, the areas with no data will be plotted
-                in white. If True, the areas with missing values are filled as 0s.
-                The default is True.
-            adapt_fontsize : bool, optional
-                If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
-                the default matplotlib font size is used. Default is True.
-            kwargs (optional): arguments for imshow matplotlib function
+        Parameters
+        ----------
+        res : float, optional
+            resolution of current data in units of latitude
+            and longitude, approximated if not provided.
+        raster_res : float, optional
+            desired resolution of the raster
+        save_tiff : str, optional
+            file name to save the raster in tiff
+            format, if provided
+        raster_f : lambda function
+            transformation to use to data. Default:
+            log10 adding 1.
+        label : str
+            colorbar label
+        scheduler : str
+            used for dask map_partitions. “threads”,
+            “synchronous” or “processes”
+        axis : matplotlib.axes._subplots.AxesSubplot, optional
+            axis to use
+        figsize : tuple, optional
+            figure size for plt.subplots
+        fill : bool, optional
+            If false, the areas with no data will be plotted
+            in white. If True, the areas with missing values are filled as 0s.
+            The default is True.
+        adapt_fontsize : bool, optional
+            If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
+            the default matplotlib font size is used. Default is True.
+        kwargs : optional
+            arguments for imshow matplotlib function
 
-        Returns:
-            matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
+        Returns
+        -------
+        matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         if self.meta and self.meta.get('height', 0) * self.meta.get('height', 0) == len(self.gdf):
             raster = self.gdf.value.values.reshape((self.meta['height'],
@@ -622,24 +681,34 @@ class Exposures():
                      axis=None, **kwargs):
         """Scatter points over satellite image using contextily
 
-         Parameters:
-            mask (np.array, optional): mask to apply to eai_exp plotted. Same
-                size of the exposures, only the selected indexes will be plot.
-            ignore_zero (bool, optional): flag to indicate if zero and negative
-                values are ignored in plot. Default: False
-            pop_name : bool, optional
-                add names of the populated places, by default True.
-            buffer (float, optional): border to add to coordinates. Default: 0.0.
-            extend (str, optional): extend border colorbar with arrows.
-                [ 'neither' | 'both' | 'min' | 'max' ]
-            zoom (int, optional): zoom coefficient used in the satellite image
-            url (str, optional): image source, e.g. ctx.sources.OSM_C
-            axis (matplotlib.axes._subplots.AxesSubplot, optional): axis to use
-            kwargs (optional): arguments for scatter matplotlib function, e.g.
-                cmap='Greys'. Default: 'Wistia'
+         Parameters
+         ----------
+         mask : np.array, optional
+             mask to apply to eai_exp plotted. Same
+             size of the exposures, only the selected indexes will be plot.
+         ignore_zero : bool, optional
+             flag to indicate if zero and negative
+             values are ignored in plot. Default: False
+         pop_name : bool, optional
+             add names of the populated places, by default True.
+         buffer : float, optional
+             border to add to coordinates. Default: 0.0.
+         extend : str, optional
+             extend border colorbar with arrows.
+             [ 'neither' | 'both' | 'min' | 'max' ]
+         zoom : int, optional
+             zoom coefficient used in the satellite image
+         url : str, optional
+             image source, e.g. ctx.sources.OSM_C
+         axis : matplotlib.axes._subplots.AxesSubplot, optional
+             axis to use
+         kwargs : optional
+             arguments for scatter matplotlib function, e.g.
+             cmap='Greys'. Default: 'Wistia'
 
-         Returns:
-            matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
+         Returns
+         -------
+         matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         if 'geometry' not in self.gdf:
             self.set_geometry_points()
@@ -655,8 +724,10 @@ class Exposures():
     def write_hdf5(self, file_name):
         """Write data frame and metadata in hdf5 format
 
-        Parameters:
-            file_name (str): (path and) file name to write to.
+        Parameters
+        ----------
+        file_name : str
+            (path and) file name to write to.
         """
         LOGGER.info('Writting %s', file_name)
         store = pd.HDFStore(file_name)
@@ -675,12 +746,13 @@ class Exposures():
     def read_hdf5(self, file_name):
         """Read data frame and metadata in hdf5 format
 
-        Parameters:
-            file_name (str): (path and) file name to read from.
-
-        Optional Parameters:
-            additional_vars (list): list of additional variable names to read that
-                are not in exposures.base._metadata
+        Parameters
+        ----------
+        file_name : str
+            (path and) file name to read from.
+        additional_vars : list
+            list of additional variable names to read that
+            are not in exposures.base._metadata
         """
         LOGGER.info('Reading %s', file_name)
         with pd.HDFStore(file_name) as store:
@@ -697,10 +769,13 @@ class Exposures():
     def read_mat(self, file_name, var_names=None):
         """Read MATLAB file and store variables in exposures.
 
-        Parameters:
-            file_name (str): absolute path file
-            var_names (dict, optional): dictionary containing the name of the
-                MATLAB variables. Default: DEF_VAR_MAT.
+        Parameters
+        ----------
+        file_name : str
+            absolute path file
+        var_names : dict, optional
+            dictionary containing the name of the
+            MATLAB variables. Default: DEF_VAR_MAT.
         """
         LOGGER.info('Reading %s', file_name)
         if not var_names:
@@ -741,18 +816,19 @@ class Exposures():
         not geodesics. Objects crossing the dateline (or other projection boundary) will have
         undesirable behavior.
 
-        Parameters:
-            crs : dict or str
-                Output projection parameters as string or in dictionary form.
-            epsg : int
-                EPSG code specifying output projection.
-            inplace : bool, optional, default: False
-                Whether to return a new GeoDataFrame or do the transformation in
-                place.
+        Parameters
+        ----------
+        crs : dict or str
+            Output projection parameters as string or in dictionary form.
+        epsg : int
+            EPSG code specifying output projection.
+        inplace : bool, optional, default: False
+            Whether to return a new GeoDataFrame or do the transformation in
+            place.
 
-        Returns:
-            None if inplace is True
-            else a transformed copy of the exposures object
+        Returns
+        -------
+        None if inplace is True else a transformed copy of the exposures object
         """
         if crs and epsg:
             raise ValueError("one of crs or epsg must be None")
@@ -796,8 +872,10 @@ class Exposures():
     def write_raster(self, file_name, value_name='value', scheduler=None):
         """Write value data into raster file with GeoTiff format
 
-        Parameters:
-            file_name (str): name output file in tif format
+        Parameters
+        ----------
+        file_name : str
+            name output file in tif format
         """
         if self.meta and self.meta['height'] * self.meta['width'] == len(self.gdf):
             raster = self.gdf[value_name].values.reshape((self.meta['height'],
@@ -869,8 +947,9 @@ def add_sea(exposures, sea_res, scheduler=None):
         used for dask map_partitions.
         “threads”, “synchronous” or “processes”
 
-    Returns:
-        Exposures
+    Returns
+    -------
+    Exposures
     """
     LOGGER.info("Adding sea at %s km resolution and %s km distance from coast.",
                 str(sea_res[1]), str(sea_res[0]))

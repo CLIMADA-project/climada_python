@@ -43,11 +43,15 @@ class DownloadProgressBar(tqdm):
     def update_to(self, blocks=1, bsize=1, tsize=None):
         """Update progress bar
 
-        Parameters:
-            blocks (int, otional): Number of blocks transferred so far [default: 1].
-            bsize  (int, otional): Size of each block (in tqdm units) [default: 1].
-            tsize  (int, otional): Total size (in tqdm units). If [default: None]
-                remains unchanged.
+        Parameters
+        ----------
+        blocks : int, optional
+            Number of blocks transferred so far [default: 1].
+        bsize : int, optional
+            Size of each block (in tqdm units) [default: 1].
+        tsize : int, optional
+            Total size (in tqdm units). If [default: None]
+            remains unchanged.
         """
         if tsize is not None:
             self.total = tsize
@@ -65,7 +69,7 @@ def download_file(url, download_dir=None, overwrite=True):
         the parent directory of the eventually downloaded file
         default: local_data.save_dir as defined in climada.conf
     overwrite : bool, optional
-        whether or not an alredy existing file at the target location should be overwritten,
+        whether or not an already existing file at the target location should be overwritten,
         by default True
 
     Returns
@@ -107,12 +111,16 @@ def download_file(url, download_dir=None, overwrite=True):
 def download_ftp(url, file_name):
     """Download file from ftp in current folder.
 
-    Parameters:
-        url (str): url containing data to download
-        file_name (str): name of the file to dowload
+    Parameters
+    ----------
+    url : str
+        url containing data to download
+    file_name : str
+        name of the file to dowload
 
-    Raises:
-        ValueError
+    Raises
+    ------
+    ValueError
     """
     LOGGER.info('Downloading file %s', file_name)
     try:
@@ -129,13 +137,18 @@ def to_list(num_exp, values, val_name):
     """Check size and transform to list if necessary. If size is one, build
     a list with num_exp repeated values.
 
-    Parameters:
-        num_exp (int): expected number of list elements
-        values (object or list(object)): values to check and transform
-        val_name (str): name of the variable values
+    Parameters
+    ----------
+    num_exp : int
+        expected number of list elements
+    values : object or list(object)
+        values to check and transform
+    val_name : str
+        name of the variable values
 
-    Returns:
-        list
+    Returns
+    -------
+    list
     """
     if not isinstance(values, list):
         return num_exp * [values]
@@ -149,15 +162,18 @@ def to_list(num_exp, values, val_name):
 def get_file_names(file_name):
     """Return list of files contained. Supports globbing.
 
-    Parameters:
-        file_name (str or list(str)): Either a single string or a list of
-            strings that are either
-                - a file path
-                - or the path of the folder containing the files
-                - or a globbing pattern.
+    Parameters
+    ----------
+    file_name : str or list(str)
+        Either a single string or a list of
+        strings that are either
+        - a file path
+        - or the path of the folder containing the files
+        - or a globbing pattern.
 
-    Returns:
-        list(str)
+    Returns
+    -------
+    list(str)
     """
     pattern_list = file_name if isinstance(file_name, list) else [file_name]
     pattern_list = [Path(pattern) for pattern in pattern_list]
@@ -182,11 +198,14 @@ def get_file_names(file_name):
 def get_extension(file_name):
     """Get file without extension and its extension (e.g. ".nc", ".grd.gz").
 
-    Parameters:
-        file_name (str): file name (with or without path)
+    Parameters
+    ----------
+    file_name : str
+        file name (with or without path)
 
-    Returns:
-        str, str
+    Returns
+    -------
+    str, str
     """
     file_path = Path(file_name)
     cuts = file_path.name.split('.')

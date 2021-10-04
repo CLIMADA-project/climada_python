@@ -40,14 +40,14 @@ YEAR_LIST = list(range(2000, 2010))
 
 class TestYearSets(unittest.TestCase):
     """Test yearset functions"""
-    
+
     def test_impact_yearset(self):
         """Test computing a yearly impact (yimp) for a given list of years (YEAR_LIST)
         from an impact (IMP) and a sampling vector (SAMPLING_VECT)"""
         yimp, sampling_vect = yearsets.impact_yearset(IMP, YEAR_LIST, correction_fac=False)
 
         self.assertAlmostEqual(len(sampling_vect), len(YEAR_LIST))
-    
+
     def test_impact_yearset_sampling_vect(self):
         """Test computing a yearly impact (yimp) for a given list of years (YEAR_LIST)
         from an impact (IMP) and a sampling vector (SAMPLING_VECT)"""

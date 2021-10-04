@@ -401,7 +401,7 @@ def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
         array_sub.
     cat_name : dict, optional
         Categories name for the colorbar labels.
-        Keys are all the unique values in array_cub, values are their labels.
+        Keys are all the unique values in array_sub, values are their labels.
         The default is labels = unique values.
     adapt_fontsize : bool, optional
         If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
@@ -450,8 +450,9 @@ def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
     kwargs['vmax'] = array_sub_n - 0.5
 
     # #create the axes
-    axes = _plot_scattered_data("scatter", array_sub_cat, geo_coord, var_name, title, adapt_fontsize=adapt_fontsize,
-                                **kwargs)
+    axes = _plot_scattered_data(
+        "scatter", array_sub_cat, geo_coord, var_name, title,
+        adapt_fontsize=adapt_fontsize, **kwargs)
 
     #add colorbar labels
     if cat_name is None:
@@ -592,7 +593,8 @@ def add_cntry_names(axis, extent, proj=ccrs.PlateCarree(), fontsize=None):
     """
     Add country names.
 
-    Parameters:
+    Parameters
+    ----------
     axis : cartopy.mpl.geoaxes.GeoAxesSubplot
         Cartopy axis.
     extent : list
@@ -601,8 +603,8 @@ def add_cntry_names(axis, extent, proj=ccrs.PlateCarree(), fontsize=None):
         Geographical projection.
         The default is PlateCarree.
      fontsize : int, optional
-            Size of the fonts. If set to None, the default matplotlib settings
-            are used.
+        Size of the fonts. If set to None, the default matplotlib settings
+        are used.
     """
     shp_file = shapereader.natural_earth(resolution='10m', category='cultural',
                                          name='admin_0_countries')
@@ -693,9 +695,9 @@ def _get_borders(geo_coord, buffer=0, proj_limits=(-180, 180, -90, 90)):
         limits of geographical projection (lon_min, lon_max, lat_min, lat_max)
         The default is (-180, 180, -90, 90)
 
-    Returns:
-    [min_lon, max_lon, min_lat, max_lat] : list
-
+    Returns
+    -------
+    extent : list [min_lon, max_lon, min_lat, max_lat]
     """
     min_lon = max(np.min(geo_coord[:, 1]) - buffer, proj_limits[0])
     max_lon = min(np.max(geo_coord[:, 1]) + buffer, proj_limits[1])

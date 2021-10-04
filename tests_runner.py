@@ -15,7 +15,7 @@ def find_unit_tests():
     suite.addTest(unittest.TestLoader().discover('climada.hazard.test'))
     suite.addTest(unittest.TestLoader().discover('climada.hazard.centroids.test'))
     suite.addTest(unittest.TestLoader().discover('climada.engine.test'))
-    suite.addTest(unittest.TestLoader().discover('climada.engine.uncertainty.test'))
+    suite.addTest(unittest.TestLoader().discover('climada.engine.uncertainty_quantification.test'))
     suite.addTest(unittest.TestLoader().discover('climada.util.test'))
     return suite
 

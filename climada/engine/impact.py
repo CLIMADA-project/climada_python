@@ -226,7 +226,7 @@ class Impact():
             if not exp_step:
                 raise ValueError('Increase max_matrix_size configuration parameter to > %s'
                                  % str(num_events))
-            # separte in chunks
+            # separate in chunks
             chk = -1
             for chk in range(int(exp_iimp.size / exp_step)):
                 self._exp_impact(
@@ -380,7 +380,8 @@ class Impact():
         kwargs : optional
             arguments for imshow matplotlib function
 
-        Returns:
+        Returns
+        -------
         cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         eai_exp = self._build_exp()

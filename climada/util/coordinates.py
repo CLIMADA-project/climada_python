@@ -1979,7 +1979,8 @@ def mask_raster_with_geometry(raster, transform, shapes, nodata=None, **kwargs):
     nodata : int or float, optional
         Passed to rasterio.mask.mask:
         Data points outside `shapes` are set to `nodata`.
-    **kwargs : Passed to rasterio.mask.mask, optional
+    kwargs : optional
+        Passed to rasterio.mask.mask.
 
     Returns
     -------

@@ -31,6 +31,7 @@ from climada import CONFIG
 from climada.hazard.storm_europe import StormEurope, generate_WS_forecast_hazard
 from climada.hazard.centroids.centr import DEF_VAR_EXCEL, Centroids
 from climada.util.constants import WS_DEMO_NC
+from climada.util.api_client import Client
 
 
 DATA_DIR = CONFIG.hazard.test_data.dir()
@@ -178,10 +179,16 @@ class TestReader(unittest.TestCase):
     def test_icon_read(self):
         """test reading from icon grib"""
         haz = StormEurope()
+        # for this test the forecast file is supposed to be already downloaded from the dwd
+        # another download would fail because the files are available for 24h only
+        # instead, we download it as a test dataset through the climada data api
+        apiclient = Client()
+        ds = apiclient.get_dataset(name='test_storm_europe_icon_2021012800')
+        dsdir, _ = apiclient.download_dataset(ds)
         haz.read_icon_grib(dt.datetime(2021, 1, 28),
                            dt.datetime(2021, 1, 28),
                            model_name='test',
-                           grib_dir=CONFIG.hazard.test_data.str(),
+                           grib_dir=dsdir,
                            delete_raw_data=False)
         self.assertEqual(haz.tag.haz_type, 'WS')
         self.assertEqual(haz.units, 'm/s')
@@ -208,7 +215,7 @@ class TestReader(unittest.TestCase):
                                     grib_dir=CONFIG.hazard.test_data.str(),
                                     delete_raw_data=False)
             mock_logger.assert_called_once()
-            
+
     def test_generate_forecast(self):
         """ testing generating a forecast """
         hazard, haz_model, run_datetime, event_date = generate_WS_forecast_hazard(

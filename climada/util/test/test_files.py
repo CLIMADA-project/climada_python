@@ -96,7 +96,7 @@ class TestGetFileNames(unittest.TestCase):
         self.assertGreater(len(out), 0)
         for file in out:
             self.assertTrue(Path(file).is_file())
-    
+
     def test_wrong_argument(self):
         """If the input contains a non-existing file, an empyt directory or a pattern that is not
         matched, the method should raise a ValueError."""
