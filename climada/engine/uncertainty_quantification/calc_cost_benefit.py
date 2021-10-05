@@ -30,10 +30,8 @@ import pandas as pd
 from climada.engine.cost_benefit import CostBenefit
 from climada.engine.uncertainty_quantification import Calc, InputVar, UncCostBenefitOutput
 from climada.util import log_level
-from climada.util.config import setup_logging as u_setup_logging
 
 LOGGER = logging.getLogger(__name__)
-u_setup_logging()
 
 # Future planed features:
 # - Add 'efc' (frequency curve) to UncCostBenenfit

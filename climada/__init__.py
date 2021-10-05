@@ -21,11 +21,9 @@ climada init
 from shutil import copyfile
 from pathlib import Path
 
-from .util.config import CONFIG, setup_logging
+from .util.config import CONFIG
 from .util.constants import *
 
-
-__all__ = ['init']
 
 GSDP_DIR = SYSTEM_DIR.joinpath('GSDP')
 
@@ -75,10 +73,4 @@ def setup_climada_data(reload=False):
                 src = Path(__file__).parent.parent.joinpath(src_dir, path.name)
                 copyfile(src, path)
 
-
-def init():
-    setup_climada_data()
-    setup_logging(CONFIG.log_level.str())
-
-
-init()
+setup_climada_data()

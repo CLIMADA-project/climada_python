@@ -487,7 +487,7 @@ class InputVar():
             kwargs['EN'] = None
 
         if haz_id_dict is None:
-            {'TC': [1]}
+            haz_id_dict = {'TC': [1]}
 
         return InputVar(
             partial(_ent_unc_func, impf_set=impf_set, haz_id_dict=haz_id_dict,
@@ -593,7 +593,7 @@ class InputVar():
             kwargs['EN'] = None
 
         if haz_id_dict is None:
-            {'TC': [1]}
+            haz_id_dict = {'TC': [1]}
 
         return InputVar(
             partial(_entfut_unc_func, haz_id_dict=haz_id_dict,
