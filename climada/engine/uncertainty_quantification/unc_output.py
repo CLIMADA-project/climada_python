@@ -37,11 +37,9 @@ from climada import CONFIG
 
 from climada.util.value_representation import value_to_monetary_unit as u_vtm
 from climada.util import plot as u_plot
-from climada.util.config import setup_logging as u_setup_logging
 import climada.util.hdf5_handler as u_hdf5
 
 LOGGER = logging.getLogger(__name__)
-u_setup_logging()
 
 # Metrics that are multi-dimensional
 METRICS_2D = ['eai_exp', 'at_event']
@@ -61,6 +59,7 @@ SALIB_COMPATIBILITY = {
     'dgsm' : ['fast_sampler', 'latin', 'morris', 'saltelli', 'latin', 'ff'],
     'ff' : ['ff'],
     }
+
 
 class UncOutput():
     """

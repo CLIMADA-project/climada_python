@@ -28,11 +28,9 @@ import pandas as pd
 import numpy as np
 
 from climada.util.value_representation import sig_dig as u_sig_dig
-from climada.util.config import setup_logging as u_setup_logging
 from climada.engine.uncertainty_quantification import UncOutput
 
 LOGGER = logging.getLogger(__name__)
-u_setup_logging()
 
 
 class Calc():
@@ -69,15 +67,15 @@ class Calc():
                     x = np.linspace(func.ppf(0.01), func.ppf(0.99), 100)
                     if not np.all(func.pdf(x) == input_param_func.pdf(x)):
                         raise ValueError(
-                            "The input parameter %s" %input_param_name +
-                            " is shared amond two input variables with "
-                            "different distributions."
+                            f"The input parameter {input_param_name}"
+                            " is shared amond two input variables with"
+                            " different distributions."
                             )
                     LOGGER.warning(
-                        "\n\nThe input parameter %s is shared " %input_param_name +
+                        "\n\nThe input parameter %s is shared " +
                         "among at least 2 input variables. Their uncertainty is " +
                         "thus computed with the same samples for this " +
-                        "input paramter.\n\n"
+                        "input paramter.\n\n", input_param_name
                         )
                 distr_dict[input_param_name] = input_param_func
         return True
