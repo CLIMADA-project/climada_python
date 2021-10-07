@@ -891,15 +891,15 @@ class Exposures():
             u_coord.write_raster(file_name, raster, meta)
 
     @staticmethod
-    def concat(exposures_list, category_ids=None):
+    def concat(exposures_list, category_id_list=None):
         """Concatenates Exposures or DataFrame objects to one Exposures object.
 
         Parameters
         ----------
         exposures_list : list of Exposures or DataFrames
             The list must not be empty with the first item supposed to be an Exposures object.
-        category_ids : list of str or int, optional
-            If provided, the value of the category_id column in each input exposure is set to the corresponding value
+        category_id_list : list of str or int, optional
+            If provided, each input exposure's category_id column is set to the corresponding value
             in this list. The list must be of the same length as exposures_list. Default None.
 
         Returns
@@ -917,10 +917,10 @@ class Exposures():
             ex.gdf if isinstance(ex, Exposures) else ex
             for ex in exposures_list
         ]
-        if category_ids:
-            if not isinstance(category_ids, list):
+        if category_id_list:
+            if not isinstance(category_id_list, list):
                 raise TypeError("category_ids must be a list")
-            df_list = [gdf.assign(category_id=category_ids[i]) for i, gdf in enumerate(df_list)]
+            df_list = [gdf.assign(category_id=category_id_list[i]) for i, gdf in enumerate(df_list)]
 
         crss = [
             ex.crs for ex in exposures_list

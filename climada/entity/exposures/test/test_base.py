@@ -346,7 +346,7 @@ class TestConcat(unittest.TestCase):
         self.assertEqual(catexp.crs, 'epsg:3395')
         self.assertEqual(np.unique(catexp.gdf['category_id']), np.array([1]))
 
-        catexp = Exposures.concat([self.dummy, self.dummy, self.dummy], category_ids=["a", "b", "c"])
+        catexp = Exposures.concat([self.dummy, self.dummy, self.dummy], category_id_list=["a", "b", "c"])
         self.assertListEqual(np.unique(catexp.gdf['category_id']), np.array(["a", "b", "c"]))
 
     def test_concat_fail(self):
@@ -355,9 +355,9 @@ class TestConcat(unittest.TestCase):
         with self.assertRaises(TypeError):
             Exposures.concat([self.dummy, self.dummy.gdf, self.dummy.gdf.values, self.dummy])
         with self.assertRaises(TypeError):
-            Exposures.concat([self.dummy, self.dummy, self.dummy], category_ids="abc")
+            Exposures.concat([self.dummy, self.dummy, self.dummy], category_id_list="abc")
         with self.assertRaises(IndexError):
-            Exposures.concat([self.dummy, self.dummy, self.dummy], category_ids=["a"])
+            Exposures.concat([self.dummy, self.dummy, self.dummy], category_id_list=["a"])
 
 
 class TestGeoDFFuncs(unittest.TestCase):
