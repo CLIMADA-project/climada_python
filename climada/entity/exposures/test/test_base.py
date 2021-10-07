@@ -329,6 +329,7 @@ class TestConcat(unittest.TestCase):
         exp.gdf['latitude'] = np.linspace(min_lat, max_lat, 10)
         exp.gdf['longitude'] = np.linspace(min_lon, max_lon, 10)
         exp.gdf['region_id'] = np.ones(10)
+        exp.gdf['category_id'] = np.ones(10)
         exp.gdf['impf_TC'] = np.ones(10)
         exp.ref_year = 2015
         exp.value_unit = 'XSD'
@@ -340,15 +341,23 @@ class TestConcat(unittest.TestCase):
         self.dummy.check()
 
         catexp = Exposures.concat([self.dummy, self.dummy.gdf, pd.DataFrame(self.dummy.gdf.values, columns=self.dummy.gdf.columns), self.dummy])
-        self.assertEqual(self.dummy.gdf.shape, (10,5))
-        self.assertEqual(catexp.gdf.shape, (40,5))
+        self.assertEqual(self.dummy.gdf.shape, (10, 6))
+        self.assertEqual(catexp.gdf.shape, (40, 6))
         self.assertEqual(catexp.crs, 'epsg:3395')
+        self.assertEqual(np.unique(catexp.gdf['category_id']), np.array([1]))
+
+        catexp = Exposures.concat([self.dummy, self.dummy, self.dummy], category_ids=["a", "b", "c"])
+        self.assertListEqual(np.unique(catexp.gdf['category_id']), np.array(["a", "b", "c"]))
 
     def test_concat_fail(self):
         """Test failing concat function with fake data."""
 
         with self.assertRaises(TypeError):
             Exposures.concat([self.dummy, self.dummy.gdf, self.dummy.gdf.values, self.dummy])
+        with self.assertRaises(TypeError):
+            Exposures.concat([self.dummy, self.dummy, self.dummy], category_ids="abc")
+        with self.assertRaises(IndexError):
+            Exposures.concat([self.dummy, self.dummy, self.dummy], category_ids=["a"])
 
 
 class TestGeoDFFuncs(unittest.TestCase):

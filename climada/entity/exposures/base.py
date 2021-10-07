@@ -891,18 +891,22 @@ class Exposures():
             u_coord.write_raster(file_name, raster, meta)
 
     @staticmethod
-    def concat(exposures_list):
-        """Concatenates Exposures or DataFrame objectss to one Exposures object.
+    def concat(exposures_list, category_ids=None):
+        """Concatenates Exposures or DataFrame objects to one Exposures object.
 
         Parameters
         ----------
         exposures_list : list of Exposures or DataFrames
             The list must not be empty with the first item supposed to be an Exposures object.
+        category_ids : list of str or int, optional
+            If provided, the value of the category_id column in each input exposure is set to the corresponding value
+            in this list. The list must be of the same length as exposures_list. Default None.
 
         Returns
         -------
         Exposures
-            with the metadata of the first item in the list and the dataframes concatenated.
+            with the metadata of the first item in the list and the dataframes concatenated. If DataFrames with no CRS
+            are provided, the default CRS is used.
         """
         exp = exposures_list[0].copy(deep=False)
         if not isinstance(exp, Exposures):
@@ -913,6 +917,11 @@ class Exposures():
             ex.gdf if isinstance(ex, Exposures) else ex
             for ex in exposures_list
         ]
+        if category_ids:
+            if not isinstance(category_ids, list):
+                raise TypeError("category_ids must be a list")
+            df_list = [gdf.assign(category_id=category_ids[i]) for i, gdf in enumerate(df_list)]
+
         crss = [
             ex.crs for ex in exposures_list
             if isinstance(ex, (Exposures, GeoDataFrame)) and not ex.crs is None
@@ -922,7 +931,7 @@ class Exposures():
             if any(not u_coord.equal_crs(c, crs) for c in crss[1:]):
                 raise ValueError("concatenation of exposures with different crs")
         else:
-            crs = None
+            crs = DEF_CRS
 
         exp.set_gdf(GeoDataFrame(
             pd.concat(df_list, ignore_index=True, sort=False)
