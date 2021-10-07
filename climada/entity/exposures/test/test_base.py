@@ -347,7 +347,7 @@ class TestConcat(unittest.TestCase):
         self.assertEqual(np.unique(catexp.gdf['category_id']), np.array([1]))
 
         catexp = Exposures.concat([self.dummy, self.dummy, self.dummy], category_id_list=["a", "b", "c"])
-        self.assertListEqual(np.unique(catexp.gdf['category_id']), np.array(["a", "b", "c"]))
+        self.assertSetEqual(set(catexp.gdf['category_id']), {"a", "b", "c"})
 
     def test_concat_fail(self):
         """Test failing concat function with fake data."""
