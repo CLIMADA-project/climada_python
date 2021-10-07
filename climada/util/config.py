@@ -31,6 +31,7 @@ from pathlib import Path
 
 
 LOGGER = logging.getLogger('climada')
+LOGGER.propagate = False
 FORMATTER = logging.Formatter(
     "%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 CONSOLE = logging.StreamHandler(stream=sys.stdout)
