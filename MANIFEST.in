@@ -1,0 +1,5 @@
+include climada/conf/climada.conf
+graft climada/*/*/test
+graft climada/test
+graft data
+global-exclude *.py[co]

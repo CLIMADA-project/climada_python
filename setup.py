@@ -2,7 +2,7 @@
 """
 
 from pathlib import Path
-from setuptools import setup, find_packages
+from setuptools import setup
 
 here = Path(__file__).parent.absolute()
 
@@ -10,44 +10,37 @@ here = Path(__file__).parent.absolute()
 with open(here.joinpath('README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
-# Get the data recursively from the data folder
-def package_files(directory):
-    return [str(path_object)
-        for path_object in directory.glob('**/*')
-        if path_object.is_file() and path_object.name[0] != '.'
-    ]
-
-extra_files = package_files(here / 'data')
-# Add configuration files
-extra_files.append(str(here / 'climada/conf/climada.conf'))
-
 setup(
     name='climada',
 
-    version='3.0.1-dev',
+    version='3.0.1.9',
 
     description='CLIMADA in Python',
 
     long_description=long_description,
+    long_description_content_type="text/markdown",
 
-    url='https://github.com/davidnbresch/climada_python',
+    url='https://github.com/CLIMADA-project/climada_python',
 
     author='ETH',
+    author_email='schmide@ethz.ch',
 
-    license='OSI Approved :: GNU General Public License v3 (GPLv3)',
+    license='OSI Approved :: GNU Lesser General Public License v3 (GPLv3)',
 
     classifiers=[
         #   3 - Alpha
         #   4 - Beta
         #   5 - Production/Stable
         'Development Status :: 4 - Beta',
-        'Topic :: Climate Adaptation',
         'Programming Language :: Python :: 3.8',
+        'Topic :: Scientific/Engineering :: Atmospheric Science',
+        'Topic :: Scientific/Engineering :: GIS',
+        'Topic :: Scientific/Engineering :: Mathematics',
     ],
 
     keywords='climate adaptation',
 
-    packages=find_packages(where='.'),
+    packages=['climada', 'data'],
 
     install_requires=[
         'bottleneck',
@@ -82,8 +75,6 @@ setup(
         'xlsxwriter',
         'xmlrunner'
     ],
-
-    package_data={'': extra_files},
 
     include_package_data=True
 )
