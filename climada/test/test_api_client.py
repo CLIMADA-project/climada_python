@@ -129,12 +129,13 @@ class TestClient(unittest.TestCase):
             client.get_exposures(exposures_type='litpop', 
                                  properties={'fin_mode': 'pop', 'exponents': '(0,1)'},
                                  dump_dir=DATA_DIR)
-        self.assertIn(' datasets matching the query and the limit is set to 10. You can force ',
+        self.assertIn(' datasets matching the query and the limit is set to 10.\nYou can force ',
                       str(cm.exception))
 
     def test_get_hazard(self):
         client = Client()
-        hazard = client.get_hazard(hazard_type='river_flood', 
+        hazard = client.get_hazard(hazard_type='river_flood',
+                                   max_datasets=10,
                                    properties={'country_name': ['Switzerland', 'Austria'],
                                                'year_range': '2010_2030', 'rcp': 'rcp26'},
                                    dump_dir=DATA_DIR)
@@ -156,12 +157,21 @@ class TestClient(unittest.TestCase):
                       str(cm.exception))
 
         with self.assertRaises(ValueError) as cm:
-            client.get_hazard(hazard_type='river_flood', 
+            client.get_hazard(hazard_type='river_flood',
+                              max_datasets=10,
                               properties={'country_name': ['Switzerland', 'Austria'],
                                           'year_range': '2010_2030', 'rcp': ['rcp26', 'rcp85']},
                               dump_dir=DATA_DIR)
         self.assertEqual("Cannot combine datasets, there are distinct values for these properties"
                          " in your selection: ['rcp']",
+                         str(cm.exception))
+
+        with self.assertRaises(ValueError) as cm:
+            client.get_hazard(hazard_type='river_flood',
+                              properties={'country_name': ['Switzerland', 'Austria'],
+                                          'year_range': '2010_2030', 'rcp': ['rcp26', 'rcp85']},
+                              dump_dir=DATA_DIR)
+        self.assertIn(' datasets matching the query and the limit is set to 1.\nYou can force ',
                       str(cm.exception))
 
     def test_get_litpop_default(self):

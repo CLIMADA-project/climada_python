@@ -550,9 +550,12 @@ class Client():
             raise ValueError("no datasets found meeting the requirements")
         if 0 < max_datasets < len(datasets):
             raise ValueError(f"There are {len(datasets)} datasets matching the query"
-                             f" and the limit is set to {max_datasets}."
-                             " You can force download by increasing max_datasets or"
-                             " setting it to a value <= 0")
+                             f" and the limit is set to {max_datasets}.\n"
+                             "You can force concatenation of multiple datasets by increasing"
+                             " max_datasets or setting it to a value <= 0 (no limit).\n"
+                             "Attention! For hazards, concatenation of datasets is currently done by"
+                             " event, which may lead to event duplication and thus biased data.\n"
+                             "In a future release this limitation will be overcome.")
         not_supported = [msd for msd in Client._multi_selection(datasets)
                          if msd in MUTUAL_PROPS]
         if not_supported:
@@ -563,7 +566,7 @@ class Client():
             raise ValueError("There are datasets with multiple versions in your selection:"
                              f" {ambiguous_ds_names}")
 
-    def get_hazard(self, hazard_type, dump_dir=SYSTEM_DIR, max_datasets=10, **kwargs):
+    def get_hazard(self, hazard_type, dump_dir=SYSTEM_DIR, max_datasets=1, **kwargs):
         """Queries the data api for hazard datasets of the given type, downloads associated
         hdf5 files and turns them into a climada.hazard.Hazard object.
 
