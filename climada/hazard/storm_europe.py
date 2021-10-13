@@ -914,7 +914,8 @@ def generate_WS_forecast_hazard(run_datetime = dt.datetime.today().replace(hour=
         defaults to the day after tomorrow
     haz_model: str, optional
         select the name of the model to
-        be used: one of ['icon-eu-eps', 'cosmo1e_file', 'cosmo2e_file'],
+        be used: one of ['icon-eu-eps', 'icon-d2-eps', 'cosmo1e_file',
+                         'cosmo2e_file'],
         default is 'icon-eu-eps'.
     haz_raw_storage: str, optional
         path to folder, where netcdf files
@@ -982,8 +983,15 @@ def generate_WS_forecast_hazard(run_datetime = dt.datetime.today().replace(hour=
                 )
             if save_haz:
                 hazard.write_hdf5(haz_file_name)
-    elif haz_model == 'icon-eu-eps':
-        haz_model='IEE'
+    elif (haz_model == 'icon-eu-eps'
+          or
+          haz_model == 'icon-d2-eps'):
+        if haz_model == 'icon-eu-eps':
+            full_model_name_temp = haz_model
+            haz_model='IEE'
+        if haz_model == 'icon-d2-eps':
+            full_model_name_temp = haz_model
+            haz_model='IDE'
         haz_file_name = Path(FORECAST_DIR) / (HAZ_TYPE +
                                               '_' +
                                               haz_model +
@@ -1007,7 +1015,8 @@ def generate_WS_forecast_hazard(run_datetime = dt.datetime.today().replace(hour=
             hazard.read_icon_grib(
                 run_datetime,
                 event_date=event_date,
-                delete_raw_data=False
+                delete_raw_data=False,
+                model_name=full_model_name_temp
                 )
             if save_haz:
                 hazard.write_hdf5(haz_file_name)
