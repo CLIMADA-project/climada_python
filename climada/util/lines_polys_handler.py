@@ -46,7 +46,7 @@ def agg_to_lines(exp_pnts, impact_pnts, agg_mode='sum'):
         return impact_line.groupby(level=0).eai_exp.sum()
     
     elif agg_mode == 'fraction':
-        return impact_line.groupby(level=0).eai_exp.sum()/exp_pnts.groupby(level=0).value.sum()
+        return impact_line.groupby(level=0).eai_exp.sum()/exp_pnts.gdf.groupby(level=0).value.sum()
     
     else:
         raise NotImplementedError
