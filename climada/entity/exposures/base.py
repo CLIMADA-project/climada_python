@@ -755,6 +755,12 @@ class Exposures():
 
         store.get_storer('exposures').attrs.metadata = var_meta
         store.close()
+        
+    def read_hdf5(self, *args, **kwargs):
+        """This function is deprecated, use Exposures.from_hdf5 instead."""
+        LOGGER.warning("The use of Exposures.read_hdf5 is deprecated."
+                       "Use Exposures.from_hdf5 instead.")
+        self.__dict__ = Exposures.from_hdf5(*args, **kwargs).__dict__
 
     @classmethod
     def from_hdf5(cls, file_name):
