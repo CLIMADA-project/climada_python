@@ -31,10 +31,7 @@ from climada.engine import Impact
 from climada.engine.uncertainty_quantification import Calc, InputVar, UncImpactOutput
 from climada.util import log_level
 
-from climada.util.config import setup_logging as u_setup_logging
-
 LOGGER = logging.getLogger(__name__)
-u_setup_logging()
 
 
 class CalcImpact(Calc):

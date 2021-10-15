@@ -21,7 +21,6 @@ Define configuration parameters.
 
 __all__ = [
     'CONFIG',
-    'setup_logging',
 ]
 
 import sys
@@ -31,29 +30,13 @@ import logging
 from pathlib import Path
 
 
-def remove_handlers(logger):
-    """Remove logger handlers."""
-    if logger.hasHandlers():
-        for handler in logger.handlers:
-            logger.removeHandler(handler)
-
 LOGGER = logging.getLogger('climada')
-LOGGER.setLevel(logging.DEBUG)
 LOGGER.propagate = False
-remove_handlers(LOGGER)
 FORMATTER = logging.Formatter(
     "%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 CONSOLE = logging.StreamHandler(stream=sys.stdout)
 CONSOLE.setFormatter(FORMATTER)
 LOGGER.addHandler(CONSOLE)
-
-
-def setup_logging(log_level='DEBUG'):
-    """Setup logging configuration"""
-    remove_handlers(LOGGER)
-    LOGGER.propagate = False
-    LOGGER.setLevel(getattr(logging, log_level))
-    LOGGER.addHandler(CONSOLE)
 
 
 class Config():
@@ -321,3 +304,4 @@ CONFIG = Config.from_dict(_fetch_conf([
     Path(Path.home(), '.config'),  # ~/.config directory
     Path.cwd(),  # current working directory
 ], CONFIG_NAME))
+LOGGER.setLevel(getattr(logging, CONFIG.log_level.str()))

@@ -21,11 +21,9 @@ climada init
 from shutil import copyfile
 from pathlib import Path
 
-from .util.config import CONFIG, setup_logging
+from .util.config import CONFIG
 from .util.constants import *
 
-
-__all__ = ['init']
 
 GSDP_DIR = SYSTEM_DIR.joinpath('GSDP')
 
@@ -64,8 +62,32 @@ REPO_DATA = {
 }
 
 
-def setup_climada_data(reload=False):
+def test_installation():
+    """Run this function to check whether climada is working properly.
+    If the invoked tests pass and an OK is printed out, the installation was successfull.
+    """
+    from unittest import TestLoader, TextTestRunner
+    suite = TestLoader().discover(start_dir='climada.engine.test',
+                                           pattern='test_cost_benefit.py')
+    suite.addTest(TestLoader().discover(start_dir='climada.engine.test',
+                                                 pattern='test_impact.py'))
+    TextTestRunner(verbosity=2).run(suite)
 
+
+def setup_climada_data(reload=False):
+    """This function is called when climada is imported.
+    It creates a climada directory by default in the home directory.
+    Other locations can be configured in the climada.conf file.
+    The directory is filled with data files from the repository and is also the default target
+    directory for files downloaded from climada.ethz.ch via the data api.
+
+    Parameters
+    ----------
+    reload : bool, optional
+        in case system or demo data have changed in the github repository, the local copies of
+        these files can be updated by setting reload to True,
+        by default False
+    """
     for dirpath in [DEMO_DIR, SYSTEM_DIR, GSDP_DIR]:
         dirpath.mkdir(parents=True, exist_ok=True)
 
@@ -75,10 +97,4 @@ def setup_climada_data(reload=False):
                 src = Path(__file__).parent.parent.joinpath(src_dir, path.name)
                 copyfile(src, path)
 
-
-def init():
-    setup_climada_data()
-    setup_logging(CONFIG.log_level.str())
-
-
-init()
+setup_climada_data()
