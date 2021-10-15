@@ -376,7 +376,8 @@ class ImpactFuncSet():
                         "Use ImpactFuncSet.from_excel instead.")
         self.__dict__ = ImpactFuncSet.from_excel(*args, **kwargs).__dict__
 
-    def read_mat(self, file_name, description='', var_names=DEF_VAR_MAT):
+    @classmethod
+    def from_mat(cls, file_name, description='', var_names=DEF_VAR_MAT):
         """Read MATLAB file generated with previous MATLAB CLIMADA version.
 
         Parameters
@@ -387,6 +388,11 @@ class ImpactFuncSet():
             description of the data
         var_names : dict, optional
             name of the variables in the file
+
+        Return
+        ------
+        impf_set : climada.entity.impact_func_set.ImpactFuncSet
+            Impact func set as defined in matlab file.
         """
         def _get_hdf5_funcs(imp, file_name, var_names):
             """Get rows that fill every impact function and its name."""
@@ -413,9 +419,9 @@ class ImpactFuncSet():
             return prev_str
 
         imp = u_hdf5.read(file_name)
-        self.clear()
-        self.tag.file_name = str(file_name)
-        self.tag.description = description
+        impf_set = cls()
+        impf_set.tag.file_name = str(file_name)
+        impf_set.tag.description = description
 
         try:
             imp = imp[var_names['sup_field_name']]
@@ -444,9 +450,17 @@ class ImpactFuncSet():
                 func.intensity = np.take(imp[var_names['var_name']['inten']], imp_rows)
                 func.mdd = np.take(imp[var_names['var_name']['mdd']], imp_rows)
                 func.paa = np.take(imp[var_names['var_name']['paa']], imp_rows)
-                self.append(func)
+                impf_set.append(func)
         except KeyError as err:
             raise KeyError("Not existing variable: %s" % str(err)) from err
+
+        return impf_set
+
+    def read_mat(self, *args, **kwargs):
+        """This function is deprecated, use ImpactFuncSet.from_mat instead."""
+        LOGGER.warning("The use of ImpactFuncSet.read_mat  is deprecated."
+                       "Use ImpactFuncSet.from_mat  instead.")
+        self.__dict__ = ImpactFuncSet.from_mat(*args, **kwargs).__dict__
 
     def write_excel(self, file_name, var_names=DEF_VAR_EXCEL):
         """Write excel file following template.

@@ -429,9 +429,8 @@ class TestReaderMat(unittest.TestCase):
     def test_demo_file_pass(self):
         """Read demo excel file"""
         # Read demo mat file
-        imp_funcs = ImpactFuncSet()
         description = 'One single file.'
-        imp_funcs.read_mat(ENT_TEST_MAT, description)
+        imp_funcs = ImpactFuncSet.from_mat(ENT_TEST_MAT, description)
 
         # Check results
         n_funcs = 2
