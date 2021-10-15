@@ -429,9 +429,8 @@ class TestReaderMat(unittest.TestCase):
     def test_demo_file_pass(self):
         """Read demo excel file"""
         # Read demo mat file
-        imp_funcs = ImpactFuncSet()
         description = 'One single file.'
-        imp_funcs.read_mat(ENT_TEST_MAT, description)
+        imp_funcs = ImpactFuncSet.from_mat(ENT_TEST_MAT, description)
 
         # Check results
         n_funcs = 2
@@ -506,9 +505,9 @@ class TestReaderExcel(unittest.TestCase):
     def test_demo_file_pass(self):
         """Read demo excel file"""
         # Read demo excel file
-        imp_funcs = ImpactFuncSet()
+
         description = 'One single file.'
-        imp_funcs.read_excel(ENT_DEMO_TODAY, description)
+        imp_funcs = ImpactFuncSet.from_excel(ENT_DEMO_TODAY, description)
 
         # Check results
         n_funcs = 2
@@ -579,8 +578,7 @@ class TestReaderExcel(unittest.TestCase):
 
     def test_template_file_pass(self):
         """Read template excel file"""
-        imp_funcs = ImpactFuncSet()
-        imp_funcs.read_excel(ENT_TEMPLATE_XLS)
+        imp_funcs = ImpactFuncSet.from_excel(ENT_TEMPLATE_XLS)
         # Check some results
         self.assertEqual(len(imp_funcs._data), 10)
         self.assertEqual(len(imp_funcs._data['TC'][3].paa), 9)
@@ -640,8 +638,7 @@ class TestWriter(unittest.TestCase):
         file_name = CONFIG.impact_funcs.test_data.dir().joinpath('test_write.xlsx')
         imp_funcs.write_excel(file_name)
 
-        imp_res = ImpactFuncSet()
-        imp_res.read_excel(file_name)
+        imp_res = ImpactFuncSet.from_excel(file_name)
 
         self.assertEqual(imp_res.tag.file_name, str(file_name))
         self.assertEqual(imp_res.tag.description, '')

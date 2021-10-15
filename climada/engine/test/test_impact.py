@@ -31,8 +31,9 @@ from climada.hazard.base import Hazard
 from climada.engine.impact import Impact
 from climada.util.constants import ENT_DEMO_TODAY, DEF_CRS
 import climada.hazard.test as hazard_test
+import climada.engine.test as engine_test
 
-DATA_FOLDER = CONFIG.engine.test_data.dir()
+DATA_FOLDER = Path(engine_test.__file__).parent.joinpath('data')
 HAZ_TEST_MAT = Path(hazard_test.__file__).parent.joinpath('data', 'atl_prob_no_name.mat')
 
 class TestFreqCurve(unittest.TestCase):
@@ -115,8 +116,7 @@ class TestOneExposure(unittest.TestCase):
         """Test result against reference value"""
         # Read demo entity values
         # Set the entity default file to the demo one
-        ent = Entity()
-        ent.read_excel(ENT_DEMO_TODAY)
+        ent = Entity.from_excel(ENT_DEMO_TODAY)
         ent.check()
 
         # Read default hazard file

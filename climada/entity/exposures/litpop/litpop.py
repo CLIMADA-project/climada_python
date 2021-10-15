@@ -132,7 +132,8 @@ class LitPop(Exposures):
 
         Returns
         -------
-        LitPop
+        exp : LitPop
+            LitPop instance with exposure for given countries
         """
         if isinstance(countries, (int, str)):
             countries = [countries] # for backward compatibility
@@ -213,10 +214,17 @@ class LitPop(Exposures):
         exp.check()
         return exp
 
-    def set_nightlight_intensity(self, countries=None, shape=None, res_arcsec=15,
+    def set_nightlight_intensity(self, *args, **kwargs):
+        """This function is deprecated, use LitPop.from_nightlight_intensity instead."""
+        LOGGER.warning("The use of LitPop.set_nightlight_intensity is deprecated."
+                       "Use LitPop.from_nightlight_intensity instead.")
+        self.__dict__ = LitPop.from_nightlight_intensity(*args, **kwargs).__dict__
+
+    @classmethod
+    def from_nightlight_intensity(cls, countries=None, shape=None, res_arcsec=15,
                         reference_year=DEF_REF_YEAR, data_dir=SYSTEM_DIR):
         """
-        Wrapper around `from_countries` / `set_custom_shape`.
+        Wrapper around `from_countries` / `from_custom_shape`.
 
         Initiate exposures instance with value equal to the original BlackMarble
         nightlight intensity resampled to the target resolution `res_arcsec`.
@@ -235,32 +243,49 @@ class LitPop(Exposures):
             Reference year. The default is CONFIG.exposures.def_ref_year.
         data_dir : Path, optional
             data directory. The default is None.
+
+        Raises
+        ------
+        ValueError
+
+        Returns
+        -------
+        exp : LitPop
+            Exposure instance with values representing pure nightlight intensity
+            from input nightlight data (BlackMarble)
         """
         if countries is None and shape is None:
             raise ValueError("Either `countries` or `shape` required. Aborting.")
         if countries is not None and shape is not None:
             raise ValueError("Not allowed to set both `countries` and `shape`. Aborting.")
         if countries is not None:
-            # TODO: replace with LitPop.from_countries
-            self.set_countries(countries, res_arcsec=res_arcsec,
-                               exponents=(1,0), fin_mode='none',
-                               reference_year=reference_year, gpw_version=GPW_VERSION,
-                               data_dir=data_dir)
+            exp = cls.from_countries(countries, res_arcsec=res_arcsec,
+                                     exponents=(1,0), fin_mode='none',
+                                     reference_year=reference_year, gpw_version=GPW_VERSION,
+                                     data_dir=data_dir)
         else:
-            self.set_custom_shape(shape, None, res_arcsec=res_arcsec,
-                                  exponents=(1,0), value_unit='',
-                                  reference_year=reference_year,
-                                  gpw_version=GPW_VERSION, data_dir=SYSTEM_DIR)
+            exp = cls.from_custom_shape(shape, None, res_arcsec=res_arcsec,
+                                        exponents=(1,0), value_unit='',
+                                        reference_year=reference_year,
+                                        gpw_version=GPW_VERSION, data_dir=SYSTEM_DIR)
         LOGGER.warning("Note: set_nightlight_intensity sets values to raw nightlight intensity, "
                        "not to USD. "
                        "To disaggregate asset value proportionally to nightlights^m, "
-                       "call from_countries or set_custom_shape with exponents=(m,0).")
+                       "call from_countries or from_custom_shape with exponents=(m,0).")
+        return exp
 
-    def set_population(self, countries=None, shape=None, res_arcsec=30,
-                       reference_year=DEF_REF_YEAR, gpw_version=GPW_VERSION,
-                       data_dir=SYSTEM_DIR):
+    def set_population(self, *args, **kwargs):
+        """This function is deprecated, use LitPop.from_population instead."""
+        LOGGER.warning("The use of LitPop.set_population is deprecated."
+                       "Use LitPop.from_population instead.")
+        self.__dict__ = LitPop.from_population(*args, **kwargs).__dict__
+
+    @classmethod
+    def from_population(cls, countries=None, shape=None, res_arcsec=30,
+                        reference_year=DEF_REF_YEAR, gpw_version=GPW_VERSION,
+                        data_dir=SYSTEM_DIR):
         """
-        Wrapper around `from_countries` / `set_custom_shape`.
+        Wrapper around `from_countries` / `from_custom_shape`.
 
         Initiate exposures instance with value equal to GPW population count.
         Provide either `countries` or `shape`.
@@ -280,31 +305,44 @@ class LitPop(Exposures):
             specify GPW data verison. The default is 11.
         data_dir : Path, optional
             data directory. The default is None.
+            Either countries or shape is required.
 
         Raises
         ------
         ValueError
-            Either countries or shape is required.
+
+        Returns
+        -------
+        exp : LitPop
+            Exposure instance with values representing population count according
+            to Gridded Population of the World (GPW) input data set.
         """
         if countries is None and shape is None:
             raise ValueError("Either `countries` or `shape` required. Aborting.")
         if countries is not None and shape is not None:
             raise ValueError("Not allowed to set both `countries` and `shape`. Aborting.")
         if countries is not None:
-            # TODO: replace with LitPop.from_countries
-            self.set_countries(countries, res_arcsec=res_arcsec,
-                               exponents=(0,1), fin_mode='pop',
-                               reference_year=reference_year, gpw_version=gpw_version,
-                               data_dir=data_dir)
+            exp = cls.from_countries(countries, res_arcsec=res_arcsec,
+                                     exponents=(0,1), fin_mode='pop',
+                                     reference_year=reference_year, gpw_version=gpw_version,
+                                     data_dir=data_dir)
         else:
-            self.set_custom_shape(shape, None, res_arcsec=res_arcsec, exponents=(0,1),
-                                  value_unit='people', reference_year=reference_year,
-                                  gpw_version=gpw_version, data_dir=data_dir)
+            exp = cls.from_custom_shape(shape, None, res_arcsec=res_arcsec, exponents=(0,1),
+                                        value_unit='people', reference_year=reference_year,
+                                        gpw_version=gpw_version, data_dir=data_dir)
+        return exp
 
-    def set_custom_shape_from_countries (self, shape, countries, res_arcsec=30,
-                                      exponents=(1,1), fin_mode='pc',
-                                      admin1_calc=False, reference_year=DEF_REF_YEAR,
-                                      gpw_version=GPW_VERSION, data_dir=SYSTEM_DIR):
+    def set_custom_shape_from_countries(self, *args, **kwargs):
+        """This function is deprecated, use LitPop.from_custom_shape_from_countries instead."""
+        LOGGER.warning("The use of LitPop.set_custom_shape_from_countries is deprecated."
+                       "Use LitPop.from_custom_shape_from_countries instead.")
+        self.__dict__ = LitPop.from_custom_shape_from_countries(*args, **kwargs).__dict__
+
+    @classmethod
+    def from_custom_shape_from_countries(cls, shape, countries, res_arcsec=30,
+                                         exponents=(1,1), fin_mode='pc',
+                                         admin1_calc=False, reference_year=DEF_REF_YEAR,
+                                         gpw_version=GPW_VERSION, data_dir=SYSTEM_DIR):
         """
         create LitPop exposure for `country` and then crop to given shape.
 
@@ -354,14 +392,13 @@ class LitPop(Exposures):
 
         Returns
         -------
-        None.
-
+        exp : LitPop
+            The exposure LitPop within shape
         """
         # init countries' exposure:
-        # TODO: replace with LitPop.from_countries
-        self.set_countries(countries, res_arcsec=res_arcsec, exponents=exponents,
-                           fin_mode=fin_mode, reference_year=reference_year,
-                           gpw_version=gpw_version, data_dir=data_dir)
+        exp = cls.from_countries(countries, res_arcsec=res_arcsec, exponents=exponents,
+                                fin_mode=fin_mode, reference_year=reference_year,
+                                gpw_version=gpw_version, data_dir=data_dir)
 
         if isinstance(shape, Shape):
             # get gdf with geometries of points within shape:
@@ -372,17 +409,17 @@ class LitPop(Exposures):
             shape_gdf = shape_gdf.drop(
                 columns=shape_gdf.columns[shape_gdf.columns != 'geometry'])
             # extract gdf with data points within shape:
-            gdf = geopandas.sjoin(self.gdf, shape_gdf, how='right')
+            gdf = geopandas.sjoin(exp.gdf, shape_gdf, how='right')
             gdf = gdf.drop(columns=['index_left'])
         elif isinstance(shape, (shapely.geometry.MultiPolygon, shapely.geometry.Polygon)):
             # works if shape is Polygon or MultiPolygon
-            gdf = self.gdf.loc[self.gdf.geometry.within(shape)]
+            gdf = exp.gdf.loc[exp.gdf.geometry.within(shape)]
         elif isinstance(shape, (geopandas.GeoSeries, list)):
-            gdf = geopandas.GeoDataFrame(columns=self.gdf.columns)
+            gdf = geopandas.GeoDataFrame(columns=exp.gdf.columns)
             for shp in shape:
                 if isinstance(shp, (shapely.geometry.MultiPolygon,
                                     shapely.geometry.Polygon)):
-                    gdf = gdf.append(self.gdf.loc[self.gdf.geometry.within(shp)])
+                    gdf = gdf.append(exp.gdf.loc[exp.gdf.geometry.within(shp)])
                 else:
                     raise NotImplementedError('Not implemented for list or GeoSeries containing '
                                               f'objects of type {type(shp)} as `shape`')
@@ -393,37 +430,33 @@ class LitPop(Exposures):
         tag.description = f'LitPop Exposure for custom shape in {countries} at ' \
                           f'{res_arcsec} as, year: {reference_year}, financial mode: ' \
                           f'{fin_mode}, exp: {exponents}, admin1_calc: {admin1_calc}'
-
-        Exposures.__init__(
-            self,
-            data=gdf.reset_index(),
-            crs=self.crs,
-            ref_year=reference_year,
-            tag=tag,
-            value_unit=get_value_unit(fin_mode),
-            exponents = exponents,
-            gpw_version = gpw_version,
-            fin_mode = fin_mode,
-        )
+        exp.gdf = gdf.reset_index()
 
         try:
             rows, cols, ras_trans = u_coord.pts_to_raster_meta(
-                (self.gdf.longitude.min(), self.gdf.latitude.min(),
-                 self.gdf.longitude.max(), self.gdf.latitude.max()),
-                u_coord.get_resolution(self.gdf.longitude, self.gdf.latitude))
-            self.meta = {
+                (exp.gdf.longitude.min(), exp.gdf.latitude.min(),
+                 exp.gdf.longitude.max(), exp.gdf.latitude.max()),
+                u_coord.get_resolution(exp.gdf.longitude, exp.gdf.latitude))
+            exp.meta = {
                 'width': cols,
                 'height': rows,
-                'crs': self.crs,
+                'crs': exp.crs,
                 'transform': ras_trans,
             }
         except ValueError as err:
             LOGGER.warning('Could not write attribute meta with ValueError: ')
             LOGGER.warning(err.args[0])
-            self.meta = {'crs': self.crs}
-        self.check()
+            exp.meta = {'crs': exp.crs}
+        return exp
 
-    def set_custom_shape(self, shape, total_value, res_arcsec=30, exponents=(1,1),
+    def set_custom_shape(self, *args, **kwargs):
+        """This function is deprecated, use LitPop.from_custom_shape instead."""
+        LOGGER.warning("The use of LitPop.set_custom_shape is deprecated."
+                       "Use LitPop.from_custom_shape instead.")
+        self.__dict__ = LitPop.from_custom_shape(*args, **kwargs).__dict__
+
+    @classmethod
+    def from_custom_shape(cls, shape, total_value, res_arcsec=30, exponents=(1,1),
                          value_unit='USD', reference_year=DEF_REF_YEAR,
                          gpw_version=GPW_VERSION, data_dir=SYSTEM_DIR):
         """init LitPop exposure object for a custom shape.
@@ -465,6 +498,11 @@ class LitPop(Exposures):
         NotImplementedError
         ValueError
         TypeError
+
+        Returns
+        -------
+        exp : LitPop
+            The exposure LitPop within shape
         """
         if isinstance(shape, (geopandas.GeoSeries, list)):
             raise NotImplementedError('Not implemented for `shape` of type list or '
@@ -489,34 +527,34 @@ class LitPop(Exposures):
 
         litpop_gdf[INDICATOR_IMPF] = 1
 
-        Exposures.__init__(
-            self,
-            data=litpop_gdf,
-            crs=litpop_gdf.crs,
-            ref_year=reference_year,
-            tag=tag,
-            value_unit=value_unit,
-            exponents = exponents,
-            gpw_version = gpw_version,
-            fin_mode = None,
-            )
+        exp = cls(
+                  data=litpop_gdf,
+                  crs=litpop_gdf.crs,
+                  ref_year=reference_year,
+                  tag=tag,
+                  value_unit=value_unit,
+                  exponents = exponents,
+                  gpw_version = gpw_version,
+                  fin_mode = None,
+                  )
 
-        if min(len(self.gdf.latitude.unique()), len(self.gdf.longitude.unique())) > 1:
-        #if self.gdf.shape[0] > 1 and len(self.gdf.latitude.unique()) > 1:
+        if min(len(exp.gdf.latitude.unique()), len(exp.gdf.longitude.unique())) > 1:
+        #if exp.gdf.shape[0] > 1 and len(exp.gdf.latitude.unique()) > 1:
             rows, cols, ras_trans = u_coord.pts_to_raster_meta(
-                (self.gdf.longitude.min(), self.gdf.latitude.min(),
-                 self.gdf.longitude.max(), self.gdf.latitude.max()),
-                u_coord.get_resolution(self.gdf.longitude, self.gdf.latitude))
-            self.meta = {
+                (exp.gdf.longitude.min(), exp.gdf.latitude.min(),
+                 exp.gdf.longitude.max(), exp.gdf.latitude.max()),
+                u_coord.get_resolution(exp.gdf.longitude, exp.gdf.latitude))
+            exp.meta = {
                 'width': cols,
                 'height': rows,
-                'crs': self.crs,
+                'crs': exp.crs,
                 'transform': ras_trans,
             }
         else:
             LOGGER.warning('Could not write attribute meta because coordinates'
                            'are either only one point or do not extend in lat and lon')
-            self.meta = {'crs': self.crs}
+            exp.meta = {'crs': exp.crs}
+        return exp
 
     @staticmethod
     def _from_country(country, res_arcsec=30, exponents=(1,1), fin_mode=None,
@@ -545,7 +583,8 @@ class LitPop(Exposures):
 
         Returns
         -------
-        LitPop Exposure instance
+        exp : LitPop
+            LitPop Exposure instance for the country
         """
         # Determine ISO 3166 representation of country and get geometry:
         try:
@@ -597,10 +636,10 @@ class LitPop(Exposures):
         elif total_value is not None:
             raise TypeError("total_value must be int or float.")
 
-        exp_country = LitPop()
-        exp_country.set_gdf(litpop_gdf)
-        exp_country.gdf[INDICATOR_IMPF] = 1
-        return exp_country
+        exp = LitPop()
+        exp.set_gdf(litpop_gdf)
+        exp.gdf[INDICATOR_IMPF] = 1
+        return exp
 
     # Alias method names for backward compatibility:
     set_country = set_countries
@@ -1141,15 +1180,16 @@ def _calc_admin1_one_country(country, res_arcsec, exponents, fin_mode, total_val
         if grp_values[record['name']] is None:
             continue
         LOGGER.info(record['name'])
-        exp_list.append(LitPop()) # init exposure for province
+        # init exposure for province and add to list
         # total value is defined from country multiplied by grp_share:
-        exp_list[-1].set_custom_shape(admin1_shapes[idx],
-                                      total_value * grp_values[record['name']],
-                                      res_arcsec=res_arcsec,
-                                      exponents=exponents,
-                                      reference_year=reference_year,
-                                      gpw_version=gpw_version,
-                                      data_dir=data_dir)
+        exp_list.append(LitPop.from_custom_shape(admin1_shapes[idx],
+                                                 total_value * grp_values[record['name']],
+                                                 res_arcsec=res_arcsec,
+                                                 exponents=exponents,
+                                                 reference_year=reference_year,
+                                                 gpw_version=gpw_version,
+                                                 data_dir=data_dir)
+                        )
         exp_list[-1].gdf['admin1'] = record['name']
 
     return Exposures.concat(exp_list)
