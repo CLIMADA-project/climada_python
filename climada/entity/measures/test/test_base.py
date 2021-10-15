@@ -170,8 +170,7 @@ class TestApply(unittest.TestCase):
         imp_tc.mdd = np.arange(10, 100, 10) * 2
         imp_tc.paa = np.arange(10, 100, 10) * 2
 
-        exp = Exposures()
-        exp.read_hdf5(EXP_DEMO_H5)
+        exp = Exposures.from_hdf5(EXP_DEMO_H5)
         new_exp = meas._change_exposures_impf(exp)
 
         self.assertEqual(new_exp.ref_year, exp.ref_year)
@@ -210,7 +209,7 @@ class TestApply(unittest.TestCase):
         meas.exposures_set = EXP_DEMO_H5
 
         ref_exp = Exposures()
-        ref_exp.read_hdf5(EXP_DEMO_H5)
+        ref_exp.from_hdf5(EXP_DEMO_H5)
 
         exposures = Exposures()
         exposures.gdf['latitude'] = np.ones(10)

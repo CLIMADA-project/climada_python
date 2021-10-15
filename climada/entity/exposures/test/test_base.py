@@ -142,8 +142,7 @@ class TestFuncs(unittest.TestCase):
 
     def test_assign_raster_same_pass(self):
         """Test assign_centroids with raster hazard"""
-        exp = Exposures()
-        exp.from_raster(HAZ_DEMO_FL, window=Window(10, 20, 50, 60))
+        exp = Exposures.from_raster(HAZ_DEMO_FL, window=Window(10, 20, 50, 60))
         exp.check()
         haz = Hazard('FL')
         haz.set_raster([HAZ_DEMO_FL], window=Window(10, 20, 50, 60))
@@ -244,8 +243,7 @@ class TestIO(unittest.TestCase):
         file_name = DATA_DIR.joinpath('test_hdf5_exp.h5')
         exp_df.write_hdf5(file_name)
 
-        exp_read = Exposures()
-        exp_read.read_hdf5(file_name)
+        exp_read = Exposures.from_hdf5(file_name)
 
         self.assertEqual(exp_df.ref_year, exp_read.ref_year)
         self.assertEqual(exp_df.value_unit, exp_read.value_unit)
