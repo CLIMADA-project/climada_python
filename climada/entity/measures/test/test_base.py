@@ -208,8 +208,7 @@ class TestApply(unittest.TestCase):
         meas = Measure()
         meas.exposures_set = EXP_DEMO_H5
 
-        ref_exp = Exposures()
-        ref_exp.from_hdf5(EXP_DEMO_H5)
+        ref_exp = Exposures.from_hdf5(EXP_DEMO_H5)
 
         exposures = Exposures()
         exposures.gdf['latitude'] = np.ones(10)
