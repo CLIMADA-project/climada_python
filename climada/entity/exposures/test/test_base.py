@@ -153,7 +153,7 @@ class TestFuncs(unittest.TestCase):
     def test_assign_large_hazard_subset_pass(self):
         """Test assign_centroids with raster hazard"""
         exp = Exposures()
-        exp.from_raster(HAZ_DEMO_FL, window=Window(10, 20, 50, 60))
+        exp = Exposures.from_raster(HAZ_DEMO_FL, window=Window(10, 20, 50, 60))
         exp.gdf.latitude[[0, 1]] = exp.gdf.latitude[[1, 0]]
         exp.gdf.longitude[[0, 1]] = exp.gdf.longitude[[1, 0]]
         exp.check()
