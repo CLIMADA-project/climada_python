@@ -143,7 +143,8 @@ class ImpactFunc():
                            'origin of the intensity scale. In impact.calc '
                            'the impact is always null at intensity = 0.')
 
-    def set_step_impf(self, intensity, mdd=(0, 1), paa=(1, 1), impf_id=1):
+    @classmethod
+    def from_step_impf(cls, intensity, mdd=(0, 1), paa=(1, 1), impf_id=1):
 
         """ Step function type impact function.
 
@@ -164,15 +165,29 @@ class ImpactFunc():
         impf_id : int, optional, default=1
             impact function id
 
+        Return
+        ------
+        impf : climada.entity.impact_funcs.ImpactFunc
+            Step impact function
+
         """
 
-        self.id = impf_id
+        impf = ImpactFunc()
+        impf.id = impf_id
         inten_min, threshold, inten_max = intensity
-        self.intensity = np.array([inten_min, threshold, threshold, inten_max])
+        impf.intensity = np.array([inten_min, threshold, threshold, inten_max])
         paa_min, paa_max = paa
-        self.paa = np.array([paa_min, paa_min, paa_max, paa_max])
+        impf.paa = np.array([paa_min, paa_min, paa_max, paa_max])
         mdd_min, mdd_max = mdd
-        self.mdd = np.array([mdd_min, mdd_min, mdd_max, mdd_max])
+        impf.mdd = np.array([mdd_min, mdd_min, mdd_max, mdd_max])
+
+        return impf
+
+    def set_step_impf(self, *args, **kwargs):
+        """This function is deprecated, use ImpactFunc.from_step_impf instead."""
+        LOGGER.warning("The use of ImpactFunc.set_step_impf is deprecated." +
+                        "Use ImpactFunc.from_step_impf instead.")
+        self.__dict__ = ImpactFunc.from_step_impf(*args, **kwargs).__dict__
 
     def set_sigmoid_impf(self, intensity, L, k, x0, if_id=1):
 
