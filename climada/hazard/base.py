@@ -218,7 +218,7 @@ class Hazard():
 
     @classmethod
     def from_raster(cls, files_intensity, files_fraction=None, attrs=None,
-                    band=None, haz_type='', pool=None, src_crs=None, window=False,
+                    band=None, haz_type=None, pool=None, src_crs=None, window=False,
                     geometry=False, dst_crs=False, transform=None, width=None,
                     height=None, resampling=Resampling.nearest):
         """Create Hazard with intensity and fraction values from raster files
@@ -239,9 +239,10 @@ class Hazard():
         band : list(int), optional
             bands to read (starting at 1), default [1]
         haz_type : str, optional
-            acronym of the hazard type (e.g. 'TC').
+            acronym of the hazard type (e.g. 'TC'). Default is None.
         pool : pathos.pool, optional
-            Pool that will be used for parallel computation when applicable. Default: None
+            Pool that will be used for parallel computation when applicable.
+            Default: None
         src_crs : crs, optional
             source CRS. Provide it if error without it.
         window : rasterio.windows.Windows, optional
@@ -275,6 +276,8 @@ class Hazard():
         if files_fraction is not None and len(files_intensity) != len(files_fraction):
             raise ValueError('Number of intensity files differs from fraction files: %s != %s'
                              % (len(files_intensity), len(files_fraction)))
+        if haz_type is None:
+            haz_type = cls().tag.haz_type
         haz = cls(haz_type, pool)
         haz.tag.file_name = str(files_intensity) + ' ; ' + str(files_fraction)
 
