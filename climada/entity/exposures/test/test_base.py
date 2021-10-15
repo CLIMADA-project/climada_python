@@ -58,8 +58,7 @@ class TestFuncs(unittest.TestCase):
         """Check that attribute `assigned` is correctly set."""
         np_rand = np.random.RandomState(123456789)
 
-        haz = Hazard('FL')
-        haz.set_raster([HAZ_DEMO_FL], window=Window(10, 20, 50, 60))
+        haz = Hazard.from_raster([HAZ_DEMO_FL], haz_type='FL', window=Window(10, 20, 50, 60))
         haz.raster_to_vector()
         ncentroids = haz.centroids.size
 
@@ -146,8 +145,7 @@ class TestFuncs(unittest.TestCase):
         exp = Exposures()
         exp.set_from_raster(HAZ_DEMO_FL, window=Window(10, 20, 50, 60))
         exp.check()
-        haz = Hazard('FL')
-        haz.set_raster([HAZ_DEMO_FL], window=Window(10, 20, 50, 60))
+        haz = Hazard.from_raster([HAZ_DEMO_FL], haz_type='FL', window=Window(10, 20, 50, 60))
         exp.assign_centroids(haz)
         np.testing.assert_array_equal(exp.gdf[INDICATOR_CENTR + 'FL'].values,
                                       np.arange(haz.centroids.size, dtype=int))
@@ -159,8 +157,7 @@ class TestFuncs(unittest.TestCase):
         exp.gdf.latitude[[0, 1]] = exp.gdf.latitude[[1, 0]]
         exp.gdf.longitude[[0, 1]] = exp.gdf.longitude[[1, 0]]
         exp.check()
-        haz = Hazard('FL')
-        haz.set_raster([HAZ_DEMO_FL])
+        haz = Hazard.from_raster([HAZ_DEMO_FL], haz_type='FL')
         haz.raster_to_vector()
         exp.assign_centroids(haz)
         assigned_centroids = haz.centroids.select(sel_cen=exp.gdf[INDICATOR_CENTR + 'FL'].values)
