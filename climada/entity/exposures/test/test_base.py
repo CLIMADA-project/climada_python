@@ -82,9 +82,8 @@ class TestFuncs(unittest.TestCase):
             np.testing.assert_array_equal(exp.gdf[INDICATOR_CENTR + 'FL'].values, expected_result)
 
     def test_read_raster_pass(self):
-        """set_from_raster"""
-        exp = Exposures()
-        exp.set_from_raster(HAZ_DEMO_FL, window=Window(10, 20, 50, 60))
+        """from_raster"""
+        exp = Exposures().from_raster(HAZ_DEMO_FL, window=Window(10, 20, 50, 60))
         exp.check()
         self.assertTrue(u_coord.equal_crs(exp.crs, DEF_CRS))
         self.assertAlmostEqual(exp.gdf['latitude'].max(),
@@ -144,7 +143,7 @@ class TestFuncs(unittest.TestCase):
     def test_assign_raster_same_pass(self):
         """Test assign_centroids with raster hazard"""
         exp = Exposures()
-        exp.set_from_raster(HAZ_DEMO_FL, window=Window(10, 20, 50, 60))
+        exp.from_raster(HAZ_DEMO_FL, window=Window(10, 20, 50, 60))
         exp.check()
         haz = Hazard('FL')
         haz.set_raster([HAZ_DEMO_FL], window=Window(10, 20, 50, 60))
@@ -155,7 +154,7 @@ class TestFuncs(unittest.TestCase):
     def test_assign_large_hazard_subset_pass(self):
         """Test assign_centroids with raster hazard"""
         exp = Exposures()
-        exp.set_from_raster(HAZ_DEMO_FL, window=Window(10, 20, 50, 60))
+        exp.from_raster(HAZ_DEMO_FL, window=Window(10, 20, 50, 60))
         exp.gdf.latitude[[0, 1]] = exp.gdf.latitude[[1, 0]]
         exp.gdf.longitude[[0, 1]] = exp.gdf.longitude[[1, 0]]
         exp.check()

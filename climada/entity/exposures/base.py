@@ -419,7 +419,14 @@ class Exposures():
         self.gdf['latitude'] = self.gdf.geometry[:].y
         self.gdf['longitude'] = self.gdf.geometry[:].x
 
-    def set_from_raster(self, file_name, band=1, src_crs=None, window=False,
+    def set_from_raster(self, *args, **kwargs):
+        """This function is deprecated, use Exposures.from_raster instead."""
+        LOGGER.warning("The use of Exposures.set_from_raster is deprecated."
+                       "Use Exposures.from_raster instead.")
+        self.__dict__ = Exposures.from_raster(*args, **kwargs).__dict__
+
+    @classmethod
+    def from_raster(cls, file_name, band=1, src_crs=None, window=False,
                         geometry=False, dst_crs=False, transform=None,
                         width=None, height=None, resampling=Resampling.nearest):
         """Read raster data and set latitude, longitude, value and meta
@@ -448,11 +455,16 @@ class Exposures():
         resampling : rasterio.warp,.Resampling optional
             resampling
             function used for reprojection to dst_crs
+
+        returns
+        --------
+        Exposures
         """
-        if 'geometry' in self.gdf:
+        exp = cls()
+        if 'geometry' in exp.gdf:
             raise ValueError("there is already a geometry column defined in the GeoDataFrame")
-        self.tag = Tag()
-        self.tag.file_name = str(file_name)
+        exp.tag = Tag()
+        exp.tag.file_name = str(file_name)
         meta, value = u_coord.read_raster(file_name, [band], src_crs, window,
                                           geometry, dst_crs, transform, width,
                                           height, resampling)
@@ -462,12 +474,13 @@ class Exposures():
         x_grid, y_grid = np.meshgrid(np.arange(ulx + xres / 2, lrx, xres),
                                      np.arange(uly + yres / 2, lry, yres))
 
-        if self.crs is None:
-            self.set_crs()
-        self.gdf['longitude'] = x_grid.flatten()
-        self.gdf['latitude'] = y_grid.flatten()
-        self.gdf['value'] = value.reshape(-1)
-        self.meta = meta
+        if exp.crs is None:
+            exp.set_crs()
+        exp.gdf['longitude'] = x_grid.flatten()
+        exp.gdf['latitude'] = y_grid.flatten()
+        exp.gdf['value'] = value.reshape(-1)
+        exp.meta = meta
+        return exp
 
     def plot_scatter(self, mask=None, ignore_zero=False, pop_name=True,
                      buffer=0.0, extend='neither', axis=None, figsize=(9, 13),
