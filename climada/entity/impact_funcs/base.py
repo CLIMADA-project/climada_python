@@ -172,7 +172,7 @@ class ImpactFunc():
 
         """
 
-        impf = ImpactFunc()
+        impf = cls()
         impf.id = impf_id
         inten_min, threshold, inten_max = intensity
         impf.intensity = np.array([inten_min, threshold, threshold, inten_max])
@@ -223,7 +223,7 @@ class ImpactFunc():
             Step impact function
 
         """
-        impf = ImpactFunc()
+        impf = cls()
         impf.id = if_id
         inten_min, inten_max, inten_step = intensity
         impf.intensity = np.arange(inten_min, inten_max, inten_step)
