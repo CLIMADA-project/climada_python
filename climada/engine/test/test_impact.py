@@ -116,8 +116,7 @@ class TestOneExposure(unittest.TestCase):
         """Test result against reference value"""
         # Read demo entity values
         # Set the entity default file to the demo one
-        ent = Entity()
-        ent.read_excel(ENT_DEMO_TODAY)
+        ent = Entity.from_excel(ENT_DEMO_TODAY)
         ent.check()
 
         # Read default hazard file
