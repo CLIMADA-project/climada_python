@@ -785,7 +785,7 @@ class Exposures():
             crs = metadata.get('crs', metadata.get('_crs'))
             if crs is None and metadata.get('meta'):
                 crs = metadata['meta'].get('crs')
-            exp.__init__(store['exposures'], crs=crs)
+            exp = cls(store['exposures'], crs=crs)
             for key, val in metadata.items():
                 if key in type(exp)._metadata:
                     setattr(exp, key, val)
