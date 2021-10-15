@@ -132,7 +132,8 @@ class LitPop(Exposures):
 
         Returns
         -------
-        LitPop
+        exp : LitPop
+            LitPop instance with exposure for given countries
         """
         if isinstance(countries, (int, str)):
             countries = [countries] # for backward compatibility
@@ -242,14 +243,16 @@ class LitPop(Exposures):
             Reference year. The default is CONFIG.exposures.def_ref_year.
         data_dir : Path, optional
             data directory. The default is None.
-            
+
         Raises
         ------
         ValueError
 
         Returns
         -------
-        LitPop
+        exp : LitPop
+            Exposure instance with values representing pure nightlight intensity
+            from input nightlight data (BlackMarble)
         """
         if countries is None and shape is None:
             raise ValueError("Either `countries` or `shape` required. Aborting.")
@@ -269,7 +272,6 @@ class LitPop(Exposures):
                        "not to USD. "
                        "To disaggregate asset value proportionally to nightlights^m, "
                        "call from_countries or from_custom_shape with exponents=(m,0).")
-        exp.check()
         return exp
 
     def set_population(self, *args, **kwargs):
@@ -304,14 +306,16 @@ class LitPop(Exposures):
         data_dir : Path, optional
             data directory. The default is None.
             Either countries or shape is required.
-      
+
         Raises
         ------
         ValueError
 
         Returns
         -------
-        LitPop
+        exp : LitPop
+            Exposure instance with values representing population count according
+            to Gridded Population of the World (GPW) input data set.
         """
         if countries is None and shape is None:
             raise ValueError("Either `countries` or `shape` required. Aborting.")
@@ -326,7 +330,6 @@ class LitPop(Exposures):
             exp = cls.from_custom_shape(shape, None, res_arcsec=res_arcsec, exponents=(0,1),
                                         value_unit='people', reference_year=reference_year,
                                         gpw_version=gpw_version, data_dir=data_dir)
-        exp.check()
         return exp
 
     def set_custom_shape_from_countries(self, *args, **kwargs):
@@ -428,19 +431,6 @@ class LitPop(Exposures):
                           f'{res_arcsec} as, year: {reference_year}, financial mode: ' \
                           f'{fin_mode}, exp: {exponents}, admin1_calc: {admin1_calc}'
         exp.gdf = gdf.reset_index()
-# =============================================================================
-#         Exposures.__init__(
-#             self,
-#             data=gdf.reset_index(),
-#             crs=self.crs,
-#             ref_year=reference_year,
-#             tag=tag,
-#             value_unit=get_value_unit(fin_mode),
-#             exponents = exponents,
-#             gpw_version = gpw_version,
-#             fin_mode = fin_mode,
-#         )
-# =============================================================================
 
         try:
             rows, cols, ras_trans = u_coord.pts_to_raster_meta(
@@ -457,7 +447,6 @@ class LitPop(Exposures):
             LOGGER.warning('Could not write attribute meta with ValueError: ')
             LOGGER.warning(err.args[0])
             exp.meta = {'crs': exp.crs}
-        exp.check()
         return exp
 
     def set_custom_shape(self, *args, **kwargs):
@@ -509,7 +498,7 @@ class LitPop(Exposures):
         NotImplementedError
         ValueError
         TypeError
-    
+
         Returns
         -------
         exp : LitPop
@@ -565,7 +554,6 @@ class LitPop(Exposures):
             LOGGER.warning('Could not write attribute meta because coordinates'
                            'are either only one point or do not extend in lat and lon')
             exp.meta = {'crs': exp.crs}
-        exp.check()
         return exp
 
     @staticmethod
@@ -595,7 +583,8 @@ class LitPop(Exposures):
 
         Returns
         -------
-        LitPop Exposure instance
+        exp : LitPop
+            LitPop Exposure instance for the country
         """
         # Determine ISO 3166 representation of country and get geometry:
         try:
@@ -647,10 +636,10 @@ class LitPop(Exposures):
         elif total_value is not None:
             raise TypeError("total_value must be int or float.")
 
-        exp_country = LitPop()
-        exp_country.set_gdf(litpop_gdf)
-        exp_country.gdf[INDICATOR_IMPF] = 1
-        return exp_country
+        exp = LitPop()
+        exp.set_gdf(litpop_gdf)
+        exp.gdf[INDICATOR_IMPF] = 1
+        return exp
 
     # Alias method names for backward compatibility:
     set_country = set_countries
