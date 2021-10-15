@@ -778,7 +778,6 @@ class Exposures():
         -------
         Exposures
         """
-        exp = cls()
         LOGGER.info('Reading %s', file_name)
         with pd.HDFStore(file_name) as store:
             metadata = store.get_storer('exposures').attrs.metadata
