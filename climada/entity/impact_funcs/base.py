@@ -217,6 +217,11 @@ class ImpactFunc():
             if_id : int, optional, default=1
                 impact function id
 
+        Return
+        ------
+        impf : climada.entity.impact_funcs.ImpactFunc
+            Step impact function
+
         """
         impf = ImpactFunc()
         impf.id = if_id
@@ -224,6 +229,8 @@ class ImpactFunc():
         impf.intensity = np.arange(inten_min, inten_max, inten_step)
         impf.paa = np.ones(len(impf.intensity))
         impf.mdd = L / (1 + np.exp(-k * (impf.intensity - x0)))
+
+        return impf
 
     def set_sigmoid_impf(self, *args, **kwargs):
         """This function is deprecated, use LitPop.from_countries instead."""
