@@ -189,8 +189,8 @@ class ImpactFunc():
                         "Use ImpactFunc.from_step_impf instead.")
         self.__dict__ = ImpactFunc.from_step_impf(*args, **kwargs).__dict__
 
-    def set_sigmoid_impf(self, intensity, L, k, x0, if_id=1):
-
+    @classmethod
+    def from_sigmoid_impf(cls, intensity, L, k, x0, if_id=1):
         """ Sigmoid type impact function hinging on three parameter.
 
         This type of impact function is very flexible for any sort of study,
@@ -218,8 +218,17 @@ class ImpactFunc():
                 impact function id
 
         """
-        self.id = if_id
+        impf = ImpactFunc()
+        impf.id = if_id
         inten_min, inten_max, inten_step = intensity
-        self.intensity = np.arange(inten_min, inten_max, inten_step)
-        self.paa = np.ones(len(self.intensity))
-        self.mdd = L / (1 + np.exp(-k * (self.intensity - x0)))
+        impf.intensity = np.arange(inten_min, inten_max, inten_step)
+        impf.paa = np.ones(len(impf.intensity))
+        impf.mdd = L / (1 + np.exp(-k * (impf.intensity - x0)))
+
+    def set_sigmoid_impf(self, *args, **kwargs):
+        """This function is deprecated, use LitPop.from_countries instead."""
+        LOGGER.warning("The use of ImpactFunc.set_sigmoid_impf is deprecated."
+                       "Use ImpactFunc.from_sigmoid_impf instead.")
+        self.__dict__ = ImpactFunc.from_sigmoid_impf(*args, **kwargs).__dict__
+
+
