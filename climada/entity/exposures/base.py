@@ -756,7 +756,8 @@ class Exposures():
         store.get_storer('exposures').attrs.metadata = var_meta
         store.close()
 
-    def read_hdf5(self, file_name):
+    @classmethod
+    def from_hdf5(cls, file_name):
         """Read data frame and metadata in hdf5 format
 
         Parameters
@@ -766,7 +767,12 @@ class Exposures():
         additional_vars : list
             list of additional variable names to read that
             are not in exposures.base._metadata
+            
+        Returns
+        -------
+        Exposures
         """
+        exp = cls()
         LOGGER.info('Reading %s', file_name)
         with pd.HDFStore(file_name) as store:
             metadata = store.get_storer('exposures').attrs.metadata
@@ -774,10 +780,11 @@ class Exposures():
             crs = metadata.get('crs', metadata.get('_crs'))
             if crs is None and metadata.get('meta'):
                 crs = metadata['meta'].get('crs')
-            self.__init__(store['exposures'], crs=crs)
+            exp.__init__(store['exposures'], crs=crs)
             for key, val in metadata.items():
-                if key in type(self)._metadata:
-                    setattr(self, key, val)
+                if key in type(exp)._metadata:
+                    setattr(exp, key, val)
+        return exp
 
     def read_mat(self, file_name, var_names=None):
         """Read MATLAB file and store variables in exposures.
