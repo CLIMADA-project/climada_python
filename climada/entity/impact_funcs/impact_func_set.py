@@ -344,7 +344,8 @@ class ImpactFuncSet():
                     i_axis += 1
         return axis
 
-    def read_excel(self, file_name, description='', var_names=DEF_VAR_EXCEL):
+    @classmethod
+    def from_excel(cls, file_name, description='', var_names=DEF_VAR_EXCEL):
         """Read excel file following template and store variables.
 
         Parameters
@@ -355,13 +356,25 @@ class ImpactFuncSet():
             description of the data
         var_names : dict, optional
             name of the variables in the file
+
+        Returns
+        -------
+        ImpFuncSet
         """
+        imp_func_set = cls()
         dfr = pd.read_excel(file_name, var_names['sheet_name'])
 
-        self.clear()
-        self.tag.file_name = str(file_name)
-        self.tag.description = description
-        self._fill_dfr(dfr, var_names)
+        imp_func_set.clear()
+        imp_func_set.tag.file_name = str(file_name)
+        imp_func_set.tag.description = description
+        imp_func_set._fill_dfr(dfr, var_names)
+        return imp_func_set
+
+    def read_excel(self, *args, **kwargs):
+        """This function is deprecated, use ImpactFuncSet.from_excel instead."""
+        LOGGER.warning("The use of ImpactFuncSet.read?excel is deprecated." +
+                        "Use ImpactFuncSet.from_excel instead.")
+        self.__dict__ = ImpactFuncSet.from_excel(*args, **kwargs).__dict__
 
     def read_mat(self, file_name, description='', var_names=DEF_VAR_MAT):
         """Read MATLAB file generated with previous MATLAB CLIMADA version.
