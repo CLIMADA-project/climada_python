@@ -327,11 +327,10 @@ class TestVector(unittest.TestCase):
 class TestRaster(unittest.TestCase):
     """Test CentroidsRaster class"""
 
-    def test_set_raster_pxl_pass(self):
-        """Test set_raster_from_pxl_bounds from pixel borders"""
-        centr = Centroids()
+    def test_from_pix_bounds_pass(self):
+        """Test from_pix_bounds"""
         xf_lat, xo_lon, d_lat, d_lon, n_lat, n_lon = 10, 5, -0.5, 0.2, 20, 25
-        centr.set_raster_from_pix_bounds(xf_lat, xo_lon, d_lat, d_lon, n_lat, n_lon)
+        centr = Centroids.from_pix_bounds(xf_lat, xo_lon, d_lat, d_lon, n_lat, n_lon)
         self.assertEqual(centr.meta['crs'], DEF_CRS)
         self.assertEqual(centr.meta['width'], n_lon)
         self.assertEqual(centr.meta['height'], n_lat)
@@ -344,11 +343,10 @@ class TestRaster(unittest.TestCase):
         self.assertTrue('lat' in centr.__dict__.keys())
         self.assertTrue('lon' in centr.__dict__.keys())
 
-    def test_set_raster_pnt_pass(self):
-        """Test set_raster_from_pnt_bounds from point borders"""
-        centr = Centroids()
+    def test_from_pnt_bounds_pass(self):
+        """Test from_pnt_bounds"""
         left, bottom, right, top = 5, 0, 10, 10
-        centr.set_raster_from_pnt_bounds((left, bottom, right, top), 0.2)
+        centr = Centroids.from_pnt_bounds((left, bottom, right, top), 0.2)
         self.assertEqual(centr.meta['crs'], DEF_CRS)
         self.assertEqual(centr.meta['width'], 26)
         self.assertEqual(centr.meta['height'], 51)
@@ -645,9 +643,8 @@ class TestReader(unittest.TestCase):
         """Write and read hdf5 format"""
         file_name = str(DATA_DIR.joinpath('test_centr.h5'))
 
-        centr = Centroids()
         xf_lat, xo_lon, d_lat, d_lon, n_lat, n_lon = 10, 5, -0.5, 0.2, 20, 25
-        centr.set_raster_from_pix_bounds(xf_lat, xo_lon, d_lat, d_lon, n_lat, n_lon)
+        centr = Centroids.from_pix_bounds(xf_lat, xo_lon, d_lat, d_lon, n_lat, n_lon)
         centr.write_hdf5(file_name)
 
         centr_read = Centroids.from_hdf5(file_name)

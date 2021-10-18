@@ -250,9 +250,14 @@ class Centroids():
 
         return centroids
 
+    def set_raster_from_pix_bounds(self, *args, **kwargs):
+        """This function is deprecated, use Centroids.from_pix_bounds instead."""
+        LOGGER.warning("The use of Centroids.set_raster_from_pix_bounds is deprecated. "
+                       "Use Centroids.from_pix_bounds instead.")
+        self.__dict__ = Centroids.from_pix_bounds(*args, **kwargs).__dict__
 
-    def set_raster_from_pix_bounds(self, xf_lat, xo_lon, d_lat, d_lon, n_lat,
-                                   n_lon, crs=DEF_CRS):
+    @classmethod
+    def from_pix_bounds(cls, xf_lat, xo_lon, d_lat, d_lon, n_lat, n_lon, crs=DEF_CRS):
         """Set raster metadata (meta attribute) from pixel border data
 
         Parameters
@@ -271,17 +276,29 @@ class Centroids():
             number of longitude points
         crs : dict() or rasterio.crs.CRS, optional
             CRS. Default: DEF_CRS
+
+        Returns
+        -------
+        Centroids
         """
-        self.__init__()
-        self.meta = {
+        centr = cls()
+        centr.meta = {
             'dtype': 'float32',
             'width': n_lon,
             'height': n_lat,
             'crs': crs,
             'transform': rasterio.Affine(d_lon, 0.0, xo_lon, 0.0, d_lat, xf_lat),
         }
+        return centr
 
-    def set_raster_from_pnt_bounds(self, points_bounds, res, crs=DEF_CRS):
+    def set_raster_from_pnt_bounds(self, *args, **kwargs):
+        """This function is deprecated, use Centroids.from_pnt_bounds instead."""
+        LOGGER.warning("The use of Centroids.set_raster_from_pnt_bounds is deprecated. "
+                       "Use Centroids.from_pnt_bounds instead.")
+        self.__dict__ = Centroids.from_pnt_bounds(*args, **kwargs).__dict__
+
+    @classmethod
+    def from_pnt_bounds(cls, points_bounds, res, crs=DEF_CRS):
         """Set raster metadata (meta attribute) from points border data.
 
         Raster border = point_border + res/2
@@ -294,15 +311,20 @@ class Centroids():
             desired resolution in same units as points_bounds
         crs : dict() or rasterio.crs.CRS, optional
             CRS. Default: DEF_CRS
+
+        Returns
+        -------
+        Centroids
         """
-        self.__init__()
+        centr = cls()
         rows, cols, ras_trans = u_coord.pts_to_raster_meta(points_bounds, (res, -res))
-        self.meta = {
+        centr.meta = {
             'width': cols,
             'height': rows,
             'crs': crs,
             'transform': ras_trans,
         }
+        return centr
 
     def set_lat_lon(self, *args, **kwargs):
         """This function is deprecated, use Centroids.from_lat_lon instead."""

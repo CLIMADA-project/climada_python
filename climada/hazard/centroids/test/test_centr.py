@@ -149,14 +149,9 @@ class TestCentroidsMethods(unittest.TestCase):
 
 
     def test_union_meta(self):
-        cent1 = Centroids()
-        cent1.set_raster_from_pnt_bounds((-1, -1, 0, 0), res=1)
-
-        cent2 = Centroids()
-        cent2.set_raster_from_pnt_bounds((0, 0, 1, 1), res=1)
-
-        cent3 = Centroids()
-        cent3.lat, cent3.lon = np.array([1]), np.array([1])
+        cent1 = Centroids.from_pnt_bounds((-1, -1, 0, 0), res=1)
+        cent2 = Centroids.from_pnt_bounds((0, 0, 1, 1), res=1)
+        cent3 = Centroids.from_lat_lon(np.array([1]), np.array([1]))
 
         cent = cent1.union(cent2)
         np.testing.assert_array_equal(cent.lat, [0,  0, -1, -1,  1,  1,  0])
