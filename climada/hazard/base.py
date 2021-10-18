@@ -239,8 +239,8 @@ class Hazard():
             bands to read (starting at 1), default [1]
         haz_type : str, optional
             acronym of the hazard type (e.g. 'TC').
-            Default: None, which will use the class default ('' for vanilla `Hazard` objects, and hard coded in some
-            subclasses)
+            Default: None, which will use the class default ('' for vanilla
+            `Hazard` objects, and hard coded in some subclasses)
         pool : pathos.pool, optional
             Pool that will be used for parallel computation when applicable.
             Default: None
@@ -386,8 +386,8 @@ class Hazard():
             reproject to given crs
         haz_type : str, optional
             acronym of the hazard type (e.g. 'TC').
-            default: None, which will use the class default ('' for vanilla `Hazard` objects, hard coded in some
-            subclasses)
+            default: None, which will use the class default ('' for vanilla
+            `Hazard` objects, hard coded in some subclasses)
 
         Returns
         -------
