@@ -66,8 +66,7 @@ def exp_dem(x_exp=1, exp=exp):
     exp_tmp.gdf.value *= x_exp
     return exp_tmp
 
-haz= Hazard()
-haz.read_hdf5(HAZ_DEMO_H5)
+haz = Hazard.from_hdf5(HAZ_DEMO_H5)
 def haz_dem(x_haz=1, haz=haz):
     haz_tmp = copy.deepcopy(haz)
     haz_tmp.intensity = haz_tmp.intensity.multiply(x_haz)

@@ -960,8 +960,7 @@ def generate_WS_forecast_hazard(run_datetime = dt.datetime.today().replace(hour=
             LOGGER.info('Loading hazard from ' +
                         str(haz_file_name) +
                         '.')
-            hazard = StormEurope()
-            hazard.read_hdf5(haz_file_name)
+            hazard = StormEurope.from_hdf5(haz_file_name)
         else:
             LOGGER.info('Generating ' +
                         haz_model +
@@ -997,8 +996,7 @@ def generate_WS_forecast_hazard(run_datetime = dt.datetime.today().replace(hour=
             LOGGER.info('Loading hazard from ' +
                         str(haz_file_name) +
                         '.')
-            hazard = StormEurope()
-            hazard.read_hdf5(haz_file_name)
+            hazard = StormEurope.from_hdf5(haz_file_name)
         else:
             LOGGER.info('Generating ' +
                         haz_model +

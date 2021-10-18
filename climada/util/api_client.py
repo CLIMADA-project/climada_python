@@ -626,8 +626,7 @@ class Client():
             for dsf in dataset.files:
                 if dsf.file_format == 'hdf5':
                     hazard_file = self.download_file(target_dir, dsf)
-                    hazard = Hazard()
-                    hazard.read_hdf5(hazard_file)
+                    hazard = Hazard.from_hdf5(hazard_file)
                     hazard_list.append(hazard)
         if not hazard_list:
             raise ValueError("no hazard files found in datasets")

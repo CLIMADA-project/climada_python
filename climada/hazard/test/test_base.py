@@ -149,37 +149,32 @@ class TestLoader(unittest.TestCase):
 
     def test_event_name_to_id_pass(self):
         """Test event_name_to_id function."""
-        haz = Hazard('TC')
-        haz.read_excel(HAZ_TEMPLATE_XLS)
+        haz = Hazard.from_excel(HAZ_TEMPLATE_XLS, haz_type='TC')
         self.assertEqual(haz.get_event_id('event001')[0], 1)
         self.assertEqual(haz.get_event_id('event084')[0], 84)
 
     def test_event_name_to_id_fail(self):
         """Test event_name_to_id function."""
-        haz = Hazard('TC')
-        haz.read_excel(HAZ_TEMPLATE_XLS)
+        haz = Hazard.from_excel(HAZ_TEMPLATE_XLS, haz_type='TC')
         with self.assertRaises(ValueError) as cm:
             haz.get_event_id('1050')
         self.assertIn('No event with name: 1050', str(cm.exception))
 
     def test_event_id_to_name_pass(self):
         """Test event_id_to_name function."""
-        haz = Hazard('TC')
-        haz.read_excel(HAZ_TEMPLATE_XLS)
+        haz = Hazard.from_excel(HAZ_TEMPLATE_XLS, haz_type='TC')
         self.assertEqual(haz.get_event_name(2), 'event002')
         self.assertEqual(haz.get_event_name(48), 'event048')
 
     def test_event_id_to_name_fail(self):
         """Test event_id_to_name function."""
-        haz = Hazard('TC')
-        haz.read_excel(HAZ_TEMPLATE_XLS)
+        haz = Hazard.from_excel(HAZ_TEMPLATE_XLS, haz_type='TC')
         with self.assertRaises(ValueError) as cm:
             haz.get_event_name(1050)
         self.assertIn('No event with id: 1050', str(cm.exception))
 
     def test_get_date_strings_pass(self):
-        haz = Hazard('TC')
-        haz.read_mat(HAZ_TEST_MAT)
+        haz = Hazard.from_mat(HAZ_TEST_MAT)
         haz.event_name[5] = 'HAZEL'
         haz.event_name[10] = 'HAZEL'
 
@@ -200,10 +195,8 @@ class TestRemoveDupl(unittest.TestCase):
 
     def test_equal_same(self):
         """Append the same hazard and remove duplicates, obtain initial hazard."""
-        haz1 = Hazard('TC')
-        haz1.read_excel(HAZ_TEMPLATE_XLS)
-        haz2 = Hazard('TC')
-        haz2.read_excel(HAZ_TEMPLATE_XLS)
+        haz1 = Hazard.from_excel(HAZ_TEMPLATE_XLS, haz_type='TC')
+        haz2 = Hazard.from_excel(HAZ_TEMPLATE_XLS, haz_type='TC')
         haz1.append(haz2)
         haz1.remove_duplicates()
         haz1.check()
@@ -464,16 +457,14 @@ class TestAppend(unittest.TestCase):
 
     def test_append_empty_fill(self):
         """Append an empty. Obtain initial hazard."""
-        haz1 = Hazard('TC')
-        haz1.read_excel(HAZ_TEMPLATE_XLS)
+        haz1 = Hazard.from_excel(HAZ_TEMPLATE_XLS, haz_type='TC')
         haz2 = Hazard('TC')
         haz2.centroids.geometry.crs = {'init': 'epsg:4326'}
         haz1.append(haz2)
         haz1.check()
 
         # expected values
-        haz1_orig = Hazard('TC')
-        haz1_orig.read_excel(HAZ_TEMPLATE_XLS)
+        haz1_orig = Hazard.from_excel(HAZ_TEMPLATE_XLS, haz_type='TC')
         self.assertEqual(haz1.event_name, haz1_orig.event_name)
         self.assertTrue(np.array_equal(haz1.event_id, haz1_orig.event_id))
         self.assertTrue(np.array_equal(haz1.date, haz1_orig.date))
@@ -489,14 +480,12 @@ class TestAppend(unittest.TestCase):
     def test_append_to_empty_fill(self):
         """Append to an empty hazard a filled one. Obtain filled one."""
         haz1 = Hazard('TC')
-        haz2 = Hazard('TC')
-        haz2.read_excel(HAZ_TEMPLATE_XLS)
+        haz2 = Hazard.from_excel(HAZ_TEMPLATE_XLS, haz_type='TC')
         haz1.append(haz2)
         haz1.check()
 
         # expected values
-        haz1_orig = Hazard('TC')
-        haz1_orig.read_excel(HAZ_TEMPLATE_XLS)
+        haz1_orig = Hazard.from_excel(HAZ_TEMPLATE_XLS, haz_type='TC')
         self.assertEqual(haz1.event_name, haz1_orig.event_name)
         self.assertTrue(np.array_equal(haz1.event_id, haz1_orig.event_id))
         self.assertTrue(np.array_equal(haz1.frequency, haz1_orig.frequency))
@@ -827,8 +816,7 @@ class TestStats(unittest.TestCase):
 
     def test_degenerate_pass(self):
         """Test degenerate call."""
-        haz = Hazard('TC')
-        haz.read_mat(HAZ_TEST_MAT)
+        haz = Hazard.from_mat(HAZ_TEST_MAT)
         return_period = np.array([25, 50, 100, 250])
         haz.intensity = sparse.csr.csr_matrix(np.zeros(haz.intensity.shape))
         inten_stats = haz.local_exceedance_inten(return_period)
@@ -836,8 +824,7 @@ class TestStats(unittest.TestCase):
 
     def test_ref_all_pass(self):
         """Compare against reference."""
-        haz = Hazard('TC')
-        haz.read_mat(HAZ_TEST_MAT)
+        haz = Hazard.from_mat(HAZ_TEST_MAT)
         return_period = np.array([25, 50, 100, 250])
         inten_stats = haz.local_exceedance_inten(return_period)
 
@@ -855,8 +842,7 @@ class TestYearset(unittest.TestCase):
 
     def test_ref_pass(self):
         """Test against matlab reference."""
-        haz = Hazard('TC')
-        haz.read_mat(HAZ_TEST_MAT)
+        haz = Hazard.from_mat(HAZ_TEST_MAT)
         orig_year_set = haz.calc_year_set()
 
         self.assertTrue(np.array_equal(np.array(list(orig_year_set.keys())),
@@ -887,9 +873,8 @@ class TestReaderExcel(unittest.TestCase):
         """Read an hazard excel file correctly."""
 
         # Read demo excel file
-        hazard = Hazard('TC')
         description = 'One single file.'
-        hazard.read_excel(HAZ_TEMPLATE_XLS, description)
+        hazard = Hazard.from_excel(HAZ_TEMPLATE_XLS, description=description, haz_type='TC')
 
         # Check results
         n_events = 100
@@ -947,8 +932,7 @@ class TestReaderMat(unittest.TestCase):
     def test_hazard_pass(self):
         """Read a hazard mat file correctly."""
         # Read demo excel file
-        hazard = Hazard('TC')
-        hazard.read_mat(HAZ_TEST_MAT)
+        hazard = Hazard.from_mat(HAZ_TEST_MAT)
 
         # Check results
         n_events = 14450
@@ -1008,9 +992,8 @@ class TestHDF5(unittest.TestCase):
         """Read a hazard mat file correctly."""
         file_name = str(DATA_DIR.joinpath('test_haz.h5'))
 
-        # Read demo excel file
-        hazard = Hazard('TC')
-        hazard.read_mat(HAZ_TEST_MAT)
+        # Read demo matlab file
+        hazard = Hazard.from_mat(HAZ_TEST_MAT)
         hazard.event_name = list(map(str, hazard.event_name))
         for todense_flag in [False, True]:
             if todense_flag:
@@ -1018,8 +1001,7 @@ class TestHDF5(unittest.TestCase):
             else:
                 hazard.write_hdf5(file_name)
 
-            haz_read = Hazard('TC')
-            haz_read.read_hdf5(file_name)
+            haz_read = Hazard.from_hdf5(file_name)
 
             self.assertEqual(str(hazard.tag.file_name), haz_read.tag.file_name)
             self.assertIsInstance(haz_read.tag.file_name, str)
@@ -1151,8 +1133,7 @@ class TestClear(unittest.TestCase):
 
     def test_clear(self):
         """Clear method clears everything"""
-        haz1 = Hazard('TC')
-        haz1.read_excel(HAZ_TEMPLATE_XLS)
+        haz1 = Hazard.from_excel(HAZ_TEMPLATE_XLS, haz_type='TC')
         haz1.units = "m"
         haz1.foo = np.arange(10)
         haz1.clear()
@@ -1167,8 +1148,7 @@ class TestClear(unittest.TestCase):
 
     def test_clear_pool(self):
         """Clear method should not clear a process pool"""
-        haz1 = Hazard('TC')
-        haz1.read_excel(HAZ_TEMPLATE_XLS)
+        haz1 = Hazard.from_excel(HAZ_TEMPLATE_XLS, haz_type='TC')
         pool = Pool(nodes=2)
         haz1.pool = pool
         haz1.check()
