@@ -329,9 +329,8 @@ class TestReaderExcel(unittest.TestCase):
 
     def test_demo_file(self):
         """Read demo excel file"""
-        meas = MeasureSet()
         description = 'One single file.'
-        meas.read_excel(ENT_DEMO_TODAY, description)
+        meas = MeasureSet.from_excel(ENT_DEMO_TODAY, description)
 
         # Check results
         n_meas = 4
@@ -373,8 +372,7 @@ class TestReaderExcel(unittest.TestCase):
 
     def test_template_file_pass(self):
         """Read template excel file"""
-        meas = MeasureSet()
-        meas.read_excel(ENT_TEMPLATE_XLS)
+        meas = MeasureSet.from_excel(ENT_TEMPLATE_XLS)
 
         self.assertEqual(meas.size(), 7)
 
@@ -454,9 +452,8 @@ class TestReaderMat(unittest.TestCase):
 
     def test_demo_file(self):
         # Read demo excel file
-        meas = MeasureSet()
         description = 'One single file.'
-        meas.read_mat(ENT_TEST_MAT, description)
+        meas = MeasureSet.from_mat(ENT_TEST_MAT, description)
 
         # Check results
         n_meas = 4
@@ -558,8 +555,7 @@ class TestWriter(unittest.TestCase):
         file_name = DATA_DIR.joinpath('test_meas.xlsx')
         meas_set.write_excel(file_name)
 
-        meas_read = MeasureSet()
-        meas_read.read_excel(file_name, 'test')
+        meas_read = MeasureSet.from_excel(file_name, 'test')
 
         self.assertEqual(meas_read.tag.file_name, str(file_name))
         self.assertEqual(meas_read.tag.description, 'test')
