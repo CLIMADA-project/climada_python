@@ -465,8 +465,15 @@ class Centroids():
         except KeyError as err:
             raise KeyError("Not existing variable: %s" % str(err)) from err
 
-    def read_excel(self, file_name, var_names=None):
-        """Read centroids from excel file with column names in var_names.
+    def read_excel(self, *args, **kwargs):
+        """This function is deprecated, use Centroids.from_excel instead."""
+        LOGGER.warning("The use of Centroids.read_excel is deprecated."
+                       "Use Centroids.from_excel instead.")
+        self.__dict__ = Centroids.from_excel(*args, **kwargs).__dict__
+
+    @classmethod
+    def from_excel(cls, file_name, var_names=None):
+        """Generate a new centroids object from an excel file with column names in var_names.
 
         Parameters
         ----------
@@ -478,22 +485,29 @@ class Centroids():
         Raises
         ------
         KeyError
+
+        Returns
+        -------
+        Centroids
         """
         LOGGER.info('Reading %s', file_name)
         if var_names is None:
             var_names = DEF_VAR_EXCEL
 
+        centr = Centroids()
         try:
             dfr = pd.read_excel(file_name, var_names['sheet_name'])
-            self.set_lat_lon(dfr[var_names['col_name']['lat']],
-                             dfr[var_names['col_name']['lon']])
+            centr.set_lat_lon(dfr[var_names['col_name']['lat']],
+                              dfr[var_names['col_name']['lon']])
             try:
-                self.region_id = dfr[var_names['col_name']['region_id']]
+                centr.region_id = dfr[var_names['col_name']['region_id']]
             except KeyError:
                 pass
 
         except KeyError as err:
             raise KeyError("Not existing variable: %s" % str(err)) from err
+
+        return centr
 
     def clear(self):
         """Clear vector and raster data."""

@@ -581,7 +581,7 @@ class Hazard():
         self.tag.haz_type = haz_type
         self.tag.description = description
         try:
-            self.centroids.read_excel(file_name, var_names=var_names['col_centroids'])
+            self.centroids = Centroids.from_excel(file_name, var_names=var_names['col_centroids'])
             self._read_att_excel(file_name, var_names)
         except KeyError as var_err:
             raise KeyError("Variable not in Excel file: " + str(var_err)) from var_err
