@@ -91,10 +91,10 @@ class Entity(object):
             The entity from matlab file
         """
         return cls(
-            exposures = Exposures.from_mat(file_name),
-            disc_rates = DiscRates.from_mat(file_name, description),
-            impact_func_set = ImpactFuncSet.from_mat(file_name, description),
-            measure_set = MeasureSet.from_mat(file_name, description)
+            exposures=Exposures.from_mat(file_name),
+            disc_rates=DiscRates.from_mat(file_name, description),
+            impact_func_set=ImpactFuncSet.from_mat(file_name, description),
+            measure_set=MeasureSet.from_mat(file_name, description)
             )
 
     def read_mat(self, *args, **kwargs):
