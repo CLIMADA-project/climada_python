@@ -116,7 +116,8 @@ class TestOneExposure(unittest.TestCase):
         """Test result against reference value"""
         # Read demo entity values
         # Set the entity default file to the demo one
-        ent = Entity.from_excel(ENT_DEMO_TODAY)
+        ent = Entity()
+        ent.read_excel(ENT_DEMO_TODAY)
         ent.check()
 
         # Read default hazard file
@@ -363,8 +364,7 @@ class TestIO(unittest.TestCase):
         file_name = DATA_FOLDER.joinpath('test.csv')
         imp_write.write_csv(file_name)
 
-        imp_read = Impact()
-        imp_read.read_csv(file_name)
+        imp_read = Impact.from_csv(file_name)
         np.testing.assert_array_equal(imp_write.event_id, imp_read.event_id)
         np.testing.assert_array_equal(imp_write.date, imp_read.date)
         np.testing.assert_array_equal(imp_write.coord_exp, imp_read.coord_exp)
@@ -402,8 +402,7 @@ class TestIO(unittest.TestCase):
         file_name = DATA_FOLDER.joinpath('test.csv')
         imp_write.write_csv(file_name)
 
-        imp_read = Impact()
-        imp_read.read_csv(file_name)
+        imp_read = Impact.from_csv(file_name)
         np.testing.assert_array_equal(imp_write.event_id, imp_read.event_id)
         np.testing.assert_array_equal(imp_write.date, imp_read.date)
         np.testing.assert_array_equal(imp_write.coord_exp, imp_read.coord_exp)
@@ -431,8 +430,7 @@ class TestIO(unittest.TestCase):
         file_name = DATA_FOLDER.joinpath('test.xlsx')
         imp_write.write_excel(file_name)
 
-        imp_read = Impact()
-        imp_read.read_excel(file_name)
+        imp_read = Impact.from_excel(file_name)
 
         np.testing.assert_array_equal(imp_write.event_id, imp_read.event_id)
         np.testing.assert_array_equal(imp_write.date, imp_read.date)
