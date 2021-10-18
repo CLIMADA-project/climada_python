@@ -45,8 +45,8 @@ class ImpfStormEurope(ImpactFunc):
         
         Returns
         -------
-        ImpfStormEurope: impact function for asset damages due to storm
-            defined in Schwierz et al. 2010
+        impf : climada.entity.impact_funcs.storm_europe.ImpfStormEurope: 
+            impact function for asset damages due to storm defined in Schwierz et al. 2010
         """
 
         impf = cls()
