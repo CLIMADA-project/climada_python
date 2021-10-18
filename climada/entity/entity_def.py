@@ -66,10 +66,6 @@ class Entity(object):
         measure_set : climada.entity.Measures, optional
             The measures. The default is None (empty MeasuresSet().
 
-        Returns
-        -------
-        None.
-
         """
         self.exposures = Exposures() if exposures is None else exposures
         self.disc_rates = DiscRates() if disc_rates is None else disc_rates
