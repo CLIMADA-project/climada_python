@@ -755,7 +755,7 @@ class Exposures():
 
         store.get_storer('exposures').attrs.metadata = var_meta
         store.close()
-        
+
     def read_hdf5(self, *args, **kwargs):
         """This function is deprecated, use Exposures.from_hdf5 instead."""
         LOGGER.warning("The use of Exposures.read_hdf5 is deprecated."
@@ -773,7 +773,7 @@ class Exposures():
         additional_vars : list
             list of additional variable names to read that
             are not in exposures.base._metadata
-            
+
         Returns
         -------
         Exposures
@@ -795,7 +795,7 @@ class Exposures():
         """This function is deprecated, use Exposures.from_mat instead."""
         LOGGER.warning("The use of Exposures.read_mat is deprecated."
                        "Use Exposures.from_mat instead.")
-        self.__dict__ = Exposures.from_hdf5(*args, **kwargs).__dict__
+        self.__dict__ = Exposures.from_mat(*args, **kwargs).__dict__
 
     @classmethod
     def from_mat(cls, file_name, var_names=None):
