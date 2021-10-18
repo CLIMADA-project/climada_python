@@ -282,17 +282,15 @@ class Hazard():
         haz = cls(haz_type, pool)
         haz.tag.file_name = str(files_intensity) + ' ; ' + str(files_fraction)
 
-        # TODO: replace Centroids.set_raster_file when Hazard.set_raster is replaced
-        haz.centroids = Centroids()
+        haz.centroids = Centroids.from_raster_file(
+            files_intensity[0], src_crs=src_crs, window=window, geometry=geometry, dst_crs=dst_crs,
+            transform=transform, width=width, height=height, resampling=resampling)
         if haz.pool:
             chunksize = min(len(files_intensity) // haz.pool.ncpus, 1000)
-            # set first centroids
-            inten_list = [sparse.csr.csr_matrix(haz.centroids.set_raster_file(
-                files_intensity[0], band, src_crs, window, geometry, dst_crs,
-                transform, width, height, resampling))]
-            inten_list += haz.pool.map(
-                haz.centroids.set_raster_file,
-                files_intensity[1:], itertools.repeat(band), itertools.repeat(src_crs),
+            inten_list = haz.pool.map(
+                haz.centroids.values_from_raster_files,
+                [[f] for f in files_intensity],
+                itertools.repeat(band), itertools.repeat(src_crs),
                 itertools.repeat(window), itertools.repeat(geometry),
                 itertools.repeat(dst_crs), itertools.repeat(transform),
                 itertools.repeat(width), itertools.repeat(height),
@@ -300,27 +298,24 @@ class Hazard():
             haz.intensity = sparse.vstack(inten_list, format='csr')
             if files_fraction is not None:
                 fract_list = haz.pool.map(
-                    haz.centroids.set_raster_file,
-                    files_fraction, itertools.repeat(band), itertools.repeat(src_crs),
+                    haz.centroids.values_from_raster_files,
+                    [[f] for f in files_fraction],
+                    itertools.repeat(band), itertools.repeat(src_crs),
                     itertools.repeat(window), itertools.repeat(geometry),
                     itertools.repeat(dst_crs), itertools.repeat(transform),
                     itertools.repeat(width), itertools.repeat(height),
                     itertools.repeat(resampling), chunksize=chunksize)
                 haz.fraction = sparse.vstack(fract_list, format='csr')
         else:
-            inten_list = []
-            for file in files_intensity:
-                inten_list.append(haz.centroids.set_raster_file(
-                    file, band, src_crs, window, geometry, dst_crs, transform,
-                    width, height, resampling))
-            haz.intensity = sparse.vstack(inten_list, format='csr')
+            haz.intensity = haz.centroids.values_from_raster_files(
+                files_intensity, band=band, src_crs=src_crs, window=window, geometry=geometry,
+                dst_crs=dst_crs, transform=transform, width=width, height=height,
+                resampling=resampling)
             if files_fraction is not None:
-                fract_list = []
-                for file in files_fraction:
-                    fract_list.append(haz.centroids.set_raster_file(
-                        file, band, src_crs, window, geometry, dst_crs, transform,
-                        width, height, resampling))
-                haz.fraction = sparse.vstack(fract_list, format='csr')
+                haz.fraction = haz.centroids.values_from_raster_files(
+                    files_fraction, band=band, src_crs=src_crs, window=window, geometry=geometry,
+                    dst_crs=dst_crs, transform=transform, width=width, height=height,
+                    resampling=resampling)
 
         if files_fraction is None:
             haz.fraction = haz.intensity.copy()
@@ -412,17 +407,19 @@ class Hazard():
         haz.tag.file_name = str(files_intensity) + ' ; ' + str(files_fraction)
 
         if len(files_intensity) > 0:
-            self.centroids = Centroids.from_vector_file(files_intensity[0], dst_crs=dst_crs)
+            haz.centroids = Centroids.from_vector_file(files_intensity[0], dst_crs=dst_crs)
         elif files_fraction is not None and len(files_fraction) > 0:
-            self.centroids = Centroids.from_vector_file(files_fraction[0], dst_crs=dst_crs)
+            haz.centroids = Centroids.from_vector_file(files_fraction[0], dst_crs=dst_crs)
+        else:
+            haz.centroids = Centroids()
 
-        self.intensity = self.centroids.values_from_vector_files(
+        haz.intensity = haz.centroids.values_from_vector_files(
             files_intensity, val_names=inten_name, dst_crs=dst_crs)
         if files_fraction is None:
             haz.fraction = haz.intensity.copy()
             haz.fraction.data.fill(1)
         else:
-            self.fraction = self.centroids.values_from_vector_files(
+            haz.fraction = haz.centroids.values_from_vector_files(
                 files_fraction, val_names=frac_name, dst_crs=dst_crs)
 
         if 'event_id' in attrs:

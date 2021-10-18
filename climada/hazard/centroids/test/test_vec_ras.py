@@ -619,8 +619,8 @@ class TestReader(unittest.TestCase):
         with self.assertRaises(ValueError):
             centr.values_from_vector_files(shp_file, val_names=['pop_min', 'pop_max'])
 
-    def test_set_raster_file_wrong_fail(self):
-        """Test set_raster_file with wrong centroids"""
+    def test_from_raster_file_wrong_fail(self):
+        """Test from_raster_file with wrong centroids"""
         centr = Centroids.from_raster_file(HAZ_DEMO_FL, window=Window(10, 20, 50, 60))
         self.assertAlmostEqual(centr.meta['crs'], DEF_CRS)
         self.assertAlmostEqual(centr.meta['transform'].c, -69.2471495969998)
