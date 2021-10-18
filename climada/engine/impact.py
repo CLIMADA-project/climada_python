@@ -849,7 +849,7 @@ class Impact():
         """This function is deprecated, use Impact.from_excel instead."""
         LOGGER.warning("The use of Impact.read_excel is deprecated."
                        "Use Impact.from_excel instead.")
-        self.__dict__ = Impact.from_csv(*args, **kwargs).__dict__
+        self.__dict__ = Impact.from_excel(*args, **kwargs).__dict__
 
     @staticmethod
     def video_direct_impact(exp, impf_set, haz_list, file_name='',
