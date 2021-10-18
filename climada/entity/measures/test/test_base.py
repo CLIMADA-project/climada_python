@@ -81,8 +81,7 @@ class TestApply(unittest.TestCase):
         act_1 = meas.get_measure(name='Seawall')[0]
 
         haz = Hazard.from_mat(HAZ_TEST_MAT)
-        exp = Exposures()
-        exp.from_mat(ENT_TEST_MAT)
+        exp = Exposures.from_mat(ENT_TEST_MAT)
         exp.gdf.rename(columns={'impf': 'impf_TC'}, inplace=True)
         exp.check()
 
@@ -117,8 +116,7 @@ class TestApply(unittest.TestCase):
         act_1.exp_region_id = [1]
 
         haz = Hazard.from_mat(HAZ_TEST_MAT)
-        exp = Exposures()
-        exp.from_mat(ENT_TEST_MAT)
+        exp = Exposures.from_mat(ENT_TEST_MAT)
         exp.gdf['region_id'] = np.zeros(exp.gdf.shape[0])
         exp.gdf.region_id.values[10:] = 1
         exp.check()
@@ -250,8 +248,7 @@ class TestApply(unittest.TestCase):
         meas.exp_region_id = [3, 4]
         meas.haz_type = 'TC'
 
-        exp = Exposures()
-        exp.from_mat(ENT_TEST_MAT)
+        exp = Exposures.from_mat(ENT_TEST_MAT)
         exp.gdf.rename(columns={'impf_': 'impf_TC', 'centr_': 'centr_TC'}, inplace=True)
         exp.gdf['region_id'] = np.ones(exp.gdf.shape[0])
         exp.gdf.region_id.values[:exp.gdf.shape[0] // 2] = 3
