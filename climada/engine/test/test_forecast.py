@@ -59,8 +59,7 @@ class TestCalc(unittest.TestCase):
         expo = Exposures(gpd.GeoDataFrame(data=data))
         #vulnerability
         #generate vulnerability
-        impact_function = ImpfStormEurope()
-        impact_function.set_welker()
+        impact_function = ImpfStormEurope.from_welker()
         impact_function_set = ImpactFuncSet()
         impact_function_set.append(impact_function)
         #create and calculate Forecast
@@ -132,8 +131,7 @@ class TestPlot(unittest.TestCase):
         expo = Exposures(gpd.GeoDataFrame(data=data))
         #vulnerability
         #generate vulnerability
-        impact_function = ImpfStormEurope()
-        impact_function.set_welker()
+        impact_function = ImpfStormEurope.from_welker()
         impact_function_set = ImpactFuncSet()
         impact_function_set.append(impact_function)
         #create and calculate Forecast
