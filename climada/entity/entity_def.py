@@ -50,12 +50,31 @@ class Entity(object):
         Default file from configuration file
     """
 
-    def __init__(self):
-        """Empty initializator"""
-        self.exposures = Exposures()
-        self.disc_rates = DiscRates()
-        self.impact_funcs = ImpactFuncSet()
-        self.measures = MeasureSet()
+    def __init__(self, exposures=None, disc_rates=None,
+                 impact_func_set=None, measure_set=None):
+        """
+        Initialize entity
+
+        Parameters
+        ----------
+        exposures : climada.entity.Exposures, optional
+            Exposures of the entity. The default is None (empty Exposures()).
+        disc_rates : climada.entity.DiscRates, optional
+            Disc rates of the entity. The default is None (empty DiscRates()).
+        impact_func_set : climada.entity.ImpactFuncSet, optional
+            The impact function set. The default is None (empty ImpactFuncSet()).
+        measure_set : climada.entity.Measures, optional
+            The measures. The default is None (empty MeasuresSet().
+
+        Returns
+        -------
+        None.
+
+        """
+        self.exposures = Exposures() if exposures is None else exposures
+        self.disc_rates = DiscRates() if disc_rates is None else disc_rates
+        self.impact_funcs = ImpactFuncSet() if impact_func_set is None else impact_func_set
+        self.measures = MeasureSet() if measure_set is None else measure_set
 
     def read_mat(self, file_name, description=''):
         """Read MATLAB file of climada.
