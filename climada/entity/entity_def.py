@@ -132,10 +132,10 @@ class Entity(object):
         meas_set = MeasureSet.from_excel(file_name, description)
 
         return cls(
-            exposures = exp,
-            disc_rates = dr,
-            impact_func_set = impf_set,
-            measure_set = meas_set
+            exposures=exp,
+            disc_rates=dr,
+            impact_func_set=impf_set,
+            measure_set=meas_set
             )
 
     def read_excel(self, *args, **kwargs):
