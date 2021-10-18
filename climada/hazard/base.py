@@ -333,8 +333,15 @@ class Hazard():
         if 'unit' in attrs:
             self.unit = attrs['unit']
 
-    def set_vector(self, files_intensity, files_fraction=None, attrs=None,
-                   inten_name=None, frac_name=None, dst_crs=None):
+    def set_vector(self, *args, **kwargs):
+        """This function is deprecated, use Hazard.from_vector."""
+        LOGGER.warning("The use of Hazard.set_vector is deprecated."
+                       "Use Hazard.from_vector instead.")
+        self.__dict__ = Hazard.from_vector(*args, **kwargs).__dict__
+
+    @classmethod
+    def from_vector(cls, files_intensity, files_fraction=None, attrs=None,
+                    inten_name=None, frac_name=None, dst_crs=None, haz_type=None):
         """Read vector files format supported by fiona. Each intensity name is
         considered an event.
 
@@ -342,7 +349,8 @@ class Hazard():
         ----------
         files_intensity : list(str)
             file names containing intensity, default: ['intensity']
-        files_fraction (list(str)): file names containing fraction,
+        files_fraction : (list(str))
+            file names containing fraction,
             default: ['fraction']
         attrs : dict, optional
             name of Hazard attributes and their values
@@ -353,6 +361,15 @@ class Hazard():
             the fractions of each event
         dst_crs : crs, optional
             reproject to given crs
+        haz_type : str, optional
+            acronym of the hazard type (e.g. 'TC').
+            default: None, which will use the class default ('' for vanilla `Hazard` objects, hard coded in some
+            subclasses)
+
+        Returns
+        -------
+        haz : climada.hazard.Hazard
+            Hazard from vector file
         """
         if not attrs:
             attrs = {}
@@ -363,42 +380,49 @@ class Hazard():
         if files_fraction is not None and len(files_intensity) != len(files_fraction):
             raise ValueError('Number of intensity files differs from fraction files: %s != %s'
                              % (len(files_intensity), len(files_fraction)))
-        self.tag.file_name = str(files_intensity) + ' ; ' + str(files_fraction)
 
-        self.centroids = Centroids()
+        if haz_type is None:
+            haz = cls()
+        else:
+            haz = cls(haz_type)
+        haz.tag.file_name = str(files_intensity) + ' ; ' + str(files_fraction)
+
+        haz.centroids = Centroids()
         for file in files_intensity:
-            inten = self.centroids.set_vector_file(file, inten_name, dst_crs)
-            self.intensity = sparse.vstack([self.intensity, inten], format='csr')
+            inten = haz.centroids.set_vector_file(file, inten_name, dst_crs)
+            haz.intensity = sparse.vstack([haz.intensity, inten], format='csr')
         if files_fraction is None:
-            self.fraction = self.intensity.copy()
-            self.fraction.data.fill(1)
+            haz.fraction = haz.intensity.copy()
+            haz.fraction.data.fill(1)
         else:
             for file in files_fraction:
-                fract = self.centroids.set_vector_file(file, frac_name, dst_crs)
-                self.fraction = sparse.vstack([self.fraction, fract], format='csr')
+                fract = haz.centroids.set_vector_file(file, frac_name, dst_crs)
+                haz.fraction = sparse.vstack([haz.fraction, fract], format='csr')
 
         if 'event_id' in attrs:
-            self.event_id = attrs['event_id']
+            haz.event_id = attrs['event_id']
         else:
-            self.event_id = np.arange(1, self.intensity.shape[0] + 1)
+            haz.event_id = np.arange(1, haz.intensity.shape[0] + 1)
         if 'frequency' in attrs:
-            self.frequency = attrs['frequency']
+            haz.frequency = attrs['frequency']
         else:
-            self.frequency = np.ones(self.event_id.size)
+            haz.frequency = np.ones(haz.event_id.size)
         if 'event_name' in attrs:
-            self.event_name = attrs['event_name']
+            haz.event_name = attrs['event_name']
         else:
-            self.event_name = list(map(str, self.event_id))
+            haz.event_name = list(map(str, haz.event_id))
         if 'date' in attrs:
-            self.date = np.array([attrs['date']])
+            haz.date = np.array([attrs['date']])
         else:
-            self.date = np.ones(self.event_id.size)
+            haz.date = np.ones(haz.event_id.size)
         if 'orig' in attrs:
-            self.orig = np.array([attrs['orig']])
+            haz.orig = np.array([attrs['orig']])
         else:
-            self.orig = np.ones(self.event_id.size, bool)
+            haz.orig = np.ones(haz.event_id.size, bool)
         if 'unit' in attrs:
-            self.unit = attrs['unit']
+            haz.unit = attrs['unit']
+
+        return haz
 
     def reproject_raster(self, dst_crs=False, transform=None, width=None, height=None,
                          resampl_inten=Resampling.nearest, resampl_fract=Resampling.nearest):
