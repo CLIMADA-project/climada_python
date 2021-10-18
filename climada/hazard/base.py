@@ -239,7 +239,8 @@ class Hazard():
         band : list(int), optional
             bands to read (starting at 1), default [1]
         haz_type : str, optional
-            acronym of the hazard type (e.g. 'TC'). Default is None.
+            acronym of the hazard type (e.g. 'TC'). Default is None, which will use the 
+            class default ('' for vanilla `Hazard` objects, hard coded in some subclasses)
         pool : pathos.pool, optional
             Pool that will be used for parallel computation when applicable.
             Default: None
