@@ -365,17 +365,19 @@ class Hazard():
                              % (len(files_intensity), len(files_fraction)))
         self.tag.file_name = str(files_intensity) + ' ; ' + str(files_fraction)
 
-        self.centroids = Centroids()
-        for file in files_intensity:
-            inten = self.centroids.set_vector_file(file, inten_name, dst_crs)
-            self.intensity = sparse.vstack([self.intensity, inten], format='csr')
+        if len(files_intensity) > 0:
+            self.centroids = Centroids.from_vector_file(files_intensity[0], dst_crs=dst_crs)
+        elif files_fraction is not None and len(files_fraction) > 0:
+            self.centroids = Centroids.from_vector_file(files_fraction[0], dst_crs=dst_crs)
+
+        self.intensity = self.centroids.values_from_vector_files(
+            files_intensity, val_names=inten_name, dst_crs=dst_crs)
         if files_fraction is None:
             self.fraction = self.intensity.copy()
             self.fraction.data.fill(1)
         else:
-            for file in files_fraction:
-                fract = self.centroids.set_vector_file(file, frac_name, dst_crs)
-                self.fraction = sparse.vstack([self.fraction, fract], format='csr')
+            self.fraction = self.centroids.values_from_vector_files(
+                files_fraction, val_names=frac_name, dst_crs=dst_crs)
 
         if 'event_id' in attrs:
             self.event_id = attrs['event_id']

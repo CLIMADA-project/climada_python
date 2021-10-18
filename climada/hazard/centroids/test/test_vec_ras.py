@@ -608,12 +608,12 @@ class TestCentroids(unittest.TestCase):
 
 class TestReader(unittest.TestCase):
     """Test Centroids setter vector and raster methods"""
-    def test_set_vector_file_wrong_fail(self):
-        """Test set_vector_file with wrong centroids"""
+    def test_from_vector_file(self):
+        """Test from_vector_file and values_from_vector_files"""
         shp_file = shapereader.natural_earth(resolution='110m', category='cultural',
                                              name='populated_places_simple')
-        centr = Centroids()
-        inten = centr.set_vector_file(shp_file, ['pop_min', 'pop_max'])
+        centr = Centroids.from_vector_file(shp_file)
+        inten = centr.values_from_vector_files([shp_file], val_names=['pop_min', 'pop_max'])
 
         self.assertEqual(CRS.from_user_input(centr.geometry.crs), CRS.from_epsg(u_coord.NE_EPSG))
         self.assertEqual(centr.geometry.size, centr.lat.size)
@@ -631,10 +631,11 @@ class TestReader(unittest.TestCase):
         self.assertEqual(inten[1, 0], 832)
         self.assertEqual(inten[1, -1], 7206000)
 
+        # Test reading values from file with incompatible geometry
         shp_file = shapereader.natural_earth(resolution='10m', category='cultural',
                                              name='populated_places_simple')
         with self.assertRaises(ValueError):
-            centr.set_vector_file(shp_file, ['pop_min', 'pop_max'])
+            centr.values_from_vector_files(shp_file, val_names=['pop_min', 'pop_max'])
 
     def test_set_raster_file_wrong_fail(self):
         """Test set_raster_file with wrong centroids"""

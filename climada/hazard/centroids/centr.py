@@ -76,9 +76,6 @@ LOGGER = logging.getLogger(__name__)
 class Centroids():
     """Contains raster or vector centroids.
 
-    Raster data can be set with set_raster_file() or set_meta().
-    Vector data can be set with set_lat_lon() or set_vector_file().
-
     Attributes
     ----------
     meta : dict, optional
@@ -204,8 +201,8 @@ class Centroids():
         centroids.check()
         return centroids
 
-    @staticmethod
-    def from_geodataframe(gdf, geometry_alias='geom'):
+    @classmethod
+    def from_geodataframe(cls, gdf, geometry_alias='geom'):
         """Create Centroids instance from GeoDataFrame.
 
         The geometry, lat, and lon attributes are set from the GeoDataFrame.geometry attribute,
@@ -233,7 +230,7 @@ class Centroids():
         geometry_alias : str, opt
             Alternate name for the geometry column; dropped to avoid duplicate assignment.
         """
-        centroids = Centroids()
+        centroids = cls()
 
         centroids.geometry = gdf.geometry
         centroids.lat = gdf.geometry.y.to_numpy(copy=True)
@@ -382,42 +379,75 @@ class Centroids():
         return sparse.csr_matrix(inten)
 
     def set_vector_file(self, file_name, inten_name=None, dst_crs=None):
-        """Read vector file format supported by fiona.
+        """This function is deprecated, use Centroids.from_vector_file
+        and Centroids.values_from_vector_files instead."""
+        LOGGER.warning("The use of Centroids.set_vector_file is deprecated. "
+                       "Use Centroids.from_vector_file and "
+                       "Centroids.values_from_vector_files instead.")
+        if not self.geometry.any():
+            self.__dict__ = Centroids.from_vector_file(file_name, dst_crs=dst_crs).__dict__
+        return self.values_from_vector_files(
+            [file_name], val_names=inten_name, dst_crs=dst_crs)
 
-        Each intensity name is considered an event.
+    @classmethod
+    def from_vector_file(cls, file_name, dst_crs=None):
+        """Create Centroids object from vector file (any format supported by fiona).
 
         Parameters
         ----------
         file_name : str
             vector file with format supported by fiona and 'geometry' field.
-        inten_name : list(str), optional
-            list of names of the columns of the intensity of each event.
-            default: ['intensity']
         dst_crs : crs, optional
             reproject to given crs
 
         Returns
         -------
-        inten : scipy.sparse.csr_matrix
-            Sparse intensity array of shape (len(inten_name), len(geometry)).
+        centr : Centroids
+            New Centroids object
         """
-        if inten_name is None:
-            inten_name = ['intensity']
+        centr = cls()
+        centr.lat, centr.lon, centr.geometry, _ = u_coord.read_vector(
+            file_name, [], dst_crs=dst_crs)
+        return centr
 
-        if not self.geometry.any():
-            self.lat, self.lon, self.geometry, inten = u_coord.read_vector(
-                file_name, inten_name, dst_crs)
-            return sparse.csr_matrix(inten)
+    def values_from_vector_files(self, file_names, val_names=None, dst_crs=None):
+        """Read intensity or other data from vector files, making sure that geometry is compatible.
 
-        tmp_lat, tmp_lon, tmp_geometry, inten = u_coord.read_vector(
-            file_name, inten_name, dst_crs)
+        If the geometry of the shapes in any of the given files does not agree with the
+        geometry of this Centroids instance, a ValueError is raised.
 
-        if not (u_coord.equal_crs(tmp_geometry.crs, self.geometry.crs)
-                and np.allclose(tmp_lat, self.lat)
-                and np.allclose(tmp_lon, self.lon)):
-            raise ValueError('Vector data inconsistent with contained vector.')
+        Parameters
+        ----------
+        file_names : list(str)
+            vector files with format supported by fiona and 'geometry' field.
+        val_names : list(str), optional
+            list of names of the columns of the values. Default: ['intensity']
+        dst_crs : crs, optional
+            reproject to given crs
 
-        return sparse.csr_matrix(inten)
+        Raises
+        ------
+        ValueError
+
+        Returns
+        -------
+        values : scipy.sparse.csr_matrix
+            Sparse array of shape (len(val_name), len(geometry)).
+        """
+        if val_names is None:
+            val_names = ['intensity']
+
+        intensity = []
+        for file_name in file_names:
+            tmp_lat, tmp_lon, tmp_geometry, inten = u_coord.read_vector(
+                file_name, val_names, dst_crs=dst_crs)
+            if not (u_coord.equal_crs(tmp_geometry.crs, self.geometry.crs)
+                    and np.allclose(tmp_lat, self.lat)
+                    and np.allclose(tmp_lon, self.lon)):
+                raise ValueError('Vector data inconsistent with contained vector.')
+            intensity.append(sparse.csr_matrix(inten))
+
+        return sparse.vstack(intensity, format='csr')
 
     def read_mat(self, *args, **kwargs):
         """This function is deprecated, use Centroids.from_mat instead."""
@@ -460,7 +490,7 @@ class Centroids():
         if num_try == len(var_names['field_names']):
             LOGGER.warning("Variables are not under: %s.", var_names['field_names'])
 
-        centr = Centroids()
+        centr = cls()
         try:
             cen_lat = np.squeeze(cent[var_names['var_name']['lat']])
             cen_lon = np.squeeze(cent[var_names['var_name']['lon']])
@@ -508,7 +538,7 @@ class Centroids():
         if var_names is None:
             var_names = DEF_VAR_EXCEL
 
-        centr = Centroids()
+        centr = cls()
         try:
             dfr = pd.read_excel(file_name, var_names['sheet_name'])
             centr.set_lat_lon(dfr[var_names['col_name']['lat']],
@@ -1020,7 +1050,7 @@ class Centroids():
             data = h5py.File(file_data, 'r')
         else:
             data = file_data
-        centr = Centroids()
+        centr = cls()
         crs = DEF_CRS
         if data.get('crs'):
             crs = u_coord.to_crs_user_input(data.get('crs')[0])
