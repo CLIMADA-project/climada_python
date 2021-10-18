@@ -46,9 +46,7 @@ LANDFALL_DECAY_V = {
 """Global landfall decay parameters for wind speed by TC category.
 Keys are TC categories with -1='TD', 0='TS', 1='Cat 1', ..., 5='Cat 5'.
 It is v_rel as derived from:
-tracks = TCTracks()
-tracks.read_ibtracs_netcdf(year_range=(1980,2019),
-                           estimate_missing=True)
+tracks = TCTracks.from_ibtracs_netcdf(year_range=(1980,2019), estimate_missing=True)
 extent = tracks.get_extent()
 land_geom = climada.util.coordinates.get_land_geometry(
     extent=extent, resolution=10
@@ -67,9 +65,7 @@ LANDFALL_DECAY_P = {
 """Global landfall decay parameters for pressure by TC category.
 Keys are TC categories with -1='TD', 0='TS', 1='Cat 1', ..., 5='Cat 5'.
 It is p_rel as derived from:
-tracks = TCTracks()
-tracks.read_ibtracs_netcdf(year_range=(1980,2019),
-                           estimate_missing=True)
+tracks = TCTracks.from_ibtracs_netcdf(year_range=(1980,2019), estimate_missing=True)
 extent = tracks.get_extent()
 land_geom = climada.util.coordinates.get_land_geometry(
     extent=extent, resolution=10
@@ -86,7 +82,8 @@ def calc_perturbed_trajectories(tracks,
                                 autocorr_ddirection=0.5,
                                 seed=CONFIG.hazard.trop_cyclone.random_seed.int(),
                                 decay=True,
-                                use_global_decay_params=True):
+                                use_global_decay_params=True,
+                                pool=None):
     """
     Generate synthetic tracks based on directed random walk. An ensemble of nb_synth_tracks
     synthetic tracks is computed for every track contained in self.
@@ -155,6 +152,9 @@ def calc_perturbed_trajectories(tracks,
         Default: True.
     """
     LOGGER.info('Computing %s synthetic tracks.', nb_synth_tracks * tracks.size)
+
+    if pool is not None:
+        tracks.pool = pool
 
     if seed >= 0:
         np.random.seed(seed)

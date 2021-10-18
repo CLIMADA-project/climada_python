@@ -61,8 +61,7 @@ class TestReader(unittest.TestCase):
         for i, val in enumerate(intensity_values["geosphere"]):
             self.assertAlmostEqual(intensity_values["equirect"][i], val, 1)
 
-        tc_track = TCTracks()
-        tc_track.read_processed_ibtracs_csv(TEST_TRACK)
+        tc_track = TCTracks.from_processed_ibtracs_csv(TEST_TRACK)
         tc_track.equal_timestep()
         tc_track.data = tc_track.data[:1]
 
@@ -120,8 +119,7 @@ class TestReader(unittest.TestCase):
                       0, 25.715983, 38.351686, 35.591153,  0, 46.873912],
         }
 
-        tc_track = TCTracks()
-        tc_track.read_processed_ibtracs_csv(TEST_TRACK)
+        tc_track = TCTracks.from_processed_ibtracs_csv(TEST_TRACK)
         tc_track.equal_timestep()
         tc_track.data = tc_track.data[:1]
 
@@ -135,8 +133,7 @@ class TestReader(unittest.TestCase):
 
     def test_set_one_file_pass(self):
         """Test from_tracks with one input."""
-        tc_track = TCTracks()
-        tc_track.read_processed_ibtracs_csv(TEST_TRACK_SHORT)
+        tc_track = TCTracks.from_processed_ibtracs_csv(TEST_TRACK_SHORT)
         tc_haz = TropCyclone.from_tracks(tc_track, centroids=CENTR_TEST_BRB)
         tc_haz.check()
 
@@ -163,8 +160,7 @@ class TestReader(unittest.TestCase):
 
     def test_two_files_pass(self):
         """Test from_tracks with two ibtracs."""
-        tc_track = TCTracks()
-        tc_track.read_processed_ibtracs_csv([TEST_TRACK_SHORT, TEST_TRACK_SHORT])
+        tc_track = TCTracks.from_processed_ibtracs_csv([TEST_TRACK_SHORT, TEST_TRACK_SHORT])
         tc_haz = TropCyclone.from_tracks(tc_track, centroids=CENTR_TEST_BRB)
         tc_haz.remove_duplicates()
         tc_haz.check()
@@ -283,8 +279,7 @@ class TestWindfieldHelpers(unittest.TestCase):
 
     def test_vtrans_pass(self):
         """Test _vtrans function. Compare to MATLAB reference."""
-        tc_track = TCTracks()
-        tc_track.read_processed_ibtracs_csv(TEST_TRACK)
+        tc_track = TCTracks.from_processed_ibtracs_csv(TEST_TRACK)
         tc_track.equal_timestep()
 
         v_trans, _ = _vtrans(
