@@ -791,7 +791,14 @@ class Exposures():
                     setattr(exp, key, val)
         return exp
 
-    def read_mat(self, file_name, var_names=None):
+    def read_mat(self, *args, **kwargs):
+        """This function is deprecated, use Exposures.from_mat instead."""
+        LOGGER.warning("The use of Exposures.read_mat is deprecated."
+                       "Use Exposures.from_mat instead.")
+        self.__dict__ = Exposures.from_hdf5(*args, **kwargs).__dict__
+
+    @classmethod
+    def from_mat(cls, file_name, var_names=None):
         """Read MATLAB file and store variables in exposures.
 
         Parameters
@@ -801,6 +808,10 @@ class Exposures():
         var_names : dict, optional
             dictionary containing the name of the
             MATLAB variables. Default: DEF_VAR_MAT.
+
+        Returns
+        -------
+        Exposures
         """
         LOGGER.info('Reading %s', file_name)
         if not var_names:
@@ -821,10 +832,11 @@ class Exposures():
         except KeyError as var_err:
             raise KeyError(f"Variable not in MAT file: {var_names.get('field_name')}")\
                 from var_err
+        exp = cls()
+        exp.set_gdf(GeoDataFrame(data=exposures))
 
-        self.set_gdf(GeoDataFrame(data=exposures))
-
-        _read_mat_metadata(self, data, file_name, var_names)
+        _read_mat_metadata(exp, data, file_name, var_names)
+        return exp
 
     #
     # Extends the according geopandas method

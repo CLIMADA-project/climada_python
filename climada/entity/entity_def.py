@@ -73,8 +73,7 @@ class Entity(object):
         ------
         ValueError
         """
-        self.exposures = Exposures()
-        self.exposures.read_mat(file_name)
+        self.exposures = Exposures.from_mat(file_name)
 
         self.disc_rates = DiscRates()
         self.disc_rates.read_mat(file_name, description)

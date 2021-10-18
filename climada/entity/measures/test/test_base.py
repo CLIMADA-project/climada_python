@@ -83,7 +83,7 @@ class TestApply(unittest.TestCase):
         haz = Hazard('TC')
         haz.read_mat(HAZ_TEST_MAT)
         exp = Exposures()
-        exp.read_mat(ENT_TEST_MAT)
+        exp.from_mat(ENT_TEST_MAT)
         exp.gdf.rename(columns={'impf': 'impf_TC'}, inplace=True)
         exp.check()
 
@@ -120,7 +120,7 @@ class TestApply(unittest.TestCase):
         haz = Hazard('TC')
         haz.read_mat(HAZ_TEST_MAT)
         exp = Exposures()
-        exp.read_mat(ENT_TEST_MAT)
+        exp.from_mat(ENT_TEST_MAT)
         exp.gdf['region_id'] = np.zeros(exp.gdf.shape[0])
         exp.gdf.region_id.values[10:] = 1
         exp.check()
@@ -254,7 +254,7 @@ class TestApply(unittest.TestCase):
         meas.haz_type = 'TC'
 
         exp = Exposures()
-        exp.read_mat(ENT_TEST_MAT)
+        exp.from_mat(ENT_TEST_MAT)
         exp.gdf.rename(columns={'impf_': 'impf_TC', 'centr_': 'centr_TC'}, inplace=True)
         exp.gdf['region_id'] = np.ones(exp.gdf.shape[0])
         exp.gdf.region_id.values[:exp.gdf.shape[0] // 2] = 3
