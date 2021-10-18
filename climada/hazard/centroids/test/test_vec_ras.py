@@ -664,8 +664,7 @@ class TestReader(unittest.TestCase):
         centr.set_raster_from_pix_bounds(xf_lat, xo_lon, d_lat, d_lon, n_lat, n_lon)
         centr.write_hdf5(file_name)
 
-        centr_read = Centroids()
-        centr_read.read_hdf5(file_name)
+        centr_read = Centroids.from_hdf5(file_name)
         self.assertTrue(centr_read.meta)
         self.assertFalse(centr_read.lat.size)
         self.assertFalse(centr_read.lon.size)
@@ -687,8 +686,7 @@ class TestReader(unittest.TestCase):
         centr.set_lat_lon(VEC_LAT, VEC_LON)
         centr.write_hdf5(file_name)
 
-        centr_read = Centroids()
-        centr_read.read_hdf5(file_name)
+        centr_read = Centroids.from_hdf5(file_name)
         self.assertFalse(centr_read.meta)
         self.assertTrue(centr_read.lat.size)
         self.assertTrue(centr_read.lon.size)

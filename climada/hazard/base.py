@@ -1075,7 +1075,7 @@ class Hazard():
             if var_name != 'tag' and var_name not in hf_data.keys():
                 continue
             if var_name == 'centroids':
-                self.centroids.read_hdf5(hf_data.get(var_name))
+                self.centroids = Centroids.from_hdf5(hf_data.get(var_name))
             elif var_name == 'tag':
                 self.tag.haz_type = u_hdf5.to_string(hf_data.get('haz_type')[0])
                 self.tag.file_name = u_hdf5.to_string(hf_data.get('file_name')[0])

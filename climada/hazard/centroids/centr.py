@@ -177,12 +177,10 @@ class Centroids():
         base_file : str, optional
             If set, read this file instead of one provided with climada.
         """
-        centroids = Centroids()
-
         if base_file is None:
             base_file = NATEARTH_CENTROIDS[res_as]
 
-        centroids.read_hdf5(base_file)
+        centroids = Centroids.from_hdf5(base_file)
         if centroids.meta:
             xres, xshear, xoff, yshear, yres, yoff = centroids.meta['transform'][:6]
             shape = (centroids.meta['height'], centroids.meta['width'])
@@ -970,40 +968,52 @@ class Centroids():
         if isinstance(file_data, str):
             data.close()
 
-    def read_hdf5(self, file_data):
-        """Read centroids attributes from hdf5.
+    def read_hdf5(self, *args, **kwargs):
+        """This function is deprecated, use Centroids.from_hdf5 instead."""
+        LOGGER.warning("The use of Centroids.read_hdf5 is deprecated."
+                       "Use Centroids.from_hdf5 instead.")
+        self.__dict__ = Centroids.from_hdf5(*args, **kwargs).__dict__
+
+    @classmethod
+    def from_hdf5(cls, file_data):
+        """Create a centroids object from a HDF5 file.
 
         Parameters
         ----------
         file_data : str or h5
             If string, path to read data. If h5 object, the datasets will be read from there.
+
+        Returns
+        -------
+        Centroids
         """
         if isinstance(file_data, (str, Path)):
             LOGGER.info('Reading %s', file_data)
             data = h5py.File(file_data, 'r')
         else:
             data = file_data
-        self.clear()
+        centr = Centroids()
         crs = DEF_CRS
         if data.get('crs'):
             crs = u_coord.to_crs_user_input(data.get('crs')[0])
         if data.get('lat') and data.get('lat').size:
-            self.set_lat_lon(np.array(data.get('lat')), np.array(data.get('lon')), crs)
+            centr.set_lat_lon(np.array(data.get('lat')), np.array(data.get('lon')), crs)
         elif data.get('latitude') and data.get('latitude').size:
-            self.set_lat_lon(np.array(data.get('latitude')), np.array(data.get('longitude')), crs)
+            centr.set_lat_lon(np.array(data.get('latitude')), np.array(data.get('longitude')), crs)
         else:
             centr_meta = data.get('meta')
-            self.meta['crs'] = crs
+            centr.meta['crs'] = crs
             for key, value in centr_meta.items():
                 if key != 'transform':
-                    self.meta[key] = value[0]
+                    centr.meta[key] = value[0]
                 else:
-                    self.meta[key] = rasterio.Affine(*value)
+                    centr.meta[key] = rasterio.Affine(*value)
         for centr_name in data.keys():
             if centr_name not in ('crs', 'lat', 'lon', 'meta'):
-                setattr(self, centr_name, np.array(data.get(centr_name)))
+                setattr(centr, centr_name, np.array(data.get(centr_name)))
         if isinstance(file_data, str):
             data.close()
+        return centr
 
     @property
     def crs(self):
