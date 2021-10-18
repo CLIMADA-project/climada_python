@@ -77,7 +77,7 @@ class ImpfTropCyclone(ImpactFunc):
 
         Returns
         -------
-        impf : ImpfTropCyclone object
+        impf : ImpfTropCyclone
             TC impact function instance based on formula by Emanuel (2011)
         """
         if v_half <= v_thresh:
@@ -140,11 +140,7 @@ class ImpfSetTropCyclone(ImpactFuncSet):
         Returns
         -------
         v_half : dict
-            Impf slope parameter v_half per region¨
-
-        Raises
-        ------
-        ValueError
+            Impf slope parameter v_half per region
 
         Returns
         -------
@@ -209,14 +205,14 @@ class ImpfSetTropCyclone(ImpactFuncSet):
             result file to be used instead of default file in repository
             (expert users only)
 
+        Raises
+        ------
+        ValueError
+
         Returns
         -------
         v_half : dict
             TC impact function slope parameter v_half per region¨
-
-        Raises
-        ------
-        ValueError
         """
         calibration_approach = calibration_approach.upper()
         if calibration_approach not in ['TDR', 'TDR1.0', 'TDR1.5', 'RMSF', 'EDR']:
