@@ -333,6 +333,11 @@ class Hazard():
         if 'unit' in attrs:
             self.unit = attrs['unit']
 
+    def set_vector(self, *args, **kwargs):
+        """This function is deprecated, use Hazard.from_vector."""
+        LOGGER.warning("The use of Hazard.set_vector is deprecated."
+                       "Use Hazard.from_vector instead.")
+        self.__dict__ = Hazard.from_vector(*args, **kwargs).__dict__
 
     @classmethod
     def from_vector(cls, files_intensity, files_fraction=None, attrs=None,
@@ -357,8 +362,9 @@ class Hazard():
         dst_crs : crs, optional
             reproject to given crs
         haz_type : str, optional
-            acronym of the hazard type (e.g. 'TC'). Default is None, which will use the
-            class default ('' for vanilla `Hazard` objects, hard coded in some subclasses)
+            acronym of the hazard type (e.g. 'TC').
+            default: None, which will use the class default ('' for vanilla `Hazard` objects, hard coded in some
+            subclasses)
 
         Returns
         -------
@@ -374,7 +380,11 @@ class Hazard():
         if files_fraction is not None and len(files_intensity) != len(files_fraction):
             raise ValueError('Number of intensity files differs from fraction files: %s != %s'
                              % (len(files_intensity), len(files_fraction)))
-        haz = cls(haz_type)
+
+        if haz_type is None:
+            haz = cls()
+        else:
+            haz = cls(haz_type)
         haz.tag.file_name = str(files_intensity) + ' ; ' + str(files_fraction)
 
         haz.centroids = Centroids()
@@ -413,14 +423,6 @@ class Hazard():
             haz.unit = attrs['unit']
 
         return haz
-
-
-    def set_vector(self, *args, **kwargs):
-        """This function is deprecated, use Hazard.from_vector."""
-        LOGGER.warning("The use of Hazard.set_vector is deprecated."
-                       "Use Hazard.from_vector instead.")
-        self.__dict__ = Hazard.from_vector(*args, **kwargs).__dict__
-
 
     def reproject_raster(self, dst_crs=False, transform=None, width=None, height=None,
                          resampl_inten=Resampling.nearest, resampl_fract=Resampling.nearest):
