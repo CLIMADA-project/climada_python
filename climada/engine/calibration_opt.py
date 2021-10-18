@@ -141,8 +141,7 @@ def init_impf(impf_name_or_instance, param_dict, df_out=pd.DataFrame(index=[0]))
     ImpactFunc_final = None
     if isinstance(impf_name_or_instance, str):
         if impf_name_or_instance == 'emanuel':
-            ImpactFunc_final = ImpfTropCyclone()
-            ImpactFunc_final.set_emanuel_usa(**param_dict)
+            ImpactFunc_final = ImpfTropCyclone.from_emanuel_usa(**param_dict)
             ImpactFunc_final.haz_type = 'TC'
             ImpactFunc_final.id = 1
             df_out['impact_function'] = impf_name_or_instance
