@@ -229,6 +229,11 @@ class Centroids():
             processing.
         geometry_alias : str, opt
             Alternate name for the geometry column; dropped to avoid duplicate assignment.
+
+        Returns
+        -------
+        centr : Centroids
+            Centroids with data from given GeoDataFrame
         """
         centroids = cls()
 
@@ -258,7 +263,7 @@ class Centroids():
 
     @classmethod
     def from_pix_bounds(cls, xf_lat, xo_lon, d_lat, d_lon, n_lat, n_lon, crs=DEF_CRS):
-        """Set raster metadata (meta attribute) from pixel border data
+        """Create Centroids object with meta attribute according to pixel border data.
 
         Parameters
         ----------
@@ -279,7 +284,8 @@ class Centroids():
 
         Returns
         -------
-        Centroids
+        centr : Centroids
+            Centroids with meta according to given pixel border data.
         """
         centr = cls()
         centr.meta = {
@@ -299,9 +305,9 @@ class Centroids():
 
     @classmethod
     def from_pnt_bounds(cls, points_bounds, res, crs=DEF_CRS):
-        """Set raster metadata (meta attribute) from points border data.
+        """Create Centroids object with meta attribute according to points border data.
 
-        Raster border = point_border + res/2
+        raster border = point border + res/2
 
         Parameters
         ----------
@@ -314,7 +320,8 @@ class Centroids():
 
         Returns
         -------
-        Centroids
+        centr : Centroids
+            Centroids with meta according to given points border data.
         """
         centr = cls()
         rows, cols, ras_trans = u_coord.pts_to_raster_meta(points_bounds, (res, -res))
@@ -347,7 +354,8 @@ class Centroids():
 
         Returns
         -------
-        Centroids
+        centr : Centroids
+            Centroids with points according to given coordinates
         """
         centr = cls()
         centr.lat = np.asarray(lat)
@@ -397,7 +405,8 @@ class Centroids():
 
         Returns
         -------
-        Centroids
+        centr : Centroids
+            Centroids with meta attribute according to the given raster file
         """
         centr = cls()
         centr.meta, _ = u_coord.read_raster(
@@ -486,7 +495,8 @@ class Centroids():
 
         Returns
         -------
-        Centroids
+        centr : Centroids
+            Centroids with points according to the given vector file
         """
         centr = cls()
         centr.lat, centr.lon, centr.geometry, _ = u_coord.read_vector(
@@ -555,7 +565,8 @@ class Centroids():
 
         Returns
         -------
-        Centroids
+        centr : Centroids
+            Centroids with data from the given file
         """
         LOGGER.info('Reading %s', file_name)
         if var_names is None:
@@ -614,7 +625,8 @@ class Centroids():
 
         Returns
         -------
-        Centroids
+        centr : Centroids
+            Centroids with data from the given file
         """
         LOGGER.info('Reading %s', file_name)
         if var_names is None:
@@ -685,7 +697,7 @@ class Centroids():
 
         Returns
         -------
-        centroids : climada.hazard.Centroids()
+        centroids : Centroids
             Centroids containing the union of the centroids in others.
 
         Raises
@@ -1123,7 +1135,8 @@ class Centroids():
 
         Returns
         -------
-        Centroids
+        centr : Centroids
+            Centroids with data from the given file
         """
         if isinstance(file_data, (str, Path)):
             LOGGER.info('Reading %s', file_data)
