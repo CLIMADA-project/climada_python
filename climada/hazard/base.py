@@ -267,6 +267,7 @@ class Hazard():
                              % (len(files_intensity), len(files_fraction)))
         self.tag.file_name = str(files_intensity) + ' ; ' + str(files_fraction)
 
+        # TODO: replace Centroids.set_raster_file when Hazard.set_raster is replaced
         self.centroids = Centroids()
         if self.pool:
             chunksize = min(len(files_intensity) // self.pool.ncpus, 1000)
