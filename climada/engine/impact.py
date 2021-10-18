@@ -807,7 +807,7 @@ class Impact():
 
         Returns
         -------
-        impf : climada.engine.impact.Impact
+        imp : climada.engine.impact.Impact
             Impact from excel file
         """
         LOGGER.info('Reading %s', file_name)
