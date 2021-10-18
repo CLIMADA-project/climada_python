@@ -72,8 +72,8 @@ class ImpfStormEurope(ImpactFunc):
         
         Returns
         -------
-        ImpfStormEurope: impact function for asset damages due to storm
-            defined in Welker et al. 2021
+        impf: climada.entity.impact_funcs.storm_europe.ImpfStormEurope:
+            impact function for asset damages due to storm defined in Welker et al. 2021
         """
 
         temp_Impf = ImpfStormEurope.from_schwierz()
