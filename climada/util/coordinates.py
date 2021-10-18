@@ -50,7 +50,7 @@ import shapely.vectorized
 import shapefile
 from sklearn.neighbors import BallTree
 
-from climada.util.constants import (DEF_CRS,EARTH_RADIUS_KM, SYSTEM_DIR, 
+from climada.util.constants import (DEF_CRS,EARTH_RADIUS_KM, SYSTEM_DIR,
                                     ONE_LAT_KM, NATEARTH_CENTROIDS,
                                     ISIMIP_GPWV3_NATID_150AS,
                                     ISIMIP_NATID_TO_ISO,
@@ -107,22 +107,22 @@ def interpol_index(centroids, coordinates, method=METHOD[0],
     Parameters
     ----------
     centroids : 2d array
-        First column contains latitude, second column contains longitude. Each 
+        First column contains latitude, second column contains longitude. Each
         row is a geographic point
-    coordinates : 2d array 
+    coordinates : 2d array
         First column contains latitude, second column contains longitude. Each
         row is a geographic point
     method : str, optional
         interpolation method to use. NN default.
     distance : str, optional
         distance to use. Haversine default
-    threshold : float 
-        distance threshold in km over which no neighbor will be found. Those 
+    threshold : float
+        distance threshold in km over which no neighbor will be found. Those
         are assigned with a -1 index
 
     Returns
     -------
-    interp : numpy array 
+    interp : numpy array
         with so many rows as coordinates containing the centroids indexes
     """
     if (method == METHOD[0]) & (distance == DIST_DEF[0]):
@@ -147,18 +147,18 @@ def index_nn_aprox(centroids, coordinates, threshold=THRESHOLD):
     Parameters
     ----------
     centroids : 2d array
-        First column contains latitude, second column contains longitude. Each 
-        row is a geographic point
-    coordinates : 2d array 
         First column contains latitude, second column contains longitude. Each
         row is a geographic point
-    threshold : float 
-        distance threshold in km over which no neighbor will be found. Those 
+    coordinates : 2d array
+        First column contains latitude, second column contains longitude. Each
+        row is a geographic point
+    threshold : float
+        distance threshold in km over which no neighbor will be found. Those
         are assigned with a -1 index
 
     Returns
     -------
-    assigend: array 
+    assigend: array
         with so many rows as coordinates containing the centroids indexes
     """
 
@@ -196,19 +196,19 @@ def index_nn_haversine(centroids, coordinates, threshold=THRESHOLD):
 
     Parameters
     ----------
-    centroids : 2d array 
-        First column contains latitude, second column contains longitude. 
+    centroids : 2d array
+        First column contains latitude, second column contains longitude.
         Each row is a geographic point
     coordinates : 2d array
         First column contains latitude, second column contains longitude. Each
         row is a geographic point
     threshold : float
-        distance threshold in km over which no neighbor will be found. Those 
+        distance threshold in km over which no neighbor will be found. Those
         are assigned with a -1 index
 
     Returns
     -------
-    np.array 
+    np.array
         with so many rows as coordinates containing the centroids indexes
     """
     # Construct tree from centroids
@@ -234,28 +234,28 @@ def index_nn_haversine(centroids, coordinates, threshold=THRESHOLD):
     return np.squeeze(assigned[inv])
 
 def interpolate_lines(gdf_lines, point_dist=5):
-    """ Convert a GeoDataframe with LineString geometries to 
+    """ Convert a GeoDataframe with LineString geometries to
     Point geometries, where Points are placed at a specified distance along the
-    original LineString 
-    Important remark: LineString.interpolate() used here performs interpolation 
-    in a Cartesian coordinate system. The result will be inaccurate for 
-    LineStrings whose defining points are spaced very far from each other 
+    original LineString
+    Important remark: LineString.interpolate() used here performs interpolation
+    in a Cartesian coordinate system. The result will be inaccurate for
+    LineStrings whose defining points are spaced very far from each other
     (like end points in Zürich and NYC)
-    
+
     Parameters
     ----------
     gdf_lines : gpd.GeoDataframe
         Geodataframe with line geometries
     point_dist : float
         Distance in metres apart from which the generated Points should be placed.
-    
+
     Returns
     -------
     gdf_points : gpd.GeoDataFrame
         with individual Point per row, retaining all other column infos
         belonging to its corresponding line (incl. line length of original geom.
         and multi-index referring to original indexing)
-        
+
     See also
     --------
     * util.coordinates.compute_geodesic_lengths()
@@ -263,79 +263,78 @@ def interpolate_lines(gdf_lines, point_dist=5):
     """
 
     gdf_points = gdf_lines.copy()
-    
+
     line_lengths = compute_geodesic_lengths(gdf_points)
-    
+
     # split line lengths into relative fractions acc to point_dist (e.g. 0, 0.5, 1)
-    dist_vectors = [np.linspace(0, 1, 
+    dist_vectors = [np.linspace(0, 1,
                                 num=int(np.ceil(line_length/point_dist)+1))
                     for line_length in line_lengths]
-    
+
     gdf_points['geometry'] = [MultiPoint(
         [line.interpolate(dist, normalized=True) for dist in dist_vector])
         for line, dist_vector in zip(gdf_lines.geometry, dist_vectors)]
-    
+
     return gdf_points.explode()
 
 
 def _interpolate_one_polygon(poly, m_per_point):
-        
+
     if poly.is_empty:
-        LOGGER.info('Got an empty geometry. Returning None.')
         return MultiPoint([])
-    
-    res_x, res_y = metres_to_degrees(poly.representative_point().y, 
+
+    res_x, res_y = metres_to_degrees(poly.representative_point().y,
                                      m_per_point)
-    height, width, trafo = pts_to_raster_meta(poly.bounds, (res_x, res_y)) 
-    lons, lats = raster_to_meshgrid(trafo, width, height) 
+    height, width, trafo = pts_to_raster_meta(poly.bounds, (res_x, res_y))
+    lons, lats = raster_to_meshgrid(trafo, width, height)
     in_geom = shapely.vectorized.contains(poly, lons, lats)
-    
+
     if sum(in_geom.flatten()) > 1:
-        return MultiPoint([(x, y) for x, y in 
+        return MultiPoint([(x, y) for x, y in
                             zip(lons[in_geom],lats[in_geom])])
     else:
-        LOGGER.info('''Chosen resolution too coarse for polygon. 
+        LOGGER.info('''Chosen resolution too coarse for polygon.
                     Assigning one representative point instead''')
         return MultiPoint([poly.representative_point()])
 
 def interpolate_polygons(gdf_poly, area_per_point):
     """For a GeoDataFrame with polygons, get equally distributed lat/lon pairs
-    throughout the geometries, at a user-specified resolution (in terms of 
-    m2 area per point) 
-    
+    throughout the geometries, at a user-specified resolution (in terms of
+    m2 area per point)
+
     Parameters
     ----------
     gdf_poly : gpd.GeoDataFrame
         with polygons to be interpolated
     area_per_point : float
         area in m2 which one point should represent
-    
+
     Returns
     -------
     gdf_points : gpd.GeoDataFrame
         with multiindex: first level represents initial polygons, second level
         individual Point per row, retaining all other column infos
         belonging to its corresponding polygon
-    
+
     See also
     --------
     * util.lines_polys_handler.point_exposure_from_polygons()
     """
-    
+
     m_per_point = math.sqrt(area_per_point)
-    
+
     if gdf_poly.crs != "EPSG:4326":
-        raise Exception('''Expected a geographic CRS. 
+        raise Exception('''Expected a geographic CRS.
                         Please re-project to EPSG:4326 first.''')
-    
+
     if gdf_poly.geometry.is_empty.any():
         LOGGER.info("Empty geometries encountered. Skipping those.")
-        
+
     gdf_points = gdf_poly[~gdf_poly.geometry.is_empty].copy()
-    
+
     gdf_points['geometry'] = gdf_poly.apply(
-        lambda row: _interpolate_one_polygon(row.geometry,m_per_point), axis=1)
-    
+        lambda row: _interpolate_one_polygon(row.geometry, m_per_point), axis=1)
+
     return gdf_points.explode()
 
 def latlon_to_geosph_vector(lat, lon, rad=False, basis=False):
@@ -581,29 +580,29 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
     return (dist, vtan) if log else dist
 
 def compute_geodesic_lengths(gdf):
-    """Calculate the great circle (geodesic / spherical) lengths along any 
+    """Calculate the great circle (geodesic / spherical) lengths along any
     (complicated) geometry object, based on the pyproj.Geod implementation.
-    
-    
+
+
     Parameters
     ----------
     gdf : gpd.GeoDataframe with geometrical shapes of which to compute the length
-    
+
     Returns
     -------
-    series : a pandas series (column) with the great circle lengths of the 
+    series : a pandas series (column) with the great circle lengths of the
         objects in metres.
-    
+
     See also
     --------
     * dist_approx() which also offers haversine distance calculation options
      between specific points (not along any geometries however).
     * interpolation.interpolate_lines()
-    
+
     Note
     ----
-    This implementation relies on non-projected crs only, which results in 
-    sea-level distances and hence a certain (minor) level of distortion; cf. 
+    This implementation relies on non-projected crs only, which results in
+    sea-level distances and hence a certain (minor) level of distortion; cf.
     https://gis.stackexchange.com/questions/176442/what-is-the-real-distance-between-positions
     """
     # convert to non-projected crs
@@ -617,23 +616,23 @@ def metres_to_degrees(lat, dist):
     """
     Get an exact estimate for converting grid resolutions in metres to degrees,
     depending on the location on the globe
-    
+
     Parameters
     ----------
-    lat : (float) 
+    lat : (float)
         latitude (in degrees) of the representative location
-    dist : (float) 
+    dist : (float)
         distance in metres which should be converted to degrees lat & lon
-    
+
     Returns
     -------
     res_x, res_y resolutions in degrees
     """
-    
-    m_per_onelon = 40075000*np.cos(lat)/360
-    res_y = dist/m_per_onelon
+
+    m_per_onelon = 40075000 * np.cos(lat) / 360
+    res_y = dist / m_per_onelon
     res_x = (dist/1000) / ONE_LAT_KM
-    
+
     return res_x, res_y
 
 def get_gridcellarea(lat, resolution=0.5, unit='km2'):
