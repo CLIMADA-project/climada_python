@@ -31,8 +31,7 @@ class TestEmanuelFormula(unittest.TestCase):
 
     def test_default_values_pass(self):
         """Compute mdr interpolating values."""
-        imp_fun = ImpfTropCyclone()
-        imp_fun.set_emanuel_usa()
+        imp_fun = ImpfTropCyclone.from_emanuel_usa()
         self.assertEqual(imp_fun.name, 'Emanuel 2011')
         self.assertEqual(imp_fun.haz_type, 'TC')
         self.assertEqual(imp_fun.id, 1)
@@ -58,9 +57,11 @@ class TestEmanuelFormula(unittest.TestCase):
 
     def test_values_pass(self):
         """Compute mdr interpolating values."""
-        imp_fun = ImpfTropCyclone()
-        imp_fun.set_emanuel_usa(impf_id=5, intensity=np.arange(0, 6, 1), v_thresh=2,
-                 v_half=5, scale=0.5)
+        imp_fun = ImpfTropCyclone.from_emanuel_usa(impf_id=5,
+                                                   intensity=np.arange(0, 6, 1),
+                                                   v_thresh=2,
+                                                   v_half=5,
+                                                   scale=0.5)
         self.assertEqual(imp_fun.name, 'Emanuel 2011')
         self.assertEqual(imp_fun.haz_type, 'TC')
         self.assertEqual(imp_fun.id, 5)
@@ -74,16 +75,16 @@ class TestEmanuelFormula(unittest.TestCase):
 
     def test_wrong_shape(self):
         """Set shape parameters."""
-        imp_fun = ImpfTropCyclone()
         with self.assertRaises(ValueError):
-            imp_fun.set_emanuel_usa(impf_id=5, v_thresh=2, v_half=1,
-                                    intensity=np.arange(0, 6, 1))
+            imp_fun = ImpfTropCyclone.from_emanuel_usa(impf_id=5, v_thresh=2,
+                                                       v_half=1,
+                                                       intensity=np.arange(0, 6, 1))
 
     def test_wrong_scale(self):
         """Set shape parameters."""
-        imp_fun = ImpfTropCyclone()
         with self.assertRaises(ValueError):
-            imp_fun.set_emanuel_usa(impf_id=5, scale=2, intensity=np.arange(0, 6, 1))
+            imp_fun = ImpfTropCyclone.from_emanuel_usa(impf_id=5, scale=2,
+                                                       intensity=np.arange(0, 6, 1))
 
 class TestCalibratedImpfSet(unittest.TestCase):
     """Test inititation of IFS with regional calibrated TC IFs

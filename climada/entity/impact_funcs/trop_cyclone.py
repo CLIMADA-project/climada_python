@@ -39,9 +39,19 @@ class ImpfTropCyclone(ImpactFunc):
         ImpactFunc.__init__(self)
         self.haz_type = 'TC'
 
-    def set_emanuel_usa(self, impf_id=1, intensity=np.arange(0, 121, 5),
+    def set_emanuel_usa(self, *args, **kwargs):
+        """This function is deprecated, use from_emanuel_usa() instead."""
+        LOGGER.warning("The use of ImpfTropCyclone.set_emanuel_usa is deprecated."
+                       "Use ImpfTropCyclone.from_emanuel_usa instead.")
+        self.__dict__ = ImpfTropCyclone.from_emanuel_usa(*args, **kwargs).__dict__
+
+    @classmethod
+    def from_emanuel_usa(cls, impf_id=1, intensity=np.arange(0, 121, 5),
                         v_thresh=25.7, v_half=74.7, scale=1.0):
-        """Using the formula of Emanuele 2011.
+        """
+        Init TC impact function using the formula of Kerry Emanuel, 2011:
+        'Global Warming Effects on U.S. Hurricane Damage',
+        https://doi.org/10.1175/WCAS-D-11-00007.1
 
         Parameters
         ----------
@@ -72,15 +82,17 @@ class ImpfTropCyclone(ImpactFunc):
         if scale > 1 or scale <= 0:
             raise ValueError('Scale parameter out of range.')
 
-        self.name = 'Emanuel 2011'
-        self.id = impf_id
-        self.intensity_unit = 'm/s'
-        self.intensity = intensity
-        self.paa = np.ones(intensity.shape)
-        v_temp = (self.intensity - v_thresh) / (v_half - v_thresh)
+        impf = cls()
+        impf.name = 'Emanuel 2011'
+        impf.id = impf_id
+        impf.intensity_unit = 'm/s'
+        impf.intensity = intensity
+        impf.paa = np.ones(intensity.shape)
+        v_temp = (impf.intensity - v_thresh) / (v_half - v_thresh)
         v_temp[v_temp < 0] = 0
-        self.mdd = v_temp**3 / (1 + v_temp**3)
-        self.mdd *= scale
+        impf.mdd = v_temp**3 / (1 + v_temp**3)
+        impf.mdd *= scale
+        return impf
 
 class ImpfSetTropCyclone(ImpactFuncSet):
     """Impact function set (ImpfS) for tropical cyclones."""
