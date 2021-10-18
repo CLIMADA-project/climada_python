@@ -304,8 +304,15 @@ class Centroids():
             'transform': ras_trans,
         }
 
-    def set_lat_lon(self, lat, lon, crs=DEF_CRS):
-        """Set Centroids points from given latitude, longitude and CRS.
+    def set_lat_lon(self, *args, **kwargs):
+        """This function is deprecated, use Centroids.from_lat_lon instead."""
+        LOGGER.warning("The use of Centroids.set_lat_lon is deprecated. "
+                       "Use Centroids.from_lat_lon instead.")
+        self.__dict__ = Centroids.from_lat_lon(*args, **kwargs).__dict__
+
+    @classmethod
+    def from_lat_lon(cls, lat, lon, crs=DEF_CRS):
+        """Create Centroids object from given latitude, longitude and CRS.
 
         Parameters
         ----------
@@ -315,9 +322,16 @@ class Centroids():
             longitude
         crs : dict() or rasterio.crs.CRS, optional
             CRS. Default: DEF_CRS
+
+        Returns
+        -------
+        Centroids
         """
-        self.__init__()
-        self.lat, self.lon, self.geometry = np.asarray(lat), np.asarray(lon), gpd.GeoSeries(crs=crs)
+        centr = cls()
+        centr.lat = np.asarray(lat)
+        centr.lon = np.asarray(lon)
+        centr.geometry = gpd.GeoSeries(crs=crs)
+        return centr
 
     def set_raster_file(self, file_name, band=None, **kwargs):
         """This function is deprecated, use Centroids.from_raster_file
@@ -537,11 +551,10 @@ class Centroids():
         if num_try == len(var_names['field_names']):
             LOGGER.warning("Variables are not under: %s.", var_names['field_names'])
 
-        centr = cls()
         try:
             cen_lat = np.squeeze(cent[var_names['var_name']['lat']])
             cen_lon = np.squeeze(cent[var_names['var_name']['lon']])
-            centr.set_lat_lon(cen_lat, cen_lon)
+            centr = cls.from_lat_lon(cen_lat, cen_lon)
 
             try:
                 centr.dist_coast = np.squeeze(cent[var_names['var_name']['dist_coast']])
@@ -585,11 +598,10 @@ class Centroids():
         if var_names is None:
             var_names = DEF_VAR_EXCEL
 
-        centr = cls()
         try:
             dfr = pd.read_excel(file_name, var_names['sheet_name'])
-            centr.set_lat_lon(dfr[var_names['col_name']['lat']],
-                              dfr[var_names['col_name']['lon']])
+            centr = cls.from_lat_lon(dfr[var_names['col_name']['lat']],
+                                     dfr[var_names['col_name']['lon']])
             try:
                 centr.region_id = dfr[var_names['col_name']['region_id']]
             except KeyError:
@@ -931,8 +943,7 @@ class Centroids():
         if not self.lat.size or not self.lon.size:
             self.set_meta_to_lat_lon()
 
-        centr = Centroids()
-        centr.set_lat_lon(self.lat[sel_cen], self.lon[sel_cen], self.geometry.crs)
+        centr = Centroids.from_lat_lon(self.lat[sel_cen], self.lon[sel_cen], self.geometry.crs)
         if self.area_pixel.size:
             centr.area_pixel = self.area_pixel[sel_cen]
         if self.region_id.size:
@@ -1097,16 +1108,23 @@ class Centroids():
             data = h5py.File(file_data, 'r')
         else:
             data = file_data
-        centr = cls()
+        centr = None
         crs = DEF_CRS
         if data.get('crs'):
             crs = u_coord.to_crs_user_input(data.get('crs')[0])
         if data.get('lat') and data.get('lat').size:
-            centr.set_lat_lon(np.array(data.get('lat')), np.array(data.get('lon')), crs)
+            centr = cls.from_lat_lon(
+                np.array(data.get('lat')),
+                np.array(data.get('lon')),
+                crs=crs)
         elif data.get('latitude') and data.get('latitude').size:
-            centr.set_lat_lon(np.array(data.get('latitude')), np.array(data.get('longitude')), crs)
+            centr = cls.from_lat_lon(
+                np.array(data.get('latitude')),
+                np.array(data.get('longitude')),
+                cr=crs)
         else:
             centr_meta = data.get('meta')
+            centr = cls()
             centr.meta['crs'] = crs
             for key, value in centr_meta.items():
                 if key != 'transform':
@@ -1249,8 +1267,7 @@ def generate_nat_earth_centroids(res_as=360, path=None, dist_coast=False):
     lon, lat = [ar.ravel() for ar in np.meshgrid(lon_dim, lat_dim)]
     natids = np.uint16(u_coord.get_country_code(lat, lon, gridded=False))
 
-    cen = Centroids()
-    cen.set_lat_lon(lat, lon)
+    cen = Centroids.from_lat_lon(lat, lon)
     cen.region_id = natids
     cen.set_lat_lon_to_meta()
     cen.lat = np.array([])

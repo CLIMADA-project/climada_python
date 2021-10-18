@@ -151,10 +151,9 @@ def data_vector():
 class TestVector(unittest.TestCase):
     """Test CentroidsVector class"""
 
-    def test_set_lat_lon_pass(self):
-        """Test set_lat_lon"""
-        centr = Centroids()
-        centr.set_lat_lon(VEC_LAT, VEC_LON)
+    def test_from_lat_lon_pass(self):
+        """Test from_lat_lon"""
+        centr = Centroids.from_lat_lon(VEC_LAT, VEC_LON)
         self.assertTrue(np.allclose(centr.lat, VEC_LAT))
         self.assertTrue(np.allclose(centr.lon, VEC_LON))
         self.assertEqual(centr.crs, DEF_CRS)
@@ -237,8 +236,7 @@ class TestVector(unittest.TestCase):
         vec_data['lon'] = xx.flatten()
         vec_data['lat'] = yy.flatten()
 
-        centr = Centroids()
-        centr.set_lat_lon(vec_data.lat.values, vec_data.lon.values)
+        centr = Centroids.from_lat_lon(vec_data.lat.values, vec_data.lon.values)
         centr.geometry = vec_data.geometry
         centr.set_area_pixel()
         self.assertTrue(np.allclose(centr.area_pixel, np.ones(centr.size)))
@@ -301,8 +299,7 @@ class TestVector(unittest.TestCase):
         """Append points"""
         centr = Centroids()
         centr.lat, centr.lon, centr.geometry = data_vector()
-        centr_bis = Centroids()
-        centr_bis.set_lat_lon(np.array([1, 2, 3]), np.array([4, 5, 6]))
+        centr_bis = Centroids.from_lat_lon(np.array([1, 2, 3]), np.array([4, 5, 6]))
         with self.assertRaises(ValueError):
             centr_bis.append(centr)
         centr.geometry.crs = {'init': 'epsg:4326'}
@@ -320,8 +317,7 @@ class TestVector(unittest.TestCase):
         """Test equal"""
         centr = Centroids()
         centr.lat, centr.lon, centr.geometry = data_vector()
-        centr_bis = Centroids()
-        centr_bis.set_lat_lon(np.array([1, 2, 3]), np.array([4, 5, 6]))
+        centr_bis = Centroids.from_lat_lon(np.array([1, 2, 3]), np.array([4, 5, 6]))
         self.assertFalse(centr.equal(centr_bis))
         self.assertFalse(centr_bis.equal(centr))
         self.assertTrue(centr_bis.equal(centr_bis))
@@ -477,8 +473,7 @@ class TestRaster(unittest.TestCase):
                 self.assertEqual(centr_ras.lon[idx], x)
                 self.assertEqual(centr_ras.lat[idx], y)
 
-        centr_ras = Centroids()
-        centr_ras.set_lat_lon(np.array([0, 0.2, 0.7]), np.array([-0.4, 0.2, 1.1]))
+        centr_ras = Centroids.from_lat_lon(np.array([0, 0.2, 0.7]), np.array([-0.4, 0.2, 1.1]))
         x, y, idx = centr_ras.get_closest_point(0.1, 0.0)
         self.assertEqual(x, 0.2)
         self.assertEqual(y, 0.2)
@@ -672,9 +667,7 @@ class TestReader(unittest.TestCase):
     def test_write_read_points_h5(self):
         file_name = str(DATA_DIR.joinpath('test_centr.h5'))
 
-        centr = Centroids()
-        centr = Centroids()
-        centr.set_lat_lon(VEC_LAT, VEC_LON)
+        centr = Centroids.from_lat_lon(VEC_LAT, VEC_LON)
         centr.write_hdf5(file_name)
 
         centr_read = Centroids.from_hdf5(file_name)
@@ -689,8 +682,7 @@ class TestCentroidsFuncs(unittest.TestCase):
     """Test Centroids methods"""
     def test_select_pass(self):
         """Test set_vector"""
-        centr = Centroids()
-        centr.set_lat_lon(VEC_LAT, VEC_LON)
+        centr = Centroids.from_lat_lon(VEC_LAT, VEC_LON)
 
         centr.region_id = np.zeros(VEC_LAT.size)
         centr.region_id[[100, 200]] = 10
@@ -705,9 +697,8 @@ class TestCentroidsFuncs(unittest.TestCase):
 
     def test_select_extent_pass(self):
         """Test select extent"""
-        centr = Centroids()
-        centr.set_lat_lon(np.array([-5, -3, 0, 3, 5]),
-                          np.array([-180, -175, -170, 170, 175]))
+        centr = Centroids.from_lat_lon(
+            np.array([-5, -3, 0, 3, 5]), np.array([-180, -175, -170, 170, 175]))
         centr.check()
         centr.region_id = np.zeros(len(centr.lat))
         ext_centr = centr.select(extent=[-175, -170, -5, 5])
