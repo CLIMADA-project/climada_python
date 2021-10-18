@@ -173,8 +173,7 @@ class Hazard():
 
         Take hazard values from file:
 
-        >>> haz = Hazard('TC', HAZ_DEMO_MAT)
-        >>> haz.read_mat(HAZ_DEMO_MAT, 'demo')
+        >>> haz = Hazard.from_mat(HAZ_DEMO_MAT, 'demo')
 
         """
         self.tag = TagHazard()
@@ -239,8 +238,9 @@ class Hazard():
         band : list(int), optional
             bands to read (starting at 1), default [1]
         haz_type : str, optional
-            acronym of the hazard type (e.g. 'TC'). Default is None, which will use the 
-            class default ('' for vanilla `Hazard` objects, hard coded in some subclasses)
+            acronym of the hazard type (e.g. 'TC').
+            Default: None, which will use the class default ('' for vanilla `Hazard` objects, and hard coded in some
+            subclasses)
         pool : pathos.pool, optional
             Pool that will be used for parallel computation when applicable.
             Default: None
@@ -404,10 +404,7 @@ class Hazard():
             raise ValueError('Number of intensity files differs from fraction files: %s != %s'
                              % (len(files_intensity), len(files_fraction)))
 
-        if haz_type is None:
-            haz = cls()
-        else:
-            haz = cls(haz_type)
+        haz = cls() if haz_type is None else cls(haz_type)
         haz.tag.file_name = str(files_intensity) + ' ; ' + str(files_fraction)
 
         haz.centroids = Centroids()
@@ -563,8 +560,15 @@ class Hazard():
         self.centroids.meta = meta
         self.check()
 
-    def read_mat(self, file_name, description='', var_names=None):
-        """Read climada hazard generate with the MATLAB code.
+    def read_mat(self, *args, **kwargs):
+        """This function is deprecated, use Hazard.from_mat."""
+        LOGGER.warning("The use of Hazard.read_mat is deprecated."
+                       "Use Hazard.from_mat instead.")
+        self.__dict__ = Hazard.from_mat(*args, **kwargs).__dict__
+
+    @classmethod
+    def from_mat(cls, file_name, description='', var_names=None):
+        """Read climada hazard generate with the MATLAB code in .mat format.
 
         Parameters
         ----------
@@ -576,6 +580,11 @@ class Hazard():
             name of the variables in the file,
             default: DEF_VAR_MAT constant
 
+        Returns
+        -------
+        haz : climada.hazard.Hazard
+            Hazard object from the provided MATLAB file
+
         Raises
         ------
         KeyError
@@ -583,9 +592,9 @@ class Hazard():
         if not var_names:
             var_names = DEF_VAR_MAT
         LOGGER.info('Reading %s', file_name)
-        self.clear()
-        self.tag.file_name = str(file_name)
-        self.tag.description = description
+        haz = cls()
+        haz.tag.file_name = str(file_name)
+        haz.tag.description = description
         try:
             data = u_hdf5.read(file_name)
             try:
@@ -594,14 +603,22 @@ class Hazard():
                 pass
 
             haz_type = u_hdf5.get_string(data[var_names['var_name']['per_id']])
-            self.tag.haz_type = haz_type
-            self.centroids.read_mat(file_name, var_names=var_names['var_cent'])
-            self._read_att_mat(data, file_name, var_names)
+            haz.tag.haz_type = haz_type
+            haz.centroids.read_mat(file_name, var_names=var_names['var_cent'])
+            haz._read_att_mat(data, file_name, var_names)
         except KeyError as var_err:
             raise KeyError("Variable not in MAT file: " + str(var_err)) from var_err
+        return haz
 
-    def read_excel(self, file_name, description='', var_names=None):
-        """Read climada hazard generate with the MATLAB code.
+    def read_excel(self, *args, **kwargs):
+        """This function is deprecated, use Hazard.from_mat."""
+        LOGGER.warning("The use of Hazard.read_excel is deprecated."
+                       "Use Hazard.from_excel instead.")
+        self.__dict__ = Hazard.from_excel(*args, **kwargs).__dict__
+
+    @classmethod
+    def from_excel(cls, file_name, description='', var_names=None, haz_type=None):
+        """Read climada hazard generated with the MATLAB code in Excel format.
 
         Parameters
         ----------
@@ -609,11 +626,17 @@ class Hazard():
             absolute file name
         description : str, optional
             description of the data
-        centroids : Centroids, optional
-            provide centroids if not contained
-            in the file
         var_names (dict, default): name of the variables in the file,
             default: DEF_VAR_EXCEL constant
+        haz_type : str, optional
+            acronym of the hazard type (e.g. 'TC').
+            Default: None, which will use the class default ('' for vanilla `Hazard` objects, and hard coded in some
+            subclasses)
+
+        Returns
+        -------
+        haz : climada.hazard.Hazard
+            Hazard object from the provided Excel file
 
         Raises
         ------
@@ -622,16 +645,15 @@ class Hazard():
         if not var_names:
             var_names = DEF_VAR_EXCEL
         LOGGER.info('Reading %s', file_name)
-        haz_type = self.tag.haz_type
-        self.clear()
-        self.tag.file_name = file_name
-        self.tag.haz_type = haz_type
-        self.tag.description = description
+        haz = cls() if haz_type is None else cls(haz_type)
+        haz.tag.file_name = file_name
+        haz.tag.description = description
         try:
-            self.centroids.read_excel(file_name, var_names=var_names['col_centroids'])
-            self._read_att_excel(file_name, var_names)
+            haz.centroids.read_excel(file_name, var_names=var_names['col_centroids'])
+            haz._read_att_excel(file_name, var_names)
         except KeyError as var_err:
             raise KeyError("Variable not in Excel file: " + str(var_err)) from var_err
+        return haz
 
     def select(self, event_names=None, date=None, orig=None, reg_id=None, reset_frequency=False):
         """Select events matching provided criteria
@@ -1107,46 +1129,60 @@ class Hazard():
                 hf_data.create_dataset(var_name, data=var_val)
         hf_data.close()
 
-    def read_hdf5(self, file_name):
+    def read_hdf5(self, *args, **kwargs):
+        """This function is deprecated, use Hazard.from_hdf5."""
+        LOGGER.warning("The use of Hazard.read_hdf5 is deprecated."
+                       "Use Hazard.from_hdf5 instead.")
+        self.__dict__ = Hazard.from_hdf5(*args, **kwargs).__dict__
+
+    @classmethod
+    def from_hdf5(cls, file_name):
         """Read hazard in hdf5 format.
 
         Parameters
         ----------
         file_name: str
             file name to read, with h5 format
+
+        Returns
+        -------
+        haz : climada.hazard.Hazard
+            Hazard object from the provided MATLAB file
+
         """
         LOGGER.info('Reading %s', file_name)
-        self.clear()
+        haz = cls()
         hf_data = h5py.File(file_name, 'r')
-        for (var_name, var_val) in self.__dict__.items():
+        for (var_name, var_val) in haz.__dict__.items():
             if var_name != 'tag' and var_name not in hf_data.keys():
                 continue
             if var_name == 'centroids':
-                self.centroids.read_hdf5(hf_data.get(var_name))
+                haz.centroids.read_hdf5(hf_data.get(var_name))
             elif var_name == 'tag':
-                self.tag.haz_type = u_hdf5.to_string(hf_data.get('haz_type')[0])
-                self.tag.file_name = u_hdf5.to_string(hf_data.get('file_name')[0])
-                self.tag.description = u_hdf5.to_string(hf_data.get('description')[0])
+                haz.tag.haz_type = u_hdf5.to_string(hf_data.get('haz_type')[0])
+                haz.tag.file_name = u_hdf5.to_string(hf_data.get('file_name')[0])
+                haz.tag.description = u_hdf5.to_string(hf_data.get('description')[0])
             elif isinstance(var_val, np.ndarray) and var_val.ndim == 1:
-                setattr(self, var_name, np.array(hf_data.get(var_name)))
+                setattr(haz, var_name, np.array(hf_data.get(var_name)))
             elif isinstance(var_val, sparse.csr_matrix):
                 hf_csr = hf_data.get(var_name)
                 if isinstance(hf_csr, h5py.Dataset):
-                    setattr(self, var_name, sparse.csr_matrix(hf_csr))
+                    setattr(haz, var_name, sparse.csr_matrix(hf_csr))
                 else:
-                    setattr(self, var_name, sparse.csr_matrix((hf_csr['data'][:],
+                    setattr(haz, var_name, sparse.csr_matrix((hf_csr['data'][:],
                                                                hf_csr['indices'][:],
                                                                hf_csr['indptr'][:]),
                                                               hf_csr.attrs['shape']))
             elif isinstance(var_val, str):
-                setattr(self, var_name, u_hdf5.to_string(hf_data.get(var_name)[0]))
+                setattr(haz, var_name, u_hdf5.to_string(hf_data.get(var_name)[0]))
             elif isinstance(var_val, list):
                 var_value = [x for x in map(u_hdf5.to_string, np.array(hf_data.get(var_name)).tolist())]
-                setattr(self, var_name, var_value)
+                setattr(haz, var_name, var_value)
             else:
-                setattr(self, var_name, hf_data.get(var_name))
+                setattr(haz, var_name, hf_data.get(var_name))
 
         hf_data.close()
+        return haz
 
     def _set_coords_centroids(self):
         """If centroids are raster, set lat and lon coordinates"""

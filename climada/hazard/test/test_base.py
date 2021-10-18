@@ -180,8 +180,7 @@ class TestLoader(unittest.TestCase):
         self.assertIn('No event with id: 1050', str(cm.exception))
 
     def test_get_date_strings_pass(self):
-        haz = Hazard('TC')
-        haz.read_mat(HAZ_TEST_MAT)
+        haz = Hazard.from_mat(HAZ_TEST_MAT)
         haz.event_name[5] = 'HAZEL'
         haz.event_name[10] = 'HAZEL'
 
@@ -834,8 +833,7 @@ class TestStats(unittest.TestCase):
 
     def test_degenerate_pass(self):
         """Test degenerate call."""
-        haz = Hazard('TC')
-        haz.read_mat(HAZ_TEST_MAT)
+        haz = Hazard.from_mat(HAZ_TEST_MAT)
         return_period = np.array([25, 50, 100, 250])
         haz.intensity = sparse.csr.csr_matrix(np.zeros(haz.intensity.shape))
         inten_stats = haz.local_exceedance_inten(return_period)
@@ -843,8 +841,7 @@ class TestStats(unittest.TestCase):
 
     def test_ref_all_pass(self):
         """Compare against reference."""
-        haz = Hazard('TC')
-        haz.read_mat(HAZ_TEST_MAT)
+        haz = Hazard.from_mat(HAZ_TEST_MAT)
         return_period = np.array([25, 50, 100, 250])
         inten_stats = haz.local_exceedance_inten(return_period)
 
@@ -862,8 +859,7 @@ class TestYearset(unittest.TestCase):
 
     def test_ref_pass(self):
         """Test against matlab reference."""
-        haz = Hazard('TC')
-        haz.read_mat(HAZ_TEST_MAT)
+        haz = Hazard.from_mat(HAZ_TEST_MAT)
         orig_year_set = haz.calc_year_set()
 
         self.assertTrue(np.array_equal(np.array(list(orig_year_set.keys())),
@@ -954,8 +950,7 @@ class TestReaderMat(unittest.TestCase):
     def test_hazard_pass(self):
         """Read a hazard mat file correctly."""
         # Read demo excel file
-        hazard = Hazard('TC')
-        hazard.read_mat(HAZ_TEST_MAT)
+        hazard = Hazard.from_mat(HAZ_TEST_MAT)
 
         # Check results
         n_events = 14450
@@ -1016,8 +1011,7 @@ class TestHDF5(unittest.TestCase):
         file_name = str(DATA_DIR.joinpath('test_haz.h5'))
 
         # Read demo excel file
-        hazard = Hazard('TC')
-        hazard.read_mat(HAZ_TEST_MAT)
+        hazard = Hazard.from_mat(HAZ_TEST_MAT)
         hazard.event_name = list(map(str, hazard.event_name))
         for todense_flag in [False, True]:
             if todense_flag:

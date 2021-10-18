@@ -80,8 +80,7 @@ class TestApply(unittest.TestCase):
         meas.read_mat(ENT_TEST_MAT)
         act_1 = meas.get_measure(name='Seawall')[0]
 
-        haz = Hazard('TC')
-        haz.read_mat(HAZ_TEST_MAT)
+        haz = Hazard.from_mat(HAZ_TEST_MAT)
         exp = Exposures()
         exp.from_mat(ENT_TEST_MAT)
         exp.gdf.rename(columns={'impf': 'impf_TC'}, inplace=True)
@@ -117,8 +116,7 @@ class TestApply(unittest.TestCase):
         act_1 = meas.get_measure(name='Seawall')[0]
         act_1.exp_region_id = [1]
 
-        haz = Hazard('TC')
-        haz.read_mat(HAZ_TEST_MAT)
+        haz = Hazard.from_mat(HAZ_TEST_MAT)
         exp = Exposures()
         exp.from_mat(ENT_TEST_MAT)
         exp.gdf['region_id'] = np.zeros(exp.gdf.shape[0])
@@ -264,8 +262,7 @@ class TestApply(unittest.TestCase):
         imp_set = ImpactFuncSet()
         imp_set.read_mat(ENT_TEST_MAT)
 
-        haz = Hazard('TC')
-        haz.read_mat(HAZ_TEST_MAT)
+        haz = Hazard.from_mat(HAZ_TEST_MAT)
         exp.assign_centroids(haz)
 
         new_exp = copy.deepcopy(exp)
@@ -348,9 +345,7 @@ class TestApply(unittest.TestCase):
 
     def test_apply_ref_pass(self):
         """Test apply method: apply all measures but insurance"""
-        hazard = Hazard('TC')
-        hazard.read_mat(HAZ_TEST_MAT)
-        hazard.haz_type = 'TC'
+        hazard = Hazard.from_mat(HAZ_TEST_MAT)
 
         entity = Entity()
         entity.read_mat(ENT_TEST_MAT)
@@ -387,8 +382,7 @@ class TestApply(unittest.TestCase):
     def test_calc_impact_pass(self):
         """Test calc_impact method: apply all measures but insurance"""
 
-        hazard = Hazard('TC')
-        hazard.read_mat(HAZ_TEST_MAT)
+        hazard = Hazard.from_mat(HAZ_TEST_MAT)
 
         entity = Entity()
         entity.read_mat(ENT_TEST_MAT)
@@ -426,8 +420,7 @@ class TestApply(unittest.TestCase):
     def test_calc_impact_transf_pass(self):
         """Test calc_impact method: apply all measures and insurance"""
 
-        hazard = Hazard('TC')
-        hazard.read_mat(HAZ_TEST_MAT)
+        hazard = Hazard.from_mat(HAZ_TEST_MAT)
 
         entity = Entity()
         entity.read_mat(ENT_TEST_MAT)
