@@ -73,7 +73,7 @@ class TestCentroids(unittest.TestCase):
         haz_fl.event_name = ['1']
         haz_fl.intensity = sparse.csr_matrix(np.array([0.5, 0.2, 0.1]))
         haz_fl.fraction = sparse.csr_matrix(np.array([0.5, 0.2, 0.1]) / 2)
-        haz_fl.centroids.set_lat_lon(np.array([1, 2, 3]), np.array([1, 2, 3]))
+        haz_fl.centroids = Centroids.from_lat_lon(np.array([1, 2, 3]), np.array([1, 2, 3]))
         haz_fl.check()
 
         haz_fl.write_raster(DATA_DIR.joinpath('test_write_hazard.tif'))
@@ -94,7 +94,7 @@ class TestCentroids(unittest.TestCase):
         haz_fl.event_name = ['1']
         haz_fl.intensity = sparse.csr_matrix(np.array([0.5, 0.2, 0.1]))
         haz_fl.fraction = sparse.csr_matrix(np.array([0.5, 0.2, 0.1]) / 2)
-        haz_fl.centroids.set_lat_lon(np.array([1, 2, 3]), np.array([1, 2, 3]))
+        haz_fl.centroids = Centroids.from_lat_lon(np.array([1, 2, 3]), np.array([1, 2, 3]))
         haz_fl.check()
 
         haz_fl.write_raster(DATA_DIR.joinpath('test_write_hazard.tif'), intensity=False)

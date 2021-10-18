@@ -41,8 +41,7 @@ def dummy_hazard():
     hazard = Hazard('TC')
     hazard.tag.file_name = 'file1.mat'
     hazard.tag.description = 'Description 1'
-    hazard.centroids = Centroids()
-    hazard.centroids.set_lat_lon(np.array([1, 3, 5]), np.array([2, 4, 6]))
+    hazard.centroids = Centroids.from_lat_lon(np.array([1, 3, 5]), np.array([2, 4, 6]))
     hazard.event_id = np.array([1, 2, 3, 4])
     hazard.event_name = ['ev1', 'ev2', 'ev3', 'ev4']
     hazard.date = np.array([1, 2, 3, 4])
@@ -67,8 +66,7 @@ class TestLoader(unittest.TestCase):
     def good_hazard():
         """Define well a hazard"""
         haz = Hazard('TC')
-        haz.centroids = Centroids()
-        haz.centroids.set_lat_lon(np.array([1, 3]), np.array([2, 3]))
+        haz.centroids = Centroids.from_lat_lon(np.array([1, 3]), np.array([2, 3]))
         haz.centroids.region_id = np.array([1, 2])
         haz.event_id = np.array([1, 2, 3])
         haz.event_name = ['A', 'B', 'C']
@@ -231,8 +229,7 @@ class TestRemoveDupl(unittest.TestCase):
         haz2 = Hazard('TC')
         haz2.tag.file_name = 'file2.mat',
         haz2.tag.description = 'Description 2'
-        haz2.centroids = Centroids()
-        haz2.centroids.set_lat_lon(np.array([7, 9, 11]), np.array([8, 10, 12]))
+        haz2.centroids = Centroids.from_lat_lon(np.array([7, 9, 11]), np.array([8, 10, 12]))
 
         haz2.event_id = haz1.event_id
         haz2.event_name = haz1.event_name
@@ -589,8 +586,7 @@ class TestAppend(unittest.TestCase):
         haz2 = Hazard('TC')
         haz2.tag.file_name = 'file2.mat'
         haz2.tag.description = 'Description 2'
-        haz2.centroids = Centroids()
-        haz2.centroids.set_lat_lon(np.array([7, 9, 11]), np.array([8, 10, 12]))
+        haz2.centroids = Centroids.from_lat_lon(np.array([7, 9, 11]), np.array([8, 10, 12]))
         haz2.event_id = np.array([5, 6, 7, 8])
         haz2.event_name = ['ev5', 'ev6', 'ev7', 'ev8']
         haz2.frequency = np.array([0.9, 0.75, 0.75, 0.22])
@@ -644,8 +640,7 @@ class TestAppend(unittest.TestCase):
         haz2 = Hazard('TC')
         haz2.tag.file_name = 'file2.mat'
         haz2.tag.description = 'Description 2'
-        haz2.centroids = Centroids()
-        haz2.centroids.set_lat_lon(np.array([7, 9, 11]), np.array([8, 10, 12]))
+        haz2.centroids = Centroids.from_lat_lon(np.array([7, 9, 11]), np.array([8, 10, 12]))
 
         haz2.event_id = haz1.event_id
         haz2.event_name = haz1.event_name.copy()
@@ -707,8 +702,7 @@ class TestAppend(unittest.TestCase):
         haz_1 = TCHazard()
         haz_1.tag.file_name = 'file1.mat'
         haz_1.tag.description = 'Description 1'
-        haz_1.centroids = Centroids()
-        haz_1.centroids.set_lat_lon(np.array([1, 3, 5]), np.array([2, 4, 6]))
+        haz_1.centroids = Centroids.from_lat_lon(np.array([1, 3, 5]), np.array([2, 4, 6]))
         haz_1.event_id = np.array([1])
         haz_1.event_name = ['ev1']
         haz_1.date = np.array([1])
@@ -721,8 +715,7 @@ class TestAppend(unittest.TestCase):
         haz_2 = TCHazard()
         haz_2.tag.file_name = 'file2.mat'
         haz_2.tag.description = 'Description 2'
-        haz_2.centroids = Centroids()
-        haz_2.centroids.set_lat_lon(np.array([1, 3, 5]), np.array([2, 4, 6]))
+        haz_2.centroids = Centroids.from_lat_lon(np.array([1, 3, 5]), np.array([2, 4, 6]))
         haz_2.event_id = np.array([1])
         haz_2.event_name = ['ev2']
         haz_2.date = np.array([2])
@@ -1112,7 +1105,7 @@ class TestCentroids(unittest.TestCase):
         haz_fl.event_name = ['1']
         haz_fl.intensity = sparse.csr_matrix(np.array([0.5, 0.2, 0.1]))
         haz_fl.fraction = sparse.csr_matrix(np.array([0.5, 0.2, 0.1]) / 2)
-        haz_fl.centroids.set_lat_lon(np.array([1, 2, 3]), np.array([1, 2, 3]))
+        haz_fl.centroids = Centroids.from_lat_lon(np.array([1, 2, 3]), np.array([1, 2, 3]))
         haz_fl.check()
 
         haz_fl.reproject_vector(dst_crs={'init': 'epsg:2202'})
@@ -1134,7 +1127,7 @@ class TestCentroids(unittest.TestCase):
         haz_fl.event_name = ['1']
         haz_fl.intensity = sparse.csr_matrix(np.array([0.5, 0.2, 0.1]))
         haz_fl.fraction = sparse.csr_matrix(np.array([0.5, 0.2, 0.1]) / 2)
-        haz_fl.centroids.set_lat_lon(np.array([1, 2, 3]), np.array([1, 2, 3]))
+        haz_fl.centroids = Centroids.from_lat_lon(np.array([1, 2, 3]), np.array([1, 2, 3]))
         haz_fl.check()
 
         haz_fl.vector_to_raster()

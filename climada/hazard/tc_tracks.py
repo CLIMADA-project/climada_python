@@ -1235,9 +1235,7 @@ class TCTracks():
         lat = np.arange(bounds[1] + 0.5 * res_deg, bounds[3], res_deg)
         lon = np.arange(bounds[0] + 0.5 * res_deg, bounds[2], res_deg)
         lon, lat = [ar.ravel() for ar in np.meshgrid(lon, lat)]
-        centroids = Centroids()
-        centroids.set_lat_lon(lat, lon)
-        return centroids
+        return Centroids.from_lat_lon(lat, lon)
 
     def plot(self, axis=None, figsize=(9, 13), legend=True, adapt_fontsize=True, **kwargs):
         """Track over earth. Historical events are blue, probabilistic black.
