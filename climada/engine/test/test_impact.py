@@ -120,8 +120,7 @@ class TestOneExposure(unittest.TestCase):
         ent.check()
 
         # Read default hazard file
-        hazard = Hazard('TC')
-        hazard.read_mat(HAZ_TEST_MAT)
+        hazard = Hazard.from_mat(HAZ_TEST_MAT, haz_type='TC')
         # Create impact object
         impact = Impact()
         impact.at_event = np.zeros(hazard.intensity.shape[0])
@@ -172,13 +171,11 @@ class TestCalc(unittest.TestCase):
     def test_ref_value_pass(self):
         """Test result against reference value"""
         # Read default entity values
-        ent = Entity()
-        ent.read_excel(ENT_DEMO_TODAY)
+        ent = Entity.from_excel(ENT_DEMO_TODAY)
         ent.check()
 
         # Read default hazard file
-        hazard = Hazard('TC')
-        hazard.read_mat(HAZ_TEST_MAT)
+        hazard = Hazard.from_mat(HAZ_TEST_MAT, haz_type='TC')
         # Create impact object
         impact = Impact()
 
@@ -215,13 +212,11 @@ class TestCalc(unittest.TestCase):
     def test_calc_imp_mat_pass(self):
         """Test save imp_mat"""
         # Read default entity values
-        ent = Entity()
-        ent.read_excel(ENT_DEMO_TODAY)
+        ent = Entity.from_excel(ENT_DEMO_TODAY)
         ent.check()
 
         # Read default hazard file
-        hazard = Hazard('TC')
-        hazard.read_mat(HAZ_TEST_MAT)
+        hazard = Hazard.from_mat(HAZ_TEST_MAT, haz_type='TC')
         # Create impact object
         impact = Impact()
 
@@ -241,16 +236,14 @@ class TestCalc(unittest.TestCase):
 
     def test_calc_impf_pass(self):
         """Execute when no impf_HAZ present, but only impf_"""
-        ent = Entity()
-        ent.read_excel(ENT_DEMO_TODAY)
+        ent = Entity.from_excel(ENT_DEMO_TODAY)
         self.assertTrue('impf_TC' in ent.exposures.gdf.columns)
         ent.exposures.gdf.rename(columns={'impf_TC': 'impf_'}, inplace=True)
         self.assertFalse('impf_TC' in ent.exposures.gdf.columns)
         ent.check()
 
         # Read default hazard file
-        hazard = Hazard('TC')
-        hazard.read_mat(HAZ_TEST_MAT)
+        hazard = Hazard.from_mat(HAZ_TEST_MAT, haz_type='TC')
         # Create impact object
         impact = Impact()
         impact.calc(ent.exposures, ent.impact_funcs, hazard)
@@ -419,20 +412,17 @@ class TestIO(unittest.TestCase):
 
     def test_write_read_excel_pass(self):
         """Test write and read in excel"""
-        ent = Entity()
-        ent.read_excel(ENT_DEMO_TODAY)
+        ent = Entity.from_excel(ENT_DEMO_TODAY)
         ent.check()
 
-        hazard = Hazard('TC')
-        hazard.read_mat(HAZ_TEST_MAT)
+        hazard = Hazard.from_mat(HAZ_TEST_MAT, haz_type='TC')
         imp_write = Impact()
         ent.exposures.assign_centroids(hazard)
         imp_write.calc(ent.exposures, ent.impact_funcs, hazard)
         file_name = DATA_FOLDER.joinpath('test.xlsx')
         imp_write.write_excel(file_name)
 
-        imp_read = Impact()
-        imp_read.read_excel(file_name)
+        imp_read = Impact.from_excel(file_name)
 
         np.testing.assert_array_equal(imp_write.event_id, imp_read.event_id)
         np.testing.assert_array_equal(imp_write.date, imp_read.date)
@@ -470,13 +460,11 @@ class TestRPmatrix(unittest.TestCase):
     def test_local_exceedance_imp_pass(self):
         """Test calc local impacts per return period"""
         # Read default entity values
-        ent = Entity()
-        ent.read_excel(ENT_DEMO_TODAY)
+        ent = Entity.from_excel(ENT_DEMO_TODAY)
         ent.check()
 
         # Read default hazard file
-        hazard = Hazard('TC')
-        hazard.read_mat(HAZ_TEST_MAT)
+        hazard = Hazard.from_mat(HAZ_TEST_MAT, haz_type='TC')
         # Create impact object
         impact = Impact()
         # Assign centroids to exposures
@@ -661,13 +649,11 @@ class TestSelect(unittest.TestCase):
         """ test select same impact with event name, id and date """
 
         # Read default entity values
-        ent = Entity()
-        ent.read_excel(ENT_DEMO_TODAY)
+        ent = Entity.from_excel(ENT_DEMO_TODAY)
         ent.check()
 
         # Read default hazard file
-        hazard = Hazard('TC')
-        hazard.read_mat(HAZ_TEST_MAT)
+        hazard = Hazard.from_mat(HAZ_TEST_MAT, haz_type='TC')
         # Create impact object
         imp = Impact()
 
