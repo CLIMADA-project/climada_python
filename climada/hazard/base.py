@@ -611,7 +611,7 @@ class Hazard():
         return haz
 
     def read_excel(self, *args, **kwargs):
-        """This function is deprecated, use Hazard.from_mat."""
+        """This function is deprecated, use Hazard.from_excel."""
         LOGGER.warning("The use of Hazard.read_excel is deprecated."
                        "Use Hazard.from_excel instead.")
         self.__dict__ = Hazard.from_excel(*args, **kwargs).__dict__
