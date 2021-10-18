@@ -698,8 +698,7 @@ class Client():
             for dsf in dataset.files:
                 if dsf.file_format == 'hdf5':
                     exposures_file = self.download_file(target_dir, dsf)
-                    exposures = Exposures()
-                    exposures.read_hdf5(exposures_file)
+                    exposures = Exposures.from_hdf5(exposures_file)
                     exposures_list.append(exposures)
         if not exposures_list:
             raise ValueError("no exposures files found in datasets")

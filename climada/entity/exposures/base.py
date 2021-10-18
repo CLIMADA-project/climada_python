@@ -419,7 +419,14 @@ class Exposures():
         self.gdf['latitude'] = self.gdf.geometry[:].y
         self.gdf['longitude'] = self.gdf.geometry[:].x
 
-    def set_from_raster(self, file_name, band=1, src_crs=None, window=False,
+    def set_from_raster(self, *args, **kwargs):
+        """This function is deprecated, use Exposures.from_raster instead."""
+        LOGGER.warning("The use of Exposures.set_from_raster is deprecated."
+                       "Use Exposures.from_raster instead.")
+        self.__dict__ = Exposures.from_raster(*args, **kwargs).__dict__
+
+    @classmethod
+    def from_raster(cls, file_name, band=1, src_crs=None, window=False,
                         geometry=False, dst_crs=False, transform=None,
                         width=None, height=None, resampling=Resampling.nearest):
         """Read raster data and set latitude, longitude, value and meta
@@ -448,11 +455,16 @@ class Exposures():
         resampling : rasterio.warp,.Resampling optional
             resampling
             function used for reprojection to dst_crs
+
+        returns
+        --------
+        Exposures
         """
-        if 'geometry' in self.gdf:
+        exp = cls()
+        if 'geometry' in exp.gdf:
             raise ValueError("there is already a geometry column defined in the GeoDataFrame")
-        self.tag = Tag()
-        self.tag.file_name = str(file_name)
+        exp.tag = Tag()
+        exp.tag.file_name = str(file_name)
         meta, value = u_coord.read_raster(file_name, [band], src_crs, window,
                                           geometry, dst_crs, transform, width,
                                           height, resampling)
@@ -462,12 +474,13 @@ class Exposures():
         x_grid, y_grid = np.meshgrid(np.arange(ulx + xres / 2, lrx, xres),
                                      np.arange(uly + yres / 2, lry, yres))
 
-        if self.crs is None:
-            self.set_crs()
-        self.gdf['longitude'] = x_grid.flatten()
-        self.gdf['latitude'] = y_grid.flatten()
-        self.gdf['value'] = value.reshape(-1)
-        self.meta = meta
+        if exp.crs is None:
+            exp.set_crs()
+        exp.gdf['longitude'] = x_grid.flatten()
+        exp.gdf['latitude'] = y_grid.flatten()
+        exp.gdf['value'] = value.reshape(-1)
+        exp.meta = meta
+        return exp
 
     def plot_scatter(self, mask=None, ignore_zero=False, pop_name=True,
                      buffer=0.0, extend='neither', axis=None, figsize=(9, 13),
@@ -743,7 +756,14 @@ class Exposures():
         store.get_storer('exposures').attrs.metadata = var_meta
         store.close()
 
-    def read_hdf5(self, file_name):
+    def read_hdf5(self, *args, **kwargs):
+        """This function is deprecated, use Exposures.from_hdf5 instead."""
+        LOGGER.warning("The use of Exposures.read_hdf5 is deprecated."
+                       "Use Exposures.from_hdf5 instead.")
+        self.__dict__ = Exposures.from_hdf5(*args, **kwargs).__dict__
+
+    @classmethod
+    def from_hdf5(cls, file_name):
         """Read data frame and metadata in hdf5 format
 
         Parameters
@@ -753,6 +773,10 @@ class Exposures():
         additional_vars : list
             list of additional variable names to read that
             are not in exposures.base._metadata
+
+        Returns
+        -------
+        Exposures
         """
         LOGGER.info('Reading %s', file_name)
         with pd.HDFStore(file_name) as store:
@@ -761,12 +785,20 @@ class Exposures():
             crs = metadata.get('crs', metadata.get('_crs'))
             if crs is None and metadata.get('meta'):
                 crs = metadata['meta'].get('crs')
-            self.__init__(store['exposures'], crs=crs)
+            exp = cls(store['exposures'], crs=crs)
             for key, val in metadata.items():
-                if key in type(self)._metadata:
-                    setattr(self, key, val)
+                if key in type(exp)._metadata:
+                    setattr(exp, key, val)
+        return exp
 
-    def read_mat(self, file_name, var_names=None):
+    def read_mat(self, *args, **kwargs):
+        """This function is deprecated, use Exposures.from_mat instead."""
+        LOGGER.warning("The use of Exposures.read_mat is deprecated."
+                       "Use Exposures.from_mat instead.")
+        self.__dict__ = Exposures.from_mat(*args, **kwargs).__dict__
+
+    @classmethod
+    def from_mat(cls, file_name, var_names=None):
         """Read MATLAB file and store variables in exposures.
 
         Parameters
@@ -776,6 +808,10 @@ class Exposures():
         var_names : dict, optional
             dictionary containing the name of the
             MATLAB variables. Default: DEF_VAR_MAT.
+
+        Returns
+        -------
+        Exposures
         """
         LOGGER.info('Reading %s', file_name)
         if not var_names:
@@ -796,10 +832,11 @@ class Exposures():
         except KeyError as var_err:
             raise KeyError(f"Variable not in MAT file: {var_names.get('field_name')}")\
                 from var_err
+        exp = cls()
+        exp.set_gdf(GeoDataFrame(data=exposures))
 
-        self.set_gdf(GeoDataFrame(data=exposures))
-
-        _read_mat_metadata(self, data, file_name, var_names)
+        _read_mat_metadata(exp, data, file_name, var_names)
+        return exp
 
     #
     # Extends the according geopandas method

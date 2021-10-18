@@ -1049,8 +1049,7 @@ class TestCentroids(unittest.TestCase):
 
     def test_reproject_raster_pass(self):
         """Test reproject_raster reference."""
-        haz_fl = Hazard('FL')
-        haz_fl.set_raster([HAZ_DEMO_FL])
+        haz_fl = Hazard.from_raster([HAZ_DEMO_FL])
         haz_fl.check()
 
         haz_fl.reproject_raster(dst_crs={'init': 'epsg:2202'})
@@ -1069,8 +1068,7 @@ class TestCentroids(unittest.TestCase):
 
     def test_raster_to_vector_pass(self):
         """Test raster_to_vector method"""
-        haz_fl = Hazard('FL')
-        haz_fl.set_raster([HAZ_DEMO_FL])
+        haz_fl = Hazard.from_raster([HAZ_DEMO_FL], haz_type='FL')
         haz_fl.check()
         meta_orig = haz_fl.centroids.meta
         inten_orig = haz_fl.intensity

@@ -244,8 +244,7 @@ class Measure():
 
         if isinstance(self.exposures_set, (str, Path)):
             LOGGER.debug('Setting new exposures %s', self.exposures_set)
-            new_exp = Exposures()
-            new_exp.read_hdf5(self.exposures_set)
+            new_exp = Exposures.from_hdf5(self.exposures_set)
             new_exp.check()
         elif isinstance(self.exposures_set, Exposures):
             LOGGER.debug('Setting new exposures. ')

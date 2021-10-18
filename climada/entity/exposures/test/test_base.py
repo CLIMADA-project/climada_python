@@ -58,8 +58,7 @@ class TestFuncs(unittest.TestCase):
         """Check that attribute `assigned` is correctly set."""
         np_rand = np.random.RandomState(123456789)
 
-        haz = Hazard('FL')
-        haz.set_raster([HAZ_DEMO_FL], window=Window(10, 20, 50, 60))
+        haz = Hazard.from_raster([HAZ_DEMO_FL], haz_type='FL', window=Window(10, 20, 50, 60))
         haz.raster_to_vector()
         ncentroids = haz.centroids.size
 
@@ -82,9 +81,8 @@ class TestFuncs(unittest.TestCase):
             np.testing.assert_array_equal(exp.gdf[INDICATOR_CENTR + 'FL'].values, expected_result)
 
     def test_read_raster_pass(self):
-        """set_from_raster"""
-        exp = Exposures()
-        exp.set_from_raster(HAZ_DEMO_FL, window=Window(10, 20, 50, 60))
+        """from_raster"""
+        exp = Exposures.from_raster(HAZ_DEMO_FL, window=Window(10, 20, 50, 60))
         exp.check()
         self.assertTrue(u_coord.equal_crs(exp.crs, DEF_CRS))
         self.assertAlmostEqual(exp.gdf['latitude'].max(),
@@ -143,24 +141,20 @@ class TestFuncs(unittest.TestCase):
 
     def test_assign_raster_same_pass(self):
         """Test assign_centroids with raster hazard"""
-        exp = Exposures()
-        exp.set_from_raster(HAZ_DEMO_FL, window=Window(10, 20, 50, 60))
+        exp = Exposures.from_raster(HAZ_DEMO_FL, window=Window(10, 20, 50, 60))
         exp.check()
-        haz = Hazard('FL')
-        haz.set_raster([HAZ_DEMO_FL], window=Window(10, 20, 50, 60))
+        haz = Hazard.from_raster([HAZ_DEMO_FL], haz_type='FL', window=Window(10, 20, 50, 60))
         exp.assign_centroids(haz)
         np.testing.assert_array_equal(exp.gdf[INDICATOR_CENTR + 'FL'].values,
                                       np.arange(haz.centroids.size, dtype=int))
 
     def test_assign_large_hazard_subset_pass(self):
         """Test assign_centroids with raster hazard"""
-        exp = Exposures()
-        exp.set_from_raster(HAZ_DEMO_FL, window=Window(10, 20, 50, 60))
+        exp = Exposures.from_raster(HAZ_DEMO_FL, window=Window(10, 20, 50, 60))
         exp.gdf.latitude[[0, 1]] = exp.gdf.latitude[[1, 0]]
         exp.gdf.longitude[[0, 1]] = exp.gdf.longitude[[1, 0]]
         exp.check()
-        haz = Hazard('FL')
-        haz.set_raster([HAZ_DEMO_FL])
+        haz = Hazard.from_raster([HAZ_DEMO_FL], haz_type='FL')
         haz.raster_to_vector()
         exp.assign_centroids(haz)
         assigned_centroids = haz.centroids.select(sel_cen=exp.gdf[INDICATOR_CENTR + 'FL'].values)
@@ -245,8 +239,7 @@ class TestIO(unittest.TestCase):
         file_name = DATA_DIR.joinpath('test_hdf5_exp.h5')
         exp_df.write_hdf5(file_name)
 
-        exp_read = Exposures()
-        exp_read.read_hdf5(file_name)
+        exp_read = Exposures.from_hdf5(file_name)
 
         self.assertEqual(exp_df.ref_year, exp_read.ref_year)
         self.assertEqual(exp_df.value_unit, exp_read.value_unit)
