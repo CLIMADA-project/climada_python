@@ -297,6 +297,12 @@ class TropCyclone(Hazard):
         'from Knutson et al 2015.' % (str(ref_year), str(rcp_scenario))
         return haz_cc
 
+    def set_climate_scenario_knu(self, *args, **kwargs):
+        """This function is deprecated, use TropCyclone.apply_climate_scenario_knu instead."""
+        LOGGER.warning("The use of TropCyclone.set_climate_scenario_knu is deprecated."
+                       "Use TropCyclone.apply_climate_scenario_knu instead.")
+        return self.apply_climate_scenario_knu(*args, **kwargs)
+
     @classmethod
     def video_intensity(cls, track_name, tracks, centroids, file_name=None,
                         writer=animation.PillowWriter(bitrate=500),
