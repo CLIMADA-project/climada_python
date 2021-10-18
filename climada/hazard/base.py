@@ -362,7 +362,8 @@ class Hazard():
 
         Returns
         -------
-        Hazard
+        haz : climada.hazard.Hazard
+            Hazard from vector file
         """
         if not attrs:
             attrs = {}
