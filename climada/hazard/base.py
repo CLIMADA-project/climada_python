@@ -548,7 +548,7 @@ class Hazard():
 
             haz_type = u_hdf5.get_string(data[var_names['var_name']['per_id']])
             self.tag.haz_type = haz_type
-            self.centroids.read_mat(file_name, var_names=var_names['var_cent'])
+            self.centroids = Centroids.from_mat(file_name, var_names=var_names['var_cent'])
             self._read_att_mat(data, file_name, var_names)
         except KeyError as var_err:
             raise KeyError("Variable not in MAT file: " + str(var_err)) from var_err

@@ -419,7 +419,14 @@ class Centroids():
 
         return sparse.csr_matrix(inten)
 
-    def read_mat(self, file_name, var_names=None):
+    def read_mat(self, *args, **kwargs):
+        """This function is deprecated, use Centroids.from_mat instead."""
+        LOGGER.warning("The use of Centroids.read_mat is deprecated."
+                       "Use Centroids.from_mat instead.")
+        self.__dict__ = Centroids.from_mat(*args, **kwargs).__dict__
+
+    @classmethod
+    def from_mat(cls, file_name, var_names=None):
         """Read centroids from CLIMADA's MATLAB version.
 
         Parameters
@@ -432,6 +439,10 @@ class Centroids():
         Raises
         ------
         KeyError
+
+        Returns
+        -------
+        Centroids
         """
         LOGGER.info('Reading %s', file_name)
         if var_names is None:
@@ -449,21 +460,24 @@ class Centroids():
         if num_try == len(var_names['field_names']):
             LOGGER.warning("Variables are not under: %s.", var_names['field_names'])
 
+        centr = Centroids()
         try:
             cen_lat = np.squeeze(cent[var_names['var_name']['lat']])
             cen_lon = np.squeeze(cent[var_names['var_name']['lon']])
-            self.set_lat_lon(cen_lat, cen_lon)
+            centr.set_lat_lon(cen_lat, cen_lon)
 
             try:
-                self.dist_coast = np.squeeze(cent[var_names['var_name']['dist_coast']])
+                centr.dist_coast = np.squeeze(cent[var_names['var_name']['dist_coast']])
             except KeyError:
                 pass
             try:
-                self.region_id = np.squeeze(cent[var_names['var_name']['region_id']])
+                centr.region_id = np.squeeze(cent[var_names['var_name']['region_id']])
             except KeyError:
                 pass
         except KeyError as err:
             raise KeyError("Not existing variable: %s" % str(err)) from err
+
+        return centr
 
     def read_excel(self, *args, **kwargs):
         """This function is deprecated, use Centroids.from_excel instead."""

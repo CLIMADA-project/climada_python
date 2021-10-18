@@ -38,8 +38,7 @@ class TestCentroidsReader(unittest.TestCase):
 
     def test_mat_pass(self):
         """Read a centroid mat file correctly."""
-        centroids = Centroids()
-        centroids.read_mat(HAZ_TEST_MAT)
+        centroids = Centroids.from_mat(HAZ_TEST_MAT)
 
         n_centroids = 100
         self.assertEqual(centroids.coord.shape, (n_centroids, 2))
@@ -50,8 +49,7 @@ class TestCentroidsReader(unittest.TestCase):
 
     def test_mat_global_pass(self):
         """Test read GLB_CENTROIDS_MAT"""
-        centroids = Centroids()
-        centroids.read_mat(GLB_CENTROIDS_MAT)
+        centroids = Centroids.from_mat(GLB_CENTROIDS_MAT)
 
         self.assertEqual(centroids.region_id[1062443], 35)
         self.assertEqual(centroids.region_id[170825], 28)
