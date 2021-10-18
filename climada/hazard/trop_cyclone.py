@@ -256,12 +256,13 @@ class TropCyclone(Hazard):
         haz.tag.description = description
         return haz
 
-    def set_climate_scenario_knu(self, ref_year=2050, rcp_scenario=45):
+    def apply_climate_scenario_knu(self, ref_year=2050, rcp_scenario=45):
         """
-        Compute future events for a given RCP scenario and year based on the
+        From current TC hazard instance, return new hazard set with
+        future events for a given RCP scenario and year based on the
         parametrized values derived from Table 3 in Knutson et al 2015.
         https://doi.org/10.1175/JCLI-D-15-0129.1 . The scaling for different
-        years and RCP scenarios is obtained by linear interpolation.ß
+        years and RCP scenarios is obtained by linear interpolation.
 
         Note: The parametrized values are derived from the overall changes
         in statistical ensemble of tracks. Hence, this method should only be
