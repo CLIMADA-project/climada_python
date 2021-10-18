@@ -186,8 +186,7 @@ class TestApply(unittest.TestCase):
         meas = Measure()
         meas.hazard_set = HAZ_DEMO_H5
 
-        ref_haz = Hazard('TC')
-        ref_haz.read_hdf5(HAZ_DEMO_H5)
+        ref_haz = Hazard.from_hdf5(HAZ_DEMO_H5)
 
         hazard = Hazard('TC')
         new_haz = meas._change_all_hazard(hazard)
