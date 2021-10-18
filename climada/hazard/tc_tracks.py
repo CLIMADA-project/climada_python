@@ -414,7 +414,8 @@ class TCTracks():
 
         Returns
         -------
-        TCTracks
+        tracks : TCTracks
+            TCTracks with data from IBTrACS
         """
         if correct_pres:
             LOGGER.warning("`correct_pres` is deprecated. "
@@ -682,7 +683,7 @@ class TCTracks():
 
     @classmethod
     def from_processed_ibtracs_csv(cls, file_names):
-        """Create TCTracks object from processed ibtracs csv file(s).
+        """Create TCTracks object from processed ibtracs CSV file(s).
 
         Parameters
         ----------
@@ -691,7 +692,8 @@ class TCTracks():
 
         Returns
         -------
-        TCTracks
+        tracks : TCTracks
+            TCTracks with data from the processed ibtracs CSV file.
         """
         tr = cls()
         tr.data = [_read_ibtracs_csv_single(f) for f in get_file_names(file_names)]
@@ -717,7 +719,8 @@ class TCTracks():
 
         Returns
         -------
-        TCTracks
+        tracks : TCTracks
+            TCTracks with data from Kerry Emanuel's simulations.
         """
         tr = cls()
         tr.data = []
@@ -744,7 +747,8 @@ class TCTracks():
 
         Returns
         -------
-        TCTracks
+        tracks : TCTracks
+            TCTracks with data from Andrew Gettelman's simulations.
         """
         nc_data = nc.Dataset(path)
         nstorms = nc_data.dimensions['storm'].size
@@ -776,7 +780,8 @@ class TCTracks():
 
         Returns
         -------
-        TCTracks
+        tracks : TCTracks
+            TCTracks with data from the CHAZ simulations.
         """
         data = []
         for path in get_file_names(file_names):
@@ -909,7 +914,8 @@ class TCTracks():
 
         Returns
         -------
-        TCTracks
+        tracks : TCTracks
+            TCTracks with data from the STORM simulations.
         """
         basins = ["EP", "NA", "NI", "SI", "SP", "WP"]
         tracks_df = pd.read_csv(path, names=['year', 'time_start', 'tc_num', 'time_delta',
@@ -1207,7 +1213,8 @@ class TCTracks():
 
         Returns
         -------
-        TCTracks
+        tracks : TCTracks
+            TCTracks with data from the given directory of NetCDF files.
         """
         file_tr = get_file_names(folder_name)
         LOGGER.info('Reading %s files.', len(file_tr))
