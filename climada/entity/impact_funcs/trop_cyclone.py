@@ -78,7 +78,7 @@ class ImpfTropCyclone(ImpactFunc):
         Returns
         -------
         impf : ImpfTropCyclone object
-            TC impact function instance based on formuala by Emanuel (2011)
+            TC impact function instance based on formula by Emanuel (2011)
         """
         if v_half <= v_thresh:
             raise ValueError('Shape parameters out of range: v_half <= v_thresh.')
@@ -107,7 +107,7 @@ class ImpfSetTropCyclone(ImpactFuncSet):
 
     def set_calibrated_regional_ImpfSet(self, *args, **kwargs):
         """This function is deprecated, use from_calibrated_regional_ImpfSet() instead."""
-        LOGGER.warning("The use of ImpfSetTropCyclone.set_calibrated_regional_ImpfSet is deprecated."
+        LOGGER.warning("ImpfSetTropCyclone.set_calibrated_regional_ImpfSet is deprecated."
                        "Use ImpfSetTropCyclone.from_calibrated_regional_ImpfSet instead.")
         self.__dict__ = \
             ImpfSetTropCyclone.from_calibrated_regional_ImpfSet(*args, **kwargs).__dict__
@@ -145,6 +145,11 @@ class ImpfSetTropCyclone(ImpactFuncSet):
         Raises
         ------
         ValueError
+
+        Returns
+        -------
+        impf_set : ImpfSetTropCyclone
+            TC Impact Function Set based on Eberenz et al, 2021.
         """
         reg_v_half = ImpfSetTropCyclone.calibrated_regional_vhalf(
             calibration_approach=calibration_approach,
@@ -167,8 +172,6 @@ class ImpfSetTropCyclone(ImpactFuncSet):
         regions_long['WP2'] = 'Philippines (WP2)'
         regions_long['WP3'] = 'China Mainland (WP3)'
         regions_long['WP4'] = 'North West Pacific (WP4)'
-#        regions_long['all'] = 'Global'
-#        regions_long['GLB'] = 'Global'
         regions_long['ROW'] = 'Global'
 
         # init impact function set
@@ -238,7 +241,7 @@ class ImpfSetTropCyclone(ImpactFuncSet):
 
         # loop over calibration regions (column cal_region2 in df):
         reg_v_half = dict()
-        for idx, region in enumerate(regions_short):
+        for region in regions_short:
             df_reg = df_calib_results.loc[df_calib_results.cal_region2 == region]
             df_reg = df_reg.reset_index(drop=True)
             reg_v_half[region] = np.round(df_reg['v_half'].quantile(q=q), 5)
