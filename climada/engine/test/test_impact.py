@@ -122,6 +122,7 @@ class TestOneExposure(unittest.TestCase):
 
         # Read default hazard file
         hazard = Hazard.from_mat(HAZ_TEST_MAT)
+
         # Create impact object
         impact = Impact()
         impact.at_event = np.zeros(hazard.intensity.shape[0])
@@ -177,6 +178,7 @@ class TestCalc(unittest.TestCase):
 
         # Read default hazard file
         hazard = Hazard.from_mat(HAZ_TEST_MAT)
+
         # Create impact object
         impact = Impact()
 
@@ -218,6 +220,7 @@ class TestCalc(unittest.TestCase):
 
         # Read default hazard file
         hazard = Hazard.from_mat(HAZ_TEST_MAT)
+
         # Create impact object
         impact = Impact()
 
@@ -245,6 +248,7 @@ class TestCalc(unittest.TestCase):
 
         # Read default hazard file
         hazard = Hazard.from_mat(HAZ_TEST_MAT)
+
         # Create impact object
         impact = Impact()
         impact.calc(ent.exposures, ent.impact_funcs, hazard)
@@ -415,6 +419,7 @@ class TestIO(unittest.TestCase):
         ent.check()
 
         hazard = Hazard.from_mat(HAZ_TEST_MAT)
+
         imp_write = Impact()
         ent.exposures.assign_centroids(hazard)
         imp_write.calc(ent.exposures, ent.impact_funcs, hazard)
@@ -464,6 +469,7 @@ class TestRPmatrix(unittest.TestCase):
 
         # Read default hazard file
         hazard = Hazard.from_mat(HAZ_TEST_MAT)
+        
         # Create impact object
         impact = Impact()
         # Assign centroids to exposures
@@ -653,6 +659,7 @@ class TestSelect(unittest.TestCase):
 
         # Read default hazard file
         hazard = Hazard.from_mat(HAZ_TEST_MAT)
+
         # Create impact object
         imp = Impact()
 

@@ -65,11 +65,6 @@ class Entity(object):
             The impact function set. The default is None (empty ImpactFuncSet()).
         measure_set : climada.entity.Measures, optional
             The measures. The default is None (empty MeasuresSet().
-
-        Returns
-        -------
-        None.
-
         """
         self.exposures = Exposures() if exposures is None else exposures
         self.disc_rates = DiscRates() if disc_rates is None else disc_rates
@@ -95,10 +90,10 @@ class Entity(object):
             The entity from matlab file
         """
         return cls(
-            exposures = Exposures.from_mat(file_name),
-            disc_rates = DiscRates.from_mat(file_name, description),
-            impact_func_set = ImpactFuncSet.from_mat(file_name, description),
-            measure_set = MeasureSet.from_mat(file_name, description)
+            exposures=Exposures.from_mat(file_name),
+            disc_rates=DiscRates.from_mat(file_name, description),
+            impact_func_set=ImpactFuncSet.from_mat(file_name, description),
+            measure_set=MeasureSet.from_mat(file_name, description)
             )
 
     def read_mat(self, *args, **kwargs):
@@ -136,10 +131,10 @@ class Entity(object):
         meas_set = MeasureSet.from_excel(file_name, description)
 
         return cls(
-            exposures = exp,
-            disc_rates = dr,
-            impact_func_set = impf_set,
-            measure_set = meas_set
+            exposures=exp,
+            disc_rates=dr,
+            impact_func_set=impf_set,
+            measure_set=meas_set
             )
 
     def read_excel(self, *args, **kwargs):
