@@ -91,8 +91,7 @@ class TestReader(unittest.TestCase):
         var_names = copy.deepcopy(DEF_VAR_EXCEL)
         var_names['sheet_name'] = 'fp_centroids-test'
         var_names['col_name']['region_id'] = 'iso_n3'
-        test_centroids = Centroids()
-        test_centroids.read_excel(
+        test_centroids = Centroids.from_excel(
             DATA_DIR.joinpath('fp_centroids-test.xls'),
             var_names=var_names
             )

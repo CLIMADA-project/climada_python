@@ -282,16 +282,15 @@ class Hazard():
         haz = cls(haz_type, pool)
         haz.tag.file_name = str(files_intensity) + ' ; ' + str(files_fraction)
 
-        haz.centroids = Centroids()
+        haz.centroids = Centroids.from_raster_file(
+            files_intensity[0], src_crs=src_crs, window=window, geometry=geometry, dst_crs=dst_crs,
+            transform=transform, width=width, height=height, resampling=resampling)
         if haz.pool:
             chunksize = min(len(files_intensity) // haz.pool.ncpus, 1000)
-            # set first centroids
-            inten_list = [sparse.csr.csr_matrix(haz.centroids.set_raster_file(
-                files_intensity[0], band, src_crs, window, geometry, dst_crs,
-                transform, width, height, resampling))]
-            inten_list += haz.pool.map(
-                haz.centroids.set_raster_file,
-                files_intensity[1:], itertools.repeat(band), itertools.repeat(src_crs),
+            inten_list = haz.pool.map(
+                haz.centroids.values_from_raster_files,
+                [[f] for f in files_intensity],
+                itertools.repeat(band), itertools.repeat(src_crs),
                 itertools.repeat(window), itertools.repeat(geometry),
                 itertools.repeat(dst_crs), itertools.repeat(transform),
                 itertools.repeat(width), itertools.repeat(height),
@@ -299,27 +298,24 @@ class Hazard():
             haz.intensity = sparse.vstack(inten_list, format='csr')
             if files_fraction is not None:
                 fract_list = haz.pool.map(
-                    haz.centroids.set_raster_file,
-                    files_fraction, itertools.repeat(band), itertools.repeat(src_crs),
+                    haz.centroids.values_from_raster_files,
+                    [[f] for f in files_fraction],
+                    itertools.repeat(band), itertools.repeat(src_crs),
                     itertools.repeat(window), itertools.repeat(geometry),
                     itertools.repeat(dst_crs), itertools.repeat(transform),
                     itertools.repeat(width), itertools.repeat(height),
                     itertools.repeat(resampling), chunksize=chunksize)
                 haz.fraction = sparse.vstack(fract_list, format='csr')
         else:
-            inten_list = []
-            for file in files_intensity:
-                inten_list.append(haz.centroids.set_raster_file(
-                    file, band, src_crs, window, geometry, dst_crs, transform,
-                    width, height, resampling))
-            haz.intensity = sparse.vstack(inten_list, format='csr')
+            haz.intensity = haz.centroids.values_from_raster_files(
+                files_intensity, band=band, src_crs=src_crs, window=window, geometry=geometry,
+                dst_crs=dst_crs, transform=transform, width=width, height=height,
+                resampling=resampling)
             if files_fraction is not None:
-                fract_list = []
-                for file in files_fraction:
-                    fract_list.append(haz.centroids.set_raster_file(
-                        file, band, src_crs, window, geometry, dst_crs, transform,
-                        width, height, resampling))
-                haz.fraction = sparse.vstack(fract_list, format='csr')
+                haz.fraction = haz.centroids.values_from_raster_files(
+                    files_fraction, band=band, src_crs=src_crs, window=window, geometry=geometry,
+                    dst_crs=dst_crs, transform=transform, width=width, height=height,
+                    resampling=resampling)
 
         if files_fraction is None:
             haz.fraction = haz.intensity.copy()
@@ -407,17 +403,21 @@ class Hazard():
         haz = cls() if haz_type is None else cls(haz_type)
         haz.tag.file_name = str(files_intensity) + ' ; ' + str(files_fraction)
 
-        haz.centroids = Centroids()
-        for file in files_intensity:
-            inten = haz.centroids.set_vector_file(file, inten_name, dst_crs)
-            haz.intensity = sparse.vstack([haz.intensity, inten], format='csr')
+        if len(files_intensity) > 0:
+            haz.centroids = Centroids.from_vector_file(files_intensity[0], dst_crs=dst_crs)
+        elif files_fraction is not None and len(files_fraction) > 0:
+            haz.centroids = Centroids.from_vector_file(files_fraction[0], dst_crs=dst_crs)
+        else:
+            haz.centroids = Centroids()
+
+        haz.intensity = haz.centroids.values_from_vector_files(
+            files_intensity, val_names=inten_name, dst_crs=dst_crs)
         if files_fraction is None:
             haz.fraction = haz.intensity.copy()
             haz.fraction.data.fill(1)
         else:
-            for file in files_fraction:
-                fract = haz.centroids.set_vector_file(file, frac_name, dst_crs)
-                haz.fraction = sparse.vstack([haz.fraction, fract], format='csr')
+            haz.fraction = haz.centroids.values_from_vector_files(
+                files_fraction, val_names=frac_name, dst_crs=dst_crs)
 
         if 'event_id' in attrs:
             haz.event_id = attrs['event_id']
@@ -604,7 +604,7 @@ class Hazard():
 
             haz_type = u_hdf5.get_string(data[var_names['var_name']['per_id']])
             haz.tag.haz_type = haz_type
-            haz.centroids.read_mat(file_name, var_names=var_names['var_cent'])
+            haz.centroids = Centroids.from_mat(file_name, var_names=var_names['var_cent'])
             haz._read_att_mat(data, file_name, var_names)
         except KeyError as var_err:
             raise KeyError("Variable not in MAT file: " + str(var_err)) from var_err
@@ -649,7 +649,7 @@ class Hazard():
         haz.tag.file_name = file_name
         haz.tag.description = description
         try:
-            haz.centroids.read_excel(file_name, var_names=var_names['col_centroids'])
+            haz.centroids = Centroids.from_excel(file_name, var_names=var_names['col_centroids'])
             haz._read_att_excel(file_name, var_names)
         except KeyError as var_err:
             raise KeyError("Variable not in Excel file: " + str(var_err)) from var_err
@@ -1157,7 +1157,7 @@ class Hazard():
             if var_name != 'tag' and var_name not in hf_data.keys():
                 continue
             if var_name == 'centroids':
-                haz.centroids.read_hdf5(hf_data.get(var_name))
+                haz.centroids = Centroids.from_hdf5(hf_data.get(var_name))
             elif var_name == 'tag':
                 haz.tag.haz_type = u_hdf5.to_string(hf_data.get('haz_type')[0])
                 haz.tag.file_name = u_hdf5.to_string(hf_data.get('file_name')[0])
