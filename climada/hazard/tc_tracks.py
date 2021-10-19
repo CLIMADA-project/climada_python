@@ -176,7 +176,13 @@ class TCTracks():
             - dist_since_lf (in km)
     """
     def __init__(self, pool=None):
-        """Empty constructor. Read csv IBTrACS files if provided."""
+        """Create new (empty) TCTracks instance.
+
+        Parameters
+        ----------
+        pool : pathos.pool, optional
+            Pool that will be used for parallel computation when applicable. Default: None
+        """
         self.data = list()
         if pool:
             self.pool = pool
@@ -244,7 +250,7 @@ class TCTracks():
         tc_tracks : TCTracks
             A new instance of TCTracks containing only the matching tracks.
         """
-        out = self.__class__(self.pool)
+        out = self.__class__(pool=self.pool)
         out.data = self.data
 
         for key, pattern in filterdict.items():
@@ -996,9 +1002,11 @@ class TCTracks():
             Temporal resolution in hours (positive, may be non-integer-valued). Default: 1.
         land_params : bool, optional
             If True, recompute `on_land` and `dist_since_lf` at each node. Default: False.
+        pool : pathos.pool, optional
+            Pool that will be used for parallel computation when applicable. If not given, the
+            pool attribute of `self` will be used. Default: None
         """
-        if pool is not None:
-            self.pool = pool
+        pool = self.pool if pool is None else pool
 
         if time_step_h <= 0:
             raise ValueError(f"time_step_h is not a positive number: {time_step_h}")
@@ -1010,12 +1018,12 @@ class TCTracks():
         else:
             land_geom = None
 
-        if self.pool:
-            chunksize = min(self.size // self.pool.ncpus, 1000)
-            self.data = self.pool.map(self._one_interp_data, self.data,
-                                      itertools.repeat(time_step_h, self.size),
-                                      itertools.repeat(land_geom, self.size),
-                                      chunksize=chunksize)
+        if pool:
+            chunksize = min(self.size // pool.ncpus, 1000)
+            self.data = pool.map(self._one_interp_data, self.data,
+                                 itertools.repeat(time_step_h, self.size),
+                                 itertools.repeat(land_geom, self.size),
+                                 chunksize=chunksize)
         else:
             last_perc = 0
             new_data = []
