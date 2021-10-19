@@ -50,14 +50,30 @@ class Entity(object):
         Default file from configuration file
     """
 
-    def __init__(self):
-        """Empty initializator"""
-        self.exposures = Exposures()
-        self.disc_rates = DiscRates()
-        self.impact_funcs = ImpactFuncSet()
-        self.measures = MeasureSet()
+    def __init__(self, exposures=None, disc_rates=None,
+                 impact_func_set=None, measure_set=None):
+        """
+        Initialize entity
 
-    def read_mat(self, file_name, description=''):
+        Parameters
+        ----------
+        exposures : climada.entity.Exposures, optional
+            Exposures of the entity. The default is None (empty Exposures()).
+        disc_rates : climada.entity.DiscRates, optional
+            Disc rates of the entity. The default is None (empty DiscRates()).
+        impact_func_set : climada.entity.ImpactFuncSet, optional
+            The impact function set. The default is None (empty ImpactFuncSet()).
+        measure_set : climada.entity.Measures, optional
+            The measures. The default is None (empty MeasuresSet().
+
+        """
+        self.exposures = Exposures() if exposures is None else exposures
+        self.disc_rates = DiscRates() if disc_rates is None else disc_rates
+        self.impact_funcs = ImpactFuncSet() if impact_func_set is None else impact_func_set
+        self.measures = MeasureSet() if measure_set is None else measure_set
+
+    @classmethod
+    def from_mat(cls, file_name, description=''):
         """Read MATLAB file of climada.
 
         Parameters
@@ -69,22 +85,26 @@ class Entity(object):
             one description of the
             data or a description of each data file
 
-        Raises
-        ------
-        ValueError
+        Returns
+        -------
+        ent : climada.entity.Entity
+            The entity from matlab file
         """
-        self.exposures = Exposures.from_mat(file_name)
+        return cls(
+            exposures=Exposures.from_mat(file_name),
+            disc_rates=DiscRates.from_mat(file_name, description),
+            impact_func_set=ImpactFuncSet.from_mat(file_name, description),
+            measure_set=MeasureSet.from_mat(file_name, description)
+            )
 
-        self.disc_rates = DiscRates()
-        self.disc_rates.read_mat(file_name, description)
+    def read_mat(self, *args, **kwargs):
+        """This function is deprecated, use Entity.from_mat instead."""
+        LOGGER.warning("The use of Entity.read_mat is deprecated."
+                        "Use Entity.from_mat instead.")
+        self.__dict__ = Entity.from_mat(*args, **kwargs).__dict__
 
-        self.impact_funcs = ImpactFuncSet()
-        self.impact_funcs.read_mat(file_name, description)
-
-        self.measures = MeasureSet()
-        self.measures.read_mat(file_name, description)
-
-    def read_excel(self, file_name, description=''):
+    @classmethod
+    def from_excel(cls, file_name, description=''):
         """Read csv or xls or xlsx file following climada's template.
 
         Parameters
@@ -96,23 +116,33 @@ class Entity(object):
             one description of the
             data or a description of each data file
 
-        Raises
-        ------
-        ValueError
+        Returns
+        -------
+        ent : climada.entity.Entity
+            The entity from excel file
         """
-        self.exposures = Exposures(pd.read_excel(file_name))
-        self.exposures.tag = Tag()
-        self.exposures.tag.file_name = str(file_name)
-        self.exposures.tag.description = description
 
-        self.disc_rates = DiscRates()
-        self.disc_rates.read_excel(file_name, description)
+        exp = Exposures(pd.read_excel(file_name))
+        exp.tag = Tag()
+        exp.tag.file_name = str(file_name)
+        exp.tag.description = description
 
-        self.impact_funcs = ImpactFuncSet()
-        self.impact_funcs.read_excel(file_name, description)
+        dr = DiscRates.from_excel(file_name, description)
+        impf_set = ImpactFuncSet.from_excel(file_name, description)
+        meas_set = MeasureSet.from_excel(file_name, description)
 
-        self.measures = MeasureSet()
-        self.measures.read_excel(file_name, description)
+        return cls(
+            exposures=exp,
+            disc_rates=dr,
+            impact_func_set=impf_set,
+            measure_set=meas_set
+            )
+
+    def read_excel(self, *args, **kwargs):
+        """This function is deprecated, use Entity.from_excel instead."""
+        LOGGER.warning("The use of Entity.read_excel is deprecated."
+                       "Use Entity.from_excel instead.")
+        self.__dict__ = Entity.from_excel(*args, **kwargs).__dict__
 
     def write_excel(self, file_name):
         """Write excel file following template."""
