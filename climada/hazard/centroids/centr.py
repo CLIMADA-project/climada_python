@@ -1156,7 +1156,7 @@ class Centroids():
             centr = cls.from_lat_lon(
                 np.array(data.get('latitude')),
                 np.array(data.get('longitude')),
-                cr=crs)
+                crs=crs)
         else:
             centr_meta = data.get('meta')
             centr = cls()
