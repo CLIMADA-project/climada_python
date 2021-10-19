@@ -121,7 +121,8 @@ class TestOneExposure(unittest.TestCase):
         ent.check()
 
         # Read default hazard file
-        hazard = Hazard.from_mat(HAZ_TEST_MAT, haz_type='TC')
+        hazard = Hazard.from_mat(HAZ_TEST_MAT)
+
         # Create impact object
         impact = Impact()
         impact.at_event = np.zeros(hazard.intensity.shape[0])
@@ -176,7 +177,8 @@ class TestCalc(unittest.TestCase):
         ent.check()
 
         # Read default hazard file
-        hazard = Hazard.from_mat(HAZ_TEST_MAT, haz_type='TC')
+        hazard = Hazard.from_mat(HAZ_TEST_MAT)
+
         # Create impact object
         impact = Impact()
 
@@ -217,7 +219,8 @@ class TestCalc(unittest.TestCase):
         ent.check()
 
         # Read default hazard file
-        hazard = Hazard.from_mat(HAZ_TEST_MAT, haz_type='TC')
+        hazard = Hazard.from_mat(HAZ_TEST_MAT)
+
         # Create impact object
         impact = Impact()
 
@@ -244,7 +247,8 @@ class TestCalc(unittest.TestCase):
         ent.check()
 
         # Read default hazard file
-        hazard = Hazard.from_mat(HAZ_TEST_MAT, haz_type='TC')
+        hazard = Hazard.from_mat(HAZ_TEST_MAT)
+
         # Create impact object
         impact = Impact()
         impact.calc(ent.exposures, ent.impact_funcs, hazard)
@@ -414,7 +418,8 @@ class TestIO(unittest.TestCase):
         ent = Entity.from_excel(ENT_DEMO_TODAY)
         ent.check()
 
-        hazard = Hazard.from_mat(HAZ_TEST_MAT, haz_type='TC')
+        hazard = Hazard.from_mat(HAZ_TEST_MAT)
+
         imp_write = Impact()
         ent.exposures.assign_centroids(hazard)
         imp_write.calc(ent.exposures, ent.impact_funcs, hazard)
@@ -463,7 +468,8 @@ class TestRPmatrix(unittest.TestCase):
         ent.check()
 
         # Read default hazard file
-        hazard = Hazard.from_mat(HAZ_TEST_MAT, haz_type='TC')
+        hazard = Hazard.from_mat(HAZ_TEST_MAT)
+        
         # Create impact object
         impact = Impact()
         # Assign centroids to exposures
@@ -652,7 +658,8 @@ class TestSelect(unittest.TestCase):
         ent.check()
 
         # Read default hazard file
-        hazard = Hazard.from_mat(HAZ_TEST_MAT, haz_type='TC')
+        hazard = Hazard.from_mat(HAZ_TEST_MAT)
+
         # Create impact object
         imp = Impact()
 

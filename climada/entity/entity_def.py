@@ -65,7 +65,6 @@ class Entity(object):
             The impact function set. The default is None (empty ImpactFuncSet()).
         measure_set : climada.entity.Measures, optional
             The measures. The default is None (empty MeasuresSet().
-
         """
         self.exposures = Exposures() if exposures is None else exposures
         self.disc_rates = DiscRates() if disc_rates is None else disc_rates
