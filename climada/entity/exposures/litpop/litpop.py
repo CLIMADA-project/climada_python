@@ -333,16 +333,16 @@ class LitPop(Exposures):
         return exp
 
     def set_custom_shape_from_countries(self, *args, **kwargs):
-        """This function is deprecated, use LitPop.from_custom_shape_from_countries instead."""
+        """This function is deprecated, use LitPop.from_custom_shape_and_countries instead."""
         LOGGER.warning("The use of LitPop.set_custom_shape_from_countries is deprecated."
-                       "Use LitPop.from_custom_shape_from_countries instead.")
-        self.__dict__ = LitPop.from_custom_shape_from_countries(*args, **kwargs).__dict__
+                       "Use LitPop.from_custom_shape_and_countries instead.")
+        self.__dict__ = LitPop.from_custom_shape_and_countries(*args, **kwargs).__dict__
 
     @classmethod
-    def from_custom_shape_from_countries(cls, shape, countries, res_arcsec=30,
-                                         exponents=(1,1), fin_mode='pc',
-                                         admin1_calc=False, reference_year=DEF_REF_YEAR,
-                                         gpw_version=GPW_VERSION, data_dir=SYSTEM_DIR):
+    def from_custom_shape_and_countries(cls, shape, countries, res_arcsec=30,
+                                        exponents=(1,1), fin_mode='pc',
+                                        admin1_calc=False, reference_year=DEF_REF_YEAR,
+                                        gpw_version=GPW_VERSION, data_dir=SYSTEM_DIR):
         """
         create LitPop exposure for `country` and then crop to given shape.
 
