@@ -22,7 +22,6 @@ Test tc_tracks module.
 import unittest
 import xarray as xr
 import numpy as np
-import netCDF4 as nc
 import pandas as pd
 import geopandas as gpd
 from shapely.geometry import Point, LineString, MultiLineString
