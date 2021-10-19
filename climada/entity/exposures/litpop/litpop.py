@@ -224,7 +224,7 @@ class LitPop(Exposures):
     def from_nightlight_intensity(cls, countries=None, shape=None, res_arcsec=15,
                         reference_year=DEF_REF_YEAR, data_dir=SYSTEM_DIR):
         """
-        Wrapper around `from_countries` / `from_custom_shape`.
+        Wrapper around `from_countries` / `from_shape`.
 
         Initiate exposures instance with value equal to the original BlackMarble
         nightlight intensity resampled to the target resolution `res_arcsec`.
@@ -264,14 +264,14 @@ class LitPop(Exposures):
                                      reference_year=reference_year, gpw_version=GPW_VERSION,
                                      data_dir=data_dir)
         else:
-            exp = cls.from_custom_shape(shape, None, res_arcsec=res_arcsec,
-                                        exponents=(1,0), value_unit='',
-                                        reference_year=reference_year,
-                                        gpw_version=GPW_VERSION, data_dir=SYSTEM_DIR)
+            exp = cls.from_shape(shape, None, res_arcsec=res_arcsec,
+                                 exponents=(1,0), value_unit='',
+                                 reference_year=reference_year,
+                                 gpw_version=GPW_VERSION, data_dir=SYSTEM_DIR)
         LOGGER.warning("Note: set_nightlight_intensity sets values to raw nightlight intensity, "
                        "not to USD. "
                        "To disaggregate asset value proportionally to nightlights^m, "
-                       "call from_countries or from_custom_shape with exponents=(m,0).")
+                       "call from_countries or from_shape with exponents=(m,0).")
         return exp
 
     def set_population(self, *args, **kwargs):
@@ -285,7 +285,7 @@ class LitPop(Exposures):
                         reference_year=DEF_REF_YEAR, gpw_version=GPW_VERSION,
                         data_dir=SYSTEM_DIR):
         """
-        Wrapper around `from_countries` / `from_custom_shape`.
+        Wrapper around `from_countries` / `from_shape`.
 
         Initiate exposures instance with value equal to GPW population count.
         Provide either `countries` or `shape`.
@@ -327,22 +327,21 @@ class LitPop(Exposures):
                                      reference_year=reference_year, gpw_version=gpw_version,
                                      data_dir=data_dir)
         else:
-            exp = cls.from_custom_shape(shape, None, res_arcsec=res_arcsec, exponents=(0,1),
-                                        value_unit='people', reference_year=reference_year,
-                                        gpw_version=gpw_version, data_dir=data_dir)
+            exp = cls.from_shape(shape, None, res_arcsec=res_arcsec, exponents=(0,1),
+                                 value_unit='people', reference_year=reference_year,
+                                 gpw_version=gpw_version, data_dir=data_dir)
         return exp
 
     def set_custom_shape_from_countries(self, *args, **kwargs):
-        """This function is deprecated, use LitPop.from_custom_shape_and_countries instead."""
+        """This function is deprecated, use LitPop.from_shape_and_countries instead."""
         LOGGER.warning("The use of LitPop.set_custom_shape_from_countries is deprecated."
-                       "Use LitPop.from_custom_shape_and_countries instead.")
-        self.__dict__ = LitPop.from_custom_shape_and_countries(*args, **kwargs).__dict__
+                       "Use LitPop.from_shape_and_countries instead.")
+        self.__dict__ = LitPop.from_shape_and_countries(*args, **kwargs).__dict__
 
     @classmethod
-    def from_custom_shape_and_countries(cls, shape, countries, res_arcsec=30,
-                                        exponents=(1,1), fin_mode='pc',
-                                        admin1_calc=False, reference_year=DEF_REF_YEAR,
-                                        gpw_version=GPW_VERSION, data_dir=SYSTEM_DIR):
+    def from_shape_and_countries(cls, shape, countries, res_arcsec=30, exponents=(1,1),
+                                 fin_mode='pc', admin1_calc=False, reference_year=DEF_REF_YEAR,
+                                 gpw_version=GPW_VERSION, data_dir=SYSTEM_DIR):
         """
         create LitPop exposure for `country` and then crop to given shape.
 
@@ -450,15 +449,14 @@ class LitPop(Exposures):
         return exp
 
     def set_custom_shape(self, *args, **kwargs):
-        """This function is deprecated, use LitPop.from_custom_shape instead."""
+        """This function is deprecated, use LitPop.from_shape instead."""
         LOGGER.warning("The use of LitPop.set_custom_shape is deprecated."
-                       "Use LitPop.from_custom_shape instead.")
-        self.__dict__ = LitPop.from_custom_shape(*args, **kwargs).__dict__
+                       "Use LitPop.from_shape instead.")
+        self.__dict__ = LitPop.from_shape(*args, **kwargs).__dict__
 
     @classmethod
-    def from_custom_shape(cls, shape, total_value, res_arcsec=30, exponents=(1,1),
-                         value_unit='USD', reference_year=DEF_REF_YEAR,
-                         gpw_version=GPW_VERSION, data_dir=SYSTEM_DIR):
+    def from_shape(cls, shape, total_value, res_arcsec=30, exponents=(1,1), value_unit='USD',
+                   reference_year=DEF_REF_YEAR, gpw_version=GPW_VERSION, data_dir=SYSTEM_DIR):
         """init LitPop exposure object for a custom shape.
         Requires user input regarding the total value to be disaggregated.
 
@@ -1182,13 +1180,13 @@ def _calc_admin1_one_country(country, res_arcsec, exponents, fin_mode, total_val
         LOGGER.info(record['name'])
         # init exposure for province and add to list
         # total value is defined from country multiplied by grp_share:
-        exp_list.append(LitPop.from_custom_shape(admin1_shapes[idx],
-                                                 total_value * grp_values[record['name']],
-                                                 res_arcsec=res_arcsec,
-                                                 exponents=exponents,
-                                                 reference_year=reference_year,
-                                                 gpw_version=gpw_version,
-                                                 data_dir=data_dir)
+        exp_list.append(LitPop.from_shape(admin1_shapes[idx],
+                                          total_value * grp_values[record['name']],
+                                          res_arcsec=res_arcsec,
+                                          exponents=exponents,
+                                          reference_year=reference_year,
+                                          gpw_version=gpw_version,
+                                          data_dir=data_dir)
                         )
         exp_list[-1].gdf['admin1'] = record['name']
 
