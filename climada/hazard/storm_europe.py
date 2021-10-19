@@ -63,7 +63,7 @@ class StormEurope(Hazard):
     with `from_footprints`. Weather forecasts can be automatically downloaded from
     https://opendata.dwd.de/ and read with read_icon_grib(). Weather forecast
     from the COSMO-Consortium http://www.cosmo-model.org/ can be read with
-    read_cosmoe_file().
+    from_cosmoe_file().
 
     Attributes
     ----------
@@ -203,6 +203,8 @@ class StormEurope(Hazard):
         centroids : Centroids
             Centr. instance that matches the
             coordinates used in the *.nc, only validated by size.
+        intensity_thres : float
+            Intensity threshold for storage in m/s.
 
         Returns
         -------
@@ -243,11 +245,18 @@ class StormEurope(Hazard):
         ncdf.close()
         return new_haz
 
+    def read_cosmoe_file(self, *args, **kwargs):
+        """This function is deprecated, use StormEurope.from_cosmoe_file instead."""
+        LOGGER.warning("The use of StormEurope.read_cosmoe_file is deprecated."
+                       "Use StormEurope.from_cosmoe_file instead.")
+        self.__dict__ = StormEurope.from_cosmoe_file(*args, **kwargs).__dict__
 
-    def read_cosmoe_file(self, fp_file, run_datetime, event_date=None,
-                         model_name='COSMO-2E', description=None):
-        """Clear instance and read gust footprint from weather forecast
-        into it. The funciton is designed for the COSMO ensemble model used by
+    @classmethod
+    def from_cosmoe_file(cls, fp_file, run_datetime, event_date=None,
+                         model_name='COSMO-2E', description=None, intensity_thres=None):
+        """Create a new StormEurope object with gust footprint from weather forecast.
+
+        The funciton is designed for the COSMO ensemble model used by
         the COSMO Consortium http://www.cosmo-model.org/ and postprocessed to
         an netcdf file using fieldextra. One event is one full day in UTC.
         Works for MeteoSwiss model output of
@@ -270,10 +279,20 @@ class StormEurope(Hazard):
         description : str, optional
             description of the events, defaults
             to a combination of model_name and run_datetime
+        intensity_thres : float, optional
+            Intensity threshold for storage in m/s. Default: class attribute
+            StormEurope.intensity_thres (same as used by WISC SSI calculations)
+
+        Returns
+        -------
+        haz : StormEurope
+            StormEurope object with data from COSMO ensemble file.
         """
-        self.clear()
+        intensity_thres = cls.intensity_thres if intensity_thres is None else intensity_thres
+
+        haz = cls()
         # create centroids
-        self.centroids = self._centroids_from_nc(fp_file)
+        haz.centroids = cls._centroids_from_nc(fp_file)
 
         # read intensity from file
         ncdf = xr.open_dataset(fp_file)
@@ -281,10 +300,9 @@ class StormEurope(Hazard):
 
         if event_date:
             try:
-                stacked = ncdf.sel(time=event_date.strftime('%Y-%m-%d')
-                                    ).groupby('date'
-                                              ).max().stack(intensity=('y_1',
-                                                                       'x_1'))
+                stacked = ncdf.sel(
+                    time=event_date.strftime('%Y-%m-%d')
+                    ).groupby('date').max().stack(intensity=('y_1', 'x_1'))
             except KeyError:
                 raise ValueError('Extraction of date and coordinates failed. '
                                  'This is most likely because '
@@ -306,30 +324,30 @@ class StormEurope(Hazard):
                                                                    'x_1'))
             considered_dates = stacked['date'].values
         stacked = stacked.stack(date_ensemble=('date', 'epsd_1'))
-        stacked = stacked.where(stacked.VMAX_10M > self.intensity_thres)
+        stacked = stacked.where(stacked.VMAX_10M > intensity_thres)
         stacked = stacked.fillna(0)
 
         # fill in values from netCDF
-        self.intensity = sparse.csr_matrix(stacked.VMAX_10M.T)
-        self.event_id = np.arange(stacked.date_ensemble.size)+1
+        haz.intensity = sparse.csr_matrix(stacked.VMAX_10M.T)
+        haz.event_id = np.arange(stacked.date_ensemble.size)+1
 
 
         # fill in default values
-        self.units = 'm/s'
-        self.fraction = self.intensity.copy().tocsr()
-        self.fraction.data.fill(1)
-        self.orig = np.ones_like(self.event_id)*False
-        self.orig[(stacked.epsd_1 == 0).values] = True
-        self.date = np.repeat(
+        haz.units = 'm/s'
+        haz.fraction = haz.intensity.copy().tocsr()
+        haz.fraction.data.fill(1)
+        haz.orig = np.ones_like(haz.event_id)*False
+        haz.orig[(stacked.epsd_1 == 0).values] = True
+        haz.date = np.repeat(
             np.array(datetime64_to_ordinal(considered_dates)),
             np.unique(ncdf.epsd_1).size
             )
-        self.event_name = [date_i + '_ens' + str(ens_i)
-                           for date_i, ens_i in zip(date_to_str(self.date),
+        haz.event_name = [date_i + '_ens' + str(ens_i)
+                           for date_i, ens_i in zip(date_to_str(haz.date),
                                                     stacked.epsd_1.values+1)
                            ]
-        self.frequency = np.divide(
-                np.ones_like(self.event_id),
+        haz.frequency = np.divide(
+                np.ones_like(haz.event_id),
                 np.unique(ncdf.epsd_1).size)
         if not description:
             description = (model_name +
@@ -337,13 +355,14 @@ class StormEurope(Hazard):
                            'for run startet at ' +
                            run_datetime.strftime('%Y%m%d%H'))
 
-        self.tag = TagHazard(
+        haz.tag = TagHazard(
                 HAZ_TYPE, 'Hazard set not saved, too large to pickle',
                 description=description
             )
         # close netcdf file
         ncdf.close()
-        self.check()
+        haz.check()
+        return haz
 
     def read_icon_grib(self, run_datetime, event_date=None,
                        model_name='icon-eu-eps', description=None,
@@ -987,8 +1006,7 @@ def generate_WS_forecast_hazard(run_datetime = dt.datetime.today().replace(hour=
                     run_datetime.strftime('%y%m%d%H')
                     )
                 )
-            hazard = StormEurope()
-            hazard.read_cosmoe_file(
+            hazard = StormEurope.from_cosmoe_file(
                 fp_file,
                 event_date=event_date,
                 run_datetime=run_datetime,

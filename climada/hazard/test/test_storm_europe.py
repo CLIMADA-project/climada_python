@@ -149,10 +149,10 @@ class TestReader(unittest.TestCase):
 
     def test_cosmoe_read(self):
         """test reading from cosmo-e netcdf"""
-        haz = StormEurope()
-        haz.read_cosmoe_file(DATA_DIR.joinpath('storm_europe_cosmoe_forecast_vmax_testfile.nc'),
-                             run_datetime=dt.datetime(2018,1,1),
-                             event_date=dt.datetime(2018,1,3))
+        haz = StormEurope.from_cosmoe_file(
+            DATA_DIR.joinpath('storm_europe_cosmoe_forecast_vmax_testfile.nc'),
+            run_datetime=dt.datetime(2018,1,1),
+            event_date=dt.datetime(2018,1,3))
         self.assertEqual(haz.tag.haz_type, 'WS')
         self.assertEqual(haz.units, 'm/s')
         self.assertEqual(haz.event_id.size, 21)
