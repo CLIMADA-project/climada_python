@@ -60,7 +60,7 @@ FORECAST_DIR = CONFIG.hazard.storm_europe.forecast_dir.str()
 class StormEurope(Hazard):
     """A hazard set containing european winter storm events. Historic storm
     events can be downloaded at http://wisc.climate.copernicus.eu/ and read
-    read_footprints(). Weather forecasts can be automatically downloaded from
+    with `from_footprints`. Weather forecasts can be automatically downloaded from
     https://opendata.dwd.de/ and read with read_icon_grib(). Weather forecast
     from the COSMO-Consortium http://www.cosmo-model.org/ can be read with
     read_cosmoe_file().
@@ -77,8 +77,7 @@ class StormEurope(Hazard):
     """
 
     intensity_thres = 14.7
-    """Intensity threshold for storage in m/s; same as used by WISC SSI
-        calculations."""
+    """Intensity threshold for storage in m/s; same as used by WISC SSI calculations."""
 
     vars_opt = Hazard.vars_opt.union({'ssi_wisc', 'ssi', 'ssi_full_area'})
     """Name of the variables that aren't need to compute the impact."""
@@ -91,12 +90,19 @@ class StormEurope(Hazard):
         self.ssi_wisc = np.array([], float)
         self.ssi_full_area = np.array([], float)
 
-    def read_footprints(self, path, description=None,
-                        ref_raster=None, centroids=None,
-                        files_omit='fp_era20c_1990012515_701_0.nc',
-                        combine_threshold=None):
-        """Clear instance and read WISC footprints into it. Read Assumes that
-        all footprints have the same coordinates as the first file listed/first
+    def read_footprints(self, *args, **kwargs):
+        """This function is deprecated, use StormEurope.from_footprints instead."""
+        LOGGER.warning("The use of StormEurope.read_footprints is deprecated."
+                       "Use StormEurope.from_footprints instead.")
+        self.__dict__ = StormEurope.from_footprints(*args, **kwargs).__dict__
+
+    @classmethod
+    def from_footprints(cls, path, description=None, ref_raster=None, centroids=None,
+                        files_omit='fp_era20c_1990012515_701_0.nc', combine_threshold=None,
+                        intensity_thres=None):
+        """Create new StormEurope object from WISC footprints.
+
+        Assumes that all footprints have the same coordinates as the first file listed/first
         file in dir.
 
         Parameters
@@ -126,10 +132,16 @@ class StormEurope(Hazard):
             of two events is smaller or equal to this threshold, the two
             events are combined into one.
             Default is None, Advised for WISC is 2
+        intensity_thres : float, optional
+            Intensity threshold for storage in m/s. Default: class attribute
+            StormEurope.intensity_thres (same as used by WISC SSI calculations)
+
+        Returns
+        -------
+        haz : StormEurope
+            StormEurope object with data from WISC footprints.
         """
-
-        self.clear()
-
+        intensity_thres = cls.intensity_thres if intensity_thres is None else intensity_thres
         file_names = get_file_names(path)
 
         if ref_raster is not None and centroids is not None:
@@ -138,45 +150,48 @@ class StormEurope(Hazard):
         if centroids is not None:
             pass
         elif ref_raster is not None:
-            centroids = self._centroids_from_nc(ref_raster)
+            centroids = cls._centroids_from_nc(ref_raster)
         elif ref_raster is None:
-            centroids = self._centroids_from_nc(file_names[0])
+            centroids = cls._centroids_from_nc(file_names[0])
 
         if isinstance(files_omit, str):
             files_omit = [files_omit]
 
         LOGGER.info('Commencing to iterate over netCDF files.')
 
+        haz = cls()
         for file_name in file_names:
             if any(fo in file_name for fo in files_omit):
                 LOGGER.info("Omitting file %s", file_name)
                 continue
-            new_haz = self._read_one_nc(file_name, centroids)
+            new_haz = cls._read_one_nc(file_name, centroids, intensity_thres)
             if new_haz is not None:
-                self.append(new_haz)
+                haz.append(new_haz)
 
-        self.event_id = np.arange(1, len(self.event_id) + 1)
-        self.frequency = np.divide(
-            np.ones_like(self.date),
-            (last_year(self.date) - first_year(self.date))
+        haz.event_id = np.arange(1, len(haz.event_id) + 1)
+        haz.frequency = np.divide(
+            np.ones_like(haz.date),
+            (last_year(haz.date) - first_year(haz.date))
         )
 
-        self.tag = TagHazard(
+        haz.tag = TagHazard(
             HAZ_TYPE, 'Hazard set not saved by default',
             description='WISC historical hazard set.'
         )
         if description is not None:
-            self.tag.description = description
+            haz.tag.description = description
 
         if combine_threshold is not None:
             LOGGER.info('Combining events with small difference in date.')
-            difference_date = np.diff(self.date)
-            for event_id_i in self.event_id[
+            difference_date = np.diff(haz.date)
+            for event_id_i in haz.event_id[
                     np.append(difference_date <= combine_threshold, False)]:
                 event_ids = [event_id_i, event_id_i + 1]
-                self._combine_events(event_ids)
+                haz._combine_events(event_ids)
+        return haz
 
-    def _read_one_nc(self, file_name, centroids):
+    @staticmethod
+    def _read_one_nc(file_name, centroids, intensity_thres):
         """Read a single WISC footprint. Assumes a time dimension of length 1.
         Omits a footprint if another file with the same timestamp has already
         been read.
@@ -193,7 +208,7 @@ class StormEurope(Hazard):
         -------
         new_haz : StormEurope
             Hazard instance for one single storm.
-       """
+        """
         ncdf = xr.open_dataset(file_name)
 
         if centroids.size != (ncdf.sizes['latitude'] * ncdf.sizes['longitude']):
@@ -207,7 +222,7 @@ class StormEurope(Hazard):
         stacked = ncdf.max_wind_gust.stack(
             intensity=('latitude', 'longitude', 'time')
         )
-        stacked = stacked.where(stacked > self.intensity_thres)
+        stacked = stacked.where(stacked > intensity_thres)
         stacked = stacked.fillna(0)
 
         # fill in values from netCDF

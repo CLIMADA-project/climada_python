@@ -82,8 +82,7 @@ class TestCalc(unittest.TestCase):
     def test_Forecast_init_raise(self):
         """Test calc and propety functions from the Forecast class"""
         #hazard with several event dates
-        storms = StormEurope()
-        storms.read_footprints(WS_DEMO_NC, description='test_description')
+        storms = StormEurope.from_footprints(WS_DEMO_NC, description='test_description')
         #exposure
         data = {}
         data['latitude'] = np.array([1, 2, 3])

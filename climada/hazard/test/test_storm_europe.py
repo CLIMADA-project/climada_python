@@ -46,10 +46,9 @@ class TestReader(unittest.TestCase):
         self.assertTrue(isinstance(cent, Centroids))
         self.assertEqual(cent.size, 9944)
 
-    def test_read_footprints(self):
-        """Test read_footprints function, using two small test files"""
-        storms = StormEurope()
-        storms.read_footprints(WS_DEMO_NC, description='test_description')
+    def test_from_footprints(self):
+        """Test from_footprints constructor, using two small test files"""
+        storms = StormEurope.from_footprints(WS_DEMO_NC, description='test_description')
 
         self.assertEqual(storms.tag.haz_type, 'WS')
         self.assertEqual(storms.units, 'm/s')
@@ -68,9 +67,8 @@ class TestReader(unittest.TestCase):
         self.assertEqual(storms.fraction.shape, (2, 9944))
 
     def test_read_with_ref(self):
-        """Test read_footprints while passing in a reference raster."""
-        storms = StormEurope()
-        storms.read_footprints(WS_DEMO_NC, ref_raster=WS_DEMO_NC[1])
+        """Test from_footprints while passing in a reference raster."""
+        storms = StormEurope.from_footprints(WS_DEMO_NC, ref_raster=WS_DEMO_NC[1])
 
         self.assertEqual(storms.tag.haz_type, 'WS')
         self.assertEqual(storms.units, 'm/s')
@@ -87,7 +85,7 @@ class TestReader(unittest.TestCase):
         self.assertEqual(storms.fraction.shape, (2, 9944))
 
     def test_read_with_cent(self):
-        """Test read_footprints while passing in a Centroids object"""
+        """Test from_footprints while passing in a Centroids object"""
         var_names = copy.deepcopy(DEF_VAR_EXCEL)
         var_names['sheet_name'] = 'fp_centroids-test'
         var_names['col_name']['region_id'] = 'iso_n3'
@@ -95,8 +93,7 @@ class TestReader(unittest.TestCase):
             DATA_DIR.joinpath('fp_centroids-test.xls'),
             var_names=var_names
             )
-        storms = StormEurope()
-        storms.read_footprints(WS_DEMO_NC, centroids=test_centroids)
+        storms = StormEurope.from_footprints(WS_DEMO_NC, centroids=test_centroids)
 
         self.assertEqual(storms.intensity.shape, (2, 9944))
         self.assertEqual(
@@ -108,8 +105,7 @@ class TestReader(unittest.TestCase):
 
     def test_set_ssi(self):
         """Test set_ssi with both dawkins and wisc_gust methodology."""
-        storms = StormEurope()
-        storms.read_footprints(WS_DEMO_NC)
+        storms = StormEurope.from_footprints(WS_DEMO_NC)
 
         storms.set_ssi(method='dawkins')
         ssi_dawg = np.asarray([1.44573572e+09, 6.16173724e+08])
@@ -132,8 +128,7 @@ class TestReader(unittest.TestCase):
     def test_generate_prob_storms(self):
         """Test the probabilistic storm generator; calls _hist2prob as well as
         Centroids.set_region_id()"""
-        storms = StormEurope()
-        storms.read_footprints(WS_DEMO_NC)
+        storms = StormEurope.from_footprints(WS_DEMO_NC)
         storms_prob = storms.generate_prob_storms()
 
         self.assertEqual(
