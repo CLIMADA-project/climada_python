@@ -76,9 +76,6 @@ LOGGER = logging.getLogger(__name__)
 class Centroids():
     """Contains raster or vector centroids.
 
-    Raster data can be set with set_raster_file() or set_meta().
-    Vector data can be set with set_lat_lon() or set_vector_file().
-
     Attributes
     ----------
     meta : dict, optional
@@ -177,12 +174,10 @@ class Centroids():
         base_file : str, optional
             If set, read this file instead of one provided with climada.
         """
-        centroids = Centroids()
-
         if base_file is None:
             base_file = NATEARTH_CENTROIDS[res_as]
 
-        centroids.read_hdf5(base_file)
+        centroids = Centroids.from_hdf5(base_file)
         if centroids.meta:
             xres, xshear, xoff, yshear, yres, yoff = centroids.meta['transform'][:6]
             shape = (centroids.meta['height'], centroids.meta['width'])
@@ -206,8 +201,8 @@ class Centroids():
         centroids.check()
         return centroids
 
-    @staticmethod
-    def from_geodataframe(gdf, geometry_alias='geom'):
+    @classmethod
+    def from_geodataframe(cls, gdf, geometry_alias='geom'):
         """Create Centroids instance from GeoDataFrame.
 
         The geometry, lat, and lon attributes are set from the GeoDataFrame.geometry attribute,
@@ -234,8 +229,13 @@ class Centroids():
             processing.
         geometry_alias : str, opt
             Alternate name for the geometry column; dropped to avoid duplicate assignment.
+
+        Returns
+        -------
+        centr : Centroids
+            Centroids with data from given GeoDataFrame
         """
-        centroids = Centroids()
+        centroids = cls()
 
         centroids.geometry = gdf.geometry
         centroids.lat = gdf.geometry.y.to_numpy(copy=True)
@@ -255,10 +255,15 @@ class Centroids():
 
         return centroids
 
+    def set_raster_from_pix_bounds(self, *args, **kwargs):
+        """This function is deprecated, use Centroids.from_pix_bounds instead."""
+        LOGGER.warning("The use of Centroids.set_raster_from_pix_bounds is deprecated. "
+                       "Use Centroids.from_pix_bounds instead.")
+        self.__dict__ = Centroids.from_pix_bounds(*args, **kwargs).__dict__
 
-    def set_raster_from_pix_bounds(self, xf_lat, xo_lon, d_lat, d_lon, n_lat,
-                                   n_lon, crs=DEF_CRS):
-        """Set raster metadata (meta attribute) from pixel border data
+    @classmethod
+    def from_pix_bounds(cls, xf_lat, xo_lon, d_lat, d_lon, n_lat, n_lon, crs=DEF_CRS):
+        """Create Centroids object with meta attribute according to pixel border data.
 
         Parameters
         ----------
@@ -276,20 +281,33 @@ class Centroids():
             number of longitude points
         crs : dict() or rasterio.crs.CRS, optional
             CRS. Default: DEF_CRS
+
+        Returns
+        -------
+        centr : Centroids
+            Centroids with meta according to given pixel border data.
         """
-        self.__init__()
-        self.meta = {
+        centr = cls()
+        centr.meta = {
             'dtype': 'float32',
             'width': n_lon,
             'height': n_lat,
             'crs': crs,
             'transform': rasterio.Affine(d_lon, 0.0, xo_lon, 0.0, d_lat, xf_lat),
         }
+        return centr
 
-    def set_raster_from_pnt_bounds(self, points_bounds, res, crs=DEF_CRS):
-        """Set raster metadata (meta attribute) from points border data.
+    def set_raster_from_pnt_bounds(self, *args, **kwargs):
+        """This function is deprecated, use Centroids.from_pnt_bounds instead."""
+        LOGGER.warning("The use of Centroids.set_raster_from_pnt_bounds is deprecated. "
+                       "Use Centroids.from_pnt_bounds instead.")
+        self.__dict__ = Centroids.from_pnt_bounds(*args, **kwargs).__dict__
 
-        Raster border = point_border + res/2
+    @classmethod
+    def from_pnt_bounds(cls, points_bounds, res, crs=DEF_CRS):
+        """Create Centroids object with meta attribute according to points border data.
+
+        raster border = point border + res/2
 
         Parameters
         ----------
@@ -299,18 +317,31 @@ class Centroids():
             desired resolution in same units as points_bounds
         crs : dict() or rasterio.crs.CRS, optional
             CRS. Default: DEF_CRS
+
+        Returns
+        -------
+        centr : Centroids
+            Centroids with meta according to given points border data.
         """
-        self.__init__()
+        centr = cls()
         rows, cols, ras_trans = u_coord.pts_to_raster_meta(points_bounds, (res, -res))
-        self.meta = {
+        centr.meta = {
             'width': cols,
             'height': rows,
             'crs': crs,
             'transform': ras_trans,
         }
+        return centr
 
-    def set_lat_lon(self, lat, lon, crs=DEF_CRS):
-        """Set Centroids points from given latitude, longitude and CRS.
+    def set_lat_lon(self, *args, **kwargs):
+        """This function is deprecated, use Centroids.from_lat_lon instead."""
+        LOGGER.warning("The use of Centroids.set_lat_lon is deprecated. "
+                       "Use Centroids.from_lat_lon instead.")
+        self.__dict__ = Centroids.from_lat_lon(*args, **kwargs).__dict__
+
+    @classmethod
+    def from_lat_lon(cls, lat, lon, crs=DEF_CRS):
+        """Create Centroids object from given latitude, longitude and CRS.
 
         Parameters
         ----------
@@ -320,13 +351,72 @@ class Centroids():
             longitude
         crs : dict() or rasterio.crs.CRS, optional
             CRS. Default: DEF_CRS
-        """
-        self.__init__()
-        self.lat, self.lon, self.geometry = np.asarray(lat), np.asarray(lon), gpd.GeoSeries(crs=crs)
 
-    def set_raster_file(self, file_name, band=None, src_crs=None, window=False,
-                        geometry=False, dst_crs=False, transform=None, width=None,
-                        height=None, resampling=Resampling.nearest):
+        Returns
+        -------
+        centr : Centroids
+            Centroids with points according to given coordinates
+        """
+        centr = cls()
+        centr.lat = np.asarray(lat)
+        centr.lon = np.asarray(lon)
+        centr.geometry = gpd.GeoSeries(crs=crs)
+        return centr
+
+    def set_raster_file(self, file_name, band=None, **kwargs):
+        """This function is deprecated, use Centroids.from_raster_file
+        and Centroids.values_from_raster_files instead."""
+        LOGGER.warning("The use of Centroids.set_raster_file is deprecated. "
+                       "Use Centroids.from_raster_file and "
+                       "Centroids.values_from_raster_files instead.")
+        if not self.meta:
+            self.__dict__ = Centroids.from_raster_file(file_name, **kwargs).__dict__
+        return self.values_from_raster_files([file_name], band=band, **kwargs)
+
+    @classmethod
+    def from_raster_file(cls, file_name, src_crs=None, window=False,
+                         geometry=False, dst_crs=False, transform=None, width=None,
+                         height=None, resampling=Resampling.nearest):
+        """Create a new Centroids object from a raster file
+
+        Select region using window or geometry. Reproject input by providing
+        dst_crs and/or (transform, width, height).
+
+        Parameters
+        ----------
+        file_name : str
+            path of the file
+        src_crs : crs, optional
+            source CRS. Provide it if error without it.
+        window : rasterio.windows.Window, optional
+            window to read
+        geometry : shapely.geometry, optional
+            consider pixels only in shape
+        dst_crs : crs, optional
+            reproject to given crs
+        transform : rasterio.Affine
+            affine transformation to apply
+        wdith : float
+            number of lons for transform
+        height : float
+            number of lats for transform
+        resampling : rasterio.warp,.Resampling optional
+            resampling function used for reprojection to dst_crs
+
+        Returns
+        -------
+        centr : Centroids
+            Centroids with meta attribute according to the given raster file
+        """
+        centr = cls()
+        centr.meta, _ = u_coord.read_raster(
+            file_name, [1], src_crs, window, geometry, dst_crs,
+            transform, width, height, resampling)
+        return centr
+
+    def values_from_raster_files(self, file_names, band=None, src_crs=None, window=False,
+                                 geometry=False, dst_crs=False, transform=None, width=None,
+                                 height=None, resampling=Resampling.nearest):
         """Read raster of bands and set 0 values to the masked ones.
 
         Each band is an event. Select region using window or geometry. Reproject input by proving
@@ -334,7 +424,7 @@ class Centroids():
 
         Parameters
         ----------
-        file_pth : str
+        file_names : str
             path of the file
         band : list(int), optional
             band number to read. Default: [1]
@@ -357,7 +447,7 @@ class Centroids():
 
         Raises
         ------
-            ValueError
+        ValueError
 
         Returns
         -------
@@ -367,61 +457,99 @@ class Centroids():
         if band is None:
             band = [1]
 
-        if not self.meta:
-            self.meta, inten = u_coord.read_raster(
+        values = []
+        for file_name in file_names:
+            tmp_meta, data = u_coord.read_raster(
                 file_name, band, src_crs, window, geometry, dst_crs,
                 transform, width, height, resampling)
-            return sparse.csr_matrix(inten)
+            if (tmp_meta['crs'] != self.meta['crs']
+                    or tmp_meta['transform'] != self.meta['transform']
+                    or tmp_meta['height'] != self.meta['height']
+                    or tmp_meta['width'] != self.meta['width']):
+                raise ValueError('Raster data is inconsistent with contained raster.')
+            values.append(sparse.csr_matrix(data))
 
-        tmp_meta, inten = u_coord.read_raster(
-            file_name, band, src_crs, window, geometry, dst_crs,
-            transform, width, height, resampling)
-        if (tmp_meta['crs'] != self.meta['crs']
-                or tmp_meta['transform'] != self.meta['transform']
-                or tmp_meta['height'] != self.meta['height']
-                or tmp_meta['width'] != self.meta['width']):
-            raise ValueError('Raster data is inconsistent with contained raster.')
-        return sparse.csr_matrix(inten)
+        return sparse.vstack(values, format='csr')
 
-    def set_vector_file(self, file_name, inten_name=None, dst_crs=None):
-        """Read vector file format supported by fiona.
 
-        Each intensity name is considered an event.
+    def set_vector_file(self, file_name, inten_name=None, **kwargs):
+        """This function is deprecated, use Centroids.from_vector_file
+        and Centroids.values_from_vector_files instead."""
+        LOGGER.warning("The use of Centroids.set_vector_file is deprecated. "
+                       "Use Centroids.from_vector_file and "
+                       "Centroids.values_from_vector_files instead.")
+        if not self.geometry.any():
+            self.__dict__ = Centroids.from_vector_file(file_name, **kwargs).__dict__
+        return self.values_from_vector_files([file_name], val_names=inten_name, **kwargs)
+
+    @classmethod
+    def from_vector_file(cls, file_name, dst_crs=None):
+        """Create Centroids object from vector file (any format supported by fiona).
 
         Parameters
         ----------
         file_name : str
             vector file with format supported by fiona and 'geometry' field.
-        inten_name : list(str), optional
-            list of names of the columns of the intensity of each event.
-            default: ['intensity']
         dst_crs : crs, optional
             reproject to given crs
 
         Returns
         -------
-        inten : scipy.sparse.csr_matrix
-            Sparse intensity array of shape (len(inten_name), len(geometry)).
+        centr : Centroids
+            Centroids with points according to the given vector file
         """
-        if inten_name is None:
-            inten_name = ['intensity']
+        centr = cls()
+        centr.lat, centr.lon, centr.geometry, _ = u_coord.read_vector(
+            file_name, [], dst_crs=dst_crs)
+        return centr
 
-        if not self.geometry.any():
-            self.lat, self.lon, self.geometry, inten = u_coord.read_vector(
-                file_name, inten_name, dst_crs)
-            return sparse.csr_matrix(inten)
+    def values_from_vector_files(self, file_names, val_names=None, dst_crs=None):
+        """Read intensity or other data from vector files, making sure that geometry is compatible.
 
-        tmp_lat, tmp_lon, tmp_geometry, inten = u_coord.read_vector(
-            file_name, inten_name, dst_crs)
+        If the geometry of the shapes in any of the given files does not agree with the
+        geometry of this Centroids instance, a ValueError is raised.
 
-        if not (u_coord.equal_crs(tmp_geometry.crs, self.geometry.crs)
-                and np.allclose(tmp_lat, self.lat)
-                and np.allclose(tmp_lon, self.lon)):
-            raise ValueError('Vector data inconsistent with contained vector.')
+        Parameters
+        ----------
+        file_names : list(str)
+            vector files with format supported by fiona and 'geometry' field.
+        val_names : list(str), optional
+            list of names of the columns of the values. Default: ['intensity']
+        dst_crs : crs, optional
+            reproject to given crs
 
-        return sparse.csr_matrix(inten)
+        Raises
+        ------
+        ValueError
 
-    def read_mat(self, file_name, var_names=None):
+        Returns
+        -------
+        values : scipy.sparse.csr_matrix
+            Sparse array of shape (len(val_name), len(geometry)).
+        """
+        if val_names is None:
+            val_names = ['intensity']
+
+        values = []
+        for file_name in file_names:
+            tmp_lat, tmp_lon, tmp_geometry, data = u_coord.read_vector(
+                file_name, val_names, dst_crs=dst_crs)
+            if not (u_coord.equal_crs(tmp_geometry.crs, self.geometry.crs)
+                    and np.allclose(tmp_lat, self.lat)
+                    and np.allclose(tmp_lon, self.lon)):
+                raise ValueError('Vector data inconsistent with contained vector.')
+            values.append(sparse.csr_matrix(data))
+
+        return sparse.vstack(values, format='csr')
+
+    def read_mat(self, *args, **kwargs):
+        """This function is deprecated, use Centroids.from_mat instead."""
+        LOGGER.warning("The use of Centroids.read_mat is deprecated."
+                       "Use Centroids.from_mat instead.")
+        self.__dict__ = Centroids.from_mat(*args, **kwargs).__dict__
+
+    @classmethod
+    def from_mat(cls, file_name, var_names=None):
         """Read centroids from CLIMADA's MATLAB version.
 
         Parameters
@@ -434,6 +562,11 @@ class Centroids():
         Raises
         ------
         KeyError
+
+        Returns
+        -------
+        centr : Centroids
+            Centroids with data from the given file
         """
         LOGGER.info('Reading %s', file_name)
         if var_names is None:
@@ -454,21 +587,30 @@ class Centroids():
         try:
             cen_lat = np.squeeze(cent[var_names['var_name']['lat']])
             cen_lon = np.squeeze(cent[var_names['var_name']['lon']])
-            self.set_lat_lon(cen_lat, cen_lon)
+            centr = cls.from_lat_lon(cen_lat, cen_lon)
 
             try:
-                self.dist_coast = np.squeeze(cent[var_names['var_name']['dist_coast']])
+                centr.dist_coast = np.squeeze(cent[var_names['var_name']['dist_coast']])
             except KeyError:
                 pass
             try:
-                self.region_id = np.squeeze(cent[var_names['var_name']['region_id']])
+                centr.region_id = np.squeeze(cent[var_names['var_name']['region_id']])
             except KeyError:
                 pass
         except KeyError as err:
             raise KeyError("Not existing variable: %s" % str(err)) from err
 
-    def read_excel(self, file_name, var_names=None):
-        """Read centroids from excel file with column names in var_names.
+        return centr
+
+    def read_excel(self, *args, **kwargs):
+        """This function is deprecated, use Centroids.from_excel instead."""
+        LOGGER.warning("The use of Centroids.read_excel is deprecated."
+                       "Use Centroids.from_excel instead.")
+        self.__dict__ = Centroids.from_excel(*args, **kwargs).__dict__
+
+    @classmethod
+    def from_excel(cls, file_name, var_names=None):
+        """Generate a new centroids object from an excel file with column names in var_names.
 
         Parameters
         ----------
@@ -480,6 +622,11 @@ class Centroids():
         Raises
         ------
         KeyError
+
+        Returns
+        -------
+        centr : Centroids
+            Centroids with data from the given file
         """
         LOGGER.info('Reading %s', file_name)
         if var_names is None:
@@ -487,15 +634,17 @@ class Centroids():
 
         try:
             dfr = pd.read_excel(file_name, var_names['sheet_name'])
-            self.set_lat_lon(dfr[var_names['col_name']['lat']],
-                             dfr[var_names['col_name']['lon']])
+            centr = cls.from_lat_lon(dfr[var_names['col_name']['lat']],
+                                     dfr[var_names['col_name']['lon']])
             try:
-                self.region_id = dfr[var_names['col_name']['region_id']]
+                centr.region_id = dfr[var_names['col_name']['region_id']]
             except KeyError:
                 pass
 
         except KeyError as err:
             raise KeyError("Not existing variable: %s" % str(err)) from err
+
+        return centr
 
     def clear(self):
         """Clear vector and raster data."""
@@ -548,7 +697,7 @@ class Centroids():
 
         Returns
         -------
-        centroids : climada.hazard.Centroids()
+        centroids : Centroids
             Centroids containing the union of the centroids in others.
 
         Raises
@@ -828,8 +977,7 @@ class Centroids():
         if not self.lat.size or not self.lon.size:
             self.set_meta_to_lat_lon()
 
-        centr = Centroids()
-        centr.set_lat_lon(self.lat[sel_cen], self.lon[sel_cen], self.geometry.crs)
+        centr = Centroids.from_lat_lon(self.lat[sel_cen], self.lon[sel_cen], self.geometry.crs)
         if self.area_pixel.size:
             centr.area_pixel = self.area_pixel[sel_cen]
         if self.region_id.size:
@@ -970,40 +1118,60 @@ class Centroids():
         if isinstance(file_data, str):
             data.close()
 
-    def read_hdf5(self, file_data):
-        """Read centroids attributes from hdf5.
+    def read_hdf5(self, *args, **kwargs):
+        """This function is deprecated, use Centroids.from_hdf5 instead."""
+        LOGGER.warning("The use of Centroids.read_hdf5 is deprecated."
+                       "Use Centroids.from_hdf5 instead.")
+        self.__dict__ = Centroids.from_hdf5(*args, **kwargs).__dict__
+
+    @classmethod
+    def from_hdf5(cls, file_data):
+        """Create a centroids object from a HDF5 file.
 
         Parameters
         ----------
         file_data : str or h5
             If string, path to read data. If h5 object, the datasets will be read from there.
+
+        Returns
+        -------
+        centr : Centroids
+            Centroids with data from the given file
         """
         if isinstance(file_data, (str, Path)):
             LOGGER.info('Reading %s', file_data)
             data = h5py.File(file_data, 'r')
         else:
             data = file_data
-        self.clear()
+        centr = None
         crs = DEF_CRS
         if data.get('crs'):
             crs = u_coord.to_crs_user_input(data.get('crs')[0])
         if data.get('lat') and data.get('lat').size:
-            self.set_lat_lon(np.array(data.get('lat')), np.array(data.get('lon')), crs)
+            centr = cls.from_lat_lon(
+                np.array(data.get('lat')),
+                np.array(data.get('lon')),
+                crs=crs)
         elif data.get('latitude') and data.get('latitude').size:
-            self.set_lat_lon(np.array(data.get('latitude')), np.array(data.get('longitude')), crs)
+            centr = cls.from_lat_lon(
+                np.array(data.get('latitude')),
+                np.array(data.get('longitude')),
+                crs=crs)
         else:
             centr_meta = data.get('meta')
-            self.meta['crs'] = crs
+            centr = cls()
+            centr.meta['crs'] = crs
             for key, value in centr_meta.items():
                 if key != 'transform':
-                    self.meta[key] = value[0]
+                    centr.meta[key] = value[0]
                 else:
-                    self.meta[key] = rasterio.Affine(*value)
+                    centr.meta[key] = rasterio.Affine(*value)
         for centr_name in data.keys():
             if centr_name not in ('crs', 'lat', 'lon', 'meta'):
-                setattr(self, centr_name, np.array(data.get(centr_name)))
+                setattr(centr, centr_name, np.array(data.get(centr_name)))
         if isinstance(file_data, str):
             data.close()
+        return centr
 
     @property
     def crs(self):
@@ -1134,8 +1302,7 @@ def generate_nat_earth_centroids(res_as=360, path=None, dist_coast=False):
     lon, lat = [ar.ravel() for ar in np.meshgrid(lon_dim, lat_dim)]
     natids = np.uint16(u_coord.get_country_code(lat, lon, gridded=False))
 
-    cen = Centroids()
-    cen.set_lat_lon(lat, lon)
+    cen = Centroids.from_lat_lon(lat, lon)
     cen.region_id = natids
     cen.set_lat_lon_to_meta()
     cen.lat = np.array([])

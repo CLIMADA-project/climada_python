@@ -66,8 +66,7 @@ class InputVar():
     Categorical variable function: LitPop exposures with m,n exponents in [0,5]
         import scipy as sp
         def litpop_cat(m, n):
-            exp = Litpop()
-            exp.set_country('CHE', exponent=[m, n])
+            exp = Litpop.from_countries('CHE', exponent=[m, n])
             return exp
         distr_dict = {
             'm': sp.stats.randint(low=0, high=5),

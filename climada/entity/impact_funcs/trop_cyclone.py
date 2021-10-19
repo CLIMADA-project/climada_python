@@ -39,9 +39,19 @@ class ImpfTropCyclone(ImpactFunc):
         ImpactFunc.__init__(self)
         self.haz_type = 'TC'
 
-    def set_emanuel_usa(self, impf_id=1, intensity=np.arange(0, 121, 5),
+    def set_emanuel_usa(self, *args, **kwargs):
+        """This function is deprecated, use from_emanuel_usa() instead."""
+        LOGGER.warning("The use of ImpfTropCyclone.set_emanuel_usa is deprecated."
+                       "Use ImpfTropCyclone.from_emanuel_usa instead.")
+        self.__dict__ = ImpfTropCyclone.from_emanuel_usa(*args, **kwargs).__dict__
+
+    @classmethod
+    def from_emanuel_usa(cls, impf_id=1, intensity=np.arange(0, 121, 5),
                         v_thresh=25.7, v_half=74.7, scale=1.0):
-        """Using the formula of Emanuele 2011.
+        """
+        Init TC impact function using the formula of Kerry Emanuel, 2011:
+        'Global Warming Effects on U.S. Hurricane Damage',
+        https://doi.org/10.1175/WCAS-D-11-00007.1
 
         Parameters
         ----------
@@ -64,6 +74,11 @@ class ImpfTropCyclone(ImpactFunc):
         Raises
         ------
         ValueError
+
+        Returns
+        -------
+        impf : ImpfTropCyclone
+            TC impact function instance based on formula by Emanuel (2011)
         """
         if v_half <= v_thresh:
             raise ValueError('Shape parameters out of range: v_half <= v_thresh.')
@@ -72,15 +87,17 @@ class ImpfTropCyclone(ImpactFunc):
         if scale > 1 or scale <= 0:
             raise ValueError('Scale parameter out of range.')
 
-        self.name = 'Emanuel 2011'
-        self.id = impf_id
-        self.intensity_unit = 'm/s'
-        self.intensity = intensity
-        self.paa = np.ones(intensity.shape)
-        v_temp = (self.intensity - v_thresh) / (v_half - v_thresh)
+        impf = cls()
+        impf.name = 'Emanuel 2011'
+        impf.id = impf_id
+        impf.intensity_unit = 'm/s'
+        impf.intensity = intensity
+        impf.paa = np.ones(intensity.shape)
+        v_temp = (impf.intensity - v_thresh) / (v_half - v_thresh)
         v_temp[v_temp < 0] = 0
-        self.mdd = v_temp**3 / (1 + v_temp**3)
-        self.mdd *= scale
+        impf.mdd = v_temp**3 / (1 + v_temp**3)
+        impf.mdd *= scale
+        return impf
 
 class ImpfSetTropCyclone(ImpactFuncSet):
     """Impact function set (ImpfS) for tropical cyclones."""
@@ -88,9 +105,19 @@ class ImpfSetTropCyclone(ImpactFuncSet):
     def __init__(self):
         ImpactFuncSet.__init__(self)
 
-    def set_calibrated_regional_ImpfSet(self, calibration_approach='TDR', q=.5,
+    def set_calibrated_regional_ImpfSet(self, *args, **kwargs):
+        """This function is deprecated, use from_calibrated_regional_ImpfSet() instead."""
+        LOGGER.warning("ImpfSetTropCyclone.set_calibrated_regional_ImpfSet is deprecated."
+                       "Use ImpfSetTropCyclone.from_calibrated_regional_ImpfSet instead.")
+        self.__dict__ = \
+            ImpfSetTropCyclone.from_calibrated_regional_ImpfSet(*args, **kwargs).__dict__
+        return ImpfSetTropCyclone.calibrated_regional_vhalf(*args, **kwargs)
+
+    @classmethod
+    def from_calibrated_regional_ImpfSet(cls, calibration_approach='TDR', q=.5,
                                         input_file_path=None, version=1):
-        """ initiate TC wind impact functions based on Eberenz et al. (2020)
+        """ initiate TC wind impact functions based on Eberenz et al. 2021:
+            https://doi.org/10.5194/nhess-21-393-2021
 
         Parameters
         ----------
@@ -113,11 +140,79 @@ class ImpfSetTropCyclone(ImpactFuncSet):
         Returns
         -------
         v_half : dict
-            Impf slope parameter v_half per region¨
+            Impf slope parameter v_half per region
+
+        Returns
+        -------
+        impf_set : ImpfSetTropCyclone
+            TC Impact Function Set based on Eberenz et al, 2021.
+        """
+        reg_v_half = ImpfSetTropCyclone.calibrated_regional_vhalf(
+            calibration_approach=calibration_approach,
+            q=q,
+            input_file_path=input_file_path,
+            version=version,
+            )
+
+        # define regions and parameters:
+        v_0 = 25.7  # v_threshold based on Emanuel (2011)
+        scale = 1.0
+
+        regions_long = dict()
+        regions_long['NA1'] = 'Caribbean and Mexico (NA1)'
+        regions_long['NA2'] = 'USA and Canada (NA2)'
+        regions_long['NI'] = 'North Indian (NI)'
+        regions_long['OC'] = 'Oceania (OC)'
+        regions_long['SI'] = 'South Indian (SI)'
+        regions_long['WP1'] = 'South East Asia (WP1)'
+        regions_long['WP2'] = 'Philippines (WP2)'
+        regions_long['WP3'] = 'China Mainland (WP3)'
+        regions_long['WP4'] = 'North West Pacific (WP4)'
+        regions_long['ROW'] = 'Global'
+
+        # init impact function set
+        impf_set = cls()
+        for idx, region in enumerate(reg_v_half.keys()):
+            impf_tc = ImpfTropCyclone.from_emanuel_usa(impf_id=int(idx + 1),
+                                                       v_thresh=v_0,
+                                                       v_half=reg_v_half[region],
+                                                       scale=scale)
+            impf_tc.name = regions_long[region]
+            impf_set.append(impf_tc)
+        return impf_set
+
+    @staticmethod
+    def calibrated_regional_vhalf(calibration_approach='TDR', q=.5,
+                                  input_file_path=None, version=1):
+        """return calibrated TC wind impact function slope parameter v_half
+        per region based on Eberenz et al., 2021: https://doi.org/10.5194/nhess-21-393-2021
+
+        Parameters
+        ----------
+        calibration_approach : str
+            'TDR' (default): Total damage ratio (TDR) optimization with
+                TDR=1.0 (simulated damage = reported damage from EM-DAT)
+            'TDR1.5' : Total damage ratio (TDR) optimization with
+                TDR=1.5 (simulated damage = 1.5*reported damage from EM-DAT)
+            'RMSF': Root-mean-squared fraction (RMSF) optimization
+            'EDR': quantile from individually fitted v_half per event,
+                i.e. v_half fitted to get EDR=1.0 for each event
+        q : float
+            quantile between 0 and 1.0 to select
+            (EDR only, default=0.5, i.e. median v_half)
+        input_file_path : str or DataFrame
+            full path to calibration
+            result file to be used instead of default file in repository
+            (expert users only)
 
         Raises
         ------
         ValueError
+
+        Returns
+        -------
+        v_half : dict
+            TC impact function slope parameter v_half per region¨
         """
         calibration_approach = calibration_approach.upper()
         if calibration_approach not in ['TDR', 'TDR1.0', 'TDR1.5', 'RMSF', 'EDR']:
@@ -138,28 +233,11 @@ class ImpfSetTropCyclone(ImpactFuncSet):
                              'tc_impf_cal_v%02.0f_%s.csv' % (version, calibration_approach)),
                 encoding="ISO-8859-1", header=0)
 
-        # define regions and parameters:
-        v_0 = 25.7  # v_threshold based on Emanuel (2011)
-        scale = 1.0
-
         regions_short = ['NA1', 'NA2', 'NI', 'OC', 'SI', 'WP1', 'WP2', 'WP3', 'WP4']
-        regions_long = dict()
-        regions_long[regions_short[0]] = 'Caribbean and Mexico (NA1)'
-        regions_long[regions_short[1]] = 'USA and Canada (NA2)'
-        regions_long[regions_short[2]] = 'North Indian (NI)'
-        regions_long[regions_short[3]] = 'Oceania (OC)'
-        regions_long[regions_short[4]] = 'South Indian (SI)'
-        regions_long[regions_short[5]] = 'South East Asia (WP1)'
-        regions_long[regions_short[6]] = 'Philippines (WP2)'
-        regions_long[regions_short[7]] = 'China Mainland (WP3)'
-        regions_long[regions_short[8]] = 'North West Pacific (WP4)'
-        regions_long['all'] = 'Global'
-        regions_long['GLB'] = 'Global'
-        regions_long['ROW'] = 'Global'
 
         # loop over calibration regions (column cal_region2 in df):
         reg_v_half = dict()
-        for idx, region in enumerate(regions_short):
+        for region in regions_short:
             df_reg = df_calib_results.loc[df_calib_results.cal_region2 == region]
             df_reg = df_reg.reset_index(drop=True)
             reg_v_half[region] = np.round(df_reg['v_half'].quantile(q=q), 5)
@@ -171,13 +249,6 @@ class ImpfSetTropCyclone(ImpactFuncSet):
             df_reg = df_calib_results.loc[df_calib_results.cal_region2 == 'GLB']
             df_reg = df_reg.reset_index(drop=True)
             reg_v_half[regions_short[-1]] = np.round(df_reg['v_half'].values[0], 5)
-
-        for idx, region in enumerate(regions_short):
-            impf_tc = ImpfTropCyclone()
-            impf_tc.set_emanuel_usa(impf_id=int(idx + 1), v_thresh=v_0, v_half=reg_v_half[region],
-                                  scale=scale)
-            impf_tc.name = regions_long[region]
-            self.append(impf_tc)
         return reg_v_half
 
     @staticmethod

@@ -22,7 +22,6 @@ Test tc_tracks module.
 import unittest
 import xarray as xr
 import numpy as np
-import netCDF4 as nc
 import pandas as pd
 import geopandas as gpd
 from shapely.geometry import Point, LineString, MultiLineString
@@ -52,30 +51,26 @@ class TestIbtracs(unittest.TestCase):
 
     def test_raw_ibtracs_empty_pass(self):
         """Test reading empty TC from IBTrACS files"""
-        tc_track = tc.TCTracks()
-        tc_track.read_ibtracs_netcdf(
+        tc_track = tc.TCTracks.from_ibtracs_netcdf(
             provider='usa', storm_id='1988234N13299')
         self.assertEqual(tc_track.size, 0)
         self.assertEqual(tc_track.get_track(), [])
 
     def test_raw_ibtracs_invalid_pass(self):
         """Test reading invalid/non-existing TC from IBTrACS files"""
-        tc_track = tc.TCTracks()
         with self.assertRaises(ValueError) as cm:
-            tc_track.read_ibtracs_netcdf(storm_id='INVALID')
+            tc_track = tc.TCTracks.from_ibtracs_netcdf(storm_id='INVALID')
         self.assertIn("IDs are invalid", str(cm.exception))
         self.assertIn("INVALID", str(cm.exception))
 
-        tc_track = tc.TCTracks()
         with self.assertRaises(ValueError) as cm:
-            tc_track.read_ibtracs_netcdf(storm_id='1988234N13298')
+            tc_track = tc.TCTracks.from_ibtracs_netcdf(storm_id='1988234N13298')
         self.assertIn("IDs are not in IBTrACS", str(cm.exception))
         self.assertIn("1988234N13298", str(cm.exception))
 
     def test_penv_rmax_penv_pass(self):
-        """read_ibtracs_netcdf"""
-        tc_track = tc.TCTracks()
-        tc_track.read_ibtracs_netcdf(provider='usa', storm_id='1992230N11325')
+        """from_ibtracs_netcdf"""
+        tc_track = tc.TCTracks.from_ibtracs_netcdf(provider='usa', storm_id='1992230N11325')
         penv_ref = np.ones(97) * 1010
         penv_ref[26:36] = [1011, 1012, 1013, 1014, 1015, 1014, 1014, 1014, 1014, 1012]
 
@@ -84,12 +79,10 @@ class TestIbtracs(unittest.TestCase):
         self.assertTrue(np.allclose(
             tc_track.get_track().radius_max_wind.values, np.zeros(97)))
 
-    def test_read_raw_pass(self):
+    def test_ibtracs_raw_pass(self):
         """Read a tropical cyclone."""
-        tc_track = tc.TCTracks()
-
         # read without specified provider or estimation of missing values
-        tc_track.read_ibtracs_netcdf(storm_id='2017242N16333')
+        tc_track = tc.TCTracks.from_ibtracs_netcdf(storm_id='2017242N16333')
         track_ds = tc_track.get_track()
         self.assertEqual(len(tc_track.data), 1)
         self.assertEqual(track_ds.time.dt.year.values[0], 2017)
@@ -127,12 +120,10 @@ class TestIbtracs(unittest.TestCase):
         self.assertEqual(track_ds.data_provider, 'ibtracs_official_3h_mixed')
         self.assertEqual(track_ds.category, 5)
 
-    def test_read_with_provider(self):
+    def test_ibtracs_with_provider(self):
         """Read a tropical cyclone with and without explicit provider."""
-        tc_track = tc.TCTracks()
         storm_id = '2012152N12130'
-
-        tc_track.read_ibtracs_netcdf(storm_id=storm_id, provider='usa')
+        tc_track = tc.TCTracks.from_ibtracs_netcdf(storm_id=storm_id, provider='usa')
         track_ds = tc_track.get_track()
         self.assertEqual(track_ds.time.size, 51)
         self.assertEqual(track_ds.data_provider, 'ibtracs_usa')
@@ -140,31 +131,29 @@ class TestIbtracs(unittest.TestCase):
         self.assertAlmostEqual(track_ds.central_pressure.values[50], 989, places=5)
         self.assertAlmostEqual(track_ds.radius_max_wind.values[46], 20, places=5)
 
-        tc_track.read_ibtracs_netcdf(storm_id=storm_id)
+        tc_track = tc.TCTracks.from_ibtracs_netcdf(storm_id=storm_id)
         track_ds = tc_track.get_track()
         self.assertEqual(track_ds.time.size, 35)
         self.assertEqual(track_ds.data_provider, 'ibtracs_official_3h_mixed')
         self.assertAlmostEqual(track_ds.lat.values[-1], 31.40, places=5)
         self.assertAlmostEqual(track_ds.central_pressure.values[-1], 980, places=5)
 
-    def test_read_antimeridian(self):
+    def test_ibtracs_antimeridian(self):
         """Read a track that crosses the antimeridian and make sure that lon is consistent"""
-        tc_track = tc.TCTracks()
         storm_id = '2013224N12220'
 
         # the officially responsible agencies 'usa' and 'tokyo' use different signs in lon, but we
         # have to `estimate_missing` because both have gaps in reported values
-        tc_track.read_ibtracs_netcdf(storm_id=storm_id, provider=['official_3h'],
+        tc_track = tc.TCTracks.from_ibtracs_netcdf(storm_id=storm_id, provider=['official_3h'],
                                      estimate_missing=True)
         track_ds = tc_track.get_track()
         np.testing.assert_array_less(0, track_ds.lon)
 
-    def test_read_estimate_missing(self):
+    def test_ibtracs_estimate_missing(self):
         """Read a tropical cyclone and estimate missing values."""
-        tc_track = tc.TCTracks()
         storm_id = '2012152N12130'
 
-        tc_track.read_ibtracs_netcdf(storm_id=storm_id, estimate_missing=True)
+        tc_track = tc.TCTracks.from_ibtracs_netcdf(storm_id=storm_id, estimate_missing=True)
         track_ds = tc_track.get_track()
         # less time steps are discarded, leading to a larger total size
         self.assertEqual(track_ds.time.size, 99)
@@ -180,12 +169,11 @@ class TestIbtracs(unittest.TestCase):
         self.assertAlmostEqual(track_ds.radius_oci.values[85], 165, places=-1)
         self.assertAlmostEqual(track_ds.radius_oci.values[95], 155, places=-1)
 
-    def test_read_official(self):
+    def test_ibtracs_official(self):
         """Read a tropical cyclone, only officially reported values."""
-        tc_track = tc.TCTracks()
         storm_id = '2012152N12130'
 
-        tc_track.read_ibtracs_netcdf(
+        tc_track = tc.TCTracks.from_ibtracs_netcdf(
             storm_id=storm_id, interpolate_missing=False, provider='official')
         track_ds = tc_track.get_track()
         self.assertEqual(track_ds.time.size, 21)
@@ -194,109 +182,97 @@ class TestIbtracs(unittest.TestCase):
         self.assertAlmostEqual(track_ds.central_pressure.values[19], 980, places=5)
         np.testing.assert_array_equal(track_ds.radius_max_wind.values, 0)
 
-    def test_read_scale_wind(self):
+    def test_ibtracs_scale_wind(self):
         """Read a tropical cyclone and scale wind speed according to agency."""
-        tc_track = tc.TCTracks()
         storm_id = '2012152N12130'
 
-        tc_track.read_ibtracs_netcdf(storm_id=storm_id, rescale_windspeeds=True)
+        tc_track = tc.TCTracks.from_ibtracs_netcdf(storm_id=storm_id, rescale_windspeeds=True)
         track_ds = tc_track.get_track()
         self.assertAlmostEqual(track_ds.max_sustained_wind.values[34], (55 - 23.3) / 0.6, places=5)
 
-        tc_track.read_ibtracs_netcdf(storm_id=storm_id, rescale_windspeeds=False)
+        tc_track = tc.TCTracks.from_ibtracs_netcdf(storm_id=storm_id, rescale_windspeeds=False)
         track_ds = tc_track.get_track()
         self.assertAlmostEqual(track_ds.max_sustained_wind.values[34], 55, places=5)
 
-    def test_read_interpolate_missing(self):
+    def test_ibtracs_interpolate_missing(self):
         """Read a tropical cyclone with and without interpolating missing values."""
-        tc_track = tc.TCTracks()
         storm_id = '2010066S19050'
 
-        tc_track.read_ibtracs_netcdf(storm_id=storm_id, interpolate_missing=False)
+        tc_track = tc.TCTracks.from_ibtracs_netcdf(storm_id=storm_id, interpolate_missing=False)
         track_ds = tc_track.get_track()
         self.assertEqual(track_ds.time.size, 50)
         self.assertAlmostEqual(track_ds.central_pressure.values[30], 992, places=5)
         self.assertAlmostEqual(track_ds.central_pressure.values[31], 1006, places=5)
 
-        tc_track.read_ibtracs_netcdf(storm_id=storm_id, interpolate_missing=True)
+        tc_track = tc.TCTracks.from_ibtracs_netcdf(storm_id=storm_id, interpolate_missing=True)
         track_ds = tc_track.get_track()
         self.assertEqual(track_ds.time.size, 65)
         self.assertAlmostEqual(track_ds.central_pressure.values[30], 992, places=5)
         self.assertAlmostEqual(track_ds.central_pressure.values[38], 999, places=5)
         self.assertAlmostEqual(track_ds.central_pressure.values[46], 1006, places=5)
 
-    def test_read_range(self):
+    def test_ibtracs_range(self):
         """Read several TCs."""
-        tc_track = tc.TCTracks()
-        tc_track.read_ibtracs_netcdf(year_range=(2100, 2150))
+        tc_track = tc.TCTracks.from_ibtracs_netcdf(year_range=(2100, 2150))
         self.assertEqual(tc_track.size, 0)
 
-        tc_track = tc.TCTracks()
-        tc_track.read_ibtracs_netcdf(provider='usa', storm_id=None,
-                                     year_range=(1915, 1916), basin='WP')
+        tc_track = tc.TCTracks.from_ibtracs_netcdf(
+            provider='usa', storm_id=None, year_range=(1915, 1916), basin='WP')
         self.assertEqual(tc_track.size, 0)
 
-        tc_track = tc.TCTracks()
-        tc_track.read_ibtracs_netcdf(provider='usa', year_range=(1993, 1994),
-                                     basin='EP', estimate_missing=False)
+        tc_track = tc.TCTracks.from_ibtracs_netcdf(
+            provider='usa', year_range=(1993, 1994), basin='EP', estimate_missing=False)
         self.assertEqual(tc_track.size, 33)
 
-        tc_track = tc.TCTracks()
-        tc_track.read_ibtracs_netcdf(provider='usa', year_range=(1993, 1994),
-                                     basin='EP', estimate_missing=True)
+        tc_track = tc.TCTracks.from_ibtracs_netcdf(
+            provider='usa', year_range=(1993, 1994), basin='EP', estimate_missing=True)
         self.assertEqual(tc_track.size, 45)
 
     def test_ibtracs_correct_pass(self):
         """Check estimate_missing option"""
-        tc_try = tc.TCTracks()
-        tc_try.read_ibtracs_netcdf(provider='usa', storm_id='1982267N25289',
-                                   estimate_missing=True)
+        tc_try = tc.TCTracks.from_ibtracs_netcdf(
+            provider='usa', storm_id='1982267N25289', estimate_missing=True)
         self.assertAlmostEqual(tc_try.data[0].central_pressure.values[0], 1013, places=0)
         self.assertAlmostEqual(tc_try.data[0].central_pressure.values[5], 1008, places=0)
         self.assertAlmostEqual(tc_try.data[0].central_pressure.values[-1], 1012, places=0)
 
-    def test_read_with_basin(self):
+    def test_ibtracs_with_basin(self):
         """Filter TCs by (genesis) basin."""
         # South Atlantic (not usually a TC location at all)
-        tc_track = tc.TCTracks()
-        tc_track.read_ibtracs_netcdf(basin="SA")
+        tc_track = tc.TCTracks.from_ibtracs_netcdf(basin="SA")
         self.assertEqual(tc_track.size, 3)
 
         # the basin is not necessarily the genesis basin
-        tc_track = tc.TCTracks()
-        tc_track.read_ibtracs_netcdf(year_range=(1995, 1995), basin="SP", estimate_missing=True)
+        tc_track = tc.TCTracks.from_ibtracs_netcdf(
+            year_range=(1995, 1995), basin="SP", estimate_missing=True)
         self.assertEqual(tc_track.size, 6)
         self.assertEqual(tc_track.data[0].basin[0], 'SP')
         self.assertEqual(tc_track.data[5].basin[0], 'SI')
 
         # genesis in NI
-        tc_track = tc.TCTracks()
-        tc_track.read_ibtracs_netcdf(
+        tc_track = tc.TCTracks.from_ibtracs_netcdf(
             year_range=(1994, 1994), genesis_basin="NI", estimate_missing=True)
         self.assertEqual(tc_track.size, 5)
         for tr in tc_track.data:
             self.assertEqual(tr.basin[0], "NI")
 
         # genesis in EP, but crosses WP at some point
-        tc_track = tc.TCTracks()
-        tc_track.read_ibtracs_netcdf(year_range=(2002, 2003), basin="WP", genesis_basin="EP")
+        tc_track = tc.TCTracks.from_ibtracs_netcdf(
+            year_range=(2002, 2003), basin="WP", genesis_basin="EP")
         self.assertEqual(tc_track.size, 3)
         for tr in tc_track.data:
             self.assertEqual(tr.basin[0], "EP")
             self.assertIn("WP", tr.basin)
 
-    def test_discard_single_points(self):
+    def test_ibtracs_discard_single_points(self):
         """Check discard_single_points option"""
-        tc_track_singlept = tc.TCTracks()
         passed = False
         for year in range(1863, 1981):
-            tc_track_singlept.read_ibtracs_netcdf(provider='usa',
-                                         year_range=(year,year),
-                                         discard_single_points=False)
+            tc_track_singlept = tc.TCTracks.from_ibtracs_netcdf(
+                provider='usa', year_range=(year,year), discard_single_points=False)
             n_singlepts = np.sum([x.time.size == 1 for x in tc_track_singlept.data])
             if n_singlepts > 0:
-                tc_track = tc.TCTracks()
-                tc_track.read_ibtracs_netcdf(provider='usa', year_range=(year,year))
+                tc_track = tc.TCTracks.from_ibtracs_netcdf(provider='usa', year_range=(year,year))
                 if tc_track.size == tc_track_singlept.size - n_singlepts:
                     passed = True
                     break
@@ -304,35 +280,30 @@ class TestIbtracs(unittest.TestCase):
 
 class TestIO(unittest.TestCase):
     """Test reading of tracks from files of different formats"""
-    def test_write_read_netcdf(self):
+    def test_netcdf_io(self):
         """Test writting and reading netcdf4 TCTracks instances"""
         path = DATA_DIR.joinpath("tc_tracks_nc")
         path.mkdir(exist_ok=True)
-        tc_track = tc.TCTracks()
-        tc_track.read_ibtracs_netcdf(provider='usa', storm_id='1988234N13299',
-                                     estimate_missing=True)
+        tc_track = tc.TCTracks.from_ibtracs_netcdf(
+            provider='usa', storm_id='1988234N13299', estimate_missing=True)
         tc_track.write_netcdf(str(path))
 
-        tc_read = tc.TCTracks()
-        tc_read.read_netcdf(str(path))
-
+        tc_read = tc.TCTracks.from_netcdf(str(path))
         self.assertEqual(tc_track.get_track().sid, tc_read.get_track().sid)
 
     def test_read_legacy_netcdf(self):
         """Test reading from NetCDF files with legacy basin attributes"""
-        anti_track = tc.TCTracks()
         # test data set with two tracks:
         # * 1980052S16155: crosses the antimeridian
         # * 2018079S09162: close, but doesn't cross antimeridian; has self-intersections
-        anti_track.read_netcdf(TEST_TRACKS_ANTIMERIDIAN)
+        anti_track = tc.TCTracks.from_netcdf(TEST_TRACKS_ANTIMERIDIAN)
 
         for tr in anti_track.data:
             self.assertEqual(tr.basin.shape, tr.time.shape)
             np.testing.assert_array_equal(tr.basin, "SP")
 
-    def test_read_processed_ibtracs_csv(self):
-        tc_track = tc.TCTracks()
-        tc_track.read_processed_ibtracs_csv(TEST_TRACK)
+    def test_from_processed_ibtracs_csv(self):
+        tc_track = tc.TCTracks.from_processed_ibtracs_csv(TEST_TRACK)
 
         self.assertEqual(tc_track.data[0].time.size, 38)
         self.assertEqual(tc_track.data[0].lon[11], -39.60)
@@ -358,10 +329,8 @@ class TestIO(unittest.TestCase):
         self.assertEqual(tc_track.data[0].id_no, 1951239012334)
         self.assertEqual(tc_track.data[0].category, 1)
 
-    def test_read_simulations_emanuel(self):
-        tc_track = tc.TCTracks()
-
-        tc_track.read_simulations_emanuel(TEST_TRACK_EMANUEL, hemisphere='N')
+    def test_from_simulations_emanuel(self):
+        tc_track = tc.TCTracks.from_simulations_emanuel(TEST_TRACK_EMANUEL, hemisphere='N')
         self.assertEqual(len(tc_track.data), 4)
         self.assertEqual(tc_track.data[0].time.size, 93)
         self.assertEqual(tc_track.data[0].lon[11], -115.57)
@@ -381,7 +350,7 @@ class TestIO(unittest.TestCase):
         self.assertTrue(np.all([np.all(d.basin == 'N') for d in tc_track.data]))
         self.assertEqual(tc_track.data[0].category, 3)
 
-        tc_track.read_simulations_emanuel(TEST_TRACK_EMANUEL_CORR, hemisphere='S')
+        tc_track = tc.TCTracks.from_simulations_emanuel(TEST_TRACK_EMANUEL_CORR, hemisphere='S')
         self.assertEqual(len(tc_track.data), 2)
         self.assertTrue(np.all([np.all(d.basin == 'S') for d in tc_track.data]))
         self.assertEqual(tc_track.data[0].radius_max_wind[15], 102.49460043196545)
@@ -394,19 +363,13 @@ class TestIO(unittest.TestCase):
         self.assertEqual(tc_track.data[1].time.dt.year[257], 2010)
         self.assertEqual(tc_track.data[1].time.dt.year[-1], 2010)
 
-        tc_track.read_simulations_emanuel(TEST_TRACK_EMANUEL_CORR)
+        tc_track = tc.TCTracks.from_simulations_emanuel(TEST_TRACK_EMANUEL_CORR)
         self.assertEqual(len(tc_track.data), 5)
         self.assertTrue(np.all([np.all(d.basin == 'GB') for d in tc_track.data]))
 
-    def test_read_one_gettelman(self):
+    def test_read_gettelman(self):
         """Test reading and model of TC from Gettelman track files"""
-        tc_track_G = tc.TCTracks()
-        # populate tracks by loading data from NetCDF:
-        nc_data = nc.Dataset(TEST_TRACK_GETTELMAN)
-        nstorms = nc_data.dimensions['storm'].size
-        for i in range(nstorms):
-            tc_track_G.read_one_gettelman(nc_data, i)
-
+        tc_track_G = tc.TCTracks.from_gettelman(TEST_TRACK_GETTELMAN)
         self.assertEqual(tc_track_G.data[0].time.size, 29)
         self.assertEqual(tc_track_G.data[0].lon[11], 60.0)
         self.assertEqual(tc_track_G.data[0].lat[23], 10.20860481262207)
@@ -429,11 +392,9 @@ class TestIO(unittest.TestCase):
         np.testing.assert_array_equal(tc_track_G.data[0].basin, 'NI')
         self.assertEqual(tc_track_G.data[0].category, 0)
 
-    def test_read_simulations_chaz(self):
+    def test_from_simulations_chaz(self):
         """Test reading NetCDF output from CHAZ simulations"""
-        tc_track = tc.TCTracks()
-
-        tc_track.read_simulations_chaz(TEST_TRACK_CHAZ)
+        tc_track = tc.TCTracks.from_simulations_chaz(TEST_TRACK_CHAZ)
         self.assertEqual(len(tc_track.data), 13)
         self.assertEqual(tc_track.data[0].time.size, 5)
         self.assertEqual(tc_track.data[0].lon[3], 74.1388328911036)
@@ -452,20 +413,18 @@ class TestIO(unittest.TestCase):
         self.assertEqual(tc_track.data[4].category, 0)
         self.assertEqual(tc_track.data[3].category, -1)
 
-        tc_track.read_simulations_chaz(TEST_TRACK_CHAZ, year_range=(1990, 1991))
+        tc_track = tc.TCTracks.from_simulations_chaz(TEST_TRACK_CHAZ, year_range=(1990, 1991))
         self.assertEqual(len(tc_track.data), 3)
 
-        tc_track.read_simulations_chaz(TEST_TRACK_CHAZ, year_range=(1950, 1955))
+        tc_track = tc.TCTracks.from_simulations_chaz(TEST_TRACK_CHAZ, year_range=(1950, 1955))
         self.assertEqual(len(tc_track.data), 0)
 
-        tc_track.read_simulations_chaz(TEST_TRACK_CHAZ, ensemble_nums=[0, 2])
+        tc_track = tc.TCTracks.from_simulations_chaz(TEST_TRACK_CHAZ, ensemble_nums=[0, 2])
         self.assertEqual(len(tc_track.data), 9)
 
-    def test_read_simulations_storm(self):
+    def test_from_simulations_storm(self):
         """Test reading NetCDF output from STORM simulations"""
-        tc_track = tc.TCTracks()
-
-        tc_track.read_simulations_storm(TEST_TRACK_STORM)
+        tc_track = tc.TCTracks.from_simulations_storm(TEST_TRACK_STORM)
         self.assertEqual(len(tc_track.data), 6)
         self.assertEqual(tc_track.data[0].time.size, 15)
         self.assertEqual(tc_track.data[0].lon[3], 245.3)
@@ -485,16 +444,15 @@ class TestIO(unittest.TestCase):
         self.assertEqual(tc_track.data[4].category, 0)
         self.assertEqual(tc_track.data[3].category, 1)
 
-        tc_track.read_simulations_storm(TEST_TRACK_STORM, years=[0, 2])
+        tc_track = tc.TCTracks.from_simulations_storm(TEST_TRACK_STORM, years=[0, 2])
         self.assertEqual(len(tc_track.data), 4)
 
-        tc_track.read_simulations_storm(TEST_TRACK_STORM, years=[7])
+        tc_track = tc.TCTracks.from_simulations_storm(TEST_TRACK_STORM, years=[7])
         self.assertEqual(len(tc_track.data), 0)
 
     def test_to_geodataframe_points(self):
         """Conversion of TCTracks to GeoDataFrame using Points."""
-        tc_track = tc.TCTracks()
-        tc_track.read_processed_ibtracs_csv(TEST_TRACK)
+        tc_track = tc.TCTracks.from_processed_ibtracs_csv(TEST_TRACK)
 
         gdf_points = tc_track.to_geodataframe(as_points=True)
         self.assertIsInstance(gdf_points.unary_union.bounds, tuple)
@@ -505,19 +463,17 @@ class TestIO(unittest.TestCase):
 
     def test_to_geodataframe_line(self):
         """Conversion of TCTracks to GeoDataFrame using LineStrings."""
-        tc_track = tc.TCTracks()
-        tc_track.read_processed_ibtracs_csv(TEST_TRACK)
+        tc_track = tc.TCTracks.from_processed_ibtracs_csv(TEST_TRACK)
 
         gdf_line = tc_track.to_geodataframe()
         self.assertEqual(gdf_line.shape[0], 1)
         self.assertAlmostEqual(gdf_line.geometry[0].length, 54.0634224372971)
         self.assertIsInstance(gdf_line.bounds.minx, pd.core.series.Series)
 
-        anti_track = tc.TCTracks()
         # test data set with two tracks:
         # * 1980052S16155: crosses the antimeridian
         # * 2018079S09162: close, but doesn't cross antimeridian; has self-intersections
-        anti_track.read_netcdf(TEST_TRACKS_ANTIMERIDIAN)
+        anti_track = tc.TCTracks.from_netcdf(TEST_TRACKS_ANTIMERIDIAN)
 
         split = anti_track.to_geodataframe(split_lines_antimeridian=True)
         split.set_index('sid', inplace=True)
@@ -546,13 +502,11 @@ class TestFuncs(unittest.TestCase):
 
     def test_get_track_pass(self):
         """Test get_track."""
-        tc_track = tc.TCTracks()
-        tc_track.read_processed_ibtracs_csv(TEST_TRACK_SHORT)
+        tc_track = tc.TCTracks.from_processed_ibtracs_csv(TEST_TRACK_SHORT)
         self.assertIsInstance(tc_track.get_track(), xr.Dataset)
         self.assertIsInstance(tc_track.get_track('1951239N12334'), xr.Dataset)
 
-        tc_track_bis = tc.TCTracks()
-        tc_track_bis.read_processed_ibtracs_csv(TEST_TRACK_SHORT)
+        tc_track_bis = tc.TCTracks.from_processed_ibtracs_csv(TEST_TRACK_SHORT)
         tc_track.append(tc_track_bis)
         self.assertIsInstance(tc_track.get_track(), list)
         self.assertIsInstance(tc_track.get_track('1951239N12334'), xr.Dataset)
@@ -560,15 +514,13 @@ class TestFuncs(unittest.TestCase):
     def test_subset(self):
         """Test subset."""
         storms = ['1988169N14259', '2002073S16161', '2002143S07157']
-        tc_track = tc.TCTracks()
-        tc_track.read_ibtracs_netcdf(storm_id=storms)
+        tc_track = tc.TCTracks.from_ibtracs_netcdf(storm_id=storms)
         self.assertEqual(tc_track.subset({'basin': 'SP'}).size, 2)
 
     def test_get_extent(self):
         """Test extent/bounds attributes."""
         storms = ['1988169N14259', '2002073S16161', '2002143S07157']
-        tc_track = tc.TCTracks()
-        tc_track.read_ibtracs_netcdf(storm_id=storms, provider=["usa", "bom"])
+        tc_track = tc.TCTracks.from_ibtracs_netcdf(storm_id=storms, provider=["usa", "bom"])
         bounds = (153.585022, -23.200001, 258.714996, 17.514986)
         extent = (bounds[0], bounds[2], bounds[1], bounds[3])
         bounds_buf = (153.485022, -23.300001, 258.814996, 17.614986)
@@ -579,8 +531,7 @@ class TestFuncs(unittest.TestCase):
     def test_generate_centroids(self):
         """Test centroids generation feature."""
         storms = ['1988169N14259', '2002073S16161', '2002143S07157']
-        tc_track = tc.TCTracks()
-        tc_track.read_ibtracs_netcdf(storm_id=storms, provider=["usa", "bom"])
+        tc_track = tc.TCTracks.from_ibtracs_netcdf(storm_id=storms, provider=["usa", "bom"])
         cen = tc_track.generate_centroids(10, 1)
         cen_bounds = (157.585022, -19.200001, 257.585022, 10.799999)
         self.assertEqual(cen.size, 44)
@@ -592,8 +543,7 @@ class TestFuncs(unittest.TestCase):
 
     def test_interp_track_pass(self):
         """Interpolate track to min_time_step. Compare to MATLAB reference."""
-        tc_track = tc.TCTracks()
-        tc_track.read_processed_ibtracs_csv(TEST_TRACK)
+        tc_track = tc.TCTracks.from_processed_ibtracs_csv(TEST_TRACK)
         tc_track.equal_timestep(time_step_h=1)
 
         self.assertEqual(tc_track.data[0].time.size, 223)
@@ -623,15 +573,13 @@ class TestFuncs(unittest.TestCase):
         for time_step_h in [0.6663545049172093, 2.509374054925788, 8.175754471661111]:
             # artifically create data that doesn't start at full hour
             for loffset in [0, 22, 30]:
-                tc_track = tc.TCTracks()
-                tc_track.read_processed_ibtracs_csv(TEST_TRACK)
+                tc_track = tc.TCTracks.from_processed_ibtracs_csv(TEST_TRACK)
                 tc_track.data[0].time.values[:] += np.timedelta64(loffset, "m")
                 tc_track.equal_timestep(time_step_h=time_step_h)
                 np.testing.assert_array_equal(tc_track.data[0].time_step, time_step_h)
                 self.assertTrue(np.isfinite(tc_track.data[0].central_pressure.values).all())
 
-        tc_track = tc.TCTracks()
-        tc_track.read_processed_ibtracs_csv(TEST_TRACK)
+        tc_track = tc.TCTracks.from_processed_ibtracs_csv(TEST_TRACK)
         tc_track.equal_timestep(time_step_h=0.16667)
 
         self.assertEqual(tc_track.data[0].time.size, 1332)
@@ -640,16 +588,14 @@ class TestFuncs(unittest.TestCase):
         self.assertAlmostEqual(tc_track.data[0].lon.values[65], -27.397636528537127)
 
         for time_step_h in [0, -0.5, -1]:
-            tc_track = tc.TCTracks()
-            tc_track.read_processed_ibtracs_csv(TEST_TRACK)
+            tc_track = tc.TCTracks.from_processed_ibtracs_csv(TEST_TRACK)
             msg = f"time_step_h is not a positive number: {time_step_h}"
             with self.assertRaises(ValueError, msg=msg) as _cm:
                 tc_track.equal_timestep(time_step_h=time_step_h)
 
     def test_interp_origin_pass(self):
         """Interpolate track to min_time_step crossing lat origin"""
-        tc_track = tc.TCTracks()
-        tc_track.read_processed_ibtracs_csv(TEST_TRACK)
+        tc_track = tc.TCTracks.from_processed_ibtracs_csv(TEST_TRACK)
         tc_track.data[0].lon.values = np.array([
             167.207761, 168.1, 168.936535, 169.728947, 170.5, 171.257176,
             171.946822, 172.5, 172.871797, 173.113396, 173.3, 173.496375,
@@ -699,8 +645,7 @@ class TestFuncs(unittest.TestCase):
 
     def test_interp_origin_inv_pass(self):
         """Interpolate track to min_time_step crossing lat origin"""
-        tc_track = tc.TCTracks()
-        tc_track.read_processed_ibtracs_csv(TEST_TRACK)
+        tc_track = tc.TCTracks.from_processed_ibtracs_csv(TEST_TRACK)
         tc_track.data[0].lon.values = np.array([
             167.207761, 168.1, 168.936535, 169.728947, 170.5, 171.257176,
             171.946822, 172.5, 172.871797, 173.113396, 173.3, 173.496375,
@@ -751,8 +696,7 @@ class TestFuncs(unittest.TestCase):
 
     def test_dist_since_lf_pass(self):
         """Test _dist_since_lf for andrew tropical cyclone."""
-        tc_track = tc.TCTracks()
-        tc_track.read_processed_ibtracs_csv(TC_ANDREW_FL)
+        tc_track = tc.TCTracks.from_processed_ibtracs_csv(TC_ANDREW_FL)
         track = tc_track.get_track()
         track['on_land'] = ('time', u_coord.coord_on_land(track.lat.values, track.lon.values))
         track['dist_since_lf'] = ('time', tc._dist_since_lf(track))
@@ -847,8 +791,7 @@ class TestFuncs(unittest.TestCase):
         """Test estimate_rmw function."""
         NM_TO_KM = (1.0 * ureg.nautical_mile).to(ureg.kilometer).magnitude
 
-        tc_track = tc.TCTracks()
-        tc_track.read_processed_ibtracs_csv(TEST_TRACK)
+        tc_track = tc.TCTracks.from_processed_ibtracs_csv(TEST_TRACK)
         tc_track.equal_timestep()
         rad_max_wind = tc.estimate_rmw(
             tc_track.data[0].radius_max_wind.values,
@@ -870,8 +813,7 @@ class TestFuncs(unittest.TestCase):
 
         # Load two tracks from ibtracks
         storms = {'in': '2000233N12316', 'out': '2000160N21267'}
-        tc_track = tc.TCTracks()
-        tc_track.read_ibtracs_netcdf(storm_id=list(storms.values()))
+        tc_track = tc.TCTracks.from_ibtracs_netcdf(storm_id=list(storms.values()))
 
         # Define exposure from geopandas
         world = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))

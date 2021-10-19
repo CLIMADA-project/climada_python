@@ -173,9 +173,8 @@ class TestReaderExcel(unittest.TestCase):
 
     def test_demo_file_pass(self):
         """Read demo excel file."""
-        disc_rate = DiscRates()
         description = 'One single file.'
-        disc_rate.read_excel(ENT_DEMO_TODAY, description)
+        disc_rate = DiscRates.from_excel(ENT_DEMO_TODAY, description)
 
         # Check results
         n_rates = 51
@@ -195,8 +194,7 @@ class TestReaderExcel(unittest.TestCase):
 
     def test_template_file_pass(self):
         """Read demo excel file."""
-        disc_rate = DiscRates()
-        disc_rate.read_excel(ENT_TEMPLATE_XLS)
+        disc_rate = DiscRates.from_excel(ENT_TEMPLATE_XLS)
 
         # Check results
         n_rates = 102
@@ -220,9 +218,9 @@ class TestReaderMat(unittest.TestCase):
     def test_demo_file_pass(self):
         """Read demo mat file"""
         # Read demo excel file
-        disc_rate = DiscRates()
+
         description = 'One single file.'
-        disc_rate.read_mat(ENT_TEST_MAT, description)
+        disc_rate = DiscRates.from_mat(file_name=ENT_TEST_MAT, description=description)
 
         # Check results
         n_rates = 51
@@ -246,15 +244,14 @@ class TestWriter(unittest.TestCase):
 
     def test_write_read_pass(self):
         """Read demo excel file."""
-        disc_rate = DiscRates()
-        disc_rate.years = np.arange(1950, 2150)
-        disc_rate.rates = np.ones(disc_rate.years.size) * 0.03
+        years = np.arange(1950, 2150)
+        rates = np.ones(years.size) * 0.03
+        disc_rate = DiscRates(years=years, rates=rates)
 
         file_name = CONFIG.disc_rates.test_data.dir().joinpath('test_disc.xlsx')
         disc_rate.write_excel(file_name)
 
-        disc_read = DiscRates()
-        disc_read.read_excel(file_name)
+        disc_read = DiscRates.from_excel(file_name)
 
         self.assertTrue(np.array_equal(disc_read.years, disc_rate.years))
         self.assertTrue(np.array_equal(disc_read.rates, disc_rate.rates))

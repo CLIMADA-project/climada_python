@@ -141,8 +141,7 @@ def init_impf(impf_name_or_instance, param_dict, df_out=pd.DataFrame(index=[0]))
     ImpactFunc_final = None
     if isinstance(impf_name_or_instance, str):
         if impf_name_or_instance == 'emanuel':
-            ImpactFunc_final = ImpfTropCyclone()
-            ImpactFunc_final.set_emanuel_usa(**param_dict)
+            ImpactFunc_final = ImpfTropCyclone.from_emanuel_usa(**param_dict)
             ImpactFunc_final.haz_type = 'TC'
             ImpactFunc_final.id = 1
             df_out['impact_function'] = impf_name_or_instance
@@ -455,10 +454,8 @@ def calib_optimize(hazard, exposure, impf_name_or_instance, param_dict,
 #
 #
 #    ## tryout calib_all
-#    hazard = TropCyclone()
-#    hazard.read_hdf5('C:/Users/ThomasRoosli/tc_NA_hazard.hdf5')
-#    exposure = LitPop()
-#    exposure.read_hdf5('C:/Users/ThomasRoosli/DOM_LitPop.hdf5')
+#    hazard = TropCyclone.from_hdf5('C:/Users/ThomasRoosli/tc_NA_hazard.hdf5')
+#    exposure = LitPop.from_hdf5('C:/Users/ThomasRoosli/DOM_LitPop.hdf5')
 #    impf_name_or_instance = 'emanuel'
 #    param_full_dict = {'v_thresh': [25.7, 20], 'v_half': [70], 'scale': [1, 0.8]}
 #
@@ -472,10 +469,8 @@ def calib_optimize(hazard, exposure, impf_name_or_instance, param_dict,
 #
 #
 #    ## tryout calib_optimize
-#    hazard = TropCyclone()
-#    hazard.read_hdf5('C:/Users/ThomasRoosli/tc_NA_hazard.hdf5')
-#    exposure = LitPop()
-#    exposure.read_hdf5('C:/Users/ThomasRoosli/DOM_LitPop.hdf5')
+#    hazard = TropCyclone.from_hdf5('C:/Users/ThomasRoosli/tc_NA_hazard.hdf5')
+#    exposure = LitPop.from_hdf5('C:/Users/ThomasRoosli/DOM_LitPop.hdf5')
 #    impf_name_or_instance = 'emanuel'
 #    param_dict = {'v_thresh': 25.7, 'v_half': 70, 'scale': 0.6}
 #    year_range = [2004, 2017]

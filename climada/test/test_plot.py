@@ -40,8 +40,7 @@ class TestPlotter(unittest.TestCase):
 
     def test_hazard_intensity_pass(self):
         """Generate all possible plots of the hazard intensity."""
-        hazard = Hazard('TC')
-        hazard.read_mat(HAZ_DEMO_MAT)
+        hazard = Hazard.from_mat(HAZ_DEMO_MAT)
         hazard.event_name = [""] * hazard.event_id.size
         hazard.event_name[35] = "NNN_1185106_gen5"
         hazard.event_name[3898] = "NNN_1190604_gen8"
@@ -75,8 +74,7 @@ class TestPlotter(unittest.TestCase):
 
     def test_hazard_fraction_pass(self):
         """Generate all possible plots of the hazard fraction."""
-        hazard = Hazard('TC')
-        hazard.read_mat(HAZ_DEMO_MAT)
+        hazard = Hazard.from_mat(HAZ_DEMO_MAT)
         hazard.event_name = [""] * hazard.event_id.size
         hazard.event_name[35] = "NNN_1185106_gen5"
         hazard.event_name[11897] = "GORDON_gen7"
@@ -107,8 +105,7 @@ class TestPlotter(unittest.TestCase):
 
     def test_impact_funcs_pass(self):
         """Plot diferent impact functions."""
-        myfuncs = ImpactFuncSet()
-        myfuncs.read_excel(ENT_DEMO_TODAY)
+        myfuncs = ImpactFuncSet.from_excel(ENT_DEMO_TODAY)
         myax = myfuncs.plot()
         self.assertEqual(2, len(myax))
         self.assertIn('TC 1: Tropical cyclone default',
@@ -117,11 +114,9 @@ class TestPlotter(unittest.TestCase):
 
     def test_impact_pass(self):
         """Plot impact exceedence frequency curves."""
-        myent = Entity()
-        myent.read_excel(ENT_DEMO_TODAY)
+        myent = Entity.from_excel(ENT_DEMO_TODAY)
         myent.exposures.check()
-        myhaz = Hazard('TC')
-        myhaz.read_mat(HAZ_DEMO_MAT)
+        myhaz = Hazard.from_mat(HAZ_DEMO_MAT)
         myimp = Impact()
         myimp.calc(myent.exposures, myent.impact_funcs, myhaz)
         ifc = myimp.calc_freq_curve()

@@ -67,24 +67,28 @@ class DiscRates():
         list of discount rates for each year (between 0 and 1)
     """
 
-    def __init__(self):
+    def __init__(self, years=None, rates=None, tag=None):
         """
-        Empty initialization.
+        Fill discount rates with values and check consistency data
 
-        Examples
-        --------
-        Fill discount rates with values and check consistency data:
-
-        >>> disc_rates = DiscRates()
-        >>> disc_rates.years = np.array([2000, 2001])
-        >>> disc_rates.rates = np.array([0.02, 0.02])
-        >>> disc_rates.check()
-
-        Read discount rates from year_2050.mat and checks consistency data.
-
-        >>> disc_rates = DiscRates(ENT_TEMPLATE_XLS)
+        Parameters
+        ----------
+        years : numpy.ndarray(int)
+            Array of years. Default is numpy.array([]).
+        rates : numpy.ndarray(float)
+            Discount rates for each year in years.
+            Default is numpy.array([]).
+            Note: rates given in float, e.g., to set 1% rate use 0.01
+        tag : climate.entity.tag
+            Metadata. Default is None.
         """
-        self.clear()
+        years = np.array([]) if years is None else years
+        rates = np.array([]) if rates is None else rates
+
+        self.years = years
+        self.rates = rates
+        tag = Tag() if tag is None else tag
+        self.tag = tag
 
     def clear(self):
         """Reinitialize attributes."""
@@ -110,23 +114,21 @@ class DiscRates():
 
         Parameters
         ----------
-        year_range: np.array
+        year_range: np.array(int)
             continuous sequence of selected years.
 
         Returns: climada.entity.DiscRates
-            The slected discrates in the year_range
+            The selected discrates in the year_range
         """
         pos_year = np.isin(year_range, self.years)
         if not np.all(pos_year):
             LOGGER.info('No discount rates for given years.')
             return None
         pos_year = np.isin(self.years, year_range)
-        sel_disc = self.__class__()
-        sel_disc.tag = self.tag
-        sel_disc.years = self.years[pos_year]
-        sel_disc.rates = self.rates[pos_year]
 
-        return sel_disc
+        return DiscRates(years=self.years[pos_year],
+                         rates=self.rates[pos_year],
+                         tag=self.tag)
 
     def append(self, disc_rates):
         """
@@ -219,7 +221,8 @@ class DiscRates():
         axis.set_xlim((self.years.min(), self.years.max()))
         return axis
 
-    def read_mat(self, file_name, description='', var_names=DEF_VAR_MAT):
+    @classmethod
+    def from_mat(cls, file_name, description='', var_names=DEF_VAR_MAT):
         """
         Read MATLAB file generated with previous MATLAB CLIMADA version.
 
@@ -233,12 +236,15 @@ class DiscRates():
             name of the variables in the file. The Default is
             DEF_VAR_MAT = {'sup_field_name': 'entity', 'field_name': 'discount',
                'var_name': {'year': 'year', 'disc': 'discount_rate'}}
+
+        Returns
+        -------
+        climada.entity.DiscRates :
+            The disc rates from matlab
         """
 
         disc = u_hdf5.read(file_name)
-        self.clear()
-        self.tag.file_name = str(file_name)
-        self.tag.description = description
+        tag = Tag(file_name=str(file_name), description=description)
         try:
             disc = disc[var_names['sup_field_name']]
         except KeyError:
@@ -246,13 +252,22 @@ class DiscRates():
 
         try:
             disc = disc[var_names['field_name']]
-            self.years = np.squeeze(disc[var_names['var_name']['year']]). \
+            years = np.squeeze(disc[var_names['var_name']['year']]). \
                 astype(int, copy=False)
-            self.rates = np.squeeze(disc[var_names['var_name']['disc']])
+            rates = np.squeeze(disc[var_names['var_name']['disc']])
         except KeyError as err:
             raise KeyError("Not existing variable: %s" % str(err)) from err
 
-    def read_excel(self, file_name, description='', var_names=DEF_VAR_EXCEL):
+        return cls(years=years, rates=rates, tag=tag)
+
+    def read_mat(self, *args, **kwargs):
+        """This function is deprecated, use DiscRates.from_mats instead."""
+        LOGGER.warning("The use of DiscRates.read_mats is deprecated."
+                       "Use DiscRates.from_mats instead.")
+        self.__dict__ = DiscRates.from_mat(*args, **kwargs).__dict__
+
+    @classmethod
+    def from_excel(cls, file_name, description='', var_names=DEF_VAR_EXCEL):
         """
         Read excel file following template and store variables.
 
@@ -266,18 +281,30 @@ class DiscRates():
             name of the variables in the file. The Default is
             DEF_VAR_EXCEL = {'sheet_name': 'discount',
                'col_name': {'year': 'year', 'disc': 'discount_rate'}}
+
+        Returns
+        -------
+        climada.entity.DiscRates :
+            The disc rates from excel
         """
 
         dfr = pd.read_excel(file_name, var_names['sheet_name'])
-        self.clear()
-        self.tag.file_name = str(file_name)
-        self.tag.description = description
+        tag = Tag(file_name=str(file_name), description=description)
         try:
-            self.years = dfr[var_names['col_name']['year']].values. \
+            years = dfr[var_names['col_name']['year']].values. \
                 astype(int, copy=False)
-            self.rates = dfr[var_names['col_name']['disc']].values
+            rates = dfr[var_names['col_name']['disc']].values
         except KeyError as err:
             raise KeyError("Not existing variable: %s" % str(err)) from err
+
+        return cls(years=years, rates=rates, tag=tag)
+
+    def read_excel(self, *args, **kwargs):
+        """This function is deprecated, use DiscRates.from_excel instead."""
+        LOGGER.warning("The use of DiscRates.read_excel is deprecated."
+                       "Use DiscRates.from_excel instead.")
+        self.__dict__ = DiscRates.from_mat(*args, **kwargs).__dict__
+
 
     def write_excel(self, file_name, var_names=DEF_VAR_EXCEL):
         """

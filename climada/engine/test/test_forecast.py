@@ -44,10 +44,10 @@ class TestCalc(unittest.TestCase):
     def test_Forecast_calc_properties(self):
         """Test calc and propety functions from the Forecast class"""
         #hazard
-        haz = StormEurope()
-        haz.read_cosmoe_file(HAZ_DIR.joinpath('storm_europe_cosmoe_forecast_vmax_testfile.nc'),
-                             run_datetime=dt.datetime(2018,1,1),
-                             event_date=dt.datetime(2018,1,3))
+        haz = StormEurope.from_cosmoe_file(
+            HAZ_DIR.joinpath('storm_europe_cosmoe_forecast_vmax_testfile.nc'),
+            run_datetime=dt.datetime(2018,1,1),
+            event_date=dt.datetime(2018,1,3))
         #exposure
         data = {}
         data['latitude'] = haz.centroids.lat
@@ -59,8 +59,7 @@ class TestCalc(unittest.TestCase):
         expo = Exposures(gpd.GeoDataFrame(data=data))
         #vulnerability
         #generate vulnerability
-        impact_function = ImpfStormEurope()
-        impact_function.set_welker()
+        impact_function = ImpfStormEurope.from_welker()
         impact_function_set = ImpactFuncSet()
         impact_function_set.append(impact_function)
         #create and calculate Forecast
@@ -83,8 +82,7 @@ class TestCalc(unittest.TestCase):
     def test_Forecast_init_raise(self):
         """Test calc and propety functions from the Forecast class"""
         #hazard with several event dates
-        storms = StormEurope()
-        storms.read_footprints(WS_DEMO_NC, description='test_description')
+        storms = StormEurope.from_footprints(WS_DEMO_NC, description='test_description')
         #exposure
         data = {}
         data['latitude'] = np.array([1, 2, 3])
@@ -108,17 +106,16 @@ class TestPlot(unittest.TestCase):
     def test_Forecast_plot(self):
         """Test cplotting functions from the Forecast class"""
                 #hazard
-        haz1 = StormEurope()
-        haz1.read_cosmoe_file(HAZ_DIR.joinpath('storm_europe_cosmoe_forecast_vmax_testfile.nc'),
-                              run_datetime=dt.datetime(2018,1,1),
-                              event_date=dt.datetime(2018,1,3))
+        haz1 = StormEurope.from_cosmoe_file(
+            HAZ_DIR.joinpath('storm_europe_cosmoe_forecast_vmax_testfile.nc'),
+            run_datetime=dt.datetime(2018,1,1),
+            event_date=dt.datetime(2018,1,3))
         haz1.centroids.lat += 0.6
         haz1.centroids.lon -= 1.2
-        haz2 = StormEurope()
-
-        haz2.read_cosmoe_file(HAZ_DIR.joinpath('storm_europe_cosmoe_forecast_vmax_testfile.nc'),
-                              run_datetime=dt.datetime(2018,1,1),
-                              event_date=dt.datetime(2018,1,3))
+        haz2 = StormEurope.from_cosmoe_file(
+            HAZ_DIR.joinpath('storm_europe_cosmoe_forecast_vmax_testfile.nc'),
+            run_datetime=dt.datetime(2018,1,1),
+            event_date=dt.datetime(2018,1,3))
         haz2.centroids.lat += 0.6
         haz2.centroids.lon -= 1.2
         #exposure
@@ -132,8 +129,7 @@ class TestPlot(unittest.TestCase):
         expo = Exposures(gpd.GeoDataFrame(data=data))
         #vulnerability
         #generate vulnerability
-        impact_function = ImpfStormEurope()
-        impact_function.set_welker()
+        impact_function = ImpfStormEurope.from_welker()
         impact_function_set = ImpactFuncSet()
         impact_function_set.append(impact_function)
         #create and calculate Forecast

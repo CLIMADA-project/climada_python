@@ -114,8 +114,7 @@ class MeasureSet():
 
         Read measures from file and checks consistency data:
 
-        >>> meas = MeasureSet()
-        >>> meas.read_excel(ENT_TEMPLATE_XLS)
+        >>> meas = MeasureSet.from_excel(ENT_TEMPLATE_XLS)
         """
         self.clear()
 
@@ -334,7 +333,8 @@ class MeasureSet():
             for _, meas in meas_dict.items():
                 self.append(meas)
 
-    def read_mat(self, file_name, description='', var_names=DEF_VAR_MAT):
+    @classmethod
+    def from_mat(cls, file_name, description='', var_names=DEF_VAR_MAT):
         """Read MATLAB file generated with previous MATLAB CLIMADA version.
 
         Parameters
@@ -345,6 +345,11 @@ class MeasureSet():
             description of the data
         var_names : dict, optional
             name of the variables in the file
+
+        Returns
+        -------
+        meas_set: climada.entity.MeasureSet()
+            Measure Set from matlab file
         """
         def read_att_mat(measures, data, file_name, var_names):
             """Read MATLAB measures attributes"""
@@ -391,9 +396,9 @@ class MeasureSet():
                 measures.append(meas)
 
         data = u_hdf5.read(file_name)
-        self.clear()
-        self.tag.file_name = str(file_name)
-        self.tag.description = description
+        meas_set = cls()
+        meas_set.tag.file_name = str(file_name)
+        meas_set.tag.description = description
         try:
             data = data[var_names['sup_field_name']]
         except KeyError:
@@ -401,11 +406,20 @@ class MeasureSet():
 
         try:
             data = data[var_names['field_name']]
-            read_att_mat(self, data, file_name, var_names)
+            read_att_mat(meas_set, data, file_name, var_names)
         except KeyError as var_err:
             raise KeyError("Variable not in MAT file: " + str(var_err)) from var_err
 
-    def read_excel(self, file_name, description='', var_names=DEF_VAR_EXCEL):
+        return meas_set
+
+    def read_mat(self, *args, **kwargs):
+       """This function is deprecated, use MeasureSet.from_mat instead."""
+       LOGGER.warning("The use of MeasureSet.read_mat is deprecated."
+                      "Use MeasureSet.from_mat instead.")
+       self.__dict__ = MeasureSet.from_mat(*args, **kwargs).__dict__
+
+    @classmethod
+    def from_excel(cls, file_name, description='', var_names=DEF_VAR_EXCEL):
         """Read excel file following template and store variables.
 
         Parameters
@@ -416,6 +430,11 @@ class MeasureSet():
             description of the data
         var_names : dict, optional
             name of the variables in the file
+
+        Returns
+        -------
+        meas_set : climada.entity.MeasureSet
+            Measures set from Excel
         """
         def read_att_excel(measures, dfr, var_names):
             """Read Excel measures attributes"""
@@ -465,13 +484,21 @@ class MeasureSet():
 
         dfr = pd.read_excel(file_name, var_names['sheet_name'])
         dfr = dfr.fillna('')
-        self.clear()
-        self.tag.file_name = str(file_name)
-        self.tag.description = description
+        meas_set = cls()
+        meas_set.tag.file_name = str(file_name)
+        meas_set.tag.description = description
         try:
-            read_att_excel(self, dfr, var_names)
+            read_att_excel(meas_set, dfr, var_names)
         except KeyError as var_err:
             raise KeyError("Variable not in Excel file: " + str(var_err)) from var_err
+
+        return meas_set
+
+    def read_excel(self, *args, **kwargs):
+        """This function is deprecated, use MeasureSet.from_excel instead."""
+        LOGGER.warning("The use ofMeasureSet.read_excel is deprecated."
+                       "Use MeasureSet.from_excel instead.")
+        self.__dict__ = MeasureSet.from_excel(*args, **kwargs).__dict__
 
     def write_excel(self, file_name, var_names=DEF_VAR_EXCEL):
         """Write excel file following template.
