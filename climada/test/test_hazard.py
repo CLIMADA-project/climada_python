@@ -50,7 +50,7 @@ class TestCentroids(unittest.TestCase):
         self.assertEqual(np.unique(np.array(haz_fl.fraction.toarray())).size, 2)
 
     def test_read_raster_pool_pass(self):
-        """Test set_raster with pool"""
+        """Test from_raster constructor with pool"""
         from pathos.pools import ProcessPool as Pool
         pool = Pool()
         haz_fl = Hazard.from_raster([HAZ_DEMO_FL], haz_type='FL', pool=pool)

@@ -678,7 +678,7 @@ class TestReader(unittest.TestCase):
 class TestCentroidsFuncs(unittest.TestCase):
     """Test Centroids methods"""
     def test_select_pass(self):
-        """Test set_vector"""
+        """Test Centroids.select method"""
         centr = Centroids.from_lat_lon(VEC_LAT, VEC_LON)
 
         centr.region_id = np.zeros(VEC_LAT.size)
