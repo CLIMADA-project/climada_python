@@ -61,7 +61,7 @@ class StormEurope(Hazard):
     """A hazard set containing european winter storm events. Historic storm
     events can be downloaded at http://wisc.climate.copernicus.eu/ and read
     with `from_footprints`. Weather forecasts can be automatically downloaded from
-    https://opendata.dwd.de/ and read with read_icon_grib(). Weather forecast
+    https://opendata.dwd.de/ and read with from_icon_grib(). Weather forecast
     from the COSMO-Consortium http://www.cosmo-model.org/ can be read with
     from_cosmoe_file().
 
@@ -364,11 +364,19 @@ class StormEurope(Hazard):
         haz.check()
         return haz
 
-    def read_icon_grib(self, run_datetime, event_date=None,
-                       model_name='icon-eu-eps', description=None,
-                       grib_dir=None, delete_raw_data=True):
-        """Clear instance and download and read dwd icon weather forecast
-        footprints into it. New files are available for 24 hours on
+    def read_icon_grib(self, *args, **kwargs):
+        """This function is deprecated, use StormEurope.from_icon_grib instead."""
+        LOGGER.warning("The use of StormEurope.read_icon_grib is deprecated."
+                       "Use StormEurope.from_icon_grib instead.")
+        self.__dict__ = StormEurope.from_icon_grib(*args, **kwargs).__dict__
+
+    @classmethod
+    def from_icon_grib(cls, run_datetime, event_date=None, model_name='icon-eu-eps',
+                       description=None, grib_dir=None, delete_raw_data=True,
+                       intensity_thres=None):
+        """Create new StormEurope object from DWD icon weather forecast footprints.
+
+        New files are available for 24 hours on
         https://opendata.dwd.de, old files can be processed if they are
         already stored in grib_dir.
         One event is one full day in UTC. Current setup works for runs
@@ -398,19 +406,28 @@ class StormEurope(Hazard):
             select if downloaded raw data in
             .grib.bz2 file format should be stored on the computer or
             removed
+        intensity_thres : float, optional
+            Intensity threshold for storage in m/s. Default: class attribute
+            StormEurope.intensity_thres (same as used by WISC SSI calculations)
+
+        Returns
+        -------
+        haz : StormEurope
+            StormEurope object with data from DWD icon weather forecast footprints.
         """
-        self.clear()
+        intensity_thres = cls.intensity_thres if intensity_thres is None else intensity_thres
+
+        haz = cls()
         if not (run_datetime.hour == 0 or run_datetime.hour == 12):
             LOGGER.warning('The event definition is inaccuratly implemented '+
                            'for starting times, which are not 00H or 12H.')
         # download files, if they don't already exist
-        file_names = download_icon_grib(run_datetime,
-                                        model_name=model_name,
-                                        download_dir=grib_dir)
+        file_names = download_icon_grib(
+            run_datetime, model_name=model_name, download_dir=grib_dir)
 
         # create centroids
         nc_centroids_file = download_icon_centroids_file(model_name, grib_dir)
-        self.centroids = self._centroids_from_nc(nc_centroids_file)
+        haz.centroids = haz._centroids_from_nc(nc_centroids_file)
 
         # read intensity from files
         for ind_i, file_i in enumerate(file_names):
@@ -428,7 +445,8 @@ class StormEurope(Hazard):
             date=('valid_time', stacked["valid_time"].dt.floor("D").values))
         if event_date:
             try:
-                stacked = stacked.sel(valid_time=event_date.strftime('%Y-%m-%d')).groupby('date').max()
+                stacked = stacked.sel(
+                    valid_time=event_date.strftime('%Y-%m-%d')).groupby('date').max()
             except KeyError:
                 raise ValueError('Extraction of date and coordinates failed. '
                                  'This is most likely because '
@@ -448,44 +466,40 @@ class StormEurope(Hazard):
             stacked = stacked.groupby('date').max().sel(date=considered_dates_bool)
             considered_dates = stacked['date'].values
         stacked = stacked.stack(date_ensemble=('date', 'number'))
-        stacked = stacked.where(stacked > self.intensity_thres)
+        stacked = stacked.where(stacked > intensity_thres)
         stacked = stacked.fillna(0)
 
 
         # fill in values from netCDF
-        self.intensity = sparse.csr_matrix(stacked.gust.T)
-        self.event_id = np.arange(stacked.date_ensemble.size)+1
+        haz.intensity = sparse.csr_matrix(stacked.gust.T)
+        haz.event_id = np.arange(stacked.date_ensemble.size)+1
 
         # fill in default values
-        self.units = 'm/s'
-        self.fraction = self.intensity.copy().tocsr()
-        self.fraction.data.fill(1)
-        self.orig = np.ones_like(self.event_id)*False
-        self.orig[(stacked.number == 1).values] = True
+        haz.units = 'm/s'
+        haz.fraction = haz.intensity.copy().tocsr()
+        haz.fraction.data.fill(1)
+        haz.orig = np.ones_like(haz.event_id)*False
+        haz.orig[(stacked.number == 1).values] = True
 
-        self.date = np.repeat(
+        haz.date = np.repeat(
             np.array(datetime64_to_ordinal(considered_dates)),
             np.unique(stacked.number).size
             )
-        self.event_name = [date_i + '_ens' + str(ens_i)
-                           for date_i, ens_i in zip(date_to_str(self.date),
-                                                    stacked.number.values)
-                           ]
-        self.frequency = np.divide(
-                np.ones_like(self.event_id),
+        haz.event_name = [date_i + '_ens' + str(ens_i)
+                          for date_i, ens_i in zip(date_to_str(haz.date), stacked.number.values)]
+        haz.frequency = np.divide(
+                np.ones_like(haz.event_id),
                 np.unique(stacked.number).size)
         if not description:
             description = ('icon weather forecast windfield ' +
                            'for run startet at ' +
                            run_datetime.strftime('%Y%m%d%H'))
 
-        self.tag = TagHazard(
+        haz.tag = TagHazard(
             HAZ_TYPE, 'Hazard set not saved, too large to pickle',
             description=description
             )
-        self.check()
-
-
+        haz.check()
 
         # delete generated .grib2 and .4cc40.idx files
         for ind_i, file_i in enumerate(file_names):
@@ -497,9 +511,9 @@ class StormEurope(Hazard):
 
         if delete_raw_data:
             #delete downloaded .bz2 files
-            delete_icon_grib(run_datetime,
-                             model_name=model_name,
-                             download_dir=grib_dir)
+            delete_icon_grib(run_datetime, model_name=model_name, download_dir=grib_dir)
+
+        return haz
 
     @staticmethod
     def _centroids_from_nc(file_name):
@@ -1041,8 +1055,7 @@ def generate_WS_forecast_hazard(run_datetime = dt.datetime.today().replace(hour=
             LOGGER.info('Generating ' +
                         haz_model +
                         ' hazard.')
-            hazard = StormEurope()
-            hazard.read_icon_grib(
+            hazard = StormEurope.from_icon_grib(
                 run_datetime,
                 event_date=event_date,
                 delete_raw_data=False,

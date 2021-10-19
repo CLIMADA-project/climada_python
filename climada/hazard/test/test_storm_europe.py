@@ -172,18 +172,18 @@ class TestReader(unittest.TestCase):
 
     def test_icon_read(self):
         """test reading from icon grib"""
-        haz = StormEurope()
         # for this test the forecast file is supposed to be already downloaded from the dwd
         # another download would fail because the files are available for 24h only
         # instead, we download it as a test dataset through the climada data api
         apiclient = Client()
         ds = apiclient.get_dataset(name='test_storm_europe_icon_2021012800')
         dsdir, _ = apiclient.download_dataset(ds)
-        haz.read_icon_grib(dt.datetime(2021, 1, 28),
-                           dt.datetime(2021, 1, 28),
-                           model_name='test',
-                           grib_dir=dsdir,
-                           delete_raw_data=False)
+        haz = StormEurope.from_icon_grib(
+            dt.datetime(2021, 1, 28),
+            dt.datetime(2021, 1, 28),
+            model_name='test',
+            grib_dir=dsdir,
+            delete_raw_data=False)
         self.assertEqual(haz.tag.haz_type, 'WS')
         self.assertEqual(haz.units, 'm/s')
         self.assertEqual(haz.event_id.size, 40)
@@ -203,11 +203,12 @@ class TestReader(unittest.TestCase):
         logger = logging.getLogger('climada.hazard.storm_europe')
         with mock.patch.object(logger,'warning') as mock_logger:
             with self.assertRaises(ValueError):
-                haz.read_icon_grib(dt.datetime(2021, 1, 28, 6),
-                                    dt.datetime(2021, 1, 28),
-                                    model_name='test',
-                                    grib_dir=CONFIG.hazard.test_data.str(),
-                                    delete_raw_data=False)
+                haz = StormEurope.from_icon_grib(
+                    dt.datetime(2021, 1, 28, 6),
+                    dt.datetime(2021, 1, 28),
+                    model_name='test',
+                    grib_dir=CONFIG.hazard.test_data.str(),
+                    delete_raw_data=False)
             mock_logger.assert_called_once()
 
     def test_generate_forecast(self):
