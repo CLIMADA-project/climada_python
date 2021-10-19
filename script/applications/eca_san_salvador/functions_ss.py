@@ -50,8 +50,7 @@ from climada.hazard import Hazard
 
 def load_entity():
     ent_file = 'FL_entity_Acelhuate_houses.xlsx'
-    ent = Entity()
-    ent.read_excel(ent_file)
+    ent = Entity.from_excel(ent_file)
     ent.exposures.set_geometry_points()
     ent.check()
     return ent

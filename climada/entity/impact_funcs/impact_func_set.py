@@ -372,7 +372,7 @@ class ImpactFuncSet():
 
     def read_excel(self, *args, **kwargs):
         """This function is deprecated, use ImpactFuncSet.from_excel instead."""
-        LOGGER.warning("The use of ImpactFuncSet.read?excel is deprecated." +
+        LOGGER.warning("The use of ImpactFuncSet.read_excel is deprecated." +
                         "Use ImpactFuncSet.from_excel instead.")
         self.__dict__ = ImpactFuncSet.from_excel(*args, **kwargs).__dict__
 

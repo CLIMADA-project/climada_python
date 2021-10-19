@@ -280,7 +280,7 @@ class TestIbtracs(unittest.TestCase):
 
 class TestIO(unittest.TestCase):
     """Test reading of tracks from files of different formats"""
-    def test_write_read_netcdf(self):
+    def test_netcdf_io(self):
         """Test writting and reading netcdf4 TCTracks instances"""
         path = DATA_DIR.joinpath("tc_tracks_nc")
         path.mkdir(exist_ok=True)
@@ -302,7 +302,7 @@ class TestIO(unittest.TestCase):
             self.assertEqual(tr.basin.shape, tr.time.shape)
             np.testing.assert_array_equal(tr.basin, "SP")
 
-    def test_read_processed_ibtracs_csv(self):
+    def test_from_processed_ibtracs_csv(self):
         tc_track = tc.TCTracks.from_processed_ibtracs_csv(TEST_TRACK)
 
         self.assertEqual(tc_track.data[0].time.size, 38)
@@ -329,7 +329,7 @@ class TestIO(unittest.TestCase):
         self.assertEqual(tc_track.data[0].id_no, 1951239012334)
         self.assertEqual(tc_track.data[0].category, 1)
 
-    def test_read_simulations_emanuel(self):
+    def test_from_simulations_emanuel(self):
         tc_track = tc.TCTracks.from_simulations_emanuel(TEST_TRACK_EMANUEL, hemisphere='N')
         self.assertEqual(len(tc_track.data), 4)
         self.assertEqual(tc_track.data[0].time.size, 93)
@@ -392,7 +392,7 @@ class TestIO(unittest.TestCase):
         np.testing.assert_array_equal(tc_track_G.data[0].basin, 'NI')
         self.assertEqual(tc_track_G.data[0].category, 0)
 
-    def test_read_simulations_chaz(self):
+    def test_from_simulations_chaz(self):
         """Test reading NetCDF output from CHAZ simulations"""
         tc_track = tc.TCTracks.from_simulations_chaz(TEST_TRACK_CHAZ)
         self.assertEqual(len(tc_track.data), 13)
@@ -422,7 +422,7 @@ class TestIO(unittest.TestCase):
         tc_track = tc.TCTracks.from_simulations_chaz(TEST_TRACK_CHAZ, ensemble_nums=[0, 2])
         self.assertEqual(len(tc_track.data), 9)
 
-    def test_read_simulations_storm(self):
+    def test_from_simulations_storm(self):
         """Test reading NetCDF output from STORM simulations"""
         tc_track = tc.TCTracks.from_simulations_storm(TEST_TRACK_STORM)
         self.assertEqual(len(tc_track.data), 6)

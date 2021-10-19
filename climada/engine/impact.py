@@ -150,8 +150,7 @@ class Impact():
 
             >>> haz = Hazard.from_mat(HAZ_DEMO_MAT)  # Set hazard
             >>> haz.check()
-            >>> ent = Entity() # Load entity with default values
-            >>> ent.read_excel(ENT_TEMPLATE_XLS) # Set exposures
+            >>> ent = Entity.from_excel(ENT_TEMPLATE_XLS) # Set exposures
             >>> ent.check()
             >>> imp = Impact()
             >>> imp.calc(ent.exposures, ent.impact_funcs, haz)
@@ -161,8 +160,7 @@ class Impact():
 
             >>> haz = Hazard.from_mat(HAZ_DEMO_MAT)  # Set hazard
             >>> haz.check()
-            >>> funcs = ImpactFuncSet()
-            >>> funcs.read_excel(ENT_TEMPLATE_XLS) # Set impact functions
+            >>> funcs = ImpactFuncSet.from_excel(ENT_TEMPLATE_XLS) # Set impact functions
             >>> funcs.check()
             >>> exp = Exposures(pd.read_excel(ENT_TEMPLATE_XLS)) # Set exposures
             >>> exp.check()

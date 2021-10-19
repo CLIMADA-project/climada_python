@@ -105,8 +105,7 @@ class TestPlotter(unittest.TestCase):
 
     def test_impact_funcs_pass(self):
         """Plot diferent impact functions."""
-        myfuncs = ImpactFuncSet()
-        myfuncs.read_excel(ENT_DEMO_TODAY)
+        myfuncs = ImpactFuncSet.from_excel(ENT_DEMO_TODAY)
         myax = myfuncs.plot()
         self.assertEqual(2, len(myax))
         self.assertIn('TC 1: Tropical cyclone default',
@@ -115,8 +114,7 @@ class TestPlotter(unittest.TestCase):
 
     def test_impact_pass(self):
         """Plot impact exceedence frequency curves."""
-        myent = Entity()
-        myent.read_excel(ENT_DEMO_TODAY)
+        myent = Entity.from_excel(ENT_DEMO_TODAY)
         myent.exposures.check()
         myhaz = Hazard.from_mat(HAZ_DEMO_MAT)
         myimp = Impact()

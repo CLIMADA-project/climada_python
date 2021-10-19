@@ -59,8 +59,7 @@ def impf_dem(x_paa=1, x_mdd=1):
     impf_set.append(impf)
     return impf_set
 
-exp = Exposures()
-exp.read_hdf5(EXP_DEMO_H5)
+exp = Exposures.from_hdf5(EXP_DEMO_H5)
 def exp_dem(x_exp=1, exp=exp):
     exp_tmp = exp.copy(deep=True)
     exp_tmp.gdf.value *= x_exp
@@ -94,15 +93,13 @@ def make_input_vars():
 
 
 def ent_dem():
-    entity = Entity()
-    entity.read_excel(ENT_DEMO_TODAY)
+    entity = Entity.from_excel(ENT_DEMO_TODAY)
     entity.exposures.ref_year = 2018
     entity.check()
     return entity
 
 def ent_fut_dem():
-    entity = Entity()
-    entity.read_excel(ENT_DEMO_FUTURE)
+    entity = Entity.from_excel(ENT_DEMO_FUTURE)
     entity.exposures.ref_year = 2040
     entity.check()
     return entity

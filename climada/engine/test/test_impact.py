@@ -116,8 +116,7 @@ class TestOneExposure(unittest.TestCase):
         """Test result against reference value"""
         # Read demo entity values
         # Set the entity default file to the demo one
-        ent = Entity()
-        ent.read_excel(ENT_DEMO_TODAY)
+        ent = Entity.from_excel(ENT_DEMO_TODAY)
         ent.check()
 
         # Read default hazard file
@@ -413,7 +412,7 @@ class TestIO(unittest.TestCase):
             0, len([i for i, j in zip(imp_write.event_name, imp_read.event_name) if i != j]))
         self.assertIsInstance(imp_read.crs, str)
 
-    def test_write_read_excel_pass(self):
+    def test_excel_io(self):
         """Test write and read in excel"""
         ent = Entity.from_excel(ENT_DEMO_TODAY)
         ent.check()
@@ -469,7 +468,7 @@ class TestRPmatrix(unittest.TestCase):
 
         # Read default hazard file
         hazard = Hazard.from_mat(HAZ_TEST_MAT)
-        
+
         # Create impact object
         impact = Impact()
         # Assign centroids to exposures

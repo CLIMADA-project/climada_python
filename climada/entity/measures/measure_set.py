@@ -114,8 +114,7 @@ class MeasureSet():
 
         Read measures from file and checks consistency data:
 
-        >>> meas = MeasureSet()
-        >>> meas.read_excel(ENT_TEMPLATE_XLS)
+        >>> meas = MeasureSet.from_excel(ENT_TEMPLATE_XLS)
         """
         self.clear()
 

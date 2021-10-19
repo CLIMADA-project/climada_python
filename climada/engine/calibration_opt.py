@@ -454,10 +454,8 @@ def calib_optimize(hazard, exposure, impf_name_or_instance, param_dict,
 #
 #
 #    ## tryout calib_all
-#    hazard = TropCyclone()
-#    hazard.read_hdf5('C:/Users/ThomasRoosli/tc_NA_hazard.hdf5')
-#    exposure = LitPop()
-#    exposure.read_hdf5('C:/Users/ThomasRoosli/DOM_LitPop.hdf5')
+#    hazard = TropCyclone.from_hdf5('C:/Users/ThomasRoosli/tc_NA_hazard.hdf5')
+#    exposure = LitPop.from_hdf5('C:/Users/ThomasRoosli/DOM_LitPop.hdf5')
 #    impf_name_or_instance = 'emanuel'
 #    param_full_dict = {'v_thresh': [25.7, 20], 'v_half': [70], 'scale': [1, 0.8]}
 #
@@ -471,10 +469,8 @@ def calib_optimize(hazard, exposure, impf_name_or_instance, param_dict,
 #
 #
 #    ## tryout calib_optimize
-#    hazard = TropCyclone()
-#    hazard.read_hdf5('C:/Users/ThomasRoosli/tc_NA_hazard.hdf5')
-#    exposure = LitPop()
-#    exposure.read_hdf5('C:/Users/ThomasRoosli/DOM_LitPop.hdf5')
+#    hazard = TropCyclone.from_hdf5('C:/Users/ThomasRoosli/tc_NA_hazard.hdf5')
+#    exposure = LitPop.from_hdf5('C:/Users/ThomasRoosli/DOM_LitPop.hdf5')
 #    impf_name_or_instance = 'emanuel'
 #    param_dict = {'v_thresh': 25.7, 'v_half': 70, 'scale': 0.6}
 #    year_range = [2004, 2017]
