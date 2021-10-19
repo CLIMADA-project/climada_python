@@ -783,7 +783,7 @@ def get_value_unit(fin_mode):
 def _get_total_value_per_country(cntry_iso3a, fin_mode, reference_year):
     """
     Get total value for disaggregation, e.g., total asset value
-    for a country, depending on unser choice (fin_mode).
+    for a country, depending on user choice (fin_mode).
 
     Parameters
     ----------
