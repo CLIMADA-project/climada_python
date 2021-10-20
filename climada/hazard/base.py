@@ -1552,6 +1552,46 @@ class Hazard():
         haz_concat.append(*haz_list)
         return haz_concat
 
+    def concat_events(cls, haz_list):
+        """
+        Recombine events from different hazards with the same events but different centroids.
+        This method is mainly meant to be used on hazards that were cut on smaller regions and that should
+        be put back together (example two hazards for single countries cut from a global file that
+        should be put together).
+
+        Parameters
+        ----------
+        haz_list : list of climada.hazard.Hazard objects
+            Hazard instances of the same hazard type (subclass) and containing the same events.
+
+        Returns
+        -------
+        haz_concat : instance of climada.hazard.Hazard
+            This will be of the same type (subclass) as all the hazards in `haz_list`.
+
+        See Also
+        --------
+        Hazard.concat : concat different events
+        """
+        if len(haz_list) == 0:
+            return cls()
+        haz_concat = haz_list[0].__class__()
+        haz_concat.tag = haz_list[0].tag
+        for attr_name, attr_val in vars(haz_list[0]).items():
+            if not (attr_name == "centroids" or attr_name == "tag" or isinstance(attr_val, sparse.csr.csr_matrix)):
+                if not np.all([getattr(haz, attr_name) == attr_val for haz in haz_list[1:]]):
+                    ValueError("The hazards do not contain the same events, please use the Hazard.concat() method.")
+                else:
+                    setattr(haz_concat, attr_name, copy.deepcopy(attr_val))
+            if isinstance(attr_val, sparse.csr.csr_matrix):
+                setattr(haz_concat, attr_name, sparse.hstack([getattr(haz, attr_name)
+                                            for haz in haz_list
+                                            ], format='csr'))
+        centroids = Centroids.union(*[haz.centroids for haz in haz_list])
+        #todo check if values at common centroids are the same, if not return error
+        haz_concat.centroids = centroids
+        return haz_concat
+
     def change_centroids(self, centroids, threshold=100):
         """
         Assign (new) centroids to hazard.
