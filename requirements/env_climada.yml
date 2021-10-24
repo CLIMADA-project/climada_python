@@ -6,7 +6,7 @@ dependencies:
   - bottleneck>=1.3
   - cartopy>=0.18,<0.20.0  # 0.20.0 omits the proj4_params in CRS, which is used to get their units
   - cfgrib>=0.9.7
-  - contextily>=1.0
+  - contextily>=1.0,<1.2  # 1.2 has removed the deprecated contextily.sources
   - dask>=2.25
   - geopandas>=0.8
   - h5py>=2.10
