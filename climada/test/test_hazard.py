@@ -25,6 +25,7 @@ from scipy import sparse
 
 from climada import CONFIG
 from climada.hazard.base import Hazard
+from climada.hazard.centroids import Centroids
 from climada.util.constants import HAZ_DEMO_FL
 
 DATA_DIR = CONFIG.test_data.dir()
