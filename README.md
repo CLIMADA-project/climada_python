@@ -57,7 +57,7 @@ To contribute follow these steps:
 8. Push the changes to GitHub (`git push origin develop`).
 9. On GitHub, create a new pull request onto the develop branch of CLIMADA-project/climada_python.
 
-See our [contribution guidelines](https://climada-python.readthedocs.io/en/latest/guide/developer.html) for more information.
+See our [developer guide](https://climada-python.readthedocs.io/en/latest/#developer-guide) for more information.
 
 ## Versioning
 
