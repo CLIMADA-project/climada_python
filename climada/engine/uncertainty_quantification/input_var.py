@@ -746,7 +746,7 @@ def _generate_litpop_dict(impf_id, value_unit, haz, assign_centr_kwargs,
             LOGGER.info('computing litpop for m=%d, n=%d' %(m, n))
             litpop_kwargs['exponents'] = (m, n)
             exp = LitPop.from_countries(**litpop_kwargs)
-            exp.gdf['impf' + haz.tag.haz_type] = impf_id
+            exp.gdf['impf_' + haz.tag.haz_type] = impf_id
             exp.gdf.drop('impf_', axis=1, inplace=True)
             if value_unit is not None:
                 exp.value_unit = value_unit
