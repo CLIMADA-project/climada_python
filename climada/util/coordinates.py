@@ -277,7 +277,7 @@ def interpolate_lines(gdf_lines, point_dist=5):
 
     return gdf_points.explode()
 
-
+# Check latitude extension of polygon and eventually select several res_x, res_y
 def _interpolate_one_polygon(poly, m_per_point):
 
     if poly.is_empty:
@@ -297,6 +297,9 @@ def _interpolate_one_polygon(poly, m_per_point):
                     Assigning one representative point instead''')
         return MultiPoint([poly.representative_point()])
 
+# Should it only be square_meters? Maybe make interpolate polygon_meters
+# and interpolate_polygons_degrees
+# Remove hard-coded limit to EPSG:4326
 def interpolate_polygons(gdf_poly, area_per_point):
     """For a GeoDataFrame with polygons, get equally distributed lat/lon pairs
     throughout the geometries, at a user-specified resolution (in terms of
@@ -579,6 +582,14 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
         raise KeyError("Unknown distance approximation method: %s" % method)
     return (dist, vtan) if log else dist
 
+# This method is supposed to convert lines to points in meters
+# Ellipsoid should be a parameter
+# Set the crs under the hood should not be done.
+# https://www.earthdatascience.org/courses/use-data-open-source-python/intro-vector-data-python/spatial-data-vector-shapefiles/geographic-vs-projected-coordinate-reference-systems-python/
+# What happens if the crs is not a projected one?
+# What happens with points, polygons and multi-polygons?
+# Why can only non-projected crs by used?
+
 def compute_geodesic_lengths(gdf):
     """Calculate the great circle (geodesic / spherical) lengths along any
     (complicated) geometry object, based on the pyproj.Geod implementation.
@@ -601,7 +612,8 @@ def compute_geodesic_lengths(gdf):
 
     Note
     ----
-    This implementation relies on non-projected crs only, which results in
+    This implementation relies on non-projected  (i.e. geographic coordinate
+    systems that span the entire globe) crs only, which results in
     sea-level distances and hence a certain (minor) level of distortion; cf.
     https://gis.stackexchange.com/questions/176442/what-is-the-real-distance-between-positions
     """
@@ -612,10 +624,13 @@ def compute_geodesic_lengths(gdf):
     return gdf.apply(lambda row: pyproj.Geod(ellps='WGS84').geometry_length(
         row.geometry), axis=1)
 
+# Conversion done for a sphere with a diameter of 40075000
+# Change to def metres_res_to_degrees_res(lat, (res_x, res_y))
+# Make based on crs instead of fixed numbers.
 def metres_to_degrees(lat, dist):
     """
-    Get an exact estimate for converting grid resolutions in metres to degrees,
-    depending on the location on the globe
+    Get a latitude dependent estimate for converting grid resolutions
+    in metres to degrees.
 
     Parameters
     ----------
