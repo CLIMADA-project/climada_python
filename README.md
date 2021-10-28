@@ -7,10 +7,10 @@
 
 CLIMADA stands for **CLIM**ate **ADA**ptation and is a probabilistic natural catastrophe impact model, that also calculates averted damage (benefit) thanks to adaptation measures of any kind (from grey to green infrastructure, behavioural, etc.).
 
-As of today, CLIMADA provides global coverage of major climate-related extreme-weather hazards at high resolution, namely (i) tropical cyclones, (ii) river flood, (iii) wildfire and (iv) European winter storms (in Europe, not global ;-), all at 4km spatial resolution. For all hazards, historic and probabilistic event sets exist, for some also under select climate scenarios (RCPs) at disting time horizons (e.g. 20240). See https://github.com/CLIMADA-project/climada_papers for details. For some further hazards like wildfire and drougth, work is on-going, hence watch out for regular updates.
+As of today, CLIMADA provides global coverage of major climate-related extreme-weather hazards at high resolution via a data API, namely (i) tropical cyclones, (ii) river flood, (iii) agro drought and (iv) European winter storms, all at 4km spatial resolution - wildfire to be added soon. For all hazards, historic and probabilistic event sets exist, for some also under select climate forcing scenarios (RCPs) at distinct time horizons (e.g. 20240). See https://github.com/CLIMADA-project/climada_papers for details.
 
 CLIMADA is divided into two parts: 
-1. the core [climada_python](https://github.com/CLIMADA-project/climada_python) contains all the modules necessary for the probabilistic impact, the averted damage, uncertainty and forecast calculations. Data for hazard, exposures and impact functions can be obtained from the API. Litpop is included as demo Exposures module, and Tropical cyclones is included as a demo Hazard module. 
+1. the core [climada_python](https://github.com/CLIMADA-project/climada_python) contains all the modules necessary for the probabilistic impact, the averted damage, uncertainty and forecast calculations. Data for hazard, exposures and impact functions can be obtained from the data API. Litpop is included as demo Exposures module, and Tropical cyclones is included as a demo Hazard module. 
 2. the petals [climada_petals](https://github.com/CLIMADA-project/climada_petals) contains all the modules for generating data (e.g., TC_Surge, WildFire, OpenStreeMap, ...). Most development is done here. The petals builds-upon the core and does not work as a stand-alone.
 
 It is recommend for new users to begin with the core (1).
