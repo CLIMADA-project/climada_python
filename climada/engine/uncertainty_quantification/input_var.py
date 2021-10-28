@@ -22,12 +22,15 @@ Define InputVar class.
 import copy
 from functools import partial
 from itertools import zip_longest
+import logging
 
 import scipy as sp
 import numpy as np
 import matplotlib.pyplot as plt
 
 from climada.entity import Entity, DiscRates
+
+LOGGER = logging.getLogger(__name__)
 
 __all__ = ['InputVar']
 
@@ -312,6 +315,89 @@ class InputVar():
         return InputVar(
             partial(_exp_uncfunc, **kwargs),
             _exp_unc_dict(bounds_totval, bounds_noise)
+            )
+
+    @staticmethod
+    def litpop(impf_id, haz, assign_centr_kwargs=None, value_unit=None,
+               bounds_totval=None, bounds_m=(1,1), bounds_n=(1,1),
+               **litpop_kwargs):
+        """
+        Helper wrapper for basic litpop uncertainty input variable
+
+        The following types of uncertainties can be added:
+        LT: scale the total value (homogeneously)
+            The value at each exposure point is multiplied by a number
+            sampled uniformly from a distribution with
+            (min, max) = bounds_totvalue
+        LN: exponent m of litpop
+        LM : exponent n of litpop
+
+        If a bounds_totval is None, this parameter is assumed to have no uncertainty.
+        For m and n, the default (1,1) is used instead of None. To choose
+        another fixed value, set bound_m = (m, m) or bounds_n = (n, n).
+
+        Note: This method generates the litpop exposure for each combination
+        of exponents. This might require some computation time and a large
+        amount of memory.
+
+        Parameters
+        ----------
+        impf_id : int
+            The impact function id to be used for all exposure points.
+        haz : Hazard()
+            The hazard instance that defines: the centroids to assign to
+            the exposures and the type of the impact function.
+        assign_centr_kwargs: {}
+            Dictionnary of the keywords arguments to be passed to
+            Exposures.assign_centroids(). The default is None.
+        value_unit : str
+            The unit of the values assigned.
+            The default is None (i.e., uses the default from LitPop.set_countries)
+        bounds_totval : (float, float), optional
+            Bounds of the uniform distribution for the homogeneous total value
+            scaling.. The default is None.
+        bounds_m : (int, int), optional
+            Bounds of the random integaer values for the litpop exponent m.
+            To define a sexponent value without uncertainty set (m, m).
+            The default is (1, 1) (no uncertainty, default litpop values).
+        bounds_n : (int, int), optional
+            Bounds of the random integaer values for the litpop exponent n.
+            To define a sexponent value without uncertainty set (m, m).
+            The default is (1, 1) (no uncertainty, default litpop values).
+        litpop_kwargs :
+            keyword arguments of LitPop.from_countries().
+
+        Returns
+        -------
+        climada.engine.uncertainty_quantification.input_var.InputVar
+            Uncertainty input variable for an exposure object.
+
+        See Also
+        --------
+        climada.entity.litpop.from_countries :
+            method used to generate the litpop entites.
+        climada.entity.exposures.assign_centroids:
+            method to assign centroids to an exposure
+
+        """
+        assign_centr_kwargs = {} if assign_centr_kwargs is None else assign_centr_kwargs
+        litpop_dict = _generate_litpop_dict(
+            impf_id=impf_id, haz=haz, assign_centr_kwargs=assign_centr_kwargs,
+            value_unit=value_unit,
+            bounds_m=bounds_m, bounds_n=bounds_n,
+            **litpop_kwargs)
+        kwargs = {}
+
+        if bounds_m[0] == bounds_m[1]:
+            kwargs['LM'] = bounds_m[0]
+        if bounds_n[0] == bounds_n[1]:
+            kwargs['LN'] = bounds_n[0]
+        if bounds_totval is None:
+            kwargs['LT'] = None
+
+        return InputVar(
+            partial(_litpop_uncfunc, litpop_dict, **kwargs),
+            _litpop_unc_dict(bounds_totval, bounds_m, bounds_n)
             )
 
     @staticmethod
@@ -647,6 +733,42 @@ def _exp_unc_dict(bounds_totval, bounds_noise):
         eud['ET'] = sp.stats.uniform(tmin, tmax)
     if bounds_noise is not None:
         eud['EN'] = sp.stats.randint(0, 2**32 - 1) #seed for rnd generator
+    return eud
+
+#Litpop
+def _generate_litpop_dict(impf_id, value_unit, haz, assign_centr_kwargs,
+                          bounds_m, bounds_n, **litpop_kwargs):
+    from climada.entity import LitPop
+    litpop_dict = {}
+    for m in range(bounds_m[0], bounds_m[1]+1):
+        litpop_dict[m] = {}
+        for n in range(bounds_n[0], bounds_n[1]+1):
+            LOGGER.info('computing litpop for m=%d, n=%d' %(m, n))
+            litpop_kwargs['exponents'] = (m, n)
+            exp = LitPop.from_countries(**litpop_kwargs)
+            exp.gdf['impf' + haz.tag.haz_type] = impf_id
+            exp.gdf.drop('impf_', axis=1, inplace=True)
+            if value_unit is not None:
+                exp.value_unit = value_unit
+            exp.assign_centroids(haz, **assign_centr_kwargs)
+            litpop_dict[m].update({n : exp})
+    return litpop_dict
+
+def _litpop_uncfunc(litpop_dict, LM, LN, LT):
+    exp_tmp = litpop_dict[LM][LN]
+    if LT is not None:
+        exp_tmp.gdf.value *= LT
+    return exp_tmp
+
+def _litpop_unc_dict(bounds_totval, bounds_m, bounds_n):
+    eud = {}
+    if bounds_totval is not None:
+        tmin, tmax = bounds_totval[0], bounds_totval[1] - bounds_totval[0]
+        eud['LT'] = sp.stats.uniform(tmin, tmax)
+    if bounds_m is not None and bounds_m[0] != bounds_m[1]:
+        eud['LM'] = sp.stats.randint(*bounds_m)
+    if bounds_n is not None and bounds_n[0] != bounds_n[1]:
+        eud['LN'] = sp.stats.randint(*bounds_n)
     return eud
 
 #Impact function set
