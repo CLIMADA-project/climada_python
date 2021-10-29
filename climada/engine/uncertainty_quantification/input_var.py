@@ -319,7 +319,7 @@ class InputVar():
 
     @staticmethod
     def litpop(impf_id, haz, assign_centr_kwargs=None, value_unit=None,
-               bounds_totval=None, choice_m=None, choice_n=None,
+               bounds_totval=None, choice_mn=None,
                **litpop_kwargs):
         """
         Helper wrapper for basic litpop uncertainty input variable
@@ -329,10 +329,8 @@ class InputVar():
             The value at each exposure point is multiplied by a number
             sampled uniformly from a distribution with
             (min, max) = bounds_totvalue
-        LM: change the exponent m of litpop. The value of LM is the index
-            of the value of m in choice_m.
-        LN : change the exponent n of litpop. The value of LN is the index
-            of the value of n in choice_n.
+        MN: change the exponent m and n of litpop. The value of MN is the index
+            of the value of m in choice_mn.
 
         If a bounds_totval is None, this parameter is assumed to have no uncertainty.
         For m and n, the default results in choice_m = [1], choice_n = [1], these
@@ -358,11 +356,8 @@ class InputVar():
         bounds_totval : (float, float), optional
             Bounds of the uniform distribution for the homogeneous total value
             scaling.. The default is None.
-        choice_m : [float], optional
-            List of values of exponent m to uniformly sample from.
-            The default is None.
-        choice_n : [float], optional
-            List of values of exponent n to uniformly sample from.
+        choice_mn : [[float, float]], optional
+            List of list of exponent pairs m and n to uniformly sample from.
             The default is None.
         litpop_kwargs :
             keyword arguments of LitPop.from_countries().
@@ -382,27 +377,24 @@ class InputVar():
         """
 
         assign_centr_kwargs = {} if assign_centr_kwargs is None else assign_centr_kwargs
-        choice_m = [1] if choice_m is None else choice_m
-        choice_n = [1] if choice_n is None else choice_n
+        choice_mn = [[1, 1]] if choice_mn is None else choice_mn
 
         litpop_dict = _generate_litpop_dict(
             impf_id=impf_id, haz=haz, assign_centr_kwargs=assign_centr_kwargs,
             value_unit=value_unit,
-            choice_m=choice_m, choice_n=choice_n,
+            choice_mn=choice_mn,
             **litpop_kwargs)
         kwargs = {}
 
 
-        if len(choice_m) == 1:
-            kwargs['LM'] = 0
-        if len(choice_n) == 1:
-            kwargs['LN'] = 0
+        if len(choice_mn) == 1:
+            kwargs['MN'] = 0
         if bounds_totval is None:
             kwargs['LT'] = None
 
         return InputVar(
             partial(_litpop_uncfunc, litpop_dict, **kwargs),
-            _litpop_unc_dict(bounds_totval, choice_m, choice_n)
+            _litpop_unc_dict(bounds_totval, choice_mn)
             )
 
     @staticmethod
@@ -1114,39 +1106,34 @@ def _entfut_unc_dict(bounds_impfi, bounds_mdd,
 
 #Litpop
 def _generate_litpop_dict(impf_id, value_unit, haz, assign_centr_kwargs,
-                          choice_m, choice_n, **litpop_kwargs):
+                          choice_mn, **litpop_kwargs):
     from climada.entity import LitPop
     litpop_base = []
-    for m in choice_m:
-        litpop_n = []
-        for n in choice_n:
-            LOGGER.info('computing litpop for m=%d, n=%d' %(m, n))
-            litpop_kwargs['exponents'] = (m, n)
-            exp = LitPop.from_countries(**litpop_kwargs)
-            exp.gdf['impf_' + haz.tag.haz_type] = impf_id
-            exp.gdf.drop('impf_', axis=1, inplace=True)
-            if value_unit is not None:
-                exp.value_unit = value_unit
-            exp.assign_centroids(haz, **assign_centr_kwargs)
-            litpop_n.append(exp)
-        litpop_base.append(litpop_n)
+    for [m, n] in choice_mn:
+        LOGGER.info('computing litpop for m=%d, n=%d' %(m, n))
+        litpop_kwargs['exponents'] = (m, n)
+        exp = LitPop.from_countries(**litpop_kwargs)
+        exp.gdf['impf_' + haz.tag.haz_type] = impf_id
+        exp.gdf.drop('impf_', axis=1, inplace=True)
+        if value_unit is not None:
+            exp.value_unit = value_unit
+        exp.assign_centroids(haz, **assign_centr_kwargs)
+        litpop_base.append(exp)
     return litpop_base
 
-def _litpop_uncfunc(litpop_base, LM, LN, LT):
-    exp_tmp = litpop_base[LM][LN]
+def _litpop_uncfunc(litpop_base, MN, LT):
+    exp_tmp = litpop_base[MN]
     if LT is not None:
         exp_tmp.gdf.value *= LT
     return exp_tmp
 
-def _litpop_unc_dict(bounds_totval, choice_m, choice_n):
+def _litpop_unc_dict(bounds_totval, choice_mn):
     eud = {}
     if bounds_totval is not None:
         tmin, tmax = bounds_totval[0], bounds_totval[1] - bounds_totval[0]
         eud['LT'] = sp.stats.uniform(tmin, tmax)
-    if len(choice_m) > 1:
-        eud['LM'] = sp.stats.randint(0, len(choice_m))
-    if len(choice_n) > 1:
-        eud['LN'] = sp.stats.randint(0, len(choice_n))
+    if len(choice_mn) > 1:
+        eud['MN'] = sp.stats.randint(0, len(choice_mn))
     return eud
 
 def _ent_litpop_unc_func(LN, LM, LT, IFi, MDD, PAA, CO, DR, litpop_dict,
