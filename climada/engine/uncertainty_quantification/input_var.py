@@ -1122,7 +1122,7 @@ def _generate_litpop_dict(impf_id, value_unit, haz, assign_centr_kwargs,
     return litpop_base
 
 def _litpop_uncfunc(litpop_base, MN, LT):
-    exp_tmp = litpop_base[MN]
+    exp_tmp = litpop_base[MN].copy()
     if LT is not None:
         exp_tmp.gdf.value *= LT
     return exp_tmp
