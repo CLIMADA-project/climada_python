@@ -378,7 +378,7 @@ class InputVar():
         assign_centr_kwargs = {} if assign_centr_kwargs is None else assign_centr_kwargs
         choice_mn = [[1, 1]] if choice_mn is None else choice_mn
 
-        litpop_dict = _generate_litpop_dict(
+        litpop_base = _generate_litpop_base(
             impf_id=impf_id, haz=haz, assign_centr_kwargs=assign_centr_kwargs,
             value_unit=value_unit,
             choice_mn=choice_mn,
@@ -392,7 +392,7 @@ class InputVar():
             kwargs['LT'] = None
 
         return InputVar(
-            partial(_litpop_uncfunc, litpop_dict, **kwargs),
+            partial(_litpop_uncfunc, litpop_base, **kwargs),
             _litpop_unc_dict(bounds_totval, choice_mn)
             )
 
@@ -673,7 +673,7 @@ class InputVar():
         assign_centr_kwargs = {} if assign_centr_kwargs is None else assign_centr_kwargs
         choice_mn = [[1, 1]] if choice_mn is None else choice_mn
 
-        litpop_dict = _generate_litpop_dict(
+        litpop_base = _generate_litpop_base(
             impf_id=impf_id, haz=haz, assign_centr_kwargs=assign_centr_kwargs,
             value_unit=value_unit,
             choice_mn=choice_mn,
@@ -700,7 +700,7 @@ class InputVar():
         return InputVar(
             partial(_ent_litpop_unc_func,
                     impf_set=impf_set, disc_rate=disc_rate,
-                    meas_set=meas_set, litpop_dict=litpop_dict,
+                    meas_set=meas_set, litpop_base=litpop_base,
                     haz_id_dict=haz_id_dict, **kwargs
                     ),
             _ent_litpop_unc_dict(
@@ -905,7 +905,7 @@ class InputVar():
         assign_centr_kwargs = {} if assign_centr_kwargs is None else assign_centr_kwargs
         choice_mn = [[1, 1]] if choice_mn is None else choice_mn
 
-        litpop_base = _generate_litpop_dict(
+        litpop_base = _generate_litpop_base(
             impf_id=impf_id, haz=haz, assign_centr_kwargs=assign_centr_kwargs,
             value_unit=value_unit,
             choice_mn=choice_mn,
@@ -1115,7 +1115,7 @@ def _entfut_unc_dict(bounds_impfi, bounds_mdd,
     return eud
 
 #Litpop
-def _generate_litpop_dict(impf_id, value_unit, haz, assign_centr_kwargs,
+def _generate_litpop_base(impf_id, value_unit, haz, assign_centr_kwargs,
                           choice_mn, **litpop_kwargs):
     from climada.entity import LitPop
     litpop_base = []
