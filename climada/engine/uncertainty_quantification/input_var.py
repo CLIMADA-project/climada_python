@@ -372,7 +372,7 @@ class InputVar():
         Returns
         -------
         climada.engine.uncertainty_quantification.input_var.InputVar
-            DESCRIPTION.
+            Uncertainty input variable for an impact function set object.
 
         """
         kwargs = {}
@@ -393,7 +393,7 @@ class InputVar():
         )
 
     @staticmethod
-    def ent(impf_set, disc_rate, exp, meas_set, haz_id_dict,
+    def ent(impf_set, disc_rate, exp_list, meas_set, haz_id_dict,
             bounds_disc=None, bounds_cost=None, bounds_totval=None,
             bounds_noise=None, bounds_mdd=None, bounds_paa=None,
             bounds_impfi=None):
@@ -421,6 +421,9 @@ class InputVar():
             a random number sampled uniformly from a distribution
             with (min, max) = bounds_noise. EN is the value of the seed
             for  the uniform random number generator.
+        EL: sample uniformly from exposure list
+            From the provided list of exposure is elements are uniformly
+            sampled. For example, LitPop instances with different exponents.
         MDD: scale the mdd (homogeneously)
             The value of mdd at each intensity is multiplied by a number
             sampled uniformly from a distribution with
@@ -465,8 +468,9 @@ class InputVar():
             The base impact function set.
         disc_rate : climada.entity.disc_rates.base.DiscRates
             The base discount rates.
-        exp : climada.entity.exposures.base.Exposure
-            The base exposure.
+        exp_list : [climada.entity.exposures.base.Exposure]
+            The list of base exposure. Can be one or many to uniformly sample
+            from.
         meas_set : climada.entity.measures.measure_set.MeasureSet
             The base measures.
         haz_id_dict : dict()
@@ -480,6 +484,8 @@ class InputVar():
             Entity uncertainty input variable
 
         """
+        n_exp = len(exp_list)
+
         kwargs = {}
         if bounds_mdd is None:
             kwargs['MDD'] = None
@@ -495,154 +501,23 @@ class InputVar():
             kwargs['ET'] = None
         if bounds_noise is None:
             kwargs['EN'] = None
-
-        if haz_id_dict is None:
-            haz_id_dict = {'TC': [1]}
+        if n_exp == 1:
+            kwargs['EL'] = 0
 
         return InputVar(
-            partial(_ent_unc_func, impf_set=impf_set, haz_id_dict=haz_id_dict,
+            partial(_ent_unc_func,
+                    impf_set=impf_set, haz_id_dict=haz_id_dict,
                     disc_rate=disc_rate, bounds_noise=bounds_noise,
-                    exp=exp, meas_set=meas_set, **kwargs),
-            _ent_unc_dict(bounds_totval, bounds_noise, bounds_impfi, bounds_mdd,
-                          bounds_paa, bounds_disc, bounds_cost)
-        )
-
-    @staticmethod
-    def ent_litpop(
-            impf_set, disc_rate, meas_set,
-            haz, impf_id, assign_centr_kwargs=None,
-            value_unit=None, litpop_kwargs=None,
-            bounds_totval=None, choice_mn=None,
-            bounds_disc=None, bounds_cost=None, bounds_mdd=None,
-            bounds_paa=None, bounds_impfi=None
-            ):
-        """
-        Helper wrapper for basic entity set uncertainty input variable.
-
-        Important: only the impact function defined by haz_type and
-        fun_id will be affected by bounds_impfi, bounds_mdd, bounds_paa.
-
-        The following types of uncertainties can be added:
-        DR: value of constant discount rate (homogeneously)
-            The value of the discounts in each year is
-            sampled uniformly from a distribution with
-            (min, max) = bounds_disc
-        CO: scale the cost (homogeneously)
-            The cost of all measures is multiplied by the same number
-            sampled uniformly from a distribution with
-            (min, max) = bounds_cost
-        LT: scale the total value (homogeneously)
-            The value at each exposure point is multiplied by a number
-            sampled uniformly from a distribution with
-            (min, max) = bounds_totval
-        MN: the LitPop exponents pair [m, n]
-            LitPop exposures are made for each pair of [m, n] in choice_mn.
-            MN is the index of the pair within choice_mn.
-        MDD: scale the mdd (homogeneously)
-            The value of mdd at each intensity is multiplied by a number
-            sampled uniformly from a distribution with
-            (min, max) = bounds_mdd
-        PAA: scale the paa (homogeneously)
-            The value of paa at each intensity is multiplied by a number
-            sampled uniformly from a distribution with
-            (min, max) = bounds_paa
-        IFi: shift the intensity (homogeneously)
-            The value intensity are all summed with a random number
-            sampled uniformly from a distribution with
-            (min, max) = bounds_int
-
-
-        If a bounds is None, this parameter is assumed to have no uncertainty.
-
-
-        Parameters
-        ----------
-        bounds_disk : (float, float), optional
-            Bounds of the uniform distribution for the homogeneous discount
-            rate scaling. The default is None.
-        bounds_cost :(float, float), optional
-            Bounds of the uniform distribution for the homogeneous cost
-            of all measures scaling. The default is None.
-        bounds_totval : (float, float), optional
-            Bounds of the uniform distribution for the homogeneous total
-            exposure value scaling. The default is None.
-        choice_mn: [[float, float]], optional
-            The finite set of LitPop exponent pairs to randomly sample from.
-            The default is None.
-        bounds_mdd : (float, float), optional
-            Bounds of the uniform distribution for the homogeneous mdd
-            scaling. The default is None.
-        bounds_paa : (float, float), optional
-            Bounds of the uniform distribution for the homogeneous paa
-            scaling. The default is None.
-        bounds_impfi : (float, float), optional
-            Bounds of the uniform distribution for the homogeneous shift
-            of intensity. The default is None.
-        impf_set : climada.engine.impact_funcs.impact_func_set.ImpactFuncSet
-            The base impact function set.
-        disc_rate : climada.entity.disc_rates.base.DiscRates
-            The base discount rates.
-        exp : climada.entity.exposures.base.Exposure
-            The base exposure.
-        meas_set : climada.entity.measures.measure_set.MeasureSet
-            The base measures.
-
-        Returns
-        -------
-        climada.engine.uncertainty_quantification.input_var.InputVar
-            Entity uncertainty input variable
-
-        See Also
-        --------
-        climada.entity.litpop.from_countries :
-            method used to generate the litpop entites.
-        climada.entity.exposures.assign_centroids:
-            method to assign centroids to an exposure
-        """
-        litpop_kwargs = {} if litpop_kwargs is None else litpop_kwargs
-        assign_centr_kwargs = {} if assign_centr_kwargs is None else assign_centr_kwargs
-        choice_mn = [[1, 1]] if choice_mn is None else choice_mn
-
-        litpop_base = _generate_litpop_base(
-            impf_id=impf_id, haz=haz, assign_centr_kwargs=assign_centr_kwargs,
-            value_unit=value_unit,
-            choice_mn=choice_mn,
-            **litpop_kwargs)
-
-        haz_id_dict={haz.tag.haz_type : [impf_id]}
-
-        kwargs = {}
-        if bounds_mdd is None:
-            kwargs['MDD'] = None
-        if bounds_paa is None:
-            kwargs['PAA'] = None
-        if bounds_impfi is None:
-            kwargs['IFi'] = None
-        if bounds_disc is None:
-            kwargs['DR'] = None
-        if bounds_cost is None:
-            kwargs['CO'] = None
-        if bounds_totval is None:
-            kwargs['LT'] = None
-        if len(choice_mn) == 1:
-            kwargs['MN'] = 0
-
-        return InputVar(
-            partial(_ent_litpop_unc_func,
-                    impf_set=impf_set, disc_rate=disc_rate,
-                    meas_set=meas_set, litpop_base=litpop_base,
-                    haz_id_dict=haz_id_dict, **kwargs
+                    exp_list=exp_list, meas_set=meas_set, **kwargs
                     ),
-            _ent_litpop_unc_dict(
-                bounds_totval=bounds_totval, choice_mn=choice_mn,
-                bounds_impfi=bounds_impfi, bounds_mdd=bounds_mdd,
-                bounds_paa=bounds_paa, bounds_disc=bounds_disc,
-                bounds_cost=bounds_cost
-                )
+            _ent_unc_dict(bounds_totval=bounds_totval, bounds_noise=bounds_noise,
+                          bounds_impfi=bounds_impfi, bounds_mdd=bounds_mdd,
+                          bounds_paa=bounds_paa, bounds_disc=bounds_disc,
+                          bounds_cost=bounds_cost, n_exp=n_exp)
         )
 
     @staticmethod
-    def entfut(impf_set, exp, meas_set, haz_id_dict,
+    def entfut(impf_set, exp_list, meas_set, haz_id_dict,
                bounds_cost=None, bounds_eg=None, bounds_noise=None,
                bounds_impfi=None, bounds_mdd=None, bounds_paa=None,
                ):
@@ -666,6 +541,9 @@ class InputVar():
             a random number sampled uniformly from a distribution
             with (min, max) = bounds_noise. EN is the value of the seed
             for  the uniform random number generator.
+        EL: sample uniformly from exposure list
+            From the provided list of exposure is elements are uniformly
+            sampled. For example, LitPop instances with different exponents.
         MDD: scale the mdd (homogeneously)
             The value of mdd at each intensity is multiplied by a number
             sampled uniformly from a distribution with
@@ -705,8 +583,9 @@ class InputVar():
             of intensity. The default is None.
         impf_set : climada.engine.impact_funcs.impact_func_set.ImpactFuncSet
             The base impact function set.
-        exp : climada.entity.exposures.base.Exposure
-            The base exposure.
+        exp_list : [climada.entity.exposures.base.Exposure]
+            The list of base exposure. Can be one or many to uniformly sample
+            from.
         meas_set : climada.entity.measures.measure_set.MeasureSet
             The base measures.
         haz_id_dict : dict()
@@ -720,6 +599,7 @@ class InputVar():
             Entity uncertainty input variable
 
         """
+        n_exp = len(exp_list)
 
         kwargs = {}
         if bounds_mdd is None:
@@ -734,143 +614,17 @@ class InputVar():
             kwargs['EG'] = None
         if bounds_noise is None:
             kwargs['EN'] = None
+        if n_exp == 1:
+            kwargs['EL'] = 0
 
         return InputVar(
             partial(_entfut_unc_func, haz_id_dict=haz_id_dict,
                     bounds_noise=bounds_noise, impf_set=impf_set,
-                    exp=exp, meas_set=meas_set, **kwargs),
+                    exp_list=exp_list, meas_set=meas_set, **kwargs),
             _entfut_unc_dict(bounds_eg=bounds_eg, bounds_noise=bounds_noise,
                              bounds_impfi=bounds_impfi, bounds_paa=bounds_paa,
-                             bounds_mdd=bounds_mdd, bounds_cost=bounds_cost)
-        )
-
-    @staticmethod
-    def entfut_litpop(
-            impf_set, meas_set, haz, impf_id, fut_year, assign_centr_kwargs=None,
-            value_unit=None, litpop_kwargs=None,
-            bounds_cost=None, bounds_lg=None, choice_mn=None,
-            bounds_impfi=None, bounds_mdd=None, bounds_paa=None
-            ):
-
-        """
-        Helper wrapper for basic future entity set uncertainty input variable.
-
-        Important: only the impact function defined by haz_type and
-        fun_id will be affected by bounds_impfi, bounds_mdd, bounds_paa.
-
-        The following types of uncertainties can be added:
-        CO: scale the cost (homogeneously)
-            The cost of all measures is multiplied by the same number
-            sampled uniformly from a distribution with
-            (min, max) = bounds_cost
-        LG: scale the exposures growth (homogeneously)
-            The value at each exposure point is multiplied by a number
-            sampled uniformly from a distribution with
-            (min, max) = bounds_eg
-        MN: the LitPop exponents pair [m, n]
-            LitPop exposures are made for each pair of [m, n] in choice_mn.
-            MN is the index of the pair within choice_mn.
-        MDD: scale the mdd (homogeneously)
-            The value of mdd at each intensity is multiplied by a number
-            sampled uniformly from a distribution with
-            (min, max) = bounds_mdd
-        PAA: scale the paa (homogeneously)
-            The value of paa at each intensity is multiplied by a number
-            sampled uniformly from a distribution with
-            (min, max) = bounds_paa
-        IFi: shift the impact function intensity (homogeneously)
-            The value intensity are all summed with a random number
-            sampled uniformly from a distribution with
-            (min, max) = bounds_impfi
-
-
-        If a bounds is None, this parameter is assumed to have no uncertainty.
-
-
-        Parameters
-        ----------
-        bounds_cost :(float, float), optional
-            Bounds of the uniform distribution for the homogeneous cost
-            of all measures scaling. The default is None.
-        bounds_eg : (float, float), optional
-            Bounds of the uniform distribution for the homogeneous total
-            exposure growth scaling. The default is None.
-        choice_mn: [[float, float]], optional
-            The finite set of LitPop exponent pairs to randomly sample from.
-            The default is None.
-        bounds_mdd : (float, float), optional
-            Bounds of the uniform distribution for the homogeneous mdd
-            scaling. The default is None.
-        bounds_paa : (float, float), optional
-            Bounds of the uniform distribution for the homogeneous paa
-            scaling. The default is None.
-        bounds_impfi : (float, float), optional
-            Bounds of the uniform distribution for the homogeneous shift
-            of intensity. The default is None.
-        impf_set : climada.engine.impact_funcs.impact_func_set.ImpactFuncSet
-            The base impact function set.
-        exp : climada.entity.exposures.base.Exposure
-            The base exposure.
-        meas_set : climada.entity.measures.measure_set.MeasureSet
-            The base measures.
-        fut_year : int, optional
-            The year of the future LitPop if different from the year in
-            litpop_kwargs. This overwrites ent.exposures.ref_year
-            The default is None.
-
-        Returns
-        -------
-        climada.engine.uncertainty_quantification.input_var.InputVar
-            Entity uncertainty input variable
-
-        See Also
-        --------
-        climada.entity.litpop.from_countries :
-            method used to generate the litpop entites.
-        climada.entity.exposures.assign_centroids:
-            method to assign centroids to an exposure
-        """
-
-        litpop_kwargs = {} if litpop_kwargs is None else litpop_kwargs
-        assign_centr_kwargs = {} if assign_centr_kwargs is None else assign_centr_kwargs
-        choice_mn = [[1, 1]] if choice_mn is None else choice_mn
-
-        litpop_base = _generate_litpop_base(
-            impf_id=impf_id, haz=haz, assign_centr_kwargs=assign_centr_kwargs,
-            value_unit=value_unit,
-            choice_mn=choice_mn,
-            **litpop_kwargs)
-
-        if fut_year is not None:
-            for exp in litpop_base:
-                exp.ref_year = fut_year
-
-        haz_id_dict={haz.tag.haz_type : [impf_id]}
-
-        kwargs = {}
-        if bounds_mdd is None:
-            kwargs['MDD'] = None
-        if bounds_paa is None:
-            kwargs['PAA'] = None
-        if bounds_impfi is None:
-            kwargs['IFi'] = None
-        if bounds_cost is None:
-            kwargs['CO'] = None
-        if bounds_lg is None:
-            kwargs['LG'] = None
-        if len(choice_mn) == 1:
-            kwargs['MN'] = 0
-
-        return InputVar(
-            partial(_entfut_litpop_unc_func,
-                    impf_set=impf_set, litpop_base=litpop_base,
-                    meas_set=meas_set, haz_id_dict=haz_id_dict, **kwargs
-                    ),
-            _entfut_litpop_unc_dict(
-                bounds_lg=bounds_lg, choice_mn=choice_mn,
-                bounds_impfi=bounds_impfi, bounds_paa=bounds_paa,
-                bounds_mdd=bounds_mdd, bounds_cost=bounds_cost
-                )
+                             bounds_mdd=bounds_mdd, bounds_cost=bounds_cost,
+                             n_exp=n_exp)
         )
 
 
@@ -901,7 +655,7 @@ def _haz_unc_dict(n_ev, bounds_int, bounds_freq):
 
 #Exposure
 def _exp_uncfunc(EN, ET, EL, exp_list, bounds_noise):
-    exp_tmp = exp_list[EL].copy(deep=True)
+    exp_tmp = exp_list[int(EL)].copy(deep=True)
     if EN is not None:
         rng = np.random.RandomState(int(EN))
         rnd_vals = rng.uniform(bounds_noise[0], bounds_noise[1], size = len(exp_tmp.gdf))
@@ -974,115 +728,56 @@ def _disc_unc_dict(bounds_disk):
 
 def _meas_set_uncfunc(CO, meas_set):
     meas_set_tmp = copy.deepcopy(meas_set)
-    for haz_type in meas_set_tmp.get_hazard_types():
-        for meas in meas_set_tmp.get_measure(haz_type=haz_type):
-            meas.cost *= CO
+    if CO is not None:
+        for haz_type in meas_set_tmp.get_hazard_types():
+            for meas in meas_set_tmp.get_measure(haz_type=haz_type):
+                meas.cost *= CO
     return meas_set_tmp
 
 def _meas_set_unc_dict(bounds_cost):
     cmin, cdelta = bounds_cost[0], bounds_cost[1] - bounds_cost[0]
     return {'CO': sp.stats.uniform(cmin, cdelta)}
 
-def _ent_unc_func(EN, ET, IFi, MDD, PAA, CO, DR, bounds_noise,
-                 impf_set, haz_id_dict, disc_rate, exp, meas_set):
+def _ent_unc_func(EN, ET, EL, IFi, MDD, PAA, CO, DR, bounds_noise,
+                 impf_set, haz_id_dict, disc_rate, exp_list, meas_set):
     ent = Entity()
-    if EN is None and ET is None:
-        ent.exposures = exp
-    else:
-        ent.exposures = _exp_uncfunc(EN, ET, exp, bounds_noise)
-    if MDD is None and PAA is None and IFi is None:
-        ent.impact_funcs = impf_set
-    else:
-        ent.impact_funcs = _impfset_uncfunc(IFi, MDD, PAA, impf_set=impf_set,
-                                            haz_id_dict=haz_id_dict)
-    if CO is None:
-        ent.measures = meas_set
-    else:
-        ent.measures = _meas_set_uncfunc(CO, meas_set=meas_set)
-    if DR is None:
-        ent.disc_rates = disc_rate
-    else:
-        ent.disc_rates = _disc_uncfunc(DR, disc_rate)
-    return ent
-
-def _ent_unc_dict(bounds_totval, bounds_noise, bounds_impfi, bounds_mdd,
-                  bounds_paa, bounds_disk, bounds_cost):
-    ent_unc_dict = _exp_unc_dict(bounds_totval, bounds_noise)
-    ent_unc_dict.update(_impfset_unc_dict(bounds_impfi, bounds_mdd, bounds_paa))
-    ent_unc_dict.update(_disc_unc_dict(bounds_disk))
-    ent_unc_dict.update(_meas_set_unc_dict(bounds_cost))
-    return  ent_unc_dict
-
-def _entfut_unc_func(EN, EG, IFi, MDD, PAA, CO, bounds_noise,
-                 impf_set, haz_id_dict, exp, meas_set):
-    ent = Entity()
-    if EN is None and EG is None:
-        ent.exposures = exp
-    else:
-        ent.exposures = _exp_uncfunc(EN=EN, ET=EG, exp=exp, bounds_noise=bounds_noise)
-    if IFi is None and PAA is None and MDD is None:
-        ent.impact_funcs = impf_set
-    else:
-        ent.impact_funcs = _impfset_uncfunc(IFi, MDD, PAA, impf_set=impf_set,
-                                            haz_id_dict=haz_id_dict)
-    if CO is None:
-        ent.measures = meas_set
-    else:
-        ent.measures = _meas_set_uncfunc(CO, meas_set=meas_set)
-    ent.disc_rates = DiscRates() #Disc rate of future entity ignored in cost_benefit.calc()
-    return ent
-
-def _entfut_unc_dict(bounds_impfi, bounds_mdd,
-                  bounds_paa, bounds_eg, bounds_noise,
-                  bounds_cost):
-    eud = {}
-    if bounds_eg is not None:
-        gmin, gmax = bounds_eg[0], bounds_eg[1] - bounds_eg[0]
-        eud['EG'] = sp.stats.uniform(gmin, gmax)
-    if bounds_noise is not None:
-        eud['EN'] = sp.stats.randint(0, 2**32 - 1) #seed for rnd generator
-    eud.update(_impfset_unc_dict(bounds_impfi, bounds_mdd, bounds_paa))
-    if bounds_cost is not None:
-        eud.update(_meas_set_unc_dict(bounds_cost))
-    return eud
-
-
-def _ent_litpop_unc_func(MN, LT, IFi, MDD, PAA, CO, DR, litpop_base,
-                 impf_set, haz_id_dict, disc_rate, meas_set):
-    ent = Entity()
-    ent.exposures = _litpop_uncfunc(litpop_base, MN=MN, LT=LT)
+    ent.exposures = _exp_uncfunc(EN, ET, EL, exp_list, bounds_noise)
     ent.impact_funcs = _impfset_uncfunc(IFi, MDD, PAA, impf_set=impf_set,
                                             haz_id_dict=haz_id_dict)
     ent.measures = _meas_set_uncfunc(CO, meas_set=meas_set)
     ent.disc_rates = _disc_uncfunc(DR, disc_rate)
     return ent
 
-def _ent_litpop_unc_dict(bounds_totval, choice_mn, bounds_impfi, bounds_mdd,
-                  bounds_paa, bounds_disc, bounds_cost):
-    ent_unc_dict = _litpop_unc_dict(bounds_totval, choice_mn)
+def _ent_unc_dict(bounds_totval, bounds_noise, bounds_impfi, bounds_mdd,
+                  bounds_paa, bounds_disc, bounds_cost, n_exp):
+    ent_unc_dict = _exp_unc_dict(bounds_totval, bounds_noise, n_exp)
     ent_unc_dict.update(_impfset_unc_dict(bounds_impfi, bounds_mdd, bounds_paa))
     ent_unc_dict.update(_disc_unc_dict(bounds_disc))
     ent_unc_dict.update(_meas_set_unc_dict(bounds_cost))
     return  ent_unc_dict
 
-def _entfut_litpop_unc_func(MN, LG, IFi, MDD, PAA, CO,
-                 impf_set, haz_id_dict, litpop_base, meas_set):
+def _entfut_unc_func(EN, EG, EL, IFi, MDD, PAA, CO, bounds_noise,
+                 impf_set, haz_id_dict, exp_list, meas_set):
     ent = Entity()
-    ent.exposures = _litpop_uncfunc(LT=LG, MN=MN, litpop_base=litpop_base)
+    ent.exposures = _exp_uncfunc(EN=EN, ET=EG, EL=EL, exp_list=exp_list, bounds_noise=bounds_noise)
     ent.impact_funcs = _impfset_uncfunc(IFi, MDD, PAA, impf_set=impf_set,
                                             haz_id_dict=haz_id_dict)
     ent.measures = _meas_set_uncfunc(CO, meas_set=meas_set)
     ent.disc_rates = DiscRates() #Disc rate of future entity ignored in cost_benefit.calc()
     return ent
 
-def _entfut_litpop_unc_dict(bounds_impfi, bounds_mdd,
-                  bounds_paa, bounds_lg, choice_mn,
-                  bounds_cost):
+def _entfut_unc_dict(bounds_impfi, bounds_mdd,
+                  bounds_paa, bounds_eg, bounds_noise,
+                  bounds_cost, n_exp):
     eud = {}
-    if bounds_lg is not None:
-        gmin, gmax = bounds_lg[0], bounds_lg[1] - bounds_lg[0]
-        eud['LG'] = sp.stats.uniform(gmin, gmax)
-    eud.update(_litpop_unc_dict(bounds_totval=None, choice_mn=choice_mn))
+    if bounds_eg is not None:
+        gmin, gmax = bounds_eg[0], bounds_eg[1] - bounds_eg[0]
+        eud['EG'] = sp.stats.uniform(gmin, gmax)
+    if bounds_noise is not None:
+        eud['EN'] = sp.stats.randint(0, 2**32 - 1) #seed for rnd generator
+    if n_exp > 1:
+        eud['EL'] = sp.stats.randint(0, n_exp)
     eud.update(_impfset_unc_dict(bounds_impfi, bounds_mdd, bounds_paa))
-    eud.update(_meas_set_unc_dict(bounds_cost))
+    if bounds_cost is not None:
+        eud.update(_meas_set_unc_dict(bounds_cost))
     return eud
