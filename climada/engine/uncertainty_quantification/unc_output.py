@@ -378,11 +378,12 @@ class UncOutput():
         param2 = np.concatenate((['None'], si_df['param2']))
         param2_max_si = [param2[idx] for idx in max_si_idx]
 
-        max_si_df = pd.DataFrame([])
-        max_si_df['metric'] = si_df_num.columns
-        max_si_df['param'] = param_max_si
-        max_si_df['param2'] = param2_max_si
-        max_si_df['si'] = max_si_val
+        max_si_df = pd.DataFrame(
+            {'metric' : si_df_num.columns,
+             'param' : param_max_si,
+             'param2' : param2_max_si,
+             'si' : max_si_val
+             })
 
         return max_si_df
 
@@ -884,7 +885,7 @@ class UncOutput():
 
         return axes
 
-    def plot_sensitivity_map(self, exp, salib_si='S1', **kwargs):
+    def plot_sensitivity_map(self, salib_si='S1', **kwargs):
         """
         Plot a map of the largest sensitivity index in each exposure point
 
@@ -892,8 +893,6 @@ class UncOutput():
 
         Parameters
         ----------
-        exp : climada.exposure
-            The exposure from which to take the coordinates.
         salib_si : str, optional
             The name of the sensitivity index to plot.
             The default is 'S1'.
@@ -919,18 +918,9 @@ class UncOutput():
         """
 
         eai_max_si_df = self.get_largest_si(salib_si, metric_list=['eai_exp'])
-        if len(eai_max_si_df) != len(exp.gdf):
-            LOGGER.error("The length of the sensitivity data "
-                  "%d does not match the number "
-                  "of points %d in the given exposure. "
-                  "Please check the exposure or recompute the sensitivity  "
-                  "using UncCalcImpact.calc_sensitivity(calc_eai_exp=True)",
-                  len(eai_max_si_df), len(exp.gdf)
-                  )
-            return None
 
         plot_val = eai_max_si_df['param']
-        coord = np.array([exp.gdf.latitude, exp.gdf.longitude]).transpose()
+        coord = np.array([self.coord_df.latitude, self.coord_df.longitude]).transpose()
         if 'var_name' not in kwargs:
             kwargs['var_name'] = 'Largest sensitivity index ' + salib_si
         if 'title' not in kwargs:
@@ -1040,7 +1030,7 @@ class UncImpactOutput(UncOutput):
     """Extension of UncOutput specific for CalcImpact, returned by the  uncertainty() method.
     """
     def __init__(self, samples_df, unit, aai_agg_unc_df, freq_curve_unc_df, eai_exp_unc_df,
-                 at_event_unc_df, tot_value_unc_df):
+                 at_event_unc_df, tot_value_unc_df, coord_df):
         """Constructor
 
         Uncertainty output values from impact.calc for each sample
@@ -1066,6 +1056,8 @@ class UncImpactOutput(UncOutput):
         tot_value_unc_df : pandas.DataFrame
             Each row contains the value of tot_value for one sample (row of
             samples_df)
+        coord_df : pandas.DataFrame
+            Coordinates of the exposure
         """
         super().__init__(samples_df, unit)
         self.aai_agg_unc_df = aai_agg_unc_df
@@ -1078,6 +1070,7 @@ class UncImpactOutput(UncOutput):
         self.at_event_sens_df = None
         self.tot_value_unc_df = tot_value_unc_df
         self.tot_value_sens_df = None
+        self.coord_df = coord_df
 
 
 class UncCostBenefitOutput(UncOutput):
