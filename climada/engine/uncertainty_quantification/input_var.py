@@ -816,10 +816,10 @@ class InputVar():
 
     @staticmethod
     def entfut_litpop(
-            impf_set, meas_set, haz, impf_id, assign_centr_kwargs=None,
+            impf_set, meas_set, haz, impf_id, fut_year, assign_centr_kwargs=None,
             value_unit=None, litpop_kwargs=None,
             bounds_cost=None, bounds_lg=None, choice_mn=None,
-            bounds_impfi=None, bounds_mdd=None, bounds_paa=None,
+            bounds_impfi=None, bounds_mdd=None, bounds_paa=None
             ):
 
         """
@@ -883,6 +883,10 @@ class InputVar():
             The base exposure.
         meas_set : climada.entity.measures.measure_set.MeasureSet
             The base measures.
+        fut_year : int, optional
+            The year of the future LitPop if different from the year in
+            litpop_kwargs. This overwrites ent.exposures.ref_year
+            The default is None.
 
         Returns
         -------
@@ -901,11 +905,15 @@ class InputVar():
         assign_centr_kwargs = {} if assign_centr_kwargs is None else assign_centr_kwargs
         choice_mn = [[1, 1]] if choice_mn is None else choice_mn
 
-        litpop_dict = _generate_litpop_dict(
+        litpop_base = _generate_litpop_dict(
             impf_id=impf_id, haz=haz, assign_centr_kwargs=assign_centr_kwargs,
             value_unit=value_unit,
             choice_mn=choice_mn,
             **litpop_kwargs)
+
+        if fut_year is not None:
+            for exp in litpop_base:
+                exp.ref_year = fut_year
 
         haz_id_dict={haz.tag.haz_type : [impf_id]}
 
@@ -925,7 +933,7 @@ class InputVar():
 
         return InputVar(
             partial(_entfut_litpop_unc_func,
-                    impf_set=impf_set, litpop_dict=litpop_dict,
+                    impf_set=impf_set, litpop_base=litpop_base,
                     meas_set=meas_set, haz_id_dict=haz_id_dict, **kwargs
                     ),
             _entfut_litpop_unc_dict(
@@ -1157,9 +1165,9 @@ def _ent_litpop_unc_dict(bounds_totval, choice_mn, bounds_impfi, bounds_mdd,
     return  ent_unc_dict
 
 def _entfut_litpop_unc_func(MN, LG, IFi, MDD, PAA, CO,
-                 impf_set, haz_id_dict, litpop_dict, meas_set):
+                 impf_set, haz_id_dict, litpop_base, meas_set):
     ent = Entity()
-    ent.exposures = _litpop_uncfunc(LT=LG, MN=MN, litpop_dict=litpop_dict)
+    ent.exposures = _litpop_uncfunc(LT=LG, MN=MN, litpop_base=litpop_base)
     ent.impact_funcs = _impfset_uncfunc(IFi, MDD, PAA, impf_set=impf_set,
                                             haz_id_dict=haz_id_dict)
     ent.measures = _meas_set_uncfunc(CO, meas_set=meas_set)
