@@ -64,8 +64,7 @@ class Calc():
             for input_param_name, input_param_func in input_var.distr_dict.items():
                 if input_param_name in distr_dict:
                     func = distr_dict[input_param_name]
-                    x = np.linspace(func.ppf(0.01), func.ppf(0.99), 100)
-                    if not np.all(func.pdf(x) == input_param_func.pdf(x)):
+                    if not func.stats('mvsk') == input_param_func.stats('mvsk'):
                         raise ValueError(
                             f"The input parameter {input_param_name}"
                             " is shared amond two input variables with"
