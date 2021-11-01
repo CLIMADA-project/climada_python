@@ -273,7 +273,7 @@ class InputVar():
             )
 
     @staticmethod
-    def exp(exp, bounds_totval=None, bounds_noise=None):
+    def exp(exp_list, bounds_totval=None, bounds_noise=None):
         """
         Helper wrapper for basic exposure uncertainty input variable
 
@@ -287,13 +287,17 @@ class InputVar():
             a random number sampled uniformly from a distribution
             with (min, max) = bounds_noise. EN is the value of the seed
             for  the uniform random number generator.
+        EL: sample uniformly from exposure list
+            From the provided list of exposure is elements are uniformly
+            sampled. For example, LitPop instances with different exponents.
 
         If a bounds is None, this parameter is assumed to have no uncertainty.
 
         Parameters
         ----------
-        exp : climada.entity.exposures.Exposures
-            The base exposure.
+        exp_list : [climada.entity.exposures.Exposures]
+            The list of base exposure. Can be one or many to uniformly sample
+            from.
         bounds_totval : (float, float), optional
             Bounds of the uniform distribution for the homogeneous total value
             scaling.. The default is None.
@@ -307,93 +311,19 @@ class InputVar():
             Uncertainty input variable for an exposure object.
 
         """
-        kwargs = {'exp': exp, 'bounds_noise': bounds_noise}
+        n_exp = len(exp_list)
+        kwargs = {'exp_list': exp_list, 'bounds_noise': bounds_noise}
         if bounds_noise is None:
             kwargs['EN'] = None
         if bounds_totval is None:
             kwargs['ET'] = None
+        if n_exp == 1:
+            kwargs['EL'] = 0
         return InputVar(
             partial(_exp_uncfunc, **kwargs),
-            _exp_unc_dict(bounds_totval, bounds_noise)
-            )
-
-    @staticmethod
-    def litpop(impf_id, haz, assign_centr_kwargs=None, value_unit=None,
-               bounds_totval=None, choice_mn=None,
-               **litpop_kwargs):
-        """
-        Helper wrapper for basic litpop uncertainty input variable
-
-        The following types of uncertainties can be added:
-        LT: scale the total value (homogeneously)
-            The value at each exposure point is multiplied by a number
-            sampled uniformly from a distribution with
-            (min, max) = bounds_totvalue
-        MN: change the exponent m and n of litpop. The value of MN is the index
-            of the value of m in choice_mn.
-
-        If a bounds_totval is None, this parameter is assumed to have no uncertainty.
-        For m and n, the default results in choice_mn = [1, 1] which
-        are the default value from the module LitPop.
-
-        Note: This method generates the litpop exposure for each combination
-        of exponents. This might require some computation time and a large
-        amount of memory.
-
-        Parameters
-        ----------
-        impf_id : int
-            The impact function id to be used for all exposure points.
-        haz : Hazard()
-            The hazard instance that defines: the centroids to assign to
-            the exposures and the type of the impact function.
-        assign_centr_kwargs: {}
-            Dictionnary of the keywords arguments to be passed to
-            Exposures.assign_centroids(). The default is None.
-        value_unit : str
-            The unit of the values assigned.
-            The default is None (i.e., uses the default from LitPop.set_countries)
-        bounds_totval : (float, float), optional
-            Bounds of the uniform distribution for the homogeneous total value
-            scaling.. The default is None.
-        choice_mn : [[float, float]], optional
-            List of list of exponent pairs m and n to uniformly sample from.
-            The default is None.
-        litpop_kwargs :
-            keyword arguments of LitPop.from_countries().
-
-        Returns
-        -------
-        climada.engine.uncertainty_quantification.input_var.InputVar
-            Uncertainty input variable for an exposure object.
-
-        See Also
-        --------
-        climada.entity.litpop.from_countries :
-            method used to generate the litpop entites.
-        climada.entity.exposures.assign_centroids:
-            method to assign centroids to an exposure
-        """
-
-        assign_centr_kwargs = {} if assign_centr_kwargs is None else assign_centr_kwargs
-        choice_mn = [[1, 1]] if choice_mn is None else choice_mn
-
-        litpop_base = _generate_litpop_base(
-            impf_id=impf_id, haz=haz, assign_centr_kwargs=assign_centr_kwargs,
-            value_unit=value_unit,
-            choice_mn=choice_mn,
-            **litpop_kwargs)
-        kwargs = {}
-
-
-        if len(choice_mn) == 1:
-            kwargs['MN'] = 0
-        if bounds_totval is None:
-            kwargs['LT'] = None
-
-        return InputVar(
-            partial(_litpop_uncfunc, litpop_base, **kwargs),
-            _litpop_unc_dict(bounds_totval, choice_mn)
+            _exp_unc_dict(bounds_totval=bounds_totval,
+                          bounds_noise=bounds_noise,
+                          n_exp=n_exp)
             )
 
     @staticmethod
@@ -970,8 +900,8 @@ def _haz_unc_dict(n_ev, bounds_int, bounds_freq):
     return hud
 
 #Exposure
-def _exp_uncfunc(EN, ET, exp, bounds_noise):
-    exp_tmp = exp.copy(deep=True)
+def _exp_uncfunc(EN, ET, EL, exp_list, bounds_noise):
+    exp_tmp = exp_list[EL].copy(deep=True)
     if EN is not None:
         rng = np.random.RandomState(int(EN))
         rnd_vals = rng.uniform(bounds_noise[0], bounds_noise[1], size = len(exp_tmp.gdf))
@@ -980,13 +910,15 @@ def _exp_uncfunc(EN, ET, exp, bounds_noise):
         exp_tmp.gdf.value *= ET
     return exp_tmp
 
-def _exp_unc_dict(bounds_totval, bounds_noise):
+def _exp_unc_dict(bounds_totval, bounds_noise, n_exp):
     eud = {}
     if bounds_totval is not None:
         tmin, tmax = bounds_totval[0], bounds_totval[1] - bounds_totval[0]
         eud['ET'] = sp.stats.uniform(tmin, tmax)
     if bounds_noise is not None:
         eud['EN'] = sp.stats.randint(0, 2**32 - 1) #seed for rnd generator
+    if n_exp > 1:
+        eud['EL'] = sp.stats.randint(0, n_exp)
     return eud
 
 #Impact function set
@@ -1114,37 +1046,6 @@ def _entfut_unc_dict(bounds_impfi, bounds_mdd,
         eud.update(_meas_set_unc_dict(bounds_cost))
     return eud
 
-#Litpop
-def _generate_litpop_base(impf_id, value_unit, haz, assign_centr_kwargs,
-                          choice_mn, **litpop_kwargs):
-    from climada.entity import LitPop
-    litpop_base = []
-    for [m, n] in choice_mn:
-        LOGGER.info('computing litpop for m=%d, n=%d' %(m, n))
-        litpop_kwargs['exponents'] = (m, n)
-        exp = LitPop.from_countries(**litpop_kwargs)
-        exp.gdf['impf_' + haz.tag.haz_type] = impf_id
-        exp.gdf.drop('impf_', axis=1, inplace=True)
-        if value_unit is not None:
-            exp.value_unit = value_unit
-        exp.assign_centroids(haz, **assign_centr_kwargs)
-        litpop_base.append(exp)
-    return litpop_base
-
-def _litpop_uncfunc(litpop_base, MN, LT):
-    exp_tmp = litpop_base[int(MN)].copy(deep=True)
-    if LT is not None:
-        exp_tmp.gdf.value *= LT
-    return exp_tmp
-
-def _litpop_unc_dict(bounds_totval, choice_mn):
-    eud = {}
-    if bounds_totval is not None:
-        tmin, tmax = bounds_totval[0], bounds_totval[1] - bounds_totval[0]
-        eud['LT'] = sp.stats.uniform(tmin, tmax)
-    if len(choice_mn) > 1:
-        eud['MN'] = sp.stats.randint(0, len(choice_mn))
-    return eud
 
 def _ent_litpop_unc_func(MN, LT, IFi, MDD, PAA, CO, DR, litpop_base,
                  impf_set, haz_id_dict, disc_rate, meas_set):
