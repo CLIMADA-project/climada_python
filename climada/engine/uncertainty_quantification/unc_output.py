@@ -32,6 +32,7 @@ import h5py
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 
 from climada import CONFIG
 
@@ -47,6 +48,8 @@ METRICS_2D = ['eai_exp', 'at_event']
 DATA_DIR = CONFIG.engine.uncertainty.local_data.user_data.dir()
 
 FIG_W, FIG_H = 8, 5 #default figize width/heigh column/work multiplicators
+
+MAP_CMAP = 'Dark2' #Default color map for the sensitivity map
 
 #Table of recommended pairing between salib sampling and sensitivity methods
 # NEEDS TO BE UPDATED REGULARLY!! https://salib.readthedocs.io/en/latest/api.html
@@ -930,6 +933,16 @@ class UncOutput():
             kwargs['title'] = 'Sensitivity map'
         if 'figsize' not in kwargs:
             kwargs['figsize'] = (8,6)
+        if 'cmap' not in kwargs:
+            labels = np.unique(plot_val)
+            n=np.where(labels=='None')[0][0]
+            cmap = mpl.colors.ListedColormap(
+                plt.get_cmap(MAP_CMAP).colors[:len(labels)]
+                )
+            colors = list(cmap.colors)
+            colors[n] = tuple(np.repeat(0.93, 3))
+            cmap.colors = tuple(colors)
+            kwargs['cmap'] = cmap
         ax = u_plot.geo_scatter_categorical(
                 plot_val, coord,
                 **kwargs
