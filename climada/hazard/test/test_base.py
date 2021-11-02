@@ -459,7 +459,7 @@ class TestAppend(unittest.TestCase):
         """Append an empty. Obtain initial hazard."""
         haz1 = Hazard.from_excel(HAZ_TEMPLATE_XLS, haz_type='TC')
         haz2 = Hazard('TC')
-        haz2.centroids.geometry.crs = {'init': 'epsg:4326'}
+        haz2.centroids.geometry.crs = 'epsg:4326'
         haz1.append(haz2)
         haz1.check()
 
@@ -1034,13 +1034,13 @@ class TestCentroids(unittest.TestCase):
         haz_fl = Hazard.from_raster([HAZ_DEMO_FL])
         haz_fl.check()
 
-        haz_fl.reproject_raster(dst_crs={'init': 'epsg:2202'})
+        haz_fl.reproject_raster(dst_crs='epsg:2202')
 
         self.assertEqual(haz_fl.intensity.shape, (1, 1046408))
         self.assertIsInstance(haz_fl.intensity, sparse.csr_matrix)
         self.assertIsInstance(haz_fl.fraction, sparse.csr_matrix)
         self.assertEqual(haz_fl.fraction.shape, (1, 1046408))
-        self.assertTrue(u_coord.equal_crs(haz_fl.centroids.meta['crs'], {'init': 'epsg:2202'}))
+        self.assertTrue(u_coord.equal_crs(haz_fl.centroids.meta['crs'], 'epsg:2202'))
         self.assertEqual(haz_fl.centroids.meta['width'], 968)
         self.assertEqual(haz_fl.centroids.meta['height'], 1081)
         self.assertEqual(haz_fl.fraction.min(), 0)
@@ -1088,12 +1088,12 @@ class TestCentroids(unittest.TestCase):
         haz_fl.centroids = Centroids.from_lat_lon(np.array([1, 2, 3]), np.array([1, 2, 3]))
         haz_fl.check()
 
-        haz_fl.reproject_vector(dst_crs={'init': 'epsg:2202'})
+        haz_fl.reproject_vector(dst_crs='epsg:2202')
         self.assertTrue(np.allclose(haz_fl.centroids.lat,
                                     np.array([331585.4099637291, 696803.88, 1098649.44])))
         self.assertTrue(np.allclose(haz_fl.centroids.lon,
                                     np.array([11625664.37925186, 11939560.43, 12244857.13])))
-        self.assertTrue(u_coord.equal_crs(haz_fl.centroids.crs, {'init': 'epsg:2202'}))
+        self.assertTrue(u_coord.equal_crs(haz_fl.centroids.crs, 'epsg:2202'))
         self.assertTrue(np.allclose(haz_fl.intensity.toarray(), np.array([0.5, 0.2, 0.1])))
         self.assertTrue(np.allclose(haz_fl.fraction.toarray(), np.array([0.5, 0.2, 0.1]) / 2))
 
@@ -1111,7 +1111,7 @@ class TestCentroids(unittest.TestCase):
         haz_fl.check()
 
         haz_fl.vector_to_raster()
-        self.assertTrue(u_coord.equal_crs(haz_fl.centroids.meta['crs'], {'init': 'epsg:4326'}))
+        self.assertTrue(u_coord.equal_crs(haz_fl.centroids.meta['crs'], 'epsg:4326'))
         self.assertAlmostEqual(haz_fl.centroids.meta['transform'][0], 1.0)
         self.assertAlmostEqual(haz_fl.centroids.meta['transform'][1], 0)
         self.assertAlmostEqual(haz_fl.centroids.meta['transform'][2], 0.5)
