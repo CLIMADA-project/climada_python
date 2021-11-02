@@ -30,6 +30,7 @@ from climada.entity.entity_def import Entity
 from climada.hazard.base import Hazard
 from climada.engine.impact import Impact
 from climada.util.constants import ENT_DEMO_TODAY, DEF_CRS
+import climada.util.coordinates as u_coord
 import climada.hazard.test as hazard_test
 import climada.engine.test as engine_test
 

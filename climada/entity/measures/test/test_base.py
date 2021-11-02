@@ -33,6 +33,7 @@ from climada.entity.impact_funcs.base import ImpactFunc
 from climada.entity.measures.measure_set import MeasureSet
 from climada.entity.measures.base import Measure, IMPF_ID_FACT
 from climada.util.constants import EXP_DEMO_H5, HAZ_DEMO_H5
+import climada.util.coordinates as u_coord
 import climada.hazard.test as hazard_test
 import climada.entity.exposures.test as exposures_test
 
