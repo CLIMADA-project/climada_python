@@ -583,12 +583,16 @@ class UncOutput():
         return axes
 
 
-    def plot_rp_uncertainty(self, figsize=(16, 6), axes=None):
+    def plot_rp_uncertainty(self, orig_list=None, figsize=(16, 6), axes=None):
         """
         Plot the distribution of return period uncertainty
 
         Parameters
         ----------
+        orig_list : list[float], optional
+            List of the original (without uncertainty) values for each
+            sub-metric of the mtrics in metric_list. The ordering is identical.
+            The default is None.
         figsize : tuple(int or float, int or float), optional
             The figsize argument of matplotlib.pyplot.subplots()
             The default is (8, 6)
@@ -616,6 +620,10 @@ class UncOutput():
                     "Please run an uncertainty analysis with the desired "
                     "return period specified.")
 
+        add_orig=True
+        if orig_list is None:
+            add_orig=False
+
         if  axes is  None:
             _fig, axes = plt.subplots(figsize=figsize, nrows=1, ncols=2)
 
@@ -623,19 +631,29 @@ class UncOutput():
 
         ax = axes[0]
 
+        prop_cycle = plt.rcParams['axes.prop_cycle']
+        colors = prop_cycle.by_key()['color']
+
         for n, (_name, values) in enumerate(unc_df.iteritems()):
             count, division = np.histogram(values, bins=100)
             count = count / count.max()
             losses = [(bin_i + bin_f )/2 for (bin_i, bin_f) in zip(division[:-1], division[1:])]
             ax.plot([min_l, max_l], [2*n, 2*n], color='k', alpha=0.5)
             ax.fill_between(losses, count + 2*n, 2*n)
+            if add_orig:
+                ax.plot(
+                    [orig_list[n], orig_list[n]], [2*n, 2*(n+1)],
+                    color=colors[n], linestyle='dotted', linewidth=2,
+                    label="orig=%.2f%s" %u_vtm(orig_list[n])
+                    );
 
         ax.set_xlim(min_l, max_l)
         ax.set_ylim(0, 2*(n+1))
-        ax.set_xlabel('impact')
-        ax.set_ylabel('return period [years]')
+        ax.set_xlabel('Impact [%s]' %self.unit)
+        ax.set_ylabel('Return period [years]')
         ax.set_yticks(np.arange(0, 2*(n+1), 2))
         ax.set_yticklabels(unc_df.columns)
+        ax.legend(loc='lower right')
 
         ax = axes[1]
 
@@ -644,13 +662,14 @@ class UncOutput():
         low = self.get_unc_df('freq_curve').quantile(0.05)
 
         x = [float(rp[2:]) for rp in middle.keys()]
-        ax.plot(x, high.values, linestyle='--', color = 'blue', alpha=0.5)
         ax.plot(x, high.values, linestyle='--', color = 'blue',
                 alpha=0.5, label='0.95 percentile')
         ax.plot(x, middle.values, label='0.5 percentile')
-        ax.plot(x, low.values, linestyle='dotted', color='blue',
+        ax.plot(x, low.values, linestyle='dashdot', color='blue',
                 alpha=0.5, label='0.05 percentile')
         ax.fill_between(x, low.values, high.values, alpha=0.2)
+        if add_orig:
+            ax.plot(x, orig_list, color='green', linestyle='dotted', label='orig')
         ax.set_xlabel('Return period [year]')
         ax.set_ylabel('Impact [' + self.unit + ']')
         ax.legend()
