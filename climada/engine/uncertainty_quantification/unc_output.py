@@ -342,7 +342,7 @@ class UncOutput():
                         submetric_df.select_dtypes('number').columns, axis=1)
         return pd.concat([df_meta, df_all], axis=1).reset_index(drop=True)
 
-    def get_largest_si(self, salib_si, metric_list=None):
+    def get_largest_si(self, salib_si, metric_list=None, threshold=0.01):
         """
         Get largest si per metric
 
@@ -353,6 +353,9 @@ class UncOutput():
         metric_list : list of strings, optional
             List of metrics to plot the sensitivity.
             Default is None.
+        threshold : float
+            The minimum value a sensitivity index must have to be considered
+            as the largest. The default is 0.01.
         Returns
         -------
         max_si_df : pandas.dataframe
@@ -367,7 +370,7 @@ class UncOutput():
 
         #get max index
         si_df_num = si_df.select_dtypes('number')
-        si_df_num[si_df_num<0.001] = 0 #remove noise whenn all si are 0
+        si_df_num[si_df_num<0.01] = 0 #remove noise whenn all si are 0
         max_si_idx = si_df_num.idxmax().to_numpy()
         max_si_val = si_df_num.max().to_numpy()
 
