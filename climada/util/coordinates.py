@@ -1304,7 +1304,13 @@ def to_crs_user_input(crs_obj):
         raise ValueError(f"crs has unhandled data set type: {type(crs_string)}")
 
     if crs_string[0] == '{':
-        return ast.literal_eval(crs_string)
+        crs_dict = ast.literal_eval(crs_string)
+        if ("init" not in crs_dict
+                or any(k not in ["init", "no_defs"] for k in crs_dict.keys())
+                or "no_defs" in crs_dict and crs_dict['no_defs'] != True):
+            return crs_dict
+        # replace deprecated CRS format
+        return crs_dict['init']
 
     return crs_string
 
