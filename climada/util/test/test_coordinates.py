@@ -262,17 +262,14 @@ class TestFunc(unittest.TestCase):
         rcrs = RCRS.from_epsg(4326)
 
         # are they the default?
-        self.assertTrue(pcrs == PCRS.from_user_input(u_coord.to_crs_user_input(DEF_CRS)))
+        self.assertEqual(pcrs, PCRS.from_user_input(u_coord.to_crs_user_input(DEF_CRS)))
         self.assertEqual(rcrs, RCRS.from_user_input(u_coord.to_crs_user_input(DEF_CRS)))
 
         # can they be understood from the provider?
-        for arg in ['epsg:4326', b'epsg:4326', DEF_CRS, 4326]:
+        for arg in ['epsg:4326', b'epsg:4326', DEF_CRS, 4326,
+                    {'init': 'epsg:4326', 'no_defs': True},
+                    b'{"init": "epsg:4326", "no_defs": True}']:
             self.assertEqual(pcrs, PCRS.from_user_input(u_coord.to_crs_user_input(arg)))
-            self.assertEqual(rcrs, RCRS.from_user_input(u_coord.to_crs_user_input(arg)))
-
-        # can they be misunderstood from the provider?
-        for arg in [{'init': 'epsg:4326', 'no_defs': True}, b'{"init": "epsg:4326", "no_defs": True}' ]:
-            self.assertFalse(pcrs == PCRS.from_user_input(u_coord.to_crs_user_input(arg)))
             self.assertEqual(rcrs, RCRS.from_user_input(u_coord.to_crs_user_input(arg)))
 
         # are they noticed?

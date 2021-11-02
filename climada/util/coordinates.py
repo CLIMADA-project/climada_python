@@ -1295,7 +1295,15 @@ def to_crs_user_input(crs_obj):
     ValueError
         if type(crs_obj) has the wrong type
     """
-    if type(crs_obj) in [dict, int]:
+    def _is_deprecated_init_crs(crs_dict):
+        return (isinstance(crs_dict, dict)
+                and "init" in crs_dict
+                and all(k in ["init", "no_defs"] for k in crs_dict.keys())
+                and ("no_defs" not in crs_dict or crs_dict['no_defs'] == True))
+
+    if isinstance(crs_obj, (dict, int)):
+        if _is_deprecated_init_crs(crs_obj):
+            return crs_obj['init']
         return crs_obj
 
     crs_string = crs_obj.decode() if isinstance(crs_obj, bytes) else crs_obj
@@ -1305,12 +1313,9 @@ def to_crs_user_input(crs_obj):
 
     if crs_string[0] == '{':
         crs_dict = ast.literal_eval(crs_string)
-        if ("init" not in crs_dict
-                or any(k not in ["init", "no_defs"] for k in crs_dict.keys())
-                or "no_defs" in crs_dict and crs_dict['no_defs'] != True):
-            return crs_dict
-        # replace deprecated CRS format
-        return crs_dict['init']
+        if _is_deprecated_init_crs(crs_dict):
+            return crs_dict['init']
+        return crs_dict
 
     return crs_string
 
