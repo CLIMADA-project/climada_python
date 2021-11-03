@@ -733,7 +733,7 @@ def get_transformation(crs_in):
         crs_epsg = ccrs.PlateCarree()
 
     try:
-        units = crs_epsg.proj4_params['units']
+        units = crs_epsg.to_dict()['units']
     except KeyError:
         units = '°'
     return crs_epsg, units
