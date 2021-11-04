@@ -266,7 +266,7 @@ class TestOutput(unittest.TestCase):
         plt_sens_2 = unc_output.plot_sensitivity_second_order(salib_si='S1')
         self.assertIsNotNone(plt_sens_2)
         plt.close()
-        plt_map = unc_output.plot_sensitivity_map(exp)
+        plt_map = unc_output.plot_sensitivity_map()
         self.assertIsNotNone(plt_map)
         plt.close()
 
