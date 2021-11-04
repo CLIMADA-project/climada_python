@@ -952,7 +952,7 @@ class UncOutput():
             kwargs['title'] = 'Sensitivity map'
         if 'figsize' not in kwargs:
             kwargs['figsize'] = (8,6)
-        if 'cmap' not in kwargs:
+        if 'cmap' not in kwargs and 'None' in plot_val:
             labels = np.unique(plot_val)
             n=np.where(labels=='None')[0][0]
             cmap = mpl.colors.ListedColormap(
