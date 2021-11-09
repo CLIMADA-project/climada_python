@@ -952,16 +952,18 @@ class UncOutput():
             kwargs['title'] = 'Sensitivity map'
         if 'figsize' not in kwargs:
             kwargs['figsize'] = (8,6)
-        if 'cmap' not in kwargs and 'None' in plot_val:
+        if 'cmap' not in kwargs:
             labels = np.unique(plot_val)
-            n=np.where(labels=='None')[0][0]
-            cmap = mpl.colors.ListedColormap(
-                plt.get_cmap(MAP_CMAP).colors[:len(labels)]
-                )
-            colors = list(cmap.colors)
-            colors[n] = tuple(np.repeat(0.93, 3))
-            cmap.colors = tuple(colors)
-            kwargs['cmap'] = cmap
+            n=np.where(labels=='None')[0]
+            if len(n) > 0 :
+                n = n[0]
+                cmap = mpl.colors.ListedColormap(
+                    plt.get_cmap(MAP_CMAP).colors[:len(labels)]
+                    )
+                colors = list(cmap.colors)
+                colors[n] = tuple(np.repeat(0.93, 3))
+                cmap.colors = tuple(colors)
+                kwargs['cmap'] = cmap
         ax = u_plot.geo_scatter_categorical(
                 plot_val, coord,
                 **kwargs
