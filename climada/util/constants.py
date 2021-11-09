@@ -37,7 +37,9 @@ __all__ = ['SYSTEM_DIR',
            'TC_ANDREW_FL',
            'HAZ_DEMO_H5',
            'EXP_DEMO_H5',
-           'WS_DEMO_NC']
+           'WS_DEMO_NC',
+           'TEST_UNC_OUTPUT_IMPACT',
+           'TEST_UNC_OUTPUT_COSTBEN']
 
 # pylint: disable=unused-import
 # without importing numpy ahead of fiona the debugger may run into an error
@@ -126,6 +128,10 @@ EXP_DEMO_H5 = DEMO_DIR.joinpath('exp_demo_today.h5')
 TC_ANDREW_FL = DEMO_DIR.joinpath('ibtracs_global_intp-None_1992230N11325.csv')
 """Tropical cyclone Andrew in Florida"""
 
+TEST_UNC_OUTPUT_IMPACT = 'test_unc_output_impact'
+"""Demo uncertainty impact output"""
+TEST_UNC_OUTPUT_COSTBEN = 'test_unc_output_costben'
+"""Demo uncertainty costben output"""
 
 ISIMIP_NATID_TO_ISO = [
     '', 'ABW', 'AFG', 'AGO', 'AIA', 'ALB', 'AND', 'ANT', 'ARE', 'ARG', 'ARM',

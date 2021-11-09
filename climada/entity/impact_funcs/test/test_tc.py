@@ -31,8 +31,7 @@ class TestEmanuelFormula(unittest.TestCase):
 
     def test_default_values_pass(self):
         """Compute mdr interpolating values."""
-        imp_fun = ImpfTropCyclone()
-        imp_fun.set_emanuel_usa()
+        imp_fun = ImpfTropCyclone.from_emanuel_usa()
         self.assertEqual(imp_fun.name, 'Emanuel 2011')
         self.assertEqual(imp_fun.haz_type, 'TC')
         self.assertEqual(imp_fun.id, 1)
@@ -58,9 +57,11 @@ class TestEmanuelFormula(unittest.TestCase):
 
     def test_values_pass(self):
         """Compute mdr interpolating values."""
-        imp_fun = ImpfTropCyclone()
-        imp_fun.set_emanuel_usa(impf_id=5, intensity=np.arange(0, 6, 1), v_thresh=2,
-                 v_half=5, scale=0.5)
+        imp_fun = ImpfTropCyclone.from_emanuel_usa(impf_id=5,
+                                                   intensity=np.arange(0, 6, 1),
+                                                   v_thresh=2,
+                                                   v_half=5,
+                                                   scale=0.5)
         self.assertEqual(imp_fun.name, 'Emanuel 2011')
         self.assertEqual(imp_fun.haz_type, 'TC')
         self.assertEqual(imp_fun.id, 5)
@@ -74,16 +75,16 @@ class TestEmanuelFormula(unittest.TestCase):
 
     def test_wrong_shape(self):
         """Set shape parameters."""
-        imp_fun = ImpfTropCyclone()
         with self.assertRaises(ValueError):
-            imp_fun.set_emanuel_usa(impf_id=5, v_thresh=2, v_half=1,
-                                    intensity=np.arange(0, 6, 1))
+            imp_fun = ImpfTropCyclone.from_emanuel_usa(impf_id=5, v_thresh=2,
+                                                       v_half=1,
+                                                       intensity=np.arange(0, 6, 1))
 
     def test_wrong_scale(self):
         """Set shape parameters."""
-        imp_fun = ImpfTropCyclone()
         with self.assertRaises(ValueError):
-            imp_fun.set_emanuel_usa(impf_id=5, scale=2, intensity=np.arange(0, 6, 1))
+            imp_fun = ImpfTropCyclone.from_emanuel_usa(impf_id=5, scale=2,
+                                                       intensity=np.arange(0, 6, 1))
 
 class TestCalibratedImpfSet(unittest.TestCase):
     """Test inititation of IFS with regional calibrated TC IFs
@@ -91,8 +92,8 @@ class TestCalibratedImpfSet(unittest.TestCase):
 
     def test_default_values_pass(self):
         """Test return TDR optimized IFs (TDR=1)"""
-        impfs = ImpfSetTropCyclone()
-        v_halfs = impfs.set_calibrated_regional_ImpfSet()
+        impfs = ImpfSetTropCyclone.from_calibrated_regional_ImpfSet()
+        v_halfs = ImpfSetTropCyclone.calibrated_regional_vhalf()
         # extract IF for region WP4
         impf_wp4 = impfs.get_func(fun_id=9)[0]
         self.assertIn('TC', impfs.get_ids().keys())
@@ -109,13 +110,13 @@ class TestCalibratedImpfSet(unittest.TestCase):
         self.assertAlmostEqual(impf_wp4.calc_mdr(75), 0.02607326527808, places=5)
 
     def test_RMSF_pass(self):
-        """Test return RMSF optimized IFs (RMSF=minimum)"""
-        ifs = ImpfSetTropCyclone()
-        v_halfs = ifs.set_calibrated_regional_ImpfSet('RMSF')
+        """Test return RMSF optimized impact function set (RMSF=minimum)"""
+        impfs = ImpfSetTropCyclone.from_calibrated_regional_ImpfSet('RMSF')
+        v_halfs = ImpfSetTropCyclone.calibrated_regional_vhalf(calibration_approach='RMSF')
         # extract IF for region NA1
-        impf_na1 = ifs.get_func(fun_id=1)[0]
-        self.assertEqual(ifs.size(), 10)
-        self.assertEqual(ifs.get_ids()['TC'], [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+        impf_na1 = impfs.get_func(fun_id=1)[0]
+        self.assertEqual(impfs.size(), 10)
+        self.assertEqual(impfs.get_ids()['TC'], [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
         self.assertEqual(impf_na1.intensity_unit, 'm/s')
         self.assertEqual(impf_na1.name, 'Caribbean and Mexico (NA1)')
         self.assertAlmostEqual(v_halfs['NA1'], 59.6, places=7)
@@ -126,16 +127,14 @@ class TestCalibratedImpfSet(unittest.TestCase):
         self.assertAlmostEqual(impf_na1.calc_mdr(75), 0.7546423895457, places=5)
 
     def test_quantile_pass(self):
-        """Test return IFs from quantile of inidividual event fitting (EDR=1)"""
-        ifs = ImpfSetTropCyclone()
-        ifs.set_calibrated_regional_ImpfSet('EDR')
-        ifs_p10 = ImpfSetTropCyclone()
-        ifs_p10.set_calibrated_regional_ImpfSet('EDR', q=.1)
+        """Test return impact function set from quantile of inidividual event fitting (EDR=1)"""
+        impfs = ImpfSetTropCyclone.from_calibrated_regional_ImpfSet('EDR')
+        impfs_p10 = ImpfSetTropCyclone.from_calibrated_regional_ImpfSet('EDR', q=.1)
         # extract IF for region SI
-        impf_si = ifs.get_func(fun_id=5)[0]
-        impf_si_p10 = ifs_p10.get_func(fun_id=5)[0]
-        self.assertEqual(ifs.size(), 10)
-        self.assertEqual(ifs_p10.size(), 10)
+        impf_si = impfs.get_func(fun_id=5)[0]
+        impf_si_p10 = impfs_p10.get_func(fun_id=5)[0]
+        self.assertEqual(impfs.size(), 10)
+        self.assertEqual(impfs_p10.size(), 10)
         self.assertEqual(impf_si.intensity_unit, 'm/s')
         self.assertEqual(impf_si_p10.name, 'South Indian (SI)')
         self.assertAlmostEqual(impf_si_p10.mdd.max(), 0.99999999880, places=5)

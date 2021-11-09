@@ -46,15 +46,12 @@ LANDFALL_DECAY_V = {
 """Global landfall decay parameters for wind speed by TC category.
 Keys are TC categories with -1='TD', 0='TS', 1='Cat 1', ..., 5='Cat 5'.
 It is v_rel as derived from:
-tracks = TCTracks()
-tracks.read_ibtracs_netcdf(year_range=(1980,2019),
-                           estimate_missing=True)
+tracks = TCTracks.from_ibtracs_netcdf(year_range=(1980,2019), estimate_missing=True)
 extent = tracks.get_extent()
 land_geom = climada.util.coordinates.get_land_geometry(
     extent=extent, resolution=10
 )
-v_rel, p_rel = _calc_land_decay(tracks.data, land_geom,
-                                pool=tracks.pool)"""
+v_rel, p_rel = _calc_land_decay(tracks.data, land_geom, pool=tracks.pool)"""
 
 LANDFALL_DECAY_P = {
     -1: (1.0088807492745373, 0.002117478217863062),
@@ -67,15 +64,12 @@ LANDFALL_DECAY_P = {
 """Global landfall decay parameters for pressure by TC category.
 Keys are TC categories with -1='TD', 0='TS', 1='Cat 1', ..., 5='Cat 5'.
 It is p_rel as derived from:
-tracks = TCTracks()
-tracks.read_ibtracs_netcdf(year_range=(1980,2019),
-                           estimate_missing=True)
+tracks = TCTracks.from_ibtracs_netcdf(year_range=(1980,2019), estimate_missing=True)
 extent = tracks.get_extent()
 land_geom = climada.util.coordinates.get_land_geometry(
     extent=extent, resolution=10
 )
-v_rel, p_rel = _calc_land_decay(tracks.data, land_geom,
-                                pool=tracks.pool)"""
+v_rel, p_rel = _calc_land_decay(tracks.data, land_geom, pool=tracks.pool)"""
 
 def calc_perturbed_trajectories(tracks,
                                 nb_synth_tracks=9,
@@ -86,7 +80,8 @@ def calc_perturbed_trajectories(tracks,
                                 autocorr_ddirection=0.5,
                                 seed=CONFIG.hazard.trop_cyclone.random_seed.int(),
                                 decay=True,
-                                use_global_decay_params=True):
+                                use_global_decay_params=True,
+                                pool=None):
     """
     Generate synthetic tracks based on directed random walk. An ensemble of nb_synth_tracks
     synthetic tracks is computed for every track contained in self.
@@ -153,8 +148,13 @@ def calc_perturbed_trajectories(tracks,
         landfall decay applied depends on the tracks passed as an input and may
         not be robust if few historical tracks make landfall in this object.
         Default: True.
+    pool : pathos.pool, optional
+        Pool that will be used for parallel computation when applicable. If not given, the
+        pool attribute of `tracks` will be used. Default: None
     """
     LOGGER.info('Computing %s synthetic tracks.', nb_synth_tracks * tracks.size)
+
+    pool = tracks.pool if pool is None else pool
 
     if seed >= 0:
         np.random.seed(seed)
@@ -183,14 +183,14 @@ def calc_perturbed_trajectories(tracks,
                       if track.time.size > 1 else np.random.uniform(size=nb_synth_tracks * 2)
                       for track in tracks.data]
 
-    if tracks.pool:
-        chunksize = min(tracks.size // tracks.pool.ncpus, 1000)
-        new_ens = tracks.pool.map(_one_rnd_walk, tracks.data,
-                                  itertools.repeat(nb_synth_tracks, tracks.size),
-                                  itertools.repeat(max_shift_ini, tracks.size),
-                                  itertools.repeat(max_dspeed_rel, tracks.size),
-                                  itertools.repeat(max_ddirection, tracks.size),
-                                  random_vec, chunksize=chunksize)
+    if pool:
+        chunksize = min(tracks.size // pool.ncpus, 1000)
+        new_ens = pool.map(_one_rnd_walk, tracks.data,
+                           itertools.repeat(nb_synth_tracks, tracks.size),
+                           itertools.repeat(max_shift_ini, tracks.size),
+                           itertools.repeat(max_dspeed_rel, tracks.size),
+                           itertools.repeat(max_ddirection, tracks.size),
+                           random_vec, chunksize=chunksize)
     else:
         new_ens = [_one_rnd_walk(track, nb_synth_tracks, max_shift_ini,
                                  max_dspeed_rel, max_ddirection, rand)
@@ -220,17 +220,15 @@ def calc_perturbed_trajectories(tracks,
         )
         if use_global_decay_params:
             tracks.data = _apply_land_decay(tracks.data, LANDFALL_DECAY_V,
-                                            LANDFALL_DECAY_P,
-                                            land_geom, pool=tracks.pool)
+                                            LANDFALL_DECAY_P, land_geom, pool=pool)
         else:
             # fit land decay coefficients based on historical tracks
             hist_tracks = [track for track in tracks.data if track.orig_event_flag]
             if hist_tracks:
                 try:
-                    v_rel, p_rel = _calc_land_decay(hist_tracks, land_geom,
-                                                    pool=tracks.pool)
-                    tracks.data = _apply_land_decay(tracks.data, v_rel, p_rel,
-                                                    land_geom, pool=tracks.pool)
+                    v_rel, p_rel = _calc_land_decay(hist_tracks, land_geom, pool=pool)
+                    tracks.data = _apply_land_decay(
+                        tracks.data, v_rel, p_rel, land_geom, pool=pool)
                 except ValueError as verr:
                     raise ValueError('Landfall decay could not be applied.') from verr
             else:
