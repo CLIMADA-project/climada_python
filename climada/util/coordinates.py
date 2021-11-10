@@ -582,18 +582,9 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
         raise KeyError("Unknown distance approximation method: %s" % method)
     return (dist, vtan) if log else dist
 
-# This method is supposed to convert lines to points in meters
-# Ellipsoid should be a parameter
-# Set the crs under the hood should not be done.
-# https://www.earthdatascience.org/courses/use-data-open-source-python/intro-vector-data-python/spatial-data-vector-shapefiles/geographic-vs-projected-coordinate-reference-systems-python/
-# What happens if the crs is not a projected one?
-# What happens with points, polygons and multi-polygons?
-# Why can only non-projected crs by used?
-
 def compute_geodesic_lengths(gdf):
     """Calculate the great circle (geodesic / spherical) lengths along any
-    (complicated) geometry object, based on the pyproj.Geod implementation.
-
+    (complicated) line geometry object, based on the pyproj.Geod implementation.
 
     Parameters
     ----------
@@ -617,38 +608,13 @@ def compute_geodesic_lengths(gdf):
     sea-level distances and hence a certain (minor) level of distortion; cf.
     https://gis.stackexchange.com/questions/176442/what-is-the-real-distance-between-positions
     """
-    # convert to non-projected crs
-    if not equal_crs(gdf.crs, DEF_CRS):
-        gdf = gdf.to_crs(DEF_CRS)
+    # convert to non-projected crs if needed
+    gdf_tmp = gdf.to_crs(DEF_CRS) if not gdf.crs.is_geographic else gdf.copy()
+    geod = gdf_tmp.crs.get_geod()
 
-    return gdf.apply(lambda row: pyproj.Geod(ellps='WGS84').geometry_length(
+    return gdf_tmp.apply(lambda row: geod.geometry_length(
         row.geometry), axis=1)
 
-# Conversion done for a sphere with a diameter of 40075000
-# Change to def metres_res_to_degrees_res(lat, (res_x, res_y))
-# Make based on crs instead of fixed numbers.
-def metres_to_degrees(lat, dist):
-    """
-    Get a latitude dependent estimate for converting grid resolutions
-    in metres to degrees.
-
-    Parameters
-    ----------
-    lat : (float)
-        latitude (in degrees) of the representative location
-    dist : (float)
-        distance in metres which should be converted to degrees lat & lon
-
-    Returns
-    -------
-    res_x, res_y resolutions in degrees
-    """
-
-    m_per_onelon = 40075000 * np.cos(lat) / 360
-    res_y = dist / m_per_onelon
-    res_x = (dist/1000) / ONE_LAT_KM
-
-    return res_x, res_y
 
 def get_gridcellarea(lat, resolution=0.5, unit='km2'):
     """The area covered by a grid cell is calculated depending on the latitude
