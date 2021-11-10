@@ -19,14 +19,15 @@ import pandas as pd
 import numpy as np
 import logging
 from shapely.ops import unary_union
-from climada.utils import coordinates as u_coord
+from climada.util import coordinates as u_coord
 import shapely as sh
 import shapely.geometry as shgeom
 from climada.util.constants import DEF_CRS, ONE_LAT_KM
+import pyproj
 
 LOGGER = logging.getLogger(__name__)
 
-def poly_to_pnts(gdf, lon_res, lat_res):
+def poly_to_pnts(gdf_poly, lon_res, lat_res):
     """
 
 
@@ -47,11 +48,12 @@ def poly_to_pnts(gdf, lon_res, lat_res):
     """
 
 
-    gdf_points = gdf.copy()
-    gdf_points['geometry'] = gdf.apply(
+    gdf_points = gdf_poly.copy()
+    gdf_points['geometry'] = gdf_points.apply(
         lambda row: _interp_one_poly(row.geometry, lon_res, lat_res), axis=1)
 
     return gdf_points.explode()
+
 
 def _interp_one_poly(poly, res_x, res_y):
     """
@@ -86,10 +88,60 @@ def _interp_one_poly(poly, res_x, res_y):
     else:
         return shgeom.MultiPoint([poly.representative_point()])
 
-def poly_to_pnts_m(gdf, x_res, y_res):
+def _interp_one_poly_m(poly, res_x, res_y, orig_crs):
     """
 
+    Parameters
+    ----------
+    poly : shapely Polygon
+        DESCRIPTION.
+    res_x : TYPE
+        Resolution in degrees (same as poly crs)
+    res_y : TYPE
+        Resolution in degrees (same as poly crs)
 
+    Returns
+    -------
+    TYPE
+        DESCRIPTION.
+
+    """
+
+    if poly.is_empty:
+        return shgeom.MultiPoint([])
+
+    repr_pnt = poly.representative_point()
+    lon_0, lat_0 = repr_pnt.x, repr_pnt.y
+
+    project = pyproj.Transformer.from_proj(
+        pyproj.Proj(orig_crs),
+        pyproj.Proj("+proj=cea +lat_0=%f +lon_0=%f +units=m" %(lat_0, lon_0)),
+        always_xy=True
+    )
+    poly_m = sh.ops.transform(project.transform, poly)
+
+    height, width, trafo = u_coord.pts_to_raster_meta(poly_m.bounds, (res_x, res_y))
+    x_grid, y_grid = u_coord.raster_to_meshgrid(trafo, width, height)
+
+    in_geom = sh.vectorized.contains(poly_m, x_grid, y_grid)
+
+    if sum(in_geom.flatten()) > 1:
+        project_inv = pyproj.Transformer.from_proj(
+            pyproj.Proj("+proj=cea +lat_0=%f +lon_0=%f +units=m" %(lat_0, lon_0)),
+            pyproj.Proj(orig_crs),
+            always_xy=True
+        )
+        x_poly, y_poly = project_inv.transform(x_grid[in_geom], y_grid[in_geom])
+        poly_pnt = shgeom.MultiPoint([(x, y) for x, y in
+                            zip(x_poly, y_poly)])
+    else:
+        poly_pnt = shgeom.MultiPoint([repr_pnt])
+
+    return poly_pnt
+
+
+def poly_to_pnts_m(gdf_poly, x_res, y_res):
+    """
     Parameters
     ----------
     gdf : TYPE
@@ -106,111 +158,57 @@ def poly_to_pnts_m(gdf, x_res, y_res):
 
     """
 
-    if gdf.crs != DEF_CRS:
-        raise Exception('''Expected a geographic CRS.
-                        Please re-project to %s first.''' %DEF_CRS)
+    orig_crs = gdf_poly.crs
+    gdf_points = gdf_poly.copy()
 
-    gdf_points = gdf.copy()
-    gdf_points['geometry'] = gdf.apply(
-        lambda row: _interp_one_poly_m(row.geometry, x_res, y_res), axis=1)
+    gdf_points['geometry'] = gdf_points.apply(
+        lambda row: _interp_one_poly_m(row.geometry, x_res, y_res, orig_crs), axis=1)
+
 
     return gdf_points.explode()
 
-def _interp_one_poly_m(poly, lat_res, lon_res):
-    """
 
-
-    Parameters
-    ----------
-    poly : Shapely polygon
-        Must be in default CRS
-    res_x : TYPE
-        Resolution in meters
-    res_y : TYPE
-        Resolution in meters
-
-    Returns
-    -------
-    TYPE
-        DESCRIPTION.
-
-    """
-
-    if poly.is_empty:
-        return shgeom.MultiPoint([])
-
-    res_x, res_y = deg_res_to_m_res(poly.representative_point().y,
-                                     lat_res, lon_res)
-
-    return _interp_one_poly(poly, res_x, res_y)
-
-# Conversion done for a sphere with a diameter of 40075000
-def deg_res_to_m_res(lat, res_lat, res_lon):
-    """
-    Get a latitude dependent estimate for converting grid resolutions
-    in metres to degrees.
+def line_to_pnts_m(gdf_lines, dist):
+    """ Convert a GeoDataframe with LineString geometries to
+    Point geometries, where Points are placed at a specified distance along the
+    original LineString
+    Important remark: LineString.interpolate() used here performs interpolation
+    on a geodesic.
 
     Parameters
     ----------
-    lat : (float)
-        latitude (in degrees) of the representative location
-    dist : (float)
-        distance in metres which should be converted to degrees lat & lon
-
-    Returns
-    -------
-    res_x, res_y resolutions in degrees
-    """
-
-    m_per_onelon = 40075000 * np.cos(lat) / 360
-    res_y = res_lon / m_per_onelon
-    res_x = (res_lat/1000) / ONE_LAT_KM
-
-    return res_x, res_y
-
-
-# Should it only be square_meters? Maybe make interpolate polygon_meters
-# and interpolate_polygons_degrees
-# Remove hard-coded limit to EPSG:4326
-def interpolate_polygons(gdf_poly, area_per_point):
-    """For a GeoDataFrame with polygons, get equally distributed lat/lon pairs
-    throughout the geometries, at a user-specified resolution (in terms of
-    m2 area per point)
-
-    Parameters
-    ----------
-    gdf_poly : gpd.GeoDataFrame
-        with polygons to be interpolated
-    area_per_point : float
-        area in m2 which one point should represent
+    gdf_lines : gpd.GeoDataframe
+        Geodataframe with line geometries
+    point_dist : float
+        Distance in metres apart from which the generated Points should be placed.
 
     Returns
     -------
     gdf_points : gpd.GeoDataFrame
-        with multiindex: first level represents initial polygons, second level
-        individual Point per row, retaining all other column infos
-        belonging to its corresponding polygon
+        with individual Point per row, retaining all other column infos
+        belonging to its corresponding line (incl. line length of original geom.
+        and multi-index referring to original indexing)
 
     See also
     --------
-    * util.lines_polys_handler.point_exposure_from_polygons()
+    * util.coordinates.compute_geodesic_lengths()
     """
 
-    m_per_point = math.sqrt(area_per_point)
+    gdf_points = gdf_lines.copy()
+    line_lengths = u_coord.compute_geodesic_lengths(gdf_points)
 
-    if gdf_poly.crs != "EPSG:4326":
-        raise Exception('''Expected a geographic CRS.
-                        Please re-project to EPSG:4326 first.''')
+    # split line lengths into relative fractions acc to point_dist (e.g. 0, 0.5, 1)
+    dist_vectors = [
+        np.linspace(0, 1, num=int(np.ceil(line_length/dist)+1))
+        for line_length in line_lengths
+        ]
 
-    if gdf_poly.geometry.is_empty.any():
-        LOGGER.info("Empty geometries encountered. Skipping those.")
-
-    gdf_points = gdf_poly[~gdf_poly.geometry.is_empty].copy()
-
-    gdf_points['geometry'] = gdf_poly.apply(
-        lambda row: _interpolate_one_polygon(row.geometry, m_per_point), axis=1)
+    gdf_points['geometry'] = [shgeom.MultiPoint(
+        [line.interpolate(dist, normalized=True) for dist in dist_vector])
+        for line, dist_vector in zip(gdf_lines.geometry, dist_vectors)]
 
     return gdf_points.explode()
+
 
 def agg_to_lines(exp_pnts, impact_pnts, agg_mode='sum'):
 
@@ -265,8 +263,7 @@ def agg_to_polygons(exp_pnts, impact_pnts, agg_mode='sum'):
         return impact_poly.groupby(level=0).eai_exp.sum() / exp_pnts.groupby(level=0).value.sum()
 
     else:
-        raise ValueError(f"The aggregation mode {agg_mode} does not exist. Possible" +
-                         " choices are 'sum' 'fraction'")
+        return None
 
 # Disaggretate constant, relative (divided evenly),
 # Should there be two types of methods? One that disaggregates values,
