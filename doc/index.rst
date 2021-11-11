@@ -32,7 +32,6 @@ Tutorials
    tutorial/climada_hazard_Hazard
    tutorial/climada_hazard_TropCyclone
    tutorial/climada_hazard_StormEurope
-   tutorial/climada_hazard_TCSurgeBathtub
    tutorial/climada_engine_Impact
    tutorial/climada_engine_impact_data
    tutorial/climada_engine_uncertainty
