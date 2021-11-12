@@ -225,11 +225,11 @@ class Config():
             path.mkdir(parents=True, exist_ok=True)
         return path.absolute()
 
-    @staticmethod
-    def _expand_source_dir(path):
+    @classmethod
+    def _expand_source_dir(cls, path):
         parts = path.parts
         if parts[0] == '...':
-            return Path(Config.SOURCE_DIR, *parts[1:])
+            return Path(cls.SOURCE_DIR, *parts[1:])
         return Path(*parts)
 
     @classmethod
