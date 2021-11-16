@@ -1299,7 +1299,7 @@ def to_crs_user_input(crs_obj):
         return (isinstance(crs_dict, dict)
                 and "init" in crs_dict
                 and all(k in ["init", "no_defs"] for k in crs_dict.keys())
-                and ("no_defs" not in crs_dict or crs_dict['no_defs'] == True))
+                and crs_dict.get("no_defs", True) == True)
 
     if isinstance(crs_obj, (dict, int)):
         if _is_deprecated_init_crs(crs_obj):
