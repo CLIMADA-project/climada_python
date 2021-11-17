@@ -1146,9 +1146,9 @@ def get_admin1_info(countries):
     ----------
     countries : list
         list with strings, either ISO3 code or names of countries, e.g.:
-        ['ZWE', 'GBR', 'VNM', 'UZB', 'Kenya', "051"]
-        For example for Armenia, the following inputs work:
-            'Armenia', 'ARM', '051'
+        ['ZWE', 'GBR', 'VNM', 'UZB', 'Kenya', '051']
+        For example, for Armenia, the following inputs work:
+            'Armenia', 'ARM', '051', 51
 
     Returns
     -------
@@ -1158,7 +1158,7 @@ def get_admin1_info(countries):
         Shape according to Natural Earth.
     """
 
-    if isinstance(countries, str):
+    if isinstance(countries, (str, int, float)):
         countries = [countries]
     admin1_file = shapereader.natural_earth(resolution='10m',
                                             category='cultural',
