@@ -1145,8 +1145,10 @@ def get_admin1_info(countries):
     Parameters
     ----------
     countries : list
-        list with strings, either ISO3 alpha code or names of countries, e.g.:
-        ['ZWE', 'GBR', 'VNM', 'UZB', 'Kenya']
+        list with strings, either ISO3 code or names of countries, e.g.:
+        ['ZWE', 'GBR', 'VNM', 'UZB', 'Kenya', "051"]
+        For example for Armenia, the following inputs work:
+            'Armenia', 'ARM', '051'
 
     Returns
     -------
@@ -1165,7 +1167,9 @@ def get_admin1_info(countries):
     admin1_info = dict()
     admin1_shapes = dict()
     for country in countries:
-        country = pycountry.countries.lookup(country).alpha_3 # iso3a code
+        if isinstance(country, (int, float)):
+            country = f'{int(country):03d}' # transform numerric code to str
+        country = pycountry.countries.lookup(country).alpha_3 # get iso3a code
         admin1_info[country] = list()
         admin1_shapes[country] = list()
         for rec, rec_shp in zip(admin1_recs.records(), admin1_recs.shapes()):

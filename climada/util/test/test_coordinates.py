@@ -576,9 +576,10 @@ class TestGetGeodata(unittest.TestCase):
 
     def test_get_admin1_info_pass(self):
         """test get_admin1_info()"""
-        country_names = ['CHE', 'Indonesia', 'USA']
+        country_names = ['CHE', 'Indonesia', '840', 51]
         admin1_info, admin1_shapes = u_coord.get_admin1_info(country_names)
-        self.assertEqual(len(admin1_info), 3)
+        self.assertEqual(len(admin1_info), 4)
+        self.assertListEqual(list(admin1_info.keys()), ['CHE', 'IDN', 'USA', 'ARM'])
         self.assertEqual(len(admin1_info['CHE']), len(admin1_shapes['CHE']))
         self.assertEqual(len(admin1_info['CHE']), 26)
         self.assertEqual(len(admin1_shapes['IDN']), 33)
