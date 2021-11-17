@@ -1139,13 +1139,14 @@ def get_country_code(lat, lon, gridded=False):
         region_id[region_id == -1] = 0
     return region_id
 
-def get_admin1_info(country_names):
+def get_admin1_info(countries):
     """Provide Natural Earth registry info and shape files for admin1 regions
 
     Parameters
     ----------
-    country_names : list
-        list with ISO3 names of countries, e.g. ['ZWE', 'GBR', 'VNM', 'UZB']
+    countries : list
+        list with strings, either ISO3 alpha code or names of countries, e.g.:
+        ['ZWE', 'GBR', 'VNM', 'UZB', 'Kenya']
 
     Returns
     -------
@@ -1155,21 +1156,22 @@ def get_admin1_info(country_names):
         Shape according to Natural Earth.
     """
 
-    if isinstance(country_names, str):
-        country_names = [country_names]
+    if isinstance(countries, str):
+        countries = [countries]
     admin1_file = shapereader.natural_earth(resolution='10m',
                                             category='cultural',
                                             name='admin_1_states_provinces')
     admin1_recs = shapefile.Reader(admin1_file)
     admin1_info = dict()
     admin1_shapes = dict()
-    for iso3 in country_names:
-        admin1_info[iso3] = list()
-        admin1_shapes[iso3] = list()
+    for country in countries:
+        country = pycountry.countries.lookup(country).alpha_3 # iso3a code
+        admin1_info[country] = list()
+        admin1_shapes[country] = list()
         for rec, rec_shp in zip(admin1_recs.records(), admin1_recs.shapes()):
-            if rec['adm0_a3'] == iso3:
-                admin1_info[iso3].append(rec)
-                admin1_shapes[iso3].append(rec_shp)
+            if rec['adm0_a3'] == country:
+                admin1_info[country].append(rec)
+                admin1_shapes[country].append(rec_shp)
     return admin1_info, admin1_shapes
 
 def get_resolution_1d(coords, min_resol=1.0e-8):
