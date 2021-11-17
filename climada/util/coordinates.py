@@ -1144,8 +1144,8 @@ def get_admin1_info(countries):
 
     Parameters
     ----------
-    countries : list
-        list with strings, either ISO3 code or names of countries, e.g.:
+    countries : list or str
+        string or list with strings, either ISO3 code or names of countries, e.g.:
         ['ZWE', 'GBR', 'VNM', 'UZB', 'Kenya', '051']
         For example, for Armenia, the following inputs work:
             'Armenia', 'ARM', '051', 51
@@ -1160,6 +1160,8 @@ def get_admin1_info(countries):
 
     if isinstance(countries, (str, int, float)):
         countries = [countries]
+    if not isinstance(countries, list):
+        raise TypeError("Invalid type for input parameter 'countries'")
     admin1_file = shapereader.natural_earth(resolution='10m',
                                             category='cultural',
                                             name='admin_1_states_provinces')
@@ -1177,6 +1179,59 @@ def get_admin1_info(countries):
                 admin1_info[country].append(rec)
                 admin1_shapes[country].append(rec_shp)
     return admin1_info, admin1_shapes
+
+def get_admin1_geometries(countries):
+    """
+    return geometries, names and codes of admin 1 regions in given countries
+    in a GeoDataFrame. If no admin 1 regions are defined, all regions in countries
+    are returned.
+
+    Parameters
+    ----------
+    countries : list or str
+        string or list with strings, either ISO3 code or names of countries, e.g.:
+        ['ZWE', 'GBR', 'VNM', 'UZB', 'Kenya', '051']
+        For example, for Armenia, the following inputs work:
+            'Armenia', 'ARM', '051', 51
+
+    Returns
+    -------
+    gdf : GeoDataFrame
+        geopandas.GeoDataFrame instance with columns:
+            "admin1_name" : str
+                name of admin 1 region
+            "iso_3166_2" : str
+                iso code of admin 1 region
+            "geometry" : Polygon or MultiPolygon
+                shape of admin 1 region as shapely geometry object
+            "iso_3n" : str
+                numerical iso 3 code of country (admin 0)
+            "iso_3a" : str
+                alphabetical iso 3 code of country (admin 0)
+    """
+    # init empty GeoDataFrame:
+    gdf = gpd.GeoDataFrame(
+        columns = ("admin1_name", "iso_3166_2", "geometry", "iso_3n", "iso_3a"))
+
+    # extract admin 1 infos and shapes for each country:
+    admin1_info, admin1_shapes = get_admin1_info(countries)
+    for country in admin1_info.keys():
+        # fill admin 1 region names and codes to GDF for single country:
+        gdf_tmp = gpd.GeoDataFrame(columns = gdf.columns)
+        gdf_tmp.admin1_name = [record['name'] for record in admin1_info[country]]
+        gdf_tmp.iso_3166_2 = [record['iso_3166_2'] for record in admin1_info[country]]
+        geoseries = gpd.GeoSeries()
+        for shape in admin1_shapes[country]:
+            # fill shape into GeoSeries,
+            # this automatically transforms shape to Polygon object:
+            geoseries = geoseries.append(gpd.GeoSeries(shape))
+        gdf_tmp.geometry = list(geoseries)
+        # fill columns with country identifiers (admin 0):
+        gdf_tmp.iso_3n = pycountry.countries.lookup(country).numeric
+        gdf_tmp.iso_3a = country
+        gdf = gdf.append(gdf_tmp, ignore_index=True)
+    return gdf
+
 
 def get_resolution_1d(coords, min_resol=1.0e-8):
     """Compute resolution of scalar grid
