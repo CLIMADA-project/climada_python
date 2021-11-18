@@ -169,6 +169,7 @@ def poly_to_pnts_m(gdf_poly, x_res, y_res):
 
 
 def line_to_pnts_m(gdf_lines, dist):
+
     """ Convert a GeoDataframe with LineString geometries to
     Point geometries, where Points are placed at a specified distance along the
     original LineString
@@ -265,72 +266,36 @@ def agg_to_polygons(exp_pnts, impact_pnts, agg_mode='sum'):
     else:
         return None
 
-# Disaggretate constant, relative (divided evenly),
-# Should there be two types of methods? One that disaggregates values,
-# and one that computes the value.
-def disaggregate_cnstly(gdf_interpol, val_per_point=None):
-    """
-    Disaggregate the values of an interpolated exposure gdf
-    constantly among all points belonging to the initial shape.
+def disagg_gdf_avg(gdf_pnts):
+
+    gdf_agg = gdf_pnts.copy()
+
+    group = gdf_pnts.groupby(axis=0, level=0)
+    gdf = group.value.mean() / group.value.count()
+
+    gdf = gdf.reindex(gdf_pnts.index, level=0)
+    gdf_agg['value'] = gdf
+
+    return gdf_agg
+
+def disagg_gdf_val(gdf_pnts, value_per_pnt):
+
+    gdf_agg = gdf_pnts.copy()
+    gdf_agg['value'] = value_per_pnt
+
+    return gdf_agg
 
 
-    Parameters
-    ----------
-    gdf_interpol : gpd.GeoDataFrame
-    val_per_point : float, optional
-        value per interpolated point, in case no total value column given in
-        gdf_interpol
-    """
-    primary_indices = np.unique(gdf_interpol.index.get_level_values(0))
+def disagg_poly_avg(gdf_poly_pnts):
 
-    if val_per_point:
-        val_per_point = val_per_point*np.ones(len(primary_indices))
-    else:
-        group = gdf_interpol.groupby(axis=0, level=0)
-        val_per_point = group.value.mean() / group.count().iloc[:,0]
+    return disagg_gdf_avg(gdf_poly_pnts)
 
-    for ix, val in zip(np.unique(gdf_interpol.index.get_level_values(0)),
-                       val_per_point):
-        gdf_interpol.at[ix, 'value']= val
+def disagg_poly_val(gdf_poly_pnts, value_per_pnt):
 
-    return gdf_interpol
+    gdf_agg = gdf_poly_pnts.copy()
+    gdf_agg['value'] = value_per_pnt
 
-
-# Does actually a change in resolution of litpop.
-def disaggregate_litpop(gdf_interpol, gdf_shapes, countries):
-
-    """
-    disaggregate the values of an interpolated exposure gdf
-    according to the litpop values contained within the initial shapes
-
-    This loads the litpop exposure(s) of the countries into memory and cuts out
-    those all the values within the original gdf_shapes.
-
-    In a second step, the values of the original shapes are then disaggregated
-    constantly onto the interpolated points within each shape.
-
-
-    """
-    # TODO. hotfix for current circular import exp.base <-> exp.litpop if put on top of module
-    from climada.entity.exposures import litpop as lp
-    exp = lp.LitPop()
-    # TODO: Don't hard-code kwargs for exposure!
-    exp.set_countries(countries,res_arcsec=30, reference_year=2015)
-
-    # extract LitPop asset values for each shape
-    shape_values = []
-    for shape in gdf_shapes.geometry:
-        shape_values.append(
-            exp.gdf.loc[exp.gdf.geometry.within(shape)].value.values.sum())
-
-    # evenly spread value per shape onto interpolated points
-    group = gdf_interpol.groupby(axis=0, level=0)
-    val_per_point = shape_values/group.count().iloc[:,0]
-    for ix, val in zip(np.unique(gdf_interpol.index.get_level_values(0)),
-                        val_per_point):
-        gdf_interpol.at[ix, 'value']= val
-
-    return gdf_interpol
+    return gdf_agg
 
 def _make_union(gdf):
     """
