@@ -295,7 +295,7 @@ class InputVar():
 
         Parameters
         ----------
-        exp_list : [climada.entity.exposures.Exposures]
+        exp_list : list of climada.entity.exposures.Exposures
             The list of base exposure. Can be one or many to uniformly sample
             from.
         bounds_totval : (float, float), optional
