@@ -1220,11 +1220,7 @@ def get_admin1_geometries(countries):
         gdf_tmp = gpd.GeoDataFrame(columns = gdf.columns)
         gdf_tmp.admin1_name = [record['name'] for record in admin1_info[country]]
         gdf_tmp.iso_3166_2 = [record['iso_3166_2'] for record in admin1_info[country]]
-        geoseries = gpd.GeoSeries()
-        for shape in admin1_shapes[country]:
-            # fill shape into GeoSeries,
-            # this automatically transforms shape to Polygon object:
-            geoseries = geoseries.append(gpd.GeoSeries(shape))
+       geoseries = gpd.GeoSeries([gpd.Geoseries(shape) for shape in admin1_shapes[country]])
         gdf_tmp.geometry = list(geoseries)
         # fill columns with country identifiers (admin 0):
         gdf_tmp.iso_3n = pycountry.countries.lookup(country).numeric
