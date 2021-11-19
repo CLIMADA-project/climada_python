@@ -33,6 +33,7 @@ from climada.entity.impact_funcs.base import ImpactFunc
 from climada.entity.measures.measure_set import MeasureSet
 from climada.entity.measures.base import Measure, IMPF_ID_FACT
 from climada.util.constants import EXP_DEMO_H5, HAZ_DEMO_H5
+import climada.util.coordinates as u_coord
 import climada.hazard.test as hazard_test
 import climada.entity.exposures.test as exposures_test
 
@@ -276,8 +277,8 @@ class TestApply(unittest.TestCase):
         self.assertEqual(res_exp.value_unit, exp.value_unit)
         self.assertEqual(res_exp.tag.file_name, exp.tag.file_name)
         self.assertEqual(res_exp.tag.description, exp.tag.description)
-        self.assertEqual(res_exp.crs, exp.crs)
-        self.assertEqual(res_exp.gdf.crs, exp.gdf.crs)
+        self.assertTrue(u_coord.equal_crs(res_exp.crs, exp.crs))
+        self.assertTrue(u_coord.equal_crs(res_exp.gdf.crs, exp.gdf.crs))
 
         # regions (that is just input data, no need for testing, but it makes the changed and unchanged parts obious)
         self.assertTrue(np.array_equal(res_exp.gdf.region_id.values[0], 4))

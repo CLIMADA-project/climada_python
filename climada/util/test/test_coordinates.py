@@ -216,7 +216,7 @@ class TestFunc(unittest.TestCase):
                                              name='populated_places_simple')
         lat, lon, geometry, intensity = u_coord.read_vector(shp_file, ['pop_min', 'pop_max'])
 
-        self.assertEqual(PCRS.from_user_input(geometry.crs), PCRS.from_epsg(u_coord.NE_EPSG))
+        self.assertTrue(u_coord.equal_crs(geometry.crs, u_coord.NE_EPSG))
         self.assertEqual(geometry.size, lat.size)
         self.assertAlmostEqual(lon[0], 12.453386544971766)
         self.assertAlmostEqual(lon[-1], 114.18306345846304)
@@ -233,17 +233,17 @@ class TestFunc(unittest.TestCase):
 
     def test_compare_crs(self):
         """Compare two crs"""
-        crs_one = {'init': 'epsg:4326'}
+        crs_one = 'epsg:4326'
         crs_two = {'init': 'epsg:4326', 'no_defs': True}
         self.assertTrue(u_coord.equal_crs(crs_one, crs_two))
 
     def test_set_df_geometry_points_pass(self):
         """Test set_df_geometry_points"""
-        df_val = gpd.GeoDataFrame(crs={'init': 'epsg:2202'})
+        df_val = gpd.GeoDataFrame()
         df_val['latitude'] = np.ones(10) * 40.0
         df_val['longitude'] = np.ones(10) * 0.50
 
-        u_coord.set_df_geometry_points(df_val)
+        u_coord.set_df_geometry_points(df_val, crs='epsg:2202')
         self.assertTrue(np.allclose(df_val.geometry[:].x.values, np.ones(10) * 0.5))
         self.assertTrue(np.allclose(df_val.geometry[:].y.values, np.ones(10) * 40.))
 
@@ -262,17 +262,14 @@ class TestFunc(unittest.TestCase):
         rcrs = RCRS.from_epsg(4326)
 
         # are they the default?
-        self.assertTrue(pcrs == PCRS.from_user_input(u_coord.to_crs_user_input(DEF_CRS)))
+        self.assertEqual(pcrs, PCRS.from_user_input(u_coord.to_crs_user_input(DEF_CRS)))
         self.assertEqual(rcrs, RCRS.from_user_input(u_coord.to_crs_user_input(DEF_CRS)))
 
         # can they be understood from the provider?
-        for arg in ['epsg:4326', b'epsg:4326', DEF_CRS, 4326]:
+        for arg in ['epsg:4326', b'epsg:4326', DEF_CRS, 4326,
+                    {'init': 'epsg:4326', 'no_defs': True},
+                    b'{"init": "epsg:4326", "no_defs": True}']:
             self.assertEqual(pcrs, PCRS.from_user_input(u_coord.to_crs_user_input(arg)))
-            self.assertEqual(rcrs, RCRS.from_user_input(u_coord.to_crs_user_input(arg)))
-
-        # can they be misunderstood from the provider?
-        for arg in [{'init': 'epsg:4326', 'no_defs': True}, b'{"init": "epsg:4326", "no_defs": True}' ]:
-            self.assertFalse(pcrs == PCRS.from_user_input(u_coord.to_crs_user_input(arg)))
             self.assertEqual(rcrs, RCRS.from_user_input(u_coord.to_crs_user_input(arg)))
 
         # are they noticed?
@@ -695,7 +692,7 @@ class TestRasterMeta(unittest.TestCase):
         df_val['latitude'] = y.flatten()
         df_val['longitude'] = x.flatten()
         df_val['value'] = np.ones(len(df_val)) * 10
-        crs = {'init': 'epsg:2202'}
+        crs = 'epsg:2202'
         _raster, meta = u_coord.points_to_raster(df_val, val_names=['value'], crs=crs)
         self.assertIsNone(df_val.crs)  # points_to_raster must not modify df_val
         self.assertTrue(u_coord.equal_crs(meta['crs'], crs))
@@ -743,7 +740,7 @@ class TestRasterIO(unittest.TestCase):
         self.assertEqual(read_meta['transform'], meta['transform'])
         self.assertEqual(read_meta['width'], meta['width'])
         self.assertEqual(read_meta['height'], meta['height'])
-        self.assertEqual(read_meta['crs'], meta['crs'])
+        self.assertTrue(u_coord.equal_crs(read_meta['crs'], meta['crs']))
         self.assertEqual(read_data.shape, (1, np.prod(data.shape)))
         np.testing.assert_array_equal(read_data, data.reshape(read_data.shape))
 
@@ -780,8 +777,8 @@ class TestRasterIO(unittest.TestCase):
     def test_crs_raster_pass(self):
         """Test change projection"""
         meta, inten_ras = u_coord.read_raster(
-            HAZ_DEMO_FL, dst_crs={'init': 'epsg:2202'}, resampling=Resampling.nearest)
-        self.assertAlmostEqual(meta['crs'], {'init': 'epsg:2202'})
+            HAZ_DEMO_FL, dst_crs='epsg:2202', resampling=Resampling.nearest)
+        self.assertAlmostEqual(meta['crs'], 'epsg:2202')
         self.assertAlmostEqual(meta['transform'].c, 462486.8490210658)
         self.assertAlmostEqual(meta['transform'].a, 998.576177833903)
         self.assertAlmostEqual(meta['transform'].b, 0.0)
@@ -804,9 +801,9 @@ class TestRasterIO(unittest.TestCase):
             (478080.8562247154, 1105419.13439131)
         ])
         meta, inten_ras = u_coord.read_raster(
-            HAZ_DEMO_FL, dst_crs={'init': 'epsg:2202'}, geometry=[ply],
+            HAZ_DEMO_FL, dst_crs='epsg:2202', geometry=[ply],
             resampling=Resampling.nearest)
-        self.assertAlmostEqual(meta['crs'], {'init': 'epsg:2202'})
+        self.assertAlmostEqual(meta['crs'], 'epsg:2202')
         self.assertEqual(meta['height'], 12)
         self.assertEqual(meta['width'], 23)
         self.assertEqual(inten_ras.shape, (1, 12 * 23))
@@ -830,7 +827,7 @@ class TestRasterIO(unittest.TestCase):
         self.assertAlmostEqual(top, 10.42822096697894)
         self.assertEqual(meta['width'], 501)
         self.assertEqual(meta['height'], 500)
-        self.assertEqual(meta['crs'].to_epsg(), 4326)
+        self.assertTrue(u_coord.equal_crs(meta['crs'].to_epsg(), 4326))
         self.assertEqual(inten_ras.shape, (1, 500 * 501))
 
         meta, inten_all = u_coord.read_raster(HAZ_DEMO_FL, window=Window(0, 0, 501, 500))

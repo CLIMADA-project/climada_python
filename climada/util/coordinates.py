@@ -31,7 +31,6 @@ import zipfile
 
 from cartopy.io import shapereader
 import dask.dataframe as dd
-from fiona.crs import from_epsg
 import geopandas as gpd
 import numpy as np
 import pandas as pd
@@ -64,7 +63,7 @@ LOGGER = logging.getLogger(__name__)
 NE_EPSG = 4326
 """Natural Earth CRS EPSG"""
 
-NE_CRS = from_epsg(NE_EPSG)
+NE_CRS = f"epsg:{NE_EPSG}"
 """Natural Earth CRS"""
 
 TMP_ELEVATION_FILE = SYSTEM_DIR.joinpath('tmp_elevation.tif')
@@ -496,7 +495,7 @@ def dist_to_coast(coord_lat, lon=None, signed=False):
     dist = np.empty(geom.shape[0])
     zones = utm_zones(geom.geometry.total_bounds)
     for izone, (epsg, bounds) in enumerate(zones):
-        to_crs = from_epsg(epsg)
+        to_crs = f"epsg:{epsg}"
         zone_mask = (
             (bounds[1] <= geom.geometry.y)
             & (geom.geometry.y <= bounds[3])
@@ -591,7 +590,7 @@ def get_land_geometry(country_names=None, extent=None, resolution=10):
     if (country_names is None) and (extent is None):
         LOGGER.info("Computing earth's land geometry ...")
         geom = list(reader.geometries())
-        geom = shapely.ops.cascaded_union(geom)
+        geom = shapely.ops.unary_union(geom)
 
     elif country_names:
         countries = list(reader.records())
@@ -599,7 +598,7 @@ def get_land_geometry(country_names=None, extent=None, resolution=10):
                 if (country.attributes['ISO_A3'] in country_names) or
                 (country.attributes['WB_A3'] in country_names) or
                 (country.attributes['ADM0_A3'] in country_names)]
-        geom = shapely.ops.cascaded_union(geom)
+        geom = shapely.ops.unary_union(geom)
 
     else:
         extent_poly = Polygon([(extent[0], extent[2]), (extent[0], extent[3]),
@@ -609,7 +608,7 @@ def get_land_geometry(country_names=None, extent=None, resolution=10):
             inter_poly = cntry_geom.intersection(extent_poly)
             if not inter_poly.is_empty:
                 geom.append(inter_poly)
-        geom = shapely.ops.cascaded_union(geom)
+        geom = shapely.ops.unary_union(geom)
     if not isinstance(geom, MultiPolygon):
         geom = MultiPolygon([geom])
     return geom
@@ -1296,7 +1295,15 @@ def to_crs_user_input(crs_obj):
     ValueError
         if type(crs_obj) has the wrong type
     """
-    if type(crs_obj) in [dict, int]:
+    def _is_deprecated_init_crs(crs_dict):
+        return (isinstance(crs_dict, dict)
+                and "init" in crs_dict
+                and all(k in ["init", "no_defs"] for k in crs_dict.keys())
+                and crs_dict.get("no_defs", True) == True)
+
+    if isinstance(crs_obj, (dict, int)):
+        if _is_deprecated_init_crs(crs_obj):
+            return crs_obj['init']
         return crs_obj
 
     crs_string = crs_obj.decode() if isinstance(crs_obj, bytes) else crs_obj
@@ -1305,7 +1312,10 @@ def to_crs_user_input(crs_obj):
         raise ValueError(f"crs has unhandled data set type: {type(crs_string)}")
 
     if crs_string[0] == '{':
-        return ast.literal_eval(crs_string)
+        crs_dict = ast.literal_eval(crs_string)
+        if _is_deprecated_init_crs(crs_dict):
+            return crs_dict['init']
+        return crs_dict
 
     return crs_string
 
@@ -1780,9 +1790,10 @@ def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, crs=DEF
     Returns
     -------
     data : np.array
-        2d array containing the raster values.
-    transform : affine.Affine
-        Affine transform defining the raster coordinates.
+        3d array containing the raster values. The first dimension has the same size as `val_names`
+        and represents the raster bands.
+    meta : dict
+        Dictionary with 'crs', 'height', 'width' and 'transform' attributes.
     """
     if not val_names:
         val_names = ['value']
@@ -1808,11 +1819,14 @@ def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, crs=DEF
     df_poly.set_crs(crs if crs else points_df.crs if points_df.crs else DEF_CRS, inplace=True)
 
     # renormalize longitude if necessary
-    if df_poly.crs == DEF_CRS:
+    if equal_crs(df_poly.crs, DEF_CRS):
         xmin, ymin, xmax, ymax = latlon_bounds(points_df.latitude.values,
                                                points_df.longitude.values)
         x_mid = 0.5 * (xmin + xmax)
-        df_poly = df_poly.to_crs({"proj": "longlat", "lon_wrap": x_mid})
+        # we don't really change the CRS when rewrapping, so we reset the CRS attribute afterwards
+        df_poly = df_poly \
+            .to_crs({"proj": "longlat", "lon_wrap": x_mid}) \
+            .set_crs(DEF_CRS, allow_override=True)
     else:
         xmin, ymin, xmax, ymax = (points_df.longitude.min(), points_df.latitude.min(),
                                   points_df.longitude.max(), points_df.latitude.max())
