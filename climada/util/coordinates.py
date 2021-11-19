@@ -1145,10 +1145,10 @@ def get_admin1_info(country_names):
     Parameters
     ----------
     country_names : list or str
-        string or list with strings, either ISO3 code or names of countries, e.g.:
+        string or list with strings, either ISO code or names of countries, e.g.:
         ['ZWE', 'GBR', 'VNM', 'UZB', 'Kenya', '051']
         For example, for Armenia, the following inputs work:
-            'Armenia', 'ARM', '051', 51
+            'Armenia', 'ARM', 'AM', '051', 51
 
     Returns
     -------
@@ -1178,6 +1178,12 @@ def get_admin1_info(country_names):
             if rec['adm0_a3'] == country:
                 admin1_info[country].append(rec)
                 admin1_shapes[country].append(rec_shp)
+    if len(admin1_info) != len(country_names):
+        raise LookupError('Mismatch between country_names and admin1_info.keys(): ' +\
+                          f'{country_names} != {list(admin1_info.keys())}. ' +\
+                          'This could be due to differences in ISO3 code between' +\
+                          'pycountry and natural_earth'
+                          )
     return admin1_info, admin1_shapes
 
 def get_admin1_geometries(countries):
@@ -1188,11 +1194,12 @@ def get_admin1_geometries(countries):
 
     Parameters
     ----------
-    countries : list or str
-        string or list with strings, either ISO3 code or names of countries, e.g.:
+    countries : list or str or int
+        string or list containing strings, either ISO3 code or ISO2 code or names
+        names of countries, e.g.:
         ['ZWE', 'GBR', 'VNM', 'UZB', 'Kenya', '051']
         For example, for Armenia, the following inputs work:
-            'Armenia', 'ARM', '051', 51
+            'Armenia', 'ARM', 'AM', '051', 51
 
     Returns
     -------
@@ -1230,7 +1237,6 @@ def get_admin1_geometries(countries):
         gdf_tmp.iso_3a = country
         gdf = gdf.append(gdf_tmp, ignore_index=True)
     return gdf
-
 
 def get_resolution_1d(coords, min_resol=1.0e-8):
     """Compute resolution of scalar grid
