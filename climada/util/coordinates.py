@@ -1178,12 +1178,8 @@ def get_admin1_info(country_names):
             if rec['adm0_a3'] == country:
                 admin1_info[country].append(rec)
                 admin1_shapes[country].append(rec_shp)
-    if len(admin1_info) != len(country_names):
-        raise LookupError('Mismatch between country_names and admin1_info.keys(): ' +\
-                          f'{country_names} != {list(admin1_info.keys())}. ' +\
-                          'This could be due to differences in ISO3 code between' +\
-                          'pycountry and natural_earth'
-                          )
+        if len(admin1_info[country]) == 0:
+            raise LookupError(f'natural_earth records are empty for country {country}')
     return admin1_info, admin1_shapes
 
 def get_admin1_geometries(countries):
