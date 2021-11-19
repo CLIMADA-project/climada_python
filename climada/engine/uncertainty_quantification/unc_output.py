@@ -373,7 +373,7 @@ class UncOutput():
 
         #get max index
         si_df_num = si_df.select_dtypes('number')
-        si_df_num[si_df_num<0.01] = 0 #remove noise whenn all si are 0
+        si_df_num[si_df_num<threshold] = 0 #remove noise whenn all si are 0
         max_si_idx = si_df_num.idxmax().to_numpy()
         max_si_val = si_df_num.max().to_numpy()
 
