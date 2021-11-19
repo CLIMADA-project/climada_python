@@ -473,7 +473,7 @@ class InputVar():
             from.
         meas_set : climada.entity.measures.measure_set.MeasureSet
             The base measures.
-        haz_id_dict : dict()
+        haz_id_dict : dict
             Dictionary of the impact functions affected by uncertainty.
             Keys are hazard types (str), values are a list of impact
             function id (int).
