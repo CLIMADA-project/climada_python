@@ -15,17 +15,111 @@ You should have received a copy of the GNU Lesser General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 """
-import pandas as pd
-import numpy as np
 import logging
-from shapely.ops import unary_union
-from climada.util import coordinates as u_coord
+import copy
+
+import pandas as pd
+import geopandas as gpd
+import numpy as np
 import shapely as sh
+import scipy as sp
 import shapely.geometry as shgeom
-from climada.util.constants import DEF_CRS, ONE_LAT_KM
+import cartopy.crs as ccrs
+
+from shapely.ops import unary_union
+
+from climada.engine import Impact
+from climada.util import coordinates as u_coord
+
 import pyproj
 
 LOGGER = logging.getLogger(__name__)
+
+
+def calc_geom_impact(exp, haz, impf_set, lon_res, lat_res, to_meters=False, disagg=None, agg_avg=False):
+
+    if to_meters and lon_res * lat_res < 10000:
+        LOGGER.warning("Caution: the resolution %f in square meters is high." %lon_res * lat_res)
+
+    #discretize exposure
+    exp_pnt = exp_geom_to_pnt(exp=exp, lon_res=lon_res, lat_res=lat_res, to_meters=to_meters, disagg=disagg)
+    exp_pnt.assign_centroids(haz)
+
+    # compute impact
+    impact_pnt = Impact()
+    impact_pnt.calc(exp_pnt, impf_set, haz, save_mat=True)
+
+    # aggregate impact
+    mat_agg = aggregate_impact_mat(impact_pnt, exp_pnt.gdf, agg_avg)
+
+    #Write to impact obj
+    impact_agg = set_imp_mat(impact_pnt, mat_agg)
+
+    #Add exposure representation points as coordinates
+    repr_pnts = exp.gdf['geometry'].apply(lambda x: x.representative_point())
+    impact_agg.coord_exp = np.array([repr_pnts.y, repr_pnts.x]).transpose()
+    #Add geometries
+    impact_agg.geom_exp = exp.gdf.geometry
+
+    return impact_agg
+
+def exp_geom_to_pnt(exp, lon_res, lat_res, to_meters, disagg=None):
+
+    # rasterize
+    if to_meters:
+        gdf_pnt = poly_to_pnts_m(exp.gdf.reset_index(drop=True), lon_res, lat_res)
+    else:
+        gdf_pnt = poly_to_pnts(exp.gdf.reset_index(drop=True), lon_res, lat_res)
+
+    # disaggregate
+    if disagg == 'avg':
+        gdf_pnt = disagg_poly_avg(gdf_pnt)
+    elif disagg == 'area':
+        gdf_pnt = disagg_poly_val(gdf_pnt, lon_res * lat_res)
+    elif disagg is None and 'value' not in gdf_pnt.columns:
+        gdf_pnt['value'] = 1
+
+    # set lat lon and centroids
+    exp_pnt = exp.copy()
+    exp_pnt.set_gdf(gdf_pnt)
+    exp_pnt.set_lat_lon()
+
+    return exp_pnt
+
+def set_imp_mat(impact, mat):
+    imp = copy.deepcopy(impact)
+    imp.eai_exp = np.einsum('ji,j->i', mat.todense(), imp.frequency)
+    imp.at_event = np.squeeze(np.asarray(np.sum(mat, axis=1)))
+    imp.aai_agg = sum(imp.at_event * imp.frequency)
+    imp.imp_mat = mat
+    return imp
+
+def aggregate_impact_mat(imp_pnt, gdf_pnt, agg_avg):
+    # aggregate impact
+    mi = gdf_pnt.index
+    row = mi.get_level_values(level=0).to_numpy()
+    mask = np.zeros((len(row), len(np.unique(mi.droplevel(1)))))
+    for i, m in enumerate(row):
+        mask[i][m] = 1
+    if agg_avg:
+        mask /= mask.sum(axis=0)
+    csr_mask = sp.sparse.csr_matrix(mask)
+    return imp_pnt.imp_mat.dot(csr_mask)
+
+def plot_eai_exp_geom(imp_geom, centered=False, figsize=(9, 13), **kwargs):
+    kwargs['figsize'] = figsize
+    if 'legend_kwds' not in kwargs:
+        kwargs['legend_kwds'] = {'label': "Impact [%s]" %imp_geom.unit, 'orientation': "horizontal"}
+    if 'legend' not in kwargs:
+        kwargs['legend'] = True
+    gdf_plot = gpd.GeoDataFrame(imp_geom.geom_exp)
+    gdf_plot['impact'] = imp_geom.eai_exp
+    if centered:
+        xmin, xmax = u_coord.lon_bounds(imp_geom.coord_exp[:,1])
+        proj_plot = ccrs.PlateCarree(central_longitude=0.5 * (xmin + xmax))
+        gdf_plot = gdf_plot.to_crs(proj_plot)
+    return gdf_plot.plot(column = 'impact', **kwargs)
+
 
 def poly_to_pnts(gdf_poly, lon_res, lat_res):
     """
