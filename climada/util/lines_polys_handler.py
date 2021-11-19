@@ -18,7 +18,6 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 import logging
 import copy
 
-import pandas as pd
 import geopandas as gpd
 import numpy as np
 import shapely as sh
@@ -304,61 +303,6 @@ def line_to_pnts_m(gdf_lines, dist):
 
     return gdf_points.explode()
 
-
-def agg_to_lines(exp_pnts, impact_pnts, agg_mode='sum'):
-
-    # TODO: make a method of Impact(), go via saving entire impact matrix
-    # TODO: think about how to include multi-index instead of requiring entire exp?
-
-    """given an original line geometry, a converted point exposure and a
-    resultingly calculated point impact, aggregate impacts back to shapes in
-    original lines geodataframe outline.
-
-    Parameters
-    ----------
-
-    Returns
-    -------
-
-    """
-    impact_line = pd.DataFrame(index=exp_pnts.gdf.index,
-                               data=impact_pnts.eai_exp, columns=['eai_exp'])
-
-    if agg_mode == 'sum':
-        return impact_line.groupby(level=0).eai_exp.sum()
-
-    elif agg_mode == 'fraction':
-        return impact_line.groupby(level=0).eai_exp.sum() / exp_pnts.gdf.groupby(level=0).value.sum()
-
-    else:
-        raise NotImplementedError
-
-def agg_to_polygons(exp_pnts, impact_pnts, agg_mode='sum'):
-
-    # TODO: make a method of Impact(), go via saving entire impact matrix
-    # TODO: think about how to include multi-index instead of requiring entire exp?
-
-    """given an original polygon geometry, a converted point exposure and a
-    resultingly calculated point impact, aggregate impacts back to shapes in
-    original polygons geodataframe outline.
-
-    Parameters
-    ----------
-
-    Returns
-    -------
-
-    """
-    impact_poly = pd.DataFrame(index=exp_pnts.gdf.index,
-                               data=impact_pnts.eai_exp, columns=['eai_exp'])
-    if agg_mode == 'sum':
-        return impact_poly.groupby(level=0).eai_exp.sum()
-
-    elif agg_mode == 'fraction':
-        return impact_poly.groupby(level=0).eai_exp.sum() / exp_pnts.groupby(level=0).value.sum()
-
-    else:
-        return None
 
 def disagg_gdf_avg(gdf_pnts):
 
