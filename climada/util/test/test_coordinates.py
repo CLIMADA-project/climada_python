@@ -576,14 +576,40 @@ class TestGetGeodata(unittest.TestCase):
 
     def test_get_admin1_info_pass(self):
         """test get_admin1_info()"""
-        country_names = ['CHE', 'IDN', 'USA']
-        admin1_info, admin1_shapes = u_coord.get_admin1_info(country_names)
-        self.assertEqual(len(admin1_info), 3)
+        country_names = ['CHE', 'Indonesia', '840', 51]
+        admin1_info, admin1_shapes = u_coord.get_admin1_info(country_names=country_names)
+        self.assertEqual(len(admin1_info), 4)
+        self.assertListEqual(list(admin1_info.keys()), ['CHE', 'IDN', 'USA', 'ARM'])
         self.assertEqual(len(admin1_info['CHE']), len(admin1_shapes['CHE']))
         self.assertEqual(len(admin1_info['CHE']), 26)
         self.assertEqual(len(admin1_shapes['IDN']), 33)
         self.assertEqual(len(admin1_info['USA']), 51)
         self.assertEqual(admin1_info['USA'][1][4], 'US-WA')
+
+    def test_get_admin1_geometries_pass(self):
+        """test get_admin1_geometries"""
+        countries = ['CHE', 'Indonesia', '840', 51]
+        gdf = u_coord.get_admin1_geometries(countries=countries)
+        self.assertEqual(len(gdf.iso_3a.unique()), 4) # 4 countries
+        self.assertEqual(gdf.loc[gdf.iso_3a=='CHE'].shape[0], 26) # 26 cantons in CHE
+        self.assertEqual(gdf.shape[0], 121) # 121 admin 1 regions in the 4 countries
+        self.assertIn('ARM', gdf.iso_3a.values) # Armenia (region_id 051)
+        self.assertIn('756', gdf.iso_3n.values) # Switzerland (region_id 756)
+        self.assertIn('CH-AI', gdf.iso_3166_2.values) # canton in CHE
+        self.assertIn('Sulawesi Tengah', gdf.admin1_name.values) # region in Indonesia
+        self.assertIsInstance(gdf.loc[gdf.iso_3166_2 == 'CH-AI'].geometry.values[0],
+                              shapely.geometry.MultiPolygon)
+        self.assertIsInstance(gdf.loc[gdf.admin1_name == 'Sulawesi Tengah'].geometry.values[0],
+                              shapely.geometry.MultiPolygon)
+        self.assertIsInstance(gdf.loc[gdf.admin1_name == 'Valais'].geometry.values[0],
+                              shapely.geometry.Polygon)
+
+    def test_get_admin1_geometries_fail(self):
+        """test get_admin1_geometries wrong input"""
+        # non existing country:
+        self.assertRaises(LookupError, u_coord.get_admin1_geometries, ["FantasyLand"])
+        # wrong variable type for 'countries', e.g. Polygon:
+        self.assertRaises(TypeError, u_coord.get_admin1_geometries, shapely.geometry.Polygon())
 
 class TestRasterMeta(unittest.TestCase):
     def test_is_regular_pass(self):
