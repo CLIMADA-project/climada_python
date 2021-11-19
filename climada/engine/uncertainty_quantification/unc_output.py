@@ -558,7 +558,7 @@ class UncOutput():
                 else:
                     orig_plot = orig_val
                 ax.axvline(orig_plot, color='green', linestyle='dotted', linewidth=2,
-                 label="orig=%.2f%s" %u_vtm(orig_val));
+                           label="orig=%.2f%s" %u_vtm(orig_val))
             if log:
                 std_m, std_p = np.log10(avg - std), np.log10(avg + std)
             else:
@@ -645,7 +645,7 @@ class UncOutput():
                     [orig_list[n], orig_list[n]], [2*n, 2*(n+1)],
                     color=colors[n], linestyle='dotted', linewidth=2,
                     label="orig=%.2f%s" %u_vtm(orig_list[n])
-                    );
+                    )
 
         ax.set_xlim(min_l, max_l)
         ax.set_ylim(0, 2*(n+1))
