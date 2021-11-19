@@ -648,10 +648,10 @@ class UncOutput():
                     );
 
         ax.set_xlim(min_l, max_l)
-        ax.set_ylim(0, 2*(n+1))
+        ax.set_ylim(0, 2*unc_df.shape[1])
         ax.set_xlabel('Impact [%s]' %self.unit)
         ax.set_ylabel('Return period [years]')
-        ax.set_yticks(np.arange(0, 2*(n+1), 2))
+        ax.set_yticks(np.arange(0, 2*unc_df.shape[1], 2))
         ax.set_yticklabels(unc_df.columns)
         ax.legend(loc='lower right')
 
