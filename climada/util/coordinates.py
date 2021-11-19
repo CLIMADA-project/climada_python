@@ -894,7 +894,7 @@ def assign_coordinates(coords, coords_to_assign, method="NN", distance="haversin
 
     if not coords.any():
         return np.array([])
-    elif not coords_to_assign.any():
+    if not coords_to_assign.any():
         return -np.ones(coords.shape[0]).astype(int)
     coords = coords.astype('float64')
     coords_to_assign = coords_to_assign.astype('float64')
