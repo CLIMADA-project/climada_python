@@ -1139,12 +1139,12 @@ def get_country_code(lat, lon, gridded=False):
         region_id[region_id == -1] = 0
     return region_id
 
-def get_admin1_info(countries):
+def get_admin1_info(country_names):
     """Provide Natural Earth registry info and shape files for admin1 regions
 
     Parameters
     ----------
-    countries : list or str
+    country_names : list or str
         string or list with strings, either ISO3 code or names of countries, e.g.:
         ['ZWE', 'GBR', 'VNM', 'UZB', 'Kenya', '051']
         For example, for Armenia, the following inputs work:
@@ -1157,18 +1157,18 @@ def get_admin1_info(countries):
     admin1_shapes : dict
         Shape according to Natural Earth.
     """
-
-    if isinstance(countries, (str, int, float)):
-        countries = [countries]
-    if not isinstance(countries, list):
-        raise TypeError("Invalid type for input parameter 'countries'")
+    if isinstance(country_names, (str, int, float)):
+        country_names = [country_names]
+    if not isinstance(country_names, list):
+        LOGGER.error("country_names needs to be of type list, str, int or float")
+        raise TypeError("Invalid type for input parameter 'country_names'")
     admin1_file = shapereader.natural_earth(resolution='10m',
                                             category='cultural',
                                             name='admin_1_states_provinces')
     admin1_recs = shapefile.Reader(admin1_file)
     admin1_info = dict()
     admin1_shapes = dict()
-    for country in countries:
+    for country in country_names:
         if isinstance(country, (int, float)):
             country = f'{int(country):03d}' # transform numerric code to str
         country = pycountry.countries.lookup(country).alpha_3 # get iso3a code

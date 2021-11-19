@@ -577,7 +577,7 @@ class TestGetGeodata(unittest.TestCase):
     def test_get_admin1_info_pass(self):
         """test get_admin1_info()"""
         country_names = ['CHE', 'Indonesia', '840', 51]
-        admin1_info, admin1_shapes = u_coord.get_admin1_info(country_names)
+        admin1_info, admin1_shapes = u_coord.get_admin1_info(country_names=country_names)
         self.assertEqual(len(admin1_info), 4)
         self.assertListEqual(list(admin1_info.keys()), ['CHE', 'IDN', 'USA', 'ARM'])
         self.assertEqual(len(admin1_info['CHE']), len(admin1_shapes['CHE']))
@@ -589,7 +589,7 @@ class TestGetGeodata(unittest.TestCase):
     def test_get_admin1_geometries_pass(self):
         """test get_admin1_geometries"""
         countries = ['CHE', 'Indonesia', '840', 51]
-        gdf = u_coord.get_admin1_geometries(countries)
+        gdf = u_coord.get_admin1_geometries(countries=countries)
         self.assertEqual(len(gdf.iso_3a.unique()), 4) # 4 countries
         self.assertEqual(gdf.loc[gdf.iso_3a=='CHE'].shape[0], 26) # 26 cantons in CHE
         self.assertEqual(gdf.shape[0], 121) # 121 admin 1 regions in the 4 countries
