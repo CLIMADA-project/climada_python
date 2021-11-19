@@ -592,6 +592,7 @@ class TestGetGeodata(unittest.TestCase):
         gdf = u_coord.get_admin1_geometries(countries)
         self.assertEqual(len(gdf.iso_3a.unique()), 4) # 4 countries
         self.assertEqual(gdf.loc[gdf.iso_3a=='CHE'].shape[0], 26) # 26 cantons in CHE
+        self.assertEqual(gdf.shape[0], 121) # 121 admin 1 regions in the 4 countries
         self.assertIn('ARM', gdf.iso_3a.values) # Armenia (region_id 051)
         self.assertIn('756', gdf.iso_3n.values) # Switzerland (region_id 756)
         self.assertIn('CH-AI', gdf.iso_3166_2.values) # canton in CHE
