@@ -35,13 +35,16 @@ import pyproj
 LOGGER = logging.getLogger(__name__)
 
 
-def calc_geom_impact(exp, haz, impf_set, lon_res, lat_res, to_meters=False, disagg=None, agg_avg=False):
-
-    if to_meters and lon_res * lat_res < 10000:
-        LOGGER.warning("Caution: the resolution %f in square meters is high." %lon_res * lat_res)
+def calc_geom_impact(
+        exp, haz, impf_set, lon_res, lat_res,
+        to_meters=False, disagg=None, agg_avg=False
+        ):
 
     #discretize exposure
-    exp_pnt = exp_geom_to_pnt(exp=exp, lon_res=lon_res, lat_res=lat_res, to_meters=to_meters, disagg=disagg)
+    exp_pnt = exp_geom_to_pnt(
+        exp=exp, lon_res=lon_res, lat_res=lat_res,
+        to_meters=to_meters, disagg=disagg
+        )
     exp_pnt.assign_centroids(haz)
 
     # compute impact
@@ -85,6 +88,44 @@ def exp_geom_to_pnt(exp, lon_res, lat_res, to_meters, disagg=None):
 
     return exp_pnt
 
+def exp_line_to_pnt(exp, dist, disagg=None):
+
+    gdf_pnt = line_to_pnts_m(exp.gdf.reset_index(drop=True), dist)
+
+    # disaggregate
+    if disagg == 'avg':
+        gdf_pnt = disagg_line_avg(gdf_pnt)
+    elif disagg == 'len':
+        gdf_pnt = disagg_line_val(gdf_pnt, dist)
+    elif disagg is None and 'value' not in gdf_pnt.columns:
+        gdf_pnt['value'] = 1
+
+    # set lat lon and centroids
+    exp_pnt = exp.copy()
+    exp_pnt.set_gdf(gdf_pnt)
+    exp_pnt.set_lat_lon()
+
+    return exp_pnt
+
+def disagg_line_avg(gdf_line_pnts):
+
+    gdf_agg = gdf_line_pnts.copy()
+
+    group = gdf_line_pnts.groupby(axis=0, level=0)
+    gdf = group.value.mean() / group.value.count()
+
+    gdf = gdf.reindex(gdf_line_pnts.index, level=0)
+    gdf_agg['value'] = gdf
+
+    return gdf_agg
+
+def disagg_line_val(gdf_line_pnts, value_per_pnt):
+
+    gdf_agg = gdf_line_pnts.copy()
+    gdf_agg['value'] = value_per_pnt
+
+    return gdf_agg
+
 def set_imp_mat(impact, mat):
     imp = copy.deepcopy(impact)
     imp.eai_exp = np.einsum('ji,j->i', mat.todense(), imp.frequency)
@@ -108,7 +149,10 @@ def aggregate_impact_mat(imp_pnt, gdf_pnt, agg_avg):
 def plot_eai_exp_geom(imp_geom, centered=False, figsize=(9, 13), **kwargs):
     kwargs['figsize'] = figsize
     if 'legend_kwds' not in kwargs:
-        kwargs['legend_kwds'] = {'label': "Impact [%s]" %imp_geom.unit, 'orientation': "horizontal"}
+        kwargs['legend_kwds'] = {
+            'label': "Impact [%s]" %imp_geom.unit,
+            'orientation': "horizontal"
+            }
     if 'legend' not in kwargs:
         kwargs['legend'] = True
     gdf_plot = gpd.GeoDataFrame(imp_geom.geom_exp)
@@ -323,7 +367,6 @@ def disagg_gdf_val(gdf_pnts, value_per_pnt):
 
     return gdf_agg
 
-
 def disagg_poly_avg(gdf_poly_pnts):
 
     return disagg_gdf_avg(gdf_poly_pnts)
@@ -334,6 +377,18 @@ def disagg_poly_val(gdf_poly_pnts, value_per_pnt):
     gdf_agg['value'] = value_per_pnt
 
     return gdf_agg
+
+def poly_to_equalarea_proj(poly, orig_crs):
+
+    repr_pnt = poly.representative_point()
+    lon_0, lat_0 = repr_pnt.x, repr_pnt.y
+
+    project = pyproj.Transformer.from_proj(
+        pyproj.Proj(orig_crs),
+        pyproj.Proj("+proj=cea +lat_0=%f +lon_0=%f +units=m" %(lat_0, lon_0)),
+        always_xy=True
+    )
+    return sh.ops.transform(project.transform, poly)
 
 def _make_union(gdf):
     """
