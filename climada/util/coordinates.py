@@ -2173,7 +2173,7 @@ def country_iso2faocode(input_iso):
 
     Parameters
     ----------
-    input_iso : array
+    input_iso : iterable of int
         ISO numeric-3 code(s) of country/countries
 
     Returns
