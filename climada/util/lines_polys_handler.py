@@ -128,11 +128,21 @@ def disagg_line_val(gdf_line_pnts, value_per_pnt):
 
 def set_imp_mat(impact, mat):
     imp = copy.deepcopy(impact)
-    imp.eai_exp = np.einsum('ji,j->i', mat.todense(), imp.frequency)
-    imp.at_event = np.squeeze(np.asarray(np.sum(mat, axis=1)))
-    imp.aai_agg = sum(imp.at_event * imp.frequency)
+    imp.eai_exp = eai_exp_from_mat(mat, imp.frequency)
+    imp.at_event = at_event_from_mat(mat)
+    imp.aai_agg = aai_agg_from_at_event(imp.at_event, imp.frequency)
     imp.imp_mat = mat
     return imp
+
+
+def eai_exp_from_mat(mat, freq):
+    return np.einsum('ji,j->i', mat.todense(), freq)
+
+def at_event_from_mat(mat):
+    return np.squeeze(np.asarray(np.sum(mat, axis=1)))
+
+def aai_agg_from_at_event(at_event, freq):
+    return sum(at_event * freq)
 
 def aggregate_impact_mat(imp_pnt, gdf_pnt, agg_avg):
     # aggregate impact
