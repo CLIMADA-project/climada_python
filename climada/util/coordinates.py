@@ -2178,7 +2178,7 @@ def country_iso2faocode(input_iso):
 
     Returns
     -------
-    output_faocode : array
+    output_faocode : numpy.array
         FAO country code(s) of country/countries
     """
     # load relation between ISO numeric-3 code and FAO country code
