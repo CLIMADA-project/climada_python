@@ -39,7 +39,6 @@ import climada.util.hdf5_handler as u_hdf5
 from climada.util.constants import ONE_LAT_KM, DEF_CRS, CMAP_RASTER
 import climada.util.coordinates as u_coord
 import climada.util.plot as u_plot
-import climada.util.lines_polys_handler as u_lp_handler
 from climada import CONFIG
 
 LOGGER = logging.getLogger(__name__)
@@ -483,43 +482,6 @@ class Exposures():
         exp.meta = meta
         return exp
 
-    def set_from_lines(self, gdf_lines, m_per_point, disagg_values=None, 
-                       m_value=None):
-        
-        self.gdf = u_coord.interpolate_lines(gdf_lines, m_per_point)
-        
-        # divide line values equally onto points
-        if disagg_values=='cnst':
-            val_per_point = m_value*m_per_point
-            self.gdf = u_lp_handler.disaggregate_cnstly(self.gdf, val_per_point)
-        
-        # TODO: any other disaggregation option?
-        elif disagg_values:
-            raise NotImplementedError
-            
-        self.set_lat_lon()
-        
-    def set_from_polygons(self, gdf_polys, m2_per_point, disagg_values='cnst',
-                          countries=None, m2_value=None):
-        
-        self.gdf = u_coord.interpolate_polygons(gdf_polys, m2_per_point)
-        
-        # divide polygon values equally onto points
-        if disagg_values=='cnst':
-            val_per_point = m2_value*m2_per_point
-            self.gdf = u_lp_handler.disaggregate_cnstly(self.gdf, val_per_point)
-        
-        # TODO: cf. tutorial implementation - divide polygon value proportional 
-        # to litpop output
-        elif disagg_values=='litpop':
-           self.gdf = u_lp_handler.disaggregate_litpop(
-               self.gdf, gdf_polys[~gdf_polys.geometry.is_empty], countries)
-        
-        else:
-            raise NotImplementedError
-            
-        self.set_lat_lon() 
-        
     def plot_scatter(self, mask=None, ignore_zero=False, pop_name=True,
                      buffer=0.0, extend='neither', axis=None, figsize=(9, 13),
                      adapt_fontsize=True, **kwargs):
