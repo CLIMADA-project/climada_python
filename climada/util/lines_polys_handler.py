@@ -51,6 +51,10 @@ def calc_geom_impact(
     impact_pnt = Impact()
     impact_pnt.calc(exp_pnt, impf_set, haz, save_mat=True)
 
+    return impact_pnt_agg(impact_pnt, exp_pnt, agg_avg)
+
+def impact_pnt_agg(impact_pnt, exp_pnt, agg_avg):
+
     # aggregate impact
     mat_agg = aggregate_impact_mat(impact_pnt, exp_pnt.gdf, agg_avg)
 
@@ -58,10 +62,10 @@ def calc_geom_impact(
     impact_agg = set_imp_mat(impact_pnt, mat_agg)
 
     #Add exposure representation points as coordinates
-    repr_pnts = exp.gdf['geometry'].apply(lambda x: x.representative_point())
+    repr_pnts = exp_pnt.gdf['geometry_orig'].apply(lambda x: x.representative_point())
     impact_agg.coord_exp = np.array([repr_pnts.y, repr_pnts.x]).transpose()
     #Add geometries
-    impact_agg.geom_exp = exp.gdf.geometry
+    impact_agg.geom_exp = exp_pnt.gdf.xs(0, level=1).set_geometry('geometry_orig').geometry.rename('geometry')
 
     return impact_agg
 
@@ -174,7 +178,7 @@ def plot_eai_exp_geom(imp_geom, centered=False, figsize=(9, 13), **kwargs):
     return gdf_plot.plot(column = 'impact', **kwargs)
 
 
-def poly_to_pnts(gdf_poly, lon_res, lat_res):
+def poly_to_pnts(gdf, lon_res, lat_res):
     """
 
 
@@ -194,10 +198,12 @@ def poly_to_pnts(gdf_poly, lon_res, lat_res):
 
     """
 
-
-    gdf_points = gdf_poly.copy()
-    gdf_points['geometry'] = gdf_points.apply(
+    gdf_points = gdf.copy()
+    gdf_points['geometry_pnt'] = gdf.apply(
         lambda row: _interp_one_poly(row.geometry, lon_res, lat_res), axis=1)
+    gdf_points.rename(columns = {'geometry': 'geometry_orig'}, inplace=True)
+    gdf_points.rename(columns = {'geometry_pnt': 'geometry'}, inplace=True)
+    gdf_points.set_geometry('geometry', inplace=True)
 
     return gdf_points.explode()
 
@@ -287,7 +293,7 @@ def _interp_one_poly_m(poly, res_x, res_y, orig_crs):
     return poly_pnt
 
 
-def poly_to_pnts_m(gdf_poly, x_res, y_res):
+def poly_to_pnts_m(gdf, x_res, y_res):
     """
     Parameters
     ----------
@@ -305,12 +311,13 @@ def poly_to_pnts_m(gdf_poly, x_res, y_res):
 
     """
 
-    orig_crs = gdf_poly.crs
-    gdf_points = gdf_poly.copy()
-
-    gdf_points['geometry'] = gdf_points.apply(
+    orig_crs = gdf.crs
+    gdf_points = gdf.copy()
+    gdf_points['geometry_pnt'] = gdf_points.apply(
         lambda row: _interp_one_poly_m(row.geometry, x_res, y_res, orig_crs), axis=1)
-
+    gdf_points.rename(columns = {'geometry': 'geometry_orig'}, inplace=True)
+    gdf_points.rename(columns = {'geometry_pnt': 'geometry'}, inplace=True)
+    gdf_points.set_geometry('geometry', inplace=True)
 
     return gdf_points.explode()
 
