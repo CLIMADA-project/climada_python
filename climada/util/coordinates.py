@@ -1223,9 +1223,9 @@ def get_admin1_geometries(countries):
         gdf_tmp = gpd.GeoDataFrame(columns = gdf.columns)
         gdf_tmp.admin1_name = [record['name'] for record in admin1_info[country]]
         gdf_tmp.iso_3166_2 = [record['iso_3166_2'] for record in admin1_info[country]]
-        # With this initiation of GeoSeries in a list comprehension, 
+        # With this initiation of GeoSeries in a list comprehension,
         # the ability of geopandas to convert shapefile.Shape to (Multi)Polygon is exploited:
-        geoseries = gpd.GeoSeries([gpd.GeoSeries(shape).values[0] 
+        geoseries = gpd.GeoSeries([gpd.GeoSeries(shape).values[0]
                                    for shape in admin1_shapes[country]])
         gdf_tmp.geometry = list(geoseries)
         # fill columns with country identifiers (admin 0):
@@ -2173,13 +2173,13 @@ def country_iso2faocode(input_iso):
 
     Parameters
     ----------
-    input_iso : int or array
-        ISO numeric-3 codes of countries (or single code)
+    input_iso : iterable of int
+        ISO numeric-3 code(s) of country/countries
 
     Returns
     -------
-    output_faocode : int or array
-        FAO country codes of countries (or single code)
+    output_faocode : numpy.array
+        FAO country code(s) of country/countries
     """
     # load relation between ISO numeric-3 code and FAO country code
     iso_list, faocode_list = fao_code_def()
