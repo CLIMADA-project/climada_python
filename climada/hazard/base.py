@@ -663,7 +663,8 @@ class Hazard():
             raise KeyError("Variable not in Excel file: " + str(var_err)) from var_err
         return haz
 
-    def select(self, event_names=None, date=None, orig=None, reg_id=None, reset_frequency=False):
+    def select(self, event_names=None, date=None, orig=None, reg_id=None,
+               extent=None, reset_frequency=False):
         """Select events matching provided criteria
 
         The frequency of events may need to be recomputed (see `reset_frequency`)!
@@ -679,6 +680,9 @@ class Hazard():
             Select only historical (True) or only synthetic (False) events.
         reg_id : int, optional
             Region identifier of the centroids' region_id attibute.
+        extent: tuple(float, float, float, float), optional
+            Extent of centroids as (min_lon, max_lon, min_lat, max_lat).
+            The default is None.
         reset_frequency : bool, optional
             Change frequency of events proportional to difference between first and last
             year (old and new). Default: False.
@@ -715,9 +719,18 @@ class Hazard():
 
         # filter centroids
         if reg_id is not None:
+
             sel_cen &= (self.centroids.region_id == reg_id)
             if not np.any(sel_cen):
                 LOGGER.info('No hazard centroids with region %s.', str(reg_id))
+                return None
+        if extent is not None:
+            cent_ext = self.centroids.select(extent=extent)
+            cent_ext_view = cent_ext.coord.view(dtype='float64,float64').reshape(-1)
+            cent_view = self.centroids.coord.view(dtype='float64,float64').reshape(-1)
+            sel_cen &= np.isin(cent_view, cent_ext_view)
+            if not np.any(sel_cen):
+                LOGGER.info('No hazard centroids within extent')
                 return None
 
         # filter events based on name
@@ -744,6 +757,8 @@ class Hazard():
             elif var_name == 'centroids':
                 if reg_id is not None:
                     setattr(haz, var_name, var_val.select(reg_id))
+                elif extent is not None:
+                    setattr(haz, var_name, cent_ext)
                 else:
                     setattr(haz, var_name, var_val)
             else:
