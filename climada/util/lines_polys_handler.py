@@ -47,9 +47,9 @@ def calc_geom_impact(
         )
     exp_pnt.assign_centroids(haz)
 
-    return calc_impact_geom_pnt(exp_pnt=exp_pnt, impf_set=impf_set, haz=haz, agg_avg=agg_avg)
+    return calc_impact_pnt_agg(exp_pnt=exp_pnt, impf_set=impf_set, haz=haz, agg_avg=agg_avg)
 
-def calc_impact_geom_pnt(exp_pnt, impf_set, haz, agg_avg=False):
+def calc_impact_pnt_agg(exp_pnt, impf_set, haz, agg_avg=False):
     # compute impact
     impact_pnt = Impact()
     impact_pnt.calc(exp_pnt, impf_set, haz, save_mat=True)
