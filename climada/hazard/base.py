@@ -776,6 +776,13 @@ class Hazard():
         haz.sanitize_event_ids()
         return haz
 
+    def select_tight_cent(self, buffer=1):
+        cent_nz = self.intensity.nonzero()[1]
+        lon_nz = self.centroids.lon[cent_nz]
+        lat_nz = self.centroids.lat[cent_nz]
+        ext = u_coord.latlon_bounds(lat_nz, lon_nz)
+        return self.select(extent = [ext[0], ext[2], ext[1], ext[3]])
+
     def local_exceedance_inten(self, return_periods=(25, 50, 100, 250)):
         """Compute exceedance intensity map for given return periods.
 
