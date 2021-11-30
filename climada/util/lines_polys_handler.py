@@ -65,7 +65,7 @@ def impact_pnt_agg(impact_pnt, exp_pnt, agg_avg):
     impact_agg = set_imp_mat(impact_pnt, mat_agg)
 
     #Add exposure representation points as coordinates
-    repr_pnts = exp_pnt.gdf['geometry_orig'].apply(lambda x: x.representative_point())
+    repr_pnts = gpd.GeoSeries(exp_pnt.gdf['geometry_orig'][:,0].apply(lambda x: x.representative_point()))
     impact_agg.coord_exp = np.array([repr_pnts.y, repr_pnts.x]).transpose()
     #Add geometries
     impact_agg.geom_exp = exp_pnt.gdf.xs(0, level=1).set_geometry('geometry_orig').geometry.rename('geometry')
@@ -154,13 +154,18 @@ def aai_agg_from_at_event(at_event, freq):
 def aggregate_impact_mat(imp_pnt, gdf_pnt, agg_avg):
     # aggregate impact
     mi = gdf_pnt.index
-    row = mi.get_level_values(level=0).to_numpy()
-    mask = np.zeros((len(row), len(np.unique(mi.droplevel(1)))))
-    for i, m in enumerate(row):
-        mask[i][m] = 1
+    col_geom = mi.get_level_values(level=0).to_numpy()
+    row_pnt = np.arange(len(col_geom))
     if agg_avg:
-        mask /= mask.sum(axis=0)
-    csr_mask = sp.sparse.csr_matrix(mask)
+        from collections import Counter
+        geom_sizes = Counter(col_geom).values()
+        mask = np.concatenate([np.ones(l) / l for l in geom_sizes])
+    else:
+        mask = np.ones(len(col_geom))
+    csr_mask = sp.sparse.csr_matrix(
+        (mask, (row_pnt, col_geom)),
+         shape=(len(row_pnt), len(np.unique(col_geom)))
+        )
     return imp_pnt.imp_mat.dot(csr_mask)
 
 def plot_eai_exp_geom(imp_geom, centered=False, figsize=(9, 13), **kwargs):
