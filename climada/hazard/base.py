@@ -711,7 +711,6 @@ class Hazard():
 
         # filter centroids
         if reg_id is not None:
-
             sel_cen &= (self.centroids.region_id == reg_id)
             if not np.any(sel_cen):
                 LOGGER.info('No hazard centroids with region %s.', str(reg_id))
