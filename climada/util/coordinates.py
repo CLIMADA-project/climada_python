@@ -266,7 +266,7 @@ def index_nn_euclidian(centroids, coordinates, threshold=THRESHOLD):
                             return_inverse=True)
 
     # query the k closest points of the n_points using dual tree
-    dist, assigned = tree.query(np.radians(coordinates[idx]), k=1, p=2)
+    dist, assigned = tree.query(np.radians(coordinates[idx]), k=1, p=2, workers=-1)
 
     # Raise a warning if the minimum distance is greater than the
     # threshold and set an unvalid index -1
