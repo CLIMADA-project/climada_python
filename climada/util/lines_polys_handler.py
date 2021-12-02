@@ -143,7 +143,8 @@ def set_imp_mat(impact, mat):
 
 
 def eai_exp_from_mat(mat, freq):
-    return np.einsum('ji,j->i', mat.todense(), freq)
+    freq_mat = freq.reshape(len(freq), 1)
+    return mat.multiply(freq_mat).sum(axis=0).A1
 
 def at_event_from_mat(mat):
     return np.squeeze(np.asarray(np.sum(mat, axis=1)))
