@@ -277,9 +277,17 @@ class Hazard():
         if files_fraction is not None and len(files_intensity) != len(files_fraction):
             raise ValueError('Number of intensity files differs from fraction files: %s != %s'
                              % (len(files_intensity), len(files_fraction)))
-        if haz_type is None:
-            haz_type = cls().tag.haz_type
-        haz = cls(haz_type, pool)
+
+        if haz_type is not None:
+            try:
+                haz = cls(haz_type=haz_type, pool=pool)
+            except TypeError:
+                haz = cls(pool=pool)
+                LOGGER.warn("haz_type argument ('%s') is ignored, haz_type is determined by class",
+                            haz_type)
+        else:
+            haz = cls(pool=pool)
+
         haz.tag.file_name = str(files_intensity) + ' ; ' + str(files_fraction)
 
         haz.centroids = Centroids.from_raster_file(
