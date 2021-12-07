@@ -27,13 +27,14 @@ __all__ = ['interpol_index',
 import logging
 import numpy as np
 import numba
+import scipy as sp
 
 from sklearn.neighbors import BallTree
 from climada.util.constants import ONE_LAT_KM, EARTH_RADIUS_KM
 
 LOGGER = logging.getLogger(__name__)
 
-DIST_DEF = ['approx', 'haversine']
+DIST_DEF = ['approx', 'haversine', 'euclidian']
 """Distances"""
 
 METHOD = ['NN']
@@ -90,6 +91,10 @@ def interpol_index(centroids, coordinates, method=METHOD[0],
         # Compute the nearest centroid for each coordinate using the
         # haversine formula. This is done with a Ball tree.
         interp = index_nn_haversine(centroids, coordinates, threshold)
+    elif (method == METHOD[0]) & (distance == DIST_DEF[2]):
+        # Compute the nearest centroid for each coordinate using the
+        # euclidian distance on a kTree. This is best for gridded data.
+        interp = index_nn_euclidian(centroids, coordinates, threshold)
     else:
         raise ValueError(
             f'Interpolation using {method} with distance {distance} is not supported.')
@@ -175,6 +180,48 @@ def index_nn_haversine(centroids, coordinates, threshold=THRESHOLD):
     dist, assigned = tree.query(np.radians(coordinates[idx]), k=1,
                                 return_distance=True, dualtree=True,
                                 breadth_first=False)
+
+    # Raise a warning if the minimum distance is greater than the
+    # threshold and set an unvalid index -1
+    num_warn = np.sum(dist * EARTH_RADIUS_KM > threshold)
+    if num_warn:
+        LOGGER.warning('Distance to closest centroid is greater than %s'
+                       'km for %s coordinates.', threshold, num_warn)
+        assigned[dist * EARTH_RADIUS_KM > threshold] = -1
+
+    # Copy result to all exposures and return value
+    return np.squeeze(assigned[inv])
+
+
+def index_nn_euclidian(centroids, coordinates, threshold=THRESHOLD):
+    """Compute the neareast centroid for each coordinate using a Ball
+    tree with haversine distance.
+
+    Parameters
+    ----------
+    centroids : 2d array
+        First column contains latitude, second column contains longitude.
+        Each row is a geographic point
+    coordinates : 2d array
+        First column contains latitude, second column contains longitude. Each
+        row is a geographic point
+    threshold : float
+        distance threshold in km over which no neighbor will be found. Those
+        are assigned with a -1 index
+
+    Returns
+    -------
+    np.array
+        with so many rows as coordinates containing the centroids indexes
+    """
+    # Construct tree from centroids
+    tree = sp.spatial.cKDTree(np.radians(centroids))
+    # Select unique exposures coordinates
+    _, idx, inv = np.unique(coordinates, axis=0, return_index=True,
+                            return_inverse=True)
+
+    # query the k closest points of the n_points using dual tree
+    dist, assigned = tree.query(np.radians(coordinates[idx]), k=1, p=2)
 
     # Raise a warning if the minimum distance is greater than the
     # threshold and set an unvalid index -1
