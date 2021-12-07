@@ -215,7 +215,7 @@ def index_nn_euclidian(centroids, coordinates, threshold=THRESHOLD):
         with so many rows as coordinates containing the centroids indexes
     """
     # Construct tree from centroids
-    tree = sp.spatial.cKDTree(np.radians(centroids))
+    tree = sp.spatial.KDTree(np.radians(centroids))
     # Select unique exposures coordinates
     _, idx, inv = np.unique(coordinates, axis=0, return_index=True,
                             return_inverse=True)
