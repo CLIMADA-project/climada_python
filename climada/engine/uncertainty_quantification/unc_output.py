@@ -63,6 +63,14 @@ SALIB_COMPATIBILITY = {
     'ff' : ['ff'],
     }
 
+plt.style.use('seaborn-white')
+params = {'legend.fontsize': 'x-large',
+         'axes.labelsize': 'x-large',
+         'axes.titlesize':'x-large',
+         'xtick.labelsize':'x-large',
+         'ytick.labelsize':'x-large'}
+mpl.rcParams.update(params)
+
 
 class UncOutput():
     """
@@ -419,6 +427,7 @@ class UncOutput():
             The axis handle of the plot.
 
         """
+        fontsize = 18
 
         if self.samples_df.empty:
             raise ValueError("No uncertainty sample present."+
@@ -436,9 +445,11 @@ class UncOutput():
                 ax.remove()
                 continue
             self.samples_df[label].hist(ax=ax, bins=100)
-            ax.set_title(label)
-            ax.set_xlabel('value')
+            ax.set_xlabel(label)
             ax.set_ylabel('Sample count')
+            ax.tick_params(labelsize=fontsize)
+            for item in [ax.title, ax.xaxis.label, ax.yaxis.label]:
+                item.set_fontsize(fontsize)
 
         plt.tight_layout()
 
@@ -566,11 +577,11 @@ class UncOutput():
             ax.plot([std_m, std_p],
                     [0.3 * ymax, 0.3 * ymax], color='black',
                     label="std=%.2f%s" %u_vtm(std))
-            ax.set_title(col)
+            xlabel = col + ' [' + self.unit + '] '
             if log:
-                ax.set_xlabel('value [log10]')
+                ax.set_xlabel( xlabel + ' (log10 scale)')
             else:
-                ax.set_xlabel('value')
+                ax.set_xlabel(xlabel)
             ax.set_ylabel('density of samples')
             ax.legend(fontsize=fontsize-2)
 
@@ -756,9 +767,7 @@ class UncOutput():
                 figsize = (ncols * FIG_W, nrows * FIG_H)
             _fig, axes = plt.subplots(nrows = nrows,
                                      ncols = ncols,
-                                     figsize = figsize,
-                                     sharex = True,
-                                     sharey = True)
+                                     figsize = figsize)
         if nplots > 1:
             flat_axes = axes.flatten()
         else:
@@ -767,6 +776,7 @@ class UncOutput():
         for ax, metric in zip(flat_axes, metric_list):
             df_S = self.get_sensitivity(salib_si, [metric]).select_dtypes('number')
             if df_S.empty:
+                ax.set_xlabel('Input parameter')
                 ax.remove()
                 continue
             df_S_conf = self.get_sensitivity(salib_si_conf, [metric]).select_dtypes('number')
@@ -774,7 +784,8 @@ class UncOutput():
                 df_S.plot(ax=ax, kind='bar', **kwargs)
             df_S.plot(ax=ax, kind='bar', yerr=df_S_conf, **kwargs)
             ax.set_xticklabels(self.param_labels, rotation=0)
-            ax.set_title(salib_si + ' - ' + metric.replace('_sens_df', ''))
+            ax.set_xlabel('Input parameter')
+            ax.set_ylabel(salib_si)
         plt.tight_layout()
 
         return axes
@@ -947,9 +958,9 @@ class UncOutput():
         plot_val = eai_max_si_df['param']
         coord = np.array([self.coord_df.latitude, self.coord_df.longitude]).transpose()
         if 'var_name' not in kwargs:
-            kwargs['var_name'] = 'Largest sensitivity index ' + salib_si
+            kwargs['var_name'] = 'Input parameter with largest ' + salib_si
         if 'title' not in kwargs:
-            kwargs['title'] = 'Sensitivity map'
+            kwargs['title'] = ''
         if 'figsize' not in kwargs:
             kwargs['figsize'] = (8,6)
         if 'cmap' not in kwargs:
