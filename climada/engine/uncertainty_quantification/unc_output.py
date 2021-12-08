@@ -37,6 +37,7 @@ import matplotlib as mpl
 from climada import CONFIG
 
 from climada.util.value_representation import value_to_monetary_unit as u_vtm
+from climada.util.value_representation import convert_monetary_value as u_cmv
 from climada.util import plot as u_plot
 import climada.util.hdf5_handler as u_hdf5
 
@@ -545,7 +546,8 @@ class UncOutput():
                 if ax is not None:
                     ax.remove()
                 continue
-            data = unc_df_plt[col]
+            data, m_unit = u_vtm(unc_df_plt[col])
+            data = pd.Series(data)
             if data.empty:
                 ax.remove()
                 continue
@@ -555,29 +557,30 @@ class UncOutput():
                 data.plot.kde(ax=ax, color='darkblue', linewidth=4, label='')
             except np.linalg.LinAlgError:
                 pass
-            avg, std = unc_df[col].mean(), unc_df[col].std()
+            avg, std = data.mean(), data.std()
             _, ymax = ax.get_ylim()
             if log:
                 avg_plot = np.log10(avg)
             else:
                 avg_plot = avg
             ax.axvline(avg_plot, color='darkorange', linestyle='dashed', linewidth=2,
-                    label="avg=%.2f%s" %u_vtm(avg))
+                    label="avg=%.2f%s" %(avg, m_unit))
             if orig_val is not None:
                 if log:
                     orig_plot = np.log10(orig_val)
                 else:
                     orig_plot = orig_val
+                orig_plot = u_cmv(orig_plot, m_unit)[0]
                 ax.axvline(orig_plot, color='green', linestyle='dotted', linewidth=2,
-                           label="orig=%.2f%s" %u_vtm(orig_val))
+                           label="orig=%.2f%s" %(orig_val, m_unit))
             if log:
                 std_m, std_p = np.log10(avg - std), np.log10(avg + std)
             else:
                 std_m, std_p = avg - std, avg + std
             ax.plot([std_m, std_p],
                     [0.3 * ymax, 0.3 * ymax], color='black',
-                    label="std=%.2f%s" %u_vtm(std))
-            xlabel = col + ' [' + self.unit + '] '
+                    label="std=%.2f%s" %(std, m_unit))
+            xlabel = col + ' [' + m_unit + ' ' + self.unit + '] '
             if log:
                 ax.set_xlabel( xlabel + ' (log10 scale)')
             else:
@@ -638,7 +641,7 @@ class UncOutput():
         if  axes is  None:
             _fig, axes = plt.subplots(figsize=figsize, nrows=1, ncols=2)
 
-        min_l, max_l = unc_df.min().min(), unc_df.max().max()
+        [min_l, max_l], m_unit = u_vtm([unc_df.min().min(), unc_df.max().max()], n_sig_dig=4)
 
         ax = axes[0]
 
@@ -646,43 +649,45 @@ class UncOutput():
         colors = prop_cycle.by_key()['color']
 
         for n, (_name, values) in enumerate(unc_df.iteritems()):
+            values = u_cmv(values, m_unit, n_sig_dig=4)
             count, division = np.histogram(values, bins=100)
             count = count / count.max()
             losses = [(bin_i + bin_f )/2 for (bin_i, bin_f) in zip(division[:-1], division[1:])]
             ax.plot([min_l, max_l], [2*n, 2*n], color='k', alpha=0.5)
             ax.fill_between(losses, count + 2*n, 2*n)
             if add_orig:
+                [orig_val] = u_cmv(orig_list[n], m_unit, n_sig_dig=4)
                 ax.plot(
-                    [orig_list[n], orig_list[n]], [2*n, 2*(n+1)],
+                    [orig_val, orig_val], [2*n, 2*(n+1)],
                     color=colors[n], linestyle='dotted', linewidth=2,
-                    label="orig=%.2f%s" %u_vtm(orig_list[n])
+                    label="orig=%.2f%s" %(orig_val, m_unit)
                     )
 
         ax.set_xlim(min_l, max_l)
         ax.set_ylim(0, 2*unc_df.shape[1])
-        ax.set_xlabel('Impact [%s]' %self.unit)
+        ax.set_xlabel('Impact [%s %s]' %(m_unit, self.unit))
         ax.set_ylabel('Return period [years]')
         ax.set_yticks(np.arange(0, 2*unc_df.shape[1], 2))
-        ax.set_yticklabels(unc_df.columns)
+        ax.set_yticklabels([s[2:] for s in unc_df.columns])
         ax.legend(loc='lower right')
 
         ax = axes[1]
 
-        high = self.get_unc_df('freq_curve').quantile(0.95)
-        middle = self.get_unc_df('freq_curve').quantile(0.5)
-        low = self.get_unc_df('freq_curve').quantile(0.05)
+        high = u_cmv(self.get_unc_df('freq_curve').quantile(0.95).values, m_unit, n_sig_dig=4)
+        middle = u_cmv(self.get_unc_df('freq_curve').quantile(0.5).values, m_unit, n_sig_dig=4)
+        low = u_cmv(self.get_unc_df('freq_curve').quantile(0.05).values, m_unit, n_sig_dig=4)
 
-        x = [float(rp[2:]) for rp in middle.keys()]
-        ax.plot(x, high.values, linestyle='--', color = 'blue',
+        x = [float(rp[2:]) for rp in unc_df.columns]
+        ax.plot(x, high, linestyle='--', color = 'blue',
                 alpha=0.5, label='0.95 percentile')
-        ax.plot(x, middle.values, label='0.5 percentile')
-        ax.plot(x, low.values, linestyle='dashdot', color='blue',
+        ax.plot(x, middle, label='0.5 percentile')
+        ax.plot(x, low, linestyle='dashdot', color='blue',
                 alpha=0.5, label='0.05 percentile')
-        ax.fill_between(x, low.values, high.values, alpha=0.2)
+        ax.fill_between(x, low, high, alpha=0.2)
         if add_orig:
-            ax.plot(x, orig_list, color='green', linestyle='dotted', label='orig')
+            ax.plot(x, u_cmv(orig_list, m_unit, n_sig_dig=4), color='green', linestyle='dotted', label='orig')
         ax.set_xlabel('Return period [year]')
-        ax.set_ylabel('Impact [' + self.unit + ']')
+        ax.set_ylabel('Impact [' + m_unit + ' ' + self.unit + ']')
         ax.legend()
 
         return axes
