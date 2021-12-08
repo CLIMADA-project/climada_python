@@ -88,6 +88,18 @@ def sig_dig_list(iterable, n_sig_dig=16):
     """
     return np.vectorize(sig_dig)(iterable, n_sig_dig)
 
+def convert_monetary_value(values, abbrev, n_sig_dig=None):
+
+    if isinstance(values, (int, float)):
+        values = [values]
+
+    thsder = list(ABBREV.keys())[list(ABBREV.values()).index(abbrev)]
+    mon_val = np.array(values) / thsder
+    if n_sig_dig is not None:
+        mon_val = [sig_dig(val, n_sig_dig=n_sig_dig) for val in mon_val]
+
+    return mon_val
+
 
 def value_to_monetary_unit(values, n_sig_dig=None, abbreviations=None):
     """
