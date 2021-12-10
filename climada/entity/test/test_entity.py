@@ -38,8 +38,7 @@ class TestReader(unittest.TestCase):
     def test_default_pass(self):
         """Instantiating the Entity class the default entity file is loaded"""
         # Set demo file as default
-        def_entity = Entity()
-        def_entity.read_excel(ENT_TEMPLATE_XLS)
+        def_entity = Entity.from_excel(ENT_TEMPLATE_XLS)
 
         # Check default demo excel file has been loaded
         self.assertEqual(len(def_entity.exposures.gdf.deductible), 24)
@@ -56,19 +55,17 @@ class TestReader(unittest.TestCase):
         self.assertTrue(isinstance(def_entity.impact_funcs, ImpactFuncSet))
         self.assertTrue(isinstance(def_entity.measures, MeasureSet))
 
-    def test_read_mat(self):
+    def test_from_mat(self):
         """Read entity from mat file produced by climada."""
-        entity_mat = Entity()
-        entity_mat.read_mat(ENT_TEST_MAT)
+        entity_mat = Entity.from_mat(ENT_TEST_MAT)
         self.assertEqual(entity_mat.exposures.tag.file_name, str(ENT_TEST_MAT))
         self.assertEqual(entity_mat.disc_rates.tag.file_name, str(ENT_TEST_MAT))
         self.assertEqual(entity_mat.measures.tag.file_name, str(ENT_TEST_MAT))
         self.assertEqual(entity_mat.impact_funcs.tag.file_name, str(ENT_TEST_MAT))
 
-    def test_read_excel(self):
+    def test_from_excel(self):
         """Read entity from an xls file following the template."""
-        entity_xls = Entity()
-        entity_xls.read_excel(ENT_TEMPLATE_XLS)
+        entity_xls = Entity.from_excel(ENT_TEMPLATE_XLS)
         self.assertEqual(entity_xls.exposures.tag.file_name, str(ENT_TEMPLATE_XLS))
         self.assertEqual(entity_xls.disc_rates.tag.file_name, str(ENT_TEMPLATE_XLS))
         self.assertEqual(entity_xls.measures.tag.file_name, str(ENT_TEMPLATE_XLS))
@@ -80,8 +77,7 @@ class TestCheck(unittest.TestCase):
 
     def test_wrongMeas_fail(self):
         """Wrong measures"""
-        ent = Entity()
-        ent.read_excel(ENT_TEMPLATE_XLS)
+        ent = Entity.from_excel(ENT_TEMPLATE_XLS)
         actions = ent.measures.get_measure('TC')
         actions[0].color_rgb = np.array([1, 2])
         with self.assertRaises(ValueError) as cm:
@@ -94,8 +90,7 @@ class TestCheck(unittest.TestCase):
 
     def test_wrongImpFun_fail(self):
         """Wrong impact functions"""
-        ent = Entity()
-        ent.read_excel(ENT_TEMPLATE_XLS)
+        ent = Entity.from_excel(ENT_TEMPLATE_XLS)
         ent.impact_funcs.get_func('TC', 1).paa = np.array([1, 2])
         with self.assertRaises(ValueError) as cm:
             ent.check()
@@ -107,8 +102,7 @@ class TestCheck(unittest.TestCase):
 
     def test_wrongDisc_fail(self):
         """Wrong discount rates"""
-        ent = Entity()
-        ent.read_excel(ENT_TEMPLATE_XLS)
+        ent = Entity.from_excel(ENT_TEMPLATE_XLS)
         ent.disc_rates.rates = np.array([1, 2])
         with self.assertRaises(ValueError) as cm:
             ent.check()

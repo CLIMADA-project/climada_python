@@ -26,16 +26,23 @@ from pathlib import Path
 from urllib.parse import quote, unquote
 import time
 
+import pandas as pd
 from peewee import CharField, DateTimeField, IntegrityError, Model, SqliteDatabase
 import requests
-
+import pycountry
 
 from climada import CONFIG
+from climada.entity import Exposures
+from climada.hazard import Hazard
 from climada.util.constants import SYSTEM_DIR
 
 LOGGER = logging.getLogger(__name__)
 
 DB = SqliteDatabase(Path(CONFIG.data_api.cache_db.str()).expanduser())
+
+HAZ_TYPES = [ht.str() for ht in CONFIG.data_api.supported_hazard_types.list()]
+EXP_TYPES = [et.str() for et in CONFIG.data_api.supported_exposures_types.list()]
+MUTUAL_PROPS = [ms.str() for ms in CONFIG.data_api.mutual_properties.list()]
 
 
 class Download(Model):
@@ -192,6 +199,25 @@ class Client():
             return json.loads(page.content.decode())
         raise Client.NoResult(page.content.decode())
 
+    @staticmethod
+    def _divide_straight_from_multi(properties):
+        straights, multis = dict(), dict()
+        for k, _v in properties.items():
+            if isinstance(_v, str):
+                straights[k] = _v
+            elif isinstance(_v, list):
+                multis[k] = _v
+            else:
+                raise ValueError("properties must be a string or a list of strings")
+        return straights, multis
+
+    @staticmethod
+    def _filter_datasets(datasets, multi_props):
+        pdf = pd.DataFrame([ds.properties for ds in datasets])
+        for prop, selection in multi_props.items():
+            pdf = pdf[pdf[prop].isin(selection)]
+        return [datasets[i] for i in pdf.index]
+
     def get_datasets(self, data_type=None, name=None, version=None, properties=None,
                      status='active'):
         """Find all datasets matching the given parameters.
@@ -206,6 +232,7 @@ class Client():
             the version of the dataset
         properties : dict, optional
             search parameters for dataset properties, by default None
+            any property has a string for key and can be a string or a list of strings for value
         status : str, optional
             valid values are 'preliminary', 'active', 'expired', and 'test_dataset',
             by default 'active'
@@ -221,8 +248,20 @@ class Client():
             'version': version,
             'status': '' if status is None else status,
         }
-        params.update(properties if properties else dict())
-        return [DatasetInfo.from_json(ds) for ds in Client._request_200(url, params=params)]
+
+        if properties:
+            straight_props, multi_props = self._divide_straight_from_multi(properties)
+        else:
+            straight_props, multi_props = None, None
+
+        if straight_props:
+            params.update(straight_props)
+
+        datasets = [DatasetInfo.from_json(ds) for ds in Client._request_200(url, params=params)]
+
+        if multi_props:
+            return self._filter_datasets(datasets, multi_props)
+        return datasets
 
     def get_dataset(self, data_type=None, name=None, version=None, properties=None,
                     status=None):
@@ -238,6 +277,7 @@ class Client():
             the version of the dataset
         properties : dict, optional
             search parameters for dataset properties, by default None
+            any property has a string for key and can be a string or a list of strings for value
         status : str, optional
             valid values are 'preliminary', 'active', 'expired', and 'test_dataset',
             by default None
@@ -408,7 +448,7 @@ class Client():
             downloaded = self._tracked_download(remote_url=fileinfo.url, local_path=local_path)
             if not downloaded.enddownload:
                 raise Download.Failed("Download seems to be in progress, please try again later"
-                    " or remove cache entry by calling purge_cache the database!")
+                    f" or remove cache entry by calling `purge_cache(Path('{local_path}'))`!")
             try:
                 check(local_path, fileinfo)
             except Download.Failed as dlf:
@@ -458,21 +498,27 @@ class Client():
             raise ValueError(f"{target_dir} is not a directory")
 
         if organize_path:
-            if dataset.data_type.data_type_group:
-                target_dir /= dataset.data_type.data_type_group
-            if dataset.data_type.data_type_group != dataset.data_type.data_type:
-                target_dir /= dataset.data_type.data_type
-            target_dir /= dataset.name
-            if dataset.version:
-                target_dir /= dataset.version
-            target_dir.mkdir(exist_ok=True, parents=True)
+            target_dir = self._organize_path(dataset, target_dir)
 
         return target_dir, [
             self.download_file(local_path=target_dir, fileinfo=dsfile, check=check)
             for dsfile in dataset.files
         ]
 
-    def purge_cache(self, local_path):
+    @staticmethod
+    def _organize_path(dataset, target_dir):
+        if dataset.data_type.data_type_group:
+            target_dir /= dataset.data_type.data_type_group
+        if dataset.data_type.data_type_group != dataset.data_type.data_type:
+            target_dir /= dataset.data_type.data_type
+        target_dir /= dataset.name
+        if dataset.version:
+            target_dir /= dataset.version
+        target_dir.mkdir(exist_ok=True, parents=True)
+        return target_dir
+
+    @staticmethod
+    def purge_cache(local_path):
         """Removes entry from the sqlite database that keeps track of files downloaded by
         `cached_download`. This may be necessary in case a previous attempt has failed
         in an uncontroled way (power outage or the like).
@@ -486,3 +532,247 @@ class Client():
         """
         dlf = Download.get(Download.path==str(local_path.absolute()))
         dlf.delete_instance()
+
+    @staticmethod
+    def _multi_version(datasets):
+        ddf = pd.DataFrame(datasets)
+        gdf = ddf.groupby('name').agg({'version': 'nunique'})
+        return list(gdf[gdf.version > 1].index)
+
+    @staticmethod
+    def _multi_selection(datasets):
+        pdf = pd.DataFrame([ds.properties for ds in datasets]).nunique()
+        return list(pdf[pdf > 1].index)
+
+    @staticmethod
+    def _check_datasets_for_concatenation(datasets, max_datasets):
+        if not datasets:
+            raise ValueError("no datasets found meeting the requirements")
+        if 0 < max_datasets < len(datasets):
+            raise ValueError(f"There are {len(datasets)} datasets matching the query"
+                             f" and the limit is set to {max_datasets}.\n"
+                             "You can force concatenation of multiple datasets by increasing"
+                             " max_datasets or setting it to a value <= 0 (no limit).\n"
+                             "Attention! For hazards, concatenation of datasets is currently done by"
+                             " event, which may lead to event duplication and thus biased data.\n"
+                             "In a future release this limitation will be overcome.")
+        not_supported = [msd for msd in Client._multi_selection(datasets)
+                         if msd in MUTUAL_PROPS]
+        if not_supported:
+            raise ValueError("Cannot combine datasets, there are distinct values for these"
+                             f" properties in your selection: {not_supported}")
+        ambiguous_ds_names = Client._multi_version(datasets)
+        if ambiguous_ds_names:
+            raise ValueError("There are datasets with multiple versions in your selection:"
+                             f" {ambiguous_ds_names}")
+
+    def get_hazard(self, hazard_type, dump_dir=SYSTEM_DIR, max_datasets=1, **kwargs):
+        """Queries the data api for hazard datasets of the given type, downloads associated
+        hdf5 files and turns them into a climada.hazard.Hazard object.
+
+        Parameters
+        ----------
+        hazard_type : str
+            Type of climada hazard.
+        dump_dir : str, optional
+            Directory where the files should be downoladed. Default: SYSTEM_DIR
+            If the directory is the SYSTEM_DIR, the eventual target directory is organized into
+            dump_dir > hazard_type > dataset name > version
+        max_datasets : int, optional
+            Download limit for datasets. If a query matches is matched by more datasets than this
+            number, a ValueError is raised. Setting it to 0 or a negative number inactivates the
+            limit. Default is 10.
+        **kwargs :
+            additional parameters passed on to get_datasets
+
+        Returns
+        -------
+        climada.hazard.Hazard
+            The combined hazard object
+        """
+        if 'data_type' in kwargs:
+            raise ValueError("data_type is already given as hazard_type")
+        if not hazard_type in HAZ_TYPES:
+            raise ValueError("Valid hazard types are a subset of CLIMADA hazard types."
+                             f" Currently these types are supported: {HAZ_TYPES}")
+        datasets = self.get_datasets(data_type=hazard_type, **kwargs)
+
+        self._check_datasets_for_concatenation(datasets, max_datasets)
+
+        return self.to_hazard(datasets, dump_dir)
+
+    def to_hazard(self, datasets, dump_dir=SYSTEM_DIR):
+        """Downloads hdf5 files belonging to the given datasets reads them into Hazards and
+        concatenates them into a single climada.Hazard object.
+
+        Parameters
+        ----------
+        datasets : list of DatasetInfo
+            Datasets to download and read into climada.Hazard objects.
+        dump_dir : str, optional
+            Directory where the files should be downoladed. Default: SYSTEM_DIR
+            If the directory is the SYSTEM_DIR, the eventual target directory is organized into
+            dump_dir > hazard_type > dataset name > version
+
+        Returns
+        -------
+        climada.hazard.Hazard
+            The combined hazard object
+        """
+        hazard_list = []
+        for dataset in datasets:
+            target_dir = self._organize_path(dataset, dump_dir) \
+                         if dump_dir == SYSTEM_DIR else dump_dir
+            for dsf in dataset.files:
+                if dsf.file_format == 'hdf5':
+                    hazard_file = self.download_file(target_dir, dsf)
+                    hazard = Hazard.from_hdf5(hazard_file)
+                    hazard_list.append(hazard)
+        if not hazard_list:
+            raise ValueError("no hazard files found in datasets")
+
+        hazard_concat = Hazard()
+        hazard_concat = hazard_concat.concat(hazard_list)
+        hazard_concat.sanitize_event_ids()
+        hazard.check()
+        return hazard_concat
+
+    def get_exposures(self, exposures_type, dump_dir=SYSTEM_DIR, max_datasets=10, **kwargs):
+        """Queries the data api for exposures datasets of the given type, downloads associated
+        hdf5 files and turns them into a climada.entity.exposures.Exposures object.
+
+        Parameters
+        ----------
+        hazard_type : str
+            Type of climada exposures.
+        dump_dir : str, optional
+            Directory where the files should be downoladed. Default: SYSTEM_DIR
+            If the directory is the SYSTEM_DIR, the eventual target directory is organized into
+            dump_dir > hazard_type > dataset name > version
+        max_datasets : int, optional
+            Download limit for datasets. If a query matches is matched by more datasets than this
+            number, a ValueError is raised. Setting it to 0 or a negative number inactivates the
+            limit. Default is 10.
+        **kwargs :
+            additional parameters passed on to `Client.get_datasets`
+
+        Returns
+        -------
+        climada.entity.exposures.Exposures
+            The combined exposures object
+        """
+        if 'data_type' in kwargs:
+            raise ValueError("data_type is already given as hazard_type")
+        if not exposures_type in EXP_TYPES:
+            raise ValueError("Valid exposures types are a subset of CLIMADA exposures types."
+                             f" Currently these types are supported: {EXP_TYPES}")
+        datasets = self.get_datasets(data_type=exposures_type, **kwargs)
+
+        self._check_datasets_for_concatenation(datasets, max_datasets)
+
+        return self.to_exposures(datasets, dump_dir)
+
+    def to_exposures(self, datasets, dump_dir=SYSTEM_DIR):
+        """Downloads hdf5 files belonging to the given datasets reads them into Exposures and
+        concatenates them into a single climada.Exposures object.
+
+        Parameters
+        ----------
+        datasets : list of DatasetInfo
+            Datasets to download and read into climada.Exposures objects.
+        dump_dir : str, optional
+            Directory where the files should be downoladed. Default: SYSTEM_DIR
+            If the directory is the SYSTEM_DIR, the eventual target directory is organized into
+            dump_dir > exposures_type > dataset name > version
+
+        Returns
+        -------
+        climada.entity.exposures.Exposures
+            The combined exposures object
+        """
+        exposures_list = []
+        for dataset in datasets:
+            target_dir = self._organize_path(dataset, dump_dir) \
+                         if dump_dir == SYSTEM_DIR else dump_dir
+            for dsf in dataset.files:
+                if dsf.file_format == 'hdf5':
+                    exposures_file = self.download_file(target_dir, dsf)
+                    exposures = Exposures.from_hdf5(exposures_file)
+                    exposures_list.append(exposures)
+        if not exposures_list:
+            raise ValueError("no exposures files found in datasets")
+
+        exposures_concat = Exposures()
+        exposures_concat = exposures_concat.concat(exposures_list)
+        exposures_concat.check()
+        return exposures_concat
+
+    def get_litpop_default(self, country=None, dump_dir=SYSTEM_DIR):
+        """Get a LitPop instance on a 150arcsec grid with the default parameters:
+        exponents = (1,1) and fin_mode = 'pc'.
+
+        Parameters
+        ----------
+        country : str or list, optional
+            List of country name or iso3 codes for which to create the LitPop object.
+            If None is given, a global LitPop instance is created. Defaut is None
+        dump_dir : str
+            directory where the files should be downoladed. Default: SYSTEM_DIR
+
+        Returns
+        -------
+        climada.entity.exposures.Exposures
+            default litpop Exposures object
+        """
+        properties = {
+            'exponents': '(1,1)',
+            'fin_mode': 'pc'
+        }
+        if country is None:
+            properties['geographical_scale'] = 'global'
+        elif isinstance(country, str):
+            properties['country_name'] = pycountry.countries.lookup(country).name
+        elif isinstance(country, list):
+            properties['country_name'] = [pycountry.countries.lookup(c).name for c in country]
+        else:
+            raise ValueError("country must be string or list of strings")
+        return self.get_exposures(exposures_type='litpop', dump_dir=dump_dir, properties=properties)
+
+    @staticmethod
+    def into_datasets_df(datasets):
+        """Convenience function providing a DataFrame of datasets with properties.
+
+        Parameters
+        ----------
+        datasets : list of DatasetInfo
+            e.g., return of get_datasets
+
+        Returns
+        -------
+        pandas.DataFrame
+            of datasets with properties as found in query by arguments
+        """
+        dsdf = pd.DataFrame(datasets)
+        ppdf = pd.DataFrame([ds.properties for ds in datasets])
+        dtdf = pd.DataFrame([pd.Series(dt) for dt in dsdf.data_type])
+
+        return dtdf.loc[:, [c for c in dtdf.columns if c not in ['description', 'properties']]].join(
+               dsdf.loc[:, [c for c in dsdf.columns if c not in ['data_type', 'properties', 'files']]]).join(
+               ppdf)
+
+    @staticmethod
+    def into_files_df(datasets):
+        """Convenience function providing a DataFrame of files aligned with the input datasets.
+
+        Parameters
+        ----------
+        datasets : list of DatasetInfo
+            e.g., return of get_datasets
+
+        Returns
+        -------
+        pandas.DataFrame
+            of the files' informations including dataset informations
+        """
+        return Client.into_datasets_df(datasets) \
+            .merge(pd.DataFrame([dsfile for ds in datasets for dsfile in ds.files]))

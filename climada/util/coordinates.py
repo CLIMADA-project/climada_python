@@ -31,7 +31,6 @@ import zipfile
 
 from cartopy.io import shapereader
 import dask.dataframe as dd
-from fiona.crs import from_epsg
 import geopandas as gpd
 import numpy as np
 import pandas as pd
@@ -64,7 +63,7 @@ LOGGER = logging.getLogger(__name__)
 NE_EPSG = 4326
 """Natural Earth CRS EPSG"""
 
-NE_CRS = from_epsg(NE_EPSG)
+NE_CRS = f"epsg:{NE_EPSG}"
 """Natural Earth CRS"""
 
 TMP_ELEVATION_FILE = SYSTEM_DIR.joinpath('tmp_elevation.tif')
@@ -496,7 +495,7 @@ def dist_to_coast(coord_lat, lon=None, signed=False):
     dist = np.empty(geom.shape[0])
     zones = utm_zones(geom.geometry.total_bounds)
     for izone, (epsg, bounds) in enumerate(zones):
-        to_crs = from_epsg(epsg)
+        to_crs = f"epsg:{epsg}"
         zone_mask = (
             (bounds[1] <= geom.geometry.y)
             & (geom.geometry.y <= bounds[3])
@@ -591,7 +590,7 @@ def get_land_geometry(country_names=None, extent=None, resolution=10):
     if (country_names is None) and (extent is None):
         LOGGER.info("Computing earth's land geometry ...")
         geom = list(reader.geometries())
-        geom = shapely.ops.cascaded_union(geom)
+        geom = shapely.ops.unary_union(geom)
 
     elif country_names:
         countries = list(reader.records())
@@ -599,7 +598,7 @@ def get_land_geometry(country_names=None, extent=None, resolution=10):
                 if (country.attributes['ISO_A3'] in country_names) or
                 (country.attributes['WB_A3'] in country_names) or
                 (country.attributes['ADM0_A3'] in country_names)]
-        geom = shapely.ops.cascaded_union(geom)
+        geom = shapely.ops.unary_union(geom)
 
     else:
         extent_poly = Polygon([(extent[0], extent[2]), (extent[0], extent[3]),
@@ -609,7 +608,7 @@ def get_land_geometry(country_names=None, extent=None, resolution=10):
             inter_poly = cntry_geom.intersection(extent_poly)
             if not inter_poly.is_empty:
                 geom.append(inter_poly)
-        geom = shapely.ops.cascaded_union(geom)
+        geom = shapely.ops.unary_union(geom)
     if not isinstance(geom, MultiPolygon):
         geom = MultiPolygon([geom])
     return geom
@@ -895,7 +894,7 @@ def assign_coordinates(coords, coords_to_assign, method="NN", distance="haversin
 
     if not coords.any():
         return np.array([])
-    elif not coords_to_assign.any():
+    if not coords_to_assign.any():
         return -np.ones(coords.shape[0]).astype(int)
     coords = coords.astype('float64')
     coords_to_assign = coords_to_assign.astype('float64')
@@ -1145,8 +1144,11 @@ def get_admin1_info(country_names):
 
     Parameters
     ----------
-    country_names : list
-        list with ISO3 names of countries, e.g. ['ZWE', 'GBR', 'VNM', 'UZB']
+    country_names : list or str
+        string or list with strings, either ISO code or names of countries, e.g.:
+        ['ZWE', 'GBR', 'VNM', 'UZB', 'Kenya', '051']
+        For example, for Armenia, the following inputs work:
+            'Armenia', 'ARM', 'AM', '051', 51
 
     Returns
     -------
@@ -1155,23 +1157,82 @@ def get_admin1_info(country_names):
     admin1_shapes : dict
         Shape according to Natural Earth.
     """
-
-    if isinstance(country_names, str):
+    if isinstance(country_names, (str, int, float)):
         country_names = [country_names]
+    if not isinstance(country_names, list):
+        LOGGER.error("country_names needs to be of type list, str, int or float")
+        raise TypeError("Invalid type for input parameter 'country_names'")
     admin1_file = shapereader.natural_earth(resolution='10m',
                                             category='cultural',
                                             name='admin_1_states_provinces')
     admin1_recs = shapefile.Reader(admin1_file)
     admin1_info = dict()
     admin1_shapes = dict()
-    for iso3 in country_names:
-        admin1_info[iso3] = list()
-        admin1_shapes[iso3] = list()
+    for country in country_names:
+        if isinstance(country, (int, float)):
+            country = f'{int(country):03d}' # transform numerric code to str
+        country = pycountry.countries.lookup(country).alpha_3 # get iso3a code
+        admin1_info[country] = list()
+        admin1_shapes[country] = list()
         for rec, rec_shp in zip(admin1_recs.records(), admin1_recs.shapes()):
-            if rec['adm0_a3'] == iso3:
-                admin1_info[iso3].append(rec)
-                admin1_shapes[iso3].append(rec_shp)
+            if rec['adm0_a3'] == country:
+                admin1_info[country].append(rec)
+                admin1_shapes[country].append(rec_shp)
+        if len(admin1_info[country]) == 0:
+            raise LookupError(f'natural_earth records are empty for country {country}')
     return admin1_info, admin1_shapes
+
+def get_admin1_geometries(countries):
+    """
+    return geometries, names and codes of admin 1 regions in given countries
+    in a GeoDataFrame. If no admin 1 regions are defined, all regions in countries
+    are returned.
+
+    Parameters
+    ----------
+    countries : list or str or int
+        string or list containing strings, either ISO3 code or ISO2 code or names
+        names of countries, e.g.:
+        ['ZWE', 'GBR', 'VNM', 'UZB', 'Kenya', '051']
+        For example, for Armenia, the following inputs work:
+            'Armenia', 'ARM', 'AM', '051', 51
+
+    Returns
+    -------
+    gdf : GeoDataFrame
+        geopandas.GeoDataFrame instance with columns:
+            "admin1_name" : str
+                name of admin 1 region
+            "iso_3166_2" : str
+                iso code of admin 1 region
+            "geometry" : Polygon or MultiPolygon
+                shape of admin 1 region as shapely geometry object
+            "iso_3n" : str
+                numerical iso 3 code of country (admin 0)
+            "iso_3a" : str
+                alphabetical iso 3 code of country (admin 0)
+    """
+    # init empty GeoDataFrame:
+    gdf = gpd.GeoDataFrame(
+        columns = ("admin1_name", "iso_3166_2", "geometry", "iso_3n", "iso_3a"))
+
+    # extract admin 1 infos and shapes for each country:
+    admin1_info, admin1_shapes = get_admin1_info(countries)
+    for country in admin1_info.keys():
+        # fill admin 1 region names and codes to GDF for single country:
+        gdf_tmp = gpd.GeoDataFrame(columns = gdf.columns)
+        gdf_tmp.admin1_name = [record['name'] for record in admin1_info[country]]
+        gdf_tmp.iso_3166_2 = [record['iso_3166_2'] for record in admin1_info[country]]
+        # With this initiation of GeoSeries in a list comprehension,
+        # the ability of geopandas to convert shapefile.Shape to (Multi)Polygon is exploited:
+        geoseries = gpd.GeoSeries([gpd.GeoSeries(shape).values[0]
+                                   for shape in admin1_shapes[country]])
+        gdf_tmp.geometry = list(geoseries)
+        # fill columns with country identifiers (admin 0):
+        gdf_tmp.iso_3n = pycountry.countries.lookup(country).numeric
+        gdf_tmp.iso_3a = country
+        gdf = gdf.append(gdf_tmp, ignore_index=True)
+    return gdf
 
 def get_resolution_1d(coords, min_resol=1.0e-8):
     """Compute resolution of scalar grid
@@ -1296,7 +1357,15 @@ def to_crs_user_input(crs_obj):
     ValueError
         if type(crs_obj) has the wrong type
     """
-    if type(crs_obj) in [dict, int]:
+    def _is_deprecated_init_crs(crs_dict):
+        return (isinstance(crs_dict, dict)
+                and "init" in crs_dict
+                and all(k in ["init", "no_defs"] for k in crs_dict.keys())
+                and crs_dict.get("no_defs", True) == True)
+
+    if isinstance(crs_obj, (dict, int)):
+        if _is_deprecated_init_crs(crs_obj):
+            return crs_obj['init']
         return crs_obj
 
     crs_string = crs_obj.decode() if isinstance(crs_obj, bytes) else crs_obj
@@ -1305,7 +1374,10 @@ def to_crs_user_input(crs_obj):
         raise ValueError(f"crs has unhandled data set type: {type(crs_string)}")
 
     if crs_string[0] == '{':
-        return ast.literal_eval(crs_string)
+        crs_dict = ast.literal_eval(crs_string)
+        if _is_deprecated_init_crs(crs_dict):
+            return crs_dict['init']
+        return crs_dict
 
     return crs_string
 
@@ -1789,9 +1861,10 @@ def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, crs=DEF
     Returns
     -------
     data : np.array
-        2d array containing the raster values.
-    transform : affine.Affine
-        Affine transform defining the raster coordinates.
+        3d array containing the raster values. The first dimension has the same size as `val_names`
+        and represents the raster bands.
+    meta : dict
+        Dictionary with 'crs', 'height', 'width' and 'transform' attributes.
     """
     if not val_names:
         val_names = ['value']
@@ -1817,11 +1890,14 @@ def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, crs=DEF
     df_poly.set_crs(crs if crs else points_df.crs if points_df.crs else DEF_CRS, inplace=True)
 
     # renormalize longitude if necessary
-    if df_poly.crs == DEF_CRS:
+    if equal_crs(df_poly.crs, DEF_CRS):
         xmin, ymin, xmax, ymax = latlon_bounds(points_df.latitude.values,
                                                points_df.longitude.values)
         x_mid = 0.5 * (xmin + xmax)
-        df_poly = df_poly.to_crs({"proj": "longlat", "lon_wrap": x_mid})
+        # we don't really change the CRS when rewrapping, so we reset the CRS attribute afterwards
+        df_poly = df_poly \
+            .to_crs({"proj": "longlat", "lon_wrap": x_mid}) \
+            .set_crs(DEF_CRS, allow_override=True)
     else:
         xmin, ymin, xmax, ymax = (points_df.longitude.min(), points_df.latitude.min(),
                                   points_df.longitude.max(), points_df.latitude.max())
@@ -2116,13 +2192,13 @@ def country_iso2faocode(input_iso):
 
     Parameters
     ----------
-    input_iso : int or array
-        ISO numeric-3 codes of countries (or single code)
+    input_iso : iterable of int
+        ISO numeric-3 code(s) of country/countries
 
     Returns
     -------
-    output_faocode : int or array
-        FAO country codes of countries (or single code)
+    output_faocode : numpy.array
+        FAO country code(s) of country/countries
     """
     # load relation between ISO numeric-3 code and FAO country code
     iso_list, faocode_list = fao_code_def()

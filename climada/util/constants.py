@@ -37,7 +37,9 @@ __all__ = ['SYSTEM_DIR',
            'TC_ANDREW_FL',
            'HAZ_DEMO_H5',
            'EXP_DEMO_H5',
-           'WS_DEMO_NC']
+           'WS_DEMO_NC',
+           'TEST_UNC_OUTPUT_IMPACT',
+           'TEST_UNC_OUTPUT_COSTBEN']
 
 # pylint: disable=unused-import
 # without importing numpy ahead of fiona the debugger may run into an error
@@ -126,6 +128,10 @@ EXP_DEMO_H5 = DEMO_DIR.joinpath('exp_demo_today.h5')
 TC_ANDREW_FL = DEMO_DIR.joinpath('ibtracs_global_intp-None_1992230N11325.csv')
 """Tropical cyclone Andrew in Florida"""
 
+TEST_UNC_OUTPUT_IMPACT = 'test_unc_output_impact'
+"""Demo uncertainty impact output"""
+TEST_UNC_OUTPUT_COSTBEN = 'test_unc_output_costben'
+"""Demo uncertainty costben output"""
 
 ISIMIP_NATID_TO_ISO = [
     '', 'ABW', 'AFG', 'AGO', 'AIA', 'ALB', 'AND', 'ANT', 'ARE', 'ARG', 'ARM',
@@ -158,6 +164,8 @@ NONISO_REGIONS = [
     dict(name="Akrotiri", alpha_2="XA", alpha_3="XXA", numeric="901"),
     dict(name="Baikonur", alpha_2="XB", alpha_3="XXB", numeric="902"),
     dict(name="Bajo Nuevo Bank", alpha_2="XJ", alpha_3="XXJ", numeric="903"),
+    dict(name="Bir Tawil", alpha_2="XQ", alpha_3="XXQ", numeric="919"),
+    dict(name="Brazilian I.", alpha_2="XE", alpha_3="XXE", numeric="909"),
     dict(name="Clipperton I.", alpha_2="XC", alpha_3="XXC", numeric="904"),
     dict(name="Coral Sea Is.", alpha_2="XO", alpha_3="XXO", numeric="905"),
     dict(name="Cyprus U.N. Buffer Zone", alpha_2="XU", alpha_3="XXU", numeric="906"),
@@ -171,6 +179,7 @@ NONISO_REGIONS = [
     dict(name="Serranilla Bank", alpha_2="XR", alpha_3="XXR", numeric="913"),
     dict(name="Siachen Glacier", alpha_2="XH", alpha_3="XXH", numeric="914"),
     dict(name="Somaliland", alpha_2="XM", alpha_3="XXM", numeric="915"),
+    dict(name="Southern Patagonian Ice Field", alpha_2="XN", alpha_3="XXN", numeric="918"),
     dict(name="Spratly Is.", alpha_2="XP", alpha_3="XXP", numeric="916"),
     dict(name="USNB Guantanamo Bay", alpha_2="XG", alpha_3="XXG", numeric="917"),
 ]

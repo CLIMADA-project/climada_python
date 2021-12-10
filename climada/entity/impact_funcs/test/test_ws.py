@@ -29,8 +29,7 @@ class TestStormEuropeDefault(unittest.TestCase):
 
     def test_default_values_pass(self):
         """Compute mdr interpolating values."""
-        imp_fun = ImpfStormEurope()
-        imp_fun.set_schwierz()
+        imp_fun = ImpfStormEurope.from_schwierz()
         self.assertEqual(imp_fun.name, 'Schwierz 2010')
         self.assertEqual(imp_fun.haz_type, 'WS')
         self.assertEqual(imp_fun.id, 1)
@@ -39,9 +38,8 @@ class TestStormEuropeDefault(unittest.TestCase):
         self.assertTrue(np.array_equal(imp_fun.paa[4:8], np.array([0.03921, 0.10707, 0.25357, 0.48869])))
         self.assertTrue(np.array_equal(imp_fun.mdd[4:8], np.array([0.00367253, 0.00749977, 0.01263556, 0.01849639])))
 
-        imp_fun2 = ImpfStormEurope()
-        imp_fun2.set_welker()
-        self.assertEqual(imp_fun2.name, 'Welker 2020')
+        imp_fun2 = ImpfStormEurope.from_welker()
+        self.assertEqual(imp_fun2.name, 'Welker 2021')
         self.assertEqual(imp_fun2.haz_type, 'WS')
         self.assertEqual(imp_fun2.id, 1)
         self.assertEqual(imp_fun2.intensity_unit, 'm/s')

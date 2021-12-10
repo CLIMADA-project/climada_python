@@ -401,7 +401,7 @@ def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
         array_sub.
     cat_name : dict, optional
         Categories name for the colorbar labels.
-        Keys are all the unique values in array_cub, values are their labels.
+        Keys are all the unique values in array_sub, values are their labels.
         The default is labels = unique values.
     adapt_fontsize : bool, optional
         If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
@@ -450,8 +450,9 @@ def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
     kwargs['vmax'] = array_sub_n - 0.5
 
     # #create the axes
-    axes = _plot_scattered_data("scatter", array_sub_cat, geo_coord, var_name, title, adapt_fontsize=adapt_fontsize,
-                                **kwargs)
+    axes = _plot_scattered_data(
+        "scatter", array_sub_cat, geo_coord, var_name, title,
+        adapt_fontsize=adapt_fontsize, **kwargs)
 
     #add colorbar labels
     if cat_name is None:
@@ -732,7 +733,7 @@ def get_transformation(crs_in):
         crs_epsg = ccrs.PlateCarree()
 
     try:
-        units = crs_epsg.proj4_params['units']
+        units = crs_epsg.to_dict()['units']
     except KeyError:
         units = '°'
     return crs_epsg, units

@@ -220,8 +220,7 @@ class Measure():
 
         LOGGER.debug('Setting new hazard %s', self.hazard_set)
         from climada.hazard.base import Hazard
-        new_haz = Hazard(hazard.tag.haz_type)
-        new_haz.read_hdf5(self.hazard_set)
+        new_haz = Hazard.from_hdf5(self.hazard_set)
         new_haz.check()
         return new_haz
 
@@ -244,8 +243,7 @@ class Measure():
 
         if isinstance(self.exposures_set, (str, Path)):
             LOGGER.debug('Setting new exposures %s', self.exposures_set)
-            new_exp = Exposures()
-            new_exp.read_hdf5(self.exposures_set)
+            new_exp = Exposures.from_hdf5(self.exposures_set)
             new_exp.check()
         elif isinstance(self.exposures_set, Exposures):
             LOGGER.debug('Setting new exposures. ')

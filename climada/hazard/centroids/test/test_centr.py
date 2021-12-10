@@ -38,8 +38,7 @@ class TestCentroidsReader(unittest.TestCase):
 
     def test_mat_pass(self):
         """Read a centroid mat file correctly."""
-        centroids = Centroids()
-        centroids.read_mat(HAZ_TEST_MAT)
+        centroids = Centroids.from_mat(HAZ_TEST_MAT)
 
         n_centroids = 100
         self.assertEqual(centroids.coord.shape, (n_centroids, 2))
@@ -50,16 +49,14 @@ class TestCentroidsReader(unittest.TestCase):
 
     def test_mat_global_pass(self):
         """Test read GLB_CENTROIDS_MAT"""
-        centroids = Centroids()
-        centroids.read_mat(GLB_CENTROIDS_MAT)
+        centroids = Centroids.from_mat(GLB_CENTROIDS_MAT)
 
         self.assertEqual(centroids.region_id[1062443], 35)
         self.assertEqual(centroids.region_id[170825], 28)
 
     def test_centroid_pass(self):
         """Read a centroid excel file correctly."""
-        centroids = Centroids()
-        centroids.read_excel(HAZ_TEMPLATE_XLS)
+        centroids = Centroids.from_excel(HAZ_TEMPLATE_XLS)
 
         n_centroids = 45
         self.assertEqual(centroids.coord.shape[0], n_centroids)
@@ -152,14 +149,9 @@ class TestCentroidsMethods(unittest.TestCase):
 
 
     def test_union_meta(self):
-        cent1 = Centroids()
-        cent1.set_raster_from_pnt_bounds((-1, -1, 0, 0), res=1)
-
-        cent2 = Centroids()
-        cent2.set_raster_from_pnt_bounds((0, 0, 1, 1), res=1)
-
-        cent3 = Centroids()
-        cent3.lat, cent3.lon = np.array([1]), np.array([1])
+        cent1 = Centroids.from_pnt_bounds((-1, -1, 0, 0), res=1)
+        cent2 = Centroids.from_pnt_bounds((0, 0, 1, 1), res=1)
+        cent3 = Centroids.from_lat_lon(np.array([1]), np.array([1]))
 
         cent = cent1.union(cent2)
         np.testing.assert_array_equal(cent.lat, [0,  0, -1, -1,  1,  1,  0])
