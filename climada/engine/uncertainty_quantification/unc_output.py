@@ -570,9 +570,9 @@ class UncOutput():
                     orig_plot = np.log10(orig_val)
                 else:
                     orig_plot = orig_val
-                orig_plot = u_cmv(orig_plot, m_unit)[0]
+                [orig_plot] = u_cmv(orig_plot, m_unit)
                 ax.axvline(orig_plot, color='green', linestyle='dotted', linewidth=2,
-                           label="orig=%.2f%s" %(orig_val, m_unit))
+                           label="orig=%.2f%s" %(orig_plot, m_unit))
             if log:
                 std_m, std_p = np.log10(avg - std), np.log10(avg + std)
             else:
