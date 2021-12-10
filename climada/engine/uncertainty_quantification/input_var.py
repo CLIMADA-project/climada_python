@@ -367,7 +367,7 @@ class InputVar():
             Dictionary of the impact functions affected by uncertainty.
             Keys are hazard types (str), values are a list of impact
             function id (int).
-            The default is {'TC': [1]}
+            Default is impsf_set.get_ids() i.e. all impact functions in the set
 
         Returns
         -------
@@ -383,7 +383,7 @@ class InputVar():
         if bounds_impfi is None:
             kwargs['IFi'] = None
         if haz_id_dict is None:
-            haz_id_dict = {'TC': [1]}
+            haz_id_dict = impf_set.get_ids()
         return InputVar(
             partial(
                 _impfset_uncfunc, impf_set=impf_set, haz_id_dict=haz_id_dict,
