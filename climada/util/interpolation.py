@@ -194,8 +194,7 @@ def index_nn_haversine(centroids, coordinates, threshold=THRESHOLD):
 
 
 def index_nn_euclidian(centroids, coordinates, threshold=THRESHOLD):
-    """Compute the neareast centroid for each coordinate using a Ball
-    tree with haversine distance.
+    """Compute the neareast centroid for each coordinate using a k-d tree.
 
     Parameters
     ----------
