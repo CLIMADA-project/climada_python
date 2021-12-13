@@ -21,7 +21,6 @@ Define configuration parameters.
 
 __all__ = [
     'CONFIG',
-    'setup_logging',
 ]
 
 import sys
@@ -31,16 +30,8 @@ import logging
 from pathlib import Path
 
 
-def remove_handlers(logger):
-    """Remove logger handlers."""
-    if logger.hasHandlers():
-        for handler in logger.handlers:
-            logger.removeHandler(handler)
-
 LOGGER = logging.getLogger('climada')
-LOGGER.setLevel(logging.DEBUG)
 LOGGER.propagate = False
-remove_handlers(LOGGER)
 FORMATTER = logging.Formatter(
     "%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 CONSOLE = logging.StreamHandler(stream=sys.stdout)
@@ -48,18 +39,17 @@ CONSOLE.setFormatter(FORMATTER)
 LOGGER.addHandler(CONSOLE)
 
 
-def setup_logging(log_level='DEBUG'):
-    """Setup logging configuration"""
-    remove_handlers(LOGGER)
-    LOGGER.propagate = False
-    LOGGER.setLevel(getattr(logging, log_level))
-    LOGGER.addHandler(CONSOLE)
-
-
 class Config():
     """Convenience Class. A Config object is a slow JSON object like nested dictonary who's values
     can be accessed by their names right away. E.g.: `a.b.c.str()` instead of `a['b']['c']`
     """
+
+    SOURCE_DIR = None
+    """If a config value is a path and the root directory is given as '...' it will be replaced by
+    the path to the installation directory.
+    Like this it's possible to refer to e.g. test files in the climada sources.
+    """
+
     def __str__(self):
         # pylint: disable=bare-except,multiple-statements
         try: return self.str()
@@ -230,10 +220,17 @@ class Config():
         Exception
             if the value is not a string or if the directory cannot be created
         """
-        path = Path(self.str(index)).expanduser()
+        path = self._expand_source_dir(Path(self.str(index)).expanduser())
         if create:
             path.mkdir(parents=True, exist_ok=True)
         return path.absolute()
+
+    @classmethod
+    def _expand_source_dir(cls, path):
+        parts = path.parts
+        if parts[0] == '...':
+            return Path(cls.SOURCE_DIR, *parts[1:])
+        return Path(*parts)
 
     @classmethod
     def _objectify_dict(cls, dct, root):
@@ -321,3 +318,5 @@ CONFIG = Config.from_dict(_fetch_conf([
     Path(Path.home(), '.config'),  # ~/.config directory
     Path.cwd(),  # current working directory
 ], CONFIG_NAME))
+Config.SOURCE_DIR = SOURCE_DIR
+LOGGER.setLevel(getattr(logging, CONFIG.log_level.str()))

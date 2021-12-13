@@ -30,9 +30,11 @@ from climada.entity.entity_def import Entity
 from climada.hazard.base import Hazard
 from climada.engine.impact import Impact
 from climada.util.constants import ENT_DEMO_TODAY, DEF_CRS
+import climada.util.coordinates as u_coord
 import climada.hazard.test as hazard_test
+import climada.engine.test as engine_test
 
-DATA_FOLDER = CONFIG.engine.test_data.dir()
+DATA_FOLDER = Path(engine_test.__file__).parent.joinpath('data')
 HAZ_TEST_MAT = Path(hazard_test.__file__).parent.joinpath('data', 'atl_prob_no_name.mat')
 
 class TestFreqCurve(unittest.TestCase):
@@ -115,13 +117,12 @@ class TestOneExposure(unittest.TestCase):
         """Test result against reference value"""
         # Read demo entity values
         # Set the entity default file to the demo one
-        ent = Entity()
-        ent.read_excel(ENT_DEMO_TODAY)
+        ent = Entity.from_excel(ENT_DEMO_TODAY)
         ent.check()
 
         # Read default hazard file
-        hazard = Hazard('TC')
-        hazard.read_mat(HAZ_TEST_MAT)
+        hazard = Hazard.from_mat(HAZ_TEST_MAT)
+
         # Create impact object
         impact = Impact()
         impact.at_event = np.zeros(hazard.intensity.shape[0])
@@ -172,13 +173,12 @@ class TestCalc(unittest.TestCase):
     def test_ref_value_pass(self):
         """Test result against reference value"""
         # Read default entity values
-        ent = Entity()
-        ent.read_excel(ENT_DEMO_TODAY)
+        ent = Entity.from_excel(ENT_DEMO_TODAY)
         ent.check()
 
         # Read default hazard file
-        hazard = Hazard('TC')
-        hazard.read_mat(HAZ_TEST_MAT)
+        hazard = Hazard.from_mat(HAZ_TEST_MAT)
+
         # Create impact object
         impact = Impact()
 
@@ -215,13 +215,12 @@ class TestCalc(unittest.TestCase):
     def test_calc_imp_mat_pass(self):
         """Test save imp_mat"""
         # Read default entity values
-        ent = Entity()
-        ent.read_excel(ENT_DEMO_TODAY)
+        ent = Entity.from_excel(ENT_DEMO_TODAY)
         ent.check()
 
         # Read default hazard file
-        hazard = Hazard('TC')
-        hazard.read_mat(HAZ_TEST_MAT)
+        hazard = Hazard.from_mat(HAZ_TEST_MAT)
+
         # Create impact object
         impact = Impact()
 
@@ -241,16 +240,15 @@ class TestCalc(unittest.TestCase):
 
     def test_calc_impf_pass(self):
         """Execute when no impf_HAZ present, but only impf_"""
-        ent = Entity()
-        ent.read_excel(ENT_DEMO_TODAY)
+        ent = Entity.from_excel(ENT_DEMO_TODAY)
         self.assertTrue('impf_TC' in ent.exposures.gdf.columns)
         ent.exposures.gdf.rename(columns={'impf_TC': 'impf_'}, inplace=True)
         self.assertFalse('impf_TC' in ent.exposures.gdf.columns)
         ent.check()
 
         # Read default hazard file
-        hazard = Hazard('TC')
-        hazard.read_mat(HAZ_TEST_MAT)
+        hazard = Hazard.from_mat(HAZ_TEST_MAT)
+
         # Create impact object
         impact = Impact()
         impact.calc(ent.exposures, ent.impact_funcs, hazard)
@@ -363,8 +361,7 @@ class TestIO(unittest.TestCase):
         file_name = DATA_FOLDER.joinpath('test.csv')
         imp_write.write_csv(file_name)
 
-        imp_read = Impact()
-        imp_read.read_csv(file_name)
+        imp_read = Impact.from_csv(file_name)
         np.testing.assert_array_equal(imp_write.event_id, imp_read.event_id)
         np.testing.assert_array_equal(imp_write.date, imp_read.date)
         np.testing.assert_array_equal(imp_write.coord_exp, imp_read.coord_exp)
@@ -402,8 +399,7 @@ class TestIO(unittest.TestCase):
         file_name = DATA_FOLDER.joinpath('test.csv')
         imp_write.write_csv(file_name)
 
-        imp_read = Impact()
-        imp_read.read_csv(file_name)
+        imp_read = Impact.from_csv(file_name)
         np.testing.assert_array_equal(imp_write.event_id, imp_read.event_id)
         np.testing.assert_array_equal(imp_write.date, imp_read.date)
         np.testing.assert_array_equal(imp_write.coord_exp, imp_read.coord_exp)
@@ -417,22 +413,20 @@ class TestIO(unittest.TestCase):
             0, len([i for i, j in zip(imp_write.event_name, imp_read.event_name) if i != j]))
         self.assertIsInstance(imp_read.crs, str)
 
-    def test_write_read_excel_pass(self):
+    def test_excel_io(self):
         """Test write and read in excel"""
-        ent = Entity()
-        ent.read_excel(ENT_DEMO_TODAY)
+        ent = Entity.from_excel(ENT_DEMO_TODAY)
         ent.check()
 
-        hazard = Hazard('TC')
-        hazard.read_mat(HAZ_TEST_MAT)
+        hazard = Hazard.from_mat(HAZ_TEST_MAT)
+
         imp_write = Impact()
         ent.exposures.assign_centroids(hazard)
         imp_write.calc(ent.exposures, ent.impact_funcs, hazard)
         file_name = DATA_FOLDER.joinpath('test.xlsx')
         imp_write.write_excel(file_name)
 
-        imp_read = Impact()
-        imp_read.read_excel(file_name)
+        imp_read = Impact.from_excel(file_name)
 
         np.testing.assert_array_equal(imp_write.event_id, imp_read.event_id)
         np.testing.assert_array_equal(imp_write.date, imp_read.date)
@@ -470,13 +464,12 @@ class TestRPmatrix(unittest.TestCase):
     def test_local_exceedance_imp_pass(self):
         """Test calc local impacts per return period"""
         # Read default entity values
-        ent = Entity()
-        ent.read_excel(ENT_DEMO_TODAY)
+        ent = Entity.from_excel(ENT_DEMO_TODAY)
         ent.check()
 
         # Read default hazard file
-        hazard = Hazard('TC')
-        hazard.read_mat(HAZ_TEST_MAT)
+        hazard = Hazard.from_mat(HAZ_TEST_MAT)
+
         # Create impact object
         impact = Impact()
         # Assign centroids to exposures
@@ -563,7 +556,7 @@ class TestSelect(unittest.TestCase):
         imp = dummy_impact()
         sel_imp = imp.select(event_ids=[10, 11, 12])
 
-        self.assertEqual(sel_imp.crs, imp.crs)
+        self.assertTrue(u_coord.equal_crs(sel_imp.crs, imp.crs))
         self.assertEqual(sel_imp.unit, imp.unit)
 
         np.testing.assert_array_equal(sel_imp.event_id, [10, 11, 12])
@@ -588,7 +581,7 @@ class TestSelect(unittest.TestCase):
         imp = dummy_impact()
         sel_imp = imp.select(event_names=[0, 1, 'two'])
 
-        self.assertEqual(sel_imp.crs, imp.crs)
+        self.assertTrue(u_coord.equal_crs(sel_imp.crs, imp.crs))
         self.assertEqual(sel_imp.unit, imp.unit)
 
         np.testing.assert_array_equal(sel_imp.event_id, [10, 11, 12])
@@ -613,7 +606,7 @@ class TestSelect(unittest.TestCase):
         imp = dummy_impact()
         sel_imp = imp.select(dates=(0, 2))
 
-        self.assertEqual(sel_imp.crs, imp.crs)
+        self.assertTrue(u_coord.equal_crs(sel_imp.crs, imp.crs))
         self.assertEqual(sel_imp.unit, imp.unit)
 
         np.testing.assert_array_equal(sel_imp.event_id, [10, 11, 12])
@@ -638,7 +631,7 @@ class TestSelect(unittest.TestCase):
         imp = dummy_impact()
         sel_imp = imp.select(coord_exp=np.array([1,2]))
 
-        self.assertEqual(sel_imp.crs, imp.crs)
+        self.assertTrue(u_coord.equal_crs(sel_imp.crs, imp.crs))
         self.assertEqual(sel_imp.unit, imp.unit)
 
         np.testing.assert_array_equal(sel_imp.event_id, imp.event_id)
@@ -661,13 +654,12 @@ class TestSelect(unittest.TestCase):
         """ test select same impact with event name, id and date """
 
         # Read default entity values
-        ent = Entity()
-        ent.read_excel(ENT_DEMO_TODAY)
+        ent = Entity.from_excel(ENT_DEMO_TODAY)
         ent.check()
 
         # Read default hazard file
-        hazard = Hazard('TC')
-        hazard.read_mat(HAZ_TEST_MAT)
+        hazard = Hazard.from_mat(HAZ_TEST_MAT)
+
         # Create impact object
         imp = Impact()
 
@@ -682,7 +674,7 @@ class TestSelect(unittest.TestCase):
                              dates=(min(imp.date), max(imp.date))
                              )
 
-        self.assertEqual(sel_imp.crs, imp.crs)
+        self.assertTrue(u_coord.equal_crs(sel_imp.crs, imp.crs))
         self.assertEqual(sel_imp.unit, imp.unit)
 
         np.testing.assert_array_equal(sel_imp.event_id, imp.event_id)
@@ -711,7 +703,7 @@ class TestSelect(unittest.TestCase):
 
         self.assertEqual(sel_imp.new_per_ev, ['a', 'b', 'c'])
 
-        self.assertEqual(sel_imp.crs, imp.crs)
+        self.assertTrue(u_coord.equal_crs(sel_imp.crs, imp.crs))
         self.assertEqual(sel_imp.unit, imp.unit)
 
         np.testing.assert_array_equal(sel_imp.event_id, [10, 11, 12])
@@ -736,7 +728,7 @@ class TestSelect(unittest.TestCase):
         sel_imp = imp.select(event_ids=[100])
         self.assertIsInstance(sel_imp, Impact)
         self.assertIsInstance(sel_imp.imp_mat, sparse.csr_matrix)
-        self.assertEqual(sel_imp.crs, imp.crs)
+        self.assertTrue(u_coord.equal_crs(sel_imp.crs, imp.crs))
         self.assertEqual(sel_imp.unit, imp.unit)
         self.assertEqual(sel_imp.event_id.size, 0)
         self.assertEqual(len(sel_imp.event_name), 0)
@@ -752,7 +744,7 @@ class TestSelect(unittest.TestCase):
         imp = dummy_impact()
         sel_imp = imp.select(event_ids=[0], event_names=[1, 'two'], dates=(0, 2))
 
-        self.assertEqual(sel_imp.crs, imp.crs)
+        self.assertTrue(u_coord.equal_crs(sel_imp.crs, imp.crs))
         self.assertEqual(sel_imp.unit, imp.unit)
 
         np.testing.assert_array_equal(sel_imp.event_id, [10, 11, 12])
@@ -787,7 +779,7 @@ class TestSelect(unittest.TestCase):
         np.testing.assert_array_equal(imp.eai_exp, exp.gdf['value'])
         np.testing.assert_array_equal(imp.coord_exp[:, 0], exp.gdf['latitude'])
         np.testing.assert_array_equal(imp.coord_exp[:, 1], exp.gdf['longitude'])
-        self.assertEqual(exp.crs, imp.crs)
+        self.assertTrue(u_coord.equal_crs(exp.crs, imp.crs))
         self.assertEqual(exp.value_unit, imp.unit)
         self.assertEqual(exp.ref_year, 0)
 
@@ -800,7 +792,7 @@ class TestSelect(unittest.TestCase):
         np.testing.assert_array_equal(imp.imp_mat[1].todense().A1, exp.gdf['value'])
         np.testing.assert_array_equal(imp.coord_exp[:, 0], exp.gdf['latitude'])
         np.testing.assert_array_equal(imp.coord_exp[:, 1], exp.gdf['longitude'])
-        self.assertEqual(exp.crs, imp.crs)
+        self.assertTrue(u_coord.equal_crs(exp.crs, imp.crs))
         self.assertEqual(exp.value_unit, imp.unit)
         self.assertEqual(exp.ref_year, 0)
 
