@@ -81,14 +81,22 @@ class DataTypeInfo():
     data_type:str
     data_type_group:str
     description:str
-    properties:list = None
+    mandatory_properties:list = None
+    optional_properties:list = None
+
+
+@dataclass
+class DataTypeShortInfo():
+    """data_type essentials from CLIMADA data API."""
+    data_type:str
+    data_type_group:str
 
 
 @dataclass
 class DatasetInfo():
     """dataset data from CLIMADA data API."""
     uuid:str
-    data_type:DataTypeInfo
+    data_type:DataTypeShortInfo
     name:str
     version:str
     status:str
@@ -114,7 +122,8 @@ class DatasetInfo():
         DatasetInfo
         """
         dataset = DatasetInfo(**jsono)
-        dataset.data_type = DataTypeInfo(**dataset.data_type)
+        dataset.data_type = DataTypeShortInfo(data_type=dataset.data_type['data_type'],
+                                              data_type_group=dataset.data_type['data_type_group'])
         dataset.files = [FileInfo(uuid=dataset.uuid, **filo) for filo in dataset.files]
         return dataset
 
@@ -163,6 +172,7 @@ class Client():
     """Python wrapper around REST calls to the CLIMADA data API server.
     """
     MAX_WAITING_PERIOD = 6
+    UNLIMITED = 100000
 
     class AmbiguousResult(Exception):
         """Custom Exception for Non-Unique Query Result"""
@@ -177,7 +187,7 @@ class Client():
         Default values are 'climada.ethz.ch' and 8096 respectively.
         """
         self.headers = {"accept": "application/json"}
-        self.host = CONFIG.data_api.host.str().rstrip("/")
+        self.url = CONFIG.data_api.url.str().rstrip("/")
         self.chunk_size = CONFIG.data_api.chunk_size.int()
 
     @staticmethod
@@ -218,7 +228,7 @@ class Client():
             pdf = pdf[pdf[prop].isin(selection)]
         return [datasets[i] for i in pdf.index]
 
-    def get_datasets(self, data_type=None, name=None, version=None, properties=None,
+    def list_dataset_infos(self, data_type=None, name=None, version=None, properties=None,
                      status='active'):
         """Find all datasets matching the given parameters.
 
@@ -241,12 +251,13 @@ class Client():
         -------
         list of DatasetInfo
         """
-        url = f'{self.host}/rest/datasets'
+        url = f'{self.url}/dataset'
         params = {
             'data_type': data_type,
             'name': name,
             'version': version,
             'status': '' if status is None else status,
+            'limit': Client.UNLIMITED,
         }
 
         if properties:
@@ -259,11 +270,11 @@ class Client():
 
         datasets = [DatasetInfo.from_json(ds) for ds in Client._request_200(url, params=params)]
 
-        if multi_props:
+        if datasets and multi_props:
             return self._filter_datasets(datasets, multi_props)
         return datasets
 
-    def get_dataset(self, data_type=None, name=None, version=None, properties=None,
+    def get_dataset_info(self, data_type=None, name=None, version=None, properties=None,
                     status=None):
         """Find the one dataset that matches the given parameters.
 
@@ -293,7 +304,7 @@ class Client():
         NoResult
             when there is no dataset matching the search parameters
         """
-        jarr = self.get_datasets(data_type=data_type, name=name, version=version,
+        jarr = self.list_dataset_infos(data_type=data_type, name=name, version=version,
                                  properties=properties, status=status)
         if len(jarr) > 1:
             raise Client.AmbiguousResult("there are several datasets meeting the requirements:"
@@ -302,8 +313,8 @@ class Client():
             raise Client.NoResult("there is no dataset meeting the requirements")
         return jarr[0]
 
-    def get_dataset_by_uuid(self, uuid):
-        """Returns the data from 'https://climada/rest/dataset/{uuid}' as DatasetInfo object.
+    def get_dataset_info_by_uuid(self, uuid):
+        """Returns the data from 'https://climada.ethz.ch/data-api/v1/dataset/{uuid}' as DatasetInfo object.
 
         Parameters
         ----------
@@ -319,10 +330,10 @@ class Client():
         NoResult
             if the uuid is not valid
         """
-        url = f'{self.host}/rest/dataset/{uuid}'
+        url = f'{self.url}/dataset/{uuid}'
         return DatasetInfo.from_json(Client._request_200(url))
 
-    def get_data_types(self, data_type_group=None):
+    def list_data_type_infos(self, data_type_group=None):
         """Returns all data types from the climada data API
         belonging to a given data type group.
 
@@ -335,12 +346,12 @@ class Client():
         -------
         list of DataTypeInfo
         """
-        url = f'{self.host}/rest/data_types'
+        url = f'{self.url}/data_type'
         params = {'data_type_group': data_type_group} \
             if data_type_group else {}
         return [DataTypeInfo(**jobj) for jobj in Client._request_200(url, params=params)]
 
-    def get_data_type(self, data_type):
+    def get_data_type_info(self, data_type):
         """Returns the data type from the climada data API
         with a given name.
 
@@ -358,7 +369,7 @@ class Client():
         NoResult
             if there is no such data type registered
         """
-        url = f'{self.host}/rest/data_type/{quote(data_type)}'
+        url = f'{self.url}/data_type/{quote(data_type)}'
         return DataTypeInfo(**Client._request_200(url))
 
     def _download(self, url, path, replace=False):
@@ -583,7 +594,7 @@ class Client():
             number, a ValueError is raised. Setting it to 0 or a negative number inactivates the
             limit. Default is 10.
         **kwargs :
-            additional parameters passed on to get_datasets
+            additional parameters passed on to list_dataset_infos
 
         Returns
         -------
@@ -595,7 +606,7 @@ class Client():
         if not hazard_type in HAZ_TYPES:
             raise ValueError("Valid hazard types are a subset of CLIMADA hazard types."
                              f" Currently these types are supported: {HAZ_TYPES}")
-        datasets = self.get_datasets(data_type=hazard_type, **kwargs)
+        datasets = self.list_dataset_infos(data_type=hazard_type, **kwargs)
 
         self._check_datasets_for_concatenation(datasets, max_datasets)
 
@@ -627,10 +638,10 @@ class Client():
                 if dsf.file_format == 'hdf5':
                     hazard_file = self.download_file(target_dir, dsf)
                     hazard = Hazard.from_hdf5(hazard_file)
+        
                     hazard_list.append(hazard)
         if not hazard_list:
             raise ValueError("no hazard files found in datasets")
-
         hazard_concat = Hazard()
         hazard_concat = hazard_concat.concat(hazard_list)
         hazard_concat.sanitize_event_ids()
@@ -654,7 +665,7 @@ class Client():
             number, a ValueError is raised. Setting it to 0 or a negative number inactivates the
             limit. Default is 10.
         **kwargs :
-            additional parameters passed on to `Client.get_datasets`
+            additional parameters passed on to `Client.list_dataset_infos`
 
         Returns
         -------
@@ -666,7 +677,7 @@ class Client():
         if not exposures_type in EXP_TYPES:
             raise ValueError("Valid exposures types are a subset of CLIMADA exposures types."
                              f" Currently these types are supported: {EXP_TYPES}")
-        datasets = self.get_datasets(data_type=exposures_type, **kwargs)
+        datasets = self.list_dataset_infos(data_type=exposures_type, **kwargs)
 
         self._check_datasets_for_concatenation(datasets, max_datasets)
 
@@ -745,7 +756,7 @@ class Client():
         Parameters
         ----------
         datasets : list of DatasetInfo
-            e.g., return of get_datasets
+            e.g., return of list_dataset_infos
 
         Returns
         -------
@@ -767,7 +778,7 @@ class Client():
         Parameters
         ----------
         datasets : list of DatasetInfo
-            e.g., return of get_datasets
+            e.g., return of list_dataset_infos
 
         Returns
         -------

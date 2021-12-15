@@ -25,7 +25,7 @@ from shutil import rmtree
 import numpy as np
 
 from climada import CONFIG
-from climada.util.api_client import Client, Download
+from climada.util.api_client import Client, DataTypeShortInfo, Download
 
 DATA_DIR = CONFIG.test_data.dir()
 
@@ -35,38 +35,40 @@ class TestClient(unittest.TestCase):
 
     def test_data_type(self):
         """"""
-        lpdt = Client().get_data_type("litpop")
+        lpdt = Client().get_data_type_info("litpop")
         self.assertEqual(lpdt.data_type, 'litpop')
         self.assertEqual(lpdt.data_type_group, 'exposures')
+        self.assertTrue('climada_version' in lpdt.mandatory_properties)
+        self.assertTrue('country_name' in lpdt.optional_properties)
 
     def test_data_types(self):
         """"""
-        exdts = Client().get_data_types("exposures")
+        exdts = Client().list_data_type_infos("exposures")
         self.assertTrue('litpop' in [exdt.data_type for exdt in exdts])
 
     def test_datasets(self):
         """"""
-        datasets = Client().get_datasets(status=None, name='FAOSTAT_data_producer_prices')
+        datasets = Client().list_dataset_infos(status=None, name='FAOSTAT_data_producer_prices')
         self.assertEqual(len(datasets), 1)
 
     def test_dataset(self):
         """"""
         client = Client()
 
-        dataset = client.get_dataset(name='FAOSTAT_data_producer_prices')
+        dataset = client.get_dataset_info(name='FAOSTAT_data_producer_prices')
         self.assertEqual(dataset.version, 'v1')
         self.assertEqual(len(dataset.files), 1)
         self.assertEqual(dataset.files[0].file_size, 26481)
-        self.assertEqual(dataset.data_type.data_type, 'crop_production')
+        self.assertEqual(dataset.data_type, DataTypeShortInfo('crop_production', 'exposures'))
 
-        dataset2 = client.get_dataset_by_uuid(dataset.uuid)
+        dataset2 = client.get_dataset_info_by_uuid(dataset.uuid)
         self.assertEqual(dataset, dataset2)
 
     def test_download_file(self):
         """"""
         client = Client()
         client.MAX_WAITING_PERIOD = 0.1
-        dataset = client.get_dataset(name='FAOSTAT_data_producer_prices')
+        dataset = client.get_dataset_info(name='FAOSTAT_data_producer_prices')
 
         # test failure
         def fail(x, y):
@@ -88,7 +90,7 @@ class TestClient(unittest.TestCase):
         client = Client()
         client.MAX_WAITING_PERIOD = 0.1
 
-        dataset = client.get_dataset(name='test_write_raster')
+        dataset = client.get_dataset_info(name='test_write_raster')
         download_dir, downloads = client.download_dataset(dataset, target_dir=DATA_DIR)
         self.assertEqual(download_dir.name, dataset.version)
         self.assertEqual(download_dir.parent.name, dataset.name)
@@ -144,7 +146,6 @@ class TestClient(unittest.TestCase):
         self.assertEqual(np.max(hazard.centroids.region_id), 756)
         self.assertEqual(np.unique(hazard.date).size, 20)
         self.assertEqual(hazard.tag.haz_type, 'RF')
-        hazard
 
     def test_get_hazard_fails(self):
         client = Client()
@@ -181,10 +182,10 @@ class TestClient(unittest.TestCase):
         self.assertEqual(np.unique(litpop.gdf.region_id), 442)
         self.assertTrue('[1, 1]' in litpop.tag.description)
         self.assertTrue('pc' in litpop.tag.description)
-    
+
     def test_multi_filter(self):
         client = Client()
-        testds = client.get_datasets(data_type='storm_europe')
+        testds = client.list_dataset_infos(data_type='storm_europe')
 
         # assert no systemic loss in filtering
         still = client._filter_datasets(testds, dict())
