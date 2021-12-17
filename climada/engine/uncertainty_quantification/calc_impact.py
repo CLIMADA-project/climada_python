@@ -203,26 +203,34 @@ class CalcImpact(Calc):
                                                 columns = ['aai_agg'])
         freq_curve_unc_df = pd.DataFrame(freq_curve_list,
                                     columns=['rp' + str(n) for n in rp])
-        df_eai_exp =  pd.DataFrame(eai_exp_list)
+        eai_exp_unc_df =  pd.DataFrame(eai_exp_list)
         # Setting to sparse dataframes is not compatible with .to_hdf5
         # if np.count_nonzero(df_eai_exp.to_numpy()) / df_eai_exp.size < 0.5:
         #     df_eai_exp = df_eai_exp.astype(pd.SparseDtype("float", 0.0))
-        eai_exp_unc_df = df_eai_exp
-        df_at_event = pd.DataFrame(at_event_list)
+        #eai_exp_unc_df = df_eai_exp
+        at_event_unc_df = pd.DataFrame(at_event_list)
         # Setting to sparse dataframes is not compatible with .to_hdf5
         # if np.count_nonzero(df_at_event.to_numpy()) / df_at_event.size < 0.5:
         #     df_at_event = df_at_event.astype(pd.SparseDtype("float", 0.0))
-        at_event_unc_df = df_at_event
+        #at_event_unc_df = df_at_event
         tot_value_unc_df = pd.DataFrame(tot_value_list,
                                                  columns = ['tot_value'])
 
+        if calc_eai_exp:
+            exp = self.exp_input_var.evaluate()
+            coord_df = exp.gdf[['latitude', 'longitude']]
+        else:
+            coord_df = pd.DataFrame([])
+
         return UncImpactOutput(samples_df=samples_df,
+                               unit=unit,
                                aai_agg_unc_df=aai_agg_unc_df,
                                freq_curve_unc_df=freq_curve_unc_df,
                                eai_exp_unc_df=eai_exp_unc_df,
                                at_event_unc_df=at_event_unc_df,
                                tot_value_unc_df=tot_value_unc_df,
-                               unit=unit)
+                               coord_df=coord_df
+                               )
 
 
     def _map_impact_calc(self, sample_iterrows):

@@ -32,10 +32,12 @@ import h5py
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 
 from climada import CONFIG
 
 from climada.util.value_representation import value_to_monetary_unit as u_vtm
+from climada.util.value_representation import convert_monetary_value as u_cmv
 from climada.util import plot as u_plot
 import climada.util.hdf5_handler as u_hdf5
 
@@ -48,6 +50,8 @@ DATA_DIR = CONFIG.engine.uncertainty.local_data.user_data.dir()
 
 FIG_W, FIG_H = 8, 5 #default figize width/heigh column/work multiplicators
 
+MAP_CMAP = 'Dark2' #Default color map for the sensitivity map
+
 #Table of recommended pairing between salib sampling and sensitivity methods
 # NEEDS TO BE UPDATED REGULARLY!! https://salib.readthedocs.io/en/latest/api.html
 SALIB_COMPATIBILITY = {
@@ -59,6 +63,14 @@ SALIB_COMPATIBILITY = {
     'dgsm' : ['fast_sampler', 'latin', 'morris', 'saltelli', 'latin', 'ff'],
     'ff' : ['ff'],
     }
+
+plt.style.use('seaborn-white')
+params = {'legend.fontsize': 'x-large',
+         'axes.labelsize': 'x-large',
+         'axes.titlesize':'x-large',
+         'xtick.labelsize':'x-large',
+         'ytick.labelsize':'x-large'}
+mpl.rcParams.update(params)
 
 
 class UncOutput():
@@ -342,7 +354,7 @@ class UncOutput():
                         submetric_df.select_dtypes('number').columns, axis=1)
         return pd.concat([df_meta, df_all], axis=1).reset_index(drop=True)
 
-    def get_largest_si(self, salib_si, metric_list=None):
+    def get_largest_si(self, salib_si, metric_list=None, threshold=0.01):
         """
         Get largest si per metric
 
@@ -353,6 +365,9 @@ class UncOutput():
         metric_list : list of strings, optional
             List of metrics to plot the sensitivity.
             Default is None.
+        threshold : float
+            The minimum value a sensitivity index must have to be considered
+            as the largest. The default is 0.01.
         Returns
         -------
         max_si_df : pandas.dataframe
@@ -367,7 +382,7 @@ class UncOutput():
 
         #get max index
         si_df_num = si_df.select_dtypes('number')
-        si_df_num[si_df_num<0.001] = 0 #remove noise whenn all si are 0
+        si_df_num[si_df_num<threshold] = 0 #remove noise whenn all si are 0
         max_si_idx = si_df_num.idxmax().to_numpy()
         max_si_val = si_df_num.max().to_numpy()
 
@@ -378,11 +393,12 @@ class UncOutput():
         param2 = np.concatenate((['None'], si_df['param2']))
         param2_max_si = [param2[idx] for idx in max_si_idx]
 
-        max_si_df = pd.DataFrame([])
-        max_si_df['metric'] = si_df_num.columns
-        max_si_df['param'] = param_max_si
-        max_si_df['param2'] = param2_max_si
-        max_si_df['si'] = max_si_val
+        max_si_df = pd.DataFrame(
+            {'metric' : si_df_num.columns,
+             'param' : param_max_si,
+             'param2' : param2_max_si,
+             'si' : max_si_val
+             })
 
         return max_si_df
 
@@ -412,6 +428,7 @@ class UncOutput():
             The axis handle of the plot.
 
         """
+        fontsize = 18
 
         if self.samples_df.empty:
             raise ValueError("No uncertainty sample present."+
@@ -429,9 +446,11 @@ class UncOutput():
                 ax.remove()
                 continue
             self.samples_df[label].hist(ax=ax, bins=100)
-            ax.set_title(label)
-            ax.set_xlabel('value')
+            ax.set_xlabel(label)
             ax.set_ylabel('Sample count')
+            ax.tick_params(labelsize=fontsize)
+            for item in [ax.title, ax.xaxis.label, ax.yaxis.label]:
+                item.set_fontsize(fontsize)
 
         plt.tight_layout()
 
@@ -527,7 +546,8 @@ class UncOutput():
                 if ax is not None:
                     ax.remove()
                 continue
-            data = unc_df_plt[col]
+            data, m_unit = u_vtm(unc_df_plt[col])
+            data = pd.Series(data)
             if data.empty:
                 ax.remove()
                 continue
@@ -537,33 +557,34 @@ class UncOutput():
                 data.plot.kde(ax=ax, color='darkblue', linewidth=4, label='')
             except np.linalg.LinAlgError:
                 pass
-            avg, std = unc_df[col].mean(), unc_df[col].std()
+            avg, std = data.mean(), data.std()
             _, ymax = ax.get_ylim()
             if log:
                 avg_plot = np.log10(avg)
             else:
                 avg_plot = avg
             ax.axvline(avg_plot, color='darkorange', linestyle='dashed', linewidth=2,
-                    label="avg=%.2f%s" %u_vtm(avg))
+                    label="avg=%.2f%s" %(avg, m_unit))
             if orig_val is not None:
                 if log:
                     orig_plot = np.log10(orig_val)
                 else:
                     orig_plot = orig_val
+                [orig_plot] = u_cmv(orig_plot, m_unit)
                 ax.axvline(orig_plot, color='green', linestyle='dotted', linewidth=2,
-                 label="orig=%.2f%s" %u_vtm(orig_val));
+                           label="orig=%.2f%s" %(orig_plot, m_unit))
             if log:
                 std_m, std_p = np.log10(avg - std), np.log10(avg + std)
             else:
                 std_m, std_p = avg - std, avg + std
             ax.plot([std_m, std_p],
                     [0.3 * ymax, 0.3 * ymax], color='black',
-                    label="std=%.2f%s" %u_vtm(std))
-            ax.set_title(col)
+                    label="std=%.2f%s" %(std, m_unit))
+            xlabel = col + ' [' + m_unit + ' ' + self.unit + '] '
             if log:
-                ax.set_xlabel('value [log10]')
+                ax.set_xlabel( xlabel + ' (log10 scale)')
             else:
-                ax.set_xlabel('value')
+                ax.set_xlabel(xlabel)
             ax.set_ylabel('density of samples')
             ax.legend(fontsize=fontsize-2)
 
@@ -576,12 +597,16 @@ class UncOutput():
         return axes
 
 
-    def plot_rp_uncertainty(self, figsize=(16, 6), axes=None):
+    def plot_rp_uncertainty(self, orig_list=None, figsize=(16, 6), axes=None):
         """
         Plot the distribution of return period uncertainty
 
         Parameters
         ----------
+        orig_list : list[float], optional
+            List of the original (without uncertainty) values for each
+            sub-metric of the mtrics in metric_list. The ordering is identical.
+            The default is None.
         figsize : tuple(int or float, int or float), optional
             The figsize argument of matplotlib.pyplot.subplots()
             The default is (8, 6)
@@ -609,43 +634,60 @@ class UncOutput():
                     "Please run an uncertainty analysis with the desired "
                     "return period specified.")
 
+        add_orig=True
+        if orig_list is None:
+            add_orig=False
+
         if  axes is  None:
             _fig, axes = plt.subplots(figsize=figsize, nrows=1, ncols=2)
 
-        min_l, max_l = unc_df.min().min(), unc_df.max().max()
+        [min_l, max_l], m_unit = u_vtm([unc_df.min().min(), unc_df.max().max()], n_sig_dig=4)
 
         ax = axes[0]
 
+        prop_cycle = plt.rcParams['axes.prop_cycle']
+        colors = prop_cycle.by_key()['color']
+
         for n, (_name, values) in enumerate(unc_df.iteritems()):
+            values = u_cmv(values, m_unit, n_sig_dig=4)
             count, division = np.histogram(values, bins=100)
             count = count / count.max()
             losses = [(bin_i + bin_f )/2 for (bin_i, bin_f) in zip(division[:-1], division[1:])]
             ax.plot([min_l, max_l], [2*n, 2*n], color='k', alpha=0.5)
             ax.fill_between(losses, count + 2*n, 2*n)
+            if add_orig:
+                [orig_val] = u_cmv(orig_list[n], m_unit, n_sig_dig=4)
+                ax.plot(
+                    [orig_val, orig_val], [2*n, 2*(n+1)],
+                    color=colors[n], linestyle='dotted', linewidth=2,
+                    label="orig=%.2f%s" %(orig_val, m_unit)
+                    )
 
         ax.set_xlim(min_l, max_l)
-        ax.set_ylim(0, 2*(n+1))
-        ax.set_xlabel('impact')
-        ax.set_ylabel('return period [years]')
-        ax.set_yticks(np.arange(0, 2*(n+1), 2))
-        ax.set_yticklabels(unc_df.columns)
+        ax.set_ylim(0, 2*unc_df.shape[1])
+        ax.set_xlabel('Impact [%s %s]' %(m_unit, self.unit))
+        ax.set_ylabel('Return period [years]')
+        ax.set_yticks(np.arange(0, 2*unc_df.shape[1], 2))
+        ax.set_yticklabels([s[2:] for s in unc_df.columns])
+        ax.legend(loc='lower right')
 
         ax = axes[1]
 
-        high = self.get_unc_df('freq_curve').quantile(0.95)
-        middle = self.get_unc_df('freq_curve').quantile(0.5)
-        low = self.get_unc_df('freq_curve').quantile(0.05)
+        high = u_cmv(self.get_unc_df('freq_curve').quantile(0.95).values, m_unit, n_sig_dig=4)
+        middle = u_cmv(self.get_unc_df('freq_curve').quantile(0.5).values, m_unit, n_sig_dig=4)
+        low = u_cmv(self.get_unc_df('freq_curve').quantile(0.05).values, m_unit, n_sig_dig=4)
 
-        x = [float(rp[2:]) for rp in middle.keys()]
-        ax.plot(x, high.values, linestyle='--', color = 'blue', alpha=0.5)
-        ax.plot(x, high.values, linestyle='--', color = 'blue',
+        x = [float(rp[2:]) for rp in unc_df.columns]
+        ax.plot(x, high, linestyle='--', color = 'blue',
                 alpha=0.5, label='0.95 percentile')
-        ax.plot(x, middle.values, label='0.5 percentile')
-        ax.plot(x, low.values, linestyle='dotted', color='blue',
+        ax.plot(x, middle, label='0.5 percentile')
+        ax.plot(x, low, linestyle='dashdot', color='blue',
                 alpha=0.5, label='0.05 percentile')
-        ax.fill_between(x, low.values, high.values, alpha=0.2)
+        ax.fill_between(x, low, high, alpha=0.2)
+        if add_orig:
+            ax.plot(x, u_cmv(orig_list, m_unit, n_sig_dig=4), color='green', linestyle='dotted', label='orig')
         ax.set_xlabel('Return period [year]')
-        ax.set_ylabel('Impact [' + self.unit + ']')
+        ax.set_ylabel('Impact [' + m_unit + ' ' + self.unit + ']')
         ax.legend()
 
         return axes
@@ -730,9 +772,7 @@ class UncOutput():
                 figsize = (ncols * FIG_W, nrows * FIG_H)
             _fig, axes = plt.subplots(nrows = nrows,
                                      ncols = ncols,
-                                     figsize = figsize,
-                                     sharex = True,
-                                     sharey = True)
+                                     figsize = figsize)
         if nplots > 1:
             flat_axes = axes.flatten()
         else:
@@ -741,6 +781,7 @@ class UncOutput():
         for ax, metric in zip(flat_axes, metric_list):
             df_S = self.get_sensitivity(salib_si, [metric]).select_dtypes('number')
             if df_S.empty:
+                ax.set_xlabel('Input parameter')
                 ax.remove()
                 continue
             df_S_conf = self.get_sensitivity(salib_si_conf, [metric]).select_dtypes('number')
@@ -748,7 +789,8 @@ class UncOutput():
                 df_S.plot(ax=ax, kind='bar', **kwargs)
             df_S.plot(ax=ax, kind='bar', yerr=df_S_conf, **kwargs)
             ax.set_xticklabels(self.param_labels, rotation=0)
-            ax.set_title(salib_si + ' - ' + metric.replace('_sens_df', ''))
+            ax.set_xlabel('Input parameter')
+            ax.set_ylabel(salib_si)
         plt.tight_layout()
 
         return axes
@@ -884,7 +926,7 @@ class UncOutput():
 
         return axes
 
-    def plot_sensitivity_map(self, exp, salib_si='S1', **kwargs):
+    def plot_sensitivity_map(self, salib_si='S1', **kwargs):
         """
         Plot a map of the largest sensitivity index in each exposure point
 
@@ -892,8 +934,6 @@ class UncOutput():
 
         Parameters
         ----------
-        exp : climada.exposure
-            The exposure from which to take the coordinates.
         salib_si : str, optional
             The name of the sensitivity index to plot.
             The default is 'S1'.
@@ -919,24 +959,27 @@ class UncOutput():
         """
 
         eai_max_si_df = self.get_largest_si(salib_si, metric_list=['eai_exp'])
-        if len(eai_max_si_df) != len(exp.gdf):
-            LOGGER.error("The length of the sensitivity data "
-                  "%d does not match the number "
-                  "of points %d in the given exposure. "
-                  "Please check the exposure or recompute the sensitivity  "
-                  "using UncCalcImpact.calc_sensitivity(calc_eai_exp=True)",
-                  len(eai_max_si_df), len(exp.gdf)
-                  )
-            return None
 
         plot_val = eai_max_si_df['param']
-        coord = np.array([exp.gdf.latitude, exp.gdf.longitude]).transpose()
+        coord = np.array([self.coord_df.latitude, self.coord_df.longitude]).transpose()
         if 'var_name' not in kwargs:
-            kwargs['var_name'] = 'Largest sensitivity index ' + salib_si
+            kwargs['var_name'] = 'Input parameter with largest ' + salib_si
         if 'title' not in kwargs:
-            kwargs['title'] = 'Sensitivity map'
+            kwargs['title'] = ''
         if 'figsize' not in kwargs:
             kwargs['figsize'] = (8,6)
+        if 'cmap' not in kwargs:
+            labels = np.unique(plot_val)
+            n=np.where(labels=='None')[0]
+            if len(n) > 0 :
+                n = n[0]
+                cmap = mpl.colors.ListedColormap(
+                    plt.get_cmap(MAP_CMAP).colors[:len(labels)]
+                    )
+                colors = list(cmap.colors)
+                colors[n] = tuple(np.repeat(0.93, 3))
+                cmap.colors = tuple(colors)
+                kwargs['cmap'] = cmap
         ax = u_plot.geo_scatter_categorical(
                 plot_val, coord,
                 **kwargs
@@ -1040,7 +1083,7 @@ class UncImpactOutput(UncOutput):
     """Extension of UncOutput specific for CalcImpact, returned by the  uncertainty() method.
     """
     def __init__(self, samples_df, unit, aai_agg_unc_df, freq_curve_unc_df, eai_exp_unc_df,
-                 at_event_unc_df, tot_value_unc_df):
+                 at_event_unc_df, tot_value_unc_df, coord_df):
         """Constructor
 
         Uncertainty output values from impact.calc for each sample
@@ -1066,6 +1109,8 @@ class UncImpactOutput(UncOutput):
         tot_value_unc_df : pandas.DataFrame
             Each row contains the value of tot_value for one sample (row of
             samples_df)
+        coord_df : pandas.DataFrame
+            Coordinates of the exposure
         """
         super().__init__(samples_df, unit)
         self.aai_agg_unc_df = aai_agg_unc_df
@@ -1078,6 +1123,7 @@ class UncImpactOutput(UncOutput):
         self.at_event_sens_df = None
         self.tot_value_unc_df = tot_value_unc_df
         self.tot_value_sens_df = None
+        self.coord_df = coord_df
 
 
 class UncCostBenefitOutput(UncOutput):
