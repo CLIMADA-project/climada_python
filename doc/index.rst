@@ -34,6 +34,7 @@ Tutorials
    tutorial/climada_hazard_StormEurope
    tutorial/climada_engine_Impact
    tutorial/climada_engine_impact_data
+   tutorial/climada_engine_uncertainty
    tutorial/climada_engine_Forecast
    tutorial/climada_util_yearsets
    turorial/climada_api_client
