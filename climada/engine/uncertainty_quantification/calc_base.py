@@ -138,14 +138,18 @@ class Calc():
             LOGGER.warning("Computation time for one set of parameters is "
                 "%.2fs. This is rather long."
                 "Potential reasons: InputVars are loading data, centroids have "
-                "been assigned to exp before defining input_var, ..."
-                "\n If computation cannot be reduced, consider using"
-                " a surrogate model https://www.uqlab.com/", time_one_run)
+                "been assigned to exp before defining input_var, ...", time_one_run)
 
         ncpus = pool.ncpus if pool else 1
         total_time = n_samples * time_one_run / ncpus
-        LOGGER.info("\n\nEstimated computaion time: %s\n",
-                    dt.timedelta(seconds=total_time))
+        LOGGER.info("\n\nEstimated computaion time per sample: %s\n"
+                       + "Number of samples: %d\n"
+                       + "Estimated total time: %s",
+                       dt.timedelta(seconds=time_one_run),
+                        n_samples,
+                        dt.timedelta(seconds=total_time
+                        )
+                    )
 
         return total_time
 

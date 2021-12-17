@@ -177,7 +177,8 @@ class CalcImpact(Calc):
         [aai_agg_list, freq_curve_list,
          eai_exp_list, at_event_list, tot_value_list] = list(zip(*imp_metrics))
         elapsed_time = (time.time() - start)
-        self.est_comp_time(unc_sample.n_samples, elapsed_time, pool)
+        with log_level(level='INFO', name_prefix='climada'):
+            self.est_comp_time(unc_sample.n_samples, elapsed_time, pool)
 
         #Compute impact distributions
         with log_level(level='ERROR', name_prefix='climada'):

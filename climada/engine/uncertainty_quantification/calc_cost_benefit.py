@@ -173,7 +173,8 @@ class CalcCostBenefit(Calc):
          benefit,
          cost_ben_ratio] = list(zip(*cb_metrics))
         elapsed_time = (time.time() - start)
-        self.est_comp_time(unc_data.n_samples, elapsed_time, pool)
+        with log_level(level='INFO', name_prefix='climada'):
+            self.est_comp_time(unc_data.n_samples, elapsed_time, pool)
 
         #Compute impact distributions
         with log_level(level='ERROR', name_prefix='climada'):
