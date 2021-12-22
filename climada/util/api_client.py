@@ -81,8 +81,7 @@ class DataTypeInfo():
     data_type:str
     data_type_group:str
     description:str
-    mandatory_properties:list = None
-    optional_properties:list = None
+    properties:list
 
 
 @dataclass

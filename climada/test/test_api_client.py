@@ -38,8 +38,8 @@ class TestClient(unittest.TestCase):
         lpdt = Client().get_data_type_info("litpop")
         self.assertEqual(lpdt.data_type, 'litpop')
         self.assertEqual(lpdt.data_type_group, 'exposures')
-        self.assertTrue('climada_version' in lpdt.mandatory_properties)
-        self.assertTrue('country_name' in lpdt.optional_properties)
+        self.assertTrue('climada_version' in [p['property'] for p in lpdt.properties if p['mandatory']])
+        self.assertTrue('country_name' in [p['property'] for p in lpdt.properties if not p['mandatory']])
 
     def test_data_types(self):
         """"""
