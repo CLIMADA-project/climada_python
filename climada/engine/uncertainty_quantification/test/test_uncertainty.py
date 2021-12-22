@@ -124,7 +124,7 @@ def make_costben_iv():
     ent_iv = InputVar.ent(
         impf_set = entdem.impact_funcs,
         disc_rate = entdem.disc_rates,
-        exp = entdem.exposures,
+        exp_list = [entdem.exposures],
         meas_set = entdem.measures,
         bounds_noise=[0.3, 1.9],
         bounds_cost=[0.5, 1.5],
@@ -135,7 +135,7 @@ def make_costben_iv():
     entfutdem = ent_fut_dem()
     entfut_iv = InputVar.entfut(
         impf_set = entfutdem.impact_funcs,
-        exp = entfutdem.exposures,
+        exp_list = [entfutdem.exposures],
         meas_set = entfutdem.measures,
         bounds_eg=[0.8, 1.5],
         bounds_mdd=[0.7, 0.9],
@@ -280,7 +280,7 @@ class TestOutput(unittest.TestCase):
         plt_sens_2 = unc_output.plot_sensitivity_second_order(salib_si='S1')
         self.assertIsNotNone(plt_sens_2)
         plt.close()
-        plt_map = unc_output.plot_sensitivity_map(Exposures.from_hdf5(EXP_DEMO_H5))
+        plt_map = unc_output.plot_sensitivity_map()
         self.assertIsNotNone(plt_map)
         plt.close()
 
@@ -589,7 +589,7 @@ class TestCalcCostBenefit(unittest.TestCase):
             )
         self.assertEqual(unc_calc.value_unit, ent_dem().exposures.value_unit)
         self.assertTrue(
-            unc_calc.ent_input_var.evaluate(CO=None, IFi=None, EN=None).exposures.gdf.equals(
+            unc_calc.ent_input_var.evaluate(CO=None, IFi=None, EN=None, EL=0).exposures.gdf.equals(
                 ent_dem().exposures.gdf)
             )
 
