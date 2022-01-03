@@ -90,7 +90,7 @@ def def_input_values():
 
             inext = inext + 1
 
-    return exposures, centroids
+    return centroids, exposures
 
 def def_ref():
     """Default output reference"""
@@ -166,7 +166,7 @@ class TestInterpIndex(unittest.TestCase):
                                     distance='haversine')
 
 class TestNN(unittest.TestCase):
-    """Test interpolator neareast neighbor with approximate distance"""
+    """Test interpolator neareast neighbor"""
 
     def tearDown(self):
         u_interp.THRESHOLD = 100
@@ -174,7 +174,7 @@ class TestNN(unittest.TestCase):
     def normal_pass(self, dist):
         """Checking result against matlab climada_demo_step_by_step"""
         # Load input
-        exposures, centroids = def_input_values()
+        centroids, exposures = def_input_values()
 
         # Interpolate with default threshold
         neighbors = u_interp.interpol_index(centroids, exposures,
@@ -189,7 +189,7 @@ class TestNN(unittest.TestCase):
         """Checking that a warning is raised when minimum distance greater
         than threshold"""
         # Load input
-        exposures, centroids = def_input_values()
+        centroids, exposures = def_input_values()
 
         # Interpolate with lower threshold to raise warnings
         threshold = 50
