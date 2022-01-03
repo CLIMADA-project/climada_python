@@ -75,6 +75,9 @@ DEF_VAR_MAT = {'sup_field_name': 'entity',
               }
 """MATLAB variable names"""
 
+THRESHOLD = 100
+"""Default threshold for assignd centroids in km"""
+
 class Exposures():
     """geopandas GeoDataFrame with metada and columns (pd.Series) defined in
     Attributes.
@@ -367,7 +370,7 @@ class Exposures():
         raise ValueError(f"Missing exposures impact functions {INDICATOR_IMPF}.")
 
     def assign_centroids(self, hazard, method='NN', distance='haversine',
-                         threshold=100):
+                         threshold=THRESHOLD):
         """Assign for each exposure coordinate closest hazard coordinate.
         -1 used for disatances > threshold in point distances. If raster hazard,
         -1 used for centroids outside raster.
