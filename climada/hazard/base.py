@@ -90,7 +90,7 @@ DEF_VAR_MAT = {'field_name': 'hazard',
                }
 """MATLAB variable names"""
 
-from climada.entity.exposures import THRESHOLD
+from climada.entity.exposures.base import THRESHOLD
 from climada.util.constants import ONE_LAT_KM
 
 
