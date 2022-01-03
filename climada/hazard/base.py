@@ -747,6 +747,12 @@ class Hazard():
                 return None
             sel_ev = sel_ev[new_sel]
 
+        # filter centroids
+        sel_cen = self.centroids.select_mask(reg_id=reg_id, extent=extent)
+        if not np.any(sel_cen):
+            LOGGER.info('No hazard centroids within extent and region')
+            return None
+
         sel_cen = sel_cen.nonzero()[0]
         for (var_name, var_val) in self.__dict__.items():
             if isinstance(var_val, np.ndarray) and var_val.ndim == 1 \
