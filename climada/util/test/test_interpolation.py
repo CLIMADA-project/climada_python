@@ -100,12 +100,12 @@ def def_ref():
                      46, 46, 46, 45, 45, 45, 45, 45, 45, 45, 45,
                      45, 45, 45, 45, 45, 45])
 
-def def_ref_50():
-    """Default output reference for maximum distance threshold 50km"""
-    return np.array([46, 46, 36, -1, 36, 46, 46, 46, 46, 46, 46, 36, 46, 46,
-                     36, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46,
-                     46, 46, 46, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 45,
-                     45, 45, 45, 45, 45, 45, 45, 45])
+def def_ref_40():
+    """Default output reference for maximum distance threshold 40km"""
+    return np.array([46, 46, 36, -1, -1, 46, 46, 46, 46, 46, 46, -1, 46, 46,
+                     -1, 46, 46, 46, 46, 46, 46, 46, 46, -1, 46, -1, -1, -1,
+                     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+                     -1, -1, -1, -1, -1, 45, -1, -1])
 
 class TestDistance(unittest.TestCase):
     """Test distance functions."""
@@ -192,13 +192,13 @@ class TestNN(unittest.TestCase):
         centroids, exposures = def_input_values()
 
         # Interpolate with lower threshold to raise warnings
-        threshold = 50
+        threshold = 40
         with self.assertLogs('climada.util.interpolation', level='INFO') as cm:
             neighbors = u_interp.interpol_index(centroids, exposures, 'NN',
                                                 dist, threshold=threshold)
         self.assertIn("Distance to closest centroid", cm.output[0])
 
-        ref_neighbors = def_ref_50()
+        ref_neighbors = def_ref_40()
         self.assertTrue(np.array_equal(neighbors, ref_neighbors))
 
     def repeat_coord_pass(self, dist):
