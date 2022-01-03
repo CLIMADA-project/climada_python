@@ -90,6 +90,9 @@ DEF_VAR_MAT = {'field_name': 'hazard',
                }
 """MATLAB variable names"""
 
+from climada.entity.exposures import THRESHOLD
+from climada.util.constants import ONE_LAT_KM
+
 
 class Hazard():
     """
@@ -773,7 +776,7 @@ class Hazard():
         haz.sanitize_event_ids()
         return haz
 
-    def select_tight_cent(self, buffer=0.0):
+    def select_tight_cent(self, buffer=THRESHOLD/ONE_LAT_KM):
         """
         Reduce hazard to those centroids spanning a minimal box which contains all non-zero
         intensity points.
@@ -781,7 +784,10 @@ class Hazard():
         Parameters
         ----------
         buffer : float, optional
-            Buffer of box in degrees. The default is 0.0.
+            Buffer of box in the units of the centroids.
+            The default is approximately equal to the default threshold
+            from the assign_centroids method (works if centroids in
+            lat/lon)
 
         Returns
         -------
