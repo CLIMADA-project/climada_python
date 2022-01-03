@@ -770,8 +770,8 @@ class Hazard():
 
     def select_tight(self, buffer=THRESHOLD/ONE_LAT_KM, val='intensity'):
         """
-        Reduce hazard to those centroids spanning a minimal box which contains all non-zero
-        intensity points.
+        Reduce hazard to those centroids spanning a minimal box which
+        contains all non-zero intensity or fraction points.
 
         Parameters
         ----------
@@ -780,6 +780,9 @@ class Hazard():
             The default is approximately equal to the default threshold
             from the assign_centroids method (works if centroids in
             lat/lon)
+        val: string, optional
+            Select tight by non-zero 'intensity' or 'fraction'. The
+            default is 'intensity'.
 
         Returns
         -------
@@ -794,7 +797,10 @@ class Hazard():
 
         """
 
-        cent_nz = (self.intensity != 0).sum(axis=0).nonzero()[1]
+        if val == 'intensity':
+            cent_nz = (self.intensity != 0).sum(axis=0).nonzero()[1]
+        if val == 'fraction':
+            cent_nz = (self.fraction != 0).sum(axis=0).nonzero()[1]
         lon_nz = self.centroids.lon[cent_nz]
         lat_nz = self.centroids.lat[cent_nz]
         ext = u_coord.latlon_bounds(lat=lat_nz, lon=lon_nz, buffer=buffer)
