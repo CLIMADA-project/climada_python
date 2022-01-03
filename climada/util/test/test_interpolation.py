@@ -206,7 +206,7 @@ class TestNN(unittest.TestCase):
         neighbors"""
 
         # Load input
-        exposures, centroids = def_input_values()
+        centroids, exposures = def_input_values()
 
         # Repeat a coordinate
         exposures[2, :] = exposures[0, :]
@@ -243,6 +243,17 @@ class TestNN(unittest.TestCase):
         """Call repeat_coord_pass test for haversine distance"""
         self.repeat_coord_pass('haversine')
 
+    def test_euc_normal_pass(self):
+        """Call normal_pass test for euclidian distance"""
+        self.normal_pass('euclidian')
+
+    def test_euc_normal_warning(self):
+        """Call normal_warning test for euclidian distance"""
+        self.normal_warning('euclidian')
+
+    def test_euc_repeat_coord_pass(self):
+        """Call repeat_coord_pass test for euclidian distance"""
+        self.repeat_coord_pass('euclidian')
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestNN)
