@@ -100,7 +100,8 @@ def interpol_index(centroids, coordinates, method=METHOD[0],
             f'Interpolation using {method} with distance {distance} is not supported.')
     return interp
 
-def index_nn_aprox(centroids, coordinates, threshold=THRESHOLD):
+def index_nn_aprox(centroids, coordinates, threshold=THRESHOLD,
+                   check_antimeridian=True):
     """Compute the nearest centroid for each coordinate using the
     euclidian distance d = ((dlon)cos(lat))^2+(dlat)^2. For distant points
     (e.g. more than 100km apart) use the haversine distance.
@@ -116,6 +117,9 @@ def index_nn_aprox(centroids, coordinates, threshold=THRESHOLD):
     threshold : float
         distance threshold in km over which no neighbor will
         be found. Those are assigned with a -1 index
+    check_antimedirian: bool
+        if True, recomputes the nn in a strip with lon size equal to threshold
+        around the antimeridian using the Haversine distance.
 
     Returns
     -------
@@ -148,6 +152,12 @@ def index_nn_aprox(centroids, coordinates, threshold=THRESHOLD):
         LOGGER.warning('Distance to closest centroid is greater than %s'
                        'km for %s coordinates.', threshold, num_warn)
 
+    if check_antimeridian:
+        assigned = index_antimeridian_strip(np.radians(centroids),
+                                            np.radians(coordinates),
+                                            threshold,
+                                            assigned)
+
     return assigned
 
 def index_nn_haversine(centroids, coordinates, threshold=THRESHOLD):
@@ -165,6 +175,7 @@ def index_nn_haversine(centroids, coordinates, threshold=THRESHOLD):
     threshold : float
         distance threshold in km over which no neighbor will
         be found. Those are assigned with a -1 index
+
 
     Returns
     -------
@@ -193,7 +204,8 @@ def index_nn_haversine(centroids, coordinates, threshold=THRESHOLD):
     return np.squeeze(assigned[inv])
 
 
-def index_nn_euclidian(centroids, coordinates, threshold=THRESHOLD):
+def index_nn_euclidian(centroids, coordinates, threshold=THRESHOLD,
+                       check_antimeridian=True):
     """Compute the neareast centroid for each coordinate using a k-d tree.
 
     Parameters
@@ -207,6 +219,9 @@ def index_nn_euclidian(centroids, coordinates, threshold=THRESHOLD):
     threshold : float
         distance threshold in km over which no neighbor will be found. Those
         are assigned with a -1 index
+    check_antimedirian: bool
+        if True, recomputes the nn in a strip with lon size equal to threshold
+        around the antimeridian using the Haversine distance.
 
     Returns
     -------
@@ -230,5 +245,52 @@ def index_nn_euclidian(centroids, coordinates, threshold=THRESHOLD):
                        'km for %s coordinates.', threshold, num_warn)
         assigned[dist * EARTH_RADIUS_KM > threshold] = -1
 
+    if check_antimeridian:
+        assigned = index_antimeridian_strip(np.radians(centroids),
+                                            np.radians(coordinates[idx]),
+                                            threshold,
+                                            assigned)
+
     # Copy result to all exposures and return value
     return np.squeeze(assigned[inv])
+
+def index_antimeridian_strip(centroids, coordinates, threshold, assigned):
+    """Recompute nearest neighbors close to the anti-meridian with the
+    Haversine distance
+
+    Parameters
+    ----------
+    centroids : 2d array
+        First column contains latitude, second column contains longitude.
+        Each row is a geographic point
+    coordinates : 2d array
+        First column contains latitude, second column contains longitude. Each
+        row is a geographic point
+    threshold : float
+        distance threshold in km over which no neighbor will be found. Those
+        are assigned with a -1 index
+    assigned : 1d array
+        coordinates that have assigned so far
+
+    Returns
+    -------
+    np.array
+        with so many rows as coordinates containing the centroids indexes
+
+    """
+
+    coord_strip_bool =  coordinates[:, 1] + np.pi < 1.5*threshold/EARTH_RADIUS_KM
+    coord_strip_bool += coordinates[:, 1] - np.pi >  -1.5*threshold/EARTH_RADIUS_KM
+    if np.any(coord_strip_bool):
+        coord_strip = coordinates[coord_strip_bool]
+        cent_strip_bool = centroids[:, 1] + np.pi < 2.5*threshold/EARTH_RADIUS_KM
+        cent_strip_bool += centroids[:, 1] - np.pi >  -2.5*threshold/EARTH_RADIUS_KM
+        if np.any(cent_strip_bool):
+            cent_strip = centroids[cent_strip_bool]
+            strip_assigned = index_nn_haversine(np.degrees(cent_strip),
+                                                np.degrees(coord_strip),
+                                                threshold)
+            new_coords = np.where(cent_strip_bool)[0][strip_assigned]
+            new_coords[np.where(strip_assigned == -1)] = -1
+            assigned[coord_strip_bool] = new_coords
+    return assigned

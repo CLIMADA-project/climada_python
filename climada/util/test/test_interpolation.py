@@ -107,6 +107,38 @@ def def_ref_40():
                      -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
                      -1, -1, -1, -1, -1, 45, -1, -1])
 
+def def_antimer_values():
+    """Default input coordinates and centroids value crossing antimerdian"""
+    exposures = np.array([
+        [0, -179.99],
+        [0, 179.99],
+        [5, -179.09],
+        [-5, 179.09],
+        [0, 130],
+        [0, -130]
+    ])
+
+    # Define centroids
+    centroids = np.zeros((100, 2))
+    inext = 0
+    for ilon in range(10):
+        for ilat in range(10):
+            centroids[inext][0] = -5 + ilat
+            if ilat -5 <= 0:
+                centroids[inext][1] = 170 + ilon + 1
+            else:
+                centroids[inext][1] = -170 - ilon
+            inext = inext + 1
+
+    return centroids, exposures
+
+def def_ref_antimer():
+    """Default output reference for maximum distance threshold 100km for
+    points crossing the anti-merdiian"""
+    return np.array([95, 95, -1, 80, -1, -1])
+
+
+
 class TestDistance(unittest.TestCase):
     """Test distance functions."""
     def test_dist_approx_pass(self):
@@ -219,6 +251,23 @@ class TestNN(unittest.TestCase):
         # Check copied coordinates have same neighbors
         self.assertEqual(neighbors[2], neighbors[0])
 
+    def antimer_warning(self, dist):
+        """Checking that a warning is raised when minimum distance greater
+        than threshold"""
+        # Load input
+        centroids, exposures = def_antimer_values()
+
+        # Interpolate with lower threshold to raise warnings
+        threshold = 100
+        with self.assertLogs('climada.util.interpolation', level='INFO') as cm:
+            neighbors = u_interp.interpol_index(centroids, exposures, 'NN',
+                                                dist, threshold=threshold)
+        self.assertIn("Distance to closest centroid", cm.output[0])
+
+        ref_neighbors = def_ref_antimer()
+        print(neighbors)
+        self.assertTrue(np.array_equal(neighbors, ref_neighbors))
+
     def test_approx_normal_pass(self):
         """Call normal_pass test for approxiamte distance"""
         self.normal_pass('approx')
@@ -230,6 +279,10 @@ class TestNN(unittest.TestCase):
     def test_approx_repeat_coord_pass(self):
         """Call repeat_coord_pass test for approxiamte distance"""
         self.repeat_coord_pass('approx')
+
+    def test_approx_antimer_warning(self):
+        """Call normal_warning test for approximate distance"""
+        self.antimer_warning('approx')
 
     def test_haver_normal_pass(self):
         """Call normal_pass test for haversine distance"""
@@ -243,6 +296,10 @@ class TestNN(unittest.TestCase):
         """Call repeat_coord_pass test for haversine distance"""
         self.repeat_coord_pass('haversine')
 
+    def test_haver_antimer_warning(self):
+        """Call normal_warning test for haversine distance"""
+        self.antimer_warning('haversine')
+
     def test_euc_normal_pass(self):
         """Call normal_pass test for euclidian distance"""
         self.normal_pass('euclidian')
@@ -254,6 +311,11 @@ class TestNN(unittest.TestCase):
     def test_euc_repeat_coord_pass(self):
         """Call repeat_coord_pass test for euclidian distance"""
         self.repeat_coord_pass('euclidian')
+
+    def test_euc_antimer_warning(self):
+        """Call normal_warning test for euclidian distance"""
+        self.antimer_warning('euclidian')
+
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestNN)
