@@ -792,10 +792,11 @@ class Hazard():
         See also
         --------
         self.select: Method to select centroids by lat/lon extent
+        exposures.assign_centroids(): Method to assign centroids to exposures
 
         """
 
-        cent_nz = self.intensity.nonzero()[1]
+        cent_nz = (self.intensity != 0).sum(axis=0).nonzero()[1]
         lon_nz = self.centroids.lon[cent_nz]
         lat_nz = self.centroids.lat[cent_nz]
         ext = u_coord.latlon_bounds(lat=lat_nz, lon=lon_nz, buffer=buffer)
