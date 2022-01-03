@@ -754,12 +754,10 @@ class Hazard():
             elif isinstance(var_val, list) and var_val:
                 setattr(haz, var_name, [var_val[idx] for idx in sel_ev])
             elif var_name == 'centroids':
-                if reg_id is not None:
-                    new_cent = var_val.select(reg_id=reg_id, extent=extent)
-                elif extent is not None:
-                    new_cent = cent_ext
-                else:
+                if reg_id is None and extent is None:
                     new_cent = var_val
+                else:
+                    new_cent = var_val.select(sel_cen=sel_cen)
                 setattr(haz, var_name, new_cent)
             else:
                 setattr(haz, var_name, var_val)
