@@ -768,7 +768,7 @@ class Hazard():
         haz.sanitize_event_ids()
         return haz
 
-    def select_tight_cent(self, buffer=THRESHOLD/ONE_LAT_KM):
+    def select_tight(self, buffer=THRESHOLD/ONE_LAT_KM, val='intensity'):
         """
         Reduce hazard to those centroids spanning a minimal box which contains all non-zero
         intensity points.
