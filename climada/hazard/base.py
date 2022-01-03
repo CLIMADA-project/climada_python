@@ -777,7 +777,7 @@ class Hazard():
 
     def select_tight_cent(self, buffer=0.0):
         """
-        Reduce hazard to centroids to minimal box containing all non-zero
+        Reduce hazard to those centroids spanning a minimal box which contains all non-zero
         intensity points.
 
         Parameters
