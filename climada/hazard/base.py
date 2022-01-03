@@ -699,8 +699,9 @@ class Hazard():
             haz = Hazard(self.tag.haz_type)
         else:
             haz = self.__class__()
+
+        #filter events
         sel_ev = np.ones(self.event_id.size, dtype=bool)
-        sel_cen = np.ones(self.centroids.size, dtype=bool)
 
         # filter events by date
         if date is not None:
@@ -718,21 +719,6 @@ class Hazard():
             sel_ev &= (self.orig.astype(bool) == orig)
             if not np.any(sel_ev):
                 LOGGER.info('No hazard with %s tracks.', str(orig))
-                return None
-
-        # filter centroids
-        if reg_id is not None:
-            sel_cen &= (self.centroids.region_id == reg_id)
-            if not np.any(sel_cen):
-                LOGGER.info('No hazard centroids with region %s.', str(reg_id))
-                return None
-        if extent is not None:
-            cent_ext = self.centroids.select(extent=extent)
-            cent_ext_view = cent_ext.coord.view(dtype='float64,float64').reshape(-1)
-            cent_view = self.centroids.coord.view(dtype='float64,float64').reshape(-1)
-            sel_cen &= np.isin(cent_view, cent_ext_view)
-            if not np.any(sel_cen):
-                LOGGER.info('No hazard centroids within extent')
                 return None
 
         # filter events based on name
