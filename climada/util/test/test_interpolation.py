@@ -265,7 +265,6 @@ class TestNN(unittest.TestCase):
         self.assertIn("Distance to closest centroid", cm.output[0])
 
         ref_neighbors = def_ref_antimer()
-        print(neighbors)
         self.assertTrue(np.array_equal(neighbors, ref_neighbors))
 
     def test_approx_normal_pass(self):
