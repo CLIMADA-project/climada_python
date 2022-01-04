@@ -348,8 +348,8 @@ class TestNN(unittest.TestCase):
 
         for dist, ref, kwargs in zip(dist_list, ref_neighbors, kwargs_list):
             neighbors= u_interp.interpol_index(centroids, exposures, 'NN',
-                                            dist, threshold=threshold,
-                                            **kwargs)
+                                               dist, threshold=threshold,
+                                               **kwargs)
             self.assertTrue(np.array_equal(neighbors, ref))
 
 
