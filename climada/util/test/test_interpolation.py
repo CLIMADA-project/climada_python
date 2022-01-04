@@ -215,7 +215,7 @@ class TestNN(unittest.TestCase):
         ref_neighbors = def_ref()
         # Check results
         self.assertEqual(exposures.shape[0], len(neighbors))
-        self.assertTrue(np.array_equal(neighbors, ref_neighbors))
+        np.testing.assert_array_equal(neighbors, ref_neighbors)
 
     def normal_warning(self, dist):
         """Checking that a warning is raised when minimum distance greater
@@ -231,7 +231,7 @@ class TestNN(unittest.TestCase):
         self.assertIn("Distance to closest centroid", cm.output[0])
 
         ref_neighbors = def_ref_40()
-        self.assertTrue(np.array_equal(neighbors, ref_neighbors))
+        np.testing.assert_array_equal(neighbors, ref_neighbors)
 
     def repeat_coord_pass(self, dist):
         """Check that exposures with the same coordinates have same
@@ -265,7 +265,7 @@ class TestNN(unittest.TestCase):
         self.assertIn("Distance to closest centroid", cm.output[0])
 
         ref_neighbors = def_ref_antimer()
-        self.assertTrue(np.array_equal(neighbors, ref_neighbors))
+        np.testing.assert_array_equal(neighbors, ref_neighbors)
 
     def test_approx_normal_pass(self):
         """Call normal_pass test for approxiamte distance"""
