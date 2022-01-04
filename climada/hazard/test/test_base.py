@@ -454,6 +454,8 @@ class TestSelect(unittest.TestCase):
 
     def test_select_tight_pass(self):
         """Test select tight box around hazard"""
+
+        #intensity select
         haz = dummy_hazard()
         haz.intensity[:, -1] = 0.0
         sel_haz = haz.select_tight()
@@ -475,6 +477,7 @@ class TestSelect(unittest.TestCase):
         self.assertIsInstance(sel_haz.intensity, sparse.csr_matrix)
         self.assertIsInstance(sel_haz.fraction, sparse.csr_matrix)
 
+        #fraction select
         haz = dummy_hazard()
         haz.fraction[:, -1] = 0.0
 
@@ -497,8 +500,15 @@ class TestSelect(unittest.TestCase):
         self.assertIsInstance(sel_haz.intensity, sparse.csr_matrix)
         self.assertIsInstance(sel_haz.fraction, sparse.csr_matrix)
 
-        haz = dummy_hazard()
 
+        haz = dummy_hazard()
+        haz.intensity[:, -1] = 0.0
+
+        # small buffer: zero field is discarded
+        sel_haz = haz.select_tight(buffer=0.1)
+        self.assertTrue(np.array_equal(sel_haz.centroids.coord.squeeze(),
+                                       haz.centroids.coord[:-1, :]))
+        # large buffer: zero field is retained
         sel_haz = haz.select_tight(buffer=10)
 
         self.assertTrue(np.array_equal(sel_haz.centroids.coord.squeeze(),
