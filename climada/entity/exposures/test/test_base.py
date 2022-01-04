@@ -244,8 +244,8 @@ class TestIO(unittest.TestCase):
         self.assertEqual(exp_df.ref_year, exp_read.ref_year)
         self.assertEqual(exp_df.value_unit, exp_read.value_unit)
         self.assertDictEqual(exp_df.meta, exp_read.meta)
-        self.assertEqual(exp_df.crs, exp_read.crs)
-        self.assertEqual(exp_df.gdf.crs, exp_read.gdf.crs)
+        self.assertTrue(u_coord.equal_crs(exp_df.crs, exp_read.crs))
+        self.assertTrue(u_coord.equal_crs(exp_df.gdf.crs, exp_read.gdf.crs))
         self.assertEqual(exp_df.tag.file_name, exp_read.tag.file_name)
         self.assertEqual(exp_df.tag.description, exp_read.tag.description)
         np.testing.assert_array_equal(exp_df.gdf.latitude.values, exp_read.gdf.latitude.values)
@@ -335,7 +335,7 @@ class TestConcat(unittest.TestCase):
         catexp = Exposures.concat([self.dummy, self.dummy.gdf, pd.DataFrame(self.dummy.gdf.values, columns=self.dummy.gdf.columns), self.dummy])
         self.assertEqual(self.dummy.gdf.shape, (10,5))
         self.assertEqual(catexp.gdf.shape, (40,5))
-        self.assertEqual(catexp.crs, 'epsg:3395')
+        self.assertTrue(u_coord.equal_crs(catexp.crs, 'epsg:3395'))
 
     def test_concat_fail(self):
         """Test failing concat function with fake data."""
@@ -352,7 +352,7 @@ class TestGeoDFFuncs(unittest.TestCase):
         exp.check()
         exp_copy = exp.copy()
         self.assertIsInstance(exp_copy, Exposures)
-        self.assertEqual(exp_copy.crs, exp.crs)
+        self.assertTrue(u_coord.equal_crs(exp_copy.crs, exp.crs))
         self.assertEqual(exp_copy.ref_year, exp.ref_year)
         self.assertEqual(exp_copy.value_unit, exp.value_unit)
         self.assertEqual(exp_copy.tag.description, exp.tag.description)
@@ -365,9 +365,9 @@ class TestGeoDFFuncs(unittest.TestCase):
         exp = good_exposures()
         exp.set_geometry_points()
         exp.check()
-        exp.to_crs({'init': 'epsg:3395'}, inplace=True)
+        exp.to_crs('epsg:3395', inplace=True)
         self.assertIsInstance(exp, Exposures)
-        self.assertEqual(exp.crs, {'init': 'epsg:3395'})
+        self.assertTrue(u_coord.equal_crs(exp.crs, 'epsg:3395'))
         self.assertEqual(exp.ref_year, DEF_REF_YEAR)
         self.assertEqual(exp.value_unit, DEF_VALUE_UNIT)
         self.assertEqual(exp.tag.description, '')
@@ -378,10 +378,10 @@ class TestGeoDFFuncs(unittest.TestCase):
         exp = good_exposures()
         exp.set_geometry_points()
         exp.check()
-        exp_tr = exp.to_crs({'init': 'epsg:3395'})
+        exp_tr = exp.to_crs('epsg:3395')
         self.assertIsInstance(exp, Exposures)
-        self.assertEqual(exp.crs, DEF_CRS)
-        self.assertEqual(exp_tr.crs, {'init': 'epsg:3395'})
+        self.assertTrue(u_coord.equal_crs(exp.crs, DEF_CRS))
+        self.assertTrue(u_coord.equal_crs(exp_tr.crs, 'epsg:3395'))
         self.assertEqual(exp_tr.ref_year, DEF_REF_YEAR)
         self.assertEqual(exp_tr.value_unit, DEF_VALUE_UNIT)
         self.assertEqual(exp_tr.tag.description, '')
@@ -449,7 +449,7 @@ class TestGeoDFFuncs(unittest.TestCase):
         probe.set_crs(DEF_CRS)
         self.assertTrue(u_coord.equal_crs(DEF_CRS, probe.crs))
         self.assertRaises(ValueError, probe.set_crs, 'epsg:3395')
-        self.assertEqual('EPSG:4326', probe.meta.get('crs'))
+        self.assertTrue(u_coord.equal_crs('EPSG:4326', probe.meta.get('crs')))
 
 
 class TestImpactFunctions(unittest.TestCase):

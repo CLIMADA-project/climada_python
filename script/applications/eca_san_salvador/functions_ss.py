@@ -29,7 +29,7 @@ def plot_salvador_ma():
     shape_poly = wkt.loads(risk_shape)
     shape = gpd.GeoDataFrame()
     shape['geometry'] = [shape_poly]
-    shape.crs = {'init': 'epsg:4326'}
+    shape.crs = 'epsg:4326'
     shape.to_crs(epsg=3857, inplace=True)
 
     ax = shape.plot(figsize=(10, 10), alpha=0.5)

@@ -21,6 +21,7 @@ Test uncertainty module.
 
 import unittest
 import copy
+import time
 
 import numpy as np
 import pandas as pd
@@ -28,6 +29,7 @@ import matplotlib.pyplot as plt
 import scipy as sp
 
 from pathos.pools import ProcessPool as Pool
+from tables.exceptions import HDF5ExtError
 
 from climada.entity import ImpactFunc, ImpactFuncSet
 from climada.entity.entity_def import Entity
@@ -39,12 +41,14 @@ from climada.util.constants import EXP_DEMO_H5, HAZ_DEMO_H5, ENT_DEMO_TODAY, ENT
 from climada.util.constants import  TEST_UNC_OUTPUT_IMPACT, TEST_UNC_OUTPUT_COSTBEN
 from climada.util.api_client import Client
 
+
 apiclient = Client()
 ds = apiclient.get_dataset(name=TEST_UNC_OUTPUT_IMPACT)
 _target_dir, [test_unc_output_impact] = apiclient.download_dataset(ds)
 
 ds = apiclient.get_dataset(name=TEST_UNC_OUTPUT_COSTBEN)
 _target_dir, [test_unc_output_costben] = apiclient.download_dataset(ds)
+
 
 def impf_dem(x_paa=1, x_mdd=1):
     impf = ImpactFunc()
@@ -59,17 +63,25 @@ def impf_dem(x_paa=1, x_mdd=1):
     impf_set.append(impf)
     return impf_set
 
-exp = Exposures.from_hdf5(EXP_DEMO_H5)
-def exp_dem(x_exp=1, exp=exp):
+
+def exp_dem(x_exp=1, exp=None):
+    while not exp:
+        try:
+            exp = Exposures.from_hdf5(EXP_DEMO_H5)
+        except HDF5ExtError:
+            # possibly raised by pd.HDFStore when the file is locked by another process due to multiprocessing
+            time.sleep(0.1)
     exp_tmp = exp.copy(deep=True)
     exp_tmp.gdf.value *= x_exp
     return exp_tmp
 
-haz = Hazard.from_hdf5(HAZ_DEMO_H5)
-def haz_dem(x_haz=1, haz=haz):
+
+def haz_dem(x_haz=1, haz=None):
+    haz = haz or Hazard.from_hdf5(HAZ_DEMO_H5)
     haz_tmp = copy.deepcopy(haz)
     haz_tmp.intensity = haz_tmp.intensity.multiply(x_haz)
     return haz_tmp
+
 
 def make_input_vars():
 
@@ -98,11 +110,13 @@ def ent_dem():
     entity.check()
     return entity
 
+
 def ent_fut_dem():
     entity = Entity.from_excel(ENT_DEMO_FUTURE)
     entity.exposures.ref_year = 2040
     entity.check()
     return entity
+
 
 def make_costben_iv():
 
@@ -110,7 +124,7 @@ def make_costben_iv():
     ent_iv = InputVar.ent(
         impf_set = entdem.impact_funcs,
         disc_rate = entdem.disc_rates,
-        exp = entdem.exposures,
+        exp_list = [entdem.exposures],
         meas_set = entdem.measures,
         bounds_noise=[0.3, 1.9],
         bounds_cost=[0.5, 1.5],
@@ -121,7 +135,7 @@ def make_costben_iv():
     entfutdem = ent_fut_dem()
     entfut_iv = InputVar.entfut(
         impf_set = entfutdem.impact_funcs,
-        exp = entfutdem.exposures,
+        exp_list = [entfutdem.exposures],
         meas_set = entfutdem.measures,
         bounds_eg=[0.8, 1.5],
         bounds_mdd=[0.7, 0.9],
@@ -266,7 +280,7 @@ class TestOutput(unittest.TestCase):
         plt_sens_2 = unc_output.plot_sensitivity_second_order(salib_si='S1')
         self.assertIsNotNone(plt_sens_2)
         plt.close()
-        plt_map = unc_output.plot_sensitivity_map(exp)
+        plt_map = unc_output.plot_sensitivity_map()
         self.assertIsNotNone(plt_map)
         plt.close()
 
@@ -436,11 +450,13 @@ class TestCalcImpact(unittest.TestCase):
         unc_data = unc_calc.make_sample(N=2)
 
         pool = Pool(nodes=2)
-        unc_data = unc_calc.uncertainty(unc_data, calc_eai_exp=False,
+        try:
+            unc_data = unc_calc.uncertainty(unc_data, calc_eai_exp=False,
                              calc_at_event=False, pool=pool)
-        pool.close()
-        pool.join()
-        pool.clear()
+        finally:
+            pool.close()
+            pool.join()
+            pool.clear()
 
         self.assertEqual(unc_data.unit, exp_dem().value_unit)
         self.assertListEqual(unc_calc.rp, [5, 10, 20, 50, 100, 250])
@@ -573,7 +589,7 @@ class TestCalcCostBenefit(unittest.TestCase):
             )
         self.assertEqual(unc_calc.value_unit, ent_dem().exposures.value_unit)
         self.assertTrue(
-            unc_calc.ent_input_var.evaluate(CO=None, IFi=None, EN=None).exposures.gdf.equals(
+            unc_calc.ent_input_var.evaluate(CO=None, IFi=None, EN=None, EL=0).exposures.gdf.equals(
                 ent_dem().exposures.gdf)
             )
 
@@ -720,16 +736,18 @@ class TestCalcCostBenefit(unittest.TestCase):
     def test_calc_uncertainty_pool_pass(self):
         """Test compute the uncertainty distribution for an impact"""
 
-        ent_iv, ent_fut_iv = make_costben_iv()
+        ent_iv, _ = make_costben_iv()
         _, _, haz_iv = make_input_vars()
         unc_calc = CalcCostBenefit(haz_iv, ent_iv)
         unc_data = unc_calc.make_sample( N=2)
 
         pool = Pool(n=2)
-        unc_data = unc_calc.uncertainty(unc_data, pool=pool)
-        pool.close()
-        pool.join()
-        pool.clear()
+        try:
+            unc_data = unc_calc.uncertainty(unc_data, pool=pool)
+        finally:
+            pool.close()
+            pool.join()
+            pool.clear()
 
         self.assertEqual(unc_data.unit, ent_dem().exposures.value_unit)
 
@@ -753,7 +771,7 @@ class TestCalcCostBenefit(unittest.TestCase):
     def test_calc_sensitivity_pass(self):
         """Test compute sensitivity default"""
 
-        ent_iv, ent_fut_iv = make_costben_iv()
+        ent_iv, _ = make_costben_iv()
         _, _, haz_iv = make_input_vars()
         unc_calc = CalcCostBenefit(haz_iv, ent_iv)
         unc_data = unc_calc.make_sample(N=4, sampling_kwargs={'calc_second_order': True})
