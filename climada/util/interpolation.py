@@ -289,7 +289,7 @@ def index_antimeridian_strip(centroids, coordinates, threshold, assigned):
     lon_max = max(centroids[:, 1].max(), coordinates[:, 1].max())
     if lon_max - lon_min > 360:
         raise ValueError("Longitudinal coordinates need to be normalized"
-                         "to 360degrees")
+                         "to a common 360 degree range")
     mid_lon = 0.5 * (lon_max + lon_min)
     antimeridian = mid_lon + 180
 
