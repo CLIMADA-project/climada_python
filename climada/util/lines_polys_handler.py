@@ -37,7 +37,7 @@ LOGGER = logging.getLogger(__name__)
 
 def calc_geom_impact(
         exp, impf_set, haz, lon_res, lat_res,
-        to_meters=False, disagg=None, agg_avg=False
+        to_meters=False, disagg=None, agg='sum'
         ):
     """
     Compute impact for exposure with (multi-)polygons. Lat/Lon values are
@@ -64,11 +64,14 @@ def calc_geom_impact(
        then reprojected into the original projections before the impact
        calculation. The default is False.
     disagg : string, optional
-        Disaggregation method. The default is None (i.e. use default disaggregation)
-    agg_avg : bool, optional
-        If True, the impact is averaged over all points in each polygon.
-        If False, the impact is summed over all points in each polygon.
-        The default is False.
+        if 'avg' average value over points
+        if 'area' value per points is equal to area per point (lon_res*lat_res)
+        if 'None' value is unchanged (or 1 if no value is defined)
+        Disaggregation method. The default is None.
+    agg : string, optional
+        If 'agg', the impact is averaged over all points in each polygon.
+        If 'sum', the impact is summed over all points in each polygon.
+        The default is 'sum'.
 
     Returns
     -------
@@ -88,9 +91,9 @@ def calc_geom_impact(
         )
     exp_pnt.assign_centroids(haz)
 
-    return calc_impact_pnt_agg(exp_pnt=exp_pnt, impf_set=impf_set, haz=haz, agg_avg=agg_avg)
+    return calc_impact_pnt_agg(exp_pnt=exp_pnt, impf_set=impf_set, haz=haz, agg=agg)
 
-def calc_impact_pnt_agg(exp_pnt, impf_set, haz, agg_avg=False):
+def calc_impact_pnt_agg(exp_pnt, impf_set, haz, agg='sum'):
     """
     Compute impact for an exposures with disaggregated geometries
 
@@ -103,10 +106,10 @@ def calc_impact_pnt_agg(exp_pnt, impf_set, haz, agg_avg=False):
         The set of impact functions.
     haz : Hazard
         The hazard instance.
-    agg_avg : bool, optional
-        If True, the impact is averaged over all points in each polygon.
-        If False, the impact is summed over all points in each polygon.
-        The default is False.
+    agg : string, optional
+        If 'agg', the impact is averaged over all points in each polygon.
+        If 'sum', the impact is summed over all points in each polygon.
+        The default is 'sum'.
 
     Returns
     -------
@@ -118,11 +121,13 @@ def calc_impact_pnt_agg(exp_pnt, impf_set, haz, agg_avg=False):
     impact_pnt = Impact()
     impact_pnt.calc(exp_pnt, impf_set, haz, save_mat=True)
 
-    return impact_pnt_agg(impact_pnt, exp_pnt, agg_avg)
+    return impact_pnt_agg(impact_pnt, exp_pnt, agg)
 
-def impact_pnt_agg(impact_pnt, exp_pnt, agg_avg):
+def impact_pnt_agg(impact_pnt, exp_pnt, agg):
     """
-    Aggregate the impact per geometry
+    Aggregate the impact per geometry.
+
+    The output Impact object contains an extra attribute 'geom_exp' containing the polygons.
 
     Parameters
     ----------
@@ -131,10 +136,10 @@ def impact_pnt_agg(impact_pnt, exp_pnt, agg_avg):
     exp_pnt : Exposures
         Exposures with a double index geodataframe, first for polygon geometries,
         second for the point disaggregation of the polygons.
-    agg_avg : bool, optional
-        If True, the impact is averaged over all points in each polygon.
-        If False, the impact is summed over all points in each polygon.
-        The default is False.
+    agg : string, optional
+        If 'agg', the impact is averaged over all points in each polygon.
+        If 'sum', the impact is summed over all points in each polygon.
+        The default is 'sum'.
 
     Returns
     -------
@@ -144,7 +149,7 @@ def impact_pnt_agg(impact_pnt, exp_pnt, agg_avg):
     """
 
     # aggregate impact
-    mat_agg = aggregate_impact_mat(impact_pnt, exp_pnt.gdf, agg_avg)
+    mat_agg = aggregate_impact_mat(impact_pnt, exp_pnt.gdf, agg)
 
     #Write to impact obj
     impact_agg = set_imp_mat(impact_pnt, mat_agg)
@@ -175,6 +180,9 @@ def exp_geom_to_pnt(exp, lon_res, lat_res, to_meters, disagg=None):
        then reprojected into the original projections before the impact
        calculation. The default is False.
     disagg : string, optional
+        if 'avg' average value over points
+        if 'area' value per points is equal to area per point (lon_res*lat_res)
+        if 'None' value is unchanged (or 1 if no value is defined)
         Disaggregation method. The default is None (i.e. use default disaggregation)
 
     Returns
@@ -287,7 +295,7 @@ def aai_agg_from_at_event(at_event, freq):
     """
     return sum(at_event * freq)
 
-def aggregate_impact_mat(imp_pnt, gdf_pnt, agg_avg):
+def aggregate_impact_mat(imp_pnt, gdf_pnt, agg):
     """
     Aggregate impact matrix given geodataframe or disaggregated polygons.
 
@@ -298,10 +306,9 @@ def aggregate_impact_mat(imp_pnt, gdf_pnt, agg_avg):
     gdf_pnt : GeoDataFrame
         Exposures geodataframe with a double index, first for polygon geometries,
         second for the point disaggregation of the polygons.
-    agg_avg : bool, optional
-        If True, the impact is averaged over all points in each polygon.
-        If False, the impact is summed over all points in each polygon.
-        The default is False.
+    agg : string
+        If 'agg', the impact is averaged over all points in each polygon.
+        If 'sum', the impact is summed over all points in each polygon.
 
     Returns
     -------
@@ -313,12 +320,14 @@ def aggregate_impact_mat(imp_pnt, gdf_pnt, agg_avg):
     mi = gdf_pnt.index
     col_geom = mi.get_level_values(level=0).to_numpy()
     row_pnt = np.arange(len(col_geom))
-    if agg_avg:
+    if agg == 'avg':
         from collections import Counter
         geom_sizes = Counter(col_geom).values()
         mask = np.concatenate([np.ones(l) / l for l in geom_sizes])
-    else:
+    elif agg == 'sum':
         mask = np.ones(len(col_geom))
+    else:
+        raise ValueError("Please choose a valid aggregation method. agg=%s is not valid", agg)
     csr_mask = sp.sparse.csr_matrix(
         (mask, (row_pnt, col_geom)),
          shape=(len(row_pnt), len(np.unique(col_geom)))
@@ -643,8 +652,6 @@ def line_to_pnts_m(gdf_lines, dist):
         for line, dist_vector in zip(gdf_lines.geometry, dist_vectors)]
 
     return gdf_points.explode()
-
-
 
 
 
