@@ -294,7 +294,7 @@ def index_antimeridian_strip(centroids, coordinates, threshold, assigned):
     antimeridian = mid_lon + 180
 
     thres_deg = np.degrees(threshold / EARTH_RADIUS_KM)
-    coord_strip_bool =  coordinates[:, 1] + antimeridian < 1.5 * thres_deg
+    coord_strip_bool = coordinates[:, 1] + antimeridian < 1.5 * thres_deg
     coord_strip_bool |= coordinates[:, 1] - antimeridian >  -1.5 * thres_deg
     if np.any(coord_strip_bool):
         coord_strip = coordinates[coord_strip_bool]
