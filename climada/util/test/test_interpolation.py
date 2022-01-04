@@ -315,6 +315,45 @@ class TestNN(unittest.TestCase):
         """Call normal_warning test for euclidian distance"""
         self.antimer_warning('euclidian')
 
+    def test_diff_outcomes(self):
+        """Different NN interpolation outcomes"""
+        threshold = 100000
+
+        # Define centroids
+        lons = np.arange(-160, 180+1, 20)
+        lats = np.arange(-60, 60+1, 20)
+        lons = np.repeat(lons, len(lats))
+        lats = np.tile(lats, int(len(lons) / len(lats)))
+        centroids = np.transpose([lats, lons])
+
+        # Define exposures
+        exposures = np.array([
+            [49.9, 9],
+            [49.5, 9],
+            [0, -175]
+            ])
+
+        # Neighbors
+        ref_neighbors = [
+            [62, 62, 3],
+            [62, 61, 122],
+            [61, 61, 3],
+            ]
+
+        dist_list = ['approx', 'haversine', 'euclidian']
+        kwargs_list = [
+            {'check_antimeridian':False},
+            {},
+            {'check_antimeridian':False}
+            ]
+
+        for dist, ref, kwargs in zip(dist_list, ref_neighbors, kwargs_list):
+            neighbors= u_interp.interpol_index(centroids, exposures, 'NN',
+                                            dist, threshold=threshold,
+                                            **kwargs)
+            self.assertTrue(np.array_equal(neighbors, ref))
+
+
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestNN)
