@@ -322,8 +322,7 @@ class TestNN(unittest.TestCase):
         # Define centroids
         lons = np.arange(-160, 180+1, 20)
         lats = np.arange(-60, 60+1, 20)
-        lons = np.repeat(lons, len(lats))
-        lats = np.tile(lats, int(len(lons) / len(lats)))
+        lats, lons = [arr.ravel() for arr in np.meshgrid(lats, lons)]
         centroids = np.transpose([lats, lons])
 
         # Define exposures
