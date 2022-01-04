@@ -80,7 +80,7 @@ def interpol_index(centroids, coordinates, method=METHOD[0],
     threshold : float
         distance threshold in km over which no neighbor will
         be found. Those are assigned with a -1 index
-    kwargs: keyword arguments, optional
+    kwargs: dict, optional
         keyword arguments to be passed on the interpolation method
 
     Returns
