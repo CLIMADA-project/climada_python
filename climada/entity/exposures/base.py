@@ -448,7 +448,7 @@ class Exposures():
             reproject to given crs
         transform : rasterio.Affine
             affine transformation to apply
-        wdith : float
+        width : float
             number of lons for transform
         height : float
             number of lats for transform
@@ -906,15 +906,29 @@ class Exposures():
             **metadata
         )
 
-    def write_raster(self, file_name, value_name='value', scheduler=None):
+    def write_raster(self, file_name, value_name=['value'], scheduler=None):
         """Write value data into raster file with GeoTiff format
 
         Parameters
         ----------
         file_name : str
-            name output file in tif format
+            output tif file to write to
+        value_name : str or list of str
+            column(s) in the geodataframe containing data. If multiple values are provided, each column will be
+            written to a separate band in the output raster
+        scheduler : str, optional
+            used for dask map_partitions.
+            “threads”, “synchronous” or “processes”
         """
-        if self.meta and self.meta['height'] * self.meta['width'] == len(self.gdf):
+        if not isinstance(value_name, list):
+            value_name = [value_name]
+
+        # Simple case: one raster band, every grid value defined in the Exposures.
+        # Then we can skip a slow points_to_raster call:
+        if self.meta and \
+                'height' in self.meta.keys() and \
+                len(value_name) == 1 and \
+                self.meta['height'] * self.meta['width'] == len(self.gdf):
             raster = self.gdf[value_name].values.reshape((self.meta['height'],
                                                           self.meta['width']))
             # check raster starts by upper left corner
@@ -924,7 +938,7 @@ class Exposures():
                 raise ValueError('Points are not ordered according to meta raster.')
             u_coord.write_raster(file_name, raster, self.meta)
         else:
-            raster, meta = u_coord.points_to_raster(self.gdf, [value_name], scheduler=scheduler)
+            raster, meta = u_coord.points_to_raster(self.gdf, value_name, scheduler=scheduler)
             u_coord.write_raster(file_name, raster, meta)
 
     @staticmethod
