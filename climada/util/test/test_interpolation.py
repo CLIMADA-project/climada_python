@@ -300,20 +300,20 @@ class TestNN(unittest.TestCase):
         self.antimer_warning('haversine')
 
     def test_euc_normal_pass(self):
-        """Call normal_pass test for euclidian distance"""
-        self.normal_pass('euclidian')
+        """Call normal_pass test for euclidean distance"""
+        self.normal_pass('euclidean')
 
     def test_euc_normal_warning(self):
-        """Call normal_warning test for euclidian distance"""
-        self.normal_warning('euclidian')
+        """Call normal_warning test for euclidean distance"""
+        self.normal_warning('euclidean')
 
     def test_euc_repeat_coord_pass(self):
-        """Call repeat_coord_pass test for euclidian distance"""
-        self.repeat_coord_pass('euclidian')
+        """Call repeat_coord_pass test for euclidean distance"""
+        self.repeat_coord_pass('euclidean')
 
     def test_euc_antimer_warning(self):
-        """Call normal_warning test for euclidian distance"""
-        self.antimer_warning('euclidian')
+        """Call normal_warning test for euclidean distance"""
+        self.antimer_warning('euclidean')
 
     def test_diff_outcomes(self):
         """Different NN interpolation outcomes"""
@@ -339,7 +339,7 @@ class TestNN(unittest.TestCase):
             [61, 61, 3],
             ]
 
-        dist_list = ['approx', 'haversine', 'euclidian']
+        dist_list = ['approx', 'haversine', 'euclidean']
         kwargs_list = [
             {'check_antimeridian':False},
             {},

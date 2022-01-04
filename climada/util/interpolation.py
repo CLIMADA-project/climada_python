@@ -34,7 +34,7 @@ from climada.util.constants import ONE_LAT_KM, EARTH_RADIUS_KM
 
 LOGGER = logging.getLogger(__name__)
 
-DIST_DEF = ['approx', 'haversine', 'euclidian']
+DIST_DEF = ['approx', 'haversine', 'euclidean']
 """Distances"""
 
 METHOD = ['NN']
@@ -96,8 +96,8 @@ def interpol_index(centroids, coordinates, method=METHOD[0],
         interp = index_nn_haversine(centroids, coordinates, threshold, **kwargs)
     elif (method == METHOD[0]) & (distance == DIST_DEF[2]):
         # Compute the nearest centroid for each coordinate using the
-        # euclidian distance on a kTree. This is best for gridded data.
-        interp = index_nn_euclidian(centroids, coordinates, threshold, **kwargs)
+        # euclidean distance on a kTree. This is best for gridded data.
+        interp = index_nn_euclidean(centroids, coordinates, threshold, **kwargs)
     else:
         raise ValueError(
             f'Interpolation using {method} with distance {distance} is not supported.')
@@ -106,7 +106,7 @@ def interpol_index(centroids, coordinates, method=METHOD[0],
 def index_nn_aprox(centroids, coordinates, threshold=THRESHOLD,
                    check_antimeridian=True):
     """Compute the nearest centroid for each coordinate using the
-    euclidian distance d = ((dlon)cos(lat))^2+(dlat)^2. For distant points
+    euclidean distance d = ((dlon)cos(lat))^2+(dlat)^2. For distant points
     (e.g. more than 100km apart) use the haversine distance.
 
     Parameters
@@ -209,7 +209,7 @@ def index_nn_haversine(centroids, coordinates, threshold=THRESHOLD):
     return np.squeeze(assigned[inv])
 
 
-def index_nn_euclidian(centroids, coordinates, threshold=THRESHOLD,
+def index_nn_euclidean(centroids, coordinates, threshold=THRESHOLD,
                        check_antimeridian=True):
     """Compute the neareast centroid for each coordinate using a k-d tree.
 
