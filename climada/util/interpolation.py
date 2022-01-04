@@ -60,7 +60,8 @@ def dist_sqr_approx(lats1, lons1, cos_lats1, lats2, lons2):
     return d_lon * d_lon * cos_lats1 * cos_lats1 + d_lat * d_lat
 
 def interpol_index(centroids, coordinates, method=METHOD[0],
-                   distance=DIST_DEF[1], threshold=THRESHOLD):
+                   distance=DIST_DEF[1], threshold=THRESHOLD,
+                   **kwargs):
     """Returns for each coordinate the centroids indexes used for
     interpolation.
 
@@ -79,6 +80,8 @@ def interpol_index(centroids, coordinates, method=METHOD[0],
     threshold : float
         distance threshold in km over which no neighbor will
         be found. Those are assigned with a -1 index
+    kwargs: keyword arguments, optional
+        keyword arguments to be passed on the interpolation method
 
     Returns
     -------
@@ -86,15 +89,15 @@ def interpol_index(centroids, coordinates, method=METHOD[0],
     """
     if (method == METHOD[0]) & (distance == DIST_DEF[0]):
         # Compute for each coordinate the closest centroid
-        interp = index_nn_aprox(centroids, coordinates, threshold)
+        interp = index_nn_aprox(centroids, coordinates, threshold, **kwargs)
     elif (method == METHOD[0]) & (distance == DIST_DEF[1]):
         # Compute the nearest centroid for each coordinate using the
         # haversine formula. This is done with a Ball tree.
-        interp = index_nn_haversine(centroids, coordinates, threshold)
+        interp = index_nn_haversine(centroids, coordinates, threshold, **kwargs)
     elif (method == METHOD[0]) & (distance == DIST_DEF[2]):
         # Compute the nearest centroid for each coordinate using the
         # euclidian distance on a kTree. This is best for gridded data.
-        interp = index_nn_euclidian(centroids, coordinates, threshold)
+        interp = index_nn_euclidian(centroids, coordinates, threshold, **kwargs)
     else:
         raise ValueError(
             f'Interpolation using {method} with distance {distance} is not supported.')
