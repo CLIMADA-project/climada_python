@@ -350,7 +350,7 @@ class TestNN(unittest.TestCase):
             neighbors= u_interp.interpol_index(centroids, exposures, 'NN',
                                                dist, threshold=threshold,
                                                **kwargs)
-            self.assertTrue(np.array_equal(neighbors, ref))
+            np.testing.assert_array_equal(neighbors, ref)
 
 
 # Execute Tests
