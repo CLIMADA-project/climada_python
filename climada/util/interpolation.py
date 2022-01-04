@@ -153,8 +153,8 @@ def index_nn_aprox(centroids, coordinates, threshold=THRESHOLD,
                        'km for %s coordinates.', threshold, num_warn)
 
     if check_antimeridian:
-        assigned = index_antimeridian_strip(np.radians(centroids),
-                                            np.radians(coordinates),
+        assigned = index_antimeridian_strip(centroids,
+                                            coordinates,
                                             threshold,
                                             assigned)
 
@@ -246,8 +246,8 @@ def index_nn_euclidian(centroids, coordinates, threshold=THRESHOLD,
         assigned[dist * EARTH_RADIUS_KM > threshold] = -1
 
     if check_antimeridian:
-        assigned = index_antimeridian_strip(np.radians(centroids),
-                                            np.radians(coordinates[idx]),
+        assigned = index_antimeridian_strip(centroids,
+                                            coordinates[idx],
                                             threshold,
                                             assigned)
 
@@ -279,16 +279,17 @@ def index_antimeridian_strip(centroids, coordinates, threshold, assigned):
 
     """
 
-    coord_strip_bool =  coordinates[:, 1] + np.pi < 1.5*threshold/EARTH_RADIUS_KM
-    coord_strip_bool += coordinates[:, 1] - np.pi >  -1.5*threshold/EARTH_RADIUS_KM
+    thres_deg = np.degrees(threshold / EARTH_RADIUS_KM)
+    coord_strip_bool =  coordinates[:, 1] + 180 < 1.5 * thres_deg
+    coord_strip_bool |= coordinates[:, 1] - 180 >  -1.5 * thres_deg
     if np.any(coord_strip_bool):
         coord_strip = coordinates[coord_strip_bool]
-        cent_strip_bool = centroids[:, 1] + np.pi < 2.5*threshold/EARTH_RADIUS_KM
-        cent_strip_bool += centroids[:, 1] - np.pi >  -2.5*threshold/EARTH_RADIUS_KM
+        cent_strip_bool = centroids[:, 1] + 180 < 2.5 * thres_deg
+        cent_strip_bool |= centroids[:, 1] - 180 >  -2.5 * thres_deg
         if np.any(cent_strip_bool):
             cent_strip = centroids[cent_strip_bool]
-            strip_assigned = index_nn_haversine(np.degrees(cent_strip),
-                                                np.degrees(coord_strip),
+            strip_assigned = index_nn_haversine(cent_strip,
+                                                coord_strip,
                                                 threshold)
             new_coords = np.where(cent_strip_bool)[0][strip_assigned]
             new_coords[np.where(strip_assigned == -1)] = -1
