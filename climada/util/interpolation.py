@@ -122,7 +122,9 @@ def index_nn_aprox(centroids, coordinates, threshold=THRESHOLD,
         be found. Those are assigned with a -1 index
     check_antimedirian: bool
         if True, recomputes the nn in a strip with lon size equal to threshold
-        around the antimeridian using the Haversine distance.
+        around the antimeridian using the Haversine distance. The antimeridian
+        is guessed from both coorindates and centroids, and is assumed
+        equal to 0.5*(lon_max+lon_min) + 180.
 
     Returns
     -------
@@ -224,7 +226,9 @@ def index_nn_euclidian(centroids, coordinates, threshold=THRESHOLD,
         are assigned with a -1 index
     check_antimedirian: bool
         if True, recomputes the nn in a strip with lon size equal to threshold
-        around the antimeridian using the Haversine distance.
+        around the antimeridian using the Haversine distance. The antimeridian
+        is guessed from both coorindates and centroids, and is assumed
+        equal to 0.5*(lon_max+lon_min) + 180.
 
     Returns
     -------
@@ -281,14 +285,21 @@ def index_antimeridian_strip(centroids, coordinates, threshold, assigned):
         with so many rows as coordinates containing the centroids indexes
 
     """
+    lon_min = min(centroids[:, 1].min(), coordinates[:, 1].min())
+    lon_max = max(centroids[:, 1].max(), coordinates[:, 1].max())
+    if lon_max - lon_min > 360:
+        raise ValueError("Longitudinal coordinates need to be normalized"
+                         "to 360degrees")
+    mid_lon = 0.5 * (lon_max + lon_min)
+    antimeridian = mid_lon + 180
 
     thres_deg = np.degrees(threshold / EARTH_RADIUS_KM)
-    coord_strip_bool =  coordinates[:, 1] + 180 < 1.5 * thres_deg
-    coord_strip_bool |= coordinates[:, 1] - 180 >  -1.5 * thres_deg
+    coord_strip_bool =  coordinates[:, 1] + antimeridian < 1.5 * thres_deg
+    coord_strip_bool |= coordinates[:, 1] - antimeridian >  -1.5 * thres_deg
     if np.any(coord_strip_bool):
         coord_strip = coordinates[coord_strip_bool]
-        cent_strip_bool = centroids[:, 1] + 180 < 2.5 * thres_deg
-        cent_strip_bool |= centroids[:, 1] - 180 >  -2.5 * thres_deg
+        cent_strip_bool = centroids[:, 1] + antimeridian < 2.5 * thres_deg
+        cent_strip_bool |= centroids[:, 1] - antimeridian >  -2.5 * thres_deg
         if np.any(cent_strip_bool):
             cent_strip = centroids[cent_strip_bool]
             strip_assigned = index_nn_haversine(cent_strip,
