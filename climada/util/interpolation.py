@@ -227,7 +227,7 @@ def index_nn_euclidian(centroids, coordinates, threshold=THRESHOLD,
     check_antimedirian: bool
         if True, recomputes the nn in a strip with lon size equal to threshold
         around the antimeridian using the Haversine distance. The antimeridian
-        is guessed from both coorindates and centroids, and is assumed
+        is guessed from both coordinates and centroids, and is assumed
         equal to 0.5*(lon_max+lon_min) + 180.
 
     Returns
