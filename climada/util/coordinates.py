@@ -1572,7 +1572,7 @@ def read_raster_bounds(path, bounds, res=None, bands=None, resampling="nearest",
         (xmin, ymin, xmax, ymax)
     res : float or pair of floats, optional
         Resolution of output. Note that the orientation (sign) of these is overwritten by the input
-        data set's axis orientations (e.g. north to south, west to east)
+        data set's axis orientations (e.g. north to south, west to east).
         Default: Resolution of input raster file.
     bands : list of int, optional
         Bands to read from the input raster file. Default: [1]
@@ -1610,8 +1610,9 @@ def read_raster_bounds(path, bounds, res=None, bands=None, resampling="nearest",
 
         if global_origin is None:
             global_origin = (src.transform[2], src.transform[5])
-        res = (np.sign(src.transform[0]) * res[0], np.sign(src.transform[4]) * res[1])
-        global_transform = rasterio.transform.from_origin(*global_origin, res[0], -res[1])
+        res_signed = (np.sign(src.transform[0]) * res[0], np.sign(src.transform[4]) * res[1])
+        global_transform = rasterio.transform.from_origin(
+            *global_origin, res_signed[0], -res_signed[1])
         transform, shape = subraster_from_bounds(global_transform, bounds)
 
         data = np.zeros((len(bands),) + shape, dtype=src.dtypes[0])
