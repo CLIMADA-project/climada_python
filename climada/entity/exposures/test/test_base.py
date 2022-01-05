@@ -22,6 +22,7 @@ import unittest
 import numpy as np
 import pandas as pd
 import geopandas as gpd
+from pathlib import Path
 from sklearn.neighbors import DistanceMetric
 import rasterio
 from rasterio.windows import Window
@@ -263,6 +264,35 @@ class TestIO(unittest.TestCase):
         for point_df, point_read in zip(exp_df.gdf.geometry.values, exp_read.gdf.geometry.values):
             self.assertEqual(point_df.x, point_read.x)
             self.assertEqual(point_df.y, point_read.y)
+
+    def test_write_raster_pass(self):
+        """Test write_raster function."""
+        test_file = Path(DATA_DIR, "test_write_raster.tif")
+        exp = Exposures.from_raster(HAZ_DEMO_FL, window=Window(10, 20, 50, 60))
+        exp.write_raster(test_file, 'value')
+        read_meta, read_data = u_coord.read_raster(test_file)
+        self.assertEqual(read_meta['transform'], exp.meta['transform'])
+        self.assertEqual(read_meta['width'], exp.meta['width'])
+        self.assertEqual(read_meta['height'], exp.meta['height'])
+        self.assertTrue(u_coord.equal_crs(read_meta['crs'], exp.meta['crs']))
+        self.assertEqual(read_data.shape, (1, exp.gdf.shape[0]))
+        np.testing.assert_array_equal(read_data[0], exp.gdf['value'])
+
+    def test_write_raster_multiband_pass(self):
+        """Test write_raster function with two (identical) bands."""
+        test_file = Path(DATA_DIR, "test_write_raster.tif")
+        exp = Exposures.from_raster(HAZ_DEMO_FL, window=Window(10, 20, 50, 60))
+        exp.gdf['value2'] = exp.gdf['value'] + 1
+        exp.write_raster(test_file, ['value', 'value2'])
+        read_meta, read_data = u_coord.read_raster(test_file, band=[1, 2])
+        self.assertEqual(read_meta['transform'], exp.meta['transform'])
+        self.assertEqual(read_meta['width'], exp.meta['width'])
+        self.assertEqual(read_meta['height'], exp.meta['height'])
+        self.assertTrue(u_coord.equal_crs(read_meta['crs'], exp.meta['crs']))
+        self.assertEqual(read_data.shape, (2, exp.gdf.shape[0]))
+        np.testing.assert_array_equal(read_data[0], exp.gdf['value'])
+        np.testing.assert_array_equal(read_data[1], exp.gdf['value2'])
+
 
 class TestAddSea(unittest.TestCase):
     """Check constructor Exposures through DataFrames readers"""
