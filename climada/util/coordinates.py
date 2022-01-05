@@ -1402,8 +1402,10 @@ def equal_crs(crs_one, crs_two):
     return rasterio.crs.CRS.from_user_input(crs_one) == rasterio.crs.CRS.from_user_input(crs_two)
 
 def _read_raster_reproject(src, src_crs, dst_meta, band=None, geometry=None, dst_crs=None,
-                           transform=None, resampling=rasterio.warp.Resampling.nearest):
+                           transform=None, resampling="nearest"):
     """Helper function for `read_raster`."""
+    if isinstance(resampling, str):
+        resampling = getattr(rasterio.warp.Resampling, resampling)
     if not band:
         band = [1]
     if not dst_crs:
@@ -1469,8 +1471,7 @@ def _read_raster_reproject(src, src_crs, dst_meta, band=None, geometry=None, dst
     return intensity
 
 def read_raster(file_name, band=None, src_crs=None, window=None, geometry=None,
-                dst_crs=None, transform=None, width=None, height=None,
-                resampling=rasterio.warp.Resampling.nearest):
+                dst_crs=None, transform=None, width=None, height=None, resampling="nearest"):
     """Read raster of bands and set 0-values to the masked ones.
 
     Parameters
@@ -1491,8 +1492,9 @@ def read_raster(file_name, band=None, src_crs=None, window=None, geometry=None,
         number of lons for transform
     height : float
         number of lats for transform
-    resampling : rasterio.warp.Resampling optional
-        resampling function used for reprojection to dst_crs
+    resampling : int, rasterio.enums.Resampling or str, optional
+        Resampling method to use. String values like `"nearest"` or `"bilinear"` are resolved to
+        attributes of `rasterio.enums.Resampling. Default: "nearest"
 
     Returns
     -------
@@ -1554,7 +1556,8 @@ def read_raster(file_name, band=None, src_crs=None, window=None, geometry=None,
 
     return dst_meta, intensity.reshape(dst_shape)
 
-def read_raster_bounds(path, bounds, res=None, bands=None, resampling=None, global_origin=None):
+def read_raster_bounds(path, bounds, res=None, bands=None, resampling="nearest",
+                       global_origin=None):
     """Read raster file within given bounds and refine to given resolution
 
     The procedure makes sure that the extent of pixel centers covers the specified region.
@@ -1575,7 +1578,7 @@ def read_raster_bounds(path, bounds, res=None, bands=None, resampling=None, glob
         Bands to read from the input raster file. Default: [1]
     resampling : int, rasterio.enums.Resampling or str, optional
         Resampling method to use. String values like `"nearest"` or `"bilinear"` are resolved to
-        attributes of `rasterio.enums.Resampling. Default: `rasterio.enums.Resampling.nearest`
+        attributes of `rasterio.enums.Resampling. Default: "nearest"
     global_origin : pair of floats, optional
         If given, align the output raster to a global reference raster with this origin.
         By default, the data set's origin (according to it's transform) is used.
@@ -1588,8 +1591,6 @@ def read_raster_bounds(path, bounds, res=None, bands=None, resampling=None, glob
     transform : rasterio.Affine
         Affine transformation defining the output raster data.
     """
-    if resampling is None:
-        resampling = "nearest"
     if isinstance(resampling, str):
         resampling = getattr(rasterio.warp.Resampling, resampling)
     if Path(path).suffix == '.gz':
@@ -1962,8 +1963,8 @@ def subraster_from_bounds(transform, bounds):
     return dst_transform, dst_shape
 
 def align_raster_data(source, src_crs, src_transform, dst_crs=None, dst_resolution=None,
-                      dst_bounds=None, global_origin=(-180, 90), resampling=None, conserve=None,
-                      **kwargs):
+                      dst_bounds=None, global_origin=(-180, 90), resampling="nearest",
+                      conserve=None, **kwargs):
     """Reproject 2D np.ndarray to be aligned to a reference grid.
 
     This function ensures that reprojected data with the same dst_resolution and global_origins are
@@ -1994,7 +1995,7 @@ def align_raster_data(source, src_crs, src_transform, dst_crs=None, dst_resoluti
         change `global_origin` for non-geographical CRS!
     resampling : int, rasterio.enums.Resampling or str, optional
         Resampling method to use. String values like `"nearest"` or `"bilinear"` are resolved to
-        attributes of `rasterio.enums.Resampling. Default: `rasterio.enums.Resampling.nearest`
+        attributes of `rasterio.enums.Resampling. Default: "nearest"
     conserve : str, optional
         If provided, conserve the source array's 'mean' or 'sum' in the transformed data or
         normalize the values of the transformed data ndarray ('norm').
@@ -2021,8 +2022,6 @@ def align_raster_data(source, src_crs, src_transform, dst_crs=None, dst_resoluti
         dst_resolution = (np.abs(src_transform[0]), np.abs(src_transform[4]))
     if np.isscalar(dst_resolution):
         dst_resolution = (dst_resolution, dst_resolution)
-    if resampling is None:
-        resampling = "nearest"
     if isinstance(resampling, str):
         resampling = getattr(rasterio.warp.Resampling, resampling)
 
