@@ -2014,6 +2014,9 @@ def align_raster_data(source, src_crs, src_transform, dst_crs=None, dst_resoluti
     conserve : str, optional
         If provided, conserve the source array's 'mean' or 'sum' in the transformed data or
         normalize the values of the transformed data ndarray ('norm').
+        WARNING: Please note that this procedure will not apply any weighting of values according
+        to the geographical cell sizes, which will introduce serious biases for lat/lon grids
+        in case of areas spanning large latitudinal ranges.
         Default: None (no conservation)
     kwargs : dict, optional
         Additional arguments passed to `rasterio.warp.reproject`.
