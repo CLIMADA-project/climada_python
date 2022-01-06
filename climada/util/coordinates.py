@@ -46,6 +46,7 @@ import shapely.ops
 import shapely.vectorized
 import shapefile
 
+from climada.util.config import CONFIG
 from climada.util.constants import (DEF_CRS, SYSTEM_DIR, ONE_LAT_KM,
                                     NATEARTH_CENTROIDS,
                                     ISIMIP_GPWV3_NATID_150AS,
@@ -518,6 +519,29 @@ def dist_to_coast(coord_lat, lon=None, signed=False):
         dist[coord_on_land(geom.geometry.y, geom.geometry.x)] *= -1
     return dist
 
+def get_dist_to_coast_nasa_tif():
+    """Get the path to the (downloaded) NASA raster file for distance to coast
+
+    Note: The NASA raster file is 300 MB and will be downloaded on first run!
+
+    If the file is already present, this will just return the path.
+
+    Returns
+    -------
+    path : Path
+        Path to the GeoTIFF raster file.
+    """
+    tifname = CONFIG.util.coordinates.dist_to_coast_nasa_tif.str()
+    url = CONFIG.util.coordinates.dist_to_coast_nasa_url.str()
+    path = SYSTEM_DIR.joinpath(tifname)
+    if not path.is_file():
+        path_dwn = download_file(url, download_dir=SYSTEM_DIR)
+        zip_ref = zipfile.ZipFile(path_dwn, 'r')
+        zip_ref.extractall(SYSTEM_DIR)
+        zip_ref.close()
+    return path
+
+
 def dist_to_coast_nasa(lat, lon, highres=False, signed=False):
     """Read interpolated (signed) distance to coast (in m) from NASA data
 
@@ -540,20 +564,9 @@ def dist_to_coast_nasa(lat, lon, highres=False, signed=False):
     dist : np.array
         (Signed) distance to coast in meters.
     """
+    path = get_dist_to_coast_nasa_tif()
     lat, lon = [np.asarray(ar).ravel() for ar in [lat, lon]]
     lon = lon_normalize(lon.copy())
-
-    # TODO move URL to config
-    zipname = "GMT_intermediate_coast_distance_01d.zip"
-    tifname = "GMT_intermediate_coast_distance_01d.tif"
-    url = "https://oceancolor.gsfc.nasa.gov/docs/distfromcoast/" + zipname
-    path = SYSTEM_DIR.joinpath(tifname)
-    if not path.is_file():
-        path_dwn = download_file(url, download_dir=SYSTEM_DIR)
-        zip_ref = zipfile.ZipFile(path_dwn, 'r')
-        zip_ref.extractall(SYSTEM_DIR)
-        zip_ref.close()
-
     intermediate_res = None if highres else 0.1
     west_msk = (lon < 0)
     dist = np.zeros_like(lat)
@@ -1606,7 +1619,8 @@ def read_raster_bounds(path, bounds, res=None, bands=None, resampling="nearest",
         res = (np.abs(res[0]), np.abs(res[1]))
 
         # make sure that the extent of pixel centers covers the specified region
-        bounds = (bounds[0] - res[0], bounds[1] - res[1], bounds[2] + res[0], bounds[3] + res[1])
+        bounds = (bounds[0] - res[0], max(-90, bounds[1] - res[1]),
+                  bounds[2] + res[0], min(90, bounds[3] + res[1]))
 
         if global_origin is None:
             global_origin = (src.transform[2], src.transform[5])

@@ -35,7 +35,7 @@ from rasterio.crs import CRS as RCRS
 import rasterio.transform
 
 from climada import CONFIG
-from climada.util.constants import HAZ_DEMO_FL, DEF_CRS
+from climada.util.constants import HAZ_DEMO_FL, DEF_CRS, SYSTEM_DIR
 import climada.util.coordinates as u_coord
 
 DATA_DIR = CONFIG.util.test_data.dir()
@@ -949,6 +949,33 @@ class TestRasterIO(unittest.TestCase):
         self.assertLess(transform[5] + 1.5 * transform[4], bounds[3])
         self.assertLessEqual(transform[5] + (z.shape[0] - 0.5) * transform[4], bounds[1])
         self.assertGreater(transform[5] + (z.shape[0] - 1.5) * transform[4], bounds[1])
+
+        # trigger downloading of dist-to-coast dataset (if not already present)
+        path = u_coord.get_dist_to_coast_nasa_tif()
+
+        # make sure the buffering doesn't go beyond ±90 degrees latitude:
+        z, transform = u_coord.read_raster_bounds(
+            path, (0, -90, 10, -80), res=1.0, global_origin=(-180, 90))
+        self.assertEqual(z.shape, (1, 11, 12))
+        self.assertEqual(transform[5], -79.0)
+        z, transform = u_coord.read_raster_bounds(
+            path, (0, 80, 10, 90), res=1.0, global_origin=(-180, 90))
+        self.assertEqual(z.shape, (1, 11, 12))
+        self.assertEqual(transform[5], 90.0)
+
+        # make sure crossing the antimeridian works fine:
+        z_right, transform = u_coord.read_raster_bounds(
+            path, (-175, 0, -170, 10), res=1.0, global_origin=(-180, 90))
+        z_left, transform = u_coord.read_raster_bounds(
+            path, (170, 0, 175, 10), res=1.0, global_origin=(-180, 90))
+        z_both, transform = u_coord.read_raster_bounds(
+            path, (170, 0, 190, 10), res=1.0, global_origin=(-180, 90))
+        z_both_neg, transform = u_coord.read_raster_bounds(
+            path, (-190, 0, -170, 10), res=1.0, global_origin=(-180, 90))
+        np.testing.assert_array_equal(z_left[0,:,:], z_both[0,:,:z_left.shape[2]])
+        np.testing.assert_array_equal(z_right[0,:,:], z_both[0,:,-z_right.shape[2]:])
+        np.testing.assert_array_equal(z_left[0,:,:], z_both_neg[0,:,:z_left.shape[2]])
+        np.testing.assert_array_equal(z_right[0,:,:], z_both_neg[0,:,-z_right.shape[2]:])
 
     def test_subraster_from_bounds(self):
         """test subraster_from_bounds function"""
