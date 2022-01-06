@@ -611,20 +611,22 @@ def poly_to_equalarea_proj(poly, orig_crs):
     return sh.ops.transform(project.transform, poly)
 
 
-def line_to_pnts_m(gdf_lines, dist):
+
+def line_to_pnts_m(gdf_lines, res):
 
     """ Convert a GeoDataframe with LineString geometries to
     Point geometries, where Points are placed at a specified distance along the
     original LineString
-    Important remark: LineString.interpolate() used here performs interpolation
+
+    Remark: LineString.interpolate() used here performs interpolation
     on a geodesic.
 
     Parameters
     ----------
     gdf_lines : gpd.GeoDataframe
         Geodataframe with line geometries
-    point_dist : float
-        Distance in metres apart from which the generated Points should be placed.
+    res : float
+        Resolution (distance) in metres apart from which the generated Points should be placed.
 
     Returns
     -------
@@ -643,7 +645,7 @@ def line_to_pnts_m(gdf_lines, dist):
 
     # split line lengths into relative fractions acc to point_dist (e.g. 0, 0.5, 1)
     dist_vectors = [
-        np.linspace(0, 1, num=int(np.ceil(line_length/dist)+1))
+        np.linspace(0, 1, num=int(np.ceil(line_length/res)+1))
         for line_length in line_lengths
         ]
 
