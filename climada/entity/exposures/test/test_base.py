@@ -277,9 +277,10 @@ class TestIO(unittest.TestCase):
         self.assertTrue(u_coord.equal_crs(read_meta['crs'], exp.meta['crs']))
         self.assertEqual(read_data.shape, (1, exp.gdf.shape[0]))
         np.testing.assert_array_equal(read_data[0], exp.gdf['value'])
+        test_file.unlink()
 
     def test_write_raster_multiband_pass(self):
-        """Test write_raster function with two (identical) bands."""
+        """Test write_raster function with two bands."""
         test_file = Path(DATA_DIR, "test_write_raster.tif")
         exp = Exposures.from_raster(HAZ_DEMO_FL, window=Window(10, 20, 50, 60))
         exp.gdf['value2'] = exp.gdf['value'] + 1
@@ -292,6 +293,7 @@ class TestIO(unittest.TestCase):
         self.assertEqual(read_data.shape, (2, exp.gdf.shape[0]))
         np.testing.assert_array_equal(read_data[0], exp.gdf['value'])
         np.testing.assert_array_equal(read_data[1], exp.gdf['value2'])
+        test_file.unlink()
 
 
 class TestAddSea(unittest.TestCase):

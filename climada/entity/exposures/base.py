@@ -906,19 +906,21 @@ class Exposures():
             **metadata
         )
 
-    def write_raster(self, file_name, value_name=['value'], scheduler=None):
+    def write_raster(self, file_name, value_name='value', scheduler=None):
         """Write value data into raster file with GeoTiff format
 
         Parameters
         ----------
         file_name : str
-            output tif file to write to
+            name (and path) of the output file.
         value_name : str or list of str
             column(s) in the geodataframe containing data. If multiple values are provided, each column will be
             written to a separate band in the output raster
+            The default is 'value'.
         scheduler : str, optional
             used for dask map_partitions.
             “threads”, “synchronous” or “processes”
+            The default is None.
         """
         if not isinstance(value_name, list):
             value_name = [value_name]
