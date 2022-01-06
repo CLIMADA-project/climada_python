@@ -391,7 +391,7 @@ class Exposures():
         if not u_coord.equal_crs(self.crs, hazard.centroids.crs):
             raise ValueError('Set hazard and exposure to same CRS first!')
         if hazard.centroids.meta and \
-                hazard.centroids.meta['height'] and \
+                'height' in hazard.centroids.meta and \
                 hazard.centroids.size == hazard.centroids.meta['height'] * hazard.centroids.meta['width']:
             assigned = u_coord.assign_grid_points(
                 self.gdf.longitude.values, self.gdf.latitude.values,
