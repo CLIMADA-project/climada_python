@@ -519,12 +519,11 @@ def dist_to_coast(coord_lat, lon=None, signed=False):
         dist[coord_on_land(geom.geometry.y, geom.geometry.x)] *= -1
     return dist
 
-def get_dist_to_coast_nasa_tif():
-    """Get the path to the (downloaded) NASA raster file for distance to coast
+def _get_dist_to_coast_nasa_tif():
+    """Get the path to the NASA raster file for distance to coast.
+    If the file (300 MB) is missing it will be automatically downloaded.
 
-    Note: The NASA raster file is 300 MB and will be downloaded on first run!
-
-    If the file is already present, this will just return the path.
+    This is a helper function of `dist_to_coast_nasa`, and doesn't have a stable API.
 
     Returns
     -------
@@ -532,15 +531,14 @@ def get_dist_to_coast_nasa_tif():
         Path to the GeoTIFF raster file.
     """
     tifname = CONFIG.util.coordinates.dist_to_coast_nasa_tif.str()
-    url = CONFIG.util.coordinates.dist_to_coast_nasa_url.str()
     path = SYSTEM_DIR.joinpath(tifname)
     if not path.is_file():
+        url = CONFIG.util.coordinates.dist_to_coast_nasa_url.str()
         path_dwn = download_file(url, download_dir=SYSTEM_DIR)
         zip_ref = zipfile.ZipFile(path_dwn, 'r')
         zip_ref.extractall(SYSTEM_DIR)
         zip_ref.close()
     return path
-
 
 def dist_to_coast_nasa(lat, lon, highres=False, signed=False):
     """Read interpolated (signed) distance to coast (in m) from NASA data
@@ -564,7 +562,7 @@ def dist_to_coast_nasa(lat, lon, highres=False, signed=False):
     dist : np.array
         (Signed) distance to coast in meters.
     """
-    path = get_dist_to_coast_nasa_tif()
+    path = _get_dist_to_coast_nasa_tif()
     lat, lon = [np.asarray(ar).ravel() for ar in [lat, lon]]
     lon = lon_normalize(lon.copy())
     intermediate_res = None if highres else 0.1
@@ -1505,9 +1503,10 @@ def read_raster(file_name, band=None, src_crs=None, window=None, geometry=None,
         number of lons for transform
     height : float
         number of lats for transform
-    resampling : int, rasterio.enums.Resampling or str, optional
-        Resampling method to use. String values like `"nearest"` or `"bilinear"` are resolved to
-        attributes of `rasterio.enums.Resampling. Default: "nearest"
+    resampling : int or str, optional
+        Resampling method to use, encoded as an integer value (see `rasterio.enums.Resampling`).
+        String values like `"nearest"` or `"bilinear"` are resolved to attributes of
+        `rasterio.enums.Resampling`. Default: "nearest"
 
     Returns
     -------
@@ -1570,10 +1569,13 @@ def read_raster(file_name, band=None, src_crs=None, window=None, geometry=None,
     return dst_meta, intensity.reshape(dst_shape)
 
 def read_raster_bounds(path, bounds, res=None, bands=None, resampling="nearest",
-                       global_origin=None):
-    """Read raster file within given bounds and refine to given resolution
+                       global_origin=None, pad_cells=1.0):
+    """Read raster file within given bounds at given resolution
 
-    The procedure makes sure that the extent of pixel centers covers the specified region.
+    By default, not only the grid cells whose cell centers fall within the specified bounds are
+    selected, but one additional row/column of grid cells is added as a padding in each
+    direction (pad_cells=1). This makes sure that the extent of the selected cell centers encloses
+    the specified bounds.
 
     The axis orientations (e.g. north to south, west to east) of the input data set are preserved.
 
@@ -1589,12 +1591,17 @@ def read_raster_bounds(path, bounds, res=None, bands=None, resampling="nearest",
         Default: Resolution of input raster file.
     bands : list of int, optional
         Bands to read from the input raster file. Default: [1]
-    resampling : int, rasterio.enums.Resampling or str, optional
-        Resampling method to use. String values like `"nearest"` or `"bilinear"` are resolved to
-        attributes of `rasterio.enums.Resampling. Default: "nearest"
+    resampling : int or str, optional
+        Resampling method to use, encoded as an integer value (see `rasterio.enums.Resampling`).
+        String values like `"nearest"` or `"bilinear"` are resolved to attributes of
+        `rasterio.enums.Resampling`. Default: "nearest"
     global_origin : pair of floats, optional
         If given, align the output raster to a global reference raster with this origin.
         By default, the data set's origin (according to it's transform) is used.
+    pad_cells : float, optional
+        The number of cells to add as a padding. This defaults to 1 to make sure that methods like
+        bilinear interpolation are well-defined everywhere within the specified bounds.
+        Default: 1.0
 
     Returns
     -------
@@ -1619,8 +1626,13 @@ def read_raster_bounds(path, bounds, res=None, bands=None, resampling="nearest",
         res = (np.abs(res[0]), np.abs(res[1]))
 
         # make sure that the extent of pixel centers covers the specified region
-        bounds = (bounds[0] - res[0], max(-90, bounds[1] - res[1]),
-                  bounds[2] + res[0], min(90, bounds[3] + res[1]))
+        bounds = (bounds[0] - pad_cells * res[0], bounds[1] - pad_cells * res[1],
+                  bounds[2] + pad_cells * res[0], bounds[3] + pad_cells * res[1])
+
+        if src.crs is not None and src.crs.to_epsg() == 4326:
+            # We consider WGS84 (EPSG:4326) as a special case just because it's so common.
+            # Other CRS might also have out-of-bounds issues, but we can't possibly cover them all.
+            bounds = (bounds[0], max(-90, bounds[1]), bounds[2], min(90, bounds[3]))
 
         if global_origin is None:
             global_origin = (src.transform[2], src.transform[5])
@@ -2008,9 +2020,10 @@ def align_raster_data(source, src_crs, src_transform, dst_crs=None, dst_resoluti
     global_origin : tuple (west, north) of floats, optional
         Coordinates of the reference grid's upper left corner. Default: (-180, 90). Make sure to
         change `global_origin` for non-geographical CRS!
-    resampling : int, rasterio.enums.Resampling or str, optional
-        Resampling method to use. String values like `"nearest"` or `"bilinear"` are resolved to
-        attributes of `rasterio.enums.Resampling. Default: "nearest"
+    resampling : int or str, optional
+        Resampling method to use, encoded as an integer value (see `rasterio.enums.Resampling`).
+        String values like `"nearest"` or `"bilinear"` are resolved to attributes of
+        `rasterio.enums.Resampling`. Default: "nearest"
     conserve : str, optional
         If provided, conserve the source array's 'mean' or 'sum' in the transformed data or
         normalize the values of the transformed data ndarray ('norm').

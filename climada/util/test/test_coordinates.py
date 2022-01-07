@@ -951,7 +951,7 @@ class TestRasterIO(unittest.TestCase):
         self.assertGreater(transform[5] + (z.shape[0] - 1.5) * transform[4], bounds[1])
 
         # trigger downloading of dist-to-coast dataset (if not already present)
-        path = u_coord.get_dist_to_coast_nasa_tif()
+        path = u_coord._get_dist_to_coast_nasa_tif()
 
         # make sure the buffering doesn't go beyond ±90 degrees latitude:
         z, transform = u_coord.read_raster_bounds(
