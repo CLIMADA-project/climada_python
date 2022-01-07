@@ -168,14 +168,16 @@ class TestInterpIndex(unittest.TestCase):
     def test_wrong_method_fail(self):
         """Check exception is thrown when wrong method is given"""
         with self.assertRaises(ValueError) as cm:
-            u_interp.interpol_index(np.ones((10, 2)), np.ones((7, 2)), 'method')
+            u_interp.interpol_index(np.ones((10, 2)), np.ones((7, 2)), 'method',
+                                    distance='haversine')
         self.assertIn('Interpolation using method with distance haversine is not supported.',
                       str(cm.exception))
 
     def test_wrong_distance_fail(self):
         """Check exception is thrown when wrong distance is given"""
         with self.assertRaises(ValueError) as cm:
-            u_interp.interpol_index(np.ones((10, 2)), np.ones((7, 2)), distance='distance')
+            u_interp.interpol_index(np.ones((10, 2)), np.ones((7, 2)),
+                                    method='NN', distance='distance')
         self.assertIn('Interpolation using NN with distance distance is not supported.',
                       str(cm.exception))
 
@@ -183,19 +185,19 @@ class TestInterpIndex(unittest.TestCase):
         """Check exception is thrown when centroids missing one dimension"""
         with self.assertRaises(IndexError):
             u_interp.interpol_index(np.ones((10, 1)), np.ones((7, 2)),
-                                    distance='approx')
+                                    method='NN', distance='approx')
         with self.assertRaises(ValueError):
             u_interp.interpol_index(np.ones((10, 1)), np.ones((7, 2)),
-                                    distance='haversine')
+                                    method='NN', distance='haversine')
 
     def test_wrong_coord_fail(self):
         """Check exception is thrown when coordinates missing one dimension"""
         with self.assertRaises(IndexError):
             u_interp.interpol_index(np.ones((10, 2)), np.ones((7, 1)),
-                                    distance='approx')
+                                    method='NN', distance='approx')
         with self.assertRaises(ValueError):
             u_interp.interpol_index(np.ones((10, 2)), np.ones((7, 1)),
-                                    distance='haversine')
+                                    method='NN', distance='haversine')
 
 class TestNN(unittest.TestCase):
     """Test interpolator neareast neighbor"""
