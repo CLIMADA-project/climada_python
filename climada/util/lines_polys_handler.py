@@ -155,10 +155,16 @@ def impact_pnt_agg(impact_pnt, exp_pnt, agg):
     impact_agg = set_imp_mat(impact_pnt, mat_agg)
 
     #Add exposure representation points as coordinates
-    repr_pnts = gpd.GeoSeries(exp_pnt.gdf['geometry_orig'][:,0].apply(lambda x: x.representative_point()))
+    repr_pnts = gpd.GeoSeries(
+        exp_pnt.gdf['geometry_orig'][:,0].apply(
+            lambda x: x.representative_point()
+            )
+        )
     impact_agg.coord_exp = np.array([repr_pnts.y, repr_pnts.x]).transpose()
     #Add geometries
-    impact_agg.geom_exp = exp_pnt.gdf.xs(0, level=1).set_geometry('geometry_orig').geometry.rename('geometry')
+    impact_agg.geom_exp = exp_pnt.gdf.xs(0, level=1)\
+        .set_geometry('geometry_orig')\
+            .geometry.rename('geometry')
 
     return impact_agg
 
@@ -372,6 +378,65 @@ def plot_eai_exp_geom(imp_geom, centered=False, figsize=(9, 13), **kwargs):
     return gdf_plot.plot(column = 'impact', **kwargs)
 
 
+
+
+
+
+def disagg_poly_avg(gdf_pnts):
+    """
+    Disaggragate value of geodataframes from polygons to points
+
+    Parameters
+    ----------
+    gdf_pnts : geodataframe
+        Geodataframe with a double index, first for polygon geometries,
+        second for the point disaggregation of the polygons. The value column is assumed
+        to represent values per polygon (first index).
+
+    Returns
+    -------
+    gdf_agg : geodataframe
+        The value per polygon is evenly distributed over the points per polygon.
+
+    """
+
+    gdf_agg = gdf_pnts.copy()
+
+    group = gdf_pnts.groupby(axis=0, level=0)
+    gdf = group.value.mean() / group.value.count()
+
+    gdf = gdf.reindex(gdf_pnts.index, level=0)
+    gdf_agg['value'] = gdf
+
+    return gdf_agg
+
+
+def disagg_gdf_val(gdf_pnts, value_per_pnt):
+    """
+    Assign same value to all geodataframe points
+
+    Parameters
+    ----------
+    gdf_pnts : geodataframe
+        Geodataframe with a double index, first for polygon geometries,
+        second for the point disaggregation of the polygons. The value column is assumed
+        to represent values per polygon (first index).
+    value_per_pnt: float
+        Value to assign to each point.
+
+    Returns
+    -------
+    gdf_agg : geodataframe
+        The value per point is value_per_pnt
+
+    """
+
+    gdf_agg = gdf_pnts.copy()
+    gdf_agg['value'] = value_per_pnt
+
+    return gdf_agg
+
+
 def poly_to_pnts(gdf, lon_res, lat_res):
     """
     Disaggragate (multi-)polygons geodataframe to points
@@ -396,12 +461,11 @@ def poly_to_pnts(gdf, lon_res, lat_res):
     gdf_points = gdf.copy()
     gdf_points['geometry_pnt'] = gdf.apply(
         lambda row: _interp_one_poly(row.geometry, lon_res, lat_res), axis=1)
-    gdf_points.rename(columns = {'geometry': 'geometry_orig'}, inplace=True)
-    gdf_points.rename(columns = {'geometry_pnt': 'geometry'}, inplace=True)
-    gdf_points.set_geometry('geometry', inplace=True)
+    gdf_points = _swap_geom_cols(
+        gdf_points, geom_to='geometry_orig', new_geom='geometry_pnt'
+        )
 
     return gdf_points.explode()
-
 
 def poly_to_pnts_m(gdf, x_res, y_res):
     """
@@ -428,13 +492,11 @@ def poly_to_pnts_m(gdf, x_res, y_res):
     gdf_points = gdf.copy()
     gdf_points['geometry_pnt'] = gdf_points.apply(
         lambda row: _interp_one_poly_m(row.geometry, x_res, y_res, orig_crs), axis=1)
-    gdf_points.rename(columns = {'geometry': 'geometry_orig'}, inplace=True)
-    gdf_points.rename(columns = {'geometry_pnt': 'geometry'}, inplace=True)
-    gdf_points.set_geometry('geometry', inplace=True)
+    gdf_points = _swap_geom_cols(
+        gdf_points, geom_to='geometry_orig', new_geom='geometry_pnt'
+        )
 
     return gdf_points.explode()
-
-
 
 def _interp_one_poly(poly, res_x, res_y):
     """
@@ -524,61 +586,6 @@ def _interp_one_poly_m(poly, res_x, res_y, orig_crs):
     return poly_pnt
 
 
-
-def disagg_poly_avg(gdf_pnts):
-    """
-    Disaggragate value of geodataframes from polygons to points
-
-    Parameters
-    ----------
-    gdf_pnts : geodataframe
-        Geodataframe with a double index, first for polygon geometries,
-        second for the point disaggregation of the polygons. The value column is assumed
-        to represent values per polygon (first index).
-
-    Returns
-    -------
-    gdf_agg : geodataframe
-        The value per polygon is evenly distributed over the points per polygon.
-
-    """
-
-    gdf_agg = gdf_pnts.copy()
-
-    group = gdf_pnts.groupby(axis=0, level=0)
-    gdf = group.value.mean() / group.value.count()
-
-    gdf = gdf.reindex(gdf_pnts.index, level=0)
-    gdf_agg['value'] = gdf
-
-    return gdf_agg
-
-def disagg_gdf_val(gdf_pnts, value_per_pnt):
-    """
-    Assign same value to all geodataframe points
-
-    Parameters
-    ----------
-    gdf_pnts : geodataframe
-        Geodataframe with a double index, first for polygon geometries,
-        second for the point disaggregation of the polygons. The value column is assumed
-        to represent values per polygon (first index).
-    value_per_pnt: float
-        Value to assign to each point.
-
-    Returns
-    -------
-    gdf_agg : geodataframe
-        The value per point is value_per_pnt
-
-    """
-
-    gdf_agg = gdf_pnts.copy()
-    gdf_agg['value'] = value_per_pnt
-
-    return gdf_agg
-
-
 def poly_to_equalarea_proj(poly, orig_crs):
     """
     Project polyong to Equal Area Cylindrical projection
@@ -615,8 +622,11 @@ def poly_to_equalarea_proj(poly, orig_crs):
 def line_to_pnts_m(gdf_lines, res):
 
     """ Convert a GeoDataframe with LineString geometries to
-    Point geometries, where Points are placed at a specified distance along the
-    original LineString
+    Point geometries, where Points are placed at a specified distance
+    (in meters) along the original LineString. Each line is reduced to
+    at least two points.
+
+
 
     Remark: LineString.interpolate() used here performs interpolation
     on a geodesic.
@@ -626,14 +636,15 @@ def line_to_pnts_m(gdf_lines, res):
     gdf_lines : gpd.GeoDataframe
         Geodataframe with line geometries
     res : float
-        Resolution (distance) in metres apart from which the generated Points should be placed.
+        Resolution (distance) in metres apart from which the generated Points
+        should be approximately placed.
 
     Returns
     -------
     gdf_points : gpd.GeoDataFrame
-        with individual Point per row, retaining all other column infos
-        belonging to its corresponding line (incl. line length of original geom.
-        and multi-index referring to original indexing)
+        Geodataframe with a double index, first for line geometries,
+        second for the point disaggregation of the lines (i.e. one Point
+        per row).
 
     See also
     --------
@@ -643,16 +654,77 @@ def line_to_pnts_m(gdf_lines, res):
     gdf_points = gdf_lines.copy()
     line_lengths = u_coord.compute_geodesic_lengths(gdf_points)
 
-    # split line lengths into relative fractions acc to point_dist (e.g. 0, 0.5, 1)
-    dist_vectors = [
-        np.linspace(0, 1, num=int(np.ceil(line_length/res)+1))
-        for line_length in line_lengths
+    def pnts_per_line(length, res):
+        return int(np.ceil(length / res) + 1)
+
+    line_fractions = [
+        np.linspace(0, 1, num=pnts_per_line(length, res))
+        for length in line_lengths
         ]
 
-    gdf_points['geometry'] = [shgeom.MultiPoint(
-        [line.interpolate(dist, normalized=True) for dist in dist_vector])
-        for line, dist_vector in zip(gdf_lines.geometry, dist_vectors)]
+    gdf_points['geometry_pnt'] = [
+        shgeom.MultiPoint([
+            line.interpolate(dist, normalized=True)
+            for dist in fractions
+            ])
+        for line, fractions in zip(gdf_lines.geometry, line_fractions)
+        ]
 
+    gdf_points = _swap_geom_cols(
+        gdf_points, geom_to='geometry_orig', new_geom='geometry_pnt'
+        )
+    return gdf_points.explode()
+
+
+def line_to_pnts(gdf_lines, res):
+
+    """ Convert a GeoDataframe with LineString geometries to
+    Point geometries, where Points are placed at a specified distance
+    along the original LineString. Each line is reduced to
+    at least two points.
+
+    Parameters
+    ----------
+    gdf_lines : gpd.GeoDataframe
+        Geodataframe with line geometries
+    res : float
+        Resolution (distance) apart from which the generated Points
+        should be approximately placed.
+
+    Returns
+    -------
+    gdf_points : gpd.GeoDataFrame
+        Geodataframe with a double index, first for line geometries,
+        second for the point disaggregation of the lines (i.e. one Point
+        per row).
+
+    See also
+    --------
+    * util.coordinates.compute_geodesic_lengths()
+    """
+
+    gdf_points = gdf_lines.copy()
+    line_lengths = gdf_lines.length
+
+    def pnts_per_line(length, res):
+        return int(np.ceil(length / res) + 1)
+
+    line_fractions = [
+        np.linspace(0, 1, num=pnts_per_line(length, res))
+        for length in line_lengths
+        ]
+
+    gdf_points['geometry_pnt'] = [
+        shgeom.MultiPoint([
+            line.interpolate(dist, normalized=True)
+            for dist in fractions
+            ])
+        for line, fractions in zip(gdf_lines.geometry, line_fractions)
+        ]
+
+    gdf_points = _swap_geom_cols(
+        gdf_points, geom_to='geometry_orig', new_geom='geometry_pnt'
+        )
     return gdf_points.explode()
 
 
@@ -714,3 +786,28 @@ def _make_union(gdf):
     union_all = unary_union([union1, union2])
 
     return union_all
+
+def _swap_geom_cols(gdf, geom_to, new_geom):
+    """
+    Change which column is the geometry column
+
+    Parameters
+    ----------
+    gdf : GeoDataFrame
+        Input geodatafram
+    geom_to : string
+        New name of the current 'geometry' column
+    new_geom : string
+        Column that should be set as the 'geometry' column. The column
+        new_geom is renamed to 'geometry'
+
+    Returns
+    -------
+    gdf_swap : GeoDataFrame
+        Copy of gdf with the new geometry column
+
+    """
+    gdf_swap = gdf.rename(columns = {'geometry': geom_to})
+    gdf_swap.rename(columns = {new_geom: 'geometry'}, inplace=True)
+    gdf_swap.set_geometry('geometry', inplace=True)
+    return gdf_swap
