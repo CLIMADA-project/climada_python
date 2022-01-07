@@ -74,18 +74,32 @@ def interpol_index(centroids, coordinates, method=METHOD[0],
         First column contains latitude, second
         column contains longitude. Each row is a geographic point
     method : str, optional
-        interpolation method to use. NN default.
-    distance : str, optional
-        distance to use. Haversine default
-    threshold : float
+        interpolation method to use. 'NN' default.
+    distance : str
+        distance to use. Options are defined in interpolation.DIST_DEF.
+        The default is 'euclidian'.
+    threshold : float, optional
         distance threshold in km over which no neighbor will
-        be found. Those are assigned with a -1 index
+        be found. Those are assigned with a -1 index.
+        The default is 100 (km)
     kwargs: dict, optional
         keyword arguments to be passed on to the interpolation method
 
     Returns
     -------
-    numpy array with so many rows as coordinates containing the centroids indexes
+    numpy array with so many rows as coordinates containing the
+    centroids indexes
+
+    Notes
+    -----
+    The default method uses the 'euclidean' distance metric to
+    find the nearest neighbors ('NN'). This method is fast for (quasi-)gridded
+    data, but introduces innacuracy since distances in lat/lon coordinates
+    are not equal to distances in meters on the Earth surface, in particular
+    for higher latitude and distances larger than 100km. If more accuracy
+    is needed, please use 'haversine' distance metric. This however is slower
+    for (quasi-)gridded data.
+
     """
     if (method == METHOD[0]) & (distance == DIST_DEF[0]):
         # Compute for each coordinate the closest centroid

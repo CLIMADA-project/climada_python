@@ -377,14 +377,39 @@ class Exposures():
         hazard : Hazard
             Hazard to match (with raster or vector centroids).
         method : str, optional
-            Interpolation method to use in case of vector centroids. Currently, "NN" (nearest
-            neighbor) is the only supported value, see `climada.util.interpolation.interpol_index`.
+            Interpolation method to use in case of vector centroids.
+            Currently, "NN" (nearest neighbor) is the only supported value,
+            see `climada.util.interpolation.interpol_index`.
         distance : str, optional
-            Distance to use in case of vector centroids. Possible values are "haversine" and
-            "approx", see `climada.util.interpolation.interpol_index`. Default: "haversine"
+            Distance to use in case of vector centroids.
+            Possible values are "haversine" and
+            "approx", see `climada.util.interpolation.interpol_index`.
+            Default: "euclidean"
         threshold : float
-            If the distance to the nearest neighbor exceeds `threshold`, the index `-1` is
-            assigned. Set `threshold` to 0, to disable nearest neighbor matching. Default: 100 (km)
+            If the distance to the nearest neighbor exceeds `threshold`,
+            the index `-1` is assigned.
+            Set `threshold` to 0, to disable nearest neighbor matching.
+            Default: 100 (km)
+
+        See Also
+        --------
+        climada.util.interpolation.interpol_index: method to
+            interpolate (associate centroids to exposure points)
+
+        Notes
+        -----
+        The default order of use is:
+            1. if centroid raster is defined, assign exposures points to
+            the closest raster point.
+            2. if no raster, assign centroids to the nearest neighbor using
+            euclidian metric
+        Both cases can introduce innacuracies for coordinates in lat/lon
+        coordinates as distances in degrees differ from distances in meters
+        on the Earth surface, in particular for higher latitude and distances
+        larger than 100km. If more accuracy is needed, please use 'haversine'
+        distance metric. This however is slower for (quasi-)gridded data,
+        and works only for non-gridded data.
+
         """
         LOGGER.info('Matching %s exposures with %s centroids.',
                     str(self.gdf.shape[0]), str(hazard.centroids.size))
