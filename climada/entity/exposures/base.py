@@ -366,7 +366,7 @@ class Exposures():
             return INDICATOR_IMPF_OLD
         raise ValueError(f"Missing exposures impact functions {INDICATOR_IMPF}.")
 
-    def assign_centroids(self, hazard, method='NN', distance='haversine',
+    def assign_centroids(self, hazard, method='NN', distance='euclidean',
                          threshold=100):
         """Assign for each exposure coordinate closest hazard coordinate.
         -1 used for disatances > threshold in point distances. If raster hazard,
