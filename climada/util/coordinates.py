@@ -1815,6 +1815,7 @@ def write_raster(file_name, data_matrix, meta, dtype=np.float32):
         A numpy dtype. Default: np.float32
     """
     LOGGER.info('Writting %s', file_name)
+    file_name = Path(file_name).with_suffix('.tiff')
     if data_matrix.shape != (meta['height'], meta['width']):
         # every row is an event (from hazard intensity or fraction) == band
         shape = (data_matrix.shape[0], meta['height'], meta['width'])
