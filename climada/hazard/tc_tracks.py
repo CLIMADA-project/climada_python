@@ -506,7 +506,8 @@ class TCTracks():
         elif isinstance(provider, str):
             provider = [provider]
 
-        for tc_var in ['lat', 'lon', 'wind', 'pres', 'rmw', 'poci', 'roci']:
+        phys_vars = ['lat', 'lon', 'wind', 'pres', 'rmw', 'poci', 'roci']
+        for tc_var in phys_vars:
             if "official" in provider or "official_3h" in provider:
                 ibtracs_add_official_variable(
                     ibtracs_ds, tc_var, add_3h=("official_3h" in provider))
@@ -515,19 +516,24 @@ class TCTracks():
             # newly created `official` and `official_3h` data if specified
             ag_vars = [f'{ag}_{tc_var}' for ag in provider]
             ag_vars = [ag_var for ag_var in ag_vars if ag_var in ibtracs_ds.data_vars.keys()]
+            if len(ag_vars) == 0:
+                ag_vars = [f'{provider[0]}_{tc_var}']
+                ibtracs_ds[ag_vars[0]] = xr.full_like(ibtracs_ds[f'usa_{tc_var}'], np.nan)
             all_vals = ibtracs_ds[ag_vars].to_array(dim='agency')
             # argmax returns the first True (i.e. valid) along the 'agency' dimension
             preferred_idx = all_vals.notnull().any(dim="date_time").argmax(dim='agency')
             ibtracs_ds[tc_var] = all_vals.isel(agency=preferred_idx)
 
-            # Usually, if an agency reports about a track that crosses the antimeridian, the
-            # longitude is always chosen positive. However, it can happen, that the TC crosses the
-            # antimeridian according to one agency, but not according to another. When mixing
-            # agency data, this can yield inconsistent sign changes in longitude. We remove those:
+            selected_ags = np.array([v[:-len(f'_{tc_var}')].encode() for v in ag_vars])
+            ibtracs_ds[f'{tc_var}_agency'] = ('storm', selected_ags[preferred_idx.values])
+
             if tc_var == 'lon':
                 # By IBTrACS default, no longitude should be <= -180, but this is not true for some
                 # agencies, so we have to manually enforce this policy:
                 ibtracs_ds[tc_var].values[(ibtracs_ds[tc_var] <= -180).values] += 360
+
+                # Make sure that the longitude is always chosen positive if a track crosses the
+                # antimeridian:
                 crossing_mask = ((ibtracs_ds[tc_var] > 170).any(dim="date_time")
                                  & (ibtracs_ds[tc_var] < -170).any(dim="date_time")
                                  & (ibtracs_ds[tc_var] < 0)).values
@@ -545,8 +551,8 @@ class TCTracks():
                         ibtracs_ds[tc_var].values[nonsingular_mask] = (
                             ibtracs_ds[tc_var].sel(storm=nonsingular_mask).interpolate_na(
                                 dim="date_time", method="linear"))
-        ibtracs_ds = ibtracs_ds[['sid', 'name', 'basin', 'lat', 'lon', 'time', 'valid_t',
-                                 'wind', 'pres', 'rmw', 'roci', 'poci']]
+        ibtracs_ds = ibtracs_ds[['sid', 'name', 'basin', 'time', 'valid_t']
+                                + phys_vars + [f'{v}_agency' for v in phys_vars]]
 
         if estimate_missing:
             ibtracs_ds['pres'][:] = _estimate_pressure(
@@ -590,7 +596,6 @@ class TCTracks():
         ibtracs_ds['id_no'] = (ibtracs_ds.sid.str.replace(b'N', b'0')
                                .str.replace(b'S', b'1')
                                .astype(float))
-        provider_str = f"ibtracs_{provider[0]}" + ("" if len(provider) == 1 else "_mixed")
 
         last_perc = 0
         all_tracks = []
@@ -648,6 +653,12 @@ class TCTracks():
             # ensure environmental pressure >= central pressure
             # this is the second most time consuming line in the processing:
             track_ds['poci'][:] = np.fmax(track_ds.poci, track_ds.pres)
+
+            provider_str = f"ibtracs_{provider[0]}"
+            if len(provider) > 1:
+                provider_str = "ibtracs_mixed:" + ",".join(
+                    "{}({})".format(v, track_ds[f'{v}_agency'].astype(str).item())
+                    for v in phys_vars)
 
             all_tracks.append(xr.Dataset({
                 'time_step': ('time', track_ds.time_step.data),
