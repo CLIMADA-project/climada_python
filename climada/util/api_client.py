@@ -42,7 +42,6 @@ DB = SqliteDatabase(Path(CONFIG.data_api.cache_db.str()).expanduser())
 
 HAZ_TYPES = [ht.str() for ht in CONFIG.data_api.supported_hazard_types.list()]
 EXP_TYPES = [et.str() for et in CONFIG.data_api.supported_exposures_types.list()]
-MUTUAL_PROPS = [ms.str() for ms in CONFIG.data_api.mutual_properties.list()]
 
 
 class Download(Model):
@@ -549,34 +548,7 @@ class Client():
         gdf = ddf.groupby('name').agg({'version': 'nunique'})
         return list(gdf[gdf.version > 1].index)
 
-    @staticmethod
-    def _multi_selection(datasets):
-        pdf = pd.DataFrame([ds.properties for ds in datasets]).nunique()
-        return list(pdf[pdf > 1].index)
-
-    @staticmethod
-    def _check_datasets_for_concatenation(datasets, max_datasets):
-        if not datasets:
-            raise ValueError("no datasets found meeting the requirements")
-        if 0 < max_datasets < len(datasets):
-            raise ValueError(f"There are {len(datasets)} datasets matching the query"
-                             f" and the limit is set to {max_datasets}.\n"
-                             "You can force concatenation of multiple datasets by increasing"
-                             " max_datasets or setting it to a value <= 0 (no limit).\n"
-                             "Attention! For hazards, concatenation of datasets is currently done by"
-                             " event, which may lead to event duplication and thus biased data.\n"
-                             "In a future release this limitation will be overcome.")
-        not_supported = [msd for msd in Client._multi_selection(datasets)
-                         if msd in MUTUAL_PROPS]
-        if not_supported:
-            raise ValueError("Cannot combine datasets, there are distinct values for these"
-                             f" properties in your selection: {not_supported}")
-        ambiguous_ds_names = Client._multi_version(datasets)
-        if ambiguous_ds_names:
-            raise ValueError("There are datasets with multiple versions in your selection:"
-                             f" {ambiguous_ds_names}")
-
-    def get_hazard(self, hazard_type, dump_dir=SYSTEM_DIR, max_datasets=1, **kwargs):
+    def get_hazard(self, hazard_type, dump_dir=SYSTEM_DIR, **kwargs):
         """Queries the data api for hazard datasets of the given type, downloads associated
         hdf5 files and turns them into a climada.hazard.Hazard object.
 
@@ -588,12 +560,8 @@ class Client():
             Directory where the files should be downoladed. Default: SYSTEM_DIR
             If the directory is the SYSTEM_DIR, the eventual target directory is organized into
             dump_dir > hazard_type > dataset name > version
-        max_datasets : int, optional
-            Download limit for datasets. If a query matches is matched by more datasets than this
-            number, a ValueError is raised. Setting it to 0 or a negative number inactivates the
-            limit. Default is 10.
-        **kwargs :
-            additional parameters passed on to list_dataset_infos
+       **kwargs :
+            additional parameters passed on to get_dataset_info
 
         Returns
         -------
@@ -605,20 +573,17 @@ class Client():
         if not hazard_type in HAZ_TYPES:
             raise ValueError("Valid hazard types are a subset of CLIMADA hazard types."
                              f" Currently these types are supported: {HAZ_TYPES}")
-        datasets = self.list_dataset_infos(data_type=hazard_type, **kwargs)
+        dataset = self.get_dataset_info(data_type=hazard_type, **kwargs)
+        return self.to_hazard(dataset, dump_dir)
 
-        self._check_datasets_for_concatenation(datasets, max_datasets)
-
-        return self.to_hazard(datasets, dump_dir)
-
-    def to_hazard(self, datasets, dump_dir=SYSTEM_DIR):
+    def to_hazard(self, dataset, dump_dir=SYSTEM_DIR):
         """Downloads hdf5 files belonging to the given datasets reads them into Hazards and
         concatenates them into a single climada.Hazard object.
 
         Parameters
         ----------
-        datasets : list of DatasetInfo
-            Datasets to download and read into climada.Hazard objects.
+        dataset : DatasetInfo
+            Dataset to download and read into climada.Hazard object.
         dump_dir : str, optional
             Directory where the files should be downoladed. Default: SYSTEM_DIR
             If the directory is the SYSTEM_DIR, the eventual target directory is organized into
@@ -629,22 +594,22 @@ class Client():
         climada.hazard.Hazard
             The combined hazard object
         """
-        hazard_list = []
-        for dataset in datasets:
-            target_dir = self._organize_path(dataset, dump_dir) \
-                         if dump_dir == SYSTEM_DIR else dump_dir
-            for dsf in dataset.files:
-                if dsf.file_format == 'hdf5':
-                    hazard_file = self.download_file(target_dir, dsf)
-                    hazard = Hazard.from_hdf5(hazard_file)
+        target_dir = self._organize_path(dataset, dump_dir) \
+                     if dump_dir == SYSTEM_DIR else dump_dir
         
-                    hazard_list.append(hazard)
+        hazard_list = [
+            Hazard.from_hdf5(self.download_file(target_dir, dsf))
+            for dsf in dataset.files
+            if dsf.file_format == 'hdf5'
+        ]
         if not hazard_list:
-            raise ValueError("no hazard files found in datasets")
+            raise ValueError("no hdf5 files found in dataset")
+        if len(hazard_list) == 1:
+            return hazard_list[0]
         hazard_concat = Hazard()
         hazard_concat = hazard_concat.concat(hazard_list)
         hazard_concat.sanitize_event_ids()
-        hazard.check()
+        hazard_concat.check()
         return hazard_concat
 
     def get_exposures(self, exposures_type, dump_dir=SYSTEM_DIR, max_datasets=10, **kwargs):
@@ -653,7 +618,7 @@ class Client():
 
         Parameters
         ----------
-        hazard_type : str
+        exposures_type : str
             Type of climada exposures.
         dump_dir : str, optional
             Directory where the files should be downoladed. Default: SYSTEM_DIR
@@ -672,24 +637,21 @@ class Client():
             The combined exposures object
         """
         if 'data_type' in kwargs:
-            raise ValueError("data_type is already given as hazard_type")
+            raise ValueError("data_type is already given as exposures_type")
         if not exposures_type in EXP_TYPES:
             raise ValueError("Valid exposures types are a subset of CLIMADA exposures types."
                              f" Currently these types are supported: {EXP_TYPES}")
-        datasets = self.list_dataset_infos(data_type=exposures_type, **kwargs)
+        dataset = self.get_dataset_info(data_type=exposures_type, **kwargs)
+        return self.to_exposures(dataset, dump_dir)
 
-        self._check_datasets_for_concatenation(datasets, max_datasets)
-
-        return self.to_exposures(datasets, dump_dir)
-
-    def to_exposures(self, datasets, dump_dir=SYSTEM_DIR):
+    def to_exposures(self, dataset, dump_dir=SYSTEM_DIR):
         """Downloads hdf5 files belonging to the given datasets reads them into Exposures and
         concatenates them into a single climada.Exposures object.
 
         Parameters
         ----------
-        datasets : list of DatasetInfo
-            Datasets to download and read into climada.Exposures objects.
+        dataset : DatasetInfo
+            Dataset to download and read into climada.Exposures objects.
         dump_dir : str, optional
             Directory where the files should be downoladed. Default: SYSTEM_DIR
             If the directory is the SYSTEM_DIR, the eventual target directory is organized into
@@ -700,18 +662,17 @@ class Client():
         climada.entity.exposures.Exposures
             The combined exposures object
         """
-        exposures_list = []
-        for dataset in datasets:
-            target_dir = self._organize_path(dataset, dump_dir) \
-                         if dump_dir == SYSTEM_DIR else dump_dir
-            for dsf in dataset.files:
-                if dsf.file_format == 'hdf5':
-                    exposures_file = self.download_file(target_dir, dsf)
-                    exposures = Exposures.from_hdf5(exposures_file)
-                    exposures_list.append(exposures)
+        target_dir = self._organize_path(dataset, dump_dir) \
+                     if dump_dir == SYSTEM_DIR else dump_dir
+        exposures_list = [
+            Exposures.from_hdf5(self.download_file(target_dir, dsf))
+            for dsf in dataset.files
+            if dsf.file_format == 'hdf5'
+        ]
         if not exposures_list:
-            raise ValueError("no exposures files found in datasets")
-
+            raise ValueError("no hdf5 files found in dataset")
+        if len(exposures_list) == 1:
+            return exposures_list[0]
         exposures_concat = Exposures()
         exposures_concat = exposures_concat.concat(exposures_list)
         exposures_concat.check()
