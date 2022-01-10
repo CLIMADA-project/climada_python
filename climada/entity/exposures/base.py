@@ -924,7 +924,7 @@ class Exposures():
                 raise ValueError('Points are not ordered according to meta raster.')
             u_coord.write_raster(file_name, raster, self.meta)
         else:
-            raster, meta = u_coord.points_to_raster(self, [value_name], scheduler=scheduler)
+            raster, meta = u_coord.points_to_raster(self.gdf, [value_name], scheduler=scheduler)
             u_coord.write_raster(file_name, raster, meta)
 
     @staticmethod
