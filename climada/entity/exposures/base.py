@@ -366,7 +366,8 @@ class Exposures():
             return INDICATOR_IMPF_OLD
         raise ValueError(f"Missing exposures impact functions {INDICATOR_IMPF}.")
 
-    def assign_centroids(self, hazard, distance='euclidean', threshold=100):
+    def assign_centroids(self, hazard, distance='euclidean',
+                         threshold=u_coord.NEAREST_NEIGHBOR_THRESHOLD):
         """Assign for each exposure coordinate closest hazard coordinate.
         -1 used for disatances > threshold in point distances. If raster hazard,
         -1 used for centroids outside raster.
@@ -380,7 +381,7 @@ class Exposures():
             Possible values are "euclidean", "haversine" and "approx".
             Default: "euclidean"
         threshold : float
-            If the distance to the nearest neighbor exceeds `threshold`,
+            If the distance (in km) to the nearest neighbor exceeds `threshold`,
             the index `-1` is assigned.
             Set `threshold` to 0, to disable nearest neighbor matching.
             Default: 100 (km)

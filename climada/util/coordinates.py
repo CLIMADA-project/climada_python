@@ -856,7 +856,8 @@ def assign_grid_points(x, y, grid_width, grid_height, grid_transform):
     assigned[(y_i < 0) | (y_i >= grid_height)] = -1
     return assigned
 
-def assign_coordinates(coords, coords_to_assign, distance="euclidean", threshold=100, **kwargs):
+def assign_coordinates(coords, coords_to_assign, distance="euclidean",
+                       threshold=NEAREST_NEIGHBOR_THRESHOLD, **kwargs):
     """To each coordinate in `coords`, assign a matching coordinate in `coords_to_assign`
 
     If there is no exact match for some entry, an attempt is made to assign the geographically
