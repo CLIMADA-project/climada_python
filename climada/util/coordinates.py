@@ -1572,10 +1572,10 @@ def read_raster_bounds(path, bounds, res=None, bands=None, resampling="nearest",
                        global_origin=None, pad_cells=1.0):
     """Read raster file within given bounds at given resolution
 
-    By default, not only the grid cells whose cell centers fall within the specified bounds are
-    selected, but one additional row/column of grid cells is added as a padding in each
-    direction (pad_cells=1). This makes sure that the extent of the selected cell centers encloses
-    the specified bounds.
+    By default, not only the grid cells of the destination raster whose cell centers fall within
+    the specified bounds are selected, but one additional row/column of grid cells is added as a
+    padding in each direction (pad_cells=1). This makes sure that the extent of the selected cell
+    centers encloses the specified bounds.
 
     The axis orientations (e.g. north to south, west to east) of the input data set are preserved.
 
@@ -1599,9 +1599,10 @@ def read_raster_bounds(path, bounds, res=None, bands=None, resampling="nearest",
         If given, align the output raster to a global reference raster with this origin.
         By default, the data set's origin (according to it's transform) is used.
     pad_cells : float, optional
-        The number of cells to add as a padding. This defaults to 1 to make sure that methods like
-        bilinear interpolation are well-defined everywhere within the specified bounds.
-        Default: 1.0
+        The number of cells to add as a padding (in terms of the destination grid that is inferred
+        from `res` and/or `global_origin` if those parameters are given). This defaults to 1 to
+        make sure that applying methods like bilinear interpolation to the output of this function
+        is well-defined everywhere within the specified bounds. Default: 1.0
 
     Returns
     -------
