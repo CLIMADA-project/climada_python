@@ -28,7 +28,7 @@ from functools import partial
 import pandas as pd
 
 from climada.engine.cost_benefit import CostBenefit
-from climada.engine.uncertainty_quantification import Calc, InputVar, UncCostBenefitOutput
+from climada.engine.unsequa import Calc, InputVar, UncCostBenefitOutput
 from climada.util import log_level
 
 LOGGER = logging.getLogger(__name__)
