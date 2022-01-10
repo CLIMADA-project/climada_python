@@ -945,7 +945,7 @@ def assign_coordinates(coords, coords_to_assign, distance="euclidean",
         assigned_idx = np.full_like(coords_sorter, -1)
         assigned_idx[sort_assign_idx[exact_assign_idx]] = exact_assign_idx
 
-        # assign remaining coordsinates to their geographically nearest neighbor
+        # assign remaining coordinates to their geographically nearest neighbor
         if threshold > 0 and exact_assign_idx.size != coords_view.size:
             not_assigned_idx_mask = (assigned_idx == -1)
             assigned_idx[not_assigned_idx_mask] = nearest_neighbor_funcs[distance](
@@ -960,8 +960,7 @@ def _dist_sqr_approx(lats1, lons1, cos_lats1, lats2, lons2):
     d_lat = lats1 - lats2
     return d_lon * d_lon * cos_lats1 * cos_lats1 + d_lat * d_lat
 
-def _nearest_neighbor_approx(centroids, coordinates, threshold=NEAREST_NEIGHBOR_THRESHOLD,
-                             check_antimeridian=True):
+def _nearest_neighbor_approx(centroids, coordinates, threshold, check_antimeridian=True):
     """Compute the nearest centroid for each coordinate using the
     euclidean distance d = ((dlon)cos(lat))^2+(dlat)^2. For distant points
     (e.g. more than 100km apart) use the haversine distance.
@@ -977,11 +976,11 @@ def _nearest_neighbor_approx(centroids, coordinates, threshold=NEAREST_NEIGHBOR_
     threshold : float
         distance threshold in km over which no neighbor will
         be found. Those are assigned with a -1 index
-    check_antimedirian: bool
-        if True, recomputes the nn in a strip with lon size equal to threshold
-        around the antimeridian using the Haversine distance. The antimeridian
-        is guessed from both coordinates and centroids, and is assumed
-        equal to 0.5*(lon_max+lon_min) + 180.
+    check_antimedirian: bool, optional
+        If True, the nearest neighbor in a strip with lon size equal to threshold around the
+        antimeridian is recomputed using the Haversine distance. The antimeridian is guessed from
+        both coordinates and centroids, and is assumed equal to 0.5*(lon_max+lon_min) + 180.
+        Default: True
 
     Returns
     -------
@@ -1021,7 +1020,7 @@ def _nearest_neighbor_approx(centroids, coordinates, threshold=NEAREST_NEIGHBOR_
 
     return assigned
 
-def _nearest_neighbor_haversine(centroids, coordinates, threshold=NEAREST_NEIGHBOR_THRESHOLD):
+def _nearest_neighbor_haversine(centroids, coordinates, threshold):
     """Compute the neareast centroid for each coordinate using a Ball tree with haversine distance.
 
     Parameters
@@ -1068,8 +1067,7 @@ def _nearest_neighbor_haversine(centroids, coordinates, threshold=NEAREST_NEIGHB
     return assigned[inv]
 
 
-def _nearest_neighbor_euclidean(centroids, coordinates, threshold=NEAREST_NEIGHBOR_THRESHOLD,
-                                check_antimeridian=True):
+def _nearest_neighbor_euclidean(centroids, coordinates, threshold, check_antimeridian=True):
     """Compute the neareast centroid for each coordinate using a k-d tree.
 
     Parameters
@@ -1083,10 +1081,11 @@ def _nearest_neighbor_euclidean(centroids, coordinates, threshold=NEAREST_NEIGHB
     threshold : float
         distance threshold in km over which no neighbor will be found. Those
         are assigned with a -1 index
-    check_antimedirian: bool
+    check_antimedirian: bool, optional
         If True, the nearest neighbor in a strip with lon size equal to threshold around the
         antimeridian is recomputed using the Haversine distance. The antimeridian is guessed from
         both coordinates and centroids, and is assumed equal to 0.5*(lon_max+lon_min) + 180.
+        Default: True
 
     Returns
     -------
