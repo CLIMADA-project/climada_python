@@ -32,6 +32,7 @@ import zipfile
 from cartopy.io import shapereader
 import dask.dataframe as dd
 import geopandas as gpd
+import numba
 import numpy as np
 import pandas as pd
 import pycountry
@@ -40,14 +41,16 @@ import rasterio.crs
 import rasterio.features
 import rasterio.mask
 import rasterio.warp
+import scipy.spatial
 import scipy.interpolate
 from shapely.geometry import Polygon, MultiPolygon, Point, box
 import shapely.ops
 import shapely.vectorized
 import shapefile
+from sklearn.neighbors import BallTree
 
 from climada.util.config import CONFIG
-from climada.util.constants import (DEF_CRS, SYSTEM_DIR, ONE_LAT_KM,
+from climada.util.constants import (DEF_CRS, EARTH_RADIUS_KM, SYSTEM_DIR, ONE_LAT_KM,
                                     NATEARTH_CENTROIDS,
                                     ISIMIP_GPWV3_NATID_150AS,
                                     ISIMIP_NATID_TO_ISO,
@@ -55,7 +58,6 @@ from climada.util.constants import (DEF_CRS, SYSTEM_DIR, ONE_LAT_KM,
                                     RIVER_FLOOD_REGIONS_CSV)
 from climada.util.files_handler import download_file
 import climada.util.hdf5_handler as u_hdf5
-import climada.util.interpolation as u_interp
 
 pd.options.mode.chained_assignment = None
 
@@ -75,6 +77,10 @@ DEM_NODATA = -9999
 
 MAX_DEM_TILES_DOWN = 300
 """Maximum DEM tiles to dowload"""
+
+NEAREST_NEIGHBOR_THRESHOLD = 100
+"""Distance threshold in km for coordinate assignment. Nearest neighbors with greater distances
+are not considered."""
 
 def latlon_to_geosph_vector(lat, lon, rad=False, basis=False):
     """Convert lat/lon coodinates to radial vectors (on geosphere)
@@ -861,7 +867,8 @@ def assign_grid_points(x, y, grid_width, grid_height, grid_transform):
     assigned[(y_i < 0) | (y_i >= grid_height)] = -1
     return assigned
 
-def assign_coordinates(coords, coords_to_assign, method="NN", distance="haversine", threshold=100):
+def assign_coordinates(coords, coords_to_assign, distance="euclidean",
+                       threshold=NEAREST_NEIGHBOR_THRESHOLD, **kwargs):
     """To each coordinate in `coords`, assign a matching coordinate in `coords_to_assign`
 
     If there is no exact match for some entry, an attempt is made to assign the geographically
@@ -886,27 +893,46 @@ def assign_coordinates(coords, coords_to_assign, method="NN", distance="haversin
         Each row is a geographical coordinate pair. The result will be an index into the
         rows of this array. Make sure that these coordinates use the same coordinate reference
         system as `coords`.
-    method : str, optional
-        Interpolation method to use for non-exact matching. Currently, "NN" (nearest neighbor)
-        is the only supported value, see `climada.util.interpolation.interpol_index`.
     distance : str, optional
-        Distance to use for non-exact matching. Possible values are "haversine" and "approx", see
-        `climada.util.interpolation.interpol_index`. Default: "haversine"
+        Distance to use for non-exact matching. Possible values are "euclidean", "haversine" and
+        "approx". Default: "euclidean"
     threshold : float, optional
         If the distance to the nearest neighbor exceeds `threshold`, the index `-1` is assigned.
         Set `threshold` to 0 to disable nearest neighbor matching. Default: 100 (km)
+    kwargs: dict, optional
+        Keyword arguments to be passed on to nearest-neighbor finding functions in case of
+        non-exact matching with the specified `distance`.
 
     Returns
     -------
     assigned_idx : np.array of size equal to the number of rows in `coords`
         Index into `coords_to_assign`. Note that the value `-1` is used to indicate that no
         matching coordinate has been found, even though `-1` is a valid index in NumPy!
-    """
 
-    if not coords.any():
+    Notes
+    -----
+    By default, the 'euclidean' distance metric is used to find the nearest neighbors in case of
+    non-exact matching. This method is fast for (quasi-)gridded data, but introduces innacuracy
+    since distances in lat/lon coordinates are not equal to distances in meters on the Earth
+    surface, in particular for higher latitude and distances larger than 100km. If more accuracy is
+    needed, please use the 'haversine' distance metric. This however is slower for (quasi-)gridded
+    data.
+    """
+    if coords.shape[0] == 0:
         return np.array([])
-    if not coords_to_assign.any():
+
+    if coords_to_assign.shape[0] == 0:
         return -np.ones(coords.shape[0]).astype(int)
+
+    nearest_neighbor_funcs = {
+        "euclidean": _nearest_neighbor_euclidean,
+        "haversine": _nearest_neighbor_haversine,
+        "approx": _nearest_neighbor_approx,
+    }
+    if distance not in nearest_neighbor_funcs:
+        raise ValueError(
+            f'Coordinate assignment with "{distance}" distance is not supported.')
+
     coords = coords.astype('float64')
     coords_to_assign = coords_to_assign.astype('float64')
     if np.array_equal(coords, coords_to_assign):
@@ -930,13 +956,221 @@ def assign_coordinates(coords, coords_to_assign, method="NN", distance="haversin
         assigned_idx = np.full_like(coords_sorter, -1)
         assigned_idx[sort_assign_idx[exact_assign_idx]] = exact_assign_idx
 
-        # assign remaining coordsinates to their geographically nearest neighbor
+        # assign remaining coordinates to their geographically nearest neighbor
         if threshold > 0 and exact_assign_idx.size != coords_view.size:
             not_assigned_idx_mask = (assigned_idx == -1)
-            assigned_idx[not_assigned_idx_mask] = u_interp.interpol_index(
-                coords_to_assign, coords[not_assigned_idx_mask],
-                method=method, distance=distance, threshold=threshold)
+            assigned_idx[not_assigned_idx_mask] = nearest_neighbor_funcs[distance](
+                coords_to_assign, coords[not_assigned_idx_mask], threshold, **kwargs)
     return assigned_idx
+
+@numba.njit
+def _dist_sqr_approx(lats1, lons1, cos_lats1, lats2, lons2):
+    """Compute squared equirectangular approximation distance. Values need
+    to be sqrt and multiplicated by ONE_LAT_KM to obtain distance in km."""
+    d_lon = lons1 - lons2
+    d_lat = lats1 - lats2
+    return d_lon * d_lon * cos_lats1 * cos_lats1 + d_lat * d_lat
+
+def _nearest_neighbor_approx(centroids, coordinates, threshold, check_antimeridian=True):
+    """Compute the nearest centroid for each coordinate using the
+    euclidean distance d = ((dlon)cos(lat))^2+(dlat)^2. For distant points
+    (e.g. more than 100km apart) use the haversine distance.
+
+    Parameters
+    ----------
+    centroids : 2d array
+        First column contains latitude, second
+        column contains longitude. Each row is a geographic point
+    coordinates : 2d array
+        First column contains latitude, second
+        column contains longitude. Each row is a geographic point
+    threshold : float
+        distance threshold in km over which no neighbor will
+        be found. Those are assigned with a -1 index
+    check_antimedirian: bool, optional
+        If True, the nearest neighbor in a strip with lon size equal to threshold around the
+        antimeridian is recomputed using the Haversine distance. The antimeridian is guessed from
+        both coordinates and centroids, and is assumed equal to 0.5*(lon_max+lon_min) + 180.
+        Default: True
+
+    Returns
+    -------
+    np.array
+        with as many rows as coordinates containing the centroids indexes
+    """
+
+    # Compute only for the unique coordinates. Copy the results for the
+    # not unique coordinates
+    _, idx, inv = np.unique(coordinates, axis=0, return_index=True,
+                            return_inverse=True)
+    # Compute cos(lat) for all centroids
+    centr_cos_lat = np.cos(np.radians(centroids[:, 0]))
+    assigned = np.zeros(coordinates.shape[0], int)
+    num_warn = 0
+    for icoord, iidx in enumerate(idx):
+        dist = _dist_sqr_approx(centroids[:, 0], centroids[:, 1],
+                               centr_cos_lat, coordinates[iidx, 0],
+                               coordinates[iidx, 1])
+        min_idx = dist.argmin()
+        # Raise a warning if the minimum distance is greater than the
+        # threshold and set an unvalid index -1
+        if np.sqrt(dist.min()) * ONE_LAT_KM > threshold:
+            num_warn += 1
+            min_idx = -1
+
+        # Assign found centroid index to all the same coordinates
+        assigned[inv == icoord] = min_idx
+
+    if num_warn:
+        LOGGER.warning('Distance to closest centroid is greater than %s'
+                       'km for %s coordinates.', threshold, num_warn)
+
+    if check_antimeridian:
+        assigned = _nearest_neighbor_antimeridian(
+            centroids, coordinates, threshold, assigned)
+
+    return assigned
+
+def _nearest_neighbor_haversine(centroids, coordinates, threshold):
+    """Compute the neareast centroid for each coordinate using a Ball tree with haversine distance.
+
+    Parameters
+    ----------
+    centroids : 2d array
+        First column contains latitude, second
+        column contains longitude. Each row is a geographic point
+    coordinates : 2d array
+        First column contains latitude, second
+        column contains longitude. Each row is a geographic point
+    threshold : float
+        distance threshold in km over which no neighbor will
+        be found. Those are assigned with a -1 index
+
+    Returns
+    -------
+    np.array
+        with as many rows as coordinates containing the centroids indexes
+    """
+    # Construct tree from centroids
+    tree = BallTree(np.radians(centroids), metric='haversine')
+    # Select unique exposures coordinates
+    _, idx, inv = np.unique(coordinates, axis=0, return_index=True,
+                            return_inverse=True)
+
+    # query the k closest points of the n_points using dual tree
+    dist, assigned = tree.query(np.radians(coordinates[idx]), k=1,
+                                return_distance=True, dualtree=True,
+                                breadth_first=False)
+
+    # `BallTree.query` returns a row for each entry, even if k=1 (number of nearest neighbors)
+    dist = dist[:, 0]
+    assigned = assigned[:, 0]
+
+    # Raise a warning if the minimum distance is greater than the
+    # threshold and set an unvalid index -1
+    num_warn = np.sum(dist * EARTH_RADIUS_KM > threshold)
+    if num_warn:
+        LOGGER.warning('Distance to closest centroid is greater than %s'
+                       'km for %s coordinates.', threshold, num_warn)
+        assigned[dist * EARTH_RADIUS_KM > threshold] = -1
+
+    # Copy result to all exposures and return value
+    return assigned[inv]
+
+
+def _nearest_neighbor_euclidean(centroids, coordinates, threshold, check_antimeridian=True):
+    """Compute the neareast centroid for each coordinate using a k-d tree.
+
+    Parameters
+    ----------
+    centroids : 2d array
+        First column contains latitude, second column contains longitude.
+        Each row is a geographic point
+    coordinates : 2d array
+        First column contains latitude, second column contains longitude. Each
+        row is a geographic point
+    threshold : float
+        distance threshold in km over which no neighbor will be found. Those
+        are assigned with a -1 index
+    check_antimedirian: bool, optional
+        If True, the nearest neighbor in a strip with lon size equal to threshold around the
+        antimeridian is recomputed using the Haversine distance. The antimeridian is guessed from
+        both coordinates and centroids, and is assumed equal to 0.5*(lon_max+lon_min) + 180.
+        Default: True
+
+    Returns
+    -------
+    np.array
+        with as many rows as coordinates containing the centroids indexes
+    """
+    # Construct tree from centroids
+    tree = scipy.spatial.KDTree(np.radians(centroids))
+    # Select unique exposures coordinates
+    _, idx, inv = np.unique(coordinates, axis=0, return_index=True,
+                            return_inverse=True)
+
+    # query the k closest points of the n_points using dual tree
+    dist, assigned = tree.query(np.radians(coordinates[idx]), k=1, p=2, workers=-1)
+
+    # Raise a warning if the minimum distance is greater than the
+    # threshold and set an unvalid index -1
+    num_warn = np.sum(dist * EARTH_RADIUS_KM > threshold)
+    if num_warn:
+        LOGGER.warning('Distance to closest centroid is greater than %s'
+                       'km for %s coordinates.', threshold, num_warn)
+        assigned[dist * EARTH_RADIUS_KM > threshold] = -1
+
+    if check_antimeridian:
+        assigned = _nearest_neighbor_antimeridian(
+            centroids, coordinates[idx], threshold, assigned)
+
+    # Copy result to all exposures and return value
+    return assigned[inv]
+
+def _nearest_neighbor_antimeridian(centroids, coordinates, threshold, assigned):
+    """Recompute nearest neighbors close to the anti-meridian with the Haversine distance
+
+    Parameters
+    ----------
+    centroids : 2d array
+        First column contains latitude, second column contains longitude.
+        Each row is a geographic point
+    coordinates : 2d array
+        First column contains latitude, second column contains longitude. Each
+        row is a geographic point
+    threshold : float
+        distance threshold in km over which no neighbor will be found. Those
+        are assigned with a -1 index
+    assigned : 1d array
+        coordinates that have assigned so far
+
+    Returns
+    -------
+    np.array
+        with as many rows as coordinates containing the centroids indexes
+    """
+    lon_min = min(centroids[:, 1].min(), coordinates[:, 1].min())
+    lon_max = max(centroids[:, 1].max(), coordinates[:, 1].max())
+    if lon_max - lon_min > 360:
+        raise ValueError("Longitudinal coordinates need to be normalized"
+                         "to a common 360 degree range")
+    mid_lon = 0.5 * (lon_max + lon_min)
+    antimeridian = mid_lon + 180
+
+    thres_deg = np.degrees(threshold / EARTH_RADIUS_KM)
+    coord_strip_bool = coordinates[:, 1] + antimeridian < 1.5 * thres_deg
+    coord_strip_bool |= coordinates[:, 1] - antimeridian >  -1.5 * thres_deg
+    if np.any(coord_strip_bool):
+        coord_strip = coordinates[coord_strip_bool]
+        cent_strip_bool = centroids[:, 1] + antimeridian < 2.5 * thres_deg
+        cent_strip_bool |= centroids[:, 1] - antimeridian >  -2.5 * thres_deg
+        if np.any(cent_strip_bool):
+            cent_strip = centroids[cent_strip_bool]
+            strip_assigned = _nearest_neighbor_haversine(cent_strip, coord_strip, threshold)
+            new_coords = cent_strip_bool.nonzero()[0][strip_assigned]
+            new_coords[strip_assigned == -1] = -1
+            assigned[coord_strip_bool] = new_coords
+    return assigned
 
 def region2isos(regions):
     """Convert region names to ISO 3166 alpha-3 codes of countries

@@ -1654,18 +1654,18 @@ class Hazard():
 
         Parameters
         ----------
-        haz: climada.hazard.Hazard()
+        haz: Hazard
             Hazard instance
-        centroids: climada.hazard.Centroids()
+        centroids: Centroids
             Centroids instance on which to map the hazard.
         threshold: int or float
-            Threshold for mapping haz.centroids not in centroids.
+            Threshold (in km) for mapping haz.centroids not in centroids.
             Argument is passed to climada.util.coordinates.assign_coordinates.
-            Default is 100.
+            Default: 100 (km)
 
         Returns
         -------
-        haz_new_cent: climada.hazard.Hazard object
+        haz_new_cent: Hazard
             Hazard projected onto centroids
 
         Raises

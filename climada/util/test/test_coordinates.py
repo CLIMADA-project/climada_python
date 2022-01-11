@@ -35,7 +35,7 @@ from rasterio.crs import CRS as RCRS
 import rasterio.transform
 
 from climada import CONFIG
-from climada.util.constants import HAZ_DEMO_FL, DEF_CRS, SYSTEM_DIR
+from climada.util.constants import HAZ_DEMO_FL, DEF_CRS, ONE_LAT_KM
 import climada.util.coordinates as u_coord
 
 DATA_DIR = CONFIG.util.test_data.dir()
@@ -279,63 +279,6 @@ class TestFunc(unittest.TestCase):
         with self.assertRaises(SyntaxError):
             u_coord.to_crs_user_input('{init: epsg:4326, no_defs: True}')
 
-    def test_assign_grid_points(self):
-        """Test assign_grid_points function"""
-        res = (1, -0.5)
-        pt_bounds = (5, 40, 10, 50)
-        height, width, transform = u_coord.pts_to_raster_meta(pt_bounds, res)
-        xy = np.array([[5, 50], [6, 50], [5, 49.5], [10, 40]])
-        out = u_coord.assign_grid_points(xy[:, 0], xy[:, 1], width, height, transform)
-        np.testing.assert_array_equal(out, [0, 1, 6, 125])
-
-        res = (0.5, -0.5)
-        height, width, transform = u_coord.pts_to_raster_meta(pt_bounds, res)
-        xy = np.array([[5.1, 49.95], [5.99, 50.05], [5, 49.6], [10.1, 39.8]])
-        out = u_coord.assign_grid_points(xy[:, 0], xy[:, 1], width, height, transform)
-        np.testing.assert_array_equal(out, [0, 2, 11, 230])
-
-        res = (1, -1)
-        pt_bounds = (-20, -40, -10, -30)
-        height, width, transform = u_coord.pts_to_raster_meta(pt_bounds, res)
-        xy = np.array([[-10, -40], [-30, -40]])
-        out = u_coord.assign_grid_points(xy[:, 0], xy[:, 1], width, height, transform)
-        np.testing.assert_array_equal(out, [120, -1])
-
-    def test_assign_coordinates(self):
-        """Test assign_coordinates function"""
-        # note that the coordinates are in lat/lon
-        coords = np.array([(0.2, 2), (0, 0), (0, 2), (2.1, 3), (1, 1), (-1, 1), (0, 179.9)])
-        coords_to_assign = np.array([(2.1, 3), (0, 0), (0, 2), (0.9, 1.0), (0, -179.9)])
-        expected_results = [
-            # test with different thresholds (in km)
-            (100, [2, 1, 2, 0, 3, -1, 4]),
-            (20, [-1, 1, 2, 0, 3, -1, -1]),
-            (0, [-1, 1, 2, 0, -1, -1, -1]),
-        ]
-
-        # make sure that it works for both float32 and float64
-        for test_dtype in [np.float64, np.float32]:
-            coords = coords.astype(test_dtype)
-            coords_to_assign = coords_to_assign.astype(test_dtype)
-            for thresh, result in expected_results:
-                assigned_idx = u_coord.assign_coordinates(
-                    coords, coords_to_assign, threshold=thresh)
-                np.testing.assert_array_equal(assigned_idx, result)
-
-        #test empty coords_to_assign
-        coords_to_assign = np.array([])
-        result = [-1, -1, -1, -1, -1, -1, -1]
-        assigned_idx = u_coord.assign_coordinates(
-                    coords, coords_to_assign, threshold=thresh)
-        np.testing.assert_array_equal(assigned_idx, result)
-
-        #test empty coords
-        coords = np.array([])
-        result = np.array([])
-        assigned_idx = u_coord.assign_coordinates(
-                    coords, coords_to_assign, threshold=thresh)
-        np.testing.assert_array_equal(assigned_idx, result)
-
     def test_country_to_iso(self):
         name_list = [
             '', 'United States', 'Argentina', 'Japan', 'Australia', 'Norway', 'Madagascar']
@@ -372,6 +315,343 @@ class TestFunc(unittest.TestCase):
         self.assertEqual(u_coord.country_natid2iso(natid_list, "alpha3"), al3_list)
         self.assertEqual(u_coord.country_natid2iso(natid_list), al3_list)
         self.assertEqual(u_coord.country_natid2iso(natid_list[1]), al3_list[1])
+
+class TestAssign(unittest.TestCase):
+    """Test coordinate assignment functions"""
+
+    def test_assign_grid_points(self):
+        """Test assign_grid_points function"""
+        res = (1, -0.5)
+        pt_bounds = (5, 40, 10, 50)
+        height, width, transform = u_coord.pts_to_raster_meta(pt_bounds, res)
+        xy = np.array([[5, 50], [6, 50], [5, 49.5], [10, 40]])
+        out = u_coord.assign_grid_points(xy[:, 0], xy[:, 1], width, height, transform)
+        np.testing.assert_array_equal(out, [0, 1, 6, 125])
+
+        res = (0.5, -0.5)
+        height, width, transform = u_coord.pts_to_raster_meta(pt_bounds, res)
+        xy = np.array([[5.1, 49.95], [5.99, 50.05], [5, 49.6], [10.1, 39.8]])
+        out = u_coord.assign_grid_points(xy[:, 0], xy[:, 1], width, height, transform)
+        np.testing.assert_array_equal(out, [0, 2, 11, 230])
+
+        res = (1, -1)
+        pt_bounds = (-20, -40, -10, -30)
+        height, width, transform = u_coord.pts_to_raster_meta(pt_bounds, res)
+        xy = np.array([[-10, -40], [-30, -40]])
+        out = u_coord.assign_grid_points(xy[:, 0], xy[:, 1], width, height, transform)
+        np.testing.assert_array_equal(out, [120, -1])
+
+    def test_dist_sqr_approx_pass(self):
+        """Test approximate distance helper function."""
+        lats1 = 45.5
+        lons1 = -32.2
+        cos_lats1 = np.cos(np.radians(lats1))
+        lats2 = 14
+        lons2 = 56
+        self.assertAlmostEqual(
+            7709.827814738594,
+            np.sqrt(u_coord._dist_sqr_approx(lats1, lons1, cos_lats1, lats2, lons2)) * ONE_LAT_KM)
+
+    def test_wrong_distance_fail(self):
+        """Check exception is thrown when wrong distance is given"""
+        with self.assertRaises(ValueError) as cm:
+            u_coord.assign_coordinates(np.ones((10, 2)), np.ones((7, 2)), distance='distance')
+        self.assertIn('Coordinate assignment with "distance" distance is not supported.',
+                      str(cm.exception))
+
+    def data_input_values(self):
+        """Default input coordinates and centroids values"""
+        # Load exposures coordinates from demo entity file
+        exposures = np.array([
+            [26.933899, -80.128799],
+            [26.957203, -80.098284],
+            [26.783846, -80.748947],
+            [26.645524, -80.550704],
+            [26.897796, -80.596929],
+            [26.925359, -80.220966],
+            [26.914768, -80.07466],
+            [26.853491, -80.190281],
+            [26.845099, -80.083904],
+            [26.82651, -80.213493],
+            [26.842772, -80.0591],
+            [26.825905, -80.630096],
+            [26.80465, -80.075301],
+            [26.788649, -80.069885],
+            [26.704277, -80.656841],
+            [26.71005, -80.190085],
+            [26.755412, -80.08955],
+            [26.678449, -80.041179],
+            [26.725649, -80.1324],
+            [26.720599, -80.091746],
+            [26.71255, -80.068579],
+            [26.6649, -80.090698],
+            [26.664699, -80.1254],
+            [26.663149, -80.151401],
+            [26.66875, -80.058749],
+            [26.638517, -80.283371],
+            [26.59309, -80.206901],
+            [26.617449, -80.090649],
+            [26.620079, -80.055001],
+            [26.596795, -80.128711],
+            [26.577049, -80.076435],
+            [26.524585, -80.080105],
+            [26.524158, -80.06398],
+            [26.523737, -80.178973],
+            [26.520284, -80.110519],
+            [26.547349, -80.057701],
+            [26.463399, -80.064251],
+            [26.45905, -80.07875],
+            [26.45558, -80.139247],
+            [26.453699, -80.104316],
+            [26.449999, -80.188545],
+            [26.397299, -80.21902],
+            [26.4084, -80.092391],
+            [26.40875, -80.1575],
+            [26.379113, -80.102028],
+            [26.3809, -80.16885],
+            [26.349068, -80.116401],
+            [26.346349, -80.08385],
+            [26.348015, -80.241305],
+            [26.347957, -80.158855]
+        ])
+
+        # Define centroids
+        centroids = np.zeros((100, 2))
+        inext = 0
+        for ilon in range(10):
+            for ilat in range(10):
+                centroids[inext][0] = 20 + ilat + 1
+                centroids[inext][1] = -85 + ilon + 1
+
+                inext = inext + 1
+
+        return centroids, exposures
+
+    def data_ref(self):
+        """Default output reference"""
+        return np.array([46, 46, 36, 36, 36, 46, 46, 46, 46, 46, 46,
+                         36, 46, 46, 36, 46, 46, 46, 46, 46, 46, 46,
+                         46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46,
+                         46, 46, 46, 45, 45, 45, 45, 45, 45, 45, 45,
+                         45, 45, 45, 45, 45, 45])
+
+    def data_ref_40(self):
+        """Default output reference for maximum distance threshold 40km"""
+        return np.array([46, 46, 36, -1, -1, 46, 46, 46, 46, 46, 46, -1, 46, 46,
+                         -1, 46, 46, 46, 46, 46, 46, 46, 46, -1, 46, -1, -1, -1,
+                         -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+                         -1, -1, -1, -1, -1, 45, -1, -1])
+
+    def data_antimeridian_values(self):
+        """Default input coordinates and centroids value crossing antimerdian"""
+        exposures = np.array([
+            [0, -179.99],
+            [0, 179.99],
+            [5, -179.09],
+            [-5, 179.09],
+            [0, 130],
+            [0, -130]
+        ])
+
+        # Define centroids
+        centroids = np.zeros((100, 2))
+        inext = 0
+        for ilon in range(10):
+            for ilat in range(10):
+                centroids[inext][0] = -5 + ilat
+                if ilat -5 <= 0:
+                    centroids[inext][1] = 170 + ilon + 1
+                else:
+                    centroids[inext][1] = -170 - ilon
+                inext = inext + 1
+
+        return centroids, exposures
+
+    def data_ref_antimeridian(self):
+        """Default output reference for maximum distance threshold 100km for
+        points crossing the anti-merdiian"""
+        return np.array([95, 95, -1, 80, -1, -1])
+
+    def normal_pass(self, dist):
+        """Checking result against matlab climada_demo_step_by_step"""
+        # Load input
+        centroids, exposures = self.data_input_values()
+
+        # Interpolate with default threshold
+        neighbors = u_coord.assign_coordinates(exposures, centroids, distance=dist)
+        # Reference output
+        ref_neighbors = self.data_ref()
+        # Check results
+        self.assertEqual(exposures.shape[0], len(neighbors))
+        np.testing.assert_array_equal(neighbors, ref_neighbors)
+
+    def normal_warning(self, dist):
+        """Checking that a warning is raised when minimum distance greater
+        than threshold"""
+        # Load input
+        centroids, exposures = self.data_input_values()
+
+        # Interpolate with lower threshold to raise warnings
+        threshold = 40
+        with self.assertLogs('climada.util.coordinates', level='INFO') as cm:
+            neighbors = u_coord.assign_coordinates(
+                exposures, centroids, distance=dist, threshold=threshold)
+        self.assertIn("Distance to closest centroid", cm.output[1])
+
+        ref_neighbors = self.data_ref_40()
+        np.testing.assert_array_equal(neighbors, ref_neighbors)
+
+    def repeat_coord_pass(self, dist):
+        """Check that exposures with the same coordinates have same neighbors"""
+
+        # Load input
+        centroids, exposures = self.data_input_values()
+
+        # Repeat a coordinate
+        exposures[2, :] = exposures[0, :]
+
+        # Interpolate with default threshold
+        neighbors = u_coord.assign_coordinates(exposures, centroids, distance=dist)
+
+        # Check output neighbors have same size as coordinates
+        self.assertEqual(len(neighbors), exposures.shape[0])
+        # Check copied coordinates have same neighbors
+        self.assertEqual(neighbors[2], neighbors[0])
+
+    def antimeridian_warning(self, dist):
+        """Check that a warning is raised when minimum distance greater than threshold"""
+        # Load input
+        centroids, exposures = self.data_antimeridian_values()
+
+        # Interpolate with lower threshold to raise warnings
+        threshold = 100
+        with self.assertLogs('climada.util.coordinates', level='INFO') as cm:
+            neighbors = u_coord.assign_coordinates(
+                exposures, centroids, distance=dist, threshold=threshold)
+        self.assertIn("Distance to closest centroid", cm.output[1])
+
+        np.testing.assert_array_equal(neighbors, self.data_ref_antimeridian())
+
+    def test_approx_normal_pass(self):
+        """Call normal_pass test for approxiamte distance"""
+        self.normal_pass('approx')
+
+    def test_approx_normal_warning(self):
+        """Call normal_warning test for approxiamte distance"""
+        self.normal_warning('approx')
+
+    def test_approx_repeat_coord_pass(self):
+        """Call repeat_coord_pass test for approxiamte distance"""
+        self.repeat_coord_pass('approx')
+
+    def test_approx_antimeridian_warning(self):
+        """Call normal_warning test for approximate distance"""
+        self.antimeridian_warning('approx')
+
+    def test_haver_normal_pass(self):
+        """Call normal_pass test for haversine distance"""
+        self.normal_pass('haversine')
+
+    def test_haver_normal_warning(self):
+        """Call normal_warning test for haversine distance"""
+        self.normal_warning('haversine')
+
+    def test_haver_repeat_coord_pass(self):
+        """Call repeat_coord_pass test for haversine distance"""
+        self.repeat_coord_pass('haversine')
+
+    def test_haver_antimeridian_warning(self):
+        """Call normal_warning test for haversine distance"""
+        self.antimeridian_warning('haversine')
+
+    def test_euc_normal_pass(self):
+        """Call normal_pass test for euclidean distance"""
+        self.normal_pass('euclidean')
+
+    def test_euc_normal_warning(self):
+        """Call normal_warning test for euclidean distance"""
+        self.normal_warning('euclidean')
+
+    def test_euc_repeat_coord_pass(self):
+        """Call repeat_coord_pass test for euclidean distance"""
+        self.repeat_coord_pass('euclidean')
+
+    def test_euc_antimeridian_warning(self):
+        """Call normal_warning test for euclidean distance"""
+        self.antimeridian_warning('euclidean')
+
+    def test_diff_outcomes(self):
+        """Different NN interpolation outcomes"""
+        threshold = 100000
+
+        # Define centroids
+        lons = np.arange(-160, 180+1, 20)
+        lats = np.arange(-60, 60+1, 20)
+        lats, lons = [arr.ravel() for arr in np.meshgrid(lats, lons)]
+        centroids = np.transpose([lats, lons])
+
+        # Define exposures
+        exposures = np.array([
+            [49.9, 9],
+            [49.5, 9],
+            [0, -175]
+            ])
+
+        # Neighbors
+        ref_neighbors = [
+            [62, 62, 3],
+            [62, 61, 122],
+            [61, 61, 3],
+            ]
+
+        dist_list = ['approx', 'haversine', 'euclidean']
+        kwargs_list = [
+            {'check_antimeridian':False},
+            {},
+            {'check_antimeridian':False}
+            ]
+
+        for dist, ref, kwargs in zip(dist_list, ref_neighbors, kwargs_list):
+            neighbors = u_coord.assign_coordinates(
+                exposures, centroids, distance=dist, threshold=threshold, **kwargs)
+            np.testing.assert_array_equal(neighbors, ref)
+
+    def test_assign_coordinates(self):
+        """Test assign_coordinates function"""
+        # note that the coordinates are in lat/lon
+        coords = np.array([(0.2, 2), (0, 0), (0, 2), (2.1, 3), (1, 1), (-1, 1), (0, 179.9)])
+        coords_to_assign = np.array([(2.1, 3), (0, 0), (0, 2), (0.9, 1.0), (0, -179.9)])
+        expected_results = [
+            # test with different thresholds (in km)
+            (100, [2, 1, 2, 0, 3, -1, 4]),
+            (20, [-1, 1, 2, 0, 3, -1, -1]),
+            (0, [-1, 1, 2, 0, -1, -1, -1]),
+        ]
+
+        for distance in ["euclidean", "haversine", "approx"]:
+            # make sure that it works for both float32 and float64
+            for test_dtype in [np.float64, np.float32]:
+                coords_typed = coords.astype(test_dtype)
+                coords_to_assign_typed = coords_to_assign.astype(test_dtype)
+                for thresh, result in expected_results:
+                    assigned_idx = u_coord.assign_coordinates(
+                        coords_typed, coords_to_assign_typed,
+                        distance=distance, threshold=thresh)
+                    np.testing.assert_array_equal(assigned_idx, result)
+
+            #test empty coords_to_assign
+            coords_to_assign_empty = np.array([])
+            result = [-1, -1, -1, -1, -1, -1, -1]
+            assigned_idx = u_coord.assign_coordinates(
+                coords, coords_to_assign_empty, distance=distance, threshold=thresh)
+            np.testing.assert_array_equal(assigned_idx, result)
+
+            #test empty coords
+            coords_empty = np.array([])
+            result = np.array([])
+            assigned_idx = u_coord.assign_coordinates(
+                coords_empty, coords_to_assign, distance=distance, threshold=thresh)
+            np.testing.assert_array_equal(assigned_idx, result)
 
 class TestGetGeodata(unittest.TestCase):
     def test_nat_earth_resolution_pass(self):
@@ -1149,6 +1429,7 @@ class TestRasterIO(unittest.TestCase):
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestFunc)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAssign))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestGetGeodata))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRasterMeta))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRasterIO))
