@@ -272,7 +272,7 @@ def _gdf_line_to_pnt(gdf, res, to_meters, disagg):
     # disaggregate
     if disagg == 'avg':
         gdf_pnt = disagg_gdf_avg(gdf_pnt)
-    elif disagg == 'sur':
+    elif disagg == 'surf':
         gdf_pnt = disagg_gdf_val(gdf_pnt, res)
     elif disagg is None and 'value' not in gdf_pnt.columns:
         gdf_pnt['value'] = 1
