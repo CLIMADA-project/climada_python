@@ -19,6 +19,7 @@ import logging
 import copy
 
 import geopandas as gpd
+import pandas as pd
 import numpy as np
 import shapely as sh
 import scipy as sp
@@ -40,16 +41,17 @@ def calc_geom_impact(
         to_meters=False, disagg=None, agg='sum'
         ):
     """
-    Compute impact for exposure with (multi-)polygons. Lat/Lon values are
-    ignored.
+    Compute impact for exposure with (multi-)polygons and/or (multi-)lines.
+    Lat/Lon values in exp.gdf are ignored, only exp.gdf.geometry is considered.
 
-    The polygons are first disaggrated to a grid with resolution
-    lon_res/lat_res. The impact per point is then aggregated for each polygon.
+    The geometries are first disaggrated to a grid with resolution res*res.
+    The impact per point is then aggregated for each geometry.
 
     Parameters
     ----------
     exp : Exposures
         The exposure instance with exp.gdf.geometry containing (multi-)polygons
+        and/or (multi-)lines
     impf_set : ImpactFuncSet
         The set of impact functions.
     haz : Hazard
@@ -57,24 +59,25 @@ def calc_geom_impact(
     res : float
         Resolution of the disaggregation grid.
     to_meters : bool, optional
-       If True, the polygons are projected to an equal area projection before
-       the disaggregation. lat/lon_res are then in meters. The exposures are
+       If True, the geometries are projected to an equal area projection before
+       the disaggregation. res is then in meters. The exposures are
        then reprojected into the original projections before the impact
        calculation. The default is False.
     disagg : string, optional
         if 'avg' average value over points
-        if 'area' value per points is equal to area per point (lon_res*lat_res)
+        if 'surf' value per points is equal to area per point (res*res)
+            for polygons, and distance per point (res) for lines.
         if 'None' value is unchanged (or 1 if no value is defined)
         Disaggregation method. The default is None.
     agg : string, optional
-        If 'agg', the impact is averaged over all points in each polygon.
-        If 'sum', the impact is summed over all points in each polygon.
+        If 'agg', the impact is averaged over all points in each geometry.
+        If 'sum', the impact is summed over all points in each geometry.
         The default is 'sum'.
 
     Returns
     -------
     Impact
-        Impact object with the impact per polygon (lines of exp.gdf).
+        Impact object with the impact per geometry (lines of exp.gdf).
 
     See Also
     --------
@@ -98,21 +101,21 @@ def calc_impact_pnt_agg(exp_pnt, impf_set, haz, agg='sum'):
     Parameters
     ----------
     exp_pnt : Exposures
-        Exposures with a double index geodataframe, first for polygon geometries,
-        second for the point disaggregation of the polygons.
+        Exposures with a double index geodataframe, first for geometries,
+        second for the point disaggregation of the geometries.
     impf_set : ImpactFuncSet
         The set of impact functions.
     haz : Hazard
         The hazard instance.
     agg : string, optional
-        If 'agg', the impact is averaged over all points in each polygon.
-        If 'sum', the impact is summed over all points in each polygon.
+        If 'agg', the impact is averaged over all points in each geometry.
+        If 'sum', the impact is summed over all points in each geometry.
         The default is 'sum'.
 
     Returns
     -------
     Impact
-        Impact object with the impact per polygon.
+        Impact object with the impact per geometry.
 
     """
     # compute impact
@@ -121,28 +124,30 @@ def calc_impact_pnt_agg(exp_pnt, impf_set, haz, agg='sum'):
 
     return impact_pnt_agg(impact_pnt, exp_pnt, agg)
 
+
 def impact_pnt_agg(impact_pnt, exp_pnt, agg):
     """
     Aggregate the impact per geometry.
 
-    The output Impact object contains an extra attribute 'geom_exp' containing the polygons.
+    The output Impact object contains an extra attribute 'geom_exp'
+    containing the geometries.
 
     Parameters
     ----------
     impact_pnt : Impact
         Impact object with impact per exposure point (lines of exp_pnt)
     exp_pnt : Exposures
-        Exposures with a double index geodataframe, first for polygon geometries,
-        second for the point disaggregation of the polygons.
+        Exposures with a double index geodataframe, first for geometries,
+        second for the point disaggregation of the geometries.
     agg : string, optional
-        If 'agg', the impact is averaged over all points in each polygon.
-        If 'sum', the impact is summed over all points in each polygon.
+        If 'agg', the impact is averaged over all points in each geometry.
+        If 'sum', the impact is summed over all points in each geometry.
         The default is 'sum'.
 
     Returns
     -------
     Impact
-        Impact object with the impact per polygon.
+        Impact object with the impact per geometry.
 
     """
 
@@ -166,9 +171,72 @@ def impact_pnt_agg(impact_pnt, exp_pnt, agg):
 
     return impact_agg
 
-def exp_geom_to_pnt(exp, res, to_meters, disagg=None):
+
+def exp_geom_to_pnt(exp, res, to_meters, disagg):
     """
-    Disaggregate exposures with polygon geometries to points
+    Disaggregate exposures with (multi-)polygons and/or (multi-)lines
+    geometries to points.
+
+    Parameters
+    ----------
+    exp : Exposures
+        The exposure instance with exp.gdf.geometry containing (multi-)polygons
+    res : float
+        Resolution of the disaggregation grid.
+    to_meters : bool
+       If True, the geometries are projected to an equal area projection before
+       the disaggregation. res is then in meters. The exposures are
+       then reprojected into the original projections before the impact
+       calculation. The default is False.
+    disagg : string,
+        Disaggregation method.
+        if 'avg' value is average over points
+        if 'surf' value is surface per points. Area per point (res*res)
+            for polygons, and distance per point (res) for lines.
+        if 'None' value is unchanged (or 1 if no value is defined)
+
+    Returns
+    -------
+    exp_pnt : Exposures
+        Exposures with a double index geodataframe, first for the geometries of exp,
+        second for the point disaggregation of the geometries.
+
+    """
+
+    line_mask, poly_mask = _line_poly_mask(exp.gdf)
+
+    if np.any(poly_mask):
+        gdf_pnt_poly = _gdf_poly_to_pnt(exp.gdf[poly_mask], res, to_meters, disagg)
+    else:
+        gdf_pnt_poly = gpd.GeoDataFrame([])
+    if np.any(line_mask):
+        gdf_pnt_line = _gdf_line_to_pnt(exp.gdf[line_mask], res, to_meters, disagg)
+    else:
+        gdf_pnt_line = gpd.GeoDataFrame([])
+
+    gdf_pnt = pd.concat([gdf_pnt_poly, gdf_pnt_line])
+    # set lat lon and centroids
+    exp_pnt = exp.copy()
+    exp_pnt.set_gdf(gdf_pnt)
+    exp_pnt.set_lat_lon()
+
+    return exp_pnt
+
+def _line_poly_mask(gdf):
+    """Mask for lines and polygons"""
+    line_mask =  gdf.geometry.apply(lambda x: isinstance(x, shgeom.LineString))
+    line_mask |=  gdf.geometry.apply(lambda x: isinstance(x, shgeom.MultiLineString))
+
+    poly_mask =  gdf.geometry.apply(lambda x: isinstance(x, shgeom.Polygon))
+    poly_mask |=  gdf.geometry.apply(lambda x: isinstance(x, shgeom.MultiPolygon))
+
+    return line_mask, poly_mask
+
+
+def _gdf_line_to_pnt(gdf, res, to_meters, disagg):
+    """
+    Disaggregate exposures with (multi-)lines
+    geometries to points.
 
     Parameters
     ----------
@@ -177,44 +245,88 @@ def exp_geom_to_pnt(exp, res, to_meters, disagg=None):
     res : float
         Resolution of the disaggregation grid.
     to_meters : bool, optional
-       If True, the polygons are projected to an equal area projection before
-       the disaggregation. lat/lon_res are then in meters. The exposures are
+       If True, the geometries are projected to an equal area projection before
+       the disaggregation. res is then in meters. The exposures are
        then reprojected into the original projections before the impact
        calculation. The default is False.
     disagg : string, optional
-        if 'avg' average value over points
-        if 'area' value per points is equal to area per point (res*res)
+        Disaggregation method.
+        if 'avg' value is average over points
+        if 'surf' value is surface per points. Distance per point (res) for lines.
         if 'None' value is unchanged (or 1 if no value is defined)
-        Disaggregation method. The default is None (i.e. use default disaggregation)
 
     Returns
     -------
     exp_pnt : Exposures
-        Exposures with a double index geodataframe, first for the polygon geometries of exp,
-        second for the point disaggregation of the polygons.
+        Exposures with a double index geodataframe, first for the geometries of exp,
+        second for the point disaggregation of the geometries.
 
     """
 
     # rasterize
     if to_meters:
-        gdf_pnt = poly_to_pnts_m(exp.gdf.reset_index(drop=True), res)
+        gdf_pnt = line_to_pnts_m(gdf.reset_index(drop=True), res)
     else:
-        gdf_pnt = poly_to_pnts(exp.gdf.reset_index(drop=True), res)
+        gdf_pnt = line_to_pnts(gdf.reset_index(drop=True), res)
 
     # disaggregate
     if disagg == 'avg':
         gdf_pnt = disagg_gdf_avg(gdf_pnt)
-    elif disagg == 'area':
+    elif disagg == 'sur':
+        gdf_pnt = disagg_gdf_val(gdf_pnt, res)
+    elif disagg is None and 'value' not in gdf_pnt.columns:
+        gdf_pnt['value'] = 1
+
+    return gdf_pnt
+
+
+def _gdf_poly_to_pnt(gdf, res, to_meters, disagg):
+    """
+    Disaggregate exposures with (multi-)polygons
+    geometries to points.
+
+    Parameters
+    ----------
+    exp : Exposures
+        The exposure instance with exp.gdf.geometry containing (multi-)polygons
+    res : float
+        Resolution of the disaggregation grid.
+    to_meters : bool
+       If True, the geometries are projected to an equal area projection before
+       the disaggregation. res is then in meters. The exposures are
+       then reprojected into the original projections before the impact
+       calculation.
+    disagg : string
+        Disaggregation method.
+        if 'avg' value is average over points
+        if 'surf' value is surface per points. Area per point (res*res)
+            for polygons.
+        if 'None' value is unchanged (or 1 if no value is defined)
+
+    Returns
+    -------
+    exp_pnt : Exposures
+        Exposures with a double index geodataframe, first for the geometries of exp,
+        second for the point disaggregation of the geometries.
+
+    """
+
+    # rasterize
+    if to_meters:
+        gdf_pnt = poly_to_pnts_m(gdf.reset_index(drop=True), res)
+    else:
+        gdf_pnt = poly_to_pnts(gdf.reset_index(drop=True), res)
+
+    # disaggregate
+    if disagg == 'avg':
+        gdf_pnt = disagg_gdf_avg(gdf_pnt)
+    elif disagg == 'sur':
         gdf_pnt = disagg_gdf_val(gdf_pnt, res * res)
     elif disagg is None and 'value' not in gdf_pnt.columns:
         gdf_pnt['value'] = 1
 
-    # set lat lon and centroids
-    exp_pnt = exp.copy()
-    exp_pnt.set_gdf(gdf_pnt)
-    exp_pnt.set_lat_lon()
+    return gdf_pnt
 
-    return exp_pnt
 
 def set_imp_mat(impact, imp_mat):
     """
