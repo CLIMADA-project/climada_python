@@ -366,8 +366,8 @@ class Exposures():
             return INDICATOR_IMPF_OLD
         raise ValueError(f"Missing exposures impact functions {INDICATOR_IMPF}.")
 
-    def assign_centroids(self, hazard, method='NN', distance='euclidean',
-                         threshold=100):
+    def assign_centroids(self, hazard, distance='euclidean',
+                         threshold=u_coord.NEAREST_NEIGHBOR_THRESHOLD):
         """Assign for each exposure coordinate closest hazard coordinate.
         -1 used for disatances > threshold in point distances. If raster hazard,
         -1 used for centroids outside raster.
@@ -376,25 +376,20 @@ class Exposures():
         ----------
         hazard : Hazard
             Hazard to match (with raster or vector centroids).
-        method : str, optional
-            Interpolation method to use in case of vector centroids.
-            Currently, "NN" (nearest neighbor) is the only supported value,
-            see `climada.util.interpolation.interpol_index`.
         distance : str, optional
             Distance to use in case of vector centroids.
-            Possible values are "haversine" and
-            "approx", see `climada.util.interpolation.interpol_index`.
+            Possible values are "euclidean", "haversine" and "approx".
             Default: "euclidean"
         threshold : float
-            If the distance to the nearest neighbor exceeds `threshold`,
+            If the distance (in km) to the nearest neighbor exceeds `threshold`,
             the index `-1` is assigned.
             Set `threshold` to 0, to disable nearest neighbor matching.
             Default: 100 (km)
 
         See Also
         --------
-        climada.util.interpolation.interpol_index: method to
-            interpolate (associate centroids to exposure points)
+        climada.util.coordinates.assign_coordinates: method to associate centroids to
+            exposure points
 
         Notes
         -----
@@ -423,7 +418,7 @@ class Exposures():
         else:
             assigned = u_coord.assign_coordinates(
                 np.stack([self.gdf.latitude.values, self.gdf.longitude.values], axis=1),
-                hazard.centroids.coord, method=method, distance=distance, threshold=threshold)
+                hazard.centroids.coord, distance=distance, threshold=threshold)
         self.gdf[INDICATOR_CENTR + hazard.tag.haz_type] = assigned
 
     def set_geometry_points(self, scheduler=None):
