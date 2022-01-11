@@ -1025,7 +1025,7 @@ class TCTracks():
 
         if land_params:
             extent = self.get_extent()
-            land_geom = u_coord.get_land_geometry(extent, resolution=10)
+            land_geom = u_coord.get_land_geometry(extent=extent, resolution=10)
         else:
             land_geom = None
 
