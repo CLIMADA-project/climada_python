@@ -75,9 +75,6 @@ DEF_VAR_MAT = {'sup_field_name': 'entity',
               }
 """MATLAB variable names"""
 
-THRESHOLD = 100
-"""Default threshold for assignd centroids in km"""
-
 class Exposures():
     """geopandas GeoDataFrame with metada and columns (pd.Series) defined in
     Attributes.
