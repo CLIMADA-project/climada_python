@@ -46,6 +46,7 @@ dependencies:
   - dask=2021.12.0=pyhd8ed1ab_0
   - dask-core=2021.12.0=pyhd8ed1ab_0
   - dbus=1.13.18=hb2f20db_0
+  - debugpy=1.5.1=py38h295c915_0
   - decorator=5.1.0=pyhd3eb1b0_0
   - dill=0.3.4=pyhd8ed1ab_0
   - distributed=2021.12.0=py38h578d9bd_0
@@ -91,7 +92,9 @@ dependencies:
   - imagesize=1.3.0=pyhd3eb1b0_0
   - importlib-metadata=4.10.0=py38h578d9bd_0
   - importlib_metadata=4.10.0=hd8ed1ab_0
+  - ipykernel=6.4.1=py38h06a4308_1
   - ipython=7.29.0=py38hb070fc8_0
+  - ipython_genutils=0.2.0=py38_0
   - jasper=2.0.33=ha77e612_0
   - jbig=2.1=h7f98852_2003
   - jedi=0.18.0=py38h06a4308_1
@@ -99,6 +102,8 @@ dependencies:
   - joblib=1.1.0=pyhd8ed1ab_0
   - jpeg=9d=h516909a_0
   - json-c=0.15=h98cffda_0
+  - jupyter_client=7.1.0=pyhd3eb1b0_0
+  - jupyter_core=4.9.1=py38h06a4308_0
   - kealib=1.4.14=h87e4c3c_3
   - kiwisolver=1.3.2=py38h1fd1430_1
   - krb5=1.19.2=hcc1bbae_3
@@ -139,6 +144,7 @@ dependencies:
   - libpng=1.6.37=hed695b0_2
   - libpq=13.5=hd57d9b9_1
   - librttopo=1.1.0=h30b5eef_8
+  - libsodium=1.0.18=h7b6447c_0
   - libspatialindex=1.9.3=h9c3ff4c_4
   - libspatialite=5.0.1=hf3ee066_12
   - libssh2=1.10.0=ha56f1ee_2
@@ -229,6 +235,7 @@ dependencies:
   - pytz=2021.3=pyhd8ed1ab_0
   - pyxlsb=1.0.9=pyhd8ed1ab_0
   - pyyaml=6.0=py38h497a2fe_3
+  - pyzmq=22.3.0=py38h295c915_2
   - qt=5.12.9=hda022c4_4
   - rasterio=1.2.10=py38h5be73f9_3
   - readline=8.1.2=h7f8727e_0
@@ -289,6 +296,7 @@ dependencies:
   - xyzservices=2021.11.0=pyhd8ed1ab_1
   - xz=5.2.5=h516909a_1
   - yaml=0.2.5=h7f98852_2
+  - zeromq=4.3.4=h2531618_0
   - zict=2.0.0=py_0
   - zipp=3.7.0=pyhd8ed1ab_0
   - zlib=1.2.11=h36c2ea0_1013
@@ -302,8 +310,6 @@ dependencies:
     - importlib-resources==5.4.0
     - ipython-genutils==0.2.0
     - jsonschema==4.3.3
-    - jupyter-client==7.1.0
-    - jupyter-core==4.9.1
     - jupyterlab-pygments==0.1.2
     - mistune==0.8.4
     - nbclient==0.5.9
@@ -316,7 +322,6 @@ dependencies:
     - peewee==3.14.8
     - pybufrkit==0.2.19
     - pyrsistent==0.18.0
-    - pyzmq==22.3.0
     - readthedocs-sphinx-ext==2.1.4
     - salib==1.3.12
     - testpath==0.5.0
