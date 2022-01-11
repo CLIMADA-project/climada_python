@@ -65,10 +65,10 @@ class Calc():
                 if input_param_name in distr_dict:
                     func = distr_dict[input_param_name]
                     x = np.linspace(func.ppf(0.01), func.ppf(0.99), 100)
-                    if not np.all(func.pdf(x) == input_param_func.pdf(x)):
+                    if not np.all(func.cdf(x) == input_param_func.cdf(x)):
                         raise ValueError(
                             f"The input parameter {input_param_name}"
-                            " is shared amond two input variables with"
+                            " is shared among two input variables with"
                             " different distributions."
                             )
                     LOGGER.warning(

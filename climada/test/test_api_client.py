@@ -137,7 +137,7 @@ class TestClient(unittest.TestCase):
         hazard = client.get_hazard(hazard_type='river_flood',
                                    max_datasets=10,
                                    properties={'country_name': ['Switzerland', 'Austria'],
-                                               'year_range': '2010_2030', 'rcp': 'rcp26'},
+                                               'year_range': '2010_2030', 'climate_scenario': 'rcp26'},
                                    dump_dir=DATA_DIR)
         self.assertEqual(np.shape(hazard.intensity), (960, 8601))
         self.assertEqual(np.min(hazard.centroids.region_id), 40)
@@ -151,7 +151,7 @@ class TestClient(unittest.TestCase):
         with self.assertRaises(ValueError) as cm:
             client.get_hazard(hazard_type='litpop', 
                               properties={'country_name': ['Switzerland', 'Austria'],
-                                          'year_range': '2010_2030', 'rcp': 'rcp26'},
+                                          'year_range': '2010_2030', 'climate_scenario': 'rcp26'},
                               dump_dir=DATA_DIR)
         self.assertIn('Valid hazard types are a subset of CLIMADA hazard types. Currently',
                       str(cm.exception))
@@ -160,16 +160,16 @@ class TestClient(unittest.TestCase):
             client.get_hazard(hazard_type='river_flood',
                               max_datasets=10,
                               properties={'country_name': ['Switzerland', 'Austria'],
-                                          'year_range': '2010_2030', 'rcp': ['rcp26', 'rcp85']},
+                                          'year_range': '2010_2030', 'climate_scenario': ['rcp26', 'rcp85']},
                               dump_dir=DATA_DIR)
         self.assertEqual("Cannot combine datasets, there are distinct values for these properties"
-                         " in your selection: ['rcp']",
+                         " in your selection: ['climate_scenario']",
                          str(cm.exception))
 
         with self.assertRaises(ValueError) as cm:
             client.get_hazard(hazard_type='river_flood',
                               properties={'country_name': ['Switzerland', 'Austria'],
-                                          'year_range': '2010_2030', 'rcp': ['rcp26', 'rcp85']},
+                                          'year_range': '2010_2030', 'climate_scenario': ['rcp26', 'rcp85']},
                               dump_dir=DATA_DIR)
         self.assertIn(' datasets matching the query and the limit is set to 1.\nYou can force ',
                       str(cm.exception))
