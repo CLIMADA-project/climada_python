@@ -47,6 +47,8 @@ import climada.util.dates_times as u_dt
 from climada import CONFIG
 import climada.util.hdf5_handler as u_hdf5
 import climada.util.coordinates as u_coord
+from climada.util.constants import ONE_LAT_KM
+from climada.util.coordinates import NEAREST_NEIGHBOR_THRESHOLD
 
 LOGGER = logging.getLogger(__name__)
 
@@ -89,9 +91,6 @@ DEF_VAR_MAT = {'field_name': 'hazard',
                             }
                }
 """MATLAB variable names"""
-
-from climada.entity.exposures.base import THRESHOLD
-from climada.util.constants import ONE_LAT_KM
 
 
 class Hazard():
@@ -768,7 +767,8 @@ class Hazard():
         haz.sanitize_event_ids()
         return haz
 
-    def select_tight(self, buffer=THRESHOLD/ONE_LAT_KM, val='intensity'):
+    def select_tight(self, buffer=NEAREST_NEIGHBOR_THRESHOLD/ONE_LAT_KM,
+                     val='intensity'):
         """
         Reduce hazard to those centroids spanning a minimal box which
         contains all non-zero intensity or fraction points.
@@ -793,7 +793,7 @@ class Hazard():
         See also
         --------
         self.select: Method to select centroids by lat/lon extent
-        exposures.assign_centroids(): Method to assign centroids to exposures
+        util.coordinates.assign_coordinates: algorithm to match centroids.
 
         """
 
@@ -1688,7 +1688,7 @@ class Hazard():
         haz_concat.append(*haz_list)
         return haz_concat
 
-    def change_centroids(self, centroids, threshold=100):
+    def change_centroids(self, centroids, threshold=NEAREST_NEIGHBOR_THRESHOLD):
         """
         Assign (new) centroids to hazard.
 
