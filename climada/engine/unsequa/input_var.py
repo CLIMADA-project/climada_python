@@ -256,7 +256,7 @@ class InputVar():
 
         Returns
         -------
-        climada.engine.uncertainty_quantification.input_var.InputVar
+        climada.engine.unsequa.input_var.InputVar
             Uncertainty input variable for a hazard object.
 
         """
@@ -307,7 +307,7 @@ class InputVar():
 
         Returns
         -------
-        climada.engine.uncertainty_quantification.input_var.InputVar
+        climada.engine.unsequa.input_var.InputVar
             Uncertainty input variable for an exposure object.
 
         """
@@ -371,7 +371,7 @@ class InputVar():
 
         Returns
         -------
-        climada.engine.uncertainty_quantification.input_var.InputVar
+        climada.engine.unsequa.input_var.InputVar
             Uncertainty input variable for an impact function set object.
 
         """
@@ -480,7 +480,7 @@ class InputVar():
 
         Returns
         -------
-        climada.engine.uncertainty_quantification.input_var.InputVar
+        climada.engine.unsequa.input_var.InputVar
             Entity uncertainty input variable
 
         """
@@ -595,7 +595,7 @@ class InputVar():
 
         Returns
         -------
-        climada.engine.uncertainty_quantification.input_var.InputVar
+        climada.engine.unsequa.input_var.InputVar
             Entity uncertainty input variable
 
         """
