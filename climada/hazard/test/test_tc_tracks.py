@@ -117,7 +117,9 @@ class TestIbtracs(unittest.TestCase):
         self.assertEqual(track_ds.sid, '2017242N16333')
         self.assertEqual(track_ds.name, 'IRMA')
         self.assertEqual(track_ds.orig_event_flag, True)
-        self.assertEqual(track_ds.data_provider, 'ibtracs_official_3h_mixed')
+        self.assertEqual(track_ds.data_provider,
+                         'ibtracs_mixed:lat(official_3h),lon(official_3h),wind(official_3h),'
+                         'pres(official_3h),rmw(official_3h),poci(official_3h),roci(official_3h)')
         self.assertEqual(track_ds.category, 5)
 
     def test_ibtracs_with_provider(self):
@@ -134,7 +136,9 @@ class TestIbtracs(unittest.TestCase):
         tc_track = tc.TCTracks.from_ibtracs_netcdf(storm_id=storm_id)
         track_ds = tc_track.get_track()
         self.assertEqual(track_ds.time.size, 35)
-        self.assertEqual(track_ds.data_provider, 'ibtracs_official_3h_mixed')
+        self.assertEqual(track_ds.data_provider,
+                         'ibtracs_mixed:lat(official_3h),lon(official_3h),wind(official_3h),'
+                         'pres(official_3h),rmw(usa),poci(usa),roci(usa)')
         self.assertAlmostEqual(track_ds.lat.values[-1], 31.40, places=5)
         self.assertAlmostEqual(track_ds.central_pressure.values[-1], 980, places=5)
 
@@ -157,7 +161,9 @@ class TestIbtracs(unittest.TestCase):
         track_ds = tc_track.get_track()
         # less time steps are discarded, leading to a larger total size
         self.assertEqual(track_ds.time.size, 99)
-        self.assertEqual(track_ds.data_provider, 'ibtracs_official_3h_mixed')
+        self.assertEqual(track_ds.data_provider,
+                         'ibtracs_mixed:lat(official_3h),lon(official_3h),wind(official_3h),'
+                         'pres(official_3h),rmw(usa),poci(usa),roci(usa)')
         self.assertAlmostEqual(track_ds.lat.values[44], 33.30, places=5)
         self.assertAlmostEqual(track_ds.central_pressure.values[44], 976, places=5)
         self.assertAlmostEqual(track_ds.central_pressure.values[42], 980, places=5)
