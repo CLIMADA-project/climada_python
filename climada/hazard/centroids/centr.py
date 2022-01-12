@@ -958,21 +958,8 @@ class Centroids():
         cen : Centroids
             Sub-selection of this object
         """
-
         if sel_cen is None:
-            sel_cen = np.ones_like(self.region_id, dtype=bool)
-            if reg_id:
-                sel_cen &= np.isin(self.region_id, reg_id)
-            if extent:
-                lon_min, lon_max, lat_min, lat_max = extent
-                lon_max += 360 if lon_min > lon_max else 0
-                lon_normalized = u_coord.lon_normalize(
-                    self.lon.copy(), center=0.5 * (lon_min + lon_max))
-                sel_cen &= (
-                  (lon_normalized >= lon_min) & (lon_normalized <= lon_max) &
-                  (self.lat >= lat_min) & (self.lat <= lat_max)
-                )
-
+            sel_cen = self.select_mask(reg_id=reg_id, extent=extent)
 
         if not self.lat.size or not self.lon.size:
             self.set_meta_to_lat_lon()
@@ -987,6 +974,40 @@ class Centroids():
         if self.dist_coast.size:
             centr.dist_coast = self.dist_coast[sel_cen]
         return centr
+
+    def select_mask(self, reg_id=None, extent=None):
+        """
+        Make mask of selected centroids
+
+        Parameters
+        ----------
+        reg_id : int
+            region to filter according to region_id values
+        extent : tuple
+            Format (min_lon, max_lon, min_lat, max_lat) tuple.
+            If min_lon > lon_max, the extend crosses the antimeridian and is
+            [lon_max, 180] + [-180, lon_min]
+            Borders are inclusive.
+
+        Returns
+        -------
+        sel_cen : 1d array of booleans
+            1d mask of selected centroids
+
+        """
+        sel_cen = np.ones(self.size, dtype=bool)
+        if reg_id is not None:
+            sel_cen &= np.isin(self.region_id, reg_id)
+        if extent is not None:
+            lon_min, lon_max, lat_min, lat_max = extent
+            lon_max += 360 if lon_min > lon_max else 0
+            lon_normalized = u_coord.lon_normalize(
+                self.lon.copy(), center=0.5 * (lon_min + lon_max))
+            sel_cen &= (
+              (lon_normalized >= lon_min) & (lon_normalized <= lon_max) &
+              (self.lat >= lat_min) & (self.lat <= lat_max)
+            )
+        return sel_cen
 
     def set_lat_lon_to_meta(self, min_resol=1.0e-8):
         """Compute meta from lat and lon values.
