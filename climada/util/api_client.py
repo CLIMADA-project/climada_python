@@ -79,6 +79,7 @@ class DataTypeInfo():
     """data_type data from CLIMADA data API."""
     data_type:str
     data_type_group:str
+    status: str
     description:str
     properties:list
 
