@@ -710,6 +710,26 @@ class Client():
             raise ValueError("country must be string or list of strings")
         return self.get_exposures(exposures_type='litpop', dump_dir=dump_dir, properties=properties)
 
+    def get_properties_datatype(self, datatype, known_properties_value=None,
+                                ignore_properties=['date_creation', 'climada_version', 'country_iso3num'],
+                                max_values=10):
+        dataset_infos = self.list_dataset_infos(data_type=datatype, properties=known_properties_value)
+        properties = [dataset.properties for dataset in dataset_infos]
+        unique_keys = set().union(*(d.keys() for d in properties))
+        dict_properties = {}
+        for key in unique_keys:
+            unique_values = []
+            for property in properties:
+                if key in property.keys():
+                    unique_values.append(property[key])
+            unique_values = list(set(unique_values))
+            dict_properties[key] = unique_values
+            df_properties = pd.DataFrame(dict([(k, pd.Series(v)) for k, v in dict_properties.items()]))
+            df_properties = df_properties.fillna('-')
+            df_properties = df_properties.reindex(sorted(df_properties.columns), axis=1)
+        df_properties = df_properties.drop(columns=ignore_properties, errors='ignore')
+        return df_properties.head(max_values)
+
     @staticmethod
     def into_datasets_df(datasets):
         """Convenience function providing a DataFrame of datasets with properties.
