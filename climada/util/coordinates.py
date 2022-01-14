@@ -49,6 +49,7 @@ import shapely.vectorized
 import shapefile
 from sklearn.neighbors import BallTree
 
+from climada.util.config import CONFIG
 from climada.util.constants import (DEF_CRS, EARTH_RADIUS_KM, SYSTEM_DIR, ONE_LAT_KM,
                                     NATEARTH_CENTROIDS,
                                     ISIMIP_GPWV3_NATID_150AS,
@@ -524,6 +525,27 @@ def dist_to_coast(coord_lat, lon=None, signed=False):
         dist[coord_on_land(geom.geometry.y, geom.geometry.x)] *= -1
     return dist
 
+def _get_dist_to_coast_nasa_tif():
+    """Get the path to the NASA raster file for distance to coast.
+    If the file (300 MB) is missing it will be automatically downloaded.
+
+    This is a helper function of `dist_to_coast_nasa`, and doesn't have a stable API.
+
+    Returns
+    -------
+    path : Path
+        Path to the GeoTIFF raster file.
+    """
+    tifname = CONFIG.util.coordinates.dist_to_coast_nasa_tif.str()
+    path = SYSTEM_DIR.joinpath(tifname)
+    if not path.is_file():
+        url = CONFIG.util.coordinates.dist_to_coast_nasa_url.str()
+        path_dwn = download_file(url, download_dir=SYSTEM_DIR)
+        zip_ref = zipfile.ZipFile(path_dwn, 'r')
+        zip_ref.extractall(SYSTEM_DIR)
+        zip_ref.close()
+    return path
+
 def dist_to_coast_nasa(lat, lon, highres=False, signed=False):
     """Read interpolated (signed) distance to coast (in m) from NASA data
 
@@ -546,20 +568,9 @@ def dist_to_coast_nasa(lat, lon, highres=False, signed=False):
     dist : np.array
         (Signed) distance to coast in meters.
     """
+    path = _get_dist_to_coast_nasa_tif()
     lat, lon = [np.asarray(ar).ravel() for ar in [lat, lon]]
     lon = lon_normalize(lon.copy())
-
-    # TODO move URL to config
-    zipname = "GMT_intermediate_coast_distance_01d.zip"
-    tifname = "GMT_intermediate_coast_distance_01d.tif"
-    url = "https://oceancolor.gsfc.nasa.gov/docs/distfromcoast/" + zipname
-    path = SYSTEM_DIR.joinpath(tifname)
-    if not path.is_file():
-        path_dwn = download_file(url, download_dir=SYSTEM_DIR)
-        zip_ref = zipfile.ZipFile(path_dwn, 'r')
-        zip_ref.extractall(SYSTEM_DIR)
-        zip_ref.close()
-
     intermediate_res = None if highres else 0.1
     west_msk = (lon < 0)
     dist = np.zeros_like(lat)
@@ -1636,8 +1647,10 @@ def equal_crs(crs_one, crs_two):
     return rasterio.crs.CRS.from_user_input(crs_one) == rasterio.crs.CRS.from_user_input(crs_two)
 
 def _read_raster_reproject(src, src_crs, dst_meta, band=None, geometry=None, dst_crs=None,
-                           transform=None, resampling=rasterio.warp.Resampling.nearest):
+                           transform=None, resampling="nearest"):
     """Helper function for `read_raster`."""
+    if isinstance(resampling, str):
+        resampling = getattr(rasterio.warp.Resampling, resampling)
     if not band:
         band = [1]
     if not dst_crs:
@@ -1703,8 +1716,7 @@ def _read_raster_reproject(src, src_crs, dst_meta, band=None, geometry=None, dst
     return intensity
 
 def read_raster(file_name, band=None, src_crs=None, window=None, geometry=None,
-                dst_crs=None, transform=None, width=None, height=None,
-                resampling=rasterio.warp.Resampling.nearest):
+                dst_crs=None, transform=None, width=None, height=None, resampling="nearest"):
     """Read raster of bands and set 0-values to the masked ones.
 
     Parameters
@@ -1725,8 +1737,10 @@ def read_raster(file_name, band=None, src_crs=None, window=None, geometry=None,
         number of lons for transform
     height : float
         number of lats for transform
-    resampling : rasterio.warp.Resampling optional
-        resampling function used for reprojection to dst_crs
+    resampling : int or str, optional
+        Resampling method to use, encoded as an integer value (see `rasterio.enums.Resampling`).
+        String values like `"nearest"` or `"bilinear"` are resolved to attributes of
+        `rasterio.enums.Resampling`. Default: "nearest"
 
     Returns
     -------
@@ -1788,10 +1802,16 @@ def read_raster(file_name, band=None, src_crs=None, window=None, geometry=None,
 
     return dst_meta, intensity.reshape(dst_shape)
 
-def read_raster_bounds(path, bounds, res=None, bands=None):
-    """Read raster file within given bounds and refine to given resolution
+def read_raster_bounds(path, bounds, res=None, bands=None, resampling="nearest",
+                       global_origin=None, pad_cells=1.0):
+    """Read raster file within given bounds at given resolution
 
-    Makes sure that the extent of pixel centers covers the specified regions
+    By default, not only the grid cells of the destination raster whose cell centers fall within
+    the specified bounds are selected, but one additional row/column of grid cells is added as a
+    padding in each direction (pad_cells=1). This makes sure that the extent of the selected cell
+    centers encloses the specified bounds.
+
+    The axis orientations (e.g. north to south, west to east) of the input data set are preserved.
 
     Parameters
     ----------
@@ -1799,10 +1819,24 @@ def read_raster_bounds(path, bounds, res=None, bands=None):
         Path to raster file to open with rasterio.
     bounds : tuple
         (xmin, ymin, xmax, ymax)
-    res : float, optional
-        Resolution of output. Default: Resolution of input raster file.
+    res : float or pair of floats, optional
+        Resolution of output. Note that the orientation (sign) of these is overwritten by the input
+        data set's axis orientations (e.g. north to south, west to east).
+        Default: Resolution of input raster file.
     bands : list of int, optional
         Bands to read from the input raster file. Default: [1]
+    resampling : int or str, optional
+        Resampling method to use, encoded as an integer value (see `rasterio.enums.Resampling`).
+        String values like `"nearest"` or `"bilinear"` are resolved to attributes of
+        `rasterio.enums.Resampling`. Default: "nearest"
+    global_origin : pair of floats, optional
+        If given, align the output raster to a global reference raster with this origin.
+        By default, the data set's origin (according to it's transform) is used.
+    pad_cells : float, optional
+        The number of cells to add as a padding (in terms of the destination grid that is inferred
+        from `res` and/or `global_origin` if those parameters are given). This defaults to 1 to
+        make sure that applying methods like bilinear interpolation to the output of this function
+        is well-defined everywhere within the specified bounds. Default: 1.0
 
     Returns
     -------
@@ -1812,11 +1846,12 @@ def read_raster_bounds(path, bounds, res=None, bands=None):
     transform : rasterio.Affine
         Affine transformation defining the output raster data.
     """
+    if isinstance(resampling, str):
+        resampling = getattr(rasterio.warp.Resampling, resampling)
     if Path(path).suffix == '.gz':
         path = '/vsigzip/' + str(path)
     if not bands:
         bands = [1]
-    resampling = rasterio.warp.Resampling.bilinear
     with rasterio.open(path, 'r') as src:
         if res:
             if not isinstance(res, tuple):
@@ -1825,20 +1860,23 @@ def read_raster_bounds(path, bounds, res=None, bands=None):
             res = (src.transform[0], src.transform[4])
         res = (np.abs(res[0]), np.abs(res[1]))
 
-        width, height = bounds[2] - bounds[0], bounds[3] - bounds[1]
-        shape = (int(np.ceil(height / res[1]) + 1),
-                 int(np.ceil(width / res[0]) + 1))
+        # make sure that the extent of pixel centers covers the specified region
+        bounds = (bounds[0] - pad_cells * res[0], bounds[1] - pad_cells * res[1],
+                  bounds[2] + pad_cells * res[0], bounds[3] + pad_cells * res[1])
 
-        # make sure that the extent of pixel centers covers the specified regions
-        extra = (0.5 * ((shape[1] - 1) * res[0] - width),
-                 0.5 * ((shape[0] - 1) * res[1] - height))
-        bounds = (bounds[0] - extra[0] - 0.5 * res[0], bounds[1] - extra[1] - 0.5 * res[1],
-                  bounds[2] + extra[0] + 0.5 * res[0], bounds[3] + extra[1] + 0.5 * res[1])
+        if src.crs is not None and src.crs.to_epsg() == 4326:
+            # We consider WGS84 (EPSG:4326) as a special case just because it's so common.
+            # Other CRS might also have out-of-bounds issues, but we can't possibly cover them all.
+            bounds = (bounds[0], max(-90, bounds[1]), bounds[2], min(90, bounds[3]))
+
+        if global_origin is None:
+            global_origin = (src.transform[2], src.transform[5])
+        res_signed = (np.sign(src.transform[0]) * res[0], np.sign(src.transform[4]) * res[1])
+        global_transform = rasterio.transform.from_origin(
+            *global_origin, res_signed[0], -res_signed[1])
+        transform, shape = subraster_from_bounds(global_transform, bounds)
 
         data = np.zeros((len(bands),) + shape, dtype=src.dtypes[0])
-        res = (np.sign(src.transform[0]) * res[0], np.sign(src.transform[4]) * res[1])
-        transform = rasterio.Affine(res[0], 0, bounds[0] if res[0] > 0 else bounds[2],
-                                    0, res[1], bounds[1] if res[1] > 0 else bounds[3])
         crs = DEF_CRS if src.crs is None else src.crs
         for iband, band in enumerate(bands):
             rasterio.warp.reproject(
@@ -2153,6 +2191,9 @@ def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, crs=DEF
 def subraster_from_bounds(transform, bounds):
     """Compute a subraster definition from a given reference transform and bounds.
 
+    The axis orientations (sign of resolution step sizes) in `transform` are not required to be
+    north to south and west to east. The given orientation is preserved in the result.
+
     Parameters
     ----------
     transform : rasterio.Affine
@@ -2163,10 +2204,15 @@ def subraster_from_bounds(transform, bounds):
     Returns
     -------
     dst_transform : rasterio.Affine
-        Subraster affine transformation.
+        Subraster affine transformation. The axis orientations of the input transform (e.g. north
+        to south, west to east) are preserved.
     dst_shape : tuple of ints (height, width)
         Number of pixels of subraster in vertical and horizontal direction.
     """
+    if np.sign(transform[0]) != np.sign(bounds[2] - bounds[0]):
+        bounds = (bounds[2], bounds[1], bounds[0], bounds[3])
+    if np.sign(transform[4]) != np.sign(bounds[1] - bounds[3]):
+        bounds = (bounds[0], bounds[3], bounds[2], bounds[1])
     window = rasterio.windows.from_bounds(*bounds, transform)
 
     # align the window bounds to the raster by rounding
@@ -2179,8 +2225,8 @@ def subraster_from_bounds(transform, bounds):
     return dst_transform, dst_shape
 
 def align_raster_data(source, src_crs, src_transform, dst_crs=None, dst_resolution=None,
-                      dst_bounds=None, global_origin=(-180, 90), resampling=None, conserve=None,
-                      **kwargs):
+                      dst_bounds=None, global_origin=(-180, 90), resampling="nearest",
+                      conserve=None, **kwargs):
     """Reproject 2D np.ndarray to be aligned to a reference grid.
 
     This function ensures that reprojected data with the same dst_resolution and global_origins are
@@ -2209,12 +2255,16 @@ def align_raster_data(source, src_crs, src_transform, dst_crs=None, dst_resoluti
     global_origin : tuple (west, north) of floats, optional
         Coordinates of the reference grid's upper left corner. Default: (-180, 90). Make sure to
         change `global_origin` for non-geographical CRS!
-    resampling : int, rasterio.enums.Resampling or str, optional
-        Resampling method to use. String values like `"nearest"` or `"bilinear"` are resolved to
-        attributes of `rasterio.enums.Resampling. Default: `rasterio.enums.Resampling.nearest`
+    resampling : int or str, optional
+        Resampling method to use, encoded as an integer value (see `rasterio.enums.Resampling`).
+        String values like `"nearest"` or `"bilinear"` are resolved to attributes of
+        `rasterio.enums.Resampling`. Default: "nearest"
     conserve : str, optional
         If provided, conserve the source array's 'mean' or 'sum' in the transformed data or
         normalize the values of the transformed data ndarray ('norm').
+        WARNING: Please note that this procedure will not apply any weighting of values according
+        to the geographical cell sizes, which will introduce serious biases for lat/lon grids
+        in case of areas spanning large latitudinal ranges.
         Default: None (no conservation)
     kwargs : dict, optional
         Additional arguments passed to `rasterio.warp.reproject`.

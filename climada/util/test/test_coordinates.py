@@ -1192,8 +1192,12 @@ class TestRasterIO(unittest.TestCase):
 
     def test_bounded_refined_raster(self):
         """Test reading a raster within specified bounds and at specified resolution"""
-        bounds = (-69.14, 9.99, -69.11, 10.03)
-        z, transform = u_coord.read_raster_bounds(HAZ_DEMO_FL, bounds, res=0.004)
+        # the bounds have an additional digit (1) at the end to avoid floating-point errors
+        bounds = (-69.141, 9.991, -69.111, 10.021)
+        res = 0.004
+        global_origin = (-180, 90)
+        z, transform = u_coord.read_raster_bounds(
+            HAZ_DEMO_FL, bounds, res=res, global_origin=global_origin)
 
         # the first dimension corresponds to the raster bands:
         self.assertEqual(z.shape[0], 1)
@@ -1203,16 +1207,55 @@ class TestRasterIO(unittest.TestCase):
         self.assertLess(transform[4], 0)
         self.assertGreater(transform[0], 0)
 
-        # the bounds of the returned data are a little larger than the requested bounds:
-        self.assertLess(transform[2], bounds[0])
-        self.assertGreaterEqual(transform[2], bounds[0] - transform[0])
-        self.assertGreater(transform[2] + z.shape[1] * transform[0], bounds[2])
-        self.assertLessEqual(transform[2] + z.shape[1] * transform[0], bounds[2] + transform[0])
+        # the absolute step sizes are as requested
+        self.assertEqual(np.abs(transform[0]), res)
+        self.assertEqual(np.abs(transform[4]), res)
 
-        self.assertGreater(transform[5], bounds[3])
-        self.assertLessEqual(transform[5], bounds[3] - transform[4])
-        self.assertLess(transform[5] + z.shape[0] * transform[4], bounds[1])
-        self.assertGreaterEqual(transform[5] + z.shape[0] * transform[4], bounds[1] + transform[4])
+        # the raster is aligned to the specified global origin
+        align_x = (transform[2] - global_origin[0]) / res
+        align_y = (transform[5] - global_origin[1]) / res
+        self.assertAlmostEqual(align_x, np.round(align_x))
+        self.assertAlmostEqual(align_y, np.round(align_y))
+
+        # the bounds of returned pixel centers cover the specified region:
+        # check along x-axis
+        self.assertLessEqual(transform[2] + 0.5 * transform[0], bounds[0])
+        self.assertGreater(transform[2] + 1.5 * transform[0], bounds[0])
+        self.assertGreaterEqual(transform[2] + (z.shape[1] - 0.5) * transform[0], bounds[2])
+        self.assertLess(transform[2] + (z.shape[1] - 1.5) * transform[0], bounds[2])
+
+        # check along y-axis (note that the orientation is reversed)
+        self.assertGreaterEqual(transform[5] + 0.5 * transform[4], bounds[3])
+        self.assertLess(transform[5] + 1.5 * transform[4], bounds[3])
+        self.assertLessEqual(transform[5] + (z.shape[0] - 0.5) * transform[4], bounds[1])
+        self.assertGreater(transform[5] + (z.shape[0] - 1.5) * transform[4], bounds[1])
+
+        # trigger downloading of dist-to-coast dataset (if not already present)
+        path = u_coord._get_dist_to_coast_nasa_tif()
+
+        # make sure the buffering doesn't go beyond ±90 degrees latitude:
+        z, transform = u_coord.read_raster_bounds(
+            path, (0, -90, 10, -80), res=1.0, global_origin=(-180, 90))
+        self.assertEqual(z.shape, (1, 11, 12))
+        self.assertEqual(transform[5], -79.0)
+        z, transform = u_coord.read_raster_bounds(
+            path, (0, 80, 10, 90), res=1.0, global_origin=(-180, 90))
+        self.assertEqual(z.shape, (1, 11, 12))
+        self.assertEqual(transform[5], 90.0)
+
+        # make sure crossing the antimeridian works fine:
+        z_right, transform = u_coord.read_raster_bounds(
+            path, (-175, 0, -170, 10), res=1.0, global_origin=(-180, 90))
+        z_left, transform = u_coord.read_raster_bounds(
+            path, (170, 0, 175, 10), res=1.0, global_origin=(-180, 90))
+        z_both, transform = u_coord.read_raster_bounds(
+            path, (170, 0, 190, 10), res=1.0, global_origin=(-180, 90))
+        z_both_neg, transform = u_coord.read_raster_bounds(
+            path, (-190, 0, -170, 10), res=1.0, global_origin=(-180, 90))
+        np.testing.assert_array_equal(z_left[0,:,:], z_both[0,:,:z_left.shape[2]])
+        np.testing.assert_array_equal(z_right[0,:,:], z_both[0,:,-z_right.shape[2]:])
+        np.testing.assert_array_equal(z_left[0,:,:], z_both_neg[0,:,:z_left.shape[2]])
+        np.testing.assert_array_equal(z_right[0,:,:], z_both_neg[0,:,-z_right.shape[2]:])
 
     def test_subraster_from_bounds(self):
         """test subraster_from_bounds function"""
@@ -1221,6 +1264,12 @@ class TestRasterIO(unittest.TestCase):
         dst_transform, dst_shape = u_coord.subraster_from_bounds(transform, bounds)
         self.assertEqual(dst_shape, (7, 8))
         self.assertEqual(dst_transform[:6], (0.5, 0, -3.5, 0, -0.5, 4.5))
+
+        # test whether orientation is preserved
+        transform = rasterio.transform.from_origin(-10, 10, 0.5, -0.5)
+        dst_transform, dst_shape = u_coord.subraster_from_bounds(transform, bounds)
+        self.assertEqual(dst_shape, (7, 8))
+        self.assertEqual(dst_transform[:6], (0.5, 0, -3.5, 0, 0.5, 1.0))
 
         # test for more complicated input data:
         _, meta_list = data_arrays_resampling_demo()
