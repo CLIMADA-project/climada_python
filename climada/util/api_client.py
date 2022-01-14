@@ -713,7 +713,28 @@ class Client():
     def get_properties_datatype(self, datatype, known_properties_value=None,
                                 ignore_properties=['date_creation', 'climada_version', 'country_iso3num'],
                                 max_values=10):
+        """Return a table of possible properties for a datatype, optionally given known property values.
+
+        Parameters
+        ----------
+        data_type : str
+            data_type of the dataset, e.g., 'litpop' or 'draught'
+        known_properties_value : dict
+            dict {'property':'value1, 'property2':'value2'}, to provide only a subset of property
+            values that can be combined with the given properties.
+        ignore_properties : list
+            name of properties to ignore because they do not help the filtering of datasets.
+        max_values : int
+            maximum property values to print
+
+        Returns
+        -------
+        pandas.DataFrame
+            of possibles property values for each key
+        """
         dataset_infos = self.list_dataset_infos(data_type=datatype, properties=known_properties_value)
+        if len(dataset_infos)<1:
+            raise Client.NoResult("there is no dataset meeting the requirements")
         properties = [dataset.properties for dataset in dataset_infos]
         unique_keys = set().union(*(d.keys() for d in properties))
         dict_properties = {}
