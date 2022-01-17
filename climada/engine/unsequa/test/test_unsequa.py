@@ -35,7 +35,7 @@ from climada.entity import ImpactFunc, ImpactFuncSet
 from climada.entity.entity_def import Entity
 from climada.entity import Exposures
 from climada.hazard import Hazard
-from climada.engine.uncertainty_quantification import InputVar, CalcImpact, UncOutput, CalcCostBenefit
+from climada.engine.unsequa import InputVar, CalcImpact, UncOutput, CalcCostBenefit
 
 from climada.util.constants import EXP_DEMO_H5, HAZ_DEMO_H5, ENT_DEMO_TODAY, ENT_DEMO_FUTURE
 from climada.util.constants import  TEST_UNC_OUTPUT_IMPACT, TEST_UNC_OUTPUT_COSTBEN
