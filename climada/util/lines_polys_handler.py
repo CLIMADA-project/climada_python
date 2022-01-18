@@ -190,7 +190,7 @@ def exp_geom_to_pnt(exp, res, to_meters, disagg):
        calculation. The default is False.
     disagg : string,
         Disaggregation method.
-        if 'avg' value is average over points
+        if 'avg' value is average of value over points
         if 'surf' value is surface per points. Area per point (res*res)
             for polygons, and distance per point (res) for lines.
         if 'None' value is unchanged (or 1 if no value is defined)
@@ -320,7 +320,7 @@ def _gdf_poly_to_pnt(gdf, res, to_meters, disagg):
     # disaggregate
     if disagg == 'avg':
         gdf_pnt = disagg_gdf_avg(gdf_pnt)
-    elif disagg == 'sur':
+    elif disagg == 'surf':
         gdf_pnt = disagg_gdf_val(gdf_pnt, res * res)
     elif disagg is None and 'value' not in gdf_pnt.columns:
         gdf_pnt['value'] = 1
@@ -486,7 +486,6 @@ def plot_eai_exp_geom(imp_geom, centered=False, figsize=(9, 13), **kwargs):
     return gdf_plot.plot(column = 'impact', **kwargs)
 
 
-
 def disagg_gdf_avg(gdf_pnts):
     """
     Disaggragate value of geodataframes from geoemtries to points
@@ -561,7 +560,7 @@ def poly_to_pnts(gdf, res):
 
     """
 
-    gdf_points = gdf.copy()
+    gdf_points = gdf.reset_index(drop=True).copy()
     gdf_points['geometry_pnt'] = gdf.apply(
         lambda row: _interp_one_poly(row.geometry, res), axis=1)
     gdf_points = _swap_geom_cols(
@@ -591,7 +590,7 @@ def poly_to_pnts_m(gdf, res):
     """
 
     orig_crs = gdf.crs
-    gdf_points = gdf.copy()
+    gdf_points = gdf.reset_index(drop=True).copy()
     gdf_points['geometry_pnt'] = gdf_points.apply(
         lambda row: _interp_one_poly_m(row.geometry, res, orig_crs), axis=1)
     gdf_points = _swap_geom_cols(
@@ -715,8 +714,6 @@ def poly_to_equalarea_proj(poly, orig_crs):
     )
     return sh.ops.transform(project.transform, poly)
 
-
-
 def line_to_pnts_m(gdf_lines, res):
 
     """ Convert a GeoDataframe with LineString geometries to
@@ -824,45 +821,6 @@ def line_to_pnts(gdf_lines, res):
         gdf_points, geom_to='geometry_orig', new_geom='geometry_pnt'
         )
     return gdf_points.explode()
-
-
-# def exp_line_to_pnt(exp, dist, disagg=None):
-
-#     gdf_pnt = line_to_pnts_m(exp.gdf.reset_index(drop=True), dist)
-
-#     # disaggregate
-#     if disagg == 'avg':
-#         gdf_pnt = disagg_line_avg(gdf_pnt)
-#     elif disagg == 'len':
-#         gdf_pnt = disagg_line_val(gdf_pnt, dist)
-#     elif disagg is None and 'value' not in gdf_pnt.columns:
-#         gdf_pnt['value'] = 1
-
-#     # set lat lon and centroids
-#     exp_pnt = exp.copy()
-#     exp_pnt.set_gdf(gdf_pnt)
-#     exp_pnt.set_lat_lon()
-
-#     return exp_pnt
-
-# def disagg_line_avg(gdf_line_pnts):
-
-#     gdf_agg = gdf_line_pnts.copy()
-
-#     group = gdf_line_pnts.groupby(axis=0, level=0)
-#     gdf = group.value.mean() / group.value.count()
-
-#     gdf = gdf.reindex(gdf_line_pnts.index, level=0)
-#     gdf_agg['value'] = gdf
-
-#     return gdf_agg
-
-# def disagg_line_val(gdf_line_pnts, value_per_pnt):
-
-#     gdf_agg = gdf_line_pnts.copy()
-#     gdf_agg['value'] = value_per_pnt
-
-#     return gdf_agg
 
 
 def invert_shapes(gdf_cutout, shape_outer):
