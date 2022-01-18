@@ -701,7 +701,7 @@ class Client():
             'fin_mode': 'pc'
         }
         if country is None:
-            properties['geographical_scale'] = 'global'
+            properties['spatial_coverage'] = 'global'
         elif isinstance(country, str):
             properties['country_name'] = pycountry.countries.lookup(country).name
         elif isinstance(country, list):
@@ -710,10 +710,9 @@ class Client():
             raise ValueError("country must be string or list of strings")
         return self.get_exposures(exposures_type='litpop', dump_dir=dump_dir, properties=properties)
 
-    def get_properties_datatype(self, datatype, known_properties_value=None,
-                                ignore_properties=['date_creation', 'climada_version', 'country_iso3num'],
-                                max_values=10):
-        """Return a table of possible properties for a datatype, optionally given known property values.
+    def get_property_values(self, datatype, known_properties_value=None,
+                            ignore_properties=['date_creation', 'climada_version', 'country_iso3num']):
+        """Return a list of possible values for a property, optionally given known property values.
 
         Parameters
         ----------
@@ -722,34 +721,30 @@ class Client():
         known_properties_value : dict
             dict {'property':'value1, 'property2':'value2'}, to provide only a subset of property
             values that can be combined with the given properties.
-        ignore_properties : list
-            name of properties to ignore because they do not help the filtering of datasets.
-        max_values : int
-            maximum property values to print
 
         Returns
         -------
-        pandas.DataFrame
-            of possibles property values for each key
+        list
+            of possibles property values
         """
         dataset_infos = self.list_dataset_infos(data_type=datatype, properties=known_properties_value)
         if len(dataset_infos)<1:
             raise Client.NoResult("there is no dataset meeting the requirements")
         properties = [dataset.properties for dataset in dataset_infos]
-        unique_keys = set().union(*(d.keys() for d in properties))
+        possible_properties = set().union(*(d.keys() for d in properties))
         dict_properties = {}
-        for key in unique_keys:
-            unique_values = []
+        for key in possible_properties:
+            if key in ignore_properties:
+                continue
+            property_values = []
             for property in properties:
                 if key in property.keys():
-                    unique_values.append(property[key])
-            unique_values = list(set(unique_values))
-            dict_properties[key] = unique_values
-            df_properties = pd.DataFrame(dict([(k, pd.Series(v)) for k, v in dict_properties.items()]))
-            df_properties = df_properties.fillna('-')
-            df_properties = df_properties.reindex(sorted(df_properties.columns), axis=1)
-        df_properties = df_properties.drop(columns=ignore_properties, errors='ignore')
-        return df_properties.head(max_values)
+                    property_values.append(property[key])
+                    property_values = list(set(property_values))
+                    dict_properties[key] = property_values
+                if len(dict_properties[key]) == 1:
+                    dict_properties[key] = dict_properties[key][0]
+        return dict_properties
 
     @staticmethod
     def into_datasets_df(datasets):
