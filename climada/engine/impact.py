@@ -1111,6 +1111,80 @@ class Impact():
 
         return imp_fit
 
+    def set_imp_mat(self, imp_mat):
+        """
+        Set Impact attributes from the impact matrix. Returns a copy.
+        Overwrites eai_exp, at_event, aai_agg, imp_mat.
+        Parameters
+        ----------
+        imp_mat : sparse.csr_matrix
+            matrix num_events x num_exp with impacts.
+        Returns
+        -------
+        imp : Impact
+            Copy of impact with eai_exp, at_event, aai_agg, imp_mat set.
+        """
+        imp = copy.deepcopy(self)
+        imp.eai_exp = self.eai_exp_from_mat(imp_mat, imp.frequency)
+        imp.at_event = self.at_event_from_mat(imp_mat)
+        imp.aai_agg = self.aai_agg_from_at_event(imp.at_event, imp.frequency)
+        imp.imp_mat = imp_mat
+        return imp
+
+    def eai_exp_from_mat(self, imp_mat, freq):
+        """
+        Compute impact for each exposures from the total impact matrix
+        Parameters
+        ----------
+        imp_mat : sparse.csr_matrix
+            matrix num_events x num_exp with impacts.
+        frequency : np.array
+            annual frequency of events
+        Returns
+        -------
+        eai_exp : np.array
+            expected annual impact for each exposure
+        """
+        freq_mat = freq.reshape(len(freq), 1)
+        return imp_mat.multiply(freq_mat).sum(axis=0).A1
+
+    def at_event_from_mat(self, imp_mat):
+        """
+        Compute impact for each hazard event from the total impact matrix
+        Parameters
+        ----------
+        imp_mat : sparse.csr_matrix
+            matrix num_events x num_exp with impacts.
+        Returns
+        -------
+        at_event : np.array
+            impact for each hazard event
+        """
+        return np.squeeze(np.asarray(np.sum(imp_mat, axis=1)))
+
+    def aai_agg_from_at_event(self, at_event, freq):
+        """
+        Aggregate impact.at_event
+        Parameters
+        ----------
+        at_event : np.array
+            impact for each hazard event
+        frequency : np.array
+            annual frequency of event
+        Returns
+        -------
+        float
+            average annual impact aggregated
+        """
+        return sum(at_event * freq)
+
+        def _selected_exposures_idx(self, coord_exp):
+            assigned_idx = u_coord.assign_coordinates(self.coord_exp, coord_exp, threshold=0)
+            sel_exp = (assigned_idx >= 0).nonzero()[0]
+            if sel_exp.size == 0:
+                LOGGER.warning("No exposure coordinates match the selection.")
+            return sel_exp
+
 
     def select(self,
                event_ids=None, event_names=None, dates=None,
@@ -1225,13 +1299,6 @@ class Impact():
         imp.aai_agg = imp.eai_exp.sum()
 
         return imp
-
-    def _selected_exposures_idx(self, coord_exp):
-        assigned_idx = u_coord.assign_coordinates(self.coord_exp, coord_exp, threshold=0)
-        sel_exp = (assigned_idx >= 0).nonzero()[0]
-        if sel_exp.size == 0:
-            LOGGER.warning("No exposure coordinates match the selection.")
-        return sel_exp
 
     def _selected_events_idx(self, event_ids, event_names, dates, nb_events):
         if all(var is None for var in [dates, event_ids, event_names]):
