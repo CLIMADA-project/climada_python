@@ -883,7 +883,7 @@ class TCTracks():
                     'central_pressure': ('time', track_ds.pres.values),
                     'radius_max_wind': ('time', track_ds.radius_max_wind.values),
                     'environmental_pressure': ('time', track_ds.environmental_pressure.values),
-                    'basin': ('time', np.full(track_ds.time.size, "GB")),
+                    'basin': ('time', np.full(track_ds.time.size, "GB", dtype="<U2")),
                 }, coords={
                     'time': track_ds.time.values,
                     'lat': ('time', track_ds.latitude.values),
@@ -992,7 +992,7 @@ class TCTracks():
                 'central_pressure': ('time', group['pres'].values),
                 'radius_max_wind': ('time', group['rmw'].values),
                 'environmental_pressure': ('time', env_pressure),
-                'basin': ("time", group['basin'].values),
+                'basin': ("time", group['basin'].values.astype("<U2")),
             }, coords={
                 'time': ('time', group['time'].values),
                 'lat': ('time', group['lat'].values),
@@ -1258,7 +1258,7 @@ class TCTracks():
                                "whole life time.")
                 basin = track.basin
                 del track.attrs['basin']
-                track['basin'] = ("time", np.full(track.time.size, basin))
+                track['basin'] = ("time", np.full(track.time.size, basin, dtype="<U2"))
             data.append(track)
         tr = cls()
         tr.data = data
@@ -1278,6 +1278,7 @@ class TCTracks():
         with h5py.File(file_name, 'w') as store:
             store.create_dataset('size', (), dtype=int, data=self.size)
             for i, tr in enumerate(self.data):
+                tr['basin'] = tr['basin'].astype('<U2')
                 tr_bytes = tr.to_netcdf()
                 store.create_dataset(
                     f'track{i}', (1,), dtype=f'|S{len(tr_bytes)}', data=[tr_bytes],
@@ -1527,6 +1528,7 @@ def _read_one_gettelman(nc_data, i_track):
     tr_ds = xr.Dataset.from_dataframe(tr_df.set_index('time'))
     tr_ds.coords['lat'] = ('time', tr_ds.lat.values)
     tr_ds.coords['lon'] = ('time', tr_ds.lon.values)
+    tr_ds['basin'] = tr_ds['basin'].astype('<U2')
     tr_ds.attrs = {'max_sustained_wind_unit': 'kn',
                    'central_pressure_unit': 'mb',
                    'sid': sid,
@@ -1649,7 +1651,7 @@ def _read_file_emanuel(path, hemisphere=None, rmw_corr=False):
             'max_sustained_wind': ('time', max_sustained_wind),
             'central_pressure': ('time', tc_pressure[i_track, valid_idx]),
             'environmental_pressure': ('time', env_pressure),
-            'basin': ('time', np.full(nnodes, basin)),
+            'basin': ('time', np.full(nnodes, basin, dtype="<U2")),
         }, coords={
             'time': datetimes,
             'lat': ('time', lat[i_track, valid_idx]),

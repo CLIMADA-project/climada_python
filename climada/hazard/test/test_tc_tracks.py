@@ -456,7 +456,7 @@ class TestIO(unittest.TestCase):
         self.assertEqual(tc_track.data[0].lon[3], 245.3)
         self.assertEqual(tc_track.data[0].lat[4], 11.9)
         self.assertEqual(tc_track.data[0].time_step[3], 3)
-        self.assertEqual(tc_track.data[0].max_sustained_wind[2], 37.127429805615556)
+        self.assertEqual(tc_track.data[0].max_sustained_wind[2], 42.19026114274495)
         self.assertEqual(tc_track.data[0].radius_max_wind[5], 19.07407454551836)
         self.assertEqual(tc_track.data[0].central_pressure[1], 999.4)
         self.assertTrue(np.all(tc_track.data[0].time.dt.year == 1980))
