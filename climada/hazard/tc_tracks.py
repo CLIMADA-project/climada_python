@@ -1277,12 +1277,23 @@ class TCTracks():
         """
         with h5py.File(file_name, 'w') as store:
             store.create_dataset('size', (), dtype=int, data=self.size)
+
+            LOGGER.info('Writing %d tracks to %s', self.size, file_name)
+            last_perc = 0
             for i, tr in enumerate(self.data):
+                perc = 100 * i / self.size
+                if perc - last_perc >= 10:
+                    LOGGER.info("Progress: %d%%", perc)
+                    last_perc = perc
+
                 tr['basin'] = tr['basin'].astype('<U2')
                 tr_bytes = tr.to_netcdf()
                 store.create_dataset(
                     f'track{i}', (1,), dtype=f'|S{len(tr_bytes)}', data=[tr_bytes],
                     compression='gzip', compression_opts=complevel)
+
+            if last_perc != 100:
+                LOGGER.info("Progress: 100%")
 
     @classmethod
     def from_hdf(cls, file_name):
