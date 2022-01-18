@@ -308,13 +308,14 @@ class TestIO(unittest.TestCase):
             self.assertEqual(tr.basin.shape, tr.time.shape)
             np.testing.assert_array_equal(tr.basin, "SP")
 
-    def test_hdf_io(self):
+    def test_hdf5_io(self):
         """Test writting and reading hdf5 TCTracks instances"""
         path = DATA_DIR.joinpath("tc_tracks.h5")
         tc_track = tc.TCTracks.from_ibtracs_netcdf(
             provider='usa', year_range=(1993, 1994), basin='EP', estimate_missing=True)
-        tc_track.write_hdf(path)
-        tc_read = tc.TCTracks.from_hdf(path)
+        tc_track.write_hdf5(path)
+        tc_read = tc.TCTracks.from_hdf5(path)
+        path.unlink()
 
         self.assertEqual(len(tc_track.data), len(tc_read.data))
         for tr, tr_read in zip(tc_track.data, tc_read.data):
@@ -373,6 +374,7 @@ class TestIO(unittest.TestCase):
         self.assertEqual(tc_track.data[0].central_pressure_unit, 'mb')
         self.assertEqual(tc_track.data[0].sid, '1')
         self.assertEqual(tc_track.data[0].name, '1')
+        self.assertEqual(tc_track.data[0].basin.dtype, '<U2')
         self.assertTrue(np.all([np.all(d.basin == 'N') for d in tc_track.data]))
         self.assertEqual(tc_track.data[0].category, 3)
 
@@ -415,6 +417,7 @@ class TestIO(unittest.TestCase):
         self.assertEqual(tc_track_G.data[0].central_pressure_unit, 'mb')
         self.assertEqual(tc_track_G.data[0].sid, '0')
         self.assertEqual(tc_track_G.data[0].name, '0')
+        self.assertEqual(tc_track_G.data[0].basin.dtype, '<U2')
         np.testing.assert_array_equal(tc_track_G.data[0].basin, 'NI')
         self.assertEqual(tc_track_G.data[0].category, 0)
 

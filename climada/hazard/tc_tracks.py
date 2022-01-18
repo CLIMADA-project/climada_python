@@ -921,7 +921,8 @@ class TCTracks():
 
             https://doi.org/10.4121/uuid:82c1dc0d-5485-43d8-901a-ce7f26cda35d
 
-        Wind speeds are converted to 1-minute sustained winds by dividing by 0.88.
+        Wind speeds are converted to 1-minute sustained winds through division by 0.88 (this value
+        is taken from Bloemendaal et al. (2020), cited above).
 
         Parameters
         ----------
@@ -963,7 +964,7 @@ class TCTracks():
         tracks_df['rmw'] *= (1 * ureg.kilometer).to(ureg.nautical_mile).magnitude
         tracks_df['wind'] *= (1 * ureg.meter / ureg.second).to(ureg.knot).magnitude
 
-        # convert from 10-minute to 1-minute sustained winds
+        # convert from 10-minute to 1-minute sustained winds, see Bloemendaal et al. (2020)
         tracks_df['wind'] /= 0.88
 
         # conversion to absolute times
@@ -1264,7 +1265,7 @@ class TCTracks():
         tr.data = data
         return tr
 
-    def write_hdf(self, file_name, complevel=4):
+    def write_hdf5(self, file_name, complevel=4):
         """Write TC tracks in HDF5 format.
 
         Parameters
@@ -1286,6 +1287,7 @@ class TCTracks():
                     LOGGER.info("Progress: %d%%", perc)
                     last_perc = perc
 
+                # enforce '<U2' data type for compatibility with NetCDF3
                 tr['basin'] = tr['basin'].astype('<U2')
                 tr_bytes = tr.to_netcdf()
                 store.create_dataset(
@@ -1296,7 +1298,7 @@ class TCTracks():
                 LOGGER.info("Progress: 100%")
 
     @classmethod
-    def from_hdf(cls, file_name):
+    def from_hdf5(cls, file_name):
         """Create new TCTracks object from HDF5 file
 
         Parameters
@@ -1315,6 +1317,7 @@ class TCTracks():
             LOGGER.info('Reading %d tracks from %s', size, file_name)
             for i in range(size):
                 tr_ds = store.get(f'track{i}')
+                # by default, numpy strips trailing \x00 in byte strings, so we need to undo that:
                 tr_bytes = tr_ds[0].ljust(int(str(tr_ds.dtype)[2:]), b'\x00')
                 tr = xr.open_dataset(tr_bytes)
                 tr['basin'] = tr['basin'].astype('<U2')
