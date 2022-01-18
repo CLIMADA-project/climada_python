@@ -869,8 +869,8 @@ class TCTracks():
 
             # add tracks one by one
             last_perc = 0
-            for i_track in chaz_ds.id_no:
-                perc = 100 * len(data) / chaz_ds.id_no.size
+            for cnt, i_track in enumerate(chaz_ds.id_no):
+                perc = 100 * cnt / chaz_ds.id_no.size
                 if perc - last_perc >= 10:
                     LOGGER.info("Progress: %d%%", perc)
                     last_perc = perc
@@ -920,6 +920,8 @@ class TCTracks():
 
             https://doi.org/10.4121/uuid:82c1dc0d-5485-43d8-901a-ce7f26cda35d
 
+        Wind speeds are converted to 1-minute sustained winds by dividing by 0.88.
+
         Parameters
         ----------
         path : str
@@ -956,10 +958,16 @@ class TCTracks():
         # a bug in the data causes some storm tracks to be double-listed:
         tracks_df = tracks_df.drop_duplicates(subset=["year", "tc_num", "time_delta"])
 
-        # conversion of units and time
+        # conversion of units
         tracks_df['rmw'] *= (1 * ureg.kilometer).to(ureg.nautical_mile).magnitude
         tracks_df['wind'] *= (1 * ureg.meter / ureg.second).to(ureg.knot).magnitude
+
+        # convert from 10-minute to 1-minute sustained winds
+        tracks_df['wind'] /= 0.88
+
+        # conversion to absolute times
         tracks_df['time'] = tracks_df['time_start'] + tracks_df['time_delta']
+
         tracks_df = tracks_df.drop(
             labels=['time_start', 'time_delta', 'landfall', 'dist_to_land'], axis=1)
 
