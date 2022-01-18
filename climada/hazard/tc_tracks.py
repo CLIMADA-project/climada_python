@@ -1264,15 +1264,15 @@ class TCTracks():
         return tr
 
     def write_hdf(self, file_name, complevel=5):
-        """Write TC tracks in hdf5 format.
+        """Write TC tracks in HDF5 format.
 
         Parameters
         ----------
-        file_name: str
-            File name to write, with h5 format
+        file_name: str or Path
+            Path to a new HDF5 file. If it exists already, the file is overwritten.
         complevel : int
             Specifies a compression level (0-9) for the data.
-            A value of 0 or None disables compression. Default: None
+            A value of 0 or None disables compression. Default: 5
         """
         with pd.HDFStore(file_name, mode="w", complevel=complevel) as store:
             attr_keys = sorted(set.union(*[set(d.attrs.keys()) for d in self.data]))
@@ -1283,17 +1283,17 @@ class TCTracks():
 
     @classmethod
     def from_hdf(cls, file_name):
-        """Create new TCTracks object from hdf5 file
+        """Create new TCTracks object from HDF5 file
 
         Parameters
         ----------
-        file_name : str
-            File name of a file that has been generated with `TCTracks.write_hdf`.
+        file_name : str or Path
+            Path to a file that has been generated with `TCTracks.write_hdf`.
 
         Returns
         -------
         tracks : TCTracks
-            TCTracks with data from the given hdf5 file.
+            TCTracks with data from the given HDF5 file.
         """
         data = []
         with pd.HDFStore(file_name, mode="r") as store:
