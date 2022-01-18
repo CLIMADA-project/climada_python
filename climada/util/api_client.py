@@ -710,9 +710,9 @@ class Client():
             raise ValueError("country must be string or list of strings")
         return self.get_exposures(exposures_type='litpop', dump_dir=dump_dir, properties=properties)
 
-    def get_property_values(self, datatype, known_properties_value=None,
+    def get_property_values(self, list_dataset_infos, known_property_values=None,
                             ignore_properties=['date_creation', 'climada_version', 'country_iso3num']):
-        """Return a list of possible values for a property, optionally given known property values.
+        """Return a dictionnary of possible values for properties of a datatype, optionally given known property values.
 
         Parameters
         ----------
@@ -724,13 +724,15 @@ class Client():
 
         Returns
         -------
-        list
+        dict
             of possibles property values
         """
-        dataset_infos = self.list_dataset_infos(data_type=datatype, properties=known_properties_value)
-        if len(dataset_infos)<1:
+        if known_property_values:
+            list_dataset_infos = [dataset for dataset in list_dataset_infos if all(item in dataset.properties.items()
+                                                                for item in known_property_values.items())]
+        if len(list_dataset_infos)<1:
             raise Client.NoResult("there is no dataset meeting the requirements")
-        properties = [dataset.properties for dataset in dataset_infos]
+        properties = [dataset.properties for dataset in list_dataset_infos]
         possible_properties = set().union(*(d.keys() for d in properties))
         dict_properties = {}
         for key in possible_properties:
@@ -742,8 +744,6 @@ class Client():
                     property_values.append(property[key])
                     property_values = list(set(property_values))
                     dict_properties[key] = property_values
-                if len(dict_properties[key]) == 1:
-                    dict_properties[key] = dict_properties[key][0]
         return dict_properties
 
     @staticmethod
