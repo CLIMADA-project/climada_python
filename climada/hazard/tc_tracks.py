@@ -1263,6 +1263,51 @@ class TCTracks():
         tr.data = data
         return tr
 
+    def write_hdf(self, file_name, complevel=5):
+        """Write TC tracks in hdf5 format.
+
+        Parameters
+        ----------
+        file_name: str
+            File name to write, with h5 format
+        complevel : int
+            Specifies a compression level (0-9) for the data.
+            A value of 0 or None disables compression. Default: None
+        """
+        with pd.HDFStore(file_name, mode="w", complevel=complevel) as store:
+            attr_keys = sorted(set.union(*[set(d.attrs.keys()) for d in self.data]))
+            attrs = {key: [d.attrs[key] for d in self.data] for key in attr_keys}
+            store["attrs"] = pd.DataFrame(attrs)
+            for i, tr in enumerate(self.data):
+                store[f"data/track{i}"] = tr.to_dataframe()
+
+    @classmethod
+    def from_hdf(cls, file_name):
+        """Create new TCTracks object from hdf5 file
+
+        Parameters
+        ----------
+        file_name : str
+            File name of a file that has been generated with `TCTracks.write_hdf`.
+
+        Returns
+        -------
+        tracks : TCTracks
+            TCTracks with data from the given hdf5 file.
+        """
+        data = []
+        with pd.HDFStore(file_name, mode="r") as store:
+            df_attrs = store["attrs"]
+            for i, (_, attrs) in enumerate(df_attrs.iterrows()):
+                df = store[f"data/track{i}"]
+                tr = df.to_xarray().set_coords(["lat", "lon"])
+                tr['basin'] = tr['basin'].astype('<U2')
+                for key in attrs.index:
+                    tr.attrs[key] = attrs[key]
+                data.append(tr)
+        tracks = cls()
+        tracks.data = data
+        return tracks
 
     def to_geodataframe(self, as_points=False, split_lines_antimeridian=True):
         """Transform this TCTracks instance into a GeoDataFrame.
