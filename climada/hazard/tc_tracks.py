@@ -34,6 +34,7 @@ from pathlib import Path
 import cartopy.crs as ccrs
 import cftime
 import geopandas as gpd
+import h5py
 import matplotlib.cm as cm_mp
 from matplotlib.collections import LineCollection
 from matplotlib.colors import BoundaryNorm, ListedColormap
@@ -1263,7 +1264,7 @@ class TCTracks():
         tr.data = data
         return tr
 
-    def write_hdf(self, file_name, complevel=5):
+    def write_hdf(self, file_name, complevel=4):
         """Write TC tracks in HDF5 format.
 
         Parameters
@@ -1271,15 +1272,16 @@ class TCTracks():
         file_name: str or Path
             Path to a new HDF5 file. If it exists already, the file is overwritten.
         complevel : int
-            Specifies a compression level (0-9) for the data.
-            A value of 0 or None disables compression. Default: 5
+            Specifies a compression level (0-9) for the gzip compression of the data.
+            A value of 0 or None disables compression. Default: 4
         """
-        with pd.HDFStore(file_name, mode="w", complevel=complevel) as store:
-            attr_keys = sorted(set.union(*[set(d.attrs.keys()) for d in self.data]))
-            attrs = {key: [d.attrs[key] for d in self.data] for key in attr_keys}
-            store["attrs"] = pd.DataFrame(attrs)
+        with h5py.File(file_name, 'w') as store:
+            store.create_dataset('size', (), dtype=int, data=self.size)
             for i, tr in enumerate(self.data):
-                store[f"data/track{i}"] = tr.to_dataframe()
+                tr_bytes = tr.to_netcdf()
+                store.create_dataset(
+                    f'track{i}', (1,), dtype=f'|S{len(tr_bytes)}', data=[tr_bytes],
+                    compression='gzip', compression_opts=complevel)
 
     @classmethod
     def from_hdf(cls, file_name):
@@ -1296,14 +1298,13 @@ class TCTracks():
             TCTracks with data from the given HDF5 file.
         """
         data = []
-        with pd.HDFStore(file_name, mode="r") as store:
-            df_attrs = store["attrs"]
-            for i, (_, attrs) in enumerate(df_attrs.iterrows()):
-                df = store[f"data/track{i}"]
-                tr = df.to_xarray().set_coords(["lat", "lon"])
+        with h5py.File(file_name, 'r') as store:
+            size = store.get('size')[()]
+            for i in range(size):
+                tr_ds = store.get(f'track{i}')
+                tr_bytes = tr_ds[0].ljust(int(str(tr_ds.dtype)[2:]), b'\x00')
+                tr = xr.open_dataset(tr_bytes)
                 tr['basin'] = tr['basin'].astype('<U2')
-                for key in attrs.index:
-                    tr.attrs[key] = attrs[key]
                 data.append(tr)
         tracks = cls()
         tracks.data = data
