@@ -1301,6 +1301,7 @@ class TCTracks():
         data = []
         with h5py.File(file_name, 'r') as store:
             size = store.get('size')[()]
+            LOGGER.info('Reading %d tracks from %s', size, file_name)
             for i in range(size):
                 tr_ds = store.get(f'track{i}')
                 tr_bytes = tr_ds[0].ljust(int(str(tr_ds.dtype)[2:]), b'\x00')
