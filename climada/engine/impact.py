@@ -1115,6 +1115,7 @@ class Impact():
         """
         Set Impact attributes from the impact matrix. Returns a copy.
         Overwrites eai_exp, at_event, aai_agg, imp_mat.
+
         Parameters
         ----------
         imp_mat : sparse.csr_matrix
@@ -1129,11 +1130,13 @@ class Impact():
         imp.at_event = self.at_event_from_mat(imp_mat)
         imp.aai_agg = self.aai_agg_from_at_event(imp.at_event, imp.frequency)
         imp.imp_mat = imp_mat
+        imp.event_id
         return imp
 
     def eai_exp_from_mat(self, imp_mat, freq):
         """
         Compute impact for each exposures from the total impact matrix
+
         Parameters
         ----------
         imp_mat : sparse.csr_matrix
@@ -1151,6 +1154,7 @@ class Impact():
     def at_event_from_mat(self, imp_mat):
         """
         Compute impact for each hazard event from the total impact matrix
+
         Parameters
         ----------
         imp_mat : sparse.csr_matrix
@@ -1165,6 +1169,7 @@ class Impact():
     def aai_agg_from_at_event(self, at_event, freq):
         """
         Aggregate impact.at_event
+
         Parameters
         ----------
         at_event : np.array
@@ -1177,14 +1182,6 @@ class Impact():
             average annual impact aggregated
         """
         return sum(at_event * freq)
-
-        def _selected_exposures_idx(self, coord_exp):
-            assigned_idx = u_coord.assign_coordinates(self.coord_exp, coord_exp, threshold=0)
-            sel_exp = (assigned_idx >= 0).nonzero()[0]
-            if sel_exp.size == 0:
-                LOGGER.warning("No exposure coordinates match the selection.")
-            return sel_exp
-
 
     def select(self,
                event_ids=None, event_names=None, dates=None,
@@ -1344,6 +1341,13 @@ class Impact():
             LOGGER.warning("No event matches the selection. ")
 
         return sel_ev
+
+    def _selected_exposures_idx(self, coord_exp):
+        assigned_idx = u_coord.assign_coordinates(self.coord_exp, coord_exp, threshold=0)
+        sel_exp = (assigned_idx >= 0).nonzero()[0]
+        if sel_exp.size == 0:
+            LOGGER.warning("No exposure coordinates match the selection.")
+        return sel_exp
 
 class ImpactFreqCurve():
     """Impact exceedence frequency curve.
