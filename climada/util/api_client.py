@@ -712,12 +712,11 @@ class Client():
 
     def get_property_values(self, list_dataset_infos, known_property_values=None,
                             ignore_properties=['date_creation', 'climada_version', 'country_iso3num']):
-        """Return a dictionnary of possible values for properties of a datatype, optionally given known property values.
+        """Return a dictionnary of possible values for properties of a data type, optionally given known property values.
 
         Parameters
         ----------
-        data_type : str
-            data_type of the dataset, e.g., 'litpop' or 'draught'
+        list_dataset_infos : list of dataset informations, return of list_dataset_infos
         known_properties_value : dict
             dict {'property':'value1, 'property2':'value2'}, to provide only a subset of property
             values that can be combined with the given properties.
