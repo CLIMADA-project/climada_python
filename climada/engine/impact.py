@@ -1111,7 +1111,7 @@ class Impact():
 
         return imp_fit
 
-    def set_imp_mat(self, imp_mat):
+    def calc_imp_from_mat(self, imp_mat, freq):
         """
         Set Impact attributes from the impact matrix. Returns a copy.
         Overwrites eai_exp, at_event, aai_agg, imp_mat.
@@ -1120,20 +1120,19 @@ class Impact():
         ----------
         imp_mat : sparse.csr_matrix
             matrix num_events x num_exp with impacts.
+        freq : np.array
+            array with the frequency per event
         Returns
         -------
         imp : Impact
             Copy of impact with eai_exp, at_event, aai_agg, imp_mat set.
         """
-        imp = copy.deepcopy(self)
-        imp.eai_exp = self.eai_exp_from_mat(imp_mat, imp.frequency)
-        imp.at_event = self.at_event_from_mat(imp_mat)
-        imp.aai_agg = self.aai_agg_from_at_event(imp.at_event, imp.frequency)
-        imp.imp_mat = imp_mat
-        imp.event_id
-        return imp
+        eai_exp = self._eai_exp_from_mat(imp_mat, freq)
+        at_event = self._at_event_from_mat(imp_mat)
+        aai_agg = self._aai_agg_from_at_event(at_event, freq)
+        return eai_exp, at_event, aai_agg
 
-    def eai_exp_from_mat(self, imp_mat, freq):
+    def _eai_exp_from_mat(self, imp_mat, freq):
         """
         Compute impact for each exposures from the total impact matrix
 
@@ -1151,7 +1150,7 @@ class Impact():
         freq_mat = freq.reshape(len(freq), 1)
         return imp_mat.multiply(freq_mat).sum(axis=0).A1
 
-    def at_event_from_mat(self, imp_mat):
+    def _at_event_from_mat(self, imp_mat):
         """
         Compute impact for each hazard event from the total impact matrix
 
@@ -1166,7 +1165,7 @@ class Impact():
         """
         return np.squeeze(np.asarray(np.sum(imp_mat, axis=1)))
 
-    def aai_agg_from_at_event(self, at_event, freq):
+    def _aai_agg_from_at_event(self, at_event, freq):
         """
         Aggregate impact.at_event
 
