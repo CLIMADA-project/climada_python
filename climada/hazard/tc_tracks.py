@@ -1264,7 +1264,7 @@ class TCTracks():
         tr.data = data
         return tr
 
-    def write_hdf5(self, file_name, complevel=4):
+    def write_hdf5(self, file_name, complevel=5):
         """Write TC tracks in NetCDF4-compliant HDF5 format.
 
         Parameters
@@ -1272,8 +1272,8 @@ class TCTracks():
         file_name: str or Path
             Path to a new HDF5 file. If it exists already, the file is overwritten.
         complevel : int
-            Specifies a compression level (0-9) for the gzip compression of the data.
-            A value of 0 or None disables compression. Default: 4
+            Specifies a compression level (0-9) for the zlib compression of the data.
+            A value of 0 or None disables compression. Default: 5
         """
         # initialise the data set with the size information
         xr.Dataset(attrs={'size': self.size}).to_netcdf(file_name, mode="w", format="NetCDF4")
@@ -1288,7 +1288,8 @@ class TCTracks():
 
             # change dtype from bool to int to be NetCDF4-compliant
             track.attrs['orig_event_flag'] = int(track.attrs['orig_event_flag'])
-            track.to_netcdf(file_name, mode="a", group=f"track{i}")
+            encoding = {var: dict(zlib=True, complevel=complevel) for var in track.data_vars}
+            track.to_netcdf(file_name, mode="a", group=f"track{i}", encoding=encoding)
             track.attrs['orig_event_flag'] = bool(track.attrs['orig_event_flag'])
 
         if last_perc != 100:
