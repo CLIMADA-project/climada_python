@@ -34,7 +34,6 @@ from pathlib import Path
 import cartopy.crs as ccrs
 import cftime
 import geopandas as gpd
-import h5py
 import matplotlib.cm as cm_mp
 from matplotlib.collections import LineCollection
 from matplotlib.colors import BoundaryNorm, ListedColormap
@@ -1266,7 +1265,7 @@ class TCTracks():
         return tr
 
     def write_hdf5(self, file_name, complevel=4):
-        """Write TC tracks in HDF5 format.
+        """Write TC tracks in NetCDF4-compliant HDF5 format.
 
         Parameters
         ----------
@@ -1276,30 +1275,28 @@ class TCTracks():
             Specifies a compression level (0-9) for the gzip compression of the data.
             A value of 0 or None disables compression. Default: 4
         """
-        with h5py.File(file_name, 'w') as store:
-            store.create_dataset('size', (), dtype=int, data=self.size)
+        # initialise the data set with the size information
+        xr.Dataset(attrs={'size': self.size}).to_netcdf(file_name, mode="w", format="NetCDF4")
 
-            LOGGER.info('Writing %d tracks to %s', self.size, file_name)
-            last_perc = 0
-            for i, tr in enumerate(self.data):
-                perc = 100 * i / self.size
-                if perc - last_perc >= 10:
-                    LOGGER.info("Progress: %d%%", perc)
-                    last_perc = perc
+        LOGGER.info('Writing %d tracks to %s', self.size, file_name)
+        last_perc = 0
+        for i, track in enumerate(self.data):
+            perc = 100 * i / self.size
+            if perc - last_perc >= 10:
+                LOGGER.info("Progress: %d%%", perc)
+                last_perc = perc
 
-                # enforce '<U2' data type for compatibility with NetCDF3
-                tr['basin'] = tr['basin'].astype('<U2')
-                tr_bytes = tr.to_netcdf()
-                store.create_dataset(
-                    f'track{i}', (1,), dtype=f'|S{len(tr_bytes)}', data=[tr_bytes],
-                    compression='gzip', compression_opts=complevel)
+            # change dtype from bool to int to be NetCDF4-compliant
+            track.attrs['orig_event_flag'] = int(track.attrs['orig_event_flag'])
+            track.to_netcdf(file_name, mode="a", group=f"track{i}")
+            track.attrs['orig_event_flag'] = bool(track.attrs['orig_event_flag'])
 
-            if last_perc != 100:
-                LOGGER.info("Progress: 100%")
+        if last_perc != 100:
+            LOGGER.info("Progress: 100%")
 
     @classmethod
     def from_hdf5(cls, file_name):
-        """Create new TCTracks object from HDF5 file
+        """Create new TCTracks object from a NetCDF4-compliant HDF5 file
 
         Parameters
         ----------
@@ -1311,17 +1308,16 @@ class TCTracks():
         tracks : TCTracks
             TCTracks with data from the given HDF5 file.
         """
+        size = xr.open_dataset(file_name).attrs['size']
+
+        LOGGER.info('Reading %d tracks from %s', size, file_name)
         data = []
-        with h5py.File(file_name, 'r') as store:
-            size = store.get('size')[()]
-            LOGGER.info('Reading %d tracks from %s', size, file_name)
-            for i in range(size):
-                tr_ds = store.get(f'track{i}')
-                # by default, numpy strips trailing \x00 in byte strings, so we need to undo that:
-                tr_bytes = tr_ds[0].ljust(int(str(tr_ds.dtype)[2:]), b'\x00')
-                tr = xr.open_dataset(tr_bytes)
-                tr['basin'] = tr['basin'].astype('<U2')
-                data.append(tr)
+        for i in range(size):
+            track = xr.open_dataset(file_name, group=f'track{i}')
+            track.attrs['orig_event_flag'] = bool(track.attrs['orig_event_flag'])
+            # when writing '<U2' and reading in again, xarray reads as dtype 'object'. undo this:
+            track['basin'] = track['basin'].astype('<U2')
+            data.append(track)
         tracks = cls()
         tracks.data = data
         return tracks
