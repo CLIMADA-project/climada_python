@@ -683,7 +683,7 @@ def line_to_pnts(gdf_lines, res):
             line.interpolate(dist, normalized=True)
             for dist in fractions
             ])
-        for line, fractions in zip(gdf_lines.geometry, line_fractions)
+        for line, fractions in zip(gdf_points.geometry, line_fractions)
         ]
 
     gdf_points = _swap_geom_cols(
@@ -741,7 +741,7 @@ def line_to_pnts_m(gdf_lines, res):
             line.interpolate(dist, normalized=True)
             for dist in fractions
             ])
-        for line, fractions in zip(gdf_lines.geometry, line_fractions)
+        for line, fractions in zip(gdf_points.geometry, line_fractions)
         ]
 
     gdf_points = _swap_geom_cols(
