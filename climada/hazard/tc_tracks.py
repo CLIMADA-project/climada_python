@@ -22,6 +22,7 @@ Define TCTracks: IBTracs reader and tracks manager.
 __all__ = ['CAT_NAMES', 'SAFFIR_SIM_CAT', 'TCTracks', 'set_category']
 
 # standard libraries
+import contextlib
 import datetime as dt
 import itertools
 import logging
@@ -1474,16 +1475,13 @@ def _xr_to_netcdf_multi(path, ds_dict, encoding=None):
         keyword parameter in `xr.Dataset.to_netcdf`. Default: None
     """
     path = str(pathlib.Path(path).expanduser().absolute())
-    store = NetCDF4DataStore.open(path, "w", "NETCDF4", None)
-    try:
+    with contextlib.closing(NetCDF4DataStore.open(path, "w", "NETCDF4", None)) as store:
         writer = ArrayWriter()
         for group, dataset in ds_dict.items():
             store._group = group
             unlimited_dims = dataset.encoding.get("unlimited_dims", None)
             encoding = None if encoding is None or group not in encoding else encoding[group]
             dump_to_store(dataset, store, writer, encoding=encoding, unlimited_dims=unlimited_dims)
-    finally:
-        store.close()
 
 def _xr_open_dataset_multi(path, prefix=""):
     """Read multiple xarray Datasets from groups contained in a single NetCDF4 file
@@ -1507,9 +1505,8 @@ def _xr_open_dataset_multi(path, prefix=""):
         Note that an empty string ("") is a valid group name and refers to the root group.
     """
     path = str(pathlib.Path(path).expanduser().absolute())
-    store = NetCDF4DataStore.open(path, "r", "NETCDF4", None)
     ds_dict = {}
-    try:
+    with contextlib.closing(NetCDF4DataStore.open(path, "r", "NETCDF4", None)) as store:
         groups = [g for g in _xr_nc4_groups_from_store(store) if g.startswith(prefix)]
         store_entrypoint = StoreBackendEntrypoint()
         LOGGER.info('Reading %d datasets from %s', len(groups), path)
@@ -1518,8 +1515,6 @@ def _xr_open_dataset_multi(path, prefix=""):
             ds = store_entrypoint.open_dataset(store)
             ds.load()
             ds_dict[group] = ds
-    finally:
-        store.close()
     return ds_dict
 
 def _xr_nc4_groups_from_store(store):
