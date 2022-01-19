@@ -25,6 +25,7 @@ __all__ = ['CAT_NAMES', 'SAFFIR_SIM_CAT', 'TCTracks', 'set_category']
 import datetime as dt
 import itertools
 import logging
+import pathlib
 import re
 import shutil
 import warnings
@@ -49,6 +50,9 @@ import shapely.ops
 from sklearn.neighbors import DistanceMetric
 import statsmodels.api as sm
 import xarray as xr
+from xarray.backends import NetCDF4DataStore
+from xarray.backends.api import dump_to_store
+from xarray.backends.common import ArrayWriter
 
 # climada dependencies
 from climada.util import ureg
@@ -1275,25 +1279,22 @@ class TCTracks():
             Specifies a compression level (0-9) for the zlib compression of the data.
             A value of 0 or None disables compression. Default: 5
         """
-        # initialise the data set with the size information
-        xr.Dataset(attrs={'size': self.size}).to_netcdf(file_name, mode="w", format="NetCDF4")
-
-        LOGGER.info('Writing %d tracks to %s', self.size, file_name)
-        last_perc = 0
         for i, track in enumerate(self.data):
-            perc = 100 * i / self.size
-            if perc - last_perc >= 10:
-                LOGGER.info("Progress: %d%%", perc)
-                last_perc = perc
-
             # change dtype from bool to int to be NetCDF4-compliant
             track.attrs['orig_event_flag'] = int(track.attrs['orig_event_flag'])
-            encoding = {var: dict(zlib=True, complevel=complevel) for var in track.data_vars}
-            track.to_netcdf(file_name, mode="a", group=f"track{i}", encoding=encoding)
-            track.attrs['orig_event_flag'] = bool(track.attrs['orig_event_flag'])
+        try:
+            encoding = {
+                f'track{i}': {var: dict(zlib=True, complevel=complevel) for var in track.data_vars}
+                for i, track in enumerate(self.data)
+            }
+            ds_dict = {f'track{i}': track for i, track in enumerate(self.data)}
+            ds_dict[""] = xr.Dataset(attrs={'size': self.size})
 
-        if last_perc != 100:
-            LOGGER.info("Progress: 100%")
+            LOGGER.info('Writing %d tracks to %s', self.size, file_name)
+            _xr_to_netcdf_multi(file_name, ds_dict, encoding=encoding)
+        finally:
+            for i, track in enumerate(self.data):
+                track.attrs['orig_event_flag'] = bool(track.attrs['orig_event_flag'])
 
     @classmethod
     def from_hdf5(cls, file_name):
@@ -1449,6 +1450,35 @@ class TCTracks():
         if land_geom:
             track_land_params(track_int, land_geom)
         return track_int
+
+def _xr_to_netcdf_multi(path, ds_dict, encoding=None):
+    """Write multiple xarray Datasets to separate groups in a single NetCDF4 file
+
+    Contrary to xarray's `to_netcdf` functionality this only supports the "NETCDF4" format and the
+    "netcdf4" engine since the groups feature has been introduced by NetCDF version 4.
+
+    Parameters
+    ----------
+    path : str or Path
+        Path of the target NetCDF file.
+    ds_dict : dict whose keys are group names and values are xr.Dataset
+        Each xr.Dataset in the dict is stored in the group identified by its key in the dict.
+        Note that an empty string ("") is a valid group name and refers to the root group.
+    encoding : dict whose keys are group names and values are dict, optional
+        For each dataset/group, one dict that is compliant with the format of the `encoding`
+        keyword parameter in `xr.Dataset.to_netcdf`. Default: None
+    """
+    path = str(pathlib.Path(path).expanduser().absolute())
+    store = NetCDF4DataStore.open(path, "w", "NETCDF4", None)
+    try:
+        writer = ArrayWriter()
+        for group, dataset in ds_dict.items():
+            store._group = group
+            unlimited_dims = dataset.encoding.get("unlimited_dims", None)
+            encoding = None if encoding is None or group not in encoding else encoding[group]
+            dump_to_store(dataset, store, writer, encoding=encoding, unlimited_dims=unlimited_dims)
+    finally:
+        store.close()
 
 def _read_one_gettelman(nc_data, i_track):
     """Read a single track from Andrew Gettelman's NetCDF dataset
