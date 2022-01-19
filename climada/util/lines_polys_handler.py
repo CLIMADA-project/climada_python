@@ -328,86 +328,6 @@ def _gdf_poly_to_pnt(gdf, res, to_meters, disagg):
     return gdf_pnt
 
 
-def set_imp_mat(impact, imp_mat):
-    """
-    Set Impact attributes from the impact matrix. Returns a copy.
-    Overwrites eai_exp, at_event, aai_agg, imp_mat.
-
-    Parameters
-    ----------
-    impact : Impact
-        Impact instance.
-    imp_mat : sparse.csr_matrix
-        matrix num_events x num_exp with impacts.
-
-    Returns
-    -------
-    imp : Impact
-        Copy of impact with eai_exp, at_event, aai_agg, imp_mat set.
-
-    """
-    imp = copy.deepcopy(impact)
-    imp.eai_exp = eai_exp_from_mat(imp_mat, imp.frequency)
-    imp.at_event = at_event_from_mat(imp_mat)
-    imp.aai_agg = aai_agg_from_at_event(imp.at_event, imp.frequency)
-    imp.imp_mat = imp_mat
-    return imp
-
-def eai_exp_from_mat(imp_mat, freq):
-    """
-    Compute impact for each exposures from the total impact matrix
-
-    Parameters
-    ----------
-    imp_mat : sparse.csr_matrix
-        matrix num_events x num_exp with impacts.
-    frequency : np.array
-        annual frequency of events
-
-    Returns
-    -------
-    eai_exp : np.array
-        expected annual impact for each exposure
-
-    """
-    freq_mat = freq.reshape(len(freq), 1)
-    return imp_mat.multiply(freq_mat).sum(axis=0).A1
-
-def at_event_from_mat(imp_mat):
-    """
-    Compute impact for each hazard event from the total impact matrix
-
-    Parameters
-    ----------
-    imp_mat : sparse.csr_matrix
-        matrix num_events x num_exp with impacts.
-
-    Returns
-    -------
-    at_event : np.array
-        impact for each hazard event
-
-    """
-    return np.squeeze(np.asarray(np.sum(imp_mat, axis=1)))
-
-def aai_agg_from_at_event(at_event, freq):
-    """
-    Aggregate impact.at_event
-
-    Parameters
-    ----------
-    at_event : np.array
-        impact for each hazard event
-    frequency : np.array
-        annual frequency of event
-
-    Returns
-    -------
-    float
-        average annual impact aggregated
-
-    """
-    return sum(at_event * freq)
 
 def aggregate_impact_mat(imp_pnt, gdf_pnt, agg):
     """
@@ -866,3 +786,90 @@ def _swap_geom_cols(gdf, geom_to, new_geom):
     gdf_swap.rename(columns = {new_geom: 'geometry'}, inplace=True)
     gdf_swap.set_geometry('geometry', inplace=True)
     return gdf_swap
+
+
+"""
+To be remvoe in a future iteration and included directly into the
+impact class
+"""
+
+def set_imp_mat(impact, imp_mat):
+    """
+    Set Impact attributes from the impact matrix. Returns a copy.
+    Overwrites eai_exp, at_event, aai_agg, imp_mat.
+
+    Parameters
+    ----------
+    impact : Impact
+        Impact instance.
+    imp_mat : sparse.csr_matrix
+        matrix num_events x num_exp with impacts.
+
+    Returns
+    -------
+    imp : Impact
+        Copy of impact with eai_exp, at_event, aai_agg, imp_mat set.
+
+    """
+    imp = copy.deepcopy(impact)
+    imp.eai_exp = eai_exp_from_mat(imp_mat, imp.frequency)
+    imp.at_event = at_event_from_mat(imp_mat)
+    imp.aai_agg = aai_agg_from_at_event(imp.at_event, imp.frequency)
+    imp.imp_mat = imp_mat
+    return imp
+
+def eai_exp_from_mat(imp_mat, freq):
+    """
+    Compute impact for each exposures from the total impact matrix
+
+    Parameters
+    ----------
+    imp_mat : sparse.csr_matrix
+        matrix num_events x num_exp with impacts.
+    frequency : np.array
+        annual frequency of events
+
+    Returns
+    -------
+    eai_exp : np.array
+        expected annual impact for each exposure
+
+    """
+    freq_mat = freq.reshape(len(freq), 1)
+    return imp_mat.multiply(freq_mat).sum(axis=0).A1
+
+def at_event_from_mat(imp_mat):
+    """
+    Compute impact for each hazard event from the total impact matrix
+
+    Parameters
+    ----------
+    imp_mat : sparse.csr_matrix
+        matrix num_events x num_exp with impacts.
+
+    Returns
+    -------
+    at_event : np.array
+        impact for each hazard event
+
+    """
+    return np.squeeze(np.asarray(np.sum(imp_mat, axis=1)))
+
+def aai_agg_from_at_event(at_event, freq):
+    """
+    Aggregate impact.at_event
+
+    Parameters
+    ----------
+    at_event : np.array
+        impact for each hazard event
+    frequency : np.array
+        annual frequency of event
+
+    Returns
+    -------
+    float
+        average annual impact aggregated
+
+    """
+    return sum(at_event * freq)
