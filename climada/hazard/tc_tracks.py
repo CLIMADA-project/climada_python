@@ -151,6 +151,13 @@ EMANUEL_RMW_CORR_FACTOR = 2.0
 """Kerry Emanuel track files in this list require a correction: The radius of
     maximum wind (rmstore) needs to be multiplied by factor 2."""
 
+STORM_1MIN_WIND_FACTOR = 0.88
+"""Scaling factor used in Bloemendaal et al. (2020) to convert 1-minute sustained wind speeds to
+10-minute sustained wind speeds.
+
+Bloemendaal et al. (2020): Generation of a global synthetic tropical cyclone hazard
+dataset using STORM. Scientific Data 7(1): 40."""
+
 class TCTracks():
     """Contains tropical cyclone tracks.
 
@@ -969,7 +976,7 @@ class TCTracks():
         tracks_df['wind'] *= (1 * ureg.meter / ureg.second).to(ureg.knot).magnitude
 
         # convert from 10-minute to 1-minute sustained winds, see Bloemendaal et al. (2020)
-        tracks_df['wind'] /= 0.88
+        tracks_df['wind'] /= STORM_1MIN_WIND_FACTOR
 
         # conversion to absolute times
         tracks_df['time'] = tracks_df['time_start'] + tracks_df['time_delta']
