@@ -171,6 +171,81 @@ def impact_pnt_agg(impact_pnt, exp_pnt, agg):
 
     return impact_agg
 
+def aggregate_impact_mat(imp_pnt, gdf_pnt, agg):
+    """
+    Aggregate impact matrix given geodataframe or disaggregated polygons.
+
+    Parameters
+    ----------
+    impact_pnt : Impact
+        Impact object with impact per point (lines of gdf_pnt)
+    gdf_pnt : GeoDataFrame
+        Exposures geodataframe with a double index, first for polygon geometries,
+        second for the point disaggregation of the polygons.
+    agg : string
+        If 'agg', the impact is averaged over all points in each polygon.
+        If 'sum', the impact is summed over all points in each polygon.
+
+    Returns
+    -------
+    sparse.csr_matrix
+        matrix num_events x num_polygons with impacts.
+
+    """
+    # aggregate impact
+    mi = gdf_pnt.index
+    col_geom = mi.get_level_values(level=0).to_numpy()
+    row_pnt = np.arange(len(col_geom))
+    if agg == 'avg':
+        from collections import Counter
+        geom_sizes = Counter(col_geom).values()
+        mask = np.concatenate([np.ones(l) / l for l in geom_sizes])
+    elif agg == 'sum':
+        mask = np.ones(len(col_geom))
+    else:
+        raise ValueError("Please choose a valid aggregation method. agg=%s is not valid", agg)
+    csr_mask = sp.sparse.csr_matrix(
+        (mask, (row_pnt, col_geom)),
+         shape=(len(row_pnt), len(np.unique(col_geom)))
+        )
+    return imp_pnt.imp_mat.dot(csr_mask)
+
+def plot_eai_exp_geom(imp_geom, centered=False, figsize=(9, 13), **kwargs):
+    """
+    Plot the average impact per exposure polygon.
+
+    Parameters
+    ----------
+    imp_geom : Impact
+        Impact instance with imp_geom set (i.e. computed from exposures with polygons)
+    centered : bool, optional
+        Center the plot. The default is False.
+    figsize : (float, float), optional
+        Figure size. The default is (9, 13).
+    **kwargs : dict
+        Keyword arguments for GeoDataFrame.plot()
+
+    Returns
+    -------
+    ax:
+        matplotlib axes instance
+
+    """
+    kwargs['figsize'] = figsize
+    if 'legend_kwds' not in kwargs:
+        kwargs['legend_kwds'] = {
+            'label': "Impact [%s]" %imp_geom.unit,
+            'orientation': "horizontal"
+            }
+    if 'legend' not in kwargs:
+        kwargs['legend'] = True
+    gdf_plot = gpd.GeoDataFrame(imp_geom.geom_exp)
+    gdf_plot['impact'] = imp_geom.eai_exp
+    if centered:
+        xmin, xmax = u_coord.lon_bounds(imp_geom.coord_exp[:,1])
+        proj_plot = ccrs.PlateCarree(central_longitude=0.5 * (xmin + xmax))
+        gdf_plot = gdf_plot.to_crs(proj_plot)
+    return gdf_plot.plot(column = 'impact', **kwargs)
 
 def exp_geom_to_pnt(exp, res, to_meters, disagg):
     """
@@ -328,84 +403,6 @@ def _gdf_poly_to_pnt(gdf, res, to_meters, disagg):
     return gdf_pnt
 
 
-
-def aggregate_impact_mat(imp_pnt, gdf_pnt, agg):
-    """
-    Aggregate impact matrix given geodataframe or disaggregated polygons.
-
-    Parameters
-    ----------
-    impact_pnt : Impact
-        Impact object with impact per point (lines of gdf_pnt)
-    gdf_pnt : GeoDataFrame
-        Exposures geodataframe with a double index, first for polygon geometries,
-        second for the point disaggregation of the polygons.
-    agg : string
-        If 'agg', the impact is averaged over all points in each polygon.
-        If 'sum', the impact is summed over all points in each polygon.
-
-    Returns
-    -------
-    sparse.csr_matrix
-        matrix num_events x num_polygons with impacts.
-
-    """
-    # aggregate impact
-    mi = gdf_pnt.index
-    col_geom = mi.get_level_values(level=0).to_numpy()
-    row_pnt = np.arange(len(col_geom))
-    if agg == 'avg':
-        from collections import Counter
-        geom_sizes = Counter(col_geom).values()
-        mask = np.concatenate([np.ones(l) / l for l in geom_sizes])
-    elif agg == 'sum':
-        mask = np.ones(len(col_geom))
-    else:
-        raise ValueError("Please choose a valid aggregation method. agg=%s is not valid", agg)
-    csr_mask = sp.sparse.csr_matrix(
-        (mask, (row_pnt, col_geom)),
-         shape=(len(row_pnt), len(np.unique(col_geom)))
-        )
-    return imp_pnt.imp_mat.dot(csr_mask)
-
-def plot_eai_exp_geom(imp_geom, centered=False, figsize=(9, 13), **kwargs):
-    """
-    Plot the average impact per exposure polygon.
-
-    Parameters
-    ----------
-    imp_geom : Impact
-        Impact instance with imp_geom set (i.e. computed from exposures with polygons)
-    centered : bool, optional
-        Center the plot. The default is False.
-    figsize : (float, float), optional
-        Figure size. The default is (9, 13).
-    **kwargs : dict
-        Keyword arguments for GeoDataFrame.plot()
-
-    Returns
-    -------
-    ax:
-        matplotlib axes instance
-
-    """
-    kwargs['figsize'] = figsize
-    if 'legend_kwds' not in kwargs:
-        kwargs['legend_kwds'] = {
-            'label': "Impact [%s]" %imp_geom.unit,
-            'orientation': "horizontal"
-            }
-    if 'legend' not in kwargs:
-        kwargs['legend'] = True
-    gdf_plot = gpd.GeoDataFrame(imp_geom.geom_exp)
-    gdf_plot['impact'] = imp_geom.eai_exp
-    if centered:
-        xmin, xmax = u_coord.lon_bounds(imp_geom.coord_exp[:,1])
-        proj_plot = ccrs.PlateCarree(central_longitude=0.5 * (xmin + xmax))
-        gdf_plot = gdf_plot.to_crs(proj_plot)
-    return gdf_plot.plot(column = 'impact', **kwargs)
-
-
 def disagg_gdf_avg(gdf_pnts):
     """
     Disaggragate value of geodataframes from geoemtries to points
@@ -480,7 +477,9 @@ def poly_to_pnts(gdf, res):
 
     """
 
+    # Needed because gdf.explode() requires numeric index
     idx = gdf.index.to_list() #To restore the naming of the index
+
     gdf_points = gdf.copy().reset_index(drop=True)
     gdf_points['geometry_pnt'] = gdf_points.apply(
         lambda row: _interp_one_poly(row.geometry, res), axis=1)
@@ -512,7 +511,10 @@ def poly_to_pnts_m(gdf, res):
     """
 
     orig_crs = gdf.crs
-    idx = gdf.index.to_list() #To restore the naming of the index
+
+    # Needed because gdf.explode() requires numeric index
+    idx = gdf.index.to_list() # To restore the naming of the index.
+
     gdf_points = gdf.copy().reset_index(drop=True)
     gdf_points['geometry_pnt'] = gdf_points.apply(
         lambda row: _interp_one_poly_m(row.geometry, res, orig_crs), axis=1)
@@ -638,6 +640,59 @@ def poly_to_equalarea_proj(poly, orig_crs):
     )
     return sh.ops.transform(project.transform, poly)
 
+def line_to_pnts(gdf_lines, res):
+
+    """ Convert a GeoDataframe with LineString geometries to
+    Point geometries, where Points are placed at a specified distance
+    along the original LineString. Each line is reduced to
+    at least two points.
+
+    Parameters
+    ----------
+    gdf_lines : gpd.GeoDataframe
+        Geodataframe with line geometries
+    res : float
+        Resolution (distance) apart from which the generated Points
+        should be approximately placed.
+
+    Returns
+    -------
+    gdf_points : gpd.GeoDataFrame
+        Geodataframe with a double index, first for line geometries,
+        second for the point disaggregation of the lines (i.e. one Point
+        per row).
+
+    See also
+    --------
+    * util.coordinates.compute_geodesic_lengths()
+    """
+
+    # Needed because gdf.explode() requires numeric index
+    idx = gdf_lines.index.to_list() #To restore the naming of the index
+
+    gdf_points = gdf_lines.copy().reset_index(drop=True)
+    line_lengths = gdf_lines.length
+
+    line_fractions = [
+        np.linspace(0, 1, num=_pnts_per_line(length, res))
+        for length in line_lengths
+        ]
+
+    gdf_points['geometry_pnt'] = [
+        shgeom.MultiPoint([
+            line.interpolate(dist, normalized=True)
+            for dist in fractions
+            ])
+        for line, fractions in zip(gdf_lines.geometry, line_fractions)
+        ]
+
+    gdf_points = _swap_geom_cols(
+        gdf_points, geom_to='geometry_orig', new_geom='geometry_pnt'
+        )
+    gdf_points = gdf_points.explode()
+    gdf_points.index = gdf_points.index.set_levels(idx, level=0)
+    return gdf_points
+
 def line_to_pnts_m(gdf_lines, res):
 
     """ Convert a GeoDataframe with LineString geometries to
@@ -670,14 +725,14 @@ def line_to_pnts_m(gdf_lines, res):
     * util.coordinates.compute_geodesic_lengths()
     """
 
+    # Needed because gdf.explode() requires numeric index
+    idx = gdf_lines.index.to_list() #To restore the naming of the index
+
     gdf_points = gdf_lines.copy().reset_index(drop=True)
     line_lengths = u_coord.compute_geodesic_lengths(gdf_points)
 
-    def pnts_per_line(length, res):
-        return int(np.ceil(length / res) + 1)
-
     line_fractions = [
-        np.linspace(0, 1, num=pnts_per_line(length, res))
+        np.linspace(0, 1, num=_pnts_per_line(length, res))
         for length in line_lengths
         ]
 
@@ -692,60 +747,12 @@ def line_to_pnts_m(gdf_lines, res):
     gdf_points = _swap_geom_cols(
         gdf_points, geom_to='geometry_orig', new_geom='geometry_pnt'
         )
-    return gdf_points.explode()
+    gdf_points = gdf_points.explode()
+    gdf_points.index = gdf_points.index.set_levels(idx, level=0)
+    return gdf_points
 
-
-def line_to_pnts(gdf_lines, res):
-
-    """ Convert a GeoDataframe with LineString geometries to
-    Point geometries, where Points are placed at a specified distance
-    along the original LineString. Each line is reduced to
-    at least two points.
-
-    Parameters
-    ----------
-    gdf_lines : gpd.GeoDataframe
-        Geodataframe with line geometries
-    res : float
-        Resolution (distance) apart from which the generated Points
-        should be approximately placed.
-
-    Returns
-    -------
-    gdf_points : gpd.GeoDataFrame
-        Geodataframe with a double index, first for line geometries,
-        second for the point disaggregation of the lines (i.e. one Point
-        per row).
-
-    See also
-    --------
-    * util.coordinates.compute_geodesic_lengths()
-    """
-
-    gdf_points = gdf_lines.copy().reset_index(drop=True)
-    line_lengths = gdf_lines.length
-
-    def pnts_per_line(length, res):
-        return int(np.ceil(length / res) + 1)
-
-    line_fractions = [
-        np.linspace(0, 1, num=pnts_per_line(length, res))
-        for length in line_lengths
-        ]
-
-    gdf_points['geometry_pnt'] = [
-        shgeom.MultiPoint([
-            line.interpolate(dist, normalized=True)
-            for dist in fractions
-            ])
-        for line, fractions in zip(gdf_lines.geometry, line_fractions)
-        ]
-
-    gdf_points = _swap_geom_cols(
-        gdf_points, geom_to='geometry_orig', new_geom='geometry_pnt'
-        )
-    return gdf_points.explode()
-
+def _pnts_per_line(length, res):
+    return int(np.ceil(length / res) + 1)
 
 def invert_shapes(gdf_cutout, shape_outer):
     """

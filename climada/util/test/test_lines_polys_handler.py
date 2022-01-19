@@ -48,12 +48,6 @@ class TestExposureGeomToPnt(unittest.TestCase):
         self.assertEqual(exp_geom.ref_year, exp_pnt.ref_year)
         self.assertEqual(exp_geom.value_unit, exp_pnt.value_unit)
         check_unchanged_geom_gdf(self, exp_geom.gdf, exp_pnt.gdf)
-        # for n in exp_pnt.gdf.index.levels[1]:
-        #     sub_gdf_pnt = exp_pnt.gdf.xs(n, level=1)
-        #     rows_sel = sub_gdf_pnt.index.to_numpy()
-        #     sub_gdf = exp_geom.gdf.iloc[rows_sel].reset_index()
-        #     sub_gdf_pnt = sub_gdf_pnt.reset_index()
-        #     self.assertTrue(np.alltrue(sub_gdf.geometry.geom_equals(sub_gdf_pnt.geometry_orig)))
 
     def test_point_exposure_from_polygons(self):
         """Test disaggregation of polygons to points"""
