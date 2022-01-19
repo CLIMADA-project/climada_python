@@ -1288,8 +1288,8 @@ class TCTracks():
             Specifies a compression level (0-9) for the zlib compression of the data.
             A value of 0 or None disables compression. Default: 5
         """
+        # change dtype from bool to int to be NetCDF4-compliant, this is undone later
         for i, track in enumerate(self.data):
-            # change dtype from bool to int to be NetCDF4-compliant
             track.attrs['orig_event_flag'] = int(track.attrs['orig_event_flag'])
         try:
             encoding = {
@@ -1300,6 +1300,7 @@ class TCTracks():
             LOGGER.info('Writing %d tracks to %s', self.size, file_name)
             _xr_to_netcdf_multi(file_name, ds_dict, encoding=encoding)
         finally:
+            # ensure to undo the temporal change of dtype from above
             for i, track in enumerate(self.data):
                 track.attrs['orig_event_flag'] = bool(track.attrs['orig_event_flag'])
 
