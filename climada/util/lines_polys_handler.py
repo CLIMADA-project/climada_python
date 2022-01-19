@@ -265,9 +265,9 @@ def _gdf_line_to_pnt(gdf, res, to_meters, disagg):
 
     # rasterize
     if to_meters:
-        gdf_pnt = line_to_pnts_m(gdf.reset_index(drop=True), res)
+        gdf_pnt = line_to_pnts_m(gdf, res)
     else:
-        gdf_pnt = line_to_pnts(gdf.reset_index(drop=True), res)
+        gdf_pnt = line_to_pnts(gdf, res)
 
     # disaggregate
     if disagg == 'avg':
@@ -313,9 +313,9 @@ def _gdf_poly_to_pnt(gdf, res, to_meters, disagg):
 
     # rasterize
     if to_meters:
-        gdf_pnt = poly_to_pnts_m(gdf.reset_index(drop=True), res)
+        gdf_pnt = poly_to_pnts_m(gdf, res)
     else:
-        gdf_pnt = poly_to_pnts(gdf.reset_index(drop=True), res)
+        gdf_pnt = poly_to_pnts(gdf, res)
 
     # disaggregate
     if disagg == 'avg':
@@ -480,14 +480,17 @@ def poly_to_pnts(gdf, res):
 
     """
 
-    gdf_points = gdf.reset_index(drop=True).copy()
-    gdf_points['geometry_pnt'] = gdf.apply(
+    idx = gdf.index.to_list() #To restore the naming of the index
+    gdf_points = gdf.copy().reset_index(drop=True)
+    gdf_points['geometry_pnt'] = gdf_points.apply(
         lambda row: _interp_one_poly(row.geometry, res), axis=1)
     gdf_points = _swap_geom_cols(
         gdf_points, geom_to='geometry_orig', new_geom='geometry_pnt'
         )
 
-    return gdf_points.explode()
+    gdf_points = gdf_points.explode()
+    gdf_points.index = gdf_points.index.set_levels(idx, level=0)
+    return gdf_points
 
 def poly_to_pnts_m(gdf, res):
     """
@@ -500,7 +503,6 @@ def poly_to_pnts_m(gdf, res):
     res : float
         Resolution in meters
 
-
     Returns
     -------
     geodataframe
@@ -510,14 +512,16 @@ def poly_to_pnts_m(gdf, res):
     """
 
     orig_crs = gdf.crs
-    gdf_points = gdf.reset_index(drop=True).copy()
+    idx = gdf.index.to_list() #To restore the naming of the index
+    gdf_points = gdf.copy().reset_index(drop=True)
     gdf_points['geometry_pnt'] = gdf_points.apply(
         lambda row: _interp_one_poly_m(row.geometry, res, orig_crs), axis=1)
     gdf_points = _swap_geom_cols(
         gdf_points, geom_to='geometry_orig', new_geom='geometry_pnt'
         )
-
-    return gdf_points.explode()
+    gdf_points = gdf_points.explode()
+    gdf_points.index = gdf_points.index.set_levels(idx, level=0)
+    return gdf_points
 
 def _interp_one_poly(poly, res):
     """
@@ -666,7 +670,7 @@ def line_to_pnts_m(gdf_lines, res):
     * util.coordinates.compute_geodesic_lengths()
     """
 
-    gdf_points = gdf_lines.copy()
+    gdf_points = gdf_lines.copy().reset_index(drop=True)
     line_lengths = u_coord.compute_geodesic_lengths(gdf_points)
 
     def pnts_per_line(length, res):
@@ -718,7 +722,7 @@ def line_to_pnts(gdf_lines, res):
     * util.coordinates.compute_geodesic_lengths()
     """
 
-    gdf_points = gdf_lines.copy()
+    gdf_points = gdf_lines.copy().reset_index(drop=True)
     line_lengths = gdf_lines.length
 
     def pnts_per_line(length, res):

@@ -30,30 +30,41 @@ import climada.util.lines_polys_handler as u_lp
 exp_poly = Exposures.from_hdf5('/Users/ckropf/climada/data/test_polygon_exp.hdf5')
 gdf_poly = exp_poly.gdf
 
+def check_unchanged_geom_gdf(self, gdf_geom, gdf_pnt):
+    """Test properties that should not change"""
+    for n in gdf_pnt.index.levels[1]:
+        sub_gdf_pnt = gdf_pnt.xs(n, level=1)
+        rows_sel = sub_gdf_pnt.index.to_numpy()
+        sub_gdf = gdf_geom.loc[rows_sel]
+        sub_gdf_pnt = sub_gdf_pnt
+        self.assertTrue(np.alltrue(sub_gdf.geometry.geom_equals(sub_gdf_pnt.geometry_orig)))
+
+
 class TestExposureGeomToPnt(unittest.TestCase):
     """Test Exposures to points functions"""
 
-    def check_unchanged_geom(self, exp_geom, exp_pnt):
+    def check_unchanged_exp(self, exp_geom, exp_pnt):
         """Test properties that should not change"""
         self.assertEqual(exp_geom.ref_year, exp_pnt.ref_year)
         self.assertEqual(exp_geom.value_unit, exp_pnt.value_unit)
-        for n in exp_pnt.gdf.index.levels[1]:
-            sub_gdf_pnt = exp_pnt.gdf.xs(n, level=1)
-            rows_sel = sub_gdf_pnt.index.values
-            sub_gdf = exp_geom.gdf.iloc[rows_sel].reset_index()
-            sub_gdf_pnt = sub_gdf_pnt.reset_index()
-            self.assertTrue(np.alltrue(sub_gdf.geometry.geom_equals(sub_gdf_pnt.geometry_orig)))
+        check_unchanged_geom_gdf(self, exp_geom.gdf, exp_pnt.gdf)
+        # for n in exp_pnt.gdf.index.levels[1]:
+        #     sub_gdf_pnt = exp_pnt.gdf.xs(n, level=1)
+        #     rows_sel = sub_gdf_pnt.index.to_numpy()
+        #     sub_gdf = exp_geom.gdf.iloc[rows_sel].reset_index()
+        #     sub_gdf_pnt = sub_gdf_pnt.reset_index()
+        #     self.assertTrue(np.alltrue(sub_gdf.geometry.geom_equals(sub_gdf_pnt.geometry_orig)))
 
     def test_point_exposure_from_polygons(self):
         """Test disaggregation of polygons to points"""
         #test
         exp_pnt = u_lp.exp_geom_to_pnt(exp_poly, res=1, to_meters=False, disagg='None')
         np.testing.assert_array_equal(exp_pnt.gdf.value, exp_poly.gdf.value)
-        self.check_unchanged_geom(exp_poly, exp_pnt)
+        self.check_unchanged_exp(exp_poly, exp_pnt)
 
         #test
         exp_pnt = u_lp.exp_geom_to_pnt(exp_poly, res=0.5, to_meters=False, disagg='avg')
-        self.check_unchanged_geom(exp_poly, exp_pnt)
+        self.check_unchanged_exp(exp_poly, exp_pnt)
         val_avg = np.array([
             4.93449000e+10, 4.22202000e+10, 6.49988000e+10, 1.04223900e+11,
             1.04223900e+11, 5.85881000e+10, 1.11822300e+11, 8.54188667e+10,
@@ -72,7 +83,7 @@ class TestExposureGeomToPnt(unittest.TestCase):
         #test
         res = 20000
         exp_pnt = u_lp.exp_geom_to_pnt(exp_poly, res=res, to_meters=True, disagg='surf')
-        self.check_unchanged_geom(exp_poly, exp_pnt)
+        self.check_unchanged_exp(exp_poly, exp_pnt)
         val = res**2
         self.assertEqual(np.unique(exp_pnt.gdf.value)[0], val)
         lat = np.array([
@@ -97,15 +108,6 @@ class TestExposureGeomToPnt(unittest.TestCase):
 class TestGdfGeomToPnt(unittest.TestCase):
     """Test Geodataframes to points and vice-versa functions"""
 
-    def check_unchanged_geom(self, gdf_geom, gdf_pnt):
-        """Test properties that should not change"""
-        for n in gdf_pnt.index.levels[1]:
-            sub_gdf_pnt = gdf_pnt.xs(n, level=1)
-            rows_sel = sub_gdf_pnt.index.values
-            sub_gdf = gdf_geom.loc[rows_sel]
-            sub_gdf_pnt = sub_gdf_pnt
-            self.assertTrue(np.alltrue(sub_gdf.geometry.geom_equals(sub_gdf_pnt.geometry_orig)))
-
     def test_disagg_gdf_avg(self):
         """Test disaggregation average"""
         pass
@@ -117,13 +119,12 @@ class TestGdfGeomToPnt(unittest.TestCase):
     def test_poly_to_pnts(self):
         """Test polygon to points disaggregation"""
         gdf_pnt = u_lp.poly_to_pnts(gdf_poly, 1)
-        self.check_unchanged_geom(gdf_poly, gdf_pnt)
+        check_unchanged_geom_gdf(self, gdf_poly, gdf_pnt)
 
     def test_poly_to_pnts_m(self):
         """Test polygon to points disaggregation in meter"""
-        print('1')
         gdf_pnt = u_lp.poly_to_pnts_m(gdf_poly, 20000)
-        self.check_unchanged_geom(gdf_poly, gdf_pnt)
+        check_unchanged_geom_gdf(self, gdf_poly, gdf_pnt)
 
     def test_lines_to_pnts(self):
         """Test polygon to points disaggregation"""
