@@ -53,6 +53,7 @@ import xarray as xr
 from xarray.backends import NetCDF4DataStore
 from xarray.backends.api import dump_to_store
 from xarray.backends.common import ArrayWriter
+from xarray.backends.store import StoreBackendEntrypoint
 
 # climada dependencies
 from climada.util import ureg
@@ -1288,8 +1289,6 @@ class TCTracks():
                 for i, track in enumerate(self.data)
             }
             ds_dict = {f'track{i}': track for i, track in enumerate(self.data)}
-            ds_dict[""] = xr.Dataset(attrs={'size': self.size})
-
             LOGGER.info('Writing %d tracks to %s', self.size, file_name)
             _xr_to_netcdf_multi(file_name, ds_dict, encoding=encoding)
         finally:
@@ -1310,12 +1309,11 @@ class TCTracks():
         tracks : TCTracks
             TCTracks with data from the given HDF5 file.
         """
-        size = xr.open_dataset(file_name).attrs['size']
-
-        LOGGER.info('Reading %d tracks from %s', size, file_name)
+        ds_dict = _xr_open_dataset_multi(file_name, prefix="track")
+        track_no = sorted(int(key[5:]) for key in ds_dict.keys())
         data = []
-        for i in range(size):
-            track = xr.open_dataset(file_name, group=f'track{i}')
+        for i in track_no:
+            track = ds_dict[f'track{i}']
             track.attrs['orig_event_flag'] = bool(track.attrs['orig_event_flag'])
             # when writing '<U2' and reading in again, xarray reads as dtype 'object'. undo this:
             track['basin'] = track['basin'].astype('<U2')
@@ -1454,7 +1452,7 @@ class TCTracks():
 def _xr_to_netcdf_multi(path, ds_dict, encoding=None):
     """Write multiple xarray Datasets to separate groups in a single NetCDF4 file
 
-    Contrary to xarray's `to_netcdf` functionality this only supports the "NETCDF4" format and the
+    Contrary to xarray's `to_netcdf` functionality, this only supports the "NETCDF4" format and the
     "netcdf4" engine since the groups feature has been introduced by NetCDF version 4.
 
     Parameters
@@ -1479,6 +1477,63 @@ def _xr_to_netcdf_multi(path, ds_dict, encoding=None):
             dump_to_store(dataset, store, writer, encoding=encoding, unlimited_dims=unlimited_dims)
     finally:
         store.close()
+
+def _xr_open_dataset_multi(path, prefix=""):
+    """Read multiple xarray Datasets from groups contained in a single NetCDF4 file
+
+    The data is loaded into memory
+
+    Contrary to xarray's `open_dataset` functionality, this only supports the "netcdf4" engine
+    since the groups feature has been introduced by NetCDF version 4.
+
+    Parameters
+    ----------
+    path : str or Path
+        Path of the NetCDF file to read.
+    prefix : str, optional
+        If given, only read groups whose name starts with this prefix. Default: ""
+
+    Returns
+    -------
+    ds_dict : dict whose keys are group names and values are xr.Dataset
+        Each xr.Dataset in the dict is taken from the group identified by its key in the dict.
+        Note that an empty string ("") is a valid group name and refers to the root group.
+    """
+    path = str(pathlib.Path(path).expanduser().absolute())
+    store = NetCDF4DataStore.open(path, "r", "NETCDF4", None)
+    ds_dict = {}
+    try:
+        groups = [g for g in _xr_nc4_groups_from_store(store) if g.startswith(prefix)]
+        store_entrypoint = StoreBackendEntrypoint()
+        LOGGER.info('Reading %d datasets from %s', len(groups), path)
+        for group in groups:
+            store._group = group
+            ds = store_entrypoint.open_dataset(store)
+            ds.load()
+            ds_dict[group] = ds
+    finally:
+        store.close()
+    return ds_dict
+
+def _xr_nc4_groups_from_store(store):
+    """List all groups contained in the given NetCDF4 data store
+
+    Parameters
+    ----------
+    store : xarray.backend.NetCDF4DataStore
+
+    Returns
+    -------
+    list of str
+    """
+    def iter_groups(ds, prefix=""):
+        groups = [""]
+        for group_name, group_ds in ds.groups.items():
+            groups.extend([f"{prefix}{group_name}{subgroup}"
+                           for subgroup in iter_groups(group_ds, prefix="/")])
+        return groups
+    with store._manager.acquire_context(False) as root:
+        return iter_groups(root)
 
 def _read_one_gettelman(nc_data, i_track):
     """Read a single track from Andrew Gettelman's NetCDF dataset
