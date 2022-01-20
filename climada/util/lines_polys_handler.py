@@ -77,7 +77,7 @@ def calc_geom_impact(
     Returns
     -------
     Impact
-        Impact object with the impact per geometry (lines of exp.gdf).
+        Impact object with the impact per geometry (rows of exp.gdf).
 
     See Also
     --------
