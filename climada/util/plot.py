@@ -735,7 +735,13 @@ def get_transformation(crs_in):
     try:
         units = crs_epsg.proj4_params['units']
     except KeyError:
-        units = '°'
+        if crs_epsg.proj4_params == {}: # if crs_epsg is _EPSGProjection under cartopy 0.20
+            try:
+                units = crs_epsg.to_dict()['units']
+            except KeyError:
+                units = '°'
+        else: # crs_epsg.proj4_params exists under cartopy <= 0.19, but does not contain ['units']
+            units = '°'
     return crs_epsg, units
 
 
