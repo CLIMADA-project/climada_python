@@ -194,7 +194,11 @@ def aggregate_impact_mat(imp_pnt, gdf_pnt, agg):
     """
     # aggregate impact
     mi = gdf_pnt.index
-    col_geom = mi.get_level_values(level=0).to_numpy()
+    col_geom = mi.get_level_values(level=0)
+    def convert_str_idx_to_int(idx):
+        """Converts string multi-index level 0 to integer index"""
+        return np.sort(np.unique(idx, return_inverse=True)[1])
+    col_geom = convert_str_idx_to_int(col_geom)
     row_pnt = np.arange(len(col_geom))
     if agg == 'avg':
         from collections import Counter
