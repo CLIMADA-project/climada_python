@@ -47,6 +47,8 @@ import climada.util.dates_times as u_dt
 from climada import CONFIG
 import climada.util.hdf5_handler as u_hdf5
 import climada.util.coordinates as u_coord
+from climada.util.constants import ONE_LAT_KM
+from climada.util.coordinates import NEAREST_NEIGHBOR_THRESHOLD
 
 LOGGER = logging.getLogger(__name__)
 
@@ -696,8 +698,9 @@ class Hazard():
             haz = Hazard(self.tag.haz_type)
         else:
             haz = self.__class__()
+
+        #filter events
         sel_ev = np.ones(self.event_id.size, dtype=bool)
-        sel_cen = np.ones(self.centroids.size, dtype=bool)
 
         # filter events by date
         if date is not None:
@@ -717,21 +720,6 @@ class Hazard():
                 LOGGER.info('No hazard with %s tracks.', str(orig))
                 return None
 
-        # filter centroids
-        if reg_id is not None:
-            sel_cen &= (self.centroids.region_id == reg_id)
-            if not np.any(sel_cen):
-                LOGGER.info('No hazard centroids with region %s.', str(reg_id))
-                return None
-        if extent is not None:
-            cent_ext = self.centroids.select(extent=extent)
-            cent_ext_view = cent_ext.coord.view(dtype='float64,float64').reshape(-1)
-            cent_view = self.centroids.coord.view(dtype='float64,float64').reshape(-1)
-            sel_cen &= np.isin(cent_view, cent_ext_view)
-            if not np.any(sel_cen):
-                LOGGER.info('No hazard centroids within extent')
-                return None
-
         # filter events based on name
         sel_ev = np.argwhere(sel_ev).reshape(-1)
         if isinstance(event_names, list):
@@ -744,6 +732,12 @@ class Hazard():
                 return None
             sel_ev = sel_ev[new_sel]
 
+        # filter centroids
+        sel_cen = self.centroids.select_mask(reg_id=reg_id, extent=extent)
+        if not np.any(sel_cen):
+            LOGGER.info('No hazard centroids within extent and region')
+            return None
+
         sel_cen = sel_cen.nonzero()[0]
         for (var_name, var_val) in self.__dict__.items():
             if isinstance(var_val, np.ndarray) and var_val.ndim == 1 \
@@ -754,12 +748,10 @@ class Hazard():
             elif isinstance(var_val, list) and var_val:
                 setattr(haz, var_name, [var_val[idx] for idx in sel_ev])
             elif var_name == 'centroids':
-                if reg_id is not None:
-                    new_cent = var_val.select(reg_id=reg_id, extent=extent)
-                elif extent is not None:
-                    new_cent = cent_ext
-                else:
+                if reg_id is None and extent is None:
                     new_cent = var_val
+                else:
+                    new_cent = var_val.select(sel_cen=sel_cen)
                 setattr(haz, var_name, new_cent)
             else:
                 setattr(haz, var_name, var_val)
@@ -775,15 +767,22 @@ class Hazard():
         haz.sanitize_event_ids()
         return haz
 
-    def select_tight_cent(self, buffer=0.0):
+    def select_tight(self, buffer=NEAREST_NEIGHBOR_THRESHOLD/ONE_LAT_KM,
+                     val='intensity'):
         """
-        Reduce hazard to centroids to minimal box containing all non-zero
-        intensity points.
+        Reduce hazard to those centroids spanning a minimal box which
+        contains all non-zero intensity or fraction points.
 
         Parameters
         ----------
         buffer : float, optional
-            Buffer of box in degrees. The default is 0.0.
+            Buffer of box in the units of the centroids.
+            The default is approximately equal to the default threshold
+            from the assign_centroids method (works if centroids in
+            lat/lon)
+        val: string, optional
+            Select tight by non-zero 'intensity' or 'fraction'. The
+            default is 'intensity'.
 
         Returns
         -------
@@ -794,14 +793,18 @@ class Hazard():
         See also
         --------
         self.select: Method to select centroids by lat/lon extent
+        util.coordinates.assign_coordinates: algorithm to match centroids.
 
         """
 
-        cent_nz = self.intensity.nonzero()[1]
+        if val == 'intensity':
+            cent_nz = (self.intensity != 0).sum(axis=0).nonzero()[1]
+        if val == 'fraction':
+            cent_nz = (self.fraction != 0).sum(axis=0).nonzero()[1]
         lon_nz = self.centroids.lon[cent_nz]
         lat_nz = self.centroids.lat[cent_nz]
         ext = u_coord.latlon_bounds(lat=lat_nz, lon=lon_nz, buffer=buffer)
-        return self.select(extent = [ext[0], ext[2], ext[1], ext[3]])
+        return self.select(extent=(ext[0], ext[2], ext[1], ext[3]))
 
     def local_exceedance_inten(self, return_periods=(25, 50, 100, 250)):
         """Compute exceedance intensity map for given return periods.
@@ -1685,7 +1688,7 @@ class Hazard():
         haz_concat.append(*haz_list)
         return haz_concat
 
-    def change_centroids(self, centroids, threshold=100):
+    def change_centroids(self, centroids, threshold=NEAREST_NEIGHBOR_THRESHOLD):
         """
         Assign (new) centroids to hazard.
 

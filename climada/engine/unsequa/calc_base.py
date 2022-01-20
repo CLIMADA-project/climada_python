@@ -28,7 +28,7 @@ import pandas as pd
 import numpy as np
 
 from climada.util.value_representation import sig_dig as u_sig_dig
-from climada.engine.uncertainty_quantification import UncOutput
+from climada.engine.unsequa import UncOutput
 
 LOGGER = logging.getLogger(__name__)
 
