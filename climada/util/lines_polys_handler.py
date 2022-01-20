@@ -68,16 +68,17 @@ def calc_geom_impact(
         if 'surf' value per points is equal to area per point (res*res)
             for polygons, and distance per point (res) for lines.
         if 'None' value is unchanged (or 1 if no value is defined)
-        Disaggregation method. The default is None.
+        Disaggregation method for the `value` column of the exposure gdf. The default is None.
     agg : string, optional
-        If 'agg', the impact is averaged over all points in each geometry.
+        Aggregation method of the point impacts into one impact figure for the respective parent-geometry.
+        If 'avg', the impact is averaged over all points in each geometry.
         If 'sum', the impact is summed over all points in each geometry.
         The default is 'sum'.
 
     Returns
     -------
     Impact
-        Impact object with the impact per geometry (lines of exp.gdf).
+        Impact object with the impact per geometry (rows of exp.gdf).
 
     See Also
     --------
