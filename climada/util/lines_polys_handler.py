@@ -70,7 +70,8 @@ def calc_geom_impact(
         if 'None' value is unchanged (or 1 if no value is defined)
         Disaggregation method for the `value` column of the exposure gdf. The default is None.
     agg : string, optional
-        If 'agg', the impact is averaged over all points in each geometry.
+        Aggregation method of the point impacts into one impact figure for the respective parent-geometry.
+        If 'avg', the impact is averaged over all points in each geometry.
         If 'sum', the impact is summed over all points in each geometry.
         The default is 'sum'.
 
