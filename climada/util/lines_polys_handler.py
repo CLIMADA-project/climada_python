@@ -321,7 +321,7 @@ def _gdf_line_to_pnt(gdf, res, to_meters, disagg):
     Parameters
     ----------
     gdf : GeoDataFrame
-        The exposure instance with exp.gdf.geometry containing (multi-)polygons
+        Geodataframe of an exposure instance with gdf.geometry containing (multi-)lines
     res : float
         Resolution of the disaggregation grid.
     to_meters : bool, optional
