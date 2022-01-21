@@ -44,7 +44,7 @@ def calc_geom_impact(
     Compute impact for exposure with (multi-)polygons and/or (multi-)lines.
     Lat/Lon values in exp.gdf are ignored, only exp.gdf.geometry is considered.
 
-    The geometries are first disaggrated to a grid with resolution res*res.
+    The geometries are first disaggregated to points. Polygons: grid with resolution res*res. Lines: points with length res.
     The impact per point is then aggregated for each geometry.
 
     Parameters
