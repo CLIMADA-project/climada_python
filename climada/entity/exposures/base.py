@@ -922,16 +922,15 @@ class Exposures():
             “threads”, “synchronous” or “processes”
             The default is None.
         """
-        if not isinstance(value_name, list):
-            value_name = [value_name]
+        value_names = value_name if isinstance(value_name, list) else [value_name]
 
         # Simple case: one raster band, every grid value defined in the Exposures.
         # Then we can skip a slow points_to_raster call:
-        if self.meta and \
-                'height' in self.meta.keys() and \
-                len(value_name) == 1 and \
-                self.meta['height'] * self.meta['width'] == len(self.gdf):
-            raster = self.gdf[value_name].values.reshape((self.meta['height'],
+        if (len(value_names) == 1 and
+                self.meta and 
+                'height' in self.meta and 'width' in self.meta and
+                self.meta['height'] * self.meta['width'] == len(self.gdf)):
+            raster = self.gdf[value_names].values.reshape((self.meta['height'],
                                                           self.meta['width']))
             # check raster starts by upper left corner
             if self.gdf.latitude.values[0] < self.gdf.latitude.values[-1]:
@@ -940,7 +939,7 @@ class Exposures():
                 raise ValueError('Points are not ordered according to meta raster.')
             u_coord.write_raster(file_name, raster, self.meta)
         else:
-            raster, meta = u_coord.points_to_raster(self.gdf, value_name, scheduler=scheduler)
+            raster, meta = u_coord.points_to_raster(self.gdf, value_names, scheduler=scheduler)
             u_coord.write_raster(file_name, raster, meta)
 
     @staticmethod
