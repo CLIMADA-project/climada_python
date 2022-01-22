@@ -57,7 +57,7 @@ def calc_geom_impact(
     haz : Hazard
         The hazard instance.
     res : float
-        Resolution of the disaggregation grid.
+        Resolution of the disaggregation grid (polygon) or line (lines).
     to_meters : bool, optional
        If True, the geometries are projected to an equal area projection before
        the disaggregation. res is then in meters. The exposures are
@@ -178,7 +178,7 @@ def aggregate_impact_mat(imp_pnt, gdf_pnt, agg):
 
     Parameters
     ----------
-    impact_pnt : Impact
+    imp_pnt : Impact
         Impact object with impact per point (lines of gdf_pnt)
     gdf_pnt : GeoDataFrame
         Exposures geodataframe with a double index, first for polygon geometries,
@@ -367,8 +367,8 @@ def _gdf_poly_to_pnt(gdf, res, to_meters, disagg):
 
     Parameters
     ----------
-    exp : Exposures
-        The exposure instance with exp.gdf.geometry containing (multi-)polygons
+    gdf : GeoDataFrame
+        The geodataframe instance with gdf.geometry containing (multi-)polygons
     res : float
         Resolution of the disaggregation grid.
     to_meters : bool
@@ -532,7 +532,7 @@ def poly_to_pnts_m(gdf, res):
 
 def _interp_one_poly(poly, res):
     """
-    Disaggragate a single polygon to points
+    Disaggregate a single polygon to points
 
     Parameters
     ----------
