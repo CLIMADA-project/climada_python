@@ -47,6 +47,27 @@ class TestReader(unittest.TestCase):
         self.assertEqual(cent.size, 9944)
 
     def test_from_footprints(self):
+        """Test from_footprints constructor, using one small test files"""
+        storms = StormEurope.from_footprints(WS_DEMO_NC[0], description='test_description')
+
+        self.assertEqual(storms.tag.haz_type, 'WS')
+        self.assertEqual(storms.units, 'm/s')
+        self.assertEqual(storms.event_id.size, 1)
+        self.assertEqual(storms.date.size, 1)
+        self.assertEqual(dt.datetime.fromordinal(storms.date[0]).year, 1999)
+        self.assertEqual(dt.datetime.fromordinal(storms.date[0]).month, 12)
+        self.assertEqual(dt.datetime.fromordinal(storms.date[0]).day, 26)
+        self.assertEqual(storms.event_id[0], 1)
+        self.assertEqual(storms.event_name[0], 'Lothar')
+        self.assertIsInstance(storms.intensity,
+                              sparse.csr.csr_matrix)
+        self.assertIsInstance(storms.fraction,
+                              sparse.csr.csr_matrix)
+        self.assertEqual(storms.intensity.shape, (1, 9944))
+        self.assertEqual(storms.fraction.shape, (1, 9944))
+        self.assertEqual(storms.frequency[0], 1.0)
+
+
         """Test from_footprints constructor, using two small test files"""
         storms = StormEurope.from_footprints(WS_DEMO_NC, description='test_description')
 
