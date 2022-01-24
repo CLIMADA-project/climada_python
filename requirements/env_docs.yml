@@ -26,8 +26,8 @@ dependencies:
   - cached-property=1.5.2=hd8ed1ab_1
   - cached_property=1.5.2=pyha770c72_1
   - cairo=1.16.0=h6cf1ce9_1008
-  - cartopy=0.20.1=py38h2f98cf7_5
-  - certifi=2021.10.8=py38h06a4308_0
+  - cartopy=0.20.2=py38h2f98cf7_0
+  - certifi=2021.10.8=py38h06a4308_2
   - cffi=1.15.0=py38h3931269_0
   - cfgrib=0.9.9.1=pyhd8ed1ab_1
   - cfitsio=4.0.0=h9a35b8e_0
@@ -43,13 +43,13 @@ dependencies:
   - curl=7.81.0=h2574ce0_0
   - cycler=0.11.0=pyhd8ed1ab_0
   - cytoolz=0.11.2=py38h497a2fe_1
-  - dask=2021.12.0=pyhd8ed1ab_0
-  - dask-core=2021.12.0=pyhd8ed1ab_0
+  - dask=2022.1.0=pyhd8ed1ab_0
+  - dask-core=2022.1.0=pyhd8ed1ab_0
   - dbus=1.13.18=hb2f20db_0
   - debugpy=1.5.1=py38h295c915_0
   - decorator=5.1.0=pyhd3eb1b0_0
   - dill=0.3.4=pyhd8ed1ab_0
-  - distributed=2021.12.0=py38h578d9bd_0
+  - distributed=2022.1.0=py38h578d9bd_0
   - docutils=0.17.1=py38h06a4308_1
   - eccodes=2.24.1=h11d1a29_0
   - et_xmlfile=1.1.0=py38h06a4308_0
@@ -68,7 +68,7 @@ dependencies:
   - freeglut=3.2.1=h9c3ff4c_2
   - freetype=2.11.0=h70c0345_0
   - freexl=1.0.6=h7f98852_0
-  - fsspec=2021.11.1=pyhd8ed1ab_0
+  - fsspec=2022.1.0=pyhd8ed1ab_0
   - gdal=3.4.0=py38h81a01a0_11
   - geographiclib=1.52=pyhd8ed1ab_0
   - geopandas=0.10.2=pyhd8ed1ab_1
@@ -88,7 +88,7 @@ dependencies:
   - hdf5=1.12.1=nompi_h2750804_103
   - heapdict=1.0.1=py_0
   - icu=68.2=h9c3ff4c_0
-  - idna=3.3=pyhd3eb1b0_0
+  - idna=3.3=pyhd8ed1ab_0
   - imagesize=1.3.0=pyhd3eb1b0_0
   - importlib-metadata=4.10.0=py38h578d9bd_0
   - importlib_metadata=4.10.0=hd8ed1ab_0
@@ -189,7 +189,7 @@ dependencies:
   - openblas=0.3.18=pthreads_h4748800_0
   - openjpeg=2.4.0=hb52868f_1
   - openpyxl=3.0.9=pyhd8ed1ab_0
-  - openssl=1.1.1l=h7f8727e_0
+  - openssl=1.1.1m=h7f8727e_0
   - packaging=21.3=pyhd8ed1ab_0
   - pandas=1.3.5=py38h43a58ef_0
   - pandas-datareader=0.10.0=pyh6c4a22f_0
@@ -216,7 +216,6 @@ dependencies:
   - pycountry=20.7.3=pyh9f0ad1d_0
   - pycparser=2.21=pyhd8ed1ab_0
   - pyepsg=0.4.0=py_0
-  - pygments=2.10.0=pyhd3eb1b0_0
   - pyopenssl=21.0.0=pyhd8ed1ab_0
   - pyparsing=3.0.6=pyhd8ed1ab_0
   - pyproj=3.3.0=py38hdd21e9b_0
@@ -238,18 +237,17 @@ dependencies:
   - pyzmq=22.3.0=py38h295c915_2
   - qt=5.12.9=hda022c4_4
   - rasterio=1.2.10=py38h5be73f9_3
-  - readline=8.1.2=h7f8727e_0
+  - readline=8.1=h46c0cb4_0
   - requests=2.27.1=pyhd8ed1ab_0
   - rtree=0.9.7=py38h02d302b_3
   - scikit-learn=1.0.2=py38h1561384_0
   - scipy=1.7.3=py38h56a6a73_0
-  - setuptools=60.5.0=py38h578d9bd_0
+  - setuptools=59.8.0=py38h578d9bd_0
   - shapely=1.8.0=py38h800f7b8_4
   - six=1.16.0=pyh6c4a22f_0
   - snowballstemmer=2.2.0=pyhd3eb1b0_0
   - snuggs=1.4.7=py_0
   - sortedcontainers=2.4.0=pyhd8ed1ab_0
-  - sphinx=4.2.0=pyhd3eb1b0_1
   - sphinxcontrib-applehelp=1.0.2=pyhd3eb1b0_0
   - sphinxcontrib-devhelp=1.0.2=pyhd3eb1b0_0
   - sphinxcontrib-htmlhelp=2.0.0=pyhd3eb1b0_0
@@ -293,7 +291,7 @@ dependencies:
   - xorg-renderproto=0.11.1=h14c3975_1002
   - xorg-xextproto=7.3.0=h14c3975_1002
   - xorg-xproto=7.0.31=h14c3975_1007
-  - xyzservices=2021.11.0=pyhd8ed1ab_1
+  - xyzservices=2022.1.0=pyhd8ed1ab_0
   - xz=5.2.5=h516909a_1
   - yaml=0.2.5=h7f98852_2
   - zeromq=4.3.4=h2531618_0
@@ -309,10 +307,11 @@ dependencies:
     - entrypoints==0.3
     - importlib-resources==5.4.0
     - ipython-genutils==0.2.0
-    - jsonschema==4.3.3
+    - jsonschema==4.4.0
+    - jupyter-client==7.1.1
     - jupyterlab-pygments==0.1.2
     - mistune==0.8.4
-    - nbclient==0.5.9
+    - nbclient==0.5.10
     - nbconvert==6.4.0
     - nbformat==5.1.3
     - nbsphinx==0.8.8
@@ -321,9 +320,11 @@ dependencies:
     - pandocfilters==1.5.0
     - peewee==3.14.8
     - pybufrkit==0.2.19
-    - pyrsistent==0.18.0
+    - pygments==2.11.2
+    - pyrsistent==0.18.1
     - readthedocs-sphinx-ext==2.1.4
     - salib==1.3.12
+    - sphinx==4.4.0
     - testpath==0.5.0
     - webencodings==0.5.1
 prefix: /home/climada/miniconda3/envs/climada_doc
