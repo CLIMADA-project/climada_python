@@ -1729,9 +1729,15 @@ class Hazard():
         haz_new_cent.centroids = centroids
 
         # indices for mapping matrices onto common centroids
-        new_cent_idx = u_coord.assign_coordinates(
-            self.centroids.coord, centroids.coord, threshold=threshold
-        )
+        if centroids.meta:
+            new_cent_idx = u_coord.assign_grid_points(
+                self.centroids.lon, self.centroids.lat,
+                centroids.meta['width'], centroids.meta['height'],
+                centroids.meta['transform'])
+        else:
+            new_cent_idx = u_coord.assign_coordinates(
+                self.centroids.coord, centroids.coord, threshold=threshold
+            )
 
         if -1 in new_cent_idx:
             raise ValueError("At least one hazard centroid is at a larger "
