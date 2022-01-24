@@ -263,8 +263,8 @@ class StormEurope(Hazard):
         COSMO-1E (11 members, resolution 1.1 km, forecast period 33-45 hours)
         COSMO-2E (21 members, resolution 2.2 km, forecast period 5 days)
 
-        The frequency of all storms is equal to 1/11 and 1/21 for COSMO-1E
-        and COSMO-2E, respectively.
+        The frequency of each event is informed by their probability in the ensemble
+        forecast and is equal to 1/11 or 1/21 for COSMO-1E or COSMO-2E, respectively.
 
         Parameters
         ----------
@@ -387,7 +387,7 @@ class StormEurope(Hazard):
         because of the given file structure with 1-hour, 3-hour and
         6-hour maxima provided.
 
-        The frequency for one event is 1/(number of runs).
+        The frequency for one event is 1/(number of ensemble members)
 
         Parameters
         ----------
