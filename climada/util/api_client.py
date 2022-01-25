@@ -243,7 +243,7 @@ class Client():
             search parameters for dataset properties, by default None
             any property has a string for key and can be a string or a list of strings for value
         status : str, optional
-            valid values are 'preliminary', 'active', 'expired', and 'test_dataset',
+            valid values are 'preliminary', 'active', 'expired', 'test_dataset' and None
             by default 'active'
 
         Returns
@@ -274,7 +274,7 @@ class Client():
         return datasets
 
     def get_dataset_info(self, data_type=None, name=None, version=None, properties=None,
-                    status=None):
+                    status='active'):
         """Find the one dataset that matches the given parameters.
 
         Parameters
@@ -289,8 +289,8 @@ class Client():
             search parameters for dataset properties, by default None
             any property has a string for key and can be a string or a list of strings for value
         status : str, optional
-            valid values are 'preliminary', 'active', 'expired', and 'test_dataset',
-            by default None
+            valid values are 'preliminary', 'active', 'expired', 'test_dataset', None
+            by default 'active'
 
         Returns
         -------
