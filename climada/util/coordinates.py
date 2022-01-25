@@ -1480,7 +1480,7 @@ def get_admin1_geometries(countries):
         gdf_tmp.admin1_name = [record['name'] for record in admin1_info[country]]
         gdf_tmp.iso_3166_2 = [record['iso_3166_2'] for record in admin1_info[country]]
         # With this initiation of GeoSeries in a list comprehension,
-        # the ability of geopandas to convert shapefile.Shape to (Multi)Polygon is exploited:
+        # the ability of geopandas to convert shapereader.Shape to (Multi)Polygon is exploited:
         geoseries = gpd.GeoSeries([gpd.GeoSeries(shape).values[0]
                                    for shape in admin1_shapes[country]])
         gdf_tmp.geometry = list(geoseries)
