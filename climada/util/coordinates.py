@@ -46,7 +46,6 @@ import scipy.interpolate
 from shapely.geometry import Polygon, MultiPolygon, Point, box
 import shapely.ops
 import shapely.vectorized
-import shapefile
 from sklearn.neighbors import BallTree
 
 from climada.util.config import CONFIG
@@ -1410,7 +1409,7 @@ def get_admin1_info(country_names):
     admin1_file = shapereader.natural_earth(resolution='10m',
                                             category='cultural',
                                             name='admin_1_states_provinces')
-    admin1_recs = shapefile.Reader(admin1_file)
+    admin1_recs = shapereader.Reader(admin1_file)
     admin1_info = dict()
     admin1_shapes = dict()
     for country in country_names:
@@ -1419,7 +1418,9 @@ def get_admin1_info(country_names):
         country = pycountry.countries.lookup(country).alpha_3 # get iso3a code
         admin1_info[country] = list()
         admin1_shapes[country] = list()
-        for rec, rec_shp in zip(admin1_recs.records(), admin1_recs.shapes()):
+        for rec in admin1_recs.records():
+            rec_shp = rec.geometry
+            rec = rec.attributes
             if rec['adm0_a3'] == country:
                 admin1_info[country].append(rec)
                 admin1_shapes[country].append(rec_shp)

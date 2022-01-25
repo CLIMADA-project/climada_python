@@ -25,7 +25,6 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 from cartopy.io import shapereader
-import shapefile
 
 from climada.util.finance import gdp
 from climada.util.constants import DEF_CRS
@@ -952,7 +951,7 @@ def emdat_to_impact(emdat_file_csv, hazard_type_climada, year_range=None, countr
     shp = shapereader.natural_earth(resolution='110m',
                                     category='cultural',
                                     name='admin_0_countries')
-    shp = shapefile.Reader(shp)
+    shp = shapereader.Reader(shp)
     countries_reg_id = list()
     countries_lat = list()
     countries_lon = list()
@@ -964,8 +963,8 @@ def emdat_to_impact(emdat_file_csv, hazard_type_climada, year_range=None, countr
             LOGGER.warning('Country not found in iso_country: %s', cntry)
         cntry_boolean = False
         for rec_i, rec in enumerate(shp.records()):
-            if rec[9].casefold() == cntry.casefold():
-                bbox = shp.shapes()[rec_i].bbox
+            if rec.attributes['ADM0_A3'].casefold() == cntry.casefold():
+                bbox = rec.geometry.bounds
                 cntry_boolean = True
                 break
         if cntry_boolean:

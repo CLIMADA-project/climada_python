@@ -864,7 +864,7 @@ class TestGetGeodata(unittest.TestCase):
         self.assertEqual(len(admin1_info['CHE']), 26)
         self.assertEqual(len(admin1_shapes['IDN']), 33)
         self.assertEqual(len(admin1_info['USA']), 51)
-        self.assertEqual(admin1_info['USA'][1][4], 'US-WA')
+        self.assertEqual(admin1_info['USA'][1]['iso_3166_2'], 'US-ID')
 
     def test_get_admin1_geometries_pass(self):
         """test get_admin1_geometries"""
