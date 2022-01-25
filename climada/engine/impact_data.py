@@ -962,7 +962,7 @@ def emdat_to_impact(emdat_file_csv, hazard_type_climada, year_range=None, countr
         except LookupError:
             LOGGER.warning('Country not found in iso_country: %s', cntry)
         cntry_boolean = False
-        for rec_i, rec in enumerate(shp.records()):
+        for rec in shp.records():
             if rec.attributes['ADM0_A3'].casefold() == cntry.casefold():
                 bbox = rec.geometry.bounds
                 cntry_boolean = True

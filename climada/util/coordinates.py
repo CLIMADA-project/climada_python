@@ -1414,16 +1414,17 @@ def get_admin1_info(country_names):
     admin1_shapes = dict()
     for country in country_names:
         if isinstance(country, (int, float)):
-            country = f'{int(country):03d}' # transform numerric code to str
-        country = pycountry.countries.lookup(country).alpha_3 # get iso3a code
+            # transform numerric code to str
+            country = f'{int(country):03d}'
+        # get alpha-3 code according to ISO 3166
+        country = pycountry.countries.lookup(country).alpha_3
         admin1_info[country] = list()
         admin1_shapes[country] = list()
         for rec in admin1_recs.records():
-            rec_shp = rec.geometry
-            rec = rec.attributes
-            if rec['adm0_a3'] == country:
-                admin1_info[country].append(rec)
-                admin1_shapes[country].append(rec_shp)
+            rec_attrs = rec.attributes
+            if rec_attrs['adm0_a3'] == country:
+                admin1_info[country].append(rec_attrs)
+                admin1_shapes[country].append(rec.geometry)
         if len(admin1_info[country]) == 0:
             raise LookupError(f'natural_earth records are empty for country {country}')
     return admin1_info, admin1_shapes
@@ -1466,7 +1467,7 @@ def get_admin1_geometries(countries):
     admin1_info, admin1_shapes = get_admin1_info(countries)
     for country in admin1_info.keys():
         # fill admin 1 region names and codes to GDF for single country:
-        gdf_tmp = gpd.GeoDataFrame(columns = gdf.columns)
+        gdf_tmp = gpd.GeoDataFrame(columns=gdf.columns)
         gdf_tmp.admin1_name = [record['name'] for record in admin1_info[country]]
         gdf_tmp.iso_3166_2 = [record['iso_3166_2'] for record in admin1_info[country]]
         # With this initiation of GeoSeries in a list comprehension,
