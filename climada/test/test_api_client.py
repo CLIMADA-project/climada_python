@@ -55,7 +55,7 @@ class TestClient(unittest.TestCase):
         """"""
         client = Client()
 
-        dataset = client.get_dataset_info(name='FAOSTAT_data_producer_prices')
+        dataset = client.get_dataset_info(name='FAOSTAT_data_producer_prices', status='test_dataset')
         self.assertEqual(dataset.version, 'v1')
         self.assertEqual(len(dataset.files), 1)
         self.assertEqual(dataset.files[0].file_size, 26481)
@@ -68,7 +68,7 @@ class TestClient(unittest.TestCase):
         """"""
         client = Client()
         client.MAX_WAITING_PERIOD = 0.1
-        dataset = client.get_dataset_info(name='FAOSTAT_data_producer_prices')
+        dataset = client.get_dataset_info(name='FAOSTAT_data_producer_prices', status='test_dataset')
 
         # test failure
         def fail(x, y):
@@ -90,7 +90,7 @@ class TestClient(unittest.TestCase):
         client = Client()
         client.MAX_WAITING_PERIOD = 0.1
 
-        dataset = client.get_dataset_info(name='test_write_raster')
+        dataset = client.get_dataset_info(name='test_write_raster', status='test_dataset')
         download_dir, downloads = client.download_dataset(dataset, target_dir=DATA_DIR)
         self.assertEqual(download_dir.name, dataset.version)
         self.assertEqual(download_dir.parent.name, dataset.name)
