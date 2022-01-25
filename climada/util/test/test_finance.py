@@ -78,11 +78,11 @@ class TestWBData(unittest.TestCase):
     def test_ne_gdp_aia_2012_pass(self):
         """Test nat_earth_adm0 function Anguilla."""
         ref_year = 2012
-        res_year, res_val = nat_earth_adm0('AIA', 'GDP_MD_EST',
+        res_year, res_val = nat_earth_adm0('AIA', 'GDP_MD',
                                            'GDP_YEAR', SHP_FILE)
 
         ref_year = 2009
-        ref_val = 1.754e+08
+        ref_val = 1.75e+08
         self.assertEqual(res_year, ref_year)
         self.assertEqual(res_val, ref_val)
 
