@@ -1401,6 +1401,17 @@ def get_admin1_info(country_names):
     admin1_shapes : dict
         Shape according to Natural Earth.
     """
+    def _ensure_utf8(val):
+        # Without the `*.cpg` file present, the shape reader wrongly assumes latin-1 encoding:
+        # https://github.com/SciTools/cartopy/issues/1282
+        # https://github.com/SciTools/cartopy/commit/6d787b01e122eea68b67a9b2966e45877755a52d
+        # As a workaround, we encode and decode again, unless this fails which means
+        # that the `*.cpg` is present and the encoding is correct:
+        try:
+            return val.encode('latin-1').decode('utf-8')
+        except:
+            return val
+
     if isinstance(country_names, (str, int, float)):
         country_names = [country_names]
     if not isinstance(country_names, list):
@@ -1421,23 +1432,14 @@ def get_admin1_info(country_names):
         admin1_info[country] = list()
         admin1_shapes[country] = list()
         for rec in admin1_recs.records():
-            rec_attrs = rec.attributes
-            if rec_attrs['adm0_a3'] == country:
-                # Fiona wrongly assumes latin-1 encoding by default:
-                # https://github.com/SciTools/cartopy/issues/1282
-                # As a workaround, we encode and decode again:
-                admin1_info[country].append(dict([(x,_from_latin1_to_utf8(y)) for (x,y) in rec_attrs.items()]))
+            if rec.attributes['adm0_a3'] == country:
+                rec_attributes = {k: _ensure_utf8(v) for k, v in rec.attributes.items()}
+                admin1_info[country].append(rec_attributes)
                 admin1_shapes[country].append(rec.geometry)
         if len(admin1_info[country]) == 0:
             raise LookupError(f'natural_earth records are empty for country {country}')
     return admin1_info, admin1_shapes
 
-def _from_latin1_to_utf8(val):
-    try:
-        return val.encode('latin-1').decode('utf-8')
-    except:
-        return val
-    
 def get_admin1_geometries(countries):
     """
     return geometries, names and codes of admin 1 regions in given countries
