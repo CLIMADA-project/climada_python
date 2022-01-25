@@ -1688,7 +1688,8 @@ class Hazard():
         haz_concat.append(*haz_list)
         return haz_concat
 
-    def change_centroids(self, centroids, threshold=NEAREST_NEIGHBOR_THRESHOLD):
+    def change_centroids(self, centroids, threshold=NEAREST_NEIGHBOR_THRESHOLD,
+                         drop_duplicates=False):
         """
         Assign (new) centroids to hazard.
 
@@ -1708,6 +1709,10 @@ class Hazard():
             Threshold (in km) for mapping haz.centroids not in centroids.
             Argument is passed to climada.util.coordinates.assign_coordinates.
             Default: 100 (km)
+        drop_duplicates: boolean
+            If True, when two or more centroids from self are closest to the
+            same points in centroids, only the first is kept.
+            The default is False.
 
         Returns
         -------
@@ -1748,20 +1753,34 @@ class Hazard():
                                  "from the given centroids. Please choose a "
                                  "larger threshold or enlarge the centroids")
 
-
-
-        if np.unique(new_cent_idx).size < new_cent_idx.size:
-            raise ValueError("At least two hazard centroids are mapped to the same "
+        if not drop_duplicates:
+            if np.unique(new_cent_idx).size < new_cent_idx.size:
+                raise ValueError("At least two hazard centroids are mapped to the same "
                              "centroids. Please make sure that the given centroids "
                              "cover the same area like the original centroids and "
                              "are not of lower resolution.")
 
+        def drop_duplicate_data(matrix, new_cent_idx):
+            new_indices = new_cent_idx[matrix.indices]
+            def unsorted_unique(array):
+                return array[np.sort(np.unique(array, return_index=True)[1])]
+            new_indices = unsorted_unique(new_indices)
+            new_data = matrix.data[np.unique(new_indices, return_index=True)[1]]
+            indptr = matrix.indptr
+            if matrix.indptr[-1] > new_data.size:
+                indptr[-1] = new_data.size
+            return new_data, new_indices, indptr
+
         # re-assign attributes intensity and fraction
         for attr_name in ["intensity", "fraction"]:
             matrix = getattr(self, attr_name)
+            if drop_duplicates:
+                data, indices, indptr = drop_duplicate_data(matrix, new_cent_idx)
+            else:
+                data, indices, indptr = matrix.data, new_cent_idx[matrix.indices], matrix.indptr
             setattr(haz_new_cent, attr_name,
                     sparse.csr_matrix(
-                        (matrix.data, new_cent_idx[matrix.indices], matrix.indptr),
+                        (data, indices, indptr),
                         shape=(matrix.shape[0], centroids.size)
                     ))
 
