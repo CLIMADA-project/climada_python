@@ -1423,12 +1423,21 @@ def get_admin1_info(country_names):
         for rec in admin1_recs.records():
             rec_attrs = rec.attributes
             if rec_attrs['adm0_a3'] == country:
-                admin1_info[country].append(rec_attrs)
+                # Fiona wrongly assumes latin-1 encoding by default:
+                # https://github.com/SciTools/cartopy/issues/1282
+                # As a workaround, we encode and decode again:
+                admin1_info[country].append(dict([(x,_from_latin1_to_utf8(y)) for (x,y) in rec_attrs.items()]))
                 admin1_shapes[country].append(rec.geometry)
         if len(admin1_info[country]) == 0:
             raise LookupError(f'natural_earth records are empty for country {country}')
     return admin1_info, admin1_shapes
 
+def _from_latin1_to_utf8(val):
+    try:
+        return val.encode('latin-1').decode('utf-8')
+    except:
+        return val
+    
 def get_admin1_geometries(countries):
     """
     return geometries, names and codes of admin 1 regions in given countries
