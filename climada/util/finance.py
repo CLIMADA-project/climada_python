@@ -263,7 +263,8 @@ def nat_earth_adm0(cntry_iso, info_name, year_name=None, shp_file=None):
     if not close_val:
         raise ValueError("No GDP for country %s found." % cntry_iso)
 
-    if info_name == 'GDP_MD':
+    # the variable name changed in Natural Earth v5.0.0
+    if info_name in ['GDP_MD', 'GDP_MD_EST']:
         close_val *= 1e6
     elif info_name == 'INCOME_GRP':
         close_val = INCOME_GRP_NE_TABLE.get(int(close_val[0]))
