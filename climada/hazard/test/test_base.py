@@ -880,6 +880,7 @@ class TestAppend(unittest.TestCase):
         self.assertTrue(np.array_equal(haz_2.orig, [True]))
         self.assertEqual(haz_2.tag.description, 'Description 1')
 
+        """Test error for projection"""
         cent3 = Centroids()
         cent3.lat, cent3.lon = np.array([0.5, 3]), np.array([-0.5, 3])
         cent3.on_land = np.array([True, True, False])
@@ -887,6 +888,24 @@ class TestAppend(unittest.TestCase):
         with self.assertRaises(ValueError) as cm:
             haz_1.change_centroids(cent3, threshold=100)
         self.assertIn('two hazard centroids are mapped to the same centroids', str(cm.exception))
+
+
+        """Test with raster centroids"""
+        cent4 = Centroids.from_pnt_bounds(points_bounds=(-1, 0, 0, 1), res=1)
+        cent4.lat, cent1.lon = np.array([0, 1]), np.array([0, -1])
+        cent4.on_land = np.array([True, True])
+
+        haz_4 = haz_1.change_centroids(cent4)
+
+        self.assertTrue(np.array_equal(haz_4.intensity.toarray(),
+                               np.array([[0.3, 0.0, 0.0, 0.2]])))
+        self.assertTrue(np.array_equal(haz_4.fraction.toarray(),
+                               np.array([[0.03, 0.0, 0.0, 0.02]])))
+        self.assertTrue(np.array_equal(haz_4.event_id, np.array([1])))
+        self.assertTrue(np.array_equal(haz_4.event_name, ['ev1']))
+        self.assertTrue(np.array_equal(haz_4.orig, [True]))
+        self.assertEqual(haz_4.tag.description, 'Description 1')
+
 
 class TestStats(unittest.TestCase):
     """Test return period statistics"""
