@@ -163,9 +163,7 @@ def gdp(cntry_iso, ref_year, shp_file=None, per_capita=False):
         if isinstance(err, requests.exceptions.ConnectionError):
             LOGGER.warning('Internet connection failed while retrieving GDPs.')
         close_year, close_val = nat_earth_adm0(cntry_iso, 'GDP_MD', 'GDP_YEAR', shp_file)
-    finally:
-        LOGGER.info("GDP {} {:d}: {:.3e}.".format(cntry_iso, close_year,
-                                                  close_val))
+    LOGGER.info("GDP {} {:d}: {:.3e}.".format(cntry_iso, close_year, close_val))
 
     return close_year, close_val
 
