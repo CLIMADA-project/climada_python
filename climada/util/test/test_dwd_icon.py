@@ -23,8 +23,6 @@ import unittest
 from pathlib import Path
 import datetime as dt
 import numpy as np
-import mock
-import logging
 
 from climada.util.dwd_icon_loader import (download_icon_grib,
                                           delete_icon_grib,
@@ -88,12 +86,12 @@ class TestDeleteIcon(unittest.TestCase):
     def test_file_not_exist_warning(self):
         """test warning if file does not exist"""
 
-        logger = logging.getLogger('climada.util.dwd_icon_loader')
-        with mock.patch.object(logger,'warning') as mock_logger:
+        with self.assertLogs('climada.util.dwd_icon_loader', 'WARNING') as cm:
             delete_icon_grib(dt.datetime(1908, 2, 2),
                                  max_lead_time=1,
                                  )
-            mock_logger.assert_called_once()
+        self.assertEqual(len(cm.output), 1)
+        self.assertIn('does not exist and could not be deleted', cm.output[0])
 
     def test_rm_file(self):
         """test if file is removed"""

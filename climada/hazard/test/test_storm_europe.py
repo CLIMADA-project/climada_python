@@ -21,8 +21,6 @@ Test StormEurope class
 
 import copy
 import unittest
-import logging
-import mock
 import datetime as dt
 import numpy as np
 from scipy import sparse
@@ -200,8 +198,7 @@ class TestReader(unittest.TestCase):
         self.assertEqual(haz.intensity.shape, (40, 49))
         self.assertAlmostEqual(haz.intensity.max(), 17.276321,places=3)
         self.assertEqual(haz.fraction.shape, (40, 49))
-        logger = logging.getLogger('climada.hazard.storm_europe')
-        with mock.patch.object(logger,'warning') as mock_logger:
+        with self.assertLogs('climada.hazard.storm_europe', level='WARNING') as cm:
             with self.assertRaises(ValueError):
                 haz = StormEurope.from_icon_grib(
                     dt.datetime(2021, 1, 28, 6),
@@ -209,7 +206,8 @@ class TestReader(unittest.TestCase):
                     model_name='test',
                     grib_dir=CONFIG.hazard.test_data.str(),
                     delete_raw_data=False)
-            mock_logger.assert_called_once()
+        self.assertEqual(len(cm.output), 1)
+        self.assertIn('event definition is inaccuratly implemented', cm.output[0])
 
     def test_generate_forecast(self):
         """ testing generating a forecast """
