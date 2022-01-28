@@ -76,17 +76,17 @@ class FileInfo():
 
 @dataclass
 class DataTypeInfo():
-    """data_type data from CLIMADA data API."""
+    """data type meta data from CLIMADA data API."""
     data_type:str
     data_type_group:str
     status: str
     description:str
-    properties:list
+    properties:list  # of dict
 
 
 @dataclass
 class DataTypeShortInfo():
-    """data_type essentials from CLIMADA data API."""
+    """data type name and group from CLIMADA data API."""
     data_type:str
     data_type_group:str
 
