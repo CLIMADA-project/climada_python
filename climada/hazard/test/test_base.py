@@ -889,17 +889,6 @@ class TestAppend(unittest.TestCase):
             haz_1.change_centroids(cent3, threshold=100)
         self.assertIn('two hazard centroids are mapped to the same centroids', str(cm.exception))
 
-        """Test Drop duplicates"""
-        haz_4 = haz_1.change_centroids(cent3, drop_duplicates=True)
-        self.assertTrue(np.array_equal(haz_4.intensity.toarray(),
-                               np.array([[0.2, 0.]])))
-        self.assertTrue(np.array_equal(haz_4.fraction.toarray(),
-                               np.array([[0.02, 0.]])))
-        self.assertTrue(np.array_equal(haz_4.event_id, np.array([1])))
-        self.assertTrue(np.array_equal(haz_4.event_name, ['ev1']))
-        self.assertTrue(np.array_equal(haz_4.orig, [True]))
-        self.assertEqual(haz_4.tag.description, 'Description 1')
-
 
     def test_change_centroids_raster(self):
         """Set new centroids for hazard"""
