@@ -351,8 +351,7 @@ class Client():
         return [DataTypeInfo(**jobj) for jobj in Client._request_200(url, params=params)]
 
     def get_data_type_info(self, data_type):
-        """Returns the data type from the climada data API
-        with a given name.
+        """Returns the metadata of the data type with the given name from the climada data API.
 
         Parameters
         ----------
@@ -427,7 +426,7 @@ class Client():
             raise
         return Download.get(Download.path==path_as_str)
 
-    def download_file(self, local_path, fileinfo, check=checksize, retries=3):
+    def _download_file(self, local_path, fileinfo, check=checksize, retries=3):
         """Download a file if it is not already present at the target destination.
 
         Parameters
@@ -471,11 +470,10 @@ class Client():
                 raise dle
             LOGGER.warning("Download failed: %s, retrying...", dle)
             time.sleep(self.MAX_WAITING_PERIOD/retries)
-            return self.download_file(local_path=local_path, fileinfo=fileinfo, check=check,
-                                      retries=retries - 1)
+            return self._download_file(local_path=local_path, fileinfo=fileinfo, check=check,
+                                       retries=retries - 1)
 
-    def download_dataset(self, dataset, target_dir=SYSTEM_DIR, organize_path=True,
-                         check=checksize):
+    def download_dataset(self, dataset, target_dir=SYSTEM_DIR, organize_path=True):
         """Download all files from a given dataset to a given directory.
 
         Parameters
@@ -488,8 +486,6 @@ class Client():
             if set to True the files will end up in subdirectories of target_dir:
             [target_dir]/[data_type_group]/[data_type]/[name]/[version]
             by default True
-        check : function, optional
-            how to check download success for each file, by default Download.checksize
 
         Returns
         -------
@@ -511,7 +507,7 @@ class Client():
             target_dir = self._organize_path(dataset, target_dir)
 
         return target_dir, [
-            self.download_file(local_path=target_dir, fileinfo=dsfile, check=check)
+            self._download_file(local_path=target_dir, fileinfo=dsfile)
             for dsfile in dataset.files
         ]
 
@@ -549,7 +545,8 @@ class Client():
         gdf = ddf.groupby('name').agg({'version': 'nunique'})
         return list(gdf[gdf.version > 1].index)
 
-    def get_hazard(self, hazard_type, dump_dir=SYSTEM_DIR, **kwargs):
+    def get_hazard(self, hazard_type, name=None, version=None, properties=None,
+                   status='active', dump_dir=SYSTEM_DIR):
         """Queries the data api for hazard datasets of the given type, downloads associated
         hdf5 files and turns them into a climada.hazard.Hazard object.
 
@@ -557,24 +554,32 @@ class Client():
         ----------
         hazard_type : str
             Type of climada hazard.
+        name : str, optional
+            the name of the dataset
+        version : str, optional
+            the version of the dataset
+        properties : dict, optional
+            search parameters for dataset properties, by default None
+            any property has a string for key and can be a string or a list of strings for value
+        status : str, optional
+            valid values are 'preliminary', 'active', 'expired', 'test_dataset', None
+            by default 'active'
         dump_dir : str, optional
             Directory where the files should be downoladed. Default: SYSTEM_DIR
-            If the directory is the SYSTEM_DIR, the eventual target directory is organized into
+            If the directory is the SYSTEM_DIR (as configured in
+            climada.conf, i.g. ~/climada/data), the eventual target directory is organized into
             dump_dir > hazard_type > dataset name > version
-       **kwargs :
-            additional parameters passed on to get_dataset_info
 
         Returns
         -------
         climada.hazard.Hazard
             The combined hazard object
         """
-        if 'data_type' in kwargs:
-            raise ValueError("data_type is already given as hazard_type")
         if not hazard_type in HAZ_TYPES:
             raise ValueError("Valid hazard types are a subset of CLIMADA hazard types."
                              f" Currently these types are supported: {HAZ_TYPES}")
-        dataset = self.get_dataset_info(data_type=hazard_type, **kwargs)
+        dataset = self.get_dataset_info(data_type=hazard_type, name=name, version=version,
+                                        properties=properties, status=status)
         return self.to_hazard(dataset, dump_dir)
 
     def to_hazard(self, dataset, dump_dir=SYSTEM_DIR):
@@ -586,7 +591,8 @@ class Client():
         dataset : DatasetInfo
             Dataset to download and read into climada.Hazard object.
         dump_dir : str, optional
-            Directory where the files should be downoladed. Default: SYSTEM_DIR
+            Directory where the files should be downoladed. Default: SYSTEM_DIR (as configured in
+            climada.conf, i.g. ~/climada/data).
             If the directory is the SYSTEM_DIR, the eventual target directory is organized into
             dump_dir > hazard_type > dataset name > version
 
@@ -599,7 +605,7 @@ class Client():
                      if dump_dir == SYSTEM_DIR else dump_dir
         
         hazard_list = [
-            Hazard.from_hdf5(self.download_file(target_dir, dsf))
+            Hazard.from_hdf5(self._download_file(target_dir, dsf))
             for dsf in dataset.files
             if dsf.file_format == 'hdf5'
         ]
@@ -613,7 +619,8 @@ class Client():
         hazard_concat.check()
         return hazard_concat
 
-    def get_exposures(self, exposures_type, dump_dir=SYSTEM_DIR, max_datasets=10, **kwargs):
+    def get_exposures(self, exposures_type, name=None, version=None, properties=None,
+                   status='active', dump_dir=SYSTEM_DIR):
         """Queries the data api for exposures datasets of the given type, downloads associated
         hdf5 files and turns them into a climada.entity.exposures.Exposures object.
 
@@ -621,28 +628,31 @@ class Client():
         ----------
         exposures_type : str
             Type of climada exposures.
+        name : str, optional
+            the name of the dataset
+        version : str, optional
+            the version of the dataset
+        properties : dict, optional
+            search parameters for dataset properties, by default None
+            any property has a string for key and can be a string or a list of strings for value
+        status : str, optional
+            valid values are 'preliminary', 'active', 'expired', 'test_dataset', None
+            by default 'active'
         dump_dir : str, optional
             Directory where the files should be downoladed. Default: SYSTEM_DIR
             If the directory is the SYSTEM_DIR, the eventual target directory is organized into
             dump_dir > hazard_type > dataset name > version
-        max_datasets : int, optional
-            Download limit for datasets. If a query matches is matched by more datasets than this
-            number, a ValueError is raised. Setting it to 0 or a negative number inactivates the
-            limit. Default is 10.
-        **kwargs :
-            additional parameters passed on to `Client.list_dataset_infos`
 
         Returns
         -------
         climada.entity.exposures.Exposures
             The combined exposures object
         """
-        if 'data_type' in kwargs:
-            raise ValueError("data_type is already given as exposures_type")
         if not exposures_type in EXP_TYPES:
             raise ValueError("Valid exposures types are a subset of CLIMADA exposures types."
                              f" Currently these types are supported: {EXP_TYPES}")
-        dataset = self.get_dataset_info(data_type=exposures_type, **kwargs)
+        dataset = self.get_dataset_info(data_type=exposures_type, name=name, version=version,
+                                        properties=properties, status=status)
         return self.to_exposures(dataset, dump_dir)
 
     def to_exposures(self, dataset, dump_dir=SYSTEM_DIR):
@@ -654,7 +664,8 @@ class Client():
         dataset : DatasetInfo
             Dataset to download and read into climada.Exposures objects.
         dump_dir : str, optional
-            Directory where the files should be downoladed. Default: SYSTEM_DIR
+            Directory where the files should be downoladed. Default: SYSTEM_DIR (as configured in
+            climada.conf, i.g. ~/climada/data).
             If the directory is the SYSTEM_DIR, the eventual target directory is organized into
             dump_dir > exposures_type > dataset name > version
 
@@ -666,7 +677,7 @@ class Client():
         target_dir = self._organize_path(dataset, dump_dir) \
                      if dump_dir == SYSTEM_DIR else dump_dir
         exposures_list = [
-            Exposures.from_hdf5(self.download_file(target_dir, dsf))
+            Exposures.from_hdf5(self._download_file(target_dir, dsf))
             for dsf in dataset.files
             if dsf.file_format == 'hdf5'
         ]
@@ -710,57 +721,63 @@ class Client():
             raise ValueError("country must be string or list of strings")
         return self.get_exposures(exposures_type='litpop', dump_dir=dump_dir, properties=properties)
 
-    def get_property_values(self, list_dataset_infos, known_property_values=None,
-                            ignore_properties=['date_creation', 'climada_version', 'country_iso3num']):
-        """Return a dictionnary of possible values for properties of a data type, optionally given known property values.
+    @staticmethod
+    def get_property_values(dataset_infos, known_property_values=None,
+                            exclude_properties=None):
+        """Returns a dictionnary of possible values for properties of a data type, optionally given known property values.
 
         Parameters
         ----------
-        list_dataset_infos : list of dataset informations, return of list_dataset_infos
-        known_properties_value : dict
+        dataset_infos : list of DataSetInfo
+            as returned by list_dataset_infos
+        known_properties_value : dict, optional
             dict {'property':'value1, 'property2':'value2'}, to provide only a subset of property
             values that can be combined with the given properties.
+        exclude_properties: list of str, optional
+            properties in this list will be excluded from the resulting dictionary, e.g., because
+            they are strictly metadata and don't provide any information essential to the dataset.
+            Default: 'creation_date', 'climada_version'
 
         Returns
         -------
         dict
             of possibles property values
         """
+        if exclude_properties is None:
+            exclude_properties = ['date_creation', 'climada_version']
+
+        ppdf = pd.DataFrame([ds.properties for ds in dataset_infos])
         if known_property_values:
-            list_dataset_infos = [dataset for dataset in list_dataset_infos if all(item in dataset.properties.items()
-                                                                for item in known_property_values.items())]
-        if len(list_dataset_infos)<1:
+            for key, val in known_property_values.items():
+                ppdf = ppdf[ppdf[key] == val]
+        if not len(ppdf):
             raise Client.NoResult("there is no dataset meeting the requirements")
-        properties = [dataset.properties for dataset in list_dataset_infos]
-        possible_properties = set().union(*(d.keys() for d in properties))
-        dict_properties = {}
-        for key in possible_properties:
-            if key in ignore_properties:
+
+        property_values = dict()
+        for col in ppdf.columns:
+            if col in exclude_properties:
                 continue
-            property_values = []
-            for property in properties:
-                if key in property.keys():
-                    property_values.append(property[key])
-                    property_values = list(set(property_values))
-                    dict_properties[key] = property_values
-        return dict_properties
+            valar = ppdf[col].dropna().drop_duplicates().values
+            if valar.size:
+                property_values[col] = list(valar)
+        return property_values
 
     @staticmethod
-    def into_datasets_df(datasets):
+    def into_datasets_df(dataset_infos):
         """Convenience function providing a DataFrame of datasets with properties.
 
         Parameters
         ----------
-        datasets : list of DatasetInfo
-            e.g., return of list_dataset_infos
+        dataset_infos : list of DatasetInfo
+             as returned by list_dataset_infos
 
         Returns
         -------
         pandas.DataFrame
             of datasets with properties as found in query by arguments
         """
-        dsdf = pd.DataFrame(datasets)
-        ppdf = pd.DataFrame([ds.properties for ds in datasets])
+        dsdf = pd.DataFrame(dataset_infos)
+        ppdf = pd.DataFrame([ds.properties for ds in dataset_infos])
         dtdf = pd.DataFrame([pd.Series(dt) for dt in dsdf.data_type])
 
         return dtdf.loc[:, [c for c in dtdf.columns if c not in ['description', 'properties']]].join(
@@ -768,18 +785,18 @@ class Client():
                ppdf)
 
     @staticmethod
-    def into_files_df(datasets):
+    def into_files_df(dataset_infos):
         """Convenience function providing a DataFrame of files aligned with the input datasets.
 
         Parameters
         ----------
         datasets : list of DatasetInfo
-            e.g., return of list_dataset_infos
+            as returned by list_dataset_infos
 
         Returns
         -------
         pandas.DataFrame
             of the files' informations including dataset informations
         """
-        return Client.into_datasets_df(datasets) \
-            .merge(pd.DataFrame([dsfile for ds in datasets for dsfile in ds.files]))
+        return Client.into_datasets_df(dataset_infos) \
+            .merge(pd.DataFrame([dsfile for ds in dataset_infos for dsfile in ds.files]))
