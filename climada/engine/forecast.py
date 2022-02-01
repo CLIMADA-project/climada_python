@@ -430,7 +430,7 @@ class Forecast:
         )
 
         # Generate each subplot
-        fig, axis_sub, fontsize = u_plot.make_map(
+        fig, axis_sub, _fontsize = u_plot.make_map(
             num_im, proj=proj, figsize=figsize, adapt_fontsize=adapt_fontsize
         )
         if not isinstance(axis_sub, np.ndarray):
@@ -824,7 +824,7 @@ class Forecast:
         kwargs["norm"] = BoundaryNorm(np.linspace(0, 1, 11), CMAP_WARNPROB.N, clip=True)
 
         # Generate each subplot
-        fig, axis_sub, fontsize = u_plot.make_map(
+        fig, axis_sub, _fontsize = u_plot.make_map(
             num_im, proj=proj, figsize=figsize, adapt_fontsize=adapt_fontsize
         )
         if not isinstance(axis_sub, np.ndarray):
@@ -1036,7 +1036,7 @@ class Forecast:
         kwargs["norm"] = BoundaryNorm(np.linspace(0, 1, 11), CMAP_WARNPROB.N, clip=True)
 
         # Generate each subplot
-        fig, axis, fontsize = u_plot.make_map(
+        fig, axis, _fontsize = u_plot.make_map(
             1, proj=proj, figsize=figsize, adapt_fontsize=adapt_fontsize
         )
         if isinstance(axis, np.ndarray):
