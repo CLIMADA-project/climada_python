@@ -22,9 +22,11 @@ Define TCTracks: IBTracs reader and tracks manager.
 __all__ = ['CAT_NAMES', 'SAFFIR_SIM_CAT', 'TCTracks', 'set_category']
 
 # standard libraries
+import contextlib
 import datetime as dt
 import itertools
 import logging
+import pathlib
 import re
 import shutil
 import warnings
@@ -49,6 +51,10 @@ import shapely.ops
 from sklearn.neighbors import DistanceMetric
 import statsmodels.api as sm
 import xarray as xr
+from xarray.backends import NetCDF4DataStore
+from xarray.backends.api import dump_to_store
+from xarray.backends.common import ArrayWriter
+from xarray.backends.store import StoreBackendEntrypoint
 
 # climada dependencies
 from climada.util import ureg
@@ -146,6 +152,13 @@ EMANUEL_RMW_CORR_FACTOR = 2.0
 """Kerry Emanuel track files in this list require a correction: The radius of
     maximum wind (rmstore) needs to be multiplied by factor 2."""
 
+STORM_1MIN_WIND_FACTOR = 0.88
+"""Scaling factor used in Bloemendaal et al. (2020) to convert 1-minute sustained wind speeds to
+10-minute sustained wind speeds.
+
+Bloemendaal et al. (2020): Generation of a global synthetic tropical cyclone hazard
+dataset using STORM. Scientific Data 7(1): 40."""
+
 class TCTracks():
     """Contains tropical cyclone tracks.
 
@@ -176,7 +189,13 @@ class TCTracks():
             - dist_since_lf (in km)
     """
     def __init__(self, pool=None):
-        """Empty constructor. Read csv IBTrACS files if provided."""
+        """Create new (empty) TCTracks instance.
+
+        Parameters
+        ----------
+        pool : pathos.pool, optional
+            Pool that will be used for parallel computation when applicable. Default: None
+        """
         self.data = list()
         if pool:
             self.pool = pool
@@ -244,7 +263,7 @@ class TCTracks():
         tc_tracks : TCTracks
             A new instance of TCTracks containing only the matching tracks.
         """
-        out = self.__class__(self.pool)
+        out = self.__class__(pool=self.pool)
         out.data = self.data
 
         for key, pattern in filterdict.items():
@@ -271,7 +290,7 @@ class TCTracks():
 
         Returns
         -------
-        filtered_tracks : climada.hazard.TCTracks()
+        filtered_tracks : TCTracks
             TCTracks object with tracks from tc_tracks intersecting the exposure whitin a buffer
             distance.
         """
@@ -289,18 +308,24 @@ class TCTracks():
         tc_tracks_lines = self.to_geodataframe().buffer(distance=buffer)
         select_tracks = tc_tracks_lines.intersects(exp_buffer)
         tracks_in_exp = [track for j, track in enumerate(self.data) if select_tracks[j]]
-        filtered_tracks= TCTracks()
+        filtered_tracks = TCTracks()
         filtered_tracks.append(tracks_in_exp)
 
         return filtered_tracks
 
+    def read_ibtracs_netcdf(self, *args, **kwargs):
+        """This function is deprecated, use TCTracks.from_ibtracs_netcdf instead."""
+        LOGGER.warning("The use of TCTracks.read_ibtracs_netcdf is deprecated. "
+                       "Use TCTracks.from_ibtracs_netcdf instead.")
+        self.__dict__ = TCTracks.from_ibtracs_netcdf(*args, **kwargs).__dict__
 
-    def read_ibtracs_netcdf(self, provider=None, rescale_windspeeds=True, storm_id=None,
+    @classmethod
+    def from_ibtracs_netcdf(cls, provider=None, rescale_windspeeds=True, storm_id=None,
                             year_range=None, basin=None, genesis_basin=None,
                             interpolate_missing=True, estimate_missing=False, correct_pres=False,
                             discard_single_points=True,
                             file_name='IBTrACS.ALL.v04r00.nc'):
-        """Read track data from IBTrACS databse.
+        """Create new TCTracks object from IBTrACS databse.
 
         When using data from IBTrACS, make sure to be familiar with the scope and limitations of
         IBTrACS, e.g. by reading the official documentation
@@ -405,6 +430,11 @@ class TCTracks():
         file_name : str, optional
             Name of NetCDF file to be dowloaded or located at climada/data/system.
             Default: 'IBTrACS.ALL.v04r00.nc'
+
+        Returns
+        -------
+        tracks : TCTracks
+            TCTracks with data from IBTrACS
         """
         if correct_pres:
             LOGGER.warning("`correct_pres` is deprecated. "
@@ -473,8 +503,7 @@ class TCTracks():
 
         if np.count_nonzero(match) == 0:
             LOGGER.info("IBTrACS doesn't contain any tracks matching the specified requirements.")
-            self.data = []
-            return
+            return cls()
 
         ibtracs_ds = ibtracs_ds.sel(storm=match)
         ibtracs_ds['valid_t'] = ibtracs_ds.time.notnull()
@@ -490,7 +519,8 @@ class TCTracks():
         elif isinstance(provider, str):
             provider = [provider]
 
-        for tc_var in ['lat', 'lon', 'wind', 'pres', 'rmw', 'poci', 'roci']:
+        phys_vars = ['lat', 'lon', 'wind', 'pres', 'rmw', 'poci', 'roci']
+        for tc_var in phys_vars:
             if "official" in provider or "official_3h" in provider:
                 ibtracs_add_official_variable(
                     ibtracs_ds, tc_var, add_3h=("official_3h" in provider))
@@ -499,19 +529,24 @@ class TCTracks():
             # newly created `official` and `official_3h` data if specified
             ag_vars = [f'{ag}_{tc_var}' for ag in provider]
             ag_vars = [ag_var for ag_var in ag_vars if ag_var in ibtracs_ds.data_vars.keys()]
+            if len(ag_vars) == 0:
+                ag_vars = [f'{provider[0]}_{tc_var}']
+                ibtracs_ds[ag_vars[0]] = xr.full_like(ibtracs_ds[f'usa_{tc_var}'], np.nan)
             all_vals = ibtracs_ds[ag_vars].to_array(dim='agency')
             # argmax returns the first True (i.e. valid) along the 'agency' dimension
             preferred_idx = all_vals.notnull().any(dim="date_time").argmax(dim='agency')
             ibtracs_ds[tc_var] = all_vals.isel(agency=preferred_idx)
 
-            # Usually, if an agency reports about a track that crosses the antimeridian, the
-            # longitude is always chosen positive. However, it can happen, that the TC crosses the
-            # antimeridian according to one agency, but not according to another. When mixing
-            # agency data, this can yield inconsistent sign changes in longitude. We remove those:
+            selected_ags = np.array([v[:-len(f'_{tc_var}')].encode() for v in ag_vars])
+            ibtracs_ds[f'{tc_var}_agency'] = ('storm', selected_ags[preferred_idx.values])
+
             if tc_var == 'lon':
                 # By IBTrACS default, no longitude should be <= -180, but this is not true for some
                 # agencies, so we have to manually enforce this policy:
                 ibtracs_ds[tc_var].values[(ibtracs_ds[tc_var] <= -180).values] += 360
+
+                # Make sure that the longitude is always chosen positive if a track crosses the
+                # antimeridian:
                 crossing_mask = ((ibtracs_ds[tc_var] > 170).any(dim="date_time")
                                  & (ibtracs_ds[tc_var] < -170).any(dim="date_time")
                                  & (ibtracs_ds[tc_var] < 0)).values
@@ -529,8 +564,8 @@ class TCTracks():
                         ibtracs_ds[tc_var].values[nonsingular_mask] = (
                             ibtracs_ds[tc_var].sel(storm=nonsingular_mask).interpolate_na(
                                 dim="date_time", method="linear"))
-        ibtracs_ds = ibtracs_ds[['sid', 'name', 'basin', 'lat', 'lon', 'time', 'valid_t',
-                                 'wind', 'pres', 'rmw', 'roci', 'poci']]
+        ibtracs_ds = ibtracs_ds[['sid', 'name', 'basin', 'time', 'valid_t']
+                                + phys_vars + [f'{v}_agency' for v in phys_vars]]
 
         if estimate_missing:
             ibtracs_ds['pres'][:] = _estimate_pressure(
@@ -563,8 +598,7 @@ class TCTracks():
             LOGGER.info('After discarding IBTrACS events without valid values by the selected '
                         'reporting agencies, there are no tracks left that match the specified '
                         'requirements.')
-            self.data = []
-            return
+            return cls()
 
         max_wind = ibtracs_ds.wind.max(dim="date_time").data.ravel()
         category_test = (max_wind[:, None] < np.array(SAFFIR_SIM_CAT)[None])
@@ -575,7 +609,6 @@ class TCTracks():
         ibtracs_ds['id_no'] = (ibtracs_ds.sid.str.replace(b'N', b'0')
                                .str.replace(b'S', b'1')
                                .astype(float))
-        provider_str = f"ibtracs_{provider[0]}" + ("" if len(provider) == 1 else "_mixed")
 
         last_perc = 0
         all_tracks = []
@@ -634,6 +667,12 @@ class TCTracks():
             # this is the second most time consuming line in the processing:
             track_ds['poci'][:] = np.fmax(track_ds.poci, track_ds.pres)
 
+            provider_str = f"ibtracs_{provider[0]}"
+            if len(provider) > 1:
+                provider_str = "ibtracs_mixed:" + ",".join(
+                    "{}({})".format(v, track_ds[f'{v}_agency'].astype(str).item())
+                    for v in phys_vars)
+
             all_tracks.append(xr.Dataset({
                 'time_step': ('time', track_ds.time_step.data),
                 'radius_max_wind': ('time', track_ds.rmw.data),
@@ -662,23 +701,43 @@ class TCTracks():
             # If all tracks have been discarded in the loop due to the basin filters:
             LOGGER.info('There were no tracks left in the specified basin '
                         'after discarding invalid track positions.')
-        self.data = all_tracks
+        tr = cls()
+        tr.data = all_tracks
+        return tr
 
-    def read_processed_ibtracs_csv(self, file_names):
-        """Fill from processed ibtracs csv file(s).
+    def read_processed_ibtracs_csv(self, *args, **kwargs):
+        """This function is deprecated, use TCTracks.from_processed_ibtracs_csv instead."""
+        LOGGER.warning("The use of TCTracks.read_processed_ibtracs_csv is deprecated. "
+                       "Use TCTracks.from_processed_ibtracs_csv instead.")
+        self.__dict__ = TCTracks.from_processed_ibtracs_csv(*args, **kwargs).__dict__
+
+    @classmethod
+    def from_processed_ibtracs_csv(cls, file_names):
+        """Create TCTracks object from processed ibtracs CSV file(s).
 
         Parameters
         ----------
         file_names : str or list of str
             Absolute file name(s) or folder name containing the files to read.
-        """
-        self.data = list()
-        all_file = get_file_names(file_names)
-        for file in all_file:
-            self._read_ibtracs_csv_single(file)
 
-    def read_simulations_emanuel(self, file_names, hemisphere=None):
-        """Fill from Kerry Emanuel tracks.
+        Returns
+        -------
+        tracks : TCTracks
+            TCTracks with data from the processed ibtracs CSV file.
+        """
+        tr = cls()
+        tr.data = [_read_ibtracs_csv_single(f) for f in get_file_names(file_names)]
+        return tr
+
+    def read_simulations_emanuel(self, *args, **kwargs):
+        """This function is deprecated, use TCTracks.from_simulations_emanuel instead."""
+        LOGGER.warning("The use of TCTracks.read_simulations_emanuel is deprecated. "
+                       "Use TCTracks.from_simulations_emanuel instead.")
+        self.__dict__ = TCTracks.from_simulations_emanuel(*args, **kwargs).__dict__
+
+    @classmethod
+    def from_simulations_emanuel(cls, file_names, hemisphere=None):
+        """Create new TCTracks object from Kerry Emanuel's tracks.
 
         Parameters
         ----------
@@ -687,235 +746,55 @@ class TCTracks():
         hemisphere : str or None, optional
             For global data sets, restrict to northern ('N') or southern ('S') hemisphere.
             Default: None (no restriction)
+
+        Returns
+        -------
+        tracks : TCTracks
+            TCTracks with data from Kerry Emanuel's simulations.
         """
-        self.data = []
+        tr = cls()
+        tr.data = []
         for path in get_file_names(file_names):
-            rmw_corr = Path(path).name in EMANUEL_RMW_CORR_FILES
-            self._read_file_emanuel(path, hemisphere=hemisphere,
-                                    rmw_corr=rmw_corr)
-
-    def _read_file_emanuel(self, path, hemisphere=None, rmw_corr=False):
-        """Append tracks from file containing Kerry Emanuel simulations.
-
-        Parameters
-        ----------
-        path : str
-            absolute path of file to read.
-        hemisphere : str or None, optional
-            For global data sets, restrict to northern ('N') or southern ('S') hemisphere.
-            Default: None (no restriction)
-        rmw_corr : str, optional
-            If True, multiply the radius of maximum wind by factor 2. Default: False.
-        """
-        LOGGER.info('Reading %s.', path)
-        data_mat = matlab.loadmat(path)
-        basin = str(data_mat['bas'][0])
-
-        hem_min, hem_max = -90, 90
-        # for backwards compatibility, also check for value 'both'
-        if basin == "GB" and hemisphere != 'both' and hemisphere is not None:
-            if hemisphere == 'S':
-                hem_min, hem_max = -90, 0
-                basin = "S"
-            elif hemisphere == 'N':
-                hem_min, hem_max = 0, 90
-                basin = "N"
-            else:
-                raise ValueError(f"Unknown hemisphere: '{hemisphere}'. Use 'N' or 'S' or None.")
-
-        lat = data_mat['latstore']
-        ntracks, nnodes = lat.shape
-        years_uniq = np.unique(data_mat['yearstore'])
-        LOGGER.info("File contains %s tracks (at most %s nodes each), "
-                    "representing %s years (%s-%s).", ntracks, nnodes,
-                    years_uniq.size, years_uniq[0], years_uniq[-1])
-
-        # filter according to chosen hemisphere
-        hem_mask = (lat >= hem_min) & (lat <= hem_max) | (lat == 0)
-        hem_idx = np.all(hem_mask, axis=1).nonzero()[0]
-        data_hem = lambda keys: [data_mat[f'{k}store'][hem_idx] for k in keys]
-
-        lat, lon = data_hem(['lat', 'long'])
-        months, days, hours = data_hem(['month', 'day', 'hour'])
-        months, days, hours = [np.int8(ar) for ar in [months, days, hours]]
-        tc_rmw, tc_maxwind, tc_pressure = data_hem(['rm', 'v', 'p'])
-        years = data_mat['yearstore'][0, hem_idx]
-
-        ntracks, nnodes = lat.shape
-        LOGGER.info("Loading %s tracks%s.", ntracks,
-                    f" on {hemisphere} hemisphere" if hemisphere in ['N', 'S'] else "")
-
-        # change lon format to -180 to 180
-        lon[lon > 180] = lon[lon > 180] - 360
-
-        # change units from kilometers to nautical miles
-        tc_rmw = (tc_rmw * ureg.kilometer).to(ureg.nautical_mile).magnitude
-        if rmw_corr:
-            LOGGER.info("Applying RMW correction.")
-            tc_rmw *= EMANUEL_RMW_CORR_FACTOR
-
-        for i_track in range(lat.shape[0]):
-            valid_idx = (lat[i_track, :] != 0).nonzero()[0]
-            nnodes = valid_idx.size
-            time_step = np.abs(np.diff(hours[i_track, valid_idx])).min()
-
-            # deal with change of year
-            year = np.full(valid_idx.size, years[i_track])
-            year_change = (np.diff(months[i_track, valid_idx]) < 0)
-            year_change = year_change.nonzero()[0]
-            if year_change.size > 0:
-                year[year_change[0] + 1:] += 1
-
-            try:
-                datetimes = map(dt.datetime, year,
-                                months[i_track, valid_idx],
-                                days[i_track, valid_idx],
-                                hours[i_track, valid_idx])
-                datetimes = list(datetimes)
-            except ValueError as err:
-                # dates are known to contain invalid February 30
-                date_feb = (months[i_track, valid_idx] == 2) \
-                         & (days[i_track, valid_idx] > 28)
-                if np.count_nonzero(date_feb) == 0:
-                    # unknown invalid date issue
-                    raise err
-                step = time_step if not date_feb[0] else -time_step
-                reference_idx = 0 if not date_feb[0] else -1
-                reference_date = dt.datetime(
-                    year[reference_idx],
-                    months[i_track, valid_idx[reference_idx]],
-                    days[i_track, valid_idx[reference_idx]],
-                    hours[i_track, valid_idx[reference_idx]],)
-                datetimes = [reference_date + dt.timedelta(hours=int(step * i))
-                             for i in range(nnodes)]
-            datetimes = [cftime.DatetimeProlepticGregorian(d.year, d.month, d.day, d.hour)
-                         for d in datetimes]
-
-            max_sustained_wind = tc_maxwind[i_track, valid_idx]
-            max_sustained_wind_unit = 'kn'
-            env_pressure = np.full(nnodes, DEF_ENV_PRESSURE)
-            category = set_category(max_sustained_wind,
-                                    max_sustained_wind_unit,
-                                    SAFFIR_SIM_CAT)
-            tr_ds = xr.Dataset({
-                'time_step': ('time', np.full(nnodes, time_step)),
-                'radius_max_wind': ('time', tc_rmw[i_track, valid_idx]),
-                'max_sustained_wind': ('time', max_sustained_wind),
-                'central_pressure': ('time', tc_pressure[i_track, valid_idx]),
-                'environmental_pressure': ('time', env_pressure),
-                'basin': ('time', np.full(nnodes, basin)),
-            }, coords={
-                'time': datetimes,
-                'lat': ('time', lat[i_track, valid_idx]),
-                'lon': ('time', lon[i_track, valid_idx]),
-            }, attrs={
-                'max_sustained_wind_unit': max_sustained_wind_unit,
-                'central_pressure_unit': 'mb',
-                'name': str(hem_idx[i_track]),
-                'sid': str(hem_idx[i_track]),
-                'orig_event_flag': True,
-                'data_provider': 'Emanuel',
-                'id_no': hem_idx[i_track],
-                'category': category,
-            })
-            self.data.append(tr_ds)
+            tr.data.extend(_read_file_emanuel(
+                path, hemisphere=hemisphere,
+                rmw_corr=Path(path).name in EMANUEL_RMW_CORR_FILES))
+        return tr
 
     def read_one_gettelman(self, nc_data, i_track):
-        """Fill from Andrew Gettelman tracks.
+        """This function is deprecated, use TCTracks.from_gettelman instead."""
+        LOGGER.warning("The use of TCTracks.read_one_gettelman is deprecated. "
+                       "Use TCTracks.from_gettelman instead.")
+        self.data.append(_read_one_gettelman(nc_data, i_track))
+
+    @classmethod
+    def from_gettelman(cls, path):
+        """Create new TCTracks object from Andrew Gettelman's tracks.
 
         Parameters
         ----------
-        nc_data : str
-            netCDF4.Dataset Objekt
-        i_tracks : int
-            track number
+        path : str or Path
+            Path to one of Andrew Gettelman's NetCDF files.
+
+        Returns
+        -------
+        tracks : TCTracks
+            TCTracks with data from Andrew Gettelman's simulations.
         """
-        scale_to_10m = (10. / 60.)**.11
-        mps2kts = 1.94384
-        basin_dict = {0: 'NA - North Atlantic',
-                      1: 'SA - South Atlantic',
-                      2: 'WP - West Pacific',
-                      3: 'EP - East Pacific',
-                      4: 'SP - South Pacific',
-                      5: 'NI - North Indian',
-                      6: 'SI - South Indian',
-                      7: 'AS - Arabian Sea',
-                      8: 'BB - Bay of Bengal',
-                      9: 'EA - Eastern Australia',
-                      10: 'WA - Western Australia',
-                      11: 'CP - Central Pacific',
-                      12: 'CS - Carribbean Sea',
-                      13: 'GM - Gulf of Mexico',
-                      14: 'MM - Missing'}
+        nc_data = nc.Dataset(path)
+        nstorms = nc_data.dimensions['storm'].size
+        tr = cls()
+        tr.data = [_read_one_gettelman(nc_data, i) for i in range(nstorms)]
+        return tr
 
-        val_len = nc_data.variables['numObs'][i_track]
-        sid = str(i_track)
-        times = nc_data.variables['source_time'][i_track, :][:val_len]
+    def read_simulations_chaz(self, *args, **kwargs):
+        """This function is deprecated, use TCTracks.from_simulations_chaz instead."""
+        LOGGER.warning("The use of TCTracks.read_simulations_chaz is deprecated. "
+                       "Use TCTracks.from_simulations_chaz instead.")
+        self.__dict__ = TCTracks.from_simulations_chaz(*args, **kwargs).__dict__
 
-        datetimes = list()
-        for time in times:
-            try:
-                datetimes.append(
-                    dt.datetime.strptime(
-                        str(nc.num2date(time, 'days since {}'.format('1858-11-17'),
-                                        calendar='standard')),
-                        '%Y-%m-%d %H:%M:%S'))
-            except ValueError:
-                # If wrong t, set t to previous t plus 3 hours
-                if datetimes:
-                    datetimes.append(datetimes[-1] + dt.timedelta(hours=3))
-                else:
-                    pos = list(times).index(time)
-                    time = times[pos + 1] - 1 / 24 * 3
-                    datetimes.append(
-                        dt.datetime.strptime(
-                            str(nc.num2date(time, 'days since {}'.format('1858-11-17'),
-                                            calendar='standard')),
-                            '%Y-%m-%d %H:%M:%S'))
-        time_step = []
-        for i_time, time in enumerate(datetimes[1:], 1):
-            time_step.append((time - datetimes[i_time - 1]).total_seconds() / 3600)
-        time_step.append(time_step[-1])
-
-        basins_numeric = nc_data.variables['basin'][i_track, :val_len]
-        basins = [basin_dict[b] if b in basin_dict else basin_dict[14] for b in basins_numeric]
-
-        lon = nc_data.variables['lon'][i_track, :][:val_len]
-        lon[lon > 180] = lon[lon > 180] - 360  # change lon format to -180 to 180
-        lat = nc_data.variables['lat'][i_track, :][:val_len]
-        cen_pres = nc_data.variables['pres'][i_track, :][:val_len]
-        av_prec = nc_data.variables['precavg'][i_track, :][:val_len]
-        max_prec = nc_data.variables['precmax'][i_track, :][:val_len]
-
-        # m/s to kn
-        wind = nc_data.variables['wind'][i_track, :][:val_len] * mps2kts * scale_to_10m
-        if not all(wind.data):  # if wind is empty
-            wind = np.ones(wind.size) * -999.9
-
-        tr_df = pd.DataFrame({'time': datetimes, 'lat': lat, 'lon': lon,
-                              'max_sustained_wind': wind,
-                              'central_pressure': cen_pres,
-                              'environmental_pressure': np.ones(lat.size) * 1015.,
-                              'radius_max_wind': np.ones(lat.size) * 65.,
-                              'maximum_precipitation': max_prec,
-                              'average_precipitation': av_prec,
-                              'basin': [b[:2] for b in basins],
-                              'time_step': time_step})
-
-        # construct xarray
-        tr_ds = xr.Dataset.from_dataframe(tr_df.set_index('time'))
-        tr_ds.coords['lat'] = ('time', tr_ds.lat.values)
-        tr_ds.coords['lon'] = ('time', tr_ds.lon.values)
-        tr_ds.attrs = {'max_sustained_wind_unit': 'kn',
-                       'central_pressure_unit': 'mb',
-                       'sid': sid,
-                       'name': sid, 'orig_event_flag': False,
-                       'id_no': i_track,
-                       'category': set_category(wind, 'kn')}
-        self.data.append(tr_ds)
-
-    def read_simulations_chaz(self, file_names, year_range=None, ensemble_nums=None):
-        """Read track output from CHAZ simulations
+    @classmethod
+    def from_simulations_chaz(cls, file_names, year_range=None, ensemble_nums=None):
+        """Create new TCTracks object from CHAZ simulations
 
             Lee, C.-Y., Tippett, M.K., Sobel, A.H., Camargo, S.J. (2018): An Environmentally
             Forced Tropical Cyclone Hazard Model. J Adv Model Earth Sy 10(1): 223–241.
@@ -928,8 +807,13 @@ class TCTracks():
             Filter by year, if given.
         ensemble_nums : list, optional
             Filter by ensembleNum, if given.
+
+        Returns
+        -------
+        tracks : TCTracks
+            TCTracks with data from the CHAZ simulations.
         """
-        self.data = []
+        data = []
         for path in get_file_names(file_names):
             LOGGER.info('Reading %s.', path)
             chaz_ds = xr.open_dataset(path)
@@ -953,7 +837,6 @@ class TCTracks():
                          & (chaz_ds.time.dt.year <= year_range[1])).sel(lifelength=0)
                 if np.count_nonzero(match) == 0:
                     LOGGER.info('No tracks in time range (%s, %s).', *year_range)
-                    self.data = []
                     continue
                 chaz_ds = chaz_ds.sel(id=match)
 
@@ -962,7 +845,6 @@ class TCTracks():
                 match = np.isin(chaz_ds.ensembleNum.values, ensemble_nums)
                 if np.count_nonzero(match) == 0:
                     LOGGER.info('No tracks with specified ensemble numbers.')
-                    self.data = []
                     continue
                 chaz_ds = chaz_ds.sel(id=match)
 
@@ -1000,20 +882,20 @@ class TCTracks():
 
             # add tracks one by one
             last_perc = 0
-            for i_track in chaz_ds.id_no:
-                perc = 100 * len(self.data) / chaz_ds.id_no.size
+            for cnt, i_track in enumerate(chaz_ds.id_no):
+                perc = 100 * cnt / chaz_ds.id_no.size
                 if perc - last_perc >= 10:
                     LOGGER.info("Progress: %d%%", perc)
                     last_perc = perc
                 track_ds = chaz_ds.sel(id=i_track.id.item())
                 track_ds = track_ds.sel(lifelength=track_ds.valid_t.data)
-                self.data.append(xr.Dataset({
+                data.append(xr.Dataset({
                     'time_step': ('time', track_ds.time_step.values),
                     'max_sustained_wind': ('time', track_ds.Mwspd.values),
                     'central_pressure': ('time', track_ds.pres.values),
                     'radius_max_wind': ('time', track_ds.radius_max_wind.values),
                     'environmental_pressure': ('time', track_ds.environmental_pressure.values),
-                    'basin': ('time', np.full(track_ds.time.size, "GB")),
+                    'basin': ('time', np.full(track_ds.time.size, "GB", dtype="<U2")),
                 }, coords={
                     'time': track_ds.time.values,
                     'lat': ('time', track_ds.latitude.values),
@@ -1030,9 +912,19 @@ class TCTracks():
                 }))
             if last_perc != 100:
                 LOGGER.info("Progress: 100%")
+        tr = cls()
+        tr.data = data
+        return tr
 
-    def read_simulations_storm(self, path, years=None):
-        """Read track output from STORM simulations
+    def read_simulations_storm(self, *args, **kwargs):
+        """This function is deprecated, use TCTracks.from_simulations_storm instead."""
+        LOGGER.warning("The use of TCTracks.read_simulations_storm is deprecated. "
+                       "Use TCTracks.from_simulations_storm instead.")
+        self.__dict__ = TCTracks.from_simulations_storm(*args, **kwargs).__dict__
+
+    @classmethod
+    def from_simulations_storm(cls, path, years=None):
+        """Create new TCTracks object from STORM simulations
 
             Bloemendaal et al. (2020): Generation of a global synthetic tropical cyclone hazard
             dataset using STORM. Scientific Data 7(1): 40.
@@ -1040,6 +932,9 @@ class TCTracks():
         Track data available for download from
 
             https://doi.org/10.4121/uuid:82c1dc0d-5485-43d8-901a-ce7f26cda35d
+
+        Wind speeds are converted to 1-minute sustained winds through division by 0.88 (this value
+        is taken from Bloemendaal et al. (2020), cited above).
 
         Parameters
         ----------
@@ -1049,8 +944,12 @@ class TCTracks():
         years : list of int, optional
             If given, only read the specified "years" from the txt-File. Note that a "year" refers
             to one ensemble of tracks in the data set that represents one sample year.
+
+        Returns
+        -------
+        tracks : TCTracks
+            TCTracks with data from the STORM simulations.
         """
-        self.data = []
         basins = ["EP", "NA", "NI", "SI", "SP", "WP"]
         tracks_df = pd.read_csv(path, names=['year', 'time_start', 'tc_num', 'time_delta',
                                              'basin', 'lat', 'lon', 'pres', 'wind',
@@ -1073,10 +972,16 @@ class TCTracks():
         # a bug in the data causes some storm tracks to be double-listed:
         tracks_df = tracks_df.drop_duplicates(subset=["year", "tc_num", "time_delta"])
 
-        # conversion of units and time
+        # conversion of units
         tracks_df['rmw'] *= (1 * ureg.kilometer).to(ureg.nautical_mile).magnitude
         tracks_df['wind'] *= (1 * ureg.meter / ureg.second).to(ureg.knot).magnitude
+
+        # convert from 10-minute to 1-minute sustained winds, see Bloemendaal et al. (2020)
+        tracks_df['wind'] /= STORM_1MIN_WIND_FACTOR
+
+        # conversion to absolute times
         tracks_df['time'] = tracks_df['time_start'] + tracks_df['time_delta']
+
         tracks_df = tracks_df.drop(
             labels=['time_start', 'time_delta', 'landfall', 'dist_to_land'], axis=1)
 
@@ -1084,8 +989,9 @@ class TCTracks():
         last_perc = 0
         fname = Path(path).name
         groups = tracks_df.groupby(by=["year", "tc_num"])
+        data = []
         for idx, group in groups:
-            perc = 100 * len(self.data) / len(groups)
+            perc = 100 * len(data) / len(groups)
             if perc - last_perc >= 10:
                 LOGGER.info("Progress: %d%%", perc)
                 last_perc = perc
@@ -1093,13 +999,13 @@ class TCTracks():
             env_pressure =  np.array([
                 BASIN_ENV_PRESSURE[basin] if basin in BASIN_ENV_PRESSURE else DEF_ENV_PRESSURE
                 for basin in group['basin'].values])
-            self.data.append(xr.Dataset({
+            data.append(xr.Dataset({
                 'time_step': ('time', np.full(group['time'].shape, 3)),
                 'max_sustained_wind': ('time', group['wind'].values),
                 'central_pressure': ('time', group['pres'].values),
                 'radius_max_wind': ('time', group['rmw'].values),
                 'environmental_pressure': ('time', env_pressure),
-                'basin': ("time", group['basin'].values),
+                'basin': ("time", group['basin'].values.astype("<U2")),
             }, coords={
                 'time': ('time', group['time'].values),
                 'lat': ('time', group['lat'].values),
@@ -1116,8 +1022,11 @@ class TCTracks():
             }))
         if last_perc != 100:
             LOGGER.info("Progress: 100%")
+        tr = cls()
+        tr.data = data
+        return tr
 
-    def equal_timestep(self, time_step_h=1, land_params=False):
+    def equal_timestep(self, time_step_h=1, land_params=False, pool=None):
         """Generate interpolated track values to time steps of time_step_h.
 
         Parameters
@@ -1126,23 +1035,28 @@ class TCTracks():
             Temporal resolution in hours (positive, may be non-integer-valued). Default: 1.
         land_params : bool, optional
             If True, recompute `on_land` and `dist_since_lf` at each node. Default: False.
+        pool : pathos.pool, optional
+            Pool that will be used for parallel computation when applicable. If not given, the
+            pool attribute of `self` will be used. Default: None
         """
+        pool = self.pool if pool is None else pool
+
         if time_step_h <= 0:
             raise ValueError(f"time_step_h is not a positive number: {time_step_h}")
         LOGGER.info('Interpolating %s tracks to %sh time steps.', self.size, time_step_h)
 
         if land_params:
             extent = self.get_extent()
-            land_geom = u_coord.get_land_geometry(extent, resolution=10)
+            land_geom = u_coord.get_land_geometry(extent=extent, resolution=10)
         else:
             land_geom = None
 
-        if self.pool:
-            chunksize = min(self.size // self.pool.ncpus, 1000)
-            self.data = self.pool.map(self._one_interp_data, self.data,
-                                      itertools.repeat(time_step_h, self.size),
-                                      itertools.repeat(land_geom, self.size),
-                                      chunksize=chunksize)
+        if pool:
+            chunksize = min(self.size // pool.ncpus, 1000)
+            self.data = pool.map(self._one_interp_data, self.data,
+                                 itertools.repeat(time_step_h, self.size),
+                                 itertools.repeat(land_geom, self.size),
+                                 chunksize=chunksize)
         else:
             last_perc = 0
             new_data = []
@@ -1235,9 +1149,7 @@ class TCTracks():
         lat = np.arange(bounds[1] + 0.5 * res_deg, bounds[3], res_deg)
         lon = np.arange(bounds[0] + 0.5 * res_deg, bounds[2], res_deg)
         lon, lat = [ar.ravel() for ar in np.meshgrid(lon, lat)]
-        centroids = Centroids()
-        centroids.set_lat_lon(lat, lon)
-        return centroids
+        return Centroids.from_lat_lon(lat, lon)
 
     def plot(self, axis=None, figsize=(9, 13), legend=True, adapt_fontsize=True, **kwargs):
         """Track over earth. Historical events are blue, probabilistic black.
@@ -1325,17 +1237,29 @@ class TCTracks():
             track.attrs['orig_event_flag'] = int(track.orig_event_flag)
         xr.save_mfdataset(self.data, list_path)
 
-    def read_netcdf(self, folder_name):
-        """Read all netcdf files contained in folder and fill a track per file.
+    def read_netcdf(self, *args, **kwargs):
+        """This function is deprecated, use TCTracks.from_netcdf instead."""
+        LOGGER.warning("The use of TCTracks.read_netcdf is deprecated. "
+                       "Use TCTracks.from_netcdf instead.")
+        self.__dict__ = TCTracks.from_netcdf(*args, **kwargs).__dict__
+
+    @classmethod
+    def from_netcdf(cls, folder_name):
+        """Create new TCTracks object from NetCDF files contained in a given folder
 
         Parameters
         ----------
         folder_name : str
-            Folder name where to write files.
+            Folder name from where to read files.
+
+        Returns
+        -------
+        tracks : TCTracks
+            TCTracks with data from the given directory of NetCDF files.
         """
         file_tr = get_file_names(folder_name)
         LOGGER.info('Reading %s files.', len(file_tr))
-        self.data = list()
+        data = []
         for file in file_tr:
             if Path(file).suffix != '.nc':
                 continue
@@ -1347,9 +1271,65 @@ class TCTracks():
                                "whole life time.")
                 basin = track.basin
                 del track.attrs['basin']
-                track['basin'] = ("time", np.full(track.time.size, basin))
-            self.data.append(track)
+                track['basin'] = ("time", np.full(track.time.size, basin, dtype="<U2"))
+            data.append(track)
+        tr = cls()
+        tr.data = data
+        return tr
 
+    def write_hdf5(self, file_name, complevel=5):
+        """Write TC tracks in NetCDF4-compliant HDF5 format.
+
+        Parameters
+        ----------
+        file_name: str or Path
+            Path to a new HDF5 file. If it exists already, the file is overwritten.
+        complevel : int
+            Specifies a compression level (0-9) for the zlib compression of the data.
+            A value of 0 or None disables compression. Default: 5
+        """
+        # change dtype from bool to int to be NetCDF4-compliant, this is undone later
+        for i, track in enumerate(self.data):
+            track.attrs['orig_event_flag'] = int(track.attrs['orig_event_flag'])
+        try:
+            encoding = {
+                f'track{i}': {var: dict(zlib=True, complevel=complevel) for var in track.data_vars}
+                for i, track in enumerate(self.data)
+            }
+            ds_dict = {f'track{i}': track for i, track in enumerate(self.data)}
+            LOGGER.info('Writing %d tracks to %s', self.size, file_name)
+            _xr_to_netcdf_multi(file_name, ds_dict, encoding=encoding)
+        finally:
+            # ensure to undo the temporal change of dtype from above
+            for i, track in enumerate(self.data):
+                track.attrs['orig_event_flag'] = bool(track.attrs['orig_event_flag'])
+
+    @classmethod
+    def from_hdf5(cls, file_name):
+        """Create new TCTracks object from a NetCDF4-compliant HDF5 file
+
+        Parameters
+        ----------
+        file_name : str or Path
+            Path to a file that has been generated with `TCTracks.write_hdf`.
+
+        Returns
+        -------
+        tracks : TCTracks
+            TCTracks with data from the given HDF5 file.
+        """
+        ds_dict = _xr_open_dataset_multi(file_name, prefix="track")
+        track_no = sorted(int(key[5:]) for key in ds_dict.keys())
+        data = []
+        for i in track_no:
+            track = ds_dict[f'track{i}']
+            track.attrs['orig_event_flag'] = bool(track.attrs['orig_event_flag'])
+            # when writing '<U2' and reading in again, xarray reads as dtype 'object'. undo this:
+            track['basin'] = track['basin'].astype('<U2')
+            data.append(track)
+        tracks = cls()
+        tracks.data = data
+        return tracks
 
     def to_geodataframe(self, as_points=False, split_lines_antimeridian=True):
         """Transform this TCTracks instance into a GeoDataFrame.
@@ -1478,67 +1458,378 @@ class TCTracks():
             track_land_params(track_int, land_geom)
         return track_int
 
-    def _read_ibtracs_csv_single(self, file_name):
-        """Read IBTrACS track file in CSV format.
+def _xr_to_netcdf_multi(path, ds_dict, encoding=None):
+    """Write multiple xarray Datasets to separate groups in a single NetCDF4 file
 
-        Parameters
-        ----------
-        file_name : str
-            File name of CSV file.
-        """
-        LOGGER.info('Reading %s', file_name)
-        # keep_default_na=False avoids interpreting the North Atlantic ('NA') basin as a NaN-value
-        dfr = pd.read_csv(file_name, keep_default_na=False)
-        name = dfr['ibtracsID'].values[0]
+    Contrary to xarray's `to_netcdf` functionality, this only supports the "NETCDF4" format and the
+    "netcdf4" engine since the groups feature has been introduced by NetCDF version 4.
 
-        datetimes = list()
-        for time in dfr['isotime'].values:
-            year = np.fix(time / 1e6)
-            time = time - year * 1e6
-            month = np.fix(time / 1e4)
-            time = time - month * 1e4
-            day = np.fix(time / 1e2)
-            hour = time - day * 1e2
-            datetimes.append(dt.datetime(int(year), int(month), int(day),
-                                         int(hour)))
+    Parameters
+    ----------
+    path : str or Path
+        Path of the target NetCDF file.
+    ds_dict : dict whose keys are group names and values are xr.Dataset
+        Each xr.Dataset in the dict is stored in the group identified by its key in the dict.
+        Note that an empty string ("") is a valid group name and refers to the root group.
+    encoding : dict whose keys are group names and values are dict, optional
+        For each dataset/group, one dict that is compliant with the format of the `encoding`
+        keyword parameter in `xr.Dataset.to_netcdf`. Default: None
+    """
+    path = str(pathlib.Path(path).expanduser().absolute())
+    with contextlib.closing(NetCDF4DataStore.open(path, "w", "NETCDF4", None)) as store:
+        writer = ArrayWriter()
+        for group, dataset in ds_dict.items():
+            store._group = group
+            unlimited_dims = dataset.encoding.get("unlimited_dims", None)
+            encoding = None if encoding is None or group not in encoding else encoding[group]
+            dump_to_store(dataset, store, writer, encoding=encoding, unlimited_dims=unlimited_dims)
 
-        lat = dfr['cgps_lat'].values.astype('float')
-        lon = dfr['cgps_lon'].values.astype('float')
-        cen_pres = dfr['pcen'].values.astype('float')
-        max_sus_wind = dfr['vmax'].values.astype('float')
-        max_sus_wind_unit = 'kn'
-        if np.any(cen_pres <= 0):
-            # Warning: If any pressure value is invalid, this enforces to use
-            # estimated pressure values everywhere!
-            cen_pres[:] = -999
-            cen_pres = _estimate_pressure(cen_pres, lat, lon, max_sus_wind)
+def _xr_open_dataset_multi(path, prefix=""):
+    """Read multiple xarray Datasets from groups contained in a single NetCDF4 file
 
-        tr_ds = xr.Dataset()
-        tr_ds.coords['time'] = ('time', datetimes)
-        tr_ds.coords['lat'] = ('time', lat)
-        tr_ds.coords['lon'] = ('time', lon)
-        tr_ds['time_step'] = ('time', dfr['tint'].values)
-        tr_ds['radius_max_wind'] = ('time', dfr['rmax'].values.astype('float'))
-        tr_ds['max_sustained_wind'] = ('time', max_sus_wind)
-        tr_ds['central_pressure'] = ('time', cen_pres)
-        tr_ds['environmental_pressure'] = ('time', dfr['penv'].values.astype('float'))
-        tr_ds['basin'] = ('time', dfr['gen_basin'].values.astype('<U2'))
-        tr_ds.attrs['max_sustained_wind_unit'] = max_sus_wind_unit
-        tr_ds.attrs['central_pressure_unit'] = 'mb'
-        tr_ds.attrs['name'] = name
-        tr_ds.attrs['sid'] = name
-        tr_ds.attrs['orig_event_flag'] = bool(dfr['original_data']. values[0])
-        tr_ds.attrs['data_provider'] = dfr['data_provider'].values[0]
+    The data is loaded into memory
+
+    Contrary to xarray's `open_dataset` functionality, this only supports the "netcdf4" engine
+    since the groups feature has been introduced by NetCDF version 4.
+
+    Parameters
+    ----------
+    path : str or Path
+        Path of the NetCDF file to read.
+    prefix : str, optional
+        If given, only read groups whose name starts with this prefix. Default: ""
+
+    Returns
+    -------
+    ds_dict : dict whose keys are group names and values are xr.Dataset
+        Each xr.Dataset in the dict is taken from the group identified by its key in the dict.
+        Note that an empty string ("") is a valid group name and refers to the root group.
+    """
+    path = str(pathlib.Path(path).expanduser().absolute())
+    ds_dict = {}
+    with contextlib.closing(NetCDF4DataStore.open(path, "r", "NETCDF4", None)) as store:
+        groups = [g for g in _xr_nc4_groups_from_store(store) if g.startswith(prefix)]
+        store_entrypoint = StoreBackendEntrypoint()
+        LOGGER.info('Reading %d datasets from %s', len(groups), path)
+        for group in groups:
+            store._group = group
+            ds = store_entrypoint.open_dataset(store)
+            ds.load()
+            ds_dict[group] = ds
+    return ds_dict
+
+def _xr_nc4_groups_from_store(store):
+    """List all groups contained in the given NetCDF4 data store
+
+    Parameters
+    ----------
+    store : xarray.backend.NetCDF4DataStore
+
+    Returns
+    -------
+    list of str
+    """
+    def iter_groups(ds, prefix=""):
+        groups = [""]
+        for group_name, group_ds in ds.groups.items():
+            groups.extend([f"{prefix}{group_name}{subgroup}"
+                           for subgroup in iter_groups(group_ds, prefix="/")])
+        return groups
+    with store._manager.acquire_context(False) as root:
+        return iter_groups(root)
+
+def _read_one_gettelman(nc_data, i_track):
+    """Read a single track from Andrew Gettelman's NetCDF dataset
+
+    Parameters
+    ----------
+    nc_data : nc.Dataset
+        Opened NetCDF dataset.
+    i_track : int
+        Track number within the dataset.
+
+    Returns
+    -------
+    xr.Dataset
+    """
+    scale_to_10m = (10. / 60.)**.11
+    mps2kts = 1.94384
+    basin_dict = {0: 'NA - North Atlantic',
+                  1: 'SA - South Atlantic',
+                  2: 'WP - West Pacific',
+                  3: 'EP - East Pacific',
+                  4: 'SP - South Pacific',
+                  5: 'NI - North Indian',
+                  6: 'SI - South Indian',
+                  7: 'AS - Arabian Sea',
+                  8: 'BB - Bay of Bengal',
+                  9: 'EA - Eastern Australia',
+                  10: 'WA - Western Australia',
+                  11: 'CP - Central Pacific',
+                  12: 'CS - Carribbean Sea',
+                  13: 'GM - Gulf of Mexico',
+                  14: 'MM - Missing'}
+
+    val_len = nc_data.variables['numObs'][i_track]
+    sid = str(i_track)
+    times = nc_data.variables['source_time'][i_track, :][:val_len]
+
+    datetimes = list()
+    for time in times:
         try:
-            tr_ds.attrs['id_no'] = float(name.replace('N', '0').
-                                         replace('S', '1'))
+            datetimes.append(
+                dt.datetime.strptime(
+                    str(nc.num2date(time, 'days since {}'.format('1858-11-17'),
+                                    calendar='standard')),
+                    '%Y-%m-%d %H:%M:%S'))
         except ValueError:
-            tr_ds.attrs['id_no'] = float(str(datetimes[0].date()).
-                                         replace('-', ''))
-        tr_ds.attrs['category'] = set_category(max_sus_wind, max_sus_wind_unit)
+            # If wrong t, set t to previous t plus 3 hours
+            if datetimes:
+                datetimes.append(datetimes[-1] + dt.timedelta(hours=3))
+            else:
+                pos = list(times).index(time)
+                time = times[pos + 1] - 1 / 24 * 3
+                datetimes.append(
+                    dt.datetime.strptime(
+                        str(nc.num2date(time, 'days since {}'.format('1858-11-17'),
+                                        calendar='standard')),
+                        '%Y-%m-%d %H:%M:%S'))
+    time_step = []
+    for i_time, time in enumerate(datetimes[1:], 1):
+        time_step.append((time - datetimes[i_time - 1]).total_seconds() / 3600)
+    time_step.append(time_step[-1])
 
-        self.data.append(tr_ds)
+    basins_numeric = nc_data.variables['basin'][i_track, :val_len]
+    basins = [basin_dict[b] if b in basin_dict else basin_dict[14] for b in basins_numeric]
 
+    lon = nc_data.variables['lon'][i_track, :][:val_len]
+    lon[lon > 180] = lon[lon > 180] - 360  # change lon format to -180 to 180
+    lat = nc_data.variables['lat'][i_track, :][:val_len]
+    cen_pres = nc_data.variables['pres'][i_track, :][:val_len]
+    av_prec = nc_data.variables['precavg'][i_track, :][:val_len]
+    max_prec = nc_data.variables['precmax'][i_track, :][:val_len]
+
+    # m/s to kn
+    wind = nc_data.variables['wind'][i_track, :][:val_len] * mps2kts * scale_to_10m
+    if not all(wind.data):  # if wind is empty
+        wind = np.ones(wind.size) * -999.9
+
+    tr_df = pd.DataFrame({'time': datetimes, 'lat': lat, 'lon': lon,
+                          'max_sustained_wind': wind,
+                          'central_pressure': cen_pres,
+                          'environmental_pressure': np.ones(lat.size) * 1015.,
+                          'radius_max_wind': np.ones(lat.size) * 65.,
+                          'maximum_precipitation': max_prec,
+                          'average_precipitation': av_prec,
+                          'basin': [b[:2] for b in basins],
+                          'time_step': time_step})
+
+    # construct xarray
+    tr_ds = xr.Dataset.from_dataframe(tr_df.set_index('time'))
+    tr_ds.coords['lat'] = ('time', tr_ds.lat.values)
+    tr_ds.coords['lon'] = ('time', tr_ds.lon.values)
+    tr_ds['basin'] = tr_ds['basin'].astype('<U2')
+    tr_ds.attrs = {'max_sustained_wind_unit': 'kn',
+                   'central_pressure_unit': 'mb',
+                   'sid': sid,
+                   'name': sid, 'orig_event_flag': False,
+                   'id_no': i_track,
+                   'category': set_category(wind, 'kn')}
+    return tr_ds
+
+def _read_file_emanuel(path, hemisphere=None, rmw_corr=False):
+    """Read track data from file containing Kerry Emanuel simulations.
+
+    Parameters
+    ----------
+    path : str
+        absolute path of file to read.
+    hemisphere : str or None, optional
+        For global data sets, restrict to northern ('N') or southern ('S') hemisphere.
+        Default: None (no restriction)
+    rmw_corr : str, optional
+        If True, multiply the radius of maximum wind by factor 2. Default: False.
+
+    Returns
+    -------
+    list(xr.Dataset)
+    """
+    LOGGER.info('Reading %s.', path)
+    data_mat = matlab.loadmat(path)
+    basin = str(data_mat['bas'][0])
+
+    hem_min, hem_max = -90, 90
+    # for backwards compatibility, also check for value 'both'
+    if basin == "GB" and hemisphere != 'both' and hemisphere is not None:
+        if hemisphere == 'S':
+            hem_min, hem_max = -90, 0
+            basin = "S"
+        elif hemisphere == 'N':
+            hem_min, hem_max = 0, 90
+            basin = "N"
+        else:
+            raise ValueError(f"Unknown hemisphere: '{hemisphere}'. Use 'N' or 'S' or None.")
+
+    lat = data_mat['latstore']
+    ntracks, nnodes = lat.shape
+    years_uniq = np.unique(data_mat['yearstore'])
+    LOGGER.info("File contains %s tracks (at most %s nodes each), "
+                "representing %s years (%s-%s).", ntracks, nnodes,
+                years_uniq.size, years_uniq[0], years_uniq[-1])
+
+    # filter according to chosen hemisphere
+    hem_mask = (lat >= hem_min) & (lat <= hem_max) | (lat == 0)
+    hem_idx = np.all(hem_mask, axis=1).nonzero()[0]
+    data_hem = lambda keys: [data_mat[f'{k}store'][hem_idx] for k in keys]
+
+    lat, lon = data_hem(['lat', 'long'])
+    months, days, hours = data_hem(['month', 'day', 'hour'])
+    months, days, hours = [np.int8(ar) for ar in [months, days, hours]]
+    tc_rmw, tc_maxwind, tc_pressure = data_hem(['rm', 'v', 'p'])
+    years = data_mat['yearstore'][0, hem_idx]
+
+    ntracks, nnodes = lat.shape
+    LOGGER.info("Loading %s tracks%s.", ntracks,
+                f" on {hemisphere} hemisphere" if hemisphere in ['N', 'S'] else "")
+
+    # change lon format to -180 to 180
+    lon[lon > 180] = lon[lon > 180] - 360
+
+    # change units from kilometers to nautical miles
+    tc_rmw = (tc_rmw * ureg.kilometer).to(ureg.nautical_mile).magnitude
+    if rmw_corr:
+        LOGGER.info("Applying RMW correction.")
+        tc_rmw *= EMANUEL_RMW_CORR_FACTOR
+
+    data = []
+    for i_track in range(lat.shape[0]):
+        valid_idx = (lat[i_track, :] != 0).nonzero()[0]
+        nnodes = valid_idx.size
+        time_step = np.abs(np.diff(hours[i_track, valid_idx])).min()
+
+        # deal with change of year
+        year = np.full(valid_idx.size, years[i_track])
+        year_change = (np.diff(months[i_track, valid_idx]) < 0)
+        year_change = year_change.nonzero()[0]
+        if year_change.size > 0:
+            year[year_change[0] + 1:] += 1
+
+        try:
+            datetimes = map(dt.datetime, year,
+                            months[i_track, valid_idx],
+                            days[i_track, valid_idx],
+                            hours[i_track, valid_idx])
+            datetimes = list(datetimes)
+        except ValueError as err:
+            # dates are known to contain invalid February 30
+            date_feb = (months[i_track, valid_idx] == 2) \
+                     & (days[i_track, valid_idx] > 28)
+            if np.count_nonzero(date_feb) == 0:
+                # unknown invalid date issue
+                raise err
+            step = time_step if not date_feb[0] else -time_step
+            reference_idx = 0 if not date_feb[0] else -1
+            reference_date = dt.datetime(
+                year[reference_idx],
+                months[i_track, valid_idx[reference_idx]],
+                days[i_track, valid_idx[reference_idx]],
+                hours[i_track, valid_idx[reference_idx]],)
+            datetimes = [reference_date + dt.timedelta(hours=int(step * i))
+                         for i in range(nnodes)]
+        datetimes = [cftime.DatetimeProlepticGregorian(d.year, d.month, d.day, d.hour)
+                     for d in datetimes]
+
+        max_sustained_wind = tc_maxwind[i_track, valid_idx]
+        max_sustained_wind_unit = 'kn'
+        env_pressure = np.full(nnodes, DEF_ENV_PRESSURE)
+        category = set_category(max_sustained_wind,
+                                max_sustained_wind_unit,
+                                SAFFIR_SIM_CAT)
+        tr_ds = xr.Dataset({
+            'time_step': ('time', np.full(nnodes, time_step)),
+            'radius_max_wind': ('time', tc_rmw[i_track, valid_idx]),
+            'max_sustained_wind': ('time', max_sustained_wind),
+            'central_pressure': ('time', tc_pressure[i_track, valid_idx]),
+            'environmental_pressure': ('time', env_pressure),
+            'basin': ('time', np.full(nnodes, basin, dtype="<U2")),
+        }, coords={
+            'time': datetimes,
+            'lat': ('time', lat[i_track, valid_idx]),
+            'lon': ('time', lon[i_track, valid_idx]),
+        }, attrs={
+            'max_sustained_wind_unit': max_sustained_wind_unit,
+            'central_pressure_unit': 'mb',
+            'name': str(hem_idx[i_track]),
+            'sid': str(hem_idx[i_track]),
+            'orig_event_flag': True,
+            'data_provider': 'Emanuel',
+            'id_no': hem_idx[i_track],
+            'category': category,
+        })
+        data.append(tr_ds)
+    return data
+
+def _read_ibtracs_csv_single(file_name):
+    """Read single track from IBTrACS file in (legacy) CSV format.
+
+    Parameters
+    ----------
+    file_name : str
+        File name of CSV file.
+
+    Returns
+    -------
+    xr.Dataset
+    """
+    LOGGER.info('Reading %s', file_name)
+    # keep_default_na=False avoids interpreting the North Atlantic ('NA') basin as a NaN-value
+    dfr = pd.read_csv(file_name, keep_default_na=False)
+    name = dfr['ibtracsID'].values[0]
+
+    datetimes = list()
+    for time in dfr['isotime'].values:
+        year = np.fix(time / 1e6)
+        time = time - year * 1e6
+        month = np.fix(time / 1e4)
+        time = time - month * 1e4
+        day = np.fix(time / 1e2)
+        hour = time - day * 1e2
+        datetimes.append(dt.datetime(int(year), int(month), int(day), int(hour)))
+
+    lat = dfr['cgps_lat'].values.astype('float')
+    lon = dfr['cgps_lon'].values.astype('float')
+    cen_pres = dfr['pcen'].values.astype('float')
+    max_sus_wind = dfr['vmax'].values.astype('float')
+    max_sus_wind_unit = 'kn'
+    if np.any(cen_pres <= 0):
+        # Warning: If any pressure value is invalid, this enforces to use
+        # estimated pressure values everywhere!
+        cen_pres[:] = -999
+        cen_pres = _estimate_pressure(cen_pres, lat, lon, max_sus_wind)
+
+    tr_ds = xr.Dataset()
+    tr_ds.coords['time'] = ('time', datetimes)
+    tr_ds.coords['lat'] = ('time', lat)
+    tr_ds.coords['lon'] = ('time', lon)
+    tr_ds['time_step'] = ('time', dfr['tint'].values)
+    tr_ds['radius_max_wind'] = ('time', dfr['rmax'].values.astype('float'))
+    tr_ds['max_sustained_wind'] = ('time', max_sus_wind)
+    tr_ds['central_pressure'] = ('time', cen_pres)
+    tr_ds['environmental_pressure'] = ('time', dfr['penv'].values.astype('float'))
+    tr_ds['basin'] = ('time', dfr['gen_basin'].values.astype('<U2'))
+    tr_ds.attrs['max_sustained_wind_unit'] = max_sus_wind_unit
+    tr_ds.attrs['central_pressure_unit'] = 'mb'
+    tr_ds.attrs['name'] = name
+    tr_ds.attrs['sid'] = name
+    tr_ds.attrs['orig_event_flag'] = bool(dfr['original_data']. values[0])
+    tr_ds.attrs['data_provider'] = dfr['data_provider'].values[0]
+    try:
+        tr_ds.attrs['id_no'] = float(name.replace('N', '0').replace('S', '1'))
+    except ValueError:
+        tr_ds.attrs['id_no'] = float(str(datetimes[0].date()).replace('-', ''))
+    tr_ds.attrs['category'] = set_category(max_sus_wind, max_sus_wind_unit)
+
+    return tr_ds
 
 def track_land_params(track, land_geom):
     """Compute parameters of land for one track.

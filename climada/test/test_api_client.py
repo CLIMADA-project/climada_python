@@ -25,7 +25,7 @@ from shutil import rmtree
 import numpy as np
 
 from climada import CONFIG
-from climada.util.api_client import Client, Download
+from climada.util.api_client import Client, DataTypeShortInfo, Download
 
 DATA_DIR = CONFIG.test_data.dir()
 
@@ -35,48 +35,50 @@ class TestClient(unittest.TestCase):
 
     def test_data_type(self):
         """"""
-        lpdt = Client().get_data_type("litpop")
-        self.assertEqual(lpdt.data_type, 'litpop')
-        self.assertEqual(lpdt.data_type_group, 'exposures')
+        lpdt = Client().get_data_type_info("tropical_cyclone")
+        self.assertEqual(lpdt.data_type, 'tropical_cyclone')
+        self.assertEqual(lpdt.data_type_group, 'hazard')
+        self.assertTrue('res_arcsec' in [p['property'] for p in lpdt.properties if p['mandatory']])
+        self.assertTrue('ref_year' in [p['property'] for p in lpdt.properties if not p['mandatory']])
 
     def test_data_types(self):
         """"""
-        exdts = Client().get_data_types("exposures")
+        exdts = Client().list_data_type_infos("exposures")
         self.assertTrue('litpop' in [exdt.data_type for exdt in exdts])
 
     def test_datasets(self):
         """"""
-        datasets = Client().get_datasets(status=None, name='FAOSTAT_data_producer_prices')
+        datasets = Client().list_dataset_infos(status=None, name='FAOSTAT_data_producer_prices')
         self.assertEqual(len(datasets), 1)
 
     def test_dataset(self):
         """"""
         client = Client()
 
-        dataset = client.get_dataset(name='FAOSTAT_data_producer_prices')
+        dataset = client.get_dataset_info(name='FAOSTAT_data_producer_prices', status='test_dataset')
         self.assertEqual(dataset.version, 'v1')
         self.assertEqual(len(dataset.files), 1)
         self.assertEqual(dataset.files[0].file_size, 26481)
-        self.assertEqual(dataset.data_type.data_type, 'crop_production')
+        self.assertEqual(dataset.data_type, DataTypeShortInfo('crop_production', 'exposures'))
 
-        dataset2 = client.get_dataset_by_uuid(dataset.uuid)
+        dataset2 = client.get_dataset_info_by_uuid(dataset.uuid)
         self.assertEqual(dataset, dataset2)
 
     def test_download_file(self):
         """"""
         client = Client()
         client.MAX_WAITING_PERIOD = 0.1
-        dataset = client.get_dataset(name='FAOSTAT_data_producer_prices')
+        dataset = client.get_dataset_info(name='FAOSTAT_data_producer_prices', status='test_dataset')
 
         # test failure
         def fail(x, y):
             raise Download.Failed("on purpose")
         self.assertRaises(Download.Failed,
-            client.download_file, DATA_DIR, dataset.files[0], check=fail)
+            client._download_file, DATA_DIR, dataset.files[0], check=fail)
         self.assertFalse(DATA_DIR.joinpath(dataset.files[0].file_name).is_file())
 
         # test success
-        download = client.download_file(DATA_DIR, dataset.files[0])
+        download = client._download_file(DATA_DIR, dataset.files[0])
         self.assertEqual(download, DATA_DIR / dataset.files[0].file_name)
         self.assertTrue(download.is_file())
         self.assertEqual(download.stat().st_size, dataset.files[0].file_size)
@@ -88,7 +90,7 @@ class TestClient(unittest.TestCase):
         client = Client()
         client.MAX_WAITING_PERIOD = 0.1
 
-        dataset = client.get_dataset(name='test_write_raster')
+        dataset = client.get_dataset_info(name='test_write_raster', status='test_dataset')
         download_dir, downloads = client.download_dataset(dataset, target_dir=DATA_DIR)
         self.assertEqual(download_dir.name, dataset.version)
         self.assertEqual(download_dir.parent.name, dataset.name)
@@ -105,12 +107,11 @@ class TestClient(unittest.TestCase):
     def test_get_exposures(self):
         client = Client()
         exposures = client.get_exposures(exposures_type='litpop',
-                                         properties={'country_iso3alpha': ['CHE', 'AUT'],
+                                         properties={'country_iso3alpha': 'AUT',
                                                      'fin_mode': 'pop', 'exponents': '(0,1)'},
                                          dump_dir=DATA_DIR)
-        self.assertEqual(len(exposures.gdf), 8583)
-        self.assertEqual(np.min(exposures.gdf.region_id), 40)
-        self.assertEqual(np.max(exposures.gdf.region_id), 756)
+        self.assertEqual(len(exposures.gdf), 5782)
+        self.assertEqual(np.unique(exposures.gdf.region_id), 40)
         self.assertTrue('[0, 1]' in exposures.tag.description)
         self.assertTrue('pop' in exposures.tag.description)
         exposures
@@ -119,60 +120,46 @@ class TestClient(unittest.TestCase):
         client = Client()
         with self.assertRaises(ValueError) as cm:
             client.get_exposures(exposures_type='river_flood', 
-                                 properties={'country_iso3alpha': ['CHE', 'AUT'],
+                                 properties={'country_iso3alpha': 'AUT',
                                              'fin_mode': 'pop', 'exponents': '(0,1)'},
                                  dump_dir=DATA_DIR)
         self.assertIn('Valid exposures types are a subset of CLIMADA exposures types. Currently',
                       str(cm.exception))
 
-        with self.assertRaises(ValueError) as cm:
+        with self.assertRaises(Client.AmbiguousResult) as cm:
             client.get_exposures(exposures_type='litpop', 
-                                 properties={'fin_mode': 'pop', 'exponents': '(0,1)'},
+                                 properties={'country_iso3alpha': 'AUT'},
                                  dump_dir=DATA_DIR)
-        self.assertIn(' datasets matching the query and the limit is set to 10.\nYou can force ',
+        self.assertIn('there are several datasets meeting the requirements',
                       str(cm.exception))
 
     def test_get_hazard(self):
         client = Client()
         hazard = client.get_hazard(hazard_type='river_flood',
-                                   max_datasets=10,
-                                   properties={'country_name': ['Switzerland', 'Austria'],
-                                               'year_range': '2010_2030', 'rcp': 'rcp26'},
+                                   properties={'country_name': 'Austria',
+                                               'year_range': '2010_2030', 'climate_scenario': 'rcp26'},
                                    dump_dir=DATA_DIR)
-        self.assertEqual(np.shape(hazard.intensity), (960, 8601))
-        self.assertEqual(np.min(hazard.centroids.region_id), 40)
-        self.assertEqual(np.max(hazard.centroids.region_id), 756)
+        self.assertEqual(np.shape(hazard.intensity), (1440, 5784))
+        self.assertEqual(np.unique(hazard.centroids.region_id), 40)
         self.assertEqual(np.unique(hazard.date).size, 20)
         self.assertEqual(hazard.tag.haz_type, 'RF')
-        hazard
 
     def test_get_hazard_fails(self):
         client = Client()
         with self.assertRaises(ValueError) as cm:
             client.get_hazard(hazard_type='litpop', 
-                              properties={'country_name': ['Switzerland', 'Austria'],
-                                          'year_range': '2010_2030', 'rcp': 'rcp26'},
+                              properties={'country_name': 'Austria',
+                                          'year_range': '2010_2030', 'climate_scenario': 'rcp26'},
                               dump_dir=DATA_DIR)
         self.assertIn('Valid hazard types are a subset of CLIMADA hazard types. Currently',
                       str(cm.exception))
 
-        with self.assertRaises(ValueError) as cm:
-            client.get_hazard(hazard_type='river_flood',
-                              max_datasets=10,
-                              properties={'country_name': ['Switzerland', 'Austria'],
-                                          'year_range': '2010_2030', 'rcp': ['rcp26', 'rcp85']},
-                              dump_dir=DATA_DIR)
-        self.assertEqual("Cannot combine datasets, there are distinct values for these properties"
-                         " in your selection: ['rcp']",
-                         str(cm.exception))
-
-        with self.assertRaises(ValueError) as cm:
+        with self.assertRaises(Client.AmbiguousResult) as cm:
             client.get_hazard(hazard_type='river_flood',
                               properties={'country_name': ['Switzerland', 'Austria'],
-                                          'year_range': '2010_2030', 'rcp': ['rcp26', 'rcp85']},
+                                          'year_range': '2010_2030', 'climate_scenario': ['rcp26', 'rcp85']},
                               dump_dir=DATA_DIR)
-        self.assertIn(' datasets matching the query and the limit is set to 1.\nYou can force ',
-                      str(cm.exception))
+        self.assertIn('there are several datasets meeting the requirements:', str(cm.exception))
 
     def test_get_litpop_default(self):
         client = Client()
@@ -181,10 +168,10 @@ class TestClient(unittest.TestCase):
         self.assertEqual(np.unique(litpop.gdf.region_id), 442)
         self.assertTrue('[1, 1]' in litpop.tag.description)
         self.assertTrue('pc' in litpop.tag.description)
-    
+
     def test_multi_filter(self):
         client = Client()
-        testds = client.get_datasets(data_type='storm_europe')
+        testds = client.list_dataset_infos(data_type='storm_europe')
 
         # assert no systemic loss in filtering
         still = client._filter_datasets(testds, dict())

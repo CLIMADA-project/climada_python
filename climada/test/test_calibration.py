@@ -45,8 +45,7 @@ class TestCalib(unittest.TestCase):
         ent.check()
 
         # Read default hazard file
-        hazard = Hazard('TC')
-        hazard.read_mat(HAZ_TEST_MAT)
+        hazard = Hazard.from_mat(HAZ_TEST_MAT)
 
         # get impact function from set
         imp_func = ent.impact_funcs.get_func(hazard.tag.haz_type,

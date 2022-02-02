@@ -39,8 +39,7 @@ class TestInterpolation(unittest.TestCase):
     def test_set_step(self):
         """Check default impact function: step function"""
         inten = (0, 5, 10)
-        imp_fun = ImpactFunc()
-        imp_fun.set_step_impf(inten)
+        imp_fun = ImpactFunc.from_step_impf(inten)
         self.assertTrue(np.array_equal(imp_fun.paa, np.ones(4)))
         self.assertTrue(np.array_equal(imp_fun.mdd, np.array([0, 0, 1, 1])))
         self.assertTrue(np.array_equal(imp_fun.intensity, np.array([0, 5, 5, 10])))
@@ -48,8 +47,7 @@ class TestInterpolation(unittest.TestCase):
     def test_set_sigmoid(self):
         """Check default impact function: sigmoid function"""
         inten = (0, 100, 5)
-        imp_fun = ImpactFunc()
-        imp_fun.set_sigmoid_impf(inten, L=1.0, k=2., x0=50.)
+        imp_fun = ImpactFunc.from_sigmoid_impf(inten, L=1.0, k=2., x0=50.)
         self.assertTrue(np.array_equal(imp_fun.paa, np.ones(20)))
         self.assertEqual(imp_fun.mdd[10], 0.5)
         self.assertEqual(imp_fun.mdd[-1], 1.0)

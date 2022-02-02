@@ -42,8 +42,7 @@ TEST_TRACK_DECAY_PENV_GT_PCEN_HIST = DATA_DIR.joinpath('1988021S12080.nc')
 class TestDecay(unittest.TestCase):
     def test_apply_decay_no_landfall_pass(self):
         """Test _apply_land_decay with no historical tracks with landfall"""
-        tc_track = tc.TCTracks()
-        tc_track.read_processed_ibtracs_csv(TEST_TRACK_SHORT)
+        tc_track = tc.TCTracks.from_processed_ibtracs_csv(TEST_TRACK_SHORT)
         extent = tc_track.get_extent()
         land_geom = climada.util.coordinates.get_land_geometry(
             extent=extent, resolution=10
@@ -83,8 +82,7 @@ class TestDecay(unittest.TestCase):
             5: (1.0499941, 0.007978940084158488)
         }
 
-        tc_track = tc.TCTracks()
-        tc_track.read_processed_ibtracs_csv(TC_ANDREW_FL)
+        tc_track = tc.TCTracks.from_processed_ibtracs_csv(TC_ANDREW_FL)
         tc_track.data[0]['orig_event_flag'] = False
         extent = tc_track.get_extent()
         land_geom = climada.util.coordinates.get_land_geometry(
@@ -177,8 +175,7 @@ class TestDecay(unittest.TestCase):
 
     def test_calc_decay_no_landfall_pass(self):
         """Test _calc_land_decay with no historical tracks with landfall"""
-        tc_track = tc.TCTracks()
-        tc_track.read_processed_ibtracs_csv(TEST_TRACK_SHORT)
+        tc_track = tc.TCTracks.from_processed_ibtracs_csv(TEST_TRACK_SHORT)
         expected_warning = 'only %s historical tracks were provided. ' % len(tc_track.data)
         extent = tc_track.get_extent()
         land_geom = climada.util.coordinates.get_land_geometry(
@@ -192,8 +189,7 @@ class TestDecay(unittest.TestCase):
 
     def test_calc_land_decay_pass(self):
         """Test _calc_land_decay with environmental pressure function."""
-        tc_track = tc.TCTracks()
-        tc_track.read_processed_ibtracs_csv(TC_ANDREW_FL)
+        tc_track = tc.TCTracks.from_processed_ibtracs_csv(TC_ANDREW_FL)
         extent = tc_track.get_extent()
         land_geom = climada.util.coordinates.get_land_geometry(
             extent=extent, resolution=10
@@ -214,8 +210,7 @@ class TestDecay(unittest.TestCase):
 
     def test_decay_values_andrew_pass(self):
         """Test _decay_values with central pressure function."""
-        tc_track = tc.TCTracks()
-        tc_track.read_processed_ibtracs_csv(TC_ANDREW_FL)
+        tc_track = tc.TCTracks.from_processed_ibtracs_csv(TC_ANDREW_FL)
         s_rel = False
         extent = tc_track.get_extent()
         land_geom = climada.util.coordinates.get_land_geometry(
@@ -295,8 +290,7 @@ class TestDecay(unittest.TestCase):
 
     def test_wrong_decay_pass(self):
         """Test decay not implemented when coefficient < 1"""
-        track = tc.TCTracks()
-        track.read_ibtracs_netcdf(provider='usa', storm_id='1975178N28281')
+        track = tc.TCTracks.from_ibtracs_netcdf(provider='usa', storm_id='1975178N28281')
 
         track_gen = track.data[0]
         track_gen['lat'] = np.array([
@@ -364,10 +358,9 @@ class TestDecay(unittest.TestCase):
 
     def test_decay_end_ocean(self):
         """Test decay is applied after landfall if the track ends over the ocean"""
-        tracks_synth_nodecay_example = tc.TCTracks()
         # this track was generated without applying landfall decay
         # (i.e. with decay=False in tc_synth.calc_perturbed_trajectories)
-        tracks_synth_nodecay_example.read_netcdf(TEST_TRACK_DECAY_END_OCEAN)
+        tracks_synth_nodecay_example = tc.TCTracks.from_netcdf(TEST_TRACK_DECAY_END_OCEAN)
 
         # apply landfall decay
         extent = tracks_synth_nodecay_example.get_extent()
@@ -382,8 +375,7 @@ class TestDecay(unittest.TestCase):
         track = tracks_synth_nodecay_example.data[0]
 
         # read its corresponding historical track
-        track_hist = tc.TCTracks()
-        track_hist.read_netcdf(TEST_TRACK_DECAY_END_OCEAN_HIST)
+        track_hist = tc.TCTracks.from_netcdf(TEST_TRACK_DECAY_END_OCEAN_HIST)
         track_hist = track_hist.data[0]
 
         # Part 1: is landfall applied after going back to the ocean?
@@ -416,10 +408,9 @@ class TestDecay(unittest.TestCase):
 
     def test_decay_penv_gt_pcen(self):
         """Test decay is applied if penv at end of landfall < pcen just before landfall"""
-        tracks_synth_nodecay_example = tc.TCTracks()
         # this track was generated without applying landfall decay
         # (i.e. with decay=False in tc_synth.calc_perturbed_trajectories)
-        tracks_synth_nodecay_example.read_netcdf(TEST_TRACK_DECAY_PENV_GT_PCEN)
+        tracks_synth_nodecay_example = tc.TCTracks.from_netcdf(TEST_TRACK_DECAY_PENV_GT_PCEN)
 
         # apply landfall decay
         extent = tracks_synth_nodecay_example.get_extent()
@@ -434,8 +425,7 @@ class TestDecay(unittest.TestCase):
         track = tracks_synth_nodecay_example.data[0]
 
         # read its corresponding historical track
-        track_hist = tc.TCTracks()
-        track_hist.read_netcdf(TEST_TRACK_DECAY_PENV_GT_PCEN_HIST)
+        track_hist = tc.TCTracks.from_netcdf(TEST_TRACK_DECAY_PENV_GT_PCEN_HIST)
         track_hist = track_hist.data[0]
 
         # Part 1: is landfall applied after going back to the ocean?
@@ -501,8 +491,7 @@ class TestSynth(unittest.TestCase):
 
     def test_random_no_landfall_pass(self):
         """Test calc_perturbed_trajectories with decay and no historical tracks with landfall"""
-        tc_track = tc.TCTracks()
-        tc_track.read_processed_ibtracs_csv(TEST_TRACK_SHORT)
+        tc_track = tc.TCTracks.from_processed_ibtracs_csv(TEST_TRACK_SHORT)
         expected_warning = 'only %s historical tracks were provided. ' % len(tc_track.data)
         with self.assertLogs('climada.hazard.tc_tracks_synth', level='INFO') as cm:
             tc_track.calc_perturbed_trajectories(use_global_decay_params=False)
@@ -511,8 +500,7 @@ class TestSynth(unittest.TestCase):
 
     def test_random_walk_ref_pass(self):
         """Test against MATLAB reference."""
-        tc_track = tc.TCTracks()
-        tc_track.read_processed_ibtracs_csv(TEST_TRACK_SHORT)
+        tc_track = tc.TCTracks.from_processed_ibtracs_csv(TEST_TRACK_SHORT)
         nb_synth_tracks = 2
         tc_track.calc_perturbed_trajectories(nb_synth_tracks=nb_synth_tracks, seed=25, decay=False)
 
@@ -550,9 +538,8 @@ class TestSynth(unittest.TestCase):
 
     def test_random_walk_decay_pass(self):
         """Test land decay is called from calc_perturbed_trajectories."""
-        tc_track = tc.TCTracks()
         assert TC_ANDREW_FL.is_file()
-        tc_track.read_processed_ibtracs_csv(TC_ANDREW_FL)
+        tc_track = tc.TCTracks.from_processed_ibtracs_csv(TC_ANDREW_FL)
         nb_synth_tracks = 2
         # should work if using global parameters
         with self.assertLogs('climada.hazard.tc_tracks_synth', level='DEBUG') as cm0:
@@ -561,8 +548,7 @@ class TestSynth(unittest.TestCase):
         self.assertEqual(len(cm0), 2)
         self.assertEqual(tc_track.size, 3)
         # but alert the user otherwise
-        tc_track = tc.TCTracks()
-        tc_track.read_processed_ibtracs_csv(TC_ANDREW_FL)
+        tc_track = tc.TCTracks.from_processed_ibtracs_csv(TC_ANDREW_FL)
         with self.assertLogs('climada.hazard.tc_tracks_synth', level='DEBUG') as cm:
             tc_track.calc_perturbed_trajectories(nb_synth_tracks=nb_synth_tracks, seed=25, decay=True,
                                                  use_global_decay_params=False)
@@ -582,8 +568,7 @@ class TestSynth(unittest.TestCase):
 
     def test_random_walk_identical_pass(self):
         """Test 0 perturbation leads to identical tracks."""
-        tc_track = tc.TCTracks()
-        tc_track.read_processed_ibtracs_csv(TC_ANDREW_FL)
+        tc_track = tc.TCTracks.from_processed_ibtracs_csv(TC_ANDREW_FL)
         nb_synth_tracks = 2
         tc_track.calc_perturbed_trajectories(nb_synth_tracks=nb_synth_tracks,
                                   max_shift_ini=0, max_dspeed_rel=0, max_ddirection=0, decay=False)
@@ -597,10 +582,9 @@ class TestSynth(unittest.TestCase):
                                               syn_track[varname].values)
 
     def test_random_walk_single_point(self):
-        tc_track = tc.TCTracks()
         found = False
         for year in range(1951, 1981):
-            tc_track.read_ibtracs_netcdf(provider='usa',
+            tc_track = tc.TCTracks.from_ibtracs_netcdf(provider='usa',
                                          year_range=(year,year),
                                          discard_single_points=False)
             singlept = np.where([x.time.size == 1 for x in tc_track.data])[0]
@@ -616,8 +600,7 @@ class TestSynth(unittest.TestCase):
         self.assertTrue(found)
 
     def test_cutoff_tracks(self):
-        tc_track = tc.TCTracks()
-        tc_track.read_ibtracs_netcdf(storm_id='1986226N30276')
+        tc_track = tc.TCTracks.from_ibtracs_netcdf(storm_id='1986226N30276')
         tc_track.equal_timestep()
         with self.assertLogs('climada.hazard.tc_tracks_synth', level='DEBUG') as cm:
             tc_track.calc_perturbed_trajectories(nb_synth_tracks=10)

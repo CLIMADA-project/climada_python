@@ -32,8 +32,7 @@ class TestReader(unittest.TestCase):
     def test_read_demo_pass(self):
         """Read one single excel file"""
         # Read demo excel file
-        expo = Exposures()
-        expo.read_mat(ENT_TEST_MAT)
+        expo = Exposures.from_mat(ENT_TEST_MAT)
 
         # Check results
         n_expos = 50
@@ -88,31 +87,27 @@ class TestObligatories(unittest.TestCase):
         """Error if no values."""
         new_var_names = copy.deepcopy(DEF_VAR_MAT)
         new_var_names['var_name']['val'] = 'no valid value'
-        exp = Exposures()
         with self.assertRaises(KeyError):
-            exp.read_mat(ENT_TEST_MAT, var_names=new_var_names)
+            Exposures.from_mat(ENT_TEST_MAT, var_names=new_var_names)
 
     def test_no_impact_fail(self):
         """Error if no impact ids."""
         new_var_names = copy.deepcopy(DEF_VAR_MAT)
         new_var_names['var_name']['impf'] = 'no valid value'
-        exp = Exposures()
         with self.assertRaises(KeyError):
-            exp.read_mat(ENT_TEST_MAT, var_names=new_var_names)
+            Exposures.from_mat(ENT_TEST_MAT, var_names=new_var_names)
 
     def test_no_coord_fail(self):
         """Error if no coordinates."""
         new_var_names = copy.deepcopy(DEF_VAR_MAT)
         new_var_names['var_name']['lat'] = 'no valid Latitude'
-        exp = Exposures()
         with self.assertRaises(KeyError):
-            exp.read_mat(ENT_TEST_MAT, var_names=new_var_names)
+            Exposures.from_mat(ENT_TEST_MAT, var_names=new_var_names)
 
         new_var_names['var_name']['lat'] = 'nLatitude'
         new_var_names['var_name']['lon'] = 'no valid Longitude'
-        exp = Exposures()
         with self.assertRaises(KeyError):
-            exp.read_mat(ENT_TEST_MAT, var_names=new_var_names)
+            Exposures.from_mat(ENT_TEST_MAT, var_names=new_var_names)
 
 class TestOptionals(unittest.TestCase):
     """Test reading exposures optional values."""
@@ -121,8 +116,7 @@ class TestOptionals(unittest.TestCase):
         """Not error if no category id."""
         new_var_names = copy.deepcopy(DEF_VAR_MAT)
         new_var_names['var_name']['cat'] = 'no valid category'
-        exp = Exposures()
-        exp.read_mat(ENT_TEST_MAT, var_names=new_var_names)
+        exp = Exposures.from_mat(ENT_TEST_MAT, var_names=new_var_names)
 
         # Check results
         self.assertTrue('category_id' not in exp.gdf)
@@ -131,8 +125,7 @@ class TestOptionals(unittest.TestCase):
         """Not error if no region id."""
         new_var_names = copy.deepcopy(DEF_VAR_MAT)
         new_var_names['var_name']['reg'] = 'no valid region'
-        exp = Exposures()
-        exp.read_mat(ENT_TEST_MAT, var_names=new_var_names)
+        exp = Exposures.from_mat(ENT_TEST_MAT, var_names=new_var_names)
 
         # Check results
         self.assertTrue('region_id' not in exp.gdf)
@@ -141,8 +134,7 @@ class TestOptionals(unittest.TestCase):
         """Not error if no value unit."""
         new_var_names = copy.deepcopy(DEF_VAR_MAT)
         new_var_names['var_name']['uni'] = 'no valid unit'
-        exp = Exposures()
-        exp.read_mat(ENT_TEST_MAT, var_names=new_var_names)
+        exp = Exposures.from_mat(ENT_TEST_MAT, var_names=new_var_names)
 
         # Check results
         self.assertEqual('USD', exp.value_unit)
@@ -151,8 +143,7 @@ class TestOptionals(unittest.TestCase):
         """Not error if no value unit."""
         new_var_names = copy.deepcopy(DEF_VAR_MAT)
         new_var_names['var_name']['ass'] = 'no valid assign'
-        exp = Exposures()
-        exp.read_mat(ENT_TEST_MAT, var_names=new_var_names)
+        exp = Exposures.from_mat(ENT_TEST_MAT, var_names=new_var_names)
 
         # Check results
         self.assertTrue('centr_' not in exp.gdf)
@@ -161,8 +152,7 @@ class TestOptionals(unittest.TestCase):
         """Not error if no value unit."""
         new_var_names = copy.deepcopy(DEF_VAR_MAT)
         new_var_names['var_name']['ref'] = 'no valid ref'
-        exp = Exposures()
-        exp.read_mat(ENT_TEST_MAT, var_names=new_var_names)
+        exp = Exposures.from_mat(ENT_TEST_MAT, var_names=new_var_names)
 
         # Check results
         self.assertEqual(2018, exp.ref_year)

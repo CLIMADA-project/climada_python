@@ -366,8 +366,8 @@ class Exposures():
             return INDICATOR_IMPF_OLD
         raise ValueError(f"Missing exposures impact functions {INDICATOR_IMPF}.")
 
-    def assign_centroids(self, hazard, method='NN', distance='haversine',
-                         threshold=100):
+    def assign_centroids(self, hazard, distance='euclidean',
+                         threshold=u_coord.NEAREST_NEIGHBOR_THRESHOLD):
         """Assign for each exposure coordinate closest hazard coordinate.
         -1 used for disatances > threshold in point distances. If raster hazard,
         -1 used for centroids outside raster.
@@ -376,15 +376,35 @@ class Exposures():
         ----------
         hazard : Hazard
             Hazard to match (with raster or vector centroids).
-        method : str, optional
-            Interpolation method to use in case of vector centroids. Currently, "NN" (nearest
-            neighbor) is the only supported value, see `climada.util.interpolation.interpol_index`.
         distance : str, optional
-            Distance to use in case of vector centroids. Possible values are "haversine" and
-            "approx", see `climada.util.interpolation.interpol_index`. Default: "haversine"
+            Distance to use in case of vector centroids.
+            Possible values are "euclidean", "haversine" and "approx".
+            Default: "euclidean"
         threshold : float
-            If the distance to the nearest neighbor exceeds `threshold`, the index `-1` is
-            assigned. Set `threshold` to 0, to disable nearest neighbor matching. Default: 100 (km)
+            If the distance (in km) to the nearest neighbor exceeds `threshold`,
+            the index `-1` is assigned.
+            Set `threshold` to 0, to disable nearest neighbor matching.
+            Default: 100 (km)
+
+        See Also
+        --------
+        climada.util.coordinates.assign_coordinates: method to associate centroids to
+            exposure points
+
+        Notes
+        -----
+        The default order of use is:
+            1. if centroid raster is defined, assign exposures points to
+            the closest raster point.
+            2. if no raster, assign centroids to the nearest neighbor using
+            euclidian metric
+        Both cases can introduce innacuracies for coordinates in lat/lon
+        coordinates as distances in degrees differ from distances in meters
+        on the Earth surface, in particular for higher latitude and distances
+        larger than 100km. If more accuracy is needed, please use 'haversine'
+        distance metric. This however is slower for (quasi-)gridded data,
+        and works only for non-gridded data.
+
         """
         LOGGER.info('Matching %s exposures with %s centroids.',
                     str(self.gdf.shape[0]), str(hazard.centroids.size))
@@ -398,7 +418,7 @@ class Exposures():
         else:
             assigned = u_coord.assign_coordinates(
                 np.stack([self.gdf.latitude.values, self.gdf.longitude.values], axis=1),
-                hazard.centroids.coord, method=method, distance=distance, threshold=threshold)
+                hazard.centroids.coord, distance=distance, threshold=threshold)
         self.gdf[INDICATOR_CENTR + hazard.tag.haz_type] = assigned
 
     def set_geometry_points(self, scheduler=None):
@@ -419,7 +439,14 @@ class Exposures():
         self.gdf['latitude'] = self.gdf.geometry[:].y
         self.gdf['longitude'] = self.gdf.geometry[:].x
 
-    def set_from_raster(self, file_name, band=1, src_crs=None, window=False,
+    def set_from_raster(self, *args, **kwargs):
+        """This function is deprecated, use Exposures.from_raster instead."""
+        LOGGER.warning("The use of Exposures.set_from_raster is deprecated."
+                       "Use Exposures.from_raster instead.")
+        self.__dict__ = Exposures.from_raster(*args, **kwargs).__dict__
+
+    @classmethod
+    def from_raster(cls, file_name, band=1, src_crs=None, window=False,
                         geometry=False, dst_crs=False, transform=None,
                         width=None, height=None, resampling=Resampling.nearest):
         """Read raster data and set latitude, longitude, value and meta
@@ -448,11 +475,16 @@ class Exposures():
         resampling : rasterio.warp,.Resampling optional
             resampling
             function used for reprojection to dst_crs
+
+        returns
+        --------
+        Exposures
         """
-        if 'geometry' in self.gdf:
+        exp = cls()
+        if 'geometry' in exp.gdf:
             raise ValueError("there is already a geometry column defined in the GeoDataFrame")
-        self.tag = Tag()
-        self.tag.file_name = str(file_name)
+        exp.tag = Tag()
+        exp.tag.file_name = str(file_name)
         meta, value = u_coord.read_raster(file_name, [band], src_crs, window,
                                           geometry, dst_crs, transform, width,
                                           height, resampling)
@@ -462,12 +494,13 @@ class Exposures():
         x_grid, y_grid = np.meshgrid(np.arange(ulx + xres / 2, lrx, xres),
                                      np.arange(uly + yres / 2, lry, yres))
 
-        if self.crs is None:
-            self.set_crs()
-        self.gdf['longitude'] = x_grid.flatten()
-        self.gdf['latitude'] = y_grid.flatten()
-        self.gdf['value'] = value.reshape(-1)
-        self.meta = meta
+        if exp.crs is None:
+            exp.set_crs()
+        exp.gdf['longitude'] = x_grid.flatten()
+        exp.gdf['latitude'] = y_grid.flatten()
+        exp.gdf['value'] = value.reshape(-1)
+        exp.meta = meta
+        return exp
 
     def plot_scatter(self, mask=None, ignore_zero=False, pop_name=True,
                      buffer=0.0, extend='neither', axis=None, figsize=(9, 13),
@@ -743,7 +776,14 @@ class Exposures():
         store.get_storer('exposures').attrs.metadata = var_meta
         store.close()
 
-    def read_hdf5(self, file_name):
+    def read_hdf5(self, *args, **kwargs):
+        """This function is deprecated, use Exposures.from_hdf5 instead."""
+        LOGGER.warning("The use of Exposures.read_hdf5 is deprecated."
+                       "Use Exposures.from_hdf5 instead.")
+        self.__dict__ = Exposures.from_hdf5(*args, **kwargs).__dict__
+
+    @classmethod
+    def from_hdf5(cls, file_name):
         """Read data frame and metadata in hdf5 format
 
         Parameters
@@ -753,6 +793,10 @@ class Exposures():
         additional_vars : list
             list of additional variable names to read that
             are not in exposures.base._metadata
+
+        Returns
+        -------
+        Exposures
         """
         LOGGER.info('Reading %s', file_name)
         with pd.HDFStore(file_name) as store:
@@ -761,12 +805,20 @@ class Exposures():
             crs = metadata.get('crs', metadata.get('_crs'))
             if crs is None and metadata.get('meta'):
                 crs = metadata['meta'].get('crs')
-            self.__init__(store['exposures'], crs=crs)
+            exp = cls(store['exposures'], crs=crs)
             for key, val in metadata.items():
-                if key in type(self)._metadata:
-                    setattr(self, key, val)
+                if key in type(exp)._metadata:
+                    setattr(exp, key, val)
+        return exp
 
-    def read_mat(self, file_name, var_names=None):
+    def read_mat(self, *args, **kwargs):
+        """This function is deprecated, use Exposures.from_mat instead."""
+        LOGGER.warning("The use of Exposures.read_mat is deprecated."
+                       "Use Exposures.from_mat instead.")
+        self.__dict__ = Exposures.from_mat(*args, **kwargs).__dict__
+
+    @classmethod
+    def from_mat(cls, file_name, var_names=None):
         """Read MATLAB file and store variables in exposures.
 
         Parameters
@@ -776,6 +828,10 @@ class Exposures():
         var_names : dict, optional
             dictionary containing the name of the
             MATLAB variables. Default: DEF_VAR_MAT.
+
+        Returns
+        -------
+        Exposures
         """
         LOGGER.info('Reading %s', file_name)
         if not var_names:
@@ -796,10 +852,11 @@ class Exposures():
         except KeyError as var_err:
             raise KeyError(f"Variable not in MAT file: {var_names.get('field_name')}")\
                 from var_err
+        exp = cls()
+        exp.set_gdf(GeoDataFrame(data=exposures))
 
-        self.set_gdf(GeoDataFrame(data=exposures))
-
-        _read_mat_metadata(self, data, file_name, var_names)
+        _read_mat_metadata(exp, data, file_name, var_names)
+        return exp
 
     #
     # Extends the according geopandas method
@@ -887,7 +944,7 @@ class Exposures():
                 raise ValueError('Points are not ordered according to meta raster.')
             u_coord.write_raster(file_name, raster, self.meta)
         else:
-            raster, meta = u_coord.points_to_raster(self, [value_name], scheduler=scheduler)
+            raster, meta = u_coord.points_to_raster(self.gdf, [value_name], scheduler=scheduler)
             u_coord.write_raster(file_name, raster, meta)
 
     @staticmethod

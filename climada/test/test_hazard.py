@@ -25,6 +25,7 @@ from scipy import sparse
 
 from climada import CONFIG
 from climada.hazard.base import Hazard
+from climada.hazard.centroids import Centroids
 from climada.util.constants import HAZ_DEMO_FL
 
 DATA_DIR = CONFIG.test_data.dir()
@@ -34,8 +35,8 @@ class TestCentroids(unittest.TestCase):
 
     def test_read_write_raster_pass(self):
         """Test write_raster: Hazard from raster data"""
-        haz_fl = Hazard('FL')
-        haz_fl.set_raster([HAZ_DEMO_FL])
+        haz_fl = Hazard.from_raster([HAZ_DEMO_FL])
+        haz_fl.tag.haz_type = 'FL'
         haz_fl.check()
 
         self.assertEqual(haz_fl.intensity.shape, (1, 1032226))
@@ -44,17 +45,16 @@ class TestCentroids(unittest.TestCase):
 
         haz_fl.write_raster(DATA_DIR.joinpath('test_write_hazard.tif'))
 
-        haz_read = Hazard('FL')
-        haz_read.set_raster([DATA_DIR.joinpath('test_write_hazard.tif')])
+        haz_read = Hazard.from_raster([DATA_DIR.joinpath('test_write_hazard.tif')])
+        haz_fl.tag.haz_type = 'FL'
         self.assertTrue(np.allclose(haz_fl.intensity.toarray(), haz_read.intensity.toarray()))
         self.assertEqual(np.unique(np.array(haz_fl.fraction.toarray())).size, 2)
 
     def test_read_raster_pool_pass(self):
-        """Test set_raster with pool"""
+        """Test from_raster constructor with pool"""
         from pathos.pools import ProcessPool as Pool
         pool = Pool()
-        haz_fl = Hazard('FL', pool)
-        haz_fl.set_raster([HAZ_DEMO_FL])
+        haz_fl = Hazard.from_raster([HAZ_DEMO_FL], haz_type='FL', pool=pool)
         haz_fl.check()
 
         self.assertEqual(haz_fl.intensity.shape, (1, 1032226))
@@ -73,13 +73,12 @@ class TestCentroids(unittest.TestCase):
         haz_fl.event_name = ['1']
         haz_fl.intensity = sparse.csr_matrix(np.array([0.5, 0.2, 0.1]))
         haz_fl.fraction = sparse.csr_matrix(np.array([0.5, 0.2, 0.1]) / 2)
-        haz_fl.centroids.set_lat_lon(np.array([1, 2, 3]), np.array([1, 2, 3]))
+        haz_fl.centroids = Centroids.from_lat_lon(np.array([1, 2, 3]), np.array([1, 2, 3]))
         haz_fl.check()
 
         haz_fl.write_raster(DATA_DIR.joinpath('test_write_hazard.tif'))
 
-        haz_read = Hazard('FL')
-        haz_read.set_raster([DATA_DIR.joinpath('test_write_hazard.tif')])
+        haz_read = Hazard.from_raster([DATA_DIR.joinpath('test_write_hazard.tif')], haz_type='FL')
         self.assertEqual(haz_read.intensity.shape, (1, 9))
         self.assertTrue(np.allclose(np.unique(np.array(haz_read.intensity.toarray())),
                                     np.array([0.0, 0.1, 0.2, 0.5])))
@@ -94,14 +93,14 @@ class TestCentroids(unittest.TestCase):
         haz_fl.event_name = ['1']
         haz_fl.intensity = sparse.csr_matrix(np.array([0.5, 0.2, 0.1]))
         haz_fl.fraction = sparse.csr_matrix(np.array([0.5, 0.2, 0.1]) / 2)
-        haz_fl.centroids.set_lat_lon(np.array([1, 2, 3]), np.array([1, 2, 3]))
+        haz_fl.centroids = Centroids.from_lat_lon(np.array([1, 2, 3]), np.array([1, 2, 3]))
         haz_fl.check()
 
         haz_fl.write_raster(DATA_DIR.joinpath('test_write_hazard.tif'), intensity=False)
 
-        haz_read = Hazard('FL')
-        haz_read.set_raster([DATA_DIR.joinpath('test_write_hazard.tif')],
-                            files_fraction=[DATA_DIR.joinpath('test_write_hazard.tif')])
+        haz_read = Hazard.from_raster([DATA_DIR.joinpath('test_write_hazard.tif')],
+                                      files_fraction=[DATA_DIR.joinpath('test_write_hazard.tif')],
+                                      haz_type='FL')
         self.assertEqual(haz_read.intensity.shape, (1, 9))
         self.assertEqual(haz_read.fraction.shape, (1, 9))
         self.assertTrue(np.allclose(np.unique(np.array(haz_read.fraction.toarray())),

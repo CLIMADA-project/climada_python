@@ -162,10 +162,8 @@ def gdp(cntry_iso, ref_year, shp_file=None, per_capita=False):
     except (ValueError, IndexError, requests.exceptions.ConnectionError) as err:
         if isinstance(err, requests.exceptions.ConnectionError):
             LOGGER.warning('Internet connection failed while retrieving GDPs.')
-        close_year, close_val = nat_earth_adm0(cntry_iso, 'GDP_MD_EST', 'GDP_YEAR', shp_file)
-    finally:
-        LOGGER.info("GDP {} {:d}: {:.3e}.".format(cntry_iso, close_year,
-                                                  close_val))
+        close_year, close_val = nat_earth_adm0(cntry_iso, 'GDP_MD', 'GDP_YEAR', shp_file)
+    LOGGER.info("GDP {} {:d}: {:.3e}.".format(cntry_iso, close_year, close_val))
 
     return close_year, close_val
 
@@ -231,7 +229,7 @@ def nat_earth_adm0(cntry_iso, info_name, year_name=None, shp_file=None):
     cntry_iso : str
         key = ISO alpha_3 country
     info_name : str
-        attribute to get, e.g. 'GDP_MD_EST', 'INCOME_GRP'.
+        attribute to get, e.g. 'GDP_MD', 'INCOME_GRP'.
     year_name : str, optional
         year name of the info_name in shape file,
         e.g. 'GDP_YEAR'
@@ -263,7 +261,8 @@ def nat_earth_adm0(cntry_iso, info_name, year_name=None, shp_file=None):
     if not close_val:
         raise ValueError("No GDP for country %s found." % cntry_iso)
 
-    if info_name == 'GDP_MD_EST':
+    # the variable name changed in Natural Earth v5.0.0
+    if info_name in ['GDP_MD', 'GDP_MD_EST']:
         close_val *= 1e6
     elif info_name == 'INCOME_GRP':
         close_val = INCOME_GRP_NE_TABLE.get(int(close_val[0]))
