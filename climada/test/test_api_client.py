@@ -139,7 +139,7 @@ class TestClient(unittest.TestCase):
                                    properties={'country_name': 'Austria',
                                                'year_range': '2010_2030', 'climate_scenario': 'rcp26'},
                                    dump_dir=DATA_DIR)
-        self.assertEqual(np.shape(hazard.intensity), (480, 5786))
+        self.assertEqual(np.shape(hazard.intensity), (1440, 5784))
         self.assertEqual(np.unique(hazard.centroids.region_id), 40)
         self.assertEqual(np.unique(hazard.date).size, 20)
         self.assertEqual(hazard.tag.haz_type, 'RF')
@@ -148,7 +148,7 @@ class TestClient(unittest.TestCase):
         client = Client()
         with self.assertRaises(ValueError) as cm:
             client.get_hazard(hazard_type='litpop', 
-                              properties={'country_name': ['Switzerland', 'Austria'],
+                              properties={'country_name': 'Austria',
                                           'year_range': '2010_2030', 'climate_scenario': 'rcp26'},
                               dump_dir=DATA_DIR)
         self.assertIn('Valid hazard types are a subset of CLIMADA hazard types. Currently',
