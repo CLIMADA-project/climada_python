@@ -38,7 +38,7 @@ Tutorials
    tutorial/climada_engine_unsequa_helper
    tutorial/climada_engine_Forecast
    tutorial/climada_util_yearsets
-   turorial/climada_api_client
+   turorial/climada_util_api_client
 
 ---------------
 Developer guide
