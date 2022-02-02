@@ -43,10 +43,10 @@ from climada.util.api_client import Client
 
 
 apiclient = Client()
-ds = apiclient.get_dataset(name=TEST_UNC_OUTPUT_IMPACT)
+ds = apiclient.get_dataset_info(name=TEST_UNC_OUTPUT_IMPACT, status='test_dataset')
 _target_dir, [test_unc_output_impact] = apiclient.download_dataset(ds)
 
-ds = apiclient.get_dataset(name=TEST_UNC_OUTPUT_COSTBEN)
+ds = apiclient.get_dataset_info(name=TEST_UNC_OUTPUT_COSTBEN, status='test_dataset')
 _target_dir, [test_unc_output_costben] = apiclient.download_dataset(ds)
 
 

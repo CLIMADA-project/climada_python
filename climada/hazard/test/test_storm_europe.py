@@ -195,7 +195,7 @@ class TestReader(unittest.TestCase):
         # another download would fail because the files are available for 24h only
         # instead, we download it as a test dataset through the climada data api
         apiclient = Client()
-        ds = apiclient.get_dataset(name='test_storm_europe_icon_2021012800')
+        ds = apiclient.get_dataset_info(name='test_storm_europe_icon_2021012800', status='test_dataset')
         dsdir, _ = apiclient.download_dataset(ds)
         haz = StormEurope.from_icon_grib(
             dt.datetime(2021, 1, 28),

@@ -42,7 +42,6 @@ DB = SqliteDatabase(Path(CONFIG.data_api.cache_db.str()).expanduser())
 
 HAZ_TYPES = [ht.str() for ht in CONFIG.data_api.supported_hazard_types.list()]
 EXP_TYPES = [et.str() for et in CONFIG.data_api.supported_exposures_types.list()]
-MUTUAL_PROPS = [ms.str() for ms in CONFIG.data_api.mutual_properties.list()]
 
 
 class Download(Model):
@@ -77,18 +76,26 @@ class FileInfo():
 
 @dataclass
 class DataTypeInfo():
-    """data_type data from CLIMADA data API."""
+    """data type meta data from CLIMADA data API."""
     data_type:str
     data_type_group:str
+    status: str
     description:str
-    properties:list = None
+    properties:list  # of dict
+
+
+@dataclass
+class DataTypeShortInfo():
+    """data type name and group from CLIMADA data API."""
+    data_type:str
+    data_type_group:str
 
 
 @dataclass
 class DatasetInfo():
     """dataset data from CLIMADA data API."""
     uuid:str
-    data_type:DataTypeInfo
+    data_type:DataTypeShortInfo
     name:str
     version:str
     status:str
@@ -114,7 +121,8 @@ class DatasetInfo():
         DatasetInfo
         """
         dataset = DatasetInfo(**jsono)
-        dataset.data_type = DataTypeInfo(**dataset.data_type)
+        dataset.data_type = DataTypeShortInfo(data_type=dataset.data_type['data_type'],
+                                              data_type_group=dataset.data_type['data_type_group'])
         dataset.files = [FileInfo(uuid=dataset.uuid, **filo) for filo in dataset.files]
         return dataset
 
@@ -163,6 +171,7 @@ class Client():
     """Python wrapper around REST calls to the CLIMADA data API server.
     """
     MAX_WAITING_PERIOD = 6
+    UNLIMITED = 100000
 
     class AmbiguousResult(Exception):
         """Custom Exception for Non-Unique Query Result"""
@@ -177,7 +186,7 @@ class Client():
         Default values are 'climada.ethz.ch' and 8096 respectively.
         """
         self.headers = {"accept": "application/json"}
-        self.host = CONFIG.data_api.host.str().rstrip("/")
+        self.url = CONFIG.data_api.url.str().rstrip("/")
         self.chunk_size = CONFIG.data_api.chunk_size.int()
 
     @staticmethod
@@ -218,7 +227,7 @@ class Client():
             pdf = pdf[pdf[prop].isin(selection)]
         return [datasets[i] for i in pdf.index]
 
-    def get_datasets(self, data_type=None, name=None, version=None, properties=None,
+    def list_dataset_infos(self, data_type=None, name=None, version=None, properties=None,
                      status='active'):
         """Find all datasets matching the given parameters.
 
@@ -234,19 +243,20 @@ class Client():
             search parameters for dataset properties, by default None
             any property has a string for key and can be a string or a list of strings for value
         status : str, optional
-            valid values are 'preliminary', 'active', 'expired', and 'test_dataset',
+            valid values are 'preliminary', 'active', 'expired', 'test_dataset' and None
             by default 'active'
 
         Returns
         -------
         list of DatasetInfo
         """
-        url = f'{self.host}/rest/datasets'
+        url = f'{self.url}/dataset'
         params = {
             'data_type': data_type,
             'name': name,
             'version': version,
             'status': '' if status is None else status,
+            'limit': Client.UNLIMITED,
         }
 
         if properties:
@@ -259,12 +269,12 @@ class Client():
 
         datasets = [DatasetInfo.from_json(ds) for ds in Client._request_200(url, params=params)]
 
-        if multi_props:
+        if datasets and multi_props:
             return self._filter_datasets(datasets, multi_props)
         return datasets
 
-    def get_dataset(self, data_type=None, name=None, version=None, properties=None,
-                    status=None):
+    def get_dataset_info(self, data_type=None, name=None, version=None, properties=None,
+                    status='active'):
         """Find the one dataset that matches the given parameters.
 
         Parameters
@@ -279,8 +289,8 @@ class Client():
             search parameters for dataset properties, by default None
             any property has a string for key and can be a string or a list of strings for value
         status : str, optional
-            valid values are 'preliminary', 'active', 'expired', and 'test_dataset',
-            by default None
+            valid values are 'preliminary', 'active', 'expired', 'test_dataset', None
+            by default 'active'
 
         Returns
         -------
@@ -293,7 +303,7 @@ class Client():
         NoResult
             when there is no dataset matching the search parameters
         """
-        jarr = self.get_datasets(data_type=data_type, name=name, version=version,
+        jarr = self.list_dataset_infos(data_type=data_type, name=name, version=version,
                                  properties=properties, status=status)
         if len(jarr) > 1:
             raise Client.AmbiguousResult("there are several datasets meeting the requirements:"
@@ -302,8 +312,8 @@ class Client():
             raise Client.NoResult("there is no dataset meeting the requirements")
         return jarr[0]
 
-    def get_dataset_by_uuid(self, uuid):
-        """Returns the data from 'https://climada/rest/dataset/{uuid}' as DatasetInfo object.
+    def get_dataset_info_by_uuid(self, uuid):
+        """Returns the data from 'https://climada.ethz.ch/data-api/v1/dataset/{uuid}' as DatasetInfo object.
 
         Parameters
         ----------
@@ -319,10 +329,10 @@ class Client():
         NoResult
             if the uuid is not valid
         """
-        url = f'{self.host}/rest/dataset/{uuid}'
+        url = f'{self.url}/dataset/{uuid}'
         return DatasetInfo.from_json(Client._request_200(url))
 
-    def get_data_types(self, data_type_group=None):
+    def list_data_type_infos(self, data_type_group=None):
         """Returns all data types from the climada data API
         belonging to a given data type group.
 
@@ -335,14 +345,13 @@ class Client():
         -------
         list of DataTypeInfo
         """
-        url = f'{self.host}/rest/data_types'
+        url = f'{self.url}/data_type'
         params = {'data_type_group': data_type_group} \
             if data_type_group else {}
         return [DataTypeInfo(**jobj) for jobj in Client._request_200(url, params=params)]
 
-    def get_data_type(self, data_type):
-        """Returns the data type from the climada data API
-        with a given name.
+    def get_data_type_info(self, data_type):
+        """Returns the metadata of the data type with the given name from the climada data API.
 
         Parameters
         ----------
@@ -358,7 +367,7 @@ class Client():
         NoResult
             if there is no such data type registered
         """
-        url = f'{self.host}/rest/data_type/{quote(data_type)}'
+        url = f'{self.url}/data_type/{quote(data_type)}'
         return DataTypeInfo(**Client._request_200(url))
 
     def _download(self, url, path, replace=False):
@@ -417,7 +426,7 @@ class Client():
             raise
         return Download.get(Download.path==path_as_str)
 
-    def download_file(self, local_path, fileinfo, check=checksize, retries=3):
+    def _download_file(self, local_path, fileinfo, check=checksize, retries=3):
         """Download a file if it is not already present at the target destination.
 
         Parameters
@@ -461,11 +470,10 @@ class Client():
                 raise dle
             LOGGER.warning("Download failed: %s, retrying...", dle)
             time.sleep(self.MAX_WAITING_PERIOD/retries)
-            return self.download_file(local_path=local_path, fileinfo=fileinfo, check=check,
-                                      retries=retries - 1)
+            return self._download_file(local_path=local_path, fileinfo=fileinfo, check=check,
+                                       retries=retries - 1)
 
-    def download_dataset(self, dataset, target_dir=SYSTEM_DIR, organize_path=True,
-                         check=checksize):
+    def download_dataset(self, dataset, target_dir=SYSTEM_DIR, organize_path=True):
         """Download all files from a given dataset to a given directory.
 
         Parameters
@@ -478,8 +486,6 @@ class Client():
             if set to True the files will end up in subdirectories of target_dir:
             [target_dir]/[data_type_group]/[data_type]/[name]/[version]
             by default True
-        check : function, optional
-            how to check download success for each file, by default Download.checksize
 
         Returns
         -------
@@ -501,7 +507,7 @@ class Client():
             target_dir = self._organize_path(dataset, target_dir)
 
         return target_dir, [
-            self.download_file(local_path=target_dir, fileinfo=dsfile, check=check)
+            self._download_file(local_path=target_dir, fileinfo=dsfile)
             for dsfile in dataset.files
         ]
 
@@ -539,34 +545,8 @@ class Client():
         gdf = ddf.groupby('name').agg({'version': 'nunique'})
         return list(gdf[gdf.version > 1].index)
 
-    @staticmethod
-    def _multi_selection(datasets):
-        pdf = pd.DataFrame([ds.properties for ds in datasets]).nunique()
-        return list(pdf[pdf > 1].index)
-
-    @staticmethod
-    def _check_datasets_for_concatenation(datasets, max_datasets):
-        if not datasets:
-            raise ValueError("no datasets found meeting the requirements")
-        if 0 < max_datasets < len(datasets):
-            raise ValueError(f"There are {len(datasets)} datasets matching the query"
-                             f" and the limit is set to {max_datasets}.\n"
-                             "You can force concatenation of multiple datasets by increasing"
-                             " max_datasets or setting it to a value <= 0 (no limit).\n"
-                             "Attention! For hazards, concatenation of datasets is currently done by"
-                             " event, which may lead to event duplication and thus biased data.\n"
-                             "In a future release this limitation will be overcome.")
-        not_supported = [msd for msd in Client._multi_selection(datasets)
-                         if msd in MUTUAL_PROPS]
-        if not_supported:
-            raise ValueError("Cannot combine datasets, there are distinct values for these"
-                             f" properties in your selection: {not_supported}")
-        ambiguous_ds_names = Client._multi_version(datasets)
-        if ambiguous_ds_names:
-            raise ValueError("There are datasets with multiple versions in your selection:"
-                             f" {ambiguous_ds_names}")
-
-    def get_hazard(self, hazard_type, dump_dir=SYSTEM_DIR, max_datasets=1, **kwargs):
+    def get_hazard(self, hazard_type, name=None, version=None, properties=None,
+                   status='active', dump_dir=SYSTEM_DIR):
         """Queries the data api for hazard datasets of the given type, downloads associated
         hdf5 files and turns them into a climada.hazard.Hazard object.
 
@@ -574,43 +554,45 @@ class Client():
         ----------
         hazard_type : str
             Type of climada hazard.
+        name : str, optional
+            the name of the dataset
+        version : str, optional
+            the version of the dataset
+        properties : dict, optional
+            search parameters for dataset properties, by default None
+            any property has a string for key and can be a string or a list of strings for value
+        status : str, optional
+            valid values are 'preliminary', 'active', 'expired', 'test_dataset', None
+            by default 'active'
         dump_dir : str, optional
             Directory where the files should be downoladed. Default: SYSTEM_DIR
-            If the directory is the SYSTEM_DIR, the eventual target directory is organized into
+            If the directory is the SYSTEM_DIR (as configured in
+            climada.conf, i.g. ~/climada/data), the eventual target directory is organized into
             dump_dir > hazard_type > dataset name > version
-        max_datasets : int, optional
-            Download limit for datasets. If a query matches is matched by more datasets than this
-            number, a ValueError is raised. Setting it to 0 or a negative number inactivates the
-            limit. Default is 10.
-        **kwargs :
-            additional parameters passed on to get_datasets
 
         Returns
         -------
         climada.hazard.Hazard
             The combined hazard object
         """
-        if 'data_type' in kwargs:
-            raise ValueError("data_type is already given as hazard_type")
         if not hazard_type in HAZ_TYPES:
             raise ValueError("Valid hazard types are a subset of CLIMADA hazard types."
                              f" Currently these types are supported: {HAZ_TYPES}")
-        datasets = self.get_datasets(data_type=hazard_type, **kwargs)
+        dataset = self.get_dataset_info(data_type=hazard_type, name=name, version=version,
+                                        properties=properties, status=status)
+        return self.to_hazard(dataset, dump_dir)
 
-        self._check_datasets_for_concatenation(datasets, max_datasets)
-
-        return self.to_hazard(datasets, dump_dir)
-
-    def to_hazard(self, datasets, dump_dir=SYSTEM_DIR):
+    def to_hazard(self, dataset, dump_dir=SYSTEM_DIR):
         """Downloads hdf5 files belonging to the given datasets reads them into Hazards and
         concatenates them into a single climada.Hazard object.
 
         Parameters
         ----------
-        datasets : list of DatasetInfo
-            Datasets to download and read into climada.Hazard objects.
+        dataset : DatasetInfo
+            Dataset to download and read into climada.Hazard object.
         dump_dir : str, optional
-            Directory where the files should be downoladed. Default: SYSTEM_DIR
+            Directory where the files should be downoladed. Default: SYSTEM_DIR (as configured in
+            climada.conf, i.g. ~/climada/data).
             If the directory is the SYSTEM_DIR, the eventual target directory is organized into
             dump_dir > hazard_type > dataset name > version
 
@@ -619,69 +601,71 @@ class Client():
         climada.hazard.Hazard
             The combined hazard object
         """
-        hazard_list = []
-        for dataset in datasets:
-            target_dir = self._organize_path(dataset, dump_dir) \
-                         if dump_dir == SYSTEM_DIR else dump_dir
-            for dsf in dataset.files:
-                if dsf.file_format == 'hdf5':
-                    hazard_file = self.download_file(target_dir, dsf)
-                    hazard = Hazard.from_hdf5(hazard_file)
-                    hazard_list.append(hazard)
+        target_dir = self._organize_path(dataset, dump_dir) \
+                     if dump_dir == SYSTEM_DIR else dump_dir
+        
+        hazard_list = [
+            Hazard.from_hdf5(self._download_file(target_dir, dsf))
+            for dsf in dataset.files
+            if dsf.file_format == 'hdf5'
+        ]
         if not hazard_list:
-            raise ValueError("no hazard files found in datasets")
-
+            raise ValueError("no hdf5 files found in dataset")
+        if len(hazard_list) == 1:
+            return hazard_list[0]
         hazard_concat = Hazard()
         hazard_concat = hazard_concat.concat(hazard_list)
         hazard_concat.sanitize_event_ids()
-        hazard.check()
+        hazard_concat.check()
         return hazard_concat
 
-    def get_exposures(self, exposures_type, dump_dir=SYSTEM_DIR, max_datasets=10, **kwargs):
+    def get_exposures(self, exposures_type, name=None, version=None, properties=None,
+                   status='active', dump_dir=SYSTEM_DIR):
         """Queries the data api for exposures datasets of the given type, downloads associated
         hdf5 files and turns them into a climada.entity.exposures.Exposures object.
 
         Parameters
         ----------
-        hazard_type : str
+        exposures_type : str
             Type of climada exposures.
+        name : str, optional
+            the name of the dataset
+        version : str, optional
+            the version of the dataset
+        properties : dict, optional
+            search parameters for dataset properties, by default None
+            any property has a string for key and can be a string or a list of strings for value
+        status : str, optional
+            valid values are 'preliminary', 'active', 'expired', 'test_dataset', None
+            by default 'active'
         dump_dir : str, optional
             Directory where the files should be downoladed. Default: SYSTEM_DIR
             If the directory is the SYSTEM_DIR, the eventual target directory is organized into
             dump_dir > hazard_type > dataset name > version
-        max_datasets : int, optional
-            Download limit for datasets. If a query matches is matched by more datasets than this
-            number, a ValueError is raised. Setting it to 0 or a negative number inactivates the
-            limit. Default is 10.
-        **kwargs :
-            additional parameters passed on to `Client.get_datasets`
 
         Returns
         -------
         climada.entity.exposures.Exposures
             The combined exposures object
         """
-        if 'data_type' in kwargs:
-            raise ValueError("data_type is already given as hazard_type")
         if not exposures_type in EXP_TYPES:
             raise ValueError("Valid exposures types are a subset of CLIMADA exposures types."
                              f" Currently these types are supported: {EXP_TYPES}")
-        datasets = self.get_datasets(data_type=exposures_type, **kwargs)
+        dataset = self.get_dataset_info(data_type=exposures_type, name=name, version=version,
+                                        properties=properties, status=status)
+        return self.to_exposures(dataset, dump_dir)
 
-        self._check_datasets_for_concatenation(datasets, max_datasets)
-
-        return self.to_exposures(datasets, dump_dir)
-
-    def to_exposures(self, datasets, dump_dir=SYSTEM_DIR):
+    def to_exposures(self, dataset, dump_dir=SYSTEM_DIR):
         """Downloads hdf5 files belonging to the given datasets reads them into Exposures and
         concatenates them into a single climada.Exposures object.
 
         Parameters
         ----------
-        datasets : list of DatasetInfo
-            Datasets to download and read into climada.Exposures objects.
+        dataset : DatasetInfo
+            Dataset to download and read into climada.Exposures objects.
         dump_dir : str, optional
-            Directory where the files should be downoladed. Default: SYSTEM_DIR
+            Directory where the files should be downoladed. Default: SYSTEM_DIR (as configured in
+            climada.conf, i.g. ~/climada/data).
             If the directory is the SYSTEM_DIR, the eventual target directory is organized into
             dump_dir > exposures_type > dataset name > version
 
@@ -690,18 +674,17 @@ class Client():
         climada.entity.exposures.Exposures
             The combined exposures object
         """
-        exposures_list = []
-        for dataset in datasets:
-            target_dir = self._organize_path(dataset, dump_dir) \
-                         if dump_dir == SYSTEM_DIR else dump_dir
-            for dsf in dataset.files:
-                if dsf.file_format == 'hdf5':
-                    exposures_file = self.download_file(target_dir, dsf)
-                    exposures = Exposures.from_hdf5(exposures_file)
-                    exposures_list.append(exposures)
+        target_dir = self._organize_path(dataset, dump_dir) \
+                     if dump_dir == SYSTEM_DIR else dump_dir
+        exposures_list = [
+            Exposures.from_hdf5(self._download_file(target_dir, dsf))
+            for dsf in dataset.files
+            if dsf.file_format == 'hdf5'
+        ]
         if not exposures_list:
-            raise ValueError("no exposures files found in datasets")
-
+            raise ValueError("no hdf5 files found in dataset")
+        if len(exposures_list) == 1:
+            return exposures_list[0]
         exposures_concat = Exposures()
         exposures_concat = exposures_concat.concat(exposures_list)
         exposures_concat.check()
@@ -729,7 +712,7 @@ class Client():
             'fin_mode': 'pc'
         }
         if country is None:
-            properties['geographical_scale'] = 'global'
+            properties['spatial_coverage'] = 'global'
         elif isinstance(country, str):
             properties['country_name'] = pycountry.countries.lookup(country).name
         elif isinstance(country, list):
@@ -739,21 +722,62 @@ class Client():
         return self.get_exposures(exposures_type='litpop', dump_dir=dump_dir, properties=properties)
 
     @staticmethod
-    def into_datasets_df(datasets):
+    def get_property_values(dataset_infos, known_property_values=None,
+                            exclude_properties=None):
+        """Returns a dictionnary of possible values for properties of a data type, optionally given known property values.
+
+        Parameters
+        ----------
+        dataset_infos : list of DataSetInfo
+            as returned by list_dataset_infos
+        known_properties_value : dict, optional
+            dict {'property':'value1, 'property2':'value2'}, to provide only a subset of property
+            values that can be combined with the given properties.
+        exclude_properties: list of str, optional
+            properties in this list will be excluded from the resulting dictionary, e.g., because
+            they are strictly metadata and don't provide any information essential to the dataset.
+            Default: 'creation_date', 'climada_version'
+
+        Returns
+        -------
+        dict
+            of possibles property values
+        """
+        if exclude_properties is None:
+            exclude_properties = ['date_creation', 'climada_version']
+
+        ppdf = pd.DataFrame([ds.properties for ds in dataset_infos])
+        if known_property_values:
+            for key, val in known_property_values.items():
+                ppdf = ppdf[ppdf[key] == val]
+        if not len(ppdf):
+            raise Client.NoResult("there is no dataset meeting the requirements")
+
+        property_values = dict()
+        for col in ppdf.columns:
+            if col in exclude_properties:
+                continue
+            valar = ppdf[col].dropna().drop_duplicates().values
+            if valar.size:
+                property_values[col] = list(valar)
+        return property_values
+
+    @staticmethod
+    def into_datasets_df(dataset_infos):
         """Convenience function providing a DataFrame of datasets with properties.
 
         Parameters
         ----------
-        datasets : list of DatasetInfo
-            e.g., return of get_datasets
+        dataset_infos : list of DatasetInfo
+             as returned by list_dataset_infos
 
         Returns
         -------
         pandas.DataFrame
             of datasets with properties as found in query by arguments
         """
-        dsdf = pd.DataFrame(datasets)
-        ppdf = pd.DataFrame([ds.properties for ds in datasets])
+        dsdf = pd.DataFrame(dataset_infos)
+        ppdf = pd.DataFrame([ds.properties for ds in dataset_infos])
         dtdf = pd.DataFrame([pd.Series(dt) for dt in dsdf.data_type])
 
         return dtdf.loc[:, [c for c in dtdf.columns if c not in ['description', 'properties']]].join(
@@ -761,18 +785,18 @@ class Client():
                ppdf)
 
     @staticmethod
-    def into_files_df(datasets):
+    def into_files_df(dataset_infos):
         """Convenience function providing a DataFrame of files aligned with the input datasets.
 
         Parameters
         ----------
         datasets : list of DatasetInfo
-            e.g., return of get_datasets
+            as returned by list_dataset_infos
 
         Returns
         -------
         pandas.DataFrame
             of the files' informations including dataset informations
         """
-        return Client.into_datasets_df(datasets) \
-            .merge(pd.DataFrame([dsfile for ds in datasets for dsfile in ds.files]))
+        return Client.into_datasets_df(dataset_infos) \
+            .merge(pd.DataFrame([dsfile for ds in dataset_infos for dsfile in ds.files]))
