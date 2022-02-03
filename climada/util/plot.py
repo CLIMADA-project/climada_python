@@ -735,14 +735,14 @@ def get_transformation(crs_in):
         crs_epsg = ccrs.PlateCarree()
 
     try:
-        units = (crs_epsg.proj_params.get('units')
-                # As of cartopy 0.20 the proj_params attribute is {} for CRS from an EPSG number
+        units = (crs_epsg.proj4_params.get('units')
+                # As of cartopy 0.20 the proj4_params attribute is {} for CRS from an EPSG number
                 # (see issue raised https://github.com/SciTools/cartopy/issues/1974 
                 # and longterm discussion on https://github.com/SciTools/cartopy/issues/813).
                 # In these cases the units can be fetched through the method `to_dict`.
                 or crs_epsg.to_dict().get('units', '°'))
     except AttributeError:  # Earlier than cartopy 0.20, the method `to_dict` is not defined, but
-                # this block nevertheless handles the case when there is no 'units' in proj_params.
+                # this block nevertheless handles the case when there is no 'units' in proj4_params.
         units = '°'
     return crs_epsg, units
 
