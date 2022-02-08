@@ -376,7 +376,7 @@ def grid_is_regular(coord):
         regular = True
     return regular, count_lat[0], count_lon[0]
 
-def get_coastlines(bounds=None, resolution=110):
+def get_coastlines(bounds=None, resolution=10):
     """Get Polygones of coast intersecting given bounds
 
     Parameters
