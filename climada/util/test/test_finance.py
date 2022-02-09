@@ -160,13 +160,15 @@ class TestWBWealthAccount(unittest.TestCase):
         res_year, res_val, q = world_bank_wealth_account(cntry_iso, ref_year, no_land=0)
         res_year_noland, res_val_noland, q = world_bank_wealth_account(cntry_iso, ref_year,
                                                                        no_land=1)
-        ref_val = 17675048450284.9
-        ref_val_noland = 14254071330874.9
+        ref_val = [17675048450284.9, 19767982562092.2]  # second value as updated by worldbank on
+                                                        # October 27 2021
+        ref_val_noland = [14254071330874.9, 15941921421042.1]  # dito
         self.assertEqual(res_year, ref_year)
         self.assertEqual(q, 1)
-        self.assertEqual(res_val, ref_val)
+        self.assertIn(res_val, ref_val)
         self.assertEqual(res_year_noland, ref_year)
-        self.assertEqual(res_val_noland, ref_val_noland)
+        self.assertIn(res_val_noland, ref_val_noland)
+
     def test_pca_CHE_2008_pass(self):
         """Test Prcoessed Capital per capita Switzerland 2008 (interp.)."""
         ref_year = 2008
@@ -174,9 +176,10 @@ class TestWBWealthAccount(unittest.TestCase):
         var_name = 'NW.PCA.PC'
         res_year, res_val, _ = world_bank_wealth_account(cntry_iso, ref_year,
                                                          variable_name=var_name, no_land=0)
-        ref_val = 328398.7
+        ref_val = [328398.7, 369081.0]  # second value as updated by worldbank on October 27 2021
         self.assertEqual(res_year, ref_year)
-        self.assertEqual(res_val, ref_val)
+        self.assertIn(res_val, ref_val)
+
     def test_tow_IND_1985_pass(self):
         """Test Total Wealth value India 1985 (outside year range)."""
         ref_year = 1985
@@ -184,9 +187,11 @@ class TestWBWealthAccount(unittest.TestCase):
         var_name = 'NW.TOW.TO'
         res_year, res_val, _ = world_bank_wealth_account(cntry_iso, ref_year,
                                                          variable_name=var_name)
-        ref_val = 5415188681942.5
+        ref_val = [5415188681942.5, 5861193808788.2]  # second value as updated by worldbank on 
+                                                      # October 27 2021
         self.assertEqual(res_year, ref_year)
-        self.assertEqual(res_val, ref_val)
+        self.assertIn(res_val, ref_val)
+
     def test_pca_CUB_2015_pass(self):
         """Test Processed Capital value Cuba 2015 (missing value)."""
         ref_year = 2015
