@@ -19,7 +19,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define impact functions for tropical cyclnes .
 """
 
-__all__ = ['ImpfTropCyclone', 'IFTropCyclone']
+__all__ = ['ImpfTropCyclone', 'ImpfSetTropCyclone', 'IFTropCyclone']
 
 import logging
 from deprecation import deprecated
