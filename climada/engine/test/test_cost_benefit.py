@@ -23,8 +23,6 @@ import copy
 import unittest
 import numpy as np
 
-import climada.hazard.test as hazard_test
-import climada.entity.exposures.test as exposures_test
 from climada.entity.entity_def import Entity
 from climada.entity.disc_rates import DiscRates
 from climada.hazard.base import Hazard
@@ -32,9 +30,19 @@ from climada.engine.cost_benefit import CostBenefit, risk_aai_agg, \
         risk_rp_100, risk_rp_250, _norm_values
 from climada.engine import Impact
 from climada.util.constants import ENT_DEMO_FUTURE, ENT_DEMO_TODAY
+from climada.util.api_client import Client
 
-HAZ_TEST_MAT = Path(hazard_test.__file__).parent / 'data' / 'atl_prob_no_name.mat'
-ENT_TEST_MAT = Path(exposures_test.__file__).parent / 'data' / 'demo_today.mat'
+
+def get_test_file(ds_name):
+    client = Client()
+    test_ds = client.get_dataset_info(name=ds_name, status='test_dataset')
+    _, test_files = client.download_dataset(test_ds)
+    return test_files[0]
+
+
+HAZ_TEST_MAT = get_test_file('atl_prob_no_name')
+ENT_TEST_MAT = get_test_file('demo_today')
+
 
 class TestSteps(unittest.TestCase):
     """Test intermediate steps"""
