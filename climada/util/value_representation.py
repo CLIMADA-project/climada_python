@@ -42,7 +42,11 @@ def sig_dig(x, n_sig_dig = 16):
     """
     Rounds x to n_sig_dig number of significant digits.
     0, inf, Nan are returned unchanged.
-    Examples: n_sig_dig = 5
+
+    Examples
+    --------
+        with n_sig_dig = 5:
+
         1.234567 -> 1.2346, 123456.89 -> 123460.0
 
     Parameters
@@ -102,8 +106,8 @@ def convert_monetary_value(values, abbrev, n_sig_dig=None):
 
 
 def value_to_monetary_unit(values, n_sig_dig=None, abbreviations=None):
-    """
-    Converts list of values to closest common monetary unit
+    """Converts list of values to closest common monetary unit.
+    
     0, Nan and inf have not unit.
 
     Parameters
@@ -112,17 +116,21 @@ def value_to_monetary_unit(values, n_sig_dig=None, abbreviations=None):
         Values to be converted
     n_sig_dig : int, optional
         Number of significant digits to return.
-        Examples n_sig_di=5: 1.234567 -> 1.2346, 123456.89 -> 123460.0
+
+        Examples: n_sig_di=5: 1.234567 -> 1.2346, 123456.89 -> 123460.0
+
         Default: all digits are returned.
     abbreviations: dict, optional
         Name of the abbreviations for the money 1000s counts
+
         Default:
-         {
-          1:'',
-          1000: 'K',
-          1000000: 'M',
-          1000000000: 'Bn',
-          1000000000000: 'Tn'}
+        {
+        1:'',
+        1000: 'K',
+        1000000: 'M',
+        1000000000: 'Bn',
+        1000000000000: 'Tn'
+        }
 
     Returns
     -------
@@ -138,7 +146,6 @@ def value_to_monetary_unit(values, n_sig_dig=None, abbreviations=None):
         ['M']
 
     """
-
     if isinstance(values, (int, float)):
         values = [values]
 

@@ -23,19 +23,29 @@ from pathlib import Path
 import numpy as np
 from scipy import sparse
 
-from climada import CONFIG
 from climada.entity.tag import Tag
 from climada.hazard.tag import Tag as TagHaz
 from climada.entity.entity_def import Entity
 from climada.hazard.base import Hazard
 from climada.engine.impact import Impact
-from climada.util.constants import ENT_DEMO_TODAY, DEF_CRS
+from climada.util.constants import ENT_DEMO_TODAY, DEF_CRS, DEMO_DIR
+from climada.util.api_client import Client
 import climada.util.coordinates as u_coord
-import climada.hazard.test as hazard_test
 import climada.engine.test as engine_test
 
-DATA_FOLDER = Path(engine_test.__file__).parent.joinpath('data')
-HAZ_TEST_MAT = Path(hazard_test.__file__).parent.joinpath('data', 'atl_prob_no_name.mat')
+
+def get_haz_test_file(ds_name):
+    client = Client()
+    test_ds = client.get_dataset_info(name=ds_name, status='test_dataset')
+    _, [haz_test_file] = client.download_dataset(test_ds)
+    return haz_test_file
+
+
+HAZ_TEST_MAT = get_haz_test_file('atl_prob_no_name')
+
+DATA_FOLDER = DEMO_DIR / 'test-results'
+DATA_FOLDER.mkdir(exist_ok=True)
+
 
 class TestFreqCurve(unittest.TestCase):
     """Test exceedence frequency curve computation"""

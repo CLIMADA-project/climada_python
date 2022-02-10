@@ -305,6 +305,7 @@ def calib_all(hazard, exposure, impf_name_or_instance, param_full_dict,
               impact_data_source, year_range, yearly_impact=True):
     """portrait the difference between modelled and reported impacts for all
     impact functions described in param_full_dict and impf_name_or_instance
+
     Parameters
     ----------
     hazard : list or Hazard

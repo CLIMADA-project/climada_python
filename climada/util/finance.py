@@ -384,7 +384,7 @@ def world_bank_wealth_account(cntry_iso, ref_year, variable_name="NW.PCA.TO",
         fac = wealth2gdp(cntry_iso)[1]
         return gdp_year, np.around((fac * gdp_val), 1), 0
     if ref_year in years:  # indicator for reference year is available directly
-        result = data_wealth.loc[:, np.str(ref_year)].values[0]
+        result = data_wealth.loc[:, str(ref_year)].values[0]
     elif ref_year > np.min(years) and ref_year < np.max(years):  # interpolate
         result = np.interp(ref_year, years, data_wealth.values[0, :])
     elif ref_year < np.min(years):  # scale proportionally to GDP
