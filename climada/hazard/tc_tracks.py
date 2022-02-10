@@ -351,10 +351,10 @@ class TCTracks():
         provider : str or list of str, optional
             Either specify an agency, such as "usa", "newdelhi", "bom", "cma", "tokyo", or the
             special values "official" and "official_3h":
-            * "official" means using the (usually 6-hourly) officially reported values of the
-              officially responsible agencies.
-            * "official_3h" means to include (inofficial) 3-hourly data of the officially
-              responsible agencies (whenever available).
+              * "official" means using the (usually 6-hourly) officially reported values of the
+                officially responsible agencies.
+              * "official_3h" means to include (inofficial) 3-hourly data of the officially
+                responsible agencies (whenever available).
             If you want to restrict to the officially reported values by the officially responsible
             agencies (`provider="official"`) without any modifications to the original official
             data, make sure to also set `estimate_missing=False` and `interpolate_missing=False`.

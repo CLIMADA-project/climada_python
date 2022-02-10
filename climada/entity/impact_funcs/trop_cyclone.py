@@ -117,7 +117,7 @@ class ImpfSetTropCyclone(ImpactFuncSet):
     def from_calibrated_regional_ImpfSet(cls, calibration_approach='TDR', q=.5,
                                         input_file_path=None, version=1):
         """ initiate TC wind impact functions based on Eberenz et al. 2021:
-            https://doi.org/10.5194/nhess-21-393-2021
+        https://doi.org/10.5194/nhess-21-393-2021
 
         Parameters
         ----------
@@ -212,7 +212,7 @@ class ImpfSetTropCyclone(ImpactFuncSet):
         Returns
         -------
         v_half : dict
-            TC impact function slope parameter v_half per region¨
+            TC impact function slope parameter v_half per region
         """
         calibration_approach = calibration_approach.upper()
         if calibration_approach not in ['TDR', 'TDR1.0', 'TDR1.5', 'RMSF', 'EDR']:

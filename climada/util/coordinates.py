@@ -261,16 +261,16 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
         Default: True
     method : str, optional
         Specify an approximation method to use:
-        * "equirect": Distance according to sinusoidal projection. Fast, but inaccurate for large
-          distances and high latitudes.
-        * "geosphere": Exact spherical distance. Much more accurate at all distances, but slow.
+            * "equirect": Distance according to sinusoidal projection. Fast, but inaccurate for
+              large distances and high latitudes.
+            * "geosphere": Exact spherical distance. Much more accurate at all distances, but slow.
         Note that ellipsoidal distances would be even more accurate, but are currently not
         implemented. Default: "equirect".
     units : str, optional
         Specify a unit for the distance. One of:
-        * "km": distance in km.
-        * "degree": angular distance in decimal degrees.
-        * "radian": angular distance in radians.
+            * "km": distance in km.
+            * "degree": angular distance in decimal degrees.
+            * "radian": angular distance in radians.
         Default: "km".
 
     Returns
@@ -458,15 +458,15 @@ def dist_to_coast(coord_lat, lon=None, signed=False):
     ----------
     coord_lat : GeoDataFrame or np.array or float
         One of the following:
-        * GeoDataFrame with geometry column in epsg:4326
-        * np.array with two columns, first for latitude of each point
-          and second with longitude in epsg:4326
-        * np.array with one dimension containing latitudes in epsg:4326
-        * float with a latitude value in epsg:4326
+            * GeoDataFrame with geometry column in epsg:4326
+            * np.array with two columns, first for latitude of each point
+              and second with longitude in epsg:4326
+            * np.array with one dimension containing latitudes in epsg:4326
+            * float with a latitude value in epsg:4326
     lon : np.array or float, optional
         One of the following:
-        * np.array with one dimension containing longitudes in epsg:4326
-        * float with a longitude value in epsg:4326
+            * np.array with one dimension containing longitudes in epsg:4326
+            * float with a longitude value in epsg:4326
     signed : bool
         If True, distance is signed with positive values off shore and negative values on land.
         Default: False

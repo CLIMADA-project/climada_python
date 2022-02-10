@@ -252,6 +252,7 @@ class Forecast:
         run_datetime: datetime.datetime, optional
             Select the used hazard by the run_datetime,
             default is first element of attribute run_datetime.
+
         Returns
         -------
         str
@@ -270,7 +271,8 @@ class Forecast:
         run_datetime : datetime.datetime, optional
             Select the used hazard by the run_datetime,
             default is first element of attribute run_datetime.
-         Returns
+
+        Returns
         -------
         datetime.timedelta
             the difference between the initialization time of the forecast
