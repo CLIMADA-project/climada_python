@@ -27,7 +27,7 @@ Follow the [tutorial](https://climada-python.readthedocs.io/en/latest/tutorial/1
 Documentation is available on Read the Docs:
 
 * [online (recommended)](https://climada-python.readthedocs.io/en/latest/)
-* [PDF file](https://climada-python.readthedocs.io/_/downloads/en/v3.1.0/pdf/)
+* [PDF file](https://climada-python.readthedocs.io/_/downloads/en/stable/pdf/)
 
 ## Citing CLIMADA
 

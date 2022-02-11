@@ -7,3 +7,6 @@ build:
 
 conda:
   environment: requirements/env_docs.yml
+
+formats:
+  - pdf
