@@ -13,7 +13,7 @@ with open(here.joinpath('README.md'), encoding='utf-8') as f:
 setup(
     name='climada',
 
-    version='3.1.0',
+    version='3.1.1-dev',
 
     description='CLIMADA in Python',
 
