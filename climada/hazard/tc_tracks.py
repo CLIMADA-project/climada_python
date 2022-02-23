@@ -22,9 +22,11 @@ Define TCTracks: IBTracs reader and tracks manager.
 __all__ = ['CAT_NAMES', 'SAFFIR_SIM_CAT', 'TCTracks', 'set_category']
 
 # standard libraries
+import contextlib
 import datetime as dt
 import itertools
 import logging
+import pathlib
 import re
 import shutil
 import warnings
@@ -49,6 +51,10 @@ import shapely.ops
 from sklearn.neighbors import DistanceMetric
 import statsmodels.api as sm
 import xarray as xr
+from xarray.backends import NetCDF4DataStore
+from xarray.backends.api import dump_to_store
+from xarray.backends.common import ArrayWriter
+from xarray.backends.store import StoreBackendEntrypoint
 
 # climada dependencies
 from climada.util import ureg
@@ -145,6 +151,13 @@ EMANUEL_RMW_CORR_FILES = [
 EMANUEL_RMW_CORR_FACTOR = 2.0
 """Kerry Emanuel track files in this list require a correction: The radius of
     maximum wind (rmstore) needs to be multiplied by factor 2."""
+
+STORM_1MIN_WIND_FACTOR = 0.88
+"""Scaling factor used in Bloemendaal et al. (2020) to convert 1-minute sustained wind speeds to
+10-minute sustained wind speeds.
+
+Bloemendaal et al. (2020): Generation of a global synthetic tropical cyclone hazard
+dataset using STORM. Scientific Data 7(1): 40."""
 
 class TCTracks():
     """Contains tropical cyclone tracks.
@@ -506,7 +519,8 @@ class TCTracks():
         elif isinstance(provider, str):
             provider = [provider]
 
-        for tc_var in ['lat', 'lon', 'wind', 'pres', 'rmw', 'poci', 'roci']:
+        phys_vars = ['lat', 'lon', 'wind', 'pres', 'rmw', 'poci', 'roci']
+        for tc_var in phys_vars:
             if "official" in provider or "official_3h" in provider:
                 ibtracs_add_official_variable(
                     ibtracs_ds, tc_var, add_3h=("official_3h" in provider))
@@ -515,19 +529,24 @@ class TCTracks():
             # newly created `official` and `official_3h` data if specified
             ag_vars = [f'{ag}_{tc_var}' for ag in provider]
             ag_vars = [ag_var for ag_var in ag_vars if ag_var in ibtracs_ds.data_vars.keys()]
+            if len(ag_vars) == 0:
+                ag_vars = [f'{provider[0]}_{tc_var}']
+                ibtracs_ds[ag_vars[0]] = xr.full_like(ibtracs_ds[f'usa_{tc_var}'], np.nan)
             all_vals = ibtracs_ds[ag_vars].to_array(dim='agency')
             # argmax returns the first True (i.e. valid) along the 'agency' dimension
             preferred_idx = all_vals.notnull().any(dim="date_time").argmax(dim='agency')
             ibtracs_ds[tc_var] = all_vals.isel(agency=preferred_idx)
 
-            # Usually, if an agency reports about a track that crosses the antimeridian, the
-            # longitude is always chosen positive. However, it can happen, that the TC crosses the
-            # antimeridian according to one agency, but not according to another. When mixing
-            # agency data, this can yield inconsistent sign changes in longitude. We remove those:
+            selected_ags = np.array([v[:-len(f'_{tc_var}')].encode() for v in ag_vars])
+            ibtracs_ds[f'{tc_var}_agency'] = ('storm', selected_ags[preferred_idx.values])
+
             if tc_var == 'lon':
                 # By IBTrACS default, no longitude should be <= -180, but this is not true for some
                 # agencies, so we have to manually enforce this policy:
                 ibtracs_ds[tc_var].values[(ibtracs_ds[tc_var] <= -180).values] += 360
+
+                # Make sure that the longitude is always chosen positive if a track crosses the
+                # antimeridian:
                 crossing_mask = ((ibtracs_ds[tc_var] > 170).any(dim="date_time")
                                  & (ibtracs_ds[tc_var] < -170).any(dim="date_time")
                                  & (ibtracs_ds[tc_var] < 0)).values
@@ -545,8 +564,8 @@ class TCTracks():
                         ibtracs_ds[tc_var].values[nonsingular_mask] = (
                             ibtracs_ds[tc_var].sel(storm=nonsingular_mask).interpolate_na(
                                 dim="date_time", method="linear"))
-        ibtracs_ds = ibtracs_ds[['sid', 'name', 'basin', 'lat', 'lon', 'time', 'valid_t',
-                                 'wind', 'pres', 'rmw', 'roci', 'poci']]
+        ibtracs_ds = ibtracs_ds[['sid', 'name', 'basin', 'time', 'valid_t']
+                                + phys_vars + [f'{v}_agency' for v in phys_vars]]
 
         if estimate_missing:
             ibtracs_ds['pres'][:] = _estimate_pressure(
@@ -590,7 +609,6 @@ class TCTracks():
         ibtracs_ds['id_no'] = (ibtracs_ds.sid.str.replace(b'N', b'0')
                                .str.replace(b'S', b'1')
                                .astype(float))
-        provider_str = f"ibtracs_{provider[0]}" + ("" if len(provider) == 1 else "_mixed")
 
         last_perc = 0
         all_tracks = []
@@ -648,6 +666,12 @@ class TCTracks():
             # ensure environmental pressure >= central pressure
             # this is the second most time consuming line in the processing:
             track_ds['poci'][:] = np.fmax(track_ds.poci, track_ds.pres)
+
+            provider_str = f"ibtracs_{provider[0]}"
+            if len(provider) > 1:
+                provider_str = "ibtracs_mixed:" + ",".join(
+                    "{}({})".format(v, track_ds[f'{v}_agency'].astype(str).item())
+                    for v in phys_vars)
 
             all_tracks.append(xr.Dataset({
                 'time_step': ('time', track_ds.time_step.data),
@@ -858,8 +882,8 @@ class TCTracks():
 
             # add tracks one by one
             last_perc = 0
-            for i_track in chaz_ds.id_no:
-                perc = 100 * len(data) / chaz_ds.id_no.size
+            for cnt, i_track in enumerate(chaz_ds.id_no):
+                perc = 100 * cnt / chaz_ds.id_no.size
                 if perc - last_perc >= 10:
                     LOGGER.info("Progress: %d%%", perc)
                     last_perc = perc
@@ -871,7 +895,7 @@ class TCTracks():
                     'central_pressure': ('time', track_ds.pres.values),
                     'radius_max_wind': ('time', track_ds.radius_max_wind.values),
                     'environmental_pressure': ('time', track_ds.environmental_pressure.values),
-                    'basin': ('time', np.full(track_ds.time.size, "GB")),
+                    'basin': ('time', np.full(track_ds.time.size, "GB", dtype="<U2")),
                 }, coords={
                     'time': track_ds.time.values,
                     'lat': ('time', track_ds.latitude.values),
@@ -909,6 +933,9 @@ class TCTracks():
 
             https://doi.org/10.4121/uuid:82c1dc0d-5485-43d8-901a-ce7f26cda35d
 
+        Wind speeds are converted to 1-minute sustained winds through division by 0.88 (this value
+        is taken from Bloemendaal et al. (2020), cited above).
+
         Parameters
         ----------
         path : str
@@ -945,10 +972,16 @@ class TCTracks():
         # a bug in the data causes some storm tracks to be double-listed:
         tracks_df = tracks_df.drop_duplicates(subset=["year", "tc_num", "time_delta"])
 
-        # conversion of units and time
+        # conversion of units
         tracks_df['rmw'] *= (1 * ureg.kilometer).to(ureg.nautical_mile).magnitude
         tracks_df['wind'] *= (1 * ureg.meter / ureg.second).to(ureg.knot).magnitude
+
+        # convert from 10-minute to 1-minute sustained winds, see Bloemendaal et al. (2020)
+        tracks_df['wind'] /= STORM_1MIN_WIND_FACTOR
+
+        # conversion to absolute times
         tracks_df['time'] = tracks_df['time_start'] + tracks_df['time_delta']
+
         tracks_df = tracks_df.drop(
             labels=['time_start', 'time_delta', 'landfall', 'dist_to_land'], axis=1)
 
@@ -972,7 +1005,7 @@ class TCTracks():
                 'central_pressure': ('time', group['pres'].values),
                 'radius_max_wind': ('time', group['rmw'].values),
                 'environmental_pressure': ('time', env_pressure),
-                'basin': ("time", group['basin'].values),
+                'basin': ("time", group['basin'].values.astype("<U2")),
             }, coords={
                 'time': ('time', group['time'].values),
                 'lat': ('time', group['lat'].values),
@@ -1014,7 +1047,7 @@ class TCTracks():
 
         if land_params:
             extent = self.get_extent()
-            land_geom = u_coord.get_land_geometry(extent, resolution=10)
+            land_geom = u_coord.get_land_geometry(extent=extent, resolution=10)
         else:
             land_geom = None
 
@@ -1238,12 +1271,65 @@ class TCTracks():
                                "whole life time.")
                 basin = track.basin
                 del track.attrs['basin']
-                track['basin'] = ("time", np.full(track.time.size, basin))
+                track['basin'] = ("time", np.full(track.time.size, basin, dtype="<U2"))
             data.append(track)
         tr = cls()
         tr.data = data
         return tr
 
+    def write_hdf5(self, file_name, complevel=5):
+        """Write TC tracks in NetCDF4-compliant HDF5 format.
+
+        Parameters
+        ----------
+        file_name: str or Path
+            Path to a new HDF5 file. If it exists already, the file is overwritten.
+        complevel : int
+            Specifies a compression level (0-9) for the zlib compression of the data.
+            A value of 0 or None disables compression. Default: 5
+        """
+        # change dtype from bool to int to be NetCDF4-compliant, this is undone later
+        for i, track in enumerate(self.data):
+            track.attrs['orig_event_flag'] = int(track.attrs['orig_event_flag'])
+        try:
+            encoding = {
+                f'track{i}': {var: dict(zlib=True, complevel=complevel) for var in track.data_vars}
+                for i, track in enumerate(self.data)
+            }
+            ds_dict = {f'track{i}': track for i, track in enumerate(self.data)}
+            LOGGER.info('Writing %d tracks to %s', self.size, file_name)
+            _xr_to_netcdf_multi(file_name, ds_dict, encoding=encoding)
+        finally:
+            # ensure to undo the temporal change of dtype from above
+            for i, track in enumerate(self.data):
+                track.attrs['orig_event_flag'] = bool(track.attrs['orig_event_flag'])
+
+    @classmethod
+    def from_hdf5(cls, file_name):
+        """Create new TCTracks object from a NetCDF4-compliant HDF5 file
+
+        Parameters
+        ----------
+        file_name : str or Path
+            Path to a file that has been generated with `TCTracks.write_hdf`.
+
+        Returns
+        -------
+        tracks : TCTracks
+            TCTracks with data from the given HDF5 file.
+        """
+        ds_dict = _xr_open_dataset_multi(file_name, prefix="track")
+        track_no = sorted(int(key[5:]) for key in ds_dict.keys())
+        data = []
+        for i in track_no:
+            track = ds_dict[f'track{i}']
+            track.attrs['orig_event_flag'] = bool(track.attrs['orig_event_flag'])
+            # when writing '<U2' and reading in again, xarray reads as dtype 'object'. undo this:
+            track['basin'] = track['basin'].astype('<U2')
+            data.append(track)
+        tracks = cls()
+        tracks.data = data
+        return tracks
 
     def to_geodataframe(self, as_points=False, split_lines_antimeridian=True):
         """Transform this TCTracks instance into a GeoDataFrame.
@@ -1372,6 +1458,86 @@ class TCTracks():
             track_land_params(track_int, land_geom)
         return track_int
 
+def _xr_to_netcdf_multi(path, ds_dict, encoding=None):
+    """Write multiple xarray Datasets to separate groups in a single NetCDF4 file
+
+    Contrary to xarray's `to_netcdf` functionality, this only supports the "NETCDF4" format and the
+    "netcdf4" engine since the groups feature has been introduced by NetCDF version 4.
+
+    Parameters
+    ----------
+    path : str or Path
+        Path of the target NetCDF file.
+    ds_dict : dict whose keys are group names and values are xr.Dataset
+        Each xr.Dataset in the dict is stored in the group identified by its key in the dict.
+        Note that an empty string ("") is a valid group name and refers to the root group.
+    encoding : dict whose keys are group names and values are dict, optional
+        For each dataset/group, one dict that is compliant with the format of the `encoding`
+        keyword parameter in `xr.Dataset.to_netcdf`. Default: None
+    """
+    path = str(pathlib.Path(path).expanduser().absolute())
+    with contextlib.closing(NetCDF4DataStore.open(path, "w", "NETCDF4", None)) as store:
+        writer = ArrayWriter()
+        for group, dataset in ds_dict.items():
+            store._group = group
+            unlimited_dims = dataset.encoding.get("unlimited_dims", None)
+            encoding = None if encoding is None or group not in encoding else encoding[group]
+            dump_to_store(dataset, store, writer, encoding=encoding, unlimited_dims=unlimited_dims)
+
+def _xr_open_dataset_multi(path, prefix=""):
+    """Read multiple xarray Datasets from groups contained in a single NetCDF4 file
+
+    The data is loaded into memory
+
+    Contrary to xarray's `open_dataset` functionality, this only supports the "netcdf4" engine
+    since the groups feature has been introduced by NetCDF version 4.
+
+    Parameters
+    ----------
+    path : str or Path
+        Path of the NetCDF file to read.
+    prefix : str, optional
+        If given, only read groups whose name starts with this prefix. Default: ""
+
+    Returns
+    -------
+    ds_dict : dict whose keys are group names and values are xr.Dataset
+        Each xr.Dataset in the dict is taken from the group identified by its key in the dict.
+        Note that an empty string ("") is a valid group name and refers to the root group.
+    """
+    path = str(pathlib.Path(path).expanduser().absolute())
+    ds_dict = {}
+    with contextlib.closing(NetCDF4DataStore.open(path, "r", "NETCDF4", None)) as store:
+        groups = [g for g in _xr_nc4_groups_from_store(store) if g.startswith(prefix)]
+        store_entrypoint = StoreBackendEntrypoint()
+        LOGGER.info('Reading %d datasets from %s', len(groups), path)
+        for group in groups:
+            store._group = group
+            ds = store_entrypoint.open_dataset(store)
+            ds.load()
+            ds_dict[group] = ds
+    return ds_dict
+
+def _xr_nc4_groups_from_store(store):
+    """List all groups contained in the given NetCDF4 data store
+
+    Parameters
+    ----------
+    store : xarray.backend.NetCDF4DataStore
+
+    Returns
+    -------
+    list of str
+    """
+    def iter_groups(ds, prefix=""):
+        groups = [""]
+        for group_name, group_ds in ds.groups.items():
+            groups.extend([f"{prefix}{group_name}{subgroup}"
+                           for subgroup in iter_groups(group_ds, prefix="/")])
+        return groups
+    with store._manager.acquire_context(False) as root:
+        return iter_groups(root)
+
 def _read_one_gettelman(nc_data, i_track):
     """Read a single track from Andrew Gettelman's NetCDF dataset
 
@@ -1462,6 +1628,7 @@ def _read_one_gettelman(nc_data, i_track):
     tr_ds = xr.Dataset.from_dataframe(tr_df.set_index('time'))
     tr_ds.coords['lat'] = ('time', tr_ds.lat.values)
     tr_ds.coords['lon'] = ('time', tr_ds.lon.values)
+    tr_ds['basin'] = tr_ds['basin'].astype('<U2')
     tr_ds.attrs = {'max_sustained_wind_unit': 'kn',
                    'central_pressure_unit': 'mb',
                    'sid': sid,
@@ -1584,7 +1751,7 @@ def _read_file_emanuel(path, hemisphere=None, rmw_corr=False):
             'max_sustained_wind': ('time', max_sustained_wind),
             'central_pressure': ('time', tc_pressure[i_track, valid_idx]),
             'environmental_pressure': ('time', env_pressure),
-            'basin': ('time', np.full(nnodes, basin)),
+            'basin': ('time', np.full(nnodes, basin, dtype="<U2")),
         }, coords={
             'time': datetimes,
             'lat': ('time', lat[i_track, valid_idx]),

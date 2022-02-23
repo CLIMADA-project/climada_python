@@ -15,147 +15,818 @@ You should have received a copy of the GNU Lesser General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 """
-import pandas as pd
-import numpy as np
 import logging
-from shapely.ops import unary_union
+import copy
+from collections import Counter
+import geopandas as gpd
+import numpy as np
+import scipy as sp
+import shapely as sh
+import shapely.geometry as shgeom
+import cartopy.crs as ccrs
+
+from climada.engine import Impact
+from climada.util import coordinates as u_coord
+
+import pyproj
 
 LOGGER = logging.getLogger(__name__)
 
 
-def agg_to_lines(exp_pnts, impact_pnts, agg_mode='sum'):
-    
-    # TODO: make a method of Impact(), go via saving entire impact matrix
-    # TODO: think about how to include multi-index instead of requiring entire exp?
-    
-    """given an original line geometry, a converted point exposure and a 
-    resultingly calculated point impact, aggregate impacts back to shapes in
-    original lines geodataframe outline.
-    
+def calc_geom_impact(
+        exp, impf_set, haz, res,
+        to_meters=False, disagg=None, agg='sum'
+        ):
+    """
+    Compute impact for exposure with (multi-)polygons and/or (multi-)lines.
+    Lat/Lon values in exp.gdf are ignored, only exp.gdf.geometry is considered.
+
+    The geometries are first disaggregated to points. Polygons: grid with
+    resolution res*res. Lines: points along the line separated by distance res.
+    The impact per point is then re-aggregated for each geometry.
+
     Parameters
     ----------
-    
+    exp : Exposures
+        The exposure instance with exp.gdf.geometry containing (multi-)polygons
+        and/or (multi-)lines
+    impf_set : ImpactFuncSet
+        The set of impact functions.
+    haz : Hazard
+        The hazard instance.
+    res : float
+        Resolution of the disaggregation grid (polygon) or line (lines).
+    to_meters : bool, optional
+       If True, res is interpreted as meters, and geometries are projected to
+       an equal area projection for disaggregation.  The exposures are
+       then projected back to the original projections before  impact
+       calculation. The default is False.
+    disagg : string, optional
+        Disaggregation method for the `value` column of the exposure gdf.
+        if 'avg', average value over points
+        if 'surf', area per point (res*res) for polygons, and distance per
+            point (res) for lines.
+        if 'None', value is unchanged or set to 1 if no value is defined.
+        The default is None.
+    agg : string, optional
+        Aggregation method of the point impacts into impact for respective
+        parent-geometry.
+        If 'avg', the impact is averaged over all points in each geometry.
+        If 'sum', the impact is summed over all points in each geometry.
+        The default is 'sum'.
+
     Returns
     -------
-   
+    Impact
+        Impact object with the impact per geometry (rows of exp.gdf).
+
+    See Also
+    --------
+    exp_geom_to_pnt: disaggregate exposures
+
     """
-    impact_line = pd.DataFrame(index=exp_pnts.gdf.index, 
-                               data=impact_pnts.eai_exp, columns=['eai_exp'])
-    
-    if agg_mode == 'sum':
-        return impact_line.groupby(level=0).eai_exp.sum()
-    
-    elif agg_mode == 'fraction':
-        return impact_line.groupby(level=0).eai_exp.sum()/exp_pnts.gdf.groupby(level=0).value.sum()
-    
-    else:
-        raise NotImplementedError
 
-def agg_to_polygons(exp_pnts, impact_pnts, agg_mode='sum'):
-    
-    # TODO: make a method of Impact(), go via saving entire impact matrix
-    # TODO: think about how to include multi-index instead of requiring entire exp?
+    # disaggregate exposure
+    exp_pnt = exp_geom_to_pnt(
+        exp=exp, res=res,
+        to_meters=to_meters, disagg=disagg
+        )
+    exp_pnt.assign_centroids(haz)
 
-    """given an original polygon geometry, a converted point exposure and a 
-    resultingly calculated point impact, aggregate impacts back to shapes in
-    original polygons geodataframe outline.
-    
+    # compute point impact
+    impact_pnt = Impact()
+    impact_pnt.calc(exp_pnt, impf_set, haz, save_mat=True)
+
+    # re-aggregate impact to original exposure geometry
+    return impact_pnt_agg(impact_pnt, exp_pnt, agg)
+
+
+def impact_pnt_agg(impact_pnt, exp_pnt, agg):
+    """
+    Aggregate the impact per geometry.
+
+    The output Impact object contains an extra attribute 'geom_exp'
+    containing the geometries.
+
     Parameters
     ----------
-   
+    impact_pnt : Impact
+        Impact object with impact per exposure point (lines of exp_pnt)
+    exp_pnt : Exposures
+        Exposures with a gdf featuring a multi-index, as obtained from
+        disaggregation method exp_geom_to_pnt(). First level indicating
+        membership of original geometries, second level the disaggregated points
+    agg : string, optional
+        If 'agg', the impact is averaged over all points in each geometry.
+        If 'sum', the impact is summed over all points in each geometry.
+        The default is 'sum'.
+
     Returns
     -------
-    
+    impact_agg : Impact
+        Impact object with the impact per original geometry. Original geometry
+        additionally stored in attribute 'geom_exp'; coord_exp contains only
+        representative points (lat/lon) of those geometries.
     """
-    impact_poly = pd.DataFrame(index=exp_pnts.gdf.index, 
-                               data=impact_pnts.eai_exp, columns=['eai_exp'])
-    if agg_mode == 'sum':
-        return impact_poly.groupby(level=0).eai_exp.sum()
-    
-    elif agg_mode == 'fraction':
-        return impact_poly.groupby(level=0).eai_exp.sum()/exp_pnts.groupby(level=0).value.sum()
-   
-    else:
-        raise NotImplementedError
 
-def disaggregate_cnstly(gdf_interpol, val_per_point=None):
+    # aggregate impact
+    mat_agg = aggregate_impact_mat(impact_pnt, exp_pnt.gdf, agg)
+
+    #Write to impact obj
+    impact_agg = set_imp_mat(impact_pnt, mat_agg)
+
+    #Add exposure representation points as coordinates
+    repr_pnts = gpd.GeoSeries(
+        exp_pnt.gdf['geometry_orig'][:,0].apply(
+            lambda x: x.representative_point()
+            )
+        )
+    impact_agg.coord_exp = np.array([repr_pnts.y, repr_pnts.x]).transpose()
+    #Add geometries
+    impact_agg.geom_exp = exp_pnt.gdf.xs(0, level=1)\
+        .set_geometry('geometry_orig')\
+            .geometry.rename('geometry')
+
+    return impact_agg
+
+def aggregate_impact_mat(imp_pnt, gdf_pnt, agg):
     """
-    Disaggregate the values of an interpolated exposure gdf 
-    constantly among all points belonging to the initial shape.
-    
-    
+    Aggregate point impact matrix given the geodataframe of disaggregated
+    geometries.
+
     Parameters
     ----------
-    gdf_interpol : gpd.GeoDataFrame
-    val_per_point : float, optional
-        value per interpolated point, in case no total value column given in 
-        gdf_interpol
+    imp_pnt : Impact
+        Impact object with impact per point (rows of gdf_pnt)
+    gdf_pnt : GeoDataFrame
+        Exposures geodataframe with a multi-index, as obtained from disaggregation
+        method exp_geom_to_pnt(). First level indicating
+        membership of original geometries, second level the disaggregated points
+    agg : string
+        If 'agg', the impact is averaged over all points in each polygon.
+        If 'sum', the impact is summed over all points in each polygon.
+
+    Returns
+    -------
+    sparse.csr_matrix
+        matrix of shape #events x #original geometries with impacts.
+
     """
-    primary_indices = np.unique(gdf_interpol.index.get_level_values(0))
-    
-    if val_per_point:
-        val_per_point = val_per_point*np.ones(len(primary_indices))
-    
+
+    col_geom = gdf_pnt.index.get_level_values(level=0)
+    # Converts string multi-index level 0 to integer index
+    col_geom = np.sort(np.unique(col_geom, return_inverse=True)[1])
+    row_pnt = np.arange(len(col_geom))
+    if agg == 'avg':
+        geom_sizes = Counter(col_geom).values()
+        mask = np.concatenate([np.ones(l) / l for l in geom_sizes])
+    elif agg == 'sum':
+        mask = np.ones(len(col_geom))
     else:
-        group = gdf_interpol.groupby(axis=0, level=0)
-        val_per_point = group.value.mean()/group.count().iloc[:,0]
-    
-    for ix, val in zip(np.unique(gdf_interpol.index.get_level_values(0)),
-                       val_per_point):
-        gdf_interpol.at[ix, 'value']= val
-        
-    return gdf_interpol
+        raise ValueError(f"Please choose a valid aggregation method. {agg} is not valid")
+    csr_mask = sp.sparse.csr_matrix(
+        (mask, (row_pnt, col_geom)),
+         shape=(len(row_pnt), len(np.unique(col_geom)))
+        )
+    return imp_pnt.imp_mat.dot(csr_mask)
 
-def disaggregate_litpop(gdf_interpol, gdf_shapes, countries):
+def plot_eai_exp_geom(imp_geom, centered=False, figsize=(9, 13), **kwargs):
+    """
+    Plot the average impact per exposure polygon.
+
+    Parameters
+    ----------
+    imp_geom : Impact
+        Impact instance with imp_geom set (i.e. computed from exposures with polygons)
+    centered : bool, optional
+        Center the plot. The default is False.
+    figsize : (float, float), optional
+        Figure size. The default is (9, 13).
+    **kwargs : dict
+        Keyword arguments for GeoDataFrame.plot()
+
+    Returns
+    -------
+    ax:
+        matplotlib axes instance
 
     """
-    disaggregate the values of an interpolated exposure gdf
-    according to the litpop values contained within the initial shapes
-    
-    This loads the litpop exposure(s) of the countries into memory and cuts out
-    those all the values within the original gdf_shapes.
-    
-    In a second step, the values of the original shapes are then disaggregated
-    constantly onto the interpolated points within each shape.
-    
-    
-    """
-    # TODO. hotfix for current circular import exp.base <-> exp.litpop if put on top of module 
-    from climada.entity.exposures import litpop as lp
-    exp = lp.LitPop()
-    # TODO: Don't hard-code kwargs for exposure!
-    exp.set_countries(countries,res_arcsec=30, reference_year=2015) 
-    
-    # extract LitPop asset values for each shape
-    shape_values = []
-    for shape in gdf_shapes.geometry:
-        shape_values.append(
-            exp.gdf.loc[exp.gdf.geometry.within(shape)].value.values.sum())
-            
-    # evenly spread value per shape onto interpolated points
-    group = gdf_interpol.groupby(axis=0, level=0)
-    val_per_point = shape_values/group.count().iloc[:,0]   
-    for ix, val in zip(np.unique(gdf_interpol.index.get_level_values(0)),
-                        val_per_point):
-        gdf_interpol.at[ix, 'value']= val
+    kwargs['figsize'] = figsize
+    if 'legend_kwds' not in kwargs:
+        kwargs['legend_kwds'] = {
+            'label': f"Impact [{imp_geom.unit}]",
+            'orientation': "horizontal"
+            }
+    if 'legend' not in kwargs:
+        kwargs['legend'] = True
+    gdf_plot = gpd.GeoDataFrame(imp_geom.geom_exp)
+    gdf_plot['impact'] = imp_geom.eai_exp
+    if centered:
+        xmin, xmax = u_coord.lon_bounds(imp_geom.coord_exp[:,1])
+        proj_plot = ccrs.PlateCarree(central_longitude=0.5 * (xmin + xmax))
+        gdf_plot = gdf_plot.to_crs(proj_plot)
+    return gdf_plot.plot(column = 'impact', **kwargs)
 
-    return gdf_interpol
+def exp_geom_to_pnt(exp, res, to_meters, disagg):
+    """
+    Disaggregate exposures with (multi-)polygons and/or (multi-)lines
+    geometries to points.
+
+    Parameters
+    ----------
+    exp : Exposures
+        The exposure instance with exp.gdf.geometry containing lines or polygons
+    res : float
+        Resolution of the disaggregation grid / distance.
+    to_meters : bool
+       If True, res is interpreted as meters, and geometries are projected to
+       an equal area projection for disaggregation.  The exposures are
+       then projected back to the original projections before  impact
+       calculation. The default is False.
+    disagg : string,
+        Disaggregation method.
+        if 'avg' value is average of value over points
+        if 'surf' value is surface per points. Area per point (res*res)
+            for polygons, and distance per point (res) for lines.
+        if 'None' value is unchanged (or 1 if no value is defined)
+
+    Returns
+    -------
+    exp_pnt : Exposures
+        Exposures with a double index geodataframe, first level indicating
+        membership of the original geometries of exp,
+        second for the point disaggregation within each geometries.
+
+    """
+
+    line_mask, poly_mask = _line_poly_mask(exp.gdf)
+    gdf_pnt = gpd.GeoDataFrame([])
+
+    if np.any(poly_mask):
+        gdf_pnt = gdf_pnt.concat(
+            _gdf_poly_to_pnt(exp.gdf[poly_mask], res, to_meters, disagg))
+    if np.any(line_mask):
+        gdf_pnt = gdf_pnt.concat(
+            _gdf_line_to_pnt(exp.gdf[line_mask], res, to_meters, disagg))
+
+    # set lat lon and centroids
+    exp_pnt = exp.copy()
+    exp_pnt.set_gdf(gdf_pnt)
+    exp_pnt.set_lat_lon()
+
+    return exp_pnt
+
+def _line_poly_mask(gdf):
+    """Mask for lines and polygons"""
+    line_mask =  gdf.geometry.apply(lambda x: isinstance(x, shgeom.LineString))
+    line_mask |=  gdf.geometry.apply(lambda x: isinstance(x, shgeom.MultiLineString))
+
+    poly_mask =  gdf.geometry.apply(lambda x: isinstance(x, shgeom.Polygon))
+    poly_mask |=  gdf.geometry.apply(lambda x: isinstance(x, shgeom.MultiPolygon))
+
+    return line_mask, poly_mask
+
+
+def _gdf_line_to_pnt(gdf, res, to_meters, disagg):
+    """
+    Disaggregate exposures with (multi-)lines
+    geometries to points.
+
+    Parameters
+    ----------
+    gdf : GeoDataFrame
+        Geodataframe of an exposure instance with gdf.geometry containing (multi-)lines
+    res : float
+        Disaggregation distance beween two points.
+    to_meters : bool, optional
+       If True, the geometries are projected to an equal area projection before
+       the disaggregation. res is then in meters. Default is False.
+    disagg : string, optional
+        Disaggregation method.
+        if 'avg' value is average over points
+        if 'surf' value is surface per points. Distance per point (res) for lines.
+        if 'None' value is unchanged (or 1 if no value is defined)
+
+    Returns
+    -------
+    gdf_pnt : GeoDataFrame
+        double index geodataframe, first level indicating
+        membership of the original geometries of exp,
+        second for the point disaggregation within each geometries.
+    """
+
+    # rasterize (disaggregate geometry)
+    if to_meters:
+        gdf_pnt = line_to_pnts_m(gdf, res)
+    else:
+        gdf_pnt = line_to_pnts(gdf, res)
+
+    # disaggregate value column
+    if disagg == 'avg':
+        gdf_pnt = disagg_values_avg(gdf_pnt)
+    elif disagg == 'surf':
+        gdf_pnt = assign_point_val(gdf_pnt, res)
+    elif (disagg is None) or ('value' not in gdf_pnt.columns):
+        gdf_pnt['value'] = 1
+
+    return gdf_pnt
+
+
+def _gdf_poly_to_pnt(gdf, res, to_meters, disagg):
+    """
+    Disaggregate exposures with (multi-)polygons
+    geometries to points.
+
+    Parameters
+    ----------
+    gdf : GeoDataFrame
+        The geodataframe instance with gdf.geometry containing (multi-)polygons
+    res : float
+        Resolution of the disaggregation grid.
+    to_meters : bool
+       If True, the geometries are projected to an equal area projection before
+       the disaggregation. res is then in meters. The exposures are
+       then reprojected into the original projections before the impact
+       calculation.
+    disagg : string
+        Disaggregation method.
+        if 'avg' value is average over points
+        if 'surf' value is surface per points. Area per point (res*res)
+            for polygons.
+        if 'None' value is unchanged (or 1 if no value is defined)
+
+    Returns
+    -------
+    exp_pnt : Exposures
+        Exposures with a double index geodataframe, first for the geometries of exp,
+        second for the point disaggregation of the geometries.
+
+    """
+
+    # rasterize (disaggregate geometry)
+    gdf_pnt = poly_to_pnts(gdf, res, to_meters)
+
+    # disaggregate value column
+    if disagg == 'avg':
+        gdf_pnt = disagg_values_avg(gdf_pnt)
+    elif disagg == 'surf':
+        gdf_pnt = assign_point_val(gdf_pnt, res * res)
+    elif disagg is None and 'value' not in gdf_pnt.columns:
+        gdf_pnt['value'] = 1
+
+    return gdf_pnt
+
+
+def disagg_values_avg(gdf_pnts):
+    """
+    Disaggregate value column of original gdf to disaggregated point gdf
+
+    Parameters
+    ----------
+    gdf_pnts : geodataframe
+        Geodataframe with a double index, first for geometries (lines, polygons),
+        second for the point disaggregation of the polygons. The value column is assumed
+        to represent values per polygon / line (first index).
+
+    Returns
+    -------
+    gdf_disagg : geodataframe
+        The value per geometry are evenly distributed over the points per geometry.
+
+    """
+
+    gdf_disagg = gdf_pnts.copy()
+
+    group = gdf_pnts.groupby(axis=0, level=0)
+    vals = group.value.mean() / group.value.count()
+
+    vals = vals.reindex(gdf_pnts.index, level=0)
+    gdf_disagg['value'] = vals
+
+    return gdf_disagg
+
+
+def assign_point_val(gdf_pnts, value_per_pnt):
+    """
+    Assign same value to all geodataframe points
+
+    Parameters
+    ----------
+    gdf_pnts : geodataframe
+        Geodataframe with a double index, first for polygon geometries,
+        second for the point disaggregation of the polygons. The value column is assumed
+        to represent values per polygon (first index).
+    value_per_pnt: float
+        Value to assign to each point.
+
+    Returns
+    -------
+    gdf_agg : geodataframe
+        The value per point is value_per_pnt
+
+    """
+
+    gdf_agg = gdf_pnts.copy()
+    gdf_agg['value'] = value_per_pnt
+
+    return gdf_agg
+
+
+def poly_to_pnts(gdf, res, to_meters=False):
+    """
+    Disaggregate (multi-)polygons geodataframe to points.
+    Note: If polygon is smaller than specified resolution, a representative
+    point within the polygon will be chosen, nevertheless. This may lead to
+    inaccuracies during value assignments / disaggregations.
+
+    Parameters
+    ----------
+    gdf : geodataframe
+        Can be any CRS
+    res : float
+        Resolution (same units as gdf crs)
+
+    Returns
+    -------
+    geodataframe
+        Geodataframe with a double index, first for polygon geometries,
+        second for the point disaggregation of the polygons.
+
+    """
+
+    # Needed because gdf.explode() requires numeric index
+    idx = gdf.index.to_list() #To restore the naming of the index
+
+    gdf_points = gdf.copy().reset_index(drop=True)
+
+    if to_meters:
+        gdf_points['geometry_pnt'] = gdf_points.apply(
+            lambda row: _interp_one_poly_m(row.geometry, res, gdf.crs), axis=1)
+    else:
+        gdf_points['geometry_pnt'] = gdf_points.apply(
+            lambda row: _interp_one_poly(row.geometry, res), axis=1)
+
+    gdf_points = _swap_geom_cols(
+        gdf_points, geom_to='geometry_orig', new_geom='geometry_pnt'
+        )
+    gdf_points = gdf_points.explode()
+    gdf_points.index = gdf_points.index.set_levels(idx, level=0)
+    return gdf_points
+
+def _interp_one_poly(poly, res):
+    """
+    Disaggregate a single polygon to points
+
+    Parameters
+    ----------
+    poly : shapely Polygon
+        Polygon
+    res : float
+        Resolution (same units as gdf crs)
+
+    Returns
+    -------
+    shapely multipoint
+        Grid of points rasterizing the polygon
+
+    """
+
+    if poly.is_empty:
+        return shgeom.MultiPoint([])
+
+    height, width, trafo = u_coord.pts_to_raster_meta(poly.bounds, (res, res))
+    x_grid, y_grid = u_coord.raster_to_meshgrid(trafo, width, height)
+    in_geom = sh.vectorized.contains(poly, x_grid, y_grid)
+
+    if sum(in_geom.flatten()) > 1:
+        return shgeom.MultiPoint(list(zip(x_grid[in_geom], y_grid[in_geom])))
+    
+    LOGGER.warning('Polygon smaller than resolution. Setting a representative point.')
+    return shgeom.MultiPoint([poly.representative_point()])
+
+def _interp_one_poly_m(poly, res, orig_crs):
+    """
+    Disaggragate a single polygon to points. Resolution in meters.
+
+    Parameters
+    ----------
+    poly : shapely Polygon
+        Polygon
+    res : float
+        Resolution in meters
+    orig_crs: pyproj.CRS
+        CRS of the polygon
+
+    Returns
+    -------
+    shapely multipoint
+        Grid of points rasterizing the polygon
+
+    """
+
+    if poly.is_empty:
+        return shgeom.MultiPoint([])
+
+    repr_pnt = poly.representative_point()
+    lon_0, lat_0 = repr_pnt.x, repr_pnt.y
+
+    project = pyproj.Transformer.from_proj(
+        pyproj.Proj(orig_crs),
+        pyproj.Proj("+proj=cea +lat_0=%f +lon_0=%f +units=m" %(lat_0, lon_0)),
+        always_xy=True
+    )
+    poly_m = sh.ops.transform(project.transform, poly)
+
+    height, width, trafo = u_coord.pts_to_raster_meta(poly_m.bounds, (res, res))
+    x_grid, y_grid = u_coord.raster_to_meshgrid(trafo, width, height)
+
+    in_geom = sh.vectorized.contains(poly_m, x_grid, y_grid)
+
+    if sum(in_geom.flatten()) > 1:
+        project_inv = pyproj.Transformer.from_proj(
+            pyproj.Proj("+proj=cea +lat_0=%f +lon_0=%f +units=m" %(lat_0, lon_0)),
+            pyproj.Proj(orig_crs),
+            always_xy=True
+        )
+        x_poly, y_poly = project_inv.transform(x_grid[in_geom], y_grid[in_geom])
+        return shgeom.MultiPoint(list(zip(x_poly, y_poly)))
+
+    LOGGER.warning('Polygon smaller than resolution. Setting a representative point.')
+    return shgeom.MultiPoint([repr_pnt])
+
+
+def poly_to_equalarea_proj(poly, orig_crs):
+    """
+    Project polyong to Equal Area Cylindrical projection
+    using a representative point as lat/lon reference.
+
+    https://proj.org/operations/projections/cea.html
+
+    Parameters
+    ----------
+    poly : shapely Polygon
+        Polygon
+    orig_crs: pyproj.CRS
+        CRS of the polygon
+
+    Returns
+    -------
+    poly : shapely Polygon
+        Polygon in equal are projection
+
+    """
+
+    repr_pnt = poly.representative_point()
+    lon_0, lat_0 = repr_pnt.x, repr_pnt.y
+
+    project = pyproj.Transformer.from_proj(
+        pyproj.Proj(orig_crs),
+        pyproj.Proj("+proj=cea +lat_0=%f +lon_0=%f +units=m" %(lat_0, lon_0)),
+        always_xy=True
+    )
+    return sh.ops.transform(project.transform, poly)
+
+def line_to_pnts(gdf_lines, res):
+
+    """ Convert a GeoDataframe with LineString geometries to
+    Point geometries, where Points are placed at a specified distance
+    along the original LineString. Each line is reduced to
+    at least two points.
+
+    Parameters
+    ----------
+    gdf_lines : gpd.GeoDataframe
+        Geodataframe with line geometries
+    res : float
+        Resolution (distance) apart from which the generated Points
+        should be approximately placed.
+
+    Returns
+    -------
+    gdf_points : gpd.GeoDataFrame
+        Geodataframe with a double index, first for line geometries,
+        second for the point disaggregation of the lines (i.e. one Point
+        per row).
+
+    See also
+    --------
+    * util.coordinates.compute_geodesic_lengths()
+    """
+
+    # Needed because gdf.explode() requires numeric index
+    idx = gdf_lines.index.to_list() #To restore the naming of the index
+
+    gdf_points = gdf_lines.copy().reset_index(drop=True)
+    line_lengths = gdf_lines.length
+
+    line_fractions = [
+        np.linspace(0, 1, num=_pnts_per_line(length, res))
+        for length in line_lengths
+        ]
+
+    gdf_points['geometry_pnt'] = [
+        shgeom.MultiPoint([
+            line.interpolate(dist, normalized=True)
+            for dist in fractions
+            ])
+        for line, fractions in zip(gdf_points.geometry, line_fractions)
+        ]
+
+    gdf_points = _swap_geom_cols(
+        gdf_points, geom_to='geometry_orig', new_geom='geometry_pnt'
+        )
+    gdf_points = gdf_points.explode()
+    gdf_points.index = gdf_points.index.set_levels(idx, level=0)
+    return gdf_points
+
+def line_to_pnts_m(gdf_lines, res):
+
+    """ Convert a GeoDataframe with LineString geometries to
+    Point geometries, where Points are placed at a specified distance
+    (in meters) along the original LineString. Each line is reduced to
+    at least two points.
+
+
+
+    Remark: LineString.interpolate() used here performs interpolation
+    on a geodesic.
+
+    Parameters
+    ----------
+    gdf_lines : gpd.GeoDataframe
+        Geodataframe with line geometries
+    res : float
+        Resolution (distance) in metres apart from which the generated Points
+        should be approximately placed.
+
+    Returns
+    -------
+    gdf_points : gpd.GeoDataFrame
+        Geodataframe with a double index, first for line geometries,
+        second for the point disaggregation of the lines (i.e. one Point
+        per row).
+
+    See also
+    --------
+    * util.coordinates.compute_geodesic_lengths()
+    """
+
+    # Needed because gdf.explode() requires numeric index
+    idx = gdf_lines.index.to_list() #To restore the naming of the index
+
+    gdf_points = gdf_lines.copy().reset_index(drop=True)
+    line_lengths = u_coord.compute_geodesic_lengths(gdf_points)
+
+    line_fractions = [
+        np.linspace(0, 1, num=_pnts_per_line(length, res))
+        for length in line_lengths
+        ]
+
+    gdf_points['geometry_pnt'] = [
+        shgeom.MultiPoint([
+            line.interpolate(dist, normalized=True)
+            for dist in fractions
+            ])
+        for line, fractions in zip(gdf_points.geometry, line_fractions)
+        ]
+
+    gdf_points = _swap_geom_cols(
+        gdf_points, geom_to='geometry_orig', new_geom='geometry_pnt'
+        )
+    gdf_points = gdf_points.explode()
+    gdf_points.index = gdf_points.index.set_levels(idx, level=0)
+    return gdf_points
+
+def _pnts_per_line(length, res):
+    return int(np.ceil(length / res) + 1)
+
+def invert_shapes(gdf_cutout, shape_outer):
+    """
+    given an outer shape and a gdf with geometries that are to be cut out,
+    return the remaining multipolygon
+    """
+    return shape_outer - _make_union(gdf_cutout)
 
 def _make_union(gdf):
     """
     Solve issue of invalid geometries in MultiPolygons, which prevents that
     shapes can be combined into one unary union, save the respective Union
     """
-    
+
     union1 = gdf[gdf.geometry.type == 'Polygon'].unary_union
     union2 = gdf[gdf.geometry.type != 'Polygon'].geometry.buffer(0).unary_union
-    union_all = unary_union([union1, union2])
-    
+    union_all = sh.ops.unary_union([union1, union2])
+
     return union_all
 
-def invert_shapes(gdf_cutout, shape_outer):
-    """ 
-    given an outer shape and a gdf with geometries that are to be cut out,
-    return the remaining multipolygon
+def _swap_geom_cols(gdf, geom_to, new_geom):
     """
-    return shape_outer - _make_union(gdf_cutout)
+    Change which column is the geometry column
+
+    Parameters
+    ----------
+    gdf : GeoDataFrame
+        Input geodatafram
+    geom_to : string
+        New name of the current 'geometry' column
+    new_geom : string
+        Column that should be set as the 'geometry' column. The column
+        new_geom is renamed to 'geometry'
+
+    Returns
+    -------
+    gdf_swap : GeoDataFrame
+        Copy of gdf with the new geometry column
+
+    """
+    gdf_swap = gdf.rename(columns = {'geometry': geom_to})
+    gdf_swap.rename(columns = {new_geom: 'geometry'}, inplace=True)
+    gdf_swap.set_geometry('geometry', inplace=True)
+    return gdf_swap
+
+
+"""
+TODO: To be remvoe in a future iteration and included directly into the
+impact class
+"""
+
+def set_imp_mat(impact, imp_mat):
+    """
+    Set Impact attributes from the impact matrix. Returns a copy.
+    Overwrites eai_exp, at_event, aai_agg, imp_mat.
+
+    Parameters
+    ----------
+    impact : Impact
+        Impact instance.
+    imp_mat : sparse.csr_matrix
+        matrix num_events x num_exp with impacts.
+
+    Returns
+    -------
+    imp : Impact
+        Copy of impact with eai_exp, at_event, aai_agg, imp_mat set.
+
+    """
+    imp = copy.deepcopy(impact)
+    imp.eai_exp = eai_exp_from_mat(imp_mat, imp.frequency)
+    imp.at_event = at_event_from_mat(imp_mat)
+    imp.aai_agg = aai_agg_from_at_event(imp.at_event, imp.frequency)
+    imp.imp_mat = imp_mat
+    return imp
+
+def eai_exp_from_mat(imp_mat, freq):
+    """
+    Compute impact for each exposures from the total impact matrix
+
+    Parameters
+    ----------
+    imp_mat : sparse.csr_matrix
+        matrix num_events x num_exp with impacts.
+    frequency : np.array
+        annual frequency of events
+
+    Returns
+    -------
+    eai_exp : np.array
+        expected annual impact for each exposure
+
+    """
+    freq_mat = freq.reshape(len(freq), 1)
+    return imp_mat.multiply(freq_mat).sum(axis=0).A1
+
+def at_event_from_mat(imp_mat):
+    """
+    Compute impact for each hazard event from the total impact matrix
+
+    Parameters
+    ----------
+    imp_mat : sparse.csr_matrix
+        matrix num_events x num_exp with impacts.
+
+    Returns
+    -------
+    at_event : np.array
+        impact for each hazard event
+
+    """
+    return np.squeeze(np.asarray(np.sum(imp_mat, axis=1)))
+
+def aai_agg_from_at_event(at_event, freq):
+    """
+    Aggregate impact.at_event
+
+    Parameters
+    ----------
+    at_event : np.array
+        impact for each hazard event
+    frequency : np.array
+        annual frequency of event
+
+    Returns
+    -------
+    float
+        average annual impact aggregated
+
+    """
+    return sum(at_event * freq)
