@@ -104,9 +104,6 @@ def calc_geom_impact(
     # re-aggregate impact to original exposure geometry
     impact_agg = impact_pnt_agg(impact_pnt, exp_pnt, agg)
 
-    # add original exposure geometries & coordinates to impact object for plotting
-    impact_agg = add_exp_geoms(impact_agg, exp.gdf.geometry)
-
     return impact_agg
 
 def impact_pnt_agg(impact_pnt, exp_pnt, agg):
@@ -140,8 +137,21 @@ def impact_pnt_agg(impact_pnt, exp_pnt, agg):
     # aggregate impact
     mat_agg = aggregate_impact_mat(impact_pnt, exp_pnt.gdf, agg)
 
-    #Write to impact obj
-    return set_imp_mat(impact_pnt, mat_agg)
+    # write to impact obj
+    impact_agg = set_imp_mat(impact_pnt, mat_agg)
+
+    # add exposure representation points as coordinates
+    repr_pnts = gpd.GeoSeries(
+        exp_pnt.gdf['geometry_orig'][:,0].apply(
+            lambda x: x.representative_point()))
+    impact_agg.coord_exp = np.array([repr_pnts.y, repr_pnts.x]).transpose()
+
+    # Add original geometries for plotting
+    impact_agg.geom_exp = exp_pnt.gdf.xs(0, level=1)\
+        .set_geometry('geometry_orig')\
+            .geometry.rename('geometry')
+
+    return impact_agg
 
 
 def aggregate_impact_mat(imp_pnt, gdf_pnt, agg):
@@ -185,28 +195,6 @@ def aggregate_impact_mat(imp_pnt, gdf_pnt, agg):
         )
     return imp_pnt.imp_mat.dot(csr_mask)
 
-def add_exp_geoms(impact_agg, exp_geom):
-    """
-    Add exposure geometries (lines or polygons) to the impact object, so
-    plotting of impacts can be performed for the originally calculated shapes.
-
-    Parameters
-    ----------
-    impact_agg : Impact
-    exp_geom : GeoSeries
-
-    Returns
-    -------
-    impact_agg
-
-    """
-    #Add exposure representation points as coordinates
-    repr_pnts = exp_geom.apply(lambda x: x.representative_point())
-    impact_agg.coord_exp = np.array([repr_pnts.y, repr_pnts.x]).transpose()
-    #Add geometries
-    impact_agg.geom_exp = exp_geom
-
-    return impact_agg
 
 def plot_eai_exp_geom(imp_geom, centered=False, figsize=(9, 13), **kwargs):
     """
@@ -478,11 +466,14 @@ def poly_to_pnts(gdf, res, to_meters=False):
     gdf_points = gdf.copy().reset_index(drop=True)
 
     if to_meters:
-        gdf_points['geometry'] = gdf_points.apply(
+        gdf_points['geometry_pnt'] = gdf_points.apply(
             lambda row: _interp_one_poly_m(row.geometry, res, gdf.crs), axis=1)
     else:
-        gdf_points['geometry'] = gdf_points.apply(
+        gdf_points['geometry_pnt'] = gdf_points.apply(
             lambda row: _interp_one_poly(row.geometry, res), axis=1)
+
+    gdf_points = _swap_geom_cols(
+        gdf_points, geom_to='geometry_orig', new_geom='geometry_pnt')
 
     gdf_points = gdf_points.explode()
     gdf_points.index = gdf_points.index.set_levels(idx, level=0)
@@ -666,7 +657,7 @@ def line_to_pnts(gdf_lines, res, to_meters=False):
         for length in line_lengths
         ]
 
-    gdf_points['geometry'] = [
+    gdf_points['geometry_pnt'] = [
         shgeom.MultiPoint([
             line.interpolate(dist, normalized=True)
             for dist in fractions
@@ -674,12 +665,38 @@ def line_to_pnts(gdf_lines, res, to_meters=False):
         for line, fractions in zip(gdf_points.geometry, line_fractions)
         ]
 
+    gdf_points = _swap_geom_cols(
+        gdf_points, geom_to='geometry_orig', new_geom='geometry_pnt')
+
     gdf_points = gdf_points.explode()
     gdf_points.index = gdf_points.index.set_levels(idx, level=0)
     return gdf_points
 
 def _pnts_per_line(length, res):
     return int(np.ceil(length / res) + 1)
+
+def _swap_geom_cols(gdf, geom_to, new_geom):
+    """
+    Change which column is the geometry column
+    Parameters
+    ----------
+    gdf : GeoDataFrame
+        Input geodatafram
+    geom_to : string
+        New name of the current 'geometry' column
+    new_geom : string
+        Column that should be set as the 'geometry' column. The column
+        new_geom is renamed to 'geometry'
+    Returns
+    -------
+    gdf_swap : GeoDataFrame
+        Copy of gdf with the new geometry column
+    """
+    gdf_swap = gdf.rename(columns = {'geometry': geom_to})
+    gdf_swap.rename(columns = {new_geom: 'geometry'}, inplace=True)
+    gdf_swap.set_geometry('geometry', inplace=True)
+    return gdf_swap
+
 
 def invert_shapes(gdf_cutout, shape_outer):
     """
