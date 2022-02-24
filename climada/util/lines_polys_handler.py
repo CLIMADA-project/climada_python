@@ -333,10 +333,7 @@ def _gdf_line_to_pnt(gdf, res, to_meters, disagg):
     """
 
     # rasterize (disaggregate geometry)
-    if to_meters:
-        gdf_pnt = line_to_pnts_m(gdf, res)
-    else:
-        gdf_pnt = line_to_pnts(gdf, res)
+    gdf_pnt = line_to_pnts(gdf, res, to_meters)
 
     # disaggregate value column
     if disagg == 'avg':
@@ -347,7 +344,6 @@ def _gdf_line_to_pnt(gdf, res, to_meters, disagg):
         gdf_pnt['value'] = 1
 
     return gdf_pnt
-
 
 def _gdf_poly_to_pnt(gdf, res, to_meters, disagg):
     """
@@ -623,12 +619,13 @@ def reproject_poly(poly, orig_crs, dest_crs):
     project = _get_pyproj_trafo(orig_crs, dest_crs)
     return sh.ops.transform(project.transform, poly)
 
-def line_to_pnts(gdf_lines, res):
+def line_to_pnts(gdf_lines, res, to_meters=False):
 
-    """ Convert a GeoDataframe with LineString geometries to
+    """ 
+    Convert a GeoDataframe with LineString geometries to
     Point geometries, where Points are placed at a specified distance
-    along the original LineString. Each line is reduced to
-    at least two points. 
+    (in meters, if applicable) along the original LineString. Each line is 
+    reduced to at least two points. 
 
     Parameters
     ----------
@@ -652,9 +649,12 @@ def line_to_pnts(gdf_lines, res):
 
     # Needed because gdf.explode() requires numeric index
     idx = gdf_lines.index.to_list() #To restore the naming of the index
-
     gdf_points = gdf_lines.copy().reset_index(drop=True)
-    line_lengths = gdf_lines.length
+
+    if to_meters:
+        line_lengths = u_coord.compute_geodesic_lengths(gdf_points)
+    else:
+        line_lengths = gdf_lines.length
 
     line_fractions = [
         np.linspace(0, 1, num=_pnts_per_line(length, res))
@@ -669,58 +669,6 @@ def line_to_pnts(gdf_lines, res):
         for line, fractions in zip(gdf_points.geometry, line_fractions)
         ]
 
-    gdf_points = gdf_points.explode()
-    gdf_points.index = gdf_points.index.set_levels(idx, level=0)
-    return gdf_points
-
-def line_to_pnts_m(gdf_lines, res):
-
-    """ Convert a GeoDataframe with LineString geometries to
-    Point geometries, where Points are placed at a specified distance
-    (in meters) along the original LineString. Each line is reduced to
-    at least two points.
-
-    Remark: LineString.interpolate() used here performs interpolation
-    on a geodesic.
-
-    Parameters
-    ----------
-    gdf_lines : gpd.GeoDataframe
-        Geodataframe with line geometries
-    res : float
-        Resolution (distance) in metres apart from which the generated Points
-        should be approximately placed.
-
-    Returns
-    -------
-    gdf_points : gpd.GeoDataFrame
-        Geodataframe with a double index, first for line geometries,
-        second for the point disaggregation of the lines (i.e. one Point
-        per row).
-
-    See also
-    --------
-    * util.coordinates.compute_geodesic_lengths()
-    """
-
-    # Needed because gdf.explode() requires numeric index
-    idx = gdf_lines.index.to_list() #To restore the naming of the index
-
-    gdf_points = gdf_lines.copy().reset_index(drop=True)
-    line_lengths = u_coord.compute_geodesic_lengths(gdf_points)
-
-    line_fractions = [
-        np.linspace(0, 1, num=_pnts_per_line(length, res))
-        for length in line_lengths
-        ]
-
-    gdf_points['geometry'] = [
-        shgeom.MultiPoint([
-            line.interpolate(dist, normalized=True)
-            for dist in fractions
-            ])
-        for line, fractions in zip(gdf_points.geometry, line_fractions)
-        ]
     gdf_points = gdf_points.explode()
     gdf_points.index = gdf_points.index.set_levels(idx, level=0)
     return gdf_points
@@ -749,7 +697,7 @@ def _make_union(gdf):
 
 
 """
-TODO: To be remvoe in a future iteration and included directly into the
+TODO: To be removed in a future iteration and included directly into the
 impact class
 """
 
