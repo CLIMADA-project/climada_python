@@ -20,6 +20,7 @@ import copy
 from collections import Counter
 import geopandas as gpd
 import numpy as np
+import pandas as pd
 import scipy as sp
 import shapely as sh
 import shapely.geometry as shgeom
@@ -102,12 +103,12 @@ def calc_geom_impact(
 
     # re-aggregate impact to original exposure geometry
     impact_agg = impact_pnt_agg(impact_pnt, exp_pnt, agg)
-    
+
     # add original exposure geometries & coordinates to impact object for plotting
     impact_agg = add_exp_geoms(impact_agg, exp.gdf.geometry)
-    
+
     return impact_agg
-            
+
 def impact_pnt_agg(impact_pnt, exp_pnt, agg):
     """
     Aggregate the impact per geometry.
@@ -186,14 +187,14 @@ def aggregate_impact_mat(imp_pnt, gdf_pnt, agg):
 
 def add_exp_geoms(impact_agg, exp_geom):
     """
-    Add exposure geometries (lines or polygons) to the impact object, so 
+    Add exposure geometries (lines or polygons) to the impact object, so
     plotting of impacts can be performed for the originally calculated shapes.
-    
+
     Parameters
     ----------
     impact_agg : Impact
     exp_geom : GeoSeries
-    
+
     Returns
     -------
     impact_agg
@@ -201,10 +202,10 @@ def add_exp_geoms(impact_agg, exp_geom):
     """
     #Add exposure representation points as coordinates
     repr_pnts = exp_geom.apply(lambda x: x.representative_point())
-    impact_agg['coord_exp'] = np.array([repr_pnts.y, repr_pnts.x]).transpose()
+    impact_agg.coord_exp = np.array([repr_pnts.y, repr_pnts.x]).transpose()
     #Add geometries
-    impact_agg['geom_exp'] = exp_geom
-    
+    impact_agg.geom_exp = exp_geom
+
     return impact_agg
 
 def plot_eai_exp_geom(imp_geom, centered=False, figsize=(9, 13), **kwargs):
@@ -280,11 +281,15 @@ def exp_geom_to_pnt(exp, res, to_meters, disagg):
     gdf_pnt = gpd.GeoDataFrame([])
 
     if np.any(poly_mask):
-        gdf_pnt = gdf_pnt.concat(
-            _gdf_poly_to_pnt(exp.gdf[poly_mask], res, to_meters, disagg))
+        gdf_pnt = gpd.GeoDataFrame(
+            pd.concat(
+                [gdf_pnt, _gdf_poly_to_pnt(exp.gdf[poly_mask], res, to_meters, disagg)]
+            ))
     if np.any(line_mask):
-        gdf_pnt = gdf_pnt.concat(
-            _gdf_line_to_pnt(exp.gdf[line_mask], res, to_meters, disagg))
+        gdf_pnt = gpd.GeoDataFrame(
+            pd.concat(
+            [gdf_pnt, _gdf_line_to_pnt(exp.gdf[line_mask], res, to_meters, disagg)]
+            ))
 
     # set lat lon and centroids
     exp_pnt = exp.copy()
@@ -510,7 +515,7 @@ def _interp_one_poly(poly, res):
 
     if sum(in_geom.flatten()) > 1:
         return shgeom.MultiPoint(list(zip(x_grid[in_geom], y_grid[in_geom])))
-    
+
     LOGGER.warning('Polygon smaller than resolution. Setting a representative point.')
     return shgeom.MultiPoint([poly.representative_point()])
 
@@ -568,17 +573,17 @@ def _get_equalarea_proj(poly):
 def _get_pyproj_trafo(orig_crs, dest_crs):
     """
     """
-    return pyproj.Transformer.from_proj(pyproj.Proj(orig_crs), 
+    return pyproj.Transformer.from_proj(pyproj.Proj(orig_crs),
                                         pyproj.Proj(dest_crs),
                                         always_xy=True)
 
 def reproject_grid(x_grid, y_grid, orig_crs, dest_crs):
     """
     Reproject a grid from one crs to another
-    
+
     Parameters
     ----------
-    x_grid : 
+    x_grid :
         x-coordinates
     y_grid :
         y-coordinates
@@ -589,7 +594,7 @@ def reproject_grid(x_grid, y_grid, orig_crs, dest_crs):
 
     Returns
     -------
-    x_trafo, y_trafo : 
+    x_trafo, y_trafo :
         Grid coordinates in reprojected crs
     """
     project = _get_pyproj_trafo(orig_crs, dest_crs)
@@ -600,7 +605,7 @@ def reproject_grid(x_grid, y_grid, orig_crs, dest_crs):
 def reproject_poly(poly, orig_crs, dest_crs):
     """
     Reproject a polygon from one crs to another
-    
+
     Parameters
     ----------
     poly : shapely Polygon
@@ -615,17 +620,17 @@ def reproject_poly(poly, orig_crs, dest_crs):
     poly : shapely Polygon
         Polygon in desired projection
     """
-    
+
     project = _get_pyproj_trafo(orig_crs, dest_crs)
     return sh.ops.transform(project.transform, poly)
 
 def line_to_pnts(gdf_lines, res, to_meters=False):
 
-    """ 
+    """
     Convert a GeoDataframe with LineString geometries to
     Point geometries, where Points are placed at a specified distance
-    (in meters, if applicable) along the original LineString. Each line is 
-    reduced to at least two points. 
+    (in meters, if applicable) along the original LineString. Each line is
+    reduced to at least two points.
 
     Parameters
     ----------
