@@ -78,7 +78,10 @@ def calc_geom_impact(
     Returns
     -------
     Impact
-        Impact object with the impact per geometry (rows of exp.gdf).
+        Impact object with the impact per geometry (rows of exp.gdf). Contains
+        two additional attributes 'geom_exp' and 'coord_exp', the first one
+        being the origninal line or polygon geometries for which impact was
+        computed.
 
     See Also
     --------
@@ -98,9 +101,13 @@ def calc_geom_impact(
     impact_pnt.calc(exp_pnt, impf_set, haz, save_mat=True)
 
     # re-aggregate impact to original exposure geometry
-    return impact_pnt_agg(impact_pnt, exp_pnt, agg)
-
-
+    impact_agg = impact_pnt_agg(impact_pnt, exp_pnt, agg)
+    
+    # add original exposure geometries & coordinates to impact object for plotting
+    impact_agg = add_exp_geoms(impact_agg, exp.gdf.geometry)
+    
+    return impact_agg
+            
 def impact_pnt_agg(impact_pnt, exp_pnt, agg):
     """
     Aggregate the impact per geometry.
@@ -133,21 +140,8 @@ def impact_pnt_agg(impact_pnt, exp_pnt, agg):
     mat_agg = aggregate_impact_mat(impact_pnt, exp_pnt.gdf, agg)
 
     #Write to impact obj
-    impact_agg = set_imp_mat(impact_pnt, mat_agg)
+    return set_imp_mat(impact_pnt, mat_agg)
 
-    #Add exposure representation points as coordinates
-    repr_pnts = gpd.GeoSeries(
-        exp_pnt.gdf['geometry_orig'][:,0].apply(
-            lambda x: x.representative_point()
-            )
-        )
-    impact_agg.coord_exp = np.array([repr_pnts.y, repr_pnts.x]).transpose()
-    #Add geometries
-    impact_agg.geom_exp = exp_pnt.gdf.xs(0, level=1)\
-        .set_geometry('geometry_orig')\
-            .geometry.rename('geometry')
-
-    return impact_agg
 
 def aggregate_impact_mat(imp_pnt, gdf_pnt, agg):
     """
@@ -189,6 +183,29 @@ def aggregate_impact_mat(imp_pnt, gdf_pnt, agg):
          shape=(len(row_pnt), len(np.unique(col_geom)))
         )
     return imp_pnt.imp_mat.dot(csr_mask)
+
+def add_exp_geoms(impact_agg, exp_geom):
+    """
+    Add exposure geometries (lines or polygons) to the impact object, so 
+    plotting of impacts can be performed for the originally calculated shapes.
+    
+    Parameters
+    ----------
+    impact_agg : Impact
+    exp_geom : GeoSeries
+    
+    Returns
+    -------
+    impact_agg
+
+    """
+    #Add exposure representation points as coordinates
+    repr_pnts = exp_geom.apply(lambda x: x.representative_point())
+    impact_agg['coord_exp'] = np.array([repr_pnts.y, repr_pnts.x]).transpose()
+    #Add geometries
+    impact_agg['geom_exp'] = exp_geom
+    
+    return impact_agg
 
 def plot_eai_exp_geom(imp_geom, centered=False, figsize=(9, 13), **kwargs):
     """
@@ -421,15 +438,15 @@ def assign_point_val(gdf_pnts, value_per_pnt):
 
     Returns
     -------
-    gdf_agg : geodataframe
+    gdf_disagg : geodataframe
         The value per point is value_per_pnt
 
     """
 
-    gdf_agg = gdf_pnts.copy()
-    gdf_agg['value'] = value_per_pnt
+    gdf_disagg = gdf_pnts.copy()
+    gdf_disagg['value'] = value_per_pnt
 
-    return gdf_agg
+    return gdf_disagg
 
 
 def poly_to_pnts(gdf, res, to_meters=False):
@@ -460,15 +477,12 @@ def poly_to_pnts(gdf, res, to_meters=False):
     gdf_points = gdf.copy().reset_index(drop=True)
 
     if to_meters:
-        gdf_points['geometry_pnt'] = gdf_points.apply(
+        gdf_points['geometry'] = gdf_points.apply(
             lambda row: _interp_one_poly_m(row.geometry, res, gdf.crs), axis=1)
     else:
-        gdf_points['geometry_pnt'] = gdf_points.apply(
+        gdf_points['geometry'] = gdf_points.apply(
             lambda row: _interp_one_poly(row.geometry, res), axis=1)
 
-    gdf_points = _swap_geom_cols(
-        gdf_points, geom_to='geometry_orig', new_geom='geometry_pnt'
-        )
     gdf_points = gdf_points.explode()
     gdf_points.index = gdf_points.index.set_levels(idx, level=0)
     return gdf_points
@@ -506,7 +520,8 @@ def _interp_one_poly(poly, res):
 
 def _interp_one_poly_m(poly, res, orig_crs):
     """
-    Disaggragate a single polygon to points. Resolution in meters.
+    Disaggregate a single polygon to points for resolution given in meters.
+    Transforms coordinates into an adequate projected equal-area crs for this.
 
     Parameters
     ----------
@@ -527,63 +542,85 @@ def _interp_one_poly_m(poly, res, orig_crs):
     if poly.is_empty:
         return shgeom.MultiPoint([])
 
-    repr_pnt = poly.representative_point()
-    lon_0, lat_0 = repr_pnt.x, repr_pnt.y
-
-    project = pyproj.Transformer.from_proj(
-        pyproj.Proj(orig_crs),
-        pyproj.Proj("+proj=cea +lat_0=%f +lon_0=%f +units=m" %(lat_0, lon_0)),
-        always_xy=True
-    )
-    poly_m = sh.ops.transform(project.transform, poly)
+    m_crs = _get_equalarea_proj(poly)
+    poly_m = reproject_poly(poly, orig_crs, m_crs)
 
     height, width, trafo = u_coord.pts_to_raster_meta(poly_m.bounds, (res, res))
     x_grid, y_grid = u_coord.raster_to_meshgrid(trafo, width, height)
 
     in_geom = sh.vectorized.contains(poly_m, x_grid, y_grid)
-
     if sum(in_geom.flatten()) > 1:
-        project_inv = pyproj.Transformer.from_proj(
-            pyproj.Proj("+proj=cea +lat_0=%f +lon_0=%f +units=m" %(lat_0, lon_0)),
-            pyproj.Proj(orig_crs),
-            always_xy=True
-        )
-        x_poly, y_poly = project_inv.transform(x_grid[in_geom], y_grid[in_geom])
+        x_poly, y_poly = reproject_grid(
+            x_grid[in_geom], y_grid[in_geom], m_crs, orig_crs)
         return shgeom.MultiPoint(list(zip(x_poly, y_poly)))
 
     LOGGER.warning('Polygon smaller than resolution. Setting a representative point.')
-    return shgeom.MultiPoint([repr_pnt])
+    return shgeom.MultiPoint([poly.representative_point()])
 
 
-def poly_to_equalarea_proj(poly, orig_crs):
+def _get_equalarea_proj(poly):
     """
-    Project polyong to Equal Area Cylindrical projection
+    Find an adequate Equal Area Cylindrical projection
     using a representative point as lat/lon reference.
 
     https://proj.org/operations/projections/cea.html
+    """
+    repr_pnt = poly.representative_point()
+    lon_0, lat_0 = repr_pnt.x, repr_pnt.y
+    return "+proj=cea +lat_0=%f +lon_0=%f +units=m" %(lat_0, lon_0)
 
+def _get_pyproj_trafo(orig_crs, dest_crs):
+    """
+    """
+    return pyproj.Transformer.from_proj(pyproj.Proj(orig_crs), 
+                                        pyproj.Proj(dest_crs),
+                                        always_xy=True)
+
+def reproject_grid(x_grid, y_grid, orig_crs, dest_crs):
+    """
+    Reproject a grid from one crs to another
+    
+    Parameters
+    ----------
+    x_grid : 
+        x-coordinates
+    y_grid :
+        y-coordinates
+    orig_crs: pyproj.CRS
+        original CRS of the grid
+    dest_crs: pyproj.CRS
+        CRS of the grid to be reprojected to
+
+    Returns
+    -------
+    x_trafo, y_trafo : 
+        Grid coordinates in reprojected crs
+    """
+    project = _get_pyproj_trafo(orig_crs, dest_crs)
+    x_trafo, y_trafo = project.transform(x_grid, y_grid)
+    return x_trafo, y_trafo
+
+
+def reproject_poly(poly, orig_crs, dest_crs):
+    """
+    Reproject a polygon from one crs to another
+    
     Parameters
     ----------
     poly : shapely Polygon
         Polygon
     orig_crs: pyproj.CRS
-        CRS of the polygon
+        original CRS of the polygon
+    dest_crs: pyproj.CRS
+        CRS of the polygon to be reprojected to
 
     Returns
     -------
     poly : shapely Polygon
-        Polygon in equal are projection
-
+        Polygon in desired projection
     """
-
-    repr_pnt = poly.representative_point()
-    lon_0, lat_0 = repr_pnt.x, repr_pnt.y
-
-    project = pyproj.Transformer.from_proj(
-        pyproj.Proj(orig_crs),
-        pyproj.Proj("+proj=cea +lat_0=%f +lon_0=%f +units=m" %(lat_0, lon_0)),
-        always_xy=True
-    )
+    
+    project = _get_pyproj_trafo(orig_crs, dest_crs)
     return sh.ops.transform(project.transform, poly)
 
 def line_to_pnts(gdf_lines, res):
@@ -591,7 +628,7 @@ def line_to_pnts(gdf_lines, res):
     """ Convert a GeoDataframe with LineString geometries to
     Point geometries, where Points are placed at a specified distance
     along the original LineString. Each line is reduced to
-    at least two points.
+    at least two points. 
 
     Parameters
     ----------
@@ -624,7 +661,7 @@ def line_to_pnts(gdf_lines, res):
         for length in line_lengths
         ]
 
-    gdf_points['geometry_pnt'] = [
+    gdf_points['geometry'] = [
         shgeom.MultiPoint([
             line.interpolate(dist, normalized=True)
             for dist in fractions
@@ -632,9 +669,6 @@ def line_to_pnts(gdf_lines, res):
         for line, fractions in zip(gdf_points.geometry, line_fractions)
         ]
 
-    gdf_points = _swap_geom_cols(
-        gdf_points, geom_to='geometry_orig', new_geom='geometry_pnt'
-        )
     gdf_points = gdf_points.explode()
     gdf_points.index = gdf_points.index.set_levels(idx, level=0)
     return gdf_points
@@ -645,8 +679,6 @@ def line_to_pnts_m(gdf_lines, res):
     Point geometries, where Points are placed at a specified distance
     (in meters) along the original LineString. Each line is reduced to
     at least two points.
-
-
 
     Remark: LineString.interpolate() used here performs interpolation
     on a geodesic.
@@ -682,17 +714,13 @@ def line_to_pnts_m(gdf_lines, res):
         for length in line_lengths
         ]
 
-    gdf_points['geometry_pnt'] = [
+    gdf_points['geometry'] = [
         shgeom.MultiPoint([
             line.interpolate(dist, normalized=True)
             for dist in fractions
             ])
         for line, fractions in zip(gdf_points.geometry, line_fractions)
         ]
-
-    gdf_points = _swap_geom_cols(
-        gdf_points, geom_to='geometry_orig', new_geom='geometry_pnt'
-        )
     gdf_points = gdf_points.explode()
     gdf_points.index = gdf_points.index.set_levels(idx, level=0)
     return gdf_points
@@ -718,31 +746,6 @@ def _make_union(gdf):
     union_all = sh.ops.unary_union([union1, union2])
 
     return union_all
-
-def _swap_geom_cols(gdf, geom_to, new_geom):
-    """
-    Change which column is the geometry column
-
-    Parameters
-    ----------
-    gdf : GeoDataFrame
-        Input geodatafram
-    geom_to : string
-        New name of the current 'geometry' column
-    new_geom : string
-        Column that should be set as the 'geometry' column. The column
-        new_geom is renamed to 'geometry'
-
-    Returns
-    -------
-    gdf_swap : GeoDataFrame
-        Copy of gdf with the new geometry column
-
-    """
-    gdf_swap = gdf.rename(columns = {'geometry': geom_to})
-    gdf_swap.rename(columns = {new_geom: 'geometry'}, inplace=True)
-    gdf_swap.set_geometry('geometry', inplace=True)
-    return gdf_swap
 
 
 """
