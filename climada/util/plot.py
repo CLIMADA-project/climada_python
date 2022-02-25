@@ -550,6 +550,17 @@ def add_shapes(axis):
         axis.add_geometries([geometry], crs=ccrs.PlateCarree(), facecolor='none',
                             edgecolor='dimgray')
 
+def _ensure_utf8(val):
+    # Without the `*.cpg` file present, the shape reader wrongly assumes latin-1 encoding:
+    # https://github.com/SciTools/cartopy/issues/1282
+    # https://github.com/SciTools/cartopy/commit/6d787b01e122eea68b67a9b2966e45877755a52d
+    # As a workaround, we encode and decode again, unless this fails which means
+    # that the `*.cpg` is present and the encoding is correct:
+    try:
+        return val.encode('latin-1').decode('utf-8')
+    except:
+        return val
+
 def add_populated_places(axis, extent, proj=ccrs.PlateCarree(), fontsize=None):
     """
     Add city names.
@@ -578,16 +589,11 @@ def add_populated_places(axis, extent, proj=ccrs.PlateCarree(), fontsize=None):
     for rec, point in zip(shp.records(), shp.geometries()):
         if ext_trans[2][0] < point.x <= ext_trans[0][0]:
             if ext_trans[0][1] < point.y <= ext_trans[1][1]:
-                # Fiona wrongly assumes latin-1 encoding by default:
-                # https://github.com/SciTools/cartopy/issues/1282
-                # As a workaround, we encode and decode again:
-                place_name = rec.attributes['name'].encode("latin-1").decode("utf-8")
                 axis.plot(point.x, point.y, color='navy', marker='o',
                           transform=ccrs.PlateCarree(), markerfacecolor='None')
-                axis.text(point.x, point.y, place_name,
+                axis.text(point.x, point.y, _ensure_utf8(rec.attributes['name']),
                           horizontalalignment='right', verticalalignment='bottom',
                           transform=ccrs.PlateCarree(), color='navy', fontsize=fontsize)
-
 
 def add_cntry_names(axis, extent, proj=ccrs.PlateCarree(), fontsize=None):
     """
@@ -614,15 +620,11 @@ def add_cntry_names(axis, extent, proj=ccrs.PlateCarree(), fontsize=None):
     ext_trans = [ccrs.PlateCarree().transform_point(pts[0], pts[1], proj)
                  for pts in ext_pts]
     for rec, point in zip(shp.records(), shp.geometries()):
-        # Fiona wrongly assumes latin-1 encoding by default:
-        # https://github.com/SciTools/cartopy/issues/1282
-        # As a workaround, we encode and decode again:
-        place_name = rec.attributes['NAME'].encode("latin-1").decode("utf-8")
         point_x = point.centroid.xy[0][0]
         point_y = point.centroid.xy[1][0]
         if ext_trans[2][0] < point_x <= ext_trans[0][0]:
             if ext_trans[0][1] < point_y <= ext_trans[1][1]:
-                axis.text(point_x, point_y, place_name,
+                axis.text(point_x, point_y, _ensure_utf8(rec.attributes['NAME']),
                           horizontalalignment='center', verticalalignment='center',
                           transform=ccrs.PlateCarree(), fontsize=fontsize, color='navy')
 
@@ -733,8 +735,16 @@ def get_transformation(crs_in):
         crs_epsg = ccrs.PlateCarree()
 
     try:
-        units = crs_epsg.to_dict()['units']
-    except KeyError:
+        units = (crs_epsg.proj4_params.get('units')
+                # As of cartopy 0.20 the proj4_params attribute is {} for CRS from an EPSG number
+                # (see issue raised https://github.com/SciTools/cartopy/issues/1974
+                # and longterm discussion on https://github.com/SciTools/cartopy/issues/813).
+                # In these cases the units can be fetched through the method `to_dict`.
+                or crs_epsg.to_dict().get('units', '°'))
+    except AttributeError:
+                # This happens in setups with cartopy<0.20, where `to_dict` is not defined.
+                # Officially, we require cartopy>=0.20, but there are still users around that
+                # can't upgrade due to https://github.com/SciTools/iris/issues/4468
         units = '°'
     return crs_epsg, units
 

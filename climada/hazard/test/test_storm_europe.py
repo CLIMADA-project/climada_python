@@ -21,8 +21,6 @@ Test StormEurope class
 
 import copy
 import unittest
-import logging
-import mock
 import datetime as dt
 import numpy as np
 from scipy import sparse
@@ -47,6 +45,27 @@ class TestReader(unittest.TestCase):
         self.assertEqual(cent.size, 9944)
 
     def test_from_footprints(self):
+        """Test from_footprints constructor, using one small test files"""
+        storms = StormEurope.from_footprints(WS_DEMO_NC[0], description='test_description')
+
+        self.assertEqual(storms.tag.haz_type, 'WS')
+        self.assertEqual(storms.units, 'm/s')
+        self.assertEqual(storms.event_id.size, 1)
+        self.assertEqual(storms.date.size, 1)
+        self.assertEqual(dt.datetime.fromordinal(storms.date[0]).year, 1999)
+        self.assertEqual(dt.datetime.fromordinal(storms.date[0]).month, 12)
+        self.assertEqual(dt.datetime.fromordinal(storms.date[0]).day, 26)
+        self.assertEqual(storms.event_id[0], 1)
+        self.assertEqual(storms.event_name[0], 'Lothar')
+        self.assertIsInstance(storms.intensity,
+                              sparse.csr.csr_matrix)
+        self.assertIsInstance(storms.fraction,
+                              sparse.csr.csr_matrix)
+        self.assertEqual(storms.intensity.shape, (1, 9944))
+        self.assertEqual(storms.fraction.shape, (1, 9944))
+        self.assertEqual(storms.frequency[0], 1.0)
+
+
         """Test from_footprints constructor, using two small test files"""
         storms = StormEurope.from_footprints(WS_DEMO_NC, description='test_description')
 
@@ -176,7 +195,7 @@ class TestReader(unittest.TestCase):
         # another download would fail because the files are available for 24h only
         # instead, we download it as a test dataset through the climada data api
         apiclient = Client()
-        ds = apiclient.get_dataset(name='test_storm_europe_icon_2021012800')
+        ds = apiclient.get_dataset_info(name='test_storm_europe_icon_2021012800', status='test_dataset')
         dsdir, _ = apiclient.download_dataset(ds)
         haz = StormEurope.from_icon_grib(
             dt.datetime(2021, 1, 28),
@@ -200,8 +219,7 @@ class TestReader(unittest.TestCase):
         self.assertEqual(haz.intensity.shape, (40, 49))
         self.assertAlmostEqual(haz.intensity.max(), 17.276321,places=3)
         self.assertEqual(haz.fraction.shape, (40, 49))
-        logger = logging.getLogger('climada.hazard.storm_europe')
-        with mock.patch.object(logger,'warning') as mock_logger:
+        with self.assertLogs('climada.hazard.storm_europe', level='WARNING') as cm:
             with self.assertRaises(ValueError):
                 haz = StormEurope.from_icon_grib(
                     dt.datetime(2021, 1, 28, 6),
@@ -209,7 +227,8 @@ class TestReader(unittest.TestCase):
                     model_name='test',
                     grib_dir=CONFIG.hazard.test_data.str(),
                     delete_raw_data=False)
-            mock_logger.assert_called_once()
+        self.assertEqual(len(cm.output), 1)
+        self.assertIn('event definition is inaccuratly implemented', cm.output[0])
 
     def test_generate_forecast(self):
         """ testing generating a forecast """
