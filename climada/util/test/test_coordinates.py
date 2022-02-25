@@ -35,7 +35,7 @@ from rasterio.crs import CRS as RCRS
 import rasterio.transform
 
 from climada import CONFIG
-from climada.util.constants import HAZ_DEMO_FL, DEF_CRS, ONE_LAT_KM
+from climada.util.constants import HAZ_DEMO_FL, DEF_CRS, ONE_LAT_KM, DEMO_DIR
 import climada.util.coordinates as u_coord
 
 DATA_DIR = CONFIG.util.test_data.dir()
@@ -136,136 +136,40 @@ class TestDistance(unittest.TestCase):
             7709.827814738594,
             np.sqrt(u_coord._dist_sqr_approx(lats1, lons1, cos_lats1, lats2, lons2)) * ONE_LAT_KM)
     
-    def test_dist_great_circle_allgeoms(self):
-        """Test compute_geodesic_lengths"""
-        # TODO: implement
-        pass
+    def test_geodesic_length_geog(self):
+        """Test compute_geodesic_lengths for geographic input crs"""
+        
+        LINE_PATH = DEMO_DIR.joinpath('nl_rails.gpkg')
+        gdf_rails = gpd.read_file(LINE_PATH).to_crs('epsg:4326')
+        lengths_geom = u_coord.compute_geodesic_lengths(gdf_rails)
+        
+        self.assertEqual(len(lengths_geom), len(gdf_rails))
+        self.assertTrue(
+            np.all(
+                (abs(lengths_geom - gdf_rails['distance'])/lengths_geom < 0.1) | 
+                (lengths_geom - gdf_rails['distance'] < 10)
+                )
+            )
 
-class TestInterpIndex(unittest.TestCase):
-    """Test interpol_index function's interface"""
+    def test_geodesic_length_proj(self):
+        """Test compute_geodesic_lengths for projected input crs"""
+        
+        LINE_PATH = DEMO_DIR.joinpath('nl_rails.gpkg')
+        gdf_rails = gpd.read_file(LINE_PATH).to_crs('epsg:4326')
+        gdf_rails_proj = gpd.read_file(LINE_PATH).to_crs('epsg:4326').to_crs('EPSG:28992')
 
-    def test_wrong_method_fail(self):
-        """Check exception is thrown when wrong method is given"""
-        with self.assertLogs('climada.util.coordinates', level='ERROR') as cm:
-            u_coord.interpol_index(np.ones((10, 2)), np.ones((7, 2)), 'method')
-        self.assertIn('Interpolation using method with distance haversine is not supported.',
-                      cm.output[0])
+        lengths_geom = u_coord.compute_geodesic_lengths(gdf_rails)
+        lengths_proj = u_coord.compute_geodesic_lengths(gdf_rails_proj)
 
-    def test_wrong_distance_fail(self):
-        """Check exception is thrown when wrong distance is given"""
-        with self.assertLogs('climada.util.coordinates', level='ERROR') as cm:
-            u_coord.interpol_index(np.ones((10, 2)), np.ones((7, 2)),
-                                    distance='distance')
-        self.assertIn('Interpolation using NN with distance distance is not supported.',
-                      cm.output[0])
-
-    def test_wrong_centroid_fail(self):
-        """Check exception is thrown when centroids missing one dimension"""
-        with self.assertRaises(IndexError):
-            u_coord.interpol_index(np.ones((10, 1)), np.ones((7, 2)),
-                                    distance='approx')
-        with self.assertRaises(ValueError):
-            u_coord.interpol_index(np.ones((10, 1)), np.ones((7, 2)),
-                                    distance='haversine')
-
-    def test_wrong_coord_fail(self):
-        """Check exception is thrown when coordinates missing one dimension"""
-        with self.assertRaises(IndexError):
-            u_coord.interpol_index(np.ones((10, 2)), np.ones((7, 1)),
-                                    distance='approx')
-        with self.assertRaises(ValueError):
-            u_coord.interpol_index(np.ones((10, 2)), np.ones((7, 1)),
-                                    distance='haversine')
-
-class TestInterpLP(unittest.TestCase):
-    """Test interpolation of lines and polygons"""
-    def test_interpolate_lines(self):
-        """Test interpolate_lines"""
-        # TODO: implement
-        pass
-    
-    def test_interpolate_polygons(self):
-        """Test interpolate_polygons"""
-        # TODO: implement
-        pass
-
-class TestNN(unittest.TestCase):
-    """Test interpolator neareast neighbor with approximate distance"""
-
-    def tearDown(self):
-        u_coord.THRESHOLD = 100
-
-    def normal_pass(self, dist):
-        """Checking result against matlab climada_demo_step_by_step"""
-        # Load input
-        exposures, centroids = def_input_values()
-
-        # Interpolate with default threshold
-        neighbors = u_coord.interpol_index(centroids, exposures,
-                                            'NN', dist)
-        # Reference output
-        ref_neighbors = def_ref()
-        # Check results
-        self.assertEqual(exposures.shape[0], len(neighbors))
-        self.assertTrue(np.array_equal(neighbors, ref_neighbors))
-
-    def normal_warning(self, dist):
-        """Checking that a warning is raised when minimum distance greater
-        than threshold"""
-        # Load input
-        exposures, centroids = def_input_values()
-
-        # Interpolate with lower threshold to raise warnings
-        threshold = 50
-        with self.assertLogs('climada.util.coordinates', level='INFO') as cm:
-            neighbors = u_coord.interpol_index(centroids, exposures, 'NN',
-                                                dist, threshold=threshold)
-        self.assertIn("Distance to closest centroid", cm.output[0])
-
-        ref_neighbors = def_ref_50()
-        self.assertTrue(np.array_equal(neighbors, ref_neighbors))
-
-    def repeat_coord_pass(self, dist):
-        """Check that exposures with the same coordinates have same
-        neighbors"""
-
-        # Load input
-        exposures, centroids = def_input_values()
-
-        # Repeat a coordinate
-        exposures[2, :] = exposures[0, :]
-
-        # Interpolate with default threshold
-        neighbors = u_coord.interpol_index(centroids, exposures, 'NN', dist)
-
-        # Check output neighbors have same size as coordinates
-        self.assertEqual(len(neighbors), exposures.shape[0])
-        # Check copied coordinates have same neighbors
-        self.assertEqual(neighbors[2], neighbors[0])
-
-    def test_approx_normal_pass(self):
-        """Call normal_pass test for approxiamte distance"""
-        self.normal_pass('approx')
-
-    def test_approx_normal_warning(self):
-        """Call normal_warning test for approxiamte distance"""
-        self.normal_warning('approx')
-
-    def test_approx_repeat_coord_pass(self):
-        """Call repeat_coord_pass test for approxiamte distance"""
-        self.repeat_coord_pass('approx')
-
-    def test_haver_normal_pass(self):
-        """Call normal_pass test for haversine distance"""
-        self.normal_pass('haversine')
-
-    def test_haver_normal_warning(self):
-        """Call normal_warning test for haversine distance"""
-        self.normal_warning('haversine')
-
-    def test_haver_repeat_coord_pass(self):
-        """Call repeat_coord_pass test for haversine distance"""
-        self.repeat_coord_pass('haversine')
+        for len_proj, len_geom in zip(lengths_proj,lengths_geom):
+            self.assertAlmostEqual(len_proj, len_geom, 1)
+        
+        self.assertTrue(
+            np.all(
+                (abs(lengths_proj - gdf_rails_proj['distance'])/lengths_proj < 0.1) | 
+                (lengths_proj - gdf_rails_proj['distance'] < 10)
+                )
+            )
 
 def data_arrays_resampling_demo():
     """init demo data arrays (2d) and meta data for resampling"""
@@ -1660,8 +1564,5 @@ if __name__ == "__main__":
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestGetGeodata))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRasterMeta))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRasterIO))
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestInterpLP))
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestNN))
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestInterpIndex))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestDistance))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
