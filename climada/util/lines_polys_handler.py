@@ -698,26 +698,6 @@ def _swap_geom_cols(gdf, geom_to, new_geom):
     return gdf_swap
 
 
-def invert_shapes(gdf_cutout, shape_outer):
-    """
-    given an outer shape and a gdf with geometries that are to be cut out,
-    return the remaining multipolygon
-    """
-    return shape_outer - _make_union(gdf_cutout)
-
-def _make_union(gdf):
-    """
-    Solve issue of invalid geometries in MultiPolygons, which prevents that
-    shapes can be combined into one unary union, save the respective Union
-    """
-
-    union1 = gdf[gdf.geometry.type == 'Polygon'].unary_union
-    union2 = gdf[gdf.geometry.type != 'Polygon'].geometry.buffer(0).unary_union
-    union_all = sh.ops.unary_union([union1, union2])
-
-    return union_all
-
-
 """
 TODO: To be removed in a future iteration and included directly into the
 impact class

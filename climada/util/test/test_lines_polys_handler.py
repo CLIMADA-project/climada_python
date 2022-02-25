@@ -39,6 +39,17 @@ def check_unchanged_geom_gdf(self, gdf_geom, gdf_pnt):
         sub_gdf_pnt = sub_gdf_pnt
         self.assertTrue(np.alltrue(sub_gdf.geometry.geom_equals(sub_gdf_pnt.geometry_orig)))
 
+class TestGeomImpactCalcs(unittest.TestCase):
+    """Test main functions on impact calculation, aggregation"""
+    def test_calc_geom_impact(self):
+        """"""
+        pass
+    
+    def test_impact_pnt_agg(self):
+        pass
+    
+    def test_aggregate_impact_mat(self):
+        pass
 
 class TestExposureGeomToPnt(unittest.TestCase):
     """Test Exposures to points functions"""
@@ -102,11 +113,19 @@ class TestExposureGeomToPnt(unittest.TestCase):
 class TestGdfGeomToPnt(unittest.TestCase):
     """Test Geodataframes to points and vice-versa functions"""
 
-    def test_disagg_gdf_avg(self):
+    def test_gdf_line_to_pnt(self):
+        """"""
+        pass
+
+    def test_gdf_poly_to_pnt(self):
+        """"""
+        pass
+
+    def test_disagg_values_avg(self):
         """Test disaggregation average"""
         pass
 
-    def test_disagg_gdf_val(self):
+    def test_assign_point_val(self):
         """Test disaggregation value"""
         pass
 
@@ -115,22 +134,72 @@ class TestGdfGeomToPnt(unittest.TestCase):
         gdf_pnt = u_lp.poly_to_pnts(gdf_poly, 1)
         check_unchanged_geom_gdf(self, gdf_poly, gdf_pnt)
 
-    def test_poly_to_pnts_m(self):
-        """Test polygon to points disaggregation in meter"""
-        gdf_pnt = u_lp.poly_to_pnts_m(gdf_poly, 20000)
-        check_unchanged_geom_gdf(self, gdf_poly, gdf_pnt)
-
     def test_lines_to_pnts(self):
         """Test polygon to points disaggregation"""
         pass
 
-    def test_lines_to_pnts_m(self):
-        """Test polygon to points disaggregation in meter"""
+    def test_pnts_per_line(self):
+        """"""
+        pass
+    
+    def test_interp_one_poly(self):
+        """"""
+        pass
+    
+    def test_interp_one_poly_m(self):
+        """"""
         pass
 
+class TestLPUtils(unittest.TestCase):
+    """ """
+    
+    def test_line_poly_mask(self):
+        """"""
+        pass
+    
+    def test_get_equalarea_proj(self):
+        """"""
+        pass
+    
+    def test_get_pyproj_trafo(self):
+        """"""
+        pass
+    
+    def test_reproject_grid(self):
+        """"""
+        pass
+    
+    def test_reproject_poly(self):
+        """"""
+        pass
 
-# Execute Tests
+    def test_swap_geom_cols(self):
+        """ """
+        pass
+
+class TestImpactSetters(unittest.TestCase):
+    """ """
+    
+    def test_set_imp_mat(self):
+        """ test set_imp_mat"""
+        pass
+    
+    def test_eai_exp_from_mat(self):
+        """ test eai_exp_from_mat"""
+
+        pass
+    
+    def test_at_event_from_mat(self):
+        """Test at_event_from_mat"""
+    
+    def test_aai_agg_from_at_event(self):
+        """Test aai_agg_from_at_event"""
+        pass
+    
+    
+    
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestExposureGeomToPnt)
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestGdfGeomToPnt))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestImpactSetters))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
