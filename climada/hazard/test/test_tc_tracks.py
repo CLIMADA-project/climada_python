@@ -623,9 +623,8 @@ class TestFuncs(unittest.TestCase):
                 tc_track.equal_timestep(time_step_h=time_step_h)
 
         # test for tracks with non-normalized longitude
-        tc_track = tc.TCTracks.from_ibtracs_netcdf(provider="nadi", storm_id="2016055S15202")
-        self.assertAlmostEqual(tc_track.data[0].lon.values[0], 203.7, places=1)
-        self.assertAlmostEqual(tc_track.data[0].lon.values[3], -155.7, places=1)
+        tc_track = tc.TCTracks.from_processed_ibtracs_csv(TEST_TRACK)
+        tc_track.data[0].lon.values[1] += 360
         tc_track.equal_timestep(time_step_h=1)
         np.testing.assert_array_less(tc_track.data[0].lon.values, 0)
 
