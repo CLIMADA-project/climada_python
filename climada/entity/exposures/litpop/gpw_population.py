@@ -153,8 +153,8 @@ def get_gpw_file_path(gpw_version, reference_year, data_dir=SYSTEM_DIR, verbatim
                           + 'The data can be downloaded from '
                           + 'http://sedac.ciesin.columbia.edu/'
                           + 'data/collection/gpw-v4/sets/browse, '
-                          + 'e.g., https://sedac.ciesin.columbia.edu/data/'
-                          + f'set/gpw-v4-population-count-rev{gpw_version}/'
-                          + 'data-download'
-                          + '(Free NASA Earthdata login required). '
+                          + 'e.g., https://sedac.ciesin.columbia.edu/downloads/data/'
+                          + f'gpw-v4/gpw-v4-population-count-rev{gpw_version}/'
+                          + f'gpw-v4-population-count-rev{gpw_version}_2020_30_sec_tif.zip '
+                          + '(Free NASA Earthdata login required).'
                           )
