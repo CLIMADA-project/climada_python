@@ -32,7 +32,6 @@ pipeline {
   post {
     always {
       junit 'tests_xml/*.xml'
-      cobertura coberturaReportFile: 'coverage.xml', enableNewApi: false
       cobertura coberturaReportFile: 'coverage.xml', enableNewApi: true
     }
   }
