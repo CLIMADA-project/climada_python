@@ -1729,15 +1729,24 @@ class Hazard():
         haz_new_cent.centroids = centroids
 
         # indices for mapping matrices onto common centroids
-        new_cent_idx = u_coord.assign_coordinates(
-            self.centroids.coord, centroids.coord, threshold=threshold
-        )
-
-        if -1 in new_cent_idx:
-            raise ValueError("At least one hazard centroid is at a larger "
-                             f"distance than the given threshold {threshold} "
-                             "from the given centroids. Please choose a "
-                             "larger threshold or enlarge the centroids")
+        if centroids.meta:
+            new_cent_idx = u_coord.assign_grid_points(
+                self.centroids.lon, self.centroids.lat,
+                centroids.meta['width'], centroids.meta['height'],
+                centroids.meta['transform'])
+            if -1 in new_cent_idx:
+                raise ValueError("At least one hazard centroid is out of"
+                                 "the raster defined by centroids.meta."
+                                 " Please choose a larger raster.")
+        else:
+            new_cent_idx = u_coord.assign_coordinates(
+                self.centroids.coord, centroids.coord, threshold=threshold
+            )
+            if -1 in new_cent_idx:
+                raise ValueError("At least one hazard centroid is at a larger "
+                                 f"distance than the given threshold {threshold} "
+                                 "from the given centroids. Please choose a "
+                                 "larger threshold or enlarge the centroids")
 
         if np.unique(new_cent_idx).size < new_cent_idx.size:
             raise ValueError("At least two hazard centroids are mapped to the same "

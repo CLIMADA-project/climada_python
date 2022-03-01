@@ -46,7 +46,6 @@ import scipy.interpolate
 from shapely.geometry import Polygon, MultiPolygon, Point, box
 import shapely.ops
 import shapely.vectorized
-import shapefile
 from sklearn.neighbors import BallTree
 
 from climada.util.config import CONFIG
@@ -262,16 +261,16 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
         Default: True
     method : str, optional
         Specify an approximation method to use:
-        * "equirect": Distance according to sinusoidal projection. Fast, but inaccurate for large
-          distances and high latitudes.
-        * "geosphere": Exact spherical distance. Much more accurate at all distances, but slow.
+            * "equirect": Distance according to sinusoidal projection. Fast, but inaccurate for
+              large distances and high latitudes.
+            * "geosphere": Exact spherical distance. Much more accurate at all distances, but slow.
         Note that ellipsoidal distances would be even more accurate, but are currently not
         implemented. Default: "equirect".
     units : str, optional
         Specify a unit for the distance. One of:
-        * "km": distance in km.
-        * "degree": angular distance in decimal degrees.
-        * "radian": angular distance in radians.
+            * "km": distance in km.
+            * "degree": angular distance in decimal degrees.
+            * "radian": angular distance in radians.
         Default: "km".
 
     Returns
@@ -459,15 +458,15 @@ def dist_to_coast(coord_lat, lon=None, signed=False):
     ----------
     coord_lat : GeoDataFrame or np.array or float
         One of the following:
-        * GeoDataFrame with geometry column in epsg:4326
-        * np.array with two columns, first for latitude of each point
-          and second with longitude in epsg:4326
-        * np.array with one dimension containing latitudes in epsg:4326
-        * float with a latitude value in epsg:4326
+            * GeoDataFrame with geometry column in epsg:4326
+            * np.array with two columns, first for latitude of each point
+              and second with longitude in epsg:4326
+            * np.array with one dimension containing latitudes in epsg:4326
+            * float with a latitude value in epsg:4326
     lon : np.array or float, optional
         One of the following:
-        * np.array with one dimension containing longitudes in epsg:4326
-        * float with a longitude value in epsg:4326
+            * np.array with one dimension containing longitudes in epsg:4326
+            * float with a longitude value in epsg:4326
     signed : bool
         If True, distance is signed with positive values off shore and negative values on land.
         Default: False
@@ -1402,6 +1401,17 @@ def get_admin1_info(country_names):
     admin1_shapes : dict
         Shape according to Natural Earth.
     """
+    def _ensure_utf8(val):
+        # Without the `*.cpg` file present, the shape reader wrongly assumes latin-1 encoding:
+        # https://github.com/SciTools/cartopy/issues/1282
+        # https://github.com/SciTools/cartopy/commit/6d787b01e122eea68b67a9b2966e45877755a52d
+        # As a workaround, we encode and decode again, unless this fails which means
+        # that the `*.cpg` is present and the encoding is correct:
+        try:
+            return val.encode('latin-1').decode('utf-8')
+        except:
+            return val
+
     if isinstance(country_names, (str, int, float)):
         country_names = [country_names]
     if not isinstance(country_names, list):
@@ -1410,19 +1420,22 @@ def get_admin1_info(country_names):
     admin1_file = shapereader.natural_earth(resolution='10m',
                                             category='cultural',
                                             name='admin_1_states_provinces')
-    admin1_recs = shapefile.Reader(admin1_file)
+    admin1_recs = shapereader.Reader(admin1_file)
     admin1_info = dict()
     admin1_shapes = dict()
     for country in country_names:
         if isinstance(country, (int, float)):
-            country = f'{int(country):03d}' # transform numerric code to str
-        country = pycountry.countries.lookup(country).alpha_3 # get iso3a code
+            # transform numerric code to str
+            country = f'{int(country):03d}'
+        # get alpha-3 code according to ISO 3166
+        country = pycountry.countries.lookup(country).alpha_3
         admin1_info[country] = list()
         admin1_shapes[country] = list()
-        for rec, rec_shp in zip(admin1_recs.records(), admin1_recs.shapes()):
-            if rec['adm0_a3'] == country:
-                admin1_info[country].append(rec)
-                admin1_shapes[country].append(rec_shp)
+        for rec in admin1_recs.records():
+            if rec.attributes['adm0_a3'] == country:
+                rec_attributes = {k: _ensure_utf8(v) for k, v in rec.attributes.items()}
+                admin1_info[country].append(rec_attributes)
+                admin1_shapes[country].append(rec.geometry)
         if len(admin1_info[country]) == 0:
             raise LookupError(f'natural_earth records are empty for country {country}')
     return admin1_info, admin1_shapes
@@ -1465,11 +1478,11 @@ def get_admin1_geometries(countries):
     admin1_info, admin1_shapes = get_admin1_info(countries)
     for country in admin1_info.keys():
         # fill admin 1 region names and codes to GDF for single country:
-        gdf_tmp = gpd.GeoDataFrame(columns = gdf.columns)
+        gdf_tmp = gpd.GeoDataFrame(columns=gdf.columns)
         gdf_tmp.admin1_name = [record['name'] for record in admin1_info[country]]
         gdf_tmp.iso_3166_2 = [record['iso_3166_2'] for record in admin1_info[country]]
         # With this initiation of GeoSeries in a list comprehension,
-        # the ability of geopandas to convert shapefile.Shape to (Multi)Polygon is exploited:
+        # the ability of geopandas to convert shapereader.Shape to (Multi)Polygon is exploited:
         geoseries = gpd.GeoSeries([gpd.GeoSeries(shape).values[0]
                                    for shape in admin1_shapes[country]])
         gdf_tmp.geometry = list(geoseries)

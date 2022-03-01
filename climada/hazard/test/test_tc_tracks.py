@@ -308,6 +308,27 @@ class TestIO(unittest.TestCase):
             self.assertEqual(tr.basin.shape, tr.time.shape)
             np.testing.assert_array_equal(tr.basin, "SP")
 
+    def test_hdf5_io(self):
+        """Test writting and reading hdf5 TCTracks instances"""
+        path = DATA_DIR.joinpath("tc_tracks.h5")
+        tc_track = tc.TCTracks.from_ibtracs_netcdf(
+            provider='usa', year_range=(1993, 1994), basin='EP', estimate_missing=True)
+        tc_track.write_hdf5(path)
+        tc_read = tc.TCTracks.from_hdf5(path)
+        path.unlink()
+
+        self.assertEqual(len(tc_track.data), len(tc_read.data))
+        for tr, tr_read in zip(tc_track.data, tc_read.data):
+            self.assertEqual(set(tr.attrs.keys()), set(tr_read.attrs.keys()))
+            self.assertEqual(set(tr.variables), set(tr_read.variables))
+            self.assertEqual(set(tr.coords), set(tr_read.coords))
+            for key in tr.attrs.keys():
+                self.assertEqual(tr.attrs[key], tr_read.attrs[key])
+            for v in tr.variables:
+                self.assertEqual(tr[v].dtype, tr_read[v].dtype)
+                np.testing.assert_array_equal(tr[v].values, tr_read[v].values)
+            self.assertEqual(tr.sid, tr_read.sid)
+
     def test_from_processed_ibtracs_csv(self):
         tc_track = tc.TCTracks.from_processed_ibtracs_csv(TEST_TRACK)
 
@@ -353,6 +374,7 @@ class TestIO(unittest.TestCase):
         self.assertEqual(tc_track.data[0].central_pressure_unit, 'mb')
         self.assertEqual(tc_track.data[0].sid, '1')
         self.assertEqual(tc_track.data[0].name, '1')
+        self.assertEqual(tc_track.data[0].basin.dtype, '<U2')
         self.assertTrue(np.all([np.all(d.basin == 'N') for d in tc_track.data]))
         self.assertEqual(tc_track.data[0].category, 3)
 
@@ -395,6 +417,7 @@ class TestIO(unittest.TestCase):
         self.assertEqual(tc_track_G.data[0].central_pressure_unit, 'mb')
         self.assertEqual(tc_track_G.data[0].sid, '0')
         self.assertEqual(tc_track_G.data[0].name, '0')
+        self.assertEqual(tc_track_G.data[0].basin.dtype, '<U2')
         np.testing.assert_array_equal(tc_track_G.data[0].basin, 'NI')
         self.assertEqual(tc_track_G.data[0].category, 0)
 
@@ -436,7 +459,7 @@ class TestIO(unittest.TestCase):
         self.assertEqual(tc_track.data[0].lon[3], 245.3)
         self.assertEqual(tc_track.data[0].lat[4], 11.9)
         self.assertEqual(tc_track.data[0].time_step[3], 3)
-        self.assertEqual(tc_track.data[0].max_sustained_wind[2], 37.127429805615556)
+        self.assertEqual(tc_track.data[0].max_sustained_wind[2], 42.19026114274495)
         self.assertEqual(tc_track.data[0].radius_max_wind[5], 19.07407454551836)
         self.assertEqual(tc_track.data[0].central_pressure[1], 999.4)
         self.assertTrue(np.all(tc_track.data[0].time.dt.year == 1980))
