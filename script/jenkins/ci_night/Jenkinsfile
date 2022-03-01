@@ -21,7 +21,9 @@ pipeline {
             sh '''#!/bin/bash
             export PATH=$PATH:$CONDAPATH
             source activate climada_env
-            python -m coverage run  tests_runner.py integ
+            python -m coverage run --parallel-mode --concurrency=multiprocessing tests_runner.py unit
+            python -m coverage run --parallel-mode --concurrency=multiprocessing tests_runner.py integ
+            python -m coverage combine
             python -m coverage xml -o coverage.xml
             python -m coverage html -d coverage'''
           }
