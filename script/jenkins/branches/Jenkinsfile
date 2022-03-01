@@ -10,6 +10,7 @@ pipeline {
             sh '''#!/bin/bash
             export PATH=$PATH:$CONDAPATH
             source activate climada_env
+            rm -f pylint.log
             pylint -ry climada | tee pylint.log'''
 
             recordIssues tools: [pyLint(pattern: 'pylint.log')]
@@ -21,6 +22,7 @@ pipeline {
             sh '''#!/bin/bash
             export PATH=$PATH:$CONDAPATH
             source activate climada_env
+            rm -rf tests_xml/
             python -m coverage run  tests_runner.py unit
             python -m coverage xml -o coverage.xml
             python -m coverage html -d coverage'''
