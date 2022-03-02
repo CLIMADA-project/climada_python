@@ -18,7 +18,7 @@ This is the Python (3.8+) version of CLIMADA - please see https://github.com/dav
 
 ## Getting started
 
-CLIMADA runs on Windows, macOS and Linux. 
+CLIMADA runs on Windows, macOS and Linux. It can be installed from sources or - in case of climada_python - directly with pip. See the [installation guide](https://climada-python.readthedocs.io/en/latest/guide/Guide_Installation.html) for instructions.
 
 ### Install CLIMADA with pip
 Published releases of CLIMADA (not CLIMADA-petals) can also be installed using pip, since version 3.0.
