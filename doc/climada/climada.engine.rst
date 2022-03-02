@@ -3,7 +3,7 @@ climada\.engine package
 
 .. toctree::
 
-    climada.engine.uncertainty_quantification
+    climada.engine.unsequa
 
 climada\.engine\.calibration\_opt module
 ----------------------------------------

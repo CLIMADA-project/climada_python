@@ -28,7 +28,7 @@ import pandas as pd
 import numpy as np
 
 from climada.engine import Impact
-from climada.engine.uncertainty_quantification import Calc, InputVar, UncImpactOutput
+from climada.engine.unsequa import Calc, InputVar, UncImpactOutput
 from climada.util import log_level
 
 LOGGER = logging.getLogger(__name__)

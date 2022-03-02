@@ -452,6 +452,83 @@ class TestSelect(unittest.TestCase):
         self.assertIsInstance(sel_haz.intensity, sparse.csr_matrix)
         self.assertIsInstance(sel_haz.fraction, sparse.csr_matrix)
 
+    def test_select_tight_pass(self):
+        """Test select tight box around hazard"""
+
+        #intensity select
+        haz = dummy_hazard()
+        haz.intensity[:, -1] = 0.0
+        sel_haz = haz.select_tight()
+
+        self.assertTrue(np.array_equal(sel_haz.centroids.coord.squeeze(),
+                                       haz.centroids.coord[:-1, :]))
+        self.assertEqual(sel_haz.tag, haz.tag)
+        self.assertEqual(sel_haz.units, haz.units)
+        self.assertTrue(np.array_equal(sel_haz.event_id, haz.event_id))
+        self.assertTrue(np.array_equal(sel_haz.date, haz.date))
+        self.assertTrue(np.array_equal(sel_haz.orig, haz.orig))
+        self.assertTrue(np.array_equal(sel_haz.frequency, haz.frequency))
+        self.assertTrue(np.array_equal(sel_haz.fraction.toarray(),
+                                       haz.fraction[:,:-1].toarray()))
+        self.assertTrue(np.array_equal(sel_haz.intensity.toarray(),
+                                       haz.intensity[:,:-1].toarray()))
+        self.assertEqual(sel_haz.event_name, haz.event_name)
+        self.assertIsInstance(sel_haz, Hazard)
+        self.assertIsInstance(sel_haz.intensity, sparse.csr_matrix)
+        self.assertIsInstance(sel_haz.fraction, sparse.csr_matrix)
+
+        #fraction select
+        haz = dummy_hazard()
+        haz.fraction[:, -1] = 0.0
+
+        sel_haz = haz.select_tight(val='fraction')
+
+        self.assertTrue(np.array_equal(sel_haz.centroids.coord.squeeze(),
+                                       haz.centroids.coord[:-1, :]))
+        self.assertEqual(sel_haz.tag, haz.tag)
+        self.assertEqual(sel_haz.units, haz.units)
+        self.assertTrue(np.array_equal(sel_haz.event_id, haz.event_id))
+        self.assertTrue(np.array_equal(sel_haz.date, haz.date))
+        self.assertTrue(np.array_equal(sel_haz.orig, haz.orig))
+        self.assertTrue(np.array_equal(sel_haz.frequency, haz.frequency))
+        self.assertTrue(np.array_equal(sel_haz.fraction.toarray(),
+                                       haz.fraction[:,:-1].toarray()))
+        self.assertTrue(np.array_equal(sel_haz.intensity.toarray(),
+                                       haz.intensity[:,:-1].toarray()))
+        self.assertEqual(sel_haz.event_name, haz.event_name)
+        self.assertIsInstance(sel_haz, Hazard)
+        self.assertIsInstance(sel_haz.intensity, sparse.csr_matrix)
+        self.assertIsInstance(sel_haz.fraction, sparse.csr_matrix)
+
+
+        haz = dummy_hazard()
+        haz.intensity[:, -1] = 0.0
+
+        # small buffer: zero field is discarded
+        sel_haz = haz.select_tight(buffer=0.1)
+        self.assertTrue(np.array_equal(sel_haz.centroids.coord.squeeze(),
+                                       haz.centroids.coord[:-1, :]))
+        # large buffer: zero field is retained
+        sel_haz = haz.select_tight(buffer=10)
+
+        self.assertTrue(np.array_equal(sel_haz.centroids.coord.squeeze(),
+                                       haz.centroids.coord))
+        self.assertEqual(sel_haz.tag, haz.tag)
+        self.assertEqual(sel_haz.units, haz.units)
+        self.assertTrue(np.array_equal(sel_haz.event_id, haz.event_id))
+        self.assertTrue(np.array_equal(sel_haz.date, haz.date))
+        self.assertTrue(np.array_equal(sel_haz.orig, haz.orig))
+        self.assertTrue(np.array_equal(sel_haz.frequency, haz.frequency))
+        self.assertTrue(np.array_equal(sel_haz.fraction.toarray(),
+                                       haz.fraction.toarray()))
+        self.assertTrue(np.array_equal(sel_haz.intensity.toarray(),
+                                       haz.intensity.toarray()))
+        self.assertEqual(sel_haz.event_name, haz.event_name)
+        self.assertIsInstance(sel_haz, Hazard)
+        self.assertIsInstance(sel_haz.intensity, sparse.csr_matrix)
+        self.assertIsInstance(sel_haz.fraction, sparse.csr_matrix)
+
+
 class TestAppend(unittest.TestCase):
     """Test append method."""
 
@@ -769,8 +846,8 @@ class TestAppend(unittest.TestCase):
         with self.assertRaises(ValueError):
              Hazard.concat([haz1, haz4])
 
-    def test_change_centroids_pass(self):
-        """Set new new centroids for hazard"""
+    def test_change_centroids(self):
+        """Set new centroids for hazard"""
         cent1 = Centroids()
         cent1.lat, cent1.lon = np.array([0, 1]), np.array([0, -1])
         cent1.on_land = np.array([True, True])
@@ -803,6 +880,7 @@ class TestAppend(unittest.TestCase):
         self.assertTrue(np.array_equal(haz_2.orig, [True]))
         self.assertEqual(haz_2.tag.description, 'Description 1')
 
+        """Test error for projection"""
         cent3 = Centroids()
         cent3.lat, cent3.lon = np.array([0.5, 3]), np.array([-0.5, 3])
         cent3.on_land = np.array([True, True, False])
@@ -810,6 +888,44 @@ class TestAppend(unittest.TestCase):
         with self.assertRaises(ValueError) as cm:
             haz_1.change_centroids(cent3, threshold=100)
         self.assertIn('two hazard centroids are mapped to the same centroids', str(cm.exception))
+
+
+    def test_change_centroids_raster(self):
+        """Set new centroids for hazard"""
+        cent1 = Centroids()
+        cent1.lat, cent1.lon = np.array([0, 1]), np.array([0, -1])
+        cent1.on_land = np.array([True, True])
+
+        haz_1 = Hazard('TC')
+        haz_1.tag.file_name = 'file1.mat'
+        haz_1.tag.description = 'Description 1'
+        haz_1.centroids = cent1
+        haz_1.event_id = np.array([1])
+        haz_1.event_name = ['ev1']
+        haz_1.date = np.array([1])
+        haz_1.orig = np.array([True])
+        haz_1.frequency = np.array([1.0])
+        haz_1.fraction = sparse.csr_matrix([[0.02, 0.03]])
+        haz_1.intensity = sparse.csr_matrix([[0.2, 0.3]])
+        haz_1.units = 'm/s'
+
+
+        """Test with raster centroids"""
+        cent4 = Centroids.from_pnt_bounds(points_bounds=(-1, 0, 0, 1), res=1)
+        cent4.lat, cent1.lon = np.array([0, 1]), np.array([0, -1])
+        cent4.on_land = np.array([True, True])
+
+        haz_4 = haz_1.change_centroids(cent4)
+
+        self.assertTrue(np.array_equal(haz_4.intensity.toarray(),
+                               np.array([[0.3, 0.0, 0.0, 0.2]])))
+        self.assertTrue(np.array_equal(haz_4.fraction.toarray(),
+                               np.array([[0.03, 0.0, 0.0, 0.02]])))
+        self.assertTrue(np.array_equal(haz_4.event_id, np.array([1])))
+        self.assertTrue(np.array_equal(haz_4.event_name, ['ev1']))
+        self.assertTrue(np.array_equal(haz_4.orig, [True]))
+        self.assertEqual(haz_4.tag.description, 'Description 1')
+
 
 class TestStats(unittest.TestCase):
     """Test return period statistics"""

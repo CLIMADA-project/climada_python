@@ -99,18 +99,18 @@ class LitPop(Exposures):
         fin_mode : str, optional
             Socio-economic value to be used as an asset base that is disaggregated
             to the grid points within the country
-            * 'pc': produced capital (Source: World Bank), incl. manufactured or
-                    built assets such as machinery, equipment, and physical structures
-                    `pc` is in constant 2014 USD.
-            * 'pop': population count (source: GPW, same as gridded population).
-                    The unit is 'people'.
-            * 'gdp': gross-domestic product (Source: World Bank) [USD]
-            * 'income_group': gdp multiplied by country's income group+1 [USD].
-                Income groups are 1 (low) to 4 (high income).
-            * 'nfw': non-financial wealth (Source: Credit Suisse, of households only) [USD]
-            * 'tw': total wealth (Source: Credit Suisse, of households only) [USD]
-            * 'norm': normalized by country (no unit)
-            * 'none': LitPop per pixel is returned unchanged (no unit)
+                * 'pc': produced capital (Source: World Bank), incl. manufactured or
+                  built assets such as machinery, equipment, and physical structures
+                  `pc` is in constant 2014 USD.
+                * 'pop': population count (source: GPW, same as gridded population).
+                  The unit is 'people'.
+                * 'gdp': gross-domestic product (Source: World Bank) [USD]
+                * 'income_group': gdp multiplied by country's income group+1 [USD].
+                  Income groups are 1 (low) to 4 (high income).
+                * 'nfw': non-financial wealth (Source: Credit Suisse, of households only) [USD]
+                * 'tw': total wealth (Source: Credit Suisse, of households only) [USD]
+                * 'norm': normalized by country (no unit)
+                * 'none': LitPop per pixel is returned unchanged (no unit)
             The default is 'pc'.
         total_values : list containing numerics, same length as countries, optional
             Total values to be disaggregated to grid in each country.
@@ -362,18 +362,18 @@ class LitPop(Exposures):
         fin_mode : str, optional
             Socio-economic value to be used as an asset base that is disaggregated
             to the grid points within the country
-            * 'pc': produced capital (Source: World Bank), incl. manufactured or
-                    built assets such as machinery, equipment, and physical structures
-                    (pc is in constant 2014 USD)
-            * 'pop': population count (source: GPW, same as gridded population).
-                The unit is 'people'.
-            * 'gdp': gross-domestic product (Source: World Bank) [USD]
-            * 'income_group': gdp multiplied by country's income group+1 [USD]
-                Income groups are 1 (low) to 4 (high income).
-            * 'nfw': non-financial wealth (Source: Credit Suisse, of households only) [USD]
-            * 'tw': total wealth (Source: Credit Suisse, of households only) [USD]
-            * 'norm': normalized by country
-            * 'none': LitPop per pixel is returned unchanged
+                * 'pc': produced capital (Source: World Bank), incl. manufactured or
+                  built assets such as machinery, equipment, and physical structures
+                  (pc is in constant 2014 USD)
+                * 'pop': population count (source: GPW, same as gridded population).
+                  The unit is 'people'.
+                * 'gdp': gross-domestic product (Source: World Bank) [USD]
+                * 'income_group': gdp multiplied by country's income group+1 [USD]
+                  Income groups are 1 (low) to 4 (high income).
+                * 'nfw': non-financial wealth (Source: Credit Suisse, of households only) [USD]
+                * 'tw': total wealth (Source: Credit Suisse, of households only) [USD]
+                * 'norm': normalized by country
+                * 'none': LitPop per pixel is returned unchanged
             The default is 'pc'.
         admin1_calc : boolean, optional
             If True, distribute admin1-level GDP (if available). Default: False
@@ -792,21 +792,20 @@ def _get_total_value_per_country(cntry_iso3a, fin_mode, reference_year):
     fin_mode : str
         Socio-economic value to be used as an asset base that is disaggregated
         to the grid points within the country
-        * 'pc': produced capital (Source: World Bank), incl. manufactured or
-                built assets such as machinery, equipment, and physical structures
-                (pc is in constant 2014 USD)
-        * 'pc_land': produced capital (Source: World Bank), incl. manufactured or
-                built assets such as machinery, equipment, physical structures,
-                and land value for built-up land.
-                (pc is in constant 2014 USD)
-
-        * 'gdp': gross-domestic product (Source: World Bank) [USD]
-        * 'income_group': gdp multiplied by country's income group+1 [USD]
-            Income groups are 1 (low) to 4 (high income).
-        * 'nfw': non-financial wealth (Source: Credit Suisse, of households only) [USD]
-        * 'tw': total wealth (Source: Credit Suisse, of households only) [USD]
-        * 'norm': normalized by country
-        * 'none': LitPop per pixel is returned unscaled
+            * 'pc': produced capital (Source: World Bank), incl. manufactured or
+              built assets such as machinery, equipment, and physical structures
+              (pc is in constant 2014 USD)
+            * 'pc_land': produced capital (Source: World Bank), incl. manufactured or
+              built assets such as machinery, equipment, physical structures,
+              and land value for built-up land.
+              (pc is in constant 2014 USD)
+            * 'gdp': gross-domestic product (Source: World Bank) [USD]
+            * 'income_group': gdp multiplied by country's income group+1 [USD]
+              Income groups are 1 (low) to 4 (high income).
+            * 'nfw': non-financial wealth (Source: Credit Suisse, of households only) [USD]
+            * 'tw': total wealth (Source: Credit Suisse, of households only) [USD]
+            * 'norm': normalized by country
+            * 'none': LitPop per pixel is returned unscaled
         The default is 'pc'
     reference_year : int
         reference year for data extraction

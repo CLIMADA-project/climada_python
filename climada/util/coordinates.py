@@ -32,6 +32,7 @@ import zipfile
 from cartopy.io import shapereader
 import dask.dataframe as dd
 import geopandas as gpd
+import numba
 import numpy as np
 import pandas as pd
 import pycountry
@@ -40,13 +41,15 @@ import rasterio.crs
 import rasterio.features
 import rasterio.mask
 import rasterio.warp
+import scipy.spatial
 import scipy.interpolate
 from shapely.geometry import Polygon, MultiPolygon, Point, box
 import shapely.ops
 import shapely.vectorized
-import shapefile
+from sklearn.neighbors import BallTree
 
-from climada.util.constants import (DEF_CRS, SYSTEM_DIR, ONE_LAT_KM,
+from climada.util.config import CONFIG
+from climada.util.constants import (DEF_CRS, EARTH_RADIUS_KM, SYSTEM_DIR, ONE_LAT_KM,
                                     NATEARTH_CENTROIDS,
                                     ISIMIP_GPWV3_NATID_150AS,
                                     ISIMIP_NATID_TO_ISO,
@@ -54,7 +57,6 @@ from climada.util.constants import (DEF_CRS, SYSTEM_DIR, ONE_LAT_KM,
                                     RIVER_FLOOD_REGIONS_CSV)
 from climada.util.files_handler import download_file
 import climada.util.hdf5_handler as u_hdf5
-import climada.util.interpolation as u_interp
 
 pd.options.mode.chained_assignment = None
 
@@ -74,6 +76,10 @@ DEM_NODATA = -9999
 
 MAX_DEM_TILES_DOWN = 300
 """Maximum DEM tiles to dowload"""
+
+NEAREST_NEIGHBOR_THRESHOLD = 100
+"""Distance threshold in km for coordinate assignment. Nearest neighbors with greater distances
+are not considered."""
 
 def latlon_to_geosph_vector(lat, lon, rad=False, basis=False):
     """Convert lat/lon coodinates to radial vectors (on geosphere)
@@ -255,16 +261,16 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
         Default: True
     method : str, optional
         Specify an approximation method to use:
-        * "equirect": Distance according to sinusoidal projection. Fast, but inaccurate for large
-          distances and high latitudes.
-        * "geosphere": Exact spherical distance. Much more accurate at all distances, but slow.
+            * "equirect": Distance according to sinusoidal projection. Fast, but inaccurate for
+              large distances and high latitudes.
+            * "geosphere": Exact spherical distance. Much more accurate at all distances, but slow.
         Note that ellipsoidal distances would be even more accurate, but are currently not
         implemented. Default: "equirect".
     units : str, optional
         Specify a unit for the distance. One of:
-        * "km": distance in km.
-        * "degree": angular distance in decimal degrees.
-        * "radian": angular distance in radians.
+            * "km": distance in km.
+            * "degree": angular distance in decimal degrees.
+            * "radian": angular distance in radians.
         Default: "km".
 
     Returns
@@ -452,15 +458,15 @@ def dist_to_coast(coord_lat, lon=None, signed=False):
     ----------
     coord_lat : GeoDataFrame or np.array or float
         One of the following:
-        * GeoDataFrame with geometry column in epsg:4326
-        * np.array with two columns, first for latitude of each point
-          and second with longitude in epsg:4326
-        * np.array with one dimension containing latitudes in epsg:4326
-        * float with a latitude value in epsg:4326
+            * GeoDataFrame with geometry column in epsg:4326
+            * np.array with two columns, first for latitude of each point
+              and second with longitude in epsg:4326
+            * np.array with one dimension containing latitudes in epsg:4326
+            * float with a latitude value in epsg:4326
     lon : np.array or float, optional
         One of the following:
-        * np.array with one dimension containing longitudes in epsg:4326
-        * float with a longitude value in epsg:4326
+            * np.array with one dimension containing longitudes in epsg:4326
+            * float with a longitude value in epsg:4326
     signed : bool
         If True, distance is signed with positive values off shore and negative values on land.
         Default: False
@@ -518,6 +524,27 @@ def dist_to_coast(coord_lat, lon=None, signed=False):
         dist[coord_on_land(geom.geometry.y, geom.geometry.x)] *= -1
     return dist
 
+def _get_dist_to_coast_nasa_tif():
+    """Get the path to the NASA raster file for distance to coast.
+    If the file (300 MB) is missing it will be automatically downloaded.
+
+    This is a helper function of `dist_to_coast_nasa`, and doesn't have a stable API.
+
+    Returns
+    -------
+    path : Path
+        Path to the GeoTIFF raster file.
+    """
+    tifname = CONFIG.util.coordinates.dist_to_coast_nasa_tif.str()
+    path = SYSTEM_DIR.joinpath(tifname)
+    if not path.is_file():
+        url = CONFIG.util.coordinates.dist_to_coast_nasa_url.str()
+        path_dwn = download_file(url, download_dir=SYSTEM_DIR)
+        zip_ref = zipfile.ZipFile(path_dwn, 'r')
+        zip_ref.extractall(SYSTEM_DIR)
+        zip_ref.close()
+    return path
+
 def dist_to_coast_nasa(lat, lon, highres=False, signed=False):
     """Read interpolated (signed) distance to coast (in m) from NASA data
 
@@ -540,20 +567,9 @@ def dist_to_coast_nasa(lat, lon, highres=False, signed=False):
     dist : np.array
         (Signed) distance to coast in meters.
     """
+    path = _get_dist_to_coast_nasa_tif()
     lat, lon = [np.asarray(ar).ravel() for ar in [lat, lon]]
     lon = lon_normalize(lon.copy())
-
-    # TODO move URL to config
-    zipname = "GMT_intermediate_coast_distance_01d.zip"
-    tifname = "GMT_intermediate_coast_distance_01d.tif"
-    url = "https://oceancolor.gsfc.nasa.gov/docs/distfromcoast/" + zipname
-    path = SYSTEM_DIR.joinpath(tifname)
-    if not path.is_file():
-        path_dwn = download_file(url, download_dir=SYSTEM_DIR)
-        zip_ref = zipfile.ZipFile(path_dwn, 'r')
-        zip_ref.extractall(SYSTEM_DIR)
-        zip_ref.close()
-
     intermediate_res = None if highres else 0.1
     west_msk = (lon < 0)
     dist = np.zeros_like(lat)
@@ -850,7 +866,8 @@ def assign_grid_points(x, y, grid_width, grid_height, grid_transform):
     assigned[(y_i < 0) | (y_i >= grid_height)] = -1
     return assigned
 
-def assign_coordinates(coords, coords_to_assign, method="NN", distance="haversine", threshold=100):
+def assign_coordinates(coords, coords_to_assign, distance="euclidean",
+                       threshold=NEAREST_NEIGHBOR_THRESHOLD, **kwargs):
     """To each coordinate in `coords`, assign a matching coordinate in `coords_to_assign`
 
     If there is no exact match for some entry, an attempt is made to assign the geographically
@@ -875,27 +892,46 @@ def assign_coordinates(coords, coords_to_assign, method="NN", distance="haversin
         Each row is a geographical coordinate pair. The result will be an index into the
         rows of this array. Make sure that these coordinates use the same coordinate reference
         system as `coords`.
-    method : str, optional
-        Interpolation method to use for non-exact matching. Currently, "NN" (nearest neighbor)
-        is the only supported value, see `climada.util.interpolation.interpol_index`.
     distance : str, optional
-        Distance to use for non-exact matching. Possible values are "haversine" and "approx", see
-        `climada.util.interpolation.interpol_index`. Default: "haversine"
+        Distance to use for non-exact matching. Possible values are "euclidean", "haversine" and
+        "approx". Default: "euclidean"
     threshold : float, optional
         If the distance to the nearest neighbor exceeds `threshold`, the index `-1` is assigned.
         Set `threshold` to 0 to disable nearest neighbor matching. Default: 100 (km)
+    kwargs: dict, optional
+        Keyword arguments to be passed on to nearest-neighbor finding functions in case of
+        non-exact matching with the specified `distance`.
 
     Returns
     -------
     assigned_idx : np.array of size equal to the number of rows in `coords`
         Index into `coords_to_assign`. Note that the value `-1` is used to indicate that no
         matching coordinate has been found, even though `-1` is a valid index in NumPy!
-    """
 
-    if not coords.any():
+    Notes
+    -----
+    By default, the 'euclidean' distance metric is used to find the nearest neighbors in case of
+    non-exact matching. This method is fast for (quasi-)gridded data, but introduces innacuracy
+    since distances in lat/lon coordinates are not equal to distances in meters on the Earth
+    surface, in particular for higher latitude and distances larger than 100km. If more accuracy is
+    needed, please use the 'haversine' distance metric. This however is slower for (quasi-)gridded
+    data.
+    """
+    if coords.shape[0] == 0:
         return np.array([])
-    if not coords_to_assign.any():
+
+    if coords_to_assign.shape[0] == 0:
         return -np.ones(coords.shape[0]).astype(int)
+
+    nearest_neighbor_funcs = {
+        "euclidean": _nearest_neighbor_euclidean,
+        "haversine": _nearest_neighbor_haversine,
+        "approx": _nearest_neighbor_approx,
+    }
+    if distance not in nearest_neighbor_funcs:
+        raise ValueError(
+            f'Coordinate assignment with "{distance}" distance is not supported.')
+
     coords = coords.astype('float64')
     coords_to_assign = coords_to_assign.astype('float64')
     if np.array_equal(coords, coords_to_assign):
@@ -919,13 +955,221 @@ def assign_coordinates(coords, coords_to_assign, method="NN", distance="haversin
         assigned_idx = np.full_like(coords_sorter, -1)
         assigned_idx[sort_assign_idx[exact_assign_idx]] = exact_assign_idx
 
-        # assign remaining coordsinates to their geographically nearest neighbor
+        # assign remaining coordinates to their geographically nearest neighbor
         if threshold > 0 and exact_assign_idx.size != coords_view.size:
             not_assigned_idx_mask = (assigned_idx == -1)
-            assigned_idx[not_assigned_idx_mask] = u_interp.interpol_index(
-                coords_to_assign, coords[not_assigned_idx_mask],
-                method=method, distance=distance, threshold=threshold)
+            assigned_idx[not_assigned_idx_mask] = nearest_neighbor_funcs[distance](
+                coords_to_assign, coords[not_assigned_idx_mask], threshold, **kwargs)
     return assigned_idx
+
+@numba.njit
+def _dist_sqr_approx(lats1, lons1, cos_lats1, lats2, lons2):
+    """Compute squared equirectangular approximation distance. Values need
+    to be sqrt and multiplicated by ONE_LAT_KM to obtain distance in km."""
+    d_lon = lons1 - lons2
+    d_lat = lats1 - lats2
+    return d_lon * d_lon * cos_lats1 * cos_lats1 + d_lat * d_lat
+
+def _nearest_neighbor_approx(centroids, coordinates, threshold, check_antimeridian=True):
+    """Compute the nearest centroid for each coordinate using the
+    euclidean distance d = ((dlon)cos(lat))^2+(dlat)^2. For distant points
+    (e.g. more than 100km apart) use the haversine distance.
+
+    Parameters
+    ----------
+    centroids : 2d array
+        First column contains latitude, second
+        column contains longitude. Each row is a geographic point
+    coordinates : 2d array
+        First column contains latitude, second
+        column contains longitude. Each row is a geographic point
+    threshold : float
+        distance threshold in km over which no neighbor will
+        be found. Those are assigned with a -1 index
+    check_antimedirian: bool, optional
+        If True, the nearest neighbor in a strip with lon size equal to threshold around the
+        antimeridian is recomputed using the Haversine distance. The antimeridian is guessed from
+        both coordinates and centroids, and is assumed equal to 0.5*(lon_max+lon_min) + 180.
+        Default: True
+
+    Returns
+    -------
+    np.array
+        with as many rows as coordinates containing the centroids indexes
+    """
+
+    # Compute only for the unique coordinates. Copy the results for the
+    # not unique coordinates
+    _, idx, inv = np.unique(coordinates, axis=0, return_index=True,
+                            return_inverse=True)
+    # Compute cos(lat) for all centroids
+    centr_cos_lat = np.cos(np.radians(centroids[:, 0]))
+    assigned = np.zeros(coordinates.shape[0], int)
+    num_warn = 0
+    for icoord, iidx in enumerate(idx):
+        dist = _dist_sqr_approx(centroids[:, 0], centroids[:, 1],
+                               centr_cos_lat, coordinates[iidx, 0],
+                               coordinates[iidx, 1])
+        min_idx = dist.argmin()
+        # Raise a warning if the minimum distance is greater than the
+        # threshold and set an unvalid index -1
+        if np.sqrt(dist.min()) * ONE_LAT_KM > threshold:
+            num_warn += 1
+            min_idx = -1
+
+        # Assign found centroid index to all the same coordinates
+        assigned[inv == icoord] = min_idx
+
+    if num_warn:
+        LOGGER.warning('Distance to closest centroid is greater than %s'
+                       'km for %s coordinates.', threshold, num_warn)
+
+    if check_antimeridian:
+        assigned = _nearest_neighbor_antimeridian(
+            centroids, coordinates, threshold, assigned)
+
+    return assigned
+
+def _nearest_neighbor_haversine(centroids, coordinates, threshold):
+    """Compute the neareast centroid for each coordinate using a Ball tree with haversine distance.
+
+    Parameters
+    ----------
+    centroids : 2d array
+        First column contains latitude, second
+        column contains longitude. Each row is a geographic point
+    coordinates : 2d array
+        First column contains latitude, second
+        column contains longitude. Each row is a geographic point
+    threshold : float
+        distance threshold in km over which no neighbor will
+        be found. Those are assigned with a -1 index
+
+    Returns
+    -------
+    np.array
+        with as many rows as coordinates containing the centroids indexes
+    """
+    # Construct tree from centroids
+    tree = BallTree(np.radians(centroids), metric='haversine')
+    # Select unique exposures coordinates
+    _, idx, inv = np.unique(coordinates, axis=0, return_index=True,
+                            return_inverse=True)
+
+    # query the k closest points of the n_points using dual tree
+    dist, assigned = tree.query(np.radians(coordinates[idx]), k=1,
+                                return_distance=True, dualtree=True,
+                                breadth_first=False)
+
+    # `BallTree.query` returns a row for each entry, even if k=1 (number of nearest neighbors)
+    dist = dist[:, 0]
+    assigned = assigned[:, 0]
+
+    # Raise a warning if the minimum distance is greater than the
+    # threshold and set an unvalid index -1
+    num_warn = np.sum(dist * EARTH_RADIUS_KM > threshold)
+    if num_warn:
+        LOGGER.warning('Distance to closest centroid is greater than %s'
+                       'km for %s coordinates.', threshold, num_warn)
+        assigned[dist * EARTH_RADIUS_KM > threshold] = -1
+
+    # Copy result to all exposures and return value
+    return assigned[inv]
+
+
+def _nearest_neighbor_euclidean(centroids, coordinates, threshold, check_antimeridian=True):
+    """Compute the neareast centroid for each coordinate using a k-d tree.
+
+    Parameters
+    ----------
+    centroids : 2d array
+        First column contains latitude, second column contains longitude.
+        Each row is a geographic point
+    coordinates : 2d array
+        First column contains latitude, second column contains longitude. Each
+        row is a geographic point
+    threshold : float
+        distance threshold in km over which no neighbor will be found. Those
+        are assigned with a -1 index
+    check_antimedirian: bool, optional
+        If True, the nearest neighbor in a strip with lon size equal to threshold around the
+        antimeridian is recomputed using the Haversine distance. The antimeridian is guessed from
+        both coordinates and centroids, and is assumed equal to 0.5*(lon_max+lon_min) + 180.
+        Default: True
+
+    Returns
+    -------
+    np.array
+        with as many rows as coordinates containing the centroids indexes
+    """
+    # Construct tree from centroids
+    tree = scipy.spatial.KDTree(np.radians(centroids))
+    # Select unique exposures coordinates
+    _, idx, inv = np.unique(coordinates, axis=0, return_index=True,
+                            return_inverse=True)
+
+    # query the k closest points of the n_points using dual tree
+    dist, assigned = tree.query(np.radians(coordinates[idx]), k=1, p=2, workers=-1)
+
+    # Raise a warning if the minimum distance is greater than the
+    # threshold and set an unvalid index -1
+    num_warn = np.sum(dist * EARTH_RADIUS_KM > threshold)
+    if num_warn:
+        LOGGER.warning('Distance to closest centroid is greater than %s'
+                       'km for %s coordinates.', threshold, num_warn)
+        assigned[dist * EARTH_RADIUS_KM > threshold] = -1
+
+    if check_antimeridian:
+        assigned = _nearest_neighbor_antimeridian(
+            centroids, coordinates[idx], threshold, assigned)
+
+    # Copy result to all exposures and return value
+    return assigned[inv]
+
+def _nearest_neighbor_antimeridian(centroids, coordinates, threshold, assigned):
+    """Recompute nearest neighbors close to the anti-meridian with the Haversine distance
+
+    Parameters
+    ----------
+    centroids : 2d array
+        First column contains latitude, second column contains longitude.
+        Each row is a geographic point
+    coordinates : 2d array
+        First column contains latitude, second column contains longitude. Each
+        row is a geographic point
+    threshold : float
+        distance threshold in km over which no neighbor will be found. Those
+        are assigned with a -1 index
+    assigned : 1d array
+        coordinates that have assigned so far
+
+    Returns
+    -------
+    np.array
+        with as many rows as coordinates containing the centroids indexes
+    """
+    lon_min = min(centroids[:, 1].min(), coordinates[:, 1].min())
+    lon_max = max(centroids[:, 1].max(), coordinates[:, 1].max())
+    if lon_max - lon_min > 360:
+        raise ValueError("Longitudinal coordinates need to be normalized"
+                         "to a common 360 degree range")
+    mid_lon = 0.5 * (lon_max + lon_min)
+    antimeridian = mid_lon + 180
+
+    thres_deg = np.degrees(threshold / EARTH_RADIUS_KM)
+    coord_strip_bool = coordinates[:, 1] + antimeridian < 1.5 * thres_deg
+    coord_strip_bool |= coordinates[:, 1] - antimeridian >  -1.5 * thres_deg
+    if np.any(coord_strip_bool):
+        coord_strip = coordinates[coord_strip_bool]
+        cent_strip_bool = centroids[:, 1] + antimeridian < 2.5 * thres_deg
+        cent_strip_bool |= centroids[:, 1] - antimeridian >  -2.5 * thres_deg
+        if np.any(cent_strip_bool):
+            cent_strip = centroids[cent_strip_bool]
+            strip_assigned = _nearest_neighbor_haversine(cent_strip, coord_strip, threshold)
+            new_coords = cent_strip_bool.nonzero()[0][strip_assigned]
+            new_coords[strip_assigned == -1] = -1
+            assigned[coord_strip_bool] = new_coords
+    return assigned
 
 def region2isos(regions):
     """Convert region names to ISO 3166 alpha-3 codes of countries
@@ -1157,6 +1401,17 @@ def get_admin1_info(country_names):
     admin1_shapes : dict
         Shape according to Natural Earth.
     """
+    def _ensure_utf8(val):
+        # Without the `*.cpg` file present, the shape reader wrongly assumes latin-1 encoding:
+        # https://github.com/SciTools/cartopy/issues/1282
+        # https://github.com/SciTools/cartopy/commit/6d787b01e122eea68b67a9b2966e45877755a52d
+        # As a workaround, we encode and decode again, unless this fails which means
+        # that the `*.cpg` is present and the encoding is correct:
+        try:
+            return val.encode('latin-1').decode('utf-8')
+        except:
+            return val
+
     if isinstance(country_names, (str, int, float)):
         country_names = [country_names]
     if not isinstance(country_names, list):
@@ -1165,19 +1420,22 @@ def get_admin1_info(country_names):
     admin1_file = shapereader.natural_earth(resolution='10m',
                                             category='cultural',
                                             name='admin_1_states_provinces')
-    admin1_recs = shapefile.Reader(admin1_file)
+    admin1_recs = shapereader.Reader(admin1_file)
     admin1_info = dict()
     admin1_shapes = dict()
     for country in country_names:
         if isinstance(country, (int, float)):
-            country = f'{int(country):03d}' # transform numerric code to str
-        country = pycountry.countries.lookup(country).alpha_3 # get iso3a code
+            # transform numerric code to str
+            country = f'{int(country):03d}'
+        # get alpha-3 code according to ISO 3166
+        country = pycountry.countries.lookup(country).alpha_3
         admin1_info[country] = list()
         admin1_shapes[country] = list()
-        for rec, rec_shp in zip(admin1_recs.records(), admin1_recs.shapes()):
-            if rec['adm0_a3'] == country:
-                admin1_info[country].append(rec)
-                admin1_shapes[country].append(rec_shp)
+        for rec in admin1_recs.records():
+            if rec.attributes['adm0_a3'] == country:
+                rec_attributes = {k: _ensure_utf8(v) for k, v in rec.attributes.items()}
+                admin1_info[country].append(rec_attributes)
+                admin1_shapes[country].append(rec.geometry)
         if len(admin1_info[country]) == 0:
             raise LookupError(f'natural_earth records are empty for country {country}')
     return admin1_info, admin1_shapes
@@ -1220,11 +1478,11 @@ def get_admin1_geometries(countries):
     admin1_info, admin1_shapes = get_admin1_info(countries)
     for country in admin1_info.keys():
         # fill admin 1 region names and codes to GDF for single country:
-        gdf_tmp = gpd.GeoDataFrame(columns = gdf.columns)
+        gdf_tmp = gpd.GeoDataFrame(columns=gdf.columns)
         gdf_tmp.admin1_name = [record['name'] for record in admin1_info[country]]
         gdf_tmp.iso_3166_2 = [record['iso_3166_2'] for record in admin1_info[country]]
         # With this initiation of GeoSeries in a list comprehension,
-        # the ability of geopandas to convert shapefile.Shape to (Multi)Polygon is exploited:
+        # the ability of geopandas to convert shapereader.Shape to (Multi)Polygon is exploited:
         geoseries = gpd.GeoSeries([gpd.GeoSeries(shape).values[0]
                                    for shape in admin1_shapes[country]])
         gdf_tmp.geometry = list(geoseries)
@@ -1402,8 +1660,10 @@ def equal_crs(crs_one, crs_two):
     return rasterio.crs.CRS.from_user_input(crs_one) == rasterio.crs.CRS.from_user_input(crs_two)
 
 def _read_raster_reproject(src, src_crs, dst_meta, band=None, geometry=None, dst_crs=None,
-                           transform=None, resampling=rasterio.warp.Resampling.nearest):
+                           transform=None, resampling="nearest"):
     """Helper function for `read_raster`."""
+    if isinstance(resampling, str):
+        resampling = getattr(rasterio.warp.Resampling, resampling)
     if not band:
         band = [1]
     if not dst_crs:
@@ -1469,8 +1729,7 @@ def _read_raster_reproject(src, src_crs, dst_meta, band=None, geometry=None, dst
     return intensity
 
 def read_raster(file_name, band=None, src_crs=None, window=None, geometry=None,
-                dst_crs=None, transform=None, width=None, height=None,
-                resampling=rasterio.warp.Resampling.nearest):
+                dst_crs=None, transform=None, width=None, height=None, resampling="nearest"):
     """Read raster of bands and set 0-values to the masked ones.
 
     Parameters
@@ -1491,8 +1750,10 @@ def read_raster(file_name, band=None, src_crs=None, window=None, geometry=None,
         number of lons for transform
     height : float
         number of lats for transform
-    resampling : rasterio.warp.Resampling optional
-        resampling function used for reprojection to dst_crs
+    resampling : int or str, optional
+        Resampling method to use, encoded as an integer value (see `rasterio.enums.Resampling`).
+        String values like `"nearest"` or `"bilinear"` are resolved to attributes of
+        `rasterio.enums.Resampling`. Default: "nearest"
 
     Returns
     -------
@@ -1554,10 +1815,16 @@ def read_raster(file_name, band=None, src_crs=None, window=None, geometry=None,
 
     return dst_meta, intensity.reshape(dst_shape)
 
-def read_raster_bounds(path, bounds, res=None, bands=None):
-    """Read raster file within given bounds and refine to given resolution
+def read_raster_bounds(path, bounds, res=None, bands=None, resampling="nearest",
+                       global_origin=None, pad_cells=1.0):
+    """Read raster file within given bounds at given resolution
 
-    Makes sure that the extent of pixel centers covers the specified regions
+    By default, not only the grid cells of the destination raster whose cell centers fall within
+    the specified bounds are selected, but one additional row/column of grid cells is added as a
+    padding in each direction (pad_cells=1). This makes sure that the extent of the selected cell
+    centers encloses the specified bounds.
+
+    The axis orientations (e.g. north to south, west to east) of the input data set are preserved.
 
     Parameters
     ----------
@@ -1565,10 +1832,24 @@ def read_raster_bounds(path, bounds, res=None, bands=None):
         Path to raster file to open with rasterio.
     bounds : tuple
         (xmin, ymin, xmax, ymax)
-    res : float, optional
-        Resolution of output. Default: Resolution of input raster file.
+    res : float or pair of floats, optional
+        Resolution of output. Note that the orientation (sign) of these is overwritten by the input
+        data set's axis orientations (e.g. north to south, west to east).
+        Default: Resolution of input raster file.
     bands : list of int, optional
         Bands to read from the input raster file. Default: [1]
+    resampling : int or str, optional
+        Resampling method to use, encoded as an integer value (see `rasterio.enums.Resampling`).
+        String values like `"nearest"` or `"bilinear"` are resolved to attributes of
+        `rasterio.enums.Resampling`. Default: "nearest"
+    global_origin : pair of floats, optional
+        If given, align the output raster to a global reference raster with this origin.
+        By default, the data set's origin (according to it's transform) is used.
+    pad_cells : float, optional
+        The number of cells to add as a padding (in terms of the destination grid that is inferred
+        from `res` and/or `global_origin` if those parameters are given). This defaults to 1 to
+        make sure that applying methods like bilinear interpolation to the output of this function
+        is well-defined everywhere within the specified bounds. Default: 1.0
 
     Returns
     -------
@@ -1578,11 +1859,12 @@ def read_raster_bounds(path, bounds, res=None, bands=None):
     transform : rasterio.Affine
         Affine transformation defining the output raster data.
     """
+    if isinstance(resampling, str):
+        resampling = getattr(rasterio.warp.Resampling, resampling)
     if Path(path).suffix == '.gz':
         path = '/vsigzip/' + str(path)
     if not bands:
         bands = [1]
-    resampling = rasterio.warp.Resampling.bilinear
     with rasterio.open(path, 'r') as src:
         if res:
             if not isinstance(res, tuple):
@@ -1591,20 +1873,23 @@ def read_raster_bounds(path, bounds, res=None, bands=None):
             res = (src.transform[0], src.transform[4])
         res = (np.abs(res[0]), np.abs(res[1]))
 
-        width, height = bounds[2] - bounds[0], bounds[3] - bounds[1]
-        shape = (int(np.ceil(height / res[1]) + 1),
-                 int(np.ceil(width / res[0]) + 1))
+        # make sure that the extent of pixel centers covers the specified region
+        bounds = (bounds[0] - pad_cells * res[0], bounds[1] - pad_cells * res[1],
+                  bounds[2] + pad_cells * res[0], bounds[3] + pad_cells * res[1])
 
-        # make sure that the extent of pixel centers covers the specified regions
-        extra = (0.5 * ((shape[1] - 1) * res[0] - width),
-                 0.5 * ((shape[0] - 1) * res[1] - height))
-        bounds = (bounds[0] - extra[0] - 0.5 * res[0], bounds[1] - extra[1] - 0.5 * res[1],
-                  bounds[2] + extra[0] + 0.5 * res[0], bounds[3] + extra[1] + 0.5 * res[1])
+        if src.crs is not None and src.crs.to_epsg() == 4326:
+            # We consider WGS84 (EPSG:4326) as a special case just because it's so common.
+            # Other CRS might also have out-of-bounds issues, but we can't possibly cover them all.
+            bounds = (bounds[0], max(-90, bounds[1]), bounds[2], min(90, bounds[3]))
+
+        if global_origin is None:
+            global_origin = (src.transform[2], src.transform[5])
+        res_signed = (np.sign(src.transform[0]) * res[0], np.sign(src.transform[4]) * res[1])
+        global_transform = rasterio.transform.from_origin(
+            *global_origin, res_signed[0], -res_signed[1])
+        transform, shape = subraster_from_bounds(global_transform, bounds)
 
         data = np.zeros((len(bands),) + shape, dtype=src.dtypes[0])
-        res = (np.sign(src.transform[0]) * res[0], np.sign(src.transform[4]) * res[1])
-        transform = rasterio.Affine(res[0], 0, bounds[0] if res[0] > 0 else bounds[2],
-                                    0, res[1], bounds[1] if res[1] > 0 else bounds[3])
         crs = DEF_CRS if src.crs is None else src.crs
         for iband, band in enumerate(bands):
             rasterio.warp.reproject(
@@ -1919,6 +2204,9 @@ def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, crs=DEF
 def subraster_from_bounds(transform, bounds):
     """Compute a subraster definition from a given reference transform and bounds.
 
+    The axis orientations (sign of resolution step sizes) in `transform` are not required to be
+    north to south and west to east. The given orientation is preserved in the result.
+
     Parameters
     ----------
     transform : rasterio.Affine
@@ -1929,10 +2217,15 @@ def subraster_from_bounds(transform, bounds):
     Returns
     -------
     dst_transform : rasterio.Affine
-        Subraster affine transformation.
+        Subraster affine transformation. The axis orientations of the input transform (e.g. north
+        to south, west to east) are preserved.
     dst_shape : tuple of ints (height, width)
         Number of pixels of subraster in vertical and horizontal direction.
     """
+    if np.sign(transform[0]) != np.sign(bounds[2] - bounds[0]):
+        bounds = (bounds[2], bounds[1], bounds[0], bounds[3])
+    if np.sign(transform[4]) != np.sign(bounds[1] - bounds[3]):
+        bounds = (bounds[0], bounds[3], bounds[2], bounds[1])
     window = rasterio.windows.from_bounds(*bounds, transform)
 
     # align the window bounds to the raster by rounding
@@ -1945,8 +2238,8 @@ def subraster_from_bounds(transform, bounds):
     return dst_transform, dst_shape
 
 def align_raster_data(source, src_crs, src_transform, dst_crs=None, dst_resolution=None,
-                      dst_bounds=None, global_origin=(-180, 90), resampling=None, conserve=None,
-                      **kwargs):
+                      dst_bounds=None, global_origin=(-180, 90), resampling="nearest",
+                      conserve=None, **kwargs):
     """Reproject 2D np.ndarray to be aligned to a reference grid.
 
     This function ensures that reprojected data with the same dst_resolution and global_origins are
@@ -1975,12 +2268,16 @@ def align_raster_data(source, src_crs, src_transform, dst_crs=None, dst_resoluti
     global_origin : tuple (west, north) of floats, optional
         Coordinates of the reference grid's upper left corner. Default: (-180, 90). Make sure to
         change `global_origin` for non-geographical CRS!
-    resampling : int, rasterio.enums.Resampling or str, optional
-        Resampling method to use. String values like `"nearest"` or `"bilinear"` are resolved to
-        attributes of `rasterio.enums.Resampling. Default: `rasterio.enums.Resampling.nearest`
+    resampling : int or str, optional
+        Resampling method to use, encoded as an integer value (see `rasterio.enums.Resampling`).
+        String values like `"nearest"` or `"bilinear"` are resolved to attributes of
+        `rasterio.enums.Resampling`. Default: "nearest"
     conserve : str, optional
         If provided, conserve the source array's 'mean' or 'sum' in the transformed data or
         normalize the values of the transformed data ndarray ('norm').
+        WARNING: Please note that this procedure will not apply any weighting of values according
+        to the geographical cell sizes, which will introduce serious biases for lat/lon grids
+        in case of areas spanning large latitudinal ranges.
         Default: None (no conservation)
     kwargs : dict, optional
         Additional arguments passed to `rasterio.warp.reproject`.

@@ -171,7 +171,7 @@ class StormEurope(Hazard):
         haz.event_id = np.arange(1, len(haz.event_id) + 1)
         haz.frequency = np.divide(
             np.ones_like(haz.date),
-            (last_year(haz.date) - first_year(haz.date))
+            np.max([(last_year(haz.date) - first_year(haz.date)), 1])
         )
 
         haz.tag = TagHazard(
@@ -262,6 +262,9 @@ class StormEurope(Hazard):
         Works for MeteoSwiss model output of
         COSMO-1E (11 members, resolution 1.1 km, forecast period 33-45 hours)
         COSMO-2E (21 members, resolution 2.2 km, forecast period 5 days)
+
+        The frequency of each event is informed by their probability in the ensemble
+        forecast and is equal to 1/11 or 1/21 for COSMO-1E or COSMO-2E, respectively.
 
         Parameters
         ----------
@@ -383,6 +386,8 @@ class StormEurope(Hazard):
         starting at 00H and 12H. Otherwise the aggregation is inaccurate,
         because of the given file structure with 1-hour, 3-hour and
         6-hour maxima provided.
+
+        The frequency for one event is 1/(number of ensemble members)
 
         Parameters
         ----------
