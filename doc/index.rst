@@ -23,6 +23,7 @@ Tutorials
    :maxdepth: 1
 
    tutorial/1_main_climada
+   tutorial/climada_installation_step_by_step
    tutorial/climada_entity_Exposures
    tutorial/climada_entity_LitPop
    tutorial/climada_entity_ImpactFuncSet
