@@ -20,32 +20,6 @@ This is the Python (3.8+) version of CLIMADA - please see https://github.com/dav
 
 CLIMADA runs on Windows, macOS and Linux. It can be installed from sources or - in case of climada_python - directly with pip. See the [installation guide](https://climada-python.readthedocs.io/en/latest/guide/Guide_Installation.html) for instructions.
 
-### Install CLIMADA with pip
-Published releases of CLIMADA (not CLIMADA-petals) can also be installed using pip, since version 3.0.
-
-Download https://raw.githubusercontent.com/CLIMADA-project/climada_python/main/requirements/env_climada.yml
-
-#### Setting the environment:
-It’s highly recommanded to install CLIMADA into a [Conda](https://docs.conda.io/projects/conda/en/latest/) environment. Without Conda, the installation of the dependencies can be cumbersome. If it is not already installed, download the latest version of [Anaconda](https://www.anaconda.com/) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html) and execute it.
-
-Check into the folder containing “env_climada.yml” file, then open a command prompt (Windows) or shell (Mac, Linux) and run:
-
-```shell
-conda env create -n climada_env -f env_climada.yml
-conda activate climada_env
-```
-
-### Install the climada package
-Run:
-
-```shell
-pip install climada
-```
-
-### Build from source:
-See the documentation for more [information on installing](https://climada-python.readthedocs.io/en/latest/guide/Guide_Installation.html).
-
-### Tutorials
 Follow the [tutorial](https://climada-python.readthedocs.io/en/latest/tutorial/1_main_climada.html) `climada_python-x.y.z/doc/tutorial/1_main_climada.ipynb` in a Jupyter Notebook to see what can be done with CLIMADA and how.
 
 ## Documentation
