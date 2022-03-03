@@ -178,7 +178,7 @@ class Measure():
         u_check.size(2, self.mdd_impact, 'Measure.mdd_impact')
         u_check.size(2, self.paa_impact, 'Measure.paa_impact')
 
-    def calc_impact(self, exposures, imp_fun_set, hazard, assign_centroids=True):
+    def calc_impact(self, exposures, imp_fun_set, hazard, assign_centroids=True, save_mat=False):
         """
         Apply measure and compute impact and risk transfer of measure
         implemented over inputs.
@@ -197,6 +197,8 @@ class Measure():
             computation time if the hazards' centroids are already assigned to the exposures
             object.
             Default: True
+        save_mat : bool
+            save the calculated Impact's impact matrix. Passed to Impact.calc
 
         Returns
         -------
@@ -205,7 +207,7 @@ class Measure():
         """
 
         new_exp, new_impfs, new_haz = self.apply(exposures, imp_fun_set, hazard)
-        return self._calc_impact(new_exp, new_impfs, new_haz, assign_centroids)
+        return self._calc_impact(new_exp, new_impfs, new_haz, assign_centroids, save_mat)
 
     def apply(self, exposures, imp_fun_set, hazard):
         """
@@ -244,7 +246,7 @@ class Measure():
 
         return new_exp, new_impfs, new_haz
 
-    def _calc_impact(self, new_exp, new_impfs, new_haz, assign_centroids):
+    def _calc_impact(self, new_exp, new_impfs, new_haz, assign_centroids, save_mat=False):
         """Compute impact and risk transfer of measure implemented over inputs.
 
         Parameters
@@ -255,6 +257,13 @@ class Measure():
             impact function set once measure applied
         new_haz  : climada.hazard.Hazard
             hazard once measure applied
+        assign_centroids : bool
+            indicates whether centroids are assigned to the exposure object.
+            Centroids assignment is an expensive operation; set this to ``False`` to save
+            computation time if the hazards' centroids are already assigned to the exposures
+            object.
+        save_mat : bool
+            save the calculated Impact's impact matrix. Passed to Impact.calc
 
         Returns
         -------
@@ -262,7 +271,9 @@ class Measure():
         """
         from climada.engine.impact_calc import ImpactCalc  # pylint: disable=import-outside-toplevel
         imp = ImpactCalc(new_exp, new_impfs, new_haz)\
-              .impact(save_mat=False, assign_centroids=assign_centroids)
+              .impact(save_mat=save_mat, assign_centroids=assign_centroids)
+        if self.risk_transf_attach == 0 and self.risk_transf_cover == 0:
+            return imp, Impact()
         return imp.calc_risk_transfer(self.risk_transf_attach, self.risk_transf_cover)
 
     def _change_all_hazard(self, hazard):
