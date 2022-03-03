@@ -35,6 +35,7 @@ Tutorials
    tutorial/climada_hazard_StormEurope
    tutorial/climada_engine_Impact
    tutorial/climada_engine_impact_data
+   tutorial/climada_engine_CostBenefit
    tutorial/climada_engine_unsequa
    tutorial/climada_engine_unsequa_helper
    tutorial/climada_engine_Forecast
