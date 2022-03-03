@@ -752,14 +752,14 @@ class CostBenefit():
             Default: average annual impact (aggregated).
         save_imp : bool, optional
             activate if Impact of each measure is
-            saved. Default: False.
+            saved. Also saves impact matrix. Default: False.
         """
         impact_meas = dict()
 
         # compute impact without measures
         LOGGER.debug('%s impact with no measure.', when)
         imp_tmp = Impact()
-        imp_tmp.calc(exposures, imp_fun_set, hazard)
+        imp_tmp.calc(exposures, imp_fun_set, hazard, save_imp)
         impact_meas[NO_MEASURE] = dict()
         impact_meas[NO_MEASURE]['cost'] = (0, 0)
         impact_meas[NO_MEASURE]['risk'] = risk_func(imp_tmp)
@@ -771,7 +771,7 @@ class CostBenefit():
         # compute impact for each measure
         for measure in meas_set.get_measure(hazard.tag.haz_type):
             LOGGER.debug('%s impact of measure %s.', when, measure.name)
-            imp_tmp, risk_transf = measure.calc_impact(exposures, imp_fun_set, hazard)
+            imp_tmp, risk_transf = measure.calc_impact(exposures, imp_fun_set, hazard, save_imp)
             impact_meas[measure.name] = dict()
             impact_meas[measure.name]['cost'] = (measure.cost, measure.risk_transf_cost_factor)
             impact_meas[measure.name]['risk'] = risk_func(imp_tmp)
