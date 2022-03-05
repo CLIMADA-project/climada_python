@@ -457,7 +457,7 @@ class Client():
             downloaded = self._tracked_download(remote_url=fileinfo.url, local_path=local_path)
             if not downloaded.enddownload:
                 raise Download.Failed("Download seems to be in progress, please try again later"
-                    f" or remove cache entry by calling `purge_cache(Path('{local_path}'))`!")
+                    f" or remove cache entry by calling `Client.purge_cache(Path('{local_path}'))`!")
             try:
                 check(local_path, fileinfo)
             except Download.Failed as dlf:
