@@ -33,6 +33,10 @@ Documentation is available on Read the Docs:
 
 If you use CLIMADA please cite (in general, in particular for academic work) :
 
+The [latest version](https://zenodo.org/search?page=1&size=20&q=climada)
+
+Or other versions, e.g.:
+
 Aznar-Siguan, G. and Bresch, D. N., 2019: CLIMADA v1: a global weather and climate risk assessment platform, Geosci. Model Dev., 12, 3085–3097, https://doi.org/10.5194/gmd-12-3085-2019
 
 Bresch, D. N. and Aznar-Siguan, G., 2021: CLIMADA v1.4.1: towards a globally consistent adaptation options appraisal tool, Geosci. Model Dev., 14, 351-363, https://doi.org/10.5194/gmd-14-351-2021
