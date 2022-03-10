@@ -18,7 +18,7 @@ This is the Python (3.8+) version of CLIMADA - please see https://github.com/dav
 
 ## Getting started
 
-CLIMADA runs on Windows, macOS and Linux. Download the [latest release](https://github.com/CLIMADA-project/climada_python/releases). Install CLIMADA's dependencies specified in  the downloaded file `climada_python-x.y.z/requirements/env_climada.yml` with conda. See the documentation for more [information on installing](https://climada-python.readthedocs.io/en/latest/guide/Guide_Installation.html).
+CLIMADA runs on Windows, macOS and Linux. It can be installed from sources or - in case of climada_python - directly with pip. See the [installation guide](https://climada-python.readthedocs.io/en/latest/guide/Guide_Installation.html) for instructions.
 
 Follow the [tutorial](https://climada-python.readthedocs.io/en/latest/tutorial/1_main_climada.html) `climada_python-x.y.z/doc/tutorial/1_main_climada.ipynb` in a Jupyter Notebook to see what can be done with CLIMADA and how.
 
