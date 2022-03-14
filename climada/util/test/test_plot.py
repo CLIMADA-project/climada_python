@@ -44,7 +44,8 @@ class TestFuncs(unittest.TestCase):
     def test_get_transform_3035_pass(self):
         """Check that assigned attribute is correctly set."""
         res, unit = u_plot.get_transformation('epsg:3035')
-        self.assertIsInstance(res, cartopy._epsg._EPSGProjection)
+        self.assertIsInstance(res, cartopy.crs.Projection)
+        self.assertEqual(res.epsg_code, 3035)
         self.assertEqual(unit, 'm')
 
 class TestPlots(unittest.TestCase):

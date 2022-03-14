@@ -394,14 +394,14 @@ class Impact():
 
         Parameters
         ----------
-        mask  : np.array, optional
+        mask : np.array, optional
             mask to apply to eai_exp plotted.
         ignore_zero : bool, optional
             flag to indicate if zero and negative
             values are ignored in plot. Default: False
         pop_name : bool, optional
             add names of the populated places
-         buffer : float, optional
+        buffer : float, optional
             border to add to coordinates. Default: 0.0.
         extend : str, optional
             extend border colorbar with arrows.
@@ -439,14 +439,14 @@ class Impact():
         event_id : int, optional
             id of the event for which to plot the impact.
             Default: 1.
-        mask  : np.array, optional
+        mask : np.array, optional
             mask to apply to impact plotted.
         ignore_zero : bool, optional
             flag to indicate if zero and negative
             values are ignored in plot. Default: False
         pop_name : bool, optional
             add names of the populated places
-         buffer : float, optional
+        buffer : float, optional
             border to add to coordinates.
             Default: 1.0.
         extend : str, optional
@@ -454,16 +454,16 @@ class Impact():
             [ 'neither' | 'both' | 'min' | 'max' ]
         kwargs : optional
             arguments for hexbin matplotlib function
-        axis  : matplotlib.axes._subplots.AxesSubplot
+        axis : matplotlib.axes._subplots.AxesSubplot
             optional axis to use
         adapt_fontsize : bool, optional
-                If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
-                the default matplotlib font size is used. Default is True.
+            If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
+            the default matplotlib font size is used. Default is True.
 
         Returns
         --------
             matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
-            """
+        """
         if not hasattr(self.imp_mat, "shape") or self.imp_mat.shape[1] == 0:
             raise ValueError('attribute imp_mat is empty. Recalculate Impact'
                              'instance with parameter save_mat=True')

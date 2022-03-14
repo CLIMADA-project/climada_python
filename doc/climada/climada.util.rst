@@ -89,14 +89,6 @@ climada\.util\.hdf5\_handler module
     :undoc-members:
     :show-inheritance:
 
-climada\.util\.interpolation module
------------------------------------
-
-.. automodule:: climada.util.interpolation
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 climada\.util\.plot module
 --------------------------
 
