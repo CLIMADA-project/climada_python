@@ -33,7 +33,7 @@ Documentation is available on Read the Docs:
 
 If you use CLIMADA please cite (in general, in particular for academic work) :
 
-The [latest version](https://zenodo.org/search?page=1&size=20&q=climada)
+The [used version](https://zenodo.org/search?page=1&size=20&q=climada)
 
 and/or the following published articles:
 
