@@ -35,7 +35,7 @@ If you use CLIMADA please cite (in general, in particular for academic work) :
 
 The [latest version](https://zenodo.org/search?page=1&size=20&q=climada)
 
-Or other versions, e.g.:
+and/or the following published articles:
 
 Aznar-Siguan, G. and Bresch, D. N., 2019: CLIMADA v1: a global weather and climate risk assessment platform, Geosci. Model Dev., 12, 3085–3097, https://doi.org/10.5194/gmd-12-3085-2019
 
