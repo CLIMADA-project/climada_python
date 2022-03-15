@@ -342,9 +342,9 @@ def get_gridcellarea(lat, resolution=0.5, unit='km2'):
     """
 
     if unit == 'm2':
-        area = (ONE_LAT_KM * resolution)**2 * np.cos(np.deg2rad(lat)) * 100 * 1000000
+        area = (ONE_LAT_KM * resolution)**2 * np.cos(np.deg2rad(lat)) * 1000000
     else:
-        area = (ONE_LAT_KM * resolution)**2 * np.cos(np.deg2rad(lat)) * 100
+        area = (ONE_LAT_KM * resolution)**2 * np.cos(np.deg2rad(lat))
 
     return area
 
