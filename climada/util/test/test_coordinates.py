@@ -206,10 +206,13 @@ class TestFunc(unittest.TestCase):
         resolution = 0.5
         area = u_coord.get_gridcellarea(lat, resolution)
 
-        self.assertAlmostEqual(area[0], 1781.5973363005)
-        self.assertAlmostEqual(area[1], 1803.5282386516)
+        self.assertAlmostEqual(area[0], 178159.73363005)
+        self.assertAlmostEqual(area[1], 180352.82386516)
         self.assertEqual(lat.shape, area.shape)
-        self.assertTrue(area[0] <= 2500)
+        
+        area2 = u_coord.get_gridcellarea(lat, resolution, unit='km2')
+        self.assertAlmostEqual(area2[0], 1781.5973363005)
+        self.assertTrue(area2[0] <= 2500)
 
     def test_read_vector_pass(self):
         """Test one columns data"""
