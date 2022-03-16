@@ -19,6 +19,7 @@ dependencies:
   - pathos>=0.2
   - pint>=0.15
   - pip
+  - proj!>9.0.0  # there are issues with proj 9.0.0 (#381)
   - pycountry>=20.7
   - pyepsg>=0.4
   - pytables>=3.6
