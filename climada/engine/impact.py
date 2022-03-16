@@ -100,38 +100,6 @@ class Impact():
         self.unit = ''
         self.imp_mat = sparse.csr_matrix(np.empty((0, 0)))
 
-    def calc_freq_curve(self, return_per=None):
-        """Compute impact exceedance frequency curve.
-
-        Parameters
-        ----------
-        return_per : np.array, optional
-            return periods where to compute
-            the exceedance impact. Use impact's frequencies if not provided
-
-        Returns
-        -------
-            ImpactFreqCurve
-        """
-        ifc = ImpactFreqCurve()
-        ifc.tag = self.tag
-        # Sort descendingly the impacts per events
-        sort_idxs = np.argsort(self.at_event)[::-1]
-        # Calculate exceedence frequency
-        exceed_freq = np.cumsum(self.frequency[sort_idxs])
-        # Set return period and imact exceeding frequency
-        ifc.return_per = 1 / exceed_freq[::-1]
-        ifc.impact = self.at_event[sort_idxs][::-1]
-        ifc.unit = self.unit
-        ifc.label = 'Exceedance frequency curve'
-
-        if return_per is not None:
-            interp_imp = np.interp(return_per, ifc.return_per, ifc.impact)
-            ifc.return_per = return_per
-            ifc.impact = interp_imp
-
-        return ifc
-
     def calc(self, exposures, impact_funcs, hazard, save_mat=False):
         """Compute impact of an hazard to exposures.
 
@@ -171,23 +139,13 @@ class Impact():
         # 1. Assign centroids to each exposure if not done
         assign_haz = INDICATOR_CENTR + hazard.tag.haz_type
         if assign_haz not in exposures.gdf:
+            LOGGER.warning(
+                "Exposures have no assigned centroids for Hazard %s.\
+                Centroids will be assigned now.", hazard.tag.haz_type
+                )
             exposures.assign_centroids(hazard)
         else:
             LOGGER.info('Exposures matching centroids found in %s', assign_haz)
-
-        # 2. Initialize values
-        self.unit = exposures.value_unit
-        self.event_id = hazard.event_id
-        self.event_name = hazard.event_name
-        self.date = hazard.date
-        self.coord_exp = np.stack([exposures.gdf.latitude.values,
-                                   exposures.gdf.longitude.values], axis=1)
-        self.frequency = hazard.frequency
-        self.at_event = np.zeros(hazard.intensity.shape[0])
-        self.eai_exp = np.zeros(exposures.gdf.value.size)
-        self.tag = {'exp': exposures.tag, 'impf_set': impact_funcs.tag,
-                    'haz': hazard.tag}
-        self.crs = exposures.crs
 
         # Select exposures with positive value and assigned centroid
         exp_idx = np.where((exposures.gdf.value > 0) & (exposures.gdf[assign_haz] >= 0))[0]
@@ -195,7 +153,7 @@ class Impact():
             LOGGER.warning("No affected exposures.")
 
         num_events = hazard.intensity.shape[0]
-        LOGGER.info('Calculating damage for %s assets (>0) and %s events.',
+        LOGGER.info('Calculating impact for %s assets (>0) and %s events.',
                     exp_idx.size, num_events)
 
         # Get damage functions for this hazard
@@ -238,6 +196,20 @@ class Impact():
         if save_mat:
             shape = (self.date.size, exposures.gdf.value.size)
             self.imp_mat = sparse.csr_matrix(self.imp_mat, shape=shape)
+
+
+        # 2. Initialize values
+        self.unit = exposures.value_unit
+        self.event_id = hazard.event_id
+        self.event_name = hazard.event_name
+        self.date = hazard.date
+        self.coord_exp = np.stack([exposures.gdf.latitude.values,
+                                   exposures.gdf.longitude.values], axis=1)
+        self.frequency = hazard.frequency
+        self.tag = {'exp': exposures.tag, 'impf_set': impact_funcs.tag,
+                    'haz': hazard.tag}
+        self.crs = exposures.crs
+
 
     def calc_risk_transfer(self, attachment, cover):
         """Compute traaditional risk transfer over impact. Returns new impact
@@ -307,6 +279,113 @@ class Impact():
                                    extend, axis=axis, adapt_fontsize=adapt_fontsize, **kwargs)
         axis.set_title('Expected annual impact')
         return axis
+
+    def calc_impact_year_set(self, all_years=True, year_range=None):
+        """Calculate yearly impact from impact data.
+
+        Parameters
+        ----------
+        all_years : boolean
+            return values for all years between first and
+            last year with event, including years without any events.
+        year_range : tuple or list with integers
+            start and end year
+
+        Returns
+        -------
+        Impact year set of type numpy.ndarray with summed impact per year.
+        """
+        if year_range is None:
+            year_range = []
+
+        orig_year = np.array([dt.datetime.fromordinal(date).year
+                              for date in self.date])
+        if orig_year.size == 0 and len(year_range) == 0:
+            return dict()
+        if orig_year.size == 0 or (len(year_range) > 0 and all_years):
+            years = np.arange(min(year_range), max(year_range) + 1)
+        elif all_years:
+            years = np.arange(min(orig_year), max(orig_year) + 1)
+        else:
+            years = np.array(sorted(np.unique(orig_year)))
+        if not len(year_range) == 0:
+            years = years[years >= min(year_range)]
+            years = years[years <= max(year_range)]
+
+        year_set = dict()
+
+        for year in years:
+            year_set[year] = sum(self.at_event[orig_year == year])
+        return year_set
+
+    def local_exceedance_imp(self, return_periods=(25, 50, 100, 250)):
+        """Compute exceedance impact map for given return periods.
+        Requires attribute imp_mat.
+
+        Parameters
+        ----------
+        return_periods : np.array return periods to consider
+
+        Returns
+        -------
+        np.array
+        """
+        LOGGER.info('Computing exceedance impact map for return periods: %s',
+                    return_periods)
+        try:
+            self.imp_mat.shape[1]
+        except AttributeError as err:
+            raise ValueError('attribute imp_mat is empty. Recalculate Impact'
+                             'instance with parameter save_mat=True') from err
+        num_cen = self.imp_mat.shape[1]
+        imp_stats = np.zeros((len(return_periods), num_cen))
+        cen_step = CONFIG.max_matrix_size.int() // self.imp_mat.shape[0]
+        if not cen_step:
+            raise ValueError('Increase max_matrix_size configuration parameter to > %s'
+                             % str(self.imp_mat.shape[0]))
+        # separte in chunks
+        chk = -1
+        for chk in range(int(num_cen / cen_step)):
+            self._loc_return_imp(np.array(return_periods),
+                                 self.imp_mat[:, chk * cen_step:(chk + 1) * cen_step].toarray(),
+                                 imp_stats[:, chk * cen_step:(chk + 1) * cen_step])
+        self._loc_return_imp(np.array(return_periods),
+                             self.imp_mat[:, (chk + 1) * cen_step:].toarray(),
+                             imp_stats[:, (chk + 1) * cen_step:])
+
+        return imp_stats
+
+    def calc_freq_curve(self, return_per=None):
+        """Compute impact exceedance frequency curve.
+
+        Parameters
+        ----------
+        return_per : np.array, optional
+            return periods where to compute
+            the exceedance impact. Use impact's frequencies if not provided
+
+        Returns
+        -------
+            ImpactFreqCurve
+        """
+        ifc = ImpactFreqCurve()
+        ifc.tag = self.tag
+        # Sort descendingly the impacts per events
+        sort_idxs = np.argsort(self.at_event)[::-1]
+        # Calculate exceedence frequency
+        exceed_freq = np.cumsum(self.frequency[sort_idxs])
+        # Set return period and imact exceeding frequency
+        ifc.return_per = 1 / exceed_freq[::-1]
+        ifc.impact = self.at_event[sort_idxs][::-1]
+        ifc.unit = self.unit
+        ifc.label = 'Exceedance frequency curve'
+
+        if return_per is not None:
+            interp_imp = np.interp(return_per, ifc.return_per, ifc.impact)
+            ifc.return_per = return_per
+            ifc.impact = interp_imp
+
+        return ifc
 
     def plot_scatter_eai_exposure(self, mask=None, ignore_zero=True,
                                   pop_name=True, buffer=0.0, extend='neither',
@@ -526,6 +605,53 @@ class Impact():
 
         return axis
 
+    def plot_rp_imp(self, return_periods=(25, 50, 100, 250),
+                    log10_scale=True, smooth=True, axis=None, **kwargs):
+        """Compute and plot exceedance impact maps for different return periods.
+        Calls local_exceedance_imp.
+
+        Parameters
+        ----------
+        return_periods : tuple(int), optional
+            return periods to consider
+        log10_scale : boolean, optional
+            plot impact as log10(impact)
+        smooth : bool, optional
+            smooth plot to plot.RESOLUTIONxplot.RESOLUTION
+        kwargs : optional
+            arguments for pcolormesh matplotlib function
+            used in event plots
+
+        Returns
+        --------
+        matplotlib.axes._subplots.AxesSubplot,
+        np.ndarray (return_periods.size x num_centroids)
+        """
+        imp_stats = self.local_exceedance_imp(np.array(return_periods))
+        if imp_stats == []:
+            raise ValueError('Error: Attribute imp_mat is empty. Recalculate Impact'
+                             'instance with parameter save_mat=True')
+        if log10_scale:
+            if np.min(imp_stats) < 0:
+                imp_stats_log = np.log10(abs(imp_stats) + 1)
+                colbar_name = 'Log10(abs(Impact)+1) (' + self.unit + ')'
+            elif np.min(imp_stats) < 1:
+                imp_stats_log = np.log10(imp_stats + 1)
+                colbar_name = 'Log10(Impact+1) (' + self.unit + ')'
+            else:
+                imp_stats_log = np.log10(imp_stats)
+                colbar_name = 'Log10(Impact) (' + self.unit + ')'
+        else:
+            imp_stats_log = imp_stats
+            colbar_name = 'Impact (' + self.unit + ')'
+        title = list()
+        for ret in return_periods:
+            title.append('Return period: ' + str(ret) + ' years')
+        axis = u_plot.geo_im_from_array(imp_stats_log, self.coord_exp,
+                                        colbar_name, title, smooth=smooth, axes=axis, **kwargs)
+
+        return axis, imp_stats
+
     def write_csv(self, file_name):
         """Write data into csv file. imp_mat is not saved.
 
@@ -605,128 +731,6 @@ class Impact():
         LOGGER.info('Writing %s', file_name)
         np.savez(file_name, data=self.imp_mat.data, indices=self.imp_mat.indices,
                  indptr=self.imp_mat.indptr, shape=self.imp_mat.shape)
-
-    def calc_impact_year_set(self, all_years=True, year_range=None):
-        """Calculate yearly impact from impact data.
-
-        Parameters
-        ----------
-        all_years : boolean
-            return values for all years between first and
-            last year with event, including years without any events.
-        year_range : tuple or list with integers
-            start and end year
-
-        Returns
-        -------
-        Impact year set of type numpy.ndarray with summed impact per year.
-        """
-        if year_range is None:
-            year_range = []
-
-        orig_year = np.array([dt.datetime.fromordinal(date).year
-                              for date in self.date])
-        if orig_year.size == 0 and len(year_range) == 0:
-            return dict()
-        if orig_year.size == 0 or (len(year_range) > 0 and all_years):
-            years = np.arange(min(year_range), max(year_range) + 1)
-        elif all_years:
-            years = np.arange(min(orig_year), max(orig_year) + 1)
-        else:
-            years = np.array(sorted(np.unique(orig_year)))
-        if not len(year_range) == 0:
-            years = years[years >= min(year_range)]
-            years = years[years <= max(year_range)]
-
-        year_set = dict()
-
-        for year in years:
-            year_set[year] = sum(self.at_event[orig_year == year])
-        return year_set
-
-    def local_exceedance_imp(self, return_periods=(25, 50, 100, 250)):
-        """Compute exceedance impact map for given return periods.
-        Requires attribute imp_mat.
-
-        Parameters
-        ----------
-        return_periods : np.array return periods to consider
-
-        Returns
-        -------
-        np.array
-        """
-        LOGGER.info('Computing exceedance impact map for return periods: %s',
-                    return_periods)
-        try:
-            self.imp_mat.shape[1]
-        except AttributeError as err:
-            raise ValueError('attribute imp_mat is empty. Recalculate Impact'
-                             'instance with parameter save_mat=True') from err
-        num_cen = self.imp_mat.shape[1]
-        imp_stats = np.zeros((len(return_periods), num_cen))
-        cen_step = CONFIG.max_matrix_size.int() // self.imp_mat.shape[0]
-        if not cen_step:
-            raise ValueError('Increase max_matrix_size configuration parameter to > %s'
-                             % str(self.imp_mat.shape[0]))
-        # separte in chunks
-        chk = -1
-        for chk in range(int(num_cen / cen_step)):
-            self._loc_return_imp(np.array(return_periods),
-                                 self.imp_mat[:, chk * cen_step:(chk + 1) * cen_step].toarray(),
-                                 imp_stats[:, chk * cen_step:(chk + 1) * cen_step])
-        self._loc_return_imp(np.array(return_periods),
-                             self.imp_mat[:, (chk + 1) * cen_step:].toarray(),
-                             imp_stats[:, (chk + 1) * cen_step:])
-
-        return imp_stats
-
-    def plot_rp_imp(self, return_periods=(25, 50, 100, 250),
-                    log10_scale=True, smooth=True, axis=None, **kwargs):
-        """Compute and plot exceedance impact maps for different return periods.
-        Calls local_exceedance_imp.
-
-        Parameters
-        ----------
-        return_periods : tuple(int), optional
-            return periods to consider
-        log10_scale : boolean, optional
-            plot impact as log10(impact)
-        smooth : bool, optional
-            smooth plot to plot.RESOLUTIONxplot.RESOLUTION
-        kwargs : optional
-            arguments for pcolormesh matplotlib function
-            used in event plots
-
-        Returns
-        --------
-        matplotlib.axes._subplots.AxesSubplot,
-        np.ndarray (return_periods.size x num_centroids)
-        """
-        imp_stats = self.local_exceedance_imp(np.array(return_periods))
-        if imp_stats == []:
-            raise ValueError('Error: Attribute imp_mat is empty. Recalculate Impact'
-                             'instance with parameter save_mat=True')
-        if log10_scale:
-            if np.min(imp_stats) < 0:
-                imp_stats_log = np.log10(abs(imp_stats) + 1)
-                colbar_name = 'Log10(abs(Impact)+1) (' + self.unit + ')'
-            elif np.min(imp_stats) < 1:
-                imp_stats_log = np.log10(imp_stats + 1)
-                colbar_name = 'Log10(Impact+1) (' + self.unit + ')'
-            else:
-                imp_stats_log = np.log10(imp_stats)
-                colbar_name = 'Log10(Impact) (' + self.unit + ')'
-        else:
-            imp_stats_log = imp_stats
-            colbar_name = 'Impact (' + self.unit + ')'
-        title = list()
-        for ret in return_periods:
-            title.append('Return period: ' + str(ret) + ' years')
-        axis = u_plot.geo_im_from_array(imp_stats_log, self.coord_exp,
-                                        colbar_name, title, smooth=smooth, axes=axis, **kwargs)
-
-        return axis, imp_stats
 
     @staticmethod
     def read_sparse_csr(file_name):
@@ -992,7 +996,7 @@ class Impact():
                 0, return_periods)
 
     def _exp_impact(self, exp_iimp, exposures, hazard, imp_fun, insure_flag):
-        """Compute impact for inpute exposure indexes and impact function.
+        """Compute impact for input exposure indexes and impact function.
 
         Parameters
         ----------
@@ -1347,6 +1351,7 @@ class Impact():
         if sel_exp.size == 0:
             LOGGER.warning("No exposure coordinates match the selection.")
         return sel_exp
+
 
 class ImpactFreqCurve():
     """Impact exceedence frequency curve.
