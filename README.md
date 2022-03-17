@@ -26,8 +26,15 @@ Follow the [tutorial](https://climada-python.readthedocs.io/en/latest/tutorial/1
 
 Documentation is available on Read the Docs:
 
+CLIMADA python:
 * [online (recommended)](https://climada-python.readthedocs.io/en/latest/)
 * [PDF file](https://climada-python.readthedocs.io/_/downloads/en/stable/pdf/)
+
+CLIMADA petals:
+* [online (recommended)](https://climada-petals.readthedocs.io/en/latest/)
+* [PDF file](https://climada-petals.readthedocs.io/_/downloads/en/stable/pdf/)
+* [petals Tutorials on GitHub](https://github.com/CLIMADA-project/climada_petals/tree/main/doc/tutorial)
+
 
 ## Citing CLIMADA
 
