@@ -84,23 +84,37 @@ class Impact():
         only filled if save_mat is True in calc()
     """
 
-    def __init__(self):
-        """Empty initialization."""
-        self.tag = dict()
-        self.event_id = np.array([], int)
-        self.event_name = list()
-        self.date = np.array([], int)
-        self.coord_exp = np.ndarray([], float)
-        self.crs = DEF_CRS
-        self.eai_exp = np.array([])
-        self.at_event = np.array([])
-        self.frequency = np.array([])
-        self.tot_value = 0
-        self.aai_agg = 0
-        self.unit = ''
-        self.imp_mat = sparse.csr_matrix(np.empty((0, 0)))
+    def __init__(self,
+                 event_id=np.array([], int),
+                 event_name=[],
+                 date=np.array([], int),
+                 frequency=np.array([],float),
+                 coord_exp=np.ndarray([], float),
+                 crs=DEF_CRS,
+                 eai_exp=np.array([], float),
+                 at_event=np.array([], float),
+                 tot_value=0,
+                 aai_agg=0,
+                 unit='',
+                 imp_mat=sparse.csr_matrix(np.empty((0, 0))),
+                 tag={}):
 
-    def calc(self, exposures, impact_funcs, hazard, save_mat=False):
+        self.tag = tag
+        self.event_id = event_id
+        self.event_name = event_name
+        self.date = date
+        self.coord_exp = coord_exp
+        self.crs = crs
+        self.eai_exp = eai_exp
+        self.at_event = at_event
+        self.frequency = frequency
+        self.tot_value = tot_value
+        self.aai_agg = aai_agg
+        self.unit = unit
+        self.imp_mat = imp_mat
+
+    @classmethod
+    def calc(cls, exposures, impact_funcs, hazard, save_mat=False):
         """Compute impact of an hazard to exposures.
 
         Parameters
@@ -120,8 +134,7 @@ class Impact():
             >>> haz.check()
             >>> ent = Entity.from_excel(ENT_TEMPLATE_XLS) # Set exposures
             >>> ent.check()
-            >>> imp = Impact()
-            >>> imp.calc(ent.exposures, ent.impact_funcs, haz)
+            >>> imp = Impact.calc(ent.exposures, ent.impact_funcs, haz)
             >>> imp.calc_freq_curve().plot()
 
             Specify only exposures and impact functions:
@@ -132,50 +145,55 @@ class Impact():
             >>> funcs.check()
             >>> exp = Exposures(pd.read_excel(ENT_TEMPLATE_XLS)) # Set exposures
             >>> exp.check()
-            >>> imp = Impact()
-            >>> imp.calc(exp, funcs, haz)
+            >>> imp = Impact.calc(exp, funcs, haz)
             >>> imp.aai_agg
         """
+
+        haz_type = hazard.tag.haz_type
         # 1. Assign centroids to each exposure if not done
-        assign_haz = INDICATOR_CENTR + hazard.tag.haz_type
+        assign_haz = INDICATOR_CENTR + haz_type
         if assign_haz not in exposures.gdf:
             LOGGER.warning(
                 "Exposures have no assigned centroids for Hazard %s.\
-                Centroids will be assigned now.", hazard.tag.haz_type
+                Centroids will be assigned now.", haz_type
                 )
             exposures.assign_centroids(hazard)
         else:
             LOGGER.info('Exposures matching centroids found in %s', assign_haz)
 
         # Select exposures with positive value and assigned centroid
-        exp_idx = np.where((exposures.gdf.value > 0) & (exposures.gdf[assign_haz] >= 0))[0]
-        if exp_idx.size == 0:
+        affected_exp_idx = np.where((exposures.gdf.value > 0) & (exposures.gdf[assign_haz] >= 0))[0]
+        if affected_exp_idx.size == 0:
             LOGGER.warning("No affected exposures.")
 
         num_events = hazard.intensity.shape[0]
         LOGGER.info('Calculating impact for %s assets (>0) and %s events.',
-                    exp_idx.size, num_events)
+                    affected_exp_idx.size, num_events)
 
         # Get damage functions for this hazard
-        impf_haz = exposures.get_impf_column(hazard.tag.haz_type)
-        haz_imp = impact_funcs.get_func(hazard.tag.haz_type)
+        exp_impf_col_for_haz_type = exposures.get_impf_column(hazard.tag.haz_type)
+        impf_for_haz_type = impact_funcs.get_func(haz_type)
+
+        # Check if impf match
+        impf_ids = [impf.id for impf in impf_for_haz_type]
+        unq_impf_aff_exp = set(exposures[exp_impf_col_for_haz_type])
+        unq_impf = set(impf_ids)
+        if not unq_impf_aff_exp.intersection(unq_impf):
+            raise AttributeError('No impact functions match the exposures.\
+                                 for the hazard type %s', haz_type)
 
         # Check if deductible and cover should be applied
-        insure_flag = False
         if ('deductible' in exposures.gdf) and ('cover' in exposures.gdf) \
         and exposures.gdf.cover.max():
-            insure_flag = True
-
-        if save_mat:
-            # (data, (row_ind, col_ind))
-            self.imp_mat = ([], ([], []))
+           raise DeprecationWarning(
+               "This method is deprecated for exposures with deductible \
+               and cover. Please use ... instead.")
 
         # 3. Loop over exposures according to their impact function
-        tot_exp = 0
-        for imp_fun in haz_imp:
+        exp_impf_id = exposures.gdf[exp_impf_col_for_haz_type].values[affected_exp_idx]
+        for impf in impf_for_haz_type:
             # get indices of all the exposures with this impact function
-            exp_iimp = np.where(exposures.gdf[impf_haz].values[exp_idx] == imp_fun.id)[0]
-            tot_exp += exp_iimp.size
+            exp_idx = np.where(exp_impf_id = impf.id)[0]
             exp_step = CONFIG.max_matrix_size.int() // num_events
             if not exp_step:
                 raise ValueError('Increase max_matrix_size configuration parameter to > %s'
@@ -189,26 +207,28 @@ class Impact():
             self._exp_impact(exp_idx[exp_iimp[(chk + 1) * exp_step:]],
                              exposures, hazard, imp_fun, insure_flag)
 
-        if not tot_exp:
-            LOGGER.warning('No impact functions match the exposures.')
-        self.aai_agg = sum(self.at_event * hazard.frequency)
-
-        if save_mat:
-            shape = (self.date.size, exposures.gdf.value.size)
-            self.imp_mat = sparse.csr_matrix(self.imp_mat, shape=shape)
 
 
-        # 2. Initialize values
-        self.unit = exposures.value_unit
-        self.event_id = hazard.event_id
-        self.event_name = hazard.event_name
-        self.date = hazard.date
-        self.coord_exp = np.stack([exposures.gdf.latitude.values,
-                                   exposures.gdf.longitude.values], axis=1)
-        self.frequency = hazard.frequency
-        self.tag = {'exp': exposures.tag, 'impf_set': impact_funcs.tag,
-                    'haz': hazard.tag}
-        self.crs = exposures.crs
+        return cls(
+            event_id = hazard.event_id,
+            event_name = hazard.event_name,
+            date = hazard.data,
+            frequency = hazard.frequency,
+            coord_exp = np.stack([exposures.gdf.latitude.values,
+                                  exposures.gdf.longitude.values],
+                                 axis=1),
+            crs = exposures.crs,
+            unit = exposures.value_unit,
+            tot_value = tot_value,
+            eai_exp = eai_exp,
+            at_event = at_event,
+            aai_agg = aai_agg,
+            imp_mat = imp_mat,
+            tag = {'exp': exposures.tag,
+                   'impf_set': impact_funcs.tag,
+                   'haz': hazard.tag
+                   }
+            )
 
 
     def calc_risk_transfer(self, attachment, cover):
