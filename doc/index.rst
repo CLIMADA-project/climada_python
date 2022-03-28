@@ -1,5 +1,5 @@
 
-This is the documentation for version v\ |version|. In `CLIMADA-project <https://github.com/CLIMADA-project>`_ you will find CLIMADA's contributors, repository and scientific publications.
+This is the documentation for version v\ |version|. In `CLIMADA-project <https://github.com/CLIMADA-project>`_ you will find CLIMADA's contributors, repository and scientific publications. The documentation of CLIMADA petals <https://github.com/CLIMADA-project/climada_petals> can be found here: https://climada-petals.readthedocs.io/en/stable/
 
 ------------
 
