@@ -541,9 +541,12 @@ class TCTracks():
             ibtracs_ds[f'{tc_var}_agency'] = ('storm', selected_ags[preferred_idx.values])
 
             if tc_var == 'lon':
-                # By IBTrACS default, no longitude should be <= -180, but this is not true for some
-                # agencies, so we have to manually enforce this policy:
-                ibtracs_ds[tc_var].values[(ibtracs_ds[tc_var] <= -180).values] += 360
+                # Most IBTrACS longitudes are either normalized to [-180, 180] or to [0, 360], but
+                # some aren't normalized at all, so we have to make sure that the values are okay:
+                lons = ibtracs_ds[tc_var].values.copy()
+                lon_valid_mask = np.isfinite(lons)
+                lons[lon_valid_mask] = u_coord.lon_normalize(lons[lon_valid_mask], center=0.0)
+                ibtracs_ds[tc_var].values[:] = lons
 
                 # Make sure that the longitude is always chosen positive if a track crosses the
                 # antimeridian:
@@ -1428,7 +1431,7 @@ class TCTracks():
             method = ['linear', 'quadratic', 'cubic'][min(2, track.time.size - 2)]
 
             # handle change of sign in longitude
-            lon = track.lon.copy()
+            lon = u_coord.lon_normalize(track.lon.copy(), center=0)
             if (lon < -170).any() and (lon > 170).any():
                 # crosses 180 degrees east/west -> use positive degrees east
                 lon[lon < 0] += 360

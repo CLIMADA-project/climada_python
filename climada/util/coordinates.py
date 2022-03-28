@@ -361,7 +361,7 @@ def compute_geodesic_lengths(gdf):
         row.geometry), axis=1)
 
 
-def get_gridcellarea(lat, resolution=0.5, unit='km2'):
+def get_gridcellarea(lat, resolution=0.5, unit='ha'):
     """The area covered by a grid cell is calculated depending on the latitude
         1 degree = ONE_LAT_KM (111.12km at the equator)
         longitudal distance in km = ONE_LAT_KM*resolution*cos(lat)
@@ -375,14 +375,16 @@ def get_gridcellarea(lat, resolution=0.5, unit='km2'):
     resolution: int, optional
         raster resolution in degree (default: 0.5 degree)
     unit: string, optional
-        unit of the output area (default: km2, alternative: m2)
+        unit of the output area (default: ha, alternatives: m2, km2)
 
     """
 
     if unit == 'm2':
-        area = (ONE_LAT_KM * resolution)**2 * np.cos(np.deg2rad(lat)) * 100 * 1000000
+        area = (ONE_LAT_KM * resolution)**2 * np.cos(np.deg2rad(lat)) * 1000000
+    elif unit == 'km2':
+        area = (ONE_LAT_KM * resolution)**2 * np.cos(np.deg2rad(lat))
     else:
-        area = (ONE_LAT_KM * resolution)**2 * np.cos(np.deg2rad(lat)) * 100
+        area = (ONE_LAT_KM * resolution)**2 * np.cos(np.deg2rad(lat))*100
 
     return area
 

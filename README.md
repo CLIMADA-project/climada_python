@@ -18,7 +18,7 @@ This is the Python (3.8+) version of CLIMADA - please see https://github.com/dav
 
 ## Getting started
 
-CLIMADA runs on Windows, macOS and Linux. Download the [latest release](https://github.com/CLIMADA-project/climada_python/releases). Install CLIMADA's dependencies specified in  the downloaded file `climada_python-x.y.z/requirements/env_climada.yml` with conda. See the documentation for more [information on installing](https://climada-python.readthedocs.io/en/latest/guide/Guide_Installation.html).
+CLIMADA runs on Windows, macOS and Linux. It can be installed from sources or - in case of climada_python - directly with pip. See the [installation guide](https://climada-python.readthedocs.io/en/latest/guide/Guide_Installation.html) for instructions.
 
 Follow the [tutorial](https://climada-python.readthedocs.io/en/latest/tutorial/1_main_climada.html) `climada_python-x.y.z/doc/tutorial/1_main_climada.ipynb` in a Jupyter Notebook to see what can be done with CLIMADA and how.
 
@@ -26,12 +26,23 @@ Follow the [tutorial](https://climada-python.readthedocs.io/en/latest/tutorial/1
 
 Documentation is available on Read the Docs:
 
+CLIMADA python:
 * [online (recommended)](https://climada-python.readthedocs.io/en/latest/)
 * [PDF file](https://climada-python.readthedocs.io/_/downloads/en/stable/pdf/)
+
+CLIMADA petals:
+* [online (recommended)](https://climada-petals.readthedocs.io/en/latest/)
+* [PDF file](https://climada-petals.readthedocs.io/_/downloads/en/stable/pdf/)
+* [petals Tutorials on GitHub](https://github.com/CLIMADA-project/climada_petals/tree/main/doc/tutorial)
+
 
 ## Citing CLIMADA
 
 If you use CLIMADA please cite (in general, in particular for academic work) :
+
+The [used version](https://zenodo.org/search?page=1&size=20&q=climada)
+
+and/or the following published articles:
 
 Aznar-Siguan, G. and Bresch, D. N., 2019: CLIMADA v1: a global weather and climate risk assessment platform, Geosci. Model Dev., 12, 3085–3097, https://doi.org/10.5194/gmd-12-3085-2019
 
