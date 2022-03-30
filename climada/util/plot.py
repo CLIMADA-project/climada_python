@@ -426,7 +426,6 @@ def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
         cmap = kwargs['cmap']
         if isinstance(cmap, str):
             cmap_name = cmap
-            cmap = mpl.cm.get_cmap(cmap)
         else:
             cmap_name = 'defined by the user'
     else:
@@ -435,6 +434,7 @@ def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
         cmap = mpl.colors.ListedColormap(
             plt.get_cmap(cmap_name).colors[:array_sub_n]
             )
+    cmap = mpl.cm.get_cmap(cmap, array_sub_n)
 
     if array_sub_n > cmap.N:
         LOGGER.warning("More than %d categories cannot be plotted accurately "
@@ -445,7 +445,7 @@ def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
                        cmap.N, cmap_name)
 
     # define the discrete colormap kwargs
-    kwargs['cmap'] = mpl.cm.get_cmap(cmap, array_sub_n)
+    kwargs['cmap'] = cmap
     kwargs['vmin'] = -0.5
     kwargs['vmax'] = array_sub_n - 0.5
 
