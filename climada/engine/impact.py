@@ -270,7 +270,7 @@ class Impact():
 
         return new_imp, Impact()
 
-    def plot_hexbin_eai_exposure(self, mask=None, ignore_zero=True,
+    def plot_hexbin_eai_exposure(self, mask=None, ignore_zero=False,
                                  pop_name=True, buffer=0.0, extend='neither',
                                  axis=None, adapt_fontsize=True, **kwargs):
         """Plot hexbin expected annual impact of each exposure.
@@ -308,7 +308,7 @@ class Impact():
         axis.set_title('Expected annual impact')
         return axis
 
-    def plot_scatter_eai_exposure(self, mask=None, ignore_zero=True,
+    def plot_scatter_eai_exposure(self, mask=None, ignore_zero=False,
                                   pop_name=True, buffer=0.0, extend='neither',
                                   axis=None, adapt_fontsize=True, **kwargs):
         """Plot scatter expected annual impact of each exposure.
@@ -428,7 +428,7 @@ class Impact():
         axis.set_title('Expected annual impact')
         return axis
 
-    def plot_hexbin_impact_exposure(self, event_id=1, mask=None, ignore_zero=True,
+    def plot_hexbin_impact_exposure(self, event_id=1, mask=None, ignore_zero=False,
                                     pop_name=True, buffer=0.0, extend='neither',
                                     axis=None, adapt_fontsize=True, **kwargs):
         """Plot hexbin impact of an event at each exposure.
@@ -476,7 +476,7 @@ class Impact():
 
         return axis
 
-    def plot_basemap_impact_exposure(self, event_id=1, mask=None, ignore_zero=True,
+    def plot_basemap_impact_exposure(self, event_id=1, mask=None, ignore_zero=False,
                                      pop_name=True, buffer=0.0, extend='neither', zoom=10,
                                      url='http://tile.stamen.com/terrain/tileZ/tileX/tileY.png',
                                      axis=None, **kwargs):
@@ -932,14 +932,14 @@ class Impact():
             haz_list[i_time].plot_intensity(1, axis=axis, cmap='Greys', vmin=v_lim[0],
                                             vmax=v_lim[1], alpha=0.8)
             if plot_raster:
-                exp.plot_hexbin(axis=axis, mask=exp_list[i_time], ignore_zero=True,
+                exp.plot_hexbin(axis=axis, mask=exp_list[i_time], ignore_zero=False,
                                 pop_name=False, **args_exp)
                 if imp_list[i_time].coord_exp.size:
                     imp_list[i_time].plot_hexbin_eai_exposure(axis=axis, pop_name=False,
                                                               **args_imp)
                     fig.delaxes(fig.axes[1])
             else:
-                exp.plot_scatter(axis=axis, mask=exp_list[i_time], ignore_zero=True,
+                exp.plot_scatter(axis=axis, mask=exp_list[i_time], ignore_zero=False,
                                  pop_name=False, **args_exp)
                 if imp_list[i_time].coord_exp.size:
                     imp_list[i_time].plot_scatter_eai_exposure(axis=axis, pop_name=False,
