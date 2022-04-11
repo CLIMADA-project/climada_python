@@ -207,7 +207,7 @@ class TestCalc(unittest.TestCase):
         self.assertEqual(0, impact.at_event[0])
         self.assertEqual(0, impact.at_event[int(num_events / 2)])
         self.assertAlmostEqual(1.472482938320243e+08, impact.at_event[13809])
-        self.assertEqual(7.076504723057620e+10, impact.at_event[12147])
+        self.assertAlmostEqual(7.076504723057620e+10, impact.at_event[12147])
         self.assertEqual(0, impact.at_event[num_events - 1])
         # impact.eai_exp == EDS.ED_at_centroid in MATLAB
         self.assertEqual(num_exp, len(impact.eai_exp))
