@@ -997,6 +997,9 @@ class Exposures():
 
         return exp
 
+    def affected_values_gdf(self, hazard):
+        return self.gdf[(self.gdf.value != 0) & (self.gdf[hazard.cent_exp_col] >= 0)]
+
 
 def add_sea(exposures, sea_res, scheduler=None):
     """Add sea to geometry's surroundings with given resolution. region_id
