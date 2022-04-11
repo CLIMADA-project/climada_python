@@ -1764,3 +1764,7 @@ class Hazard():
                     ))
 
         return haz_new_cent
+
+    @property
+    def haz_type(self):
+        return self.tag.haz_type
