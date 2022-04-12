@@ -883,6 +883,7 @@ class Impact():
             values are ignored in plot. Default: False
         pop_name : bool, optional
             add names of the populated places
+            The default is False.
 
         Returns
         -------
