@@ -1764,7 +1764,7 @@ class Hazard():
                     ))
 
         return haz_new_cent
-        
+
     @property
     def cent_exp_col(self):
         from climada.entity.exposures import INDICATOR_CENTR
@@ -1773,3 +1773,55 @@ class Hazard():
     @property
     def haz_type(self):
         return self.tag.haz_type
+
+    def get_mdr(self, cent_idx, impf):
+        """
+        Return Mean Damage Ratio (mdr) for chosen centroids (cent_idx)
+        for given impact function.
+
+        Parameters
+        ----------
+        cent_idx : array-like
+            array of indices of chosen centroids from hazard
+        impf : ImpactFunc
+            impact function to compute mdr
+
+        Returns
+        -------
+        sparse.csr_matrix
+            sparse matrix (n_events x len(cent_idx)) with mdr values
+
+        """
+        uniq_cent_idx, indices = np.unique(cent_idx, return_inverse=True)
+        mdr = self.intensity[:, uniq_cent_idx]
+        if impf.calc_mdr(0) == 0:
+            mdr.data = impf.calc_mdr(mdr.data)
+        else:
+            LOGGER.warning("Impact function id=%d has mdr(0) != 0."
+            "The mean damage ratio must thus be computed for all values of"
+            "hazard intensity including 0 which can be very time consuming.",
+            impf.id)
+        return mdr[:, indices]
+
+    def get_paa(self, cent_idx, impf):
+        uniq_cent_idx, indices = np.unique(cent_idx, return_inverse=True)
+        paa = self.intensity[:, uniq_cent_idx]
+        paa.data = np.interp(paa.data, impf.intensity, impf.paa)
+        return paa[:, indices]
+
+    def get_fraction(self, cent_idx):
+        """
+        Return fraction for chosen centroids (cent_idx).
+
+        Parameters
+        ----------
+        cent_idx : array-like
+            array of indices of chosen centroids from hazard
+
+        Returns
+        -------
+        sparse.csr_matrix
+            sparse matrix (n_events x len(cent_idx)) with fraction values
+
+        """
+        return self.fraction[:, cent_idx]
