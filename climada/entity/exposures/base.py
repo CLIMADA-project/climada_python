@@ -1000,6 +1000,10 @@ class Exposures():
     def affected_values_gdf(self, hazard):
         return self.gdf[(self.gdf.value != 0) & (self.gdf[hazard.cent_exp_col] >= 0)]
 
+    def affected_total_value(self, hazard):
+        exp_idx = np.where((self.gdf.value > 0) & (self.gdf[hazard.cent_exp_col] >= 0))[0]
+        return np.sum(self.gdf.value.values[exp_idx])
+
 
 def add_sea(exposures, sea_res, scheduler=None):
     """Add sea to geometry's surroundings with given resolution. region_id

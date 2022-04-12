@@ -258,7 +258,7 @@ class Impact():
                 at_event += at_event_from_mat(imp_mat)
                 eai_exp[exp_idx] += eai_exp_from_mat(imp_mat, hazard.frequency)
             aai_agg = aai_agg_from_eai_exp(eai_exp)
-            tot_value = exposures.affected_values_gdf(hazard).value.sum()
+            tot_value = exposures.affected_total_value(hazard)
             return cls(
                 event_id = hazard.event_id,
                 event_name = hazard.event_name,
@@ -322,7 +322,7 @@ class Impact():
                 at_event += at_event_from_mat(imp_mat)
                 eai_exp[exp_idx] += eai_exp_from_mat(imp_mat, hazard.frequency)
             aai_agg = aai_agg_from_eai_exp(eai_exp)
-            tot_value = exposures.affected_values_gdf(hazard).value.sum()
+            tot_value = exposures.affected_total_value(hazard)
             return cls(
                 event_id = hazard.event_id,
                 event_name = hazard.event_name,
@@ -364,7 +364,7 @@ class Impact():
         eai_exp = eai_exp_from_mat(imp_mat, hazard.frequency)
         at_event = at_event_from_mat(imp_mat)
         aai_agg = aai_agg_from_eai_exp(eai_exp)
-        tot_value = exposures.affected_values_gdf(hazard).value.sum()
+        tot_value = exposures.affected_total_value(hazard)
         return cls(
             event_id = hazard.event_id,
             event_name = hazard.event_name,
