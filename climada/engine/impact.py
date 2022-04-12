@@ -294,7 +294,8 @@ class Impact():
 
         exposures.assign_centroids(hazard, overwrite=False)
 
-        exp_gdf = exposures.affected_values_gdf(hazard)
+        exp_gdf = exposures.gdf[['value', 'impf_TC', 'centr_TC']]
+        exp_gdf = exp_gdf[(exp_gdf.value != 0) & (exp_gdf[hazard.cent_exp_col] >= 0)]
         if exp_gdf.size == 0:
             LOGGER.warning("No exposures with value >0 in the vicinity of the hazard.")
             return sparse.csr_matrix(np.empty((0, 0)))
@@ -306,9 +307,9 @@ class Impact():
 
     @classmethod
     def calc_risk(cls, exposures, impact_funcs, hazard, save_mat=True):
+        imp_mat_list = cls.calc_imp_mat_list(exposures, impact_funcs, hazard)
         n_exp_pnt = exposures.gdf.shape[0]
         n_events = hazard.size
-        imp_mat_list = cls.calc_imp_mat_list(exposures, impact_funcs, hazard)
         if save_mat:
             data = np.hstack([mat.data for mat, _ in imp_mat_list])
             row = np.hstack([mat.nonzero()[0] for mat, _ in imp_mat_list])
