@@ -851,7 +851,8 @@ class Impact():
     @staticmethod
     def video_direct_impact(exp, impf_set, haz_list, file_name='',
                             writer=animation.PillowWriter(bitrate=500),
-                            imp_thresh=0, args_exp=None, args_imp=None):
+                            imp_thresh=0, args_exp=None, args_imp=None,
+                            ignore_zero=False, pop_name=False):
         """
         Computes and generates video of accumulated impact per input events
         over exposure.
@@ -877,6 +878,11 @@ class Impact():
         args_imp : optional
             arguments for scatter (points) or hexbin (raster)
             matplotlib function used in impact
+        ignore_zero : bool, optional
+            flag to indicate if zero and negative
+            values are ignored in plot. Default: False
+        pop_name : bool, optional
+            add names of the populated places
 
         Returns
         -------
@@ -932,17 +938,17 @@ class Impact():
             haz_list[i_time].plot_intensity(1, axis=axis, cmap='Greys', vmin=v_lim[0],
                                             vmax=v_lim[1], alpha=0.8)
             if plot_raster:
-                exp.plot_hexbin(axis=axis, mask=exp_list[i_time], ignore_zero=False,
-                                pop_name=False, **args_exp)
+                exp.plot_hexbin(axis=axis, mask=exp_list[i_time], ignore_zero=ignore_zero,
+                                pop_name=pop_name, **args_exp)
                 if imp_list[i_time].coord_exp.size:
-                    imp_list[i_time].plot_hexbin_eai_exposure(axis=axis, pop_name=False,
+                    imp_list[i_time].plot_hexbin_eai_exposure(axis=axis, pop_name=pop_name,
                                                               **args_imp)
                     fig.delaxes(fig.axes[1])
             else:
-                exp.plot_scatter(axis=axis, mask=exp_list[i_time], ignore_zero=False,
-                                 pop_name=False, **args_exp)
+                exp.plot_scatter(axis=axis, mask=exp_list[i_time], ignore_zero=ignore_zero,
+                                 pop_name=pop_name, **args_exp)
                 if imp_list[i_time].coord_exp.size:
-                    imp_list[i_time].plot_scatter_eai_exposure(axis=axis, pop_name=False,
+                    imp_list[i_time].plot_scatter_eai_exposure(axis=axis, pop_name=pop_name,
                                                                **args_imp)
                     fig.delaxes(fig.axes[1])
             fig.delaxes(fig.axes[1])
