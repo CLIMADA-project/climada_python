@@ -91,7 +91,7 @@ def aai_agg_from_eai_exp(eai_exp):
     float
         average annual impact aggregated
     """
-    return sum(eai_exp)
+    return np.sum(eai_exp)
 
 def calc_impstats_from_mat(self, imp_mat, freq):
     """
