@@ -293,8 +293,9 @@ class Impact():
         """
 
         exposures.assign_centroids(hazard, overwrite=False)
+        impf_col = exposures.get_impf_column(hazard.haz_type)
 
-        exp_gdf = exposures.gdf[['value', 'impf_TC', 'centr_TC']]
+        exp_gdf = exposures.gdf[['value', impf_col, hazard.cent_exp_col]]
         exp_gdf = exp_gdf[(exp_gdf.value != 0) & (exp_gdf[hazard.cent_exp_col] >= 0)]
         if exp_gdf.size == 0:
             LOGGER.warning("No exposures with value >0 in the vicinity of the hazard.")
@@ -302,7 +303,7 @@ class Impact():
 
         LOGGER.info('Calculating impact for %s assets (>0) and %s events.',
                     exp_gdf.size, hazard.size)
-        impf_col = exposures.get_impf_column(hazard.haz_type)
+
         return calc_imp_mat_per_impf(hazard, exp_gdf, impf_col, impact_funcs)
 
     @classmethod
