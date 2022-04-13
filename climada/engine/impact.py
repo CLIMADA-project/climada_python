@@ -117,7 +117,7 @@ def risk_metrics_from_mat(imp_mat, freq):
     eai_exp = eai_exp_from_mat(imp_mat, freq)
     at_event = at_event_from_mat(imp_mat)
     aai_agg = aai_agg_from_eai_exp(eai_exp)
-    return eai_exp, at_event, aai_agg
+    return at_event, eai_exp, aai_agg
 
 def impact_matrix(mdr, fraction, exp_values):
     """
@@ -142,6 +142,9 @@ def impact_matrix(mdr, fraction, exp_values):
     return fraction.multiply(mdr).multiply(sparse.csr_matrix(exp_values))
 
 def calc_imp_mat_per_impf(hazard, exp_gdf, impf_col, impf_set):
+    """
+    List of impact matrices for the exposure and of corresponding exposures indices
+    """
     imp_mat_list = []
     for impf_id, exp_impf_gdf in exp_gdf.groupby(impf_col):
         impf = impf_set.get_func(haz_type=hazard.haz_type, fun_id=impf_id)
@@ -158,6 +161,9 @@ def calc_imp_mat_per_impf(hazard, exp_gdf, impf_col, impf_set):
     return imp_mat_list
 
 def calc_one_imp_mat(exp, hazard, impf):
+    """
+    Impact matrix for exposure, hazard, impact function
+    """
     cent_idx = exp[hazard.cent_exp_col].values
     mdr = hazard.get_mdr(cent_idx, impf)
     fract = hazard.get_fraction(cent_idx)
@@ -165,12 +171,18 @@ def calc_one_imp_mat(exp, hazard, impf):
     return imp_mat, exp.index.to_numpy()
 
 def stich_impact_matrix(imp_mat_list, n_events, n_exp_pnt):
-        data = np.hstack([mat.data for mat, _ in imp_mat_list])
-        row = np.hstack([mat.nonzero()[0] for mat, _ in imp_mat_list])
-        col = np.hstack([idx[mat.nonzero()[1]] for mat, idx in imp_mat_list])
-        return sparse.csr_matrix((data, (row, col)), shape=(n_events, n_exp_pnt))
+    """
+    Make an impact matrix from an impact matrix list
+    """
+    data = np.hstack([mat.data for mat, _ in imp_mat_list])
+    row = np.hstack([mat.nonzero()[0] for mat, _ in imp_mat_list])
+    col = np.hstack([idx[mat.nonzero()[1]] for mat, idx in imp_mat_list])
+    return sparse.csr_matrix((data, (row, col)), shape=(n_events, n_exp_pnt))
 
-def stich_risk_metrics_from_mat(self, imp_mat_list, freq, n_events, n_exp_pnt):
+def stich_risk_metrics_from_mat(imp_mat_list, freq, n_events, n_exp_pnt):
+    """
+    Compute the impact metrics from an impact matrix list
+    """
     at_event = np.zeros(n_events)
     eai_exp = np.zeros(n_exp_pnt)
     for imp_mat, exp_idx in imp_mat_list:
@@ -372,7 +384,7 @@ class Impact():
             >>> imp = Impact.calc_risk(exp, funcs, haz)
             >>> imp.aai_agg
         """
-        imp_mat_list = cls.calc_imp_mat_list(exposures, impact_funcs, hazard)
+        imp_mat_list = calc_imp_mat_list(exposures, impact_funcs, hazard)
         n_exp_pnt = exposures.gdf.shape[0]
         n_events = hazard.size
         if save_mat:
@@ -380,26 +392,7 @@ class Impact():
             return cls.set_from_imp_mat(imp_mat, exposures, impact_funcs, hazard)
         else:
             at_event, eai_exp, aai_agg = stich_risk_metrics_from_mat(imp_mat_list, hazard.frequency, n_events, n_exp_pnt)
-            tot_value = exposures.affected_total_value(hazard)
-            return cls(
-                event_id = hazard.event_id,
-                event_name = hazard.event_name,
-                date = hazard.date,
-                frequency = hazard.frequency,
-                coord_exp = np.stack([exposures.gdf.latitude.values,
-                                      exposures.gdf.longitude.values],
-                                     axis=1),
-                crs = exposures.crs,
-                unit = exposures.value_unit,
-                tot_value = tot_value,
-                eai_exp = eai_exp,
-                at_event = at_event,
-                aai_agg = aai_agg,
-                tag = {'exp': exposures.tag,
-                       'impf_set': impact_funcs.tag,
-                       'haz': hazard.tag
-                       }
-                )
+            return cls.set_from_imp_metrics(at_event, eai_exp, aai_agg, exposures, impact_funcs, hazard)
 
     @classmethod
     def calc_insured_risk(cls, exposures, impact_funcs, hazard, save_mat=False):
@@ -427,9 +420,7 @@ class Impact():
         """
         n_exp_pnt = exposures.gdf.shape[0]
         n_events = hazard.size
-        imp_mat_list = cls.calc_imp_mat_list(exposures, impact_funcs, hazard)
-        at_event = np.zeros(n_events)
-        eai_exp = np.zeros(n_exp_pnt)
+        imp_mat_list = calc_imp_mat_list(exposures, impact_funcs, hazard)
         impf_col = exposures.get_impf_column(hazard.haz_type)
         imp_mat_list2 = []
         for mat, exp_idx in imp_mat_list:
@@ -443,38 +434,52 @@ class Impact():
             imp_mat_list2.append((mat, exp_idx))
         imp_mat_list = imp_mat_list2
         if save_mat:
-            data = np.hstack([mat.data for mat, _ in imp_mat_list])
-            row = np.hstack([mat.nonzero()[0] for mat, _ in imp_mat_list])
-            col = np.hstack([idx[mat.nonzero()[1]] for mat, idx in imp_mat_list])
-            imp_mat = sparse.csr_matrix((data, (row, col)), shape=(n_events, n_exp_pnt))
+            imp_mat = stich_impact_matrix(imp_mat_list, n_events, n_exp_pnt)
             return cls.set_from_imp_mat(imp_mat, exposures, impact_funcs, hazard)
         else:
-            at_event = np.zeros(n_events)
-            eai_exp = np.zeros(n_exp_pnt)
-            for imp_mat, exp_idx in imp_mat_list:
-                at_event += at_event_from_mat(imp_mat)
-                eai_exp[exp_idx] += eai_exp_from_mat(imp_mat, hazard.frequency)
-            aai_agg = aai_agg_from_eai_exp(eai_exp)
-            tot_value = exposures.affected_total_value(hazard)
-            return cls(
-                event_id = hazard.event_id,
-                event_name = hazard.event_name,
-                date = hazard.date,
-                frequency = hazard.frequency,
-                coord_exp = np.stack([exposures.gdf.latitude.values,
-                                      exposures.gdf.longitude.values],
-                                     axis=1),
-                crs = exposures.crs,
-                unit = exposures.value_unit,
-                tot_value = tot_value,
-                eai_exp = eai_exp,
-                at_event = at_event,
-                aai_agg = aai_agg,
-                tag = {'exp': exposures.tag,
-                       'impf_set': impact_funcs.tag,
-                       'haz': hazard.tag
-                       }
-                )
+            at_event, eai_exp, aai_agg = stich_risk_metrics_from_mat(imp_mat_list, hazard.frequency, n_events, n_exp_pnt)
+            return cls.set_from_imp_metrics(at_event, eai_exp, aai_agg, exposures, impact_funcs, hazard)
+
+    @classmethod
+    def set_from_imp_metrics(cls, at_event, eai_exp, aai_agg, exposures, impf_set, hazard):
+        """
+        Set Impact attributes from the impact matrix.
+
+        Parameters
+        ----------
+        imp_mat : sparse.csr_matrix
+            matrix num_events x num_exp with impacts.
+        exposures : climada.entity.Exposures
+            exposure used to compute imp_mat
+        impf_set: climada.entity.ImpactFuncSet
+            impact functions set used to compute imp_mat
+        hazard : climada.Hazard
+            hazard used to compute imp_mat
+
+        Returns
+        -------
+        Impact
+            impact with all risk metrics set based on the given impact matrix
+        """
+        return cls(
+            event_id = hazard.event_id,
+            event_name = hazard.event_name,
+            date = hazard.date,
+            frequency = hazard.frequency,
+            coord_exp = np.stack([exposures.gdf.latitude.values,
+                                  exposures.gdf.longitude.values],
+                                 axis=1),
+            crs = exposures.crs,
+            unit = exposures.value_unit,
+            tot_value = exposures.affected_total_value(hazard),
+            eai_exp = eai_exp,
+            at_event = at_event,
+            aai_agg = aai_agg,
+            tag = {'exp': exposures.tag,
+                   'impf_set': impf_set.tag,
+                   'haz': hazard.tag
+                   }
+            )
 
 
     @classmethod
@@ -499,7 +504,6 @@ class Impact():
             impact with all risk metrics set based on the given impact matrix
         """
         at_event, eai_exp, aai_agg = risk_metrics_from_mat(imp_mat, hazard.frequency)
-        tot_value = exposures.affected_total_value(hazard)
         return cls(
             event_id = hazard.event_id,
             event_name = hazard.event_name,
@@ -510,7 +514,7 @@ class Impact():
                                  axis=1),
             crs = exposures.crs,
             unit = exposures.value_unit,
-            tot_value = tot_value,
+            tot_value = exposures.affected_total_value(hazard),
             eai_exp = eai_exp,
             at_event = at_event,
             aai_agg = aai_agg,
