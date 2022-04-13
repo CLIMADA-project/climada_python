@@ -222,10 +222,13 @@ class Client():
 
 
     @staticmethod
-    def is_online(host):
+    def _is_online(url):
+        host = [x for x in self.url.split('/') 
+                if x not in ['https:', 'http:', '']][0]
+        port = 80 if host.startswith('http://') else 443
         try:
             socket.setdefaulttimeout(1)
-            socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host, 443))
+            socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host, port))
             return True
         except socket.error as ex:
             return False
@@ -240,8 +243,7 @@ class Client():
         self.url = CONFIG.data_api.url.str().rstrip("/")
         self.chunk_size = CONFIG.data_api.chunk_size.int()
         self.cache = Cacher()
-        self.online = Client.is_online([x for x in self.url.split('/') 
-                                        if x not in ['https:', 'http:', '']][0])
+        self.online = Client._is_online(self.url)
 
     def _request_200(self, url, **kwargs):
         """Helper method, triaging successfull and failing requests.
