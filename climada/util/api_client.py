@@ -20,11 +20,13 @@ Data API client
 """
 from dataclasses import dataclass
 from datetime import datetime
+import hashlib
 import json
 import logging
 from pathlib import Path
 from urllib.parse import quote, unquote
 import time
+import socket
 
 import pandas as pd
 from peewee import CharField, DateTimeField, IntegrityError, Model, SqliteDatabase
@@ -167,17 +169,66 @@ def checkhash(local_path, fileinfo):
     raise NotImplementedError("sanity check by hash sum needs to be implemented yet")
 
 
+class Cacher():
+    """Utility class handling cached results from http requests,
+    to allow for offline use of the API Client.
+    """
+    def __init__(self):
+        self.enabled = True
+        self.cachedir = CONFIG.data_api.cache_dir.dir()
+
+    @staticmethod
+    def _make_key(*args, **kwargs):
+        as_text = ' '.join(
+            [str(a) for a in args] +
+            [f"{k}={kwargs[k]}" for k in sorted(kwargs.keys())]
+        )
+        print(as_text)
+        h = hashlib.md5()
+        h.update(as_text.encode())
+        return h.hexdigest()
+
+    def store(self, result, *args, **kwargs):
+        _key = Cacher._make_key(*args, **kwargs)
+        try:
+            with Path(self.cachedir, _key).open('w') as fp:
+                json.dump(result, fp)
+        except Exception:
+            pass
+
+    def fetch(self, *args, **kwargs):
+        _key = Cacher._make_key(*args, **kwargs)
+        try:
+            with Path(self.cachedir, _key).open() as fp:
+                return json.load(fp)
+        except Exception:
+            return None
+
+
 class Client():
     """Python wrapper around REST calls to the CLIMADA data API server.
     """
     MAX_WAITING_PERIOD = 6
     UNLIMITED = 100000
-
+    
     class AmbiguousResult(Exception):
         """Custom Exception for Non-Unique Query Result"""
 
     class NoResult(Exception):
         """Custom Exception for No Query Result"""
+
+    class NoConnection(Exception):
+        """To be raised if there is no internet connection and no cached result."""
+
+
+    @staticmethod
+    def is_online(host):
+        try:
+            socket.setdefaulttimeout(1)
+            socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host, 443))
+            return True
+        except socket.error as ex:
+            return False
 
     def __init__(self):
         """Constructor of Client.
@@ -188,9 +239,11 @@ class Client():
         self.headers = {"accept": "application/json"}
         self.url = CONFIG.data_api.url.str().rstrip("/")
         self.chunk_size = CONFIG.data_api.chunk_size.int()
+        self.cache = Cacher()
+        self.online = Client.is_online([x for x in self.url.split('/') 
+                                        if x not in ['https:', 'http:', '']][0])
 
-    @staticmethod
-    def _request_200(url, **kwargs):
+    def _request_200(self, url, **kwargs):
         """Helper method, triaging successfull and failing requests.
 
         Returns
@@ -203,10 +256,25 @@ class Client():
         NoResult
             if the response status code is different from 200
         """
-        page = requests.get(url, **kwargs)
-        if page.status_code == 200:
-            return json.loads(page.content.decode())
-        raise Client.NoResult(page.content.decode())
+        if self.online:
+            page = requests.get(url, **kwargs)
+            if page.status_code != 200:
+                raise Client.NoResult(page.content.decode())
+            result = json.loads(page.content.decode())
+            if self.cache.enabled:
+                self.cache.store(result, url, **kwargs)
+            return result
+        else:
+            if not self.cache.enabled:
+                raise Client.NoConnection("there is no internet connection and the client does"
+                                          " not cache results.")
+            cached_result = self.cache.fetch(url, **kwargs)
+            if not cached_result:
+                raise Client.NoConnection("there is no internet connection and the client has not"
+                                          " found any cached result for this request.")
+            LOGGER.warn("there is no internet connection but the client has stored the result for"
+                        " this very request sometime in the past.")
+            return cached_result
 
     @staticmethod
     def _divide_straight_from_multi(properties):
@@ -267,7 +335,7 @@ class Client():
         if straight_props:
             params.update(straight_props)
 
-        datasets = [DatasetInfo.from_json(ds) for ds in Client._request_200(url, params=params)]
+        datasets = [DatasetInfo.from_json(ds) for ds in self._request_200(url, params=params)]
 
         if datasets and multi_props:
             return self._filter_datasets(datasets, multi_props)
@@ -330,7 +398,7 @@ class Client():
             if the uuid is not valid
         """
         url = f'{self.url}/dataset/{uuid}'
-        return DatasetInfo.from_json(Client._request_200(url))
+        return DatasetInfo.from_json(self._request_200(url))
 
     def list_data_type_infos(self, data_type_group=None):
         """Returns all data types from the climada data API
@@ -348,7 +416,7 @@ class Client():
         url = f'{self.url}/data_type'
         params = {'data_type_group': data_type_group} \
             if data_type_group else {}
-        return [DataTypeInfo(**jobj) for jobj in Client._request_200(url, params=params)]
+        return [DataTypeInfo(**jobj) for jobj in self._request_200(url, params=params)]
 
     def get_data_type_info(self, data_type):
         """Returns the metadata of the data type with the given name from the climada data API.
@@ -368,7 +436,7 @@ class Client():
             if there is no such data type registered
         """
         url = f'{self.url}/data_type/{quote(data_type)}'
-        return DataTypeInfo(**Client._request_200(url))
+        return DataTypeInfo(**self._request_200(url))
 
     def _download(self, url, path, replace=False):
         """Downloads a file from the given url to a specified location.
