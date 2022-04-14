@@ -8,6 +8,7 @@ dependencies:
   - cfgrib>=0.9.7,<0.9.10  # 0.9.10 cannot read the icon_grib files from https://opendata.dwd.de
   - contextily>=1.0,<1.2  # 1.2 has removed the deprecated contextily.sources
   - dask>=2.25
+  - gdal!=3.4.1  # has an issue with fiona on Windows (#403)
   - geopandas>=0.8
   - h5py>=2.10
   - haversine>=2.3
@@ -19,6 +20,7 @@ dependencies:
   - pathos>=0.2
   - pint>=0.15
   - pip
+  - proj!=9.0.0  # there are issues with proj 9.0.0 (#381)
   - pycountry>=20.7
   - pyepsg>=0.4
   - pytables>=3.6
