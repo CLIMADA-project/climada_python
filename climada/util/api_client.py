@@ -181,7 +181,7 @@ class Cacher():
         cache_enabled : bool, None
             Default: None, in this case the value is taken from CONFIG.data_api.cache_enabled.
         """
-        self.enabled = (CONFIG.data_api.cache.enabled.bool()
+        self.enabled = (CONFIG.data_api.cache_enabled.bool()
                         if cache_enabled is None else cache_enabled)
         self.cachedir = CONFIG.data_api.cache_dir.dir() if self.enabled else None 
 
