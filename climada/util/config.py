@@ -58,6 +58,8 @@ class Config():
         except: pass
         try: return str(self.float())
         except: pass
+        try: return str(self.bool())
+        except: pass
         try: return str(self.list())
         except: pass
         return '{{{}}}'.format(", ".join([
@@ -75,7 +77,7 @@ class Config():
             the top Config object, required for self referencing str objects,
             if None, it is pointing to self, otherwise it's passed from containing to
             contained.
-        val : [float, int, str, list], optional
+        val : [float, int, bool, str, list], optional
             the value of the Config in case it's basic, by default None,
             when a dictionary like object is created
         """
@@ -114,6 +116,26 @@ class Config():
             raise Exception(f"{self._val.__class__}, not str")
         if self._val.__class__ is list:
             return self._val[index].str()
+        raise Exception(f"{self._val.__class__}, not list")
+
+    def bool(self, index=None):
+        """
+        Returns
+        -------
+        bool
+            the value of this Config interpreted as boolean
+
+        Raises
+        ------
+        Exception
+            if it cannot be take as boolean
+        """
+        if index is None:
+            if self._val.__class__ is bool:
+                return self._val
+            raise Exception(f"{self._val.__class__}, not bool")
+        if self._val.__class__ is list:
+            return self._val[index].bool()
         raise Exception(f"{self._val.__class__}, not list")
 
     def int(self, index=None):
@@ -264,7 +286,7 @@ class Config():
         ----------
         dct : dict
             keys must be of type str.
-            values can be one of these: int, float, str, dict, list.
+            values can be one of these: int, float, bool, str, dict, list.
         Returns
         -------
         Config
