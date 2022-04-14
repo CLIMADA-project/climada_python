@@ -1157,9 +1157,7 @@ class TestHDF5(unittest.TestCase):
         # Write the hazard and check the logs for the correct warning
         with self.assertLogs(logger="climada.hazard.base", level="WARN") as cm:
             hazard.write_hdf5(file_name)
-        self.assertRegex(
-            cm.output[0], r"write_hdf5: the class member event_id is skipped"
-        )
+        self.assertIn("write_hdf5: the class member event_id is skipped", cm.output[0])
 
         # Load the file again and compare to previous instance
         hazard_read = Hazard.from_hdf5(file_name)
