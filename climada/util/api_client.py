@@ -187,7 +187,7 @@ class Cacher():
 
     @staticmethod
     def _make_key(*args, **kwargs):
-        as_text = ' '.join(
+        as_text = '\t'.join(
             [str(a) for a in args] +
             [f"{k}={kwargs[k]}" for k in sorted(kwargs.keys())]
         )
@@ -288,7 +288,7 @@ class Client():
         self.cache = Cacher(cache_enabled)
         self.online = Client._is_online(self.url)
 
-    def _request_200(self, url, **kwargs):
+    def _request_200(self, url, params=None):
         """Helper method, triaging successfull and failing requests.
 
         Returns
@@ -301,19 +301,20 @@ class Client():
         NoResult
             if the response status code is different from 200
         """
+        if params is None: params = dict()
         if self.online:
-            page = requests.get(url, **kwargs)
+            page = requests.get(url, params=params)
             if page.status_code != 200:
                 raise Client.NoResult(page.content.decode())
             result = json.loads(page.content.decode())
             if self.cache.enabled:
-                self.cache.store(result, url, **kwargs)
+                self.cache.store(result, url, **params)
             return result
         else:
             if not self.cache.enabled:
                 raise Client.NoConnection("there is no internet connection and the client does"
                                           " not cache results.")
-            cached_result = self.cache.fetch(url, **kwargs)
+            cached_result = self.cache.fetch(url, **params)
             if not cached_result:
                 raise Client.NoConnection("there is no internet connection and the client has not"
                                           " found any cached result for this request.")
