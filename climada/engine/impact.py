@@ -123,7 +123,7 @@ def calc_imp_mat_list(hazard, exp_gdf, impf_col, impf_set):
     """
     List of impact matrices for the exposure and of corresponding exposures indices
     """
-    imp_mat_list = []
+    # imp_mat_list = []
     for impf_id, exp_impf_gdf in exp_gdf.groupby(impf_col):
         impf = impf_set.get_func(haz_type=hazard.haz_type, fun_id=impf_id)
         exp_step = CONFIG.max_matrix_size.int() // hazard.size
@@ -133,10 +133,12 @@ def calc_imp_mat_list(hazard, exp_gdf, impf_col, impf_set):
         chk = -1
         for chk in range(int(len(exp_impf_gdf) / exp_step)):
             exp = exp_impf_gdf[chk * exp_step:(chk + 1) * exp_step]
-            imp_mat_list.append((impact_matrix(exp, hazard, impf), exp.index.to_numpy()))
+        #     imp_mat_list.append((impact_matrix(exp, hazard, impf), exp.index.to_numpy()))
+            yield (impact_matrix(exp, hazard, impf), exp.index.to_numpy())
+    #     imp_mat_list.append((impact_matrix(exp, hazard, impf), exp.index.to_numpy()))
+    # return imp_mat_list
         exp = exp_impf_gdf[(chk + 1) * exp_step:]
-        imp_mat_list.append((impact_matrix(exp, hazard, impf), exp.index.to_numpy()))
-    return imp_mat_list
+        yield (impact_matrix(exp, hazard, impf), exp.index.to_numpy())
 
 def impact_matrix(exp_gdf, hazard, impf):
     """
@@ -166,6 +168,7 @@ def stich_impact_matrix(imp_mat_list, n_events, n_exp_pnt):
     """
     Make an impact matrix from an impact matrix list
     """
+    imp_mat_list = list(imp_mat_list)
     data = np.hstack([mat.data for mat, _ in imp_mat_list])
     row = np.hstack([mat.nonzero()[0] for mat, _ in imp_mat_list])
     col = np.hstack([idx[mat.nonzero()[1]] for mat, idx in imp_mat_list])
