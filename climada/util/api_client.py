@@ -171,11 +171,19 @@ def checkhash(local_path, fileinfo):
 
 class Cacher():
     """Utility class handling cached results from http requests,
-    to allow for offline use of the API Client.
+    to enable the API Client working in offline mode.
     """
-    def __init__(self):
-        self.enabled = True
-        self.cachedir = CONFIG.data_api.cache_dir.dir()
+    def __init__(self, cache_enabled):
+        """Constructor of Cacher.
+
+        Parameters
+        ----------
+        cache_enabled : bool, None
+            Default: None, in this case the value is taken from CONFIG.data_api.cache_enabled.
+        """
+        self.enabled = (CONFIG.data_api.cache.enabled.bool()
+                        if cache_enabled is None else cache_enabled)
+        self.cachedir = CONFIG.data_api.cache_dir.dir() if self.enabled else None 
 
     @staticmethod
     def _make_key(*args, **kwargs):
@@ -189,6 +197,18 @@ class Cacher():
         return h.hexdigest()
 
     def store(self, result, *args, **kwargs):
+        """stores the result from a API call to a local file.
+
+        The name of the file is the md5 hash of a string created from the call's arguments, the
+        content of the file is the call's result in json format.
+
+        Parameters
+        ----------
+        result : dict
+            will be written in json format to the cached result file
+        *args : list of str
+        **kwargs : list of dict of (str,str)
+        """        
         _key = Cacher._make_key(*args, **kwargs)
         try:
             with Path(self.cachedir, _key).open('w') as fp:
@@ -197,6 +217,20 @@ class Cacher():
             pass
 
     def fetch(self, *args, **kwargs):
+        """reloads the result from a API call from a local file, created by the corresponding call
+        of `self.store`.
+        
+        If no call with exactly the same arguments has been made in the past, the result is None.
+
+        Parameters
+        ----------
+        *args : list of str
+        **kwargs : list of dict of (str,str)
+        
+        Returns
+        -------
+        dict or None
+        """        
         _key = Cacher._make_key(*args, **kwargs)
         try:
             with Path(self.cachedir, _key).open() as fp:
@@ -223,7 +257,7 @@ class Client():
 
     @staticmethod
     def _is_online(url):
-        host = [x for x in self.url.split('/') 
+        host = [x for x in url.split('/') 
                 if x not in ['https:', 'http:', '']][0]
         port = 80 if host.startswith('http://') else 443
         try:
@@ -233,16 +267,25 @@ class Client():
         except socket.error as ex:
             return False
 
-    def __init__(self):
+    def __init__(self, cache_enabled=None):
         """Constructor of Client.
 
         Data API host and chunk_size (for download) are configurable values.
         Default values are 'climada.ethz.ch' and 8096 respectively.
+        
+        Parameters
+        ----------
+        cache_enabled : bool, optional
+            This flag controls whether the api calls of this client are going to be cached to the
+            local file system (location defined by CONFIG.data_api.cache_dir). 
+            If set to true, the client can reload the results from the cache in case there is no
+            internet connection and thus work in offline mode.
+            Default: None, in this case the value is taken from CONFIG.data_api.cache_enabled.
         """
         self.headers = {"accept": "application/json"}
         self.url = CONFIG.data_api.url.str().rstrip("/")
         self.chunk_size = CONFIG.data_api.chunk_size.int()
-        self.cache = Cacher()
+        self.cache = Cacher(cache_enabled)
         self.online = Client._is_online(self.url)
 
     def _request_200(self, url, **kwargs):
