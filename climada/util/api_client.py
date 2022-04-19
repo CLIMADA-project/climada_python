@@ -319,7 +319,7 @@ class Client():
             if not cached_result:
                 raise Client.NoConnection("there is no internet connection and the client has not"
                                           " found any cached result for this request.")
-            LOGGER.warn("there is no internet connection but the client has stored the result for"
+            LOGGER.warning("there is no internet connection but the client has stored the result for"
                         " this very request sometime in the past.")
             return cached_result
 
