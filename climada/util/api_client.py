@@ -260,12 +260,13 @@ class Client():
         host = [x for x in url.split('/') 
                 if x not in ['https:', 'http:', '']][0]
         port = 80 if host.startswith('http://') else 443
-        try:
-            socket.setdefaulttimeout(1)
-            socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host, port))
-            return True
-        except socket.error as ex:
-            return False
+        socket.setdefaulttimeout(1)
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as skt:
+            try:
+                skt.connect((host, port))
+                return True
+            except socket.error as ex:
+                return False
 
     def __init__(self, cache_enabled=None):
         """Constructor of Client.
