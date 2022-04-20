@@ -1182,7 +1182,7 @@ class Hazard():
             elif var_val is not None and var_name != 'pool':
                 try:
                     hf_data.create_dataset(var_name, data=var_val)
-                except TypeError as ter:
+                except TypeError:
                     LOGGER.warning(f"write_hdf5: the class member {var_name} is skipped, due to its"
                     f" type, {var_val.__class__.__name__}, for which writing to hdf5 is not"
                     " implemented.")
