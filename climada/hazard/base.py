@@ -1183,9 +1183,12 @@ class Hazard():
                 try:
                     hf_data.create_dataset(var_name, data=var_val)
                 except TypeError:
-                    LOGGER.warning(f"write_hdf5: the class member {var_name} is skipped, due to its"
-                    f" type, {var_val.__class__.__name__}, for which writing to hdf5 is not"
-                    " implemented.")
+                    LOGGER.warning(
+                        f"write_hdf5: the class member {var_name} is skipped, due to its "
+                        "type, {var_val.__class__.__name__}, for which writing to hdf5 "
+                        "is not implemented. Reading this H5 file will probably lead to "
+                        "'{var_name}' being set to its default value."
+                    )
         hf_data.close()
 
     def read_hdf5(self, *args, **kwargs):
