@@ -627,16 +627,16 @@ def compute_windfields(track, centroids, model, metric="equirect"):
         return windfields, reachable_centr_idx
 
     # compute distances and vectors to all centroids
-    [d_centr], [v_centr] = u_coord.dist_approx(t_lat[None], t_lon[None],
-                                               track_centr[None, :, 0], track_centr[None, :, 1],
-                                               log=True, normalize=False, method=metric)
+    [d_centr], [v_centr_normed] = u_coord.dist_approx(
+        t_lat[None], t_lon[None], track_centr[None, :, 0], track_centr[None, :, 1],
+        log=True, normalize=False, method=metric)
 
     # exclude centroids that are too far from or too close to the eye
     close_centr_msk = (d_centr < CENTR_NODE_MAX_DIST_KM) & (d_centr > 1e-2)
     if not np.any(close_centr_msk):
         return windfields, reachable_centr_idx
-    v_centr_normed = np.zeros_like(v_centr)
-    v_centr_normed[close_centr_msk] = v_centr[close_centr_msk] / d_centr[close_centr_msk, None]
+    v_centr_normed[~close_centr_msk] = 0
+    v_centr_normed[close_centr_msk] /= d_centr[close_centr_msk, None]
 
     # make sure that central pressure never exceeds environmental pressure
     pres_exceed_msk = (t_cen > t_env)
@@ -646,8 +646,7 @@ def compute_windfields(track, centroids, model, metric="equirect"):
     t_rad[:] = estimate_rmw(t_rad, t_cen) * NM_TO_KM
 
     # translational speed of track at every node
-    v_trans = _vtrans(t_lat, t_lon, t_tstep, metric=metric)
-    v_trans_norm = v_trans[0]
+    [v_trans_norm, v_trans] = _vtrans(t_lat, t_lon, t_tstep, metric=metric)
 
     # adjust pressure at previous track point
     prev_pres = t_cen[:-1].copy()
@@ -655,28 +654,29 @@ def compute_windfields(track, centroids, model, metric="equirect"):
     prev_pres[msk] = t_cen[1:][msk]
 
     # compute b-value and derive (absolute) angular velocity
+    v_ang_norm = np.zeros((npositions, nreachable), dtype=np.float64)
     if model == MODEL_VANG['H1980']:
         # convert recorded surface winds to gradient-level winds without translational influence
         t_vmax = track.max_sustained_wind.values.copy()
         t_gradient_winds = np.fmax(0, t_vmax - v_trans_norm) / GRADIENT_LEVEL_TO_SURFACE_WINDS
         hol_b = _B_holland_1980(t_gradient_winds[1:], t_env[1:], t_cen[1:])
-        v_ang_norm = _stat_holland_1980(d_centr[1:], t_rad[1:], hol_b, t_env[1:],
-                                        t_cen[1:], t_lat[1:], close_centr_msk[1:])
+        v_ang_norm[1:] = _stat_holland_1980(d_centr[1:], t_rad[1:], hol_b, t_env[1:],
+                                            t_cen[1:], t_lat[1:], close_centr_msk[1:])
         v_ang_norm *= GRADIENT_LEVEL_TO_SURFACE_WINDS
     elif model == MODEL_VANG['H08']:
         # this model doesn't use the recorded surface winds
         hol_b = _bs_holland_2008(v_trans_norm[1:], t_env[1:], t_cen[1:], prev_pres,
                                  t_lat[1:], t_tstep[1:])
-        v_ang_norm = _stat_holland_1980(d_centr[1:], t_rad[1:], hol_b, t_env[1:],
-                                        t_cen[1:], t_lat[1:], close_centr_msk[1:])
+        v_ang_norm[1:] = _stat_holland_1980(d_centr[1:], t_rad[1:], hol_b, t_env[1:],
+                                            t_cen[1:], t_lat[1:], close_centr_msk[1:])
     elif model == MODEL_VANG['H10']:
         # this model doesn't use the recorded surface winds
         hol_b = _bs_holland_2008(v_trans_norm[1:], t_env[1:], t_cen[1:], prev_pres,
                                  t_lat[1:], t_tstep[1:])
         t_vmax = _v_max_s_holland_2008(t_env[1:], t_cen[1:], hol_b)
         hol_x = _x_holland_2010(d_centr[1:], t_rad[1:], t_vmax, hol_b, close_centr_msk[1:])
-        v_ang_norm = _stat_holland_2010(d_centr[1:], t_vmax, t_rad[1:], hol_b,
-                                        close_centr_msk[1:], hol_x)
+        v_ang_norm[1:] = _stat_holland_2010(d_centr[1:], t_vmax, t_rad[1:], hol_b,
+                                            close_centr_msk[1:], hol_x)
     else:
         raise NotImplementedError
 
@@ -685,10 +685,8 @@ def compute_windfields(track, centroids, model, metric="equirect"):
     if np.count_nonzero(t_lat < 0) > np.count_nonzero(t_lat > 0):
         hemisphere = 'S'
     v_ang_rotate = [1.0, -1.0] if hemisphere == 'N' else [-1.0, 1.0]
-    v_ang_dir = np.array(v_ang_rotate)[..., :] * v_centr_normed[1:, :, ::-1]
-    v_ang = np.zeros_like(v_ang_dir)
-    v_ang[close_centr_msk[1:]] = v_ang_norm[close_centr_msk[1:], None] \
-                                 * v_ang_dir[close_centr_msk[1:]]
+    windfields = np.array(v_ang_rotate)[..., :] * v_centr_normed[:, :, ::-1]
+    windfields[close_centr_msk] *= v_ang_norm[close_centr_msk, None]
 
     # Influence of translational speed decreases with distance from eye.
     # The "absorbing factor" is according to the following paper (see Fig. 7):
@@ -704,11 +702,9 @@ def compute_windfields(track, centroids, model, metric="equirect"):
         1, t_rad_bc[close_centr_msk] / d_centr[close_centr_msk])
 
     # add angular and corrected translational velocity vectors
-    v_full = v_trans[1][1:, None, :] * v_trans_corr[1:, :, None] + v_ang
-    v_full[np.isnan(v_full)] = 0
-
-    windfields = np.zeros((npositions, nreachable, 2), dtype=np.float64)
-    windfields[1:, :, :] = v_full
+    windfields[1:] += v_trans[1:, None, :] * v_trans_corr[1:, :, None]
+    windfields[np.isnan(windfields)] = 0
+    windfields[0, :, :] = 0
     [reachable_centr_idx] = track_centr_msk.nonzero()
     return windfields, reachable_centr_idx
 
