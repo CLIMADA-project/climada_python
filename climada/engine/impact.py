@@ -123,7 +123,7 @@ def risk_metrics_from_mat(imp_mat, freq):
     aai_agg = aai_agg_from_eai_exp(eai_exp)
     return at_event, eai_exp, aai_agg
 
-def calc_imp_mat_list(hazard, exp_gdf, impf_col, impf_set):
+def imp_mat_gen(hazard, exp_gdf, impf_col, impf_set):
     """
     List of impact matrices for the exposure and of corresponding exposures indices
     """
@@ -389,7 +389,7 @@ class Impact():
         exp_gdf = get_minimal_exp(exposures, hazard, impf_col)
         LOGGER.info('Calculating impact for %s assets (>0) and %s events.',
                     exp_gdf.size, hazard.size)
-        imp_mat_list = calc_imp_mat_list(hazard, exp_gdf, impf_col, impact_funcs)
+        imp_mat_list = imp_mat_gen(hazard, exp_gdf, impf_col, impact_funcs)
         n_exp_pnt = exposures.gdf.shape[0]
         n_events = hazard.size
         if save_mat:
@@ -427,7 +427,7 @@ class Impact():
         exp_gdf = get_minimal_exp(exposures, hazard, impf_col)
         LOGGER.info('Calculating impact for %s assets (>0) and %s events.',
                     exp_gdf.size, hazard.size)
-        imp_mat_list = calc_imp_mat_list(hazard, exp_gdf, impf_col, impact_funcs)
+        imp_mat_list = imp_mat_gen(hazard, exp_gdf, impf_col, impact_funcs)
         n_exp_pnt = exposures.gdf.shape[0]
         n_events = hazard.size
         imp_mat_list2 = []
