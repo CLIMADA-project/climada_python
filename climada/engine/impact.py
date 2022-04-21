@@ -129,13 +129,13 @@ def imp_mat_gen(hazard, exp_gdf, impf_col, impf_set):
     """
     for impf_id in exp_gdf[impf_col].unique():
         impf = impf_set.get_func(haz_type=hazard.haz_type, fun_id=impf_id)
-        exp_iimp = (exp_gdf[impf_col].values == impf.id).nonzero()[0]
+        idx_exp_impf = (exp_gdf[impf_col].values == impf.id).nonzero()[0]
         exp_step = CONFIG.max_matrix_size.int() // hazard.size
         if not exp_step:
             raise ValueError(
                 f'Increase max_matrix_size configuration parameter to > {hazard.size}')
-        for chk in range(int(exp_iimp.size / exp_step) + 1):
-            exp_idx = exp_iimp[chk * exp_step:(chk + 1) * exp_step]
+        for chk in range(int(idx_exp_impf.size / exp_step) + 1):
+            exp_idx = idx_exp_impf[chk * exp_step:(chk + 1) * exp_step]
             exp_values = exp_gdf.value.values[exp_idx]
             cent_idx = exp_gdf[hazard.cent_exp_col].values[exp_idx]
             yield (impact_matrix(exp_values, cent_idx, hazard, impf), exp_idx)
