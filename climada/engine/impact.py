@@ -247,6 +247,7 @@ def apply_deductible_to_imp_mat(imp_mat, deductible, hazard, cent_idx, impf):
     """
     paa = hazard.get_paa(cent_idx, impf)
     imp_mat -= paa.multiply(sparse.csr_matrix(deductible))
+    imp_mat.eliminate_zeros()
     return imp_mat
 
 
@@ -271,6 +272,7 @@ def apply_cover_to_imp_mat(imp_mat, cover):
 
     """
     imp_mat.data = np.clip(imp_mat.data, 0, cover.to_numpy()[imp_mat.nonzero()[1]])
+    imp_mat.eliminate_zeros()
     return imp_mat
 
 
