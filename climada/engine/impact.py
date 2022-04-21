@@ -430,17 +430,18 @@ class Impact():
         imp_mat_list = imp_mat_gen(hazard, exp_gdf, impf_col, impact_funcs)
         n_exp_pnt = exposures.gdf.shape[0]
         n_events = hazard.size
-        imp_mat_list2 = []
-        for mat, exp_idx in imp_mat_list:
-            impf_id = exposures.gdf[impf_col][exp_idx].unique()[0]
-            deductible = exposures.gdf['deductible'][exp_idx]
-            cent_idx = exposures.gdf['centr_TC'][exp_idx]
-            impf = impact_funcs.get_func(haz_type=hazard.haz_type, fun_id=impf_id)
-            mat = apply_deductible_to_imp_mat(mat, deductible, hazard, cent_idx, impf)
-            cover = exposures.gdf['cover'][exp_idx]
-            mat = apply_cover_to_imp_mat(mat, cover)
-            imp_mat_list2.append((mat, exp_idx))
-        imp_mat_list = imp_mat_list2
+
+        def insured_mat_gen(imp_mat_gen, exposures, impact_funcs, hazard, impf_col):
+            for mat, exp_idx in imp_mat_gen:
+                impf_id = exposures.gdf[impf_col][exp_idx].unique()[0]
+                deductible = exposures.gdf['deductible'][exp_idx]
+                cent_idx = exposures.gdf['centr_TC'][exp_idx]
+                impf = impact_funcs.get_func(haz_type=hazard.haz_type, fun_id=impf_id)
+                mat = apply_deductible_to_imp_mat(mat, deductible, hazard, cent_idx, impf)
+                cover = exposures.gdf['cover'][exp_idx]
+                mat = apply_cover_to_imp_mat(mat, cover)
+                yield (mat, exp_idx)
+        imp_mat_list = insured_mat_gen(imp_mat_list, exposures, impact_funcs, hazard, impf_col)
         if save_mat:
             imp_mat = stich_impact_matrix(imp_mat_list, n_events, n_exp_pnt)
             return cls.from_imp_mat(imp_mat, exposures, impact_funcs, hazard)
