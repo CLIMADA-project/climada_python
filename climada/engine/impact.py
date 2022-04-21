@@ -127,7 +127,8 @@ def calc_imp_mat_list(hazard, exp_gdf, impf_col, impf_set):
     """
     List of impact matrices for the exposure and of corresponding exposures indices
     """
-    for impf in impf_set.get_func(haz_type=hazard.haz_type):
+    for impf_id in exp_gdf[impf_col].unique():
+        impf = impf_set.get_func(haz_type=hazard.haz_type, fun_id=impf_id)
         exp_iimp = (exp_gdf[impf_col].values == impf.id).nonzero()[0]
         exp_step = CONFIG.max_matrix_size.int() // hazard.size
         if not exp_step:
