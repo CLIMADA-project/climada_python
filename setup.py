@@ -2,7 +2,7 @@
 """
 
 from pathlib import Path
-from setuptools import setup
+from setuptools import find_packages, setup
 
 here = Path(__file__).parent.absolute()
 
@@ -13,7 +13,7 @@ with open(here.joinpath('README.md'), encoding='utf-8') as f:
 setup(
     name='climada',
 
-    version='3.1.1',
+    version='3.1.2',
 
     description='CLIMADA in Python',
 
@@ -40,7 +40,7 @@ setup(
 
     keywords='climate adaptation',
 
-    packages=['climada', 'data'],
+    packages=find_packages(),
 
     install_requires=[
         'bottleneck',
