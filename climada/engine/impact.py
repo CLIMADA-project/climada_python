@@ -173,10 +173,10 @@ def stich_impact_matrix(imp_mat_list, n_events, n_exp_pnt):
     """
     Make an impact matrix from an impact matrix list
     """
-    imp_mat_list = list(imp_mat_list)
-    data = np.hstack([mat.data for mat, _ in imp_mat_list])
-    row = np.hstack([mat.nonzero()[0] for mat, _ in imp_mat_list])
-    col = np.hstack([idx[mat.nonzero()[1]] for mat, idx in imp_mat_list])
+    data, row, col = np.hstack([
+        (mat.data, mat.nonzero()[0], idx[mat.nonzero()[1]])
+        for mat, idx in imp_mat_list
+        ])
     return sparse.csr_matrix((data, (row, col)), shape=(n_events, n_exp_pnt))
 
 def stich_risk_metrics(imp_mat_list, freq, n_events, n_exp_pnt):
