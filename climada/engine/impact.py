@@ -138,7 +138,7 @@ def calc_imp_mat_list(hazard, exp_gdf, impf_col, impf_set):
             exp_idx = exp_iimp[chk * exp_step:(chk + 1) * exp_step]
             exp_values = exp_gdf.value.values[exp_idx]
             cent_idx = exp_gdf[hazard.cent_exp_col].values[exp_idx]
-            yield (impact_matrix(exp_values, cent_idx, hazard, impf), exp_iimp)
+            yield (impact_matrix(exp_values, cent_idx, hazard, impf), exp_idx)
 
 def impact_matrix(exp_values, cent_idx, hazard, impf):
     """
