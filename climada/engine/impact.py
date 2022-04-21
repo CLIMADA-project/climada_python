@@ -342,12 +342,12 @@ class Impact():
         """This function is deprecated, use Impact.calc_risk and Impact.calc_insured_risk instead."""
         if ('deductible' in exposures.gdf) and ('cover' in exposures.gdf) \
             and exposures.gdf.cover.max():
-            LOGGER.warning("To compute the risk transfer value"
-                 "please use Impact.calc_insured_risk")
+            # LOGGER.warning("To compute the risk transfer value"
+            #      "please use Impact.calc_insured_risk")
             self.__dict__ = self.calc_insured_risk(exposures, impact_funcs, hazard, save_mat).__dict__
         else:
-            LOGGER.warning("The use of Impact.calc() is deprecated."
-                 "Please use Impact.calc_risk() or Impact.calc_risk_insured().")
+            # LOGGER.warning("The use of Impact.calc() is deprecated."
+            #      "Please use Impact.calc_risk() or Impact.calc_risk_insured().")
             self.__dict__ = self.calc_risk(exposures, impact_funcs, hazard, save_mat).__dict__
 
     @classmethod
