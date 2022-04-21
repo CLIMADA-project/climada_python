@@ -60,6 +60,7 @@ climada/hazard/test/data/tc_tracks_nc/*
 climada/hazard/test/data/tc_tracks.h5
 climada/hazard/test/data/test_centr.h5
 climada/hazard/test/data/test_haz.h5
+climada/hazard/test/data/test_unsupported.h5
 climada/test/data/1988234N13299.nc
 climada/test/data/exposure_buildings_default_47_7.h5
 climada/test/data/exposure_high_47_8.h5
