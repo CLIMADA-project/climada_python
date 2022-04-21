@@ -1001,8 +1001,11 @@ class Exposures():
         return self.gdf[(self.gdf.value != 0) & (self.gdf[hazard.cent_exp_col] >= 0)]
 
     def affected_total_value(self, hazard):
-        exp_idx = np.where((self.gdf.value > 0) & (self.gdf[hazard.cent_exp_col] >= 0))[0]
-        return np.sum(self.gdf.value.values[exp_idx])
+        nz_mask = (
+            (self.gdf.value.values > 0)
+            & (self.gdf[hazard.cent_exp_col].values >= 0)
+        )
+        return np.sum(self.gdf.value.values[nz_mask])
 
 
 def add_sea(exposures, sea_res, scheduler=None):

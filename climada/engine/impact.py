@@ -61,7 +61,11 @@ def eai_exp_from_mat(imp_mat, freq):
         eai_exp : np.array
             expected annual impact for each exposure
         """
-        return imp_mat.multiply(sparse.csr_matrix(freq.reshape(-1, 1))).sum(axis=0).A1
+        n_events = freq.size
+        freq_csr = sparse.csr_matrix(
+            (freq, np.zeros(n_events), np.arange(n_events + 1)),
+            shape=(n_events, 1))
+        return imp_mat.multiply(freq_csr).sum(axis=0).A1
 
 def at_event_from_mat(imp_mat):
     """
@@ -123,32 +127,29 @@ def calc_imp_mat_list(hazard, exp_gdf, impf_col, impf_set):
     """
     List of impact matrices for the exposure and of corresponding exposures indices
     """
-    # imp_mat_list = []
-    for impf_id, exp_impf_gdf in exp_gdf.groupby(impf_col):
-        impf = impf_set.get_func(haz_type=hazard.haz_type, fun_id=impf_id)
+    for impf in impf_set.get_func(haz_type=hazard.haz_type):
+        exp_iimp = (exp_gdf[impf_col].values == impf.id).nonzero()[0]
         exp_step = CONFIG.max_matrix_size.int() // hazard.size
         if not exp_step:
-            raise ValueError('Increase max_matrix_size configuration parameter to > %s'
-                         % str(hazard.size))
-        chk = -1
-        for chk in range(int(len(exp_impf_gdf) / exp_step)):
-            exp = exp_impf_gdf[chk * exp_step:(chk + 1) * exp_step]
-        #     imp_mat_list.append((impact_matrix(exp, hazard, impf), exp.index.to_numpy()))
-            yield (impact_matrix(exp, hazard, impf), exp.index.to_numpy())
-    #     imp_mat_list.append((impact_matrix(exp, hazard, impf), exp.index.to_numpy()))
-    # return imp_mat_list
-        exp = exp_impf_gdf[(chk + 1) * exp_step:]
-        yield (impact_matrix(exp, hazard, impf), exp.index.to_numpy())
+            raise ValueError(
+                f'Increase max_matrix_size configuration parameter to > {hazard.size}')
+        for chk in range(int(exp_iimp.size / exp_step) + 1):
+            exp_idx = exp_iimp[chk * exp_step:(chk + 1) * exp_step]
+            exp_values = exp_gdf.value.values[exp_idx]
+            cent_idx = exp_gdf[hazard.cent_exp_col].values[exp_idx]
+            yield (impact_matrix(exp_values, cent_idx, hazard, impf), exp_iimp)
 
-def impact_matrix(exp_gdf, hazard, impf):
+def impact_matrix(exp_values, cent_idx, hazard, impf):
     """
-    Compute the impact matrix for an exposures geodataframe, a hazard,
+    Compute the impact matrix for given exposure values, assigned centroids, a hazard,
     and one impact function.
 
     Parameters
     ----------
-    exp_gdf : GeoDataFrame
-        Exposures geodataframe with columns 'value' and 'centr_haz_type'
+    exp_values : np.array
+        Exposure values
+    cent_idx : np.array
+        Hazard centroids assigned to each exposure location
     hazard : Hazard
        Hazard object
     impf : ImpactFunction
@@ -159,10 +160,13 @@ def impact_matrix(exp_gdf, hazard, impf):
     scipy.sparse.csr_matrix
         Impact per event (rows) per exposure point (columns)
     """
-    cent_idx = exp_gdf[hazard.cent_exp_col].values
+    n_centroids = cent_idx.size
     mdr = hazard.get_mdr(cent_idx, impf)
     fract = hazard.get_fraction(cent_idx)
-    return fract.multiply(mdr).multiply(sparse.csr_matrix(exp_gdf.value))
+    exp_values_csr = sparse.csr_matrix(
+        (exp_values, np.arange(n_centroids), [0, n_centroids]),
+        shape=(1, n_centroids))
+    return fract.multiply(mdr).multiply(exp_values_csr)
 
 def stich_impact_matrix(imp_mat_list, n_events, n_exp_pnt):
     """
@@ -199,11 +203,16 @@ def get_minimal_exp(exposures, hazard, impf_col):
     """
     exposures.assign_centroids(hazard, overwrite=False)
 
-    exp_gdf = exposures.gdf[['value', impf_col, hazard.cent_exp_col]]
-    exp_gdf = exp_gdf[(exp_gdf.value != 0) & (exp_gdf[hazard.cent_exp_col] >= 0)]
+    mask = (
+        (exposures.gdf.value.values != 0)
+        & (exposures.gdf[hazard.cent_exp_col].values >= 0)
+    )
+    exp_gdf = pd.DataFrame({
+        col: exposures.gdf[col].values[mask]
+        for col in ['value', impf_col, hazard.cent_exp_col]
+    })
     if exp_gdf.size == 0:
         LOGGER.warning("No exposures with value >0 in the vicinity of the hazard.")
-        return sparse.csr_matrix(np.empty((0, 0)))
     return exp_gdf
 
 
@@ -382,10 +391,10 @@ class Impact():
         n_events = hazard.size
         if save_mat:
             imp_mat = stich_impact_matrix(imp_mat_list, n_events, n_exp_pnt)
-            return cls.set_from_imp_mat(imp_mat, exposures, impact_funcs, hazard)
+            return cls.from_imp_mat(imp_mat, exposures, impact_funcs, hazard)
         else:
             at_event, eai_exp, aai_agg = stich_risk_metrics(imp_mat_list, hazard.frequency, n_events, n_exp_pnt)
-            return cls.set_from_imp_metrics(at_event, eai_exp, aai_agg, exposures, impact_funcs, hazard)
+            return cls.from_imp_metrics(at_event, eai_exp, aai_agg, exposures, impact_funcs, hazard)
 
     @classmethod
     def calc_insured_risk(cls, exposures, impact_funcs, hazard, save_mat=False):
@@ -431,13 +440,13 @@ class Impact():
         imp_mat_list = imp_mat_list2
         if save_mat:
             imp_mat = stich_impact_matrix(imp_mat_list, n_events, n_exp_pnt)
-            return cls.set_from_imp_mat(imp_mat, exposures, impact_funcs, hazard)
+            return cls.from_imp_mat(imp_mat, exposures, impact_funcs, hazard)
         else:
             at_event, eai_exp, aai_agg = stich_risk_metrics(imp_mat_list, hazard.frequency, n_events, n_exp_pnt)
-            return cls.set_from_imp_metrics(at_event, eai_exp, aai_agg, exposures, impact_funcs, hazard)
+            return cls.from_imp_metrics(at_event, eai_exp, aai_agg, exposures, impact_funcs, hazard)
 
     @classmethod
-    def set_from_imp_metrics(cls, at_event, eai_exp, aai_agg, exposures, impf_set, hazard):
+    def from_imp_metrics(cls, at_event, eai_exp, aai_agg, exposures, impf_set, hazard):
         """
         Set Impact attributes from the impact matrix.
 
@@ -479,7 +488,7 @@ class Impact():
 
 
     @classmethod
-    def set_from_imp_mat(cls, imp_mat, exposures, impf_set, hazard):
+    def from_imp_mat(cls, imp_mat, exposures, impf_set, hazard):
         """
         Set Impact attributes from the impact matrix.
 
