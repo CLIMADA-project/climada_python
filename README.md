@@ -26,12 +26,23 @@ Follow the [tutorial](https://climada-python.readthedocs.io/en/latest/tutorial/1
 
 Documentation is available on Read the Docs:
 
+CLIMADA python:
 * [online (recommended)](https://climada-python.readthedocs.io/en/latest/)
 * [PDF file](https://climada-python.readthedocs.io/_/downloads/en/stable/pdf/)
+
+CLIMADA petals:
+* [online (recommended)](https://climada-petals.readthedocs.io/en/latest/)
+* [PDF file](https://climada-petals.readthedocs.io/_/downloads/en/stable/pdf/)
+* [petals Tutorials on GitHub](https://github.com/CLIMADA-project/climada_petals/tree/main/doc/tutorial)
+
 
 ## Citing CLIMADA
 
 If you use CLIMADA please cite (in general, in particular for academic work) :
+
+The [used version](https://zenodo.org/search?page=1&size=20&q=climada)
+
+and/or the following published articles:
 
 Aznar-Siguan, G. and Bresch, D. N., 2019: CLIMADA v1: a global weather and climate risk assessment platform, Geosci. Model Dev., 12, 3085–3097, https://doi.org/10.5194/gmd-12-3085-2019
 
