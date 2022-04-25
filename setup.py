@@ -13,7 +13,7 @@ with open(here.joinpath('README.md'), encoding='utf-8') as f:
 setup(
     name='climada',
 
-    version='3.1.2',
+    version='3.1.3',
 
     description='CLIMADA in Python',
 
@@ -40,7 +40,7 @@ setup(
 
     keywords='climate adaptation',
 
-    packages=find_packages(),
+    packages=find_packages() + ['data'],
 
     install_requires=[
         'bottleneck',
@@ -65,6 +65,7 @@ setup(
         'pybufrkit',
         'pycountry',
         'rasterio',
+        'salib',
         'scikit-learn',
         'statsmodels',
         'tables',
