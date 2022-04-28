@@ -563,6 +563,7 @@ def _get_equalarea_proj(poly):
 
 def _get_pyproj_trafo(orig_crs, dest_crs):
     """
+    Get pyproj projection from orig_crs to dest_crs
     """
     return pyproj.Transformer.from_proj(pyproj.Proj(orig_crs),
                                         pyproj.Proj(dest_crs),
