@@ -65,7 +65,7 @@ def calc_geom_impact(
     disagg : string, optional
         Disaggregation method for the `value` column of the exposure gdf.
         if 'avg', average value over points
-        if 'surf', area per point (res*res) for polygons, and distance per
+        if 'area', area per point (res*res) for polygons, and distance per
             point (res) for lines.
         if 'None', value is unchanged or set to 1 if no value is defined.
         The default is None.
@@ -252,7 +252,7 @@ def exp_geom_to_pnt(exp, res, to_meters, disagg):
     disagg : string,
         Disaggregation method.
         if 'avg' value is average of value over points
-        if 'surf' value is surface per points. Area per point (res*res)
+        if 'area' value is area per points. Area per point (res*res)
             for polygons, and distance per point (res) for lines.
         if 'None' value is unchanged (or 1 if no value is defined)
 
@@ -314,7 +314,7 @@ def _gdf_line_to_pnt(gdf, res, to_meters, disagg):
     disagg : string, optional
         Disaggregation method.
         if 'avg' value is average over points
-        if 'surf' value is surface per points. Distance per point (res) for lines.
+        if 'area' value is area per points. Distance per point (res) for lines.
         if 'None' value is unchanged (or 1 if no value is defined)
 
     Returns
@@ -331,7 +331,7 @@ def _gdf_line_to_pnt(gdf, res, to_meters, disagg):
     # disaggregate value column
     if disagg == 'avg':
         gdf_pnt = disagg_values_avg(gdf_pnt)
-    elif disagg == 'surf':
+    elif disagg == 'area':
         gdf_pnt = assign_point_val(gdf_pnt, res)
     elif (disagg is None) or ('value' not in gdf_pnt.columns):
         gdf_pnt['value'] = 1
@@ -357,7 +357,7 @@ def _gdf_poly_to_pnt(gdf, res, to_meters, disagg):
     disagg : string
         Disaggregation method.
         if 'avg' value is average over points
-        if 'surf' value is surface per points. Area per point (res*res)
+        if 'area' value is area per points. Area per point (res*res)
             for polygons.
         if 'None' value is unchanged (or 1 if no value is defined)
 
@@ -375,7 +375,7 @@ def _gdf_poly_to_pnt(gdf, res, to_meters, disagg):
     # disaggregate value column
     if disagg == 'avg':
         gdf_pnt = disagg_values_avg(gdf_pnt)
-    elif disagg == 'surf':
+    elif disagg == 'area':
         gdf_pnt = assign_point_val(gdf_pnt, res * res)
     elif disagg is None and 'value' not in gdf_pnt.columns:
         gdf_pnt['value'] = 1
