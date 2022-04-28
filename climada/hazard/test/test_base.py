@@ -1142,6 +1142,30 @@ class TestHDF5(unittest.TestCase):
             self.assertTrue(np.array_equal(hazard.fraction.toarray(), haz_read.fraction.toarray()))
             self.assertIsInstance(haz_read.fraction, sparse.csr_matrix)
 
+    def test_write_read_unsupported_type(self):
+        """Check if the write command correctly handles unsupported types"""
+        file_name = str(DATA_DIR.joinpath('test_unsupported.h5'))
+
+        # Define an unsupported type
+        class CustomID:
+            id = 1
+
+        # Create a hazard with unsupported type as attribute
+        hazard = dummy_hazard()
+        hazard.event_id = CustomID()
+
+        # Write the hazard and check the logs for the correct warning
+        with self.assertLogs(logger="climada.hazard.base", level="WARN") as cm:
+            hazard.write_hdf5(file_name)
+        self.assertIn("write_hdf5: the class member event_id is skipped", cm.output[0])
+
+        # Load the file again and compare to previous instance
+        hazard_read = Hazard.from_hdf5(file_name)
+        self.assertEqual(hazard.tag.description, hazard_read.tag.description)
+        self.assertTrue(np.array_equal(hazard.date, hazard_read.date))
+        self.assertTrue(np.array_equal(hazard_read.event_id, np.array([])))  # Empty array
+
+
 class TestCentroids(unittest.TestCase):
     """Test return period statistics"""
 
