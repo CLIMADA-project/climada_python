@@ -26,6 +26,7 @@ import numpy as np
 
 from climada.entity import Exposures
 import climada.util.lines_polys_handler as u_lp
+import climada.util.coordinates as u_coord
 
 exp_poly = Exposures.from_hdf5('/Users/ckropf/climada/data/test_polygon_exp.hdf5')
 gdf_poly = exp_poly.gdf
@@ -44,10 +45,10 @@ class TestGeomImpactCalcs(unittest.TestCase):
     def test_calc_geom_impact(self):
         """"""
         pass
-    
+
     def test_impact_pnt_agg(self):
         pass
-    
+
     def test_aggregate_impact_mat(self):
         pass
 
@@ -110,6 +111,26 @@ class TestExposureGeomToPnt(unittest.TestCase):
             ])
         np.testing.assert_allclose(exp_pnt.gdf.latitude, lat)
 
+    def test_point_exposure_from_polygons_on_grid(self):
+        """Test disaggregation of polygons to points on grid"""
+        res = 0.1
+        exp_poly.gdf = exp_poly.gdf[exp_poly.gdf['population']<400000]
+        height, width, trafo = u_coord.pts_to_raster_meta(exp_poly.gdf.geometry.bounds, (res, res))
+        x_grid, y_grid = u_coord.raster_to_meshgrid(trafo, width, height)
+        #test
+        exp_pnt = u_lp.exp_geom_to_pnt(exp_poly, res=0.1, to_meters=False, disagg='avg')
+        exp_pnt_grid = u_lp.exp_geom_to_pnt(exp_poly, (x_grid, y_grid), to_meters=False, disagg='avg')
+        for col in ['value', 'latitude', 'longitude']:
+            np.testing.assert_allclose(exp_pnt.gdf[col], exp_pnt_grid.gdf[col])
+
+        x_grid = np.append(x_grid, x_grid+10)
+        y_grid = np.append(y_grid, y_grid+10)
+        #test
+        exp_pnt = u_lp.exp_geom_to_pnt(exp_poly, res=0.1, to_meters=False, disagg='avg')
+        exp_pnt_grid = u_lp.exp_geom_to_pnt(exp_poly, (x_grid, y_grid), to_meters=False, disagg='avg')
+        for col in ['value', 'latitude', 'longitude']:
+            np.testing.assert_allclose(exp_pnt.gdf[col], exp_pnt_grid.gdf[col])
+
 class TestGdfGeomToPnt(unittest.TestCase):
     """Test Geodataframes to points and vice-versa functions"""
 
@@ -141,34 +162,34 @@ class TestGdfGeomToPnt(unittest.TestCase):
     def test_pnts_per_line(self):
         """"""
         pass
-    
+
     def test_interp_one_poly(self):
         """"""
         pass
-    
+
     def test_interp_one_poly_m(self):
         """"""
         pass
 
 class TestLPUtils(unittest.TestCase):
     """ """
-    
+
     def test_line_poly_mask(self):
         """"""
         pass
-    
+
     def test_get_equalarea_proj(self):
         """"""
         pass
-    
+
     def test_get_pyproj_trafo(self):
         """"""
         pass
-    
+
     def test_reproject_grid(self):
         """"""
         pass
-    
+
     def test_reproject_poly(self):
         """"""
         pass
@@ -179,25 +200,25 @@ class TestLPUtils(unittest.TestCase):
 
 class TestImpactSetters(unittest.TestCase):
     """ """
-    
+
     def test_set_imp_mat(self):
         """ test set_imp_mat"""
         pass
-    
+
     def test_eai_exp_from_mat(self):
         """ test eai_exp_from_mat"""
 
         pass
-    
+
     def test_at_event_from_mat(self):
         """Test at_event_from_mat"""
-    
+
     def test_aai_agg_from_at_event(self):
         """Test aai_agg_from_at_event"""
         pass
-    
-    
-    
+
+
+
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestExposureGeomToPnt)
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestGdfGeomToPnt))

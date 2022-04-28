@@ -243,7 +243,9 @@ def exp_geom_to_pnt(exp, res, to_meters, disagg):
     exp : Exposures
         The exposure instance with exp.gdf.geometry containing lines or polygons
     res : float
-        Resolution of the disaggregation grid / distance.
+        Resolution of the disaggregation grid / distance. Can also be a
+        tuple of [x_grid, y_grid] numpy arrays. In this case, to_meters is
+        ignored. This is only possible for Polygon-only exposures.
     to_meters : bool
        If True, res is interpreted as meters, and geometries are projected to
        an equal area projection for disaggregation.  The exposures are
@@ -286,6 +288,7 @@ def exp_geom_to_pnt(exp, res, to_meters, disagg):
 
     return exp_pnt
 
+
 def _line_poly_mask(gdf):
     """Mask for lines and polygons"""
     line_mask =  gdf.geometry.apply(lambda x: isinstance(x, shgeom.LineString))
@@ -307,7 +310,9 @@ def _gdf_line_to_pnt(gdf, res, to_meters, disagg):
     gdf : GeoDataFrame
         Geodataframe of an exposure instance with gdf.geometry containing (multi-)lines
     res : float
-        Disaggregation distance beween two points.
+        Disaggregation distance beween two points. Can also be a
+        tuple of [x_grid, y_grid] numpy arrays. In this case, to_meters is
+        ignored.
     to_meters : bool, optional
        If True, the geometries are projected to an equal area projection before
        the disaggregation. res is then in meters. Default is False.
@@ -348,7 +353,9 @@ def _gdf_poly_to_pnt(gdf, res, to_meters, disagg):
     gdf : GeoDataFrame
         The geodataframe instance with gdf.geometry containing (multi-)polygons
     res : float
-        Resolution of the disaggregation grid.
+        Resolution of the disaggregation grid. Can also be a
+        tuple of [x_grid, y_grid] numpy arrays. In this case, to_meters is
+        ignored.
     to_meters : bool
        If True, the geometries are projected to an equal area projection before
        the disaggregation. res is then in meters. The exposures are
@@ -465,7 +472,11 @@ def poly_to_pnts(gdf, res, to_meters=False):
 
     gdf_points = gdf.copy().reset_index(drop=True)
 
-    if to_meters:
+    if isinstance(res, tuple):
+        x_grid, y_grid = res
+        gdf_points['geometry_pnt'] = gdf_points.apply(
+            lambda row: _interp_one_poly_grid(row.geometry, x_grid, y_grid), axis=1)
+    elif to_meters:
         gdf_points['geometry_pnt'] = gdf_points.apply(
             lambda row: _interp_one_poly_m(row.geometry, res, gdf.crs), axis=1)
     else:
@@ -478,6 +489,38 @@ def poly_to_pnts(gdf, res, to_meters=False):
     gdf_points = gdf_points.explode()
     gdf_points.index = gdf_points.index.set_levels(idx, level=0)
     return gdf_points
+
+def _interp_one_poly_grid(poly, x_grid, y_grid):
+    """
+    Disaggregate a single polygon to points on grid (does not have to be a
+    regular raster)
+
+    Parameters
+    ----------
+    poly : shapely Polygon
+        Polygon
+    x_grid : np.array
+        1D array of x-coordinates of grid points.
+    y_grid : np.array
+        1D array of y-coordinates of grid points.
+
+    Returns
+    -------
+    shapely multipoint
+        Grid of points inside the polygon
+
+    """
+
+    if poly.is_empty:
+        return shgeom.MultiPoint([])
+    in_geom = sh.vectorized.contains(poly, x_grid, y_grid)
+
+    if sum(in_geom.flatten()) > 1:
+        return shgeom.MultiPoint(list(zip(x_grid[in_geom], y_grid[in_geom])))
+
+    LOGGER.warning('Polygon smaller than resolution. Setting a representative point.')
+    return shgeom.MultiPoint([poly.representative_point()])
+
 
 def _interp_one_poly(poly, res):
     """
