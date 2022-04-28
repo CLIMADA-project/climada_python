@@ -40,7 +40,7 @@ class TestCentroidsReader(unittest.TestCase):
         """Read a centroid mat file correctly."""
         centroids = Centroids.from_mat(HAZ_TEST_MAT)
 
-        n_centroids = 101
+        n_centroids = 100
         self.assertEqual(centroids.coord.shape, (n_centroids, 2))
         self.assertEqual(centroids.coord[0][0], 21)
         self.assertEqual(centroids.coord[0][1], -84)
