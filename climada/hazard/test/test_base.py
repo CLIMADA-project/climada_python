@@ -279,8 +279,8 @@ class TestSelect(unittest.TestCase):
         self.assertTrue(np.array_equal(sel_haz.centroids.coord, haz.centroids.coord))
         self.assertEqual(sel_haz.tag, haz.tag)
         self.assertEqual(sel_haz.units, haz.units)
-        self.assertTrue(np.array_equal(sel_haz.event_id, np.array([4, 1])))
-        self.assertTrue(np.array_equal(sel_haz.date, np.array([4, 1])))
+        self.assertTrue(np.array_equal(sel_haz.event_id, np.array([4, 2])))
+        self.assertTrue(np.array_equal(sel_haz.date, np.array([4, 3])))
         self.assertTrue(np.array_equal(sel_haz.orig, np.array([True, True])))
         self.assertTrue(np.array_equal(sel_haz.frequency, np.array([0.2, 0.1])))
         self.assertTrue(np.array_equal(sel_haz.fraction.toarray(),
