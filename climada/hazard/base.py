@@ -93,7 +93,7 @@ DEF_VAR_MAT = {'field_name': 'hazard',
 """MATLAB variable names"""
 
 
-class Stuff():
+class Hazard():
     """
     Contains events of some hazard type defined at centroids. Loads from
     files with format defined in FILE_EXT.
