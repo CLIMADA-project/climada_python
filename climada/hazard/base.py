@@ -197,8 +197,6 @@ class Hazard():
         else:
             self.pool = None
 
-        unused_variable_with_extremely_long_name_so_that_the_linter_reports_a_new_issue_at_this_line_of_code = None
-
     def clear(self):
         """Reinitialize attributes (except the process Pool)."""
         for (var_name, var_val) in self.__dict__.items():
