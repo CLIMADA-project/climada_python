@@ -423,19 +423,33 @@ def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
 
     if 'cmap' in kwargs:
         # optional user defined colormap (can be continuous)
-        cmap = kwargs['cmap']
-        if isinstance(cmap, str):
-            cmap_name = cmap
-            cmap = mpl.cm.get_cmap(cmap)
-        else:
+        cmap_arg = kwargs['cmap']
+        if isinstance(cmap_arg, str):
+            cmap_name = cmap_arg
+            # for qualitative colormaps taking the first few colors is preferable
+            # over jumping equal distances
+            if cmap_name in ['Pastel1', 'Pastel2', 'Paired', 'Accent', 'Dark2',
+                    'Set1', 'Set2', 'Set3', 'tab10', 'tab20', 'tab20b', 'tab20c']:
+                cmap = mpl.colors.ListedColormap(
+                    mpl.cm.get_cmap(cmap_name).colors[:array_sub_n]
+                )
+            else:
+                cmap = mpl.cm.get_cmap(cmap_arg, array_sub_n)
+        elif isinstance(cmap_arg, mpl.colors.ListedColormap):
+            # If a user brings their own colormap it's probably qualitative
             cmap_name = 'defined by the user'
+            cmap = mpl.colors.ListedColormap(
+                cmap_arg.colors[:array_sub_n]
+            )
+        else:
+            raise TypeError("if cmap is given it must be either a str or a ListedColormap")
     else:
         # default qualitative colormap
         cmap_name = CMAP_CAT
         cmap = mpl.colors.ListedColormap(
-            plt.get_cmap(cmap_name).colors[:array_sub_n]
-            )
-
+            mpl.cm.get_cmap(cmap_name).colors[:array_sub_n]
+        )
+    
     if array_sub_n > cmap.N:
         LOGGER.warning("More than %d categories cannot be plotted accurately "
                        "using the colormap %s. Please specify "
@@ -445,7 +459,7 @@ def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
                        cmap.N, cmap_name)
 
     # define the discrete colormap kwargs
-    kwargs['cmap'] = mpl.cm.get_cmap(cmap, array_sub_n)
+    kwargs['cmap'] = cmap
     kwargs['vmin'] = -0.5
     kwargs['vmax'] = array_sub_n - 0.5
 

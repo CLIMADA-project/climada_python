@@ -1180,7 +1180,15 @@ class Hazard():
                 for i_ev, var_ev in enumerate(var_val):
                     hf_str[i_ev] = var_ev
             elif var_val is not None and var_name != 'pool':
-                hf_data.create_dataset(var_name, data=var_val)
+                try:
+                    hf_data.create_dataset(var_name, data=var_val)
+                except TypeError:
+                    LOGGER.warning(
+                        f"write_hdf5: the class member {var_name} is skipped, due to its "
+                        f"type, {var_val.__class__.__name__}, for which writing to hdf5 "
+                        "is not implemented. Reading this H5 file will probably lead to "
+                        f"{var_name} being set to its default value."
+                    )
         hf_data.close()
 
     def read_hdf5(self, *args, **kwargs):

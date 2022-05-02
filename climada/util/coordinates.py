@@ -34,11 +34,8 @@ import dask.dataframe as dd
 import geopandas as gpd
 import numba
 import numpy as np
-from numba import jit
 import pandas as pd
-import scipy as sp
 
-import pyproj
 import pycountry
 import rasterio
 import rasterio.crs
@@ -47,7 +44,7 @@ import rasterio.mask
 import rasterio.warp
 import scipy.spatial
 import scipy.interpolate
-from shapely.geometry import Polygon, MultiPolygon, MultiPoint, Point, box
+from shapely.geometry import Polygon, MultiPolygon, Point, box
 import shapely.ops
 import shapely.vectorized
 from sklearn.neighbors import BallTree
@@ -1449,7 +1446,7 @@ def get_admin1_info(country_names):
         # that the `*.cpg` is present and the encoding is correct:
         try:
             return val.encode('latin-1').decode('utf-8')
-        except:
+        except UnicodeEncodeError:
             return val
 
     if isinstance(country_names, (str, int, float)):
@@ -1516,7 +1513,7 @@ def get_admin1_geometries(countries):
 
     # extract admin 1 infos and shapes for each country:
     admin1_info, admin1_shapes = get_admin1_info(countries)
-    for country in admin1_info.keys():
+    for country in admin1_info:
         # fill admin 1 region names and codes to GDF for single country:
         gdf_tmp = gpd.GeoDataFrame(columns=gdf.columns)
         gdf_tmp.admin1_name = [record['name'] for record in admin1_info[country]]
@@ -1659,7 +1656,7 @@ def to_crs_user_input(crs_obj):
         return (isinstance(crs_dict, dict)
                 and "init" in crs_dict
                 and all(k in ["init", "no_defs"] for k in crs_dict.keys())
-                and crs_dict.get("no_defs", True) == True)
+                and crs_dict.get("no_defs", True) is True)
 
     if isinstance(crs_obj, (dict, int)):
         if _is_deprecated_init_crs(crs_obj):
