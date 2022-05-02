@@ -183,7 +183,7 @@ class Cacher():
         """
         self.enabled = (CONFIG.data_api.cache_enabled.bool()
                         if cache_enabled is None else cache_enabled)
-        self.cachedir = CONFIG.data_api.cache_dir.dir() if self.enabled else None 
+        self.cachedir = CONFIG.data_api.cache_dir.dir() if self.enabled else None
 
     @staticmethod
     def _make_key(*args, **kwargs):
@@ -192,9 +192,9 @@ class Cacher():
             [f"{k}={kwargs[k]}" for k in sorted(kwargs.keys())]
         )
         print(as_text)
-        h = hashlib.md5()
-        h.update(as_text.encode())
-        return h.hexdigest()
+        md5h = hashlib.md5()
+        md5h.update(as_text.encode())
+        return md5h.hexdigest()
 
     def store(self, result, *args, **kwargs):
         """stores the result from a API call to a local file.
@@ -208,33 +208,33 @@ class Cacher():
             will be written in json format to the cached result file
         *args : list of str
         **kwargs : list of dict of (str,str)
-        """        
+        """
         _key = Cacher._make_key(*args, **kwargs)
         try:
-            with Path(self.cachedir, _key).open('w') as fp:
-                json.dump(result, fp)
+            with Path(self.cachedir, _key).open('w') as flp:
+                json.dump(result, flp)
         except Exception:
             pass
 
     def fetch(self, *args, **kwargs):
         """reloads the result from a API call from a local file, created by the corresponding call
         of `self.store`.
-        
+
         If no call with exactly the same arguments has been made in the past, the result is None.
 
         Parameters
         ----------
         *args : list of str
         **kwargs : list of dict of (str,str)
-        
+
         Returns
         -------
         dict or None
-        """        
+        """
         _key = Cacher._make_key(*args, **kwargs)
         try:
-            with Path(self.cachedir, _key).open() as fp:
-                return json.load(fp)
+            with Path(self.cachedir, _key).open() as flp:
+                return json.load(flp)
         except Exception:
             return None
 
@@ -244,7 +244,7 @@ class Client():
     """
     MAX_WAITING_PERIOD = 6
     UNLIMITED = 100000
-    
+
     class AmbiguousResult(Exception):
         """Custom Exception for Non-Unique Query Result"""
 
@@ -257,7 +257,7 @@ class Client():
 
     @staticmethod
     def _is_online(url):
-        host = [x for x in url.split('/') 
+        host = [x for x in url.split('/')
                 if x not in ['https:', 'http:', '']][0]
         port = 80 if host.startswith('http://') else 443
         socket.setdefaulttimeout(1)
@@ -265,7 +265,7 @@ class Client():
             try:
                 skt.connect((host, port))
                 return True
-            except socket.error as ex:
+            except socket.error:
                 return False
 
     def __init__(self, cache_enabled=None):
@@ -273,12 +273,12 @@ class Client():
 
         Data API host and chunk_size (for download) are configurable values.
         Default values are 'climada.ethz.ch' and 8096 respectively.
-        
+
         Parameters
         ----------
         cache_enabled : bool, optional
             This flag controls whether the api calls of this client are going to be cached to the
-            local file system (location defined by CONFIG.data_api.cache_dir). 
+            local file system (location defined by CONFIG.data_api.cache_dir).
             If set to true, the client can reload the results from the cache in case there is no
             internet connection and thus work in offline mode.
             Default: None, in this case the value is taken from CONFIG.data_api.cache_enabled.
@@ -302,7 +302,8 @@ class Client():
         NoResult
             if the response status code is different from 200
         """
-        if params is None: params = dict()
+        if params is None:
+            params = dict()
         if self.online:
             page = requests.get(url, params=params)
             if page.status_code != 200:
@@ -319,8 +320,8 @@ class Client():
             if not cached_result:
                 raise Client.NoConnection("there is no internet connection and the client has not"
                                           " found any cached result for this request.")
-            LOGGER.warning("there is no internet connection but the client has stored the result for"
-                        " this very request sometime in the past.")
+            LOGGER.warning("there is no internet connection but the client has stored the result"
+                        " for this very request sometime in the past.")
             return cached_result
 
     @staticmethod
@@ -718,7 +719,7 @@ class Client():
         """
         target_dir = self._organize_path(dataset, dump_dir) \
                      if dump_dir == SYSTEM_DIR else dump_dir
-        
+
         hazard_list = [
             Hazard.from_hdf5(self._download_file(target_dir, dsf))
             for dsf in dataset.files
