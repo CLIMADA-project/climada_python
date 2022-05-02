@@ -25,18 +25,18 @@ import scipy as sp
 import shapely as sh
 import shapely.geometry as shgeom
 import cartopy.crs as ccrs
+import pyproj
 
 from climada.engine import Impact
 from climada.util import coordinates as u_coord
 
-import pyproj
 
 LOGGER = logging.getLogger(__name__)
 
 
 def calc_geom_impact(
         exp, impf_set, haz, res,
-        to_meters=False, disagg_met=None, disagg_val=None, agg='sum'
+        to_meters=False, disagg_met='avg', disagg_val=None, agg='sum'
         ):
     """
     Compute impact for exposure with (multi-)polygons and/or (multi-)lines.
@@ -63,12 +63,16 @@ def calc_geom_impact(
        then projected back to the original projections before  impact
        calculation. The default is False.
     disagg_met : string, optional
-        Disaggregation method for the `value` column of the exposure gdf.
-        if 'avg', average value over points
-        if 'fix', same value for each point
+        Disaggregation method of the shapes's original value onto its inter-
+        polated points. 'avg': Divide the value evenly over all the new points;
+        'fix': Replicate the value onto all the new points. Default is 'avg'.
+        Works in combination with the kwarg 'disagg_val'.
     disagg_val: float, optional
-        if 'None', value is taken from exp.gdf.value column
-        The default is None.
+        Specifies from where and what number should be taken as the value, which
+        is to be disaggregated according to the method provided in disagg_met.
+        None: default. The shape's value is taken from the exp.gdf.value column.
+        Will throw an error if no value column is present.
+        float: This given number will be disaggregated according to the method.
     agg : string, optional
         Aggregation method of the point impacts into impact for respective
         parent-geometry.
@@ -257,7 +261,8 @@ def exp_geom_to_pnt(exp, res, to_meters, disagg_met, disagg_val):
         if 'avg', average value over points
         if 'fix', same value for each point
     disagg_val: float
-        if 'None', value is taken from exp.gdf.value column
+        if 'None', value is taken from exp.gdf.value column, else the indicated
+        value is taken for disaggregation according to disagg_met
 
     Returns
     -------
@@ -270,8 +275,17 @@ def exp_geom_to_pnt(exp, res, to_meters, disagg_met, disagg_val):
 
     line_mask, poly_mask = _line_poly_mask(exp.gdf)
     gdf_geom = exp.gdf.copy()
+
     if disagg_val is not None:
         gdf_geom.value = disagg_val
+
+    if ((disagg_val is None) and ('value' not in gdf_geom.columns)):
+        raise ValueError('There is no value column in the exposure gdf to'+
+                         ' disaggregate from. Please set disagg_val explicitly.')
+
+    if disagg_met not in ['fix', 'avg']:
+        raise ValueError(f"{disagg_met} is not a valid argument for 'disagg_met'."+
+                         " Please choose one of ['fix', 'avg'] ")
 
     gdf_pnt = gpd.GeoDataFrame([])
     if np.any(poly_mask):
