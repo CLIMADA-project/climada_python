@@ -51,7 +51,7 @@ class Config():
     """
 
     def __str__(self):
-        # pylint: disable=bare-except,multiple-statements,too-complex,consider-using-f-string
+        # pylint: disable=bare-except,multiple-statements,too-complex
         try: return self.str()
         except: pass
         try: return str(self.int())
@@ -269,7 +269,6 @@ class Config():
 
     @classmethod
     def _objectify_list(cls, lst, root):
-        # pylint: disable=use-list-literal
         objs = list()
         for item in lst:
             if item.__class__ is dict:
@@ -318,7 +317,6 @@ def _find_in_parents(directory, filename):
 
 
 def _fetch_conf(directories, config_name):
-    # pylint: disable=use-dict-literal
     superseding_configs = [
         _find_in_parents(path, config_name)
         for path in directories
