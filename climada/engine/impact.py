@@ -48,24 +48,24 @@ from climada.util.select import get_attributes_with_matching_dimension
 LOGGER = logging.getLogger(__name__)
 
 def eai_exp_from_mat(imp_mat, freq):
-        """
-        Compute impact for each exposures from the total impact matrix
-        Parameters
-        ----------
-        imp_mat : sparse.csr_matrix
-            matrix num_events x num_exp with impacts.
-        frequency : np.array
-            annual frequency of events
-        Returns
-        -------
-        eai_exp : np.array
-            expected annual impact for each exposure
-        """
-        n_events = freq.size
-        freq_csr = sparse.csr_matrix(
-            (freq, np.zeros(n_events), np.arange(n_events + 1)),
-            shape=(n_events, 1))
-        return imp_mat.multiply(freq_csr).sum(axis=0).A1
+    """
+    Compute impact for each exposures from the total impact matrix
+    Parameters
+    ----------
+    imp_mat : sparse.csr_matrix
+        matrix num_events x num_exp with impacts.
+    frequency : np.array
+        annual frequency of events
+    Returns
+    -------
+    eai_exp : np.array
+        expected annual impact for each exposure
+    """
+    n_events = freq.size
+    freq_csr = sparse.csr_matrix(
+        (freq, np.zeros(n_events), np.arange(n_events + 1)),
+        shape=(n_events, 1))
+    return imp_mat.multiply(freq_csr).sum(axis=0).A1
 
 def at_event_from_mat(imp_mat):
     """
