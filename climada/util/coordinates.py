@@ -1444,7 +1444,7 @@ def get_admin1_info(country_names):
         # that the `*.cpg` is present and the encoding is correct:
         try:
             return val.encode('latin-1').decode('utf-8')
-        except UnicodeEncodeError:
+        except (AttributeError, UnicodeDecodeError, UnicodeEncodeError):
             return val
 
     if isinstance(country_names, (str, int, float)):
