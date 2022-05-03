@@ -32,14 +32,18 @@ import climada.util.coordinates as u_coord
 exp_poly = Exposures.from_hdf5(CONFIG.local_data.demo.dir().joinpath('test_polygon_exp.hdf5'))
 gdf_poly = exp_poly.gdf
 
+COL_CHANGING = ['value', 'latitude', 'longitude', 'geometry', 'geometry_orig']
+
 def check_unchanged_geom_gdf(self, gdf_geom, gdf_pnt):
     """Test properties that should not change"""
     for n in gdf_pnt.index.levels[1]:
         sub_gdf_pnt = gdf_pnt.xs(n, level=1)
         rows_sel = sub_gdf_pnt.index.to_numpy()
         sub_gdf = gdf_geom.loc[rows_sel]
-        sub_gdf_pnt = sub_gdf_pnt
         self.assertTrue(np.alltrue(sub_gdf.geometry.geom_equals(sub_gdf_pnt.geometry_orig)))
+    for col in gdf_pnt.columns:
+        if col not in COL_CHANGING:
+            np.testing.assert_allclose(gdf_pnt[col].unique(), gdf_geom[col].unique())
 
 class TestGeomImpactCalcs(unittest.TestCase):
     """Test main functions on impact calculation, aggregation"""
@@ -121,6 +125,7 @@ class TestExposureGeomToPnt(unittest.TestCase):
         #test
         exp_pnt = u_lp.exp_geom_to_pnt(exp_poly, res=0.1, to_meters=False, disagg_met='avg', disagg_val=None)
         exp_pnt_grid = u_lp.exp_geom_to_pnt(exp_poly, (x_grid, y_grid), to_meters=False, disagg_met='avg', disagg_val=None)
+        self.check_unchanged_exp(exp_poly, exp_pnt_grid)
         for col in ['value', 'latitude', 'longitude']:
             np.testing.assert_allclose(exp_pnt.gdf[col], exp_pnt_grid.gdf[col])
 
@@ -129,6 +134,7 @@ class TestExposureGeomToPnt(unittest.TestCase):
         #test
         exp_pnt = u_lp.exp_geom_to_pnt(exp_poly, res=0.1, to_meters=False, disagg_met='avg', disagg_val=None)
         exp_pnt_grid = u_lp.exp_geom_to_pnt(exp_poly, (x_grid, y_grid), to_meters=False, disagg_met='avg', disagg_val=None)
+        self.check_unchanged_exp(exp_poly, exp_pnt_grid)
         for col in ['value', 'latitude', 'longitude']:
             np.testing.assert_allclose(exp_pnt.gdf[col], exp_pnt_grid.gdf[col])
 
