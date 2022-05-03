@@ -24,11 +24,12 @@ import unittest
 import geopandas as gpd
 import numpy as np
 
+from climada import CONFIG
 from climada.entity import Exposures
 import climada.util.lines_polys_handler as u_lp
 import climada.util.coordinates as u_coord
 
-exp_poly = Exposures.from_hdf5('/Users/ckropf/climada/data/test_polygon_exp.hdf5')
+exp_poly = Exposures.from_hdf5(CONFIG.local_data.demo.dir().joinpath('test_polygon_exp.hdf5'))
 gdf_poly = exp_poly.gdf
 
 def check_unchanged_geom_gdf(self, gdf_geom, gdf_pnt):
