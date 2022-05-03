@@ -123,158 +123,270 @@ def risk_metrics_from_mat(imp_mat, freq):
     aai_agg = aai_agg_from_eai_exp(eai_exp)
     return at_event, eai_exp, aai_agg
 
-def imp_mat_gen(hazard, exp_gdf, impf_col, impf_set):
+
+class Impact_calc():
     """
-    List of impact matrices for the exposure and of corresponding exposures indices
+    Class to compute impacts from exposures, impact function set and hazard
     """
-    for impf_id in exp_gdf[impf_col].unique():
-        impf = impf_set.get_func(haz_type=hazard.haz_type, fun_id=impf_id)
-        idx_exp_impf = (exp_gdf[impf_col].values == impf.id).nonzero()[0]
-        exp_step = CONFIG.max_matrix_size.int() // hazard.size
-        if not exp_step:
-            raise ValueError(
-                f'Increase max_matrix_size configuration parameter to > {hazard.size}')
-        for chk in range(int(idx_exp_impf.size / exp_step) + 1):
-            exp_idx = idx_exp_impf[chk * exp_step:(chk + 1) * exp_step]
-            exp_values = exp_gdf.value.values[exp_idx]
-            cent_idx = exp_gdf[hazard.cent_exp_col].values[exp_idx]
-            yield (impact_matrix(exp_values, cent_idx, hazard, impf), exp_idx)
 
-def impact_matrix(exp_values, cent_idx, hazard, impf):
-    """
-    Compute the impact matrix for given exposure values, assigned centroids, a hazard,
-    and one impact function.
+    def __init__(self,
+                 exposures,
+                 impfset,
+                 hazard):
 
-    Parameters
-    ----------
-    exp_values : np.array
-        Exposure values
-    cent_idx : np.array
-        Hazard centroids assigned to each exposure location
-    hazard : Hazard
-       Hazard object
-    impf : ImpactFunction
-        one impactfunction comon to all exposure elements in exp_gdf
+        self.exposures = exposures
+        self.impfset = impfset
+        self.hazard = hazard
 
-    Returns
-    -------
-    scipy.sparse.csr_matrix
-        Impact per event (rows) per exposure point (columns)
-    """
-    n_centroids = cent_idx.size
-    mdr = hazard.get_mdr(cent_idx, impf)
-    fract = hazard.get_fraction(cent_idx)
-    exp_values_csr = sparse.csr_matrix(
-        (exp_values, np.arange(n_centroids), [0, n_centroids]),
-        shape=(1, n_centroids))
-    return fract.multiply(mdr).multiply(exp_values_csr)
+    def risk(self, save_mat=True):
+        """Compute impact of an hazard to exposures including risk metrics.
 
-def stich_impact_matrix(imp_mat_list, n_events, n_exp_pnt):
-    """
-    Make an impact matrix from an impact matrix list
-    """
-    data, row, col = np.hstack([
-        (mat.data, mat.nonzero()[0], idx[mat.nonzero()[1]])
-        for mat, idx in imp_mat_list
-        ])
-    return sparse.csr_matrix((data, (row, col)), shape=(n_events, n_exp_pnt))
+        Parameters
+        ----------
+        exposures : climada.entity.Exposures
+            the exposures
+        impact_funcs : climada.entity.ImpactFuncSet
+            the set of impact functions
+        hazard : climada.Hazard
+            the hazard
+        save_mat : bool
+            if true, save the total impact matrix (events x exposures)
 
-def stich_risk_metrics(imp_mat_list, freq, n_events, n_exp_pnt):
-    """
-    Compute the impact metrics from an impact matrix list
-    """
-    at_event = np.zeros(n_events)
-    eai_exp = np.zeros(n_exp_pnt)
-    for imp_mat, exp_idx in imp_mat_list:
-        at_event += at_event_from_mat(imp_mat)
-        eai_exp[exp_idx] += eai_exp_from_mat(imp_mat, freq)
-    aai_agg = aai_agg_from_eai_exp(eai_exp)
-    return at_event, eai_exp, aai_agg
+        Examples
+        --------
+            Use Entity class:
 
-def get_minimal_exp(exposures, hazard, impf_col):
-    """Get minimal exposures geodataframe for impact computation
+            >>> haz = Hazard.from_mat(HAZ_DEMO_MAT)  # Set hazard
+            >>> ent = Entity.from_excel(ENT_TEMPLATE_XLS) # Set exposures
+            >>> imp = Impact.calc_risk(ent.exposures, ent.impact_funcs, haz)
+            >>> imp.calc_freq_curve().plot()
 
-    Parameters
-    ----------
-    exposures : climada.entity.Exposures
-    hazard : climada.Hazard
-    impf_col: stirng
-        name of the impact function column in exposures.gdf
+            Specify only exposures and impact functions:
 
-    """
-    exposures.assign_centroids(hazard, overwrite=False)
+            >>> haz = Hazard.from_mat(HAZ_DEMO_MAT)  # Set hazard
+            >>> funcs = ImpactFuncSet.from_excel(ENT_TEMPLATE_XLS) # Set impact functions
+            >>> exp = Exposures(pd.read_excel(ENT_TEMPLATE_XLS)) # Set exposures
+            >>> imp = Impact.calc_risk(exp, funcs, haz)
+            >>> imp.aai_agg
+        """
+        impf_col = self.exposures.get_impf_column(self.hazard.haz_type)
+        exp_gdf = self.get_minimal_exp(self.exposures, self.hazard, impf_col)
+        LOGGER.info('Calculating impact for %s assets (>0) and %s events.',
+                    exp_gdf.size, self.hazard.size)
+        imp_mat_list = self.imp_mat_gen(exp_gdf, impf_col)
+        n_exp_pnt = self.exposures.gdf.shape[0]
+        n_events = self.hazard.size
+        if save_mat:
+            imp_mat = self.stich_impact_matrix(imp_mat_list, n_events, n_exp_pnt)
+            return Impact.from_imp_mat(imp_mat, self.exposures, self.impfset, self.hazard)
+        else:
+            at_event, eai_exp, aai_agg = self.stich_risk_metrics(imp_mat_list, self.hazard.frequency, n_events, n_exp_pnt)
+            return Impact.from_imp_metrics(at_event, eai_exp, aai_agg, self.exposures, self.impfset, self.hazard)
 
-    mask = (
-        (exposures.gdf.value.values != 0)
-        & (exposures.gdf[hazard.cent_exp_col].values >= 0)
-    )
-    exp_gdf = pd.DataFrame({
-        col: exposures.gdf[col].values[mask]
-        for col in ['value', impf_col, hazard.cent_exp_col]
-    })
-    if exp_gdf.size == 0:
-        LOGGER.warning("No exposures with value >0 in the vicinity of the hazard.")
-    return exp_gdf
+    def insured_risk(self, save_mat=False):
+        """
+        To be document and written more nicely.
 
+        Parameters
+        ----------
+        cls : TYPE
+            DESCRIPTION.
+        exposures : TYPE
+            DESCRIPTION.
+        impact_funcs : TYPE
+            DESCRIPTION.
+        hazard : TYPE
+            DESCRIPTION.
+        save_mat : TYPE, optional
+            DESCRIPTION. The default is False.
 
-def apply_deductible_to_imp_mat(imp_mat, deductible, hazard, cent_idx, impf):
-    """
-    Apply a deductible per exposure point to an impact matrix at given
-    centroid points for given impact function.
+        Returns
+        -------
+        TYPE
+            DESCRIPTION.
 
-    All exposure points must have the same impact function. For different
-    impact functions apply use this method repeatedly on the same impact
-    matrix.
+        """
+        impf_col = self.exposures.get_impf_column(self.hazard.haz_type)
+        exp_gdf = self.get_minimal_exp(impf_col)
+        LOGGER.info('Calculating impact for %s assets (>0) and %s events.',
+                    exp_gdf.size, self.hazard.size)
+        imp_mat_list = self.imp_mat_gen(exp_gdf, impf_col)
+        n_exp_pnt = self.exposures.gdf.shape[0]
+        n_events = self.hazard.size
 
-    Parameters
-    ----------
-    imp_mat : scipy.sparse.csr_matrix
-        impact matrix (events x exposure points)
-    deductible : np.array()
-        deductible for each exposure point
-    hazard : Hazard
-        hazard used to compute the imp_mat
-    cent_idx : np.array()
-        index of centroids associated with each exposure point
-    impf : ImpactFunc
-        impact function associated with the exposure points
+        def insured_mat_gen(imp_mat_gen, exposures, impact_funcs, hazard, impf_col):
+            for mat, exp_idx in imp_mat_gen:
+                impf_id = exposures.gdf[impf_col][exp_idx].unique()[0]
+                deductible = exposures.gdf['deductible'][exp_idx]
+                cent_idx = exposures.gdf['centr_TC'][exp_idx]
+                impf = impact_funcs.get_func(haz_type=hazard.haz_type, fun_id=impf_id)
+                mat = self.apply_deductible_to_imp_mat(mat, deductible, hazard, cent_idx, impf)
+                cover = exposures.gdf['cover'][exp_idx]
+                mat = self.apply_cover_to_imp_mat(mat, cover)
+                yield (mat, exp_idx)
 
-    Returns
-    -------
-    imp_mat : scipy.sparse.csr_matrix
-        impact matrix with applied deductible
-
-    """
-    paa = hazard.get_paa(cent_idx, impf)
-    imp_mat -= paa.multiply(sparse.csr_matrix(deductible))
-    imp_mat.eliminate_zeros()
-    return imp_mat
+        imp_mat_list = insured_mat_gen(imp_mat_list, self.exposures, self.impfset, self.hazard, impf_col)
+        if save_mat:
+            imp_mat = self.stich_impact_matrix(imp_mat_list, n_events, n_exp_pnt)
+            return Impact.from_imp_mat(imp_mat, self.exposures, self.impfset, self.hazard)
+        else:
+            at_event, eai_exp, aai_agg = self.stich_risk_metrics(imp_mat_list, self.hazard.frequency, n_events, n_exp_pnt)
+            return Impact.from_imp_metrics(at_event, eai_exp, aai_agg, self.exposures, self.impfset, self.hazard)
 
 
-def apply_cover_to_imp_mat(imp_mat, cover):
-    """
-    Apply cover to impact matrix.
+    def get_minimal_exp(self, impf_col):
+        """Get minimal exposures geodataframe for impact computation
 
-    The impact data is clipped to the range [0, cover]. The cover is defined
-    per exposure point.
+        Parameters
+        ----------
+        exposures : climada.entity.Exposures
+        hazard : climada.Hazard
+        impf_col: stirng
+            name of the impact function column in exposures.gdf
 
-    Parameters
-    ----------
-    imp_mat : scipy.sparse.csr_matrix
-        impact matrix
-    cover : np.array()
-        cover per exposures point (columns of imp_mat)
+        """
+        self.exposures.assign_centroids(self.hazard, overwrite=False)
 
-    Returns
-    -------
-    imp_mat : scyp.sparse.csr_matrix
-        impact matrix with applied cover
+        mask = (
+            (self.exposures.gdf.value.values != 0)
+            & (self.exposures.gdf[self.hazard.cent_exp_col].values >= 0)
+        )
+        exp_gdf = pd.DataFrame({
+            col: self.exposures.gdf[col].values[mask]
+            for col in ['value', impf_col, self.hazard.cent_exp_col]
+        })
+        if exp_gdf.size == 0:
+            LOGGER.warning("No exposures with value >0 in the vicinity of the hazard.")
+        return exp_gdf
 
-    """
-    imp_mat.data = np.clip(imp_mat.data, 0, cover.to_numpy()[imp_mat.nonzero()[1]])
-    imp_mat.eliminate_zeros()
-    return imp_mat
+    def imp_mat_gen(self, exp_gdf, impf_col):
+        """
+        List of impact matrices for the exposure and of corresponding exposures indices
+        """
+        for impf_id in exp_gdf[impf_col].unique():
+            impf = self.impfset.get_func(haz_type=self.hazard.haz_type, fun_id=impf_id)
+            idx_exp_impf = (exp_gdf[impf_col].values == impf.id).nonzero()[0]
+            exp_step = CONFIG.max_matrix_size.int() // self.hazard.size
+            if not exp_step:
+                raise ValueError(
+                    f'Increase max_matrix_size configuration parameter to > {self.hazard.size}')
+            for chk in range(int(idx_exp_impf.size / exp_step) + 1):
+                exp_idx = idx_exp_impf[chk * exp_step:(chk + 1) * exp_step]
+                exp_values = exp_gdf.value.values[exp_idx]
+                cent_idx = exp_gdf[self.hazard.cent_exp_col].values[exp_idx]
+                yield (self.impact_matrix(exp_values, cent_idx, impf), exp_idx)
 
+    def impact_matrix(self, exp_values, cent_idx, impf):
+        """
+        Compute the impact matrix for given exposure values, assigned centroids, a hazard,
+        and one impact function.
+
+        Parameters
+        ----------
+        exp_values : np.array
+            Exposure values
+        cent_idx : np.array
+            Hazard centroids assigned to each exposure location
+        hazard : Hazard
+           Hazard object
+        impf : ImpactFunction
+            one impactfunction comon to all exposure elements in exp_gdf
+
+        Returns
+        -------
+        scipy.sparse.csr_matrix
+            Impact per event (rows) per exposure point (columns)
+        """
+        n_centroids = cent_idx.size
+        mdr = self.hazard.get_mdr(cent_idx, impf)
+        fract = self.hazard.get_fraction(cent_idx)
+        exp_values_csr = sparse.csr_matrix(
+            (exp_values, np.arange(n_centroids), [0, n_centroids]),
+            shape=(1, n_centroids))
+        return fract.multiply(mdr).multiply(exp_values_csr)
+
+    @staticmethod
+    def stich_impact_matrix(imp_mat_list, n_events, n_exp_pnt):
+        """
+        Make an impact matrix from an impact matrix list
+        """
+        data, row, col = np.hstack([
+            (mat.data, mat.nonzero()[0], idx[mat.nonzero()[1]])
+            for mat, idx in imp_mat_list
+            ])
+        return sparse.csr_matrix((data, (row, col)), shape=(n_events, n_exp_pnt))
+
+    @staticmethod
+    def stich_risk_metrics(imp_mat_list, freq, n_events, n_exp_pnt):
+        """
+        Compute the impact metrics from an impact matrix list
+        """
+        at_event = np.zeros(n_events)
+        eai_exp = np.zeros(n_exp_pnt)
+        for imp_mat, exp_idx in imp_mat_list:
+            at_event += at_event_from_mat(imp_mat)
+            eai_exp[exp_idx] += eai_exp_from_mat(imp_mat, freq)
+        aai_agg = aai_agg_from_eai_exp(eai_exp)
+        return at_event, eai_exp, aai_agg
+
+    @staticmethod
+    def apply_deductible_to_imp_mat(imp_mat, deductible, hazard, cent_idx, impf):
+        """
+        Apply a deductible per exposure point to an impact matrix at given
+        centroid points for given impact function.
+
+        All exposure points must have the same impact function. For different
+        impact functions apply use this method repeatedly on the same impact
+        matrix.
+
+        Parameters
+        ----------
+        imp_mat : scipy.sparse.csr_matrix
+            impact matrix (events x exposure points)
+        deductible : np.array()
+            deductible for each exposure point
+        hazard : Hazard
+            hazard used to compute the imp_mat
+        cent_idx : np.array()
+            index of centroids associated with each exposure point
+        impf : ImpactFunc
+            impact function associated with the exposure points
+
+        Returns
+        -------
+        imp_mat : scipy.sparse.csr_matrix
+            impact matrix with applied deductible
+
+        """
+        paa = hazard.get_paa(cent_idx, impf)
+        imp_mat -= paa.multiply(sparse.csr_matrix(deductible))
+        imp_mat.eliminate_zeros()
+        return imp_mat
+
+    @staticmethod
+    def apply_cover_to_imp_mat(imp_mat, cover):
+        """
+        Apply cover to impact matrix.
+
+        The impact data is clipped to the range [0, cover]. The cover is defined
+        per exposure point.
+
+        Parameters
+        ----------
+        imp_mat : scipy.sparse.csr_matrix
+            impact matrix
+        cover : np.array()
+            cover per exposures point (columns of imp_mat)
+
+        Returns
+        -------
+        imp_mat : scyp.sparse.csr_matrix
+            impact matrix with applied cover
+
+        """
+        imp_mat.data = np.clip(imp_mat.data, 0, cover.to_numpy()[imp_mat.nonzero()[1]])
+        imp_mat.eliminate_zeros()
+        return imp_mat
 
 class Impact():
     """Impact definition. Compute from an entity (exposures and impact
@@ -343,114 +455,19 @@ class Impact():
 
     def calc(self, exposures, impact_funcs, hazard, save_mat=False):
         """This function is deprecated, use Impact.calc_risk and Impact.calc_insured_risk instead."""
+        impcalc= Impact_calc(exposures, impact_funcs, hazard)
         if ('deductible' in exposures.gdf) and ('cover' in exposures.gdf) \
             and exposures.gdf.cover.max():
             # LOGGER.warning("To compute the risk transfer value"
             #      "please use Impact.calc_insured_risk")
-            self.__dict__ = self.calc_insured_risk(exposures, impact_funcs, hazard, save_mat).__dict__
+            self.__dict__ = impcalc.insured_risk(save_mat).__dict__
         else:
             # LOGGER.warning("The use of Impact.calc() is deprecated."
             #      "Please use Impact.calc_risk() or Impact.calc_risk_insured().")
-            self.__dict__ = self.calc_risk(exposures, impact_funcs, hazard, save_mat).__dict__
+            self.__dict__ = impcalc.risk(save_mat).__dict__
 
     @classmethod
-    def calc_risk(cls, exposures, impact_funcs, hazard, save_mat=True):
-        """Compute impact of an hazard to exposures including risk metrics.
-
-        Parameters
-        ----------
-        exposures : climada.entity.Exposures
-            the exposures
-        impact_funcs : climada.entity.ImpactFuncSet
-            the set of impact functions
-        hazard : climada.Hazard
-            the hazard
-        save_mat : bool
-            if true, save the total impact matrix (events x exposures)
-
-        Examples
-        --------
-            Use Entity class:
-
-            >>> haz = Hazard.from_mat(HAZ_DEMO_MAT)  # Set hazard
-            >>> ent = Entity.from_excel(ENT_TEMPLATE_XLS) # Set exposures
-            >>> imp = Impact.calc_risk(ent.exposures, ent.impact_funcs, haz)
-            >>> imp.calc_freq_curve().plot()
-
-            Specify only exposures and impact functions:
-
-            >>> haz = Hazard.from_mat(HAZ_DEMO_MAT)  # Set hazard
-            >>> funcs = ImpactFuncSet.from_excel(ENT_TEMPLATE_XLS) # Set impact functions
-            >>> exp = Exposures(pd.read_excel(ENT_TEMPLATE_XLS)) # Set exposures
-            >>> imp = Impact.calc_risk(exp, funcs, haz)
-            >>> imp.aai_agg
-        """
-        impf_col = exposures.get_impf_column(hazard.haz_type)
-        exp_gdf = get_minimal_exp(exposures, hazard, impf_col)
-        LOGGER.info('Calculating impact for %s assets (>0) and %s events.',
-                    exp_gdf.size, hazard.size)
-        imp_mat_list = imp_mat_gen(hazard, exp_gdf, impf_col, impact_funcs)
-        n_exp_pnt = exposures.gdf.shape[0]
-        n_events = hazard.size
-        if save_mat:
-            imp_mat = stich_impact_matrix(imp_mat_list, n_events, n_exp_pnt)
-            return cls.from_imp_mat(imp_mat, exposures, impact_funcs, hazard)
-        else:
-            at_event, eai_exp, aai_agg = stich_risk_metrics(imp_mat_list, hazard.frequency, n_events, n_exp_pnt)
-            return cls.from_imp_metrics(at_event, eai_exp, aai_agg, exposures, impact_funcs, hazard)
-
-    @classmethod
-    def calc_insured_risk(cls, exposures, impact_funcs, hazard, save_mat=False):
-        """
-        To be document and written more nicely.
-
-        Parameters
-        ----------
-        cls : TYPE
-            DESCRIPTION.
-        exposures : TYPE
-            DESCRIPTION.
-        impact_funcs : TYPE
-            DESCRIPTION.
-        hazard : TYPE
-            DESCRIPTION.
-        save_mat : TYPE, optional
-            DESCRIPTION. The default is False.
-
-        Returns
-        -------
-        TYPE
-            DESCRIPTION.
-
-        """
-        impf_col = exposures.get_impf_column(hazard.haz_type)
-        exp_gdf = get_minimal_exp(exposures, hazard, impf_col)
-        LOGGER.info('Calculating impact for %s assets (>0) and %s events.',
-                    exp_gdf.size, hazard.size)
-        imp_mat_list = imp_mat_gen(hazard, exp_gdf, impf_col, impact_funcs)
-        n_exp_pnt = exposures.gdf.shape[0]
-        n_events = hazard.size
-
-        def insured_mat_gen(imp_mat_gen, exposures, impact_funcs, hazard, impf_col):
-            for mat, exp_idx in imp_mat_gen:
-                impf_id = exposures.gdf[impf_col][exp_idx].unique()[0]
-                deductible = exposures.gdf['deductible'][exp_idx]
-                cent_idx = exposures.gdf['centr_TC'][exp_idx]
-                impf = impact_funcs.get_func(haz_type=hazard.haz_type, fun_id=impf_id)
-                mat = apply_deductible_to_imp_mat(mat, deductible, hazard, cent_idx, impf)
-                cover = exposures.gdf['cover'][exp_idx]
-                mat = apply_cover_to_imp_mat(mat, cover)
-                yield (mat, exp_idx)
-        imp_mat_list = insured_mat_gen(imp_mat_list, exposures, impact_funcs, hazard, impf_col)
-        if save_mat:
-            imp_mat = stich_impact_matrix(imp_mat_list, n_events, n_exp_pnt)
-            return cls.from_imp_mat(imp_mat, exposures, impact_funcs, hazard)
-        else:
-            at_event, eai_exp, aai_agg = stich_risk_metrics(imp_mat_list, hazard.frequency, n_events, n_exp_pnt)
-            return cls.from_imp_metrics(at_event, eai_exp, aai_agg, exposures, impact_funcs, hazard)
-
-    @classmethod
-    def from_imp_metrics(cls, at_event, eai_exp, aai_agg, exposures, impf_set, hazard):
+    def from_imp_metrics(cls, at_event, eai_exp, aai_agg, exposures, impfset, hazard):
         """
         Set Impact attributes from the impact matrix.
 
@@ -485,14 +502,13 @@ class Impact():
             at_event = at_event,
             aai_agg = aai_agg,
             tag = {'exp': exposures.tag,
-                   'impf_set': impf_set.tag,
+                   'impf_set': impfset.tag,
                    'haz': hazard.tag
                    }
             )
 
-
     @classmethod
-    def from_imp_mat(cls, imp_mat, exposures, impf_set, hazard):
+    def from_imp_mat(cls, imp_mat, exposures, impfset, hazard):
         """
         Set Impact attributes from the impact matrix.
 
@@ -529,12 +545,12 @@ class Impact():
             aai_agg = aai_agg,
             imp_mat = imp_mat,
             tag = {'exp': exposures.tag,
-                   'impf_set': impf_set.tag,
+                   'impf_set': impfset.tag,
                    'haz': hazard.tag
                    }
             )
 
-    def calc_transfer_risk(self, attachment, cover):
+    def transfer_risk(self, attachment, cover):
         """Compute the risk transfer for the full portfolio
 
         Parameters
@@ -555,7 +571,7 @@ class Impact():
         transfer_aai_agg = np.sum(transfer_at_event * self.frequency)
         return transfer_at_event, transfer_aai_agg
 
-    def calc_residual_risk(self, attachment, cover):
+    def residual_risk(self, attachment, cover):
         """Compute the residual risk after application of insurance
         attachment and cover to entire portfolio.
 
@@ -574,7 +590,7 @@ class Impact():
             average annual residual risk
 
         """
-        transfer_at_event, _ = self.calc_transfer_risk(attachment, cover)
+        transfer_at_event, _ = self.transfer_risk(attachment, cover)
         residual_at_event = np.maximum(self.at_event - transfer_at_event, 0)
         residual_aai_agg = np.sum(residual_at_event * self.frequency)
         return residual_at_event, residual_aai_agg
@@ -611,7 +627,7 @@ class Impact():
 
         return new_imp, Impact()
 
-    def calc_impact_per_year(self, all_years=True, year_range=None):
+    def impact_per_year(self, all_years=True, year_range=None):
         """Calculate yearly impact from impact data.
 
         Note: the impact in a given year is summed over all events.
@@ -654,10 +670,10 @@ class Impact():
         return year_set
 
     def calc_impact_year_set(self,all_years=True, year_range=None):
-        """This function is deprecated, use Impact.calc_impact_per_year instead."""
+        """This function is deprecated, use Impact.impact_per_year instead."""
         LOGGER.warning("The use of Impact.calc_impact_year_set is deprecated."
-                       "Use Impact.calc_impact_per_year instead.")
-        return self.calc_impact_per_year(all_years=all_years, year_range=year_range)
+                       "Use Impact.impact_per_year instead.")
+        return self.impact_per_year(all_years=all_years, year_range=year_range)
 
     def local_exceedance_imp(self, return_periods=(25, 50, 100, 250)):
         """Compute exceedance impact map for given return periods.
