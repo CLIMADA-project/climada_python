@@ -205,24 +205,25 @@ class TestLPUtils(unittest.TestCase):
         """ """
         pass
 
-class TestImpactSetters(unittest.TestCase):
-    """ """
+# Not needed, will come with another pull request.
+# class TestImpactSetters(unittest.TestCase):
+#     """ """
 
-    def test_set_imp_mat(self):
-        """ test set_imp_mat"""
-        pass
+#     def test_set_imp_mat(self):
+#         """ test set_imp_mat"""
+#         pass
 
-    def test_eai_exp_from_mat(self):
-        """ test eai_exp_from_mat"""
+#     def test_eai_exp_from_mat(self):
+#         """ test eai_exp_from_mat"""
 
-        pass
+#         pass
 
-    def test_at_event_from_mat(self):
-        """Test at_event_from_mat"""
+#     def test_at_event_from_mat(self):
+#         """Test at_event_from_mat"""
 
-    def test_aai_agg_from_at_event(self):
-        """Test aai_agg_from_at_event"""
-        pass
+#     def test_aai_agg_from_at_event(self):
+#         """Test aai_agg_from_at_event"""
+#         pass
 
 
 
