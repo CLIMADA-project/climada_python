@@ -124,7 +124,7 @@ def risk_metrics_from_mat(imp_mat, freq):
     return at_event, eai_exp, aai_agg
 
 
-class Impact_calc():
+class ImpactCalc():
     """
     Class to compute impacts from exposures, impact function set and hazard
     """
@@ -455,7 +455,7 @@ class Impact():
 
     def calc(self, exposures, impact_funcs, hazard, save_mat=False):
         """This function is deprecated, use Impact.calc_risk and Impact.calc_insured_risk instead."""
-        impcalc= Impact_calc(exposures, impact_funcs, hazard)
+        impcalc= ImpactCalc(exposures, impact_funcs, hazard)
         if ('deductible' in exposures.gdf) and ('cover' in exposures.gdf) \
             and exposures.gdf.cover.max():
             # LOGGER.warning("To compute the risk transfer value"
