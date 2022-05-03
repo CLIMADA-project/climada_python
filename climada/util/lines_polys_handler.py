@@ -37,7 +37,7 @@ LOGGER = logging.getLogger(__name__)
 
 def calc_geom_impact(
         exp, impf_set, haz, res,
-        to_meters=False, disagg=None, agg='sum'):
+        to_meters=False, disagg_met='avg', disagg_val=None, agg='sum'):
     """
     Compute impact for exposure with (multi-)polygons and/or (multi-)lines.
     Lat/Lon values in exp.gdf are ignored, only exp.gdf.geometry is considered.
@@ -62,13 +62,17 @@ def calc_geom_impact(
        an equal area projection for disaggregation.  The exposures are
        then projected back to the original projections before  impact
        calculation. The default is False.
-    disagg : string, optional
-        Disaggregation method for the `value` column of the exposure gdf.
-        if 'avg', average value over points
-        if 'area', area per point (res*res) for polygons, and distance per
-            point (res) for lines.
-        if 'None', value is unchanged or set to 1 if no value is defined.
-        The default is None.
+    disagg_met : string, optional
+        Disaggregation method of the shapes's original value onto its inter-
+        polated points. 'avg': Divide the value evenly over all the new points;
+        'fix': Replicate the value onto all the new points. Default is 'avg'.
+        Works in combination with the kwarg 'disagg_val'.
+    disagg_val: float, optional
+        Specifies from where and what number should be taken as the value, which
+        is to be disaggregated according to the method provided in disagg_met.
+        None: default. The shape's value is taken from the exp.gdf.value column.
+        Will throw an error if no value column is present.
+        float: This given number will be disaggregated according to the method.
     agg : string, optional
         Aggregation method of the point impacts into impact for respective
         parent-geometry.
@@ -93,7 +97,8 @@ def calc_geom_impact(
     # disaggregate exposure
     exp_pnt = exp_geom_to_pnt(
         exp=exp, res=res,
-        to_meters=to_meters, disagg=disagg
+        to_meters=to_meters, disagg_met=disagg_met,
+        disagg_val=disagg_val
         )
     exp_pnt.assign_centroids(haz)
 
@@ -105,7 +110,6 @@ def calc_geom_impact(
     impact_agg = impact_pnt_agg(impact_pnt, exp_pnt, agg)
 
     return impact_agg
-
 
 def impact_pnt_agg(impact_pnt, exp_pnt, agg):
     """
@@ -150,7 +154,7 @@ def impact_pnt_agg(impact_pnt, exp_pnt, agg):
     # Add original geometries for plotting
     impact_agg.geom_exp = exp_pnt.gdf.xs(0, level=1)\
         .set_geometry('geometry_orig')\
-        .geometry.rename('geometry')
+            .geometry.rename('geometry')
 
     return impact_agg
 
@@ -192,8 +196,8 @@ def aggregate_impact_mat(imp_pnt, gdf_pnt, agg):
         raise ValueError(f"Please choose a valid aggregation method. {agg} is not valid")
     csr_mask = sp.sparse.csr_matrix(
         (mask, (row_pnt, col_geom)),
-        shape=(len(row_pnt), len(np.unique(col_geom)))
-    )
+         shape=(len(row_pnt), len(np.unique(col_geom)))
+        )
     return imp_pnt.imp_mat.dot(csr_mask)
 
 
@@ -223,7 +227,7 @@ def plot_eai_exp_geom(imp_geom, centered=False, figsize=(9, 13), **kwargs):
         kwargs['legend_kwds'] = {
             'label': f"Impact [{imp_geom.unit}]",
             'orientation': "horizontal"
-        }
+            }
     if 'legend' not in kwargs:
         kwargs['legend'] = True
     gdf_plot = gpd.GeoDataFrame(imp_geom.geom_exp)
@@ -234,8 +238,7 @@ def plot_eai_exp_geom(imp_geom, centered=False, figsize=(9, 13), **kwargs):
         gdf_plot = gdf_plot.to_crs(proj_plot)
     return gdf_plot.plot(column = 'impact', **kwargs)
 
-
-def exp_geom_to_pnt(exp, res, to_meters, disagg):
+def exp_geom_to_pnt(exp, res, to_meters, disagg_met, disagg_val):
     """
     Disaggregate exposures with (multi-)polygons and/or (multi-)lines
     geometries to points.
@@ -253,12 +256,13 @@ def exp_geom_to_pnt(exp, res, to_meters, disagg):
        an equal area projection for disaggregation.  The exposures are
        then projected back to the original projections before  impact
        calculation. The default is False.
-    disagg : string,
-        Disaggregation method.
-        if 'avg' value is average of value over points
-        if 'area' value is area per points. Area per point (res*res)
-            for polygons, and distance per point (res) for lines.
-        if 'None' value is unchanged (or 1 if no value is defined)
+    disagg_met : string
+        Disaggregation method for the `value` column of the exposure gdf.
+        if 'avg', average value over points
+        if 'fix', same value for each point
+    disagg_val: float
+        if 'None', value is taken from exp.gdf.value column, else the indicated
+        value is taken for disaggregation according to disagg_met
 
     Returns
     -------
@@ -270,17 +274,29 @@ def exp_geom_to_pnt(exp, res, to_meters, disagg):
     """
 
     line_mask, poly_mask = _line_poly_mask(exp.gdf)
-    gdf_pnt = gpd.GeoDataFrame([])
+    gdf_geom = exp.gdf.copy()
 
+    if disagg_val is not None:
+        gdf_geom.value = disagg_val
+
+    if ((disagg_val is None) and ('value' not in gdf_geom.columns)):
+        raise ValueError('There is no value column in the exposure gdf to'+
+                         ' disaggregate from. Please set disagg_val explicitly.')
+
+    if disagg_met not in ['fix', 'avg']:
+        raise ValueError(f"{disagg_met} is not a valid argument for 'disagg_met'."+
+                         " Please choose one of ['fix', 'avg'] ")
+
+    gdf_pnt = gpd.GeoDataFrame([])
     if np.any(poly_mask):
         gdf_pnt = gpd.GeoDataFrame(
             pd.concat(
-                [gdf_pnt, _gdf_poly_to_pnt(exp.gdf[poly_mask], res, to_meters, disagg)]
+                [gdf_pnt, gdf_poly_to_pnt(gdf_geom[poly_mask], res, to_meters, disagg_met)]
             ))
     if np.any(line_mask):
         gdf_pnt = gpd.GeoDataFrame(
             pd.concat(
-                [gdf_pnt, _gdf_line_to_pnt(exp.gdf[line_mask], res, to_meters, disagg)]
+            [gdf_pnt, gdf_line_to_pnt(gdf_geom[line_mask], res, to_meters, disagg_met)]
             ))
 
     # set lat lon and centroids
@@ -302,7 +318,7 @@ def _line_poly_mask(gdf):
     return line_mask, poly_mask
 
 
-def _gdf_line_to_pnt(gdf, res, to_meters, disagg):
+def gdf_line_to_pnt(gdf, res, to_meters, disagg_met):
     """
     Disaggregate exposures with (multi-)lines
     geometries to points.
@@ -318,11 +334,10 @@ def _gdf_line_to_pnt(gdf, res, to_meters, disagg):
     to_meters : bool, optional
        If True, the geometries are projected to an equal area projection before
        the disaggregation. res is then in meters. Default is False.
-    disagg : string, optional
-        Disaggregation method.
-        if 'avg' value is average over points
-        if 'area' value is area per points. Distance per point (res) for lines.
-        if 'None' value is unchanged (or 1 if no value is defined)
+    disagg_met : string, optional
+        Disaggregation method for the `value` column of the exposure gdf.
+        if 'avg', average value over points
+        if 'fix', same value for each point
 
     Returns
     -------
@@ -333,22 +348,17 @@ def _gdf_line_to_pnt(gdf, res, to_meters, disagg):
     """
 
     # rasterize (disaggregate geometry)
-    gdf_pnt = line_to_pnts(gdf, res, to_meters)
+    gdf_pnt = _line_to_pnts(gdf, res, to_meters)
 
     # disaggregate value column
-    if disagg == 'avg':
-        gdf_pnt = disagg_values_avg(gdf_pnt)
-    elif disagg == 'area':
-        gdf_pnt = assign_point_val(gdf_pnt, res)
-    elif (disagg is None) or ('value' not in gdf_pnt.columns):
-        gdf_pnt['value'] = 1
+    if disagg_met == 'avg':
+        gdf_pnt = _disagg_values_avg(gdf_pnt)
 
     return gdf_pnt
 
-
-def _gdf_poly_to_pnt(gdf, res, to_meters, disagg):
+def gdf_poly_to_pnt(gdf, res, to_meters, disagg_met):
     """
-    Disaggregate exposures with (multi-)polygons
+    Disaggregate geodataframe with (multi-)polygons
     geometries to points.
 
     Parameters
@@ -364,12 +374,10 @@ def _gdf_poly_to_pnt(gdf, res, to_meters, disagg):
        the disaggregation. res is then in meters. The exposures are
        then reprojected into the original projections before the impact
        calculation.
-    disagg : string
-        Disaggregation method.
-        if 'avg' value is average over points
-        if 'area' value is area per points. Area per point (res*res)
-            for polygons.
-        if 'None' value is unchanged (or 1 if no value is defined)
+    disagg_met : string, optional
+        Disaggregation method for the `value` column of the exposure gdf.
+        if 'avg', average value over points
+        if 'fix', same value for each point
 
     Returns
     -------
@@ -380,26 +388,22 @@ def _gdf_poly_to_pnt(gdf, res, to_meters, disagg):
     """
 
     # rasterize (disaggregate geometry)
-    gdf_pnt = poly_to_pnts(gdf, res, to_meters)
+    gdf_pnt = _poly_to_pnts(gdf, res, to_meters)
 
     # disaggregate value column
-    if disagg == 'avg':
-        gdf_pnt = disagg_values_avg(gdf_pnt)
-    elif disagg == 'area':
-        gdf_pnt = assign_point_val(gdf_pnt, res * res)
-    elif disagg is None and 'value' not in gdf_pnt.columns:
-        gdf_pnt['value'] = 1
+    if disagg_met == 'avg':
+        gdf_pnt = _disagg_values_avg(gdf_pnt)
 
     return gdf_pnt
 
 
-def disagg_values_avg(gdf_pnts):
+def _disagg_values_avg(gdf_pnts):
     """
     Disaggregate value column of original gdf to disaggregated point gdf
 
     Parameters
     ----------
-    gdf_pnts : geodataframe - mutable?
+    gdf_pnts : geodataframe
         Geodataframe with a double index, first for geometries (lines, polygons),
         second for the point disaggregation of the polygons. The value column is assumed
         to represent values per polygon / line (first index).
@@ -422,33 +426,7 @@ def disagg_values_avg(gdf_pnts):
     return gdf_disagg
 
 
-def assign_point_val(gdf_pnts, value_per_pnt):
-    """
-    Assign same value to all geodataframe points
-
-    Parameters
-    ----------
-    gdf_pnts : geodataframe
-        Geodataframe with a double index, first for polygon geometries,
-        second for the point disaggregation of the polygons. The value column is assumed
-        to represent values per polygon (first index).
-    value_per_pnt: float
-        Value to assign to each point.
-
-    Returns
-    -------
-    gdf_disagg : geodataframe
-        The value per point is value_per_pnt
-
-    """
-
-    gdf_disagg = gdf_pnts.copy()
-    gdf_disagg['value'] = value_per_pnt
-
-    return gdf_disagg
-
-
-def poly_to_pnts(gdf, res, to_meters=False):
+def _poly_to_pnts(gdf, res, to_meters=False):
     """
     Disaggregate (multi-)polygons geodataframe to points.
     Note: If polygon is smaller than specified resolution, a representative
@@ -492,6 +470,7 @@ def poly_to_pnts(gdf, res, to_meters=False):
     gdf_points = gdf_points.explode()
     gdf_points.index = gdf_points.index.set_levels(idx, level=0)
     return gdf_points
+
 
 def _interp_one_poly_grid(poly, x_grid, y_grid):
     """
@@ -662,7 +641,7 @@ def reproject_poly(poly, orig_crs, dest_crs):
     project = _get_pyproj_trafo(orig_crs, dest_crs)
     return sh.ops.transform(project.transform, poly)
 
-def line_to_pnts(gdf_lines, res, to_meters=False):
+def _line_to_pnts(gdf_lines, res, to_meters=False):
 
     """
     Convert a GeoDataframe with LineString geometries to
