@@ -35,7 +35,6 @@ import geopandas as gpd
 import numba
 import numpy as np
 import pandas as pd
-
 import pycountry
 import rasterio
 import rasterio.crs
@@ -345,7 +344,7 @@ def compute_geodesic_lengths(gdf):
 
     Note
     ----
-    This implementation relies on non-projected  (i.e. geographic coordinate
+    This implementation relies on non-projected (i.e. geographic coordinate
     systems that span the entire globe) crs only, which results in
     sea-level distances and hence a certain (minor) level of distortion; cf.
     https://gis.stackexchange.com/questions/176442/what-is-the-real-distance-between-positions
@@ -354,8 +353,7 @@ def compute_geodesic_lengths(gdf):
     gdf_tmp = gdf.to_crs(DEF_CRS) if not gdf.crs.is_geographic else gdf.copy()
     geod = gdf_tmp.crs.get_geod()
 
-    return gdf_tmp.apply(lambda row: geod.geometry_length(
-        row.geometry), axis=1)
+    return gdf_tmp.apply(lambda row: geod.geometry_length(row.geometry), axis=1)
 
 
 def get_gridcellarea(lat, resolution=0.5, unit='ha'):

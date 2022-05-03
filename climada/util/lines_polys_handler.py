@@ -18,26 +18,26 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 import logging
 import copy
 from collections import Counter
+
+import cartopy.crs as ccrs
 import geopandas as gpd
 import numpy as np
 import pandas as pd
+import pyproj
 import scipy as sp
 import shapely as sh
 import shapely.geometry as shgeom
-import cartopy.crs as ccrs
 
 from climada.engine import Impact
 from climada.util import coordinates as u_coord
 
-import pyproj
 
 LOGGER = logging.getLogger(__name__)
 
 
 def calc_geom_impact(
         exp, impf_set, haz, res,
-        to_meters=False, disagg=None, agg='sum'
-        ):
+        to_meters=False, disagg=None, agg='sum'):
     """
     Compute impact for exposure with (multi-)polygons and/or (multi-)lines.
     Lat/Lon values in exp.gdf are ignored, only exp.gdf.geometry is considered.
@@ -106,6 +106,7 @@ def calc_geom_impact(
 
     return impact_agg
 
+
 def impact_pnt_agg(impact_pnt, exp_pnt, agg):
     """
     Aggregate the impact per geometry.
@@ -149,7 +150,7 @@ def impact_pnt_agg(impact_pnt, exp_pnt, agg):
     # Add original geometries for plotting
     impact_agg.geom_exp = exp_pnt.gdf.xs(0, level=1)\
         .set_geometry('geometry_orig')\
-            .geometry.rename('geometry')
+        .geometry.rename('geometry')
 
     return impact_agg
 
@@ -191,8 +192,8 @@ def aggregate_impact_mat(imp_pnt, gdf_pnt, agg):
         raise ValueError(f"Please choose a valid aggregation method. {agg} is not valid")
     csr_mask = sp.sparse.csr_matrix(
         (mask, (row_pnt, col_geom)),
-         shape=(len(row_pnt), len(np.unique(col_geom)))
-        )
+        shape=(len(row_pnt), len(np.unique(col_geom)))
+    )
     return imp_pnt.imp_mat.dot(csr_mask)
 
 
@@ -222,7 +223,7 @@ def plot_eai_exp_geom(imp_geom, centered=False, figsize=(9, 13), **kwargs):
         kwargs['legend_kwds'] = {
             'label': f"Impact [{imp_geom.unit}]",
             'orientation': "horizontal"
-            }
+        }
     if 'legend' not in kwargs:
         kwargs['legend'] = True
     gdf_plot = gpd.GeoDataFrame(imp_geom.geom_exp)
@@ -232,6 +233,7 @@ def plot_eai_exp_geom(imp_geom, centered=False, figsize=(9, 13), **kwargs):
         proj_plot = ccrs.PlateCarree(central_longitude=0.5 * (xmin + xmax))
         gdf_plot = gdf_plot.to_crs(proj_plot)
     return gdf_plot.plot(column = 'impact', **kwargs)
+
 
 def exp_geom_to_pnt(exp, res, to_meters, disagg):
     """
@@ -278,7 +280,7 @@ def exp_geom_to_pnt(exp, res, to_meters, disagg):
     if np.any(line_mask):
         gdf_pnt = gpd.GeoDataFrame(
             pd.concat(
-            [gdf_pnt, _gdf_line_to_pnt(exp.gdf[line_mask], res, to_meters, disagg)]
+                [gdf_pnt, _gdf_line_to_pnt(exp.gdf[line_mask], res, to_meters, disagg)]
             ))
 
     # set lat lon and centroids
@@ -343,6 +345,7 @@ def _gdf_line_to_pnt(gdf, res, to_meters, disagg):
 
     return gdf_pnt
 
+
 def _gdf_poly_to_pnt(gdf, res, to_meters, disagg):
     """
     Disaggregate exposures with (multi-)polygons
@@ -396,7 +399,7 @@ def disagg_values_avg(gdf_pnts):
 
     Parameters
     ----------
-    gdf_pnts : geodataframe
+    gdf_pnts : geodataframe - mutable?
         Geodataframe with a double index, first for geometries (lines, polygons),
         second for the point disaggregation of the polygons. The value column is assumed
         to represent values per polygon / line (first index).
