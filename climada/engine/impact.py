@@ -170,7 +170,7 @@ class Impact_calc():
             >>> imp.aai_agg
         """
         impf_col = self.exposures.get_impf_column(self.hazard.haz_type)
-        exp_gdf = self.get_minimal_exp(self.exposures, self.hazard, impf_col)
+        exp_gdf = self.get_minimal_exp(impf_col)
         LOGGER.info('Calculating impact for %s assets (>0) and %s events.',
                     exp_gdf.size, self.hazard.size)
         imp_mat_list = self.imp_mat_gen(exp_gdf, impf_col)
