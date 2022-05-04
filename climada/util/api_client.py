@@ -259,7 +259,7 @@ class Client():
     def _is_online(url):
         host = [x for x in url.split('/')
                 if x not in ['https:', 'http:', '']][0]
-        port = 80 if host.startswith('http://') else 443
+        port = 80 if url.startswith('http://') else 443
         socket.setdefaulttimeout(1)
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as skt:
             try:
