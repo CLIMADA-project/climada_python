@@ -440,7 +440,7 @@ def _poly_to_pnts(gdf, res, to_meters=False):
     Parameters
     ----------
     gdf : geodataframe
-        Can be any CRS
+        Can have any CRS
     res : float
         Resolution (same units as gdf crs)
 
