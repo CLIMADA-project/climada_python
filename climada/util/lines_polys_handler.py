@@ -281,7 +281,6 @@ def exp_geom_to_pnt(exp, res, to_meters, disagg_met, disagg_val):
 
     """
 
-    line_mask, poly_mask = _line_poly_mask(exp.gdf)
     gdf_geom = exp.gdf.copy()
 
     if disagg_val is not None:
@@ -295,10 +294,7 @@ def exp_geom_to_pnt(exp, res, to_meters, disagg_met, disagg_val):
         raise ValueError(f"{disagg_met} is not a valid argument for 'disagg_met'."+
                          " Please choose one of ['fix', 'avg'] ")
 
-    gdf_pnt = gpd.GeoDataFrame(pd.concat([
-        gdf_poly_to_pnt(gdf_geom[poly_mask], res, to_meters, disagg_met),
-        gdf_line_to_pnt(gdf_geom[line_mask], res, to_meters, disagg_met)
-    ]))
+    gdf_pnt = gdf_to_pnts(gdf_geom, res, to_meters, disagg_met)
 
     # set lat lon and centroids
     exp_pnt = exp.copy()
@@ -308,58 +304,20 @@ def exp_geom_to_pnt(exp, res, to_meters, disagg_met, disagg_val):
     return exp_pnt
 
 
-def _line_poly_mask(gdf):
-    """Mask for lines and polygons"""
+def _pnt_line_poly_mask(gdf):
+    """Mask for points, lines and polygons"""
+    pnt_mask =  gdf.geometry.apply(lambda x: isinstance(x, shgeom.Point))
+
     line_mask =  gdf.geometry.apply(lambda x: isinstance(x, shgeom.LineString))
     line_mask |=  gdf.geometry.apply(lambda x: isinstance(x, shgeom.MultiLineString))
 
     poly_mask =  gdf.geometry.apply(lambda x: isinstance(x, shgeom.Polygon))
     poly_mask |=  gdf.geometry.apply(lambda x: isinstance(x, shgeom.MultiPolygon))
 
-    return line_mask, poly_mask
+    return pnt_mask, line_mask, poly_mask
 
 
-def gdf_line_to_pnt(gdf, res, to_meters, disagg_met):
-    """
-    Disaggregate exposures with (multi-)lines
-    geometries to points.
-
-    Parameters
-    ----------
-    gdf : GeoDataFrame
-        Geodataframe of an exposure instance with gdf.geometry containing (multi-)lines
-    res : float
-        Disaggregation distance beween two points. Can also be a
-        tuple of [x_grid, y_grid] numpy arrays. In this case, to_meters is
-        ignored.
-    to_meters : bool, optional
-       If True, the geometries are projected to an equal area projection before
-       the disaggregation. res is then in meters. Default is False.
-    disagg_met : string, optional
-        Disaggregation method for the `value` column of the exposure gdf.
-        if 'avg', average value over points
-        if 'fix', same value for each point
-
-    Returns
-    -------
-    gdf_pnt : GeoDataFrame
-        double index geodataframe, first level indicating
-        membership of the original geometries of exp,
-        second for the point disaggregation within each geometries.
-    """
-    if gdf.empty:
-        return gdf
-
-    # rasterize (disaggregate geometry)
-    gdf_pnt = _line_to_pnts(gdf, res, to_meters)
-
-    # disaggregate value column
-    if disagg_met == 'avg':
-        gdf_pnt = _disagg_values_avg(gdf_pnt)
-
-    return gdf_pnt
-
-def gdf_poly_to_pnt(gdf, res, to_meters, disagg_met):
+def gdf_to_pnts(gdf, res, to_meters, disagg_met):
     """
     Disaggregate geodataframe with (multi-)polygons
     geometries to points.
@@ -367,7 +325,8 @@ def gdf_poly_to_pnt(gdf, res, to_meters, disagg_met):
     Parameters
     ----------
     gdf : GeoDataFrame
-        The geodataframe instance with gdf.geometry containing (multi-)polygons
+        Feodataframe instance with gdf.geometry containing (multi)-lines or
+        (multi-)polygons. Points are ignored.
     res : float
         Resolution of the disaggregation grid. Can also be a
         tuple of [x_grid, y_grid] numpy arrays. In this case, to_meters is
@@ -392,8 +351,13 @@ def gdf_poly_to_pnt(gdf, res, to_meters, disagg_met):
     if gdf.empty:
         return gdf
 
-    # rasterize (disaggregate geometry)
-    gdf_pnt = _poly_to_pnts(gdf, res, to_meters)
+    pnt_mask, line_mask, poly_mask = _pnt_line_poly_mask(gdf)
+
+    gdf_pnt = gpd.GeoDataFrame(pd.concat([
+        gdf[pnt_mask],
+        _line_to_pnts(gdf[line_mask], res, to_meters, disagg_met),
+        _poly_to_pnts(gdf[poly_mask], res, to_meters, disagg_met)
+    ]))
 
     # disaggregate value column
     if disagg_met == 'avg':
