@@ -124,7 +124,7 @@ class TestExposureGeomToPnt(unittest.TestCase):
         x_grid, y_grid = u_coord.raster_to_meshgrid(trafo, width, height)
         #test
         exp_pnt = u_lp.exp_geom_to_pnt(exp_poly, res=0.1, to_meters=False, disagg_met='avg', disagg_val=None)
-        exp_pnt_grid = u_lp.exp_geom_to_pnt(exp_poly, (x_grid, y_grid), to_meters=False, disagg_met='avg', disagg_val=None)
+        exp_pnt_grid = u_lp.exp_geom_to_grid(exp_poly, (x_grid, y_grid), disagg_met='avg', disagg_val=None)
         self.check_unchanged_exp(exp_poly, exp_pnt_grid)
         for col in ['value', 'latitude', 'longitude']:
             np.testing.assert_allclose(exp_pnt.gdf[col], exp_pnt_grid.gdf[col])
@@ -133,7 +133,7 @@ class TestExposureGeomToPnt(unittest.TestCase):
         y_grid = np.append(y_grid, y_grid+10)
         #test
         exp_pnt = u_lp.exp_geom_to_pnt(exp_poly, res=0.1, to_meters=False, disagg_met='avg', disagg_val=None)
-        exp_pnt_grid = u_lp.exp_geom_to_pnt(exp_poly, (x_grid, y_grid), to_meters=False, disagg_met='avg', disagg_val=None)
+        exp_pnt_grid = u_lp.exp_geom_to_grid(exp_poly, (x_grid, y_grid), disagg_met='avg', disagg_val=None)
         self.check_unchanged_exp(exp_poly, exp_pnt_grid)
         for col in ['value', 'latitude', 'longitude']:
             np.testing.assert_allclose(exp_pnt.gdf[col], exp_pnt_grid.gdf[col])

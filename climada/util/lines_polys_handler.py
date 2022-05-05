@@ -207,6 +207,77 @@ def _aggregate_impact_mat(imp_pnt, gdf_pnt, agg_met):
         )
     return imp_pnt.imp_mat.dot(csr_mask)
 
+def calc_grid_impact(
+        exp, impf_set, haz, grid, disagg_met='avg', disagg_val=None, agg_met='sum'):
+    """
+    Compute impact for exposure with (multi-)polygons and/or (multi-)lines.
+    Lat/Lon values in exp.gdf are ignored, only exp.gdf.geometry is considered.
+
+    The geometries are first disaggregated to points. Polygons: grid with
+    resolution res*res. Lines: points along the line separated by distance res.
+    The impact per point is then re-aggregated for each geometry.
+
+    Parameters
+    ----------
+    exp : Exposures
+        The exposure instance with exp.gdf.geometry containing (multi-)polygons
+        and/or (multi-)lines
+    impf_set : ImpactFuncSet
+        The set of impact functions.
+    haz : Hazard
+        The hazard instance.
+    grid : np.array()
+        Grid on which to disaggregate the exposures. Provided as two
+        vectors [x_grid, y_grid].
+    disagg_met : string, optional
+        Disaggregation method of the shapes's original value onto its inter-
+        polated points. 'avg': Divide the value evenly over all the new points;
+        'fix': Replicate the value onto all the new points. Default is 'avg'.
+        Works in combination with the kwarg 'disagg_val'.
+        The default is 'avg'.
+    disagg_val: float, optional
+        Specifies from where and what number should be taken as the value, which
+        is to be disaggregated according to the method provided in disagg_met.
+        None: default. The shape's value is taken from the exp.gdf.value column.
+        Will throw an error if no value column is present.
+        float: This given number will be disaggregated according to the method.
+        The default is None.
+    agg_met : string, optional
+        Aggregation method of the point impacts into impact for respective
+        parent-geometry.
+        If 'avg', the impact is averaged over all points in each geometry.
+        If 'sum', the impact is summed over all points in each geometry.
+        The default is 'sum'.
+
+    Returns
+    -------
+    Impact
+        Impact object with the impact per geometry (rows of exp.gdf). Contains
+        two additional attributes 'geom_exp' and 'coord_exp', the first one
+        being the origninal line or polygon geometries for which impact was
+        computed.
+
+    See Also
+    --------
+    exp_geom_to_pnt: disaggregate exposures
+
+    """
+
+    # disaggregate exposure
+    exp_pnt = exp_geom_to_grid(
+        exp=exp, grid= grid, disagg_met=disagg_met,
+        disagg_val=disagg_val
+        )
+    exp_pnt.assign_centroids(haz)
+
+    # compute point impact
+    impact_pnt = Impact()
+    impact_pnt.calc(exp_pnt, impf_set, haz, save_mat=True)
+
+    # re-aggregate impact to original exposure geometry
+    impact_agg = impact_pnt_agg(impact_pnt, exp_pnt, agg_met)
+
+    return impact_agg
 
 def plot_eai_exp_geom(imp_geom, centered=False, figsize=(9, 13), **kwargs):
     """
@@ -303,6 +374,57 @@ def exp_geom_to_pnt(exp, res, to_meters, disagg_met, disagg_val):
 
     return exp_pnt
 
+def exp_geom_to_grid(exp, grid, disagg_met, disagg_val):
+    """
+    Disaggregate exposures with (multi-)polygons and/or (multi-)lines
+    geometries to points.
+
+    Parameters
+    ----------
+    exp : Exposures
+        The exposure instance with exp.gdf.geometry containing lines or polygons
+    grid : np.array()
+        Grid on which to disaggregate the exposures. Provided as two
+        vectors [x_grid, y_grid].
+    disagg_met : string
+        Disaggregation method for the `value` column of the exposure gdf.
+        if 'avg', average value over points
+        if 'fix', same value for each point
+    disagg_val: float
+        if 'None', value is taken from exp.gdf.value column, else the indicated
+        value is taken for disaggregation according to disagg_met
+
+    Returns
+    -------
+    exp_pnt : Exposures
+        Exposures with a double index geodataframe, first level indicating
+        membership of the original geometries of exp,
+        second for the point disaggregation within each geometries.
+
+    """
+
+    gdf_geom = exp.gdf.copy()
+
+    if disagg_val is not None:
+        gdf_geom.value = disagg_val
+
+    if ((disagg_val is None) and ('value' not in gdf_geom.columns)):
+        raise ValueError('There is no value column in the exposure gdf to'+
+                         ' disaggregate from. Please set disagg_val explicitly.')
+
+    if disagg_met not in ['fix', 'avg']:
+        raise ValueError(f"{disagg_met} is not a valid argument for 'disagg_met'."+
+                         " Please choose one of ['fix', 'avg'] ")
+
+    gdf_pnt = gdf_to_grid(gdf_geom, grid, disagg_met)
+
+    # set lat lon and centroids
+    exp_pnt = exp.copy()
+    exp_pnt.set_gdf(gdf_pnt)
+    exp_pnt.set_lat_lon()
+
+    return exp_pnt
+
 
 def _pnt_line_poly_mask(gdf):
     """Mask for points, lines and polygons"""
@@ -378,6 +500,59 @@ def gdf_to_pnts(gdf, res, to_meters, disagg_met):
 
     return gdf_pnt
 
+def gdf_to_grid(gdf, grid, disagg_met):
+    """
+    Disaggregate geodataframe with (multi-)polygons
+    geometries to points.
+
+    Parameters
+    ----------
+    gdf : GeoDataFrame
+        Feodataframe instance with gdf.geometry containing (multi)-lines or
+        (multi-)polygons. Points are ignored.
+    grid : np.array()
+        Grid on which to disaggregate the exposures. Provided as two
+        vectors [x_grid, y_grid].
+    disagg_met : string, optional
+        Disaggregation method for the `value` column of the exposure gdf.
+        if 'avg', average value over points
+        if 'fix', same value for each point
+
+    Returns
+    -------
+    exp_pnt : Exposures
+        Exposures with a double index geodataframe, first for the geometries of exp,
+        second for the point disaggregation of the geometries.
+
+    """
+    if gdf.empty:
+        return gdf
+
+    pnt_mask, line_mask, poly_mask = _pnt_line_poly_mask(gdf)
+
+    # Concatenating an empty dataframe with an index  together with
+    # a dataframe with a multi-index breaks the multi-index
+    gdf_pnt = gpd.GeoDataFrame([])
+    if pnt_mask.any():
+        gdf_pnt = gpd.GeoDataFrame(pd.concat([
+            gdf_pnt,
+            gdf[pnt_mask]
+        ]))
+    if line_mask.any():
+        raise AttributeError("The exposures contains lines. Lines cannot"
+                             "be disaggregate on a fixed grid.")
+    if poly_mask.any():
+        gdf_pnt = gpd.GeoDataFrame(pd.concat([
+            gdf_pnt,
+            _poly_to_grid(gdf[poly_mask], grid)
+        ]))
+
+    # disaggregate value column
+    if disagg_met == 'avg':
+        gdf_pnt = _disagg_values_avg(gdf_pnt)
+
+    return gdf_pnt
+
 
 def _disagg_values_avg(gdf_pnts):
     """
@@ -438,16 +613,55 @@ def _poly_to_pnts(gdf, res, to_meters=False):
 
     gdf_points = gdf.copy().reset_index(drop=True)
 
-    if isinstance(res, tuple):
-        x_grid, y_grid = res
-        gdf_points['geometry_pnt'] = gdf_points.apply(
-            lambda row: _interp_one_poly_grid(row.geometry, x_grid, y_grid), axis=1)
-    elif to_meters:
+    if to_meters:
         gdf_points['geometry_pnt'] = gdf_points.apply(
             lambda row: _interp_one_poly_m(row.geometry, res, gdf.crs), axis=1)
     else:
         gdf_points['geometry_pnt'] = gdf_points.apply(
             lambda row: _interp_one_poly(row.geometry, res), axis=1)
+
+    gdf_points = _swap_geom_cols(
+        gdf_points, geom_to='geometry_orig', new_geom='geometry_pnt')
+
+    gdf_points = gdf_points.explode()
+    gdf_points.index = gdf_points.index.set_levels(idx, level=0)
+    return gdf_points
+
+
+def _poly_to_grid(gdf, grid):
+    """
+    Disaggregate (multi-)polygons geodataframe to points.
+    Note: If polygon is smaller than specified resolution, a representative
+    point within the polygon will be chosen, nevertheless. This may lead to
+    inaccuracies during value assignments / disaggregations.
+
+    Parameters
+    ----------
+    gdf : geodataframe
+        Can have any CRS
+    grid : np.array()
+        Grid on which to disaggregate the exposures. Provided as two
+        vectors [x_grid, y_grid].
+
+    Returns
+    -------
+    geodataframe
+        Geodataframe with a double index, first for polygon geometries,
+        second for the point disaggregation of the polygons.
+
+    """
+
+    if gdf.empty:
+        return gdf
+
+    # Needed because gdf.explode() requires numeric index
+    idx = gdf.index.to_list() #To restore the naming of the index
+
+    gdf_points = gdf.copy().reset_index(drop=True)
+
+    x_grid, y_grid = grid
+    gdf_points['geometry_pnt'] = gdf_points.apply(
+        lambda row: _interp_one_poly_grid(row.geometry, x_grid, y_grid), axis=1)
 
     gdf_points = _swap_geom_cols(
         gdf_points, geom_to='geometry_orig', new_geom='geometry_pnt')
