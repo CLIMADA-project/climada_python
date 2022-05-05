@@ -240,6 +240,7 @@ def plot_eai_exp_geom(imp_geom, centered=False, figsize=(9, 13), **kwargs):
     gdf_plot = gpd.GeoDataFrame(imp_geom.geom_exp)
     gdf_plot['impact'] = imp_geom.eai_exp
     if centered:
+        # pylint: disable=abstract-class-instantiated
         xmin, xmax = u_coord.lon_bounds(imp_geom.coord_exp[:,1])
         proj_plot = ccrs.PlateCarree(central_longitude=0.5 * (xmin + xmax))
         gdf_plot = gdf_plot.to_crs(proj_plot)
