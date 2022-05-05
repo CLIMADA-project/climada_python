@@ -294,17 +294,10 @@ def exp_geom_to_pnt(exp, res, to_meters, disagg_met, disagg_val):
         raise ValueError(f"{disagg_met} is not a valid argument for 'disagg_met'."+
                          " Please choose one of ['fix', 'avg'] ")
 
-    gdf_pnt = gpd.GeoDataFrame([])
-    if np.any(poly_mask):
-        gdf_pnt = gpd.GeoDataFrame(
-            pd.concat(
-                [gdf_pnt, gdf_poly_to_pnt(gdf_geom[poly_mask], res, to_meters, disagg_met)]
-            ))
-    if np.any(line_mask):
-        gdf_pnt = gpd.GeoDataFrame(
-            pd.concat(
-            [gdf_pnt, gdf_line_to_pnt(gdf_geom[line_mask], res, to_meters, disagg_met)]
-            ))
+    gdf_pnt = gpd.GeoDataFrame(pd.concat([
+        gdf_poly_to_pnt(gdf_geom[poly_mask], res, to_meters, disagg_met),
+        gdf_line_to_pnt(gdf_geom[line_mask], res, to_meters, disagg_met)
+    ]))
 
     # set lat lon and centroids
     exp_pnt = exp.copy()
@@ -353,6 +346,8 @@ def gdf_line_to_pnt(gdf, res, to_meters, disagg_met):
         membership of the original geometries of exp,
         second for the point disaggregation within each geometries.
     """
+    if gdf.empty:
+        return gdf
 
     # rasterize (disaggregate geometry)
     gdf_pnt = _line_to_pnts(gdf, res, to_meters)
@@ -393,6 +388,8 @@ def gdf_poly_to_pnt(gdf, res, to_meters, disagg_met):
         second for the point disaggregation of the geometries.
 
     """
+    if gdf.empty:
+        return gdf
 
     # rasterize (disaggregate geometry)
     gdf_pnt = _poly_to_pnts(gdf, res, to_meters)
