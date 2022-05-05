@@ -113,7 +113,7 @@ def calc_geom_impact(
 
     return impact_agg
 
-def impact_pnt_agg(impact_pnt, exp_pnt, agg):
+def impact_pnt_agg(impact_pnt, exp_pnt_gdf, agg):
     """
     Aggregate the impact per geometry.
 
@@ -124,10 +124,11 @@ def impact_pnt_agg(impact_pnt, exp_pnt, agg):
     ----------
     impact_pnt : Impact
         Impact object with impact per exposure point (lines of exp_pnt)
-    exp_pnt : Exposures
-        Exposures with a gdf featuring a multi-index, as obtained from
-        disaggregation method exp_geom_to_pnt(). First level indicating
-        membership of original geometries, second level the disaggregated points
+    exp_pnt_gdf : GeoDataFrame
+        Geodataframe of an exposures featuring a multi-index. First level indicating
+        membership of original geometries, second level the disaggregated points.
+        The exposure is obtained for instance with the disaggregation method
+        exp_geom_to_pnt().
     agg : string, optional
         If 'agg', the impact is averaged over all points in each geometry.
         If 'sum', the impact is summed over all points in each geometry.
@@ -139,22 +140,26 @@ def impact_pnt_agg(impact_pnt, exp_pnt, agg):
         Impact object with the impact per original geometry. Original geometry
         additionally stored in attribute 'geom_exp'; coord_exp contains only
         representative points (lat/lon) of those geometries.
+
+    See also
+    --------
+        exp_geom_to_pnt: exposures disaggregation method
     """
 
     # aggregate impact
-    mat_agg = aggregate_impact_mat(impact_pnt, exp_pnt.gdf, agg)
+    mat_agg = aggregate_impact_mat(impact_pnt, exp_pnt_gdf, agg)
 
     # write to impact obj
     impact_agg = set_imp_mat(impact_pnt, mat_agg)
 
     # add exposure representation points as coordinates
     repr_pnts = gpd.GeoSeries(
-        exp_pnt.gdf['geometry_orig'][:,0].apply(
+        exp_pnt_gdf['geometry_orig'][:,0].apply(
             lambda x: x.representative_point()))
     impact_agg.coord_exp = np.array([repr_pnts.y, repr_pnts.x]).transpose()
 
     # Add original geometries for plotting
-    impact_agg.geom_exp = exp_pnt.gdf.xs(0, level=1)\
+    impact_agg.geom_exp = exp_pnt_gdf.xs(0, level=1)\
         .set_geometry('geometry_orig')\
             .geometry.rename('geometry')
 
