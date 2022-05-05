@@ -353,11 +353,24 @@ def gdf_to_pnts(gdf, res, to_meters, disagg_met):
 
     pnt_mask, line_mask, poly_mask = _pnt_line_poly_mask(gdf)
 
-    gdf_pnt = gpd.GeoDataFrame(pd.concat([
-        gdf[pnt_mask],
-        _line_to_pnts(gdf[line_mask], res, to_meters, disagg_met),
-        _poly_to_pnts(gdf[poly_mask], res, to_meters, disagg_met)
-    ]))
+    # Concatenating an empty dataframe with an index  together with
+    # a dataframe with a multi-index breaks the multi-index
+    gdf_pnt = gpd.GeoDataFrame([])
+    if pnt_mask.any():
+        gdf_pnt = gpd.GeoDataFrame(pd.concat([
+            gdf_pnt,
+            gdf[pnt_mask]
+        ]))
+    if line_mask.any():
+        gdf_pnt = gpd.GeoDataFrame(pd.concat([
+            gdf_pnt,
+            _line_to_pnts(gdf[line_mask], res, to_meters)
+        ]))
+    if poly_mask.any():
+        gdf_pnt = gpd.GeoDataFrame(pd.concat([
+            gdf_pnt,
+            _poly_to_pnts(gdf[poly_mask], res, to_meters)
+        ]))
 
     # disaggregate value column
     if disagg_met == 'avg':
@@ -416,6 +429,9 @@ def _poly_to_pnts(gdf, res, to_meters=False):
         second for the point disaggregation of the polygons.
 
     """
+
+    if gdf.empty:
+        return gdf
 
     # Needed because gdf.explode() requires numeric index
     idx = gdf.index.to_list() #To restore the naming of the index
@@ -637,6 +653,9 @@ def _line_to_pnts(gdf_lines, res, to_meters=False):
     --------
     * util.coordinates.compute_geodesic_lengths()
     """
+
+    if gdf_lines.empty:
+        return gdf_lines
 
     # Needed because gdf.explode() requires numeric index
     idx = gdf_lines.index.to_list() #To restore the naming of the index
