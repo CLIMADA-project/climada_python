@@ -67,12 +67,14 @@ def calc_geom_impact(
         polated points. 'avg': Divide the value evenly over all the new points;
         'fix': Replicate the value onto all the new points. Default is 'avg'.
         Works in combination with the kwarg 'disagg_val'.
+        The default is 'avg'.
     disagg_val: float, optional
         Specifies from where and what number should be taken as the value, which
         is to be disaggregated according to the method provided in disagg_met.
         None: default. The shape's value is taken from the exp.gdf.value column.
         Will throw an error if no value column is present.
         float: This given number will be disaggregated according to the method.
+        The default is None.
     agg : string, optional
         Aggregation method of the point impacts into impact for respective
         parent-geometry.
