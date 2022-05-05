@@ -37,7 +37,7 @@ LOGGER = logging.getLogger(__name__)
 
 def calc_geom_impact(
         exp, impf_set, haz, res,
-        to_meters=False, disagg_met='avg', disagg_val=None, agg='sum'):
+        to_meters=False, disagg_met='avg', disagg_val=None, agg_met='sum'):
     """
     Compute impact for exposure with (multi-)polygons and/or (multi-)lines.
     Lat/Lon values in exp.gdf are ignored, only exp.gdf.geometry is considered.
@@ -75,7 +75,7 @@ def calc_geom_impact(
         Will throw an error if no value column is present.
         float: This given number will be disaggregated according to the method.
         The default is None.
-    agg : string, optional
+    agg_met : string, optional
         Aggregation method of the point impacts into impact for respective
         parent-geometry.
         If 'avg', the impact is averaged over all points in each geometry.
@@ -109,11 +109,11 @@ def calc_geom_impact(
     impact_pnt.calc(exp_pnt, impf_set, haz, save_mat=True)
 
     # re-aggregate impact to original exposure geometry
-    impact_agg = impact_pnt_agg(impact_pnt, exp_pnt, agg)
+    impact_agg = impact_pnt_agg(impact_pnt, exp_pnt, agg_met)
 
     return impact_agg
 
-def impact_pnt_agg(impact_pnt, exp_pnt_gdf, agg):
+def impact_pnt_agg(impact_pnt, exp_pnt_gdf, agg_met):
     """
     Aggregate the impact per geometry.
 
@@ -129,7 +129,7 @@ def impact_pnt_agg(impact_pnt, exp_pnt_gdf, agg):
         membership of original geometries, second level the disaggregated points.
         The exposure is obtained for instance with the disaggregation method
         exp_geom_to_pnt().
-    agg : string, optional
+    agg_met : string, optional
         If 'agg', the impact is averaged over all points in each geometry.
         If 'sum', the impact is summed over all points in each geometry.
         The default is 'sum'.
@@ -147,7 +147,7 @@ def impact_pnt_agg(impact_pnt, exp_pnt_gdf, agg):
     """
 
     # aggregate impact
-    mat_agg = aggregate_impact_mat(impact_pnt, exp_pnt_gdf, agg)
+    mat_agg = _aggregate_impact_mat(impact_pnt, exp_pnt_gdf, agg_met)
 
     # write to impact obj
     impact_agg = set_imp_mat(impact_pnt, mat_agg)
@@ -166,7 +166,7 @@ def impact_pnt_agg(impact_pnt, exp_pnt_gdf, agg):
     return impact_agg
 
 
-def aggregate_impact_mat(imp_pnt, gdf_pnt, agg):
+def _aggregate_impact_mat(imp_pnt, gdf_pnt, agg_met):
     """
     Aggregate point impact matrix given the geodataframe of disaggregated
     geometries.
@@ -194,13 +194,13 @@ def aggregate_impact_mat(imp_pnt, gdf_pnt, agg):
     # Converts string multi-index level 0 to integer index
     col_geom = np.sort(np.unique(col_geom, return_inverse=True)[1])
     row_pnt = np.arange(len(col_geom))
-    if agg == 'avg':
+    if agg_met == 'avg':
         geom_sizes = Counter(col_geom).values()
         mask = np.concatenate([np.ones(l) / l for l in geom_sizes])
-    elif agg == 'sum':
+    elif agg_met == 'sum':
         mask = np.ones(len(col_geom))
     else:
-        raise ValueError(f"Please choose a valid aggregation method. {agg} is not valid")
+        raise ValueError(f"Please choose a valid aggregation method. {agg_met} is not valid")
     csr_mask = sp.sparse.csr_matrix(
         (mask, (row_pnt, col_geom)),
          shape=(len(row_pnt), len(np.unique(col_geom)))
