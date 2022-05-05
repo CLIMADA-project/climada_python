@@ -728,11 +728,7 @@ def _swap_geom_cols(gdf, geom_to, new_geom):
     return gdf_swap
 
 
-"""
-TODO: To be removed in a future iteration and included directly into the
-impact class
-"""
-
+# TODO: To be removed in a future iteration and included directly into the impact class
 def set_imp_mat(impact, imp_mat):
     """
     Set Impact attributes from the impact matrix. Returns a copy.
