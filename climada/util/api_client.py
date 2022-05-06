@@ -213,7 +213,7 @@ class Cacher():
         try:
             with Path(self.cachedir, _key).open('w') as flp:
                 json.dump(result, flp)
-        except Exception:
+        except (OSError, ValueError):
             pass
 
     def fetch(self, *args, **kwargs):
@@ -235,7 +235,7 @@ class Cacher():
         try:
             with Path(self.cachedir, _key).open() as flp:
                 return json.load(flp)
-        except Exception:
+        except (OSError, ValueError):
             return None
 
 
@@ -302,8 +302,11 @@ class Client():
         NoResult
             if the response status code is different from 200
         """
+        # pylint: disable=no-else-return
+
         if params is None:
             params = dict()
+
         if self.online:
             page = requests.get(url, params=params)
             if page.status_code != 200:
@@ -312,7 +315,8 @@ class Client():
             if self.cache.enabled:
                 self.cache.store(result, url, **params)
             return result
-        else:
+
+        else:  # try to restore previous results from an identical request
             if not self.cache.enabled:
                 raise Client.NoConnection("there is no internet connection and the client does"
                                           " not cache results.")
@@ -320,9 +324,10 @@ class Client():
             if not cached_result:
                 raise Client.NoConnection("there is no internet connection and the client has not"
                                           " found any cached result for this request.")
-            LOGGER.warning("there is no internet connection but the client has stored the result"
-                        " for this very request sometime in the past.")
+            LOGGER.warning("there is no internet connection but the client has stored the results"
+                           " of this very request sometime in the past.")
             return cached_result
+
 
     @staticmethod
     def _divide_straight_from_multi(properties):
