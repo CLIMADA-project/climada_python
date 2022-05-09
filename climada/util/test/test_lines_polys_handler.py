@@ -202,7 +202,11 @@ class TestLPUtils(unittest.TestCase):
         pass
 
     def test_swap_geom_cols(self):
-        """ """
+        """Test swap of geometry columns """
+        gdf_orig = gdf_poly.copy()
+        gdf_orig['new_geom'] = gdf_orig.geometry
+        swap_gdf = u_lp._swap_geom_cols(gdf_poly, 'old_geom', 'new_geom')
+        self.assertTrue(np.alltrue(swap_gdf.geometry.geom_equals(gdf_orig.new_geom)))
         pass
 
 # Not needed, will come with another pull request.
