@@ -69,12 +69,12 @@ class TestExposureGeomToPnt(unittest.TestCase):
     def test_point_exposure_from_polygons(self):
         """Test disaggregation of polygons to points"""
         #test
-        exp_pnt = u_lp.exp_geom_to_pnt(exp_poly, res=1, to_meters=False, disagg_met='fix', disagg_val=None)
+        exp_pnt = u_lp.exp_geom_to_pnt(exp_poly, res=1, to_meters=False, disagg_met=u_lp.DisaggMethod.FIX, disagg_val=None)
         np.testing.assert_array_equal(exp_pnt.gdf.value, exp_poly.gdf.value)
         self.check_unchanged_exp(exp_poly, exp_pnt)
 
         #test
-        exp_pnt = u_lp.exp_geom_to_pnt(exp_poly, res=0.5, to_meters=False, disagg_met='avg', disagg_val=None)
+        exp_pnt = u_lp.exp_geom_to_pnt(exp_poly, res=0.5, to_meters=False, disagg_met=u_lp.DisaggMethod.DIV, disagg_val=None)
         self.check_unchanged_exp(exp_poly, exp_pnt)
         val_avg = np.array([
             4.93449000e+10, 4.22202000e+10, 6.49988000e+10, 1.04223900e+11,
@@ -93,7 +93,7 @@ class TestExposureGeomToPnt(unittest.TestCase):
 
         #test
         res = 20000
-        exp_pnt = u_lp.exp_geom_to_pnt(exp_poly, res=res, to_meters=True, disagg_met='fix', disagg_val=res**2   )
+        exp_pnt = u_lp.exp_geom_to_pnt(exp_poly, res=res, to_meters=True, disagg_met=u_lp.DisaggMethod.FIX, disagg_val=res**2   )
         self.check_unchanged_exp(exp_poly, exp_pnt)
         val = res**2
         self.assertEqual(np.unique(exp_pnt.gdf.value)[0], val)
@@ -123,8 +123,8 @@ class TestExposureGeomToPnt(unittest.TestCase):
         height, width, trafo = u_coord.pts_to_raster_meta(exp_poly.gdf.geometry.bounds, (res, res))
         x_grid, y_grid = u_coord.raster_to_meshgrid(trafo, width, height)
         #test
-        exp_pnt = u_lp.exp_geom_to_pnt(exp_poly, res=0.1, to_meters=False, disagg_met='avg', disagg_val=None)
-        exp_pnt_grid = u_lp.exp_geom_to_grid(exp_poly, (x_grid, y_grid), disagg_met='avg', disagg_val=None)
+        exp_pnt = u_lp.exp_geom_to_pnt(exp_poly, res=0.1, to_meters=False, disagg_met=u_lp.DisaggMethod.DIV, disagg_val=None)
+        exp_pnt_grid = u_lp.exp_geom_to_grid(exp_poly, (x_grid, y_grid), disagg_met=u_lp.DisaggMethod.DIV, disagg_val=None)
         self.check_unchanged_exp(exp_poly, exp_pnt_grid)
         for col in ['value', 'latitude', 'longitude']:
             np.testing.assert_allclose(exp_pnt.gdf[col], exp_pnt_grid.gdf[col])
@@ -132,8 +132,8 @@ class TestExposureGeomToPnt(unittest.TestCase):
         x_grid = np.append(x_grid, x_grid+10)
         y_grid = np.append(y_grid, y_grid+10)
         #test
-        exp_pnt = u_lp.exp_geom_to_pnt(exp_poly, res=0.1, to_meters=False, disagg_met='avg', disagg_val=None)
-        exp_pnt_grid = u_lp.exp_geom_to_grid(exp_poly, (x_grid, y_grid), disagg_met='avg', disagg_val=None)
+        exp_pnt = u_lp.exp_geom_to_pnt(exp_poly, res=0.1, to_meters=False, disagg_met=u_lp.DisaggMethod.DIV, disagg_val=None)
+        exp_pnt_grid = u_lp.exp_geom_to_grid(exp_poly, (x_grid, y_grid), disagg_met=u_lp.DisaggMethod.DIV, disagg_val=None)
         self.check_unchanged_exp(exp_poly, exp_pnt_grid)
         for col in ['value', 'latitude', 'longitude']:
             np.testing.assert_allclose(exp_pnt.gdf[col], exp_pnt_grid.gdf[col])
