@@ -234,5 +234,4 @@ class TestLPUtils(unittest.TestCase):
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestExposureGeomToPnt)
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestGdfGeomToPnt))
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestImpactSetters))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
