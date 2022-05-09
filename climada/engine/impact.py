@@ -177,10 +177,10 @@ class ImpactCalc():
         n_exp_pnt = self.exposures.gdf.shape[0]
         n_events = self.hazard.size
         if save_mat:
-            imp_mat = self.stich_impact_matrix(imp_mat_list, n_events, n_exp_pnt)
+            imp_mat = self.stitch_impact_matrix(imp_mat_list, n_events, n_exp_pnt)
             return Impact.from_imp_mat(imp_mat, self.exposures, self.impfset, self.hazard)
         else:
-            at_event, eai_exp, aai_agg = self.stich_risk_metrics(imp_mat_list, self.hazard.frequency, n_events, n_exp_pnt)
+            at_event, eai_exp, aai_agg = self.stitch_risk_metrics(imp_mat_list, self.hazard.frequency, n_events, n_exp_pnt)
             return Impact.from_imp_metrics(at_event, eai_exp, aai_agg, self.exposures, self.impfset, self.hazard)
 
     def insured_risk(self, save_mat=False):
@@ -227,10 +227,10 @@ class ImpactCalc():
 
         imp_mat_list = insured_mat_gen(imp_mat_list, self.exposures, self.impfset, self.hazard, impf_col)
         if save_mat:
-            imp_mat = self.stich_impact_matrix(imp_mat_list, n_events, n_exp_pnt)
+            imp_mat = self.stitch_impact_matrix(imp_mat_list, n_events, n_exp_pnt)
             return Impact.from_imp_mat(imp_mat, self.exposures, self.impfset, self.hazard)
         else:
-            at_event, eai_exp, aai_agg = self.stich_risk_metrics(imp_mat_list, self.hazard.frequency, n_events, n_exp_pnt)
+            at_event, eai_exp, aai_agg = self.stitch_risk_metrics(imp_mat_list, self.hazard.frequency, n_events, n_exp_pnt)
             return Impact.from_imp_metrics(at_event, eai_exp, aai_agg, self.exposures, self.impfset, self.hazard)
 
 
@@ -263,7 +263,7 @@ class ImpactCalc():
         """
         List of impact matrices for the exposure and of corresponding exposures indices
         """
-        for impf_id in exp_gdf[impf_col].unique():
+        for impf_id in exp_gdf[impf_col].dropna().unique():
             impf = self.impfset.get_func(haz_type=self.hazard.haz_type, fun_id=impf_id)
             idx_exp_impf = (exp_gdf[impf_col].values == impf.id).nonzero()[0]
             exp_step = CONFIG.max_matrix_size.int() // self.hazard.size
@@ -306,7 +306,7 @@ class ImpactCalc():
         return fract.multiply(mdr).multiply(exp_values_csr)
 
     @staticmethod
-    def stich_impact_matrix(imp_mat_list, n_events, n_exp_pnt):
+    def stitch_impact_matrix(imp_mat_list, n_events, n_exp_pnt):
         """
         Make an impact matrix from an impact matrix list
         """
@@ -317,7 +317,7 @@ class ImpactCalc():
         return sparse.csr_matrix((data, (row, col)), shape=(n_events, n_exp_pnt))
 
     @staticmethod
-    def stich_risk_metrics(imp_mat_list, freq, n_events, n_exp_pnt):
+    def stitch_risk_metrics(imp_mat_list, freq, n_events, n_exp_pnt):
         """
         Compute the impact metrics from an impact matrix list
         """
@@ -469,7 +469,7 @@ class Impact():
     @classmethod
     def from_imp_metrics(cls, at_event, eai_exp, aai_agg, exposures, impfset, hazard):
         """
-        Set Impact attributes from the impact matrix.
+        Set Impact attributes from precalculated impact metrics.
 
         Parameters
         ----------
