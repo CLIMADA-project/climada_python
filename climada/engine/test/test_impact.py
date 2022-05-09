@@ -35,7 +35,10 @@ import climada.engine.test as engine_test
 
 
 def get_haz_test_file(ds_name):
-    client = Client()
+    # As this module is part of the installation test suite, we want tom make sure it is running
+    # also in offline mode even when installing from pypi, where there is no test configuration.
+    # So we set cache_enabled explicitly to true
+    client = Client(cache_enabled=True)
     test_ds = client.get_dataset_info(name=ds_name, status='test_dataset')
     _, [haz_test_file] = client.download_dataset(test_ds)
     return haz_test_file

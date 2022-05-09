@@ -618,7 +618,7 @@ class LitPop(Exposures):
                                f' country {iso3a}.')
                 continue
             total_population += meta_tmp['total_population']
-            litpop_gdf = litpop_gdf.append(gdf_tmp)
+            litpop_gdf = pd.concat([litpop_gdf, gdf_tmp])
         litpop_gdf.crs = meta_tmp['crs']
 
         # set total value for disaggregation if not provided:
