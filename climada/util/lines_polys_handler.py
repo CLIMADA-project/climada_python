@@ -18,6 +18,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 import logging
 import copy
 from collections import Counter
+from enum import Enum
 
 import cartopy.crs as ccrs
 import geopandas as gpd
@@ -35,9 +36,29 @@ from climada.util import coordinates as u_coord
 LOGGER = logging.getLogger(__name__)
 
 
+class DisaggMethod(Enum):
+    """
+    Disaggregation Method for the ... function
+
+	AVG : the geometry's value is equally averaged over all its interpolated points
+	FIX : the geometry's value is replicated over all its interpolated points
+    """
+    AVG = 1
+    FIX = 2
+
+class AggMethod(Enum):
+    """
+    Aggregation Method for the aggregate_impact_mat function
+
+	AVG : the impact is averaged over all points in the polygon/line
+	SUM : the impact is summed over all points in the polygon/line
+    """
+    AVG = 'avg'
+    SUM = 'sum'
+
 def calc_geom_impact(
-        exp, impf_set, haz, res,
-        to_meters=False, disagg_met='avg', disagg_val=None, agg_met='sum'):
+        exp, impf_set, haz, res, to_meters=False, disagg_met=DisaggMethod.AVG,
+        disagg_val=None, agg_met=AggMethod.SUM):
     """
     Compute impact for exposure with (multi-)polygons and/or (multi-)lines.
     Lat/Lon values in exp.gdf are ignored, only exp.gdf.geometry is considered.
@@ -62,10 +83,10 @@ def calc_geom_impact(
        an equal area projection for disaggregation.  The exposures are
        then projected back to the original projections before  impact
        calculation. The default is False.
-    disagg_met : string, optional
+    disagg_met : DisaggMethod
         Disaggregation method of the shapes's original value onto its inter-
-        polated points. 'avg': Divide the value evenly over all the new points;
-        'fix': Replicate the value onto all the new points. Default is 'avg'.
+        polated points. 'AVG': Divide the value evenly over all the new points;
+        'FIX': Replicate the value onto all the new points. Default is 'AVG'.
         Works in combination with the kwarg 'disagg_val'.
         The default is 'avg'.
     disagg_val: float, optional
@@ -75,12 +96,12 @@ def calc_geom_impact(
         Will throw an error if no value column is present.
         float: This given number will be disaggregated according to the method.
         The default is None.
-    agg_met : string, optional
+    agg_met : AggMethod
         Aggregation method of the point impacts into impact for respective
         parent-geometry.
-        If 'avg', the impact is averaged over all points in each geometry.
-        If 'sum', the impact is summed over all points in each geometry.
-        The default is 'sum'.
+        If 'AVG', the impact is averaged over all points in each geometry.
+        If 'SUM', the impact is summed over all points in each geometry.
+        The default is 'SUM'.
 
     Returns
     -------
@@ -129,10 +150,10 @@ def impact_pnt_agg(impact_pnt, exp_pnt_gdf, agg_met):
         membership of original geometries, second level the disaggregated points.
         The exposure is obtained for instance with the disaggregation method
         exp_geom_to_pnt().
-    agg_met : string, optional
-        If 'agg', the impact is averaged over all points in each geometry.
-        If 'sum', the impact is summed over all points in each geometry.
-        The default is 'sum'.
+    agg_met : AggMethod
+        If 'AVG', the impact is averaged over all points in each geometry.
+        If 'SUM', the impact is summed over all points in each geometry.
+        The default is 'SUM'.
 
     Returns
     -------
@@ -179,9 +200,9 @@ def _aggregate_impact_mat(imp_pnt, gdf_pnt, agg_met):
         Exposures geodataframe with a multi-index, as obtained from disaggregation
         method exp_geom_to_pnt(). First level indicating
         membership of original geometries, second level the disaggregated points
-    agg : string
-        If 'agg', the impact is averaged over all points in each polygon.
-        If 'sum', the impact is summed over all points in each polygon.
+    agg_met : AggMethod
+        If 'AVG', the impact is averaged over all points in each polygon.
+        If 'SUM', the impact is summed over all points in each polygon.
 
     Returns
     -------
@@ -194,13 +215,12 @@ def _aggregate_impact_mat(imp_pnt, gdf_pnt, agg_met):
     # Converts string multi-index level 0 to integer index
     col_geom = np.sort(np.unique(col_geom, return_inverse=True)[1])
     row_pnt = np.arange(len(col_geom))
-    if agg_met == 'avg':
+    if agg_met.value == 'avg':
         geom_sizes = Counter(col_geom).values()
         mask = np.concatenate([np.ones(l) / l for l in geom_sizes])
-    elif agg_met == 'sum':
-        mask = np.ones(len(col_geom))
     else:
-        raise ValueError(f"Please choose a valid aggregation method. {agg_met} is not valid")
+        mask = np.ones(len(col_geom))
+
     csr_mask = sp.sparse.csr_matrix(
         (mask, (row_pnt, col_geom)),
          shape=(len(row_pnt), len(np.unique(col_geom)))
@@ -208,7 +228,8 @@ def _aggregate_impact_mat(imp_pnt, gdf_pnt, agg_met):
     return imp_pnt.imp_mat.dot(csr_mask)
 
 def calc_grid_impact(
-        exp, impf_set, haz, grid, disagg_met='avg', disagg_val=None, agg_met='sum'):
+        exp, impf_set, haz, grid, disagg_met=DisaggMethod.AVG, disagg_val=None,
+        agg_met=AggMethod.SUM):
     """
     Compute impact for exposure with (multi-)polygons and/or (multi-)lines.
     Lat/Lon values in exp.gdf are ignored, only exp.gdf.geometry is considered.
@@ -229,12 +250,11 @@ def calc_grid_impact(
     grid : np.array()
         Grid on which to disaggregate the exposures. Provided as two
         vectors [x_grid, y_grid].
-    disagg_met : string, optional
+    disagg_met : DisaggMethod
         Disaggregation method of the shapes's original value onto its inter-
-        polated points. 'avg': Divide the value evenly over all the new points;
-        'fix': Replicate the value onto all the new points. Default is 'avg'.
+        polated points. 'AVG': Divide the value evenly over all the new points;
+        'FIX': Replicate the value onto all the new points.  The default is 'AVG'.
         Works in combination with the kwarg 'disagg_val'.
-        The default is 'avg'.
     disagg_val: float, optional
         Specifies from where and what number should be taken as the value, which
         is to be disaggregated according to the method provided in disagg_met.
@@ -242,12 +262,12 @@ def calc_grid_impact(
         Will throw an error if no value column is present.
         float: This given number will be disaggregated according to the method.
         The default is None.
-    agg_met : string, optional
+    agg_met : AggMethod
         Aggregation method of the point impacts into impact for respective
         parent-geometry.
-        If 'avg', the impact is averaged over all points in each geometry.
-        If 'sum', the impact is summed over all points in each geometry.
-        The default is 'sum'.
+        If 'AVG', the impact is averaged over all points in each geometry.
+        If 'SUM', the impact is summed over all points in each geometry.
+        The default is 'SUM'.
 
     Returns
     -------
@@ -335,10 +355,10 @@ def exp_geom_to_pnt(exp, res, to_meters, disagg_met, disagg_val):
        an equal area projection for disaggregation.  The exposures are
        then projected back to the original projections before  impact
        calculation. The default is False.
-    disagg_met : string
+    disagg_met : DisaggMethod
         Disaggregation method for the `value` column of the exposure gdf.
-        if 'avg', average value over points
-        if 'fix', same value for each point
+        if 'AVG', average value over points
+        if 'FIX', same value for each point
     disagg_val: float
         if 'None', value is taken from exp.gdf.value column, else the indicated
         value is taken for disaggregation according to disagg_met
@@ -360,10 +380,6 @@ def exp_geom_to_pnt(exp, res, to_meters, disagg_met, disagg_val):
     if ((disagg_val is None) and ('value' not in gdf_geom.columns)):
         raise ValueError('There is no value column in the exposure gdf to'+
                          ' disaggregate from. Please set disagg_val explicitly.')
-
-    if disagg_met not in ['fix', 'avg']:
-        raise ValueError(f"{disagg_met} is not a valid argument for 'disagg_met'."+
-                         " Please choose one of ['fix', 'avg'] ")
 
     gdf_pnt = gdf_to_pnts(gdf_geom, res, to_meters, disagg_met)
 
@@ -386,10 +402,10 @@ def exp_geom_to_grid(exp, grid, disagg_met, disagg_val):
     grid : np.array()
         Grid on which to disaggregate the exposures. Provided as two
         vectors [x_grid, y_grid].
-    disagg_met : string
+    disagg_met : DisaggMethod
         Disaggregation method for the `value` column of the exposure gdf.
-        if 'avg', average value over points
-        if 'fix', same value for each point
+        if 'AVG', average value over points
+        if 'FIX', same value for each point
     disagg_val: float
         if 'None', value is taken from exp.gdf.value column, else the indicated
         value is taken for disaggregation according to disagg_met
@@ -412,10 +428,6 @@ def exp_geom_to_grid(exp, grid, disagg_met, disagg_val):
         raise ValueError('There is no value column in the exposure gdf to'+
                          ' disaggregate from. Please set disagg_val explicitly.')
 
-    if disagg_met not in ['fix', 'avg']:
-        raise ValueError(f"{disagg_met} is not a valid argument for 'disagg_met'."+
-                         " Please choose one of ['fix', 'avg'] ")
-
     gdf_pnt = gdf_to_grid(gdf_geom, grid, disagg_met)
 
     # set lat lon and centroids
@@ -427,7 +439,19 @@ def exp_geom_to_grid(exp, grid, disagg_met, disagg_val):
 
 
 def _pnt_line_poly_mask(gdf):
-    """Mask for points, lines and polygons"""
+    """
+    Mask for points, lines and polygons
+
+    Parameters
+    ----------
+    gdf : GeoDataFrame
+        Feodataframe instance with gdf.geometry containing (multi)-lines or
+        (multi-)polygons. Points are ignored.
+
+    Returns
+    -------
+    pnt_mask, line_mask, poly_mask :
+    """
     pnt_mask =  gdf.geometry.apply(lambda x: isinstance(x, shgeom.Point))
 
     line_mask =  gdf.geometry.apply(lambda x: isinstance(x, shgeom.LineString))
@@ -458,16 +482,16 @@ def gdf_to_pnts(gdf, res, to_meters, disagg_met):
        the disaggregation. res is then in meters. The exposures are
        then reprojected into the original projections before the impact
        calculation.
-    disagg_met : string, optional
+    disagg_met : DisaggMethod
         Disaggregation method for the `value` column of the exposure gdf.
-        if 'avg', average value over points
-        if 'fix', same value for each point
+        if 'AVG', average value over points
+        if 'FIX', same value for each point
 
     Returns
     -------
     exp_pnt : Exposures
-        Exposures with a double index geodataframe, first for the geometries of exp,
-        second for the point disaggregation of the geometries.
+        Exposures with a double index geodataframe, first for the geometries
+        of exp, second for the point disaggregation of the geometries.
 
     """
     if gdf.empty:
@@ -495,7 +519,7 @@ def gdf_to_pnts(gdf, res, to_meters, disagg_met):
         ]))
 
     # disaggregate value column
-    if disagg_met == 'avg':
+    if disagg_met.value == 'avg':
         gdf_pnt = _disagg_values_avg(gdf_pnt)
 
     return gdf_pnt
@@ -513,10 +537,10 @@ def gdf_to_grid(gdf, grid, disagg_met):
     grid : np.array()
         Grid on which to disaggregate the exposures. Provided as two
         vectors [x_grid, y_grid].
-    disagg_met : string, optional
+    disagg_met : DisaggMethod
         Disaggregation method for the `value` column of the exposure gdf.
-        if 'avg', average value over points
-        if 'fix', same value for each point
+        if 'AVG', average value over points
+        if 'FIX', same value for each point
 
     Returns
     -------
@@ -548,7 +572,7 @@ def gdf_to_grid(gdf, grid, disagg_met):
         ]))
 
     # disaggregate value column
-    if disagg_met == 'avg':
+    if disagg_met.value == 'avg':
         gdf_pnt = _disagg_values_avg(gdf_pnt)
 
     return gdf_pnt
@@ -901,6 +925,19 @@ def _line_to_pnts(gdf_lines, res, to_meters=False):
     return gdf_points
 
 def _pnts_per_line(length, res):
+    """Calculate number of points fitting along a line, given a certain
+    resolution (spacing) res between points.
+
+    Parameters
+    ----------
+    length : float
+    res : float
+
+    Returns
+    --------
+    int
+        Number of points along line
+    """
     return int(np.ceil(length / res) + 1)
 
 def _swap_geom_cols(gdf, geom_to, new_geom):
