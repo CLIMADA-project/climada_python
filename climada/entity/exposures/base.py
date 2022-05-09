@@ -23,6 +23,7 @@ __all__ = ['Exposures', 'add_sea', 'INDICATOR_IMPF', 'INDICATOR_CENTR']
 
 import logging
 import copy
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -768,12 +769,18 @@ class Exposures():
         for col in pandas_df.columns:
             if str(pandas_df[col].dtype) == "geometry":
                 pandas_df[col] = np.asarray(self.gdf[col])
-        store.put('exposures', pandas_df)
+
+        # Avoid pandas PerformanceWarning when writing HDF5 data
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=pd.errors.PerformanceWarning)
+            # Write dataframe
+            store.put('exposures', pandas_df)
+
         var_meta = {}
         for var in type(self)._metadata:
             var_meta[var] = getattr(self, var)
-
         store.get_storer('exposures').attrs.metadata = var_meta
+
         store.close()
 
     def read_hdf5(self, *args, **kwargs):
