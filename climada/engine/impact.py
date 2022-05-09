@@ -180,8 +180,11 @@ class ImpactCalc():
             imp_mat = self.stitch_impact_matrix(imp_mat_list, n_events, n_exp_pnt)
             return Impact.from_imp_mat(imp_mat, self.exposures, self.impfset, self.hazard)
         else:
-            at_event, eai_exp, aai_agg = self.stitch_risk_metrics(imp_mat_list, self.hazard.frequency, n_events, n_exp_pnt)
-            return Impact.from_imp_metrics(at_event, eai_exp, aai_agg, self.exposures, self.impfset, self.hazard)
+            at_event, eai_exp, aai_agg = self.stitch_risk_metrics(imp_mat_list,
+                                                                  self.hazard.frequency,
+                                                                  n_events, n_exp_pnt)
+            return Impact.from_imp_metrics(at_event, eai_exp, aai_agg, self.exposures,
+                                           self.impfset, self.hazard)
 
     def insured_risk(self, save_mat=False):
         """
@@ -225,13 +228,17 @@ class ImpactCalc():
                 mat = self.apply_cover_to_imp_mat(mat, cover)
                 yield (mat, exp_idx)
 
-        imp_mat_list = insured_mat_gen(imp_mat_list, self.exposures, self.impfset, self.hazard, impf_col)
+        imp_mat_list = insured_mat_gen(imp_mat_list, self.exposures, self.impfset, self.hazard,
+                                       impf_col)
         if save_mat:
             imp_mat = self.stitch_impact_matrix(imp_mat_list, n_events, n_exp_pnt)
             return Impact.from_imp_mat(imp_mat, self.exposures, self.impfset, self.hazard)
         else:
-            at_event, eai_exp, aai_agg = self.stitch_risk_metrics(imp_mat_list, self.hazard.frequency, n_events, n_exp_pnt)
-            return Impact.from_imp_metrics(at_event, eai_exp, aai_agg, self.exposures, self.impfset, self.hazard)
+            at_event, eai_exp, aai_agg = self.stitch_risk_metrics(imp_mat_list,
+                                                                  self.hazard.frequency,
+                                                                  n_events, n_exp_pnt)
+            return Impact.from_imp_metrics(at_event, eai_exp, aai_agg, self.exposures,
+                                           self.impfset, self.hazard)
 
 
     def get_minimal_exp(self, impf_col):
@@ -426,7 +433,7 @@ class Impact():
 
     def __init__(self,
                  event_id=np.array([], int),
-                 event_name=[],
+                 event_name=None,
                  date=np.array([], int),
                  frequency=np.array([],float),
                  coord_exp=np.ndarray([], float),
@@ -437,11 +444,11 @@ class Impact():
                  aai_agg=0,
                  unit='',
                  imp_mat=sparse.csr_matrix(np.empty((0, 0))),
-                 tag={}):
+                 tag=None):
 
-        self.tag = tag
+        self.tag = tag or {}
         self.event_id = event_id
-        self.event_name = event_name
+        self.event_name = event_name or []
         self.date = date
         self.coord_exp = coord_exp
         self.crs = crs
@@ -454,7 +461,8 @@ class Impact():
         self.imp_mat = imp_mat
 
     def calc(self, exposures, impact_funcs, hazard, save_mat=False):
-        """This function is deprecated, use Impact.calc_risk and Impact.calc_insured_risk instead."""
+        """This function is deprecated, use Impact.calc_risk and Impact.calc_insured_risk instead.
+        """
         impcalc= ImpactCalc(exposures, impact_funcs, hazard)
         if ('deductible' in exposures.gdf) and ('cover' in exposures.gdf) \
             and exposures.gdf.cover.max():
@@ -698,8 +706,8 @@ class Impact():
         imp_stats = np.zeros((len(return_periods), num_cen))
         cen_step = CONFIG.max_matrix_size.int() // self.imp_mat.shape[0]
         if not cen_step:
-            raise ValueError('Increase max_matrix_size configuration parameter to > %s'
-                             % str(self.imp_mat.shape[0]))
+            raise ValueError('Increase max_matrix_size configuration parameter to > '
+                             f'{self.imp_mat.shape[0]}')
         # separte in chunks
         chk = -1
         for chk in range(int(num_cen / cen_step)):
@@ -767,8 +775,8 @@ class Impact():
         axis  : matplotlib.axes._subplots.AxesSubplot, optional
             axis to use
         adapt_fontsize : bool, optional
-                If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
-                the default matplotlib font size is used. Default is True.
+                If set to true, the size of the fonts will be adapted to the size of the figure.
+                Otherwise the default matplotlib font size is used. Default is True.
         kwargs : optional
             arguments for hexbin matplotlib function
 
@@ -845,8 +853,8 @@ class Impact():
         axis : matplotlib.axes._subplots.AxesSubplot, optional
             axis to use
         adapt_fontsize : bool, optional
-                If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
-                the default matplotlib font size is used. Default is True.
+                If set to true, the size of the fonts will be adapted to the size of the figure.
+                Otherwise the default matplotlib font size is used. Default is True.
         kwargs : optional
             arguments for imshow matplotlib function
 
@@ -931,8 +939,8 @@ class Impact():
         axis : matplotlib.axes._subplots.AxesSubplot
             optional axis to use
         adapt_fontsize : bool, optional
-            If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
-            the default matplotlib font size is used. Default is True.
+            If set to true, the size of the fonts will be adapted to the size of the figure.
+            Otherwise the default matplotlib font size is used. Default is True.
 
         Returns
         --------
@@ -945,7 +953,8 @@ class Impact():
             kwargs['cmap'] = CMAP_IMPACT
         impact_at_events_exp = self._build_exp_event(event_id)
         axis = impact_at_events_exp.plot_hexbin(mask, ignore_zero, pop_name,
-                                                buffer, extend, axis=axis, adapt_fontsize=adapt_fontsize,
+                                                buffer, extend, axis=axis,
+                                                adapt_fontsize=adapt_fontsize,
                                                 **kwargs)
 
         return axis
@@ -1023,7 +1032,7 @@ class Impact():
         np.ndarray (return_periods.size x num_centroids)
         """
         imp_stats = self.local_exceedance_imp(np.array(return_periods))
-        if imp_stats == []:
+        if imp_stats.size == 0:
             raise ValueError('Error: Attribute imp_mat is empty. Recalculate Impact'
                              'instance with parameter save_mat=True')
         if log10_scale:
@@ -1056,7 +1065,7 @@ class Impact():
             absolute path of the file
         """
         LOGGER.info('Writing %s', file_name)
-        with open(file_name, "w") as imp_file:
+        with open(file_name, "w", encoding='utf-8') as imp_file:
             imp_wr = csv.writer(imp_file)
             imp_wr.writerow(["tag_hazard", "tag_exposure", "tag_impact_func",
                              "unit", "tot_value", "aai_agg", "event_id",
@@ -1157,6 +1166,7 @@ class Impact():
         imp : climada.engine.impact.Impact
             Impact from csv file
         """
+        # pylint: disable=no-member
         LOGGER.info('Reading %s', file_name)
         imp_df = pd.read_csv(file_name)
         imp = cls()
@@ -1419,10 +1429,10 @@ class Impact():
         event_id : int
             id of the event
         """
-        [[ix]] = (self.event_id == event_id).nonzero()
+        [[idx]] = (self.event_id == event_id).nonzero()
         return Exposures(
             data={
-                'value': self.imp_mat[ix].toarray().ravel(),
+                'value': self.imp_mat[idx].toarray().ravel(),
                 'latitude': self.coord_exp[:, 0],
                 'longitude': self.coord_exp[:, 1],
             },
@@ -1608,7 +1618,8 @@ class Impact():
         if event_ids is None:
             sel_id = np.array([], dtype=int)
         else:
-            sel_id = np.isin(self.event_id, event_ids).nonzero()[0]
+            (sel_id,) = np.isin(self.event_id, event_ids).nonzero()
+            # pylint: disable=no-member
             if sel_id.size == 0:
                 LOGGER.info('No impact event with given ids %s found.', event_ids)
 
@@ -1616,7 +1627,8 @@ class Impact():
         if event_names is None:
             sel_na = np.array([], dtype=int)
         else:
-            sel_na = np.isin(self.event_name, event_names).nonzero()[0]
+            (sel_na,) = np.isin(self.event_name, event_names).nonzero()
+            # pylint: disable=no-member
             if sel_na.size == 0:
                 LOGGER.info('No impact event with given names %s found.', event_names)
 
