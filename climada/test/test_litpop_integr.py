@@ -21,6 +21,7 @@ Tests on LitPop exposures.
 import unittest
 import numpy as np
 from shapely.geometry import Polygon
+import warnings
 
 from climada.entity.exposures.litpop import litpop as lp
 from climada.entity.exposures.litpop import gpw_population
@@ -32,6 +33,13 @@ from climada import CONFIG
 
 class TestLitPopExposure(unittest.TestCase):
     """Test LitPop exposure data model:"""
+
+    def test_no_future_warning(self):
+        """Test that 'from_countries' does not throw a FutureWarning"""
+        with warnings.catch_warnings():
+            # Make sure that FutureWarning will cause an error
+            warnings.simplefilter("error", category=FutureWarning)
+            lp.LitPop.from_countries("Netherlands")
 
     def test_netherlands150_pass(self):
         """Test from_countries for Netherlands at 150 arcsec, first shape is empty"""
