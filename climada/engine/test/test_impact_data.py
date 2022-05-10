@@ -20,6 +20,7 @@ Test Impact class.
 """
 import unittest
 import numpy as np
+import warnings
 
 from climada import CONFIG
 from climada.util.constants import DEMO_DIR
@@ -153,6 +154,20 @@ class TestEmdatProcessing(unittest.TestCase):
         self.assertIn('USA', list(df['ISO']))
         self.assertIn('Drought', list(df['Disaster Type']))
         self.assertEqual(2000, df['reference_year'].min())
+
+    def test_emdat_impact_yearlysum_no_futurewarning(self):
+        """Ensure that no FutureWarning is issued"""
+        with warnings.catch_warnings():
+            # Make sure that FutureWarning will cause an error
+            warnings.simplefilter("error", category=FutureWarning)
+            im_d.emdat_impact_yearlysum(
+                EMDAT_TEST_CSV,
+                countries=["Bangladesh", "USA"],
+                hazard="Flood",
+                year_range=(2015, 2017),
+                reference_year=None,
+                imp_str="Total Affected",
+            )
 
     def test_emdat_affected_yearlysum(self):
         """test emdat_impact_yearlysum yearly impact data extraction"""

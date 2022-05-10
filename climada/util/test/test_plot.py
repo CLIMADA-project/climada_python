@@ -67,7 +67,7 @@ class TestPlots(unittest.TestCase):
                                   1: 'int',
                                   2.0: 'float',
                                   'a': 'string'},
-                        pop_name=False, cmap='Set1')
+                        pop_name=False, cmap=plt.get_cmap('Set1'))
         plt.close()
 
         #test colormap warning
@@ -75,7 +75,7 @@ class TestPlots(unittest.TestCase):
                            [12, 13, 14, 15]])
         coord = np.array([[26, 0], [26, 4], [28, 0], [29, 1]])
         u_plot.geo_scatter_categorical(values, coord, 'value', 'test plot',
-                        pop_name=False, cmap='Set1')
+                        pop_name=False, cmap='viridis')
 
         plt.close()
 
