@@ -163,12 +163,15 @@ class TestGdfGeomToPnt(unittest.TestCase):
         check_unchanged_geom_gdf(self, gdf_poly, gdf_pnt)
 
     def test_lines_to_pnts(self):
-        """Test polygon to points disaggregation"""
+        """Test lines to points disaggregation"""
         pass
 
     def test_pnts_per_line(self):
-        """"""
-        pass
+        """Test number of points per line for give resolutio"""
+        self.assertEqual(u_lp._pnts_per_line(10, 1), 11)
+        self.assertEqual(u_lp._pnts_per_line(1, 1), 2)
+        self.assertEqual(u_lp._pnts_per_line(10, 1.5), 8)
+        self.assertEqual(u_lp._pnts_per_line(10.5, 1), 12)
 
     def test_interp_one_poly(self):
         """"""
