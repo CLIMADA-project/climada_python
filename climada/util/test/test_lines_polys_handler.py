@@ -181,17 +181,29 @@ class TestGdfGeomToPnt(unittest.TestCase):
 class TestLPUtils(unittest.TestCase):
     """ """
 
-    def test_line_poly_mask(self):
+    def test_pnt_line_poly_mask(self):
         """"""
-        pass
+        pnt, lines, poly = u_lp._pnt_line_poly_mask(exp_poly.gdf)
+        self.assertTrue(np.all(poly))
+        self.assertTrue(np.all(lines==False))
+        self.assertTrue(np.all(pnt==False))
 
     def test_get_equalarea_proj(self):
-        """"""
-        pass
+        """Test pass get locally cylindrical equalarea projection"""
+        poly = exp_poly.gdf.geometry[0]
+        proj = u_lp._get_equalarea_proj(poly)
+        self.assertEqual(proj, '+proj=cea +lat_0=52.112866 +lon_0=5.150162 +units=m')
 
     def test_get_pyproj_trafo(self):
         """"""
-        pass
+        dest_crs = '+proj=cea +lat_0=52.112866 +lon_0=5.150162 +units=m'
+        orig_crs = exp_poly.gdf.crs
+        trafo = u_lp._get_pyproj_trafo(orig_crs, dest_crs)
+        self.assertEqual(
+            trafo.definition,
+            'proj=pipeline step proj=unitconvert xy_in=deg' +
+            ' xy_out=rad step proj=cea lat_0=52.112866 lon_0=5.150162 units=m'
+            )
 
     def test_reproject_grid(self):
         """"""
@@ -205,9 +217,9 @@ class TestLPUtils(unittest.TestCase):
         """Test swap of geometry columns """
         gdf_orig = gdf_poly.copy()
         gdf_orig['new_geom'] = gdf_orig.geometry
-        swap_gdf = u_lp._swap_geom_cols(gdf_poly, 'old_geom', 'new_geom')
+        swap_gdf = u_lp._swap_geom_cols(gdf_orig, 'old_geom', 'new_geom')
         self.assertTrue(np.alltrue(swap_gdf.geometry.geom_equals(gdf_orig.new_geom)))
-        pass
+
 
 # Not needed, will come with another pull request.
 # class TestImpactSetters(unittest.TestCase):
@@ -234,4 +246,5 @@ class TestLPUtils(unittest.TestCase):
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestExposureGeomToPnt)
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestGdfGeomToPnt))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestLPUtils))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
