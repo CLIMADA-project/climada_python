@@ -45,18 +45,6 @@ def check_unchanged_geom_gdf(self, gdf_geom, gdf_pnt):
         if col not in COL_CHANGING:
             np.testing.assert_allclose(gdf_pnt[col].unique(), gdf_geom[col].unique())
 
-class TestGeomImpactCalcs(unittest.TestCase):
-    """Test main functions on impact calculation, aggregation"""
-    def test_calc_geom_impact(self):
-        """"""
-        pass
-
-    def test_impact_pnt_agg(self):
-        pass
-
-    def test_aggregate_impact_mat(self):
-        pass
-
 class TestExposureGeomToPnt(unittest.TestCase):
     """Test Exposures to points functions"""
 
@@ -138,6 +126,18 @@ class TestExposureGeomToPnt(unittest.TestCase):
         for col in ['value', 'latitude', 'longitude']:
             np.testing.assert_allclose(exp_pnt.gdf[col], exp_pnt_grid.gdf[col])
 
+class TestGeomImpactCalcs(unittest.TestCase):
+    """Test main functions on impact calculation, aggregation"""
+    def test_calc_geom_impact(self):
+        """"""
+        pass
+
+    def test_impact_pnt_agg(self):
+        pass
+
+    def test_aggregate_impact_mat(self):
+        pass
+
 class TestGdfGeomToPnt(unittest.TestCase):
     """Test Geodataframes to points and vice-versa functions"""
 
@@ -149,13 +149,21 @@ class TestGdfGeomToPnt(unittest.TestCase):
         """"""
         pass
 
-    def test_disagg_values_avg(self):
-        """Test disaggregation average"""
-        pass
+    def test_disagg_values_div(self):
+        """Test disaggregation divide value"""
+        div_vals = np.array(
+            [4.93449000e+10, 4.22202000e+10, 6.49988000e+10, 1.04223900e+11,
+            1.04223900e+11, 5.85881000e+10, 1.11822300e+11, 8.54188667e+10,
+            8.54188667e+10, 8.54188667e+10, 1.43895450e+11, 1.43895450e+11,
+            1.16221500e+11, 3.70562500e+11, 1.35359600e+11, 3.83689000e+10]
+            )
 
-    def test_assign_point_val(self):
-        """Test disaggregation value"""
-        pass
+        gdf_div = u_lp._disagg_values_div(gdf_poly_pnts)
+        np.testing.assert_allclose(div_vals, gdf_div.value)
+        not_checked = ['geometry', 'geometry_orig', 'value']
+        for col in gdf_div.columns:
+            if col not in not_checked:
+                np.testing.assert_allclose(gdf_div[col], gdf_poly_pnts[col])
 
     def test_poly_to_pnts(self):
         """Test polygon to points disaggregation"""
@@ -186,7 +194,7 @@ class TestLPUtils(unittest.TestCase):
 
     def test_pnt_line_poly_mask(self):
         """"""
-        pnt, lines, poly = u_lp._pnt_line_poly_mask(exp_poly.gdf)
+        pnt, lines, poly = u_lp._pnt_line_poly_mask(gdf_poly)
         self.assertTrue(np.all(poly))
         self.assertTrue(np.all(lines==False))
         self.assertTrue(np.all(pnt==False))
@@ -245,9 +253,9 @@ class TestLPUtils(unittest.TestCase):
 #         pass
 
 
-
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestExposureGeomToPnt)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestGeomImpactCalcs))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestGdfGeomToPnt))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestLPUtils))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
