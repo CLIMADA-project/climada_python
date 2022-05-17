@@ -28,8 +28,9 @@ from climada import CONFIG
 from climada.entity import Exposures
 import climada.util.lines_polys_handler as u_lp
 import climada.util.coordinates as u_coord
+from climada.util.api_client import Client
 
-exp_poly = Exposures.from_hdf5(CONFIG.local_data.demo.dir().joinpath('test_polygon_exp.hdf5'))
+exp_poly = Client().get_exposures('base', name='test_polygon_exp', status='test_dataset')
 gdf_poly = exp_poly.gdf
 
 COL_CHANGING = ['value', 'latitude', 'longitude', 'geometry', 'geometry_orig']
