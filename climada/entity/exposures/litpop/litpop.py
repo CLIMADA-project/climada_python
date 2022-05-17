@@ -604,7 +604,7 @@ class LitPop(Exposures):
         # is initiated for each shape separately and 0 values (e.g. on sea)
         # removed before combination, to save memory.
         # loop over single polygons in country shape object:
-        for idx, polygon in enumerate(list(country_geometry)):
+        for idx, polygon in enumerate(country_geometry.geoms):
             # get litpop data for each polygon and combine into GeoDataFrame:
             gdf_tmp, meta_tmp, = \
                 _get_litpop_single_polygon(polygon, reference_year,
@@ -618,7 +618,7 @@ class LitPop(Exposures):
                                f' country {iso3a}.')
                 continue
             total_population += meta_tmp['total_population']
-            litpop_gdf = litpop_gdf.append(gdf_tmp)
+            litpop_gdf = pd.concat([litpop_gdf, gdf_tmp])
         litpop_gdf.crs = meta_tmp['crs']
 
         # set total value for disaggregation if not provided:

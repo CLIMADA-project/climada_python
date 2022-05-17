@@ -34,7 +34,10 @@ from climada.util.api_client import Client
 
 
 def get_test_file(ds_name):
-    client = Client()
+    # As this module is part of the installation test suite, we want tom make sure it is running
+    # also in offline mode even when installing from pypi, where there is no test configuration.
+    # So we set cache_enabled explicitly to true
+    client = Client(cache_enabled=True)
     test_ds = client.get_dataset_info(name=ds_name, status='test_dataset')
     _, test_files = client.download_dataset(test_ds)
     return test_files[0]

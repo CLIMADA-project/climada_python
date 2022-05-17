@@ -665,8 +665,8 @@ class Hazard():
             raise KeyError("Variable not in Excel file: " + str(var_err)) from var_err
         return haz
 
-    def select(self, event_names=None, date=None, orig=None, reg_id=None,
-               extent=None, reset_frequency=False):
+    def select(self, event_names=None, event_id=None, date=None, orig=None,
+               reg_id=None, extent=None, reset_frequency=False):
         """Select events matching provided criteria
 
         The frequency of events may need to be recomputed (see `reset_frequency`)!
@@ -675,6 +675,8 @@ class Hazard():
         ----------
         event_names : list of str, optional
             Names of events.
+        event_id : list of int, optional
+            Id of events. Default is None.
         date : array-like of length 2 containing str or int, optional
             (initial date, final date) in string ISO format ('2011-01-02') or datetime
             ordinal integer.
@@ -717,7 +719,7 @@ class Hazard():
         if isinstance(orig, bool):
             sel_ev &= (self.orig.astype(bool) == orig)
             if not np.any(sel_ev):
-                LOGGER.info('No hazard with %s tracks.', str(orig))
+                LOGGER.info('No hazard with %s original events.', str(orig))
                 return None
 
         # filter events based on name
@@ -731,6 +733,15 @@ class Hazard():
                 LOGGER.info('No hazard with name %s', name)
                 return None
             sel_ev = sel_ev[new_sel]
+
+        # filter events based on id
+        if isinstance(event_id, list):
+            # preserves order of event_id
+            sel_ev = np.array([
+                np.argwhere(self.event_id == n)[0,0]
+                for n in event_id
+                if n in self.event_id[sel_ev]
+                ])
 
         # filter centroids
         sel_cen = self.centroids.select_mask(reg_id=reg_id, extent=extent)
