@@ -133,6 +133,7 @@ def calc_geom_impact(
 
     return impact_agg
 
+
 def impact_pnt_agg(impact_pnt, exp_pnt_gdf, agg_met):
     """
     Aggregate the impact per geometry.
@@ -231,6 +232,7 @@ def _aggregate_impact_mat(imp_pnt, gdf_pnt, agg_met):
         )
     return imp_pnt.imp_mat.dot(csr_mask)
 
+
 def calc_grid_impact(
         exp, impf_set, haz, grid, disagg_met=DisaggMethod.DIV, disagg_val=None,
         agg_met=AggMethod.SUM):
@@ -302,6 +304,7 @@ def calc_grid_impact(
 
     return impact_agg
 
+
 def plot_eai_exp_geom(imp_geom, centered=False, figsize=(9, 13), **kwargs):
     """
     Plot the average impact per exposure polygon.
@@ -339,6 +342,7 @@ def plot_eai_exp_geom(imp_geom, centered=False, figsize=(9, 13), **kwargs):
         proj_plot = ccrs.PlateCarree(central_longitude=0.5 * (xmin + xmax))
         gdf_plot = gdf_plot.to_crs(proj_plot)
     return gdf_plot.plot(column = 'impact', **kwargs)
+
 
 def exp_geom_to_pnt(exp, res, to_meters, disagg_met, disagg_val):
     """
@@ -535,6 +539,7 @@ def gdf_to_pnts(gdf, res, to_meters):
         ]))
 
     return gdf_pnt
+
 
 def gdf_to_grid(gdf, grid):
     """
@@ -763,6 +768,7 @@ def _interp_one_poly(poly, res):
     LOGGER.warning('Polygon smaller than resolution. Setting a representative point.')
     return shgeom.MultiPoint([poly.representative_point()])
 
+
 def _interp_one_poly_m(poly, res, orig_crs):
     """
     Disaggregate a single polygon to points for resolution given in meters.
@@ -814,6 +820,7 @@ def _get_equalarea_proj(poly):
     lon_0, lat_0 = repr_pnt.x, repr_pnt.y
     return "+proj=cea +lat_0=%f +lon_0=%f +units=m" %(lat_0, lon_0)
 
+
 def _get_pyproj_trafo(orig_crs, dest_crs):
     """
     Get pyproj projection from orig_crs to dest_crs
@@ -821,6 +828,7 @@ def _get_pyproj_trafo(orig_crs, dest_crs):
     return pyproj.Transformer.from_proj(pyproj.Proj(orig_crs),
                                         pyproj.Proj(dest_crs),
                                         always_xy=True)
+
 
 def reproject_grid(x_grid, y_grid, orig_crs, dest_crs):
     """
@@ -868,6 +876,7 @@ def reproject_poly(poly, orig_crs, dest_crs):
 
     project = _get_pyproj_trafo(orig_crs, dest_crs)
     return sh.ops.transform(project.transform, poly)
+
 
 def _line_to_pnts(gdf_lines, res, to_meters=False):
 
@@ -929,6 +938,7 @@ def _line_to_pnts(gdf_lines, res, to_meters=False):
     gdf_points.index = gdf_points.index.set_levels(idx, level=0)
     return gdf_points
 
+
 def _pnts_per_line(length, res):
     """Calculate number of points fitting along a line, given a certain
     resolution (spacing) res between points.
@@ -944,6 +954,7 @@ def _pnts_per_line(length, res):
         Number of points along line
     """
     return int(np.ceil(length / res) + 1)
+
 
 def _swap_geom_cols(gdf, geom_to, new_geom):
     """
@@ -994,6 +1005,7 @@ def set_imp_mat(impact, imp_mat):
     imp.imp_mat = imp_mat
     return imp
 
+
 def eai_exp_from_mat(imp_mat, freq):
     """
     Compute impact for each exposures from the total impact matrix
@@ -1014,6 +1026,7 @@ def eai_exp_from_mat(imp_mat, freq):
     freq_mat = freq.reshape(len(freq), 1)
     return imp_mat.multiply(freq_mat).sum(axis=0).A1
 
+
 def at_event_from_mat(imp_mat):
     """
     Compute impact for each hazard event from the total impact matrix
@@ -1030,6 +1043,7 @@ def at_event_from_mat(imp_mat):
 
     """
     return np.squeeze(np.asarray(np.sum(imp_mat, axis=1)))
+
 
 def aai_agg_from_at_event(at_event, freq):
     """
