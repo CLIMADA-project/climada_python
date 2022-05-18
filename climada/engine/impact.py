@@ -47,83 +47,7 @@ from climada.util.select import get_attributes_with_matching_dimension
 
 LOGGER = logging.getLogger(__name__)
 
-def eai_exp_from_mat(imp_mat, freq):
-    """
-    Compute impact for each exposures from the total impact matrix
-    Parameters
-    ----------
-    imp_mat : sparse.csr_matrix
-        matrix num_events x num_exp with impacts.
-    frequency : np.array
-        annual frequency of events
-    Returns
-    -------
-    eai_exp : np.array
-        expected annual impact for each exposure
-    """
-    n_events = freq.size
-    freq_csr = sparse.csr_matrix(
-        (freq, np.zeros(n_events), np.arange(n_events + 1)),
-        shape=(n_events, 1))
-    return imp_mat.multiply(freq_csr).sum(axis=0).A1
-
-def at_event_from_mat(imp_mat):
-    """
-    Compute impact for each hazard event from the total impact matrix
-    Parameters
-    ----------
-    imp_mat : sparse.csr_matrix
-        matrix num_events x num_exp with impacts.
-    Returns
-    -------
-    at_event : np.array
-        impact for each hazard event
-    """
-    return np.squeeze(np.asarray(np.sum(imp_mat, axis=1)))
-
-def aai_agg_from_eai_exp(eai_exp):
-    """
-    Aggregate impact.eai_exp
-
-    Parameters
-    ----------
-    eai_exp : np.array
-        expected annual impact for each exposure point
-
-    Returns
-    -------
-    float
-        average annual impact aggregated
-    """
-    return np.sum(eai_exp)
-
-def risk_metrics_from_mat(imp_mat, freq):
-    """
-    Compute risk metricss eai_exp, at_event, aai_agg
-    for an impact matrix and a frequency vector.
-
-    Parameters
-    ----------
-    imp_mat : sparse.csr_matrix
-        matrix num_events x num_exp with impacts.
-    freq : np.array
-        array with the frequency per event
-
-    Returns
-    -------
-    eai_exp: np.array
-        expected annual impact at each exposure point
-    at_event: np.array()
-        total impact for each event
-    aai_agg : float
-        average annual impact aggregated over all exposure points
-    """
-    eai_exp = eai_exp_from_mat(imp_mat, freq)
-    at_event = at_event_from_mat(imp_mat)
-    aai_agg = aai_agg_from_eai_exp(eai_exp)
-    return at_event, eai_exp, aai_agg
-
-
+#TODO put in ImpactCalc class
 class ImpactCalc():
     """
     Class to compute impacts from exposures, impact function set and hazard
@@ -132,11 +56,18 @@ class ImpactCalc():
     def __init__(self,
                  exposures,
                  impfset,
-                 hazard):
+                 hazard,
+                 imp_mat = None):
 
         self.exposures = exposures
         self.impfset = impfset
         self.hazard = hazard
+        imp_mat = sparse.csr_matrix(np.empty((0, 0))) if imp_mat is None else imp_mat
+        self.imp_mat = imp_mat
+        self.n_exp_pnt = self.exposures.gdf.shape[0]
+        self.n_events = self.hazard.size
+        self.deductible = exposures.gdf['deductible']
+        self.cover = exposures.gdf['cover']
 
     def risk(self, save_mat=True):
         """Compute impact of an hazard to exposures including risk metrics.
@@ -173,18 +104,18 @@ class ImpactCalc():
         exp_gdf = self.get_minimal_exp(impf_col)
         LOGGER.info('Calculating impact for %s assets (>0) and %s events.',
                     exp_gdf.size, self.hazard.size)
-        imp_mat_list = self.imp_mat_gen(exp_gdf, impf_col)
-        n_exp_pnt = self.exposures.gdf.shape[0]
-        n_events = self.hazard.size
+        imp_mat_gen = self.imp_mat_gen(exp_gdf, impf_col)
         if save_mat:
-            imp_mat = self.stitch_impact_matrix(imp_mat_list, n_events, n_exp_pnt)
-            return Impact.from_imp_mat(imp_mat, self.exposures, self.impfset, self.hazard)
+            self.imp_mat = self.stitch_impact_matrix(imp_mat_gen)
+            at_event, eai_exp, aai_agg = self.risk_metrics_from_mat(
+                self.imp_mat, self.hazard.frequency
+                )
         else:
-            at_event, eai_exp, aai_agg = self.stitch_risk_metrics(imp_mat_list,
-                                                                  self.hazard.frequency,
-                                                                  n_events, n_exp_pnt)
-            return Impact.from_imp_metrics(at_event, eai_exp, aai_agg, self.exposures,
-                                           self.impfset, self.hazard)
+            at_event, eai_exp, aai_agg = self.stitch_risk_metrics(imp_mat_gen)
+        return Impact.from_eih(
+            self.exposures, self.impfset, self.hazard,
+            at_event, eai_exp, aai_agg, self.imp_mat
+            )
 
     def insured_risk(self, save_mat=False):
         """
@@ -213,33 +144,32 @@ class ImpactCalc():
         exp_gdf = self.get_minimal_exp(impf_col)
         LOGGER.info('Calculating impact for %s assets (>0) and %s events.',
                     exp_gdf.size, self.hazard.size)
-        imp_mat_list = self.imp_mat_gen(exp_gdf, impf_col)
+        imp_mat_gen = self.imp_mat_gen(exp_gdf, impf_col)
         n_exp_pnt = self.exposures.gdf.shape[0]
         n_events = self.hazard.size
 
         def insured_mat_gen(imp_mat_gen, exposures, impact_funcs, hazard, impf_col):
             for mat, exp_idx in imp_mat_gen:
                 impf_id = exposures.gdf[impf_col][exp_idx].unique()[0]
-                deductible = exposures.gdf['deductible'][exp_idx]
+                deductible = self.exposures.gdf['deductible'][exp_idx]
                 cent_idx = exposures.gdf['centr_TC'][exp_idx]
                 impf = impact_funcs.get_func(haz_type=hazard.haz_type, fun_id=impf_id)
-                mat = self.apply_deductible_to_imp_mat(mat, deductible, hazard, cent_idx, impf)
-                cover = exposures.gdf['cover'][exp_idx]
-                mat = self.apply_cover_to_imp_mat(mat, cover)
+                mat = self.apply_deductible_to_mat(mat, deductible, hazard, cent_idx, impf)
+                cover = self.exposures.gdf['cover'][exp_idx]
+                mat = self.apply_cover_to_mat(mat, cover)
                 yield (mat, exp_idx)
 
-        imp_mat_list = insured_mat_gen(imp_mat_list, self.exposures, self.impfset, self.hazard,
+        imp_mat_gen = insured_mat_gen(imp_mat_gen, self.exposures, self.impfset, self.hazard,
                                        impf_col)
         if save_mat:
-            imp_mat = self.stitch_impact_matrix(imp_mat_list, n_events, n_exp_pnt)
-            return Impact.from_imp_mat(imp_mat, self.exposures, self.impfset, self.hazard)
+            self.imp_mat = self.stitch_impact_matrix(imp_mat_gen)
+            at_event, eai_exp, aai_agg = self.risk_metrics()
         else:
-            at_event, eai_exp, aai_agg = self.stitch_risk_metrics(imp_mat_list,
-                                                                  self.hazard.frequency,
-                                                                  n_events, n_exp_pnt)
-            return Impact.from_imp_metrics(at_event, eai_exp, aai_agg, self.exposures,
-                                           self.impfset, self.hazard)
-
+            at_event, eai_exp, aai_agg = self.stitch_risk_metrics(imp_mat_gen)
+        return Impact.from_eih(
+            self.exposures, self.impfset, self.hazard,
+            at_event, eai_exp, aai_agg, self.imp_mat
+            )
 
     def get_minimal_exp(self, impf_col):
         """Get minimal exposures geodataframe for impact computation
@@ -312,32 +242,32 @@ class ImpactCalc():
             shape=(1, n_centroids))
         return fract.multiply(mdr).multiply(exp_values_csr)
 
-    @staticmethod
-    def stitch_impact_matrix(imp_mat_list, n_events, n_exp_pnt):
+    def stitch_impact_matrix(self, imp_mat_gen):
         """
         Make an impact matrix from an impact matrix list
         """
         data, row, col = np.hstack([
             (mat.data, mat.nonzero()[0], idx[mat.nonzero()[1]])
-            for mat, idx in imp_mat_list
+            for mat, idx in imp_mat_gen
             ])
-        return sparse.csr_matrix((data, (row, col)), shape=(n_events, n_exp_pnt))
+        return sparse.csr_matrix(
+            (data, (row, col)), shape=(self.n_events, self.n_exp_pnt)
+            )
 
-    @staticmethod
-    def stitch_risk_metrics(imp_mat_list, freq, n_events, n_exp_pnt):
+    def stitch_risk_metrics(self, imp_mat_gen):
         """
         Compute the impact metrics from an impact matrix list
         """
-        at_event = np.zeros(n_events)
-        eai_exp = np.zeros(n_exp_pnt)
-        for imp_mat, exp_idx in imp_mat_list:
-            at_event += at_event_from_mat(imp_mat)
-            eai_exp[exp_idx] += eai_exp_from_mat(imp_mat, freq)
-        aai_agg = aai_agg_from_eai_exp(eai_exp)
+        at_event = np.zeros(self.n_events)
+        eai_exp = np.zeros(self.n_exp_pnt)
+        for sub_imp_mat, exp_idx in imp_mat_gen:
+            at_event += self.at_event_from_mat(sub_imp_mat)
+            eai_exp[exp_idx] += self.eai_exp_from_mat(sub_imp_mat, self.hazard.frequency)
+        aai_agg = self.aai_agg_from_eai_exp(eai_exp)
         return at_event, eai_exp, aai_agg
 
     @staticmethod
-    def apply_deductible_to_imp_mat(imp_mat, deductible, hazard, cent_idx, impf):
+    def apply_deductible_to_mat(mat, deductible, hazard, cent_idx, impf):
         """
         Apply a deductible per exposure point to an impact matrix at given
         centroid points for given impact function.
@@ -366,12 +296,12 @@ class ImpactCalc():
 
         """
         paa = hazard.get_paa(cent_idx, impf)
-        imp_mat -= paa.multiply(sparse.csr_matrix(deductible))
-        imp_mat.eliminate_zeros()
-        return imp_mat
+        mat -= paa.multiply(sparse.csr_matrix(deductible))
+        mat.eliminate_zeros()
+        return mat
 
     @staticmethod
-    def apply_cover_to_imp_mat(imp_mat, cover):
+    def apply_cover_to_mat(mat, cover):
         """
         Apply cover to impact matrix.
 
@@ -391,9 +321,89 @@ class ImpactCalc():
             impact matrix with applied cover
 
         """
-        imp_mat.data = np.clip(imp_mat.data, 0, cover.to_numpy()[imp_mat.nonzero()[1]])
-        imp_mat.eliminate_zeros()
-        return imp_mat
+        mat.data = np.clip(mat.data, 0, cover.to_numpy()[mat.nonzero()[1]])
+        mat.eliminate_zeros()
+        return mat
+
+    @staticmethod
+    def eai_exp_from_mat(mat, freq):
+        """
+        Compute impact for each exposures from the total impact matrix
+        Parameters
+        ----------
+        imp_mat : sparse.csr_matrix
+            matrix num_events x num_exp with impacts.
+        frequency : np.array
+            annual frequency of events
+        Returns
+        -------
+        eai_exp : np.array
+            expected annual impact for each exposure
+        """
+        n_events = freq.size
+        freq_csr = sparse.csr_matrix(
+            (freq, np.zeros(n_events), np.arange(n_events + 1)),
+            shape=(n_events, 1))
+        return mat.multiply(freq_csr).sum(axis=0).A1
+
+    @staticmethod
+    def at_event_from_mat(mat):
+        """
+        Compute impact for each hazard event from the total impact matrix
+        Parameters
+        ----------
+        imp_mat : sparse.csr_matrix
+            matrix num_events x num_exp with impacts.
+        Returns
+        -------
+        at_event : np.array
+            impact for each hazard event
+        """
+        return np.squeeze(np.asarray(np.sum(mat, axis=1)))
+
+    @staticmethod
+    def aai_agg_from_eai_exp(eai_exp):
+        """
+        Aggregate impact.eai_exp
+
+        Parameters
+        ----------
+        eai_exp : np.array
+            expected annual impact for each exposure point
+
+        Returns
+        -------
+        float
+            average annual impact aggregated
+        """
+        return np.sum(eai_exp)
+
+
+    def risk_metrics(self):
+        """
+        Compute risk metricss eai_exp, at_event, aai_agg
+        for an impact matrix and a frequency vector.
+
+        Parameters
+        ----------
+        imp_mat : sparse.csr_matrix
+            matrix num_events x num_exp with impacts.
+        freq : np.array
+            array with the frequency per event
+
+        Returns
+        -------
+        eai_exp: np.array
+            expected annual impact at each exposure point
+        at_event: np.array()
+            total impact for each event
+        aai_agg : float
+            average annual impact aggregated over all exposure points
+        """
+        eai_exp = self.eai_exp_from_mat(self.imp_mat, self.hazard.frequency)
+        at_event = self.at_event_from_mat(self.imp_mat)
+        aai_agg = self.aai_agg_from_eai_exp(eai_exp)
+        return at_event, eai_exp, aai_agg
 
 class Impact():
     """Impact definition. Compute from an entity (exposures and impact
@@ -431,6 +441,7 @@ class Impact():
         only filled if save_mat is True in calc()
     """
 
+#TODO: change init
     def __init__(self,
                  event_id=np.array([], int),
                  event_name=None,
@@ -474,8 +485,9 @@ class Impact():
             #      "Please use Impact.calc_risk() or Impact.calc_risk_insured().")
             self.__dict__ = impcalc.risk(save_mat).__dict__
 
+#TODO: new name
     @classmethod
-    def from_imp_metrics(cls, at_event, eai_exp, aai_agg, exposures, impfset, hazard):
+    def from_eih(cls, exposures, impfset, hazard, at_event, eai_exp, aai_agg, imp_mat=None):
         """
         Set Impact attributes from precalculated impact metrics.
 
@@ -495,48 +507,7 @@ class Impact():
         Impact
             impact with all risk metrics set based on the given impact matrix
         """
-        return cls(
-            event_id = hazard.event_id,
-            event_name = hazard.event_name,
-            date = hazard.date,
-            frequency = hazard.frequency,
-            coord_exp = np.stack([exposures.gdf.latitude.values,
-                                  exposures.gdf.longitude.values],
-                                 axis=1),
-            crs = exposures.crs,
-            unit = exposures.value_unit,
-            tot_value = exposures.affected_total_value(hazard),
-            eai_exp = eai_exp,
-            at_event = at_event,
-            aai_agg = aai_agg,
-            tag = {'exp': exposures.tag,
-                   'impf_set': impfset.tag,
-                   'haz': hazard.tag
-                   }
-            )
-
-    @classmethod
-    def from_imp_mat(cls, imp_mat, exposures, impfset, hazard):
-        """
-        Set Impact attributes from the impact matrix.
-
-        Parameters
-        ----------
-        imp_mat : sparse.csr_matrix
-            matrix num_events x num_exp with impacts.
-        exposures : climada.entity.Exposures
-            exposure used to compute imp_mat
-        impf_set: climada.entity.ImpactFuncSet
-            impact functions set used to compute imp_mat
-        hazard : climada.Hazard
-            hazard used to compute imp_mat
-
-        Returns
-        -------
-        Impact
-            impact with all risk metrics set based on the given impact matrix
-        """
-        at_event, eai_exp, aai_agg = risk_metrics_from_mat(imp_mat, hazard.frequency)
+        imp_mat = sparse.csr_matrix(np.empty((0, 0))) if imp_mat is None else imp_mat
         return cls(
             event_id = hazard.event_id,
             event_name = hazard.event_name,
@@ -557,6 +528,7 @@ class Impact():
                    'haz': hazard.tag
                    }
             )
+
 
     def transfer_risk(self, attachment, cover):
         """Compute the risk transfer for the full portfolio
