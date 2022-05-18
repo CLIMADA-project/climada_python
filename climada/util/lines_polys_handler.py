@@ -34,6 +34,7 @@ from climada.util import coordinates as u_coord
 
 LOGGER = logging.getLogger(__name__)
 
+
 class DisaggMethod(Enum):
     """
     Disaggregation Method for the ... function
@@ -44,6 +45,7 @@ class DisaggMethod(Enum):
     DIV = 'div'
     FIX = 'fix'
 
+
 class AggMethod(Enum):
     """
     Aggregation Method for the aggregate_impact_mat function
@@ -53,6 +55,7 @@ class AggMethod(Enum):
     """
     AVG = 'avg'
     SUM = 'sum'
+
 
 def calc_geom_impact(
         exp, impf_set, haz, res, to_meters=False, disagg_met=DisaggMethod.DIV,
@@ -141,7 +144,7 @@ def impact_pnt_agg(impact_pnt, exp_pnt_gdf, agg_met):
     ----------
     impact_pnt : Impact
         Impact object with impact per exposure point (lines of exp_pnt)
-    exp_pnt_gdf : GeoDataFrame
+    exp_pnt_gdf : gpd.GeoDataFrame
         Geodataframe of an exposures featuring a multi-index. First level indicating
         membership of original geometries, second level the disaggregated points.
         The exposure is obtained for instance with the disaggregation method
@@ -194,7 +197,7 @@ def _aggregate_impact_mat(imp_pnt, gdf_pnt, agg_met):
     ----------
     imp_pnt : Impact
         Impact object with impact per point (rows of gdf_pnt)
-    gdf_pnt : GeoDataFrame
+    gdf_pnt : gpd.GeoDataFrame
         Exposures geodataframe with a multi-index, as obtained from disaggregation
         method exp_geom_to_pnt(). First level indicating
         membership of original geometries, second level the disaggregated points
@@ -216,7 +219,7 @@ def _aggregate_impact_mat(imp_pnt, gdf_pnt, agg_met):
     # Converts string multi-index level 0 to integer index
     col_geom = np.sort(np.unique(col_geom, return_inverse=True)[1])
     row_pnt = np.arange(len(col_geom))
-    if agg_met.value == 'avg':
+    if AggMethod(agg_met) is AggMethod.AVG:
         geom_sizes = Counter(col_geom).values()
         mask = np.concatenate([np.ones(l) / l for l in geom_sizes])
     else:
@@ -388,7 +391,7 @@ def exp_geom_to_pnt(exp, res, to_meters, disagg_met, disagg_val):
     gdf_pnt = gdf_to_pnts(gdf_geom, res, to_meters)
 
     # disaggregate value column
-    if disagg_met.value == 'div':
+    if DisaggMethod(disagg_met) is DisaggMethod.DIV:
         gdf_pnt = _disagg_values_div(gdf_pnt)
 
     # set lat lon and centroids
@@ -397,6 +400,7 @@ def exp_geom_to_pnt(exp, res, to_meters, disagg_met, disagg_val):
     exp_pnt.set_lat_lon()
 
     return exp_pnt
+
 
 def exp_geom_to_grid(exp, grid, disagg_met, disagg_val):
     """
@@ -443,7 +447,7 @@ def exp_geom_to_grid(exp, grid, disagg_met, disagg_val):
     gdf_pnt = gdf_to_grid(gdf_geom, grid)
 
     # disaggregate value column
-    if disagg_met.value == 'div':
+    if DisaggMethod(disagg_met) is DisaggMethod.DIV:
         gdf_pnt = _disagg_values_div(gdf_pnt)
 
     # set lat lon and centroids
@@ -460,7 +464,7 @@ def _pnt_line_poly_mask(gdf):
 
     Parameters
     ----------
-    gdf : GeoDataFrame
+    gdf : gpd.GeoDataFrame
         Feodataframe instance with gdf.geometry containing (multi)-lines or
         (multi-)polygons. Points are ignored.
 
@@ -486,7 +490,7 @@ def gdf_to_pnts(gdf, res, to_meters):
 
     Parameters
     ----------
-    gdf : GeoDataFrame
+    gdf : gpd.GeoDataFrame
         Feodataframe instance with gdf.geometry containing (multi)-lines or
         (multi-)polygons. Points are ignored.
     res : float
@@ -539,7 +543,7 @@ def gdf_to_grid(gdf, grid):
 
     Parameters
     ----------
-    gdf : GeoDataFrame
+    gdf : gpd.GeoDataFrame
         Feodataframe instance with gdf.geometry containing (multi)-lines or
         (multi-)polygons. Points are ignored.
     grid : np.array()
@@ -585,14 +589,14 @@ def _disagg_values_div(gdf_pnts):
 
     Parameters
     ----------
-    gdf_pnts : geodataframe
+    gdf_pnts : gpd.GeoDataFrame
         Geodataframe with a double index, first for geometries (lines, polygons),
         second for the point disaggregation of the polygons. The value column is assumed
         to represent values per polygon / line (first index).
 
     Returns
     -------
-    gdf_disagg : geodataframe
+    gdf_disagg : gpd.GeoDataFrame
         The value per geometry are evenly distributed over the points per geometry.
 
     """
@@ -617,14 +621,14 @@ def _poly_to_pnts(gdf, res, to_meters=False):
 
     Parameters
     ----------
-    gdf : geodataframe
+    gdf : gpd.GeoDataFrame
         Can have any CRS
     res : float
         Resolution (same units as gdf crs)
 
     Returns
     -------
-    geodataframe
+    gpd.GeoDataFrame
         Geodataframe with a double index, first for polygon geometries,
         second for the point disaggregation of the polygons.
 
@@ -662,7 +666,7 @@ def _poly_to_grid(gdf, grid):
 
     Parameters
     ----------
-    gdf : geodataframe
+    gdf : gpd.GeoDataFrame
         Can have any CRS
     grid : np.array()
         Grid on which to disaggregate the exposures. Provided as two
@@ -670,7 +674,7 @@ def _poly_to_grid(gdf, grid):
 
     Returns
     -------
-    geodataframe
+    gpd.GeoDataFrame
         Geodataframe with a double index, first for polygon geometries,
         second for the point disaggregation of the polygons.
 
@@ -868,14 +872,14 @@ def reproject_poly(poly, orig_crs, dest_crs):
 def _line_to_pnts(gdf_lines, res, to_meters=False):
 
     """
-    Convert a GeoDataframe with LineString geometries to
+    Convert a GeoDataFrame with LineString geometries to
     Point geometries, where Points are placed at a specified distance
     (in meters, if applicable) along the original LineString. Each line is
     reduced to at least two points.
 
     Parameters
     ----------
-    gdf_lines : gpd.GeoDataframe
+    gdf_lines : gpd.GeoDataFrame
         Geodataframe with line geometries
     res : float
         Resolution (distance) apart from which the generated Points
@@ -890,7 +894,7 @@ def _line_to_pnts(gdf_lines, res, to_meters=False):
 
     See also
     --------
-    * util.coordinates.compute_geodesic_lengths()
+    climada.util.coordinates.compute_geodesic_lengths
     """
 
     if gdf_lines.empty:
@@ -946,7 +950,7 @@ def _swap_geom_cols(gdf, geom_to, new_geom):
     Change which column is the geometry column
     Parameters
     ----------
-    gdf : GeoDataFrame
+    gdf : gpd.GeoDataFrame
         Input geodatafram
     geom_to : string
         New name of the current 'geometry' column
@@ -955,7 +959,7 @@ def _swap_geom_cols(gdf, geom_to, new_geom):
         new_geom is renamed to 'geometry'
     Returns
     -------
-    gdf_swap : GeoDataFrame
+    gdf_swap : gpd.GeoDataFrame
         Copy of gdf with the new geometry column
     """
     gdf_swap = gdf.rename(columns = {'geometry': geom_to})
