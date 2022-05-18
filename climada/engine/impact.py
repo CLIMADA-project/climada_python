@@ -224,9 +224,9 @@ class ImpactCalc():
             Exposure values
         cent_idx : np.array
             Hazard centroids assigned to each exposure location
-        hazard : Hazard
+        hazard : climada.Hazard
            Hazard object
-        impf : ImpactFunction
+        impf : climada.entity.ImpactFunc
             one impactfunction comon to all exposure elements in exp_gdf
 
         Returns
@@ -282,11 +282,11 @@ class ImpactCalc():
             impact matrix (events x exposure points)
         deductible : np.array()
             deductible for each exposure point
-        hazard : Hazard
+        hazard : climada.Hazard
             hazard used to compute the imp_mat
         cent_idx : np.array()
             index of centroids associated with each exposure point
-        impf : ImpactFunc
+        impf : climada.entity.ImpactFunc
             impact function associated with the exposure points
 
         Returns
@@ -317,7 +317,7 @@ class ImpactCalc():
 
         Returns
         -------
-        imp_mat : scyp.sparse.csr_matrix
+        imp_mat : scipy.sparse.csr_matrix
             impact matrix with applied cover
 
         """
@@ -504,7 +504,7 @@ class Impact():
 
         Returns
         -------
-        Impact
+        climada.engine.impact.Impact
             impact with all risk metrics set based on the given impact matrix
         """
         imp_mat = sparse.csr_matrix(np.empty((0, 0))) if imp_mat is None else imp_mat
@@ -542,9 +542,9 @@ class Impact():
 
         Returns
         -------
-        transfer_at_event: np.array()
+        transfer_at_event : np.array()
             risk transfered per event
-        transfer_aai_agg: float
+        transfer_aai_agg : float
             average  annual risk transfered
         """
         transfer_at_event = np.minimum(np.maximum(self.at_event - attachment, 0), cover)
@@ -564,9 +564,9 @@ class Impact():
 
         Returns
         -------
-        residual_at_event: np.array()
+        residual_at_event : np.array()
             residual risk per event
-        residual_aai_agg: float
+        residual_aai_agg : float
             average annual residual risk
 
         """
@@ -588,7 +588,7 @@ class Impact():
 
         Returns
         -------
-        climada.engine.Impact
+        climada.engine.impact.Impact
         """
         new_imp = copy.deepcopy(self)
         if attachment or cover:
@@ -731,7 +731,7 @@ class Impact():
 
         Parameters
         ----------
-        mask  : np.array, optional
+        mask : np.array, optional
             mask to apply to eai_exp plotted.
         ignore_zero : bool, optional
             flag to indicate if zero and negative
@@ -943,7 +943,7 @@ class Impact():
         event_id : int, optional
             id of the event for which to plot the impact.
             Default: 1.
-        mask  : np.array, optional
+        mask : np.array, optional
             mask to apply to impact plotted.
         ignore_zero : bool, optional
             flag to indicate if zero and negative
@@ -1240,9 +1240,9 @@ class Impact():
 
         Parameters
         ----------
-        exp : Exposures
+        exp : climada.entity.Exposures
             exposures instance, constant during all video
-        impf_set : ImpactFuncSet
+        impf_set : climada.entity.ImactFuncSet
             impact functions
         haz_list : (list(Hazard))
             every Hazard contains an event; all hazards
@@ -1483,7 +1483,7 @@ class Impact():
             than start-date and <= than end-date. Dates in same format
             as impact.date (ordinal format of datetime library)
             The default is None.
-        coord_exp : np.ndarray), optional
+        coord_exp : np.ndarray, optional
             Selection of exposures coordinates [lat, lon] (in degrees)
             The default is None.
 
@@ -1495,7 +1495,7 @@ class Impact():
 
         Returns
         -------
-        imp : climada.engine.Impact
+        imp : climada.engine.impact.Impact
             A new impact object with a selection of events and/or exposures
 
         """
