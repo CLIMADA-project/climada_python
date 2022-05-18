@@ -23,6 +23,7 @@ __all__ = ['Exposures', 'add_sea', 'INDICATOR_IMPF', 'INDICATOR_CENTR']
 
 import logging
 import copy
+from pathlib import Path
 import warnings
 
 import numpy as np
@@ -806,6 +807,8 @@ class Exposures():
         Exposures
         """
         LOGGER.info('Reading %s', file_name)
+        if not Path(file_name).is_file():
+            raise FileNotFoundError(str(file_name))
         with pd.HDFStore(file_name) as store:
             metadata = store.get_storer('exposures').attrs.metadata
             # in previous versions of CLIMADA and/or geopandas, the CRS was stored in '_crs'/'crs'

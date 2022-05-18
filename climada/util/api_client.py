@@ -211,7 +211,7 @@ class Cacher():
         """
         _key = Cacher._make_key(*args, **kwargs)
         try:
-            with Path(self.cachedir, _key).open('w') as flp:
+            with Path(self.cachedir, _key).open('w', encoding='utf-8') as flp:
                 json.dump(result, flp)
         except (OSError, ValueError):
             pass
@@ -233,7 +233,7 @@ class Cacher():
         """
         _key = Cacher._make_key(*args, **kwargs)
         try:
-            with Path(self.cachedir, _key).open() as flp:
+            with Path(self.cachedir, _key).open(encoding='utf-8') as flp:
                 return json.load(flp)
         except (OSError, ValueError):
             return None
@@ -871,7 +871,7 @@ class Client():
         if known_property_values:
             for key, val in known_property_values.items():
                 ppdf = ppdf[ppdf[key] == val]
-        if not len(ppdf):
+        if len(ppdf) == 0:
             raise Client.NoResult("there is no dataset meeting the requirements")
 
         property_values = dict()
