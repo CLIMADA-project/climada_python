@@ -47,7 +47,6 @@ from climada.util.select import get_attributes_with_matching_dimension
 
 LOGGER = logging.getLogger(__name__)
 
-#TODO put in ImpactCalc class
 class ImpactCalc():
     """
     Class to compute impacts from exposures, impact function set and hazard
@@ -57,110 +56,68 @@ class ImpactCalc():
                  exposures,
                  impfset,
                  hazard,
-                 imp_mat = None):
+                 imp_mat=None):
 
+        imp_mat = sparse.csr_matrix(np.empty((0, 0))) if imp_mat is None else imp_mat
         self.exposures = exposures
         self.impfset = impfset
         self.hazard = hazard
-        imp_mat = sparse.csr_matrix(np.empty((0, 0))) if imp_mat is None else imp_mat
         self.imp_mat = imp_mat
         self.n_exp_pnt = self.exposures.gdf.shape[0]
         self.n_events = self.hazard.size
-        self.deductible = exposures.gdf['deductible']
-        self.cover = exposures.gdf['cover']
 
-    def risk(self, save_mat=True):
-        """Compute impact of an hazard to exposures including risk metrics.
+    @property
+    def deductible(self):
+        """
+        Deductible from the exposures
+
+        Returns
+        -------
+        np.array
+            The deductible per exposure point
+
+        """
+        return self.exposures.gdf['deductible']
+
+    @property
+    def cover(self):
+        """
+        Cover from the exposures
+
+        Returns
+        -------
+        np.array
+            The cover per exposure point
+
+        """
+        return self.exposures.gdf['cover']
+
+    def impact(self, save_mat=True):
+        """Compute the impact of a hazard on exposures.
 
         Parameters
         ----------
-        exposures : climada.entity.Exposures
-            the exposures
-        impact_funcs : climada.entity.ImpactFuncSet
-            the set of impact functions
-        hazard : climada.Hazard
-            the hazard
         save_mat : bool
             if true, save the total impact matrix (events x exposures)
 
         Examples
         --------
-            Use Entity class:
-
             >>> haz = Hazard.from_mat(HAZ_DEMO_MAT)  # Set hazard
-            >>> ent = Entity.from_excel(ENT_TEMPLATE_XLS) # Set exposures
-            >>> imp = Impact.calc_risk(ent.exposures, ent.impact_funcs, haz)
-            >>> imp.calc_freq_curve().plot()
-
-            Specify only exposures and impact functions:
-
-            >>> haz = Hazard.from_mat(HAZ_DEMO_MAT)  # Set hazard
-            >>> funcs = ImpactFuncSet.from_excel(ENT_TEMPLATE_XLS) # Set impact functions
+            >>> impfset = ImpactFuncSet.from_excel(ENT_TEMPLATE_XLS) # Set impact functions
             >>> exp = Exposures(pd.read_excel(ENT_TEMPLATE_XLS)) # Set exposures
-            >>> imp = Impact.calc_risk(exp, funcs, haz)
+            >>> impcalc = ImpactCal(exp, impfset, haz)
+            >>> imp = impcalc.insured_impact()
             >>> imp.aai_agg
+
+        Note
+        ----
+        Deductible and/or cover values in the exposures are ignored.
         """
         impf_col = self.exposures.get_impf_column(self.hazard.haz_type)
-        exp_gdf = self.get_minimal_exp(impf_col)
+        exp_gdf = self.minimal_exp_gdf(impf_col)
         LOGGER.info('Calculating impact for %s assets (>0) and %s events.',
-                    exp_gdf.size, self.hazard.size)
+                    self.n_events, self.n_events)
         imp_mat_gen = self.imp_mat_gen(exp_gdf, impf_col)
-        if save_mat:
-            self.imp_mat = self.stitch_impact_matrix(imp_mat_gen)
-            at_event, eai_exp, aai_agg = self.risk_metrics_from_mat(
-                self.imp_mat, self.hazard.frequency
-                )
-        else:
-            at_event, eai_exp, aai_agg = self.stitch_risk_metrics(imp_mat_gen)
-        return Impact.from_eih(
-            self.exposures, self.impfset, self.hazard,
-            at_event, eai_exp, aai_agg, self.imp_mat
-            )
-
-    def insured_risk(self, save_mat=False):
-        """
-        To be document and written more nicely.
-
-        Parameters
-        ----------
-        cls : TYPE
-            DESCRIPTION.
-        exposures : TYPE
-            DESCRIPTION.
-        impact_funcs : TYPE
-            DESCRIPTION.
-        hazard : TYPE
-            DESCRIPTION.
-        save_mat : TYPE, optional
-            DESCRIPTION. The default is False.
-
-        Returns
-        -------
-        TYPE
-            DESCRIPTION.
-
-        """
-        impf_col = self.exposures.get_impf_column(self.hazard.haz_type)
-        exp_gdf = self.get_minimal_exp(impf_col)
-        LOGGER.info('Calculating impact for %s assets (>0) and %s events.',
-                    exp_gdf.size, self.hazard.size)
-        imp_mat_gen = self.imp_mat_gen(exp_gdf, impf_col)
-        n_exp_pnt = self.exposures.gdf.shape[0]
-        n_events = self.hazard.size
-
-        def insured_mat_gen(imp_mat_gen, exposures, impact_funcs, hazard, impf_col):
-            for mat, exp_idx in imp_mat_gen:
-                impf_id = exposures.gdf[impf_col][exp_idx].unique()[0]
-                deductible = self.exposures.gdf['deductible'][exp_idx]
-                cent_idx = exposures.gdf['centr_TC'][exp_idx]
-                impf = impact_funcs.get_func(haz_type=hazard.haz_type, fun_id=impf_id)
-                mat = self.apply_deductible_to_mat(mat, deductible, hazard, cent_idx, impf)
-                cover = self.exposures.gdf['cover'][exp_idx]
-                mat = self.apply_cover_to_mat(mat, cover)
-                yield (mat, exp_idx)
-
-        imp_mat_gen = insured_mat_gen(imp_mat_gen, self.exposures, self.impfset, self.hazard,
-                                       impf_col)
         if save_mat:
             self.imp_mat = self.stitch_impact_matrix(imp_mat_gen)
             at_event, eai_exp, aai_agg = self.risk_metrics()
@@ -171,7 +128,53 @@ class ImpactCalc():
             at_event, eai_exp, aai_agg, self.imp_mat
             )
 
-    def get_minimal_exp(self, impf_col):
+    def insured_impact(self, save_mat=False):
+        """Compute the impact of a hazard on exposures with a deductible and/or
+        cover.
+
+        For each exposure point, the impact per event is obtained by
+        substracting the deductible (and is maximally equal to the cover).
+
+        Parameters
+        ----------
+        save_mat : bool
+            if true, save the total impact matrix (events x exposures)
+
+        Examples
+        --------
+            >>> haz = Hazard.from_mat(HAZ_DEMO_MAT)  # Set hazard
+            >>> impfset = ImpactFuncSet.from_excel(ENT_TEMPLATE_XLS) # Set impact functions
+            >>> exp = Exposures(pd.read_excel(ENT_TEMPLATE_XLS)) # Set exposures
+            >>> impcalc = ImpactCal(exp, impfset, haz)
+            >>> imp = impcalc.insured_impact()
+            >>> imp.aai_agg
+
+        See also
+        --------
+        apply_deductible_to_mat:
+            apply deductible to impact matrix
+        apply_cover_to_mat:
+            apply cover to impact matrix
+        """
+        impf_col = self.exposures.get_impf_column(self.hazard.haz_type)
+        exp_gdf = self.minimal_exp_gdf(impf_col)
+        LOGGER.info('Calculating impact for %s assets (>0) and %s events.',
+                    exp_gdf.size, self.hazard.size)
+
+        imp_mat_gen = self.imp_mat_gen(exp_gdf, impf_col)
+        ins_mat_gen = self.insured_mat_gen(imp_mat_gen, impf_col)
+
+        if save_mat:
+            self.imp_mat = self.stitch_impact_matrix(ins_mat_gen)
+            at_event, eai_exp, aai_agg = self.risk_metrics()
+        else:
+            at_event, eai_exp, aai_agg = self.stitch_risk_metrics(ins_mat_gen)
+        return Impact.from_eih(
+            self.exposures, self.impfset, self.hazard,
+            at_event, eai_exp, aai_agg, self.imp_mat
+            )
+
+    def minimal_exp_gdf(self, impf_col):
         """Get minimal exposures geodataframe for impact computation
 
         Parameters
@@ -198,7 +201,7 @@ class ImpactCalc():
 
     def imp_mat_gen(self, exp_gdf, impf_col):
         """
-        List of impact matrices for the exposure and of corresponding exposures indices
+        Geneartor of impact sub-matrices and correspoding exposures indices
         """
         for impf_id in exp_gdf[impf_col].dropna().unique():
             impf = self.impfset.get_func(haz_type=self.hazard.haz_type, fun_id=impf_id)
@@ -213,10 +216,25 @@ class ImpactCalc():
                 cent_idx = exp_gdf[self.hazard.cent_exp_col].values[exp_idx]
                 yield (self.impact_matrix(exp_values, cent_idx, impf), exp_idx)
 
+    def insured_mat_gen(self, imp_mat_gen, impf_col):
+        """
+        Generator of insured impact sub-matrices (with applied cover and deductible)
+        and corresponding exposures indices
+        """
+        for mat, exp_idx in imp_mat_gen:
+            impf_id = self.exposures.gdf[impf_col][exp_idx].unique()[0]
+            deductible = self.deductible[exp_idx]
+            cent_idx = self.exposures.gdf['centr_TC'][exp_idx]
+            impf = self.impfset.get_func(haz_type=self.hazard.haz_type, fun_id=impf_id)
+            mat = self.apply_deductible_to_mat(mat, deductible, self.hazard, cent_idx, impf)
+            cover = self.cover[exp_idx]
+            mat = self.apply_cover_to_mat(mat, cover)
+            yield (mat, exp_idx)
+
     def impact_matrix(self, exp_values, cent_idx, impf):
         """
-        Compute the impact matrix for given exposure values, assigned centroids, a hazard,
-        and one impact function.
+        Compute the impact matrix for given exposure values,
+        assigned centroids, a hazard, and one impact function.
 
         Parameters
         ----------
@@ -244,7 +262,7 @@ class ImpactCalc():
 
     def stitch_impact_matrix(self, imp_mat_gen):
         """
-        Make an impact matrix from an impact matrix list
+        Make an impact matrix from an impact sub-matrix generator
         """
         data, row, col = np.hstack([
             (mat.data, mat.nonzero()[0], idx[mat.nonzero()[1]])
@@ -256,7 +274,7 @@ class ImpactCalc():
 
     def stitch_risk_metrics(self, imp_mat_gen):
         """
-        Compute the impact metrics from an impact matrix list
+        Compute the impact metrics from an impact sub-matrix generator
         """
         at_event = np.zeros(self.n_events)
         eai_exp = np.zeros(self.n_exp_pnt)
@@ -329,6 +347,7 @@ class ImpactCalc():
     def eai_exp_from_mat(mat, freq):
         """
         Compute impact for each exposures from the total impact matrix
+
         Parameters
         ----------
         imp_mat : sparse.csr_matrix
@@ -441,35 +460,34 @@ class Impact():
         only filled if save_mat is True in calc()
     """
 
-#TODO: change init
     def __init__(self,
-                 event_id=np.array([], int),
+                 event_id=None,
                  event_name=None,
-                 date=np.array([], int),
-                 frequency=np.array([],float),
-                 coord_exp=np.ndarray([], float),
+                 date=None,
+                 frequency=None,
+                 coord_exp=None,
                  crs=DEF_CRS,
-                 eai_exp=np.array([], float),
-                 at_event=np.array([], float),
+                 eai_exp=None,
+                 at_event=None,
                  tot_value=0,
                  aai_agg=0,
                  unit='',
-                 imp_mat=sparse.csr_matrix(np.empty((0, 0))),
+                 imp_mat=None,
                  tag=None):
 
         self.tag = tag or {}
-        self.event_id = event_id
+        self.event_id = np.array([], int) if event_id is None else event_id
         self.event_name = event_name or []
-        self.date = date
-        self.coord_exp = coord_exp
+        self.date = np.array([], int) if date is None else date
+        self.coord_exp = np.ndarray([], float) if coord_exp is None else coord_exp
         self.crs = crs
-        self.eai_exp = eai_exp
-        self.at_event = at_event
-        self.frequency = frequency
+        self.eai_exp = np.array([], float) if eai_exp is None else eai_exp
+        self.at_event = np.array([], float) if at_event is None else at_event
+        self.frequency = np.array([],float) if frequency is None else frequency
         self.tot_value = tot_value
         self.aai_agg = aai_agg
         self.unit = unit
-        self.imp_mat = imp_mat
+        self.imp_mat = sparse.csr_matrix(np.empty((0, 0))) if imp_mat is None else imp_mat
 
     def calc(self, exposures, impact_funcs, hazard, save_mat=False):
         """This function is deprecated, use Impact.calc_risk and Impact.calc_insured_risk instead.
@@ -479,15 +497,16 @@ class Impact():
             and exposures.gdf.cover.max():
             # LOGGER.warning("To compute the risk transfer value"
             #      "please use Impact.calc_insured_risk")
-            self.__dict__ = impcalc.insured_risk(save_mat).__dict__
+            self.__dict__ = impcalc.insured_impact(save_mat).__dict__
         else:
             # LOGGER.warning("The use of Impact.calc() is deprecated."
             #      "Please use Impact.calc_risk() or Impact.calc_risk_insured().")
-            self.__dict__ = impcalc.risk(save_mat).__dict__
+            self.__dict__ = impcalc.impact(save_mat).__dict__
 
 #TODO: new name
     @classmethod
-    def from_eih(cls, exposures, impfset, hazard, at_event, eai_exp, aai_agg, imp_mat=None):
+    def from_eih(cls, exposures, impfset, hazard,
+                 at_event, eai_exp, aai_agg, imp_mat=None):
         """
         Set Impact attributes from precalculated impact metrics.
 
@@ -531,7 +550,11 @@ class Impact():
 
 
     def transfer_risk(self, attachment, cover):
-        """Compute the risk transfer for the full portfolio
+        """Compute the risk transfer for the full portfolio. This is the risk
+        of the full portfolio summed over all events. For each
+        event, the transfered risk amounts to the impact minus the attachment
+        (but maximally equal to the cover) multiplied with the probability
+        of the event.
 
         Parameters
         ----------
@@ -553,7 +576,11 @@ class Impact():
 
     def residual_risk(self, attachment, cover):
         """Compute the residual risk after application of insurance
-        attachment and cover to entire portfolio.
+        attachment and cover to entire portfolio. This is the residual risk
+        of the full portfolio summed over all events. For each
+        event, the residual risk is obtained by subtracting the transfered risk
+        from the trom the total risk per event.
+        of the event.
 
         Parameters
         ----------
@@ -569,12 +596,17 @@ class Impact():
         residual_aai_agg : float
             average annual residual risk
 
+        See also
+        --------
+        transfer_risk: compute the transfer risk per portfolio.
+
         """
         transfer_at_event, _ = self.transfer_risk(attachment, cover)
         residual_at_event = np.maximum(self.at_event - transfer_at_event, 0)
         residual_aai_agg = np.sum(residual_at_event * self.frequency)
         return residual_at_event, residual_aai_agg
 
+#TODO deprecate method
     def calc_risk_transfer(self, attachment, cover):
         """Compute traaditional risk transfer over impact. Returns new impact
         with risk transfer applied and the insurance layer resulting
