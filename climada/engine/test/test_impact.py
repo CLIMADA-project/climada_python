@@ -19,7 +19,6 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Test Impact class.
 """
 import unittest
-from pathlib import Path
 import numpy as np
 from scipy import sparse
 
