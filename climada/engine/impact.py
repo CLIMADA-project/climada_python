@@ -57,6 +57,29 @@ class ImpactCalc():
                  impfset,
                  hazard,
                  imp_mat=None):
+        """
+        Initialize an ImpactCalc object.
+
+        The dimension of the imp_mat variable must be compatible with the
+        exposures and hazard objects.
+
+        Parameters
+        ----------
+        exposures : climada.entity.Exposures
+            exposure used to compute imp_mat
+        impf_set: climada.entity.ImpactFuncSet
+            impact functions set used to compute imp_mat
+        hazard : climada.Hazard
+            hazard used to compute imp_mat
+        imp_mat : sparse.csr_matrix, optional
+            matrix num_events x num_exp with impacts.
+            Default is an empty matrix.
+
+        Returns
+        -------
+        None.
+
+        """
 
         imp_mat = sparse.csr_matrix(np.empty((0, 0))) if imp_mat is None else imp_mat
         self.exposures = exposures
@@ -512,14 +535,14 @@ class Impact():
 
         Parameters
         ----------
-        imp_mat : sparse.csr_matrix
-            matrix num_events x num_exp with impacts.
         exposures : climada.entity.Exposures
             exposure used to compute imp_mat
         impf_set: climada.entity.ImpactFuncSet
             impact functions set used to compute imp_mat
         hazard : climada.Hazard
             hazard used to compute imp_mat
+        imp_mat : sparse.csr_matrix
+            matrix num_events x num_exp with impacts.
 
         Returns
         -------
