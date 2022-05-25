@@ -489,29 +489,26 @@ def _pnt_line_poly_mask(gdf):
 
 def gdf_to_pnts(gdf, res, to_meters):
     """
-    Disaggregate geodataframe with (multi-)polygons
-    geometries to points.
+    Disaggregate geodataframe with (multi-)polygons geometries to points.
 
     Parameters
     ----------
     gdf : gpd.GeoDataFrame
-        Feodataframe instance with gdf.geometry containing (multi)-lines or
-        (multi-)polygons. Points are ignored.
+        Feodataframe instance with gdf.geometry containing (multi)-lines or (multi-)polygons.
+        Points are ignored.
     res : float
-        Resolution of the disaggregation grid. Can also be a
-        tuple of [x_grid, y_grid] numpy arrays. In this case, to_meters is
-        ignored.
+        Resolution of the disaggregation grid. Can also be a tuple of [x_grid, y_grid] numpy
+        arrays. In this case, to_meters is ignored.
     to_meters : bool
-       If True, the geometries are projected to an equal area projection before
-       the disaggregation. res is then in meters. The exposures are
-       then reprojected into the original projections before the impact
-       calculation.
+       If True, the geometries are projected to an equal area projection before the disaggregation.
+       res is then in meters. The exposures are then reprojected into the original projections
+       before the impact calculation.
 
     Returns
     -------
-    exp_pnt : Exposures
-        Exposures with a double index geodataframe, first for the geometries
-        of exp, second for the point disaggregation of the geometries.
+    gdf_pnt : gpd.GeoDataFrame
+        with a double index, first for the geometries of exp, second for the point disaggregation
+        of the geometries.
 
     """
     if gdf.empty:
@@ -543,24 +540,21 @@ def gdf_to_pnts(gdf, res, to_meters):
 
 def gdf_to_grid(gdf, grid):
     """
-    Disaggregate geodataframe with (multi-)polygons
-    geometries to points.
+    Disaggregate geodataframe with (multi-)polygons geometries to points.
 
     Parameters
     ----------
     gdf : gpd.GeoDataFrame
-        Feodataframe instance with gdf.geometry containing (multi)-lines or
-        (multi-)polygons. Points are ignored.
+        Feodataframe instance with gdf.geometry containing (multi)-lines or (multi-)polygons.
+        Points are ignored.
     grid : np.array()
-        Grid on which to disaggregate the exposures. Provided as two
-        vectors [x_grid, y_grid].
+        Grid on which to disaggregate the exposures. Provided as two vectors [x_grid, y_grid].
 
     Returns
     -------
-    exp_pnt : Exposures
-        Exposures with a double index geodataframe, first for the geometries of exp,
-        second for the point disaggregation of the geometries.
-
+    gdf_pnt : gpd.GeoDataFrame
+        with a double index, first for the geometries of exp, second for the point disaggregation
+        of the geometries.
     """
     if gdf.empty:
         return gdf
@@ -576,8 +570,8 @@ def gdf_to_grid(gdf, grid):
             gdf[pnt_mask]
         ]))
     if line_mask.any():
-        raise AttributeError("The exposures contains lines. Lines cannot"
-                             "be disaggregate on a fixed grid.")
+        raise AttributeError("The dataframe contains lines. Lines cannot be disaggregated onto a "
+                             "fixed grid.")
     if poly_mask.any():
         gdf_pnt = gpd.GeoDataFrame(pd.concat([
             gdf_pnt,
