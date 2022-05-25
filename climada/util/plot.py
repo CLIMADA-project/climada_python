@@ -738,7 +738,7 @@ def get_transformation(crs_in):
     units : str
     """
     with warnings.catch_warnings():
-    # Within this block we want to suppress this UserWarning from pyproj._crs._CRS.to_proj4:
+    # Within this function we want to suppress the UserWarning from pyproj._crs._CRS.to_proj4:
     # You will likely lose important projection information when converting to a PROJ string from
     # another format. See:
     # https://proj.org/faq.html#what-is-the-best-format-for-describing-coordinate-reference-systems
@@ -752,8 +752,7 @@ def get_transformation(crs_in):
         except ValueError:
             crs_epsg = ccrs.PlateCarree()
         except requests.exceptions.ConnectionError:
-            LOGGER.warning('No internet connection.'
-                        ' Using projection PlateCarree in plot.')
+            LOGGER.warning('No internet connection. Using projection PlateCarree in plot.')
             crs_epsg = ccrs.PlateCarree()
 
         try:
