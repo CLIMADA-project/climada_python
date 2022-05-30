@@ -750,6 +750,10 @@ def get_transformation(crs_in):
             else:
                 crs_epsg = ccrs.epsg(CRS.from_user_input(crs_in).to_epsg())
         except ValueError:
+            LOGGER.warning(
+                f"Error parsing coordinate system '{crs_in}'. Using projection "
+                "PlateCarree in plot."
+            )
             crs_epsg = ccrs.PlateCarree()
         except requests.exceptions.ConnectionError:
             LOGGER.warning('No internet connection. Using projection PlateCarree in plot.')
