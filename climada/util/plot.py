@@ -737,41 +737,42 @@ def get_transformation(crs_in):
     crs_epsg : ccrs.Projection
     units : str
     """
+
+    # projection
+    try:
+        if CRS.from_user_input(crs_in) == CRS.from_user_input('EPSG:3395'):
+            crs_epsg = ccrs.Mercator()
+        else:
+            crs_epsg = ccrs.epsg(CRS.from_user_input(crs_in).to_epsg())
+    except ValueError:
+        LOGGER.warning(
+            "Error parsing coordinate system '%s'. Using projection PlateCarree in plot.", crs_in
+        )
+        crs_epsg = ccrs.PlateCarree()
+    except requests.exceptions.ConnectionError:
+        LOGGER.warning('No internet connection. Using projection PlateCarree in plot.')
+        crs_epsg = ccrs.PlateCarree()
+
+    # units
     with warnings.catch_warnings():
-    # Within this function we want to suppress the UserWarning from pyproj._crs._CRS.to_proj4:
-    # You will likely lose important projection information when converting to a PROJ string from
-    # another format. See:
-    # https://proj.org/faq.html#what-is-the-best-format-for-describing-coordinate-reference-systems
+        # The method `to_dict` converts the crs into a string, which causes a user warning about
+        # losing important information. Since we are only interested in its units at this point,
+        # we may safely ignore it.
         warnings.simplefilter(action="ignore", category=UserWarning)
-
-        try:
-            if CRS.from_user_input(crs_in) == CRS.from_user_input('EPSG:3395'):
-                crs_epsg = ccrs.Mercator()
-            else:
-                crs_epsg = ccrs.epsg(CRS.from_user_input(crs_in).to_epsg())
-        except ValueError:
-            LOGGER.warning(
-                f"Error parsing coordinate system '{crs_in}'. Using projection "
-                "PlateCarree in plot."
-            )
-            crs_epsg = ccrs.PlateCarree()
-        except requests.exceptions.ConnectionError:
-            LOGGER.warning('No internet connection. Using projection PlateCarree in plot.')
-            crs_epsg = ccrs.PlateCarree()
-
         try:
             units = (crs_epsg.proj4_params.get('units')
-                # As of cartopy 0.20 the proj4_params attribute is {} for CRS from an EPSG number
-                # (see issue raised https://github.com/SciTools/cartopy/issues/1974
-                # and longterm discussion on https://github.com/SciTools/cartopy/issues/813).
-                # In these cases the units can be fetched through the method `to_dict`.
-                or crs_epsg.to_dict().get('units', '°'))
+            # As of cartopy 0.20 the proj4_params attribute is {} for CRS from an EPSG number
+            # (see issue raised https://github.com/SciTools/cartopy/issues/1974
+            # and longterm discussion on https://github.com/SciTools/cartopy/issues/813).
+            # In these cases the units can be fetched through the method `to_dict`.
+            or crs_epsg.to_dict().get('units', '°'))
         except AttributeError:
-                # This happens in setups with cartopy<0.20, where `to_dict` is not defined.
-                # Officially, we require cartopy>=0.20, but there are still users around that
-                # can't upgrade due to https://github.com/SciTools/iris/issues/4468
+            # This happens in setups with cartopy<0.20, where `to_dict` is not defined.
+            # Officially, we require cartopy>=0.20, but there are still users around that
+            # can't upgrade due to https://github.com/SciTools/iris/issues/4468
             units = '°'
-        return crs_epsg, units
+
+    return crs_epsg, units
 
 
 def multibar_plot(ax, data, colors=None, total_width=0.8, single_width=1,
