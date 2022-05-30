@@ -18,6 +18,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Define auxiliary functions for plots.
 """
+# pylint: disable=abstract-class-instantiated
 
 __all__ = ['geo_bin_from_array',
            'geo_im_from_array',
@@ -29,6 +30,7 @@ __all__ = ['geo_bin_from_array',
 
 import logging
 from textwrap import wrap
+import warnings
 
 from scipy.interpolate import griddata
 import numpy as np
@@ -449,7 +451,7 @@ def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
         cmap = mpl.colors.ListedColormap(
             mpl.cm.get_cmap(cmap_name).colors[:array_sub_n]
         )
-    
+
     if array_sub_n > cmap.N:
         LOGGER.warning("More than %d categories cannot be plotted accurately "
                        "using the colormap %s. Please specify "
@@ -723,8 +725,7 @@ def _get_borders(geo_coord, buffer=0, proj_limits=(-180, 180, -90, 90)):
 
 def get_transformation(crs_in):
     """
-    Get projection and its units to use in cartopy transforamtions from
-    current crs
+    Get projection and its units to use in cartopy transforamtions from current crs.
 
     Parameters
     ----------
@@ -736,31 +737,41 @@ def get_transformation(crs_in):
     crs_epsg : ccrs.Projection
     units : str
     """
-    try:
-        if CRS.from_user_input(crs_in) == CRS.from_user_input('EPSG:3395'):
-            crs_epsg = ccrs.Mercator()
-        else:
-            crs_epsg = ccrs.epsg(CRS.from_user_input(crs_in).to_epsg())
-    except ValueError:
-        crs_epsg = ccrs.PlateCarree()
-    except requests.exceptions.ConnectionError:
-        LOGGER.warning('No internet connection.'
-                       ' Using projection PlateCarree in plot.')
-        crs_epsg = ccrs.PlateCarree()
+    with warnings.catch_warnings():
+    # Within this function we want to suppress the UserWarning from pyproj._crs._CRS.to_proj4:
+    # You will likely lose important projection information when converting to a PROJ string from
+    # another format. See:
+    # https://proj.org/faq.html#what-is-the-best-format-for-describing-coordinate-reference-systems
+        warnings.simplefilter(action="ignore", category=UserWarning)
 
-    try:
-        units = (crs_epsg.proj4_params.get('units')
+        try:
+            if CRS.from_user_input(crs_in) == CRS.from_user_input('EPSG:3395'):
+                crs_epsg = ccrs.Mercator()
+            else:
+                crs_epsg = ccrs.epsg(CRS.from_user_input(crs_in).to_epsg())
+        except ValueError:
+            LOGGER.warning(
+                f"Error parsing coordinate system '{crs_in}'. Using projection "
+                "PlateCarree in plot."
+            )
+            crs_epsg = ccrs.PlateCarree()
+        except requests.exceptions.ConnectionError:
+            LOGGER.warning('No internet connection. Using projection PlateCarree in plot.')
+            crs_epsg = ccrs.PlateCarree()
+
+        try:
+            units = (crs_epsg.proj4_params.get('units')
                 # As of cartopy 0.20 the proj4_params attribute is {} for CRS from an EPSG number
                 # (see issue raised https://github.com/SciTools/cartopy/issues/1974
                 # and longterm discussion on https://github.com/SciTools/cartopy/issues/813).
                 # In these cases the units can be fetched through the method `to_dict`.
                 or crs_epsg.to_dict().get('units', '°'))
-    except AttributeError:
+        except AttributeError:
                 # This happens in setups with cartopy<0.20, where `to_dict` is not defined.
                 # Officially, we require cartopy>=0.20, but there are still users around that
                 # can't upgrade due to https://github.com/SciTools/iris/issues/4468
-        units = '°'
-    return crs_epsg, units
+            units = '°'
+        return crs_epsg, units
 
 
 def multibar_plot(ax, data, colors=None, total_width=0.8, single_width=1,
