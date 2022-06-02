@@ -1116,6 +1116,9 @@ class Centroids():
         else:
             data = file_data
         str_dt = h5py.special_dtype(vlen=str)
+        if 'nodata' in self.meta.keys():
+            if self.meta['nodata'] is None:
+                self.meta['nodata'] = 'None'
         for centr_name, centr_val in self.__dict__.items():
             if isinstance(centr_val, np.ndarray):
                 data.create_dataset(centr_name, data=centr_val, compression="gzip")
