@@ -184,8 +184,12 @@ class ImpactCalc():
         LOGGER.info('Calculating impact for %s assets (>0) and %s events.',
                     exp_gdf.size, self.hazard.size)
 
-        imp_mat_gen = self.imp_mat_gen(exp_gdf, impf_col)
+        if self.imp_mat.size == 0:
+            imp_mat_gen = self.imp_mat_gen(exp_gdf, impf_col)
+        else:
+            imp_mat_gen = ((self.imp_mat, self.exposures.gdf.index.values) for n in range(1))
         ins_mat_gen = self.insured_mat_gen(imp_mat_gen, impf_col)
+
 
         if save_mat:
             self.imp_mat = self.stitch_impact_matrix(ins_mat_gen)
