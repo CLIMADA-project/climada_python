@@ -19,7 +19,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define Impact and ImpactFreqCurve classes.
 """
 
-__all__ = ['ImpactFreqCurve', 'Impact']
+__all__ = ['ImpactFreqCurve', 'Impact', 'ImpactCalc']
 
 import logging
 import copy
