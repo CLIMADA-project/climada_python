@@ -76,7 +76,8 @@ class ImpactCalc():
     @property
     def deductible(self):
         """
-        Deductible from the exposures
+        Deductibles from the exposures. Returns empty array
+        if no deductibles defined.
 
         Returns
         -------
@@ -84,12 +85,14 @@ class ImpactCalc():
             The deductible per exposure point
 
         """
-        return self.exposures.gdf['deductible']
+        if 'deductible' in self.exposures.gdf.columns:
+            return self.exposures.gdf['deductible'].to_numpy()
+        return np.array([])
 
     @property
     def cover(self):
         """
-        Cover from the exposures
+        Covers from the exposures. Returns empty array if no covers defined.
 
         Returns
         -------
@@ -97,7 +100,9 @@ class ImpactCalc():
             The cover per exposure point
 
         """
-        return self.exposures.gdf['cover']
+        if 'cover' in self.exposures.gdf.columns:
+            return self.exposures.gdf['cover'].to_numpy()
+        return np.array([])
 
     def impact(self, save_mat=True):
         """Compute the impact of a hazard on exposures.
@@ -157,6 +162,10 @@ class ImpactCalc():
         apply_cover_to_mat:
             apply cover to impact matrix
         """
+        if self.cover.size == 0 and self.deductible.size == 0:
+            raise AttributeError("Neither cover nor deductible defined."
+                                 "Please set exposures.gdf.cover"
+                                 "and/or exposures.gdf.deductible")
         impf_col = self.exposures.get_impf_column(self.hazard.haz_type)
         exp_gdf = self.minimal_exp_gdf(impf_col)
         LOGGER.info('Calculating impact for %s assets (>0) and %s events.',
@@ -365,7 +374,7 @@ class ImpactCalc():
             impact matrix with applied cover
 
         """
-        mat.data = np.clip(mat.data, 0, cover.to_numpy()[mat.nonzero()[1]])
+        mat.data = np.clip(mat.data, 0, cover[mat.nonzero()[1]])
         mat.eliminate_zeros()
         return mat
 
