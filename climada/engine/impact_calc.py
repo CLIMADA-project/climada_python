@@ -130,7 +130,7 @@ class ImpactCalc():
         LOGGER.info('Calculating impact for %s assets (>0) and %s events.',
                     self.n_events, self.n_events)
         imp_mat_gen = self.imp_mat_gen(exp_gdf, impf_col)
-        self._return_impact(imp_mat_gen, save_mat)
+        return self._return_impact(imp_mat_gen, save_mat)
 
 #TODO: make a better impact matrix generator for insured impacts when
 # the impact matrix is already present
@@ -433,14 +433,14 @@ class ImpactCalc():
         return np.sum(eai_exp)
 
     @classmethod
-    def risk_metrics(cls, imp_mat, freq):
+    def risk_metrics(cls, mat, freq):
         """
         Compute risk metricss eai_exp, at_event, aai_agg
         for an impact matrix and a frequency vector.
 
         Parameters
         ----------
-        imp_mat : sparse.csr_matrix
+        mat : sparse.csr_matrix
             matrix num_events x num_exp with impacts.
         freq : np.array
             array with the frequency per event
@@ -454,7 +454,7 @@ class ImpactCalc():
         aai_agg : float
             average annual impact aggregated over all exposure points
         """
-        eai_exp = cls.eai_exp_from_mat(imp_mat, freq)
-        at_event = cls.at_event_from_mat(imp_mat)
+        eai_exp = cls.eai_exp_from_mat(mat, freq)
+        at_event = cls.at_event_from_mat(mat)
         aai_agg = cls.aai_agg_from_eai_exp(eai_exp)
         return at_event, eai_exp, aai_agg
