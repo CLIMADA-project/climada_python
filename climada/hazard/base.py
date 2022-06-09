@@ -1162,45 +1162,44 @@ class Hazard():
             file name to write, with h5 format
         """
         LOGGER.info('Writing %s', file_name)
-        hf_data = h5py.File(file_name, 'w')
-        str_dt = h5py.special_dtype(vlen=str)
-        for (var_name, var_val) in self.__dict__.items():
-            if var_name == 'centroids':
-                self.centroids.write_hdf5(hf_data.create_group(var_name))
-            elif var_name == 'tag':
-                hf_str = hf_data.create_dataset('haz_type', (1,), dtype=str_dt)
-                hf_str[0] = var_val.haz_type
-                hf_str = hf_data.create_dataset('file_name', (1,), dtype=str_dt)
-                hf_str[0] = str(var_val.file_name)
-                hf_str = hf_data.create_dataset('description', (1,), dtype=str_dt)
-                hf_str[0] = str(var_val.description)
-            elif isinstance(var_val, sparse.csr_matrix):
-                if todense:
-                    hf_data.create_dataset(var_name, data=var_val.toarray())
-                else:
-                    hf_csr = hf_data.create_group(var_name)
-                    hf_csr.create_dataset('data', data=var_val.data)
-                    hf_csr.create_dataset('indices', data=var_val.indices)
-                    hf_csr.create_dataset('indptr', data=var_val.indptr)
-                    hf_csr.attrs['shape'] = var_val.shape
-            elif isinstance(var_val, str):
-                hf_str = hf_data.create_dataset(var_name, (1,), dtype=str_dt)
-                hf_str[0] = var_val
-            elif isinstance(var_val, list) and var_val and isinstance(var_val[0], str):
-                hf_str = hf_data.create_dataset(var_name, (len(var_val),), dtype=str_dt)
-                for i_ev, var_ev in enumerate(var_val):
-                    hf_str[i_ev] = var_ev
-            elif var_val is not None and var_name != 'pool':
-                try:
-                    hf_data.create_dataset(var_name, data=var_val)
-                except TypeError:
-                    LOGGER.warning(
-                        f"write_hdf5: the class member {var_name} is skipped, due to its "
-                        f"type, {var_val.__class__.__name__}, for which writing to hdf5 "
-                        "is not implemented. Reading this H5 file will probably lead to "
-                        f"{var_name} being set to its default value."
-                    )
-        hf_data.close()
+        with h5py.File(file_name, 'w') as hf_data:
+            str_dt = h5py.special_dtype(vlen=str)
+            for (var_name, var_val) in self.__dict__.items():
+                if var_name == 'centroids':
+                    self.centroids.write_hdf5(hf_data.create_group(var_name))
+                elif var_name == 'tag':
+                    hf_str = hf_data.create_dataset('haz_type', (1,), dtype=str_dt)
+                    hf_str[0] = var_val.haz_type
+                    hf_str = hf_data.create_dataset('file_name', (1,), dtype=str_dt)
+                    hf_str[0] = str(var_val.file_name)
+                    hf_str = hf_data.create_dataset('description', (1,), dtype=str_dt)
+                    hf_str[0] = str(var_val.description)
+                elif isinstance(var_val, sparse.csr_matrix):
+                    if todense:
+                        hf_data.create_dataset(var_name, data=var_val.toarray())
+                    else:
+                        hf_csr = hf_data.create_group(var_name)
+                        hf_csr.create_dataset('data', data=var_val.data)
+                        hf_csr.create_dataset('indices', data=var_val.indices)
+                        hf_csr.create_dataset('indptr', data=var_val.indptr)
+                        hf_csr.attrs['shape'] = var_val.shape
+                elif isinstance(var_val, str):
+                    hf_str = hf_data.create_dataset(var_name, (1,), dtype=str_dt)
+                    hf_str[0] = var_val
+                elif isinstance(var_val, list) and var_val and isinstance(var_val[0], str):
+                    hf_str = hf_data.create_dataset(var_name, (len(var_val),), dtype=str_dt)
+                    for i_ev, var_ev in enumerate(var_val):
+                        hf_str[i_ev] = var_ev
+                elif var_val is not None and var_name != 'pool':
+                    try:
+                        hf_data.create_dataset(var_name, data=var_val)
+                    except TypeError:
+                        LOGGER.warning(
+                            f"write_hdf5: the class member {var_name} is skipped, due to its "
+                            f"type, {var_val.__class__.__name__}, for which writing to hdf5 "
+                            "is not implemented. Reading this H5 file will probably lead to "
+                            f"{var_name} being set to its default value."
+                        )
 
     def read_hdf5(self, *args, **kwargs):
         """This function is deprecated, use Hazard.from_hdf5."""
@@ -1225,36 +1224,35 @@ class Hazard():
         """
         LOGGER.info('Reading %s', file_name)
         haz = cls()
-        hf_data = h5py.File(file_name, 'r')
-        for (var_name, var_val) in haz.__dict__.items():
-            if var_name != 'tag' and var_name not in hf_data.keys():
-                continue
-            if var_name == 'centroids':
-                haz.centroids = Centroids.from_hdf5(hf_data.get(var_name))
-            elif var_name == 'tag':
-                haz.tag.haz_type = u_hdf5.to_string(hf_data.get('haz_type')[0])
-                haz.tag.file_name = u_hdf5.to_string(hf_data.get('file_name')[0])
-                haz.tag.description = u_hdf5.to_string(hf_data.get('description')[0])
-            elif isinstance(var_val, np.ndarray) and var_val.ndim == 1:
-                setattr(haz, var_name, np.array(hf_data.get(var_name)))
-            elif isinstance(var_val, sparse.csr_matrix):
-                hf_csr = hf_data.get(var_name)
-                if isinstance(hf_csr, h5py.Dataset):
-                    setattr(haz, var_name, sparse.csr_matrix(hf_csr))
+        with h5py.File(file_name, 'r') as hf_data:
+            for (var_name, var_val) in haz.__dict__.items():
+                if var_name != 'tag' and var_name not in hf_data.keys():
+                    continue
+                if var_name == 'centroids':
+                    haz.centroids = Centroids.from_hdf5(hf_data.get(var_name))
+                elif var_name == 'tag':
+                    haz.tag.haz_type = u_hdf5.to_string(hf_data.get('haz_type')[0])
+                    haz.tag.file_name = u_hdf5.to_string(hf_data.get('file_name')[0])
+                    haz.tag.description = u_hdf5.to_string(hf_data.get('description')[0])
+                elif isinstance(var_val, np.ndarray) and var_val.ndim == 1:
+                    setattr(haz, var_name, np.array(hf_data.get(var_name)))
+                elif isinstance(var_val, sparse.csr_matrix):
+                    hf_csr = hf_data.get(var_name)
+                    if isinstance(hf_csr, h5py.Dataset):
+                        setattr(haz, var_name, sparse.csr_matrix(hf_csr))
+                    else:
+                        setattr(haz, var_name, sparse.csr_matrix((hf_csr['data'][:],
+                                                                hf_csr['indices'][:],
+                                                                hf_csr['indptr'][:]),
+                                                                hf_csr.attrs['shape']))
+                elif isinstance(var_val, str):
+                    setattr(haz, var_name, u_hdf5.to_string(hf_data.get(var_name)[0]))
+                elif isinstance(var_val, list):
+                    var_value = [x for x in map(u_hdf5.to_string, 
+                                 np.array(hf_data.get(var_name)).tolist())]
+                    setattr(haz, var_name, var_value)
                 else:
-                    setattr(haz, var_name, sparse.csr_matrix((hf_csr['data'][:],
-                                                               hf_csr['indices'][:],
-                                                               hf_csr['indptr'][:]),
-                                                              hf_csr.attrs['shape']))
-            elif isinstance(var_val, str):
-                setattr(haz, var_name, u_hdf5.to_string(hf_data.get(var_name)[0]))
-            elif isinstance(var_val, list):
-                var_value = [x for x in map(u_hdf5.to_string, np.array(hf_data.get(var_name)).tolist())]
-                setattr(haz, var_name, var_value)
-            else:
-                setattr(haz, var_name, hf_data.get(var_name))
-
-        hf_data.close()
+                    setattr(haz, var_name, hf_data.get(var_name))
         return haz
 
     def _set_coords_centroids(self):

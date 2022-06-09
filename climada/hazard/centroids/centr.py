@@ -1112,9 +1112,12 @@ class Centroids():
         """
         if isinstance(file_data, str):
             LOGGER.info('Writting %s', file_data)
-            data = h5py.File(file_data, 'w')
+            with h5py.File(file_data, 'w') as data:
+                self._write_hdf5(data)
         else:
-            data = file_data
+            self._write_hdf5(file_data)
+
+    def _write_hdf5(self, data):
         str_dt = h5py.special_dtype(vlen=str)
         if 'nodata' in self.meta.keys():
             if self.meta['nodata'] is None:
@@ -1139,9 +1142,6 @@ class Centroids():
         hf_str = data.create_dataset('crs', (1,), dtype=str_dt)
         hf_str[0] = CRS.from_user_input(self.crs).to_wkt()
 
-        if isinstance(file_data, str):
-            data.close()
-
     def read_hdf5(self, *args, **kwargs):
         """This function is deprecated, use Centroids.from_hdf5 instead."""
         LOGGER.warning("The use of Centroids.read_hdf5 is deprecated."
@@ -1164,9 +1164,13 @@ class Centroids():
         """
         if isinstance(file_data, (str, Path)):
             LOGGER.info('Reading %s', file_data)
-            data = h5py.File(file_data, 'r')
+            with h5py.File(file_data, 'r') as data:
+                return cls._from_hdf5(data)
         else:
-            data = file_data
+            return cls._from_hdf5(file_data)
+    
+    @classmethod
+    def _from_hdf5(cls, data):
         centr = None
         crs = DEF_CRS
         if data.get('crs'):
@@ -1193,8 +1197,6 @@ class Centroids():
         for centr_name in data.keys():
             if centr_name not in ('crs', 'lat', 'lon', 'meta'):
                 setattr(centr, centr_name, np.array(data.get(centr_name)))
-        if isinstance(file_data, str):
-            data.close()
         return centr
 
     @property
