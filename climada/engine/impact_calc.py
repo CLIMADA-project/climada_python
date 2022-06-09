@@ -24,7 +24,7 @@ __all__ = ['ImpactCalc']
 import logging
 import numpy as np
 from scipy import sparse
-import pandas as pd
+import geopandas as gpd
 
 from climada import CONFIG
 from climada.engine import Impact
@@ -217,7 +217,7 @@ class ImpactCalc():
             (self.exposures.gdf.value.values != 0)
             & (self.exposures.gdf[self.hazard.cent_exp_col].values >= 0)
         )
-        exp_gdf = pd.DataFrame({
+        exp_gdf = gpd.GeoDataFrame({
             col: self.exposures.gdf[col].values[mask]
             for col in ['value', impf_col, self.hazard.cent_exp_col]
         })
