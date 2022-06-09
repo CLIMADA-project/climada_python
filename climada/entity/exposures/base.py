@@ -387,6 +387,9 @@ class Exposures():
             the index `-1` is assigned.
             Set `threshold` to 0, to disable nearest neighbor matching.
             Default: 100 (km)
+        overwrite: bool
+            If True, overwrite centroids already present. If False, do
+            not assign new centroids. Default is True.
 
         See Also
         --------

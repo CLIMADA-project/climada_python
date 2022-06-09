@@ -79,6 +79,10 @@ class TestFuncs(unittest.TestCase):
             exp.assign_centroids(haz)
             self.assertEqual(exp.gdf.shape[0], len(exp.gdf[INDICATOR_CENTR + 'FL']))
             np.testing.assert_array_equal(exp.gdf[INDICATOR_CENTR + 'FL'].values, expected_result)
+            exp.assign_centroids(Hazard(), overwrite=False)
+            self.assertEqual(exp.gdf.shape[0], len(exp.gdf[INDICATOR_CENTR + 'FL']))
+            np.testing.assert_array_equal(exp.gdf[INDICATOR_CENTR + 'FL'].values, expected_result)
+
 
     def test_read_raster_pass(self):
         """from_raster"""
