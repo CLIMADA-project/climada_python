@@ -24,10 +24,9 @@ from scipy import sparse
 
 from climada.entity.entity_def import Entity
 from climada.hazard.base import Hazard
-from climada.engine import Impact, ImpactCalc
-from climada.util.constants import ENT_DEMO_TODAY, DEF_CRS, DEMO_DIR
+from climada.engine import ImpactCalc
+from climada.util.constants import ENT_DEMO_TODAY, DEMO_DIR
 from climada.util.api_client import Client
-import climada.engine.test as engine_test
 
 
 def get_haz_test_file(ds_name):
@@ -55,127 +54,162 @@ class TestImpactCalc(unittest.TestCase):
         icalc = ImpactCalc(ENT.exposures, ENT.impact_funcs, HAZ)
         self.assertEqual(icalc.n_exp_pnt, ENT.exposures.gdf.shape[0])
         self.assertEqual(icalc.n_events, HAZ.size)
-        np.testing.assert_array_equal(icalc.deductible, ENT.exposures.gdf.deductible)
-        np.testing.assert_array_equal(icalc.cover, ENT.exposures.gdf.cover)
         self.assertEqual(icalc.imp_mat.size, 0)
         self.assertTrue(ENT.exposures.gdf.equals(icalc.exposures.gdf))
-        self.assertEqual(HAZ.event_id, icalc.hazard.event_id)
-        self.assertEqual(HAZ.event_name, icalc.hazard.event_name)
+        np.testing.assert_array_equal(HAZ.event_id, icalc.hazard.event_id)
+        np.testing.assert_array_equal(HAZ.event_name, icalc.hazard.event_name)
+        np.testing.assert_array_equal(icalc.deductible, ENT.exposures.gdf.deductible)
+        np.testing.assert_array_equal(icalc.cover, ENT.exposures.gdf.cover)
 
-class TestCalc(unittest.TestCase):
-    """Test impact calc method."""
 
-    def test_ref_value_pass(self):
-        """Test result against reference value"""
-        # Read default entity values
-        ent = Entity.from_excel(ENT_DEMO_TODAY)
-        ent.check()
+    def test_metrics(self):
+        """Test methods to get impact metrics"""
+        mat = sparse.csr_matrix(np.array(
+            [[1, 0, 1],
+             [2, 2, 0]]
+            ))
+        freq = np.array([1, 1/10])
+        at_event = ImpactCalc.at_event_from_mat(mat)
+        eai_exp = ImpactCalc.eai_exp_from_mat(mat, freq)
+        aai_agg = ImpactCalc.aai_agg_from_eai_exp(eai_exp)
+        np.testing.assert_array_equal(at_event, [2, 4])
+        np.testing.assert_array_equal(eai_exp, [1.2, 0.2, 1])
+        self.assertEqual(aai_agg, 2.4)
 
-        # Read default hazard file
-        hazard = Hazard.from_mat(HAZ_TEST_MAT)
+        ae, eai, aai = ImpactCalc.risk_metrics(mat, freq)
+        self.assertEqual(aai, aai_agg)
+        np.testing.assert_array_equal(at_event, ae)
+        np.testing.assert_array_equal(eai_exp, eai)
 
-        # Create impact object
-        impact = Impact()
+    def test_insured_matrics(self):
+        """Test methods to get insured metrics"""
+        mat = sparse.csr_matrix(np.array(
+            [[1, 0, 1],
+             [2, 2, 0]]
+            ))
+        cover = np.array([0, 1, 10])
+        imp = ImpactCalc.apply_cover_to_mat(mat, cover)
+        np.testing.assert_array_equal(
+            imp.todense(), np.array([[0, 0, 1], [0, 1, 0]])
+            )
 
-        # Assign centroids to exposures
-        ent.exposures.assign_centroids(hazard)
-
-        # Compute the impact over the whole exposures
-        impact.calc(ent.exposures, ent.impact_funcs, hazard)
-
-        # Check result
-        num_events = len(hazard.event_id)
-        num_exp = ent.exposures.gdf.shape[0]
-        # Check relative errors as well when absolute value gt 1.0e-7
-        # impact.at_event == EDS.damage in MATLAB
-        self.assertEqual(num_events, len(impact.at_event))
+    def test_calc_impact_pass(self):
+        """Test compute impact"""
+        icalc = ImpactCalc(ENT.exposures, ENT.impact_funcs, HAZ)
+        impact = icalc.impact()
+        self.assertEqual(icalc.n_events, len(impact.at_event))
         self.assertEqual(0, impact.at_event[0])
-        self.assertEqual(0, impact.at_event[int(num_events / 2)])
-        self.assertAlmostEqual(1.472482938320243e+08, impact.at_event[13809])
-        self.assertAlmostEqual(7.076504723057620e+10, impact.at_event[12147])
-        self.assertEqual(0, impact.at_event[num_events - 1])
-        # impact.eai_exp == EDS.ED_at_centroid in MATLAB
-        self.assertEqual(num_exp, len(impact.eai_exp))
-        self.assertAlmostEqual(1.518553670803242e+08, impact.eai_exp[0])
-        self.assertAlmostEqual(1.373490457046383e+08, impact.eai_exp[int(num_exp / 2)], 6)
-        self.assertAlmostEqual(1.373490457046383e+08, impact.eai_exp[int(num_exp / 2)], 5)
-        self.assertAlmostEqual(1.066837260150042e+08, impact.eai_exp[num_exp - 1], 6)
-        self.assertAlmostEqual(1.066837260150042e+08, impact.eai_exp[int(num_exp - 1)], 5)
-        # impact.tot_value == EDS.Value in MATLAB
-        # impact.aai_agg == EDS.ED in MATLAB
+        self.assertEqual(0, impact.at_event[7225])
+        self.assertAlmostEqual(1.472482938320243e+08, impact.at_event[13809], delta=1)
+        self.assertAlmostEqual(7.076504723057620e+10, impact.at_event[12147], delta=1)
+        self.assertEqual(0, impact.at_event[14449])
+        self.assertEqual(icalc.n_exp_pnt, len(impact.eai_exp))
+        self.assertAlmostEqual(1.518553670803242e+08, impact.eai_exp[0], delta=1)
+        self.assertAlmostEqual(1.373490457046383e+08, impact.eai_exp[25], 6)
+        self.assertAlmostEqual(1.066837260150042e+08, impact.eai_exp[49], 6)
         self.assertAlmostEqual(6.570532945599105e+11, impact.tot_value)
         self.assertAlmostEqual(6.512201157564421e+09, impact.aai_agg, 5)
-        self.assertAlmostEqual(6.512201157564421e+09, impact.aai_agg, 5)
 
-    def test_calc_imp_mat_pass(self):
-        """Test save imp_mat"""
-        # Read default entity values
-        ent = Entity.from_excel(ENT_DEMO_TODAY)
-        ent.check()
+    def test_calc_impact_save_mat_pass(self):
+        """Test compute impact with impact matrix"""
+        icalc = ImpactCalc(ENT.exposures, ENT.impact_funcs, HAZ)
+        impact = icalc.impact(save_mat=True)
 
-        # Read default hazard file
-        hazard = Hazard.from_mat(HAZ_TEST_MAT)
-
-        # Create impact object
-        impact = Impact()
-
-        # Assign centroids to exposures
-        ent.exposures.assign_centroids(hazard)
-
-        # Compute the impact over the whole exposures
-        impact.calc(ent.exposures, ent.impact_funcs, hazard, save_mat=True)
         self.assertIsInstance(impact.imp_mat, sparse.csr_matrix)
-        self.assertEqual(impact.imp_mat.shape, (hazard.event_id.size,
-                                                ent.exposures.gdf.value.size))
+        self.assertEqual(impact.imp_mat.shape, (HAZ.event_id.size,
+                                                ENT.exposures.gdf.value.size))
         np.testing.assert_array_almost_equal_nulp(
             np.array(impact.imp_mat.sum(axis=1)).ravel(), impact.at_event, nulp=5)
         np.testing.assert_array_almost_equal_nulp(
             np.sum(impact.imp_mat.toarray() * impact.frequency[:, None], axis=0).reshape(-1),
             impact.eai_exp)
 
-    def test_calc_impf_pass(self):
-        """Execute when no impf_HAZ present, but only impf_"""
-        ent = Entity.from_excel(ENT_DEMO_TODAY)
-        self.assertTrue('impf_TC' in ent.exposures.gdf.columns)
-        ent.exposures.gdf.rename(columns={'impf_TC': 'impf_'}, inplace=True)
-        self.assertFalse('impf_TC' in ent.exposures.gdf.columns)
-        ent.check()
-
-        # Read default hazard file
-        hazard = Hazard.from_mat(HAZ_TEST_MAT)
-
-        # Create impact object
-        impact = Impact()
-        impact.calc(ent.exposures, ent.impact_funcs, hazard)
-
-        # Check result
-        num_events = len(hazard.event_id)
-        num_exp = ent.exposures.gdf.shape[0]
-        # Check relative errors as well when absolute value gt 1.0e-7
-        # impact.at_event == EDS.damage in MATLAB
-        self.assertEqual(num_events, len(impact.at_event))
+        self.assertEqual(icalc.n_events, len(impact.at_event))
         self.assertEqual(0, impact.at_event[0])
-        self.assertEqual(0, impact.at_event[int(num_events / 2)])
-        self.assertAlmostEqual(1.472482938320243e+08, impact.at_event[13809])
-        self.assertEqual(7.076504723057620e+10, impact.at_event[12147])
-        self.assertEqual(0, impact.at_event[num_events - 1])
-        # impact.eai_exp == EDS.ED_at_centroid in MATLAB
-        self.assertEqual(num_exp, len(impact.eai_exp))
-        self.assertAlmostEqual(1.518553670803242e+08, impact.eai_exp[0])
-        self.assertAlmostEqual(1.373490457046383e+08, impact.eai_exp[int(num_exp / 2)], 6)
-        self.assertAlmostEqual(1.373490457046383e+08, impact.eai_exp[int(num_exp / 2)], 5)
-        self.assertAlmostEqual(1.066837260150042e+08, impact.eai_exp[num_exp - 1], 6)
-        self.assertAlmostEqual(1.066837260150042e+08, impact.eai_exp[int(num_exp - 1)], 5)
-        # impact.tot_value == EDS.Value in MATLAB
-        # impact.aai_agg == EDS.ED in MATLAB
+        self.assertEqual(0, impact.at_event[7225])
+        self.assertAlmostEqual(1.472482938320243e+08, impact.at_event[13809], delta=1)
+        self.assertAlmostEqual(7.076504723057620e+10, impact.at_event[12147], delta=1)
+        self.assertEqual(0, impact.at_event[14449])
+        self.assertEqual(icalc.n_exp_pnt, len(impact.eai_exp))
+        self.assertAlmostEqual(1.518553670803242e+08, impact.eai_exp[0], delta=1)
+        self.assertAlmostEqual(1.373490457046383e+08, impact.eai_exp[25], 6)
+        self.assertAlmostEqual(1.066837260150042e+08, impact.eai_exp[49], 6)
         self.assertAlmostEqual(6.570532945599105e+11, impact.tot_value)
         self.assertAlmostEqual(6.512201157564421e+09, impact.aai_agg, 5)
-        self.assertAlmostEqual(6.512201157564421e+09, impact.aai_agg, 5)
 
+    def test_calc_insured_impact_pass(self):
+        """Test compute insured impact"""
+        exp = ENT.exposures.copy()
+        exp.gdf.cover /= 1e3
+        exp.gdf.deductible += 1e5
+        icalc = ImpactCalc(exp, ENT.impact_funcs, HAZ)
+        impact = icalc.insured_impact()
+        self.assertEqual(icalc.n_events, len(impact.at_event))
+        self.assertEqual(0, impact.at_event[0])
+        self.assertEqual(0, impact.at_event[7225])
+        self.assertAlmostEqual(62989686, impact.at_event[13809], delta=1)
+        self.assertAlmostEqual(657053294, impact.at_event[12147], delta=1)
+        self.assertEqual(0, impact.at_event[14449])
+        self.assertEqual(icalc.n_exp_pnt, len(impact.eai_exp))
+        self.assertAlmostEqual(3072092, impact.eai_exp[0], delta=1)
+        self.assertAlmostEqual(2778593, impact.eai_exp[25], delta=1)
+        self.assertAlmostEqual(2716548, impact.eai_exp[49], delta=1)
+        self.assertAlmostEqual(6.570532945599105e+11, impact.tot_value)
+        self.assertAlmostEqual(143180396, impact.aai_agg, delta=1)
+
+    def test_calc_insured_impact_save_mat_pass(self):
+        """Test compute impact with impact matrix"""
+        exp = ENT.exposures.copy()
+        exp.gdf.cover /= 1e3
+        exp.gdf.deductible += 1e5
+        icalc = ImpactCalc(exp, ENT.impact_funcs, HAZ)
+        impact = icalc.insured_impact(save_mat=True)
+
+        self.assertIsInstance(impact.imp_mat, sparse.csr_matrix)
+        self.assertEqual(impact.imp_mat.shape, (HAZ.event_id.size,
+                                                ENT.exposures.gdf.value.size))
+        np.testing.assert_array_almost_equal_nulp(
+            np.array(impact.imp_mat.sum(axis=1)).ravel(), impact.at_event, nulp=5)
+        np.testing.assert_array_almost_equal_nulp(
+            np.sum(impact.imp_mat.toarray() * impact.frequency[:, None], axis=0).reshape(-1),
+            impact.eai_exp)
+
+        self.assertEqual(icalc.n_events, len(impact.at_event))
+        self.assertEqual(0, impact.at_event[0])
+        self.assertEqual(0, impact.at_event[7225])
+        self.assertAlmostEqual(62989686, impact.at_event[13809], delta=1)
+        self.assertAlmostEqual(657053294, impact.at_event[12147], delta=1)
+        self.assertEqual(0, impact.at_event[14449])
+        self.assertEqual(icalc.n_exp_pnt, len(impact.eai_exp))
+        self.assertAlmostEqual(3072092, impact.eai_exp[0], delta=1)
+        self.assertAlmostEqual(2778593, impact.eai_exp[25], delta=1)
+        self.assertAlmostEqual(2716548, impact.eai_exp[49], delta=1)
+        self.assertAlmostEqual(6.570532945599105e+11, impact.tot_value)
+        self.assertAlmostEqual(143180396, impact.aai_agg, delta=1)
+
+    def test_calc_insured_impact_fail(self):
+        """Test raise error for insured impact calc if no cover and
+        no deductibles defined
+        """
+        exp = ENT.exposures.copy()
+        exp.gdf = exp.gdf.drop(columns = ['cover', 'deductible'])
+        icalc = ImpactCalc(exp, ENT.impact_funcs, HAZ)
+        with self.assertRaises(AttributeError):
+            icalc.insured_impact()
+
+    def test_minimal_exp_gdf(self):
+        """Test obtain minimal exposures gdf"""
+        icalc = ImpactCalc(ENT.exposures, ENT.impact_funcs, HAZ)
+        exp_min_gdf = icalc.minimal_exp_gdf('impf_TC')
+        self.assertSetEqual(
+            set(exp_min_gdf.columns), set(['value', 'impf_TC', 'centr_TC'])
+            )
+        np.testing.assert_array_equal(exp_min_gdf.value, ENT.exposures.gdf.value)
+        np.testing.assert_array_equal(exp_min_gdf.impf_TC, ENT.exposures.gdf.impf_TC)
+        np.testing.assert_array_equal(exp_min_gdf.centr_TC, ENT.exposures.gdf.centr_TC)
 
 
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestImpactCalc)
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCalc))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
