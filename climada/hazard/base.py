@@ -1786,11 +1786,30 @@ class Hazard():
 
     @property
     def cent_exp_col(self):
+        """
+        Name of the centroids columns for this hazard in an exposures
+
+        Returns
+        -------
+        String
+            centroids string indicator with hazard type defining column
+            in an exposures gdf. E.g. "centr_TC"
+
+        """
         from climada.entity.exposures import INDICATOR_CENTR
         return INDICATOR_CENTR + self.tag.haz_type
 
     @property
     def haz_type(self):
+        """
+        Hazard type
+
+        Returns
+        -------
+        String
+            Two-letters hazard type string. E.g. "TC", "RF", or "WF"
+
+        """
         return self.tag.haz_type
 
     def get_mdr(self, cent_idx, impf):
@@ -1825,6 +1844,23 @@ class Hazard():
         return mdr[:, indices]
 
     def get_paa(self, cent_idx, impf):
+        """
+        Return Percentage of Affected Assets (paa) for chosen centroids (cent_idx)
+        for given impact function.
+
+        Parameters
+        ----------
+        cent_idx : array-like
+            array of indices of chosen centroids from hazard
+        impf : ImpactFunc
+            impact function to compute mdr
+
+        Returns
+        -------
+        sparse.csr_matrix
+            sparse matrix (n_events x len(cent_idx)) with paa values
+
+        """
         uniq_cent_idx, indices = np.unique(cent_idx, return_inverse=True)
         paa = self.intensity[:, uniq_cent_idx]
         paa.data = np.interp(paa.data, impf.intensity, impf.paa)
