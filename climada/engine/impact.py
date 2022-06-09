@@ -208,7 +208,7 @@ class ImpactCalc():
         """
         if save_mat:
             self.imp_mat = self.stitch_impact_matrix(imp_mat_gen)
-            at_event, eai_exp, aai_agg = self.risk_metrics()
+            at_event, eai_exp, aai_agg = self.risk_metrics(self.imp_mat, self.hazard.frequency)
         else:
             at_event, eai_exp, aai_agg = self.stitch_risk_metrics(imp_mat_gen)
         return Impact.from_eih(
@@ -439,8 +439,8 @@ class ImpactCalc():
         """
         return np.sum(eai_exp)
 
-
-    def risk_metrics(self):
+    @classmethod
+    def risk_metrics(cls, imp_mat, freq):
         """
         Compute risk metricss eai_exp, at_event, aai_agg
         for an impact matrix and a frequency vector.
@@ -461,9 +461,9 @@ class ImpactCalc():
         aai_agg : float
             average annual impact aggregated over all exposure points
         """
-        eai_exp = self.eai_exp_from_mat(self.imp_mat, self.hazard.frequency)
-        at_event = self.at_event_from_mat(self.imp_mat)
-        aai_agg = self.aai_agg_from_eai_exp(eai_exp)
+        eai_exp = cls.eai_exp_from_mat(imp_mat, freq)
+        at_event = cls.at_event_from_mat(imp_mat)
+        aai_agg = cls.aai_agg_from_eai_exp(eai_exp)
         return at_event, eai_exp, aai_agg
 
 class Impact():
