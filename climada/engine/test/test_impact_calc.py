@@ -24,7 +24,7 @@ from scipy import sparse
 
 from climada.entity.entity_def import Entity
 from climada.hazard.base import Hazard
-from climada.engine.impact import Impact, ImpactCalc
+from climada.engine import Impact, ImpactCalc
 from climada.util.constants import ENT_DEMO_TODAY, DEF_CRS, DEMO_DIR
 from climada.util.api_client import Client
 import climada.engine.test as engine_test
