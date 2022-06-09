@@ -915,13 +915,8 @@ class Centroids():
         self.on_land = u_coord.coord_on_land(
             ne_geom.geometry[:].y.values, ne_geom.geometry[:].x.values)
 
-    def remove_duplicate_points(self, scheduler=None):
+    def remove_duplicate_points(self):
         """Return Centroids with removed duplicated points
-
-        Parameters
-        ----------
-        scheduler : str
-            used for dask map_partitions. “threads”, “synchronous” or “processes”
 
         Returns
         -------
@@ -1168,7 +1163,7 @@ class Centroids():
                 return cls._from_hdf5(data)
         else:
             return cls._from_hdf5(file_data)
-    
+
     @classmethod
     def _from_hdf5(cls, data):
         centr = None

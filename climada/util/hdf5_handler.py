@@ -26,7 +26,6 @@ __all__ = ['read',
            'get_sparse_csr_mat'
           ]
 
-import logging
 from scipy import sparse
 import numpy as np
 import h5py

@@ -285,8 +285,9 @@ class Hazard():
                 haz = cls(haz_type=haz_type, pool=pool)
             except TypeError:
                 haz = cls(pool=pool)
-                LOGGER.warn("haz_type argument ('%s') is ignored, haz_type is determined by class",
-                            haz_type)
+                LOGGER.warning(
+                    "haz_type argument ('%s') is ignored, haz_type is determined by class",
+                    haz_type)
         else:
             haz = cls(pool=pool)
 
@@ -640,8 +641,8 @@ class Hazard():
             default: DEF_VAR_EXCEL constant
         haz_type : str, optional
             acronym of the hazard type (e.g. 'TC').
-            Default: None, which will use the class default ('' for vanilla `Hazard` objects, and hard coded in some
-            subclasses)
+            Default: None, which will use the class default ('' for vanilla `Hazard` objects, and
+            hard coded in some subclasses)
 
         Returns
         -------
@@ -696,6 +697,7 @@ class Hazard():
         haz : Hazard or None
             If no event matching the specified criteria is found, None is returned.
         """
+        # pylint: disable=unidiomatic-typecheck
         if type(self) is Hazard:
             haz = Hazard(self.tag.haz_type)
         else:
@@ -890,8 +892,8 @@ class Hazard():
         for ret in return_periods:
             title.append('Return period: ' + str(ret) + ' years')
         axis = u_plot.geo_im_from_array(inten_stats, self.centroids.coord,
-                                        colbar_name, title, smooth=smooth,
-                                        axes=axis, figsize=figsize, adapt_fontsize=adapt_fontsize, **kwargs)
+                                        colbar_name, title, smooth=smooth, axes=axis,
+                                        figsize=figsize, adapt_fontsize=adapt_fontsize, **kwargs)
         return axis, inten_stats
 
     def plot_intensity(self, event=None, centr=None, smooth=True, axis=None, adapt_fontsize=True,
@@ -1195,10 +1197,11 @@ class Hazard():
                         hf_data.create_dataset(var_name, data=var_val)
                     except TypeError:
                         LOGGER.warning(
-                            f"write_hdf5: the class member {var_name} is skipped, due to its "
-                            f"type, {var_val.__class__.__name__}, for which writing to hdf5 "
+                            "write_hdf5: the class member %s is skipped, due to its "
+                            "type, %s, for which writing to hdf5 "
                             "is not implemented. Reading this H5 file will probably lead to "
-                            f"{var_name} being set to its default value."
+                            "%s being set to its default value.",
+                            var_name, var_val.__class__.__name__, var_name
                         )
 
     def read_hdf5(self, *args, **kwargs):
@@ -1248,7 +1251,7 @@ class Hazard():
                 elif isinstance(var_val, str):
                     setattr(haz, var_name, u_hdf5.to_string(hf_data.get(var_name)[0]))
                 elif isinstance(var_val, list):
-                    var_value = [x for x in map(u_hdf5.to_string, 
+                    var_value = [x for x in map(u_hdf5.to_string,
                                  np.array(hf_data.get(var_name)).tolist())]
                     setattr(haz, var_name, var_value)
                 else:
@@ -1324,8 +1327,8 @@ class Hazard():
             l_title.append(title)
 
         return u_plot.geo_im_from_array(array_val, self.centroids.coord, col_name,
-                                        l_title, smooth=smooth, axes=axis,
-                                        figsize=figsize, proj=crs_espg, adapt_fontsize=adapt_fontsize, **kwargs)
+                                        l_title, smooth=smooth, axes=axis, figsize=figsize,
+                                        proj=crs_espg, adapt_fontsize=adapt_fontsize, **kwargs)
 
     def _centr_plot(self, centr_idx, mat_var, col_name, axis=None, **kwargs):
         """Plot a centroid of the input matrix.
