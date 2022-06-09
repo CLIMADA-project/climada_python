@@ -141,16 +141,10 @@ class ImpactCalc():
         LOGGER.info('Calculating impact for %s assets (>0) and %s events.',
                     self.n_events, self.n_events)
         imp_mat_gen = self.imp_mat_gen(exp_gdf, impf_col)
-        if save_mat:
-            self.imp_mat = self.stitch_impact_matrix(imp_mat_gen)
-            at_event, eai_exp, aai_agg = self.risk_metrics()
-        else:
-            at_event, eai_exp, aai_agg = self.stitch_risk_metrics(imp_mat_gen)
-        return Impact.from_eih(
-            self.exposures, self.impfset, self.hazard,
-            at_event, eai_exp, aai_agg, self.imp_mat
-            )
+        self._return_impact(imp_mat_gen, save_mat)
 
+#TODO: make a better impact matrix generator for insured impacts when
+# the impact matrix is already present
     def insured_impact(self, save_mat=False):
         """Compute the impact of a hazard on exposures with a deductible and/or
         cover.
@@ -189,13 +183,34 @@ class ImpactCalc():
         else:
             imp_mat_gen = ((self.imp_mat, self.exposures.gdf.index.values) for n in range(1))
         ins_mat_gen = self.insured_mat_gen(imp_mat_gen, impf_col)
+        self._return_impact(ins_mat_gen, save_mat)
 
+    def _return_impact(self, imp_mat_gen, save_mat):
+        """Return an impact object from an impact matrix generator
 
+        Parameters
+        ----------
+        imp_mat_gen : generator
+            Generator of impact matrix and corresponding exposures index
+        save_mat : boolean
+            if true, save the impact matrix
+
+        Returns
+        -------
+        Impact
+            Impact Object initialize from the impact matrix
+
+        See Also
+        --------
+        imp_mat_gen: impact matrix generator
+        insured_mat_gen: insured impact matrix generator
+
+        """
         if save_mat:
-            self.imp_mat = self.stitch_impact_matrix(ins_mat_gen)
+            self.imp_mat = self.stitch_impact_matrix(imp_mat_gen)
             at_event, eai_exp, aai_agg = self.risk_metrics()
         else:
-            at_event, eai_exp, aai_agg = self.stitch_risk_metrics(ins_mat_gen)
+            at_event, eai_exp, aai_agg = self.stitch_risk_metrics(imp_mat_gen)
         return Impact.from_eih(
             self.exposures, self.impfset, self.hazard,
             at_event, eai_exp, aai_agg, self.imp_mat
@@ -714,6 +729,7 @@ class Impact():
                        "Use Impact.impact_per_year instead.")
         return self.impact_per_year(all_years=all_years, year_range=year_range)
 
+#TODO: improve method
     def local_exceedance_imp(self, return_periods=(25, 50, 100, 250)):
         """Compute exceedance impact map for given return periods.
         Requires attribute imp_mat.
