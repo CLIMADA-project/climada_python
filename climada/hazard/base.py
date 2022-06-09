@@ -1811,7 +1811,7 @@ class Hazard():
             sparse matrix (n_events x len(cent_idx)) with mdr values
 
         """
-        uniq_cent_idx, indices = np.unique(cent_idx, return_inverse=True)      #costs about 30ms for small datasets
+        uniq_cent_idx, indices = np.unique(cent_idx, return_inverse=True)
         mdr = self.intensity[:, uniq_cent_idx]
         if impf.calc_mdr(0) == 0:
             mdr.data = impf.calc_mdr(mdr.data)
@@ -1820,11 +1820,12 @@ class Hazard():
             "The mean damage ratio must thus be computed for all values of"
             "hazard intensity including 0 which can be very time consuming.",
             impf.id)
-            raise NotImplementedError("Not yet implemented.")
+            mdr_array = impf.calc_mdr(mdr.toarray().ravel())
+            mdr = sparse.csr_matrix(mdr_array, shape=mdr.shape)
         return mdr[:, indices]
 
     def get_paa(self, cent_idx, impf):
-        uniq_cent_idx, indices = np.unique(cent_idx, return_inverse=True)      #costs about 30ms for small datasets
+        uniq_cent_idx, indices = np.unique(cent_idx, return_inverse=True)
         paa = self.intensity[:, uniq_cent_idx]
         paa.data = np.interp(paa.data, impf.intensity, impf.paa)
         return paa[:, indices]
