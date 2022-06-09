@@ -113,18 +113,21 @@ class Impact():
         self.imp_mat = sparse.csr_matrix(np.empty((0, 0))) if imp_mat is None else imp_mat
 
     def calc(self, exposures, impact_funcs, hazard, save_mat=False):
-        """This function is deprecated, use Impact.calc_risk and Impact.calc_insured_risk instead.
+        """This function is deprecated, use ImpactCalc.impact
+        and ImpactCalc.insured_impact instead.
         """
         from climada.engine.impact_calc import ImpactCalc
         impcalc= ImpactCalc(exposures, impact_funcs, hazard)
         if ('deductible' in exposures.gdf) and ('cover' in exposures.gdf) \
             and exposures.gdf.cover.max():
-            # LOGGER.warning("To compute the risk transfer value"
-            #      "please use Impact.calc_insured_risk")
+            LOGGER.warning(
+                "The use of Impact().calc() is deprecated for exposures with "
+                "deductible and/or cover. Use ImpactCalc().impact() instead."
+                )
             self.__dict__ = impcalc.insured_impact(save_mat).__dict__
         else:
-            # LOGGER.warning("The use of Impact.calc() is deprecated."
-            #      "Please use Impact.calc_risk() or Impact.calc_risk_insured().")
+            LOGGER.warning("The use of Impact().calc() is deprecated."
+                           "Use ImpactCalc().impact() instead.")
             self.__dict__ = impcalc.impact(save_mat).__dict__
 
 #TODO: new name
@@ -144,6 +147,7 @@ class Impact():
             hazard used to compute imp_mat
         imp_mat : sparse.csr_matrix
             matrix num_events x num_exp with impacts.
+            Default is None (empty sparse csr matrix)
 
         Returns
         -------
@@ -171,7 +175,6 @@ class Impact():
                    'haz': hazard.tag
                    }
             )
-
 
     def transfer_risk(self, attachment, cover):
         """Compute the risk transfer for the full portfolio. This is the risk
@@ -230,7 +233,7 @@ class Impact():
         residual_aai_agg = np.sum(residual_at_event * self.frequency)
         return residual_at_event, residual_aai_agg
 
-#TODO deprecate method
+#TODO: rewrite and deprecate method
     def calc_risk_transfer(self, attachment, cover):
         """Compute traaditional risk transfer over impact. Returns new impact
         with risk transfer applied and the insurance layer resulting
@@ -311,7 +314,7 @@ class Impact():
                        "Use Impact.impact_per_year instead.")
         return self.impact_per_year(all_years=all_years, year_range=year_range)
 
-#TODO: improve method
+#TODO: rewrite and deprecate method
     def local_exceedance_imp(self, return_periods=(25, 50, 100, 250)):
         """Compute exceedance impact map for given return periods.
         Requires attribute imp_mat.
@@ -1009,6 +1012,7 @@ class Impact():
 
         return imp_list
 
+#TODO: rewrite and deprecate method
     def _loc_return_imp(self, return_periods, imp, exc_imp):
         """Compute local exceedence impact for given return period.
 
