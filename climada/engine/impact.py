@@ -183,7 +183,7 @@ class ImpactCalc():
         else:
             imp_mat_gen = ((self.imp_mat, self.exposures.gdf.index.values) for n in range(1))
         ins_mat_gen = self.insured_mat_gen(imp_mat_gen, impf_col)
-        self._return_impact(ins_mat_gen, save_mat)
+        return self._return_impact(ins_mat_gen, save_mat)
 
     def _return_impact(self, imp_mat_gen, save_mat):
         """Return an impact object from an impact matrix generator
