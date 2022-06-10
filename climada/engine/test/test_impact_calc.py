@@ -19,6 +19,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Test Impact class.
 """
 import unittest
+import unittest.mock
 import numpy as np
 from scipy import sparse
 
@@ -209,7 +210,50 @@ class TestImpactCalc(unittest.TestCase):
         np.testing.assert_array_equal(exp_min_gdf.centr_TC, ENT.exposures.gdf.centr_TC)
 
 
+class TestImpactMatrixCalc(unittest.TestCase):
+    """Verify the computation of the impact matrix"""
+
+    def setUp(self):
+        # Mock the methods called by 'impact_matrix'
+        self.hazard = unittest.mock.create_autospec(HAZ)
+        self.hazard.get_mdr.return_value = sparse.csr_matrix(
+            [[0.0, 0.5, -1.0], [1.0, 2.0, 1.0]]
+        )
+        self.hazard.get_fraction.return_value = sparse.csr_matrix(
+            [[1.0, 1.0, 1.0], [-0.5, 0.5, 2.0]]
+        )
+        self.exposure_values = np.array([10.0, 20.0, -30.0])
+        self.centroids = np.array([1, 2, 4])
+        self.icalc = ImpactCalc(ENT.exposures, ENT.impact_funcs, self.hazard)
+
+    def test_correct_calculation(self):
+        """Assert that the calculation of the impact matrix is correct"""
+        impact_matrix = self.icalc.impact_matrix(
+            self.exposure_values, self.centroids, ENT.impact_funcs
+        )
+        np.testing.assert_array_equal(
+            impact_matrix.toarray(), [[0.0, 10.0, 30.0], [-5.0, 20.0, -60.0]]
+        )
+
+        # Check if hazard methods were called with expected arguments
+        with self.subTest("Internal call to hazard instance"):
+            self.hazard.get_mdr.assert_called_once_with(
+                self.centroids, ENT.impact_funcs
+            )
+            self.hazard.get_fraction.assert_called_once_with(self.centroids)
+
+    def test_wrong_sizes(self):
+        """Calling 'impact_matrix' with wrongly sized argument results in errors"""
+        centroids = np.array([1, 2, 4, 5])  # Too long
+        with self.assertRaises(ValueError):
+            self.icalc.impact_matrix(self.exposure_values, centroids, ENT.impact_funcs)
+        exposure_values = np.array([1.0])  # Too short
+        with self.assertRaises(ValueError):
+            self.icalc.impact_matrix(exposure_values, self.centroids, ENT.impact_funcs)
+
+
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestImpactCalc)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestImpactMatrixCalc))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
