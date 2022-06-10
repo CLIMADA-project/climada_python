@@ -95,7 +95,7 @@ class Impact():
                  tot_value=0,
                  aai_agg=0,
                  unit='',
-                 imp_mat=None,
+                 imp_mat=sparse.csr_matrix((0, 0)),
                  tag=None):
 
         self.tag = tag or {}
@@ -110,7 +110,7 @@ class Impact():
         self.tot_value = tot_value
         self.aai_agg = aai_agg
         self.unit = unit
-        self.imp_mat = sparse.csr_matrix(np.empty((0, 0))) if imp_mat is None else imp_mat
+        self.imp_mat = imp_mat
 
     def calc(self, exposures, impact_funcs, hazard, save_mat=False):
         """This function is deprecated, use ImpactCalc.impact
@@ -133,7 +133,7 @@ class Impact():
 #TODO: new name
     @classmethod
     def from_eih(cls, exposures, impfset, hazard,
-                 at_event, eai_exp, aai_agg, imp_mat=None):
+                 at_event, eai_exp, aai_agg, imp_mat=sparse.csr_matrix((0, 0))):
         """
         Set Impact attributes from precalculated impact metrics.
 
@@ -147,14 +147,13 @@ class Impact():
             hazard used to compute imp_mat
         imp_mat : sparse.csr_matrix
             matrix num_events x num_exp with impacts.
-            Default is None (empty sparse csr matrix)
+            Default is empty sparse csr matrix.
 
         Returns
         -------
         climada.engine.impact.Impact
             impact with all risk metrics set based on the given impact matrix
         """
-        imp_mat = sparse.csr_matrix(np.empty((0, 0))) if imp_mat is None else imp_mat
         return cls(
             event_id = hazard.event_id,
             event_name = hazard.event_name,
@@ -257,7 +256,7 @@ class Impact():
             # next values are no longer valid
             new_imp.eai_exp = np.array([])
             new_imp.coord_exp = np.array([])
-            new_imp.imp_mat = sparse.csr_matrix(np.empty((0, 0)))
+            new_imp.imp_mat = sparse.csr_matrix((0, 0))
             # insurance layer metrics
             risk_transfer = copy.deepcopy(new_imp)
             risk_transfer.at_event = imp_layer
@@ -329,11 +328,9 @@ class Impact():
         """
         LOGGER.info('Computing exceedance impact map for return periods: %s',
                     return_periods)
-        try:
-            self.imp_mat.shape[1]
-        except AttributeError as err:
-            raise ValueError('attribute imp_mat is empty. Recalculate Impact'
-                             'instance with parameter save_mat=True') from err
+        if self.imp_mat.size == 0:
+            raise ValueError('Attribute imp_mat is empty. Recalculate Impact'
+                             'instance with parameter save_mat=True')
         num_cen = self.imp_mat.shape[1]
         imp_stats = np.zeros((len(return_periods), num_cen))
         cen_step = CONFIG.max_matrix_size.int() // self.imp_mat.shape[0]
@@ -578,8 +575,8 @@ class Impact():
         --------
             matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
         """
-        if not hasattr(self.imp_mat, "shape") or self.imp_mat.shape[1] == 0:
-            raise ValueError('attribute imp_mat is empty. Recalculate Impact'
+        if self.imp_mat.size == 0:
+            raise ValueError('Attribute imp_mat is empty. Recalculate Impact'
                              'instance with parameter save_mat=True')
         if 'cmap' not in kwargs:
             kwargs['cmap'] = CMAP_IMPACT
@@ -627,8 +624,8 @@ class Impact():
         -------
         cartopy.mpl.geoaxes.GeoAxesSubplot
         """
-        if not hasattr(self.imp_mat, "shape") or self.imp_mat.shape[1] == 0:
-            raise ValueError('attribute imp_mat is empty. Recalculate Impact'
+        if self.imp_mat.size == 0:
+            raise ValueError('Attribute imp_mat is empty. Recalculate Impact'
                              'instance with parameter save_mat=True')
 
         if event_id not in self.event_id:
