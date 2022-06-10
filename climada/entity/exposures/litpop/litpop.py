@@ -914,7 +914,7 @@ def reproject_input_data(data_array_list, meta_list,
     # loop over data arrays, do transformation where required:
     data_out_list = [None] * len(data_array_list)
     meta_out = {'dtype': meta_list[i_align]['dtype'],
-                'nodata': meta_list[i_align]['dtype'],
+                'nodata': meta_list[i_align]['nodata'],
                 'crs': dst_crs}
 
     for idx, data in enumerate(data_array_list):
