@@ -902,7 +902,7 @@ class Impact():
         ----------
         exp : climada.entity.Exposures
             exposures instance, constant during all video
-        impf_set : climada.entity.ImactFuncSet
+        impf_set : climada.entity.ImpactFuncSet
             impact functions
         haz_list : (list(Hazard))
             every Hazard contains an event; all hazards
