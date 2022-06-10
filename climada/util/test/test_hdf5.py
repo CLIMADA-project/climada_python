@@ -79,19 +79,19 @@ class TestFunc(unittest.TestCase):
 
     def test_get_str_from_ref(self):
         """Check import string from a HDF5 object reference"""
-        file = h5py.File(HAZ_DEMO_MAT, 'r')
-        var = file['hazard']['name'][0][0]
-        res = u_hdf5.get_str_from_ref(HAZ_DEMO_MAT, var)
-        self.assertEqual('NNN_1185101', res)
+        with h5py.File(HAZ_DEMO_MAT, 'r') as file:
+            var = file['hazard']['name'][0][0]
+            res = u_hdf5.get_str_from_ref(HAZ_DEMO_MAT, var)
+            self.assertEqual('NNN_1185101', res)
 
     def test_get_list_str_from_ref(self):
         """Check import string from a HDF5 object reference"""
-        file = h5py.File(HAZ_DEMO_MAT, 'r')
-        var = file['hazard']['name']
-        var_list = u_hdf5.get_list_str_from_ref(HAZ_DEMO_MAT, var)
-        self.assertEqual('NNN_1185101', var_list[0])
-        self.assertEqual('NNN_1185101_gen1', var_list[1])
-        self.assertEqual('NNN_1185101_gen2', var_list[2])
+        with h5py.File(HAZ_DEMO_MAT, 'r') as file:
+            var = file['hazard']['name']
+            var_list = u_hdf5.get_list_str_from_ref(HAZ_DEMO_MAT, var)
+            self.assertEqual('NNN_1185101', var_list[0])
+            self.assertEqual('NNN_1185101_gen1', var_list[1])
+            self.assertEqual('NNN_1185101_gen2', var_list[2])
 
 class TestReader(unittest.TestCase):
     """Test HDF5 reader"""

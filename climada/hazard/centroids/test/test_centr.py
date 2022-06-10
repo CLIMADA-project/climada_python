@@ -109,6 +109,25 @@ class TestCentroidsReader(unittest.TestCase):
         self.assertIsInstance(centroids.geometry, gpd.GeoSeries)
         self.assertIsInstance(centroids.geometry.total_bounds, np.ndarray)
 
+
+class TestCentroidsWriter(unittest.TestCase):
+
+    def test_write_hdf5(self):
+        tmpfile = 'test_write_hdf5.out.hdf5'
+        xf_lat, xo_lon, d_lat, d_lon, n_lat, n_lon = 5, 6.5, -0.08, 0.12, 4, 5
+        centr = Centroids.from_pix_bounds(xf_lat, xo_lon, d_lat, d_lon, n_lat, n_lon)
+        with self.assertLogs('climada.hazard.centroids.centr', level='INFO') as cm:
+            centr.write_hdf5(tmpfile)
+        self.assertEqual(1, len(cm.output))
+        self.assertIn(f"Writing {tmpfile}", cm.output[0])
+        centr.meta['nodata'] = None
+        with self.assertLogs('climada.hazard.centroids.centr', level='INFO') as cm:
+            centr.write_hdf5(tmpfile)
+        self.assertEqual(2, len(cm.output))
+        self.assertIn("Skip writing Centroids.meta['nodata'] for it is None.", cm.output[1])
+        Path(tmpfile).unlink()
+
+
 class TestCentroidsMethods(unittest.TestCase):
 
     def test_union(self):
