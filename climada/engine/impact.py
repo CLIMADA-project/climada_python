@@ -95,7 +95,7 @@ class Impact():
                  tot_value=0,
                  aai_agg=0,
                  unit='',
-                 imp_mat=sparse.csr_matrix((0, 0)),
+                 imp_mat=None,
                  tag=None):
 
         self.tag = tag or {}
@@ -110,7 +110,7 @@ class Impact():
         self.tot_value = tot_value
         self.aai_agg = aai_agg
         self.unit = unit
-        self.imp_mat = imp_mat
+        self.imp_mat = imp_mat if imp_mat is not None else sparse.csr_matrix((0, 0))
 
     def calc(self, exposures, impact_funcs, hazard, save_mat=False):
         """This function is deprecated, use ImpactCalc.impact
@@ -133,7 +133,7 @@ class Impact():
 #TODO: new name
     @classmethod
     def from_eih(cls, exposures, impfset, hazard,
-                 at_event, eai_exp, aai_agg, imp_mat=sparse.csr_matrix((0, 0))):
+                 at_event, eai_exp, aai_agg, imp_mat=None):
         """
         Set Impact attributes from precalculated impact metrics.
 
@@ -168,7 +168,7 @@ class Impact():
             eai_exp = eai_exp,
             at_event = at_event,
             aai_agg = aai_agg,
-            imp_mat = imp_mat,
+            imp_mat = imp_mat if imp_mat is not None else sparse.csr_matrix((0, 0)),
             tag = {'exp': exposures.tag,
                    'impf_set': impfset.tag,
                    'haz': hazard.tag
