@@ -604,7 +604,7 @@ class LitPop(Exposures):
         # is initiated for each shape separately and 0 values (e.g. on sea)
         # removed before combination, to save memory.
         # loop over single polygons in country shape object:
-        for idx, polygon in enumerate(list(country_geometry)):
+        for idx, polygon in enumerate(country_geometry.geoms):
             # get litpop data for each polygon and combine into GeoDataFrame:
             gdf_tmp, meta_tmp, = \
                 _get_litpop_single_polygon(polygon, reference_year,

@@ -23,6 +23,7 @@ __all__ = ['Exposures', 'add_sea', 'INDICATOR_IMPF', 'INDICATOR_CENTR']
 
 import logging
 import copy
+from pathlib import Path
 import warnings
 
 import numpy as np
@@ -776,8 +777,8 @@ class Exposures():
         file_name : str
             (path and) file name to write to.
         """
-        LOGGER.info('Writting %s', file_name)
-        store = pd.HDFStore(file_name)
+        LOGGER.info('Writing %s', file_name)
+        store = pd.HDFStore(file_name, mode='w')
         pandas_df = pd.DataFrame(self.gdf)
         for col in pandas_df.columns:
             if str(pandas_df[col].dtype) == "geometry":
@@ -819,7 +820,9 @@ class Exposures():
         Exposures
         """
         LOGGER.info('Reading %s', file_name)
-        with pd.HDFStore(file_name) as store:
+        if not Path(file_name).is_file():
+            raise FileNotFoundError(str(file_name))
+        with pd.HDFStore(file_name, mode='r') as store:
             metadata = store.get_storer('exposures').attrs.metadata
             # in previous versions of CLIMADA and/or geopandas, the CRS was stored in '_crs'/'crs'
             crs = metadata.get('crs', metadata.get('_crs'))
