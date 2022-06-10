@@ -174,8 +174,8 @@ class ImpactCalc():
         if self.imp_mat.size == 0:
             imp_mat_gen = self.imp_mat_gen(exp_gdf, impf_col)
         else:
-            imp_mat_gen = ((self.imp_mat, self.exposures.gdf.index.values) for n in range(1))
-        ins_mat_gen = self.insured_mat_gen(imp_mat_gen, impf_col)
+            imp_mat_gen = ((self.imp_mat, np.arange(1, len(exp_gdf))) for n in range(1))
+        ins_mat_gen = self.insured_mat_gen(imp_mat_gen, exp_gdf, impf_col)
         return self._return_impact(ins_mat_gen, save_mat)
 
     def _return_impact(self, imp_mat_gen, save_mat):
@@ -251,15 +251,15 @@ class ImpactCalc():
                 cent_idx = exp_gdf[self.hazard.cent_exp_col].values[exp_idx]
                 yield (self.impact_matrix(exp_values, cent_idx, impf), exp_idx)
 
-    def insured_mat_gen(self, imp_mat_gen, impf_col):
+    def insured_mat_gen(self, imp_mat_gen, exp_gdf, impf_col):
         """
         Generator of insured impact sub-matrices (with applied cover and deductible)
         and corresponding exposures indices
         """
         for mat, exp_idx in imp_mat_gen:
-            impf_id = self.exposures.gdf[impf_col][exp_idx].unique()[0]
+            impf_id = exp_gdf[impf_col][exp_idx].unique()[0]
             deductible = self.deductible[exp_idx]
-            cent_idx = self.exposures.gdf['centr_TC'][exp_idx]
+            cent_idx = exp_gdf[self.hazard.cent_exp_col].values[exp_idx]
             impf = self.impfset.get_func(haz_type=self.hazard.haz_type, fun_id=impf_id)
             mat = self.apply_deductible_to_mat(mat, deductible, self.hazard, cent_idx, impf)
             cover = self.cover[exp_idx]
