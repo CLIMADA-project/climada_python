@@ -915,13 +915,8 @@ class Centroids():
         self.on_land = u_coord.coord_on_land(
             ne_geom.geometry[:].y.values, ne_geom.geometry[:].x.values)
 
-    def remove_duplicate_points(self, scheduler=None):
+    def remove_duplicate_points(self):
         """Return Centroids with removed duplicated points
-
-        Parameters
-        ----------
-        scheduler : str
-            used for dask map_partitions. “threads”, “synchronous” or “processes”
 
         Returns
         -------
@@ -1111,18 +1106,23 @@ class Centroids():
             If string, path to write data. If h5 object, the datasets will be generated there.
         """
         if isinstance(file_data, str):
-            LOGGER.info('Writting %s', file_data)
-            data = h5py.File(file_data, 'w')
+            LOGGER.info('Writing %s', file_data)
+            with h5py.File(file_data, 'w') as data:
+                self._write_hdf5(data)
         else:
-            data = file_data
+            self._write_hdf5(file_data)
+
+    def _write_hdf5(self, data):
         str_dt = h5py.special_dtype(vlen=str)
         for centr_name, centr_val in self.__dict__.items():
             if isinstance(centr_val, np.ndarray):
                 data.create_dataset(centr_name, data=centr_val, compression="gzip")
-            if centr_name == 'meta' and centr_val:
+            elif centr_name == 'meta' and centr_val:
                 centr_meta = data.create_group(centr_name)
                 for key, value in centr_val.items():
-                    if key not in ('crs', 'transform'):
+                    if value is None:
+                        LOGGER.info("Skip writing Centroids.meta['%s'] for it is None.", key)
+                    elif key not in ('crs', 'transform'):
                         if not isinstance(value, str):
                             centr_meta.create_dataset(key, (1,), data=value, dtype=type(value))
                         else:
@@ -1133,11 +1133,13 @@ class Centroids():
                             key, (6,),
                             data=[value.a, value.b, value.c, value.d, value.e, value.f],
                             dtype=float)
+            elif centr_name == 'geometry':
+                LOGGER.debug("Skip writing Centroids.geometry")
+            else:
+                LOGGER.info("Skip writing Centroids.%s:%s, it's neither an array nor a non-empty"
+                            " meta object", centr_name, centr_val.__class__.__name__)
         hf_str = data.create_dataset('crs', (1,), dtype=str_dt)
         hf_str[0] = CRS.from_user_input(self.crs).to_wkt()
-
-        if isinstance(file_data, str):
-            data.close()
 
     def read_hdf5(self, *args, **kwargs):
         """This function is deprecated, use Centroids.from_hdf5 instead."""
@@ -1161,9 +1163,13 @@ class Centroids():
         """
         if isinstance(file_data, (str, Path)):
             LOGGER.info('Reading %s', file_data)
-            data = h5py.File(file_data, 'r')
+            with h5py.File(file_data, 'r') as data:
+                return cls._from_hdf5(data)
         else:
-            data = file_data
+            return cls._from_hdf5(file_data)
+
+    @classmethod
+    def _from_hdf5(cls, data):
         centr = None
         crs = DEF_CRS
         if data.get('crs'):
@@ -1190,8 +1196,6 @@ class Centroids():
         for centr_name in data.keys():
             if centr_name not in ('crs', 'lat', 'lon', 'meta'):
                 setattr(centr, centr_name, np.array(data.get(centr_name)))
-        if isinstance(file_data, str):
-            data.close()
         return centr
 
     @property
