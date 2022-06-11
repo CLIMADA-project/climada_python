@@ -51,6 +51,10 @@ HAZ = Hazard.from_mat(HAZ_TEST_MAT)
 DATA_FOLDER = DEMO_DIR / 'test-results'
 DATA_FOLDER.mkdir(exist_ok=True)
 
+class TestImpact(unittest.TestCase):
+    "Test initialization and more"
+    def test_from_eih_pass(self):
+        imp = Impact.from_eih(ENT.exposures, ENT.impact_funcs, HAZ)
 
 class TestFreqCurve(unittest.TestCase):
     """Test exceedence frequency curve computation"""
