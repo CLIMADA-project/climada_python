@@ -56,9 +56,9 @@ class Impact():
     tag : dict
         dictionary of tags of exposures, impact functions set and
         hazard: {'exp': Tag(), 'impf_set': Tag(), 'haz': TagHazard()}
-    event_id :
-        np.array id (>0) of each hazard event
-    event_name :
+    event_id : np.array
+        id (>0) of each hazard event
+    event_name : list
         list name of each hazard event
     date : np.array
         date if events as integer date corresponding to the
@@ -97,6 +97,41 @@ class Impact():
                  unit='',
                  imp_mat=None,
                  tag=None):
+        """
+        Init Impact object
+
+        Attributes
+        ----------
+        tag : dict
+            dictionary of tags of exposures, impact functions set and
+            hazard: {'exp': Tag(), 'impf_set': Tag(), 'haz': TagHazard()}
+        event_id : np.array
+            id (>0) of each hazard event
+        event_name : list
+            list name of each hazard event
+        date : np.array
+            date if events as integer date corresponding to the
+            proleptic Gregorian ordinal, where January 1 of year 1 has
+            ordinal 1 (ordinal format of datetime library)
+        coord_exp : np.array
+            exposures coordinates [lat, lon] (in degrees)
+        eai_exp : np.array
+            expected annual impact for each exposure
+        at_event : np.array
+            impact for each hazard event
+        frequency : np.array
+            annual frequency of event
+        tot_value : float
+            total exposure value affected
+        aai_agg : float
+            average annual impact (aggregated)
+        unit : str
+            value unit used (given by exposures unit)
+        imp_mat : sparse.csr_matrix
+            matrix num_events x num_exp with impacts.
+            only filled if save_mat is True in calc()
+
+        """
 
         self.tag = tag or {}
         self.event_id = np.array([], int) if event_id is None else event_id
@@ -110,7 +145,42 @@ class Impact():
         self.tot_value = tot_value
         self.aai_agg = aai_agg
         self.unit = unit
-        self.imp_mat = sparse.csr_matrix(np.empty((0, 0))) if imp_mat is None else imp_mat
+
+        if len(event_id) != len(event_name):
+            raise AttributeError('Hazard event ids and event names'
+                                 ' are not of the same length')
+        if len(event_id) != len(date):
+            raise AttributeError('Hazard event ids and event dates'
+                             ' are not of the same length')
+        if len(event_id) != len(frequency):
+            raise AttributeError('Hazard event ids and event frequency'
+                                 ' are not of the same length')
+        if len(event_id) != len(at_event):
+            raise AttributeError('Number of hazard event ids different '
+                                 'from number of at_event values')
+        if len(coord_exp) != len(eai_exp):
+            raise AttributeError('Number of exposures points different from'
+                                 'number of eai_exp values')
+        if imp_mat is not None:
+            self.imp_mat = imp_mat
+            if len(event_id) != imp_mat.shape[0]:
+                raise AttributeError(
+                    f'The number of rows {imp_mat.shape[0]} of the impact '
+                    'matrix is inconsistent with the number {len(event_id} '
+                    'of hazard events.')
+            if len(coord_exp) != imp_mat.shape[1]:
+                raise AttributeError(
+                    'The number of columns {imp_mat.shape[1]} of the impact'
+                    ' matrix is inconsistent with the number {len(coord_exp)}'
+                    ' exposures points.')
+        else:
+            self.imp_mat = sparse.csr_matrix(np.empty((0, 0)))
+
+        if np.sum(eai_exp) != aai_agg:
+            raise AttributeError('The aai_agg value does not correspond'
+                                 'to the sum of eai_exp.')
+
+
 
     def calc(self, exposures, impact_funcs, hazard, save_mat=False):
         """This function is deprecated, use ImpactCalc.impact
