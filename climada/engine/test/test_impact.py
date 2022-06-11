@@ -52,7 +52,7 @@ DATA_FOLDER = DEMO_DIR / 'test-results'
 DATA_FOLDER.mkdir(exist_ok=True)
 
 class TestImpact(unittest.TestCase):
-    "Test initialization and more"
+    """"Test initialization and more"""
     def test_from_eih_pass(self):
         exp = ENT.exposures
         tot_value = exp.affected_total_value(HAZ)
@@ -76,6 +76,24 @@ class TestImpact(unittest.TestCase):
             imp.coord_exp,
             np.stack([exp.gdf.latitude.values, exp.gdf.longitude.values], axis=1)
             )
+
+    def test_transfer_risk_pass(self):
+        """Test transfer risk"""
+        imp = Impact()
+        imp.at_event = np.array([1.5, 2, 3])
+        imp.frequency = np.array([0.1, 0, 2])
+        transfer_at_event, transfer_aai_agg = imp.transfer_risk(attachment=1, cover=2)
+        self.assertTrue(transfer_aai_agg, 4.05)
+        np.testing.assert_array_almost_equal(transfer_at_event, np.array([0.5, 1, 2]))
+
+    def test_residual_risk_pass(self):
+        """Test residual risk"""
+        imp = Impact()
+        imp.at_event = np.array([1.5, 2, 3])
+        imp.frequency = np.array([0.1, 0, 2])
+        residual_at_event, residual_aai_agg = imp.residual_risk(attachment=1, cover=1.5)
+        self.assertTrue(residual_aai_agg, 3.1)
+        np.testing.assert_array_almost_equal(residual_at_event, np.array([1, 1, 1.5]))
 
 
 class TestFreqCurve(unittest.TestCase):
