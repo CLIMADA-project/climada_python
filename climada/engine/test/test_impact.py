@@ -170,10 +170,10 @@ class TestFreqCurve(unittest.TestCase):
         self.assertEqual('Exceedance frequency curve', ifc.label)
         self.assertEqual('USD', ifc.unit)
 
-class TestImpactYearSet(unittest.TestCase):
+class TestImpactPerYear(unittest.TestCase):
     """Test calc_impact_year_set method"""
 
-    def test_impact_year_set_sum(self):
+    def test_impact_per_year_sum(self):
         """Test result against reference value with given events"""
         imp = Impact()
         imp.frequency = np.ones(10) * 6.211180124223603e-04
@@ -192,11 +192,11 @@ class TestImpactYearSet(unittest.TestCase):
         imp.date = np.array([732801, 716160, 718313, 712468, 732802,
                              729285, 732931, 715419, 722404, 718351])
 
-        iys_all = imp.calc_impact_year_set()
-        iys = imp.calc_impact_year_set(all_years=False)
-        iys_all_yr = imp.calc_impact_year_set(year_range=(1975, 2000))
-        iys_yr = imp.calc_impact_year_set(all_years=False, year_range=[1975, 2000])
-        iys_all_yr_1940 = imp.calc_impact_year_set(all_years=True, year_range=[1940, 2000])
+        iys_all = imp.impact_per_year()
+        iys = imp.impact_per_year(all_years=False)
+        iys_all_yr = imp.impact_per_year(year_range=(1975, 2000))
+        iys_yr = imp.impact_per_year(all_years=False, year_range=[1975, 2000])
+        iys_all_yr_1940 = imp.impact_per_year(all_years=True, year_range=[1940, 2000])
         self.assertEqual(np.around(sum([iys[year] for year in iys])),
                          np.around(sum(imp.at_event)))
         self.assertEqual(sum([iys[year] for year in iys]),
@@ -218,11 +218,11 @@ class TestImpactYearSet(unittest.TestCase):
         self.assertFalse(1959 in iys_yr)
         self.assertEqual(len(iys_all_yr_1940), 61)
 
-    def test_impact_year_set_empty(self):
+    def test_impact_per_year_empty(self):
         """Test result for empty impact"""
         imp = Impact()
-        iys_all = imp.calc_impact_year_set()
-        iys = imp.calc_impact_year_set(all_years=False)
+        iys_all = imp.impact_per_year()
+        iys = imp.impact_per_year(all_years=False)
         self.assertEqual(len(iys), 0)
         self.assertEqual(len(iys_all), 0)
 
@@ -694,7 +694,7 @@ class TestConvertExp(unittest.TestCase):
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestFreqCurve)
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestImpactYearSet))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestImpactPerYear))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestIO))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRPmatrix))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRiskTrans))
