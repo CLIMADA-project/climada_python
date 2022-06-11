@@ -95,7 +95,7 @@ class Impact():
                  tot_value=0,
                  aai_agg=0,
                  unit='',
-                 imp_mat=sparse.csr_matrix((0, 0)),
+                 imp_mat=None,
                  tag=None):
         """
         Init Impact object
@@ -129,7 +129,7 @@ class Impact():
             value unit used (given by exposures unit)
         imp_mat : sparse.csr_matrix
             matrix num_events x num_exp with impacts.
-            only filled if save_mat is True in calc()
+            Default is None (empty matrix)
 
         """
 
@@ -156,23 +156,24 @@ class Impact():
             raise AttributeError('Hazard event ids and event frequency'
                                  ' are not of the same length')
         if len(event_id) != len(at_event):
-            raise AttributeError('Number of hazard event ids different '
+            raise AttributeError('Number of hazard event ids is different '
                                  'from number of at_event values')
         if len(coord_exp) != len(eai_exp):
-            raise AttributeError('Number of exposures points different from'
+            raise AttributeError('Number of exposures points is different from'
                                  'number of eai_exp values')
         if imp_mat is not None:
             self.imp_mat = imp_mat
-            if len(event_id) != imp_mat.shape[0]:
-                raise AttributeError(
-                    f'The number of rows {imp_mat.shape[0]} of the impact '
-                    'matrix is inconsistent with the number {len(event_id} '
-                    'of hazard events.')
-            if len(coord_exp) != imp_mat.shape[1]:
-                raise AttributeError(
-                    'The number of columns {imp_mat.shape[1]} of the impact'
-                    ' matrix is inconsistent with the number {len(coord_exp)}'
-                    ' exposures points.')
+            if imp_mat.size > 0:
+                if len(event_id) != imp_mat.shape[0]:
+                    raise AttributeError(
+                        f'The number of rows {imp_mat.shape[0]} of the impact ' +
+                        f'matrix is inconsistent with the number {len(event_id)} '
+                        'of hazard events.')
+                if len(coord_exp) != imp_mat.shape[1]:
+                    raise AttributeError(
+                        f'The number of columns {imp_mat.shape[1]} of the impact' +
+                        f' matrix is inconsistent with the number {len(coord_exp)}'
+                        ' exposures points.')
         else:
             self.imp_mat = sparse.csr_matrix(np.empty((0, 0)))
 
@@ -203,7 +204,7 @@ class Impact():
 #TODO: new name
     @classmethod
     def from_eih(cls, exposures, impfset, hazard,
-                 at_event, eai_exp, aai_agg, imp_mat=sparse.csr_matrix((0, 0))):
+                 at_event, eai_exp, aai_agg, imp_mat=None):
         """
         Set Impact attributes from precalculated impact metrics.
 
@@ -217,7 +218,7 @@ class Impact():
             hazard used to compute imp_mat
         imp_mat : sparse.csr_matrix
             matrix num_events x num_exp with impacts.
-            Default is empty sparse csr matrix.
+            Default is None (empty sparse csr matrix).
 
         Returns
         -------
