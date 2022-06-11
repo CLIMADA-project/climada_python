@@ -24,7 +24,8 @@ pipeline {
             export PATH=$PATH:$CONDAPATH
             source activate climada_env
             rm -rf tests_xml/
-            python -m coverage run  tests_runner.py unit
+            rm -rf coverage/
+            python -m coverage run tests_runner.py unit
             python -m coverage xml -o coverage.xml
             python -m coverage html -d coverage'''
           }

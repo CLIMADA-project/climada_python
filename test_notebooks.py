@@ -15,6 +15,8 @@ NOTEBOOK_DIR = Path(__file__).parent.joinpath('doc', 'tutorial')
 BOUND_TO_FAIL = '# Note: execution of this cell will fail'
 '''Cells containing this line will not be executed in the test'''
 
+EXCLUDED_FROM_NOTEBOOK_TEST = ['climada_installation_step_by_step.ipynb']
+'''These notebooks are excluded from being tested'''
 
 class NotebookTest(unittest.TestCase):
     '''Generic TestCase for testing the executability of notebooks
@@ -112,7 +114,8 @@ def main():
     # list notebooks in the NOTEBOOK_DIR
     notebooks = [f.absolute()
                  for f in sorted(NOTEBOOK_DIR.iterdir())
-                 if os.path.splitext(f)[1] == ('.ipynb')]
+                 if os.path.splitext(f)[1] == ('.ipynb')
+                 and not f.name in EXCLUDED_FROM_NOTEBOOK_TEST]
 
     # build a test suite with a test for each notebook
     suite = unittest.TestSuite()

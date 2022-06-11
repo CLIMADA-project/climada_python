@@ -40,7 +40,7 @@ class ImpactCalc():
                  exposures,
                  impfset,
                  hazard,
-                 imp_mat=None):
+                 imp_mat=sparse.csr_matrix((0, 0))):
         """
         Initialize an ImpactCalc object.
 
@@ -65,7 +65,6 @@ class ImpactCalc():
 
         """
 
-        imp_mat = sparse.csr_matrix(np.empty((0, 0))) if imp_mat is None else imp_mat
         self.exposures = exposures
         self.impfset = impfset
         self.hazard = hazard
