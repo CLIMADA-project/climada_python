@@ -239,7 +239,7 @@ class Impact():
             eai_exp = eai_exp,
             at_event = at_event,
             aai_agg = aai_agg,
-            imp_mat = imp_mat,
+            imp_mat = imp_mat if imp_mat is not None else sparse.csr_matrix((0, 0)),
             tag = {'exp': exposures.tag,
                    'impf_set': impfset.tag,
                    'haz': hazard.tag
