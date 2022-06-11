@@ -135,9 +135,9 @@ class Impact():
 
         self.tag = tag or {}
         self.event_id = np.array([], int) if event_id is None else event_id
-        self.event_name = event_name or []
+        self.event_name = [] if event_name is None else event_name
         self.date = np.array([], int) if date is None else date
-        self.coord_exp = np.ndarray([], float) if coord_exp is None else coord_exp
+        self.coord_exp = np.array([], float) if coord_exp is None else coord_exp
         self.crs = crs
         self.eai_exp = np.array([], float) if eai_exp is None else eai_exp
         self.at_event = np.array([], float) if at_event is None else at_event
@@ -146,40 +146,36 @@ class Impact():
         self.aai_agg = aai_agg
         self.unit = unit
 
-        if len(event_id) != len(event_name):
+        if len(self.event_id) != len(self.event_name):
             raise AttributeError('Hazard event ids and event names'
                                  ' are not of the same length')
-        if len(event_id) != len(date):
+        if len(self.event_id) != len(self.date):
             raise AttributeError('Hazard event ids and event dates'
                              ' are not of the same length')
-        if len(event_id) != len(frequency):
+        if len(self.event_id) != len(self.frequency):
             raise AttributeError('Hazard event ids and event frequency'
                                  ' are not of the same length')
-        if len(event_id) != len(at_event):
+        if len(self.event_id) != len(self.at_event):
             raise AttributeError('Number of hazard event ids is different '
                                  'from number of at_event values')
-        if len(coord_exp) != len(eai_exp):
+        if len(self.coord_exp) != len(self.eai_exp):
             raise AttributeError('Number of exposures points is different from'
                                  'number of eai_exp values')
         if imp_mat is not None:
             self.imp_mat = imp_mat
-            if imp_mat.size > 0:
-                if len(event_id) != imp_mat.shape[0]:
+            if self.imp_mat.size > 0:
+                if len(self.event_id) != self.imp_mat.shape[0]:
                     raise AttributeError(
                         f'The number of rows {imp_mat.shape[0]} of the impact ' +
                         f'matrix is inconsistent with the number {len(event_id)} '
                         'of hazard events.')
-                if len(coord_exp) != imp_mat.shape[1]:
+                if len(self.coord_exp) != self.imp_mat.shape[1]:
                     raise AttributeError(
                         f'The number of columns {imp_mat.shape[1]} of the impact' +
                         f' matrix is inconsistent with the number {len(coord_exp)}'
                         ' exposures points.')
         else:
             self.imp_mat = sparse.csr_matrix(np.empty((0, 0)))
-
-        if np.sum(eai_exp) != aai_agg:
-            raise AttributeError('The aai_agg value does not correspond'
-                                 'to the sum of eai_exp.')
 
 
 
