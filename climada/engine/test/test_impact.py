@@ -54,7 +54,29 @@ DATA_FOLDER.mkdir(exist_ok=True)
 class TestImpact(unittest.TestCase):
     "Test initialization and more"
     def test_from_eih_pass(self):
-        imp = Impact.from_eih(ENT.exposures, ENT.impact_funcs, HAZ)
+        exp = ENT.exposures
+        tot_value = exp.affected_total_value(HAZ)
+        fake_eai_exp = np.arange(len(exp.gdf))
+        fake_at_event = np.arange(len(HAZ.size))
+        fake_aai_agg = np.sum(fake_eai_exp)
+        imp = Impact.from_eih(exp, ENT.impact_funcs, HAZ,
+                              fake_eai_exp, fake_at_event, fake_aai_agg)
+        self.assertEqual(imp.crs, exp.crs)
+        self.assertEqual(imp.aai_agg, fake_aai_agg)
+        self.assertIsNone(imp.imp_mat)
+        self.assertEqual(imp.unit, exp.value_unit)
+        self.assertEqual(imp.tot_value, tot_value)
+        np.testing.assert_array_almost_equal(imp.event_id, HAZ.event_id)
+        np.testing.assert_array_almost_equal(imp.event_name, HAZ.event_name)
+        np.testing.assert_array_almost_equal(imp.data, HAZ.data)
+        np.testing.assert_array_almost_equal(imp.frequency, HAZ.frequency)
+        np.testing.assert_array_almost_equal(imp.eai_exp, fake_eai_exp)
+        np.testing.assert_array_almost_equal(imp.at_event, fake_at_event)
+        np.testing.assert_array_almost_equal(
+            imp.coord_exp,
+            np.stack([exp.gdf.latitude.values, exp.gdf.longitude.values], axis=1)
+            )
+
 
 class TestFreqCurve(unittest.TestCase):
     """Test exceedence frequency curve computation"""
