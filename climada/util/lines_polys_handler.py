@@ -259,7 +259,7 @@ def calc_grid_impact(
     disagg_met : DisaggMethod
         Disaggregation method of the shapes's original value onto its inter-
         polated points. 'DIV': Divide the value evenly over all the new points;
-        'FIX': Replicate the value onto all the new points. Default is 'AVG'.
+        'FIX': Replicate the value onto all the new points. Default is 'DIV'.
         Works in combination with the kwarg 'disagg_val'.
     disagg_val: float, optional
         Specifies what number should be taken as the value, which
@@ -365,7 +365,7 @@ def exp_geom_to_pnt(exp, res, to_meters, disagg_met, disagg_val):
     disagg_met : DisaggMethod
         Disaggregation method of the shapes's original value onto its inter-
         polated points. 'DIV': Divide the value evenly over all the new points;
-        'FIX': Replicate the value onto all the new points. Default is 'AVG'.
+        'FIX': Replicate the value onto all the new points. Default is 'DIV'.
         Works in combination with the kwarg 'disagg_val'.
     disagg_val: float, optional
         Specifies what number should be taken as the value, which
@@ -421,7 +421,7 @@ def exp_geom_to_grid(exp, grid, disagg_met, disagg_val):
     disagg_met : DisaggMethod
         Disaggregation method of the shapes's original value onto its inter-
         polated points. 'DIV': Divide the value evenly over all the new points;
-        'FIX': Replicate the value onto all the new points. Default is 'AVG'.
+        'FIX': Replicate the value onto all the new points. Default is 'DIV'.
         Works in combination with the kwarg 'disagg_val'.
     disagg_val: float, optional
         Specifies what number should be taken as the value, which
