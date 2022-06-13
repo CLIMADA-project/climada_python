@@ -19,7 +19,6 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Import data from Global Population of the World (GPW) datasets
 """
 import logging
-import subprocess
 
 import rasterio
 import numpy as np
