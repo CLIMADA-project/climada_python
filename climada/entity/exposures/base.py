@@ -1010,10 +1010,24 @@ class Exposures():
 
         return exp
 
-    def affected_values_gdf(self, hazard):
-        return self.gdf[(self.gdf.value != 0) & (self.gdf[hazard.cent_exp_col] >= 0)]
-
     def affected_total_value(self, hazard):
+        """
+        Total value of the exposures that are close enough to be affected
+        by the hazard (sum of value of all exposures points for which
+        a centroids is assigned)
+
+        Parameters
+        ----------
+        hazard : Hazard
+           Hazard affecting Exposures
+
+        Returns
+        -------
+        float
+            Sum of value of all exposures points for which
+            a centroids is assigned
+
+        """
         nz_mask = (
             (self.gdf.value.values > 0)
             & (self.gdf[hazard.cent_exp_col].values >= 0)
