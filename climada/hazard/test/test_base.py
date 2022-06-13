@@ -1321,6 +1321,23 @@ class TestClear(unittest.TestCase):
         pool.join()
         pool.clear()
 
+class TestImpactFuncs(unittest.TestCase):
+    """Test methods mainly for computing impacts"""
+    def test_haz_type(self):
+        """Test haz_type property"""
+        haz = dummy_hazard()
+        self.assertEqual(haz.haz_type, 'TC')
+        haz.tag.haz_type = 'random'
+        self.assertEqual(haz.haz_type, 'random')
+
+    def test_cent_exp_col(self):
+        """Test return of centroid exposures column"""
+        haz = dummy_hazard()
+        self.assertEqual(haz.centr_exp_col, 'centr_TC')
+        haz.tag.haz_type = 'random'
+        self.assertEqual(haz.cent_exp_col, 'centr_random')
+        haz = Hazard()
+        self.assertEqual(haz.cent_exp_col, 'centr_')
 
 # Execute Tests
 if __name__ == "__main__":
