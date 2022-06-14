@@ -1785,7 +1785,7 @@ class Hazard():
         return haz_new_cent
 
     @property
-    def cent_exp_col(self):
+    def centr_exp_col(self):
         """
         Name of the centroids columns for this hazard in an exposures
 
@@ -1839,8 +1839,8 @@ class Hazard():
             "The mean damage ratio must thus be computed for all values of"
             "hazard intensity including 0 which can be very time consuming.",
             impf.id)
-            mdr_array = impf.calc_mdr(mdr.toarray().ravel())
-            mdr = sparse.csr_matrix(mdr_array, shape=mdr.shape)
+            mdr_array = impf.calc_mdr(mdr.toarray().ravel()).reshape(mdr.shape)
+            mdr = sparse.csr_matrix(mdr_array)
         return mdr[:, indices]
 
     def get_paa(self, cent_idx, impf):
