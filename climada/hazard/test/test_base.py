@@ -1376,14 +1376,14 @@ class TestImpactFuncs(unittest.TestCase):
         impf = dummy_step_impf(haz)
 
         idx = [0, 1]
-        cent_idx = np.array([idx])
+        cent_idx = np.array(idx)
         paa = haz.get_paa(cent_idx, impf)
         true_paa = np.ones(haz.intensity[:, idx].shape)
         np.testing.assert_array_almost_equal(paa.toarray(), true_paa)
 
         #repeated index
         idx = [0, 0]
-        cent_idx = np.array([idx])
+        cent_idx = np.array(idx)
         paa = haz.get_paa(cent_idx, impf)
         true_paa = np.ones(haz.intensity[:, idx].shape)
         np.testing.assert_array_almost_equal(paa.toarray(), true_paa)
@@ -1392,10 +1392,27 @@ class TestImpactFuncs(unittest.TestCase):
         impf.paa += 1
         #repeated index
         idx = [0, 0, 1]
-        cent_idx = np.array([idx])
+        cent_idx = np.array(idx)
         paa = haz.get_paa(cent_idx, impf)
         true_paa = np.ones(haz.intensity[:, idx].shape) + 1
         np.testing.assert_array_almost_equal(paa.toarray(), true_paa)
+
+    def test_get_fraction(self):
+        haz = dummy_hazard()
+
+        idx = [0, 1]
+        cent_idx = np.array(idx)
+        frac = haz.get_fraction(cent_idx)
+        true_frac = haz.fraction[:, idx]
+        np.testing.assert_array_almost_equal(frac.toarray(), true_frac.toarray())
+
+        #repeated index
+        idx = [0, 0]
+        cent_idx = np.array(idx)
+        frac = haz.get_fraction(cent_idx)
+        true_frac = haz.fraction[:, idx]
+        np.testing.assert_array_almost_equal(frac.toarray(), true_frac.toarray())
+
 
 # Execute Tests
 if __name__ == "__main__":
