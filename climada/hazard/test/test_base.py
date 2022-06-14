@@ -1357,12 +1357,12 @@ class TestImpactFuncs(unittest.TestCase):
             np.testing.assert_array_almost_equal(mdr.toarray(), true_mdr)
 
         #repeated index
-        cent_idx = np.array([0, 0])
+        cent_idx = np.array([0, 0, 1])
         mdr = haz.get_mdr(cent_idx, impf)
         true_mdr = np.digitize(haz.intensity[:, cent_idx].toarray(), [0, 1]) - 1
         np.testing.assert_array_almost_equal(mdr.toarray(), true_mdr)
 
-        #impf is not zero at 0
+        #mdr is not zero at 0
         impf.mdd += 1
         #single index
         for idx in range(3):
@@ -1370,6 +1370,32 @@ class TestImpactFuncs(unittest.TestCase):
             mdr = haz.get_mdr(cent_idx, impf)
             true_mdr = np.digitize(haz.intensity[:, idx].toarray(), [0, 1])
             np.testing.assert_array_almost_equal(mdr.toarray(), true_mdr)
+
+    def test_get_paa(self):
+        haz = dummy_hazard()
+        impf = dummy_step_impf(haz)
+
+        idx = [0, 1]
+        cent_idx = np.array([idx])
+        paa = haz.get_paa(cent_idx, impf)
+        true_paa = np.ones(haz.intensity[:, idx].shape)
+        np.testing.assert_array_almost_equal(paa.toarray(), true_paa)
+
+        #repeated index
+        idx = [0, 0]
+        cent_idx = np.array([idx])
+        paa = haz.get_paa(cent_idx, impf)
+        true_paa = np.ones(haz.intensity[:, idx].shape)
+        np.testing.assert_array_almost_equal(paa.toarray(), true_paa)
+
+        #paa is not zero at 0
+        impf.paa += 1
+        #repeated index
+        idx = [0, 0, 1]
+        cent_idx = np.array([idx])
+        paa = haz.get_paa(cent_idx, impf)
+        true_paa = np.ones(haz.intensity[:, idx].shape) + 1
+        np.testing.assert_array_almost_equal(paa.toarray(), true_paa)
 
 # Execute Tests
 if __name__ == "__main__":
