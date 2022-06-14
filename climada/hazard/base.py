@@ -1829,6 +1829,11 @@ class Hazard():
         sparse.csr_matrix
             sparse matrix (n_events x len(cent_idx)) with mdr values
 
+        See Also
+        --------
+        get_fraction: get the fraction for the given centroids
+        get_paa: get the paa ffor the given centroids
+
         """
         uniq_cent_idx, indices = np.unique(cent_idx, return_inverse=True)
         mdr = self.intensity[:, uniq_cent_idx]
@@ -1848,6 +1853,9 @@ class Hazard():
         Return Percentage of Affected Assets (paa) for chosen centroids (cent_idx)
         for given impact function.
 
+        Note that value as intensity = 0 are ignored. This is different from
+        get_mdr.
+
         Parameters
         ----------
         cent_idx : array-like
@@ -1859,6 +1867,11 @@ class Hazard():
         -------
         sparse.csr_matrix
             sparse matrix (n_events x len(cent_idx)) with paa values
+
+        See Also
+        --------
+        get_mdr: get the mean-damage ratio for the given centroids
+        get_fraction: get the fraction for the given centroids
 
         """
         uniq_cent_idx, indices = np.unique(cent_idx, return_inverse=True)
@@ -1880,5 +1893,9 @@ class Hazard():
         sparse.csr_matrix
             sparse matrix (n_events x len(cent_idx)) with fraction values
 
+        See Also
+        --------
+        get_mdr: get the mdr for the given centroids
+        get_paa: get the paa ffor the given centroids
         """
         return self.fraction[:, cent_idx]
