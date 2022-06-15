@@ -223,11 +223,11 @@ class ImpactCalc():
 
         mask = (
             (self.exposures.gdf.value.values != 0)
-            & (self.exposures.gdf[self.hazard.cent_exp_col].values >= 0)
+            & (self.exposures.gdf[self.hazard.centr_exp_col].values >= 0)
         )
         exp_gdf = gpd.GeoDataFrame({
             col: self.exposures.gdf[col].values[mask]
-            for col in ['value', impf_col, self.hazard.cent_exp_col]
+            for col in ['value', impf_col, self.hazard.centr_exp_col]
         })
         if exp_gdf.size == 0:
             LOGGER.warning("No exposures with value >0 in the vicinity of the hazard.")
