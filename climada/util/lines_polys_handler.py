@@ -455,7 +455,7 @@ def exp_geom_to_grid(exp, grid, disagg_met, disagg_val):
         gdf_pnt = _disagg_values_div(gdf_pnt)
 
     # set lat lon and centroids
-    exp_pnt = exp.copy()
+    exp_pnt = exp.copy(deep=False)
     exp_pnt.set_gdf(gdf_pnt)
     exp_pnt.set_lat_lon()
 
