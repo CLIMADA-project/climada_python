@@ -408,13 +408,13 @@ def exp_geom_to_pnt(exp, res, to_meters, disagg_met, disagg_val):
 
 def exp_geom_to_grid(exp, grid, disagg_met, disagg_val):
     """
-    Disaggregate exposures with (multi-)polygons and/or (multi-)lines
-    geometries to points.
+    Disaggregate exposures with (multi-)polygon geometries to points based on
+    a pre-defined grid.
 
     Parameters
     ----------
     exp : Exposures
-        The exposure instance with exp.gdf.geometry containing lines or polygons
+        The exposure instance with exp.gdf.geometry containing polygons
     grid : np.array()
         Grid on which to disaggregate the exposures. Provided as two
         vectors [x_grid, y_grid].
@@ -437,6 +437,9 @@ def exp_geom_to_grid(exp, grid, disagg_met, disagg_val):
         membership of the original geometries of exp,
         second for the point disaggregation within each geometries.
 
+    Note
+    ----
+    Works with polygon geometries only. No points or lines are allowed.
     """
 
     gdf_geom = exp.gdf.copy()
@@ -540,13 +543,13 @@ def gdf_to_pnts(gdf, res, to_meters):
 
 def gdf_to_grid(gdf, grid):
     """
-    Disaggregate geodataframe with (multi-)polygons geometries to points.
+    Disaggregate geodataframe with (multi-)polygons geometries to points based
+    on a pre-defined grid.
 
     Parameters
     ----------
     gdf : gpd.GeoDataFrame
-        Feodataframe instance with gdf.geometry containing (multi)-lines or (multi-)polygons.
-        Points are ignored.
+        Geodataframe instance with gdf.geometry containing (multi-)polygons.
     grid : np.array()
         Grid on which to disaggregate the exposures. Provided as two vectors [x_grid, y_grid].
 
@@ -555,6 +558,16 @@ def gdf_to_grid(gdf, grid):
     gdf_pnt : gpd.GeoDataFrame
         with a double index, first for the geometries of exp, second for the point disaggregation
         of the geometries.
+    
+    Note
+    ----
+    Works only with polygon geometries. No mixed inputs (with lines or points)
+    are allowed
+    
+    Raises
+    ------
+    AttributeError : if other geometry types than polygons are contained in the
+    dataframe
     """
     if gdf.empty:
         return gdf
@@ -564,14 +577,11 @@ def gdf_to_grid(gdf, grid):
     # Concatenating an empty dataframe with an index together with
     # a dataframe with a multi-index breaks the multi-index
     gdf_pnt = gpd.GeoDataFrame([])
-    if pnt_mask.any():
-        gdf_pnt = gpd.GeoDataFrame(pd.concat([
-            gdf_pnt,
-            gdf[pnt_mask]
-        ]))
-    if line_mask.any():
-        raise AttributeError("The dataframe contains lines. Lines cannot be disaggregated onto a "
-                             "fixed grid.")
+
+    if (line_mask.any() or pnt_mask.any()):
+        raise AttributeError("The dataframe contains lines and/or polygons."
+                             "Currently only polygon dataframes can be "
+                             "disaggregated onto a fixed grid.")
     if poly_mask.any():
         gdf_pnt = gpd.GeoDataFrame(pd.concat([
             gdf_pnt,
