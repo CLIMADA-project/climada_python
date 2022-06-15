@@ -266,12 +266,12 @@ class ImpactCalc():
             if haz_size > max_size:
                 raise ValueError(
                     f'Increase max_matrix_size configuration parameter to > {self.hazard.size}')
-            n_chunks =  np.ceil(haz_size * len(idx_exp_impf) / max_size)
+            n_chunks = np.ceil(haz_size * len(idx_exp_impf) / max_size)
             return np.array_split(idx_exp_impf, n_chunks)
 
         for impf_id in exp_gdf[impf_col].dropna().unique():
             impf = self.impfset.get_func(haz_type=self.hazard.haz_type, fun_id=impf_id)
-            idx_exp_impf = (exp_gdf[impf_col].values == impf.id).nonzero()[0]
+            idx_exp_impf = (exp_gdf[impf_col].values == impf_id).nonzero()[0]
             for exp_idx in _chunk_exp_idx(self.hazard.size, idx_exp_impf):
                 exp_values = exp_gdf.value.values[exp_idx]
                 cent_idx = exp_gdf[self.hazard.centr_exp_col].values[exp_idx]
