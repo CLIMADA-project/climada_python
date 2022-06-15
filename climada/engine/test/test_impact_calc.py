@@ -19,10 +19,13 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Test Impact class.
 """
 import unittest
-import unittest.mock
+from unittest.mock import create_autospec, MagicMock, call
 import numpy as np
 from scipy import sparse
+import pandas as pd
+from copy import deepcopy
 
+from climada import CONFIG
 from climada.entity.entity_def import Entity
 from climada.hazard.base import Hazard
 from climada.engine import ImpactCalc
@@ -215,7 +218,7 @@ class TestImpactMatrixCalc(unittest.TestCase):
 
     def setUp(self):
         # Mock the methods called by 'impact_matrix'
-        self.hazard = unittest.mock.create_autospec(HAZ)
+        self.hazard = create_autospec(HAZ)
         self.hazard.get_mdr.return_value = sparse.csr_matrix(
             [[0.0, 0.5, -1.0], [1.0, 2.0, 1.0]]
         )
@@ -252,8 +255,105 @@ class TestImpactMatrixCalc(unittest.TestCase):
             self.icalc.impact_matrix(exposure_values, self.centroids, ENT.impact_funcs)
 
 
+class TestImpactMatrixGenerator(unittest.TestCase):
+    """Check the impact matrix generator"""
+
+    def setUp(self):
+        """"Initialize mocks"""
+        # Alter the default config to enable chunking
+        self.CONFIG_COPY = deepcopy(CONFIG)
+        CONFIG.max_matrix_size.int = MagicMock(return_value=1)
+
+        # Mock the hazard
+        self.hazard = create_autospec(HAZ)
+        self.hazard.haz_type = "haz_type"
+        self.hazard.centr_exp_col = "centr_col"
+        self.hazard.size = 1
+
+        # Mock the Impact function (set)
+        self.impf = MagicMock(name="impact_function")
+        self.impfset = create_autospec(ENT.impact_funcs)
+        self.impfset.get_func.return_value = self.impf
+
+        # Mock the impact matrix call
+        self.icalc = ImpactCalc(ENT.exposures, self.impfset, self.hazard)
+        self.icalc.impact_matrix = MagicMock()
+
+        # Set up a dummy exposure dataframe
+        self.exp_gdf = pd.DataFrame(
+            {
+                "impact_functions": [0, 11, 11],
+                "centr_col": [0, 10, 20],
+                "value": [0.0, 1.0, 2.0],
+            }
+        )
+
+    def tearDown(self):
+        """Reset the original config"""
+        CONFIG = self.CONFIG_COPY
+
+    def test_selection(self):
+        """Verify the impact matrix generator returns the right values"""
+        gen = self.icalc.imp_mat_gen(exp_gdf=self.exp_gdf, impf_col="impact_functions")
+        out_list = [exp_idx for _, exp_idx in gen]
+
+        np.testing.assert_array_equal(out_list, [[0], [1], [2]])
+
+        # Verify calls
+        self.impfset.get_func.assert_has_calls(
+            [call(haz_type="haz_type", fun_id=0), call(haz_type="haz_type", fun_id=11),]
+        )
+        self.icalc.impact_matrix.assert_has_calls(
+            [
+                call(np.array([0.0]), np.array([0]), self.impf),
+                call(np.array([1.0]), np.array([10]), self.impf),
+                call(np.array([2.0]), np.array([20]), self.impf),
+            ]
+        )
+
+    def test_chunking(self):
+        """Verify that chunking works as expected"""
+        # n_chunks = hazard.size * len(centr_idx) / max_size = 2 * 5 / 4 = 2.5
+        CONFIG.max_matrix_size.int = MagicMock(return_value=4)
+        self.hazard.size = 2
+
+        arr_len = 5
+        exp_gdf = pd.DataFrame(
+            {
+                "impact_functions": np.zeros(arr_len, dtype=np.int64),
+                "centr_col": np.array(list(range(arr_len))),
+                "value": np.ones(arr_len, dtype=np.float64),
+            }
+        )
+        gen = self.icalc.imp_mat_gen(exp_gdf=exp_gdf, impf_col="impact_functions")
+        out_list = [exp_idx for _, exp_idx in gen]
+
+        # Expect three chunks
+        self.assertEqual(len(out_list[0]), 2)
+        self.assertEqual(len(out_list[1]), 2)
+        self.assertEqual(len(out_list[2]), 1)
+
+    def test_chunk_error(self):
+        """Assert that too large hazard results in error"""
+        self.hazard.size = 2
+        gen = self.icalc.imp_mat_gen(exp_gdf=self.exp_gdf, impf_col="impact_functions")
+        with self.assertRaises(ValueError):
+            list(gen)
+
+    def test_empty_exp(self):
+        """imp_mat_gen should return an empty iterator for an empty dataframe"""
+        exp_gdf = pd.DataFrame({"impact_functions": [], "centr_col": [], "value": []})
+        self.assertEqual(
+            [],
+            list(self.icalc.imp_mat_gen(exp_gdf=exp_gdf, impf_col="impact_functions")),
+        )
+
+
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestImpactCalc)
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestImpactMatrixCalc))
+    TESTS.addTests(
+        unittest.TestLoader().loadTestsFromTestCase(TestImpactMatrixGenerator)
+    )
     unittest.TextTestRunner(verbosity=2).run(TESTS)
