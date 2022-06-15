@@ -229,6 +229,19 @@ class TestImpactCalc(unittest.TestCase):
             [[1.0, 1.0, 0.0, 0.0], [0.0, 3.0, 2.0, 0.0], [0.0, 2.0, 2.0, 4.0]],
         )
 
+    def test_apply_deductible_to_mat(self):
+        """Test applying a deductible to an impact matrix"""
+        hazard = create_autospec(HAZ)
+        hazard.get_paa.return_value = sparse.csr_matrix([[1.0, 0.0], [0.1, 1.0]])
+
+        mat = sparse.csr_matrix([[10.0, 20.0], [30.0, 40.0]])
+        deductible = np.array([1.0, 0.5])
+
+        centr_idx = np.ones(2)
+        impf = None
+        mat = ImpactCalc.apply_deductible_to_mat(mat, deductible, hazard, centr_idx, impf)
+        np.testing.assert_array_equal(mat.toarray(), [[9.0, 20.0], [29.9, 39.5]])
+        hazard.get_paa.assert_called_once_with(centr_idx, impf)
 
 class TestImpactMatrixCalc(unittest.TestCase):
     """Verify the computation of the impact matrix"""
