@@ -267,9 +267,7 @@ class ImpactCalc():
                 raise ValueError(
                     f'Increase max_matrix_size configuration parameter to > {self.hazard.size}')
             n_chunks =  np.ceil(self.hazard.size * len(idx_exp_impf) / max_size)
-            exp_chunk_size = int(len(idx_exp_impf) / n_chunks)
-            for chk in range(int(n_chunks)):
-                yield idx_exp_impf[chk * exp_chunk_size:(chk + 1) * exp_chunk_size]
+            return np.array_split(idx_exp_impf, n_chunks)
 
         for impf_id in exp_gdf[impf_col].dropna().unique():
             impf = self.impfset.get_func(haz_type=self.hazard.haz_type, fun_id=impf_id)
