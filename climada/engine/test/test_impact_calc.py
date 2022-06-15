@@ -23,7 +23,7 @@ from unittest.mock import create_autospec, MagicMock, call
 import numpy as np
 from scipy import sparse
 import pandas as pd
-from copy import deepcopy
+from copy import deepcopy, copy
 
 from climada import CONFIG
 from climada.entity.entity_def import Entity
@@ -85,7 +85,7 @@ class TestImpactCalc(unittest.TestCase):
         np.testing.assert_array_equal(at_event, ae)
         np.testing.assert_array_equal(eai_exp, eai)
 
-    def test_insured_matrics(self):
+    def test_apply_cover_to_mat(self):
         """Test methods to get insured metrics"""
         mat = sparse.csr_matrix(np.array(
             [[1, 0, 1],
@@ -113,6 +113,24 @@ class TestImpactCalc(unittest.TestCase):
         self.assertAlmostEqual(1.066837260150042e+08, impact.eai_exp[49], 6)
         self.assertAlmostEqual(6.570532945599105e+11, impact.tot_value)
         self.assertAlmostEqual(6.512201157564421e+09, impact.aai_agg, 5)
+
+        x = 0.6
+        HAZf = deepcopy(HAZ)
+        HAZf.fraction *= 0.6
+        icalc = ImpactCalc(ENT.exposures, ENT.impact_funcs, HAZf)
+        impact = icalc.impact()
+        self.assertEqual(icalc.n_events, len(impact.at_event))
+        self.assertEqual(0, impact.at_event[0])
+        self.assertEqual(0, impact.at_event[7225])
+        self.assertAlmostEqual(1.472482938320243e+08 * x, impact.at_event[13809], delta=1)
+        self.assertAlmostEqual(7.076504723057620e+10 * x, impact.at_event[12147], delta=1)
+        self.assertEqual(0, impact.at_event[14449])
+        self.assertEqual(icalc.n_exp_pnt, len(impact.eai_exp))
+        self.assertAlmostEqual(1.518553670803242e+08 * x, impact.eai_exp[0], delta=1)
+        self.assertAlmostEqual(1.373490457046383e+08 * x, impact.eai_exp[25], 6)
+        self.assertAlmostEqual(1.066837260150042e+08 * x, impact.eai_exp[49], 6)
+        self.assertAlmostEqual(6.570532945599105e+11, impact.tot_value)
+        self.assertAlmostEqual(6.512201157564421e+09 * x, impact.aai_agg, 5)
 
     def test_calc_impact_save_mat_pass(self):
         """Test compute impact with impact matrix"""
