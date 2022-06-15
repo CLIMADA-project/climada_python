@@ -610,7 +610,7 @@ def _disagg_values_div(gdf_pnts):
 
     """
 
-    gdf_disagg = gdf_pnts.copy()
+    gdf_disagg = gdf_pnts.copy(deep=False)
 
     group = gdf_pnts.groupby(axis=0, level=0)
     vals = group.value.mean() / group.value.count()
@@ -621,7 +621,7 @@ def _disagg_values_div(gdf_pnts):
     return gdf_disagg
 
 
-def _poly_to_pnts(gdf, res, to_meters=False):
+def _poly_to_pnts(gdf, res, to_meters):
     """
     Disaggregate (multi-)polygons geodataframe to points.
     Note: If polygon is smaller than specified resolution, a representative
@@ -634,6 +634,9 @@ def _poly_to_pnts(gdf, res, to_meters=False):
         Can have any CRS
     res : float
         Resolution (same units as gdf crs)
+    to_meters : bool
+        If True, res is interpreted as meters, and geometries are projected to
+        an equal area projection for disaggregation. 
 
     Returns
     -------
@@ -882,7 +885,7 @@ def reproject_poly(poly, orig_crs, dest_crs):
     return sh.ops.transform(project.transform, poly)
 
 
-def _line_to_pnts(gdf_lines, res, to_meters=False):
+def _line_to_pnts(gdf_lines, res, to_meters):
 
     """
     Convert a GeoDataFrame with LineString geometries to
@@ -897,7 +900,9 @@ def _line_to_pnts(gdf_lines, res, to_meters=False):
     res : float
         Resolution (distance) apart from which the generated Points
         should be approximately placed.
-
+    to_meters : bool
+        If True, res is interpreted as meters, and geometries are projected to
+        an equal area projection for disaggregation. 
     Returns
     -------
     gdf_points : gpd.GeoDataFrame
