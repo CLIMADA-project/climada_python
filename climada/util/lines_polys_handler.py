@@ -39,7 +39,7 @@ class DisaggMethod(Enum):
     """
     Disaggregation Method for the ... function
 
-	AVG : the geometry's value is equally averaged over all its interpolated points
+	DIV : the geometry's distributed to equal parts over all its interpolated points
 	FIX : the geometry's value is replicated over all its interpolated points
     """
     DIV = 'div'
