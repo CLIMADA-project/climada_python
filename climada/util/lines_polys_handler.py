@@ -220,7 +220,7 @@ def _aggregate_impact_mat(imp_pnt, gdf_pnt, agg_met):
     # Converts string multi-index level 0 to integer index
     col_geom = np.sort(np.unique(col_geom, return_inverse=True)[1])
     row_pnt = np.arange(len(col_geom))
-    if AggMethod(agg_met) is AggMethod.AVG:
+    if agg_met is AggMethod.AVG:
         geom_sizes = Counter(col_geom).values()
         mask = np.concatenate([np.ones(l) / l for l in geom_sizes])
     else:
@@ -395,7 +395,7 @@ def exp_geom_to_pnt(exp, res, to_meters, disagg_met, disagg_val):
     gdf_pnt = gdf_to_pnts(gdf_geom, res, to_meters)
 
     # disaggregate value column
-    if DisaggMethod(disagg_met) is DisaggMethod.DIV:
+    if disagg_met is DisaggMethod.DIV:
         gdf_pnt = _disagg_values_div(gdf_pnt)
 
     # set lat lon and centroids
@@ -454,7 +454,7 @@ def exp_geom_to_grid(exp, grid, disagg_met, disagg_val):
     gdf_pnt = gdf_to_grid(gdf_geom, grid)
 
     # disaggregate value column
-    if DisaggMethod(disagg_met) is DisaggMethod.DIV:
+    if disagg_met is DisaggMethod.DIV:
         gdf_pnt = _disagg_values_div(gdf_pnt)
 
     # set lat lon and centroids
