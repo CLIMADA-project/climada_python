@@ -212,6 +212,23 @@ class TestImpactCalc(unittest.TestCase):
         np.testing.assert_array_equal(exp_min_gdf.impf_TC, ENT.exposures.gdf.impf_TC)
         np.testing.assert_array_equal(exp_min_gdf.centr_TC, ENT.exposures.gdf.centr_TC)
 
+    def test_stitch_impact_matrix(self):
+        """Check how sparse matrices from a generator are stitched together"""
+        icalc = ImpactCalc(ENT.exposures, ENT.impact_funcs, HAZ)
+        icalc.n_events = 3
+        icalc.n_exp_pnt = 4
+
+        imp_mat_gen = [
+            (sparse.csr_matrix([[1.0, 1.0], [0.0, 1.0]]), np.array([0, 1])),
+            (sparse.csr_matrix([[0.0, 0.0], [2.0, 2.0], [2.0, 2.0]]), np.array([1, 2])),
+            (sparse.csr_matrix([[0.0], [0.0], [4.0]]), np.array([3])),
+        ]
+        mat = icalc.stitch_impact_matrix(imp_mat_gen)
+        np.testing.assert_array_equal(
+            mat.toarray(),
+            [[1.0, 1.0, 0.0, 0.0], [0.0, 3.0, 2.0, 0.0], [0.0, 2.0, 2.0, 4.0]],
+        )
+
 
 class TestImpactMatrixCalc(unittest.TestCase):
     """Verify the computation of the impact matrix"""
