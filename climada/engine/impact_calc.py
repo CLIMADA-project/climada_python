@@ -235,7 +235,30 @@ class ImpactCalc():
 
     def imp_mat_gen(self, exp_gdf, impf_col):
         """
-        Geneartor of impact sub-matrices and correspoding exposures indices
+        Generator of impact sub-matrices and correspoding exposures indices
+
+        The exposures gdf is decomposed into chunks that fit into the max
+        defined memory size. For each chunk, the impact matrix is computed
+        and returned, together with the corresponding exposures points index.
+
+        Parameters
+        ----------
+        exp_gdf : GeoDataFrame
+            Geodataframe of the exposures with columns required for impact
+            computation.
+        impf_col : string
+            name of the desired impact column in the exposures.
+
+        Raises
+        ------
+        ValueError
+            if the hazard is larger than the memory limit
+
+        Yields
+        ------
+        scipy.sparse.crs_matrix, np.ndarray
+            impact matrix and corresponding exposures indices for each chunk.
+
         """
 
         def _chunk_exp_idx_iter(self, idx_exp_impf):
