@@ -292,7 +292,7 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
 
     if method == "equirect":
         if normalize:
-            mid_lon = 0.5 * sum(lon_bounds(np.concatenate([lon1, lon2])))
+            mid_lon = 0.5 * sum(lon_bounds(np.hstack([lon1, lon2])))
             lon_normalize(lon1, center=mid_lon)
             lon_normalize(lon2, center=mid_lon)
         vtan = np.stack([lat2[:, None] - lat1[:, :, None],
