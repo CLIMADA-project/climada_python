@@ -41,9 +41,12 @@ exp_poly = Client().get_exposures(
     'base', name='test_polygon_exp', status='test_dataset')
 gdf_poly = exp_poly.gdf
 
-# also atm in /climada_python/data/demo. Put on API.
+# also atm in /climada_python/data/demo. Put on API. And only a subset, as 
+# 500 aren't needed
 gdf_line = gpd.read_file(
-    '/Users/evelynm/climada/demo/data/nl_rails.gpkg', driver="GPKG")
+    '/Users/evelynm/climada/demo/data/nl_rails.gpkg', driver="GPKG", crs="EPSG:4326")
+gdf_line = gdf_line.iloc[np.arange(0,500,18)].set_crs(epsg=4326, allow_override=True)
+gdf_line['impf_WS'] = 1
 
 lon = np.array([6.88122345, 6.63770392, 6.3834594 , 6.08705493, 5.86532833,
        3.76552166, 5.04178393, 4.42513969, 4.89959365, 5.83199221,
@@ -290,8 +293,57 @@ class TestGeomImpactCalcs(unittest.TestCase):
     def test_calc_geom_impact_lines(self):
         """ test calc_geom_impact() with lines"""
         # line exposures only 
-        pass
-   
+        gdf_line_withvals = gdf_line.copy()
+        gdf_line_withvals['value'] = np.arange(len(gdf_line_withvals))*1000
+        exp_line = Exposures(gdf_line_withvals)
+        exp_line_novals  = Exposures(gdf_line)
+        
+        imp1 = u_lp.calc_geom_impact(exp_line, impf_set, haz,
+        res=0.05, to_meters=False, disagg_met=u_lp.DisaggMethod.DIV,
+        disagg_val=None, agg_met=u_lp.AggMethod.SUM)
+        
+        self.assertEqual(len(haz.event_id), len(imp1.at_event))
+        self.assertIsInstance(imp1, Impact)
+        self.assertTrue(hasattr(imp1, 'geom_exp'))
+        self.assertTrue(hasattr(imp1, 'coord_exp'))
+        self.assertTrue(np.all(imp1.geom_exp==exp_line.gdf.geometry))
+        self.assertEqual(len(imp1.coord_exp), len(exp_line.gdf))
+        self.assertAlmostEqual(imp1.aai_agg, 0.5165320782563735, 3)
+        self.assertTrue(np.all(np.isclose(
+            imp1.eai_exp,
+            np.array([0.        , 0.00035429, 0.0003158 , 0.00260505, 0.00532207,
+                   0.00487179, 0.00443956, 0.00083155, 0.0025156 , 0.00721847,
+                   0.00670862, 0.00725904, 0.00312695, 0.02160797, 0.03094104,
+                   0.00647638, 0.00731211, 0.07057858, 0.02156532, 0.01191608,
+                   0.00619134, 0.0780445 , 0.02992291, 0.02016611, 0.08015055,
+                   0.04738706, 0.01257872, 0.02612462]))))
+        
+        
+        imp2 = u_lp.calc_geom_impact(exp_line, impf_set, haz,
+        res=300, to_meters=True, disagg_met=u_lp.DisaggMethod.DIV,
+        disagg_val=None, agg_met=u_lp.AggMethod.SUM)
+        
+        self.assertEqual(len(haz.event_id), len(imp1.at_event))
+        self.assertIsInstance(imp2, Impact)
+        self.assertTrue(hasattr(imp2, 'geom_exp'))
+        self.assertTrue(hasattr(imp2, 'coord_exp'))
+        self.assertTrue(np.all(imp2.geom_exp==exp_line.gdf.geometry))
+        self.assertEqual(len(imp2.coord_exp), len(exp_line.gdf))
+        self.assertAlmostEqual(imp2.aai_agg, 0.5232328825117059, 3)
+        self.assertTrue(np.all(np.isclose(
+            imp2.eai_exp, imp1.eai_exp, rtol=0.1)))
+        
+        imp3 = u_lp.calc_geom_impact(exp_line_novals, impf_set, haz,
+        res=300, to_meters=True, disagg_met=u_lp.DisaggMethod.FIX,
+        disagg_val=5000, agg_met=u_lp.AggMethod.SUM)
+        
+        imp4 = u_lp.calc_geom_impact(exp_line, impf_set, haz,
+        res=300, to_meters=True, disagg_met=u_lp.DisaggMethod.FIX,
+        disagg_val=5000, agg_met=u_lp.AggMethod.SUM)
+        
+        self.assertEqual(imp3.eai_exp, imp4.eai_exp)
+        self.assertAlmostEqual(imp3.aai_agg, )
+        
     def test_calc_geom_impact_points(self):
         """ test calc_geom_impact() with points"""
         # point exposures only 
