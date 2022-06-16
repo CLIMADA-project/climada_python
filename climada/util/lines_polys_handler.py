@@ -50,10 +50,8 @@ class AggMethod(Enum):
     """
     Aggregation Method for the aggregate_impact_mat function
 
-	AVG : the impact is averaged over all points in the polygon/line
 	SUM : the impact is summed over all points in the polygon/line
     """
-    AVG = 'avg'
     SUM = 'sum'
 
 
@@ -98,7 +96,6 @@ def calc_geom_impact(
     agg_met : AggMethod
         Aggregation method of the point impacts into impact for respective
         parent-geometry.
-        If 'AVG', the impact is averaged over all points in each geometry.
         If 'SUM', the impact is summed over all points in each geometry.
         The default is 'SUM'.
 
@@ -153,7 +150,6 @@ def impact_pnt_agg(impact_pnt, exp_pnt_gdf, agg_met):
     agg_met : AggMethod
         Aggregation method of the point impacts into impact for respective
         parent-geometry.
-        If 'AVG', the impact is averaged over all points in each geometry.
         If 'SUM', the impact is summed over all points in each geometry.
         The default is 'SUM'.
 
@@ -205,7 +201,6 @@ def _aggregate_impact_mat(imp_pnt, gdf_pnt, agg_met):
     agg_met : AggMethod
         Aggregation method of the point impacts into impact for respective
         parent-geometry.
-        If 'AVG', the impact is averaged over all points in each geometry.
         If 'SUM', the impact is summed over all points in each geometry.
         The default is 'SUM'.
 
@@ -220,16 +215,13 @@ def _aggregate_impact_mat(imp_pnt, gdf_pnt, agg_met):
     # Converts string multi-index level 0 to integer index
     col_geom = np.sort(np.unique(col_geom, return_inverse=True)[1])
     row_pnt = np.arange(len(col_geom))
-    if agg_met is AggMethod.AVG:
-        geom_sizes = Counter(col_geom).values()
-        mask = np.concatenate([np.ones(l) / l for l in geom_sizes])
-    else:
-        mask = np.ones(len(col_geom))
-
+    
+    mask = np.ones(len(col_geom))
     csr_mask = sp.sparse.csr_matrix(
         (mask, (row_pnt, col_geom)),
          shape=(len(row_pnt), len(np.unique(col_geom)))
         )
+    
     return imp_pnt.imp_mat.dot(csr_mask)
 
 
@@ -270,7 +262,6 @@ def calc_grid_impact(
     agg_met : AggMethod
         Aggregation method of the point impacts into impact for respective
         parent-geometry.
-        If 'AVG', the impact is averaged over all points in each geometry.
         If 'SUM', the impact is summed over all points in each geometry.
         The default is 'SUM'.
 
