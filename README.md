@@ -26,6 +26,8 @@ Follow the [tutorial](https://climada-python.readthedocs.io/en/latest/tutorial/1
 
 Documentation is available on Read the Docs:
 
+Note that all the documentations has two versions,'latest' and 'stable', and explicit version numbers, such as 'v3.1.1', in the url path. 'latest' is created from the 'develop' branch and has the latest changes by developers, 'stable' from the latest release. For more details about documentation versions, please have a look at [here](https://readthedocs.org/projects/climada-python/versions/).
+
 CLIMADA python:
 * [online (recommended)](https://climada-python.readthedocs.io/en/latest/)
 * [PDF file](https://climada-python.readthedocs.io/_/downloads/en/stable/pdf/)

@@ -2,6 +2,7 @@
 # coding: utf-8
 
 import os
+import re
 import sys
 import unittest
 from pathlib import Path
@@ -71,8 +72,8 @@ class NotebookTest(unittest.TestCase):
 
                 # skip multiprocessing cells
                 if any([ tabu in c['source'].split() for tabu in [
-                    'pathos.pools',
-                    'mulitprocessing',
+                    'import multiprocessing',
+                    'from multiprocessing import',
                 ]]): 
                     print('\n'.join([
                         f'\nskip multiprocessing cell {i} in {self.notebook}',
@@ -81,12 +82,18 @@ class NotebookTest(unittest.TestCase):
                     ]))
                     continue
 
-                # remove non python lines and help calls which require user input
-                python_code = "\n".join([ln for ln in c['source'].split("\n") 
+                # remove non python lines and help calls which require user input 
+                # or involve pools being opened/closed
+                python_code = "\n".join([
+                    re.sub(r'pool=\w+', 'pool=None', ln)
+                    for ln in c['source'].split("\n")
                     if not ln.startswith('%')
                     and not ln.startswith('help(')
                     and not ln.startswith('ask_ok(')
+                    and not ln.startswith('ask_ok(')
+                    and not ln.startswith('pool')  # by convention Pool objects are called pool
                     and not ln.strip().endswith('?')
+                    and not 'Pool(' in ln  # prevent Pool object creation
                 ])
 
                 # execute the python code
