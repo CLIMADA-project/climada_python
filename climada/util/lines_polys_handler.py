@@ -347,7 +347,7 @@ def plot_eai_exp_geom(imp_geom, centered=False, figsize=(9, 13), **kwargs):
 def exp_geom_to_pnt(exp, res, to_meters, disagg_met, disagg_val):
     """
     Disaggregate exposures with (multi-)polygons and/or (multi-)lines
-    geometries to points.
+    geometries to points based on a given resolution.
 
     Parameters
     ----------
@@ -383,16 +383,15 @@ def exp_geom_to_pnt(exp, res, to_meters, disagg_met, disagg_val):
 
     """
 
-    gdf_geom = exp.gdf.copy()
-
     if disagg_val is not None:
-        gdf_geom['value'] = disagg_val
-
-    if ((disagg_val is None) and ('value' not in gdf_geom.columns)):
+        exp = exp.copy()
+        exp.gdf.value = disagg_val
+    
+    if ((disagg_val is None) and ('value' not in exp.gdf.columns)):
         raise ValueError('There is no value column in the exposure gdf to'+
                          ' disaggregate from. Please set disagg_val explicitly.')
 
-    gdf_pnt = gdf_to_pnts(gdf_geom, res, to_meters)
+    gdf_pnt = gdf_to_grid(exp.gdf, res, to_meters)
 
     # disaggregate value column
     if disagg_met is DisaggMethod.DIV:
@@ -442,16 +441,15 @@ def exp_geom_to_grid(exp, grid, disagg_met, disagg_val):
     Works with polygon geometries only. No points or lines are allowed.
     """
 
-    gdf_geom = exp.gdf.copy()
-
     if disagg_val is not None:
-        gdf_geom.value = disagg_val
+        exp = exp.copy()
+        exp.gdf.value = disagg_val
 
-    if ((disagg_val is None) and ('value' not in gdf_geom.columns)):
+    if ((disagg_val is None) and ('value' not in exp.gdf.columns)):
         raise ValueError('There is no value column in the exposure gdf to'+
                          ' disaggregate from. Please set disagg_val explicitly.')
 
-    gdf_pnt = gdf_to_grid(gdf_geom, grid)
+    gdf_pnt = gdf_to_grid(exp.gdf, grid)
 
     # disaggregate value column
     if disagg_met is DisaggMethod.DIV:
