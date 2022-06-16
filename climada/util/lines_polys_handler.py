@@ -92,6 +92,8 @@ def calc_geom_impact(
         is to be disaggregated according to the method provided in disagg_met.
         None: The shape's value is taken from the exp.gdf.value column.
         float: This given number will be disaggregated according to the method.
+        In case exp.gdf.value column exists, original values in there will be 
+        ignored.
         The default is None.
     agg_met : AggMethod
         Aggregation method of the point impacts into impact for respective
@@ -258,6 +260,8 @@ def calc_grid_impact(
         is to be disaggregated according to the method provided in disagg_met.
         None: The shape's value is taken from the exp.gdf.value column.
         float: This given number will be disaggregated according to the method.
+        In case exp.gdf.value column exists, original values in there will be 
+        ignored
         The default is None.
     agg_met : AggMethod
         Aggregation method of the point impacts into impact for respective
@@ -363,6 +367,8 @@ def exp_geom_to_pnt(exp, res, to_meters, disagg_met, disagg_val):
         is to be disaggregated according to the method provided in disagg_met.
         None: The shape's value is taken from the exp.gdf.value column.
         float: This given number will be disaggregated according to the method.
+        In case exp.gdf.value column exists, original values in there will be 
+        ignored
         The default is None.
 
     Returns
@@ -376,7 +382,7 @@ def exp_geom_to_pnt(exp, res, to_meters, disagg_met, disagg_val):
 
     if disagg_val is not None:
         exp = exp.copy()
-        exp.gdf.value = disagg_val
+        exp.gdf['value'] = disagg_val
     
     if ((disagg_val is None) and ('value' not in exp.gdf.columns)):
         raise ValueError('There is no value column in the exposure gdf to'+
@@ -418,6 +424,8 @@ def exp_geom_to_grid(exp, grid, disagg_met, disagg_val):
         is to be disaggregated according to the method provided in disagg_met.
         None: The shape's value is taken from the exp.gdf.value column.
         float: This given number will be disaggregated according to the method.
+        In case exp.gdf.value column exists, original values in there will be 
+        ignored
         The default is None.
 
     Returns
