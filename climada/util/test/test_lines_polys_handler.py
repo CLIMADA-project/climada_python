@@ -29,9 +29,37 @@ from climada.entity import Exposures
 import climada.util.lines_polys_handler as u_lp
 import climada.util.coordinates as u_coord
 from climada.util.api_client import Client
+from climada.util.constants import WS_DEMO_NC
+from climada.engine.impact import Impact
+from climada.hazard.storm_europe import StormEurope
+from climada.entity.impact_funcs import ImpactFuncSet
+from climada.entity.impact_funcs.storm_europe import ImpfStormEurope
 
-exp_poly = Client().get_exposures('base', name='test_polygon_exp', status='test_dataset')
+
+# Load gdfs and hazard and impact functions for tests
+exp_poly = Client().get_exposures(
+    'base', name='test_polygon_exp', status='test_dataset')
 gdf_poly = exp_poly.gdf
+
+# also atm in /climada_python/data/demo. Put on API.
+gdf_line = gpd.read_file(
+    '/Users/evelynm/climada/demo/data/nl_rails.gpkg', driver="GPKG")
+
+lon = np.array([6.88122345, 6.63770392, 6.3834594 , 6.08705493, 5.86532833,
+       3.76552166, 5.04178393, 4.42513969, 4.89959365, 5.83199221,
+       5.48188808, 5.15016205])
+lat = np.array([53.15019278, 52.90814037, 52.48232657, 52.13002249, 51.26574748,
+       51.30438894, 51.52944652, 51.98426911, 52.61538869, 53.10328543,
+       52.54974468, 52.11286591])
+gdf_point = gpd.GeoDataFrame({
+    'name': np.arange(len(lat))}, 
+    geometry=gpd.points_from_xy(lon, lat, crs="EPSG:4326"))
+
+haz = StormEurope.from_footprints(WS_DEMO_NC, description='test_description')
+
+impf = ImpfStormEurope.from_welker()
+impf_set = ImpactFuncSet()
+impf_set.append(impf)
 
 COL_CHANGING = ['value', 'latitude', 'longitude', 'geometry', 'geometry_orig']
 
@@ -128,11 +156,152 @@ class TestExposureGeomToPnt(unittest.TestCase):
             np.testing.assert_allclose(exp_pnt.gdf[col], exp_pnt_grid.gdf[col])
 
 class TestGeomImpactCalcs(unittest.TestCase):
-    """Test main functions on impact calculation, aggregation"""
-    def test_calc_geom_impact(self):
-        """"""
+    """Test main functions on impact calculation and impact aggregation"""
+    
+    def test_calc_geom_impact_polys(self):
+        """ test calc_geom_impact() with polygons"""
+    
+        # polygon exposures only
+        imp1 = u_lp.calc_geom_impact(
+            exp_poly, impf_set, haz, res=0.1, to_meters=False, 
+            disagg_met=u_lp.DisaggMethod.DIV,
+            disagg_val=None, agg_met=u_lp.AggMethod.SUM)
+        self.assertEqual(len(haz.event_id), len(imp1.at_event))
+        self.assertIsInstance(imp1, Impact)
+        self.assertTrue(hasattr(imp1, 'geom_exp'))
+        self.assertTrue(hasattr(imp1, 'coord_exp'))
+        self.assertTrue(np.all(imp1.geom_exp==exp_poly.gdf.geometry))
+        self.assertEqual(len(imp1.coord_exp), len(exp_poly.gdf))
+        self.assertAlmostEqual(imp1.aai_agg, 2182703.085366719, 3)
+        self.assertTrue(np.all(np.isclose(
+            imp1.eai_exp,
+            np.array([17554.08233195,   9896.48265036,  16862.31818246,  
+                      72055.81490662, 21485.93199464, 253701.42418527, 
+                      135031.5217457 , 387550.35813156, 352213.16031506, 
+                      480603.19106997, 203634.46630402, 232114.3335491 ]))))
+    
+        imp2 = u_lp.calc_geom_impact(
+            exp_poly, impf_set, haz, res=10, to_meters=False, 
+            disagg_met=u_lp.DisaggMethod.DIV,
+            disagg_val=None, agg_met=u_lp.AggMethod.SUM)
+        
+        # checking for warning doesnt quite work like this
+        # with self.assertWarns(u_lp.LOGGER.warning()) as cm:
+        #     u_lp.calc_geom_impact(
+        #         exp_poly, impf_set, haz, res=10, to_meters=False, 
+        #         disagg_met=u_lp.DisaggMethod.DIV,
+        #         disagg_val=None, agg_met=u_lp.AggMethod.SUM)
+        # self.assertEqual(cm.msg,
+        #                  'Polygon smaller than resolution. Setting a representative point.')
+        # self.assertEqual(len(haz.event_id), len(imp1.at_event))
+        
+        self.assertIsInstance(imp2, Impact)
+        self.assertTrue(hasattr(imp2, 'geom_exp'))
+        self.assertTrue(hasattr(imp2, 'coord_exp'))
+        self.assertTrue(np.all(imp2.geom_exp==exp_poly.gdf.geometry))
+        self.assertEqual(len(imp2.coord_exp), len(exp_poly.gdf))
+        self.assertAlmostEqual(imp2.aai_agg, 1282899.053069401, 3)
+        self.assertTrue(np.all(np.isclose(
+            imp2.eai_exp,
+            np.array([ 8361.78802035,   7307.04698346,  12062.89257699,  
+                      35406.14977618, 12352.43204322,  77807.46608747, 
+                      128292.99535735, 231231.95252362, 131911.22622791, 
+                      537897.30570932,  83701.69475186,  16566.10301167]))))
+        
+        imp3 = u_lp.calc_geom_impact(
+            exp_poly, impf_set, haz, res=100, to_meters=True, 
+            disagg_met=u_lp.DisaggMethod.DIV,
+            disagg_val=None, agg_met=u_lp.AggMethod.SUM)
+        self.assertIsInstance(imp3, Impact)
+        self.assertTrue(hasattr(imp3, 'geom_exp'))
+        self.assertTrue(hasattr(imp3, 'coord_exp'))
+        self.assertTrue(np.all(imp3.geom_exp==exp_poly.gdf.geometry))
+        self.assertEqual(len(imp3.coord_exp), len(exp_poly.gdf))
+        self.assertAlmostEqual(imp3.aai_agg, 2326597.33541342, 3)
+        self.assertTrue(np.all(np.isclose(
+            imp3.eai_exp,
+            np.array([ 17562.23600586,  10750.64050132,  16295.19417757,  
+                      73521.19343345, 24968.39336204, 216953.35044025, 
+                      135005.31546255, 406737.94528983, 434273.30610881, 
+                      519614.68701078, 247469.57948002, 223445.49414094]))))
+        
+        imp4 = u_lp.calc_geom_impact(
+            exp_poly, impf_set, haz, res=1000, to_meters=True, 
+            disagg_met=u_lp.DisaggMethod.DIV,
+            disagg_val=None, agg_met=u_lp.AggMethod.SUM)
+        self.assertIsInstance(imp4, Impact)
+        self.assertTrue(hasattr(imp4, 'geom_exp'))
+        self.assertTrue(hasattr(imp4, 'coord_exp'))
+        self.assertTrue(np.all(imp4.geom_exp==exp_poly.gdf.geometry))
+        self.assertEqual(len(imp4.coord_exp), len(exp_poly.gdf))
+        self.assertAlmostEqual(imp4.aai_agg, 2326978.3422788195, 3)
+        self.assertTrue(np.all(np.isclose(
+            imp4.eai_exp,
+            np.array([ 17558.22201377,  10796.36836336,  16239.35385599,  73254.21872128,
+                    25202.52110382, 216510.67702673, 135412.73610909, 410197.10023667,
+                   433400.62668497, 521005.95549878, 254979.4396249 , 212421.12303947]))))
+        self.assertTrue(np.all(np.isclose(
+            np.ones_like(imp4.eai_exp), imp4.eai_exp/imp3.eai_exp, rtol=0.1)))
+        
+        imp5 = u_lp.calc_geom_impact(
+            exp_poly, impf_set, haz, res=1000, to_meters=True, 
+            disagg_met=u_lp.DisaggMethod.DIV,
+            disagg_val=10e6, agg_met=u_lp.AggMethod.SUM)
+        self.assertIsInstance(imp5, Impact)
+        self.assertTrue(hasattr(imp5, 'geom_exp'))
+        self.assertTrue(hasattr(imp5, 'coord_exp'))
+        self.assertTrue(np.all(imp5.geom_exp==exp_poly.gdf.geometry))
+        self.assertEqual(len(imp5.coord_exp), len(exp_poly.gdf))
+        self.assertAlmostEqual(imp5.aai_agg, 132.8155950020916, 3)
+        self.assertTrue(np.all(np.isclose(
+            imp5.eai_exp,
+            np.array([3.55826479,  2.55715709,  2.49840826,  3.51427162,  4.30164506,
+                   19.36203038,  5.28426336, 14.25330336, 37.29091663, 14.05986724,
+                    6.88087542, 19.2545918 ]))))
+     
+        gdf_noval = gdf_poly.copy()
+        gdf_noval.pop('value')
+        exp_noval = Exposures(gdf_noval)
+    
+        imp6 = u_lp.calc_geom_impact(
+            exp_noval, impf_set, haz, res=1000, to_meters=True, 
+            disagg_met=u_lp.DisaggMethod.DIV,
+            disagg_val=10e6, agg_met=u_lp.AggMethod.SUM)
+        self.assertTrue(np.all(np.isclose(
+            imp5.eai_exp, imp6.eai_exp)))
+        
+        imp7 = u_lp.calc_geom_impact(
+            exp_noval, impf_set, haz, res=1000, to_meters=True, 
+            disagg_met=u_lp.DisaggMethod.FIX,
+            disagg_val=10e6, agg_met=u_lp.AggMethod.SUM)
+        self.assertIsInstance(imp7, Impact)
+        self.assertTrue(hasattr(imp7, 'geom_exp'))
+        self.assertTrue(hasattr(imp7, 'coord_exp'))
+        self.assertTrue(np.all(imp7.geom_exp==exp_poly.gdf.geometry))
+        self.assertEqual(len(imp7.coord_exp), len(exp_poly.gdf))
+        self.assertAlmostEqual(imp7.aai_agg, 412832.8602866128, 3)
+        self.assertTrue(np.all(np.isclose(
+            imp7.eai_exp,
+            np.array([8561.18507994,   6753.45186608,   8362.17243334,  
+                      18014.15630989, 8986.13653385,  36826.58179136,  
+                      27446.46387061,  45468.03772305, 130145.29903078,  
+                      54861.60197959,  26849.17587226,  40558.59779586]))))
+        
+    def test_calc_geom_impact_lines(self):
+        """ test calc_geom_impact() with lines"""
+        # line exposures only 
         pass
-
+   
+    def test_calc_geom_impact_points(self):
+        """ test calc_geom_impact() with points"""
+        # point exposures only 
+        pass
+      
+    def test_calc_geom_impact_mixed(self):
+        """ test calc_geom_impact() with a mixed exp (points, lines and polygons) """
+        # mixed exposures 
+        pass
+   
     def test_impact_pnt_agg(self):
         pass
 
@@ -159,12 +328,12 @@ class TestGdfGeomToPnt(unittest.TestCase):
             1.16221500e+11, 3.70562500e+11, 1.35359600e+11, 3.83689000e+10]
             )
 
-        gdf_div = u_lp._disagg_values_div(gdf_poly_pnts)
-        np.testing.assert_allclose(div_vals, gdf_div.value)
-        not_checked = ['geometry', 'geometry_orig', 'value']
-        for col in gdf_div.columns:
-            if col not in not_checked:
-                np.testing.assert_allclose(gdf_div[col], gdf_poly_pnts[col])
+        # gdf_div = u_lp._disagg_values_div(gdf_poly_pnts)
+        # np.testing.assert_allclose(div_vals, gdf_div.value)
+        # not_checked = ['geometry', 'geometry_orig', 'value']
+        # for col in gdf_div.columns:
+        #     if col not in not_checked:
+        #         np.testing.assert_allclose(gdf_div[col], gdf_poly_pnts[col])
 
     def test_poly_to_pnts(self):
         """Test polygon to points disaggregation"""
@@ -189,7 +358,11 @@ class TestGdfGeomToPnt(unittest.TestCase):
     def test_interp_one_poly_m(self):
         """"""
         pass
-
+    
+    def test_gdf_to_grid(self):
+        """"""
+        pass
+        
 class TestLPUtils(unittest.TestCase):
     """ """
 
