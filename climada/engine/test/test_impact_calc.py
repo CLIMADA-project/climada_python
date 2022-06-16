@@ -338,7 +338,8 @@ class TestImpactMatrixGenerator(unittest.TestCase):
 
     def tearDown(self):
         """Reset the original config"""
-        CONFIG = self.CONFIG_COPY
+        import climada
+        climada.CONFIG = self.CONFIG_COPY
 
     def test_selection(self):
         """Verify the impact matrix generator returns the right values"""
