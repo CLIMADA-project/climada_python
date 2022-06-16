@@ -256,7 +256,7 @@ class TestGPWPopulation(unittest.TestCase):
         """test method gpw_population.get_gpw_file_path"""
         gpw_version = CONFIG.exposures.litpop.gpw_population.gpw_version.int()
         try:
-            path = gpw_population.get_gpw_file_path(gpw_version, 2020, verbatim=False)
+            path = gpw_population.get_gpw_file_path(gpw_version, 2020, verbose=False)
             self.assertIn('gpw_v4_population', str(path))
         except FileExistsError as err:
             self.assertIn('lease download', err.args[0])
@@ -274,8 +274,7 @@ class TestGPWPopulation(unittest.TestCase):
             ])
         try:
             data, meta, glb_transform = \
-                gpw_population.load_gpw_pop_shape(shape, 2020, gpw_version,
-                                                  verbatim=False)
+                gpw_population.load_gpw_pop_shape(shape, 2020, gpw_version, verbose=False)
             self.assertEqual(data.shape, (31, 36))
             self.assertAlmostEqual(meta['transform'][0], 0.00833333333333333)
             self.assertAlmostEqual(meta['transform'][0], glb_transform[0])
