@@ -129,7 +129,7 @@ def calc_geom_impact(
     impact_pnt.calc(exp_pnt, impf_set, haz, save_mat=True)
 
     # re-aggregate impact to original exposure geometry
-    impact_agg = impact_pnt_agg(impact_pnt, exp_pnt, agg_met)
+    impact_agg = impact_pnt_agg(impact_pnt, exp_pnt.gdf, agg_met)
 
     return impact_agg
 
@@ -391,7 +391,7 @@ def exp_geom_to_pnt(exp, res, to_meters, disagg_met, disagg_val):
         raise ValueError('There is no value column in the exposure gdf to'+
                          ' disaggregate from. Please set disagg_val explicitly.')
 
-    gdf_pnt = gdf_to_grid(exp.gdf, res, to_meters)
+    gdf_pnt = gdf_to_pnts(exp.gdf, res, to_meters)
 
     # disaggregate value column
     if disagg_met is DisaggMethod.DIV:
