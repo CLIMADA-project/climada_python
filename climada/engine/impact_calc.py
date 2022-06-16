@@ -265,7 +265,9 @@ class ImpactCalc():
             max_size = CONFIG.max_matrix_size.int()
             if haz_size > max_size:
                 raise ValueError(
-                    f'Increase max_matrix_size configuration parameter to > {self.hazard.size}')
+                    f"Hazard size '{haz_size}' exceeds maximum matrix size '{max_size}'. "
+                    "Increase max_matrix_size configuration parameter accordingly."
+                )
             n_chunks = np.ceil(haz_size * len(idx_exp_impf) / max_size)
             return np.array_split(idx_exp_impf, n_chunks)
 
