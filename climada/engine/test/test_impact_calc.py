@@ -469,9 +469,36 @@ class TestInsuredImpactMatrixGenerator(unittest.TestCase):
         )
 
 
+class TestImpactMatrix(unittest.TestCase):
+    def setUp(self):
+        hazard = create_autospec(HAZ)
+        impact_funcs = create_autospec(ENT.impact_funcs)
+        self.icalc = ImpactCalc(ENT.exposures, impact_funcs, hazard)
+
+        mdr = sparse.csr_matrix([[1.0, 0.0, 2.0], [-1.0, 0.5, 1.0]])
+        mdr.eliminate_zeros()
+        self.icalc.hazard.get_mdr.return_value = mdr
+        fraction = sparse.csr_matrix([[1.0, 1.0, 1.0], [1.0, 0.0, -1.0]])
+        fraction.eliminate_zeros()
+        self.icalc.hazard.get_fraction.return_value = fraction
+
+    def test_impact_matrix(self):
+        """Check if impact matrix calculations and calls to hazard are correct"""
+        exp_values = np.array([1.0, 2.0, 4.0])
+        centroid_idx = np.array([0, 2, 3])
+        impact_matrix = self.icalc.impact_matrix(exp_values, centroid_idx, "impf")
+
+        np.testing.assert_array_equal(
+            impact_matrix.toarray(), [[1.0, 0.0, 8.0], [-1.0, 0.0, -4.0]]
+        )
+        self.icalc.hazard.get_mdr.assert_called_once_with(centroid_idx, "impf")
+        self.icalc.hazard.get_fraction.assert_called_once_with(centroid_idx)
+
+
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestImpactCalc)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestImpactMatrix))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestImpactMatrixCalc))
     TESTS.addTests(
         unittest.TestLoader().loadTestsFromTestCase(TestImpactMatrixGenerator)
