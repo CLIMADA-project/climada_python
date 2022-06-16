@@ -417,6 +417,58 @@ class TestImpactMatrixGenerator(unittest.TestCase):
         )
 
 
+class TestInsuredImpactMatrixGenerator(unittest.TestCase):
+    def setUp(self):
+        hazard = create_autospec(HAZ)
+        self.icalc = ImpactCalc(ENT.exposures, ENT.impact_funcs, hazard)
+        self.icalc.exposures.gdf = pd.DataFrame(
+            {"deductible": [10.0, 20.0], "cover": [1.0, 100.0]}
+        )
+        self.icalc.hazard.centr_exp_col = "centr_col"
+        self.icalc.hazard.haz_type = "haz_type"
+        self.icalc.apply_deductible_to_mat = MagicMock(
+            side_effect=["mat_deduct_1", "mat_deduct_2"]
+        )
+        self.icalc.apply_cover_to_mat = MagicMock(
+            side_effect=["mat_cov_1", "mat_cov_2"]
+        )
+        self.icalc.impfset.get_func = MagicMock(side_effect=["impf_0", "impf_2"])
+
+    def test_insured_mat_gen(self):
+        exp_gdf = pd.DataFrame(
+            {"impact_functions": [0, 2], "centr_col": [0, 10], "value": [1.0, 2.0],}
+        )
+        imp_mat_gen = ((i, np.array([i])) for i in range(2))
+        gen = self.icalc.insured_mat_gen(imp_mat_gen, exp_gdf, "impact_functions")
+        out_list = list(gen)
+
+        # Assert expected output
+        self.assertEqual(len(out_list), 2)
+        np.testing.assert_array_equal(
+            [item[0] for item in out_list], ["mat_cov_1", "mat_cov_2"]
+        )
+        np.testing.assert_array_equal([item[1] for item in out_list], [[0], [1]])
+
+        # Check if correct impf_id was selected
+        self.icalc.impfset.get_func.assert_has_calls(
+            [call(haz_type="haz_type", fun_id=0), call(haz_type="haz_type", fun_id=2),]
+        )
+        # Check if correct deductible and cent_idx were selected
+        self.icalc.apply_deductible_to_mat.assert_has_calls(
+            [
+                call(0, np.array([10.0]), self.icalc.hazard, np.array([0]), "impf_0"),
+                call(1, np.array([20.0]), self.icalc.hazard, np.array([10]), "impf_2"),
+            ]
+        )
+        # Check if correct cover was selected
+        self.icalc.apply_cover_to_mat.assert_has_calls(
+            [
+                call("mat_deduct_1", np.array([1.0])),
+                call("mat_deduct_2", np.array([100.0])),
+            ]
+        )
+
+
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestImpactCalc)

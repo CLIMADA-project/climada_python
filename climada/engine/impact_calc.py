@@ -283,6 +283,30 @@ class ImpactCalc():
         """
         Generator of insured impact sub-matrices (with applied cover and deductible)
         and corresponding exposures indices
+
+        This generator takes a 'regular' impact matrix generator and applies cover and
+        deductible onto the impacts. It yields the same sub-matrices as the original
+        generator.
+
+        Deductible and cover are taken from the dataframe stored in `exposures.gdf`.
+
+        Parameters
+        ----------
+        imp_mat_gen : Generator yielding (sparse.csr_matrix, np.array)
+            The generator for creating the impact matrix. It returns a part of the full
+            matrix and the associated exposure indices.
+        exp_gdf : GeoDataFrame
+            Geodataframe of the exposures with columns required for impact computation.
+        impf_col : str
+            Name of the column in 'exp_gdf' indicating the impact function (id)
+
+        Yields
+        ------
+        mat : scipy.sparse.csr_matrix
+            Impact sub-matrix (with applied cover and deductible) with size
+            (n_events, len(exp_idx))
+        exp_idx : np.array
+            Exposure indices for impacts in mat
         """
         for mat, exp_idx in imp_mat_gen:
             impf_id = exp_gdf[impf_col][exp_idx].unique()[0]
