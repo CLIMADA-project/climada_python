@@ -610,7 +610,7 @@ class LitPop(Exposures):
                 _get_litpop_single_polygon(polygon, reference_year,
                                            res_arcsec, data_dir,
                                            gpw_version, exponents,
-                                           verbatim=not bool(idx),
+                                           verbose=(idx > 0),
                                            region_id=iso3n
                                            )
             if gdf_tmp is None:
@@ -643,7 +643,7 @@ class LitPop(Exposures):
     set_country = set_countries
 
 def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
-                               gpw_version, exponents, region_id=None, verbatim=False):
+                               gpw_version, exponents, region_id=None, verbose=False):
     """load nightlight (nl) and population (pop) data in rastered 2d arrays
     and apply rescaling (resolution reprojection) and LitPop core calculation,
     i.e. combination of nl and pop per grid cell.
@@ -670,8 +670,10 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
     region_id : int, optional
         if provided, region_id of gdf is set to value.
         The default is None, this implies that region_id is not set.
-    verbatim : bool, optional
-        verbatim logging? Default is False.
+    verbose : bool, optional
+        Enable verbose logging about the used GPW version and reference year as well as about the
+        boundary case where no grid points from the GPW grid are contained in the specified
+        polygon. Default: False.
 
     Returns
     -------
@@ -695,7 +697,7 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
                                     reference_year,
                                     gpw_version=gpw_version,
                                     data_dir=data_dir,
-                                    verbatim=verbatim,
+                                    verbose=verbose,
                                     )
     total_population = pop.sum()
     # import nightlight data (2d array) and associated meta data:
@@ -718,15 +720,15 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
     # reproject Lit and Pop input data to aligned grid with target resolution:
     try:
         [pop, nlight], meta_out = reproject_input_data([pop, nlight],
-                                                  [meta_pop, meta_nl],
-                                                  i_align=i_align, # pop defines grid
-                                                  target_res_arcsec=res_arcsec,
-                                                  global_origins=global_origins,
-                                                  )
+                                                       [meta_pop, meta_nl],
+                                                       i_align=i_align, # pop defines grid
+                                                       target_res_arcsec=res_arcsec,
+                                                       global_origins=global_origins,
+                                                       )
     except ValueError as err:
         if "height must be > 0" in err.args[0] or "width must be > 0" in err.args[0]:
             # no grid point within shape after reprojection, None is returned.
-            if verbatim:
+            if verbose:
                 LOGGER.info('No data point on destination grid within polygon.')
             return None, {'crs': meta_pop['crs']}
         raise err
