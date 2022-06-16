@@ -23,6 +23,7 @@ from unittest.mock import create_autospec, MagicMock, call
 import numpy as np
 from scipy import sparse
 import pandas as pd
+from copy import deepcopy
 
 from climada import CONFIG
 from climada.entity.entity_def import Entity
