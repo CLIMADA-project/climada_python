@@ -23,7 +23,6 @@ from unittest.mock import create_autospec, MagicMock, call
 import numpy as np
 from scipy import sparse
 import pandas as pd
-from copy import deepcopy, copy
 
 from climada import CONFIG
 from climada.entity.entity_def import Entity
@@ -31,6 +30,7 @@ from climada.hazard.base import Hazard
 from climada.engine import ImpactCalc
 from climada.util.constants import ENT_DEMO_TODAY, DEMO_DIR
 from climada.util.api_client import Client
+from climada.util.config import Config
 
 
 def get_haz_test_file(ds_name):
@@ -309,8 +309,8 @@ class TestImpactMatrixGenerator(unittest.TestCase):
     def setUp(self):
         """"Initialize mocks"""
         # Alter the default config to enable chunking
-        self.CONFIG_COPY = deepcopy(CONFIG)
-        CONFIG.max_matrix_size.int = MagicMock(return_value=1)
+        self._max_matrix_size = CONFIG.max_matrix_size.int()
+        CONFIG.max_matrix_size = Config(val=1, root=CONFIG)
 
         # Mock the hazard
         self.hazard = create_autospec(HAZ)
@@ -338,8 +338,7 @@ class TestImpactMatrixGenerator(unittest.TestCase):
 
     def tearDown(self):
         """Reset the original config"""
-        import climada
-        climada.CONFIG = self.CONFIG_COPY
+        CONFIG.max_matrix_size = Config(val=self._max_matrix_size, root=CONFIG)
 
     def test_selection(self):
         """Verify the impact matrix generator returns the right values"""
@@ -363,7 +362,7 @@ class TestImpactMatrixGenerator(unittest.TestCase):
     def test_chunking(self):
         """Verify that chunking works as expected"""
         # n_chunks = hazard.size * len(centr_idx) / max_size = 2 * 5 / 4 = 2.5
-        CONFIG.max_matrix_size.int = MagicMock(return_value=4)
+        CONFIG.max_matrix_size = Config(val=4, root=CONFIG)
         self.hazard.size = 2
 
         arr_len = 5
