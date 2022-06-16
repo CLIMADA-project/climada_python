@@ -503,4 +503,7 @@ if __name__ == "__main__":
     TESTS.addTests(
         unittest.TestLoader().loadTestsFromTestCase(TestImpactMatrixGenerator)
     )
+    TESTS.addTests(
+        unittest.TestLoader().loadTestsFromTestCase(TestInsuredImpactMatrixGenerator)
+    )
     unittest.TextTestRunner(verbosity=2).run(TESTS)
