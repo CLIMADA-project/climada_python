@@ -336,8 +336,25 @@ class ImpactCalc():
             )
 
     def stitch_risk_metrics(self, imp_mat_gen):
-        """
-        Compute the impact metrics from an impact sub-matrix generator
+        """Compute the impact metrics from an impact sub-matrix generator
+
+        This method is used to compute the risk metrics if the user decided not to store
+        the full impact matrix.
+
+        Parameters
+        ----------
+        imp_mat_gen : Generator yielding (sparse.csr_matrix, np.array)
+            The generator for creating the impact matrix. It returns a part of the full
+            matrix and the associated exposure indices.
+
+        Returns
+        -------
+        at_event : np.array
+            Accumulated damage for each event
+        eai_exp : np.array
+            Expected annual impact for each exposure point
+        aai_agg : float
+            Average annual impact aggregated
         """
         at_event = np.zeros(self.n_events)
         eai_exp = np.zeros(self.n_exp_pnt)

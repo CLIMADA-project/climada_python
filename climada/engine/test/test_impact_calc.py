@@ -261,6 +261,25 @@ class TestImpactCalc(unittest.TestCase):
         np.testing.assert_array_equal(mat.toarray(), [[9.0, 20.0], [29.9, 39.5]])
         hazard.get_paa.assert_called_once_with(centr_idx, impf)
 
+    def test_stitch_risk_metrics(self):
+        """Test computing risk metrics from an impact matrix generator"""
+        icalc = ImpactCalc(ENT.exposures, ENT.impact_funcs, HAZ)
+        icalc.n_events = 2
+        icalc.n_exp_pnt = 3
+        icalc.hazard.frequency = np.array([2, 0.5])
+
+        # Matrices overlap at central exposure point
+        imp_mat_gen = (
+            (sparse.csc_matrix([[1.0, 0.0], [0.5, 1.0]]), np.array([0, 1])),
+            (sparse.csc_matrix([[0.0, 2.0], [1.5, 1.0]]), np.array([1, 2])),
+        )
+        at_event, eai_exp, aai_agg = icalc.stitch_risk_metrics(imp_mat_gen)
+
+        np.testing.assert_array_equal(at_event, [3.0, 4.0])
+        np.testing.assert_array_equal(eai_exp, [2.25, 1.25, 4.5])
+        self.assertEqual(aai_agg, 8.0)  # Sum of eai_exp
+
+
 class TestImpactMatrixCalc(unittest.TestCase):
     """Verify the computation of the impact matrix"""
 
