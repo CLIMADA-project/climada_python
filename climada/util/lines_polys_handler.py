@@ -17,7 +17,6 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 """
 import logging
 import copy
-from collections import Counter
 from enum import Enum
 
 import cartopy.crs as ccrs
@@ -92,7 +91,7 @@ def calc_geom_impact(
         is to be disaggregated according to the method provided in disagg_met.
         None: The shape's value is taken from the exp.gdf.value column.
         float: This given number will be disaggregated according to the method.
-        In case exp.gdf.value column exists, original values in there will be 
+        In case exp.gdf.value column exists, original values in there will be
         ignored.
         The default is None.
     agg_met : AggMethod
@@ -217,13 +216,13 @@ def _aggregate_impact_mat(imp_pnt, gdf_pnt, agg_met):
     # Converts string multi-index level 0 to integer index
     col_geom = np.sort(np.unique(col_geom, return_inverse=True)[1])
     row_pnt = np.arange(len(col_geom))
-    
+
     mask = np.ones(len(col_geom))
     csr_mask = sp.sparse.csr_matrix(
         (mask, (row_pnt, col_geom)),
          shape=(len(row_pnt), len(np.unique(col_geom)))
         )
-    
+
     return imp_pnt.imp_mat.dot(csr_mask)
 
 
@@ -260,7 +259,7 @@ def calc_grid_impact(
         is to be disaggregated according to the method provided in disagg_met.
         None: The shape's value is taken from the exp.gdf.value column.
         float: This given number will be disaggregated according to the method.
-        In case exp.gdf.value column exists, original values in there will be 
+        In case exp.gdf.value column exists, original values in there will be
         ignored
         The default is None.
     agg_met : AggMethod
@@ -307,7 +306,8 @@ def plot_eai_exp_geom(imp_geom, centered=False, figsize=(9, 13), **kwargs):
     Parameters
     ----------
     imp_geom : Impact
-        Impact instance with imp_geom set (i.e. computed from exposures with polygons)
+        Impact instance with imp_geom set (i.e. computed from exposures with
+                                           polygons)
     centered : bool, optional
         Center the plot. The default is False.
     figsize : (float, float), optional
@@ -367,7 +367,7 @@ def exp_geom_to_pnt(exp, res, to_meters, disagg_met, disagg_val):
         is to be disaggregated according to the method provided in disagg_met.
         None: The shape's value is taken from the exp.gdf.value column.
         float: This given number will be disaggregated according to the method.
-        In case exp.gdf.value column exists, original values in there will be 
+        In case exp.gdf.value column exists, original values in there will be
         ignored
         The default is None.
 
@@ -383,7 +383,7 @@ def exp_geom_to_pnt(exp, res, to_meters, disagg_met, disagg_val):
     if disagg_val is not None:
         exp = exp.copy()
         exp.gdf['value'] = disagg_val
-    
+
     if ((disagg_val is None) and ('value' not in exp.gdf.columns)):
         raise ValueError('There is no value column in the exposure gdf to'+
                          ' disaggregate from. Please set disagg_val explicitly.')
@@ -424,7 +424,7 @@ def exp_geom_to_grid(exp, grid, disagg_met, disagg_val):
         is to be disaggregated according to the method provided in disagg_met.
         None: The shape's value is taken from the exp.gdf.value column.
         float: This given number will be disaggregated according to the method.
-        In case exp.gdf.value column exists, original values in there will be 
+        In case exp.gdf.value column exists, original values in there will be
         ignored
         The default is None.
 
@@ -494,22 +494,23 @@ def gdf_to_pnts(gdf, res, to_meters):
     Parameters
     ----------
     gdf : gpd.GeoDataFrame
-        Feodataframe instance with gdf.geometry containing (multi)-lines or (multi-)polygons.
+        Feodataframe instance with gdf.geometry containing (multi)-lines or
+        (multi-)polygons.
         Points are ignored.
     res : float
-        Resolution of the disaggregation grid. Can also be a tuple of [x_grid, y_grid] numpy
+        Resolution of the disaggregation grid. Can also be a tuple of
+        [x_grid, y_grid] numpy
         arrays. In this case, to_meters is ignored.
     to_meters : bool
-       If True, the geometries are projected to an equal area projection before the disaggregation.
-       res is then in meters. The exposures are then reprojected into the original projections
-       before the impact calculation.
+       If True, the geometries are projected to an equal area projection before
+       the disaggregation. res is then in meters. The exposures are then
+       reprojected into the original projections before the impact calculation.
 
     Returns
     -------
     gdf_pnt : gpd.GeoDataFrame
-        with a double index, first for the geometries of exp, second for the point disaggregation
-        of the geometries.
-
+        with a double index, first for the geometries of exp, second for the
+        point disaggregation of the geometries.
     """
     if gdf.empty:
         return gdf
@@ -548,19 +549,20 @@ def gdf_to_grid(gdf, grid):
     gdf : gpd.GeoDataFrame
         Geodataframe instance with gdf.geometry containing (multi-)polygons.
     grid : np.array()
-        Grid on which to disaggregate the exposures. Provided as two vectors [x_grid, y_grid].
+        Grid on which to disaggregate the exposures. Provided as two vectors
+        [x_grid, y_grid].
 
     Returns
     -------
     gdf_pnt : gpd.GeoDataFrame
-        with a double index, first for the geometries of exp, second for the point disaggregation
-        of the geometries.
-    
+        with a double index, first for the geometries of exp, second for the
+        point disaggregation of the geometries.
+
     Note
     ----
     Works only with polygon geometries. No mixed inputs (with lines or points)
     are allowed
-    
+
     Raises
     ------
     AttributeError : if other geometry types than polygons are contained in the
@@ -633,7 +635,7 @@ def _poly_to_pnts(gdf, res, to_meters):
         Resolution (same units as gdf crs)
     to_meters : bool
         If True, res is interpreted as meters, and geometries are projected to
-        an equal area projection for disaggregation. 
+        an equal area projection for disaggregation.
 
     Returns
     -------
@@ -899,7 +901,7 @@ def _line_to_pnts(gdf_lines, res, to_meters):
         should be approximately placed.
     to_meters : bool
         If True, res is interpreted as meters, and geometries are projected to
-        an equal area projection for disaggregation. 
+        an equal area projection for disaggregation.
     Returns
     -------
     gdf_points : gpd.GeoDataFrame
