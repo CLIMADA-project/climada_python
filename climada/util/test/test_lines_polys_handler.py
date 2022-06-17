@@ -20,6 +20,7 @@ Test of lines_polys_handler
 """
 
 import unittest
+from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
@@ -29,7 +30,7 @@ from climada.entity import Exposures
 import climada.util.lines_polys_handler as u_lp
 import climada.util.coordinates as u_coord
 from climada.util.api_client import Client
-from climada.util.constants import WS_DEMO_NC
+from climada.util.constants import DEMO_DIR, WS_DEMO_NC
 from climada.engine.impact import Impact
 from climada.hazard.storm_europe import StormEurope
 from climada.entity.impact_funcs import ImpactFuncSet
@@ -43,8 +44,7 @@ gdf_poly = exp_poly.gdf
 
 # also atm in /climada_python/data/demo. Put on API. And only a subset, as 
 # 500 aren't needed
-gdf_line = gpd.read_file(
-    '/Users/evelynm/climada/demo/data/nl_rails.gpkg', driver="GPKG", crs="EPSG:4326")
+gdf_line = gpd.read_file(Path(DEMO_DIR,'nl_rails.gpkg'), driver="GPKG", crs="EPSG:4326")
 gdf_line = gdf_line.iloc[np.arange(0,500,18)].set_crs(epsg=4326, allow_override=True)
 gdf_line['impf_WS'] = 1
 
@@ -389,7 +389,7 @@ class TestGdfGeomToPnt(unittest.TestCase):
 
     def test_poly_to_pnts(self):
         """Test polygon to points disaggregation"""
-        gdf_pnt = u_lp._poly_to_pnts(gdf_poly, 1)
+        gdf_pnt = u_lp._poly_to_pnts(gdf_poly, 1, False)
         check_unchanged_geom_gdf(self, gdf_poly, gdf_pnt)
 
     def test_lines_to_pnts(self):
