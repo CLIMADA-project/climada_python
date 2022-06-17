@@ -575,19 +575,15 @@ def gdf_to_grid(gdf, grid):
 
     # Concatenating an empty dataframe with an index together with
     # a dataframe with a multi-index breaks the multi-index
-    gdf_pnt = gpd.GeoDataFrame([])
-
+    
     if (line_mask.any() or pnt_mask.any()):
         raise AttributeError("The dataframe contains lines and/or polygons."
                              "Currently only polygon dataframes can be "
                              "disaggregated onto a fixed grid.")
     if poly_mask.any():
-        gdf_pnt = gpd.GeoDataFrame(pd.concat([
-            gdf_pnt,
-            _poly_to_grid(gdf[poly_mask], grid)
-        ]))
+       return _poly_to_grid(gdf[poly_mask], grid)
 
-    return gdf_pnt
+    return gpd.GeoDataFrame([])
 
 
 def _disagg_values_div(gdf_pnts):
