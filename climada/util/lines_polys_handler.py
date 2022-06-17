@@ -644,7 +644,7 @@ def _poly_to_pnts(gdf, res, to_meters):
     if gdf.empty:
         return gdf
 
-    # Needed because gdf.explode() requires numeric index
+    # Needed because gdf.explode(index_parts=True) requires numeric index
     idx = gdf.index.to_list() #To restore the naming of the index
 
     gdf_points = gdf.copy().reset_index(drop=True)
@@ -659,7 +659,7 @@ def _poly_to_pnts(gdf, res, to_meters):
     gdf_points = _swap_geom_cols(
         gdf_points, geom_to='geometry_orig', new_geom='geometry_pnt')
 
-    gdf_points = gdf_points.explode()
+    gdf_points = gdf_points.explode(index_parts=True)
     gdf_points.index = gdf_points.index.set_levels(idx, level=0)
     return gdf_points
 
@@ -690,7 +690,7 @@ def _poly_to_grid(gdf, grid):
     if gdf.empty:
         return gdf
 
-    # Needed because gdf.explode() requires numeric index
+    # Needed because gdf.explode(index_parts=True) requires numeric index
     idx = gdf.index.to_list() #To restore the naming of the index
 
     gdf_points = gdf.copy().reset_index(drop=True)
@@ -702,7 +702,7 @@ def _poly_to_grid(gdf, grid):
     gdf_points = _swap_geom_cols(
         gdf_points, geom_to='geometry_orig', new_geom='geometry_pnt')
 
-    gdf_points = gdf_points.explode()
+    gdf_points = gdf_points.explode(index_parts=True)
     gdf_points.index = gdf_points.index.set_levels(idx, level=0)
     return gdf_points
 
@@ -913,7 +913,7 @@ def _line_to_pnts(gdf_lines, res, to_meters):
     if gdf_lines.empty:
         return gdf_lines
 
-    # Needed because gdf.explode() requires numeric index
+    # Needed because gdf.explode(index_parts=True) requires numeric index
     idx = gdf_lines.index.to_list() #To restore the naming of the index
     gdf_points = gdf_lines.copy().reset_index(drop=True)
 
@@ -938,7 +938,7 @@ def _line_to_pnts(gdf_lines, res, to_meters):
     gdf_points = _swap_geom_cols(
         gdf_points, geom_to='geometry_orig', new_geom='geometry_pnt')
 
-    gdf_points = gdf_points.explode()
+    gdf_points = gdf_points.explode(index_parts=True)
     gdf_points.index = gdf_points.index.set_levels(idx, level=0)
     return gdf_points
 
