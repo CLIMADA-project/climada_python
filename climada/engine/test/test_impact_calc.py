@@ -19,7 +19,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Test Impact class.
 """
 import unittest
-from unittest.mock import create_autospec, MagicMock, call
+from unittest.mock import create_autospec, MagicMock, call, patch
 import numpy as np
 from scipy import sparse
 import pandas as pd
@@ -28,7 +28,7 @@ from copy import deepcopy
 from climada import CONFIG
 from climada.entity.entity_def import Entity
 from climada.hazard.base import Hazard
-from climada.engine import ImpactCalc
+from climada.engine import ImpactCalc, Impact
 from climada.util.constants import ENT_DEMO_TODAY, DEMO_DIR
 from climada.util.api_client import Client
 from climada.util.config import Config
@@ -495,9 +495,71 @@ class TestImpactMatrix(unittest.TestCase):
         self.icalc.hazard.get_fraction.assert_called_once_with(centroid_idx)
 
 
+@patch.object(Impact, "from_eih")
+class TestReturnImpact(unittest.TestCase):
+    """Test the functionality of _return_impact without digging into the called methods
+
+    This test patches the classmethod `Impact.from_eih` with a mock, so that the input
+    variables don't need to make sense. The mock is passed to the test methods via the
+    `from_eih_mock` argument for convenience.
+    """
+
+    def setUp(self):
+        """Mock the methods called by _return_impact"""
+        self.icalc = ImpactCalc(ENT.exposures, ENT.impact_funcs, HAZ)
+        self.icalc.stitch_impact_matrix = MagicMock(return_value="stitched_matrix")
+        self.icalc.risk_metrics = MagicMock(
+            return_value=("at_event", "eai_exp", "aai_agg")
+        )
+        self.icalc.stitch_risk_metrics = MagicMock(
+            return_value=("at_event", "eai_exp", "aai_agg")
+        )
+        self.imp_mat_gen = "imp_mat_gen"
+
+    def test_save_mat(self, from_eih_mock):
+        """Test _return_impact when impact matrix is saved"""
+        self.icalc._return_impact(self.imp_mat_gen, save_mat=True)
+        from_eih_mock.assert_called_once_with(
+            ENT.exposures,
+            ENT.impact_funcs,
+            HAZ,
+            "at_event",
+            "eai_exp",
+            "aai_agg",
+            "stitched_matrix",
+        )
+
+        self.icalc.stitch_impact_matrix.assert_called_once_with(self.imp_mat_gen)
+        self.icalc.risk_metrics.assert_called_once_with(
+            "stitched_matrix", HAZ.frequency
+        )
+        self.icalc.stitch_risk_metrics.assert_not_called()
+
+    def test_skip_mat(self, from_eih_mock):
+        """Test _return_impact when impact matrix is NOT saved"""
+        self.icalc._return_impact(self.imp_mat_gen, save_mat=False)
+
+        # Need to check every argument individually due to the last one being a matrix
+        call_args = from_eih_mock.call_args.args
+        self.assertEqual(call_args[0], ENT.exposures)
+        self.assertEqual(call_args[1], ENT.impact_funcs)
+        self.assertEqual(call_args[2], HAZ)
+        self.assertEqual(call_args[3], "at_event")
+        self.assertEqual(call_args[4], "eai_exp")
+        self.assertEqual(call_args[5], "aai_agg")
+        np.testing.assert_array_equal(
+            from_eih_mock.call_args.args[-1], sparse.csr_matrix((0, 0)).toarray()
+        )
+
+        self.icalc.stitch_impact_matrix.assert_not_called()
+        self.icalc.risk_metrics.assert_not_called()
+        self.icalc.stitch_risk_metrics.assert_called_once_with(self.imp_mat_gen)
+
+
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestImpactCalc)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReturnImpact))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestImpactMatrix))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestImpactMatrixCalc))
     TESTS.addTests(
