@@ -163,7 +163,10 @@ class TestGeomImpactCalcs(unittest.TestCase):
     
     def test_calc_geom_impact_polys(self):
         """ test calc_geom_impact() with polygons"""
-    
+        
+        # TODO: update all values here with the most up-to-date version of 
+        # exp_poly from the Data API
+        
         # polygon exposures only
         imp1 = u_lp.calc_geom_impact(
             exp_poly, impf_set, haz, res=0.1, to_meters=False, 
@@ -187,17 +190,6 @@ class TestGeomImpactCalcs(unittest.TestCase):
             exp_poly, impf_set, haz, res=10, to_meters=False, 
             disagg_met=u_lp.DisaggMethod.DIV,
             disagg_val=None, agg_met=u_lp.AggMethod.SUM)
-        
-        # checking for warning doesnt quite work like this
-        # with self.assertWarns(u_lp.LOGGER.warning()) as cm:
-        #     u_lp.calc_geom_impact(
-        #         exp_poly, impf_set, haz, res=10, to_meters=False, 
-        #         disagg_met=u_lp.DisaggMethod.DIV,
-        #         disagg_val=None, agg_met=u_lp.AggMethod.SUM)
-        # self.assertEqual(cm.msg,
-        #                  'Polygon smaller than resolution. Setting a representative point.')
-        # self.assertEqual(len(haz.event_id), len(imp1.at_event))
-        
         self.assertIsInstance(imp2, Impact)
         self.assertTrue(hasattr(imp2, 'geom_exp'))
         self.assertTrue(hasattr(imp2, 'coord_exp'))
@@ -341,18 +333,37 @@ class TestGeomImpactCalcs(unittest.TestCase):
         res=300, to_meters=True, disagg_met=u_lp.DisaggMethod.FIX,
         disagg_val=5000, agg_met=u_lp.AggMethod.SUM)
         
-        self.assertEqual(imp3.eai_exp, imp4.eai_exp)
-        self.assertAlmostEqual(imp3.aai_agg, )
+        self.assertTrue(np.all(imp3.eai_exp==imp4.eai_exp))
+        self.assertAlmostEqual(imp4.aai_agg, 2.8301447149208117)
+
         
     def test_calc_geom_impact_points(self):
         """ test calc_geom_impact() with points"""
-        # point exposures only 
-        pass
-      
+        gdf_pnt_vals = gdf_point.copy()
+        gdf_pnt_vals['value'] = np.arange(len(gdf_pnt_vals))*1000
+        gdf_pnt_vals['impf_WS'] = 1
+        gdf_pnt_novals = gdf_point.copy()
+        gdf_pnt_novals['impf_WS'] = 1
+        exp_pnt_vals = Exposures(gdf_pnt_vals)
+        exp_pnt_novals = Exposures(gdf_pnt_novals)
+        
+        imp1 = u_lp.calc_geom_impact(exp_pnt_vals, impf_set, haz,
+        res=0.05, to_meters=False, disagg_met=u_lp.DisaggMethod.DIV,
+        disagg_val=None, agg_met=u_lp.AggMethod.SUM)
+        
     def test_calc_geom_impact_mixed(self):
         """ test calc_geom_impact() with a mixed exp (points, lines and polygons) """
         # mixed exposures 
-        pass
+        gdf_pnt_vals = gdf_point.copy()
+        gdf_pnt_vals['value'] = np.arange(len(gdf_pnt_vals))*1000
+        gdf_mix = gdf_line.append(gdf_poly).append(
+            gdf_pnt_vals).reset_index(drop=True)
+        
+        exp_mix = Exposures(gdf_mix)
+        
+        imp1 = u_lp.calc_geom_impact(exp_mix, impf_set, haz,
+        res=0.05, to_meters=False, disagg_met=u_lp.DisaggMethod.DIV,
+        disagg_val=None, agg_met=u_lp.AggMethod.SUM)
    
     def test_impact_pnt_agg(self):
         pass
