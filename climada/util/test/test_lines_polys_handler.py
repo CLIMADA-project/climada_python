@@ -166,7 +166,9 @@ class TestGeomImpactCalcs(unittest.TestCase):
         
         # TODO: update all values here with the most up-to-date version of 
         # exp_poly from the Data API
-        
+        exp_poly = Client().get_exposures(
+            'base', name='test_polygon_exp', status='test_dataset')
+        gdf_poly = exp_poly.gdf
         # polygon exposures only
         imp1 = u_lp.calc_geom_impact(
             exp_poly, impf_set, haz, res=0.1, to_meters=False, 
@@ -358,12 +360,20 @@ class TestGeomImpactCalcs(unittest.TestCase):
         gdf_pnt_vals['value'] = np.arange(len(gdf_pnt_vals))*1000
         gdf_mix = gdf_line.append(gdf_poly).append(
             gdf_pnt_vals).reset_index(drop=True)
+        gdf_mix_lp = gdf_line.append(gdf_poly).reset_index(drop=True)
         
         exp_mix = Exposures(gdf_mix)
-        
+        exp_mix_lp = Exposures(gdf_mix_lp)
+
         imp1 = u_lp.calc_geom_impact(exp_mix, impf_set, haz,
         res=0.05, to_meters=False, disagg_met=u_lp.DisaggMethod.DIV,
         disagg_val=None, agg_met=u_lp.AggMethod.SUM)
+        
+        imp2 = u_lp.calc_geom_impact(exp_mix_lp, impf_set, haz,
+        res=0.05, to_meters=False, disagg_met=u_lp.DisaggMethod.DIV,
+        disagg_val=None, agg_met=u_lp.AggMethod.SUM)
+        
+        
    
     def test_impact_pnt_agg(self):
         pass
