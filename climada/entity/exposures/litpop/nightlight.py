@@ -405,7 +405,7 @@ def load_nightlight_nasa(bounds, req_files, year):
         im_nl, _ = read_bm_file(SYSTEM_DIR, fname %(year))
         im_nl = np.flipud(im_nl)
         im_nl = sparse.csc.csc_matrix(im_nl)
-        im_nl = im_nl[extent[0, 0]:extent[1, 0] + 1, extent[0, 1]:extent[1, 1] + 1]
+        im_nl = im_nl[extent[0, 0]:extent[1, 0] + 1, extent[0, 1]:extent[1, 1] + 1] # pylint: disable=unsubscriptable-object
         nightlight.append((tile_coord, im_nl))
 
     tile_coords = np.array([n[0] for n in nightlight])
