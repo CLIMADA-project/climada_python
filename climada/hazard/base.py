@@ -1599,7 +1599,7 @@ class Hazard():
         if len(others) == 0:
             return
         haz_list = [self] + list(others)
-        haz_list_nonempty = [haz for haz in haz_list if haz.size > 0]
+        haz_list_nonempty = [haz for haz in haz_list if haz.size > 0] # pylint: disable=no-member
 
         for haz in haz_list:
             haz._check_events()
