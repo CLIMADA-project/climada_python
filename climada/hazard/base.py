@@ -1602,7 +1602,7 @@ class Hazard():
         haz_list_nonempty = [haz for haz in haz_list if haz.size > 0] # pylint: disable=no-member
 
         for haz in haz_list:
-            haz._check_events()
+            haz._check_events() # pylint: disable=no-member
 
         # check type, unit, and attribute consistency among hazards
         haz_types = {haz.tag.haz_type for haz in haz_list if haz.tag.haz_type != ''}
