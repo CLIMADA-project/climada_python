@@ -413,10 +413,10 @@ class MeasureSet():
         return meas_set
 
     def read_mat(self, *args, **kwargs):
-       """This function is deprecated, use MeasureSet.from_mat instead."""
-       LOGGER.warning("The use of MeasureSet.read_mat is deprecated."
-                      "Use MeasureSet.from_mat instead.")
-       self.__dict__ = MeasureSet.from_mat(*args, **kwargs).__dict__
+        """This function is deprecated, use MeasureSet.from_mat instead."""
+        LOGGER.warning("The use of MeasureSet.read_mat is deprecated."
+                       "Use MeasureSet.from_mat instead.")
+        self.__dict__ = MeasureSet.from_mat(*args, **kwargs).__dict__
 
     @classmethod
     def from_excel(cls, file_name, description='', var_names=DEF_VAR_EXCEL):
