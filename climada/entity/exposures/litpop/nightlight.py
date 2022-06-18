@@ -508,8 +508,6 @@ def untar_noaa_stable_nightlight(f_tar_ini):
                        ' %s %s', f_tar_ini, extract_name)
     try:
         tar_file.extract(extract_name[0], SYSTEM_DIR)
-    except tarfile.TarError as err:
-        raise
     finally:
         tar_file.close()
     f_tif_gz = SYSTEM_DIR.joinpath(extract_name[0])
