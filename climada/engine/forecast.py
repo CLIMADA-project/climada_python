@@ -24,7 +24,6 @@ __all__ = ["Forecast"]
 
 import logging
 import datetime as dt
-from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
