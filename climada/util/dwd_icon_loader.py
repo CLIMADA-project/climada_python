@@ -299,7 +299,7 @@ def download_icon_centroids_file(model_name='icon-eu-eps',
                 download_file(url + file_name,
                               download_dir=download_path)
             except ValueError as err:
-                raise ValueError('Error while downloading %s.' % (url + file_name))
+                raise ValueError('Error while downloading %s.' % (url + file_name)) from err
         with open(bz2_pathfile, 'rb') as source, open(nc_pathfile, 'wb') as dest:
             dest.write(bz2.decompress(source.read()))
         bz2_pathfile.unlink()
