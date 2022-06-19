@@ -1636,7 +1636,7 @@ class Hazard():
                 self.tag.append(haz.tag) # pylint: disable=no-member
 
         # map individual centroids objects to union
-        centroids = Centroids.union(*[haz.centroids for haz in haz_list])
+        centroids = Centroids.union(*[haz.centroids for haz in haz_list]) # pylint: disable=no-member
         hazcent_in_cent_idx_list = [
             u_coord.assign_coordinates(haz.centroids.coord, centroids.coord, threshold=0)
             for haz in haz_list_nonempty
