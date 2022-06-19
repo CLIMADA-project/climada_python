@@ -1632,7 +1632,7 @@ class Hazard():
 
         # append all tags (to keep track of input files and descriptions)
         for haz in haz_list:
-            if haz.tag is not self.tag:
+            if haz.tag is not self.tag: # pylint: disable=no-member
                 self.tag.append(haz.tag)
 
         # map individual centroids objects to union
