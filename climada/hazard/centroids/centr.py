@@ -705,7 +705,7 @@ class Centroids():
         ValueError
         """
         # restrict to non-empty centroids
-        cent_list = [c for c in (self,) + others if c.size > 0 or c.meta]
+        cent_list = [c for c in (self,) + others if c.size > 0 or c.meta] # pylint: disable=no-member
         if len(cent_list) == 0 or len(others) == 0:
             return copy.deepcopy(self)
 
