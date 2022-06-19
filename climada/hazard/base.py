@@ -1616,7 +1616,7 @@ class Hazard():
             raise TypeError(f"The given hazards are of different classes: {haz_classes}. "
                             "The hazards are incompatible and cannot be concatenated.")
 
-        units = {haz.units for haz in haz_list if haz.units != ''}
+        units = {haz.units for haz in haz_list if haz.units != ''} # pylint: disable=no-member
         if len(units) > 1:
             raise ValueError(f"The given hazards use different units: {units}. "
                              "The hazards are incompatible and cannot be concatenated.")
