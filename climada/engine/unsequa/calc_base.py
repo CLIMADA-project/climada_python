@@ -76,7 +76,7 @@ class Calc():
                         "among at least 2 input variables. Their uncertainty is " +
                         "thus computed with the same samples for this " +
                         "input paramter.\n\n", input_param_name
-                        )
+                        )# pylint: disable=logging-not-lazy
                 distr_dict[input_param_name] = input_param_func
         return True
 
