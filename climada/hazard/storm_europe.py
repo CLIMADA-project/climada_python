@@ -417,6 +417,7 @@ class StormEurope(Hazard):
 
         haz = cls()
         if not (run_datetime.hour == 0 or run_datetime.hour == 12):
+            # pylint: disable=logging-not-lazy
             LOGGER.warning('The event definition is inaccuratly implemented '
                            'for starting times, which are not 00H or 12H.')
         # download files, if they don't already exist
@@ -996,9 +997,11 @@ def generate_WS_forecast_hazard(run_datetime=None,
                          f'_event{event_date.strftime("%Y%m%d")}.hdf5')
         haz_file = FORECAST_DIR / haz_file_name
         if haz_file.exists():
+            # pylint: disable=logging-not-lazy
             LOGGER.info('Loading hazard from %s.', haz_file)
             hazard = StormEurope.from_hdf5(haz_file)
         else:
+            # pylint: disable=logging-not-lazy
             LOGGER.info('Generating %s hazard.', haz_model)
             if not haz_raw_storage:
                 haz_raw_storage = FORECAST_DIR / "cosmoe_forecast_{}_vmax.nc"
@@ -1022,9 +1025,11 @@ def generate_WS_forecast_hazard(run_datetime=None,
                          f'_event{event_date.strftime("%Y%m%d")}.hdf5')
         haz_file = FORECAST_DIR / haz_file_name
         if haz_file.exists():
+            # pylint: disable=logging-not-lazy
             LOGGER.info('Loading hazard from %s.', haz_file)
             hazard = StormEurope.from_hdf5(haz_file)
         else:
+            # pylint: disable=logging-not-lazy
             LOGGER.info('Generating %s hazard.', haz_model)
             hazard = StormEurope.from_icon_grib(
                 run_datetime,
