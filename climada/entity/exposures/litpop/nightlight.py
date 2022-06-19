@@ -504,6 +504,7 @@ def untar_noaa_stable_nightlight(f_tar_ini):
         raise ValueError('No stable light intensities for selected year and satellite '
                          f'in file {f_tar_ini}')
     if len(extract_name) > 1:
+        # pylint: disable=logging-not-lazy
         LOGGER.warning('found more than one potential intensity file in' +
                        ' %s %s', f_tar_ini, extract_name)
     try:
