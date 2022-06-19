@@ -76,6 +76,7 @@ def download_icon_grib(run_datetime,
         the input parameters
     """
 
+    # pylint: disable=logging-not-lazy
     LOGGER.info(('Downloading icon grib files of model ' +
                  model_name + ' for parameter ' + parameter_name +
                  ' with starting date ' + run_datetime.strftime('%Y%m%d%H') +
@@ -241,6 +242,7 @@ def _create_icon_grib_name(run_datetime,
     if  not max_lead_time:
         max_lead_time = max_lead_time_default
     elif max_lead_time > max_lead_time_default:
+        # pylint: disable=logging-not-lazy
         LOGGER.warning(('Parameter max_lead_time ' +
                         str(max_lead_time) + ' is bigger than maximum ' +
                         'available files. max_lead_time is adjusted to ' +
