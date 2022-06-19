@@ -71,6 +71,7 @@ class Calc():
                             " is shared among two input variables with"
                             " different distributions."
                             )
+                    # pylint: disable=logging-not-lazy
                     LOGGER.warning(
                         "\n\nThe input parameter %s is shared " +
                         "among at least 2 input variables. Their uncertainty is " +
