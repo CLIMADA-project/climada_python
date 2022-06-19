@@ -1605,7 +1605,7 @@ class Hazard():
             haz._check_events() # pylint: disable=no-member
 
         # check type, unit, and attribute consistency among hazards
-        haz_types = {haz.tag.haz_type for haz in haz_list if haz.tag.haz_type != ''}
+        haz_types = {haz.tag.haz_type for haz in haz_list if haz.tag.haz_type != ''} # pylint: disable=no-member
         if len(haz_types) > 1:
             raise ValueError(f"The given hazards are of different types: {haz_types}. "
                              "The hazards are incompatible and cannot be concatenated.")
