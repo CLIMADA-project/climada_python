@@ -498,14 +498,14 @@ def untar_noaa_stable_nightlight(f_tar_ini):
     shutil.move(f_tar_ini, f_tar_dest)
     # extract stable_lights.avg_vis.tif
     with tarfile.open(f_tar_ini) as tar_file:
-    extract_name = [name for name in tar_file.getnames()
-                    if name.endswith('stable_lights.avg_vis.tif.gz')]
-    if len(extract_name) == 0:
-        raise ValueError('No stable light intensities for selected year and satellite '
-                         f'in file {f_tar_ini}')
-    if len(extract_name) > 1:
+        extract_name = [name for name in tar_file.getnames()
+                        if name.endswith('stable_lights.avg_vis.tif.gz')]
+        if len(extract_name) == 0:
+            raise ValueError('No stable light intensities for selected year and satellite '
+                            f'in file {f_tar_ini}')
+        if len(extract_name) > 1:
             LOGGER.warning('found more than one potential intensity file in %s %s',
-                           f_tar_ini, extract_name)
+                        f_tar_ini, extract_name)
         tar_file.extract(extract_name[0], SYSTEM_DIR)
     return SYSTEM_DIR.joinpath(extract_name[0])
 
