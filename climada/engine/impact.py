@@ -111,7 +111,7 @@ class Impact():
 
         Returns
         -------
-            ImpactFreqCurve
+            climada.engine.impact.ImpactFreqCurve
         """
         ifc = ImpactFreqCurve()
         ifc.tag = self.tag
@@ -251,7 +251,7 @@ class Impact():
 
         Returns
         -------
-        climada.engine.Impact
+        climada.engine.impact.Impact
         """
         new_imp = copy.deepcopy(self)
         if attachment or cover:
@@ -619,7 +619,8 @@ class Impact():
 
         Returns
         -------
-        Impact year set of type numpy.ndarray with summed impact per year.
+        yearset : numpy.ndarray
+            Impact year set of type numpy.ndarray with summed impact per year.
         """
         if year_range is None:
             year_range = []
@@ -859,9 +860,9 @@ class Impact():
 
         Parameters
         ----------
-        exp : Exposures
+        exp : climada.entity.Exposures
             exposures instance, constant during all video
-        impf_set : ImpactFuncSet
+        impf_set : climada.entity.ImpactFuncSet
             impact functions
         haz_list : (list(Hazard))
             every Hazard contains an event; all hazards
@@ -1162,7 +1163,7 @@ class Impact():
 
         Returns
         -------
-        imp : climada.engine.Impact
+        imp : climada.engine.impact.Impact
             A new impact object with a selection of events and/or exposures
 
         """

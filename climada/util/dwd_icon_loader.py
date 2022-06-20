@@ -32,8 +32,8 @@ __all__ = [
 import logging
 from pathlib import Path
 import bz2
-import numpy as np
 import datetime as dt
+import numpy as np
 
 from climada.util.config import CONFIG
 from climada.util.files_handler import download_file
@@ -76,10 +76,8 @@ def download_icon_grib(run_datetime,
         the input parameters
     """
 
-    LOGGER.info(('Downloading icon grib files of model ' +
-                 model_name + ' for parameter ' + parameter_name +
-                 ' with starting date ' + run_datetime.strftime('%Y%m%d%H') +
-                 '.'))
+    LOGGER.info('Downloading icon grib files of model %s for parameter %s with starting date %s.',
+                model_name, parameter_name, run_datetime.strftime('%Y%m%d%H'))
 
     url, file_name, lead_times = _create_icon_grib_name(run_datetime,
                                                         model_name,
@@ -241,10 +239,9 @@ def _create_icon_grib_name(run_datetime,
     if  not max_lead_time:
         max_lead_time = max_lead_time_default
     elif max_lead_time > max_lead_time_default:
-        LOGGER.warning(('Parameter max_lead_time ' +
-                        str(max_lead_time) + ' is bigger than maximum ' +
-                        'available files. max_lead_time is adjusted to ' +
-                        str(max_lead_time_default)))
+        LOGGER.warning('Parameter max_lead_time %s is bigger than maximum '
+                       'available files. max_lead_time is adjusted to %s.',
+                       max_lead_time, max_lead_time_default)
         max_lead_time = max_lead_time_default
     lead_times = lead_times[lead_times<=max_lead_time]
 
@@ -299,7 +296,7 @@ def download_icon_centroids_file(model_name='icon-eu-eps',
                 download_file(url + file_name,
                               download_dir=download_path)
             except ValueError as err:
-                raise ValueError('Error while downloading %s.' % (url + file_name))
+                raise ValueError(f'Error while downloading {url + file_name}.') from err
         with open(bz2_pathfile, 'rb') as source, open(nc_pathfile, 'wb') as dest:
             dest.write(bz2.decompress(source.read()))
         bz2_pathfile.unlink()

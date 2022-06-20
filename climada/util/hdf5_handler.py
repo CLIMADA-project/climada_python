@@ -26,7 +26,6 @@ __all__ = ['read',
            'get_sparse_csr_mat'
           ]
 
-import logging
 from scipy import sparse
 import numpy as np
 import h5py
@@ -71,13 +70,8 @@ def read(file_name, with_refs=False):
             # other objects such as links are ignored
         return contents
 
-    try:
-        file = h5py.File(file_name, 'r')
-        contents = get_group(file)
-        file.close()
-        return contents
-    except OSError as err:
-        raise OSError(f'Invalid file {file_name}: ' + str(err)) from err
+    with h5py.File(file_name, 'r') as file:
+        return get_group(file)
 
 def get_string(array):
     """Form string from input array of unisgned integers.
@@ -107,9 +101,8 @@ def get_str_from_ref(file_name, var):
         -------
         string
     """
-    file = h5py.File(file_name, 'r')
-    obj = file[var]
-    return get_string(obj)
+    with h5py.File(file_name, 'r') as file:
+        return get_string(file[var])
 
 def get_list_str_from_ref(file_name, var):
     """Form list of strings from a reference HDF5 variable of the given file.
@@ -126,9 +119,9 @@ def get_list_str_from_ref(file_name, var):
         string
     """
     name_list = []
-    file = h5py.File(file_name, 'r')
-    for name in var:
-        name_list.append(get_string(file[name[0]][:]).strip())
+    with h5py.File(file_name, 'r') as file:
+        for name in var:
+            name_list.append(get_string(file[name[0]][:]).strip())
     return name_list
 
 def get_sparse_csr_mat(mat_dict, shape):
