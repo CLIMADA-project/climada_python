@@ -102,35 +102,35 @@ class Impact():
 
         Attributes
         ----------
-        tag : dict
-            dictionary of tags of exposures, impact functions set and
-            hazard: {'exp': Tag(), 'impf_set': Tag(), 'haz': TagHazard()}
-        event_id : np.array
+        event_id : np.array, optional
             id (>0) of each hazard event
-        event_name : list
+        event_name : list, optional
             list name of each hazard event
-        date : np.array
+        date : np.array, optional
             date if events as integer date corresponding to the
             proleptic Gregorian ordinal, where January 1 of year 1 has
             ordinal 1 (ordinal format of datetime library)
-        coord_exp : np.array
+        frequency : np.array, optional
+            annual frequency of event impact for each hazard event
+        coord_exp : np.array, optional
             exposures coordinates [lat, lon] (in degrees)
-        eai_exp : np.array
+        crs : Any, optional
+            coordinate reference system
+        eai_exp : np.array, optional
             expected annual impact for each exposure
-        at_event : np.array
+        at_event : np.array, optional
             impact for each hazard event
-        frequency : np.array
-            annual frequency of event
-        tot_value : float
+        tot_value : float, optional
             total exposure value affected
-        aai_agg : float
+        aai_agg : float, optional
             average annual impact (aggregated)
-        unit : str
+        unit : str, optional
             value unit used (given by exposures unit)
-        imp_mat : sparse.csr_matrix
+        imp_mat : sparse.csr_matrix, optional
             matrix num_events x num_exp with impacts.
-            Default is None (empty matrix)
-
+        tag : dict, optional
+            dictionary of tags of exposures, impact functions set and
+            hazard: {'exp': Tag(), 'impf_set': Tag(), 'haz': TagHazard()}
         """
 
         self.tag = tag or {}
@@ -208,11 +208,17 @@ class Impact():
         ----------
         exposures : climada.entity.Exposures
             exposure used to compute imp_mat
-        impf_set: climada.entity.ImpactFuncSet
+        impfset: climada.entity.ImpactFuncSet
             impact functions set used to compute imp_mat
         hazard : climada.Hazard
             hazard used to compute imp_mat
-        imp_mat : sparse.csr_matrix
+        at_event : np.array
+            impact for each hazard event
+        eai_exp : np.array
+            expected annual impact for each exposure
+        aai_agg : float
+            average annual impact (aggregated)
+        imp_mat : sparse.csr_matrix, optional
             matrix num_events x num_exp with impacts.
             Default is None (empty sparse csr matrix).
 
@@ -252,7 +258,7 @@ class Impact():
         Parameters
         ----------
         attachment : float
-           attachment per event for entire portfolio.
+            attachment per event for entire portfolio.
         cover : float
             cover per event for entire portfolio.
 
@@ -341,10 +347,11 @@ class Impact():
 
         Parameters
         ----------
-        all_years : boolean
+        all_years : boolean, optional
             return values for all years between first and
             last year with event, including years without any events.
-        year_range : tuple or list with integers
+            Default: True
+        year_range : tuple or list with integers, optional
             start and end year
         Returns
         -------
@@ -387,7 +394,9 @@ class Impact():
 
         Parameters
         ----------
-        return_periods : np.array return periods to consider
+        return_periods : Any, optional
+            return periods to consider
+            Dafault is (25, 50, 100, 250)
 
         Returns
         -------
@@ -468,12 +477,12 @@ class Impact():
         extend : str
             optional extend border colorbar with arrows.
             [ 'neither' | 'both' | 'min' | 'max' ]
-        axis  : matplotlib.axes._subplots.AxesSubplot, optional
+        axis : matplotlib.axes.Axes, optional
             axis to use
         adapt_fontsize : bool, optional
-                If set to true, the size of the fonts will be adapted to the size of the figure.
-                Otherwise the default matplotlib font size is used. Default is True.
-        kwargs : optional
+            If set to true, the size of the fonts will be adapted to the size of the figure.
+            Otherwise the default matplotlib font size is used. Default is True.
+        kwargs : dict, optional
             arguments for hexbin matplotlib function
 
         Returns
@@ -509,9 +518,12 @@ class Impact():
             extend : str, optional
                 extend border colorbar with arrows.
                 [ 'neither' | 'both' | 'min' | 'max' ]
-            axis : matplotlib.axes._subplots.AxesSubplot, optional
+            axis : matplotlib.axes.Axes, optional
                 axis to use
-            kwargs : optional
+            adapt_fontsize : bool, optional
+                If set to true, the size of the fonts will be adapted to the size of the figure.
+                Otherwise the default matplotlib font size is used. Default: True
+            kwargs : dict, optional
                 arguments for hexbin matplotlib function
 
         Returns
@@ -545,13 +557,14 @@ class Impact():
             format, if provided
         raster_f : lambda function
             transformation to use to data. Default: log10 adding 1.
-        label : str colorbar label
-        axis : matplotlib.axes._subplots.AxesSubplot, optional
+        label : str
+            colorbar label
+        axis : matplotlib.axes.Axes, optional
             axis to use
         adapt_fontsize : bool, optional
-                If set to true, the size of the fonts will be adapted to the size of the figure.
-                Otherwise the default matplotlib font size is used. Default is True.
-        kwargs : optional
+            If set to true, the size of the fonts will be adapted to the size of the figure.
+            Otherwise the default matplotlib font size is used. Default is True.
+        kwargs : dict, optional
             arguments for imshow matplotlib function
 
         Returns
@@ -588,9 +601,9 @@ class Impact():
             zoom coefficient used in the satellite image
         url : str, optional
             image source, e.g. ctx.sources.OSM_C
-        axis : matplotlib.axes._subplots.AxesSubplot, optional
+        axis : matplotlib.axes.Axes, optional
             axis to use
-        kwargs : optional
+        kwargs : dict, optional
             arguments for scatter matplotlib function, e.g.
             cmap='Greys'. Default: 'Wistia'
 
@@ -630,12 +643,12 @@ class Impact():
         extend : str, optional
             extend border colorbar with arrows.
             [ 'neither' | 'both' | 'min' | 'max' ]
-        axis : matplotlib.axes._subplots.AxesSubplot
+        axis : matplotlib.axes.Axes
             optional axis to use
         adapt_fontsize : bool, optional
             If set to true, the size of the fonts will be adapted to the size of the figure.
             Otherwise the default matplotlib font size is used. Default is True.
-        kwargs : optional
+        kwargs : dict, optional
             arguments for hexbin matplotlib function
         
         Returns
@@ -683,10 +696,11 @@ class Impact():
             zoom coefficient used in the satellite image
         url : str, optional
             image source, e.g. ctx.sources.OSM_C
-        axis  : matplotlib.axes._subplots.AxesSubplot, optional
+        axis : matplotlib.axes.Axes, optional
             axis to use
-        kwargs : optional arguments for scatter matplotlib function, e.g.
-            cmap='Greys'. Default: 'Wistia'
+        kwargs : dict, optional
+            arguments for scatter matplotlib function, e.g. cmap='Greys'.
+            Default: 'Wistia'
 
         Returns
         -------
@@ -713,19 +727,19 @@ class Impact():
 
         Parameters
         ----------
-        return_periods : tuple(int), optional
-            return periods to consider
+        return_periods : tuple of int, optional
+            return periods to consider. Default: (25, 50, 100, 250)
         log10_scale : boolean, optional
-            plot impact as log10(impact)
+            plot impact as log10(impact). Default: True
         smooth : bool, optional
-            smooth plot to plot.RESOLUTIONxplot.RESOLUTION
-        kwargs : optional
+            smooth plot to plot.RESOLUTIONxplot.RESOLUTION. Default: True
+        kwargs : dict, optional
             arguments for pcolormesh matplotlib function
             used in event plots
 
         Returns
         -------
-        axis : matplotlib.axes._subplots.AxesSubplot
+        axis : matplotlib.axes.Axes
         imp_stats : np.array
             return_periods.size x num_centroids
         """
@@ -857,7 +871,8 @@ class Impact():
 
         Parameters
         ----------
-        file_name : str absolute path of the file
+        file_name : str
+            absolute path of the file
 
         Returns
         -------
@@ -907,7 +922,8 @@ class Impact():
 
         Parameters
         ----------
-        file_name : str absolute path of the file
+        file_name : str
+            absolute path of the file
 
         Returns
         -------
@@ -977,12 +993,12 @@ class Impact():
             file name to save video, if provided
         writer : matplotlib.animation.*, optional
             video writer. Default: pillow with bitrate=500
-        imp_thresh : float
-            represent damages greater than threshold
-        args_exp : optional
+        imp_thresh : float, optional
+            represent damages greater than threshold. Default: 0
+        args_exp : dict, optional
             arguments for scatter (points) or hexbin (raster)
             matplotlib function used in exposures
-        args_imp : optional
+        args_imp : dict, optional
             arguments for scatter (points) or hexbin (raster)
             matplotlib function used in impact
         ignore_zero : bool, optional
@@ -1084,8 +1100,10 @@ class Impact():
 
         Parameters
         ----------
-        return_periods : np.array return periods to consider
-        cen_pos (int): centroid position
+        return_periods : np.array
+            return periods to consider
+        cen_pos :int
+            centroid position
 
         Returns
         -------
@@ -1201,11 +1219,11 @@ class Impact():
 
         Parameters
         ----------
-        event_ids : list[int], optional
+        event_ids : list of int, optional
             Selection of events by their id. The default is None.
-        event_names : list[str], optional
+        event_names : list of str, optional
             Selection of events by their name. The default is None.
-        dates : tuple(), optional
+        dates : tuple, optional
             (start-date, end-date), events are selected if they are >=
             than start-date and <= than end-date. Dates in same format
             as impact.date (ordinal format of datetime library)
@@ -1376,16 +1394,16 @@ class ImpactFreqCurve():
 
         Parameters
         ----------
-        axis  : matplotlib.axes._subplots.AxesSubplot, optional
+        axis : matplotlib.axes.Axes, optional
             axis to use
         log_frequency : boolean, optional
             plot logarithmioc exceedance frequency on x-axis
-        kwargs : optional
+        kwargs : dict, optional
             arguments for plot matplotlib function, e.g. color='b'
 
         Returns
         -------
-        matplotlib.axes._subplots.AxesSubplot
+        matplotlib.axes.Axes
         """
         if not axis:
             _, axis = plt.subplots(1, 1)

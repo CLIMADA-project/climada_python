@@ -195,7 +195,7 @@ class ImpactCalc():
 
         See Also
         --------
-        imp_mat_gen: impact matrix generator
+        imp_mat_gen : impact matrix generator
         insured_mat_gen: insured impact matrix generator
 
         """
@@ -216,7 +216,7 @@ class ImpactCalc():
         ----------
         exposures : climada.entity.Exposures
         hazard : climada.Hazard
-        impf_col: stirng
+        impf_col: str
             name of the impact function column in exposures.gdf
 
         """
@@ -247,7 +247,7 @@ class ImpactCalc():
         exp_gdf : GeoDataFrame
             Geodataframe of the exposures with columns required for impact
             computation.
-        impf_col : string
+        impf_col : str
             name of the desired impact column in the exposures.
 
         Raises
@@ -293,7 +293,7 @@ class ImpactCalc():
 
         Parameters
         ----------
-        imp_mat_gen : Generator yielding (sparse.csr_matrix, np.array)
+        imp_mat_gen : generator of tuples (sparse.csr_matrix, np.array)
             The generator for creating the impact matrix. It returns a part of the full
             matrix and the associated exposure indices.
         exp_gdf : GeoDataFrame
@@ -368,7 +368,7 @@ class ImpactCalc():
 
         Parameters
         ----------
-        imp_mat_gen : Generator yielding (sparse.csr_matrix, np.array)
+        imp_mat_gen : generator of tuples (sparse.csr_matrix, np.array)
             The generator for creating the impact matrix. It returns a part of the full
             matrix and the associated exposure indices.
 
