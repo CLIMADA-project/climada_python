@@ -1,5 +1,6 @@
 
-This is the documentation for version v\ |version|. In `CLIMADA-project <https://github.com/CLIMADA-project>`_ you will find CLIMADA's contributors, repository and scientific publications. The documentation of CLIMADA petals <https://github.com/CLIMADA-project/climada_petals> can be found here: https://climada-petals.readthedocs.io/en/stable/
+This is the documentation for version v\ |version|. In `CLIMADA-project <https://github.com/CLIMADA-project>`_ you will find CLIMADA's contributors, repository and scientific publications. The documentation of CLIMADA `petals <https://github.com/CLIMADA-project/climada_petals>`_ can be found `here <https://climada-petals.readthedocs.io/en/stable/>`_.
+Note that all the documentations has two versions,'latest' and 'stable', and explicit version numbers, such as 'v3.1.1', in the url path. 'latest' is created from the 'develop' branch and has the latest changes by developers, 'stable' from the latest release. For more details about documentation versions, please have a look at here `<https://readthedocs.org/projects/climada-python/versions/>`_.
 
 ------------
 
