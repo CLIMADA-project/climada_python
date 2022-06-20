@@ -72,9 +72,9 @@ class Calc():
                             " different distributions."
                             )
                     LOGGER.warning(
-                        "\n\nThe input parameter %s is shared " +
-                        "among at least 2 input variables. Their uncertainty is " +
-                        "thus computed with the same samples for this " +
+                        "\n\nThe input parameter %s is shared "
+                        "among at least 2 input variables. Their uncertainty is "
+                        "thus computed with the same samples for this "
                         "input paramter.\n\n", input_param_name
                         )
                 distr_dict[input_param_name] = input_param_func
@@ -256,7 +256,7 @@ class Calc():
         #Import the named submodule from the SALib sample module
         #From the workings of __import__ the use of 'from_list' is necessary
         #c.f. https://stackoverflow.com/questions/2724260/why-does-pythons-import-require-fromlist
-        import importlib
+        import importlib # pylint: disable=import-outside-toplevel
         salib_sampling_method = importlib.import_module(f'SALib.sample.{sampling_method}')
         sample_uniform = salib_sampling_method.sample(
             problem = problem_sa, N = N, **sampling_kwargs)
