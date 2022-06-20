@@ -401,11 +401,11 @@ def load_nightlight_nasa(bounds, req_files, year):
             # this tile does not intersect the specified bounds
             continue
         extent = np.int64(np.clip(extent, 0, tile_size[None] - 1))
-
+        # pylint: disable=unsubscriptable-object
         im_nl, _ = read_bm_file(SYSTEM_DIR, fname %(year))
         im_nl = np.flipud(im_nl)
         im_nl = sparse.csc.csc_matrix(im_nl)
-        im_nl = im_nl[extent[0, 0]:extent[1, 0] + 1, extent[0, 1]:extent[1, 1] + 1] # pylint: disable=unsubscriptable-object
+        im_nl = im_nl[extent[0, 0]:extent[1, 0] + 1, extent[0, 1]:extent[1, 1] + 1]
         nightlight.append((tile_coord, im_nl))
 
     tile_coords = np.array([n[0] for n in nightlight])
@@ -497,23 +497,18 @@ def untar_noaa_stable_nightlight(f_tar_ini):
     f_tar_dest = SYSTEM_DIR.joinpath(Path(f_tar_ini).name)
     shutil.move(f_tar_ini, f_tar_dest)
     # extract stable_lights.avg_vis.tif
-    tar_file = tarfile.open(f_tar_ini)
+    with tarfile.open(f_tar_ini) as tar_file:
     extract_name = [name for name in tar_file.getnames()
                     if name.endswith('stable_lights.avg_vis.tif.gz')]
     if len(extract_name) == 0:
         raise ValueError('No stable light intensities for selected year and satellite '
                          f'in file {f_tar_ini}')
     if len(extract_name) > 1:
-        # pylint: disable=logging-not-lazy
-        LOGGER.warning('found more than one potential intensity file in' +
-                       ' %s %s', f_tar_ini, extract_name)
-    try:
+            LOGGER.warning('found more than one potential intensity file in %s %s',
+                           f_tar_ini, extract_name)
         tar_file.extract(extract_name[0], SYSTEM_DIR)
-    finally:
-        tar_file.close()
-    f_tif_gz = SYSTEM_DIR.joinpath(extract_name[0])
+    return SYSTEM_DIR.joinpath(extract_name[0])
 
-    return f_tif_gz
 
 def load_nightlight_noaa(ref_year=2013, sat_name=None):
     """Get nightlight luminosites. Nightlight matrix, lat and lon ordered
