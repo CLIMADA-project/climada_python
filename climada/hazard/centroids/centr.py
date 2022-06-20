@@ -819,7 +819,10 @@ class Centroids():
             res = np.abs(res).min()
         self.set_geometry_points(scheduler)
         LOGGER.debug('Setting area_pixel %s points.', str(self.lat.size))
-        xy_pixels = self.geometry.buffer(res / 2).envelope
+        xy_pixels = self.to_crs(crs=3857)
+        xy_pixels = self.geometry.buffer(res / 2)
+        xy_pixels = self.to_crs(crs=4326)
+        xy_pixels = self.envelope
         if PROJ_CEA == self.geometry.crs:
             self.area_pixel = xy_pixels.area.values
         else:
