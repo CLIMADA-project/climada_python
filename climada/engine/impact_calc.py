@@ -31,6 +31,7 @@ from climada.engine import Impact
 
 LOGGER = logging.getLogger(__name__)
 
+
 class ImpactCalc():
     """
     Class to compute impacts from exposures, impact function set and hazard

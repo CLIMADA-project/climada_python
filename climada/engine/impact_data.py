@@ -621,6 +621,7 @@ def clean_emdat_df(emdat_file, countries=None, hazard=None, year_range=None,
             (df_data[VARNAMES_EMDAT[target_version]['Disaster Subtype']].isin(disaster_subtypes))]
     return df_data.reset_index(drop=True)
 
+
 def emdat_countries_by_hazard(emdat_file_csv, hazard=None, year_range=None):
     """return list of all countries exposed to a chosen hazard type
     from EMDAT data as CSV.
@@ -701,6 +702,7 @@ def scale_impact2refyear(impact_values, year_values, iso3a_values, reference_yea
         return impact_values
     raise ValueError('Invalid reference_year')
 
+
 def emdat_impact_yearlysum(emdat_file_csv, countries=None, hazard=None, year_range=None,
                            reference_year=None, imp_str="Total Damages ('000 US$)",
                            version=2020):
@@ -767,6 +769,7 @@ def emdat_impact_yearlysum(emdat_file_csv, countries=None, hazard=None, year_ran
         out = pd.concat([out, data_out])
     out = out.reset_index(drop=True)
     return out
+
 
 def emdat_impact_event(emdat_file_csv, countries=None, hazard=None, year_range=None,
                        reference_year=None, imp_str="Total Damages ('000 US$)",

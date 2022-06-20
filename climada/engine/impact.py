@@ -258,7 +258,7 @@ class Impact():
 
         Returns
         -------
-        transfer_at_event : np.array()
+        transfer_at_event : np.array
             risk transfered per event
         transfer_aai_agg : float
             average  annual risk transfered
@@ -284,7 +284,7 @@ class Impact():
 
         Returns
         -------
-        residual_at_event : np.array()
+        residual_at_event : np.array
             residual risk per event
         residual_aai_agg : float
             average annual residual risk
@@ -348,7 +348,7 @@ class Impact():
             start and end year
         Returns
         -------
-        year_set: dict
+        year_set : dict
             Key=year, value=Summed impact per year.
         """
         if year_range is None:
@@ -427,7 +427,7 @@ class Impact():
 
         Returns
         -------
-            ImpactFreqCurve
+        ImpactFreqCurve
         """
         ifc = ImpactFreqCurve()
         ifc.tag = self.tag
@@ -478,7 +478,7 @@ class Impact():
 
         Returns
         -------
-            cartopy.mpl.geoaxes.GeoAxesSubplot
+        cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         if 'cmap' not in kwargs:
             kwargs['cmap'] = CMAP_IMPACT
@@ -516,7 +516,7 @@ class Impact():
 
         Returns
         -------
-            cartopy.mpl.geoaxes.GeoAxesSubplot
+        cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         if 'cmap' not in kwargs:
             kwargs['cmap'] = CMAP_IMPACT
@@ -640,7 +640,7 @@ class Impact():
         
         Returns
         -------
-        matplotlib.figure.Figure | cartopy.mpl.geoaxes.GeoAxesSubplot
+        cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         if self.imp_mat.size == 0:
             raise ValueError('Attribute imp_mat is empty. Recalculate Impact'
@@ -683,7 +683,8 @@ class Impact():
             zoom coefficient used in the satellite image
         url : str, optional
             image source, e.g. ctx.sources.OSM_C
-        axis  : matplotlib.axes._subplots.AxesSubplot, optional axis to use
+        axis  : matplotlib.axes._subplots.AxesSubplot, optional
+            axis to use
         kwargs : optional arguments for scatter matplotlib function, e.g.
             cmap='Greys'. Default: 'Wistia'
 
@@ -724,8 +725,9 @@ class Impact():
 
         Returns
         -------
-        matplotlib.axes._subplots.AxesSubplot,
-        np.ndarray (return_periods.size x num_centroids)
+        axis : matplotlib.axes._subplots.AxesSubplot
+        imp_stats : np.array
+            return_periods.size x num_centroids
         """
         imp_stats = self.local_exceedance_imp(np.array(return_periods))
         if imp_stats.size == 0:
@@ -992,7 +994,7 @@ class Impact():
 
         Returns
         -------
-        list(Impact)
+        list of Impact
         """
         if args_exp is None:
             args_exp = dict()
@@ -1208,7 +1210,7 @@ class Impact():
             than start-date and <= than end-date. Dates in same format
             as impact.date (ordinal format of datetime library)
             The default is None.
-        coord_exp : np.ndarray, optional
+        coord_exp : np.array, optional
             Selection of exposures coordinates [lat, lon] (in degrees)
             The default is None.
 
@@ -1222,7 +1224,6 @@ class Impact():
         -------
         imp : climada.engine.impact.Impact
             A new impact object with a selection of events and/or exposures
-
         """
 
         nb_events = self.event_id.size
