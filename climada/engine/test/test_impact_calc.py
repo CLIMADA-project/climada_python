@@ -27,6 +27,7 @@ from copy import deepcopy
 
 from climada import CONFIG
 from climada.entity.entity_def import Entity
+from climada.entity import Exposures, ImpactFuncSet
 from climada.hazard.base import Hazard
 from climada.engine import ImpactCalc, Impact
 from climada.util.constants import ENT_DEMO_TODAY, DEMO_DIR
@@ -233,7 +234,7 @@ class TestImpactCalc(unittest.TestCase):
 
     def test_stitch_impact_matrix(self):
         """Check how sparse matrices from a generator are stitched together"""
-        icalc = ImpactCalc(ENT.exposures, ENT.impact_funcs, HAZ)
+        icalc = ImpactCalc(Exposures(), ImpactFuncSet(), Hazard())
         icalc.n_events = 3
         icalc.n_exp_pnt = 4
 
@@ -264,7 +265,7 @@ class TestImpactCalc(unittest.TestCase):
 
     def test_stitch_risk_metrics(self):
         """Test computing risk metrics from an impact matrix generator"""
-        icalc = ImpactCalc(ENT.exposures, ENT.impact_funcs, HAZ)
+        icalc = ImpactCalc(Exposures(), ImpactFuncSet(), Hazard())
         icalc.n_events = 2
         icalc.n_exp_pnt = 3
         icalc.hazard.frequency = np.array([2, 0.5])
@@ -285,7 +286,7 @@ class TestImpactMatrixCalc(unittest.TestCase):
     """Verify the computation of the impact matrix"""
 
     def setUp(self):
-        # Mock the methods called by 'impact_matrix'
+        """Mock the methods called by 'impact_matrix'"""
         self.hazard = create_autospec(HAZ)
         self.hazard.get_mdr.return_value = sparse.csr_matrix(
             [[0.0, 0.5, -1.0], [1.0, 2.0, 1.0]]
@@ -418,7 +419,9 @@ class TestImpactMatrixGenerator(unittest.TestCase):
 
 
 class TestInsuredImpactMatrixGenerator(unittest.TestCase):
+    """Verify the computation of the insured impact matrix"""
     def setUp(self):
+        """"Initialize mocks"""
         hazard = create_autospec(HAZ)
         self.icalc = ImpactCalc(ENT.exposures, ENT.impact_funcs, hazard)
         self.icalc.exposures.gdf = pd.DataFrame(
@@ -435,6 +438,7 @@ class TestInsuredImpactMatrixGenerator(unittest.TestCase):
         self.icalc.impfset.get_func = MagicMock(side_effect=["impf_0", "impf_2"])
 
     def test_insured_mat_gen(self):
+        """Test insured impact matrix generator"""
         exp_gdf = pd.DataFrame(
             {"impact_functions": [0, 2], "centr_col": [0, 10], "value": [1.0, 2.0],}
         )
@@ -470,7 +474,9 @@ class TestInsuredImpactMatrixGenerator(unittest.TestCase):
 
 
 class TestImpactMatrix(unittest.TestCase):
+    """Test Impact matrix computation"""
     def setUp(self):
+        """Initialize mock"""
         hazard = create_autospec(HAZ)
         impact_funcs = create_autospec(ENT.impact_funcs)
         self.icalc = ImpactCalc(ENT.exposures, impact_funcs, hazard)
