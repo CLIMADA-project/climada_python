@@ -120,8 +120,8 @@ class ImpactCalc():
             >>> imp = impcalc.insured_impact()
             >>> imp.aai_agg
 
-        Note
-        ----
+        Notes
+        -----
         Deductible and/or cover values in the exposures are ignored.
         """
         impf_col = self.exposures.get_impf_column(self.hazard.haz_type)

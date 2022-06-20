@@ -630,17 +630,17 @@ class Impact():
         extend : str, optional
             extend border colorbar with arrows.
             [ 'neither' | 'both' | 'min' | 'max' ]
-        kwargs : optional
-            arguments for hexbin matplotlib function
         axis : matplotlib.axes._subplots.AxesSubplot
             optional axis to use
         adapt_fontsize : bool, optional
             If set to true, the size of the fonts will be adapted to the size of the figure.
             Otherwise the default matplotlib font size is used. Default is True.
-
+        kwargs : optional
+            arguments for hexbin matplotlib function
+        
         Returns
-        --------
-            matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
+        -------
+        matplotlib.figure.Figure | cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         if self.imp_mat.size == 0:
             raise ValueError('Attribute imp_mat is empty. Recalculate Impact'
@@ -723,7 +723,7 @@ class Impact():
             used in event plots
 
         Returns
-        --------
+        -------
         matplotlib.axes._subplots.AxesSubplot,
         np.ndarray (return_periods.size x num_centroids)
         """
@@ -838,7 +838,7 @@ class Impact():
 
         Parameters
         ----------
-        file_name : str file name
+        file_name : str
 
         Returns
         -------
@@ -1185,8 +1185,8 @@ class Impact():
         If multiple input variables are not None, it returns all the impacts
         matching at least one of the conditions.
 
-        Note
-        ----
+        Notes
+        -----
             the frequencies are NOT adjusted. Method to adjust frequencies
         and obtain correct eai_exp:
             1- Select subset of impact according to your choice
