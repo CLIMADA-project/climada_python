@@ -277,8 +277,8 @@ class Hazard():
         if not band:
             band = [1]
         if files_fraction is not None and len(files_intensity) != len(files_fraction):
-            raise ValueError('Number of intensity files differs from fraction files: %s != %s'
-                             % (len(files_intensity), len(files_fraction)))
+            raise ValueError('Number of intensity files differs from fraction files:'
+                             f'{len(files_intensity)} != {len(files_fraction)}')
 
         if haz_type is not None:
             try:

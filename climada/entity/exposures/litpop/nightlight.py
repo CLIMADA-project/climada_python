@@ -505,7 +505,7 @@ def untar_noaa_stable_nightlight(f_tar_ini):
                             f'in file {f_tar_ini}')
         if len(extract_name) > 1:
             LOGGER.warning('found more than one potential intensity file in %s %s',
-                        f_tar_ini, extract_name)
+                           f_tar_ini, extract_name)
         tar_file.extract(extract_name[0], SYSTEM_DIR)
     return SYSTEM_DIR.joinpath(extract_name[0])
 
