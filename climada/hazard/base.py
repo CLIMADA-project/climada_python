@@ -1596,6 +1596,7 @@ class Hazard():
         Hazard.concat : concatenate 2 or more hazards
         Centroids.union : combine centroids
         """
+        # pylint: disable=no-member
         if len(others) == 0:
             return
         haz_list = [self] + list(others)
