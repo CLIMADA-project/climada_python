@@ -1596,16 +1596,17 @@ class Hazard():
         Hazard.concat : concatenate 2 or more hazards
         Centroids.union : combine centroids
         """
+        # pylint: disable=no-member
         if len(others) == 0:
             return
         haz_list = [self] + list(others)
-        haz_list_nonempty = [haz for haz in haz_list if haz.size > 0] # pylint: disable=no-member
+        haz_list_nonempty = [haz for haz in haz_list if haz.size > 0]
 
         for haz in haz_list:
-            haz._check_events() # pylint: disable=no-member
+            haz._check_events()
 
         # check type, unit, and attribute consistency among hazards
-        haz_types = {haz.tag.haz_type for haz in haz_list if haz.tag.haz_type != ''} # pylint: disable=no-member
+        haz_types = {haz.tag.haz_type for haz in haz_list if haz.tag.haz_type != ''}
         if len(haz_types) > 1:
             raise ValueError(f"The given hazards are of different types: {haz_types}. "
                              "The hazards are incompatible and cannot be concatenated.")
@@ -1616,7 +1617,7 @@ class Hazard():
             raise TypeError(f"The given hazards are of different classes: {haz_classes}. "
                             "The hazards are incompatible and cannot be concatenated.")
 
-        units = {haz.units for haz in haz_list if haz.units != ''} # pylint: disable=no-member
+        units = {haz.units for haz in haz_list if haz.units != ''}
         if len(units) > 1:
             raise ValueError(f"The given hazards use different units: {units}. "
                              "The hazards are incompatible and cannot be concatenated.")
@@ -1632,11 +1633,11 @@ class Hazard():
 
         # append all tags (to keep track of input files and descriptions)
         for haz in haz_list:
-            if haz.tag is not self.tag: # pylint: disable=no-member
-                self.tag.append(haz.tag) # pylint: disable=no-member
+            if haz.tag is not self.tag:
+                self.tag.append(haz.tag)
 
         # map individual centroids objects to union
-        centroids = Centroids.union(*[haz.centroids for haz in haz_list]) # pylint: disable=no-member
+        centroids = Centroids.union(*[haz.centroids for haz in haz_list])
         hazcent_in_cent_idx_list = [
             u_coord.assign_coordinates(haz.centroids.coord, centroids.coord, threshold=0)
             for haz in haz_list_nonempty
