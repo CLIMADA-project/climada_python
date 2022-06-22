@@ -42,7 +42,7 @@ exp_poly = Client().get_exposures(
     'base', name='test_polygon_exp', status='test_dataset')
 gdf_poly = exp_poly.gdf
 
-# also atm in /climada_python/data/demo. Put on API. And only a subset, as 
+# also atm in /climada_python/data/demo. Put on API. And only a subset, as
 # 500 aren't needed
 gdf_line = gpd.read_file(Path(DEMO_DIR,'nl_rails.gpkg'), driver="GPKG", crs="EPSG:4326")
 gdf_line = gdf_line.iloc[np.arange(0,500,18)].set_crs(epsg=4326, allow_override=True)
@@ -55,7 +55,7 @@ lat = np.array([53.15019278, 52.90814037, 52.48232657, 52.13002249, 51.26574748,
        51.30438894, 51.52944652, 51.98426911, 52.61538869, 53.10328543,
        52.54974468, 52.11286591])
 gdf_point = gpd.GeoDataFrame({
-    'name': np.arange(len(lat))}, 
+    'name': np.arange(len(lat))},
     geometry=gpd.points_from_xy(lon, lat, crs="EPSG:4326"))
 
 haz = StormEurope.from_footprints(WS_DEMO_NC, description='test_description')
@@ -160,18 +160,18 @@ class TestExposureGeomToPnt(unittest.TestCase):
 
 class TestGeomImpactCalcs(unittest.TestCase):
     """Test main functions on impact calculation and impact aggregation"""
-    
+
     def test_calc_geom_impact_polys(self):
         """ test calc_geom_impact() with polygons"""
-        
-        # TODO: update all values here with the most up-to-date version of 
+
+        # TODO: update all values here with the most up-to-date version of
         # exp_poly from the Data API
         exp_poly = Client().get_exposures(
             'base', name='test_polygon_exp', status='test_dataset')
         gdf_poly = exp_poly.gdf
         # polygon exposures only
         imp1 = u_lp.calc_geom_impact(
-            exp_poly, impf_set, haz, res=0.1, to_meters=False, 
+            exp_poly, impf_set, haz, res=0.1, to_meters=False,
             disagg_met=u_lp.DisaggMethod.DIV,
             disagg_val=None, agg_met=u_lp.AggMethod.SUM)
         self.assertEqual(len(haz.event_id), len(imp1.at_event))
@@ -183,13 +183,13 @@ class TestGeomImpactCalcs(unittest.TestCase):
         self.assertAlmostEqual(imp1.aai_agg, 2182703.085366719, 3)
         self.assertTrue(np.all(np.isclose(
             imp1.eai_exp,
-            np.array([17554.08233195,   9896.48265036,  16862.31818246,  
-                      72055.81490662, 21485.93199464, 253701.42418527, 
-                      135031.5217457 , 387550.35813156, 352213.16031506, 
+            np.array([17554.08233195,   9896.48265036,  16862.31818246,
+                      72055.81490662, 21485.93199464, 253701.42418527,
+                      135031.5217457 , 387550.35813156, 352213.16031506,
                       480603.19106997, 203634.46630402, 232114.3335491 ]))))
-    
+
         imp2 = u_lp.calc_geom_impact(
-            exp_poly, impf_set, haz, res=10, to_meters=False, 
+            exp_poly, impf_set, haz, res=10, to_meters=False,
             disagg_met=u_lp.DisaggMethod.DIV,
             disagg_val=None, agg_met=u_lp.AggMethod.SUM)
         self.assertIsInstance(imp2, Impact)
@@ -200,13 +200,13 @@ class TestGeomImpactCalcs(unittest.TestCase):
         self.assertAlmostEqual(imp2.aai_agg, 1282899.053069401, 3)
         self.assertTrue(np.all(np.isclose(
             imp2.eai_exp,
-            np.array([ 8361.78802035,   7307.04698346,  12062.89257699,  
-                      35406.14977618, 12352.43204322,  77807.46608747, 
-                      128292.99535735, 231231.95252362, 131911.22622791, 
+            np.array([ 8361.78802035,   7307.04698346,  12062.89257699,
+                      35406.14977618, 12352.43204322,  77807.46608747,
+                      128292.99535735, 231231.95252362, 131911.22622791,
                       537897.30570932,  83701.69475186,  16566.10301167]))))
-        
+
         imp3 = u_lp.calc_geom_impact(
-            exp_poly, impf_set, haz, res=100, to_meters=True, 
+            exp_poly, impf_set, haz, res=800, to_meters=True,
             disagg_met=u_lp.DisaggMethod.DIV,
             disagg_val=None, agg_met=u_lp.AggMethod.SUM)
         self.assertIsInstance(imp3, Impact)
@@ -214,16 +214,10 @@ class TestGeomImpactCalcs(unittest.TestCase):
         self.assertTrue(hasattr(imp3, 'coord_exp'))
         self.assertTrue(np.all(imp3.geom_exp==exp_poly.gdf.geometry))
         self.assertEqual(len(imp3.coord_exp), len(exp_poly.gdf))
-        self.assertAlmostEqual(imp3.aai_agg, 2326597.33541342, 3)
-        self.assertTrue(np.all(np.isclose(
-            imp3.eai_exp,
-            np.array([ 17562.23600586,  10750.64050132,  16295.19417757,  
-                      73521.19343345, 24968.39336204, 216953.35044025, 
-                      135005.31546255, 406737.94528983, 434273.30610881, 
-                      519614.68701078, 247469.57948002, 223445.49414094]))))
-        
+        self.assertAlmostEqual(imp3.aai_agg, 2317081.0602, 3)
+
         imp4 = u_lp.calc_geom_impact(
-            exp_poly, impf_set, haz, res=1000, to_meters=True, 
+            exp_poly, impf_set, haz, res=1000, to_meters=True,
             disagg_met=u_lp.DisaggMethod.DIV,
             disagg_val=None, agg_met=u_lp.AggMethod.SUM)
         self.assertIsInstance(imp4, Impact)
@@ -237,11 +231,11 @@ class TestGeomImpactCalcs(unittest.TestCase):
             np.array([ 17558.22201377,  10796.36836336,  16239.35385599,  73254.21872128,
                     25202.52110382, 216510.67702673, 135412.73610909, 410197.10023667,
                    433400.62668497, 521005.95549878, 254979.4396249 , 212421.12303947]))))
-        self.assertTrue(np.all(np.isclose(
-            np.ones_like(imp4.eai_exp), imp4.eai_exp/imp3.eai_exp, rtol=0.1)))
-        
+        np.testing.assert_allclose(imp4.eai_exp, imp3.eai_exp, rtol=0.1)
+
+
         imp5 = u_lp.calc_geom_impact(
-            exp_poly, impf_set, haz, res=1000, to_meters=True, 
+            exp_poly, impf_set, haz, res=1000, to_meters=True,
             disagg_met=u_lp.DisaggMethod.DIV,
             disagg_val=10e6, agg_met=u_lp.AggMethod.SUM)
         self.assertIsInstance(imp5, Impact)
@@ -255,20 +249,21 @@ class TestGeomImpactCalcs(unittest.TestCase):
             np.array([3.55826479,  2.55715709,  2.49840826,  3.51427162,  4.30164506,
                    19.36203038,  5.28426336, 14.25330336, 37.29091663, 14.05986724,
                     6.88087542, 19.2545918 ]))))
-     
+
         gdf_noval = gdf_poly.copy()
         gdf_noval.pop('value')
         exp_noval = Exposures(gdf_noval)
-    
+
         imp6 = u_lp.calc_geom_impact(
-            exp_noval, impf_set, haz, res=1000, to_meters=True, 
+            exp_noval, impf_set, haz, res=1000, to_meters=True,
             disagg_met=u_lp.DisaggMethod.DIV,
-            disagg_val=10e6, agg_met=u_lp.AggMethod.SUM)
+            disagg_val=10e6, agg_met=u_lp.AggMethod.SUM
+            )
         self.assertTrue(np.all(np.isclose(
             imp5.eai_exp, imp6.eai_exp)))
-        
+
         imp7 = u_lp.calc_geom_impact(
-            exp_noval, impf_set, haz, res=1000, to_meters=True, 
+            exp_noval, impf_set, haz, res=1000, to_meters=True,
             disagg_met=u_lp.DisaggMethod.FIX,
             disagg_val=10e6, agg_met=u_lp.AggMethod.SUM)
         self.assertIsInstance(imp7, Impact)
@@ -279,23 +274,25 @@ class TestGeomImpactCalcs(unittest.TestCase):
         self.assertAlmostEqual(imp7.aai_agg, 412832.8602866128, 3)
         self.assertTrue(np.all(np.isclose(
             imp7.eai_exp,
-            np.array([8561.18507994,   6753.45186608,   8362.17243334,  
-                      18014.15630989, 8986.13653385,  36826.58179136,  
-                      27446.46387061,  45468.03772305, 130145.29903078,  
+            np.array([8561.18507994,   6753.45186608,   8362.17243334,
+                      18014.15630989, 8986.13653385,  36826.58179136,
+                      27446.46387061,  45468.03772305, 130145.29903078,
                       54861.60197959,  26849.17587226,  40558.59779586]))))
-        
+
     def test_calc_geom_impact_lines(self):
         """ test calc_geom_impact() with lines"""
-        # line exposures only 
+        # line exposures only
         gdf_line_withvals = gdf_line.copy()
         gdf_line_withvals['value'] = np.arange(len(gdf_line_withvals))*1000
         exp_line = Exposures(gdf_line_withvals)
         exp_line_novals  = Exposures(gdf_line)
-        
-        imp1 = u_lp.calc_geom_impact(exp_line, impf_set, haz,
-        res=0.05, to_meters=False, disagg_met=u_lp.DisaggMethod.DIV,
-        disagg_val=None, agg_met=u_lp.AggMethod.SUM)
-        
+
+        imp1 = u_lp.calc_geom_impact(
+            exp_line, impf_set, haz,
+            res=0.05, to_meters=False, disagg_met=u_lp.DisaggMethod.DIV,
+            disagg_val=None, agg_met=u_lp.AggMethod.SUM
+            )
+
         self.assertEqual(len(haz.event_id), len(imp1.at_event))
         self.assertIsInstance(imp1, Impact)
         self.assertTrue(hasattr(imp1, 'geom_exp'))
@@ -311,12 +308,12 @@ class TestGeomImpactCalcs(unittest.TestCase):
                    0.00647638, 0.00731211, 0.07057858, 0.02156532, 0.01191608,
                    0.00619134, 0.0780445 , 0.02992291, 0.02016611, 0.08015055,
                    0.04738706, 0.01257872, 0.02612462]))))
-        
-        
+
+
         imp2 = u_lp.calc_geom_impact(exp_line, impf_set, haz,
         res=300, to_meters=True, disagg_met=u_lp.DisaggMethod.DIV,
         disagg_val=None, agg_met=u_lp.AggMethod.SUM)
-        
+
         self.assertEqual(len(haz.event_id), len(imp1.at_event))
         self.assertIsInstance(imp2, Impact)
         self.assertTrue(hasattr(imp2, 'geom_exp'))
@@ -326,19 +323,23 @@ class TestGeomImpactCalcs(unittest.TestCase):
         self.assertAlmostEqual(imp2.aai_agg, 0.5232328825117059, 3)
         self.assertTrue(np.all(np.isclose(
             imp2.eai_exp, imp1.eai_exp, rtol=0.1)))
-        
-        imp3 = u_lp.calc_geom_impact(exp_line_novals, impf_set, haz,
-        res=300, to_meters=True, disagg_met=u_lp.DisaggMethod.FIX,
-        disagg_val=5000, agg_met=u_lp.AggMethod.SUM)
-        
-        imp4 = u_lp.calc_geom_impact(exp_line, impf_set, haz,
-        res=300, to_meters=True, disagg_met=u_lp.DisaggMethod.FIX,
-        disagg_val=5000, agg_met=u_lp.AggMethod.SUM)
-        
+
+        imp3 = u_lp.calc_geom_impact(
+            exp_line_novals, impf_set, haz,
+            res=300, to_meters=True, disagg_met=u_lp.DisaggMethod.FIX,
+            disagg_val=5000, agg_met=u_lp.AggMethod.SUM
+            )
+
+        imp4 = u_lp.calc_geom_impact(
+            exp_line, impf_set, haz,
+            res=300, to_meters=True, disagg_met=u_lp.DisaggMethod.FIX,
+            disagg_val=5000, agg_met=u_lp.AggMethod.SUM
+            )
+
         self.assertTrue(np.all(imp3.eai_exp==imp4.eai_exp))
         self.assertAlmostEqual(imp4.aai_agg, 2.8301447149208117)
 
-        
+
     def test_calc_geom_impact_points(self):
         """ test calc_geom_impact() with points"""
         gdf_pnt_vals = gdf_point.copy()
@@ -348,33 +349,39 @@ class TestGeomImpactCalcs(unittest.TestCase):
         gdf_pnt_novals['impf_WS'] = 1
         exp_pnt_vals = Exposures(gdf_pnt_vals)
         exp_pnt_novals = Exposures(gdf_pnt_novals)
-        
-        imp1 = u_lp.calc_geom_impact(exp_pnt_vals, impf_set, haz,
-        res=0.05, to_meters=False, disagg_met=u_lp.DisaggMethod.DIV,
-        disagg_val=None, agg_met=u_lp.AggMethod.SUM)
-        
+
+        imp1 = u_lp.calc_geom_impact(
+            exp_pnt_vals, impf_set, haz,
+            res=0.05, to_meters=False, disagg_met=u_lp.DisaggMethod.DIV,
+            disagg_val=None, agg_met=u_lp.AggMethod.SUM
+            )
+
     def test_calc_geom_impact_mixed(self):
         """ test calc_geom_impact() with a mixed exp (points, lines and polygons) """
-        # mixed exposures 
+        # mixed exposures
         gdf_pnt_vals = gdf_point.copy()
         gdf_pnt_vals['value'] = np.arange(len(gdf_pnt_vals))*1000
         gdf_mix = gdf_line.append(gdf_poly).append(
             gdf_pnt_vals).reset_index(drop=True)
         gdf_mix_lp = gdf_line.append(gdf_poly).reset_index(drop=True)
-        
+
         exp_mix = Exposures(gdf_mix)
         exp_mix_lp = Exposures(gdf_mix_lp)
 
-        imp1 = u_lp.calc_geom_impact(exp_mix, impf_set, haz,
-        res=0.05, to_meters=False, disagg_met=u_lp.DisaggMethod.DIV,
-        disagg_val=None, agg_met=u_lp.AggMethod.SUM)
-        
-        imp2 = u_lp.calc_geom_impact(exp_mix_lp, impf_set, haz,
-        res=0.05, to_meters=False, disagg_met=u_lp.DisaggMethod.DIV,
-        disagg_val=None, agg_met=u_lp.AggMethod.SUM)
-        
-        
-   
+        imp1 = u_lp.calc_geom_impact(
+            exp_mix, impf_set, haz,
+            res=0.05, to_meters=False, disagg_met=u_lp.DisaggMethod.DIV,
+            disagg_val=None, agg_met=u_lp.AggMethod.SUM
+            )
+
+        imp2 = u_lp.calc_geom_impact(
+            exp_mix_lp, impf_set, haz,
+            res=0.05, to_meters=False, disagg_met=u_lp.DisaggMethod.DIV,
+            disagg_val=None, agg_met=u_lp.AggMethod.SUM
+            )
+
+
+
     def test_impact_pnt_agg(self):
         pass
 
@@ -431,11 +438,11 @@ class TestGdfGeomToPnt(unittest.TestCase):
     def test_interp_one_poly_m(self):
         """"""
         pass
-    
+
     def test_gdf_to_grid(self):
         """"""
         pass
-        
+
 class TestLPUtils(unittest.TestCase):
     """ """
 
@@ -506,3 +513,4 @@ if __name__ == "__main__":
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestGdfGeomToPnt))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestLPUtils))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
+
