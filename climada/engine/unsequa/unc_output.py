@@ -105,7 +105,7 @@ class UncOutput():
     _metadata = ['sampling_method', 'sampling_kwargs', 'sensitivity_method',
                  'sensitivity_kwargs']
 
-    def __init__(self, samples_df, unit=None):
+    def __init__(self, samples_df, coord_df, unit=None):
         """
         Initialize Uncertainty Data object.
 
@@ -115,10 +115,13 @@ class UncOutput():
             input parameters samples
         unit : str, optional
             value unit
+        coord_df : pandas.DataFrame
+            Coordinates of the exposure.
         """
         #Data
         self.samples_df = samples_df
         self.unit = unit
+        self.coord_df = coord_df
 
     def get_samples_df(self):
         return getattr(self, 'samples_df')
@@ -1112,7 +1115,7 @@ class UncImpactOutput(UncOutput):
         coord_df : pandas.DataFrame
             Coordinates of the exposure
         """
-        super().__init__(samples_df, unit)
+        super().__init__(samples_df, coord_df, unit)
         self.aai_agg_unc_df = aai_agg_unc_df
         self.aai_agg_sens_df = None
         self.freq_curve_unc_df = freq_curve_unc_df
@@ -1123,7 +1126,6 @@ class UncImpactOutput(UncOutput):
         self.at_event_sens_df = None
         self.tot_value_unc_df = tot_value_unc_df
         self.tot_value_sens_df = None
-        self.coord_df = coord_df
 
 
 class UncCostBenefitOutput(UncOutput):
