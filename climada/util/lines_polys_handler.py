@@ -521,9 +521,13 @@ def gdf_to_pnts(gdf, res, to_meters):
     # a dataframe with a multi-index breaks the multi-index
     gdf_pnt = gpd.GeoDataFrame([])
     if pnt_mask.any():
+        gdf_pnt_only = gdf[pnt_mask]
+        gdf_pnt_only['geometry_orig'] = gdf_pnt_only['geometry'].copy()
+        index = gdf_pnt_only.index.values
+        gdf_pnt_only.index = pd.MultiIndex.from_arrays([index, index])
         gdf_pnt = gpd.GeoDataFrame(pd.concat([
             gdf_pnt,
-            gdf[pnt_mask]
+            gdf_pnt_only
         ]))
     if line_mask.any():
         gdf_pnt = gpd.GeoDataFrame(pd.concat([
@@ -575,7 +579,7 @@ def gdf_to_grid(gdf, grid):
 
     # Concatenating an empty dataframe with an index together with
     # a dataframe with a multi-index breaks the multi-index
-    
+
     if (line_mask.any() or pnt_mask.any()):
         raise AttributeError("The dataframe contains lines and/or polygons."
                              "Currently only polygon dataframes can be "
