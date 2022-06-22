@@ -381,7 +381,6 @@ class TestGeomImpactCalcs(unittest.TestCase):
             )
 
 
-
     def test_impact_pnt_agg(self):
         pass
 
@@ -486,7 +485,8 @@ class TestLPUtils(unittest.TestCase):
         self.assertTrue(np.alltrue(swap_gdf.geometry.geom_equals(gdf_orig.new_geom)))
 
 
-# Not needed, will come with another pull request.
+# Not needed, metehods will be incorporated in to ImpactCalc in another
+# pull request
 # class TestImpactSetters(unittest.TestCase):
 #     """ """
 
