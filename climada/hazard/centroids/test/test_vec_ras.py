@@ -139,13 +139,13 @@ VEC_LAT = np.array([
     14.375, 11.875, 12.29166667, 12.70833333, 13.125, 13.54166667, 13.95833333, 14.375
 ])
 
+
 def data_vector():
-    vec_data = gpd.GeoDataFrame(crs='epsg:32632')
-    vec_data['geometry'] = list(zip(VEC_LON, VEC_LAT))
-    vec_data['geometry'] = vec_data['geometry'].apply(Point)
-    vec_data['lon'] = VEC_LON
-    vec_data['lat'] = VEC_LAT
-    vec_data['value'] = np.arange(VEC_LAT.size) + 100
+    vec_data = gpd.GeoDataFrame({
+        'geometry': [Point(lon, lat) for lon, lat in zip(VEC_LON, VEC_LAT)],
+        'lon': VEC_LON,
+        'lat': VEC_LAT
+    }, crs='epsg:32632')
     return vec_data.lat.values, vec_data.lon.values, vec_data.geometry
 
 class TestVector(unittest.TestCase):
@@ -230,11 +230,11 @@ class TestVector(unittest.TestCase):
         uly, yres, lry = 0, 1, 20
         xx, yy = np.meshgrid(np.arange(ulx + xres / 2, lrx, xres),
                              np.arange(uly + yres / 2, lry, yres))
-        vec_data = gpd.GeoDataFrame(crs={'proj': 'cea'})
-        vec_data['geometry'] = list(zip(xx.flatten(), yy.flatten()))
-        vec_data['geometry'] = vec_data['geometry'].apply(Point)
-        vec_data['lon'] = xx.flatten()
-        vec_data['lat'] = yy.flatten()
+        vec_data = gpd.GeoDataFrame({
+            'geometry': [Point(xflat, yflat) for xflat, yflat in zip(xx.flatten(), yy.flatten())],
+            'lon': xx.flatten(),
+            'lat': yy.flatten(),
+        }, crs={'proj': 'cea'})
 
         centr = Centroids.from_lat_lon(vec_data.lat.values, vec_data.lon.values)
         centr.geometry = vec_data.geometry
@@ -574,9 +574,10 @@ class TestCentroids(unittest.TestCase):
             centr.check()
 
         centr.lon = np.array([])
-        centr.geometry = gpd.GeoSeries(np.ones(1))
-        with self.assertRaises(ValueError):
+        centr.geometry = gpd.GeoSeries(Point(0,0))
+        with self.assertRaises(ValueError) as raised:
             centr.check()
+        self.assertEqual(str(raised.exception), 'Wrong geometry size: 0 != 1.')
 
         cen = Centroids()
         cen.meta = {
