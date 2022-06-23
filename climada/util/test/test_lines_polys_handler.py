@@ -35,27 +35,17 @@ from climada.entity.impact_funcs.storm_europe import ImpfStormEurope
 
 #TODO: add tests for the private methods
 
-# HAZ = Client().get_hazard(
-#     'base', name='test_haz_WS_nl', status='test_dataset')
-HAZ = Hazard.from_hdf5(Path.home() / 'climada/data/hazard/storm_europe/test_haz_WS_nl/test_haz_WS_nl.hdf5')
-# haz = StormEurope.from_footprints(WS_DEMO_NC, description='test_description')
-
-
 # Load gdfs and hazard and impact functions for tests
-# EXP_POLY = Client().get_exposures(
-#     'base', name='test_polygon_exp_nl', status='test_dataset')
-EXP_POLY = Client().get_exposures(
-    'base', name='test_polygon_exp', status='test_dataset')
+
+HAZ = Client().get_hazard('storm_europe', name='test_haz_WS_nl', status='test_dataset')
+
+EXP_POLY = Client().get_exposures('base', name='test_polygon_exp', status='test_dataset')
 GDF_POLY = EXP_POLY.gdf
 
-# EXP_LINE = Client().get_exposures(
-#     'base', name='test_line_exp_nl', status='test_dataset')
-EXP_LINE = Exposures.from_hdf5(Path.home() /'climada/data/exposures/base/test_line_exp/test_line_exp.hdf5')
+EXP_LINE = Client().get_exposures('base', name='test_line_exp', status='test_dataset')
 GDF_LINE = EXP_LINE.gdf
 
-# EXP_POINT = Client().get_exposures(
-#     'base', name='test_point_exp_nl', status='test_dataset')
-EXP_POINT = Exposures.from_hdf5(Path.home() / 'climada/data/exposures/base/test_point_exp/test_point_exp.hdf5')
+EXP_POINT = Client().get_exposures('base', name='test_point_exp', status='test_dataset')
 GDF_POINT = EXP_POINT.gdf
 
 impf = ImpfStormEurope.from_welker()
@@ -63,6 +53,7 @@ impf_set = ImpactFuncSet()
 impf_set.append(impf)
 
 COL_CHANGING = ['value', 'latitude', 'longitude', 'geometry', 'geometry_orig']
+
 
 def check_unchanged_geom_gdf(self, gdf_geom, gdf_pnt):
     """Test properties that should not change"""
@@ -539,6 +530,7 @@ class TestGdfGeomToPnt(unittest.TestCase):
         """Private method"""
         pass
 
+
 class TestLPUtils(unittest.TestCase):
     """ """
 
@@ -621,4 +613,3 @@ if __name__ == "__main__":
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestGdfGeomToPnt))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestLPUtils))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
-
