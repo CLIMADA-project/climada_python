@@ -62,8 +62,7 @@ class TestFuncs(unittest.TestCase):
         haz.raster_to_vector()
         ncentroids = haz.centroids.size
 
-        exp = Exposures()
-        exp.gdf.crs = haz.centroids.crs
+        exp = Exposures(crs=haz.centroids.crs)
 
         # some are matching exactly, some are geographically close
         exp.gdf['longitude'] = np.concatenate([
