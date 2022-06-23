@@ -36,24 +36,18 @@ from climada.hazard import Hazard
 from climada.entity.impact_funcs import ImpactFuncSet
 from climada.entity.impact_funcs.storm_europe import ImpfStormEurope
 
-HAZ = Client().get_hazard('storm_europe', name='test_haz_WS_nl', status='test_dataset')
 
 # Load gdfs and hazard and impact functions for tests
-# EXP_POLY = Client().get_exposures(
-#     'base', name='test_polygon_exp_nl', status='test_dataset')
-EXP_POLY = Client().get_exposures(
-    'base', name='test_polygon_exp', status='test_dataset')
+
+HAZ = Client().get_hazard('storm_europe', name='test_haz_WS_nl', status='test_dataset')
+
+EXP_POLY = Client().get_exposures('base', name='test_polygon_exp', status='test_dataset')
 GDF_POLY = EXP_POLY.gdf
 
-# EXP_LINE = Client().get_exposures(
-#     'base', name='test_line_exp_nl', status='test_dataset')
-EXP_LINE = Exposures.from_hdf5(Path.home() /'climada/data/exposures/base/test_line_exp/test_line_exp.hdf5')
+EXP_LINE = Client().get_exposures('base', name='test_line_exp', status='test_dataset')
 GDF_LINE = EXP_LINE.gdf
 
-# EXP_POINT = Client().get_exposures(
-#     'base', name='test_point_exp_nl', status='test_dataset')
-EXP_POINT = Exposures.from_hdf5(Path.home() / 'climada/data/exposures/base/test_point_exp/test_point_exp.hdf5')
-EXP_POINT.assign_centroids(HAZ)
+EXP_POINT = Client().get_exposures('base', name='test_point_exp', status='test_dataset')
 GDF_POINT = EXP_POINT.gdf
 
 impf = ImpfStormEurope.from_welker()
@@ -61,6 +55,7 @@ impf_set = ImpactFuncSet()
 impf_set.append(impf)
 
 COL_CHANGING = ['value', 'latitude', 'longitude', 'geometry', 'geometry_orig']
+
 
 def check_unchanged_geom_gdf(self, gdf_geom, gdf_pnt):
     """Test properties that should not change"""
@@ -72,6 +67,7 @@ def check_unchanged_geom_gdf(self, gdf_geom, gdf_pnt):
     for col in gdf_pnt.columns:
         if col not in COL_CHANGING:
             np.testing.assert_allclose(gdf_pnt[col].unique(), gdf_geom[col].unique())
+
 
 class TestExposureGeomToPnt(unittest.TestCase):
     """Test Exposures to points functions"""
@@ -178,6 +174,7 @@ class TestExposureGeomToPnt(unittest.TestCase):
         self.check_unchanged_exp(exp_poly, exp_pnt_grid)
         for col in ['value', 'latitude', 'longitude']:
             np.testing.assert_allclose(exp_pnt.gdf[col], exp_pnt_grid.gdf[col])
+
 
 class TestGeomImpactCalcs(unittest.TestCase):
     """Test main functions on impact calculation and impact aggregation"""
@@ -479,6 +476,7 @@ class TestGdfGeomToPnt(unittest.TestCase):
         """"""
         pass
 
+
 class TestLPUtils(unittest.TestCase):
     """ """
 
@@ -550,4 +548,3 @@ if __name__ == "__main__":
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestGdfGeomToPnt))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestLPUtils))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
-
