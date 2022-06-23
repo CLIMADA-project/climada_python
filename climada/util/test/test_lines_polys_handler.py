@@ -466,7 +466,35 @@ class TestGeomImpactCalcs(unittest.TestCase):
         check_impact(self, imp2, HAZ, exp_mix, aai_agg2, eai_exp2)
 
     def test_impact_pnt_agg(self):
-        pass
+        """Test impact agreggation method"""
+        gdf_mix = GDF_LINE.append(GDF_POLY).append(GDF_POINT).reset_index(drop=True)
+        exp_mix = Exposures(gdf_mix)
+
+        exp_pnt = u_lp.exp_geom_to_pnt(
+            exp_mix, res=1, to_meters=False, disagg_met=u_lp.DisaggMethod.DIV,
+            disagg_val=None
+            )
+        imp_pnt = Impact()
+        imp_pnt.calc(exp_pnt, impf_set, HAZ, save_mat=True)
+        imp_agg = u_lp.impact_pnt_agg(imp_pnt, exp_pnt.gdf, u_lp.AggMethod.SUM)
+        aai_agg = 1282901.377219451
+        eai_exp = np.array([
+            1.73069928e-04, 8.80741357e-04, 4.32240819e-03, 8.62816073e-03,
+            2.21441154e-02, 1.09329988e-02, 8.58546479e-02, 4.62370081e-02,
+            8.99584440e-02, 1.27160538e-02, 8.60317575e-02, 2.02440009e-01,
+            2.32808488e-02, 2.86159458e-02, 4.26205598e-03, 2.40051484e-01,
+            5.29133033e-03, 2.72705887e-03, 8.87954091e-03, 2.95633263e-02,
+            6.33106879e-01, 1.33011693e-03, 1.11120718e-01, 7.72573773e-02,
+            6.12233710e-03, 1.61239410e-02, 1.01492204e-01, 7.45522678e-02,
+            1.41155415e-01, 1.53820450e-01, 2.27951125e-02, 2.23629697e-02,
+            8.59651753e-03, 5.98415680e-03, 1.24717770e-02, 1.24717770e-02,
+            1.48060577e-05, 1.48060577e-05, 5.18270742e-03, 5.18270742e-03,
+            8.36178802e+03, 7.30704698e+03, 1.20628926e+04, 3.54061498e+04,
+            1.23524320e+04, 7.78074661e+04, 1.28292995e+05, 2.31231953e+05,
+            1.31911226e+05, 5.37897306e+05, 8.37016948e+04, 1.65661030e+04
+            ])
+        check_impact(self, imp_agg, HAZ, exp_mix, aai_agg, eai_exp)
+
 
     def test_aggregate_impact_mat(self):
         """Private method"""
