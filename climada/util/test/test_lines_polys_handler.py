@@ -36,11 +36,7 @@ from climada.hazard import Hazard
 from climada.entity.impact_funcs import ImpactFuncSet
 from climada.entity.impact_funcs.storm_europe import ImpfStormEurope
 
-# HAZ = Client().get_hazard(
-#     'base', name='test_haz_WS_nl', status='test_dataset')
-HAZ = Hazard.from_hdf5(Path.home() / 'climada/data/hazard/storm_europe/test_haz_WS_nl/test_haz_WS_nl.hdf5')
-# haz = StormEurope.from_footprints(WS_DEMO_NC, description='test_description')
-
+HAZ = Client().get_hazard('storm_europe', name='test_haz_WS_nl', status='test_dataset')
 
 # Load gdfs and hazard and impact functions for tests
 # EXP_POLY = Client().get_exposures(
