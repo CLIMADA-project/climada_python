@@ -524,7 +524,7 @@ def gdf_to_pnts(gdf, res, to_meters):
         gdf_pnt_only = gdf[pnt_mask]
         gdf_pnt_only['geometry_orig'] = gdf_pnt_only['geometry'].copy()
         index = gdf_pnt_only.index.values
-        gdf_pnt_only.index = pd.MultiIndex.from_arrays([index, index])
+        gdf_pnt_only.index = pd.MultiIndex.from_arrays([index, np.zeros(len(index))])
         gdf_pnt = gpd.GeoDataFrame(pd.concat([
             gdf_pnt,
             gdf_pnt_only
