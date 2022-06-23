@@ -88,7 +88,7 @@ class TestExposureGeomToPnt(unittest.TestCase):
 
     def test_point_exposure_from_polygons(self):
         """Test disaggregation of polygons to points"""
-        #test
+        #test low res - one point per poly
         exp_pnt = u_lp.exp_geom_to_pnt(
             EXP_POLY, res=1, to_meters=False,
             disagg_met=u_lp.DisaggMethod.FIX, disagg_val=None
@@ -182,6 +182,52 @@ class TestExposureGeomToPnt(unittest.TestCase):
         self.check_unchanged_exp(exp_poly, exp_pnt_grid)
         for col in ['value', 'latitude', 'longitude']:
             np.testing.assert_allclose(exp_pnt.gdf[col], exp_pnt_grid.gdf[col])
+
+
+    def test_point_exposure_from_lines(self):
+        """Test disaggregation of lines to points"""
+        #test start and end point per line
+        exp_pnt = u_lp.exp_geom_to_pnt(
+            EXP_LINE, res=1, to_meters=False,
+            disagg_met=u_lp.DisaggMethod.FIX, disagg_val=None
+            )
+        np.testing.assert_array_equal(exp_pnt.gdf.value[:,0], EXP_LINE.gdf.value)
+        np.testing.assert_array_equal(exp_pnt.gdf.value[:,0], exp_pnt.gdf.value[:,1])
+        self.check_unchanged_exp(EXP_LINE, exp_pnt)
+
+        #to_meters=False, DIV
+        exp_pnt = u_lp.exp_geom_to_pnt(
+            EXP_LINE, res=1, to_meters=False,
+            disagg_met=u_lp.DisaggMethod.DIV, disagg_val=None
+            )
+        np.testing.assert_array_equal(exp_pnt.gdf.value[:,0], EXP_LINE.gdf.value/2)
+        np.testing.assert_array_equal(exp_pnt.gdf.value[:,0], exp_pnt.gdf.value[:,1])
+        self.check_unchanged_exp(EXP_LINE, exp_pnt)
+
+        #to_meters=TRUE, FIX, dissag_val
+        res = 20000
+        exp_pnt = u_lp.exp_geom_to_pnt(
+            EXP_LINE, res=res, to_meters=True,
+            disagg_met=u_lp.DisaggMethod.FIX, disagg_val=res**2
+            )
+        self.check_unchanged_exp(EXP_LINE, exp_pnt)
+        val = res**2
+        self.assertEqual(np.unique(exp_pnt.gdf.value)[0], val)
+        lat = np.array([
+            50.8794    , 50.8003    , 50.955     , 50.9198    , 51.921     ,
+            51.83477563, 51.77826097, 51.6732    , 52.078     , 52.0788    ,
+            50.8963    , 50.8967    , 51.9259    , 51.925     , 51.5457    ,
+            51.5285    , 52.2614    , 52.3091    , 53.1551    , 53.1635    ,
+            51.6814    , 51.61111058, 51.5457    , 52.0518    , 52.052     ,
+            52.3893    , 52.3893    , 52.1543    , 52.1413    , 52.4735    ,
+            52.4784    , 52.6997    , 52.6448    , 52.1139    , 52.1132    ,
+            51.9222    , 51.8701    , 52.4943    , 52.4929    , 51.8402    ,
+            51.8434    , 51.9255    , 51.9403    , 51.2019    , 51.10694216,
+            50.9911    , 52.4919    , 52.4797    , 50.8557    , 50.8627    ,
+            51.0757    , 51.0821    , 50.8207    , 50.8223    , 50.817     ,
+            50.8093    , 51.0723    , 51.0724    , 50.9075    , 50.9141
+            ])
+        np.testing.assert_allclose(exp_pnt.gdf.latitude, lat)
 
 class TestGeomImpactCalcs(unittest.TestCase):
     """Test main functions on impact calculation and impact aggregation"""
