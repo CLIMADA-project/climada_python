@@ -247,6 +247,15 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
                 method="equirect", units='km'):
     """Compute approximation of geodistance in specified units
 
+    Several batches of points can be processed at once for improved performance. The distances of
+    all (lat1, lon1)-points within a batch to all (lat2, lon2)-points within the same batch are
+    computed, according to the formula:
+
+    result[k, i, j] = dist((lat1[k, i], lon1[k, i]), (lat2[k, j], lon2[k, j]))
+
+    Hence, each of lat1, lon1, lat2, lon2 is expected to be a 2-dimensional array and the resulting
+    array will always be 3-dimensional.
+
     Parameters
     ----------
     lat1, lon1 : ndarrays of floats, shape (nbatch, nx)
@@ -257,7 +266,12 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
         If True, return the tangential vectors at the first points pointing to
         the second points (Riemannian logarithm). Default: False.
     normalize : bool, optional
-        If False, assume that lon values are already between -180 and 180.
+        If False, assume that all longitudinal values lie within a single interval of size 360
+        (e.g., between -180 and 180, or between 0 and 360) and such that the shortest path between
+        any two points does not cross the antimeridian according to that parametrization. If True,
+        a suitable interval is determined using `lon_bounds` and the longitudinal values are
+        reparametrized accordingly using `lon_normalize`. Note that this option has no effect when
+        using the "geosphere" method because it is independent from the parametrization.
         Default: True
     method : str, optional
         Specify an approximation method to use:
@@ -292,11 +306,11 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
 
     if method == "equirect":
         if normalize:
-            mid_lon = 0.5 * sum(lon_bounds(np.concatenate([lon1, lon2])))
+            mid_lon = 0.5 * sum(lon_bounds(np.concatenate([lon1.ravel(), lon2.ravel()])))
             lon_normalize(lon1, center=mid_lon)
             lon_normalize(lon2, center=mid_lon)
-        vtan = np.stack([lat2[:, None] - lat1[:, :, None],
-                         lon2[:, None] - lon1[:, :, None]], axis=-1)
+        vtan = np.stack([lat2[:, None, :] - lat1[:, :, None],
+                         lon2[:, None, :] - lon1[:, :, None]], axis=-1)
         fact1 = np.heaviside(vtan[..., 1] - 180, 0)
         fact2 = np.heaviside(-vtan[..., 1] - 180, 0)
         vtan[..., 1] -= (fact1 - fact2) * 360
@@ -306,18 +320,18 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
         dist = np.sqrt(np.einsum("...l,...l->...", vtan, vtan))
     elif method == "geosphere":
         lat1, lon1, lat2, lon2 = map(np.radians, [lat1, lon1, lat2, lon2])
-        dlat = 0.5 * (lat2[:, None] - lat1[:, :, None])
-        dlon = 0.5 * (lon2[:, None] - lon1[:, :, None])
+        dlat = 0.5 * (lat2[:, None, :] - lat1[:, :, None])
+        dlon = 0.5 * (lon2[:, None, :] - lon1[:, :, None])
         # haversine formula:
         hav = np.sin(dlat)**2 \
-            + np.cos(lat1[:, :, None]) * np.cos(lat2[:, None]) * np.sin(dlon)**2
+            + np.cos(lat1[:, :, None]) * np.cos(lat2[:, None, :]) * np.sin(dlon)**2
         dist = np.degrees(2 * np.arcsin(np.sqrt(hav))) * unit_factor
         if log:
             vec1, vbasis = latlon_to_geosph_vector(lat1, lon1, rad=True, basis=True)
             vec2 = latlon_to_geosph_vector(lat2, lon2, rad=True)
             scal = 1 - 2 * hav
             fact = dist / np.fmax(np.spacing(1), np.sqrt(1 - scal**2))
-            vtan = fact[..., None] * (vec2[:, None] - scal[..., None] * vec1[:, :, None])
+            vtan = fact[..., None] * (vec2[:, None, :] - scal[..., None] * vec1[:, :, None])
             vtan = np.einsum('nkli,nkji->nklj', vtan, vbasis)
     else:
         raise KeyError("Unknown distance approximation method: %s" % method)
