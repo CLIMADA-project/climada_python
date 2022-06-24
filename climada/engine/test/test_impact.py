@@ -55,20 +55,21 @@ class TestImpact(unittest.TestCase):
     """"Test initialization and more"""
     def test_from_eih_pass(self):
         exp = ENT.exposures
+        exp.assign_centroids(HAZ)
         tot_value = exp.affected_total_value(HAZ)
         fake_eai_exp = np.arange(len(exp.gdf))
-        fake_at_event = np.arange(len(HAZ.size))
+        fake_at_event = np.arange(HAZ.size)
         fake_aai_agg = np.sum(fake_eai_exp)
         imp = Impact.from_eih(exp, ENT.impact_funcs, HAZ,
-                              fake_eai_exp, fake_at_event, fake_aai_agg)
+                              fake_at_event, fake_eai_exp, fake_aai_agg)
         self.assertEqual(imp.crs, exp.crs)
         self.assertEqual(imp.aai_agg, fake_aai_agg)
-        self.assertIsNone(imp.imp_mat)
+        self.assertEqual(imp.imp_mat.size, 0)
         self.assertEqual(imp.unit, exp.value_unit)
         self.assertEqual(imp.tot_value, tot_value)
         np.testing.assert_array_almost_equal(imp.event_id, HAZ.event_id)
         np.testing.assert_array_almost_equal(imp.event_name, HAZ.event_name)
-        np.testing.assert_array_almost_equal(imp.data, HAZ.data)
+        np.testing.assert_array_almost_equal(imp.date, HAZ.date)
         np.testing.assert_array_almost_equal(imp.frequency, HAZ.frequency)
         np.testing.assert_array_almost_equal(imp.eai_exp, fake_eai_exp)
         np.testing.assert_array_almost_equal(imp.at_event, fake_at_event)
@@ -700,4 +701,5 @@ if __name__ == "__main__":
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRiskTrans))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestSelect))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestConvertExp))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestImpact))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
