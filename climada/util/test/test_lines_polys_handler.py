@@ -505,35 +505,88 @@ class TestGdfGeomToPnt(unittest.TestCase):
 
     def test_gdf_line_to_pnt(self):
         """Test Lines to point dissagregation"""
-        gdf_pnt = u_lp._poly_to_pnts(GDF_LINE, 1, False)
+        gdf_pnt = u_lp._line_to_pnts(GDF_LINE, 1, False)
         check_unchanged_geom_gdf(self, GDF_LINE, gdf_pnt)
+        np.testing.assert_array_equal(
+            np.unique(GDF_LINE.value), np.unique(gdf_pnt.value)
+            )
 
-        gdf_pnt = u_lp._poly_to_pnts(GDF_LINE, 1000, True)
+        gdf_pnt = u_lp._line_to_pnts(GDF_LINE, 1000, True)
         check_unchanged_geom_gdf(self, GDF_LINE, gdf_pnt)
+        np.testing.assert_array_equal(
+            np.unique(GDF_LINE.value), np.unique(gdf_pnt.value)
+            )
 
-    def test_gdf_point_to_pnt(self):
-        """test Point to point "dissaggregation"""
-        gdf_pnt = u_lp._poly_to_pnts(GDF_POINT, 1, False)
-        check_unchanged_geom_gdf(self, GDF_POINT, gdf_pnt)
-
-        gdf_pnt = u_lp._poly_to_pnts(GDF_POINT, 5000, True)
-        check_unchanged_geom_gdf(self, GDF_POINT, gdf_pnt)
+        gdf_pnt_d = u_lp._line_to_pnts(GDF_LINE.iloc[0:1], 0.01, False)
+        np.testing.assert_allclose(
+            gdf_pnt_d.geometry.x.values,
+            np.array([
+                6.0885    , 6.09416494, 6.09160809, 6.08743533, 6.08326257,
+                6.0791987 , 6.07509502, 6.07016232, 6.0640264 , 6.06085342,
+                6.06079
+                ])
+            )
+        np.testing.assert_allclose(
+            gdf_pnt_d.geometry.y.values,
+            np.array([
+                50.8794    , 50.87275494, 50.86410478, 50.85590192, 50.84769906,
+                50.83944191, 50.83120479, 50.82346045, 50.81661416, 50.80861974,
+                50.8003
+                ])
+            )
+        gdf_pnt_m = u_lp._line_to_pnts(GDF_LINE.iloc[0:1], 1000, True)
+        np.testing.assert_allclose(
+            gdf_pnt_m.geometry.x,
+            gdf_pnt_d.geometry.x)
+        np.testing.assert_allclose(
+            gdf_pnt_m.geometry.y,
+            gdf_pnt_d.geometry.y)
 
     def test_gdf_poly_to_pnts(self):
         """Test polygon to points disaggregation"""
         gdf_pnt = u_lp._poly_to_pnts(GDF_POLY, 1, False)
         check_unchanged_geom_gdf(self, GDF_POLY, gdf_pnt)
+        np.testing.assert_array_equal(
+            np.unique(GDF_POLY.value), np.unique(gdf_pnt.value)
+            )
 
         gdf_pnt = u_lp._poly_to_pnts(GDF_POLY, 5000, True)
         check_unchanged_geom_gdf(self, GDF_POLY, gdf_pnt)
+        np.testing.assert_array_equal(
+            np.unique(GDF_POLY.value), np.unique(gdf_pnt.value)
+            )
 
-    def test_gdf_mixed_to_pnts(self):
-        gdf_mix = GDF_LINE.append(GDF_POLY).append(GDF_POINT).reset_index(drop=True)
-        gdf_pnt = u_lp._poly_to_pnts(gdf_mix, 1, False)
-        check_unchanged_geom_gdf(self, gdf_mix, gdf_pnt)
+        gdf_pnt_d = u_lp._poly_to_pnts(GDF_POLY.iloc[0:1], 0.2, False)
+        np.testing.assert_allclose(
+            gdf_pnt_d.geometry.x.values,
+            np.array([
+                6.9690605, 7.1690605, 6.3690605, 6.5690605, 6.7690605, 6.9690605,
+                7.1690605, 6.5690605, 6.7690605
+                ])
+            )
+        np.testing.assert_allclose(
+            gdf_pnt_d.geometry.y.values,
+            np.array([
+                53.04131655, 53.04131655, 53.24131655, 53.24131655, 53.24131655,
+                53.24131655, 53.24131655, 53.44131655, 53.44131655
+                ])
+            )
+        gdf_pnt_m = u_lp._poly_to_pnts(GDF_POLY.iloc[0:1], 15000, True)
+        np.testing.assert_allclose(
+            gdf_pnt_m.geometry.x.values,
+            np.array([
+                6.84279696, 6.97754426, 7.11229155, 6.30380779, 6.43855509,
+                6.57330238, 6.70804967, 6.84279696, 6.97754426
+                ])
+            )
+        np.testing.assert_allclose(
+            gdf_pnt_m.geometry.y.values,
+            np.array([
+                53.0645655 , 53.0645655 , 53.0645655 , 53.28896623, 53.28896623,
+                53.28896623, 53.28896623, 53.28896623, 53.28896623
+                ])
+            )
 
-        gdf_pnt = u_lp._poly_to_pnts(gdf_mix, 5000, True)
-        check_unchanged_geom_gdf(self, gdf_mix, gdf_pnt)
 
     def test_pnts_per_line(self):
         """Test number of points per line for give resolution"""
