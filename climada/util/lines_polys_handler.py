@@ -217,7 +217,11 @@ def _aggregate_impact_mat(imp_pnt, gdf_pnt, agg_met):
     col_geom = np.sort(np.unique(col_geom, return_inverse=True)[1])
     row_pnt = np.arange(len(col_geom))
 
-    mask = np.ones(len(col_geom))
+    if agg_met is AggMethod.SUM:
+        mask = np.ones(len(col_geom))
+    else:
+        raise NotImplementedError(
+            'The available aggregation methods are %s', AggMethod._member_names_)
     csr_mask = sp.sparse.csr_matrix(
         (mask, (row_pnt, col_geom)),
          shape=(len(row_pnt), len(np.unique(col_geom)))
