@@ -147,17 +147,21 @@ class Impact():
         self.unit = unit
 
         if len(self.event_id) != len(self.event_name):
-            raise AttributeError('Hazard event ids and event names'
-                                 ' are not of the same length')
+            raise AttributeError(
+                f'Hazard event ids {len(self.event_id)} and event names'
+                f' {len(self.event_name)} are not of the same length')
         if len(self.event_id) != len(self.date):
-            raise AttributeError('Hazard event ids and event dates'
-                             ' are not of the same length')
+            raise AttributeError(
+                f'Hazard event ids {len(self.event_id)} and event dates'
+                f' {len(self.date)} are not of the same length')
         if len(self.event_id) != len(self.frequency):
-            raise AttributeError('Hazard event ids and event frequency'
-                                 ' are not of the same length')
+            raise AttributeError(
+                f'Hazard event ids {len(self.event_id)} and event frequency'
+                f' {len(self.frequency)} are not of the same length')
         if len(self.event_id) != len(self.at_event):
-            raise AttributeError('Number of hazard event ids is different '
-                                 'from number of at_event values')
+            raise AttributeError(
+                f'Number of hazard event ids {len(self.event_id)} is different '
+                f'from number of at_event values {len(self.at_event)}')
         if len(self.coord_exp) != len(self.eai_exp):
             raise AttributeError('Number of exposures points is different from'
                                  'number of eai_exp values')
@@ -650,7 +654,7 @@ class Impact():
             Otherwise the default matplotlib font size is used. Default is True.
         kwargs : dict, optional
             arguments for hexbin matplotlib function
-        
+
         Returns
         -------
         cartopy.mpl.geoaxes.GeoAxesSubplot
