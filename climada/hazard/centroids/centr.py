@@ -823,8 +823,7 @@ class Centroids():
             xy_pixels = self.geometry.buffer(res / 2)
         else:
             xy_pixels = self.geometry.to_crs(crs={'proj': 'cea'}).buffer(res / 2)
-        xy_pixels = self.envelope
-        self.area_pixel = xy_pixels.area.values
+        self.area_pixel = xy_pixels.envelope.area.values
 
     def set_area_approx(self, min_resol=1.0e-8):
         """Set `area_pixel` attribute for every pixel or point (approximate area in m*m).
