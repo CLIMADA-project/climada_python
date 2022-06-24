@@ -819,14 +819,12 @@ class Centroids():
             res = np.abs(res).min()
         self.set_geometry_points(scheduler)
         LOGGER.debug('Setting area_pixel %s points.', str(self.lat.size))
-        xy_pixels = self.geometry.to_crs(crs=3857)
-        xy_pixels = self.geometry.buffer(res / 2)
-        xy_pixels = self.geometry.to_crs(crs=4326)
-        xy_pixels = self.envelope
         if PROJ_CEA == self.geometry.crs:
-            self.area_pixel = xy_pixels.area.values
+            xy_pixels = self.geometry.buffer(res / 2)
         else:
-            self.area_pixel = xy_pixels.to_crs(crs={'proj': 'cea'}).area.values
+            xy_pixels = self.geometry.to_crs(crs={'proj': 'cea'}).buffer(res / 2)
+        xy_pixels = self.envelope
+        self.area_pixel = xy_pixels.area.values
 
     def set_area_approx(self, min_resol=1.0e-8):
         """Set `area_pixel` attribute for every pixel or point (approximate area in m*m).
