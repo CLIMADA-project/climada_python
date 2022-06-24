@@ -40,10 +40,9 @@ class ImpactCalc():
     def __init__(self,
                  exposures,
                  impfset,
-                 hazard,
-                 imp_mat=None):
+                 hazard):
         """
-        Initialize an ImpactCalc object.
+        ImpactCalc constructor
 
         The dimension of the imp_mat variable must be compatible with the
         exposures and hazard objects.
@@ -51,33 +50,33 @@ class ImpactCalc():
         Parameters
         ----------
         exposures : climada.entity.Exposures
-            exposure used to compute imp_mat
+            exposures used to compute imp_mat, the object is subject to change when ImpactCalc
+            methods are executed.
         impf_set: climada.entity.ImpactFuncSet
             impact functions set used to compute imp_mat
         hazard : climada.Hazard
             hazard used to compute imp_mat
-        imp_mat : sparse.csr_matrix, optional
-            matrix num_events x num_exp with impacts.
-            Default is an empty matrix.
-
-        Returns
-        -------
-        None.
 
         """
 
         self.exposures = exposures
         self.impfset = impfset
         self.hazard = hazard
-        self.imp_mat = imp_mat if imp_mat is not None else sparse.csr_matrix((0, 0))
-        self.n_exp_pnt = self.exposures.gdf.shape[0]
-        self.n_events = self.hazard.size
+
+    @property
+    def n_exp_pnt(self):
+        """Number of exposure points (rows in gdf)"""
+        return self.exposures.gdf.shape[0]
+    
+    @property
+    def n_events(self):
+        """Number of hazard events (size of event_id array)"""
+        return self.hazard.size
 
     @property
     def deductible(self):
         """
-        Deductibles from the exposures. Returns empty array
-        if no deductibles defined.
+        Deductibles from the exposures. Returns None if no deductibles defined.
 
         Returns
         -------
@@ -87,12 +86,11 @@ class ImpactCalc():
         """
         if 'deductible' in self.exposures.gdf.columns:
             return self.exposures.gdf['deductible'].to_numpy()
-        return np.array([])
 
     @property
     def cover(self):
         """
-        Covers from the exposures. Returns empty array if no covers defined.
+        Covers from the exposures. Returns None if no covers defined.
 
         Returns
         -------
@@ -102,9 +100,8 @@ class ImpactCalc():
         """
         if 'cover' in self.exposures.gdf.columns:
             return self.exposures.gdf['cover'].to_numpy()
-        return np.array([])
 
-    def impact(self, save_mat=True):
+    def impact(self):
         """Compute the impact of a hazard on exposures.
 
         Parameters
@@ -130,7 +127,7 @@ class ImpactCalc():
         LOGGER.info('Calculating impact for %s assets (>0) and %s events.',
                     self.n_events, self.n_events)
         imp_mat_gen = self.imp_mat_gen(exp_gdf, impf_col)
-        return self._return_impact(imp_mat_gen, save_mat)
+        return self._return_impact(imp_mat_gen, True)
 
 #TODO: make a better impact matrix generator for insured impacts when
 # the impact matrix is already present
@@ -162,7 +159,7 @@ class ImpactCalc():
         apply_cover_to_mat:
             apply cover to impact matrix
         """
-        if self.cover.size == 0 and self.deductible.size == 0:
+        if self.cover is None and self.deductible is None:
             raise AttributeError("Neither cover nor deductible defined."
                                  "Please set exposures.gdf.cover"
                                  "and/or exposures.gdf.deductible")
@@ -171,10 +168,8 @@ class ImpactCalc():
         LOGGER.info('Calculating impact for %s assets (>0) and %s events.',
                     exp_gdf.size, self.hazard.size)
 
-        if self.imp_mat.size == 0:
-            imp_mat_gen = self.imp_mat_gen(exp_gdf, impf_col)
-        else:
-            imp_mat_gen = ((self.imp_mat, np.arange(1, len(exp_gdf))) for n in range(1))
+        imp_mat_gen = self.imp_mat_gen(exp_gdf, impf_col)
+        
         ins_mat_gen = self.insured_mat_gen(imp_mat_gen, exp_gdf, impf_col)
         return self._return_impact(ins_mat_gen, save_mat)
 
@@ -200,13 +195,14 @@ class ImpactCalc():
 
         """
         if save_mat:
-            self.imp_mat = self.stitch_impact_matrix(imp_mat_gen)
-            at_event, eai_exp, aai_agg = self.risk_metrics(self.imp_mat, self.hazard.frequency)
+            imp_mat = self.stitch_impact_matrix(imp_mat_gen)
+            at_event, eai_exp, aai_agg = self.risk_metrics(imp_mat, self.hazard.frequency)
         else:
+            imp_mat = None
             at_event, eai_exp, aai_agg = self.stitch_risk_metrics(imp_mat_gen)
         return Impact.from_eih(
             self.exposures, self.impfset, self.hazard,
-            at_event, eai_exp, aai_agg, self.imp_mat
+            at_event, eai_exp, aai_agg, imp_mat
             )
 
     def minimal_exp_gdf(self, impf_col):
@@ -220,7 +216,10 @@ class ImpactCalc():
             name of the impact function column in exposures.gdf
 
         """
-        self.exposures.assign_centroids(self.hazard, overwrite=False)
+        # since the original exposures object will be "spoiled" through assign_centroids
+        # (a column cent_XY is added), overwrite=True makes sure the exposures can be reused
+        # for ImpactCalc with another Hazard object of the same hazard type.
+        self.exposures.assign_centroids(self.hazard, overwrite=True)
 
         mask = (
             (self.exposures.gdf.value.values != 0)

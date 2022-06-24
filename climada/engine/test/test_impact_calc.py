@@ -60,7 +60,6 @@ class TestImpactCalc(unittest.TestCase):
         icalc = ImpactCalc(ENT.exposures, ENT.impact_funcs, HAZ)
         self.assertEqual(icalc.n_exp_pnt, ENT.exposures.gdf.shape[0])
         self.assertEqual(icalc.n_events, HAZ.size)
-        self.assertEqual(icalc.imp_mat.size, 0)
         self.assertTrue(ENT.exposures.gdf.equals(icalc.exposures.gdf))
         np.testing.assert_array_equal(HAZ.event_id, icalc.hazard.event_id)
         np.testing.assert_array_equal(HAZ.event_name, icalc.hazard.event_name)
@@ -137,7 +136,7 @@ class TestImpactCalc(unittest.TestCase):
     def test_calc_impact_save_mat_pass(self):
         """Test compute impact with impact matrix"""
         icalc = ImpactCalc(ENT.exposures, ENT.impact_funcs, HAZ)
-        impact = icalc.impact(save_mat=True)
+        impact = icalc.impact()
 
         self.assertIsInstance(impact.imp_mat, sparse.csr_matrix)
         self.assertEqual(impact.imp_mat.shape, (HAZ.event_id.size,
@@ -234,9 +233,8 @@ class TestImpactCalc(unittest.TestCase):
 
     def test_stitch_impact_matrix(self):
         """Check how sparse matrices from a generator are stitched together"""
-        icalc = ImpactCalc(Exposures(), ImpactFuncSet(), Hazard())
-        icalc.n_events = 3
-        icalc.n_exp_pnt = 4
+        icalc = ImpactCalc(Exposures({'blank': [1, 2, 3, 4]}), ImpactFuncSet(), Hazard())
+        icalc.hazard.event_id = np.array([1, 2, 3])
 
         imp_mat_gen = [
             (sparse.csr_matrix([[1.0, 1.0], [0.0, 1.0]]), np.array([0, 1])),
@@ -265,9 +263,8 @@ class TestImpactCalc(unittest.TestCase):
 
     def test_stitch_risk_metrics(self):
         """Test computing risk metrics from an impact matrix generator"""
-        icalc = ImpactCalc(Exposures(), ImpactFuncSet(), Hazard())
-        icalc.n_events = 2
-        icalc.n_exp_pnt = 3
+        icalc = ImpactCalc(Exposures({'blank': [1, 2, 3]}), ImpactFuncSet(), Hazard())
+        icalc.hazard.event_id = np.array([1, 2])
         icalc.hazard.frequency = np.array([2, 0.5])
 
         # Matrices overlap at central exposure point
