@@ -50,12 +50,11 @@ class ImpactCalc():
         Parameters
         ----------
         exposures : climada.entity.Exposures
-            exposures used to compute imp_mat, the object is subject to change when ImpactCalc
-            methods are executed.
+            exposures used to compute impacts
         impf_set: climada.entity.ImpactFuncSet
-            impact functions set used to compute imp_mat
+            impact functions set used to compute impacts
         hazard : climada.Hazard
-            hazard used to compute imp_mat
+            hazard used to compute impacts
 
         """
 
@@ -67,7 +66,7 @@ class ImpactCalc():
     def n_exp_pnt(self):
         """Number of exposure points (rows in gdf)"""
         return self.exposures.gdf.shape[0]
-    
+
     @property
     def n_events(self):
         """Number of hazard events (size of event_id array)"""
@@ -121,6 +120,9 @@ class ImpactCalc():
         Notes
         -----
         Deductible and/or cover values in the exposures are ignored.
+
+        In case the exposures has no centroids assigned for the given hazard,
+        the column is added to the exposures geodataframe.
         """
         impf_col = self.exposures.get_impf_column(self.hazard.haz_type)
         exp_gdf = self.minimal_exp_gdf(impf_col)
@@ -169,7 +171,7 @@ class ImpactCalc():
                     exp_gdf.size, self.hazard.size)
 
         imp_mat_gen = self.imp_mat_gen(exp_gdf, impf_col)
-        
+
         ins_mat_gen = self.insured_mat_gen(imp_mat_gen, exp_gdf, impf_col)
         return self._return_impact(ins_mat_gen, save_mat)
 
@@ -216,10 +218,7 @@ class ImpactCalc():
             name of the impact function column in exposures.gdf
 
         """
-        # since the original exposures object will be "spoiled" through assign_centroids
-        # (a column cent_XY is added), overwrite=True makes sure the exposures can be reused
-        # for ImpactCalc with another Hazard object of the same hazard type.
-        self.exposures.assign_centroids(self.hazard, overwrite=True)
+        self.exposures.assign_centroids(self.hazard, overwrite=False)
 
         mask = (
             (self.exposures.gdf.value.values != 0)
