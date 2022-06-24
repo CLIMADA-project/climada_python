@@ -48,9 +48,9 @@ GDF_LINE = EXP_LINE.gdf
 EXP_POINT = Client().get_exposures('base', name='test_point_exp', status='test_dataset')
 GDF_POINT = EXP_POINT.gdf
 
-impf = ImpfStormEurope.from_welker()
-impf_set = ImpactFuncSet()
-impf_set.append(impf)
+IMPF = ImpfStormEurope.from_welker()
+IMPF_SET = ImpactFuncSet()
+IMPF_SET.append(IMPF)
 
 COL_CHANGING = ['value', 'latitude', 'longitude', 'geometry', 'geometry_orig']
 
@@ -236,7 +236,7 @@ class TestGeomImpactCalcs(unittest.TestCase):
         """ test calc_geom_impact() with polygons"""
         #to_meters=False, DIV, res=0.1, SUM
         imp1 = u_lp.calc_geom_impact(
-            EXP_POLY, impf_set, HAZ, res=0.1, to_meters=False,
+            EXP_POLY, IMPF_SET, HAZ, res=0.1, to_meters=False,
             disagg_met=u_lp.DisaggMethod.DIV,
             disagg_val=None, agg_met=u_lp.AggMethod.SUM)
         aai_agg = 2182703.085366719
@@ -251,7 +251,7 @@ class TestGeomImpactCalcs(unittest.TestCase):
 
         #to_meters=False, DIV, res=10, SUM
         imp2 = u_lp.calc_geom_impact(
-            EXP_POLY, impf_set, HAZ, res=10, to_meters=False,
+            EXP_POLY, IMPF_SET, HAZ, res=10, to_meters=False,
             disagg_met=u_lp.DisaggMethod.DIV,
             disagg_val=None, agg_met=u_lp.AggMethod.SUM)
         aai_agg2 = 1282899.0530
@@ -266,7 +266,7 @@ class TestGeomImpactCalcs(unittest.TestCase):
 
         #to_meters=True, DIV, res=800, SUM
         imp3 = u_lp.calc_geom_impact(
-            EXP_POLY, impf_set, HAZ, res=800, to_meters=True,
+            EXP_POLY, IMPF_SET, HAZ, res=800, to_meters=True,
             disagg_met=u_lp.DisaggMethod.DIV,
             disagg_val=None, agg_met=u_lp.AggMethod.SUM)
         self.assertIsInstance(imp3, Impact)
@@ -278,7 +278,7 @@ class TestGeomImpactCalcs(unittest.TestCase):
 
         #to_meters=True, DIV, res=1000, SUM
         imp4 = u_lp.calc_geom_impact(
-            EXP_POLY, impf_set, HAZ, res=1000, to_meters=True,
+            EXP_POLY, IMPF_SET, HAZ, res=1000, to_meters=True,
             disagg_met=u_lp.DisaggMethod.DIV,
             disagg_val=None, agg_met=u_lp.AggMethod.SUM)
         aai_agg4 = 2326978.3422
@@ -293,7 +293,7 @@ class TestGeomImpactCalcs(unittest.TestCase):
 
         #to_meters=True, DIV, res=1000, SUM, dissag_va=10e6
         imp5 = u_lp.calc_geom_impact(
-            EXP_POLY, impf_set, HAZ, res=1000, to_meters=True,
+            EXP_POLY, IMPF_SET, HAZ, res=1000, to_meters=True,
             disagg_met=u_lp.DisaggMethod.DIV,
             disagg_val=10e6, agg_met=u_lp.AggMethod.SUM
             )
@@ -310,7 +310,7 @@ class TestGeomImpactCalcs(unittest.TestCase):
         exp_noval = Exposures(gdf_noval)
         #to_meters=True, DIV, res=950, SUM, dissag_va=10e6
         imp6 = u_lp.calc_geom_impact(
-            exp_noval, impf_set, HAZ, res=950, to_meters=True,
+            exp_noval, IMPF_SET, HAZ, res=950, to_meters=True,
             disagg_met=u_lp.DisaggMethod.DIV,
             disagg_val=10e6, agg_met=u_lp.AggMethod.SUM
             )
@@ -318,7 +318,7 @@ class TestGeomImpactCalcs(unittest.TestCase):
 
         #to_meters=True, FIX, res=1000, SUM, dissag_va=10e6
         imp7 = u_lp.calc_geom_impact(
-            exp_noval, impf_set, HAZ, res=1000, to_meters=True,
+            exp_noval, IMPF_SET, HAZ, res=1000, to_meters=True,
             disagg_met=u_lp.DisaggMethod.FIX,
             disagg_val=10e6, agg_met=u_lp.AggMethod.SUM
             )
@@ -338,7 +338,7 @@ class TestGeomImpactCalcs(unittest.TestCase):
         exp_line_novals  = Exposures(GDF_LINE.drop(columns='value'))
 
         imp1 = u_lp.calc_geom_impact(
-            EXP_LINE, impf_set, HAZ,
+            EXP_LINE, IMPF_SET, HAZ,
             res=0.05, to_meters=False, disagg_met=u_lp.DisaggMethod.DIV,
             disagg_val=None, agg_met=u_lp.AggMethod.SUM
             )
@@ -356,14 +356,14 @@ class TestGeomImpactCalcs(unittest.TestCase):
 
 
         imp2 = u_lp.calc_geom_impact(
-            EXP_LINE, impf_set, HAZ,
+            EXP_LINE, IMPF_SET, HAZ,
             res=300, to_meters=True, disagg_met=u_lp.DisaggMethod.DIV,
             disagg_val=None, agg_met=u_lp.AggMethod.SUM
             )
         np.testing.assert_allclose(imp2.eai_exp, imp1.eai_exp, rtol=0.1)
 
         imp3 = u_lp.calc_geom_impact(
-            exp_line_novals, impf_set, HAZ,
+            exp_line_novals, IMPF_SET, HAZ,
             res=300, to_meters=True, disagg_met=u_lp.DisaggMethod.FIX,
             disagg_val=5000, agg_met=u_lp.AggMethod.SUM
             )
@@ -379,7 +379,7 @@ class TestGeomImpactCalcs(unittest.TestCase):
         check_impact(self, imp3, HAZ, exp_line_novals, aai_agg3, eai_exp3)
 
         imp4 = u_lp.calc_geom_impact(
-            EXP_LINE, impf_set, HAZ,
+            EXP_LINE, IMPF_SET, HAZ,
             res=300, to_meters=True, disagg_met=u_lp.DisaggMethod.FIX,
             disagg_val=5000, agg_met=u_lp.AggMethod.SUM
             )
@@ -389,7 +389,7 @@ class TestGeomImpactCalcs(unittest.TestCase):
     def test_calc_geom_impact_points(self):
         """ test calc_geom_impact() with points"""
         imp1 = u_lp.calc_geom_impact(
-            EXP_POINT, impf_set, HAZ,
+            EXP_POINT, IMPF_SET, HAZ,
             res=0.05, to_meters=False, disagg_met=u_lp.DisaggMethod.DIV,
             disagg_val=None, agg_met=u_lp.AggMethod.SUM
             )
@@ -398,18 +398,18 @@ class TestGeomImpactCalcs(unittest.TestCase):
         imp11 = Impact()
         exp = EXP_POINT.copy()
         exp.set_lat_lon()
-        imp11.calc(exp, impf_set, HAZ)
+        imp11.calc(exp, IMPF_SET, HAZ)
         check_impact(self, imp1, HAZ, EXP_POINT, aai_agg1, imp11.eai_exp)
 
         imp2 = u_lp.calc_geom_impact(
-            EXP_POINT, impf_set, HAZ,
+            EXP_POINT, IMPF_SET, HAZ,
             res=500, to_meters=True, disagg_met=u_lp.DisaggMethod.FIX,
             disagg_val=1.0, agg_met=u_lp.AggMethod.SUM
             )
 
         exp.gdf['value'] = 1.0
         imp22 = Impact()
-        imp22.calc(exp, impf_set, HAZ)
+        imp22.calc(exp, IMPF_SET, HAZ)
         aai_agg2 = 6.5454249333e-06
         check_impact(self, imp2, HAZ, EXP_POINT, aai_agg2, imp22.eai_exp)
 
@@ -420,7 +420,7 @@ class TestGeomImpactCalcs(unittest.TestCase):
         exp_mix = Exposures(gdf_mix)
 
         imp1 = u_lp.calc_geom_impact(
-            exp_mix, impf_set, HAZ,
+            exp_mix, IMPF_SET, HAZ,
             res=0.05, to_meters=False, disagg_met=u_lp.DisaggMethod.DIV,
             disagg_val=None, agg_met=u_lp.AggMethod.SUM
             )
@@ -443,7 +443,7 @@ class TestGeomImpactCalcs(unittest.TestCase):
         check_impact(self, imp1, HAZ, exp_mix, aai_agg1, eai_exp1)
 
         imp2 = u_lp.calc_geom_impact(
-            exp_mix, impf_set, HAZ,
+            exp_mix, IMPF_SET, HAZ,
             res=5000, to_meters=True, disagg_met=u_lp.DisaggMethod.FIX,
             disagg_val=None, agg_met=u_lp.AggMethod.SUM
             )
@@ -475,7 +475,7 @@ class TestGeomImpactCalcs(unittest.TestCase):
             disagg_val=None
             )
         imp_pnt = Impact()
-        imp_pnt.calc(exp_pnt, impf_set, HAZ, save_mat=True)
+        imp_pnt.calc(exp_pnt, IMPF_SET, HAZ, save_mat=True)
         imp_agg = u_lp.impact_pnt_agg(imp_pnt, exp_pnt.gdf, u_lp.AggMethod.SUM)
         aai_agg = 1282901.377219451
         eai_exp = np.array([
