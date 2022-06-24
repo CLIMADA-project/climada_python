@@ -495,6 +495,31 @@ class TestGeomImpactCalcs(unittest.TestCase):
             ])
         check_impact(self, imp_agg, HAZ, exp_mix, aai_agg, eai_exp)
 
+    def test_calc_grid_impact_polys(self):
+        """Test impact on grid for polygons"""
+        import climada.util.coordinates as u_coord
+        res = 0.1
+        (_, _, xmax, ymax) = EXP_POLY.gdf.geometry.bounds.max()
+        (xmin, ymin, _, _) = EXP_POLY.gdf.geometry.bounds.min()
+        bounds = (xmin, ymin, xmax, ymax)
+        height, width, trafo = u_coord.pts_to_raster_meta(
+            bounds, (res, res)
+            )
+        x_grid, y_grid = u_coord.raster_to_meshgrid(trafo, width, height)
+
+        imp_g = u_lp.calc_grid_impact(
+                    exp=EXP_POLY, impf_set=IMPF_SET, haz=HAZ,
+                    grid=(x_grid, y_grid), disagg_met=u_lp.DisaggMethod.DIV,
+                    disagg_val=None, agg_met=u_lp.AggMethod.SUM
+                    )
+        aai_agg = 2319608.54202
+        eai_exp = np.array([
+            17230.22051525,  10974.85453081,  14423.77523209,  77906.29609785,
+            22490.08925927, 147937.83580832, 132329.78961234, 375082.82348148,
+            514527.07490518, 460185.19291995, 265875.77587879, 280644.81378238
+            ])
+        check_impact(self, imp_g, HAZ, EXP_POLY, aai_agg, eai_exp)
+
 
     def test_aggregate_impact_mat(self):
         """Private method"""
