@@ -298,7 +298,7 @@ def calc_grid_impact(
     impact_pnt.calc(exp_pnt, impf_set, haz, save_mat=True)
 
     # re-aggregate impact to original exposure geometry
-    impact_agg = impact_pnt_agg(impact_pnt, exp_pnt, agg_met)
+    impact_agg = impact_pnt_agg(impact_pnt, exp_pnt.gdf, agg_met)
 
     return impact_agg
 
