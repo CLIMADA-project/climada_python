@@ -193,11 +193,11 @@ class Impact():
             and exposures.gdf.cover.max():
             LOGGER.warning(
                 "The use of Impact().calc() is deprecated for exposures with "
-                "deductible and/or cover. Use ImpactCalc().impact() instead."
+                "deductible and/or cover. Use ImpactCalc().insured_impact() instead."
                 )
             self.__dict__ = impcalc.insured_impact(save_mat).__dict__
         else:
-            LOGGER.warning("The use of Impact().calc() is deprecated."
+            LOGGER.warning("The use of Impact().calc() is deprecated. "
                            "Use ImpactCalc().impact() instead.")
             self.__dict__ = impcalc.impact(save_mat).__dict__
 

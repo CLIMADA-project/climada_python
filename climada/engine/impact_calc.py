@@ -101,7 +101,7 @@ class ImpactCalc():
         if 'cover' in self.exposures.gdf.columns:
             return self.exposures.gdf['cover'].to_numpy()
 
-    def impact(self):
+    def impact(self, save_mat=True):
         """Compute the impact of a hazard on exposures.
 
         Parameters
@@ -127,7 +127,7 @@ class ImpactCalc():
         LOGGER.info('Calculating impact for %s assets (>0) and %s events.',
                     self.n_events, self.n_events)
         imp_mat_gen = self.imp_mat_gen(exp_gdf, impf_col)
-        return self._return_impact(imp_mat_gen, True)
+        return self._return_impact(imp_mat_gen, save_mat)
 
 #TODO: make a better impact matrix generator for insured impacts when
 # the impact matrix is already present
