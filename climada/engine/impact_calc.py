@@ -25,6 +25,7 @@ import logging
 import numpy as np
 from scipy import sparse
 import geopandas as gpd
+import pandas as pd
 
 from climada import CONFIG
 from climada.engine import Impact
@@ -226,7 +227,7 @@ class ImpactCalc():
         exp_gdf = gpd.GeoDataFrame(
             {col: self.exposures.gdf[col].values[mask]
             for col in ['value', impf_col, self.hazard.centr_exp_col]},
-            index=self.exposures.gdf.index[mask]
+            index=pd.Index(mask.nonzero()[0])
             )
         if exp_gdf.size == 0:
             LOGGER.warning("No exposures with value >0 in the vicinity of the hazard.")
