@@ -310,9 +310,9 @@ class ImpactCalc():
             Exposure indices for impacts in mat
         """
         for mat, exp_idx in imp_mat_gen:
-            impf_id = exp_gdf.iloc[exp_idx][impf_col].unique()[0]
+            impf_id = np.unique(self.exposures.gdf[impf_col].values[exp_idx])[0]
             deductible = self.deductible[exp_idx]
-            cent_idx = exp_gdf.iloc[exp_idx][self.hazard.centr_exp_col].values
+            cent_idx = self.exposures.gdf[self.hazard.centr_exp_col].values[exp_idx]
             impf = self.impfset.get_func(haz_type=self.hazard.haz_type, fun_id=impf_id)
             mat = self.apply_deductible_to_mat(mat, deductible, self.hazard, cent_idx, impf)
             cover = self.cover[exp_idx]
