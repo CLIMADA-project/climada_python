@@ -461,7 +461,7 @@ class Impact():
 
         return ifc
 
-    def plot_scatter_eai_exposure(self, mask=None, ignore_zero=True,
+    def plot_scatter_eai_exposure(self, mask=None, ignore_zero=False,
                                   pop_name=True, buffer=0.0, extend='neither',
                                   axis=None, adapt_fontsize=True, **kwargs):
         """Plot scatter expected annual impact of each exposure.
@@ -502,7 +502,7 @@ class Impact():
         axis.set_title('Expected annual impact')
         return axis
 
-    def plot_hexbin_eai_exposure(self, mask=None, ignore_zero=True,
+    def plot_hexbin_eai_exposure(self, mask=None, ignore_zero=False,
                                  pop_name=True, buffer=0.0, extend='neither',
                                  axis=None, adapt_fontsize=True, **kwargs):
         """Plot hexbin expected annual impact of each exposure.
@@ -542,6 +542,7 @@ class Impact():
                                    extend, axis=axis, adapt_fontsize=adapt_fontsize, **kwargs)
         axis.set_title('Expected annual impact')
         return axis
+
 
     def plot_raster_eai_exposure(self, res=None, raster_res=None, save_tiff=None,
                                  raster_f=lambda x: np.log10((np.fmax(x + 1, 1))),
