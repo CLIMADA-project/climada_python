@@ -712,7 +712,7 @@ class Exposures():
 
     def plot_basemap(self, mask=None, ignore_zero=False, pop_name=True,
                      buffer=0.0, extend='neither', zoom=10,
-                     url='http://tile.stamen.com/terrain/tileZ/tileX/tileY.png',
+                     url='http://tile.stamen.com/terrain/{z}/{x}/{y}.png',
                      axis=None, **kwargs):
         """Scatter points over satellite image using contextily
 
