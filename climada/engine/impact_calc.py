@@ -171,7 +171,6 @@ class ImpactCalc():
                     exp_gdf.size, self.hazard.size)
 
         imp_mat_gen = self.imp_mat_gen(exp_gdf, impf_col)
-
         ins_mat_gen = self.insured_mat_gen(imp_mat_gen, exp_gdf, impf_col)
         return self._return_impact(ins_mat_gen, save_mat)
 
@@ -224,10 +223,11 @@ class ImpactCalc():
             (self.exposures.gdf.value.values != 0)
             & (self.exposures.gdf[self.hazard.centr_exp_col].values >= 0)
         )
-        exp_gdf = gpd.GeoDataFrame({
-            col: self.exposures.gdf[col].values[mask]
-            for col in ['value', impf_col, self.hazard.centr_exp_col]
-        })
+        exp_gdf = gpd.GeoDataFrame(
+            {col: self.exposures.gdf[col].values[mask]
+            for col in ['value', impf_col, self.hazard.centr_exp_col]},
+            index=self.exposures.gdf.index[mask]
+            )
         if exp_gdf.size == 0:
             LOGGER.warning("No exposures with value >0 in the vicinity of the hazard.")
         return exp_gdf
@@ -276,7 +276,8 @@ class ImpactCalc():
             for exp_idx in _chunk_exp_idx(self.hazard.size, idx_exp_impf):
                 exp_values = exp_gdf.value.values[exp_idx]
                 cent_idx = exp_gdf[self.hazard.centr_exp_col].values[exp_idx]
-                yield (self.impact_matrix(exp_values, cent_idx, impf), exp_idx)
+                yield (self.impact_matrix(exp_values, cent_idx, impf),
+                       exp_gdf.index[exp_idx].values)
 
     def insured_mat_gen(self, imp_mat_gen, exp_gdf, impf_col):
         """
@@ -308,9 +309,9 @@ class ImpactCalc():
             Exposure indices for impacts in mat
         """
         for mat, exp_idx in imp_mat_gen:
-            impf_id = exp_gdf[impf_col][exp_idx].unique()[0]
+            impf_id = exp_gdf.iloc[exp_idx][impf_col].unique()[0]
             deductible = self.deductible[exp_idx]
-            cent_idx = exp_gdf[self.hazard.centr_exp_col].values[exp_idx]
+            cent_idx = exp_gdf.iloc[exp_idx][self.hazard.centr_exp_col].values
             impf = self.impfset.get_func(haz_type=self.hazard.haz_type, fun_id=impf_id)
             mat = self.apply_deductible_to_mat(mat, deductible, self.hazard, cent_idx, impf)
             cover = self.cover[exp_idx]
