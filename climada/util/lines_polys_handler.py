@@ -221,7 +221,7 @@ def _aggregate_impact_mat(imp_pnt, gdf_pnt, agg_met):
         mask = np.ones(len(col_geom))
     else:
         raise NotImplementedError(
-            f'The available aggregation methods are {AggMethod._member_names_}')
+            f'The available aggregation methods are {AggMethod._member_names_}') # pylint: disable=no-member, protected-access
     csr_mask = sp.sparse.csr_matrix(
         (mask, (row_pnt, col_geom)),
          shape=(len(row_pnt), len(np.unique(col_geom)))
@@ -589,7 +589,7 @@ def gdf_to_grid(gdf, grid):
                              "Currently only polygon dataframes can be "
                              "disaggregated onto a fixed grid.")
     if poly_mask.any():
-       return _poly_to_grid(gdf[poly_mask], grid)
+        return _poly_to_grid(gdf[poly_mask], grid)
 
     return gpd.GeoDataFrame([])
 
@@ -828,7 +828,7 @@ def _get_equalarea_proj(poly):
     """
     repr_pnt = poly.representative_point()
     lon_0, lat_0 = repr_pnt.x, repr_pnt.y
-    return "+proj=cea +lat_0=%f +lon_0=%f +units=m" %(lat_0, lon_0)
+    return f"+proj=cea +lat_0={lat_0} +lon_0={lon_0} +units=m"
 
 
 def _get_pyproj_trafo(orig_crs, dest_crs):
