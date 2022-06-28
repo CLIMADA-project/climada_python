@@ -62,6 +62,7 @@ class ImpactCalc():
         self.exposures = exposures
         self.impfset = impfset
         self.hazard = hazard
+        self._orig_exp_idx = np.arange(self.exposures.gdf.shape[0]) #exposures index to use for matrix reconstruction
 
     @property
     def n_exp_pnt(self):
