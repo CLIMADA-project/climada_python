@@ -844,6 +844,10 @@ class Client():
             raise ValueError("country must be string or list of strings")
         return self.get_exposures(exposures_type='litpop', dump_dir=dump_dir, properties=properties)
 
+    def get_centroids(self, dump_dir=SYSTEM_DIR):
+        dataset = self.get_dataset_info(name="earth_centroids_150asland_1800asoceans_distcoast_region_nopoles")
+        client.download_dataset(dataset=dataset)
+
     @staticmethod
     def get_property_values(dataset_infos, known_property_values=None,
                             exclude_properties=None):
