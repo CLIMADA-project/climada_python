@@ -182,6 +182,7 @@ class TestImpactCalc(unittest.TestCase):
         check_impact(self, impact, haz, exp, aai_agg, eai_exp, at_event, imp_mat_array)
 
     def test_empty_impact(self):
+        """Check that empty impact is returned if no centroids matching the exposures"""
         exp = ENT.exposures.copy()
         exp.gdf['centr_TC'] = -1
         icalc = ImpactCalc(exp, ENT.impact_funcs, HAZ)
@@ -191,13 +192,22 @@ class TestImpactCalc(unittest.TestCase):
         at_event = np.zeros(HAZ.size)
         check_impact(self, impact, HAZ, exp, aai_agg, eai_exp, at_event, None)
 
-        icalc = ImpactCalc(exp, ENT.impact_funcs, HAZ)
         impact = icalc.impact(save_mat=True)
-        aai_agg = 0.0
-        eai_exp = np.zeros(len(exp.gdf))
-        at_event = np.zeros(HAZ.size)
         imp_mat_array = sparse.csr_matrix((HAZ.size, len(exp.gdf))).toarray()
         check_impact(self, impact, HAZ, exp, aai_agg, eai_exp, at_event, imp_mat_array)
+
+    def test_single_event_impact(self):
+        """Check impact for single event"""
+        haz = HAZ.select([1])
+        icalc = ImpactCalc(ENT.exposures, ENT.impact_funcs, haz)
+        impact = icalc.impact()
+        aai_agg = 0.0
+        eai_exp = np.zeros(len(ENT.exposures.gdf))
+        at_event = np.array([0])
+        check_impact(self, impact, haz, ENT.exposures, aai_agg, eai_exp, at_event, None)
+        impact = icalc.impact(save_mat=True)
+        imp_mat_array = sparse.csr_matrix((haz.size, len(ENT.exposures.gdf))).toarray()
+        check_impact(self, impact, haz, ENT.exposures, aai_agg, eai_exp, at_event, imp_mat_array)
 
 
 

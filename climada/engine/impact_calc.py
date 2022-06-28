@@ -510,7 +510,7 @@ class ImpactCalc():
         at_event : np.array
             impact for each hazard event
         """
-        return np.squeeze(np.asarray(np.sum(mat, axis=1)))
+        return np.asarray(np.sum(mat, axis=1)).ravel()
 
     @staticmethod
     def aai_agg_from_eai_exp(eai_exp):
