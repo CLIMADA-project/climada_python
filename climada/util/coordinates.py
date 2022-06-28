@@ -337,6 +337,39 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
         raise KeyError("Unknown distance approximation method: %s" % method)
     return (dist, vtan) if log else dist
 
+def compute_geodesic_lengths(gdf):
+    """Calculate the great circle (geodesic / spherical) lengths along any
+    (complicated) line geometry object, based on the pyproj.Geod implementation.
+
+    Parameters
+    ----------
+    gdf : gpd.GeoDataframe with geometrical shapes of which to compute the length
+
+    Returns
+    -------
+    series : a pandas series (column) with the great circle lengths of the
+        objects in metres.
+
+    See also
+    --------
+    * dist_approx() which also offers haversine distance calculation options
+     between specific points (not along any geometries however).
+    * interpolation.interpolate_lines()
+
+    Note
+    ----
+    This implementation relies on non-projected (i.e. geographic coordinate
+    systems that span the entire globe) crs only, which results in
+    sea-level distances and hence a certain (minor) level of distortion; cf.
+    https://gis.stackexchange.com/questions/176442/what-is-the-real-distance-between-positions
+    """
+    # convert to non-projected crs if needed
+    gdf_tmp = gdf.to_crs(DEF_CRS) if not gdf.crs.is_geographic else gdf.copy()
+    geod = gdf_tmp.crs.get_geod()
+
+    return gdf_tmp.apply(lambda row: geod.geometry_length(row.geometry), axis=1)
+
+
 def get_gridcellarea(lat, resolution=0.5, unit='ha'):
     """The area covered by a grid cell is calculated depending on the latitude
         1 degree = ONE_LAT_KM (111.12km at the equator)
@@ -1425,7 +1458,7 @@ def get_admin1_info(country_names):
         # that the `*.cpg` is present and the encoding is correct:
         try:
             return val.encode('latin-1').decode('utf-8')
-        except:
+        except (AttributeError, UnicodeDecodeError, UnicodeEncodeError):
             return val
 
     if isinstance(country_names, (str, int, float)):
@@ -1492,7 +1525,7 @@ def get_admin1_geometries(countries):
 
     # extract admin 1 infos and shapes for each country:
     admin1_info, admin1_shapes = get_admin1_info(countries)
-    for country in admin1_info.keys():
+    for country in admin1_info:
         # fill admin 1 region names and codes to GDF for single country:
         gdf_tmp = gpd.GeoDataFrame(columns=gdf.columns)
         gdf_tmp.admin1_name = [record['name'] for record in admin1_info[country]]
@@ -1635,7 +1668,7 @@ def to_crs_user_input(crs_obj):
         return (isinstance(crs_dict, dict)
                 and "init" in crs_dict
                 and all(k in ["init", "no_defs"] for k in crs_dict.keys())
-                and crs_dict.get("no_defs", True) == True)
+                and crs_dict.get("no_defs", True) is True)
 
     if isinstance(crs_obj, (dict, int)):
         if _is_deprecated_init_crs(crs_obj):
