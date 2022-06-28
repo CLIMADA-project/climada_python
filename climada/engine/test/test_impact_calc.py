@@ -24,6 +24,7 @@ import numpy as np
 from scipy import sparse
 import pandas as pd
 from copy import deepcopy
+from pathlib import Path
 
 from climada import CONFIG
 from climada.entity.entity_def import Entity
@@ -52,6 +53,19 @@ HAZ = Hazard.from_mat(HAZ_TEST_MAT)
 
 DATA_FOLDER = DEMO_DIR / 'test-results'
 DATA_FOLDER.mkdir(exist_ok=True)
+
+def check_impact(self, imp, haz, exp, aai_agg, eai_exp, at_event, imp_mat_array=None):
+    """Test properties of imapcts"""
+    self.assertEqual(len(haz.event_id), len(imp.at_event))
+    self.assertIsInstance(imp, Impact)
+    np.testing.assert_allclose(imp.coord_exp[:,0], exp.gdf.latitude)
+    np.testing.assert_allclose(imp.coord_exp[:,1], exp.gdf.longitude)
+    self.assertAlmostEqual(imp.aai_agg, aai_agg, 3)
+    np.testing.assert_allclose(imp.eai_exp, eai_exp, rtol=1e-5)
+    np.testing.assert_allclose(imp.at_event, at_event, rtol=1e-5)
+    if imp_mat_array is not None:
+        np.testing.assert_allclose(imp.imp_mat.toarray().ravel(),
+                                   imp_mat_array.ravel())
 
 
 class TestImpactCalc(unittest.TestCase):
@@ -98,7 +112,7 @@ class TestImpactCalc(unittest.TestCase):
             imp.todense(), np.array([[0, 0, 1], [0, 1, 0]])
             )
 
-    def test_calc_impact_pass(self):
+    def test_calc_impact_TC_pass(self):
         """Test compute impact"""
         icalc = ImpactCalc(ENT.exposures, ENT.impact_funcs, HAZ)
         impact = icalc.impact()
@@ -132,6 +146,41 @@ class TestImpactCalc(unittest.TestCase):
         self.assertAlmostEqual(1.066837260150042e+08 * x, impact.eai_exp[49], 6)
         self.assertAlmostEqual(6.570532945599105e+11, impact.tot_value)
         self.assertAlmostEqual(6.512201157564421e+09 * x, impact.aai_agg, 5)
+
+    def test_calc_impact_RF_pass(self):
+        from climada_petals.entity.impact_funcs.river_flood import flood_imp_func_set
+        haz = Hazard.from_hdf5(Path.home() / 'climada/data/hazard/test_hazard_US_flood_random_locations.hdf5')
+        exp = Exposures.from_hdf5(Path.home() / 'climada/data/exposures/test_exposure_US_flood_random_locations.hdf5')
+        impf_set = flood_imp_func_set()
+        icalc = ImpactCalc(exp, impf_set, haz)
+        impact = icalc.impact()
+        aai_agg = 161436.05112960344
+        eai_exp = np.array([
+            1.61159701e+05, 1.33742847e+02, 0.00000000e+00, 4.21352988e-01,
+            1.42185609e+02, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00
+            ])
+        at_event = np.array([
+            0.00000000e+00, 0.00000000e+00, 9.85233619e+04, 3.41245461e+04,
+            7.73566566e+07, 0.00000000e+00, 0.00000000e+00
+            ])
+        imp_mat_array = np.array([
+            [0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00,
+             0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00],
+            [0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00,
+             0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00],
+            [0.00000000e+00, 6.41965663e+04, 0.00000000e+00, 2.02249434e+02,
+             3.41245461e+04, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00],
+            [0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00,
+             3.41245461e+04, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00],
+            [7.73566566e+07, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00,
+             0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00],
+            [0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00,
+             0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00],
+            [0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00,
+             0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 0.00000000e+00]
+            ])
+        check_impact(self, impact, haz, exp, aai_agg, eai_exp, at_event, imp_mat_array)
+
 
     def test_calc_impact_save_mat_pass(self):
         """Test compute impact with impact matrix"""
