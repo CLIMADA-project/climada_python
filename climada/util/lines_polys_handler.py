@@ -828,7 +828,7 @@ def _get_equalarea_proj(poly):
     """
     repr_pnt = poly.representative_point()
     lon_0, lat_0 = repr_pnt.x, repr_pnt.y
-    return f"+proj=cea +lat_0={lat_0} +lon_0={lon_0} +units=m"
+    return f"+proj=cea +lat_0={lat_0:.6f} +lon_0={lon_0:.6f} +units=m"
 
 
 def _get_pyproj_trafo(orig_crs, dest_crs):
