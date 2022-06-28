@@ -219,7 +219,6 @@ class ImpactCalc():
 
         """
         self.exposures.assign_centroids(self.hazard, overwrite=False)
-
         mask = (
             (self.exposures.gdf.value.values != 0)
             & (self.exposures.gdf[self.hazard.centr_exp_col].values >= 0)
@@ -227,10 +226,10 @@ class ImpactCalc():
         exp_gdf = gpd.GeoDataFrame(
             {col: self.exposures.gdf[col].values[mask]
             for col in ['value', impf_col, self.hazard.centr_exp_col]},
-            index=pd.Index(mask.nonzero()[0])
             )
         if exp_gdf.size == 0:
             LOGGER.warning("No exposures with value >0 in the vicinity of the hazard.")
+        self._orig_exp_idx = mask.nonzero()[0]
         return exp_gdf
 
     def imp_mat_gen(self, exp_gdf, impf_col):
@@ -278,7 +277,7 @@ class ImpactCalc():
                 exp_values = exp_gdf.value.values[exp_idx]
                 cent_idx = exp_gdf[self.hazard.centr_exp_col].values[exp_idx]
                 yield (self.impact_matrix(exp_values, cent_idx, impf),
-                       exp_gdf.index[exp_idx].values)
+                       exp_idx)
 
     def insured_mat_gen(self, imp_mat_gen, exp_gdf, impf_col):
         """
@@ -310,12 +309,12 @@ class ImpactCalc():
             Exposure indices for impacts in mat
         """
         for mat, exp_idx in imp_mat_gen:
-            impf_id = np.unique(self.exposures.gdf[impf_col].values[exp_idx])[0]
-            deductible = self.deductible[exp_idx]
-            cent_idx = self.exposures.gdf[self.hazard.centr_exp_col].values[exp_idx]
+            impf_id = exp_gdf[impf_col][exp_idx[0]]
+            deductible = self.deductible[self._orig_exp_idx[exp_idx]]
+            cent_idx = exp_gdf[self.hazard.centr_exp_col].values[exp_idx]
             impf = self.impfset.get_func(haz_type=self.hazard.haz_type, fun_id=impf_id)
             mat = self.apply_deductible_to_mat(mat, deductible, self.hazard, cent_idx, impf)
-            cover = self.cover[exp_idx]
+            cover = self.cover[self._orig_exp_idx[exp_idx]]
             mat = self.apply_cover_to_mat(mat, cover)
             yield (mat, exp_idx)
 
@@ -353,7 +352,7 @@ class ImpactCalc():
         Make an impact matrix from an impact sub-matrix generator
         """
         data, row, col = np.hstack([
-            (mat.data, mat.nonzero()[0], idx[mat.nonzero()[1]])
+            (mat.data, mat.nonzero()[0], self._orig_exp_idx[idx][mat.nonzero()[1]])
             for mat, idx in imp_mat_gen
             ])
         return sparse.csr_matrix(
@@ -383,9 +382,9 @@ class ImpactCalc():
         """
         at_event = np.zeros(self.n_events)
         eai_exp = np.zeros(self.n_exp_pnt)
-        for sub_imp_mat, exp_idx in imp_mat_gen:
+        for sub_imp_mat, idx in imp_mat_gen:
             at_event += self.at_event_from_mat(sub_imp_mat)
-            eai_exp[exp_idx] += self.eai_exp_from_mat(sub_imp_mat, self.hazard.frequency)
+            eai_exp[self._orig_exp_idx[idx]] += self.eai_exp_from_mat(sub_imp_mat, self.hazard.frequency)
         aai_agg = self.aai_agg_from_eai_exp(eai_exp)
         return at_event, eai_exp, aai_agg
 

@@ -235,6 +235,7 @@ class TestImpactCalc(unittest.TestCase):
         """Check how sparse matrices from a generator are stitched together"""
         icalc = ImpactCalc(Exposures({'blank': [1, 2, 3, 4]}), ImpactFuncSet(), Hazard())
         icalc.hazard.event_id = np.array([1, 2, 3])
+        icalc._orig_exp_idx = np.array([0, 1, 2, 3])
 
         imp_mat_gen = [
             (sparse.csr_matrix([[1.0, 1.0], [0.0, 1.0]]), np.array([0, 1])),
@@ -266,6 +267,7 @@ class TestImpactCalc(unittest.TestCase):
         icalc = ImpactCalc(Exposures({'blank': [1, 2, 3]}), ImpactFuncSet(), Hazard())
         icalc.hazard.event_id = np.array([1, 2])
         icalc.hazard.frequency = np.array([2, 0.5])
+        icalc._orig_exp_idx = np.array([0, 1, 2])
 
         # Matrices overlap at central exposure point
         imp_mat_gen = (
@@ -424,6 +426,7 @@ class TestInsuredImpactMatrixGenerator(unittest.TestCase):
         self.icalc.exposures.gdf = pd.DataFrame(
             {"deductible": [10.0, 20.0], "cover": [1.0, 100.0]}
         )
+        self.icalc._orig_exp_idx = np.array([0, 1])
         self.icalc.hazard.centr_exp_col = "centr_col"
         self.icalc.hazard.haz_type = "haz_type"
         self.icalc.apply_deductible_to_mat = MagicMock(
