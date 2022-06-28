@@ -113,8 +113,8 @@ class ImpactCalc():
         Examples
         --------
             >>> haz = Hazard.from_mat(HAZ_DEMO_MAT)  # Set hazard
-            >>> impfset = ImpactFuncSet.from_excel(ENT_TEMPLATE_XLS) # Set impact functions
-            >>> exp = Exposures(pd.read_excel(ENT_TEMPLATE_XLS)) # Set exposures
+            >>> impfset = ImpactFuncSet.from_excel(ENT_TEMPLATE_XLS)
+            >>> exp = Exposures(pd.read_excel(ENT_TEMPLATE_XLS))
             >>> impcalc = ImpactCal(exp, impfset, haz)
             >>> imp = impcalc.insured_impact()
             >>> imp.aai_agg
@@ -152,8 +152,8 @@ class ImpactCalc():
         Examples
         --------
             >>> haz = Hazard.from_mat(HAZ_DEMO_MAT)  # Set hazard
-            >>> impfset = ImpactFuncSet.from_excel(ENT_TEMPLATE_XLS) # Set impact functions
-            >>> exp = Exposures(pd.read_excel(ENT_TEMPLATE_XLS)) # Set exposures
+            >>> impfset = ImpactFuncSet.from_excel(ENT_TEMPLATE_XLS)
+            >>> exp = Exposures(pd.read_excel(ENT_TEMPLATE_XLS))
             >>> impcalc = ImpactCal(exp, impfset, haz)
             >>> imp = impcalc.insured_impact()
             >>> imp.aai_agg
@@ -258,7 +258,7 @@ class ImpactCalc():
             )
         if exp_gdf.size == 0:
             LOGGER.warning("No exposures with value >0 in the vicinity of the hazard.")
-        self._orig_exp_idx = mask.nonzero()[0]
+        self._orig_exp_idx = mask.nonzero()[0]  #update index of kept exposures points in exp_gdf within the full exposures
         return exp_gdf
 
     def imp_mat_gen(self, exp_gdf, impf_col):
@@ -290,6 +290,9 @@ class ImpactCalc():
         """
 
         def _chunk_exp_idx(haz_size, idx_exp_impf):
+            '''
+            Chunk computations in sizes that roughly fit into memory
+            '''
             max_size = CONFIG.max_matrix_size.int()
             if haz_size > max_size:
                 raise ValueError(
@@ -368,19 +371,19 @@ class ImpactCalc():
         scipy.sparse.csr_matrix
             Impact per event (rows) per exposure point (columns)
         """
-        n_centroids = cent_idx.size
+        n_exp_pnt = len(cent_idx) #implicitly checks in matrix assignement whether len(cent_idx) == len(exp_values)
         mdr = self.hazard.get_mdr(cent_idx, impf)
         fract = self.hazard.get_fraction(cent_idx)
-        exp_values_csr = sparse.csr_matrix(
-            (exp_values, np.arange(n_centroids), [0, n_centroids]),
-            shape=(1, n_centroids))
+        exp_values_csr = sparse.csr_matrix( #vector 1 x exp_size
+            (exp_values, np.arange(n_exp_pnt), [0, n_exp_pnt]),
+            shape=(1, n_exp_pnt))
         return fract.multiply(mdr).multiply(exp_values_csr)
 
     def stitch_impact_matrix(self, imp_mat_gen):
         """
         Make an impact matrix from an impact sub-matrix generator
         """
-        data, row, col = np.hstack([
+        data, row, col = np.hstack([  #rows=events index, cols=exposure point index within self.exposures
             (mat.data, mat.nonzero()[0], self._orig_exp_idx[idx][mat.nonzero()[1]])
             for mat, idx in imp_mat_gen
             ])
@@ -493,7 +496,7 @@ class ImpactCalc():
             expected annual impact for each exposure
         """
         n_events = freq.size
-        freq_csr = sparse.csr_matrix(
+        freq_csr = sparse.csr_matrix(   #vector n_events x 1
             (freq, np.zeros(n_events), np.arange(n_events + 1)),
             shape=(n_events, 1))
         return mat.multiply(freq_csr).sum(axis=0).A1

@@ -210,7 +210,6 @@ class TestImpactCalc(unittest.TestCase):
         check_impact(self, impact, haz, ENT.exposures, aai_agg, eai_exp, at_event, imp_mat_array)
 
 
-
     def test_calc_impact_save_mat_pass(self):
         """Test compute impact with impact matrix"""
         icalc = ImpactCalc(ENT.exposures, ENT.impact_funcs, HAZ)
