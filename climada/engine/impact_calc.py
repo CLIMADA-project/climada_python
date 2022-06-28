@@ -203,7 +203,8 @@ class ImpactCalc():
         """
         if save_mat:
             imp_mat = self.stitch_impact_matrix(imp_mat_gen)
-            at_event, eai_exp, aai_agg = self.risk_metrics(imp_mat, self.hazard.frequency)
+            at_event, eai_exp, aai_agg = \
+                self.risk_metrics(imp_mat, self.hazard.frequency)
         else:
             imp_mat = None
             at_event, eai_exp, aai_agg = self.stitch_risk_metrics(imp_mat_gen)
@@ -230,7 +231,9 @@ class ImpactCalc():
         eai_exp = np.zeros(self.n_exp_pnt)
         aai_agg = 0.0
         if save_mat:
-            imp_mat = sparse.csr_matrix((self.n_events, self.n_exp_pnt), dtype=np.float64)
+            imp_mat = sparse.csr_matrix((
+                self.n_events, self.n_exp_pnt), dtype=np.float64
+                )
         else:
             imp_mat = None
         return Impact.from_eih(self.exposures, self.impfset, self.hazard,
@@ -303,13 +306,17 @@ class ImpactCalc():
             return np.array_split(idx_exp_impf, n_chunks)
 
         for impf_id in exp_gdf[impf_col].dropna().unique():
-            impf = self.impfset.get_func(haz_type=self.hazard.haz_type, fun_id=impf_id)
+            impf = self.impfset.get_func(
+                haz_type=self.hazard.haz_type, fun_id=impf_id
+                )
             idx_exp_impf = (exp_gdf[impf_col].values == impf_id).nonzero()[0]
             for exp_idx in _chunk_exp_idx(self.hazard.size, idx_exp_impf):
                 exp_values = exp_gdf.value.values[exp_idx]
                 cent_idx = exp_gdf[self.hazard.centr_exp_col].values[exp_idx]
-                yield (self.impact_matrix(exp_values, cent_idx, impf),
-                       exp_idx)
+                yield (
+                    self.impact_matrix(exp_values, cent_idx, impf),
+                    exp_idx
+                    )
 
     def insured_mat_gen(self, imp_mat_gen, exp_gdf, impf_col):
         """
@@ -344,8 +351,12 @@ class ImpactCalc():
             impf_id = exp_gdf[impf_col][exp_idx[0]]
             deductible = self.deductible[self._orig_exp_idx[exp_idx]]
             cent_idx = exp_gdf[self.hazard.centr_exp_col].values[exp_idx]
-            impf = self.impfset.get_func(haz_type=self.hazard.haz_type, fun_id=impf_id)
-            mat = self.apply_deductible_to_mat(mat, deductible, self.hazard, cent_idx, impf)
+            impf = self.impfset.get_func(
+                haz_type=self.hazard.haz_type, fun_id=impf_id
+                )
+            mat = self.apply_deductible_to_mat(
+                mat, deductible, self.hazard, cent_idx, impf
+                )
             cover = self.cover[self._orig_exp_idx[exp_idx]]
             mat = self.apply_cover_to_mat(mat, cover)
             yield (mat, exp_idx)
@@ -383,10 +394,10 @@ class ImpactCalc():
         """
         Make an impact matrix from an impact sub-matrix generator
         """
-        data, row, col = np.hstack([  #rows=events index, cols=exposure point index within self.exposures
+        data, row, col = np.hstack((  #rows=events index, cols=exposure point index within self.exposures
             (mat.data, mat.nonzero()[0], self._orig_exp_idx[idx][mat.nonzero()[1]])
             for mat, idx in imp_mat_gen
-            ])
+            ))
         return sparse.csr_matrix(
             (data, (row, col)), shape=(self.n_events, self.n_exp_pnt)
             )
@@ -416,7 +427,8 @@ class ImpactCalc():
         eai_exp = np.zeros(self.n_exp_pnt)
         for sub_imp_mat, idx in imp_mat_gen:
             at_event += self.at_event_from_mat(sub_imp_mat)
-            eai_exp[self._orig_exp_idx[idx]] += self.eai_exp_from_mat(sub_imp_mat, self.hazard.frequency)
+            eai_exp[self._orig_exp_idx[idx]] += \
+                self.eai_exp_from_mat(sub_imp_mat, self.hazard.frequency)
         aai_agg = self.aai_agg_from_eai_exp(eai_exp)
         return at_event, eai_exp, aai_agg
 
