@@ -127,6 +127,8 @@ class ImpactCalc():
         """
         impf_col = self.exposures.get_impf_column(self.hazard.haz_type)
         exp_gdf = self.minimal_exp_gdf(impf_col)
+        if exp_gdf.size == 0:
+            return self._return_empty(save_mat)
         LOGGER.info('Calculating impact for %s assets (>0) and %s events.',
                     self.n_events, self.n_events)
         imp_mat_gen = self.imp_mat_gen(exp_gdf, impf_col)
@@ -168,6 +170,8 @@ class ImpactCalc():
                                  "and/or exposures.gdf.deductible")
         impf_col = self.exposures.get_impf_column(self.hazard.haz_type)
         exp_gdf = self.minimal_exp_gdf(impf_col)
+        if exp_gdf.size == 0:
+            return self._return_empty(save_mat)
         LOGGER.info('Calculating impact for %s assets (>0) and %s events.',
                     exp_gdf.size, self.hazard.size)
 
@@ -206,6 +210,30 @@ class ImpactCalc():
             self.exposures, self.impfset, self.hazard,
             at_event, eai_exp, aai_agg, imp_mat
             )
+
+    def _return_empty(self, save_mat):
+        """
+        Return empty impact.
+
+        Parameters
+        ----------
+        save_mat : bool
+              If true, save impact matrix
+
+        Returns
+        -------
+        Impact
+            Empty impact object with correct array sizes.
+        """
+        at_event = np.zeros(self.n_events)
+        eai_exp = np.zeros(self.n_exp_pnt)
+        aai_agg = 0.0
+        if save_mat:
+            imp_mat = sparse.csr_matrix((self.n_events, self.n_exp_pnt), dtype=np.float64)
+        else:
+            imp_mat = None
+        return Impact.from_eih(self.exposures, self.impfset, self.hazard,
+                        at_event, eai_exp, aai_agg, imp_mat)
 
     def minimal_exp_gdf(self, impf_col):
         """Get minimal exposures geodataframe for impact computation
