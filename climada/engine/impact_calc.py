@@ -394,10 +394,10 @@ class ImpactCalc():
         """
         Make an impact matrix from an impact sub-matrix generator
         """
-        data, row, col = np.hstack((  #rows=events index, cols=exposure point index within self.exposures
+        data, row, col = np.hstack([  #rows=events index, cols=exposure point index within self.exposures
             (mat.data, mat.nonzero()[0], self._orig_exp_idx[idx][mat.nonzero()[1]])
             for mat, idx in imp_mat_gen
-            ))
+            ])
         return sparse.csr_matrix(
             (data, (row, col)), shape=(self.n_events, self.n_exp_pnt)
             )
