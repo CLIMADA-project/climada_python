@@ -1190,7 +1190,7 @@ class TCTracks():
 
         if not axis:
             proj = ccrs.PlateCarree(central_longitude=mid_lon)
-            _, axis, fontsize = u_plot.make_map(proj=proj, figsize=figsize, adapt_fontsize=adapt_fontsize)
+            _, axis, _ = u_plot.make_map(proj=proj, figsize=figsize, adapt_fontsize=adapt_fontsize)
         axis.set_extent(extent, crs=kwargs['transform'])
         u_plot.add_shapes(axis)
 
@@ -1292,7 +1292,7 @@ class TCTracks():
             A value of 0 or None disables compression. Default: 5
         """
         # change dtype from bool to int to be NetCDF4-compliant, this is undone later
-        for i, track in enumerate(self.data):
+        for track in self.data:
             track.attrs['orig_event_flag'] = int(track.attrs['orig_event_flag'])
         try:
             encoding = {
