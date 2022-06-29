@@ -817,7 +817,7 @@ class Exposures():
                 crs = metadata['meta'].get('crs')
             exp = cls(store['exposures'], crs=crs)
             for key, val in metadata.items():
-                if key in type(exp)._metadata:
+                if key in type(exp)._metadata: # pylint: disable=protected-access
                     setattr(exp, key, val)
         return exp
 
