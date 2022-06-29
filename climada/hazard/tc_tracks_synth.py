@@ -678,6 +678,7 @@ def _decay_values(track, land_geom, s_rel):
         key is Saffir-Simpson scale, values are arrays with the values used as
         "x" in the coefficient fitting, the distance since landfall
     """
+    # pylint: disable=protected-access
     v_lf = dict()
     p_lf = dict()
     x_val = dict()
@@ -857,6 +858,7 @@ def _apply_decay_coeffs(track, v_rel, p_rel, land_geom, s_rel):
     -------
     xr.Dataset
     """
+    # pylint: disable=protected-access
     # return if historical track
     if track.orig_event_flag:
         return track
@@ -1000,6 +1002,7 @@ def _check_apply_decay_syn_plot(sy_tracks, syn_orig_wind,
                                 syn_orig_pres):
     """Plot winds and pressures of synthetic tracks before and after
     correction."""
+    # pylint: disable=protected-access
     _, graph_v_b = plt.subplots()
     graph_v_b.set_title('Wind before land decay correction')
     graph_v_b.set_xlabel('Node number')
@@ -1073,6 +1076,7 @@ def _check_apply_decay_syn_plot(sy_tracks, syn_orig_wind,
 
 def _check_apply_decay_hist_plot(hist_tracks):
     """Plot winds and pressures of historical tracks."""
+    # pylint: disable=protected-access
     _, graph_hv = plt.subplots()
     graph_hv.set_title('Historical wind')
     graph_hv.set_xlabel('Node number')
