@@ -318,6 +318,7 @@ class ImpactFuncSet():
         -------
         matplotlib.axes._subplots.AxesSubplot
         """
+        # pylint: disable=protected-access
         num_plts = self.size(haz_type, fun_id)
         num_row, num_col = u_plot._get_row_col_size(num_plts)
         # Select all hazard types to plot
@@ -361,6 +362,7 @@ class ImpactFuncSet():
         -------
         ImpFuncSet
         """
+        # pylint: disable=protected-access
         imp_func_set = cls()
         dfr = pd.read_excel(file_name, var_names['sheet_name'])
 
