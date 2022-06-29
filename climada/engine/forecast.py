@@ -396,6 +396,7 @@ class Forecast:
         adapt_fontsize=True,
     ):
         # select hazard with run_datetime
+        # pylint: disable=protected-access
         if run_datetime is None:
             run_datetime = self.run_datetime[0]
         haz_ind = np.argwhere(np.isin(self.run_datetime, run_datetime))[0][0]
@@ -793,6 +794,7 @@ class Forecast:
     ):
         """plot the probability of reaching a threshold"""
         # select hazard with run_datetime
+        # pylint: disable=protected-access
         if run_datetime is None:
             run_datetime = self.run_datetime[0]
         haz_ind = np.argwhere(np.isin(self.run_datetime, run_datetime))[0][0]
@@ -1026,6 +1028,7 @@ class Forecast:
     ):
         """plotting the warning level of each warning region based on thresholds"""
         # select hazard with run_datetime
+        # pylint: disable=protected-access
         if run_datetime is None:
             run_datetime = self.run_datetime[0]
         haz_ind = np.argwhere(np.isin(self.run_datetime, run_datetime))[0][0]
