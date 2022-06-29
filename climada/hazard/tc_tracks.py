@@ -457,11 +457,11 @@ class TCTracks():
         ibtracs_ds = xr.open_dataset(ibtracs_path)
         ibtracs_date = ibtracs_ds.attrs["date_created"]
         if (np.datetime64('today') - np.datetime64(ibtracs_date)).item().days > 180:
-            LOGGER.warning("The cached IBTrACS data set dates from %s (older "
+            LOGGER.warning(f"The cached IBTrACS data set dates from {ibtracs_date} (older "
                            "than 180 days). Very likely, a more recent version is available. "
-                           f"Consider manually removing the file %s and re-running "
+                           f"Consider manually removing the file {ibtracs_path} and re-running "
                            "this function, which will download the most recent version of the "
-                           "IBTrACS data set from the official URL." % (ibtracs_date, ibtracs_path))
+                           "IBTrACS data set from the official URL.")
 
         match = np.ones(ibtracs_ds.sid.shape[0], dtype=bool)
         if storm_id is not None:
