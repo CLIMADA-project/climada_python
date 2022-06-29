@@ -1478,6 +1478,7 @@ def _xr_to_netcdf_multi(path, ds_dict, encoding=None):
         For each dataset/group, one dict that is compliant with the format of the `encoding`
         keyword parameter in `xr.Dataset.to_netcdf`. Default: None
     """
+    # pylint: disable=protected-access
     path = str(pathlib.Path(path).expanduser().absolute())
     with contextlib.closing(NetCDF4DataStore.open(path, "w", "NETCDF4", None)) as store:
         writer = ArrayWriter()
@@ -1508,6 +1509,7 @@ def _xr_open_dataset_multi(path, prefix=""):
         Each xr.Dataset in the dict is taken from the group identified by its key in the dict.
         Note that an empty string ("") is a valid group name and refers to the root group.
     """
+    # pylint: disable=protected-access
     path = str(pathlib.Path(path).expanduser().absolute())
     ds_dict = {}
     with contextlib.closing(NetCDF4DataStore.open(path, "r", "NETCDF4", None)) as store:
@@ -1532,6 +1534,7 @@ def _xr_nc4_groups_from_store(store):
     -------
     list of str
     """
+    # pylint: disable=protected-access
     def iter_groups(ds, prefix=""):
         groups = [""]
         for group_name, group_ds in ds.groups.items():
