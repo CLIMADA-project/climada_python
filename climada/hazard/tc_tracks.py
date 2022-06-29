@@ -1304,7 +1304,7 @@ class TCTracks():
             _xr_to_netcdf_multi(file_name, ds_dict, encoding=encoding)
         finally:
             # ensure to undo the temporal change of dtype from above
-            for i, track in enumerate(self.data):
+            for track in self.data:
                 track.attrs['orig_event_flag'] = bool(track.attrs['orig_event_flag'])
 
     @classmethod
