@@ -461,7 +461,7 @@ class TCTracks():
                            "than 180 days). Very likely, a more recent version is available. "
                            "Consider manually removing the file %s and re-running "
                            "this function, which will download the most recent version of the "
-                           "IBTrACS data set from the official URL." % (ibtracs_date, ibtracs_path))
+                           "IBTrACS data set from the official URL.", ibtracs_date, ibtracs_path)
 
         match = np.ones(ibtracs_ds.sid.shape[0], dtype=bool)
         if storm_id is not None:
