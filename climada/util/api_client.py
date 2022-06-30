@@ -35,7 +35,7 @@ import pycountry
 
 from climada import CONFIG
 from climada.entity import Exposures
-from climada.hazard import Hazard
+from climada.hazard import Hazard, Centroids
 from climada.util.constants import SYSTEM_DIR
 
 LOGGER = logging.getLogger(__name__)
@@ -844,9 +844,43 @@ class Client():
             raise ValueError("country must be string or list of strings")
         return self.get_exposures(exposures_type='litpop', dump_dir=dump_dir, properties=properties)
 
-    def get_centroids(self, dump_dir=SYSTEM_DIR):
-        dataset = self.get_dataset_info(name="earth_centroids_150asland_1800asoceans_distcoast_region_nopoles")
-        client.download_dataset(dataset=dataset)
+    def get_centroids(self, res_arcsec_land=150, res_arcsec_ocean=1800, extent=None, reg_id=None, country_iso3alpha=None,
+                      dump_dir=SYSTEM_DIR):
+        """Get global centroids
+
+        Parameters
+        ----------
+        res_land_arcsec : int
+            resolution for land centroids in arcsec. Default is 150
+        res_ocean_arcsec : int
+            resolution for ocean centroids in arcsec. Default is 1800
+        reg_id : int
+            region to filter according to region_id values
+        extent : tuple
+            Format (min_lon, max_lon, min_lat, max_lat) tuple.
+            If min_lon > lon_max, the extend crosses the antimeridian and is
+            [lon_max, 180] + [-180, lon_min]
+            Borders are inclusive.
+        dump_dir : str
+            directory where the files should be downoladed. Default: SYSTEM_DIR
+        Returns
+        -------
+        climada.hazard.centroids.Centroids
+            global centroids from the api
+        """
+
+        res_arcsec_land = str(res_arcsec_land)
+        res_arcsec_ocean = str(res_arcsec_ocean)
+        extent_property = '(-180, -90, 180, 90)'
+        dataset = self.get_dataset_info("centroids", properties={'res_arcsec_land':res_arcsec_land,
+                                                                 'res_arcsec_ocean':res_arcsec_ocean,'extent':extent_property})
+        target_dir = self._organize_path(dataset, dump_dir) \
+            if dump_dir == SYSTEM_DIR else dump_dir
+        centroids = Centroids.from_hdf5(self._download_file(target_dir, dataset.files[0]))
+        if country_iso3alpha:
+            reg_id = pycountry.countries.get(alpha_3=country_iso3alpha).numeric
+        centroids = centroids.select(reg_id=int(reg_id), extent=extent)
+        return centroids
 
     @staticmethod
     def get_property_values(dataset_infos, known_property_values=None,
