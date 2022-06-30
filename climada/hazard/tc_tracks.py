@@ -457,11 +457,11 @@ class TCTracks():
         ibtracs_ds = xr.open_dataset(ibtracs_path)
         ibtracs_date = ibtracs_ds.attrs["date_created"]
         if (np.datetime64('today') - np.datetime64(ibtracs_date)).item().days > 180:
-            LOGGER.warning(f"The cached IBTrACS data set dates from {ibtracs_date} (older "
+            LOGGER.warning("The cached IBTrACS data set dates from %s (older "
                            "than 180 days). Very likely, a more recent version is available. "
-                           f"Consider manually removing the file {ibtracs_path} and re-running "
+                           "Consider manually removing the file %s and re-running "
                            "this function, which will download the most recent version of the "
-                           "IBTrACS data set from the official URL.")
+                           "IBTrACS data set from the official URL.", ibtracs_date, ibtracs_path)
 
         match = np.ones(ibtracs_ds.sid.shape[0], dtype=bool)
         if storm_id is not None:
@@ -1190,7 +1190,7 @@ class TCTracks():
 
         if not axis:
             proj = ccrs.PlateCarree(central_longitude=mid_lon)
-            _, axis, fontsize = u_plot.make_map(proj=proj, figsize=figsize, adapt_fontsize=adapt_fontsize)
+            _, axis, _ = u_plot.make_map(proj=proj, figsize=figsize, adapt_fontsize=adapt_fontsize)
         axis.set_extent(extent, crs=kwargs['transform'])
         u_plot.add_shapes(axis)
 
@@ -1292,7 +1292,7 @@ class TCTracks():
             A value of 0 or None disables compression. Default: 5
         """
         # change dtype from bool to int to be NetCDF4-compliant, this is undone later
-        for i, track in enumerate(self.data):
+        for track in self.data:
             track.attrs['orig_event_flag'] = int(track.attrs['orig_event_flag'])
         try:
             encoding = {
@@ -1304,7 +1304,7 @@ class TCTracks():
             _xr_to_netcdf_multi(file_name, ds_dict, encoding=encoding)
         finally:
             # ensure to undo the temporal change of dtype from above
-            for i, track in enumerate(self.data):
+            for track in self.data:
                 track.attrs['orig_event_flag'] = bool(track.attrs['orig_event_flag'])
 
     @classmethod
@@ -1478,6 +1478,7 @@ def _xr_to_netcdf_multi(path, ds_dict, encoding=None):
         For each dataset/group, one dict that is compliant with the format of the `encoding`
         keyword parameter in `xr.Dataset.to_netcdf`. Default: None
     """
+    # pylint: disable=protected-access
     path = str(pathlib.Path(path).expanduser().absolute())
     with contextlib.closing(NetCDF4DataStore.open(path, "w", "NETCDF4", None)) as store:
         writer = ArrayWriter()
@@ -1508,6 +1509,7 @@ def _xr_open_dataset_multi(path, prefix=""):
         Each xr.Dataset in the dict is taken from the group identified by its key in the dict.
         Note that an empty string ("") is a valid group name and refers to the root group.
     """
+    # pylint: disable=protected-access
     path = str(pathlib.Path(path).expanduser().absolute())
     ds_dict = {}
     with contextlib.closing(NetCDF4DataStore.open(path, "r", "NETCDF4", None)) as store:
@@ -1532,6 +1534,7 @@ def _xr_nc4_groups_from_store(store):
     -------
     list of str
     """
+    # pylint: disable=protected-access
     def iter_groups(ds, prefix=""):
         groups = [""]
         for group_name, group_ds in ds.groups.items():
