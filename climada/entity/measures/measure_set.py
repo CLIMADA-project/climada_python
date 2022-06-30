@@ -334,7 +334,7 @@ class MeasureSet():
                 self.append(meas)
 
     @classmethod
-    def from_mat(cls, file_name, description='', var_names=DEF_VAR_MAT):
+    def from_mat(cls, file_name, description='', var_names=None):
         """Read MATLAB file generated with previous MATLAB CLIMADA version.
 
         Parameters
@@ -351,6 +351,8 @@ class MeasureSet():
         meas_set: climada.entity.MeasureSet()
             Measure Set from matlab file
         """
+        if var_names is None:
+            var_names = DEF_VAR_MAT
         def read_att_mat(measures, data, file_name, var_names):
             """Read MATLAB measures attributes"""
             num_mes = len(data[var_names['var_name']['name']])
@@ -419,7 +421,7 @@ class MeasureSet():
         self.__dict__ = MeasureSet.from_mat(*args, **kwargs).__dict__
 
     @classmethod
-    def from_excel(cls, file_name, description='', var_names=DEF_VAR_EXCEL):
+    def from_excel(cls, file_name, description='', var_names=None):
         """Read excel file following template and store variables.
 
         Parameters
@@ -436,6 +438,8 @@ class MeasureSet():
         meas_set : climada.entity.MeasureSet
             Measures set from Excel
         """
+        if var_names is None:
+            var_names = DEF_VAR_EXCEL
         def read_att_excel(measures, dfr, var_names):
             """Read Excel measures attributes"""
             num_mes = len(dfr.index)
@@ -500,7 +504,7 @@ class MeasureSet():
                        "Use MeasureSet.from_excel instead.")
         self.__dict__ = MeasureSet.from_excel(*args, **kwargs).__dict__
 
-    def write_excel(self, file_name, var_names=DEF_VAR_EXCEL):
+    def write_excel(self, file_name, var_names=None):
         """Write excel file following template.
 
         Parameters
@@ -510,6 +514,8 @@ class MeasureSet():
         var_names : dict, optional
             name of the variables in the file
         """
+        if var_names is None:
+            var_names = DEF_VAR_EXCEL
         def write_meas(row_ini, imp_ws, xls_data):
             """Write one measure"""
             for icol, col_dat in enumerate(xls_data):
