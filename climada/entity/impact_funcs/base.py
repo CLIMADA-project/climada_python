@@ -185,7 +185,7 @@ class ImpactFunc():
 
     def set_step_impf(self, *args, **kwargs):
         """This function is deprecated, use ImpactFunc.from_step_impf instead."""
-        LOGGER.warning("The use of ImpactFunc.set_step_impf is deprecated." +
+        LOGGER.warning("The use of ImpactFunc.set_step_impf is deprecated."
                         "Use ImpactFunc.from_step_impf instead.")
         self.__dict__ = ImpactFunc.from_step_impf(*args, **kwargs).__dict__
 
