@@ -846,7 +846,7 @@ class Client():
 
     def get_centroids(self, res_arcsec_land=150, res_arcsec_ocean=1800, extent=None, country=None,
                       dump_dir=SYSTEM_DIR):
-        """Get global centroids
+        """Get centroids from teh API
 
         Parameters
         ----------
@@ -855,7 +855,7 @@ class Client():
         res_ocean_arcsec : int
             resolution for ocean centroids in arcsec. Default is 1800
         country : str
-            country iso3 code. Default is None (global)
+            country name, numeric code or iso code based on pycountry. Default is None (global).
         extent : tuple
             Format (min_lon, max_lon, min_lat, max_lat) tuple.
             If min_lon > lon_max, the extend crosses the antimeridian and is
@@ -866,10 +866,10 @@ class Client():
         Returns
         -------
         climada.hazard.centroids.Centroids
-            global centroids from the api
+            Centroids from the api
         """
 
-        extent_property = '(-180, -90, 180, 90)'
+        extent_property = '(-180, 180, -90, 90)'
         try:
             dataset = self.get_dataset_info('centroids', properties={'res_arcsec_land':str(res_arcsec_land),
                                                                      'res_arcsec_ocean':str(res_arcsec_ocean),'extent':extent_property})
@@ -877,15 +877,18 @@ class Client():
             data_info = self.list_dataset_infos('centroids')
             properties = self.get_property_values(data_info)
             raise self.NoResult("there is no dataset meeting the requirements, the following properties values"
-                                  " exist for centroids on the API"
+                                  " are available for centroids"
                                   f" {properties}")
 
         target_dir = self._organize_path(dataset, dump_dir) \
             if dump_dir == SYSTEM_DIR else dump_dir
         centroids = Centroids.from_hdf5(self._download_file(target_dir, dataset.files[0]))
         if country:
-            reg_id = pycountry.countries.get(alpha_3=country).numeric
-        centroids = centroids.select(reg_id=int(reg_id), extent=extent)
+            reg_id = pycountry.countries.lookup(country).numeric
+            centroids = centroids.select(reg_id=int(reg_id), extent=extent)
+        if extent:
+            centroids = centroids.select(extent=extent)
+
         return centroids
 
     @staticmethod
