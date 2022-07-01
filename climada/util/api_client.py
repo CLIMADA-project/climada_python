@@ -844,7 +844,7 @@ class Client():
             raise ValueError("country must be string or list of strings")
         return self.get_exposures(exposures_type='litpop', dump_dir=dump_dir, properties=properties)
 
-    def get_centroids(self, res_arcsec_land=150, res_arcsec_ocean=1800, extent=None, reg_id=None, country_iso3alpha=None,
+    def get_centroids(self, res_arcsec_land=150, res_arcsec_ocean=1800, extent=None, country=None,
                       dump_dir=SYSTEM_DIR):
         """Get global centroids
 
@@ -854,8 +854,8 @@ class Client():
             resolution for land centroids in arcsec. Default is 150
         res_ocean_arcsec : int
             resolution for ocean centroids in arcsec. Default is 1800
-        reg_id : int
-            region to filter according to region_id values
+        country : str
+            country iso3 code. Default is None (global)
         extent : tuple
             Format (min_lon, max_lon, min_lat, max_lat) tuple.
             If min_lon > lon_max, the extend crosses the antimeridian and is
@@ -869,16 +869,22 @@ class Client():
             global centroids from the api
         """
 
-        res_arcsec_land = str(res_arcsec_land)
-        res_arcsec_ocean = str(res_arcsec_ocean)
         extent_property = '(-180, -90, 180, 90)'
-        dataset = self.get_dataset_info("centroids", properties={'res_arcsec_land':res_arcsec_land,
-                                                                 'res_arcsec_ocean':res_arcsec_ocean,'extent':extent_property})
+        try:
+            dataset = self.get_dataset_info('centroids', properties={'res_arcsec_land':str(res_arcsec_land),
+                                                                     'res_arcsec_ocean':str(res_arcsec_ocean),'extent':extent_property})
+        except self.NoResult:
+            data_info = self.list_dataset_infos('centroids')
+            properties = self.get_property_values(data_info)
+            raise self.NoResult("there is no dataset meeting the requirements, the following properties values"
+                                  " exist for centroids on the API"
+                                  f" {properties}")
+
         target_dir = self._organize_path(dataset, dump_dir) \
             if dump_dir == SYSTEM_DIR else dump_dir
         centroids = Centroids.from_hdf5(self._download_file(target_dir, dataset.files[0]))
-        if country_iso3alpha:
-            reg_id = pycountry.countries.get(alpha_3=country_iso3alpha).numeric
+        if country:
+            reg_id = pycountry.countries.get(alpha_3=country).numeric
         centroids = centroids.select(reg_id=int(reg_id), extent=extent)
         return centroids
 
