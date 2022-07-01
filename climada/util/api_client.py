@@ -701,8 +701,16 @@ class Client():
         if not hazard_type in HAZ_TYPES:
             raise ValueError("Valid hazard types are a subset of CLIMADA hazard types."
                              f" Currently these types are supported: {HAZ_TYPES}")
-        dataset = self.get_dataset_info(data_type=hazard_type, name=name, version=version,
+        try:
+            dataset = self.get_dataset_info(data_type=hazard_type, name=name, version=version,
                                         properties=properties, status=status)
+        except self.NoResult:
+            data_info = self.list_dataset_infos(hazard_type)
+            properties = self.get_property_values(data_info)
+            raise self.NoResult("there is no dataset meeting the requirements, the following properties values"
+                                " are available for"
+                                f" {hazard_type}"
+                                f" {properties}")
         return self.to_hazard(dataset, dump_dir)
 
     def to_hazard(self, dataset, dump_dir=SYSTEM_DIR):
@@ -774,8 +782,16 @@ class Client():
         if not exposures_type in EXP_TYPES:
             raise ValueError("Valid exposures types are a subset of CLIMADA exposures types."
                              f" Currently these types are supported: {EXP_TYPES}")
-        dataset = self.get_dataset_info(data_type=exposures_type, name=name, version=version,
+        try:
+            dataset = self.get_dataset_info(data_type=exposures_type, name=name, version=version,
                                         properties=properties, status=status)
+        except self.NoResult:
+            data_info = self.list_dataset_infos(exposures_type)
+            properties = self.get_property_values(data_info)
+            raise self.NoResult("there is no dataset meeting the requirements, the following properties values"
+                                " are available for"
+                                f" {exposures_type}"
+                                f" {properties}")
         return self.to_exposures(dataset, dump_dir)
 
     def to_exposures(self, dataset, dump_dir=SYSTEM_DIR):
@@ -813,7 +829,7 @@ class Client():
         exposures_concat.check()
         return exposures_concat
 
-    def get_litpop_default(self, country=None, dump_dir=SYSTEM_DIR):
+    def get_litpop(self, country=None, exponents=(1,1), dump_dir=SYSTEM_DIR):
         """Get a LitPop instance on a 150arcsec grid with the default parameters:
         exponents = (1,1) and fin_mode = 'pc'.
 
@@ -822,6 +838,11 @@ class Client():
         country : str or list, optional
             List of country name or iso3 codes for which to create the LitPop object.
             If None is given, a global LitPop instance is created. Defaut is None
+        exponents : tuple of two integers, optional
+            Defining power with which lit (nightlights) and pop (gpw) go into LitPop. To get
+            nightlights^3 without population count: (3, 0).
+            To use population count alone: (0, 1).
+            Default: (1, 1)
         dump_dir : str
             directory where the files should be downoladed. Default: SYSTEM_DIR
 
@@ -831,9 +852,7 @@ class Client():
             default litpop Exposures object
         """
         properties = {
-            'exponents': '(1,1)',
-            'fin_mode': 'pc'
-        }
+            'exponents': "".join(['(',str(exponents[0]),',',str(exponents[1]),')'])}
         if country is None:
             properties['spatial_coverage'] = 'global'
         elif isinstance(country, str):
