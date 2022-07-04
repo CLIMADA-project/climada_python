@@ -359,7 +359,8 @@ def _calc_sens_df(method, problem_sa, sensitivity_kwargs, param_labels, X, unc_d
         sens_first_order = np.array([
             np.array(si_val_array)
             for si, si_val_array in sens_indices.items()
-            if (np.array(si_val_array).ndim == 1 and si!='names')  # dirty trick due to Salib incoherent output
+            if (np.array(si_val_array).ndim == 1 and si!='names')
+            # dirty trick due to Salib incoherent output
             ]).ravel()
         sens_first_order_dict[submetric_name] = sens_first_order
 
@@ -399,7 +400,8 @@ def _si_param_first(param_labels, sens_indices):
     si_name_first_order_list = [
         key
         for key, array in sens_indices.items()
-        if (np.array(array).ndim == 1 and key!='names')  # dirty trick due to Salib incoherent output
+        if (np.array(array).ndim == 1 and key!='names')
+        # dirty trick due to Salib incoherent output
         ]
     si_names_first_order = [
         si
