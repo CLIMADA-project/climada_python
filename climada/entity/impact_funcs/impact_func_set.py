@@ -345,7 +345,7 @@ class ImpactFuncSet():
         return axis
 
     @classmethod
-    def from_excel(cls, file_name, description='', var_names=DEF_VAR_EXCEL):
+    def from_excel(cls, file_name, description='', var_names=None):
         """Read excel file following template and store variables.
 
         Parameters
@@ -361,6 +361,8 @@ class ImpactFuncSet():
         -------
         ImpFuncSet
         """
+        if var_names is None:
+            var_names = DEF_VAR_EXCEL
         imp_func_set = cls()
         dfr = pd.read_excel(file_name, var_names['sheet_name'])
 
@@ -377,7 +379,7 @@ class ImpactFuncSet():
         self.__dict__ = ImpactFuncSet.from_excel(*args, **kwargs).__dict__
 
     @classmethod
-    def from_mat(cls, file_name, description='', var_names=DEF_VAR_MAT):
+    def from_mat(cls, file_name, description='', var_names=None):
         """Read MATLAB file generated with previous MATLAB CLIMADA version.
 
         Parameters
@@ -394,6 +396,8 @@ class ImpactFuncSet():
         impf_set : climada.entity.impact_func_set.ImpactFuncSet
             Impact func set as defined in matlab file.
         """
+        if var_names is None:
+            var_names = DEF_VAR_MAT
         def _get_hdf5_funcs(imp, file_name, var_names):
             """Get rows that fill every impact function and its name."""
             func_pos = dict()
@@ -462,7 +466,7 @@ class ImpactFuncSet():
                        "Use ImpactFuncSet.from_mat  instead.")
         self.__dict__ = ImpactFuncSet.from_mat(*args, **kwargs).__dict__
 
-    def write_excel(self, file_name, var_names=DEF_VAR_EXCEL):
+    def write_excel(self, file_name, var_names=None):
         """Write excel file following template.
 
         Parameters
@@ -472,6 +476,8 @@ class ImpactFuncSet():
         var_names : dict, optional
             name of the variables in the file
         """
+        if var_names is None:
+            var_names = DEF_VAR_EXCEL
         def write_impf(row_ini, imp_ws, xls_data):
             """Write one impact function"""
             for icol, col_dat in enumerate(xls_data):
