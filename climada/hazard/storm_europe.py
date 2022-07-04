@@ -140,6 +140,7 @@ class StormEurope(Hazard):
         haz : StormEurope
             StormEurope object with data from WISC footprints.
         """
+        # pylint: disable=protected-access
         intensity_thres = cls.intensity_thres if intensity_thres is None else intensity_thres
         file_names = get_file_names(path)
 
@@ -413,6 +414,7 @@ class StormEurope(Hazard):
         haz : StormEurope
             StormEurope object with data from DWD icon weather forecast footprints.
         """
+        # pylint: disable=protected-access
         intensity_thres = cls.intensity_thres if intensity_thres is None else intensity_thres
 
         haz = cls()
