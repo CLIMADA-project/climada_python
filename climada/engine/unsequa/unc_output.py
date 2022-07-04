@@ -685,7 +685,8 @@ class UncOutput():
                 alpha=0.5, label='0.05 percentile')
         ax.fill_between(x, low, high, alpha=0.2)
         if add_orig:
-            ax.plot(x, u_cmv(orig_list, m_unit, n_sig_dig=4), color='green', linestyle='dotted', label='orig')
+            ax.plot(x, u_cmv(orig_list, m_unit, n_sig_dig=4), color='green',
+                    linestyle='dotted', label='orig')
         ax.set_xlabel('Return period [year]')
         ax.set_ylabel('Impact [' + m_unit + ' ' + self.unit + ']')
         ax.legend()
