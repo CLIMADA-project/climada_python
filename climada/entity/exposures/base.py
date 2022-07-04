@@ -137,13 +137,11 @@ class Exposures():
     @property
     def crs(self):
         """Coordinate Reference System, refers to the crs attribute of the inherent GeoDataFrame"""
-        if getattr(self.gdf, "crs", None):
-            return self.gdf.crs
-        # Due to a bug, the CRS of a GeoDataFrame and its geometry column might be out of sync:
-        # https://github.com/geopandas/geopandas/issues/1960
-        if "geometry" in self.gdf and getattr(self.gdf.geometry, "crs", None):
-            return self.gdf.geometry.crs
-        return self.meta.get('crs')
+        try:
+            return self.gdf.geometry.crs or self.meta.get('crs')
+        except AttributeError:  # i.e., no geometry, crs is assumed to be a property
+            # In case of gdf without geometry, empty or before set_geometry_points was called
+            return self.meta.get('crs')
 
     def __init__(self, *args, meta=None, tag=None, ref_year=DEF_REF_YEAR,
                  value_unit=DEF_VALUE_UNIT, crs=None, **kwargs):
@@ -712,7 +710,7 @@ class Exposures():
 
     def plot_basemap(self, mask=None, ignore_zero=False, pop_name=True,
                      buffer=0.0, extend='neither', zoom=10,
-                     url='http://tile.stamen.com/terrain/tileZ/tileX/tileY.png',
+                     url='http://tile.stamen.com/terrain/{z}/{x}/{y}.png',
                      axis=None, **kwargs):
         """Scatter points over satellite image using contextily
 

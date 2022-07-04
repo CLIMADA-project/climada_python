@@ -434,7 +434,8 @@ class Client():
         return jarr[0]
 
     def get_dataset_info_by_uuid(self, uuid):
-        """Returns the data from 'https://climada.ethz.ch/data-api/v1/dataset/{uuid}' as DatasetInfo object.
+        """Returns the data from 'https://climada.ethz.ch/data-api/v1/dataset/{uuid}' as
+        DatasetInfo object.
 
         Parameters
         ----------
@@ -578,7 +579,8 @@ class Client():
             downloaded = self._tracked_download(remote_url=fileinfo.url, local_path=local_path)
             if not downloaded.enddownload:
                 raise Download.Failed("Download seems to be in progress, please try again later"
-                    f" or remove cache entry by calling `Client.purge_cache(Path('{local_path}'))`!")
+                                      " or remove cache entry by calling"
+                                      f" `Client.purge_cache(Path('{local_path}'))`!")
             try:
                 check(local_path, fileinfo)
             except Download.Failed as dlf:
@@ -845,7 +847,8 @@ class Client():
     @staticmethod
     def get_property_values(dataset_infos, known_property_values=None,
                             exclude_properties=None):
-        """Returns a dictionnary of possible values for properties of a data type, optionally given known property values.
+        """Returns a dictionnary of possible values for properties of a data type, optionally given
+        known property values.
 
         Parameters
         ----------
@@ -901,8 +904,10 @@ class Client():
         ppdf = pd.DataFrame([ds.properties for ds in dataset_infos])
         dtdf = pd.DataFrame([pd.Series(dt) for dt in dsdf.data_type])
 
-        return dtdf.loc[:, [c for c in dtdf.columns if c not in ['description', 'properties']]].join(
-               dsdf.loc[:, [c for c in dsdf.columns if c not in ['data_type', 'properties', 'files']]]).join(
+        return dtdf.loc[:, [c for c in dtdf.columns
+                            if c not in ['description', 'properties']]].join(
+               dsdf.loc[:, [c for c in dsdf.columns
+                            if c not in ['data_type', 'properties', 'files']]]).join(
                ppdf)
 
     @staticmethod
