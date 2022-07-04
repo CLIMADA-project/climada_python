@@ -1621,7 +1621,7 @@ class Hazard():
         if len(units) > 1:
             raise ValueError(f"The given hazards use different units: {units}. "
                              "The hazards are incompatible and cannot be concatenated.")
-        elif len(units) == 0:
+        if len(units) == 0:
             units = {''}
         self.units = units.pop()
 
