@@ -339,8 +339,8 @@ class Forecast:
             figure size for plt.subplots, width, height in inches
             The default is (9, 13)
         adapt_fontsize : bool, optional
-            If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
-            the default matplotlib font size is used. Default is True.
+            If set to true, the size of the fonts will be adapted to the size of the figure.
+            Otherwise the default matplotlib font size is used. Default is True.
 
         Returns
         -------
@@ -728,8 +728,8 @@ class Forecast:
             figure size for plt.subplots, width, height in inches
             The default is (9, 13)
         adapt_fontsize : bool, optional
-            If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
-            the default matplotlib font size is used. Default is True.
+            If set to true, the size of the fonts will be adapted to the size of the figure.
+            Otherwise the default matplotlib font size is used. Default is True.
 
         Returns
         -------
@@ -961,8 +961,8 @@ class Forecast:
         close_fig : bool, optional
             Figure is not drawn if True. The default is False.
         adapt_fontsize : bool, optional
-            If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
-            the default matplotlib font size is used. Default is True.
+            If set to true, the size of the fonts will be adapted to the size of the figure.
+            Otherwise the default matplotlib font size is used. Default is True.
 
         Returns
         -------
