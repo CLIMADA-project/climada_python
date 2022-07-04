@@ -331,8 +331,8 @@ class Impact():
         axis  : matplotlib.axes._subplots.AxesSubplot, optional
             axis to use
         adapt_fontsize : bool, optional
-                If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
-                the default matplotlib font size is used. Default is True.
+                If set to true, the size of the fonts will be adapted to the size of the figure.
+                Otherwise the default matplotlib font size is used. Default is True.
         kwargs : optional
             arguments for hexbin matplotlib function
 
@@ -371,8 +371,8 @@ class Impact():
         axis : matplotlib.axes._subplots.AxesSubplot, optional
             axis to use
         adapt_fontsize : bool, optional
-                If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
-                the default matplotlib font size is used. Default is True.
+                If set to true, the size of the fonts will be adapted to the size of the figure.
+                Otherwise the default matplotlib font size is used. Default is True.
         kwargs : optional
             arguments for imshow matplotlib function
 
@@ -457,8 +457,8 @@ class Impact():
         axis : matplotlib.axes._subplots.AxesSubplot
             optional axis to use
         adapt_fontsize : bool, optional
-            If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
-            the default matplotlib font size is used. Default is True.
+            If set to true, the size of the fonts will be adapted to the size of the figure.
+            Otherwise the default matplotlib font size is used. Default is True.
 
         Returns
         --------
@@ -471,7 +471,8 @@ class Impact():
             kwargs['cmap'] = CMAP_IMPACT
         impact_at_events_exp = self._build_exp_event(event_id)
         axis = impact_at_events_exp.plot_hexbin(mask, ignore_zero, pop_name,
-                                                buffer, extend, axis=axis, adapt_fontsize=adapt_fontsize,
+                                                buffer, extend, axis=axis,
+                                                adapt_fontsize=adapt_fontsize,
                                                 **kwargs)
 
         return axis
