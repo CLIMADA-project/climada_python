@@ -75,8 +75,7 @@ class CalcImpact(Calc):
         ----------
         exp_input_var : climada.engine.uncertainty.input_var.InputVar or climada.entity.Exposure
             Exposure uncertainty variable or Exposure
-        impf_input_var : climada.engine.uncertainty.input_var.InputVar
-            or climada.entity.ImpactFuncSet
+        impf_input_var : climada.engine.uncertainty.input_var.InputVar or climada.entity.ImpactFuncSet
             Impact function set uncertainty variable or Impact function set
         haz_input_var : climada.engine.uncertainty.input_var.InputVar or climada.hazard.Hazard
             Hazard uncertainty variable or Hazard

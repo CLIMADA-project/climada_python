@@ -871,8 +871,7 @@ def _apply_decay_coeffs(track, v_rel, p_rel, land_geom, s_rel):
         if S <= 1:
             # central_pressure at start of landfall > env_pres after landfall:
             # set central_pressure to environmental pressure during whole lf
-            track.central_pressure[sea_land:land_sea] = \
-                track.environmental_pressure[sea_land:land_sea]
+            track.central_pressure[sea_land:land_sea] = track.environmental_pressure[sea_land:land_sea]
         else:
             p_decay = _decay_p_function(S, p_rel[ss_scale][1],
                                         track.dist_since_lf[sea_land:land_sea].values)
