@@ -600,6 +600,7 @@ class Hazard():
         ------
         KeyError
         """
+        # pylint: disable=protected-access
         if not var_names:
             var_names = DEF_VAR_MAT
         LOGGER.info('Reading %s', file_name)
@@ -653,6 +654,7 @@ class Hazard():
         ------
         KeyError
         """
+        # pylint: disable=protected-access
         if not var_names:
             var_names = DEF_VAR_EXCEL
         LOGGER.info('Reading %s', file_name)
@@ -1596,7 +1598,7 @@ class Hazard():
         Hazard.concat : concatenate 2 or more hazards
         Centroids.union : combine centroids
         """
-        # pylint: disable=no-member
+        # pylint: disable=no-member, protected-access
         if len(others) == 0:
             return
         haz_list = [self] + list(others)
