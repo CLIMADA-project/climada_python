@@ -137,7 +137,7 @@ class ImpactFunc():
                                'Consider shifting the origin of the intensity '
                                'scale. In impact.calc the impact is always '
                                'null at intensity = 0.')
-        elif self.intensity[0] < 0 and self.intensity[-1] > 0:
+        elif self.intensity[0] < 0 < self.intensity[-1]:
             LOGGER.warning('Impact function might be interpolated to non-zero'
                            ' value at intensity = 0. Consider shifting the '
                            'origin of the intensity scale. In impact.calc '

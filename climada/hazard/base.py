@@ -857,7 +857,7 @@ class Hazard():
             self.intensity[:, (chk + 1) * cen_step:].toarray(),
             inten_stats[:, (chk + 1) * cen_step:])
         # set values below 0 to zero if minimum of hazard.intensity >= 0:
-        if self.intensity.min() >= 0 and np.min(inten_stats) < 0:
+        if np.min(inten_stats) < 0 <= self.intensity.min():
             LOGGER.warning('Exceedance intenstiy values below 0 are set to 0. \
                    Reason: no negative intensity values were found in hazard.')
             inten_stats[inten_stats < 0] = 0
