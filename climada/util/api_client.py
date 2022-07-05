@@ -863,7 +863,7 @@ class Client():
             raise ValueError("country must be string or list of strings")
         return self.get_exposures(exposures_type='litpop', dump_dir=dump_dir, properties=properties)
 
-    def get_centroids(self, res_arcsec_land=150, res_arcsec_ocean=1800, extent=None, country=None,
+    def get_centroids(self, res_arcsec_land=150, res_arcsec_ocean=1800, extent=(-180, 180, -60, 60), country=None,
                       dump_dir=SYSTEM_DIR):
         """Get centroids from teh API
 
@@ -879,7 +879,7 @@ class Client():
             Format (min_lon, max_lon, min_lat, max_lat) tuple.
             If min_lon > lon_max, the extend crosses the antimeridian and is
             [lon_max, 180] + [-180, lon_min]
-            Borders are inclusive.
+            Borders are inclusive. Default is (-180, 180, -60, 60).
         dump_dir : str
             directory where the files should be downoladed. Default: SYSTEM_DIR
         Returns
