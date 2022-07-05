@@ -111,7 +111,7 @@ def calib_instance(hazard, exposure, impact_func, df_out=pd.DataFrame(),
             raise ValueError('adding simulated impacts to reported impacts not'
                              ' yet implemented. use yearly_impact=True or run'
                              ' without init_impact_data.')
-    if not return_cost == 'False':
+    if return_cost != 'False':
         df_out = calib_cost_calc(df_out, return_cost)
     return df_out
 
