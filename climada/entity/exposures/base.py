@@ -551,9 +551,11 @@ class Exposures():
                           self.gdf.longitude[mask][pos_vals].values], axis=1)
         return u_plot.geo_scatter_from_array(value, coord, cbar_label, title,
                                              pop_name, buffer, extend,
-                                             proj=crs_epsg, axes=axis,
+                                             proj=crs_epsg,
+                                             axes=axis,
                                              figsize=figsize,
-                                             adapt_fontsize=adapt_fontsize, **kwargs)
+                                             adapt_fontsize=adapt_fontsize,
+                                             **kwargs)
 
     def plot_hexbin(self, mask=None, ignore_zero=False, pop_name=True,
                     buffer=0.0, extend='neither', axis=None, figsize=(9, 13),
