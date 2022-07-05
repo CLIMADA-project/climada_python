@@ -141,7 +141,7 @@ class Exposures():
             return self.gdf.geometry.crs or self.meta.get('crs')
         except AttributeError:  # i.e., no geometry, crs is assumed to be a property
             # In case of gdf without geometry, empty or before set_geometry_points was called
-        return self.meta.get('crs')
+            return self.meta.get('crs')
 
     def __init__(self, *args, meta=None, tag=None, ref_year=DEF_REF_YEAR,
                  value_unit=DEF_VALUE_UNIT, crs=None, **kwargs):
