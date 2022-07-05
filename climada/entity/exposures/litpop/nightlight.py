@@ -203,7 +203,7 @@ def get_required_nl_files(bounds):
     last_tile_lat = min(np.floor(-(max_lat - 90) / tile_width), 1)
 
     for i_lon in range(0, int(len(req_files) / 2)):
-        if first_tile_lon <= i_lon and last_tile_lon >= i_lon:
+        if first_tile_lon <= i_lon <= last_tile_lon:
             if first_tile_lat == 0 or last_tile_lat == 0:
                 req_files[((i_lon)) * 2] = 1
             if first_tile_lat == 1 or last_tile_lat == 1:
