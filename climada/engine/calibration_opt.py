@@ -20,19 +20,19 @@ Impact function calibration functionalities:
     Optimization and manual calibration
 """
 
-import numpy as np
-import pandas as pd
 import datetime as dt
 import copy
+import itertools
+import logging
+import numpy as np
+import pandas as pd
 from scipy import interpolate
 from scipy.optimize import minimize
-import itertools
 
 from climada.engine import Impact
 from climada.entity import ImpactFuncSet, ImpfTropCyclone, impact_funcs
 from climada.engine.impact_data import emdat_impact_yearlysum, emdat_impact_event
 
-import logging
 LOGGER = logging.getLogger(__name__)
 
 
