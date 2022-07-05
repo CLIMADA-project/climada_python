@@ -27,6 +27,7 @@ import itertools
 import logging
 import pathlib
 import warnings
+from typing import Union, Optional, Callable, Dict
 
 import geopandas as gpd
 import h5py
@@ -38,6 +39,7 @@ import rasterio
 from rasterio.features import rasterize
 from rasterio.warp import reproject, Resampling, calculate_default_transform
 from scipy import sparse
+import xarray as xr
 
 from climada.hazard.tag import Tag as TagHazard
 from climada.hazard.centroids.centr import Centroids
@@ -368,6 +370,104 @@ class Hazard():
         LOGGER.warning("The use of Hazard.set_vector is deprecated."
                        "Use Hazard.from_vector instead.")
         self.__dict__ = Hazard.from_vector(*args, **kwargs).__dict__
+
+    @classmethod
+    def from_raster_netcdf(
+        cls,
+        data: Union[xr.Dataset, str],
+        *,
+        intensity: str = "intensity",
+        fraction: Union[str, Callable[[np.ndarray], np.ndarray]] = "fraction",
+        coordinate_vars: Optional[Dict[str, str]] = None,
+    ):
+        """Read raster-like data from a NetCDF file
+
+        Parameters
+        ----------
+        data : xarray.Dataset or str
+            The NetCDF data to read from. May be a opened dataset or a path to a NetCDF
+            file, in which case the file is opened first.
+        intensity : str
+            Identifier of the `xarray.DataArray` containing the hazard intensity data.
+        fraction : str or Callable
+            Identifier of the `xarray.DataArray` containing the hazard fraction data.
+            May be a callable, in which case the callable is applied on the respective
+            intensity value to yield a fraction.
+        coordinate_vars : dict(str, str)
+            Mapping from default coordinate names to coordinate names used in the data
+            to read. The default coordinates are `time`, `longitude`, and `latitude`.
+
+        Returns
+        -------
+        hazard : climada.Hazard
+            A hazard object created from the input data
+
+        """
+        # If the data is a string, open the respective file
+        if not isinstance(data, xr.Dataset):
+            data = xr.open_dataset(data)
+        hazard = cls()  # TODO: Hazard type
+
+        # Update coordinate identifiers
+        coords = {"time": "time", "longitude": "longitude", "latitude": "latitude"}
+        if coordinate_vars is not None:
+            unknown_coords = [co not in coords for co in coordinate_vars]
+            if any(unknown_coords):
+                raise ValueError(
+                    f"Unknown coordinates passed: '{list(coordinate_vars.keys())}'. "
+                    "Supported coordinates are 'time', 'longitude', 'latitude'."
+                )
+            coords.update(coordinate_vars)
+
+        # Transform coordinates into centroids
+        lat, lon = np.meshgrid(
+            data[coords["latitude"]], data[coords["longitude"]], indexing="ij"
+        )
+        hazard.centroids = Centroids.from_lat_lon(lat.flatten(), lon.flatten())
+
+        def to_hazard_csr_matrix(dataarray):
+            """Create a CSR matrix from a 3D data array"""
+            arr = dataarray.transpose(
+                coords["time"], coords["latitude"], coords["longitude"]
+            )
+            return sparse.csr_matrix(
+                arr.values.reshape((arr.sizes[coords["time"]], -1))
+            )
+
+        # Read the intensity data and flatten it in spatial dimensions
+        hazard.intensity = to_hazard_csr_matrix(data[intensity])
+        hazard.intensity.eliminate_zeros()
+
+        # Use fraction data or apply callable
+        if isinstance(fraction, str):
+            fraction_arr = data[fraction]
+        elif isinstance(fraction, Callable):
+            fraction_arr = xr.apply_ufunc(fraction, data[intensity])
+        else:
+            raise TypeError("'fraction' parameter must be 'str' or Callable")
+        hazard.fraction = to_hazard_csr_matrix(fraction_arr)
+        hazard.fraction.eliminate_zeros()
+
+        # Fill hazard with required information
+        num_events = data.sizes[coords["time"]]
+        hazard.event_id = np.array(range(num_events)) + 1  # event_id starts at 1
+        hazard.frequency = np.ones(num_events)  # TODO: Optional read from file
+        hazard.event_name = list(data[coords["time"]].values)
+
+        def to_datetime(date: np.datetime64):
+            """Convert a numpy.datetime64 into a datetime.datetime"""
+            timestamp = (date - np.datetime64("1970-01-01T00:00:00")) / np.timedelta64(
+                1, "s"
+            )
+            return dt.datetime.utcfromtimestamp(timestamp)
+
+        hazard.date = np.array(
+            [to_datetime(val).toordinal() for val in data[coords["time"]].values]
+        )
+        # TODO: hazard.unit
+
+        # Done!
+        return hazard
 
     @classmethod
     def from_vector(cls, files_intensity, files_fraction=None, attrs=None,
