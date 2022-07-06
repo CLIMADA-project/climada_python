@@ -154,9 +154,10 @@ class ReadDefaultNetCDF(unittest.TestCase):
         # Wrong coordinate key
         with self.assertRaises(ValueError) as cm:
             Hazard.from_raster_netcdf(
-                self.netcdf_path, coordinate_vars=dict(bla="latitude")
+                self.netcdf_path,
+                coordinate_vars=dict(bla="latitude", longitude="longitude"),
             )
-        self.assertIn("Unknown coordinates passed: '['bla']'", str(cm.exception))
+        self.assertIn("Unknown coordinates passed: '['bla']'.", str(cm.exception))
 
 
 # Execute Tests

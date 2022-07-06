@@ -411,11 +411,11 @@ class Hazard():
         # Update coordinate identifiers
         coords = {"time": "time", "longitude": "longitude", "latitude": "latitude"}
         if coordinate_vars is not None:
-            unknown_coords = [co not in coords for co in coordinate_vars]
-            if any(unknown_coords):
+            unknown_coords = [co for co in coordinate_vars if co not in coords]
+            if unknown_coords:
                 raise ValueError(
-                    f"Unknown coordinates passed: '{list(coordinate_vars.keys())}'. "
-                    "Supported coordinates are 'time', 'longitude', 'latitude'."
+                    f"Unknown coordinates passed: '{unknown_coords}'. Supported "
+                    "coordinates are 'time', 'longitude', 'latitude'."
                 )
             coords.update(coordinate_vars)
 
