@@ -430,7 +430,10 @@ class Client():
             raise Client.AmbiguousResult("there are several datasets meeting the requirements:"
                                         f" {jarr}")
         if len(jarr) < 1:
-            raise Client.NoResult("there is no dataset meeting the requirements")
+            data_info = self.list_dataset_infos(data_type)
+            properties = self.get_property_values(data_info)
+            raise Client.NoResult("there is no dataset meeting the requirements, the following"
+                                  f" property values are available for {data_type}: {properties}")
         return jarr[0]
 
     def get_dataset_info_by_uuid(self, uuid):
@@ -532,12 +535,19 @@ class Client():
             raise Exception("tracked download requires a path to a file not a directory")
         path_as_str = str(local_path.absolute())
         try:
-            dlf = Download.create(url=remote_url, path=path_as_str, startdownload=datetime.utcnow())
+            dlf = Download.create(url=remote_url,
+                                  path=path_as_str,
+                                  startdownload=datetime.utcnow())
         except IntegrityError as ierr:
-            dlf = Download.get(Download.path==path_as_str)
+            dlf = Download.get(Download.path==path_as_str)  # path is the table's one unique column
+            if not Path(path_as_str).is_file():  # in case the file has been removed
+                dlf.delete_instance()  # delete entry from database
+                return self._tracked_download(remote_url, local_path)  # and try again
             if dlf.url != remote_url:
-                raise Exception("this file has been downloaded from another url, "
-                    "please purge the entry from data base before trying again") from ierr
+                raise Exception(f"this file ({path_as_str}) has been downloaded from another url"
+                                f" ({dlf.url}), possibly because it belongs to a dataset with a"
+                                " recent version update. Please remove the file or purge the entry"
+                                " from data base before trying again") from ierr
             return dlf
         try:
             self._download(url=remote_url, path=local_path, replace=True)
@@ -701,16 +711,8 @@ class Client():
         if not hazard_type in HAZ_TYPES:
             raise ValueError("Valid hazard types are a subset of CLIMADA hazard types."
                              f" Currently these types are supported: {HAZ_TYPES}")
-        try:
-            dataset = self.get_dataset_info(data_type=hazard_type, name=name, version=version,
+        dataset = self.get_dataset_info(data_type=hazard_type, name=name, version=version,
                                         properties=properties, status=status)
-        except self.NoResult:
-            data_info = self.list_dataset_infos(hazard_type)
-            properties = self.get_property_values(data_info)
-            raise self.NoResult("there is no dataset meeting the requirements, the following properties values"
-                                " are available for"
-                                f" {hazard_type}"
-                                f" {properties}")
         return self.to_hazard(dataset, dump_dir)
 
     def to_hazard(self, dataset, dump_dir=SYSTEM_DIR):
@@ -734,7 +736,6 @@ class Client():
         """
         target_dir = self._organize_path(dataset, dump_dir) \
                      if dump_dir == SYSTEM_DIR else dump_dir
-
         hazard_list = [
             Hazard.from_hdf5(self._download_file(target_dir, dsf))
             for dsf in dataset.files
@@ -782,16 +783,8 @@ class Client():
         if not exposures_type in EXP_TYPES:
             raise ValueError("Valid exposures types are a subset of CLIMADA exposures types."
                              f" Currently these types are supported: {EXP_TYPES}")
-        try:
-            dataset = self.get_dataset_info(data_type=exposures_type, name=name, version=version,
+        dataset = self.get_dataset_info(data_type=exposures_type, name=name, version=version,
                                         properties=properties, status=status)
-        except self.NoResult:
-            data_info = self.list_dataset_infos(exposures_type)
-            properties = self.get_property_values(data_info)
-            raise self.NoResult("there is no dataset meeting the requirements, the following properties values"
-                                " are available for"
-                                f" {exposures_type}"
-                                f" {properties}")
         return self.to_exposures(dataset, dump_dir)
 
     def to_exposures(self, dataset, dump_dir=SYSTEM_DIR):
@@ -863,7 +856,8 @@ class Client():
             raise ValueError("country must be string or list of strings")
         return self.get_exposures(exposures_type='litpop', dump_dir=dump_dir, properties=properties)
 
-    def get_centroids(self, res_arcsec_land=150, res_arcsec_ocean=1800, extent=(-180, 180, -60, 60), country=None,
+    def get_centroids(self, res_arcsec_land=150, res_arcsec_ocean=1800,
+                      extent=(-180, 180, -60, 60), country=None,
                       dump_dir=SYSTEM_DIR):
         """Get centroids from teh API
 
@@ -888,19 +882,14 @@ class Client():
             Centroids from the api
         """
 
-        extent_property = '(-180, 180, -90, 90)'
-        try:
-            dataset = self.get_dataset_info('centroids', properties={'res_arcsec_land':str(res_arcsec_land),
-                                                                     'res_arcsec_ocean':str(res_arcsec_ocean),'extent':extent_property})
-        except self.NoResult:
-            data_info = self.list_dataset_infos('centroids')
-            properties = self.get_property_values(data_info)
-            raise self.NoResult("there is no dataset meeting the requirements, the following properties values"
-                                  " are available for centroids"
-                                  f" {properties}")
-
+        properties = {
+            'res_arcsec_land': str(res_arcsec_land),
+            'res_arcsec_ocean': str(res_arcsec_ocean),
+            'extent': '(-180, 180, -90, 90)'
+        }
+        dataset = self.get_dataset_info('centroids', properties=properties)
         target_dir = self._organize_path(dataset, dump_dir) \
-            if dump_dir == SYSTEM_DIR else dump_dir
+                     if dump_dir == SYSTEM_DIR else dump_dir
         centroids = Centroids.from_hdf5(self._download_file(target_dir, dataset.files[0]))
         if country:
             reg_id = pycountry.countries.lookup(country).numeric
@@ -940,8 +929,6 @@ class Client():
         if known_property_values:
             for key, val in known_property_values.items():
                 ppdf = ppdf[ppdf[key] == val]
-        if len(ppdf) == 0:
-            raise Client.NoResult("there is no dataset meeting the requirements")
 
         property_values = dict()
         for col in ppdf.columns:

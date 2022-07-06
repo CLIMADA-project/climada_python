@@ -140,8 +140,8 @@ class TestClient(unittest.TestCase):
                                          dump_dir=DATA_DIR)
         self.assertEqual(len(exposures.gdf), 5782)
         self.assertEqual(np.unique(exposures.gdf.region_id), 40)
-        self.assertTrue('[0, 1]' in exposures.tag.description)
-        self.assertTrue('pop' in exposures.tag.description)
+        self.assertIn('(0, 1)', exposures.tag.description)
+        self.assertIn('pop', exposures.tag.description)
         exposures
 
     def test_get_exposures_fails(self):
