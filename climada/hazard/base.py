@@ -428,19 +428,21 @@ class Hazard():
             data = xr.open_dataset(data)
         hazard = cls()  # TODO: Hazard type
 
-        def update_without_addition(map: dict, map_update: dict, error_keyword: str):
+        def update_without_addition(
+            map_orig: dict, map_update: dict, error_keyword: str
+        ):
             """Update an existing map with another map
 
             Throw an error if the other map contains keys that are not present in the
             original map.
             """
-            unknown_keys = [key for key in map_update if key not in map]
+            unknown_keys = [key for key in map_update if key not in map_orig]
             if unknown_keys:
                 raise ValueError(
                     f"Unknown {error_keyword} passed: '{unknown_keys}'. Supported "
-                    f"{error_keyword} are: '{list(map.keys())}'."
+                    f"{error_keyword} are: '{list(map_orig.keys())}'."
                 )
-            map.update(map_update)
+            map_orig.update(map_update)
 
         # Update dimension identifiers
         dims = {"time": "time", "longitude": "longitude", "latitude": "latitude"}
