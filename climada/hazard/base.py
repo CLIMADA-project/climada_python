@@ -453,17 +453,7 @@ class Hazard():
         hazard.event_id = np.array(range(num_events)) + 1  # event_id starts at 1
         hazard.frequency = np.ones(num_events)  # TODO: Optional read from file
         hazard.event_name = list(data[coords["time"]].values)
-
-        def to_datetime(date: np.datetime64):
-            """Convert a numpy.datetime64 into a datetime.datetime"""
-            timestamp = (date - np.datetime64("1970-01-01T00:00:00")) / np.timedelta64(
-                1, "s"
-            )
-            return dt.datetime.utcfromtimestamp(timestamp)
-
-        hazard.date = np.array(
-            [to_datetime(val).toordinal() for val in data[coords["time"]].values]
-        )
+        hazard.date = np.array(u_dt.datetime64_to_ordinal(data[coords["time"]].values))
         # TODO: hazard.unit
 
         # Done!
