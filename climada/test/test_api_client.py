@@ -140,8 +140,8 @@ class TestClient(unittest.TestCase):
                                          dump_dir=DATA_DIR)
         self.assertEqual(len(exposures.gdf), 5782)
         self.assertEqual(np.unique(exposures.gdf.region_id), 40)
-        self.assertTrue('[0, 1]' in exposures.tag.description)
-        self.assertTrue('pop' in exposures.tag.description)
+        self.assertIn('(0, 1)', exposures.tag.description)
+        self.assertIn('pop', exposures.tag.description)
         exposures
 
     def test_get_exposures_fails(self):
@@ -189,9 +189,9 @@ class TestClient(unittest.TestCase):
                               dump_dir=DATA_DIR)
         self.assertIn('there are several datasets meeting the requirements:', str(cm.exception))
 
-    def test_get_litpop_default(self):
+    def test_get_litpop(self):
         client = Client()
-        litpop = client.get_litpop_default(country='LUX', dump_dir=DATA_DIR)
+        litpop = client.get_litpop(country='LUX', dump_dir=DATA_DIR)
         self.assertEqual(len(litpop.gdf), 188)
         self.assertEqual(np.unique(litpop.gdf.region_id), 442)
         self.assertTrue('[1, 1]' in litpop.tag.description)

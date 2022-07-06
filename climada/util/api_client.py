@@ -35,7 +35,7 @@ import pycountry
 
 from climada import CONFIG
 from climada.entity import Exposures
-from climada.hazard import Hazard
+from climada.hazard import Hazard, Centroids
 from climada.util.constants import SYSTEM_DIR
 
 LOGGER = logging.getLogger(__name__)
@@ -430,7 +430,10 @@ class Client():
             raise Client.AmbiguousResult("there are several datasets meeting the requirements:"
                                         f" {jarr}")
         if len(jarr) < 1:
-            raise Client.NoResult("there is no dataset meeting the requirements")
+            data_info = self.list_dataset_infos(data_type)
+            properties = self.get_property_values(data_info)
+            raise Client.NoResult("there is no dataset meeting the requirements, the following"
+                                  f" property values are available for {data_type}: {properties}")
         return jarr[0]
 
     def get_dataset_info_by_uuid(self, uuid):
@@ -532,12 +535,19 @@ class Client():
             raise Exception("tracked download requires a path to a file not a directory")
         path_as_str = str(local_path.absolute())
         try:
-            dlf = Download.create(url=remote_url, path=path_as_str, startdownload=datetime.utcnow())
+            dlf = Download.create(url=remote_url,
+                                  path=path_as_str,
+                                  startdownload=datetime.utcnow())
         except IntegrityError as ierr:
-            dlf = Download.get(Download.path==path_as_str)
+            dlf = Download.get(Download.path==path_as_str)  # path is the table's one unique column
+            if not Path(path_as_str).is_file():  # in case the file has been removed
+                dlf.delete_instance()  # delete entry from database
+                return self._tracked_download(remote_url, local_path)  # and try again
             if dlf.url != remote_url:
-                raise Exception("this file has been downloaded from another url, "
-                    "please purge the entry from data base before trying again") from ierr
+                raise Exception(f"this file ({path_as_str}) has been downloaded from another url"
+                                f" ({dlf.url}), possibly because it belongs to a dataset with a"
+                                " recent version update. Please remove the file or purge the entry"
+                                " from data base before trying again") from ierr
             return dlf
         try:
             self._download(url=remote_url, path=local_path, replace=True)
@@ -726,7 +736,6 @@ class Client():
         """
         target_dir = self._organize_path(dataset, dump_dir) \
                      if dump_dir == SYSTEM_DIR else dump_dir
-
         hazard_list = [
             Hazard.from_hdf5(self._download_file(target_dir, dsf))
             for dsf in dataset.files
@@ -813,7 +822,7 @@ class Client():
         exposures_concat.check()
         return exposures_concat
 
-    def get_litpop_default(self, country=None, dump_dir=SYSTEM_DIR):
+    def get_litpop(self, country=None, exponents=(1,1), dump_dir=SYSTEM_DIR):
         """Get a LitPop instance on a 150arcsec grid with the default parameters:
         exponents = (1,1) and fin_mode = 'pc'.
 
@@ -822,6 +831,11 @@ class Client():
         country : str or list, optional
             List of country name or iso3 codes for which to create the LitPop object.
             If None is given, a global LitPop instance is created. Defaut is None
+        exponents : tuple of two integers, optional
+            Defining power with which lit (nightlights) and pop (gpw) go into LitPop. To get
+            nightlights^3 without population count: (3, 0).
+            To use population count alone: (0, 1).
+            Default: (1, 1)
         dump_dir : str
             directory where the files should be downoladed. Default: SYSTEM_DIR
 
@@ -831,9 +845,7 @@ class Client():
             default litpop Exposures object
         """
         properties = {
-            'exponents': '(1,1)',
-            'fin_mode': 'pc'
-        }
+            'exponents': "".join(['(',str(exponents[0]),',',str(exponents[1]),')'])}
         if country is None:
             properties['spatial_coverage'] = 'global'
         elif isinstance(country, str):
@@ -843,6 +855,49 @@ class Client():
         else:
             raise ValueError("country must be string or list of strings")
         return self.get_exposures(exposures_type='litpop', dump_dir=dump_dir, properties=properties)
+
+    def get_centroids(self, res_arcsec_land=150, res_arcsec_ocean=1800,
+                      extent=(-180, 180, -60, 60), country=None,
+                      dump_dir=SYSTEM_DIR):
+        """Get centroids from teh API
+
+        Parameters
+        ----------
+        res_land_arcsec : int
+            resolution for land centroids in arcsec. Default is 150
+        res_ocean_arcsec : int
+            resolution for ocean centroids in arcsec. Default is 1800
+        country : str
+            country name, numeric code or iso code based on pycountry. Default is None (global).
+        extent : tuple
+            Format (min_lon, max_lon, min_lat, max_lat) tuple.
+            If min_lon > lon_max, the extend crosses the antimeridian and is
+            [lon_max, 180] + [-180, lon_min]
+            Borders are inclusive. Default is (-180, 180, -60, 60).
+        dump_dir : str
+            directory where the files should be downoladed. Default: SYSTEM_DIR
+        Returns
+        -------
+        climada.hazard.centroids.Centroids
+            Centroids from the api
+        """
+
+        properties = {
+            'res_arcsec_land': str(res_arcsec_land),
+            'res_arcsec_ocean': str(res_arcsec_ocean),
+            'extent': '(-180, 180, -90, 90)'
+        }
+        dataset = self.get_dataset_info('centroids', properties=properties)
+        target_dir = self._organize_path(dataset, dump_dir) \
+                     if dump_dir == SYSTEM_DIR else dump_dir
+        centroids = Centroids.from_hdf5(self._download_file(target_dir, dataset.files[0]))
+        if country:
+            reg_id = pycountry.countries.lookup(country).numeric
+            centroids = centroids.select(reg_id=int(reg_id), extent=extent)
+        if extent:
+            centroids = centroids.select(extent=extent)
+
+        return centroids
 
     @staticmethod
     def get_property_values(dataset_infos, known_property_values=None,
@@ -874,8 +929,6 @@ class Client():
         if known_property_values:
             for key, val in known_property_values.items():
                 ppdf = ppdf[ppdf[key] == val]
-        if len(ppdf) == 0:
-            raise Client.NoResult("there is no dataset meeting the requirements")
 
         property_values = dict()
         for col in ppdf.columns:
