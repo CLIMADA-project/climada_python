@@ -425,7 +425,10 @@ class Hazard():
         """
         # If the data is a string, open the respective file
         if not isinstance(data, xr.Dataset):
+            LOGGER.info(f"Loading Hazard from file: {data}")
             data = xr.open_dataset(data)
+        else:
+            LOGGER.info("Loading Hazard from xarray Dataset")
         hazard = cls()  # TODO: Hazard type
 
         def update_without_addition(
@@ -448,6 +451,7 @@ class Hazard():
         dims = {"time": "time", "longitude": "longitude", "latitude": "latitude"}
         if dimension_vars is not None:
             update_without_addition(dims, dimension_vars, "dimensions")
+            LOGGER.debug(f"Custom dimension names specified. Dimensions: {dims}")
 
         # Stack (vectorize) the entire dataset along the spatial dimensions
         data = data.stack(lat_lon=[dims["latitude"], dims["longitude"]])
@@ -458,18 +462,22 @@ class Hazard():
         coords = copy.deepcopy(dims)
         if coordinate_vars is not None:
             update_without_addition(coords, coordinate_vars, "coordinates")
+            LOGGER.debug(f"Custom coordinate names specified. Coordinates: {coords}")
         hazard.centroids = Centroids.from_lat_lon(
             data[coords["latitude"]].values, data[coords["longitude"]].values
         )
 
         # Read the intensity data and flatten it in spatial dimensions
+        LOGGER.debug(f"Loading Hazard intensity from DataArray '{intensity}'")
         hazard.intensity = sparse.csr_matrix(data[intensity])
         hazard.intensity.eliminate_zeros()
 
         # Use fraction data or apply callable
         if isinstance(fraction, str):
+            LOGGER.debug(f"Loading Hazard fraction from DataArray '{fraction}'")
             fraction_arr = data[fraction]
         elif isinstance(fraction, Callable):
+            LOGGER.debug("Computing Hazard fraction from callable")
             fraction_arr = xr.apply_ufunc(fraction, data[intensity])
         else:
             raise TypeError("'fraction' parameter must be 'str' or Callable")
@@ -485,6 +493,7 @@ class Hazard():
         # TODO: hazard.unit
 
         # Done!
+        LOGGER.debug(f"Hazard successfully loaded. Number of events: {num_events}")
         return hazard
 
     @classmethod
