@@ -633,8 +633,8 @@ def _haz_uncfunc(HE, HI, HF, haz, n_ev):
     haz_tmp = copy.deepcopy(haz)
     if HE is not None:
         rng = np.random.RandomState(int(HE))
-        event_names = list(rng.choice(haz_tmp.event_name, int(n_ev)))
-        haz_tmp = haz_tmp.select(event_names=event_names)
+        event_id = list(rng.choice(haz_tmp.event_id, int(n_ev)))
+        haz_tmp = haz_tmp.select(event_id=event_id)
     if HI is not None:
         haz_tmp.intensity = haz_tmp.intensity.multiply(HI)
     if HF is not None:

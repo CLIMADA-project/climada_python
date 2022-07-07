@@ -111,7 +111,7 @@ class Impact():
 
         Returns
         -------
-            ImpactFreqCurve
+            climada.engine.impact.ImpactFreqCurve
         """
         ifc = ImpactFreqCurve()
         ifc.tag = self.tag
@@ -251,7 +251,7 @@ class Impact():
 
         Returns
         -------
-        climada.engine.Impact
+        climada.engine.impact.Impact
         """
         new_imp = copy.deepcopy(self)
         if attachment or cover:
@@ -270,7 +270,7 @@ class Impact():
 
         return new_imp, Impact()
 
-    def plot_hexbin_eai_exposure(self, mask=None, ignore_zero=True,
+    def plot_hexbin_eai_exposure(self, mask=None, ignore_zero=False,
                                  pop_name=True, buffer=0.0, extend='neither',
                                  axis=None, adapt_fontsize=True, **kwargs):
         """Plot hexbin expected annual impact of each exposure.
@@ -308,7 +308,7 @@ class Impact():
         axis.set_title('Expected annual impact')
         return axis
 
-    def plot_scatter_eai_exposure(self, mask=None, ignore_zero=True,
+    def plot_scatter_eai_exposure(self, mask=None, ignore_zero=False,
                                   pop_name=True, buffer=0.0, extend='neither',
                                   axis=None, adapt_fontsize=True, **kwargs):
         """Plot scatter expected annual impact of each exposure.
@@ -331,8 +331,8 @@ class Impact():
         axis  : matplotlib.axes._subplots.AxesSubplot, optional
             axis to use
         adapt_fontsize : bool, optional
-                If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
-                the default matplotlib font size is used. Default is True.
+                If set to true, the size of the fonts will be adapted to the size of the figure.
+                Otherwise the default matplotlib font size is used. Default is True.
         kwargs : optional
             arguments for hexbin matplotlib function
 
@@ -371,8 +371,8 @@ class Impact():
         axis : matplotlib.axes._subplots.AxesSubplot, optional
             axis to use
         adapt_fontsize : bool, optional
-                If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
-                the default matplotlib font size is used. Default is True.
+                If set to true, the size of the fonts will be adapted to the size of the figure.
+                Otherwise the default matplotlib font size is used. Default is True.
         kwargs : optional
             arguments for imshow matplotlib function
 
@@ -428,7 +428,7 @@ class Impact():
         axis.set_title('Expected annual impact')
         return axis
 
-    def plot_hexbin_impact_exposure(self, event_id=1, mask=None, ignore_zero=True,
+    def plot_hexbin_impact_exposure(self, event_id=1, mask=None, ignore_zero=False,
                                     pop_name=True, buffer=0.0, extend='neither',
                                     axis=None, adapt_fontsize=True, **kwargs):
         """Plot hexbin impact of an event at each exposure.
@@ -457,8 +457,8 @@ class Impact():
         axis : matplotlib.axes._subplots.AxesSubplot
             optional axis to use
         adapt_fontsize : bool, optional
-            If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
-            the default matplotlib font size is used. Default is True.
+            If set to true, the size of the fonts will be adapted to the size of the figure.
+            Otherwise the default matplotlib font size is used. Default is True.
 
         Returns
         --------
@@ -471,12 +471,13 @@ class Impact():
             kwargs['cmap'] = CMAP_IMPACT
         impact_at_events_exp = self._build_exp_event(event_id)
         axis = impact_at_events_exp.plot_hexbin(mask, ignore_zero, pop_name,
-                                                buffer, extend, axis=axis, adapt_fontsize=adapt_fontsize,
+                                                buffer, extend, axis=axis,
+                                                adapt_fontsize=adapt_fontsize,
                                                 **kwargs)
 
         return axis
 
-    def plot_basemap_impact_exposure(self, event_id=1, mask=None, ignore_zero=True,
+    def plot_basemap_impact_exposure(self, event_id=1, mask=None, ignore_zero=False,
                                      pop_name=True, buffer=0.0, extend='neither', zoom=10,
                                      url='http://tile.stamen.com/terrain/tileZ/tileX/tileY.png',
                                      axis=None, **kwargs):
@@ -619,7 +620,8 @@ class Impact():
 
         Returns
         -------
-        Impact year set of type numpy.ndarray with summed impact per year.
+        yearset : numpy.ndarray
+            Impact year set of type numpy.ndarray with summed impact per year.
         """
         if year_range is None:
             year_range = []
@@ -851,16 +853,17 @@ class Impact():
     @staticmethod
     def video_direct_impact(exp, impf_set, haz_list, file_name='',
                             writer=animation.PillowWriter(bitrate=500),
-                            imp_thresh=0, args_exp=None, args_imp=None):
+                            imp_thresh=0, args_exp=None, args_imp=None,
+                            ignore_zero=False, pop_name=False):
         """
         Computes and generates video of accumulated impact per input events
         over exposure.
 
         Parameters
         ----------
-        exp : Exposures
+        exp : climada.entity.Exposures
             exposures instance, constant during all video
-        impf_set : ImpactFuncSet
+        impf_set : climada.entity.ImpactFuncSet
             impact functions
         haz_list : (list(Hazard))
             every Hazard contains an event; all hazards
@@ -877,6 +880,12 @@ class Impact():
         args_imp : optional
             arguments for scatter (points) or hexbin (raster)
             matplotlib function used in impact
+        ignore_zero : bool, optional
+            flag to indicate if zero and negative
+            values are ignored in plot. Default: False
+        pop_name : bool, optional
+            add names of the populated places
+            The default is False.
 
         Returns
         -------
@@ -932,17 +941,17 @@ class Impact():
             haz_list[i_time].plot_intensity(1, axis=axis, cmap='Greys', vmin=v_lim[0],
                                             vmax=v_lim[1], alpha=0.8)
             if plot_raster:
-                exp.plot_hexbin(axis=axis, mask=exp_list[i_time], ignore_zero=True,
-                                pop_name=False, **args_exp)
+                exp.plot_hexbin(axis=axis, mask=exp_list[i_time], ignore_zero=ignore_zero,
+                                pop_name=pop_name, **args_exp)
                 if imp_list[i_time].coord_exp.size:
-                    imp_list[i_time].plot_hexbin_eai_exposure(axis=axis, pop_name=False,
+                    imp_list[i_time].plot_hexbin_eai_exposure(axis=axis, pop_name=pop_name,
                                                               **args_imp)
                     fig.delaxes(fig.axes[1])
             else:
-                exp.plot_scatter(axis=axis, mask=exp_list[i_time], ignore_zero=True,
-                                 pop_name=False, **args_exp)
+                exp.plot_scatter(axis=axis, mask=exp_list[i_time], ignore_zero=ignore_zero,
+                                 pop_name=pop_name, **args_exp)
                 if imp_list[i_time].coord_exp.size:
-                    imp_list[i_time].plot_scatter_eai_exposure(axis=axis, pop_name=False,
+                    imp_list[i_time].plot_scatter_eai_exposure(axis=axis, pop_name=pop_name,
                                                                **args_imp)
                     fig.delaxes(fig.axes[1])
             fig.delaxes(fig.axes[1])
@@ -1155,7 +1164,7 @@ class Impact():
 
         Returns
         -------
-        imp : climada.engine.Impact
+        imp : climada.engine.impact.Impact
             A new impact object with a selection of events and/or exposures
 
         """

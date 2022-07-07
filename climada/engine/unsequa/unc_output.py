@@ -685,7 +685,8 @@ class UncOutput():
                 alpha=0.5, label='0.05 percentile')
         ax.fill_between(x, low, high, alpha=0.2)
         if add_orig:
-            ax.plot(x, u_cmv(orig_list, m_unit, n_sig_dig=4), color='green', linestyle='dotted', label='orig')
+            ax.plot(x, u_cmv(orig_list, m_unit, n_sig_dig=4),
+                    color='green', linestyle='dotted', label='orig')
         ax.set_xlabel('Return period [year]')
         ax.set_ylabel('Impact [' + m_unit + ' ' + self.unit + ']')
         ax.legend()
@@ -1013,7 +1014,7 @@ class UncOutput():
         save_path = save_path.with_suffix('.hdf5')
 
         LOGGER.info('Writing %s', save_path)
-        store = pd.HDFStore(save_path)
+        store = pd.HDFStore(save_path, mode='w')
         for (var_name, var_val) in self.__dict__.items():
             if isinstance(var_val, pd.DataFrame):
                 store.put(var_name, var_val, format='fixed', complevel=9)
@@ -1058,7 +1059,7 @@ class UncOutput():
         unc_data = UncOutput(pd.DataFrame())
 
         LOGGER.info('Reading %s', filename)
-        store = pd.HDFStore(filename)
+        store = pd.HDFStore(filename, mode='r')
         for var_name in store.keys():
             setattr(unc_data, var_name[1:], store.get(var_name))
         unc_data.samples_df.attrs = store.get_storer('/samples_df').attrs.metadata

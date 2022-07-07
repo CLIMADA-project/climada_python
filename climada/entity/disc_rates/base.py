@@ -222,7 +222,7 @@ class DiscRates():
         return axis
 
     @classmethod
-    def from_mat(cls, file_name, description='', var_names=DEF_VAR_MAT):
+    def from_mat(cls, file_name, description='', var_names=None):
         """
         Read MATLAB file generated with previous MATLAB CLIMADA version.
 
@@ -242,7 +242,8 @@ class DiscRates():
         climada.entity.DiscRates :
             The disc rates from matlab
         """
-
+        if var_names is None:
+            var_names = DEF_VAR_MAT
         disc = u_hdf5.read(file_name)
         tag = Tag(file_name=str(file_name), description=description)
         try:
@@ -267,7 +268,7 @@ class DiscRates():
         self.__dict__ = DiscRates.from_mat(*args, **kwargs).__dict__
 
     @classmethod
-    def from_excel(cls, file_name, description='', var_names=DEF_VAR_EXCEL):
+    def from_excel(cls, file_name, description='', var_names=None):
         """
         Read excel file following template and store variables.
 
@@ -287,7 +288,8 @@ class DiscRates():
         climada.entity.DiscRates :
             The disc rates from excel
         """
-
+        if var_names is None:
+            var_names = DEF_VAR_EXCEL
         dfr = pd.read_excel(file_name, var_names['sheet_name'])
         tag = Tag(file_name=str(file_name), description=description)
         try:
@@ -306,7 +308,7 @@ class DiscRates():
         self.__dict__ = DiscRates.from_mat(*args, **kwargs).__dict__
 
 
-    def write_excel(self, file_name, var_names=DEF_VAR_EXCEL):
+    def write_excel(self, file_name, var_names=None):
         """
         Write excel file following template.
 
@@ -319,7 +321,8 @@ class DiscRates():
             DEF_VAR_EXCEL = {'sheet_name': 'discount',
                'col_name': {'year': 'year', 'disc': 'discount_rate'}}
         """
-
+        if var_names is None:
+            var_names = DEF_VAR_EXCEL
         disc_wb = xlsxwriter.Workbook(file_name)
         disc_ws = disc_wb.add_worksheet(var_names['sheet_name'])
 

@@ -18,6 +18,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Define auxiliary functions for plots.
 """
+# pylint: disable=abstract-class-instantiated
 
 __all__ = ['geo_bin_from_array',
            'geo_im_from_array',
@@ -29,6 +30,7 @@ __all__ = ['geo_bin_from_array',
 
 import logging
 from textwrap import wrap
+import warnings
 
 from scipy.interpolate import griddata
 import numpy as np
@@ -196,7 +198,8 @@ def _plot_scattered_data(method, array_sub, geo_coord, var_name, title,
             # use different projections for plot and data to shift the central lon in the plot
             xmin, xmax = u_coord.lon_bounds(np.concatenate([c[:, 1] for c in list_coord]))
             proj_plot = ccrs.PlateCarree(central_longitude=0.5 * (xmin + xmax))
-        _, axes, fontsize = make_map(num_im, proj=proj_plot, figsize=figsize, adapt_fontsize=adapt_fontsize)
+        _, axes, fontsize = make_map(num_im, proj=proj_plot, figsize=figsize,
+                                     adapt_fontsize=adapt_fontsize)
     else:
         fontsize = None
     axes_iter = axes
@@ -310,7 +313,8 @@ def geo_im_from_array(array_sub, coord, var_name, title,
             # use different projections for plot and data to shift the central lon in the plot
             xmin, xmax = u_coord.lon_bounds(np.concatenate([c[:, 1] for c in list_coord]))
             proj_plot = ccrs.PlateCarree(central_longitude=0.5 * (xmin + xmax))
-        _, axes, fontsize = make_map(num_im, proj=proj_plot, figsize=figsize, adapt_fontsize=adapt_fontsize)
+        _, axes, fontsize = make_map(num_im, proj=proj_plot, figsize=figsize,
+                                     adapt_fontsize=adapt_fontsize)
     else:
         fontsize = None
     axes_iter = axes
@@ -423,18 +427,32 @@ def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
 
     if 'cmap' in kwargs:
         # optional user defined colormap (can be continuous)
-        cmap = kwargs['cmap']
-        if isinstance(cmap, str):
-            cmap_name = cmap
-            cmap = mpl.cm.get_cmap(cmap)
-        else:
+        cmap_arg = kwargs['cmap']
+        if isinstance(cmap_arg, str):
+            cmap_name = cmap_arg
+            # for qualitative colormaps taking the first few colors is preferable
+            # over jumping equal distances
+            if cmap_name in ['Pastel1', 'Pastel2', 'Paired', 'Accent', 'Dark2',
+                    'Set1', 'Set2', 'Set3', 'tab10', 'tab20', 'tab20b', 'tab20c']:
+                cmap = mpl.colors.ListedColormap(
+                    mpl.cm.get_cmap(cmap_name).colors[:array_sub_n]
+                )
+            else:
+                cmap = mpl.cm.get_cmap(cmap_arg, array_sub_n)
+        elif isinstance(cmap_arg, mpl.colors.ListedColormap):
+            # If a user brings their own colormap it's probably qualitative
             cmap_name = 'defined by the user'
+            cmap = mpl.colors.ListedColormap(
+                cmap_arg.colors[:array_sub_n]
+            )
+        else:
+            raise TypeError("if cmap is given it must be either a str or a ListedColormap")
     else:
         # default qualitative colormap
         cmap_name = CMAP_CAT
         cmap = mpl.colors.ListedColormap(
-            plt.get_cmap(cmap_name).colors[:array_sub_n]
-            )
+            mpl.cm.get_cmap(cmap_name).colors[:array_sub_n]
+        )
 
     if array_sub_n > cmap.N:
         LOGGER.warning("More than %d categories cannot be plotted accurately "
@@ -445,7 +463,7 @@ def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
                        cmap.N, cmap_name)
 
     # define the discrete colormap kwargs
-    kwargs['cmap'] = mpl.cm.get_cmap(cmap, array_sub_n)
+    kwargs['cmap'] = cmap
     kwargs['vmin'] = -0.5
     kwargs['vmax'] = array_sub_n - 0.5
 
@@ -709,8 +727,7 @@ def _get_borders(geo_coord, buffer=0, proj_limits=(-180, 180, -90, 90)):
 
 def get_transformation(crs_in):
     """
-    Get projection and its units to use in cartopy transforamtions from
-    current crs
+    Get projection and its units to use in cartopy transforamtions from current crs.
 
     Parameters
     ----------
@@ -722,30 +739,41 @@ def get_transformation(crs_in):
     crs_epsg : ccrs.Projection
     units : str
     """
+
+    # projection
     try:
         if CRS.from_user_input(crs_in) == CRS.from_user_input('EPSG:3395'):
             crs_epsg = ccrs.Mercator()
         else:
             crs_epsg = ccrs.epsg(CRS.from_user_input(crs_in).to_epsg())
     except ValueError:
+        LOGGER.warning(
+            "Error parsing coordinate system '%s'. Using projection PlateCarree in plot.", crs_in
+        )
         crs_epsg = ccrs.PlateCarree()
     except requests.exceptions.ConnectionError:
-        LOGGER.warning('No internet connection.'
-                       ' Using projection PlateCarree in plot.')
+        LOGGER.warning('No internet connection. Using projection PlateCarree in plot.')
         crs_epsg = ccrs.PlateCarree()
 
-    try:
-        units = (crs_epsg.proj4_params.get('units')
-                # As of cartopy 0.20 the proj4_params attribute is {} for CRS from an EPSG number
-                # (see issue raised https://github.com/SciTools/cartopy/issues/1974
-                # and longterm discussion on https://github.com/SciTools/cartopy/issues/813).
-                # In these cases the units can be fetched through the method `to_dict`.
-                or crs_epsg.to_dict().get('units', '°'))
-    except AttributeError:
-                # This happens in setups with cartopy<0.20, where `to_dict` is not defined.
-                # Officially, we require cartopy>=0.20, but there are still users around that
-                # can't upgrade due to https://github.com/SciTools/iris/issues/4468
-        units = '°'
+    # units
+    with warnings.catch_warnings():
+        # The method `to_dict` converts the crs into a string, which causes a user warning about
+        # losing important information. Since we are only interested in its units at this point,
+        # we may safely ignore it.
+        warnings.simplefilter(action="ignore", category=UserWarning)
+        try:
+            units = (crs_epsg.proj4_params.get('units')
+            # As of cartopy 0.20 the proj4_params attribute is {} for CRS from an EPSG number
+            # (see issue raised https://github.com/SciTools/cartopy/issues/1974
+            # and longterm discussion on https://github.com/SciTools/cartopy/issues/813).
+            # In these cases the units can be fetched through the method `to_dict`.
+            or crs_epsg.to_dict().get('units', '°'))
+        except AttributeError:
+            # This happens in setups with cartopy<0.20, where `to_dict` is not defined.
+            # Officially, we require cartopy>=0.20, but there are still users around that
+            # can't upgrade due to https://github.com/SciTools/iris/issues/4468
+            units = '°'
+
     return crs_epsg, units
 
 

@@ -58,6 +58,7 @@ REPO_DATA = {
         HAZ_DEMO_H5,
         TC_ANDREW_FL,
         DEMO_DIR.joinpath('demo_emdat_impact_data_2020.csv'),
+        DEMO_DIR.joinpath('nl_rails.gpkg'),
     ] + WS_DEMO_NC
 }
 
@@ -68,9 +69,9 @@ def test_installation():
     """
     from unittest import TestLoader, TextTestRunner
     suite = TestLoader().discover(start_dir='climada.engine.test',
-                                           pattern='test_cost_benefit.py')
+                                  pattern='test_cost_benefit.py')
     suite.addTest(TestLoader().discover(start_dir='climada.engine.test',
-                                                 pattern='test_impact.py'))
+                                        pattern='test_impact.py'))
     TextTestRunner(verbosity=2).run(suite)
 
 

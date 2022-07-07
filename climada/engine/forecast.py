@@ -24,7 +24,6 @@ __all__ = ["Forecast"]
 
 import logging
 import datetime as dt
-from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
@@ -340,8 +339,8 @@ class Forecast:
             figure size for plt.subplots, width, height in inches
             The default is (9, 13)
         adapt_fontsize : bool, optional
-            If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
-            the default matplotlib font size is used. Default is True.
+            If set to true, the size of the fonts will be adapted to the size of the figure.
+            Otherwise the default matplotlib font size is used. Default is True.
 
         Returns
         -------
@@ -397,6 +396,7 @@ class Forecast:
         adapt_fontsize=True,
     ):
         # select hazard with run_datetime
+        # pylint: disable=protected-access
         if run_datetime is None:
             run_datetime = self.run_datetime[0]
         haz_ind = np.argwhere(np.isin(self.run_datetime, run_datetime))[0][0]
@@ -729,8 +729,8 @@ class Forecast:
             figure size for plt.subplots, width, height in inches
             The default is (9, 13)
         adapt_fontsize : bool, optional
-            If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
-            the default matplotlib font size is used. Default is True.
+            If set to true, the size of the fonts will be adapted to the size of the figure.
+            Otherwise the default matplotlib font size is used. Default is True.
 
         Returns
         -------
@@ -794,6 +794,7 @@ class Forecast:
     ):
         """plot the probability of reaching a threshold"""
         # select hazard with run_datetime
+        # pylint: disable=protected-access
         if run_datetime is None:
             run_datetime = self.run_datetime[0]
         haz_ind = np.argwhere(np.isin(self.run_datetime, run_datetime))[0][0]
@@ -962,8 +963,8 @@ class Forecast:
         close_fig : bool, optional
             Figure is not drawn if True. The default is False.
         adapt_fontsize : bool, optional
-            If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
-            the default matplotlib font size is used. Default is True.
+            If set to true, the size of the fonts will be adapted to the size of the figure.
+            Otherwise the default matplotlib font size is used. Default is True.
 
         Returns
         -------
@@ -1027,6 +1028,7 @@ class Forecast:
     ):
         """plotting the warning level of each warning region based on thresholds"""
         # select hazard with run_datetime
+        # pylint: disable=protected-access
         if run_datetime is None:
             run_datetime = self.run_datetime[0]
         haz_ind = np.argwhere(np.isin(self.run_datetime, run_datetime))[0][0]

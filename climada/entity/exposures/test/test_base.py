@@ -62,8 +62,7 @@ class TestFuncs(unittest.TestCase):
         haz.raster_to_vector()
         ncentroids = haz.centroids.size
 
-        exp = Exposures()
-        exp.gdf.crs = haz.centroids.crs
+        exp = Exposures(crs=haz.centroids.crs)
 
         # some are matching exactly, some are geographically close
         exp.gdf['longitude'] = np.concatenate([
@@ -237,7 +236,13 @@ class TestIO(unittest.TestCase):
         exp_df.value_unit = 'XSD'
 
         file_name = DATA_DIR.joinpath('test_hdf5_exp.h5')
-        exp_df.write_hdf5(file_name)
+
+        # pd.errors.PerformanceWarning should be suppressed. Therefore, make sure that
+        # PerformanceWarning would result in test failure here
+        import warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", category=pd.errors.PerformanceWarning)
+            exp_df.write_hdf5(file_name)
 
         exp_read = Exposures.from_hdf5(file_name)
 

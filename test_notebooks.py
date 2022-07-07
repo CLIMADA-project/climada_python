@@ -2,6 +2,7 @@
 # coding: utf-8
 
 import os
+import re
 import sys
 import unittest
 from pathlib import Path
@@ -15,6 +16,8 @@ NOTEBOOK_DIR = Path(__file__).parent.joinpath('doc', 'tutorial')
 BOUND_TO_FAIL = '# Note: execution of this cell will fail'
 '''Cells containing this line will not be executed in the test'''
 
+EXCLUDED_FROM_NOTEBOOK_TEST = ['climada_installation_step_by_step.ipynb']
+'''These notebooks are excluded from being tested'''
 
 class NotebookTest(unittest.TestCase):
     '''Generic TestCase for testing the executability of notebooks
@@ -69,8 +72,8 @@ class NotebookTest(unittest.TestCase):
 
                 # skip multiprocessing cells
                 if any([ tabu in c['source'].split() for tabu in [
-                    'pathos.pools',
-                    'mulitprocessing',
+                    'import multiprocessing',
+                    'from multiprocessing import',
                 ]]): 
                     print('\n'.join([
                         f'\nskip multiprocessing cell {i} in {self.notebook}',
@@ -79,12 +82,18 @@ class NotebookTest(unittest.TestCase):
                     ]))
                     continue
 
-                # remove non python lines and help calls which require user input
-                python_code = "\n".join([ln for ln in c['source'].split("\n") 
+                # remove non python lines and help calls which require user input 
+                # or involve pools being opened/closed
+                python_code = "\n".join([
+                    re.sub(r'pool=\w+', 'pool=None', ln)
+                    for ln in c['source'].split("\n")
                     if not ln.startswith('%')
                     and not ln.startswith('help(')
                     and not ln.startswith('ask_ok(')
+                    and not ln.startswith('ask_ok(')
+                    and not ln.startswith('pool')  # by convention Pool objects are called pool
                     and not ln.strip().endswith('?')
+                    and not 'Pool(' in ln  # prevent Pool object creation
                 ])
 
                 # execute the python code
@@ -112,7 +121,8 @@ def main():
     # list notebooks in the NOTEBOOK_DIR
     notebooks = [f.absolute()
                  for f in sorted(NOTEBOOK_DIR.iterdir())
-                 if os.path.splitext(f)[1] == ('.ipynb')]
+                 if os.path.splitext(f)[1] == ('.ipynb')
+                 and not f.name in EXCLUDED_FROM_NOTEBOOK_TEST]
 
     # build a test suite with a test for each notebook
     suite = unittest.TestSuite()

@@ -64,11 +64,39 @@ class TestClient(unittest.TestCase):
         dataset2 = client.get_dataset_info_by_uuid(dataset.uuid)
         self.assertEqual(dataset, dataset2)
 
+    def test_dataset_offline(self):
+        """"""
+        client = Client()
+        client.online = False
+
+        with self.assertLogs('climada.util.api_client', level='WARNING') as cm:
+            dataset = client.get_dataset_info(name='FAOSTAT_data_producer_prices',
+                                              status='test_dataset')
+        self.assertIn("there is no internet connection but the client has stored ", cm.output[0])
+
+        self.assertEqual(dataset.version, 'v1')
+        self.assertEqual(len(dataset.files), 1)
+        self.assertEqual(dataset.files[0].file_size, 26481)
+        self.assertEqual(dataset.data_type, DataTypeShortInfo('crop_production', 'exposures'))
+
+        
+        with self.assertRaises(AssertionError) as ar:
+            with self.assertLogs('climada.util.api_client', level='WARNING') as cm:
+                dataset2 = Client().get_dataset_info_by_uuid(dataset.uuid)
+        self.assertIn("no logs of level WARNING or higher triggered", str(ar.exception))
+        self.assertEqual(dataset, dataset2)
+
+        with self.assertLogs('climada.util.api_client', level='WARNING') as cm:
+            dataset2 = client.get_dataset_info_by_uuid(dataset.uuid)
+        self.assertIn("there is no internet connection but the client has stored ", cm.output[0])
+        self.assertEqual(dataset, dataset2)
+
     def test_download_file(self):
         """"""
         client = Client()
         client.MAX_WAITING_PERIOD = 0.1
-        dataset = client.get_dataset_info(name='FAOSTAT_data_producer_prices', status='test_dataset')
+        dataset = client.get_dataset_info(name='FAOSTAT_data_producer_prices',
+                                          status='test_dataset')
 
         # test failure
         def fail(x, y):
@@ -109,17 +137,18 @@ class TestClient(unittest.TestCase):
         exposures = client.get_exposures(exposures_type='litpop',
                                          properties={'country_iso3alpha': 'AUT',
                                                      'fin_mode': 'pop', 'exponents': '(0,1)'},
+                                         version='v1',
                                          dump_dir=DATA_DIR)
         self.assertEqual(len(exposures.gdf), 5782)
         self.assertEqual(np.unique(exposures.gdf.region_id), 40)
-        self.assertTrue('[0, 1]' in exposures.tag.description)
-        self.assertTrue('pop' in exposures.tag.description)
+        self.assertIn('[0, 1]', exposures.tag.description)
+        self.assertIn('pop', exposures.tag.description)
         exposures
 
     def test_get_exposures_fails(self):
         client = Client()
         with self.assertRaises(ValueError) as cm:
-            client.get_exposures(exposures_type='river_flood', 
+            client.get_exposures(exposures_type='river_flood',
                                  properties={'country_iso3alpha': 'AUT',
                                              'fin_mode': 'pop', 'exponents': '(0,1)'},
                                  dump_dir=DATA_DIR)
@@ -138,6 +167,7 @@ class TestClient(unittest.TestCase):
         hazard = client.get_hazard(hazard_type='river_flood',
                                    properties={'country_name': 'Austria',
                                                'year_range': '2010_2030', 'climate_scenario': 'rcp26'},
+                                   version='v1',
                                    dump_dir=DATA_DIR)
         self.assertEqual(np.shape(hazard.intensity), (480, 5784))
         self.assertEqual(np.unique(hazard.centroids.region_id), 40)
@@ -161,9 +191,9 @@ class TestClient(unittest.TestCase):
                               dump_dir=DATA_DIR)
         self.assertIn('there are several datasets meeting the requirements:', str(cm.exception))
 
-    def test_get_litpop_default(self):
+    def test_get_litpop(self):
         client = Client()
-        litpop = client.get_litpop_default(country='LUX', dump_dir=DATA_DIR)
+        litpop = client.get_litpop(country='LUX', version='v1', dump_dir=DATA_DIR)
         self.assertEqual(len(litpop.gdf), 188)
         self.assertEqual(np.unique(litpop.gdf.region_id), 442)
         self.assertTrue('[1, 1]' in litpop.tag.description)

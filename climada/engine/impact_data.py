@@ -765,7 +765,7 @@ def emdat_impact_yearlysum(emdat_file_csv, countries=None, hazard=None, year_ran
             if '000 US' in imp_str:  # EM-DAT damages provided in '000 USD
                 data_out.loc[cnt, 'impact'] = data_out.loc[cnt, 'impact'] * 1e3
                 data_out.loc[cnt, 'impact_scaled'] = data_out.loc[cnt, 'impact_scaled'] * 1e3
-        out = out.append(data_out)
+        out = pd.concat([out, data_out])
     out = out.reset_index(drop=True)
     return out
 

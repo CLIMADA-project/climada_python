@@ -26,12 +26,25 @@ Follow the [tutorial](https://climada-python.readthedocs.io/en/latest/tutorial/1
 
 Documentation is available on Read the Docs:
 
+Note that all the documentations has two versions,'latest' and 'stable', and explicit version numbers, such as 'v3.1.1', in the url path. 'latest' is created from the 'develop' branch and has the latest changes by developers, 'stable' from the latest release. For more details about documentation versions, please have a look at [here](https://readthedocs.org/projects/climada-python/versions/).
+
+CLIMADA python:
 * [online (recommended)](https://climada-python.readthedocs.io/en/latest/)
 * [PDF file](https://climada-python.readthedocs.io/_/downloads/en/stable/pdf/)
+
+CLIMADA petals:
+* [online (recommended)](https://climada-petals.readthedocs.io/en/latest/)
+* [PDF file](https://climada-petals.readthedocs.io/_/downloads/en/stable/pdf/)
+* [petals Tutorials on GitHub](https://github.com/CLIMADA-project/climada_petals/tree/main/doc/tutorial)
+
 
 ## Citing CLIMADA
 
 If you use CLIMADA please cite (in general, in particular for academic work) :
+
+The [used version](https://zenodo.org/search?page=1&size=20&q=climada)
+
+and/or the following published articles:
 
 Aznar-Siguan, G. and Bresch, D. N., 2019: CLIMADA v1: a global weather and climate risk assessment platform, Geosci. Model Dev., 12, 3085–3097, https://doi.org/10.5194/gmd-12-3085-2019
 

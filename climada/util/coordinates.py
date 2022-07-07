@@ -247,6 +247,15 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
                 method="equirect", units='km'):
     """Compute approximation of geodistance in specified units
 
+    Several batches of points can be processed at once for improved performance. The distances of
+    all (lat1, lon1)-points within a batch to all (lat2, lon2)-points within the same batch are
+    computed, according to the formula:
+
+    result[k, i, j] = dist((lat1[k, i], lon1[k, i]), (lat2[k, j], lon2[k, j]))
+
+    Hence, each of lat1, lon1, lat2, lon2 is expected to be a 2-dimensional array and the resulting
+    array will always be 3-dimensional.
+
     Parameters
     ----------
     lat1, lon1 : ndarrays of floats, shape (nbatch, nx)
@@ -257,7 +266,12 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
         If True, return the tangential vectors at the first points pointing to
         the second points (Riemannian logarithm). Default: False.
     normalize : bool, optional
-        If False, assume that lon values are already between -180 and 180.
+        If False, assume that all longitudinal values lie within a single interval of size 360
+        (e.g., between -180 and 180, or between 0 and 360) and such that the shortest path between
+        any two points does not cross the antimeridian according to that parametrization. If True,
+        a suitable interval is determined using `lon_bounds` and the longitudinal values are
+        reparametrized accordingly using `lon_normalize`. Note that this option has no effect when
+        using the "geosphere" method because it is independent from the parametrization.
         Default: True
     method : str, optional
         Specify an approximation method to use:
@@ -292,11 +306,11 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
 
     if method == "equirect":
         if normalize:
-            mid_lon = 0.5 * sum(lon_bounds(np.concatenate([lon1, lon2])))
+            mid_lon = 0.5 * sum(lon_bounds(np.concatenate([lon1.ravel(), lon2.ravel()])))
             lon_normalize(lon1, center=mid_lon)
             lon_normalize(lon2, center=mid_lon)
-        vtan = np.stack([lat2[:, None] - lat1[:, :, None],
-                         lon2[:, None] - lon1[:, :, None]], axis=-1)
+        vtan = np.stack([lat2[:, None, :] - lat1[:, :, None],
+                         lon2[:, None, :] - lon1[:, :, None]], axis=-1)
         fact1 = np.heaviside(vtan[..., 1] - 180, 0)
         fact2 = np.heaviside(-vtan[..., 1] - 180, 0)
         vtan[..., 1] -= (fact1 - fact2) * 360
@@ -306,24 +320,57 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
         dist = np.sqrt(np.einsum("...l,...l->...", vtan, vtan))
     elif method == "geosphere":
         lat1, lon1, lat2, lon2 = map(np.radians, [lat1, lon1, lat2, lon2])
-        dlat = 0.5 * (lat2[:, None] - lat1[:, :, None])
-        dlon = 0.5 * (lon2[:, None] - lon1[:, :, None])
+        dlat = 0.5 * (lat2[:, None, :] - lat1[:, :, None])
+        dlon = 0.5 * (lon2[:, None, :] - lon1[:, :, None])
         # haversine formula:
         hav = np.sin(dlat)**2 \
-            + np.cos(lat1[:, :, None]) * np.cos(lat2[:, None]) * np.sin(dlon)**2
+            + np.cos(lat1[:, :, None]) * np.cos(lat2[:, None, :]) * np.sin(dlon)**2
         dist = np.degrees(2 * np.arcsin(np.sqrt(hav))) * unit_factor
         if log:
             vec1, vbasis = latlon_to_geosph_vector(lat1, lon1, rad=True, basis=True)
             vec2 = latlon_to_geosph_vector(lat2, lon2, rad=True)
             scal = 1 - 2 * hav
             fact = dist / np.fmax(np.spacing(1), np.sqrt(1 - scal**2))
-            vtan = fact[..., None] * (vec2[:, None] - scal[..., None] * vec1[:, :, None])
+            vtan = fact[..., None] * (vec2[:, None, :] - scal[..., None] * vec1[:, :, None])
             vtan = np.einsum('nkli,nkji->nklj', vtan, vbasis)
     else:
         raise KeyError("Unknown distance approximation method: %s" % method)
     return (dist, vtan) if log else dist
 
-def get_gridcellarea(lat, resolution=0.5, unit='km2'):
+def compute_geodesic_lengths(gdf):
+    """Calculate the great circle (geodesic / spherical) lengths along any
+    (complicated) line geometry object, based on the pyproj.Geod implementation.
+
+    Parameters
+    ----------
+    gdf : gpd.GeoDataframe with geometrical shapes of which to compute the length
+
+    Returns
+    -------
+    series : a pandas series (column) with the great circle lengths of the
+        objects in metres.
+
+    See also
+    --------
+    * dist_approx() which also offers haversine distance calculation options
+     between specific points (not along any geometries however).
+    * interpolation.interpolate_lines()
+
+    Note
+    ----
+    This implementation relies on non-projected (i.e. geographic coordinate
+    systems that span the entire globe) crs only, which results in
+    sea-level distances and hence a certain (minor) level of distortion; cf.
+    https://gis.stackexchange.com/questions/176442/what-is-the-real-distance-between-positions
+    """
+    # convert to non-projected crs if needed
+    gdf_tmp = gdf.to_crs(DEF_CRS) if not gdf.crs.is_geographic else gdf.copy()
+    geod = gdf_tmp.crs.get_geod()
+
+    return gdf_tmp.apply(lambda row: geod.geometry_length(row.geometry), axis=1)
+
+
+def get_gridcellarea(lat, resolution=0.5, unit='ha'):
     """The area covered by a grid cell is calculated depending on the latitude
         1 degree = ONE_LAT_KM (111.12km at the equator)
         longitudal distance in km = ONE_LAT_KM*resolution*cos(lat)
@@ -337,14 +384,16 @@ def get_gridcellarea(lat, resolution=0.5, unit='km2'):
     resolution: int, optional
         raster resolution in degree (default: 0.5 degree)
     unit: string, optional
-        unit of the output area (default: km2, alternative: m2)
+        unit of the output area (default: ha, alternatives: m2, km2)
 
     """
 
     if unit == 'm2':
-        area = (ONE_LAT_KM * resolution)**2 * np.cos(np.deg2rad(lat)) * 100 * 1000000
+        area = (ONE_LAT_KM * resolution)**2 * np.cos(np.deg2rad(lat)) * 1000000
+    elif unit == 'km2':
+        area = (ONE_LAT_KM * resolution)**2 * np.cos(np.deg2rad(lat))
     else:
-        area = (ONE_LAT_KM * resolution)**2 * np.cos(np.deg2rad(lat)) * 100
+        area = (ONE_LAT_KM * resolution)**2 * np.cos(np.deg2rad(lat))*100
 
     return area
 
@@ -1409,7 +1458,7 @@ def get_admin1_info(country_names):
         # that the `*.cpg` is present and the encoding is correct:
         try:
             return val.encode('latin-1').decode('utf-8')
-        except:
+        except (AttributeError, UnicodeDecodeError, UnicodeEncodeError):
             return val
 
     if isinstance(country_names, (str, int, float)):
@@ -1476,7 +1525,7 @@ def get_admin1_geometries(countries):
 
     # extract admin 1 infos and shapes for each country:
     admin1_info, admin1_shapes = get_admin1_info(countries)
-    for country in admin1_info.keys():
+    for country in admin1_info:
         # fill admin 1 region names and codes to GDF for single country:
         gdf_tmp = gpd.GeoDataFrame(columns=gdf.columns)
         gdf_tmp.admin1_name = [record['name'] for record in admin1_info[country]]
@@ -1619,7 +1668,7 @@ def to_crs_user_input(crs_obj):
         return (isinstance(crs_dict, dict)
                 and "init" in crs_dict
                 and all(k in ["init", "no_defs"] for k in crs_dict.keys())
-                and crs_dict.get("no_defs", True) == True)
+                and crs_dict.get("no_defs", True) is True)
 
     if isinstance(crs_obj, (dict, int)):
         if _is_deprecated_init_crs(crs_obj):

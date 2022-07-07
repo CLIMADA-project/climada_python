@@ -23,6 +23,8 @@ __all__ = ['Exposures', 'add_sea', 'INDICATOR_IMPF', 'INDICATOR_CENTR']
 
 import logging
 import copy
+from pathlib import Path
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -135,13 +137,11 @@ class Exposures():
     @property
     def crs(self):
         """Coordinate Reference System, refers to the crs attribute of the inherent GeoDataFrame"""
-        if getattr(self.gdf, "crs", None):
-            return self.gdf.crs
-        # Due to a bug, the CRS of a GeoDataFrame and its geometry column might be out of sync:
-        # https://github.com/geopandas/geopandas/issues/1960
-        if "geometry" in self.gdf and getattr(self.gdf.geometry, "crs", None):
-            return self.gdf.geometry.crs
-        return self.meta.get('crs')
+        try:
+            return self.gdf.geometry.crs or self.meta.get('crs')
+        except AttributeError:  # i.e., no geometry, crs is assumed to be a property
+            # In case of gdf without geometry, empty or before set_geometry_points was called
+            return self.meta.get('crs')
 
     def __init__(self, *args, meta=None, tag=None, ref_year=DEF_REF_YEAR,
                  value_unit=DEF_VALUE_UNIT, crs=None, **kwargs):
@@ -527,8 +527,8 @@ class Exposures():
         figsize : tuple, optional
             figure size for plt.subplots
         adapt_fontsize : bool, optional
-            If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
-            the default matplotlib font size is used. Default is True.
+            If set to true, the size of the fonts will be adapted to the size of the figure.
+            Otherwise the default matplotlib font size is used. Default is True.
         kwargs : optional
             arguments for scatter matplotlib function, e.g.
             cmap='Greys'. Default: 'Wistia'
@@ -551,8 +551,11 @@ class Exposures():
                           self.gdf.longitude[mask][pos_vals].values], axis=1)
         return u_plot.geo_scatter_from_array(value, coord, cbar_label, title,
                                              pop_name, buffer, extend,
-                                             proj=crs_epsg, axes=axis,
-                                             figsize=figsize, adapt_fontsize=adapt_fontsize, **kwargs)
+                                             proj=crs_epsg,
+                                             axes=axis,
+                                             figsize=figsize,
+                                             adapt_fontsize=adapt_fontsize,
+                                             **kwargs)
 
     def plot_hexbin(self, mask=None, ignore_zero=False, pop_name=True,
                     buffer=0.0, extend='neither', axis=None, figsize=(9, 13),
@@ -580,8 +583,8 @@ class Exposures():
         figsize : tuple
             figure size for plt.subplots
         adapt_fontsize : bool, optional
-            If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
-            the default matplotlib font size is used. Default is True.
+            If set to true, the size of the fonts will be adapted to the size of the figure.
+            Otherwise the default matplotlib font size is used. Default is True.
         kwargs : optional
             arguments for hexbin matplotlib function, e.g.
             reduce_C_function=np.average. Default: reduce_C_function=np.sum
@@ -643,8 +646,8 @@ class Exposures():
             in white. If True, the areas with missing values are filled as 0s.
             The default is True.
         adapt_fontsize : bool, optional
-            If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
-            the default matplotlib font size is used. Default is True.
+            If set to true, the size of the fonts will be adapted to the size of the figure.
+            Otherwise the default matplotlib font size is used. Default is True.
         kwargs : optional
             arguments for imshow matplotlib function
 
@@ -683,7 +686,8 @@ class Exposures():
                                       self.gdf.longitude.max(), self.gdf.latitude.max())
 
         if not axis:
-            _, axis, fontsize = u_plot.make_map(proj=proj_plot, figsize=figsize, adapt_fontsize=adapt_fontsize)
+            _, axis, fontsize = u_plot.make_map(proj=proj_plot, figsize=figsize,
+                                                adapt_fontsize=adapt_fontsize)
         else:
             fontsize = None
         cbar_ax = make_axes_locatable(axis).append_axes('right', size="6.5%",
@@ -710,7 +714,7 @@ class Exposures():
 
     def plot_basemap(self, mask=None, ignore_zero=False, pop_name=True,
                      buffer=0.0, extend='neither', zoom=10,
-                     url='http://tile.stamen.com/terrain/tileZ/tileX/tileY.png',
+                     url='http://tile.stamen.com/terrain/{z}/{x}/{y}.png',
                      axis=None, **kwargs):
         """Scatter points over satellite image using contextily
 
@@ -762,18 +766,24 @@ class Exposures():
         file_name : str
             (path and) file name to write to.
         """
-        LOGGER.info('Writting %s', file_name)
-        store = pd.HDFStore(file_name)
+        LOGGER.info('Writing %s', file_name)
+        store = pd.HDFStore(file_name, mode='w')
         pandas_df = pd.DataFrame(self.gdf)
         for col in pandas_df.columns:
             if str(pandas_df[col].dtype) == "geometry":
                 pandas_df[col] = np.asarray(self.gdf[col])
-        store.put('exposures', pandas_df)
+
+        # Avoid pandas PerformanceWarning when writing HDF5 data
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=pd.errors.PerformanceWarning)
+            # Write dataframe
+            store.put('exposures', pandas_df)
+
         var_meta = {}
         for var in type(self)._metadata:
             var_meta[var] = getattr(self, var)
-
         store.get_storer('exposures').attrs.metadata = var_meta
+
         store.close()
 
     def read_hdf5(self, *args, **kwargs):
@@ -799,7 +809,9 @@ class Exposures():
         Exposures
         """
         LOGGER.info('Reading %s', file_name)
-        with pd.HDFStore(file_name) as store:
+        if not Path(file_name).is_file():
+            raise FileNotFoundError(str(file_name))
+        with pd.HDFStore(file_name, mode='r') as store:
             metadata = store.get_storer('exposures').attrs.metadata
             # in previous versions of CLIMADA and/or geopandas, the CRS was stored in '_crs'/'crs'
             crs = metadata.get('crs', metadata.get('_crs'))
@@ -807,7 +819,7 @@ class Exposures():
                 crs = metadata['meta'].get('crs')
             exp = cls(store['exposures'], crs=crs)
             for key, val in metadata.items():
-                if key in type(exp)._metadata:
+                if key in type(exp)._metadata: # pylint: disable=protected-access
                     setattr(exp, key, val)
         return exp
 

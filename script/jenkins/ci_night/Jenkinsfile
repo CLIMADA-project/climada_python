@@ -20,6 +20,7 @@ pipeline {
         export PATH=$PATH:$CONDAPATH
         source activate climada_env
         rm -rf tests_xml/
+        rm -rf coverage/
         python -m coverage run --parallel-mode --concurrency=multiprocessing tests_runner.py unit
         python -m coverage run --parallel-mode --concurrency=multiprocessing tests_runner.py integ
         python -m coverage combine
@@ -32,7 +33,7 @@ pipeline {
   post {
     always {
       junit 'tests_xml/*.xml'
-      cobertura coberturaReportFile: 'coverage.xml', enableNewApi: true
+      cobertura coberturaReportFile: 'coverage.xml', enableNewApi: false
     }
   }
 }

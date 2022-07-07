@@ -1,5 +1,9 @@
 
 This is the documentation for version v\ |version|. In `CLIMADA-project <https://github.com/CLIMADA-project>`_ you will find CLIMADA's contributors, repository and scientific publications.
+The documentation of CLIMADA `petals <https://github.com/CLIMADA-project/climada_petals>`_ can be found `here <https://climada-petals.readthedocs.io/en/stable/>`_.
+Note that all the documentations has two versions, 'latest' and 'stable', and explicit version numbers, such as 'v3.1.1', in the url path.
+'latest' is created from the 'develop' branch and has the latest changes by developers, 'stable' from the latest release.
+For more details about documentation versions, please have a look at `here <https://readthedocs.org/projects/climada-python/versions/>`_.
 
 ------------
 
@@ -23,6 +27,7 @@ Tutorials
    :maxdepth: 1
 
    tutorial/1_main_climada
+   tutorial/climada_installation_step_by_step
    tutorial/climada_entity_Exposures
    tutorial/climada_entity_LitPop
    tutorial/climada_entity_ImpactFuncSet
@@ -34,6 +39,7 @@ Tutorials
    tutorial/climada_hazard_StormEurope
    tutorial/climada_engine_Impact
    tutorial/climada_engine_impact_data
+   tutorial/climada_engine_CostBenefit
    tutorial/climada_engine_unsequa
    tutorial/climada_engine_unsequa_helper
    tutorial/climada_engine_Forecast

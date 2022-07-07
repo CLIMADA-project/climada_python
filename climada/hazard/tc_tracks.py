@@ -48,7 +48,7 @@ import pandas as pd
 import scipy.io.matlab as matlab
 from shapely.geometry import Point, LineString, MultiLineString
 import shapely.ops
-from sklearn.neighbors import DistanceMetric
+from sklearn.metrics import DistanceMetric
 import statsmodels.api as sm
 import xarray as xr
 from xarray.backends import NetCDF4DataStore
@@ -457,11 +457,11 @@ class TCTracks():
         ibtracs_ds = xr.open_dataset(ibtracs_path)
         ibtracs_date = ibtracs_ds.attrs["date_created"]
         if (np.datetime64('today') - np.datetime64(ibtracs_date)).item().days > 180:
-            LOGGER.warning(f"The cached IBTrACS data set dates from {ibtracs_date} (older "
+            LOGGER.warning("The cached IBTrACS data set dates from %s (older "
                            "than 180 days). Very likely, a more recent version is available. "
-                           f"Consider manually removing the file {ibtracs_path} and re-running "
+                           "Consider manually removing the file %s and re-running "
                            "this function, which will download the most recent version of the "
-                           "IBTrACS data set from the official URL.")
+                           "IBTrACS data set from the official URL.", ibtracs_date, ibtracs_path)
 
         match = np.ones(ibtracs_ds.sid.shape[0], dtype=bool)
         if storm_id is not None:
@@ -541,9 +541,12 @@ class TCTracks():
             ibtracs_ds[f'{tc_var}_agency'] = ('storm', selected_ags[preferred_idx.values])
 
             if tc_var == 'lon':
-                # By IBTrACS default, no longitude should be <= -180, but this is not true for some
-                # agencies, so we have to manually enforce this policy:
-                ibtracs_ds[tc_var].values[(ibtracs_ds[tc_var] <= -180).values] += 360
+                # Most IBTrACS longitudes are either normalized to [-180, 180] or to [0, 360], but
+                # some aren't normalized at all, so we have to make sure that the values are okay:
+                lons = ibtracs_ds[tc_var].values.copy()
+                lon_valid_mask = np.isfinite(lons)
+                lons[lon_valid_mask] = u_coord.lon_normalize(lons[lon_valid_mask], center=0.0)
+                ibtracs_ds[tc_var].values[:] = lons
 
                 # Make sure that the longitude is always chosen positive if a track crosses the
                 # antimeridian:
@@ -590,7 +593,8 @@ class TCTracks():
             if invalid_storms_idx.size > 0:
                 invalid_sids = list(ibtracs_ds.sid.sel(storm=invalid_storms_idx).astype(str).data)
                 LOGGER.warning('%d storm events are discarded because only one valid timestep '
-                               'has been found: %s%s', len(invalid_sids), ", ".join(invalid_sids[:5]),
+                               'has been found: %s%s', len(invalid_sids),
+                               ", ".join(invalid_sids[:5]),
                                ", ..." if len(invalid_sids) > 5  else ".")
                 ibtracs_ds = ibtracs_ds.sel(storm=valid_storms_mask)
 
@@ -1167,8 +1171,8 @@ class TCTracks():
         kwargs : optional
             arguments for LineCollection matplotlib, e.g. alpha=0.5
         adapt_fontsize : bool, optional
-            If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
-            the default matplotlib font size is used. Default is True.
+            If set to true, the size of the fonts will be adapted to the size of the figure.
+            Otherwise the default matplotlib font size is used. Default is True.
         Returns
         -------
         axis : matplotlib.axes._subplots.AxesSubplot
@@ -1187,7 +1191,7 @@ class TCTracks():
 
         if not axis:
             proj = ccrs.PlateCarree(central_longitude=mid_lon)
-            _, axis, fontsize = u_plot.make_map(proj=proj, figsize=figsize, adapt_fontsize=adapt_fontsize)
+            _, axis, _ = u_plot.make_map(proj=proj, figsize=figsize, adapt_fontsize=adapt_fontsize)
         axis.set_extent(extent, crs=kwargs['transform'])
         u_plot.add_shapes(axis)
 
@@ -1289,7 +1293,7 @@ class TCTracks():
             A value of 0 or None disables compression. Default: 5
         """
         # change dtype from bool to int to be NetCDF4-compliant, this is undone later
-        for i, track in enumerate(self.data):
+        for track in self.data:
             track.attrs['orig_event_flag'] = int(track.attrs['orig_event_flag'])
         try:
             encoding = {
@@ -1301,7 +1305,7 @@ class TCTracks():
             _xr_to_netcdf_multi(file_name, ds_dict, encoding=encoding)
         finally:
             # ensure to undo the temporal change of dtype from above
-            for i, track in enumerate(self.data):
+            for track in self.data:
                 track.attrs['orig_event_flag'] = bool(track.attrs['orig_event_flag'])
 
     @classmethod
@@ -1428,7 +1432,7 @@ class TCTracks():
             method = ['linear', 'quadratic', 'cubic'][min(2, track.time.size - 2)]
 
             # handle change of sign in longitude
-            lon = track.lon.copy()
+            lon = u_coord.lon_normalize(track.lon.copy(), center=0)
             if (lon < -170).any() and (lon > 170).any():
                 # crosses 180 degrees east/west -> use positive degrees east
                 lon[lon < 0] += 360
@@ -1475,6 +1479,7 @@ def _xr_to_netcdf_multi(path, ds_dict, encoding=None):
         For each dataset/group, one dict that is compliant with the format of the `encoding`
         keyword parameter in `xr.Dataset.to_netcdf`. Default: None
     """
+    # pylint: disable=protected-access
     path = str(pathlib.Path(path).expanduser().absolute())
     with contextlib.closing(NetCDF4DataStore.open(path, "w", "NETCDF4", None)) as store:
         writer = ArrayWriter()
@@ -1505,6 +1510,7 @@ def _xr_open_dataset_multi(path, prefix=""):
         Each xr.Dataset in the dict is taken from the group identified by its key in the dict.
         Note that an empty string ("") is a valid group name and refers to the root group.
     """
+    # pylint: disable=protected-access
     path = str(pathlib.Path(path).expanduser().absolute())
     ds_dict = {}
     with contextlib.closing(NetCDF4DataStore.open(path, "r", "NETCDF4", None)) as store:
@@ -1529,6 +1535,7 @@ def _xr_nc4_groups_from_store(store):
     -------
     list of str
     """
+    # pylint: disable=protected-access
     def iter_groups(ds, prefix=""):
         groups = [""]
         for group_name, group_ds in ds.groups.items():

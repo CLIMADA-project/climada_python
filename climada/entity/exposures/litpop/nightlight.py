@@ -203,7 +203,7 @@ def get_required_nl_files(bounds):
     last_tile_lat = min(np.floor(-(max_lat - 90) / tile_width), 1)
 
     for i_lon in range(0, int(len(req_files) / 2)):
-        if first_tile_lon <= i_lon and last_tile_lon >= i_lon:
+        if first_tile_lon <= i_lon <= last_tile_lon:
             if first_tile_lat == 0 or last_tile_lat == 0:
                 req_files[((i_lon)) * 2] = 1
             if first_tile_lat == 1 or last_tile_lat == 1:
@@ -401,7 +401,7 @@ def load_nightlight_nasa(bounds, req_files, year):
             # this tile does not intersect the specified bounds
             continue
         extent = np.int64(np.clip(extent, 0, tile_size[None] - 1))
-
+        # pylint: disable=unsubscriptable-object
         im_nl, _ = read_bm_file(SYSTEM_DIR, fname %(year))
         im_nl = np.flipud(im_nl)
         im_nl = sparse.csc.csc_matrix(im_nl)
@@ -497,24 +497,18 @@ def untar_noaa_stable_nightlight(f_tar_ini):
     f_tar_dest = SYSTEM_DIR.joinpath(Path(f_tar_ini).name)
     shutil.move(f_tar_ini, f_tar_dest)
     # extract stable_lights.avg_vis.tif
-    tar_file = tarfile.open(f_tar_ini)
-    extract_name = [name for name in tar_file.getnames()
-                    if name.endswith('stable_lights.avg_vis.tif.gz')]
-    if len(extract_name) == 0:
-        raise ValueError('No stable light intensities for selected year and satellite '
-                         f'in file {f_tar_ini}')
-    if len(extract_name) > 1:
-        LOGGER.warning('found more than one potential intensity file in' +
-                       ' %s %s', f_tar_ini, extract_name)
-    try:
+    with tarfile.open(f_tar_ini) as tar_file:
+        extract_name = [name for name in tar_file.getnames()
+                        if name.endswith('stable_lights.avg_vis.tif.gz')]
+        if len(extract_name) == 0:
+            raise ValueError('No stable light intensities for selected year and satellite '
+                            f'in file {f_tar_ini}')
+        if len(extract_name) > 1:
+            LOGGER.warning('found more than one potential intensity file in %s %s',
+                           f_tar_ini, extract_name)
         tar_file.extract(extract_name[0], SYSTEM_DIR)
-    except tarfile.TarError as err:
-        raise
-    finally:
-        tar_file.close()
-    f_tif_gz = SYSTEM_DIR.joinpath(extract_name[0])
+    return SYSTEM_DIR.joinpath(extract_name[0])
 
-    return f_tif_gz
 
 def load_nightlight_noaa(ref_year=2013, sat_name=None):
     """Get nightlight luminosites. Nightlight matrix, lat and lon ordered

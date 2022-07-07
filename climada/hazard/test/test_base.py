@@ -294,6 +294,29 @@ class TestSelect(unittest.TestCase):
         self.assertIsInstance(sel_haz.intensity, sparse.csr_matrix)
         self.assertIsInstance(sel_haz.fraction, sparse.csr_matrix)
 
+    def test_select_event_id(self):
+        """Test select historical events."""
+        haz = dummy_hazard()
+        sel_haz = haz.select(event_id=[4, 1])
+
+        self.assertTrue(np.array_equal(sel_haz.centroids.coord, haz.centroids.coord))
+        self.assertEqual(sel_haz.tag, haz.tag)
+        self.assertEqual(sel_haz.units, haz.units)
+        self.assertTrue(np.array_equal(sel_haz.event_id, np.array([4, 1])))
+        self.assertTrue(np.array_equal(sel_haz.date, np.array([4, 1])))
+        self.assertTrue(np.array_equal(sel_haz.orig, np.array([True, True])))
+        self.assertTrue(np.array_equal(sel_haz.frequency, np.array([0.2, 0.1])))
+        self.assertTrue(np.array_equal(sel_haz.fraction.toarray(),
+                                       np.array([[0.3, 0.2, 0.0],
+                                                 [0.02, 0.03, 0.04]])))
+        self.assertTrue(np.array_equal(sel_haz.intensity.toarray(),
+                                       np.array([[5.3, 0.2, 1.3],
+                                                 [0.2, 0.3, 0.4]])))
+        self.assertEqual(sel_haz.event_name, ['ev4', 'ev1'])
+        self.assertIsInstance(sel_haz, Hazard)
+        self.assertIsInstance(sel_haz.intensity, sparse.csr_matrix)
+        self.assertIsInstance(sel_haz.fraction, sparse.csr_matrix)
+
     def test_select_orig_pass(self):
         """Test select historical events."""
         haz = dummy_hazard()
@@ -1141,6 +1164,30 @@ class TestHDF5(unittest.TestCase):
             self.assertIsInstance(haz_read.intensity, sparse.csr_matrix)
             self.assertTrue(np.array_equal(hazard.fraction.toarray(), haz_read.fraction.toarray()))
             self.assertIsInstance(haz_read.fraction, sparse.csr_matrix)
+
+    def test_write_read_unsupported_type(self):
+        """Check if the write command correctly handles unsupported types"""
+        file_name = str(DATA_DIR.joinpath('test_unsupported.h5'))
+
+        # Define an unsupported type
+        class CustomID:
+            id = 1
+
+        # Create a hazard with unsupported type as attribute
+        hazard = dummy_hazard()
+        hazard.event_id = CustomID()
+
+        # Write the hazard and check the logs for the correct warning
+        with self.assertLogs(logger="climada.hazard.base", level="WARN") as cm:
+            hazard.write_hdf5(file_name)
+        self.assertIn("write_hdf5: the class member event_id is skipped", cm.output[0])
+
+        # Load the file again and compare to previous instance
+        hazard_read = Hazard.from_hdf5(file_name)
+        self.assertEqual(hazard.tag.description, hazard_read.tag.description)
+        self.assertTrue(np.array_equal(hazard.date, hazard_read.date))
+        self.assertTrue(np.array_equal(hazard_read.event_id, np.array([])))  # Empty array
+
 
 class TestCentroids(unittest.TestCase):
     """Test return period statistics"""

@@ -22,14 +22,15 @@ Define StormEurope class.
 __all__ = ['StormEurope']
 
 import bz2
+import datetime as dt
 import logging
 from pathlib import Path
+
 import numpy as np
 import xarray as xr
 import pandas as pd
 import matplotlib.pyplot as plt
 from scipy import sparse
-import datetime as dt
 
 from climada.util.config import CONFIG
 from climada.hazard.base import Hazard
@@ -53,8 +54,6 @@ HAZ_TYPE = 'WS'
 
 N_PROB_EVENTS = 5 * 6
 """Number of events per historic event in probabilistic dataset"""
-
-FORECAST_DIR = CONFIG.hazard.storm_europe.forecast_dir.str()
 
 
 class StormEurope(Hazard):
@@ -141,6 +140,7 @@ class StormEurope(Hazard):
         haz : StormEurope
             StormEurope object with data from WISC footprints.
         """
+        # pylint: disable=protected-access
         intensity_thres = cls.intensity_thres if intensity_thres is None else intensity_thres
         file_names = get_file_names(path)
 
@@ -306,25 +306,21 @@ class StormEurope(Hazard):
                 stacked = ncdf.sel(
                     time=event_date.strftime('%Y-%m-%d')
                     ).groupby('date').max().stack(intensity=('y_1', 'x_1'))
-            except KeyError:
-                raise ValueError('Extraction of date and coordinates failed. '
-                                 'This is most likely because '
-                                 'the selected event_date {} is not contained'
-                                 ' in the weather forecast selected by '
-                                 'fp_file {}. Please adjust event_date'
-                                 ' or fp_file.'.format(
-                                     event_date.strftime('%Y-%m-%d'),
-                                     fp_file))
+            except KeyError as ker:
+                raise ValueError('Extraction of date and coordinates failed. This is most likely '
+                                 'because the selected event_date '
+                                 f'{event_date.strftime("%Y-%m-%d")} is not contained in the '
+                                 'weather forecast selected by fp_file {fp_file}. Please adjust '
+                                 f'event_date or fp_file.') from ker
             considered_dates = np.datetime64(event_date)
         else:
             time_covered_step = ncdf['time'].diff('time')
             time_covered_day = time_covered_step.groupby('date').sum()
             # forecast run should cover at least 18 hours of a day
             considered_dates_bool = time_covered_day >= np.timedelta64(18,'h')
-            stacked = ncdf.groupby('date'
-                                    ).max().sel(date=considered_dates_bool
-                                                ).stack(intensity=('y_1',
-                                                                   'x_1'))
+            stacked = ncdf.groupby('date').max()\
+                          .sel(date=considered_dates_bool)\
+                          .stack(intensity=('y_1', 'x_1'))
             considered_dates = stacked['date'].values
         stacked = stacked.stack(date_ensemble=('date', 'epsd_1'))
         stacked = stacked.where(stacked.VMAX_10M > intensity_thres)
@@ -332,8 +328,7 @@ class StormEurope(Hazard):
 
         # fill in values from netCDF
         haz.intensity = sparse.csr_matrix(stacked.VMAX_10M.T)
-        haz.event_id = np.arange(stacked.date_ensemble.size)+1
-
+        haz.event_id = np.arange(stacked.date_ensemble.size) + 1
 
         # fill in default values
         haz.units = 'm/s'
@@ -344,11 +339,10 @@ class StormEurope(Hazard):
         haz.date = np.repeat(
             np.array(datetime64_to_ordinal(considered_dates)),
             np.unique(ncdf.epsd_1).size
-            )
+        )
         haz.event_name = [date_i + '_ens' + str(ens_i)
-                           for date_i, ens_i in zip(date_to_str(haz.date),
-                                                    stacked.epsd_1.values+1)
-                           ]
+                          for date_i, ens_i
+                          in zip(date_to_str(haz.date), stacked.epsd_1.values+1)]
         haz.frequency = np.divide(
                 np.ones_like(haz.event_id),
                 np.unique(ncdf.epsd_1).size)
@@ -359,9 +353,9 @@ class StormEurope(Hazard):
                            run_datetime.strftime('%Y%m%d%H'))
 
         haz.tag = TagHazard(
-                HAZ_TYPE, 'Hazard set not saved, too large to pickle',
-                description=description
-            )
+            HAZ_TYPE, 'Hazard set not saved, too large to pickle',
+            description=description
+        )
         # close netcdf file
         ncdf.close()
         haz.check()
@@ -420,11 +414,12 @@ class StormEurope(Hazard):
         haz : StormEurope
             StormEurope object with data from DWD icon weather forecast footprints.
         """
+        # pylint: disable=protected-access
         intensity_thres = cls.intensity_thres if intensity_thres is None else intensity_thres
 
         haz = cls()
         if not (run_datetime.hour == 0 or run_datetime.hour == 12):
-            LOGGER.warning('The event definition is inaccuratly implemented '+
+            LOGGER.warning('The event definition is inaccuratly implemented '
                            'for starting times, which are not 00H or 12H.')
         # download files, if they don't already exist
         file_names = download_icon_grib(
@@ -452,15 +447,13 @@ class StormEurope(Hazard):
             try:
                 stacked = stacked.sel(
                     valid_time=event_date.strftime('%Y-%m-%d')).groupby('date').max()
-            except KeyError:
-                raise ValueError('Extraction of date and coordinates failed. '
-                                 'This is most likely because '
-                                 'the selected event_date {} is not contained'
-                                 ' in the weather forecast selected by '
-                                 'run_datetime {}. Please adjust event_date'
-                                 ' or run_datetime.'.format(
-                                     event_date.strftime('%Y-%m-%d'),
-                                     run_datetime.strftime('%Y-%m-%d %H:%M')))
+            except KeyError as ker:
+                raise ValueError('Extraction of date and coordinates failed. This is most likely '
+                                 'because the selected event_date '
+                                 f'{event_date.strftime("%Y-%m-%d")} is not contained in the '
+                                 'weather forecast selected by run_datetime'
+                                 f'{run_datetime.strftime("%Y-%m-%d %H:%M")}. Please adjust '
+                                 'event_date or run_datetime.') from ker
 
             considered_dates = np.datetime64(event_date)
         else:
@@ -939,19 +932,13 @@ class StormEurope(Hazard):
         return intensity_out[:, sel_cen], ssi
 
 
-def generate_WS_forecast_hazard(run_datetime = dt.datetime.today().replace(hour=0,
-                                                                           minute=0,
-                                                                           second=0,
-                                                                           microsecond=0),
-                                event_date = (dt.datetime.today().replace(hour=0,
-                                                                          minute=0,
-                                                                          second=0,
-                                                                          microsecond=0)
-                                              + dt.timedelta(days=2)),
-                                haz_model = 'icon-eu-eps',
-                                haz_raw_storage = None,
-                                save_haz = True):
-    """ use the initialization time (run_datetime), the date of the event and
+# pylint: disable=invalid-name
+def generate_WS_forecast_hazard(run_datetime=None,
+                                event_date=None,
+                                haz_model='icon-eu-eps',
+                                haz_raw_storage=None,
+                                save_haz=True):
+    """use the initialization time (run_datetime), the date of the event and
     specify the forecast model (haz_model) to generate a Hazard from forecast
     data either by download or through reading from existing file.
 
@@ -980,6 +967,7 @@ def generate_WS_forecast_hazard(run_datetime = dt.datetime.today().replace(hour=
     save_haz: bool, optional
         flag if resulting hazard should be saved in
         CONFIG.hazard.storm_europe.forecast_dir, default is True.
+
     Returns
     -------
     Hazard
@@ -991,83 +979,63 @@ def generate_WS_forecast_hazard(run_datetime = dt.datetime.today().replace(hour=
     datetime.datetime
         event_date
     """
-    if (haz_model == 'cosmo1e_file'
-        or
-        haz_model == 'cosmo2e_file'):
+    FORECAST_DIR = CONFIG.hazard.storm_europe.forecast_dir.dir()
+
+    if run_datetime is None:
+        run_datetime = dt.datetime.today().replace(hour=0, minute=0, second=0, microsecond=0)
+    if event_date is None:
+        event_date = dt.datetime.today().replace(hour=0, minute=0, second=0, microsecond=0) \
+                   + dt.timedelta(days=2)
+
+    if haz_model in ['cosmo1e_file', 'cosmo2e_file']:
         if haz_model == 'cosmo1e_file':
             haz_model='C1E'
             full_model_name_temp = 'COSMO-1E'
         if haz_model == 'cosmo2e_file':
             haz_model='C2E'
             full_model_name_temp = 'COSMO-2E'
-        haz_file_name = Path(FORECAST_DIR) / (HAZ_TYPE +
-                                              '_' +
-                                              haz_model +
-                                              '_run' +
-                                              run_datetime.strftime('%Y%m%d%H') +
-                                              '_event' +
-                                              event_date.strftime('%Y%m%d')
-                                              +
-                                              '.hdf5')
-        if haz_file_name.exists():
-            LOGGER.info('Loading hazard from ' +
-                        str(haz_file_name) +
-                        '.')
-            hazard = StormEurope.from_hdf5(haz_file_name)
+        haz_file_name = (f'{HAZ_TYPE}_{haz_model}_run{run_datetime.strftime("%Y%m%d%H")}'
+                         f'_event{event_date.strftime("%Y%m%d")}.hdf5')
+        haz_file = FORECAST_DIR / haz_file_name
+        if haz_file.exists():
+            LOGGER.info('Loading hazard from %s.', haz_file)
+            hazard = StormEurope.from_hdf5(haz_file)
         else:
-            LOGGER.info('Generating ' +
-                        haz_model +
-                        ' hazard.')
+            LOGGER.info('Generating %s hazard.', haz_model)
             if not haz_raw_storage:
-                haz_raw_storage = Path(FORECAST_DIR) / "cosmoe_forecast_{}_vmax.nc"
-            fp_file = Path(
-                str(haz_raw_storage).format(
-                    run_datetime.strftime('%y%m%d%H')
-                    )
-                )
+                haz_raw_storage = FORECAST_DIR / "cosmoe_forecast_{}_vmax.nc"
+            fp_file = Path(str(haz_raw_storage).format(run_datetime.strftime('%y%m%d%H')))
             hazard = StormEurope.from_cosmoe_file(
                 fp_file,
                 event_date=event_date,
                 run_datetime=run_datetime,
                 model_name=full_model_name_temp
-                )
+            )
             if save_haz:
-                hazard.write_hdf5(haz_file_name)
-    elif (haz_model == 'icon-eu-eps'
-          or
-          haz_model == 'icon-d2-eps'):
+                hazard.write_hdf5(haz_file)
+    elif haz_model in ['icon-eu-eps', 'icon-d2-eps']:
         if haz_model == 'icon-eu-eps':
             full_model_name_temp = haz_model
             haz_model='IEE'
         if haz_model == 'icon-d2-eps':
             full_model_name_temp = haz_model
             haz_model='IDE'
-        haz_file_name = Path(FORECAST_DIR) / (HAZ_TYPE +
-                                              '_' +
-                                              haz_model +
-                                              '_run' +
-                                              run_datetime.strftime('%Y%m%d%H') +
-                                              '_event' +
-                                              event_date.strftime('%Y%m%d')
-                                              +
-                                              '.hdf5')
-        if haz_file_name.exists():
-            LOGGER.info('Loading hazard from ' +
-                        str(haz_file_name) +
-                        '.')
-            hazard = StormEurope.from_hdf5(haz_file_name)
+        haz_file_name = (f'{HAZ_TYPE}_{haz_model}_run{run_datetime.strftime("%Y%m%d%H")}'
+                         f'_event{event_date.strftime("%Y%m%d")}.hdf5')
+        haz_file = FORECAST_DIR / haz_file_name
+        if haz_file.exists():
+            LOGGER.info('Loading hazard from %s.', haz_file)
+            hazard = StormEurope.from_hdf5(haz_file)
         else:
-            LOGGER.info('Generating ' +
-                        haz_model +
-                        ' hazard.')
+            LOGGER.info('Generating %s hazard.', haz_model)
             hazard = StormEurope.from_icon_grib(
                 run_datetime,
                 event_date=event_date,
                 delete_raw_data=False,
                 model_name=full_model_name_temp
-                )
+            )
             if save_haz:
-                hazard.write_hdf5(haz_file_name)
+                hazard.write_hdf5(haz_file)
     else:
         raise NotImplementedError("specific 'WS' hazard not implemented yet. " +
                                   "Please specify a valid value for haz_model.")

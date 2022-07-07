@@ -27,7 +27,7 @@ import geopandas as gpd
 import numpy as np
 from pyproj.crs import CRS as PCRS
 import shapely
-from shapely.geometry import box, Point
+from shapely.geometry import box
 from rasterio.windows import Window
 from rasterio.warp import Resampling
 from rasterio import Affine
@@ -35,10 +35,141 @@ from rasterio.crs import CRS as RCRS
 import rasterio.transform
 
 from climada import CONFIG
-from climada.util.constants import HAZ_DEMO_FL, DEF_CRS, ONE_LAT_KM
+from climada.util.constants import HAZ_DEMO_FL, DEF_CRS, ONE_LAT_KM, DEMO_DIR
 import climada.util.coordinates as u_coord
 
 DATA_DIR = CONFIG.util.test_data.dir()
+def def_input_values():
+    """Default input coordinates and centroids values"""
+    # Load exposures coordinates from demo entity file
+    exposures = np.array([
+        [26.933899, -80.128799],
+        [26.957203, -80.098284],
+        [26.783846, -80.748947],
+        [26.645524, -80.550704],
+        [26.897796, -80.596929],
+        [26.925359, -80.220966],
+        [26.914768, -80.07466],
+        [26.853491, -80.190281],
+        [26.845099, -80.083904],
+        [26.82651, -80.213493],
+        [26.842772, -80.0591],
+        [26.825905, -80.630096],
+        [26.80465, -80.075301],
+        [26.788649, -80.069885],
+        [26.704277, -80.656841],
+        [26.71005, -80.190085],
+        [26.755412, -80.08955],
+        [26.678449, -80.041179],
+        [26.725649, -80.1324],
+        [26.720599, -80.091746],
+        [26.71255, -80.068579],
+        [26.6649, -80.090698],
+        [26.664699, -80.1254],
+        [26.663149, -80.151401],
+        [26.66875, -80.058749],
+        [26.638517, -80.283371],
+        [26.59309, -80.206901],
+        [26.617449, -80.090649],
+        [26.620079, -80.055001],
+        [26.596795, -80.128711],
+        [26.577049, -80.076435],
+        [26.524585, -80.080105],
+        [26.524158, -80.06398],
+        [26.523737, -80.178973],
+        [26.520284, -80.110519],
+        [26.547349, -80.057701],
+        [26.463399, -80.064251],
+        [26.45905, -80.07875],
+        [26.45558, -80.139247],
+        [26.453699, -80.104316],
+        [26.449999, -80.188545],
+        [26.397299, -80.21902],
+        [26.4084, -80.092391],
+        [26.40875, -80.1575],
+        [26.379113, -80.102028],
+        [26.3809, -80.16885],
+        [26.349068, -80.116401],
+        [26.346349, -80.08385],
+        [26.348015, -80.241305],
+        [26.347957, -80.158855]
+    ])
+
+    # Define centroids
+    centroids = np.zeros((100, 2))
+    inext = 0
+    for ilon in range(10):
+        for ilat in range(10):
+            centroids[inext][0] = 20 + ilat + 1
+            centroids[inext][1] = -85 + ilon + 1
+
+            inext = inext + 1
+
+    return exposures, centroids
+
+def def_ref():
+    """Default output reference"""
+    return np.array([46, 46, 36, 36, 36, 46, 46, 46, 46, 46, 46,
+                     36, 46, 46, 36, 46, 46, 46, 46, 46, 46, 46,
+                     46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46,
+                     46, 46, 46, 45, 45, 45, 45, 45, 45, 45, 45,
+                     45, 45, 45, 45, 45, 45])
+
+def def_ref_50():
+    """Default output reference for maximum distance threshold 50km"""
+    return np.array([46, 46, 36, -1, 36, 46, 46, 46, 46, 46, 46, 36, 46, 46,
+                     36, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46, 46,
+                     46, 46, 46, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 45,
+                     45, 45, 45, 45, 45, 45, 45, 45])
+
+class TestDistance(unittest.TestCase):
+    """Test distance functions."""
+
+    def test_dist_sqr_approx_pass(self):
+        """Test against matlab reference."""
+        lats1 = 45.5
+        lons1 = -32.2
+        cos_lats1 = np.cos(np.radians(lats1))
+        lats2 = 14
+        lons2 = 56
+        self.assertAlmostEqual(
+            7709.827814738594,
+            np.sqrt(u_coord._dist_sqr_approx(lats1, lons1, cos_lats1, lats2, lons2)) * ONE_LAT_KM)
+    
+    def test_geodesic_length_geog(self):
+        """Test compute_geodesic_lengths for geographic input crs"""
+        
+        LINE_PATH = DEMO_DIR.joinpath('nl_rails.gpkg')
+        gdf_rails = gpd.read_file(LINE_PATH).to_crs('epsg:4326')
+        lengths_geom = u_coord.compute_geodesic_lengths(gdf_rails)
+        
+        self.assertEqual(len(lengths_geom), len(gdf_rails))
+        self.assertTrue(
+            np.all(
+                (abs(lengths_geom - gdf_rails['distance'])/lengths_geom < 0.1) | 
+                (lengths_geom - gdf_rails['distance'] < 10)
+                )
+            )
+
+    def test_geodesic_length_proj(self):
+        """Test compute_geodesic_lengths for projected input crs"""
+        
+        LINE_PATH = DEMO_DIR.joinpath('nl_rails.gpkg')
+        gdf_rails = gpd.read_file(LINE_PATH).to_crs('epsg:4326')
+        gdf_rails_proj = gpd.read_file(LINE_PATH).to_crs('epsg:4326').to_crs('EPSG:28992')
+
+        lengths_geom = u_coord.compute_geodesic_lengths(gdf_rails)
+        lengths_proj = u_coord.compute_geodesic_lengths(gdf_rails_proj)
+
+        for len_proj, len_geom in zip(lengths_proj,lengths_geom):
+            self.assertAlmostEqual(len_proj, len_geom, 1)
+        
+        self.assertTrue(
+            np.all(
+                (abs(lengths_proj - gdf_rails_proj['distance'])/lengths_proj < 0.1) | 
+                (lengths_proj - gdf_rails_proj['distance'] < 10)
+                )
+            )
 
 def data_arrays_resampling_demo():
     """init demo data arrays (2d) and meta data for resampling"""
@@ -198,6 +329,37 @@ class TestFunc(unittest.TestCase):
                 # longitude from 179 to -179 is positive (!) in lon-direction
                 np.testing.assert_array_less(100, vec[1, :] / factor)
 
+    def test_dist_approx_batch_pass(self):
+        """Test batch-execution of approximate distance functions"""
+
+        lat1 = np.array([[45.5, -3.0, 45.5, 45.5], [45.5, 45.5, 45.5, -3.0]])
+        lon1 = np.array([[-32.1, -130.1, 147.8, 507.9], [-212.2, 507.9, -32.1, -130.1]])
+        lat2 = np.array([[14.0, 14.0, 4.0], [4.0, 14.0, 14.0]])
+        lon2 = np.array([[56.0, -124.0, -30.5], [-30.5, -124.0, 56.0]])
+
+        # The distance of each of 4 points (lat1, lon1) to each of 3 points (lat2, lon2) is
+        # computed for each of 2 batches (first dimension) of data.
+        test_data = np.array([
+            [
+                [7702.88906574, 7967.66578334, 4613.1634431],
+                [19389.5254652, 2006.65638992, 11079.7217421],
+                [7960.66983129, 7709.82781473, 14632.55958021],
+                [7967.66578334, 7702.88906574, 14639.95139706],
+            ],
+            [
+                [14632.55958021, 7709.82781473, 7960.66983129],
+                [14639.95139706, 7702.88906574, 7967.66578334],
+                [4613.1634431, 7967.66578334, 7702.88906574],
+                [11079.7217421, 2006.65638992, 19389.5254652],
+            ],
+        ])
+
+        dist = u_coord.dist_approx(lat1, lon1, lat2, lon2)
+        np.testing.assert_array_almost_equal(dist, test_data)
+
+        dist, vec = u_coord.dist_approx(lat1, lon1, lat2, lon2, log=True)
+        np.testing.assert_array_almost_equal(dist, test_data)
+        self.assertEqual(vec.shape, (2, 4, 3, 2))
 
     def test_get_gridcellarea(self):
         """Test get_gridcellarea function to calculate the gridcellarea from a given latitude"""
@@ -209,6 +371,10 @@ class TestFunc(unittest.TestCase):
         self.assertAlmostEqual(area[0], 178159.73363005)
         self.assertAlmostEqual(area[1], 180352.82386516)
         self.assertEqual(lat.shape, area.shape)
+
+        area2 = u_coord.get_gridcellarea(lat, resolution, unit='km2')
+        self.assertAlmostEqual(area2[0], 1781.5973363005)
+        self.assertTrue(area2[0] <= 2500)
 
     def test_read_vector_pass(self):
         """Test one columns data"""
@@ -1434,4 +1600,5 @@ if __name__ == "__main__":
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestGetGeodata))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRasterMeta))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRasterIO))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestDistance))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
