@@ -405,7 +405,7 @@ class Hazard():
         """
         # If the data is a string, open the respective file
         if not isinstance(data, xr.Dataset):
-            LOGGER.info(f"Loading Hazard from file: {data}")
+            LOGGER.info("Loading Hazard from file: %s", data)
             data = xr.open_dataset(data)
         else:
             LOGGER.info("Loading Hazard from xarray Dataset")
@@ -445,13 +445,13 @@ class Hazard():
         )
 
         # Read the intensity data and flatten it in spatial dimensions
-        LOGGER.debug(f"Loading Hazard intensity from DataArray '{intensity}'")
+        LOGGER.debug("Loading Hazard intensity from DataArray '%s'", intensity)
         hazard.intensity = sparse.csr_matrix(data[intensity])
         hazard.intensity.eliminate_zeros()
 
         # Use fraction data or apply callable
         if isinstance(fraction, str):
-            LOGGER.debug(f"Loading Hazard fraction from DataArray '{fraction}'")
+            LOGGER.debug("Loading Hazard fraction from DataArray '%s'", fraction)
             fraction_arr = data[fraction]
         elif isinstance(fraction, Callable):
             LOGGER.debug("Computing Hazard fraction from callable")
@@ -470,7 +470,7 @@ class Hazard():
         # TODO: hazard.unit
 
         # Done!
-        LOGGER.debug(f"Hazard successfully loaded. Number of events: {num_events}")
+        LOGGER.debug("Hazard successfully loaded. Number of events: %i", num_events)
         return hazard
 
     @classmethod
