@@ -23,8 +23,8 @@ Created on Mon Nov 16 19:21:42 2020
 
 import logging
 import math
-import numpy as np
 import decimal
+import numpy as np
 
 
 LOGGER = logging.getLogger(__name__)
