@@ -101,7 +101,7 @@ dependencies:
   - ipython_genutils=0.2.0=py38_0
   - jasper=2.0.33=ha77e612_0
   - jedi=0.18.1=py38h06a4308_1
-  - jinja2=3.1.2=pyhd8ed1ab_1
+  - jinja2=3.0.3=pyhd8ed1ab_0
   - joblib=1.1.0=pyhd8ed1ab_0
   - jpeg=9e=h166bdaf_2
   - json-c=0.15=h98cffda_0
