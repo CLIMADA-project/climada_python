@@ -378,7 +378,6 @@ class Hazard():
         *,
         intensity: str = "intensity",
         fraction: Union[str, Callable[[np.ndarray], np.ndarray]] = "fraction",
-        dimension_vars: Optional[Dict[str, str]] = None,
         coordinate_vars: Optional[Dict[str, str]] = None,
     ):
         """Read raster-like data from a NetCDF file
@@ -394,28 +393,9 @@ class Hazard():
             Identifier of the `xarray.DataArray` containing the hazard fraction data.
             May be a callable, in which case the callable is applied on the respective
             intensity value to yield a fraction.
-        dimension_vars : dict(str, str)
-            Mapping from default dimension names to dimension names used in the data
-            to read. The default dimensions are `time`, `longitude`, and `latitude`.
         coordinate_vars : dict(str, str)
-            Mapping from default coordinate names to coordinate names used in the
-            data to read. The default coordinates are the settings for `time`,
-            `longitude`, and `latitude` in the `dimension_vars`, which themselves default
-            to `time`, `longitude`, and `latitude`. See Notes for details.
-
-        Notes
-        -----
-        This method is able to read *coordinates* that differ from the *dimensions* of
-        the evaluated dataset. If you are unfamiliar with the `xarray` nomenclature,
-        please consult https://docs.xarray.dev/en/stable/user-guide/terminology.html.
-        By default, it is assumed that the dimensions and coordinates of the dataset
-        are called `time`, `longitude`, and `latitude`, and the data is interpreted
-        accordingly. If the dimensions of the dataset are named differently, you may
-        specify the respective names via the `dimension_vars` mapping. If the dimension
-        names differ from the names of the coordinates you want to read as information
-        for time, latitude, and longitude, you may specify the coordinate names via the
-        `coordinate_vars` mapping. If the latter is not given, it is assumed that the
-        coordinates have the same names as the dimensions.
+            Mapping from default coordinate names to coordinate names used in the data
+            to read. The default names are `time`, `longitude`, and `latitude`.
 
         Returns
         -------
@@ -431,38 +411,35 @@ class Hazard():
             LOGGER.info("Loading Hazard from xarray Dataset")
         hazard = cls()  # TODO: Hazard type
 
-        def update_without_addition(
-            map_orig: dict, map_update: dict, error_keyword: str
-        ):
-            """Update an existing map with another map
-
-            Throw an error if the other map contains keys that are not present in the
-            original map.
-            """
-            unknown_keys = [key for key in map_update if key not in map_orig]
-            if unknown_keys:
+        # Update coordinate identifiers
+        coords = {"time": "time", "longitude": "longitude", "latitude": "latitude"}
+        if coordinate_vars is not None:
+            unknown_coords = [co for co in coordinate_vars if co not in coords]
+            if unknown_coords:
                 raise ValueError(
-                    f"Unknown {error_keyword} passed: '{unknown_keys}'. Supported "
-                    f"{error_keyword} are: '{list(map_orig.keys())}'."
+                    f"Unknown coordinates passed: '{unknown_coords}'. Supported "
+                    "coordinates are 'time', 'longitude', 'latitude'."
                 )
-            map_orig.update(map_update)
+            coords.update(coordinate_vars)
 
-        # Update dimension identifiers
-        dims = {"time": "time", "longitude": "longitude", "latitude": "latitude"}
-        if dimension_vars is not None:
-            update_without_addition(dims, dimension_vars, "dimensions")
-            LOGGER.debug(f"Custom dimension names specified. Dimensions: {dims}")
+        # Retrieve dimensions of coordinates
+        dims = dict(
+            time=data[coords["time"]].dims,
+            longitude=data[coords["longitude"]].dims,
+            latitude=data[coords["latitude"]].dims,
+        )
 
-        # Stack (vectorize) the entire dataset along the spatial dimensions
-        data = data.stack(lat_lon=[dims["latitude"], dims["longitude"]])
+        # Stack (vectorize) the entire dataset into 2D (time, lat/lon)
+        # NOTE: We want the set union of the dimensions, but Python 'set' does not
+        #       preserve order. However, we want longitude to run faster than latitude.
+        #       So we use 'dict' without values, as 'dict' preserves insertion order
+        #       (dict keys behave like a set).
+        data = data.stack(
+            event=dims["time"],
+            lat_lon=dict.fromkeys(dims["latitude"] + dims["longitude"]),
+        )
 
         # Transform coordinates into centroids
-        # NOTE: We might use different coordinates here than the dimensions defining the
-        #       dataset shape
-        coords = copy.deepcopy(dims)
-        if coordinate_vars is not None:
-            update_without_addition(coords, coordinate_vars, "coordinates")
-            LOGGER.debug(f"Custom coordinate names specified. Coordinates: {coords}")
         hazard.centroids = Centroids.from_lat_lon(
             data[coords["latitude"]].values, data[coords["longitude"]].values
         )
@@ -485,7 +462,7 @@ class Hazard():
         hazard.fraction.eliminate_zeros()
 
         # Fill hazard with required information
-        num_events = data[coords["time"]].size
+        num_events = data.sizes["event"]
         hazard.event_id = np.array(range(num_events)) + 1  # event_id starts at 1
         hazard.frequency = np.ones(num_events)  # TODO: Optional read from file
         hazard.event_name = list(data[coords["time"]].values)

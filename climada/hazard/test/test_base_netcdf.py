@@ -80,7 +80,7 @@ class ReadDimsCoordsNetCDF(unittest.TestCase):
         """Test if dimensions with different names can be read"""
         hazard = Hazard.from_raster_netcdf(
             self.netcdf_path,
-            dimension_vars=dict(latitude="y", longitude="x"),  # 'time' stays default
+            coordinate_vars=dict(latitude="y", longitude="x"),  # 'time' stays default
         )
         np.testing.assert_array_equal(hazard.centroids.lat, [0, 0, 0, 1, 1, 1])
         np.testing.assert_array_equal(hazard.centroids.lon, [0, 1, 2, 0, 1, 2])
@@ -93,7 +93,6 @@ class ReadDimsCoordsNetCDF(unittest.TestCase):
         """Test if coordinates with different names than dimensions can be read"""
         hazard = Hazard.from_raster_netcdf(
             self.netcdf_path,
-            dimension_vars=dict(latitude="y", longitude="x"),
             coordinate_vars=dict(latitude="lat", longitude="lon", time="years"),
         )
         np.testing.assert_array_equal(hazard.centroids.lat, [1, 1, 1, 2, 2, 2])
@@ -107,7 +106,6 @@ class ReadDimsCoordsNetCDF(unittest.TestCase):
         """Test if read method correctly handles 2D coordinates"""
         hazard = Hazard.from_raster_netcdf(
             self.netcdf_path,
-            dimension_vars=dict(latitude="y", longitude="x"),
             coordinate_vars=dict(latitude="latitude", longitude="longitude"),
         )
         np.testing.assert_array_equal(
@@ -116,41 +114,58 @@ class ReadDimsCoordsNetCDF(unittest.TestCase):
         np.testing.assert_array_equal(hazard.centroids.lon, [10, 11, 12, 10, 11, 12])
         self._assert_intensity_fraction(hazard)
 
+    def test_2D_time(self):
+        """Test if stacking multiple time dimensions works out"""
+        time = np.array(
+            [
+                [dt.datetime(1999, 1, 1), dt.datetime(1999, 2, 1)],
+                [dt.datetime(2000, 1, 1), dt.datetime(2000, 2, 1)],
+            ]
+        )
+        ds = xr.Dataset(
+            {
+                "intensity": (
+                    ["year", "month", "latitude", "longitude"],
+                    [[[[1]], [[2]]], [[[3]], [[4]]]],
+                ),
+                "fraction": (
+                    ["year", "month", "latitude", "longitude"],
+                    [[[[10]], [[20]]], [[[30]], [[40]]]],
+                ),
+            },
+            {
+                "latitude": [1],
+                "longitude": [2],
+                "year": [1999, 2000],
+                "month": [1, 2],
+                "time": (["year", "month"], time),
+            },
+        )
+        hazard = Hazard.from_raster_netcdf(ds)
+
+        np.testing.assert_array_equal(hazard.intensity.toarray(), [[1], [2], [3], [4]])
+        np.testing.assert_array_equal(
+            hazard.fraction.toarray(), [[10], [20], [30], [40]]
+        )
+        np.testing.assert_array_equal(hazard.centroids.lat, [1])
+        np.testing.assert_array_equal(hazard.centroids.lon, [2])
+        np.testing.assert_array_equal(
+            hazard.date, [val.toordinal() for val in time.flat]
+        )
+
     def test_errors(self):
         """Check if expected errors are thrown"""
-        # Default, should throw because default dimension names don't work out
-        with self.assertRaises(KeyError):
-            Hazard.from_raster_netcdf(self.netcdf_path)
-
-        # Wrong dimension key
-        with self.assertRaises(ValueError) as cm:
-            Hazard.from_raster_netcdf(
-                self.netcdf_path,
-                dimension_vars=dict(foo="latitude", longitude="longitude"),
-            )
-        self.assertIn("Unknown dimensions passed: '['foo']'.", str(cm.exception))
-
-        # Correctly specified, but the custom dimension does not exist
-        with self.assertRaises(KeyError):
-            Hazard.from_raster_netcdf(
-                self.netcdf_path, dimension_vars=dict(time="year")
-            )
-
         # Wrong coordinate key
         with self.assertRaises(ValueError) as cm:
             Hazard.from_raster_netcdf(
-                self.netcdf_path,
-                dimension_vars=dict(latitude="y", longitude="x"),
-                coordinate_vars=dict(bar="latitude", longitude="baz"),
+                self.netcdf_path, coordinate_vars=dict(bar="latitude", longitude="baz"),
             )
         self.assertIn("Unknown coordinates passed: '['bar']'.", str(cm.exception))
 
         # Correctly specified, but the custom dimension does not exist
         with self.assertRaises(KeyError) as cm:
             Hazard.from_raster_netcdf(
-                self.netcdf_path,
-                dimension_vars=dict(latitude="y", longitude="x"),
-                coordinate_vars=dict(latitude="lalalatitude"),
+                self.netcdf_path, coordinate_vars=dict(latitude="lalalatitude"),
             )
 
 
