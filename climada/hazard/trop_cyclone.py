@@ -326,8 +326,8 @@ class TropCyclone(Hazard):
         figsize : tuple, optional
             figure size for plt.subplots
         adapt_fontsize : bool, optional
-            If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
-            the default matplotlib font size is used. Default is True.
+            If set to true, the size of the fonts will be adapted to the size of the figure.
+            Otherwise the default matplotlib font size is used. Default is True.
         kwargs : optional
             arguments for pcolormesh matplotlib function used in event plots
 

@@ -137,17 +137,18 @@ class TestClient(unittest.TestCase):
         exposures = client.get_exposures(exposures_type='litpop',
                                          properties={'country_iso3alpha': 'AUT',
                                                      'fin_mode': 'pop', 'exponents': '(0,1)'},
+                                         version='v1',
                                          dump_dir=DATA_DIR)
         self.assertEqual(len(exposures.gdf), 5782)
         self.assertEqual(np.unique(exposures.gdf.region_id), 40)
-        self.assertTrue('[0, 1]' in exposures.tag.description)
-        self.assertTrue('pop' in exposures.tag.description)
+        self.assertIn('[0, 1]', exposures.tag.description)
+        self.assertIn('pop', exposures.tag.description)
         exposures
 
     def test_get_exposures_fails(self):
         client = Client()
         with self.assertRaises(ValueError) as cm:
-            client.get_exposures(exposures_type='river_flood', 
+            client.get_exposures(exposures_type='river_flood',
                                  properties={'country_iso3alpha': 'AUT',
                                              'fin_mode': 'pop', 'exponents': '(0,1)'},
                                  dump_dir=DATA_DIR)
@@ -166,6 +167,7 @@ class TestClient(unittest.TestCase):
         hazard = client.get_hazard(hazard_type='river_flood',
                                    properties={'country_name': 'Austria',
                                                'year_range': '2010_2030', 'climate_scenario': 'rcp26'},
+                                   version='v1',
                                    dump_dir=DATA_DIR)
         self.assertEqual(np.shape(hazard.intensity), (480, 5784))
         self.assertEqual(np.unique(hazard.centroids.region_id), 40)
@@ -189,9 +191,9 @@ class TestClient(unittest.TestCase):
                               dump_dir=DATA_DIR)
         self.assertIn('there are several datasets meeting the requirements:', str(cm.exception))
 
-    def test_get_litpop_default(self):
+    def test_get_litpop(self):
         client = Client()
-        litpop = client.get_litpop_default(country='LUX', dump_dir=DATA_DIR)
+        litpop = client.get_litpop(country='LUX', version='v1', dump_dir=DATA_DIR)
         self.assertEqual(len(litpop.gdf), 188)
         self.assertEqual(np.unique(litpop.gdf.region_id), 442)
         self.assertTrue('[1, 1]' in litpop.tag.description)

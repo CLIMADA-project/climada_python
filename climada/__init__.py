@@ -58,6 +58,7 @@ REPO_DATA = {
         HAZ_DEMO_H5,
         TC_ANDREW_FL,
         DEMO_DIR.joinpath('demo_emdat_impact_data_2020.csv'),
+        DEMO_DIR.joinpath('nl_rails.gpkg'),
     ] + WS_DEMO_NC
 }
 
