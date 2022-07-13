@@ -27,6 +27,7 @@ import csv
 import warnings
 import datetime as dt
 from itertools import zip_longest
+import contextily as ctx
 import numpy as np
 from scipy import sparse
 import matplotlib.pyplot as plt
@@ -388,7 +389,7 @@ class Impact():
 
     def plot_basemap_eai_exposure(self, mask=None, ignore_zero=False, pop_name=True,
                                   buffer=0.0, extend='neither', zoom=10,
-                                  url='http://tile.stamen.com/terrain/tileZ/tileX/tileY.png',
+                                  url=ctx.providers.Stamen.Terrain,
                                   axis=None, **kwargs):
         """Plot basemap expected annual impact of each exposure.
 
@@ -409,7 +410,7 @@ class Impact():
         zoom : int, optional
             zoom coefficient used in the satellite image
         url : str, optional
-            image source, e.g. ctx.sources.OSM_C
+            image source, e.g. ctx.providers.OpenStreetMap.Mapnik
         axis : matplotlib.axes._subplots.AxesSubplot, optional
             axis to use
         kwargs : optional
@@ -479,7 +480,7 @@ class Impact():
 
     def plot_basemap_impact_exposure(self, event_id=1, mask=None, ignore_zero=False,
                                      pop_name=True, buffer=0.0, extend='neither', zoom=10,
-                                     url='http://tile.stamen.com/terrain/tileZ/tileX/tileY.png',
+                                     url=ctx.providers.Stamen.Terrain,
                                      axis=None, **kwargs):
         """Plot basemap impact of an event at each exposure.
         Requires attribute imp_mat.
@@ -504,7 +505,7 @@ class Impact():
         zoom : int, optional
             zoom coefficient used in the satellite image
         url : str, optional
-            image source, e.g. ctx.sources.OSM_C
+            image source, e.g. ctx.providers.OpenStreetMap.Mapnik
         axis  : matplotlib.axes._subplots.AxesSubplot, optional axis to use
         kwargs : optional arguments for scatter matplotlib function, e.g.
             cmap='Greys'. Default: 'Wistia'
