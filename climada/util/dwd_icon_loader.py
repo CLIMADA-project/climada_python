@@ -190,7 +190,8 @@ def _create_icon_grib_name(run_datetime,
     """
     # define defaults of the url for each model and parameter combination
     if (model_name == 'icon-eu-eps') & (parameter_name == 'vmax_10m'):
-        file_extension = '_europe_icosahedral_single-level_' #this string completes the filename on the server
+        file_extension = '_europe_icosahedral_single-level_'
+        #this string completes the filename on the server
         file_extension_2 = '' #this string completes the filename on the server
         max_lead_time_default = 120 # maximum available data
         lead_times = np.concatenate((np.arange(1, 49),
@@ -198,7 +199,8 @@ def _create_icon_grib_name(run_datetime,
                                      np.arange(78, 121, 6)
                                      ))
     elif (model_name == 'icon-d2-eps') & (parameter_name == 'vmax_10m'):
-        file_extension = '_germany_icosahedral_single-level_' #this string completes the filename on the server
+        file_extension = '_germany_icosahedral_single-level_'
+        #this string completes the filename on the server
         file_extension_2 = '_2d' #this string completes the filename on the server
         max_lead_time_default = 48 # maximum available data
         lead_times = np.concatenate((np.arange(1, 49),

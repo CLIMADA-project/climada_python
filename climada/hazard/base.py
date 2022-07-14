@@ -600,6 +600,7 @@ class Hazard():
         ------
         KeyError
         """
+        # pylint: disable=protected-access
         if not var_names:
             var_names = DEF_VAR_MAT
         LOGGER.info('Reading %s', file_name)
@@ -653,6 +654,7 @@ class Hazard():
         ------
         KeyError
         """
+        # pylint: disable=protected-access
         if not var_names:
             var_names = DEF_VAR_EXCEL
         LOGGER.info('Reading %s', file_name)
@@ -855,7 +857,7 @@ class Hazard():
             self.intensity[:, (chk + 1) * cen_step:].toarray(),
             inten_stats[:, (chk + 1) * cen_step:])
         # set values below 0 to zero if minimum of hazard.intensity >= 0:
-        if self.intensity.min() >= 0 and np.min(inten_stats) < 0:
+        if np.min(inten_stats) < 0 <= self.intensity.min():
             LOGGER.warning('Exceedance intenstiy values below 0 are set to 0. \
                    Reason: no negative intensity values were found in hazard.')
             inten_stats[inten_stats < 0] = 0
@@ -1596,7 +1598,7 @@ class Hazard():
         Hazard.concat : concatenate 2 or more hazards
         Centroids.union : combine centroids
         """
-        # pylint: disable=no-member
+        # pylint: disable=no-member, protected-access
         if len(others) == 0:
             return
         haz_list = [self] + list(others)
@@ -1621,7 +1623,7 @@ class Hazard():
         if len(units) > 1:
             raise ValueError(f"The given hazards use different units: {units}. "
                              "The hazards are incompatible and cannot be concatenated.")
-        elif len(units) == 0:
+        if len(units) == 0:
             units = {''}
         self.units = units.pop()
 

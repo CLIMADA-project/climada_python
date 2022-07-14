@@ -540,8 +540,8 @@ class Exposures():
         figsize : tuple, optional
             figure size for plt.subplots
         adapt_fontsize : bool, optional
-            If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
-            the default matplotlib font size is used. Default is True.
+            If set to true, the size of the fonts will be adapted to the size of the figure.
+            Otherwise the default matplotlib font size is used. Default is True.
         kwargs : optional
             arguments for scatter matplotlib function, e.g.
             cmap='Greys'. Default: 'Wistia'
@@ -564,8 +564,11 @@ class Exposures():
                           self.gdf.longitude[mask][pos_vals].values], axis=1)
         return u_plot.geo_scatter_from_array(value, coord, cbar_label, title,
                                              pop_name, buffer, extend,
-                                             proj=crs_epsg, axes=axis,
-                                             figsize=figsize, adapt_fontsize=adapt_fontsize, **kwargs)
+                                             proj=crs_epsg,
+                                             axes=axis,
+                                             figsize=figsize,
+                                             adapt_fontsize=adapt_fontsize,
+                                             **kwargs)
 
     def plot_hexbin(self, mask=None, ignore_zero=False, pop_name=True,
                     buffer=0.0, extend='neither', axis=None, figsize=(9, 13),
@@ -593,8 +596,8 @@ class Exposures():
         figsize : tuple
             figure size for plt.subplots
         adapt_fontsize : bool, optional
-            If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
-            the default matplotlib font size is used. Default is True.
+            If set to true, the size of the fonts will be adapted to the size of the figure.
+            Otherwise the default matplotlib font size is used. Default is True.
         kwargs : optional
             arguments for hexbin matplotlib function, e.g.
             reduce_C_function=np.average. Default: reduce_C_function=np.sum
@@ -656,8 +659,8 @@ class Exposures():
             in white. If True, the areas with missing values are filled as 0s.
             The default is True.
         adapt_fontsize : bool, optional
-            If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
-            the default matplotlib font size is used. Default is True.
+            If set to true, the size of the fonts will be adapted to the size of the figure.
+            Otherwise the default matplotlib font size is used. Default is True.
         kwargs : optional
             arguments for imshow matplotlib function
 
@@ -696,7 +699,8 @@ class Exposures():
                                       self.gdf.longitude.max(), self.gdf.latitude.max())
 
         if not axis:
-            _, axis, fontsize = u_plot.make_map(proj=proj_plot, figsize=figsize, adapt_fontsize=adapt_fontsize)
+            _, axis, fontsize = u_plot.make_map(proj=proj_plot, figsize=figsize,
+                                                adapt_fontsize=adapt_fontsize)
         else:
             fontsize = None
         cbar_ax = make_axes_locatable(axis).append_axes('right', size="6.5%",
@@ -828,7 +832,7 @@ class Exposures():
                 crs = metadata['meta'].get('crs')
             exp = cls(store['exposures'], crs=crs)
             for key, val in metadata.items():
-                if key in type(exp)._metadata:
+                if key in type(exp)._metadata: # pylint: disable=protected-access
                     setattr(exp, key, val)
         return exp
 

@@ -265,6 +265,7 @@ class CostBenefit():
         -------
         climada.CostBenefit
         """
+        # pylint: disable=protected-access
         new_cb = CostBenefit()
         new_cb.present_year = self.present_year
         new_cb.future_year = self.future_year

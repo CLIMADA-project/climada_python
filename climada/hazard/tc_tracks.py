@@ -593,7 +593,8 @@ class TCTracks():
             if invalid_storms_idx.size > 0:
                 invalid_sids = list(ibtracs_ds.sid.sel(storm=invalid_storms_idx).astype(str).data)
                 LOGGER.warning('%d storm events are discarded because only one valid timestep '
-                               'has been found: %s%s', len(invalid_sids), ", ".join(invalid_sids[:5]),
+                               'has been found: %s%s', len(invalid_sids),
+                               ", ".join(invalid_sids[:5]),
                                ", ..." if len(invalid_sids) > 5  else ".")
                 ibtracs_ds = ibtracs_ds.sel(storm=valid_storms_mask)
 
@@ -1170,8 +1171,8 @@ class TCTracks():
         kwargs : optional
             arguments for LineCollection matplotlib, e.g. alpha=0.5
         adapt_fontsize : bool, optional
-            If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
-            the default matplotlib font size is used. Default is True.
+            If set to true, the size of the fonts will be adapted to the size of the figure.
+            Otherwise the default matplotlib font size is used. Default is True.
         Returns
         -------
         axis : matplotlib.axes._subplots.AxesSubplot
