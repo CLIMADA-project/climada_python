@@ -27,7 +27,6 @@ Here's a selection of the commonly required information:
 * Coding instructions for CLIMADA: [Python Dos and Don'ts](https://climada-python.readthedocs.io/en/latest/guide/Guide_PythonDos-n-Donts.html), [Performance Tips](https://climada-python.readthedocs.io/en/latest/guide/Guide_Py_Performance.html), [CLIMADA Conventions](https://climada-python.readthedocs.io/en/latest/guide/Guide_Miscellaneous.html)
 * How to execute tests in CLIMADA: [Testing and Continuous Integration](https://climada-python.readthedocs.io/en/latest/guide/Guide_Continuous_Integration_and_Testing.html)
 
-
 ## Pull Requests
 
 After developing a new feature, fixing a bug, or updating the tutorials, you can create a [pull request](https://docs.github.com/en/pull-requests) to have your changes reviewed and then merged into the CLIMADA code base.
