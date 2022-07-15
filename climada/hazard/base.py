@@ -372,7 +372,7 @@ class Hazard():
         self.__dict__ = Hazard.from_vector(*args, **kwargs).__dict__
 
     @classmethod
-    def from_raster_netcdf(
+    def from_raster_xarray(
         cls,
         data: Union[xr.Dataset, str],
         *,
@@ -380,13 +380,14 @@ class Hazard():
         fraction: Union[str, Callable[[np.ndarray], np.ndarray]] = "fraction",
         coordinate_vars: Optional[Dict[str, str]] = None,
     ):
-        """Read raster-like data from a NetCDF file
+        """Read raster-like data from an xarray Dataset or a raster data file
 
         Parameters
         ----------
         data : xarray.Dataset or str
-            The NetCDF data to read from. May be a opened dataset or a path to a NetCDF
-            file, in which case the file is opened first.
+            The data to read from. May be a opened dataset or a path to a raster data
+            file, in which case the file is opened first. Works with any file format
+            supported by `xarray`.
         intensity : str
             Identifier of the `xarray.DataArray` containing the hazard intensity data.
         fraction : str or Callable

@@ -16,7 +16,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
-Test NetCDF reading capabilities of Hazard base class.
+Test xarray reading capabilities of Hazard base class.
 """
 
 import os
@@ -33,6 +33,8 @@ THIS_DIR = os.path.dirname(__file__)
 
 
 class ReadDefaultNetCDF(unittest.TestCase):
+    """Test reading a NetCDF file where the coordinates to read match the dimensions"""
+
     def setUp(self):
         """Write a simple NetCDF file to read"""
         self.netcdf_path = os.path.join(THIS_DIR, "default.nc")
@@ -87,18 +89,18 @@ class ReadDefaultNetCDF(unittest.TestCase):
 
     def test_load_path(self):
         """Load the data with path as argument"""
-        hazard = Hazard.from_raster_netcdf(self.netcdf_path)
+        hazard = Hazard.from_raster_xarray(self.netcdf_path)
         self._assert_default(hazard)
 
     def test_load_dataset(self):
         """Load the data from an opened dataset as argument"""
         dataset = xr.open_dataset(self.netcdf_path)
-        hazard = Hazard.from_raster_netcdf(dataset)
+        hazard = Hazard.from_raster_xarray(dataset)
         self._assert_default(hazard)
 
     def test_fraction_callable(self):
         """Test creating a fraction from a callable"""
-        hazard = Hazard.from_raster_netcdf(
+        hazard = Hazard.from_raster_xarray(
             self.netcdf_path, fraction=lambda x: np.where(x > 1, 1, 0)
         )
         self.assertIsInstance(hazard.fraction, csr_matrix)
@@ -111,18 +113,18 @@ class ReadDefaultNetCDF(unittest.TestCase):
         # TODO: Maybe move to 'test_load_path'
         # Wrong paths
         with self.assertRaises(FileNotFoundError):
-            Hazard.from_raster_netcdf("file-does-not-exist.nc")
+            Hazard.from_raster_xarray("file-does-not-exist.nc")
         with self.assertRaises(KeyError):
-            Hazard.from_raster_netcdf(
+            Hazard.from_raster_xarray(
                 self.netcdf_path, intensity="wrong-intensity-path"
             )
         with self.assertRaises(KeyError):
-            Hazard.from_raster_netcdf(self.netcdf_path, fraction="wrong-fraction-path")
+            Hazard.from_raster_xarray(self.netcdf_path, fraction="wrong-fraction-path")
 
         # TODO: Maybe move to 'test_fraction_callable'
         # Wrong type passed as fraction
         with self.assertRaises(TypeError) as cm:
-            Hazard.from_raster_netcdf(self.netcdf_path, fraction=3)
+            Hazard.from_raster_xarray(self.netcdf_path, fraction=3)
         self.assertIn(
             "'fraction' parameter must be 'str' or Callable", str(cm.exception)
         )
@@ -174,7 +176,7 @@ class ReadDimsCoordsNetCDF(unittest.TestCase):
 
     def test_dimension_naming(self):
         """Test if dimensions with different names can be read"""
-        hazard = Hazard.from_raster_netcdf(
+        hazard = Hazard.from_raster_xarray(
             self.netcdf_path,
             coordinate_vars=dict(latitude="y", longitude="x"),  # 'time' stays default
         )
@@ -187,7 +189,7 @@ class ReadDimsCoordsNetCDF(unittest.TestCase):
 
     def test_coordinate_naming(self):
         """Test if coordinates with different names than dimensions can be read"""
-        hazard = Hazard.from_raster_netcdf(
+        hazard = Hazard.from_raster_xarray(
             self.netcdf_path,
             coordinate_vars=dict(latitude="lat", longitude="lon", time="years"),
         )
@@ -200,7 +202,7 @@ class ReadDimsCoordsNetCDF(unittest.TestCase):
 
     def test_2D_coordinates(self):
         """Test if read method correctly handles 2D coordinates"""
-        hazard = Hazard.from_raster_netcdf(
+        hazard = Hazard.from_raster_xarray(
             self.netcdf_path,
             coordinate_vars=dict(latitude="latitude", longitude="longitude"),
         )
@@ -237,7 +239,7 @@ class ReadDimsCoordsNetCDF(unittest.TestCase):
                 "time": (["year", "month"], time),
             },
         )
-        hazard = Hazard.from_raster_netcdf(ds)
+        hazard = Hazard.from_raster_xarray(ds)
 
         np.testing.assert_array_equal(hazard.intensity.toarray(), [[1], [2], [3], [4]])
         np.testing.assert_array_equal(
@@ -253,14 +255,14 @@ class ReadDimsCoordsNetCDF(unittest.TestCase):
         """Check if expected errors are thrown"""
         # Wrong coordinate key
         with self.assertRaises(ValueError) as cm:
-            Hazard.from_raster_netcdf(
+            Hazard.from_raster_xarray(
                 self.netcdf_path, coordinate_vars=dict(bar="latitude", longitude="baz"),
             )
         self.assertIn("Unknown coordinates passed: '['bar']'.", str(cm.exception))
 
         # Correctly specified, but the custom dimension does not exist
         with self.assertRaises(KeyError) as cm:
-            Hazard.from_raster_netcdf(
+            Hazard.from_raster_xarray(
                 self.netcdf_path, coordinate_vars=dict(latitude="lalalatitude"),
             )
 
