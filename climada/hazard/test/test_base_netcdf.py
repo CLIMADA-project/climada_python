@@ -70,24 +70,20 @@ class ReadDefaultNetCDF(unittest.TestCase):
         )
 
         # Centroids
-        self.assertEqual(hazard.centroids.lat.size, 6)
-        self.assertEqual(hazard.centroids.lon.size, 6)
         np.testing.assert_array_equal(hazard.centroids.lat, [0, 0, 0, 1, 1, 1])
         np.testing.assert_array_equal(hazard.centroids.lon, [0, 1, 2, 0, 1, 2])
 
         # Intensity data
         self.assertIsInstance(hazard.intensity, csr_matrix)
-        np.testing.assert_array_equal(hazard.intensity.shape, [2, 6])
-        np.testing.assert_array_equal(hazard.intensity.toarray()[0], [0, 1, 2, 3, 4, 5])
         np.testing.assert_array_equal(
-            hazard.intensity.toarray()[1], [6, 7, 8, 9, 10, 11]
+            hazard.intensity.toarray(), [[0, 1, 2, 3, 4, 5], [6, 7, 8, 9, 10, 11]]
         )
 
         # Fraction data
         self.assertIsInstance(hazard.fraction, csr_matrix)
-        np.testing.assert_array_equal(hazard.fraction.shape, [2, 6])
-        np.testing.assert_array_equal(hazard.fraction.toarray()[0], [0, 0, 0, 0, 0, 0])
-        np.testing.assert_array_equal(hazard.fraction.toarray()[1], [1, 1, 1, 1, 1, 1])
+        np.testing.assert_array_equal(
+            hazard.fraction.toarray(), [[0, 0, 0, 0, 0, 0], [1, 1, 1, 1, 1, 1]]
+        )
 
     def test_load_path(self):
         """Load the data with path as argument"""
@@ -106,9 +102,9 @@ class ReadDefaultNetCDF(unittest.TestCase):
             self.netcdf_path, fraction=lambda x: np.where(x > 1, 1, 0)
         )
         self.assertIsInstance(hazard.fraction, csr_matrix)
-        np.testing.assert_array_equal(hazard.fraction.shape, [2, 6])
-        np.testing.assert_array_equal(hazard.fraction.toarray()[0], [0, 0, 1, 1, 1, 1])
-        np.testing.assert_array_equal(hazard.fraction.toarray()[1], [1, 1, 1, 1, 1, 1])
+        np.testing.assert_array_equal(
+            hazard.fraction.toarray(), [[0, 0, 1, 1, 1, 1], [1, 1, 1, 1, 1, 1]]
+        )
 
     def test_errors(self):
         """Check the errors thrown"""
