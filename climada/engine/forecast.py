@@ -1214,7 +1214,7 @@ class Forecast:
             The default is (9, 13)
         Returns
         -------
-        axes : cartopy.mpl.geoaxes.GeoAxesSubplot
+        cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         # select hazard with run_datetime
         if run_datetime is None:

@@ -54,7 +54,7 @@ def dummy_hazard():
     hazard.intensity = sparse.csr_matrix([[0.2, 0.3, 0.4],
                                           [0.1, 0.1, 0.01],
                                           [4.3, 2.1, 1.0],
-                                          [5.3, 0.2, 1.3]])
+                                          [5.3, 0.2, 0.0]])
     hazard.units = 'm/s'
 
     return hazard
@@ -287,7 +287,7 @@ class TestSelect(unittest.TestCase):
                                        np.array([[0.3, 0.2, 0.0],
                                                  [0.02, 0.03, 0.04]])))
         self.assertTrue(np.array_equal(sel_haz.intensity.toarray(),
-                                       np.array([[5.3, 0.2, 1.3],
+                                       np.array([[5.3, 0.2, 0.0],
                                                  [0.2, 0.3, 0.4]])))
         self.assertEqual(sel_haz.event_name, ['ev4', 'ev1'])
         self.assertIsInstance(sel_haz, Hazard)
@@ -310,7 +310,7 @@ class TestSelect(unittest.TestCase):
                                        np.array([[0.3, 0.2, 0.0],
                                                  [0.02, 0.03, 0.04]])))
         self.assertTrue(np.array_equal(sel_haz.intensity.toarray(),
-                                       np.array([[5.3, 0.2, 1.3],
+                                       np.array([[5.3, 0.2, 0.0],
                                                  [0.2, 0.3, 0.4]])))
         self.assertEqual(sel_haz.event_name, ['ev4', 'ev1'])
         self.assertIsInstance(sel_haz, Hazard)
@@ -332,7 +332,7 @@ class TestSelect(unittest.TestCase):
         self.assertTrue(np.array_equal(
             sel_haz.fraction.toarray(), np.array([[0.02, 0.03, 0.04], [0.3, 0.2, 0.0]])))
         self.assertTrue(np.array_equal(
-            sel_haz.intensity.toarray(), np.array([[0.2, 0.3, 0.4], [5.3, 0.2, 1.3]])))
+            sel_haz.intensity.toarray(), np.array([[0.2, 0.3, 0.4], [5.3, 0.2, 0.0]])))
         self.assertEqual(sel_haz.event_name, ['ev1', 'ev4'])
         self.assertIsInstance(sel_haz, Hazard)
         self.assertIsInstance(sel_haz.intensity, sparse.csr_matrix)
@@ -378,7 +378,7 @@ class TestSelect(unittest.TestCase):
         self.assertTrue(np.array_equal(
             sel_haz.intensity.toarray(), np.array([[0.1, 0.1, 0.01],
                                                    [4.3, 2.1, 1.0],
-                                                   [5.3, 0.2, 1.3]])))
+                                                   [5.3, 0.2, 0.0]])))
         self.assertEqual(sel_haz.event_name, ['ev2', 'ev3', 'ev4'])
         self.assertIsInstance(sel_haz, Hazard)
         self.assertIsInstance(sel_haz.intensity, sparse.csr_matrix)
@@ -1321,18 +1321,111 @@ class TestClear(unittest.TestCase):
         pool.join()
         pool.clear()
 
+def dummy_step_impf(haz):
+    from climada.entity import ImpactFunc
+    intensity = (0, 1, haz.intensity.max())
+    impf = ImpactFunc.from_step_impf(intensity)
+    return impf
+
+class TestImpactFuncs(unittest.TestCase):
+    """Test methods mainly for computing impacts"""
+    def test_haz_type(self):
+        """Test haz_type property"""
+        haz = dummy_hazard()
+        self.assertEqual(haz.haz_type, 'TC')
+        haz.tag.haz_type = 'random'
+        self.assertEqual(haz.haz_type, 'random')
+
+    def test_cent_exp_col(self):
+        """Test return of centroid exposures column"""
+        haz = dummy_hazard()
+        self.assertEqual(haz.centr_exp_col, 'centr_TC')
+        haz.tag.haz_type = 'random'
+        self.assertEqual(haz.centr_exp_col, 'centr_random')
+        haz = Hazard()
+        self.assertEqual(haz.centr_exp_col, 'centr_')
+
+    def test_get_mdr(self):
+        haz = dummy_hazard()
+        impf = dummy_step_impf(haz)
+
+        #single index
+        for idx in range(3):
+            cent_idx = np.array([idx])
+            mdr = haz.get_mdr(cent_idx, impf)
+            true_mdr = np.digitize(haz.intensity[:, idx].toarray(), [0, 1]) - 1
+            np.testing.assert_array_almost_equal(mdr.toarray(), true_mdr)
+
+        #repeated index
+        cent_idx = np.array([0, 0, 1])
+        mdr = haz.get_mdr(cent_idx, impf)
+        true_mdr = np.digitize(haz.intensity[:, cent_idx].toarray(), [0, 1]) - 1
+        np.testing.assert_array_almost_equal(mdr.toarray(), true_mdr)
+
+        #mdr is not zero at 0
+        impf.mdd += 1
+        #single index
+        for idx in range(3):
+            cent_idx = np.array([idx])
+            mdr = haz.get_mdr(cent_idx, impf)
+            true_mdr = np.digitize(haz.intensity[:, idx].toarray(), [0, 1])
+            np.testing.assert_array_almost_equal(mdr.toarray(), true_mdr)
+
+    def test_get_paa(self):
+        haz = dummy_hazard()
+        impf = dummy_step_impf(haz)
+
+        idx = [0, 1]
+        cent_idx = np.array(idx)
+        paa = haz.get_paa(cent_idx, impf)
+        true_paa = np.ones(haz.intensity[:, idx].shape)
+        np.testing.assert_array_almost_equal(paa.toarray(), true_paa)
+
+        #repeated index
+        idx = [0, 0]
+        cent_idx = np.array(idx)
+        paa = haz.get_paa(cent_idx, impf)
+        true_paa = np.ones(haz.intensity[:, idx].shape)
+        np.testing.assert_array_almost_equal(paa.toarray(), true_paa)
+
+        #paa is not zero at 0
+        impf.paa += 1
+        #repeated index
+        idx = [0, 0, 1]
+        cent_idx = np.array(idx)
+        paa = haz.get_paa(cent_idx, impf)
+        true_paa = np.ones(haz.intensity[:, idx].shape) + 1
+        np.testing.assert_array_almost_equal(paa.toarray(), true_paa)
+
+    def test_get_fraction(self):
+        haz = dummy_hazard()
+
+        idx = [0, 1]
+        cent_idx = np.array(idx)
+        frac = haz.get_fraction(cent_idx)
+        true_frac = haz.fraction[:, idx]
+        np.testing.assert_array_almost_equal(frac.toarray(), true_frac.toarray())
+
+        #repeated index
+        idx = [0, 0]
+        cent_idx = np.array(idx)
+        frac = haz.get_fraction(cent_idx)
+        true_frac = haz.fraction[:, idx]
+        np.testing.assert_array_almost_equal(frac.toarray(), true_frac.toarray())
+
 
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestLoader)
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestHDF5))
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReaderExcel))
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReaderMat))
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRemoveDupl))
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestSelect))
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestStats))
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestYearset))
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAppend))
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCentroids))
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestClear))
+    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestHDF5))
+    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReaderExcel))
+    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReaderMat))
+    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRemoveDupl))
+    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestSelect))
+    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestStats))
+    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestYearset))
+    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAppend))
+    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCentroids))
+    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestClear))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestImpactFuncs))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
