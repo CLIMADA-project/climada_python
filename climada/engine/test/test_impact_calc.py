@@ -36,7 +36,7 @@ from climada.util.api_client import Client
 from climada.util.config import Config
 
 
-def get_haz_test_file(ds_name):
+def get_test_file(ds_name):
     # As this module is part of the installation test suite, we want tom make sure it is running
     # also in offline mode even when installing from pypi, where there is no test configuration.
     # So we set cache_enabled explicitly to true
@@ -46,7 +46,7 @@ def get_haz_test_file(ds_name):
     return haz_test_file
 
 
-HAZ_TEST_MAT = get_haz_test_file('atl_prob_no_name')
+HAZ_TEST_MAT = get_test_file('atl_prob_no_name')
 
 ENT = Entity.from_excel(ENT_DEMO_TODAY)
 HAZ = Hazard.from_mat(HAZ_TEST_MAT)
@@ -148,10 +148,9 @@ class TestImpactCalc(unittest.TestCase):
         self.assertAlmostEqual(6.512201157564421e+09 * x, impact.aai_agg, 5)
 
     def test_calc_impact_RF_pass(self):
-        from climada_petals.entity.impact_funcs.river_flood import flood_imp_func_set
-        haz = Hazard.from_hdf5(Path.home() / 'climada/data/hazard/test_hazard_US_flood_random_locations.hdf5')
-        exp = Exposures.from_hdf5(Path.home() / 'climada/data/exposures/test_exposure_US_flood_random_locations.hdf5')
-        impf_set = flood_imp_func_set()
+        haz = Hazard.from_hdf5(get_test_file('test_hazard_US_flood_random_locations'))
+        exp = Exposures.from_hdf5(get_test_file('test_exposure_US_flood_random_locations'))
+        impf_set = ImpactFuncSet.from_excel(Path(__file__).parent / 'data' / 'flood_imp_func_set.xls')
         icalc = ImpactCalc(exp, impf_set, haz)
         impact = icalc.impact()
         aai_agg = 161436.05112960344
