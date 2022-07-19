@@ -210,8 +210,7 @@ def _plot_scattered_data(method, array_sub, geo_coord, var_name, title,
     for array_im, axis, tit, name, coord in \
     zip(list_arr, axes_iter.flatten(), list_tit, list_name, list_coord):
         if coord.shape[0] != array_im.size:
-            raise ValueError("Size mismatch in input array: %s != %s." %
-                             (coord.shape[0], array_im.size))
+            raise ValueError(f"Size mismatch in input array: {coord.shape[0]} != {array_im.size}.")
 
         # Binned image with coastlines
         if isinstance(proj, ccrs.PlateCarree):
@@ -327,8 +326,7 @@ def geo_im_from_array(array_sub, coord, var_name, title,
     # Generate each subplot
     for array_im, axis, tit, name in zip(list_arr, axes_iter.flatten(), list_tit, list_name):
         if coord.shape[0] != array_im.size:
-            raise ValueError("Size mismatch in input array: %s != %s." %
-                             (coord.shape[0], array_im.size))
+            raise ValueError(f"Size mismatch in input array: {coord.shape[0]} != {array_im.size}.")
         if smooth or not is_reg:
             # Create regular grid where to interpolate the array
             grid_x, grid_y = np.mgrid[
@@ -576,7 +574,7 @@ def _ensure_utf8(val):
     # that the `*.cpg` is present and the encoding is correct:
     try:
         return val.encode('latin-1').decode('utf-8')
-    except:
+    except (AttributeError, UnicodeDecodeError, UnicodeEncodeError):
         return val
 
 def add_populated_places(axis, extent, proj=ccrs.PlateCarree(), fontsize=None):
