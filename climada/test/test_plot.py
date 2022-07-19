@@ -117,6 +117,7 @@ class TestPlotter(unittest.TestCase):
         myent = Entity.from_excel(ENT_DEMO_TODAY)
         myent.exposures.check()
         myhaz = Hazard.from_mat(HAZ_DEMO_MAT)
+        myhaz.event_name = [""] * myhaz.event_id.size
         myimp = Impact()
         myimp.calc(myent.exposures, myent.impact_funcs, myhaz)
         ifc = myimp.calc_freq_curve()
