@@ -847,14 +847,14 @@ def multibar_plot(ax, data, colors=None, total_width=0.8, single_width=1,
         # Draw a bar for every value of that type
         for x, y in enumerate(values):
             if invert_axis:
-                bar = ax.barh(x + x_offset, width=y, height=bar_width * single_width,
+                lbar = ax.barh(x + x_offset, width=y, height=bar_width * single_width,
                               color=colors[i % len(colors)])
             else:
-                bar = ax.bar(x + x_offset, y, width=bar_width * single_width,
+                lbar = ax.bar(x + x_offset, y, width=bar_width * single_width,
                              color=colors[i % len(colors)])
 
         # Add a handle to the last drawn bar, which we'll need for the legend
-        bars.append(bar[0])
+        bars.append(lbar[0])
 
     if ticklabels:
         if invert_axis:

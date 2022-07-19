@@ -408,8 +408,8 @@ class Hazard():
         if not frac_name:
             inten_name = ['fraction']
         if files_fraction is not None and len(files_intensity) != len(files_fraction):
-            raise ValueError('Number of intensity files differs from fraction files: %s != %s'
-                             % (len(files_intensity), len(files_fraction)))
+            raise ValueError('Number of intensity files differs from fraction files:'
+                             f' {len(files_intensity)} != {len(files_fraction)}')
 
         haz = cls() if haz_type is None else cls(haz_type)
         haz.tag.file_name = str(files_intensity) + ' ; ' + str(files_fraction)
@@ -843,8 +843,8 @@ class Hazard():
         inten_stats = np.zeros((len(return_periods), num_cen))
         cen_step = CONFIG.max_matrix_size.int() // self.intensity.shape[0]
         if not cen_step:
-            raise ValueError('Increase max_matrix_size configuration parameter to > %s'
-                             % str(self.intensity.shape[0]))
+            raise ValueError('Increase max_matrix_size configuration parameter to >'
+                             f' {self.intensity.shape[0]}')
         # separte in chunks
         chk = -1
         for chk in range(int(num_cen / cen_step)):
@@ -934,7 +934,7 @@ class Hazard():
             ValueError
         """
         self._set_coords_centroids()
-        col_label = 'Intensity (%s)' % self.units
+        col_label = f'Intensity ({self.units})'
         crs_epsg, _ = u_plot.get_transformation(self.centroids.geometry.crs)
         if event is not None:
             if isinstance(event, str):
@@ -1019,7 +1019,7 @@ class Hazard():
         list_id = self.event_id[[i_name for i_name, val_name in enumerate(self.event_name)
                                  if val_name == event_name]]
         if list_id.size == 0:
-            raise ValueError("No event with name: %s" % event_name)
+            raise ValueError(f"No event with name: {event_name}")
         return list_id
 
     def get_event_name(self, event_id):
@@ -1311,19 +1311,17 @@ class Hazard():
                 except IndexError as err:
                     raise ValueError(f'Wrong event id: {ev_id}.') from err
                 im_val = mat_var[event_pos, :].toarray().transpose()
-                title = 'Event ID %s: %s' % (str(self.event_id[event_pos]),
-                                             self.event_name[event_pos])
+                title = f'Event ID {self.event_id[event_pos]}: {self.event_name[event_pos]}'
             elif ev_id < 0:
                 max_inten = np.asarray(np.sum(mat_var, axis=1)).reshape(-1)
                 event_pos = np.argpartition(max_inten, ev_id)[ev_id:]
                 event_pos = event_pos[np.argsort(max_inten[event_pos])][0]
                 im_val = mat_var[event_pos, :].toarray().transpose()
-                title = '%s-largest Event. ID %s: %s' % (np.abs(ev_id),
-                                                         str(self.event_id[event_pos]),
-                                                         self.event_name[event_pos])
+                title = (f'{np.abs(ev_id)}-largest Event. ID {self.event_id[event_pos]}:'
+                         f' {self.event_name[event_pos]}')
             else:
                 im_val = np.max(mat_var, axis=0).toarray().transpose()
-                title = '%s max intensity at each point' % self.tag.haz_type
+                title = f'{self.tag.haz_type} max intensity at each point'
 
             array_val.append(im_val)
             l_title.append(title)
@@ -1364,21 +1362,18 @@ class Hazard():
             except IndexError as err:
                 raise ValueError(f'Wrong centroid id: {centr_idx}.') from err
             array_val = mat_var[:, centr_pos].toarray()
-            title = 'Centroid %s: (%s, %s)' % (str(centr_idx),
-                                               coord[centr_pos, 0],
-                                               coord[centr_pos, 1])
+            title = f'Centroid {centr_idx}: ({coord[centr_pos, 0]}, {coord[centr_pos, 1]})'
         elif centr_idx < 0:
             max_inten = np.asarray(np.sum(mat_var, axis=0)).reshape(-1)
             centr_pos = np.argpartition(max_inten, centr_idx)[centr_idx:]
             centr_pos = centr_pos[np.argsort(max_inten[centr_pos])][0]
             array_val = mat_var[:, centr_pos].toarray()
 
-            title = '%s-largest Centroid. %s: (%s, %s)' % \
-                    (np.abs(centr_idx), str(centr_pos), coord[centr_pos, 0],
-                     coord[centr_pos, 1])
+            title = (f'{np.abs(centr_idx)}-largest Centroid. {centr_pos}:'
+                     f' ({coord[centr_pos, 0]}, {coord[centr_pos, 1]})')
         else:
             array_val = np.max(mat_var, axis=1).toarray()
-            title = '%s max intensity at each event' % self.tag.haz_type
+            title = f'{self.tag.haz_type} max intensity at each event'
 
         if not axis:
             _, axis = plt.subplots(1)

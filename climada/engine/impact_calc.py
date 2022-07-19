@@ -25,7 +25,6 @@ import logging
 import numpy as np
 from scipy import sparse
 import geopandas as gpd
-import pandas as pd
 
 from climada import CONFIG
 from climada.engine import Impact
