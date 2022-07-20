@@ -61,7 +61,8 @@ class ImpactCalc():
         self.exposures = exposures
         self.impfset = impfset
         self.hazard = hazard
-        self._orig_exp_idx = np.arange(self.exposures.gdf.shape[0]) #exposures index to use for matrix reconstruction
+        # exposures index to use for matrix reconstruction
+        self._orig_exp_idx = np.arange(self.exposures.gdf.shape[0])
 
     @property
     def n_exp_pnt(self):
@@ -260,7 +261,8 @@ class ImpactCalc():
             )
         if exp_gdf.size == 0:
             LOGGER.warning("No exposures with value >0 in the vicinity of the hazard.")
-        self._orig_exp_idx = mask.nonzero()[0]  #update index of kept exposures points in exp_gdf within the full exposures
+        self._orig_exp_idx = mask.nonzero()[0]  # update index of kept exposures points in exp_gdf
+                                                # within the full exposures
         return exp_gdf
 
     def imp_mat_gen(self, exp_gdf, impf_col):
@@ -381,10 +383,11 @@ class ImpactCalc():
         scipy.sparse.csr_matrix
             Impact per event (rows) per exposure point (columns)
         """
-        n_exp_pnt = len(cent_idx) #implicitly checks in matrix assignement whether len(cent_idx) == len(exp_values)
+        n_exp_pnt = len(cent_idx)  # implicitly checks in matrix assignement whether
+                                   # len(cent_idx) == len(exp_values)
         mdr = self.hazard.get_mdr(cent_idx, impf)
         fract = self.hazard.get_fraction(cent_idx)
-        exp_values_csr = sparse.csr_matrix( #vector 1 x exp_size
+        exp_values_csr = sparse.csr_matrix(  # vector 1 x exp_size
             (exp_values, np.arange(n_exp_pnt), [0, n_exp_pnt]),
             shape=(1, n_exp_pnt))
         return fract.multiply(mdr).multiply(exp_values_csr)
@@ -393,7 +396,9 @@ class ImpactCalc():
         """
         Make an impact matrix from an impact sub-matrix generator
         """
-        data, row, col = np.hstack([  #rows=events index, cols=exposure point index within self.exposures
+        # rows: events index
+        # cols: exposure point index within self.exposures
+        data, row, col = np.hstack([
             (mat.data, mat.nonzero()[0], self._orig_exp_idx[idx][mat.nonzero()[1]])
             for mat, idx in imp_mat_gen
             ])

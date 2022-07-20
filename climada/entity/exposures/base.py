@@ -417,7 +417,7 @@ class Exposures():
             if overwrite:
                 LOGGER.info('Existing centroids will be overwritten for %s', haz_type)
             else:
-                return None
+                return
 
         LOGGER.info('Matching %s exposures with %s centroids.',
                     str(self.gdf.shape[0]), str(hazard.centroids.size))

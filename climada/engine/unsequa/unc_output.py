@@ -962,7 +962,7 @@ class UncOutput():
         eai_max_si_df = self.get_largest_si(salib_si, metric_list=['eai_exp'])
 
         plot_val = eai_max_si_df['param']
-        coord = np.array([self.coord_df.latitude, self.coord_df.longitude]).transpose()
+        coord = np.array([self.coord_df.latitude, self.coord_df.longitude]).transpose()  # pylint: disable=no-member
         if 'var_name' not in kwargs:
             kwargs['var_name'] = 'Input parameter with largest ' + salib_si
         if 'title' not in kwargs:
