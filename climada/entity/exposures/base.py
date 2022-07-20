@@ -727,7 +727,7 @@ class Exposures():
 
     def plot_basemap(self, mask=None, ignore_zero=False, pop_name=True,
                      buffer=0.0, extend='neither', zoom=10,
-                     url='http://tile.stamen.com/terrain/{z}/{x}/{y}.png',
+                     url=ctx.providers.Stamen.Terrain,
                      axis=None, **kwargs):
         """Scatter points over satellite image using contextily
 
@@ -749,7 +749,7 @@ class Exposures():
          zoom : int, optional
              zoom coefficient used in the satellite image
          url : str, optional
-             image source, e.g. ctx.sources.OSM_C
+             image source, e.g. ctx.providers.OpenStreetMap.Mapnik
          axis : matplotlib.axes._subplots.AxesSubplot, optional
              axis to use
          kwargs : optional
