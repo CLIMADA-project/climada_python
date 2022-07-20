@@ -239,18 +239,23 @@ class ImpactCalc():
         return Impact.from_eih(self.exposures, self.impfset, self.hazard,
                         at_event, eai_exp, aai_agg, imp_mat)
 
-    def minimal_exp_gdf(self, impf_col):
+    def minimal_exp_gdf(self, impf_col, reassign=True):
         """Get minimal exposures geodataframe for impact computation
 
         Parameters
         ----------
         exposures : climada.entity.Exposures
         hazard : climada.Hazard
-        impf_col: str
+        impf_col : str
             name of the impact function column in exposures.gdf
-
+        reassign : bool, optional
+            indicates whether centroids are re-assigned to the self.exposures object
+            or kept from previous impact calculation with a hazard of the same hazard type.
+            Centroids assignment is an expensive operation, set this to true if you know that
+            the centroids are the same between two impact calculations.
+            Default: True, i.e., re-assign
         """
-        self.exposures.assign_centroids(self.hazard, overwrite=False)
+        self.exposures.assign_centroids(self.hazard, overwrite=reassign)
         mask = (
             (self.exposures.gdf.value.values != 0)
             & (self.exposures.gdf[self.hazard.centr_exp_col].values >= 0)
