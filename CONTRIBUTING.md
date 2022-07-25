@@ -8,15 +8,35 @@ Before you start, please have a look at our [Developer Guide][devguide].
 
 To contribute follow these steps:
 
-1. Fork the project on GitHub.
-2. Create a local clone of the develop branch (`git clone https://github.com/YOUR-USERNAME/climada_python.git -b develop`)
-3. Install the packages in `climada_python/requirements/env_climada.yml` and `climada_python/requirements/env_developer.yml`.
-4. Make well commented and clean commits to your repository.
-5. Make unit and integration tests on your code, preferably during development.
-6. Perform a static code analysis of your code with CLIMADA's configuration `.pylintrc`.
+1. Install CLIMADA following the [installation instructions for developers](https://climada-python.readthedocs.io/en/stable/guide/Guide_Installation.html#Install-CLIMADA-from-sources-(for-developers)).
+2. Additionally, install the packages for developers:
+
+    ```
+    $ conda update -n climada_env -f climada_python/requirements/env_developer.yml
+    ```
+3. In the CLIMADA repository, create a new feature branch from the latest `develop` branch:
+
+    ```
+    $ git checkout develop && git pull
+    $ git checkout -b feature/my-fancy-branch
+    ```
+4. Implement your changes and commit them with [meaningful and well formatted](https://tbaggery.com/2008/04/19/a-note-about-git-commit-messages.html) commit messages.
+5. Add [unit and integration tests][testing] to your code, if applicable.
+6. Use [Pylint](https://pypi.org/project/pylint/) for a static code analysis of your code with CLIMADA's configuration `.pylintrc`:
+
+    ```
+    $ pylint
+    ```
 7. Add your name to the [AUTHORS](/AUTHORS) file.
-8. Push the changes to GitHub (`git push origin develop`).
-9. On GitHub, create a new pull request onto the develop branch of CLIMADA-project/climada_python.
+8. Push your updates to the remote repository:
+
+    ```
+    $ git push --set-upstream origin feature/my-fancy-branch
+    ```
+9. On the [CLIMADA-project/climada_python](https://github.com/CLIMADA-project/climada_python) GitHub repository, create a new pull request with target branch `develop`.
+    Add a description and explanation of your changes and work through the pull request author checklist provided.
+    Feel free to request reviews from specific team members.
+10. After approval of the pull request, the branch is merged into `develop` and your changes will become part of the next CLIMADA release.
 
 ## Resources
 
@@ -25,7 +45,7 @@ Here's a selection of the commonly required information:
 
 * How to use Git and GitHub for CLIMADA development: [Development and Git and CLIMADA](https://climada-python.readthedocs.io/en/latest/guide/Guide_Git_Development.html)
 * Coding instructions for CLIMADA: [Python Dos and Don'ts](https://climada-python.readthedocs.io/en/latest/guide/Guide_PythonDos-n-Donts.html), [Performance Tips](https://climada-python.readthedocs.io/en/latest/guide/Guide_Py_Performance.html), [CLIMADA Conventions](https://climada-python.readthedocs.io/en/latest/guide/Guide_Miscellaneous.html)
-* How to execute tests in CLIMADA: [Testing and Continuous Integration](https://climada-python.readthedocs.io/en/latest/guide/Guide_Continuous_Integration_and_Testing.html)
+* How to execute tests in CLIMADA: [Testing and Continuous Integration][testing]
 
 ## Pull Requests
 
@@ -37,3 +57,4 @@ We provide a description template for pull requests that helps you provide the e
 It also contains a checklist for both pull request authors and reviewers to guide the review process.
 
 [devguide]: https://climada-python.readthedocs.io/en/latest/#developer-guide
+[testing]: https://climada-python.readthedocs.io/en/latest/guide/Guide_Continuous_Integration_and_Testing.html
