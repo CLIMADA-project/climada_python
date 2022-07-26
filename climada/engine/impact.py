@@ -1372,7 +1372,157 @@ class Impact():
             LOGGER.warning("No exposure coordinates match the selection.")
         return sel_exp
 
+    @classmethod
+    def concat(cls, imp_list,concat_type='time_window'):
+       """Merge impact objects of the same hazard type, frequency, exposure, and coordinate system.
 
+        Parameters
+        ----------
+        imp_list : list of climada.engine.Impact objects
+                list of Impact object to concatenate
+        concat_type: string
+                string specifying the type of concatenation to be done.
+                    'time_window': concatenate impacts for different time windows / time slices within a year (e.g. May to June, July to August,...) 
+                    'exposure': concatenate impacts with separate exposures
+       Returns
+       --------
+        impact: climada.engine.Impact 
+               New impact object which is a merge of self and impact
+       """
+       
+       ## TO Dos
+           # Make concatenation more concise/make sure no attribute is missed (loop over attributes as in hazard.append)
+           # implement the 'exposure' concatenation option
+           
+       #some thougts
+       ## either one has to keep the exposure the same and has impacts of different time periods during the year
+       ## or one keeps the time period the same but allows for different exposures
+       ## this function is now implemented in a way that merging only works if exposures are the same.
+       ## However, it is set up such that that concatenation of impacts with separate exposure can be implemented when the keyword concat_type='exposure' is passed.
+       
+       
+       ## Question: Is it a problem that data is not sorted by date? e.g. the impact matrix?
+       
+       if len(imp_list) == 0:
+            return cls()
+       
+       if concat_type not in ['time_window','exposure']:
+           raise ValueError(f"Concatenation option {concat_type} not available.")
+       
+        #initialize new impact object
+       impact=cls()
+       
+       # check impacts consistency and fill impact object
+       
+       ### the following checks are common for both concat options
+       
+       # check hazard type
+       haz_types = {imp.tag['haz'].haz_type for imp in imp_list if imp.tag['haz'].haz_type != ''}
+       if len(haz_types) > 1:
+           raise ValueError(f"The given impacts are based on hazards of different types: {haz_types}. "
+                            "The impacts are incompatible and cannot be concatenated.")      
+       
+       # check unit
+       units = {imp.unit for imp in imp_list if imp.unit != ''}
+       if len(units) > 1:
+           raise ValueError(f"The given impacts have different units: {units}. "
+                            "The impacts are incompatible and cannot be concatenated.")
+       if len(units) == 0:
+           units = {''}
+       impact.unit = units.pop()
+
+       #check coordinate reference system
+       crss={imp.crs for imp in imp_list if imp.crs != ''}
+       if len(crss)>1:
+           raise ValueError(f"The given impacts have different crs: {crss}. "
+                        "The impacts are incompatible and cannot be concatenated.")
+       impact.crs=crss.pop()
+ 
+       #check attributes
+       attributes = sorted(set.union(*[set(vars(imp).keys()) for imp in imp_list]))
+       for attr_name in attributes:
+           if not all(hasattr(imp, attr_name) for imp in imp_list):
+               raise ValueError(f"Attribute {attr_name} is not shared by all impacts. "
+                                "The impacts are incompatible and cannot be concatenated.")
+
+       #check if impacts have the same frequency values (only first entries in frequency attributes are checked)
+       freqs=set([imp.frequency[0] for imp in imp_list])
+       if len(freqs)>1:
+           raise ValueError(f"Impacts do not have the same frequency: {freqs}."
+                            "The impacts are incompatible and cannot be concatenated.")
+       frequencies=[imp.frequency for imp in imp_list]
+       impact.frequency = np.concatenate(frequencies,axis=0) 
+       
+       ### The following checks are separate for the two concat options 
+       
+       if concat_type=='time_window':
+          
+          #check if no overlapping dates
+          dates=[date for imp in imp_list for date in imp.date]
+          
+          if len(dates)!=len(set(dates)): 
+              raise ValueError("There is at least one date in more than one impact. Please make sure impacts do not contain same dates."
+                               "The impacts are incompatible and cannot be concatenated.")
+          impact.date = np.array(dates)
+          
+          
+          #check if exposure is consistent
+          isin=[np.isin(imp.coord_exp,imp_list[0].coord_exp) for imp in imp_list[0::]]
+          tot_vals=set([imp.tot_value for imp in imp_list])
+          if (not np.all(isin)) or (len(tot_vals)>1):
+               raise ValueError("Impacts are not based on the same exposure. Please make sure exposures are identical."
+                                "The impacts are incompatible and cannot be concatenated.")
+          exp_descriptions= {imp.tag['exp'].description for imp in imp_list if imp.tag['exp'].description != ''}
+          if len(exp_descriptions) > 1:
+               raise ValueError(f"The given impacts are based on exposures with different descriptions: {exp_descriptions}. "
+                            "The impacts are incompatible and cannot be concatenated.")      
+          impact.coord_exp=imp_list[0].coord_exp
+          impact.tot_value=imp_list[0].tot_value
+          
+          #fill remaining attributes
+          impact.tag=imp_list[0].tag
+
+          #event IDs
+          event_ids=[event_id for imp in imp_list for event_id in imp.event_id]
+          if len(event_ids)!=len(set(event_ids)):
+              raise ValueError("Duplicate event IDs found.")
+          impact.event_id=np.array(event_ids)
+          
+          #event names
+          event_names=[event_name for imp in imp_list for event_name in imp.event_name]
+          if len(event_names)!=len(set(event_names)):
+              raise ValueError("Duplicate event names found.")   
+          impact.event_name = np.array(event_names,dtype=object)
+
+          #impact matrix
+          imp_mats=[imp.imp_mat for imp in imp_list]
+          impact.imp_mat=sparse.vstack(imp_mats)
+          
+          #concatenate remaining attributes
+          at_events=[imp.at_event for imp in imp_list]
+          impact.at_event = np.concatenate(at_events,axis=0)
+          eai_exps=[imp.eai_exp for imp in imp_list]
+          impact.eai_exp = np.nansum(eai_exps,axis=0) 
+          aai_aggs=[imp.aai_agg for imp in imp_list]
+          impact.aai_agg = np.nansum(aai_aggs)
+
+       elif concat_type=='exposure':
+            
+            raise ValueError("Concatenation of impacts with different exposures not yet implemented."
+                             "Feel free to do so!")
+     
+               ##merge coordinates (only if exposure is not the same)
+               ##check if there are any additional exposure coordinates in the new impact
+               #compare_coords=np.isin(impact.coord_exp,self.coord_exp)
+               #additional_coords=[impact.coords[ind] for ind, x in enumerate(compare_coords) if not np.all(x)]
+               #imp.coord_exp=np.concatenate(self.coord_exp,additional_coords)
+        
+          
+
+
+
+       return impact
+   
 class ImpactFreqCurve():
     """Impact exceedence frequency curve.
 
