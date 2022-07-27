@@ -379,8 +379,21 @@ class Hazard():
         intensity: str = "intensity",
         fraction: Union[str, Callable[[np.ndarray], np.ndarray]] = "fraction",
         coordinate_vars: Optional[Dict[str, str]] = None,
+        data_vars: Optional[Dict[str, str]] = None,
+        hazard_type: Optional[str] = "",
+        intensity_unit: Optional[str] = "",
     ):
         """Read raster-like data from an xarray Dataset or a raster data file
+
+        If this method succeeds, it will always return a "consistent" Hazard object,
+        meaning that the object can be used in all CLIMADA operations without throwing
+        an error due to missing data or faulty data types.
+
+        Notes
+        -----
+        The attributes ``Hazard.tag.haz_type`` and ``Hazard.unit`` currently cannot be
+        read from the Dataset. Use the method parameters to set these attributes or set
+        them in the resulting ``Hazard`` object by yourself.
 
         Parameters
         ----------
@@ -397,6 +410,24 @@ class Hazard():
         coordinate_vars : dict(str, str)
             Mapping from default coordinate names to coordinate names used in the data
             to read. The default names are `time`, `longitude`, and `latitude`.
+        data_vars : dict(str, str)
+            Mapping from default variable names to variable names used in the data
+            to read. The default names are `hazard_type`, `frequency`, `event_name`, and
+            `event_id`. If these values are not set, the method tries to load data from
+            the default names. If this fails, the method uses default values for each
+            entry. If the values are set to empty strings (`""`), no data is loaded and
+            the default values are used exclusively. See examples for details.
+
+            Default values are:
+            * `hazard_type`: Empty string
+            * `frequency`: 1.0 for every event
+            * `event_name`: String representation of the event time
+            * `event_id`: Consecutive integers starting at 1 and increasing with time
+        hazard_type : str
+            The type identifier of the hazard. Will be stored directly in the hazard
+            object.
+        intensity_unit : str
+            The physical units of the intensity. Will be stored in the ``hazard.tag``.
 
         Returns
         -------
@@ -410,7 +441,10 @@ class Hazard():
             data = xr.open_dataset(data)
         else:
             LOGGER.info("Loading Hazard from xarray Dataset")
-        hazard = cls()  # TODO: Hazard type
+
+        # Initialize Hazard object
+        hazard = cls(haz_type=hazard_type)
+        hazard.unit = intensity_unit
 
         # Update coordinate identifiers
         coords = {"time": "time", "longitude": "longitude", "latitude": "latitude"}
@@ -462,13 +496,101 @@ class Hazard():
         hazard.fraction = sparse.csr_matrix(fraction_arr)
         hazard.fraction.eliminate_zeros()
 
-        # Fill hazard with required information
+        # Define accessors for xarray DataArrays
+        def default_accessor(x: xr.DataArray):
+            """By default, use the numpy array representation of data"""
+            return x.values
+
+        def strict_positive_int_accessor(x: xr.DataArray, report_key: str):
+            """Only allow positive, non-zero integers"""
+            values = x.values
+            if not np.issubdtype(values.dtype, np.integer):
+                raise TypeError(f"'{report_key}' data array must be integers")
+            if not np.all(values > 0):
+                raise ValueError(f"'{report_key}' data must be larger than zero")
+            return np.asarray(values, dtype=np.int64)
+
+        # Create a DataFrame storing access information for each of data_vars
         num_events = data.sizes["event"]
-        hazard.event_id = np.array(range(num_events)) + 1  # event_id starts at 1
-        hazard.frequency = np.ones(num_events)  # TODO: Optional read from file
-        hazard.event_name = list(data[coords["time"]].values)
-        hazard.date = np.array(u_dt.datetime64_to_ordinal(data[coords["time"]].values))
-        # TODO: hazard.unit
+        keys = ["frequency", "event_id", "event_name", "date"]
+        data_ident = pd.DataFrame(
+            data=dict(
+                # The attribute of the Hazard class where data is stored
+                hazard_attr=keys,
+                # The identifier and default key used in this method
+                identifier=keys,
+                # The keys assigned by the user
+                user_key=None,
+                # The default value for each attribute
+                default_value=[
+                    np.ones(num_events),
+                    np.array(range(num_events), dtype=int) + 1,
+                    list(data[coords["time"]].values),
+                    np.array(u_dt.datetime64_to_ordinal(data[coords["time"]].values)),
+                ],
+                # The accessor for the data in the Dataset
+                accessor=[
+                    default_accessor,
+                    lambda x: strict_positive_int_accessor(x, "event_id"),
+                    lambda x: list(x.values),  # Write into list, not np.array
+                    lambda x: strict_positive_int_accessor(x, "date"),
+                ],
+            )
+        )
+
+        # Update the keys from user settings
+        if data_vars is not None:
+            ident = data_ident["identifier"]
+            unknown_keys = [
+                key for key in data_vars.keys() if not ident.str.contains(key).any()
+            ]
+            if unknown_keys:
+                raise ValueError(
+                    f"Unknown data variables passed: '{unknown_keys}'. Supported "
+                    f"data variables are {list(ident)}."
+                )
+
+            # Make 'identifier' an index for replacement, then make it a column again
+            data_ident = data_ident.set_index("identifier")
+            data_ident["user_key"].loc[list(data_vars.keys())] = list(
+                data_vars.values()
+            )
+            data_ident.reset_index(inplace=True)
+
+        def read_or_default(ident: pd.Series):
+            """Read data from a variable in the data or use default"""
+            key = ident["user_key"]
+            default_value = ident["default_value"]
+            accessor = ident["accessor"]
+
+            # User does not want to read data
+            if ident["user_key"] == "":
+                return default_value
+
+            default_key = ident["identifier"]
+            if not pd.isna(key):
+                # Read key exclusively
+                val = accessor(data[key])
+            else:
+                # Try default key
+                try:
+                    val = accessor(data[default_key])
+                except KeyError:
+                    return default_value
+
+            # Check size for read data
+            if len(val) != len(default_value):
+                raise RuntimeError(
+                    f"Hazard {default_key} (data key: '{key if key else default_key}') "
+                    f"must have size {len(default_value)}, but size is {len(val)}"
+                )
+
+            # Store the data in the Hazard object
+            return val
+
+        # Set the Hazard attributes
+        for _, ident in data_ident.iterrows():
+            setattr(hazard, ident["hazard_attr"], read_or_default(ident))
 
         # Done!
         LOGGER.debug("Hazard successfully loaded. Number of events: %i", num_events)

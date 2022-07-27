@@ -58,34 +58,47 @@ class ReadDefaultNetCDF(unittest.TestCase):
 
     def _assert_default(self, hazard):
         """Assertions for the default hazard to be loaded"""
+        self._assert_default_types(hazard)
+        self._assert_default_values(hazard)
+
+    def _assert_default_values(self, hazard):
+        """Check the values of the default hazard to be loaded"""
         # Hazard data
         self.assertEqual(hazard.tag.haz_type, "")
-        self.assertIsInstance(hazard.event_id, np.ndarray)
+        self.assertEqual(hazard.unit, "")
         np.testing.assert_array_equal(hazard.event_id, [1, 2])
-        self.assertIsInstance(hazard.event_name, list)
         np.testing.assert_array_equal(
             hazard.event_name, [np.datetime64(val) for val in self.time]
         )
-        self.assertIsInstance(hazard.date, np.ndarray)
         np.testing.assert_array_equal(
             hazard.date, [val.toordinal() for val in self.time]
         )
+        np.testing.assert_array_equal(hazard.frequency, np.ones(hazard.event_id.size))
 
         # Centroids
         np.testing.assert_array_equal(hazard.centroids.lat, [0, 0, 0, 1, 1, 1])
         np.testing.assert_array_equal(hazard.centroids.lon, [0, 1, 2, 0, 1, 2])
 
         # Intensity data
-        self.assertIsInstance(hazard.intensity, csr_matrix)
         np.testing.assert_array_equal(
             hazard.intensity.toarray(), [[0, 1, 2, 3, 4, 5], [6, 7, 8, 9, 10, 11]]
         )
 
         # Fraction data
-        self.assertIsInstance(hazard.fraction, csr_matrix)
         np.testing.assert_array_equal(
             hazard.fraction.toarray(), [[0, 0, 0, 0, 0, 0], [1, 1, 1, 1, 1, 1]]
         )
+
+    def _assert_default_types(self, hazard):
+        """Check types of all hazard attributes"""
+        self.assertIsInstance(hazard.unit, str)
+        self.assertIsInstance(hazard.tag.haz_type, str)
+        self.assertIsInstance(hazard.event_id, np.ndarray)
+        self.assertIsInstance(hazard.event_name, list)
+        self.assertIsInstance(hazard.frequency, np.ndarray)
+        self.assertIsInstance(hazard.intensity, csr_matrix)
+        self.assertIsInstance(hazard.fraction, csr_matrix)
+        self.assertIsInstance(hazard.date, np.ndarray)
 
     def test_load_path(self):
         """Load the data with path as argument"""
@@ -107,6 +120,84 @@ class ReadDefaultNetCDF(unittest.TestCase):
         np.testing.assert_array_equal(
             hazard.fraction.toarray(), [[0, 0, 1, 1, 1, 1], [1, 1, 1, 1, 1, 1]]
         )
+
+    def test_type_and_unit(self):
+        """Test passing a custom type and unit"""
+        hazard = Hazard.from_raster_xarray(
+            self.netcdf_path, hazard_type="TC", intensity_unit="m/s"
+        )
+        self._assert_default_types(hazard)
+        self.assertEqual(hazard.tag.haz_type, "TC")
+        self.assertEqual(hazard.unit, "m/s")
+
+    def test_data_vars(self):
+        """Check handling of data variables"""
+        dataset = xr.open_dataset(self.netcdf_path)
+        size = dataset.sizes["time"]
+
+        # Set optionals in the dataset
+        frequency = np.ones(size) * 1.5
+        event_id = np.array(range(size), dtype=np.int64) + 3
+        event_name = ["bla"] * size
+        date = np.array(range(size)) + 100
+        dataset["event_id"] = event_id
+        dataset["event_name"] = event_name
+        dataset["date"] = date
+
+        # Assign a proper coordinate for a change
+        dataset = dataset.assign_coords(dict(frequency=("time", frequency)))
+
+        # Optionals should be read automatically
+        hazard = Hazard.from_raster_xarray(dataset)
+        self._assert_default_types(hazard)
+        np.testing.assert_array_equal(hazard.frequency, frequency)
+        np.testing.assert_array_equal(hazard.event_id, event_id)
+        np.testing.assert_array_equal(hazard.event_name, event_name)
+        np.testing.assert_array_equal(hazard.date, date)
+
+        # Ignore keys (should be default values)
+        hazard = Hazard.from_raster_xarray(
+            dataset, data_vars=dict(frequency="", event_id="", event_name="", date="")
+        )
+        self._assert_default(hazard)
+
+        # Wrong key
+        with self.assertRaises(ValueError) as cm:
+            Hazard.from_raster_xarray(dataset, data_vars=dict(wrong_key="stuff"))
+        self.assertIn(
+            "Unknown data variables passed: '['wrong_key']'.", str(cm.exception)
+        )
+
+        # Non-existent identifier
+        with self.assertRaises(KeyError) as cm:
+            Hazard.from_raster_xarray(dataset, data_vars=dict(frequency="freqqqqq"))
+        self.assertIn("freqqqqq", str(cm.exception))
+
+        # Wrong data length
+        # NOTE: This also implicitly checks that 'frequency' is not read!
+        dataset["freq"] = np.array(range(size + 1), dtype=np.float64)
+        print(dataset)
+        with self.assertRaises(RuntimeError) as cm:
+            Hazard.from_raster_xarray(dataset, data_vars=dict(frequency="freq"))
+        self.assertIn(
+            f"Hazard frequency (data key: 'freq') must have size {size}, but size is "
+            f"{size + 1}",
+            str(cm.exception),
+        )
+
+        # Integer data assertions
+        for key in ("event_id", "date"):
+            dset = dataset.copy(deep=True)
+            dset[key] = np.array(range(size), dtype=np.float64) + 3.5
+            with self.assertRaises(TypeError) as cm:
+                Hazard.from_raster_xarray(dset)
+            self.assertIn(f"'{key}' data array must be integers", str(cm.exception))
+            dset[key] = np.linspace(0, 10, size, dtype=np.int64)
+            with self.assertRaises(ValueError) as cm:
+                Hazard.from_raster_xarray(dset)
+            self.assertIn(
+                f"'{key}' data must be larger than zero", str(cm.exception)
+            )
 
     def test_errors(self):
         """Check the errors thrown"""
