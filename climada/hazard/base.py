@@ -379,8 +379,8 @@ class Hazard():
         intensity: str = "intensity",
         coordinate_vars: Optional[Dict[str, str]] = None,
         data_vars: Optional[Dict[str, str]] = None,
-        hazard_type: Optional[str] = "",
-        intensity_unit: Optional[str] = "",
+        hazard_type: str = "",
+        intensity_unit: str = "",
     ):
         """Read raster-like data from an xarray Dataset or a raster data file
 
