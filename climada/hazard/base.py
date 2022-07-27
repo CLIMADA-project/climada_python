@@ -385,15 +385,31 @@ class Hazard():
     ):
         """Read raster-like data from an xarray Dataset or a raster data file
 
+        This method reads data that can be interpreted using three coordinates for time,
+        latitude, and longitude. The data and the coordinates themselves may be organized
+        in arbitrary dimensions in the Dataset (e.g. three dimensions 'year', 'month',
+        'day' for the coordinate 'date' representing time). The three coordinates to be
+        read can be specified via the ``coordinate_vars`` parameter.
+
+        The only required data is the intensity. For all other data, this method can
+        supply sensible default values. By default, this method will try to find these
+        "optional" data in the Dataset and read it, or use the default values otherwise.
+        Users may specify the variables in the Dataset to be read for certain Hazard
+        object entries, or may indicate that the default values should be used although
+        the Dataset contains appropriate data. This behavior is controlled via the
+        ``data_vars`` parameter.
+
         If this method succeeds, it will always return a "consistent" Hazard object,
         meaning that the object can be used in all CLIMADA operations without throwing
         an error due to missing data or faulty data types.
 
         Notes
         -----
-        The attributes ``Hazard.tag.haz_type`` and ``Hazard.unit`` currently cannot be
-        read from the Dataset. Use the method parameters to set these attributes or set
-        them in the resulting ``Hazard`` object by yourself.
+        * To avoid confusion in the call signature, all parameters are keyword-only
+          arguments, except ``data``.
+        * The attributes ``Hazard.tag.haz_type`` and ``Hazard.unit`` currently cannot be
+          read from the Dataset. Use the method parameters to set these attributes or set
+          them in the resulting ``Hazard`` object by yourself.
 
         Parameters
         ----------
@@ -562,20 +578,35 @@ class Hazard():
             key = ident["user_key"]
             default_value = ident["default_value"]
             accessor = ident["accessor"]
+            hazard_attr = ident["hazard_attr"]
 
             # User does not want to read data
             if ident["user_key"] == "":
+                LOGGER.debug(
+                    "Using default values for Hazard.%s per user request", hazard_attr
+                )
                 return default_value
 
             default_key = ident["identifier"]
             if not pd.isna(key):
                 # Read key exclusively
+                LOGGER.debug(
+                    "Reading data for Hazard.%s from DataArray '%s'", hazard_attr, key
+                )
                 val = accessor(data[key])
             else:
                 # Try default key
                 try:
                     val = accessor(data[default_key])
+                    LOGGER.debug(
+                        "Reading data for Hazard.%s from DataArray '%s'",
+                        hazard_attr,
+                        default_key,
+                    )
                 except KeyError:
+                    LOGGER.debug(
+                        "Using default values for Hazard.%s. No data found", hazard_attr
+                    )
                     return default_value
 
             # Check size for read data
