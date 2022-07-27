@@ -451,6 +451,94 @@ class Hazard():
         hazard : climada.Hazard
             A hazard object created from the input data
 
+        Examples
+        --------
+        The use of this method is straightforward if the Dataset contains the data with
+        expected names.
+        >>> dset = xr.Dataset(
+        >>>     dict(
+        >>>         intensity=(
+        >>>             ["time", "latitude", "longitude"],
+        >>>             [[[0, 1, 2], [3, 4, 5]]],
+        >>>         )
+        >>>     ),
+        >>>     dict(
+        >>>         time=[datetime.datetime(2000, 1, 1)],
+        >>>         latitude=[0, 1],
+        >>>         longitude=[0, 1, 2],
+        >>>     ),
+        >>> )
+        >>> hazard = Hazard.from_raster_xarray(dset)
+
+        For non-default coordinate names, use the ``coordinate_vars`` argument.
+        >>> dset = xr.Dataset(
+        >>>     dict(
+        >>>         intensity=(
+        >>>             ["day", "lat", "longitude"],
+        >>>             [[[0, 1, 2], [3, 4, 5]]],
+        >>>         )
+        >>>     ),
+        >>>     dict(
+        >>>         day=[datetime.datetime(2000, 1, 1)],
+        >>>         lat=[0, 1],
+        >>>         longitude=[0, 1, 2],
+        >>>     ),
+        >>> )
+        >>> hazard = Hazard.from_raster_xarray(
+        >>>     dset, coordinate_vars=dict(time="day", latitude="lat")
+        >>> )
+
+        Coordinates can be different from the actual dataset dimensions. The following
+        loads the data with coordinates ``longitude`` and ``latitude`` (default names):
+        >>> dset = xr.Dataset(
+        >>>     dict(intensity=(["time", "y", "x"], [[[0, 1, 2], [3, 4, 5]]])),
+        >>>     dict(
+        >>>         time=[datetime.datetime(2000, 1, 1)],
+        >>>         y=[0, 1],
+        >>>         x=[0, 1, 2],
+        >>>         longitude=(["y", "x"], [[0.0, 0.1, 0.2], [0.0, 0.1, 0.2]]),
+        >>>         latitude=(["y", "x"], [[0.0, 0.0, 0.0], [0.1, 0.1, 0.1]]),
+        >>>     ),
+        >>> )
+        >>> hazard = Hazard.from_raster_xarray(dset)
+
+
+        Optional data is read from the dataset if the default keys are found. Users can
+        specify custom variables in the data, or that the default keys should be ignored,
+        with the ``data_vars`` argument.
+        >>> dset = xr.Dataset(
+        >>>     dict(
+        >>>         intensity=(
+        >>>             ["time", "latitude", "longitude"],
+        >>>             [[[0, 1, 2], [3, 4, 5]]],
+        >>>         ),
+        >>>         fraction=(
+        >>>             ["time", "latitude", "longitude"],
+        >>>             [[[0.0, 0.1, 0.2], [0.3, 0.4, 0.5]]],
+        >>>         ),
+        >>>         freq=(["time"], [0.4]),
+        >>>         event_id=(["time"], [4]),
+        >>>     ),
+        >>>     dict(
+        >>>         time=[datetime.datetime(2000, 1, 1)],
+        >>>         latitude=[0, 1],
+        >>>         longitude=[0, 1, 2],
+        >>>     ),
+        >>> )
+        >>> hazard = Hazard.from_raster_xarray(
+        >>>     dset,
+        >>>     data_vars=dict(
+        >>>         # Load frequency from 'freq' array
+        >>>         frequency="freq",
+        >>>         # Ignore 'event_id' array and use default instead
+        >>>         event_id="",
+        >>>         # 'fraction' array is loaded because it has the default name
+        >>>     ),
+        >>> )
+        >>> np.array_equal(hazard.frequency, [0.4]) and np.array_equal(
+        >>>     hazard.event_id, [1]
+        >>> )
+        True
 
         """
         # If the data is a string, open the respective file
