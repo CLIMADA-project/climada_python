@@ -39,15 +39,11 @@ class ReadDefaultNetCDF(unittest.TestCase):
         """Write a simple NetCDF file to read"""
         self.netcdf_path = os.path.join(THIS_DIR, "default.nc")
         self.intensity = np.array([[[0, 1, 2], [3, 4, 5]], [[6, 7, 8], [9, 10, 11]]])
-        self.fraction = np.array([[[0, 0, 0], [0, 0, 0]], [[1, 1, 1], [1, 1, 1]]])
         self.time = np.array([dt.datetime(1999, 1, 1), dt.datetime(2000, 1, 1)])
         self.latitude = np.array([0, 1])
         self.longitude = np.array([0, 1, 2])
         dset = xr.Dataset(
-            {
-                "intensity": (["time", "latitude", "longitude"], self.intensity),
-                "fraction": (["time", "latitude", "longitude"], self.fraction),
-            },
+            {"intensity": (["time", "latitude", "longitude"], self.intensity),},
             dict(time=self.time, latitude=self.latitude, longitude=self.longitude),
         )
         dset.to_netcdf(self.netcdf_path)
@@ -84,9 +80,9 @@ class ReadDefaultNetCDF(unittest.TestCase):
             hazard.intensity.toarray(), [[0, 1, 2, 3, 4, 5], [6, 7, 8, 9, 10, 11]]
         )
 
-        # Fraction data
+        # Fraction default
         np.testing.assert_array_equal(
-            hazard.fraction.toarray(), [[0, 0, 0, 0, 0, 0], [1, 1, 1, 1, 1, 1]]
+            hazard.fraction.toarray(), [[0, 1, 1, 1, 1, 1], [1, 1, 1, 1, 1, 1]]
         )
 
     def _assert_default_types(self, hazard):
@@ -105,21 +101,21 @@ class ReadDefaultNetCDF(unittest.TestCase):
         hazard = Hazard.from_raster_xarray(self.netcdf_path)
         self._assert_default(hazard)
 
+        # Check wrong paths
+        with self.assertRaises(FileNotFoundError) as cm:
+            Hazard.from_raster_xarray("file-does-not-exist.nc")
+        self.assertIn("file-does-not-exist.nc", str(cm.exception))
+        with self.assertRaises(KeyError) as cm:
+            Hazard.from_raster_xarray(
+                self.netcdf_path, intensity="wrong-intensity-path"
+            )
+        self.assertIn("wrong-intensity-path", str(cm.exception))
+
     def test_load_dataset(self):
         """Load the data from an opened dataset as argument"""
         dataset = xr.open_dataset(self.netcdf_path)
         hazard = Hazard.from_raster_xarray(dataset)
         self._assert_default(hazard)
-
-    def test_fraction_callable(self):
-        """Test creating a fraction from a callable"""
-        hazard = Hazard.from_raster_xarray(
-            self.netcdf_path, fraction=lambda x: np.where(x > 1, 1, 0)
-        )
-        self.assertIsInstance(hazard.fraction, csr_matrix)
-        np.testing.assert_array_equal(
-            hazard.fraction.toarray(), [[0, 0, 1, 1, 1, 1], [1, 1, 1, 1, 1, 1]]
-        )
 
     def test_type_and_unit(self):
         """Test passing a custom type and unit"""
@@ -147,6 +143,16 @@ class ReadDefaultNetCDF(unittest.TestCase):
         # Assign a proper coordinate for a change
         dataset = dataset.assign_coords(dict(frequency=("time", frequency)))
 
+        # Assign fraction
+        frac = xr.DataArray(
+            np.array([[[0, 0, 0], [0, 0, 0]], [[1, 1, 1], [1, 1, 1]]]),
+            dims=["time", "latitude", "longitude"],
+            coords=dict(
+                time=self.time, latitude=self.latitude, longitude=self.longitude
+            ),
+        )
+        dataset["fraction"] = frac
+
         # Optionals should be read automatically
         hazard = Hazard.from_raster_xarray(dataset)
         self._assert_default_types(hazard)
@@ -154,10 +160,16 @@ class ReadDefaultNetCDF(unittest.TestCase):
         np.testing.assert_array_equal(hazard.event_id, event_id)
         np.testing.assert_array_equal(hazard.event_name, event_name)
         np.testing.assert_array_equal(hazard.date, date)
+        np.testing.assert_array_equal(
+            hazard.fraction.toarray(), [[0, 0, 0, 0, 0, 0], [1, 1, 1, 1, 1, 1]]
+        )
 
         # Ignore keys (should be default values)
         hazard = Hazard.from_raster_xarray(
-            dataset, data_vars=dict(frequency="", event_id="", event_name="", date="")
+            dataset,
+            data_vars=dict(
+                frequency="", event_id="", event_name="", date="", fraction=""
+            ),
         )
         self._assert_default(hazard)
 
@@ -176,12 +188,11 @@ class ReadDefaultNetCDF(unittest.TestCase):
         # Wrong data length
         # NOTE: This also implicitly checks that 'frequency' is not read!
         dataset["freq"] = np.array(range(size + 1), dtype=np.float64)
-        print(dataset)
         with self.assertRaises(RuntimeError) as cm:
             Hazard.from_raster_xarray(dataset, data_vars=dict(frequency="freq"))
         self.assertIn(
-            f"Hazard frequency (data key: 'freq') must have size {size}, but size is "
-            f"{size + 1}",
+            f"Hazard frequency (data key: 'freq') must have shape ({size},), but shape "
+            f"is ({size + 1},)",
             str(cm.exception),
         )
 
@@ -195,30 +206,7 @@ class ReadDefaultNetCDF(unittest.TestCase):
             dset[key] = np.linspace(0, 10, size, dtype=np.int64)
             with self.assertRaises(ValueError) as cm:
                 Hazard.from_raster_xarray(dset)
-            self.assertIn(
-                f"'{key}' data must be larger than zero", str(cm.exception)
-            )
-
-    def test_errors(self):
-        """Check the errors thrown"""
-        # TODO: Maybe move to 'test_load_path'
-        # Wrong paths
-        with self.assertRaises(FileNotFoundError):
-            Hazard.from_raster_xarray("file-does-not-exist.nc")
-        with self.assertRaises(KeyError):
-            Hazard.from_raster_xarray(
-                self.netcdf_path, intensity="wrong-intensity-path"
-            )
-        with self.assertRaises(KeyError):
-            Hazard.from_raster_xarray(self.netcdf_path, fraction="wrong-fraction-path")
-
-        # TODO: Maybe move to 'test_fraction_callable'
-        # Wrong type passed as fraction
-        with self.assertRaises(TypeError) as cm:
-            Hazard.from_raster_xarray(self.netcdf_path, fraction=3)
-        self.assertIn(
-            "'fraction' parameter must be 'str' or Callable", str(cm.exception)
-        )
+            self.assertIn(f"'{key}' data must be larger than zero", str(cm.exception))
 
 
 class ReadDimsCoordsNetCDF(unittest.TestCase):

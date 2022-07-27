@@ -377,7 +377,6 @@ class Hazard():
         data: Union[xr.Dataset, str],
         *,
         intensity: str = "intensity",
-        fraction: Union[str, Callable[[np.ndarray], np.ndarray]] = "fraction",
         coordinate_vars: Optional[Dict[str, str]] = None,
         data_vars: Optional[Dict[str, str]] = None,
         hazard_type: Optional[str] = "",
@@ -405,11 +404,15 @@ class Hazard():
 
         Notes
         -----
+        * Intensity and fraction data must be three-dimensional data that is interpreted
+          with the coordinates given by ``coordinate_vars`` (or the default). All other
+          data must be given in time coordinates only.
         * To avoid confusion in the call signature, all parameters are keyword-only
           arguments, except ``data``.
         * The attributes ``Hazard.tag.haz_type`` and ``Hazard.unit`` currently cannot be
           read from the Dataset. Use the method parameters to set these attributes or set
           them in the resulting ``Hazard`` object by yourself.
+        * This method **does not** read lazily. Single data arrays must fit into memory.
 
         Parameters
         ----------
@@ -419,22 +422,20 @@ class Hazard():
             supported by `xarray`.
         intensity : str
             Identifier of the `xarray.DataArray` containing the hazard intensity data.
-        fraction : str or Callable
-            Identifier of the `xarray.DataArray` containing the hazard fraction data.
-            May be a callable, in which case the callable is applied on the respective
-            intensity value to yield a fraction.
         coordinate_vars : dict(str, str)
             Mapping from default coordinate names to coordinate names used in the data
             to read. The default names are `time`, `longitude`, and `latitude`.
         data_vars : dict(str, str)
             Mapping from default variable names to variable names used in the data
-            to read. The default names are `hazard_type`, `frequency`, `event_name`, and
-            `event_id`. If these values are not set, the method tries to load data from
-            the default names. If this fails, the method uses default values for each
-            entry. If the values are set to empty strings (`""`), no data is loaded and
-            the default values are used exclusively. See examples for details.
+            to read. The default names are `fraction`, `hazard_type`, `frequency`,
+            `event_name`, and `event_id`. If these values are not set, the method tries
+            to load data from the default names. If this fails, the method uses default
+            values for each entry. If the values are set to empty strings (`""`), no data
+            is loaded and the default values are used exclusively. See examples for
+            details.
 
             Default values are:
+            * `fraction`: 1.0 where intensity is not zero, else zero
             * `hazard_type`: Empty string
             * `frequency`: 1.0 for every event
             * `event_name`: String representation of the event time
@@ -449,6 +450,7 @@ class Hazard():
         -------
         hazard : climada.Hazard
             A hazard object created from the input data
+
 
         """
         # If the data is a string, open the respective file
@@ -495,22 +497,15 @@ class Hazard():
             data[coords["latitude"]].values, data[coords["longitude"]].values
         )
 
+        def to_csr_matrix(array):
+            """Store an array as sparse matrix, optimizing storage space"""
+            mat = sparse.csr_matrix(array)
+            mat.eliminate_zeros()
+            return mat
+
         # Read the intensity data and flatten it in spatial dimensions
         LOGGER.debug("Loading Hazard intensity from DataArray '%s'", intensity)
-        hazard.intensity = sparse.csr_matrix(data[intensity])
-        hazard.intensity.eliminate_zeros()
-
-        # Use fraction data or apply callable
-        if isinstance(fraction, str):
-            LOGGER.debug("Loading Hazard fraction from DataArray '%s'", fraction)
-            fraction_arr = data[fraction]
-        elif isinstance(fraction, Callable):
-            LOGGER.debug("Computing Hazard fraction from callable")
-            fraction_arr = xr.apply_ufunc(fraction, data[intensity])
-        else:
-            raise TypeError("'fraction' parameter must be 'str' or Callable")
-        hazard.fraction = sparse.csr_matrix(fraction_arr)
-        hazard.fraction.eliminate_zeros()
+        hazard.intensity = to_csr_matrix(data[intensity])
 
         # Define accessors for xarray DataArrays
         def default_accessor(x: xr.DataArray):
@@ -528,7 +523,7 @@ class Hazard():
 
         # Create a DataFrame storing access information for each of data_vars
         num_events = data.sizes["event"]
-        keys = ["frequency", "event_id", "event_name", "date"]
+        keys = ["fraction", "frequency", "event_id", "event_name", "date"]
         data_ident = pd.DataFrame(
             data=dict(
                 # The attribute of the Hazard class where data is stored
@@ -539,6 +534,11 @@ class Hazard():
                 user_key=None,
                 # The default value for each attribute
                 default_value=[
+                    to_csr_matrix(
+                        xr.apply_ufunc(
+                            lambda x: np.where(x != 0, 1, 0), data[intensity]
+                        ).values
+                    ),
                     np.ones(num_events),
                     np.array(range(num_events), dtype=int) + 1,
                     list(data[coords["time"]].values),
@@ -546,9 +546,10 @@ class Hazard():
                 ],
                 # The accessor for the data in the Dataset
                 accessor=[
+                    lambda x: to_csr_matrix(default_accessor(x)),
                     default_accessor,
                     lambda x: strict_positive_int_accessor(x, "event_id"),
-                    lambda x: list(x.values),  # Write into list, not np.array
+                    lambda x: list(default_accessor(x)),  # list, not np.array
                     lambda x: strict_positive_int_accessor(x, "date"),
                 ],
             )
@@ -609,14 +610,24 @@ class Hazard():
                     )
                     return default_value
 
+            def vshape(x):
+                """Return a shape tuple for all data types that may occur"""
+                if isinstance(x, list):
+                    return len(x)
+                elif isinstance(x, sparse.csr_matrix):
+                    return x.get_shape()
+                else:
+                    return x.shape
+
             # Check size for read data
-            if len(val) != len(default_value):
+            if not np.array_equal(vshape(val), vshape(default_value)):
                 raise RuntimeError(
                     f"Hazard {default_key} (data key: '{key if key else default_key}') "
-                    f"must have size {len(default_value)}, but size is {len(val)}"
+                    f"must have shape {vshape(default_value)}, but shape is "
+                    f"{vshape(val)}"
                 )
 
-            # Store the data in the Hazard object
+            # Return the data
             return val
 
         # Set the Hazard attributes
