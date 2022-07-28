@@ -28,8 +28,7 @@ from scipy.sparse import csr_matrix
 import xarray as xr
 
 from climada.hazard.base import Hazard
-
-THIS_DIR = os.path.dirname(__file__)
+from pathlib import Path
 
 
 class ReadDefaultNetCDF(unittest.TestCase):
@@ -37,7 +36,7 @@ class ReadDefaultNetCDF(unittest.TestCase):
 
     def setUp(self):
         """Write a simple NetCDF file to read"""
-        self.netcdf_path = os.path.join(THIS_DIR, "default.nc")
+        self.netcdf_path = Path.cwd() / "default.nc"
         self.intensity = np.array([[[0, 1, 2], [3, 4, 5]], [[6, 7, 8], [9, 10, 11]]])
         self.time = np.array([dt.datetime(1999, 1, 1), dt.datetime(2000, 1, 1)])
         self.latitude = np.array([0, 1])
@@ -50,7 +49,7 @@ class ReadDefaultNetCDF(unittest.TestCase):
 
     def tearDown(self):
         """Delete the NetCDF file"""
-        os.remove(self.netcdf_path)
+        self.netcdf_path.unlink()
 
     def _assert_default(self, hazard):
         """Assertions for the default hazard to be loaded"""
@@ -214,7 +213,7 @@ class ReadDimsCoordsNetCDF(unittest.TestCase):
 
     def setUp(self):
         """Write a NetCDF file with many coordinates"""
-        self.netcdf_path = os.path.join(THIS_DIR, "coords.nc")
+        self.netcdf_path = Path.cwd() / "coords.nc"
         self.intensity = np.array([[[0, 1, 2], [3, 4, 5]]])
         self.fraction = np.array([[[0, 0, 0], [1, 1, 1]]])
         self.time = np.array([dt.datetime(2000, 1, 1)])
@@ -246,7 +245,7 @@ class ReadDimsCoordsNetCDF(unittest.TestCase):
 
     def tearDown(self):
         """Delete the NetCDF file"""
-        os.remove(self.netcdf_path)
+        self.netcdf_path.unlink()
 
     def _assert_intensity_fraction(self, hazard):
         """Check if intensity and fraction data are read correctly"""
