@@ -663,12 +663,12 @@ class Hazard():
                     f"data variables are {list(ident)}."
                 )
 
-            # Make 'identifier' an index for replacement, then make it a column again
-            data_ident = data_ident.set_index("identifier")
-            data_ident["user_key"].loc[list(data_vars.keys())] = list(
-                data_vars.values()
-            )
-            data_ident.reset_index(inplace=True)
+        # Update with keys provided by the user
+        # NOTE: Keys in 'data_ident' missing from 'data_vars' will be set to 'None',
+        #       which is exactly what we want
+        data_ident["user_key"] = data_ident["identifier"].map(
+            data_vars if data_vars else {}
+        )
 
         def load_data_or_default(
             user_key: Optional[str],
