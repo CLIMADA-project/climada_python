@@ -206,6 +206,46 @@ class ReadDefaultNetCDF(unittest.TestCase):
                 Hazard.from_raster_xarray(dset)
             self.assertIn(f"'{key}' data must be larger than zero", str(cm.exception))
 
+    def test_nan(self):
+        """Check handling of NaNs in original data"""
+        dataset = xr.open_dataset(self.netcdf_path)
+        intensity = xr.DataArray(
+            np.array([[[0, np.nan, 2], [3, 4, 5]], [[6, np.nan, 8], [9, 10, 11]]]),
+            dims=["time", "latitude", "longitude"],
+            coords=dict(
+                time=self.time, latitude=self.latitude, longitude=self.longitude
+            ),
+        )
+        dataset["intensity"] = intensity
+        fraction = xr.DataArray(
+            np.array([[[0, 0, 0], [0, 0, 0]], [[1, np.nan, 1], [np.nan, 1, 1]]]),
+            dims=["time", "latitude", "longitude"],
+            coords=dict(
+                time=self.time, latitude=self.latitude, longitude=self.longitude
+            ),
+        )
+        dataset["fraction"] = fraction
+        frequency = np.ones(dataset.sizes["time"])
+        frequency[0] = np.nan
+        dataset["frequency"] = frequency
+
+        # Load hazard
+        hazard = Hazard.from_raster_xarray(dataset)
+        self._assert_default_types(hazard)
+
+        # NaNs are set to zero in sparse data
+        np.testing.assert_array_equal(
+            hazard.intensity.toarray(),
+            [[0, 0, 2, 3, 4, 5], [6, 0, 8, 9, 10, 11]],
+        )
+        np.testing.assert_array_equal(
+            hazard.fraction.toarray(),
+            [[0, 0, 0, 0, 0, 0], [1, 0, 1, 0, 1, 1]],
+        )
+
+        # NaNs are propagated in dense data
+        np.testing.assert_array_equal(hazard.frequency, frequency)
+
 
 class ReadDimsCoordsNetCDF(unittest.TestCase):
     """Checks for dimensions and coordinates with different names and shapes"""
