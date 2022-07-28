@@ -27,7 +27,7 @@ import itertools
 import logging
 import pathlib
 import warnings
-from typing import Union, Optional, Callable, Dict
+from typing import Union, Optional, Callable, Dict, Any
 
 import geopandas as gpd
 import h5py
@@ -587,29 +587,37 @@ class Hazard():
 
         def to_csr_matrix(array):
             """Store an array as sparse matrix, optimizing storage space"""
-            mat = sparse.csr_matrix(array)
-            mat.eliminate_zeros()
-            return mat
+            array = sparse.csr_matrix(array)
+            array.eliminate_zeros()
+            return array
 
         # Read the intensity data and flatten it in spatial dimensions
         LOGGER.debug("Loading Hazard intensity from DataArray '%s'", intensity)
         hazard.intensity = to_csr_matrix(data[intensity])
 
         # Define accessors for xarray DataArrays
-        def default_accessor(x: xr.DataArray):
-            """By default, use the numpy array representation of data"""
-            return x.values
+        def default_accessor(array: xr.DataArray) -> np.ndarray:
+            """Take a DataArray and return its numpy representation"""
+            return array.values
 
-        def strict_positive_int_accessor(x: xr.DataArray, report_key: str):
-            """Only allow positive, non-zero integers"""
-            values = x.values
-            if not np.issubdtype(values.dtype, np.integer):
-                raise TypeError(f"'{report_key}' data array must be integers")
-            if not np.all(values > 0):
-                raise ValueError(f"'{report_key}' data must be larger than zero")
-            return np.asarray(values, dtype=np.int64)
+        def strict_positive_int_accessor(array: xr.DataArray) -> np.ndarray:
+            """Take a positive int DataArray and return its numpy representation
+
+            Raises
+            ------
+            TypeError
+                If the underlying data type is not integer
+            ValueError
+                If any value is zero or less
+            """
+            if not np.issubdtype(array.dtype, np.integer):
+                raise TypeError(f"'{array.name}' data array must be integers")
+            if not (array > 0).all():
+                raise ValueError(f"'{array.name}' data must be larger than zero")
+            return array.values
 
         # Create a DataFrame storing access information for each of data_vars
+        # NOTE: Each row will be passed as arguments to `load_data_or_default`
         num_events = data.sizes["event"]
         keys = ["fraction", "frequency", "event_id", "event_name", "date"]
         data_ident = pd.DataFrame(
@@ -636,9 +644,9 @@ class Hazard():
                 accessor=[
                     lambda x: to_csr_matrix(default_accessor(x)),
                     default_accessor,
-                    lambda x: strict_positive_int_accessor(x, "event_id"),
-                    lambda x: list(default_accessor(x)),  # list, not np.array
-                    lambda x: strict_positive_int_accessor(x, "date"),
+                    strict_positive_int_accessor,
+                    lambda x: list(default_accessor(x).flat),  # list, not np.array
+                    strict_positive_int_accessor,
                 ],
             )
         )
@@ -662,35 +670,71 @@ class Hazard():
             )
             data_ident.reset_index(inplace=True)
 
-        def read_or_default(ident: pd.Series):
-            """Read data from a variable in the data or use default"""
-            key = ident["user_key"]
-            default_value = ident["default_value"]
-            accessor = ident["accessor"]
-            hazard_attr = ident["hazard_attr"]
+        def load_data_or_default(
+            user_key: Optional[str],
+            identifier: str,
+            hazard_attr: str,
+            accessor: Callable[[xr.DataArray], Any],
+            default_value: Any,
+        ) -> Any:
+            """Return data for a single Hazard attribute or return the default value
 
+            Does the following based on the ``user_key``:
+            * If the key is an empty string, return the default value
+            * If the key is a non-empty string, load the data for that key and return it.
+            * If the key is ``None``, look for the default key ``identifier`` in the
+              data. If it exists, return that data. If not, return the default value.
+
+            Parameters
+            ----------
+            user_key : str or None
+                The key set by the user to identify the DataArray to read data from.
+            identifier : str
+                The default key identifying the DataArray to read data from.
+            hazard_attr : str
+                The name of the attribute of ``Hazard`` where the data will be stored in.
+            accessor : Callable
+                A callable that takes the DataArray as argument and returns the data
+                structure that is required by the ``Hazard`` attribute.
+            default_value
+                The default value/array to return in case the data could not be found.
+
+            Returns
+            -------
+            The object that will be stored in the ``Hazard`` attribute ``hazard_attr``.
+
+            Raises
+            ------
+            KeyError
+                If ``user_key`` was a non-empty string but no such key was found in the
+                data
+            RuntimeError
+                If the data structure loaded has a different shape than the default data
+                structure
+            """
             # User does not want to read data
-            if ident["user_key"] == "":
+            if user_key == "":
                 LOGGER.debug(
                     "Using default values for Hazard.%s per user request", hazard_attr
                 )
                 return default_value
 
-            default_key = ident["identifier"]
-            if not pd.isna(key):
+            if not pd.isna(user_key):
                 # Read key exclusively
                 LOGGER.debug(
-                    "Reading data for Hazard.%s from DataArray '%s'", hazard_attr, key
+                    "Reading data for Hazard.%s from DataArray '%s'",
+                    hazard_attr,
+                    user_key,
                 )
-                val = accessor(data[key])
+                val = accessor(data[user_key])
             else:
                 # Try default key
                 try:
-                    val = accessor(data[default_key])
+                    val = accessor(data[identifier])
                     LOGGER.debug(
                         "Reading data for Hazard.%s from DataArray '%s'",
                         hazard_attr,
-                        default_key,
+                        identifier,
                     )
                 except KeyError:
                     LOGGER.debug(
@@ -698,21 +742,19 @@ class Hazard():
                     )
                     return default_value
 
-            def vshape(x):
-                """Return a shape tuple for all data types that may occur"""
-                if isinstance(x, list):
-                    return len(x)
-                elif isinstance(x, sparse.csr_matrix):
-                    return x.get_shape()
-                else:
-                    return x.shape
+            def vshape(array):
+                """Return a shape tuple for any array-like type we use"""
+                if isinstance(array, list):
+                    return len(array)
+                if isinstance(array, sparse.csr_matrix):
+                    return array.get_shape()
+                return array.shape
 
             # Check size for read data
             if not np.array_equal(vshape(val), vshape(default_value)):
                 raise RuntimeError(
-                    f"Hazard {default_key} (data key: '{key if key else default_key}') "
-                    f"must have shape {vshape(default_value)}, but shape is "
-                    f"{vshape(val)}"
+                    f"'{user_key if user_key else identifier}' must have shape "
+                    f"{vshape(default_value)}, but shape is {vshape(val)}"
                 )
 
             # Return the data
@@ -720,7 +762,7 @@ class Hazard():
 
         # Set the Hazard attributes
         for _, ident in data_ident.iterrows():
-            setattr(hazard, ident["hazard_attr"], read_or_default(ident))
+            setattr(hazard, ident["hazard_attr"], load_data_or_default(**ident))
 
         # Done!
         LOGGER.debug("Hazard successfully loaded. Number of events: %i", num_events)

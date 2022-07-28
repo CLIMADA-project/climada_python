@@ -190,8 +190,7 @@ class ReadDefaultNetCDF(unittest.TestCase):
         with self.assertRaises(RuntimeError) as cm:
             Hazard.from_raster_xarray(dataset, data_vars=dict(frequency="freq"))
         self.assertIn(
-            f"Hazard frequency (data key: 'freq') must have shape ({size},), but shape "
-            f"is ({size + 1},)",
+            f"'freq' must have shape ({size},), but shape is ({size + 1},)",
             str(cm.exception),
         )
 
