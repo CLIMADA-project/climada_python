@@ -677,14 +677,29 @@ def coord_on_land(lat, lon, land_geom=None):
     if lat.size == 0:
         return np.empty((0,), dtype=bool)
     delta_deg = 1
+    lons = lon.copy()
     if land_geom is None:
+        # ensure extent of longitude is consistent
+        bounds = lon_bounds(lons)
+        lon_mid = 0.5 * (bounds[0] + bounds[1])
+        # normalize lon
+        lons = lon_normalize(lons, center=lon_mid)
+        # load land geometry with appropriate same extent
         land_geom = get_land_geometry(
-            extent=(np.min(lon) - delta_deg,
-                    np.max(lon) + delta_deg,
+            extent=(bounds[0] - delta_deg,
+                    bounds[1] + delta_deg,
                     np.min(lat) - delta_deg,
                     np.max(lat) + delta_deg),
             resolution=10)
-    return shapely.vectorized.contains(land_geom, lon, lat)
+    else:
+        # ensure lon values are within extent of provided land_geom
+        land_bounds = land_geom.bounds
+        if lons.max() > land_bounds[2] or lons.min() < land_bounds[0]:
+            # normalize longitude to land_geom extent
+            lon_mid = 0.5 * (land_bounds[0] + land_bounds[2])
+            lon_normalize(lons, center=lon_mid)
+
+    return shapely.vectorized.contains(land_geom, lons, lat)
 
 def nat_earth_resolution(resolution):
     """Check if resolution is available in Natural Earth. Build string.
