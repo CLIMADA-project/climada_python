@@ -586,14 +586,11 @@ class Hazard():
             data[coords["latitude"]].values, data[coords["longitude"]].values
         )
 
-        def to_csr_matrix(array: Union[np.ndarray, xr.DataArray]) -> sparse.csr_matrix:
-            """Store an array as sparse matrix, optimizing storage space
+        def to_csr_matrix(array: np.ndarray) -> sparse.csr_matrix:
+            """Store a numpy array as sparse matrix, optimizing storage space
 
             The CSR matrix stores NaNs explicitly, so we set them to zero.
             """
-            if isinstance(array, xr.DataArray):
-                return sparse.csr_matrix(array.fillna(0))
-
             return sparse.csr_matrix(np.where(np.isnan(array), 0, array))
 
         # Read the intensity data and flatten it in spatial dimensions
