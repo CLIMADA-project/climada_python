@@ -905,21 +905,21 @@ class TestFuncs(unittest.TestCase):
         on_land = np.array([False, True, True])
         lon_shift = np.array([-360, 0, 360])
         # ensure both points are considered on land as is
-        self.assertEqual(
+        np.testing.assert_array_equal(
             u_coord.coord_on_land(lat = lat_test, lon = lon_test),
             on_land
         )
         # independently on shifts by 360 degrees in longitude
-        self.assertEqual(
+        np.testing.assert_array_equal(
             u_coord.coord_on_land(lat = lat_test, lon = lon_test + lon_shift),
             on_land
         )
-        self.assertEqual(
+        np.testing.assert_array_equal(
             u_coord.coord_on_land(lat = lat_test, lon = lon_test - lon_shift),
             on_land
         )
         # also when longitude is within correct range
-        self.assertEqual(
+        np.testing.assert_array_equal(
             u_coord.coord_on_land(lat = lat_test, lon = u_coord.lon_normalize(lon_test)),
             on_land
         )
