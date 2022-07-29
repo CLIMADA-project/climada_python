@@ -647,33 +647,9 @@ def get_land_geometry(country_names=None, extent=None, resolution=10):
     geom : shapely.geometry.multipolygon.MultiPolygon
         Polygonal shape of union.
     """
-    resolution = nat_earth_resolution(resolution)
-    shp_file = shapereader.natural_earth(resolution=resolution,
-                                         category='cultural',
-                                         name='admin_0_countries')
-    reader = shapereader.Reader(shp_file)
-    if (country_names is None) and (extent is None):
-        LOGGER.info("Computing earth's land geometry ...")
-        geom = list(reader.geometries())
-        geom = shapely.ops.unary_union(geom)
-
-    elif country_names:
-        countries = list(reader.records())
-        geom = [country.geometry for country in countries
-                if (country.attributes['ISO_A3'] in country_names) or
-                (country.attributes['WB_A3'] in country_names) or
-                (country.attributes['ADM0_A3'] in country_names)]
-        geom = shapely.ops.unary_union(geom)
-
-    else:
-        extent_poly = Polygon([(extent[0], extent[2]), (extent[0], extent[3]),
-                               (extent[1], extent[3]), (extent[1], extent[2])])
-        geom = []
-        for cntry_geom in reader.geometries():
-            inter_poly = cntry_geom.intersection(extent_poly)
-            if not inter_poly.is_empty:
-                geom.append(inter_poly)
-        geom = shapely.ops.unary_union(geom)
+    geom = get_country_geometries(country_names, extent, resolution)
+    # combine all into a single multipolygon
+    geom = geom.geometry.unary_union
     if not isinstance(geom, MultiPolygon):
         geom = MultiPolygon([geom])
     return geom
