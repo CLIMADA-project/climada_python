@@ -741,11 +741,16 @@ def get_country_geometries(country_names=None, extent=None, resolution=10):
     starts including the projection information. (They are saving a whopping 147 bytes by omitting
     it.) Same goes for UTF.
 
+    If extent is provided, longitude values in 'geom' will all lie within 'extent' longitude
+    range. Therefore setting extent to e.g. [160, 200, -20, 20] will provide longitude values
+    between 160 and 200 degrees.
+
     Parameters
     ----------
     country_names : list, optional
         list with ISO 3166 alpha-3 codes of countries, e.g ['ZWE', 'GBR', 'VNM', 'UZB']
-    extent : tuple (min_lon, max_lon, min_lat, max_lat), optional
+    extent : tuple, optional
+        (min_lon, max_lon, min_lat, max_lat)
         Extent, assumed to be in the same CRS as the natural earth data.
     resolution : float, optional
         10, 50 or 110. Resolution in m. Default: 10m
@@ -777,18 +782,53 @@ def get_country_geometries(country_names=None, extent=None, resolution=10):
     if country_names:
         if isinstance(country_names, str):
             country_names = [country_names]
-        out = out[out.ISO_A3.isin(country_names)]
+        country_mask = np.isin(nat_earth[['ISO_A3', 'WB_A3', 'ADM0_A3']].values, country_names).any(axis=1)
+        out = out[country_mask]
 
     if extent:
-        bbox = Polygon([
-            (extent[0], extent[2]),
-            (extent[0], extent[3]),
-            (extent[1], extent[3]),
-            (extent[1], extent[2])
-        ])
-        bbox = gpd.GeoSeries(bbox, crs=out.crs)
-        bbox = gpd.GeoDataFrame({'geometry': bbox}, crs=out.crs)
+        if extent[1] - extent[0] > 360:
+            raise ValueError(f"longitude extent range is greater than 360: {extent[0]} to {extent[1]}")
+        elif extent[1] < extent[0]:
+            raise ValueError(f"longitude extent at the left ({extent[0]}) is larger than longitude extent at the right ({extent[1]})")
+        # is longitude extent already normalized (i.e., within [-180, +180])? If not, need to be wrapped
+        lon_normalized = extent[0] >= -180 and extent[1] <= 180
+        if lon_normalized:
+            bbox = Polygon([
+                (extent[0], extent[2]),
+                (extent[0], extent[3]),
+                (extent[1], extent[3]),
+                (extent[1], extent[2])
+            ])
+        else:
+            # split the extent box into two boxes both within [-180, +180] in longitude
+            lon_left = np.array([extent[0]])
+            lon_right = np.array([extent[1]])
+            lon_normalize(lon_left)
+            lon_normalize(lon_right)
+            extent_left = (lon_left, 180, extent[2], extent[3])
+            extent_right = (-180, lon_right, extent[2], extent[3])
+            bbox = [
+                Polygon([
+                    (extent_left[0], extent_left[2]),
+                    (extent_left[0], extent_left[3]),
+                    (extent_left[1], extent_left[3]),
+                    (extent_left[1], extent_left[2])
+                ]),
+                Polygon([
+                    (extent_right[0], extent_right[2]),
+                    (extent_right[0], extent_right[3]),
+                    (extent_right[1], extent_right[3]),
+                    (extent_right[1], extent_right[2])
+                ])
+            ]
+            bbox = shapely.ops.unary_union(bbox)
+        bbox = gpd.GeoSeries(bbox, crs=DEF_CRS)
+        bbox = gpd.GeoDataFrame({'geometry': bbox}, crs=DEF_CRS)
         out = gpd.overlay(out, bbox, how="intersection")
+        if ~lon_normalized:
+            lon_mid = 0.5 * (extent[0] + extent[1])
+            # we don't really change the CRS when rewrapping, so we reset the CRS attribute afterwards
+            out = out.to_crs({"proj": "longlat", "lon_wrap": lon_mid}).set_crs(DEF_CRS, allow_override=True)
 
     return out
 
