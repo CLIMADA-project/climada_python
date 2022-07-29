@@ -691,7 +691,7 @@ def coord_on_land(lat, lon, land_geom=None):
                     np.min(lat) - delta_deg,
                     np.max(lat) + delta_deg),
             resolution=10)
-    else:
+    elif not land_geom.is_empty:
         # ensure lon values are within extent of provided land_geom
         land_bounds = land_geom.bounds
         if lons.max() > land_bounds[2] or lons.min() < land_bounds[0]:
