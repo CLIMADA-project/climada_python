@@ -555,14 +555,14 @@ class Hazard():
 
         # Update coordinate identifiers
         coords = {"time": "time", "longitude": "longitude", "latitude": "latitude"}
-        if coordinate_vars is not None:
-            unknown_coords = [co for co in coordinate_vars if co not in coords]
-            if unknown_coords:
-                raise ValueError(
-                    f"Unknown coordinates passed: '{unknown_coords}'. Supported "
-                    "coordinates are 'time', 'longitude', 'latitude'."
-                )
-            coords.update(coordinate_vars)
+        coordinate_vars = coordinate_vars if coordinate_vars is not None else {}
+        unknown_coords = [co for co in coordinate_vars if co not in coords]
+        if unknown_coords:
+            raise ValueError(
+                f"Unknown coordinates passed: '{unknown_coords}'. Supported "
+                "coordinates are 'time', 'longitude', 'latitude'."
+            )
+        coords.update(coordinate_vars)
 
         # Retrieve dimensions of coordinates
         dims = dict(
@@ -657,23 +657,21 @@ class Hazard():
         )
 
         # Update the keys from user settings
-        if data_vars is not None:
-            ident = data_ident["identifier"]
-            unknown_keys = [
-                key for key in data_vars.keys() if not ident.str.contains(key).any()
-            ]
-            if unknown_keys:
-                raise ValueError(
-                    f"Unknown data variables passed: '{unknown_keys}'. Supported "
-                    f"data variables are {list(ident)}."
-                )
+        data_vars = data_vars if data_vars is not None else {}
+        ident = data_ident["identifier"]
+        unknown_keys = [
+            key for key in data_vars.keys() if not ident.str.contains(key).any()
+        ]
+        if unknown_keys:
+            raise ValueError(
+                f"Unknown data variables passed: '{unknown_keys}'. Supported "
+                f"data variables are {list(ident)}."
+            )
 
         # Update with keys provided by the user
         # NOTE: Keys in 'data_ident' missing from 'data_vars' will be set to 'None',
         #       which is exactly what we want
-        data_ident["user_key"] = data_ident["identifier"].map(
-            data_vars if data_vars else {}
-        )
+        data_ident["user_key"] = ident.map(data_vars)
 
         def load_data_or_default(
             user_key: Optional[str],
