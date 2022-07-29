@@ -97,23 +97,23 @@ class ReadDefaultNetCDF(unittest.TestCase):
 
     def test_load_path(self):
         """Load the data with path as argument"""
-        hazard = Hazard.from_raster_xarray(self.netcdf_path)
+        hazard = Hazard.from_raster_xarray(self.netcdf_path, "", "")
         self._assert_default(hazard)
 
         # Check wrong paths
         with self.assertRaises(FileNotFoundError) as cm:
-            Hazard.from_raster_xarray("file-does-not-exist.nc")
+            Hazard.from_raster_xarray("file-does-not-exist.nc", "", "")
         self.assertIn("file-does-not-exist.nc", str(cm.exception))
         with self.assertRaises(KeyError) as cm:
             Hazard.from_raster_xarray(
-                self.netcdf_path, intensity="wrong-intensity-path"
+                self.netcdf_path, "", "", intensity="wrong-intensity-path"
             )
         self.assertIn("wrong-intensity-path", str(cm.exception))
 
     def test_load_dataset(self):
         """Load the data from an opened dataset as argument"""
         dataset = xr.open_dataset(self.netcdf_path)
-        hazard = Hazard.from_raster_xarray(dataset)
+        hazard = Hazard.from_raster_xarray(dataset, "", "")
         self._assert_default(hazard)
 
     def test_type_and_unit(self):
@@ -153,7 +153,7 @@ class ReadDefaultNetCDF(unittest.TestCase):
         dataset["fraction"] = frac
 
         # Optionals should be read automatically
-        hazard = Hazard.from_raster_xarray(dataset)
+        hazard = Hazard.from_raster_xarray(dataset, "", "")
         self._assert_default_types(hazard)
         np.testing.assert_array_equal(hazard.frequency, frequency)
         np.testing.assert_array_equal(hazard.event_id, event_id)
@@ -166,6 +166,8 @@ class ReadDefaultNetCDF(unittest.TestCase):
         # Ignore keys (should be default values)
         hazard = Hazard.from_raster_xarray(
             dataset,
+            "",
+            "",
             data_vars=dict(
                 frequency="", event_id="", event_name="", date="", fraction=""
             ),
@@ -174,21 +176,25 @@ class ReadDefaultNetCDF(unittest.TestCase):
 
         # Wrong key
         with self.assertRaises(ValueError) as cm:
-            Hazard.from_raster_xarray(dataset, data_vars=dict(wrong_key="stuff"))
+            Hazard.from_raster_xarray(
+                dataset, "", "", data_vars=dict(wrong_key="stuff")
+            )
         self.assertIn(
             "Unknown data variables passed: '['wrong_key']'.", str(cm.exception)
         )
 
         # Non-existent identifier
         with self.assertRaises(KeyError) as cm:
-            Hazard.from_raster_xarray(dataset, data_vars=dict(frequency="freqqqqq"))
+            Hazard.from_raster_xarray(
+                dataset, "", "", data_vars=dict(frequency="freqqqqq")
+            )
         self.assertIn("freqqqqq", str(cm.exception))
 
         # Wrong data length
         # NOTE: This also implicitly checks that 'frequency' is not read!
         dataset["freq"] = np.array(range(size + 1), dtype=np.float64)
         with self.assertRaises(RuntimeError) as cm:
-            Hazard.from_raster_xarray(dataset, data_vars=dict(frequency="freq"))
+            Hazard.from_raster_xarray(dataset, "", "", data_vars=dict(frequency="freq"))
         self.assertIn(
             f"'freq' must have shape ({size},), but shape is ({size + 1},)",
             str(cm.exception),
@@ -199,11 +205,11 @@ class ReadDefaultNetCDF(unittest.TestCase):
             dset = dataset.copy(deep=True)
             dset[key] = np.array(range(size), dtype=np.float64) + 3.5
             with self.assertRaises(TypeError) as cm:
-                Hazard.from_raster_xarray(dset)
+                Hazard.from_raster_xarray(dset, "", "")
             self.assertIn(f"'{key}' data array must be integers", str(cm.exception))
             dset[key] = np.linspace(0, 10, size, dtype=np.int64)
             with self.assertRaises(ValueError) as cm:
-                Hazard.from_raster_xarray(dset)
+                Hazard.from_raster_xarray(dset, "", "")
             self.assertIn(f"'{key}' data must be larger than zero", str(cm.exception))
 
     def test_nan(self):
@@ -230,17 +236,15 @@ class ReadDefaultNetCDF(unittest.TestCase):
         dataset["frequency"] = frequency
 
         # Load hazard
-        hazard = Hazard.from_raster_xarray(dataset)
+        hazard = Hazard.from_raster_xarray(dataset, "", "")
         self._assert_default_types(hazard)
 
         # NaNs are set to zero in sparse data
         np.testing.assert_array_equal(
-            hazard.intensity.toarray(),
-            [[0, 0, 2, 3, 4, 5], [6, 0, 8, 9, 10, 11]],
+            hazard.intensity.toarray(), [[0, 0, 2, 3, 4, 5], [6, 0, 8, 9, 10, 11]],
         )
         np.testing.assert_array_equal(
-            hazard.fraction.toarray(),
-            [[0, 0, 0, 0, 0, 0], [1, 0, 1, 0, 1, 1]],
+            hazard.fraction.toarray(), [[0, 0, 0, 0, 0, 0], [1, 0, 1, 0, 1, 1]],
         )
 
         # NaNs are propagated in dense data
@@ -295,6 +299,8 @@ class ReadDimsCoordsNetCDF(unittest.TestCase):
         """Test if dimensions with different names can be read"""
         hazard = Hazard.from_raster_xarray(
             self.netcdf_path,
+            "",
+            "",
             coordinate_vars=dict(latitude="y", longitude="x"),  # 'time' stays default
         )
         np.testing.assert_array_equal(hazard.centroids.lat, [0, 0, 0, 1, 1, 1])
@@ -308,6 +314,8 @@ class ReadDimsCoordsNetCDF(unittest.TestCase):
         """Test if coordinates with different names than dimensions can be read"""
         hazard = Hazard.from_raster_xarray(
             self.netcdf_path,
+            "",
+            "",
             coordinate_vars=dict(latitude="lat", longitude="lon", time="years"),
         )
         np.testing.assert_array_equal(hazard.centroids.lat, [1, 1, 1, 2, 2, 2])
@@ -321,6 +329,8 @@ class ReadDimsCoordsNetCDF(unittest.TestCase):
         """Test if read method correctly handles 2D coordinates"""
         hazard = Hazard.from_raster_xarray(
             self.netcdf_path,
+            "",
+            "",
             coordinate_vars=dict(latitude="latitude", longitude="longitude"),
         )
         np.testing.assert_array_equal(
@@ -356,7 +366,7 @@ class ReadDimsCoordsNetCDF(unittest.TestCase):
                 "time": (["year", "month"], time),
             },
         )
-        hazard = Hazard.from_raster_xarray(ds)
+        hazard = Hazard.from_raster_xarray(ds, "", "")
 
         np.testing.assert_array_equal(hazard.intensity.toarray(), [[1], [2], [3], [4]])
         np.testing.assert_array_equal(
@@ -373,14 +383,17 @@ class ReadDimsCoordsNetCDF(unittest.TestCase):
         # Wrong coordinate key
         with self.assertRaises(ValueError) as cm:
             Hazard.from_raster_xarray(
-                self.netcdf_path, coordinate_vars=dict(bar="latitude", longitude="baz"),
+                self.netcdf_path,
+                "",
+                "",
+                coordinate_vars=dict(bar="latitude", longitude="baz"),
             )
         self.assertIn("Unknown coordinates passed: '['bar']'.", str(cm.exception))
 
         # Correctly specified, but the custom dimension does not exist
         with self.assertRaises(KeyError) as cm:
             Hazard.from_raster_xarray(
-                self.netcdf_path, coordinate_vars=dict(latitude="lalalatitude"),
+                self.netcdf_path, "", "", coordinate_vars=dict(latitude="lalalatitude"),
             )
 
 

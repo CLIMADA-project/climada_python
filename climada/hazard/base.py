@@ -375,12 +375,12 @@ class Hazard():
     def from_raster_xarray(
         cls,
         data: Union[xr.Dataset, str],
+        hazard_type: str,
+        intensity_unit: str,
         *,
         intensity: str = "intensity",
         coordinate_vars: Optional[Dict[str, str]] = None,
         data_vars: Optional[Dict[str, str]] = None,
-        hazard_type: str = "",
-        intensity_unit: str = "",
     ):
         """Read raster-like data from an xarray Dataset or a raster data file
 
@@ -410,8 +410,7 @@ class Hazard():
         * To avoid confusion in the call signature, all parameters are keyword-only
           arguments, except ``data``.
         * The attributes ``Hazard.tag.haz_type`` and ``Hazard.unit`` currently cannot be
-          read from the Dataset. Use the method parameters to set these attributes or set
-          them in the resulting ``Hazard`` object by yourself.
+          read from the Dataset. Use the method parameters to set these attributes.
         * This method **does not** read lazily. Single data arrays must fit into memory.
 
         Parameters
@@ -420,12 +419,17 @@ class Hazard():
             The data to read from. May be a opened dataset or a path to a raster data
             file, in which case the file is opened first. Works with any file format
             supported by `xarray`.
-        intensity : str
+        hazard_type : str
+            The type identifier of the hazard. Will be stored directly in the hazard
+            object.
+        intensity_unit : str
+            The physical units of the intensity. Will be stored in the ``hazard.tag``.
+        intensity : str, optional
             Identifier of the `xarray.DataArray` containing the hazard intensity data.
-        coordinate_vars : dict(str, str)
+        coordinate_vars : dict(str, str), optional
             Mapping from default coordinate names to coordinate names used in the data
             to read. The default names are `time`, `longitude`, and `latitude`.
-        data_vars : dict(str, str)
+        data_vars : dict(str, str), optional
             Mapping from default variable names to variable names used in the data
             to read. The default names are `fraction`, `hazard_type`, `frequency`,
             `event_name`, and `event_id`. If these values are not set, the method tries
@@ -440,11 +444,6 @@ class Hazard():
             * `frequency`: 1.0 for every event
             * `event_name`: String representation of the event time
             * `event_id`: Consecutive integers starting at 1 and increasing with time
-        hazard_type : str
-            The type identifier of the hazard. Will be stored directly in the hazard
-            object.
-        intensity_unit : str
-            The physical units of the intensity. Will be stored in the ``hazard.tag``.
 
         Returns
         -------
@@ -468,7 +467,7 @@ class Hazard():
         >>>         longitude=[0, 1, 2],
         >>>     ),
         >>> )
-        >>> hazard = Hazard.from_raster_xarray(dset)
+        >>> hazard = Hazard.from_raster_xarray(dset, "", "")
 
         For non-default coordinate names, use the ``coordinate_vars`` argument.
         >>> dset = xr.Dataset(
@@ -485,7 +484,7 @@ class Hazard():
         >>>     ),
         >>> )
         >>> hazard = Hazard.from_raster_xarray(
-        >>>     dset, coordinate_vars=dict(time="day", latitude="lat")
+        >>>     dset, "", "", coordinate_vars=dict(time="day", latitude="lat")
         >>> )
 
         Coordinates can be different from the actual dataset dimensions. The following
@@ -500,7 +499,7 @@ class Hazard():
         >>>         latitude=(["y", "x"], [[0.0, 0.0, 0.0], [0.1, 0.1, 0.1]]),
         >>>     ),
         >>> )
-        >>> hazard = Hazard.from_raster_xarray(dset)
+        >>> hazard = Hazard.from_raster_xarray(dset, "", "")
 
 
         Optional data is read from the dataset if the default keys are found. Users can
@@ -527,6 +526,8 @@ class Hazard():
         >>> )
         >>> hazard = Hazard.from_raster_xarray(
         >>>     dset,
+        >>>     "",
+        >>>     "",
         >>>     data_vars=dict(
         >>>         # Load frequency from 'freq' array
         >>>         frequency="freq",
