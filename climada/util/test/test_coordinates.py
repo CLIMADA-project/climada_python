@@ -135,25 +135,25 @@ class TestDistance(unittest.TestCase):
         self.assertAlmostEqual(
             7709.827814738594,
             np.sqrt(u_coord._dist_sqr_approx(lats1, lons1, cos_lats1, lats2, lons2)) * ONE_LAT_KM)
-    
+
     def test_geodesic_length_geog(self):
         """Test compute_geodesic_lengths for geographic input crs"""
-        
+
         LINE_PATH = DEMO_DIR.joinpath('nl_rails.gpkg')
         gdf_rails = gpd.read_file(LINE_PATH).to_crs('epsg:4326')
         lengths_geom = u_coord.compute_geodesic_lengths(gdf_rails)
-        
+
         self.assertEqual(len(lengths_geom), len(gdf_rails))
         self.assertTrue(
             np.all(
-                (abs(lengths_geom - gdf_rails['distance'])/lengths_geom < 0.1) | 
+                (abs(lengths_geom - gdf_rails['distance'])/lengths_geom < 0.1) |
                 (lengths_geom - gdf_rails['distance'] < 10)
                 )
             )
 
     def test_geodesic_length_proj(self):
         """Test compute_geodesic_lengths for projected input crs"""
-        
+
         LINE_PATH = DEMO_DIR.joinpath('nl_rails.gpkg')
         gdf_rails = gpd.read_file(LINE_PATH).to_crs('epsg:4326')
         gdf_rails_proj = gpd.read_file(LINE_PATH).to_crs('epsg:4326').to_crs('EPSG:28992')
@@ -163,10 +163,10 @@ class TestDistance(unittest.TestCase):
 
         for len_proj, len_geom in zip(lengths_proj,lengths_geom):
             self.assertAlmostEqual(len_proj, len_geom, 1)
-        
+
         self.assertTrue(
             np.all(
-                (abs(lengths_proj - gdf_rails_proj['distance'])/lengths_proj < 0.1) | 
+                (abs(lengths_proj - gdf_rails_proj['distance'])/lengths_proj < 0.1) |
                 (lengths_proj - gdf_rails_proj['distance'] < 10)
                 )
             )
