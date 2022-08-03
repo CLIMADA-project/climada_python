@@ -560,7 +560,7 @@ class Hazard():
         if unknown_coords:
             raise ValueError(
                 f"Unknown coordinates passed: '{unknown_coords}'. Supported "
-                "coordinates are 'time', 'longitude', 'latitude'."
+                f"coordinates are {list(coords.keys())}."
             )
         coords.update(coordinate_vars)
 
