@@ -859,21 +859,21 @@ class TestGetGeodata(unittest.TestCase):
     def test_get_land_geometry_country_pass(self):
         """get_land_geometry with selected countries."""
         iso_countries = ['DEU', 'VNM']
-        res = u_coord.get_land_geometry(iso_countries, resolution=110)
+        res = u_coord.get_land_geometry(country_names=iso_countries, resolution=10)
         self.assertIsInstance(res, shapely.geometry.multipolygon.MultiPolygon)
         for res, ref in zip(res.bounds, (5.85248986800, 8.56557851800,
                                          109.47242272200, 55.065334377000)):
             self.assertAlmostEqual(res, ref)
 
         iso_countries = ['ESP']
-        res = u_coord.get_land_geometry(iso_countries, resolution=110)
+        res = u_coord.get_land_geometry(country_names=iso_countries, resolution=10)
         self.assertIsInstance(res, shapely.geometry.multipolygon.MultiPolygon)
         for res, ref in zip(res.bounds, (-18.16722571499986, 27.642238674000,
                                          4.337087436000, 43.793443101)):
             self.assertAlmostEqual(res, ref)
 
         iso_countries = ['FRA']
-        res = u_coord.get_land_geometry(iso_countries, resolution=110)
+        res = u_coord.get_land_geometry(country_names=iso_countries, resolution=10)
         self.assertIsInstance(res, shapely.geometry.multipolygon.MultiPolygon)
         for res, ref in zip(res.bounds, (-61.79784094999991, -21.37078215899993,
                                          55.854502800000034, 51.08754088371883)):
