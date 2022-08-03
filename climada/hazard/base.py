@@ -501,7 +501,6 @@ class Hazard():
         >>> )
         >>> hazard = Hazard.from_raster_xarray(dset, "", "")
 
-
         Optional data is read from the dataset if the default keys are found. Users can
         specify custom variables in the data, or that the default keys should be ignored,
         with the ``data_vars`` argument.
