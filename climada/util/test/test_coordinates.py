@@ -958,7 +958,7 @@ class TestGetGeodata(unittest.TestCase):
 
     def test_get_country_geometries_country_norway_pass(self):
         """test correct numeric ISO3 for country Norway"""
-        iso_countries = ['NOR']
+        iso_countries = 'NOR'
         extent = [10, 11, 55, 60]
         res1 = u_coord.get_country_geometries(iso_countries)
         res2 = u_coord.get_country_geometries(extent=extent)
@@ -1002,6 +1002,18 @@ class TestGetGeodata(unittest.TestCase):
         res = u_coord.get_country_geometries(resolution=110)
         self.assertIsInstance(res, gpd.geodataframe.GeoDataFrame)
         self.assertAlmostEqual(res.area[0], 1.639510995900778)
+
+    def test_get_country_geometries_fail(self):
+        """get_country_geometries with offensive parameters"""
+        with self.assertRaises(ValueError) as cm:
+            u_coord.get_country_geometries(extent=(-20,350,0,0))
+        self.assertIn("longitude extent range is greater than 360: -20 to 350",
+                      str(cm.exception))
+        with self.assertRaises(ValueError) as cm:
+            u_coord.get_country_geometries(extent=(350,-20,0,0))
+        self.assertIn("longitude extent at the left (350) is larger "
+                      "than longitude extent at the right (-20)",
+                      str(cm.exception))
 
     def test_country_code_pass(self):
         """Test set_region_id"""
