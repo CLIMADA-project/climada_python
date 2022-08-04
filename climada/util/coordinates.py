@@ -43,7 +43,7 @@ import rasterio.mask
 import rasterio.warp
 import scipy.spatial
 import scipy.interpolate
-from shapely.geometry import MultiPolygon, Point, box
+from shapely.geometry import Polygon, MultiPolygon, Point, box
 import shapely.ops
 import shapely.vectorized
 from sklearn.neighbors import BallTree
