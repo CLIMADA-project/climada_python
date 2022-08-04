@@ -740,18 +740,21 @@ def get_transformation(crs_in):
 
     # projection
     try:
-        if CRS.from_user_input(crs_in) == CRS.from_user_input('EPSG:3395'):
-            crs_epsg = ccrs.Mercator()
+        epsg = CRS.from_user_input(crs_in).to_epsg()
+        if epsg == 3395:
+            crs = ccrs.Mercator()
+        elif epsg == 4326:  # WSG 84
+            crs = ccrs.PlateCarree()
         else:
-            crs_epsg = ccrs.epsg(CRS.from_user_input(crs_in).to_epsg())
+            crs = ccrs.epsg(epsg)
     except ValueError:
         LOGGER.warning(
             "Error parsing coordinate system '%s'. Using projection PlateCarree in plot.", crs_in
         )
-        crs_epsg = ccrs.PlateCarree()
+        crs = ccrs.PlateCarree()
     except requests.exceptions.ConnectionError:
         LOGGER.warning('No internet connection. Using projection PlateCarree in plot.')
-        crs_epsg = ccrs.PlateCarree()
+        crs = ccrs.PlateCarree()
 
     # units
     with warnings.catch_warnings():
@@ -760,19 +763,19 @@ def get_transformation(crs_in):
         # we may safely ignore it.
         warnings.simplefilter(action="ignore", category=UserWarning)
         try:
-            units = (crs_epsg.proj4_params.get('units')
+            units = (crs.proj4_params.get('units')
             # As of cartopy 0.20 the proj4_params attribute is {} for CRS from an EPSG number
             # (see issue raised https://github.com/SciTools/cartopy/issues/1974
             # and longterm discussion on https://github.com/SciTools/cartopy/issues/813).
             # In these cases the units can be fetched through the method `to_dict`.
-            or crs_epsg.to_dict().get('units', '°'))
+            or crs.to_dict().get('units', '°'))
         except AttributeError:
             # This happens in setups with cartopy<0.20, where `to_dict` is not defined.
             # Officially, we require cartopy>=0.20, but there are still users around that
             # can't upgrade due to https://github.com/SciTools/iris/issues/4468
             units = '°'
 
-    return crs_epsg, units
+    return crs, units
 
 
 def multibar_plot(ax, data, colors=None, total_width=0.8, single_width=1,
