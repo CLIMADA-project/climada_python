@@ -18,6 +18,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Test Calibration class.
 """
+import re
 import unittest
 from pathlib import Path
 import pandas as pd
@@ -69,7 +70,7 @@ class TestCalib(unittest.TestCase):
                                        yearly_impact=True)
         # calc Impact as comparison
         impact = Impact()
-        impact.calc(ent.exposures, ent.impact_funcs, hazard)
+        impact.calc(ent.exposures, ent.impact_funcs, hazard, reassign_centroids=False)
         IYS = impact.calc_impact_year_set(all_years=True)
 
         # do the tests

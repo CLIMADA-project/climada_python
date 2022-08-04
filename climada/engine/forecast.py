@@ -297,7 +297,7 @@ class Forecast:
             if force_reassign:
                 self.exposure.assign_centroids(haz_i)
             self._impact[ind_i].calc(
-                self.exposure, self.vulnerability, haz_i, save_mat=True
+                self.exposure, self.vulnerability, haz_i, save_mat=True, reassign_centroids=False
             )
 
     def plot_imp_map(

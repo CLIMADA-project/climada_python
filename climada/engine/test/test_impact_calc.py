@@ -133,7 +133,7 @@ class TestImpactCalc(unittest.TestCase):
         HAZf = deepcopy(HAZ)
         HAZf.fraction *= 0.6
         icalc = ImpactCalc(ENT.exposures, ENT.impact_funcs, HAZf)
-        impact = icalc.impact()
+        impact = icalc.impact(reassign_centroids=False)
         self.assertEqual(icalc.n_events, len(impact.at_event))
         self.assertEqual(0, impact.at_event[0])
         self.assertEqual(0, impact.at_event[7225])
@@ -191,7 +191,7 @@ class TestImpactCalc(unittest.TestCase):
         at_event = np.zeros(HAZ.size)
         check_impact(self, impact, HAZ, exp, aai_agg, eai_exp, at_event, None)
 
-        impact = icalc.impact(save_mat=True)
+        impact = icalc.impact(save_mat=True, reassign_centroids=False)
         imp_mat_array = sparse.csr_matrix((HAZ.size, len(exp.gdf))).toarray()
         check_impact(self, impact, HAZ, exp, aai_agg, eai_exp, at_event, imp_mat_array)
 
@@ -204,7 +204,7 @@ class TestImpactCalc(unittest.TestCase):
         eai_exp = np.zeros(len(ENT.exposures.gdf))
         at_event = np.array([0])
         check_impact(self, impact, haz, ENT.exposures, aai_agg, eai_exp, at_event, None)
-        impact = icalc.impact(save_mat=True)
+        impact = icalc.impact(save_mat=True, reassign_centroids=False)
         imp_mat_array = sparse.csr_matrix((haz.size, len(ENT.exposures.gdf))).toarray()
         check_impact(self, impact, haz, ENT.exposures, aai_agg, eai_exp, at_event, imp_mat_array)
 

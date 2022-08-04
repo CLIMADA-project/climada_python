@@ -184,7 +184,7 @@ class Impact():
 
 
 
-    def calc(self, exposures, impact_funcs, hazard, save_mat=False):
+    def calc(self, exposures, impact_funcs, hazard, save_mat=False, reassign_centroids=True):
         """This function is deprecated, use ImpactCalc.impact
         and ImpactCalc.insured_impact instead.
         """
@@ -198,11 +198,11 @@ class Impact():
                 " for insured impacts instead. For non-insured impacts "
                 "please use ImpactCalc().impact()"
                 )
-            self.__dict__ = impcalc.insured_impact(save_mat).__dict__
+            self.__dict__ = impcalc.insured_impact(save_mat, reassign_centroids).__dict__
         else:
             LOGGER.warning("The use of Impact().calc() is deprecated. "
                            "Use ImpactCalc().impact() instead.")
-            self.__dict__ = impcalc.impact(save_mat).__dict__
+            self.__dict__ = impcalc.impact(save_mat, reassign_centroids).__dict__
 
 #TODO: new name
     @classmethod
@@ -1029,7 +1029,7 @@ class Impact():
         imp_arr = np.zeros(len(exp.gdf))
         for i_time, _ in enumerate(haz_list):
             imp_tmp = Impact()
-            imp_tmp.calc(exp, impf_set, haz_list[i_time])
+            imp_tmp.calc(exp, impf_set, haz_list[i_time], reassign_centroids=False)
             imp_arr = np.maximum(imp_arr, imp_tmp.eai_exp)
             # remove not impacted exposures
             save_exp = imp_arr > imp_thresh
