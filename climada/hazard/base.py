@@ -407,10 +407,13 @@ class Hazard():
         * Intensity and fraction data must be three-dimensional data that is interpreted
           with the coordinates given by ``coordinate_vars`` (or the default). All other
           data must be given in time coordinates only.
-        * To avoid confusion in the call signature, all parameters are keyword-only
-          arguments, except ``data``.
+        * To avoid confusion in the call signature, several parameters are keyword-only
+          arguments.
         * The attributes ``Hazard.tag.haz_type`` and ``Hazard.unit`` currently cannot be
           read from the Dataset. Use the method parameters to set these attributes.
+        * This method does not read coordinate system metadata and uses the default WGS
+          84 coordinate system exclusively. To set a custom coordinate system, modify
+          the ``Hazard.centroids.geometry`` attribute of the returned object.
         * This method **does not** read lazily. Single data arrays must fit into memory.
 
         Parameters
