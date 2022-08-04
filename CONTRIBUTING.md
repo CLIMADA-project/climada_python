@@ -33,7 +33,19 @@ To contribute follow these steps:
     ```
     $ git push --set-upstream origin feature/my-fancy-branch
     ```
+
+    **NOTE:** Only team members are allowed to push to the original repository.
+    If you lack permissions, you need to [fork the CLIMADA repository](https://github.com/CLIMADA-project/climada_python/fork) and add this fork as a new [remote](https://git-scm.com/book/en/v2/Git-Basics-Working-with-Remotes) to your local repository.
+    You can then push to the fork remote:
+
+    ```
+    $ git remote add fork <your-fork-url>
+    $ git push --set-upstream fork feature/my-fancy-branch
+    ```
+
+    If you would like to request permissions for the main repository, please contact the [team members](https://github.com/orgs/CLIMADA-project/people).
 9. On the [CLIMADA-project/climada_python](https://github.com/CLIMADA-project/climada_python) GitHub repository, create a new pull request with target branch `develop`.
+    This also works if you pushed to a fork instead of the main repository.
     Add a description and explanation of your changes and work through the pull request author checklist provided.
     Feel free to request reviews from specific team members.
 10. After approval of the pull request, the branch is merged into `develop` and your changes will become part of the next CLIMADA release.
