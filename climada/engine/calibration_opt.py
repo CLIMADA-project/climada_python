@@ -69,7 +69,7 @@ def calib_instance(hazard, exposure, impact_func, df_out=pd.DataFrame(),
     IFS = ImpactFuncSet()
     IFS.append(impact_func)
     impacts = Impact()
-    impacts.calc(exposure, IFS, hazard)
+    impacts.calc(exposure, IFS, hazard, assign_centroids=False)
     if yearly_impact:  # impact per year
         IYS = impacts.calc_impact_year_set(all_years=True)
         # Loop over whole year range:
@@ -333,6 +333,7 @@ def calib_all(hazard, exposure, impf_name_or_instance, param_full_dict,
     # prepare hazard and exposure
     region_ids = list(np.unique(exposure.region_id))
     hazard_type = hazard.tag.haz_type
+    exposure.assign_centroids(hazard)
     # prepare impact data
     if isinstance(impact_data_source, pd.DataFrame):
         df_impact_data = impact_data_source
@@ -398,6 +399,7 @@ def calib_optimize(hazard, exposure, impf_name_or_instance, param_dict,
     # prepare hazard and exposure
     region_ids = list(np.unique(exposure.region_id))
     hazard_type = hazard.tag.haz_type
+    exposure.assign_centroids(hazard)
     # prepare impact data
     if isinstance(impact_data_source, pd.DataFrame):
         df_impact_data = impact_data_source
