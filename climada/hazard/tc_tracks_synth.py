@@ -951,45 +951,73 @@ def _assign_on_land_to_track(track, land_geom):
     return track
 
 
-def _get_id_track_chunks(track):
-    """Identify tracks chunks for which intensity is to be modelled.
+def _add_id_synth_chunks(synth_track):
+    """Identify track chunks for which intensity is to be modelled.
+
+    The track chunks are coded as follows:
+    * -1 to -n when a track point is overland, decreasing by 1 with each landfall.
+    * 1 to n when a track point is over the ocean, increasing by 1 with each land-to-ocean
+      transition
+    * 0 for any point that does not neet any intensity modelling, i.e.:
+            * If the track starts on land, the first points on land are set to 0
+            * If both historical and synthetic tracks have the same points on land, return all 0
+            * If both historical and synthetic tracks have fewer than 2 points on land, return all 0
+    * To capture the intensification of a non-landfalling synthetic track versus its historical
+      counterpart, the non-landfalling points on the synthetic track are counted as if after a
+      land-to-ocean transition.
 
     Parameters
     ----------
-    track : xr.Dataset
-        TC track
-    land_geom : shapely.geometry.multipolygon.MultiPolygon
-        land geometry
+    synth_track : xr.Dataset
+        A single synthetic TC track with the on_land_hist and on_land variables set.
 
     Returns
     -------
-    id_chunk : np.array
-        ID of chunks value per track point: -1 before any landfall in historical or synthetic
-        track, then depending on the location of the (synthetic) track: 0 when over land,
-        1 to n for n chunks over the ocean. A chunk consists of a set of consecutive points
-        over the ocean for which intensity will be modelled.
+    id_chunk : np.array like synth_track["time"]
+        ID of chunks value per track point
     """
-    # TODO implement this properly
-    on_land = track.on_land.values
-    on_land_hist = track.on_land_hist.values
-    # initialize as 0
-    id_chunk = np.zeros_like(on_land)
-    sea_to_land = np.diff(on_land) == 1
-    sea_to_land_hist = np.diff(on_land_hist) == 1
-    # index of first point to be modelled
-    first_landfall_idx = np.where(sea_to_land | sea_to_land_hist)[0][0] + 1
-    # split into land and ocean chunks thereafter
-    # land_to_sea = np.diff() == -1
-    # id_over_ocean = np.cumsum(land_to_sea)
-    # id_over_ocean.
-    id_chunk[first_landfall_idx:] = on_land[first_landfall_idx:]
-    id_chunk = np.cumsum(np.append(np.diff(id_chunk) == -1), False)
-    id_chunk[on_land] = 0
-    id_chunk[:first_landfall_idx] = np.nan
-    return id_chunk
+    on_land_synth = synth_track.on_land.values
+    on_land_hist = synth_track.on_land_hist.values
 
+    # TODO need to discuss the and condition below. Was specced  as "If a landfall
+    # consists of 2 or less landfall points (in either track): no correction (likely
+    # just a small Island). [...]" This doesn't make sense: if both tracks hardly
+    # make landfall, nothing should be done. If either makes a significant landfall,
+    # however, we need to correct.
+    below_threshold = np.sum(on_land_synth) <= 2 and np.sum(on_land_hist) <= 2
+    all_equal = np.all(on_land_synth == on_land_hist)
+    if below_threshold or all_equal:
+        return np.zeros_like(on_land_synth)
 
+    # transitions coded as -1: to land, 1: to sea, 0: no change
+    transitions_synth = np.diff(~on_land_synth.astype(int), append=0)
+    transitions_hist = np.diff(~on_land_hist.astype(int), append=0)
 
+    # if the first transition is from land to sea, ignore it
+    first_transition_synth = np.flatnonzero(transitions_synth)[0]
+    if transitions_synth[first_transition_synth] == 1:
+        transitions_synth[first_transition_synth] = 0
+
+    # TODO do we want intensity increase from the first divergence? if not, remove the following
+    first_transition_synth = np.flatnonzero(transitions_synth)[0]
+    first_transition_hist = np.flatnonzero(transitions_hist)[0]
+    if first_transition_synth > first_transition_hist:
+        # increase chunk count if historical track has made landfall, but the synthetic one has not
+        transitions_synth[first_transition_hist + 1] = 1
+
+    to_sea = np.where(transitions_synth > 0, 0, transitions_synth)
+    no_chunks_sea = np.count_nonzero(to_sea)
+    to_land = np.where(transitions_synth < 0, 0, transitions_synth)
+    no_chunks_land = np.count_nonzero(to_land)
+    id_chunks = np.where(
+        on_land_synth,
+        to_land.cumsum(),
+        to_sea.cumsum(),
+    )
+    synth_track = synth_track.assign({
+        "id_chunk" : ("time", id_chunks),
+    })
+    return synth_track, no_chunks_sea, no_chunks_land
 
 
 def _model_tc_intensity(track, v_rel, p_rel, s_rel, rnd_pars):
