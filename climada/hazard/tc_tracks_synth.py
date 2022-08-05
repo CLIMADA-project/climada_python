@@ -977,7 +977,12 @@ def _add_id_synth_chunks(synth_track):
     -------
     id_chunk : np.array like synth_track["time"]
         ID of chunks value per track point
+    no_chunks_sea : int
+        number of chunks that need intensity modulation over sea
+    no_chunks_land : int
+        number of chunks that need intensity modulation over land
     """
+    assert not synth_track.orig_event_flag, "This logic only works on synth. tracks."
     on_land_synth = synth_track.on_land.values
     on_land_hist = synth_track.on_land_hist.values
 
@@ -986,6 +991,8 @@ def _add_id_synth_chunks(synth_track):
     # just a small Island). [...]" This doesn't make sense: if both tracks hardly
     # make landfall, nothing should be done. If either makes a significant landfall,
     # however, we need to correct.
+    # TODO could also think of filtering out two consecutive points on land if more than
+    # n points before and after lie on the ocean
     below_threshold = np.sum(on_land_synth) <= 2 and np.sum(on_land_hist) <= 2
     all_equal = np.all(on_land_synth == on_land_hist)
     if below_threshold or all_equal:
