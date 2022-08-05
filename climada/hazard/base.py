@@ -94,6 +94,12 @@ DEF_VAR_MAT = {'field_name': 'hazard',
                }
 """MATLAB variable names"""
 
+DEF_COORDS = dict(event="time", longitude="longitude", latitude="latitude")
+"""Default coordinates when reading Hazard data from an xarray Dataset"""
+
+DEF_DATA_VARS = ["fraction", "frequency", "event_id", "event_name", "date"]
+"""Default keys for optional Hazard attributes when reading from an xarray Dataset"""
+
 
 class Hazard():
     """
@@ -384,11 +390,11 @@ class Hazard():
     ):
         """Read raster-like data from an xarray Dataset or a raster data file
 
-        This method reads data that can be interpreted using three coordinates for time,
+        This method reads data that can be interpreted using three coordinates for event,
         latitude, and longitude. The data and the coordinates themselves may be organized
         in arbitrary dimensions in the Dataset (e.g. three dimensions 'year', 'month',
-        'day' for the coordinate 'date' representing time). The three coordinates to be
-        read can be specified via the ``coordinate_vars`` parameter.
+        'day' for the coordinate 'date' representing time/events). The three coordinates
+        to be read can be specified via the ``coordinate_vars`` parameter.
 
         The only required data is the intensity. For all other data, this method can
         supply sensible default values. By default, this method will try to find these
@@ -421,7 +427,7 @@ class Hazard():
         data : xarray.Dataset or str
             The data to read from. May be a opened dataset or a path to a raster data
             file, in which case the file is opened first. Works with any file format
-            supported by `xarray`.
+            supported by ``xarray``.
         hazard_type : str
             The type identifier of the hazard. Will be stored directly in the hazard
             object.
@@ -431,22 +437,23 @@ class Hazard():
             Identifier of the `xarray.DataArray` containing the hazard intensity data.
         coordinate_vars : dict(str, str), optional
             Mapping from default coordinate names to coordinate names used in the data
-            to read. The default names are `time`, `longitude`, and `latitude`.
+            to read. The default is
+            ``dict(event="time", longitude="longitude", latitude="latitude")``
         data_vars : dict(str, str), optional
             Mapping from default variable names to variable names used in the data
-            to read. The default names are `fraction`, `hazard_type`, `frequency`,
-            `event_name`, and `event_id`. If these values are not set, the method tries
-            to load data from the default names. If this fails, the method uses default
-            values for each entry. If the values are set to empty strings (`""`), no data
-            is loaded and the default values are used exclusively. See examples for
-            details.
+            to read. The default names are ``fraction``, ``hazard_type``, ``frequency``,
+            ``event_name``, and ``event_id``. If these values are not set, the method
+            tries to load data from the default names. If this fails, the method uses
+            default values for each entry. If the values are set to empty strings
+            (``""``), no data is loaded and the default values are used exclusively. See
+            examples for details.
 
             Default values are:
-            * `fraction`: 1.0 where intensity is not zero, else zero
-            * `hazard_type`: Empty string
-            * `frequency`: 1.0 for every event
-            * `event_name`: String representation of the event time
-            * `event_id`: Consecutive integers starting at 1 and increasing with time
+            * ``fraction``: 1.0 where intensity is not zero, else zero
+            * ``hazard_type``: Empty string
+            * ``frequency``: 1.0 for every event
+            * ``event_name``: String representation of the event time
+            * ``event_id``: Consecutive integers starting at 1 and increasing with time
 
         Returns
         -------
@@ -487,7 +494,7 @@ class Hazard():
         >>>     ),
         >>> )
         >>> hazard = Hazard.from_raster_xarray(
-        >>>     dset, "", "", coordinate_vars=dict(time="day", latitude="lat")
+        >>>     dset, "", "", coordinate_vars=dict(event="day", latitude="lat")
         >>> )
 
         Coordinates can be different from the actual dataset dimensions. The following
@@ -556,7 +563,7 @@ class Hazard():
         hazard.unit = intensity_unit
 
         # Update coordinate identifiers
-        coords = {"time": "time", "longitude": "longitude", "latitude": "latitude"}
+        coords = copy.deepcopy(DEF_COORDS)
         coordinate_vars = coordinate_vars if coordinate_vars is not None else {}
         unknown_coords = [co for co in coordinate_vars if co not in coords]
         if unknown_coords:
@@ -568,7 +575,7 @@ class Hazard():
 
         # Retrieve dimensions of coordinates
         dims = dict(
-            time=data[coords["time"]].dims,
+            event=data[coords["event"]].dims,
             longitude=data[coords["longitude"]].dims,
             latitude=data[coords["latitude"]].dims,
         )
@@ -579,7 +586,7 @@ class Hazard():
         #       So we use 'dict' without values, as 'dict' preserves insertion order
         #       (dict keys behave like a set).
         data = data.stack(
-            event=dims["time"],
+            event=dims["event"],
             lat_lon=dict.fromkeys(dims["latitude"] + dims["longitude"]),
         )
 
@@ -621,16 +628,17 @@ class Hazard():
             return array.values
 
         # Create a DataFrame storing access information for each of data_vars
-        # NOTE: Each row will be passed as arguments to `load_data_or_default`
+        # NOTE: Each row will be passed as arguments to
+        #       `load_from_xarray_or_return_default`, see its docstring for further
+        #       explanation of the DataFrame columns / keywords.
         num_events = data.sizes["event"]
-        keys = ["fraction", "frequency", "event_id", "event_name", "date"]
         data_ident = pd.DataFrame(
             data=dict(
-                # The attribute of the Hazard class where data is stored
-                hazard_attr=keys,
+                # The attribute of the Hazard class where the data will be stored
+                hazard_attr=DEF_DATA_VARS,
                 # The identifier and default key used in this method
-                identifier=keys,
-                # The keys assigned by the user
+                default_key=DEF_DATA_VARS,
+                # The key assigned by the user
                 user_key=None,
                 # The default value for each attribute
                 default_value=[
@@ -641,8 +649,8 @@ class Hazard():
                     ),
                     np.ones(num_events),
                     np.array(range(num_events), dtype=int) + 1,
-                    list(data[coords["time"]].values),
-                    np.array(u_dt.datetime64_to_ordinal(data[coords["time"]].values)),
+                    list(data[coords["event"]].values),
+                    np.array(u_dt.datetime64_to_ordinal(data[coords["event"]].values)),
                 ],
                 # The accessor for the data in the Dataset
                 accessor=[
@@ -655,43 +663,44 @@ class Hazard():
             )
         )
 
-        # Update the keys from user settings
+        # Check for unexpected keys
         data_vars = data_vars if data_vars is not None else {}
-        ident = data_ident["identifier"]
+        default_keys = data_ident["default_key"]
         unknown_keys = [
-            key for key in data_vars.keys() if not ident.str.contains(key).any()
+            key for key in data_vars.keys() if not default_keys.str.contains(key).any()
         ]
         if unknown_keys:
             raise ValueError(
                 f"Unknown data variables passed: '{unknown_keys}'. Supported "
-                f"data variables are {list(ident)}."
+                f"data variables are {list(default_keys)}."
             )
 
         # Update with keys provided by the user
-        # NOTE: Keys in 'data_ident' missing from 'data_vars' will be set to 'None',
-        #       which is exactly what we want
-        data_ident["user_key"] = ident.map(data_vars)
+        # NOTE: Keys in 'default_keys' missing from 'data_vars' will be set to 'None'
+        #       (which is exactly what we want) and the result is written into
+        #       'user_key'. 'default_keys' is not modified.
+        data_ident["user_key"] = default_keys.map(data_vars)
 
-        def load_data_or_default(
+        def load_from_xarray_or_return_default(
             user_key: Optional[str],
-            identifier: str,
+            default_key: str,
             hazard_attr: str,
             accessor: Callable[[xr.DataArray], Any],
             default_value: Any,
         ) -> Any:
-            """Return data for a single Hazard attribute or return the default value
+            """Load data for a single Hazard attribute or return the default value
 
             Does the following based on the ``user_key``:
             * If the key is an empty string, return the default value
             * If the key is a non-empty string, load the data for that key and return it.
-            * If the key is ``None``, look for the default key ``identifier`` in the
-              data. If it exists, return that data. If not, return the default value.
+            * If the key is ``None``, look for the``default_key`` in the data. If it
+              exists, return that data. If not, return the default value.
 
             Parameters
             ----------
             user_key : str or None
                 The key set by the user to identify the DataArray to read data from.
-            identifier : str
+            default_key : str
                 The default key identifying the DataArray to read data from.
             hazard_attr : str
                 The name of the attribute of ``Hazard`` where the data will be stored in.
@@ -732,11 +741,11 @@ class Hazard():
             else:
                 # Try default key
                 try:
-                    val = accessor(data[identifier])
+                    val = accessor(data[default_key])
                     LOGGER.debug(
                         "Reading data for Hazard.%s from DataArray '%s'",
                         hazard_attr,
-                        identifier,
+                        default_key,
                     )
                 except KeyError:
                     LOGGER.debug(
@@ -755,7 +764,7 @@ class Hazard():
             # Check size for read data
             if not np.array_equal(vshape(val), vshape(default_value)):
                 raise RuntimeError(
-                    f"'{user_key if user_key else identifier}' must have shape "
+                    f"'{user_key if user_key else default_key}' must have shape "
                     f"{vshape(default_value)}, but shape is {vshape(val)}"
                 )
 
@@ -764,7 +773,11 @@ class Hazard():
 
         # Set the Hazard attributes
         for _, ident in data_ident.iterrows():
-            setattr(hazard, ident["hazard_attr"], load_data_or_default(**ident))
+            setattr(
+                hazard,
+                ident["hazard_attr"],
+                load_from_xarray_or_return_default(**ident),
+            )
 
         # Done!
         LOGGER.debug("Hazard successfully loaded. Number of events: %i", num_events)

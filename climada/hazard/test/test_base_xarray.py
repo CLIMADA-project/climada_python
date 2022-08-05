@@ -316,7 +316,7 @@ class ReadDimsCoordsNetCDF(unittest.TestCase):
             self.netcdf_path,
             "",
             "",
-            coordinate_vars=dict(latitude="lat", longitude="lon", time="years"),
+            coordinate_vars=dict(latitude="lat", longitude="lon", event="years"),
         )
         np.testing.assert_array_equal(hazard.centroids.lat, [1, 1, 1, 2, 2, 2])
         np.testing.assert_array_equal(hazard.centroids.lon, [1, 2, 3, 1, 2, 3])
