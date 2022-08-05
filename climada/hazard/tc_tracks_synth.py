@@ -1155,7 +1155,7 @@ def _apply_decay_coeffs(track, v_rel, p_rel, land_geom, s_rel):
         if np.any(v_decay > 1):
             # should not happen unless v_rel is negative
             LOGGER.info('Landfall decay would increase wind speed for '
-                        'track id %s. This behavious in unphysical and '
+                        'track id %s. This behaviour is unphysical and '
                         'therefore landfall decay is not applied in this '
                         'case.',
                         track.sid)
