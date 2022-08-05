@@ -83,7 +83,7 @@ def calc_perturbed_trajectories(
     autocorr_ddirection: float = 0.5,
     seed: int = CONFIG.hazard.trop_cyclone.random_seed.int(),
     adjust_intensity: bool = True,
-    decay: bool = False,
+    legacy_decay: bool = False,
     use_global_decay_params: bool = True,
     pool: AbstractWorkerPool = None,
 ):
@@ -150,10 +150,8 @@ def calc_perturbed_trajectories(
         historical and synthetic tracks. If True, track intensification, peak
         intensity duration as well as intensity decay over the ocean and over
         land are explicitely modeled.
-    decay : bool, optional
-        For backwards compatibility, alias for `adjust_intensity`.
-        This is deprecated, use `adjust_intensity` instead!
-        Whether to apply landfall decay in probabilistic tracks. Default: True.
+    legacy_decay : bool, optional
+        Apply the legacy landfall decay functionality. Default: True.
     use_global_decay_params : bool, optional
         Whether to use precomputed global parameter values for landfall decay
         obtained from IBTrACS (1980-2019). If False, parameters are fitted
@@ -165,10 +163,6 @@ def calc_perturbed_trajectories(
         Pool that will be used for parallel computation when applicable. If not given, the
         pool attribute of `tracks` will be used. Default: None
     """
-    if decay:
-        LOGGER.warning("`decay` is deprecated. "
-                        "Use `adjust_intensity` instead.")
-        adjust_intensity = True
     LOGGER.info('Computing %s synthetic tracks.', nb_synth_tracks * tracks.size)
 
     pool = tracks.pool if pool is None else pool
@@ -300,6 +294,11 @@ def calc_perturbed_trajectories(
         LOGGER.info(
             f"Adapted intensity on {len(ocean_modelled_tracks)} tracks for a total of "
             f"{sum(no_sea_chunks for _, no_sea_chunks, _ in tracks_with_id_chunks)} chunks"
+        )
+
+    if legacy_decay:
+        land_geom = climada.util.coordinates.get_land_geometry(
+            extent=tracks.get_extent(deg_buffer=0.1), resolution=10
         )
 
         if use_global_decay_params:
