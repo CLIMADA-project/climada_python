@@ -22,16 +22,17 @@ Generate synthetic tropical cyclone tracks from real ones
 import array
 import itertools
 import logging
+
 import matplotlib.cm as cm_mp
-from matplotlib.lines import Line2D
 import matplotlib.pyplot as plt
 import numba
 import numpy as np
+from matplotlib.lines import Line2D
 from pathos.abstract_launcher import AbstractWorkerPool
 
-from climada import CONFIG
-import climada.util.coordinates
 import climada.hazard.tc_tracks
+import climada.util.coordinates
+from climada import CONFIG
 
 LOGGER = logging.getLogger(__name__)
 
