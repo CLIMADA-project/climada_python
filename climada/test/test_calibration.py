@@ -18,7 +18,6 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Test Calibration class.
 """
-import re
 import unittest
 from pathlib import Path
 import pandas as pd
