@@ -272,7 +272,7 @@ class ImpactCalc():
         """
         if assign_centroids:
             self.exposures.assign_centroids(self.hazard, overwrite=True)
-        elif self.hazard.centr_exp_col not in self.exposures.gdf.column:
+        elif self.hazard.centr_exp_col not in self.exposures.gdf.columns:
             raise ValueError("'assign_centroids' is set to 'False' but no centroids are assigned"
                              f" for the given hazard type ({self.hazard.tag.haz_type})."
                              " Run `asssign_centroids` beforehand or set the 'assign_centroids'"
