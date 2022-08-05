@@ -27,6 +27,7 @@ from matplotlib.lines import Line2D
 import matplotlib.pyplot as plt
 import numba
 import numpy as np
+from pathos.abstract_launcher import AbstractWorkerPool
 
 from climada import CONFIG
 import climada.util.coordinates
@@ -71,18 +72,21 @@ land_geom = climada.util.coordinates.get_land_geometry(
 )
 v_rel, p_rel = _calc_land_decay(tracks.data, land_geom, pool=tracks.pool)"""
 
-def calc_perturbed_trajectories(tracks,
-                                nb_synth_tracks=9,
-                                max_shift_ini=0.75,
-                                max_dspeed_rel=0.3,
-                                max_ddirection=np.pi / 360,
-                                autocorr_dspeed=0.85,
-                                autocorr_ddirection=0.5,
-                                seed=CONFIG.hazard.trop_cyclone.random_seed.int(),
-                                adjust_intensity=True,
-                                decay=False,
-                                use_global_decay_params=True,
-                                pool=None):
+
+def calc_perturbed_trajectories(
+    tracks,
+    nb_synth_tracks: int = 9,
+    max_shift_ini: float = 0.75,
+    max_dspeed_rel: float = 0.3,
+    max_ddirection: float = np.pi / 360,
+    autocorr_dspeed: float = 0.85,
+    autocorr_ddirection: float = 0.5,
+    seed: int = CONFIG.hazard.trop_cyclone.random_seed.int(),
+    adjust_intensity: bool = True,
+    decay: bool = False,
+    use_global_decay_params: bool = True,
+    pool: AbstractWorkerPool = None,
+):
     """
     Generate synthetic tracks based on directed random walk. An ensemble of nb_synth_tracks
     synthetic tracks is computed for every track contained in self.
