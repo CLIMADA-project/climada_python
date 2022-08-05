@@ -292,7 +292,8 @@ class Forecast:
             default is false.
         """
         # calc impact
-        self.exposure.assign_centroids(self.hazard, overwrite=force_reassign)
+        if self.hazard:
+            self.exposure.assign_centroids(self.hazard[0], overwrite=force_reassign)
         for ind_i, haz_i in enumerate(self.hazard):
             self._impact[ind_i].calc(
                 self.exposure, self.vulnerability, haz_i,
