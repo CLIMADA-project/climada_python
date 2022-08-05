@@ -259,45 +259,44 @@ def calc_perturbed_trajectories(tracks,
             extent=tracks.get_extent(deg_buffer=0.1), resolution=10
         )
 
-        # random parameters for intensification, peak duration, and ocean decay
-        # are needed
-        # number depends on number of chunks to model
-        # chunk to model: from first landfall each chunk over the ocean
-        # first a variable 'on_land_hist' to each synthetic track
-          # TODO calculate land geom for each historical track
         if pool:
-            tracks = pool.map(_assign_on_land_to_track, tracks,
-                            itertools.repeat(land_geom),
-                            chunksize=chunksize)
+            tracks = pool.map(
+                _assign_on_land_to_track,
+                tracks,
+                itertools.repeat(land_geom),
+                chunksize=chunksize,
+            )
         else:
             for track in tracks.data:
                 climada.hazard.tc_tracks.track_land_params(track, land_geom)
-        # so now we have for synth tracks on_land and on_land_hist
 
-        # TODO now we need to calculate how many tracks chunks over the oceans need
-        # to be modelled, to know how many random parameters to generate
-        synth_tracks = [track for track in tracks.data if not track.orig_event_flag]
-        if pool:
-            id_chunks = pool.map(_get_id_track_chunks, synth_tracks
-                                 chunksize=chunksize)
-        else:
-            id_chunks = [_get_id_track_chunks(track, land_geom) for track in synth_tracks]
-        
-        # TODO generate random parameters: for each chunk, 3: for
-        # intensification, duration, decay
-        random_vec_2 = [
-            # for each chunk we need 3 random value: for intensification, duration, decay
-            np.random.uniform(size=3*max(idchunk))
-            for idchunk in id_chunks if max(idchunk) > -1
+        # TODO implement parallelism; _add_id_synth_chunks returns tuple!
+        # if pool:
+        #     id_chunks = pool.map(
+        #         _add_id_synth_chunks, synth_tracks, chunksize=chunksize
+        #     )
+        # else:
+        # returns a list of tuples (track, no_sea_chunks, no_land_chunks)
+        tracks_with_id_chunks = [
+            _add_id_synth_chunks(track)
+            for track in tracks.data
+            if not track.orig_event_flag
         ]
 
+        # TODO @benoit needs to explain to me why we should pre-generate random values outside the
+        # actual computation.
 
-        # TODO _model_tc_intensity similar to currently _apply_land_decay.
+        # TODO _model_tc_intensity needs to call _apply_land_decay to
         #       also include the land decay when a landfall occurs.
-        # need to pass random_vec_2 components as well
-        # _model_tc_intensity(track, v_rel, p_rel, s_rel, rnd_pars)
-
-
+        ocean_modelled_tracks = [
+            _model_synth_tc_intensity(track, np.random.uniform(size=4 * no_sea_chunks))
+            for track, no_sea_chunks, _ in tracks_with_id_chunks
+            if no_sea_chunks > 0
+        ]
+        LOGGER.info(
+            f"Adapted intensity on {len(ocean_modelled_tracks)} tracks for a total of "
+            f"{sum(no_sea_chunks for _, no_sea_chunks, _ in tracks_with_id_chunks)} chunks"
+        )
 
         if use_global_decay_params:
             tracks.data = _apply_land_decay(tracks.data, LANDFALL_DECAY_V,
@@ -1032,26 +1031,41 @@ def _add_id_synth_chunks(synth_track):
     return synth_track, no_chunks_sea, no_chunks_land
 
 
-def _model_tc_intensity(track, v_rel, p_rel, s_rel, rnd_pars):
+def _model_synth_tc_intensity(synth_track, v_rel, p_rel, land_geom, rnd_pars):
+    """Models a synthetic track's intensity evolution
+
+    Sequentially moves over each unique track["id_chunk"] and applies the following:
+    * If id_chunk is negative, i.e. over land, applies landfall decay logic
+    * if id_chunk is positive, i.e. over sea, applies intensification/peak duration/decay logic
+
+    """
+    assert not synth_track.orig_event_flag, "Only handles synthetic tracks"
+    # return track, rnd_pars
+    raise NotImplementedError
 
     # 0) if both tracks start over land: shift values so that first point over
     #    the ocean is the same values
+    if synth_track.on_land.values[0] == synth_track.on_land_hist.values[0]:
+        # needs logic to find first (hist and synth common?) point over ocean
+        # also i don't understand what you mean by "is the same value" for both tracks - you haven't
+        # yet applied more than some slight (autocorrelated) intensity perturbations to the track at
+        # this stage, so i would simply ignore this condition
+        raise NotImplementedError
 
     # 1) find out when first on_land or on_land_hist is True -> model from there
-    first_on_land = 
+    # first_on_land =
 
-    if no land point in either track -> return track
+    # if no land point in either track -> return track
 
-    if first_on_land == 0:
+    # if first_on_land == 0:
       # shift intensity/radius/pressure etc (all values except on_land and
       # on_land_hist) so that the first value over the ocean is the same
 
-      
-    sea_land_idx, land_sea_idx = climada.hazard.tc_tracks._get_landfall_idx(track, include_starting_landfall=True)
+    sea_land_idx, land_sea_idx = climada.hazard.tc_tracks._get_landfall_idx(
+        synth_track, include_starting_landfall=True
+    )
 
-
-    return track
-
+    return synth_track
 
 
 def _apply_decay_coeffs(track, v_rel, p_rel, land_geom, s_rel):
