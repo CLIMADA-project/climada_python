@@ -179,6 +179,13 @@ def calc_perturbed_trajectories(tracks,
                          'Please ensure constant time steps by applying equal_timestep beforehand')
     time_step_h = time_step_h[0]
 
+    # ensure we're not making synths from synths
+    if not sum(1 for t in tracks.data if t.orig_event_flag) == tracks.size:
+        raise ValueError(
+            "Not all tracks are original; refusing to compute perturbed "
+            "trajectories on perturbed trajectories."
+        )
+
     # number of random value per synthetic track:
     # 2*nb_synth_tracks for starting points (lon, lat)
     # nb_synth_tracks*(track.time.size-1) for angle and same for translation perturbation
