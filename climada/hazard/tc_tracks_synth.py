@@ -742,6 +742,7 @@ def _apply_land_decay(tracks, v_rel, p_rel, land_geom, s_rel=True,
 
     if pool:
         chunksize = min(len(tracks) // pool.ncpus, 1000)
+        # TODO @benoit did you actually mean to map over `tracks` instead of `sy_tracks`?
         tracks = pool.map(_apply_decay_coeffs, tracks,
                           itertools.repeat(v_rel), itertools.repeat(p_rel),
                           itertools.repeat(land_geom), itertools.repeat(s_rel),
