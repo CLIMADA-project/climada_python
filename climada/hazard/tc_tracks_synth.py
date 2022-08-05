@@ -205,17 +205,8 @@ def calc_perturbed_trajectories(tracks,
 
     if adjust_intensity:
         # assign land parameters to historical tracks for use in synthetic tracks later
-        extent = tracks.get_extent()
-        # TODO this can actually be removed once PR 524 is merged in here
-        # if longitude extent is outside of [-180,+180], need to retrieve the
-        # full longitude extent
-        if extent[0] < -180 or extent[1] > 180:
-            extent[0] = -180
-            extent[1] = 180
-        # note: even so this will fail currently if longitude values are not properly normalized around 0
-        # TODO end of: this can actually be removed once PR 524 is merged
         land_geom_hist = climada.util.coordinates.get_land_geometry(
-            extent=extent, resolution=10
+            extent=tracks.get_extent(deg_buffer=0.1), resolution=10
         )
         if pool:
             tracks = pool.map(_assign_on_land_to_track, tracks,
@@ -260,16 +251,8 @@ def calc_perturbed_trajectories(tracks,
     tracks.data = sum(new_ens, [])
 
     if adjust_intensity:
-        extent = tracks.get_extent()
-        # TODO this can actually be removed once PR 524 is merged in here
-        # if longitude extent is outside of [-180,+180], need to retrieve the
-        # full longitude extent
-        if extent[0] < -180 or extent[1] > 180:
-            extent[0] = -180
-            extent[1] = 180
-        # TODO end of: this can actually be removed once PR 524 is merged
         land_geom = climada.util.coordinates.get_land_geometry(
-            extent=extent, resolution=10
+            extent=tracks.get_extent(deg_buffer=0.1), resolution=10
         )
 
         # random parameters for intensification, peak duration, and ocean decay
