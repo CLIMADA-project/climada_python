@@ -22,11 +22,13 @@ Generate synthetic tropical cyclone tracks from real ones
 import array
 import itertools
 import logging
+from typing import Dict
 
 import matplotlib.cm as cm_mp
 import matplotlib.pyplot as plt
 import numba
 import numpy as np
+import xarray as xr
 from matplotlib.lines import Line2D
 from pathos.abstract_launcher import AbstractWorkerPool
 
@@ -288,7 +290,12 @@ def calc_perturbed_trajectories(
         # TODO _model_tc_intensity needs to call _apply_land_decay to
         #       also include the land decay when a landfall occurs.
         ocean_modelled_tracks = [
-            _model_synth_tc_intensity(track, np.random.uniform(size=4 * no_sea_chunks))
+            _model_synth_tc_intensity(
+                synth_track=track,
+                v_rel=LANDFALL_DECAY_V,
+                p_rel=LANDFALL_DECAY_P,
+                rnd_pars=np.random.uniform(size=4 * no_sea_chunks),
+            )
             for track, no_sea_chunks, _ in tracks_with_id_chunks
             if no_sea_chunks > 0
         ]
@@ -707,8 +714,9 @@ def _calc_land_decay(hist_tracks, land_geom, s_rel=True, check_plot=False,
     return v_rel, p_rel
 
 
-def _apply_land_decay(tracks, v_rel, p_rel, land_geom, s_rel=True,
-                      check_plot=False, pool=None):
+def _apply_land_decay(
+    tracks, v_rel: Dict, p_rel: Dict, land_geom, s_rel=True, check_plot=False, pool=None
+):
     """Compute wind and pressure decay due to landfall in synthetic tracks.
 
     Parameters
@@ -954,7 +962,7 @@ def _assign_on_land_to_track(track, land_geom):
     return track
 
 
-def _add_id_synth_chunks(synth_track):
+def _add_id_synth_chunks(synth_track: xr.Dataset):
     """Identify track chunks for which intensity is to be modelled.
 
     The track chunks are coded as follows:
@@ -1043,13 +1051,23 @@ def _add_id_synth_chunks(synth_track):
     return synth_track, no_chunks_sea, no_chunks_land
 
 
-def _model_synth_tc_intensity(synth_track, v_rel, p_rel, land_geom, rnd_pars):
+def _model_synth_tc_intensity(
+    synth_track: xr.Dataset, v_rel: Dict, p_rel: Dict, rnd_pars: np.ndarray
+):
     """Models a synthetic track's intensity evolution
 
     Sequentially moves over each unique track["id_chunk"] and applies the following:
     * If id_chunk is negative, i.e. over land, applies landfall decay logic
     * if id_chunk is positive, i.e. over sea, applies intensification/peak duration/decay logic
 
+    Parameters
+    ----------
+    synth_track : xarray.Dataset
+        A synthetic track object
+    v_rel : Dict
+        A dict of form {category : A} for MSW decay of the form exp(-x*A)
+    p_rel : Dict
+        A dict of form {category : (S, B)} for pressure decay of the form S-(S-1)*exp(-x*B)
     """
     assert not synth_track.orig_event_flag, "Only handles synthetic tracks"
     # return track, rnd_pars
