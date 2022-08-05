@@ -113,7 +113,7 @@ class ImpactCalc():
         assign_centroids : bool, optional
             indicates whether centroids are re-assigned to the self.exposures object
             or kept from previous impact calculation with a hazard of the same hazard type.
-            Centroids assignment is an expensive operation; set this to ``False`` to save 
+            Centroids assignment is an expensive operation; set this to ``False`` to save
             computation time if the centroids have not changed since the last impact
             calculation.
             Default: True
@@ -159,7 +159,7 @@ class ImpactCalc():
         assign_centroids : bool, optional
             indicates whether centroids are re-assigned to the self.exposures object
             or kept from previous impact calculation with a hazard of the same hazard type.
-            Centroids assignment is an expensive operation; set this to ``False`` to save 
+            Centroids assignment is an expensive operation; set this to ``False`` to save
             computation time if the centroids have not changed since the last impact
             calculation.
             Default: True
@@ -266,7 +266,7 @@ class ImpactCalc():
         assign_centroids : bool
             Indicates whether centroids are re-assigned to the self.exposures object
             or kept from previous impact calculation with a hazard of the same hazard type.
-            Centroids assignment is an expensive operation; set this to ``False`` to save 
+            Centroids assignment is an expensive operation; set this to ``False`` to save
             computation time if the centroids have not changed since the last impact
             calculation.
         """

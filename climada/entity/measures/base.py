@@ -282,12 +282,14 @@ class Measure():
         from_id = int(self.imp_fun_map[0:self.imp_fun_map.find('to')])
         to_id = int(self.imp_fun_map[self.imp_fun_map.find('to') + 2:])
         try:
-            exp_change = np.argwhere(new_exp.gdf[INDICATOR_IMPF + self.haz_type].values == from_id).\
-                reshape(-1)
+            exp_change = np.argwhere(
+                new_exp.gdf[INDICATOR_IMPF + self.haz_type].values == from_id
+            ).reshape(-1)
             new_exp.gdf[INDICATOR_IMPF + self.haz_type].values[exp_change] = to_id
         except KeyError:
-            exp_change = np.argwhere(new_exp.gdf[INDICATOR_IMPF].values == from_id).\
-                reshape(-1)
+            exp_change = np.argwhere(
+                new_exp.gdf[INDICATOR_IMPF].values == from_id
+            ).reshape(-1)
             new_exp.gdf[INDICATOR_IMPF].values[exp_change] = to_id
         return new_exp
 

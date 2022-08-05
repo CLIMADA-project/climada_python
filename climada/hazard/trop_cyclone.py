@@ -388,7 +388,7 @@ class TropCyclone(Hazard):
 
         if file_name:
             LOGGER.info('Generating video %s', file_name)
-            fig, axis, fontsize = u_plot.make_map(figsize=figsize, adapt_fontsize=adapt_fontsize)
+            fig, axis, _fontsize = u_plot.make_map(figsize=figsize, adapt_fontsize=adapt_fontsize)
             pbar = tqdm(total=idx_plt.size - 2)
             ani = animation.FuncAnimation(fig, run, frames=idx_plt.size - 2,
                                           interval=500, blit=False)
@@ -873,7 +873,7 @@ def _v_max_s_holland_2008(penv, pcen, b_s):
     v_squared = b_s / (RHO_AIR * np.exp(1)) * 100 * (penv - pcen)
     return np.sqrt(v_squared)
 
-def _B_holland_1980(gradient_winds, penv, pcen):
+def _B_holland_1980(gradient_winds, penv, pcen):  # pylint: disable=invalid-name
     """Holland's 1980 B-value computation for gradient-level winds.
 
     The parameter applies to gradient-level winds (about 1000 metres above the earth's surface).
