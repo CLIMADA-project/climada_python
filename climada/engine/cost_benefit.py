@@ -158,7 +158,7 @@ class CostBenefit():
         self.imp_meas_present = dict()
 
     def calc(self, hazard, entity, haz_future=None, ent_future=None,
-             future_year=None, risk_func=risk_aai_agg, imp_time_depen=None, save_imp=False):
+             future_year=None, risk_func=risk_aai_agg, imp_time_depen=None, save_imp=False, assign_centroids=True):
         """Compute cost-benefit ratio for every measure provided current
         and, optionally, future conditions. Present and future measures need
         to have the same name. The measures costs need to be discounted by the user.
@@ -202,6 +202,14 @@ class CostBenefit():
 
         if future_year is None and ent_future is None:
             future_year = entity.exposures.ref_year
+
+        # assign centroids
+        if assign_centroids:
+            entity.exposures.assign_centroids(hazard, overwrite=True)
+            if ent_future:
+                ent_future.exposures.assign_centroids(
+                    haz_future if haz_future else hazard, overwrite=True
+                )
 
         if not haz_future and not ent_future:
             self.future_year = future_year
@@ -525,11 +533,11 @@ class CostBenefit():
         future_year = ent_future.exposures.ref_year
 
         imp = Impact()
-        imp.calc(entity.exposures, entity.impact_funcs, hazard)
+        imp.calc(entity.exposures, entity.impact_funcs, hazard, assign_centroids=False)
         curr_risk = risk_func(imp)
 
         imp = Impact()
-        imp.calc(ent_future.exposures, ent_future.impact_funcs, haz_future)
+        imp.calc(ent_future.exposures, ent_future.impact_funcs, haz_future, assign_centroids=False)
         fut_risk = risk_func(imp)
 
         if not axis:
@@ -542,7 +550,7 @@ class CostBenefit():
         # changing future
         # socio-economic dev
         imp = Impact()
-        imp.calc(ent_future.exposures, ent_future.impact_funcs, hazard)
+        imp.calc(ent_future.exposures, ent_future.impact_funcs, hazard, assign_centroids=False)
         risk_dev = risk_func(imp)
         LOGGER.info('Risk with development at {:d}: {:.3e}'.format(future_year, risk_dev))
 
@@ -687,7 +695,7 @@ class CostBenefit():
         time_dep = self._time_dependency_array(imp_time_depen)
         # socio-economic dev
         imp = Impact()
-        imp.calc(ent_future.exposures, ent_future.impact_funcs, hazard)
+        imp.calc(ent_future.exposures, ent_future.impact_funcs, hazard, assign_centroids=False)
         risk_dev = self._npv_unaverted_impact(risk_func(imp), entity.disc_rates,
                                               time_dep, curr_risk)
         LOGGER.info('Total risk with development at {:d}: {:.3e}'.format(
@@ -760,7 +768,7 @@ class CostBenefit():
         # compute impact without measures
         LOGGER.debug('%s impact with no measure.', when)
         imp_tmp = Impact()
-        imp_tmp.calc(exposures, imp_fun_set, hazard)
+        imp_tmp.calc(exposures, imp_fun_set, hazard, assign_centroids=False)
         impact_meas[NO_MEASURE] = dict()
         impact_meas[NO_MEASURE]['cost'] = (0, 0)
         impact_meas[NO_MEASURE]['risk'] = risk_func(imp_tmp)
@@ -772,7 +780,7 @@ class CostBenefit():
         # compute impact for each measure
         for measure in meas_set.get_measure(hazard.tag.haz_type):
             LOGGER.debug('%s impact of measure %s.', when, measure.name)
-            imp_tmp, risk_transf = measure.calc_impact(exposures, imp_fun_set, hazard)
+            imp_tmp, risk_transf = measure.calc_impact(exposures, imp_fun_set, hazard, assign_centroids=False)
             impact_meas[measure.name] = dict()
             impact_meas[measure.name]['cost'] = (measure.cost, measure.risk_transf_cost_factor)
             impact_meas[measure.name]['risk'] = risk_func(imp_tmp)

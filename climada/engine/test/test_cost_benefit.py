@@ -61,6 +61,7 @@ class TestSteps(unittest.TestCase):
         for meas in entity.measures.get_measure('TC'):
             meas.haz_type = 'TC'
         entity.check()
+        entity.exposures.assign_centroids(hazard)
 
         cost_ben = CostBenefit()
         cost_ben._calc_impact_measures(hazard, entity.exposures, entity.measures,
@@ -241,6 +242,7 @@ class TestSteps(unittest.TestCase):
         for meas in entity.measures.get_measure('TC'):
             meas.haz_type = 'TC'
         entity.check()
+        entity.exposures.assign_centroids(hazard)
 
         cost_ben = CostBenefit()
         cost_ben._calc_impact_measures(hazard, entity.exposures, entity.measures,
@@ -277,6 +279,7 @@ class TestSteps(unittest.TestCase):
         for meas in entity.measures.get_measure('TC'):
             meas.haz_type = 'TC'
         entity.check()
+        entity.exposures.assign_centroids(hazard)
 
         cost_ben = CostBenefit()
         cost_ben._calc_impact_measures(hazard, entity.exposures, entity.measures,
@@ -288,6 +291,7 @@ class TestSteps(unittest.TestCase):
 
         haz_future = copy.deepcopy(hazard)
         haz_future.intensity.data += 25
+        ent_future.exposures.assign_centroids(haz_future)
 
         cost_ben._calc_impact_measures(haz_future, ent_future.exposures, ent_future.measures,
                                        ent_future.impact_funcs, when='future',
