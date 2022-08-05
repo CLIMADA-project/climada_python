@@ -1086,14 +1086,19 @@ def _model_synth_tc_intensity(
     # first_on_land =
 
     # if no land point in either track -> return track
+    if np.all(synth_track["id_chunk"] == 0):
+        return synth_track
 
-    # if first_on_land == 0:
-      # shift intensity/radius/pressure etc (all values except on_land and
-      # on_land_hist) so that the first value over the ocean is the same
-
-    sea_land_idx, land_sea_idx = climada.hazard.tc_tracks._get_landfall_idx(
-        synth_track, include_starting_landfall=True
-    )
+    def intensity_evolution_sea(synth_track, rnd_pars):
+        raise NotImplementedError
+    
+    def intensity_evolution_land(synth_track):
+        raise NotImplementedError
+    
+    for chunk in np.unique(synth_track["id_chunk"]):
+        # xr_dataset_subset = subset synth_track using chunk == id_chunk
+        # apply intensity evolution according to chunk sign: negative on land, positive on sea
+        pass
 
     return synth_track
 
