@@ -135,25 +135,25 @@ class TestDistance(unittest.TestCase):
         self.assertAlmostEqual(
             7709.827814738594,
             np.sqrt(u_coord._dist_sqr_approx(lats1, lons1, cos_lats1, lats2, lons2)) * ONE_LAT_KM)
-    
+
     def test_geodesic_length_geog(self):
         """Test compute_geodesic_lengths for geographic input crs"""
-        
+
         LINE_PATH = DEMO_DIR.joinpath('nl_rails.gpkg')
         gdf_rails = gpd.read_file(LINE_PATH).to_crs('epsg:4326')
         lengths_geom = u_coord.compute_geodesic_lengths(gdf_rails)
-        
+
         self.assertEqual(len(lengths_geom), len(gdf_rails))
         self.assertTrue(
             np.all(
-                (abs(lengths_geom - gdf_rails['distance'])/lengths_geom < 0.1) | 
+                (abs(lengths_geom - gdf_rails['distance'])/lengths_geom < 0.1) |
                 (lengths_geom - gdf_rails['distance'] < 10)
                 )
             )
 
     def test_geodesic_length_proj(self):
         """Test compute_geodesic_lengths for projected input crs"""
-        
+
         LINE_PATH = DEMO_DIR.joinpath('nl_rails.gpkg')
         gdf_rails = gpd.read_file(LINE_PATH).to_crs('epsg:4326')
         gdf_rails_proj = gpd.read_file(LINE_PATH).to_crs('epsg:4326').to_crs('EPSG:28992')
@@ -163,10 +163,10 @@ class TestDistance(unittest.TestCase):
 
         for len_proj, len_geom in zip(lengths_proj,lengths_geom):
             self.assertAlmostEqual(len_proj, len_geom, 1)
-        
+
         self.assertTrue(
             np.all(
-                (abs(lengths_proj - gdf_rails_proj['distance'])/lengths_proj < 0.1) | 
+                (abs(lengths_proj - gdf_rails_proj['distance'])/lengths_proj < 0.1) |
                 (lengths_proj - gdf_rails_proj['distance'] < 10)
                 )
             )
@@ -859,21 +859,21 @@ class TestGetGeodata(unittest.TestCase):
     def test_get_land_geometry_country_pass(self):
         """get_land_geometry with selected countries."""
         iso_countries = ['DEU', 'VNM']
-        res = u_coord.get_land_geometry(iso_countries, 110)
+        res = u_coord.get_land_geometry(country_names=iso_countries, resolution=10)
         self.assertIsInstance(res, shapely.geometry.multipolygon.MultiPolygon)
         for res, ref in zip(res.bounds, (5.85248986800, 8.56557851800,
                                          109.47242272200, 55.065334377000)):
             self.assertAlmostEqual(res, ref)
 
         iso_countries = ['ESP']
-        res = u_coord.get_land_geometry(iso_countries, 110)
+        res = u_coord.get_land_geometry(country_names=iso_countries, resolution=10)
         self.assertIsInstance(res, shapely.geometry.multipolygon.MultiPolygon)
         for res, ref in zip(res.bounds, (-18.16722571499986, 27.642238674000,
                                          4.337087436000, 43.793443101)):
             self.assertAlmostEqual(res, ref)
 
         iso_countries = ['FRA']
-        res = u_coord.get_land_geometry(iso_countries, 110)
+        res = u_coord.get_land_geometry(country_names=iso_countries, resolution=10)
         self.assertIsInstance(res, shapely.geometry.multipolygon.MultiPolygon)
         for res, ref in zip(res.bounds, (-61.79784094999991, -21.37078215899993,
                                          55.854502800000034, 51.08754088371883)):
@@ -958,7 +958,7 @@ class TestGetGeodata(unittest.TestCase):
 
     def test_get_country_geometries_country_norway_pass(self):
         """test correct numeric ISO3 for country Norway"""
-        iso_countries = ['NOR']
+        iso_countries = 'NOR'
         extent = [10, 11, 55, 60]
         res1 = u_coord.get_country_geometries(iso_countries)
         res2 = u_coord.get_country_geometries(extent=extent)
@@ -1002,6 +1002,18 @@ class TestGetGeodata(unittest.TestCase):
         res = u_coord.get_country_geometries(resolution=110)
         self.assertIsInstance(res, gpd.geodataframe.GeoDataFrame)
         self.assertAlmostEqual(res.area[0], 1.639510995900778)
+
+    def test_get_country_geometries_fail(self):
+        """get_country_geometries with offensive parameters"""
+        with self.assertRaises(ValueError) as cm:
+            u_coord.get_country_geometries(extent=(-20,350,0,0))
+        self.assertIn("longitude extent range is greater than 360: -20 to 350",
+                      str(cm.exception))
+        with self.assertRaises(ValueError) as cm:
+            u_coord.get_country_geometries(extent=(350,-20,0,0))
+        self.assertIn("longitude extent at the left (350) is larger "
+                      "than longitude extent at the right (-20)",
+                      str(cm.exception))
 
     def test_country_code_pass(self):
         """Test set_region_id"""
