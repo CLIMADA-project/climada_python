@@ -102,7 +102,7 @@ class ImpactCalc():
         if 'cover' in self.exposures.gdf.columns:
             return self.exposures.gdf['cover'].to_numpy()
 
-    def impact(self, save_mat=True, reassign_centroids=True):
+    def impact(self, save_mat=True, assign_centroids=True):
         """Compute the impact of a hazard on exposures.
 
         Parameters
@@ -110,7 +110,7 @@ class ImpactCalc():
         save_mat : bool, optional
             if true, save the total impact matrix (events x exposures)
             Default: True
-        reassign_centroids : bool, optional
+        assign_centroids : bool, optional
             indicates whether centroids are re-assigned to the self.exposures object
             or kept from previous impact calculation with a hazard of the same hazard type.
             Centroids assignment is an expensive operation; set this to ``False`` to save 
@@ -135,7 +135,7 @@ class ImpactCalc():
         the column is added to the exposures geodataframe.
         """
         impf_col = self.exposures.get_impf_column(self.hazard.haz_type)
-        exp_gdf = self.minimal_exp_gdf(impf_col, reassign_centroids)
+        exp_gdf = self.minimal_exp_gdf(impf_col, assign_centroids)
         if exp_gdf.size == 0:
             return self._return_empty(save_mat)
         LOGGER.info('Calculating impact for %s assets (>0) and %s events.',
@@ -145,7 +145,7 @@ class ImpactCalc():
 
 #TODO: make a better impact matrix generator for insured impacts when
 # the impact matrix is already present
-    def insured_impact(self, save_mat=False, reassign_centroids=True):
+    def insured_impact(self, save_mat=False, assign_centroids=True):
         """Compute the impact of a hazard on exposures with a deductible and/or
         cover.
 
@@ -156,7 +156,7 @@ class ImpactCalc():
         ----------
         save_mat : bool
             if true, save the total impact matrix (events x exposures)
-        reassign_centroids : bool, optional
+        assign_centroids : bool, optional
             indicates whether centroids are re-assigned to the self.exposures object
             or kept from previous impact calculation with a hazard of the same hazard type.
             Centroids assignment is an expensive operation; set this to ``False`` to save 
@@ -185,7 +185,7 @@ class ImpactCalc():
                                  "Please set exposures.gdf.cover"
                                  "and/or exposures.gdf.deductible")
         impf_col = self.exposures.get_impf_column(self.hazard.haz_type)
-        exp_gdf = self.minimal_exp_gdf(impf_col, reassign_centroids)
+        exp_gdf = self.minimal_exp_gdf(impf_col, assign_centroids)
         if exp_gdf.size == 0:
             return self._return_empty(save_mat)
         LOGGER.info('Calculating impact for %s assets (>0) and %s events.',
@@ -254,7 +254,7 @@ class ImpactCalc():
         return Impact.from_eih(self.exposures, self.impfset, self.hazard,
                         at_event, eai_exp, aai_agg, imp_mat)
 
-    def minimal_exp_gdf(self, impf_col, reassign_centroids):
+    def minimal_exp_gdf(self, impf_col, assign_centroids):
         """Get minimal exposures geodataframe for impact computation
 
         Parameters
@@ -263,14 +263,20 @@ class ImpactCalc():
         hazard : climada.Hazard
         impf_col : str
             Name of the impact function column in exposures.gdf
-        reassign_centroids : bool
+        assign_centroids : bool
             Indicates whether centroids are re-assigned to the self.exposures object
             or kept from previous impact calculation with a hazard of the same hazard type.
             Centroids assignment is an expensive operation; set this to ``False`` to save 
             computation time if the centroids have not changed since the last impact
             calculation.
         """
-        self.exposures.assign_centroids(self.hazard, overwrite=reassign_centroids)
+        if assign_centroids:
+            self.exposures.assign_centroids(self.hazard, overwrite=True)
+        elif self.hazard.centr_exp_col not in self.exposures.gdf.column:
+            raise ValueError("'assign_centroids' is set to 'False' but no centroids are assigned"
+                             f" for the given hazard type ({self.hazard.tag.haz_type})."
+                             " Run `asssign_centroids` beforehand or set the 'assign_centroids'"
+                             " to 'True'")
         mask = (
             (self.exposures.gdf.value.values != 0)
             & (self.exposures.gdf[self.hazard.centr_exp_col].values >= 0)
