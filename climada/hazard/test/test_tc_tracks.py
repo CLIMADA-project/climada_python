@@ -897,6 +897,32 @@ class TestFuncs(unittest.TestCase):
         self.assertEqual(sea_land_idx.tolist(), [0,4])
         self.assertEqual(land_sea_idx.tolist(), [2,6])
 
+    def test_track_land_params(self):
+        """Test identification of points on land and distance since landfall"""
+        # 1 pt over the ocean and two points within Fiji, one on each side of the anti-meridian
+        lon_test = np.array([170, 179.18, 180.05])
+        lat_test = np.array([-60, -16.56, -16.85])
+        on_land = np.array([False, True, True])
+        lon_shift = np.array([-360, 0, 360])
+        # ensure both points are considered on land as is
+        np.testing.assert_array_equal(
+            u_coord.coord_on_land(lat = lat_test, lon = lon_test),
+            on_land
+        )
+        # independently on shifts by 360 degrees in longitude
+        np.testing.assert_array_equal(
+            u_coord.coord_on_land(lat = lat_test, lon = lon_test + lon_shift),
+            on_land
+        )
+        np.testing.assert_array_equal(
+            u_coord.coord_on_land(lat = lat_test, lon = lon_test - lon_shift),
+            on_land
+        )
+        # also when longitude is within correct range
+        np.testing.assert_array_equal(
+            u_coord.coord_on_land(lat = lat_test, lon = u_coord.lon_normalize(lon_test)),
+            on_land
+        )
 
 # Execute Tests
 if __name__ == "__main__":
