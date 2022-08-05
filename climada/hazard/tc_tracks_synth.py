@@ -440,11 +440,16 @@ def _one_rnd_walk(track, nb_synth_tracks, max_shift_ini, max_dspeed_rel, max_ddi
             taget_pressure = np.minimum.accumulate(
                 np.flip(i_track.central_pressure.values)
             )
-            # TODO these assignments are wrong, check how to do in xarray
-            i_track['target_central_pressure'] = ('time', taget_pressure)
-            i_track['on_land_hist'] = ('time', i_track.on_land.values)
-            # TODO check this works: remove 'on_land' and 'dist_since_lf' variable
-            i_track = i_track.drop_vars(['on_land', 'dist_since_lf'])
+            i_track = i_track.assign(
+                {
+                    "target_central_pressure": ("time", taget_pressure),
+                    # "on_land_hist" : ("time", i_track["on_land"]),
+                }
+            )
+            i_track = i_track.rename({"on_land": "on_land_hist"})
+            # TODO IMHO this should be dropped even without adjust_intensity, since it pertains to
+            # the historical track
+            i_track = i_track.drop_vars(["dist_since_lf"])
 
         ens_track.append(i_track)
 
