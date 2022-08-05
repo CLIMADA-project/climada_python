@@ -992,32 +992,45 @@ def _add_id_synth_chunks(synth_track):
     below_threshold = np.sum(on_land_synth) <= 2 and np.sum(on_land_hist) <= 2
     all_equal = np.all(on_land_synth == on_land_hist)
     if below_threshold or all_equal:
-        return np.zeros_like(on_land_synth)
+        synth_track = synth_track.assign(
+            {
+                "id_chunk": ("time", np.zeros_like(on_land_synth)),
+            }
+        )
+        return synth_track, 0, 0
 
-    # transitions coded as -1: to land, 1: to sea, 0: no change
-    transitions_synth = np.diff(~on_land_synth.astype(int), append=0)
-    transitions_hist = np.diff(~on_land_hist.astype(int), append=0)
+    # transitions coded as -1: first pt. on land, 1: first pt. on sea, 0: no change
+    transitions_synth = np.append(0, np.diff(~on_land_synth.astype(int)))
+    transitions_hist = np.append(0, np.diff(~on_land_hist.astype(int)))
 
-    # if the first transition is from land to sea, ignore it
-    first_transition_synth = np.flatnonzero(transitions_synth)[0]
-    if transitions_synth[first_transition_synth] == 1:
-        transitions_synth[first_transition_synth] = 0
+    def first_transition(transitions):
+        tnz = np.flatnonzero(transitions)
+        return tnz[0] if tnz.size > 0 else transitions.size - 1
+
+    def remove_landstart(transitions):
+        ftr = first_transition(transitions)
+        # if the first transition is from land to sea, drop it
+        if transitions[ftr] == 1:
+            transitions[ftr] = 0
+
+    remove_landstart(transitions_synth)
+    remove_landstart(transitions_hist)
 
     # TODO do we want intensity increase from the first divergence? if not, remove the following
-    first_transition_synth = np.flatnonzero(transitions_synth)[0]
-    first_transition_hist = np.flatnonzero(transitions_hist)[0]
-    if first_transition_synth > first_transition_hist:
+    ftr_synth = first_transition(transitions_synth)
+    ftr_hist = first_transition(transitions_hist)
+    if ftr_synth > ftr_hist:
         # increase chunk count if historical track has made landfall, but the synthetic one has not
-        transitions_synth[first_transition_hist + 1] = 1
+        transitions_synth[ftr_hist] = 1
 
-    to_sea = np.where(transitions_synth > 0, 0, transitions_synth)
+    to_sea = np.where(transitions_synth > 0, transitions_synth, 0)
     no_chunks_sea = np.count_nonzero(to_sea)
-    to_land = np.where(transitions_synth < 0, 0, transitions_synth)
+    to_land = np.where(transitions_synth < 0, transitions_synth, 0)
     no_chunks_land = np.count_nonzero(to_land)
     id_chunks = np.where(
         on_land_synth,
-        to_land.cumsum(),
         to_sea.cumsum(),
+        to_land.cumsum(),
     )
     synth_track = synth_track.assign({
         "id_chunk" : ("time", id_chunks),
