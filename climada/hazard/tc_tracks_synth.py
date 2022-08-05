@@ -209,11 +209,15 @@ def calc_perturbed_trajectories(tracks,
             extent=tracks.get_extent(deg_buffer=0.1), resolution=10
         )
         if pool:
-            tracks = pool.map(_assign_on_land_to_track, tracks,
-                            itertools.repeat(land_geom_hist),
-                            chunksize=chunksize)
+            # TODO should we use this chunksize for all maps?
+            chunksize = min(tracks.size // pool.ncpus, 1000)
+            tracks = pool.map(
+                _assign_on_land_to_track,
+                tracks,
+                itertools.repeat(land_geom_hist),
+                chunksize=chunksize,
+            )
         else:
-            # non-parallel version
             for track in tracks.data:
                 climada.hazard.tc_tracks.track_land_params(track, land_geom_hist)
 
