@@ -1483,7 +1483,7 @@ class Impact():
 
           #impact matrix
           imp_mats=[imp.imp_mat for imp in imp_list]
-          impact.imp_mat=sparse.vstack(imp_mats)
+          imp_mat = sparse.vstack(imp_mats)
           
           #concatenate remaining attributes
           at_events=[imp.at_event for imp in imp_list]
