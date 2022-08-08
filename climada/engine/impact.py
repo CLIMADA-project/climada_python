@@ -1388,7 +1388,7 @@ class Impact():
         Returns
         --------
         impact: climada.engine.Impact
-               New impact object which is a merge of self and impact
+               New impact object which is a concatenation of all impacts
         """
        
         if len(imp_list) == 0:
