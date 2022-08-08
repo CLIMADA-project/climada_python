@@ -1416,7 +1416,6 @@ class Impact():
                             "The impacts are incompatible and cannot be concatenated.")
         if len(units) == 0:
            units = {''}
-        impact.unit = units.pop()
 
         #check coordinate reference system
         crss={imp.crs for imp in imp_list if imp.crs != ''}
