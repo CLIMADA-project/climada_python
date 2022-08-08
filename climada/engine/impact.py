@@ -1398,7 +1398,6 @@ class Impact():
            raise ValueError(f"Concatenation option {concat_type} not available.")
        
         #initialize new impact object
-        impact=cls()
        
         # check impacts consistency and fill impact object
        
