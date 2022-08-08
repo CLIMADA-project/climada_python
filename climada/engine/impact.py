@@ -1463,7 +1463,7 @@ class Impact():
           if len(exp_descriptions) > 1:
                raise ValueError(f"The given impacts are based on exposures with different descriptions: {exp_descriptions}. "
                             "The impacts are incompatible and cannot be concatenated.")      
-          impact.coord_exp=imp_list[0].coord_exp
+          coord_exp = imp_list[0].coord_exp
           impact.tot_value=imp_list[0].tot_value
           
           #fill remaining attributes
