@@ -1444,7 +1444,7 @@ class Impact():
         if concat_type=='time_window':
           
           #check if no overlapping dates
-          dates=[date for imp in imp_list for date in imp.date]
+          dates = [date for imp in imp_list for date in imp.date]
           
           if len(dates)!=len(set(dates)): 
               raise ValueError("There is at least one date in more than one impact. Please make sure impacts do not contain same dates."
