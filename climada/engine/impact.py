@@ -1437,8 +1437,7 @@ class Impact():
         if len(freqs)>1:
            raise ValueError(f"Impacts do not have the same frequency: {freqs}."
                             "The impacts are incompatible and cannot be concatenated.")
-        frequencies=[imp.frequency for imp in imp_list]
-        impact.frequency = np.concatenate(frequencies,axis=0) 
+        frequencies = np.concatenate([imp.frequency for imp in imp_list], axis=0)
        
         ### The following checks are specific to the selected concatenation options
        
