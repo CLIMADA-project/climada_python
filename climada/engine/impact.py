@@ -1492,7 +1492,7 @@ class Impact():
           eai_exps=[imp.eai_exp for imp in imp_list]
           impact.eai_exp = np.nansum(eai_exps,axis=0) 
           aai_aggs=[imp.aai_agg for imp in imp_list]
-          impact.aai_agg = np.nansum(aai_aggs)
+          aai_agg = np.nansum(aai_aggs)
 
         elif concat_type=='exposure':
             
