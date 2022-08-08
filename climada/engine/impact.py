@@ -1478,7 +1478,7 @@ class Impact():
           event_names=[event_name for imp in imp_list for event_name in imp.event_name]
           if len(event_names)!=len(set(event_names)):
               raise ValueError("Duplicate event names found.")   
-          impact.event_name = np.array(event_names,dtype=object)
+          event_name = event_names
 
           #impact matrix
           imp_mats=[imp.imp_mat for imp in imp_list]
