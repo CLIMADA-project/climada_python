@@ -1416,13 +1416,15 @@ class Impact():
                             "The impacts are incompatible and cannot be concatenated.")
         if len(units) == 0:
            units = {''}
-
+        unit = units.pop()
+        
         #check coordinate reference system
         crss={imp.crs for imp in imp_list if imp.crs != ''}
         if len(crss)>1:
            raise ValueError(f"The given impacts have different crs: {crss}. "
                         "The impacts are incompatible and cannot be concatenated.")
- 
+        crs = crss.pop()
+        
         #check attributes
         attributes = sorted(set.union(*[set(vars(imp).keys()) for imp in imp_list]))
         for attr_name in attributes:
@@ -1435,7 +1437,7 @@ class Impact():
         if len(freqs)>1:
            raise ValueError(f"Impacts do not have the same frequency: {freqs}."
                             "The impacts are incompatible and cannot be concatenated.")
-        frequencies = np.concatenate([imp.frequency for imp in imp_list], axis=0)
+        frequency = np.concatenate([imp.frequency for imp in imp_list], axis=0)
        
         ### The following checks are specific to the selected concatenation options
        
@@ -1444,19 +1446,19 @@ class Impact():
           #check if no overlapping dates
           dates = [date for imp in imp_list for date in imp.date]
           
-          if len(dates)!=len(set(dates)): 
+          if len(dates) != len(set(dates)): 
               raise ValueError("There is at least one date in more than one impact. Please make sure impacts do not contain same dates."
                                "The impacts are incompatible and cannot be concatenated.")
-          impact.date = np.array(dates)
+          date = np.array(dates)
           
           
           #check if exposure is consistent
-          isin=[np.isin(imp.coord_exp,imp_list[0].coord_exp) for imp in imp_list[0::]]
-          tot_vals=set([imp.tot_value for imp in imp_list])
+          isin = [np.isin(imp.coord_exp,imp_list[0].coord_exp) for imp in imp_list[0::]]
+          tot_vals = set([imp.tot_value for imp in imp_list])
           if (not np.all(isin)) or (len(tot_vals)>1):
                raise ValueError("Impacts are not based on the same exposure. Please make sure exposures are identical."
                                 "The impacts are incompatible and cannot be concatenated.")
-          exp_descriptions= {imp.tag['exp'].description for imp in imp_list if imp.tag['exp'].description != ''}
+          exp_descriptions = {imp.tag['exp'].description for imp in imp_list if imp.tag['exp'].description != ''}
           if len(exp_descriptions) > 1:
                raise ValueError(f"The given impacts are based on exposures with different descriptions: {exp_descriptions}. "
                             "The impacts are incompatible and cannot be concatenated.")      
@@ -1464,30 +1466,30 @@ class Impact():
           tot_value = imp_list[0].tot_value
           
           #fill remaining attributes
-          impact.tag=imp_list[0].tag
+          tag=imp_list[0].tag
 
           #event IDs
-          event_ids=[event_id for imp in imp_list for event_id in imp.event_id]
-          if len(event_ids)!=len(set(event_ids)):
+          event_ids = [event_id for imp in imp_list for event_id in imp.event_id]
+          if len(event_ids) != len(set(event_ids)):
               raise ValueError("Duplicate event IDs found.")
-          impact.event_id=np.array(event_ids)
+          event_id = np.array(event_ids)
           
           #event names
-          event_names=[event_name for imp in imp_list for event_name in imp.event_name]
-          if len(event_names)!=len(set(event_names)):
+          event_names = [event_name for imp in imp_list for event_name in imp.event_name]
+          if len(event_names) != len(set(event_names)):
               raise ValueError("Duplicate event names found.")   
           event_name = event_names
 
           #impact matrix
-          imp_mats=[imp.imp_mat for imp in imp_list]
+          imp_mats =[imp.imp_mat for imp in imp_list]
           imp_mat = sparse.vstack(imp_mats)
           
           #concatenate remaining attributes
-          at_events=[imp.at_event for imp in imp_list]
+          at_events = [imp.at_event for imp in imp_list]
           at_event = np.concatenate(at_events,axis=0)
-          eai_exps=[imp.eai_exp for imp in imp_list]
+          eai_exps = [imp.eai_exp for imp in imp_list]
           eai_exp = np.nansum(eai_exps,axis=0) 
-          aai_aggs=[imp.aai_agg for imp in imp_list]
+          aai_aggs = [imp.aai_agg for imp in imp_list]
           aai_agg = np.nansum(aai_aggs)
 
         elif concat_type=='exposure':
@@ -1507,15 +1509,15 @@ class Impact():
 
 
 
-                return cls(
+        return cls(
             event_id = event_id,
             event_name = event_name,
             date = date,
             frequency = frequency,
-            coord_exp = coords,
+            coord_exp = coord_exp,
             crs = crs,
-            unit = value_unit,
-            tot_value = total_value,
+            unit = unit,
+            tot_value = tot_value,
             eai_exp = eai_exp,
             at_event = at_event,
             aai_agg = aai_agg,
