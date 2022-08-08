@@ -1441,7 +1441,7 @@ class Impact():
        
         ### The following checks are specific to the selected concatenation options
        
-        if concat_type=='time_window':
+        if concat_type == 'time_window':
           
           #check if no overlapping dates
           dates = [date for imp in imp_list for date in imp.date]
