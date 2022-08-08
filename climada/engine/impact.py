@@ -1423,7 +1423,6 @@ class Impact():
         if len(crss)>1:
            raise ValueError(f"The given impacts have different crs: {crss}. "
                         "The impacts are incompatible and cannot be concatenated.")
-        impact.crs=crss.pop()
  
         #check attributes
         attributes = sorted(set.union(*[set(vars(imp).keys()) for imp in imp_list]))
