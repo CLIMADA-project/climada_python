@@ -1374,7 +1374,7 @@ class Impact():
 
     @classmethod
     def concat(cls, imp_list,concat_type='time_window'):
-       """Merge impact objects of the same hazard type, frequency, exposure, and coordinate system.
+       """Concatenate impact objects of the same hazard type, frequency, exposure, and coordinate system.
 
         Parameters
         ----------
@@ -1391,13 +1391,13 @@ class Impact():
        """
        
        ## TO Dos
-           # Make concatenation more concise/make sure no attribute is missed (loop over attributes as in hazard.append)
+           # Make concatenation more concise/make sure no attribute is missed (loop over attributes as e.g. in hazard.append)
            # implement the 'exposure' concatenation option
            
        #some thougts
-       ## either one has to keep the exposure the same and has impacts of different time periods during the year
-       ## or one keeps the time period the same but allows for different exposures
-       ## this function is now implemented in a way that merging only works if exposures are the same.
+       ## It seems that either one has to keep the exposure the same and has impacts of different time periods during the year
+       ## or one keeps the time period the same but allows for different exposures.
+       ## this function is now implemented in a way that concatenating only works if exposures are the same.
        ## However, it is set up such that that concatenation of impacts with separate exposure can be implemented when the keyword concat_type='exposure' is passed.
        
        
@@ -1453,7 +1453,7 @@ class Impact():
        frequencies=[imp.frequency for imp in imp_list]
        impact.frequency = np.concatenate(frequencies,axis=0) 
        
-       ### The following checks are separate for the two concat options 
+       ### The following checks are specific to the selected concatenation options 
        
        if concat_type=='time_window':
           
