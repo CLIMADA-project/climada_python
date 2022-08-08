@@ -250,6 +250,10 @@ class ReadDefaultNetCDF(unittest.TestCase):
         # NaNs are propagated in dense data
         np.testing.assert_array_equal(hazard.frequency, frequency)
 
+    @unittest.skip("no test for CRS input implemented")
+    def test_crs(self):
+        """Check if different CRS are handled correctly"""
+        self.fail("No test implemented")
 
 class ReadDimsCoordsNetCDF(unittest.TestCase):
     """Checks for dimensions and coordinates with different names and shapes"""

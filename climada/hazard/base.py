@@ -49,7 +49,7 @@ import climada.util.dates_times as u_dt
 from climada import CONFIG
 import climada.util.hdf5_handler as u_hdf5
 import climada.util.coordinates as u_coord
-from climada.util.constants import ONE_LAT_KM
+from climada.util.constants import ONE_LAT_KM, DEF_CRS
 from climada.util.coordinates import NEAREST_NEIGHBOR_THRESHOLD
 
 LOGGER = logging.getLogger(__name__)
@@ -387,6 +387,7 @@ class Hazard():
         intensity: str = "intensity",
         coordinate_vars: Optional[Dict[str, str]] = None,
         data_vars: Optional[Dict[str, str]] = None,
+        crs: str = DEF_CRS,
     ):
         """Read raster-like data from an xarray Dataset or a raster data file
 
@@ -417,9 +418,8 @@ class Hazard():
           arguments.
         * The attributes ``Hazard.tag.haz_type`` and ``Hazard.unit`` currently cannot be
           read from the Dataset. Use the method parameters to set these attributes.
-        * This method does not read coordinate system metadata and uses the default WGS
-          84 coordinate system exclusively. To set a custom coordinate system, modify
-          the ``Hazard.centroids.geometry`` attribute of the returned object.
+        * This method does not read coordinate system metadata. Use the ``crs`` parameter
+          to set a custom coordinate system identifier.
         * This method **does not** read lazily. Single data arrays must fit into memory.
 
         Parameters
@@ -454,6 +454,9 @@ class Hazard():
             * ``frequency``: 1.0 for every event
             * ``event_name``: String representation of the event time
             * ``event_id``: Consecutive integers starting at 1 and increasing with time
+        crs : str, optional
+            Identifier for the coordinate reference system to use. Defaults to
+            ``EPSG:4326`` (WGS 84), defined by ``climada.util.constants.DEF_CRS``.
 
         Returns
         -------
@@ -592,7 +595,7 @@ class Hazard():
 
         # Transform coordinates into centroids
         hazard.centroids = Centroids.from_lat_lon(
-            data[coords["latitude"]].values, data[coords["longitude"]].values
+            data[coords["latitude"]].values, data[coords["longitude"]].values, crs=crs,
         )
 
         def to_csr_matrix(array: np.ndarray) -> sparse.csr_matrix:
