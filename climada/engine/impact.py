@@ -1489,7 +1489,7 @@ class Impact():
           at_events=[imp.at_event for imp in imp_list]
           at_event = np.concatenate(at_events,axis=0)
           eai_exps=[imp.eai_exp for imp in imp_list]
-          impact.eai_exp = np.nansum(eai_exps,axis=0) 
+          eai_exp = np.nansum(eai_exps,axis=0) 
           aai_aggs=[imp.aai_agg for imp in imp_list]
           aai_agg = np.nansum(aai_aggs)
 
