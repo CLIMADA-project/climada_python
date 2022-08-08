@@ -1511,7 +1511,22 @@ class Impact():
 
 
 
-        return impact
+                return cls(
+            event_id = event_id,
+            event_name = event_name,
+            date = date,
+            frequency = frequency,
+            coord_exp = coords,
+            crs = crs,
+            unit = value_unit,
+            tot_value = total_value,
+            eai_exp = eai_exp,
+            at_event = at_event,
+            aai_agg = aai_agg,
+            imp_mat = imp_mat if imp_mat is not None else sparse.csr_matrix((0, 0)),
+            tag = tag
+      )
+
    
 class ImpactFreqCurve():
     """Impact exceedence frequency curve.
