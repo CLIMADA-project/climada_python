@@ -188,7 +188,14 @@ class CostBenefit():
             count the same when there is no future hazard nor entity and 1
             (linear annual change) when there is future hazard or entity.
             Default is None.
-        save_imp : bool, optional)
+        save_imp : bool, optional
+            Default: False
+        assign_centroids : bool, optional
+            indicates whether centroids are assigned to the self.exposures object.
+            Centroids assignment is an expensive operation; set this to ``False`` to save
+            computation time if the exposures from ``ent`` and ``ent_fut`` have already
+            centroids assigned for the respective hazards.
+            Default: True
         True if Impact of each measure is saved. Default is False.
         """
         # Present year given in entity. Future year in ent_future if provided.

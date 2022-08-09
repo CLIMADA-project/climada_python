@@ -134,6 +134,12 @@ class Measure():
             impact function set instance
         hazard : climada.hazard.Hazard
             hazard instance
+        assign_centroids : bool, optional
+            indicates whether centroids are assigned to the self.exposures object.
+            Centroids assignment is an expensive operation; set this to ``False`` to save
+            computation time if the hazards' centroids are already assigned to the exposures
+            object.
+            Default: True
 
         Returns
         -------

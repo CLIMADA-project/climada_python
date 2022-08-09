@@ -111,11 +111,10 @@ class ImpactCalc():
             if true, save the total impact matrix (events x exposures)
             Default: True
         assign_centroids : bool, optional
-            indicates whether centroids are re-assigned to the self.exposures object
-            or kept from previous impact calculation with a hazard of the same hazard type.
+            indicates whether centroids are assigned to the self.exposures object.
             Centroids assignment is an expensive operation; set this to ``False`` to save
-            computation time if the centroids have not changed since the last impact
-            calculation.
+            computation time if the hazards' centroids are already assigned to the exposures
+            object.
             Default: True
 
         Examples
@@ -157,11 +156,10 @@ class ImpactCalc():
         save_mat : bool
             if true, save the total impact matrix (events x exposures)
         assign_centroids : bool, optional
-            indicates whether centroids are re-assigned to the self.exposures object
-            or kept from previous impact calculation with a hazard of the same hazard type.
+            indicates whether centroids are assigned to the self.exposures object.
             Centroids assignment is an expensive operation; set this to ``False`` to save
-            computation time if the centroids have not changed since the last impact
-            calculation.
+            computation time if the hazards' centroids are already assigned to the exposures
+            object.
             Default: True
 
         Examples
