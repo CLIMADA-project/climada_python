@@ -157,8 +157,8 @@ class CostBenefit():
         self.imp_meas_future = dict()
         self.imp_meas_present = dict()
 
-    def calc(self, hazard, entity, haz_future=None, ent_future=None,
-             future_year=None, risk_func=risk_aai_agg, imp_time_depen=None, save_imp=False, assign_centroids=True):
+    def calc(self, hazard, entity, haz_future=None, ent_future=None, future_year=None,
+             risk_func=risk_aai_agg, imp_time_depen=None, save_imp=False, assign_centroids=True):
         """Compute cost-benefit ratio for every measure provided current
         and, optionally, future conditions. Present and future measures need
         to have the same name. The measures costs need to be discounted by the user.
@@ -780,7 +780,8 @@ class CostBenefit():
         # compute impact for each measure
         for measure in meas_set.get_measure(hazard.tag.haz_type):
             LOGGER.debug('%s impact of measure %s.', when, measure.name)
-            imp_tmp, risk_transf = measure.calc_impact(exposures, imp_fun_set, hazard, assign_centroids=False)
+            imp_tmp, risk_transf = measure.calc_impact(exposures, imp_fun_set, hazard,
+                                                       assign_centroids=False)
             impact_meas[measure.name] = dict()
             impact_meas[measure.name]['cost'] = (measure.cost, measure.risk_transf_cost_factor)
             impact_meas[measure.name]['risk'] = risk_func(imp_tmp)

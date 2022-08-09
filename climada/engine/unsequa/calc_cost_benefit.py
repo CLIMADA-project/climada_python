@@ -279,8 +279,11 @@ class CalcCostBenefit(Calc):
         ent_fut = self.ent_fut_input_var.evaluate(**ent_fut_samples)
 
         cb = CostBenefit()
+        ent.exposures.assign_centroids(haz, overwrite=False)
+        if ent_fut:
+            ent_fut.exposures.assign_centroids(haz_fut if haz_fut else haz, overwrite=False)
         cb.calc(hazard=haz, entity=ent, haz_future=haz_fut, ent_future=ent_fut,
-                save_imp=False, **kwargs)
+                save_imp=False, assign_centroids=False, **kwargs)
 
         # Extract from climada.impact the chosen metrics
         return  [cb.imp_meas_present,
