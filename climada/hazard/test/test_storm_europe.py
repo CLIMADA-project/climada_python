@@ -127,21 +127,21 @@ class TestReader(unittest.TestCase):
         storms = StormEurope.from_footprints(WS_DEMO_NC)
 
         storms.set_ssi(method='dawkins')
-        ssi_dawg = np.asarray([1.44573572e+09, 6.16173724e+08])
+        ssi_dawg = np.asarray([0.18808288, 0.08014435])
         self.assertTrue(
-            np.allclose(storms.ssi, ssi_dawg)
+            np.allclose(storms.ssi, ssi_dawg), storms.ssi
         )
 
         storms.set_ssi(method='wisc_gust')
-        ssi_gusty = np.asarray([1.42124571e+09, 5.86870673e+08])
+        ssi_gusty = np.asarray([0.18442705, 0.0761549])
         self.assertTrue(
-            np.allclose(storms.ssi, ssi_gusty)
+            np.allclose(storms.ssi, ssi_gusty), storms.ssi
         )
 
         storms.set_ssi(threshold=20, on_land=False)
-        ssi_special = np.asarray([2.96582030e+09, 1.23980294e+09])
+        ssi_special = np.asarray([0.3919637, 0.16458253])
         self.assertTrue(
-            np.allclose(storms.ssi, ssi_special)
+            np.allclose(storms.ssi, ssi_special), storms.ssi
         )
 
     def test_generate_prob_storms(self):
