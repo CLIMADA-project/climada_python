@@ -279,7 +279,7 @@ def calc_perturbed_trajectories(
         # else:
         # returns a list of tuples (track, no_sea_chunks, no_land_chunks)
         tracks_with_id_chunks = [
-            _add_id_synth_chunks(track)
+            _add_id_synth_chunks_shift_init(track, shift_values_init=True)
             for track in tracks.data
             if not track.orig_event_flag
         ]
@@ -963,8 +963,9 @@ def _assign_on_land_to_track(track, land_geom):
     return track
 
 
-def _add_id_synth_chunks(synth_track: xr.Dataset):
-    """Identify track chunks for which intensity is to be modelled.
+def _add_id_synth_chunks_shift_init(synth_track: xr.Dataset, shift_values_init: bool = True):
+    """Identify track chunks for which intensity is to be modelled, and shift
+    track parameter value in case the track starts over land.
 
     The track chunks are coded as follows:
     * -1 to -n when a track point is overland, decreasing by 1 with each landfall.
@@ -978,15 +979,27 @@ def _add_id_synth_chunks(synth_track: xr.Dataset):
       counterpart, the non-landfalling points on the synthetic track are counted as if after a
       land-to-ocean transition.
 
+    If the synthetic track and/or its historical counterparts starts over land, track parameters
+    are additionally shifted in time such as to have both starting over the ocean with the same
+    parameter values.
+
     Parameters
     ----------
     synth_track : xr.Dataset
         A single synthetic TC track with the on_land_hist and on_land variables set.
+    shift_values_init : bool
+        Whether to shift track parameters (central pressure, maximum sustained
+        wind, radii, environmental pressure) in time if the first point over the
+        ocean is not the same in on_land and on_land_hist.
 
     Returns
     -------
-    id_chunk : np.array like synth_track["time"]
-        ID of chunks value per track point
+    synth_track : xr.Dataset 
+        as input parameter synth_track but with additional variable 'id_chunk'
+        (ID of chunks value per track point) and, if shift_values_init is True,
+        with variables shifted in time if the first track point over the ocean
+        is not the same in synthetic vs historical tracks (on_land vs
+        on_land_hist variables)
     no_chunks_sea : int
         number of chunks that need intensity modulation over sea
     no_chunks_land : int
@@ -995,6 +1008,25 @@ def _add_id_synth_chunks(synth_track: xr.Dataset):
     assert not synth_track.orig_event_flag, "This logic only works on synth. tracks."
     on_land_synth = synth_track.on_land.values
     on_land_hist = synth_track.on_land_hist.values
+
+    # if any track starts over land, what is the shift between the first point
+    # over the ocean in modelled vs historical track?
+    shift_first_sea = 0
+    if on_land_synth[0] or on_land_hist[0]:
+        # first point over the ocean?
+        foc_hist = np.where(~on_land_hist)[0][0]
+        foc_synth = np.where(~on_land_synth)[0][0]
+        shift_first_sea = foc_synth - foc_hist
+
+    # shift track parameters in time to match first value over the ocean
+    if shift_first_sea != 0 and shift_values_init:
+        params_fixed = ['time_step', 'basin', 'on_land', 'on_land_hist', 'dist_since_lf']
+        params_avail = list(synth_track.data_vars)
+        for tc_var in list(set(params_avail) - set(params_fixed)):
+          if shift_first_sea < 0:
+            synth_track[tc_var].values[:shift_first_sea] = synth_track[tc_var].values[-shift_first_sea:]
+          else:
+            synth_track[tc_var].values[shift_first_sea:] = synth_track[tc_var].values[:-shift_first_sea]
 
     # TODO need to discuss the and condition below. Was specced  as "If a landfall
     # consists of 2 or less landfall points (in either track): no correction (likely
