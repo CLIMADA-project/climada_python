@@ -137,13 +137,11 @@ class Exposures():
     @property
     def crs(self):
         """Coordinate Reference System, refers to the crs attribute of the inherent GeoDataFrame"""
-        if getattr(self.gdf, "crs", None):
-            return self.gdf.crs
-        # Due to a bug, the CRS of a GeoDataFrame and its geometry column might be out of sync:
-        # https://github.com/geopandas/geopandas/issues/1960
-        if "geometry" in self.gdf and getattr(self.gdf.geometry, "crs", None):
-            return self.gdf.geometry.crs
-        return self.meta.get('crs')
+        try:
+            return self.gdf.geometry.crs or self.meta.get('crs')
+        except AttributeError:  # i.e., no geometry, crs is assumed to be a property
+            # In case of gdf without geometry, empty or before set_geometry_points was called
+            return self.meta.get('crs')
 
     def __init__(self, *args, meta=None, tag=None, ref_year=DEF_REF_YEAR,
                  value_unit=DEF_VALUE_UNIT, crs=None, **kwargs):
@@ -369,7 +367,8 @@ class Exposures():
         raise ValueError(f"Missing exposures impact functions {INDICATOR_IMPF}.")
 
     def assign_centroids(self, hazard, distance='euclidean',
-                         threshold=u_coord.NEAREST_NEIGHBOR_THRESHOLD):
+                         threshold=u_coord.NEAREST_NEIGHBOR_THRESHOLD,
+                         overwrite=True):
         """Assign for each exposure coordinate closest hazard coordinate.
         -1 used for disatances > threshold in point distances. If raster hazard,
         -1 used for centroids outside raster.
@@ -387,6 +386,9 @@ class Exposures():
             the index `-1` is assigned.
             Set `threshold` to 0, to disable nearest neighbor matching.
             Default: 100 (km)
+        overwrite: bool
+            If True, overwrite centroids already present. If False, do
+            not assign new centroids. Default is True.
 
         See Also
         --------
@@ -408,6 +410,15 @@ class Exposures():
         and works only for non-gridded data.
 
         """
+        haz_type = hazard.tag.haz_type
+        centr_haz = INDICATOR_CENTR + haz_type
+        if centr_haz in self.gdf:
+            LOGGER.info('Exposures matching centroids already found for %s', haz_type)
+            if overwrite:
+                LOGGER.info('Existing centroids will be overwritten for %s', haz_type)
+            else:
+                return None
+
         LOGGER.info('Matching %s exposures with %s centroids.',
                     str(self.gdf.shape[0]), str(hazard.centroids.size))
         if not u_coord.equal_crs(self.crs, hazard.centroids.crs):
@@ -421,7 +432,7 @@ class Exposures():
             assigned = u_coord.assign_coordinates(
                 np.stack([self.gdf.latitude.values, self.gdf.longitude.values], axis=1),
                 hazard.centroids.coord, distance=distance, threshold=threshold)
-        self.gdf[INDICATOR_CENTR + hazard.tag.haz_type] = assigned
+        self.gdf[centr_haz] = assigned
 
     def set_geometry_points(self, scheduler=None):
         """Set geometry attribute of GeoDataFrame with Points from latitude and
@@ -529,8 +540,8 @@ class Exposures():
         figsize : tuple, optional
             figure size for plt.subplots
         adapt_fontsize : bool, optional
-            If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
-            the default matplotlib font size is used. Default is True.
+            If set to true, the size of the fonts will be adapted to the size of the figure.
+            Otherwise the default matplotlib font size is used. Default is True.
         kwargs : optional
             arguments for scatter matplotlib function, e.g.
             cmap='Greys'. Default: 'Wistia'
@@ -553,8 +564,11 @@ class Exposures():
                           self.gdf.longitude[mask][pos_vals].values], axis=1)
         return u_plot.geo_scatter_from_array(value, coord, cbar_label, title,
                                              pop_name, buffer, extend,
-                                             proj=crs_epsg, axes=axis,
-                                             figsize=figsize, adapt_fontsize=adapt_fontsize, **kwargs)
+                                             proj=crs_epsg,
+                                             axes=axis,
+                                             figsize=figsize,
+                                             adapt_fontsize=adapt_fontsize,
+                                             **kwargs)
 
     def plot_hexbin(self, mask=None, ignore_zero=False, pop_name=True,
                     buffer=0.0, extend='neither', axis=None, figsize=(9, 13),
@@ -582,8 +596,8 @@ class Exposures():
         figsize : tuple
             figure size for plt.subplots
         adapt_fontsize : bool, optional
-            If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
-            the default matplotlib font size is used. Default is True.
+            If set to true, the size of the fonts will be adapted to the size of the figure.
+            Otherwise the default matplotlib font size is used. Default is True.
         kwargs : optional
             arguments for hexbin matplotlib function, e.g.
             reduce_C_function=np.average. Default: reduce_C_function=np.sum
@@ -645,8 +659,8 @@ class Exposures():
             in white. If True, the areas with missing values are filled as 0s.
             The default is True.
         adapt_fontsize : bool, optional
-            If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
-            the default matplotlib font size is used. Default is True.
+            If set to true, the size of the fonts will be adapted to the size of the figure.
+            Otherwise the default matplotlib font size is used. Default is True.
         kwargs : optional
             arguments for imshow matplotlib function
 
@@ -685,7 +699,8 @@ class Exposures():
                                       self.gdf.longitude.max(), self.gdf.latitude.max())
 
         if not axis:
-            _, axis, fontsize = u_plot.make_map(proj=proj_plot, figsize=figsize, adapt_fontsize=adapt_fontsize)
+            _, axis, fontsize = u_plot.make_map(proj=proj_plot, figsize=figsize,
+                                                adapt_fontsize=adapt_fontsize)
         else:
             fontsize = None
         cbar_ax = make_axes_locatable(axis).append_axes('right', size="6.5%",
@@ -712,7 +727,7 @@ class Exposures():
 
     def plot_basemap(self, mask=None, ignore_zero=False, pop_name=True,
                      buffer=0.0, extend='neither', zoom=10,
-                     url='http://tile.stamen.com/terrain/tileZ/tileX/tileY.png',
+                     url=ctx.providers.Stamen.Terrain,
                      axis=None, **kwargs):
         """Scatter points over satellite image using contextily
 
@@ -734,7 +749,7 @@ class Exposures():
          zoom : int, optional
              zoom coefficient used in the satellite image
          url : str, optional
-             image source, e.g. ctx.sources.OSM_C
+             image source, e.g. ctx.providers.OpenStreetMap.Mapnik
          axis : matplotlib.axes._subplots.AxesSubplot, optional
              axis to use
          kwargs : optional
@@ -817,7 +832,7 @@ class Exposures():
                 crs = metadata['meta'].get('crs')
             exp = cls(store['exposures'], crs=crs)
             for key, val in metadata.items():
-                if key in type(exp)._metadata:
+                if key in type(exp)._metadata: # pylint: disable=protected-access
                     setattr(exp, key, val)
         return exp
 
@@ -996,6 +1011,30 @@ class Exposures():
         ), crs=crs)
 
         return exp
+
+    def affected_total_value(self, hazard):
+        """
+        Total value of the exposures that are close enough to be affected
+        by the hazard (sum of value of all exposures points for which
+        a centroids is assigned)
+
+        Parameters
+        ----------
+        hazard : Hazard
+           Hazard affecting Exposures
+
+        Returns
+        -------
+        float
+            Sum of value of all exposures points for which
+            a centroids is assigned
+
+        """
+        nz_mask = (
+            (self.gdf.value.values > 0)
+            & (self.gdf[hazard.centr_exp_col].values >= 0)
+        )
+        return np.sum(self.gdf.value.values[nz_mask])
 
 
 def add_sea(exposures, sea_res, scheduler=None):

@@ -1203,7 +1203,7 @@ class Centroids():
         """Get CRS of raster or vector."""
         if self.meta:
             return self.meta['crs']
-        elif self.geometry.crs:
+        if self.geometry.crs:
             return self.geometry.crs
         return DEF_CRS
 

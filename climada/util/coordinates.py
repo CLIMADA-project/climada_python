@@ -247,6 +247,15 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
                 method="equirect", units='km'):
     """Compute approximation of geodistance in specified units
 
+    Several batches of points can be processed at once for improved performance. The distances of
+    all (lat1, lon1)-points within a batch to all (lat2, lon2)-points within the same batch are
+    computed, according to the formula:
+
+    result[k, i, j] = dist((lat1[k, i], lon1[k, i]), (lat2[k, j], lon2[k, j]))
+
+    Hence, each of lat1, lon1, lat2, lon2 is expected to be a 2-dimensional array and the resulting
+    array will always be 3-dimensional.
+
     Parameters
     ----------
     lat1, lon1 : ndarrays of floats, shape (nbatch, nx)
@@ -257,7 +266,12 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
         If True, return the tangential vectors at the first points pointing to
         the second points (Riemannian logarithm). Default: False.
     normalize : bool, optional
-        If False, assume that lon values are already between -180 and 180.
+        If False, assume that all longitudinal values lie within a single interval of size 360
+        (e.g., between -180 and 180, or between 0 and 360) and such that the shortest path between
+        any two points does not cross the antimeridian according to that parametrization. If True,
+        a suitable interval is determined using `lon_bounds` and the longitudinal values are
+        reparametrized accordingly using `lon_normalize`. Note that this option has no effect when
+        using the "geosphere" method because it is independent from the parametrization.
         Default: True
     method : str, optional
         Specify an approximation method to use:
@@ -292,11 +306,11 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
 
     if method == "equirect":
         if normalize:
-            mid_lon = 0.5 * sum(lon_bounds(np.concatenate([lon1, lon2])))
+            mid_lon = 0.5 * sum(lon_bounds(np.concatenate([lon1.ravel(), lon2.ravel()])))
             lon_normalize(lon1, center=mid_lon)
             lon_normalize(lon2, center=mid_lon)
-        vtan = np.stack([lat2[:, None] - lat1[:, :, None],
-                         lon2[:, None] - lon1[:, :, None]], axis=-1)
+        vtan = np.stack([lat2[:, None, :] - lat1[:, :, None],
+                         lon2[:, None, :] - lon1[:, :, None]], axis=-1)
         fact1 = np.heaviside(vtan[..., 1] - 180, 0)
         fact2 = np.heaviside(-vtan[..., 1] - 180, 0)
         vtan[..., 1] -= (fact1 - fact2) * 360
@@ -306,22 +320,55 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
         dist = np.sqrt(np.einsum("...l,...l->...", vtan, vtan))
     elif method == "geosphere":
         lat1, lon1, lat2, lon2 = map(np.radians, [lat1, lon1, lat2, lon2])
-        dlat = 0.5 * (lat2[:, None] - lat1[:, :, None])
-        dlon = 0.5 * (lon2[:, None] - lon1[:, :, None])
+        dlat = 0.5 * (lat2[:, None, :] - lat1[:, :, None])
+        dlon = 0.5 * (lon2[:, None, :] - lon1[:, :, None])
         # haversine formula:
         hav = np.sin(dlat)**2 \
-            + np.cos(lat1[:, :, None]) * np.cos(lat2[:, None]) * np.sin(dlon)**2
+            + np.cos(lat1[:, :, None]) * np.cos(lat2[:, None, :]) * np.sin(dlon)**2
         dist = np.degrees(2 * np.arcsin(np.sqrt(hav))) * unit_factor
         if log:
             vec1, vbasis = latlon_to_geosph_vector(lat1, lon1, rad=True, basis=True)
             vec2 = latlon_to_geosph_vector(lat2, lon2, rad=True)
             scal = 1 - 2 * hav
             fact = dist / np.fmax(np.spacing(1), np.sqrt(1 - scal**2))
-            vtan = fact[..., None] * (vec2[:, None] - scal[..., None] * vec1[:, :, None])
+            vtan = fact[..., None] * (vec2[:, None, :] - scal[..., None] * vec1[:, :, None])
             vtan = np.einsum('nkli,nkji->nklj', vtan, vbasis)
     else:
         raise KeyError("Unknown distance approximation method: %s" % method)
     return (dist, vtan) if log else dist
+
+def compute_geodesic_lengths(gdf):
+    """Calculate the great circle (geodesic / spherical) lengths along any
+    (complicated) line geometry object, based on the pyproj.Geod implementation.
+
+    Parameters
+    ----------
+    gdf : gpd.GeoDataframe with geometrical shapes of which to compute the length
+
+    Returns
+    -------
+    series : a pandas series (column) with the great circle lengths of the
+        objects in metres.
+
+    See also
+    --------
+    * dist_approx() which also offers haversine distance calculation options
+     between specific points (not along any geometries however).
+    * interpolation.interpolate_lines()
+
+    Note
+    ----
+    This implementation relies on non-projected (i.e. geographic coordinate
+    systems that span the entire globe) crs only, which results in
+    sea-level distances and hence a certain (minor) level of distortion; cf.
+    https://gis.stackexchange.com/questions/176442/what-is-the-real-distance-between-positions
+    """
+    # convert to non-projected crs if needed
+    gdf_tmp = gdf.to_crs(DEF_CRS) if not gdf.crs.is_geographic else gdf.copy()
+    geod = gdf_tmp.crs.get_geod()
+
+    return gdf_tmp.apply(lambda row: geod.geometry_length(row.geometry), axis=1)
+
 
 def get_gridcellarea(lat, resolution=0.5, unit='ha'):
     """The area covered by a grid cell is calculated depending on the latitude
@@ -600,33 +647,9 @@ def get_land_geometry(country_names=None, extent=None, resolution=10):
     geom : shapely.geometry.multipolygon.MultiPolygon
         Polygonal shape of union.
     """
-    resolution = nat_earth_resolution(resolution)
-    shp_file = shapereader.natural_earth(resolution=resolution,
-                                         category='cultural',
-                                         name='admin_0_countries')
-    reader = shapereader.Reader(shp_file)
-    if (country_names is None) and (extent is None):
-        LOGGER.info("Computing earth's land geometry ...")
-        geom = list(reader.geometries())
-        geom = shapely.ops.unary_union(geom)
-
-    elif country_names:
-        countries = list(reader.records())
-        geom = [country.geometry for country in countries
-                if (country.attributes['ISO_A3'] in country_names) or
-                (country.attributes['WB_A3'] in country_names) or
-                (country.attributes['ADM0_A3'] in country_names)]
-        geom = shapely.ops.unary_union(geom)
-
-    else:
-        extent_poly = Polygon([(extent[0], extent[2]), (extent[0], extent[3]),
-                               (extent[1], extent[3]), (extent[1], extent[2])])
-        geom = []
-        for cntry_geom in reader.geometries():
-            inter_poly = cntry_geom.intersection(extent_poly)
-            if not inter_poly.is_empty:
-                geom.append(inter_poly)
-        geom = shapely.ops.unary_union(geom)
+    geom = get_country_geometries(country_names, extent, resolution)
+    # combine all into a single multipolygon
+    geom = geom.geometry.unary_union
     if not isinstance(geom, MultiPolygon):
         geom = MultiPolygon([geom])
     return geom
@@ -654,14 +677,29 @@ def coord_on_land(lat, lon, land_geom=None):
     if lat.size == 0:
         return np.empty((0,), dtype=bool)
     delta_deg = 1
+    lons = lon.copy()
     if land_geom is None:
+        # ensure extent of longitude is consistent
+        bounds = lon_bounds(lons)
+        lon_mid = 0.5 * (bounds[0] + bounds[1])
+        # normalize lon
+        lon_normalize(lons, center=lon_mid)
+        # load land geometry with appropriate same extent
         land_geom = get_land_geometry(
-            extent=(np.min(lon) - delta_deg,
-                    np.max(lon) + delta_deg,
+            extent=(bounds[0] - delta_deg,
+                    bounds[1] + delta_deg,
                     np.min(lat) - delta_deg,
                     np.max(lat) + delta_deg),
             resolution=10)
-    return shapely.vectorized.contains(land_geom, lon, lat)
+    elif not land_geom.is_empty:
+        # ensure lon values are within extent of provided land_geom
+        land_bounds = land_geom.bounds
+        if lons.max() > land_bounds[2] or lons.min() < land_bounds[0]:
+            # normalize longitude to land_geom extent
+            lon_mid = 0.5 * (land_bounds[0] + land_bounds[2])
+            lon_normalize(lons, center=lon_mid)
+
+    return shapely.vectorized.contains(land_geom, lons, lat)
 
 def nat_earth_resolution(resolution):
     """Check if resolution is available in Natural Earth. Build string.
@@ -694,11 +732,16 @@ def get_country_geometries(country_names=None, extent=None, resolution=10):
     starts including the projection information. (They are saving a whopping 147 bytes by omitting
     it.) Same goes for UTF.
 
+    If extent is provided, longitude values in 'geom' will all lie within 'extent' longitude
+    range. Therefore setting extent to e.g. [160, 200, -20, 20] will provide longitude values
+    between 160 and 200 degrees.
+
     Parameters
     ----------
     country_names : list, optional
         list with ISO 3166 alpha-3 codes of countries, e.g ['ZWE', 'GBR', 'VNM', 'UZB']
-    extent : tuple (min_lon, max_lon, min_lat, max_lat), optional
+    extent : tuple, optional
+        (min_lon, max_lon, min_lat, max_lat)
         Extent, assumed to be in the same CRS as the natural earth data.
     resolution : float, optional
         10, 50 or 110. Resolution in m. Default: 10m
@@ -730,18 +773,47 @@ def get_country_geometries(country_names=None, extent=None, resolution=10):
     if country_names:
         if isinstance(country_names, str):
             country_names = [country_names]
-        out = out[out.ISO_A3.isin(country_names)]
+        country_mask = np.isin(
+            nat_earth[['ISO_A3', 'WB_A3', 'ADM0_A3']].values,
+            country_names,
+        ).any(axis=1)
+        out = out[country_mask]
 
     if extent:
-        bbox = Polygon([
-            (extent[0], extent[2]),
-            (extent[0], extent[3]),
-            (extent[1], extent[3]),
-            (extent[1], extent[2])
-        ])
-        bbox = gpd.GeoSeries(bbox, crs=out.crs)
-        bbox = gpd.GeoDataFrame({'geometry': bbox}, crs=out.crs)
+        if extent[1] - extent[0] > 360:
+            raise ValueError(
+                f"longitude extent range is greater than 360: {extent[0]} to {extent[1]}"
+            )
+
+        if extent[1] < extent[0]:
+            raise ValueError(
+                f"longitude extent at the left ({extent[0]}) is larger "
+                f"than longitude extent at the right ({extent[1]})"
+            )
+
+        # rewrap longitudes unless longitude extent is already normalized (within [-180, +180])
+        lon_normalized = extent[0] >= -180 and extent[1] <= 180
+        if lon_normalized:
+            bbox = box(extent[0], extent[2], extent[1], extent[3])
+        else:
+            # split the extent box into two boxes both within [-180, +180] in longitude
+            lon_left, lon_right = lon_normalize(np.array(extent[:2]))
+            extent_left = (lon_left, 180, extent[2], extent[3])
+            extent_right = (-180, lon_right, extent[2], extent[3])
+            bbox = shapely.ops.unary_union(
+                [box(e[0], e[2], e[1], e[3]) for e in [extent_left, extent_right]]
+            )
+        bbox = gpd.GeoSeries(bbox, crs=DEF_CRS)
+        bbox = gpd.GeoDataFrame({'geometry': bbox}, crs=DEF_CRS)
         out = gpd.overlay(out, bbox, how="intersection")
+        if ~lon_normalized:
+            lon_mid = 0.5 * (extent[0] + extent[1])
+            # reset the CRS attribute after rewrapping (we don't really change the CRS)
+            out = (
+                out
+                .to_crs({"proj": "longlat", "lon_wrap": lon_mid})
+                .set_crs(DEF_CRS, allow_override=True)
+            )
 
     return out
 
@@ -1411,7 +1483,7 @@ def get_admin1_info(country_names):
         # that the `*.cpg` is present and the encoding is correct:
         try:
             return val.encode('latin-1').decode('utf-8')
-        except:
+        except (AttributeError, UnicodeDecodeError, UnicodeEncodeError):
             return val
 
     if isinstance(country_names, (str, int, float)):
@@ -1478,7 +1550,7 @@ def get_admin1_geometries(countries):
 
     # extract admin 1 infos and shapes for each country:
     admin1_info, admin1_shapes = get_admin1_info(countries)
-    for country in admin1_info.keys():
+    for country in admin1_info:
         # fill admin 1 region names and codes to GDF for single country:
         gdf_tmp = gpd.GeoDataFrame(columns=gdf.columns)
         gdf_tmp.admin1_name = [record['name'] for record in admin1_info[country]]
@@ -1621,7 +1693,7 @@ def to_crs_user_input(crs_obj):
         return (isinstance(crs_dict, dict)
                 and "init" in crs_dict
                 and all(k in ["init", "no_defs"] for k in crs_dict.keys())
-                and crs_dict.get("no_defs", True) == True)
+                and crs_dict.get("no_defs", True) is True)
 
     if isinstance(crs_obj, (dict, int)):
         if _is_deprecated_init_crs(crs_obj):

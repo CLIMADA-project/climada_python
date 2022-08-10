@@ -685,7 +685,8 @@ class UncOutput():
                 alpha=0.5, label='0.05 percentile')
         ax.fill_between(x, low, high, alpha=0.2)
         if add_orig:
-            ax.plot(x, u_cmv(orig_list, m_unit, n_sig_dig=4), color='green', linestyle='dotted', label='orig')
+            ax.plot(x, u_cmv(orig_list, m_unit, n_sig_dig=4),
+                    color='green', linestyle='dotted', label='orig')
         ax.set_xlabel('Return period [year]')
         ax.set_ylabel('Impact [' + m_unit + ' ' + self.unit + ']')
         ax.legend()
@@ -961,7 +962,7 @@ class UncOutput():
         eai_max_si_df = self.get_largest_si(salib_si, metric_list=['eai_exp'])
 
         plot_val = eai_max_si_df['param']
-        coord = np.array([self.coord_df.latitude, self.coord_df.longitude]).transpose()
+        coord = np.array([self.coord_df.latitude, self.coord_df.longitude]).transpose()  # pylint: disable=no-member
         if 'var_name' not in kwargs:
             kwargs['var_name'] = 'Input parameter with largest ' + salib_si
         if 'title' not in kwargs:

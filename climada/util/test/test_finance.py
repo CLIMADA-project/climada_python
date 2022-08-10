@@ -176,7 +176,8 @@ class TestWBWealthAccount(unittest.TestCase):
         var_name = 'NW.PCA.PC'
         res_year, res_val, _ = world_bank_wealth_account(cntry_iso, ref_year,
                                                          variable_name=var_name, no_land=0)
-        ref_val = [328398.7, 369081.0]  # second value as updated by worldbank on October 27 2021
+        ref_val = [328398.7,  # values sporadically updated by worldbank
+                   369081.0]  # <- October 27 2021
         self.assertEqual(res_year, ref_year)
         self.assertIn(res_val, ref_val)
 
@@ -187,8 +188,8 @@ class TestWBWealthAccount(unittest.TestCase):
         var_name = 'NW.TOW.TO'
         res_year, res_val, _ = world_bank_wealth_account(cntry_iso, ref_year,
                                                          variable_name=var_name)
-        ref_val = [5415188681942.5, 5861193808788.2]  # second value as updated by worldbank on 
-                                                      # October 27 2021
+        ref_val = [5415188681934.5,  # values sporadically updated by worldbank
+                   5861193808779.6]  # <- October 27 2021
         self.assertEqual(res_year, ref_year)
         self.assertIn(res_val, ref_val)
 

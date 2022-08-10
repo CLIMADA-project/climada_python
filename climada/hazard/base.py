@@ -408,8 +408,8 @@ class Hazard():
         if not frac_name:
             inten_name = ['fraction']
         if files_fraction is not None and len(files_intensity) != len(files_fraction):
-            raise ValueError('Number of intensity files differs from fraction files: %s != %s'
-                             % (len(files_intensity), len(files_fraction)))
+            raise ValueError('Number of intensity files differs from fraction files:'
+                             f' {len(files_intensity)} != {len(files_fraction)}')
 
         haz = cls() if haz_type is None else cls(haz_type)
         haz.tag.file_name = str(files_intensity) + ' ; ' + str(files_fraction)
@@ -600,6 +600,7 @@ class Hazard():
         ------
         KeyError
         """
+        # pylint: disable=protected-access
         if not var_names:
             var_names = DEF_VAR_MAT
         LOGGER.info('Reading %s', file_name)
@@ -653,6 +654,7 @@ class Hazard():
         ------
         KeyError
         """
+        # pylint: disable=protected-access
         if not var_names:
             var_names = DEF_VAR_EXCEL
         LOGGER.info('Reading %s', file_name)
@@ -841,8 +843,8 @@ class Hazard():
         inten_stats = np.zeros((len(return_periods), num_cen))
         cen_step = CONFIG.max_matrix_size.int() // self.intensity.shape[0]
         if not cen_step:
-            raise ValueError('Increase max_matrix_size configuration parameter to > %s'
-                             % str(self.intensity.shape[0]))
+            raise ValueError('Increase max_matrix_size configuration parameter to >'
+                             f' {self.intensity.shape[0]}')
         # separte in chunks
         chk = -1
         for chk in range(int(num_cen / cen_step)):
@@ -855,7 +857,7 @@ class Hazard():
             self.intensity[:, (chk + 1) * cen_step:].toarray(),
             inten_stats[:, (chk + 1) * cen_step:])
         # set values below 0 to zero if minimum of hazard.intensity >= 0:
-        if self.intensity.min() >= 0 and np.min(inten_stats) < 0:
+        if np.min(inten_stats) < 0 <= self.intensity.min():
             LOGGER.warning('Exceedance intenstiy values below 0 are set to 0. \
                    Reason: no negative intensity values were found in hazard.')
             inten_stats[inten_stats < 0] = 0
@@ -932,7 +934,7 @@ class Hazard():
             ValueError
         """
         self._set_coords_centroids()
-        col_label = 'Intensity (%s)' % self.units
+        col_label = f'Intensity ({self.units})'
         crs_epsg, _ = u_plot.get_transformation(self.centroids.geometry.crs)
         if event is not None:
             if isinstance(event, str):
@@ -1017,7 +1019,7 @@ class Hazard():
         list_id = self.event_id[[i_name for i_name, val_name in enumerate(self.event_name)
                                  if val_name == event_name]]
         if list_id.size == 0:
-            raise ValueError("No event with name: %s" % event_name)
+            raise ValueError(f"No event with name: {event_name}")
         return list_id
 
     def get_event_name(self, event_id):
@@ -1309,19 +1311,17 @@ class Hazard():
                 except IndexError as err:
                     raise ValueError(f'Wrong event id: {ev_id}.') from err
                 im_val = mat_var[event_pos, :].toarray().transpose()
-                title = 'Event ID %s: %s' % (str(self.event_id[event_pos]),
-                                             self.event_name[event_pos])
+                title = f'Event ID {self.event_id[event_pos]}: {self.event_name[event_pos]}'
             elif ev_id < 0:
                 max_inten = np.asarray(np.sum(mat_var, axis=1)).reshape(-1)
                 event_pos = np.argpartition(max_inten, ev_id)[ev_id:]
                 event_pos = event_pos[np.argsort(max_inten[event_pos])][0]
                 im_val = mat_var[event_pos, :].toarray().transpose()
-                title = '%s-largest Event. ID %s: %s' % (np.abs(ev_id),
-                                                         str(self.event_id[event_pos]),
-                                                         self.event_name[event_pos])
+                title = (f'{np.abs(ev_id)}-largest Event. ID {self.event_id[event_pos]}:'
+                         f' {self.event_name[event_pos]}')
             else:
                 im_val = np.max(mat_var, axis=0).toarray().transpose()
-                title = '%s max intensity at each point' % self.tag.haz_type
+                title = f'{self.tag.haz_type} max intensity at each point'
 
             array_val.append(im_val)
             l_title.append(title)
@@ -1362,21 +1362,18 @@ class Hazard():
             except IndexError as err:
                 raise ValueError(f'Wrong centroid id: {centr_idx}.') from err
             array_val = mat_var[:, centr_pos].toarray()
-            title = 'Centroid %s: (%s, %s)' % (str(centr_idx),
-                                               coord[centr_pos, 0],
-                                               coord[centr_pos, 1])
+            title = f'Centroid {centr_idx}: ({coord[centr_pos, 0]}, {coord[centr_pos, 1]})'
         elif centr_idx < 0:
             max_inten = np.asarray(np.sum(mat_var, axis=0)).reshape(-1)
             centr_pos = np.argpartition(max_inten, centr_idx)[centr_idx:]
             centr_pos = centr_pos[np.argsort(max_inten[centr_pos])][0]
             array_val = mat_var[:, centr_pos].toarray()
 
-            title = '%s-largest Centroid. %s: (%s, %s)' % \
-                    (np.abs(centr_idx), str(centr_pos), coord[centr_pos, 0],
-                     coord[centr_pos, 1])
+            title = (f'{np.abs(centr_idx)}-largest Centroid. {centr_pos}:'
+                     f' ({coord[centr_pos, 0]}, {coord[centr_pos, 1]})')
         else:
             array_val = np.max(mat_var, axis=1).toarray()
-            title = '%s max intensity at each event' % self.tag.haz_type
+            title = f'{self.tag.haz_type} max intensity at each event'
 
         if not axis:
             _, axis = plt.subplots(1)
@@ -1596,7 +1593,7 @@ class Hazard():
         Hazard.concat : concatenate 2 or more hazards
         Centroids.union : combine centroids
         """
-        # pylint: disable=no-member
+        # pylint: disable=no-member, protected-access
         if len(others) == 0:
             return
         haz_list = [self] + list(others)
@@ -1621,7 +1618,7 @@ class Hazard():
         if len(units) > 1:
             raise ValueError(f"The given hazards use different units: {units}. "
                              "The hazards are incompatible and cannot be concatenated.")
-        elif len(units) == 0:
+        if len(units) == 0:
             units = {''}
         self.units = units.pop()
 
@@ -1785,3 +1782,119 @@ class Hazard():
                     ))
 
         return haz_new_cent
+
+    @property
+    def centr_exp_col(self):
+        """
+        Name of the centroids columns for this hazard in an exposures
+
+        Returns
+        -------
+        String
+            centroids string indicator with hazard type defining column
+            in an exposures gdf. E.g. "centr_TC"
+
+        """
+        from climada.entity.exposures import INDICATOR_CENTR
+        return INDICATOR_CENTR + self.tag.haz_type
+
+    @property
+    def haz_type(self):
+        """
+        Hazard type
+
+        Returns
+        -------
+        String
+            Two-letters hazard type string. E.g. "TC", "RF", or "WF"
+
+        """
+        return self.tag.haz_type
+
+    def get_mdr(self, cent_idx, impf):
+        """
+        Return Mean Damage Ratio (mdr) for chosen centroids (cent_idx)
+        for given impact function.
+
+        Parameters
+        ----------
+        cent_idx : array-like
+            array of indices of chosen centroids from hazard
+        impf : ImpactFunc
+            impact function to compute mdr
+
+        Returns
+        -------
+        sparse.csr_matrix
+            sparse matrix (n_events x len(cent_idx)) with mdr values
+
+        See Also
+        --------
+        get_fraction: get the fraction for the given centroids
+        get_paa: get the paa ffor the given centroids
+
+        """
+        uniq_cent_idx, indices = np.unique(cent_idx, return_inverse=True)
+        mdr = self.intensity[:, uniq_cent_idx]
+        if impf.calc_mdr(0) == 0:
+            mdr.data = impf.calc_mdr(mdr.data)
+        else:
+            LOGGER.warning("Impact function id=%d has mdr(0) != 0."
+            "The mean damage ratio must thus be computed for all values of"
+            "hazard intensity including 0 which can be very time consuming.",
+            impf.id)
+            mdr_array = impf.calc_mdr(mdr.toarray().ravel()).reshape(mdr.shape)
+            mdr = sparse.csr_matrix(mdr_array)
+        return mdr[:, indices]
+
+    def get_paa(self, cent_idx, impf):
+        """
+        Return Percentage of Affected Assets (paa) for chosen centroids (cent_idx)
+        for given impact function.
+
+        Note that value as intensity = 0 are ignored. This is different from
+        get_mdr.
+
+        Parameters
+        ----------
+        cent_idx : array-like
+            array of indices of chosen centroids from hazard
+        impf : ImpactFunc
+            impact function to compute mdr
+
+        Returns
+        -------
+        sparse.csr_matrix
+            sparse matrix (n_events x len(cent_idx)) with paa values
+
+        See Also
+        --------
+        get_mdr: get the mean-damage ratio for the given centroids
+        get_fraction: get the fraction for the given centroids
+
+        """
+        uniq_cent_idx, indices = np.unique(cent_idx, return_inverse=True)
+        paa = self.intensity[:, uniq_cent_idx]
+        paa.data = np.interp(paa.data, impf.intensity, impf.paa)
+        return paa[:, indices]
+
+    def get_fraction(self, cent_idx):
+        """
+        Return fraction for chosen centroids (cent_idx).
+
+        Parameters
+        ----------
+        cent_idx : array-like
+            array of indices of chosen centroids from hazard
+
+        Returns
+        -------
+        sparse.csr_matrix
+            sparse matrix (n_events x len(cent_idx)) with fraction values
+
+        See Also
+        --------
+        get_mdr: get the mdr for the given centroids
+        get_paa: get the paa ffor the given centroids
+        """
+        return self.fraction[:, cent_idx]
