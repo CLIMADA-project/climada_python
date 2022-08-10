@@ -1043,8 +1043,8 @@ def _add_id_synth_chunks(synth_track: xr.Dataset):
     no_chunks_land = np.count_nonzero(to_land)
     id_chunks = np.where(
         on_land_synth,
-        to_sea.cumsum(),
         to_land.cumsum(),
+        to_sea.cumsum()
     )
     synth_track = synth_track.assign({
         "id_chunk" : ("time", id_chunks),
