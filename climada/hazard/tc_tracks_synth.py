@@ -1008,7 +1008,7 @@ def _add_id_synth_chunks(synth_track: xr.Dataset):
     if below_threshold or all_equal:
         synth_track = synth_track.assign(
             {
-                "id_chunk": ("time", np.zeros_like(on_land_synth)),
+                "id_chunk": ("time", np.zeros_like(on_land_synth, dtype='int')),
             }
         )
         return synth_track, 0, 0
