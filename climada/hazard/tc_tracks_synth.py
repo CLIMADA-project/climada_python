@@ -451,9 +451,10 @@ def _one_rnd_walk(track, nb_synth_tracks, max_shift_ini, max_dspeed_rel, max_ddi
                 }
             )
             i_track = i_track.rename({"on_land": "on_land_hist"})
-            # TODO IMHO this should be dropped even without adjust_intensity, since it pertains to
-            # the historical track
-            i_track = i_track.drop_vars(["dist_since_lf"])
+
+        # remove 'on_land' and 'dist_since_lf' if present since not correct for synthetic track
+        vars_to_drop = [v for v in ['on_land', 'dist_since_lf'] if v in list(i_track.variables)]
+        i_track = i_track.drop_vars(vars_to_drop)
 
         ens_track.append(i_track)
 
