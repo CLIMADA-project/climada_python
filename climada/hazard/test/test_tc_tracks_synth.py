@@ -39,6 +39,30 @@ TEST_TRACK_DECAY_END_OCEAN_HIST = DATA_DIR.joinpath('1997018S11059.nc')
 TEST_TRACK_DECAY_PENV_GT_PCEN = DATA_DIR.joinpath('1988021S12080_gen2.nc')
 TEST_TRACK_DECAY_PENV_GT_PCEN_HIST = DATA_DIR.joinpath('1988021S12080.nc')
 
+def dummy_track_builder(vars_dict):
+    """Create a simply tc track xarray using a dictionary of variables"""
+    # on_land_hist = np.array([False, False, True, True, True, False, False])
+    # on_land = np.array([False, False, False, True, True, True, False])
+    # expected_id_chunk = np.array([0, 0, 1, -1, -1, -1, 2])
+    # time does not matter here but is needed as a coordinate, use 3h res
+    if 'time' not in vars_dict.keys():
+      n_time = len(vars_dict[list(vars_dict.keys())[0]])
+      time = np.arange(
+        np.datetime64('2020-06-01'),
+        np.datetime64('2020-06-01') + np.timedelta64(3, 'h')*n_time,
+        np.timedelta64(3, 'h')
+      )
+    for v in vars_dict.keys():
+      vars_dict[v] = ('time', vars_dict[v])
+    tc_track = xr.Dataset(
+      vars_dict,
+      coords={
+          'time': time
+      }, attrs={
+          'orig_event_flag': False,
+    })
+    return tc_track
+
 class TestDecay(unittest.TestCase):
     def test_apply_decay_no_landfall_pass(self):
         """Test _apply_land_decay with no historical tracks with landfall"""
@@ -607,8 +631,139 @@ class TestSynth(unittest.TestCase):
         self.assertIn('The following generated synthetic tracks moved beyond '
                       'the range of [-70, 70] degrees latitude', cm.output[1])
 
+class TestSynthIdChunks(unittest.TestCase):
+    def test_add_id_synth_chunks_nolf(self):
+        """Test _add_id_synth_chunks_shift_init for idealized case without any landfall"""
+        on_land_hist = np.repeat(np.array([False]), 9)
+        on_land = on_land_hist
+        pcen = np.arange(0, len(on_land))
+        # expected values
+        expected_id_chunk = np.repeat(0, len(on_land))
+        expected_no_chunks_land = 0
+        expected_no_chunks_sea = 0
+        # create fake xarray with time, on_land and on_land_hist
+        tc_track = dummy_track_builder({'on_land': on_land, 'on_land_hist': on_land_hist, 'central_pressure': pcen.copy()})
+        # call _add_id_synth_chunks
+        synth_track, no_chunks_sea, no_chunks_land = tc_synth._add_id_synth_chunks_shift_init(tc_track)
+        # check output
+        self.assertEqual(no_chunks_land, expected_no_chunks_land)
+        self.assertEqual(no_chunks_sea, expected_no_chunks_sea)
+        np.testing.assert_array_equal(synth_track.id_chunk.data, expected_id_chunk)
+        np.testing.assert_array_equal(synth_track.central_pressure.data, pcen)
+
+    def test_add_id_synth_chunks_all_equal(self):
+        """Test _add_id_synth_chunks_shift_init for idealized case without difference in landfall"""
+        on_land_hist = np.array([False, False, False, False, True, True, True, False, False])
+        on_land = on_land_hist.copy()
+        pcen = np.arange(0, len(on_land))
+        # expected values
+        expected_id_chunk = np.repeat(0, len(on_land))
+        expected_no_chunks_land = 0
+        expected_no_chunks_sea = 0
+        # create fake xarray with time, on_land and on_land_hist
+        tc_track = dummy_track_builder({'on_land': on_land, 'on_land_hist': on_land_hist, 'central_pressure': pcen.copy()})
+        # call _add_id_synth_chunks
+        synth_track, no_chunks_sea, no_chunks_land = tc_synth._add_id_synth_chunks_shift_init(tc_track)
+        # check output
+        self.assertEqual(synth_track.drop_vars('id_chunk'), tc_track.drop_vars)
+        self.assertEqual(no_chunks_land, expected_no_chunks_land)
+        self.assertEqual(no_chunks_sea, expected_no_chunks_sea)
+        np.testing.assert_array_equal(synth_track.id_chunk.data, expected_id_chunk)
+        np.testing.assert_array_equal(synth_track.central_pressure.data, pcen)
+
+    def test_add_id_synth_chunks_short_lf(self):
+        """Test _add_id_synth_chunks_shift_init for idealized case with short landfall (no
+        correction applied"""
+        on_land_hist = np.array([False, False, False, False, True, True, False, False, False])
+        on_land = np.array([False, False, False, False, False, True, True, False, False])
+        pcen = np.arange(0, len(on_land))
+        # expected values
+        expected_id_chunk = np.repeat(0, len(on_land))
+        expected_no_chunks_land = 0
+        expected_no_chunks_sea = 0
+        # create fake xarray with time, on_land and on_land_hist
+        tc_track = dummy_track_builder({'on_land': on_land, 'on_land_hist': on_land_hist, 'central_pressure': pcen.copy()})
+        # call _add_id_synth_chunks
+        synth_track, no_chunks_sea, no_chunks_land = tc_synth._add_id_synth_chunks_shift_init(tc_track)
+        # check output
+        self.assertEqual(synth_track.drop_vars('id_chunk'), tc_track)
+        self.assertEqual(no_chunks_land, expected_no_chunks_land)
+        self.assertEqual(no_chunks_sea, expected_no_chunks_sea)
+        np.testing.assert_array_equal(synth_track.id_chunk.data, expected_id_chunk)
+        np.testing.assert_array_equal(synth_track.central_pressure.data, pcen)
+
+    def test_add_id_synth_chunks_start_over_land(self):
+        """Test _add_id_synth_chunks_shift_init for track starting over land"""
+        on_land_hist = np.array([True, True, False, False, True, True, False, False])
+        on_land_hist2 = np.array([False, False, False, False, True, True, False, False])
+        on_land = np.array([True, False, False, False, True, True, True, False])
+        pcen = np.arange(0, len(on_land))
+        # expected values
+        expected_id_chunk = np.array([0, 0, 0, 0, -1, -1, -1, 1])
+        expected_no_chunks_land = 1
+        expected_no_chunks_sea = 1
+        # fist case: shifted backward
+        expected_pcen = np.append(pcen[1:], pcen[-1])
+        # second case: shifted forward
+        expected_pcen2 = np.append(pcen[0], pcen[:-1])
+        # create fake xarray with time, on_land and on_land_hist
+        tc_track = dummy_track_builder({'on_land': on_land, 'on_land_hist': on_land_hist, 'central_pressure': pcen.copy()})
+        tc_track2 = dummy_track_builder({'on_land': on_land, 'on_land_hist': on_land_hist2, 'central_pressure': pcen.copy()})
+        # call _add_id_synth_chunks
+        synth_track, no_chunks_sea, no_chunks_land = tc_synth._add_id_synth_chunks_shift_init(tc_track)
+        synth_track2, no_chunks_sea2, no_chunks_land2 = tc_synth._add_id_synth_chunks_shift_init(tc_track2)
+        # check output
+        self.assertEqual(no_chunks_land, expected_no_chunks_land)
+        self.assertEqual(no_chunks_sea, expected_no_chunks_sea)
+        self.assertEqual(no_chunks_land2, expected_no_chunks_land)
+        self.assertEqual(no_chunks_sea2, expected_no_chunks_sea)
+        np.testing.assert_array_equal(synth_track.id_chunk.data, expected_id_chunk)
+        np.testing.assert_array_equal(synth_track2.id_chunk.data, expected_id_chunk)
+        np.testing.assert_array_equal(synth_track.central_pressure.data, expected_pcen)
+        np.testing.assert_array_equal(synth_track2.central_pressure.data, expected_pcen2)
+
+    def test_add_id_synth_chunks_typical(self):
+        """Test _add_id_synth_chunks_shift_init for idealized cases"""
+        on_land_hist = np.array([False, False, True, True, True, False, False])
+        on_land = np.array([False, False, False, True, True, True, False])
+        pcen = np.arange(0, len(on_land))
+        # expected values
+        expected_id_chunk = np.array([0, 0, 1, -1, -1, -1, 2])
+        expected_no_chunks_land = 1
+        expected_no_chunks_sea = 2
+        # create fake xarray with time, on_land and on_land_hist
+        tc_track = dummy_track_builder({'on_land': on_land, 'on_land_hist': on_land_hist, 'central_pressure': pcen.copy()})
+        # call _add_id_synth_chunks
+        synth_track, no_chunks_sea, no_chunks_land = tc_synth._add_id_synth_chunks_shift_init(tc_track)
+        # check output
+        self.assertEqual(no_chunks_land, expected_no_chunks_land)
+        self.assertEqual(no_chunks_sea, expected_no_chunks_sea)
+        np.testing.assert_array_equal(synth_track.id_chunk.data, expected_id_chunk)
+        np.testing.assert_array_equal(synth_track.central_pressure.data, pcen)
+
+    def test_add_id_synth_chunks_complex(self):
+        """Test _add_id_synth_chunks_shift_init for idealized cases"""
+        on_land_hist = np.array([True, True, False, False, True, True, True, False, False])
+        on_land = np.array([True, False, False, False, False, True, True, True, False])
+        pcen = np.arange(0, len(on_land))
+        # expected values
+        expected_id_chunk = np.array([0, 0, 0, 0, 1, -1, -1, -1, 2])
+        expected_no_chunks_land = 1
+        expected_no_chunks_sea = 2
+        expected_pcen = np.append(pcen[1:], pcen[-1])
+        # create fake xarray with time, on_land and on_land_hist
+        tc_track = dummy_track_builder({'on_land': on_land, 'on_land_hist': on_land_hist, 'central_pressure': pcen.copy()})
+        # call _add_id_synth_chunks
+        synth_track, no_chunks_sea, no_chunks_land = tc_synth._add_id_synth_chunks_shift_init(tc_track)
+        # check output
+        self.assertEqual(no_chunks_land, expected_no_chunks_land)
+        self.assertEqual(no_chunks_sea, expected_no_chunks_sea)
+        np.testing.assert_array_equal(synth_track.id_chunk.data, expected_id_chunk)
+        np.testing.assert_array_equal(synth_track.central_pressure.data, expected_pcen)
+
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestDecay)
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestSynth))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestSynthIdChunks))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
