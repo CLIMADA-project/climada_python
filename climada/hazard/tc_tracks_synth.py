@@ -31,6 +31,7 @@ import numpy as np
 import xarray as xr
 from matplotlib.lines import Line2D
 from pathos.abstract_launcher import AbstractWorkerPool
+from shapely.geometry.multipolygon import MultiPolygon
 
 import climada.hazard.tc_tracks
 import climada.util.coordinates
@@ -250,17 +251,6 @@ def calc_perturbed_trajectories(
             extent=tracks.get_extent(deg_buffer=0.1), resolution=10
         )
 
-        if pool:
-            tracks = pool.map(
-                _assign_on_land_to_track,
-                tracks,
-                itertools.repeat(land_geom),
-                chunksize=chunksize,
-            )
-        else:
-            for track in tracks.data:
-                climada.hazard.tc_tracks.track_land_params(track, land_geom)
-
         # TODO implement parallelism; _add_id_synth_chunks returns tuple!
         # if pool:
         #     id_chunks = pool.map(
@@ -268,10 +258,10 @@ def calc_perturbed_trajectories(
         #     )
         # else:
         # returns a list of tuples (track, no_sea_chunks, no_land_chunks)
+        LOGGER.info('Identifying tracks chunks')
         tracks_with_id_chunks = [
-            _add_id_synth_chunks_shift_init(track, shift_values_init=True)
+            _add_id_synth_chunks_shift_init(track, land_geom, shift_values_init=True)
             for track in tracks.data
-            if not track.orig_event_flag
         ]
 
         # TODO @benoit needs to explain to me why we should pre-generate random values outside the
@@ -941,7 +931,9 @@ def _check_decay_values_plot(x_val, v_lf, p_lf, v_rel, p_rel):
             _decay_p_function(p_rel[track_cat][0], p_rel[track_cat][1], x_eval),
             '-', c=color)
 
-def _add_id_synth_chunks_shift_init(synth_track: xr.Dataset, shift_values_init: bool = True):
+def _add_id_synth_chunks_shift_init(track: xr.Dataset,
+                                    land_geom: MultiPolygon = None,
+                                    shift_values_init: bool = True):
     """Identify track chunks for which intensity is to be modelled, and shift
     track parameter value in case the track starts over land.
 
@@ -963,8 +955,10 @@ def _add_id_synth_chunks_shift_init(synth_track: xr.Dataset, shift_values_init: 
 
     Parameters
     ----------
-    synth_track : xr.Dataset
-        A single synthetic TC track with the on_land_hist and on_land variables set.
+    track : xr.Dataset
+        A single TC track.
+    land_geom : shapely.geometry.multipolygon.MultiPolygon
+        Land geometry to assign land parameters.
     shift_values_init : bool
         Whether to shift track parameters (central pressure, maximum sustained
         wind, radii, environmental pressure) in time if the first point over the
@@ -972,8 +966,8 @@ def _add_id_synth_chunks_shift_init(synth_track: xr.Dataset, shift_values_init: 
 
     Returns
     -------
-    synth_track : xr.Dataset 
-        as input parameter synth_track but with additional variable 'id_chunk'
+    track : xr.Dataset 
+        as input parameter track but with additional variable 'id_chunk'
         (ID of chunks value per track point) and, if shift_values_init is True,
         with variables shifted in time if the first track point over the ocean
         is not the same in synthetic vs historical tracks (on_land vs
@@ -983,28 +977,41 @@ def _add_id_synth_chunks_shift_init(synth_track: xr.Dataset, shift_values_init: 
     no_chunks_land : int
         number of chunks that need intensity modulation over land
     """
-    assert not synth_track.orig_event_flag, "This logic only works on synth. tracks."
-    on_land_synth = synth_track.on_land.values
-    on_land_hist = synth_track.on_land_hist.values
+    if track.orig_event_flag:
+        return track, 0, 0
+
+    if 'on_land' not in list(track.data_vars):
+        if not land_geom:
+            raise ValueError('Track %s is missing land params. Argument land_geom should be provided.' % track.sid)
+        climada.hazard.tc_tracks.track_land_params(track, land_geom)
+
+    on_land_synth = track.on_land.values
+    on_land_hist = track.on_land_hist.values
 
     # if any track starts over land, what is the shift between the first point
     # over the ocean in modelled vs historical track?
     shift_first_sea = 0
     if on_land_synth[0] or on_land_hist[0]:
         # first point over the ocean?
-        foc_hist = np.where(~on_land_hist)[0][0]
-        foc_synth = np.where(~on_land_synth)[0][0]
-        shift_first_sea = foc_synth - foc_hist
+        if np.sum(~on_land_hist) == 0:
+            LOGGER.debug('No point over the ocean for historical track %s', track.sid)
+        if np.sum(~on_land_synth) == 0 or np.sum(~on_land_hist) == 0:
+            # nothing to shift
+            LOGGER.debug('No shift possible as track fully over land: %s', track.sid)
+        else:
+            first_sea_hist = np.where(~on_land_hist)[0][0]
+            first_sea_synth = np.where(~on_land_synth)[0][0]
+            shift_first_sea = first_sea_synth - first_sea_hist
 
     # shift track parameters in time to match first value over the ocean
     if shift_first_sea != 0 and shift_values_init:
         params_fixed = ['time_step', 'basin', 'on_land', 'on_land_hist', 'dist_since_lf']
-        params_avail = list(synth_track.data_vars)
+        params_avail = list(track.data_vars)
         for tc_var in list(set(params_avail) - set(params_fixed)):
           if shift_first_sea < 0:
-            synth_track[tc_var].values[:shift_first_sea] = synth_track[tc_var].values[-shift_first_sea:]
+            track[tc_var].values[:shift_first_sea] = track[tc_var].values[-shift_first_sea:]
           else:
-            synth_track[tc_var].values[shift_first_sea:] = synth_track[tc_var].values[:-shift_first_sea]
+            track[tc_var].values[shift_first_sea:] = track[tc_var].values[:-shift_first_sea]
 
     # TODO need to discuss the and condition below. Was specced  as "If a landfall
     # consists of 2 or less landfall points (in either track): no correction (likely
@@ -1016,12 +1023,12 @@ def _add_id_synth_chunks_shift_init(synth_track: xr.Dataset, shift_values_init: 
     below_threshold = np.sum(on_land_synth) <= 2 and np.sum(on_land_hist) <= 2
     all_equal = np.all(on_land_synth == on_land_hist)
     if below_threshold or all_equal:
-        synth_track = synth_track.assign(
+        track = track.assign(
             {
                 "id_chunk": ("time", np.zeros_like(on_land_synth, dtype='int')),
             }
         )
-        return synth_track, 0, 0
+        return track, 0, 0
 
     # transitions coded as -1: first pt. on land, 1: first pt. on sea, 0: no change
     transitions_synth = np.append(0, np.diff(~on_land_synth.astype(int)))
@@ -1056,10 +1063,10 @@ def _add_id_synth_chunks_shift_init(synth_track: xr.Dataset, shift_values_init: 
         to_land.cumsum(),
         to_sea.cumsum()
     )
-    synth_track = synth_track.assign({
+    track = track.assign({
         "id_chunk" : ("time", id_chunks),
     })
-    return synth_track, no_chunks_sea, no_chunks_land
+    return track, no_chunks_sea, no_chunks_land
 
 
 def _model_synth_tc_intensity(
