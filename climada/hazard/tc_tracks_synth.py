@@ -334,11 +334,13 @@ def _one_rnd_walk(track,
         Amplitude of track direction (bearing angle) perturbation
         per hour, in radians. Default: pi/180.
     land_geom : shapely.geometry.multipolygon.MultiPolygon
-        Land geometry. Required to model intensity (central pressure, max_sustained_wind, as
-        well as radius_oci and radius_max_wind) depending on landfalls in
-        historical and synthetic tracks. If True, variable 'on_land' is renamed
-        to 'on_land_hist' and variable 'target_central_pressure' is created as the
-        lowest central pressure from each time step to the end of the track.
+        Land geometry. Required to model intensity (central pressure,
+        max_sustained_wind, as well as radius_oci and radius_max_wind) depending
+        on landfalls in historical and synthetic tracks. If provided, variable
+        'on_land' is calculated for the historical track and renamed to
+        'on_land_hist' in synthetic tracks, and variable
+        'target_central_pressure' is created as the lowest central pressure from
+        each time step to the end of the track.
     rnd_vec : np.ndarray of shape (2 * nb_synth_tracks * track.time.size),)
         Vector of random perturbations.
 
