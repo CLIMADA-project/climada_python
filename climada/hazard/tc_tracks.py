@@ -159,6 +159,9 @@ STORM_1MIN_WIND_FACTOR = 0.88
 Bloemendaal et al. (2020): Generation of a global synthetic tropical cyclone hazard
 dataset using STORM. Scientific Data 7(1): 40."""
 
+ALL_LAND_PARAMS = ['on_land', 'dist_since_lf']
+"""List of all the land parameters that can be calculated for a TC track."""
+
 class TCTracks():
     """Contains tropical cyclone tracks.
 
@@ -1838,7 +1841,7 @@ def _read_ibtracs_csv_single(file_name):
 
     return tr_ds
 
-def track_land_params(track, land_geom):
+def track_land_params(track, land_geom, land_params=None):
     """Compute parameters of land for one track.
 
     Parameters
@@ -1847,10 +1850,23 @@ def track_land_params(track, land_geom):
         tropical cyclone track
     land_geom : shapely.geometry.multipolygon.MultiPolygon
         land geometry
+    land_params : list of str
+        A list of land parameters to be computed. Default: None (i.e., all of them).
     """
-    track['on_land'] = ('time',
-                        u_coord.coord_on_land(track.lat.values, track.lon.values, land_geom))
-    track['dist_since_lf'] = ('time', _dist_since_lf(track))
+    if land_params is None:
+        land_params = ALL_LAND_PARAMS
+    if isinstance(land_params, str):
+        land_params = [land_params]
+    # checking no land_params requested that do not exist
+    if len(set(land_params) - set(ALL_LAND_PARAMS)) > 0:
+        raise ValueError(
+          'land_params not recognised: %s.' % ', '.join(set(land_params) - set(ALL_LAND_PARAMS))
+        )
+    if 'on_land' in land_params:
+        track['on_land'] = ('time',
+                            u_coord.coord_on_land(track.lat.values, track.lon.values, land_geom))
+    if 'dist_since_lf' in land_params:
+        track['dist_since_lf'] = ('time', _dist_since_lf(track))
 
 def _dist_since_lf(track):
     """Compute the distance to landfall in km point for every point on land.
