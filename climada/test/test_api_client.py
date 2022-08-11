@@ -159,7 +159,7 @@ class TestClient(unittest.TestCase):
             client.get_exposures(exposures_type='litpop', 
                                  properties={'country_iso3alpha': 'AUT'},
                                  dump_dir=DATA_DIR)
-        self.assertIn('there are several datasets meeting the requirements',
+        self.assertIn('there are 3 datasets meeting the requirements',
                       str(cm.exception))
 
     def test_get_hazard(self):
@@ -189,7 +189,7 @@ class TestClient(unittest.TestCase):
                               properties={'country_name': ['Switzerland', 'Austria'],
                                           'year_range': '2010_2030', 'climate_scenario': ['rcp26', 'rcp85']},
                               dump_dir=DATA_DIR)
-        self.assertIn('there are several datasets meeting the requirements:', str(cm.exception))
+        self.assertIn('there are 4 datasets meeting the requirements:', str(cm.exception))
 
     def test_get_litpop(self):
         client = Client()
