@@ -251,7 +251,8 @@ class ImpactCalc():
         """
         self.exposures.assign_centroids(self.hazard, overwrite=False)
         mask = (
-            (self.exposures.gdf.value.values != 0)
+            (self.exposures.gdf.value.values == self.exposures.gdf.value.values)
+            & (self.exposures.gdf.value.values != 0)
             & (self.exposures.gdf[self.hazard.centr_exp_col].values >= 0)
         )
         exp_gdf = gpd.GeoDataFrame(
