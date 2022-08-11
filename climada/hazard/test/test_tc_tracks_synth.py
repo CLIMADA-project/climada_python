@@ -59,8 +59,9 @@ def dummy_track_builder(vars_dict):
       coords={
           'time': time
       }, attrs={
-          'orig_event_flag': False,
-    })
+          'orig_event_flag': False
+      }
+    )
     return tc_track
 
 class TestDecay(unittest.TestCase):
