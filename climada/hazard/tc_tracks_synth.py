@@ -205,24 +205,14 @@ def calc_perturbed_trajectories(
                       for track in tracks.data]
 
     if adjust_intensity:
-        # assign land parameters to historical tracks for use in synthetic tracks later
+        # to assign land parameters to historical tracks for use in synthetic tracks later
         land_geom_hist = climada.util.coordinates.get_land_geometry(
             extent=tracks.get_extent(deg_buffer=0.1), resolution=10
         )
-        if pool:
-            # TODO should we use this chunksize for all maps?
-            chunksize = min(tracks.size // pool.ncpus, 1000)
-            tracks = pool.map(
-                _assign_on_land_to_track,
-                tracks,
-                itertools.repeat(land_geom_hist),
-                chunksize=chunksize,
-            )
-        else:
-            for track in tracks.data:
-                climada.hazard.tc_tracks.track_land_params(track, land_geom_hist)
+    else:
+        land_geom_hist = None
 
-
+    LOGGER.info('Applying locations perturbations')
     if pool:
         chunksize = min(tracks.size // pool.ncpus, 1000)
         new_ens = pool.map(_one_rnd_walk, tracks.data,
@@ -230,12 +220,12 @@ def calc_perturbed_trajectories(
                            itertools.repeat(max_shift_ini, tracks.size),
                            itertools.repeat(max_dspeed_rel, tracks.size),
                            itertools.repeat(max_ddirection, tracks.size),
-                           itertools.repeat(adjust_intensity, tracks.size),
+                           itertools.repeat(land_geom_hist, tracks.size),
                            random_vec, chunksize=chunksize)
     else:
         new_ens = [_one_rnd_walk(track, nb_synth_tracks, max_shift_ini,
-                                 max_dspeed_rel, max_ddirection, adjust_intensity,
-                                 rand)
+                                 max_dspeed_rel, max_ddirection,
+                                 land_geom_hist, rand)
                    for track, rand in zip(tracks.data, random_vec)]
 
     cutoff_track_ids_tc = [x[1] for x in new_ens]
@@ -328,7 +318,13 @@ def calc_perturbed_trajectories(
                                  ' if use_global_decay_params=False.')
 
 
-def _one_rnd_walk(track, nb_synth_tracks, max_shift_ini, max_dspeed_rel, max_ddirection, adjust_intensity, rnd_vec):
+def _one_rnd_walk(track,
+                  nb_synth_tracks,
+                  max_shift_ini,
+                  max_dspeed_rel,
+                  max_ddirection,
+                  land_geom,
+                  rnd_vec):
     """
     Apply random walk to one track.
 
@@ -347,8 +343,8 @@ def _one_rnd_walk(track, nb_synth_tracks, max_shift_ini, max_dspeed_rel, max_ddi
     max_ddirection : float, optional
         Amplitude of track direction (bearing angle) perturbation
         per hour, in radians. Default: pi/180.
-    adjust_intensity : bool, optional
-        Whether to model intensity (central pressure, max_sustained_wind, as
+    land_geom : shapely.geometry.multipolygon.MultiPolygon
+        Land geometry. Required to model intensity (central pressure, max_sustained_wind, as
         well as radius_oci and radius_max_wind) depending on landfalls in
         historical and synthetic tracks. If True, variable 'on_land' is renamed
         to 'on_land_hist' and variable 'target_central_pressure' is created as the
@@ -372,6 +368,10 @@ def _one_rnd_walk(track, nb_synth_tracks, max_shift_ini, max_dspeed_rel, max_ddi
     n_seg = n_dat - 1
     xy_ini = max_shift_ini * (2 * rnd_vec[:2 * nb_synth_tracks].reshape((2, nb_synth_tracks)) - 1)
     [dt] = np.unique(track['time_step'])
+
+    # on_land parameters of historical track will be required for each synthetic track
+    if land_geom:
+        climada.hazard.tc_tracks.track_land_params(track, land_geom, land_params='on_land')
 
     ens_track.append(track)
     cutoff_track_ids_ts = []
@@ -439,7 +439,7 @@ def _one_rnd_walk(track, nb_synth_tracks, max_shift_ini, max_dspeed_rel, max_ddi
         i_track.attrs['sid'] = f"{i_track.attrs['sid']}_gen{i_ens + 1}"
         i_track.attrs['id_no'] = i_track.attrs['id_no'] + (i_ens + 1) / 100
         i_track = i_track.isel(time=slice(None, last_idx))
-        if adjust_intensity:
+        if land_geom:
             # compute minimum pressure occurring on or after each timestep
             taget_pressure = np.minimum.accumulate(
                 np.flip(i_track.central_pressure.values)
@@ -940,28 +940,6 @@ def _check_decay_values_plot(x_val, v_lf, p_lf, v_rel, p_rel):
             x_eval,
             _decay_p_function(p_rel[track_cat][0], p_rel[track_cat][1], x_eval),
             '-', c=color)
-
-def _assign_on_land_to_track(track, land_geom):
-    """Call climada.hazard.tc_tracks.track_land_params on track and
-    returns track.
-
-    Useful for applying climada.hazard.tc_tracks.track_land_params to
-    multiple tracks in parallel.
-
-    Parameters
-    ----------
-    track : xr.Dataset
-        TC track
-    land_geom : shapely.geometry.multipolygon.MultiPolygon
-        land geometry
-
-    Returns
-    -------
-    xr.Dataset
-    """
-    climada.hazard.tc_tracks.track_land_params(track, land_geom)
-    return track
-
 
 def _add_id_synth_chunks_shift_init(synth_track: xr.Dataset, shift_values_init: bool = True):
     """Identify track chunks for which intensity is to be modelled, and shift
