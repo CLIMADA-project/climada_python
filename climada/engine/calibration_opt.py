@@ -66,26 +66,26 @@ def calib_instance(hazard, exposure, impact_func, df_out=pd.DataFrame(),
             DataFrame with modelled impact written to rows for each year
             or event.
     """
-    IFS = ImpactFuncSet()
-    IFS.append(impact_func)
+    ifs = ImpactFuncSet()
+    ifs.append(impact_func)
     impacts = Impact()
-    impacts.calc(exposure, IFS, hazard)
+    impacts.calc(exposure, ifs, hazard, assign_centroids=False)
     if yearly_impact:  # impact per year
-        IYS = impacts.calc_impact_year_set(all_years=True)
+        iys = impacts.calc_impact_year_set(all_years=True)
         # Loop over whole year range:
         if df_out.empty | df_out.index.shape[0] == 1:
-            for cnt_, year in enumerate(np.sort(list((IYS.keys())))):
+            for cnt_, year in enumerate(np.sort(list((iys.keys())))):
                 if cnt_ > 0:
                     df_out.loc[cnt_] = df_out.loc[0]  # copy info from first row
-                if year in IYS:
-                    df_out.loc[cnt_, 'impact_CLIMADA'] = IYS[year]
+                if year in iys:
+                    df_out.loc[cnt_, 'impact_CLIMADA'] = iys[year]
                 else:
                     df_out.loc[cnt_, 'impact_CLIMADA'] = 0.0
                 df_out.loc[cnt_, 'year'] = year
         else:
-            years_in_common = df_out.loc[df_out['year'].isin(np.sort(list((IYS.keys())))), 'year']
+            years_in_common = df_out.loc[df_out['year'].isin(np.sort(list((iys.keys())))), 'year']
             for cnt_, year in years_in_common.iteritems():
-                df_out.loc[df_out['year'] == year, 'impact_CLIMADA'] = IYS[year]
+                df_out.loc[df_out['year'] == year, 'impact_CLIMADA'] = iys[year]
 
 
     else:  # impact per event
@@ -138,21 +138,21 @@ def init_impf(impf_name_or_instance, param_dict, df_out=pd.DataFrame(index=[0]))
         (index=0) defined with values. The impact function parameters from
         param_dict are represented here.
     """
-    ImpactFunc_final = None
+    impact_func_final = None
     if isinstance(impf_name_or_instance, str):
         if impf_name_or_instance == 'emanuel':
-            ImpactFunc_final = ImpfTropCyclone.from_emanuel_usa(**param_dict)
-            ImpactFunc_final.haz_type = 'TC'
-            ImpactFunc_final.id = 1
+            impact_func_final = ImpfTropCyclone.from_emanuel_usa(**param_dict)
+            impact_func_final.haz_type = 'TC'
+            impact_func_final.id = 1
             df_out['impact_function'] = impf_name_or_instance
     elif isinstance(impf_name_or_instance, impact_funcs.ImpactFunc):
-        ImpactFunc_final = change_impf(impf_name_or_instance, param_dict)
+        impact_func_final = change_impf(impf_name_or_instance, param_dict)
         df_out['impact_function'] = ('given_' +
-                                     ImpactFunc_final.haz_type +
-                                     str(ImpactFunc_final.id))
+                                     impact_func_final.haz_type +
+                                     str(impact_func_final.id))
     for key, val in param_dict.items():
         df_out[key] = val
-    return ImpactFunc_final, df_out
+    return impact_func_final, df_out
 
 def change_impf(impf_instance, param_dict):
     """apply a shifting or a scaling defined in param_dict to the impact
@@ -333,6 +333,7 @@ def calib_all(hazard, exposure, impf_name_or_instance, param_full_dict,
     # prepare hazard and exposure
     region_ids = list(np.unique(exposure.region_id))
     hazard_type = hazard.tag.haz_type
+    exposure.assign_centroids(hazard)
     # prepare impact data
     if isinstance(impact_data_source, pd.DataFrame):
         df_impact_data = impact_data_source
@@ -347,8 +348,8 @@ def calib_all(hazard, exposure, impf_name_or_instance, param_full_dict,
     for param_dict in params_generator:
         print(param_dict)
         df_out = copy.deepcopy(df_impact_data)
-        ImpactFunc_final, df_out = init_impf(impf_name_or_instance, param_dict, df_out)
-        df_out = calib_instance(hazard, exposure, ImpactFunc_final, df_out, yearly_impact)
+        impact_func_final, df_out = init_impf(impf_name_or_instance, param_dict, df_out)
+        df_out = calib_instance(hazard, exposure, impact_func_final, df_out, yearly_impact)
         if df_result is None:
             df_result = copy.deepcopy(df_out)
         else:
@@ -398,6 +399,7 @@ def calib_optimize(hazard, exposure, impf_name_or_instance, param_dict,
     # prepare hazard and exposure
     region_ids = list(np.unique(exposure.region_id))
     hazard_type = hazard.tag.haz_type
+    exposure.assign_centroids(hazard)
     # prepare impact data
     if isinstance(impact_data_source, pd.DataFrame):
         df_impact_data = impact_data_source
@@ -408,8 +410,8 @@ def calib_optimize(hazard, exposure, impf_name_or_instance, param_dict,
         else:
             raise ValueError('other impact data sources not yet implemented.')
     # definie specific function to
-    def specific_calib(x):
-        param_dict_temp = dict(zip(param_dict.keys(), x))
+    def specific_calib(values):
+        param_dict_temp = dict(zip(param_dict.keys(), values))
         print(param_dict_temp)
         return calib_instance(hazard, exposure,
                               init_impf(impf_name_or_instance, param_dict_temp)[0],
@@ -427,8 +429,8 @@ def calib_optimize(hazard, exposure, impf_name_or_instance, param_dict,
                 {'type': 'ineq', 'fun': lambda x: x[1]}]
 
 
-    x0 = list(param_dict.values())
-    res = minimize(specific_calib, x0,
+    values = list(param_dict.values())
+    res = minimize(specific_calib, values,
                    # bounds=bounds,
                    # bounds=((0.0, np.inf), (0.0, np.inf), (0.0, 1.0)),
                    constraints=cons,

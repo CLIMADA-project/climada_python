@@ -121,7 +121,7 @@ class Measure():
         u_check.size(2, self.mdd_impact, 'Measure.mdd_impact')
         u_check.size(2, self.paa_impact, 'Measure.paa_impact')
 
-    def calc_impact(self, exposures, imp_fun_set, hazard):
+    def calc_impact(self, exposures, imp_fun_set, hazard, assign_centroids=True):
         """
         Apply measure and compute impact and risk transfer of measure
         implemented over inputs.
@@ -134,15 +134,21 @@ class Measure():
             impact function set instance
         hazard : climada.hazard.Hazard
             hazard instance
+        assign_centroids : bool, optional
+            indicates whether centroids are assigned to the self.exposures object.
+            Centroids assignment is an expensive operation; set this to ``False`` to save
+            computation time if the hazards' centroids are already assigned to the exposures
+            object.
+            Default: True
 
         Returns
         -------
-            : climada.engine.Impact
+        climada.engine.Impact
             resulting impact and risk transfer of measure
         """
 
         new_exp, new_impfs, new_haz = self.apply(exposures, imp_fun_set, hazard)
-        return self._calc_impact(new_exp, new_impfs, new_haz)
+        return self._calc_impact(new_exp, new_impfs, new_haz, assign_centroids)
 
     def apply(self, exposures, imp_fun_set, hazard):
         """
@@ -180,7 +186,7 @@ class Measure():
 
         return new_exp, new_impfs, new_haz
 
-    def _calc_impact(self, new_exp, new_impfs, new_haz):
+    def _calc_impact(self, new_exp, new_impfs, new_haz, assign_centroids):
         """Compute impact and risk transfer of measure implemented over inputs.
 
         Parameters
@@ -194,11 +200,11 @@ class Measure():
 
         Returns
         -------
-            : climada.engine.Impact
+        climada.engine.Impact
         """
         from climada.engine.impact import Impact
         imp = Impact()
-        imp.calc(new_exp, new_impfs, new_haz)
+        imp.calc(new_exp, new_impfs, new_haz, assign_centroids=assign_centroids)
         return imp.calc_risk_transfer(self.risk_transf_attach, self.risk_transf_cover)
 
     def _change_all_hazard(self, hazard):
@@ -282,12 +288,14 @@ class Measure():
         from_id = int(self.imp_fun_map[0:self.imp_fun_map.find('to')])
         to_id = int(self.imp_fun_map[self.imp_fun_map.find('to') + 2:])
         try:
-            exp_change = np.argwhere(new_exp.gdf[INDICATOR_IMPF + self.haz_type].values == from_id).\
-                reshape(-1)
+            exp_change = np.argwhere(
+                new_exp.gdf[INDICATOR_IMPF + self.haz_type].values == from_id
+            ).reshape(-1)
             new_exp.gdf[INDICATOR_IMPF + self.haz_type].values[exp_change] = to_id
         except KeyError:
-            exp_change = np.argwhere(new_exp.gdf[INDICATOR_IMPF].values == from_id).\
-                reshape(-1)
+            exp_change = np.argwhere(
+                new_exp.gdf[INDICATOR_IMPF].values == from_id
+            ).reshape(-1)
             new_exp.gdf[INDICATOR_IMPF].values[exp_change] = to_id
         return new_exp
 
@@ -358,7 +366,7 @@ class Measure():
 
         from climada.engine.impact import Impact
         imp = Impact()
-        imp.calc(exp_imp, impf_set, hazard)
+        imp.calc(exp_imp, impf_set, hazard, assign_centroids=False)
 
         LOGGER.debug('Cutting events whose damage have a frequency > %s.',
                      self.hazard_freq_cutoff)
