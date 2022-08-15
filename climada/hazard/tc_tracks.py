@@ -973,13 +973,6 @@ class TCTracks():
         if years is not None:
             tracks_df = tracks_df[np.isin(tracks_df['year'], years)]
 
-        # set years as labelled in files
-        tracks_df['time_start'] = tracks_df.apply(
-            lambda row: dt.datetime(
-                row['year'], row['time_start'].month, row['time_start'].day
-            ), axis=1
-        )
-        
         # a bug in the data causes some storm tracks to be double-listed:
         tracks_df = tracks_df.drop_duplicates(subset=["year", "tc_num", "time_delta"])
 
