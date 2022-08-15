@@ -957,8 +957,11 @@ class TCTracks():
         Notes
         -----
         All tracks are set in the year 1980. The id of the year (starting from 0) is saved in the
-        attribute 'id_no'. To obtain the year of each track use e.g.
-        `years = [int(tr.attrs['id_no'] / 1000) for tr in tc_tracks.data]`
+        attribute 'id_no'. To obtain the year of each track use
+        
+        >>> years = [int(tr.attrs['id_no'] / 1000) for tr in tc_tracks.data]
+        >>> # or, alternatively, 
+        >>> years = [int(tr.attrs['sid'].split("-")[-2]) for tr in tc_tracks.data]
 
         If a windfield is generated from these tracks using the method `TropCylcone.from_tracks()`,
         the following should be considered:
