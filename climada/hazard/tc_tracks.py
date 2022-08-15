@@ -962,9 +962,9 @@ class TCTracks():
 
         If a windfield is generated from these tracks using the method `TropCylcone.from_tracks()`,
         the following should be considered:
-        1- the frequencies will be set to "1" for each storm. Thus, in order to compute annual values,
-           the frequencies of the TropCylone should be changed to "1/number of years".
-        2- the storm year and the storm id are stored in the 'TropCyclone.event_name' attribute
+        1. The frequencies will be set to ``1`` for each storm. Thus, in order to compute annual
+        values, the frequencies of the TropCylone should be changed to ``1/number of years``.
+        2. The storm year and the storm id are stored in the ``TropCyclone.event_name`` attribute.
 
 
         """
