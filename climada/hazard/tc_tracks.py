@@ -963,13 +963,12 @@ class TCTracks():
         >>> # or, alternatively, 
         >>> years = [int(tr.attrs['sid'].split("-")[-2]) for tr in tc_tracks.data]
 
-        If a windfield is generated from these tracks using the method `TropCylcone.from_tracks()`,
+        If a windfield is generated from these tracks using the method ``TropCylcone.from_tracks()``,
         the following should be considered:
+
         1. The frequencies will be set to ``1`` for each storm. Thus, in order to compute annual
-        values, the frequencies of the TropCylone should be changed to ``1/number of years``.
+           values, the frequencies of the TropCylone should be changed to ``1/number of years``.
         2. The storm year and the storm id are stored in the ``TropCyclone.event_name`` attribute.
-
-
         """
         basins = ["EP", "NA", "NI", "SI", "SP", "WP"]
         tracks_df = pd.read_csv(path, names=['year', 'time_start', 'tc_num', 'time_delta',
