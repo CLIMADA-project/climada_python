@@ -433,9 +433,9 @@ def _one_rnd_walk(track,
         i_track = i_track.isel(time=slice(None, last_idx))
         if land_geom:
             # compute minimum pressure occurring on or after each timestep
-            taget_pressure = np.minimum.accumulate(
+            taget_pressure = np.flip(np.minimum.accumulate(
                 np.flip(i_track.central_pressure.values)
-            )
+            ))
             i_track = i_track.assign(
                 {
                     "target_central_pressure": ("time", taget_pressure),
