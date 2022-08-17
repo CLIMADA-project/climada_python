@@ -47,7 +47,7 @@ import climada.util.dates_times as u_dt
 from climada import CONFIG
 import climada.util.hdf5_handler as u_hdf5
 import climada.util.coordinates as u_coord
-from climada.util.constants import ONE_LAT_KM
+from climada.util.constants import ONE_LAT_KM, DEF_FREQ_UNIT
 from climada.util.coordinates import NEAREST_NEIGHBOR_THRESHOLD
 
 LOGGER = logging.getLogger(__name__)
@@ -118,7 +118,9 @@ class Hazard():
         flags indicating historical events (True)
         or probabilistic (False)
     frequency : np.array
-        frequency of each event in years
+        frequency of each event
+    frequency_unit : str
+        unit of the frequency (default: "annual")
     intensity : sparse.csr_matrix
         intensity of the events at centroids
     fraction : sparse.csr_matrix
@@ -143,7 +145,8 @@ class Hazard():
 
     vars_def = {'date',
                 'orig',
-                'event_name'
+                'event_name',
+                'frequency_unit'
                 }
     """Name of the variables used in impact calculation whose value is
     descriptive and can therefore be set with default values. Types: scalar,
@@ -185,6 +188,7 @@ class Hazard():
         # following values are defined for each event
         self.event_id = np.array([], int)
         self.frequency = np.array([], float)
+        self.frequency_unit = DEF_FREQ_UNIT
         self.event_name = list()
         self.date = np.array([], int)
         self.orig = np.array([], bool)
@@ -340,6 +344,8 @@ class Hazard():
             haz.frequency = attrs['frequency']
         else:
             haz.frequency = np.ones(haz.event_id.size)
+        if 'frequency_unit' in attrs:
+            haz.frequency_unit = attrs['frequency_unit']
         if 'event_name' in attrs:
             haz.event_name = attrs['event_name']
         else:
@@ -438,6 +444,8 @@ class Hazard():
             haz.frequency = attrs['frequency']
         else:
             haz.frequency = np.ones(haz.event_id.size)
+        if 'frequency_unit' in attrs:
+            haz.frequency_unit = attrs['frequency_unit']
         if 'event_name' in attrs:
             haz.event_name = attrs['event_name']
         else:
@@ -772,6 +780,7 @@ class Hazard():
                 setattr(haz, var_name, var_val)
 
         # reset frequency if date span has changed (optional):
+        # TODO: is the following correct for frequency_units != 'annual'?
         if reset_frequency:
             year_span_old = np.abs(dt.datetime.fromordinal(self.date.max()).year -
                                    dt.datetime.fromordinal(self.date.min()).year) + 1
@@ -1110,6 +1119,7 @@ class Hazard():
             per event. If yearrange is not given (None), the year range is
             derived from self.date
         """
+        # TODO: what if self.frequency_unit != 'annual' ?
         if not yearrange:
             delta_time = dt.datetime.fromordinal(int(np.max(self.date))).year - \
                          dt.datetime.fromordinal(int(np.min(self.date))).year + 1
@@ -1481,6 +1491,10 @@ class Hazard():
     def _read_att_mat(self, data, file_name, var_names):
         """Read MATLAB hazard's attributes."""
         self.frequency = np.squeeze(data[var_names['var_name']['freq']])
+        try:
+            self.frequency_unit = u_hdf5.get_string(data[var_names['var_name']['freq_unit']])
+        except KeyError:
+            pass
         self.orig = np.squeeze(data[var_names['var_name']['orig']]).astype(bool)
         self.event_id = np.squeeze(
             data[var_names['var_name']['even_id']].astype(int, copy=False))

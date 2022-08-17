@@ -1305,7 +1305,7 @@ class TestClear(unittest.TestCase):
         self.assertEqual(haz1.centroids.size, 0)
         self.assertEqual(len(haz1.event_name), 0)
         for attr in vars(haz1).keys():
-            if attr not in ['tag', 'units', 'event_name', 'pool']:
+            if attr not in ['tag', 'units', 'event_name', 'pool', 'frequency_unit']:
                 self.assertEqual(getattr(haz1, attr).size, 0)
         self.assertIsNone(haz1.pool)
 
