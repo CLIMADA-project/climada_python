@@ -274,6 +274,8 @@ def calc_perturbed_trajectories(
                      ', '.join(cutoff_track_ids_ts))
     new_ens = [x[0] for x in new_ens]
     tracks.data = sum(new_ens, [])
+    tracks.data_hist = deepcopy([deepcopy(x[0]) for x in new_ens if x[0].orig_event_flag])
+
 
     if adjust_intensity:
         land_geom = climada.util.coordinates.get_land_geometry(
@@ -304,9 +306,11 @@ def calc_perturbed_trajectories(
         LOGGER.info('Generating random number for intensity perturbations...')
         random_vec_intensity = [np.random.uniform(size=track_id_chunks[1] * 4)
                                 for track_id_chunks in tracks_with_id_chunks]
+        
         # TODO _model_tc_intensity needs to call _apply_land_decay to
         #       also include the land decay when a landfall occurs.
         tracks_with_id_chunks_tracks = [track_id_chunks[0] for track_id_chunks in tracks_with_id_chunks]
+
         # calculate landfall decay parameters
         if use_global_decay_params:
             v_rel = LANDFALL_DECAY_V
