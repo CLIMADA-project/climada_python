@@ -29,6 +29,7 @@ import matplotlib.pyplot as plt
 import numba
 import numpy as np
 import xarray as xr
+import pandas as pd
 from matplotlib.lines import Line2D
 from pathos.abstract_launcher import AbstractWorkerPool
 from shapely.geometry.multipolygon import MultiPolygon
