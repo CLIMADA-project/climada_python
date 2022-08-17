@@ -221,6 +221,7 @@ def calc_perturbed_trajectories(
     # nb_synth_tracks*(track.time.size-1) for angle and same for translation perturbation
     # hence sum is nb_synth_tracks * (2 + 2*(size-1)) = nb_synth_tracks * 2 * size
     # https://stats.stackexchange.com/questions/48086/algorithm-to-produce-autocorrelated-uniformly-distributed-number
+    LOGGER.info('Generating random number for locations perturbations...')
     if autocorr_ddirection == 0 and autocorr_dspeed == 0:
         random_vec = [np.random.uniform(size=nb_synth_tracks * (2 * track.time.size))
                       for track in tracks.data]
@@ -241,7 +242,7 @@ def calc_perturbed_trajectories(
     else:
         land_geom_hist = None
 
-    LOGGER.info('Applying locations perturbations')
+    LOGGER.info('Applying locations perturbations...')
     if pool:
         chunksize = min(tracks.size // pool.ncpus, 1000)
         new_ens = pool.map(_one_rnd_walk, tracks.data,
@@ -286,7 +287,7 @@ def calc_perturbed_trajectories(
         #     )
         # else:
         # returns a list of tuples (track, no_sea_chunks, no_land_chunks)
-        LOGGER.info('Identifying tracks chunks')
+        LOGGER.info('Identifying tracks chunks...')
         tracks_with_id_chunks = [
             _add_id_synth_chunks_shift_init(track, land_geom, shift_values_init=True)
             for track in tracks.data
@@ -300,7 +301,7 @@ def calc_perturbed_trajectories(
 
         # FOR EACH CHUNK OVER THE OCEAN, WE NEED 4 RANDOM VALUES: intensification
         # target perturbation, intensification shape, peak duration, decay
-        LOGGER.info('Generating random number for intensity perturbations')
+        LOGGER.info('Generating random number for intensity perturbations...')
         random_vec_intensity = [np.random.uniform(size=track_id_chunks[1] * 4)
                                 for track_id_chunks in tracks_with_id_chunks]
         # TODO _model_tc_intensity needs to call _apply_land_decay to
@@ -322,6 +323,7 @@ def calc_perturbed_trajectories(
                                  ' tracks are needed for land decay calibration'
                                  ' if use_global_decay_params=False.')
 
+        LOGGER.info('Modelling TC intensities...')
         ocean_modelled_tracks = [
             _model_synth_tc_intensity(
                 track=track,
