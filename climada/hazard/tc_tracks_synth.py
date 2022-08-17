@@ -340,9 +340,9 @@ def calc_perturbed_trajectories(
             f"{sum(no_sea_chunks for _, no_sea_chunks, _ in tracks_with_id_chunks)} ocean and "
             f"{sum(no_land_chunks for _, _, no_land_chunks in tracks_with_id_chunks)} land chunks."
         )
-    tracks.data = ocean_modelled_tracks
+        tracks.data = ocean_modelled_tracks
 
-    if legacy_decay:
+    elif legacy_decay:
         land_geom = climada.util.coordinates.get_land_geometry(
             extent=tracks.get_extent(deg_buffer=0.1), resolution=10
         )
