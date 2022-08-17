@@ -32,6 +32,7 @@ import xarray as xr
 from matplotlib.lines import Line2D
 from pathos.abstract_launcher import AbstractWorkerPool
 from shapely.geometry.multipolygon import MultiPolygon
+from pathlib import Path
 
 import climada.hazard.tc_tracks
 import climada.util.coordinates
@@ -76,6 +77,22 @@ land_geom = climada.util.coordinates.get_land_geometry(
 )
 v_rel, p_rel = _calc_land_decay(tracks.data, land_geom, pool=tracks.pool)"""
 
+DATA_DIR = Path(__file__).parent.joinpath('data')
+RANDOM_WALK_DATA_INTENSIFICATION = pd.read_csv(DATA_DIR.joinpath('tc_intensification_params.csv'))
+RANDOM_WALK_DATA_INTENSIFICATION['cumfreqlow'] = np.append(-0.01, RANDOM_WALK_DATA_INTENSIFICATION['freq'].values.cumsum()[:-1])
+RANDOM_WALK_DATA_INTENSIFICATION['cumfreqhigh'] = np.append(RANDOM_WALK_DATA_INTENSIFICATION['cumfreqlow'].values[1:], 1.0)
+RANDOM_WALK_DATA_DURATION = pd.read_csv(DATA_DIR.joinpath('tc_peak_params.csv'), na_values='', keep_default_na=False)
+RANDOM_WALK_DATA_SEA_DECAY = pd.read_csv(DATA_DIR.joinpath('tc_decay_params.csv'), na_values='', keep_default_na=False)
+
+RANDOM_WALK_DATA_CAT_STR = {
+    -1: 'TD-TS',
+    0: 'TD-TS',
+    1: "Cat 1",
+    2: "Cat 2",
+    3: "Cat 3",
+    4: "Cat 4",
+    5: "Cat 5"
+}
 
 def calc_perturbed_trajectories(
     tracks,
