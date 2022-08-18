@@ -120,7 +120,7 @@ class Hazard():
     frequency : np.array
         frequency of each event
     frequency_unit : str
-        unit of the frequency (default: "annual")
+        unit of the frequency (default: "1/year")
     intensity : sparse.csr_matrix
         intensity of the events at centroids
     fraction : sparse.csr_matrix
@@ -780,7 +780,7 @@ class Hazard():
                 setattr(haz, var_name, var_val)
 
         # reset frequency if date span has changed (optional):
-        # TODO: is the following correct for frequency_units != 'annual'?
+        # TODO: is the following correct for frequency_units != '1/year'?
         if reset_frequency:
             year_span_old = np.abs(dt.datetime.fromordinal(self.date.max()).year -
                                    dt.datetime.fromordinal(self.date.min()).year) + 1
@@ -1119,7 +1119,7 @@ class Hazard():
             per event. If yearrange is not given (None), the year range is
             derived from self.date
         """
-        # TODO: what if self.frequency_unit != 'annual' ?
+        # TODO: what if self.frequency_unit != '1/year' ?
         if not yearrange:
             delta_time = dt.datetime.fromordinal(int(np.max(self.date))).year - \
                          dt.datetime.fromordinal(int(np.min(self.date))).year + 1

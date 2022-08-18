@@ -193,7 +193,7 @@ ONE_LAT_KM = 111.12
 EARTH_RADIUS_KM = 6371
 """Earth radius in km"""
 
-DEF_FREQ_UNIT = "annual"
+DEF_FREQ_UNIT = "1/year"
 """Default frequency unit for hazards, impacts and cost/benefit calculations"""
 
 DEF_EPSG = 4326

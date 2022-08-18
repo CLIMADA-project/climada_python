@@ -41,7 +41,7 @@ from climada.entity import Exposures, Tag
 from climada.hazard import Tag as TagHaz
 import climada.util.plot as u_plot
 from climada import CONFIG
-from climada.util.constants import DEF_CRS, CMAP_IMPACT
+from climada.util.constants import DEF_CRS, CMAP_IMPACT, DEF_FREQ_UNIT
 import climada.util.coordinates as u_coord
 import climada.util.dates_times as u_dt
 from climada.util.select import get_attributes_with_matching_dimension
@@ -72,7 +72,9 @@ class Impact():
     at_event : np.array
         impact for each hazard event
     frequency : np.array
-        annual frequency of event
+        frequency of event
+    frequency_unit : str
+        frequency unit used (given by hazard), default is '1/year'
     tot_value : float
         total exposure value affected
     aai_agg : float
@@ -89,6 +91,7 @@ class Impact():
                  event_name=None,
                  date=None,
                  frequency=None,
+                 frequency_unit=DEF_FREQ_UNIT,
                  coord_exp=None,
                  crs=DEF_CRS,
                  eai_exp=None,
@@ -112,7 +115,9 @@ class Impact():
             proleptic Gregorian ordinal, where January 1 of year 1 has
             ordinal 1 (ordinal format of datetime library)
         frequency : np.array, optional
-            annual frequency of event impact for each hazard event
+            frequency of event impact for each hazard event
+        frequency_unit : np.array, optional
+            frequency unit, default: '1/year'
         coord_exp : np.array, optional
             exposures coordinates [lat, lon] (in degrees)
         crs : Any, optional
@@ -143,6 +148,7 @@ class Impact():
         self.eai_exp = np.array([], float) if eai_exp is None else eai_exp
         self.at_event = np.array([], float) if at_event is None else at_event
         self.frequency = np.array([],float) if frequency is None else frequency
+        self.frequency_unit = frequency_unit
         self.tot_value = tot_value
         self.aai_agg = aai_agg
         self.unit = unit
@@ -239,6 +245,7 @@ class Impact():
             event_name = hazard.event_name,
             date = hazard.date,
             frequency = hazard.frequency,
+            frequency_unit = hazard.frequency_unit,
             coord_exp = np.stack([exposures.gdf.latitude.values,
                                   exposures.gdf.longitude.values],
                                  axis=1),
@@ -451,7 +458,7 @@ class Impact():
         sort_idxs = np.argsort(self.at_event)[::-1]
         # Calculate exceedence frequency
         exceed_freq = np.cumsum(self.frequency[sort_idxs])
-        # Set return period and imact exceeding frequency
+        # Set return period and impact exceeding frequency
         ifc.return_per = 1 / exceed_freq[::-1]
         ifc.impact = self.at_event[sort_idxs][::-1]
         ifc.unit = self.unit
@@ -789,7 +796,7 @@ class Impact():
             imp_wr = csv.writer(imp_file)
             imp_wr.writerow(["tag_hazard", "tag_exposure", "tag_impact_func",
                              "unit", "tot_value", "aai_agg", "event_id",
-                             "event_name", "event_date", "event_frequency",
+                             "event_name", "event_date", "event_frequency", "frequency_unit",
                              "at_event", "eai_exp", "exp_lat", "exp_lon", "exp_crs"])
             csv_data = [[[self.tag['haz'].haz_type], [self.tag['haz'].file_name],
                          [self.tag['haz'].description]],
@@ -797,7 +804,7 @@ class Impact():
                         [[self.tag['impf_set'].file_name], [self.tag['impf_set'].description]],
                         [self.unit], [self.tot_value], [self.aai_agg],
                         self.event_id, self.event_name, self.date,
-                        self.frequency, self.at_event,
+                        self.frequency, [self.frequency_unit], self.at_event,
                         self.eai_exp, self.coord_exp[:, 0], self.coord_exp[:, 1],
                         [str(self.crs)]]
             for values in zip_longest(*csv_data):
@@ -842,11 +849,12 @@ class Impact():
         write_col(7, imp_ws, self.event_name)
         write_col(8, imp_ws, self.date)
         write_col(9, imp_ws, self.frequency)
-        write_col(10, imp_ws, self.at_event)
-        write_col(11, imp_ws, self.eai_exp)
-        write_col(12, imp_ws, self.coord_exp[:, 0])
-        write_col(13, imp_ws, self.coord_exp[:, 1])
-        write_col(14, imp_ws, [str(self.crs)])
+        write_col(10, imp_ws, [self.frequency_unit])
+        write_col(11, imp_ws, self.at_event)
+        write_col(12, imp_ws, self.eai_exp)
+        write_col(13, imp_ws, self.coord_exp[:, 0])
+        write_col(14, imp_ws, self.coord_exp[:, 1])
+        write_col(15, imp_ws, [str(self.crs)])
 
         imp_wb.close()
 
@@ -900,6 +908,7 @@ class Impact():
         imp.date = imp_df.event_date[:num_ev].values
         imp.at_event = imp_df.at_event[:num_ev].values
         imp.frequency = imp_df.event_frequency[:num_ev].values
+        imp.frequency_unit = imp_df.frequency_unit[0]
         imp.eai_exp = imp_df.eai_exp[~np.isnan(imp_df.eai_exp)].values
         num_exp = imp.eai_exp.size
         imp.coord_exp = np.zeros((num_exp, 2))
@@ -960,6 +969,7 @@ class Impact():
         imp.event_name = dfr.event_name[:imp.event_id.size].values
         imp.date = dfr.event_date[:imp.event_id.size].values
         imp.frequency = dfr.event_frequency[:imp.event_id.size].values
+        imp.frequency_unit = dfr.frequency_unit[0]
         imp.at_event = dfr.at_event[:imp.event_id.size].values
 
         imp.eai_exp = dfr.eai_exp[~np.isnan(dfr.eai_exp.values)].values
@@ -1420,7 +1430,7 @@ class ImpactFreqCurve():
         axis.set_title(self.label)
         axis.set_ylabel('Impact (' + self.unit + ')')
         if log_frequency:
-            axis.set_xlabel('Exceedance frequency (1/year)')
+            axis.set_xlabel(f'Exceedance frequency ({self.frequency_unit})')
             axis.set_xscale('log')
             axis.plot(self.return_per**-1, self.impact, **kwargs)
         else:
