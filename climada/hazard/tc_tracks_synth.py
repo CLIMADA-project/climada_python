@@ -87,6 +87,10 @@ RANDOM_WALK_DATA_INTENSIFICATION['cumfreqhigh'] = np.append(RANDOM_WALK_DATA_INT
 RANDOM_WALK_DATA_DURATION = pd.read_csv(DATA_DIR.joinpath('tc_peak_params.csv'), na_values='', keep_default_na=False)
 RANDOM_WALK_DATA_SEA_DECAY = pd.read_csv(DATA_DIR.joinpath('tc_decay_params.csv'), na_values='', keep_default_na=False)
 
+TIME_MODEL_BEFORE_HIST_LF_H = 4
+"""Time (in hours) before a historical landfall from which intensity (central
+pressure) is assumed to be affected by the upcoming landfall"""
+
 RANDOM_WALK_DATA_CAT_STR = {
     -1: 'TD-TS',
     0: 'TD-TS',
@@ -1111,12 +1115,25 @@ def _add_id_synth_chunks_shift_init(track: xr.Dataset,
     remove_landstart(transitions_synth)
     remove_landstart(transitions_hist)
 
-    # TODO do we want intensity increase from the first divergence? if not, remove the following
-    ftr_synth = first_transition(transitions_synth)
+
+    # intensity should be modelled no latter than:
+    # - TIME_MODEL_BEFORE_HIST_LF_H hours before the first historical landfall;
+    # and
+    # - when the synthetic track makes landfall
+    # here, find the first of these two
+
+    # identify first historical sea-to-land transition
     ftr_hist = first_transition(transitions_hist)
-    if ftr_synth > ftr_hist:
-        # increase chunk count if historical track has made landfall, but the synthetic one has not
-        transitions_synth[ftr_hist] = 1
+    # when to start modelling intensity according to first historical landfall
+    time_start_model = track.time.values[ftr_hist] - np.timedelta64(TIME_MODEL_BEFORE_HIST_LF_H, 'h')
+    idx_start_model = np.where(track.time.values > time_start_model)[0][0]
+
+    # if historical landfall implies modelling intensity before synthetic landfall
+    if idx_start_model < first_transition(transitions_synth):
+        # increase chunk count if historical track has made landfall, but the
+        # synthetic one has not - intensity will be modelled starting a few
+        # timesteps before the historical landfall
+        transitions_synth[idx_start_model] = 1
 
     to_sea = np.where(transitions_synth > 0, transitions_synth, 0)
     no_chunks_sea = np.count_nonzero(to_sea)
@@ -1200,9 +1217,9 @@ def _model_synth_tc_intensity(
         target_peak_pert = central_pressure_pert / 2 * scipy.stats.truncnorm.ppf(rnd_pars_i[0], -2, 2)
         target_peak = track_chunk.target_central_pressure.values[0] + target_peak_pert
 
-        if pcen[1] <= target_peak:
+        if pcen[0] <= target_peak:
             # already at target, no intensification needed - keep at current intensity
-            pcen[1:] = pcen[1]
+            pcen[:] = pcen[0]
         else:
             # intensification parameters
             inten_i = np.logical_and(
