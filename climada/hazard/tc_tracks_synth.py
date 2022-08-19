@@ -1233,8 +1233,32 @@ def _model_synth_tc_intensity(
         pcen = np.fmin(pcen, track_chunk.environmental_pressure.values)
 
         # peak duration
+        # defined as the time difference between the first point after peak
+        # intensity and first point within peak intensity.
+
+        # Peak is reached if target is reached within 5 mbat
         is_peak = pcen - target_peak <= 5
         if np.sum(is_peak) > 0:
+
+            # if the chunks starts at peak, account for previous time steps for
+            # peak duration
+            if is_peak[0]:
+                # account for previous time steps for peak duration
+                pcen_before_peak_rev = np.flip(track.central_pressure.values[:in_chunk[0]])
+                idx_before_peak_rev = np.where(pcen_before_peak_rev - target_peak > 5)[0]
+                time_before_peak_rev = np.flip(track.time.values[:in_chunk[0]])
+                if idx_before_peak_rev.shape[0] > 0:
+                    idx_start_peak_rev = idx_before_peak_rev[0] -1
+                    # time of first point within peak
+                    peak_start_time = time_before_peak_rev[idx_start_peak_rev]
+                    # time spent in peak until chunk start
+                    time_already_in_peak = track_chunk.time.values[0] - peak_start_time
+                    time_already_in_peak_days = time_already_in_peak / np.timedelta64(1, 'D')
+                else:
+                    time_already_in_peak_days = 0
+            else:
+                time_already_in_peak_days = 0
+
             # apply duration: as a function of basin and category
             peak_pcen_i = np.where(pcen == np.min(pcen))[0]
             pcen_peak = pcen[peak_pcen_i[:1]]
@@ -1258,8 +1282,12 @@ def _model_synth_tc_intensity(
                                                              loc=lognorm_pars['meanlog'],
                                                              scale=lognorm_pars['sdlog']))
             # last peak point
-            time_in_peak = time_days - time_days[np.where(is_peak)[0][0]]
-            end_peak = np.where(time_in_peak <= peak_duration_days)[0][-1]
+            time_in_peak = time_days - time_days[np.where(is_peak)[0][0]] + time_already_in_peak_days
+            if np.any(time_in_peak <= peak_duration_days):
+                end_peak = np.where(time_in_peak <= peak_duration_days)[0][-1]
+            else:
+                # peak already ends
+                end_peak = 0
 
             # decay required?
             if end_peak < len(time_days) - 1:
