@@ -36,6 +36,7 @@ from pathos.abstract_launcher import AbstractWorkerPool
 from shapely.geometry.multipolygon import MultiPolygon
 from pathlib import Path
 from copy import deepcopy
+import statsmodels.api as sm
 
 import climada.hazard.tc_tracks
 import climada.util.coordinates
@@ -100,6 +101,8 @@ RANDOM_WALK_DATA_CAT_STR = {
     4: "Cat 4",
     5: "Cat 5"
 }
+
+FIT_TRACK_VARS = ['max_sustained_wind', 'radius_max_wind', 'radius_oci']
 
 def calc_perturbed_trajectories(
     tracks,
@@ -255,11 +258,12 @@ def calc_perturbed_trajectories(
                            itertools.repeat(max_dspeed_rel, tracks.size),
                            itertools.repeat(max_ddirection, tracks.size),
                            itertools.repeat(land_geom_hist, tracks.size),
+                           itertools.repeat(central_pressure_pert, tracks.size),
                            random_vec, chunksize=chunksize)
     else:
         new_ens = [_one_rnd_walk(track, nb_synth_tracks, max_shift_ini,
                                  max_dspeed_rel, max_ddirection,
-                                 land_geom_hist, rand)
+                                 land_geom_hist, central_pressure_pert, rand)
                    for track, rand in zip(tracks.data, random_vec)]
 
     cutoff_track_ids_tc = [x[1] for x in new_ens]
@@ -380,6 +384,7 @@ def _one_rnd_walk(track,
                   max_dspeed_rel,
                   max_ddirection,
                   land_geom,
+                  central_pressure_pert,
                   rnd_vec):
     """
     Apply random walk to one track.
@@ -407,6 +412,10 @@ def _one_rnd_walk(track,
         'on_land_hist' in synthetic tracks, and variable
         'target_central_pressure' is created as the lowest central pressure from
         each time step to the end of the track.
+    central_pressure_pert : float, optional
+        Maximum perturbations in central pressure. Used to determine the range
+        of pressure values over which to fit data. This argment must be provided
+        if 'land_geom' is provided.
     rnd_vec : np.ndarray of shape (2 * nb_synth_tracks * track.time.size),)
         Vector of random perturbations.
 
@@ -431,7 +440,17 @@ def _one_rnd_walk(track,
     if land_geom:
         climada.hazard.tc_tracks.track_land_params(track, land_geom, land_params='on_land')
 
-    ens_track.append(track)
+    ens_track.append(track.copy(True))
+
+    # calculate historical track values that are used for synthetic track modelling
+    if land_geom:
+        # compute minimum pressure occurring on or after each timestep
+        taget_pressure = np.flip(np.minimum.accumulate(
+            np.flip(track.central_pressure.values)
+        ))
+        # compute linear regression onto intensification and decay
+        _add_fits_to_track(track, central_pressure_pert)
+
     cutoff_track_ids_ts = []
     cutoff_track_ids_tc = []
     for i_ens in range(nb_synth_tracks):
@@ -498,10 +517,6 @@ def _one_rnd_walk(track,
         i_track.attrs['id_no'] = i_track.attrs['id_no'] + (i_ens + 1) / 100
         i_track = i_track.isel(time=slice(None, last_idx))
         if land_geom:
-            # compute minimum pressure occurring on or after each timestep
-            taget_pressure = np.flip(np.minimum.accumulate(
-                np.flip(i_track.central_pressure.values)
-            ))
             i_track = i_track.assign(
                 {
                     "target_central_pressure": ("time", taget_pressure),
@@ -998,6 +1013,182 @@ def _check_decay_values_plot(x_val, v_lf, p_lf, v_rel, p_rel):
             x_eval,
             _decay_p_function(p_rel[track_cat][0], p_rel[track_cat][1], x_eval),
             '-', c=color)
+
+def _add_fits_to_track(track: xr.Dataset, central_pressure_pert: float):
+    """Calculate fit of variables to be modelled as a function of central
+    pressure for the intensification and the decay phase, and add the results as
+    attributes to track.
+
+    The input 'track' in modified in-place!
+    
+    The following variables are fitted: Maximum sustained wind, radius of
+    maximum winds and radius of outmost closed isobar.
+
+    max_sustained_wind: linear regression
+    radius_max_wind,radius_oci: piecewise linear regression (up to 4 segments)
+
+    Parameters
+    ----------
+    track : xr.Dataset
+        A single TC track.
+    central_pressure_pert : float
+        Maximum perturbations in central pressure. Used to determine the range
+        of pressure values over which to fit data.    
+
+    Returns
+    -------
+    track : xr.Dataset 
+        Same as input parameter track but with additional attributes 'fit_intens' and
+        'fit_decay' (see _get_fit_single_phase). If intensification and/or decay
+        consist of less than 3 data points, the corresponding attribute is not set.
+    """
+    pcen = track.central_pressure.values
+    where_max_intensity = np.where(pcen == pcen.min())[0]
+    if where_max_intensity[0] > 3:
+        track_intens = track[dict(time=slice(None,where_max_intensity[0]))]
+        fit_attrs_intens = _get_fit_single_phase(track_intens, central_pressure_pert)
+        track.attrs['fit_intens'] = fit_attrs_intens
+    if where_max_intensity[-1] < len(pcen) - 4:    
+        track_decay = track[dict(time=slice(where_max_intensity[-1],None))]
+        fit_attrs_decay = _get_fit_single_phase(track_decay, central_pressure_pert)
+        track.attrs['fit_decay'] = fit_attrs_decay
+    return track
+
+def _get_fit_single_phase(track_sub, central_pressure_pert):
+    """Calculate order and fit of variables to be modelled for a temporal subset
+    of a track.
+    
+    The following variables are fitted: Maximum sustained wind, radius of
+    maximum winds and radius of outmost closed isobar.
+
+    max_sustained_wind: linear regression
+    radius_max_wind,radius_oci: piecewise linear regression (up to 4 segments)
+
+    Parameters
+    ----------
+    track_sub : xr.Dataset
+        A temporal subset of a single TC track.
+    central_pressure_pert : float
+        Maximum perturbations in central pressure. Used to determine the range
+        of pressure values over which to fit data.    
+
+    Returns
+    -------
+    fit_output : Dict
+        Dictionary of dictionaries:
+        {'var': {
+            'order': (int or tuple),
+            'fit': statsmodels.regression.linear_model.RegressionResultsWrapper
+        }}
+        where 'var' is the fitted variables (e.g., 'max_sustained_wind'), 'order'
+        is an int or Tuple, and 'fit' is a statsmodels.regression.linear_model.RegressionResultsWrapper
+        object.
+    """
+    pcen = track_sub['central_pressure'].values
+    fit_output = {}
+    for var in FIT_TRACK_VARS:
+        order = _get_fit_order(pcen, central_pressure_pert, var_name=var)
+        d_explanatory = _prepare_data_piecewise(pcen, order)
+        d_explained = pd.DataFrame({
+            var: track_sub[var].values
+        })
+        sm_results = sm.OLS(d_explained, d_explanatory).fit()
+        fit_output[var] = {
+            'order': order,
+            'fit': sm_results
+        }
+    return fit_output
+
+def _get_fit_order(pcen, central_pressure_pert, var_name):
+    """Get the order of the data fit.
+
+    For variable 'max_sustained_wind' or if pcen does not consist of more than 5
+    values, order is 1 (i.e. linear regression). Otherwise, data is split into
+    up to 4 bins and a tuple with breakpoints for a piecewise linear regression
+    is returned.
+
+    Parameters
+    ----------
+    pcen : np.array
+        Central pressure values.
+    central_pressure_pert : float
+        Maximum perturbations in central pressure. Used to determine the range
+        of pressure values over which to fit data.
+    var_name : str
+        Name of the variable for which to determine the order.
+
+    Returns
+    -------
+    order : int or Tuple
+        Order of the statistical model.
+
+    """
+    if var_name == 'max_sustained_wind' or len(pcen) <= 5:
+        order = 1
+    else:
+        # split the central pressure domain into up to 4 bins
+        pcen_min = pcen.min() - central_pressure_pert
+        order = np.linspace(pcen_min - 1, pcen.max()+1, num=5)
+        def get_order_filtered(order, values):
+            order_empty = [
+                np.all(~np.logical_and(values >= order[i], values <= order[i+1]))
+                for i in range(len(order)-1)
+            ]
+            while np.any(order_empty):
+                # first empty bin
+                i_empty = np.where(order_empty)[0][0]
+                if i_empty < len(order) - 2:
+                    # not the last bin: remove upper breakpoint
+                    order = np.delete(order, i_empty + 1)
+                else:
+                    # last bin, therefore remove previous breakpoint
+                    order = np.delete(order, i_empty)
+                order_empty = [
+                    np.all(~np.logical_and(values >= order[i], values <= order[i+1]))
+                    for i in range(len(order)-1)
+                ]
+            return order
+        order = get_order_filtered(order, pcen)
+        if len(order) == 2:
+            # single bin: back to standard linear regression
+            order = 1
+        else:
+            order = tuple(order)
+    return order
+
+def _prepare_data_piecewise(pcen, order):
+    """Prepare data for statistical modelling of track parameters.
+
+    Parameters
+    ----------
+    pcen : np.array
+        Central pressure values.
+    order : int or Tuple
+        Order of the statistical model.
+
+    Returns
+    -------
+    d_explanatory : pandas.DataFrame
+        Dataframe with one column per order.
+    """
+    if isinstance(order, int):
+        if order != 1:
+            raise ValueError('Unexpected value in order')
+        d_explanatory = pd.DataFrame({
+            'pcen': pcen,
+            'const': [1.0] * len(pcen)
+        })
+    else:
+        # piecewise linear regression
+        d_explanatory = dict()
+        for i, order_i in enumerate(order):
+            col = f'var{order_i}'
+            slope_0 = 1. / (order_i - order[i - 1]) if i > 0 else 0
+            slope_1 = 1. / (order[i + 1] - order_i) if i + 1 < len(order) else 0
+            d_explanatory[col] = np.fmax(0, (1 - slope_0 * np.fmax(0, order_i - pcen)
+                                                - slope_1 * np.fmax(0, pcen - order_i)))
+        d_explanatory = pd.DataFrame(d_explanatory)
+    return d_explanatory
 
 def _add_id_synth_chunks_shift_init(track: xr.Dataset,
                                     land_geom: MultiPolygon = None,
