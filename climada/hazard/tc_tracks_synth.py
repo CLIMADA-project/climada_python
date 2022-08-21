@@ -1580,6 +1580,33 @@ def _model_synth_tc_intensity(
             time_in_peak = time_days - time_days[np.where(is_peak)[0][0]] + time_already_in_peak_days
             if np.any(time_in_peak <= peak_duration_days):
                 end_peak = np.where(time_in_peak <= peak_duration_days)[0][-1]
+                if end_peak > 2:
+                    # add pcen variations during peak
+                    if is_peak[0]:
+                        # starting at peak: linear decrease to peak value +2.5mbar
+                        # from peak center
+                        peak_start_idx = np.where(pcen == np.min(pcen))[0][0]
+                        mid_peak_idx = np.floor((end_peak+1)/2).astype(int)
+                        pcen[mid_peak_idx:end_peak + 1] = np.interp(
+                            np.arange(mid_peak_idx, end_peak+1),
+                            np.array([mid_peak_idx, end_peak]),
+                            np.array([pcen[mid_peak_idx], target_peak+2.5])
+                        )
+                    elif end_peak - np.where(is_peak)[0][0] >= 2:
+                        # model peak as a quadratic function
+                        peak_start_idx = np.where(is_peak)[0][0]
+                        mid_peak_idx = (peak_start_idx + np.floor((end_peak-peak_start_idx+1)/2)).astype(int)
+                        if pcen[peak_start_idx] == pcen[mid_peak_idx]:
+                            pcen[peak_start_idx] += 2.5
+                        if (pcen[peak_start_idx] <= pcen[mid_peak_idx]) or (pcen[mid_peak_idx] >= pcen[end_peak]+2.5):
+                            LOGGER.debug('strange values during peak: ', track.sid)
+                            print(pcen[peak_start_idx:end_peak+1])
+                        interp_fun = scipy.interpolate.interp1d(
+                            x=np.array([peak_start_idx, mid_peak_idx, end_peak]),
+                            y=np.array([pcen[peak_start_idx], pcen[mid_peak_idx], pcen[end_peak]+2.5]),
+                            kind='quadratic'
+                        )
+                        pcen[peak_start_idx:end_peak+1] = interp_fun(np.arange(peak_start_idx, end_peak+1))
             else:
                 # peak already ends
                 end_peak = 0
@@ -1746,10 +1773,10 @@ def _model_synth_tc_intensity(
         peak_start_idx, peak_end_idx = _get_peak_idx(pcen)
         if peak_start_idx > 0:
             _estimate_vars_chunk(track, 'intens', np.arange(peak_start_idx + 1))
-        if peak_end_idx > peak_start_idx:
-            _estimate_vars_chunk(track, 'peak', np.arange(peak_start_idx, peak_end_idx + 1))
         if peak_end_idx < len(pcen) -1:
             _estimate_vars_chunk(track, 'decay', np.arange(peak_end_idx, len(pcen)))
+        if peak_end_idx > peak_start_idx:
+            _estimate_vars_chunk(track, 'peak', np.arange(peak_start_idx, peak_end_idx + 1))
     
     # organise chunks to be processed in temporal sequence
     chunk_index = np.unique(track.id_chunk.values, return_index=True)[1]
