@@ -1190,6 +1190,106 @@ def _prepare_data_piecewise(pcen, order):
         d_explanatory = pd.DataFrame(d_explanatory)
     return d_explanatory
 
+def _estimate_vars_chunk(track: xr.Dataset,
+                         phase: str,
+                         idx):
+    """Estimate a synthetic track's parameters from central pressure based
+    on relationships fitted on that track's historical values for a subset of
+    the track as specified by the phase (intensification, peak, decay).
+
+    The input 'track' is modified in place!
+
+    The variables estimated from central pressure are 'max_sustained_wind',
+    'radius_max_wind 'radius_oci'.
+
+    Parameters
+    ----------
+    track : xarray.Datasset
+        Track data.
+    phase : str
+        Track phase to be modelled. One of 'intens', 'peak', or 'decay'.
+    idx : numpy.array
+        Indices in time corresponding to the phase to be modelled.
+
+    Returns
+    -------
+    Nothing.
+    """
+    pcen = track.central_pressure.values[idx]
+    LOGGER.info(phase)
+    if phase in ['intens', 'decay']:
+        if 'fit_' + phase in track.attrs.keys():
+            fit_data = track.attrs['fit_' + phase]
+            for var in FIT_TRACK_VARS:
+                track[var][idx] = fit_data[var]['fit'].predict(
+                    _prepare_data_piecewise(pcen, fit_data[var]['order'])
+                ).values
+        else:
+            # apply global fit
+            track['max_sustained_wind'][idx] = climada.hazard.tc_tracks._estimate_vmax(
+                np.repeat(np.nan, pcen.shape), track.lat[idx], track.lon[idx], pcen)
+            track['radius_max_wind'][idx] = climada.hazard.tc_tracks.estimate_rmw(
+                np.repeat(np.nan, pcen.shape), pcen)
+            track['radius_oci'][idx] = climada.hazard.tc_tracks.estimate_roci(
+                np.repeat(np.nan, pcen.shape), pcen)
+        return
+    elif phase != "peak":
+        raise ValueError("'phase' should be one of 'intens', 'decay' or 'peak'")
+
+    # for peak: interpolate between estimated first and last value
+    if 'fit_intens' in track.attrs.keys():
+        fit_data = track.attrs['fit_intens']
+        start_vals = {}
+        for var in FIT_TRACK_VARS:
+            start_vals[var] = fit_data[var]['fit'].predict(
+                _prepare_data_piecewise(np.array([pcen[0]]), fit_data[var]['order'])
+            ).values[0]
+    else:
+        # take previous values or global fit
+        if idx[0] > 0:
+            start_vals = {var: track[var].values[idx[0]-1] for var in FIT_TRACK_VARS}
+        else:
+            start_vals = {}
+            # TODO does not work for a single value...
+            start_vals['max_sustained_wind'] = climada.hazard.tc_tracks._estimate_vmax(
+                np.array([np.nan]), np.array([track.lat[0]]),
+                np.array([track.lon[0]]), np.array([pcen[0]]))[0]
+            start_vals['radius_max_wind'] = climada.hazard.tc_tracks.estimate_rmw(
+                np.array([np.nan]), np.array([pcen[0]]))[0]
+            start_vals['radius_oci'] = climada.hazard.tc_tracks.estimate_roci(
+                np.array([np.nan]), np.array([pcen[0]]))[0]
+    if len(idx) == 1:
+        # no need to get the decay fit, just use the intens one
+        for var in FIT_TRACK_VARS:
+            track[var][idx] = start_vals[var]
+        return
+    if 'fit_decay' in track.attrs.keys():
+        fit_data = track.attrs['fit_decay']
+        end_vals = {}
+        for var in FIT_TRACK_VARS:
+            end_vals[var] = fit_data[var]['fit'].predict(
+                _prepare_data_piecewise(np.array([pcen[-1]]), fit_data[var]['order'])
+            ).values[0]
+    else:
+        # take next values or global fit
+        if idx[-1] < len(pcen) - 1:
+            end_vals = {var: track[var][idx[-1]+1] for var in FIT_TRACK_VARS}
+        else:
+            end_vals = {}
+            end_vals['max_sustained_wind'] = climada.hazard.tc_tracks._estimate_vmax(
+                np.array([np.nan]), np.array([track.lat[idx[-1]]]),
+                np.array([track.lon[idx[-1]]]), np.array([pcen[-1]]))[0]
+            end_vals['radius_max_wind'] = climada.hazard.tc_tracks.estimate_rmw(
+                np.array([np.nan]), np.array([pcen[-1]]))[0]
+            end_vals['radius_oci'] = climada.hazard.tc_tracks.estimate_roci(
+                np.array([np.nan]), np.array([pcen[-1]]))[0]
+
+    for var in FIT_TRACK_VARS:
+        track[var][idx] = np.interp(
+            idx, np.array([idx[0], idx[-1]]), np.array([start_vals[var], end_vals[var]])
+        )
+    return track
+
 def _add_id_synth_chunks_shift_init(track: xr.Dataset,
                                     land_geom: MultiPolygon = None,
                                     shift_values_init: bool = True):
@@ -1411,6 +1511,8 @@ def _model_synth_tc_intensity(
         if pcen[0] <= target_peak:
             # already at target, no intensification needed - keep at current intensity
             pcen[:] = pcen[0]
+            # ensure central pressure < environmental pressure
+            pcen = np.fmin(pcen, track_chunk.environmental_pressure.values)
         else:
             # intensification parameters
             inten_i = np.logical_and(
@@ -1420,8 +1522,9 @@ def _model_synth_tc_intensity(
             inten_pars = RANDOM_WALK_DATA_INTENSIFICATION.loc[inten_i, ['a', 'b']].to_dict('records')[0]
             # apply intensification
             pcen = np.fmax(pcen[0] + inten_pars['a']*(1-np.exp(inten_pars['b']*time_days)), np.array([target_peak]))
-        # ensure central pressure < environmental pressure
-        pcen = np.fmin(pcen, track_chunk.environmental_pressure.values)
+            # ensure central pressure < environmental pressure
+            pcen = np.fmin(pcen, track_chunk.environmental_pressure.values)
+            track_chunk['central_pressure'][:] = pcen
 
         # peak duration
         # defined as the time difference between the first point after peak
@@ -1451,18 +1554,17 @@ def _model_synth_tc_intensity(
                 time_already_in_peak_days = 0
 
             # apply duration: as a function of basin and category
-            peak_pcen_i = np.where(pcen == np.min(pcen))[0]
-            pcen_peak = pcen[peak_pcen_i[:1]]
+            peak_pcen_i = np.where(pcen == np.min(pcen))[0][0]
             # TODO estimate Vmax from pcen consistently with elsewhere
-            peak_vmax = climada.hazard.tc_tracks._estimate_vmax(
-                np.array([np.nan]),
-                track_chunk.lon.values[peak_pcen_i[:1]],
-                track_chunk.lat.values[peak_pcen_i[:1]],
-                pcen_peak
-            )
+            # since we do not know if we are in the intensification or decay
+            # phase of the whole TC, take the average Vmax estimate from both
+            # fits
+            track_peak = track_chunk.copy(True).isel(time = [peak_pcen_i])
+            _estimate_vars_chunk(track_peak, phase='peak', idx=np.zeros(1).astype(int))
+            peak_vmax = track_peak['max_sustained_wind'].values
             peak_cat = climada.hazard.tc_tracks.set_category(peak_vmax, wind_unit=track_chunk.max_sustained_wind_unit)
             peak_cat = RANDOM_WALK_DATA_CAT_STR[peak_cat]
-            peak_basin = track_chunk.basin.values[peak_pcen_i[0]]
+            peak_basin = track_chunk.basin.values[peak_pcen_i]
             duration_i = np.logical_and(
                 RANDOM_WALK_DATA_DURATION['basin'] == peak_basin,
                 RANDOM_WALK_DATA_DURATION['category'] == peak_cat
@@ -1496,42 +1598,11 @@ def _model_synth_tc_intensity(
                 p_drop = p_drop * np.exp(-peak_decay_k * time_in_decay)
                 pcen[end_peak:] = track_chunk.environmental_pressure.values[end_peak:] + p_drop
 
-        # ensure central pressure < environmental pressure
-        pcen = np.fmin(pcen, track_chunk.environmental_pressure.values)
+                # ensure central pressure < environmental pressure
+                pcen = np.fmin(pcen, track_chunk.environmental_pressure.values)
 
-        # derive other parameters from central_pressure
-        # TODO fit par vs pcen for correspondung chunk, use that fit (see below)
-        # for now let's use the globally valid fits
-        track_chunk['max_sustained_wind'][:] = climada.hazard.tc_tracks._estimate_vmax(
-            np.repeat(np.nan, pcen.shape), track_chunk.lat, track_chunk.lon, pcen)
-        track_chunk['radius_max_wind'][:] = climada.hazard.tc_tracks.estimate_rmw(
-            np.repeat(np.nan, pcen.shape), pcen)
-        track_chunk['radius_oci'][:] = climada.hazard.tc_tracks.estimate_roci(
-            np.repeat(np.nan, pcen.shape), pcen)
-
-        # vars_to_model = ['radius_max_wind', 'radius_oci', 'max_sustained_wind']
-        # for v in vars_to_model:
-            # fit par vs pcen for corresponding chunk, use that fit
-            # 1) identify chunk
-
-            # 2) make fit
-            # d_explained = pd.DataFrame({v: track[v].values.ravel()})
-            # d_explanatory = pd.DataFrame({
-            #   'pcen': track.central_pressure.values,
-            #   'const': 1.0
-            # })
-            # sm_results = sm.OLS(d_explained, d_explanatory)
-            # #   apply fit to variable
-            # x = sm_results.predict()
-            # done
-
-        # mask = (track.id_chunk == id_chunk)
-        # track_chunk2 = track_chunk.copy()
-        track['central_pressure'][in_chunk] = pcen
-        track['max_sustained_wind'][in_chunk] = track_chunk['max_sustained_wind'].values
-        track['radius_max_wind'][in_chunk] = track_chunk['radius_max_wind'].values
-        track['radius_oci'][in_chunk] = track_chunk['radius_oci'].values
-
+        # Now central pressure has been modelled
+        track['central_pressure'][in_chunk][:] = track_chunk['central_pressure'].values
     
     def intensity_evolution_land(track, id_chunk, v_rel, p_rel, s_rel):
         # taking last value before the chunk as a starting point from where to model intensity
@@ -1599,10 +1670,6 @@ def _model_synth_tc_intensity(
 
         # assign output
         track['central_pressure'][in_chunk] = track_chunk['central_pressure'][:]
-        track['max_sustained_wind'][in_chunk] = track_chunk['max_sustained_wind'][:]
-        track['radius_max_wind'][in_chunk] = track_chunk['radius_max_wind'][:]
-        track['radius_oci'][in_chunk] = track_chunk['radius_oci'][:]
-        # return end_target_peak_time
 
     def _get_relax_time(track, max_relax_time_days):
         # if in last max_relax_time_days any pressure value equal to 2 days
@@ -1632,13 +1699,61 @@ def _model_synth_tc_intensity(
             track['max_sustained_wind'][in_end] = track_end['max_sustained_wind'].values
             track.max_sustained_wind[track.max_sustained_wind < 0] = 0
 
+    def _estimate_params_track(track):
+        """Estimate a synthetic track's parameters from central pressure based
+        on relationships fitted on that track's historical values.
+
+        The input 'track' is modified in place!
+
+        The variables estimated from central pressure are 'max_sustained_wind',
+        'radius_max_wind 'radius_oci'. The track is split into 3 phases:
+        intensification (up to maximum intensity +/-5 mbar), peak (set of
+        subsequent values around the minimum central pressure value, all within
+        5 mbar of that minimum value), and decay (thereafter).
+
+        Parameters
+        ----------
+        track : xarray.Datasset
+            Track data.
+        """
+        pcen = track.central_pressure.values
+        def _get_peak_idx(pcen):
+            peak_idx = np.where(pcen == pcen.min())[0]
+            if np.all(pcen - pcen.min() <= 5):
+                return 0, len(pcen) - 1
+            peak_idx = peak_idx[0]
+            if peak_idx < len(pcen) - 1:
+                idx_out = np.where(np.diff((pcen[peak_idx:] - pcen.min() <= 5).astype(int)) == -1)[0]
+                if idx_out.shape[0] == 0:
+                    peak_end_idx = len(pcen) - 1
+                else:
+                    peak_end_idx = peak_idx + idx_out[0]
+            else:
+                peak_end_idx = peak_idx
+            if peak_idx > 0:
+                idx_out = np.where(np.diff((np.flip(pcen[:peak_idx+1]) - pcen.min() <= 5).astype(int)) == -1)[0]
+                if idx_out.shape[0] == 0:
+                    peak_start_idx = 0
+                else:
+                    peak_start_idx = peak_idx - [0]
+            else:
+                peak_start_idx = 0
+            return peak_start_idx, peak_end_idx
+
+        # identify phases
+        peak_start_idx, peak_end_idx = _get_peak_idx(pcen)
+        if peak_start_idx > 0:
+            _estimate_vars_chunk(track, 'intens', np.arange(peak_start_idx + 1))
+        if peak_end_idx > peak_start_idx:
+            _estimate_vars_chunk(track, 'peak', np.arange(peak_start_idx, peak_end_idx + 1))
+        if peak_end_idx < len(pcen) -1:
+            _estimate_vars_chunk(track, 'decay', np.arange(peak_end_idx, len(pcen)))
     
     # organise chunks to be processed in temporal sequence
     chunk_index = np.unique(track.id_chunk.values, return_index=True)[1]
     id_chunk_sorted = [track.id_chunk.values[index] for index in sorted(chunk_index)]
     # track_orig = track.copy()
 
-    relax_time = _get_relax_time(track, 2)
     # relax_time = track.time.values[-1] - np.timedelta64(2, 'D')
     last_pcen = track.central_pressure.values[-1]
     
@@ -1651,9 +1766,10 @@ def _model_synth_tc_intensity(
         else:
             intensity_evolution_land(track, id_chunk, v_rel, p_rel, s_rel)
 
+    _estimate_params_track(track)
 
     # make sure track ends meaningfully (low intensity)
-    ensure_track_ends(track, last_pcen, relax_time)
+    # ensure_track_ends(track, last_pcen, relax_time)
 
     track.attrs['category'] = climada.hazard.tc_tracks.set_category(
         track.max_sustained_wind.values, track.max_sustained_wind_unit)
