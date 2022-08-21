@@ -1496,7 +1496,7 @@ def _model_synth_tc_intensity(
             if in_chunk[0] > 0:
                 track['max_sustained_wind'][in_chunk] = track['max_sustained_wind'].values[in_chunk-1]
                 track['central_pressure'][in_chunk] = track['central_pressure'].values[in_chunk-1]
-            return track
+            return
         
         # taking last value before the chunk as a starting point from where to model intensity
         if in_chunk[0] > 0:
@@ -1557,10 +1557,9 @@ def _model_synth_tc_intensity(
 
             # apply duration: as a function of basin and category
             peak_pcen_i = np.where(pcen == np.min(pcen))[0][0]
-            # TODO estimate Vmax from pcen consistently with elsewhere
             # since we do not know if we are in the intensification or decay
             # phase of the whole TC, take the average Vmax estimate from both
-            # fits
+            # fits to determine TC category at peak
             track_peak = track_chunk.copy(True).isel(time = [peak_pcen_i])
             _estimate_vars_chunk(track_peak, phase='peak', idx=np.zeros(1).astype(int))
             peak_vmax = track_peak['max_sustained_wind'].values
@@ -1597,9 +1596,9 @@ def _model_synth_tc_intensity(
                         peak_start_idx = np.where(is_peak)[0][0]
                         mid_peak_idx = (peak_start_idx + np.floor((end_peak-peak_start_idx+1)/2)).astype(int)
                         if pcen[peak_start_idx] == pcen[mid_peak_idx]:
-                            pcen[peak_start_idx] += 2.5
+                            pcen[peak_start_idx] = pcen[peak_start_idx] + 2.5
                         if (pcen[peak_start_idx] <= pcen[mid_peak_idx]) or (pcen[mid_peak_idx] >= pcen[end_peak]+2.5):
-                            LOGGER.debug('strange values during peak: ', track.sid)
+                            LOGGER.debug('strange values during peak: %s', track.sid)
                             print(pcen[peak_start_idx:end_peak+1])
                         interp_fun = scipy.interpolate.interp1d(
                             x=np.array([peak_start_idx, mid_peak_idx, end_peak]),
@@ -1619,8 +1618,6 @@ def _model_synth_tc_intensity(
                 peak_decay_k = scipy.stats.weibull_min.ppf(rnd_pars_i[3],
                                                            c = weibull_pars['shape'],
                                                            scale = weibull_pars['scale'])
-
-                # TODO implement ocean decay
                 time_in_decay = time_days[end_peak:] - time_days[end_peak]
                 # decay: p(t) = p_env(t) + (p(t=0) - p_env(t)) * exp(-k*t)
                 p_drop = (pcen[end_peak] - track_chunk.environmental_pressure.values[end_peak:])
@@ -1631,7 +1628,8 @@ def _model_synth_tc_intensity(
                 pcen = np.fmin(pcen, track_chunk.environmental_pressure.values)
 
         # Now central pressure has been modelled
-        track['central_pressure'][in_chunk][:] = track_chunk['central_pressure'].values
+        track_chunk['central_pressure'][:] = pcen
+        track['central_pressure'][in_chunk] = track_chunk['central_pressure'][:]
     
     def intensity_evolution_land(track, id_chunk, v_rel, p_rel, s_rel):
         # taking last value before the chunk as a starting point from where to model intensity
@@ -1642,7 +1640,6 @@ def _model_synth_tc_intensity(
             if in_chunk[0] > 0:
                 track['max_sustained_wind'][in_chunk] = track['max_sustained_wind'].values[in_chunk-1]
                 track['central_pressure'][in_chunk] = track['central_pressure'].values[in_chunk-1]
-            return track
 
         if in_chunk[0] > 0:
             #     in_chunk = np.append(in_chunk[0]-1, in_chunk)
@@ -1661,7 +1658,7 @@ def _model_synth_tc_intensity(
         if S <= 1:
             # central_pressure at start of landfall > env_pres after landfall:
             # set central_pressure to environmental pressure during whole lf
-            track_chunk.central_pressure = track_chunk.environmental_pressure
+            track_chunk.central_pressure[:] = track_chunk.environmental_pressure.values
         else:
             p_decay = _decay_p_function(S, p_rel[ss_scale][1],
                                         track_chunk.dist_since_lf.values)
