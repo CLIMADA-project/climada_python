@@ -31,6 +31,7 @@ import numpy as np
 import xarray as xr
 import pandas as pd
 import scipy.stats
+import scipy.interpolate
 from matplotlib.lines import Line2D
 from pathos.abstract_launcher import AbstractWorkerPool
 from shapely.geometry.multipolygon import MultiPolygon
@@ -103,6 +104,8 @@ RANDOM_WALK_DATA_CAT_STR = {
 }
 
 FIT_TRACK_VARS = ['max_sustained_wind', 'radius_max_wind', 'radius_oci']
+"""Track variables to estimate from track-specific fit to central_pressure after
+modelling intensity"""
 
 def calc_perturbed_trajectories(
     tracks,
@@ -1216,7 +1219,6 @@ def _estimate_vars_chunk(track: xr.Dataset,
     Nothing.
     """
     pcen = track.central_pressure.values[idx]
-    LOGGER.info(phase)
     if phase in ['intens', 'decay']:
         if 'fit_' + phase in track.attrs.keys():
             fit_data = track.attrs['fit_' + phase]
@@ -1530,7 +1532,7 @@ def _model_synth_tc_intensity(
         # defined as the time difference between the first point after peak
         # intensity and first point within peak intensity.
 
-        # Peak is reached if target is reached within 5 mbat
+        # Peak is reached if target is reached within 5 mbar
         is_peak = pcen - target_peak <= 5
         if np.sum(is_peak) > 0:
 
