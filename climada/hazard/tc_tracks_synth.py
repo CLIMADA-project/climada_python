@@ -103,9 +103,27 @@ RANDOM_WALK_DATA_CAT_STR = {
     5: "Cat 5"
 }
 
-FIT_TRACK_VARS = ['max_sustained_wind', 'radius_max_wind', 'radius_oci']
-"""Track variables to estimate from track-specific fit to central_pressure after
-modelling intensity"""
+FIT_TRACK_VARS_RANGE = {
+    'max_sustained_wind': {
+        # minimum value in IBTrACS where provided
+        'min': 5,
+        # maximum in IBTrACS USA is 185 kts. Cannot exclude more powerful
+        # (basic theory says 175 kts, which has been exceeded)
+        'max': 200
+    },
+    'radius_max_wind': {
+        # range in IBTrACS
+        'min': 10,
+        'max': 650
+    },
+    'radius_oci': {
+        # range in IBTrACS
+        'min': 4,
+        'max': 300
+    }
+}
+"""Dict of track variables to estimate from track-specific fit to central_pressure after
+modelling intensity, containing 'min' and 'max' allowed values."""
 
 FIT_TIME_ADJUST_HOUR = 6
 """Number of hours before track intensity is modelled for which to estimate track parameters"""
@@ -1092,7 +1110,7 @@ def _get_fit_single_phase(track_sub, central_pressure_pert):
     """
     pcen = track_sub['central_pressure'].values
     fit_output = {}
-    for var in FIT_TRACK_VARS:
+    for var in FIT_TRACK_VARS_RANGE.keys():
         order = _get_fit_order(pcen, central_pressure_pert, var_name=var)
         d_explanatory = _prepare_data_piecewise(pcen, order)
         d_explained = pd.DataFrame({
@@ -1225,10 +1243,16 @@ def _estimate_vars_chunk(track: xr.Dataset,
     if phase in ['intens', 'decay']:
         if 'fit_' + phase in track.attrs.keys():
             fit_data = track.attrs['fit_' + phase]
-            for var in FIT_TRACK_VARS:
-                track[var][idx] = fit_data[var]['fit'].predict(
-                    _prepare_data_piecewise(pcen, fit_data[var]['order'])
-                ).values
+            for var in FIT_TRACK_VARS_RANGE.keys():
+                track[var][idx] = np.fmax(
+                    FIT_TRACK_VARS_RANGE[var]['min'],
+                    np.fmin(
+                        FIT_TRACK_VARS_RANGE[var]['max'],
+                        fit_data[var]['fit'].predict(
+                            _prepare_data_piecewise(pcen, fit_data[var]['order'])
+                        ).values
+                    )
+                )
         else:
             # apply global fit
             track['max_sustained_wind'][idx] = climada.hazard.tc_tracks._estimate_vmax(
@@ -1245,14 +1269,20 @@ def _estimate_vars_chunk(track: xr.Dataset,
     if 'fit_intens' in track.attrs.keys():
         fit_data = track.attrs['fit_intens']
         start_vals = {}
-        for var in FIT_TRACK_VARS:
-            start_vals[var] = fit_data[var]['fit'].predict(
-                _prepare_data_piecewise(np.array([pcen[0]]), fit_data[var]['order'])
-            ).values[0]
+        for var in FIT_TRACK_VARS_RANGE.keys():
+            start_vals[var] = np.fmax(
+                FIT_TRACK_VARS_RANGE[var]['min'],
+                np.fmin(
+                    FIT_TRACK_VARS_RANGE[var]['max'],
+                    fit_data[var]['fit'].predict(
+                        _prepare_data_piecewise(np.array([pcen[0]]), fit_data[var]['order'])
+                    ).values[0]
+                )
+            )
     else:
         # take previous values or global fit
         if idx[0] > 0:
-            start_vals = {var: track[var].values[idx[0]-1] for var in FIT_TRACK_VARS}
+            start_vals = {var: track[var].values[idx[0]-1] for var in FIT_TRACK_VARS_RANGE.keys()}
         else:
             start_vals = {}
             # TODO does not work for a single value...
@@ -1265,20 +1295,26 @@ def _estimate_vars_chunk(track: xr.Dataset,
                 np.array([np.nan]), np.array([pcen[0]]))[0]
     if len(idx) == 1:
         # no need to get the decay fit, just use the intens one
-        for var in FIT_TRACK_VARS:
+        for var in FIT_TRACK_VARS_RANGE.keys():
             track[var][idx] = start_vals[var]
         return
     if 'fit_decay' in track.attrs.keys():
         fit_data = track.attrs['fit_decay']
         end_vals = {}
-        for var in FIT_TRACK_VARS:
-            end_vals[var] = fit_data[var]['fit'].predict(
-                _prepare_data_piecewise(np.array([pcen[-1]]), fit_data[var]['order'])
-            ).values[0]
+        for var in FIT_TRACK_VARS_RANGE.keys():
+            end_vals[var] = np.fmax(
+                FIT_TRACK_VARS_RANGE[var]['min'],
+                np.fmin(
+                    FIT_TRACK_VARS_RANGE[var]['max'],
+                    fit_data[var]['fit'].predict(
+                        _prepare_data_piecewise(np.array([pcen[-1]]), fit_data[var]['order'])
+                    ).values[0]
+                )
+            )
     else:
         # take next values or global fit
         if idx[-1] < len(pcen) - 1:
-            end_vals = {var: track[var][idx[-1]+1] for var in FIT_TRACK_VARS}
+            end_vals = {var: track[var][idx[-1]+1] for var in FIT_TRACK_VARS_RANGE.keys()}
         else:
             end_vals = {}
             end_vals['max_sustained_wind'] = climada.hazard.tc_tracks._estimate_vmax(
@@ -1289,7 +1325,7 @@ def _estimate_vars_chunk(track: xr.Dataset,
             end_vals['radius_oci'] = climada.hazard.tc_tracks.estimate_roci(
                 np.array([np.nan]), np.array([pcen[-1]]))[0]
 
-    for var in FIT_TRACK_VARS:
+    for var in FIT_TRACK_VARS_RANGE.keys():
         track[var][idx] = np.interp(
             idx, np.array([idx[0], idx[-1]]), np.array([start_vals[var], end_vals[var]])
         )
@@ -1809,7 +1845,7 @@ def _model_synth_tc_intensity(
         if interp_idx is not None:
             # interpolate between new and old values
             weights_idx = (np.arange(len(interp_idx)) + 1) / (len(interp_idx) + 1)
-            for var in FIT_TRACK_VARS:
+            for var in FIT_TRACK_VARS_RANGE.keys():
                 track[var][interp_idx] = weights_idx * track[var][interp_idx] + (1-weights_idx) * track_orig[var][interp_idx]
     
     # organise chunks to be processed in temporal sequence
