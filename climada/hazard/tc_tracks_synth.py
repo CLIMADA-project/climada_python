@@ -105,10 +105,11 @@ RANDOM_WALK_DATA_CAT_STR = {
 
 FIT_TRACK_VARS_RANGE = {
     'max_sustained_wind': {
-        # minimum value in IBTrACS where provided
+        # minimum value in IBTrACS
         'min': 5,
-        # maximum in IBTrACS USA is 185 kts. Cannot exclude more powerful
-        # (basic theory says 175 kts, which has been exceeded)
+        # maximum in IBTrACS USA is 185 kts. But cannot exclude more powerful
+        # (basic theory says 175 kts, which has already been exceeded; also,
+        # hypothetical hypercanes)
         'max': 200
     },
     'radius_max_wind': {
@@ -1111,7 +1112,7 @@ def _get_fit_single_phase(track_sub, central_pressure_pert):
     pcen = track_sub['central_pressure'].values
     fit_output = {}
     for var in FIT_TRACK_VARS_RANGE.keys():
-        order = _get_fit_order(pcen, central_pressure_pert, var_name=var)
+        order = _get_fit_order(pcen, central_pressure_pert)
         d_explanatory = _prepare_data_piecewise(pcen, order)
         d_explained = pd.DataFrame({
             var: track_sub[var].values
@@ -1121,15 +1122,52 @@ def _get_fit_single_phase(track_sub, central_pressure_pert):
             'order': order,
             'fit': sm_results
         }
+        # for wind, check that slope is negative
+        if var == 'max_sustained_wind':
+            # check that fit lead to monotonous negative function - or at
+            # least not impacting more than 2.5 kts
+            kts_margin = 2.5
+            if isinstance(order, tuple):
+                interp_at_res = sm_results.predict(
+                    _prepare_data_piecewise(
+                        np.array(order),
+                        order
+                    )
+                )
+                if np.any(np.diff(interp_at_res.values) > kts_margin):
+                    idx_pos = np.where(np.diff(interp_at_res.values) > kts_margin)[0]
+                    max_wind = [interp_at_res[i+1] for i in idx_pos]
+                    LOGGER.debug('Positive slope for cyc_id %s in wind-pressure relationship, '
+                                 'with max amplitude of %s kts (piecewise linear). '
+                                 'Maximum potentially affected category: %s.',
+                                 track_sub.sid, np.round(np.max(np.diff(interp_at_res.values)), 1),
+                                 climada.hazard.tc_tracks.CAT_NAMES[
+                                    climada.hazard.tc_tracks.set_category(max_wind, track_sub.max_sustained_wind_unit)
+                                ])
+            else:
+                pcen_range = np.diff([pcen.min()-central_pressure_pert, 1010])
+                if sm_results.params.values[0]*pcen_range > kts_margin:
+                    max_wind = sm_results.predict(
+                        _prepare_data_piecewise(
+                            np.array([pcen.min()-central_pressure_pert]),
+                            order
+                        )
+                    )
+                    LOGGER.debug('Positive slope for cyc_id %s in wind-pressure relationship, '
+                                 'with max amplitude of %s kts (linear). '
+                                 'Maximum potentially affected category: %s',
+                                 track_sub.sid, sm_results.params.values[0]*pcen_range,
+                                 climada.hazard.tc_tracks.CAT_NAMES[
+                                    climada.hazard.tc_tracks.set_category(max_wind, track_sub.max_sustained_wind_unit)
+                                ])
     return fit_output
 
-def _get_fit_order(pcen, central_pressure_pert, var_name):
+def _get_fit_order(pcen, central_pressure_pert):
     """Get the order of the data fit.
 
-    For variable 'max_sustained_wind' or if pcen does not consist of more than 5
-    values, order is 1 (i.e. linear regression). Otherwise, data is split into
-    up to 4 bins and a tuple with breakpoints for a piecewise linear regression
-    is returned.
+    Data is split into up to 4 bins, requiring bin width >= 10 mbar and at least 5
+    data points per bin. The bins will cover the range from the minimum central
+    pressure minus the maximum possible perturbation up to 1021 mbar.
 
     Parameters
     ----------
@@ -1138,41 +1176,39 @@ def _get_fit_order(pcen, central_pressure_pert, var_name):
     central_pressure_pert : float
         Maximum perturbations in central pressure. Used to determine the range
         of pressure values over which to fit data.
-    var_name : str
-        Name of the variable for which to determine the order.
 
     Returns
     -------
     order : int or Tuple
-        Order of the statistical model.
-
+        Order of the statistical model. Either a tuple with breakpoints for a
+        piecewise linear regression, or 1 (int) for a single linear regression.
     """
-    if var_name == 'max_sustained_wind' or len(pcen) <= 5:
+    # max number of bins to get at least 5 points per bin
+    min_bin_pts = 5
+    min_bin_width = 10
+    n_bins_max = np.fmin(
+        4,
+        np.fmin(
+            np.floor(len(pcen) / min_bin_pts).astype(int),
+            np.floor((pcen.max()-pcen.min())/min_bin_width).astype(int)
+        )
+    )
+    # if var_name == 'max_sustained_wind' or len(pcen) <= 5:
+    if n_bins_max <= 1:
         order = 1
     else:
         # split the central pressure domain into up to 4 bins
-        pcen_min = pcen.min() - central_pressure_pert
-        order = np.linspace(pcen_min - 1, pcen.max()+1, num=5)
-        def get_order_filtered(order, values):
-            order_empty = [
-                np.all(~np.logical_and(values >= order[i], values <= order[i+1]))
-                for i in range(len(order)-1)
-            ]
-            while np.any(order_empty):
-                # first empty bin
-                i_empty = np.where(order_empty)[0][0]
-                if i_empty < len(order) - 2:
-                    # not the last bin: remove upper breakpoint
-                    order = np.delete(order, i_empty + 1)
-                else:
-                    # last bin, therefore remove previous breakpoint
-                    order = np.delete(order, i_empty)
-                order_empty = [
-                    np.all(~np.logical_and(values >= order[i], values <= order[i+1]))
-                    for i in range(len(order)-1)
-                ]
-            return order
-        order = get_order_filtered(order, pcen)
+        pcen_min = pcen.min() - central_pressure_pert - 1
+        # cover the full range of possible values
+        # bins_range = [pcen_min -1, max(pcen.max()+1, 1021)]
+        for n_bins in np.arange(n_bins_max, 1, -1):
+            order = np.linspace(pcen.min()-0.1, pcen.max(), num=n_bins+1)
+            # count valuer per bin
+            val_bins = np.digitize(pcen, order, right=True)
+            if np.all(np.bincount(val_bins)[1:] >= min_bin_pts):
+                break
+        order[0] = pcen_min
+        order[-1] = max(1021, pcen.max() + 0.1)
         if len(order) == 2:
             # single bin: back to standard linear regression
             order = 1
@@ -1636,9 +1672,6 @@ def _model_synth_tc_intensity(
                         mid_peak_idx = (peak_start_idx + np.floor((end_peak-peak_start_idx+1)/2)).astype(int)
                         if pcen[peak_start_idx] == pcen[mid_peak_idx]:
                             pcen[peak_start_idx] = pcen[peak_start_idx] + 2.5
-                        if (pcen[peak_start_idx] <= pcen[mid_peak_idx]) or (pcen[mid_peak_idx] >= pcen[end_peak]+2.5):
-                            LOGGER.debug('strange values during peak: %s', track.sid)
-                            print(pcen[peak_start_idx:end_peak+1])
                         interp_fun = scipy.interpolate.interp1d(
                             x=np.array([peak_start_idx, mid_peak_idx, end_peak]),
                             y=np.array([pcen[peak_start_idx], pcen[mid_peak_idx], pcen[end_peak]+2.5]),
