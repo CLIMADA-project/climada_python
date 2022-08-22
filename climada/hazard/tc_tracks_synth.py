@@ -1550,6 +1550,7 @@ def _model_synth_tc_intensity(
     """
     def drop_temporary_variables(x : xr.Dataset):
         vars_to_drop = [v for v in ['on_land_hist', 'target_central_pressure', 'id_chunk'] if v in list(x.variables)]
+        # TODO drop fit attributes
         return x.drop_vars(vars_to_drop)
 
     # if track.sid == '2019273N23070_gen1':
@@ -1768,34 +1769,6 @@ def _model_synth_tc_intensity(
 
         # assign output
         track['central_pressure'][in_chunk] = track_chunk['central_pressure'][:]
-
-    def _get_relax_time(track, max_relax_time_days):
-        # if in last max_relax_time_days any pressure value equal to 2 days
-        # before use that last value, else 2 days
-        time_in = track.time.values >= track.time.values[-1] - np.timedelta64(max_relax_time_days, 'D')
-        relax_pcen = track.central_pressure[time_in].values.min()
-        time_in2 = track.time.values[track.central_pressure.values <= relax_pcen].max()
-        return max(time_in2, track.time[time_in].values[0])
-
-    def ensure_track_ends(track, last_pcen, relax_time):
-        # TODO if intensity at end of track is higher than in historical,
-        # correct as well - otherwise track can end at high category
-        target_pcen = last_pcen-5
-        if track.central_pressure.values[-1] < target_pcen:
-            in_end = np.where(track.time.values >= relax_time)[0]
-            track_end = track.isel(time = in_end)
-            pcen = track_end.central_pressure.values
-            # make a linear move to reach target + 5mbar
-            delta_pcen = (target_pcen - pcen[-1]) / (len(pcen) - 1)
-            pcen = pcen + delta_pcen * np.arange(0, len(pcen))
-            # TODO ok then calculate wind again, put back into track
-            cor_p = pcen > track_end.environmental_pressure.values
-            pcen[cor_p] = pcen[cor_p]
-            track_end['max_sustained_wind'][:] = climada.hazard.tc_tracks._estimate_vmax(
-            np.repeat(np.nan, pcen.shape), track_end.lat, track_end.lon, pcen)
-            track['central_pressure'][in_end] = pcen
-            track['max_sustained_wind'][in_end] = track_end['max_sustained_wind'].values
-            track.max_sustained_wind[track.max_sustained_wind < 0] = 0
 
     def _estimate_params_track(track):
         """Estimate a synthetic track's parameters from central pressure based
