@@ -107,6 +107,9 @@ FIT_TRACK_VARS = ['max_sustained_wind', 'radius_max_wind', 'radius_oci']
 """Track variables to estimate from track-specific fit to central_pressure after
 modelling intensity"""
 
+FIT_TIME_ADJUST_HOUR = 6
+"""Number of hours before track intensity is modelled for which to estimate track parameters"""
+
 def calc_perturbed_trajectories(
     tracks,
     nb_synth_tracks: int = 9,
@@ -1203,7 +1206,8 @@ def _estimate_vars_chunk(track: xr.Dataset,
     The input 'track' is modified in place!
 
     The variables estimated from central pressure are 'max_sustained_wind',
-    'radius_max_wind 'radius_oci'.
+    'radius_max_wind 'radius_oci'. All parameter values are being re-estimated
+    (not only those with id_chunk!=0).
 
     Parameters
     ----------
@@ -1742,12 +1746,15 @@ def _model_synth_tc_intensity(
         track : xarray.Datasset
             Track data.
         """
+        if np.all(track.id_chunk.values == 0):
+            return
         pcen = track.central_pressure.values
         def _get_peak_idx(pcen):
             peak_idx = np.where(pcen == pcen.min())[0]
             if np.all(pcen - pcen.min() <= 5):
                 return 0, len(pcen) - 1
             peak_idx = peak_idx[0]
+            # detect end of peak
             if peak_idx < len(pcen) - 1:
                 idx_out = np.where(np.diff((pcen[peak_idx:] - pcen.min() <= 5).astype(int)) == -1)[0]
                 if idx_out.shape[0] == 0:
@@ -1756,6 +1763,7 @@ def _model_synth_tc_intensity(
                     peak_end_idx = peak_idx + idx_out[0]
             else:
                 peak_end_idx = peak_idx
+            # detect start of peak
             if peak_idx > 0:
                 idx_out = np.where(np.diff((np.flip(pcen[:peak_idx+1]) - pcen.min() <= 5).astype(int)) == -1)[0]
                 if idx_out.shape[0] == 0:
@@ -1768,12 +1776,34 @@ def _model_synth_tc_intensity(
 
         # identify phases
         peak_start_idx, peak_end_idx = _get_peak_idx(pcen)
-        if peak_start_idx > 0:
-            _estimate_vars_chunk(track, 'intens', np.arange(peak_start_idx + 1))
-        if peak_end_idx < len(pcen) -1:
-            _estimate_vars_chunk(track, 'decay', np.arange(peak_end_idx, len(pcen)))
-        if peak_end_idx > peak_start_idx:
+        # data point from which to re-estimate variables
+        first_idx = np.where(track.id_chunk.values != 0)[0][0]
+        interp_idx = None
+        if first_idx > 0:
+            # how many time steps to go back
+            time_step_h = np.unique(track['time_step'].values)[0]
+            nb_timesteps_adjust = np.ceil(FIT_TIME_ADJUST_HOUR/time_step_h).astype(int)
+            # where to adjust previous time steps
+            if nb_timesteps_adjust > 0:
+                # copy original values
+                track_orig = track.copy(deep = True)
+                # indices where to interpolate between original and estimated values
+                interp_idx = np.arange(np.max(0, first_idx - nb_timesteps_adjust), first_idx)
+
+        # apply adjustments
+        if peak_start_idx > 0 and peak_start_idx >= first_idx - nb_timesteps_adjust:
+            _estimate_vars_chunk(track, 'intens', np.arange(peak_start_idx))
+        if peak_end_idx < len(pcen) -1 and peak_end_idx >= first_idx - nb_timesteps_adjust:
+            _estimate_vars_chunk(track, 'decay', np.arange(peak_end_idx + 1, len(pcen)))
+        if peak_end_idx > peak_start_idx and peak_end_idx >= first_idx - nb_timesteps_adjust:
             _estimate_vars_chunk(track, 'peak', np.arange(peak_start_idx, peak_end_idx + 1))
+
+        # mediate adjustments
+        if interp_idx is not None:
+            # interpolate between new and old values
+            # TODO
+            raise NotImplementedError('todo')
+            
     
     # organise chunks to be processed in temporal sequence
     chunk_index = np.unique(track.id_chunk.values, return_index=True)[1]
