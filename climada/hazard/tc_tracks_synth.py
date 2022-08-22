@@ -1206,8 +1206,7 @@ def _estimate_vars_chunk(track: xr.Dataset,
     The input 'track' is modified in place!
 
     The variables estimated from central pressure are 'max_sustained_wind',
-    'radius_max_wind 'radius_oci'. All parameter values are being re-estimated
-    (not only those with id_chunk!=0).
+    'radius_max_wind 'radius_oci'.
 
     Parameters
     ----------
@@ -1788,22 +1787,30 @@ def _model_synth_tc_intensity(
                 # copy original values
                 track_orig = track.copy(deep = True)
                 # indices where to interpolate between original and estimated values
-                interp_idx = np.arange(np.max(0, first_idx - nb_timesteps_adjust), first_idx)
+                interp_idx = np.arange(max(0, first_idx - nb_timesteps_adjust), first_idx)
+            # where to estimate each chunk: not before first_idx - nb_timesteps_adjust
+            intens_idx = np.arange(max(0, first_idx - nb_timesteps_adjust), peak_start_idx)
+            peak_idx = np.arange(max(peak_start_idx, first_idx - nb_timesteps_adjust), peak_end_idx + 1)
+            decay_idx = np.arange(max(peak_end_idx + 1, first_idx - nb_timesteps_adjust), len(pcen))
+        else:
+            intens_idx = np.arange(peak_start_idx)
+            peak_idx = np.arange(peak_start_idx, peak_end_idx + 1)
+            decay_idx = np.arange(peak_end_idx + 1, len(pcen))
 
         # apply adjustments
-        if peak_start_idx > 0 and peak_start_idx >= first_idx - nb_timesteps_adjust:
-            _estimate_vars_chunk(track, 'intens', np.arange(peak_start_idx))
-        if peak_end_idx < len(pcen) -1 and peak_end_idx >= first_idx - nb_timesteps_adjust:
-            _estimate_vars_chunk(track, 'decay', np.arange(peak_end_idx + 1, len(pcen)))
-        if peak_end_idx > peak_start_idx and peak_end_idx >= first_idx - nb_timesteps_adjust:
-            _estimate_vars_chunk(track, 'peak', np.arange(peak_start_idx, peak_end_idx + 1))
+        if len(intens_idx) > 0:
+            _estimate_vars_chunk(track, 'intens', intens_idx)
+        if len(decay_idx) > 0:
+            _estimate_vars_chunk(track, 'decay', decay_idx)
+        if len(peak_idx) > 0:
+            _estimate_vars_chunk(track, 'peak', peak_idx)
 
         # mediate adjustments
         if interp_idx is not None:
             # interpolate between new and old values
-            # TODO
-            raise NotImplementedError('todo')
-            
+            weights_idx = (np.arange(len(interp_idx)) + 1) / (len(interp_idx) + 1)
+            for var in FIT_TRACK_VARS:
+                track[var][interp_idx] = weights_idx * track[var][interp_idx] + (1-weights_idx) * track_orig[var][interp_idx]
     
     # organise chunks to be processed in temporal sequence
     chunk_index = np.unique(track.id_chunk.values, return_index=True)[1]
