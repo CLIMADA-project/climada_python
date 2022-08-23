@@ -248,23 +248,15 @@ def calc_perturbed_trajectories(
             "trajectories on perturbed trajectories."
         )
 
-    # number of random value per synthetic track:
-    # 2*nb_synth_tracks for starting points (lon, lat)
-    # nb_synth_tracks*(track.time.size-1) for angle and same for translation perturbation
-    # hence sum is nb_synth_tracks * (2 + 2*(size-1)) = nb_synth_tracks * 2 * size
-    # https://stats.stackexchange.com/questions/48086/algorithm-to-produce-autocorrelated-uniformly-distributed-number
     LOGGER.info('Generating random number for locations perturbations...')
-    if autocorr_ddirection == 0 and autocorr_dspeed == 0:
-        random_vec = [np.random.uniform(size=nb_synth_tracks * (2 * track.time.size))
-                      for track in tracks.data]
-    else:
-        random_vec = [np.concatenate((np.random.uniform(size=nb_synth_tracks * 2),
-                                      _random_uniform_ac(nb_synth_tracks * (track.time.size - 1),
-                                                         autocorr_ddirection, time_step_h),
-                                      _random_uniform_ac(nb_synth_tracks * (track.time.size - 1),
-                                                         autocorr_dspeed, time_step_h)))
-                      if track.time.size > 1 else np.random.uniform(size=nb_synth_tracks * 2)
-                      for track in tracks.data]
+    random_vec = _get_random_trajectories_perts(tracks,
+                                                nb_synth_tracks,
+                                                time_step_h,
+                                                max_shift_ini,
+                                                max_dspeed_rel,
+                                                max_ddirection,
+                                                autocorr_ddirection,
+                                                autocorr_dspeed)
 
     if adjust_intensity:
         # to assign land parameters to historical tracks for use in synthetic tracks later
@@ -279,15 +271,11 @@ def calc_perturbed_trajectories(
         chunksize = min(tracks.size // pool.ncpus, 1000)
         new_ens = pool.map(_one_rnd_walk, tracks.data,
                            itertools.repeat(nb_synth_tracks, tracks.size),
-                           itertools.repeat(max_shift_ini, tracks.size),
-                           itertools.repeat(max_dspeed_rel, tracks.size),
-                           itertools.repeat(max_ddirection, tracks.size),
                            itertools.repeat(land_geom_hist, tracks.size),
                            itertools.repeat(central_pressure_pert, tracks.size),
                            random_vec, chunksize=chunksize)
     else:
-        new_ens = [_one_rnd_walk(track, nb_synth_tracks, max_shift_ini,
-                                 max_dspeed_rel, max_ddirection,
+        new_ens = [_one_rnd_walk(track, nb_synth_tracks,
                                  land_geom_hist, central_pressure_pert, rand)
                    for track, rand in zip(tracks.data, random_vec)]
 
@@ -405,12 +393,9 @@ def calc_perturbed_trajectories(
 
 def _one_rnd_walk(track,
                   nb_synth_tracks,
-                  max_shift_ini,
-                  max_dspeed_rel,
-                  max_ddirection,
                   land_geom,
                   central_pressure_pert,
-                  rnd_vec):
+                  rnd_tpl):
     """
     Apply random walk to one track.
 
@@ -420,15 +405,6 @@ def _one_rnd_walk(track,
         Track data.
     nb_synth_tracks : int, optional
         Number of ensemble members per track. Default: 9.
-    max_shift_ini : float, optional
-        Amplitude of max random starting point shift in decimal degree
-        (up to +/-max_shift_ini for longitude and latitude). Default: 0.75.
-    max_dspeed_rel : float, optional
-        Amplitude of translation speed perturbation in relative terms
-        (e.g., 0.2 for +/-20%). Default: 0.3.
-    max_ddirection : float, optional
-        Amplitude of track direction (bearing angle) perturbation
-        per hour, in radians. Default: pi/180.
     land_geom : shapely.geometry.multipolygon.MultiPolygon
         Land geometry. Required to model intensity (central pressure,
         max_sustained_wind, as well as radius_oci and radius_max_wind) depending
@@ -455,16 +431,12 @@ def _one_rnd_walk(track,
         List containing information about the tracks that were cut off at high
         latitudes with a wind speed up to TC category 1.
     """
-    ens_track = list()
-    n_dat = track.time.size
-    n_seg = n_dat - 1
-    xy_ini = max_shift_ini * (2 * rnd_vec[:2 * nb_synth_tracks].reshape((2, nb_synth_tracks)) - 1)
-    [dt] = np.unique(track['time_step'])
 
     # on_land parameters of historical track will be required for each synthetic track
     if land_geom:
         climada.hazard.tc_tracks.track_land_params(track, land_geom, land_params='on_land')
 
+    ens_track = list()
     ens_track.append(track.copy(True))
 
     # calculate historical track values that are used for synthetic track modelling
@@ -476,71 +448,26 @@ def _one_rnd_walk(track,
         # compute linear regression onto intensification and decay
         _add_fits_to_track(track, central_pressure_pert)
 
-    cutoff_track_ids_ts = []
-    cutoff_track_ids_tc = []
+    # to keep track of cut-off tracks
+    cutoff_track_ids_tstc = {'tc': {}, 'ts': {}}
+
+    # generate tracks with perturbed trajectories
     for i_ens in range(nb_synth_tracks):
         i_track = track.copy(True)
 
-        # select angular perturbation for that synthetic track
-        i_start_ang = 2 * nb_synth_tracks + i_ens * n_seg
-        i_end_ang = i_start_ang + track.time.size - 1
-        # scale by maximum perturbation and time step in hour (temporal-resolution independent)
-        ang_pert = dt * np.degrees(max_ddirection * (2 * rnd_vec[i_start_ang:i_end_ang] - 1))
-        ang_pert_cum = np.cumsum(ang_pert)
-
-        # select translational speed perturbation for that synthetic track
-        i_start_trans = 2 * nb_synth_tracks + nb_synth_tracks * n_seg + i_ens * n_seg
-        i_end_trans = i_start_trans + track.time.size - 1
-        # scale by maximum perturbation and time step in hour (temporal-resolution independent)
-        trans_pert = 1 + max_dspeed_rel * (2 * rnd_vec[i_start_trans:i_end_trans] - 1)
-
-        # get bearings and angular distance for the original track
-        bearings = _get_bearing_angle(i_track.lon.values, i_track.lat.values)
-        angular_dist = climada.util.coordinates.dist_approx(i_track.lat.values[:-1, None],
-                                                            i_track.lon.values[:-1, None],
-                                                            i_track.lat.values[1:, None],
-                                                            i_track.lon.values[1:, None],
-                                                            method="geosphere",
-                                                            units="degree")[:, 0, 0]
-
-        # apply perturbation to lon / lat
-        new_lon = np.zeros_like(i_track.lon.values)
-        new_lat = np.zeros_like(i_track.lat.values)
-        new_lon[0] = i_track.lon.values[0] + xy_ini[0, i_ens]
-        new_lat[0] = i_track.lat.values[0] + xy_ini[1, i_ens]
-        last_idx = i_track.time.size
-        for i in range(0, len(new_lon) - 1):
-            new_lon[i + 1], new_lat[i + 1] = \
-                _get_destination_points(new_lon[i], new_lat[i],
-                                        bearings[i] + ang_pert_cum[i],
-                                        trans_pert[i] * angular_dist[i])
-            # if track crosses latitudinal thresholds (+-70°),
-            # keep up to this segment (i+1), set i+2 as last point,
-            # and discard all further points > i+2.
-            if i+2 < last_idx and (new_lat[i + 1] > 70 or new_lat[i + 1] < -70):
-                last_idx = i + 2
-                # end the track here
-                max_wind_end = i_track.max_sustained_wind.values[last_idx]
-                ss_scale_end = climada.hazard.tc_tracks.set_category(max_wind_end,
-                        i_track.max_sustained_wind_unit)
-                # TC category at ending point should not be higher than 1
-                cutoff_txt = (f"{i_track.attrs['name']}_gen{i_ens + 1}"
-                              f" ({climada.hazard.tc_tracks.CAT_NAMES[ss_scale_end]})")
-                if ss_scale_end > 1:
-                    cutoff_track_ids_tc = cutoff_track_ids_tc + [cutoff_txt]
-                else:
-                    cutoff_track_ids_ts = cutoff_track_ids_ts + [cutoff_txt]
-                break
-        # make sure longitude values are within (-180, 180)
-        climada.util.coordinates.lon_normalize(new_lon, center=0.0)
-
-        i_track.lon.values = new_lon
-        i_track.lat.values = new_lat
+        # adjust attributes
         i_track.attrs['orig_event_flag'] = False
         i_track.attrs['name'] = f"{i_track.attrs['name']}_gen{i_ens + 1}"
         i_track.attrs['sid'] = f"{i_track.attrs['sid']}_gen{i_ens + 1}"
         i_track.attrs['id_no'] = i_track.attrs['id_no'] + (i_ens + 1) / 100
-        i_track = i_track.isel(time=slice(None, last_idx))
+
+        # apply locations perturbations
+        _apply_random_walk_pert(
+            i_track,
+            rnd_tpl=rnd_tpl[i_ens],
+            cutoff_track_ids_tstc=cutoff_track_ids_tstc
+        )
+
         if land_geom:
             i_track = i_track.assign(
                 {
@@ -556,8 +483,136 @@ def _one_rnd_walk(track,
 
         ens_track.append(i_track)
 
+    cutoff_track_ids_tc = [f"{k} ({v})" for k,v in cutoff_track_ids_tstc['tc'].items()]
+    cutoff_track_ids_ts = [f"{k} ({v})" for k,v in cutoff_track_ids_tstc['ts'].items()]
+
     return ens_track, cutoff_track_ids_tc, cutoff_track_ids_ts
 
+def _get_random_trajectories_perts(tracks,
+                                    nb_synth_tracks,
+                                    time_step_h,
+                                    max_shift_ini,
+                                    max_dspeed_rel,
+                                    max_ddirection,
+                                    autocorr_ddirection,
+                                    autocorr_dspeed):
+    """Generate random numbers for random walk
+    
+    """
+    # number of random value per synthetic track:
+    # 2 for starting points (lon, lat)
+    # (track.time.size-1) for angle and same for translation perturbation
+    # hence sum is nb_synth_tracks * (2 + 2*(size-1)) = nb_synth_tracks * 2 * size
+    if autocorr_ddirection == 0 and autocorr_dspeed == 0:
+        random_vec = tuple(
+            # one element for each historical track
+            tuple(
+                # one element for each synthetic track to create for that historical track
+                tuple(
+                    # ini pert: random, uncorrelated, within [-max_shift_ini/2, +max_shift_ini/2]
+                    [max_shift_ini * (0.5 - np.random.uniform(size=2))]
+                    # further random parameters are not required
+                )
+                for i in range(nb_synth_tracks)
+            )
+            if track.time.size > 1
+            else tuple(np.random.uniform(size=nb_synth_tracks * 2))
+            for track in tracks.data
+        )
+    else:
+        random_vec = tuple(
+            # one element for each historical track
+            tuple(
+                # one element for each synthetic track to create for that
+                # historical track
+                tuple(
+                    [
+                        # ini pert: random, uncorrelated, within [-max_shift_ini/2, +max_shift_ini/2]
+                        max_shift_ini * (2 * np.random.uniform(size=2) -1),
+                        # ddirection pert: autocorrelated hourly pert, used as angle
+                        # and scale
+                        time_step_h * np.degrees(
+                            max_ddirection * (
+                                2 * _random_uniform_ac(track.time.size - 1,
+                                                    autocorr_ddirection,
+                                                    time_step_h) - 1
+                            )
+                        ),
+                        1 + max_dspeed_rel * (
+                            2 *_random_uniform_ac(track.time.size - 1,
+                                                autocorr_dspeed,
+                                                time_step_h) - 1
+                        )
+                    ]
+                )
+                for i in range(nb_synth_tracks)
+            )
+            if track.time.size > 1
+            else tuple(tuple(tuple([np.random.uniform(size=2)])))
+            for track in tracks.data
+        )
+    return random_vec
+
+def _apply_random_walk_pert(track: xr.Dataset,
+                            rnd_tpl: tuple,
+                            cutoff_track_ids_tstc: dict):
+    """
+    Perturb track locations using provided random numbers and parameters.
+
+    The inputs track and cutoff_track_ids_tstc are modified in place.
+
+    TODO complete docstring
+    """
+    # synth_track = track.copy(True)
+    new_lon = np.zeros_like(track.lon.values)
+    new_lat = np.zeros_like(track.lat.values)
+    n_seg = track.time.size - 1
+    last_idx = track.time.size
+
+    # get perturbations
+    xy_ini, ang_pert, trans_pert = rnd_tpl
+    ang_pert_cum = np.cumsum(ang_pert)
+
+    # get bearings and angular distance for the original track
+    bearings = _get_bearing_angle(track.lon.values, track.lat.values)
+    angular_dist = climada.util.coordinates.dist_approx(track.lat.values[:-1, None],
+                                                        track.lon.values[:-1, None],
+                                                        track.lat.values[1:, None],
+                                                        track.lon.values[1:, None],
+                                                        method="geosphere",
+                                                        units="degree")[:, 0, 0]
+
+    # apply initial location shift
+    new_lon[0] = track.lon.values[0] + xy_ini[0]
+    new_lat[0] = track.lat.values[0] + xy_ini[1]
+    
+    # apply perturbations along the track segments
+    for i in range(0, len(new_lon) - 1):
+        new_lon[i + 1], new_lat[i + 1] = \
+            _get_destination_points(new_lon[i], new_lat[i],
+                                    bearings[i] + ang_pert_cum[i],
+                                    trans_pert[i] * angular_dist[i])
+        # if track crosses latitudinal thresholds (+-70°),
+        # keep up to this segment (i+1), set i+2 as last point,
+        # and discard all further points > i+2.
+        if i+2 < last_idx and (new_lat[i + 1] > 70 or new_lat[i + 1] < -70):
+            last_idx = i + 2
+            # end the track here
+            max_wind_end = track.max_sustained_wind.values[last_idx:]
+            ss_scale_end = climada.hazard.tc_tracks.set_category(max_wind_end,
+                    track.max_sustained_wind_unit)
+            # TC category at ending point should not be higher than 1
+            if ss_scale_end > 1:
+                cutoff_track_ids_tstc['tc'][track.attrs['name']] = climada.hazard.tc_tracks.CAT_NAMES[ss_scale_end]
+            else:
+                cutoff_track_ids_tstc['ts'][track.attrs['name']] = climada.hazard.tc_tracks.CAT_NAMES[ss_scale_end]
+            break
+    # make sure longitude values are within (-180, 180)
+    climada.util.coordinates.lon_normalize(new_lon, center=0.0)
+
+    track.lon.values = new_lon
+    track.lat.values = new_lat
+    track = track.isel(time=slice(None, last_idx))
 
 def _random_uniform_ac(n_ts, autocorr, time_step_h):
     """
