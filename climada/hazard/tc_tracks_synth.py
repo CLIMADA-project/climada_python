@@ -469,7 +469,7 @@ def _one_rnd_walk(track,
         i_track.attrs['id_no'] = i_track.attrs['id_no'] + (i_ens + 1) / 100
 
         # apply locations perturbations
-        _apply_random_walk_pert(
+        last_idx = _apply_random_walk_pert(
             i_track,
             rnd_tpl=rnd_tpl[i_ens],
             cutoff_track_ids_tstc=cutoff_track_ids_tstc
@@ -487,6 +487,8 @@ def _one_rnd_walk(track,
         # remove 'on_land' and 'dist_since_lf' if present since not correct for synthetic track
         vars_to_drop = [v for v in ['on_land', 'dist_since_lf'] if v in list(i_track.variables)]
         i_track = i_track.drop_vars(vars_to_drop)
+        if last_idx < i_track.time.size:
+            i_track = i_track.isel(time=slice(None, last_idx))
 
         ens_track.append(i_track)
 
