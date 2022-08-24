@@ -248,6 +248,12 @@ def calc_perturbed_trajectories(
             "trajectories on perturbed trajectories."
         )
 
+    # get variables and attributes to keep at the end
+    track_vars_attrs = (
+        set(tracks[0].variables) + set(['on_land', 'dist_since_lf']),
+        set(tracks[0].attrs.keys())
+    )
+
     LOGGER.info('Generating random number for locations perturbations...')
     random_vec = _get_random_trajectories_perts(tracks,
                                                 nb_synth_tracks,
@@ -1573,9 +1579,13 @@ def _add_id_synth_chunks_shift_init(track: xr.Dataset,
     return track, no_chunks_sea, no_chunks_land
 
 
-def _model_synth_tc_intensity(
-    track: xr.Dataset, v_rel: Dict, p_rel: Dict, s_rel: bool, central_pressure_pert: float, rnd_pars: np.ndarray
-):
+def _model_synth_tc_intensity(track: xr.Dataset,
+                              v_rel: dict,
+                              p_rel: dict,
+                              s_rel: bool,
+                              central_pressure_pert: float,
+                              rnd_pars: np.ndarray,
+                              track_vars_attrs: tuple):
     """Models a synthetic track's intensity evolution
 
     Sequentially moves over each unique track["id_chunk"] and applies the following:
@@ -1603,21 +1613,20 @@ def _model_synth_tc_intensity(
         Array of 4 random values within (0,1] to be used for perturbing track
         intensity over the ocean.
     """
-    def drop_temporary_variables(x : xr.Dataset):
-        vars_to_drop = [v for v in ['on_land_hist', 'target_central_pressure', 'id_chunk'] if v in list(x.variables)]
-        # TODO drop fit attributes
-        return x.drop_vars(vars_to_drop)
+    def drop_temporary_variables(track : xr.Dataset, track_vars_attrs):
+        vars_to_drop = set(track.variables) - track_vars_attrs[0]
+        attrs_to_drop = set(track.attrs.keys()) - track_vars_attrs[1]
+        for attr in attrs_to_drop:
+            del(track.attrs[attr])
+        return track.drop_vars(vars_to_drop)
 
     # if track.sid == '2019273N23070_gen1':
     #     return drop_temporary_variables(track)
     # if 'id_chunk' in list(track.variables):
         # LOGGER.debug(track.sid)
     # if no land point in either track -> return track
-    if track.orig_event_flag:
-        return drop_temporary_variables(track)
-    if np.all(track["id_chunk"] == 0):
-        # LOGGER.warning('For track %s all id_chunk values are 0 but went into _model_synth_tc_intensity', track.sid)
-        return drop_temporary_variables(track)
+    if track.orig_event_flag or np.all(track['id_chunk'] == 0):
+        return drop_temporary_variables(track, track_vars_attrs)
 
     def intensity_evolution_sea(track, id_chunk, central_pressure_pert, rnd_pars_i):
         in_chunk = np.where(track.id_chunk.values == id_chunk)[0]
@@ -1934,7 +1943,7 @@ def _model_synth_tc_intensity(
     track.attrs['category'] = climada.hazard.tc_tracks.set_category(
         track.max_sustained_wind.values, track.max_sustained_wind_unit)
 
-    return drop_temporary_variables(track)
+    return drop_temporary_variables(track, track_vars_attrs)
 
 
 def _apply_decay_coeffs(track, v_rel, p_rel, land_geom, s_rel):
