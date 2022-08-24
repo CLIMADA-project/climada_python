@@ -596,7 +596,7 @@ def _apply_random_walk_pert(track: xr.Dataset,
     new_lat[0] = track.lat.values[0] + xy_ini[1]
     
     # apply perturbations along the track segments
-    for i in range(0, len(new_lon) - 1):
+    for i in range(n_seg):
         new_lon[i + 1], new_lat[i + 1] = \
             _get_destination_points(new_lon[i], new_lat[i],
                                     bearings[i] + ang_pert_cum[i],
