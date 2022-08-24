@@ -1614,12 +1614,6 @@ def _model_synth_tc_intensity(track: xr.Dataset,
         Array of 4 random values within (0,1] to be used for perturbing track
         intensity over the ocean.
     """
-    def drop_temporary_variables(track : xr.Dataset, track_vars_attrs):
-        vars_to_drop = set(track.variables) - track_vars_attrs[0]
-        attrs_to_drop = set(track.attrs.keys()) - track_vars_attrs[1]
-        for attr in attrs_to_drop:
-            del(track.attrs[attr])
-        return track.drop_vars(vars_to_drop)
 
     # if track.sid == '2019273N23070_gen1':
     #     return drop_temporary_variables(track)
@@ -1629,295 +1623,6 @@ def _model_synth_tc_intensity(track: xr.Dataset,
     if track.orig_event_flag or np.all(track['id_chunk'] == 0):
         return drop_temporary_variables(track, track_vars_attrs)
 
-    def intensity_evolution_sea(track, id_chunk, central_pressure_pert, rnd_pars_i):
-        in_chunk = np.where(track.id_chunk.values == id_chunk)[0]
-        # end_target_peak_time = track.time.values[np.where(track.central_pressure.values == track.target_central_pressure[in_chunk[0]])[0][-1]]
-        # if a single point over the ocean, do not adjust intensity - keep constant
-        if len(in_chunk) == 1:
-            if in_chunk[0] > 0:
-                track['max_sustained_wind'][in_chunk] = track['max_sustained_wind'].values[in_chunk-1]
-                track['central_pressure'][in_chunk] = track['central_pressure'].values[in_chunk-1]
-            return
-        
-        # taking last value before the chunk as a starting point from where to model intensity
-        if in_chunk[0] > 0:
-            in_chunk = np.append(in_chunk[0]-1, in_chunk)
-        
-        track_chunk = track.isel(time = in_chunk)
-        pcen = track_chunk.central_pressure.values
-        time_days = np.append(0, np.cumsum(track_chunk.time_step.values[1:] / 24))
-
-        # perturb target central pressure: truncated normal distribution
-        target_peak_pert = central_pressure_pert / 2 * scipy.stats.truncnorm.ppf(rnd_pars_i[0], -2, 2)
-        target_peak = track_chunk.target_central_pressure.values[0] + target_peak_pert
-
-        if pcen[0] <= target_peak:
-            # already at target, no intensification needed - keep at current intensity
-            pcen[:] = pcen[0]
-            # ensure central pressure < environmental pressure
-            pcen = np.fmin(pcen, track_chunk.environmental_pressure.values)
-        else:
-            # intensification parameters
-            inten_i = np.logical_and(
-                rnd_pars_i[1] >= RANDOM_WALK_DATA_INTENSIFICATION['cumfreqlow'],
-                rnd_pars_i[1] < RANDOM_WALK_DATA_INTENSIFICATION['cumfreqhigh']
-            )
-            inten_pars = RANDOM_WALK_DATA_INTENSIFICATION.loc[inten_i, ['a', 'b']].to_dict('records')[0]
-            # apply intensification
-            pcen = np.fmax(pcen[0] + inten_pars['a']*(1-np.exp(inten_pars['b']*time_days)), np.array([target_peak]))
-            # ensure central pressure < environmental pressure
-            pcen = np.fmin(pcen, track_chunk.environmental_pressure.values)
-            track_chunk['central_pressure'][:] = pcen
-
-        # peak duration
-        # defined as the time difference between the first point after peak
-        # intensity and first point within peak intensity.
-
-        # Peak is reached if target is reached within 5 mbar
-        is_peak = pcen - target_peak <= 5
-        if np.sum(is_peak) > 0:
-
-            # if the chunks starts at peak, account for previous time steps for
-            # peak duration
-            if is_peak[0]:
-                # account for previous time steps for peak duration
-                pcen_before_peak_rev = np.flip(track.central_pressure.values[:in_chunk[0]])
-                idx_before_peak_rev = np.where(pcen_before_peak_rev - target_peak > 5)[0]
-                time_before_peak_rev = np.flip(track.time.values[:in_chunk[0]])
-                if idx_before_peak_rev.shape[0] > 0:
-                    idx_start_peak_rev = idx_before_peak_rev[0] -1
-                    # time of first point within peak
-                    peak_start_time = time_before_peak_rev[idx_start_peak_rev]
-                    # time spent in peak until chunk start
-                    time_already_in_peak = track_chunk.time.values[0] - peak_start_time
-                    time_already_in_peak_days = time_already_in_peak / np.timedelta64(1, 'D')
-                else:
-                    time_already_in_peak_days = 0
-            else:
-                time_already_in_peak_days = 0
-
-            # apply duration: as a function of basin and category
-            peak_pcen_i = np.where(pcen == np.min(pcen))[0][0]
-            # since we do not know if we are in the intensification or decay
-            # phase of the whole TC, take the average Vmax estimate from both
-            # fits to determine TC category at peak
-            track_peak = track_chunk.copy(True).isel(time = [peak_pcen_i])
-            _estimate_vars_chunk(track_peak, phase='peak', idx=np.zeros(1).astype(int))
-            peak_vmax = track_peak['max_sustained_wind'].values
-            peak_cat = climada.hazard.tc_tracks.set_category(peak_vmax, wind_unit=track_chunk.max_sustained_wind_unit)
-            peak_cat = RANDOM_WALK_DATA_CAT_STR[peak_cat]
-            peak_basin = track_chunk.basin.values[peak_pcen_i]
-            duration_i = np.logical_and(
-                RANDOM_WALK_DATA_DURATION['basin'] == peak_basin,
-                RANDOM_WALK_DATA_DURATION['category'] == peak_cat
-            )
-            lognorm_pars = RANDOM_WALK_DATA_DURATION.loc[duration_i, ['meanlog', 'sdlog']].to_dict('records')[0]
-            # sample from that distribution
-            peak_duration_days = np.exp(scipy.stats.norm.ppf(rnd_pars_i[2],
-                                                             loc=lognorm_pars['meanlog'],
-                                                             scale=lognorm_pars['sdlog']))
-            # last peak point
-            time_in_peak = time_days - time_days[np.where(is_peak)[0][0]] + time_already_in_peak_days
-            if np.any(time_in_peak <= peak_duration_days):
-                end_peak = np.where(time_in_peak <= peak_duration_days)[0][-1]
-                if end_peak > 2:
-                    # add pcen variations during peak
-                    if is_peak[0]:
-                        # starting at peak: linear decrease to peak value +2.5mbar
-                        # from peak center
-                        peak_start_idx = np.where(pcen == np.min(pcen))[0][0]
-                        mid_peak_idx = np.floor((end_peak+1)/2).astype(int)
-                        pcen[mid_peak_idx:end_peak + 1] = np.interp(
-                            np.arange(mid_peak_idx, end_peak+1),
-                            np.array([mid_peak_idx, end_peak]),
-                            np.array([pcen[mid_peak_idx], target_peak+2.5])
-                        )
-                    elif end_peak - np.where(is_peak)[0][0] >= 2:
-                        # model peak as a quadratic function
-                        peak_start_idx = np.where(is_peak)[0][0]
-                        mid_peak_idx = (peak_start_idx + np.floor((end_peak-peak_start_idx+1)/2)).astype(int)
-                        if pcen[peak_start_idx] == pcen[mid_peak_idx]:
-                            pcen[peak_start_idx] = pcen[peak_start_idx] + 2.5
-                        interp_fun = scipy.interpolate.interp1d(
-                            x=np.array([peak_start_idx, mid_peak_idx, end_peak]),
-                            y=np.array([pcen[peak_start_idx], pcen[mid_peak_idx], pcen[end_peak]+2.5]),
-                            kind='quadratic'
-                        )
-                        pcen[peak_start_idx:end_peak+1] = interp_fun(np.arange(peak_start_idx, end_peak+1))
-            else:
-                # peak already ends
-                end_peak = 0
-
-            # decay required?
-            if end_peak < len(time_days) - 1:
-                weibull_pars = RANDOM_WALK_DATA_SEA_DECAY.loc[
-                    RANDOM_WALK_DATA_SEA_DECAY['basin'] == track_chunk.basin.values[end_peak]
-                ].to_dict('records')[0]
-                peak_decay_k = scipy.stats.weibull_min.ppf(rnd_pars_i[3],
-                                                           c = weibull_pars['shape'],
-                                                           scale = weibull_pars['scale'])
-                time_in_decay = time_days[end_peak:] - time_days[end_peak]
-                # decay: p(t) = p_env(t) + (p(t=0) - p_env(t)) * exp(-k*t)
-                p_drop = (pcen[end_peak] - track_chunk.environmental_pressure.values[end_peak:])
-                p_drop = p_drop * np.exp(-peak_decay_k * time_in_decay)
-                pcen[end_peak:] = track_chunk.environmental_pressure.values[end_peak:] + p_drop
-
-                # ensure central pressure < environmental pressure
-                pcen = np.fmin(pcen, track_chunk.environmental_pressure.values)
-
-        # Now central pressure has been modelled
-        track_chunk['central_pressure'][:] = pcen
-        track['central_pressure'][in_chunk] = track_chunk['central_pressure'][:]
-    
-    def intensity_evolution_land(track, id_chunk, v_rel, p_rel, s_rel):
-        # taking last value before the chunk as a starting point from where to model intensity
-        in_chunk = np.where(track.id_chunk.values == id_chunk)[0]
-        # end_target_peak_time = track.time.values[np.where(track.central_pressure.values == track.target_central_pressure[in_chunk[0]])[0][-1]]
-        # if a single point over land, do not adjust intensity - keep constant
-        if len(in_chunk) == 1:
-            if in_chunk[0] > 0:
-                track['max_sustained_wind'][in_chunk] = track['max_sustained_wind'].values[in_chunk-1]
-                track['central_pressure'][in_chunk] = track['central_pressure'].values[in_chunk-1]
-
-        if in_chunk[0] > 0:
-            #     in_chunk = np.append(in_chunk[0]-1, in_chunk)
-            # values just before landfall
-            p_landfall = float(track.central_pressure[in_chunk[0]-1].values)
-            v_landfall = track.max_sustained_wind[in_chunk[0]-1].values
-        else:
-            p_landfall = float(track.central_pressure[in_chunk[0]].values)
-            v_landfall = track.max_sustained_wind[in_chunk[0]].values
-        track_chunk = track.isel(time = in_chunk)
-        # implement that part
-        ss_scale = climada.hazard.tc_tracks.set_category(v_landfall,
-                                                         track.max_sustained_wind_unit)
-        # position of the last point on land: last item in chunk
-        S = _calc_decay_ps_value(track_chunk, p_landfall, len(in_chunk)-1, s_rel)
-        if S <= 1:
-            # central_pressure at start of landfall > env_pres after landfall:
-            # set central_pressure to environmental pressure during whole lf
-            track_chunk.central_pressure[:] = track_chunk.environmental_pressure.values
-        else:
-            p_decay = _decay_p_function(S, p_rel[ss_scale][1],
-                                        track_chunk.dist_since_lf.values)
-            # dont apply decay if it would decrease central pressure
-            if np.any(p_decay < 1):
-                LOGGER.info('Landfall decay would decrease pressure for '
-                            'track id %s, leading to an intensification '
-                            'of the Tropical Cyclone. This behaviour is '
-                            'unphysical and therefore landfall decay is not '
-                            'applied in this case.',
-                            track_chunk.sid)
-                p_decay[p_decay < 1] = (track_chunk.central_pressure[p_decay < 1]
-                                        / p_landfall)
-            track_chunk['central_pressure'][:] = p_landfall * p_decay
-
-        v_decay = _decay_v_function(v_rel[ss_scale],
-                                    track_chunk.dist_since_lf.values)
-        # dont apply decay if it would increase wind speeds
-        if np.any(v_decay > 1):
-            # should not happen unless v_rel is negative
-            LOGGER.info('Landfall decay would increase wind speed for '
-                        'track id %s. This behaviour is unphysical and '
-                        'therefore landfall decay is not applied in this '
-                        'case.',
-                        track_chunk.sid)
-            v_decay[v_decay > 1] = (track_chunk.max_sustained_wind[v_decay > 1]
-                                    / v_landfall)
-        track_chunk['max_sustained_wind'][:] = v_landfall * v_decay
-
-        # correct limits
-        np.warnings.filterwarnings('ignore')
-        cor_p = track_chunk.central_pressure.values > track_chunk.environmental_pressure.values
-        track_chunk.central_pressure[cor_p] = track_chunk.environmental_pressure[cor_p]
-        track_chunk.max_sustained_wind[track_chunk.max_sustained_wind < 0] = 0
-
-        # assign output
-        track['central_pressure'][in_chunk] = track_chunk['central_pressure'][:]
-
-    def _estimate_params_track(track):
-        """Estimate a synthetic track's parameters from central pressure based
-        on relationships fitted on that track's historical values.
-
-        The input 'track' is modified in place!
-
-        The variables estimated from central pressure are 'max_sustained_wind',
-        'radius_max_wind 'radius_oci'. The track is split into 3 phases:
-        intensification (up to maximum intensity +/-5 mbar), peak (set of
-        subsequent values around the minimum central pressure value, all within
-        5 mbar of that minimum value), and decay (thereafter).
-
-        Parameters
-        ----------
-        track : xarray.Datasset
-            Track data.
-        """
-        if np.all(track.id_chunk.values == 0):
-            return
-        pcen = track.central_pressure.values
-        def _get_peak_idx(pcen):
-            peak_idx = np.where(pcen == pcen.min())[0]
-            if np.all(pcen - pcen.min() <= 5):
-                return 0, len(pcen) - 1
-            peak_idx = peak_idx[0]
-            # detect end of peak
-            if peak_idx < len(pcen) - 1:
-                idx_out = np.where(np.diff((pcen[peak_idx:] - pcen.min() <= 5).astype(int)) == -1)[0]
-                if idx_out.shape[0] == 0:
-                    peak_end_idx = len(pcen) - 1
-                else:
-                    peak_end_idx = peak_idx + idx_out[0]
-            else:
-                peak_end_idx = peak_idx
-            # detect start of peak
-            if peak_idx > 0:
-                idx_out = np.where(np.diff((np.flip(pcen[:peak_idx+1]) - pcen.min() <= 5).astype(int)) == -1)[0]
-                if idx_out.shape[0] == 0:
-                    peak_start_idx = 0
-                else:
-                    peak_start_idx = peak_idx - [0]
-            else:
-                peak_start_idx = 0
-            return peak_start_idx, peak_end_idx
-
-        # identify phases
-        peak_start_idx, peak_end_idx = _get_peak_idx(pcen)
-        # data point from which to re-estimate variables
-        first_idx = np.where(track.id_chunk.values != 0)[0][0]
-        interp_idx = None
-        if first_idx > 0:
-            # how many time steps to go back
-            time_step_h = np.unique(track['time_step'].values)[0]
-            nb_timesteps_adjust = np.ceil(FIT_TIME_ADJUST_HOUR/time_step_h).astype(int)
-            # where to adjust previous time steps
-            if nb_timesteps_adjust > 0:
-                # copy original values
-                track_orig = track.copy(deep = True)
-                # indices where to interpolate between original and estimated values
-                interp_idx = np.arange(max(0, first_idx - nb_timesteps_adjust), first_idx)
-            # where to estimate each chunk: not before first_idx - nb_timesteps_adjust
-            intens_idx = np.arange(max(0, first_idx - nb_timesteps_adjust), peak_start_idx)
-            peak_idx = np.arange(max(peak_start_idx, first_idx - nb_timesteps_adjust), peak_end_idx + 1)
-            decay_idx = np.arange(max(peak_end_idx + 1, first_idx - nb_timesteps_adjust), len(pcen))
-        else:
-            intens_idx = np.arange(peak_start_idx)
-            peak_idx = np.arange(peak_start_idx, peak_end_idx + 1)
-            decay_idx = np.arange(peak_end_idx + 1, len(pcen))
-
-        # apply adjustments
-        if len(intens_idx) > 0:
-            _estimate_vars_chunk(track, 'intens', intens_idx)
-        if len(decay_idx) > 0:
-            _estimate_vars_chunk(track, 'decay', decay_idx)
-        if len(peak_idx) > 0:
-            _estimate_vars_chunk(track, 'peak', peak_idx)
-
-        # mediate adjustments
-        if interp_idx is not None:
-            # interpolate between new and old values
-            weights_idx = (np.arange(len(interp_idx)) + 1) / (len(interp_idx) + 1)
-            for var in FIT_TRACK_VARS_RANGE.keys():
-                track[var][interp_idx] = weights_idx * track[var][interp_idx] + (1-weights_idx) * track_orig[var][interp_idx]
     
     # organise chunks to be processed in temporal sequence
     chunk_index = np.unique(track.id_chunk.values, return_index=True)[1]
@@ -1945,6 +1650,304 @@ def _model_synth_tc_intensity(track: xr.Dataset,
         track.max_sustained_wind.values, track.max_sustained_wind_unit)
 
     return drop_temporary_variables(track, track_vars_attrs)
+
+
+def drop_temporary_variables(track : xr.Dataset, track_vars_attrs):
+    vars_to_drop = set(track.variables) - track_vars_attrs[0]
+    attrs_to_drop = set(track.attrs.keys()) - track_vars_attrs[1]
+    for attr in attrs_to_drop:
+        del(track.attrs[attr])
+    return track.drop_vars(vars_to_drop)
+
+def intensity_evolution_sea(track, id_chunk, central_pressure_pert, rnd_pars_i):
+    in_chunk = np.where(track.id_chunk.values == id_chunk)[0]
+    # end_target_peak_time = track.time.values[np.where(track.central_pressure.values == track.target_central_pressure[in_chunk[0]])[0][-1]]
+    # if a single point over the ocean, do not adjust intensity - keep constant
+    if len(in_chunk) == 1:
+        if in_chunk[0] > 0:
+            track['max_sustained_wind'][in_chunk] = track['max_sustained_wind'].values[in_chunk-1]
+            track['central_pressure'][in_chunk] = track['central_pressure'].values[in_chunk-1]
+        return
+    
+    # taking last value before the chunk as a starting point from where to model intensity
+    if in_chunk[0] > 0:
+        in_chunk = np.append(in_chunk[0]-1, in_chunk)
+    
+    track_chunk = track.isel(time = in_chunk)
+    pcen = track_chunk.central_pressure.values
+    time_days = np.append(0, np.cumsum(track_chunk.time_step.values[1:] / 24))
+
+    # perturb target central pressure: truncated normal distribution
+    target_peak_pert = central_pressure_pert / 2 * scipy.stats.truncnorm.ppf(rnd_pars_i[0], -2, 2)
+    target_peak = track_chunk.target_central_pressure.values[0] + target_peak_pert
+
+    if pcen[0] <= target_peak:
+        # already at target, no intensification needed - keep at current intensity
+        pcen[:] = pcen[0]
+        # ensure central pressure < environmental pressure
+        pcen = np.fmin(pcen, track_chunk.environmental_pressure.values)
+    else:
+        # intensification parameters
+        inten_i = np.logical_and(
+            rnd_pars_i[1] >= RANDOM_WALK_DATA_INTENSIFICATION['cumfreqlow'],
+            rnd_pars_i[1] < RANDOM_WALK_DATA_INTENSIFICATION['cumfreqhigh']
+        )
+        inten_pars = RANDOM_WALK_DATA_INTENSIFICATION.loc[inten_i, ['a', 'b']].to_dict('records')[0]
+        # apply intensification
+        pcen = np.fmax(pcen[0] + inten_pars['a']*(1-np.exp(inten_pars['b']*time_days)), np.array([target_peak]))
+        # ensure central pressure < environmental pressure
+        pcen = np.fmin(pcen, track_chunk.environmental_pressure.values)
+        track_chunk['central_pressure'][:] = pcen
+
+    # peak duration
+    # defined as the time difference between the first point after peak
+    # intensity and first point within peak intensity.
+
+    # Peak is reached if target is reached within 5 mbar
+    is_peak = pcen - target_peak <= 5
+    if np.sum(is_peak) > 0:
+
+        # if the chunks starts at peak, account for previous time steps for
+        # peak duration
+        if is_peak[0]:
+            # account for previous time steps for peak duration
+            pcen_before_peak_rev = np.flip(track.central_pressure.values[:in_chunk[0]])
+            idx_before_peak_rev = np.where(pcen_before_peak_rev - target_peak > 5)[0]
+            time_before_peak_rev = np.flip(track.time.values[:in_chunk[0]])
+            if idx_before_peak_rev.shape[0] > 0:
+                idx_start_peak_rev = idx_before_peak_rev[0] -1
+                # time of first point within peak
+                peak_start_time = time_before_peak_rev[idx_start_peak_rev]
+                # time spent in peak until chunk start
+                time_already_in_peak = track_chunk.time.values[0] - peak_start_time
+                time_already_in_peak_days = time_already_in_peak / np.timedelta64(1, 'D')
+            else:
+                time_already_in_peak_days = 0
+        else:
+            time_already_in_peak_days = 0
+
+        # apply duration: as a function of basin and category
+        peak_pcen_i = np.where(pcen == np.min(pcen))[0][0]
+        # since we do not know if we are in the intensification or decay
+        # phase of the whole TC, take the average Vmax estimate from both
+        # fits to determine TC category at peak
+        track_peak = track_chunk.copy(True).isel(time = [peak_pcen_i])
+        _estimate_vars_chunk(track_peak, phase='peak', idx=np.zeros(1).astype(int))
+        peak_vmax = track_peak['max_sustained_wind'].values
+        peak_cat = climada.hazard.tc_tracks.set_category(peak_vmax, wind_unit=track_chunk.max_sustained_wind_unit)
+        peak_cat = RANDOM_WALK_DATA_CAT_STR[peak_cat]
+        peak_basin = track_chunk.basin.values[peak_pcen_i]
+        duration_i = np.logical_and(
+            RANDOM_WALK_DATA_DURATION['basin'] == peak_basin,
+            RANDOM_WALK_DATA_DURATION['category'] == peak_cat
+        )
+        lognorm_pars = RANDOM_WALK_DATA_DURATION.loc[duration_i, ['meanlog', 'sdlog']].to_dict('records')[0]
+        # sample from that distribution
+        peak_duration_days = np.exp(scipy.stats.norm.ppf(rnd_pars_i[2],
+                                                            loc=lognorm_pars['meanlog'],
+                                                            scale=lognorm_pars['sdlog']))
+        # last peak point
+        time_in_peak = time_days - time_days[np.where(is_peak)[0][0]] + time_already_in_peak_days
+        if np.any(time_in_peak <= peak_duration_days):
+            end_peak = np.where(time_in_peak <= peak_duration_days)[0][-1]
+            if end_peak > 2:
+                # add pcen variations during peak
+                if is_peak[0]:
+                    # starting at peak: linear decrease to peak value +2.5mbar
+                    # from peak center
+                    peak_start_idx = np.where(pcen == np.min(pcen))[0][0]
+                    mid_peak_idx = np.floor((end_peak+1)/2).astype(int)
+                    pcen[mid_peak_idx:end_peak + 1] = np.interp(
+                        np.arange(mid_peak_idx, end_peak+1),
+                        np.array([mid_peak_idx, end_peak]),
+                        np.array([pcen[mid_peak_idx], target_peak+2.5])
+                    )
+                elif end_peak - np.where(is_peak)[0][0] >= 2:
+                    # model peak as a quadratic function
+                    peak_start_idx = np.where(is_peak)[0][0]
+                    mid_peak_idx = (peak_start_idx + np.floor((end_peak-peak_start_idx+1)/2)).astype(int)
+                    if pcen[peak_start_idx] == pcen[mid_peak_idx]:
+                        pcen[peak_start_idx] = pcen[peak_start_idx] + 2.5
+                    interp_fun = scipy.interpolate.interp1d(
+                        x=np.array([peak_start_idx, mid_peak_idx, end_peak]),
+                        y=np.array([pcen[peak_start_idx], pcen[mid_peak_idx], pcen[end_peak]+2.5]),
+                        kind='quadratic'
+                    )
+                    pcen[peak_start_idx:end_peak+1] = interp_fun(np.arange(peak_start_idx, end_peak+1))
+        else:
+            # peak already ends
+            end_peak = 0
+
+        # decay required?
+        if end_peak < len(time_days) - 1:
+            weibull_pars = RANDOM_WALK_DATA_SEA_DECAY.loc[
+                RANDOM_WALK_DATA_SEA_DECAY['basin'] == track_chunk.basin.values[end_peak]
+            ].to_dict('records')[0]
+            peak_decay_k = scipy.stats.weibull_min.ppf(rnd_pars_i[3],
+                                                        c = weibull_pars['shape'],
+                                                        scale = weibull_pars['scale'])
+            time_in_decay = time_days[end_peak:] - time_days[end_peak]
+            # decay: p(t) = p_env(t) + (p(t=0) - p_env(t)) * exp(-k*t)
+            p_drop = (pcen[end_peak] - track_chunk.environmental_pressure.values[end_peak:])
+            p_drop = p_drop * np.exp(-peak_decay_k * time_in_decay)
+            pcen[end_peak:] = track_chunk.environmental_pressure.values[end_peak:] + p_drop
+
+            # ensure central pressure < environmental pressure
+            pcen = np.fmin(pcen, track_chunk.environmental_pressure.values)
+
+    # Now central pressure has been modelled
+    track_chunk['central_pressure'][:] = pcen
+    track['central_pressure'][in_chunk] = track_chunk['central_pressure'][:]
+
+def intensity_evolution_land(track, id_chunk, v_rel, p_rel, s_rel):
+    # taking last value before the chunk as a starting point from where to model intensity
+    in_chunk = np.where(track.id_chunk.values == id_chunk)[0]
+    # end_target_peak_time = track.time.values[np.where(track.central_pressure.values == track.target_central_pressure[in_chunk[0]])[0][-1]]
+    # if a single point over land, do not adjust intensity - keep constant
+    if len(in_chunk) == 1:
+        if in_chunk[0] > 0:
+            track['max_sustained_wind'][in_chunk] = track['max_sustained_wind'].values[in_chunk-1]
+            track['central_pressure'][in_chunk] = track['central_pressure'].values[in_chunk-1]
+
+    if in_chunk[0] > 0:
+        #     in_chunk = np.append(in_chunk[0]-1, in_chunk)
+        # values just before landfall
+        p_landfall = float(track.central_pressure[in_chunk[0]-1].values)
+        v_landfall = track.max_sustained_wind[in_chunk[0]-1].values
+    else:
+        p_landfall = float(track.central_pressure[in_chunk[0]].values)
+        v_landfall = track.max_sustained_wind[in_chunk[0]].values
+    track_chunk = track.isel(time = in_chunk)
+    # implement that part
+    ss_scale = climada.hazard.tc_tracks.set_category(v_landfall,
+                                                        track.max_sustained_wind_unit)
+    # position of the last point on land: last item in chunk
+    S = _calc_decay_ps_value(track_chunk, p_landfall, len(in_chunk)-1, s_rel)
+    if S <= 1:
+        # central_pressure at start of landfall > env_pres after landfall:
+        # set central_pressure to environmental pressure during whole lf
+        track_chunk.central_pressure[:] = track_chunk.environmental_pressure.values
+    else:
+        p_decay = _decay_p_function(S, p_rel[ss_scale][1],
+                                    track_chunk.dist_since_lf.values)
+        # dont apply decay if it would decrease central pressure
+        if np.any(p_decay < 1):
+            LOGGER.info('Landfall decay would decrease pressure for '
+                        'track id %s, leading to an intensification '
+                        'of the Tropical Cyclone. This behaviour is '
+                        'unphysical and therefore landfall decay is not '
+                        'applied in this case.',
+                        track_chunk.sid)
+            p_decay[p_decay < 1] = (track_chunk.central_pressure[p_decay < 1]
+                                    / p_landfall)
+        track_chunk['central_pressure'][:] = p_landfall * p_decay
+
+    v_decay = _decay_v_function(v_rel[ss_scale],
+                                track_chunk.dist_since_lf.values)
+    # dont apply decay if it would increase wind speeds
+    if np.any(v_decay > 1):
+        # should not happen unless v_rel is negative
+        LOGGER.info('Landfall decay would increase wind speed for '
+                    'track id %s. This behaviour is unphysical and '
+                    'therefore landfall decay is not applied in this '
+                    'case.',
+                    track_chunk.sid)
+        v_decay[v_decay > 1] = (track_chunk.max_sustained_wind[v_decay > 1]
+                                / v_landfall)
+    track_chunk['max_sustained_wind'][:] = v_landfall * v_decay
+
+    # correct limits
+    np.warnings.filterwarnings('ignore')
+    cor_p = track_chunk.central_pressure.values > track_chunk.environmental_pressure.values
+    track_chunk.central_pressure[cor_p] = track_chunk.environmental_pressure[cor_p]
+    track_chunk.max_sustained_wind[track_chunk.max_sustained_wind < 0] = 0
+
+    # assign output
+    track['central_pressure'][in_chunk] = track_chunk['central_pressure'][:]
+
+def _estimate_params_track(track):
+    """Estimate a synthetic track's parameters from central pressure based
+    on relationships fitted on that track's historical values.
+
+    The input 'track' is modified in place!
+
+    The variables estimated from central pressure are 'max_sustained_wind',
+    'radius_max_wind 'radius_oci'. The track is split into 3 phases:
+    intensification (up to maximum intensity +/-5 mbar), peak (set of
+    subsequent values around the minimum central pressure value, all within
+    5 mbar of that minimum value), and decay (thereafter).
+
+    Parameters
+    ----------
+    track : xarray.Datasset
+        Track data.
+    """
+    if np.all(track.id_chunk.values == 0):
+        return
+    pcen = track.central_pressure.values
+    def _get_peak_idx(pcen):
+        peak_idx = np.where(pcen == pcen.min())[0]
+        if np.all(pcen - pcen.min() <= 5):
+            return 0, len(pcen) - 1
+        peak_idx = peak_idx[0]
+        # detect end of peak
+        if peak_idx < len(pcen) - 1:
+            idx_out = np.where(np.diff((pcen[peak_idx:] - pcen.min() <= 5).astype(int)) == -1)[0]
+            if idx_out.shape[0] == 0:
+                peak_end_idx = len(pcen) - 1
+            else:
+                peak_end_idx = peak_idx + idx_out[0]
+        else:
+            peak_end_idx = peak_idx
+        # detect start of peak
+        if peak_idx > 0:
+            idx_out = np.where(np.diff((np.flip(pcen[:peak_idx+1]) - pcen.min() <= 5).astype(int)) == -1)[0]
+            if idx_out.shape[0] == 0:
+                peak_start_idx = 0
+            else:
+                peak_start_idx = peak_idx - [0]
+        else:
+            peak_start_idx = 0
+        return peak_start_idx, peak_end_idx
+
+    # identify phases
+    peak_start_idx, peak_end_idx = _get_peak_idx(pcen)
+    # data point from which to re-estimate variables
+    first_idx = np.where(track.id_chunk.values != 0)[0][0]
+    interp_idx = None
+    if first_idx > 0:
+        # how many time steps to go back
+        time_step_h = np.unique(track['time_step'].values)[0]
+        nb_timesteps_adjust = np.ceil(FIT_TIME_ADJUST_HOUR/time_step_h).astype(int)
+        # where to adjust previous time steps
+        if nb_timesteps_adjust > 0:
+            # copy original values
+            track_orig = track.copy(deep = True)
+            # indices where to interpolate between original and estimated values
+            interp_idx = np.arange(max(0, first_idx - nb_timesteps_adjust), first_idx)
+        # where to estimate each chunk: not before first_idx - nb_timesteps_adjust
+        intens_idx = np.arange(max(0, first_idx - nb_timesteps_adjust), peak_start_idx)
+        peak_idx = np.arange(max(peak_start_idx, first_idx - nb_timesteps_adjust), peak_end_idx + 1)
+        decay_idx = np.arange(max(peak_end_idx + 1, first_idx - nb_timesteps_adjust), len(pcen))
+    else:
+        intens_idx = np.arange(peak_start_idx)
+        peak_idx = np.arange(peak_start_idx, peak_end_idx + 1)
+        decay_idx = np.arange(peak_end_idx + 1, len(pcen))
+
+    # apply adjustments
+    if len(intens_idx) > 0:
+        _estimate_vars_chunk(track, 'intens', intens_idx)
+    if len(decay_idx) > 0:
+        _estimate_vars_chunk(track, 'decay', decay_idx)
+    if len(peak_idx) > 0:
+        _estimate_vars_chunk(track, 'peak', peak_idx)
+
+    # mediate adjustments
+    if interp_idx is not None:
+        # interpolate between new and old values
+        weights_idx = (np.arange(len(interp_idx)) + 1) / (len(interp_idx) + 1)
+        for var in FIT_TRACK_VARS_RANGE.keys():
+            track[var][interp_idx] = weights_idx * track[var][interp_idx] + (1-weights_idx) * track_orig[var][interp_idx]
 
 
 def _apply_decay_coeffs(track, v_rel, p_rel, land_geom, s_rel):
