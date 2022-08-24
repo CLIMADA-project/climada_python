@@ -250,8 +250,8 @@ def calc_perturbed_trajectories(
 
     # get variables and attributes to keep at the end
     track_vars_attrs = (
-        set(tracks[0].variables) + set(['on_land', 'dist_since_lf']),
-        set(tracks[0].attrs.keys())
+        set(tracks.data[0].variables).union(['on_land', 'dist_since_lf']),
+        set(tracks.data[0].attrs.keys())
     )
 
     LOGGER.info('Generating random number for locations perturbations...')
@@ -363,6 +363,7 @@ def calc_perturbed_trajectories(
                 s_rel=True,
                 central_pressure_pert = central_pressure_pert,
                 rnd_pars=random_intensity,
+                track_vars_attrs=track_vars_attrs
             )
             for track, random_intensity in zip(tracks_with_id_chunks_tracks, random_vec_intensity)
         ]
