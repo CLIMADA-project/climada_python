@@ -621,7 +621,7 @@ def _apply_random_walk_pert(track: xr.Dataset,
 
     track.lon.values = new_lon
     track.lat.values = new_lat
-    track = track.isel(time=slice(None, last_idx))
+    return last_idx
 
 def _random_uniform_ac(n_ts, autocorr, time_step_h):
     """
