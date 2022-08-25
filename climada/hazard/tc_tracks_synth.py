@@ -138,9 +138,9 @@ def calc_perturbed_trajectories(
     autocorr_dspeed: float = 0.85,
     autocorr_ddirection: float = 0.5,
     seed: int = CONFIG.hazard.trop_cyclone.random_seed.int(),
-    adjust_intensity: bool = True,
+    adjust_intensity: str = None,
     central_pressure_pert: float = 7.5,
-    legacy_decay: bool = False,
+    decay: bool = False,
     use_global_decay_params: bool = True,
     pool: AbstractWorkerPool = None,
 ):
@@ -201,12 +201,22 @@ def calc_perturbed_trajectories(
     seed : int, optional
         Random number generator seed for replicability of random walk.
         Put negative value if you don't want to use it. Default: configuration file.
-    adjust_intensity : bool, optional
-        Whether to model intensity (central pressure, max_sustained_wind, as
-        well as radius_oci and radius_max_wind) depending on landfalls in
-        historical and synthetic tracks. If True, track intensification, peak
-        intensity duration as well as intensity decay over the ocean and over
-        land are explicitely modeled.
+    adjust_intensity : str, optional
+        Whether and how tropical cyclone intensity (central pressure,
+        max_sustained_wind) should be modelled. One of 'explicit',
+        'legacy_decay', or 'none'.
+        For 'explicit', intensity as well as radius_oci and radius_max_wind) are
+        statistically modelled depending on landfalls in historical and
+        synthetic tracks (track intensification, peak intensity duration as well
+        as intensity decay over the ocean and over land are explicitely
+        modelled).
+        For 'legacy_decay', a landfall decay is applied when a synthetic track
+        reached land; however when a synthetic track is over the ocean while its
+        historical counterpart was over land, intensity will be underestimated.
+        For 'none', the track intensity will be the same as the historical track
+        independently on whether both tracks are over land or the ocean.
+        For None, will be set to 'explicit'.
+        Default: None (i.e., 'explicit').
     central_pressure_pert : float, optional
         Magnitude of the intensity perturbation (in mbar). This value is used to
         perturb the maximum intensity (lowest central_pressure value) when
@@ -214,8 +224,9 @@ def calc_perturbed_trajectories(
         distribution with mean=0 and sd=central_pressure_pert/2 constrained
         between -central_pressure_pert and +central_pressure_pert. Default: 7.5
         (corresponds to about 10 kn).
-    legacy_decay : bool, optional
-        Apply the legacy landfall decay functionality. Default: True.
+    decay : bool, optional
+        Deprecated, for backward compatibility only. If True, equivalent to
+        setting 'adjust_intensity' to 'legacy_decay'.
     use_global_decay_params : bool, optional
         Whether to use precomputed global parameter values for landfall decay
         obtained from IBTrACS (1980-2019). If False, parameters are fitted
@@ -227,6 +238,18 @@ def calc_perturbed_trajectories(
         Pool that will be used for parallel computation when applicable. If not given, the
         pool attribute of `tracks` will be used. Default: None
     """
+    if decay:
+        LOGGER.warning("`decay` is deprecated. "
+                        "Use `adjust_intensity` instead.")
+        if adjust_intensity == 'explicit':
+            raise ValueError(
+                'Set `adjust_intensity` to "legacy_decay" or `decay` to False.'
+            )
+        LOGGER.warning('decay is set to True - this set adjust_intensity to "legacy_decay"')
+        adjust_intensity = 'legacy_decay'
+    if adjust_intensity is None:
+        adjust_intensity = 'explicit'
+    
     LOGGER.info('Computing %s synthetic tracks.', nb_synth_tracks * tracks.size)
 
     pool = tracks.pool if pool is None else pool
@@ -264,7 +287,7 @@ def calc_perturbed_trajectories(
                                                 autocorr_ddirection,
                                                 autocorr_dspeed)
 
-    if adjust_intensity:
+    if adjust_intensity == 'explicit':
         # to assign land parameters to historical tracks for use in synthetic tracks later
         land_geom_hist = climada.util.coordinates.get_land_geometry(
             extent=tracks.get_extent(deg_buffer=0.1), resolution=10
@@ -304,7 +327,7 @@ def calc_perturbed_trajectories(
     tracks.data_hist = deepcopy([deepcopy(x[0]) for x in new_ens if x[0].orig_event_flag])
 
 
-    if adjust_intensity:
+    if adjust_intensity == 'explicit':
         land_geom = climada.util.coordinates.get_land_geometry(
             extent=tracks.get_extent(deg_buffer=0.1), resolution=10
         )
@@ -374,7 +397,7 @@ def calc_perturbed_trajectories(
         )
         tracks.data = ocean_modelled_tracks
 
-    elif legacy_decay:
+    elif adjust_intensity == 'legacy_decay':
         land_geom = climada.util.coordinates.get_land_geometry(
             extent=tracks.get_extent(deg_buffer=0.1), resolution=10
         )
