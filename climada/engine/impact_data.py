@@ -867,14 +867,15 @@ def emdat_to_impact(emdat_file_csv, hazard_type_climada, year_range=None, countr
 
     Returns
     -------
-    impact_instance : instance of climada.engine.Impact
-    impact object of same format as output from CLIMADA
-    impact computation.
-    Values scaled with GDP to reference_year if reference_year is given.
-    i.e. current US$ for imp_str="Total Damages ('000 US$) scaled" (factor 1000 is applied)
-    impact_instance.eai_exp holds expected annual impact for each country.
-    impact_instance.coord_exp holds rough central coordinates for each country.
-    countries (list): ISO3-codes of countries in same order as in impact_instance.eai_exp
+    impact_instance : climada.engine.Impact
+        impact object of same format as output from CLIMADA
+        impact computation.
+        Values scaled with GDP to reference_year if reference_year is given.
+        i.e. current US$ for imp_str="Total Damages ('000 US$) scaled" (factor 1000 is applied)
+        impact_instance.eai_exp holds expected impact for each country (within 1/frequency_unit).
+        impact_instance.coord_exp holds rough central coordinates for each country.
+    countries : list of str
+        ISO3-codes of countries in same order as in impact_instance.eai_exp
     """
     if "Total Damages" in imp_str:
         imp_str = "Total Damages ('000 US$)"
