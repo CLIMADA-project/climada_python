@@ -831,7 +831,7 @@ class Impact():
 
         header = ["tag_hazard", "tag_exposure", "tag_impact_func",
                   "unit", "tot_value", "aai_agg", "event_id",
-                  "event_name", "event_date", "event_frequency",
+                  "event_name", "event_date", "event_frequency", "frequency_unit",
                   "at_event", "eai_exp", "exp_lat", "exp_lon", "exp_crs"]
         for icol, head_dat in enumerate(header):
             imp_ws.write(0, icol, head_dat)
@@ -908,7 +908,7 @@ class Impact():
         imp.date = imp_df.event_date[:num_ev].values
         imp.at_event = imp_df.at_event[:num_ev].values
         imp.frequency = imp_df.event_frequency[:num_ev].values
-        imp.frequency_unit = imp_df.frequency_unit[0]
+        imp.frequency_unit = imp_df.frequency_unit[0] if 'frequency_unit' in imp_df else DEF_FREQ_UNIT
         imp.eai_exp = imp_df.eai_exp[~np.isnan(imp_df.eai_exp)].values
         num_exp = imp.eai_exp.size
         imp.coord_exp = np.zeros((num_exp, 2))
@@ -969,7 +969,7 @@ class Impact():
         imp.event_name = dfr.event_name[:imp.event_id.size].values
         imp.date = dfr.event_date[:imp.event_id.size].values
         imp.frequency = dfr.event_frequency[:imp.event_id.size].values
-        imp.frequency_unit = dfr.frequency_unit[0]
+        imp.frequency_unit = dfr.frequency_unit[0] if 'frequency_unit' in dfr else DEF_FREQ_UNIT
         imp.at_event = dfr.at_event[:imp.event_id.size].values
 
         imp.eai_exp = dfr.eai_exp[~np.isnan(dfr.eai_exp.values)].values
