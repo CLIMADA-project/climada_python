@@ -74,7 +74,7 @@ class NotebookTest(unittest.TestCase):
                 if any([ tabu in c['source'].split() for tabu in [
                     'import multiprocessing',
                     'from multiprocessing import',
-                ]]): 
+                ]]):
                     print('\n'.join([
                         f'\nskip multiprocessing cell {i} in {self.notebook}',
                         '+'+'-'*68+'+',
@@ -82,7 +82,7 @@ class NotebookTest(unittest.TestCase):
                     ]))
                     continue
 
-                # remove non python lines and help calls which require user input 
+                # remove non python lines and help calls which require user input
                 # or involve pools being opened/closed
                 python_code = "\n".join([
                     re.sub(r'pool=\w+', 'pool=None', ln)

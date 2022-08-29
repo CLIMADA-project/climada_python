@@ -79,7 +79,6 @@ class TestClient(unittest.TestCase):
         self.assertEqual(dataset.files[0].file_size, 26481)
         self.assertEqual(dataset.data_type, DataTypeShortInfo('crop_production', 'exposures'))
 
-        
         with self.assertRaises(AssertionError) as ar:
             with self.assertLogs('climada.util.api_client', level='WARNING') as cm:
                 dataset2 = Client().get_dataset_info_by_uuid(dataset.uuid)
@@ -156,7 +155,7 @@ class TestClient(unittest.TestCase):
                       str(cm.exception))
 
         with self.assertRaises(Client.AmbiguousResult) as cm:
-            client.get_exposures(exposures_type='litpop', 
+            client.get_exposures(exposures_type='litpop',
                                  properties={'country_iso3alpha': 'AUT'},
                                  dump_dir=DATA_DIR)
         self.assertIn('there are 3 datasets meeting the requirements',
@@ -177,7 +176,7 @@ class TestClient(unittest.TestCase):
     def test_get_hazard_fails(self):
         client = Client()
         with self.assertRaises(ValueError) as cm:
-            client.get_hazard(hazard_type='litpop', 
+            client.get_hazard(hazard_type='litpop',
                               properties={'country_name': 'Austria',
                                           'year_range': '2010_2030', 'climate_scenario': 'rcp26'},
                               dump_dir=DATA_DIR)
