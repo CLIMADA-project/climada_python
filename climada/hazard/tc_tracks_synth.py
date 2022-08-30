@@ -137,6 +137,7 @@ def calc_perturbed_trajectories(
     max_ddirection: float = np.pi / 360,
     autocorr_dspeed: float = 0.85,
     autocorr_ddirection: float = 0.5,
+    decay_ddirection_hourly: float = 1/(2.5*24),
     seed: int = CONFIG.hazard.trop_cyclone.random_seed.int(),
     adjust_intensity: str = None,
     central_pressure_pert: float = 7.5,
@@ -196,8 +197,13 @@ def calc_perturbed_trajectories(
         Temporal autocorrelation in translation speed perturbation
         at a lag of 1 hour. Default: 0.85.
     autocorr_ddirection : float, optional
-        Temporal autocorrelation of translational direction perturbation
+        Temporal autocorrelation of track direction perturbation
         at a lag of 1 hour. Default: 0.5.
+    decay_ddirection_hourly : float, optional
+        Exponential decay parameter applied to reduce the track direction
+        perturbation with track time, in units of "per hour". Set to larger than
+        0 to prevent long tracks to deviate too much from their historical
+        counterpart. Default: 1/(2.5*24) (i.e. per 2.5 days).
     seed : int, optional
         Random number generator seed for replicability of random walk.
         Put negative value if you don't want to use it. Default: configuration file.
@@ -285,7 +291,8 @@ def calc_perturbed_trajectories(
                                                 max_dspeed_rel,
                                                 max_ddirection,
                                                 autocorr_ddirection,
-                                                autocorr_dspeed)
+                                                autocorr_dspeed,
+                                                decay_ddirection_hourly)
 
     if adjust_intensity == 'explicit':
         # to assign land parameters to historical tracks for use in synthetic tracks later
@@ -447,7 +454,7 @@ def _one_rnd_walk(track,
         Maximum perturbations in central pressure. Used to determine the range
         of pressure values over which to fit data. This argment must be provided
         if 'land_geom' is provided.
-    rnd_vec : np.ndarray of shape (2 * nb_synth_tracks * track.time.size),)
+    rnd_tpl : np.ndarray of shape (2 * nb_synth_tracks * track.time.size),)
         Vector of random perturbations.
 
     Returns
@@ -527,9 +534,52 @@ def _get_random_trajectories_perts(tracks,
                                     max_dspeed_rel,
                                     max_ddirection,
                                     autocorr_ddirection,
-                                    autocorr_dspeed):
+                                    autocorr_dspeed,
+                                    decay_ddirection_hourly):
     """Generate random numbers for random walk
     
+    Parameters
+    ----------
+    tracks : List
+        List containing tracks data (i.e. the 'data' attribute of a
+        climada.hazard.tc_tracks.TCTracks object).
+    nb_synth_tracks : int
+        Number of ensemble members per track.
+    time_step_h : float
+        Temporal resolution of the time series, in hour.
+    max_shift_ini : float
+        Amplitude of max random starting point shift in decimal degree
+        (up to +/-max_shift_ini for longitude and latitude).
+    max_dspeed_rel : float
+        Amplitude of translation speed perturbation in relative terms
+        (e.g., 0.2 for +/-20%).
+    max_ddirection : float
+        Amplitude of track direction (bearing angle) perturbation
+        per hour, in radians.
+    autocorr_dspeed : float
+        Temporal autocorrelation in translation speed perturbation
+        at a lag of 1 hour.
+    autocorr_ddirection : float
+        Temporal autocorrelation of translational direction perturbation
+        at a lag of 1 hour
+    decay_ddirection_hourly : float
+        Exponential decay parameter applied to reduce the track direction
+        perturbation with track time, in units of "per hour". Set to larger than
+        0 to prevent long tracks to deviate too much from their historical
+        counterpart. Default: 1/(2.5*24) (i.e. per 2.5 days).
+
+    Returns
+    -------
+    random_vec : Tuple
+        Tuple of tuples of tuples: random_vec[i][j] contains random track
+        locations perturbations for the j-th synthetic track generated based on
+        historical track i. random_vec[i][j] is a tuple of length 3 which
+        contains random numbers for the perturbation of (1) the track starting
+        point (2 values), (2) the track direction at each track
+        node (1 values per track segment), and (3) the track
+        translation speed at each track node (1 value per track segment). For tracks containing a single
+        time step or if 'autocorr_ddirection' or 'autocorr_dspeed' are equal to
+        0 the Tuples will only contain the first element.
     """
     # number of random value per synthetic track:
     # 2 for starting points (lon, lat)
@@ -563,13 +613,13 @@ def _get_random_trajectories_perts(tracks,
                         max_shift_ini * (2 * np.random.uniform(size=2) -1),
                         # ddirection pert: autocorrelated hourly pert, used as angle
                         # and scale
-                        time_step_h * np.degrees(
+                        np.cumsum(time_step_h * np.degrees(
                             max_ddirection * (
                                 2 * _random_uniform_ac(track.time.size - 1,
                                                     autocorr_ddirection,
                                                     time_step_h) - 1
                             )
-                        ),
+                        )) * np.exp(-decay_ddirection_hourly*np.arange(0, time_step_h*(track.time.size-1), time_step_h)),
                         1 + max_dspeed_rel * (
                             2 *_random_uniform_ac(track.time.size - 1,
                                                 autocorr_dspeed,
@@ -602,8 +652,7 @@ def _apply_random_walk_pert(track: xr.Dataset,
     last_idx = track.time.size
 
     # get perturbations
-    xy_ini, ang_pert, trans_pert = rnd_tpl
-    ang_pert_cum = np.cumsum(ang_pert)
+    xy_ini, ang_pert_cum, trans_pert = rnd_tpl
 
     # get bearings and angular distance for the original track
     bearings = _get_bearing_angle(track.lon.values, track.lat.values)
