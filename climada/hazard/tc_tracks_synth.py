@@ -127,7 +127,11 @@ FIT_TRACK_VARS_RANGE = {
 modelling intensity, containing 'min' and 'max' allowed values."""
 
 FIT_TIME_ADJUST_HOUR = 6
-"""Number of hours before track intensity is modelled for which to estimate track parameters"""
+"""Number of hours before track intensity is modelled for which to estimate
+track parameters"""
+
+NEGLECT_LANDFALL_DURATION_HOUR = 4.5
+"""Minimum landfall duration in hour from which to correct intensity"""
 
 def calc_perturbed_trajectories(
     tracks,
@@ -269,6 +273,8 @@ def calc_perturbed_trajectories(
         raise ValueError('Tracks have different temporal resolution. '
                          'Please ensure constant time steps by applying equal_timestep beforehand')
     time_step_h = time_step_h[0]
+    if NEGLECT_LANDFALL_DURATION_HOUR < time_step_h:
+        LOGGER.warning('A higher temporal resolution is recommended.')
 
     # ensure we're not making synths from synths
     if not sum(1 for t in tracks.data if t.orig_event_flag) == tracks.size:
@@ -348,7 +354,7 @@ def calc_perturbed_trajectories(
         # returns a list of tuples (track, no_sea_chunks, no_land_chunks)
         LOGGER.info('Identifying tracks chunks...')
         tracks_with_id_chunks = [
-            _add_id_synth_chunks_shift_init(track, land_geom, shift_values_init=True)
+            _add_id_synth_chunks_shift_init(track, time_step_h, land_geom, shift_values_init=True)
             for track in tracks.data
         ]
 
@@ -1504,6 +1510,7 @@ def _estimate_vars_chunk(track: xr.Dataset,
     return track
 
 def _add_id_synth_chunks_shift_init(track: xr.Dataset,
+                                    time_step_h: float,
                                     land_geom: MultiPolygon = None,
                                     shift_values_init: bool = True):
     """Identify track chunks for which intensity is to be modelled, and shift
@@ -1557,8 +1564,8 @@ def _add_id_synth_chunks_shift_init(track: xr.Dataset,
             raise ValueError('Track %s is missing land params. Argument land_geom should be provided.' % track.sid)
         climada.hazard.tc_tracks.track_land_params(track, land_geom)
 
-    on_land_synth = track.on_land.values
-    on_land_hist = track.on_land_hist.values
+    on_land_synth = track.on_land.values.copy()
+    on_land_hist = track.on_land_hist.values.copy()
 
     # if any track starts over land, what is the shift between the first point
     # over the ocean in modelled vs historical track?
@@ -1585,6 +1592,65 @@ def _add_id_synth_chunks_shift_init(track: xr.Dataset,
           else:
             track[tc_var].values[shift_first_sea:] = track[tc_var].values[:-shift_first_sea]
 
+    # transitions coded as -1: first pt. on land, 1: first pt. on sea, 0: no change
+    # neglecting short landfalls
+    def get_transitions(on_land):
+        transitions = np.append(0, np.diff(~on_land.astype(int)))
+        # remove short landfalls
+        min_n_ts = NEGLECT_LANDFALL_DURATION_HOUR/time_step_h
+        for idx in np.where(transitions == -1)[0]:
+            transitions_end = transitions[idx:]
+            if np.any(transitions_end == 1):
+                n_ts = np.where(transitions_end == 1)[0][0]
+                if n_ts < min_n_ts:
+                    transitions[idx] = 0
+                    transitions[idx+n_ts] = 0
+        return transitions
+
+    def first_transition(transitions):
+        tnz = np.flatnonzero(transitions)
+        return tnz[0] if tnz.size > 0 else transitions.size - 1
+
+    def remove_landstart(transitions):
+        ftr = first_transition(transitions)
+        # if the first transition is from land to sea, drop it
+        if transitions[ftr] == 1:
+            transitions[ftr] = 0
+    
+    def remove_before_ts(transitions):
+        # if no values above TD before end of first landfall: do not alter there
+        if np.any(transitions == 1):
+            min_wind_correct = climada.hazard.tc_tracks.SAFFIR_SIM_CAT[0]
+            for first_land_sea in np.where(transitions == 1)[0]:
+                if np.all(track['max_sustained_wind'].values[:first_land_sea] < min_wind_correct):
+                    # neglect that transition
+                    transitions[:first_land_sea+1] = 0
+
+    def remove_within_ts(transitions):
+        # if no values above TD before end of first landfall: do not alter there
+        if np.any(transitions == 1):
+            min_wind_correct = climada.hazard.tc_tracks.SAFFIR_SIM_CAT[0]
+            sea_land_idx = np.where(transitions == 1)[0]
+            if np.any(transitions == -1):
+                land_sea_idx = np.where(transitions == -1)[0] + 1
+            else:
+                land_sea_idx = np.array([transitions.size])
+            if len(sea_land_idx) > len(land_sea_idx):
+                sea_land_idx = sea_land_idx[:-1]
+            for lf_start,lf_end in zip(sea_land_idx, land_sea_idx):
+                if np.all(track['max_sustained_wind'].values[lf_start:lf_end] < min_wind_correct):
+                    # neglect that landfall
+                    transitions[lf_start:lf_end] = 0
+
+    transitions_hist = get_transitions(on_land_hist)
+    transitions_synth = get_transitions(on_land_synth)
+    remove_landstart(transitions_synth)
+    remove_landstart(transitions_hist)
+    # remove_before_ts(transitions_synth)
+    # remove_before_ts(transitions_hist)
+    remove_within_ts(transitions_synth)
+    remove_within_ts(transitions_hist)
+
     # TODO need to discuss the and condition below. Was specced  as "If a landfall
     # consists of 2 or less landfall points (in either track): no correction (likely
     # just a small Island). [...]" This doesn't make sense: if both tracks hardly
@@ -1601,24 +1667,6 @@ def _add_id_synth_chunks_shift_init(track: xr.Dataset,
             }
         )
         return track, 0, 0
-
-    # transitions coded as -1: first pt. on land, 1: first pt. on sea, 0: no change
-    transitions_synth = np.append(0, np.diff(~on_land_synth.astype(int)))
-    transitions_hist = np.append(0, np.diff(~on_land_hist.astype(int)))
-
-    def first_transition(transitions):
-        tnz = np.flatnonzero(transitions)
-        return tnz[0] if tnz.size > 0 else transitions.size - 1
-
-    def remove_landstart(transitions):
-        ftr = first_transition(transitions)
-        # if the first transition is from land to sea, drop it
-        if transitions[ftr] == 1:
-            transitions[ftr] = 0
-
-    remove_landstart(transitions_synth)
-    remove_landstart(transitions_hist)
-
 
     # intensity should be modelled no latter than:
     # - TIME_MODEL_BEFORE_HIST_LF_H hours before the first historical landfall;
