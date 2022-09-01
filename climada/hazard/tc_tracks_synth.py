@@ -145,7 +145,7 @@ def calc_perturbed_trajectories(
     seed: int = CONFIG.hazard.trop_cyclone.random_seed.int(),
     adjust_intensity: str = None,
     central_pressure_pert: float = 7.5,
-    decay: bool = False,
+    decay: bool = None,
     use_global_decay_params: bool = True,
     pool: AbstractWorkerPool = None,
 ):
@@ -236,7 +236,9 @@ def calc_perturbed_trajectories(
         (corresponds to about 10 kn).
     decay : bool, optional
         Deprecated, for backward compatibility only. If True, equivalent to
-        setting 'adjust_intensity' to 'legacy_decay'.
+        setting 'adjust_intensity' to 'legacy_decay'. If False, equivalent to
+        setting 'adjust_intensity' to 'none'. Default: None (i.e. rely on the
+        value of 'adjust_intensity').
     use_global_decay_params : bool, optional
         Whether to use precomputed global parameter values for landfall decay
         obtained from IBTrACS (1980-2019). If False, parameters are fitted
@@ -248,17 +250,23 @@ def calc_perturbed_trajectories(
         Pool that will be used for parallel computation when applicable. If not given, the
         pool attribute of `tracks` will be used. Default: None
     """
-    if decay:
+    if decay is not None:
         LOGGER.warning("`decay` is deprecated. "
                         "Use `adjust_intensity` instead.")
         if adjust_intensity == 'explicit':
             raise ValueError(
                 'Set `adjust_intensity` to "legacy_decay" or `decay` to False.'
             )
-        LOGGER.warning('decay is set to True - this set adjust_intensity to "legacy_decay"')
-        adjust_intensity = 'legacy_decay'
+        if decay:
+            LOGGER.warning('decay is set to True - this sets adjust_intensity to "legacy_decay"')
+            adjust_intensity = 'legacy_decay'
+        else:
+            LOGGER.warning('decay is set to False - this sets adjust_intensity to "none" (as a string)')
+            adjust_intensity = 'none'            
     if adjust_intensity is None:
         adjust_intensity = 'explicit'
+    if adjust_intensity not in ['explicit', 'legacy_decay', 'none']:
+        raise ValueError("adjust_intensity should be one of 'explicit', 'legacy_decay', 'none', or None")
     
     LOGGER.info('Computing %s synthetic tracks.', nb_synth_tracks * tracks.size)
 
