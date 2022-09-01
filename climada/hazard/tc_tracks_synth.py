@@ -476,14 +476,14 @@ def _one_rnd_walk(track,
     """
 
     # on_land parameters of historical track will be required for each synthetic track
-    if land_geom:
+    if land_geom is not None:
         climada.hazard.tc_tracks.track_land_params(track, land_geom, land_params='on_land')
 
     ens_track = list()
     ens_track.append(track.copy(True))
 
     # calculate historical track values that are used for synthetic track modelling
-    if land_geom:
+    if land_geom is not None:
         # compute minimum pressure occurring on or after each timestep
         taget_pressure = np.flip(np.minimum.accumulate(
             np.flip(track.central_pressure.values)
@@ -511,7 +511,7 @@ def _one_rnd_walk(track,
             cutoff_track_ids_tstc=cutoff_track_ids_tstc
         )
 
-        if land_geom:
+        if land_geom is not None:
             i_track = i_track.assign(
                 {
                     "target_central_pressure": ("time", taget_pressure),
@@ -1560,7 +1560,7 @@ def _add_id_synth_chunks_shift_init(track: xr.Dataset,
         return track, 0, 0
 
     if 'on_land' not in list(track.data_vars):
-        if not land_geom:
+        if land_geom is None:
             raise ValueError('Track %s is missing land params. Argument land_geom should be provided.' % track.sid)
         climada.hazard.tc_tracks.track_land_params(track, land_geom)
 
