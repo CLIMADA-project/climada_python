@@ -68,7 +68,7 @@ class Impact():
     coord_exp : np.array
         exposures coordinates [lat, lon] (in degrees)
     eai_exp : np.array
-        expected annual impact for each exposure
+        expected impact for each exposure within a period of 1/frequency_unit
     at_event : np.array
         impact for each hazard event
     frequency : np.array
@@ -78,7 +78,7 @@ class Impact():
     tot_value : float
         total exposure value affected
     aai_agg : float
-        average annual impact (aggregated)
+        average impact within a period of 1/frequency_unit (aggregated)
     unit : str
         value unit used (given by exposures unit)
     imp_mat : sparse.csr_matrix
@@ -123,13 +123,13 @@ class Impact():
         crs : Any, optional
             coordinate reference system
         eai_exp : np.array, optional
-            expected annual impact for each exposure
+            expected impact for each exposure within a period of 1/frequency_unit
         at_event : np.array, optional
             impact for each hazard event
         tot_value : float, optional
             total exposure value affected
         aai_agg : float, optional
-            average annual impact (aggregated)
+            average impact within a period of 1/frequency_unit (aggregated)
         unit : str, optional
             value unit used (given by exposures unit)
         imp_mat : sparse.csr_matrix, optional
@@ -228,9 +228,9 @@ class Impact():
         at_event : np.array
             impact for each hazard event
         eai_exp : np.array
-            expected annual impact for each exposure
+            expected impact for each exposure within a period of 1/frequency_unit
         aai_agg : float
-            average annual impact (aggregated)
+            average impact within a period of 1/frequency_unit (aggregated)
         imp_mat : sparse.csr_matrix, optional
             matrix num_events x num_exp with impacts.
             Default is None (empty sparse csr matrix).
@@ -281,7 +281,7 @@ class Impact():
         transfer_at_event : np.array
             risk transfered per event
         transfer_aai_agg : float
-            average  annual risk transfered
+            average risk within a period of 1/frequency_unit, transfered
         """
         transfer_at_event = np.minimum(np.maximum(self.at_event - attachment, 0), cover)
         transfer_aai_agg = np.sum(transfer_at_event * self.frequency)
@@ -307,7 +307,7 @@ class Impact():
         residual_at_event : np.array
             residual risk per event
         residual_aai_agg : float
-            average annual residual risk
+            average residual risk within a period of 1/frequency_unit
 
         See also
         --------
@@ -474,7 +474,7 @@ class Impact():
     def plot_scatter_eai_exposure(self, mask=None, ignore_zero=False,
                                   pop_name=True, buffer=0.0, extend='neither',
                                   axis=None, adapt_fontsize=True, **kwargs):
-        """Plot scatter expected annual impact of each exposure.
+        """Plot scatter expected impact within a period of 1/frequency_unit of each exposure.
 
         Parameters
         ----------
@@ -509,13 +509,13 @@ class Impact():
         eai_exp = self._build_exp()
         axis = eai_exp.plot_scatter(mask, ignore_zero, pop_name, buffer,
                                     extend, axis=axis, adapt_fontsize=adapt_fontsize, **kwargs)
-        axis.set_title('Expected annual impact')
+        axis.set_title(u_plot.eai_title(self.frequency_unit))
         return axis
 
     def plot_hexbin_eai_exposure(self, mask=None, ignore_zero=False,
                                  pop_name=True, buffer=0.0, extend='neither',
                                  axis=None, adapt_fontsize=True, **kwargs):
-        """Plot hexbin expected annual impact of each exposure.
+        """Plot hexbin expected impact within a period of 1/frequency_unit of each exposure.
 
         Parameters
         ----------
@@ -550,15 +550,14 @@ class Impact():
         eai_exp = self._build_exp()
         axis = eai_exp.plot_hexbin(mask, ignore_zero, pop_name, buffer,
                                    extend, axis=axis, adapt_fontsize=adapt_fontsize, **kwargs)
-        axis.set_title('Expected annual impact')
+        axis.set_title(u_plot.eai_title(self.frequency_unit))
         return axis
-
 
     def plot_raster_eai_exposure(self, res=None, raster_res=None, save_tiff=None,
                                  raster_f=lambda x: np.log10((np.fmax(x + 1, 1))),
                                  label='value (log10)', axis=None, adapt_fontsize=True,
                                  **kwargs):
-        """Plot raster expected annual impact of each exposure.
+        """Plot raster expected impact within a period of 1/frequency_unit of each exposure.
 
         Parameters
         ----------
@@ -589,14 +588,14 @@ class Impact():
         eai_exp = self._build_exp()
         axis = eai_exp.plot_raster(res, raster_res, save_tiff, raster_f,
                                    label, axis=axis, adapt_fontsize=adapt_fontsize, **kwargs)
-        axis.set_title('Expected annual impact')
+        axis.set_title(u_plot.eai_title(self.frequency_unit))
         return axis
 
     def plot_basemap_eai_exposure(self, mask=None, ignore_zero=False, pop_name=True,
                                   buffer=0.0, extend='neither', zoom=10,
                                   url=ctx.providers.Stamen.Terrain,
                                   axis=None, **kwargs):
-        """Plot basemap expected annual impact of each exposure.
+        """Plot basemap expected impact of each exposure within a period of 1/frequency_unit.
 
         Parameters
         ----------
@@ -631,7 +630,7 @@ class Impact():
         eai_exp = self._build_exp()
         axis = eai_exp.plot_basemap(mask, ignore_zero, pop_name, buffer,
                                     extend, zoom, url, axis=axis, **kwargs)
-        axis.set_title('Expected annual impact')
+        axis.set_title(u_plot.eai_title(self.frequency_unit))
         return axis
 
     def plot_hexbin_impact_exposure(self, event_id=1, mask=None, ignore_zero=False,
