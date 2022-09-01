@@ -45,21 +45,26 @@ def dummy_track_builder(vars_dict):
     # on_land = np.array([False, False, False, True, True, True, False])
     # expected_id_chunk = np.array([0, 0, 1, -1, -1, -1, 2])
     # time does not matter here but is needed as a coordinate, use 3h res
-    if 'time' not in vars_dict.keys():
+    if 'time' not in vars_dict:
       n_time = len(vars_dict[list(vars_dict.keys())[0]])
       time = np.arange(
         np.datetime64('2020-06-01'),
         np.datetime64('2020-06-01') + np.timedelta64(3, 'h')*n_time,
         np.timedelta64(3, 'h')
       )
+    if 'time_step' not in vars_dict:
+        vars_dict['time_step'] = np.repeat([3], n_time)
+    if 'max_sustained_wind' not in vars_dict:
+        vars_dict['max_sustained_wind'] = np.repeat([22.5], n_time)
     for v in vars_dict.keys():
-      vars_dict[v] = ('time', vars_dict[v])
+        vars_dict[v] = ('time', vars_dict[v])
     tc_track = xr.Dataset(
       vars_dict,
       coords={
           'time': time
       }, attrs={
-          'orig_event_flag': False
+          'orig_event_flag': False,
+          'max_sustained_wind_unit': 'kn'
       }
     )
     return tc_track
@@ -519,15 +524,15 @@ class TestSynth(unittest.TestCase):
         tc_track = tc.TCTracks.from_processed_ibtracs_csv(TEST_TRACK_SHORT)
         expected_warning = 'only %s historical tracks were provided. ' % len(tc_track.data)
         with self.assertLogs('climada.hazard.tc_tracks_synth', level='INFO') as cm:
-            tc_track.calc_perturbed_trajectories(use_global_decay_params=False)
-        self.assertIn(expected_warning, cm.output[1])
-        self.assertIn('No historical track with landfall.', cm.output[2])
+            tc_track.calc_perturbed_trajectories(use_global_decay_params=False, adjust_intensity='legacy_decay')
+        self.assertIn(expected_warning, cm.output[2])
+        self.assertIn('No historical track with landfall.', cm.output[3])
 
     def test_random_walk_ref_pass(self):
         """Test against MATLAB reference."""
         tc_track = tc.TCTracks.from_processed_ibtracs_csv(TEST_TRACK_SHORT)
         nb_synth_tracks = 2
-        tc_track.calc_perturbed_trajectories(nb_synth_tracks=nb_synth_tracks, seed=25, decay=False)
+        tc_track.calc_perturbed_trajectories(nb_synth_tracks=nb_synth_tracks, seed=25, decay=False, decay_ddirection_hourly=0)
 
         self.assertEqual(len(tc_track.data), nb_synth_tracks + 1)
 
@@ -575,21 +580,21 @@ class TestSynth(unittest.TestCase):
         # but alert the user otherwise
         tc_track = tc.TCTracks.from_processed_ibtracs_csv(TC_ANDREW_FL)
         with self.assertLogs('climada.hazard.tc_tracks_synth', level='DEBUG') as cm:
-            tc_track.calc_perturbed_trajectories(nb_synth_tracks=nb_synth_tracks, seed=25, decay=True,
+            tc_track.calc_perturbed_trajectories(nb_synth_tracks=nb_synth_tracks, seed=25, adjust_intensity='legacy_decay',
                                                  use_global_decay_params=False)
         self.assertIn('No historical track of category Tropical Depression '
-                      'with landfall.', cm.output[2])
+                      'with landfall.', cm.output[5])
         self.assertIn('Decay parameters from category Hurricane Cat. 4 taken.',
-                      cm.output[3])
+                      cm.output[6])
         self.assertIn('No historical track of category Hurricane Cat. 1 with '
-                      'landfall.', cm.output[4])
+                      'landfall.', cm.output[7])
         self.assertIn('Decay parameters from category Hurricane Cat. 4 taken.',
-                      cm.output[5])
+                      cm.output[8])
         self.assertIn('No historical track of category Hurricane Cat. 3 with '
                       'landfall. Decay parameters from category Hurricane Cat. '
-                      '4 taken.', cm.output[6])
+                      '4 taken.', cm.output[9])
         self.assertIn('No historical track of category Hurricane Cat. 5 with '
-                      'landfall.', cm.output[7])
+                      'landfall.', cm.output[10])
 
     def test_random_walk_identical_pass(self):
         """Test 0 perturbation leads to identical tracks."""
@@ -628,9 +633,11 @@ class TestSynth(unittest.TestCase):
         tc_track = tc.TCTracks.from_ibtracs_netcdf(storm_id='1986226N30276')
         tc_track.equal_timestep()
         with self.assertLogs('climada.hazard.tc_tracks_synth', level='DEBUG') as cm:
-            tc_track.calc_perturbed_trajectories(nb_synth_tracks=10)
+            tc_track.calc_perturbed_trajectories(nb_synth_tracks=25,
+                                                 adjust_intensity='none',
+                                                 decay_ddirection_hourly=0)
         self.assertIn('The following generated synthetic tracks moved beyond '
-                      'the range of [-70, 70] degrees latitude', cm.output[1])
+                      'the range of [-70, 70] degrees latitude', cm.output[3])
 
 class TestSynthIdChunks(unittest.TestCase):
     def test_add_id_synth_chunks_nolf(self):
