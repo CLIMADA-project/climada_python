@@ -366,7 +366,7 @@ class Measure():
 
         from climada.engine.impact import Impact
         imp = Impact()
-        imp.calc(exp_imp, impf_set, hazard, assign_centroids=False)
+        imp.calc(exp_imp, impf_set, hazard, assign_centroids=hazard.centr_exp_col not in exp_imp.gdf)
 
         LOGGER.debug('Cutting events whose damage have a frequency > %s.',
                      self.hazard_freq_cutoff)
