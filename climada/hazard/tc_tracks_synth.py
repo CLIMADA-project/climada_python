@@ -297,7 +297,7 @@ def calc_perturbed_trajectories(
         set(tracks.data[0].attrs.keys())
     )
 
-    LOGGER.info('Generating random number for locations perturbations...')
+    LOGGER.debug('Generating random number for locations perturbations...')
     random_vec = _get_random_trajectories_perts(tracks,
                                                 nb_synth_tracks,
                                                 time_step_h,
@@ -316,7 +316,7 @@ def calc_perturbed_trajectories(
     else:
         land_geom_hist = None
 
-    LOGGER.info('Applying locations perturbations...')
+    LOGGER.debug('Applying locations perturbations...')
     if pool:
         chunksize = min(tracks.size // pool.ncpus, 1000)
         new_ens = pool.map(_one_rnd_walk, tracks.data,
@@ -360,7 +360,7 @@ def calc_perturbed_trajectories(
         #     )
         # else:
         # returns a list of tuples (track, no_sea_chunks, no_land_chunks)
-        LOGGER.info('Identifying tracks chunks...')
+        LOGGER.debug('Identifying tracks chunks...')
         tracks_with_id_chunks = [
             _add_id_synth_chunks_shift_init(track, time_step_h, land_geom, shift_values_init=True)
             for track in tracks.data
@@ -374,7 +374,7 @@ def calc_perturbed_trajectories(
 
         # FOR EACH CHUNK OVER THE OCEAN, WE NEED 4 RANDOM VALUES: intensification
         # target perturbation, intensification shape, peak duration, decay
-        LOGGER.info('Generating random number for intensity perturbations...')
+        LOGGER.debug('Generating random number for intensity perturbations...')
         random_vec_intensity = [np.random.uniform(size=track_id_chunks[1] * 4)
                                 for track_id_chunks in tracks_with_id_chunks]
         
@@ -398,7 +398,7 @@ def calc_perturbed_trajectories(
                                  ' tracks are needed for land decay calibration'
                                  ' if use_global_decay_params=False.')
 
-        LOGGER.info('Modelling TC intensities...')
+        LOGGER.debug('Modelling TC intensities...')
         ocean_modelled_tracks = [
             _model_synth_tc_intensity(
                 track=track,
@@ -411,7 +411,7 @@ def calc_perturbed_trajectories(
             )
             for track, random_intensity in zip(tracks_with_id_chunks_tracks, random_vec_intensity)
         ]
-        LOGGER.info(
+        LOGGER.debug(
             f"Adapted intensity on {len(ocean_modelled_tracks)} tracks for a total of "
             f"{sum(no_sea_chunks for _, no_sea_chunks, _ in tracks_with_id_chunks)} ocean and "
             f"{sum(no_land_chunks for _, _, no_land_chunks in tracks_with_id_chunks)} land chunks."
@@ -612,7 +612,7 @@ def _get_random_trajectories_perts(tracks,
                 for i in range(nb_synth_tracks)
             )
             if track.time.size > 1
-            else tuple(np.random.uniform(size=nb_synth_tracks * 2))
+            else tuple(tuple(np.random.uniform(size=nb_synth_tracks * 2)))
             for track in tracks.data
         )
     else:
