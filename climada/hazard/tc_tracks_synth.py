@@ -1750,7 +1750,9 @@ def _model_synth_tc_intensity(track: xr.Dataset,
     # if 'id_chunk' in list(track.variables):
         # LOGGER.debug(track.sid)
     # if no land point in either track -> return track
-    if track.orig_event_flag or np.all(track['id_chunk'] == 0):
+    if track.time.size == 1 or track.orig_event_flag:
+        return drop_temporary_variables(track, track_vars_attrs)
+    if np.all(track['id_chunk'] == 0):
         return drop_temporary_variables(track, track_vars_attrs)
 
     
