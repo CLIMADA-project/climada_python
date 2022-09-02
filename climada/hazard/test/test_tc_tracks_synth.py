@@ -652,7 +652,7 @@ class TestSynthIdChunks(unittest.TestCase):
         # create fake xarray with time, on_land and on_land_hist
         tc_track = dummy_track_builder({'on_land': on_land, 'on_land_hist': on_land_hist, 'central_pressure': pcen.copy()})
         # call _add_id_synth_chunks
-        synth_track, no_chunks_sea, no_chunks_land = tc_synth._add_id_synth_chunks_shift_init(tc_track)
+        synth_track, no_chunks_sea, no_chunks_land, _ = tc_synth._add_id_synth_chunks_shift_init(tc_track)
         # check output
         self.assertEqual(no_chunks_land, expected_no_chunks_land)
         self.assertEqual(no_chunks_sea, expected_no_chunks_sea)
@@ -671,7 +671,9 @@ class TestSynthIdChunks(unittest.TestCase):
         # create fake xarray with time, on_land and on_land_hist
         tc_track = dummy_track_builder({'on_land': on_land, 'on_land_hist': on_land_hist, 'central_pressure': pcen.copy()})
         # call _add_id_synth_chunks
-        synth_track, no_chunks_sea, no_chunks_land = tc_synth._add_id_synth_chunks_shift_init(tc_track)
+        synth_track, no_chunks_sea, no_chunks_land, _ = tc_synth._add_id_synth_chunks_shift_init(
+            tc_track, time_step_h=3
+        )
         # check output
         self.assertEqual(synth_track.drop_vars('id_chunk'), tc_track.drop_vars)
         self.assertEqual(no_chunks_land, expected_no_chunks_land)
@@ -692,7 +694,9 @@ class TestSynthIdChunks(unittest.TestCase):
         # create fake xarray with time, on_land and on_land_hist
         tc_track = dummy_track_builder({'on_land': on_land, 'on_land_hist': on_land_hist, 'central_pressure': pcen.copy()})
         # call _add_id_synth_chunks
-        synth_track, no_chunks_sea, no_chunks_land = tc_synth._add_id_synth_chunks_shift_init(tc_track)
+        synth_track, no_chunks_sea, no_chunks_land, _ = tc_synth._add_id_synth_chunks_shift_init(
+            tc_track, 3
+        )
         # check output
         self.assertEqual(synth_track.drop_vars('id_chunk'), tc_track)
         self.assertEqual(no_chunks_land, expected_no_chunks_land)
@@ -707,7 +711,7 @@ class TestSynthIdChunks(unittest.TestCase):
         on_land = np.array([True, False, False, False, True, True, True, False])
         pcen = np.arange(0, len(on_land))
         # expected values
-        expected_id_chunk = np.array([0, 0, 0, 0, -1, -1, -1, 1])
+        expected_id_chunk = np.array([0, 0, 0, 1, -1, -1, -1, 2])
         expected_no_chunks_land = 1
         expected_no_chunks_sea = 1
         # fist case: shifted backward
@@ -718,8 +722,10 @@ class TestSynthIdChunks(unittest.TestCase):
         tc_track = dummy_track_builder({'on_land': on_land, 'on_land_hist': on_land_hist, 'central_pressure': pcen.copy()})
         tc_track2 = dummy_track_builder({'on_land': on_land, 'on_land_hist': on_land_hist2, 'central_pressure': pcen.copy()})
         # call _add_id_synth_chunks
-        synth_track, no_chunks_sea, no_chunks_land = tc_synth._add_id_synth_chunks_shift_init(tc_track)
-        synth_track2, no_chunks_sea2, no_chunks_land2 = tc_synth._add_id_synth_chunks_shift_init(tc_track2)
+        synth_track, no_chunks_sea, no_chunks_land, _ = tc_synth._add_id_synth_chunks_shift_init(
+            tc_track, 3
+        )
+        synth_track2, no_chunks_sea2, no_chunks_land2, _ = tc_synth._add_id_synth_chunks_shift_init(tc_track2, 3)
         # check output
         self.assertEqual(no_chunks_land, expected_no_chunks_land)
         self.assertEqual(no_chunks_sea, expected_no_chunks_sea)
@@ -736,13 +742,13 @@ class TestSynthIdChunks(unittest.TestCase):
         on_land = np.array([False, False, False, True, True, True, False])
         pcen = np.arange(0, len(on_land))
         # expected values
-        expected_id_chunk = np.array([0, 0, 1, -1, -1, -1, 2])
+        expected_id_chunk = np.array([0, 1, 1, -1, -1, -1, 2])
         expected_no_chunks_land = 1
         expected_no_chunks_sea = 2
         # create fake xarray with time, on_land and on_land_hist
         tc_track = dummy_track_builder({'on_land': on_land, 'on_land_hist': on_land_hist, 'central_pressure': pcen.copy()})
         # call _add_id_synth_chunks
-        synth_track, no_chunks_sea, no_chunks_land = tc_synth._add_id_synth_chunks_shift_init(tc_track)
+        synth_track, no_chunks_sea, no_chunks_land, _ = tc_synth._add_id_synth_chunks_shift_init(tc_track, 3)
         # check output
         self.assertEqual(no_chunks_land, expected_no_chunks_land)
         self.assertEqual(no_chunks_sea, expected_no_chunks_sea)
@@ -762,7 +768,7 @@ class TestSynthIdChunks(unittest.TestCase):
         # create fake xarray with time, on_land and on_land_hist
         tc_track = dummy_track_builder({'on_land': on_land, 'on_land_hist': on_land_hist, 'central_pressure': pcen.copy()})
         # call _add_id_synth_chunks
-        synth_track, no_chunks_sea, no_chunks_land = tc_synth._add_id_synth_chunks_shift_init(tc_track)
+        synth_track, no_chunks_sea, no_chunks_land, _ = tc_synth._add_id_synth_chunks_shift_init(tc_track)
         # check output
         self.assertEqual(no_chunks_land, expected_no_chunks_land)
         self.assertEqual(no_chunks_sea, expected_no_chunks_sea)

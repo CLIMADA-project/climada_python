@@ -413,8 +413,8 @@ def calc_perturbed_trajectories(
         ]
         LOGGER.debug(
             f"Adapted intensity on {len(ocean_modelled_tracks)} tracks for a total of "
-            f"{sum(no_sea_chunks for _, no_sea_chunks, _ in tracks_with_id_chunks)} ocean and "
-            f"{sum(no_land_chunks for _, _, no_land_chunks in tracks_with_id_chunks)} land chunks."
+            f"{sum(no_sea_chunks for _, no_sea_chunks, _, _ in tracks_with_id_chunks)} ocean and "
+            f"{sum(no_land_chunks for _, _, no_land_chunks, _ in tracks_with_id_chunks)} land chunks."
         )
         tracks.data = ocean_modelled_tracks
 
@@ -1518,7 +1518,7 @@ def _estimate_vars_chunk(track: xr.Dataset,
     return track
 
 def _add_id_synth_chunks_shift_init(track: xr.Dataset,
-                                    time_step_h: float,
+                                    time_step_h: float = None,
                                     land_geom: MultiPolygon = None,
                                     shift_values_init: bool = True):
     """Identify track chunks for which intensity is to be modelled, and shift
@@ -1563,42 +1563,34 @@ def _add_id_synth_chunks_shift_init(track: xr.Dataset,
         number of chunks that need intensity modulation over sea
     no_chunks_land : int
         number of chunks that need intensity modulation over land
+    track_end_shift : xarray.Dataset
+        Subset of track for which the track needs to be extended
     """
+    track_end_shift = None
     if track.orig_event_flag:
-        return track, 0, 0
+        return track, 0, 0, track_end_shift
+
+    # default assignment
+    track = track.assign({
+        "id_chunk" : ("time", np.zeros_like(track.central_pressure, dtype='int')),
+    })
+    if track.time.size == 1:
+        return track, 0, 0, track_end_shift
 
     if 'on_land' not in list(track.data_vars):
         if land_geom is None:
             raise ValueError('Track %s is missing land params. Argument land_geom should be provided.' % track.sid)
         climada.hazard.tc_tracks.track_land_params(track, land_geom)
+    if time_step_h is None:
+        time_step_h = track['time_step'].values[0]
 
     on_land_synth = track.on_land.values.copy()
     on_land_hist = track.on_land_hist.values.copy()
 
-    # if any track starts over land, what is the shift between the first point
-    # over the ocean in modelled vs historical track?
-    shift_first_sea = 0
-    if on_land_synth[0] or on_land_hist[0]:
-        # first point over the ocean?
-        if np.sum(~on_land_hist) == 0:
-            LOGGER.debug('No point over the ocean for historical track %s', track.sid)
-        if np.sum(~on_land_synth) == 0 or np.sum(~on_land_hist) == 0:
-            # nothing to shift
-            LOGGER.debug('No shift possible as track fully over land: %s', track.sid)
-        else:
-            first_sea_hist = np.where(~on_land_hist)[0][0]
-            first_sea_synth = np.where(~on_land_synth)[0][0]
-            shift_first_sea = first_sea_synth - first_sea_hist
-
-    # shift track parameters in time to match first value over the ocean
-    if shift_first_sea != 0 and shift_values_init:
-        params_fixed = ['time_step', 'basin', 'on_land', 'on_land_hist', 'dist_since_lf']
-        params_avail = list(track.data_vars)
-        for tc_var in list(set(params_avail) - set(params_fixed)):
-          if shift_first_sea < 0:
-            track[tc_var].values[:shift_first_sea] = track[tc_var].values[-shift_first_sea:]
-          else:
-            track[tc_var].values[shift_first_sea:] = track[tc_var].values[:-shift_first_sea]
+    below_threshold = np.sum(on_land_synth) <= 2 and np.sum(on_land_hist) <= 2
+    all_equal = np.all(on_land_synth == on_land_hist)
+    if below_threshold or all_equal:
+        return track, 0, 0, track_end_shift
 
     # transitions coded as -1: first pt. on land, 1: first pt. on sea, 0: no change
     # neglecting short landfalls
@@ -1617,98 +1609,118 @@ def _add_id_synth_chunks_shift_init(track: xr.Dataset,
 
     def first_transition(transitions):
         tnz = np.flatnonzero(transitions)
-        return tnz[0] if tnz.size > 0 else transitions.size - 1
+        return tnz[0] if tnz.size > 0 else transitions.size
 
     def remove_landstart(transitions):
         ftr = first_transition(transitions)
         # if the first transition is from land to sea, drop it
-        if transitions[ftr] == 1:
+        if ftr < transitions.size and transitions[ftr] == 1:
             transitions[ftr] = 0
-    
-    def remove_before_ts(transitions):
-        # if no values above TD before end of first landfall: do not alter there
-        if np.any(transitions == 1):
-            min_wind_correct = climada.hazard.tc_tracks.SAFFIR_SIM_CAT[0]
-            for first_land_sea in np.where(transitions == 1)[0]:
-                if np.all(track['max_sustained_wind'].values[:first_land_sea] < min_wind_correct):
-                    # neglect that transition
-                    transitions[:first_land_sea+1] = 0
+    # to label chunks
+    def get_id_chunk(transitions_synth, on_land_synth):
+        to_sea = np.where(transitions_synth > 0, transitions_synth, 0)
+        no_chunks_sea = np.count_nonzero(to_sea)
+        to_land = np.where(transitions_synth < 0, transitions_synth, 0)
+        no_chunks_land = np.count_nonzero(to_land)
+        id_chunks = np.where(
+            on_land_synth,
+            to_land.cumsum(),
+            to_sea.cumsum()
+        )
+        return id_chunks, no_chunks_sea, no_chunks_land
 
-    def remove_within_ts(transitions):
-        # if no values above TD before end of first landfall: do not alter there
-        if np.any(transitions == 1):
-            min_wind_correct = climada.hazard.tc_tracks.SAFFIR_SIM_CAT[0]
-            sea_land_idx = np.where(transitions == 1)[0]
-            if np.any(transitions == -1):
-                land_sea_idx = np.where(transitions == -1)[0] + 1
-            else:
-                land_sea_idx = np.array([transitions.size])
-            if len(sea_land_idx) > len(land_sea_idx):
-                sea_land_idx = sea_land_idx[:-1]
-            for lf_start,lf_end in zip(sea_land_idx, land_sea_idx):
-                if np.all(track['max_sustained_wind'].values[lf_start:lf_end] < min_wind_correct):
-                    # neglect that landfall
-                    transitions[lf_start:lf_end] = 0
+    # synth track fully over land: apply decay when hist track over ocean
+    if np.all(on_land_synth):
+        if np.any(~on_land_hist):
+            # all over land but historical went over the ocean: prevent intensification
+            track['id_chunk'][:] = np.where(np.cumsum(~on_land_hist) > 0, -1, 0)
+        return track, 0, 1, track_end_shift
+    # hist track fully over land: model from first point over the ocean.
+    if np.all(on_land_hist):
+        transitions_synth = get_transitions(on_land_synth)
+        id_chunk, no_chunks_sea, no_chunks_land = get_id_chunk(transitions_synth, on_land_synth)
+        track['id_chunk'][:] = id_chunk
+        return track, no_chunks_sea, no_chunks_land, track_end_shift
 
-    transitions_hist = get_transitions(on_land_hist)
+    # if any track starts over land, what is the shift between the first point
+    # over the ocean in modelled vs historical track?
+    if shift_values_init and (on_land_synth[0] or on_land_hist[0]):
+        # both move to the ocean: shift values to match first point over the ocean?
+        shift_first_sea = 0
+        first_sea_hist = np.where(~on_land_hist)[0][0]
+        first_sea_synth = np.where(~on_land_synth)[0][0]
+        nts_in = int(np.floor(6/time_step_h))
+        # if cannot shift: will model intensity from the start
+        idx_start_model = 0
+        if ~on_land_synth[0] and np.any(on_land_synth[:nts_in + 1]):
+            # synth is on land in the next 6 hours: shift to end of that landfall
+            transitions_synth = get_transitions(on_land_synth)
+            if np.any(transitions_synth == 1):
+                first_sea_synth = np.where(transitions_synth == 1)[0][0]
+                shift_first_sea = first_sea_synth - first_sea_hist
+                # model latest from next hist landfall
+                transitions_hist = get_transitions(on_land_hist)
+                if np.any(transitions_hist == -1):
+                    idx_start_model = np.where(transitions_hist == -1)[0][0] + shift_first_sea
+                    idx_start_model = idx_start_model - np.floor(TIME_MODEL_BEFORE_HIST_LF_H/time_step_h)
+                else:
+                    idx_start_model = on_land_synth.size
+            # is it ahead or behind hist?
+            # bearing_start = _get_bearing_angle(track.lon[:2].values, track.lat[:2].values)
+            # dir_to_hist_start = _get_bearing_angle(
+            #     np.array([track.lon.values[0]]),
+                
+            # )
+            # if towards hist first point, shift so 
+        elif ~on_land_hist[0] and np.any(on_land_hist[:nts_in + 1]):
+            # synth is on land in the next 6 hours: shift to end of that landfall
+            transitions_hist = get_transitions(on_land_hist)
+            if np.any(transitions_hist == 1):
+                first_sea_hist = np.where(transitions_hist == 1)[0][0]
+                shift_first_sea = first_sea_synth - first_sea_hist
+                # model latest from next hist landfall (2nd landfall)
+                transitions_hist = get_transitions(on_land_hist)
+                if np.sum(transitions_hist == -1):
+                    idx_start_model = np.where(transitions_hist == -1)[0][1] + shift_first_sea
+                    idx_start_model = idx_start_model - np.floor(TIME_MODEL_BEFORE_HIST_LF_H/time_step_h)
+                else:
+                    idx_start_model = on_land_synth.size
+        # if the track that starts over the ocean does not soon move over land,
+        # modelling intensity is unavoidable
+        if shift_first_sea != 0:
+            if shift_first_sea > 0:
+                track_end_shift = track.isel(time=slice(shift_first_sea, None))
+            params_fixed = ['time_step', 'basin', 'on_land', 'dist_since_lf']
+            params_avail = list(track.data_vars)
+            for tc_var in list(set(params_avail) - set(params_fixed)):
+                if shift_first_sea < 0:
+                    track[tc_var].values[:shift_first_sea] = track[tc_var].values[-shift_first_sea:]
+                else:
+                    track[tc_var].values[shift_first_sea:] = track[tc_var].values[:-shift_first_sea]
+            on_land_hist = track.on_land_hist.values.copy()
+    else:
+        # identify first historical sea-to-land transition
+        transitions_hist = get_transitions(on_land_hist)
+        remove_landstart(transitions_hist)
+        ftr_hist = first_transition(transitions_hist)
+        # when to start modelling intensity according to first historical landfall
+        if ftr_hist == transitions_hist.size:
+            idx_start_model = on_land_synth.size
+        else:
+            idx_start_model = ftr_hist - np.floor(TIME_MODEL_BEFORE_HIST_LF_H/time_step_h)
+
     transitions_synth = get_transitions(on_land_synth)
     remove_landstart(transitions_synth)
-    remove_landstart(transitions_hist)
-    # remove_before_ts(transitions_synth)
-    # remove_before_ts(transitions_hist)
-    remove_within_ts(transitions_synth)
-    remove_within_ts(transitions_hist)
-
-    # TODO need to discuss the and condition below. Was specced  as "If a landfall
-    # consists of 2 or less landfall points (in either track): no correction (likely
-    # just a small Island). [...]" This doesn't make sense: if both tracks hardly
-    # make landfall, nothing should be done. If either makes a significant landfall,
-    # however, we need to correct.
-    # TODO could also think of filtering out two consecutive points on land if more than
-    # n points before and after lie on the ocean
-    below_threshold = np.sum(on_land_synth) <= 2 and np.sum(on_land_hist) <= 2
-    all_equal = np.all(on_land_synth == on_land_hist)
-    if below_threshold or all_equal:
-        track = track.assign(
-            {
-                "id_chunk": ("time", np.zeros_like(on_land_synth, dtype='int')),
-            }
-        )
-        return track, 0, 0
-
-    # intensity should be modelled no latter than:
-    # - TIME_MODEL_BEFORE_HIST_LF_H hours before the first historical landfall;
-    # and
-    # - when the synthetic track makes landfall
-    # here, find the first of these two
-
-    # identify first historical sea-to-land transition
-    ftr_hist = first_transition(transitions_hist)
-    # when to start modelling intensity according to first historical landfall
-    time_start_model = track.time.values[ftr_hist] - np.timedelta64(TIME_MODEL_BEFORE_HIST_LF_H, 'h')
-    idx_start_model = np.where(track.time.values > time_start_model)[0][0]
-
     # if historical landfall implies modelling intensity before synthetic landfall
     if idx_start_model < first_transition(transitions_synth):
         # increase chunk count if historical track has made landfall, but the
         # synthetic one has not - intensity will be modelled starting a few
         # timesteps before the historical landfall
-        transitions_synth[idx_start_model] = 1
+        transitions_synth[int(idx_start_model)] = 1
 
-    to_sea = np.where(transitions_synth > 0, transitions_synth, 0)
-    no_chunks_sea = np.count_nonzero(to_sea)
-    to_land = np.where(transitions_synth < 0, transitions_synth, 0)
-    no_chunks_land = np.count_nonzero(to_land)
-    id_chunks = np.where(
-        on_land_synth,
-        to_land.cumsum(),
-        to_sea.cumsum()
-    )
-    track = track.assign({
-        "id_chunk" : ("time", id_chunks),
-    })
-    return track, no_chunks_sea, no_chunks_land
-
+    id_chunk, no_chunks_sea, no_chunks_land = get_id_chunk(transitions_synth, on_land_synth)
+    track['id_chunk'][:] = id_chunk
+    return track, no_chunks_sea, no_chunks_land, track_end_shift
 
 def _model_synth_tc_intensity(track: xr.Dataset,
                               v_rel: dict,
@@ -1761,8 +1773,8 @@ def _model_synth_tc_intensity(track: xr.Dataset,
     id_chunk_sorted = [track.id_chunk.values[index] for index in sorted(chunk_index)]
     # track_orig = track.copy()
 
-    # relax_time = track.time.values[-1] - np.timedelta64(2, 'D')
     last_pcen = track.central_pressure.values[-1]
+    track_orig = track.copy(deep=True)
     
     for id_chunk in id_chunk_sorted:
         # LOGGER.debug('processing id_chunk %s', id_chunk)
@@ -1772,6 +1784,7 @@ def _model_synth_tc_intensity(track: xr.Dataset,
             intensity_evolution_sea(track, id_chunk, central_pressure_pert, rnd_pars[4*(id_chunk-1):4*id_chunk])
         else:
             intensity_evolution_land(track, id_chunk, v_rel, p_rel, s_rel)
+    track_2 = track.copy(deep=True)
 
     _estimate_params_track(track)
 
@@ -1792,6 +1805,7 @@ def drop_temporary_variables(track : xr.Dataset, track_vars_attrs):
     return track.drop_vars(vars_to_drop)
 
 def intensity_evolution_sea(track, id_chunk, central_pressure_pert, rnd_pars_i):
+    # TODO docstring
     in_chunk = np.where(track.id_chunk.values == id_chunk)[0]
     # end_target_peak_time = track.time.values[np.where(track.central_pressure.values == track.target_central_pressure[in_chunk[0]])[0][-1]]
     # if a single point over the ocean, do not adjust intensity - keep constant
