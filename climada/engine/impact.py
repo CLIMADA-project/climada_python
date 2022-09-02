@@ -1436,7 +1436,7 @@ class ImpactFreqCurve():
         axis.set_title(self.label)
         axis.set_ylabel('Impact (' + self.unit + ')')
         if log_frequency:
-            axis.set_xlabel(f'Exceedance frequency ({self.frequency_unit})')
+            axis.set_xlabel(f'Exceedance frequency ({self.impact.frequency_unit})')
             axis.set_xscale('log')
             axis.plot(self.return_per**-1, self.impact, **kwargs)
         else:
