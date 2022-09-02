@@ -471,7 +471,7 @@ class Impact():
 
         return ifc
 
-    def _eai_title(frequency_unit):
+    def _eai_title(self, frequency_unit):
         if frequency_unit in ['1/year', 'annual', '1/y', '1/a']:
             return 'Expected annual impact'
         if frequency_unit in ['1/day', 'daily', '1/d']:
