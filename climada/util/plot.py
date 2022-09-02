@@ -866,11 +866,3 @@ def multibar_plot(ax, data, colors=None, total_width=0.8, single_width=1,
     # Draw legend if we need
     if legend:
         ax.legend(bars, data.keys())
-
-
-def eai_title(frequency_unit):
-    if frequency_unit in ['1/year', 'annual', '1/y', '1/a']:
-        return 'Expected annual impact'
-    if frequency_unit in ['1/day', 'daily', '1/d']:
-        return 'Expected daily impact'
-    return f'Expected impact ({frequency_unit})'
