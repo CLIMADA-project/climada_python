@@ -21,6 +21,7 @@ Define Impact and ImpactFreqCurve classes.
 
 __all__ = ['ImpactFreqCurve', 'Impact']
 
+from dataclasses import dataclass
 import logging
 import copy
 import csv
@@ -452,24 +453,27 @@ class Impact():
         -------
         ImpactFreqCurve
         """
-        ifc = ImpactFreqCurve()
-        ifc.tag = self.tag
         # Sort descendingly the impacts per events
         sort_idxs = np.argsort(self.at_event)[::-1]
         # Calculate exceedence frequency
         exceed_freq = np.cumsum(self.frequency[sort_idxs])
         # Set return period and impact exceeding frequency
-        ifc.return_per = 1 / exceed_freq[::-1]
-        ifc.impact = self.at_event[sort_idxs][::-1]
-        ifc.unit = self.unit
-        ifc.label = 'Exceedance frequency curve'
+        ifc_return_per = 1 / exceed_freq[::-1]
+        ifc_impact = self.at_event[sort_idxs][::-1]
 
         if return_per is not None:
-            interp_imp = np.interp(return_per, ifc.return_per, ifc.impact)
-            ifc.return_per = return_per
-            ifc.impact = interp_imp
+            interp_imp = np.interp(return_per, ifc_return_per, ifc_impact)
+            ifc_return_per = return_per
+            ifc_impact = interp_imp
 
-        return ifc
+        return ImpactFreqCurve(
+            tag=self.tag,
+            return_per=ifc_return_per,
+            impact=ifc_impact,
+            unit=self.unit,
+            frequency_unit=self.frequency_unit,
+            label='Exceedance frequency curve'
+        )
 
     def _eai_title(self, frequency_unit):
         if frequency_unit in ['1/year', 'annual', '1/y', '1/a']:
@@ -1392,29 +1396,28 @@ class Impact():
         return sel_exp
 
 
+@dataclass
 class ImpactFreqCurve():
     """Impact exceedence frequency curve.
-
-    Attributes
-    ----------
-    tag : dict
-        dictionary of tags of exposures, impact functions set and
-        hazard: {'exp': Tag(), 'impf_set': Tag(), 'haz': TagHazard()}
-    return_per : np.array
-        return period
-    impact : np.array
-        impact exceeding frequency
-    unit : str
-        value unit used (given by exposures unit)
-    label : str
-        string describing source data
     """
-    def __init__(self):
-        self.tag = dict()
-        self.return_per = np.array([])
-        self.impact = np.array([])
-        self.unit = ''
-        self.label = ''
+    tag : dict
+    """dictionary of tags of exposures, impact functions set and
+        hazard: {'exp': Tag(), 'impf_set': Tag(), 'haz': TagHazard()}"""
+
+    return_per : np.array
+    """return period"""
+
+    impact : np.array
+    """impact exceeding frequency"""
+
+    unit : str = ''
+    """value unit used (given by exposures unit)"""
+
+    frequency_unit : str = DEF_FREQ_UNIT
+    """value unit used (given by exposures unit)"""
+
+    label : str = ''
+    """string describing source data"""
 
     def plot(self, axis=None, log_frequency=False, **kwargs):
         """Plot impact frequency curve.
@@ -1437,7 +1440,7 @@ class ImpactFreqCurve():
         axis.set_title(self.label)
         axis.set_ylabel('Impact (' + self.unit + ')')
         if log_frequency:
-            axis.set_xlabel(f'Exceedance frequency ({self.impact.frequency_unit})')
+            axis.set_xlabel(f'Exceedance frequency ({self.frequency_unit})')
             axis.set_xscale('log')
             axis.plot(self.return_per**-1, self.impact, **kwargs)
         else:
