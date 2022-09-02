@@ -201,6 +201,23 @@ class Hazard():
         else:
             self.pool = None
 
+    @classmethod
+    def get_default(cls, attribute):
+        """Get the Hazard type default for a given attribute.
+        
+        Parameters
+        ----------
+        attribute : str
+            attribute name
+        
+        Returns
+        ------
+        Any
+        """
+        return {
+            'frequency_unit': DEF_FREQ_UNIT,
+        }.get(attribute)
+
     def clear(self):
         """Reinitialize attributes (except the process Pool)."""
         for (var_name, var_val) in self.__dict__.items():
@@ -209,7 +226,7 @@ class Hazard():
             elif isinstance(var_val, sparse.csr_matrix):
                 setattr(self, var_name, sparse.csr_matrix(np.empty((0, 0))))
             elif not isinstance(var_val, Pool):
-                setattr(self, var_name, var_val.__class__())
+                setattr(self, var_name, self.get_default(var_name) or var_val.__class__())
 
     def check(self):
         """Check dimension of attributes.
@@ -268,8 +285,8 @@ class Hazard():
         resampling : rasterio.warp.Resampling, optional
             resampling function used for reprojection to dst_crs
 
-        Return
-        ------
+        Returns
+        -------
         Hazard
         """
         if isinstance(files_intensity, (str, pathlib.Path)):
@@ -1633,6 +1650,12 @@ class Hazard():
         if len(haz_classes) > 1:
             raise TypeError(f"The given hazards are of different classes: {haz_classes}. "
                             "The hazards are incompatible and cannot be concatenated.")
+
+        freq_units = {haz.frequency_unit for haz in haz_list}
+        if len(freq_units) > 1:
+            raise ValueError(f"The given hazards have different frequency units: {freq_units}. "
+                             "The hazards are incompatible and cannot be concatenated.")
+        self.frequency_unit = freq_units.pop()
 
         units = {haz.units for haz in haz_list if haz.units != ''}
         if len(units) > 1:
