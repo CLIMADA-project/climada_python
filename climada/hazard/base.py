@@ -780,8 +780,11 @@ class Hazard():
                 setattr(haz, var_name, var_val)
 
         # reset frequency if date span has changed (optional):
-        # TODO: is the following correct for frequency_units != '1/year'?
         if reset_frequency:
+            if self.frequency_unit not in ['1/year', 'annual', '1/y', '1/a']:
+                LOGGER.warning("resetting the frequency on a hazard object who's frequency unit"
+                    "is %s and not %s will most likely lead to unexpected results",
+                    self.frequency_unit, DEF_FREQ_UNIT)
             year_span_old = np.abs(dt.datetime.fromordinal(self.date.max()).year -
                                    dt.datetime.fromordinal(self.date.min()).year) + 1
             year_span_new = np.abs(dt.datetime.fromordinal(haz.date.max()).year -
@@ -1119,7 +1122,10 @@ class Hazard():
             per event. If yearrange is not given (None), the year range is
             derived from self.date
         """
-        # TODO: what if self.frequency_unit != '1/year' ?
+        if self.frequency_unit not in ['1/year', 'annual', '1/y', '1/a']:
+            LOGGER.warning("setting the frequency on a hazard object who's frequency unit"
+                "is %s and not %s will most likely lead to unexpected results",
+                self.frequency_unit, DEF_FREQ_UNIT)
         if not yearrange:
             delta_time = dt.datetime.fromordinal(int(np.max(self.date))).year - \
                          dt.datetime.fromordinal(int(np.min(self.date))).year + 1
@@ -1854,8 +1860,8 @@ class Hazard():
             mdr.data = impf.calc_mdr(mdr.data)
         else:
             LOGGER.warning("Impact function id=%d has mdr(0) != 0."
-            "The mean damage ratio must thus be computed for all values of"
-            "hazard intensity including 0 which can be very time consuming.",
+                "The mean damage ratio must thus be computed for all values of"
+                "hazard intensity including 0 which can be very time consuming.",
             impf.id)
             mdr_array = impf.calc_mdr(mdr.toarray().ravel()).reshape(mdr.shape)
             mdr = sparse.csr_matrix(mdr_array)

@@ -914,7 +914,8 @@ class Impact():
         imp.date = imp_df.event_date[:num_ev].values
         imp.at_event = imp_df.at_event[:num_ev].values
         imp.frequency = imp_df.event_frequency[:num_ev].values
-        imp.frequency_unit = imp_df.frequency_unit[0] if 'frequency_unit' in imp_df else DEF_FREQ_UNIT
+        imp.frequency_unit = imp_df.frequency_unit[0] if 'frequency_unit' in imp_df \
+                             else DEF_FREQ_UNIT
         imp.eai_exp = imp_df.eai_exp[~np.isnan(imp_df.eai_exp)].values
         num_exp = imp.eai_exp.size
         imp.coord_exp = np.zeros((num_exp, 2))
