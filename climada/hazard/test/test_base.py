@@ -1195,6 +1195,7 @@ class TestHDF5(unittest.TestCase):
             self.assertTrue(np.array_equal(hazard.event_id, haz_read.event_id))
             self.assertTrue(np.array_equal(hazard.frequency, haz_read.frequency))
             self.assertEqual(hazard.frequency_unit, haz_read.frequency_unit)
+            self.assertIsInstance(haz_read.frequency_unit, str)
             self.assertTrue(np.array_equal(hazard.event_name, haz_read.event_name))
             self.assertIsInstance(haz_read.event_name, list)
             self.assertIsInstance(haz_read.event_name[0], str)

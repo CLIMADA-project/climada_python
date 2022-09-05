@@ -946,6 +946,7 @@ def emdat_to_impact(emdat_file_csv, hazard_type_climada, year_range=None, countr
     if not year_range:
         year_range = [em_data['Year'].min(), em_data['Year'].max()]
     impact_instance.frequency = np.ones(em_data.shape[0]) / (1 + np.diff(year_range))
+    impact_instance.frequency_unit = '1/year'
     impact_instance.tot_value = 0
     impact_instance.aai_agg = np.nansum(impact_instance.at_event * impact_instance.frequency)
     impact_instance.unit = 'USD'

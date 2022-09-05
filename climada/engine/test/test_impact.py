@@ -143,6 +143,7 @@ class TestFreqCurve(unittest.TestCase):
         imp.at_event[8] = 0.569142464157450e9
         imp.at_event[9] = 0.467572545849132e9
         imp.unit = 'USD'
+        imp.frequency_unit = '1/week'
 
         ifc = imp.calc_freq_curve(np.array([100, 500, 1000]))
         self.assertEqual(3, len(ifc.return_per))
@@ -155,6 +156,7 @@ class TestFreqCurve(unittest.TestCase):
         self.assertEqual(3287314329.129928, ifc.impact[2])
         self.assertEqual('Exceedance frequency curve', ifc.label)
         self.assertEqual('USD', ifc.unit)
+        self.assertEqual('1/week', ifc.frequency_unit)
 
 class TestImpactPerYear(unittest.TestCase):
     """Test calc_impact_year_set method"""
@@ -389,6 +391,7 @@ class TestRiskTrans(unittest.TestCase):
 
         new_imp, imp_rt = imp.calc_risk_transfer(2, 10)
         self.assertEqual(new_imp.unit, imp.unit)
+        self.assertEqual(new_imp.frequency_unit, imp.frequency_unit)
         self.assertEqual(new_imp.tot_value, imp.tot_value)
         np.testing.assert_array_equal(new_imp.imp_mat.toarray(), imp.imp_mat.toarray())
         self.assertEqual(new_imp.event_name, imp.event_name)
@@ -657,6 +660,7 @@ class TestSelect(unittest.TestCase):
 
         self.assertTrue(u_coord.equal_crs(sel_imp.crs, imp.crs))
         self.assertEqual(sel_imp.unit, imp.unit)
+        self.assertEqual(sel_imp.frequency_unit, imp.frequency_unit)
 
         np.testing.assert_array_equal(sel_imp.event_id, [10, 11, 12])
         self.assertEqual(sel_imp.event_name, [0, 1, 'two'])
