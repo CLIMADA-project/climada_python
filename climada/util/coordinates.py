@@ -218,6 +218,8 @@ def latlon_bounds(lat, lon, buffer=0.0):
 
     See `lon_bounds` for more information about the handling of longitudinal values crossing the
     antimeridian.
+    
+    The lon input data is modified in place!
 
     Example
     -------
