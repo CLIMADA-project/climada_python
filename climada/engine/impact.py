@@ -1400,6 +1400,7 @@ class Impact():
 class ImpactFreqCurve():
     """Impact exceedence frequency curve.
     """
+
     tag : dict = field(default_factory=dict)
     """dictionary of tags of exposures, impact functions set and
         hazard: {'exp': Tag(), 'impf_set': Tag(), 'haz': TagHazard()}"""

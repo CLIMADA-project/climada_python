@@ -16,7 +16,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
-Define Impact and ImpactFreqCurve classes.
+Define ImpactCalc class.
 """
 
 __all__ = ['ImpactCalc']
