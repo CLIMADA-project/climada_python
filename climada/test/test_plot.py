@@ -124,11 +124,11 @@ class TestPlotter(unittest.TestCase):
         myax = ifc.plot()
         self.assertIn('Exceedance frequency curve', myax.get_title())
 
-        ifc2 = ImpactFreqCurve()
-        ifc2.return_per = ifc.return_per
-        ifc2.impact = 1.5e11 * np.ones(ifc2.return_per.size)
-        ifc2.unit = ''
-        ifc2.label = 'prove'
+        ifc2 = ImpactFreqCurve(
+            return_per=ifc.return_per,
+            impact=1.5e11 * np.ones(ifc.return_per.size),
+            label='prove'
+        )
         ifc2.plot(axis=myax)
 
     def test_ctx_osm_pass(self):

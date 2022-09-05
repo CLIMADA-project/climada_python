@@ -21,7 +21,7 @@ Define Impact and ImpactFreqCurve classes.
 
 __all__ = ['ImpactFreqCurve', 'Impact']
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import logging
 import copy
 import csv
@@ -1400,14 +1400,14 @@ class Impact():
 class ImpactFreqCurve():
     """Impact exceedence frequency curve.
     """
-    tag : dict
+    tag : dict = field(default_factory=dict)
     """dictionary of tags of exposures, impact functions set and
         hazard: {'exp': Tag(), 'impf_set': Tag(), 'haz': TagHazard()}"""
 
-    return_per : np.array
+    return_per : np.array = np.array([])
     """return period"""
 
-    impact : np.array
+    impact : np.array = np.array([])
     """impact exceeding frequency"""
 
     unit : str = ''
