@@ -475,12 +475,12 @@ class Impact():
             label='Exceedance frequency curve'
         )
 
-    def _eai_title(self, frequency_unit):
-        if frequency_unit in ['1/year', 'annual', '1/y', '1/a']:
+    def _eai_title(self):
+        if self.frequency_unit in ['1/year', 'annual', '1/y', '1/a']:
             return 'Expected annual impact'
-        if frequency_unit in ['1/day', 'daily', '1/d']:
+        if self.frequency_unit in ['1/day', 'daily', '1/d']:
             return 'Expected daily impact'
-        return f'Expected impact ({frequency_unit})'
+        return f'Expected impact ({self.frequency_unit})'
 
     def plot_scatter_eai_exposure(self, mask=None, ignore_zero=False,
                                   pop_name=True, buffer=0.0, extend='neither',
@@ -520,7 +520,7 @@ class Impact():
         eai_exp = self._build_exp()
         axis = eai_exp.plot_scatter(mask, ignore_zero, pop_name, buffer,
                                     extend, axis=axis, adapt_fontsize=adapt_fontsize, **kwargs)
-        axis.set_title(self._eai_title(self.frequency_unit))
+        axis.set_title(self._eai_title())
         return axis
 
     def plot_hexbin_eai_exposure(self, mask=None, ignore_zero=False,
@@ -561,7 +561,7 @@ class Impact():
         eai_exp = self._build_exp()
         axis = eai_exp.plot_hexbin(mask, ignore_zero, pop_name, buffer,
                                    extend, axis=axis, adapt_fontsize=adapt_fontsize, **kwargs)
-        axis.set_title(self._eai_title(self.frequency_unit))
+        axis.set_title(self._eai_title())
         return axis
 
     def plot_raster_eai_exposure(self, res=None, raster_res=None, save_tiff=None,
@@ -599,7 +599,7 @@ class Impact():
         eai_exp = self._build_exp()
         axis = eai_exp.plot_raster(res, raster_res, save_tiff, raster_f,
                                    label, axis=axis, adapt_fontsize=adapt_fontsize, **kwargs)
-        axis.set_title(self._eai_title(self.frequency_unit))
+        axis.set_title(self._eai_title())
         return axis
 
     def plot_basemap_eai_exposure(self, mask=None, ignore_zero=False, pop_name=True,
@@ -641,7 +641,7 @@ class Impact():
         eai_exp = self._build_exp()
         axis = eai_exp.plot_basemap(mask, ignore_zero, pop_name, buffer,
                                     extend, zoom, url, axis=axis, **kwargs)
-        axis.set_title(self._eai_title(self.frequency_unit))
+        axis.set_title(self._eai_title())
         return axis
 
     def plot_hexbin_impact_exposure(self, event_id=1, mask=None, ignore_zero=False,

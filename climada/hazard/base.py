@@ -204,12 +204,12 @@ class Hazard():
     @classmethod
     def get_default(cls, attribute):
         """Get the Hazard type default for a given attribute.
-        
+
         Parameters
         ----------
         attribute : str
             attribute name
-        
+
         Returns
         ------
         Any
