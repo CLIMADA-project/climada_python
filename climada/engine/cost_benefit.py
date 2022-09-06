@@ -29,7 +29,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle, FancyArrowPatch
 from tabulate import tabulate
 
-from climada.engine.impact import Impact
+from climada.engine.impact_calc import Impact, ImpactCalc
 
 LOGGER = logging.getLogger(__name__)
 
@@ -774,8 +774,7 @@ class CostBenefit():
 
         # compute impact without measures
         LOGGER.debug('%s impact with no measure.', when)
-        imp_tmp = Impact()
-        imp_tmp.calc(exposures, imp_fun_set, hazard, assign_centroids=False)
+        imp_tmp = ImpactCalc(exposures, imp_fun_set, hazard).impact(assign_centroids=False)
         impact_meas[NO_MEASURE] = dict()
         impact_meas[NO_MEASURE]['cost'] = (0, 0)
         impact_meas[NO_MEASURE]['risk'] = risk_func(imp_tmp)
