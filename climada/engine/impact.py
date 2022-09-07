@@ -198,11 +198,13 @@ class Impact():
                 " for insured impacts instead. For non-insured impacts "
                 "please use ImpactCalc().impact()"
                 )
-            self.__dict__ = impcalc.insured_impact(save_mat, assign_centroids).__dict__
+            self.__dict__ = impcalc.insured_impact(
+                save_mat=save_mat, assign_centroids=assign_centroids).__dict__
         else:
             LOGGER.warning("The use of Impact().calc() is deprecated. "
                            "Use ImpactCalc().impact() instead.")
-            self.__dict__ = impcalc.impact(save_mat, assign_centroids).__dict__
+            self.__dict__ = impcalc.impact(
+                save_mat=save_mat, assign_centroids=assign_centroids).__dict__
 
 #TODO: new name
     @classmethod

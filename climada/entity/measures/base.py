@@ -202,9 +202,9 @@ class Measure():
         -------
         climada.engine.Impact
         """
-        from climada.engine.impact import Impact
-        imp = Impact()
-        imp.calc(new_exp, new_impfs, new_haz, assign_centroids=assign_centroids)
+        from climada.engine.impact_calc import ImpactCalc
+        imp = ImpactCalc(new_exp, new_impfs, new_haz)\
+              .impact(save_mat=False, assign_centroids=assign_centroids)
         return imp.calc_risk_transfer(self.risk_transf_attach, self.risk_transf_cover)
 
     def _change_all_hazard(self, hazard):
@@ -364,9 +364,8 @@ class Measure():
         else:
             exp_imp = exposures
 
-        from climada.engine.impact import Impact
-        imp = Impact()
-        imp.calc(exp_imp, impf_set, hazard, assign_centroids=hazard.centr_exp_col not in exp_imp.gdf)
+        from climada.engine.impact_calc import ImpactCalc
+        imp = ImpactCalc(exp_imp, impf_set, hazard).impact(assign_centroids=hazard.centr_exp_col not in exp_imp.gdf)
 
         LOGGER.debug('Cutting events whose damage have a frequency > %s.',
                      self.hazard_freq_cutoff)

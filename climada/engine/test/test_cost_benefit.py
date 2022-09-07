@@ -28,7 +28,7 @@ from climada.entity.disc_rates import DiscRates
 from climada.hazard.base import Hazard
 from climada.engine.cost_benefit import CostBenefit, risk_aai_agg, \
         risk_rp_100, risk_rp_250, _norm_values
-from climada.engine import Impact
+from climada.engine import ImpactCalc
 from climada.util.constants import ENT_DEMO_FUTURE, ENT_DEMO_TODAY
 from climada.util.api_client import Client
 
@@ -822,9 +822,7 @@ class TestRiskFuncs(unittest.TestCase):
         ent = Entity.from_excel(ENT_DEMO_TODAY)
         ent.check()
         hazard = Hazard.from_mat(HAZ_TEST_MAT)
-        impact = Impact()
-        ent.exposures.assign_centroids(hazard)
-        impact.calc(ent.exposures, ent.impact_funcs, hazard, assign_centroids=False)
+        impact = ImpactCalc(ent.exposures, ent.impact_funcs, hazard).impact()
         return impact
 
     def test_risk_aai_agg_pass(self):
