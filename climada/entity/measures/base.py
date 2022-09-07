@@ -29,6 +29,8 @@ import pandas as pd
 from geopandas import GeoDataFrame
 
 from climada.entity.exposures.base import Exposures, INDICATOR_IMPF, INDICATOR_CENTR
+from climada.hazard.base import Hazard
+from climada.engine.impact_calc import ImpactCalc
 import climada.util.checker as u_check
 
 LOGGER = logging.getLogger(__name__)
@@ -202,7 +204,6 @@ class Measure():
         -------
         climada.engine.Impact
         """
-        from climada.engine.impact_calc import ImpactCalc
         imp = ImpactCalc(new_exp, new_impfs, new_haz)\
               .impact(save_mat=False, assign_centroids=assign_centroids)
         return imp.calc_risk_transfer(self.risk_transf_attach, self.risk_transf_cover)
@@ -225,7 +226,6 @@ class Measure():
             return hazard
 
         LOGGER.debug('Setting new hazard %s', self.hazard_set)
-        from climada.hazard.base import Hazard
         new_haz = Hazard.from_hdf5(self.hazard_set)
         new_haz.check()
         return new_haz
@@ -364,8 +364,8 @@ class Measure():
         else:
             exp_imp = exposures
 
-        from climada.engine.impact_calc import ImpactCalc
-        imp = ImpactCalc(exp_imp, impf_set, hazard).impact(assign_centroids=hazard.centr_exp_col not in exp_imp.gdf)
+        imp = ImpactCalc(exp_imp, impf_set, hazard)\
+              .impact(assign_centroids=hazard.centr_exp_col not in exp_imp.gdf)
 
         LOGGER.debug('Cutting events whose damage have a frequency > %s.',
                      self.hazard_freq_cutoff)

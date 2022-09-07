@@ -191,20 +191,20 @@ class Impact():
         from climada.engine.impact_calc import ImpactCalc
         impcalc= ImpactCalc(exposures, impact_funcs, hazard)
         if ('deductible' in exposures.gdf) and ('cover' in exposures.gdf) \
-            and exposures.gdf.cover.max():
+            and exposures.gdf.cover.max() > 0:
             LOGGER.warning(
-                "The use of Impact().calc() is deprecated for exposures with "
-                "deductible and/or cover. Use ImpactCalc().insured_impact() "
+                "The use of Impact().calc() is deprecated for exposures with"
+                " deductible and/or cover. Use ImpactCalc().insured_impact()"
                 " for insured impacts instead. For non-insured impacts "
-                "please use ImpactCalc().impact()"
+                " please use ImpactCalc().impact()"
                 )
-            self.__dict__ = impcalc.insured_impact(
-                save_mat=save_mat, assign_centroids=assign_centroids).__dict__
+            self.__dict__ = impcalc.impact(insured=True, save_mat=save_mat,
+                                           assign_centroids=assign_centroids).__dict__
         else:
-            LOGGER.warning("The use of Impact().calc() is deprecated. "
-                           "Use ImpactCalc().impact() instead.")
-            self.__dict__ = impcalc.impact(
-                save_mat=save_mat, assign_centroids=assign_centroids).__dict__
+            LOGGER.warning("The use of Impact().calc() is deprecated."
+                           " Use ImpactCalc().impact() instead.")
+            self.__dict__ = impcalc.impact(insured=False, save_mat=save_mat,
+                                           assign_centroids=assign_centroids).__dict__
 
 #TODO: new name
     @classmethod
