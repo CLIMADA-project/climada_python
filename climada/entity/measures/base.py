@@ -30,7 +30,6 @@ from geopandas import GeoDataFrame
 
 from climada.entity.exposures.base import Exposures, INDICATOR_IMPF, INDICATOR_CENTR
 from climada.hazard.base import Hazard
-from climada.engine.impact_calc import ImpactCalc
 import climada.util.checker as u_check
 
 LOGGER = logging.getLogger(__name__)
@@ -204,6 +203,7 @@ class Measure():
         -------
         climada.engine.Impact
         """
+        from climada.engine.impact_calc import ImpactCalc  # pylint: disable=import-outside-toplevel
         imp = ImpactCalc(new_exp, new_impfs, new_haz)\
               .impact(save_mat=False, assign_centroids=assign_centroids)
         return imp.calc_risk_transfer(self.risk_transf_attach, self.risk_transf_cover)
@@ -364,6 +364,7 @@ class Measure():
         else:
             exp_imp = exposures
 
+        from climada.engine.impact_calc import ImpactCalc  # pylint: disable=import-outside-toplevel
         imp = ImpactCalc(exp_imp, impf_set, hazard)\
               .impact(assign_centroids=hazard.centr_exp_col not in exp_imp.gdf)
 

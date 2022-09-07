@@ -550,7 +550,7 @@ class LitPop(Exposures):
             }
         else:
             LOGGER.warning('Could not write attribute meta because coordinates'
-                           'are either only one point or do not extend in lat and lon')
+                           ' are either only one point or do not extend in lat and lon')
             exp.meta = {'crs': exp.crs}
         return exp
 
