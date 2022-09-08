@@ -29,7 +29,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle, FancyArrowPatch
 from tabulate import tabulate
 
-from climada.engine.impact_calc import Impact, ImpactCalc
+from climada.engine.impact_calc import ImpactCalc
 
 LOGGER = logging.getLogger(__name__)
 
