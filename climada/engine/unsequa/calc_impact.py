@@ -27,7 +27,7 @@ import time
 import pandas as pd
 import numpy as np
 
-from climada.engine import Impact, ImpactCalc
+from climada.engine import ImpactCalc
 from climada.engine.unsequa import Calc, InputVar, UncImpactOutput
 from climada.util import log_level
 

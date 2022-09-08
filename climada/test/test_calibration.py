@@ -67,8 +67,7 @@ class TestCalib(unittest.TestCase):
                                        df_in_yearly,
                                        yearly_impact=True)
         # calc Impact as comparison
-        calc = ImpactCalc(ent.exposures, ent.impact_funcs, hazard)
-        impact = calc.insured_impact(assign_centroids=False)
+        impact = ImpactCalc(ent.exposures, ent.impact_funcs, hazard).impact(assign_centroids=False)
         IYS = impact.impact_per_year(all_years=True)
 
         # do the tests

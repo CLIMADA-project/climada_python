@@ -539,12 +539,12 @@ class CostBenefit():
         present_year = entity.exposures.ref_year
         future_year = ent_future.exposures.ref_year
 
-        imp = Impact()
-        imp.calc(entity.exposures, entity.impact_funcs, hazard, assign_centroids=False)
+        imp = ImpactCalc(entity.exposures, entity.impact_funcs, hazard)\
+              .impact(assign_centroids=False)
         curr_risk = risk_func(imp)
 
-        imp = Impact()
-        imp.calc(ent_future.exposures, ent_future.impact_funcs, haz_future, assign_centroids=False)
+        imp = ImpactCalc(ent_future.exposures, ent_future.impact_funcs, haz_future)\
+              .impact(assign_centroids=False)
         fut_risk = risk_func(imp)
 
         if not axis:
@@ -556,8 +556,8 @@ class CostBenefit():
 
         # changing future
         # socio-economic dev
-        imp = Impact()
-        imp.calc(ent_future.exposures, ent_future.impact_funcs, hazard, assign_centroids=False)
+        imp = ImpactCalc(ent_future.exposures, ent_future.impact_funcs, hazard)\
+              .impact(assign_centroids=False)
         risk_dev = risk_func(imp)
         LOGGER.info('Risk with development at {:d}: {:.3e}'.format(future_year, risk_dev))
 
@@ -701,8 +701,8 @@ class CostBenefit():
         # changing future
         time_dep = self._time_dependency_array(imp_time_depen)
         # socio-economic dev
-        imp = Impact()
-        imp.calc(ent_future.exposures, ent_future.impact_funcs, hazard, assign_centroids=False)
+        imp = ImpactCalc(ent_future.exposures, ent_future.impact_funcs, hazard)\
+              .impact(assign_centroids=False)
         risk_dev = self._npv_unaverted_impact(risk_func(imp), entity.disc_rates,
                                               time_dep, curr_risk)
         LOGGER.info('Total risk with development at {:d}: {:.3e}'.format(

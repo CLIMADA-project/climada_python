@@ -68,12 +68,8 @@ def calib_instance(hazard, exposure, impact_func, df_out=pd.DataFrame(),
     """
     ifs = ImpactFuncSet()
     ifs.append(impact_func)
-    calc = ImpactCalc(exposures=exposure, impfset=ifs, hazard=hazard)
-    if ('deductible' in exposure.gdf) and ('cover' in exposure.gdf) \
-            and exposure.gdf.cover.max():
-        impacts = calc.insured_impact(assign_centroids=False)
-    else:
-        impacts = calc.impact(assign_centroids=False)
+    impacts = ImpactCalc(exposures=exposure, impfset=ifs, hazard=hazard)\
+              .impact(assign_centroids=False)
     if yearly_impact:  # impact per year
         iys = impacts.impact_per_year(all_years=True)
         # Loop over whole year range:
