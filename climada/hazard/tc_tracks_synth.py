@@ -393,7 +393,6 @@ def calc_perturbed_trajectories(
     tracks.data = sum(new_ens, [])
     tracks.data_hist = deepcopy([deepcopy(x[0]) for x in new_ens if x[0].orig_event_flag])
 
-
     if adjust_intensity == 'explicit':
         land_geom = climada.util.coordinates.get_land_geometry(
             extent=tracks.get_extent(deg_buffer=0.1), resolution=10
@@ -580,9 +579,12 @@ def _one_rnd_walk(track,
         ))
         # compute linear regression onto intensification and decay
         _add_fits_to_track(track, central_pressure_pert)
-
-    # to keep track of cut-off tracks
-    cutoff_track_ids_tstc = {'tc': {}, 'ts': {}}
+        # track are not to be cut-off. Latitudinal tresholds are applied later
+        # in the model.
+        cutoff_track_ids_tstc = None
+    else:
+        # to keep track of cut-off tracks
+        cutoff_track_ids_tstc = {'tc': {}, 'ts': {}}
 
     # generate tracks with perturbed trajectories
     for i_ens in range(nb_synth_tracks):
@@ -618,8 +620,12 @@ def _one_rnd_walk(track,
 
         ens_track.append(i_track)
 
-    cutoff_track_ids_tc = [f"{k} ({v})" for k,v in cutoff_track_ids_tstc['tc'].items()]
-    cutoff_track_ids_ts = [f"{k} ({v})" for k,v in cutoff_track_ids_tstc['ts'].items()]
+    if land_geom is None:
+        cutoff_track_ids_tc = [f"{k} ({v})" for k,v in cutoff_track_ids_tstc['tc'].items()]
+        cutoff_track_ids_ts = [f"{k} ({v})" for k,v in cutoff_track_ids_tstc['ts'].items()]
+    else:
+        cutoff_track_ids_tc = []
+        cutoff_track_ids_ts = []
 
     return ens_track, cutoff_track_ids_tc, cutoff_track_ids_ts
 
@@ -769,21 +775,22 @@ def _apply_random_walk_pert(track: xr.Dataset,
             _get_destination_points(new_lon[i], new_lat[i],
                                     bearings[i] + ang_pert_cum[i],
                                     trans_pert[i] * angular_dist[i])
-        # if track crosses latitudinal thresholds (+-70°),
-        # keep up to this segment (i+1), set i+2 as last point,
-        # and discard all further points > i+2.
-        if i+2 < last_idx and (new_lat[i + 1] > 70 or new_lat[i + 1] < -70):
-            last_idx = i + 2
-            # end the track here
-            max_wind_end = track.max_sustained_wind.values[last_idx:]
-            ss_scale_end = climada.hazard.tc_tracks.set_category(max_wind_end,
-                    track.max_sustained_wind_unit)
-            # TC category at ending point should not be higher than 1
-            if ss_scale_end > 1:
-                cutoff_track_ids_tstc['tc'][track.attrs['name']] = climada.hazard.tc_tracks.CAT_NAMES[ss_scale_end]
-            else:
-                cutoff_track_ids_tstc['ts'][track.attrs['name']] = climada.hazard.tc_tracks.CAT_NAMES[ss_scale_end]
-            break
+        if cutoff_track_ids_tstc is not None:
+            # if track crosses latitudinal thresholds (+-70°),
+            # keep up to this segment (i+1), set i+2 as last point,
+            # and discard all further points > i+2.
+            if i+2 < last_idx and (new_lat[i + 1] > 70 or new_lat[i + 1] < -70):
+                last_idx = i + 2
+                # end the track here
+                max_wind_end = track.max_sustained_wind.values[last_idx:]
+                ss_scale_end = climada.hazard.tc_tracks.set_category(max_wind_end,
+                        track.max_sustained_wind_unit)
+                # TC category at ending point should not be higher than 1
+                if ss_scale_end > 1:
+                    cutoff_track_ids_tstc['tc'][track.attrs['name']] = climada.hazard.tc_tracks.CAT_NAMES[ss_scale_end]
+                else:
+                    cutoff_track_ids_tstc['ts'][track.attrs['name']] = climada.hazard.tc_tracks.CAT_NAMES[ss_scale_end]
+                break
     # make sure longitude values are within (-180, 180)
     climada.util.coordinates.lon_normalize(new_lon, center=0.0)
 
