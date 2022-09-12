@@ -1128,7 +1128,7 @@ def _create_raw_track_extension(track,
                 append_vals
             ]))
     if track.time.values.dtype != time_append.dtype:
-        LOGGER.info(track.sid)
+        raise ValueError('dtype of time_append unexpected')
     track_ext = xr.Dataset(
         vars_values,
         coords={
