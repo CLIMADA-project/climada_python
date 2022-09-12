@@ -399,18 +399,23 @@ def calc_perturbed_trajectories(
             extent=tracks.get_extent(deg_buffer=0.1), resolution=10
         )
 
-        # TODO implement parallelism; _add_id_synth_chunks returns tuple!
-        # if pool:
-        #     id_chunks = pool.map(
-        #         _add_id_synth_chunks, synth_tracks, chunksize=chunksize
-        #     )
-        # else:
-        # returns a list of tuples (track, no_sea_chunks, no_land_chunks)
         LOGGER.debug('Identifying tracks chunks...')
-        tracks_with_id_chunks = [
-            _add_id_synth_chunks_shift_init(track, time_step_h, land_geom, shift_values_init=True)
-            for track in tracks.data
-        ]
+        if pool:
+            chunksize = min(tracks.size // pool.ncpus, 2000)
+            tracks_with_id_chunks = pool.map(
+                _add_id_synth_chunks_shift_init,
+                tracks.data,
+                itertools.repeat(time_step_h, tracks.size),
+                itertools.repeat(land_geom, tracks.size),
+                itertools.repeat(True, tracks.size),
+                chunksize=chunksize
+            )
+        else:
+            # returns a list of tuples (track, no_sea_chunks, no_land_chunks)
+            tracks_with_id_chunks = [
+                _add_id_synth_chunks_shift_init(track, time_step_h, land_geom, shift_values_init=True)
+                for track in tracks.data
+            ]
 
         # track extension when shifted
         if extend_track:
@@ -480,10 +485,11 @@ def calc_perturbed_trajectories(
             time_step_h=time_step_h,
             track_vars_attrs=track_vars_attrs,
             extend_track=extend_track,
+            pool=pool,
+            central_pressure_pert = central_pressure_pert,
             v_rel=v_rel,
             p_rel=p_rel,
-            s_rel=True,
-            central_pressure_pert = central_pressure_pert
+            s_rel=True
         )
 
         LOGGER.debug(
@@ -2098,13 +2104,31 @@ def _model_synth_tc_intensity(tracks_list,
                               time_step_h,
                               track_vars_attrs,
                               extend_track,
-                              **kwargs):
+                              pool,
+                              central_pressure_pert,
+                              v_rel,
+                              p_rel,
+                              s_rel):
     # model track intensity
     # TODO parallelize here
-    tracks_intensified = [
-        _one_model_synth_tc_intensity(track, rnd_pars=random_intensity, **kwargs)
-        for track, random_intensity in zip(tracks_list, random_vec_intensity)
-    ]
+    if pool:
+        chunksize = min(len(tracks_list) // pool.ncpus, 1000)
+        tracks_intensified = pool.map(
+            _one_model_synth_tc_intensity,
+            tracks_list,
+            itertools.repeat(v_rel, len(tracks_list)),
+            itertools.repeat(p_rel, len(tracks_list)),
+            itertools.repeat(s_rel, len(tracks_list)),
+            itertools.repeat(central_pressure_pert, len(tracks_list)),
+            random_vec_intensity,
+            chunksize=chunksize
+        )
+    else:
+        tracks_intensified = [
+            _one_model_synth_tc_intensity(track, v_rel, p_rel, s_rel,
+                                        central_pressure_pert, rnd_pars=random_intensity)
+            for track, random_intensity in zip(tracks_list, random_vec_intensity)
+        ]
     if not extend_track:
         for (track,_) in tracks_intensified:
             if not track.orig_event_flag:
@@ -2205,9 +2229,9 @@ def _model_synth_tc_intensity(tracks_list,
             track['dist_since_lf'] = ('time', climada.hazard.tc_tracks._dist_since_lf(track))
             pcen_extend, v_extend = intensity_evolution_land(track,
                                                              id_chunk=-1,
-                                                             v_rel=kwargs['v_rel'],
-                                                             p_rel=kwargs['p_rel'],
-                                                             s_rel=kwargs['s_rel'])
+                                                             v_rel=v_rel,
+                                                             p_rel=p_rel,
+                                                             s_rel=s_rel)
             if v_extend is not None:
                 LOGGER.warning(
                     f'Track extension not over owing to a landfall for {track.sid}. '
