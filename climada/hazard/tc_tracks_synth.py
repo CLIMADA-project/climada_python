@@ -734,7 +734,7 @@ def _get_random_trajectories_perts(tracks,
                 for i in range(nb_synth_tracks)
             )
             if track.time.size > 1
-            else tuple(tuple(tuple([np.random.uniform(size=2), None, None])) for i in range(nb_synth_tracks))
+            else tuple(tuple(tuple([max_shift_ini * (2 * np.random.uniform(size=2) -1), None, None])) for i in range(nb_synth_tracks))
             for track in tracks.data
         )
     return random_vec
