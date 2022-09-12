@@ -1021,48 +1021,46 @@ def _track_ext_id_chunk(track, land_geom):
         # case of extending due to a shift in values
         # 1) retrieve land parameters
         id_chunk_na = np.where(np.isnan(track['id_chunk']))[0][0]
-        if id_chunk_na > 0:
+        if id_chunk_na == 0:
+            raise ValueError('all id_chuk missing %s' % track.sid)
+        else:
             id_chunk_full = track.isel(time=slice(None, id_chunk_na))['id_chunk'].values
             min_id_chunk = int(id_chunk_full.min())
             max_id_chunk = int(id_chunk_full.max())
             id_chunk_na = id_chunk_na - 1
-        else:
-            min_id_chunk = 0
-            max_id_chunk = 0
-        track_ext = track.isel(time=slice(id_chunk_na, None))
-        # track['on_land'][id_chunk_na:] = track_ext.on_land.values
-        # track['on_land'] = np.concatenate([
-        #     track['on_land'][:id_chunk_na].values.astype(bool),
-        #     track_ext.on_land.values[1:]
-        # ])
-        # 2) get id_chunk for the rest of the track
-        transitions = np.diff(~(track_ext['on_land'].values).astype(int))
-        # remove short landfalls
-        time_step_h = track.time_step.values[0]
-        min_n_ts = NEGLECT_LANDFALL_DURATION_HOUR/time_step_h
-        for idx in np.where(transitions == -1)[0]:
-            transitions_end = transitions[idx:]
-            if np.any(transitions_end == 1):
-                n_ts = np.where(transitions_end == 1)[0][0]
-                if n_ts < min_n_ts:
-                    transitions[idx] = 0
-                    transitions[idx+n_ts] = 0
-        to_sea = np.where(transitions > 0, transitions, 0)
-        to_land = np.where(transitions < 0, transitions, 0)
-        id_chunks = np.where(
-            track_ext.on_land.values[1:],
-            to_land.cumsum() + min_id_chunk,
-            to_sea.cumsum() + max_id_chunk
-        ).astype(int)
-        if id_chunk_na > 0:
-            if id_chunks[0] != track.id_chunk.values[id_chunk_na-1]:
-                if track.on_land.values[id_chunk_na-1] == track.on_land.values[id_chunk_na]:
+            track_ext = track.isel(time=slice(id_chunk_na, None))
+            # track['on_land'][id_chunk_na:] = track_ext.on_land.values
+            # track['on_land'] = np.concatenate([
+            #     track['on_land'][:id_chunk_na].values.astype(bool),
+            #     track_ext.on_land.values[1:]
+            # ])
+            # 2) get id_chunk for the rest of the track
+            transitions = np.diff(~(track_ext['on_land'].values).astype(int))
+            # remove short landfalls
+            time_step_h = track.time_step.values[0]
+            min_n_ts = NEGLECT_LANDFALL_DURATION_HOUR/time_step_h
+            for idx in np.where(transitions == -1)[0]:
+                transitions_end = transitions[idx:]
+                if np.any(transitions_end == 1):
+                    n_ts = np.where(transitions_end == 1)[0][0]
+                    if n_ts < min_n_ts:
+                        transitions[idx] = 0
+                        transitions[idx+n_ts] = 0
+            to_sea = np.where(transitions > 0, transitions, 0)
+            to_land = np.where(transitions < 0, transitions, 0)
+            id_chunks = np.where(
+                track_ext.on_land.values[1:],
+                to_land.cumsum() + min_id_chunk,
+                to_sea.cumsum() + max_id_chunk
+            ).astype(int)
+            if id_chunks[0] != track.id_chunk.values[id_chunk_na]:
+                if track.on_land.values[id_chunk_na+1] == track.on_land.values[id_chunk_na]:
                     LOGGER.debug('Issue1: %s', track.sid)
-                    raise ValueError('Issue1')
-        track['id_chunk'] = ('time', np.concatenate([
-            track['id_chunk'][:id_chunk_na+1].values.astype(int),
-            id_chunks
-        ]))
+                    raise ValueError('Issue1: %s')
+            track['id_chunk'] = ('time', np.concatenate([
+                track['id_chunk'][:id_chunk_na+1].values.astype(int),
+                id_chunks
+            ]))
         if np.any(np.diff(track['id_chunk'].values[track['id_chunk'].values>=0]) < 0):
             LOGGER.debug('Issue2: %s', track.sid)
             raise ValueError('Issue2')
@@ -1107,7 +1105,7 @@ def _create_raw_track_extension(track,
     # get the values where applicable
     vars_set_missing = ['on_land', 'dist_since_lf', 'id_chunk']
     vars_not_copy = ['time', 'lat', 'lon'] + vars_set_missing
-    if values_df is not None:
+    if values_df is not None and values_df.shape[0] > 0:
         vars_values = {
             k:('time', np.concatenate([track[k].values[-2:], v.values])) for k,v in values_df.items()
         }
@@ -2094,7 +2092,6 @@ def _one_model_synth_tc_intensity(track: xr.Dataset,
 
     # make sure track ends meaningfully (low intensity)
     if pcen_extend is not None:
-        LOGGER.debug('Track extended: %s' % track.sid)
         # if pcen_extend.size == 1:
         #     pcen_extend = [pcen_extend]
         values_ext_df = {
@@ -2102,7 +2099,6 @@ def _one_model_synth_tc_intensity(track: xr.Dataset,
         }
         if v_extend is not None:
             # TODO extend the track
-            LOGGER.debug('With v_extend')
             values_ext_df['max_sustained_wind'] = v_extend
         values_ext_df = pd.DataFrame(values_ext_df)
 
@@ -2153,7 +2149,9 @@ def _model_synth_tc_intensity(tracks_list,
     # create extension and trajectory
     tracks_intensified_new = []
     for i,(track,values_df) in enumerate(tracks_intensified):
-        if values_df is None:
+        if values_df is not None and values_df.shape[0] == 0:
+            LOGGER.warning('values_df has 0 rows, please check: %s', track.sid)
+        if values_df is None or values_df.shape[0] == 0:
             tracks_intensified_new.append(track)
             continue
         track_ext = _create_raw_track_extension(
@@ -2195,39 +2193,12 @@ def _model_synth_tc_intensity(tracks_list,
             False
         )
         _estimate_params_track(track)
-        # TODO apply additional decay if far poleward or equatorward
-        # max_lat_after = np.flip(
-        #     np.maximum.accumulate(
-        #         np.flip(track.lat.values)
-        #     )
-        # )
-        mid_basin = track.basin.values[int(np.floor(track.basin.size/2))]
-        latrange_out_idx = track.time.size
-        for lat_max,max_wind in zip(
-            MAX_WIND_BY_LAT_RANGE[mid_basin]['lat_max']['lat'],
-            MAX_WIND_BY_LAT_RANGE[mid_basin]['lat_max']['max_wind']
-        ):
-            outside_range = np.logical_and(
-                track.lat.values > lat_max,
-                track.max_sustained_wind.values > 1.1*max_wind
-            )
-            if np.sum(outside_range) > 3:
-                latrange_out_idx = min(np.where(outside_range)[0][0], latrange_out_idx)
-        for lat_min,max_wind in zip(
-            MAX_WIND_BY_LAT_RANGE[mid_basin]['lat_min']['lat'],
-            MAX_WIND_BY_LAT_RANGE[mid_basin]['lat_min']['max_wind']
-        ):
-            outside_range = np.logical_and(
-                track.lat.values < lat_min,
-                track.max_sustained_wind.values > 1.1*max_wind
-            )
-            if np.sum(outside_range) > 3:
-                latrange_out_idx = min(np.where(outside_range)[0][0], latrange_out_idx)
+        # apply decay (landfall) if track moves too much poleward or equatorward
+        latrange_out_idx = _get_outside_lat_idx(track)
         if latrange_out_idx < track.time.size:
             if np.all(~sea_land) or np.where(sea_land)[0][0] > latrange_out_idx:
-                LOGGER.debug('Outside range for %s - applying land decay', track.sid)
+                LOGGER.debug('Outside latitude range for %s - applying land decay', track.sid)
                 sea_land[latrange_out_idx] = True
-
         if np.any(sea_land):
             # apply landfall decay thereafter
             sea_land_idx = np.where(sea_land)[0][0]
@@ -2525,22 +2496,18 @@ def intensity_evolution_sea(track, id_chunk, central_pressure_pert, rnd_pars_i):
             p_drop_rel = (target_decay_pres - track_chunk.environmental_pressure.values[-1])/p_drop
             nb_days_decay = -np.log(p_drop_rel) / peak_decay_k
             nts_extend_decay = int(np.ceil(24*nb_days_decay/time_step_h))
-            # if peak_end_idx < 0:
-            #     time_in_decay = time_in_decay[-1] + np.cumsum(np.repeat([time_step_h/24], nts_extend_decay))
-            # else:
-            # time_in_decay = time_step_h/24 + np.cumsum(np.repeat([time_step_h/24], nts_extend_decay))
-            time_in_decay = np.cumsum(np.repeat([time_step_h/24], nts_extend_decay))
-            p_drop2 = p_drop * np.exp(-peak_decay_k * time_in_decay)
-            pcen_decay = track_chunk.environmental_pressure.values[-1] + p_drop2
-            # p_drop = (pcen[end_peak] - track_chunk.environmental_pressure.values[end_peak:])
-            # p_drop = p_drop * np.exp(-peak_decay_k * time_in_decay)
-            # pcen[end_peak:] = track_chunk.environmental_pressure.values[end_peak:] + p_drop
-            if peak_end_idx < 0:
-                # pcen[peak_end_idx:] = pcen_decay[:-peak_end_idx]
-                # pcen = np.fmin(pcen, track_chunk.environmental_pressure.values)
-                pcen_decay = pcen_decay[-(peak_end_idx+1):]
-
-            pcen_extend = np.concatenate([pcen_extend, pcen_decay])
+            if nts_extend_decay > 0:
+                time_in_decay = np.cumsum(np.repeat([time_step_h/24], nts_extend_decay))
+                p_drop2 = p_drop * np.exp(-peak_decay_k * time_in_decay)
+                pcen_decay = track_chunk.environmental_pressure.values[-1] + p_drop2
+                # p_drop = (pcen[end_peak] - track_chunk.environmental_pressure.values[end_peak:])
+                # p_drop = p_drop * np.exp(-peak_decay_k * time_in_decay)
+                # pcen[end_peak:] = track_chunk.environmental_pressure.values[end_peak:] + p_drop
+                if peak_end_idx < 0:
+                    # peak ended during existing chunk, therefore first
+                    # abs(peak_end_idx) time steps already in pcen: exclude those
+                    pcen_decay = pcen_decay[-(peak_end_idx+1):]
+                pcen_extend = np.concatenate([pcen_extend, pcen_decay])
             pcen_extend = np.fmin(pcen_extend, track_chunk.environmental_pressure.values[-1])
 
             # finally, truncate track to keep only 3 after entering TD category
@@ -2551,6 +2518,9 @@ def intensity_evolution_sea(track, id_chunk, central_pressure_pert, rnd_pars_i):
             if np.any(extended_cat >= 0):
                 cutoff_idx = min(np.where(extended_cat >= 0)[0][-1] + 4, extended_cat.size-1)
                 pcen_extend = pcen_extend[:cutoff_idx]
+            if pcen_extend.size == 0:
+                # in case in the end there is nothing to extend (0 time steps)
+                pcen_extend = None
 
 
 
@@ -2632,11 +2602,12 @@ def intensity_evolution_land(track, id_chunk, v_rel, p_rel, s_rel):
                 target_dist_since_lf,
                 d_dist_since_lf
             ) + d_dist_since_lf
-            v_decay_extend = _decay_v_function(v_rel[ss_scale], dist_since_lf_extend)
-            v_extend = v_landfall * v_decay_extend
-            p_decay_extend = _decay_p_function(S, p_rel[ss_scale][1],
-                                        dist_since_lf_extend)
-            pcen_extend = p_landfall * p_decay_extend
+            if dist_since_lf_extend.size > 0:
+                v_decay_extend = _decay_v_function(v_rel[ss_scale], dist_since_lf_extend)
+                v_extend = v_landfall * v_decay_extend
+                p_decay_extend = _decay_p_function(S, p_rel[ss_scale][1],
+                                            dist_since_lf_extend)
+                pcen_extend = p_landfall * p_decay_extend
 
     # correct limits
     np.warnings.filterwarnings('ignore')
@@ -2733,6 +2704,46 @@ def _estimate_params_track(track):
         for var in FIT_TRACK_VARS_RANGE.keys():
             track[var][interp_idx] = weights_idx * track[var][interp_idx] + (1-weights_idx) * track_orig[var][interp_idx]
 
+def _get_outside_lat_idx(track):
+    """Get the index of the first track point located too poleward or equatorward
+    
+    A track point with unrealistically high wind speed for its latitude is
+    considered to be too poleward or too equatorward.
+
+    Parameters
+    ----------
+    track : xr.Dataset
+        TC track
+
+    Returns
+    -------
+    latrange_out_idx : int
+        Index of the first point with unrealistic wind speed for its latitude.
+        If no such point if found in the track, set to track.time.size.
+    """
+    mid_basin = track.basin.values[int(np.floor(track.basin.size/2))]
+    latrange_out_idx = track.time.size
+    for lat_max,max_wind in zip(
+        MAX_WIND_BY_LAT_RANGE[mid_basin]['lat_max']['lat'],
+        MAX_WIND_BY_LAT_RANGE[mid_basin]['lat_max']['max_wind']
+    ):
+        outside_range = np.logical_and(
+            track.lat.values > lat_max,
+            track.max_sustained_wind.values > 1.1*max_wind
+        )
+        if np.sum(outside_range) > 3:
+            latrange_out_idx = min(np.where(outside_range)[0][0], latrange_out_idx)
+    for lat_min,max_wind in zip(
+        MAX_WIND_BY_LAT_RANGE[mid_basin]['lat_min']['lat'],
+        MAX_WIND_BY_LAT_RANGE[mid_basin]['lat_min']['max_wind']
+    ):
+        outside_range = np.logical_and(
+            track.lat.values < lat_min,
+            track.max_sustained_wind.values > 1.1*max_wind
+        )
+        if np.sum(outside_range) > 3:
+            latrange_out_idx = min(np.where(outside_range)[0][0], latrange_out_idx)
+    return latrange_out_idx
 
 def _apply_decay_coeffs(track, v_rel, p_rel, land_geom, s_rel):
     """Change track's max sustained wind and central pressure using the land
@@ -2745,7 +2756,7 @@ def _apply_decay_coeffs(track, v_rel, p_rel, land_geom, s_rel):
 
     Returns
     -------
-    dist : np.arrray
+    dist : np.array
         Distances in km, points on water get nan values.
     """
     # pylint: disable=protected-access
