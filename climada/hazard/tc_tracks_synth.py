@@ -2616,14 +2616,11 @@ def intensity_evolution_land(track, id_chunk, v_rel, p_rel, s_rel):
     # TODO docstring
     if id_chunk >= 0:
         raise ValueError('id_chunk should be negative')
+    if track.time.size < 2:
+        raise ValueError('track intensity can only be modelled if track consists of at least 2 points')
     # taking last value before the chunk as a starting point from where to model intensity
     in_chunk = np.where(track.id_chunk.values == id_chunk)[0]
-    # end_target_peak_time = track.time.values[np.where(track.central_pressure.values == track.target_central_pressure[in_chunk[0]])[0][-1]]
-    # if a single point over land, do not adjust intensity - keep constant
-    if len(in_chunk) == 1:
-        if in_chunk[0] > 0:
-            track['max_sustained_wind'][in_chunk] = track['max_sustained_wind'].values[in_chunk-1]
-            track['central_pressure'][in_chunk] = track['central_pressure'].values[in_chunk-1]
+
     if in_chunk[0] > 0:
         if track.id_chunk.values[in_chunk[0]-1] != 0:
             # need to estimate wind speed
@@ -2681,7 +2678,23 @@ def intensity_evolution_land(track, id_chunk, v_rel, p_rel, s_rel):
             target_wind_speed = 25
             target_v_decay = target_wind_speed / v_landfall
             target_dist_since_lf = -np.log(target_v_decay)/v_rel[ss_scale]
-            d_dist_since_lf = track_chunk.dist_since_lf.values[-1]
+            # approximate the distance between points in the extension with the
+            #   distance between the last two existing points
+            if track_chunk.lon.values.size == 1:
+                # this chunk is the end and track.time.size>1 hence in_chunk[0]>0
+                lon_last_but_one = track.lon.values[in_chunk[0]-1:in_chunk[0], None]
+                lat_last_but_one = track.lat.values[in_chunk[0]-1:in_chunk[0], None]
+            else:
+                lon_last_but_one = track_chunk.lon.values[-2:-1, None]
+                lat_last_but_one = track_chunk.lat.values[-2:-1, None]
+            d_dist_since_lf = climada.util.coordinates.dist_approx(
+                lat_last_but_one,
+                lon_last_but_one,
+                track_chunk.lat.values[-1:, None],
+                track_chunk.lon.values[-1:, None],
+                method="geosphere",
+                units="km"
+            )[0, 0, 0]
             dist_since_lf_extend = np.arange(
                 track_chunk.dist_since_lf.values[-1],
                 target_dist_since_lf,
