@@ -1013,6 +1013,7 @@ def _create_track_from_ext(track, track_ext, rnd_tpl):
 def _track_ext_id_chunk(track, land_geom):
     if track.orig_event_flag:
         return 0, 0
+    check_id_chunk(track.id_chunk.values, track.sid, allow_missing=True)
     # up to this point, 'on_land' was set to True for all extension points
     # and dist_since_lf was not correct
     climada.hazard.tc_tracks.track_land_params(track, land_geom=land_geom)
@@ -1021,60 +1022,52 @@ def _track_ext_id_chunk(track, land_geom):
         # case of extending due to a shift in values
         # 1) retrieve land parameters
         id_chunk_na = np.where(np.isnan(track['id_chunk']))[0][0]
-        if id_chunk_na == 0:
-            raise ValueError('all id_chuk missing %s' % track.sid)
-        else:
-            id_chunk_full = track.isel(time=slice(None, id_chunk_na))['id_chunk'].values
-            min_id_chunk = int(id_chunk_full.min())
-            max_id_chunk = int(id_chunk_full.max())
-            id_chunk_na = id_chunk_na - 1
-            track_ext = track.isel(time=slice(id_chunk_na, None))
-            # track['on_land'][id_chunk_na:] = track_ext.on_land.values
-            # track['on_land'] = np.concatenate([
-            #     track['on_land'][:id_chunk_na].values.astype(bool),
-            #     track_ext.on_land.values[1:]
-            # ])
-            # 2) get id_chunk for the rest of the track
-            transitions = np.diff(~(track_ext['on_land'].values).astype(int))
-            # remove short landfalls
-            time_step_h = track.time_step.values[0]
-            min_n_ts = NEGLECT_LANDFALL_DURATION_HOUR/time_step_h
-            for idx in np.where(transitions == -1)[0]:
-                transitions_end = transitions[idx:]
-                if np.any(transitions_end == 1):
-                    n_ts = np.where(transitions_end == 1)[0][0]
-                    if n_ts < min_n_ts:
-                        transitions[idx] = 0
-                        transitions[idx+n_ts] = 0
-            to_sea = np.where(transitions > 0, transitions, 0)
-            to_land = np.where(transitions < 0, transitions, 0)
-            id_chunks = np.where(
-                track_ext.on_land.values[1:],
-                to_land.cumsum() + min_id_chunk,
-                to_sea.cumsum() + max_id_chunk
-            ).astype(int)
-            if id_chunks[0] != track.id_chunk.values[id_chunk_na]:
-                if track.on_land.values[id_chunk_na+1] == track.on_land.values[id_chunk_na]:
-                    LOGGER.debug('Issue1: %s', track.sid)
-                    raise ValueError('Issue1: %s')
-            track['id_chunk'] = ('time', np.concatenate([
-                track['id_chunk'][:id_chunk_na+1].values.astype(int),
-                id_chunks
-            ]))
-        if np.any(np.diff(track['id_chunk'].values[track['id_chunk'].values>=0]) < 0):
-            LOGGER.debug('Issue2: %s', track.sid)
-            raise ValueError('Issue2')
-        if np.any(np.diff(track['id_chunk'].values[track['id_chunk'].values<=0]) > 0):
-            LOGGER.debug('Issue3: %s', track.sid)
-            raise ValueError('Issue3')
+        # id_chunk_na cannot be 0, otherwise it should fail in check_id_chunk above
+        id_chunk_full = track.isel(time=slice(None, id_chunk_na))['id_chunk'].values
+        min_id_chunk = int(id_chunk_full.min())
+        max_id_chunk = int(id_chunk_full.max())
+        # include last time step with id_chunk value
+        id_chunk_na = id_chunk_na - 1
+        track_ext = track.isel(time=slice(id_chunk_na, None))
+        # track['on_land'][id_chunk_na:] = track_ext.on_land.values
+        # track['on_land'] = np.concatenate([
+        #     track['on_land'][:id_chunk_na].values.astype(bool),
+        #     track_ext.on_land.values[1:]
+        # ])
+        # 2) get id_chunk for the rest of the track
+        transitions = np.diff(~(track_ext['on_land'].values).astype(int))
+        # remove short landfalls
+        time_step_h = track.time_step.values[0]
+        min_n_ts = NEGLECT_LANDFALL_DURATION_HOUR/time_step_h
+        for idx in np.where(transitions == -1)[0]:
+            transitions_end = transitions[idx:]
+            if np.any(transitions_end == 1):
+                n_ts = np.where(transitions_end == 1)[0][0]
+                if n_ts < min_n_ts:
+                    transitions[idx] = 0
+                    transitions[idx+n_ts] = 0
+        to_sea = np.where(transitions > 0, transitions, 0)
+        to_land = np.where(transitions < 0, transitions, 0)
+        id_chunks = np.where(
+            track_ext.on_land.values[1:],
+            to_land.cumsum() + min_id_chunk,
+            to_sea.cumsum() + max_id_chunk
+        ).astype(int)
+        if id_chunks[0] != track.id_chunk.values[id_chunk_na]:
+            if track.on_land.values[id_chunk_na+1] == track.on_land.values[id_chunk_na]:
+                LOGGER.debug('Issue1: %s', track.sid)
+                raise ValueError('Issue1: %s')
+        track['id_chunk'] = ('time', np.concatenate([
+            track['id_chunk'][:id_chunk_na+1].values.astype(int),
+            id_chunks
+        ]))
+        # now id_chunk should be valid and not contain any missing value
+        check_id_chunk(track['id_chunk'].values, track.sid, allow_missing=False)
     no_chunks_sea = int(max(0, track['id_chunk'].values.max()))
     no_chunks_land = int(np.abs(min(0, track['id_chunk'].values.min())))
     if np.abs(no_chunks_sea - no_chunks_land) > 1:
         LOGGER.debug('Issue4: %s', track.sid)
         raise ValueError('Issue4')
-    if np.any(np.isnan(track['id_chunk'].values)):
-        LOGGER.debug('id_chunk still contains missing values: %s', track.sid)
-        raise ValueError("id_chunk still contains missing values")
     return no_chunks_sea, no_chunks_land
 
 def _create_raw_track_extension(track,
@@ -1818,6 +1811,78 @@ def _estimate_vars_chunk(track: xr.Dataset,
         )
     return track
 
+def check_id_chunk(id_chunk: np.ndarray, sid: str, allow_missing: bool = False):
+    """Check if id_chunk values are valid
+
+    Raises an error if id_chunk values are not valid.
+
+    Parameters
+    ----------
+    id_chunk : np.ndarray
+        Id chunk values.
+    sid : str
+        Track ID, used for the error message.
+    allow_missing : bool
+        Whether missing values (np.nan) are allowed in id_chunk.
+    """
+    valid = True
+    # check missing values in id_chunk
+    if np.all(np.isnan(id_chunk)):
+        LOGGER.debug('All id_chunk values are missing')
+        valid = False
+    elif np.any(np.isnan(id_chunk)):
+        valid = allow_missing
+        # nans are all at the end
+        if not np.all(np.isnan(id_chunk[np.where(np.isnan(id_chunk))[0][0]:])):
+            LOGGER.debug('id_chunk contains missing values before a non-missing value')
+            valid = False
+        if np.isnan(id_chunk[0]):
+            LOGGER.debug('id_chunk starts with a missing value')
+            valid = False
+        # remove NA values for further checks
+        id_chunk = id_chunk[~np.isnan(id_chunk)]
+    elif np.all(id_chunk == 0):
+        return valid
+    if not valid:
+        raise ValueError('Invalid id_chunk values: %s' % sid)
+
+    # from here onwards there are not missing values in id_chunk
+    if np.any(id_chunk == 0):
+        # Any zero after first non-zero value?
+        if np.any(id_chunk[np.flatnonzero(id_chunk)[0]:] == 0):
+            LOGGER.debug('id_chunk contains zeros after a non-zero')
+            valid = False
+    if np.any(np.diff(id_chunk[id_chunk >= 0]) < 0):
+        LOGGER.debug('Positive id_chunk values have negative increment')
+        valid = False
+    if np.any(np.diff(id_chunk[id_chunk <= 0]) > 0):
+        LOGGER.debug('Negative id_chunk values have positive increment')
+        valid = False
+    if np.any(np.diff(np.abs(id_chunk)) < 0):
+        LOGGER.debug('Absolute value of id_chunk decreases in time')
+        valid = False
+    if np.abs(id_chunk[id_chunk != 0][0]) != 1:
+        LOGGER.debug('First id_chunk is not 1 or -1')
+        valid = False
+    # complete check
+    for id in np.unique(id_chunk):
+        idx = np.where(id_chunk == id)[0]
+        start_idx,end_idx = idx[0],idx[-1]
+        if np.any(id_chunk[start_idx:end_idx+1] != id):
+            LOGGER.debug('Non-continuous id_chunks')
+            valid = False
+        if start_idx > 0:
+            if np.sign(id) == np.sign(id_chunk[start_idx-1]):
+                LOGGER.debug('Sign of id_chunk issue')
+                valid = False
+        if end_idx < id_chunk.size-1:
+            if np.sign(id) == np.sign(id_chunk[end_idx+1]):
+                LOGGER.debug('Sign of id_chunk issue')
+                valid = False
+    if not valid:
+        raise ValueError('Invalid id_chunk values: %s' % sid)
+    return valid
+
 def _add_id_synth_chunks_shift_init(track: xr.Dataset,
                                     time_step_h: float = None,
                                     land_geom: MultiPolygon = None,
@@ -1935,11 +2000,13 @@ def _add_id_synth_chunks_shift_init(track: xr.Dataset,
         if np.any(~on_land_hist):
             # all over land but historical went over the ocean: prevent intensification
             track['id_chunk'][:] = np.where(np.cumsum(~on_land_hist) > 0, -1, 0)
+            check_id_chunk(track['id_chunk'].values, track.sid)
         return track, 0, 1, track_end_shift
     # hist track fully over land: model from first point over the ocean.
     if np.all(on_land_hist):
         transitions_synth = get_transitions(on_land_synth)
         id_chunk, no_chunks_sea, no_chunks_land = get_id_chunk(transitions_synth, on_land_synth)
+        check_id_chunk(id_chunk, track.sid)
         track['id_chunk'][:] = id_chunk
         return track, no_chunks_sea, no_chunks_land, track_end_shift
 
@@ -2027,6 +2094,7 @@ def _add_id_synth_chunks_shift_init(track: xr.Dataset,
         transitions_synth[int(idx_start_model)] = 1
 
     id_chunk, no_chunks_sea, no_chunks_land = get_id_chunk(transitions_synth, on_land_synth)
+    check_id_chunk(id_chunk, track.sid)
     track['id_chunk'][:] = id_chunk
     return track, no_chunks_sea, no_chunks_land, track_end_shift
 
@@ -2069,6 +2137,7 @@ def _one_model_synth_tc_intensity(track: xr.Dataset,
     values_ext_df = None
     if track.time.size == 1 or track.orig_event_flag:
         return track, values_ext_df
+    check_id_chunk(track['id_chunk'].values, track.sid, allow_missing=False)
     if np.all(track['id_chunk'] == 0):
         return track, values_ext_df
     
@@ -2204,6 +2273,7 @@ def _model_synth_tc_intensity(tracks_list,
             sea_land_idx = np.where(sea_land)[0][0]
             track['id_chunk'][:sea_land_idx] = 0
             track['id_chunk'][sea_land_idx:] = -1
+            check_id_chunk(track['id_chunk'].values, track.sid, allow_missing=False)
             # assign fake dist_since_lf
             track['on_land'][sea_land_idx:] = True
             track['dist_since_lf'] = ('time', climada.hazard.tc_tracks._dist_since_lf(track))
@@ -2301,6 +2371,8 @@ def _get_decay_k(basin, rnd_par):
     return peak_decay_k
 
 def intensity_evolution_sea(track, id_chunk, central_pressure_pert, rnd_pars_i):
+    if id_chunk <= 0:
+        raise ValueError('id_chunk should be positive')
     # TODO docstring
     in_chunk = np.where(track.id_chunk.values == id_chunk)[0]
     pcen_extend = None
@@ -2534,6 +2606,8 @@ def intensity_evolution_sea(track, id_chunk, central_pressure_pert, rnd_pars_i):
 
 def intensity_evolution_land(track, id_chunk, v_rel, p_rel, s_rel):
     # TODO docstring
+    if id_chunk >= 0:
+        raise ValueError('id_chunk should be negative')
     # taking last value before the chunk as a starting point from where to model intensity
     in_chunk = np.where(track.id_chunk.values == id_chunk)[0]
     # end_target_peak_time = track.time.values[np.where(track.central_pressure.values == track.target_central_pressure[in_chunk[0]])[0][-1]]
