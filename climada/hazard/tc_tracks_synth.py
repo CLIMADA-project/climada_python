@@ -1983,13 +1983,21 @@ def _add_id_synth_chunks_shift_init(track: xr.Dataset,
         if ftr < transitions.size and transitions[ftr] == 1:
             transitions[ftr] = 0
     # to label chunks
-    def get_id_chunk(transitions_synth, on_land_synth):
+    def get_id_chunk(transitions_synth):
         to_sea = np.where(transitions_synth > 0, transitions_synth, 0)
         no_chunks_sea = np.count_nonzero(to_sea)
         to_land = np.where(transitions_synth < 0, transitions_synth, 0)
         no_chunks_land = np.count_nonzero(to_land)
+        # filter out short landfalls from on_land_synth
+        def get_on_land_from_transition(transitions):
+            on_land_rec = np.zeros_like(transitions)
+            trans_non0 = np.append(np.where(transitions != 0)[0], transitions.size)
+            for idx_start,idx_end in zip(trans_non0[:-1], trans_non0[1:]):
+                if transitions[idx_start] == -1:
+                    on_land_rec[idx_start:idx_end] = True
+            return on_land_rec
         id_chunks = np.where(
-            on_land_synth,
+            get_on_land_from_transition(transitions_synth),
             to_land.cumsum(),
             to_sea.cumsum()
         )
@@ -2005,7 +2013,7 @@ def _add_id_synth_chunks_shift_init(track: xr.Dataset,
     # hist track fully over land: model from first point over the ocean.
     if np.all(on_land_hist):
         transitions_synth = get_transitions(on_land_synth)
-        id_chunk, no_chunks_sea, no_chunks_land = get_id_chunk(transitions_synth, on_land_synth)
+        id_chunk, no_chunks_sea, no_chunks_land = get_id_chunk(transitions_synth)
         check_id_chunk(id_chunk, track.sid)
         track['id_chunk'][:] = id_chunk
         return track, no_chunks_sea, no_chunks_land, track_end_shift
@@ -2093,7 +2101,7 @@ def _add_id_synth_chunks_shift_init(track: xr.Dataset,
         # timesteps before the historical landfall
         transitions_synth[int(idx_start_model)] = 1
 
-    id_chunk, no_chunks_sea, no_chunks_land = get_id_chunk(transitions_synth, on_land_synth)
+    id_chunk, no_chunks_sea, no_chunks_land = get_id_chunk(transitions_synth)
     check_id_chunk(id_chunk, track.sid)
     track['id_chunk'][:] = id_chunk
     return track, no_chunks_sea, no_chunks_land, track_end_shift
