@@ -2492,22 +2492,25 @@ def intensity_evolution_sea(track, id_chunk, central_pressure_pert, rnd_pars_i):
                     p_drop = pcen[-1] - track_chunk.environmental_pressure.values[-1]
             else:
                 p_drop = pcen[peak_end_idx] - track_chunk.environmental_pressure.values[-1]
-            target_decay_pres = track_chunk.environmental_pressure.values[-1] - 5
-            p_drop_rel = (target_decay_pres - track_chunk.environmental_pressure.values[-1])/p_drop
-            nb_days_decay = -np.log(p_drop_rel) / peak_decay_k
-            nts_extend_decay = int(np.ceil(24*nb_days_decay/time_step_h))
-            if nts_extend_decay > 0:
-                time_in_decay = np.cumsum(np.repeat([time_step_h/24], nts_extend_decay))
-                p_drop2 = p_drop * np.exp(-peak_decay_k * time_in_decay)
-                pcen_decay = track_chunk.environmental_pressure.values[-1] + p_drop2
-                # p_drop = (pcen[end_peak] - track_chunk.environmental_pressure.values[end_peak:])
-                # p_drop = p_drop * np.exp(-peak_decay_k * time_in_decay)
-                # pcen[end_peak:] = track_chunk.environmental_pressure.values[end_peak:] + p_drop
-                if peak_end_idx < 0:
-                    # peak ended during existing chunk, therefore first
-                    # abs(peak_end_idx) time steps already in pcen: exclude those
-                    pcen_decay = pcen_decay[-(peak_end_idx+1):]
-                pcen_extend = np.concatenate([pcen_extend, pcen_decay])
+            # p_drop >= 0 implies pcen >= penv i.e. no extension to be applied.
+            # Hence, decay extension is to be applied only if p_drop < 0
+            if p_drop < 0:
+                target_decay_pres = track_chunk.environmental_pressure.values[-1] - 5
+                p_drop_rel = (target_decay_pres - track_chunk.environmental_pressure.values[-1])/p_drop
+                nb_days_decay = -np.log(p_drop_rel) / peak_decay_k
+                nts_extend_decay = int(np.ceil(24*nb_days_decay/time_step_h))
+                if nts_extend_decay > 0:
+                    time_in_decay = np.cumsum(np.repeat([time_step_h/24], nts_extend_decay))
+                    p_drop2 = p_drop * np.exp(-peak_decay_k * time_in_decay)
+                    pcen_decay = track_chunk.environmental_pressure.values[-1] + p_drop2
+                    # p_drop = (pcen[end_peak] - track_chunk.environmental_pressure.values[end_peak:])
+                    # p_drop = p_drop * np.exp(-peak_decay_k * time_in_decay)
+                    # pcen[end_peak:] = track_chunk.environmental_pressure.values[end_peak:] + p_drop
+                    if peak_end_idx < 0:
+                        # peak ended during existing chunk, therefore first
+                        # abs(peak_end_idx) time steps already in pcen: exclude those
+                        pcen_decay = pcen_decay[-(peak_end_idx+1):]
+                    pcen_extend = np.concatenate([pcen_extend, pcen_decay])
             pcen_extend = np.fmin(pcen_extend, track_chunk.environmental_pressure.values[-1])
 
             # finally, truncate track to keep only 3 after entering TD category
