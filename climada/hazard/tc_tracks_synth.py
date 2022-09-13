@@ -2605,8 +2605,6 @@ def intensity_evolution_sea(track, id_chunk, central_pressure_pert, rnd_pars_i):
                 # in case in the end there is nothing to extend (0 time steps)
                 pcen_extend = None
 
-
-
     # Now central pressure has been modelled
     track_chunk['central_pressure'][:] = pcen
     track['central_pressure'][in_chunk] = track_chunk['central_pressure'][:]
