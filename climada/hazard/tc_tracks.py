@@ -1063,6 +1063,10 @@ class TCTracks():
 
         if time_step_h <= 0:
             raise ValueError(f"time_step_h is not a positive number: {time_step_h}")
+        time_step_h_current = self._get_unique_time_step_h()
+        if np.allclose(time_step_h_current, time_step_h):
+            LOGGER.info('All tracks are already at the requested temporal resolution')
+            return
         LOGGER.info('Interpolating %s tracks to %sh time steps.', self.size, time_step_h)
 
         if land_params:
@@ -1425,6 +1429,10 @@ class TCTracks():
             gdf.crs = DEF_CRS
 
         return gdf
+
+    def _get_unique_time_step_h(self):
+        time_step_h = np.unique(np.concatenate([np.unique(x['time_step']) for x in self.data]))
+        return time_step_h
 
     @staticmethod
     @numba.jit(forceobj=True)
