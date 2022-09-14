@@ -353,7 +353,7 @@ class Hazard():
         else:
             haz.orig = np.ones(haz.event_id.size, bool)
         if 'unit' in attrs:
-            haz.unit = attrs['unit']
+            haz.units = attrs['unit']
 
         return haz
 
@@ -451,7 +451,7 @@ class Hazard():
         else:
             haz.orig = np.ones(haz.event_id.size, bool)
         if 'unit' in attrs:
-            haz.unit = attrs['unit']
+            haz.units = attrs['unit']
 
         return haz
 

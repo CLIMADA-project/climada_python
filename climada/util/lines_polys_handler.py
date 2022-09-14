@@ -124,7 +124,7 @@ def calc_geom_impact(
 
     # compute point impact
     impact_pnt = Impact()
-    impact_pnt.calc(exp_pnt, impf_set, haz, save_mat=True)
+    impact_pnt.calc(exp_pnt, impf_set, haz, save_mat=True, assign_centroids=False)
 
     # re-aggregate impact to original exposure geometry
     impact_agg = impact_pnt_agg(impact_pnt, exp_pnt.gdf, agg_met)
@@ -295,7 +295,7 @@ def calc_grid_impact(
 
     # compute point impact
     impact_pnt = Impact()
-    impact_pnt.calc(exp_pnt, impf_set, haz, save_mat=True)
+    impact_pnt.calc(exp_pnt, impf_set, haz, save_mat=True, assign_centroids=False)
 
     # re-aggregate impact to original exposure geometry
     impact_agg = impact_pnt_agg(impact_pnt, exp_pnt.gdf, agg_met)

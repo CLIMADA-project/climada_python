@@ -61,7 +61,8 @@ class ImpactCalc():
         self.exposures = exposures
         self.impfset = impfset
         self.hazard = hazard
-        self._orig_exp_idx = np.arange(self.exposures.gdf.shape[0]) #exposures index to use for matrix reconstruction
+        # exposures index to use for matrix reconstruction
+        self._orig_exp_idx = np.arange(self.exposures.gdf.shape[0])
 
     @property
     def n_exp_pnt(self):
@@ -101,13 +102,20 @@ class ImpactCalc():
         if 'cover' in self.exposures.gdf.columns:
             return self.exposures.gdf['cover'].to_numpy()
 
-    def impact(self, save_mat=True):
+    def impact(self, save_mat=True, assign_centroids=True):
         """Compute the impact of a hazard on exposures.
 
         Parameters
         ----------
-        save_mat : bool
+        save_mat : bool, optional
             if true, save the total impact matrix (events x exposures)
+            Default: True
+        assign_centroids : bool, optional
+            indicates whether centroids are assigned to the self.exposures object.
+            Centroids assignment is an expensive operation; set this to ``False`` to save
+            computation time if the hazards' centroids are already assigned to the exposures
+            object.
+            Default: True
 
         Examples
         --------
@@ -126,7 +134,7 @@ class ImpactCalc():
         the column is added to the exposures geodataframe.
         """
         impf_col = self.exposures.get_impf_column(self.hazard.haz_type)
-        exp_gdf = self.minimal_exp_gdf(impf_col)
+        exp_gdf = self.minimal_exp_gdf(impf_col, assign_centroids)
         if exp_gdf.size == 0:
             return self._return_empty(save_mat)
         LOGGER.info('Calculating impact for %s assets (>0) and %s events.',
@@ -136,7 +144,7 @@ class ImpactCalc():
 
 #TODO: make a better impact matrix generator for insured impacts when
 # the impact matrix is already present
-    def insured_impact(self, save_mat=False):
+    def insured_impact(self, save_mat=False, assign_centroids=True):
         """Compute the impact of a hazard on exposures with a deductible and/or
         cover.
 
@@ -147,6 +155,12 @@ class ImpactCalc():
         ----------
         save_mat : bool
             if true, save the total impact matrix (events x exposures)
+        assign_centroids : bool, optional
+            indicates whether centroids are assigned to the self.exposures object.
+            Centroids assignment is an expensive operation; set this to ``False`` to save
+            computation time if the hazards' centroids are already assigned to the exposures
+            object.
+            Default: True
 
         Examples
         --------
@@ -169,7 +183,7 @@ class ImpactCalc():
                                  "Please set exposures.gdf.cover"
                                  "and/or exposures.gdf.deductible")
         impf_col = self.exposures.get_impf_column(self.hazard.haz_type)
-        exp_gdf = self.minimal_exp_gdf(impf_col)
+        exp_gdf = self.minimal_exp_gdf(impf_col, assign_centroids)
         if exp_gdf.size == 0:
             return self._return_empty(save_mat)
         LOGGER.info('Calculating impact for %s assets (>0) and %s events.',
@@ -238,21 +252,33 @@ class ImpactCalc():
         return Impact.from_eih(self.exposures, self.impfset, self.hazard,
                         at_event, eai_exp, aai_agg, imp_mat)
 
-    def minimal_exp_gdf(self, impf_col):
+    def minimal_exp_gdf(self, impf_col, assign_centroids):
         """Get minimal exposures geodataframe for impact computation
 
         Parameters
         ----------
         exposures : climada.entity.Exposures
         hazard : climada.Hazard
-        impf_col: str
-            name of the impact function column in exposures.gdf
-
+        impf_col : str
+            Name of the impact function column in exposures.gdf
+        assign_centroids : bool
+            Indicates whether centroids are re-assigned to the self.exposures object
+            or kept from previous impact calculation with a hazard of the same hazard type.
+            Centroids assignment is an expensive operation; set this to ``False`` to save
+            computation time if the centroids have not changed since the last impact
+            calculation.
         """
-        self.exposures.assign_centroids(self.hazard, overwrite=False)
+        if assign_centroids:
+            self.exposures.assign_centroids(self.hazard, overwrite=True)
+        elif self.hazard.centr_exp_col not in self.exposures.gdf.columns:
+            raise ValueError("'assign_centroids' is set to 'False' but no centroids are assigned"
+                             f" for the given hazard type ({self.hazard.tag.haz_type})."
+                             " Run 'exposures.assign_centroids()' beforehand or set"
+                             " 'assign_centroids' to 'True'")
         mask = (
-            (self.exposures.gdf.value.values != 0)
-            & (self.exposures.gdf[self.hazard.centr_exp_col].values >= 0)
+            (self.exposures.gdf.value.values == self.exposures.gdf.value.values)  # value != NaN
+            & (self.exposures.gdf.value.values != 0)                              # value != 0
+            & (self.exposures.gdf[self.hazard.centr_exp_col].values >= 0)    # centroid assigned
         )
         exp_gdf = gpd.GeoDataFrame(
             {col: self.exposures.gdf[col].values[mask]
@@ -260,7 +286,8 @@ class ImpactCalc():
             )
         if exp_gdf.size == 0:
             LOGGER.warning("No exposures with value >0 in the vicinity of the hazard.")
-        self._orig_exp_idx = mask.nonzero()[0]  #update index of kept exposures points in exp_gdf within the full exposures
+        self._orig_exp_idx = mask.nonzero()[0]  # update index of kept exposures points in exp_gdf
+                                                # within the full exposures
         return exp_gdf
 
     def imp_mat_gen(self, exp_gdf, impf_col):
@@ -381,10 +408,11 @@ class ImpactCalc():
         scipy.sparse.csr_matrix
             Impact per event (rows) per exposure point (columns)
         """
-        n_exp_pnt = len(cent_idx) #implicitly checks in matrix assignement whether len(cent_idx) == len(exp_values)
+        n_exp_pnt = len(cent_idx)  # implicitly checks in matrix assignement whether
+                                   # len(cent_idx) == len(exp_values)
         mdr = self.hazard.get_mdr(cent_idx, impf)
         fract = self.hazard.get_fraction(cent_idx)
-        exp_values_csr = sparse.csr_matrix( #vector 1 x exp_size
+        exp_values_csr = sparse.csr_matrix(  # vector 1 x exp_size
             (exp_values, np.arange(n_exp_pnt), [0, n_exp_pnt]),
             shape=(1, n_exp_pnt))
         return fract.multiply(mdr).multiply(exp_values_csr)
@@ -393,7 +421,9 @@ class ImpactCalc():
         """
         Make an impact matrix from an impact sub-matrix generator
         """
-        data, row, col = np.hstack([  #rows=events index, cols=exposure point index within self.exposures
+        # rows: events index
+        # cols: exposure point index within self.exposures
+        data, row, col = np.hstack([
             (mat.data, mat.nonzero()[0], self._orig_exp_idx[idx][mat.nonzero()[1]])
             for mat, idx in imp_mat_gen
             ])

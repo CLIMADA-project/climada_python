@@ -83,6 +83,7 @@ class TestApply(unittest.TestCase):
         exp = Exposures.from_mat(ENT_TEST_MAT)
         exp.gdf.rename(columns={'impf': 'impf_TC'}, inplace=True)
         exp.check()
+        exp.assign_centroids(haz)
 
         imp_set = ImpactFuncSet.from_mat(ENT_TEST_MAT)
 
@@ -117,6 +118,7 @@ class TestApply(unittest.TestCase):
         exp.gdf['region_id'] = np.zeros(exp.gdf.shape[0])
         exp.gdf.region_id.values[10:] = 1
         exp.check()
+        exp.assign_centroids(haz)
 
         imp_set = ImpactFuncSet.from_mat(ENT_TEST_MAT)
 

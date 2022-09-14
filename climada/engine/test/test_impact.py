@@ -298,7 +298,7 @@ class TestIO(unittest.TestCase):
 
         imp_write = Impact()
         ent.exposures.assign_centroids(hazard)
-        imp_write.calc(ent.exposures, ent.impact_funcs, hazard)
+        imp_write.calc(ent.exposures, ent.impact_funcs, hazard, assign_centroids=False)
         file_name = DATA_FOLDER.joinpath('test.xlsx')
         imp_write.write_excel(file_name)
 
@@ -351,7 +351,7 @@ class TestRPmatrix(unittest.TestCase):
         # Assign centroids to exposures
         ent.exposures.assign_centroids(hazard)
         # Compute the impact over the whole exposures
-        impact.calc(ent.exposures, ent.impact_funcs, hazard, save_mat=True)
+        impact.calc(ent.exposures, ent.impact_funcs, hazard, save_mat=True, assign_centroids=False)
         # Compute the impact per return period over the whole exposures
         impact_rp = impact.local_exceedance_imp(return_periods=(10, 40))
 
@@ -561,7 +561,7 @@ class TestSelect(unittest.TestCase):
         ent.exposures.assign_centroids(hazard)
 
         # Compute the impact over the whole exposures
-        imp.calc(ent.exposures, ent.impact_funcs, hazard, save_mat=True)
+        imp.calc(ent.exposures, ent.impact_funcs, hazard, save_mat=True, assign_centroids=False)
 
         sel_imp = imp.select(event_ids=imp.event_id,
                              event_names=imp.event_name,

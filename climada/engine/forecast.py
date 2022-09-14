@@ -292,12 +292,12 @@ class Forecast:
             default is false.
         """
         # calc impact
+        if self.hazard:
+            self.exposure.assign_centroids(self.hazard[0], overwrite=force_reassign)
         for ind_i, haz_i in enumerate(self.hazard):
-            # force reassign
-            if force_reassign:
-                self.exposure.assign_centroids(haz_i)
             self._impact[ind_i].calc(
-                self.exposure, self.vulnerability, haz_i, save_mat=True
+                self.exposure, self.vulnerability, haz_i,
+                save_mat=True, assign_centroids=False
             )
 
     def plot_imp_map(
