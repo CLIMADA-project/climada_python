@@ -628,6 +628,12 @@ class TestFuncs(unittest.TestCase):
         tc_track.equal_timestep(time_step_h=1)
         np.testing.assert_array_less(tc_track.data[0].lon.values, 0)
 
+        # test for case when temporal resolution of all tracks already matches time_step_h
+        expected_warning = 'All tracks are already at the requested temporal resolution.'
+        with self.assertLogs('climada.hazard.tc_tracks', level='INFO') as cm:
+            tc_track.equal_timestep(time_step_h=1)
+        self.assertIn(expected_warning, cm.output[0])
+
     def test_interp_origin_pass(self):
         """Interpolate track to min_time_step crossing lat origin"""
         tc_track = tc.TCTracks.from_processed_ibtracs_csv(TEST_TRACK)

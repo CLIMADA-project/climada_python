@@ -1065,7 +1065,7 @@ class TCTracks():
             raise ValueError(f"time_step_h is not a positive number: {time_step_h}")
         time_step_h_current = self._get_unique_time_step_h()
         if np.allclose(time_step_h_current, time_step_h):
-            LOGGER.info('All tracks are already at the requested temporal resolution')
+            LOGGER.info('All tracks are already at the requested temporal resolution.')
             return
         LOGGER.info('Interpolating %s tracks to %sh time steps.', self.size, time_step_h)
 
