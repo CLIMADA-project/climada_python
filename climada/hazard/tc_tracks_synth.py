@@ -375,7 +375,14 @@ def calc_perturbed_trajectories(
                                  land_geom_hist, central_pressure_pert, rand)
                    for track, rand in zip(tracks.data, random_vec)]
 
-    if adjust_intensity != 'explicit':
+    if adjust_intensity == "explicit":
+        track_fits_warnings = ', '.join([x[3] for x in new_ens if x[3] is not None])
+        if len(track_fits_warnings) > 0:
+            LOGGER.warning('Positive slope in wind-pressure relationship for the '
+                           'following storms (max amplitude, max potentially '
+                           'affected category, fitted relationship type): %s',
+                           track_fits_warnings)
+    else:
         # log tracks that have been cut-off at high latitudes
         cutoff_track_ids_tc = [x[1] for x in new_ens]
         cutoff_track_ids_tc = sum(cutoff_track_ids_tc, [])
@@ -484,7 +491,7 @@ def calc_perturbed_trajectories(
                                  ' if use_global_decay_params=False.')
 
         LOGGER.debug('Modelling TC intensities...')
-        ocean_modelled_tracks, sid_extended_tracks_intensity = _model_synth_tc_intensity(
+        ocean_modelled_tracks, sid_extended_tracks_intensity, sid_outside_lat_range = _model_synth_tc_intensity(
             tracks_list=tracks_list,
             random_vec_intensity=random_vec_intensity,
             time_step_h=time_step_h,
@@ -502,6 +509,9 @@ def calc_perturbed_trajectories(
             raise ValueError('Track extension, why did it happen?')
         else:
             nb_extended_tracks = 0
+        if len(sid_outside_lat_range):
+            LOGGER.debug('Outside latitude range for following events - applied land decay: %s',
+                         ', '.join(sid_outside_lat_range))
 
         LOGGER.debug(
             f"Extended {nb_extended_tracks} synthetic tracks that ended at Tropical Storm or above category. "
@@ -571,7 +581,7 @@ def _one_rnd_walk(track,
     cutoff_track_ids_tc : List of str
         List containing information about the tracks that were cut off at high
         latitudes with wind speed of TC category 2-5.
-    curoff_track_ids_ts : List of str
+    cutoff_track_ids_ts : List of str
         List containing information about the tracks that were cut off at high
         latitudes with a wind speed up to TC category 1.
     """
@@ -590,13 +600,14 @@ def _one_rnd_walk(track,
             np.flip(track.central_pressure.values)
         ))
         # compute linear regression onto intensification and decay
-        _add_fits_to_track(track, central_pressure_pert)
+        track_fits_warning = _add_fits_to_track(track, central_pressure_pert)
         # track are not to be cut-off. Latitudinal tresholds are applied later
         # in the model.
         cutoff_track_ids_tstc = None
     else:
         # to keep track of cut-off tracks
         cutoff_track_ids_tstc = {'tc': {}, 'ts': {}}
+        track_fits_warning = None
 
     # generate tracks with perturbed trajectories
     for i_ens in range(nb_synth_tracks):
@@ -639,7 +650,7 @@ def _one_rnd_walk(track,
         cutoff_track_ids_tc = []
         cutoff_track_ids_ts = []
 
-    return ens_track, cutoff_track_ids_tc, cutoff_track_ids_ts
+    return ens_track, cutoff_track_ids_tc, cutoff_track_ids_ts, track_fits_warning
 
 def _get_random_trajectories_perts(tracks,
                                     nb_synth_tracks,
@@ -1191,9 +1202,7 @@ def _track_ext_id_chunk(track, land_geom):
     # and dist_since_lf was not correct
     climada.hazard.tc_tracks.track_land_params(track, land_geom=land_geom)
     if np.any(np.isnan(track['id_chunk'].values)):
-
         # case of extending due to a shift in values
-        # 1) retrieve land parameters
         na_start_idx = np.where(np.isnan(track['id_chunk']))[0][0]
         # na_start_idx cannot be 0, otherwise it should fail in check_id_chunk above
         id_chunk_full = track['id_chunk'].values[:na_start_idx]
@@ -1672,18 +1681,29 @@ def _add_fits_to_track(track: xr.Dataset, central_pressure_pert: float):
         Same as input parameter track but with additional attributes 'fit_intens' and
         'fit_decay' (see _get_fit_single_phase). If intensification and/or decay
         consist of less than 3 data points, the corresponding attribute is not set.
+    warning_slope : str
+        A warning string if a slope has unexpected sign.
     """
     pcen = track.central_pressure.values
     where_max_intensity = np.where(pcen == pcen.min())[0]
+    warning_slope = []
     if where_max_intensity[0] > 3:
         track_intens = track[dict(time=slice(None,where_max_intensity[0]))]
-        fit_attrs_intens = _get_fit_single_phase(track_intens, central_pressure_pert)
+        fit_attrs_intens, warning_slope_intens = _get_fit_single_phase(track_intens, central_pressure_pert)
         track.attrs['fit_intens'] = fit_attrs_intens
+        if warning_slope_intens is not None:
+            warning_slope += ["%s intensification %s" % (track.sid, warning_slope_intens)]
     if where_max_intensity[-1] < len(pcen) - 4:    
         track_decay = track[dict(time=slice(where_max_intensity[-1],None))]
-        fit_attrs_decay = _get_fit_single_phase(track_decay, central_pressure_pert)
+        fit_attrs_decay, warning_slope_decay = _get_fit_single_phase(track_decay, central_pressure_pert)
         track.attrs['fit_decay'] = fit_attrs_decay
-    return track
+        if warning_slope_decay is not None:
+            warning_slope += ["%s decay %s" % (track.sid, warning_slope_decay)]
+    if len(warning_slope) > 0:
+        warning_slope = ', '.join(warning_slope)
+    else:
+        warning_slope = None
+    return warning_slope
 
 def _get_fit_single_phase(track_sub, central_pressure_pert):
     """Calculate order and fit of variables to be modelled for a temporal subset
@@ -1717,6 +1737,7 @@ def _get_fit_single_phase(track_sub, central_pressure_pert):
     """
     pcen = track_sub['central_pressure'].values
     fit_output = {}
+    warning_str = None
     for var in FIT_TRACK_VARS_RANGE.keys():
         order = _get_fit_order(pcen, central_pressure_pert)
         d_explanatory = _prepare_data_piecewise(pcen, order)
@@ -1743,15 +1764,14 @@ def _get_fit_single_phase(track_sub, central_pressure_pert):
                 if np.any(np.diff(interp_at_res.values) > kts_margin):
                     idx_pos = np.where(np.diff(interp_at_res.values) > kts_margin)[0]
                     max_wind = [interp_at_res[i+1] for i in idx_pos]
-                    LOGGER.debug('Positive slope for cyc_id %s in wind-pressure relationship, '
-                                 'with max amplitude of %s kts (piecewise linear). '
-                                 'Maximum potentially affected category: %s.',
-                                 track_sub.sid, np.round(np.max(np.diff(interp_at_res.values)), 1),
-                                 climada.hazard.tc_tracks.CAT_NAMES[
-                                    climada.hazard.tc_tracks.set_category(max_wind, track_sub.max_sustained_wind_unit)
-                                ])
+                    warning_str = "(%s kts, %s, piecewise linear)" % (
+                        np.round(np.max(np.diff(interp_at_res.values)), 1),
+                        climada.hazard.tc_tracks.CAT_NAMES[
+                            climada.hazard.tc_tracks.set_category(max_wind, track_sub.max_sustained_wind_unit)
+                        ]
+                    )
             else:
-                pcen_range = np.diff([pcen.min()-central_pressure_pert, 1010])
+                pcen_range = np.diff([pcen.min()-central_pressure_pert, 1010])[0]
                 if sm_results.params.values[0]*pcen_range > kts_margin:
                     max_wind = sm_results.predict(
                         _prepare_data_piecewise(
@@ -1759,14 +1779,13 @@ def _get_fit_single_phase(track_sub, central_pressure_pert):
                             order
                         )
                     )
-                    LOGGER.debug('Positive slope for cyc_id %s in wind-pressure relationship, '
-                                 'with max amplitude of %s kts (linear). '
-                                 'Maximum potentially affected category: %s',
-                                 track_sub.sid, sm_results.params.values[0]*pcen_range,
-                                 climada.hazard.tc_tracks.CAT_NAMES[
-                                    climada.hazard.tc_tracks.set_category(max_wind, track_sub.max_sustained_wind_unit)
-                                ])
-    return fit_output
+                    warning_str = "(%s kts, %s, linear)" % (
+                        np.round(sm_results.params.values[0]*pcen_range, 1),
+                        climada.hazard.tc_tracks.CAT_NAMES[
+                            climada.hazard.tc_tracks.set_category(max_wind, track_sub.max_sustained_wind_unit)
+                        ]
+                    )
+    return fit_output, warning_str
 
 def _get_fit_order(pcen, central_pressure_pert):
     """Get the order of the data fit.
@@ -2408,6 +2427,7 @@ def _model_synth_tc_intensity(tracks_list,
     # model track intensity
     # TODO parallelize here
     sid_extended_tracks = []
+    sid_outside_lat_range = []
     if pool:
         chunksize = min(len(tracks_list) // pool.ncpus, 1000)
         tracks_intensified = pool.map(
@@ -2436,7 +2456,7 @@ def _model_synth_tc_intensity(tracks_list,
             drop_temporary_variables(track, track_vars_attrs)
             for (track,_) in tracks_intensified
         ]
-        return new_tracks_list, sid_extended_tracks
+        return new_tracks_list, sid_extended_tracks, sid_outside_lat_range
 
     # create extension and trajectory
     tracks_intensified_new = []
@@ -2490,7 +2510,7 @@ def _model_synth_tc_intensity(tracks_list,
         latrange_out_idx = _get_outside_lat_idx(track)
         if latrange_out_idx < track.time.size:
             if np.all(~sea_land) or np.where(sea_land)[0][0] > latrange_out_idx:
-                LOGGER.debug('Outside latitude range for %s - applying land decay', track.sid)
+                sid_outside_lat_range.append(track.sid)
                 sea_land[latrange_out_idx] = True
         if np.any(sea_land):
             # apply landfall decay thereafter
@@ -2542,7 +2562,7 @@ def _model_synth_tc_intensity(tracks_list,
         drop_temporary_variables(track, track_vars_attrs)
         for track in tracks_intensified_new2
     ]
-    return new_tracks_list, sid_extended_tracks
+    return new_tracks_list, sid_extended_tracks, sid_outside_lat_range
 
 def drop_temporary_variables(track : xr.Dataset, track_vars_attrs):
     # TODO docstring
