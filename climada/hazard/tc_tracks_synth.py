@@ -423,20 +423,21 @@ def calc_perturbed_trajectories(
             # get random numbers: track_ext.time.size-2 for each track_ext
             LOGGER.debug('Extending tracks after shift')
             random_traj_extension = [
-                _get_random_trajectory_ext(track_id_chunks[3], time_step_h)
-                for track_id_chunks in tracks_with_id_chunks
+                _get_random_trajectory_ext(track_ext, time_step_h)
+                for _,_,_,track_ext in tracks_with_id_chunks
             ]
             # create the tracks with extension
-            tracks_with_id_chunks_extended = [
-                _create_track_from_ext(track, track_ext, rnd_tpl)
+            sid_extended_tracks_shift = [track_ext.sid for _, _, _, track_ext in tracks_with_id_chunks if track_ext is not None]
+            tracks_with_id_chunks = [
+                (_create_track_from_ext(track, track_ext, rnd_tpl), -1, -1)
                 if track_ext is not None
-                else track
-                for (track, _, _, track_ext),rnd_tpl in zip(tracks_with_id_chunks, random_traj_extension)
+                else (track, no_chunks_sea, no_chunks_land)
+                for (track, no_chunks_sea, no_chunks_land, track_ext),rnd_tpl in zip(tracks_with_id_chunks, random_traj_extension)
             ]
             # get new land_geom
             extent = climada.util.coordinates.latlon_bounds(
-                np.concatenate([t.lat.values for t in tracks_with_id_chunks_extended]),
-                np.concatenate([t.lon.values for t in tracks_with_id_chunks_extended]),
+                np.concatenate([t[0].lat.values for t in tracks_with_id_chunks]),
+                np.concatenate([t[0].lon.values for t in tracks_with_id_chunks]),
                 buffer=0.1
             )
             extent = (extent[0], extent[2], extent[1], extent[3])
@@ -445,17 +446,20 @@ def calc_perturbed_trajectories(
             )
             # on_land still True for id_chunk NA
             # extend id_chunk and get number of chunks
-            tracks_list = tracks_with_id_chunks_extended
             no_chunks = [
                 _track_ext_id_chunk(track, land_geom)
-                for track in tracks_with_id_chunks_extended
+                if 'id_chunk' in track.variables and np.any(np.isnan(track['id_chunk'].values))
+                else (no_chunks_sea, no_chunks_land)
+                for track, no_chunks_sea, no_chunks_land in tracks_with_id_chunks
             ]
+            tracks_list = [track for track, _, _ in tracks_with_id_chunks]
         else:
-            tracks_list = [track for track, _, _, _ in tracks_with_id_chunks]
+            sid_extended_tracks_shift = []
             no_chunks = [
                 (no_chunks_sea, no_chunks_land)
                 for _, no_chunks_sea, no_chunks_land, _ in tracks_with_id_chunks
             ]
+            tracks_list = [track for track, _, _, _ in tracks_with_id_chunks]
 
         # FOR EACH CHUNK OVER THE OCEAN, WE NEED 4 RANDOM VALUES: intensification
         # target perturbation, intensification shape, peak duration, decay
@@ -480,7 +484,7 @@ def calc_perturbed_trajectories(
                                  ' if use_global_decay_params=False.')
 
         LOGGER.debug('Modelling TC intensities...')
-        ocean_modelled_tracks = _model_synth_tc_intensity(
+        ocean_modelled_tracks, sid_extended_tracks_intensity = _model_synth_tc_intensity(
             tracks_list=tracks_list,
             random_vec_intensity=random_vec_intensity,
             time_step_h=time_step_h,
@@ -492,9 +496,15 @@ def calc_perturbed_trajectories(
             p_rel=p_rel,
             s_rel=True
         )
+        if extend_track:
+            nb_extended_tracks = np.unique(np.concatenate([sid_extended_tracks_shift, sid_extended_tracks_intensity])).size
+        elif len(sid_extended_tracks_intensity) > 0:
+            raise ValueError('Track extension, why did it happen?')
+        else:
+            nb_extended_tracks = 0
 
         LOGGER.debug(
-            f"Extended {sum([1 for _, _, _, track_ext in tracks_with_id_chunks if track_ext is not None])} synthetic tracks that ended at Tropical Storm or above category. "
+            f"Extended {nb_extended_tracks} synthetic tracks that ended at Tropical Storm or above category. "
             f"Adapted intensity on {len(ocean_modelled_tracks)} tracks for a total of "
             f"{sum(no_sea_chunks for no_sea_chunks, _ in no_chunks)} ocean and "
             f"{sum(no_land_chunks for _, no_land_chunks in no_chunks)} land chunks."
@@ -1001,10 +1011,12 @@ def _create_track_from_ext(track, track_ext, rnd_tpl):
     _project_trajectory_track_ext(track_ext, rnd_tpl)
     miss_vars_ext = set(list(track.variables)) - set(list(track_ext.variables))
     if len(miss_vars_ext) > 0:
-        print('Variables in track but not in track_ext: %s' % miss_vars_ext)
+        LOGGER.debug('Variables in track but not in track_ext: %s (%s)',
+                     miss_vars_ext, track.sid)
     miss_vars = set(list(track_ext.variables)) - set(list(track.variables))
     if len(miss_vars) > 0:
-        print('Variables in track_ext but not in track: %s' % miss_vars)
+        LOGGER.debug('Variables in track_ext but not in track: %s (%s)',
+                     miss_vars, track.sid)
     if track.time.values[-1] != track_ext.time.values[1]:
         raise ValueError('Time of track and track_ext do not match')
     track_new = xr.concat([track, track_ext.isel(time=slice(2, None))], "time")
@@ -1034,7 +1046,18 @@ def _track_ext_id_chunk(track, land_geom):
         id_chunk, no_chunks_sea, no_chunks_land = _get_id_chunk(transitions)
         # check that newly computed id_chunk values match the original ones
         if np.any(id_chunk[:na_start_idx] != track['id_chunk'][:na_start_idx].values.astype(int)):
-            raise ValueError('id_chunk values mismatch: %s' % track.sid)
+            # due to a short landfall at the end of track before missing values.
+            # check if calculating id_chunk from subset
+            transitions_orig = _get_transitions(track.on_land.values[:na_start_idx], 3)
+            _remove_landstart(transitions_orig)
+            if idx_start_model < _first_transition(transitions_orig):
+                transitions_orig[int(idx_start_model)] = 1
+            id_chunk_orig, _, _ = _get_id_chunk(transitions_orig)
+            min_n_ts = np.ceil(NEGLECT_LANDFALL_DURATION_HOUR/track.time_step.values[0]).astype(int)
+            if np.any(id_chunk_orig != track['id_chunk'][:na_start_idx].values):
+                raise ValueError('id_chunk values mismatch: %s' % track.sid)
+            elif np.any(id_chunk[:max(0, na_start_idx-min_n_ts-1)] != track['id_chunk'][:max(0, na_start_idx-min_n_ts-1)].values.astype(int)):
+                raise ValueError('id_chunk values mismatch (2): %s' % track.sid)
         # now id_chunk should be valid and not contain any missing value
         check_id_chunk(id_chunk, track.sid, allow_missing=False)
         track['id_chunk'] = ('time', id_chunk)
@@ -2239,6 +2262,7 @@ def _model_synth_tc_intensity(tracks_list,
                               s_rel):
     # model track intensity
     # TODO parallelize here
+    sid_extended_tracks = []
     if pool:
         chunksize = min(len(tracks_list) // pool.ncpus, 1000)
         tracks_intensified = pool.map(
@@ -2267,7 +2291,7 @@ def _model_synth_tc_intensity(tracks_list,
             drop_temporary_variables(track, track_vars_attrs)
             for (track,_) in tracks_intensified
         ]
-        return new_tracks_list
+        return new_tracks_list, sid_extended_tracks
 
     # create extension and trajectory
     tracks_intensified_new = []
@@ -2277,6 +2301,7 @@ def _model_synth_tc_intensity(tracks_list,
         if values_df is None or values_df.shape[0] == 0:
             tracks_intensified_new.append(track)
             continue
+        sid_extended_tracks.append(track.sid)
         track_ext = _create_raw_track_extension(
             track,
             nb_time_steps=values_df.shape[0],
@@ -2372,7 +2397,7 @@ def _model_synth_tc_intensity(tracks_list,
         drop_temporary_variables(track, track_vars_attrs)
         for track in tracks_intensified_new2
     ]
-    return new_tracks_list
+    return new_tracks_list, sid_extended_tracks
 
 def drop_temporary_variables(track : xr.Dataset, track_vars_attrs):
     # TODO docstring
