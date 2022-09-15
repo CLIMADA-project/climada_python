@@ -480,6 +480,8 @@ class Impact():
             return 'Expected annual impact'
         if self.frequency_unit in ['1/day', 'daily', '1/d']:
             return 'Expected daily impact'
+        if self.frequency_unit in ['1/month', 'monthly', '1/m']:
+            return 'Expected monthly impact'
         return f'Expected impact ({self.frequency_unit})'
 
     def plot_scatter_eai_exposure(self, mask=None, ignore_zero=False,
