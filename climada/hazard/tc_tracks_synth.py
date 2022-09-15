@@ -2410,6 +2410,11 @@ def drop_temporary_variables(track : xr.Dataset, track_vars_attrs):
         if v in track.variables:
             if np.any(np.isnan(track[v].values)):
                 raise ValueError('Missing values in %s: %s', v, track.sid)
+    # check time
+    time_steps_h = (track.time.values[1:] - track.time.values[:-1]) / np.timedelta64(1, 'h')
+    if not np.allclose(time_steps_h, time_steps_h[0]):
+        LOGGER.debug('time steps in hour: %s' % ','.join(time_steps_h.astype(str)))
+        raise ValueError('Temporal resolution not constant: %s', track.sid)
     return track.drop_vars(vars_to_drop)
 
 def _get_cat_from_pcen(track_chunk, phase, idx=None, pcen=None):
