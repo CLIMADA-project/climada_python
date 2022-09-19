@@ -138,7 +138,7 @@ class ImpactCalc():
         if exp_gdf.size == 0:
             return self._return_empty(save_mat)
         LOGGER.info('Calculating impact for %s assets (>0) and %s events.',
-                    self.n_events, self.n_events)
+                    self.n_exp_pnt, self.n_events)
         imp_mat_gen = self.imp_mat_gen(exp_gdf, impf_col)
         return self._return_impact(imp_mat_gen, save_mat)
 
