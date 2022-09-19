@@ -16,7 +16,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
-Define Impact and ImpactFreqCurve classes.
+Define ImpactCalc class.
 """
 
 __all__ = ['ImpactCalc']
@@ -102,18 +102,11 @@ class ImpactCalc():
         if 'cover' in self.exposures.gdf.columns:
             return self.exposures.gdf['cover'].to_numpy()
 
-    def impact(self, insured=None, save_mat=True, assign_centroids=True):
+    def impact(self, save_mat=True, assign_centroids=True):
         """Compute the impact of a hazard on exposures.
 
         Parameters
         ----------
-        insured : bool, optional
-            if ``True``, the impact per event is obtained by subtracting the deductible for each
-            exposure point (and is maximally equal to the cover)
-            if ``False``, deductible and/or cover values in the exposures are ignored.
-            if ``None``, the value is derived from presence of both, cover and deductible columns
-            in the exposures ``GeoDataFrame``.
-            Default: None
         save_mat : bool, optional
             if true, save the total impact matrix (events x exposures)
             Default: True
@@ -133,36 +126,24 @@ class ImpactCalc():
             >>> imp = impcalc.insured_impact()
             >>> imp.aai_agg
 
-        See also
-        --------
-        insured_impact : same as ``impact(insured=True)``
+        Notes
+        -----
+        Deductible and/or cover values in the exposures are ignored.
+
+        In case the exposures has no centroids assigned for the given hazard,
+        the column is added to the exposures geodataframe.
         """
         impf_col = self.exposures.get_impf_column(self.hazard.haz_type)
         exp_gdf = self.minimal_exp_gdf(impf_col, assign_centroids)
         if exp_gdf.size == 0:
             return self._return_empty(save_mat)
         LOGGER.info('Calculating impact for %s assets (>0) and %s events.',
-                    exp_gdf.size, self.n_events)
+                    self.n_exp_pnt, self.n_events)
         imp_mat_gen = self.imp_mat_gen(exp_gdf, impf_col)
-
-        # insured impact
-        if insured is None:
-            insured = (self.cover is not None
-                   and self.cover.max() > 0
-                   and self.deductible is not None)
-            if insured:
-                LOGGER.info("cover and deductible columns detected,"
-                            " going to calculate insured impact")
-        if insured:
-            if self.cover is None and self.deductible is None:
-                raise AttributeError("Neither cover nor deductible defined."
-                    " Please set exposures.gdf.cover and/or exposures.gdf.deductible")
-#TODO: make a better impact matrix generator for insured impacts when
-# the impact matrix is already present
-            imp_mat_gen = self.insured_mat_gen(imp_mat_gen, exp_gdf, impf_col)
-
         return self._return_impact(imp_mat_gen, save_mat)
 
+#TODO: make a better impact matrix generator for insured impacts when
+# the impact matrix is already present
     def insured_impact(self, save_mat=False, assign_centroids=True):
         """Compute the impact of a hazard on exposures with a deductible and/or
         cover.
@@ -192,11 +173,25 @@ class ImpactCalc():
 
         See also
         --------
-        apply_deductible_to_mat : apply deductible to impact matrix
-        apply_cover_to_mat : apply cover to impact matrix
-        impact : impact calculation
+        apply_deductible_to_mat:
+            apply deductible to impact matrix
+        apply_cover_to_mat:
+            apply cover to impact matrix
         """
-        return self.impact(insured=True, save_mat=save_mat, assign_centroids=assign_centroids)
+        if self.cover is None and self.deductible is None:
+            raise AttributeError("Neither cover nor deductible defined."
+                                 "Please set exposures.gdf.cover"
+                                 "and/or exposures.gdf.deductible")
+        impf_col = self.exposures.get_impf_column(self.hazard.haz_type)
+        exp_gdf = self.minimal_exp_gdf(impf_col, assign_centroids)
+        if exp_gdf.size == 0:
+            return self._return_empty(save_mat)
+        LOGGER.info('Calculating impact for %s assets (>0) and %s events.',
+                    exp_gdf.size, self.hazard.size)
+
+        imp_mat_gen = self.imp_mat_gen(exp_gdf, impf_col)
+        ins_mat_gen = self.insured_mat_gen(imp_mat_gen, exp_gdf, impf_col)
+        return self._return_impact(ins_mat_gen, save_mat)
 
     def _return_impact(self, imp_mat_gen, save_mat):
         """Return an impact object from an impact matrix generator
@@ -217,6 +212,7 @@ class ImpactCalc():
         --------
         imp_mat_gen : impact matrix generator
         insured_mat_gen: insured impact matrix generator
+
         """
         if save_mat:
             imp_mat = self.stitch_impact_matrix(imp_mat_gen)
@@ -452,9 +448,9 @@ class ImpactCalc():
         at_event : np.array
             Accumulated damage for each event
         eai_exp : np.array
-            Expected annual impact for each exposure point
+            Expected impact within a period of 1/frequency_unit for each exposure point
         aai_agg : float
-            Average annual impact aggregated
+            Average impact within a period of 1/frequency_unit aggregated
         """
         at_event = np.zeros(self.n_events)
         eai_exp = np.zeros(self.n_exp_pnt)
@@ -534,11 +530,11 @@ class ImpactCalc():
         imp_mat : sparse.csr_matrix
             matrix num_events x num_exp with impacts.
         frequency : np.array
-            annual frequency of events
+            frequency of events within a period of 1/frequency_unit
         Returns
         -------
         eai_exp : np.array
-            expected annual impact for each exposure
+            expected impact within a period of 1/frequency_unit for each exposure
         """
         n_events = freq.size
         freq_csr = sparse.csr_matrix(   #vector n_events x 1
@@ -569,12 +565,12 @@ class ImpactCalc():
         Parameters
         ----------
         eai_exp : np.array
-            expected annual impact for each exposure point
+            expected impact within a period of 1/frequency_unit for each exposure point
 
         Returns
         -------
         float
-            average annual impact aggregated
+            average aggregated impact within a period of 1/frequency_unit
         """
         return np.sum(eai_exp)
 
@@ -594,11 +590,11 @@ class ImpactCalc():
         Returns
         -------
         eai_exp: np.array
-            expected annual impact at each exposure point
+            expected impact within a period of 1/frequency_unit at each exposure point
         at_event: np.array()
             total impact for each event
         aai_agg : float
-            average annual impact aggregated over all exposure points
+            average impact within a period of 1/frequency_unit aggregated over all exposure points
         """
         eai_exp = cls.eai_exp_from_mat(mat, freq)
         at_event = cls.at_event_from_mat(mat)

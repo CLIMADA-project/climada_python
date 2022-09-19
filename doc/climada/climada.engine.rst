@@ -37,6 +37,14 @@ climada\.engine\.impact module
     :undoc-members:
     :show-inheritance:
 
+climada\.engine\.impact\_calc module
+------------------------------------
+
+.. automodule:: climada.engine.impact_calc
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 climada\.engine\.impact\_data module
 ------------------------------------
 
