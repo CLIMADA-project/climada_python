@@ -103,7 +103,7 @@ class CalcImpact(Calc):
         """
         Computes the impact for each sample in unc_data.sample_df.
 
-        By default, the aggregated average annual impact
+        By default, the aggregated average impact within a period of 1/frequency_unit
         (impact.aai_agg) and the excees impact at return periods rp
         (imppact.calc_freq_curve(self.rp).impact) is computed.
         Optionally, eai_exp and at_event is computed (this may require

@@ -16,7 +16,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
-Define Impact and ImpactFreqCurve classes.
+Define ImpactCalc class.
 """
 
 __all__ = ['ImpactCalc']
@@ -448,9 +448,9 @@ class ImpactCalc():
         at_event : np.array
             Accumulated damage for each event
         eai_exp : np.array
-            Expected annual impact for each exposure point
+            Expected impact within a period of 1/frequency_unit for each exposure point
         aai_agg : float
-            Average annual impact aggregated
+            Average impact within a period of 1/frequency_unit aggregated
         """
         at_event = np.zeros(self.n_events)
         eai_exp = np.zeros(self.n_exp_pnt)
@@ -530,11 +530,11 @@ class ImpactCalc():
         imp_mat : sparse.csr_matrix
             matrix num_events x num_exp with impacts.
         frequency : np.array
-            annual frequency of events
+            frequency of events within a period of 1/frequency_unit
         Returns
         -------
         eai_exp : np.array
-            expected annual impact for each exposure
+            expected impact within a period of 1/frequency_unit for each exposure
         """
         n_events = freq.size
         freq_csr = sparse.csr_matrix(   #vector n_events x 1
@@ -565,12 +565,12 @@ class ImpactCalc():
         Parameters
         ----------
         eai_exp : np.array
-            expected annual impact for each exposure point
+            expected impact within a period of 1/frequency_unit for each exposure point
 
         Returns
         -------
         float
-            average annual impact aggregated
+            average aggregated impact within a period of 1/frequency_unit
         """
         return np.sum(eai_exp)
 
@@ -590,11 +590,11 @@ class ImpactCalc():
         Returns
         -------
         eai_exp: np.array
-            expected annual impact at each exposure point
+            expected impact within a period of 1/frequency_unit at each exposure point
         at_event: np.array()
             total impact for each event
         aai_agg : float
-            average annual impact aggregated over all exposure points
+            average impact within a period of 1/frequency_unit aggregated over all exposure points
         """
         eai_exp = cls.eai_exp_from_mat(mat, freq)
         at_event = cls.at_event_from_mat(mat)

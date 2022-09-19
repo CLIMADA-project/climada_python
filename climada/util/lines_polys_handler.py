@@ -1027,12 +1027,12 @@ def eai_exp_from_mat(imp_mat, freq):
     imp_mat : sparse.csr_matrix
         matrix num_events x num_exp with impacts.
     frequency : np.array
-        annual frequency of events
+        frequency of events
 
     Returns
     -------
     eai_exp : np.array
-        expected annual impact for each exposure
+        expected impact for each exposure within a period of 1/frequency_unit
 
     """
     freq_mat = freq.reshape(len(freq), 1)
@@ -1066,12 +1066,12 @@ def aai_agg_from_at_event(at_event, freq):
     at_event : np.array
         impact for each hazard event
     frequency : np.array
-        annual frequency of event
+        frequency of event
 
     Returns
     -------
     float
-        average annual impact aggregated
+        average impact within a period of 1/frequency_unit, aggregated
 
     """
     return sum(at_event * freq)
