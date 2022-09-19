@@ -799,8 +799,9 @@ class Hazard():
         # reset frequency if date span has changed (optional):
         if reset_frequency:
             if self.frequency_unit not in ['1/year', 'annual', '1/y', '1/a']:
-                LOGGER.warning("resetting the frequency on a hazard object who's frequency unit"
-                    "is %s and not %s will most likely lead to unexpected results",
+                LOGGER.warning("Resetting the frequency is based on the calendar year of given"
+                    " dates but the frequency unit here is %s. Consider setting the frequency"
+                    " manually for the selection or changing the frequency unit to %s.",
                     self.frequency_unit, DEF_FREQ_UNIT)
             year_span_old = np.abs(dt.datetime.fromordinal(self.date.max()).year -
                                    dt.datetime.fromordinal(self.date.min()).year) + 1
