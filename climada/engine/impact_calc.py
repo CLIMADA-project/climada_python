@@ -148,8 +148,8 @@ class ImpactCalc():
 
         # insured impact
         if insured is None:
-            insured = (self.cover and self.cover.max() > 0) \
-                   or (self.deductible and self.deductible.max() > 0)
+            insured = (self.cover is not None and self.cover.max() > 0) \
+                   or (self.deductible is not None and self.deductible.max() > 0)
             if insured:
                 LOGGER.info("cover and deductible columns detected,"
                             " going to calculate insured impact")
