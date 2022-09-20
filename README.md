@@ -59,19 +59,7 @@ As key link, please use https://wcr.ethz.ch/research/climada.html, as it will la
 
 ## Contributing
 
-To contribute follow these steps:
-
-1. Fork the project on GitHub.
-2. Create a local clone of the develop branch (`git clone https://github.com/YOUR-USERNAME/climada_python.git -b develop`)
-3. Install the packages in `climada_python/requirements/env_climada.yml` and `climada_python/requirements/env_developer.yml`.
-4. Make well commented and clean commits to your repository.
-5. Make unit and integration tests on your code, preferably during development.
-6. Perform a static code analysis of your code with CLIMADA's configuration `.pylintrc`.
-7. Add your name to the AUTHORS file.
-8. Push the changes to GitHub (`git push origin develop`).
-9. On GitHub, create a new pull request onto the develop branch of CLIMADA-project/climada_python.
-
-See our [developer guide](https://climada-python.readthedocs.io/en/latest/#developer-guide) for more information.
+See the [Contribution Guide](/CONTRIBUTING.md).
 
 ## Versioning
 
