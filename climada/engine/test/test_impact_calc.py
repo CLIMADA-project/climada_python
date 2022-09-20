@@ -242,7 +242,7 @@ class TestImpactCalc(unittest.TestCase):
         exp.gdf.cover /= 1e3
         exp.gdf.deductible += 1e5
         icalc = ImpactCalc(exp, ENT.impact_funcs, HAZ)
-        impact = icalc.insured_impact()
+        impact = icalc.impact(insured=True)
         self.assertEqual(icalc.n_events, len(impact.at_event))
         self.assertEqual(0, impact.at_event[0])
         self.assertEqual(0, impact.at_event[7225])
@@ -262,7 +262,7 @@ class TestImpactCalc(unittest.TestCase):
         exp.gdf.cover /= 1e3
         exp.gdf.deductible += 1e5
         icalc = ImpactCalc(exp, ENT.impact_funcs, HAZ)
-        impact = icalc.insured_impact(save_mat=True)
+        impact = icalc.impact(insured=True, save_mat=True)
 
         self.assertIsInstance(impact.imp_mat, sparse.csr_matrix)
         self.assertEqual(impact.imp_mat.shape, (HAZ.event_id.size,
@@ -294,7 +294,7 @@ class TestImpactCalc(unittest.TestCase):
         exp.gdf = exp.gdf.drop(columns = ['cover', 'deductible'])
         icalc = ImpactCalc(exp, ENT.impact_funcs, HAZ)
         with self.assertRaises(AttributeError):
-            icalc.insured_impact()
+            icalc.impact(insured=True)
 
     def test_minimal_exp_gdf(self):
         """Test obtain minimal exposures gdf"""

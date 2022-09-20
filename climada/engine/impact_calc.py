@@ -130,12 +130,13 @@ class ImpactCalc():
             >>> impfset = ImpactFuncSet.from_excel(ENT_TEMPLATE_XLS)
             >>> exp = Exposures(pd.read_excel(ENT_TEMPLATE_XLS))
             >>> impcalc = ImpactCal(exp, impfset, haz)
-            >>> imp = impcalc.insured_impact()
+            >>> imp = impcalc.impact(insured=True)
             >>> imp.aai_agg
 
         See also
         --------
-        insured_impact : same as ``impact(insured=True)``
+        apply_deductible_to_mat : apply deductible to impact matrix
+        apply_cover_to_mat : apply cover to impact matrix
         """
         impf_col = self.exposures.get_impf_column(self.hazard.haz_type)
         exp_gdf = self.minimal_exp_gdf(impf_col, assign_centroids)
@@ -147,9 +148,8 @@ class ImpactCalc():
 
         # insured impact
         if insured is None:
-            insured = (self.cover is not None
-                   and self.cover.max() > 0
-                   and self.deductible is not None)
+            insured = (self.cover and self.cover.max() > 0) \
+                   or (self.deductible and self.deductible.max() > 0)
             if insured:
                 LOGGER.info("cover and deductible columns detected,"
                             " going to calculate insured impact")
@@ -162,41 +162,6 @@ class ImpactCalc():
             imp_mat_gen = self.insured_mat_gen(imp_mat_gen, exp_gdf, impf_col)
 
         return self._return_impact(imp_mat_gen, save_mat)
-
-    def insured_impact(self, save_mat=False, assign_centroids=True):
-        """Compute the impact of a hazard on exposures with a deductible and/or
-        cover.
-
-        For each exposure point, the impact per event is obtained by
-        substracting the deductible (and is maximally equal to the cover).
-
-        Parameters
-        ----------
-        save_mat : bool
-            if true, save the total impact matrix (events x exposures)
-        assign_centroids : bool, optional
-            indicates whether centroids are assigned to the self.exposures object.
-            Centroids assignment is an expensive operation; set this to ``False`` to save
-            computation time if the hazards' centroids are already assigned to the exposures
-            object.
-            Default: True
-
-        Examples
-        --------
-            >>> haz = Hazard.from_mat(HAZ_DEMO_MAT)  # Set hazard
-            >>> impfset = ImpactFuncSet.from_excel(ENT_TEMPLATE_XLS)
-            >>> exp = Exposures(pd.read_excel(ENT_TEMPLATE_XLS))
-            >>> impcalc = ImpactCal(exp, impfset, haz)
-            >>> imp = impcalc.insured_impact()
-            >>> imp.aai_agg
-
-        See also
-        --------
-        apply_deductible_to_mat : apply deductible to impact matrix
-        apply_cover_to_mat : apply cover to impact matrix
-        impact : impact calculation
-        """
-        return self.impact(insured=True, save_mat=save_mat, assign_centroids=assign_centroids)
 
     def _return_impact(self, imp_mat_gen, save_mat):
         """Return an impact object from an impact matrix generator
