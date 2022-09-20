@@ -638,7 +638,7 @@ class TestSteps(unittest.TestCase):
             new_cb.imp_meas_future[tr_name]['risk'],
             np.sum(new_imp * cost_ben.imp_meas_future['no measure']['impact'].frequency), 5)
         self.assertAlmostEqual(new_cb.cost_ben_ratio[tr_name] * new_cb.benefit[tr_name],
-                               risk_transf[2] * 32106013195.316242, 5)
+                               risk_transf[2] * 32106013195.316242, 4)
         self.assertTrue(
             np.allclose(new_cb.imp_meas_future[tr_name]['efc'].impact,
                         new_cb.imp_meas_future[tr_name]['impact'].calc_freq_curve().impact))
