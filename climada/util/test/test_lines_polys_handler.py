@@ -149,7 +149,7 @@ class TestExposureGeomToPnt(unittest.TestCase):
         """Test disaggregation of polygons to points on grid"""
         exp_poly = EXP_POLY.copy()
         res = 0.1
-        exp_poly.gdf = exp_poly.gdf[exp_poly.gdf['population']<400000]
+        exp_poly.set_gdf(exp_poly.gdf[exp_poly.gdf['population']<400000])
         height, width, trafo = u_coord.pts_to_raster_meta(
             exp_poly.gdf.geometry.bounds, (res, res)
             )

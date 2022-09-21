@@ -22,7 +22,7 @@ import unittest
 from unittest.mock import create_autospec, MagicMock, call, patch
 import numpy as np
 from scipy import sparse
-import pandas as pd
+import geopandas as gpd
 from copy import deepcopy
 from pathlib import Path
 
@@ -291,7 +291,7 @@ class TestImpactCalc(unittest.TestCase):
         no deductibles defined
         """
         exp = ENT.exposures.copy()
-        exp.gdf = exp.gdf.drop(columns = ['cover', 'deductible'])
+        exp.set_gdf(gpd.GeoDataFrame(exp.gdf.drop(columns = ['cover', 'deductible'])))
         icalc = ImpactCalc(exp, ENT.impact_funcs, HAZ)
         with self.assertRaises(AttributeError):
             icalc.impact(insured=True)
@@ -424,7 +424,7 @@ class TestImpactMatrixGenerator(unittest.TestCase):
         self.icalc.impact_matrix = MagicMock()
 
         # Set up a dummy exposure dataframe
-        self.exp_gdf = pd.DataFrame(
+        self.exp_gdf = gpd.GeoDataFrame(
             {
                 "impact_functions": [0, 11, 11],
                 "centr_col": [0, 10, 20],
@@ -462,7 +462,7 @@ class TestImpactMatrixGenerator(unittest.TestCase):
         self.hazard.size = 2
 
         arr_len = 5
-        exp_gdf = pd.DataFrame(
+        exp_gdf = gpd.GeoDataFrame(
             {
                 "impact_functions": np.zeros(arr_len, dtype=np.int64),
                 "centr_col": np.array(list(range(arr_len))),
@@ -486,7 +486,7 @@ class TestImpactMatrixGenerator(unittest.TestCase):
 
     def test_empty_exp(self):
         """imp_mat_gen should return an empty iterator for an empty dataframe"""
-        exp_gdf = pd.DataFrame({"impact_functions": [], "centr_col": [], "value": []})
+        exp_gdf = gpd.GeoDataFrame({"impact_functions": [], "centr_col": [], "value": []})
         self.assertEqual(
             [],
             list(self.icalc.imp_mat_gen(exp_gdf=exp_gdf, impf_col="impact_functions")),
@@ -499,9 +499,9 @@ class TestInsuredImpactMatrixGenerator(unittest.TestCase):
         """"Initialize mocks"""
         hazard = create_autospec(HAZ)
         self.icalc = ImpactCalc(ENT.exposures, ENT.impact_funcs, hazard)
-        self.icalc.exposures.gdf = pd.DataFrame(
+        self.icalc.exposures.set_gdf(gpd.GeoDataFrame(
             {"deductible": [10.0, 20.0], "cover": [1.0, 100.0]}
-        )
+        ))
         self.icalc._orig_exp_idx = np.array([0, 1])
         self.icalc.hazard.centr_exp_col = "centr_col"
         self.icalc.hazard.haz_type = "haz_type"
@@ -515,7 +515,7 @@ class TestInsuredImpactMatrixGenerator(unittest.TestCase):
 
     def test_insured_mat_gen(self):
         """Test insured impact matrix generator"""
-        exp_gdf = pd.DataFrame(
+        exp_gdf = gpd.GeoDataFrame(
             {"impact_functions": [0, 2], "centr_col": [0, 10], "value": [1.0, 2.0],}
         )
         imp_mat_gen = ((i, np.array([i])) for i in range(2))
