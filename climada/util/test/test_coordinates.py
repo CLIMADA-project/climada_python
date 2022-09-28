@@ -1020,6 +1020,14 @@ class TestGetGeodata(unittest.TestCase):
             # 578 for Norway
             self.assertEqual(region_id_OSLO, np.array([578]))
 
+    def test_all_points_on_sea(self):
+        """Test country codes for unassignable coordinates (i.e., on sea)"""
+        lon = [-24.1 , -24.32634711, -24.55751498, -24.79698392]
+        lat = [87.3 , 87.23261237, 87.14440587, 87.04121094]
+        for gridded in [True, False]:
+            country_codes = u_coord.get_country_code(lat, lon, gridded=gridded)
+            self.assertTrue(np.all(country_codes == np.array([0, 0, 0, 0])))
+
     def test_get_admin1_info_pass(self):
         """test get_admin1_info()"""
         country_names = ['CHE', 'Indonesia', '840', 51]
