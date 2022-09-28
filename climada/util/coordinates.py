@@ -1447,7 +1447,8 @@ def get_country_code(lat, lon, gridded=False):
         countries = countries.sort_values(by=['area'], ascending=False)
         region_id = np.full((lon.size,), -1, dtype=int)
         total_land = countries.geometry.unary_union
-        ocean_mask = ~shapely.vectorized.contains(total_land, lon, lat)
+        ocean_mask = (region_id.all() if total_land is None
+                else ~shapely.vectorized.contains(total_land, lon, lat))
         region_id[ocean_mask] = 0
         for country in countries.itertuples():
             unset = (region_id == -1).nonzero()[0]
