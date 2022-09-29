@@ -429,7 +429,7 @@ class LitPop(Exposures):
         tag.description = f'LitPop Exposure for custom shape in {countries} at ' \
                           f'{res_arcsec} as, year: {reference_year}, financial mode: ' \
                           f'{fin_mode}, exp: {exponents}, admin1_calc: {admin1_calc}'
-        exp.gdf = gdf.reset_index()
+        exp.set_gdf(gdf.reset_index())
 
         try:
             rows, cols, ras_trans = u_coord.pts_to_raster_meta(

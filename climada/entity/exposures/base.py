@@ -877,8 +877,7 @@ class Exposures():
         except KeyError as var_err:
             raise KeyError(f"Variable not in MAT file: {var_names.get('field_name')}")\
                 from var_err
-        exp = cls()
-        exp.set_gdf(GeoDataFrame(data=exposures))
+        exp = cls(data=exposures)
 
         _read_mat_metadata(exp, data, file_name, var_names)
         return exp
