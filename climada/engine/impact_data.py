@@ -283,6 +283,7 @@ def hit_country_per_hazard(intensity_path, names_path, reg_id_path, date_path):
     # retrun data frame with all hit countries per hazard
     return hit_countries
 
+
 def create_lookup(emdat_data, start, end, disaster_subtype='Tropical cyclone'):
     """create_lookup: prepare a lookup table of EMdat events to which hazards can be assigned
 
@@ -439,6 +440,7 @@ def assign_track_to_em(lookup, possible_tracks_1, possible_tracks_2, level):
         else:
             lookup.possible_track_all.values[i] = possible_tracks_1[i]
     return lookup
+
 
 def check_assigned_track(lookup, checkset):
     """compare lookup with assigned tracks to a set with checked sets
@@ -619,6 +621,7 @@ def clean_emdat_df(emdat_file, countries=None, hazard=None, year_range=None,
             (df_data[VARNAMES_EMDAT[target_version]['Disaster Subtype']].isin(disaster_subtypes))]
     return df_data.reset_index(drop=True)
 
+
 def emdat_countries_by_hazard(emdat_file_csv, hazard=None, year_range=None):
     """return list of all countries exposed to a chosen hazard type
     from EMDAT data as CSV.
@@ -670,13 +673,10 @@ def scale_impact2refyear(impact_values, year_values, iso3a_values, reference_yea
         Year of each impact (same length as impact_values)
     iso3a_values : list or array
         ISO3alpha code of country for each impact (same length as impact_values)
-
-    Optional Parameters
-    -------------------
-    reference_year : int
+    reference_year : int, optional
         Impact is scaled proportional to GDP to the value of the reference year.
         No scaling for reference_year=None (default)
-        """
+    """
     impact_values = np.array(impact_values)
     year_values = np.array(year_values)
     iso3a_values = np.array(iso3a_values)
@@ -701,6 +701,7 @@ def scale_impact2refyear(impact_values, year_values, iso3a_values, reference_yea
     if not reference_year:
         return impact_values
     raise ValueError('Invalid reference_year')
+
 
 def emdat_impact_yearlysum(emdat_file_csv, countries=None, hazard=None, year_range=None,
                            reference_year=None, imp_str="Total Damages ('000 US$)",
@@ -769,6 +770,7 @@ def emdat_impact_yearlysum(emdat_file_csv, countries=None, hazard=None, year_ran
     out = out.reset_index(drop=True)
     return out
 
+
 def emdat_impact_event(emdat_file_csv, countries=None, hazard=None, year_range=None,
                        reference_year=None, imp_str="Total Damages ('000 US$)",
                        version=2020):
@@ -831,6 +833,7 @@ def emdat_impact_event(emdat_file_csv, countries=None, hazard=None, year_range=N
         df_data['impact_scaled'] *= 1e3
     return df_data.reset_index(drop=True)
 
+
 def emdat_to_impact(emdat_file_csv, hazard_type_climada, year_range=None, countries=None,
                     hazard_type_emdat=None,
                     reference_year=None, imp_str="Total Damages"):
@@ -864,14 +867,15 @@ def emdat_to_impact(emdat_file_csv, hazard_type_climada, year_range=None, countr
 
     Returns
     -------
-    impact_instance : instance of climada.engine.Impact
-    impact object of same format as output from CLIMADA
-    impact computation.
-    Values scaled with GDP to reference_year if reference_year is given.
-    i.e. current US$ for imp_str="Total Damages ('000 US$) scaled" (factor 1000 is applied)
-    impact_instance.eai_exp holds expected annual impact for each country.
-    impact_instance.coord_exp holds rough central coordinates for each country.
-    countries (list): ISO3-codes of countries in same order as in impact_instance.eai_exp
+    impact_instance : climada.engine.Impact
+        impact object of same format as output from CLIMADA
+        impact computation.
+        Values scaled with GDP to reference_year if reference_year is given.
+        i.e. current US$ for imp_str="Total Damages ('000 US$) scaled" (factor 1000 is applied)
+        impact_instance.eai_exp holds expected impact for each country (within 1/frequency_unit).
+        impact_instance.coord_exp holds rough central coordinates for each country.
+    countries : list of str
+        ISO3-codes of countries in same order as in impact_instance.eai_exp
     """
     if "Total Damages" in imp_str:
         imp_str = "Total Damages ('000 US$)"
@@ -942,6 +946,7 @@ def emdat_to_impact(emdat_file_csv, hazard_type_climada, year_range=None, countr
     if not year_range:
         year_range = [em_data['Year'].min(), em_data['Year'].max()]
     impact_instance.frequency = np.ones(em_data.shape[0]) / (1 + np.diff(year_range))
+    impact_instance.frequency_unit = '1/year'
     impact_instance.tot_value = 0
     impact_instance.aai_agg = np.nansum(impact_instance.at_event * impact_instance.frequency)
     impact_instance.unit = 'USD'

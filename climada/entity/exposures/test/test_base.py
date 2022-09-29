@@ -78,6 +78,10 @@ class TestFuncs(unittest.TestCase):
             exp.assign_centroids(haz)
             self.assertEqual(exp.gdf.shape[0], len(exp.gdf[INDICATOR_CENTR + 'FL']))
             np.testing.assert_array_equal(exp.gdf[INDICATOR_CENTR + 'FL'].values, expected_result)
+            exp.assign_centroids(Hazard(), overwrite=False)
+            self.assertEqual(exp.gdf.shape[0], len(exp.gdf[INDICATOR_CENTR + 'FL']))
+            np.testing.assert_array_equal(exp.gdf[INDICATOR_CENTR + 'FL'].values, expected_result)
+
 
     def test_read_raster_pass(self):
         """from_raster"""
@@ -160,6 +164,25 @@ class TestFuncs(unittest.TestCase):
         np.testing.assert_array_equal(assigned_centroids.lat, exp.gdf.latitude)
         np.testing.assert_array_equal(assigned_centroids.lon, exp.gdf.longitude)
 
+    def test_affected_total_value(self):
+        exp = Exposures.from_raster(HAZ_DEMO_FL, window=Window(25, 90, 10, 5))
+        haz = Hazard.from_raster([HAZ_DEMO_FL], haz_type='FL', window=Window(25, 90, 10, 5))
+        exp.assign_centroids(haz)
+        tot_val = exp.affected_total_value(haz)
+        self.assertEqual(tot_val, np.sum(exp.gdf.value))
+        new_centr = exp.gdf.centr_FL
+        new_centr[6] = -1
+        exp.gdf.centr_FL = new_centr
+        tot_val = exp.affected_total_value(haz)
+        self.assertAlmostEqual(tot_val, np.sum(exp.gdf.value) - exp.gdf.value[6], places=4)
+        new_vals = exp.gdf.value
+        new_vals[7] = 0
+        exp.gdf.value = new_vals
+        tot_val = exp.affected_total_value(haz)
+        self.assertAlmostEqual(tot_val, np.sum(exp.gdf.value) - exp.gdf.value[6], places=4)
+        exp.gdf.centr_FL = -1
+        tot_val = exp.affected_total_value(haz)
+        self.assertEqual(tot_val, 0)
 
 class TestChecker(unittest.TestCase):
     """Test logs of check function"""

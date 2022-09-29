@@ -61,6 +61,7 @@ class TestSteps(unittest.TestCase):
         for meas in entity.measures.get_measure('TC'):
             meas.haz_type = 'TC'
         entity.check()
+        entity.exposures.assign_centroids(hazard)
 
         cost_ben = CostBenefit()
         cost_ben._calc_impact_measures(hazard, entity.exposures, entity.measures,
@@ -241,6 +242,7 @@ class TestSteps(unittest.TestCase):
         for meas in entity.measures.get_measure('TC'):
             meas.haz_type = 'TC'
         entity.check()
+        entity.exposures.assign_centroids(hazard)
 
         cost_ben = CostBenefit()
         cost_ben._calc_impact_measures(hazard, entity.exposures, entity.measures,
@@ -277,6 +279,7 @@ class TestSteps(unittest.TestCase):
         for meas in entity.measures.get_measure('TC'):
             meas.haz_type = 'TC'
         entity.check()
+        entity.exposures.assign_centroids(hazard)
 
         cost_ben = CostBenefit()
         cost_ben._calc_impact_measures(hazard, entity.exposures, entity.measures,
@@ -288,6 +291,7 @@ class TestSteps(unittest.TestCase):
 
         haz_future = copy.deepcopy(hazard)
         haz_future.intensity.data += 25
+        ent_future.exposures.assign_centroids(haz_future)
 
         cost_ben._calc_impact_measures(haz_future, ent_future.exposures, ent_future.measures,
                                        ent_future.impact_funcs, when='future',
@@ -323,10 +327,10 @@ class TestSteps(unittest.TestCase):
         self.assertAlmostEqual(cost_ben.imp_meas_future['Building code']['risk'],
                                4.462999483999791e+10, places=3)
 
-        self.assertAlmostEqual(cost_ben.benefit['Mangroves'], 113345027690.81276, places=3)
-        self.assertAlmostEqual(cost_ben.benefit['Beach nourishment'], 89444869971.53653, places=3)
-        self.assertAlmostEqual(cost_ben.benefit['Seawall'], 347977469896.1333, places=3)
-        self.assertAlmostEqual(cost_ben.benefit['Building code'], 144216478822.05154, places=3)
+        self.assertAlmostEqual(cost_ben.benefit['Mangroves'], 113345027690.81276, places=2)
+        self.assertAlmostEqual(cost_ben.benefit['Beach nourishment'], 89444869971.53653, places=2)
+        self.assertAlmostEqual(cost_ben.benefit['Seawall'], 347977469896.1333, places=2)
+        self.assertAlmostEqual(cost_ben.benefit['Building code'], 144216478822.05154, places=2)
 
         self.assertAlmostEqual(cost_ben.cost_ben_ratio['Mangroves'], 0.011573232523528404)
         self.assertAlmostEqual(cost_ben.cost_ben_ratio['Beach nourishment'], 0.01931916274851638)
@@ -772,10 +776,10 @@ class TestCalc(unittest.TestCase):
         self.assertAlmostEqual(cost_ben.imp_meas_future['Building code']['risk'],
                                4.462999483999791e+10, places=3)
 
-        self.assertAlmostEqual(cost_ben.benefit['Mangroves'], 113345027690.81276, places=3)
-        self.assertAlmostEqual(cost_ben.benefit['Beach nourishment'], 89444869971.53653, places=3)
-        self.assertAlmostEqual(cost_ben.benefit['Seawall'], 347977469896.1333, places=3)
-        self.assertAlmostEqual(cost_ben.benefit['Building code'], 144216478822.05154, places=3)
+        self.assertAlmostEqual(cost_ben.benefit['Mangroves'], 113345027690.81276, places=2)
+        self.assertAlmostEqual(cost_ben.benefit['Beach nourishment'], 89444869971.53653, places=2)
+        self.assertAlmostEqual(cost_ben.benefit['Seawall'], 347977469896.1333, places=2)
+        self.assertAlmostEqual(cost_ben.benefit['Building code'], 144216478822.05154, places=2)
 
         self.assertAlmostEqual(cost_ben.cost_ben_ratio['Mangroves'], 0.011573232523528404)
         self.assertAlmostEqual(cost_ben.cost_ben_ratio['Beach nourishment'], 0.01931916274851638)
@@ -820,7 +824,7 @@ class TestRiskFuncs(unittest.TestCase):
         hazard = Hazard.from_mat(HAZ_TEST_MAT)
         impact = Impact()
         ent.exposures.assign_centroids(hazard)
-        impact.calc(ent.exposures, ent.impact_funcs, hazard)
+        impact.calc(ent.exposures, ent.impact_funcs, hazard, assign_centroids=False)
         return impact
 
     def test_risk_aai_agg_pass(self):

@@ -83,6 +83,7 @@ class TestApply(unittest.TestCase):
         exp = Exposures.from_mat(ENT_TEST_MAT)
         exp.gdf.rename(columns={'impf': 'impf_TC'}, inplace=True)
         exp.check()
+        exp.assign_centroids(haz)
 
         imp_set = ImpactFuncSet.from_mat(ENT_TEST_MAT)
 
@@ -117,6 +118,7 @@ class TestApply(unittest.TestCase):
         exp.gdf['region_id'] = np.zeros(exp.gdf.shape[0])
         exp.gdf.region_id.values[10:] = 1
         exp.check()
+        exp.assign_centroids(haz)
 
         imp_set = ImpactFuncSet.from_mat(ENT_TEST_MAT)
 
@@ -385,7 +387,7 @@ class TestApply(unittest.TestCase):
         imp, risk_transf = entity.measures.get_measure('TC', 'Mangroves').calc_impact(
                 entity.exposures, entity.impact_funcs, hazard)
 
-        self.assertAlmostEqual(imp.aai_agg, 4.850407096284983e+09)
+        self.assertAlmostEqual(imp.aai_agg, 4.850407096284983e+09, delta=1)
         self.assertAlmostEqual(imp.at_event[0], 0)
         self.assertAlmostEqual(imp.at_event[12], 1.470194187501225e+07)
         self.assertAlmostEqual(imp.at_event[41], 4.7226357936631286e+08)

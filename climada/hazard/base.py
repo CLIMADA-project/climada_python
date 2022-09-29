@@ -49,7 +49,7 @@ import climada.util.dates_times as u_dt
 from climada import CONFIG
 import climada.util.hdf5_handler as u_hdf5
 import climada.util.coordinates as u_coord
-from climada.util.constants import ONE_LAT_KM, DEF_CRS
+from climada.util.constants import ONE_LAT_KM, DEF_CRS, DEF_FREQ_UNIT
 from climada.util.coordinates import NEAREST_NEIGHBOR_THRESHOLD
 
 LOGGER = logging.getLogger(__name__)
@@ -126,7 +126,9 @@ class Hazard():
         flags indicating historical events (True)
         or probabilistic (False)
     frequency : np.array
-        frequency of each event in years
+        frequency of each event
+    frequency_unit : str
+        unit of the frequency (default: "1/year")
     intensity : sparse.csr_matrix
         intensity of the events at centroids
     fraction : sparse.csr_matrix
@@ -151,7 +153,8 @@ class Hazard():
 
     vars_def = {'date',
                 'orig',
-                'event_name'
+                'event_name',
+                'frequency_unit'
                 }
     """Name of the variables used in impact calculation whose value is
     descriptive and can therefore be set with default values. Types: scalar,
@@ -193,6 +196,7 @@ class Hazard():
         # following values are defined for each event
         self.event_id = np.array([], int)
         self.frequency = np.array([], float)
+        self.frequency_unit = DEF_FREQ_UNIT
         self.event_name = list()
         self.date = np.array([], int)
         self.orig = np.array([], bool)
@@ -205,6 +209,23 @@ class Hazard():
         else:
             self.pool = None
 
+    @classmethod
+    def get_default(cls, attribute):
+        """Get the Hazard type default for a given attribute.
+
+        Parameters
+        ----------
+        attribute : str
+            attribute name
+
+        Returns
+        ------
+        Any
+        """
+        return {
+            'frequency_unit': DEF_FREQ_UNIT,
+        }.get(attribute)
+
     def clear(self):
         """Reinitialize attributes (except the process Pool)."""
         for (var_name, var_val) in self.__dict__.items():
@@ -213,7 +234,7 @@ class Hazard():
             elif isinstance(var_val, sparse.csr_matrix):
                 setattr(self, var_name, sparse.csr_matrix(np.empty((0, 0))))
             elif not isinstance(var_val, Pool):
-                setattr(self, var_name, var_val.__class__())
+                setattr(self, var_name, self.get_default(var_name) or var_val.__class__())
 
     def check(self):
         """Check dimension of attributes.
@@ -272,8 +293,8 @@ class Hazard():
         resampling : rasterio.warp.Resampling, optional
             resampling function used for reprojection to dst_crs
 
-        Return
-        ------
+        Returns
+        -------
         Hazard
         """
         if isinstance(files_intensity, (str, pathlib.Path)):
@@ -348,6 +369,8 @@ class Hazard():
             haz.frequency = attrs['frequency']
         else:
             haz.frequency = np.ones(haz.event_id.size)
+        if 'frequency_unit' in attrs:
+            haz.frequency_unit = attrs['frequency_unit']
         if 'event_name' in attrs:
             haz.event_name = attrs['event_name']
         else:
@@ -361,7 +384,7 @@ class Hazard():
         else:
             haz.orig = np.ones(haz.event_id.size, bool)
         if 'unit' in attrs:
-            haz.unit = attrs['unit']
+            haz.units = attrs['unit']
 
         return haz
 
@@ -825,8 +848,8 @@ class Hazard():
         if not frac_name:
             inten_name = ['fraction']
         if files_fraction is not None and len(files_intensity) != len(files_fraction):
-            raise ValueError('Number of intensity files differs from fraction files: %s != %s'
-                             % (len(files_intensity), len(files_fraction)))
+            raise ValueError('Number of intensity files differs from fraction files:'
+                             f' {len(files_intensity)} != {len(files_fraction)}')
 
         haz = cls() if haz_type is None else cls(haz_type)
         haz.tag.file_name = str(files_intensity) + ' ; ' + str(files_fraction)
@@ -855,6 +878,8 @@ class Hazard():
             haz.frequency = attrs['frequency']
         else:
             haz.frequency = np.ones(haz.event_id.size)
+        if 'frequency_unit' in attrs:
+            haz.frequency_unit = attrs['frequency_unit']
         if 'event_name' in attrs:
             haz.event_name = attrs['event_name']
         else:
@@ -868,7 +893,7 @@ class Hazard():
         else:
             haz.orig = np.ones(haz.event_id.size, bool)
         if 'unit' in attrs:
-            haz.unit = attrs['unit']
+            haz.units = attrs['unit']
 
         return haz
 
@@ -1190,6 +1215,11 @@ class Hazard():
 
         # reset frequency if date span has changed (optional):
         if reset_frequency:
+            if self.frequency_unit not in ['1/year', 'annual', '1/y', '1/a']:
+                LOGGER.warning("Resetting the frequency is based on the calendar year of given"
+                    " dates but the frequency unit here is %s. Consider setting the frequency"
+                    " manually for the selection or changing the frequency unit to %s.",
+                    self.frequency_unit, DEF_FREQ_UNIT)
             year_span_old = np.abs(dt.datetime.fromordinal(self.date.max()).year -
                                    dt.datetime.fromordinal(self.date.min()).year) + 1
             year_span_new = np.abs(dt.datetime.fromordinal(haz.date.max()).year -
@@ -1260,8 +1290,8 @@ class Hazard():
         inten_stats = np.zeros((len(return_periods), num_cen))
         cen_step = CONFIG.max_matrix_size.int() // self.intensity.shape[0]
         if not cen_step:
-            raise ValueError('Increase max_matrix_size configuration parameter to > %s'
-                             % str(self.intensity.shape[0]))
+            raise ValueError('Increase max_matrix_size configuration parameter to >'
+                             f' {self.intensity.shape[0]}')
         # separte in chunks
         chk = -1
         for chk in range(int(num_cen / cen_step)):
@@ -1351,7 +1381,7 @@ class Hazard():
             ValueError
         """
         self._set_coords_centroids()
-        col_label = 'Intensity (%s)' % self.units
+        col_label = f'Intensity ({self.units})'
         crs_epsg, _ = u_plot.get_transformation(self.centroids.geometry.crs)
         if event is not None:
             if isinstance(event, str):
@@ -1436,7 +1466,7 @@ class Hazard():
         list_id = self.event_id[[i_name for i_name, val_name in enumerate(self.event_name)
                                  if val_name == event_name]]
         if list_id.size == 0:
-            raise ValueError("No event with name: %s" % event_name)
+            raise ValueError(f"No event with name: {event_name}")
         return list_id
 
     def get_event_name(self, event_id):
@@ -1527,6 +1557,10 @@ class Hazard():
             per event. If yearrange is not given (None), the year range is
             derived from self.date
         """
+        if self.frequency_unit not in ['1/year', 'annual', '1/y', '1/a']:
+            LOGGER.warning("setting the frequency on a hazard object who's frequency unit"
+                "is %s and not %s will most likely lead to unexpected results",
+                self.frequency_unit, DEF_FREQ_UNIT)
         if not yearrange:
             delta_time = dt.datetime.fromordinal(int(np.max(self.date))).year - \
                          dt.datetime.fromordinal(int(np.min(self.date))).year + 1
@@ -1728,19 +1762,17 @@ class Hazard():
                 except IndexError as err:
                     raise ValueError(f'Wrong event id: {ev_id}.') from err
                 im_val = mat_var[event_pos, :].toarray().transpose()
-                title = 'Event ID %s: %s' % (str(self.event_id[event_pos]),
-                                             self.event_name[event_pos])
+                title = f'Event ID {self.event_id[event_pos]}: {self.event_name[event_pos]}'
             elif ev_id < 0:
                 max_inten = np.asarray(np.sum(mat_var, axis=1)).reshape(-1)
                 event_pos = np.argpartition(max_inten, ev_id)[ev_id:]
                 event_pos = event_pos[np.argsort(max_inten[event_pos])][0]
                 im_val = mat_var[event_pos, :].toarray().transpose()
-                title = '%s-largest Event. ID %s: %s' % (np.abs(ev_id),
-                                                         str(self.event_id[event_pos]),
-                                                         self.event_name[event_pos])
+                title = (f'{np.abs(ev_id)}-largest Event. ID {self.event_id[event_pos]}:'
+                         f' {self.event_name[event_pos]}')
             else:
                 im_val = np.max(mat_var, axis=0).toarray().transpose()
-                title = '%s max intensity at each point' % self.tag.haz_type
+                title = f'{self.tag.haz_type} max intensity at each point'
 
             array_val.append(im_val)
             l_title.append(title)
@@ -1781,21 +1813,18 @@ class Hazard():
             except IndexError as err:
                 raise ValueError(f'Wrong centroid id: {centr_idx}.') from err
             array_val = mat_var[:, centr_pos].toarray()
-            title = 'Centroid %s: (%s, %s)' % (str(centr_idx),
-                                               coord[centr_pos, 0],
-                                               coord[centr_pos, 1])
+            title = f'Centroid {centr_idx}: ({coord[centr_pos, 0]}, {coord[centr_pos, 1]})'
         elif centr_idx < 0:
             max_inten = np.asarray(np.sum(mat_var, axis=0)).reshape(-1)
             centr_pos = np.argpartition(max_inten, centr_idx)[centr_idx:]
             centr_pos = centr_pos[np.argsort(max_inten[centr_pos])][0]
             array_val = mat_var[:, centr_pos].toarray()
 
-            title = '%s-largest Centroid. %s: (%s, %s)' % \
-                    (np.abs(centr_idx), str(centr_pos), coord[centr_pos, 0],
-                     coord[centr_pos, 1])
+            title = (f'{np.abs(centr_idx)}-largest Centroid. {centr_pos}:'
+                     f' ({coord[centr_pos, 0]}, {coord[centr_pos, 1]})')
         else:
             array_val = np.max(mat_var, axis=1).toarray()
-            title = '%s max intensity at each event' % self.tag.haz_type
+            title = f'{self.tag.haz_type} max intensity at each event'
 
         if not axis:
             _, axis = plt.subplots(1)
@@ -1903,6 +1932,10 @@ class Hazard():
     def _read_att_mat(self, data, file_name, var_names):
         """Read MATLAB hazard's attributes."""
         self.frequency = np.squeeze(data[var_names['var_name']['freq']])
+        try:
+            self.frequency_unit = u_hdf5.get_string(data[var_names['var_name']['freq_unit']])
+        except KeyError:
+            pass
         self.orig = np.squeeze(data[var_names['var_name']['orig']]).astype(bool)
         self.event_id = np.squeeze(
             data[var_names['var_name']['even_id']].astype(int, copy=False))
@@ -2035,6 +2068,12 @@ class Hazard():
         if len(haz_classes) > 1:
             raise TypeError(f"The given hazards are of different classes: {haz_classes}. "
                             "The hazards are incompatible and cannot be concatenated.")
+
+        freq_units = {haz.frequency_unit for haz in haz_list}
+        if len(freq_units) > 1:
+            raise ValueError(f"The given hazards have different frequency units: {freq_units}. "
+                             "The hazards are incompatible and cannot be concatenated.")
+        self.frequency_unit = freq_units.pop()
 
         units = {haz.units for haz in haz_list if haz.units != ''}
         if len(units) > 1:
@@ -2204,3 +2243,119 @@ class Hazard():
                     ))
 
         return haz_new_cent
+
+    @property
+    def centr_exp_col(self):
+        """
+        Name of the centroids columns for this hazard in an exposures
+
+        Returns
+        -------
+        String
+            centroids string indicator with hazard type defining column
+            in an exposures gdf. E.g. "centr_TC"
+
+        """
+        from climada.entity.exposures import INDICATOR_CENTR
+        return INDICATOR_CENTR + self.tag.haz_type
+
+    @property
+    def haz_type(self):
+        """
+        Hazard type
+
+        Returns
+        -------
+        String
+            Two-letters hazard type string. E.g. "TC", "RF", or "WF"
+
+        """
+        return self.tag.haz_type
+
+    def get_mdr(self, cent_idx, impf):
+        """
+        Return Mean Damage Ratio (mdr) for chosen centroids (cent_idx)
+        for given impact function.
+
+        Parameters
+        ----------
+        cent_idx : array-like
+            array of indices of chosen centroids from hazard
+        impf : ImpactFunc
+            impact function to compute mdr
+
+        Returns
+        -------
+        sparse.csr_matrix
+            sparse matrix (n_events x len(cent_idx)) with mdr values
+
+        See Also
+        --------
+        get_fraction: get the fraction for the given centroids
+        get_paa: get the paa ffor the given centroids
+
+        """
+        uniq_cent_idx, indices = np.unique(cent_idx, return_inverse=True)
+        mdr = self.intensity[:, uniq_cent_idx]
+        if impf.calc_mdr(0) == 0:
+            mdr.data = impf.calc_mdr(mdr.data)
+        else:
+            LOGGER.warning("Impact function id=%d has mdr(0) != 0."
+                "The mean damage ratio must thus be computed for all values of"
+                "hazard intensity including 0 which can be very time consuming.",
+            impf.id)
+            mdr_array = impf.calc_mdr(mdr.toarray().ravel()).reshape(mdr.shape)
+            mdr = sparse.csr_matrix(mdr_array)
+        return mdr[:, indices]
+
+    def get_paa(self, cent_idx, impf):
+        """
+        Return Percentage of Affected Assets (paa) for chosen centroids (cent_idx)
+        for given impact function.
+
+        Note that value as intensity = 0 are ignored. This is different from
+        get_mdr.
+
+        Parameters
+        ----------
+        cent_idx : array-like
+            array of indices of chosen centroids from hazard
+        impf : ImpactFunc
+            impact function to compute mdr
+
+        Returns
+        -------
+        sparse.csr_matrix
+            sparse matrix (n_events x len(cent_idx)) with paa values
+
+        See Also
+        --------
+        get_mdr: get the mean-damage ratio for the given centroids
+        get_fraction: get the fraction for the given centroids
+
+        """
+        uniq_cent_idx, indices = np.unique(cent_idx, return_inverse=True)
+        paa = self.intensity[:, uniq_cent_idx]
+        paa.data = np.interp(paa.data, impf.intensity, impf.paa)
+        return paa[:, indices]
+
+    def get_fraction(self, cent_idx):
+        """
+        Return fraction for chosen centroids (cent_idx).
+
+        Parameters
+        ----------
+        cent_idx : array-like
+            array of indices of chosen centroids from hazard
+
+        Returns
+        -------
+        sparse.csr_matrix
+            sparse matrix (n_events x len(cent_idx)) with fraction values
+
+        See Also
+        --------
+        get_mdr: get the mdr for the given centroids
+        get_paa: get the paa ffor the given centroids
+        """
+        return self.fraction[:, cent_idx]

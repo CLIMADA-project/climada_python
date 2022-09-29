@@ -210,8 +210,7 @@ def _plot_scattered_data(method, array_sub, geo_coord, var_name, title,
     for array_im, axis, tit, name, coord in \
     zip(list_arr, axes_iter.flatten(), list_tit, list_name, list_coord):
         if coord.shape[0] != array_im.size:
-            raise ValueError("Size mismatch in input array: %s != %s." %
-                             (coord.shape[0], array_im.size))
+            raise ValueError(f"Size mismatch in input array: {coord.shape[0]} != {array_im.size}.")
 
         # Binned image with coastlines
         if isinstance(proj, ccrs.PlateCarree):
@@ -327,8 +326,7 @@ def geo_im_from_array(array_sub, coord, var_name, title,
     # Generate each subplot
     for array_im, axis, tit, name in zip(list_arr, axes_iter.flatten(), list_tit, list_name):
         if coord.shape[0] != array_im.size:
-            raise ValueError("Size mismatch in input array: %s != %s." %
-                             (coord.shape[0], array_im.size))
+            raise ValueError(f"Size mismatch in input array: {coord.shape[0]} != {array_im.size}.")
         if smooth or not is_reg:
             # Create regular grid where to interpolate the array
             grid_x, grid_y = np.mgrid[
@@ -576,7 +574,7 @@ def _ensure_utf8(val):
     # that the `*.cpg` is present and the encoding is correct:
     try:
         return val.encode('latin-1').decode('utf-8')
-    except:
+    except (AttributeError, UnicodeDecodeError, UnicodeEncodeError):
         return val
 
 def add_populated_places(axis, extent, proj=ccrs.PlateCarree(), fontsize=None):
@@ -742,18 +740,21 @@ def get_transformation(crs_in):
 
     # projection
     try:
-        if CRS.from_user_input(crs_in) == CRS.from_user_input('EPSG:3395'):
-            crs_epsg = ccrs.Mercator()
+        epsg = CRS.from_user_input(crs_in).to_epsg()
+        if epsg == 3395:
+            crs = ccrs.Mercator()
+        elif epsg == 4326:  # WSG 84
+            crs = ccrs.PlateCarree()
         else:
-            crs_epsg = ccrs.epsg(CRS.from_user_input(crs_in).to_epsg())
+            crs = ccrs.epsg(epsg)
     except ValueError:
         LOGGER.warning(
             "Error parsing coordinate system '%s'. Using projection PlateCarree in plot.", crs_in
         )
-        crs_epsg = ccrs.PlateCarree()
+        crs = ccrs.PlateCarree()
     except requests.exceptions.ConnectionError:
         LOGGER.warning('No internet connection. Using projection PlateCarree in plot.')
-        crs_epsg = ccrs.PlateCarree()
+        crs = ccrs.PlateCarree()
 
     # units
     with warnings.catch_warnings():
@@ -762,19 +763,19 @@ def get_transformation(crs_in):
         # we may safely ignore it.
         warnings.simplefilter(action="ignore", category=UserWarning)
         try:
-            units = (crs_epsg.proj4_params.get('units')
+            units = (crs.proj4_params.get('units')
             # As of cartopy 0.20 the proj4_params attribute is {} for CRS from an EPSG number
             # (see issue raised https://github.com/SciTools/cartopy/issues/1974
             # and longterm discussion on https://github.com/SciTools/cartopy/issues/813).
             # In these cases the units can be fetched through the method `to_dict`.
-            or crs_epsg.to_dict().get('units', '°'))
+            or crs.to_dict().get('units', '°'))
         except AttributeError:
             # This happens in setups with cartopy<0.20, where `to_dict` is not defined.
             # Officially, we require cartopy>=0.20, but there are still users around that
             # can't upgrade due to https://github.com/SciTools/iris/issues/4468
             units = '°'
 
-    return crs_epsg, units
+    return crs, units
 
 
 def multibar_plot(ax, data, colors=None, total_width=0.8, single_width=1,
@@ -847,14 +848,14 @@ def multibar_plot(ax, data, colors=None, total_width=0.8, single_width=1,
         # Draw a bar for every value of that type
         for x, y in enumerate(values):
             if invert_axis:
-                bar = ax.barh(x + x_offset, width=y, height=bar_width * single_width,
+                lbar = ax.barh(x + x_offset, width=y, height=bar_width * single_width,
                               color=colors[i % len(colors)])
             else:
-                bar = ax.bar(x + x_offset, y, width=bar_width * single_width,
+                lbar = ax.bar(x + x_offset, y, width=bar_width * single_width,
                              color=colors[i % len(colors)])
 
         # Add a handle to the last drawn bar, which we'll need for the legend
-        bars.append(bar[0])
+        bars.append(lbar[0])
 
     if ticklabels:
         if invert_axis:
