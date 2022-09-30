@@ -195,11 +195,13 @@ class Impact():
         """This function is deprecated, use ``ImpactCalc.impact`` instead.
         """
         LOGGER.warning("The use of Impact().calc() is deprecated."
-                        " Use ImpactCalc().impact() instead.")
+                       " Use ImpactCalc().impact() instead.")
         from climada.engine.impact_calc import ImpactCalc
         impcalc = ImpactCalc(exposures, impact_funcs, hazard)
-        self.__dict__ = impcalc.impact(insured=False, save_mat=save_mat,
-                                        assign_centroids=assign_centroids).__dict__
+        self.__dict__ = impcalc.impact(
+            save_mat=save_mat,
+            assign_centroids=assign_centroids
+        ).__dict__
 
 #TODO: new name
     @classmethod
