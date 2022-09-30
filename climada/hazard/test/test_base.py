@@ -78,6 +78,11 @@ class TestLoader(unittest.TestCase):
 
         return haz
 
+    def test_check_empty_fraction(self):
+        haz = self.good_hazard()
+        haz.fraction = sparse.csr_matrix(shape=haz.intensity.shape)
+        haz.check()
+
     def test_check_wrongCentroids_fail(self):
         """Wrong hazard definition"""
         haz = self.good_hazard()
@@ -1461,15 +1466,15 @@ class TestImpactFuncs(unittest.TestCase):
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestLoader)
-    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestHDF5))
-    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReaderExcel))
-    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReaderMat))
-    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRemoveDupl))
-    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestSelect))
-    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestStats))
-    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestYearset))
-    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAppend))
-    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCentroids))
-    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestClear))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestHDF5))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReaderExcel))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReaderMat))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRemoveDupl))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestSelect))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestStats))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestYearset))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAppend))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCentroids))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestClear))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestImpactFuncs))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
