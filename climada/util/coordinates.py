@@ -1016,7 +1016,7 @@ def assign_coordinates(coords, coords_to_assign, distance="euclidean",
                     threshold)
         # pairs of floats can be sorted (lexicographically) in NumPy
         coords_view = coords.view(dtype='float64,float64').reshape(-1)
-        coords_to_assign_view = coords_to_assign.T.view(dtype='float64,float64').T.reshape(-1)
+        coords_to_assign_view = coords_to_assign.view(dtype='float64,float64').reshape(-1)
 
         # assign each hazard coordsinate to an element in coords using searchsorted
         coords_sorter = np.argsort(coords_view)
