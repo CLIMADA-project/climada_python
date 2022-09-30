@@ -50,6 +50,7 @@ HAZ_TEST_MAT = get_test_file('atl_prob_no_name')
 
 ENT = Entity.from_excel(ENT_DEMO_TODAY)
 HAZ = Hazard.from_mat(HAZ_TEST_MAT)
+HAZ.fraction = sparse.csr_matrix(HAZ.intensity.shape) #temporary, to remove when file updated
 
 DATA_FOLDER = DEMO_DIR / 'test-results'
 DATA_FOLDER.mkdir(exist_ok=True)
@@ -131,7 +132,8 @@ class TestImpactCalc(unittest.TestCase):
 
         x = 0.6
         HAZf = deepcopy(HAZ)
-        HAZf.fraction *= 0.6
+        HAZf.fraction = HAZ.intensity.copy()
+        HAZf.fraction.data.fill(x)
         icalc = ImpactCalc(ENT.exposures, ENT.impact_funcs, HAZf)
         impact = icalc.impact(assign_centroids=False)
         self.assertEqual(icalc.n_events, len(impact.at_event))

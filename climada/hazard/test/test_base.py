@@ -79,8 +79,9 @@ class TestLoader(unittest.TestCase):
         return haz
 
     def test_check_empty_fraction(self):
+        """Test empty fraction"""
         haz = self.good_hazard()
-        haz.fraction = sparse.csr_matrix(shape=haz.intensity.shape)
+        haz.fraction = sparse.csr_matrix(haz.intensity.shape)
         haz.check()
 
     def test_check_wrongCentroids_fail(self):
