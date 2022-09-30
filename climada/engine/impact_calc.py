@@ -416,9 +416,9 @@ class ImpactCalc():
             shape=(1, n_exp_pnt))
         if self.hazard.fraction.nonzero()[0].size == 0:
             return mdr.multiply(exp_values_csr)
-        else:
-            fract = self.hazard.get_fraction(cent_idx)
-            return fract.multiply(mdr).multiply(exp_values_csr)
+
+        fract = self.hazard.get_fraction(cent_idx)
+        return fract.multiply(mdr).multiply(exp_values_csr)
 
     def stitch_impact_matrix(self, imp_mat_gen):
         """
