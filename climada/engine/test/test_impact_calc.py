@@ -359,7 +359,7 @@ class TestImpactCalc(unittest.TestCase):
         icalc = ImpactCalc(ENT.exposures, ENT.impact_funcs, HAZ)
         exp_min_gdf = icalc.minimal_exp_gdf('impf_TC', assign_centroids=True,
                                             ignore_cover=True, ignore_deductible=True)
-        self.assertSetEqual(set(exp_min_gdf.columns), 
+        self.assertSetEqual(set(exp_min_gdf.columns),
                             set(['value', 'impf_TC', 'centr_TC']))
         np.testing.assert_array_equal(exp_min_gdf.value, ENT.exposures.gdf.value)
         np.testing.assert_array_equal(exp_min_gdf.impf_TC, ENT.exposures.gdf.impf_TC)

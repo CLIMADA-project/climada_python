@@ -74,7 +74,7 @@ class ImpactCalc():
         """Number of hazard events (size of event_id array)"""
         return self.hazard.size
 
-    def impact(self, save_mat=True, assign_centroids=True, 
+    def impact(self, save_mat=True, assign_centroids=True,
                ignore_cover=False, ignore_deductible=False):
         """Compute the impact of a hazard on exposures.
 
@@ -329,7 +329,7 @@ class ImpactCalc():
                 haz_type=self.hazard.haz_type,
                 fun_id=impf_id)
             if 'deductible' in exp_gdf:
-                deductible = exp_gdf.deductible.values[exp_idx] 
+                deductible = exp_gdf.deductible.values[exp_idx]
                 mat = self.apply_deductible_to_mat(mat, deductible, self.hazard, cent_idx, impf)
             if 'cover' in exp_gdf:
                 cover = exp_gdf.cover.values[exp_idx]
