@@ -400,7 +400,6 @@ def calc_perturbed_trajectories(
                         ', '.join(cutoff_track_ids_ts))
     new_ens = [x[0] for x in new_ens]
     tracks.data = sum(new_ens, [])
-    tracks.data_hist = deepcopy([deepcopy(x[0]) for x in new_ens if x[0].orig_event_flag])
 
     if adjust_intensity == 'explicit':
         land_geom = climada.util.coordinates.get_land_geometry(
@@ -419,11 +418,12 @@ def calc_perturbed_trajectories(
                 chunksize=chunksize
             )
         else:
-            # returns a list of tuples (track, no_sea_chunks, no_land_chunks)
+            # returns a list of tuples (track, no_sea_chunks, no_land_chunks, track_ext)
             tracks_with_id_chunks = [
                 _add_id_synth_chunks_shift_init(track, time_step_h, land_geom, shift_values_init=True)
                 for track in tracks.data
             ]
+        # on_land and dist_since_lf calculated except for track extension
 
         # track extension when shifted
         if extend_track:
@@ -433,7 +433,8 @@ def calc_perturbed_trajectories(
                 _get_random_trajectory_ext(track_ext, time_step_h)
                 for _,_,_,track_ext in tracks_with_id_chunks
             ]
-            # create the tracks with extension
+            # create the tracks with extension - this is very fast
+            LOGGER.debug('create the tracks with extension')
             sid_extended_tracks_shift = [track_ext.sid for _, _, _, track_ext in tracks_with_id_chunks if track_ext is not None]
             tracks_with_id_chunks = [
                 (_create_track_from_ext(track, track_ext, rnd_tpl), -1, -1)
@@ -453,6 +454,7 @@ def calc_perturbed_trajectories(
             )
             # on_land still True for id_chunk NA
             # extend id_chunk and get number of chunks
+            LOGGER.debug('extend id_chunk and get number of chunks')
             no_chunks = [
                 _track_ext_id_chunk(track, land_geom)
                 if 'id_chunk' in track.variables and np.any(np.isnan(track['id_chunk'].values))
@@ -1094,7 +1096,6 @@ def _get_shift_idx_start(on_land_hist, on_land_synth, time_step_h, shift_values_
                     # From synth perspective, model latest from next landfall
                     # (i.e. second landfall)
                     idx_start_model_synth = idx_lf_synth[1] if idx_lf_synth.size > 1 else nts
-                    LOGGER.info('case 1a i: %s', sid)
                 else:
                     # ii) synth track never moves back to the sea after first
                     # landfall: model from the start of the synth landfall
@@ -1102,7 +1103,6 @@ def _get_shift_idx_start(on_land_hist, on_land_synth, time_step_h, shift_values_
                     # no modelling needed before first synth landfall or first hist landfall.
                     idx_start_model_hist = idx_lf_hist[0]
                     idx_start_model_synth = idx_lf_synth[0]
-                    LOGGER.info('case 1a ii: %s', sid)
 
             elif np.all(on_land_hist[:nts_in_next_ocean + 1]):
 
@@ -1111,7 +1111,6 @@ def _get_shift_idx_start(on_land_hist, on_land_synth, time_step_h, shift_values_
                 shift_first_sea = 0
                 idx_start_model_hist = 0
                 idx_start_model_synth = 0
-                LOGGER.info('case 1b: %s', sid)
             else:
 
                 # c) synth track not over land soon AND hist track soon over the ocean: shift as by default: first
@@ -1120,7 +1119,6 @@ def _get_shift_idx_start(on_land_hist, on_land_synth, time_step_h, shift_values_
                 # no modelling needed before first synth landfall or first hist landfall
                 idx_start_model_hist = idx_lf_hist[0]
                 idx_start_model_synth = idx_lf_synth[0]
-                LOGGER.info('case 1c: %s', sid)
 
         else:
 
@@ -1141,14 +1139,12 @@ def _get_shift_idx_start(on_land_hist, on_land_synth, time_step_h, shift_values_
                     # From synth perspective: model latest from next landfall
                     # (first landfall)
                     idx_start_model_synth = idx_lf_synth[0]
-                    LOGGER.info('case 2a i: %s', sid)
                 else:
                     # hist track never moves back to sea after first landfall
                     # hence need to model from the start
                     shift_first_sea = 0
                     idx_start_model_synth = 0
                     idx_start_model_hist = 0
-                    LOGGER.info('case 2a ii: %s', sid)
 
             elif np.all(on_land_synth[:nts_in_next_ocean + 1]):
 
@@ -1157,7 +1153,6 @@ def _get_shift_idx_start(on_land_hist, on_land_synth, time_step_h, shift_values_
                 shift_first_sea = 0
                 idx_start_model_synth = 0
                 idx_start_model_hist = 0
-                LOGGER.info('case 2b: %s', sid)
             else:
                 # c) hist track not over land soon AND synth track soon over the ocean
                 # -> shift as normal
@@ -1166,7 +1161,6 @@ def _get_shift_idx_start(on_land_hist, on_land_synth, time_step_h, shift_values_
                 idx_start_model_hist = idx_lf_hist[0]
                 # from synth perspective: model latest from first landfall
                 idx_start_model_synth = idx_lf_synth[0]
-                LOGGER.info('case 2c: %s', sid)
 
     else:
         # case without shift
@@ -1291,8 +1285,6 @@ def _create_raw_track_extension(track,
                 track[v].values[-2:],
                 append_vals
             ]))
-    if track.time.values.dtype != time_append.dtype:
-        raise ValueError('dtype of time_append unexpected')
     track_ext = xr.Dataset(
         vars_values,
         coords={
@@ -1992,7 +1984,7 @@ def _estimate_vars_chunk(track: xr.Dataset,
         )
     return track
 
-def check_id_chunk(id_chunk: np.ndarray, sid: str, allow_missing: bool = False):
+def check_id_chunk(id_chunk: np.ndarray, sid: str, allow_missing: bool = False, raise_error: bool = True):
     """Check if id_chunk values are valid
 
     Raises an error if id_chunk values are not valid.
@@ -2005,28 +1997,37 @@ def check_id_chunk(id_chunk: np.ndarray, sid: str, allow_missing: bool = False):
         Track ID, used for the error message.
     allow_missing : bool
         Whether missing values (np.nan) are allowed in id_chunk.
+    raise_error : bool
+        Whether an error should be thrown id id_chunk is not valid
+
+    Returns
+    -------
+    valid : bool
+        True if id_chunk is valid, False otherwise.
     """
     valid = True
     # check missing values in id_chunk
     if np.all(np.isnan(id_chunk)):
-        LOGGER.debug('All id_chunk values are missing')
+        LOGGER.debug('All id_chunk values are missing.')
         valid = False
     elif np.any(np.isnan(id_chunk)):
         valid = allow_missing
         # nans are all at the end
         if not np.all(np.isnan(id_chunk[np.where(np.isnan(id_chunk))[0][0]:])):
-            LOGGER.debug('id_chunk contains missing values before a non-missing value')
+            LOGGER.debug('id_chunk contains missing values before a non-missing value.')
             valid = False
         if np.isnan(id_chunk[0]):
-            LOGGER.debug('id_chunk starts with a missing value')
+            LOGGER.debug('id_chunk starts with a missing value.')
             valid = False
         # remove NA values for further checks
         id_chunk = id_chunk[~np.isnan(id_chunk)]
     elif id_chunk.dtype != 'int':
-        LOGGER.debug('id_chunk should be integer if no missing values is present')
+        LOGGER.debug('id_chunk should be integer if no missing values is present.')
         valid = False
     if not valid:
-        raise ValueError('Invalid id_chunk values: %s' % sid)
+        if raise_error:
+            raise ValueError('Invalid id_chunk values: %s.' % sid)
+        return valid
     if np.all(id_chunk == 0):
         return valid
 
@@ -2034,44 +2035,45 @@ def check_id_chunk(id_chunk: np.ndarray, sid: str, allow_missing: bool = False):
     if np.any(id_chunk == 0):
         # Any zero after first non-zero value?
         if np.any(id_chunk[np.flatnonzero(id_chunk)[0]:] == 0):
-            LOGGER.debug('id_chunk contains zeros after a non-zero')
+            LOGGER.debug('id_chunk contains zeros after a non-zero.')
             valid = False
     if np.any(np.diff(id_chunk[id_chunk >= 0]) < 0):
-        LOGGER.debug('Positive id_chunk values have negative increment')
+        LOGGER.debug('Positive id_chunk values have negative increment.')
         valid = False
     if np.any(np.diff(id_chunk[id_chunk <= 0]) > 0):
-        LOGGER.debug('Negative id_chunk values have positive increment')
+        LOGGER.debug('Negative id_chunk values have positive increment.')
         valid = False
     if np.any(np.diff(np.abs(id_chunk)) < 0):
-        LOGGER.debug('Absolute value of id_chunk decreases in time')
+        LOGGER.debug('Absolute value of id_chunk decreases in time.')
         valid = False
     if np.abs(id_chunk[id_chunk != 0][0]) != 1:
-        LOGGER.debug('First id_chunk is not 1 or -1')
+        LOGGER.debug('First id_chunk is not 1 or -1.')
         valid = False
     # complete check
     for id in np.unique(id_chunk):
         idx = np.where(id_chunk == id)[0]
         start_idx,end_idx = idx[0],idx[-1]
         if np.any(id_chunk[start_idx:end_idx+1] != id):
-            LOGGER.debug('Non-continuous id_chunks')
+            LOGGER.debug('Non-continuous id_chunks.')
             valid = False
         if start_idx > 0:
             if np.sign(id) == np.sign(id_chunk[start_idx-1]):
-                LOGGER.debug('Sign of id_chunk issue')
+                LOGGER.debug('Sign of id_chunk issue.')
                 valid = False
         if end_idx < id_chunk.size-1:
             if np.sign(id) == np.sign(id_chunk[end_idx+1]):
-                LOGGER.debug('Sign of id_chunk issue')
+                LOGGER.debug('Sign of id_chunk issue.')
                 valid = False
     # check number of chunks
     no_chunks_sea = int(max(0, id_chunk.max()))
     no_chunks_land = int(np.abs(min(0, id_chunk.min())))
     if np.abs(no_chunks_sea - no_chunks_land) > 1:
-        LOGGER.debug('Number of sea and land chunks differ by more than 1')
+        LOGGER.debug('Number of sea and land chunks differ by more than 1.')
         valid = False
 
     if not valid:
-        raise ValueError('Invalid id_chunk values: %s' % sid)
+        if raise_error:
+            raise ValueError('Invalid id_chunk values: %s.' % sid)
     return valid
 
 def _get_transitions(on_land, time_step_h, exclude_short_landfalls=True):
@@ -2332,7 +2334,6 @@ def _add_id_synth_chunks_shift_init(track: xr.Dataset,
 
     transitions_synth = _get_transitions(on_land_synth, time_step_h)
     _set_first_transition(transitions_synth, idx_start_model, on_land_synth)
-    # if historical landfall implies modelling intensity before synthetic landfall
 
     id_chunk, no_chunks_sea, no_chunks_land = _get_id_chunk(transitions_synth)
     check_id_chunk(id_chunk, track.sid)
@@ -2391,7 +2392,6 @@ def _one_model_synth_tc_intensity(track: xr.Dataset,
     track_orig = track.copy(deep=True)
     
     for id_chunk in id_chunk_sorted:
-        # LOGGER.debug('processing id_chunk %s', id_chunk)
         if id_chunk == 0:
             continue
         elif id_chunk > 0:
@@ -2402,13 +2402,10 @@ def _one_model_synth_tc_intensity(track: xr.Dataset,
 
     # make sure track ends meaningfully (low intensity)
     if pcen_extend is not None:
-        # if pcen_extend.size == 1:
-        #     pcen_extend = [pcen_extend]
         values_ext_df = {
             'central_pressure': pcen_extend
         }
         if v_extend is not None:
-            # TODO extend the track
             values_ext_df['max_sustained_wind'] = v_extend
         values_ext_df = pd.DataFrame(values_ext_df)
 
@@ -2425,7 +2422,6 @@ def _model_synth_tc_intensity(tracks_list,
                               p_rel,
                               s_rel):
     # model track intensity
-    # TODO parallelize here
     sid_extended_tracks = []
     sid_outside_lat_range = []
     if pool:
@@ -2458,8 +2454,10 @@ def _model_synth_tc_intensity(tracks_list,
         ]
         return new_tracks_list, sid_extended_tracks, sid_outside_lat_range
 
+    LOGGER.debug('Extending tracks after intensity modelling')
     # create extension and trajectory
     tracks_intensified_new = []
+    LOGGER.debug('create track extensions')
     for i,(track,values_df) in enumerate(tracks_intensified):
         if values_df is not None and values_df.shape[0] == 0:
             LOGGER.warning('values_df has 0 rows, please check: %s', track.sid)
@@ -2486,6 +2484,7 @@ def _model_synth_tc_intensity(tracks_list,
         extent=extent, resolution=10
     )
     # any sea-to-land transition? If so apply landfall decay thereafter
+    LOGGER.debug('apply decay after sea-to-land transition')
     tracks_intensified_new2 = []
     for i,track in enumerate(tracks_intensified_new):
         if track.orig_event_flag:
@@ -2558,6 +2557,7 @@ def _model_synth_tc_intensity(tracks_list,
             tracks_intensified_new2[i].max_sustained_wind_unit
         )
 
+    LOGGER.debug('dropping temporary variables')
     new_tracks_list = [
         drop_temporary_variables(track, track_vars_attrs)
         for track in tracks_intensified_new2
@@ -2765,7 +2765,6 @@ def intensity_evolution_sea(track, id_chunk, central_pressure_pert, rnd_pars_i):
         if end_cat >= 0:
             # ending as a Tropical Storm or above: extend track
             # when will peak be reached?
-            # LOGGER.info('sid: %s, track_stage_end: %s' % (track.sid, track_stage_end))
 
             # INTENSIFICATION EXTENSION
             if track_stage_end == 'intens':
