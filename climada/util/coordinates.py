@@ -708,7 +708,7 @@ def coord_on_land(lat, lon, land_geom=None):
         bounds = latlon_bounds(lat, lons, buffer=delta_deg)
         # load land geometry with appropriate same extent
         land_geom = get_land_geometry(
-            extent=u_coord.toggle_extent_bounds(bounds),
+            extent=toggle_extent_bounds(bounds),
             resolution=10)
     elif not land_geom.is_empty:
         # ensure lon values are within extent of provided land_geom
@@ -813,14 +813,14 @@ def get_country_geometries(country_names=None, extent=None, resolution=10):
         # rewrap longitudes unless longitude extent is already normalized (within [-180, +180])
         lon_normalized = extent[0] >= -180 and extent[1] <= 180
         if lon_normalized:
-            bbox = box(*u_coord.toggle_extent_bounds(extent))
+            bbox = box(*toggle_extent_bounds(extent))
         else:
             # split the extent box into two boxes both within [-180, +180] in longitude
             lon_left, lon_right = lon_normalize(np.array(extent[:2]))
             extent_left = (lon_left, 180, extent[2], extent[3])
             extent_right = (-180, lon_right, extent[2], extent[3])
             bbox = shapely.ops.unary_union(
-                [box(*u_coord.toggle_extent_bounds(e)) for e in [extent_left, extent_right]]
+                [box(*toggle_extent_bounds(e)) for e in [extent_left, extent_right]]
             )
         bbox = gpd.GeoSeries(bbox, crs=DEF_CRS)
         bbox = gpd.GeoDataFrame({'geometry': bbox}, crs=DEF_CRS)
