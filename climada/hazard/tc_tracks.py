@@ -1142,8 +1142,7 @@ class TCTracks():
         -------
         extent : tuple (lon_min, lon_max, lat_min, lat_max)
         """
-        bounds = self.get_bounds(deg_buffer=deg_buffer)
-        return (bounds[0], bounds[2], bounds[1], bounds[3])
+        return u_coord.toggle_extent_bounds(self.get_bounds(deg_buffer=deg_buffer))
 
     @property
     def extent(self):
