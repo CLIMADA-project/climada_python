@@ -586,7 +586,7 @@ class Hazard():
 
         # Initialize Hazard object
         hazard = cls(haz_type=hazard_type)
-        hazard.unit = intensity_unit
+        hazard.units = intensity_unit
 
         # Update coordinate identifiers
         coords = copy.deepcopy(DEF_COORDS)

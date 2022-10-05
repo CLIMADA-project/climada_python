@@ -60,7 +60,7 @@ class ReadDefaultNetCDF(unittest.TestCase):
         """Check the values of the default hazard to be loaded"""
         # Hazard data
         self.assertEqual(hazard.tag.haz_type, "")
-        self.assertEqual(hazard.unit, "")
+        self.assertEqual(hazard.units, "")
         np.testing.assert_array_equal(hazard.event_id, [1, 2])
         np.testing.assert_array_equal(
             hazard.event_name, [np.datetime64(val) for val in self.time]
@@ -86,7 +86,7 @@ class ReadDefaultNetCDF(unittest.TestCase):
 
     def _assert_default_types(self, hazard):
         """Check types of all hazard attributes"""
-        self.assertIsInstance(hazard.unit, str)
+        self.assertIsInstance(hazard.units, str)
         self.assertIsInstance(hazard.tag.haz_type, str)
         self.assertIsInstance(hazard.event_id, np.ndarray)
         self.assertIsInstance(hazard.event_name, list)
@@ -123,7 +123,7 @@ class ReadDefaultNetCDF(unittest.TestCase):
         )
         self._assert_default_types(hazard)
         self.assertEqual(hazard.tag.haz_type, "TC")
-        self.assertEqual(hazard.unit, "m/s")
+        self.assertEqual(hazard.units, "m/s")
 
     def test_data_vars(self):
         """Check handling of data variables"""
