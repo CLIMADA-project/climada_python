@@ -417,8 +417,8 @@ class Hazard():
         This method reads data that can be interpreted using three coordinates for event,
         latitude, and longitude. The data and the coordinates themselves may be organized
         in arbitrary dimensions in the Dataset (e.g. three dimensions 'year', 'month',
-        'day' for the coordinate 'date' representing time/events). The three coordinates
-        to be read can be specified via the ``coordinate_vars`` parameter.
+        'day' for the coordinate 'event'). The three coordinates to be read can be
+        specified via the ``coordinate_vars`` parameter.
 
         The only required data is the intensity. For all other data, this method can
         supply sensible default values. By default, this method will try to find these
@@ -478,8 +478,10 @@ class Hazard():
             * ``event_name``: String representation of the event time
             * ``event_id``: Consecutive integers starting at 1 and increasing with time
         crs : str, optional
-            Identifier for the coordinate reference system to use. Defaults to
-            ``EPSG:4326`` (WGS 84), defined by ``climada.util.constants.DEF_CRS``.
+            Identifier for the coordinate reference system of the coordinates. Defaults
+            to ``EPSG:4326`` (WGS 84), defined by ``climada.util.constants.DEF_CRS``.
+            See https://pyproj4.github.io/pyproj/dev/api/crs/crs.html#pyproj.crs.CRS.from_user_input
+            for further information on how to specify the coordinate system.
 
         Returns
         -------
