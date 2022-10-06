@@ -34,7 +34,7 @@ from climada.util.constants import DEF_CRS
 from pathlib import Path
 
 
-class ReadDefaultNetCDF(unittest.TestCase):
+class TestReadDefaultNetCDF(unittest.TestCase):
     """Test reading a NetCDF file where the coordinates to read match the dimensions"""
 
     def setUp(self):
@@ -265,7 +265,7 @@ class ReadDefaultNetCDF(unittest.TestCase):
         test_crs_from_input(3857)
         test_crs_from_input("+proj=cea +lat_0=52.112866 +lon_0=5.150162 +units=m")
 
-class ReadDimsCoordsNetCDF(unittest.TestCase):
+class TestReadDimsCoordsNetCDF(unittest.TestCase):
     """Checks for dimensions and coordinates with different names and shapes"""
 
     def setUp(self):
@@ -413,6 +413,6 @@ class ReadDimsCoordsNetCDF(unittest.TestCase):
 
 # Execute Tests
 if __name__ == "__main__":
-    TESTS = unittest.TestLoader().loadTestsFromTestCase(ReadDefaultNetCDF)
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(ReadDimsCoordsNetCDF))
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReadDefaultNetCDF)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReadDimsCoordsNetCDF))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
