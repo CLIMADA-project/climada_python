@@ -26,8 +26,11 @@ import numpy as np
 from scipy.sparse import csr_matrix
 
 import xarray as xr
+from pyproj import CRS
 
 from climada.hazard.base import Hazard
+from climada.util.constants import DEF_CRS
+
 from pathlib import Path
 
 
@@ -73,6 +76,7 @@ class ReadDefaultNetCDF(unittest.TestCase):
         # Centroids
         np.testing.assert_array_equal(hazard.centroids.lat, [0, 0, 0, 1, 1, 1])
         np.testing.assert_array_equal(hazard.centroids.lon, [0, 1, 2, 0, 1, 2])
+        self.assertEqual(hazard.centroids.geometry.crs, DEF_CRS)
 
         # Intensity data
         np.testing.assert_array_equal(
@@ -250,10 +254,16 @@ class ReadDefaultNetCDF(unittest.TestCase):
         # NaNs are propagated in dense data
         np.testing.assert_array_equal(hazard.frequency, frequency)
 
-    @unittest.skip("no test for CRS input implemented")
     def test_crs(self):
-        """Check if different CRS are handled correctly"""
-        self.fail("No test implemented")
+        """Check if different CRS inputs are handled correctly"""
+        def test_crs_from_input(crs_input):
+            crs = CRS.from_user_input(crs_input)
+            hazard = Hazard.from_raster_xarray(self.netcdf_path, "", "", crs=crs_input)
+            self.assertEqual(hazard.centroids.geometry.crs, crs)
+
+        test_crs_from_input("EPSG:3857")
+        test_crs_from_input(3857)
+        test_crs_from_input("+proj=cea +lat_0=52.112866 +lon_0=5.150162 +units=m")
 
 class ReadDimsCoordsNetCDF(unittest.TestCase):
     """Checks for dimensions and coordinates with different names and shapes"""
