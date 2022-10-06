@@ -630,7 +630,7 @@ class Hazard():
             """
             return sparse.csr_matrix(np.where(np.isnan(array), 0, array))
 
-        # Read the intensity data and flatten it in spatial dimensions
+        # Read the intensity data
         LOGGER.debug("Loading Hazard intensity from DataArray '%s'", intensity)
         hazard.intensity = to_csr_matrix(data[intensity])
 
