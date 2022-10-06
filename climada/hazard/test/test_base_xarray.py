@@ -45,7 +45,9 @@ class TestReadDefaultNetCDF(unittest.TestCase):
         self.latitude = np.array([0, 1])
         self.longitude = np.array([0, 1, 2])
         dset = xr.Dataset(
-            {"intensity": (["time", "latitude", "longitude"], self.intensity),},
+            {
+                "intensity": (["time", "latitude", "longitude"], self.intensity),
+            },
             dict(time=self.time, latitude=self.latitude, longitude=self.longitude),
         )
         dset.to_netcdf(self.netcdf_path)
@@ -245,10 +247,12 @@ class TestReadDefaultNetCDF(unittest.TestCase):
 
         # NaNs are set to zero in sparse data
         np.testing.assert_array_equal(
-            hazard.intensity.toarray(), [[0, 0, 2, 3, 4, 5], [6, 0, 8, 9, 10, 11]],
+            hazard.intensity.toarray(),
+            [[0, 0, 2, 3, 4, 5], [6, 0, 8, 9, 10, 11]],
         )
         np.testing.assert_array_equal(
-            hazard.fraction.toarray(), [[0, 0, 0, 0, 0, 0], [1, 0, 1, 0, 1, 1]],
+            hazard.fraction.toarray(),
+            [[0, 0, 0, 0, 0, 0], [1, 0, 1, 0, 1, 1]],
         )
 
         # NaNs are propagated in dense data
@@ -256,6 +260,7 @@ class TestReadDefaultNetCDF(unittest.TestCase):
 
     def test_crs(self):
         """Check if different CRS inputs are handled correctly"""
+
         def test_crs_from_input(crs_input):
             crs = CRS.from_user_input(crs_input)
             hazard = Hazard.from_raster_xarray(self.netcdf_path, "", "", crs=crs_input)
@@ -264,6 +269,7 @@ class TestReadDefaultNetCDF(unittest.TestCase):
         test_crs_from_input("EPSG:3857")
         test_crs_from_input(3857)
         test_crs_from_input("+proj=cea +lat_0=52.112866 +lon_0=5.150162 +units=m")
+
 
 class TestReadDimsCoordsNetCDF(unittest.TestCase):
     """Checks for dimensions and coordinates with different names and shapes"""
@@ -407,12 +413,17 @@ class TestReadDimsCoordsNetCDF(unittest.TestCase):
         # Correctly specified, but the custom dimension does not exist
         with self.assertRaises(KeyError) as cm:
             Hazard.from_raster_xarray(
-                self.netcdf_path, "", "", coordinate_vars=dict(latitude="lalalatitude"),
+                self.netcdf_path,
+                "",
+                "",
+                coordinate_vars=dict(latitude="lalalatitude"),
             )
 
 
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReadDefaultNetCDF)
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReadDimsCoordsNetCDF))
+    TESTS.addTests(
+        unittest.TestLoader().loadTestsFromTestCase(TestReadDimsCoordsNetCDF)
+    )
     unittest.TextTestRunner(verbosity=2).run(TESTS)
