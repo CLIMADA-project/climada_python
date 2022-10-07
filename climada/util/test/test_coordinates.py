@@ -899,13 +899,13 @@ class TestGetGeodata(unittest.TestCase):
 
     def test_on_land_pass(self):
         """check point on land with 1:50.000.000 resolution."""
-        lat = np.array([28.203216, 28.555994, 28.860875])
-        lon = np.array([-16.567489, -18.554130, -9.532476])
+        rows, cols, trans = u_coord.pts_to_raster_meta((-179.5, -60, 179.5, 60), (1, -1))
+        xgrid, ygrid = u_coord.raster_to_meshgrid(trans, cols, rows)
+        lat = np.concatenate([[28.203216, 28.555994, 28.860875], ygrid.ravel()])
+        lon = np.concatenate([[-16.567489, -18.554130, -9.532476], xgrid.ravel()])
         res = u_coord.coord_on_land(lat, lon)
-        self.assertEqual(res.size, 3)
-        self.assertTrue(res[0])
-        self.assertFalse(res[1])
-        self.assertTrue(res[2])
+        self.assertEqual(res.size, lat.size)
+        np.testing.assert_array_equal(res[:3], [True, False, True])
 
     def test_dist_to_coast(self):
         """Test point in coast and point not in coast"""

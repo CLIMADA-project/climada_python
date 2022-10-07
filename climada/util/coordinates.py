@@ -684,12 +684,10 @@ def coord_on_land(lat, lon, land_geom=None):
         lon_mid = 0.5 * (bounds[0] + bounds[1])
         # normalize lon
         lon_normalize(lons, center=lon_mid)
+        bounds = latlon_bounds(lat, lons, buffer=delta_deg)
         # load land geometry with appropriate same extent
         land_geom = get_land_geometry(
-            extent=(bounds[0] - delta_deg,
-                    bounds[1] + delta_deg,
-                    np.min(lat) - delta_deg,
-                    np.max(lat) + delta_deg),
+            extent=(bounds[0], bounds[2], bounds[1], bounds[3]),
             resolution=10)
     elif not land_geom.is_empty:
         # ensure lon values are within extent of provided land_geom
