@@ -133,7 +133,7 @@ class TestImpactCalc(unittest.TestCase):
         HAZf = deepcopy(HAZ)
         HAZf.fraction *= 0.6
         icalc = ImpactCalc(ENT.exposures, ENT.impact_funcs, HAZf)
-        impact = icalc.impact()
+        impact = icalc.impact(assign_centroids=False)
         self.assertEqual(icalc.n_events, len(impact.at_event))
         self.assertEqual(0, impact.at_event[0])
         self.assertEqual(0, impact.at_event[7225])
@@ -152,7 +152,7 @@ class TestImpactCalc(unittest.TestCase):
         exp = Exposures.from_hdf5(get_test_file('test_exposure_US_flood_random_locations'))
         impf_set = ImpactFuncSet.from_excel(Path(__file__).parent / 'data' / 'flood_imp_func_set.xls')
         icalc = ImpactCalc(exp, impf_set, haz)
-        impact = icalc.impact()
+        impact = icalc.impact(assign_centroids=False)
         aai_agg = 161436.05112960344
         eai_exp = np.array([
             1.61159701e+05, 1.33742847e+02, 0.00000000e+00, 4.21352988e-01,
@@ -181,17 +181,17 @@ class TestImpactCalc(unittest.TestCase):
         check_impact(self, impact, haz, exp, aai_agg, eai_exp, at_event, imp_mat_array)
 
     def test_empty_impact(self):
-        """Check that empty impact is returned if no centroids matching the exposures"""
+        """Check that empty impact is returned if no centroids match the exposures"""
         exp = ENT.exposures.copy()
         exp.gdf['centr_TC'] = -1
         icalc = ImpactCalc(exp, ENT.impact_funcs, HAZ)
-        impact = icalc.impact()
+        impact = icalc.impact(assign_centroids=False)
         aai_agg = 0.0
         eai_exp = np.zeros(len(exp.gdf))
         at_event = np.zeros(HAZ.size)
         check_impact(self, impact, HAZ, exp, aai_agg, eai_exp, at_event, None)
 
-        impact = icalc.impact(save_mat=True)
+        impact = icalc.impact(save_mat=True, assign_centroids=False)
         imp_mat_array = sparse.csr_matrix((HAZ.size, len(exp.gdf))).toarray()
         check_impact(self, impact, HAZ, exp, aai_agg, eai_exp, at_event, imp_mat_array)
 
@@ -204,7 +204,7 @@ class TestImpactCalc(unittest.TestCase):
         eai_exp = np.zeros(len(ENT.exposures.gdf))
         at_event = np.array([0])
         check_impact(self, impact, haz, ENT.exposures, aai_agg, eai_exp, at_event, None)
-        impact = icalc.impact(save_mat=True)
+        impact = icalc.impact(save_mat=True, assign_centroids=False)
         imp_mat_array = sparse.csr_matrix((haz.size, len(ENT.exposures.gdf))).toarray()
         check_impact(self, impact, haz, ENT.exposures, aai_agg, eai_exp, at_event, imp_mat_array)
 
@@ -299,7 +299,7 @@ class TestImpactCalc(unittest.TestCase):
     def test_minimal_exp_gdf(self):
         """Test obtain minimal exposures gdf"""
         icalc = ImpactCalc(ENT.exposures, ENT.impact_funcs, HAZ)
-        exp_min_gdf = icalc.minimal_exp_gdf('impf_TC')
+        exp_min_gdf = icalc.minimal_exp_gdf('impf_TC', False)
         self.assertSetEqual(
             set(exp_min_gdf.columns), set(['value', 'impf_TC', 'centr_TC'])
             )

@@ -430,8 +430,11 @@ class Client():
         jarr = self.list_dataset_infos(data_type=data_type, name=name, version=version,
                                  properties=properties, status=status)
         if len(jarr) > 1:
-            raise Client.AmbiguousResult("there are several datasets meeting the requirements:"
-                                        f" {jarr}")
+            shown = 10
+            endofmessage = '' if len(jarr) <= shown else f'\nand {len(jarr)-shown} more'
+            datasetlist = ',\n* '.join(str(jarr[i]) for i in range(min(shown, len(jarr))))
+            raise Client.AmbiguousResult(f"there are {len(jarr)} datasets meeting the requirements:"
+                                         f"\n* {datasetlist}{endofmessage}.")
         if len(jarr) < 1:
             data_info = self.list_dataset_infos(data_type)
             properties = self.get_property_values(data_info)
