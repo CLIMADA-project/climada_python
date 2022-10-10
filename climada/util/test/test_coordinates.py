@@ -258,6 +258,10 @@ class TestFunc(unittest.TestCase):
         bounds = u_coord.latlon_bounds(lat, lon, buffer=1)
         self.assertEqual(bounds, (-180, -90, 180, 90))
 
+    def test_toggle_extent_bounds(self):
+        """Test the conversion between 'extent' and 'bounds'"""
+        self.assertEqual(u_coord.toggle_extent_bounds((0, -1, 1, 3)), (0, 1, -1, 3))
+
     def test_geosph_vector(self):
         """Test conversion from lat/lon to unit vector on geosphere"""
         data = np.array([[0, 0], [-13, 179]], dtype=np.float64)
