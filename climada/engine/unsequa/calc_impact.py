@@ -27,7 +27,7 @@ import time
 import pandas as pd
 import numpy as np
 
-from climada.engine import Impact
+from climada.engine import ImpactCalc
 from climada.engine.unsequa import Calc, InputVar, UncImpactOutput
 from climada.util import log_level
 
@@ -260,9 +260,9 @@ class CalcImpact(Calc):
         impf = self.impf_input_var.evaluate(**impf_samples)
         haz = self.haz_input_var.evaluate(**haz_samples)
 
-        imp = Impact()
         exp.assign_centroids(haz, overwrite=False)
-        imp.calc(exposures=exp, impact_funcs=impf, hazard=haz, assign_centroids=False)
+        imp = ImpactCalc(exposures=exp, impfset=impf, hazard=haz)\
+              .impact(assign_centroids=False)
 
         # Extract from climada.impact the chosen metrics
         freq_curve = imp.calc_freq_curve(self.rp).impact

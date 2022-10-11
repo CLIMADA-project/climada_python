@@ -28,7 +28,7 @@ from climada.entity.disc_rates import DiscRates
 from climada.hazard.base import Hazard
 from climada.engine.cost_benefit import CostBenefit, risk_aai_agg, \
         risk_rp_100, risk_rp_250, _norm_values
-from climada.engine import Impact
+from climada.engine import ImpactCalc
 from climada.util.constants import ENT_DEMO_FUTURE, ENT_DEMO_TODAY
 from climada.util.api_client import Client
 
@@ -638,7 +638,7 @@ class TestSteps(unittest.TestCase):
             new_cb.imp_meas_future[tr_name]['risk'],
             np.sum(new_imp * cost_ben.imp_meas_future['no measure']['impact'].frequency), 5)
         self.assertAlmostEqual(new_cb.cost_ben_ratio[tr_name] * new_cb.benefit[tr_name],
-                               risk_transf[2] * 32106013195.316242)
+                               risk_transf[2] * 32106013195.316242, 4)
         self.assertTrue(
             np.allclose(new_cb.imp_meas_future[tr_name]['efc'].impact,
                         new_cb.imp_meas_future[tr_name]['impact'].calc_freq_curve().impact))
@@ -822,9 +822,7 @@ class TestRiskFuncs(unittest.TestCase):
         ent = Entity.from_excel(ENT_DEMO_TODAY)
         ent.check()
         hazard = Hazard.from_mat(HAZ_TEST_MAT)
-        impact = Impact()
-        ent.exposures.assign_centroids(hazard)
-        impact.calc(ent.exposures, ent.impact_funcs, hazard, assign_centroids=False)
+        impact = ImpactCalc(ent.exposures, ent.impact_funcs, hazard).impact()
         return impact
 
     def test_risk_aai_agg_pass(self):
