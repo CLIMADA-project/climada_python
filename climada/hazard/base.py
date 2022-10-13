@@ -1922,7 +1922,7 @@ class Hazard():
         paa.data = np.interp(paa.data, impf.intensity, impf.paa)
         return paa[:, indices]
 
-    def get_fraction(self, cent_idx):
+    def get_fraction(self, cent_idx=None):
         """
         Return fraction for chosen centroids (cent_idx).
 
@@ -1930,6 +1930,7 @@ class Hazard():
         ----------
         cent_idx : array-like
             array of indices of chosen centroids from hazard
+            Default is None (full fraction is returned)
 
         Returns
         -------
@@ -1942,4 +1943,5 @@ class Hazard():
         get_paa: get the paa ffor the given centroids
         """
         if self.fraction.nnz == 0: return None
+        if cent_idx is None: return self.fraction
         return self.fraction[:, cent_idx]
