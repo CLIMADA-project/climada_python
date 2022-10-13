@@ -414,10 +414,10 @@ class ImpactCalc():
         exp_values_csr = sparse.csr_matrix(  # vector 1 x exp_size
             (exp_values, np.arange(n_exp_pnt), [0, n_exp_pnt]),
             shape=(1, n_exp_pnt))
-        if self.hazard.fraction.nonzero()[0].size == 0:
+        fract = self.hazard.get_fraction(cent_idx)
+        if fract is None:
             return mdr.multiply(exp_values_csr)
 
-        fract = self.hazard.get_fraction(cent_idx)
         return fract.multiply(mdr).multiply(exp_values_csr)
 
     def stitch_impact_matrix(self, imp_mat_gen):

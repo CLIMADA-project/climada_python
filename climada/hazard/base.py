@@ -1941,4 +1941,5 @@ class Hazard():
         get_mdr: get the mdr for the given centroids
         get_paa: get the paa ffor the given centroids
         """
+        if self.fraction.nnz == 0: return None
         return self.fraction[:, cent_idx]
