@@ -83,8 +83,7 @@ class TestReader(unittest.TestCase):
             self.assertTrue(np.array_equal(tc_haz.frequency, np.array([1])))
             self.assertTrue(isinstance(tc_haz.fraction, sparse.csr.csr_matrix))
             self.assertEqual(tc_haz.fraction.shape, (1, 296))
-            self.assertEqual(tc_haz.fraction[0, 100], 1)
-            self.assertEqual(tc_haz.fraction[0, 260], 0)
+            self.assertIsNone(tc_haz.get_fraction())
             self.assertEqual(tc_haz.fraction.nonzero()[0].size, 280)
 
             self.assertTrue(isinstance(tc_haz.intensity, sparse.csr.csr_matrix))
