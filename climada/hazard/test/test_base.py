@@ -178,12 +178,17 @@ class TestLoader(unittest.TestCase):
 
     def test_check_wrongId_fail(self):
         """Wrong hazard definition"""
-        haz = self.good_hazard()
-        haz.event_id = np.array([1, 2, 1])
-
+        # Assert that event IDs must be unique
+        self.hazard.event_id = np.array([1, 2, 1])
         with self.assertRaises(ValueError) as cm:
-            haz.check()
+            self.hazard.check()
         self.assertIn('There are events with the same identifier.', str(cm.exception))
+
+        # Assert that event IDs must be >0
+        self.hazard.event_id = np.array([-1, 0, 1])
+        with self.assertRaises(ValueError) as cm:
+            self.hazard.check()
+        self.assertIn("Event IDs must be larger than zero", str(cm.exception))
 
     def test_check_wrong_date_fail(self):
         """Wrong hazard definition"""

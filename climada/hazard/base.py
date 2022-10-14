@@ -1504,6 +1504,8 @@ class Hazard():
         num_cen = self.centroids.size
         if np.unique(self.event_id).size != num_ev:
             raise ValueError("There are events with the same identifier.")
+        if np.any(self.event_id < 1):
+            raise ValueError("Event IDs must be larger than zero")
 
         u_check.check_oligatories(self.__dict__, self.vars_oblig, 'Hazard.',
                                   num_ev, num_ev, num_cen)
