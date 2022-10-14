@@ -159,10 +159,10 @@ class Hazard():
     scalar, string, list, 1dim np.array of size num_events."""
 
     def __init__(self,
-                 haz_type: str,
                  intensity: sparse.csr_matrix,
                  centroids: Centroids,
                  date: np.ndarray,
+                 haz_type: str = "",
                  units: str = "",
                  frequency: Optional[np.ndarray] = None,
                  frequency_unit: str = DEF_FREQ_UNIT,
@@ -182,14 +182,15 @@ class Hazard():
 
         Parameters
         ----------
-        haz_type : str
-            String indicating the hazard type (e.g., ``TC`` for tropical cyclone)
         intensity : sparse.csr_matrix
             The intensity of the hazard for each event. Shape ``(n_event, n_centroids)``
         centroids : Centroids
             The centroids on which this hazard is defined.
         date : np.array of int
             The ordinal representation of the date of each event.
+        haz_type : str (optional)
+            String indicating the hazard type (e.g., ``TC`` for tropical cyclone). This
+            parameter is passed to the hazard ``Tag``.
         units : str (optional)
             The physical units of the intensity (used for plotting)
         frequency : np.array of float (optional)

@@ -55,10 +55,10 @@ def dummy_hazard():
                                    [4.3, 2.1, 1.0], [5.3, 0.2, 0.0]])
     units = 'm/s'
 
-    return Hazard(haz_type,
-                  intensity,
+    return Hazard(intensity,
                   centroids,
                   date,
+                  haz_type,
                   units,
                   frequency,
                   frequency_unit,
@@ -86,10 +86,10 @@ class TestLoader(unittest.TestCase):
         self.intensity = sparse.csr_matrix([[1, 2], [1, 2], [1, 2]])
         self.fraction = sparse.csr_matrix([[1, 2], [1, 2], [1, 2]])
 
-        self.hazard = Hazard(self.haz_type,
-                             self.intensity,
+        self.hazard = Hazard(self.intensity,
                              self.centroids,
                              self.date,
+                             self.haz_type,
                              event_id=self.event_id,
                              event_name=self.event_name,
                              frequency=self.frequency,
@@ -101,10 +101,10 @@ class TestLoader(unittest.TestCase):
 
     def test_minimal_hazard(self):
         """Check if stating only the required parameters works"""
-        Hazard(self.haz_type,
-               self.intensity,
+        Hazard(self.intensity,
                self.centroids,
                self.date,
+               self.haz_type,
                fast=False)
 
     def test_fast_init_fail(self):
@@ -112,21 +112,21 @@ class TestLoader(unittest.TestCase):
         frequency = np.array([1, 2])
         # Not fast: Should raise exception
         with self.assertRaises(ValueError) as cm:
-            Hazard(self.haz_type,
-                            self.intensity,
-                            self.centroids,
-                            self.date,
-                            event_id=self.event_id,
-                            event_name=self.event_name,
-                            frequency=frequency,
-                            fraction=self.fraction)
+            Hazard(self.intensity,
+                   self.centroids,
+                   self.date,
+                   self.haz_type,
+                   event_id=self.event_id,
+                   event_name=self.event_name,
+                   frequency=frequency,
+                   fraction=self.fraction)
         self.assertIn("Invalid Hazard.frequency", str(cm.exception))
 
         # Fast: Skip check
-        Hazard(self.haz_type,
-               self.intensity,
+        Hazard(self.intensity,
                self.centroids,
                self.date,
+               self.haz_type,
                event_id=self.event_id,
                event_name=self.event_name,
                frequency=frequency,
