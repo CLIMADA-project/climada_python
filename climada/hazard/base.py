@@ -27,6 +27,7 @@ import itertools
 import logging
 import pathlib
 import warnings
+from typing import List, Optional
 
 import geopandas as gpd
 import h5py
@@ -157,49 +158,88 @@ class Hazard():
     """Name of the variables that aren't need to compute the impact. Types:
     scalar, string, list, 1dim np.array of size num_events."""
 
-    def __init__(self, haz_type='', pool=None):
-        """
-        Initialize values.
+    def __init__(self,
+                 haz_type: str,
+                 intensity: sparse.csr_matrix,
+                 centroids: Centroids,
+                 date: np.ndarray,
+                 units: str = "",
+                 frequency: Optional[np.ndarray] = None,
+                 frequency_unit: str = DEF_FREQ_UNIT,
+                 orig: Optional[np.ndarray] = None,
+                 event_id: Optional[np.ndarray] = None,
+                 event_name: Optional[List[str]] = None,
+                 fraction: Optional[sparse.csr_matrix] = None,
+                 pool: Optional[Pool] = None,
+                 fast: bool = False,
+                 **tag_kwargs):
+        """Initialize the Hazard object
+
+        After initialization, the Hazard object performs a self-check to ensure
+        consistency. This check can be skipped by setting ``fast=True``. This should only
+        be used when other consistency checks are performed, e.g. when loading data from
+        a file before inserting it into a Hazard object.
 
         Parameters
         ----------
-        haz_type : str, optional
-            acronym of the hazard type (e.g. 'TC').
-        pool : pathos.pool, optional
-            Pool that will be used for parallel computation when applicable. Default: None
-
-        Examples
-        --------
-        Fill hazard values by hand:
-
-        >>> haz = Hazard('TC')
-        >>> haz.intensity = sparse.csr_matrix(np.zeros((2, 2)))
-        >>> ...
-
-        Take hazard values from file:
-
-        >>> haz = Hazard.from_mat(HAZ_DEMO_MAT, 'demo')
-
+        haz_type : str
+            String indicating the hazard type (e.g., ``TC`` for tropical cyclone)
+        intensity : sparse.csr_matrix
+            The intensity of the hazard for each event. Shape ``(n_event, n_centroids)``
+        centroids : Centroids
+            The centroids on which this hazard is defined.
+        date : np.array of int
+            The ordinal representation of the date of each event.
+        units : str (optional)
+            The physical units of the intensity (used for plotting)
+        frequency : np.array of float (optional)
+            The frequency of each event. Defaults to 1.0 for each event.
+        frequency_unit : str (optional)
+            The physical unit of the frequency. Defaults to 1/y.
+        orig : np.array of bool (optional)
+            Flag indicating if event is historic (True) or probabilistic (False) for each
+            event. Defaults to True.
+        event_id : np.array of int (optional)
+            The ID for each event. All IDs must be >0. Defaults to ``1...n_event``.
+        event_name : list of str (optional)
+            The name of each event. Defaults to a string representation of ``event_id``.
+        fraction : sparse.csr_matrix (optional)
+            The spatial fraction on which the hazard intensity applies for each event and
+            centroid. Shape ``(n_event, n_centroids)``. Defaults to 1.0 everywhere.
+        pool : pathos.pools.ProcessPool (optional)
+            The process pool to use when performing calculations with this Hazard.
+        fast : bool (optional)
+            Flag indicating if a consistency check of this Hazard object should be
+            skipped after constructing it. Defaults to False.
+        **tag_kwargs : dict (optional)
+            Additional keyword arguments for initializing the Tag of the Hazard. Note
+            that ``haz_type`` is already passed to the Tag.
         """
-        self.tag = TagHazard()
-        self.tag.haz_type = haz_type
-        self.units = ''
-        self.centroids = Centroids()
-        # following values are defined for each event
-        self.event_id = np.array([], int)
-        self.frequency = np.array([], float)
-        self.frequency_unit = DEF_FREQ_UNIT
-        self.event_name = list()
-        self.date = np.array([], int)
-        self.orig = np.array([], bool)
-        # following values are defined for each event and centroid
-        self.intensity = sparse.csr_matrix(np.empty((0, 0)))  # events x centroids
-        self.fraction = sparse.csr_matrix(np.empty((0, 0)))  # events x centroids
-        if pool:
-            self.pool = pool
-            LOGGER.info('Using %s CPUs.', self.pool.ncpus)
-        else:
-            self.pool = None
+        # Load the required information
+        self.tag = TagHazard(haz_type=haz_type, **tag_kwargs)
+        self.intensity = intensity
+        self.centroids = centroids
+        self.date = date
+        self.units = units
+
+        # Load the optionals
+        num_events = self.intensity.shape[0]
+        self.frequency = frequency if frequency is not None else np.ones(
+            num_events)
+        self.frequency_unit = frequency_unit
+        self.orig = orig if orig is not None else np.full(
+            num_events, True, bool)
+        self.event_id = event_id if event_id is not None else np.array(
+            range(num_events), dtype=int) + 1
+        self.event_name = event_name if event_name is not None else list(
+            map(str, np.nditer(self.event_id)))
+        self.fraction = fraction if fraction is not None else sparse.csr_matrix(
+            (self.intensity.shape))
+        self.pool = pool
+
+        # Initiate self-check
+        if not fast:
+            self.check()
 
     @classmethod
     def get_default(cls, attribute):

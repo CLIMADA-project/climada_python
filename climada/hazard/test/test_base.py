@@ -38,45 +38,92 @@ DATA_DIR = CONFIG.hazard.test_data.dir()
 HAZ_TEST_MAT = Path(hazard_test.__file__).parent.joinpath('data', 'atl_prob_no_name.mat')
 
 def dummy_hazard():
-    hazard = Hazard('TC')
-    hazard.tag.file_name = 'file1.mat'
-    hazard.tag.description = 'Description 1'
-    hazard.centroids = Centroids.from_lat_lon(np.array([1, 3, 5]), np.array([2, 4, 6]))
-    hazard.event_id = np.array([1, 2, 3, 4])
-    hazard.event_name = ['ev1', 'ev2', 'ev3', 'ev4']
-    hazard.date = np.array([1, 2, 3, 4])
-    hazard.orig = np.array([True, False, False, True])
-    hazard.frequency = np.array([0.1, 0.5, 0.5, 0.2])
-    hazard.frequency_unit = '1/week'
-    hazard.fraction = sparse.csr_matrix([[0.02, 0.03, 0.04],
-                                         [0.01, 0.01, 0.01],
-                                         [0.3, 0.1, 0.0],
-                                         [0.3, 0.2, 0.0]])
-    hazard.intensity = sparse.csr_matrix([[0.2, 0.3, 0.4],
-                                          [0.1, 0.1, 0.01],
-                                          [4.3, 2.1, 1.0],
-                                          [5.3, 0.2, 0.0]])
-    hazard.units = 'm/s'
+    haz_type = 'TC'
+    file_name = 'file1.mat'
+    description = 'Description 1'
+    centroids = Centroids.from_lat_lon(np.array([1, 3, 5]), np.array([2, 4,
+                                                                      6]))
+    event_id = np.array([1, 2, 3, 4])
+    event_name = ['ev1', 'ev2', 'ev3', 'ev4']
+    date = np.array([1, 2, 3, 4])
+    orig = np.array([True, False, False, True])
+    frequency = np.array([0.1, 0.5, 0.5, 0.2])
+    frequency_unit = '1/week'
+    fraction = sparse.csr_matrix([[0.02, 0.03, 0.04], [0.01, 0.01, 0.01],
+                                  [0.3, 0.1, 0.0], [0.3, 0.2, 0.0]])
+    intensity = sparse.csr_matrix([[0.2, 0.3, 0.4], [0.1, 0.1, 0.01],
+                                   [4.3, 2.1, 1.0], [5.3, 0.2, 0.0]])
+    units = 'm/s'
 
-    return hazard
+    return Hazard(haz_type,
+                  intensity,
+                  centroids,
+                  date,
+                  units,
+                  frequency,
+                  frequency_unit,
+                  orig,
+                  event_id,
+                  event_name,
+                  fraction,
+                  file_name=file_name,
+                  description=description)
 
 class TestLoader(unittest.TestCase):
     """Test loading funcions from the Hazard class"""
 
-    @staticmethod
-    def good_hazard():
-        """Define well a hazard"""
-        haz = Hazard('TC')
-        haz.centroids = Centroids.from_lat_lon(np.array([1, 3]), np.array([2, 3]))
-        haz.centroids.region_id = np.array([1, 2])
-        haz.event_id = np.array([1, 2, 3])
-        haz.event_name = ['A', 'B', 'C']
-        haz.frequency = np.array([1, 2, 3])
+    def setUp(self):
+        """Define a consistent hazard as test fixture"""
+        self.haz_type = 'TC'
+        self.centroids = Centroids.from_lat_lon(np.array([1, 3]),
+                                                np.array([2, 3]))
+        self.centroids.region_id = np.array([1, 2])
+        self.date = np.array([1, 2, 3])
+        self.event_id = np.array([1, 2, 3])
+        self.event_name = ['A', 'B', 'C']
+        self.frequency = np.array([1, 2, 3])
         # events x centroids
-        haz.intensity = sparse.csr_matrix([[1, 2], [1, 2], [1, 2]])
-        haz.fraction = sparse.csr_matrix([[1, 2], [1, 2], [1, 2]])
+        self.intensity = sparse.csr_matrix([[1, 2], [1, 2], [1, 2]])
+        self.fraction = sparse.csr_matrix([[1, 2], [1, 2], [1, 2]])
 
-        return haz
+        self.hazard = Hazard(self.haz_type,
+                             self.intensity,
+                             self.centroids,
+                             self.date,
+                             event_id=self.event_id,
+                             event_name=self.event_name,
+                             frequency=self.frequency,
+                             fraction=self.fraction)
+
+    def good_hazard(self):
+        """Return a well-defined hazard"""
+        return self.hazard
+
+    def test_fast_init_fail(self):
+        """Check if fast init correctly disables internal check"""
+        frequency = np.array([1, 2])
+        # Not fast: Should raise exception
+        with self.assertRaises(ValueError) as cm:
+            Hazard(self.haz_type,
+                            self.intensity,
+                            self.centroids,
+                            self.date,
+                            event_id=self.event_id,
+                            event_name=self.event_name,
+                            frequency=frequency,
+                            fraction=self.fraction)
+        self.assertIn("Invalid Hazard.frequency", str(cm.exception))
+
+        # Fast: Skip check
+        Hazard(self.haz_type,
+               self.intensity,
+               self.centroids,
+               self.date,
+               event_id=self.event_id,
+               event_name=self.event_name,
+               frequency=frequency,
+               fraction=self.fraction,
+               fast=True)
 
     def test_check_wrongCentroids_fail(self):
         """Wrong hazard definition"""
@@ -896,12 +943,12 @@ class TestAppend(unittest.TestCase):
         haz1.units = 'm/s'
         haz3 = Hazard('EQ')
         with self.assertRaises(ValueError):
-             Hazard.concat([haz1, haz3])
+            Hazard.concat([haz1, haz3])
 
         haz4 = Hazard('TC')
         haz4.units = 'cm'
         with self.assertRaises(ValueError):
-             Hazard.concat([haz1, haz4])
+            Hazard.concat([haz1, haz4])
 
     def test_change_centroids(self):
         """Set new centroids for hazard"""
