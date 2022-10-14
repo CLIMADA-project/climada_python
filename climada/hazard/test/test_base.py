@@ -99,6 +99,14 @@ class TestLoader(unittest.TestCase):
         """Return a well-defined hazard"""
         return self.hazard
 
+    def test_minimal_hazard(self):
+        """Check if stating only the required parameters works"""
+        Hazard(self.haz_type,
+               self.intensity,
+               self.centroids,
+               self.date,
+               fast=False)
+
     def test_fast_init_fail(self):
         """Check if fast init correctly disables internal check"""
         frequency = np.array([1, 2])
