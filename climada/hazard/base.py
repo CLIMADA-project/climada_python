@@ -418,7 +418,8 @@ class Hazard():
         latitude, and longitude. The data and the coordinates themselves may be organized
         in arbitrary dimensions in the Dataset (e.g. three dimensions 'year', 'month',
         'day' for the coordinate 'event'). The three coordinates to be read can be
-        specified via the ``coordinate_vars`` parameter.
+        specified via the ``coordinate_vars`` parameter. See Notes and Examples if you
+        want to load single-event data that does not contain an event dimension.
 
         The only required data is the intensity. For all other data, this method can
         supply sensible default values. By default, this method will try to find these
@@ -434,9 +435,11 @@ class Hazard():
 
         Notes
         -----
-        * Intensity and fraction data must be three-dimensional data that is interpreted
-          with the coordinates given by ``coordinate_vars`` (or the default). All other
-          data must be given in time coordinates only.
+        * Single-valued coordinates given by ``coordinate_vars``, that are not proper
+          dimensions of the data, are promoted to dimensions automatically. If one of the
+          three coordinates does not exist, use ``Dataset.expand_dims`` (see
+          https://docs.xarray.dev/en/stable/generated/xarray.Dataset.expand_dims.html
+          and Examples) before loading the Dataset as Hazard.
         * To avoid confusion in the call signature, several parameters are keyword-only
           arguments.
         * The attributes ``Hazard.tag.haz_type`` and ``Hazard.unit`` currently cannot be
@@ -578,6 +581,40 @@ class Hazard():
         >>> )
         True
 
+        If your read single-event data your dataset probably will not have a time
+        dimension. As long as a time *coordinate* exists, however, this method will
+        automatically promote it to a dataset dimension and load the data:
+        >>> dset = xr.Dataset(
+        >>>     dict(
+        >>>         intensity=(
+        >>>             ["latitude", "longitude"],
+        >>>             [[0, 1, 2], [3, 4, 5]],
+        >>>         )
+        >>>     ),
+        >>>     dict(
+        >>>         time=[datetime.datetime(2000, 1, 1)],
+        >>>         latitude=[0, 1],
+        >>>         longitude=[0, 1, 2],
+        >>>     ),
+        >>> )
+        >>> hazard = Hazard.from_raster_xarray(dset, "", "")  # Same as first example
+
+        If one coordinate is missing altogehter, you must add it or expand the dimensions
+        before loading the dataset:
+        >>> dset = xr.Dataset(
+        >>>     dict(
+        >>>         intensity=(
+        >>>             ["latitude", "longitude"],
+        >>>             [[0, 1, 2], [3, 4, 5]],
+        >>>         )
+        >>>     ),
+        >>>     dict(
+        >>>         latitude=[0, 1],
+        >>>         longitude=[0, 1, 2],
+        >>>     ),
+        >>> )
+        >>> dset = dset.expand_dims(time=[numpy.datetime64("2000-01-01")])
+        >>> hazard = Hazard.from_raster_xarray(dset, "", "")
         """
         # If the data is a string, open the respective file
         if not isinstance(data, xr.Dataset):
@@ -602,11 +639,27 @@ class Hazard():
         coords.update(coordinate_vars)
 
         # Retrieve dimensions of coordinates
-        dims = dict(
-            event=data[coords["event"]].dims,
-            longitude=data[coords["longitude"]].dims,
-            latitude=data[coords["latitude"]].dims,
-        )
+        try:
+            dims = dict(
+                event=data[coords["event"]].dims,
+                longitude=data[coords["longitude"]].dims,
+                latitude=data[coords["latitude"]].dims,
+            )
+        # Handle KeyError for better error message
+        except KeyError as err:
+            key = err.args[0]
+            raise RuntimeError(
+                f"Dataset is missing dimension/coordinate: {key}. Dataset dimensions: "
+                f"{list(data.dims.keys())}"
+            ) from err
+
+        # Try promoting single-value coordinates to dimensions
+        for key, val in dims.items():
+            if not val:
+                coord = coords[key]
+                LOGGER.debug("Promoting Dataset coordinate '%s' to dimension", coord)
+                data = data.expand_dims(coord)
+                dims[key] = data[coord].dims
 
         # Stack (vectorize) the entire dataset into 2D (time, lat/lon)
         # NOTE: We want the set union of the dimensions, but Python 'set' does not

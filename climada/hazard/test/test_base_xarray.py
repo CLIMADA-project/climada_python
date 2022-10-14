@@ -270,6 +270,37 @@ class TestReadDefaultNetCDF(unittest.TestCase):
         test_crs_from_input(3857)
         test_crs_from_input("+proj=cea +lat_0=52.112866 +lon_0=5.150162 +units=m")
 
+    def test_missing_dims(self):
+        """Test if missing coordinates are expanded and correct errors are thrown"""
+        # Drop time as dimension, but not as coordinate!
+        ds = xr.open_dataset(self.netcdf_path).isel(time=0).squeeze()
+        hazard = Hazard.from_raster_xarray(ds, "", "")
+        self._assert_default_types(hazard)
+        np.testing.assert_array_equal(hazard.event_name, [np.datetime64(self.time[0])])
+        np.testing.assert_array_equal(hazard.date, [self.time[0].toordinal()])
+        np.testing.assert_array_equal(hazard.centroids.lat, [0, 0, 0, 1, 1, 1])
+        np.testing.assert_array_equal(hazard.centroids.lon, [0, 1, 2, 0, 1, 2])
+        self.assertEqual(hazard.centroids.geometry.crs, DEF_CRS)
+        np.testing.assert_array_equal(hazard.intensity.toarray(), [[0, 1, 2, 3, 4, 5]])
+        np.testing.assert_array_equal(hazard.fraction.toarray(), [[0, 1, 1, 1, 1, 1]])
+
+        # Now drop variable altogether, should raise an error
+        ds = ds.drop_vars("time")
+        with self.assertRaises(RuntimeError) as cm:
+            Hazard.from_raster_xarray(ds, "", "")
+        self.assertIn(
+            "Dataset is missing dimension/coordinate: time", str(cm.exception)
+        )
+
+        # Expand time again
+        ds = ds.expand_dims(time=[np.datetime64("2022-01-01")])
+        hazard = Hazard.from_raster_xarray(ds, "", "")
+        self._assert_default_types(hazard)
+        np.testing.assert_array_equal(hazard.event_name, [np.datetime64("2022-01-01")])
+        np.testing.assert_array_equal(
+            hazard.date, [dt.datetime(2022, 1, 1).toordinal()]
+        )
+
 
 class TestReadDimsCoordsNetCDF(unittest.TestCase):
     """Checks for dimensions and coordinates with different names and shapes"""
@@ -411,13 +442,16 @@ class TestReadDimsCoordsNetCDF(unittest.TestCase):
         self.assertIn("Unknown coordinates passed: '['bar']'.", str(cm.exception))
 
         # Correctly specified, but the custom dimension does not exist
-        with self.assertRaises(KeyError) as cm:
+        with self.assertRaises(RuntimeError) as cm:
             Hazard.from_raster_xarray(
                 self.netcdf_path,
                 "",
                 "",
                 coordinate_vars=dict(latitude="lalalatitude"),
             )
+        self.assertIn(
+            "Dataset is missing dimension/coordinate: lalalatitude.", str(cm.exception)
+        )
 
 
 # Execute Tests
