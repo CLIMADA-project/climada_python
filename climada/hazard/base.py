@@ -27,6 +27,7 @@ import itertools
 import logging
 import pathlib
 import warnings
+from typing import Union, Optional, Callable, Dict, Any
 
 import geopandas as gpd
 import h5py
@@ -38,6 +39,7 @@ import rasterio
 from rasterio.features import rasterize
 from rasterio.warp import reproject, Resampling, calculate_default_transform
 from scipy import sparse
+import xarray as xr
 
 from climada.hazard.tag import Tag as TagHazard
 from climada.hazard.centroids.centr import Centroids
@@ -47,7 +49,7 @@ import climada.util.dates_times as u_dt
 from climada import CONFIG
 import climada.util.hdf5_handler as u_hdf5
 import climada.util.coordinates as u_coord
-from climada.util.constants import ONE_LAT_KM, DEF_FREQ_UNIT
+from climada.util.constants import ONE_LAT_KM, DEF_CRS, DEF_FREQ_UNIT
 from climada.util.coordinates import NEAREST_NEIGHBOR_THRESHOLD
 
 LOGGER = logging.getLogger(__name__)
@@ -91,6 +93,12 @@ DEF_VAR_MAT = {'field_name': 'hazard',
                             }
                }
 """MATLAB variable names"""
+
+DEF_COORDS = dict(event="time", longitude="longitude", latitude="latitude")
+"""Default coordinates when reading Hazard data from an xarray Dataset"""
+
+DEF_DATA_VARS = ["fraction", "frequency", "event_id", "event_name", "date"]
+"""Default keys for optional Hazard attributes when reading from an xarray Dataset"""
 
 
 class Hazard():
@@ -391,6 +399,470 @@ class Hazard():
         LOGGER.warning("The use of Hazard.set_vector is deprecated."
                        "Use Hazard.from_vector instead.")
         self.__dict__ = Hazard.from_vector(*args, **kwargs).__dict__
+
+    @classmethod
+    def from_raster_xarray(
+        cls,
+        data: Union[xr.Dataset, str],
+        hazard_type: str,
+        intensity_unit: str,
+        *,
+        intensity: str = "intensity",
+        coordinate_vars: Optional[Dict[str, str]] = None,
+        data_vars: Optional[Dict[str, str]] = None,
+        crs: str = DEF_CRS,
+    ):
+        """Read raster-like data from an xarray Dataset or a raster data file
+
+        This method reads data that can be interpreted using three coordinates for event,
+        latitude, and longitude. The data and the coordinates themselves may be organized
+        in arbitrary dimensions in the Dataset (e.g. three dimensions 'year', 'month',
+        'day' for the coordinate 'event'). The three coordinates to be read can be
+        specified via the ``coordinate_vars`` parameter. See Notes and Examples if you
+        want to load single-event data that does not contain an event dimension.
+
+        The only required data is the intensity. For all other data, this method can
+        supply sensible default values. By default, this method will try to find these
+        "optional" data in the Dataset and read it, or use the default values otherwise.
+        Users may specify the variables in the Dataset to be read for certain Hazard
+        object entries, or may indicate that the default values should be used although
+        the Dataset contains appropriate data. This behavior is controlled via the
+        ``data_vars`` parameter.
+
+        If this method succeeds, it will always return a "consistent" Hazard object,
+        meaning that the object can be used in all CLIMADA operations without throwing
+        an error due to missing data or faulty data types.
+
+        Notes
+        -----
+        * Single-valued coordinates given by ``coordinate_vars``, that are not proper
+          dimensions of the data, are promoted to dimensions automatically. If one of the
+          three coordinates does not exist, use ``Dataset.expand_dims`` (see
+          https://docs.xarray.dev/en/stable/generated/xarray.Dataset.expand_dims.html
+          and Examples) before loading the Dataset as Hazard.
+        * To avoid confusion in the call signature, several parameters are keyword-only
+          arguments.
+        * The attributes ``Hazard.tag.haz_type`` and ``Hazard.unit`` currently cannot be
+          read from the Dataset. Use the method parameters to set these attributes.
+        * This method does not read coordinate system metadata. Use the ``crs`` parameter
+          to set a custom coordinate system identifier.
+        * This method **does not** read lazily. Single data arrays must fit into memory.
+
+        Parameters
+        ----------
+        data : xarray.Dataset or str
+            The data to read from. May be a opened dataset or a path to a raster data
+            file, in which case the file is opened first. Works with any file format
+            supported by ``xarray``.
+        hazard_type : str
+            The type identifier of the hazard. Will be stored directly in the hazard
+            object.
+        intensity_unit : str
+            The physical units of the intensity. Will be stored in the ``hazard.tag``.
+        intensity : str, optional
+            Identifier of the `xarray.DataArray` containing the hazard intensity data.
+        coordinate_vars : dict(str, str), optional
+            Mapping from default coordinate names to coordinate names used in the data
+            to read. The default is
+            ``dict(event="time", longitude="longitude", latitude="latitude")``
+        data_vars : dict(str, str), optional
+            Mapping from default variable names to variable names used in the data
+            to read. The default names are ``fraction``, ``hazard_type``, ``frequency``,
+            ``event_name``, and ``event_id``. If these values are not set, the method
+            tries to load data from the default names. If this fails, the method uses
+            default values for each entry. If the values are set to empty strings
+            (``""``), no data is loaded and the default values are used exclusively. See
+            examples for details.
+
+            Default values are:
+            * ``fraction``: 1.0 where intensity is not zero, else zero
+            * ``hazard_type``: Empty string
+            * ``frequency``: 1.0 for every event
+            * ``event_name``: String representation of the event time
+            * ``event_id``: Consecutive integers starting at 1 and increasing with time
+        crs : str, optional
+            Identifier for the coordinate reference system of the coordinates. Defaults
+            to ``EPSG:4326`` (WGS 84), defined by ``climada.util.constants.DEF_CRS``.
+            See https://pyproj4.github.io/pyproj/dev/api/crs/crs.html#pyproj.crs.CRS.from_user_input
+            for further information on how to specify the coordinate system.
+
+        Returns
+        -------
+        hazard : climada.Hazard
+            A hazard object created from the input data
+
+        Examples
+        --------
+        The use of this method is straightforward if the Dataset contains the data with
+        expected names.
+        >>> dset = xr.Dataset(
+        >>>     dict(
+        >>>         intensity=(
+        >>>             ["time", "latitude", "longitude"],
+        >>>             [[[0, 1, 2], [3, 4, 5]]],
+        >>>         )
+        >>>     ),
+        >>>     dict(
+        >>>         time=[datetime.datetime(2000, 1, 1)],
+        >>>         latitude=[0, 1],
+        >>>         longitude=[0, 1, 2],
+        >>>     ),
+        >>> )
+        >>> hazard = Hazard.from_raster_xarray(dset, "", "")
+
+        For non-default coordinate names, use the ``coordinate_vars`` argument.
+        >>> dset = xr.Dataset(
+        >>>     dict(
+        >>>         intensity=(
+        >>>             ["day", "lat", "longitude"],
+        >>>             [[[0, 1, 2], [3, 4, 5]]],
+        >>>         )
+        >>>     ),
+        >>>     dict(
+        >>>         day=[datetime.datetime(2000, 1, 1)],
+        >>>         lat=[0, 1],
+        >>>         longitude=[0, 1, 2],
+        >>>     ),
+        >>> )
+        >>> hazard = Hazard.from_raster_xarray(
+        >>>     dset, "", "", coordinate_vars=dict(event="day", latitude="lat")
+        >>> )
+
+        Coordinates can be different from the actual dataset dimensions. The following
+        loads the data with coordinates ``longitude`` and ``latitude`` (default names):
+        >>> dset = xr.Dataset(
+        >>>     dict(intensity=(["time", "y", "x"], [[[0, 1, 2], [3, 4, 5]]])),
+        >>>     dict(
+        >>>         time=[datetime.datetime(2000, 1, 1)],
+        >>>         y=[0, 1],
+        >>>         x=[0, 1, 2],
+        >>>         longitude=(["y", "x"], [[0.0, 0.1, 0.2], [0.0, 0.1, 0.2]]),
+        >>>         latitude=(["y", "x"], [[0.0, 0.0, 0.0], [0.1, 0.1, 0.1]]),
+        >>>     ),
+        >>> )
+        >>> hazard = Hazard.from_raster_xarray(dset, "", "")
+
+        Optional data is read from the dataset if the default keys are found. Users can
+        specify custom variables in the data, or that the default keys should be ignored,
+        with the ``data_vars`` argument.
+        >>> dset = xr.Dataset(
+        >>>     dict(
+        >>>         intensity=(
+        >>>             ["time", "latitude", "longitude"],
+        >>>             [[[0, 1, 2], [3, 4, 5]]],
+        >>>         ),
+        >>>         fraction=(
+        >>>             ["time", "latitude", "longitude"],
+        >>>             [[[0.0, 0.1, 0.2], [0.3, 0.4, 0.5]]],
+        >>>         ),
+        >>>         freq=(["time"], [0.4]),
+        >>>         event_id=(["time"], [4]),
+        >>>     ),
+        >>>     dict(
+        >>>         time=[datetime.datetime(2000, 1, 1)],
+        >>>         latitude=[0, 1],
+        >>>         longitude=[0, 1, 2],
+        >>>     ),
+        >>> )
+        >>> hazard = Hazard.from_raster_xarray(
+        >>>     dset,
+        >>>     "",
+        >>>     "",
+        >>>     data_vars=dict(
+        >>>         # Load frequency from 'freq' array
+        >>>         frequency="freq",
+        >>>         # Ignore 'event_id' array and use default instead
+        >>>         event_id="",
+        >>>         # 'fraction' array is loaded because it has the default name
+        >>>     ),
+        >>> )
+        >>> np.array_equal(hazard.frequency, [0.4]) and np.array_equal(
+        >>>     hazard.event_id, [1]
+        >>> )
+        True
+
+        If your read single-event data your dataset probably will not have a time
+        dimension. As long as a time *coordinate* exists, however, this method will
+        automatically promote it to a dataset dimension and load the data:
+        >>> dset = xr.Dataset(
+        >>>     dict(
+        >>>         intensity=(
+        >>>             ["latitude", "longitude"],
+        >>>             [[0, 1, 2], [3, 4, 5]],
+        >>>         )
+        >>>     ),
+        >>>     dict(
+        >>>         time=[datetime.datetime(2000, 1, 1)],
+        >>>         latitude=[0, 1],
+        >>>         longitude=[0, 1, 2],
+        >>>     ),
+        >>> )
+        >>> hazard = Hazard.from_raster_xarray(dset, "", "")  # Same as first example
+
+        If one coordinate is missing altogehter, you must add it or expand the dimensions
+        before loading the dataset:
+        >>> dset = xr.Dataset(
+        >>>     dict(
+        >>>         intensity=(
+        >>>             ["latitude", "longitude"],
+        >>>             [[0, 1, 2], [3, 4, 5]],
+        >>>         )
+        >>>     ),
+        >>>     dict(
+        >>>         latitude=[0, 1],
+        >>>         longitude=[0, 1, 2],
+        >>>     ),
+        >>> )
+        >>> dset = dset.expand_dims(time=[numpy.datetime64("2000-01-01")])
+        >>> hazard = Hazard.from_raster_xarray(dset, "", "")
+        """
+        # If the data is a string, open the respective file
+        if not isinstance(data, xr.Dataset):
+            LOGGER.info("Loading Hazard from file: %s", data)
+            data = xr.open_dataset(data)
+        else:
+            LOGGER.info("Loading Hazard from xarray Dataset")
+
+        # Initialize Hazard object
+        hazard = cls(haz_type=hazard_type)
+        hazard.units = intensity_unit
+
+        # Update coordinate identifiers
+        coords = copy.deepcopy(DEF_COORDS)
+        coordinate_vars = coordinate_vars if coordinate_vars is not None else {}
+        unknown_coords = [co for co in coordinate_vars if co not in coords]
+        if unknown_coords:
+            raise ValueError(
+                f"Unknown coordinates passed: '{unknown_coords}'. Supported "
+                f"coordinates are {list(coords.keys())}."
+            )
+        coords.update(coordinate_vars)
+
+        # Retrieve dimensions of coordinates
+        try:
+            dims = dict(
+                event=data[coords["event"]].dims,
+                longitude=data[coords["longitude"]].dims,
+                latitude=data[coords["latitude"]].dims,
+            )
+        # Handle KeyError for better error message
+        except KeyError as err:
+            key = err.args[0]
+            raise RuntimeError(
+                f"Dataset is missing dimension/coordinate: {key}. Dataset dimensions: "
+                f"{list(data.dims.keys())}"
+            ) from err
+
+        # Try promoting single-value coordinates to dimensions
+        for key, val in dims.items():
+            if not val:
+                coord = coords[key]
+                LOGGER.debug("Promoting Dataset coordinate '%s' to dimension", coord)
+                data = data.expand_dims(coord)
+                dims[key] = data[coord].dims
+
+        # Stack (vectorize) the entire dataset into 2D (time, lat/lon)
+        # NOTE: We want the set union of the dimensions, but Python 'set' does not
+        #       preserve order. However, we want longitude to run faster than latitude.
+        #       So we use 'dict' without values, as 'dict' preserves insertion order
+        #       (dict keys behave like a set).
+        data = data.stack(
+            event=dims["event"],
+            lat_lon=dict.fromkeys(dims["latitude"] + dims["longitude"]),
+        )
+
+        # Transform coordinates into centroids
+        hazard.centroids = Centroids.from_lat_lon(
+            data[coords["latitude"]].values, data[coords["longitude"]].values, crs=crs,
+        )
+
+        def to_csr_matrix(array: np.ndarray) -> sparse.csr_matrix:
+            """Store a numpy array as sparse matrix, optimizing storage space
+
+            The CSR matrix stores NaNs explicitly, so we set them to zero.
+            """
+            return sparse.csr_matrix(np.where(np.isnan(array), 0, array))
+
+        # Read the intensity data
+        LOGGER.debug("Loading Hazard intensity from DataArray '%s'", intensity)
+        hazard.intensity = to_csr_matrix(data[intensity])
+
+        # Define accessors for xarray DataArrays
+        def default_accessor(array: xr.DataArray) -> np.ndarray:
+            """Take a DataArray and return its numpy representation"""
+            return array.values
+
+        def strict_positive_int_accessor(array: xr.DataArray) -> np.ndarray:
+            """Take a positive int DataArray and return its numpy representation
+
+            Raises
+            ------
+            TypeError
+                If the underlying data type is not integer
+            ValueError
+                If any value is zero or less
+            """
+            if not np.issubdtype(array.dtype, np.integer):
+                raise TypeError(f"'{array.name}' data array must be integers")
+            if not (array > 0).all():
+                raise ValueError(f"'{array.name}' data must be larger than zero")
+            return array.values
+
+        # Create a DataFrame storing access information for each of data_vars
+        # NOTE: Each row will be passed as arguments to
+        #       `load_from_xarray_or_return_default`, see its docstring for further
+        #       explanation of the DataFrame columns / keywords.
+        num_events = data.sizes["event"]
+        data_ident = pd.DataFrame(
+            data=dict(
+                # The attribute of the Hazard class where the data will be stored
+                hazard_attr=DEF_DATA_VARS,
+                # The identifier and default key used in this method
+                default_key=DEF_DATA_VARS,
+                # The key assigned by the user
+                user_key=None,
+                # The default value for each attribute
+                default_value=[
+                    to_csr_matrix(
+                        xr.apply_ufunc(
+                            lambda x: np.where(x != 0, 1, 0), data[intensity]
+                        ).values
+                    ),
+                    np.ones(num_events),
+                    np.array(range(num_events), dtype=int) + 1,
+                    list(data[coords["event"]].values),
+                    np.array(u_dt.datetime64_to_ordinal(data[coords["event"]].values)),
+                ],
+                # The accessor for the data in the Dataset
+                accessor=[
+                    lambda x: to_csr_matrix(default_accessor(x)),
+                    default_accessor,
+                    strict_positive_int_accessor,
+                    lambda x: list(default_accessor(x).flat),  # list, not np.array
+                    strict_positive_int_accessor,
+                ],
+            )
+        )
+
+        # Check for unexpected keys
+        data_vars = data_vars if data_vars is not None else {}
+        default_keys = data_ident["default_key"]
+        unknown_keys = [
+            key for key in data_vars.keys() if not default_keys.str.contains(key).any()
+        ]
+        if unknown_keys:
+            raise ValueError(
+                f"Unknown data variables passed: '{unknown_keys}'. Supported "
+                f"data variables are {list(default_keys)}."
+            )
+
+        # Update with keys provided by the user
+        # NOTE: Keys in 'default_keys' missing from 'data_vars' will be set to 'None'
+        #       (which is exactly what we want) and the result is written into
+        #       'user_key'. 'default_keys' is not modified.
+        data_ident["user_key"] = default_keys.map(data_vars)
+
+        def load_from_xarray_or_return_default(
+            user_key: Optional[str],
+            default_key: str,
+            hazard_attr: str,
+            accessor: Callable[[xr.DataArray], Any],
+            default_value: Any,
+        ) -> Any:
+            """Load data for a single Hazard attribute or return the default value
+
+            Does the following based on the ``user_key``:
+            * If the key is an empty string, return the default value
+            * If the key is a non-empty string, load the data for that key and return it.
+            * If the key is ``None``, look for the``default_key`` in the data. If it
+              exists, return that data. If not, return the default value.
+
+            Parameters
+            ----------
+            user_key : str or None
+                The key set by the user to identify the DataArray to read data from.
+            default_key : str
+                The default key identifying the DataArray to read data from.
+            hazard_attr : str
+                The name of the attribute of ``Hazard`` where the data will be stored in.
+            accessor : Callable
+                A callable that takes the DataArray as argument and returns the data
+                structure that is required by the ``Hazard`` attribute.
+            default_value
+                The default value/array to return in case the data could not be found.
+
+            Returns
+            -------
+            The object that will be stored in the ``Hazard`` attribute ``hazard_attr``.
+
+            Raises
+            ------
+            KeyError
+                If ``user_key`` was a non-empty string but no such key was found in the
+                data
+            RuntimeError
+                If the data structure loaded has a different shape than the default data
+                structure
+            """
+            # User does not want to read data
+            if user_key == "":
+                LOGGER.debug(
+                    "Using default values for Hazard.%s per user request", hazard_attr
+                )
+                return default_value
+
+            if not pd.isna(user_key):
+                # Read key exclusively
+                LOGGER.debug(
+                    "Reading data for Hazard.%s from DataArray '%s'",
+                    hazard_attr,
+                    user_key,
+                )
+                val = accessor(data[user_key])
+            else:
+                # Try default key
+                try:
+                    val = accessor(data[default_key])
+                    LOGGER.debug(
+                        "Reading data for Hazard.%s from DataArray '%s'",
+                        hazard_attr,
+                        default_key,
+                    )
+                except KeyError:
+                    LOGGER.debug(
+                        "Using default values for Hazard.%s. No data found", hazard_attr
+                    )
+                    return default_value
+
+            def vshape(array):
+                """Return a shape tuple for any array-like type we use"""
+                if isinstance(array, list):
+                    return len(array)
+                if isinstance(array, sparse.csr_matrix):
+                    return array.get_shape()
+                return array.shape
+
+            # Check size for read data
+            if not np.array_equal(vshape(val), vshape(default_value)):
+                raise RuntimeError(
+                    f"'{user_key if user_key else default_key}' must have shape "
+                    f"{vshape(default_value)}, but shape is {vshape(val)}"
+                )
+
+            # Return the data
+            return val
+
+        # Set the Hazard attributes
+        for _, ident in data_ident.iterrows():
+            setattr(
+                hazard,
+                ident["hazard_attr"],
+                load_from_xarray_or_return_default(**ident),
+            )
+
+        # Done!
+        LOGGER.debug("Hazard successfully loaded. Number of events: %i", num_events)
+        return hazard
 
     @classmethod
     def from_vector(cls, files_intensity, files_fraction=None, attrs=None,
