@@ -754,7 +754,7 @@ class TestAssign(unittest.TestCase):
         lons = np.arange(-160, 180+1, 20)
         lats = np.arange(-60, 60+1, 20)
         lats, lons = [arr.ravel() for arr in np.meshgrid(lats, lons)]
-        centroids = np.transpose([lats, lons])
+        centroids = np.transpose([lats, lons]).copy()  # `copy()` makes it F-contiguous
 
         # Define exposures
         exposures = np.array([
