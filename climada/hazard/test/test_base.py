@@ -101,11 +101,29 @@ class TestLoader(unittest.TestCase):
 
     def test_minimal_hazard(self):
         """Check if stating only the required parameters works"""
-        Hazard(self.intensity,
-               self.centroids,
-               self.date,
-               self.haz_type,
-               fast=False)
+        hazard = Hazard(self.intensity,
+                        self.centroids,
+                        self.date,
+                        fast=False)
+
+        # Test optional members
+        np.testing.assert_array_equal(hazard.frequency,
+                                      np.ones_like(self.frequency))
+        self.assertEqual(hazard.frequency_unit, DEF_FREQ_UNIT)
+        np.testing.assert_array_equal(hazard.orig,
+                                      np.full(len(self.event_id), True))
+        np.testing.assert_array_equal(hazard.event_id, self.event_id)
+        np.testing.assert_array_equal(hazard.event_name,
+                                      list(map(str, self.event_id.flat)))
+        self.assertEqual(hazard.fraction.nnz, 0)
+        np.testing.assert_array_equal(hazard.fraction.shape,
+                                      hazard.intensity.shape)
+        self.assertIs(hazard.pool, None)
+
+        # Test tag
+        self.assertEqual(hazard.tag.haz_type, "")
+        self.assertEqual(hazard.tag.description, "")
+        self.assertEqual(hazard.tag.file_name, "")
 
     def test_fast_init_fail(self):
         """Check if fast init correctly disables internal check"""
