@@ -28,7 +28,7 @@ import scipy as sp
 import shapely as sh
 import shapely.geometry as shgeom
 
-from climada.engine import Impact
+from climada.engine import ImpactCalc
 from climada.util import coordinates as u_coord
 
 LOGGER = logging.getLogger(__name__)
@@ -123,8 +123,8 @@ def calc_geom_impact(
     exp_pnt.assign_centroids(haz)
 
     # compute point impact
-    impact_pnt = Impact()
-    impact_pnt.calc(exp_pnt, impf_set, haz, save_mat=True, assign_centroids=False)
+    calc = ImpactCalc(exp_pnt, impf_set, haz)
+    impact_pnt = calc.impact(save_mat=True, assign_centroids=False)
 
     # re-aggregate impact to original exposure geometry
     impact_agg = impact_pnt_agg(impact_pnt, exp_pnt.gdf, agg_met)
@@ -294,8 +294,7 @@ def calc_grid_impact(
     exp_pnt.assign_centroids(haz)
 
     # compute point impact
-    impact_pnt = Impact()
-    impact_pnt.calc(exp_pnt, impf_set, haz, save_mat=True, assign_centroids=False)
+    impact_pnt = ImpactCalc(exp_pnt, impf_set, haz).impact(save_mat=True, assign_centroids=False)
 
     # re-aggregate impact to original exposure geometry
     impact_agg = impact_pnt_agg(impact_pnt, exp_pnt.gdf, agg_met)

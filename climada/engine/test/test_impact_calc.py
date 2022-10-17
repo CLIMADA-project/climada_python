@@ -22,7 +22,7 @@ import unittest
 from unittest.mock import create_autospec, MagicMock, call, patch
 import numpy as np
 from scipy import sparse
-import pandas as pd
+import geopandas as gpd
 from copy import deepcopy
 from pathlib import Path
 
@@ -31,6 +31,7 @@ from climada.entity.entity_def import Entity
 from climada.entity import Exposures, ImpactFuncSet
 from climada.hazard.base import Hazard
 from climada.engine import ImpactCalc, Impact
+from climada.engine.impact_calc import LOGGER as ILOG
 from climada.util.constants import ENT_DEMO_TODAY, DEMO_DIR
 from climada.util.api_client import Client
 from climada.util.config import Config
@@ -77,9 +78,6 @@ class TestImpactCalc(unittest.TestCase):
         self.assertTrue(ENT.exposures.gdf.equals(icalc.exposures.gdf))
         np.testing.assert_array_equal(HAZ.event_id, icalc.hazard.event_id)
         np.testing.assert_array_equal(HAZ.event_name, icalc.hazard.event_name)
-        np.testing.assert_array_equal(icalc.deductible, ENT.exposures.gdf.deductible)
-        np.testing.assert_array_equal(icalc.cover, ENT.exposures.gdf.cover)
-
 
     def test_metrics(self):
         """Test methods to get impact metrics"""
@@ -242,7 +240,9 @@ class TestImpactCalc(unittest.TestCase):
         exp.gdf.cover /= 1e3
         exp.gdf.deductible += 1e5
         icalc = ImpactCalc(exp, ENT.impact_funcs, HAZ)
-        impact = icalc.insured_impact()
+        with self.assertLogs(ILOG, level='INFO') as logs:
+            impact = icalc.impact()
+        self.assertIn("cover and/or deductible columns detected", logs.output[1])
         self.assertEqual(icalc.n_events, len(impact.at_event))
         self.assertEqual(0, impact.at_event[0])
         self.assertEqual(0, impact.at_event[7225])
@@ -256,13 +256,81 @@ class TestImpactCalc(unittest.TestCase):
         self.assertAlmostEqual(6.570532945599105e+11, impact.tot_value)
         self.assertAlmostEqual(143180396, impact.aai_agg, delta=1)
 
+    def test_calc_insured_impact_no_cover(self):
+        """Test compute insured impact"""
+        exp = ENT.exposures.copy()
+        exp.gdf.cover /= 1e3
+        exp.gdf.deductible += 1e5
+        icalc = ImpactCalc(exp, ENT.impact_funcs, HAZ)
+        with self.assertLogs(ILOG, level='INFO') as logs:
+            impact = icalc.impact(ignore_cover=True)
+        self.assertIn("cover and/or deductible columns detected", logs.output[1])
+        self.assertEqual(icalc.n_events, len(impact.at_event))
+        self.assertEqual(0, impact.at_event[0])
+        self.assertEqual(0, impact.at_event[7225])
+        self.assertAlmostEqual(147188636, impact.at_event[13809], delta=1)
+        self.assertAlmostEqual(70761282665, impact.at_event[12147], delta=1)
+        self.assertEqual(0, impact.at_event[14449])
+        self.assertEqual(icalc.n_exp_pnt, len(impact.eai_exp))
+        self.assertAlmostEqual(151847975, impact.eai_exp[0], delta=1)
+        self.assertAlmostEqual(137341654, impact.eai_exp[25], delta=1)
+        self.assertAlmostEqual(106676521, impact.eai_exp[49], delta=1)
+        self.assertAlmostEqual(6.570532945599105e+11, impact.tot_value)
+        self.assertAlmostEqual(6511839456, impact.aai_agg, delta=1)
+
+    def test_calc_insured_impact_no_deductible(self):
+        """Test compute insured impact"""
+        exp = ENT.exposures.copy()
+        exp.gdf.cover /= 1e3
+        exp.gdf.deductible += 1e5
+        icalc = ImpactCalc(exp, ENT.impact_funcs, HAZ)
+        with self.assertLogs(ILOG, level='INFO') as logs:
+            impact = icalc.impact(ignore_deductible=True)
+        self.assertIn("cover and/or deductible columns detected", logs.output[1])
+        self.assertEqual(icalc.n_events, len(impact.at_event))
+        self.assertEqual(0, impact.at_event[0])
+        self.assertEqual(0, impact.at_event[7225])
+        self.assertAlmostEqual(62989686, impact.at_event[13809], delta=1)
+        self.assertAlmostEqual(657053294, impact.at_event[12147], delta=1)
+        self.assertEqual(0, impact.at_event[14449])
+        self.assertEqual(icalc.n_exp_pnt, len(impact.eai_exp))
+        self.assertAlmostEqual(3072413, impact.eai_exp[0], delta=1)
+        self.assertAlmostEqual(2778914, impact.eai_exp[25], delta=1)
+        self.assertAlmostEqual(2716831, impact.eai_exp[49], delta=1)
+        self.assertAlmostEqual(6.570532945599105e+11, impact.tot_value)
+        self.assertAlmostEqual(143195738, impact.aai_agg, delta=1)
+
+    def test_calc_insured_impact_no_insurance(self):
+        """Test compute insured impact"""
+        exp = ENT.exposures.copy()
+        exp.gdf.cover /= 1e3
+        exp.gdf.deductible += 1e5
+        icalc = ImpactCalc(exp, ENT.impact_funcs, HAZ)
+        with self.assertLogs(ILOG, level='INFO') as logs:
+            impact = icalc.impact(ignore_cover=True, ignore_deductible=True)
+        self.assertEqual(logs.output, [
+            "INFO:climada.engine.impact_calc:Calculating impact for 150 assets (>0) and 14450 events."
+        ])
+        self.assertEqual(icalc.n_events, len(impact.at_event))
+        self.assertEqual(0, impact.at_event[0])
+        self.assertEqual(0, impact.at_event[7225])
+        self.assertAlmostEqual(147248293, impact.at_event[13809], delta=1)
+        self.assertAlmostEqual(70765047230, impact.at_event[12147], delta=1)
+        self.assertEqual(0, impact.at_event[14449])
+        self.assertEqual(icalc.n_exp_pnt, len(impact.eai_exp))
+        self.assertAlmostEqual(151855367, impact.eai_exp[0], delta=1)
+        self.assertAlmostEqual(137349045, impact.eai_exp[25], delta=1)
+        self.assertAlmostEqual(106683726, impact.eai_exp[49], delta=1)
+        self.assertAlmostEqual(6.570532945599105e+11, impact.tot_value)
+        self.assertAlmostEqual(6512201157, impact.aai_agg, delta=1)
+
     def test_calc_insured_impact_save_mat_pass(self):
         """Test compute impact with impact matrix"""
         exp = ENT.exposures.copy()
         exp.gdf.cover /= 1e3
         exp.gdf.deductible += 1e5
         icalc = ImpactCalc(exp, ENT.impact_funcs, HAZ)
-        impact = icalc.insured_impact(save_mat=True)
+        impact = icalc.impact(save_mat=True)
 
         self.assertIsInstance(impact.imp_mat, sparse.csr_matrix)
         self.assertEqual(impact.imp_mat.shape, (HAZ.event_id.size,
@@ -286,23 +354,13 @@ class TestImpactCalc(unittest.TestCase):
         self.assertAlmostEqual(6.570532945599105e+11, impact.tot_value)
         self.assertAlmostEqual(143180396, impact.aai_agg, delta=1)
 
-    def test_calc_insured_impact_fail(self):
-        """Test raise error for insured impact calc if no cover and
-        no deductibles defined
-        """
-        exp = ENT.exposures.copy()
-        exp.gdf = exp.gdf.drop(columns = ['cover', 'deductible'])
-        icalc = ImpactCalc(exp, ENT.impact_funcs, HAZ)
-        with self.assertRaises(AttributeError):
-            icalc.insured_impact()
-
     def test_minimal_exp_gdf(self):
         """Test obtain minimal exposures gdf"""
         icalc = ImpactCalc(ENT.exposures, ENT.impact_funcs, HAZ)
-        exp_min_gdf = icalc.minimal_exp_gdf('impf_TC', False)
-        self.assertSetEqual(
-            set(exp_min_gdf.columns), set(['value', 'impf_TC', 'centr_TC'])
-            )
+        exp_min_gdf = icalc.minimal_exp_gdf('impf_TC', assign_centroids=True,
+                                            ignore_cover=True, ignore_deductible=True)
+        self.assertSetEqual(set(exp_min_gdf.columns),
+                            set(['value', 'impf_TC', 'centr_TC']))
         np.testing.assert_array_equal(exp_min_gdf.value, ENT.exposures.gdf.value)
         np.testing.assert_array_equal(exp_min_gdf.impf_TC, ENT.exposures.gdf.impf_TC)
         np.testing.assert_array_equal(exp_min_gdf.centr_TC, ENT.exposures.gdf.centr_TC)
@@ -424,7 +482,7 @@ class TestImpactMatrixGenerator(unittest.TestCase):
         self.icalc.impact_matrix = MagicMock()
 
         # Set up a dummy exposure dataframe
-        self.exp_gdf = pd.DataFrame(
+        self.exp_gdf = gpd.GeoDataFrame(
             {
                 "impact_functions": [0, 11, 11],
                 "centr_col": [0, 10, 20],
@@ -462,7 +520,7 @@ class TestImpactMatrixGenerator(unittest.TestCase):
         self.hazard.size = 2
 
         arr_len = 5
-        exp_gdf = pd.DataFrame(
+        exp_gdf = gpd.GeoDataFrame(
             {
                 "impact_functions": np.zeros(arr_len, dtype=np.int64),
                 "centr_col": np.array(list(range(arr_len))),
@@ -486,7 +544,7 @@ class TestImpactMatrixGenerator(unittest.TestCase):
 
     def test_empty_exp(self):
         """imp_mat_gen should return an empty iterator for an empty dataframe"""
-        exp_gdf = pd.DataFrame({"impact_functions": [], "centr_col": [], "value": []})
+        exp_gdf = gpd.GeoDataFrame({"impact_functions": [], "centr_col": [], "value": []})
         self.assertEqual(
             [],
             list(self.icalc.imp_mat_gen(exp_gdf=exp_gdf, impf_col="impact_functions")),
@@ -499,9 +557,6 @@ class TestInsuredImpactMatrixGenerator(unittest.TestCase):
         """"Initialize mocks"""
         hazard = create_autospec(HAZ)
         self.icalc = ImpactCalc(ENT.exposures, ENT.impact_funcs, hazard)
-        self.icalc.exposures.gdf = pd.DataFrame(
-            {"deductible": [10.0, 20.0], "cover": [1.0, 100.0]}
-        )
         self.icalc._orig_exp_idx = np.array([0, 1])
         self.icalc.hazard.centr_exp_col = "centr_col"
         self.icalc.hazard.haz_type = "haz_type"
@@ -515,8 +570,9 @@ class TestInsuredImpactMatrixGenerator(unittest.TestCase):
 
     def test_insured_mat_gen(self):
         """Test insured impact matrix generator"""
-        exp_gdf = pd.DataFrame(
-            {"impact_functions": [0, 2], "centr_col": [0, 10], "value": [1.0, 2.0],}
+        exp_gdf = gpd.GeoDataFrame(
+            {"impact_functions": [0, 2], "centr_col": [0, 10], "value": [1.0, 2.0],
+             "deductible": [10.0, 20.0], "cover": [1.0, 100.0]}
         )
         imp_mat_gen = ((i, np.array([i])) for i in range(2))
         gen = self.icalc.insured_mat_gen(imp_mat_gen, exp_gdf, "impact_functions")

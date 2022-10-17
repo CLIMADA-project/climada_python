@@ -22,7 +22,7 @@ import unittest
 import numpy as np
 import pandas as pd
 import geopandas as gpd
-from sklearn.neighbors import DistanceMetric
+from sklearn.metrics import DistanceMetric
 import rasterio
 from rasterio.windows import Window
 
