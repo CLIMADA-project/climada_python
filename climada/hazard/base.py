@@ -165,7 +165,19 @@ class Hazard():
     """Name of the variables that aren't need to compute the impact. Types:
     scalar, string, list, 1dim np.array of size num_events."""
 
-    def __init__(self, haz_type='', pool=None):
+    def __init__(self,
+                 haz_type="",
+                 pool=None,
+                 units="",
+                 centroids=None,
+                 event_id=None,
+                 frequency=None,
+                 frequency_unit=DEF_FREQ_UNIT,
+                 event_name=None,
+                 date=None,
+                 orig=None,
+                 intensity=None,
+                 fraction=None):
         """
         Initialize values.
 
@@ -191,23 +203,25 @@ class Hazard():
         """
         self.tag = TagHazard()
         self.tag.haz_type = haz_type
-        self.units = ''
-        self.centroids = Centroids()
+        self.units = units
+        self.centroids = centroids if centroids is not None else Centroids()
         # following values are defined for each event
-        self.event_id = np.array([], int)
-        self.frequency = np.array([], float)
-        self.frequency_unit = DEF_FREQ_UNIT
-        self.event_name = list()
-        self.date = np.array([], int)
-        self.orig = np.array([], bool)
+        self.event_id = event_id if event_id is not None else np.array([], int)
+        self.frequency = frequency if frequency is not None else np.array(
+            [], float)
+        self.frequency_unit = frequency_unit
+        self.event_name = event_name if event_name is not None else list()
+        self.date = date if date is not None else np.array([], int)
+        self.orig = orig if orig is not None else np.array([], bool)
         # following values are defined for each event and centroid
-        self.intensity = sparse.csr_matrix(np.empty((0, 0)))  # events x centroids
-        self.fraction = sparse.csr_matrix(np.empty((0, 0)))  # events x centroids
-        if pool:
-            self.pool = pool
+        self.intensity = intensity if intensity is not None else sparse.csr_matrix(
+            np.empty((0, 0)))  # events x centroids
+        self.fraction = fraction if fraction is not None else sparse.csr_matrix(
+            np.empty((0, 0)))  # events x centroids
+
+        self.pool = pool
+        if self.pool:
             LOGGER.info('Using %s CPUs.', self.pool.ncpus)
-        else:
-            self.pool = None
 
     @classmethod
     def get_default(cls, attribute):
