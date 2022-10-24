@@ -84,7 +84,6 @@ class TestReader(unittest.TestCase):
             self.assertTrue(isinstance(tc_haz.fraction, sparse.csr.csr_matrix))
             self.assertEqual(tc_haz.fraction.shape, (1, 296))
             self.assertIsNone(tc_haz.get_fraction())
-            self.assertEqual(tc_haz.fraction.nonzero()[0].size, 280)
 
             self.assertTrue(isinstance(tc_haz.intensity, sparse.csr.csr_matrix))
             self.assertEqual(tc_haz.intensity.shape, (1, 296))
