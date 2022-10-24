@@ -2,6 +2,21 @@
 [![Build Status](http://ied-wcr-jenkins.ethz.ch/buildStatus/icon?job=climada_branches/develop)](http://ied-wcr-jenkins.ethz.ch/job/climada_branches/)
 [![Documentation build status](https://img.shields.io/readthedocs/climada-python.svg?style=flat-square)](https://readthedocs.org/projects/climada-python/builds/)
 
+# CLIMADA_Nea 
+CLIMADA stands for **CLIM**ate **ADA**ptation and is a probabilistic natural catastrophe impact model
+Original Code cloned from https://github.com/CLIMADA-project/climada_python.git,  v3.2.0
+with Modifications started on 2022 October 24 by J.Lefevre :
+
+- Add method to write storm tracks in a/b-deck (ATCF) format, see write_atcf(),
+  climada/hazard/tc_tracks.py. 
+- Exemple of use (Niran Cyclone, South western Pacific):
+
+tr_niran = TCTracks.from_ibtracs_netcdf(storm_id='2021060S17147')
+file_name = 'niran.atcf'
+tr_niran.equal_timestep()  # 1 hourly output
+tr_niran.write_atcf(file_name, verbose=False)
+
+
 # CLIMADA
 
 CLIMADA stands for **CLIM**ate **ADA**ptation and is a probabilistic natural catastrophe impact model, that also calculates averted damage (benefit) thanks to adaptation measures of any kind (from grey to green infrastructure, behavioural, etc.).

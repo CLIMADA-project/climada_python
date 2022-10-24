@@ -64,6 +64,7 @@ from climada.util.files_handler import get_file_names, download_ftp
 import climada.util.plot as u_plot
 from climada.hazard import Centroids
 import climada.hazard.tc_tracks_synth
+import os
 
 LOGGER = logging.getLogger(__name__)
 
@@ -158,6 +159,24 @@ STORM_1MIN_WIND_FACTOR = 0.88
 
 Bloemendaal et al. (2020): Generation of a global synthetic tropical cyclone hazard
 dataset using STORM. Scientific Data 7(1): 40."""
+
+def LatNS_DTG(lat):
+    ''' Formatter to print LAT in ATCF formet '''
+        #lat = min(-15.9,lat)
+        a1 = 'N'
+        if lat<0.:
+          a1 = 'S'
+        latNS = '%03d%s'%(abs(round(lat*10)),a1)
+        return( latNS )
+def LonEW_DTG(lon):
+    ''' Formatter to print LON in ATCF formet '''
+        #lon = max(159.75,lon)
+        a1 = 'W'
+        if lon<180.0:
+           a1 = 'E'
+        LonEW = '%04d%s'%(abs(round(lon*10)),a1)
+        return( LonEW )
+
 
 class TCTracks():
     """Contains tropical cyclone tracks.
@@ -1307,6 +1326,85 @@ class TCTracks():
             # ensure to undo the temporal change of dtype from above
             for track in self.data:
                 track.attrs['orig_event_flag'] = bool(track.attrs['orig_event_flag'])
+
+
+    def write_atcf(self, file_name, verbose=False):
+        r"""Write out a ATCF formatted storm file 
+            Author Jerome LEfevre IRD Noumea 21102022
+
+            See inspiration from https://www.clawpack.org/storm_module.html
+
+            See ATCF format :
+            https://dtcenter.org/sites/default/files/community-code/met/docs/user-guide/MET-TC_Users_Guide_v5.0.pdf
+            pages 3,4
+
+        :Input:
+         - *path* (string) Path to the file to be written.
+         - *verbose* (bool) Print out additional information when writing (not used).
+         - ToDo : Print warning in LOGGER
+        """
+        if len(self.data)>1:
+           raise ValueError('Actually, Only 1 track accepted')
+
+        storm = self.data[0]
+
+        if os.path.exists(file_name):
+           os.remove(file_name)
+
+        with open(file_name, 'w') as data_file:
+
+             LOGGER.info('Writing %d tracks to %s', 1, file_name)
+
+             for n in np.arange(0,len(storm.time)):
+
+                time = dt.datetime.strptime(str(storm.time[n].values),'%Y-%m-%dT%H:%M:%S.000000000')
+
+                data_file.write("".join((
+                  "%s" % str(storm.basin[n].values),  # BASIN: basin (COL 1)
+                  ", ",
+                  "01", # CY: annual cyclone number: 1 -­‐ 99
+                  ", ",
+                  "%s" % time.strftime('%Y%m%d%H'), #YYYYMMDDHH: Warning Date-­‐Time-­‐Group.
+                  ", ",
+                  " 0", #TECHNUM/MIN: objective technique sorting number, minutes for best track: 00 -­‐ 99
+                  ", ",
+                  "BEST", #TECH: acronym for each objective technique or CARQ or WRNG, BEST for best track
+                  ", ",
+                  "  0", #TAU: forecast period: -­‐24 through 240 hours, 0 for best-­‐track
+                  ",",
+                  "%s" % LatNS_DTG(storm.lat[n].values), #LatN/S: Latitude for the date time group (DTG)
+                  ",",
+                  "%s" % LonEW_DTG(storm.lon[n].values), #LonE/W: Longitude for the DTG
+                  ", ",
+                  "%s" % int(storm.max_sustained_wind[n].values), #VMAX: Maximum sustained wind speed in knots
+                  ", ",
+                  "%s" % int(storm.central_pressure[n].values), #MSLP: Minimum sea level pressure, 850 -­‐ 1050 mb.
+                  ", ",
+                  ", ", # TY: Highest level of tropical cyclone development ; LO, TD, TD, HU... 
+                  ", ", # RAD: Wind intensity for the radii defined in this record: 34, 50 or 64 kt.
+                  ", ", # WINDCODE: Radius code
+                  ", ", # RAD1: If full circle, radius of specified wind intensity, or radius of first quadrant wind intensity
+                  ", ", # RAD2: If full circle this field not used, or radius of 2nd quadrant wind intensity
+                  ", ", # RAD3: If full circle this field not used, or radius of 3rd quadrant wind intensity
+                  ", ", # RAD4: If full circle this field not used, or radius of 4th quadrant wind intensity
+                  "%s" % int(storm.environmental_pressure[n].values), # POUTER: pressure in millibars of the last closed isobar
+                  ", ",
+                  "%s" % int(storm.radius_oci[n].values), # ROUTER: radius of the last closed isobar (nautical miles) 
+                  ", ",
+                  "%s" % int(storm.radius_max_wind[n].values), # RMW: radius of max winds (nautical miles)
+                  ", ",
+                  ", ", # GUSTS: gusts (COL 20)
+                  ", ", # EYE: eye diameter
+                  ", ", # SUBREGION: subregion
+                  ", ", # MAXSEAS: max seas
+                  ", ", # INITIALS: Forecaster's initials
+                  ", ", # DIR: storm direction
+                  ", ", # SPEED: storm speed
+                  "%s" % storm.attrs['name'], # STORMNAME: literal storm name, number, NONAME or INVEST, or TCcyx
+                  ", ", 
+                  ", ", # DEPTH: system depth  (COL 28)
+                  "\n")))
+
 
     @classmethod
     def from_hdf5(cls, file_name):
