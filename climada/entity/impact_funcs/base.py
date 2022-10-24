@@ -24,10 +24,12 @@ __all__ = ['ImpactFunc']
 import logging
 import numpy as np
 import matplotlib.pyplot as plt
+from typing import Optional, Union
 
 import climada.util.checker as u_check
 
 LOGGER = logging.getLogger(__name__)
+
 
 class ImpactFunc():
     """Contains the definition of one impact function.
@@ -54,13 +56,13 @@ class ImpactFunc():
     """
 
     def __init__(self,
-                 id="",
-                 name="",
-                 intensity_unit="",
-                 haz_type="",
-                 intensity=None,
-                 mdd=None,
-                 paa=None):
+                 id: Union[str, int] = "",
+                 name: str = "",
+                 intensity_unit: str = "",
+                 haz_type: str = "",
+                 intensity: Optional[np.ndarray] = None,
+                 mdd: Optional[np.ndarray] = None,
+                 paa: Optional[np.ndarray] = None):
         """Initialization."""
         self.id = id
         self.name = name
