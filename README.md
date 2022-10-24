@@ -12,8 +12,11 @@ with Modifications started on 2022 October 24 by J.Lefevre :
 - Exemple of use (Niran Cyclone, South western Pacific):
 
 tr_niran = TCTracks.from_ibtracs_netcdf(storm_id='2021060S17147')
+
 file_name = 'niran.atcf'
+
 tr_niran.equal_timestep()  # 1 hourly output
+
 tr_niran.write_atcf(file_name, verbose=False)
 
 
