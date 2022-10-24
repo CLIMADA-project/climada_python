@@ -52,16 +52,24 @@ class ImpactFunc():
         percentage of affected assets (exposures) for each
         intensity (numbers in [0,1])
     """
-    def __init__(self):
-        """Empty initialization."""
-        self.id = ''
-        self.name = ''
-        self.intensity_unit = ''
-        self.haz_type = ''
+
+    def __init__(self,
+                 id="",
+                 name="",
+                 intensity_unit="",
+                 haz_type="",
+                 intensity=None,
+                 mdd=None,
+                 paa=None):
+        """Initialization."""
+        self.id = id
+        self.name = name
+        self.intensity_unit = intensity_unit
+        self.haz_type = haz_type
         # Followng values defined for each intensity value
-        self.intensity = np.array([])
-        self.mdd = np.array([])
-        self.paa = np.array([])
+        self.intensity = intensity if intensity is not None else np.array([])
+        self.mdd = mdd if mdd is not None else np.array([])
+        self.paa = paa if paa is not None else np.array([])
 
     def calc_mdr(self, inten):
         """Interpolate impact function to a given intensity.
@@ -222,5 +230,3 @@ class ImpactFunc():
         LOGGER.warning("The use of ImpactFunc.set_sigmoid_impf is deprecated."
                        "Use ImpactFunc.from_sigmoid_impf instead.")
         self.__dict__ = ImpactFunc.from_sigmoid_impf(*args, **kwargs).__dict__
-
-
