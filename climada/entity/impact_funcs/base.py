@@ -166,17 +166,14 @@ class ImpactFunc():
             Step impact function
 
         """
-
-        impf = cls()
-        impf.id = impf_id
         inten_min, threshold, inten_max = intensity
-        impf.intensity = np.array([inten_min, threshold, threshold, inten_max])
+        intensity = np.array([inten_min, threshold, threshold, inten_max])
         paa_min, paa_max = paa
-        impf.paa = np.array([paa_min, paa_min, paa_max, paa_max])
+        paa = np.array([paa_min, paa_min, paa_max, paa_max])
         mdd_min, mdd_max = mdd
-        impf.mdd = np.array([mdd_min, mdd_min, mdd_max, mdd_max])
+        mdd = np.array([mdd_min, mdd_min, mdd_max, mdd_max])
 
-        return impf
+        return cls(impf_id, intensity=intensity, mdd=mdd, paa=paa)
 
     def set_step_impf(self, *args, **kwargs):
         """This function is deprecated, use ImpactFunc.from_step_impf instead."""
@@ -218,14 +215,12 @@ class ImpactFunc():
             Step impact function
 
         """
-        impf = cls()
-        impf.id = if_id
         inten_min, inten_max, inten_step = intensity
-        impf.intensity = np.arange(inten_min, inten_max, inten_step)
-        impf.paa = np.ones(len(impf.intensity))
-        impf.mdd = L / (1 + np.exp(-k * (impf.intensity - x0)))
+        intensity = np.arange(inten_min, inten_max, inten_step)
+        paa = np.ones(len(intensity))
+        mdd = L / (1 + np.exp(-k * (intensity - x0)))
 
-        return impf
+        return cls(if_id, intensity=intensity, paa=paa, mdd=mdd)
 
     def set_sigmoid_impf(self, *args, **kwargs):
         """This function is deprecated, use LitPop.from_countries instead."""
