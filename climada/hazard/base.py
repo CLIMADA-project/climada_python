@@ -27,7 +27,7 @@ import itertools
 import logging
 import pathlib
 import warnings
-from typing import Union, Optional, Callable, Dict, Any
+from typing import Union, Optional, Callable, Dict, Any, List
 
 import geopandas as gpd
 import h5py
@@ -100,7 +100,6 @@ DEF_COORDS = dict(event="time", longitude="longitude", latitude="latitude")
 DEF_DATA_VARS = ["fraction", "frequency", "event_id", "event_name", "date"]
 """Default keys for optional Hazard attributes when reading from an xarray Dataset"""
 
-
 class Hazard():
     """
     Contains events of some hazard type defined at centroids. Loads from
@@ -166,18 +165,18 @@ class Hazard():
     scalar, string, list, 1dim np.array of size num_events."""
 
     def __init__(self,
-                 haz_type="",
-                 pool=None,
-                 units="",
-                 centroids=None,
-                 event_id=None,
-                 frequency=None,
-                 frequency_unit=DEF_FREQ_UNIT,
-                 event_name=None,
-                 date=None,
-                 orig=None,
-                 intensity=None,
-                 fraction=None):
+                 haz_type: str = "",
+                 pool: pathos.pools.ProcessPool = None,
+                 units: str = "",
+                 centroids: Optional[Centroids] = None,
+                 event_id: Optional[np.ndarray] = None,
+                 frequency: Optional[np.ndarray] = None,
+                 frequency_unit: str = DEF_FREQ_UNIT,
+                 event_name: Optional[List[str]] = None,
+                 date: Optional[np.ndarray] = None,
+                 orig: Optional[np.ndarray] = None,
+                 intensity: Optional[sparse.csr_matrix] = None,
+                 fraction: Optional[sparse.csr_matrix] = None):
         """
         Initialize values.
 
