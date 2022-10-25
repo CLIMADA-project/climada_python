@@ -1822,6 +1822,39 @@ def _read_raster_reproject(src, src_crs, dst_meta, band=None, geometry=None, dst
 
     return intensity
 
+def _add_gdal_vsi_prefix(path):
+    """Add one of GDAL's virtual file system prefixes if applicable
+
+    GDAL (and thus, rasterio) can be told to read data from compressed files without extracting the
+    data on disk ("GDAL Virtual File Systems"). This utility function tries to guess from a file's
+    suffix whether the file is compressed. If applicable, a prefix is added to the file's path that
+    tells GDAL to use the virtual file system feature.
+
+    For more information about the GDAL Virtual File Systems feature, see:
+    https://gdal.org/user/virtual_file_systems.html
+
+    Parameters
+    ----------
+    path : str or Path
+        Path to a (compressed) raster file to be opened with rasterio.
+
+    Returns
+    -------
+    path : str
+        The path with prefix if applicable, and the original path otherwise. This will always be
+        a string even if the path was provided as a Path object.
+    """
+    supported_suffixes = {
+        ".gz": "gzip",
+        ".zip": "zip",
+        ".tar": "tar",
+        ".tgz": "tar",
+    }
+    suffix = Path(path).suffix
+    if suffix in supported_suffixes:
+        path = f"/vsi{supported_suffixes[suffix]}/{path}"
+    return str(path)
+
 def read_raster(file_name, band=None, src_crs=None, window=None, geometry=None,
                 dst_crs=None, transform=None, width=None, height=None, resampling="nearest"):
     """Read raster of bands and set 0-values to the masked ones.
@@ -1860,11 +1893,9 @@ def read_raster(file_name, band=None, src_crs=None, window=None, geometry=None,
     if not band:
         band = [1]
     LOGGER.info('Reading %s', file_name)
-    if Path(file_name).suffix == '.gz':
-        file_name = '/vsigzip/' + str(file_name)
 
     with rasterio.Env():
-        with rasterio.open(file_name, 'r') as src:
+        with rasterio.open(_add_gdal_vsi_prefix(file_name), 'r') as src:
             dst_meta = src.meta.copy()
 
             if dst_crs or transform:
@@ -1955,11 +1986,9 @@ def read_raster_bounds(path, bounds, res=None, bands=None, resampling="nearest",
     """
     if isinstance(resampling, str):
         resampling = getattr(rasterio.warp.Resampling, resampling)
-    if Path(path).suffix == '.gz':
-        path = '/vsigzip/' + str(path)
     if not bands:
         bands = [1]
-    with rasterio.open(path, 'r') as src:
+    with rasterio.open(_add_gdal_vsi_prefix(path), 'r') as src:
         if res:
             if not isinstance(res, tuple):
                 res = (res, res)
@@ -2024,10 +2053,8 @@ def read_raster_sample(path, lat, lon, intermediate_res=None, method='linear', f
         return np.zeros_like(lat)
 
     LOGGER.info('Sampling from %s', path)
-    if Path(path).suffix == '.gz':
-        path = '/vsigzip/' + str(path)
 
-    with rasterio.open(path, "r") as src:
+    with rasterio.open(_add_gdal_vsi_prefix(path), "r") as src:
         if intermediate_res is None:
             xres, yres = np.abs(src.transform[0]), np.abs(src.transform[4])
         else:
