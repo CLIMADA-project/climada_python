@@ -55,35 +55,37 @@ class ImpactFunc():
         intensity (numbers in [0,1])
     """
 
-    def __init__(self,
-                 id: Union[str, int] = "",
-                 name: str = "",
-                 intensity_unit: str = "",
-                 haz_type: str = "",
-                 intensity: Optional[np.ndarray] = None,
-                 mdd: Optional[np.ndarray] = None,
-                 paa: Optional[np.ndarray] = None):
+    def __init__(
+        self,
+        haz_type: str = "",
+        id: Union[str, int] = "",
+        intensity: Optional[np.ndarray] = None,
+        mdd: Optional[np.ndarray] = None,
+        paa: Optional[np.ndarray] = None,
+        intensity_unit: str = "",
+        name: str = "",
+    ):
         """Initialization.
 
         Parameters
         ----------
-        id : int or str (optional)
+        haz_type : str, optional
+            Hazard type acronym (e.g. 'TC').
+        id : int or str, optional
             id of the impact function. Exposures of the same type
             will refer to the same impact function id.
-        name : str (optional)
-            Name of the ImpactFunc.
-        intensity_unit : str (optional)
-            Unit of the intensity.
-        haz_type : str (optional)
-            Hazard type acronym (e.g. 'TC').
-        intensity : np.array (optional)
+        intensity : np.array, optional
             Intensity values. Defaults to empty array.
-        mdd : np.array (optional)
+        mdd : np.array, optional
             Mean damage (impact) degree for each intensity (numbers
             in [0,1]). Defaults to empty array.
-        paa : np.array (optional)
+        paa : np.array, optional
             Percentage of affected assets (exposures) for each
             intensity (numbers in [0,1]). Defaults to empty array.
+        intensity_unit : str, optional
+            Unit of the intensity.
+        name : str, optional
+            Name of the ImpactFunc.
         """
         self.id = id
         self.name = name
@@ -194,7 +196,7 @@ class ImpactFunc():
         mdd_min, mdd_max = mdd
         mdd = np.array([mdd_min, mdd_min, mdd_max, mdd_max])
 
-        return cls(impf_id, intensity=intensity, mdd=mdd, paa=paa)
+        return cls(id=impf_id, intensity=intensity, mdd=mdd, paa=paa)
 
     def set_step_impf(self, *args, **kwargs):
         """This function is deprecated, use ImpactFunc.from_step_impf instead."""
@@ -241,7 +243,7 @@ class ImpactFunc():
         paa = np.ones(len(intensity))
         mdd = L / (1 + np.exp(-k * (intensity - x0)))
 
-        return cls(if_id, intensity=intensity, paa=paa, mdd=mdd)
+        return cls(id=if_id, intensity=intensity, paa=paa, mdd=mdd)
 
     def set_sigmoid_impf(self, *args, **kwargs):
         """This function is deprecated, use LitPop.from_countries instead."""
