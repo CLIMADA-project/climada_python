@@ -22,9 +22,9 @@ Define ImpactFunc class.
 __all__ = ['ImpactFunc']
 
 import logging
+from typing import Optional, Union
 import numpy as np
 import matplotlib.pyplot as plt
-from typing import Optional, Union
 
 import climada.util.checker as u_check
 
