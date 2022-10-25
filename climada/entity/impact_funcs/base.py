@@ -63,7 +63,28 @@ class ImpactFunc():
                  intensity: Optional[np.ndarray] = None,
                  mdd: Optional[np.ndarray] = None,
                  paa: Optional[np.ndarray] = None):
-        """Initialization."""
+        """Initialization.
+
+        Parameters
+        ----------
+        id : int or str (optional)
+            id of the impact function. Exposures of the same type
+            will refer to the same impact function id.
+        name : str (optional)
+            Name of the ImpactFunc.
+        intensity_unit : str (optional)
+            Unit of the intensity.
+        haz_type : str (optional)
+            Hazard type acronym (e.g. 'TC').
+        intensity : np.array (optional)
+            Intensity values. Defaults to empty array.
+        mdd : np.array (optional)
+            Mean damage (impact) degree for each intensity (numbers
+            in [0,1]). Defaults to empty array.
+        paa : np.array (optional)
+            Percentage of affected assets (exposures) for each
+            intensity (numbers in [0,1]). Defaults to empty array.
+        """
         self.id = id
         self.name = name
         self.intensity_unit = intensity_unit
