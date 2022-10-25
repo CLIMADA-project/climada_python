@@ -1647,7 +1647,6 @@ def pts_to_raster_meta(points_bounds, res):
     ras_trans : affine.Affine
         Affine transformation defining the raster.
     """
-    Affine = rasterio.Affine
     bounds = np.asarray(points_bounds).reshape(2, 2)
     res = np.asarray(res).ravel()
     if res.size == 1:
@@ -1657,7 +1656,7 @@ def pts_to_raster_meta(points_bounds, res):
     nsteps[np.abs(nsteps * res) < sizes + np.abs(res) / 2] += 1
     bounds[:, res < 0] = bounds[::-1, res < 0]
     origin = bounds[0, :] - res[:] / 2
-    ras_trans = Affine.translation(*origin) * Affine.scale(*res)
+    ras_trans = rasterio.Affine.translation(*origin) * rasterio.Affine.scale(*res)
     return int(nsteps[1]), int(nsteps[0]), ras_trans
 
 def raster_to_meshgrid(transform, width, height):
@@ -1674,9 +1673,9 @@ def raster_to_meshgrid(transform, width, height):
 
     Returns
     -------
-    x : np.array
+    x : np.array of shape (height, width)
         x-coordinates of grid points.
-    y : np.array
+    y : np.array of shape (height, width)
         y-coordinates of grid points.
     """
     xres, _, xmin, _, yres, ymin = transform[:6]
@@ -2025,29 +2024,86 @@ def read_raster_bounds(path, bounds, res=None, bands=None, resampling="nearest",
                 resampling=resampling)
     return data, transform
 
-def read_raster_sample(path, lat, lon, intermediate_res=None, method='linear', fill_value=None):
+def _raster_gradient(data, transform, latlon_to_m=False):
+    """Compute the gradient of raster data using finite differences
+
+    Note that the gradient is defined on a staggered grid relative to the input raster. More
+    precisely, the gradients are computed in the cell centers of the input raster so that the
+    shape, size and location of the output raster is different from the input raster.
+
+    Parameters
+    ----------
+    data : np.array
+        A two-dimensional array containing the values.
+    transform : rasterio.Affine
+        Affine transformation defining the input raster.
+    latlon_to_m : boolean, optional
+        If True, convert the raster step sizes from lat/lon-units to meters, applying a latitude
+        correction. Default: False
+
+    Returns
+    -------
+    gradient_data : np.array of shape (ny, nx, 2)
+        The first/second entry in the last dimension is the derivative in x/y direction.
+    gradient_transform : rasterio.Affine
+        Affine transformation defining the output raster.
+    """
+    xres, _, xmin, _, yres, ymin = transform[:6]
+    gradient_transform =  rasterio.Affine.translation(0.5 * xres, 0.5 * yres) * transform
+
+    if latlon_to_m:
+        height, width = [s - 1 for s in data.shape]
+        _, lat = raster_to_meshgrid(gradient_transform, width, height)
+        xres = ONE_LAT_KM * 1000 * xres * np.cos(np.radians(lat))
+        yres = ONE_LAT_KM * 1000 * yres
+
+    diff_x = np.diff(data, axis=1)
+    diff_x = 0.5 * (diff_x[1:, :] + diff_x[:-1, :])
+    diff_y = np.diff(data, axis=0)
+    diff_y = 0.5 * (diff_y[:, 1:] + diff_y[:, :-1])
+    gradient_data = np.stack([diff_x / xres, diff_y / yres], axis=-1)
+
+    return gradient_data, gradient_transform
+
+
+def read_raster_sample(path, lat, lon, intermediate_res=None, method='linear', fill_value=None,
+                       gradient=False):
     """Read point samples from raster file.
+
+    To avoid redundant IO operations, the gradients at the specified points can be computed in the
+    same function call using the `gradient` feature. For example, in case of an elevation data set,
+    the slopes of the terrain in x- and y-direction are returned. In addition, if the CRS of the
+    elevation data set is EPSG:4326 (lat/lon) and elevations are given in m, then distances are
+    converted from degrees to meters, so that the unit of the returned slopes is "meters (height)
+    per meter (distance)".
 
     Parameters
     ----------
     path : str
         path of the raster file
-    lat : np.array
+    lat : np.array of shape (npoints,)
         latitudes in file's CRS
-    lon : np.array
+    lon : np.array of shape (npoints,)
         longitudes in file's CRS
-    intermediate_res : float, optional
+    intermediate_res : float or pair of floats, optional
         If given, the raster is not read in its original resolution but in the given one. This can
         increase performance for files of very high resolution.
     method : str, optional
         The interpolation method, passed to scipy.interp.interpn. Default: 'linear'.
     fill_value : numeric, optional
         The value used outside of the raster bounds. Default: The raster's nodata value or 0.
+    gradient : boolean, optional
+        If True, compute the raster gradient at the specified points. For convenience, and because
+        this is the most common use case, the step sizes in the gradient computation are converted
+        to meters if the raster's CRS is EPSG:4326 (lat/lon). Default: False
 
     Returns
     -------
-    values : np.array of same length as lat
+    values : np.array of shape (npoints,)
         Interpolated raster values for each given coordinate point.
+    gradient : np.array of shape (npoints, 2), optional
+        If grad=True, the raster gradient at each of the given coordinate points is returned.
+        The first/second value in each row is the derivative in lon/lat direction.
     """
     if lat.size == 0:
         return np.zeros_like(lat)
@@ -2056,33 +2112,31 @@ def read_raster_sample(path, lat, lon, intermediate_res=None, method='linear', f
 
     with rasterio.open(_add_gdal_vsi_prefix(path), "r") as src:
         if intermediate_res is None:
-            xres, yres = np.abs(src.transform[0]), np.abs(src.transform[4])
-        else:
-            xres = yres = intermediate_res
-        bounds = (lon.min() - 2 * xres, lat.min() - 2 * yres,
-                  lon.max() + 2 * xres, lat.max() + 2 * yres)
-        win = src.window(*bounds).round_offsets(op='ceil').round_shape(op='floor')
-        win_transform = src.window_transform(win)
-        intermediate_shape = None
-        if intermediate_res is not None:
-            win_bounds = src.window_bounds(win)
-            win_width, win_height = win_bounds[2] - win_bounds[0], win_bounds[3] - win_bounds[1]
-            intermediate_shape = (int(np.ceil(win_height / intermediate_res)),
-                                  int(np.ceil(win_width / intermediate_res)))
-        data = src.read(1, out_shape=intermediate_shape, boundless=True, window=win)
-        if fill_value is not None:
-            data[data == src.meta['nodata']] = fill_value
-        else:
-            fill_value = src.meta['nodata']
+            intermediate_res = (np.abs(src.transform[0]), np.abs(src.transform[4]))
+        meta_nodata = src.meta['nodata']
+        crs = src.crs
 
+    bounds = (lon.min(), lat.min(), lon.max(), lat.max())
+    data, transform = read_raster_bounds(path, bounds, res=intermediate_res, pad_cells=2)
+    data = data[0, :, :]
 
-    if intermediate_res is not None:
-        xres, yres = win_width / data.shape[1], win_height / data.shape[0]
-        xres, yres = np.sign(win_transform[0]) * xres, np.sign(win_transform[4]) * yres
-        win_transform = rasterio.Affine(xres, 0, win_transform[2],
-                                        0, yres, win_transform[5])
-    fill_value = fill_value if fill_value else 0
-    return interp_raster_data(data, lat, lon, win_transform, method=method, fill_value=fill_value)
+    if fill_value is not None:
+        data[data == meta_nodata] = fill_value
+    else:
+        fill_value = meta_nodata
+    fill_value = fill_value or 0
+
+    interp_data = interp_raster_data(
+        data, lat, lon, transform, method=method, fill_value=fill_value)
+
+    if not gradient:
+        return interp_data
+
+    is_latlon = crs is not None and crs.to_epsg() == 4326
+    grad_data, grad_transform = _raster_gradient(data, transform, latlon_to_m=is_latlon)
+    interp_grad = interp_raster_data(
+        grad_data, lat, lon, grad_transform, method="nearest", fill_value=fill_value)
+    return interp_data, interp_grad
 
 def interp_raster_data(data, interp_y, interp_x, transform, method='linear', fill_value=0):
     """Interpolate raster data, given as array and affine transform
@@ -2090,7 +2144,9 @@ def interp_raster_data(data, interp_y, interp_x, transform, method='linear', fil
     Parameters
     ----------
     data : np.array
-        2d numpy array containing the values
+        Array containing the values. The first two dimensions are always interpreted as
+        corresponding to the y- and x-coordinates of the grid. Additional dimensions can be present
+        in case of multi-band data.
     interp_y : np.array
         y-coordinates of points (corresp. to first axis of data)
     interp_x : np.array
@@ -2098,8 +2154,7 @@ def interp_raster_data(data, interp_y, interp_x, transform, method='linear', fil
     transform : affine.Affine
         affine transform defining the raster
     method : str, optional
-        The interpolation method, passed to
-            scipy.interp.interpn. Default: 'linear'.
+        The interpolation method, passed to scipy.interpolate.interpn. Default: 'linear'.
     fill_value : numeric, optional
         The value used outside of the raster
             bounds. Default: 0.
@@ -2107,21 +2162,22 @@ def interp_raster_data(data, interp_y, interp_x, transform, method='linear', fil
     Returns
     -------
     values : np.array
-        Interpolated raster values for each given coordinate point.
+        Interpolated raster values for each given coordinate point. If multi-band data is provided,
+        the additional dimensions from `data` will also be present in this array.
     """
     xres, _, xmin, _, yres, ymin = transform[:6]
     xmax = xmin + data.shape[1] * xres
     ymax = ymin + data.shape[0] * yres
-    data = np.pad(data, 1, mode='edge')
+    data = np.pad(data, [(1, 1) if i < 2 else (0, 0) for i in range(data.ndim)], mode='edge')
 
     if yres < 0:
         yres = -yres
         ymax, ymin = ymin, ymax
-        data = np.flipud(data)
+        data = np.flip(data, axis=0)
     if xres < 0:
         xres = -xres
         xmax, xmin = xmin, xmax
-        data = np.fliplr(data)
+        data = np.flip(data, axis=1)
     y_dim = ymin - yres / 2 + yres * np.arange(data.shape[0])
     x_dim = xmin - xres / 2 + xres * np.arange(data.shape[1])
 
