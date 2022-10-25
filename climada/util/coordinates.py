@@ -2065,7 +2065,6 @@ def _raster_gradient(data, transform, latlon_to_m=False):
 
     return gradient_data, gradient_transform
 
-
 def read_raster_sample(path, lat, lon, intermediate_res=None, method='linear', fill_value=None,
                        gradient=False):
     """Read point samples from raster file.

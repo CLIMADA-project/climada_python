@@ -942,14 +942,12 @@ class TestGetGeodata(unittest.TestCase):
             [1.96475615, 45.23249055],
         ])
         dists = [-3000, -1393549.5, 48.77]
-        dists_lowres = [416.66666667, 1393448.09801077, 1191.38205367]
-        # Warning: This will download more than 300 MB of data!
+        dists_lowres = [729.1666667, 1393670.6973145, 945.73129294]
+        # Warning: This will download more than 300 MB of data if not already present!
         result = u_coord.dist_to_coast_nasa(points[:, 0], points[:, 1], highres=True, signed=True)
         result_lowres = u_coord.dist_to_coast_nasa(points[:, 0], points[:, 1])
-        for d, r in zip(dists, result):
-            self.assertAlmostEqual(d, r)
-        for d, r in zip(dists_lowres, result_lowres):
-            self.assertAlmostEqual(d, r)
+        np.testing.assert_array_almost_equal(dists, result)
+        np.testing.assert_array_almost_equal(dists_lowres, result_lowres)
 
     def test_get_country_geometries_country_pass(self):
         """get_country_geometries with selected countries. issues with the
