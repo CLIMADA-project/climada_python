@@ -110,7 +110,7 @@ class TestAppend(unittest.TestCase):
         )
 
         disc_rate_add = DiscRates(
-            years=np.array([2000, 2001, 2002]),
+            years=np.array([2000, 2001, 2003]),
             rates=np.array([0.11, 0.22, 0.33]),
             tag=Tag(
                 file_name = 'file2.txt',
@@ -168,7 +168,7 @@ class TestNetPresValue(unittest.TestCase):
         """Test net_present_value right time range."""
         disc_rate = DiscRates(
             years=np.arange(2000, 2050),
-            rates=np.arange(50) * 0.02,
+            rates=np.ones(50) * 0.02,
             tag=Tag(
                 file_name = 'file1.txt',
                 description = 'descr1'
