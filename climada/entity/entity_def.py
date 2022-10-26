@@ -32,7 +32,7 @@ from climada.entity.exposures.base import Exposures
 
 LOGGER = logging.getLogger(__name__)
 
-class Entity(object):
+class Entity:
     """Collects exposures, impact functions, measures and discount rates.
     Default values set when empty constructor.
 
@@ -40,8 +40,8 @@ class Entity(object):
     ----------
     exposures : Exposures
         exposures
-    impact_funcs : ImpactFucs
-        impact functions
+    impact_funcs : ImpactFuncSet
+        impact functions set
     measures : MeasureSet
         measures
     disc_rates : DiscRates
@@ -50,8 +50,13 @@ class Entity(object):
         Default file from configuration file
     """
 
-    def __init__(self, exposures=None, disc_rates=None,
-                 impact_func_set=None, measure_set=None):
+    def __init__(
+        self,
+        exposures: Optional[Exposures] = None,
+        disc_rates: [DiscRates] = None,
+        impact_func_set: [ImpactFuncSet] = None,
+        measure_set: [MeasureSet] = None
+    ):
         """
         Initialize entity
 
