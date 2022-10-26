@@ -740,7 +740,7 @@ class TCTracks():
         self.__dict__ = TCTracks.from_simulations_emanuel(*args, **kwargs).__dict__
 
     @classmethod
-    def from_simulations_emanuel(cls, file_names, hemisphere=None):
+    def from_simulations_emanuel(cls, file_names, subset=None, hemisphere=None):
         """Create new TCTracks object from Kerry Emanuel's tracks.
 
         Parameters
@@ -760,7 +760,7 @@ class TCTracks():
         tr.data = []
         for path in get_file_names(file_names):
             tr.data.extend(_read_file_emanuel(
-                path, hemisphere=hemisphere,
+                path, subset=subset, hemisphere=hemisphere,
                 rmw_corr=Path(path).name in EMANUEL_RMW_CORR_FILES))
         return tr
 
@@ -1659,7 +1659,7 @@ def _read_one_gettelman(nc_data, i_track):
                    'category': set_category(wind, 'kn')}
     return tr_ds
 
-def _read_file_emanuel(path, hemisphere=None, rmw_corr=False):
+def _read_file_emanuel(path, subset=None, hemisphere=None, rmw_corr=False):
     """Read track data from file containing Kerry Emanuel simulations.
 
     Parameters
@@ -1725,6 +1725,9 @@ def _read_file_emanuel(path, hemisphere=None, rmw_corr=False):
 
     data = []
     for i_track in range(lat.shape[0]):
+        if subset is not None and i_track not in subset:
+            continue
+
         valid_idx = (lat[i_track, :] != 0).nonzero()[0]
         nnodes = valid_idx.size
         time_step = np.abs(np.diff(hours[i_track, valid_idx])).min()
