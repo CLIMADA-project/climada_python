@@ -144,9 +144,10 @@ class TestApply(unittest.TestCase):
 
     def test_change_exposures_impf_pass(self):
         """Test _change_exposures_impf"""
-        meas = Measure()
-        meas.imp_fun_map = '1to3'
-        meas.haz_type = 'TC'
+        meas = Measure(
+            imp_fun_map='1to3',
+            haz_type='TC',
+        )
 
         imp_set = ImpactFuncSet()
         imp_tc = ImpactFunc()
@@ -179,8 +180,7 @@ class TestApply(unittest.TestCase):
 
     def test_change_all_hazard_pass(self):
         """Test _change_all_hazard method"""
-        meas = Measure()
-        meas.hazard_set = HAZ_DEMO_H5
+        meas = Measure(hazard_set=HAZ_DEMO_H5)
 
         ref_haz = Hazard.from_hdf5(HAZ_DEMO_H5)
 
@@ -198,8 +198,7 @@ class TestApply(unittest.TestCase):
 
     def test_change_all_exposures_pass(self):
         """Test _change_all_exposures method"""
-        meas = Measure()
-        meas.exposures_set = EXP_DEMO_H5
+        meas = Measure(exposures_set=EXP_DEMO_H5)
 
         ref_exp = Exposures.from_hdf5(EXP_DEMO_H5)
 
@@ -218,8 +217,7 @@ class TestApply(unittest.TestCase):
 
     def test_not_filter_exposures_pass(self):
         """Test _filter_exposures method with []"""
-        meas = Measure()
-        meas.exp_region_id = []
+        meas = Measure(exp_region_id=[])
 
         exp = Exposures()
         imp_set = ImpactFuncSet()
@@ -242,9 +240,10 @@ class TestApply(unittest.TestCase):
 
     def test_filter_exposures_pass(self):
         """Test _filter_exposures method with two values"""
-        meas = Measure()
-        meas.exp_region_id = [3, 4]
-        meas.haz_type = 'TC'
+        meas = Measure(
+            exp_region_id=[3, 4],
+            haz_type='TC',
+        )
 
         exp = Exposures.from_mat(ENT_TEST_MAT)
         exp.gdf.rename(columns={'impf_': 'impf_TC', 'centr_': 'centr_TC'}, inplace=True)
