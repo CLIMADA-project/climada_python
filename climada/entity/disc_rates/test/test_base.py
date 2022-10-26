@@ -132,9 +132,11 @@ class TestSelect(unittest.TestCase):
     """Test select method"""
     def test_select_pass(self):
         """Test select right time range."""
+        years=np.arange(2000, 2050)
+        rates=np.arange(years.size)
         disc_rate = DiscRates(
-            years=np.arange(2000, 2050),
-            rates=np.arange(disc_rate.years.size),
+            years=years,
+            rates=rates,
             tag=Tag(
                 file_name = 'file1.txt',
                 description = 'descr1'
@@ -151,7 +153,7 @@ class TestSelect(unittest.TestCase):
         """Test select wrong time range."""
         disc_rate = DiscRates(
             years=np.arange(2000, 2050),
-            rates=np.arange(disc_rate.years.size),
+            rates=np.arange(50),
             tag=Tag(
                 file_name = 'file1.txt',
                 description = 'descr1'
@@ -166,7 +168,7 @@ class TestNetPresValue(unittest.TestCase):
         """Test net_present_value right time range."""
         disc_rate = DiscRates(
             years=np.arange(2000, 2050),
-            rates=np.arange(disc_rate.years.size) * 0.02,
+            rates=np.arange(50) * 0.02,
             tag=Tag(
                 file_name = 'file1.txt',
                 description = 'descr1'
@@ -181,7 +183,7 @@ class TestNetPresValue(unittest.TestCase):
         """Test net_present_value wrong time range."""
         disc_rate = DiscRates(
             years=np.arange(2000, 2050),
-            rates=np.arange(disc_rate.years.size) * 0.02,
+            rates=np.arange(50) * 0.02,
             tag=Tag(
                 file_name = 'file1.txt',
                 description = 'descr1'
