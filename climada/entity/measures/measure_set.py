@@ -119,10 +119,10 @@ class MeasureSet():
         """
         self.clear()
 
-    def clear(self):
+    def clear(self, tag: Tag = None, _data: dict = None):
         """Reinitialize attributes."""
-        self.tag = Tag()
-        self._data = dict()  # {hazard_type : {name: Measure()}}
+        self.tag = tag if tag is not None else Tag()
+        self._data = _data if _data is not None else dict()  # {hazard_type : {name: Measure()}}
 
     def append(self, meas):
         """Append an Measure. Override if same name and haz_type.
