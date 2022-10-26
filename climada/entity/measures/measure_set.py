@@ -484,7 +484,13 @@ class MeasureSet():
                     meas_kwargs["exp_region_id"] = ast.literal_eval(
                         dfr[var_names['col_name']['exp_reg']][idx])
                 except KeyError:
-                    pass
+                    exposures_set = ""
+
+                try:
+                    exp_region_id = ast.literal_eval(
+                        dfr[var_names['col_name']['exp_reg']][idx])
+                except KeyError:
+                    exp_region_id = []
                 except ValueError:
                     meas_kwargs["exp_region_id"] = dfr[var_names['col_name']['exp_reg']][idx]
 
@@ -493,7 +499,7 @@ class MeasureSet():
                         dfr[var_names['col_name']['risk_fact']][idx]
                     )
                 except KeyError:
-                    pass
+                    risk_transf_cost_factor = 1
 
                 measures.append(Measure(**meas_kwargs))
 
