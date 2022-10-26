@@ -200,6 +200,8 @@ class TCTracks():
         pool : pathos.pools, optional
             Pool that will be used for parallel computation when applicable. Default: None
         """
+        self.data = data if data is not None else list()
+        self.pool = pool
         if pool:
             LOGGER.debug('Using %s CPUs.', self.pool.ncpus)
 
