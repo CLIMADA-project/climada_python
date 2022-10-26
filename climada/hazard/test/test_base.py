@@ -939,7 +939,6 @@ class TestAppend(unittest.TestCase):
         self.assertEqual(haz_2.tag.description, 'Description 1')
 
         """Test error for projection"""
-        cent3 = Centroids()
         lat3, lon3 = np.array([0.5, 3]), np.array([-0.5, 3])
         on_land3 = np.array([True, True, False])
         cent3 = Centroids(lat=lat3, lon=lon3, on_land=on_land3)
