@@ -21,9 +21,11 @@ Define MeasureSet class.
 
 __all__ = ['MeasureSet']
 
+import ast
 import copy
 import logging
-import ast
+from typing import Optional, List
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -94,8 +96,19 @@ class MeasureSet():
         directly accessed. Use the class methods instead.
     """
 
-    def __init__(self):
-        """Empty initialization.
+    def __init__(
+        self,
+        measure_list: Optional[List[Measure]] = None,
+        tag: Optional[Tag] = None,
+    ):
+        """Initialize a new MeasureSet object with specified data.
+
+        Parameters
+        ----------
+        measure_list : list of Measure objects, optional
+            The measures to include in the MeasureSet
+        tag : Tag, optional
+            Information about the source data
 
         Examples
         --------
@@ -108,16 +121,20 @@ class MeasureSet():
         ...     mdd_impact=(1, 0),
         ...     paa_impact=(1, 0),
         ... )
-        >>> meas = MeasureSet()
-        >>> meas.append(act_1)
-        >>> meas.tag.description = "my dummy MeasureSet."
+        >>> meas = MeasureSet(
+        ...     measure_list=[act_1],
+        ...     tag=Tag(description="my dummy MeasureSet.")
+        ... )
         >>> meas.check()
 
         Read measures from file and checks consistency data:
 
         >>> meas = MeasureSet.from_excel(ENT_TEMPLATE_XLS)
         """
-        self.clear()
+        self.clear(tag=tag)
+        if measure_list is not None:
+            for meas in measure_list:
+                self.append(meas)
 
     def clear(self, tag: Tag = None, _data: dict = None):
         """Reinitialize attributes."""
