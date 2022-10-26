@@ -26,6 +26,7 @@ import contextlib
 import datetime as dt
 import itertools
 import logging
+from typing import Optional
 import pathlib
 import re
 import shutil
@@ -36,6 +37,7 @@ from pathlib import Path
 import cartopy.crs as ccrs
 import cftime
 import geopandas as gpd
+import pathos
 import matplotlib.cm as cm_mp
 from matplotlib.collections import LineCollection
 from matplotlib.colors import BoundaryNorm, ListedColormap
@@ -188,20 +190,18 @@ class TCTracks():
             - on_land (bool for each track position)
             - dist_since_lf (in km)
     """
-    def __init__(self, pool=None):
+    def __init__(self, 
+                 data: Optional[list] = None, 
+                 pool: Optional[pathos.pools] = None):
         """Create new (empty) TCTracks instance.
 
         Parameters
         ----------
-        pool : pathos.pool, optional
+        pool : pathos.pools, optional
             Pool that will be used for parallel computation when applicable. Default: None
         """
-        self.data = list()
         if pool:
-            self.pool = pool
             LOGGER.debug('Using %s CPUs.', self.pool.ncpus)
-        else:
-            self.pool = None
 
     def append(self, tracks):
         """Append tracks to current.
