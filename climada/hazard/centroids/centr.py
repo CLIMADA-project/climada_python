@@ -769,7 +769,6 @@ class Centroids():
 
         # create new Centroids object and set concatenated attributes
         centroids = Centroids()
-        centroids.meta = {}
         for attr_name, attr_val in vars(cent_list[0]).items():
             if isinstance(attr_val, np.ndarray) and attr_val.ndim == 1:
                 attr_val_list = [getattr(cent, attr_name) for cent in cent_list]
