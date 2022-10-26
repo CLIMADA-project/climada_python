@@ -53,9 +53,9 @@ class Entity:
     def __init__(
         self,
         exposures: Optional[Exposures] = None,
-        disc_rates: [DiscRates] = None,
-        impact_func_set: [ImpactFuncSet] = None,
-        measure_set: [MeasureSet] = None
+        disc_rates: Optional[DiscRates] = None,
+        impact_func_set: Optional[ImpactFuncSet] = None,
+        measure_set: Optional[MeasureSet] = None
     ):
         """
         Initialize entity
