@@ -192,7 +192,7 @@ class TCTracks():
     """
     def __init__(self, 
                  data: Optional[list] = None, 
-                 pool: Optional[pathos.pools] = None):
+                 pool: Optional[pathos.multiprocessing.ProcessPool] = None):
         """Create new (empty) TCTracks instance.
 
         Parameters
