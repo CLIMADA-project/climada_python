@@ -9,6 +9,14 @@ climada\.util\.api\_client module
     :undoc-members:
     :show-inheritance:
 
+climada\.util\.cached module
+----------------------------
+
+.. automodule:: climada.util.cached
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 climada\.util\.checker module
 -----------------------------
 
@@ -85,6 +93,14 @@ climada\.util\.hdf5\_handler module
 -----------------------------------
 
 .. automodule:: climada.util.hdf5_handler
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+climada\.util\.lines\_polys\_handler module
+-------------------------------------------
+
+.. automodule:: climada.util.lines_polys_handler
     :members:
     :undoc-members:
     :show-inheritance:

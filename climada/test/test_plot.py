@@ -29,7 +29,7 @@ from climada.entity.entity_def import Entity
 from climada.hazard.base import Hazard
 from climada.entity.exposures.base import Exposures
 from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
-from climada.engine.impact import Impact, ImpactFreqCurve
+from climada.engine import ImpactCalc, ImpactFreqCurve
 from climada.util.constants import HAZ_DEMO_MAT, ENT_DEMO_TODAY
 
 class TestPlotter(unittest.TestCase):
@@ -117,17 +117,17 @@ class TestPlotter(unittest.TestCase):
         myent = Entity.from_excel(ENT_DEMO_TODAY)
         myent.exposures.check()
         myhaz = Hazard.from_mat(HAZ_DEMO_MAT)
-        myimp = Impact()
-        myimp.calc(myent.exposures, myent.impact_funcs, myhaz)
+        myhaz.event_name = [""] * myhaz.event_id.size
+        myimp = ImpactCalc(myent.exposures, myent.impact_funcs, myhaz).impact()
         ifc = myimp.calc_freq_curve()
         myax = ifc.plot()
         self.assertIn('Exceedance frequency curve', myax.get_title())
 
-        ifc2 = ImpactFreqCurve()
-        ifc2.return_per = ifc.return_per
-        ifc2.impact = 1.5e11 * np.ones(ifc2.return_per.size)
-        ifc2.unit = ''
-        ifc2.label = 'prove'
+        ifc2 = ImpactFreqCurve(
+            return_per=ifc.return_per,
+            impact=1.5e11 * np.ones(ifc.return_per.size),
+            label='prove'
+        )
         ifc2.plot(axis=myax)
 
     def test_ctx_osm_pass(self):
@@ -139,7 +139,7 @@ class TestPlotter(unittest.TestCase):
         myexp.check()
 
         try:
-            myexp.plot_basemap(url=ctx.sources.OSM_A)
+            myexp.plot_basemap(url=ctx.providers.OpenStreetMap.Mapnik)
         except urllib.error.HTTPError:
             self.assertEqual(1, 0)
 

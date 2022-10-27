@@ -42,10 +42,10 @@ class ImpfStormEurope(ImpactFunc):
     def from_schwierz(cls, impf_id=1):
         """
         Generate the impact function of Schwierz et al. 2010, doi:10.1007/s10584-009-9712-1
-        
+
         Returns
         -------
-        impf : climada.entity.impact_funcs.storm_europe.ImpfStormEurope: 
+        impf : climada.entity.impact_funcs.storm_europe.ImpfStormEurope:
             impact function for asset damages due to storm defined in Schwierz et al. 2010
         """
 
@@ -69,7 +69,7 @@ class ImpfStormEurope(ImpactFunc):
         Return the impact function of Welker et al. 2021, doi:10.5194/nhess-21-279-2021
         It is the Schwierz function, calibrated with a simple multiplicative
         factor to minimize RMSE between modelled damages and reported damages.
-        
+
         Returns
         -------
         impf: climada.entity.impact_funcs.storm_europe.ImpfStormEurope:
@@ -84,7 +84,7 @@ class ImpfStormEurope(ImpactFunc):
         temp_Impf.intensity_unit = 'm/s'
         temp_Impf.check()
         return temp_Impf
-        
+
     def set_schwierz(self, impf_id=1):
         """
         This function is deprecated, use ImpfStormEurope.from_schwierz
@@ -93,7 +93,7 @@ class ImpfStormEurope(ImpactFunc):
         LOGGER.warning("The use of ImpfStormEurope.set_schwierz is deprecated."
                        "Use ImpfStormEurope.from_schwierz instead.")
         self.__dict__ = ImpfStormEurope.from_schwierz(impf_id=impf_id).__dict__
-        
+
     def set_welker(self, impf_id=1):
         """
         This function is deprecated, use ImpfStormEurope.from_welker

@@ -551,11 +551,10 @@ class TestFuncs(unittest.TestCase):
         storms = ['1988169N14259', '2002073S16161', '2002143S07157']
         tc_track = tc.TCTracks.from_ibtracs_netcdf(storm_id=storms, provider=["usa", "bom"])
         bounds = (153.585022, -23.200001, 258.714996, 17.514986)
-        extent = (bounds[0], bounds[2], bounds[1], bounds[3])
         bounds_buf = (153.485022, -23.300001, 258.814996, 17.614986)
         np.testing.assert_array_almost_equal(tc_track.bounds, bounds)
         np.testing.assert_array_almost_equal(tc_track.get_bounds(deg_buffer=0.1), bounds_buf)
-        np.testing.assert_array_almost_equal(tc_track.extent, extent)
+        np.testing.assert_array_almost_equal(tc_track.extent, u_coord.toggle_extent_bounds(bounds))
 
     def test_generate_centroids(self):
         """Test centroids generation feature."""
@@ -897,6 +896,32 @@ class TestFuncs(unittest.TestCase):
         self.assertEqual(sea_land_idx.tolist(), [0,4])
         self.assertEqual(land_sea_idx.tolist(), [2,6])
 
+    def test_track_land_params(self):
+        """Test identification of points on land and distance since landfall"""
+        # 1 pt over the ocean and two points within Fiji, one on each side of the anti-meridian
+        lon_test = np.array([170, 179.18, 180.05])
+        lat_test = np.array([-60, -16.56, -16.85])
+        on_land = np.array([False, True, True])
+        lon_shift = np.array([-360, 0, 360])
+        # ensure both points are considered on land as is
+        np.testing.assert_array_equal(
+            u_coord.coord_on_land(lat = lat_test, lon = lon_test),
+            on_land
+        )
+        # independently on shifts by 360 degrees in longitude
+        np.testing.assert_array_equal(
+            u_coord.coord_on_land(lat = lat_test, lon = lon_test + lon_shift),
+            on_land
+        )
+        np.testing.assert_array_equal(
+            u_coord.coord_on_land(lat = lat_test, lon = lon_test - lon_shift),
+            on_land
+        )
+        # also when longitude is within correct range
+        np.testing.assert_array_equal(
+            u_coord.coord_on_land(lat = lat_test, lon = u_coord.lon_normalize(lon_test)),
+            on_land
+        )
 
 # Execute Tests
 if __name__ == "__main__":
