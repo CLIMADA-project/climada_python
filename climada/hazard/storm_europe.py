@@ -83,13 +83,13 @@ class StormEurope(Hazard):
     """Name of the variables that aren't need to compute the impact."""
 
     def __init__(self, units: Optional[str] = 'm/s', ssi: Optional[np.ndarray] = None, ssi_wisk: Optional[np.ndarray] = None,
-                 ssi_fullarea: Optional[np.ndarray] = None):
+                 ssi_full_area: Optional[np.ndarray] = None):
         """Calls the Hazard init dunder. Sets unit to 'm/s'."""
         Hazard.__init__(self, HAZ_TYPE)
         self.units = units
         self.ssi = ssi if ssi is not None else np.array([], float)
         self.ssi_wisc = ssi_wisk if ssi_wisk is not None else np.array([], float)
-        self.ssi_full_area = ssi_fullarea if ssi_fullarea is not None else np.array([], float)
+        self.ssi_full_area = ssi_full_area if ssi_full_area is not None else np.array([], float)
 
     def read_footprints(self, *args, **kwargs):
         """This function is deprecated, use StormEurope.from_footprints instead."""
@@ -818,7 +818,6 @@ class StormEurope(Hazard):
         LOGGER.info('Generating new StormEurope instance')
         new_haz = StormEurope()
         new_haz.intensity = sparse.csr_matrix(intensity_prob)
-        new_haz.ssi_full_area = ssi
 
         # don't use synthetic dates; just repeat the historic dates
         new_haz.date = np.repeat(self.date, N_PROB_EVENTS)
