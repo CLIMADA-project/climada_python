@@ -551,11 +551,10 @@ class TestFuncs(unittest.TestCase):
         storms = ['1988169N14259', '2002073S16161', '2002143S07157']
         tc_track = tc.TCTracks.from_ibtracs_netcdf(storm_id=storms, provider=["usa", "bom"])
         bounds = (153.585022, -23.200001, 258.714996, 17.514986)
-        extent = (bounds[0], bounds[2], bounds[1], bounds[3])
         bounds_buf = (153.485022, -23.300001, 258.814996, 17.614986)
         np.testing.assert_array_almost_equal(tc_track.bounds, bounds)
         np.testing.assert_array_almost_equal(tc_track.get_bounds(deg_buffer=0.1), bounds_buf)
-        np.testing.assert_array_almost_equal(tc_track.extent, extent)
+        np.testing.assert_array_almost_equal(tc_track.extent, u_coord.toggle_extent_bounds(bounds))
 
     def test_generate_centroids(self):
         """Test centroids generation feature."""

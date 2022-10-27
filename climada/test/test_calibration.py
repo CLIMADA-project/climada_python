@@ -25,7 +25,7 @@ import pandas as pd
 from climada import CONFIG
 from climada.entity.entity_def import Entity
 from climada.hazard.base import Hazard
-from climada.engine import Impact
+from climada.engine import ImpactCalc
 from climada.engine.calibration_opt import calib_instance
 from climada.util.constants import ENT_DEMO_TODAY
 import climada.hazard.test as hazard_test
@@ -40,8 +40,7 @@ class TestCalib(unittest.TestCase):
     def test_calib_instance(self):
         """Test save calib instance"""
          # Read default entity values
-        ent = Entity()
-        ent.read_excel(ENT_DEMO_TODAY)
+        ent = Entity.from_excel(ENT_DEMO_TODAY)
         ent.check()
 
         # Read default hazard file
@@ -68,9 +67,8 @@ class TestCalib(unittest.TestCase):
                                        df_in_yearly,
                                        yearly_impact=True)
         # calc Impact as comparison
-        impact = Impact()
-        impact.calc(ent.exposures, ent.impact_funcs, hazard, assign_centroids=False)
-        IYS = impact.calc_impact_year_set(all_years=True)
+        impact = ImpactCalc(ent.exposures, ent.impact_funcs, hazard).impact(assign_centroids=False)
+        IYS = impact.impact_per_year(all_years=True)
 
         # do the tests
         self.assertTrue(isinstance(df_out, pd.DataFrame))

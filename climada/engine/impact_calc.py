@@ -74,35 +74,8 @@ class ImpactCalc():
         """Number of hazard events (size of event_id array)"""
         return self.hazard.size
 
-    @property
-    def deductible(self):
-        """
-        Deductibles from the exposures. Returns None if no deductibles defined.
-
-        Returns
-        -------
-        np.array
-            The deductible per exposure point
-
-        """
-        if 'deductible' in self.exposures.gdf.columns:
-            return self.exposures.gdf['deductible'].to_numpy()
-
-    @property
-    def cover(self):
-        """
-        Covers from the exposures. Returns None if no covers defined.
-
-        Returns
-        -------
-        np.array
-            The cover per exposure point
-
-        """
-        if 'cover' in self.exposures.gdf.columns:
-            return self.exposures.gdf['cover'].to_numpy()
-
-    def impact(self, save_mat=True, assign_centroids=True):
+    def impact(self, save_mat=True, assign_centroids=True,
+               ignore_cover=False, ignore_deductible=False):
         """Compute the impact of a hazard on exposures.
 
         Parameters
@@ -116,6 +89,14 @@ class ImpactCalc():
             computation time if the hazards' centroids are already assigned to the exposures
             object.
             Default: True
+        ignore_cover : bool, optional
+            if set to True, the column 'cover' of the exposures GeoDataFrame, if present, is
+            ignored and the impact it not capped by the values in this column.
+            Default: False
+        ignore_deductible : bool, opotional
+            if set to True, the column 'deductible' of the exposures GeoDataFrame, if present, is
+            ignored and the impact it not reduced through values in this column.
+            Default: False
 
         Examples
         --------
@@ -123,75 +104,32 @@ class ImpactCalc():
             >>> impfset = ImpactFuncSet.from_excel(ENT_TEMPLATE_XLS)
             >>> exp = Exposures(pd.read_excel(ENT_TEMPLATE_XLS))
             >>> impcalc = ImpactCal(exp, impfset, haz)
-            >>> imp = impcalc.insured_impact()
-            >>> imp.aai_agg
-
-        Notes
-        -----
-        Deductible and/or cover values in the exposures are ignored.
-
-        In case the exposures has no centroids assigned for the given hazard,
-        the column is added to the exposures geodataframe.
-        """
-        impf_col = self.exposures.get_impf_column(self.hazard.haz_type)
-        exp_gdf = self.minimal_exp_gdf(impf_col, assign_centroids)
-        if exp_gdf.size == 0:
-            return self._return_empty(save_mat)
-        LOGGER.info('Calculating impact for %s assets (>0) and %s events.',
-                    self.n_exp_pnt, self.n_events)
-        imp_mat_gen = self.imp_mat_gen(exp_gdf, impf_col)
-        return self._return_impact(imp_mat_gen, save_mat)
-
-#TODO: make a better impact matrix generator for insured impacts when
-# the impact matrix is already present
-    def insured_impact(self, save_mat=False, assign_centroids=True):
-        """Compute the impact of a hazard on exposures with a deductible and/or
-        cover.
-
-        For each exposure point, the impact per event is obtained by
-        substracting the deductible (and is maximally equal to the cover).
-
-        Parameters
-        ----------
-        save_mat : bool
-            if true, save the total impact matrix (events x exposures)
-        assign_centroids : bool, optional
-            indicates whether centroids are assigned to the self.exposures object.
-            Centroids assignment is an expensive operation; set this to ``False`` to save
-            computation time if the hazards' centroids are already assigned to the exposures
-            object.
-            Default: True
-
-        Examples
-        --------
-            >>> haz = Hazard.from_mat(HAZ_DEMO_MAT)  # Set hazard
-            >>> impfset = ImpactFuncSet.from_excel(ENT_TEMPLATE_XLS)
-            >>> exp = Exposures(pd.read_excel(ENT_TEMPLATE_XLS))
-            >>> impcalc = ImpactCal(exp, impfset, haz)
-            >>> imp = impcalc.insured_impact()
+            >>> imp = impcalc.impact(insured=True)
             >>> imp.aai_agg
 
         See also
         --------
-        apply_deductible_to_mat:
-            apply deductible to impact matrix
-        apply_cover_to_mat:
-            apply cover to impact matrix
+        apply_deductible_to_mat : apply deductible to impact matrix
+        apply_cover_to_mat : apply cover to impact matrix
         """
-        if self.cover is None and self.deductible is None:
-            raise AttributeError("Neither cover nor deductible defined."
-                                 "Please set exposures.gdf.cover"
-                                 "and/or exposures.gdf.deductible")
         impf_col = self.exposures.get_impf_column(self.hazard.haz_type)
-        exp_gdf = self.minimal_exp_gdf(impf_col, assign_centroids)
+        exp_gdf = self.minimal_exp_gdf(impf_col, assign_centroids, ignore_cover, ignore_deductible)
         if exp_gdf.size == 0:
             return self._return_empty(save_mat)
         LOGGER.info('Calculating impact for %s assets (>0) and %s events.',
-                    exp_gdf.size, self.hazard.size)
-
+                    exp_gdf.size, self.n_events)
         imp_mat_gen = self.imp_mat_gen(exp_gdf, impf_col)
-        ins_mat_gen = self.insured_mat_gen(imp_mat_gen, exp_gdf, impf_col)
-        return self._return_impact(ins_mat_gen, save_mat)
+
+        insured = ('cover' in exp_gdf and exp_gdf.cover.max() >= 0) \
+               or ('deductible' in exp_gdf and exp_gdf.deductible.max() > 0)
+        if insured:
+            LOGGER.info("cover and/or deductible columns detected,"
+                        " going to calculate insured impact")
+#TODO: make a better impact matrix generator for insured impacts when
+# the impact matrix is already present
+            imp_mat_gen = self.insured_mat_gen(imp_mat_gen, exp_gdf, impf_col)
+
+        return self._return_impact(imp_mat_gen, save_mat)
 
     def _return_impact(self, imp_mat_gen, save_mat):
         """Return an impact object from an impact matrix generator
@@ -212,7 +150,6 @@ class ImpactCalc():
         --------
         imp_mat_gen : impact matrix generator
         insured_mat_gen: insured impact matrix generator
-
         """
         if save_mat:
             imp_mat = self.stitch_impact_matrix(imp_mat_gen)
@@ -252,7 +189,7 @@ class ImpactCalc():
         return Impact.from_eih(self.exposures, self.impfset, self.hazard,
                         at_event, eai_exp, aai_agg, imp_mat)
 
-    def minimal_exp_gdf(self, impf_col, assign_centroids):
+    def minimal_exp_gdf(self, impf_col, assign_centroids, ignore_cover, ignore_deductible):
         """Get minimal exposures geodataframe for impact computation
 
         Parameters
@@ -267,6 +204,12 @@ class ImpactCalc():
             Centroids assignment is an expensive operation; set this to ``False`` to save
             computation time if the centroids have not changed since the last impact
             calculation.
+        include_cover : bool
+            if set to True, the column 'cover' of the exposures GeoDataFrame is excluded from the
+            returned GeoDataFrame, otherwise it is included if present.
+        include_deductible : bool
+            if set to True, the column 'deductible' of the exposures GeoDataFrame is excluded from
+            the returned GeoDataFrame, otherwise it is included if present.
         """
         if assign_centroids:
             self.exposures.assign_centroids(self.hazard, overwrite=True)
@@ -280,9 +223,15 @@ class ImpactCalc():
             & (self.exposures.gdf.value.values != 0)                              # value != 0
             & (self.exposures.gdf[self.hazard.centr_exp_col].values >= 0)    # centroid assigned
         )
+
+        columns = ['value', impf_col, self.hazard.centr_exp_col]
+        if not ignore_cover and 'cover' in self.exposures.gdf:
+            columns.append('cover')
+        if not ignore_deductible and 'deductible' in self.exposures.gdf:
+            columns.append('deductible')
         exp_gdf = gpd.GeoDataFrame(
             {col: self.exposures.gdf[col].values[mask]
-            for col in ['value', impf_col, self.hazard.centr_exp_col]},
+            for col in columns},
             )
         if exp_gdf.size == 0:
             LOGGER.warning("No exposures with value >0 in the vicinity of the hazard.")
@@ -375,16 +324,16 @@ class ImpactCalc():
         """
         for mat, exp_idx in imp_mat_gen:
             impf_id = exp_gdf[impf_col][exp_idx[0]]
-            deductible = self.deductible[self._orig_exp_idx[exp_idx]]
             cent_idx = exp_gdf[self.hazard.centr_exp_col].values[exp_idx]
             impf = self.impfset.get_func(
-                haz_type=self.hazard.haz_type, fun_id=impf_id
-                )
-            mat = self.apply_deductible_to_mat(
-                mat, deductible, self.hazard, cent_idx, impf
-                )
-            cover = self.cover[self._orig_exp_idx[exp_idx]]
-            mat = self.apply_cover_to_mat(mat, cover)
+                haz_type=self.hazard.haz_type,
+                fun_id=impf_id)
+            if 'deductible' in exp_gdf:
+                deductible = exp_gdf.deductible.values[exp_idx]
+                mat = self.apply_deductible_to_mat(mat, deductible, self.hazard, cent_idx, impf)
+            if 'cover' in exp_gdf:
+                cover = exp_gdf.cover.values[exp_idx]
+                mat = self.apply_cover_to_mat(mat, cover)
             yield (mat, exp_idx)
 
     def impact_matrix(self, exp_values, cent_idx, impf):

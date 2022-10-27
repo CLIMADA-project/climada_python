@@ -28,7 +28,7 @@ from climada.entity import Exposures
 import climada.util.lines_polys_handler as u_lp
 import climada.util.coordinates as u_coord
 from climada.util.api_client import Client
-from climada.engine.impact import Impact
+from climada.engine import Impact, ImpactCalc
 from climada.hazard import Hazard
 from climada.entity.impact_funcs import ImpactFuncSet
 from climada.entity.impact_funcs.storm_europe import ImpfStormEurope
@@ -149,7 +149,7 @@ class TestExposureGeomToPnt(unittest.TestCase):
         """Test disaggregation of polygons to points on grid"""
         exp_poly = EXP_POLY.copy()
         res = 0.1
-        exp_poly.gdf = exp_poly.gdf[exp_poly.gdf['population']<400000]
+        exp_poly.set_gdf(exp_poly.gdf[exp_poly.gdf['population']<400000])
         height, width, trafo = u_coord.pts_to_raster_meta(
             exp_poly.gdf.geometry.bounds, (res, res)
             )
@@ -395,10 +395,9 @@ class TestGeomImpactCalcs(unittest.TestCase):
             )
         aai_agg1 =  0.0470814
 
-        imp11 = Impact()
         exp = EXP_POINT.copy()
         exp.set_lat_lon()
-        imp11.calc(exp, IMPF_SET, HAZ)
+        imp11 = ImpactCalc(exp, IMPF_SET, HAZ).impact()
         check_impact(self, imp1, HAZ, EXP_POINT, aai_agg1, imp11.eai_exp)
 
         imp2 = u_lp.calc_geom_impact(
@@ -408,8 +407,7 @@ class TestGeomImpactCalcs(unittest.TestCase):
             )
 
         exp.gdf['value'] = 1.0
-        imp22 = Impact()
-        imp22.calc(exp, IMPF_SET, HAZ)
+        imp22 = ImpactCalc(exp, IMPF_SET, HAZ).impact()
         aai_agg2 = 6.5454249333e-06
         check_impact(self, imp2, HAZ, EXP_POINT, aai_agg2, imp22.eai_exp)
 
@@ -474,8 +472,7 @@ class TestGeomImpactCalcs(unittest.TestCase):
             exp_mix, res=1, to_meters=False, disagg_met=u_lp.DisaggMethod.DIV,
             disagg_val=None
             )
-        imp_pnt = Impact()
-        imp_pnt.calc(exp_pnt, IMPF_SET, HAZ, save_mat=True)
+        imp_pnt = ImpactCalc(exp_pnt, IMPF_SET, HAZ).impact(save_mat=True)
         imp_agg = u_lp.impact_pnt_agg(imp_pnt, exp_pnt.gdf, u_lp.AggMethod.SUM)
         aai_agg = 1282901.377219451
         eai_exp = np.array([
