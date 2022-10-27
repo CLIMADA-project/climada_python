@@ -190,8 +190,8 @@ class TCTracks():
             - on_land (bool for each track position)
             - dist_since_lf (in km)
     """
-    def __init__(self, 
-                 data: Optional[list] = None, 
+    def __init__(self,
+                 data: Optional[list] = None,
                  pool: Optional[pathos.multiprocessing.ProcessPool] = None):
         """Create new (empty) TCTracks instance.
 
