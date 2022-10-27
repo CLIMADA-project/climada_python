@@ -1450,18 +1450,33 @@ class TestImpactFuncs(unittest.TestCase):
     def test_get_fraction(self):
         haz = dummy_hazard()
 
+        #standard index
         idx = [0, 1]
         cent_idx = np.array(idx)
-        frac = haz.get_fraction(cent_idx)
+        frac = haz._get_fraction(cent_idx)
         true_frac = haz.fraction[:, idx]
         np.testing.assert_array_almost_equal(frac.toarray(), true_frac.toarray())
 
         #repeated index
         idx = [0, 0]
         cent_idx = np.array(idx)
-        frac = haz.get_fraction(cent_idx)
+        frac = haz._get_fraction(cent_idx)
         true_frac = haz.fraction[:, idx]
         np.testing.assert_array_almost_equal(frac.toarray(), true_frac.toarray())
+
+        #index is None
+        cent_idx = None
+        frac = haz._get_fraction(cent_idx)
+        true_frac = haz.fraction
+        np.testing.assert_array_almost_equal(frac.toarray(), true_frac.toarray())
+
+        #test empty fraction
+        haz.fraction = sparse.csr_matrix(haz.fraction.shape)
+        frac = haz._get_fraction()
+        self.assertIsNone(frac)
+
+        frac = haz._get_fraction(np.array([0, 1]))
+        self.assertIsNone(frac)
 
 
 # Execute Tests

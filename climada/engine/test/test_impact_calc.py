@@ -426,7 +426,7 @@ class TestImpactMatrixCalc(unittest.TestCase):
         self.hazard.get_mdr.return_value = sparse.csr_matrix(
             [[0.0, 0.5, -1.0], [1.0, 2.0, 1.0]]
         )
-        self.hazard.get_fraction.return_value = sparse.csr_matrix(
+        self.hazard._get_fraction.return_value = sparse.csr_matrix(
             [[1.0, 1.0, 1.0], [-0.5, 0.5, 2.0]]
         )
         self.exposure_values = np.array([10.0, 20.0, -30.0])
@@ -447,7 +447,7 @@ class TestImpactMatrixCalc(unittest.TestCase):
             self.hazard.get_mdr.assert_called_once_with(
                 self.centroids, ENT.impact_funcs
             )
-            self.hazard.get_fraction.assert_called_once_with(self.centroids)
+            self.hazard._get_fraction.assert_called_once_with(self.centroids)
 
     def test_wrong_sizes(self):
         """Calling 'impact_matrix' with wrongly sized argument results in errors"""
@@ -620,7 +620,7 @@ class TestImpactMatrix(unittest.TestCase):
         self.icalc.hazard.get_mdr.return_value = mdr
         fraction = sparse.csr_matrix([[1.0, 1.0, 1.0], [1.0, 0.0, -1.0]])
         fraction.eliminate_zeros()
-        self.icalc.hazard.get_fraction.return_value = fraction
+        self.icalc.hazard._get_fraction.return_value = fraction
 
     def test_impact_matrix(self):
         """Check if impact matrix calculations and calls to hazard are correct"""
@@ -632,7 +632,7 @@ class TestImpactMatrix(unittest.TestCase):
             impact_matrix.toarray(), [[1.0, 0.0, 8.0], [-1.0, 0.0, -4.0]]
         )
         self.icalc.hazard.get_mdr.assert_called_once_with(centroid_idx, "impf")
-        self.icalc.hazard.get_fraction.assert_called_once_with(centroid_idx)
+        self.icalc.hazard._get_fraction.assert_called_once_with(centroid_idx)
 
 
 @patch.object(Impact, "from_eih")

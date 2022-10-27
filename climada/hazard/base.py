@@ -132,8 +132,9 @@ class Hazard():
     intensity : sparse.csr_matrix
         intensity of the events at centroids
     fraction : sparse.csr_matrix
-        fraction of affected exposures for each
-        event at each centroid
+        fraction of affected exposures for each event at each centroid.
+        If empty (all 0), it is ignored in the impact computations
+        (i.e., is equivalent to fraction is 1 everywhere).  
     """
     intensity_thres = 10
     """Intensity threshold per hazard used to filter lower intensities. To be
@@ -2395,7 +2396,7 @@ class Hazard():
         paa.data = np.interp(paa.data, impf.intensity, impf.paa)
         return paa[:, indices]
 
-    def get_fraction(self, cent_idx=None):
+    def _get_fraction(self, cent_idx=None):
         """
         Return fraction for chosen centroids (cent_idx).
 
@@ -2407,8 +2408,9 @@ class Hazard():
 
         Returns
         -------
-        sparse.csr_matrix
+        sparse.csr_matrix or None
             sparse matrix (n_events x len(cent_idx)) with fraction values
+            None if fraction is empty.
 
         See Also
         --------
