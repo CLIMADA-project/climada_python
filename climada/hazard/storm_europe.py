@@ -82,13 +82,17 @@ class StormEurope(Hazard):
     vars_opt = Hazard.vars_opt.union({'ssi_wisc', 'ssi', 'ssi_full_area'})
     """Name of the variables that aren't need to compute the impact."""
 
-    def __init__(self, units: Optional[str] = 'm/s', ssi: Optional[np.ndarray] = None, ssi_wisk: Optional[np.ndarray] = None,
-                 ssi_full_area: Optional[np.ndarray] = None):
+    def __init__(self,
+                 units: Optional[str] = 'm/s',
+                 ssi: Optional[np.ndarray] = None,
+                 ssi_wisc: Optional[np.ndarray] = None,
+                 ssi_full_area: Optional[np.ndarray] = None
+                 ):
         """Calls the Hazard init dunder. Sets unit to 'm/s'."""
         Hazard.__init__(self, HAZ_TYPE)
         self.units = units
         self.ssi = ssi if ssi is not None else np.array([], float)
-        self.ssi_wisc = ssi_wisk if ssi_wisk is not None else np.array([], float)
+        self.ssi_wisc = ssi_wisc if ssi_wisc is not None else np.array([], float)
         self.ssi_full_area = ssi_full_area if ssi_full_area is not None else np.array([], float)
 
     def read_footprints(self, *args, **kwargs):
@@ -230,11 +234,11 @@ class StormEurope(Hazard):
         stacked = stacked.fillna(0)
 
         # fill in values from netCDF
-        new_haz = StormEurope()
+        ssi_wisc = np.array([float(ncdf.ssi)])
+        new_haz = StormEurope(ssi_wisc=ssi_wisc)
         new_haz.event_name = [ncdf.storm_name]
         new_haz.date = np.array([datetime64_to_ordinal(ncdf.time.data[0])])
         new_haz.intensity = sparse.csr_matrix(stacked)
-        new_haz.ssi_wisc = np.array([float(ncdf.ssi)])
 
         # fill in default values
         new_haz.centroids = centroids
@@ -816,7 +820,7 @@ class StormEurope(Hazard):
                     **kwargs)
 
         LOGGER.info('Generating new StormEurope instance')
-        new_haz = StormEurope()
+        new_haz = StormEurope(ssi=ssi)
         new_haz.intensity = sparse.csr_matrix(intensity_prob)
 
         # don't use synthetic dates; just repeat the historic dates
