@@ -799,7 +799,7 @@ def _ent_unc_func(EN, ET, EL, IFi, IL, MDD, PAA, CO, DR, bounds_noise,
     exposures = _exp_uncfunc(EN, ET, EL, exp_list, bounds_noise)
     impact_func_set = _impfset_uncfunc(IFi, MDD, PAA, IL, impf_set_list=impf_set_list,
                                             haz_id_dict=haz_id_dict)
-    measures = _meas_set_uncfunc(CO, meas_set=meas_set)
+    measure_set = _meas_set_uncfunc(CO, meas_set=meas_set)
     disc_rates = _disc_uncfunc(DR, disc_rate)
     return Entity(exposures, disc_rates, impact_func_set, measure_set)
 
