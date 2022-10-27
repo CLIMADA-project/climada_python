@@ -375,9 +375,9 @@ class TestSteps(unittest.TestCase):
         cb.present_year = 2018
         cb.future_year = 2030
         risk_future = 1000
-        years=np.arange(cb.present_year, cb.future_year + 1)
-        rates=np.ones(years.size) * 0.025
-        disc_rates = years=years, rates=rates)
+        years = np.arange(cb.present_year, cb.future_year + 1)
+        rates = np.ones(years.size) * 0.025
+        disc_rates = DiscRates(years=years, rates=rates)
         time_dep = np.linspace(0, 1, disc_rates.years.size)
         res = cb._npv_unaverted_impact(risk_future, disc_rates, time_dep,
                                        risk_present=None)
@@ -393,8 +393,8 @@ class TestSteps(unittest.TestCase):
         cb.future_year = 2030
         risk_future = 1000
         risk_present = 500
-        years=np.arange(cb.present_year, cb.future_year + 1),
-        rates=np.ones(years.size) * 0.025
+        years = np.arange(cb.present_year, cb.future_year + 1)
+        rates = np.ones(years.size) * 0.025
         disc_rates = DiscRates(years=years, rates=rates)
         
         time_dep = np.linspace(0, 1, disc_rates.years.size)
