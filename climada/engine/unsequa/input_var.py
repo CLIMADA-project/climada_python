@@ -27,6 +27,7 @@ import logging
 import scipy as sp
 import numpy as np
 import matplotlib.pyplot as plt
+from typing import Dict
 
 from climada.entity import Entity, DiscRates
 
@@ -101,7 +102,11 @@ class InputVar():
 
     """
 
-    def __init__(self, func, distr_dict):
+    def __init__(
+            self, 
+            func: sp.stats, 
+            distr_dict: Dict
+            ):
         """
         Initialize InputVar
 

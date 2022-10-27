@@ -26,6 +26,7 @@ import datetime as dt
 
 import pandas as pd
 import numpy as np
+from typing import Optional, Tuple
 
 from climada.util.value_representation import sig_dig as u_sig_dig
 from climada.engine.unsequa import UncOutput
@@ -41,12 +42,23 @@ class Calc():
     the uncertainty distribution for specific CLIMADA outputs see
     the subclass CalcImpact and CalcCostBenefit.
     """
-    def __init__(self):
+    def __init__(
+            self, 
+            input_var_names: Optional[Tuple[str]] = None, 
+            metric_names: Optional[Tuple[str]] = None
+            ):
         """
         Empty constructor to be overwritten by subclasses
+        
+        Parameters
+        ----------
+        input_var_names : tuple, optional
+            Variable names of uncertainty and sensitivity input data
+        metric_names : tuple, optional
+            Variable names of uncertainty and sensitivity output data
         """
-        self.input_var_names = ()
-        self.metric_names = ()
+        self.input_var_names = input_var_names if not None else ()
+        self.metric_names = metric_names if not None else ()
         self.check_distr()
 
     def check_distr(self):
