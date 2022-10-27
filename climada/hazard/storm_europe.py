@@ -25,6 +25,7 @@ import bz2
 import datetime as dt
 import logging
 from pathlib import Path
+from typing import Optional
 
 import numpy as np
 import xarray as xr
@@ -81,13 +82,14 @@ class StormEurope(Hazard):
     vars_opt = Hazard.vars_opt.union({'ssi_wisc', 'ssi', 'ssi_full_area'})
     """Name of the variables that aren't need to compute the impact."""
 
-    def __init__(self):
+    def __init__(self, units: Optional[str] = 'm/s', ssi: Optional[np.ndarray] = None, ssi_wisk: Optional[np.ndarray] = None,
+                 ssi_fullarea: Optional[np.ndarray] = None):
         """Calls the Hazard init dunder. Sets unit to 'm/s'."""
         Hazard.__init__(self, HAZ_TYPE)
-        self.units = 'm/s'
-        self.ssi = np.array([], float)
-        self.ssi_wisc = np.array([], float)
-        self.ssi_full_area = np.array([], float)
+        self.units = units
+        self.ssi = ssi if ssi is not None else np.array([], float)
+        self.ssi_wisc = ssi_wisk if ssi_wisk is not None else np.array([], float)
+        self.ssi_full_area = ssi_fullarea if ssi_fullarea is not None else np.array([], float)
 
     def read_footprints(self, *args, **kwargs):
         """This function is deprecated, use StormEurope.from_footprints instead."""
