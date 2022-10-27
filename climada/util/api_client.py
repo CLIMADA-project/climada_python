@@ -359,7 +359,9 @@ class Client():
         name : str, optional
             the name of the dataset
         version : str, optional
-            the version of the dataset
+            the version of the dataset, 'any' for all versions, 'newest' or None for the newest
+            version meeting the requirements
+            Default: None
         properties : dict, optional
             search parameters for dataset properties, by default None
             any property has a string for key and can be a string or a list of strings for value
@@ -406,6 +408,7 @@ class Client():
             the name of the dataset
         version : str, optional
             the version of the dataset
+            Default: newest version meeting the requirements
         properties : dict, optional
             search parameters for dataset properties, by default None
             any property has a string for key and can be a string or a list of strings for value
@@ -427,8 +430,11 @@ class Client():
         jarr = self.list_dataset_infos(data_type=data_type, name=name, version=version,
                                  properties=properties, status=status)
         if len(jarr) > 1:
-            raise Client.AmbiguousResult("there are several datasets meeting the requirements:"
-                                        f" {jarr}")
+            shown = 10
+            endofmessage = '' if len(jarr) <= shown else f'\nand {len(jarr)-shown} more'
+            datasetlist = ',\n* '.join(str(jarr[i]) for i in range(min(shown, len(jarr))))
+            raise Client.AmbiguousResult(f"there are {len(jarr)} datasets meeting the requirements:"
+                                         f"\n* {datasetlist}{endofmessage}.")
         if len(jarr) < 1:
             data_info = self.list_dataset_infos(data_type)
             properties = self.get_property_values(data_info)
@@ -691,6 +697,7 @@ class Client():
             the name of the dataset
         version : str, optional
             the version of the dataset
+            Default: newest version meeting the requirements
         properties : dict, optional
             search parameters for dataset properties, by default None
             any property has a string for key and can be a string or a list of strings for value
@@ -764,6 +771,7 @@ class Client():
             the name of the dataset
         version : str, optional
             the version of the dataset
+            Default: newest version meeting the requirements
         properties : dict, optional
             search parameters for dataset properties, by default None
             any property has a string for key and can be a string or a list of strings for value
@@ -822,7 +830,7 @@ class Client():
         exposures_concat.check()
         return exposures_concat
 
-    def get_litpop(self, country=None, exponents=(1,1), dump_dir=SYSTEM_DIR):
+    def get_litpop(self, country=None, exponents=(1,1), version=None, dump_dir=SYSTEM_DIR):
         """Get a LitPop instance on a 150arcsec grid with the default parameters:
         exponents = (1,1) and fin_mode = 'pc'.
 
@@ -836,6 +844,9 @@ class Client():
             nightlights^3 without population count: (3, 0).
             To use population count alone: (0, 1).
             Default: (1, 1)
+        version : str, optional
+            the version of the dataset
+            Default: newest version meeting the requirements
         dump_dir : str
             directory where the files should be downoladed. Default: SYSTEM_DIR
 
@@ -854,10 +865,11 @@ class Client():
             properties['country_name'] = [pycountry.countries.lookup(c).name for c in country]
         else:
             raise ValueError("country must be string or list of strings")
-        return self.get_exposures(exposures_type='litpop', dump_dir=dump_dir, properties=properties)
+        return self.get_exposures(exposures_type='litpop', properties=properties, version=version,
+                                  dump_dir=dump_dir)
 
     def get_centroids(self, res_arcsec_land=150, res_arcsec_ocean=1800,
-                      extent=(-180, 180, -60, 60), country=None,
+                      extent=(-180, 180, -60, 60), country=None, version=None,
                       dump_dir=SYSTEM_DIR):
         """Get centroids from teh API
 
@@ -874,6 +886,9 @@ class Client():
             If min_lon > lon_max, the extend crosses the antimeridian and is
             [lon_max, 180] + [-180, lon_min]
             Borders are inclusive. Default is (-180, 180, -60, 60).
+        version : str, optional
+            the version of the dataset
+            Default: newest version meeting the requirements
         dump_dir : str
             directory where the files should be downoladed. Default: SYSTEM_DIR
         Returns
@@ -887,7 +902,7 @@ class Client():
             'res_arcsec_ocean': str(res_arcsec_ocean),
             'extent': '(-180, 180, -90, 90)'
         }
-        dataset = self.get_dataset_info('centroids', properties=properties)
+        dataset = self.get_dataset_info('centroids', version=version, properties=properties)
         target_dir = self._organize_path(dataset, dump_dir) \
                      if dump_dir == SYSTEM_DIR else dump_dir
         centroids = Centroids.from_hdf5(self._download_file(target_dir, dataset.files[0]))

@@ -28,7 +28,7 @@ import pandas as pd
 import numpy as np
 from typing import Union
 
-from climada.engine import Impact
+from climada.engine import ImpactCalc
 from climada.engine.unsequa import Calc, InputVar, UncImpactOutput
 from climada.util import log_level
 from climada.engine import Exposures
@@ -111,7 +111,7 @@ class CalcImpact(Calc):
         """
         Computes the impact for each sample in unc_data.sample_df.
 
-        By default, the aggregated average annual impact
+        By default, the aggregated average impact within a period of 1/frequency_unit
         (impact.aai_agg) and the excees impact at return periods rp
         (imppact.calc_freq_curve(self.rp).impact) is computed.
         Optionally, eai_exp and at_event is computed (this may require
@@ -268,9 +268,9 @@ class CalcImpact(Calc):
         impf = self.impf_input_var.evaluate(**impf_samples)
         haz = self.haz_input_var.evaluate(**haz_samples)
 
-        imp = Impact()
-
-        imp.calc(exposures=exp, impact_funcs=impf, hazard=haz)
+        exp.assign_centroids(haz, overwrite=False)
+        imp = ImpactCalc(exposures=exp, impfset=impf, hazard=haz)\
+              .impact(assign_centroids=False)
 
         # Extract from climada.impact the chosen metrics
         freq_curve = imp.calc_freq_curve(self.rp).impact
