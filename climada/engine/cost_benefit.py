@@ -295,14 +295,10 @@ class CostBenefit():
         climada.CostBenefit
         """
         # pylint: disable=protected-access
-        new_cb = CostBenefit()
-        new_cb.present_year = self.present_year
-        new_cb.future_year = self.future_year
-        new_cb.tot_climate_risk = self.tot_climate_risk
-        new_cb.unit = self.unit
-        new_cb.color_rgb[NO_MEASURE] = self.color_rgb[NO_MEASURE]
+        new_cb = CostBenefit(present_year=self.present_year, future_year=self.future_year, unit=self.unit,
+                             tot_climate_risk=self.tot_climate_risk, color_rgb=self.color_rgb,
+                             imp_meas_future=self.imp_meas_future)
         new_cb.color_rgb[new_name] = new_color
-        new_cb.imp_meas_future[NO_MEASURE] = self.imp_meas_future[NO_MEASURE]
 
         # compute impacts for imp_meas_future and imp_meas_present
         self._combine_imp_meas(new_cb, in_meas_names, new_name, risk_func, when='future')
