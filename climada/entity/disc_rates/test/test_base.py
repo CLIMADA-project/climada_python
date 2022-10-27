@@ -20,9 +20,11 @@ Test DiscRates class.
 """
 import unittest
 import numpy as np
+import copy
 
 from climada import CONFIG
 from climada.entity.disc_rates.base import DiscRates
+from climada.entity.tag import Tag
 from climada.util.constants import ENT_TEMPLATE_XLS, ENT_DEMO_TODAY
 
 ENT_TEST_MAT = CONFIG.exposures.test_data.dir().joinpath('demo_today.mat')
@@ -32,9 +34,10 @@ class TestChecker(unittest.TestCase):
 
     def test_check_wrongRates_fail(self):
         """Wrong discount rates definition"""
-        disc_rate = DiscRates()
-        disc_rate.rates = np.array([3, 4])
-        disc_rate.years = np.array([1])
+        disc_rate = DiscRates(
+            rates=np.array([3, 4]),
+            years=np.array([1])
+        )
 
         with self.assertRaises(ValueError) as cm:
             disc_rate.check()
@@ -53,11 +56,14 @@ class TestAppend(unittest.TestCase):
     def test_append_to_empty_same(self):
         """Append DiscRates to empty one."""
         disc_rate = DiscRates()
-        disc_rate_add = DiscRates()
-        disc_rate_add.tag.file_name = 'file1.txt'
-        disc_rate_add.tag.description = 'descr1'
-        disc_rate_add.years = np.array([2000, 2001, 2002])
-        disc_rate_add.rates = np.array([0.1, 0.2, 0.3])
+        disc_rate_add = DiscRates(
+            years=np.array([2000, 2001, 2002]),
+            rates=np.array([0.1, 0.2, 0.3]),
+            tag=Tag(
+                file_name = 'file1.txt',
+                description = 'descr1'
+            )
+        )
 
         disc_rate.append(disc_rate_add)
         disc_rate.check()
@@ -71,17 +77,16 @@ class TestAppend(unittest.TestCase):
 
     def test_append_equal_same(self):
         """Append the same DiscRates. The inital DiscRates is obtained."""
-        disc_rate = DiscRates()
-        disc_rate.tag.file_name = 'file1.txt'
-        disc_rate.tag.description = 'descr1'
-        disc_rate.years = np.array([2000, 2001, 2002])
-        disc_rate.rates = np.array([0.1, 0.2, 0.3])
+        disc_rate = DiscRates(
+            years=np.array([2000, 2001, 2002]),
+            rates=np.array([0.1, 0.2, 0.3]),
+            tag=Tag(
+                file_name = 'file1.txt',
+                description = 'descr1'
+            )
+        )
 
-        disc_rate_add = DiscRates()
-        disc_rate_add.tag.file_name = 'file1.txt'
-        disc_rate_add.tag.description = 'descr1'
-        disc_rate_add.years = np.array([2000, 2001, 2002])
-        disc_rate_add.rates = np.array([0.1, 0.2, 0.3])
+        disc_rate_add = copy.deepcopy(disc_rate)
 
         disc_rate.append(disc_rate_add)
         disc_rate.check()
@@ -94,17 +99,24 @@ class TestAppend(unittest.TestCase):
     def test_append_different_append(self):
         """Append DiscRates with same and new values. The rates with repeated
         years are overwritten."""
-        disc_rate = DiscRates()
-        disc_rate.tag.file_name = 'file1.txt'
-        disc_rate.tag.description = 'descr1'
-        disc_rate.years = np.array([2000, 2001, 2002])
-        disc_rate.rates = np.array([0.1, 0.2, 0.3])
 
-        disc_rate_add = DiscRates()
-        disc_rate_add.tag.file_name = 'file2.txt'
-        disc_rate_add.tag.description = 'descr2'
-        disc_rate_add.years = np.array([2000, 2001, 2003])
-        disc_rate_add.rates = np.array([0.11, 0.22, 0.33])
+        disc_rate = DiscRates(
+            years=np.array([2000, 2001, 2002]),
+            rates=np.array([0.1, 0.2, 0.3]),
+            tag=Tag(
+                file_name = 'file1.txt',
+                description = 'descr1'
+            )
+        )
+
+        disc_rate_add = DiscRates(
+            years=np.array([2000, 2001, 2003]),
+            rates=np.array([0.11, 0.22, 0.33]),
+            tag=Tag(
+                file_name = 'file2.txt',
+                description = 'descr2'
+            )
+        )
 
         disc_rate.append(disc_rate_add)
         disc_rate.check()
@@ -120,11 +132,16 @@ class TestSelect(unittest.TestCase):
     """Test select method"""
     def test_select_pass(self):
         """Test select right time range."""
-        disc_rate = DiscRates()
-        disc_rate.tag.file_name = 'file1.txt'
-        disc_rate.tag.description = 'descr1'
-        disc_rate.years = np.arange(2000, 2050)
-        disc_rate.rates = np.arange(disc_rate.years.size)
+        years=np.arange(2000, 2050)
+        rates=np.arange(years.size)
+        disc_rate = DiscRates(
+            years=years,
+            rates=rates,
+            tag=Tag(
+                file_name = 'file1.txt',
+                description = 'descr1'
+            )
+        )
 
         year_range = np.arange(2010, 2020)
         sel_disc = disc_rate.select(year_range)
@@ -134,12 +151,14 @@ class TestSelect(unittest.TestCase):
 
     def test_select_wrong_pass(self):
         """Test select wrong time range."""
-        disc_rate = DiscRates()
-        disc_rate.tag.file_name = 'file1.txt'
-        disc_rate.tag.description = 'descr1'
-        disc_rate.years = np.arange(2000, 2050)
-        disc_rate.rates = np.arange(disc_rate.years.size)
-
+        disc_rate = DiscRates(
+            years=np.arange(2000, 2050),
+            rates=np.arange(50),
+            tag=Tag(
+                file_name = 'file1.txt',
+                description = 'descr1'
+            )
+        )
         year_range = np.arange(2050, 2060)
         self.assertEqual(None, disc_rate.select(year_range))
 
@@ -147,11 +166,14 @@ class TestNetPresValue(unittest.TestCase):
     """Test select method"""
     def test_net_present_value_pass(self):
         """Test net_present_value right time range."""
-        disc_rate = DiscRates()
-        disc_rate.tag.file_name = 'file1.txt'
-        disc_rate.tag.description = 'descr1'
-        disc_rate.years = np.arange(2000, 2050)
-        disc_rate.rates = np.ones(disc_rate.years.size) * 0.02
+        disc_rate = DiscRates(
+            years=np.arange(2000, 2050),
+            rates=np.ones(50) * 0.02,
+            tag=Tag(
+                file_name = 'file1.txt',
+                description = 'descr1'
+            )
+        )
 
         val_years = np.ones(23) * 6.512201157564418e9
         res = disc_rate.net_present_value(2018, 2040, val_years)
@@ -159,11 +181,14 @@ class TestNetPresValue(unittest.TestCase):
 
     def test_net_present_value_wrong_pass(self):
         """Test net_present_value wrong time range."""
-        disc_rate = DiscRates()
-        disc_rate.tag.file_name = 'file1.txt'
-        disc_rate.tag.description = 'descr1'
-        disc_rate.years = np.arange(2000, 2050)
-        disc_rate.rates = np.arange(disc_rate.years.size)
+        disc_rate = DiscRates(
+            years=np.arange(2000, 2050),
+            rates=np.arange(50) * 0.02,
+            tag=Tag(
+                file_name = 'file1.txt',
+                description = 'descr1'
+            )
+        )
         val_years = np.ones(11) * 6.512201157564418e9
         with self.assertRaises(ValueError):
             disc_rate.net_present_value(2050, 2060, val_years)
