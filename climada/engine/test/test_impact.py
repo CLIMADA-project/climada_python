@@ -79,6 +79,28 @@ class TestImpact(unittest.TestCase):
             np.stack([exp.gdf.latitude.values, exp.gdf.longitude.values], axis=1)
             )
 
+    def test_concat_pass(self):
+        """test concatenation of impacts"""
+        ent = Entity.from_excel(ENT_DEMO_TODAY)
+        ent.check()
+
+        hazard = Hazard.from_mat(HAZ_TEST_MAT)
+
+        #create hazard subsets
+        date0 = hazard.date[0]
+        date1 = hazard.date[0] + np.floor(len(hazard.date) / 3)
+        date2 = date1 + np.floor(len(hazard.date) / 3)
+        date3 = hazard.date[-1]
+        haz_subset1 = hazard.select(date=(date0, date1))
+        haz_subset2 = hazard.select(date=(date1, date2))
+        haz_subset3 = hazard.select(date=(date2, date3))
+
+        #compute impacts separately
+        imp1 = ImpactCalc(ent.exposures, ent.impact_funcs, haz_subset1).impact()
+        imp2 = ImpactCalc(ent.exposures, ent.impact_funcs, haz_subset2).impact()
+        imp3 = ImpactCalc(ent.exposures, ent.impact_funcs, haz_subset3).impact()
+
+        imp = Impact.concat([imp1,imp2,imp3],concat_type='time')
 
 class TestFreqCurve(unittest.TestCase):
     """Test exceedence frequency curve computation"""

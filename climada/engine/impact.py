@@ -1409,7 +1409,7 @@ class Impact():
                New impact object which is a concatenation of all impacts
         """
 
-        # tests
+        # checks
         def check_haz_types(imp_list):
             haz_types = [imp.tag['haz'].haz_type for imp in imp_list if \
                          imp.tag['haz'].haz_type != '']
@@ -1420,7 +1420,7 @@ class Impact():
             if len(set(haz_types)) > 1:
                 raise ValueError(f"Impacts are based on hazards of different types: {haz_types}. "
                                  "The impacts are incompatible and cannot be concatenated.")
-            return
+            return True
 
         def check_units(imp_list):
             units = [imp.unit for imp in imp_list if imp.unit != '']
@@ -1452,7 +1452,7 @@ class Impact():
                 if not all(hasattr(imp, attr_name) for imp in imp_list):
                     raise ValueError(f"Attribute {attr_name} is not shared by all impacts. "
                                     "The impacts are incompatible and cannot be concatenated.")
-            return
+            return True
 
         def check_frequency(imp_list):
             freqs = set([imp.frequency[0] for imp in imp_list])
@@ -1481,7 +1481,7 @@ class Impact():
                 raise ValueError(
                     f"The given impacts are based on exposures with different descriptions: {exp_desc}. "
                     "The impacts are incompatible and cannot be concatenated.")
-            return
+            return True
 
         #if impact list is empty, return cls()
         if len(imp_list) == 0:
@@ -1546,7 +1546,7 @@ class Impact():
             aai_aggs = [imp.aai_agg for imp in imp_list]
             aai_agg = np.nansum(aai_aggs)
 
-        elif concat_type=='exposure':
+        elif concat_type == 'exposure':
 
             ## some possibly useful code snippets for this option
             ##merge coordinates (only if exposure is not the same)
