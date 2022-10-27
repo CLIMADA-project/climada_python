@@ -140,7 +140,7 @@ class TestCentroidsMethods(unittest.TestCase):
         cent2 = Centroids(lat=lat2, lon=lon2, on_land=on_land2)
 
         lat3, lon3 = np.array([-1, -2]), np.array([1, 2])
-        cent3 = Centroids(lat=lat,lon=lon)
+        cent3 = Centroids(lat=lat3,lon=lon3)
 
         cent = cent1.union(cent2)
         np.testing.assert_array_equal(cent.lat, [0, 1, 2, 3])

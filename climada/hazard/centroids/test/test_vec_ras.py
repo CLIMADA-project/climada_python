@@ -177,7 +177,7 @@ class TestVector(unittest.TestCase):
     def test_dist_coast_pass(self):
         """Test set_dist_coast"""
         lat, lon, geometry = data_vector()
-        centr = Centroid(lat=lat, lon=lon, geometry=geometry)
+        centr = Centroids(lat=lat, lon=lon, geometry=geometry)
         centr.geometry.crs = 'epsg:4326'
         centr.set_dist_coast()
         self.assertAlmostEqual(2594.2070842031694, centr.dist_coast[1])
@@ -187,7 +187,7 @@ class TestVector(unittest.TestCase):
         """Test set_region_id"""
         lat, lon, geometry = data_vector()
         geometry.crs = 'epsg:4326'
-        centr = Centroid(lat=lat, lon=lon, geometry=geometry)
+        centr = Centroids(lat=lat, lon=lon, geometry=geometry)
         centr.set_region_id()
         self.assertEqual(np.count_nonzero(centr.region_id), 6)
         self.assertEqual(centr.region_id[0], 52)  # 052 for barbados
@@ -196,7 +196,7 @@ class TestVector(unittest.TestCase):
         """Test set_on_land"""
         lat, lon, geometry = data_vector()
         geometry.crs = 'epsg:4326'
-        centr = Centroid(lat=lat, lon=lon, geometry=geometry)
+        centr = Centroids(lat=lat, lon=lon, geometry=geometry)
         centr.set_on_land()
         centr.set_region_id()
         centr.region_id[centr.region_id > 0] = 1
@@ -207,7 +207,7 @@ class TestVector(unittest.TestCase):
         """Test remove_duplicate_points"""
         lat, lon, geometry = data_vector()
         geometry.crs = 'epsg:4326'
-        centr = Centroid(lat=lat, lon=lon, geometry=geometry)
+        centr = Centroids(lat=lat, lon=lon, geometry=geometry)
         # create duplicates manually:
         centr.geometry.values[100] = centr.geometry.values[101]
         centr.geometry.values[120] = centr.geometry.values[101]
@@ -245,14 +245,14 @@ class TestVector(unittest.TestCase):
         """Test size property"""
         lat, lon, geometry = data_vector()
         geometry.crs = 'epsg:4326'
-        centr = Centroid(lat=lat, lon=lon, geometry=geometry)
+        centr = Centroids(lat=lat, lon=lon, geometry=geometry)
         self.assertEqual(centr.size, 296)
 
     def test_get_closest_point(self):
         """Test get_closest_point"""
         lat, lon, geometry = data_vector()
         geometry.crs = 'epsg:4326'
-        centr = Centroid(lat=lat, lon=lon, geometry=geometry)
+        centr = Centroids(lat=lat, lon=lon, geometry=geometry)
         x, y, idx = centr.get_closest_point(-58.13, 14.38)
         self.assertAlmostEqual(x, -58.125)
         self.assertAlmostEqual(y, 14.375)
@@ -264,7 +264,7 @@ class TestVector(unittest.TestCase):
         """Test set_lat_lon_to_meta"""
         lat, lon, geometry = data_vector()
         geometry.crs = 'epsg:4326'
-        centr = Centroid(lat=lat, lon=lon, geometry=geometry)
+        centr = Centroids(lat=lat, lon=lon, geometry=geometry)
 
         centr.set_lat_lon_to_meta()
         self.assertTrue(u_coord.equal_crs(centr.meta['crs'], 'epsg:4326'))
@@ -281,7 +281,7 @@ class TestVector(unittest.TestCase):
         """Test calc_pixels_polygons"""
         lat, lon, geometry = data_vector()
         geometry.crs = 'epsg:4326'
-        centr = Centroid(lat=lat, lon=lon, geometry=geometry)
+        centr = Centroids(lat=lat, lon=lon, geometry=geometry)
         poly = centr.calc_pixels_polygons()
         self.assertIsInstance(poly[0], Polygon)
         self.assertTrue(np.allclose(poly.centroid[:].y.values, centr.lat))
@@ -291,7 +291,7 @@ class TestVector(unittest.TestCase):
         """Test set_area_approx"""
         lat, lon, geometry = data_vector()
         geometry.crs = 'epsg:4326'
-        centr = Centroid(lat=lat, lon=lon, geometry=geometry)
+        centr = Centroids(lat=lat, lon=lon, geometry=geometry)
         with self.assertRaises(ValueError):
             centr.set_area_approx()
 
@@ -299,7 +299,7 @@ class TestVector(unittest.TestCase):
         """Append points"""
         lat, lon, geometry = data_vector()
         geometry.crs = 'epsg:4326'
-        centr = Centroid(lat=lat, lon=lon, geometry=geometry)
+        centr = Centroids(lat=lat, lon=lon, geometry=geometry)
         centr_bis = Centroids.from_lat_lon(np.array([1, 2, 3]), np.array([4, 5, 6]))
         with self.assertRaises(ValueError):
             centr_bis.append(centr)
@@ -316,7 +316,7 @@ class TestVector(unittest.TestCase):
     def test_equal_pass(self):
         """Test equal"""
         lat, lon, geometry = data_vector()
-        centr = Centroid(lat=lat, lon=lon, geometry=geometry)
+        centr = Centroids(lat=lat, lon=lon, geometry=geometry)
         centr_bis = Centroids.from_lat_lon(np.array([1, 2, 3]), np.array([4, 5, 6]))
         self.assertFalse(centr.equal(centr_bis))
         self.assertFalse(centr_bis.equal(centr))
@@ -526,7 +526,8 @@ class TestCentroids(unittest.TestCase):
 
     def test_centroids_check_pass(self):
         """Test vector data in Centroids"""
-        lat, lon, geometry = data_vector()
+        data_vec = data_vector()
+        lat, lon, geometry = data_vec
         centr = Centroids(lat=lat, lon=lon, geometry=geometry)
         centr.check()
 
