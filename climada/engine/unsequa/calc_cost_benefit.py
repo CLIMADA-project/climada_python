@@ -67,17 +67,29 @@ class CalcCostBenefit(Calc):
         Future Entity uncertainty variable
 
     """
-    _metric_names = ('tot_climate_risk', 'benefit', 'cost_ben_ratio',
-                    'imp_meas_present', 'imp_meas_future')
-    _input_var_names = ('haz_input_var', 'ent_input_var',
-                        'haz_fut_input_var', 'ent_fut_input_var')
+
+    _metric_names = (
+        'tot_climate_risk',
+        'benefit',
+        'cost_ben_ratio',
+        'imp_meas_present',
+        'imp_meas_future',
+    )
+
+    _input_var_names = (
+        'haz_input_var',
+        'ent_input_var',
+        'haz_fut_input_var',
+        'ent_fut_input_var',
+    )
 
     def __init__(
-            self, 
-            haz_input_var: Union[InputVar, Hazard], 
-            ent_input_var: Union[InputVar, Entity],
-            haz_fut_input_var: Optional[Union[InputVar, Hazard]] = None, 
-            ent_fut_input_var: Optional[Union[InputVar, Entity]] = None):
+        self,
+        haz_input_var: Union[InputVar, Hazard],
+        ent_input_var: Union[InputVar, Entity],
+        haz_fut_input_var: Optional[Union[InputVar, Hazard]] = None,
+        ent_fut_input_var: Optional[Union[InputVar, Entity]] = None,
+    ):
         """Initialize UncCalcCostBenefit
 
         Sets the uncertainty input variables, the cost benefit metric_names,

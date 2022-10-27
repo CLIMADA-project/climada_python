@@ -26,7 +26,6 @@ import datetime as dt
 
 import pandas as pd
 import numpy as np
-from typing import Optional, Tuple
 
 from climada.util.value_representation import sig_dig as u_sig_dig
 from climada.engine.unsequa import UncOutput
@@ -51,7 +50,7 @@ class Calc():
         Empty constructor to be overwritten by subclasses
         """
         pass
-        
+
     def check_distr(self):
         """
         Log warning if input parameters repeated among input variables
@@ -334,7 +333,7 @@ class Calc():
         salib_kwargs = method.analyze.__code__.co_varnames  # obtain all kwargs of the salib method
         X = unc_output.samples_df.to_numpy() if 'X' in salib_kwargs else None
 
-        for metric_name in self.metric_names:
+        for metric_name in self._metric_names:
             unc_df = unc_output.get_unc_df(metric_name)
             sens_df = _calc_sens_df(method, unc_output.problem_sa, sensitivity_kwargs,
                                     unc_output.param_labels, X, unc_df)

@@ -23,12 +23,15 @@ __all__ = ['CalcImpact']
 
 import logging
 import time
+from typing import Union
 
 import pandas as pd
 import numpy as np
 
 from climada.engine import ImpactCalc
 from climada.engine.unsequa import Calc, InputVar, UncImpactOutput
+from climada.entity import Exposures, ImpactFuncSet
+from climada.hazard import Hazard
 from climada.util import log_level
 
 LOGGER = logging.getLogger(__name__)
@@ -64,10 +67,27 @@ class CalcImpact(Calc):
     haz_input_var: climada.engine.uncertainty.input_var.InputVar
         Hazard uncertainty variable
     """
-    _input_var_names = ('exp_input_var', 'impf_input_var', 'haz_input_var')
-    _metric_names = ('aai_agg', 'freq_curve', 'at_event', 'eai_exp', 'tot_value')
 
-    def __init__(self, exp_input_var, impf_input_var, haz_input_var):
+    _input_var_names = (
+        'exp_input_var',
+        'impf_input_var',
+        'haz_input_var',
+    )
+
+    _metric_names = (
+        'aai_agg',
+        'freq_curve',
+        'at_event',
+        'eai_exp',
+        'tot_value',
+    )
+
+    def __init__(
+        self,
+        exp_input_var: Union[InputVar, Exposures],
+        impf_input_var: Union[InputVar, ImpactFuncSet],
+        haz_input_var: Union[InputVar, Hazard],
+    ):
         """Initialize UncCalcImpact
 
         Sets the uncertainty input variables, the impact metric_names, and the

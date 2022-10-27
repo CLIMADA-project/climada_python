@@ -103,10 +103,10 @@ class InputVar():
     """
 
     def __init__(
-            self, 
-            func: sp.stats, 
-            distr_dict: Dict
-            ):
+        self,
+        func: sp.stats,
+        distr_dict: Dict,
+    ):
         """
         Initialize InputVar
 
