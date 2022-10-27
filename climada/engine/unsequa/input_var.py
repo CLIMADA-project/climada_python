@@ -795,13 +795,13 @@ def _meas_set_unc_dict(bounds_cost):
 
 def _ent_unc_func(EN, ET, EL, IFi, IL, MDD, PAA, CO, DR, bounds_noise,
                  impf_set_list, haz_id_dict, disc_rate, exp_list, meas_set):
-    ent = Entity()
-    ent.exposures = _exp_uncfunc(EN, ET, EL, exp_list, bounds_noise)
-    ent.impact_funcs = _impfset_uncfunc(IFi, MDD, PAA, IL, impf_set_list=impf_set_list,
+
+    exposures = _exp_uncfunc(EN, ET, EL, exp_list, bounds_noise)
+    impact_func_set = _impfset_uncfunc(IFi, MDD, PAA, IL, impf_set_list=impf_set_list,
                                             haz_id_dict=haz_id_dict)
-    ent.measures = _meas_set_uncfunc(CO, meas_set=meas_set)
-    ent.disc_rates = _disc_uncfunc(DR, disc_rate)
-    return ent
+    measure_set = _meas_set_uncfunc(CO, meas_set=meas_set)
+    disc_rates = _disc_uncfunc(DR, disc_rate)
+    return Entity(exposures, disc_rates, impact_func_set, measure_set)
 
 def _ent_unc_dict(bounds_totval, bounds_noise, bounds_impfi, bounds_mdd,
                   bounds_paa, n_impf_set, bounds_disc, bounds_cost, n_exp):
@@ -813,13 +813,12 @@ def _ent_unc_dict(bounds_totval, bounds_noise, bounds_impfi, bounds_mdd,
 
 def _entfut_unc_func(EN, EG, EL, IFi, IL, MDD, PAA, CO, bounds_noise,
                  impf_set_list, haz_id_dict, exp_list, meas_set):
-    ent = Entity()
-    ent.exposures = _exp_uncfunc(EN=EN, ET=EG, EL=EL, exp_list=exp_list, bounds_noise=bounds_noise)
-    ent.impact_funcs = _impfset_uncfunc(IFi, MDD, PAA, IL, impf_set_list=impf_set_list,
+    exposures = _exp_uncfunc(EN=EN, ET=EG, EL=EL, exp_list=exp_list, bounds_noise=bounds_noise)
+    impact_funcs = _impfset_uncfunc(IFi, MDD, PAA, IL, impf_set_list=impf_set_list,
                                             haz_id_dict=haz_id_dict)
-    ent.measures = _meas_set_uncfunc(CO, meas_set=meas_set)
-    ent.disc_rates = DiscRates() #Disc rate of future entity ignored in cost_benefit.calc()
-    return ent
+    measures = _meas_set_uncfunc(CO, meas_set=meas_set)
+    disc_rates = DiscRates() #Disc rate of future entity ignored in cost_benefit.calc()
+    return Entity(exposures, disc_rates, impact_funcs, measures)
 
 def _entfut_unc_dict(bounds_impfi, bounds_mdd,
                   bounds_paa, n_impf_set, bounds_eg, bounds_noise,
