@@ -280,7 +280,8 @@ class TestApply(unittest.TestCase):
         self.assertEqual(res_exp.tag.file_name, exp.tag.file_name)
         self.assertEqual(res_exp.tag.description, exp.tag.description)
         self.assertTrue(u_coord.equal_crs(res_exp.crs, exp.crs))
-        self.assertTrue(u_coord.equal_crs(res_exp.gdf.crs, exp.gdf.crs))
+        self.assertFalse(hasattr(exp.gdf, "crs"))
+        self.assertFalse(hasattr(res_exp.gdf, "crs"))
 
         # regions (that is just input data, no need for testing, but it makes the changed and unchanged parts obious)
         self.assertTrue(np.array_equal(res_exp.gdf.region_id.values[0], 4))
