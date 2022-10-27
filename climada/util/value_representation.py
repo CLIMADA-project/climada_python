@@ -107,7 +107,7 @@ def convert_monetary_value(values, abbrev, n_sig_dig=None):
 
 def value_to_monetary_unit(values, n_sig_dig=None, abbreviations=None):
     """Converts list of values to closest common monetary unit.
-    
+
     0, Nan and inf have not unit.
 
     Parameters

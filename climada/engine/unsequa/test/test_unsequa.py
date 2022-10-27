@@ -122,7 +122,7 @@ def make_costben_iv():
 
     entdem = ent_dem()
     ent_iv = InputVar.ent(
-        impf_set = entdem.impact_funcs,
+        impf_set_list = [entdem.impact_funcs],
         disc_rate = entdem.disc_rates,
         exp_list = [entdem.exposures],
         meas_set = entdem.measures,
@@ -134,7 +134,7 @@ def make_costben_iv():
 
     entfutdem = ent_fut_dem()
     entfut_iv = InputVar.entfut(
-        impf_set = entfutdem.impact_funcs,
+        impf_set_list = [entfutdem.impact_funcs],
         exp_list = [entfutdem.exposures],
         meas_set = entfutdem.measures,
         bounds_eg=[0.8, 1.5],

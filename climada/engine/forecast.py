@@ -35,7 +35,7 @@ import shapely
 from cartopy.io import shapereader
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-from climada.engine import Impact
+from climada.engine import ImpactCalc
 import climada.util.plot as u_plot
 from climada.util.config import CONFIG
 from climada.util.files_handler import to_list
@@ -180,7 +180,7 @@ class Forecast:
         else:
             self.exposure_name = exposure_name
         self.vulnerability = impact_funcs
-        self._impact = [Impact() for dt in self.run_datetime]
+        self._impact = [None for dt in self.run_datetime]
 
     def ei_exp(self, run_datetime=None):
         """
@@ -292,13 +292,11 @@ class Forecast:
             default is false.
         """
         # calc impact
+        if self.hazard:
+            self.exposure.assign_centroids(self.hazard[0], overwrite=force_reassign)
         for ind_i, haz_i in enumerate(self.hazard):
-            # force reassign
-            if force_reassign:
-                self.exposure.assign_centroids(haz_i)
-            self._impact[ind_i].calc(
-                self.exposure, self.vulnerability, haz_i, save_mat=True
-            )
+            self._impact[ind_i] = ImpactCalc(self.exposure, self.vulnerability, haz_i)\
+                                  .impact(save_mat=True, assign_centroids=False)
 
     def plot_imp_map(
         self,
@@ -1214,7 +1212,7 @@ class Forecast:
             The default is (9, 13)
         Returns
         -------
-        axes : cartopy.mpl.geoaxes.GeoAxesSubplot
+        cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         # select hazard with run_datetime
         if run_datetime is None:

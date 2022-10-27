@@ -953,6 +953,22 @@ class TCTracks():
         -------
         tracks : TCTracks
             TCTracks with data from the STORM simulations.
+
+        Notes
+        -----
+        All tracks are set in the year 1980. The id of the year (starting from 0) is saved in the
+        attribute 'id_no'. To obtain the year of each track use
+
+        >>> years = [int(tr.attrs['id_no'] / 1000) for tr in tc_tracks.data]
+        >>> # or, alternatively,
+        >>> years = [int(tr.attrs['sid'].split("-")[-2]) for tr in tc_tracks.data]
+
+        If a windfield is generated from these tracks using the method ``TropCylcone.from_tracks()``,
+        the following should be considered:
+
+        1. The frequencies will be set to ``1`` for each storm. Thus, in order to compute annual
+           values, the frequencies of the TropCylone should be changed to ``1/number of years``.
+        2. The storm year and the storm id are stored in the ``TropCyclone.event_name`` attribute.
         """
         basins = ["EP", "NA", "NI", "SI", "SP", "WP"]
         tracks_df = pd.read_csv(path, names=['year', 'time_start', 'tc_num', 'time_delta',
@@ -1126,8 +1142,7 @@ class TCTracks():
         -------
         extent : tuple (lon_min, lon_max, lat_min, lat_max)
         """
-        bounds = self.get_bounds(deg_buffer=deg_buffer)
-        return (bounds[0], bounds[2], bounds[1], bounds[3])
+        return u_coord.toggle_extent_bounds(self.get_bounds(deg_buffer=deg_buffer))
 
     @property
     def extent(self):
