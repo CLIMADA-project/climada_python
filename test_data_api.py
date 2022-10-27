@@ -95,7 +95,7 @@ class TestDataAvail(unittest.TestCase):
         self.assertEqual(len(icon_file), 1)
         delete_icon_grib(run_datetime,max_lead_time=1) #deletes icon_file
         self.assertFalse(Path(icon_file[0]).exists())
-        
+
     def test_icon_d2_forecast_download(self):
         """Test availability of DWD icon forecast."""
         run_datetime = dt.datetime.utcnow() - dt.timedelta(hours=5)

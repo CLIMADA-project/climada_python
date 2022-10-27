@@ -140,7 +140,7 @@ class Entity(object):
     def read_excel(self, *args, **kwargs):
         """This function is deprecated, use Entity.from_excel instead."""
         LOGGER.warning("The use of Entity.read_excel is deprecated."
-                       "Use Entity.from_excel instead.")
+                       " Use Entity.from_excel instead.")
         self.__dict__ = Entity.from_excel(*args, **kwargs).__dict__
 
     def write_excel(self, file_name):
