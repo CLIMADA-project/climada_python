@@ -298,11 +298,11 @@ class TestVector(unittest.TestCase):
     def test_append_pass(self):
         """Append points"""
         lat, lon, geometry = data_vector()
-        geometry.crs = 'epsg:4326'
         centr = Centroids(lat=lat, lon=lon, geometry=geometry)
         centr_bis = Centroids.from_lat_lon(np.array([1, 2, 3]), np.array([4, 5, 6]))
         with self.assertRaises(ValueError):
             centr_bis.append(centr)
+        centr.geometry.crs = 'epsg:4326'
         centr_bis.append(centr)
         self.assertAlmostEqual(centr_bis.lat[0], 1)
         self.assertAlmostEqual(centr_bis.lat[1], 2)
