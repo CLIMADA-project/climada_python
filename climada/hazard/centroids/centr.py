@@ -109,14 +109,14 @@ class Centroids():
         self,
         lat: Optional[np.ndarray] = None,
         lon: Optional[np.ndarray] = None,
-        geometry: Optional[gpd.geoseries.GeoSeries] = None,
-        meta: Optional[Dict[Any,Any]] = None,
-        area_pixel : Optional[np.ndarray] = None,
-        on_land : Optional[np.ndarray] = None,
-        region_id : Optional[np.ndarray] = None,
-        elevation : Optional[np.ndarray] = None,
-        dist_coast : Optional[np.ndarray] = None
-        ):
+        geometry: Optional[gpd.GeoSeries] = None,
+        meta: Optional[Dict[Any, Any]] = None,
+        area_pixel: Optional[np.ndarray] = None,
+        on_land: Optional[np.ndarray] = None,
+        region_id: Optional[np.ndarray] = None,
+        elevation: Optional[np.ndarray] = None,
+        dist_coast: Optional[np.ndarray] = None
+    ):
         """Initialization
 
         Parameters
@@ -129,9 +129,10 @@ class Centroids():
             contains lat and lon crs. Might contain geometry points for lat and lon.
             Defaults to empty gpd.Geoseries with crs=DEF_CRS
         meta : dict, optional
-            rasterio meta dictionary containing raster properties: width, height, crs and transform
-            must be present at least. The affine ransformation needs to be shearless (only stretching)
-            and have positive x- and negative y-orientation. Defaults to empty dict()
+            rasterio meta dictionary containing raster properties: width, height, crs and
+            transform must be present at least. The affine ransformation needs to be
+            shearless (only stretching) and have positive x- and negative y-orientation.
+            Defaults to empty dict()
         area_pixel : np.array, optional
             area of size size. Defaults to empty array
         on_land : np.array, optional
