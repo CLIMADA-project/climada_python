@@ -22,8 +22,8 @@ Define Entity Class.
 __all__ = ['Entity']
 
 import logging
-import pandas as pd
 from typing import Optional
+import pandas as pd
 
 from climada.entity.tag import Tag
 from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
