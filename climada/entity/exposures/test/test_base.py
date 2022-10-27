@@ -447,7 +447,7 @@ class TestGeoDFFuncs(unittest.TestCase):
         probe.set_gdf(empty_gdf)
         self.assertTrue(probe.gdf.equals(gpd.GeoDataFrame()))
         self.assertTrue(u_coord.equal_crs(DEF_CRS, probe.crs))
-        self.assertIsNone(probe.gdf.crs)
+        self.assertFalse(hasattr(probe.gdf, "crs"))
 
         probe.set_gdf(gdf_with_geometry)
         self.assertTrue(probe.gdf.equals(gdf_with_geometry))
@@ -457,7 +457,7 @@ class TestGeoDFFuncs(unittest.TestCase):
         probe.set_gdf(gdf_without_geometry)
         self.assertTrue(probe.gdf.equals(good_exposures().gdf))
         self.assertTrue(u_coord.equal_crs(DEF_CRS, probe.crs))
-        self.assertIsNone(probe.gdf.crs)
+        self.assertFalse(hasattr(probe.gdf, "crs"))
 
     def test_set_crs(self):
         """Test setting the CRS"""

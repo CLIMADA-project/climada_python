@@ -996,7 +996,9 @@ class Exposures():
         ]
         crss = [
             ex.crs for ex in exposures_list
-            if isinstance(ex, (Exposures, GeoDataFrame)) and not ex.crs is None
+            if isinstance(ex, (Exposures, GeoDataFrame))
+            and hasattr(ex, "crs")
+            and ex.crs is not None
         ]
         if crss:
             crs = crss[0]
