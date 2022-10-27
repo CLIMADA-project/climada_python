@@ -39,7 +39,10 @@ class Tag(object):
         description(s) of the data
     """
 
-    def __init__(self, haz_type='', file_name='', description=''):
+    def __init__(self, 
+                 haz_type: str = '',
+                 file_name: str = '',
+                 description: str = ''):
         """Initialize values.
 
         Parameters
