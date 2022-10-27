@@ -49,22 +49,25 @@ class CalcImpact(Calc):
         Compute eai_exp or not
     calc_at_event : bool
         Compute eai_exp or not
-    metric_names : tuple(str)
-        Names of the impact output metris
-        ('aai_agg', 'freq_curve', 'at_event', 'eai_exp', 'tot_value')
     value_unit : str
         Unit of the exposures value
-    input_var_names : tuple(str)
-        Names of the required uncertainty input variables
-        ('exp_input_var', 'impf_input_var', 'haz_input_var')
     exp_input_var : climada.engine.uncertainty.input_var.InputVar
         Exposure uncertainty variable
     impf_input_var : climada.engine.uncertainty.input_var.InputVar
         Impact function set uncertainty variable
     haz_input_var: climada.engine.uncertainty.input_var.InputVar
         Hazard uncertainty variable
+    _input_var_names : tuple(str)
+        Names of the required uncertainty input variables
+        ('exp_input_var', 'impf_input_var', 'haz_input_var')
+    _metric_names : tuple(str)
+        Names of the impact output metrics
+        ('aai_agg', 'freq_curve', 'at_event', 'eai_exp', 'tot_value')
     """
+
+    """Names of the required uncertainty variables"""
     _input_var_names = ('exp_input_var', 'impf_input_var', 'haz_input_var')
+    """Names of the cost benefit output metrics"""
     _metric_names = ('aai_agg', 'freq_curve', 'at_event', 'eai_exp', 'tot_value')
 
     def __init__(self, exp_input_var, impf_input_var, haz_input_var):

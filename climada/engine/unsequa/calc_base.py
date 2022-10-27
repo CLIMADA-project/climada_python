@@ -41,9 +41,18 @@ class Calc():
     Contains the generic sampling and sensitivity methods. For computing
     the uncertainty distribution for specific CLIMADA outputs see
     the subclass CalcImpact and CalcCostBenefit.
+
+    Attributes
+    ----------
+    _input_var_names : tuple(str)
+        Names of the required uncertainty variables. 
+    _metric_names : tuple(str)
+        Names of the output metrics.
     """
 
+    """Names of the required uncertainty variables"""
     _input_var_names = ()
+    """Names of the output metrics"""
     _metric_names = ()
 
     def __init__(self):
@@ -334,7 +343,7 @@ class Calc():
         salib_kwargs = method.analyze.__code__.co_varnames  # obtain all kwargs of the salib method
         X = unc_output.samples_df.to_numpy() if 'X' in salib_kwargs else None
 
-        for metric_name in self.metric_names:
+        for metric_name in self._metric_names:
             unc_df = unc_output.get_unc_df(metric_name)
             sens_df = _calc_sens_df(method, unc_output.problem_sa, sensitivity_kwargs,
                                     unc_output.param_labels, X, unc_df)

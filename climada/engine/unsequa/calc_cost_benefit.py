@@ -48,15 +48,8 @@ class CalcCostBenefit(Calc):
 
     Attributes
     ----------
-    metric_names : tuple(str)
-        Names of the cost benefit output metris
-        ('tot_climate_risk', 'benefit', 'cost_ben_ratio',
-         'imp_meas_present', 'imp_meas_future')
     value_unit : str
         Unit of the exposures value
-    input_var_names : tuple(str)
-        Names of the required uncertainty variables
-        ('haz_input_var', 'ent_input_var', 'haz_fut_input_var', 'ent_fut_input_var')
     haz_input_var : climada.engine.uncertainty.input_var.InputVar
         Present Hazard uncertainty variable
     ent_input_var : climada.engine.uncertainty.input_var.InputVar
@@ -65,12 +58,22 @@ class CalcCostBenefit(Calc):
         Future Hazard uncertainty variable
     ent_fut_input_var : climada.engine.uncertainty.input_var.InputVar
         Future Entity uncertainty variable
+    _input_var_names : tuple(str)
+        Names of the required uncertainty variables
+        ('haz_input_var', 'ent_input_var', 'haz_fut_input_var', 'ent_fut_input_var')
+    _metric_names : tuple(str)
+        Names of the cost benefit output metrics
+        ('tot_climate_risk', 'benefit', 'cost_ben_ratio',
+         'imp_meas_present', 'imp_meas_future')
 
     """
-    _metric_names = ('tot_climate_risk', 'benefit', 'cost_ben_ratio',
-                    'imp_meas_present', 'imp_meas_future')
+
+    """Names of the required uncertainty variables"""
     _input_var_names = ('haz_input_var', 'ent_input_var',
                         'haz_fut_input_var', 'ent_fut_input_var')
+    """Names of the cost benefit output metrics"""
+    _metric_names = ('tot_climate_risk', 'benefit', 'cost_ben_ratio',
+                    'imp_meas_present', 'imp_meas_future')
 
     def __init__(
             self, 
