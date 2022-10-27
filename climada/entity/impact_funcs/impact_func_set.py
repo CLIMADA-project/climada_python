@@ -541,7 +541,7 @@ class ImpactFuncSet():
                 try:
                     if len(df_func[var_names['col_name']['unit']].unique()) != 1:
                         raise ValueError('Impact function with two different \
-                                         intensity units.'                                                          )
+                                         intensity units.')
                     impf_kwargs["intensity_unit"] = df_func[var_names['col_name']
                                                             ['unit']].values[0]
                 except KeyError:
