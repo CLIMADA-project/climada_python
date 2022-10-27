@@ -263,9 +263,6 @@ class TestContainer(unittest.TestCase):
         # Initialize with tuple
         _check_contents(ImpactFuncSet(
             (ImpactFunc("TC", 1), ImpactFunc("TC", 3), ImpactFunc("FL", 3))))
-        # Initialize with set
-        _check_contents(ImpactFuncSet(
-            {ImpactFunc("TC", 1), ImpactFunc("TC", 3), ImpactFunc("FL", 3)}))
 
     def test_remove_add_pass(self):
         """Test ImpactFunc can be added after removing."""
