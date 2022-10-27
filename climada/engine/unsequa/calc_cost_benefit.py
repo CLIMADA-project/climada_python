@@ -67,6 +67,10 @@ class CalcCostBenefit(Calc):
         Future Entity uncertainty variable
 
     """
+    _metric_names = ('tot_climate_risk', 'benefit', 'cost_ben_ratio',
+                    'imp_meas_present', 'imp_meas_future')
+    _input_var_names = ('haz_input_var', 'ent_input_var',
+                        'haz_fut_input_var', 'ent_fut_input_var')
 
     def __init__(
             self, 
@@ -101,15 +105,11 @@ class CalcCostBenefit(Calc):
         """
 
         Calc.__init__(self)
-        self.input_var_names = ('haz_input_var', 'ent_input_var',
-                             'haz_fut_input_var', 'ent_fut_input_var')
         self.haz_input_var = InputVar.var_to_inputvar(haz_input_var)
         self.ent_input_var = InputVar.var_to_inputvar(ent_input_var)
         self.haz_fut_input_var = InputVar.var_to_inputvar(haz_fut_input_var)
         self.ent_fut_input_var = InputVar.var_to_inputvar(ent_fut_input_var)
-        self.metric_names = ('tot_climate_risk', 'benefit',
-                             'cost_ben_ratio',
-                             'imp_meas_present', 'imp_meas_future')
+
         self.value_unit = self.ent_input_var.evaluate().exposures.value_unit
         self.check_distr()
 

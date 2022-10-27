@@ -42,25 +42,16 @@ class Calc():
     the uncertainty distribution for specific CLIMADA outputs see
     the subclass CalcImpact and CalcCostBenefit.
     """
-    def __init__(
-            self, 
-            input_var_names: Optional[Tuple[str]] = None, 
-            metric_names: Optional[Tuple[str]] = None
-            ):
+
+    _input_var_names = ()
+    _metric_names = ()
+
+    def __init__(self):
         """
         Empty constructor to be overwritten by subclasses
-        
-        Parameters
-        ----------
-        input_var_names : tuple, optional
-            Variable names of uncertainty and sensitivity input data
-        metric_names : tuple, optional
-            Variable names of uncertainty and sensitivity output data
         """
-        self.input_var_names = input_var_names if not None else ()
-        self.metric_names = metric_names if not None else ()
-        self.check_distr()
-
+        pass
+        
     def check_distr(self):
         """
         Log warning if input parameters repeated among input variables
@@ -104,7 +95,7 @@ class Calc():
             All uncertainty variables associated with the calculation
 
         """
-        return tuple(getattr(self, var) for var in self.input_var_names)
+        return tuple(getattr(self, var) for var in self._input_var_names)
 
     @property
     def distr_dict(self):
