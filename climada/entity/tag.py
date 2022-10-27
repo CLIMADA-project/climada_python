@@ -32,7 +32,9 @@ class Tag():
         description of the data
     """
 
-    def __init__(self, file_name='', description=''):
+    def __init__(self,
+                 file_name: str = '',
+                 description: str = ''):
         """Initialize values.
 
         Parameters
@@ -42,7 +44,7 @@ class Tag():
         description : str, optional
             description of the data
         """
-        self.file_name = str(file_name)
+        self.file_name = file_name
         self.description = description
 
     def append(self, tag):
