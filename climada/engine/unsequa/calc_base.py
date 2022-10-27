@@ -26,7 +26,6 @@ import datetime as dt
 
 import pandas as pd
 import numpy as np
-from typing import Optional, Tuple
 
 from climada.util.value_representation import sig_dig as u_sig_dig
 from climada.engine.unsequa import UncOutput
@@ -60,7 +59,7 @@ class Calc():
         Empty constructor to be overwritten by subclasses
         """
         pass
-        
+
     def check_distr(self):
         """
         Log warning if input parameters repeated among input variables
