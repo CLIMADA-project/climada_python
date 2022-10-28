@@ -86,7 +86,7 @@ class TropCyclone(Hazard):
 
     Attributes
     ----------
-    category : np.array(int)
+    category : np.ndarray(int)
         for every event, the TC category using the
         Saffir-Simpson scale:
             -1 tropical depression
@@ -114,7 +114,7 @@ class TropCyclone(Hazard):
 
     def __init__(
         self,
-        category: Optional[np.array] = None,
+        category: Optional[np.ndarray] = None,
         basin: Optional[List] = None,
         windfields: Optional[List] = None,
         pool: Optional[pathos.pools.ProcessPool] = None
@@ -364,7 +364,7 @@ class TropCyclone(Hazard):
 
         Returns
         -------
-        tc_list, tc_coord : list(TropCyclone), list(np.array)
+        tc_list, tc_coord : list(TropCyclone), list(np.ndarray)
 
         Raises
         ------
@@ -450,7 +450,7 @@ class TropCyclone(Hazard):
         cls,
         track: xr.Dataset,
         centroids: Centroids,
-        coastal_idx: np.array,
+        coastal_idx: np.ndarray,
         model: str = 'H08',
         store_windfields: bool = False,
         metric: str = "equirect",
@@ -465,7 +465,7 @@ class TropCyclone(Hazard):
             Single tropical cyclone track.
         centroids : Centroids
             Centroids instance.
-        coastal_idx : np.array
+        coastal_idx : np.ndarray
             Indices of centroids close to coast.
         model : str, optional
             Parametric wind field model, one of "H1980" (the prominent Holland 1980 model),
@@ -613,7 +613,7 @@ class TropCyclone(Hazard):
 
 def compute_windfields(
     track: xr.Dataset,
-    centroids: np.array,
+    centroids: np.ndarray,
     model: int,
     metric: str = "equirect"
 ):
@@ -626,7 +626,7 @@ def compute_windfields(
     ----------
     track : xr.Dataset
         Track infomation.
-    centroids : 2d np.array
+    centroids : np.ndarray
         Each row is a centroid [lat, lon].
         Centroids that are not within reach of the track are ignored.
     model : int
@@ -638,10 +638,10 @@ def compute_windfields(
 
     Returns
     -------
-    windfields : np.array of shape (npositions, nreachable, 2)
+    windfields : np.ndarray of shape (npositions, nreachable, 2)
         Directional wind fields for each track position on those centroids within reach
         of the TC track.
-    reachable_centr_idx : np.array of shape (nreachable,)
+    reachable_centr_idx : np.ndarray of shape (nreachable,)
         List of indices of input centroids within reach of the TC track.
     """
     # copies of track data
@@ -756,9 +756,9 @@ def compute_windfields(
     return windfields, reachable_centr_idx
 
 def _close_centroids(
-    t_lat: np.array,
-    t_lon: np.array,
-    centroids: np.array,
+    t_lat: np.ndarray,
+    t_lon: np.ndarray,
+    centroids: np.ndarray,
     buffer: Optional[float] = CENTR_NODE_MAX_DIST_DEG
 ):
     """Check whether centroids lay within a rectangular buffer around track positions
@@ -772,18 +772,18 @@ def _close_centroids(
 
     Parameters
     ----------
-    t_lat : np.array of shape (npositions,)
+    t_lat : np.ndarray of shape (npositions,)
         Latitudinal coordinates of track positions.
-    t_lon : np.array of shape (npositions,)
+    t_lon : np.ndarray of shape (npositions,)
         Longitudinal coordinates of track positions, normalized around a central longitude.
-    centroids : np.array of shape (ncentroids, 2)
+    centroids : np.ndarray of shape (ncentroids, 2)
         Coordinates of centroids, each row is a pair [lat, lon].
     buffer : float (optional)
         Size of the buffer. Default: CENTR_NODE_MAX_DIST_DEG.
 
     Returns
     -------
-    mask : np.array of shape (ncentroids,)
+    mask : np.ndarray of shape (ncentroids,)
         Mask that is True for close centroids and False for other centroids.
     """
     centr_lat, centr_lon = centroids[:, 0], centroids[:, 1]
@@ -796,20 +796,20 @@ def _close_centroids(
     return mask.any(axis=0)
 
 def _vtrans(
-    t_lat: np.array,
-    t_lon: np.array,
-    t_tstep: np.array,
+    t_lat: np.ndarray,
+    t_lon: np.ndarray,
+    t_tstep: np.ndarray,
     metric: str = "equirect"
 ):
     """Translational vector and velocity at each track node.
 
     Parameters
     ----------
-    t_lat : np.array
+    t_lat : np.ndarray
         track latitudes
-    t_lon : np.array
+    t_lon : np.ndarray
         track longitudes
-    t_tstep : np.array
+    t_tstep : np.ndarray
         track time steps
     metric : str, optional
         Specify an approximation method to use for earth distances: "equirect" (faster) or
@@ -818,9 +818,9 @@ def _vtrans(
 
     Returns
     -------
-    v_trans_norm : np.array
+    v_trans_norm : np.ndarray
         Same shape as input, the first velocity is always 0.
-    v_trans : np.array
+    v_trans : np.ndarray
         Directional vectors of velocity.
     """
     v_trans = np.zeros((t_lat.size, 2))
@@ -841,12 +841,12 @@ def _vtrans(
     return v_trans_norm, v_trans
 
 def _bs_holland_2008(
-    v_trans: np.array,
-    penv: np.array,
-    pcen: np.array,
-    prepcen: np.array,
-    lat: np.array,
-    tint: np.array
+    v_trans: np.ndarray,
+    penv: np.ndarray,
+    pcen: np.ndarray,
+    prepcen: np.ndarray,
+    lat: np.ndarray,
+    tint: np.ndarray,
 ):
     """Holland's 2008 b-value estimate for sustained surface winds.
 
@@ -879,22 +879,22 @@ def _bs_holland_2008(
 
     Parameters
     ----------
-    v_trans : np.array
+    v_trans : np.ndarray
         Translational wind (m/s).
-    penv : np.array
+    penv : np.ndarray
         Environmental pressure (hPa).
-    pcen : np.array
+    pcen : np.ndarray
         Central pressure (hPa).
-    prepcen : np.array
+    prepcen : np.ndarray
         Central pressure (hPa) at previous track position.
-    lat : np.array
+    lat : np.ndarray
         Latitude (degrees).
-    tint : np.array
+    tint : np.ndarray
         Time step (h).
 
     Returns
     -------
-    b_s : np.array
+    b_s : np.ndarray
         Holland b-value
     """
     pdelta = penv - pcen
@@ -905,9 +905,9 @@ def _bs_holland_2008(
     return np.clip(hol_b, 1, 2.5)
 
 def _v_max_s_holland_2008(
-    penv: np.array,
-    pcen: np.array,
-    b_s: np.array
+    penv: np.ndarray,
+    pcen: np.ndarray,
+    b_s: np.ndarray,
 ):
     """Compute maximum surface winds from pressure according to Holland 2008.
 
@@ -925,16 +925,16 @@ def _v_max_s_holland_2008(
 
     Parameters
     ----------
-    penv : np.array
+    penv : np.ndarray
         Environmental pressure (hPa).
-    pcen : np.array
+    pcen : np.ndarray
         Central pressure (hPa).
-    b_s : np.array
+    b_s : np.ndarray
         Holland's b-parameter according to `_bs_holland_2008`.
 
     Returns
     -------
-    v_max_s : np.array
+    v_max_s : np.ndarray
         Maximum surface winds.
     """
     # the factor 100 is from conversion between mbar and pascal
@@ -942,9 +942,9 @@ def _v_max_s_holland_2008(
     return np.sqrt(v_squared)
 
 def _B_holland_1980(
-    gradient_winds: np.array,
-    penv: np.array,
-    pcen: np.array
+    gradient_winds: np.ndarray,
+    penv: np.ndarray,
+    pcen: np.ndarray,
 ):  # pylint: disable=invalid-name
     """Holland's 1980 B-value computation for gradient-level winds.
 
@@ -964,18 +964,18 @@ def _B_holland_1980(
 
     Parameters
     ----------
-    gradient_winds : np.array
+    gradient_winds : np.ndarray
         Maximum gradient-level wind speeds (m/s) of the tropical cyclone. If your data are maximum
         surface wind speeds (e.g. from IBTrACS), make sure to subtract translational wind speed and
         convert to gradient-level winds first.
-    penv : np.array
+    penv : np.ndarray
         Environmental pressure (hPa).
-    pcen : np.array
+    pcen : np.ndarray
         Central pressure (hPa).
 
     Returns
     -------
-    B : np.array
+    B : np.ndarray
         Holland b-value
     """
     # the factor 100 is from conversion between mbar and pascal
@@ -984,13 +984,13 @@ def _B_holland_1980(
     return np.clip(hol_b, 1, 2.5)
 
 def _x_holland_2010(
-    d_centr: np.array,
-    r_max: np.array,
-    v_max_s: np.array,
-    hol_b: np.array,
-    close_centr: np.array,
-    v_n: Union[float, np.array] = 17.0,
-    r_n: Union[float, np.array] = 300e3
+    d_centr: np.ndarray,
+    r_max: np.ndarray,
+    v_max_s: np.ndarray,
+    hol_b: np.ndarray,
+    close_centr: np.ndarray,
+    v_n: Union[float, np.ndarray] = 17.0,
+    r_n: Union[float, np.ndarray] = 300e3
 ):
     """Compute exponent for wind model according to Holland et al. 2010.
 
@@ -1009,28 +1009,28 @@ def _x_holland_2010(
 
     Parameters
     ----------
-    d_centr : np.array of shape (nnodes, ncentroids)
+    d_centr : np.ndarray of shape (nnodes, ncentroids)
         Distance (m) between centroids and track nodes.
-    r_max : np.array of shape (nnodes,)
+    r_max : np.ndarray of shape (nnodes,)
         Radius (m) of maximum winds at each track node.
-    v_max_s : np.array of shape (nnodes,)
+    v_max_s : np.ndarray of shape (nnodes,)
         Maximum surface winds (m/s) at each track node.
-    hol_b : np.array of shape (nnodes,)
+    hol_b : np.ndarray of shape (nnodes,)
         Holland's b parameter at each track node.
-    close_centr : np.array of shape (nnodes, ncentroids)
+    close_centr : np.ndarray of shape (nnodes, ncentroids)
         Mask indicating for each track node which centroids are within reach of the windfield.
-    v_n : np.array of shape (nnodes,) or float, optional
+    v_n : np.ndarray of shape (nnodes,) or float, optional
         Peripheral wind speeds (m/s) at radius `r_n` outside of radius of maximum winds `r_max`.
         In absence of a second wind speed measurement, this value defaults to 17 m/s following
         Holland et al. 2010 (at a radius of 300 km).
-    r_n : np.array of shape (nnodes,) or float, optional
+    r_n : np.ndarray of shape (nnodes,) or float, optional
         Radius (m) where the peripheral wind speed `v_n` is measured (or assumed).
         In absence of a second wind speed measurement, this value defaults to 300 km following
         Holland et al. 2010.
 
     Returns
     -------
-    x : np.array of shape (nnodes, ncentroids)
+    x : np.ndarray of shape (nnodes, ncentroids)
         Exponents according to Holland et al. 2010.
     """
     x = np.zeros_like(d_centr)
@@ -1050,12 +1050,12 @@ def _x_holland_2010(
 
 
 def _stat_holland_2010(
-    d_centr: np.array,
-    v_max_s: np.array,
-    r_max: np.array,
-    hol_b: np.array,
-    close_centr: np.array,
-    x: Union[float, : np.array]
+    d_centr: np.ndarray,
+    v_max_s: np.ndarray,
+    r_max: np.ndarray,
+    hol_b: np.ndarray,
+    close_centr: np.ndarray,
+    x: Union[float, np.ndarray]
 ):
     """Symmetric and static surface wind fields (in m/s) according to Holland et al. 2010
 
@@ -1072,23 +1072,23 @@ def _stat_holland_2010(
 
     Parameters
     ----------
-    d_centr : np.array of shape (nnodes, ncentroids)
+    d_centr : np.ndarray of shape (nnodes, ncentroids)
         Distance (m) between centroids and track nodes.
-    v_max_s : np.array of shape (nnodes,)
+    v_max_s : np.ndarray of shape (nnodes,)
         Maximum surface wind speeds (m/s) of the tropical cyclone according to
         `_v_max_s_holland_2008`.
-    r_max : np.array of shape (nnodes,)
+    r_max : np.ndarray of shape (nnodes,)
         Radius (m) of maximum winds at each track node.
-    hol_b : np.array of shape (nnodes,)
+    hol_b : np.ndarray of shape (nnodes,)
         Holland's b parameter at each track node according to `_bs_holland_2008`.
-    close_centr : np.array of shape (nnodes, ncentroids)
+    close_centr : np.ndarray of shape (nnodes, ncentroids)
         Mask indicating for each track node which centroids are within reach of the windfield.
-    x : np.array of shape (nnodes, ncentroids) or float, optional
+    x : np.ndarray of shape (nnodes, ncentroids) or float, optional
         The exponent according to `_x_holland_2010`.
 
     Returns
     -------
-    v_ang : np.array (nnodes, ncentroids)
+    v_ang : np.ndarray (nnodes, ncentroids)
         Absolute values of wind speeds (m/s) in angular direction.
     """
     v_ang = np.zeros_like(d_centr)
@@ -1102,13 +1102,13 @@ def _stat_holland_2010(
     return v_ang
 
 def _stat_holland_1980(
-    d_centr: np.array,
-    r_max: np.array,
-    hol_b: np.array,
-    penv: np.array,
-    pcen: np.array,
-    lat: np.array,
-    close_centr: np.array,
+    d_centr: np.ndarray,
+    r_max: np.ndarray,
+    hol_b: np.ndarray,
+    penv: np.ndarray,
+    pcen: np.ndarray,
+    lat: np.ndarray,
+    close_centr: np.ndarray,
     cyclostrophic: bool = False
 ):
     """Symmetric and static wind fields (in m/s) according to Holland 1980.
@@ -1133,19 +1133,19 @@ def _stat_holland_1980(
 
     Parameters
     ----------
-    d_centr : np.array of shape (nnodes, ncentroids)
+    d_centr : np.ndarray of shape (nnodes, ncentroids)
         Distance (m) between centroids and track nodes.
-    r_max : np.array of shape (nnodes,)
+    r_max : np.ndarray of shape (nnodes,)
         Radius (m) of maximum winds at each track node.
-    hol_b : np.array of shape (nnodes,)
+    hol_b : np.ndarray of shape (nnodes,)
         Holland's b parameter at each track node.
-    penv : np.array of shape (nnodes,)
+    penv : np.ndarray of shape (nnodes,)
         Environmental pressure (hPa) at each track node.
-    pcen : np.array of shape (nnodes,)
+    pcen : np.ndarray of shape (nnodes,)
         Central pressure (hPa) at each track node.
-    lat : np.array of shape (nnodes,)
+    lat : np.ndarray of shape (nnodes,)
         Latitudinal coordinate of each track node.
-    close_centr : np.array of shape (nnodes, ncentroids)
+    close_centr : np.ndarray of shape (nnodes, ncentroids)
         Mask indicating for each track node which centroids are within reach of the windfield.
     cyclostrophic : bool, optional
         If True, don't apply the influence of the Coriolis force (set the Coriolis terms to 0).
@@ -1153,7 +1153,7 @@ def _stat_holland_1980(
 
     Returns
     -------
-    v_ang : np.array (nnodes, ncentroids)
+    v_ang : np.ndarray (nnodes, ncentroids)
         Absolute values of wind speeds (m/s) in angular direction.
     """
     v_ang = np.zeros_like(d_centr)
