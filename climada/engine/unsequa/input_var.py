@@ -80,14 +80,16 @@ class InputVar():
     Continuous variable function: Impact function for TC
         import scipy as sp
         def imp_fun_tc(G, v_half, vmin, k, _id=1):
-            imp_fun = ImpactFunc()
-            imp_fun.haz_type = 'TC'
-            imp_fun.id = _id
-            imp_fun.intensity_unit = 'm/s'
-            imp_fun.intensity = np.linspace(0, 150, num=100)
-            imp_fun.mdd = np.repeat(1, len(imp_fun.intensity))
-            imp_fun.paa = np.array([sigmoid_function(v, G, v_half, vmin, k)
-                                    for v in imp_fun.intensity])
+            intensity = np.linspace(0, 150, num=100)
+            mdd = np.repeat(1, len(intensity))
+            paa = np.array([sigmoid_function(v, G, v_half, vmin, k)
+                            for v in intensity])
+            imp_fun = ImpactFunc(haz_type='TC',
+                                 id=_id,
+                                 intensity_unit='m/s',
+                                 intensity=intensity,
+                                 mdd=mdd,
+                                 paa=paa)
             imp_fun.check()
             impf_set = ImpactFuncSet()
             impf_set.append(imp_fun)
