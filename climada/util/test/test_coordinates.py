@@ -1191,7 +1191,7 @@ class TestRasterMeta(unittest.TestCase):
         df_val['value'] = np.ones(len(df_val)) * 10
         crs = 'epsg:2202'
         _raster, meta = u_coord.points_to_raster(df_val, val_names=['value'], crs=crs)
-        self.assertIsNone(df_val.crs)  # points_to_raster must not modify df_val
+        self.assertFalse(hasattr(df_val, "crs"))  # points_to_raster must not modify df_val
         self.assertTrue(u_coord.equal_crs(meta['crs'], crs))
         self.assertAlmostEqual(meta['transform'][0], 0.5)
         self.assertAlmostEqual(meta['transform'][1], 0)

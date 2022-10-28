@@ -81,12 +81,12 @@ class ImpactFuncSet():
         --------
         Fill impact functions with values and check consistency data:
 
-        >>> fun_1 = ImpactFunc()
         >>> fun_1.haz_type = 'TC'
         >>> fun_1.id = 3
         >>> fun_1.intensity = np.array([0, 20])
         >>> fun_1.paa = np.array([0, 1])
         >>> fun_1.mdd = np.array([0, 0.5])
+        >>> fun_1 = ImpactFunc(haz_type, id, intensity, mdd, paa)
         >>> imp_fun = ImpactFuncSet()
         >>> imp_fun.append(fun_1)
         >>> imp_fun.check()
@@ -435,26 +435,27 @@ class ImpactFuncSet():
             imp = imp[var_names['field_name']]
             funcs_idx = _get_hdf5_funcs(imp, file_name, var_names)
             for imp_key, imp_rows in funcs_idx.items():
-                func = ImpactFunc()
-                func.haz_type = imp_key[0]
-                func.id = imp_key[1]
+                # Store arguments in a dict (missing ones will be default)
+                impf_kwargs = dict()
+                impf_kwargs["haz_type"] = imp_key[0]
+                impf_kwargs["id"] = imp_key[1]
                 # check that this function only has one intensity unit, if provided
                 try:
-                    func.intensity_unit = _get_hdf5_str(imp, imp_rows,
-                                                        file_name,
-                                                        var_names['var_name']['unit'])
+                    impf_kwargs["intensity_unit"] = _get_hdf5_str(
+                        imp, imp_rows, file_name, var_names['var_name']['unit'])
                 except KeyError:
                     pass
                 # check that this function only has one name
                 try:
-                    func.name = _get_hdf5_str(imp, imp_rows, file_name,
-                                              var_names['var_name']['name'])
+                    impf_kwargs["name"] = _get_hdf5_str(
+                        imp, imp_rows, file_name, var_names['var_name']['name'])
                 except KeyError:
-                    func.name = str(func.id)
-                func.intensity = np.take(imp[var_names['var_name']['inten']], imp_rows)
-                func.mdd = np.take(imp[var_names['var_name']['mdd']], imp_rows)
-                func.paa = np.take(imp[var_names['var_name']['paa']], imp_rows)
-                impf_set.append(func)
+                    impf_kwargs["name"] = str(impf_kwargs["idx"])
+                impf_kwargs["intensity"] = np.take(
+                    imp[var_names['var_name']['inten']], imp_rows)
+                impf_kwargs["mdd"] = np.take(imp[var_names['var_name']['mdd']], imp_rows)
+                impf_kwargs["paa"] = np.take(imp[var_names['var_name']['paa']], imp_rows)
+                impf_set.append(ImpactFunc(**impf_kwargs))
         except KeyError as err:
             raise KeyError("Not existing variable: %s" % str(err)) from err
 
@@ -523,32 +524,34 @@ class ImpactFuncSet():
                 df_func = df_func[df_func[var_names['col_name']['func_id']]
                                   == imp_id]
 
-                func = ImpactFunc()
-                func.haz_type = haz_type
-                func.id = imp_id
+                # Store arguments in a dict (missing ones will be default)
+                impf_kwargs = dict()
+                impf_kwargs["haz_type"] = haz_type
+                impf_kwargs["id"] = imp_id
                 # check that the unit of the intensity is the same
                 try:
                     if len(df_func[var_names['col_name']['name']].unique()) != 1:
                         raise ValueError('Impact function with two different names.')
-                    func.name = df_func[var_names['col_name']['name']].values[0]
+                    impf_kwargs["name"] = df_func[var_names['col_name']
+                                                  ['name']].values[0]
                 except KeyError:
-                    func.name = str(func.id)
+                    impf_kwargs["name"] = str(impf_kwargs["id"])
 
                 # check that the unit of the intensity is the same, if provided
                 try:
                     if len(df_func[var_names['col_name']['unit']].unique()) != 1:
                         raise ValueError('Impact function with two different \
                                          intensity units.')
-                    func.intensity_unit = \
-                                    df_func[var_names['col_name']['unit']].values[0]
+                    impf_kwargs["intensity_unit"] = df_func[var_names['col_name']
+                                                            ['unit']].values[0]
                 except KeyError:
                     pass
 
-                func.intensity = df_func[var_names['col_name']['inten']].values
-                func.mdd = df_func[var_names['col_name']['mdd']].values
-                func.paa = df_func[var_names['col_name']['paa']].values
+                impf_kwargs["intensity"] = df_func[var_names['col_name']['inten']].values
+                impf_kwargs["mdd"] = df_func[var_names['col_name']['mdd']].values
+                impf_kwargs["paa"] = df_func[var_names['col_name']['paa']].values
 
-                self.append(func)
+                self.append(ImpactFunc(**impf_kwargs))
 
         except KeyError as err:
             raise KeyError("Not existing variable: %s" % str(err)) from err
