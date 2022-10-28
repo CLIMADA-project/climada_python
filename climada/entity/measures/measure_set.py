@@ -369,10 +369,7 @@ class MeasureSet():
                     hazard_inten_imp = (
                         data[var_names['var_name']['haz_int_a'][:-2]][idx][0], 0)
 
-                exp_region_id = data[var_names['var_name']['exp_reg']][idx][0]
-                exp_region_id = [exp_region_id] if exp_region_id else []
-
-                measures.append(Measure(
+                meas_kwargs = dict(
                     name=u_hdf5.get_str_from_ref(
                         file_name, data[var_names['var_name']['name']][idx][0]),
                     color_rgb=np.fromstring(color_str, dtype=float, sep=' '),
@@ -390,12 +387,17 @@ class MeasureSet():
                                 data[var_names['var_name']['paa_b']][idx][0]),
                     imp_fun_map=u_hdf5.get_str_from_ref(
                         file_name, data[var_names['var_name']['fun_map']][idx][0]),
-                    exp_region_id=exp_region_id,
                     exposures_set=u_hdf5.get_str_from_ref(
                         file_name, data[var_names['var_name']['exp_set']][idx][0]),
                     risk_transf_attach=data[var_names['var_name']['risk_att']][idx][0],
                     risk_transf_cover=data[var_names['var_name']['risk_cov']][idx][0],
-                ))
+                )
+
+                exp_region_id = data[var_names['var_name']['exp_reg']][idx][0]
+                if exp_region_id:
+                    meas_kwargs["exp_region_id"] = [exp_region_id]
+
+                measures.append(Measure(**meas_kwargs))
 
         data = u_hdf5.read(file_name)
         meas_set = cls()
