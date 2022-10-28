@@ -444,11 +444,6 @@ class MeasureSet():
             """Read Excel measures attributes"""
             num_mes = len(dfr.index)
             for idx in range(0, num_mes):
-                try:
-                    haz_type = dfr[var_names['col_name']['haz']][idx]
-                except KeyError:
-                    haz_type = ""
-
                 # Search for (a, b) values, put a=1 otherwise
                 try:
                     hazard_inten_imp = (dfr[var_names['col_name']['haz_int_a']][idx],
@@ -456,37 +451,12 @@ class MeasureSet():
                 except KeyError:
                     hazard_inten_imp = (1, dfr['hazard intensity impact'][idx])
 
-                try:
-                    exposures_set = dfr[var_names['col_name']['exp_set']][idx]
-                except KeyError:
-                    exposures_set = ""
-
-                try:
-                    exp_region_id = ast.literal_eval(
-                        dfr[var_names['col_name']['exp_reg']][idx])
-                except KeyError:
-                    exp_region_id = None
-                except ValueError:
-                    exp_region_id = dfr[var_names['col_name']['exp_reg']][idx]
-
-                try:
-                    risk_transf_cost_factor = (
-                        dfr[var_names['col_name']['risk_fact']][idx]
-                    )
-                except KeyError:
-                    risk_transf_cost_factor = 1
-
-                measures.append(Measure(
+                meas_kwargs = dict(
                     name=dfr[var_names['col_name']['name']][idx],
-                    haz_type=haz_type,
-                    color_rgb=np.fromstring(
-                        dfr[var_names['col_name']['color']][idx], dtype=float, sep=' '),
                     cost=dfr[var_names['col_name']['cost']][idx],
                     hazard_freq_cutoff=dfr[var_names['col_name']['haz_frq']][idx],
                     hazard_set=dfr[var_names['col_name']['haz_set']][idx],
                     hazard_inten_imp=hazard_inten_imp,
-                    exposures_set=exposures_set,
-                    exp_region_id=exp_region_id,
                     mdd_impact=(dfr[var_names['col_name']['mdd_a']][idx],
                                 dfr[var_names['col_name']['mdd_b']][idx]),
                     paa_impact=(dfr[var_names['col_name']['paa_a']][idx],
@@ -494,8 +464,36 @@ class MeasureSet():
                     imp_fun_map=dfr[var_names['col_name']['fun_map']][idx],
                     risk_transf_attach=dfr[var_names['col_name']['risk_att']][idx],
                     risk_transf_cover=dfr[var_names['col_name']['risk_cov']][idx],
-                    risk_transf_cost_factor=risk_transf_cost_factor,
-                ))
+                    color_rgb=np.fromstring(
+                        dfr[var_names['col_name']['color']][idx], dtype=float, sep=' '),
+                )
+
+                try:
+                    meas_kwargs["haz_type"] = dfr[var_names['col_name']['haz']][idx]
+                except KeyError:
+                    pass
+
+                try:
+                    meas_kwargs["exposures_set"] = dfr[var_names['col_name']['exp_set']][idx]
+                except KeyError:
+                    pass
+
+                try:
+                    meas_kwargs["exp_region_id"] = ast.literal_eval(
+                        dfr[var_names['col_name']['exp_reg']][idx])
+                except KeyError:
+                    pass
+                except ValueError:
+                    meas_kwargs["exp_region_id"] = dfr[var_names['col_name']['exp_reg']][idx]
+
+                try:
+                    meas_kwargs["risk_transf_cost_factor"] = (
+                        dfr[var_names['col_name']['risk_fact']][idx]
+                    )
+                except KeyError:
+                    pass
+
+                measures.append(Measure(**meas_kwargs))
 
         dfr = pd.read_excel(file_name, var_names['sheet_name'])
         dfr = dfr.fillna('')
