@@ -87,8 +87,7 @@ class TropCyclone(Hazard):
     Attributes
     ----------
     category : np.ndarray(int)
-        for every event, the TC category using the
-        Saffir-Simpson scale:
+        For every event, the TC category using the Saffir-Simpson scale:
             -1 tropical depression
              0 tropical storm
              1 Hurrican category 1
@@ -97,14 +96,14 @@ class TropCyclone(Hazard):
              4 Hurrican category 4
              5 Hurrican category 5
     basin : list(str)
-        basin where every event starts
-        'NA' North Atlantic
-        'EP' Eastern North Pacific
-        'WP' Western North Pacific
-        'NI' North Indian
-        'SI' South Indian
-        'SP' Southern Pacific
-        'SA' South Atlantic
+        Basin where every event starts:
+            'NA' North Atlantic
+            'EP' Eastern North Pacific
+            'WP' Western North Pacific
+            'NI' North Indian
+            'SI' South Indian
+            'SP' Southern Pacific
+            'SA' South Atlantic
     """
     intensity_thres = DEF_INTENSITY_THRES
     """intensity threshold for storage in m/s"""
@@ -116,17 +115,37 @@ class TropCyclone(Hazard):
         self,
         category: Optional[np.ndarray] = None,
         basin: Optional[List] = None,
-        windfields: Optional[List] = None,
-        pool: Optional[pathos.pools.ProcessPool] = None
+        windfields: Optional[List[sparse.csr_matrix]] = None,
+        **kwargs,
     ):
         """Initialize values.
 
         Parameters
         ----------
-        pool : pathos.pools.ProcessPool, optional
-            Pool that will be used for parallel computation when applicable. Default: None
+        category : np.ndarray of int, optional
+            For every event, the TC category using the Saffir-Simpson scale:
+                -1 tropical depression
+                 0 tropical storm
+                 1 Hurrican category 1
+                 2 Hurrican category 2
+                 3 Hurrican category 3
+                 4 Hurrican category 4
+                 5 Hurrican category 5
+        basin : list of str, optional
+            Basin where every event starts:
+                'NA' North Atlantic
+                'EP' Eastern North Pacific
+                'WP' Western North Pacific
+                'NI' North Indian
+                'SI' South Indian
+                'SP' Southern Pacific
+                'SA' South Atlantic
+        windfields : list of csr_matrix, optional
+            For each event
+        **kwargs : Hazard properties, optional
+            All other keyword arguments are passed to the Hazard constructor.
         """
-        Hazard.__init__(self, haz_type=HAZ_TYPE, pool=pool)
+        Hazard.__init__(self, haz_type=HAZ_TYPE, **kwargs)
         self.category = category if category is not None else np.array([], int)
         self.basin = basin if basin is not None else []
         self.windfields = windfields if windfields is not None else []
