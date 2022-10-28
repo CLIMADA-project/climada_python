@@ -2,7 +2,7 @@ Changes proposed in this PR:
 - 
 - 
 
-This PR fixes issue #
+This PR fixes #
 
 ### PR Author Checklist
 
