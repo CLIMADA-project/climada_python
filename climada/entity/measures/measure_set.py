@@ -383,7 +383,7 @@ class MeasureSet():
                     hazard_set=u_hdf5.get_str_from_ref(
                         file_name, data[var_names['var_name']['haz_set']][idx][0]),
                     hazard_inten_imp=hazard_inten_imp,
-                    # different convention of signes followed in MATLAB!
+                    # different convention of signs followed in MATLAB!
                     mdd_impact=(data[var_names['var_name']['mdd_a']][idx][0],
                                 data[var_names['var_name']['mdd_b']][idx][0]),
                     paa_impact=(data[var_names['var_name']['paa_a']][idx][0],
