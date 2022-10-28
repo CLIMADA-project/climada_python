@@ -905,9 +905,9 @@ class TestAppend(unittest.TestCase):
 
     def test_change_centroids(self):
         """Set new centroids for hazard"""
-        cent1 = Centroids()
-        cent1.lat, cent1.lon = np.array([0, 1]), np.array([0, -1])
-        cent1.on_land = np.array([True, True])
+        lat, lon = np.array([0, 1]), np.array([0, -1])
+        on_land = np.array([True, True])
+        cent1 = Centroids(lat=lat, lon=lon, on_land=on_land)
 
         haz_1 = Hazard('TC')
         haz_1.tag.file_name = 'file1.mat'
@@ -923,9 +923,9 @@ class TestAppend(unittest.TestCase):
         haz_1.intensity = sparse.csr_matrix([[0.2, 0.3]])
         haz_1.units = 'm/s'
 
-        cent2 = Centroids()
-        cent2.lat, cent2.lon = np.array([0, 1, 3]), np.array([0, -1, 3])
-        cent2.on_land = np.array([True, True, False])
+        lat2, lon2 = np.array([0, 1, 3]), np.array([0, -1, 3])
+        on_land2 = np.array([True, True, False])
+        cent2 = Centroids(lat=lat2, lon=lon2, on_land=on_land2)
 
         haz_2 = haz_1.change_centroids(cent2)
 
@@ -939,10 +939,10 @@ class TestAppend(unittest.TestCase):
         self.assertEqual(haz_2.tag.description, 'Description 1')
 
         """Test error for projection"""
-        cent3 = Centroids()
-        cent3.lat, cent3.lon = np.array([0.5, 3]), np.array([-0.5, 3])
-        cent3.on_land = np.array([True, True, False])
-
+        lat3, lon3 = np.array([0.5, 3]), np.array([-0.5, 3])
+        on_land3 = np.array([True, True, False])
+        cent3 = Centroids(lat=lat3, lon=lon3, on_land=on_land3)
+        
         with self.assertRaises(ValueError) as cm:
             haz_1.change_centroids(cent3, threshold=100)
         self.assertIn('two hazard centroids are mapped to the same centroids', str(cm.exception))
@@ -950,9 +950,9 @@ class TestAppend(unittest.TestCase):
 
     def test_change_centroids_raster(self):
         """Set new centroids for hazard"""
-        cent1 = Centroids()
-        cent1.lat, cent1.lon = np.array([0, 1]), np.array([0, -1])
-        cent1.on_land = np.array([True, True])
+        lat, lon = np.array([0, 1]), np.array([0, -1])
+        on_land = np.array([True, True])
+        cent1 = Centroids(lat=lat, lon=lon, on_land=on_land)
 
         haz_1 = Hazard('TC')
         haz_1.tag.file_name = 'file1.mat'
