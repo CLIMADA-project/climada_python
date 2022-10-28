@@ -50,18 +50,18 @@ class TestApply(unittest.TestCase):
         act_1 = meas.get_measure(name='Mangroves')[0]
 
         imp_set = ImpactFuncSet()
-        imp_tc = ImpactFunc()
-        imp_tc.haz_type = 'XX'
-        imp_tc.id = 1
-        imp_tc.intensity = np.arange(10, 100, 10)
-        imp_tc.intensity[0] = 0.
-        imp_tc.intensity[-1] = 100.
-        imp_tc.mdd = np.array([0.0, 0.0, 0.021857142857143, 0.035887500000000,
+        haz_type = 'XX'
+        idx = 1
+        intensity = np.arange(10, 100, 10)
+        intensity[0] = 0.
+        intensity[-1] = 100.
+        mdd = np.array([0.0, 0.0, 0.021857142857143, 0.035887500000000,
                                0.053977415307403, 0.103534246575342, 0.180414000000000,
                                0.410796000000000, 0.410796000000000])
-        imp_tc.paa = np.array([0, 0.005000000000000, 0.042000000000000, 0.160000000000000,
+        paa = np.array([0, 0.005000000000000, 0.042000000000000, 0.160000000000000,
                                0.398500000000000, 0.657000000000000, 1.000000000000000,
                                1.000000000000000, 1.000000000000000])
+        imp_tc = ImpactFunc(haz_type, idx, intensity, mdd, paa)
         imp_set.append(imp_tc)
         new_imp = act_1._change_imp_func(imp_set).get_func('XX')[0]
 
@@ -149,20 +149,16 @@ class TestApply(unittest.TestCase):
         meas.haz_type = 'TC'
 
         imp_set = ImpactFuncSet()
-        imp_tc = ImpactFunc()
-        imp_tc.haz_type = 'TC'
-        imp_tc.id = 1
-        imp_tc.intensity = np.arange(10, 100, 10)
-        imp_tc.mdd = np.arange(10, 100, 10)
-        imp_tc.paa = np.arange(10, 100, 10)
+
+        intensity = np.arange(10, 100, 10)
+        mdd = np.arange(10, 100, 10)
+        paa = np.arange(10, 100, 10)
+        imp_tc = ImpactFunc("TC", 1, intensity, mdd, paa)
         imp_set.append(imp_tc)
 
-        imp_tc = ImpactFunc()
-        imp_tc.haz_type = 'TC'
-        imp_tc.id = 3
-        imp_tc.intensity = np.arange(10, 100, 10)
-        imp_tc.mdd = np.arange(10, 100, 10) * 2
-        imp_tc.paa = np.arange(10, 100, 10) * 2
+        mdd = np.arange(10, 100, 10) * 2
+        paa = np.arange(10, 100, 10) * 2
+        imp_tc = ImpactFunc("TC", 3, intensity, mdd, paa)
 
         exp = Exposures.from_hdf5(EXP_DEMO_H5)
         new_exp = meas._change_exposures_impf(exp)
