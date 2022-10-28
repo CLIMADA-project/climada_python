@@ -104,13 +104,12 @@ class TestFuncs(unittest.TestCase):
     def test_assign_raster_pass(self):
         """Test assign_centroids with raster hazard"""
         # explicit, easy-to-understand raster centroids for hazard
-        centroids = Centroids()
-        centroids.meta = {
+        meta = {
             'count': 1, 'crs': DEF_CRS,
             'width': 20, 'height': 10,
             'transform': rasterio.Affine(1.5, 0.0, -20, 0.0, -1.4, 8)
         }
-        haz = Hazard('FL', centroids=centroids)
+        haz = Hazard('FL', centroids=Centroids(meta=meta))
 
         # explicit points with known results (see `expected_result` for details)
         exp = Exposures(crs=DEF_CRS)

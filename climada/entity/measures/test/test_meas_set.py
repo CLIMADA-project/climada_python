@@ -34,8 +34,7 @@ class TestConstructor(unittest.TestCase):
     def test_attributes_all(self):
         """All attributes are defined"""
         meas = MeasureSet()
-        act_1 = Measure()
-        act_1.name = 'Seawall'
+        act_1 = Measure(name='Seawall')
         self.assertTrue(hasattr(meas, 'tag'))
         self.assertTrue(hasattr(meas, '_data'))
         self.assertTrue(hasattr(act_1, 'name'))
@@ -53,9 +52,8 @@ class TestContainer(unittest.TestCase):
     def test_add_wrong_error(self):
         """Test error is raised when wrong ImpactFunc provided."""
         meas = MeasureSet()
-        act_1 = Measure()
         with self.assertLogs('climada.entity.measures.measure_set', level='WARNING') as cm:
-            meas.append(act_1)
+            meas.append(Measure())
         self.assertIn("Input Measure's hazard type not set.", cm.output[0])
 
         with self.assertRaises(ValueError) as cm:
@@ -65,20 +63,20 @@ class TestContainer(unittest.TestCase):
     def test_remove_measure_pass(self):
         """Test remove_measure removes Measure of MeasureSet correcty."""
         meas = MeasureSet()
-        act_1 = Measure()
-        act_1.name = 'Mangrove'
-        act_1.haz_type = 'FL'
-        meas.append(act_1)
+        meas.append(Measure(
+            name='Mangrove',
+            haz_type='FL',
+        ))
         meas.remove_measure(name='Mangrove')
         self.assertEqual(0, meas.size())
 
     def test_remove_wrong_error(self):
         """Test error is raised when invalid inputs."""
         meas = MeasureSet()
-        act_1 = Measure()
-        act_1.name = 'Mangrove'
-        act_1.haz_type = 'FL'
-        meas.append(act_1)
+        meas.append(Measure(
+            name='Mangrove',
+            haz_type='FL',
+        ))
         with self.assertLogs('climada.entity.measures.measure_set', level='INFO') as cm:
             meas.remove_measure(name='Seawall')
         self.assertIn('No Measure with name Seawall.', cm.output[0])
@@ -86,17 +84,17 @@ class TestContainer(unittest.TestCase):
     def test_get_names_pass(self):
         """Test get_names function."""
         meas = MeasureSet()
-        act_1 = Measure()
-        act_1.name = 'Mangrove'
-        act_1.haz_type = 'FL'
-        meas.append(act_1)
+        meas.append(Measure(
+            name='Mangrove',
+            haz_type='FL',
+        ))
         self.assertEqual(1, len(meas.get_names()))
         self.assertEqual({'FL': ['Mangrove']}, meas.get_names())
 
-        act_2 = Measure()
-        act_2.name = 'Seawall'
-        act_2.haz_type = 'FL'
-        meas.append(act_2)
+        meas.append(Measure(
+            name='Seawall',
+            haz_type='FL',
+        ))
         self.assertEqual(2, len(meas.get_names('FL')))
         self.assertIn('Mangrove', meas.get_names('FL'))
         self.assertIn('Seawall', meas.get_names('FL'))
@@ -104,15 +102,17 @@ class TestContainer(unittest.TestCase):
     def test_get_measure_pass(self):
         """Test normal functionality of get_measure method."""
         meas = MeasureSet()
-        act_1 = Measure()
-        act_1.name = 'Mangrove'
-        act_1.haz_type = 'FL'
+        act_1 = Measure(
+            name='Mangrove',
+            haz_type='FL',
+        )
         meas.append(act_1)
         self.assertIs(act_1, meas.get_measure(name='Mangrove')[0])
 
-        act_2 = Measure()
-        act_2.name = 'Seawall'
-        act_2.haz_type = 'FL'
+        act_2 = Measure(
+            name='Seawall',
+            haz_type='FL',
+        )
         meas.append(act_2)
         self.assertIs(act_1, meas.get_measure(name='Mangrove')[0])
         self.assertIs(act_2, meas.get_measure(name='Seawall')[0])
@@ -121,28 +121,29 @@ class TestContainer(unittest.TestCase):
     def test_get_measure_wrong_error(self):
         """Test get_measure method with wrong inputs."""
         meas = MeasureSet()
-        act_1 = Measure()
-        act_1.name = 'Seawall'
-        act_1.haz_type = 'FL'
-        meas.append(act_1)
+        meas.append(Measure(
+            name='Seawall',
+            haz_type='FL',
+        ))
         self.assertEqual([], meas.get_measure('Mangrove'))
 
     def test_num_measures_pass(self):
         """Test num_measures function."""
         meas = MeasureSet()
         self.assertEqual(0, meas.size())
-        act_1 = Measure()
-        act_1.name = 'Mangrove'
-        act_1.haz_type = 'FL'
+        act_1 = Measure(
+            name='Mangrove',
+            haz_type='FL',
+        )
         meas.append(act_1)
         self.assertEqual(1, meas.size())
         meas.append(act_1)
         self.assertEqual(1, meas.size())
 
-        act_2 = Measure()
-        act_2.name = 'Seawall'
-        act_2.haz_type = 'FL'
-        meas.append(act_2)
+        meas.append(Measure(
+            name='Seawall',
+            haz_type='FL',
+        ))
         self.assertEqual(2, meas.size())
 
 class TestChecker(unittest.TestCase):
@@ -151,14 +152,14 @@ class TestChecker(unittest.TestCase):
     def test_check_wronginten_fail(self):
         """Wrong intensity definition"""
         meas = MeasureSet()
-        act_1 = Measure()
-        act_1.haz_type = 'TC'
-        act_1.name = 'Mangrove'
-        act_1.hazard_inten_imp = (1, 2, 3)
-        act_1.color_rgb = np.array([1, 1, 1])
-        act_1.mdd_impact = (1, 2)
-        act_1.paa_impact = (1, 2)
-        meas.append(act_1)
+        meas.append(Measure(
+            haz_type='TC',
+            name='Mangrove',
+            hazard_inten_imp=(1, 2, 3),
+            color_rgb=np.array([1, 1, 1]),
+            mdd_impact=(1, 2),
+            paa_impact=(1, 2),
+        ))
 
         with self.assertRaises(ValueError) as cm:
             meas.check()
@@ -167,14 +168,14 @@ class TestChecker(unittest.TestCase):
     def test_check_wrongColor_fail(self):
         """Wrong measures definition"""
         meas = MeasureSet()
-        act_1 = Measure()
-        act_1.name = 'Mangrove'
-        act_1.haz_type = 'DR'
-        act_1.color_rgb = (1, 2)
-        act_1.mdd_impact = (1, 2)
-        act_1.paa_impact = (1, 2)
-        act_1.hazard_inten_imp = (1, 2)
-        meas.append(act_1)
+        meas.append(Measure(
+            name='Mangrove',
+            haz_type='DR',
+            color_rgb=(1, 2),
+            mdd_impact=(1, 2),
+            paa_impact=(1, 2),
+            hazard_inten_imp=(1, 2),
+        ))
 
         with self.assertRaises(ValueError) as cm:
             meas.check()
@@ -183,14 +184,14 @@ class TestChecker(unittest.TestCase):
     def test_check_wrongMDD_fail(self):
         """Wrong measures definition"""
         meas = MeasureSet()
-        act_1 = Measure()
-        act_1.name = 'Mangrove'
-        act_1.haz_type = 'DR'
-        act_1.color_rgb = np.array([1, 1, 1])
-        act_1.mdd_impact = (1)
-        act_1.paa_impact = (1, 2)
-        act_1.hazard_inten_imp = (1, 2)
-        meas.append(act_1)
+        meas.append(Measure(
+            name='Mangrove',
+            haz_type='DR',
+            color_rgb=np.array([1, 1, 1]),
+            mdd_impact=(1),
+            paa_impact=(1, 2),
+            hazard_inten_imp=(1, 2),
+        ))
 
         with self.assertRaises(ValueError) as cm:
             meas.check()
@@ -199,14 +200,14 @@ class TestChecker(unittest.TestCase):
     def test_check_wrongPAA_fail(self):
         """Wrong measures definition"""
         meas = MeasureSet()
-        act_1 = Measure()
-        act_1.name = 'Mangrove'
-        act_1.haz_type = 'TC'
-        act_1.color_rgb = np.array([1, 1, 1])
-        act_1.mdd_impact = (1, 2)
-        act_1.paa_impact = (1, 2, 3, 4)
-        act_1.hazard_inten_imp = (1, 2)
-        meas.append(act_1)
+        meas.append(Measure(
+            name='Mangrove',
+            haz_type='TC',
+            color_rgb=np.array([1, 1, 1]),
+            mdd_impact=(1, 2),
+            paa_impact=(1, 2, 3, 4),
+            hazard_inten_imp=(1, 2),
+        ))
 
         with self.assertRaises(ValueError) as cm:
             meas.check()
@@ -215,11 +216,11 @@ class TestChecker(unittest.TestCase):
     def test_check_name_fail(self):
         """Wrong measures definition"""
         meas = MeasureSet()
-        act_1 = Measure()
-        act_1.name = 'LaLa'
-        act_1.haz_type = 'FL'
         meas._data['FL'] = dict()
-        meas._data['FL']['LoLo'] = act_1
+        meas._data['FL']['LoLo'] = Measure(
+            name='LaLa',
+            haz_type='FL',
+        )
 
         with self.assertRaises(ValueError) as cm:
             meas.check()
@@ -228,15 +229,15 @@ class TestChecker(unittest.TestCase):
     def test_def_color(self):
         """Test default grey scale used when no color set"""
         meas = MeasureSet()
-        act_1 = Measure()
-        act_1.name = 'LaLa'
-        act_1.haz_type = 'FL'
-        meas.append(act_1)
+        meas.append(Measure(
+            name='LaLa',
+            haz_type='FL',
+        ))
 
-        act_2 = Measure()
-        act_2.name = 'LoLo'
-        act_2.haz_type = 'FL'
-        meas.append(act_2)
+        meas.append(Measure(
+            name='LoLo',
+            haz_type='FL',
+        ))
 
         meas.check()
         self.assertTrue(np.array_equal(meas.get_measure('FL', 'LaLa').color_rgb, np.ones(4)))
@@ -249,14 +250,14 @@ class TestExtend(unittest.TestCase):
         """Extend MeasureSet to empty one."""
         meas = MeasureSet()
         meas_add = MeasureSet()
-        act_1 = Measure()
-        act_1.name = 'Mangrove'
-        act_1.haz_type = 'TC'
-        act_1.color_rgb = np.array([1, 1, 1])
-        act_1.mdd_impact = (1, 2)
-        act_1.paa_impact = (1, 2)
-        act_1.hazard_inten_imp = (1, 2)
-        meas_add.append(act_1)
+        meas_add.append(Measure(
+            name='Mangrove',
+            haz_type='TC',
+            color_rgb=np.array([1, 1, 1]),
+            mdd_impact=(1, 2),
+            paa_impact=(1, 2),
+            hazard_inten_imp=(1, 2),
+        ))
 
         meas.extend(meas_add)
         meas.check()
@@ -268,13 +269,14 @@ class TestExtend(unittest.TestCase):
         """Extend the same MeasureSet. The inital MeasureSet is obtained."""
         meas = MeasureSet()
         meas_add = MeasureSet()
-        act_1 = Measure()
-        act_1.name = 'Mangrove'
-        act_1.haz_type = 'TC'
-        act_1.color_rgb = np.array([1, 1, 1])
-        act_1.mdd_impact = (1, 2)
-        act_1.paa_impact = (1, 2)
-        act_1.hazard_inten_imp = (1, 2)
+        act_1 = Measure(
+            name='Mangrove',
+            haz_type='TC',
+            color_rgb=np.array([1, 1, 1]),
+            mdd_impact=(1, 2),
+            paa_impact=(1, 2),
+            hazard_inten_imp=(1, 2),
+        )
         meas.append(act_1)
         meas_add.append(act_1)
 
@@ -287,29 +289,32 @@ class TestExtend(unittest.TestCase):
     def test_extend_different_extend(self):
         """Extend MeasureSet with same and new values. The actions
         with repeated name are overwritten."""
-        act_1 = Measure()
-        act_1.name = 'Mangrove'
-        act_1.haz_type = 'TC'
-        act_1.color_rgb = np.array([1, 1, 1])
-        act_1.mdd_impact = (1, 2)
-        act_1.paa_impact = (1, 2)
-        act_1.hazard_inten_imp = (1, 2)
+        act_1 = Measure(
+            name='Mangrove',
+            haz_type='TC',
+            color_rgb=np.array([1, 1, 1]),
+            mdd_impact=(1, 2),
+            paa_impact=(1, 2),
+            hazard_inten_imp=(1, 2),
+        )
 
-        act_11 = Measure()
-        act_11.name = 'Mangrove'
-        act_11.haz_type = 'TC'
-        act_11.color_rgb = np.array([1, 1, 1])
-        act_11.mdd_impact = (1, 2)
-        act_11.paa_impact = (1, 3)
-        act_11.hazard_inten_imp = (1, 2)
+        act_11 = Measure(
+            name='Mangrove',
+            haz_type='TC',
+            color_rgb=np.array([1, 1, 1]),
+            mdd_impact=(1, 2),
+            paa_impact=(1, 3),
+            hazard_inten_imp=(1, 2),
+        )
 
-        act_2 = Measure()
-        act_2.name = 'Anything'
-        act_2.haz_type = 'TC'
-        act_2.color_rgb = np.array([1, 1, 1])
-        act_2.mdd_impact = (1, 2)
-        act_2.paa_impact = (1, 2)
-        act_2.hazard_inten_imp = (1, 2)
+        act_2 = Measure(
+            name='Anything',
+            haz_type='TC',
+            color_rgb=np.array([1, 1, 1]),
+            mdd_impact=(1, 2),
+            paa_impact=(1, 2),
+            hazard_inten_imp=(1, 2),
+        )
 
         meas = MeasureSet()
         meas.append(act_1)
@@ -518,34 +523,37 @@ class TestWriter(unittest.TestCase):
     def test_write_read_file(self):
         """Write and read excel file"""
 
-        act_1 = Measure()
-        act_1.name = 'Mangrove'
-        act_1.haz_type = 'TC'
-        act_1.color_rgb = np.array([1, 1, 1])
-        act_1.cost = 10
-        act_1.mdd_impact = (1, 2)
-        act_1.paa_impact = (1, 2)
-        act_1.hazard_inten_imp = (1, 2)
-        act_1.risk_transf_cover = 500
+        act_1 = Measure(
+            name='Mangrove',
+            haz_type='TC',
+            color_rgb=np.array([1, 1, 1]),
+            cost=10,
+            mdd_impact=(1, 2),
+            paa_impact=(1, 2),
+            hazard_inten_imp=(1, 2),
+            risk_transf_cover=500,
+        )
 
-        act_11 = Measure()
-        act_11.name = 'Something'
-        act_11.haz_type = 'TC'
-        act_11.color_rgb = np.array([1, 1, 1])
-        act_11.mdd_impact = (1, 2)
-        act_11.paa_impact = (1, 3)
-        act_11.hazard_inten_imp = (1, 2)
-        act_11.exp_region_id = [2]
+        act_11 = Measure(
+            name='Something',
+            haz_type='TC',
+            color_rgb=np.array([1, 1, 1]),
+            mdd_impact=(1, 2),
+            paa_impact=(1, 3),
+            hazard_inten_imp=(1, 2),
+            exp_region_id=[2],
+        )
 
-        act_2 = Measure()
-        act_2.name = 'Anything'
-        act_2.haz_type = 'FL'
-        act_2.color_rgb = np.array([1, 1, 1])
-        act_2.mdd_impact = (1, 2)
-        act_2.paa_impact = (1, 2)
-        act_2.hazard_inten_imp = (1, 2)
-        act_2.hazard_freq_cutoff = 30
-        act_2.imp_fun_map = 'map'
+        act_2 = Measure(
+            name='Anything',
+            haz_type='FL',
+            color_rgb=np.array([1, 1, 1]),
+            mdd_impact=(1, 2),
+            paa_impact=(1, 2),
+            hazard_inten_imp=(1, 2),
+            hazard_freq_cutoff=30,
+            imp_fun_map='map',
+        )
 
         meas_set = MeasureSet()
         meas_set.append(act_1)
