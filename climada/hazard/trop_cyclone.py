@@ -113,10 +113,10 @@ class TropCyclone(Hazard):
     """Name of the variables that aren't need to compute the impact."""
 
     def __init__(
-        self, 
-        category: Optional[np.array] = None, 
-        basin: Optional[List] = None, 
-        windfields: Optional[List] = None, 
+        self,
+        category: Optional[np.array] = None,
+        basin: Optional[List] = None,
+        windfields: Optional[List] = None,
         pool: Optional[pathos.pools.ProcessPool] = None
     ):
         """Initialize values.
@@ -146,12 +146,12 @@ class TropCyclone(Hazard):
     def from_tracks(
         cls,
         tracks: TCTracks,
-        centroids: Optional[Centroids] = None, 
-        pool: Optional[pathos.pools.ProcessPool] = None, 
-        description: str = '', 
+        centroids: Optional[Centroids] = None,
+        pool: Optional[pathos.pools.ProcessPool] = None,
+        description: str = '',
         model: str = 'H08',
-        ignore_distance_to_coast: bool = False, 
-        store_windfields: bool = False, 
+        ignore_distance_to_coast: bool = False,
+        store_windfields: bool = False,
         metric: str = "equirect",
         intensity_thres: float = DEF_INTENSITY_THRES
     ):
@@ -276,8 +276,8 @@ class TropCyclone(Hazard):
         return haz
 
     def apply_climate_scenario_knu(
-        self, 
-        ref_year: int = 2050, 
+        self,
+        ref_year: int = 2050,
         rcp_scenario: int = 45
     ):
         """
@@ -328,10 +328,10 @@ class TropCyclone(Hazard):
 
     @classmethod
     def video_intensity(
-        cls, 
-        track_name: str, 
-        tracks: TCTracks, 
-        centroids: Centroids, 
+        cls,
+        track_name: str,
+        tracks: TCTracks,
+        centroids: Centroids,
         file_name: Optional[str] = None,
         writer: animation = animation.PillowWriter(bitrate=500),
         figsize: Tuple[float, float] = (9, 13),
@@ -543,8 +543,8 @@ class TropCyclone(Hazard):
         return new_haz
 
     def _apply_knutson_criterion(
-        self, 
-        chg_int_freq: List, 
+        self,
+        chg_int_freq: List,
         scaling_rcp_year: float
     ):
         """
@@ -612,9 +612,9 @@ class TropCyclone(Hazard):
 
 
 def compute_windfields(
-    track: xr.Dataset, 
-    centroids: np.array, 
-    model: int, 
+    track: xr.Dataset,
+    centroids: np.array,
+    model: int,
     metric: str = "equirect"
 ):
     """Compute 1-minute sustained winds (in m/s) at 10 meters above ground
@@ -756,9 +756,9 @@ def compute_windfields(
     return windfields, reachable_centr_idx
 
 def _close_centroids(
-    t_lat: np.array, 
-    t_lon: np.array, 
-    centroids: np.array, 
+    t_lat: np.array,
+    t_lon: np.array,
+    centroids: np.array,
     buffer: Optional[float] = CENTR_NODE_MAX_DIST_DEG
 ):
     """Check whether centroids lay within a rectangular buffer around track positions
@@ -796,8 +796,8 @@ def _close_centroids(
     return mask.any(axis=0)
 
 def _vtrans(
-    t_lat: np.array, 
-    t_lon: np.array, 
+    t_lat: np.array,
+    t_lon: np.array,
     t_tstep: np.array,
     metric: str = "equirect"
 ):
@@ -905,8 +905,8 @@ def _bs_holland_2008(
     return np.clip(hol_b, 1, 2.5)
 
 def _v_max_s_holland_2008(
-    penv: np.array, 
-    pcen: np.array, 
+    penv: np.array,
+    pcen: np.array,
     b_s: np.array
 ):
     """Compute maximum surface winds from pressure according to Holland 2008.
@@ -942,8 +942,8 @@ def _v_max_s_holland_2008(
     return np.sqrt(v_squared)
 
 def _B_holland_1980(
-    gradient_winds: np.array, 
-    penv: np.array, 
+    gradient_winds: np.array,
+    penv: np.array,
     pcen: np.array
 ):  # pylint: disable=invalid-name
     """Holland's 1980 B-value computation for gradient-level winds.
@@ -984,12 +984,12 @@ def _B_holland_1980(
     return np.clip(hol_b, 1, 2.5)
 
 def _x_holland_2010(
-    d_centr: np.array, 
-    r_max: np.array, 
-    v_max_s: np.array, 
-    hol_b: np.array, 
-    close_centr: np.array, 
-    v_n: Union[float, np.array] = 17.0, 
+    d_centr: np.array,
+    r_max: np.array,
+    v_max_s: np.array,
+    hol_b: np.array,
+    close_centr: np.array,
+    v_n: Union[float, np.array] = 17.0,
     r_n: Union[float, np.array] = 300e3
 ):
     """Compute exponent for wind model according to Holland et al. 2010.
@@ -1050,11 +1050,11 @@ def _x_holland_2010(
 
 
 def _stat_holland_2010(
-    d_centr: np.array, 
-    v_max_s: np.array, 
-    r_max: np.array, 
-    hol_b: np.array, 
-    close_centr: np.array, 
+    d_centr: np.array,
+    v_max_s: np.array,
+    r_max: np.array,
+    hol_b: np.array,
+    close_centr: np.array,
     x: Union[float, : np.array]
 ):
     """Symmetric and static surface wind fields (in m/s) according to Holland et al. 2010
@@ -1102,13 +1102,13 @@ def _stat_holland_2010(
     return v_ang
 
 def _stat_holland_1980(
-    d_centr: np.array, 
-    r_max: np.array, 
-    hol_b: np.array, 
-    penv: np.array, 
-    pcen: np.array, 
-    lat: np.array, 
-    close_centr: np.array,  
+    d_centr: np.array,
+    r_max: np.array,
+    hol_b: np.array,
+    penv: np.array,
+    pcen: np.array,
+    lat: np.array,
+    close_centr: np.array,
     cyclostrophic: bool = False
 ):
     """Symmetric and static wind fields (in m/s) according to Holland 1980.
