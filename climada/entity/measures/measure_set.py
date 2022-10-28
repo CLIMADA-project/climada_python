@@ -465,7 +465,7 @@ class MeasureSet():
                     exp_region_id = ast.literal_eval(
                         dfr[var_names['col_name']['exp_reg']][idx])
                 except KeyError:
-                    exp_region_id = []
+                    exp_region_id = None
                 except ValueError:
                     exp_region_id = dfr[var_names['col_name']['exp_reg']][idx]
 
