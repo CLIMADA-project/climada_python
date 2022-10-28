@@ -21,18 +21,19 @@ Define TC wind hazard (TropCyclone class).
 
 __all__ = ['TropCyclone']
 
+import copy
+import datetime as dt
 import itertools
 import logging
-import copy
 import time
-import datetime as dt
+from typing import Optional, Tuple, List, Union
+
 import numpy as np
 from scipy import sparse
 import matplotlib.animation as animation
 from tqdm import tqdm
 import pathos.pools
 import xarray as xr
-from typing import Optional, Tuple, List, Union
 
 from climada.hazard.base import Hazard
 from climada.hazard.tag import Tag as TagHazard
