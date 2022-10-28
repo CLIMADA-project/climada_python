@@ -197,6 +197,10 @@ class TCTracks():
 
         Parameters
         ----------
+        data : list of xarray.Dataset, optional
+            List of tropical cyclone tracks, each stored as single xarray Dataset.
+            See the Attributes for a full description of the required Dataset variables
+            and attributes. Defaults to an empty list.
         pool : pathos.pools, optional
             Pool that will be used for parallel computation when applicable. Default: None
         """
