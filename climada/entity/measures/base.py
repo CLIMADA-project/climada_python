@@ -109,8 +109,6 @@ class Measure():
             name of the measure
         haz_type : str, optional
             related hazard type (peril), e.g. TC
-        color_rgb : np.array, optional
-            integer array of size 3. Color code of this measure in RGB
         cost : float, optional
             discounted cost (in same units as assets)
         hazard_set : str, optional
@@ -137,6 +135,9 @@ class Measure():
         risk_transf_cost_factor : float, optional
             factor to multiply to resulting insurance layer to get the total
             cost of risk transfer
+        color_rgb : np.array, optional
+            integer array of size 3. Color code of this measure in RGB.
+            Default is None (corresponds to black).
         """
         self.name = name
         self.haz_type = haz_type
