@@ -83,12 +83,28 @@ class StormEurope(Hazard):
     """Name of the variables that aren't need to compute the impact."""
 
     def __init__(self,
-                 units: Optional[str] = 'm/s',
+                 units: str = 'm/s',
                  ssi: Optional[np.ndarray] = None,
                  ssi_wisc: Optional[np.ndarray] = None,
                  ssi_full_area: Optional[np.ndarray] = None
                  ):
-        """Calls the Hazard init dunder. Sets unit to 'm/s'."""
+        """Initialize a StormEurope object
+
+        Parameters
+        ----------
+        units : str
+            The units of the Hazard intensity.
+        ssi : numpy.ndarray
+            The Storm Severity Index (SSI). Shape ``(?? x ??)``. Defaults to an empty
+            array.
+        ssi_wisc : numpy.ndarray
+            The Storm Severity Index (SSI) as reconded in the footprint files.
+            Shape ``(?? x ??)``. Defaults to an empty array.
+        ssi_full_area : numpy.ndarray
+            The Storm Severity Index (SSI) ???. Shape ``(?? x ??)``. Defaults to an empty
+            array.
+        """
+        # TODO: Pass arguments to base class constructor once Hazard.__init__ was updated!
         Hazard.__init__(self, HAZ_TYPE)
         self.units = units
         self.ssi = ssi if ssi is not None else np.array([], float)
