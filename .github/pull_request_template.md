@@ -2,7 +2,7 @@ Changes proposed in this PR:
 - 
 - 
 
-This PR fixes issue #
+This PR fixes #
 
 ### PR Author Checklist
 
@@ -21,6 +21,6 @@ This PR fixes issue #
 - [ ] [Tests][testing] passing
 - [ ] No new [linter issues][linter]
 
-[contrib]: /CONTRIBUTING.md
+[contrib]: https://github.com/CLIMADA-project/climada_python/blob/main/CONTRIBUTING.md
 [testing]: https://climada-python.readthedocs.io/en/latest/guide/Guide_Continuous_Integration_and_Testing.html
 [linter]: https://climada-python.readthedocs.io/en/stable/guide/Guide_Continuous_Integration_and_Testing.html#3.C.--Static-Code-Analysis
