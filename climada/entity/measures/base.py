@@ -87,7 +87,6 @@ class Measure():
         self,
         name: str = "",
         haz_type: str = "",
-        color_rgb: Optional[np.ndarray] = None,
         cost: float = 0,
         hazard_set: str = NULL_STR,
         hazard_freq_cutoff: float = 0,
@@ -100,6 +99,7 @@ class Measure():
         risk_transf_attach: float = 0,
         risk_transf_cover: float = 0,
         risk_transf_cost_factor: float = 1,
+        color_rgb: Optional[np.ndarray] = None
     ):
         """Initialize a Measure object with given values.
 
