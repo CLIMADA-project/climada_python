@@ -92,8 +92,8 @@ class MeasureSet():
     tag : Tag
         information about the source data
     _data : dict
-        cotains Measure classes. It's not suppossed to be
-        directly accessed. Use the class methods instead.
+        Contains Measure objects. This attribute is not suppossed to be accessed directly.
+        Use the available methods instead.
     """
 
     def __init__(
@@ -136,8 +136,17 @@ class MeasureSet():
             for meas in measure_list:
                 self.append(meas)
 
-    def clear(self, tag: Tag = None, _data: dict = None):
-        """Reinitialize attributes."""
+    def clear(self, tag: Optional[Tag] = None, _data: Optional[dict] = None):
+        """Reinitialize attributes.
+
+        Parameters
+        ----------
+        tag : Tag, optional
+            Information about the source data. If not given, an empty Tag object is used.
+        _data : dict, optional
+            A dict containing the Measure objects. For internal use only: It's not suppossed to be
+            set directly. Use the class methods instead.
+        """
         self.tag = tag if tag is not None else Tag()
         self._data = _data if _data is not None else dict()  # {hazard_type : {name: Measure()}}
 
