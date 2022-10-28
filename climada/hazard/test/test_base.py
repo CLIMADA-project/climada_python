@@ -1455,20 +1455,20 @@ class TestImpactFuncs(unittest.TestCase):
         cent_idx = np.array(idx)
         frac = haz._get_fraction(cent_idx)
         true_frac = haz.fraction[:, idx]
-        np.testing.assert_array_almost_equal(frac.toarray(), true_frac.toarray())
+        np.testing.assert_array_equal(frac.toarray(), true_frac.toarray())
 
         #repeated index
         idx = [0, 0]
         cent_idx = np.array(idx)
         frac = haz._get_fraction(cent_idx)
         true_frac = haz.fraction[:, idx]
-        np.testing.assert_array_almost_equal(frac.toarray(), true_frac.toarray())
+        np.testing.assert_array_equal(frac.toarray(), true_frac.toarray())
 
         #index is None
         cent_idx = None
         frac = haz._get_fraction(cent_idx)
         true_frac = haz.fraction
-        np.testing.assert_array_almost_equal(frac.toarray(), true_frac.toarray())
+        np.testing.assert_array_equal(frac.toarray(), true_frac.toarray())
 
         #test empty fraction
         haz.fraction = sparse.csr_matrix(haz.fraction.shape)
