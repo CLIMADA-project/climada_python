@@ -217,7 +217,7 @@ class Hazard():
         self.intensity = intensity if intensity is not None else sparse.csr_matrix(
             np.empty((0, 0)))  # events x centroids
         self.fraction = fraction if fraction is not None else sparse.csr_matrix(
-            np.empty((0, 0)))  # events x centroids
+            self.intensity.shape)  # events x centroids
 
         self.pool = pool
         if self.pool:
