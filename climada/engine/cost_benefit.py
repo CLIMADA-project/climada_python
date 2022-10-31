@@ -140,7 +140,7 @@ class CostBenefit():
                  present_year: Optional[int] = DEF_PRESENT_YEAR,
                  future_year: Optional[int] = DEF_FUTURE_YEAR,
                  tot_climate_risk: Optional[float] = 0.0,
-                 units:  Optional[str] = 'USD',
+                 unit:  Optional[str] = 'USD',
                  color_rgb: Optional[dict] = None,
                  benefit: Optional[dict] = None,
                  cost_ben_ratio: Optional[dict] = None,
@@ -152,7 +152,7 @@ class CostBenefit():
         self.future_year = future_year
 
         self.tot_climate_risk = tot_climate_risk
-        self.unit = units
+        self.unit = unit
 
         # dictionaries with key: measure name
         # value: measure color_rgb
