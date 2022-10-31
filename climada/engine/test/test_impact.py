@@ -27,7 +27,7 @@ from climada.hazard.tag import Tag as TagHaz
 from climada.entity.entity_def import Entity
 from climada.hazard.base import Hazard
 from climada.engine import Impact, ImpactCalc
-from climada.util.constants import ENT_DEMO_TODAY, DEF_CRS, DEMO_DIR
+from climada.util.constants import ENT_DEMO_TODAY, DEF_CRS, DEMO_DIR, HAZ_TEST_TC
 from climada.util.api_client import Client
 import climada.util.coordinates as u_coord
 import climada.engine.test as engine_test
@@ -43,10 +43,12 @@ def get_haz_test_file(ds_name):
     return haz_test_file
 
 
-HAZ_TEST_MAT = get_haz_test_file('atl_prob_no_name')
+#HAZ_TEST_MAT = get_haz_test_file('atl_prob_no_name')
 
 ENT = Entity.from_excel(ENT_DEMO_TODAY)
-HAZ = Hazard.from_mat(HAZ_TEST_MAT)
+#HAZ = Hazard.from_mat(HAZ_TEST_MAT)
+HAZ = Hazard.from_hdf5(HAZ_TEST_TC)
+
 
 DATA_FOLDER = DEMO_DIR / 'test-results'
 DATA_FOLDER.mkdir(exist_ok=True)
@@ -302,7 +304,7 @@ class TestIO(unittest.TestCase):
         ent = Entity.from_excel(ENT_DEMO_TODAY)
         ent.check()
 
-        hazard = Hazard.from_mat(HAZ_TEST_MAT)
+        hazard = Hazard.from_hdf5(HAZ_TEST_TC)
 
         imp_write = ImpactCalc(ent.exposures, ent.impact_funcs, hazard).impact()
         file_name = DATA_FOLDER.joinpath('test.xlsx')
@@ -351,7 +353,7 @@ class TestRPmatrix(unittest.TestCase):
         ent.check()
 
         # Read default hazard file
-        hazard = Hazard.from_mat(HAZ_TEST_MAT)
+        hazard = Hazard.from_hdf5(HAZ_TEST_TC)
 
         # Compute the impact over the whole exposures
         impact = ImpactCalc(ent.exposures, ent.impact_funcs, hazard).impact(save_mat=True)
@@ -563,7 +565,7 @@ class TestSelect(unittest.TestCase):
         ent.check()
 
         # Read default hazard file
-        hazard = Hazard.from_mat(HAZ_TEST_MAT)
+        hazard = Hazard.from_hdf5(HAZ_TEST_TC)
 
         # Assign centroids to exposures
         ent.exposures.assign_centroids(hazard)

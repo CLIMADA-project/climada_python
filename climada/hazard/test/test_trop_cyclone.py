@@ -35,7 +35,6 @@ import climada.hazard.test as hazard_test
 
 DATA_DIR = Path(hazard_test.__file__).parent.joinpath('data')
 
-HAZ_TEST_MAT = DATA_DIR.joinpath('atl_prob_no_name.mat')
 TEST_TRACK = DATA_DIR.joinpath("trac_brb_test.csv")
 TEST_TRACK_SHORT = DATA_DIR.joinpath("trac_short_test.csv")
 

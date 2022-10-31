@@ -25,6 +25,7 @@ __all__ = ['SYSTEM_DIR',
            'ENT_DEMO_FUTURE',
            'HAZ_DEMO_MAT',
            'HAZ_DEMO_FL',
+           'HAZ_TEST_TC',
            'ENT_TEMPLATE_XLS',
            'HAZ_TEMPLATE_XLS',
            'ONE_LAT_KM',
@@ -98,6 +99,12 @@ HAZ_DEMO_FL = DEMO_DIR.joinpath('SC22000_VE__M1.grd.gz')
 HAZ_DEMO_MAT = DEMO_DIR.joinpath('atl_prob_nonames.mat')
 """
 Hazard demo from climada in MATLAB: hurricanes from 1851 to 2011 over Florida with 100 centroids.
+"""
+
+HAZ_TEST_TC = DEMO_DIR.joinpath('test_tc_florida.hdf5')
+"""
+Hazard demo from climada: hurricanes from 1851 to 2011 over Florida with 100 centroids.
+Fraction is empty.
 """
 
 HAZ_DEMO_H5 = DEMO_DIR.joinpath('tc_fl_1990_2004.h5')

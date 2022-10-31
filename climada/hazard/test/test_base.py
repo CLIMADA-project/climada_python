@@ -30,7 +30,7 @@ from climada import CONFIG
 from climada.hazard.base import Hazard
 from climada.hazard.centroids.centr import Centroids
 import climada.util.dates_times as u_dt
-from climada.util.constants import DEF_FREQ_UNIT, HAZ_TEMPLATE_XLS, HAZ_DEMO_FL
+from climada.util.constants import DEF_FREQ_UNIT, HAZ_TEMPLATE_XLS, HAZ_DEMO_FL, HAZ_TEST_TC
 import climada.util.coordinates as u_coord
 import climada.hazard.test as hazard_test
 
@@ -57,7 +57,6 @@ def dummy_hazard():
                                           [4.3, 2.1, 1.0],
                                           [5.3, 0.2, 0.0]])
     hazard.units = 'm/s'
-
     return hazard
 
 class TestLoader(unittest.TestCase):
@@ -75,7 +74,6 @@ class TestLoader(unittest.TestCase):
         # events x centroids
         haz.intensity = sparse.csr_matrix([[1, 2], [1, 2], [1, 2]])
         haz.fraction = sparse.csr_matrix([[1, 2], [1, 2], [1, 2]])
-
         return haz
 
     def test_check_empty_fraction(self):
@@ -181,7 +179,7 @@ class TestLoader(unittest.TestCase):
         self.assertIn('No event with id: 1050', str(cm.exception))
 
     def test_get_date_strings_pass(self):
-        haz = Hazard.from_mat(HAZ_TEST_MAT)
+        haz = Hazard.from_hdf5(HAZ_TEST_TC)
         haz.event_name[5] = 'HAZEL'
         haz.event_name[10] = 'HAZEL'
 
@@ -997,7 +995,7 @@ class TestStats(unittest.TestCase):
 
     def test_degenerate_pass(self):
         """Test degenerate call."""
-        haz = Hazard.from_mat(HAZ_TEST_MAT)
+        haz = Hazard.from_hdf5(HAZ_TEST_TC)
         return_period = np.array([25, 50, 100, 250])
         haz.intensity = sparse.csr.csr_matrix(np.zeros(haz.intensity.shape))
         inten_stats = haz.local_exceedance_inten(return_period)
@@ -1005,7 +1003,7 @@ class TestStats(unittest.TestCase):
 
     def test_ref_all_pass(self):
         """Compare against reference."""
-        haz = Hazard.from_mat(HAZ_TEST_MAT)
+        haz = Hazard.from_hdf5(HAZ_TEST_TC)
         return_period = np.array([25, 50, 100, 250])
         inten_stats = haz.local_exceedance_inten(return_period)
 
@@ -1022,8 +1020,8 @@ class TestYearset(unittest.TestCase):
     """Test return period statistics"""
 
     def test_ref_pass(self):
-        """Test against matlab reference."""
-        haz = Hazard.from_mat(HAZ_TEST_MAT)
+        """Test against reference."""
+        haz = Hazard.from_hdf5(HAZ_TEST_TC)
         orig_year_set = haz.calc_year_set()
 
         self.assertTrue(np.array_equal(np.array(list(orig_year_set.keys())),

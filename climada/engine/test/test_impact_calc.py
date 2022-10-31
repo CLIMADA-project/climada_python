@@ -32,7 +32,7 @@ from climada.entity import Exposures, ImpactFuncSet
 from climada.hazard.base import Hazard
 from climada.engine import ImpactCalc, Impact
 from climada.engine.impact_calc import LOGGER as ILOG
-from climada.util.constants import ENT_DEMO_TODAY, DEMO_DIR
+from climada.util.constants import ENT_DEMO_TODAY, DEMO_DIR, HAZ_TEST_TC
 from climada.util.api_client import Client
 from climada.util.config import Config
 
@@ -47,10 +47,11 @@ def get_test_file(ds_name):
     return haz_test_file
 
 
-HAZ_TEST_MAT = get_test_file('atl_prob_no_name')
+#HAZ_TEST_MAT = get_test_file('atl_prob_no_name')
 
 ENT = Entity.from_excel(ENT_DEMO_TODAY)
-HAZ = Hazard.from_mat(HAZ_TEST_MAT)
+#HAZ = Hazard.from_mat(HAZ_TEST_MAT)
+HAZ = Hazard.from_hdf5(HAZ_TEST_TC)
 HAZ.fraction = sparse.csr_matrix(HAZ.intensity.shape) #temporary, to remove when file updated
 
 DATA_FOLDER = DEMO_DIR / 'test-results'
