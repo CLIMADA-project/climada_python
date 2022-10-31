@@ -519,7 +519,6 @@ class StormEurope(Hazard):
         'longitude' variables in a netCDF file.
         """
         LOGGER.info('Constructing centroids from %s', file_name)
-        cent = Centroids()
         ncdf = xr.open_dataset(file_name)
         create_meshgrid = True
         if hasattr(ncdf, 'latitude'):

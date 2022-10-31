@@ -101,12 +101,13 @@ class MeasureSet():
         --------
         Fill MeasureSet with values and check consistency data:
 
-        >>> act_1 = Measure()
-        >>> act_1.name = 'Seawall'
-        >>> act_1.color_rgb = np.array([0.1529, 0.2510, 0.5451])
-        >>> act_1.hazard_intensity = (1, 0)
-        >>> act_1.mdd_impact = (1, 0)
-        >>> act_1.paa_impact = (1, 0)
+        >>> act_1 = Measure(
+        ...     name='Seawall',
+        ...     color_rgb=np.array([0.1529, 0.2510, 0.5451]),
+        ...     hazard_intensity=(1, 0),
+        ...     mdd_impact=(1, 0),
+        ...     paa_impact=(1, 0),
+        ... )
         >>> meas = MeasureSet()
         >>> meas.append(act_1)
         >>> meas.tag.description = "my dummy MeasureSet."
@@ -357,45 +358,46 @@ class MeasureSet():
             """Read MATLAB measures attributes"""
             num_mes = len(data[var_names['var_name']['name']])
             for idx in range(0, num_mes):
-                meas = Measure()
-
-                meas.name = u_hdf5.get_str_from_ref(
-                    file_name, data[var_names['var_name']['name']][idx][0])
-
                 color_str = u_hdf5.get_str_from_ref(
                     file_name, data[var_names['var_name']['color']][idx][0])
-                meas.color_rgb = np.fromstring(color_str, dtype=float, sep=' ')
-                meas.cost = data[var_names['var_name']['cost']][idx][0]
-                meas.haz_type = u_hdf5.get_str_from_ref(
-                    file_name, data[var_names['var_name']['haz']][idx][0])
-                meas.hazard_freq_cutoff = data[var_names['var_name']['haz_frq']][idx][0]
-                meas.hazard_set = u_hdf5.get_str_from_ref(
-                    file_name, data[var_names['var_name']['haz_set']][idx][0])
+
                 try:
-                    meas.hazard_inten_imp = (
+                    hazard_inten_imp = (
                         data[var_names['var_name']['haz_int_a']][idx][0],
                         data[var_names['var_name']['haz_int_b']][0][idx])
                 except KeyError:
-                    meas.hazard_inten_imp = (
+                    hazard_inten_imp = (
                         data[var_names['var_name']['haz_int_a'][:-2]][idx][0], 0)
 
-                # different convention of signes followed in MATLAB!
-                meas.mdd_impact = (data[var_names['var_name']['mdd_a']][idx][0],
-                                   data[var_names['var_name']['mdd_b']][idx][0])
-                meas.paa_impact = (data[var_names['var_name']['paa_a']][idx][0],
-                                   data[var_names['var_name']['paa_b']][idx][0])
-                meas.imp_fun_map = u_hdf5.get_str_from_ref(
-                    file_name, data[var_names['var_name']['fun_map']][idx][0])
+                meas_kwargs = dict(
+                    name=u_hdf5.get_str_from_ref(
+                        file_name, data[var_names['var_name']['name']][idx][0]),
+                    color_rgb=np.fromstring(color_str, dtype=float, sep=' '),
+                    cost=data[var_names['var_name']['cost']][idx][0],
+                    haz_type=u_hdf5.get_str_from_ref(
+                        file_name, data[var_names['var_name']['haz']][idx][0]),
+                    hazard_freq_cutoff=data[var_names['var_name']['haz_frq']][idx][0],
+                    hazard_set=u_hdf5.get_str_from_ref(
+                        file_name, data[var_names['var_name']['haz_set']][idx][0]),
+                    hazard_inten_imp=hazard_inten_imp,
+                    # different convention of signs followed in MATLAB!
+                    mdd_impact=(data[var_names['var_name']['mdd_a']][idx][0],
+                                data[var_names['var_name']['mdd_b']][idx][0]),
+                    paa_impact=(data[var_names['var_name']['paa_a']][idx][0],
+                                data[var_names['var_name']['paa_b']][idx][0]),
+                    imp_fun_map=u_hdf5.get_str_from_ref(
+                        file_name, data[var_names['var_name']['fun_map']][idx][0]),
+                    exposures_set=u_hdf5.get_str_from_ref(
+                        file_name, data[var_names['var_name']['exp_set']][idx][0]),
+                    risk_transf_attach=data[var_names['var_name']['risk_att']][idx][0],
+                    risk_transf_cover=data[var_names['var_name']['risk_cov']][idx][0],
+                )
 
-                meas.exposures_set = u_hdf5.get_str_from_ref(
-                    file_name, data[var_names['var_name']['exp_set']][idx][0])
                 exp_region_id = data[var_names['var_name']['exp_reg']][idx][0]
                 if exp_region_id:
-                    meas.exp_region_id = [exp_region_id]
-                meas.risk_transf_attach = data[var_names['var_name']['risk_att']][idx][0]
-                meas.risk_transf_cover = data[var_names['var_name']['risk_cov']][idx][0]
+                    meas_kwargs["exp_region_id"] = [exp_region_id]
 
-                measures.append(meas)
+                measures.append(Measure(**meas_kwargs))
 
         data = u_hdf5.read(file_name)
         meas_set = cls()
@@ -444,47 +446,56 @@ class MeasureSet():
             """Read Excel measures attributes"""
             num_mes = len(dfr.index)
             for idx in range(0, num_mes):
-                meas = Measure()
-
-                meas.name = dfr[var_names['col_name']['name']][idx]
+                # Search for (a, b) values, put a=1 otherwise
                 try:
-                    meas.haz_type = dfr[var_names['col_name']['haz']][idx]
+                    hazard_inten_imp = (dfr[var_names['col_name']['haz_int_a']][idx],
+                                        dfr[var_names['col_name']['haz_int_b']][idx])
+                except KeyError:
+                    hazard_inten_imp = (1, dfr['hazard intensity impact'][idx])
+
+                meas_kwargs = dict(
+                    name=dfr[var_names['col_name']['name']][idx],
+                    cost=dfr[var_names['col_name']['cost']][idx],
+                    hazard_freq_cutoff=dfr[var_names['col_name']['haz_frq']][idx],
+                    hazard_set=dfr[var_names['col_name']['haz_set']][idx],
+                    hazard_inten_imp=hazard_inten_imp,
+                    mdd_impact=(dfr[var_names['col_name']['mdd_a']][idx],
+                                dfr[var_names['col_name']['mdd_b']][idx]),
+                    paa_impact=(dfr[var_names['col_name']['paa_a']][idx],
+                                dfr[var_names['col_name']['paa_b']][idx]),
+                    imp_fun_map=dfr[var_names['col_name']['fun_map']][idx],
+                    risk_transf_attach=dfr[var_names['col_name']['risk_att']][idx],
+                    risk_transf_cover=dfr[var_names['col_name']['risk_cov']][idx],
+                    color_rgb=np.fromstring(
+                        dfr[var_names['col_name']['color']][idx], dtype=float, sep=' '),
+                )
+
+                try:
+                    meas_kwargs["haz_type"] = dfr[var_names['col_name']['haz']][idx]
                 except KeyError:
                     pass
-                meas.color_rgb = np.fromstring(
-                    dfr[var_names['col_name']['color']][idx], dtype=float, sep=' ')
-                meas.cost = dfr[var_names['col_name']['cost']][idx]
 
-                meas.hazard_freq_cutoff = dfr[var_names['col_name']['haz_frq']][idx]
-                meas.hazard_set = dfr[var_names['col_name']['haz_set']][idx]
-                # Search for (a, b) values, put a = 1 otherwise
                 try:
-                    meas.hazard_inten_imp = (dfr[var_names['col_name']['haz_int_a']][idx],
-                                             dfr[var_names['col_name']['haz_int_b']][idx])
+                    meas_kwargs["exposures_set"] = dfr[var_names['col_name']['exp_set']][idx]
                 except KeyError:
-                    meas.hazard_inten_imp = (1, dfr['hazard intensity impact'][idx])
+                    pass
 
                 try:
-                    meas.exposures_set = dfr[var_names['col_name']['exp_set']][idx]
-                    meas.exp_region_id = ast.literal_eval(dfr[var_names['col_name']['exp_reg']][idx])
+                    meas_kwargs["exp_region_id"] = ast.literal_eval(
+                        dfr[var_names['col_name']['exp_reg']][idx])
                 except KeyError:
                     pass
                 except ValueError:
-                    meas.exp_region_id = dfr[var_names['col_name']['exp_reg']][idx]
+                    meas_kwargs["exp_region_id"] = dfr[var_names['col_name']['exp_reg']][idx]
 
-                meas.mdd_impact = (dfr[var_names['col_name']['mdd_a']][idx],
-                                   dfr[var_names['col_name']['mdd_b']][idx])
-                meas.paa_impact = (dfr[var_names['col_name']['paa_a']][idx],
-                                   dfr[var_names['col_name']['paa_b']][idx])
-                meas.imp_fun_map = dfr[var_names['col_name']['fun_map']][idx]
-                meas.risk_transf_attach = dfr[var_names['col_name']['risk_att']][idx]
-                meas.risk_transf_cover = dfr[var_names['col_name']['risk_cov']][idx]
                 try:
-                    meas.risk_transf_cost_factor = dfr[var_names['col_name']['risk_fact']][idx]
+                    meas_kwargs["risk_transf_cost_factor"] = (
+                        dfr[var_names['col_name']['risk_fact']][idx]
+                    )
                 except KeyError:
                     pass
 
-                measures.append(meas)
+                measures.append(Measure(**meas_kwargs))
 
         dfr = pd.read_excel(file_name, var_names['sheet_name'])
         dfr = dfr.fillna('')
