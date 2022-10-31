@@ -23,6 +23,7 @@ __all__ = ['CostBenefit', 'risk_aai_agg', 'risk_rp_100', 'risk_rp_250']
 
 import copy
 import logging
+import typing
 from typing import Optional
 
 import numpy as np
@@ -137,13 +138,13 @@ class CostBenefit():
     """
 
     def __init__(self,
-                 present_year: Optional[int] = DEF_PRESENT_YEAR,
-                 future_year: Optional[int] = DEF_FUTURE_YEAR,
-                 tot_climate_risk: Optional[float] = 0.0,
-                 unit:  Optional[str] = 'USD',
-                 color_rgb: Optional[dict] = None,
-                 benefit: Optional[dict] = None,
-                 cost_ben_ratio: Optional[dict] = None,
+                 present_year: int = DEF_PRESENT_YEAR,
+                 future_year: int = DEF_FUTURE_YEAR,
+                 tot_climate_risk: float = 0.0,
+                 unit:  str = 'USD',
+                 color_rgb: typing.Dict[str, tuple] = None,
+                 benefit: typing.Dict[str, float] = None,
+                 cost_ben_ratio: typing.Dict[str, float] = None,
                  imp_meas_present: Optional[dict] = None,
                  imp_meas_future: Optional[dict] = None
                  ):
