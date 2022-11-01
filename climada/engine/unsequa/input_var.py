@@ -23,11 +23,11 @@ import copy
 from functools import partial
 from itertools import zip_longest
 import logging
+from typing import Dict
 
 import scipy as sp
 import numpy as np
 import matplotlib.pyplot as plt
-from typing import Dict
 
 from climada.entity import Entity, DiscRates
 
@@ -106,7 +106,7 @@ class InputVar():
 
     def __init__(
         self,
-        func: sp.stats,
+        func: callable,
         distr_dict: Dict,
     ):
         """
@@ -138,7 +138,7 @@ class InputVar():
         Parameters
         ----------
         **params : optional
-            Input parameters will be passed to self.InputVar_func.
+            Input parameters will be passed to self.func.
 
         Returns
         -------
