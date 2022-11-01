@@ -23,7 +23,7 @@ __all__ = ['CostBenefit', 'risk_aai_agg', 'risk_rp_100', 'risk_rp_250']
 
 import copy
 import logging
-from typing import Optional
+from typing import Optional, Dict, Tuple, Union
 
 import numpy as np
 import matplotlib.colors as colors
@@ -32,6 +32,7 @@ from matplotlib.patches import Rectangle, FancyArrowPatch
 from tabulate import tabulate
 
 from climada.engine.impact_calc import ImpactCalc
+from climada.engine import Impact, ImpactFreqCurve
 
 LOGGER = logging.getLogger(__name__)
 
@@ -136,21 +137,23 @@ class CostBenefit():
         'impact' (Impact): impact instance
     """
 
-    def __init__(self,
-                 present_year: Optional[int] = DEF_PRESENT_YEAR,
-                 future_year: Optional[int] = DEF_FUTURE_YEAR,
-                 tot_climate_risk: Optional[float] = 0.0,
-                 units:  Optional[str] = 'USD',
-                 color_rgb: Optional[dict] = None,
-                 benefit: Optional[dict] = None,
-                 cost_ben_ratio: Optional[dict] = None,
-                 imp_meas_present: Optional[dict] = None,
-                 imp_meas_future: Optional[dict] = None
-                 ):
+    def __init__(
+        self,
+        present_year: int = DEF_PRESENT_YEAR,
+        future_year: int = DEF_FUTURE_YEAR,
+        tot_climate_risk: float = 0.0,
+        units: str = 'USD',
+        color_rgb: Optional[Dict[str, np.ndarray]] = None,
+        benefit: Optional[Dict[str, float]] = None,
+        cost_ben_ratio: Optional[Dict[str, float]] = None,
+        imp_meas_present: Optional[Dict[str,
+            Union[float, Tuple[float, float], Impact, ImpactFreqCurve]]] = None,
+        imp_meas_future: Optional[Dict[str,
+            Union[float, Tuple[float, float], Impact, ImpactFreqCurve]]] = None,
+    ):
         """Initilization"""
         self.present_year = present_year
         self.future_year = future_year
-
         self.tot_climate_risk = tot_climate_risk
         self.unit = units
 
