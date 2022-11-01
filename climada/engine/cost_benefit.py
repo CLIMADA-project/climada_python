@@ -23,7 +23,12 @@ __all__ = ['CostBenefit', 'risk_aai_agg', 'risk_rp_100', 'risk_rp_250']
 
 import copy
 import logging
+<<<<<<< HEAD
 from typing import Optional, Dict, Tuple, Union
+=======
+import typing
+from typing import Optional
+>>>>>>> d9ed4b876c4139c143a56d8837ba67e88ec8ccbe
 
 import numpy as np
 import matplotlib.colors as colors
@@ -142,7 +147,7 @@ class CostBenefit():
         present_year: int = DEF_PRESENT_YEAR,
         future_year: int = DEF_FUTURE_YEAR,
         tot_climate_risk: float = 0.0,
-        units: str = 'USD',
+        unit: str = 'USD',
         color_rgb: Optional[Dict[str, np.ndarray]] = None,
         benefit: Optional[Dict[str, float]] = None,
         cost_ben_ratio: Optional[Dict[str, float]] = None,
@@ -155,7 +160,7 @@ class CostBenefit():
         self.present_year = present_year
         self.future_year = future_year
         self.tot_climate_risk = tot_climate_risk
-        self.unit = units
+        self.unit = unit
 
         # dictionaries with key: measure name
         # value: measure color_rgb

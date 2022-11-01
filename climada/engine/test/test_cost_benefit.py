@@ -226,9 +226,9 @@ class TestSteps(unittest.TestCase):
 
         cb = CostBenefit(present_year=2018, future_year=2040, imp_meas_future=imp_meas_future)
 
-        disc_rates = DiscRates()
-        disc_rates.years = np.arange(2000, 2051)
-        disc_rates.rates = np.ones(disc_rates.years.size) * 0.02
+        years = np.arange(2000, 2051)
+        rates = np.ones(years.size) * 0.02
+        disc_rates = DiscRates(years=years, rates=rates)
 
         time_dep = cb._time_dependency_array()
 
@@ -375,9 +375,9 @@ class TestSteps(unittest.TestCase):
         """Test _npv_unaverted_impact"""
         cb = CostBenefit(present_year=2018, future_year=2030)
         risk_future = 1000
-        disc_rates = DiscRates()
-        disc_rates.years = np.arange(cb.present_year, cb.future_year + 1)
-        disc_rates.rates = np.ones(disc_rates.years.size) * 0.025
+        years = np.arange(cb.present_year, cb.future_year + 1)
+        rates = np.ones(years.size) * 0.025
+        disc_rates = DiscRates(years=years, rates=rates)
         time_dep = np.linspace(0, 1, disc_rates.years.size)
         res = cb._npv_unaverted_impact(risk_future, disc_rates, time_dep,
                                        risk_present=None)
@@ -391,9 +391,10 @@ class TestSteps(unittest.TestCase):
         cb = CostBenefit(present_year=2018, future_year=2030)
         risk_future = 1000
         risk_present = 500
-        disc_rates = DiscRates()
-        disc_rates.years = np.arange(cb.present_year, cb.future_year + 1)
-        disc_rates.rates = np.ones(disc_rates.years.size) * 0.025
+        years = np.arange(cb.present_year, cb.future_year + 1)
+        rates = np.ones(years.size) * 0.025
+        disc_rates = DiscRates(years=years, rates=rates)
+
         time_dep = np.linspace(0, 1, disc_rates.years.size)
         res = cb._npv_unaverted_impact(risk_future, disc_rates, time_dep, risk_present)
 

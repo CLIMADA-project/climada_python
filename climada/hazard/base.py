@@ -1064,8 +1064,7 @@ class Hazard():
                                                 scheduler=scheduler)
         self.intensity = sparse.csr_matrix(raster[:self.size, :, :].reshape(self.size, -1))
         self.fraction = sparse.csr_matrix(raster[self.size:, :, :].reshape(self.size, -1))
-        self.centroids = Centroids()
-        self.centroids.meta = meta
+        self.centroids = Centroids(meta=meta)
         self.check()
 
     def read_mat(self, *args, **kwargs):
