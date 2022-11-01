@@ -22,6 +22,7 @@ Define Centroids class.
 import copy
 import logging
 from pathlib import Path
+from typing import Optional, Dict, Any
 
 import cartopy.crs as ccrs
 import geopandas as gpd
@@ -104,17 +105,55 @@ class Centroids():
                   'on_land', 'region_id', 'elevation'}
     """Variables whose size will be checked"""
 
-    def __init__(self):
-        """Initialize to None raster and vector. Default crs=DEF_CRS"""
-        self.meta = dict()
-        self.geometry = gpd.GeoSeries(crs=DEF_CRS)
-        self.lat = np.array([])
-        self.lon = np.array([])
-        self.area_pixel = np.array([])
-        self.dist_coast = np.array([])
-        self.on_land = np.array([])
-        self.region_id = np.array([])
-        self.elevation = np.array([])
+    def __init__(
+        self,
+        lat: Optional[np.ndarray] = None,
+        lon: Optional[np.ndarray] = None,
+        geometry: Optional[gpd.GeoSeries] = None,
+        meta: Optional[Dict[Any, Any]] = None,
+        area_pixel: Optional[np.ndarray] = None,
+        on_land: Optional[np.ndarray] = None,
+        region_id: Optional[np.ndarray] = None,
+        elevation: Optional[np.ndarray] = None,
+        dist_coast: Optional[np.ndarray] = None
+    ):
+        """Initialization
+
+        Parameters
+        ----------
+        lat : np.array, optional
+            latitude of size size. Defaults to empty array
+        lon : np.array, optional
+            longitude of size size. Defaults to empty array
+        geometry : gpd.GeoSeries, optional
+            contains lat and lon crs. Might contain geometry points for lat and lon.
+            Defaults to empty gpd.Geoseries with crs=DEF_CRS
+        meta : dict, optional
+            rasterio meta dictionary containing raster properties: width, height, crs and
+            transform must be present at least. The affine ransformation needs to be
+            shearless (only stretching) and have positive x- and negative y-orientation.
+            Defaults to empty dict()
+        area_pixel : np.array, optional
+            area of size size. Defaults to empty array
+        on_land : np.array, optional
+            on land (True) and on sea (False) of size size. Defaults to empty array
+        region_id : np.array, optional
+            country region code of size size, Defaults to empty array
+        elevation : np.array, optional
+            elevation of size size. Defaults to empty array
+        dist_coast : np.array, optional
+            distance to coast of size size. Defaults to empty array
+        """
+
+        self.lat = lat if lat is not None else np.array([])
+        self.lon = lon if lon is not None else np.array([])
+        self.geometry = geometry if geometry is not None else gpd.GeoSeries(crs=DEF_CRS)
+        self.meta = meta if meta is not None else dict()
+        self.area_pixel = area_pixel if area_pixel is not None else np.array([])
+        self.on_land = on_land if on_land is not None else np.array([])
+        self.region_id = region_id if region_id is not None else np.array([])
+        self.elevation = elevation if elevation is not None else np.array([])
+        self.dist_coast = dist_coast if dist_coast is not None else np.array([])
 
     def check(self):
         """Check integrity of stored information.
@@ -235,11 +274,10 @@ class Centroids():
         centr : Centroids
             Centroids with data from given GeoDataFrame
         """
-        centroids = cls()
-
-        centroids.geometry = gdf.geometry
-        centroids.lat = gdf.geometry.y.to_numpy(copy=True)
-        centroids.lon = gdf.geometry.x.to_numpy(copy=True)
+        geometry = gdf.geometry
+        lat = gdf.geometry.y.to_numpy(copy=True)
+        lon = gdf.geometry.x.to_numpy(copy=True)
+        centroids = cls(lat=lat, lon=lon, geometry=geometry)
 
         for col in gdf.columns:
             if col in [geometry_alias, 'geometry', 'lat', 'lon']:
@@ -287,15 +325,15 @@ class Centroids():
         centr : Centroids
             Centroids with meta according to given pixel border data.
         """
-        centr = cls()
-        centr.meta = {
+        meta = {
             'dtype': 'float32',
             'width': n_lon,
             'height': n_lat,
             'crs': crs,
             'transform': rasterio.Affine(d_lon, 0.0, xo_lon, 0.0, d_lat, xf_lat),
         }
-        return centr
+
+        return cls(meta=meta)
 
     def set_raster_from_pnt_bounds(self, *args, **kwargs):
         """This function is deprecated, use Centroids.from_pnt_bounds instead."""
@@ -323,15 +361,14 @@ class Centroids():
         centr : Centroids
             Centroids with meta according to given points border data.
         """
-        centr = cls()
         rows, cols, ras_trans = u_coord.pts_to_raster_meta(points_bounds, (res, -res))
-        centr.meta = {
+        meta = {
             'width': cols,
             'height': rows,
             'crs': crs,
             'transform': ras_trans,
         }
-        return centr
+        return cls(meta=meta)
 
     def set_lat_lon(self, *args, **kwargs):
         """This function is deprecated, use Centroids.from_lat_lon instead."""
@@ -357,11 +394,10 @@ class Centroids():
         centr : Centroids
             Centroids with points according to given coordinates
         """
-        centr = cls()
-        centr.lat = np.asarray(lat)
-        centr.lon = np.asarray(lon)
-        centr.geometry = gpd.GeoSeries(crs=crs)
-        return centr
+        lat = np.asarray(lat)
+        lon = np.asarray(lon)
+        geometry = gpd.GeoSeries(crs=crs)
+        return cls(lat=lat, lon=lon, geometry=geometry)
 
     def set_raster_file(self, file_name, band=None, **kwargs):
         """This function is deprecated, use Centroids.from_raster_file
@@ -408,11 +444,10 @@ class Centroids():
         centr : Centroids
             Centroids with meta attribute according to the given raster file
         """
-        centr = cls()
-        centr.meta, _ = u_coord.read_raster(
+        meta, _ = u_coord.read_raster(
             file_name, [1], src_crs, window, geometry, dst_crs,
             transform, width, height, resampling)
-        return centr
+        return cls(meta=meta)
 
     def values_from_raster_files(self, file_names, band=None, src_crs=None, window=False,
                                  geometry=False, dst_crs=False, transform=None, width=None,
@@ -498,10 +533,9 @@ class Centroids():
         centr : Centroids
             Centroids with points according to the given vector file
         """
-        centr = cls()
-        centr.lat, centr.lon, centr.geometry, _ = u_coord.read_vector(
+        lat, lon, geometry, _ = u_coord.read_vector(
             file_name, [], dst_crs=dst_crs)
-        return centr
+        return cls(lat=lat, lon=lon, geometry=geometry)
 
     def values_from_vector_files(self, file_names, val_names=None, dst_crs=None):
         """Read intensity or other data from vector files, making sure that geometry is compatible.
@@ -736,7 +770,6 @@ class Centroids():
 
         # create new Centroids object and set concatenated attributes
         centroids = Centroids()
-        centroids.meta = {}
         for attr_name, attr_val in vars(cent_list[0]).items():
             if isinstance(attr_val, np.ndarray) and attr_val.ndim == 1:
                 attr_val_list = [getattr(cent, attr_name) for cent in cent_list]
@@ -1186,13 +1219,15 @@ class Centroids():
                 crs=crs)
         else:
             centr_meta = data.get('meta')
-            centr = cls()
-            centr.meta['crs'] = crs
+            meta = dict()
+            meta['crs'] = crs
             for key, value in centr_meta.items():
                 if key != 'transform':
-                    centr.meta[key] = value[0]
+                    meta[key] = value[0]
                 else:
-                    centr.meta[key] = rasterio.Affine(*value)
+                    meta[key] = rasterio.Affine(*value)
+            centr = cls(meta=meta)
+
         for centr_name in data.keys():
             if centr_name not in ('crs', 'lat', 'lon', 'meta'):
                 setattr(centr, centr_name, np.array(data.get(centr_name)))
