@@ -363,8 +363,6 @@ class TestSteps(unittest.TestCase):
     def test_time_array_no_pres_pass(self):
         """Test _time_dependency_array"""
         cb = CostBenefit(present_year=2018, future_year=2030)
-        cb.present_year = 2018
-        cb.future_year = 2030
         time_arr = cb._time_dependency_array()
 
         n_years = cb.future_year - cb.present_year + 1
