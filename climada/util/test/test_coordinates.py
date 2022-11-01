@@ -1402,8 +1402,8 @@ class TestRasterIO(unittest.TestCase):
             gradx = 0.5 * (dx0 + dx1) / lon_size_m
             grady = 0.5 * (dy0 + dy1) / lat_size_m
 
-            np.testing.assert_array_almost_equal(gradient[4:, 0], gradx)
-            np.testing.assert_array_almost_equal(gradient[4:, 1], grady)
+            np.testing.assert_array_almost_equal(gradient[4:, 0], grady)
+            np.testing.assert_array_almost_equal(gradient[4:, 1], gradx)
 
     def test_refine_raster(self):
         """Test refinement of given raster data"""

@@ -2044,7 +2044,8 @@ def _raster_gradient(data, transform, latlon_to_m=False):
     Returns
     -------
     gradient_data : np.array of shape (ny, nx, 2)
-        The first/second entry in the last dimension is the derivative in x/y direction.
+        The first/second entry in the last dimension is the derivative in y/x direction (y is
+        listed first!).
     gradient_transform : rasterio.Affine
         Affine transformation defining the output raster.
     """
@@ -2061,7 +2062,7 @@ def _raster_gradient(data, transform, latlon_to_m=False):
     diff_x = 0.5 * (diff_x[1:, :] + diff_x[:-1, :])
     diff_y = np.diff(data, axis=0)
     diff_y = 0.5 * (diff_y[:, 1:] + diff_y[:, :-1])
-    gradient_data = np.stack([diff_x / xres, diff_y / yres], axis=-1)
+    gradient_data = np.stack([diff_y / yres, diff_x / xres], axis=-1)
 
     return gradient_data, gradient_transform
 
@@ -2102,7 +2103,7 @@ def read_raster_sample(path, lat, lon, intermediate_res=None, method='linear', f
         Interpolated raster values for each given coordinate point.
     gradient : np.array of shape (npoints, 2), optional
         If grad=True, the raster gradient at each of the given coordinate points is returned.
-        The first/second value in each row is the derivative in lon/lat direction.
+        The first/second value in each row is the derivative in lat/lon direction (lat is first!).
     """
     if lat.size == 0:
         return np.zeros_like(lat)
