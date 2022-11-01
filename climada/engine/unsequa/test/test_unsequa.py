@@ -51,13 +51,13 @@ _target_dir, [test_unc_output_costben] = apiclient.download_dataset(ds)
 
 
 def impf_dem(x_paa=1, x_mdd=1):
-    impf = ImpactFunc()
-    impf.haz_type = 'TC'
-    impf.id = 1
-    impf.intensity_unit = 'm/s'
-    impf.intensity = np.linspace(0, 150, num=100)
-    impf.mdd = np.repeat(1, len(impf.intensity)) * x_mdd
-    impf.paa = np.arange(0, len(impf.intensity)) / len(impf.intensity) * x_paa
+    haz_type = 'TC'
+    id = 1
+    intensity_unit = 'm/s'
+    intensity = np.linspace(0, 150, num=100)
+    mdd = np.repeat(1, len(intensity)) * x_mdd
+    paa = np.arange(0, len(intensity)) / len(intensity) * x_paa
+    impf = ImpactFunc(haz_type, id, intensity, mdd, paa, intensity_unit)
     impf.check()
     impf_set = ImpactFuncSet()
     impf_set.append(impf)

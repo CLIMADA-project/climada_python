@@ -24,6 +24,8 @@ __all__ = ['Measure']
 import copy
 import logging
 from pathlib import Path
+from typing import Optional, Tuple
+
 import numpy as np
 import pandas as pd
 from geopandas import GeoDataFrame
@@ -81,33 +83,87 @@ class Measure():
         cost of risk transfer
     """
 
-    def __init__(self):
-        """Empty initialization."""
-        self.name = ''
-        self.haz_type = ''
-        self.color_rgb = np.array([0, 0, 0])
-        self.cost = 0
+    def __init__(
+        self,
+        name: str = "",
+        haz_type: str = "",
+        cost: float = 0,
+        hazard_set: str = NULL_STR,
+        hazard_freq_cutoff: float = 0,
+        exposures_set: str = NULL_STR,
+        imp_fun_map: str = NULL_STR,
+        hazard_inten_imp: Tuple[float, float] = (1, 0),
+        mdd_impact: Tuple[float, float] = (1, 0),
+        paa_impact: Tuple[float, float] = (1, 0),
+        exp_region_id: Optional[list] = None,
+        risk_transf_attach: float = 0,
+        risk_transf_cover: float = 0,
+        risk_transf_cost_factor: float = 1,
+        color_rgb: Optional[np.ndarray] = None
+    ):
+        """Initialize a Measure object with given values.
+
+        Parameters
+        ----------
+        name : str, optional
+            name of the measure
+        haz_type : str, optional
+            related hazard type (peril), e.g. TC
+        cost : float, optional
+            discounted cost (in same units as assets)
+        hazard_set : str, optional
+            file name of hazard to use (in h5 format)
+        hazard_freq_cutoff : float, optional
+            hazard frequency cutoff
+        exposures_set : str  or climada.entity.Exposure, optional
+            file name of exposure to use (in h5 format) or Exposure instance
+        imp_fun_map : str, optional
+            change of impact function id of exposures, e.g. '1to3'
+        hazard_inten_imp : tuple(float, float), optional
+            parameter a and b of hazard intensity change
+        mdd_impact : tuple(float, float), optional
+            parameter a and b of the impact over the mean damage degree
+        paa_impact : tuple(float, float), optional
+            parameter a and b of the impact over the percentage of affected assets
+        exp_region_id : int, optional
+            region id of the selected exposures to consider ALL the previous
+            parameters
+        risk_transf_attach : float, optional
+            risk transfer attachment
+        risk_transf_cover : float, optional
+            risk transfer cover
+        risk_transf_cost_factor : float, optional
+            factor to multiply to resulting insurance layer to get the total
+            cost of risk transfer
+        color_rgb : np.array, optional
+            integer array of size 3. Color code of this measure in RGB.
+            Default is None (corresponds to black).
+        """
+        self.name = name
+        self.haz_type = haz_type
+        self.color_rgb = np.array([0, 0, 0]) if color_rgb is None else color_rgb
+        self.cost = cost
 
         # related to change in hazard
-        self.hazard_set = NULL_STR
-        self.hazard_freq_cutoff = 0
+        self.hazard_set = hazard_set
+        self.hazard_freq_cutoff = hazard_freq_cutoff
 
         # related to change in exposures
-        self.exposures_set = NULL_STR
-        self.imp_fun_map = NULL_STR  # ids of impact functions to change e.g. 1to10
+        self.exposures_set = exposures_set
+        self.imp_fun_map = imp_fun_map
 
         # related to change in impact functions
-        self.hazard_inten_imp = (1, 0)  # parameter a and b
-        self.mdd_impact = (1, 0)  # parameter a and b
-        self.paa_impact = (1, 0)  # parameter a and b
+        self.hazard_inten_imp = hazard_inten_imp
+        self.mdd_impact = mdd_impact
+        self.paa_impact = paa_impact
 
         # related to change in region
-        self.exp_region_id = []
+        self.exp_region_id = [] if exp_region_id is None else exp_region_id
 
         # risk transfer
-        self.risk_transf_attach = 0
-        self.risk_transf_cover = 0
-        self.risk_transf_cost_factor = 1
+        self.risk_transf_attach = risk_transf_attach
+        self.risk_transf_cover = risk_transf_cover
+        self.risk_transf_cost_factor = risk_transf_cost_factor
 
     def check(self):
         """
