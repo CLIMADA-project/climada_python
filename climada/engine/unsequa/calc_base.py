@@ -44,15 +44,16 @@ class Calc():
     Attributes
     ----------
     _input_var_names : tuple(str)
-        Names of the required uncertainty variables. 
+        Names of the required uncertainty variables.
     _metric_names : tuple(str)
         Names of the output metrics.
     """
 
-    """Names of the required uncertainty variables"""
     _input_var_names = ()
-    """Names of the output metrics"""
+    """Names of the required uncertainty variables"""
+
     _metric_names = ()
+    """Names of the output metrics"""
 
     def __init__(self):
         """

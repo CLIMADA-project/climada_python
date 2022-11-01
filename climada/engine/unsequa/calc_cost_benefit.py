@@ -68,12 +68,13 @@ class CalcCostBenefit(Calc):
 
     """
 
+    _input_var_names = (
+        'haz_input_var',
+        'ent_input_var',
+        'haz_fut_input_var',
+        'ent_fut_input_var',
+    )
     """Names of the required uncertainty variables"""
-    _input_var_names = ('haz_input_var', 'ent_input_var',
-                        'haz_fut_input_var', 'ent_fut_input_var')
-    """Names of the cost benefit output metrics"""
-    _metric_names = ('tot_climate_risk', 'benefit', 'cost_ben_ratio',
-                    'imp_meas_present', 'imp_meas_future')
 
     _metric_names = (
         'tot_climate_risk',
@@ -82,13 +83,7 @@ class CalcCostBenefit(Calc):
         'imp_meas_present',
         'imp_meas_future',
     )
-
-    _input_var_names = (
-        'haz_input_var',
-        'ent_input_var',
-        'haz_fut_input_var',
-        'ent_fut_input_var',
-    )
+    """Names of the cost benefit output metrics"""
 
     def __init__(
         self,

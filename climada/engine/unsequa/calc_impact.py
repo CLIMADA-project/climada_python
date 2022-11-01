@@ -68,16 +68,12 @@ class CalcImpact(Calc):
         ('aai_agg', 'freq_curve', 'at_event', 'eai_exp', 'tot_value')
     """
 
-    """Names of the required uncertainty variables"""
-    _input_var_names = ('exp_input_var', 'impf_input_var', 'haz_input_var')
-    """Names of the cost benefit output metrics"""
-    _metric_names = ('aai_agg', 'freq_curve', 'at_event', 'eai_exp', 'tot_value')
-
     _input_var_names = (
         'exp_input_var',
         'impf_input_var',
         'haz_input_var',
     )
+    """Names of the required uncertainty variables"""
 
     _metric_names = (
         'aai_agg',
@@ -86,6 +82,7 @@ class CalcImpact(Calc):
         'eai_exp',
         'tot_value',
     )
+    """Names of the cost benefit output metrics"""
 
     def __init__(
         self,
