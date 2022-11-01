@@ -23,12 +23,7 @@ __all__ = ['CostBenefit', 'risk_aai_agg', 'risk_rp_100', 'risk_rp_250']
 
 import copy
 import logging
-<<<<<<< HEAD
 from typing import Optional, Dict, Tuple, Union
-=======
-import typing
-from typing import Optional
->>>>>>> d9ed4b876c4139c143a56d8837ba67e88ec8ccbe
 
 import numpy as np
 import matplotlib.colors as colors
