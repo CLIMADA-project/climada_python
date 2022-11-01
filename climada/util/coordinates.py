@@ -2066,8 +2066,8 @@ def _raster_gradient(data, transform, latlon_to_m=False):
 
     return gradient_data, gradient_transform
 
-def read_raster_sample(path, lat, lon, intermediate_res=None, method='linear', fill_value=None,
-                       gradient=False):
+def read_raster_sample(path, lat, lon, intermediate_res=None, method=('linear', 'nearest'),
+                       fill_value=None, gradient=False):
     """Read point samples from raster file.
 
     To avoid redundant IO operations, the gradients at the specified points can be computed in the
@@ -2088,8 +2088,10 @@ def read_raster_sample(path, lat, lon, intermediate_res=None, method='linear', f
     intermediate_res : float or pair of floats, optional
         If given, the raster is not read in its original resolution but in the given one. This can
         increase performance for files of very high resolution.
-    method : str, optional
-        The interpolation method, passed to scipy.interp.interpn. Default: 'linear'.
+    method : str or pair of str, optional
+        The interpolation methods for the data and its gradient, passed to
+        `scipy.interpolate.interpn`. If a single string is given, the same interpolation method is
+        used for both the data and its gradient. Default: ('linear', 'nearest')
     fill_value : numeric, optional
         The value used outside of the raster bounds. Default: The raster's nodata value or 0.
     gradient : boolean, optional
@@ -2107,6 +2109,9 @@ def read_raster_sample(path, lat, lon, intermediate_res=None, method='linear', f
     """
     if lat.size == 0:
         return np.zeros_like(lat)
+
+    if isinstance(method, str):
+        method = (method, method)
 
     LOGGER.info('Sampling from %s', path)
 
@@ -2127,7 +2132,7 @@ def read_raster_sample(path, lat, lon, intermediate_res=None, method='linear', f
     fill_value = fill_value or 0
 
     interp_data = interp_raster_data(
-        data, lat, lon, transform, method=method, fill_value=fill_value)
+        data, lat, lon, transform, method=method[0], fill_value=fill_value)
 
     if not gradient:
         return interp_data
@@ -2135,7 +2140,7 @@ def read_raster_sample(path, lat, lon, intermediate_res=None, method='linear', f
     is_latlon = crs is not None and crs.to_epsg() == 4326
     grad_data, grad_transform = _raster_gradient(data, transform, latlon_to_m=is_latlon)
     interp_grad = interp_raster_data(
-        grad_data, lat, lon, grad_transform, method="nearest", fill_value=fill_value)
+        grad_data, lat, lon, grad_transform, method=method[1], fill_value=fill_value)
     return interp_data, interp_grad
 
 def interp_raster_data(data, interp_y, interp_x, transform, method='linear', fill_value=0):
