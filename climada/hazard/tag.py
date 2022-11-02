@@ -39,7 +39,7 @@ class Tag(object):
         description(s) of the data
     """
 
-    def __init__(self, 
+    def __init__(self,
                  haz_type: str = '',
                  file_name: str = '',
                  description: str = ''):
