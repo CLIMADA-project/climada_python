@@ -955,10 +955,10 @@ class Impact():
         LOGGER.info('Reading %s', file_name)
         dfr = pd.read_excel(file_name)
         imp =cls()
-        imp.tag['haz'] = TagHaz()
-        imp.tag['haz'].haz_type = dfr['tag_hazard'][0]
-        imp.tag['haz'].file_name = dfr['tag_hazard'][1]
-        imp.tag['haz'].description = dfr['tag_hazard'][2]
+        imp.tag['haz'] = TagHaz(
+            haz_type = dfr['tag_hazard'][0],
+            file_name = dfr['tag_hazard'][1],
+            description = dfr['tag_hazard'][2])
         imp.tag['exp'] = Tag()
         imp.tag['exp'].file_name = dfr['tag_exposure'][0]
         imp.tag['exp'].description = dfr['tag_exposure'][1]
