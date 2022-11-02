@@ -49,8 +49,7 @@ EXP_POINT = Client().get_exposures('base', name='test_point_exp', status='test_d
 GDF_POINT = EXP_POINT.gdf
 
 IMPF = ImpfStormEurope.from_welker()
-IMPF_SET = ImpactFuncSet()
-IMPF_SET.append(IMPF)
+IMPF_SET = ImpactFuncSet([IMPF])
 
 COL_CHANGING = ['value', 'latitude', 'longitude', 'geometry', 'geometry_orig']
 

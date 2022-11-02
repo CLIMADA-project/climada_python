@@ -65,17 +65,13 @@ class TestContainer(unittest.TestCase):
 
     def test_remove_func_pass(self):
         """Test remove_func removes ImpactFunc of ImpactFuncSet correcty."""
-        imp_fun = ImpactFuncSet()
-        vulner_1 = ImpactFunc("TC", 1)
-        imp_fun.append(vulner_1)
+        imp_fun = ImpactFuncSet([ImpactFunc("TC", 1)])
         imp_fun.remove_func()
         self.assertEqual(0, len(imp_fun._data))
 
     def test_remove_wrong_error(self):
         """Test error is raised when invalid inputs."""
-        imp_fun = ImpactFuncSet()
-        vulner_1 = ImpactFunc("TC", 1)
-        imp_fun.append(vulner_1)
+        imp_fun = ImpactFuncSet([ImpactFunc("TC", 1)])
         with self.assertLogs('climada.entity.impact_funcs.impact_func_set', level='WARNING') as cm:
             imp_fun.remove_func('FL')
         self.assertIn('No ImpactFunc with hazard FL.', cm.output[0])
@@ -85,9 +81,7 @@ class TestContainer(unittest.TestCase):
 
     def test_get_hazards_pass(self):
         """Test get_hazard_types function."""
-        imp_fun = ImpactFuncSet()
-        vulner_1 = ImpactFunc("TC", 1)
-        imp_fun.append(vulner_1)
+        imp_fun = ImpactFuncSet([ImpactFunc("TC", 1)])
         self.assertEqual(1, len(imp_fun.get_hazard_types()))
         self.assertEqual(['TC'], imp_fun.get_hazard_types())
 
@@ -133,9 +127,7 @@ class TestContainer(unittest.TestCase):
 
     def test_get_ids_wrong_zero(self):
         """Test get_ids method with wrong inputs."""
-        imp_fun = ImpactFuncSet()
-        vulner_1 = ImpactFunc("WS", 56)
-        imp_fun.append(vulner_1)
+        imp_fun = ImpactFuncSet([ImpactFunc("WS", 56)])
         self.assertEqual([], imp_fun.get_ids('TC'))
 
     def test_get_func_pass(self):
@@ -167,9 +159,7 @@ class TestContainer(unittest.TestCase):
 
     def test_get_func_wrong_error(self):
         """Test get_func method with wrong inputs."""
-        imp_fun = ImpactFuncSet()
-        vulner_1 = ImpactFunc("WS", 56)
-        imp_fun.append(vulner_1)
+        imp_fun = ImpactFuncSet([ImpactFunc("WS", 56)])
         self.assertEqual([], imp_fun.get_func('TC'))
 
     def test_size_pass(self):

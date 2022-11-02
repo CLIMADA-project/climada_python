@@ -378,7 +378,7 @@ class ImpactFuncSet:
 
         Returns
         -------
-        ImpFuncSet
+        ImpactFuncSet
         """
         if var_names is None:
             var_names = DEF_VAR_EXCEL
