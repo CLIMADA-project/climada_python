@@ -23,10 +23,10 @@ __all__ = ['CalcCostBenefit']
 
 import logging
 import time
-
 from functools import partial
-import pandas as pd
 from typing import Optional, Union
+
+import pandas as pd
 
 from climada.engine.cost_benefit import CostBenefit
 from climada.engine.unsequa import Calc, InputVar, UncCostBenefitOutput
