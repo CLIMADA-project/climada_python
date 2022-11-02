@@ -47,7 +47,7 @@ class Tag(object):
 
         Parameters
         ----------
-        haz_type : str, optional
+        haz_type : str
             acronym of the hazard type (e.g. 'TC').
         file_name : str or list(str), optional
             file name(s) to read
