@@ -842,7 +842,7 @@ class TestCalcCostBenefit(unittest.TestCase):
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestInputVar)
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCalcDelta))
-    #TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestOutput))
-    #TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCalcImpact))
-    #TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCalcCostBenefit))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestOutput))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCalcImpact))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCalcCostBenefit))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
