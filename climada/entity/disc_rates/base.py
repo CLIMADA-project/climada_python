@@ -24,6 +24,7 @@ __all__ = ['DiscRates']
 import copy
 from array import array
 import logging
+from typing import Optional
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -67,7 +68,12 @@ class DiscRates():
         list of discount rates for each year (between 0 and 1)
     """
 
-    def __init__(self, years=None, rates=None, tag=None):
+    def __init__(
+        self,
+        years : Optional[np.ndarray] = None,
+        rates : Optional[np.ndarray] = None,
+        tag : Optional[Tag] = None
+        ):
         """
         Fill discount rates with values and check consistency data
 
@@ -82,13 +88,9 @@ class DiscRates():
         tag : climate.entity.tag
             Metadata. Default is None.
         """
-        years = np.array([]) if years is None else years
-        rates = np.array([]) if rates is None else rates
-
-        self.years = years
-        self.rates = rates
-        tag = Tag() if tag is None else tag
-        self.tag = tag
+        self.years = np.array([]) if years is None else years
+        self.rates = np.array([]) if rates is None else rates
+        self.tag = Tag() if tag is None else tag
 
     def clear(self):
         """Reinitialize attributes."""

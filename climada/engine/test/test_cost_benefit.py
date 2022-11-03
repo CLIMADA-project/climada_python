@@ -28,7 +28,7 @@ from climada.entity.disc_rates import DiscRates
 from climada.hazard.base import Hazard
 from climada.engine.cost_benefit import CostBenefit, risk_aai_agg, \
         risk_rp_100, risk_rp_250, _norm_values
-from climada.engine import Impact
+from climada.engine import ImpactCalc
 from climada.util.constants import ENT_DEMO_FUTURE, ENT_DEMO_TODAY
 from climada.util.api_client import Client
 
@@ -187,17 +187,19 @@ class TestSteps(unittest.TestCase):
         meas_val['efc'] = None
         meas_val['risk_transf'] = 0
 
-        cb = CostBenefit()
-        cb.present_year = 2018
-        cb.future_year = 2040
-        cb.imp_meas_present['no measure'] = dict()
-        cb.imp_meas_present['no measure']['risk'] = 6.51220115756442e+09
-        cb.imp_meas_present['Mangroves'] = dict()
-        cb.imp_meas_present['Mangroves']['risk'] = 4.850407096284983e+09
-        cb.imp_meas_present['Mangroves']['risk_transf'] = 0
+        imp_meas_present = dict()
+        imp_meas_present['no measure'] = dict()
+        imp_meas_present['no measure']['risk'] = 6.51220115756442e+09
+        imp_meas_present['Mangroves'] = dict()
+        imp_meas_present['Mangroves']['risk'] = 4.850407096284983e+09
+        imp_meas_present['Mangroves']['risk_transf'] = 0
 
-        cb.imp_meas_future['no measure'] = dict()
-        cb.imp_meas_future['no measure']['risk'] = 5.9506659786664024e+10
+        imp_meas_future = dict()
+        imp_meas_future['no measure'] = dict()
+        imp_meas_future['no measure']['risk'] = 5.9506659786664024e+10
+
+        cb = CostBenefit(present_year=2018, future_year=2040, imp_meas_present=imp_meas_present,
+                         imp_meas_future=imp_meas_future)
 
         disc_rates = DiscRates()
         disc_rates.years = np.arange(2016, 2051)
@@ -218,15 +220,15 @@ class TestSteps(unittest.TestCase):
         meas_val['efc'] = None
         meas_val['risk_transf'] = 0
 
-        cb = CostBenefit()
-        cb.present_year = 2018
-        cb.future_year = 2040
-        cb.imp_meas_future['no measure'] = dict()
-        cb.imp_meas_future['no measure']['risk'] = 6.51220115756442e+09
+        imp_meas_future = dict()
+        imp_meas_future['no measure'] = dict()
+        imp_meas_future['no measure']['risk'] = 6.51220115756442e+09
 
-        disc_rates = DiscRates()
-        disc_rates.years = np.arange(2000, 2051)
-        disc_rates.rates = np.ones(disc_rates.years.size) * 0.02
+        cb = CostBenefit(present_year=2018, future_year=2040, imp_meas_future=imp_meas_future)
+
+        years = np.arange(2000, 2051)
+        rates = np.ones(years.size) * 0.02
+        disc_rates = DiscRates(years=years, rates=rates)
 
         time_dep = cb._time_dependency_array()
 
@@ -341,9 +343,7 @@ class TestSteps(unittest.TestCase):
 
     def test_time_array_pres_pass(self):
         """Test _time_dependency_array"""
-        cb = CostBenefit()
-        cb.present_year = 2018
-        cb.future_year = 2030
+        cb = CostBenefit(present_year=2018, future_year=2030)
         imp_time_depen = 1.0
         time_arr = cb._time_dependency_array(imp_time_depen)
 
@@ -362,9 +362,7 @@ class TestSteps(unittest.TestCase):
 
     def test_time_array_no_pres_pass(self):
         """Test _time_dependency_array"""
-        cb = CostBenefit()
-        cb.present_year = 2018
-        cb.future_year = 2030
+        cb = CostBenefit(present_year=2018, future_year=2030)
         time_arr = cb._time_dependency_array()
 
         n_years = cb.future_year - cb.present_year + 1
@@ -373,13 +371,11 @@ class TestSteps(unittest.TestCase):
 
     def test_npv_unaverted_no_pres_pass(self):
         """Test _npv_unaverted_impact"""
-        cb = CostBenefit()
-        cb.present_year = 2018
-        cb.future_year = 2030
+        cb = CostBenefit(present_year=2018, future_year=2030)
         risk_future = 1000
-        disc_rates = DiscRates()
-        disc_rates.years = np.arange(cb.present_year, cb.future_year + 1)
-        disc_rates.rates = np.ones(disc_rates.years.size) * 0.025
+        years = np.arange(cb.present_year, cb.future_year + 1)
+        rates = np.ones(years.size) * 0.025
+        disc_rates = DiscRates(years=years, rates=rates)
         time_dep = np.linspace(0, 1, disc_rates.years.size)
         res = cb._npv_unaverted_impact(risk_future, disc_rates, time_dep,
                                        risk_present=None)
@@ -390,14 +386,13 @@ class TestSteps(unittest.TestCase):
 
     def test_npv_unaverted_pres_pass(self):
         """Test _npv_unaverted_impact"""
-        cb = CostBenefit()
-        cb.present_year = 2018
-        cb.future_year = 2030
+        cb = CostBenefit(present_year=2018, future_year=2030)
         risk_future = 1000
         risk_present = 500
-        disc_rates = DiscRates()
-        disc_rates.years = np.arange(cb.present_year, cb.future_year + 1)
-        disc_rates.rates = np.ones(disc_rates.years.size) * 0.025
+        years = np.arange(cb.present_year, cb.future_year + 1)
+        rates = np.ones(years.size) * 0.025
+        disc_rates = DiscRates(years=years, rates=rates)
+
         time_dep = np.linspace(0, 1, disc_rates.years.size)
         res = cb._npv_unaverted_impact(risk_future, disc_rates, time_dep, risk_present)
 
@@ -638,7 +633,7 @@ class TestSteps(unittest.TestCase):
             new_cb.imp_meas_future[tr_name]['risk'],
             np.sum(new_imp * cost_ben.imp_meas_future['no measure']['impact'].frequency), 5)
         self.assertAlmostEqual(new_cb.cost_ben_ratio[tr_name] * new_cb.benefit[tr_name],
-                               risk_transf[2] * 32106013195.316242)
+                               risk_transf[2] * 32106013195.316242, 4)
         self.assertTrue(
             np.allclose(new_cb.imp_meas_future[tr_name]['efc'].impact,
                         new_cb.imp_meas_future[tr_name]['impact'].calc_freq_curve().impact))
@@ -822,9 +817,7 @@ class TestRiskFuncs(unittest.TestCase):
         ent = Entity.from_excel(ENT_DEMO_TODAY)
         ent.check()
         hazard = Hazard.from_mat(HAZ_TEST_MAT)
-        impact = Impact()
-        ent.exposures.assign_centroids(hazard)
-        impact.calc(ent.exposures, ent.impact_funcs, hazard, assign_centroids=False)
+        impact = ImpactCalc(ent.exposures, ent.impact_funcs, hazard).impact()
         return impact
 
     def test_risk_aai_agg_pass(self):
