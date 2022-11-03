@@ -22,12 +22,14 @@ Define ImpactFunc class.
 __all__ = ['ImpactFunc']
 
 import logging
+from typing import Optional, Union
 import numpy as np
 import matplotlib.pyplot as plt
 
 import climada.util.checker as u_check
 
 LOGGER = logging.getLogger(__name__)
+
 
 class ImpactFunc():
     """Contains the definition of one impact function.
@@ -52,16 +54,47 @@ class ImpactFunc():
         percentage of affected assets (exposures) for each
         intensity (numbers in [0,1])
     """
-    def __init__(self):
-        """Empty initialization."""
-        self.id = ''
-        self.name = ''
-        self.intensity_unit = ''
-        self.haz_type = ''
+
+    def __init__(
+        self,
+        haz_type: str = "",
+        id: Union[str, int] = "",
+        intensity: Optional[np.ndarray] = None,
+        mdd: Optional[np.ndarray] = None,
+        paa: Optional[np.ndarray] = None,
+        intensity_unit: str = "",
+        name: str = "",
+    ):
+        """Initialization.
+
+        Parameters
+        ----------
+        haz_type : str, optional
+            Hazard type acronym (e.g. 'TC').
+        id : int or str, optional
+            id of the impact function. Exposures of the same type
+            will refer to the same impact function id.
+        intensity : np.array, optional
+            Intensity values. Defaults to empty array.
+        mdd : np.array, optional
+            Mean damage (impact) degree for each intensity (numbers
+            in [0,1]). Defaults to empty array.
+        paa : np.array, optional
+            Percentage of affected assets (exposures) for each
+            intensity (numbers in [0,1]). Defaults to empty array.
+        intensity_unit : str, optional
+            Unit of the intensity.
+        name : str, optional
+            Name of the ImpactFunc.
+        """
+        self.id = id
+        self.name = name
+        self.intensity_unit = intensity_unit
+        self.haz_type = haz_type
         # Followng values defined for each intensity value
-        self.intensity = np.array([])
-        self.mdd = np.array([])
-        self.paa = np.array([])
+        self.intensity = intensity if intensity is not None else np.array([])
+        self.mdd = mdd if mdd is not None else np.array([])
+        self.paa = paa if paa is not None else np.array([])
 
     def calc_mdr(self, inten):
         """Interpolate impact function to a given intensity.
@@ -156,17 +189,14 @@ class ImpactFunc():
             Step impact function
 
         """
-
-        impf = cls()
-        impf.id = impf_id
         inten_min, threshold, inten_max = intensity
-        impf.intensity = np.array([inten_min, threshold, threshold, inten_max])
+        intensity = np.array([inten_min, threshold, threshold, inten_max])
         paa_min, paa_max = paa
-        impf.paa = np.array([paa_min, paa_min, paa_max, paa_max])
+        paa = np.array([paa_min, paa_min, paa_max, paa_max])
         mdd_min, mdd_max = mdd
-        impf.mdd = np.array([mdd_min, mdd_min, mdd_max, mdd_max])
+        mdd = np.array([mdd_min, mdd_min, mdd_max, mdd_max])
 
-        return impf
+        return cls(id=impf_id, intensity=intensity, mdd=mdd, paa=paa)
 
     def set_step_impf(self, *args, **kwargs):
         """This function is deprecated, use ImpactFunc.from_step_impf instead."""
@@ -208,19 +238,15 @@ class ImpactFunc():
             Step impact function
 
         """
-        impf = cls()
-        impf.id = if_id
         inten_min, inten_max, inten_step = intensity
-        impf.intensity = np.arange(inten_min, inten_max, inten_step)
-        impf.paa = np.ones(len(impf.intensity))
-        impf.mdd = L / (1 + np.exp(-k * (impf.intensity - x0)))
+        intensity = np.arange(inten_min, inten_max, inten_step)
+        paa = np.ones(len(intensity))
+        mdd = L / (1 + np.exp(-k * (intensity - x0)))
 
-        return impf
+        return cls(id=if_id, intensity=intensity, paa=paa, mdd=mdd)
 
     def set_sigmoid_impf(self, *args, **kwargs):
         """This function is deprecated, use LitPop.from_countries instead."""
         LOGGER.warning("The use of ImpactFunc.set_sigmoid_impf is deprecated."
                        "Use ImpactFunc.from_sigmoid_impf instead.")
         self.__dict__ = ImpactFunc.from_sigmoid_impf(*args, **kwargs).__dict__
-
-

@@ -131,16 +131,16 @@ class TestCentroidsWriter(unittest.TestCase):
 class TestCentroidsMethods(unittest.TestCase):
 
     def test_union(self):
-        cent1 = Centroids()
-        cent1.lat, cent1.lon = np.array([0, 1]), np.array([0, -1])
-        cent1.on_land = np.array([True, True])
+        lat, lon = np.array([0, 1]), np.array([0, -1])
+        on_land = np.array([True, True])
+        cent1 = Centroids(lat=lat, lon=lon, on_land=on_land)
 
-        cent2 = Centroids()
-        cent2.lat, cent2.lon = np.array([2, 3]), np.array([-2, 3])
-        cent2.on_land = np.array([False, False])
+        lat2, lon2 = np.array([2, 3]), np.array([-2, 3])
+        on_land2 = np.array([False, False])
+        cent2 = Centroids(lat=lat2, lon=lon2, on_land=on_land2)
 
-        cent3 = Centroids()
-        cent3.lat, cent3.lon = np.array([-1, -2]), np.array([1, 2])
+        lat3, lon3 = np.array([-1, -2]), np.array([1, 2])
+        cent3 = Centroids(lat=lat3,lon=lon3)
 
         cent = cent1.union(cent2)
         np.testing.assert_array_equal(cent.lat, [0, 1, 2, 3])
