@@ -161,8 +161,10 @@ class Forecast:
             weather prediction.
         exposure_name : str, optional
             string specifying the exposure (e.g. 'EU'), which is used to
-            name output files. If ``None``, the name will be inferred from the region ID
-            in the Exposures GeoDataframe. If that fails, it defaults to ``"custom"``.
+            name output files. If ``None``, the name will be inferred from the Exposures
+            GeoDataframe ``region_id`` column, using the corresponding name of the region
+            with the lowest ISO 3166-1 numeric code. If that fails, it defaults to
+            ``"custom"``.
         """
         self.run_datetime = list(hazard_dict.keys())
         self.hazard = list(hazard_dict.values())
