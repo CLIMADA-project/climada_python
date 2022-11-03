@@ -43,12 +43,10 @@ def get_haz_test_file(ds_name):
     return haz_test_file
 
 
-#HAZ_TEST_MAT = get_haz_test_file('atl_prob_no_name')
+HAZ_TEST_TC = get_haz_test_file('test_tc_florida')
 
 ENT = Entity.from_excel(ENT_DEMO_TODAY)
-#HAZ = Hazard.from_mat(HAZ_TEST_MAT)
 HAZ = Hazard.from_hdf5(HAZ_TEST_TC)
-
 
 DATA_FOLDER = DEMO_DIR / 'test-results'
 DATA_FOLDER.mkdir(exist_ok=True)
