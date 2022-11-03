@@ -35,7 +35,7 @@ from climada.entity import ImpactFunc, ImpactFuncSet
 from climada.entity.entity_def import Entity
 from climada.entity import Exposures
 from climada.hazard import Hazard
-from climada.engine.unsequa import InputVar, CalcImpact, UncOutput, CalcCostBenefit
+from climada.engine.unsequa import InputVar, CalcImpact, UncOutput, CalcCostBenefit, CalcDeltaImpact
 
 from climada.util.constants import EXP_DEMO_H5, HAZ_DEMO_H5, ENT_DEMO_TODAY, ENT_DEMO_FUTURE
 from climada.util.constants import  TEST_UNC_OUTPUT_IMPACT, TEST_UNC_OUTPUT_COSTBEN
@@ -348,6 +348,38 @@ class TestOutput(unittest.TestCase):
         self.assertEqual(unc_data_load.sensitivity_kwargs, unc_data_save.sensitivity_kwargs)
         filename.unlink()
 
+class TestCalcDelta(unittest.TestCase):
+    """Test the calcluate delta impact uncertainty class"""
+
+    def test_calc_uncertainty_pass(self):
+        """Test compute the uncertainty distribution for an impact"""
+
+        exp_unc, impf_unc, _ = make_input_vars()
+        haz = haz_dem()
+        unc_calc = CalcDeltaImpact(exp_unc, impf_unc, haz, exp_unc, impf_unc, haz)
+        unc_data = unc_calc.make_sample( N=2)
+        unc_data = unc_calc.uncertainty(unc_data, calc_eai_exp=False, calc_at_event=False)
+
+        self.assertEqual(unc_data.unit, exp_dem().value_unit)
+        self.assertListEqual(unc_calc.rp, [5, 10, 20, 50, 100, 250])
+        self.assertEqual(unc_calc.calc_eai_exp, False)
+        self.assertEqual(unc_calc.calc_at_event, False)
+
+        self.assertEqual(
+            unc_data.aai_agg_unc_df.size,
+            unc_data.n_samples
+            )
+        self.assertEqual(
+            unc_data.tot_value_unc_df.size,
+            unc_data.n_samples
+            )
+
+        self.assertEqual(
+            unc_data.freq_curve_unc_df.size,
+            unc_data.n_samples * len(unc_calc.rp)
+            )
+        self.assertTrue(unc_data.eai_exp_unc_df.empty)
+        self.assertTrue(unc_data.at_event_unc_df.empty)
 
 class TestCalcImpact(unittest.TestCase):
     """Test the calcluate impact uncertainty class"""
@@ -809,7 +841,8 @@ class TestCalcCostBenefit(unittest.TestCase):
 
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestInputVar)
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestOutput))
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCalcImpact))
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCalcCostBenefit))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCalcDelta))
+    #TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestOutput))
+    #TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCalcImpact))
+    #TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCalcCostBenefit))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
