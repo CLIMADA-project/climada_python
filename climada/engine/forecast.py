@@ -24,6 +24,7 @@ __all__ = ["Forecast"]
 
 import logging
 import datetime as dt
+from typing import Dict, Optional
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
@@ -35,6 +36,9 @@ import shapely
 from cartopy.io import shapereader
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
+from climada.hazard import Hazard
+from climada.entity import Exposures
+from climada.entity.impact_funcs import ImpactFuncSet
 from climada.engine import ImpactCalc
 import climada.util.plot as u_plot
 from climada.util.config import CONFIG
@@ -130,7 +134,12 @@ class Forecast:
     """
 
     def __init__(
-        self, hazard_dict, exposure, impact_funcs, haz_model="NWP", exposure_name=None
+        self,
+        hazard_dict: Dict[str, Hazard],
+        exposure: Exposures,
+        impact_funcs: ImpactFuncSet,
+        haz_model: str = "NWP",
+        exposure_name: Optional[str] = None
     ):
         """Initialization with hazard, exposure and vulnerability.
 
@@ -144,7 +153,7 @@ class Forecast:
             as long as the attribute Hazard.date is the same for all
             events. Several run_datetime:Hazard combinations for the same
             event can be provided.
-        exposure : Exposure
+        exposure : Exposures
         impact_funcs : ImpactFuncSet
         haz_model : str, optional
             Short string specifying the model used to create the hazard,
@@ -152,7 +161,10 @@ class Forecast:
             weather prediction.
         exposure_name : str, optional
             string specifying the exposure (e.g. 'EU'), which is used to
-            name output files.
+            name output files. If ``None``, the name will be inferred from the Exposures
+            GeoDataframe ``region_id`` column, using the corresponding name of the region
+            with the lowest ISO 3166-1 numeric code. If that fails, it defaults to
+            ``"custom"``.
         """
         self.run_datetime = list(hazard_dict.keys())
         self.hazard = list(hazard_dict.values())
