@@ -363,6 +363,7 @@ class ImpactCalc():
         exp_values_csr = sparse.csr_matrix(  # vector 1 x exp_size
             (exp_values, np.arange(n_exp_pnt), [0, n_exp_pnt]),
             shape=(1, n_exp_pnt))
+        # pylint: disable=protected-access
         fract = self.hazard._get_fraction(cent_idx)
         if fract is None:
             return mdr.multiply(exp_values_csr)
