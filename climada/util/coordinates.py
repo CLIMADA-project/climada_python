@@ -2049,7 +2049,7 @@ def _raster_gradient(data, transform, latlon_to_m=False):
     gradient_transform : rasterio.Affine
         Affine transformation defining the output raster.
     """
-    xres, _, xmin, _, yres, ymin = transform[:6]
+    xres, _, _, _, yres = transform[:5]
     gradient_transform =  rasterio.Affine.translation(0.5 * xres, 0.5 * yres) * transform
 
     if latlon_to_m:
