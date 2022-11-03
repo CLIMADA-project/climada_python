@@ -44,7 +44,7 @@ class Tag():
         description : str, optional
             description of the data
         """
-        self.file_name = file_name
+        self.file_name = str(file_name)
         self.description = description
 
     def append(self, tag):
