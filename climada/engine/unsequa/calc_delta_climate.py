@@ -79,11 +79,11 @@ class CalcDeltaImpact(Calc):
     """Names of the required uncertainty variables"""
 
     _metric_names = (
-        'delta_aai_agg',
-        'delta_freq_curve',
-        'delta_at_event',
-        'delta_eai_exp',
-        'delta_tot_value',
+        'aai_agg',
+        'freq_curve',
+        'at_event',
+        'eai_exp',
+        'tot_value',
     )
     """Names of the cost benefit output metrics"""
 
