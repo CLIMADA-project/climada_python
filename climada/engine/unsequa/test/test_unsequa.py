@@ -356,7 +356,9 @@ class TestCalcDelta(unittest.TestCase):
 
         exp_unc, impf_unc, _ = make_input_vars()
         haz = haz_dem()
-        unc_calc = CalcDeltaImpact(exp_unc, impf_unc, haz, exp_unc, impf_unc, haz)
+        haz2 = haz_dem()
+        haz2.intensity *=2
+        unc_calc = CalcDeltaImpact(exp_unc, impf_unc, haz, exp_dem(), impf_dem(), haz2)
         unc_data = unc_calc.make_sample( N=2)
         unc_data = unc_calc.uncertainty(unc_data, calc_eai_exp=False, calc_at_event=False)
 
