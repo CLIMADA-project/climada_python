@@ -32,10 +32,9 @@ from climada.entity import Exposures, ImpactFuncSet
 from climada.hazard.base import Hazard
 from climada.engine import ImpactCalc, Impact
 from climada.engine.impact_calc import LOGGER as ILOG
-from climada.util.constants import ENT_DEMO_TODAY, DEMO_DIR, HAZ_TEST_TC
+from climada.util.constants import ENT_DEMO_TODAY, DEMO_DIR
 from climada.util.api_client import Client
 from climada.util.config import Config
-
 
 def get_test_file(ds_name):
     # As this module is part of the installation test suite, we want tom make sure it is running
@@ -43,16 +42,11 @@ def get_test_file(ds_name):
     # So we set cache_enabled explicitly to true
     client = Client(cache_enabled=True)
     test_ds = client.get_dataset_info(name=ds_name, status='test_dataset')
-    _, [haz_test_file] = client.download_dataset(test_ds)
-    return haz_test_file
-
-
-#HAZ_TEST_MAT = get_test_file('atl_prob_no_name')
+    _, [test_file] = client.download_dataset(test_ds)
+    return test_file
 
 ENT = Entity.from_excel(ENT_DEMO_TODAY)
-#HAZ = Hazard.from_mat(HAZ_TEST_MAT)
-HAZ = Hazard.from_hdf5(HAZ_TEST_TC)
-HAZ.fraction = sparse.csr_matrix(HAZ.intensity.shape) #temporary, to remove when file updated
+HAZ = Hazard.from_hdf5(get_test_file('test_tc_florida'))
 
 DATA_FOLDER = DEMO_DIR / 'test-results'
 DATA_FOLDER.mkdir(exist_ok=True)
@@ -69,7 +63,6 @@ def check_impact(self, imp, haz, exp, aai_agg, eai_exp, at_event, imp_mat_array=
     if imp_mat_array is not None:
         np.testing.assert_allclose(imp.imp_mat.toarray().ravel(),
                                    imp_mat_array.ravel())
-
 
 class TestImpactCalc(unittest.TestCase):
     """Test Impact calc methods"""
