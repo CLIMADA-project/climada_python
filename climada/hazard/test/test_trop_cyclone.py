@@ -29,7 +29,9 @@ from climada.util import ureg
 from climada.hazard.tc_tracks import TCTracks
 from climada.hazard.trop_cyclone import (
     TropCyclone, _close_centroids, _vtrans, _B_holland_1980, _bs_holland_2008,
-    _v_max_s_holland_2008, _x_holland_2010, _stat_holland_1980, _stat_holland_2010)
+    _v_max_s_holland_2008, _x_holland_2010, _stat_holland_1980, _stat_holland_2010,
+    _stat_er_2011,
+)
 from climada.hazard.centroids.centr import Centroids
 import climada.hazard.test as hazard_test
 
@@ -110,19 +112,21 @@ class TestReader(unittest.TestCase):
         intensity_values = {
             "H08": [25.60778909, 26.90887264, 28.26624642, 25.54092386, 31.21941738, 36.16596567,
                     21.11399856, 28.01452136, 32.65076804, 31.33884098, 0, 40.27002104],
-            "H10": [27.477252, 28.626236, 29.829914, 27.393616, 32.495186, 37.113324,
-                    23.573216, 29.552127, 33.767067, 32.530964, 19.656737, 41.014578],
-            # Holland 1980 is the only model that uses recorded wind speeds, while the above use
-            # pressure values only. That's why the results for Holland 1980 are so different:
-            "H1980": [20.291397, 22.678914, 25.428598, 20.44718 , 31.868592, 41.920317,
-                      0, 25.715983, 38.351686, 35.591153,  0, 46.873912],
+            "H10": [27.604317, 28.720708, 29.894993, 27.52234 , 32.512395, 37.114355,
+                    23.848917, 29.614752, 33.775593, 32.545347, 19.957627, 41.014578],
+            # Holland 1980 and Emanuel & Rotunno 2011 use recorded wind speeds, while the above use
+            # pressure values only. That's why the results are so different:
+            "H1980": [21.376807, 21.957217, 22.569568, 21.284351, 24.254226, 26.971303,
+                      19.220149, 21.984516, 24.196388, 23.449116,  0, 31.550207],
+            "ER11": [23.565332, 24.931413, 26.360758, 23.490333, 29.601171, 34.522795,
+                     18.996389, 26.102109, 30.780737, 29.498453,  0, 38.368805],
         }
 
         tc_track = TCTracks.from_processed_ibtracs_csv(TEST_TRACK)
         tc_track.equal_timestep()
         tc_track.data = tc_track.data[:1]
 
-        for model in ["H08", "H10", "H1980"]:
+        for model in ["H08", "H10", "H1980", "ER11"]:
             tc_haz = TropCyclone.from_tracks(tc_track, centroids=CENTR_TEST_BRB, model=model)
             np.testing.assert_array_almost_equal(
                 tc_haz.intensity[0, intensity_idx].toarray()[0], intensity_values[model])
@@ -234,8 +238,8 @@ class TestWindfieldHelpers(unittest.TestCase):
     def test_holland_2010_pass(self):
         """Test Holland et al. 2010 wind field model."""
         # test at centroids within and outside of radius of max wind
-        d_centr = np.array([[35e3, 75e3, 220e3], [30e3, 1000e3, 300e3]])
-        r_max = np.array([75e3, 40e3])
+        d_centr = np.array([[35, 75, 220], [30, 1000, 300]], dtype=float)
+        r_max = np.array([75, 40], dtype=float)
         v_max_s = np.array([35.0, 40.0])
         hol_b = np.array([1.80, 2.5])
         mask = np.array([[True, True, True], [True, False, True]], dtype=bool)
@@ -275,6 +279,18 @@ class TestWindfieldHelpers(unittest.TestCase):
         mask = np.ones_like(d_centr, dtype=bool)
         v_ang_norm = _stat_holland_1980(d_centr, r_max, hol_b, penv, pcen, lat, mask)
         np.testing.assert_array_equal(v_ang_norm, np.array([[], []]))
+
+    def test_er_2011_pass(self):
+        """Test Emanuel and Rotunno 2011 wind field model."""
+        # test at centroids within and outside of radius of max wind
+        d_centr = np.array([[35, 75, 220], [30, 1000, 300]], dtype=float)
+        r_max = np.array([75, 40], dtype=float)
+        v_max = np.array([35.0, 40.0])
+        lat = np.array([20, 27])
+        v_ang_norm = _stat_er_2011(d_centr, v_max, r_max, lat)
+        np.testing.assert_array_almost_equal(v_ang_norm,
+            [[28.258025, 36.869995, 22.521237],
+             [39.670883,  3.300626, 10.827206]])
 
     def test_vtrans_pass(self):
         """Test _vtrans function. Compare to MATLAB reference."""
