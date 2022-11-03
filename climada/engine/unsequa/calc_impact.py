@@ -23,12 +23,15 @@ __all__ = ['CalcImpact']
 
 import logging
 import time
+from typing import Union
 
 import pandas as pd
 import numpy as np
 
 from climada.engine import ImpactCalc
 from climada.engine.unsequa import Calc, InputVar, UncImpactOutput
+from climada.entity import Exposures, ImpactFuncSet
+from climada.hazard import Hazard
 from climada.util import log_level
 
 LOGGER = logging.getLogger(__name__)
@@ -49,23 +52,44 @@ class CalcImpact(Calc):
         Compute eai_exp or not
     calc_at_event : bool
         Compute eai_exp or not
-    metric_names : tuple(str)
-        Names of the impact output metris
-        ('aai_agg', 'freq_curve', 'at_event', 'eai_exp', 'tot_value')
     value_unit : str
         Unit of the exposures value
-    input_var_names : tuple(str)
-        Names of the required uncertainty input variables
-        ('exp_input_var', 'impf_input_var', 'haz_input_var')
     exp_input_var : climada.engine.uncertainty.input_var.InputVar
         Exposure uncertainty variable
     impf_input_var : climada.engine.uncertainty.input_var.InputVar
         Impact function set uncertainty variable
     haz_input_var: climada.engine.uncertainty.input_var.InputVar
         Hazard uncertainty variable
+    _input_var_names : tuple(str)
+        Names of the required uncertainty input variables
+        ('exp_input_var', 'impf_input_var', 'haz_input_var')
+    _metric_names : tuple(str)
+        Names of the impact output metrics
+        ('aai_agg', 'freq_curve', 'at_event', 'eai_exp', 'tot_value')
     """
 
-    def __init__(self, exp_input_var, impf_input_var, haz_input_var):
+    _input_var_names = (
+        'exp_input_var',
+        'impf_input_var',
+        'haz_input_var',
+    )
+    """Names of the required uncertainty variables"""
+
+    _metric_names = (
+        'aai_agg',
+        'freq_curve',
+        'at_event',
+        'eai_exp',
+        'tot_value',
+    )
+    """Names of the cost benefit output metrics"""
+
+    def __init__(
+        self,
+        exp_input_var: Union[InputVar, Exposures],
+        impf_input_var: Union[InputVar, ImpactFuncSet],
+        haz_input_var: Union[InputVar, Hazard],
+    ):
         """Initialize UncCalcImpact
 
         Sets the uncertainty input variables, the impact metric_names, and the
@@ -83,12 +107,10 @@ class CalcImpact(Calc):
         """
 
         Calc.__init__(self)
-        self.input_var_names = ('exp_input_var', 'impf_input_var', 'haz_input_var')
         self.exp_input_var =  InputVar.var_to_inputvar(exp_input_var)
         self.impf_input_var =  InputVar.var_to_inputvar(impf_input_var)
         self.haz_input_var =  InputVar.var_to_inputvar(haz_input_var)
-        self.metric_names = ('aai_agg', 'freq_curve', 'at_event',
-                             'eai_exp', 'tot_value')
+
         self.value_unit = self.exp_input_var.evaluate().value_unit
         self.check_distr()
 

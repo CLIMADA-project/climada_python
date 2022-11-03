@@ -189,8 +189,7 @@ class Hazard():
         >>> haz = Hazard.from_mat(HAZ_DEMO_MAT, 'demo')
 
         """
-        self.tag = TagHazard()
-        self.tag.haz_type = haz_type
+        self.tag = TagHazard(haz_type=haz_type)
         self.units = ''
         self.centroids = Centroids()
         # following values are defined for each event
