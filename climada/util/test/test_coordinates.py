@@ -942,14 +942,12 @@ class TestGetGeodata(unittest.TestCase):
             [1.96475615, 45.23249055],
         ])
         dists = [-3000, -1393549.5, 48.77]
-        dists_lowres = [416.66666667, 1393448.09801077, 1191.38205367]
-        # Warning: This will download more than 300 MB of data!
+        dists_lowres = [729.1666667, 1393670.6973145, 945.73129294]
+        # Warning: This will download more than 300 MB of data if not already present!
         result = u_coord.dist_to_coast_nasa(points[:, 0], points[:, 1], highres=True, signed=True)
         result_lowres = u_coord.dist_to_coast_nasa(points[:, 0], points[:, 1])
-        for d, r in zip(dists, result):
-            self.assertAlmostEqual(d, r)
-        for d, r in zip(dists_lowres, result_lowres):
-            self.assertAlmostEqual(d, r)
+        np.testing.assert_array_almost_equal(dists, result)
+        np.testing.assert_array_almost_equal(dists_lowres, result_lowres)
 
     def test_get_country_geometries_country_pass(self):
         """get_country_geometries with selected countries. issues with the
@@ -1356,11 +1354,56 @@ class TestRasterIO(unittest.TestCase):
             self.assertAlmostEqual(values[i], val)
 
         # with explicit intermediate resolution
-        values = u_coord.read_raster_sample(HAZ_DEMO_FL, lat, lon, fill_value=fill_value,
-                                    intermediate_res=res)
+        values = u_coord.read_raster_sample(
+            HAZ_DEMO_FL, lat, lon, fill_value=fill_value, intermediate_res=res)
         self.assertEqual(values.size, lat.size)
         for i, val in enumerate(i_j_vals[:, 2]):
             self.assertAlmostEqual(values[i], val)
+
+        # for the antimeridian tests, use the dist-to-coast dataset
+        path = u_coord._get_dist_to_coast_nasa_tif()
+
+        lat_left = np.array([5.132, 3.442])
+        lon_left = np.array([172.543, 177.234])
+        lat_right = np.array([2.782, -1.293])
+        lon_right = np.array([181.334, 185.968])
+        lat_both = np.concatenate([lat_left, lat_right])
+        lon_both = np.concatenate([lon_left, lon_right])
+        z_left = u_coord.read_raster_sample(path, lat_left, lon_left)
+        z_right = u_coord.read_raster_sample(path, lat_right, lon_right)
+        z_both = u_coord.read_raster_sample(path, lat_both, lon_both)
+        z_both_neg = u_coord.read_raster_sample(path, lat_both, lon_both - 360)
+
+        self.assertEqual(z_both.size, lat_both.size)
+        self.assertEqual(z_both_neg.size, lat_both.size)
+        np.testing.assert_array_almost_equal(z_left, z_both[:z_left.size], )
+        np.testing.assert_array_almost_equal(z_right, z_both[-z_right.size:])
+        np.testing.assert_array_almost_equal(z_left, z_both_neg[:z_left.size])
+        np.testing.assert_array_almost_equal(z_right, z_both_neg[-z_right.size:])
+
+    def test_sample_raster_gradient(self):
+        """Test sampling gradients from a raster file"""
+        path = u_coord._get_dist_to_coast_nasa_tif()
+        res = 0.01
+        for clon, clat in [(0, 0), (119.03, -17.38)]:
+            # extract the values of the corners, of the center, and of an additional point
+            lon = clon + res * (np.array([1, 0, 1, 0, 0.5, 0.349]) - 0.5)
+            lat = clat + res * (np.array([0, 0, 1, 1, 0.5, 0.537]) - 0.5)
+            values, gradient = u_coord.read_raster_sample_with_gradients(path, lat, lon)
+
+            # manually compute the gradient for comparison:
+            lon_size_m = res * u_coord.ONE_LAT_KM * 1000 * np.cos(np.radians(clat))
+            lat_size_m = res * u_coord.ONE_LAT_KM * 1000
+            v10, v00, v11, v01 = values[:4]
+            dx0 = v10 - v00
+            dx1 = v11 - v01
+            dy0 = v01 - v00
+            dy1 = v11 - v10
+            gradx = 0.5 * (dx0 + dx1) / lon_size_m
+            grady = 0.5 * (dy0 + dy1) / lat_size_m
+
+            np.testing.assert_array_almost_equal(gradient[4:, 0], grady)
+            np.testing.assert_array_almost_equal(gradient[4:, 1], gradx)
 
     def test_refine_raster(self):
         """Test refinement of given raster data"""
