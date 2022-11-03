@@ -2066,16 +2066,8 @@ def _raster_gradient(data, transform, latlon_to_m=False):
 
     return gradient_data, gradient_transform
 
-def read_raster_sample(path, lat, lon, intermediate_res=None, method=('linear', 'nearest'),
-                       fill_value=None, gradient=False):
-    """Read point samples from raster file.
-
-    To avoid redundant IO operations, the gradients at the specified points can be computed in the
-    same function call using the `gradient` feature. For example, in case of an elevation data set,
-    the slopes of the terrain in x- and y-direction are returned. In addition, if the CRS of the
-    elevation data set is EPSG:4326 (lat/lon) and elevations are given in m, then distances are
-    converted from degrees to meters, so that the unit of the returned slopes is "meters (height)
-    per meter (distance)".
+def _prepare_raster_sample(path, lat, lon, intermediate_res, fill_value):
+    """Helper function for the sampling of points from a raster file.
 
     Parameters
     ----------
@@ -2085,34 +2077,25 @@ def read_raster_sample(path, lat, lon, intermediate_res=None, method=('linear', 
         latitudes in file's CRS
     lon : np.array of shape (npoints,)
         longitudes in file's CRS
-    intermediate_res : float or pair of floats, optional
+    intermediate_res : float or pair of floats or None
         If given, the raster is not read in its original resolution but in the given one. This can
         increase performance for files of very high resolution.
-    method : str or pair of str, optional
-        The interpolation methods for the data and its gradient, passed to
-        `scipy.interpolate.interpn`. If a single string is given, the same interpolation method is
-        used for both the data and its gradient. Default: ('linear', 'nearest')
-    fill_value : numeric, optional
-        The value used outside of the raster bounds. Default: The raster's nodata value or 0.
-    gradient : boolean, optional
-        If True, compute the raster gradient at the specified points. For convenience, and because
-        this is the most common use case, the step sizes in the gradient computation are converted
-        to meters if the raster's CRS is EPSG:4326 (lat/lon). Default: False
+    fill_value : numeric or None
+        The value used outside of the raster bounds.
 
     Returns
     -------
-    values : np.array of shape (npoints,)
-        Interpolated raster values for each given coordinate point.
-    gradient : np.array of shape (npoints, 2), optional
-        If grad=True, the raster gradient at each of the given coordinate points is returned.
-        The first/second value in each row is the derivative in lat/lon direction (lat is first!).
+    data : np.array of shape (ny, nx)
+        Raster data from the given raster file that is covering a rectangular region around the
+        given sample points.
+    transform : rasterio.Affine
+        Affine transformation defining the output raster data.
+    fill_value : float
+        The values to use outside of the raster bounds. If None was provided as an input, this is
+        the raster's nodata value (if it exists) or 0.
+    crs : CRS
+        The CRS of the raster file.
     """
-    if lat.size == 0:
-        return np.zeros_like(lat)
-
-    if isinstance(method, str):
-        method = (method, method)
-
     LOGGER.info('Sampling from %s', path)
 
     with rasterio.open(_add_gdal_vsi_prefix(path), "r") as src:
@@ -2131,16 +2114,98 @@ def read_raster_sample(path, lat, lon, intermediate_res=None, method=('linear', 
         fill_value = meta_nodata
     fill_value = fill_value or 0
 
+    return data, transform, fill_value, crs
+
+def read_raster_sample(path, lat, lon, intermediate_res=None, method='linear', fill_value=None):
+    """Read point samples from raster file.
+
+    Parameters
+    ----------
+    path : str
+        path of the raster file
+    lat : np.array of shape (npoints,)
+        latitudes in file's CRS
+    lon : np.array of shape (npoints,)
+        longitudes in file's CRS
+    intermediate_res : float or pair of floats, optional
+        If given, the raster is not read in its original resolution but in the given one. This can
+        increase performance for files of very high resolution.
+    method : str or pair of str, optional
+        The interpolation method, passed to `scipy.interpolate.interpn`. Default: 'linear'
+    fill_value : numeric, optional
+        The value used outside of the raster bounds. Default: The raster's nodata value or 0.
+
+    Returns
+    -------
+    values : np.array of shape (npoints,)
+        Interpolated raster values for each given coordinate point.
+    """
+    if lat.size == 0:
+        return np.zeros_like(lat)
+
+    data, transform, fill_value, _ = _prepare_raster_sample(
+        path, lat, lon, intermediate_res, fill_value)
+
+    return interp_raster_data(
+        data, lat, lon, transform, method=method, fill_value=fill_value)
+
+def read_raster_sample_with_gradients(path, lat, lon, intermediate_res=None,
+                                      method=('linear', 'nearest'), fill_value=None):
+    """Read point samples with computed gradients from raster file.
+
+    For convenience, and because this is the most common use case, the step sizes in the gradient
+    computation are converted to meters if the raster's CRS is EPSG:4326 (lat/lon).
+
+    For example, in case of an elevation data set, not only the heights, but also the slopes of the
+    terrain in x- and y-direction are returned. In addition, if the CRS of the elevation data set
+    is EPSG:4326 (lat/lon) and elevations are given in m, then distances are converted from degrees
+    to meters, so that the unit of the returned slopes is "meters (height) per meter (distance)".
+
+    Parameters
+    ----------
+    path : str
+        path of the raster file
+    lat : np.array of shape (npoints,)
+        latitudes in file's CRS
+    lon : np.array of shape (npoints,)
+        longitudes in file's CRS
+    intermediate_res : float or pair of floats, optional
+        If given, the raster is not read in its original resolution but in the given one. This can
+        increase performance for files of very high resolution.
+    method : str or pair of str, optional
+        The interpolation methods for the data and its gradient, passed to
+        `scipy.interpolate.interpn`. If a single string is given, the same interpolation method is
+        used for both the data and its gradient. Default: ('linear', 'nearest')
+    fill_value : numeric, optional
+        The value used outside of the raster bounds. Default: The raster's nodata value or 0.
+
+    Returns
+    -------
+    values : np.array of shape (npoints,)
+        Interpolated raster values for each given coordinate point.
+    gradient : np.array of shape (npoints, 2)
+        The raster gradient at each of the given coordinate points. The first/second value in each
+        row is the derivative in lat/lon direction (lat is first!).
+    """
+    npoints = lat.size
+
+    if npoints == 0:
+        return np.zeros(npoints), np.zeros((npoints, 2))
+
+    if isinstance(method, str):
+        method = (method, method)
+
+    data, transform, fill_value, crs = _prepare_raster_sample(
+        path, lat, lon, intermediate_res, fill_value)
+
     interp_data = interp_raster_data(
         data, lat, lon, transform, method=method[0], fill_value=fill_value)
-
-    if not gradient:
-        return interp_data
 
     is_latlon = crs is not None and crs.to_epsg() == 4326
     grad_data, grad_transform = _raster_gradient(data, transform, latlon_to_m=is_latlon)
     interp_grad = interp_raster_data(
         grad_data, lat, lon, grad_transform, method=method[1], fill_value=fill_value)
+
     return interp_data, interp_grad
 
 def interp_raster_data(data, interp_y, interp_x, transform, method='linear', fill_value=0):

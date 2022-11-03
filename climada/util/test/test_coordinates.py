@@ -1389,7 +1389,7 @@ class TestRasterIO(unittest.TestCase):
             # extract the values of the corners, of the center, and of an additional point
             lon = clon + res * (np.array([1, 0, 1, 0, 0.5, 0.349]) - 0.5)
             lat = clat + res * (np.array([0, 0, 1, 1, 0.5, 0.537]) - 0.5)
-            values, gradient = u_coord.read_raster_sample(path, lat, lon, gradient=True)
+            values, gradient = u_coord.read_raster_sample_with_gradients(path, lat, lon)
 
             # manually compute the gradient for comparison:
             lon_size_m = res * u_coord.ONE_LAT_KM * 1000 * np.cos(np.radians(clat))
