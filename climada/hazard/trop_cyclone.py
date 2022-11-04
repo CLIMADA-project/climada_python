@@ -494,8 +494,7 @@ class TropCyclone(Hazard):
         new_haz.event_id = np.array([1])
         new_haz.frequency = np.array([1])
         new_haz.event_name = [track.sid]
-        new_haz.fraction = new_haz.intensity.copy()
-        new_haz.fraction.data.fill(1)
+        new_haz.fraction = sparse.csr_matrix(new_haz.intensity.shape)
         # store first day of track as date
         new_haz.date = np.array([
             dt.datetime(track.time.dt.year.values[0],
