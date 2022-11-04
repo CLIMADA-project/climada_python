@@ -19,6 +19,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Test Impact class.
 """
 import unittest
+from pathlib import Path
 import numpy as np
 from scipy import sparse
 
@@ -27,29 +28,18 @@ from climada.hazard.tag import Tag as TagHaz
 from climada.entity.entity_def import Entity
 from climada.hazard.base import Hazard
 from climada.engine import Impact, ImpactCalc
-from climada.util.constants import ENT_DEMO_TODAY, DEF_CRS, DEMO_DIR, HAZ_TEST_TC
-from climada.util.api_client import Client
+from climada.util.constants import ENT_DEMO_TODAY, DEF_CRS, DEMO_DIR
 import climada.util.coordinates as u_coord
-import climada.engine.test as engine_test
+
+from climada.hazard.test.test_base import HAZ_TEST_TC
 
 
-def get_haz_test_file(ds_name):
-    # As this module is part of the installation test suite, we want tom make sure it is running
-    # also in offline mode even when installing from pypi, where there is no test configuration.
-    # So we set cache_enabled explicitly to true
-    client = Client(cache_enabled=True)
-    test_ds = client.get_dataset_info(name=ds_name, status='test_dataset')
-    _, [haz_test_file] = client.download_dataset(test_ds)
-    return haz_test_file
+ENT :Entity = Entity.from_excel(ENT_DEMO_TODAY)
+HAZ :Hazard = Hazard.from_hdf5(HAZ_TEST_TC)
 
-
-HAZ_TEST_TC = get_haz_test_file('test_tc_florida')
-
-ENT = Entity.from_excel(ENT_DEMO_TODAY)
-HAZ = Hazard.from_hdf5(HAZ_TEST_TC)
-
-DATA_FOLDER = DEMO_DIR / 'test-results'
+DATA_FOLDER :Path = DEMO_DIR / 'test-results'
 DATA_FOLDER.mkdir(exist_ok=True)
+
 
 class TestImpact(unittest.TestCase):
     """"Test initialization and more"""

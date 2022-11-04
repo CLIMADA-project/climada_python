@@ -134,7 +134,7 @@ class Hazard():
     fraction : sparse.csr_matrix
         fraction of affected exposures for each event at each centroid.
         If empty (all 0), it is ignored in the impact computations
-        (i.e., is equivalent to fraction is 1 everywhere).  
+        (i.e., is equivalent to fraction is 1 everywhere).
     """
     intensity_thres = 10
     """Intensity threshold per hazard used to filter lower intensities. To be

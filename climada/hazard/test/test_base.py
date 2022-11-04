@@ -32,21 +32,25 @@ from climada.hazard.centroids.centr import Centroids
 import climada.util.dates_times as u_dt
 from climada.util.constants import DEF_FREQ_UNIT, HAZ_TEMPLATE_XLS, HAZ_DEMO_FL
 import climada.util.coordinates as u_coord
-from climada.util.api_client import Client
+
+from climada.test import get_test_file
 import climada.hazard.test as hazard_test
 
-DATA_DIR = CONFIG.hazard.test_data.dir()
-HAZ_TEST_MAT = Path(hazard_test.__file__).parent.joinpath('data', 'atl_prob_no_name.mat')
 
-def get_test_file_name(ds_name):
-    # As this module is part of the installation test suite, we want tom make sure it is running
-    # also in offline mode even when installing from pypi, where there is no test configuration.
-    # So we set cache_enabled explicitly to true
-    client = Client(cache_enabled=True)
-    test_ds = client.get_dataset_info(name=ds_name, status='test_dataset')
-    _, [test_file] = client.download_dataset(test_ds)
-    return test_file
-HAZ_TEST_TC = get_test_file_name('test_tc_florida')
+DATA_DIR :Path = CONFIG.hazard.test_data.dir()
+"""
+Directory for writing (and subsequent reading) of temporary files created during tests.
+"""
+HAZ_TEST_MAT :Path = Path(hazard_test.__file__).parent.joinpath('data', 'atl_prob_no_name.mat')
+"""
+Hazard test file from Git repository. Fraction is 1. Format: matlab.
+"""
+HAZ_TEST_TC :Path = get_test_file('test_tc_florida')
+"""
+Hazard test file from Data API: Hurricanes from 1851 to 2011 over Florida with 100 centroids.
+Fraction is empty. Format: HDF5.
+"""
+
 
 def dummy_hazard():
     hazard = Hazard('TC')
@@ -957,7 +961,7 @@ class TestAppend(unittest.TestCase):
         lat3, lon3 = np.array([0.5, 3]), np.array([-0.5, 3])
         on_land3 = np.array([True, True, False])
         cent3 = Centroids(lat=lat3, lon=lon3, on_land=on_land3)
-        
+
         with self.assertRaises(ValueError) as cm:
             haz_1.change_centroids(cent3, threshold=100)
         self.assertIn('two hazard centroids are mapped to the same centroids', str(cm.exception))
