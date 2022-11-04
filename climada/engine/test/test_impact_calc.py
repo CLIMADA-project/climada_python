@@ -36,24 +36,15 @@ from climada.util.constants import ENT_DEMO_TODAY, DEMO_DIR
 from climada.util.api_client import Client
 from climada.util.config import Config
 
+from climada.test import get_test_file
 
-def get_test_file(ds_name):
-    # As this module is part of the installation test suite, we want tom make sure it is running
-    # also in offline mode even when installing from pypi, where there is no test configuration.
-    # So we set cache_enabled explicitly to true
-    client = Client(cache_enabled=True)
-    test_ds = client.get_dataset_info(name=ds_name, status='test_dataset')
-    _, [haz_test_file] = client.download_dataset(test_ds)
-    return haz_test_file
-
-
-HAZ_TEST_MAT = get_test_file('atl_prob_no_name')
 
 ENT = Entity.from_excel(ENT_DEMO_TODAY)
-HAZ = Hazard.from_mat(HAZ_TEST_MAT)
+HAZ = Hazard.from_hdf5(get_test_file('test_tc_florida'))
 
 DATA_FOLDER = DEMO_DIR / 'test-results'
 DATA_FOLDER.mkdir(exist_ok=True)
+
 
 def check_impact(self, imp, haz, exp, aai_agg, eai_exp, at_event, imp_mat_array=None):
     """Test properties of imapcts"""
@@ -129,7 +120,8 @@ class TestImpactCalc(unittest.TestCase):
 
         x = 0.6
         HAZf = deepcopy(HAZ)
-        HAZf.fraction *= 0.6
+        HAZf.fraction = HAZ.intensity.copy()
+        HAZf.fraction.data.fill(x)
         icalc = ImpactCalc(ENT.exposures, ENT.impact_funcs, HAZf)
         impact = icalc.impact(assign_centroids=False)
         self.assertEqual(icalc.n_events, len(impact.at_event))
@@ -424,7 +416,7 @@ class TestImpactMatrixCalc(unittest.TestCase):
         self.hazard.get_mdr.return_value = sparse.csr_matrix(
             [[0.0, 0.5, -1.0], [1.0, 2.0, 1.0]]
         )
-        self.hazard.get_fraction.return_value = sparse.csr_matrix(
+        self.hazard._get_fraction.return_value = sparse.csr_matrix(
             [[1.0, 1.0, 1.0], [-0.5, 0.5, 2.0]]
         )
         self.exposure_values = np.array([10.0, 20.0, -30.0])
@@ -445,7 +437,7 @@ class TestImpactMatrixCalc(unittest.TestCase):
             self.hazard.get_mdr.assert_called_once_with(
                 self.centroids, ENT.impact_funcs
             )
-            self.hazard.get_fraction.assert_called_once_with(self.centroids)
+            self.hazard._get_fraction.assert_called_once_with(self.centroids)
 
     def test_wrong_sizes(self):
         """Calling 'impact_matrix' with wrongly sized argument results in errors"""
@@ -618,7 +610,7 @@ class TestImpactMatrix(unittest.TestCase):
         self.icalc.hazard.get_mdr.return_value = mdr
         fraction = sparse.csr_matrix([[1.0, 1.0, 1.0], [1.0, 0.0, -1.0]])
         fraction.eliminate_zeros()
-        self.icalc.hazard.get_fraction.return_value = fraction
+        self.icalc.hazard._get_fraction.return_value = fraction
 
     def test_impact_matrix(self):
         """Check if impact matrix calculations and calls to hazard are correct"""
@@ -630,7 +622,7 @@ class TestImpactMatrix(unittest.TestCase):
             impact_matrix.toarray(), [[1.0, 0.0, 8.0], [-1.0, 0.0, -4.0]]
         )
         self.icalc.hazard.get_mdr.assert_called_once_with(centroid_idx, "impf")
-        self.icalc.hazard.get_fraction.assert_called_once_with(centroid_idx)
+        self.icalc.hazard._get_fraction.assert_called_once_with(centroid_idx)
 
 
 @patch.object(Impact, "from_eih")

@@ -39,12 +39,15 @@ class Tag(object):
         description(s) of the data
     """
 
-    def __init__(self, haz_type='', file_name='', description=''):
+    def __init__(self,
+                 haz_type: str = '',
+                 file_name: str = '',
+                 description: str = ''):
         """Initialize values.
 
         Parameters
         ----------
-        haz_type : str, optional
+        haz_type : str
             acronym of the hazard type (e.g. 'TC').
         file_name : str or list(str), optional
             file name(s) to read

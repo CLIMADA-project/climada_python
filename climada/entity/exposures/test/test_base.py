@@ -106,12 +106,12 @@ class TestFuncs(unittest.TestCase):
         haz = Hazard('FL')
 
         # explicit, easy-to-understand raster centroids for hazard
-        haz.centroids = Centroids()
-        haz.centroids.meta = {
+        meta = {
             'count': 1, 'crs': DEF_CRS,
             'width': 20, 'height': 10,
             'transform': rasterio.Affine(1.5, 0.0, -20, 0.0, -1.4, 8)
         }
+        haz.centroids = Centroids(meta=meta)
 
         # explicit points with known results (see `expected_result` for details)
         exp = Exposures(crs=DEF_CRS)
@@ -447,7 +447,7 @@ class TestGeoDFFuncs(unittest.TestCase):
         probe.set_gdf(empty_gdf)
         self.assertTrue(probe.gdf.equals(gpd.GeoDataFrame()))
         self.assertTrue(u_coord.equal_crs(DEF_CRS, probe.crs))
-        self.assertIsNone(probe.gdf.crs)
+        self.assertFalse(hasattr(probe.gdf, "crs"))
 
         probe.set_gdf(gdf_with_geometry)
         self.assertTrue(probe.gdf.equals(gdf_with_geometry))
@@ -457,7 +457,7 @@ class TestGeoDFFuncs(unittest.TestCase):
         probe.set_gdf(gdf_without_geometry)
         self.assertTrue(probe.gdf.equals(good_exposures().gdf))
         self.assertTrue(u_coord.equal_crs(DEF_CRS, probe.crs))
-        self.assertIsNone(probe.gdf.crs)
+        self.assertFalse(hasattr(probe.gdf, "crs"))
 
     def test_set_crs(self):
         """Test setting the CRS"""
