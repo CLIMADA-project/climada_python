@@ -132,8 +132,9 @@ class Hazard():
     intensity : sparse.csr_matrix
         intensity of the events at centroids
     fraction : sparse.csr_matrix
-        fraction of affected exposures for each
-        event at each centroid
+        fraction of affected exposures for each event at each centroid.
+        If empty (all 0), it is ignored in the impact computations
+        (i.e., is equivalent to fraction is 1 everywhere).
     """
     intensity_thres = 10
     """Intensity threshold per hazard used to filter lower intensities. To be
@@ -2345,7 +2346,6 @@ class Hazard():
 
         See Also
         --------
-        get_fraction: get the fraction for the given centroids
         get_paa: get the paa ffor the given centroids
 
         """
@@ -2385,7 +2385,6 @@ class Hazard():
         See Also
         --------
         get_mdr: get the mean-damage ratio for the given centroids
-        get_fraction: get the fraction for the given centroids
 
         """
         uniq_cent_idx, indices = np.unique(cent_idx, return_inverse=True)
@@ -2393,7 +2392,7 @@ class Hazard():
         paa.data = np.interp(paa.data, impf.intensity, impf.paa)
         return paa[:, indices]
 
-    def get_fraction(self, cent_idx):
+    def _get_fraction(self, cent_idx=None):
         """
         Return fraction for chosen centroids (cent_idx).
 
@@ -2401,15 +2400,18 @@ class Hazard():
         ----------
         cent_idx : array-like
             array of indices of chosen centroids from hazard
+            Default is None (full fraction is returned)
 
         Returns
         -------
-        sparse.csr_matrix
+        sparse.csr_matrix or None
             sparse matrix (n_events x len(cent_idx)) with fraction values
-
-        See Also
-        --------
-        get_mdr: get the mdr for the given centroids
-        get_paa: get the paa ffor the given centroids
+            None if fraction is empty. (When calculating the impact, an empty fraction is
+            equivalent to the identity under multiplication, i.e. a uniform matrix with
+            value 1 everywhere.)
         """
+        if self.fraction.nnz == 0:
+            return None
+        if cent_idx is None:
+            return self.fraction
         return self.fraction[:, cent_idx]
