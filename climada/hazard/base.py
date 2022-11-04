@@ -2346,7 +2346,6 @@ class Hazard():
 
         See Also
         --------
-        get_fraction: get the fraction for the given centroids
         get_paa: get the paa ffor the given centroids
 
         """
@@ -2386,7 +2385,6 @@ class Hazard():
         See Also
         --------
         get_mdr: get the mean-damage ratio for the given centroids
-        get_fraction: get the fraction for the given centroids
 
         """
         uniq_cent_idx, indices = np.unique(cent_idx, return_inverse=True)
@@ -2408,12 +2406,9 @@ class Hazard():
         -------
         sparse.csr_matrix or None
             sparse matrix (n_events x len(cent_idx)) with fraction values
-            None if fraction is empty.
-
-        See Also
-        --------
-        get_mdr: get the mdr for the given centroids
-        get_paa: get the paa ffor the given centroids
+            None if fraction is empty. (When calculating the impact, an empty fraction is
+            equivalent to the identity under multiplication, i.e. a uniform matrix with
+            value 1 everywhere.)
         """
         if self.fraction.nnz == 0:
             return None
