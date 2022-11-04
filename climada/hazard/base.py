@@ -190,8 +190,7 @@ class Hazard():
         >>> haz = Hazard.from_mat(HAZ_DEMO_MAT, 'demo')
 
         """
-        self.tag = TagHazard()
-        self.tag.haz_type = haz_type
+        self.tag = TagHazard(haz_type=haz_type)
         self.units = ''
         self.centroids = Centroids()
         # following values are defined for each event
@@ -1065,8 +1064,7 @@ class Hazard():
                                                 scheduler=scheduler)
         self.intensity = sparse.csr_matrix(raster[:self.size, :, :].reshape(self.size, -1))
         self.fraction = sparse.csr_matrix(raster[self.size:, :, :].reshape(self.size, -1))
-        self.centroids = Centroids()
-        self.centroids.meta = meta
+        self.centroids = Centroids(meta=meta)
         self.check()
 
     def read_mat(self, *args, **kwargs):

@@ -23,6 +23,7 @@ import copy
 from functools import partial
 from itertools import zip_longest
 import logging
+from typing import Dict
 
 import scipy as sp
 import numpy as np
@@ -103,7 +104,11 @@ class InputVar():
 
     """
 
-    def __init__(self, func, distr_dict):
+    def __init__(
+        self,
+        func: callable,
+        distr_dict: Dict,
+    ):
         """
         Initialize InputVar
 
@@ -133,7 +138,7 @@ class InputVar():
         Parameters
         ----------
         **params : optional
-            Input parameters will be passed to self.InputVar_func.
+            Input parameters will be passed to self.func.
 
         Returns
         -------

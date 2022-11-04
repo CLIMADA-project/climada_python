@@ -359,11 +359,11 @@ class TestCalcImpact(unittest.TestCase):
         unc_calc = CalcImpact(exp_iv, impf_iv, haz_iv)
 
         self.assertTupleEqual(
-            unc_calc.input_var_names,
+            unc_calc._input_var_names,
             ('exp_input_var', 'impf_input_var', 'haz_input_var')
             )
         self.assertTupleEqual(
-            unc_calc.metric_names,
+            unc_calc._metric_names,
             ('aai_agg', 'freq_curve', 'at_event', 'eai_exp', 'tot_value')
             )
         self.assertEqual(unc_calc.value_unit, exp_iv.evaluate().value_unit)
@@ -578,12 +578,12 @@ class TestCalcCostBenefit(unittest.TestCase):
         unc_calc = CalcCostBenefit(haz_iv, ent_iv)
 
         self.assertTupleEqual(
-            unc_calc.input_var_names,
+            unc_calc._input_var_names,
             ('haz_input_var', 'ent_input_var',
               'haz_fut_input_var', 'ent_fut_input_var')
             )
         self.assertTupleEqual(
-            unc_calc.metric_names,
+            unc_calc._metric_names,
             ('tot_climate_risk', 'benefit', 'cost_ben_ratio',
             'imp_meas_present', 'imp_meas_future')
             )
@@ -602,12 +602,12 @@ class TestCalcCostBenefit(unittest.TestCase):
         unc_calc = CalcCostBenefit(haz_iv, ent_iv, haz_iv, ent_fut_iv)
 
         self.assertTupleEqual(
-            unc_calc.input_var_names,
+            unc_calc._input_var_names,
             ('haz_input_var', 'ent_input_var',
               'haz_fut_input_var', 'ent_fut_input_var')
             )
         self.assertTupleEqual(
-            unc_calc.metric_names,
+            unc_calc._metric_names,
             ('tot_climate_risk', 'benefit', 'cost_ben_ratio',
             'imp_meas_present', 'imp_meas_future')
             )
