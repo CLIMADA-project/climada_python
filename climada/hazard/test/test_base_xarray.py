@@ -118,9 +118,13 @@ class TestReadDefaultNetCDF(unittest.TestCase):
 
     def test_load_dataset(self):
         """Load the data from an opened dataset as argument"""
-        dataset = xr.open_dataset(self.netcdf_path)
-        hazard = Hazard.from_raster_xarray(dataset, "", "")
-        self._assert_default(hazard)
+        def _load_and_assert(chunks):
+            dataset = xr.open_dataset(self.netcdf_path, chunks=chunks)
+            hazard = Hazard.from_raster_xarray(dataset, "", "")
+            self._assert_default(hazard)
+
+        _load_and_assert(chunks=None)
+        _load_and_assert(chunks=dict(latitude=1, longitude=1, time=1))
 
     def test_type_and_unit(self):
         """Test passing a custom type and unit"""

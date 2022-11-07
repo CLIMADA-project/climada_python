@@ -40,6 +40,7 @@ from rasterio.features import rasterize
 from rasterio.warp import reproject, Resampling, calculate_default_transform
 from scipy import sparse
 import xarray as xr
+import sparse as sp
 
 from climada.hazard.tag import Tag as TagHazard
 from climada.hazard.centroids.centr import Centroids
@@ -619,7 +620,7 @@ class Hazard():
         # If the data is a string, open the respective file
         if not isinstance(data, xr.Dataset):
             LOGGER.info("Loading Hazard from file: %s", data)
-            data = xr.open_dataset(data)
+            data = xr.open_dataset(data, chunks="auto")
         else:
             LOGGER.info("Loading Hazard from xarray Dataset")
 
@@ -676,12 +677,15 @@ class Hazard():
             data[coords["latitude"]].values, data[coords["longitude"]].values, crs=crs,
         )
 
-        def to_csr_matrix(array: np.ndarray) -> sparse.csr_matrix:
+        def to_csr_matrix(array: xr.DataArray) -> sparse.csr_matrix:
             """Store a numpy array as sparse matrix, optimizing storage space
 
             The CSR matrix stores NaNs explicitly, so we set them to zero.
             """
-            return sparse.csr_matrix(np.where(np.isnan(array), 0, array))
+            array = array.where(array.notnull(), 0)
+            array = xr.apply_ufunc(sp.COO.from_numpy, array, dask="parallelized", output_dtypes=[array.dtype])
+            array = array.compute().data  # Load into memory, da is now a sparse.COO array
+            return array.tocsr()  # Convert sparse.COO to scipy.sparse.csr_matrix
 
         # Read the intensity data
         LOGGER.debug("Loading Hazard intensity from DataArray '%s'", intensity)
@@ -725,8 +729,10 @@ class Hazard():
                 default_value=[
                     to_csr_matrix(
                         xr.apply_ufunc(
-                            lambda x: np.where(x != 0, 1, 0), data[intensity]
-                        ).values
+                            lambda x: np.where(x != 0, 1, 0), data[intensity],
+                            dask="parallelized",
+                            output_dtypes=[data[intensity].dtype],
+                        )
                     ),
                     np.ones(num_events),
                     np.array(range(num_events), dtype=int) + 1,
@@ -735,7 +741,7 @@ class Hazard():
                 ],
                 # The accessor for the data in the Dataset
                 accessor=[
-                    lambda x: to_csr_matrix(default_accessor(x)),
+                    to_csr_matrix,
                     default_accessor,
                     strict_positive_int_accessor,
                     lambda x: list(default_accessor(x).flat),  # list, not np.array
