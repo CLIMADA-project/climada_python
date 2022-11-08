@@ -1463,24 +1463,39 @@ class Impact():
             return frequency
 
         def check_dates(imp_list):
-            dates = [date for imp in imp_list for date in imp.date]
-            if len(dates) != len(set(dates)):
-                raise ValueError(
-                    "Found at least one duplicate date. Impacts can not contain same dates."
+
+            #compare dates of all impact pairs
+            for i in range(len(imp_list)):
+                for j in range(i + 1, len(imp_list)):
+                    dates_a_set = set(imp_list[i].date)
+                    dates_b_set = set(imp_list[j].date)
+                    if len(dates_a_set.intersection(dates_b_set)) > 0:
+                        raise ValueError("Found at least one duplicate date. Impacts can not contain same dates."
                     "The impacts are incompatible and cannot be concatenated.")
-            date = np.array(dates)
+            date = np.array([date for imp in imp_list for date in imp.date])
             return date
 
         def check_exposure(imp_list):
-            tot_vals = set([imp.tot_value for imp in imp_list])
-            if (not np.array_equal(imp.coord_exp, imp_list[0].coord_exp)) or (len(tot_vals) > 1): #here something doesnt work (imp not defined)
-                raise ValueError("The impacts are not based on same exposure."
+
+            #check total value
+            tot_vals = {imp.tot_value for imp in imp_list}
+            if (len(tot_vals) > 1):
+                raise ValueError("The impacts are not based on same exposure (total exposure values are different)."
                                  "The impacts are incompatible and cannot be concatenated.")
+
+            #compare exposure coordinates of all impact pairs
+            for i in range(len(imp_list)):
+                for j in range(i + 1, len(imp_list)):
+                    if not np.array_equal(imp_list[i].coord_exp, imp_list[j].coord_exp): #SOLVED #here something doesnt work (imp not defined)
+                        raise ValueError("The impacts are not based on same exposure."
+                                         "The impacts are incompatible and cannot be concatenated.")
+            #compare exposure descriptions
             exp_desc = {imp.tag['exp'].description for imp in imp_list if imp.tag['exp'].description != ''}
             if len(exp_desc) > 1:
                 raise ValueError(
                     f"The given impacts are based on exposures with different descriptions: {exp_desc}. "
                     "The impacts are incompatible and cannot be concatenated.")
+
             return True
 
         #if impact list is empty, return cls()
