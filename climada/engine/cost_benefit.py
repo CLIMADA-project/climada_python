@@ -23,6 +23,8 @@ __all__ = ['CostBenefit', 'risk_aai_agg', 'risk_rp_100', 'risk_rp_250']
 
 import copy
 import logging
+from typing import Optional, Dict, Tuple, Union
+
 import numpy as np
 import matplotlib.colors as colors
 import matplotlib.pyplot as plt
@@ -30,6 +32,7 @@ from matplotlib.patches import Rectangle, FancyArrowPatch
 from tabulate import tabulate
 
 from climada.engine.impact_calc import ImpactCalc
+from climada.engine import Impact, ImpactFreqCurve
 
 LOGGER = logging.getLogger(__name__)
 
@@ -134,28 +137,42 @@ class CostBenefit():
         'impact' (Impact): impact instance
     """
 
-    def __init__(self):
+    def __init__(
+        self,
+        present_year: int = DEF_PRESENT_YEAR,
+        future_year: int = DEF_FUTURE_YEAR,
+        tot_climate_risk: float = 0.0,
+        unit: str = 'USD',
+        color_rgb: Optional[Dict[str, np.ndarray]] = None,
+        benefit: Optional[Dict[str, float]] = None,
+        cost_ben_ratio: Optional[Dict[str, float]] = None,
+        imp_meas_present: Optional[Dict[str,
+            Union[float, Tuple[float, float], Impact, ImpactFreqCurve]]] = None,
+        imp_meas_future: Optional[Dict[str,
+            Union[float, Tuple[float, float], Impact, ImpactFreqCurve]]] = None,
+    ):
         """Initilization"""
-        self.present_year = DEF_PRESENT_YEAR
-        self.future_year = DEF_FUTURE_YEAR
-
-        self.tot_climate_risk = 0.0
-        self.unit = 'USD'
+        self.present_year = present_year
+        self.future_year = future_year
+        self.tot_climate_risk = tot_climate_risk
+        self.unit = unit
 
         # dictionaries with key: measure name
         # value: measure color_rgb
-        self.color_rgb = dict()
+        self.color_rgb = color_rgb if color_rgb is not None else dict()
         # value: measure benefit
-        self.benefit = dict()
+        self.benefit = color_rgb if color_rgb is not None else dict()
         # value: measure cost benefit
-        self.cost_ben_ratio = dict()
+        self.cost_ben_ratio = cost_ben_ratio if cost_ben_ratio is not None else dict()
+        self.benefit = benefit if benefit is not None else dict()
+
         # 'no measure' key for impact without measures
         # values: dictionary with 'cost': cost measure,
         #                         'risk': risk measurement,
         #                         'efc': ImpactFreqCurve
         #          (optionally)   'impact': Impact
-        self.imp_meas_future = dict()
-        self.imp_meas_present = dict()
+        self.imp_meas_future = imp_meas_future if imp_meas_future is not None else dict()
+        self.imp_meas_present = imp_meas_present if imp_meas_present is not None else dict()
 
     def calc(self, hazard, entity, haz_future=None, ent_future=None, future_year=None,
              risk_func=risk_aai_agg, imp_time_depen=None, save_imp=False, assign_centroids=True):
@@ -281,14 +298,15 @@ class CostBenefit():
         climada.CostBenefit
         """
         # pylint: disable=protected-access
-        new_cb = CostBenefit()
-        new_cb.present_year = self.present_year
-        new_cb.future_year = self.future_year
-        new_cb.tot_climate_risk = self.tot_climate_risk
-        new_cb.unit = self.unit
-        new_cb.color_rgb[NO_MEASURE] = self.color_rgb[NO_MEASURE]
+        new_cb = CostBenefit(
+            present_year=self.present_year,
+            future_year=self.future_year,
+            unit=self.unit,
+            tot_climate_risk=self.tot_climate_risk,
+            color_rgb=self.color_rgb,
+            imp_meas_future=self.imp_meas_future,
+        )
         new_cb.color_rgb[new_name] = new_color
-        new_cb.imp_meas_future[NO_MEASURE] = self.imp_meas_future[NO_MEASURE]
 
         # compute impacts for imp_meas_future and imp_meas_present
         self._combine_imp_meas(new_cb, in_meas_names, new_name, risk_func, when='future')
