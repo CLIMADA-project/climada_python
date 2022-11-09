@@ -347,8 +347,7 @@ class TestDecay(unittest.TestCase):
         track_gen.attrs['orig_event_flag'] = False
 
         cp_ref = np.array([1012., 1012.])
-        single_track = tc.TCTracks()
-        single_track.data = [track_gen]
+        single_track = tc.TCTracks([track_gen])
         extent = single_track.get_extent()
         land_geom = climada.util.coordinates.get_land_geometry(
             extent=extent, resolution=10
