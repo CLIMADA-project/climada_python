@@ -468,13 +468,14 @@ class Hazard():
         data_vars : dict(str, str), optional
             Mapping from default variable names to variable names used in the data
             to read. The default names are ``fraction``, ``hazard_type``, ``frequency``,
-            ``event_name``, and ``event_id``. If these values are not set, the method
-            tries to load data from the default names. If this fails, the method uses
-            default values for each entry. If the values are set to empty strings
+            ``event_name``, ``event_id``, and ``date``. If these values are not set, the
+            method tries to load data from the default names. If this fails, the method
+            uses default values for each entry. If the values are set to empty strings
             (``""``), no data is loaded and the default values are used exclusively. See
             examples for details.
 
             Default values are:
+            * ``date``: The ``event`` coordinate interpreted as date
             * ``fraction``: 1.0 where intensity is not zero, else zero
             * ``hazard_type``: Empty string
             * ``frequency``: 1.0 for every event
@@ -619,7 +620,7 @@ class Hazard():
         # If the data is a string, open the respective file
         if not isinstance(data, xr.Dataset):
             LOGGER.info("Loading Hazard from file: %s", data)
-            data = xr.open_dataset(data)
+            data: xr.Dataset = xr.open_dataset(data)
         else:
             LOGGER.info("Loading Hazard from xarray Dataset")
 
@@ -708,6 +709,21 @@ class Hazard():
                 raise ValueError(f"'{array.name}' data must be larger than zero")
             return array.values
 
+        def date_to_ordinal_accessor(array: xr.DataArray) -> np.ndarray:
+            """Take a DataArray and transform it into ordinals"""
+            if np.issubdtype(array.dtype, np.integer):
+                # Assume that data is ordinals
+                return array.values
+
+            # Try transforming to ordinals
+            return np.array(u_dt.datetime64_to_ordinal(array.values))
+
+        def maybe_repeat(values: np.ndarray, times: int) -> np.ndarray:
+            if values.size == 1:
+                return np.array(list(itertools.repeat(values.flat[0], times)))
+
+            return values
+
         # Create a DataFrame storing access information for each of data_vars
         # NOTE: Each row will be passed as arguments to
         #       `load_from_xarray_or_return_default`, see its docstring for further
@@ -738,8 +754,8 @@ class Hazard():
                     lambda x: to_csr_matrix(default_accessor(x)),
                     default_accessor,
                     strict_positive_int_accessor,
-                    lambda x: list(default_accessor(x).flat),  # list, not np.array
-                    strict_positive_int_accessor,
+                    lambda x: list(maybe_repeat(default_accessor(x), num_events).flat),
+                    lambda x: maybe_repeat(date_to_ordinal_accessor(x), num_events),
                 ],
             )
         )
