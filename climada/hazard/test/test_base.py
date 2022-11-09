@@ -102,6 +102,20 @@ class TestLoader(unittest.TestCase):
         self.hazard.fraction = sparse.csr_matrix(self.hazard.intensity.shape)
         self.hazard.check()
 
+    def test_init_empty_fraction(self):
+        """Test initializing a Hazard without fraction"""
+        hazard = Hazard(
+            "TC",
+            centroids=self.hazard.centroids,
+            event_id=self.hazard.event_id,
+            event_name=self.hazard.event_name,
+            frequency=self.hazard.frequency,
+            intensity=self.hazard.intensity
+        )
+        hazard.check()
+        np.testing.assert_array_equal(hazard.fraction.shape, hazard.intensity.shape)
+        self.assertEqual(hazard.fraction.nnz, 0)  # No nonzero entries
+
     def test_check_wrongCentroids_fail(self):
         """Wrong hazard definition"""
         self.hazard.centroids.region_id = np.array([1, 2, 3, 4])
