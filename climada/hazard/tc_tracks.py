@@ -26,6 +26,7 @@ import contextlib
 import datetime as dt
 import itertools
 import logging
+from typing import Optional, List
 import pathlib
 import re
 import shutil
@@ -36,6 +37,7 @@ from pathlib import Path
 import cartopy.crs as ccrs
 import cftime
 import geopandas as gpd
+import pathos
 import matplotlib.cm as cm_mp
 from matplotlib.collections import LineCollection
 from matplotlib.colors import BoundaryNorm, ListedColormap
@@ -188,20 +190,24 @@ class TCTracks():
             - on_land (bool for each track position)
             - dist_since_lf (in km)
     """
-    def __init__(self, pool=None):
+    def __init__(self,
+                 data: Optional[List[xr.Dataset]] = None,
+                 pool: Optional[pathos.multiprocessing.ProcessPool] = None):
         """Create new (empty) TCTracks instance.
 
         Parameters
         ----------
-        pool : pathos.pool, optional
+        data : list of xarray.Dataset, optional
+            List of tropical cyclone tracks, each stored as single xarray Dataset.
+            See the Attributes for a full description of the required Dataset variables
+            and attributes. Defaults to an empty list.
+        pool : pathos.pools, optional
             Pool that will be used for parallel computation when applicable. Default: None
         """
-        self.data = list()
+        self.data = data if data is not None else list()
+        self.pool = pool
         if pool:
-            self.pool = pool
             LOGGER.debug('Using %s CPUs.', self.pool.ncpus)
-        else:
-            self.pool = None
 
     def append(self, tracks):
         """Append tracks to current.
@@ -308,8 +314,7 @@ class TCTracks():
         tc_tracks_lines = self.to_geodataframe().buffer(distance=buffer)
         select_tracks = tc_tracks_lines.intersects(exp_buffer)
         tracks_in_exp = [track for j, track in enumerate(self.data) if select_tracks[j]]
-        filtered_tracks = TCTracks()
-        filtered_tracks.append(tracks_in_exp)
+        filtered_tracks = TCTracks(tracks_in_exp)
 
         return filtered_tracks
 
@@ -705,9 +710,7 @@ class TCTracks():
             # If all tracks have been discarded in the loop due to the basin filters:
             LOGGER.info('There were no tracks left in the specified basin '
                         'after discarding invalid track positions.')
-        tr = cls()
-        tr.data = all_tracks
-        return tr
+        return cls(all_tracks)
 
     def read_processed_ibtracs_csv(self, *args, **kwargs):
         """This function is deprecated, use TCTracks.from_processed_ibtracs_csv instead."""
@@ -729,9 +732,7 @@ class TCTracks():
         tracks : TCTracks
             TCTracks with data from the processed ibtracs CSV file.
         """
-        tr = cls()
-        tr.data = [_read_ibtracs_csv_single(f) for f in get_file_names(file_names)]
-        return tr
+        return cls([_read_ibtracs_csv_single(f) for f in get_file_names(file_names)])
 
     def read_simulations_emanuel(self, *args, **kwargs):
         """This function is deprecated, use TCTracks.from_simulations_emanuel instead."""
@@ -756,13 +757,11 @@ class TCTracks():
         tracks : TCTracks
             TCTracks with data from Kerry Emanuel's simulations.
         """
-        tr = cls()
-        tr.data = []
+        data = []
         for path in get_file_names(file_names):
-            tr.data.extend(_read_file_emanuel(
-                path, hemisphere=hemisphere,
-                rmw_corr=Path(path).name in EMANUEL_RMW_CORR_FILES))
-        return tr
+            data.extend(_read_file_emanuel(path, hemisphere=hemisphere,
+                        rmw_corr=Path(path).name in EMANUEL_RMW_CORR_FILES))
+        return cls(data)
 
     def read_one_gettelman(self, nc_data, i_track):
         """This function is deprecated, use TCTracks.from_gettelman instead."""
@@ -786,9 +785,7 @@ class TCTracks():
         """
         nc_data = nc.Dataset(path)
         nstorms = nc_data.dimensions['storm'].size
-        tr = cls()
-        tr.data = [_read_one_gettelman(nc_data, i) for i in range(nstorms)]
-        return tr
+        return cls([_read_one_gettelman(nc_data, i) for i in range(nstorms)])
 
     def read_simulations_chaz(self, *args, **kwargs):
         """This function is deprecated, use TCTracks.from_simulations_chaz instead."""
@@ -916,9 +913,7 @@ class TCTracks():
                 }))
             if last_perc != 100:
                 LOGGER.info("Progress: 100%")
-        tr = cls()
-        tr.data = data
-        return tr
+        return cls(data)
 
     def read_simulations_storm(self, *args, **kwargs):
         """This function is deprecated, use TCTracks.from_simulations_storm instead."""
@@ -1042,9 +1037,7 @@ class TCTracks():
             }))
         if last_perc != 100:
             LOGGER.info("Progress: 100%")
-        tr = cls()
-        tr.data = data
-        return tr
+        return cls(data)
 
     def equal_timestep(self, time_step_h=1, land_params=False, pool=None):
         """Generate interpolated track values to time steps of time_step_h.
@@ -1292,9 +1285,7 @@ class TCTracks():
                 del track.attrs['basin']
                 track['basin'] = ("time", np.full(track.time.size, basin, dtype="<U2"))
             data.append(track)
-        tr = cls()
-        tr.data = data
-        return tr
+        return cls(data)
 
     def write_hdf5(self, file_name, complevel=5):
         """Write TC tracks in NetCDF4-compliant HDF5 format.
@@ -1346,9 +1337,7 @@ class TCTracks():
             # when writing '<U2' and reading in again, xarray reads as dtype 'object'. undo this:
             track['basin'] = track['basin'].astype('<U2')
             data.append(track)
-        tracks = cls()
-        tracks.data = data
-        return tracks
+        return cls(data)
 
     def to_geodataframe(self, as_points=False, split_lines_antimeridian=True):
         """Transform this TCTracks instance into a GeoDataFrame.
