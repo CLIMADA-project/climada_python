@@ -360,10 +360,13 @@ class ImpactCalc():
         n_exp_pnt = len(cent_idx)  # implicitly checks in matrix assignement whether
                                    # len(cent_idx) == len(exp_values)
         mdr = self.hazard.get_mdr(cent_idx, impf)
-        fract = self.hazard.get_fraction(cent_idx)
         exp_values_csr = sparse.csr_matrix(  # vector 1 x exp_size
             (exp_values, np.arange(n_exp_pnt), [0, n_exp_pnt]),
             shape=(1, n_exp_pnt))
+        fract = self.hazard._get_fraction(cent_idx)  # pylint: disable=protected-access
+        if fract is None:
+            return mdr.multiply(exp_values_csr)
+
         return fract.multiply(mdr).multiply(exp_values_csr)
 
     def stitch_impact_matrix(self, imp_mat_gen):
