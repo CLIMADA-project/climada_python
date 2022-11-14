@@ -86,14 +86,14 @@ class StormEurope(Hazard):
                  units: str = 'm/s',
                  ssi: Optional[np.ndarray] = None,
                  ssi_wisc: Optional[np.ndarray] = None,
-                 ssi_full_area: Optional[np.ndarray] = None
-                 ):
+                 ssi_full_area: Optional[np.ndarray] = None,
+                 **kwargs):
         """Initialize a StormEurope object
 
         Parameters
         ----------
         units : str
-            The units of the Hazard intensity.
+            The units of the Hazard intensity. Defaults to 'm/s'
         ssi : numpy.ndarray
             The Storm Severity Index (SSI). Shape ``(?? x ??)``. Defaults to an empty
             array.
@@ -104,9 +104,7 @@ class StormEurope(Hazard):
             The Storm Severity Index (SSI) ???. Shape ``(?? x ??)``. Defaults to an empty
             array.
         """
-        # TODO: Pass arguments to base class constructor once Hazard.__init__ was updated!
-        Hazard.__init__(self, HAZ_TYPE)
-        self.units = units
+        Hazard.__init__(self, haz_type=HAZ_TYPE, units=units, **kwargs)
         self.ssi = ssi if ssi is not None else np.array([], float)
         self.ssi_wisc = ssi_wisc if ssi_wisc is not None else np.array([], float)
         self.ssi_full_area = ssi_full_area if ssi_full_area is not None else np.array([], float)
@@ -834,7 +832,7 @@ class StormEurope(Hazard):
                     **kwargs)
 
         LOGGER.info('Generating new StormEurope instance')
-        new_haz = StormEurope(ssi=ssi)
+        new_haz = StormEurope(ssi_full_area=ssi)
         new_haz.intensity = sparse.csr_matrix(intensity_prob)
 
         # don't use synthetic dates; just repeat the historic dates

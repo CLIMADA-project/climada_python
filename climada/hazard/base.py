@@ -189,7 +189,7 @@ class Hazard():
         pool : pathos.pool, optional
             Pool that will be used for parallel computation when applicable. Default: None
         units : str, optional
-            units of the intensity. Defaults to empty array.
+            units of the intensity. Defaults to empty string.
         centroids : Centroids, optional
             centroids of the events. Defaults to empty Centroids object.
         event_id : np.array, optional
