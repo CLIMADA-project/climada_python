@@ -27,7 +27,7 @@ import itertools
 import logging
 import pathlib
 import warnings
-from typing import Union, Optional, Callable, Dict, Any
+from typing import Union, Optional, Callable, Dict, Any, List
 
 import geopandas as gpd
 import h5py
@@ -100,7 +100,6 @@ DEF_COORDS = dict(event="time", longitude="longitude", latitude="latitude")
 DEF_DATA_VARS = ["fraction", "frequency", "event_id", "event_name", "date"]
 """Default keys for optional Hazard attributes when reading from an xarray Dataset"""
 
-
 class Hazard():
     """
     Contains events of some hazard type defined at centroids. Loads from
@@ -166,7 +165,20 @@ class Hazard():
     """Name of the variables that aren't need to compute the impact. Types:
     scalar, string, list, 1dim np.array of size num_events."""
 
-    def __init__(self, haz_type='', pool=None):
+    def __init__(self,
+                 haz_type: str = "",
+                 pool: Optional[Pool] = None,
+                 units: str = "",
+                 centroids: Optional[Centroids] = None,
+                 event_id: Optional[np.ndarray] = None,
+                 frequency: Optional[np.ndarray] = None,
+                 frequency_unit: str = DEF_FREQ_UNIT,
+                 event_name: Optional[List[str]] = None,
+                 date: Optional[np.ndarray] = None,
+                 orig: Optional[np.ndarray] = None,
+                 intensity: Optional[sparse.csr_matrix] = None,
+                 fraction: Optional[sparse.csr_matrix] = None,
+                 **tag_kwargs):
         """
         Initialize values.
 
@@ -176,38 +188,65 @@ class Hazard():
             acronym of the hazard type (e.g. 'TC').
         pool : pathos.pool, optional
             Pool that will be used for parallel computation when applicable. Default: None
+        units : str, optional
+            units of the intensity. Defaults to empty array.
+        centroids : Centroids, optional
+            centroids of the events. Defaults to empty Centroids object.
+        event_id : np.array, optional
+            id (>0) of each event. Defaults to empty array.
+        event_name : list(str), optional
+            name of each event (default: event_id). Defaults to empty list.
+        date : np.array, optional
+            integer date corresponding to the proleptic
+            Gregorian ordinal, where January 1 of year 1 has ordinal 1
+            (ordinal format of datetime library). Defaults to empty array.
+        orig : np.array, optional
+            flags indicating historical events (True)
+            or probabilistic (False). Defaults to empty array.
+        frequency : np.array, optional
+            frequency of each event. Defaults to empty array.
+        frequency_unit : str, optional
+            unit of the frequency (default: "1/year").
+        intensity : sparse.csr_matrix, optional
+            intensity of the events at centroids. Defaults to empty matrix.
+        fraction : sparse.csr_matrix, optional
+            fraction of affected exposures for each event at each centroid. Defaults to
+            empty matrix.
+        tag_kwargs
+            Keyword-arguments for creating the HazardTag. ``haz_type`` is also passed
+            to the Tag constructor.
 
         Examples
         --------
-        Fill hazard values by hand:
+        Initialize using keyword arguments:
 
-        >>> haz = Hazard('TC')
-        >>> haz.intensity = sparse.csr_matrix(np.zeros((2, 2)))
-        >>> ...
+        >>> haz = Hazard('TC', intensity=sparse.csr_matrix(np.zeros((2, 2))))
 
         Take hazard values from file:
 
         >>> haz = Hazard.from_mat(HAZ_DEMO_MAT, 'demo')
 
         """
-        self.tag = TagHazard(haz_type=haz_type)
-        self.units = ''
-        self.centroids = Centroids()
+        self.tag = TagHazard(haz_type, **tag_kwargs)
+        self.units = units
+        self.centroids = centroids if centroids is not None else Centroids()
         # following values are defined for each event
-        self.event_id = np.array([], int)
-        self.frequency = np.array([], float)
-        self.frequency_unit = DEF_FREQ_UNIT
-        self.event_name = list()
-        self.date = np.array([], int)
-        self.orig = np.array([], bool)
+        self.event_id = event_id if event_id is not None else np.array([], int)
+        self.frequency = frequency if frequency is not None else np.array(
+            [], float)
+        self.frequency_unit = frequency_unit
+        self.event_name = event_name if event_name is not None else list()
+        self.date = date if date is not None else np.array([], int)
+        self.orig = orig if orig is not None else np.array([], bool)
         # following values are defined for each event and centroid
-        self.intensity = sparse.csr_matrix(np.empty((0, 0)))  # events x centroids
-        self.fraction = sparse.csr_matrix(np.empty((0, 0)))  # events x centroids
-        if pool:
-            self.pool = pool
+        self.intensity = intensity if intensity is not None else sparse.csr_matrix(
+            np.empty((0, 0)))  # events x centroids
+        self.fraction = fraction if fraction is not None else sparse.csr_matrix(
+            self.intensity.shape)  # events x centroids
+
+        self.pool = pool
+        if self.pool:
             LOGGER.info('Using %s CPUs.', self.pool.ncpus)
-        else:
-            self.pool = None
 
     @classmethod
     def get_default(cls, attribute):
@@ -309,84 +348,53 @@ class Hazard():
             raise ValueError('Number of intensity files differs from fraction files:'
                              f'{len(files_intensity)} != {len(files_fraction)}')
 
+        # List all parameters for initialization here (missing ones will be default)
+        hazard_kwargs = dict()
         if haz_type is not None:
-            try:
-                haz = cls(haz_type=haz_type, pool=pool)
-            except TypeError:
-                haz = cls(pool=pool)
-                LOGGER.warning(
-                    "haz_type argument ('%s') is ignored, haz_type is determined by class",
-                    haz_type)
-        else:
-            haz = cls(pool=pool)
+            hazard_kwargs["haz_type"] = haz_type
+        hazard_kwargs["file_name"] = str(files_intensity) + ' ; ' + str(files_fraction)
 
-        haz.tag.file_name = str(files_intensity) + ' ; ' + str(files_fraction)
-
-        haz.centroids = Centroids.from_raster_file(
+        centroids = Centroids.from_raster_file(
             files_intensity[0], src_crs=src_crs, window=window, geometry=geometry, dst_crs=dst_crs,
             transform=transform, width=width, height=height, resampling=resampling)
-        if haz.pool:
-            chunksize = min(len(files_intensity) // haz.pool.ncpus, 1000)
-            inten_list = haz.pool.map(
-                haz.centroids.values_from_raster_files,
+        if pool:
+            chunksize = min(len(files_intensity) // pool.ncpus, 1000)
+            inten_list = pool.map(
+                centroids.values_from_raster_files,
                 [[f] for f in files_intensity],
                 itertools.repeat(band), itertools.repeat(src_crs),
                 itertools.repeat(window), itertools.repeat(geometry),
                 itertools.repeat(dst_crs), itertools.repeat(transform),
                 itertools.repeat(width), itertools.repeat(height),
                 itertools.repeat(resampling), chunksize=chunksize)
-            haz.intensity = sparse.vstack(inten_list, format='csr')
+            intensity = sparse.vstack(inten_list, format='csr')
             if files_fraction is not None:
-                fract_list = haz.pool.map(
-                    haz.centroids.values_from_raster_files,
+                fract_list = pool.map(
+                    centroids.values_from_raster_files,
                     [[f] for f in files_fraction],
                     itertools.repeat(band), itertools.repeat(src_crs),
                     itertools.repeat(window), itertools.repeat(geometry),
                     itertools.repeat(dst_crs), itertools.repeat(transform),
                     itertools.repeat(width), itertools.repeat(height),
                     itertools.repeat(resampling), chunksize=chunksize)
-                haz.fraction = sparse.vstack(fract_list, format='csr')
+                fraction = sparse.vstack(fract_list, format='csr')
         else:
-            haz.intensity = haz.centroids.values_from_raster_files(
+            intensity = centroids.values_from_raster_files(
                 files_intensity, band=band, src_crs=src_crs, window=window, geometry=geometry,
                 dst_crs=dst_crs, transform=transform, width=width, height=height,
                 resampling=resampling)
             if files_fraction is not None:
-                haz.fraction = haz.centroids.values_from_raster_files(
+                fraction = centroids.values_from_raster_files(
                     files_fraction, band=band, src_crs=src_crs, window=window, geometry=geometry,
                     dst_crs=dst_crs, transform=transform, width=width, height=height,
                     resampling=resampling)
 
         if files_fraction is None:
-            haz.fraction = haz.intensity.copy()
-            haz.fraction.data.fill(1)
+            fraction = intensity.copy()
+            fraction.data.fill(1)
 
-        if 'event_id' in attrs:
-            haz.event_id = attrs['event_id']
-        else:
-            haz.event_id = np.arange(1, haz.intensity.shape[0] + 1)
-        if 'frequency' in attrs:
-            haz.frequency = attrs['frequency']
-        else:
-            haz.frequency = np.ones(haz.event_id.size)
-        if 'frequency_unit' in attrs:
-            haz.frequency_unit = attrs['frequency_unit']
-        if 'event_name' in attrs:
-            haz.event_name = attrs['event_name']
-        else:
-            haz.event_name = list(map(str, haz.event_id))
-        if 'date' in attrs:
-            haz.date = np.array([attrs['date']])
-        else:
-            haz.date = np.ones(haz.event_id.size)
-        if 'orig' in attrs:
-            haz.orig = np.array([attrs['orig']])
-        else:
-            haz.orig = np.ones(haz.event_id.size, bool)
-        if 'unit' in attrs:
-            haz.units = attrs['unit']
-
-        return haz
+        hazard_kwargs.update(cls._attrs_to_kwargs(attrs, num_events=intensity.shape[0]))
+        return cls(centroids=centroids, intensity=intensity, fraction=fraction, **hazard_kwargs)
 
     def set_raster(self, *args, **kwargs):
         """This function is deprecated, use Hazard.from_raster."""
@@ -624,8 +632,7 @@ class Hazard():
             LOGGER.info("Loading Hazard from xarray Dataset")
 
         # Initialize Hazard object
-        hazard = cls(haz_type=hazard_type)
-        hazard.units = intensity_unit
+        hazard_kwargs = dict(haz_type=hazard_type, units=intensity_unit)
 
         # Update coordinate identifiers
         coords = copy.deepcopy(DEF_COORDS)
@@ -672,7 +679,7 @@ class Hazard():
         )
 
         # Transform coordinates into centroids
-        hazard.centroids = Centroids.from_lat_lon(
+        centroids = Centroids.from_lat_lon(
             data[coords["latitude"]].values, data[coords["longitude"]].values, crs=crs,
         )
 
@@ -685,7 +692,7 @@ class Hazard():
 
         # Read the intensity data
         LOGGER.debug("Loading Hazard intensity from DataArray '%s'", intensity)
-        hazard.intensity = to_csr_matrix(data[intensity])
+        intensity_matrix = to_csr_matrix(data[intensity])
 
         # Define accessors for xarray DataArrays
         def default_accessor(array: xr.DataArray) -> np.ndarray:
@@ -854,15 +861,12 @@ class Hazard():
 
         # Set the Hazard attributes
         for _, ident in data_ident.iterrows():
-            setattr(
-                hazard,
-                ident["hazard_attr"],
-                load_from_xarray_or_return_default(**ident),
-            )
+            hazard_kwargs[ident["hazard_attr"]
+                          ] = load_from_xarray_or_return_default(**ident)
 
         # Done!
         LOGGER.debug("Hazard successfully loaded. Number of events: %i", num_events)
-        return hazard
+        return cls(centroids=centroids, intensity=intensity_matrix, **hazard_kwargs)
 
     @classmethod
     def from_vector(cls, files_intensity, files_fraction=None, attrs=None,
@@ -906,51 +910,80 @@ class Hazard():
             raise ValueError('Number of intensity files differs from fraction files:'
                              f' {len(files_intensity)} != {len(files_fraction)}')
 
-        haz = cls() if haz_type is None else cls(haz_type)
-        haz.tag.file_name = str(files_intensity) + ' ; ' + str(files_fraction)
+        hazard_kwargs = dict(
+            file_name=str(files_intensity) + ' ; ' + str(files_fraction))
+        if haz_type is not None:
+            hazard_kwargs["haz_type"] = haz_type
 
         if len(files_intensity) > 0:
-            haz.centroids = Centroids.from_vector_file(files_intensity[0], dst_crs=dst_crs)
+            centroids = Centroids.from_vector_file(files_intensity[0], dst_crs=dst_crs)
         elif files_fraction is not None and len(files_fraction) > 0:
-            haz.centroids = Centroids.from_vector_file(files_fraction[0], dst_crs=dst_crs)
+            centroids = Centroids.from_vector_file(files_fraction[0], dst_crs=dst_crs)
         else:
-            haz.centroids = Centroids()
+            centroids = Centroids()
 
-        haz.intensity = haz.centroids.values_from_vector_files(
+        intensity = centroids.values_from_vector_files(
             files_intensity, val_names=inten_name, dst_crs=dst_crs)
         if files_fraction is None:
-            haz.fraction = haz.intensity.copy()
-            haz.fraction.data.fill(1)
+            fraction = intensity.copy()
+            fraction.data.fill(1)
         else:
-            haz.fraction = haz.centroids.values_from_vector_files(
+            fraction = centroids.values_from_vector_files(
                 files_fraction, val_names=frac_name, dst_crs=dst_crs)
 
-        if 'event_id' in attrs:
-            haz.event_id = attrs['event_id']
-        else:
-            haz.event_id = np.arange(1, haz.intensity.shape[0] + 1)
-        if 'frequency' in attrs:
-            haz.frequency = attrs['frequency']
-        else:
-            haz.frequency = np.ones(haz.event_id.size)
-        if 'frequency_unit' in attrs:
-            haz.frequency_unit = attrs['frequency_unit']
-        if 'event_name' in attrs:
-            haz.event_name = attrs['event_name']
-        else:
-            haz.event_name = list(map(str, haz.event_id))
-        if 'date' in attrs:
-            haz.date = np.array([attrs['date']])
-        else:
-            haz.date = np.ones(haz.event_id.size)
-        if 'orig' in attrs:
-            haz.orig = np.array([attrs['orig']])
-        else:
-            haz.orig = np.ones(haz.event_id.size, bool)
-        if 'unit' in attrs:
-            haz.units = attrs['unit']
+        hazard_kwargs.update(cls._attrs_to_kwargs(attrs, num_events=intensity.shape[0]))
+        return cls(
+            centroids=centroids, intensity=intensity, fraction=fraction, **hazard_kwargs)
 
-        return haz
+    @staticmethod
+    def _attrs_to_kwargs(attrs: Dict[str, Any], num_events: int) -> Dict[str, Any]:
+        """Transform attributes to init kwargs or use default values
+
+        If attributes are missing from ``attrs``, this method will use a sensible default
+        value.
+
+        Parameters
+        ----------
+        attrs : dict
+            Attributes for a new Hazard object
+        num_events : int
+            Number of events stored in a new Hazard object. Used for determining default
+            values if Hazard object attributes are missing from ``attrs``.
+
+        Returns
+        -------
+        kwargs : dict
+            Keywords arguments to be passed to a Hazard constructor
+        """
+
+        kwargs = dict()
+
+        if 'event_id' in attrs:
+            kwargs["event_id"] = attrs['event_id']
+        else:
+            kwargs["event_id"] = np.arange(1, num_events + 1)
+        if 'frequency' in attrs:
+            kwargs["frequency"] = attrs['frequency']
+        else:
+            kwargs["frequency"] = np.ones(kwargs["event_id"].size)
+        if 'frequency_unit' in attrs:
+            kwargs["frequency_unit"] = attrs['frequency_unit']
+        if 'event_name' in attrs:
+            kwargs["event_name"] = attrs['event_name']
+        else:
+            kwargs["event_name"] = list(map(str, kwargs["event_id"]))
+        if 'date' in attrs:
+            kwargs["date"] = np.array([attrs['date']])
+        else:
+            kwargs["date"] = np.ones(kwargs["event_id"].size)
+        if 'orig' in attrs:
+            kwargs["orig"] = np.array([attrs['orig']])
+        else:
+            kwargs["orig"] = np.ones(kwargs["event_id"].size, bool)
+        if 'unit' in attrs:
+            kwargs["units"] = attrs['unit']
+
+        return kwargs
 
     def reproject_raster(self, dst_crs=False, transform=None, width=None, height=None,
                          resampl_inten=Resampling.nearest, resampl_fract=Resampling.nearest):
@@ -1100,9 +1133,6 @@ class Hazard():
         if not var_names:
             var_names = DEF_VAR_MAT
         LOGGER.info('Reading %s', file_name)
-        haz = cls()
-        haz.tag.file_name = str(file_name)
-        haz.tag.description = description
         try:
             data = u_hdf5.read(file_name)
             try:
@@ -1110,10 +1140,13 @@ class Hazard():
             except KeyError:
                 pass
 
-            haz_type = u_hdf5.get_string(data[var_names['var_name']['per_id']])
-            haz.tag.haz_type = haz_type
-            haz.centroids = Centroids.from_mat(file_name, var_names=var_names['var_cent'])
-            haz._read_att_mat(data, file_name, var_names)
+            centroids = Centroids.from_mat(file_name, var_names=var_names['var_cent'])
+            attrs = cls._read_att_mat(data, file_name, var_names, centroids, description)
+            haz = cls(haz_type=u_hdf5.get_string(data[var_names['var_name']['per_id']]),
+                      centroids=centroids,
+                      file_name=str(file_name),
+                      **attrs
+                      )
         except KeyError as var_err:
             raise KeyError("Variable not in MAT file: " + str(var_err)) from var_err
         return haz
@@ -1154,15 +1187,16 @@ class Hazard():
         if not var_names:
             var_names = DEF_VAR_EXCEL
         LOGGER.info('Reading %s', file_name)
-        haz = cls() if haz_type is None else cls(haz_type)
-        haz.tag.file_name = file_name
-        haz.tag.description = description
+        hazard_kwargs = dict(file_name=file_name, description=description)
+        if haz_type is not None:
+            hazard_kwargs["haz_type"] = haz_type
         try:
-            haz.centroids = Centroids.from_excel(file_name, var_names=var_names['col_centroids'])
-            haz._read_att_excel(file_name, var_names)
+            centroids = Centroids.from_excel(file_name, var_names=var_names['col_centroids'])
+            hazard_kwargs.update(cls._read_att_excel(file_name, var_names, centroids))
         except KeyError as var_err:
             raise KeyError("Variable not in Excel file: " + str(var_err)) from var_err
-        return haz
+
+        return cls(centroids=centroids, **hazard_kwargs)
 
     def select(self, event_names=None, event_id=None, date=None, orig=None,
                reg_id=None, extent=None, reset_frequency=False):
@@ -1734,37 +1768,45 @@ class Hazard():
 
         """
         LOGGER.info('Reading %s', file_name)
+        # NOTE: This is a stretch. We instantiate one empty object to iterate over its
+        #       attributes. But then we create a new one with the attributes filled!
         haz = cls()
+        hazard_kwargs = dict()
         with h5py.File(file_name, 'r') as hf_data:
             for (var_name, var_val) in haz.__dict__.items():
                 if var_name != 'tag' and var_name not in hf_data.keys():
                     continue
                 if var_name == 'centroids':
-                    haz.centroids = Centroids.from_hdf5(hf_data.get(var_name))
+                    hazard_kwargs["centroids"] = Centroids.from_hdf5(
+                        hf_data.get(var_name))
                 elif var_name == 'tag':
-                    haz.tag.haz_type = u_hdf5.to_string(hf_data.get('haz_type')[0])
-                    haz.tag.file_name = u_hdf5.to_string(hf_data.get('file_name')[0])
-                    haz.tag.description = u_hdf5.to_string(hf_data.get('description')[0])
+                    hazard_kwargs["haz_type"] = u_hdf5.to_string(
+                        hf_data.get('haz_type')[0])
+                    hazard_kwargs["file_name"] = u_hdf5.to_string(
+                        hf_data.get('file_name')[0])
+                    hazard_kwargs["description"] = u_hdf5.to_string(
+                        hf_data.get('description')[0])
                 elif isinstance(var_val, np.ndarray) and var_val.ndim == 1:
-                    setattr(haz, var_name, np.array(hf_data.get(var_name)))
+                    hazard_kwargs[var_name] = np.array(hf_data.get(var_name))
                 elif isinstance(var_val, sparse.csr_matrix):
                     hf_csr = hf_data.get(var_name)
                     if isinstance(hf_csr, h5py.Dataset):
-                        setattr(haz, var_name, sparse.csr_matrix(hf_csr))
+                        hazard_kwargs[var_name] = sparse.csr_matrix(hf_csr)
                     else:
-                        setattr(haz, var_name, sparse.csr_matrix((hf_csr['data'][:],
-                                                                hf_csr['indices'][:],
-                                                                hf_csr['indptr'][:]),
-                                                                hf_csr.attrs['shape']))
+                        hazard_kwargs[var_name] = sparse.csr_matrix(
+                            (hf_csr['data'][:], hf_csr['indices'][:], hf_csr['indptr'][:]),
+                            hf_csr.attrs['shape'])
                 elif isinstance(var_val, str):
-                    setattr(haz, var_name, u_hdf5.to_string(hf_data.get(var_name)[0]))
+                    hazard_kwargs[var_name] = u_hdf5.to_string(
+                        hf_data.get(var_name)[0])
                 elif isinstance(var_val, list):
-                    var_value = [x for x in map(u_hdf5.to_string,
-                                 np.array(hf_data.get(var_name)).tolist())]
-                    setattr(haz, var_name, var_value)
+                    hazard_kwargs[var_name] = [x for x in map(
+                        u_hdf5.to_string, np.array(hf_data.get(var_name)).tolist())]
                 else:
-                    setattr(haz, var_name, hf_data.get(var_name))
-        return haz
+                    hazard_kwargs[var_name] = hf_data.get(var_name)
+
+        # Now create the actual object we want to return!
+        return cls(**hazard_kwargs)
 
     def _set_coords_centroids(self):
         """If centroids are raster, set lat and lon coordinates"""
@@ -1984,50 +2026,57 @@ class Hazard():
 
         return inten_fit
 
-    def _read_att_mat(self, data, file_name, var_names):
+    @staticmethod
+    def _read_att_mat(data, file_name, var_names, centroids, description):
         """Read MATLAB hazard's attributes."""
-        self.frequency = np.squeeze(data[var_names['var_name']['freq']])
+        attrs = dict()
+        attrs["frequency"] = np.squeeze(data[var_names['var_name']['freq']])
         try:
-            self.frequency_unit = u_hdf5.get_string(data[var_names['var_name']['freq_unit']])
+            attrs["frequency_unit"] = u_hdf5.get_string(
+                data[var_names['var_name']['freq_unit']])
         except KeyError:
             pass
-        self.orig = np.squeeze(data[var_names['var_name']['orig']]).astype(bool)
-        self.event_id = np.squeeze(
+        attrs["orig"] = np.squeeze(
+            data[var_names['var_name']['orig']]).astype(bool)
+        attrs["event_id"] = np.squeeze(
             data[var_names['var_name']['even_id']].astype(int, copy=False))
         try:
-            self.units = u_hdf5.get_string(data[var_names['var_name']['unit']])
+            attrs["units"] = u_hdf5.get_string(
+                data[var_names['var_name']['unit']])
         except KeyError:
             pass
 
-        n_cen = self.centroids.size
-        n_event = len(self.event_id)
+        n_cen = centroids.size
+        n_event = len(attrs["event_id"])
         try:
-            self.intensity = u_hdf5.get_sparse_csr_mat(
+            attrs["intensity"] = u_hdf5.get_sparse_csr_mat(
                 data[var_names['var_name']['inten']], (n_event, n_cen))
         except ValueError as err:
             raise ValueError('Size missmatch in intensity matrix.') from err
         try:
-            self.fraction = u_hdf5.get_sparse_csr_mat(
+            attrs["fraction"] = u_hdf5.get_sparse_csr_mat(
                 data[var_names['var_name']['frac']], (n_event, n_cen))
         except ValueError as err:
             raise ValueError('Size missmatch in fraction matrix.') from err
         except KeyError:
-            self.fraction = sparse.csr_matrix(np.ones(self.intensity.shape, dtype=float))
+            attrs["fraction"] = sparse.csr_matrix(
+                np.ones(attrs["intensity"].shape, dtype=float))
         # Event names: set as event_id if no provided
         try:
-            self.event_name = u_hdf5.get_list_str_from_ref(
+            attrs["event_name"] = u_hdf5.get_list_str_from_ref(
                 file_name, data[var_names['var_name']['ev_name']])
         except KeyError:
-            self.event_name = list(self.event_id)
+            attrs["event_name"] = list(attrs["event_id"])
+        attrs["description"] = description
         try:
             comment = u_hdf5.get_string(data[var_names['var_name']['comment']])
-            self.tag.description += ' ' + comment
+            attrs["description"] += ' ' + comment
         except KeyError:
             pass
 
         try:
             datenum = data[var_names['var_name']['datenum']].squeeze()
-            self.date = np.array([
+            attrs["date"] = np.array([
                 (dt.datetime.fromordinal(int(date))
                  + dt.timedelta(days=date % 1)
                  - dt.timedelta(days=366)).toordinal()
@@ -2035,18 +2084,23 @@ class Hazard():
         except KeyError:
             pass
 
-    def _read_att_excel(self, file_name, var_names):
+        return attrs
+
+    @staticmethod
+    def _read_att_excel(file_name, var_names, centroids):
         """Read Excel hazard's attributes."""
         dfr = pd.read_excel(file_name, var_names['sheet_name']['freq'])
 
         num_events = dfr.shape[0]
-        self.frequency = dfr[var_names['col_name']['freq']].values
-        self.orig = dfr[var_names['col_name']['orig']].values.astype(bool)
-        self.event_id = dfr[var_names['col_name']['even_id']].values. \
-            astype(int, copy=False)
-        self.date = dfr[var_names['col_name']['even_dt']].values. \
-            astype(int, copy=False)
-        self.event_name = dfr[var_names['col_name']['even_name']].values.tolist()
+        attrs = dict()
+        attrs["frequency"] = dfr[var_names['col_name']['freq']].values
+        attrs["orig"] = dfr[var_names['col_name']['orig']].values.astype(bool)
+        attrs["event_id"] = dfr[var_names['col_name']
+                                ['even_id']].values.astype(int, copy=False)
+        attrs["date"] = dfr[var_names['col_name']
+                            ['even_dt']].values.astype(int, copy=False)
+        attrs["event_name"] = dfr[var_names['col_name']
+                                  ['even_name']].values.tolist()
 
         dfr = pd.read_excel(file_name, var_names['sheet_name']['inten'])
         # number of events (ignore centroid_ID column)
@@ -2056,13 +2110,17 @@ class Hazard():
                              'different from the number of defined in its frequency: '
                              f'{dfr.shape[1] - 1} != {num_events}')
         # check number of centroids is the same as retrieved before
-        if dfr.shape[0] is not self.centroids.size:
+        if dfr.shape[0] is not centroids.size:
             raise ValueError('Hazard intensity is given for a number of centroids '
                              'different from the number of centroids defined: '
-                             f'{dfr.shape[0]} != {self.centroids.size}')
+                             f'{dfr.shape[0]} != {centroids.size}')
 
-        self.intensity = sparse.csr_matrix(dfr.values[:, 1:num_events + 1].transpose())
-        self.fraction = sparse.csr_matrix(np.ones(self.intensity.shape, dtype=float))
+        attrs["intensity"] = sparse.csr_matrix(
+            dfr.values[:, 1:num_events + 1].transpose())
+        attrs["fraction"] = sparse.csr_matrix(
+            np.ones(attrs["intensity"].shape, dtype=float))
+
+        return attrs
 
     def append(self, *others):
         """Append the events and centroids to this hazard object.
