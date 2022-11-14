@@ -581,6 +581,7 @@ class TropCyclone(Hazard):
             list of criteria from climada.hazard.tc_clim_change
         scaling_rcp_year : float
             scale parameter because of chosen year and RCP
+
         Returns
         -------
         tc_cc : climada.hazard.TropCyclone
@@ -641,7 +642,7 @@ def compute_windfields(
     centroids: np.ndarray,
     model: int,
     metric: str = "equirect"
-):
+) -> Tuple[np.ndarray, np.ndarray]:
     """Compute 1-minute sustained winds (in m/s) at 10 meters above ground
 
     In a first step, centroids within reach of the track are determined so that wind fields will
@@ -787,7 +788,7 @@ def _close_centroids(
     t_lon: np.ndarray,
     centroids: np.ndarray,
     buffer: Optional[float] = CENTR_NODE_MAX_DIST_DEG
-):
+) -> np.ndarray:
     """Check whether centroids lay within a rectangular buffer around track positions
 
     The longitudinal coordinates are assumed to be normalized around a central longitude. This
@@ -827,7 +828,7 @@ def _vtrans(
     t_lon: np.ndarray,
     t_tstep: np.ndarray,
     metric: str = "equirect"
-):
+) -> Tuple[np.ndarray, np.ndarray]:
     """Translational vector and velocity (in m/s) at each track node.
 
     Parameters
@@ -868,7 +869,7 @@ def _vtrans(
     return v_trans_norm, v_trans
 
 
-def _coriolis_parameter(lat):
+def _coriolis_parameter(lat: np.ndarray) -> np.ndarray:
     """Compute the Coriolis parameter from latitude.
 
     Parameters
@@ -891,7 +892,7 @@ def _bs_holland_2008(
     prepcen: np.ndarray,
     lat: np.ndarray,
     tint: np.ndarray
-):
+) -> np.ndarray:
     """Holland's 2008 b-value estimate for sustained surface winds.
 
     Unlike the original 1980 formula (see `_B_holland_1980`), this approach does not require any
@@ -952,7 +953,7 @@ def _v_max_s_holland_2008(
     penv: np.ndarray,
     pcen: np.ndarray,
     b_s: np.ndarray,
-):
+) -> np.ndarray:
     """Compute maximum surface winds from pressure according to Holland 2008.
 
     This function implements equation (11) in the following paper:
@@ -989,7 +990,7 @@ def _B_holland_1980(
     gradient_winds: np.ndarray,
     penv: np.ndarray,
     pcen: np.ndarray,
-):  # pylint: disable=invalid-name
+) -> np.ndarray:  # pylint: disable=invalid-name
     """Holland's 1980 B-value computation for gradient-level winds.
 
     The parameter applies to gradient-level winds (about 1000 metres above the earth's surface).
@@ -1035,7 +1036,7 @@ def _x_holland_2010(
     close_centr: np.ndarray,
     v_n: Union[float, np.ndarray] = 17.0,
     r_n: Union[float, np.ndarray] = 300
-):
+) -> np.ndarray:
     """Compute exponent for wind model according to Holland et al. 2010.
 
     This function implements equation (10) from the following paper:
@@ -1102,7 +1103,7 @@ def _stat_holland_2010(
     hol_b: np.ndarray,
     close_centr: np.ndarray,
     x: Union[float, np.ndarray]
-):
+) -> np.ndarray:
     """Symmetric and static surface wind fields (in m/s) according to Holland et al. 2010
 
     This function applies the cyclostrophic surface wind model expressed in equation (6) from
@@ -1156,7 +1157,7 @@ def _stat_holland_1980(
     lat: np.ndarray,
     close_centr: np.ndarray,
     cyclostrophic: bool = False
-):
+) -> np.ndarray:
     """Symmetric and static wind fields (in m/s) according to Holland 1980.
 
     This function applies the gradient wind model expressed in equation (4) (combined with
@@ -1221,7 +1222,13 @@ def _stat_holland_1980(
     v_ang[close_centr] = np.sqrt(np.fmax(0, sqrt_term)) - r_coriolis
     return v_ang
 
-def _stat_er_2011(d_centr, v_max, r_max, lat, cyclostrophic=False):
+def _stat_er_2011(
+    d_centr: np.ndarray,
+    v_max: np.ndarray,
+    r_max: np.ndarray,
+    lat: np.ndarray,
+    cyclostrophic: bool = False,
+) -> np.ndarray:
     """Symmetric and static wind fields (in m/s) according to Emanuel and Rotunno 2011
 
     Emanuel, K., Rotunno, R. (2011): Self-Stratification of Tropical Cyclone Outflow. Part I:
