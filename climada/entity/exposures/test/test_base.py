@@ -54,6 +54,16 @@ def good_exposures():
 class TestFuncs(unittest.TestCase):
     """Check assign function"""
 
+    def test__init__meta_type(self):
+        """ Check if meta of type list raises a ValueError in __init__"""
+        with self.assertRaises(ValueError) as cm:
+            Exposures(None, meta=[], tag=None, ref_year=DEF_REF_YEAR,
+                 value_unit=DEF_VALUE_UNIT, crs=None)
+        self.assertEqual("meta must be a dictionary",
+                      str(cm.exception))
+        
+            
+
     def test_assign_pass(self):
         """Check that attribute `assigned` is correctly set."""
         np_rand = np.random.RandomState(123456789)
@@ -414,6 +424,13 @@ class TestGeoDFFuncs(unittest.TestCase):
         self.assertEqual(exp_tr.value_unit, DEF_VALUE_UNIT)
         self.assertEqual(exp_tr.tag.description, '')
         self.assertEqual(exp_tr.tag.file_name, '')
+
+    def test_to_crs_epsg_crs(self):
+        """ Check that if crs and epsg are both provided a ValueError is raised"""
+        with self.assertRaises(ValueError) as cm:
+            Exposures.to_crs(self,crs='GCS', epsg=26915, inplace=False)
+        self.assertEqual("one of crs or epsg must be None",
+                      str(cm.exception))
 
     def test_constructor_pass(self):
         """Test initialization with input GeoDataFrame"""
