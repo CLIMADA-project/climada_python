@@ -238,8 +238,7 @@ class StormEurope(Hazard):
         new_haz.centroids = centroids
         new_haz.event_id = np.array([1])
         new_haz.frequency = np.array([1])
-        new_haz.fraction = new_haz.intensity.copy().tocsr()
-        new_haz.fraction.data.fill(1)
+        new_haz.fraction = sparse.csr_matrix(new_haz.intensity.shape)
         new_haz.orig = np.array([True])
 
         ncdf.close()
