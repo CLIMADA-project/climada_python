@@ -2648,7 +2648,7 @@ def set_df_geometry_points(df_val, scheduler=None, crs=None):
             return df_exp.apply(lambda row: Point(row.longitude, row.latitude), axis=1)
 
         ddata = dd.from_pandas(df_val, npartitions=cpu_count())
-        df_val['geometry'] = ddata.map_partitions(apply_point, meta=Point) \
+        df_val['geometry'] = ddata.map_partitions(apply_point) \
                                   .compute(scheduler=scheduler)
     # single process
     else:
