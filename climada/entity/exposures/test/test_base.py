@@ -85,8 +85,7 @@ class TestFuncs(unittest.TestCase):
     def test__init__meta_type(self):
         """ Check if meta of type list raises a ValueError in __init__"""
         with self.assertRaises(ValueError) as cm:
-            Exposures(None, meta=[], tag=None, ref_year=DEF_REF_YEAR,
-                 value_unit=DEF_VALUE_UNIT, crs=None)
+            Exposures(meta=[])
         self.assertEqual("meta must be a dictionary",
                       str(cm.exception))
 
