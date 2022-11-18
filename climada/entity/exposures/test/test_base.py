@@ -486,7 +486,7 @@ class TestGeoDFFuncs(unittest.TestCase):
     def test_to_crs_epsg_crs(self):
         """ Check that if crs and epsg are both provided a ValueError is raised"""
         with self.assertRaises(ValueError) as cm:
-            Exposures.to_crs(self,crs='GCS', epsg=26915, inplace=False)
+            Exposures.to_crs(self, crs='GCS', epsg=26915)
         self.assertEqual("one of crs or epsg must be None",
                       str(cm.exception))
 
