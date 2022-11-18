@@ -487,8 +487,7 @@ class TestGeoDFFuncs(unittest.TestCase):
         """ Check that if crs and epsg are both provided a ValueError is raised"""
         with self.assertRaises(ValueError) as cm:
             Exposures.to_crs(self, crs='GCS', epsg=26915)
-        self.assertEqual("one of crs or epsg must be None",
-                      str(cm.exception))
+        self.assertEqual("one of crs or epsg must be None", str(cm.exception))
 
 class TestImpactFunctions(unittest.TestCase):
     """Test impact function handling"""
