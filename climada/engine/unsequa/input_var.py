@@ -92,8 +92,7 @@ class InputVar():
                                  mdd=mdd,
                                  paa=paa)
             imp_fun.check()
-            impf_set = ImpactFuncSet()
-            impf_set.append(imp_fun)
+            impf_set = ImpactFuncSet([imp_fun])
             return impf_set
         distr_dict = {"G": sp.stats.uniform(0.8, 1),
               "v_half": sp.stats.uniform(50, 100),

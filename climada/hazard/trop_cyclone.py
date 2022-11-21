@@ -21,15 +21,19 @@ Define TC wind hazard (TropCyclone class).
 
 __all__ = ['TropCyclone']
 
+import copy
+import datetime as dt
 import itertools
 import logging
-import copy
 import time
-import datetime as dt
+from typing import Optional, Tuple, List, Union
+
 import numpy as np
 from scipy import sparse
 import matplotlib.animation as animation
 from tqdm import tqdm
+import pathos.pools
+import xarray as xr
 
 from climada.hazard.base import Hazard
 from climada.hazard.tag import Tag as TagHazard
@@ -97,14 +101,14 @@ class TropCyclone(Hazard):
              4 Hurrican category 4
              5 Hurrican category 5
     basin : list(str)
-        basin where every event starts
-        'NA' North Atlantic
-        'EP' Eastern North Pacific
-        'WP' Western North Pacific
-        'NI' North Indian
-        'SI' South Indian
-        'SP' Southern Pacific
-        'SA' South Atlantic
+        Basin where every event starts:
+            'NA' North Atlantic
+            'EP' Eastern North Pacific
+            'WP' Western North Pacific
+            'NI' North Indian
+            'SI' South Indian
+            'SP' Southern Pacific
+            'SA' South Atlantic
     """
     intensity_thres = DEF_INTENSITY_THRES
     """intensity threshold for storage in m/s"""
@@ -112,18 +116,44 @@ class TropCyclone(Hazard):
     vars_opt = Hazard.vars_opt.union({'category'})
     """Name of the variables that aren't need to compute the impact."""
 
-    def __init__(self, pool=None):
+    def __init__(
+        self,
+        category: Optional[np.ndarray] = None,
+        basin: Optional[List] = None,
+        windfields: Optional[List[sparse.csr_matrix]] = None,
+        **kwargs,
+    ):
         """Initialize values.
 
         Parameters
         ----------
-        pool : pathos.pool, optional
-            Pool that will be used for parallel computation when applicable. Default: None
+        category : np.ndarray of int, optional
+            For every event, the TC category using the Saffir-Simpson scale:
+                -1 tropical depression
+                 0 tropical storm
+                 1 Hurrican category 1
+                 2 Hurrican category 2
+                 3 Hurrican category 3
+                 4 Hurrican category 4
+                 5 Hurrican category 5
+        basin : list of str, optional
+            Basin where every event starts:
+                'NA' North Atlantic
+                'EP' Eastern North Pacific
+                'WP' Western North Pacific
+                'NI' North Indian
+                'SI' South Indian
+                'SP' Southern Pacific
+                'SA' South Atlantic
+        windfields : list of csr_matrix, optional
+            For each event
+        **kwargs : Hazard properties, optional
+            All other keyword arguments are passed to the Hazard constructor.
         """
-        Hazard.__init__(self, haz_type=HAZ_TYPE, pool=pool)
-        self.category = np.array([], int)
-        self.basin = []
-        self.windfields = []
+        Hazard.__init__(self, haz_type=HAZ_TYPE, **kwargs)
+        self.category = category if category is not None else np.array([], int)
+        self.basin = basin if basin is not None else []
+        self.windfields = windfields if windfields is not None else []
 
     def set_from_tracks(self, *args, **kwargs):
         """This function is deprecated, use TropCyclone.from_tracks instead."""
@@ -137,9 +167,18 @@ class TropCyclone(Hazard):
         self.__dict__ = TropCyclone.from_tracks(*args, **kwargs).__dict__
 
     @classmethod
-    def from_tracks(cls, tracks, centroids=None, pool=None, description='', model='H08',
-                    ignore_distance_to_coast=False, store_windfields=False, metric="equirect",
-                    intensity_thres=DEF_INTENSITY_THRES):
+    def from_tracks(
+        cls,
+        tracks: TCTracks,
+        centroids: Optional[Centroids] = None,
+        pool: Optional[pathos.pools.ProcessPool] = None,
+        description: str = '',
+        model: str = 'H08',
+        ignore_distance_to_coast: bool = False,
+        store_windfields: bool = False,
+        metric: str = "equirect",
+        intensity_thres: float = DEF_INTENSITY_THRES
+    ):
         """
         Create new TropCyclone instance that contains windfields from the specified tracks.
 
@@ -159,7 +198,7 @@ class TropCyclone(Hazard):
 
         Parameters
         ----------
-        tracks : TCTracks
+        tracks : climada.hazard.TCTracks
             Tracks of storm events.
         centroids : Centroids, optional
             Centroids where to model TC. Default: global centroids at 360 arc-seconds resolution.
@@ -261,7 +300,11 @@ class TropCyclone(Hazard):
         haz.tag.description = description
         return haz
 
-    def apply_climate_scenario_knu(self, ref_year=2050, rcp_scenario=45):
+    def apply_climate_scenario_knu(
+        self,
+        ref_year: int = 2050,
+        rcp_scenario: int = 45
+    ):
         """
         From current TC hazard instance, return new hazard set with
         future events for a given RCP scenario and year based on the
@@ -309,9 +352,17 @@ class TropCyclone(Hazard):
         return self.apply_climate_scenario_knu(*args, **kwargs)
 
     @classmethod
-    def video_intensity(cls, track_name, tracks, centroids, file_name=None,
-                        writer=animation.PillowWriter(bitrate=500),
-                        figsize=(9, 13), adapt_fontsize=True, **kwargs):
+    def video_intensity(
+        cls,
+        track_name: str,
+        tracks: TCTracks,
+        centroids: Centroids,
+        file_name: Optional[str] = None,
+        writer: animation = animation.PillowWriter(bitrate=500),
+        figsize: Tuple[float, float] = (9, 13),
+        adapt_fontsize: bool = True,
+        **kwargs
+    ):
         """
         Generate video of TC wind fields node by node and returns its
         corresponding TropCyclone instances and track pieces.
@@ -402,7 +453,7 @@ class TropCyclone(Hazard):
             pbar.close()
         return tc_list, tr_coord
 
-    def frequency_from_tracks(self, tracks):
+    def frequency_from_tracks(self, tracks: List):
         """
         Set hazard frequency from tracks data.
 
@@ -420,9 +471,16 @@ class TropCyclone(Hazard):
         self.frequency = np.ones(self.event_id.size) / (year_delta * ens_size)
 
     @classmethod
-    def from_single_track(cls, track, centroids, coastal_idx, model='H08',
-                          store_windfields=False, metric="equirect",
-                          intensity_thres=DEF_INTENSITY_THRES):
+    def from_single_track(
+        cls,
+        track: xr.Dataset,
+        centroids: Centroids,
+        coastal_idx: np.ndarray,
+        model: str = 'H08',
+        store_windfields: bool = False,
+        metric: str = "equirect",
+        intensity_thres: float = DEF_INTENSITY_THRES
+    ):
         """
         Generate windfield hazard from a single track dataset
 
@@ -509,16 +567,21 @@ class TropCyclone(Hazard):
                          else str(track.basin.values[0])]
         return new_haz
 
-    def _apply_knutson_criterion(self, chg_int_freq, scaling_rcp_year):
+    def _apply_knutson_criterion(
+        self,
+        chg_int_freq: List,
+        scaling_rcp_year: float
+    ):
         """
         Apply changes to intensities and cumulative frequencies.
 
         Parameters
         ----------
-        criterion : list(dict))
+        chg_int_freq : list(dict))
             list of criteria from climada.hazard.tc_clim_change
-        scale : float
+        scaling_rcp_year : float
             scale parameter because of chosen year and RCP
+
         Returns
         -------
         tc_cc : climada.hazard.TropCyclone
@@ -574,7 +637,12 @@ class TropCyclone(Hazard):
         return tc_cc
 
 
-def compute_windfields(track, centroids, model, metric="equirect"):
+def compute_windfields(
+    track: xr.Dataset,
+    centroids: np.ndarray,
+    model: int,
+    metric: str = "equirect"
+) -> Tuple[np.ndarray, np.ndarray]:
     """Compute 1-minute sustained winds (in m/s) at 10 meters above ground
 
     In a first step, centroids within reach of the track are determined so that wind fields will
@@ -715,7 +783,12 @@ def compute_windfields(track, centroids, model, metric="equirect"):
     [reachable_centr_idx] = track_centr_msk.nonzero()
     return windfields, reachable_centr_idx
 
-def _close_centroids(t_lat, t_lon, centroids, buffer=CENTR_NODE_MAX_DIST_DEG):
+def _close_centroids(
+    t_lat: np.ndarray,
+    t_lon: np.ndarray,
+    centroids: np.ndarray,
+    buffer: Optional[float] = CENTR_NODE_MAX_DIST_DEG
+) -> np.ndarray:
     """Check whether centroids lay within a rectangular buffer around track positions
 
     The longitudinal coordinates are assumed to be normalized around a central longitude. This
@@ -750,7 +823,12 @@ def _close_centroids(t_lat, t_lon, centroids, buffer=CENTR_NODE_MAX_DIST_DEG):
     # for each centroid, check whether it is in the buffer for any of the track positions
     return mask.any(axis=0)
 
-def _vtrans(t_lat, t_lon, t_tstep, metric="equirect"):
+def _vtrans(
+    t_lat: np.ndarray,
+    t_lon: np.ndarray,
+    t_tstep: np.ndarray,
+    metric: str = "equirect"
+) -> Tuple[np.ndarray, np.ndarray]:
     """Translational vector and velocity (in m/s) at each track node.
 
     Parameters
@@ -790,7 +868,8 @@ def _vtrans(t_lat, t_lon, t_tstep, metric="equirect"):
     v_trans_norm[msk] *= fact
     return v_trans_norm, v_trans
 
-def _coriolis_parameter(lat):
+
+def _coriolis_parameter(lat: np.ndarray) -> np.ndarray:
     """Compute the Coriolis parameter from latitude.
 
     Parameters
@@ -805,7 +884,15 @@ def _coriolis_parameter(lat):
     """
     return 2 * V_ANG_EARTH * np.sin(np.radians(np.abs(lat)))
 
-def _bs_holland_2008(v_trans, penv, pcen, prepcen, lat, tint):
+
+def _bs_holland_2008(
+    v_trans: np.ndarray,
+    penv: np.ndarray,
+    pcen: np.ndarray,
+    prepcen: np.ndarray,
+    lat: np.ndarray,
+    tint: np.ndarray
+) -> np.ndarray:
     """Holland's 2008 b-value estimate for sustained surface winds.
 
     Unlike the original 1980 formula (see `_B_holland_1980`), this approach does not require any
@@ -862,7 +949,11 @@ def _bs_holland_2008(v_trans, penv, pcen, prepcen, lat, tint):
         0.15 * v_trans**hol_xx + 1.0
     return np.clip(hol_b, 1, 2.5)
 
-def _v_max_s_holland_2008(penv, pcen, b_s):
+def _v_max_s_holland_2008(
+    penv: np.ndarray,
+    pcen: np.ndarray,
+    b_s: np.ndarray,
+) -> np.ndarray:
     """Compute maximum surface winds from pressure according to Holland 2008.
 
     This function implements equation (11) in the following paper:
@@ -895,7 +986,11 @@ def _v_max_s_holland_2008(penv, pcen, b_s):
     v_squared = b_s / (RHO_AIR * np.exp(1)) * 100 * (penv - pcen)
     return np.sqrt(v_squared)
 
-def _B_holland_1980(gradient_winds, penv, pcen):  # pylint: disable=invalid-name
+def _B_holland_1980(
+    gradient_winds: np.ndarray,
+    penv: np.ndarray,
+    pcen: np.ndarray,
+) -> np.ndarray:  # pylint: disable=invalid-name
     """Holland's 1980 B-value computation for gradient-level winds.
 
     The parameter applies to gradient-level winds (about 1000 metres above the earth's surface).
@@ -933,7 +1028,15 @@ def _B_holland_1980(gradient_winds, penv, pcen):  # pylint: disable=invalid-name
     hol_b = gradient_winds**2 * np.exp(1) * RHO_AIR / np.fmax(np.spacing(1), pdelta)
     return np.clip(hol_b, 1, 2.5)
 
-def _x_holland_2010(d_centr, r_max, v_max_s, hol_b, close_centr, v_n=17.0, r_n=300):
+def _x_holland_2010(
+    d_centr: np.ndarray,
+    r_max: np.ndarray,
+    v_max_s: np.ndarray,
+    hol_b: np.ndarray,
+    close_centr: np.ndarray,
+    v_n: Union[float, np.ndarray] = 17.0,
+    r_n: Union[float, np.ndarray] = 300
+) -> np.ndarray:
     """Compute exponent for wind model according to Holland et al. 2010.
 
     This function implements equation (10) from the following paper:
@@ -992,7 +1095,15 @@ def _x_holland_2010(d_centr, r_max, v_max_s, hol_b, close_centr, v_n=17.0, r_n=3
     x[close_centr] = np.clip(x[close_centr], 0.0, 0.5)
     return x
 
-def _stat_holland_2010(d_centr, v_max_s, r_max, hol_b, close_centr, x):
+
+def _stat_holland_2010(
+    d_centr: np.ndarray,
+    v_max_s: np.ndarray,
+    r_max: np.ndarray,
+    hol_b: np.ndarray,
+    close_centr: np.ndarray,
+    x: Union[float, np.ndarray]
+) -> np.ndarray:
     """Symmetric and static surface wind fields (in m/s) according to Holland et al. 2010
 
     This function applies the cyclostrophic surface wind model expressed in equation (6) from
@@ -1037,7 +1148,16 @@ def _stat_holland_2010(d_centr, v_max_s, r_max, hol_b, close_centr, x):
     v_ang[close_centr] = v_max_s * (r_max_norm * np.exp(1 - r_max_norm))**x
     return v_ang
 
-def _stat_holland_1980(d_centr, r_max, hol_b, penv, pcen, lat, close_centr, cyclostrophic=False):
+def _stat_holland_1980(
+    d_centr: np.ndarray,
+    r_max: np.ndarray,
+    hol_b: np.ndarray,
+    penv: np.ndarray,
+    pcen: np.ndarray,
+    lat: np.ndarray,
+    close_centr: np.ndarray,
+    cyclostrophic: bool = False
+) -> np.ndarray:
     """Symmetric and static wind fields (in m/s) according to Holland 1980.
 
     This function applies the gradient wind model expressed in equation (4) (combined with
@@ -1102,7 +1222,13 @@ def _stat_holland_1980(d_centr, r_max, hol_b, penv, pcen, lat, close_centr, cycl
     v_ang[close_centr] = np.sqrt(np.fmax(0, sqrt_term)) - r_coriolis
     return v_ang
 
-def _stat_er_2011(d_centr, v_max, r_max, lat, cyclostrophic=False):
+def _stat_er_2011(
+    d_centr: np.ndarray,
+    v_max: np.ndarray,
+    r_max: np.ndarray,
+    lat: np.ndarray,
+    cyclostrophic: bool = False,
+) -> np.ndarray:
     """Symmetric and static wind fields (in m/s) according to Emanuel and Rotunno 2011
 
     Emanuel, K., Rotunno, R. (2011): Self-Stratification of Tropical Cyclone Outflow. Part I:

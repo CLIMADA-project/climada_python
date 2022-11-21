@@ -82,6 +82,12 @@ class TestFuncs(unittest.TestCase):
             self.assertEqual(exp.gdf.shape[0], len(exp.gdf[INDICATOR_CENTR + 'FL']))
             np.testing.assert_array_equal(exp.gdf[INDICATOR_CENTR + 'FL'].values, expected_result)
 
+    def test__init__meta_type(self):
+        """ Check if meta of type list raises a ValueError in __init__"""
+        with self.assertRaises(ValueError) as cm:
+            Exposures(meta=[])
+        self.assertEqual("meta must be a dictionary",
+                      str(cm.exception))
 
     def test_read_raster_pass(self):
         """from_raster"""
@@ -103,15 +109,13 @@ class TestFuncs(unittest.TestCase):
 
     def test_assign_raster_pass(self):
         """Test assign_centroids with raster hazard"""
-        haz = Hazard('FL')
-
         # explicit, easy-to-understand raster centroids for hazard
         meta = {
             'count': 1, 'crs': DEF_CRS,
             'width': 20, 'height': 10,
             'transform': rasterio.Affine(1.5, 0.0, -20, 0.0, -1.4, 8)
         }
-        haz.centroids = Centroids(meta=meta)
+        haz = Hazard('FL', centroids=Centroids(meta=meta))
 
         # explicit points with known results (see `expected_result` for details)
         exp = Exposures(crs=DEF_CRS)
@@ -479,6 +483,11 @@ class TestGeoDFFuncs(unittest.TestCase):
         self.assertRaises(ValueError, probe.set_crs, 'epsg:3395')
         self.assertTrue(u_coord.equal_crs('EPSG:4326', probe.meta.get('crs')))
 
+    def test_to_crs_epsg_crs(self):
+        """ Check that if crs and epsg are both provided a ValueError is raised"""
+        with self.assertRaises(ValueError) as cm:
+            Exposures.to_crs(self, crs='GCS', epsg=26915)
+        self.assertEqual("one of crs or epsg must be None", str(cm.exception))
 
 class TestImpactFunctions(unittest.TestCase):
     """Test impact function handling"""
