@@ -1518,6 +1518,8 @@ class Impact():
         #check attributes
         check_attributes(imp_list)
         #check if impacts have same frequency values (only first entries are checked)
+        #unclear if this check can be avoided to allow concatenating impacts with different frequencies
+        #but this affects other attributes such as eai
         frequency = check_frequency(imp_list)
 
         ### The following checks are specific to the selected concatenation options

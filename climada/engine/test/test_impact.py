@@ -74,7 +74,9 @@ class TestImpact(unittest.TestCase):
         ent = Entity.from_excel(ENT_DEMO_TODAY)
         ent.check()
 
-        hazard = Hazard.from_mat(HAZ_TEST_TC)
+        hazard = Hazard.from_hdf5(HAZ_TEST_TC)
+        hazard2 = Hazard.from_hdf5(HAZ_TEST_TC)
+        hazard2.tag.haz_type = 'OTHER'
 
         #create hazard subsets
         date0 = hazard.date[0]
@@ -84,16 +86,64 @@ class TestImpact(unittest.TestCase):
         haz_subset1 = hazard.select(date=(date0, date1))
         haz_subset2 = hazard.select(date=(date1, date2))
         haz_subset3 = hazard.select(date=(date2, date3))
+        haz2_subset3 = hazard2.select(date=(date2, date3))
 
         #compute impacts separately
         imp1 = ImpactCalc(ent.exposures, ent.impact_funcs, haz_subset1).impact()
         imp2 = ImpactCalc(ent.exposures, ent.impact_funcs, haz_subset2).impact()
         imp3 = ImpactCalc(ent.exposures, ent.impact_funcs, haz_subset3).impact()
 
-        imp = Impact.concat([imp1,imp2,imp3],concat_type='time')
+        #and another impact with other hazard type
+        ent2 = Entity.from_excel(ENT_DEMO_TODAY)
+        ent2.check()
+        ent2.impact_funcs._data['OTHER'] = ent2.impact_funcs._data['TC']
+        imp3_2 = ImpactCalc(ent2.exposures, ent2.impact_funcs, haz2_subset3).impact()
+
+        imp = Impact.concat([imp1,imp2,imp3], concat_type='time')
 
         with self.assertRaises(ValueError):
             Impact.concat([imp1, imp2, imp3], concat_type='test')
+        with self.assertRaises(ValueError):
+            Impact.concat([imp1, imp2, imp3], concat_type='exposure')
+        with self.assertRaises(ValueError):
+            imp3.tag['haz'].haz_type=''
+            Impact.concat([imp1, imp2, imp3], concat_type='time')
+        with self.assertRaises(ValueError):
+            Impact.concat([imp1, imp2, imp3_2], concat_type='time')
+        with self.assertRaises(ValueError):
+            imp3.tag['haz'].haz_type=imp2.tag['haz'].haz_type
+            imp3.unit=''
+            Impact.concat([imp1, imp2, imp3], concat_type='time')
+            imp3.tag['haz'].haz_type = imp2.tag['haz'].haz_type
+        with self.assertRaises(ValueError):
+            imp3.unit = ''
+            Impact.concat([imp1, imp2, imp3], concat_type='time')
+        with self.assertRaises(ValueError):
+            imp3.unit = 'OTHER'
+            Impact.concat([imp1, imp2, imp3], concat_type='time')
+            imp3.unit = imp2.unit
+        with self.assertRaises(ValueError):
+            imp3.crs = ''
+            Impact.concat([imp1, imp2, imp3], concat_type='time')
+        with self.assertRaises(ValueError):
+            imp3.crs = 'OTHER'
+            Impact.concat([imp1, imp2, imp3], concat_type='time')
+            imp3.crs = imp2.crs
+        with self.assertRaises(ValueError):
+            imp3.new_attr = 'test_attr'
+            Impact.concat([imp1, imp2, imp3], concat_type='time')
+            delattr(imp3, "new_attr")
+        with self.assertRaises(ValueError):
+            imp3.frequency = imp3.frequency*2
+            Impact.concat([imp1, imp2, imp3], concat_type='time')
+            imp3.frequency = imp2.frequency
+
+        #checks for concat_type=time only
+        with self.assertRaises(ValueError):
+            dates0=np.array(imp3.date,copy=True)
+            imp3.date[0]=imp2.date[0]
+            Impact.concat([imp1, imp2, imp3], concat_type='time')
+            imp3.date[0]=dates0
 
 
 class TestFreqCurve(unittest.TestCase):
