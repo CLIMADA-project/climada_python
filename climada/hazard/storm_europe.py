@@ -95,14 +95,17 @@ class StormEurope(Hazard):
         units : str
             The units of the Hazard intensity. Defaults to 'm/s'
         ssi : numpy.ndarray
-            The Storm Severity Index (SSI). Shape ``(?? x ??)``. Defaults to an empty
-            array.
+            The Storm Severity Index (SSI). 1d vector, same length as number of
+            storms. Defaults to an empty array.
         ssi_wisc : numpy.ndarray
             The Storm Severity Index (SSI) as reconded in the footprint files.
-            Shape ``(?? x ??)``. Defaults to an empty array.
-        ssi_full_area : numpy.ndarray
-            The Storm Severity Index (SSI) ???. Shape ``(?? x ??)``. Defaults to an empty
+            1d vector, same length as number of storms. Defaults to an empty
             array.
+        ssi_full_area : numpy.ndarray
+            FIXME need to recover rationale for this attribute; no substantive
+            difference to regular SSI attribute; is computed when creating a
+            synthetic event set. 1d vector, same length as number of storms.
+            Defaults to an empty array.
         """
         Hazard.__init__(self, haz_type=HAZ_TYPE, units=units, **kwargs)
         self.ssi = ssi if ssi is not None else np.array([], float)
@@ -655,11 +658,6 @@ class StormEurope(Hazard):
         sel_cen : np.array, bool
             A boolean vector selecting centroids.
             Takes precendence over on_land.
-
-        Attributes
-        ----------
-        self.ssi_dawkins : np.array
-            SSI per event
         """
         if intensity is not None:
             if not isinstance(intensity, sparse.csr_matrix):
