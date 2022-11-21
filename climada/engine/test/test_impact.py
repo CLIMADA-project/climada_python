@@ -74,7 +74,7 @@ class TestImpact(unittest.TestCase):
         ent = Entity.from_excel(ENT_DEMO_TODAY)
         ent.check()
 
-        hazard = Hazard.from_mat(HAZ_TEST_MAT)
+        hazard = Hazard.from_mat(HAZ_TEST_TC)
 
         #create hazard subsets
         date0 = hazard.date[0]
@@ -91,6 +91,10 @@ class TestImpact(unittest.TestCase):
         imp3 = ImpactCalc(ent.exposures, ent.impact_funcs, haz_subset3).impact()
 
         imp = Impact.concat([imp1,imp2,imp3],concat_type='time')
+
+        with self.assertRaises(ValueError):
+            Impact.concat([imp1, imp2, imp3], concat_type='test')
+
 
 class TestFreqCurve(unittest.TestCase):
     """Test exceedence frequency curve computation"""
