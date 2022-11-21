@@ -49,7 +49,6 @@ class TestApply(unittest.TestCase):
         meas = MeasureSet.from_mat(ENT_TEST_MAT)
         act_1 = meas.get_measure(name='Mangroves')[0]
 
-        imp_set = ImpactFuncSet()
         haz_type = 'XX'
         idx = 1
         intensity = np.arange(10, 100, 10)
@@ -62,7 +61,7 @@ class TestApply(unittest.TestCase):
                                0.398500000000000, 0.657000000000000, 1.000000000000000,
                                1.000000000000000, 1.000000000000000])
         imp_tc = ImpactFunc(haz_type, idx, intensity, mdd, paa)
-        imp_set.append(imp_tc)
+        imp_set = ImpactFuncSet([imp_tc])
         new_imp = act_1._change_imp_func(imp_set).get_func('XX')[0]
 
         self.assertTrue(np.array_equal(new_imp.intensity, np.array([4., 24., 34., 44.,
