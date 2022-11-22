@@ -107,7 +107,8 @@ class StormEurope(Hazard):
             synthetic event set. 1d vector, same length as number of storms.
             Defaults to an empty array.
         """
-        Hazard.__init__(self, haz_type=HAZ_TYPE, units=units, **kwargs)
+        kwargs.setdefault('haz_type', HAZ_TYPE)
+        Hazard.__init__(self, units=units, **kwargs)
         self.ssi = ssi if ssi is not None else np.array([], float)
         self.ssi_wisc = ssi_wisc if ssi_wisc is not None else np.array([], float)
         self.ssi_full_area = ssi_full_area if ssi_full_area is not None else np.array([], float)
