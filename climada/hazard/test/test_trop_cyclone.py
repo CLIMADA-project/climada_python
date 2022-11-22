@@ -444,6 +444,24 @@ class TestClimateSce(unittest.TestCase):
             tc._apply_knutson_criterion(criterion, 3)
 
 
+class TestHDF5Cycle(unittest.TestCase):
+    def setUp(self) -> None:
+        self.dump = '.shorttrack-dump.hdf5'
+        tc_track = TCTracks.from_processed_ibtracs_csv(TEST_TRACK_SHORT)
+        self.haz = TropCyclone.from_tracks(tc_track, centroids=CENTR_TEST_BRB)
+        return super().setUp()
+    
+    def test_dump_reload(self):
+        """Try to write hazard to a hdf5 file and read it back in"""
+        self.haz.write_hdf5(self.dump)
+        trop_cyclone = TropCyclone.from_hdf5(self.dump)
+        self.assertTrue(np.allclose(self.haz.category, trop_cyclone.category))
+    
+    def tearDown(self) -> None:
+        Path(self.dump).unlink(missing_ok=True)
+        return super().tearDown()
+
+
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReader)
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestWindfieldHelpers))
