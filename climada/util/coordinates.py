@@ -26,7 +26,7 @@ import math
 from multiprocessing import cpu_count
 from pathlib import Path
 import re
-
+import warnings
 import zipfile
 
 from cartopy.io import shapereader
@@ -1462,7 +1462,13 @@ def get_country_code(lat, lon, gridded=False):
         extent = (lon.min() - 0.001, lon.max() + 0.001,
                   lat.min() - 0.001, lat.max() + 0.001)
         countries = get_country_geometries(extent=extent)
-        countries['area'] = countries.geometry.area
+        with warnings.catch_warnings():
+            # in order to suppress the following
+            # UserWarning: Geometry is in a geographic CRS. Results from 'area' are likely
+            # incorrect. Use 'GeoSeries.to_crs()' to re-project geometries to a projected CRS
+            # before this operation.
+            warnings.simplefilter('ignore', UserWarning)
+            countries['area'] = countries.geometry.area
         countries = countries.sort_values(by=['area'], ascending=False)
         region_id = np.full((lon.size,), -1, dtype=int)
         total_land = countries.geometry.unary_union
