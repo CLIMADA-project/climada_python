@@ -411,7 +411,7 @@ class Hazard():
     @classmethod
     def from_raster_xarray(
         cls,
-        data: Union[xr.Dataset, str],
+        data: Union[xr.Dataset, str, pathlib.Path],
         hazard_type: str,
         intensity_unit: str,
         *,
@@ -448,6 +448,8 @@ class Hazard():
           three coordinates does not exist, use ``Dataset.expand_dims`` (see
           https://docs.xarray.dev/en/stable/generated/xarray.Dataset.expand_dims.html
           and Examples) before loading the Dataset as Hazard.
+        * Single-valued data for variables ``frequency``. ``event_name``, and
+          ``event_date`` will be broadcast to every event.
         * To avoid confusion in the call signature, several parameters are keyword-only
           arguments.
         * The attributes ``Hazard.tag.haz_type`` and ``Hazard.unit`` currently cannot be
@@ -484,7 +486,8 @@ class Hazard():
 
             Default values are:
             * ``date``: The ``event`` coordinate interpreted as date
-            * ``fraction``: 1.0 where intensity is not zero, else zero
+            * ``fraction``: ``None``, which results in a value of 1.0 everywhere, see the
+              :meth:`Hazard.__init__` for details.
             * ``hazard_type``: Empty string
             * ``frequency``: 1.0 for every event
             * ``event_name``: String representation of the event time
@@ -504,6 +507,7 @@ class Hazard():
         --------
         The use of this method is straightforward if the Dataset contains the data with
         expected names.
+
         >>> dset = xr.Dataset(
         >>>     dict(
         >>>         intensity=(
@@ -520,6 +524,7 @@ class Hazard():
         >>> hazard = Hazard.from_raster_xarray(dset, "", "")
 
         For non-default coordinate names, use the ``coordinate_vars`` argument.
+
         >>> dset = xr.Dataset(
         >>>     dict(
         >>>         intensity=(
@@ -539,6 +544,7 @@ class Hazard():
 
         Coordinates can be different from the actual dataset dimensions. The following
         loads the data with coordinates ``longitude`` and ``latitude`` (default names):
+
         >>> dset = xr.Dataset(
         >>>     dict(intensity=(["time", "y", "x"], [[[0, 1, 2], [3, 4, 5]]])),
         >>>     dict(
@@ -554,6 +560,7 @@ class Hazard():
         Optional data is read from the dataset if the default keys are found. Users can
         specify custom variables in the data, or that the default keys should be ignored,
         with the ``data_vars`` argument.
+
         >>> dset = xr.Dataset(
         >>>     dict(
         >>>         intensity=(
@@ -593,6 +600,7 @@ class Hazard():
         If your read single-event data your dataset probably will not have a time
         dimension. As long as a time *coordinate* exists, however, this method will
         automatically promote it to a dataset dimension and load the data:
+
         >>> dset = xr.Dataset(
         >>>     dict(
         >>>         intensity=(
@@ -610,6 +618,7 @@ class Hazard():
 
         If one coordinate is missing altogehter, you must add it or expand the dimensions
         before loading the dataset:
+
         >>> dset = xr.Dataset(
         >>>     dict(
         >>>         intensity=(
@@ -720,7 +729,7 @@ class Hazard():
             """Take a DataArray and transform it into ordinals"""
             if np.issubdtype(array.dtype, np.integer):
                 # Assume that data is ordinals
-                return array.values
+                return strict_positive_int_accessor(array)
 
             # Try transforming to ordinals
             return np.array(u_dt.datetime64_to_ordinal(array.values))
@@ -746,11 +755,7 @@ class Hazard():
                 user_key=None,
                 # The default value for each attribute
                 default_value=[
-                    to_csr_matrix(
-                        xr.apply_ufunc(
-                            lambda x: np.where(x != 0, 1, 0), data[intensity]
-                        ).values
-                    ),
+                    None,
                     np.ones(num_events),
                     np.array(range(num_events), dtype=int) + 1,
                     list(data[coords["event"]].values),
@@ -759,7 +764,7 @@ class Hazard():
                 # The accessor for the data in the Dataset
                 accessor=[
                     lambda x: to_csr_matrix(default_accessor(x)),
-                    default_accessor,
+                    lambda x: maybe_repeat(default_accessor(x), num_events),
                     strict_positive_int_accessor,
                     lambda x: list(maybe_repeat(default_accessor(x), num_events).flat),
                     lambda x: maybe_repeat(date_to_ordinal_accessor(x), num_events),
@@ -866,7 +871,9 @@ class Hazard():
                 return array.shape
 
             # Check size for read data
-            if not np.array_equal(vshape(val), vshape(default_value)):
+            if default_value is not None and (
+                not np.array_equal(vshape(val), vshape(default_value))
+            ):
                 raise RuntimeError(
                     f"'{user_key if user_key else default_key}' must have shape "
                     f"{vshape(default_value)}, but shape is {vshape(val)}"
