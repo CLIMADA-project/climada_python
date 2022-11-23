@@ -183,27 +183,30 @@ class StormEurope(Hazard):
 
         LOGGER.info('Commencing to iterate over netCDF files.')
 
-        haz = cls()
-        for file_name in file_names:
-            if any(fo in file_name for fo in files_omit):
-                LOGGER.info("Omitting file %s", file_name)
-                continue
-            new_haz = cls._read_one_nc(file_name, centroids, intensity_thres)
-            if new_haz is not None:
-                haz.append(new_haz)
+        files_to_read = [file for file in file_names if file not in files_omit]
+        LOGGER.info(
+            "Omitting files %s", [
+                file for file in file_names if file in files_omit])
+        hazard_list = [
+            cls._read_one_nc(
+                file_name,
+                centroids,
+                intensity_thres) for file_name in files_to_read]
+        haz = cls.concat([haz for haz in hazard_list if haz is not None])
 
+        # Fix values after concatenation
         haz.event_id = np.arange(1, len(haz.event_id) + 1)
         haz.frequency = np.divide(
             np.ones_like(haz.date),
             np.max([(last_year(haz.date) - first_year(haz.date)), 1])
         )
 
+        if description is None:
+            description = "WISC historical hazard set."
         haz.tag = TagHazard(
             HAZ_TYPE, 'Hazard set not saved by default',
-            description='WISC historical hazard set.'
+            description=description,
         )
-        if description is not None:
-            haz.tag.description = description
 
         if combine_threshold is not None:
             LOGGER.info('Combining events with small difference in date.')
@@ -214,8 +217,8 @@ class StormEurope(Hazard):
                 haz._combine_events(event_ids)
         return haz
 
-    @staticmethod
-    def _read_one_nc(file_name, centroids, intensity_thres):
+    @classmethod
+    def _read_one_nc(cls, file_name, centroids, intensity_thres):
         """Read a single WISC footprint. Assumes a time dimension of length 1.
         Omits a footprint if another file with the same timestamp has already
         been read.
@@ -253,17 +256,16 @@ class StormEurope(Hazard):
 
         # fill in values from netCDF
         ssi_wisc = np.array([float(ncdf.ssi)])
-        new_haz = StormEurope(ssi_wisc=ssi_wisc)
-        new_haz.event_name = [ncdf.storm_name]
-        new_haz.date = np.array([datetime64_to_ordinal(ncdf.time.data[0])])
-        new_haz.intensity = sparse.csr_matrix(stacked)
-
-        # fill in default values
-        new_haz.centroids = centroids
-        new_haz.event_id = np.array([1])
-        new_haz.frequency = np.array([1])
-        new_haz.fraction = sparse.csr_matrix(new_haz.intensity.shape)
-        new_haz.orig = np.array([True])
+        intensity = sparse.csr_matrix(stacked)
+        new_haz = cls(ssi_wisc=ssi_wisc,
+                      intensity=intensity,
+                      event_name=[ncdf.storm_name],
+                      date=np.array([datetime64_to_ordinal(ncdf.time.data[0])]),
+                      # fill in default values
+                      centroids=centroids,
+                      event_id=np.array([1]),
+                      frequency=np.array([1]),
+                      orig=np.array([True]),)
 
         ncdf.close()
         return new_haz
@@ -316,10 +318,6 @@ class StormEurope(Hazard):
         """
         intensity_thres = cls.intensity_thres if intensity_thres is None else intensity_thres
 
-        haz = cls()
-        # create centroids
-        haz.centroids = cls._centroids_from_nc(fp_file)
-
         # read intensity from file
         ncdf = xr.open_dataset(fp_file)
         ncdf = ncdf.assign_coords(date=('time',ncdf["time"].dt.floor("D").values))
@@ -350,35 +348,38 @@ class StormEurope(Hazard):
         stacked = stacked.fillna(0)
 
         # fill in values from netCDF
-        haz.intensity = sparse.csr_matrix(stacked.VMAX_10M.T)
-        haz.event_id = np.arange(stacked.date_ensemble.size) + 1
-
-        # fill in default values
-        haz.units = 'm/s'
-        haz.fraction = haz.intensity.copy().tocsr()
-        haz.fraction.data.fill(1)
-        haz.orig = np.ones_like(haz.event_id)*False
-        haz.orig[(stacked.epsd_1 == 0).values] = True
-        haz.date = np.repeat(
+        intensity = sparse.csr_matrix(stacked.VMAX_10M.T)
+        event_id = np.arange(stacked.date_ensemble.size) + 1
+        date = np.repeat(
             np.array(datetime64_to_ordinal(considered_dates)),
             np.unique(ncdf.epsd_1).size
         )
-        haz.event_name = [date_i + '_ens' + str(ens_i)
-                          for date_i, ens_i
-                          in zip(date_to_str(haz.date), stacked.epsd_1.values+1)]
-        haz.frequency = np.divide(
-                np.ones_like(haz.event_id),
-                np.unique(ncdf.epsd_1).size)
-        if not description:
+        orig = np.full_like(event_id, False)
+        orig[(stacked.epsd_1 == 0).values] = True
+        if description is None:
             description = (model_name +
                            ' weather forecast windfield ' +
                            'for run startet at ' +
                            run_datetime.strftime('%Y%m%d%H'))
 
-        haz.tag = TagHazard(
-            HAZ_TYPE, 'Hazard set not saved, too large to pickle',
-            description=description
+        # Create Hazard
+        haz = cls(
+            intensity=intensity,
+            event_id=event_id,
+            centroids = cls._centroids_from_nc(fp_file),
+            # fill in default values
+            orig=orig,
+            date=date,
+            event_name=[date_i + '_ens' + str(ens_i)
+                        for date_i, ens_i
+                        in zip(date_to_str(date), stacked.epsd_1.values + 1)],
+            frequency=np.divide(
+                np.ones_like(event_id),
+                np.unique(ncdf.epsd_1).size),
+            description=description,
+            file_name="Hazard set not saved, too large to pickle",
         )
+
         # close netcdf file
         ncdf.close()
         haz.check()
@@ -440,7 +441,6 @@ class StormEurope(Hazard):
         # pylint: disable=protected-access
         intensity_thres = cls.intensity_thres if intensity_thres is None else intensity_thres
 
-        haz = cls()
         if not (run_datetime.hour == 0 or run_datetime.hour == 12):
             LOGGER.warning('The event definition is inaccuratly implemented '
                            'for starting times, which are not 00H or 12H.')
@@ -450,7 +450,6 @@ class StormEurope(Hazard):
 
         # create centroids
         nc_centroids_file = download_icon_centroids_file(model_name, grib_dir)
-        haz.centroids = haz._centroids_from_nc(nc_centroids_file)
 
         # read intensity from files
         for ind_i, file_i in enumerate(file_names):
@@ -490,36 +489,32 @@ class StormEurope(Hazard):
         stacked = stacked.where(stacked > intensity_thres)
         stacked = stacked.fillna(0)
 
-
-        # fill in values from netCDF
-        haz.intensity = sparse.csr_matrix(stacked.gust.T)
-        haz.event_id = np.arange(stacked.date_ensemble.size)+1
-
-        # fill in default values
-        haz.units = 'm/s'
-        haz.fraction = haz.intensity.copy().tocsr()
-        haz.fraction.data.fill(1)
-        haz.orig = np.ones_like(haz.event_id)*False
-        haz.orig[(stacked.number == 1).values] = True
-
-        haz.date = np.repeat(
+        event_id = np.arange(stacked.date_ensemble.size) + 1
+        date = np.repeat(
             np.array(datetime64_to_ordinal(considered_dates)),
             np.unique(stacked.number).size
-            )
-        haz.event_name = [date_i + '_ens' + str(ens_i)
-                          for date_i, ens_i in zip(date_to_str(haz.date), stacked.number.values)]
-        haz.frequency = np.divide(
-                np.ones_like(haz.event_id),
-                np.unique(stacked.number).size)
-        if not description:
-            description = ('icon weather forecast windfield ' +
-                           'for run startet at ' +
+        )
+        orig = np.full_like(event_id, False)
+        orig[(stacked.number == 1).values] = True
+        if description is None:
+            description = ('icon weather forecast windfield for run started at ' +
                            run_datetime.strftime('%Y%m%d%H'))
 
-        haz.tag = TagHazard(
-            HAZ_TYPE, 'Hazard set not saved, too large to pickle',
-            description=description
-            )
+        # Create Hazard
+        haz = cls(
+            intensity=sparse.csr_matrix(stacked.gust.T),
+            centroids=cls._centroids_from_nc(nc_centroids_file),
+            event_id=event_id,
+            date=date,
+            orig=orig,
+            event_name=[date_i + '_ens' + str(ens_i)
+                        for date_i, ens_i
+                        in zip(date_to_str(date), stacked.number.values)],
+            frequency=np.divide(
+                np.ones_like(event_id),
+                np.unique(stacked.number).size),
+            description=description,
+            file_name="Hazard set not saved, too large to pickle")
         haz.check()
 
         # delete generated .grib2 and .4cc40.idx files
@@ -831,33 +826,28 @@ class StormEurope(Hazard):
                     **kwargs)
 
         LOGGER.info('Generating new StormEurope instance')
-        new_haz = StormEurope(ssi_full_area=ssi)
-        new_haz.intensity = sparse.csr_matrix(intensity_prob)
-
-        # don't use synthetic dates; just repeat the historic dates
-        new_haz.date = np.repeat(self.date, N_PROB_EVENTS)
-
-        # subsetting centroids
-        new_haz.centroids = self.centroids.select(sel_cen=sel_cen)
-
-        # construct new event ids
         base = np.repeat((self.event_id * 100), N_PROB_EVENTS)
         synth_id = np.tile(np.arange(N_PROB_EVENTS), self.size)
-        new_haz.event_id = base + synth_id
+        event_id = base + synth_id
+        new_haz = StormEurope(
+            ssi_full_area=ssi,
+            intensity=sparse.csr_matrix(intensity_prob),
+            # don't use synthetic dates; just repeat the
+            # historic dates
+            date=np.repeat(self.date, N_PROB_EVENTS),
+            # subsetting centroids
+            centroids=self.centroids.select(sel_cen=sel_cen),
+            # construct new event ids
 
-        # frequency still based on the historic number of years
-        new_haz.frequency = np.divide(np.repeat(self.frequency, N_PROB_EVENTS),
-                                      N_PROB_EVENTS)
-
-        new_haz.tag = TagHazard(
-            HAZ_TYPE, 'Hazard set not saved by default',
-            description='WISC probabilistic hazard set according to Schwierz et al.'
+            event_id=event_id,
+            # frequency still based on the historic number of
+            # years
+            frequency=np.divide(np.repeat(self.frequency, N_PROB_EVENTS),
+                                N_PROB_EVENTS),
+            file_name='Hazard set not saved by default',
+            description='WISC probabilistic hazard set according to Schwierz et al.',
+            orig=(event_id % 100 == 0),
         )
-
-        new_haz.fraction = new_haz.intensity.copy().tocsr()
-        new_haz.fraction.data.fill(1)
-        new_haz.orig = (new_haz.event_id % 100 == 0)
-
         new_haz.check()
 
         return new_haz
