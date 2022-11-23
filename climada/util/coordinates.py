@@ -1583,7 +1583,7 @@ def get_admin1_geometries(countries):
         # fill columns with country identifiers (admin 0):
         gdf_tmp.iso_3n = pycountry.countries.lookup(country).numeric
         gdf_tmp.iso_3a = country
-        gdf = gdf.append(gdf_tmp, ignore_index=True)
+        gdf = pd.concat([gdf, gdf_tmp], ignore_index=True)
     return gdf
 
 def get_resolution_1d(coords, min_resol=1.0e-8):
