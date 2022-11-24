@@ -33,7 +33,11 @@ class TestCoordinates(unittest.TestCase):
     """Test data coordinates methods in multi processing mode."""
 
     def test_set_df_geometry_points_scheduled_pass(self):
-        """Test set_df_geometry_points with a scheduler other than None"""
+        """Test set_df_geometry_points with a scheduler other than None
+
+        The same test runs with scheduler None runs in
+        climada.util.test.test_coordinates.TestFunc.test_set_df_geometry_points_pass
+        """
         for scheduler in ['threads', 'synchronous', 'processes']:
             df_val = gpd.GeoDataFrame()
             df_val['latitude'] = np.ones(10) * 40.0
@@ -42,8 +46,8 @@ class TestCoordinates(unittest.TestCase):
             # set_df_geometry_points with a scheduler other than None uses dask.dataframe
             # methods to execute calculations in parallel
             u_coord.set_df_geometry_points(df_val, scheduler=scheduler, crs='epsg:2202')
-            self.assertTrue(np.allclose(df_val.geometry[:].x.values, np.ones(10) * 0.5))
-            self.assertTrue(np.allclose(df_val.geometry[:].y.values, np.ones(10) * 40.))
+            np.testing.assert_allclose(df_val.geometry.x.values, np.ones(10) * 0.5)
+            np.testing.assert_allclose(df_val.geometry.y.values, np.ones(10) * 40.)
 
 
 # Execute Tests
