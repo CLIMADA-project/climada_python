@@ -468,4 +468,5 @@ if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReader)
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestWindfieldHelpers))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestClimateSce))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestHDF5Cycle))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
