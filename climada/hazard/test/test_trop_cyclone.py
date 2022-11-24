@@ -445,19 +445,19 @@ class TestClimateSce(unittest.TestCase):
             tc._apply_knutson_criterion(criterion, 3)
 
 
-class TestHDF5Cycle(unittest.TestCase):
+class TestDumpReloadCycle(unittest.TestCase):
     def setUp(self):
-        """Write a TropCyclone file into a temporary directory"""
+        """Create a TropCyclone object and a temporary directory"""
         self.tempdir = TemporaryDirectory()
-        self.dumpfile = Path(self.tempdir.name, "shorttrack-dump.h5")
         tc_track = TCTracks.from_processed_ibtracs_csv(TEST_TRACK_SHORT)
-        self.haz = TropCyclone.from_tracks(tc_track, centroids=CENTR_TEST_BRB)
-        self.haz.write_hdf5(self.dumpfile)
+        self.tc_hazard = TropCyclone.from_tracks(tc_track, centroids=CENTR_TEST_BRB)
 
-    def test_reload(self):
-        """Try to read a TropCyclone object back in"""
-        trop_cyclone = TropCyclone.from_hdf5(self.dumpfile)
-        np.testing.assert_array_equal(self.haz.category, trop_cyclone.category)
+    def test_dump_reload_hdf5(self):
+        """Try to write TropCyclone to a hdf5 file and read it back in"""
+        hdf5_dump = Path(self.tempdir.name, "tc_dump.h5")
+        self.tc_hazard.write_hdf5(hdf5_dump)
+        recycled = TropCyclone.from_hdf5(hdf5_dump)
+        np.testing.assert_array_equal(recycled.category, self.tc_hazard.category)
 
     def tearDown(self):
         """Delete the temporary directory"""
@@ -468,5 +468,5 @@ if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReader)
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestWindfieldHelpers))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestClimateSce))
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestHDF5Cycle))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestDumpReloadCycle))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
