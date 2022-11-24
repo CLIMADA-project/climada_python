@@ -22,6 +22,7 @@ Test TropCyclone class
 import unittest
 import datetime as dt
 from pathlib import Path
+from tempfile import TemporaryDirectory
 import numpy as np
 from scipy import sparse
 
@@ -308,18 +309,18 @@ class TestWindfieldHelpers(unittest.TestCase):
 class TestClimateSce(unittest.TestCase):
     def test_apply_criterion_track(self):
         """Test _apply_criterion function."""
-        tc = TropCyclone()
-        tc.intensity = np.zeros((4, 10))
-        tc.intensity[0, :] = np.arange(10)
-        tc.intensity[1, 5] = 10
-        tc.intensity[2, :] = np.arange(10, 20)
-        tc.intensity[3, 3] = 3
-        tc.intensity = sparse.csr_matrix(tc.intensity)
-        tc.basin = ['NA'] * 4
-        tc.basin[3] = 'NO'
-        tc.category = np.array([2, 0, 4, 1])
-        tc.event_id = np.arange(4)
-        tc.frequency = np.ones(4) * 0.5
+        intensity = np.zeros((4, 10))
+        intensity[0, :] = np.arange(10)
+        intensity[1, 5] = 10
+        intensity[2, :] = np.arange(10, 20)
+        intensity[3, 3] = 3
+        tc = TropCyclone(
+            intensity=sparse.csr_matrix(intensity),
+            basin=['NA', 'NA', 'NA', 'NO'],
+            category=np.array([2, 0, 4, 1]),
+            event_id=np.arange(4),
+            frequency=np.ones(4) * 0.5,
+        )
 
         tc_cc = tc.apply_climate_scenario_knu(ref_year=2050, rcp_scenario=45)
         self.assertTrue(np.allclose(tc.intensity[1, :].toarray(), tc_cc.intensity[1, :].toarray()))
@@ -343,19 +344,18 @@ class TestClimateSce(unittest.TestCase):
         # artificially increase the size of the hazard by repeating (tiling) the data:
         ntiles = 8
 
-        tc = TropCyclone()
-        tc.intensity = np.zeros((4, 10))
-        tc.intensity[0, :] = np.arange(10)
-        tc.intensity[1, 5] = 10
-        tc.intensity[2, :] = np.arange(10, 20)
-        tc.intensity[3, 3] = 3
-        tc.intensity = np.tile(tc.intensity, (ntiles, 1))
-        tc.intensity = sparse.csr_matrix(tc.intensity)
-        tc.basin = ['NA'] * 4
-        tc.basin[3] = 'WP'
-        tc.basin = ntiles * tc.basin
-        tc.category = np.array(ntiles * [2, 0, 4, 1])
-        tc.event_id = np.arange(tc.intensity.shape[0])
+        intensity = np.zeros((4, 10))
+        intensity[0, :] = np.arange(10)
+        intensity[1, 5] = 10
+        intensity[2, :] = np.arange(10, 20)
+        intensity[3, 3] = 3
+        intensity = np.tile(intensity, (ntiles, 1))
+        tc = TropCyclone(
+            intensity=sparse.csr_matrix(intensity),
+            basin=ntiles * ['NA', 'NA', 'NA', 'WP'],
+            category=np.array(ntiles * [2, 0, 4, 1]),
+            event_id=np.arange(intensity.shape[0]),
+        )
 
         tc_cc = tc._apply_knutson_criterion(criterion, scale)
         for i_tile in range(ntiles):
@@ -394,18 +394,18 @@ class TestClimateSce(unittest.TestCase):
             ]
         scale = 0.75
 
-        tc = TropCyclone()
-        tc.intensity = np.zeros((4, 10))
-        tc.intensity[0, :] = np.arange(10)
-        tc.intensity[1, 5] = 10
-        tc.intensity[2, :] = np.arange(10, 20)
-        tc.intensity[3, 3] = 3
-        tc.intensity = sparse.csr_matrix(tc.intensity)
-        tc.frequency = np.ones(4) * 0.5
-        tc.basin = ['NA'] * 4
-        tc.basin[3] = 'WP'
-        tc.category = np.array([2, 0, 4, 1])
-        tc.event_id = np.arange(4)
+        intensity = np.zeros((4, 10))
+        intensity[0, :] = np.arange(10)
+        intensity[1, 5] = 10
+        intensity[2, :] = np.arange(10, 20)
+        intensity[3, 3] = 3
+        tc = TropCyclone(
+            intensity=sparse.csr_matrix(intensity),
+            frequency=np.ones(4) * 0.5,
+            basin=['NA', 'NA', 'NA', 'WP'],
+            category=np.array([2, 0, 4, 1]),
+            event_id=np.arange(4),
+        )
 
         tc_cc = tc._apply_knutson_criterion(criterion, scale)
         self.assertTrue(np.allclose(tc.intensity[1, :].toarray(), tc_cc.intensity[1, :].toarray()))
@@ -435,16 +435,38 @@ class TestClimateSce(unittest.TestCase):
                       'variable': 'frequency'}
                      ]
 
-        tc = TropCyclone()
-        tc.frequency = np.ones(2)
-        tc.basin = ['SP', 'SP']
-        tc.category = np.array([0, 1])
+        tc = TropCyclone(
+            frequency=np.ones(2),
+            basin=['SP', 'SP'],
+            category=np.array([0, 1]),
+        )
+
         with self.assertRaises(ValueError):
             tc._apply_knutson_criterion(criterion, 3)
+
+
+class TestDumpReloadCycle(unittest.TestCase):
+    def setUp(self):
+        """Create a TropCyclone object and a temporary directory"""
+        self.tempdir = TemporaryDirectory()
+        tc_track = TCTracks.from_processed_ibtracs_csv(TEST_TRACK_SHORT)
+        self.tc_hazard = TropCyclone.from_tracks(tc_track, centroids=CENTR_TEST_BRB)
+
+    def test_dump_reload_hdf5(self):
+        """Try to write TropCyclone to a hdf5 file and read it back in"""
+        hdf5_dump = Path(self.tempdir.name, "tc_dump.h5")
+        self.tc_hazard.write_hdf5(hdf5_dump)
+        recycled = TropCyclone.from_hdf5(hdf5_dump)
+        np.testing.assert_array_equal(recycled.category, self.tc_hazard.category)
+
+    def tearDown(self):
+        """Delete the temporary directory"""
+        self.tempdir.cleanup()
 
 
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReader)
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestWindfieldHelpers))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestClimateSce))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestDumpReloadCycle))
     unittest.TextTestRunner(verbosity=2).run(TESTS)

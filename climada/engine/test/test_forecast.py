@@ -60,8 +60,7 @@ class TestCalc(unittest.TestCase):
         #vulnerability
         #generate vulnerability
         impact_function = ImpfStormEurope.from_welker()
-        impact_function_set = ImpactFuncSet()
-        impact_function_set.append(impact_function)
+        impact_function_set = ImpactFuncSet([impact_function])
         #create and calculate Forecast
         forecast = Forecast({dt.datetime(2018,1,1): haz}, expo, impact_function_set)
         forecast.calc()
@@ -130,8 +129,7 @@ class TestPlot(unittest.TestCase):
         #vulnerability
         #generate vulnerability
         impact_function = ImpfStormEurope.from_welker()
-        impact_function_set = ImpactFuncSet()
-        impact_function_set.append(impact_function)
+        impact_function_set = ImpactFuncSet([impact_function])
         #create and calculate Forecast
         forecast = Forecast({dt.datetime(2018,1,2): haz1,
                              dt.datetime(2017,12,31): haz2},
