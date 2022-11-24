@@ -22,6 +22,7 @@ Test TropCyclone class
 import unittest
 import datetime as dt
 from pathlib import Path
+from tempfile import TemporaryDirectory
 import numpy as np
 from scipy import sparse
 
@@ -445,21 +446,22 @@ class TestClimateSce(unittest.TestCase):
 
 
 class TestHDF5Cycle(unittest.TestCase):
-    def setUp(self) -> None:
-        self.dump = '.shorttrack-dump.hdf5'
+    def setUp(self):
+        """Write a TropCyclone file into a temporary directory"""
+        self.tempdir = TemporaryDirectory()
+        self.dumpfile = Path(self.tempdir.name, "shorttrack-dump.h5")
         tc_track = TCTracks.from_processed_ibtracs_csv(TEST_TRACK_SHORT)
         self.haz = TropCyclone.from_tracks(tc_track, centroids=CENTR_TEST_BRB)
-        return super().setUp()
-    
-    def test_dump_reload(self):
-        """Try to write hazard to a hdf5 file and read it back in"""
-        self.haz.write_hdf5(self.dump)
-        trop_cyclone = TropCyclone.from_hdf5(self.dump)
-        self.assertTrue(np.allclose(self.haz.category, trop_cyclone.category))
-    
-    def tearDown(self) -> None:
-        Path(self.dump).unlink(missing_ok=True)
-        return super().tearDown()
+        self.haz.write_hdf5(self.dumpfile)
+
+    def test_reload(self):
+        """Try to read a TropCyclone object back in"""
+        trop_cyclone = TropCyclone.from_hdf5(self.dumpfile)
+        np.testing.assert_array_equal(self.haz.category, trop_cyclone.category)
+
+    def tearDown(self):
+        """Delete the temporary directory"""
+        self.tempdir.cleanup()
 
 
 if __name__ == "__main__":
