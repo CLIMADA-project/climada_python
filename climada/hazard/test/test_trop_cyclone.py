@@ -444,22 +444,23 @@ class TestClimateSce(unittest.TestCase):
             tc._apply_knutson_criterion(criterion, 3)
 
 
-class TestHDF5Cycle(unittest.TestCase):
-    def setUp(self) -> None:
-        self.dump = '.shorttrack-dump.hdf5'
+class TestDumpReloadCycle(unittest.TestCase):
+    """Tests for checking whether writing a hazard to a file and reading it
+    back from it leads to an equal hazard"""
+    
+    def setUp(self):
         tc_track = TCTracks.from_processed_ibtracs_csv(TEST_TRACK_SHORT)
-        self.haz = TropCyclone.from_tracks(tc_track, centroids=CENTR_TEST_BRB)
-        return super().setUp()
-    
-    def test_dump_reload(self):
+        self.tc_hazard = TropCyclone.from_tracks(tc_track, centroids=CENTR_TEST_BRB)
+
+    def test_dump_reload_hdf5(self):
         """Try to write hazard to a hdf5 file and read it back in"""
-        self.haz.write_hdf5(self.dump)
-        trop_cyclone = TropCyclone.from_hdf5(self.dump)
-        self.assertTrue(np.allclose(self.haz.category, trop_cyclone.category))
-    
-    def tearDown(self) -> None:
-        Path(self.dump).unlink(missing_ok=True)
-        return super().tearDown()
+        hdf5_dump = '.tc_dump.hdf5'
+
+        self.tc_hazard.write_hdf5(hdf5_dump)
+        recycled = TropCyclone.from_hdf5(hdf5_dump)
+        np.testing.assert_allclose(recycled.category, self.tc_hazard.category)
+
+        Path(hdf5_dump).unlink(missing_ok=False)
 
 
 if __name__ == "__main__":
