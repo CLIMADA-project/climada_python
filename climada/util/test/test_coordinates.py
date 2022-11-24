@@ -1059,6 +1059,7 @@ class TestGetGeodata(unittest.TestCase):
         """test get_admin1_geometries"""
         countries = ['CHE', 'Indonesia', '840', 51]
         gdf = u_coord.get_admin1_geometries(countries=countries)
+        self.assertIsInstance(gdf, gpd.GeoDataFrame)
         self.assertEqual(len(gdf.iso_3a.unique()), 4) # 4 countries
         self.assertEqual(gdf.loc[gdf.iso_3a=='CHE'].shape[0], 26) # 26 cantons in CHE
         self.assertEqual(gdf.shape[0], 121) # 121 admin 1 regions in the 4 countries
