@@ -1475,7 +1475,7 @@ class Impact():
 
             #compare dates of all impact pairs
             for i, imp1 in enumerate(imp_list):
-                for j, imp2 in enumerate(imp_list[i+1::]):
+                for imp2 in enumerate(imp_list[i+1::]):
                     dates_a_set = set(imp1.date)
                     dates_b_set = set(imp2.date)
                     if len(dates_a_set.intersection(dates_b_set)) > 0:
@@ -1514,6 +1514,7 @@ class Impact():
             return cls()
 
         #raise error if concat_type is not available
+        #NOTE: not sure how to use an ENUM class in this context
         if concat_type not in ['time','exposure']:
             raise ValueError(f"Concatenation option {concat_type} not available.")
 
