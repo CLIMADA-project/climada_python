@@ -184,8 +184,8 @@ class StormEurope(Hazard):
         LOGGER.info('Commencing to iterate over netCDF files.')
 
         file_names = set(file_names)
-        files_to_read = sorted(files_names.difference(files_omit))
-        files_to_skip = sorted(files_names.intersection(files_omit))
+        files_to_read = sorted(file_names.difference(files_omit))
+        files_to_skip = sorted(file_names.intersection(files_omit))
         if files_to_skip:
             LOGGER.info("Omitting files %s", files_to_skip)
         hazard_list = [
