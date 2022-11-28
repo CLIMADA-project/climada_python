@@ -1392,7 +1392,15 @@ class Impact():
     @classmethod
     def concat(cls, imp_list, concat_type='time'):
         """Concatenate impact objects of the same hazard type, frequency,
-        exposure, and coordinate system.
+        exposure, and coordinate system. This function is useful if, e.g. different impact functions
+        have to be applied for different seasons (e.g. for agricultural impacts).
+
+        NOTES
+        -----
+            - Concatenation of impacts with different exposure (e.g. different countries)
+                could also be implemented here in the future.
+            - For now, impacts have to be computed based on the same hazard set
+                that is split into time windows using hazard.select()
 
         Parameters
         ----------
@@ -1486,15 +1494,14 @@ class Impact():
             #compare exposure coordinates of all impact pairs
             for i in range(len(imp_list)):
                 for j in range(i + 1, len(imp_list)):
-                    if not np.array_equal(imp_list[i].coord_exp, imp_list[j].coord_exp): #SOLVED #here something doesnt work (imp not defined)
+                    if not np.array_equal(imp_list[i].coord_exp, imp_list[j].coord_exp):
                         raise ValueError("The impacts are not based on same exposure."
                                          "The impacts are incompatible and cannot be concatenated.")
             #compare exposure descriptions
             exp_desc = {imp.tag['exp'].description for imp in imp_list if imp.tag['exp'].description != ''}
             if len(exp_desc) > 1:
-                raise ValueError(
-                    f"The given impacts are based on exposures with different descriptions: {exp_desc}. "
-                    "The impacts are incompatible and cannot be concatenated.")
+                LOGGER.warning("The impacts are based on exposures with different descriptions but are compatible."
+                                "Concatenate anyways.")
 
             return True
 
@@ -1537,7 +1544,7 @@ class Impact():
             tot_value = imp_list[0].tot_value
 
             #fill remaining attributes
-            tag=imp_list[0].tag
+            tag = imp_list[0].tag
 
             #event IDs
             event_ids = [event_id for imp in imp_list for event_id in imp.event_id]
