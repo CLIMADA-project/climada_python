@@ -1474,10 +1474,10 @@ class Impact():
         def check_dates(imp_list):
 
             #compare dates of all impact pairs
-            for i in range(len(imp_list)):
-                for j in range(i + 1, len(imp_list)):
-                    dates_a_set = set(imp_list[i].date)
-                    dates_b_set = set(imp_list[j].date)
+            for i, imp1 in enumerate(imp_list):
+                for j, imp2 in enumerate(imp_list[i+1::]):
+                    dates_a_set = set(imp1.date)
+                    dates_b_set = set(imp2.date)
                     if len(dates_a_set.intersection(dates_b_set)) > 0:
                         raise ValueError("Found at least one duplicate date. "
                                          "Impacts can not contain same dates."
