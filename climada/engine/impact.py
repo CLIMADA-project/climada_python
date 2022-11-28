@@ -1423,7 +1423,8 @@ class Impact():
                          imp.tag['haz'].haz_type != '']
             if len(haz_types) < len(imp_list):
                 raise ValueError(
-                    "Not all impacts have a hazard type. Please specify the same hazard type for each impact."
+                    "Not all impacts have a hazard type."
+                    "Please specify the same hazard type for each impact."
                     "The impacts are incompatible and cannot be concatenated.")
             if len(set(haz_types)) > 1:
                 raise ValueError(f"Impacts are based on hazards of different types: {haz_types}. "
@@ -1478,8 +1479,9 @@ class Impact():
                     dates_a_set = set(imp_list[i].date)
                     dates_b_set = set(imp_list[j].date)
                     if len(dates_a_set.intersection(dates_b_set)) > 0:
-                        raise ValueError("Found at least one duplicate date. Impacts can not contain same dates."
-                    "The impacts are incompatible and cannot be concatenated.")
+                        raise ValueError("Found at least one duplicate date. "
+                                         "Impacts can not contain same dates."
+                                         "Impacts are incompatible and cannot be concatenated.")
             date = np.array([date for imp in imp_list for date in imp.date])
             return date
 
@@ -1488,7 +1490,8 @@ class Impact():
             #check total value
             tot_vals = {imp.tot_value for imp in imp_list}
             if (len(tot_vals) > 1):
-                raise ValueError("The impacts are not based on same exposure (total exposure values are different)."
+                raise ValueError("The impacts are not based on same exposure."
+                                 "Total exposure values are different."
                                  "The impacts are incompatible and cannot be concatenated.")
 
             #compare exposure coordinates of all impact pairs
@@ -1496,12 +1499,13 @@ class Impact():
                 for j in range(i + 1, len(imp_list)):
                     if not np.array_equal(imp_list[i].coord_exp, imp_list[j].coord_exp):
                         raise ValueError("The impacts are not based on same exposure."
-                                         "The impacts are incompatible and cannot be concatenated.")
+                                         "Impacts are incompatible and cannot be concatenated.")
             #compare exposure descriptions
-            exp_desc = {imp.tag['exp'].description for imp in imp_list if imp.tag['exp'].description != ''}
+            exp_desc = {imp.tag['exp'].description for imp in imp_list \
+                        if imp.tag['exp'].description != ''}
             if len(exp_desc) > 1:
-                LOGGER.warning("The impacts are based on exposures with different descriptions but are compatible."
-                                "Concatenate anyways.")
+                LOGGER.warning("Impacts are based on exposures with different descriptions."
+                               "Concatenate anyways.")
 
             return True
 
@@ -1525,7 +1529,8 @@ class Impact():
         #check attributes
         check_attributes(imp_list)
         #check if impacts have same frequency values (only first entries are checked)
-        #unclear if this check can be avoided to allow concatenating impacts with different frequencies
+        #unclear if this check can be avoided to allow concatenating impacts
+        #with different frequencies
         #but this affects other attributes such as eai
         frequency = check_frequency(imp_list)
 
@@ -1576,7 +1581,8 @@ class Impact():
             ##merge coordinates (only if exposure is not the same)
             ##check if there are any additional exposure coordinates in the new impact
             #compare_coords=np.isin(impact.coord_exp,self.coord_exp)
-            #ad_coords=[impact.coords[ind] for ind,x in enumerate(compare_coords) if not np.all(x)]
+            #ad_coords=[impact.coords[ind] for ind,x in enumerate(compare_coords) \
+            #                           if not np.all(x)]
             #imp.coord_exp=np.concatenate(self.coord_exp,ad_coords)
 
             raise ValueError("Concatenating impacts with different exposures not yet implemented."
