@@ -1475,7 +1475,7 @@ class Impact():
 
             #compare dates of all impact pairs
             for i, imp1 in enumerate(imp_list):
-                for imp2 in enumerate(imp_list[i+1::]):
+                for imp2 in imp_list[i+1::]:
                     dates_a_set = set(imp1.date)
                     dates_b_set = set(imp2.date)
                     if len(dates_a_set.intersection(dates_b_set)) > 0:
@@ -1496,12 +1496,12 @@ class Impact():
 
             #compare exposure coordinates of all impact pairs
             for i, imp1 in enumerate(imp_list):
-                for imp2 in enumerate(imp_list[i + 1::]):
+                for imp2 in imp_list[i + 1::]:
                     if not np.array_equal(imp1.coord_exp, imp2.coord_exp):
                         raise ValueError("The impacts are not based on same exposure."
                                          "Impacts are incompatible and cannot be concatenated.")
             #compare exposure descriptions
-            exp_desc = {imp.tag['exp'].description for imp in imp_list \
+            exp_desc = {imp.tag['exp'].description for imp in imp_list
                         if imp.tag['exp'].description != ''}
             if len(exp_desc) > 1:
                 LOGGER.warning("Impacts are based on exposures with different descriptions."
