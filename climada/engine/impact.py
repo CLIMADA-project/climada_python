@@ -1495,9 +1495,9 @@ class Impact():
                                  "The impacts are incompatible and cannot be concatenated.")
 
             #compare exposure coordinates of all impact pairs
-            for i in range(len(imp_list)):
-                for j in range(i + 1, len(imp_list)):
-                    if not np.array_equal(imp_list[i].coord_exp, imp_list[j].coord_exp):
+            for i, imp1 in enumerate(imp_list):
+                for imp2 in enumerate(imp_list[i + 1::]):
+                    if not np.array_equal(imp1.coord_exp, imp2.coord_exp):
                         raise ValueError("The impacts are not based on same exposure."
                                          "Impacts are incompatible and cannot be concatenated.")
             #compare exposure descriptions
