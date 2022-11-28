@@ -1464,12 +1464,12 @@ class Impact():
             return True
 
         def check_frequency(imp_list):
-            freqs = set([imp.frequency[0] for imp in imp_list])
+            freqs = {imp.frequency[0] for imp in imp_list}
             if len(freqs) > 1:
                 raise ValueError(f"Impacts do not have the same frequency: {freqs}."
                                  "The impacts are incompatible and cannot be concatenated.")
-            frequency = np.concatenate([imp.frequency for imp in imp_list], axis=0)
-            return frequency
+            freq = np.concatenate([imp.frequency for imp in imp_list], axis=0)
+            return freq
 
         def check_dates(imp_list):
 
@@ -1489,7 +1489,7 @@ class Impact():
 
             #check total value
             tot_vals = {imp.tot_value for imp in imp_list}
-            if (len(tot_vals) > 1):
+            if len(tot_vals) > 1:
                 raise ValueError("The impacts are not based on same exposure."
                                  "Total exposure values are different."
                                  "The impacts are incompatible and cannot be concatenated.")
