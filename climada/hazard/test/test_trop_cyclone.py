@@ -22,6 +22,7 @@ Test TropCyclone class
 import unittest
 import datetime as dt
 from pathlib import Path
+from tempfile import TemporaryDirectory
 import numpy as np
 from scipy import sparse
 
@@ -444,8 +445,28 @@ class TestClimateSce(unittest.TestCase):
             tc._apply_knutson_criterion(criterion, 3)
 
 
+class TestDumpReloadCycle(unittest.TestCase):
+    def setUp(self):
+        """Create a TropCyclone object and a temporary directory"""
+        self.tempdir = TemporaryDirectory()
+        tc_track = TCTracks.from_processed_ibtracs_csv(TEST_TRACK_SHORT)
+        self.tc_hazard = TropCyclone.from_tracks(tc_track, centroids=CENTR_TEST_BRB)
+
+    def test_dump_reload_hdf5(self):
+        """Try to write TropCyclone to a hdf5 file and read it back in"""
+        hdf5_dump = Path(self.tempdir.name, "tc_dump.h5")
+        self.tc_hazard.write_hdf5(hdf5_dump)
+        recycled = TropCyclone.from_hdf5(hdf5_dump)
+        np.testing.assert_array_equal(recycled.category, self.tc_hazard.category)
+
+    def tearDown(self):
+        """Delete the temporary directory"""
+        self.tempdir.cleanup()
+
+
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReader)
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestWindfieldHelpers))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestClimateSce))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestDumpReloadCycle))
     unittest.TextTestRunner(verbosity=2).run(TESTS)

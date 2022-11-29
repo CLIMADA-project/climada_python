@@ -408,14 +408,18 @@ class TestFunc(unittest.TestCase):
         self.assertTrue(u_coord.equal_crs(crs_one, crs_two))
 
     def test_set_df_geometry_points_pass(self):
-        """Test set_df_geometry_points"""
+        """Test set_df_geometry_points
+
+        The same test with scheduler other than None runs in
+        climada.test.test_multi_processing.TestCoordinates.test_set_df_geometry_points_scheduled_pass
+        """
         df_val = gpd.GeoDataFrame()
         df_val['latitude'] = np.ones(10) * 40.0
         df_val['longitude'] = np.ones(10) * 0.50
 
         u_coord.set_df_geometry_points(df_val, crs='epsg:2202')
-        self.assertTrue(np.allclose(df_val.geometry[:].x.values, np.ones(10) * 0.5))
-        self.assertTrue(np.allclose(df_val.geometry[:].y.values, np.ones(10) * 40.))
+        np.testing.assert_allclose(df_val.geometry.x.values, np.ones(10) * 0.5)
+        np.testing.assert_allclose(df_val.geometry.y.values, np.ones(10) * 40.)
 
     def test_convert_wgs_to_utm_pass(self):
         """Test convert_wgs_to_utm"""
@@ -1059,6 +1063,7 @@ class TestGetGeodata(unittest.TestCase):
         """test get_admin1_geometries"""
         countries = ['CHE', 'Indonesia', '840', 51]
         gdf = u_coord.get_admin1_geometries(countries=countries)
+        self.assertIsInstance(gdf, gpd.GeoDataFrame)
         self.assertEqual(len(gdf.iso_3a.unique()), 4) # 4 countries
         self.assertEqual(gdf.loc[gdf.iso_3a=='CHE'].shape[0], 26) # 26 cantons in CHE
         self.assertEqual(gdf.shape[0], 121) # 121 admin 1 regions in the 4 countries
