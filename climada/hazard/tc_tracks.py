@@ -1259,6 +1259,13 @@ class TCTracks():
     def from_netcdf(cls, folder_name):
         """Create new TCTracks object from NetCDF files contained in a given folder
 
+        Warning
+        -------
+        Do not use this classmethod for reading IBTrACS NetCDF files! If you need to
+        manually download IBTrACS NetCDF files, place them in the
+        ``~/climada/data/system`` folder and use the ``TCTracks.from_ibtracks_netcdf``
+        classmethod.
+
         Parameters
         ----------
         folder_name : str
