@@ -394,12 +394,6 @@ class TestConcat(unittest.TestCase):
 
 class TestGeoDFFuncs(unittest.TestCase):
     """Check constructor Exposures through DataFrames readers"""
-    def test_from_raster(self):
-        exp.gdf['geometry']=""
-        
-
-
-
     def test_copy_pass(self):
         """Test copy function."""
         exp = good_exposures()
