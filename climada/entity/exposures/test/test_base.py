@@ -104,7 +104,6 @@ class TestFuncs(unittest.TestCase):
         LitPop(meta=dict(exponents=2))
         self.assertEqual(litpop.exponents, 2)
 
-
     def test_read_raster_pass(self):
         """from_raster"""
         exp = Exposures.from_raster(HAZ_DEMO_FL, window=Window(10, 20, 50, 60))
