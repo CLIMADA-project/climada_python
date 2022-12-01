@@ -26,7 +26,7 @@ import math
 from multiprocessing import cpu_count
 from pathlib import Path
 import re
-
+import warnings
 import zipfile
 
 from cartopy.io import shapereader
@@ -1462,7 +1462,13 @@ def get_country_code(lat, lon, gridded=False):
         extent = (lon.min() - 0.001, lon.max() + 0.001,
                   lat.min() - 0.001, lat.max() + 0.001)
         countries = get_country_geometries(extent=extent)
-        countries['area'] = countries.geometry.area
+        with warnings.catch_warnings():
+            # in order to suppress the following
+            # UserWarning: Geometry is in a geographic CRS. Results from 'area' are likely
+            # incorrect. Use 'GeoSeries.to_crs()' to re-project geometries to a projected CRS
+            # before this operation.
+            warnings.simplefilter('ignore', UserWarning)
+            countries['area'] = countries.geometry.area
         countries = countries.sort_values(by=['area'], ascending=False)
         region_id = np.full((lon.size,), -1, dtype=int)
         total_land = countries.geometry.unary_union
@@ -1583,7 +1589,7 @@ def get_admin1_geometries(countries):
         # fill columns with country identifiers (admin 0):
         gdf_tmp.iso_3n = pycountry.countries.lookup(country).numeric
         gdf_tmp.iso_3a = country
-        gdf = gdf.append(gdf_tmp, ignore_index=True)
+        gdf = pd.concat([gdf, gdf_tmp], ignore_index=True)
     return gdf
 
 def get_resolution_1d(coords, min_resol=1.0e-8):
@@ -2648,8 +2654,10 @@ def set_df_geometry_points(df_val, scheduler=None, crs=None):
             return df_exp.apply(lambda row: Point(row.longitude, row.latitude), axis=1)
 
         ddata = dd.from_pandas(df_val, npartitions=cpu_count())
-        df_val['geometry'] = ddata.map_partitions(apply_point, meta=Point) \
-                                  .compute(scheduler=scheduler)
+        df_val['geometry'] = ddata.map_partitions(
+                                 apply_point,
+                                 meta=('geometry', gpd.array.GeometryDtype)
+                             ).compute(scheduler=scheduler)
     # single process
     else:
         df_val['geometry'] = gpd.GeoSeries(

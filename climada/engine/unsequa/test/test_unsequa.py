@@ -59,8 +59,7 @@ def impf_dem(x_paa=1, x_mdd=1):
     paa = np.arange(0, len(intensity)) / len(intensity) * x_paa
     impf = ImpactFunc(haz_type, id, intensity, mdd, paa, intensity_unit)
     impf.check()
-    impf_set = ImpactFuncSet()
-    impf_set.append(impf)
+    impf_set = ImpactFuncSet([impf])
     return impf_set
 
 

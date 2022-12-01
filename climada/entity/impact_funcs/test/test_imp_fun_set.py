@@ -22,7 +22,7 @@ import unittest
 import numpy as np
 
 from climada import CONFIG
-from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet, ImpactFunc
+from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet, ImpactFunc, Tag
 from climada.util.constants import ENT_TEMPLATE_XLS, ENT_DEMO_TODAY
 
 ENT_TEST_MAT = CONFIG.exposures.test_data.dir().joinpath('demo_today.mat')
@@ -65,17 +65,13 @@ class TestContainer(unittest.TestCase):
 
     def test_remove_func_pass(self):
         """Test remove_func removes ImpactFunc of ImpactFuncSet correcty."""
-        imp_fun = ImpactFuncSet()
-        vulner_1 = ImpactFunc("TC", 1)
-        imp_fun.append(vulner_1)
+        imp_fun = ImpactFuncSet([ImpactFunc("TC", 1)])
         imp_fun.remove_func()
         self.assertEqual(0, len(imp_fun._data))
 
     def test_remove_wrong_error(self):
         """Test error is raised when invalid inputs."""
-        imp_fun = ImpactFuncSet()
-        vulner_1 = ImpactFunc("TC", 1)
-        imp_fun.append(vulner_1)
+        imp_fun = ImpactFuncSet([ImpactFunc("TC", 1)])
         with self.assertLogs('climada.entity.impact_funcs.impact_func_set', level='WARNING') as cm:
             imp_fun.remove_func('FL')
         self.assertIn('No ImpactFunc with hazard FL.', cm.output[0])
@@ -85,9 +81,7 @@ class TestContainer(unittest.TestCase):
 
     def test_get_hazards_pass(self):
         """Test get_hazard_types function."""
-        imp_fun = ImpactFuncSet()
-        vulner_1 = ImpactFunc("TC", 1)
-        imp_fun.append(vulner_1)
+        imp_fun = ImpactFuncSet([ImpactFunc("TC", 1)])
         self.assertEqual(1, len(imp_fun.get_hazard_types()))
         self.assertEqual(['TC'], imp_fun.get_hazard_types())
 
@@ -133,9 +127,7 @@ class TestContainer(unittest.TestCase):
 
     def test_get_ids_wrong_zero(self):
         """Test get_ids method with wrong inputs."""
-        imp_fun = ImpactFuncSet()
-        vulner_1 = ImpactFunc("WS", 56)
-        imp_fun.append(vulner_1)
+        imp_fun = ImpactFuncSet([ImpactFunc("WS", 56)])
         self.assertEqual([], imp_fun.get_ids('TC'))
 
     def test_get_func_pass(self):
@@ -167,9 +159,7 @@ class TestContainer(unittest.TestCase):
 
     def test_get_func_wrong_error(self):
         """Test get_func method with wrong inputs."""
-        imp_fun = ImpactFuncSet()
-        vulner_1 = ImpactFunc("WS", 56)
-        imp_fun.append(vulner_1)
+        imp_fun = ImpactFuncSet([ImpactFunc("WS", 56)])
         self.assertEqual([], imp_fun.get_func('TC'))
 
     def test_size_pass(self):
@@ -242,6 +232,28 @@ class TestContainer(unittest.TestCase):
         self.assertIn(3, imp_fun._data['TC'].keys())
         self.assertIn(3, imp_fun._data['FL'].keys())
 
+    def test_init_with_iterable(self):
+        """Check that initializing with iterables works"""
+        def _check_contents(imp_fun):
+            self.assertEqual(imp_fun.size("TC"), 2)
+            self.assertEqual(imp_fun.size("FL"), 1)
+            self.assertEqual(imp_fun.size(fun_id=1), 1)
+            self.assertEqual(imp_fun.size(fun_id=3), 2)
+            np.testing.assert_array_equal(imp_fun.get_ids("TC"), [1, 3])
+            np.testing.assert_array_equal(imp_fun.get_ids("FL"), [3])
+
+        # Initialize with empty list
+        impf_set = ImpactFuncSet([])
+        self.assertEqual(impf_set.size("TC"), 0)
+        self.assertFalse(impf_set.get_ids("TC"))
+
+        # Initialize with list
+        _check_contents(ImpactFuncSet(
+            [ImpactFunc("TC", 1), ImpactFunc("TC", 3), ImpactFunc("FL", 3)]))
+        # Initialize with tuple
+        _check_contents(ImpactFuncSet(
+            (ImpactFunc("TC", 1), ImpactFunc("TC", 3), ImpactFunc("FL", 3))))
+
     def test_remove_add_pass(self):
         """Test ImpactFunc can be added after removing."""
         imp_fun = ImpactFuncSet()
@@ -261,12 +273,11 @@ class TestChecker(unittest.TestCase):
     """Test loading funcions from the ImpactFuncSet class"""
     def test_check_wrongPAA_fail(self):
         """Wrong PAA definition"""
-        imp_fun = ImpactFuncSet()
         intensity = np.array([1, 2, 3])
         mdd = np.array([1, 2, 3])
         paa = np.array([1, 2])
         vulner = ImpactFunc("TC", 1, intensity, mdd, paa)
-        imp_fun.append(vulner)
+        imp_fun = ImpactFuncSet([vulner])
 
         with self.assertRaises(ValueError) as cm:
             imp_fun.check()
@@ -274,12 +285,11 @@ class TestChecker(unittest.TestCase):
 
     def test_check_wrongMDD_fail(self):
         """Wrong MDD definition"""
-        imp_fun = ImpactFuncSet()
         intensity = np.array([1, 2, 3])
         mdd = np.array([1, 2])
         paa = np.array([1, 2, 3])
         vulner = ImpactFunc("TC", 1, intensity, mdd, paa)
-        imp_fun.append(vulner)
+        imp_fun = ImpactFuncSet([vulner])
 
         with self.assertRaises(ValueError) as cm:
             imp_fun.check()
@@ -290,18 +300,9 @@ class TestExtend(unittest.TestCase):
     def test_extend_to_empty_same(self):
         """Extend ImpactFuncSet to empty one."""
         imp_fun = ImpactFuncSet()
-        imp_fun_add = ImpactFuncSet()
-        vulner_1 = ImpactFunc("TC", 1)
-        imp_fun_add.append(vulner_1)
-
-        vulner_2 = ImpactFunc("TC", 3)
-        imp_fun_add.append(vulner_2)
-
-        vulner_3 = ImpactFunc("FL", 3)
-        imp_fun_add.append(vulner_3)
-
-        imp_fun_add.tag.file_name = 'file1.txt'
-
+        imp_fun_add = ImpactFuncSet(
+            (ImpactFunc("TC", 1), ImpactFunc("TC", 3), ImpactFunc("FL", 3)),
+            Tag('file1.txt'))
         imp_fun.extend(imp_fun_add)
         imp_fun.check()
 
@@ -313,12 +314,9 @@ class TestExtend(unittest.TestCase):
 
     def test_extend_equal_same(self):
         """Extend the same ImpactFuncSet. The inital ImpactFuncSet is obtained."""
-        imp_fun = ImpactFuncSet()
         vulner_1 = ImpactFunc("TC", 1)
-        imp_fun.append(vulner_1)
-
-        imp_fun_add = ImpactFuncSet()
-        imp_fun_add.append(vulner_1)
+        imp_fun = ImpactFuncSet([vulner_1])
+        imp_fun_add = ImpactFuncSet([vulner_1])
 
         imp_fun.extend(imp_fun_add)
         imp_fun.check()
@@ -339,16 +337,8 @@ class TestExtend(unittest.TestCase):
         vulner_3 = ImpactFunc("FL", 3)
         imp_fun.append(vulner_3)
 
-        imp_fun_add = ImpactFuncSet()
-        vulner_1 = ImpactFunc("TC", 1)
-        imp_fun_add.append(vulner_1)
-
-        vulner_2 = ImpactFunc("WS", 1)
-        imp_fun_add.append(vulner_2)
-
-        vulner_3 = ImpactFunc("FL", 3)
-        imp_fun_add.append(vulner_3)
-
+        imp_fun_add = ImpactFuncSet(
+            (ImpactFunc("TC", 1), ImpactFunc("WS", 1), ImpactFunc("FL", 3)))
         imp_fun.extend(imp_fun_add)
         imp_fun.check()
 
