@@ -66,8 +66,7 @@ def calib_instance(hazard, exposure, impact_func, df_out=pd.DataFrame(),
             DataFrame with modelled impact written to rows for each year
             or event.
     """
-    ifs = ImpactFuncSet()
-    ifs.append(impact_func)
+    ifs = ImpactFuncSet([impact_func])
     impacts = ImpactCalc(exposures=exposure, impfset=ifs, hazard=hazard)\
               .impact(assign_centroids=False)
     if yearly_impact:  # impact per year

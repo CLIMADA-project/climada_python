@@ -150,7 +150,8 @@ class TropCyclone(Hazard):
         **kwargs : Hazard properties, optional
             All other keyword arguments are passed to the Hazard constructor.
         """
-        Hazard.__init__(self, haz_type=HAZ_TYPE, **kwargs)
+        kwargs.setdefault('haz_type', HAZ_TYPE)
+        Hazard.__init__(self, **kwargs)
         self.category = category if category is not None else np.array([], int)
         self.basin = basin if basin is not None else []
         self.windfields = windfields if windfields is not None else []
