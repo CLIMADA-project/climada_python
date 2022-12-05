@@ -91,14 +91,14 @@ class TestFuncs(unittest.TestCase):
                       str(cm.exception))
 
     def test__init__geometry_type(self):
-        """ Check if the column name of geometry of GDF was customized"""
+        """Check that initialization fails when `geometry` is given as a `str` argument"""
         with self.assertRaises(ValueError) as cm:
-            Exposures(geometry = 'myname')
+            Exposures(geometry='myname')
         self.assertEqual("Exposures is not able to handle customized 'geometry' column names.",
-                      str(cm.exception))
+                         str(cm.exception))
 
     def test__init__mda_in_kwargs(self):
-        """ Check if mda is not present in Kwargs after being removed"""
+        """Check if mda is not present in kwargs after being removed"""
         litpop = LitPop(exponents=2)
         self.assertEqual(litpop.exponents, 2)
         LitPop(meta=dict(exponents=2))
