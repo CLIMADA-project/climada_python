@@ -101,8 +101,8 @@ class TestFuncs(unittest.TestCase):
         """Check if mda is not present in kwargs after being removed"""
         litpop = LitPop(exponents=2)
         self.assertEqual(litpop.exponents, 2)
-        LitPop(meta=dict(exponents=2))
-        self.assertEqual(litpop.exponents, 2)
+        litpop = LitPop(meta=dict(exponents=3))
+        self.assertEqual(litpop.exponents, 3)
 
     def test_read_raster_pass(self):
         """from_raster"""
