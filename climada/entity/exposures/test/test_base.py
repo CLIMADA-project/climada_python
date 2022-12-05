@@ -98,7 +98,8 @@ class TestFuncs(unittest.TestCase):
                          str(cm.exception))
 
     def test__init__mda_in_kwargs(self):
-        """Check if `_metadata` attributes are instantiated correctly for sub-classes of `Exposures`"""
+        """Check if `_metadata` attributes are instantiated correctly for sub-classes of
+        ``Exposures``"""
         litpop = LitPop(exponents=2)
         self.assertEqual(litpop.exponents, 2)
         litpop = LitPop(meta=dict(exponents=3))
