@@ -103,8 +103,8 @@ class StormEurope(Hazard):
             array.
         ssi_full_area : numpy.ndarray
             1d vector, same length as number of storms.
-            Used to conserve the the index that is derived from the area and windspeed 
-            of the full geographic extent of a storm system. Needed for cropping the 
+            Used to conserve the the index that is derived from the area and windspeed
+            of the full geographic extent of a storm system. Needed for cropping the
             `StormEurope` object into a smaller region`.
             Defaults to an empty array.
         """
