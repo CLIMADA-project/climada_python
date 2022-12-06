@@ -102,9 +102,10 @@ class StormEurope(Hazard):
             1d vector, same length as number of storms. Defaults to an empty
             array.
         ssi_full_area : numpy.ndarray
-            FIXME need to recover rationale for this attribute; no substantive
-            difference to regular SSI attribute; is computed when creating a
-            synthetic event set. 1d vector, same length as number of storms.
+            1d vector, same length as number of storms.
+            Used to conserve the the index that is derived from the area and windspeed 
+            of the full geographic extend of a storm system. Needed for cropping the 
+            `StormEurope` object into a smaller region`.
             Defaults to an empty array.
         """
         kwargs.setdefault('haz_type', HAZ_TYPE)
