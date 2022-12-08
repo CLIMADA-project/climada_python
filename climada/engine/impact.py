@@ -1390,7 +1390,7 @@ class Impact():
         return sel_exp
 
     @classmethod
-    def concat(cls, imp_list, concat_type='time'):
+    def concat(cls, imp_list):
         """Concatenate impact objects of the same hazard type, frequency,
         exposure, and coordinate system. This function is useful if, e.g. different impact functions
         have to be applied for different seasons (e.g. for agricultural impacts).
@@ -1399,18 +1399,12 @@ class Impact():
         -----
             - Concatenation of impacts with different exposure (e.g. different countries)
                 could also be implemented here in the future.
-            - For now, impacts have to be computed based on the same hazard set
-                that is split into time windows using hazard.select()
 
         Parameters
         ----------
         imp_list : list of climada.engine.Impact objects
                 list of Impact object to concatenate
-        concat_type: string
-                string specifying the type of concatenation to be done.
-                    'time': concatenate impacts for different events / time slices
-                                   within a year (e.g. May to June, July to August,...)
-                    'exposure': concatenate impacts with separate exposures
+
         Returns
         --------
         impact: climada.engine.Impact
@@ -1441,7 +1435,7 @@ class Impact():
             if len(set(units)) > 1:
                 raise ValueError(f"The given impacts have different units: {units}. "
                                  "The impacts are incompatible and cannot be concatenated.")
-            unit = set(units[0])
+            unit = units[0]
             return unit
 
         def check_crs(imp_list):
@@ -1462,14 +1456,6 @@ class Impact():
                     raise ValueError(f"Attribute {attr_name} is not shared by all impacts. "
                                     "The impacts are incompatible and cannot be concatenated.")
             return True
-
-        def check_frequency(imp_list):
-            freqs = {imp.frequency[0] for imp in imp_list}
-            if len(freqs) > 1:
-                raise ValueError(f"Impacts do not have the same frequency: {freqs}."
-                                 "The impacts are incompatible and cannot be concatenated.")
-            freq = np.concatenate([imp.frequency for imp in imp_list], axis=0)
-            return freq
 
         def check_dates(imp_list):
 
@@ -1513,11 +1499,6 @@ class Impact():
         if len(imp_list) == 0:
             return cls()
 
-        #raise error if concat_type is not available
-        #NOTE: not sure how to use an ENUM class in this context
-        if concat_type not in ['time','exposure']:
-            raise ValueError(f"Concatenation option {concat_type} not available.")
-
         # check impacts consistency and fill impact object
 
         ### the following checks are in common for both concat options
@@ -1529,65 +1510,46 @@ class Impact():
         crs = check_crs(imp_list)
         #check attributes
         check_attributes(imp_list)
-        #check if impacts have same frequency values (only first entries are checked)
-        #unclear if this check can be avoided to allow concatenating impacts
-        #with different frequencies
-        #but this affects other attributes such as eai
-        frequency = check_frequency(imp_list)
 
-        ### The following checks are specific to the selected concatenation options
+        #check if no overlapping dates
+        date = check_dates(imp_list)
 
-        if concat_type == 'time':
+        #check if exposure is consistent
+        check_exposure(imp_list)
 
-            #check if no overlapping dates
-            date = check_dates(imp_list)
+        #get hazard frequencies
+        frequency = np.concatenate([imp.frequency for imp in imp_list], axis=0)
 
-            #check if exposure is consistent
-            check_exposure(imp_list)
+        #set attributes related to exposure
+        coord_exp = imp_list[0].coord_exp
+        tot_value = imp_list[0].tot_value
 
-            #set attributes related to exposure
-            coord_exp = imp_list[0].coord_exp
-            tot_value = imp_list[0].tot_value
+        #fill remaining attributes
+        tag = imp_list[0].tag
 
-            #fill remaining attributes
-            tag = imp_list[0].tag
+        #event IDs
+        event_ids = [event_id for imp in imp_list for event_id in imp.event_id]
+        if len(event_ids) != len(set(event_ids)):
+            raise ValueError("Duplicate event IDs found.")
+        event_id = np.array(event_ids)
 
-            #event IDs
-            event_ids = [event_id for imp in imp_list for event_id in imp.event_id]
-            if len(event_ids) != len(set(event_ids)):
-                raise ValueError("Duplicate event IDs found.")
-            event_id = np.array(event_ids)
+        #event names
+        event_names = [event_name for imp in imp_list for event_name in imp.event_name]
+        if len(event_names) != len(set(event_names)):
+            raise ValueError("Duplicate event names found.")
+        event_name = event_names
 
-            #event names
-            event_names = [event_name for imp in imp_list for event_name in imp.event_name]
-            if len(event_names) != len(set(event_names)):
-                raise ValueError("Duplicate event names found.")
-            event_name = event_names
+        #impact matrix
+        imp_mats =[imp.imp_mat for imp in imp_list]
+        imp_mat = sparse.vstack(imp_mats)
 
-            #impact matrix
-            imp_mats =[imp.imp_mat for imp in imp_list]
-            imp_mat = sparse.vstack(imp_mats)
-
-            #concatenate remaining attributes
-            at_events = [imp.at_event for imp in imp_list]
-            at_event = np.concatenate(at_events,axis=0)
-            eai_exps = [imp.eai_exp for imp in imp_list]
-            eai_exp = np.nansum(eai_exps,axis=0)
-            aai_aggs = [imp.aai_agg for imp in imp_list]
-            aai_agg = np.nansum(aai_aggs)
-
-        elif concat_type == 'exposure':
-
-            ## some possibly useful code snippets for this option
-            ##merge coordinates (only if exposure is not the same)
-            ##check if there are any additional exposure coordinates in the new impact
-            #compare_coords=np.isin(impact.coord_exp,self.coord_exp)
-            #ad_coords=[impact.coords[ind] for ind,x in enumerate(compare_coords) \
-            #                           if not np.all(x)]
-            #imp.coord_exp=np.concatenate(self.coord_exp,ad_coords)
-
-            raise ValueError("Concatenating impacts with different exposures not yet implemented."
-                             "Feel free to do so!")
+        #concatenate remaining attributes
+        at_events = [imp.at_event for imp in imp_list]
+        at_event = np.concatenate(at_events,axis=0)
+        eai_exps = [imp.eai_exp for imp in imp_list]
+        eai_exp = np.nansum(eai_exps,axis=0)
+        aai_aggs = [imp.aai_agg for imp in imp_list]
+        aai_agg = np.nansum(aai_aggs)
 
         return cls(
             event_id = event_id,
