@@ -117,62 +117,54 @@ class TestImpact(unittest.TestCase):
         imp3_3 = ImpactCalc(ent3.exposures, ent3.impact_funcs, haz3_subset3).impact()
 
         with self.assertRaises(ValueError):
-            Impact.concat([imp1, imp2, imp3], concat_type='test')
+            Impact.concat([imp1, imp2, imp3_3])
         with self.assertRaises(ValueError):
-            Impact.concat([imp1, imp2, imp3], concat_type='exposure')
-        with self.assertRaises(ValueError):
-            Impact.concat([imp1, imp2, imp3_3], concat_type='time')
-        with self.assertRaises(ValueError):
-            Impact.concat([imp1, imp2, imp3_2], concat_type='time')
+            Impact.concat([imp1, imp2, imp3_2])
         with self.assertRaises(ValueError):
             imp3.unit = ''
-            Impact.concat([imp1, imp2, imp3], concat_type='time')
+            Impact.concat([imp1, imp2, imp3])
         with self.assertRaises(ValueError):
             imp3.unit = 'OTHER'
-            Impact.concat([imp1, imp2, imp3], concat_type='time')
+            Impact.concat([imp1, imp2, imp3])
         imp3.unit = imp2.unit
         with self.assertRaises(ValueError):
             imp3.crs = ''
-            Impact.concat([imp1, imp2, imp3], concat_type='time')
+            Impact.concat([imp1, imp2, imp3])
         with self.assertRaises(ValueError):
             imp3.crs = 'OTHER'
-            Impact.concat([imp1, imp2, imp3], concat_type='time')
+            Impact.concat([imp1, imp2, imp3])
         imp3.crs = imp2.crs
         with self.assertRaises(ValueError):
             imp3.new_attr = 'test_attr'
-            Impact.concat([imp1, imp2, imp3], concat_type='time')
+            Impact.concat([imp1, imp2, imp3])
         delattr(imp3, "new_attr")
-        with self.assertRaises(ValueError):
-            imp3.frequency = imp3.frequency*2
-            Impact.concat([imp1, imp2, imp3], concat_type='time')
-        imp3.frequency = imp2.frequency
 
         #checks for concat_type=time only
         with self.assertRaises(ValueError):
             dates0 = np.array(imp3.date, copy=True)
             imp3.date[0] = imp2.date[0]
-            Impact.concat([imp1, imp2, imp3], concat_type='time')
+            Impact.concat([imp1, imp2, imp3])
         imp3.date = dates0
         with self.assertRaises(ValueError):
             imp3.tot_value = 1
-            Impact.concat([imp1, imp2, imp3], concat_type='time')
+            Impact.concat([imp1, imp2, imp3])
         imp3.tot_value = imp2.tot_value
         with self.assertRaises(ValueError):
             imp3.coord_exp[0][0] = 0
-            Impact.concat([imp1, imp2, imp3], concat_type='time')
+            Impact.concat([imp1, imp2, imp3])
         imp3.coord_exp = imp2.coord_exp
         with self.assertRaises(ValueError):
             imp3.event_id[0] = imp2.event_id[-1]
-            Impact.concat([imp1, imp2, imp3], concat_type='time')
+            Impact.concat([imp1, imp2, imp3])
         imp3.event_id[0] = imp3.event_id[0]+1
         with self.assertRaises(ValueError):
             imp3.event_name[0] = imp2.event_name[-1]
-            Impact.concat([imp1, imp2, imp3], concat_type='time')
+            Impact.concat([imp1, imp2, imp3])
         imp3.event_name[0] = imp3.event_name[0]+1
 
         #check results
         print(imp1.tag['haz'].haz_type, imp2.tag['haz'].haz_type, imp3.tag['haz'].haz_type)
-        imp = Impact.concat([imp1, imp2, imp3], concat_type='time')
+        imp = Impact.concat([imp1, imp2, imp3])
         self.assertEqual(len(imp1.event_id)+len(imp2.event_id)+len(imp3.event_id),len(imp.event_id))
         self.assertEqual(len(imp1.event_name) + len(imp2.event_name) + len(imp3.event_name), len(imp.event_name))
         self.assertEqual(len(imp1.date) + len(imp2.date) + len(imp3.event_name), len(imp.date))
