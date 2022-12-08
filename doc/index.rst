@@ -8,7 +8,7 @@ Welcome to CLIMADA!
 
 CLIMADA stands for CLIMate ADAptation and is a probabilistic natural catastrophe impact model, that also calculates averted damage (benefit) thanks to adaptation measures of any kind (from grey to green infrastructure, behavioural, etc.).
 
-* :doc:`README <README>`
+* :doc:`README <misc/README>`
 * :doc:`Getting Started <guide/Guide_get_started>`
 * :doc:`Installation <guide/Guide_Installation>`
 * :doc:`Overview <tutorial/1_main_climada>`
@@ -85,6 +85,6 @@ CLIMADA stands for CLIMate ADAptation and is a probabilistic natural catastrophe
    :hidden:
 
    Python modules <climada/climada>
-   README <README>
-   List of Authors <AUTHORS>
-   Contribution Guide <CONTRIBUTING>
+   README <misc/README>
+   List of Authors <misc/AUTHORS>
+   Contribution Guide <misc/CONTRIBUTING>
