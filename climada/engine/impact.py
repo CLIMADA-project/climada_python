@@ -1480,7 +1480,7 @@ class Impact():
                     dates_b_set = set(imp2.date)
                     if len(dates_a_set.intersection(dates_b_set)) > 0:
                         raise ValueError("Found at least one duplicate date. "
-                                         "Impacts can not contain same dates."
+                                         "Impacts cannot contain same dates."
                                          "Impacts are incompatible and cannot be concatenated.")
             date = np.array([date for imp in imp_list for date in imp.date])
             return date
@@ -1490,8 +1490,8 @@ class Impact():
             #check total value
             tot_vals = {imp.tot_value for imp in imp_list}
             if len(tot_vals) > 1:
-                raise ValueError("The impacts are not based on same exposure."
-                                 "Total exposure values are different."
+                raise ValueError("The impacts are not based on the same exposure."
+                                 "The total exposure values are different."
                                  "The impacts are incompatible and cannot be concatenated.")
 
             #compare exposure coordinates of all impact pairs
