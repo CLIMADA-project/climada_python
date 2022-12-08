@@ -8,16 +8,28 @@ Welcome to CLIMADA!
 
 CLIMADA stands for CLIMate ADAptation and is a probabilistic natural catastrophe impact model, that also calculates averted damage (benefit) thanks to adaptation measures of any kind (from grey to green infrastructure, behavioural, etc.).
 
+This is the documentation of the CLIMADA core module which contains all functionalities necessary for performing climate risk analysis and appraisal of adaptation options. Modules for generating different types of hazards and other specialized applications can be found in the `CLIMADA Petals <https://climada-petals.readthedocs.io/en/stable/>`_ module.
+
+Jump right in:
+
 * :doc:`README <misc/README>`
 * :doc:`Getting Started <guide/Guide_get_started>`
 * :doc:`Installation <guide/Guide_Installation>`
 * :doc:`Overview <tutorial/1_main_climada>`
 * `GitHub Repository <https://github.com/CLIMADA-project/climada_python>`_
-* :doc:`Python Module Reference <climada/climada>`
+* :doc:`Module Reference <climada/climada>`
+
+.. ifconfig:: readthedocs
+
+   .. hint::
+
+      ReadTheDocs hosts multiple versions of this documentation.
+      Use the drop-down menu on the bottom left to switch versions.
+      ``stable`` refers to the most recent release, whereas ``latest`` refers to the latest development version.
 
 .. admonition:: Copyright Notice
 
-   Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
+   Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in :doc:`AUTHORS.md <misc/AUTHORS>`.
 
    CLIMADA is free software: you can redistribute it and/or modify it under the
    terms of the GNU General Public License as published by the Free
@@ -46,6 +58,7 @@ CLIMADA stands for CLIMate ADAptation and is a probabilistic natural catastrophe
    guide/Guide_Introduction
    Getting Started <guide/Guide_get_started>
    guide/Guide_Installation
+   Very Easy Installation <tutorial/climada_installation_step_by_step>
    Running CLIMADA on Euler <guide/Guide_Euler>
 
 

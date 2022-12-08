@@ -37,6 +37,7 @@ extensions = ['matplotlib.sphinxext.plot_directive',
               'sphinx.ext.inheritance_diagram',
               'sphinx.ext.viewcode',
               'sphinx.ext.napoleon',
+              'sphinx.ext.ifconfig',
               'nbsphinx',
               'myst_parser',
               'sphinx_markdown_tables',
@@ -247,6 +248,10 @@ autodoc_member_order = "bysource"
 def setup(app):
     app.connect("autodoc-skip-member", skip)
     app.connect("autodoc-process-docstring", remove_module_docstring)
+
+    # Pass to the app if we are building this on ReadTheDocs
+    on_rtd = True if (os.environ.get('READTHEDOCS') == 'True') else False
+    app.add_config_value('readthedocs', on_rtd, 'env')
 
 # improve parameters description
 napoleon_use_param = False
