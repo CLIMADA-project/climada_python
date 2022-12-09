@@ -397,7 +397,7 @@ class Exposures():
             exposure points
         climada.util.coordinates.assign_gdf_centroids: method to associate centroids to
             geodataframe points
-            
+
         Notes
         -----
         The default order of use is:
@@ -413,9 +413,10 @@ class Exposures():
         and works only for non-gridded data.
 
         """
-        u_coord.assign_gdf_centroids(self.gdf, hazard, distance='euclidean',
-                         threshold=u_coord.NEAREST_NEIGHBOR_THRESHOLD,
-                         overwrite=True)
+        u_coord.assign_haz_centroids(self.gdf, hazard, crs = self.crs, 
+                        distance='euclidean',
+                        threshold=u_coord.NEAREST_NEIGHBOR_THRESHOLD,
+                        overwrite=True)
                          
 
     def set_geometry_points(self, scheduler=None):

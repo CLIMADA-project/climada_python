@@ -1390,7 +1390,7 @@ class Impact():
             LOGGER.warning("No exposure coordinates match the selection.")
         return sel_exp
 
-    def assign_haz_centroids(self, hazard, distance='euclidean',
+    def assign_centroids(self, hazard, distance='euclidean',
                          threshold=u_coord.NEAREST_NEIGHBOR_THRESHOLD,
                          overwrite=True):
         """Wrapper for u_coord.assign_gdf_centroids():
@@ -1439,18 +1439,18 @@ class Impact():
         """
         #Assert that the imp crs is epsg:4326, as it is required by the u_coord methods
         assert(self.crs == 'EPSG:4326')
-        
+
         #create geodataframe from coordinates
         coord_df = pd.DataFrame(self.coord_exp,columns=['latitude', 'longitude'])
-        gdf = gpd.GeoDataFrame(coord_df,geometry = gpd.points_from_xy(self.coord_exp[:,1],self.coord_exp[:,0],crs = 'EPSG:4326'))
 
         #call the assign_gdf_centroids util function
-        u_coord.assign_gdf_centroids(gdf, hazard, distance='euclidean',
+        u_coord.assign_haz_centroids(coord_df, hazard, crs = self.crs,
+                        distance='euclidean',
                         threshold=u_coord.NEAREST_NEIGHBOR_THRESHOLD,
                         overwrite=True)
 
         #create new impact attribute with hazard centroids
-        setattr(self,f'centr_{hazard.tag.haz_type}' , gdf[f'centr_{hazard.tag.haz_type}'] )
+        setattr(self,f'centr_{hazard.tag.haz_type}' , coord_df[f'centr_{hazard.tag.haz_type}'] )
                         
 @dataclass
 class ImpactFreqCurve():
