@@ -34,7 +34,6 @@ from scipy import sparse
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import pandas as pd
-import geopandas as gpd
 import xlsxwriter
 from tqdm import tqdm
 
@@ -1437,21 +1436,22 @@ class Impact():
         and works only for non-gridded data.
 
         """
+
         #Assert that the imp crs is epsg:4326, as it is required by the u_coord methods
-        assert(self.crs == 'EPSG:4326')
+        if not u_coord.equal_crs(self.crs, 'EPSG:4326'):
+            raise ValueError('Set Impact to lat/lon crs (EPSG:4326)!')
 
         #create geodataframe from coordinates
         coord_df = pd.DataFrame(self.coord_exp,columns=['latitude', 'longitude'])
 
         #call the assign_gdf_centroids util function
         u_coord.assign_haz_centroids(coord_df, hazard, crs = self.crs,
-                        distance='euclidean',
-                        threshold=u_coord.NEAREST_NEIGHBOR_THRESHOLD,
-                        overwrite=True)
+                        distance=distance,
+                        threshold=threshold,
+                        overwrite=overwrite)
 
         #create new impact attribute with hazard centroids
         setattr(self,f'centr_{hazard.tag.haz_type}' , coord_df[f'centr_{hazard.tag.haz_type}'] )
-                        
 @dataclass
 class ImpactFreqCurve():
     """Impact exceedence frequency curve.

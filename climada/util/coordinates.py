@@ -1104,16 +1104,16 @@ def assign_haz_centroids(coord_df, hazard, crs, distance='euclidean',
     haz_type = hazard.tag.haz_type
     centr_haz = 'centr_' + haz_type
     if centr_haz in coord_df:
-        LOGGER.info('GeoDataFrame matching centroids already found for %s', haz_type)
+        LOGGER.info('DataFrame matching centroids already found for %s', haz_type)
         if overwrite:
             LOGGER.info('Existing centroids will be overwritten for %s', haz_type)
         else:
             return
 
-    LOGGER.info('Matching %s GDF points with %s centroids.',
+    LOGGER.info('Matching %s coord points with %s hazard centroids.',
                 str(coord_df.shape[0]), str(hazard.centroids.size))
     if not equal_crs(crs, hazard.centroids.crs):
-        raise ValueError('Set hazard and exposure to same CRS first!')
+        raise ValueError('Set hazard and DataFrame to same CRS first!')
     if hazard.centroids.meta:
         assigned = assign_grid_points(
             coord_df.longitude.values, coord_df.latitude.values,

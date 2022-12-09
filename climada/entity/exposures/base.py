@@ -414,9 +414,9 @@ class Exposures():
 
         """
         u_coord.assign_haz_centroids(self.gdf, hazard, crs = self.crs, 
-                        distance='euclidean',
-                        threshold=u_coord.NEAREST_NEIGHBOR_THRESHOLD,
-                        overwrite=True)
+                        distance=distance,
+                        threshold=threshold,
+                        overwrite=overwrite)
                          
 
     def set_geometry_points(self, scheduler=None):
