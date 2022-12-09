@@ -1055,6 +1055,76 @@ def assign_coordinates(coords, coords_to_assign, distance="euclidean",
                 coords_to_assign, coords[not_assigned_idx_mask], threshold, **kwargs)
     return assigned_idx
 
+def assign_gdf_centroids(gdf, hazard, distance='euclidean',
+                        threshold=NEAREST_NEIGHBOR_THRESHOLD,
+                        overwrite=True):
+    """Assign for each exposure coordinate closest hazard coordinate.
+    -1 used for disatances > threshold in point distances. If raster hazard,
+    -1 used for centroids outside raster.
+
+    Parameters
+    ----------
+    gdf : gpd.GeoDataFrame
+        Geodataframe with defined crs and latitude/longitude column
+    hazard : Hazard
+        Hazard to match (with raster or vector centroids).
+    distance : str, optional
+        Distance to use in case of vector centroids.
+        Possible values are "euclidean", "haversine" and "approx".
+        Default: "euclidean"
+    threshold : float
+        If the distance (in km) to the nearest neighbor exceeds `threshold`,
+        the index `-1` is assigned.
+        Set `threshold` to 0, to disable nearest neighbor matching.
+        Default: 100 (km)
+    overwrite: bool
+        If True, overwrite centroids already present. If False, do
+        not assign new centroids. Default is True.
+
+    See Also
+    --------
+    climada.util.coordinates.assign_coordinates: method to associate centroids to
+        exposure points
+
+    Notes
+    -----
+    The default order of use is:
+        1. if centroid raster is defined, assign exposures points to
+        the closest raster point.
+        2. if no raster, assign centroids to the nearest neighbor using
+        euclidian metric
+    Both cases can introduce innacuracies for coordinates in lat/lon
+    coordinates as distances in degrees differ from distances in meters
+    on the Earth surface, in particular for higher latitude and distances
+    larger than 100km. If more accuracy is needed, please use 'haversine'
+    distance metric. This however is slower for (quasi-)gridded data,
+    and works only for non-gridded data.
+
+    """
+    haz_type = hazard.tag.haz_type
+    centr_haz = 'centr_' + haz_type
+    if centr_haz in gdf:
+        LOGGER.info('GeoDataFrame matching centroids already found for %s', haz_type)
+        if overwrite:
+            LOGGER.info('Existing centroids will be overwritten for %s', haz_type)
+        else:
+            return
+
+    LOGGER.info('Matching %s GDF points with %s centroids.',
+                str(gdf.shape[0]), str(hazard.centroids.size))
+    if not equal_crs(gdf.crs, hazard.centroids.crs):
+        raise ValueError('Set hazard and exposure to same CRS first!')
+    if hazard.centroids.meta:
+        assigned = assign_grid_points(
+            gdf.longitude.values, gdf.latitude.values,
+            hazard.centroids.meta['width'], hazard.centroids.meta['height'],
+            hazard.centroids.meta['transform'])
+    else:
+        assigned = assign_coordinates(
+            np.stack([gdf.latitude.values, gdf.longitude.values], axis=1),
+            hazard.centroids.coord, distance=distance, threshold=threshold)
+    gdf[centr_haz] = assigned
+
 @numba.njit
 def _dist_sqr_approx(lats1, lons1, cos_lats1, lats2, lons2):
     """Compute squared equirectangular approximation distance. Values need

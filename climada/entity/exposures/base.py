@@ -369,7 +369,8 @@ class Exposures():
     def assign_centroids(self, hazard, distance='euclidean',
                          threshold=u_coord.NEAREST_NEIGHBOR_THRESHOLD,
                          overwrite=True):
-        """Assign for each exposure coordinate closest hazard coordinate.
+        """Wrapper for u_coord.assign_gdf_centroids():
+        Assign for each exposure coordinate closest hazard coordinate.
         -1 used for disatances > threshold in point distances. If raster hazard,
         -1 used for centroids outside raster.
 
@@ -394,7 +395,9 @@ class Exposures():
         --------
         climada.util.coordinates.assign_coordinates: method to associate centroids to
             exposure points
-
+        climada.util.coordinates.assign_gdf_centroids: method to associate centroids to
+            geodataframe points
+            
         Notes
         -----
         The default order of use is:
@@ -410,29 +413,10 @@ class Exposures():
         and works only for non-gridded data.
 
         """
-        haz_type = hazard.tag.haz_type
-        centr_haz = INDICATOR_CENTR + haz_type
-        if centr_haz in self.gdf:
-            LOGGER.info('Exposures matching centroids already found for %s', haz_type)
-            if overwrite:
-                LOGGER.info('Existing centroids will be overwritten for %s', haz_type)
-            else:
-                return
-
-        LOGGER.info('Matching %s exposures with %s centroids.',
-                    str(self.gdf.shape[0]), str(hazard.centroids.size))
-        if not u_coord.equal_crs(self.crs, hazard.centroids.crs):
-            raise ValueError('Set hazard and exposure to same CRS first!')
-        if hazard.centroids.meta:
-            assigned = u_coord.assign_grid_points(
-                self.gdf.longitude.values, self.gdf.latitude.values,
-                hazard.centroids.meta['width'], hazard.centroids.meta['height'],
-                hazard.centroids.meta['transform'])
-        else:
-            assigned = u_coord.assign_coordinates(
-                np.stack([self.gdf.latitude.values, self.gdf.longitude.values], axis=1),
-                hazard.centroids.coord, distance=distance, threshold=threshold)
-        self.gdf[centr_haz] = assigned
+        u_coord.assign_gdf_centroids(self.gdf, hazard, distance='euclidean',
+                         threshold=u_coord.NEAREST_NEIGHBOR_THRESHOLD,
+                         overwrite=True)
+                         
 
     def set_geometry_points(self, scheduler=None):
         """Set geometry attribute of GeoDataFrame with Points from latitude and

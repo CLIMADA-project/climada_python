@@ -34,6 +34,7 @@ from scipy import sparse
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import pandas as pd
+import geopandas as gpd
 import xlsxwriter
 from tqdm import tqdm
 
@@ -1389,7 +1390,68 @@ class Impact():
             LOGGER.warning("No exposure coordinates match the selection.")
         return sel_exp
 
+    def assign_haz_centroids(self, hazard, distance='euclidean',
+                         threshold=u_coord.NEAREST_NEIGHBOR_THRESHOLD,
+                         overwrite=True):
+        """Wrapper for u_coord.assign_gdf_centroids():
+        Assign for each impact coordinate closest hazard coordinate.
+        -1 used for disatances > threshold in point distances. If raster hazard,
+        -1 used for centroids outside raster.
 
+        Parameters
+        ----------
+        hazard : Hazard
+            Hazard to match (with raster or vector centroids).
+        distance : str, optional
+            Distance to use in case of vector centroids.
+            Possible values are "euclidean", "haversine" and "approx".
+            Default: "euclidean"
+        threshold : float
+            If the distance (in km) to the nearest neighbor exceeds `threshold`,
+            the index `-1` is assigned.
+            Set `threshold` to 0, to disable nearest neighbor matching.
+            Default: 100 (km)
+        overwrite: bool
+            If True, overwrite centroids already present. If False, do
+            not assign new centroids. Default is True.
+
+        See Also
+        --------
+        climada.util.coordinates.assign_coordinates: method to associate centroids to
+            impact points
+        climada.util.coordinates.assign_gdf_centroids: method to associate centroids to
+            geodataframe points
+            
+        Notes
+        -----
+        The default order of use is:
+            1. if centroid raster is defined, assign impact points to
+            the closest raster point.
+            2. if no raster, assign centroids to the nearest neighbor using
+            euclidian metric
+        Both cases can introduce innacuracies for coordinates in lat/lon
+        coordinates as distances in degrees differ from distances in meters
+        on the Earth surface, in particular for higher latitude and distances
+        larger than 100km. If more accuracy is needed, please use 'haversine'
+        distance metric. This however is slower for (quasi-)gridded data,
+        and works only for non-gridded data.
+
+        """
+        #Assert that the imp crs is epsg:4326, as it is required by the u_coord methods
+        assert(self.crs == 'EPSG:4326')
+        
+        #create geodataframe from coordinates
+        coord_df = pd.DataFrame(self.coord_exp,columns=['latitude', 'longitude'])
+        gdf = gpd.GeoDataFrame(coord_df,geometry = gpd.points_from_xy(self.coord_exp[:,1],self.coord_exp[:,0],crs = 'EPSG:4326'))
+
+        #call the assign_gdf_centroids util function
+        u_coord.assign_gdf_centroids(gdf, hazard, distance='euclidean',
+                        threshold=u_coord.NEAREST_NEIGHBOR_THRESHOLD,
+                        overwrite=True)
+
+        #create new impact attribute with hazard centroids
+        setattr(self,f'centr_{hazard.tag.haz_type}' , gdf[f'centr_{hazard.tag.haz_type}'] )
+                        
 @dataclass
 class ImpactFreqCurve():
     """Impact exceedence frequency curve.
