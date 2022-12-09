@@ -25,7 +25,6 @@ import pandas as pd
 import contextily as ctx
 import urllib
 
-from rasterio.windows import Window
 from climada.entity.entity_def import Entity
 from climada.hazard.base import Hazard
 from climada.entity.exposures.base import Exposures
@@ -33,17 +32,8 @@ from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
 from climada.engine import ImpactCalc, ImpactFreqCurve
 from climada.util.constants import HAZ_DEMO_FL, HAZ_DEMO_MAT, ENT_DEMO_TODAY
 
-# Define an exposure to use for plotting
-exp = Exposures.from_raster(HAZ_DEMO_FL, window= Window(10, 20, 50, 60))
-
 class TestPlotter(unittest.TestCase):
     """Test plot functions."""
-
-    def test_plots(self):
-        """ Test plot_scatter, plot_basemap, and plot_raster"""
-        exp.plot_scatter()
-        exp.plot_basemap()
-        exp.plot_raster()
 
     def setUp(self):
         plt.ioff()
@@ -112,6 +102,10 @@ class TestPlotter(unittest.TestCase):
         myexp.tag.description = ''
         myax = myexp.plot_hexbin()
         self.assertIn('', myax.get_title())
+
+        myexp.plot_scatter()
+        myexp.plot_basemap()
+        myexp.plot_raster()
 
     def test_impact_funcs_pass(self):
         """Plot diferent impact functions."""
