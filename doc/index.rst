@@ -8,6 +8,8 @@ Welcome to CLIMADA!
 
 CLIMADA stands for CLIMate ADAptation and is a probabilistic natural catastrophe impact model, that also calculates averted damage (benefit) thanks to adaptation measures of any kind (from grey to green infrastructure, behavioural, etc.).
 
+CLIMADA is primarily developed and maintained by the `Weather and Climate Risks Group <https://wcr.ethz.ch/>`_ at `ETH Zürich <https://ethz.ch/en.html>`_.
+
 This is the documentation of the CLIMADA core module which contains all functionalities necessary for performing climate risk analysis and appraisal of adaptation options. Modules for generating different types of hazards and other specialized applications can be found in the `CLIMADA Petals <https://climada-petals.readthedocs.io/en/stable/>`_ module.
 
 Jump right in:
@@ -48,6 +50,7 @@ Jump right in:
 
    GitHub Repositories <https://github.com/CLIMADA-project>
    CLIMADA Petals <https://climada-petals.readthedocs.io/en/stable/>
+   Weather and Climate Risks Group <https://wcr.ethz.ch/>
 
 
 .. toctree::
