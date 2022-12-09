@@ -76,7 +76,7 @@ Jump right in:
    Exposures <tutorial/exposures>
    Impact <tutorial/impact>
    Uncertainty Quantification <tutorial/unsequa>
-   <tutorial/climada_engine_Forecast>
+   tutorial/climada_engine_Forecast
    Google Earth Engine <tutorial/climada_util_earth_engine>
    tutorial/climada_util_api_client
 
