@@ -35,8 +35,6 @@ from climada.util.constants import HAZ_DEMO_FL, HAZ_DEMO_MAT, ENT_DEMO_TODAY
 
 # Define an exposure to use for plotting
 exp = Exposures.from_raster(HAZ_DEMO_FL, window= Window(10, 20, 50, 60))
-exp.set_geometry_points()
-
 
 class TestPlotter(unittest.TestCase):
     """Test plot functions."""
