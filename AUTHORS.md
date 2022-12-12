@@ -25,3 +25,4 @@
 * Jan Wüthrich
 * Zélie Standhanske
 * Yue Yu
+* Lukas Riedel
