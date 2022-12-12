@@ -52,7 +52,7 @@ else:
     read_docs_url = 'en/v{}/'.format(__version__)
 
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ['_templates']
+templates_path = []
 
 # The suffix of source filenames.
 source_suffix = {
