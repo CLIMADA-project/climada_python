@@ -94,6 +94,7 @@ Jump right in:
    guide/Guide_PythonDos-n-Donts
    Performance and Best Practices <guide/Guide_Py_Performance>
    Coding Conventions <guide/Guide_Miscellaneous>
+   Building the Documentation <README>
 
 
 .. toctree::
