@@ -1420,7 +1420,7 @@ class Impact():
             impact points
         climada.util.coordinates.assign_gdf_centroids: method to associate centroids to
             geodataframe points
-            
+
         Notes
         -----
         The default order of use is:
