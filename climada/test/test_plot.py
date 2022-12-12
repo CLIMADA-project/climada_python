@@ -30,7 +30,7 @@ from climada.hazard.base import Hazard
 from climada.entity.exposures.base import Exposures
 from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
 from climada.engine import ImpactCalc, ImpactFreqCurve
-from climada.util.constants import HAZ_DEMO_FL, HAZ_DEMO_MAT, ENT_DEMO_TODAY
+from climada.util.constants import HAZ_DEMO_MAT, ENT_DEMO_TODAY
 
 class TestPlotter(unittest.TestCase):
     """Test plot functions."""
