@@ -9,14 +9,6 @@ climada\.util\.api\_client module
     :undoc-members:
     :show-inheritance:
 
-climada\.util\.cached module
-----------------------------
-
-.. automodule:: climada.util.cached
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 climada\.util\.checker module
 -----------------------------
 
