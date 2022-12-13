@@ -1058,9 +1058,9 @@ def assign_coordinates(coords, coords_to_assign, distance="euclidean",
 def assign_haz_centroids(coord_df, hazard, crs, distance='euclidean',
                         threshold=NEAREST_NEIGHBOR_THRESHOLD,
                         overwrite=True):
-    """Assign for each exposure coordinate closest hazard coordinate.
-    -1 used for disatances > threshold in point distances. If raster hazard,
-    -1 used for centroids outside raster.
+    """Assign to each exposure's coordinate point its closest hazard's coordinate.
+    If disatances > threshold in points' distances, -1 is returned. 
+    If raster hazard and coordinate point outside raster, -1 is returned.
 
     Parameters
     ----------
@@ -1083,9 +1083,10 @@ def assign_haz_centroids(coord_df, hazard, crs, distance='euclidean',
 
     See Also
     --------
+    climada.util.coordinates.assign_grid_points: method to associate centroids to
+        exposure points when centroids is a raster
     climada.util.coordinates.assign_coordinates: method to associate centroids to
         exposure points
-
     Notes
     -----
     The default order of use is:
@@ -1099,8 +1100,8 @@ def assign_haz_centroids(coord_df, hazard, crs, distance='euclidean',
     larger than 100km. If more accuracy is needed, please use 'haversine'
     distance metric. This however is slower for (quasi-)gridded data,
     and works only for non-gridded data.
-
     """
+
     haz_type = hazard.tag.haz_type
     centr_haz = 'centr_' + haz_type
     if centr_haz in coord_df:

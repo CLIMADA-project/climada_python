@@ -1392,7 +1392,8 @@ class Impact():
     def assign_centroids(self, hazard, distance='euclidean',
                          threshold=u_coord.NEAREST_NEIGHBOR_THRESHOLD,
                          overwrite=True):
-        """Wrapper for u_coord.assign_gdf_centroids():
+        """
+        Wrapper for u_coord.assign_gdf_centroids():
         Assign for each impact coordinate closest hazard coordinate.
         -1 used for disatances > threshold in point distances. If raster hazard,
         -1 used for centroids outside raster.
@@ -1427,14 +1428,13 @@ class Impact():
             1. if centroid raster is defined, assign impact points to
             the closest raster point.
             2. if no raster, assign centroids to the nearest neighbor using
-            euclidian metric
-        Both cases can introduce innacuracies for coordinates in lat/lon
-        coordinates as distances in degrees differ from distances in meters
-        on the Earth surface, in particular for higher latitude and distances
-        larger than 100km. If more accuracy is needed, please use 'haversine'
-        distance metric. This however is slower for (quasi-)gridded data,
-        and works only for non-gridded data.
-
+            euclidian metric.
+        Both cases can introduce inaccuracies for coordinates in lat/lon
+        as distances in degrees differ from distances in meters on the Earth 
+        surface, in particular for higher latitude and distances larger than 100km. 
+        If more accuracy is needed, please use 'haversine' distance metric. 
+        This however is slower for (quasi-)gridded data, and works only for 
+        non-gridded data.
         """
 
         #Assert that the imp crs is epsg:4326, as it is required by the u_coord methods
@@ -1442,16 +1442,17 @@ class Impact():
             raise ValueError('Set Impact to lat/lon crs (EPSG:4326)!')
 
         #create geodataframe from coordinates
-        coord_df = pd.DataFrame(self.coord_exp,columns=['latitude', 'longitude'])
+        coord_df = pd.DataFrame(self.coord_exp, columns=['latitude', 'longitude'])
 
         #call the assign_gdf_centroids util function
-        u_coord.assign_haz_centroids(coord_df, hazard, crs = self.crs,
+        u_coord.assign_haz_centroids(coord_df, hazard, crs=self.crs,
                         distance=distance,
                         threshold=threshold,
                         overwrite=overwrite)
 
         #create new impact attribute with hazard centroids
         setattr(self,f'centr_{hazard.tag.haz_type}' , coord_df[f'centr_{hazard.tag.haz_type}'] )
+
 @dataclass
 class ImpactFreqCurve():
     """Impact exceedence frequency curve.

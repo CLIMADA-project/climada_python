@@ -393,11 +393,10 @@ class Exposures():
 
         See Also
         --------
+        climada.util.coordinates.assign_grid_points: method to associate centroids to
+            exposure points when centroids is a raster
         climada.util.coordinates.assign_coordinates: method to associate centroids to
             exposure points
-        climada.util.coordinates.assign_gdf_centroids: method to associate centroids to
-            geodataframe points
-
         Notes
         -----
         The default order of use is:
