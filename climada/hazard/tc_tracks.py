@@ -396,9 +396,9 @@ class TCTracks():
             which simulates the genesis location. Note that the resulting genesis basin of a
             particular track may depend on the selected `provider` and on `estimate_missing`
             because only the first *valid* eye position is considered. Possible values are 'NA'
-            (North Atlantic), 'SA' (South Atlantic), 'EP'​ (Eastern North Pacific, which includes
-            the Central Pacific region), 'WP'​ (Western North Pacific), 'SP'​ (South Pacific),
-            'SI'​ (South Indian), 'NI'​ (North Indian). If None, this filter is not applied.
+            (North Atlantic), 'SA' (South Atlantic), 'EP' (Eastern North Pacific, which includes
+            the Central Pacific region), 'WP' (Western North Pacific), 'SP' (South Pacific),
+            'SI' (South Indian), 'NI' (North Indian). If None, this filter is not applied.
             Default: None.
         interpolate_missing : bool, optional
             If True, interpolate temporal reporting gaps within a variable (such as pressure, wind
@@ -1258,6 +1258,13 @@ class TCTracks():
     @classmethod
     def from_netcdf(cls, folder_name):
         """Create new TCTracks object from NetCDF files contained in a given folder
+
+        Warning
+        -------
+        Do not use this classmethod for reading IBTrACS NetCDF files! If you need to
+        manually download IBTrACS NetCDF files, place them in the
+        ``~/climada/data/system`` folder and use the ``TCTracks.from_ibtracks_netcdf``
+        classmethod.
 
         Parameters
         ----------

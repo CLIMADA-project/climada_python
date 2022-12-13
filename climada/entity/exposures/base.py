@@ -494,8 +494,6 @@ class Exposures():
         Exposures
         """
         exp = cls()
-        if 'geometry' in exp.gdf:
-            raise ValueError("there is already a geometry column defined in the GeoDataFrame")
         exp.tag = Tag()
         exp.tag.file_name = str(file_name)
         meta, value = u_coord.read_raster(file_name, [band], src_crs, window,

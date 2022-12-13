@@ -103,6 +103,10 @@ class TestPlotter(unittest.TestCase):
         myax = myexp.plot_hexbin()
         self.assertIn('', myax.get_title())
 
+        myexp.plot_scatter()
+        myexp.plot_basemap()
+        myexp.plot_raster()
+
     def test_impact_funcs_pass(self):
         """Plot diferent impact functions."""
         myfuncs = ImpactFuncSet.from_excel(ENT_DEMO_TODAY)
