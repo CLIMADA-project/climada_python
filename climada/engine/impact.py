@@ -25,6 +25,7 @@ from dataclasses import dataclass, field
 import logging
 import copy
 import csv
+import h5py
 import warnings
 import datetime as dt
 from itertools import zip_longest
@@ -36,6 +37,7 @@ import matplotlib.animation as animation
 import pandas as pd
 import xlsxwriter
 from tqdm import tqdm
+from pathlib import Path
 
 
 from climada.entity import Exposures, Tag
@@ -45,6 +47,7 @@ from climada import CONFIG
 from climada.util.constants import DEF_CRS, CMAP_IMPACT, DEF_FREQ_UNIT
 import climada.util.coordinates as u_coord
 import climada.util.dates_times as u_dt
+import climada.util.hdf5_handler as u_hdf5
 from climada.util.select import get_attributes_with_matching_dimension
 
 LOGGER = logging.getLogger(__name__)
@@ -862,6 +865,76 @@ class Impact():
 
         imp_wb.close()
 
+    def write_hdf5(self, file_data, todense=False):
+        """Write centroids attributes into hdf5 format.
+
+        Parameters
+        ----------
+        file_data : str or h5
+            If string, path to write data. If h5 object, the datasets will be generated there.
+        todense: bool
+            if True write the sparse matrices as hdf5.dataset by converting them to dense format first.
+            This increases readability of the file for other programs. default: False
+        """
+        if isinstance(file_data, (str, Path)):
+            LOGGER.info('Writing %s', file_data)
+            with h5py.File(file_data, 'w') as data:
+                self._write_hdf5(data, todense)
+        else:
+            self._write_hdf5(file_data, todense)
+
+    def _write_hdf5(self, data, todense):
+        str_dt = h5py.special_dtype(vlen=str)
+        for (var_name, var_val) in self.__dict__.items():
+            if var_name == 'tag':
+                # write the dictionary of tags of exposures, impact functions set and hazard
+                # write hazard tag
+                hf_str = data.create_dataset('haz_tag_haz_type', (1,), dtype=str_dt)
+                hf_str[0] = var_val['haz'].haz_type
+                hf_str = data.create_dataset('haz_tag_file_name', (1,), dtype=str_dt)
+                hf_str[0] = str(var_val['haz'].file_name)
+                hf_str = data.create_dataset('haz_tag_description', (1,), dtype=str_dt)
+                hf_str[0] = str(var_val['haz'].description)
+                # write exposure tag
+                hf_str = data.create_dataset('exp_tag_file_name', (1,), dtype=str_dt)
+                hf_str[0] = str(var_val['exp'].file_name)
+                hf_str = data.create_dataset('exp_tag_description', (1,), dtype=str_dt)
+                hf_str[0] = str(var_val['exp'].description)
+                # write impact functions tag
+                hf_str = data.create_dataset('impf_set_tag_file_name', (1,), dtype=str_dt)
+                hf_str[0] = str(var_val['impf_set'].file_name)
+                hf_str = data.create_dataset('impf_set_tag_description', (1,), dtype=str_dt)
+                hf_str[0] = str(var_val['impf_set'].description)
+            elif isinstance(var_val, sparse.csr_matrix):
+                if todense:
+                    data.create_dataset(var_name, data=var_val.toarray())
+                else:
+                    hf_csr = data.create_group(var_name)
+                    hf_csr.create_dataset('data', data=var_val.data)
+                    hf_csr.create_dataset('indices', data=var_val.indices)
+                    hf_csr.create_dataset('indptr', data=var_val.indptr)
+                    hf_csr.attrs['shape'] = var_val.shape
+            elif isinstance(var_val, str):
+                hf_str = data.create_dataset(var_name, (1,), dtype=str_dt)
+                hf_str[0] = var_val
+            elif isinstance(var_val, (int, float)):
+                hf_int = data.create_dataset(var_name, (1,), dtype=float)
+                hf_int[0] = var_val
+            elif isinstance(var_val, list) and var_val and isinstance(var_val[0], str):
+                hf_str = data.create_dataset(var_name, (len(var_val),), dtype=str_dt)
+                for i_ev, var_ev in enumerate(var_val):
+                    hf_str[i_ev] = var_ev
+            elif var_val is not None and var_name != 'pool':
+                try:
+                    data.create_dataset(var_name, data=var_val)
+                except TypeError:
+                    LOGGER.warning(
+                        "write_hdf5: the class member %s is skipped, due to its "
+                        "type, %s, for which writing to hdf5 "
+                        "is not implemented. Reading this H5 file will probably lead to "
+                        "%s being set to its default value.",
+                        var_name, var_val.__class__.__name__, var_name
+                    )
     def write_sparse_csr(self, file_name):
         """Write imp_mat matrix in numpy's npz format."""
         LOGGER.info('Writing %s', file_name)
@@ -994,6 +1067,99 @@ class Impact():
                        "Use Impact.from_excel instead.")
         self.__dict__ = Impact.from_excel(*args, **kwargs).__dict__
 
+    @classmethod
+    def from_hdf5(cls, file_data):
+        """Create an impact object from a HDF5 file.
+
+        Parameters
+        ----------
+        file_data : str or h5
+            If string, path to read data. If h5 object, the datasets will be read from there.
+
+        Returns
+        -------
+        imp : Impact
+            Impact with data from the given file
+        """
+        if isinstance(file_data, (str, Path)):
+            LOGGER.info('Reading %s', file_data)
+            with h5py.File(file_data, 'r') as data:
+                return cls._from_hdf5(data)
+        else:
+            return cls._from_hdf5(file_data)
+
+    @classmethod
+    def _from_hdf5(cls, data):
+        imp = cls()
+        impact_kwargs = dict()
+        for (var_name, var_val) in imp.__dict__.items():
+            if var_name != 'tag' and var_name not in data.keys():
+                continue
+            elif var_name == 'tag':
+                # read the dictionary of tags of exposures, impact functions set and hazard
+                impact_kwargs["tag"] = dict()
+                # read hazard tag
+                impact_kwargs["tag"]['haz'] = TagHaz()
+                impact_kwargs["tag"]['haz'].haz_type = u_hdf5.to_string(
+                    data.get('haz_tag_haz_type')[0])
+                impact_kwargs["tag"]['haz'].file_name = u_hdf5.to_string(
+                    data.get('haz_tag_file_name')[0])
+                impact_kwargs["tag"]['haz'].description = u_hdf5.to_string(
+                    data.get('haz_tag_description')[0])
+                # read exposure tag
+                impact_kwargs["tag"]['exp'] = Tag()
+                impact_kwargs["tag"]['exp'].file_name = u_hdf5.to_string(
+                    data.get('exp_tag_file_name')[0])
+                impact_kwargs["tag"]['exp'].description = u_hdf5.to_string(
+                    data.get('exp_tag_description')[0])
+                # write impact functions tag
+                impact_kwargs["tag"]['impf_set'] = Tag()
+                impact_kwargs["tag"]['impf_set'].file_name = u_hdf5.to_string(
+                    data.get('impf_set_tag_file_name')[0])
+                impact_kwargs["tag"]['impf_set'].description = u_hdf5.to_string(
+                    data.get('impf_set_tag_description')[0])
+            elif isinstance(var_val, np.ndarray) and var_val.ndim == 1:
+                impact_kwargs[var_name] = np.array(data.get(var_name))
+            elif isinstance(var_val, sparse.csr_matrix):
+                hf_csr = data.get(var_name)
+                if isinstance(hf_csr, h5py.Dataset):
+                    impact_kwargs[var_name] = sparse.csr_matrix(hf_csr)
+                else:
+                    impact_kwargs[var_name] = sparse.csr_matrix(
+                        (hf_csr['data'][:], hf_csr['indices'][:], hf_csr['indptr'][:]),
+                        hf_csr.attrs['shape'])
+            elif isinstance(var_val, str):
+                impact_kwargs[var_name] = u_hdf5.to_string(
+                    data.get(var_name)[0])
+            elif isinstance(var_val, (float, int)):
+                impact_kwargs[var_name] = data.get(var_name)[0]
+            elif isinstance(var_val, list):
+                impact_kwargs[var_name] = [x for x in map(
+                    u_hdf5.to_string, np.array(data.get(var_name)).tolist())]
+            else:
+                impact_kwargs[var_name] = data.get(var_name)
+
+        # Now create the actual object we want to return!
+        return cls(**impact_kwargs)
+        # as long as the init function of Impact is not specified more clearly use the code below instead
+        # imp.tag = impact_kwargs['tag']
+        # imp.unit = impact_kwargs['unit']
+        # imp.tot_value = impact_kwargs['tot_value']
+        # imp.aai_agg = impact_kwargs['aai_agg']
+        # imp.event_id = impact_kwargs['event_id']
+        # imp.event_name = impact_kwargs['event_name']
+        # imp.date = impact_kwargs['date']
+        # imp.frequency = impact_kwargs['frequency']
+        # imp.frequency_unit = impact_kwargs['frequency_unit'] if 'frequency_unit' in impact_kwargs else DEF_FREQ_UNIT
+        # imp.at_event = impact_kwargs['at_event']
+        #
+        # imp.eai_exp = impact_kwargs['eai_exp']
+        # imp.coord_exp = impact_kwargs['coord_exp']
+        # try:
+        #     imp.crs = impact_kwargs['crs']
+        # except AttributeError:
+        #     imp.crs = DEF_CRS
+        # return imp
     @staticmethod
     def video_direct_impact(exp, impf_set, haz_list, file_name='',
                             writer=animation.PillowWriter(bitrate=500),
