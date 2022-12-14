@@ -343,8 +343,9 @@ class TCTracks():
         to be larger than `central_pressure`.
 
         Note that the tracks returned by this function might contain irregular time steps since
-        that is often the case for the original IBTrACS records. Apply the `equal_timestep`
-        function afterwards to enforce regular time steps.
+        that is often the case for the original IBTrACS records: many agencies add an additional
+        time step at landfall. Apply the `equal_timestep` function afterwards to enforce regular
+        time steps.
 
         Parameters
         ----------
@@ -1047,7 +1048,10 @@ class TCTracks():
         return tr
 
     def equal_timestep(self, time_step_h=1, land_params=False, pool=None):
-        """Generate interpolated track values to time steps of time_step_h.
+        """Generate interpolated track values to time steps of time_step_h. Only frames
+        at the requested interval are returned, so this method can up/down/rescale track
+        time steps. Note that nothing is done when all tracks already agree with the
+        requested time step.
 
         Parameters
         ----------
