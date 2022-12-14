@@ -25,7 +25,6 @@ from dataclasses import dataclass, field
 import logging
 import copy
 import csv
-import h5py
 import warnings
 import datetime as dt
 from itertools import zip_longest
@@ -38,6 +37,7 @@ import pandas as pd
 import xlsxwriter
 from tqdm import tqdm
 from pathlib import Path
+import h5py
 
 
 from climada.entity import Exposures, Tag
@@ -873,8 +873,8 @@ class Impact():
         file_data : str or h5
             If string, path to write data. If h5 object, the datasets will be generated there.
         todense: bool
-            if True write the sparse matrices as hdf5.dataset by converting them to dense format first.
-            This increases readability of the file for other programs. default: False
+            if True write the sparse matrices as hdf5.dataset by converting them to dense format
+            first. This increases readability of the file for other programs. default: False
         """
         if isinstance(file_data, (str, Path)):
             LOGGER.info('Writing %s', file_data)
@@ -935,6 +935,7 @@ class Impact():
                         "%s being set to its default value.",
                         var_name, var_val.__class__.__name__, var_name
                     )
+
     def write_sparse_csr(self, file_name):
         """Write imp_mat matrix in numpy's npz format."""
         LOGGER.info('Writing %s', file_name)
@@ -1095,7 +1096,7 @@ class Impact():
         for (var_name, var_val) in imp.__dict__.items():
             if var_name != 'tag' and var_name not in data.keys():
                 continue
-            elif var_name == 'tag':
+            if var_name == 'tag':
                 # read the dictionary of tags of exposures, impact functions set and hazard
                 impact_kwargs["tag"] = dict()
                 # read hazard tag
@@ -1141,25 +1142,7 @@ class Impact():
 
         # Now create the actual object we want to return!
         return cls(**impact_kwargs)
-        # as long as the init function of Impact is not specified more clearly use the code below instead
-        # imp.tag = impact_kwargs['tag']
-        # imp.unit = impact_kwargs['unit']
-        # imp.tot_value = impact_kwargs['tot_value']
-        # imp.aai_agg = impact_kwargs['aai_agg']
-        # imp.event_id = impact_kwargs['event_id']
-        # imp.event_name = impact_kwargs['event_name']
-        # imp.date = impact_kwargs['date']
-        # imp.frequency = impact_kwargs['frequency']
-        # imp.frequency_unit = impact_kwargs['frequency_unit'] if 'frequency_unit' in impact_kwargs else DEF_FREQ_UNIT
-        # imp.at_event = impact_kwargs['at_event']
-        #
-        # imp.eai_exp = impact_kwargs['eai_exp']
-        # imp.coord_exp = impact_kwargs['coord_exp']
-        # try:
-        #     imp.crs = impact_kwargs['crs']
-        # except AttributeError:
-        #     imp.crs = DEF_CRS
-        # return imp
+
     @staticmethod
     def video_direct_impact(exp, impf_set, haz_list, file_name='',
                             writer=animation.PillowWriter(bitrate=500),
