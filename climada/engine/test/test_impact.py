@@ -317,6 +317,7 @@ class TestIO(unittest.TestCase):
     def test_hdf5_io(self):
         """Test write and read in excel"""
         imp_write = dummy_impact()
+        imp_write.event_name = ['event_' + str(num) for num in imp_write.event_id]
         file_name = DATA_FOLDER.joinpath('test.hdf5')
         imp_write.write_hdf5(file_name)
 
