@@ -37,7 +37,6 @@ import climada.hazard.test as hazard_test
 
 DATA_DIR = Path(hazard_test.__file__).parent.joinpath('data')
 
-HAZ_TEST_MAT = DATA_DIR.joinpath('atl_prob_no_name.mat')
 TEST_TRACK = DATA_DIR.joinpath("trac_brb_test.csv")
 TEST_TRACK_SHORT = DATA_DIR.joinpath("trac_short_test.csv")
 
@@ -85,9 +84,7 @@ class TestReader(unittest.TestCase):
             self.assertTrue(np.array_equal(tc_haz.frequency, np.array([1])))
             self.assertTrue(isinstance(tc_haz.fraction, sparse.csr.csr_matrix))
             self.assertEqual(tc_haz.fraction.shape, (1, 296))
-            self.assertEqual(tc_haz.fraction[0, 100], 1)
-            self.assertEqual(tc_haz.fraction[0, 260], 0)
-            self.assertEqual(tc_haz.fraction.nonzero()[0].size, 280)
+            self.assertIsNone(tc_haz._get_fraction())
 
             self.assertTrue(isinstance(tc_haz.intensity, sparse.csr.csr_matrix))
             self.assertEqual(tc_haz.intensity.shape, (1, 296))

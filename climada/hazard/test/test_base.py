@@ -32,10 +32,25 @@ from climada.hazard.centroids.centr import Centroids
 import climada.util.dates_times as u_dt
 from climada.util.constants import DEF_FREQ_UNIT, HAZ_TEMPLATE_XLS, HAZ_DEMO_FL
 import climada.util.coordinates as u_coord
+
+from climada.test import get_test_file
 import climada.hazard.test as hazard_test
 
-DATA_DIR = CONFIG.hazard.test_data.dir()
-HAZ_TEST_MAT = Path(hazard_test.__file__).parent.joinpath('data', 'atl_prob_no_name.mat')
+
+DATA_DIR :Path = CONFIG.hazard.test_data.dir()
+"""
+Directory for writing (and subsequent reading) of temporary files created during tests.
+"""
+HAZ_TEST_MAT :Path = Path(hazard_test.__file__).parent.joinpath('data', 'atl_prob_no_name.mat')
+"""
+Hazard test file from Git repository. Fraction is 1. Format: matlab.
+"""
+HAZ_TEST_TC :Path = get_test_file('test_tc_florida')
+"""
+Hazard test file from Data API: Hurricanes from 1851 to 2011 over Florida with 100 centroids.
+Fraction is empty. Format: HDF5.
+"""
+
 
 def dummy_hazard():
     hazard = Hazard('TC')
@@ -57,7 +72,6 @@ def dummy_hazard():
                                           [4.3, 2.1, 1.0],
                                           [5.3, 0.2, 0.0]])
     hazard.units = 'm/s'
-
     return hazard
 
 class TestLoader(unittest.TestCase):
@@ -75,8 +89,13 @@ class TestLoader(unittest.TestCase):
         # events x centroids
         haz.intensity = sparse.csr_matrix([[1, 2], [1, 2], [1, 2]])
         haz.fraction = sparse.csr_matrix([[1, 2], [1, 2], [1, 2]])
-
         return haz
+
+    def test_check_empty_fraction(self):
+        """Test empty fraction"""
+        haz = self.good_hazard()
+        haz.fraction = sparse.csr_matrix(haz.intensity.shape)
+        haz.check()
 
     def test_check_wrongCentroids_fail(self):
         """Wrong hazard definition"""
@@ -175,7 +194,7 @@ class TestLoader(unittest.TestCase):
         self.assertIn('No event with id: 1050', str(cm.exception))
 
     def test_get_date_strings_pass(self):
-        haz = Hazard.from_mat(HAZ_TEST_MAT)
+        haz = Hazard.from_hdf5(HAZ_TEST_TC)
         haz.event_name[5] = 'HAZEL'
         haz.event_name[10] = 'HAZEL'
 
@@ -942,7 +961,7 @@ class TestAppend(unittest.TestCase):
         lat3, lon3 = np.array([0.5, 3]), np.array([-0.5, 3])
         on_land3 = np.array([True, True, False])
         cent3 = Centroids(lat=lat3, lon=lon3, on_land=on_land3)
-        
+
         with self.assertRaises(ValueError) as cm:
             haz_1.change_centroids(cent3, threshold=100)
         self.assertIn('two hazard centroids are mapped to the same centroids', str(cm.exception))
@@ -991,7 +1010,7 @@ class TestStats(unittest.TestCase):
 
     def test_degenerate_pass(self):
         """Test degenerate call."""
-        haz = Hazard.from_mat(HAZ_TEST_MAT)
+        haz = Hazard.from_hdf5(HAZ_TEST_TC)
         return_period = np.array([25, 50, 100, 250])
         haz.intensity = sparse.csr.csr_matrix(np.zeros(haz.intensity.shape))
         inten_stats = haz.local_exceedance_inten(return_period)
@@ -999,7 +1018,7 @@ class TestStats(unittest.TestCase):
 
     def test_ref_all_pass(self):
         """Compare against reference."""
-        haz = Hazard.from_mat(HAZ_TEST_MAT)
+        haz = Hazard.from_hdf5(HAZ_TEST_TC)
         return_period = np.array([25, 50, 100, 250])
         inten_stats = haz.local_exceedance_inten(return_period)
 
@@ -1016,8 +1035,8 @@ class TestYearset(unittest.TestCase):
     """Test return period statistics"""
 
     def test_ref_pass(self):
-        """Test against matlab reference."""
-        haz = Hazard.from_mat(HAZ_TEST_MAT)
+        """Test against reference."""
+        haz = Hazard.from_hdf5(HAZ_TEST_TC)
         orig_year_set = haz.calc_year_set()
 
         self.assertTrue(np.array_equal(np.array(list(orig_year_set.keys())),
@@ -1444,32 +1463,47 @@ class TestImpactFuncs(unittest.TestCase):
     def test_get_fraction(self):
         haz = dummy_hazard()
 
+        #standard index
         idx = [0, 1]
         cent_idx = np.array(idx)
-        frac = haz.get_fraction(cent_idx)
+        frac = haz._get_fraction(cent_idx)
         true_frac = haz.fraction[:, idx]
-        np.testing.assert_array_almost_equal(frac.toarray(), true_frac.toarray())
+        np.testing.assert_array_equal(frac.toarray(), true_frac.toarray())
 
         #repeated index
         idx = [0, 0]
         cent_idx = np.array(idx)
-        frac = haz.get_fraction(cent_idx)
+        frac = haz._get_fraction(cent_idx)
         true_frac = haz.fraction[:, idx]
-        np.testing.assert_array_almost_equal(frac.toarray(), true_frac.toarray())
+        np.testing.assert_array_equal(frac.toarray(), true_frac.toarray())
+
+        #index is None
+        cent_idx = None
+        frac = haz._get_fraction(cent_idx)
+        true_frac = haz.fraction
+        np.testing.assert_array_equal(frac.toarray(), true_frac.toarray())
+
+        #test empty fraction
+        haz.fraction = sparse.csr_matrix(haz.fraction.shape)
+        frac = haz._get_fraction()
+        self.assertIsNone(frac)
+
+        frac = haz._get_fraction(np.array([0, 1]))
+        self.assertIsNone(frac)
 
 
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestLoader)
-    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestHDF5))
-    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReaderExcel))
-    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReaderMat))
-    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRemoveDupl))
-    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestSelect))
-    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestStats))
-    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestYearset))
-    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAppend))
-    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCentroids))
-    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestClear))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestHDF5))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReaderExcel))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReaderMat))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRemoveDupl))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestSelect))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestStats))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestYearset))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAppend))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCentroids))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestClear))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestImpactFuncs))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
