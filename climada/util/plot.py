@@ -195,7 +195,8 @@ def _plot_scattered_data(method, array_sub, geo_coord, var_name, title,
     if axes is None:
         proj_plot = proj
         if isinstance(proj, ccrs.PlateCarree):
-            # use different projections for plot and data to shift the central lon in the plot
+            # for PlateCarree, center plot around data's central lon
+            # without overwriting the data's original projection info
             xmin, xmax = u_coord.lon_bounds(np.concatenate([c[:, 1] for c in list_coord]))
             proj_plot = ccrs.PlateCarree(central_longitude=0.5 * (xmin + xmax))
         _, axes, fontsize = make_map(num_im, proj=proj_plot, figsize=figsize,
@@ -308,8 +309,10 @@ def geo_im_from_array(array_sub, coord, var_name, title,
     if 'vmax' not in kwargs:
         kwargs['vmax'] = np.nanmax(array_sub)
     if axes is None:
+        proj_plot = proj
         if isinstance(proj, ccrs.PlateCarree):
-            # use different projections for plot and data to shift the central lon in the plot
+            # for PlateCarree, center plot around data's central lon 
+            # without overwriting the data's original projection info
             xmin, xmax = u_coord.lon_bounds(np.concatenate([c[:, 1] for c in list_coord]))
             proj_plot = ccrs.PlateCarree(central_longitude=0.5 * (xmin + xmax))
         _, axes, fontsize = make_map(num_im, proj=proj_plot, figsize=figsize,
