@@ -693,6 +693,22 @@ class TestConvertExp(unittest.TestCase):
         self.assertEqual(exp.value_unit, imp.unit)
         self.assertEqual(exp.ref_year, 0)
 
+class TestAssignCentroids(unittest.TestCase):
+
+    def test_assign_centroids(self):
+        "Test that hazard centroids get assigned correctly"
+        exp = ENT.exposures
+        exp.assign_centroids(HAZ)
+        tot_value = exp.affected_total_value(HAZ)
+        fake_eai_exp = np.arange(len(exp.gdf))
+        fake_at_event = np.arange(HAZ.size)
+        fake_aai_agg = np.sum(fake_eai_exp)
+        imp = Impact.from_eih(exp, ENT.impact_funcs, HAZ,
+                              fake_at_event, fake_eai_exp, fake_aai_agg)
+        imp.assign_centroids(HAZ)
+        imp_centr = getattr(imp,f'centr_{HAZ.tag.haz_type}')
+        np.testing.assert_array_equal(imp_centr,exp.gdf.centr_TC)
+
 
 # Execute Tests
 if __name__ == "__main__":
@@ -704,4 +720,5 @@ if __name__ == "__main__":
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestSelect))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestConvertExp))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestImpact))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAssignCentroids))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
