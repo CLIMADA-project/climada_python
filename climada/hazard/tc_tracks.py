@@ -1041,10 +1041,18 @@ class TCTracks():
         return cls(data)
 
     def equal_timestep(self, time_step_h=1, land_params=False, pool=None):
-        """Generate interpolated track values to time steps of time_step_h. Only frames
-        at the requested interval are returned, so this method can up/down/rescale track
-        time steps. Note that nothing is done when all tracks already agree with the
-        requested time step.
+        """Resample all tracks at the specified temporal resolution
+
+        The resulting track data will be given at evenly distributed time steps, relative to
+        midnight (00:00). For example, if `time_step_h` is 1 and the original track data starts
+        at 06:30, the interpolated track will not have a time step at 06:30 because only multiples
+        of 01:00 (relative to midnight) are included. In this case, the interpolated track will
+        start at 07:00.
+
+        Depending on the original resolution of the track data, this method may up- or downsample
+        track time steps.
+
+        Note that tracks that already have the specified resolution remain unchanged.
 
         Parameters
         ----------
@@ -1060,11 +1068,24 @@ class TCTracks():
 
         if time_step_h <= 0:
             raise ValueError(f"time_step_h is not a positive number: {time_step_h}")
-        time_step_h_current = self._get_unique_time_step_h()
-        if np.allclose(time_step_h_current, time_step_h):
+
+        # set step size to None for tracks that already have the specified resolution
+        l_time_step_h = [
+            None if np.allclose(np.unique(tr['time_step'].values), time_step_h)
+            else time_step_h
+            for tr in self.data
+        ]
+
+        n_skip = np.sum([ts is None for ts in l_time_step_h])
+        if n_skip == self.size:
             LOGGER.info('All tracks are already at the requested temporal resolution.')
             return
-        LOGGER.info('Interpolating %s tracks to %sh time steps.', self.size, time_step_h)
+        elif n_skip > 0:
+            LOGGER.info('%d track%s already at the requested temporal resolution.',
+                        n_skip, "s are" if n_skip > 1 else " is")
+
+        LOGGER.info('Interpolating %d tracks to %sh time steps.',
+                    self.size - n_skip, time_step_h)
 
         if land_params:
             extent = self.get_extent()
@@ -1074,21 +1095,24 @@ class TCTracks():
 
         if pool:
             chunksize = min(self.size // pool.ncpus, 1000)
-            self.data = pool.map(self._one_interp_data, self.data,
-                                 itertools.repeat(time_step_h, self.size),
-                                 itertools.repeat(land_geom, self.size),
-                                 chunksize=chunksize)
+            self.data = pool.map(
+                self._one_interp_data,
+                self.data,
+                l_time_step_h,
+                itertools.repeat(land_geom, self.size),
+                chunksize=chunksize
+            )
         else:
             last_perc = 0
             new_data = []
-            for track in self.data:
+            for track, ts_h in zip(self.data, l_time_step_h):
                 # progress indicator
                 perc = 100 * len(new_data) / len(self.data)
                 if perc - last_perc >= 10:
                     LOGGER.debug("Progress: %d%%", perc)
                     last_perc = perc
-                new_data.append(
-                    self._one_interp_data(track, time_step_h, land_geom))
+                track_int = self._one_interp_data(track, ts_h, land_geom)
+                new_data.append(track_int)
             self.data = new_data
 
     def calc_random_walk(self, **kwargs):
@@ -1422,10 +1446,6 @@ class TCTracks():
 
         return gdf
 
-    def _get_unique_time_step_h(self):
-        time_step_h = np.unique(np.concatenate([np.unique(x['time_step']) for x in self.data]))
-        return time_step_h
-
     @staticmethod
     @numba.jit(forceobj=True)
     def _one_interp_data(track, time_step_h, land_geom=None):
@@ -1435,8 +1455,9 @@ class TCTracks():
         ----------
         track : xr.Dataset
             Track data.
-        time_step_h : int or float
-            Desired temporal resolution in hours (may be non-integer-valued).
+        time_step_h : int, float or None
+            Desired temporal resolution in hours (may be non-integer-valued). If None, no
+            interpolation is done and the input track dataset is returned unchanged.
         land_geom : shapely.geometry.multipolygon.MultiPolygon, optional
             Land geometry. If given, recompute `dist_since_lf` and `on_land` property.
 
@@ -1444,7 +1465,9 @@ class TCTracks():
         -------
         track_int : xr.Dataset
         """
-        if track.time.size >= 2:
+        if time_step_h is None:
+            return track
+        elif track.time.size >= 2:
             method = ['linear', 'quadratic', 'cubic'][min(2, track.time.size - 2)]
 
             # handle change of sign in longitude
