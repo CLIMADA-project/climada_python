@@ -1080,7 +1080,7 @@ class TCTracks():
         if n_skip == self.size:
             LOGGER.info('All tracks are already at the requested temporal resolution.')
             return
-        elif n_skip > 0:
+        if n_skip > 0:
             LOGGER.info('%d track%s already at the requested temporal resolution.',
                         n_skip, "s are" if n_skip > 1 else " is")
 
@@ -1467,7 +1467,11 @@ class TCTracks():
         """
         if time_step_h is None:
             return track
-        elif track.time.size >= 2:
+        if track.time.size < 2:
+            LOGGER.warning('Track interpolation not done. '
+                           'Not enough elements for %s', track.name)
+            track_int = track
+        else:
             method = ['linear', 'quadratic', 'cubic'][min(2, track.time.size - 2)]
 
             # handle change of sign in longitude
@@ -1492,10 +1496,6 @@ class TCTracks():
             # restrict to time steps within original bounds
             track_int = track_int.sel(
                 time=(track.time[0] <= track_int.time) & (track_int.time <= track.time[-1]))
-        else:
-            LOGGER.warning('Track interpolation not done. '
-                           'Not enough elements for %s', track.name)
-            track_int = track
 
         if land_geom:
             track_land_params(track_int, land_geom)
