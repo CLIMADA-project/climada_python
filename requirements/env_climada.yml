@@ -12,7 +12,7 @@ dependencies:
   - geopandas>=0.8
   - h5py>=2.10
   - haversine>=2.3
-  - matplotlib>=3.2
+  - matplotlib>=3.2,<3.6  # 3.6 requires cartopy 0.21 (s. https://github.com/SciTools/cartopy/pull/2054)
   - netcdf4>=1.5
   - numba>=0.51,!=0.55.0  # 0.55.0 has a bug breaking coverage reports
   - openpyxl>=3.0

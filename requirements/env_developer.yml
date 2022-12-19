@@ -4,7 +4,9 @@ channels:
   - defaults
 dependencies:
   - ipython
+  - ipykernel
   - mccabe>=0.6
+  - pandoc
   - sphinx>=2.0
   - pip
   - pip:
@@ -13,3 +15,8 @@ dependencies:
     - nbformat
     - pylint==2.7.1  # 2.7.2 and higher: false positive E1136 and E1137
     - readthedocs-sphinx-ext>=2.1
+    - nbsphinx
+    - myst-parser
+    - sphinx-markdown-tables
+    - markdown
+    - sphinx-book-theme
