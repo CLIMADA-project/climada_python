@@ -348,8 +348,9 @@ class TCTracks():
         to be larger than `central_pressure`.
 
         Note that the tracks returned by this function might contain irregular time steps since
-        that is often the case for the original IBTrACS records. Apply the `equal_timestep`
-        function afterwards to enforce regular time steps.
+        that is often the case for the original IBTrACS records: many agencies add an additional
+        time step at landfall. Apply the `equal_timestep` function afterwards to enforce regular
+        time steps.
 
         Parameters
         ----------
@@ -1040,7 +1041,18 @@ class TCTracks():
         return cls(data)
 
     def equal_timestep(self, time_step_h=1, land_params=False, pool=None):
-        """Generate interpolated track values to time steps of time_step_h.
+        """Resample all tracks at the specified temporal resolution
+
+        The resulting track data will be given at evenly distributed time steps, relative to
+        midnight (00:00). For example, if `time_step_h` is 1 and the original track data starts
+        at 06:30, the interpolated track will not have a time step at 06:30 because only multiples
+        of 01:00 (relative to midnight) are included. In this case, the interpolated track will
+        start at 07:00.
+
+        Depending on the original resolution of the track data, this method may up- or downsample
+        track time steps.
+
+        Note that tracks that already have the specified resolution remain unchanged.
 
         Parameters
         ----------
@@ -1056,7 +1068,24 @@ class TCTracks():
 
         if time_step_h <= 0:
             raise ValueError(f"time_step_h is not a positive number: {time_step_h}")
-        LOGGER.info('Interpolating %s tracks to %sh time steps.', self.size, time_step_h)
+
+        # set step size to None for tracks that already have the specified resolution
+        l_time_step_h = [
+            None if np.allclose(np.unique(tr['time_step'].values), time_step_h)
+            else time_step_h
+            for tr in self.data
+        ]
+
+        n_skip = np.sum([ts is None for ts in l_time_step_h])
+        if n_skip == self.size:
+            LOGGER.info('All tracks are already at the requested temporal resolution.')
+            return
+        if n_skip > 0:
+            LOGGER.info('%d track%s already at the requested temporal resolution.',
+                        n_skip, "s are" if n_skip > 1 else " is")
+
+        LOGGER.info('Interpolating %d tracks to %sh time steps.',
+                    self.size - n_skip, time_step_h)
 
         if land_params:
             extent = self.get_extent()
@@ -1066,21 +1095,24 @@ class TCTracks():
 
         if pool:
             chunksize = min(self.size // pool.ncpus, 1000)
-            self.data = pool.map(self._one_interp_data, self.data,
-                                 itertools.repeat(time_step_h, self.size),
-                                 itertools.repeat(land_geom, self.size),
-                                 chunksize=chunksize)
+            self.data = pool.map(
+                self._one_interp_data,
+                self.data,
+                l_time_step_h,
+                itertools.repeat(land_geom, self.size),
+                chunksize=chunksize
+            )
         else:
             last_perc = 0
             new_data = []
-            for track in self.data:
+            for track, ts_h in zip(self.data, l_time_step_h):
                 # progress indicator
                 perc = 100 * len(new_data) / len(self.data)
                 if perc - last_perc >= 10:
                     LOGGER.debug("Progress: %d%%", perc)
                     last_perc = perc
-                new_data.append(
-                    self._one_interp_data(track, time_step_h, land_geom))
+                track_int = self._one_interp_data(track, ts_h, land_geom)
+                new_data.append(track_int)
             self.data = new_data
 
     def calc_random_walk(self, **kwargs):
@@ -1430,8 +1462,9 @@ class TCTracks():
         ----------
         track : xr.Dataset
             Track data.
-        time_step_h : int or float
-            Desired temporal resolution in hours (may be non-integer-valued).
+        time_step_h : int, float or None
+            Desired temporal resolution in hours (may be non-integer-valued). If None, no
+            interpolation is done and the input track dataset is returned unchanged.
         land_geom : shapely.geometry.multipolygon.MultiPolygon, optional
             Land geometry. If given, recompute `dist_since_lf` and `on_land` property.
 
@@ -1439,7 +1472,13 @@ class TCTracks():
         -------
         track_int : xr.Dataset
         """
-        if track.time.size >= 2:
+        if time_step_h is None:
+            return track
+        if track.time.size < 2:
+            LOGGER.warning('Track interpolation not done. '
+                           'Not enough elements for %s', track.name)
+            track_int = track
+        else:
             method = ['linear', 'quadratic', 'cubic'][min(2, track.time.size - 2)]
 
             # handle change of sign in longitude
@@ -1464,10 +1503,6 @@ class TCTracks():
             # restrict to time steps within original bounds
             track_int = track_int.sel(
                 time=(track.time[0] <= track_int.time) & (track_int.time <= track.time[-1]))
-        else:
-            LOGGER.warning('Track interpolation not done. '
-                           'Not enough elements for %s', track.name)
-            track_int = track
 
         if land_geom:
             track_land_params(track_int, land_geom)
