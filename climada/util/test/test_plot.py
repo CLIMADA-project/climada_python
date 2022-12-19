@@ -136,6 +136,15 @@ class TestPlots(unittest.TestCase):
         self.assertEqual(cmap, ax.collections[0].cmap.name)
         plt.close()
 
+        projection = ccrs.AzimuthalEquidistant()
+        ax = u_plot.geo_im_from_array(values, coord, var_name, title,
+                      proj=projection, smooth=True, axes=None, figsize=(9, 13), cmap=cmap)
+        self.assertEqual(var_name, ax.get_title())
+        self.assertAlmostEqual(np.max(values), ax.collections[0].colorbar.vmax)
+        self.assertAlmostEqual(np.min(values), ax.collections[0].colorbar.vmin)
+        self.assertEqual(cmap, ax.collections[0].cmap.name)
+        plt.close()
+
 
 # Execute Tests
 if __name__ == "__main__":
