@@ -20,6 +20,7 @@ Test xarray reading capabilities of Hazard base class.
 """
 
 import unittest
+from unittest.mock import patch, MagicMock
 import datetime as dt
 import numpy as np
 from scipy.sparse import csr_matrix
@@ -418,6 +419,46 @@ class TestReadDimsCoordsNetCDF(unittest.TestCase):
         )
         np.testing.assert_array_equal(hazard.centroids.lon, [10, 11, 12, 10, 11, 12])
         self._assert_intensity_fraction(hazard)
+
+    def test_load_dataset_rechunk(self):
+        """Load the data from an opened dataset and force rechunking"""
+        dataset = xr.open_dataset(self.netcdf_path)
+        hazard = Hazard.from_raster_xarray(
+            dataset,
+            "",
+            "",
+            coordinate_vars=dict(latitude="latitude", longitude="longitude"),
+            rechunk=True,
+        )
+        np.testing.assert_array_equal(
+            hazard.centroids.lat, [100, 100, 100, 200, 200, 200]
+        )
+        np.testing.assert_array_equal(hazard.centroids.lon, [10, 11, 12, 10, 11, 12])
+        self._assert_intensity_fraction(hazard)
+
+        # Assert that .chunk is called the right way
+        with patch("xarray.Dataset.chunk") as mock:
+            mock.return_value = dataset
+            dataset = xr.open_dataset(self.netcdf_path)
+            Hazard.from_raster_xarray(
+                dataset,
+                "",
+                "",
+                coordinate_vars=dict(latitude="latitude", longitude="longitude"),
+                rechunk=True,
+            )
+            # First latitude dim, then longitude dim, then event dim
+            mock.assert_called_once_with(chunks=dict(y=-1, x=-1, time="auto"))
+
+            # Should not be called by default
+            mock.reset_mock()
+            Hazard.from_raster_xarray(
+                dataset,
+                "",
+                "",
+                coordinate_vars=dict(latitude="latitude", longitude="longitude"),
+            )
+            mock.assert_not_called()
 
     def test_2D_time(self):
         """Test if stacking multiple time dimensions works out"""

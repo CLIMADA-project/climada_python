@@ -419,6 +419,7 @@ class Hazard():
         coordinate_vars: Optional[Dict[str, str]] = None,
         data_vars: Optional[Dict[str, str]] = None,
         crs: str = DEF_CRS,
+        rechunk: bool = False,
     ):
         """Read raster-like data from an xarray Dataset or a raster data file
 
@@ -485,9 +486,10 @@ class Hazard():
             examples for details.
 
             Default values are:
+
             * ``date``: The ``event`` coordinate interpreted as date
-            * ``fraction``: ``None``, which results in a value of 1.0 everywhere, see the
-              :meth:`Hazard.__init__` for details.
+            * ``fraction``: ``None``, which results in a value of 1.0 everywhere, see
+              :py:meth:`Hazard.__init__` for details.
             * ``hazard_type``: Empty string
             * ``frequency``: 1.0 for every event
             * ``event_name``: String representation of the event time
@@ -497,6 +499,14 @@ class Hazard():
             to ``EPSG:4326`` (WGS 84), defined by ``climada.util.constants.DEF_CRS``.
             See https://pyproj4.github.io/pyproj/dev/api/crs/crs.html#pyproj.crs.CRS.from_user_input
             for further information on how to specify the coordinate system.
+        rechunk : bool, optional
+            Rechunk the dataset before flattening. This might have serious performance
+            implications. Rechunking in general is expensive, but it might be less
+            expensive than stacking a poorly-chunked array. One event being stored in
+            one chunk would be the optimal configuration. If ``rechunk=True``, this will
+            be forced by rechunking the data. Ideally, you would select the chunks in
+            that manner when opening the dataset before passing it to this function.
+            Defaults to ``False``.
 
         Returns
         -------
@@ -678,6 +688,16 @@ class Hazard():
                 data = data.expand_dims(coord)
                 dims[key] = data[coord].dims
 
+        # Try to rechunk the data to optimize the stack operation afterwards.
+        if rechunk:
+            # We want one event to be contained in one chunk
+            chunks = {dim: -1 for dim in dims["longitude"]}
+            chunks.update({dim: -1 for dim in dims["latitude"]})
+
+            # Chunks can be auto-sized along the event dimensions
+            chunks.update({dim: "auto" for dim in dims["event"]})
+            data = data.chunk(chunks=chunks)
+
         # Stack (vectorize) the entire dataset into 2D (time, lat/lon)
         # NOTE: We want the set union of the dimensions, but Python 'set' does not
         #       preserve order. However, we want longitude to run faster than latitude.
@@ -735,6 +755,11 @@ class Hazard():
             return np.array(u_dt.datetime64_to_ordinal(array.values))
 
         def maybe_repeat(values: np.ndarray, times: int) -> np.ndarray:
+            """Return the array or repeat a single-valued array
+
+            If ``values`` has size 1, return an array that repeats this value ``times``
+            times. If the size is different, just return the array.
+            """
             if values.size == 1:
                 return np.array(list(itertools.repeat(values.flat[0], times)))
 
