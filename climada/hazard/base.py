@@ -442,23 +442,6 @@ class Hazard():
         meaning that the object can be used in all CLIMADA operations without throwing
         an error due to missing data or faulty data types.
 
-        Notes
-        -----
-        * Single-valued coordinates given by ``coordinate_vars``, that are not proper
-          dimensions of the data, are promoted to dimensions automatically. If one of the
-          three coordinates does not exist, use ``Dataset.expand_dims`` (see
-          https://docs.xarray.dev/en/stable/generated/xarray.Dataset.expand_dims.html
-          and Examples) before loading the Dataset as Hazard.
-        * Single-valued data for variables ``frequency``. ``event_name``, and
-          ``event_date`` will be broadcast to every event.
-        * To avoid confusion in the call signature, several parameters are keyword-only
-          arguments.
-        * The attributes ``Hazard.tag.haz_type`` and ``Hazard.unit`` currently cannot be
-          read from the Dataset. Use the method parameters to set these attributes.
-        * This method does not read coordinate system metadata. Use the ``crs`` parameter
-          to set a custom coordinate system identifier.
-        * This method **does not** read lazily. Single data arrays must fit into memory.
-
         Parameters
         ----------
         data : xarray.Dataset or str
@@ -512,6 +495,23 @@ class Hazard():
         -------
         hazard : climada.Hazard
             A hazard object created from the input data
+
+        Notes
+        -----
+        * Single-valued coordinates given by ``coordinate_vars``, that are not proper
+          dimensions of the data, are promoted to dimensions automatically. If one of the
+          three coordinates does not exist, use ``Dataset.expand_dims`` (see
+          https://docs.xarray.dev/en/stable/generated/xarray.Dataset.expand_dims.html
+          and Examples) before loading the Dataset as Hazard.
+        * Single-valued data for variables ``frequency``. ``event_name``, and
+          ``event_date`` will be broadcast to every event.
+        * To avoid confusion in the call signature, several parameters are keyword-only
+          arguments.
+        * The attributes ``Hazard.tag.haz_type`` and ``Hazard.unit`` currently cannot be
+          read from the Dataset. Use the method parameters to set these attributes.
+        * This method does not read coordinate system metadata. Use the ``crs`` parameter
+          to set a custom coordinate system identifier.
+        * This method **does not** read lazily. Single data arrays must fit into memory.
 
         Examples
         --------
