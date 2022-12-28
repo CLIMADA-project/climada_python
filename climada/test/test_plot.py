@@ -90,6 +90,11 @@ class TestPlotter(unittest.TestCase):
         myax = hazard.plot_fraction(centr=-1)
         self.assertIn('1-largest Centroid. 79: (30.0, -77.0)', myax.get_title())
 
+    def test_hazard_rp_intensity(self):
+        """"Plot exceedance intensity maps for different return periods"""
+        hazard = Hazard.from_mat(HAZ_DEMO_MAT)  
+        hazard.plot_rp_intensity()  
+        
     def test_exposures_value_pass(self):
         """Plot exposures values."""
         myexp = pd.read_excel(ENT_DEMO_TODAY)
