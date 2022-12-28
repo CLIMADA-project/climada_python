@@ -28,6 +28,7 @@ import urllib
 from climada.entity.entity_def import Entity
 from climada.hazard.base import Hazard
 from climada.entity.exposures.base import Exposures
+from climada.entity import DiscRates
 from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
 from climada.engine import ImpactCalc, ImpactFreqCurve
 from climada.util.constants import HAZ_DEMO_FL, HAZ_DEMO_MAT, ENT_DEMO_TODAY
@@ -152,6 +153,15 @@ class TestPlotter(unittest.TestCase):
         except urllib.error.HTTPError:
             self.assertEqual(1, 0)
 
+    def test_disc_rates(self):
+        """Test plot function of discount rates."""
+        years = np.arange(1950, 2100)
+        rates = np.ones(years.size) * 0.014
+        rates[51:55] = 0.025
+        rates[95:120] = 0.035
+        disc = DiscRates(years=years, rates=rates)
+        disc.plot()
+    
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestPlotter)
