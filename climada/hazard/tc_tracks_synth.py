@@ -599,7 +599,7 @@ def _one_rnd_walk(track,
     # calculate historical track values that are used for synthetic track modelling
     if land_geom is not None:
         # compute minimum pressure occurring on or after each timestep
-        taget_pressure = np.flip(np.minimum.accumulate(
+        target_pressure = np.flip(np.minimum.accumulate(
             np.flip(track.central_pressure.values)
         ))
         # compute linear regression onto intensification and decay
@@ -632,7 +632,7 @@ def _one_rnd_walk(track,
         if land_geom is not None:
             i_track = i_track.assign(
                 {
-                    "target_central_pressure": ("time", taget_pressure),
+                    "target_central_pressure": ("time", target_pressure),
                     # "on_land_hist" : ("time", i_track["on_land"]),
                 }
             )
