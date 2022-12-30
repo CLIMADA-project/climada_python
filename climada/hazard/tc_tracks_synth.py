@@ -1681,7 +1681,7 @@ def _add_fits_to_track(track: xr.Dataset, central_pressure_pert: float):
     where_max_intensity = np.where(pcen == pcen.min())[0]
     warning_slope = []
     if where_max_intensity[0] > 3:
-        track_intens = track[dict(time=slice(None,where_max_intensity[0]))]
+        track_intens = track[dict(time=slice(None,where_max_intensity[0] + 1))]
         fit_attrs_intens, warning_slope_intens = _get_fit_single_phase(track_intens, central_pressure_pert)
         track.attrs['fit_intens'] = fit_attrs_intens
         if warning_slope_intens is not None:
