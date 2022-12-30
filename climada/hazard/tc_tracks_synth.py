@@ -116,7 +116,7 @@ FIT_TRACK_VARS_RANGE = {
         'max': 650
     },
     'radius_oci': {
-        # range in IBTrACS
+        # radius of outermost closed isobar: range in IBTrACS
         'min': 4,
         'max': 300
     }
@@ -129,7 +129,8 @@ FIT_TIME_ADJUST_HOUR = 6
 track parameters"""
 
 NEGLECT_LANDFALL_DURATION_HOUR = 4.5
-"""Minimum landfall duration in hour from which to correct intensity"""
+"""Minimum landfall duration in hours from which to correct intensity. Perturbed systems 
+spending less time than this over land will not be adjusted for landfall effects"""
 
 TRACK_EXTENSION_PARS = {
     'max_shift_ini': 0,
@@ -261,11 +262,11 @@ def calc_perturbed_trajectories(
         Whether and how tropical cyclone intensity (central pressure,
         max_sustained_wind) should be modelled. One of 'explicit',
         'legacy_decay', or 'none'.
-        For 'explicit', intensity as well as radius_oci and radius_max_wind) are
-        statistically modelled depending on landfalls in historical and
-        synthetic tracks (track intensification, peak intensity duration as well
-        as intensity decay over the ocean and over land are explicitely
-        modelled).
+        For 'explicit', intensity as well as radius_oci (outermost closed isobar)
+        and radius_max_wind are statistically modelled depending on landfalls in 
+        historical and synthetic tracks (track intensification, peak intensity 
+        duration as well as intensity decay over the ocean and over land are 
+        explicitly modelled).
         For 'legacy_decay', a landfall decay is applied when a synthetic track
         reached land; however when a synthetic track is over the ocean while its
         historical counterpart was over land, intensity will be underestimated.
@@ -1651,7 +1652,7 @@ def _add_fits_to_track(track: xr.Dataset, central_pressure_pert: float):
     pressure for the intensification and the decay phase, and add the results as
     attributes to track.
 
-    The input 'track' in modified in-place!
+    The input 'track' is modified in-place!
     
     The following variables are fitted: Maximum sustained wind, radius of
     maximum winds and radius of outmost closed isobar.
