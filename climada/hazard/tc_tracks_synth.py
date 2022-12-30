@@ -328,8 +328,8 @@ def calc_perturbed_trajectories(
         raise ValueError('Tracks have different temporal resolution. '
                          'Please ensure constant time steps by applying equal_timestep beforehand')
     time_step_h = time_step_h[0]
-    if NEGLECT_LANDFALL_DURATION_HOUR < time_step_h:
-        LOGGER.warning('A higher temporal resolution is recommended.')
+    if 0 < NEGLECT_LANDFALL_DURATION_HOUR < time_step_h:
+        LOGGER.warning('A higher temporal resolution is recommended to resolve shorter landfalls.')
 
     # ensure we're not making synths from synths
     if not sum(1 for t in tracks.data if t.orig_event_flag) == tracks.size:
