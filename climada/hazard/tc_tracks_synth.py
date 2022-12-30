@@ -189,7 +189,7 @@ def calc_perturbed_trajectories(
     autocorr_ddirection: float = 0.5,
     decay_ddirection_hourly: float = 1/(2.5*24),
     seed: int = CONFIG.hazard.trop_cyclone.random_seed.int(),
-    adjust_intensity: str = None,
+    adjust_intensity: str = 'explicit',
     central_pressure_pert: float = 7.5,
     decay: bool = None,
     use_global_decay_params: bool = True,
