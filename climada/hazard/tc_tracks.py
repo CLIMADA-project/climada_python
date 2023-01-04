@@ -1235,30 +1235,27 @@ class TCTracks():
         axis.set_extent(extent, crs=kwargs['transform'])
         u_plot.add_shapes(axis)
 
-        synth_flag = False
         cmap = ListedColormap(colors=CAT_COLORS)
         norm = BoundaryNorm([0] + SAFFIR_SIM_CAT, len(SAFFIR_SIM_CAT))
-        for track in self.data:
-            lonlat = np.stack([track.lon.values, track.lat.values], axis=-1)
-            lonlat[:, 0] = u_coord.lon_normalize(lonlat[:, 0], center=mid_lon)
-            segments = np.stack([lonlat[:-1], lonlat[1:]], axis=1)
-            # remove segments which cross 180 degree longitude boundary
-            segments = segments[segments[:, 0, 0] * segments[:, 1, 0] >= 0, :, :]
-            if track.orig_event_flag:
-                track_lc = LineCollection(segments, cmap=cmap, norm=norm,
-                                          linestyle='solid', **kwargs)
-            else:
-                synth_flag = True
-                track_lc = LineCollection(segments, cmap=cmap, norm=norm,
-                                          linestyle=':', **kwargs)
-            track_lc.set_array(track.max_sustained_wind.values)
-            axis.add_collection(track_lc)
+
+        tracks_gdf = self.to_geodataframe(as_points=True)
+        tracks_gdf = tracks_gdf.to_crs(proj)
+        tracks_gdf['lonlat'] = [(x, y) for x, y in zip(u_coord.lon_normalize(tracks_gdf.geometry.x), tracks_gdf.geometry.y)]
+        tracks_gdf['segments'] = [(a, b) for a, b in zip(tracks_gdf['lonlat'], tracks_gdf['lonlat'].shift(-1))]
+        # remove segments which cross 180 degree longitude boundary
+        # remove segments that would connect the end of one track with the start of another
+        ix = abs(tracks_gdf.geometry.x.groupby(tracks_gdf['sid']).diff(periods=-1)) < 300    # Missing values are also False
+        tracks_gdf = tracks_gdf.loc[ix]
+        tracks_gdf.geometry = [LineString(seg) for seg in tracks_gdf['segments']]
+        tracks_gdf['linestyle'] = ['solid' if flag == 1 else ':' for flag in tracks_gdf['orig_event_flag']]
+
+        axis = tracks_gdf.plot(column='max_sustained_wind', cmap=cmap, ax=axis, linestyle=tracks_gdf['linestyle'], norm=norm)
 
         if legend:
             leg_lines = [Line2D([0], [0], color=CAT_COLORS[i_col], lw=2)
                          for i_col in range(len(SAFFIR_SIM_CAT))]
             leg_names = [CAT_NAMES[i_col] for i_col in sorted(CAT_NAMES.keys())]
-            if synth_flag:
+            if not all(tracks_gdf['orig_event_flag']):
                 leg_lines.append(Line2D([0], [0], color='grey', lw=2, ls='solid'))
                 leg_lines.append(Line2D([0], [0], color='grey', lw=2, ls=':'))
                 leg_names.append('Historical')
