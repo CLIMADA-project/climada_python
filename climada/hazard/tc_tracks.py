@@ -959,8 +959,8 @@ class TCTracks():
         >>> # or, alternatively,
         >>> years = [int(tr.attrs['sid'].split("-")[-2]) for tr in tc_tracks.data]
 
-        If a windfield is generated from these tracks using the method ``TropCylcone.from_tracks()``,
-        the following should be considered:
+        If a windfield is generated from these tracks using the method
+        ``TropCylcone.from_tracks()``, the following should be considered:
 
         1. The frequencies will be set to ``1`` for each storm. Thus, in order to compute annual
            values, the frequencies of the TropCylone should be changed to ``1/number of years``.
@@ -1240,16 +1240,28 @@ class TCTracks():
 
         tracks_gdf = self.to_geodataframe(as_points=True)
         tracks_gdf = tracks_gdf.to_crs(proj)
-        tracks_gdf['lonlat'] = [(x, y) for x, y in zip(u_coord.lon_normalize(tracks_gdf.geometry.x), tracks_gdf.geometry.y)]
-        tracks_gdf['segments'] = [(a, b) for a, b in zip(tracks_gdf['lonlat'], tracks_gdf['lonlat'].shift(-1))]
+        tracks_gdf['lonlat'] = list(
+            zip(u_coord.lon_normalize(tracks_gdf.geometry.x), tracks_gdf.geometry.y)
+            )
+        tracks_gdf['segments'] = list(
+            zip(tracks_gdf['lonlat'], tracks_gdf['lonlat'].shift(-1))
+            )
         # remove segments which cross 180 degree longitude boundary
-        # remove segments that would connect the end of one track with the start of another
-        ix = abs(tracks_gdf.geometry.x.groupby(tracks_gdf['sid']).diff(periods=-1)) < 300    # Missing values are also False
-        tracks_gdf = tracks_gdf.loc[ix]
+        # remove segments that would connect one track with the next (using grouping)
+        idx = abs(tracks_gdf.geometry.x.groupby(tracks_gdf['sid']).diff(periods=-1)) < 300
+        tracks_gdf = tracks_gdf.loc[idx]
         tracks_gdf.geometry = [LineString(seg) for seg in tracks_gdf['segments']]
-        tracks_gdf['linestyle'] = ['solid' if flag == 1 else ':' for flag in tracks_gdf['orig_event_flag']]
+        tracks_gdf['linestyle'] = [
+            'solid' if flag == 1 else ':' for flag in tracks_gdf['orig_event_flag']
+            ]
 
-        axis = tracks_gdf.plot(column='max_sustained_wind', cmap=cmap, ax=axis, linestyle=tracks_gdf['linestyle'], norm=norm)
+        axis = tracks_gdf.plot(
+            column='max_sustained_wind',
+            cmap=cmap,
+            ax=axis,
+            linestyle=tracks_gdf['linestyle'],
+            norm=norm
+            )
 
         if legend:
             leg_lines = [Line2D([0], [0], color=CAT_COLORS[i_col], lw=2)
