@@ -1267,7 +1267,7 @@ class TCTracks():
             leg_lines = [Line2D([0], [0], color=CAT_COLORS[i_col], lw=2)
                          for i_col in range(len(SAFFIR_SIM_CAT))]
             leg_names = [CAT_NAMES[i_col] for i_col in sorted(CAT_NAMES.keys())]
-            if not all(tracks_gdf['orig_event_flag']):
+            if not tracks_gdf['orig_event_flag'].values.all():
                 leg_lines.append(Line2D([0], [0], color='grey', lw=2, ls='solid'))
                 leg_lines.append(Line2D([0], [0], color='grey', lw=2, ls=':'))
                 leg_names.append('Historical')
