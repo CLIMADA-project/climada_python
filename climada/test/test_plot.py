@@ -96,8 +96,8 @@ class TestPlotter(unittest.TestCase):
         """"Plot exceedance intensity maps for different return periods"""
         hazard = Hazard.from_mat(HAZ_DEMO_MAT)  
         (axis1, axis2), _ = hazard.plot_rp_intensity([25, 50])
-        self.assertEqual('Return period: 25 years',  axis1.get_title())
-        self.assertEqual('Return period: 50 years',  axis2.get_title())
+        self.assertEqual('Return period: 25 years', axis1.get_title())
+        self.assertEqual('Return period: 50 years', axis2.get_title())
 
     def test_hazard_centroids(self):
         """Plot centroids scatter points over earth."""
