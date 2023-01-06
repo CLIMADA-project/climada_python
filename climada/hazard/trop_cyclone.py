@@ -50,8 +50,12 @@ LOGGER = logging.getLogger(__name__)
 HAZ_TYPE = 'TC'
 """Hazard type acronym for Tropical Cyclone"""
 
+DEF_MAX_DIST_EYE_KM = 300
+"""Default value for the maximum distance (in km) of a centroid to the TC center at which wind
+speed calculations are done."""
+
 DEF_INTENSITY_THRES = 17.5
-"""Wind speeds (in m/s) below this threshold are stored as 0 if no other threshold is specified."""
+"""Default value for the threshold below which wind speeds (in m/s) are stored as 0."""
 
 MODEL_VANG = {'H08': 0, 'H1980': 1, 'H10': 2, 'ER11': 3}
 """Enumerate different symmetric wind field models."""
@@ -173,7 +177,7 @@ class TropCyclone(Hazard):
         intensity_thres: float = DEF_INTENSITY_THRES,
         max_latitude: float = 61,
         max_dist_inland_km: float = 1000,
-        max_dist_eye_km: float = 300,
+        max_dist_eye_km: float = DEF_MAX_DIST_EYE_KM,
     ):
         """
         Create new TropCyclone instance that contains windfields from the specified tracks.
@@ -492,7 +496,7 @@ class TropCyclone(Hazard):
         store_windfields: bool = False,
         metric: str = "equirect",
         intensity_thres: float = DEF_INTENSITY_THRES,
-        max_dist_eye_km: float = 300,
+        max_dist_eye_km: float = DEF_MAX_DIST_EYE_KM,
     ):
         """
         Generate windfield hazard from a single track dataset
@@ -658,7 +662,7 @@ def compute_windfields(
     centroids: np.ndarray,
     model: int,
     metric: str = "equirect",
-    max_dist_eye_km: float = 300,
+    max_dist_eye_km: float = DEF_MAX_DIST_EYE_KM,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Compute 1-minute sustained winds (in m/s) at 10 meters above ground
 
