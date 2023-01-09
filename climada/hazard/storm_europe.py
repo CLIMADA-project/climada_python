@@ -72,8 +72,7 @@ class StormEurope(Hazard):
         the footprint files; apparently not reproducible from the footprint
         values only.
     ssi : np.array, float
-        SSI as set by set_ssi; uses the Dawkins
-        definition by default.
+        SSI as set by set_ssi; uses the Dawkins definition by default.
     """
 
     intensity_thres = 14.7
@@ -705,11 +704,6 @@ class StormEurope(Hazard):
         ----------
         kwargs :
             passed on to calc_ssi
-
-        Attributes
-        ----------
-        ssi : np.array
-            SSI per event
         """
         self.ssi = self.calc_ssi(**kwargs)
 

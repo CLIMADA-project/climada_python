@@ -2131,10 +2131,8 @@ class Hazard():
         The following kinds of object attributes are processed:
 
         - All centroids are combined together using `Centroids.union`.
-
         - Lists, 1-dimensional arrays (NumPy) and sparse CSR matrices (SciPy) are concatenated.
-        Sparse matrices are concatenated along the first (vertical) axis.
-
+          Sparse matrices are concatenated along the first (vertical) axis.
         - All `tag` attributes are appended to `self.tag`.
 
         For any other type of attribute: A ValueError is raised if an attribute of that name is
