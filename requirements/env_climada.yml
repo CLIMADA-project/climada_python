@@ -24,7 +24,7 @@ dependencies:
   - pycountry>=20.7
   - pyepsg>=0.4
   - pytables>=3.6
-  - python=3.8
+  - python=3.9
   - pyxlsb>=1.0
   - rasterio>=1.2.7,<1.3  # 1.3 yields different results for some tests (#512)
   - requests>=2.24
