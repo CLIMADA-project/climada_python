@@ -41,6 +41,7 @@ from climada.hazard.tc_tracks import TCTracks, estimate_rmw
 from climada.hazard.tc_clim_change import get_knutson_criterion, calc_scale_knutson
 from climada.hazard.centroids.centr import Centroids
 from climada.util import ureg
+import climada.util.constants as u_const
 import climada.util.coordinates as u_coord
 import climada.util.plot as u_plot
 
@@ -49,17 +50,12 @@ LOGGER = logging.getLogger(__name__)
 HAZ_TYPE = 'TC'
 """Hazard type acronym for Tropical Cyclone"""
 
-INLAND_MAX_DIST_KM = 1000
-"""Maximum inland distance of the centroids in km"""
-
-CENTR_NODE_MAX_DIST_KM = 300
-"""Maximum distance between centroid and TC track node in km"""
-
-CENTR_NODE_MAX_DIST_DEG = 5.5
-"""Maximum distance between centroid and TC track node in degrees"""
+DEF_MAX_DIST_EYE_KM = 300
+"""Default value for the maximum distance (in km) of a centroid to the TC center at which wind
+speed calculations are done."""
 
 DEF_INTENSITY_THRES = 17.5
-"""Wind speeds (in m/s) below this threshold are stored as 0 if no other threshold is specified."""
+"""Default value for the threshold below which wind speeds (in m/s) are stored as 0."""
 
 MODEL_VANG = {'H08': 0, 'H1980': 1, 'H10': 2, 'ER11': 3}
 """Enumerate different symmetric wind field models."""
@@ -178,7 +174,10 @@ class TropCyclone(Hazard):
         ignore_distance_to_coast: bool = False,
         store_windfields: bool = False,
         metric: str = "equirect",
-        intensity_thres: float = DEF_INTENSITY_THRES
+        intensity_thres: float = DEF_INTENSITY_THRES,
+        max_latitude: float = 61,
+        max_dist_inland_km: float = 1000,
+        max_dist_eye_km: float = DEF_MAX_DIST_EYE_KM,
     ):
         """
         Create new TropCyclone instance that contains windfields from the specified tracks.
@@ -227,6 +226,15 @@ class TropCyclone(Hazard):
             Default: "equirect".
         intensity_thres : float, optional
             Wind speeds (in m/s) below this threshold are stored as 0. Default: 17.5
+        max_latitude : float, optional
+            No wind speed calculation is done for centroids with latitude larger than this
+            parameter. Default: 61
+        max_dist_inland_km : float, optional
+            No wind speed calculation is done for centroids with a distance (in km) to the coast
+            larger than this parameter. Default: 1000
+        max_dist_eye_km : float, optional
+            No wind speed calculation is done for centroids with a distance (in km) to the TC
+            center ("eye") larger than this parameter. Default: 300
 
         Raises
         ------
@@ -244,18 +252,23 @@ class TropCyclone(Hazard):
             centroids.set_meta_to_lat_lon()
 
         if ignore_distance_to_coast:
-            # Select centroids with lat < 61
-            coastal_idx = (np.abs(centroids.lat) < 61).nonzero()[0]
+            # Select centroids with lat <= max_latitude
+            coastal_idx = (np.abs(centroids.lat) <= max_latitude).nonzero()[0]
         else:
-            # Select centroids which are inside INLAND_MAX_DIST_KM and lat < 61
+            # Select centroids which are inside max_dist_inland_km and lat <= max_latitude
             if not centroids.dist_coast.size:
                 centroids.set_dist_coast()
-            coastal_idx = ((centroids.dist_coast < INLAND_MAX_DIST_KM * 1000)
-                           & (np.abs(centroids.lat) < 61)).nonzero()[0]
+            coastal_idx = ((centroids.dist_coast <= max_dist_inland_km * 1000)
+                           & (np.abs(centroids.lat) <= max_latitude)).nonzero()[0]
+
+        # Filter early with a larger threshold, but inaccurate (lat/lon) distances.
+        # Later, there will be another filtering step with more accurate distances in km.
+        max_dist_eye_deg = max_dist_eye_km / (
+            u_const.ONE_LAT_KM * np.cos(np.radians(max_latitude))
+        )
 
         # Restrict to coastal centroids within reach of any of the tracks
-        t_lon_min, t_lat_min, t_lon_max, t_lat_max = tracks.get_bounds(
-            deg_buffer=CENTR_NODE_MAX_DIST_DEG)
+        t_lon_min, t_lat_min, t_lon_max, t_lat_max = tracks.get_bounds(deg_buffer=max_dist_eye_deg)
         t_mid_lon = 0.5 * (t_lon_min + t_lon_max)
         coastal_centroids = centroids.coord[coastal_idx]
         u_coord.lon_normalize(coastal_centroids[:, 1], center=t_mid_lon)
@@ -276,6 +289,7 @@ class TropCyclone(Hazard):
                 itertools.repeat(store_windfields, num_tracks),
                 itertools.repeat(metric, num_tracks),
                 itertools.repeat(intensity_thres, num_tracks),
+                itertools.repeat(max_dist_eye_km, num_tracks),
                 chunksize=chunksize)
         else:
             last_perc = 0
@@ -288,7 +302,8 @@ class TropCyclone(Hazard):
                 tc_haz_list.append(
                     cls.from_single_track(track, centroids, coastal_idx,
                                           model=model, store_windfields=store_windfields,
-                                          metric=metric, intensity_thres=intensity_thres))
+                                          metric=metric, intensity_thres=intensity_thres,
+                                          max_dist_eye_km=max_dist_eye_km))
             if last_perc < 100:
                 LOGGER.info("Progress: 100%")
 
@@ -480,7 +495,8 @@ class TropCyclone(Hazard):
         model: str = 'H08',
         store_windfields: bool = False,
         metric: str = "equirect",
-        intensity_thres: float = DEF_INTENSITY_THRES
+        intensity_thres: float = DEF_INTENSITY_THRES,
+        max_dist_eye_km: float = DEF_MAX_DIST_EYE_KM,
     ):
         """
         Generate windfield hazard from a single track dataset
@@ -506,6 +522,9 @@ class TropCyclone(Hazard):
             Default: "equirect".
         intensity_thres : float, optional
             Wind speeds (in m/s) below this threshold are stored as 0. Default: 17.5
+        max_dist_eye_km : float, optional
+            No wind speed calculation is done for centroids with a distance (in km) to the TC
+            center ("eye") larger than this parameter. Default: 300
 
         Raises
         ------
@@ -521,8 +540,8 @@ class TropCyclone(Hazard):
             raise ValueError(f'Model not implemented: {model}.') from err
         ncentroids = centroids.coord.shape[0]
         coastal_centr = centroids.coord[coastal_idx]
-        windfields, reachable_centr_idx = compute_windfields(track, coastal_centr, mod_id,
-                                                             metric=metric)
+        windfields, reachable_centr_idx = compute_windfields(
+            track, coastal_centr, mod_id, metric=metric, max_dist_eye_km=max_dist_eye_km)
         reachable_coastal_centr_idx = coastal_idx[reachable_centr_idx]
         npositions = windfields.shape[0]
 
@@ -642,7 +661,8 @@ def compute_windfields(
     track: xr.Dataset,
     centroids: np.ndarray,
     model: int,
-    metric: str = "equirect"
+    metric: str = "equirect",
+    max_dist_eye_km: float = DEF_MAX_DIST_EYE_KM,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Compute 1-minute sustained winds (in m/s) at 10 meters above ground
 
@@ -662,6 +682,9 @@ def compute_windfields(
         Specify an approximation method to use for earth distances: "equirect" (faster) or
         "geosphere" (more accurate). See `dist_approx` function in `climada.util.coordinates`.
         Default: "equirect".
+    max_dist_eye_km : float, optional
+        No wind speed calculation is done for centroids with a distance (in km) to the TC center
+        ("eye") larger than this parameter. Default: 300
 
     Returns
     -------
@@ -692,8 +715,14 @@ def compute_windfields(
     u_coord.lon_normalize(t_lon, center=mid_lon)
     u_coord.lon_normalize(centroids[:, 1], center=mid_lon)
 
+    # Filter early with a larger threshold, but inaccurate (lat/lon) distances.
+    # There is another filtering step with more accurate distances in km later.
+    max_dist_eye_deg = max_dist_eye_km / (
+        u_const.ONE_LAT_KM * np.cos(np.radians(np.abs(t_lat).max()))
+    )
+
     # restrict to centroids within rectangular bounding boxes around track positions
-    track_centr_msk = _close_centroids(t_lat, t_lon, centroids)
+    track_centr_msk = _close_centroids(t_lat, t_lon, centroids, max_dist_eye_deg)
     track_centr = centroids[track_centr_msk]
     nreachable = track_centr.shape[0]
     if nreachable == 0:
@@ -705,7 +734,7 @@ def compute_windfields(
         log=True, normalize=False, method=metric)
 
     # exclude centroids that are too far from or too close to the eye
-    close_centr_msk = (d_centr < CENTR_NODE_MAX_DIST_KM) & (d_centr > 1e-2)
+    close_centr_msk = (d_centr <= max_dist_eye_km) & (d_centr > 1e-2)
     if not np.any(close_centr_msk):
         return windfields, reachable_centr_idx
     v_centr_normed[~close_centr_msk] = 0
@@ -788,15 +817,15 @@ def _close_centroids(
     t_lat: np.ndarray,
     t_lon: np.ndarray,
     centroids: np.ndarray,
-    buffer: Optional[float] = CENTR_NODE_MAX_DIST_DEG
+    buffer: float,
 ) -> np.ndarray:
     """Check whether centroids lay within a rectangular buffer around track positions
 
     The longitudinal coordinates are assumed to be normalized around a central longitude. This
     makes sure that the buffered bounding box around the track doesn't cross the antimeridian.
 
-    The only hypothetical problem occurs when a TC track is travelling more than 349 degrees in
-    longitude because that's when adding a buffer of 5.5 degrees might cross the antimeridian.
+    The only hypothetical problem occurs when a TC track is travelling so far in longitude that
+    adding a buffer exceeds 360 degrees (i.e. crosses the antimeridian).
     Of course, this case is physically impossible.
 
     Parameters
@@ -807,8 +836,8 @@ def _close_centroids(
         Longitudinal coordinates of track positions, normalized around a central longitude.
     centroids : np.ndarray of shape (ncentroids, 2)
         Coordinates of centroids, each row is a pair [lat, lon].
-    buffer : float (optional)
-        Size of the buffer. Default: CENTR_NODE_MAX_DIST_DEG.
+    buffer : float
+        Size of the buffer (in degrees).
 
     Returns
     -------
@@ -817,10 +846,10 @@ def _close_centroids(
     """
     centr_lat, centr_lon = centroids[:, 0], centroids[:, 1]
     # check for each track position which centroids are within buffer, uses NumPy's broadcasting
-    mask = ((t_lat[:, None] - buffer < centr_lat[None])
-            & (centr_lat[None] < t_lat[:, None] + buffer)
-            & (t_lon[:, None] - buffer < centr_lon[None])
-            & (centr_lon[None] < t_lon[:, None] + buffer))
+    mask = ((t_lat[:, None] - buffer <= centr_lat[None])
+            & (centr_lat[None] <= t_lat[:, None] + buffer)
+            & (t_lon[:, None] - buffer <= centr_lon[None])
+            & (centr_lon[None] <= t_lon[:, None] + buffer))
     # for each centroid, check whether it is in the buffer for any of the track positions
     return mask.any(axis=0)
 

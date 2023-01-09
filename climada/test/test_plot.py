@@ -28,10 +28,15 @@ import copy
 
 from climada.hazard.base import Hazard
 from climada.hazard import Centroids
+<<<<<<< HEAD
 from climada.entity.entity_def import Entity
 from climada.entity.exposures.base import Exposures
 from climada.entity import DiscRates,ImpfTropCyclone
 from climada.entity.measures import Measure, MeasureSet
+=======
+from climada.entity.exposures.base import Exposures
+from climada.entity import DiscRates
+>>>>>>> develop
 from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
 from climada.engine import ImpactCalc, ImpactFreqCurve
 from climada.engine import CostBenefit
@@ -245,6 +250,7 @@ class TestPlotter(unittest.TestCase):
                                     accumulate=True)
         CostBenefit._plot_list_cost_ben(cb_list = [costben])
 
+    
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestPlotter)
