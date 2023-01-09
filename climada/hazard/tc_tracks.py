@@ -1235,22 +1235,27 @@ class TCTracks():
         axis.set_extent(extent, crs=kwargs['transform'])
         u_plot.add_shapes(axis)
 
-        synth_flag = False
         cmap = ListedColormap(colors=CAT_COLORS)
         norm = BoundaryNorm([0] + SAFFIR_SIM_CAT, len(SAFFIR_SIM_CAT))
         for track in self.data:
             lonlat = np.stack([track.lon.values, track.lat.values], axis=-1)
             lonlat[:, 0] = u_coord.lon_normalize(lonlat[:, 0], center=mid_lon)
             segments = np.stack([lonlat[:-1], lonlat[1:]], axis=1)
-            # remove segments which cross 180 degree longitude boundary
-            segments = segments[segments[:, 0, 0] * segments[:, 1, 0] >= 0, :, :]
-            if track.orig_event_flag:
-                track_lc = LineCollection(segments, cmap=cmap, norm=norm,
-                                          linestyle='solid', **kwargs)
-            else:
-                synth_flag = True
-                track_lc = LineCollection(segments, cmap=cmap, norm=norm,
-                                          linestyle=':', **kwargs)
+
+            # Truncate segments which cross the antimeridian.
+            # Note: Since we apply `lon_normalize` above and shift the central longitude of the
+            # plot to `mid_lon`, this is not necessary (and will do nothing) in cases where all
+            # tracks are located in a region around the antimeridian, like the Pacific ocean.
+            # The only case where this is relevant: Crowded global data sets where `mid_lon`
+            # falls back to 0, i.e. using the [-180, 180] range.
+            mask = (segments[:, 0, 0] > 100) & (segments[:, 1, 0] < -100)
+            segments[mask, 1, 0] = 180
+            mask = (segments[:, 0, 0] < -100) & (segments[:, 1, 0] > 100)
+            segments[mask, 1, 0] = -180
+
+            track_lc = LineCollection(
+                segments, linestyle='solid' if track.orig_event_flag else ':',
+                cmap=cmap, norm=norm, **kwargs)
             track_lc.set_array(track.max_sustained_wind.values)
             axis.add_collection(track_lc)
 
@@ -1258,7 +1263,7 @@ class TCTracks():
             leg_lines = [Line2D([0], [0], color=CAT_COLORS[i_col], lw=2)
                          for i_col in range(len(SAFFIR_SIM_CAT))]
             leg_names = [CAT_NAMES[i_col] for i_col in sorted(CAT_NAMES.keys())]
-            if synth_flag:
+            if any(not tr.orig_event_flag for tr in self.data):
                 leg_lines.append(Line2D([0], [0], color='grey', lw=2, ls='solid'))
                 leg_lines.append(Line2D([0], [0], color='grey', lw=2, ls=':'))
                 leg_names.append('Historical')
