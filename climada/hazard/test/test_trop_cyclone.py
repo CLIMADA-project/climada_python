@@ -189,11 +189,11 @@ class TestWindfieldHelpers(unittest.TestCase):
 
     def test_close_centroids_pass(self):
         """Test _close_centroids function."""
-        t_lat = np.array([0, 0, 0])
-        t_lon = np.array([1, 2, 3])
-        centroids = np.array([[0, 0], [0, 0.9], [-0.9, 1.2], [1, 2.1], [0, 4], [0.5, 3.8]])
+        t_lat = np.array([0, -0.5, 0])
+        t_lon = np.array([0.9, 2, 3.2])
+        centroids = np.array([[0, -0.2], [0, 0.9], [-1.1, 1.2], [1, 2.1], [0, 4.3], [0.6, 3.8]])
         test_mask = np.array([False, True, True, False, False, True])
-        mask = _close_centroids(t_lat, t_lon, centroids, buffer=1)
+        mask = _close_centroids(t_lat, t_lon, centroids, 1)
         np.testing.assert_equal(mask, test_mask)
 
         # example where antimeridian is crossed
@@ -202,7 +202,7 @@ class TestWindfieldHelpers(unittest.TestCase):
         t_lon[t_lon > 180] -= 360
         centroids = np.array([[-11, 169], [-7, 176], [4, -170], [10, 170], [-10, -160]])
         test_mask = np.array([True, True, True, False, False])
-        mask = _close_centroids(t_lat, t_lon, centroids, buffer=5)
+        mask = _close_centroids(t_lat, t_lon, centroids, 5)
         np.testing.assert_equal(mask, test_mask)
 
     def test_B_holland_1980_pass(self):
