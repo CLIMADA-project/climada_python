@@ -494,8 +494,6 @@ class Exposures():
         Exposures
         """
         exp = cls()
-        if 'geometry' in exp.gdf:
-            raise ValueError("there is already a geometry column defined in the GeoDataFrame")
         exp.tag = Tag()
         exp.tag.file_name = str(file_name)
         meta, value = u_coord.read_raster(file_name, [band], src_crs, window,
@@ -877,8 +875,7 @@ class Exposures():
         except KeyError as var_err:
             raise KeyError(f"Variable not in MAT file: {var_names.get('field_name')}")\
                 from var_err
-        exp = cls()
-        exp.set_gdf(GeoDataFrame(data=exposures))
+        exp = cls(data=exposures)
 
         _read_mat_metadata(exp, data, file_name, var_names)
         return exp
@@ -997,7 +994,9 @@ class Exposures():
         ]
         crss = [
             ex.crs for ex in exposures_list
-            if isinstance(ex, (Exposures, GeoDataFrame)) and not ex.crs is None
+            if isinstance(ex, (Exposures, GeoDataFrame))
+            and hasattr(ex, "crs")
+            and ex.crs is not None
         ]
         if crss:
             crs = crss[0]

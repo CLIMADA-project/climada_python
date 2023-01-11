@@ -46,27 +46,35 @@ class TestReader(unittest.TestCase):
 
     def test_from_footprints(self):
         """Test from_footprints constructor, using one small test files"""
-        storms = StormEurope.from_footprints(WS_DEMO_NC[0], description='test_description')
+        def _test_first(haz):
+            """Test the expected first entry of the hazard"""
+            self.assertEqual(haz.tag.haz_type, 'WS')
+            self.assertEqual(haz.units, 'm/s')
+            self.assertEqual(haz.event_id.size, 1)
+            self.assertEqual(haz.date.size, 1)
+            self.assertEqual(dt.datetime.fromordinal(haz.date[0]).year, 1999)
+            self.assertEqual(dt.datetime.fromordinal(haz.date[0]).month, 12)
+            self.assertEqual(dt.datetime.fromordinal(haz.date[0]).day, 26)
+            self.assertEqual(haz.event_id[0], 1)
+            self.assertEqual(haz.event_name[0], 'Lothar')
+            self.assertIsInstance(haz.intensity,
+                                  sparse.csr.csr_matrix)
+            self.assertIsInstance(haz.fraction,
+                                  sparse.csr.csr_matrix)
+            self.assertEqual(haz.intensity.shape, (1, 9944))
+            self.assertEqual(haz.fraction.shape, (1, 9944))
+            self.assertEqual(haz.frequency[0], 1.0)
 
-        self.assertEqual(storms.tag.haz_type, 'WS')
-        self.assertEqual(storms.units, 'm/s')
-        self.assertEqual(storms.event_id.size, 1)
-        self.assertEqual(storms.date.size, 1)
-        self.assertEqual(dt.datetime.fromordinal(storms.date[0]).year, 1999)
-        self.assertEqual(dt.datetime.fromordinal(storms.date[0]).month, 12)
-        self.assertEqual(dt.datetime.fromordinal(storms.date[0]).day, 26)
-        self.assertEqual(storms.event_id[0], 1)
-        self.assertEqual(storms.event_name[0], 'Lothar')
-        self.assertIsInstance(storms.intensity,
-                              sparse.csr.csr_matrix)
-        self.assertIsInstance(storms.fraction,
-                              sparse.csr.csr_matrix)
-        self.assertEqual(storms.intensity.shape, (1, 9944))
-        self.assertEqual(storms.fraction.shape, (1, 9944))
-        self.assertEqual(storms.frequency[0], 1.0)
+        # Load first entry
+        storms = StormEurope.from_footprints(
+            WS_DEMO_NC[0], description='test_description')
+        _test_first(storms)
 
+        # Omit the second file, should be the same result
+        storms = StormEurope.from_footprints(WS_DEMO_NC, files_omit=str(WS_DEMO_NC[1]))
+        _test_first(storms)
 
-        """Test from_footprints constructor, using two small test files"""
+        # Now load both
         storms = StormEurope.from_footprints(WS_DEMO_NC, description='test_description')
 
         self.assertEqual(storms.tag.haz_type, 'WS')

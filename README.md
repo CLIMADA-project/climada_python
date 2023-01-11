@@ -8,8 +8,8 @@ CLIMADA stands for **CLIM**ate **ADA**ptation and is a probabilistic natural cat
 
 As of today, CLIMADA provides global coverage of major climate-related extreme-weather hazards at high resolution via a [data API](https://climada.ethz.ch/data-api/v1/docs), namely (i) tropical cyclones, (ii) river flood, (iii) agro drought and (iv) European winter storms, all at 4km spatial resolution - wildfire to be added soon. For all hazards, historic and probabilistic event sets exist, for some also under select climate forcing scenarios (RCPs) at distinct time horizons (e.g. 2040). See also [papers](https://github.com/CLIMADA-project/climada_papers) for details.
 
-CLIMADA is divided into two parts (two repositories): 
-1. the core [climada_python](https://github.com/CLIMADA-project/climada_python) contains all the modules necessary for the probabilistic impact, the averted damage, uncertainty and forecast calculations. Data for hazard, exposures and impact functions can be obtained from the [data API](https://github.com/CLIMADA-project/climada_python/blob/main/doc/tutorial/climada_util_api_client.ipynb). [Litpop](https://github.com/CLIMADA-project/climada_python/blob/main/doc/tutorial/climada_entity_LitPop.ipynb) is included as demo Exposures module, and [Tropical cyclones](https://github.com/CLIMADA-project/climada_python/blob/main/doc/tutorial/climada_hazard_TropCyclone.ipynb) is included as a demo Hazard module. 
+CLIMADA is divided into two parts (two repositories):
+1. the core [climada_python](https://github.com/CLIMADA-project/climada_python) contains all the modules necessary for the probabilistic impact, the averted damage, uncertainty and forecast calculations. Data for hazard, exposures and impact functions can be obtained from the [data API](https://github.com/CLIMADA-project/climada_python/blob/main/doc/tutorial/climada_util_api_client.ipynb). [Litpop](https://github.com/CLIMADA-project/climada_python/blob/main/doc/tutorial/climada_entity_LitPop.ipynb) is included as demo Exposures module, and [Tropical cyclones](https://github.com/CLIMADA-project/climada_python/blob/main/doc/tutorial/climada_hazard_TropCyclone.ipynb) is included as a demo Hazard module.
 2. the petals [climada_petals](https://github.com/CLIMADA-project/climada_petals) contains all the modules for generating data (e.g., TC_Surge, WildFire, OpenStreeMap, ...). Most development is done here. The petals builds-upon the core and does not work as a stand-alone.
 
 It is recommend for new users to begin with the core (1) and the [tutorials](https://github.com/CLIMADA-project/climada_python/tree/main/doc/tutorial) therein.
@@ -37,6 +37,7 @@ CLIMADA petals:
 * [PDF file](https://climada-petals.readthedocs.io/_/downloads/en/stable/pdf/)
 * [petals Tutorials on GitHub](https://github.com/CLIMADA-project/climada_petals/tree/main/doc/tutorial)
 
+The documentation can also be [built locally](doc/README.md).
 
 ## Citing CLIMADA
 
@@ -59,19 +60,7 @@ As key link, please use https://wcr.ethz.ch/research/climada.html, as it will la
 
 ## Contributing
 
-To contribute follow these steps:
-
-1. Fork the project on GitHub.
-2. Create a local clone of the develop branch (`git clone https://github.com/YOUR-USERNAME/climada_python.git -b develop`)
-3. Install the packages in `climada_python/requirements/env_climada.yml` and `climada_python/requirements/env_developer.yml`.
-4. Make well commented and clean commits to your repository.
-5. Make unit and integration tests on your code, preferably during development.
-6. Perform a static code analysis of your code with CLIMADA's configuration `.pylintrc`.
-7. Add your name to the AUTHORS file.
-8. Push the changes to GitHub (`git push origin develop`).
-9. On GitHub, create a new pull request onto the develop branch of CLIMADA-project/climada_python.
-
-See our [developer guide](https://climada-python.readthedocs.io/en/latest/#developer-guide) for more information.
+See the [Contribution Guide](/CONTRIBUTING.md).
 
 ## Versioning
 

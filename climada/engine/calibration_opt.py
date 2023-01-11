@@ -29,7 +29,7 @@ import pandas as pd
 from scipy import interpolate
 from scipy.optimize import minimize
 
-from climada.engine import Impact
+from climada.engine import ImpactCalc
 from climada.entity import ImpactFuncSet, ImpfTropCyclone, impact_funcs
 from climada.engine.impact_data import emdat_impact_yearlysum, emdat_impact_event
 
@@ -66,12 +66,11 @@ def calib_instance(hazard, exposure, impact_func, df_out=pd.DataFrame(),
             DataFrame with modelled impact written to rows for each year
             or event.
     """
-    ifs = ImpactFuncSet()
-    ifs.append(impact_func)
-    impacts = Impact()
-    impacts.calc(exposure, ifs, hazard, assign_centroids=False)
+    ifs = ImpactFuncSet([impact_func])
+    impacts = ImpactCalc(exposures=exposure, impfset=ifs, hazard=hazard)\
+              .impact(assign_centroids=False)
     if yearly_impact:  # impact per year
-        iys = impacts.calc_impact_year_set(all_years=True)
+        iys = impacts.impact_per_year(all_years=True)
         # Loop over whole year range:
         if df_out.empty | df_out.index.shape[0] == 1:
             for cnt_, year in enumerate(np.sort(list((iys.keys())))):

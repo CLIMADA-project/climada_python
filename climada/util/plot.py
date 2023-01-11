@@ -195,7 +195,8 @@ def _plot_scattered_data(method, array_sub, geo_coord, var_name, title,
     if axes is None:
         proj_plot = proj
         if isinstance(proj, ccrs.PlateCarree):
-            # use different projections for plot and data to shift the central lon in the plot
+            # for PlateCarree, center plot around data's central lon
+            # without overwriting the data's original projection info
             xmin, xmax = u_coord.lon_bounds(np.concatenate([c[:, 1] for c in list_coord]))
             proj_plot = ccrs.PlateCarree(central_longitude=0.5 * (xmin + xmax))
         _, axes, fontsize = make_map(num_im, proj=proj_plot, figsize=figsize,
@@ -308,8 +309,10 @@ def geo_im_from_array(array_sub, coord, var_name, title,
     if 'vmax' not in kwargs:
         kwargs['vmax'] = np.nanmax(array_sub)
     if axes is None:
+        proj_plot = proj
         if isinstance(proj, ccrs.PlateCarree):
-            # use different projections for plot and data to shift the central lon in the plot
+            # for PlateCarree, center plot around data's central lon 
+            # without overwriting the data's original projection info
             xmin, xmax = u_coord.lon_bounds(np.concatenate([c[:, 1] for c in list_coord]))
             proj_plot = ccrs.PlateCarree(central_longitude=0.5 * (xmin + xmax))
         _, axes, fontsize = make_map(num_im, proj=proj_plot, figsize=figsize,
@@ -599,7 +602,7 @@ def add_populated_places(axis, extent, proj=ccrs.PlateCarree(), fontsize=None):
                                          name='populated_places_simple')
 
     shp = shapereader.Reader(shp_file)
-    ext_pts = list(box(extent[0], extent[2], extent[1], extent[3]).exterior.coords)
+    ext_pts = list(box(*u_coord.toggle_extent_bounds(extent)).exterior.coords)
     ext_trans = [ccrs.PlateCarree().transform_point(pts[0], pts[1], proj)
                  for pts in ext_pts]
     for rec, point in zip(shp.records(), shp.geometries()):
@@ -632,7 +635,7 @@ def add_cntry_names(axis, extent, proj=ccrs.PlateCarree(), fontsize=None):
                                          name='admin_0_countries')
 
     shp = shapereader.Reader(shp_file)
-    ext_pts = list(box(extent[0], extent[2], extent[1], extent[3]).exterior.coords)
+    ext_pts = list(box(*u_coord.toggle_extent_bounds(extent)).exterior.coords)
     ext_trans = [ccrs.PlateCarree().transform_point(pts[0], pts[1], proj)
                  for pts in ext_pts]
     for rec, point in zip(shp.records(), shp.geometries()):

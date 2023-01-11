@@ -23,6 +23,7 @@ import copy
 from functools import partial
 from itertools import zip_longest
 import logging
+from typing import Dict
 
 import scipy as sp
 import numpy as np
@@ -80,17 +81,18 @@ class InputVar():
     Continuous variable function: Impact function for TC
         import scipy as sp
         def imp_fun_tc(G, v_half, vmin, k, _id=1):
-            imp_fun = ImpactFunc()
-            imp_fun.haz_type = 'TC'
-            imp_fun.id = _id
-            imp_fun.intensity_unit = 'm/s'
-            imp_fun.intensity = np.linspace(0, 150, num=100)
-            imp_fun.mdd = np.repeat(1, len(imp_fun.intensity))
-            imp_fun.paa = np.array([sigmoid_function(v, G, v_half, vmin, k)
-                                    for v in imp_fun.intensity])
+            intensity = np.linspace(0, 150, num=100)
+            mdd = np.repeat(1, len(intensity))
+            paa = np.array([sigmoid_function(v, G, v_half, vmin, k)
+                            for v in intensity])
+            imp_fun = ImpactFunc(haz_type='TC',
+                                 id=_id,
+                                 intensity_unit='m/s',
+                                 intensity=intensity,
+                                 mdd=mdd,
+                                 paa=paa)
             imp_fun.check()
-            impf_set = ImpactFuncSet()
-            impf_set.append(imp_fun)
+            impf_set = ImpactFuncSet([imp_fun])
             return impf_set
         distr_dict = {"G": sp.stats.uniform(0.8, 1),
               "v_half": sp.stats.uniform(50, 100),
@@ -101,7 +103,11 @@ class InputVar():
 
     """
 
-    def __init__(self, func, distr_dict):
+    def __init__(
+        self,
+        func: callable,
+        distr_dict: Dict,
+    ):
         """
         Initialize InputVar
 
@@ -131,7 +137,7 @@ class InputVar():
         Parameters
         ----------
         **params : optional
-            Input parameters will be passed to self.InputVar_func.
+            Input parameters will be passed to self.func.
 
         Returns
         -------
@@ -795,13 +801,13 @@ def _meas_set_unc_dict(bounds_cost):
 
 def _ent_unc_func(EN, ET, EL, IFi, IL, MDD, PAA, CO, DR, bounds_noise,
                  impf_set_list, haz_id_dict, disc_rate, exp_list, meas_set):
-    ent = Entity()
-    ent.exposures = _exp_uncfunc(EN, ET, EL, exp_list, bounds_noise)
-    ent.impact_funcs = _impfset_uncfunc(IFi, MDD, PAA, IL, impf_set_list=impf_set_list,
+
+    exposures = _exp_uncfunc(EN, ET, EL, exp_list, bounds_noise)
+    impact_func_set = _impfset_uncfunc(IFi, MDD, PAA, IL, impf_set_list=impf_set_list,
                                             haz_id_dict=haz_id_dict)
-    ent.measures = _meas_set_uncfunc(CO, meas_set=meas_set)
-    ent.disc_rates = _disc_uncfunc(DR, disc_rate)
-    return ent
+    measure_set = _meas_set_uncfunc(CO, meas_set=meas_set)
+    disc_rates = _disc_uncfunc(DR, disc_rate)
+    return Entity(exposures, disc_rates, impact_func_set, measure_set)
 
 def _ent_unc_dict(bounds_totval, bounds_noise, bounds_impfi, bounds_mdd,
                   bounds_paa, n_impf_set, bounds_disc, bounds_cost, n_exp):
@@ -813,13 +819,12 @@ def _ent_unc_dict(bounds_totval, bounds_noise, bounds_impfi, bounds_mdd,
 
 def _entfut_unc_func(EN, EG, EL, IFi, IL, MDD, PAA, CO, bounds_noise,
                  impf_set_list, haz_id_dict, exp_list, meas_set):
-    ent = Entity()
-    ent.exposures = _exp_uncfunc(EN=EN, ET=EG, EL=EL, exp_list=exp_list, bounds_noise=bounds_noise)
-    ent.impact_funcs = _impfset_uncfunc(IFi, MDD, PAA, IL, impf_set_list=impf_set_list,
+    exposures = _exp_uncfunc(EN=EN, ET=EG, EL=EL, exp_list=exp_list, bounds_noise=bounds_noise)
+    impact_funcs = _impfset_uncfunc(IFi, MDD, PAA, IL, impf_set_list=impf_set_list,
                                             haz_id_dict=haz_id_dict)
-    ent.measures = _meas_set_uncfunc(CO, meas_set=meas_set)
-    ent.disc_rates = DiscRates() #Disc rate of future entity ignored in cost_benefit.calc()
-    return ent
+    measures = _meas_set_uncfunc(CO, meas_set=meas_set)
+    disc_rates = DiscRates() #Disc rate of future entity ignored in cost_benefit.calc()
+    return Entity(exposures, disc_rates, impact_funcs, measures)
 
 def _entfut_unc_dict(bounds_impfi, bounds_mdd,
                   bounds_paa, n_impf_set, bounds_eg, bounds_noise,
