@@ -48,6 +48,6 @@ jobs:
       -
         name: Run Unit Tests
         run: |
-          make unit_test
+          python -m coverage run tests_runner.py unit
 
 
