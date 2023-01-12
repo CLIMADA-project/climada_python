@@ -36,7 +36,7 @@ jobs:
 
   unit-test:
     needs: docker-build
-    if: ${{ always }}
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     container:
       image: peanutfunn/climada_env:${{ github.ref_name }}
