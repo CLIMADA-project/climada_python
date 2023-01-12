@@ -29,12 +29,12 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           push: true
-          tags: ${{ env.DOCKER_IMAGE }}
+          tags: $DOCKER_IMAGE
 
   unit-test:
     needs: docker-build
     runs-on: ubuntu-latest
-    container: ${{ env.DOCKER_IMAGE }}
+    container: $DOCKER_IMAGE
     steps:
       -
         name: Checkout Repo
