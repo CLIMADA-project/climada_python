@@ -87,24 +87,25 @@ class TropCyclone(Hazard):
     Attributes
     ----------
     category : np.ndarray of ints
-        for every event, the TC category using the
-        Saffir-Simpson scale:
-            -1 tropical depression
-             0 tropical storm
-             1 Hurrican category 1
-             2 Hurrican category 2
-             3 Hurrican category 3
-             4 Hurrican category 4
-             5 Hurrican category 5
+        for every event, the TC category using the Saffir-Simpson scale:
+
+        * -1 tropical depression
+        *  0 tropical storm
+        *  1 Hurrican category 1
+        *  2 Hurrican category 2
+        *  3 Hurrican category 3
+        *  4 Hurrican category 4
+        *  5 Hurrican category 5
     basin : list(str)
         Basin where every event starts:
-            'NA' North Atlantic
-            'EP' Eastern North Pacific
-            'WP' Western North Pacific
-            'NI' North Indian
-            'SI' South Indian
-            'SP' Southern Pacific
-            'SA' South Atlantic
+
+        * 'NA' North Atlantic
+        * 'EP' Eastern North Pacific
+        * 'WP' Western North Pacific
+        * 'NI' North Indian
+        * 'SI' South Indian
+        * 'SP' Southern Pacific
+        * 'SA' South Atlantic
     """
     intensity_thres = DEF_INTENSITY_THRES
     """intensity threshold for storage in m/s"""
@@ -220,9 +221,11 @@ class TropCyclone(Hazard):
             of shape (npositions, ncentroids, 2). Default: False.
         metric : str, optional
             Specify an approximation method to use for earth distances:
+
             * "equirect": Distance according to sinusoidal projection. Fast, but inaccurate for
               large distances and high latitudes.
             * "geosphere": Exact spherical distance. Much more accurate at all distances, but slow.
+
             Default: "equirect".
         intensity_thres : float, optional
             Wind speeds (in m/s) below this threshold are stored as 0. Default: 17.5
@@ -796,7 +799,7 @@ def compute_windfields(
     # Influence of translational speed decreases with distance from eye.
     # The "absorbing factor" is according to the following paper (see Fig. 7):
     #
-    #   Mouton, F., & Nordbeck, O. (1999). Cyclone Database Manager. A tool
+    #   Mouton, F. & Nordbeck, O. (2005). Cyclone Database Manager. A tool
     #   for converting point data from cyclone observations into tracks and
     #   wind speed profiles in a GIS. UNED/GRID-Geneva.
     #   https://unepgrid.ch/en/resource/19B7D302
