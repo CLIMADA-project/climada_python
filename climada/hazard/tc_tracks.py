@@ -127,9 +127,9 @@ IBTRACS_AGENCY_1MIN_WIND_FACTOR = {
 """Scale and shift used by agencies to convert their internal Dvorak 1-minute sustained winds to
 the officially reported values that are in IBTrACS. From Table 1 in:
 
-Knapp, K.R., Kruk, M.C. (2010): Quantifying Interagency Differences in Tropical Cyclone Best-Track
+Knapp, K.R. & Kruk, M.C. (2010): Quantifying Interagency Differences in Tropical Cyclone Best-Track
 Wind Speed Estimates. Monthly Weather Review 138(4): 1459–1473.
-https://library.wmo.int/index.php?lvl=notice_display&id=135"""
+https://journals.ametsoc.org/view/journals/mwre/138/4/2009mwr3123.1.xml"""
 
 DEF_ENV_PRESSURE = 1010
 """Default environmental pressure"""
