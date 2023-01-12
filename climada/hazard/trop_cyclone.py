@@ -796,7 +796,7 @@ def compute_windfields(
     # Influence of translational speed decreases with distance from eye.
     # The "absorbing factor" is according to the following paper (see Fig. 7):
     #
-    #   Mouton, F., & Nordbeck, O. (1999). Cyclone Database Manager. A tool
+    #   Mouton, F. & Nordbeck, O. (2005). Cyclone Database Manager. A tool
     #   for converting point data from cyclone observations into tracks and
     #   wind speed profiles in a GIS. UNED/GRID-Geneva.
     #   https://unepgrid.ch/en/resource/19B7D302
