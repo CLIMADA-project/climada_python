@@ -1,6 +1,8 @@
 name: ci
 
-on: push
+on:
+  push:
+    branches:
 
 env:
   DOCKER_IMAGE: ${{ secrets.DOCKER_USERNAME }}/climada_env:${{ github.ref_name }}
@@ -8,6 +10,7 @@ env:
 jobs:
   docker-build:
     runs-on: ubuntu-latest
+    if: github.event == 'create'
     steps:
       -
         name: Checkout Repo
@@ -33,8 +36,11 @@ jobs:
 
   unit-test:
     needs: docker-build
+    if: ${{ always }}
     runs-on: ubuntu-latest
-    container: peanutfunn/climada_env:${{ github.ref_name }}
+    container:
+      image: peanutfunn/climada_env:${{ github.ref_name }}
+      options: --user root
     steps:
       -
         name: Checkout Repo
