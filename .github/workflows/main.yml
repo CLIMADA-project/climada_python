@@ -29,12 +29,12 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/climada_env:${{ github.ref_name }}
+          tags: peanutfunn/climada_env:${{ github.ref_name }}
 
   unit-test:
     needs: docker-build
     runs-on: ubuntu-latest
-    container: ${{ secrets.DOCKER_USERNAME }}/climada_env:${{ github.ref_name }}
+    container: peanutfunn/climada_env:${{ github.ref_name }}
     steps:
       -
         name: Checkout Repo
