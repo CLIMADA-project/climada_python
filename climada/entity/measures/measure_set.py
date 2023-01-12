@@ -89,7 +89,7 @@ class MeasureSet():
 
     Attributes
     ----------
-    tag : Tag
+    tag : climada.entity.tag.Tag
         information about the source data
     _data : dict
         Contains Measure objects. This attribute is not suppossed to be accessed directly.

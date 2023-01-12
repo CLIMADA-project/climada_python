@@ -357,10 +357,12 @@ class TCTracks():
         provider : str or list of str, optional
             Either specify an agency, such as "usa", "newdelhi", "bom", "cma", "tokyo", or the
             special values "official" and "official_3h":
-              * "official" means using the (usually 6-hourly) officially reported values of the
-                officially responsible agencies.
-              * "official_3h" means to include (inofficial) 3-hourly data of the officially
-                responsible agencies (whenever available).
+
+            * "official" means using the (usually 6-hourly) officially reported values of the
+              officially responsible agencies.
+            * "official_3h" means to include (inofficial) 3-hourly data of the officially
+              responsible agencies (whenever available).
+
             If you want to restrict to the officially reported values by the officially responsible
             agencies (`provider="official"`) without any modifications to the original official
             data, make sure to also set `estimate_missing=False` and `interpolate_missing=False`.
@@ -370,8 +372,8 @@ class TCTracks():
             are not reported by the first agency for this storm are taken from the next agency in
             the list that did report this variable for this storm. For different storms, the same
             variable might be taken from different agencies.
-            Default: ['official_3h', 'usa', 'tokyo', 'newdelhi', 'reunion', 'bom', 'nadi',
-            'wellington', 'cma', 'hko', 'ds824', 'td9636', 'td9635', 'neumann', 'mlc']
+            Default: ``['official_3h', 'usa', 'tokyo', 'newdelhi', 'reunion', 'bom', 'nadi',
+            'wellington', 'cma', 'hko', 'ds824', 'td9636', 'td9635', 'neumann', 'mlc']``
         rescale_windspeeds : bool, optional
             If True, all wind speeds are linearly rescaled to 1-minute sustained winds.
             Note however that the IBTrACS documentation (Section 5.2,

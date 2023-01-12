@@ -44,14 +44,18 @@ LANDFALL_DECAY_V = {
     5: 0.003788695795963695
 }
 """Global landfall decay parameters for wind speed by TC category.
+
 Keys are TC categories with -1='TD', 0='TS', 1='Cat 1', ..., 5='Cat 5'.
+
 It is v_rel as derived from:
-tracks = TCTracks.from_ibtracs_netcdf(year_range=(1980,2019), estimate_missing=True)
-extent = tracks.get_extent()
-land_geom = climada.util.coordinates.get_land_geometry(
-    extent=extent, resolution=10
-)
-v_rel, p_rel = _calc_land_decay(tracks.data, land_geom, pool=tracks.pool)"""
+
+>>> tracks = TCTracks.from_ibtracs_netcdf(year_range=(1980,2019), estimate_missing=True)
+>>> extent = tracks.get_extent()
+>>> land_geom = climada.util.coordinates.get_land_geometry(
+...     extent=extent, resolution=10
+... )
+>>> v_rel, p_rel = _calc_land_decay(tracks.data, land_geom, pool=tracks.pool)
+"""
 
 LANDFALL_DECAY_P = {
     -1: (1.0088807492745373, 0.002117478217863062),
@@ -62,14 +66,18 @@ LANDFALL_DECAY_P = {
     4: (1.0828373148889825, 0.003997492773076179),
     5: (1.1088615145002092, 0.005224331234796362)}
 """Global landfall decay parameters for pressure by TC category.
+
 Keys are TC categories with -1='TD', 0='TS', 1='Cat 1', ..., 5='Cat 5'.
+
 It is p_rel as derived from:
-tracks = TCTracks.from_ibtracs_netcdf(year_range=(1980,2019), estimate_missing=True)
-extent = tracks.get_extent()
-land_geom = climada.util.coordinates.get_land_geometry(
-    extent=extent, resolution=10
-)
-v_rel, p_rel = _calc_land_decay(tracks.data, land_geom, pool=tracks.pool)"""
+
+>>> tracks = TCTracks.from_ibtracs_netcdf(year_range=(1980,2019), estimate_missing=True)
+>>> extent = tracks.get_extent()
+>>> land_geom = climada.util.coordinates.get_land_geometry(
+...     extent=extent, resolution=10
+... )
+>>> v_rel, p_rel = _calc_land_decay(tracks.data, land_geom, pool=tracks.pool)
+"""
 
 def calc_perturbed_trajectories(tracks,
                                 nb_synth_tracks=9,
