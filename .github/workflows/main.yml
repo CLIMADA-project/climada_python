@@ -51,6 +51,6 @@ jobs:
       -
         name: Run Unit Tests
         run: |
-          python -m coverage run tests_runner.py unit
+          micromamba run python -m coverage run tests_runner.py unit
 
 
