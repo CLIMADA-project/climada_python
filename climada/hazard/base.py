@@ -896,8 +896,8 @@ class Hazard():
                 return array.shape
 
             # Check size for read data
-            if default_value is not None and (
-                not np.array_equal(vshape(val), vshape(default_value))
+            if default_value is not None and not np.array_equal(
+                vshape(val), vshape(default_value)
             ):
                 raise RuntimeError(
                     f"'{user_key if user_key else default_key}' must have shape "
