@@ -837,7 +837,7 @@ class Client():
         Parameters
         ----------
         country : str, optional
-            List of country name or iso3 codes for which to create the LitPop object.
+            Country name or iso3 codes for which to create the LitPop object.
             If None is given, a global LitPop instance is created. Defaut is None
         exponents : tuple of two integers, optional
             Defining power with which lit (nightlights) and pop (gpw) go into LitPop. To get
