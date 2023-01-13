@@ -726,8 +726,8 @@ class Hazard():
                 dask="parallelized",
                 output_dtypes=[array.dtype]
             )
-            array = array.compute().data  # Load into memory, now it's a sparse.COO array
-            return array.tocsr()  # Convert sparse.COO to scipy.sparse.csr_matrix
+            sparse_coo = array.compute().data  # Load into memory
+            return sparse_coo.tocsr()  # Convert sparse.COO to scipy.sparse.csr_matrix
 
         # Read the intensity data
         LOGGER.debug("Loading Hazard intensity from DataArray '%s'", intensity)
