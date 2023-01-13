@@ -831,14 +831,16 @@ class Client():
         return exposures_concat
 
     def get_litpop(self, country=None, exponents=(1,1), version=None, dump_dir=SYSTEM_DIR):
-        """Get a LitPop instance on a 150arcsec grid with the default parameters:
+        """Get a LitPop ``Exposures`` instance on a 150arcsec grid with the default parameters:
         exponents = (1,1) and fin_mode = 'pc'.
 
         Parameters
         ----------
         country : str, optional
             Country name or iso3 codes for which to create the LitPop object.
-            If None is given, a global LitPop instance is created. Defaut is None
+            For creating a LitPop object over multiple countries, use ``get_litpop`` individually
+            and concatenate using ``LitPop.concat``, see Examples.
+            If country is None a global LitPop instance is created. Defaut is None.
         exponents : tuple of two integers, optional
             Defining power with which lit (nightlights) and pop (gpw) go into LitPop. To get
             nightlights^3 without population count: (3, 0).
@@ -854,6 +856,15 @@ class Client():
         -------
         climada.entity.exposures.Exposures
             default litpop Exposures object
+        
+        Examples
+        --------
+        Combined default LitPop object for Austria and Switzerland:
+
+        >>> client = Client()
+        >>> litpop_aut = client.get_litpop("AUT")
+        >>> litpop_che = client.get_litpop("CHE")
+        >>> litpop_comb = LitPop.concat([litpop_aut, litpop_che]) 
         """
         properties = {
             'exponents': "".join(['(',str(exponents[0]),',',str(exponents[1]),')'])}
@@ -864,7 +875,7 @@ class Client():
         elif isinstance(country, list):
             if len(set(country)) > 1:
                 raise ValueError("``get_litpop`` can only query single countries. Download the"
-                                 " data for multiple countries individually, and concatenate the"
+                                 " data for multiple countries individually and concatenate the"
                                  " objects using ``LitPop.concat``")
             properties['country_name'] = [pycountry.countries.lookup(c).name for c in country]
         else:
