@@ -1393,7 +1393,7 @@ class Impact():
                          threshold=u_coord.NEAREST_NEIGHBOR_THRESHOLD,
                          overwrite=True):
         """
-        Wrapper for u_coord.assign_gdf_centroids():
+        Wrapper for u_coord.assign_haz_centroids():
         Assign for each impact coordinate closest hazard coordinate.
         -1 used for disatances > threshold in point distances. If raster hazard,
         -1 used for centroids outside raster.
@@ -1430,10 +1430,10 @@ class Impact():
             2. if no raster, assign centroids to the nearest neighbor using
             euclidian metric.
         Both cases can introduce inaccuracies for coordinates in lat/lon
-        as distances in degrees differ from distances in meters on the Earth 
-        surface, in particular for higher latitude and distances larger than 100km. 
-        If more accuracy is needed, please use 'haversine' distance metric. 
-        This however is slower for (quasi-)gridded data, and works only for 
+        as distances in degrees differ from distances in meters on the Earth
+        surface, in particular for higher latitude and distances larger than 100km.
+        If more accuracy is needed, please use 'haversine' distance metric.
+        This however is slower for (quasi-)gridded data, and works only for
         non-gridded data.
         """
 
@@ -1451,7 +1451,7 @@ class Impact():
                         overwrite=overwrite)
 
         #create new impact attribute with hazard centroids
-        setattr(self,f'centr_{hazard.tag.haz_type}' , coord_df[f'centr_{hazard.tag.haz_type}'] )
+        setattr(self,f'centr_{hazard.tag.haz_type}' , coord_df[f'centr_{hazard.tag.haz_type}'])
 
 @dataclass
 class ImpactFreqCurve():

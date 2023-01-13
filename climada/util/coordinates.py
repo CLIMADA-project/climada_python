@@ -1061,15 +1061,17 @@ def assign_haz_centroids(coord_df, hazard, crs, distance='euclidean',
                         threshold=NEAREST_NEIGHBOR_THRESHOLD,
                         overwrite=True):
     """Assign to each exposure's coordinate point its closest hazard's coordinate.
-    If disatances > threshold in points' distances, -1 is returned. 
+    If disatances > threshold in points' distances, -1 is returned.
     If raster hazard and coordinate point outside raster, -1 is returned.
 
     Parameters
     ----------
-    coord_df : gpd.GeoDataFrame
-        Geodataframe with defined latitude/longitude column
+    coord_df : pd.DataFrame
+        Dataframe with defined latitude/longitude column
     hazard : Hazard
         Hazard to match (with raster or vector centroids).
+    crs : pyproj.crs.crs.CRS
+        Coordinate system of the dataframe
     distance : str, optional
         Distance to use in case of vector centroids.
         Possible values are "euclidean", "haversine" and "approx".
