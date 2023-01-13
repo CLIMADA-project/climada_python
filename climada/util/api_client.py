@@ -25,6 +25,7 @@ import json
 import logging
 from pathlib import Path
 from urllib.parse import quote, unquote
+import re
 import time
 import socket
 
@@ -45,6 +46,16 @@ DB = SqliteDatabase(Path(CONFIG.data_api.cache_db.str()).expanduser())
 HAZ_TYPES = [ht.str() for ht in CONFIG.data_api.supported_hazard_types.list()]
 EXP_TYPES = [et.str() for et in CONFIG.data_api.supported_exposures_types.list()]
 
+
+def host_and_port_from_url(url):
+    urlpat = r"http(s?)://([^:/]+)(:\d+)?(/|$)"
+    match = re.match(urlpat, url)
+    if match:
+        host = match.group(2)
+        port = int(match.group(3)[1:]) if match.group(3) else 443 if match.group(1) else 80
+    else:
+        raise ValueError(f'URL not as expected, cannot figure out host and port from "{url}"')
+    return host, port
 
 class Download(Model):
     """Database entry keeping track of downloaded files from the CLIMADA data API"""
@@ -84,6 +95,8 @@ class DataTypeInfo():
     status: str
     description:str
     properties:list  # of dict
+    key_reference:list = None
+    version_notes:list = None
 
 
 @dataclass
@@ -191,7 +204,6 @@ class Cacher():
             [str(a) for a in args] +
             [f"{k}={kwargs[k]}" for k in sorted(kwargs.keys())]
         )
-        print(as_text)
         md5h = hashlib.md5()
         md5h.update(as_text.encode())
         return md5h.hexdigest()
@@ -254,12 +266,13 @@ class Client():
     class NoConnection(Exception):
         """To be raised if there is no internet connection and no cached result."""
 
-
     @staticmethod
     def _is_online(url):
-        host = [x for x in url.split('/')
-                if x not in ['https:', 'http:', '']][0]
-        port = 80 if url.startswith('http://') else 443
+        try:
+            host, port = host_and_port_from_url(url)
+        except ValueError as ve:
+            raise ValueError("You may want to revise the data_api.url configuration"
+                             " in the climada.conf file") from ve
         socket.setdefaulttimeout(1)
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as skt:
             try:
@@ -476,7 +489,7 @@ class Client():
         -------
         list of DataTypeInfo
         """
-        url = f'{self.url}/data_type'
+        url = f'{self.url}/data_type/'
         params = {'data_type_group': data_type_group} \
             if data_type_group else {}
         return [DataTypeInfo(**jobj) for jobj in self._request_200(url, params=params)]
