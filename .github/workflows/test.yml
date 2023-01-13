@@ -1,0 +1,39 @@
+name: test
+
+on:
+  workflow_call:
+    inputs:
+      test-type:
+        required: true
+        type: string
+
+jobs:
+  unit-test:
+    if: inputs.test-type == 'unit-test'
+    runs-on: ubuntu-latest
+    container:
+      image: peanutfunn/climada_env:${{ github.ref_name }}
+      options: --user root
+    steps:
+      -
+        name: Checkout Repo
+        uses: actions/checkout@v3
+      -
+        name: Run Unit Tests
+        run: |
+          micromamba run python -m coverage run tests_runner.py unit
+
+  data-test:
+    if: inputs.test-type == 'data-test'
+    runs-on: ubuntu-latest
+    container:
+      image: peanutfunn/climada_env:${{ github.ref_name }}
+      options: --user root
+    steps:
+      -
+        name: Checkout Repo
+        uses: actions/checkout@v3
+      -
+        name: Run Unit Tests
+        run: |
+          micromamba run python test_data_api.py

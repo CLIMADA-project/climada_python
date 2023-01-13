@@ -1,12 +1,19 @@
-name: ci
+name: docker
+
+on:
+  workflow_call:
+    secrets:
+      DOCKER_USERNAME:
+        required: true
+      DOCKER_ACCESS_TOKEN:
+        required: true
 
 env:
   DOCKER_IMAGE: ${{ secrets.DOCKER_USERNAME }}/climada_env:${{ github.ref_name }}
 
 jobs:
-  docker-build:
+  build-image:
     runs-on: ubuntu-latest
-    if: github.event == 'create'
     steps:
       -
         name: Checkout Repo
@@ -29,21 +36,3 @@ jobs:
         with:
           push: true
           tags: peanutfunn/climada_env:${{ github.ref_name }}
-
-  unit-test:
-    needs: docker-build
-    if: ${{ always() }}
-    runs-on: ubuntu-latest
-    container:
-      image: peanutfunn/climada_env:${{ github.ref_name }}
-      options: --user root
-    steps:
-      -
-        name: Checkout Repo
-        uses: actions/checkout@v3
-      -
-        name: Run Unit Tests
-        run: |
-          micromamba run python -m coverage run tests_runner.py unit
-
-
