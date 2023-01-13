@@ -520,52 +520,52 @@ class Hazard():
         expected names.
 
         >>> dset = xr.Dataset(
-        >>>     dict(
-        >>>         intensity=(
-        >>>             ["time", "latitude", "longitude"],
-        >>>             [[[0, 1, 2], [3, 4, 5]]],
-        >>>         )
-        >>>     ),
-        >>>     dict(
-        >>>         time=[datetime.datetime(2000, 1, 1)],
-        >>>         latitude=[0, 1],
-        >>>         longitude=[0, 1, 2],
-        >>>     ),
-        >>> )
+        ...     dict(
+        ...         intensity=(
+        ...             ["time", "latitude", "longitude"],
+        ...             [[[0, 1, 2], [3, 4, 5]]],
+        ...         )
+        ...     ),
+        ...     dict(
+        ...         time=[datetime.datetime(2000, 1, 1)],
+        ...         latitude=[0, 1],
+        ...         longitude=[0, 1, 2],
+        ...     ),
+        ... )
         >>> hazard = Hazard.from_raster_xarray(dset, "", "")
 
         For non-default coordinate names, use the ``coordinate_vars`` argument.
 
         >>> dset = xr.Dataset(
-        >>>     dict(
-        >>>         intensity=(
-        >>>             ["day", "lat", "longitude"],
-        >>>             [[[0, 1, 2], [3, 4, 5]]],
-        >>>         )
-        >>>     ),
-        >>>     dict(
-        >>>         day=[datetime.datetime(2000, 1, 1)],
-        >>>         lat=[0, 1],
-        >>>         longitude=[0, 1, 2],
-        >>>     ),
-        >>> )
+        ...     dict(
+        ...         intensity=(
+        ...             ["day", "lat", "longitude"],
+        ...             [[[0, 1, 2], [3, 4, 5]]],
+        ...         )
+        ...     ),
+        ...     dict(
+        ...         day=[datetime.datetime(2000, 1, 1)],
+        ...         lat=[0, 1],
+        ...         longitude=[0, 1, 2],
+        ...     ),
+        ... )
         >>> hazard = Hazard.from_raster_xarray(
-        >>>     dset, "", "", coordinate_vars=dict(event="day", latitude="lat")
-        >>> )
+        ...     dset, "", "", coordinate_vars=dict(event="day", latitude="lat")
+        ... )
 
         Coordinates can be different from the actual dataset dimensions. The following
         loads the data with coordinates ``longitude`` and ``latitude`` (default names):
 
         >>> dset = xr.Dataset(
-        >>>     dict(intensity=(["time", "y", "x"], [[[0, 1, 2], [3, 4, 5]]])),
-        >>>     dict(
-        >>>         time=[datetime.datetime(2000, 1, 1)],
-        >>>         y=[0, 1],
-        >>>         x=[0, 1, 2],
-        >>>         longitude=(["y", "x"], [[0.0, 0.1, 0.2], [0.0, 0.1, 0.2]]),
-        >>>         latitude=(["y", "x"], [[0.0, 0.0, 0.0], [0.1, 0.1, 0.1]]),
-        >>>     ),
-        >>> )
+        ...     dict(intensity=(["time", "y", "x"], [[[0, 1, 2], [3, 4, 5]]])),
+        ...     dict(
+        ...         time=[datetime.datetime(2000, 1, 1)],
+        ...         y=[0, 1],
+        ...         x=[0, 1, 2],
+        ...         longitude=(["y", "x"], [[0.0, 0.1, 0.2], [0.0, 0.1, 0.2]]),
+        ...         latitude=(["y", "x"], [[0.0, 0.0, 0.0], [0.1, 0.1, 0.1]]),
+        ...     ),
+        ... )
         >>> hazard = Hazard.from_raster_xarray(dset, "", "")
 
         Optional data is read from the dataset if the default keys are found. Users can
@@ -573,39 +573,39 @@ class Hazard():
         with the ``data_vars`` argument.
 
         >>> dset = xr.Dataset(
-        >>>     dict(
-        >>>         intensity=(
-        >>>             ["time", "latitude", "longitude"],
-        >>>             [[[0, 1, 2], [3, 4, 5]]],
-        >>>         ),
-        >>>         fraction=(
-        >>>             ["time", "latitude", "longitude"],
-        >>>             [[[0.0, 0.1, 0.2], [0.3, 0.4, 0.5]]],
-        >>>         ),
-        >>>         freq=(["time"], [0.4]),
-        >>>         event_id=(["time"], [4]),
-        >>>     ),
-        >>>     dict(
-        >>>         time=[datetime.datetime(2000, 1, 1)],
-        >>>         latitude=[0, 1],
-        >>>         longitude=[0, 1, 2],
-        >>>     ),
-        >>> )
+        ...     dict(
+        ...         intensity=(
+        ...             ["time", "latitude", "longitude"],
+        ...             [[[0, 1, 2], [3, 4, 5]]],
+        ...         ),
+        ...         fraction=(
+        ...             ["time", "latitude", "longitude"],
+        ...             [[[0.0, 0.1, 0.2], [0.3, 0.4, 0.5]]],
+        ...         ),
+        ...         freq=(["time"], [0.4]),
+        ...         event_id=(["time"], [4]),
+        ...     ),
+        ...     dict(
+        ...         time=[datetime.datetime(2000, 1, 1)],
+        ...         latitude=[0, 1],
+        ...         longitude=[0, 1, 2],
+        ...     ),
+        ... )
         >>> hazard = Hazard.from_raster_xarray(
-        >>>     dset,
-        >>>     "",
-        >>>     "",
-        >>>     data_vars=dict(
-        >>>         # Load frequency from 'freq' array
-        >>>         frequency="freq",
-        >>>         # Ignore 'event_id' array and use default instead
-        >>>         event_id="",
-        >>>         # 'fraction' array is loaded because it has the default name
-        >>>     ),
-        >>> )
+        ...     dset,
+        ...     "",
+        ...     "",
+        ...     data_vars=dict(
+        ...         # Load frequency from 'freq' array
+        ...         frequency="freq",
+        ...         # Ignore 'event_id' array and use default instead
+        ...         event_id="",
+        ...         # 'fraction' array is loaded because it has the default name
+        ...     ),
+        ... )
         >>> np.array_equal(hazard.frequency, [0.4]) and np.array_equal(
-        >>>     hazard.event_id, [1]
-        >>> )
+        ...     hazard.event_id, [1]
+        ... )
         True
 
         If your read single-event data your dataset probably will not have a time
@@ -613,35 +613,35 @@ class Hazard():
         automatically promote it to a dataset dimension and load the data:
 
         >>> dset = xr.Dataset(
-        >>>     dict(
-        >>>         intensity=(
-        >>>             ["latitude", "longitude"],
-        >>>             [[0, 1, 2], [3, 4, 5]],
-        >>>         )
-        >>>     ),
-        >>>     dict(
-        >>>         time=[datetime.datetime(2000, 1, 1)],
-        >>>         latitude=[0, 1],
-        >>>         longitude=[0, 1, 2],
-        >>>     ),
-        >>> )
+        ...     dict(
+        ...         intensity=(
+        ...             ["latitude", "longitude"],
+        ...             [[0, 1, 2], [3, 4, 5]],
+        ...         )
+        ...     ),
+        ...     dict(
+        ...         time=[datetime.datetime(2000, 1, 1)],
+        ...         latitude=[0, 1],
+        ...         longitude=[0, 1, 2],
+        ...     ),
+        ... )
         >>> hazard = Hazard.from_raster_xarray(dset, "", "")  # Same as first example
 
         If one coordinate is missing altogehter, you must add it or expand the dimensions
         before loading the dataset:
 
         >>> dset = xr.Dataset(
-        >>>     dict(
-        >>>         intensity=(
-        >>>             ["latitude", "longitude"],
-        >>>             [[0, 1, 2], [3, 4, 5]],
-        >>>         )
-        >>>     ),
-        >>>     dict(
-        >>>         latitude=[0, 1],
-        >>>         longitude=[0, 1, 2],
-        >>>     ),
-        >>> )
+        ...     dict(
+        ...         intensity=(
+        ...             ["latitude", "longitude"],
+        ...             [[0, 1, 2], [3, 4, 5]],
+        ...         )
+        ...     ),
+        ...     dict(
+        ...         latitude=[0, 1],
+        ...         longitude=[0, 1, 2],
+        ...     ),
+        ... )
         >>> dset = dset.expand_dims(time=[numpy.datetime64("2000-01-01")])
         >>> hazard = Hazard.from_raster_xarray(dset, "", "")
         """
