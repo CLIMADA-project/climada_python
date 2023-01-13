@@ -1,93 +1,107 @@
+===================
+Welcome to CLIMADA!
+===================
 
-This is the documentation for version v\ |version|. In `CLIMADA-project <https://github.com/CLIMADA-project>`_ you will find CLIMADA's contributors, repository and scientific publications.
-The documentation of CLIMADA `petals <https://github.com/CLIMADA-project/climada_petals>`_ can be found `here <https://climada-petals.readthedocs.io/en/stable/>`_.
-Note that all the documentations has two versions, 'latest' and 'stable', and explicit version numbers, such as 'v3.1.1', in the url path.
-'latest' is created from the 'develop' branch and has the latest changes by developers, 'stable' from the latest release.
-For more details about documentation versions, please have a look at `here <https://readthedocs.org/projects/climada-python/versions/>`_.
+.. image:: guide/img/CLIMADA_logo_QR.png
+   :align: center
+   :alt: CLIMADA Logo
 
-------------
+CLIMADA stands for CLIMate ADAptation and is a probabilistic natural catastrophe impact model, that also calculates averted damage (benefit) thanks to adaptation measures of any kind (from grey to green infrastructure, behavioural, etc.).
 
-----------
-User guide
-----------
+CLIMADA is primarily developed and maintained by the `Weather and Climate Risks Group <https://wcr.ethz.ch/>`_ at `ETH Zürich <https://ethz.ch/en.html>`_.
+
+This is the documentation of the CLIMADA core module which contains all functionalities necessary for performing climate risk analysis and appraisal of adaptation options. Modules for generating different types of hazards and other specialized applications can be found in the `CLIMADA Petals <https://climada-petals.readthedocs.io/en/stable/>`_ module.
+
+Jump right in:
+
+* :doc:`README <misc/README>`
+* :doc:`Getting Started <guide/Guide_get_started>`
+* :doc:`Installation <guide/Guide_Installation>`
+* :doc:`Overview <tutorial/1_main_climada>`
+* `GitHub Repository <https://github.com/CLIMADA-project/climada_python>`_
+* :doc:`Module Reference <climada/climada>`
+
+.. ifconfig:: readthedocs
+
+   .. hint::
+
+      ReadTheDocs hosts multiple versions of this documentation.
+      Use the drop-down menu on the bottom left to switch versions.
+      ``stable`` refers to the most recent release, whereas ``latest`` refers to the latest development version.
+
+.. admonition:: Copyright Notice
+
+   Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in :doc:`AUTHORS.md <misc/AUTHORS>`.
+
+   CLIMADA is free software: you can redistribute it and/or modify it under the
+   terms of the GNU General Public License as published by the Free
+   Software Foundation, version 3.
+
+   CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
+   WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+   PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License along
+   with CLIMADA. If not, see https://www.gnu.org/licenses/.
+
+
+.. toctree::
+   :hidden:
+
+   GitHub Repositories <https://github.com/CLIMADA-project>
+   CLIMADA Petals <https://climada-petals.readthedocs.io/en/stable/>
+   Weather and Climate Risks Group <https://wcr.ethz.ch/>
+
 
 .. toctree::
    :maxdepth: 1
+   :caption: User Guide
+   :hidden:
 
-   guide/Guide_get_started
    guide/Guide_Introduction
+   Getting Started <guide/Guide_get_started>
    guide/Guide_Installation
-   guide/Guide_Euler
+   Very Easy Installation <tutorial/climada_installation_step_by_step>
+   Running CLIMADA on Euler <guide/Guide_Euler>
 
----------
-Tutorials
----------
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
+   :caption: Tutorials
+   :hidden:
 
-   tutorial/1_main_climada
-   tutorial/climada_installation_step_by_step
-   tutorial/climada_entity_Exposures
-   tutorial/climada_entity_LitPop
-   tutorial/climada_entity_ImpactFuncSet
-   tutorial/climada_entity_DiscRates
-   tutorial/climada_entity_Exposures_polygons_lines
-   tutorial/climada_entity_MeasureSet
-   tutorial/climada_hazard_Hazard
-   tutorial/climada_hazard_TropCyclone
-   tutorial/climada_hazard_StormEurope
-   tutorial/climada_engine_Impact
-   tutorial/climada_engine_impact_data
-   tutorial/climada_engine_CostBenefit
-   tutorial/climada_engine_unsequa
-   tutorial/climada_engine_unsequa_helper
+   Overview <tutorial/1_main_climada>
+   Python Introduction <tutorial/0_intro_python>
+   Hazard <tutorial/hazard>
+   Exposures <tutorial/exposures>
+   Impact <tutorial/impact>
+   Uncertainty Quantification <tutorial/unsequa>
    tutorial/climada_engine_Forecast
-   tutorial/climada_util_yearsets
+   Google Earth Engine <tutorial/climada_util_earth_engine>
    tutorial/climada_util_api_client
 
----------------
-Developer guide
----------------
 
 .. toctree::
    :maxdepth: 1
+   :caption: Developer Guide
+   :hidden:
 
-   guide/Guide_Git_Development
+   Development with Git <guide/Guide_Git_Development>
    guide/Guide_CLIMADA_Tutorial
    guide/Guide_Configuration
    guide/Guide_Continuous_Integration_and_Testing
    guide/Guide_Reviewer_Checklist
    guide/Guide_PythonDos-n-Donts
-   guide/Guide_Py_Performance
-   guide/Guide_Miscellaneous
+   Performance and Best Practices <guide/Guide_Py_Performance>
+   Coding Conventions <guide/Guide_Miscellaneous>
+   Building the Documentation <README>
 
-----------------------
-Software documentation
-----------------------
-
-Documents functions, classes and methods:
 
 .. toctree::
-   :maxdepth: 1
+   :caption: Miscellaneous
+   :hidden:
 
-   climada/climada
-* :ref:`genindex`
-* :ref:`modindex`
-
--------
-License
--------
-
-Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
-
-CLIMADA is free software: you can redistribute it and/or modify it under the
-terms of the GNU General Public License as published by the Free
-Software Foundation, version 3.
-
-CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
-WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License along
-with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
+   Python modules <climada/climada>
+   README <misc/README>
+   List of Authors <misc/AUTHORS>
+   Contribution Guide <misc/CONTRIBUTING>
