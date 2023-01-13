@@ -836,7 +836,7 @@ class Client():
 
         Parameters
         ----------
-        country : str or list, optional
+        country : str, optional
             List of country name or iso3 codes for which to create the LitPop object.
             If None is given, a global LitPop instance is created. Defaut is None
         exponents : tuple of two integers, optional
@@ -862,9 +862,13 @@ class Client():
         elif isinstance(country, str):
             properties['country_name'] = pycountry.countries.lookup(country).name
         elif isinstance(country, list):
+            if len(set(country)) > 1:
+                raise ValueError("``get_litpop`` can only query single countries. Download the"
+                                 " data for multiple countries individually, and concatenate the"
+                                 " objects using ``LitPop.concat``")
             properties['country_name'] = [pycountry.countries.lookup(c).name for c in country]
         else:
-            raise ValueError("country must be string or list of strings")
+            raise ValueError("country must be string")
         return self.get_exposures(exposures_type='litpop', properties=properties, version=version,
                                   dump_dir=dump_dir)
 
