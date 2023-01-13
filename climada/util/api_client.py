@@ -856,7 +856,7 @@ class Client():
         -------
         climada.entity.exposures.Exposures
             default litpop Exposures object
-        
+
         Examples
         --------
         Combined default LitPop object for Austria and Switzerland:
@@ -864,7 +864,7 @@ class Client():
         >>> client = Client()
         >>> litpop_aut = client.get_litpop("AUT")
         >>> litpop_che = client.get_litpop("CHE")
-        >>> litpop_comb = LitPop.concat([litpop_aut, litpop_che]) 
+        >>> litpop_comb = LitPop.concat([litpop_aut, litpop_che])
         """
         properties = {
             'exponents': "".join(['(',str(exponents[0]),',',str(exponents[1]),')'])}
