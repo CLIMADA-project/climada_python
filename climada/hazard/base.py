@@ -799,7 +799,7 @@ class Hazard():
                 accessor=[
                     to_csr_matrix,
                     lambda x: maybe_repeat(default_accessor(x), num_events),
-                    lambda x: strict_positive_int_accessor(x),
+                    strict_positive_int_accessor,
                     lambda x: list(maybe_repeat(default_accessor(x), num_events).flat),
                     lambda x: maybe_repeat(date_to_ordinal_accessor(x), num_events),
                 ],
