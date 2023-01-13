@@ -70,11 +70,12 @@ BM_FILENAMES = ['BlackMarble_%i_A1_geo_gray.tif',
 def load_nasa_nl_shape(geometry, year, data_dir=SYSTEM_DIR, dtype='float32'):
     """Read nightlight data from NASA BlackMarble tiles
     cropped to given shape(s) and combine arrays from each tile.
+
     1) check and download required blackmarble files
     2) read and crop data from each file required in a bounding box around
-        the given `geometry`.
+       the given `geometry`.
     3) combine data from all input files into one array. this array then
-        contains all data in the geographic bounding box around `geometry`.
+       contains all data in the geographic bounding box around `geometry`.
     4) return array with nightlight data
 
     Parameters
@@ -330,8 +331,7 @@ def download_nl_files(req_files=np.ones(len(BM_FILENAMES),),
     return dwnl_path
 
 def load_nasa_nl_shape_single_tile(geometry, path, layer=0):
-    """Read nightlight data from single NASA BlackMarble tile
-    and crop to given shape.
+    """Read nightlight data from single NASA BlackMarble tile and crop to given shape.
 
     Parameters
     ----------
