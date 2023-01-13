@@ -28,15 +28,10 @@ import copy
 
 from climada.hazard.base import Hazard
 from climada.hazard import Centroids
-<<<<<<< HEAD
 from climada.entity.entity_def import Entity
 from climada.entity.exposures.base import Exposures
 from climada.entity import DiscRates,ImpfTropCyclone
 from climada.entity.measures import Measure, MeasureSet
-=======
-from climada.entity.exposures.base import Exposures
-from climada.entity import DiscRates
->>>>>>> develop
 from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
 from climada.engine import ImpactCalc, ImpactFreqCurve
 from climada.engine import CostBenefit
@@ -182,8 +177,8 @@ class TestPlotter(unittest.TestCase):
 
     def test_cost_benefit(self):
         """ Test plot functions of cost benefit"""
-        
-        """Hazard."""
+
+        # Load hazard from the data API
         client = Client()
         future_year = 2080
         haz_present = client.get_hazard('tropical_cyclone', 
@@ -196,17 +191,17 @@ class TestPlotter(unittest.TestCase):
                                             'ref_year': str(future_year),
                                             'nb_synth_tracks':'10'})
         
-        """Exposure."""
+        # Create an exposure
         exp_present = client.get_litpop(country='Haiti')
         exp_future = copy.deepcopy(exp_present)
         exp_future.ref_year = future_year
         n_years = exp_future.ref_year - exp_present.ref_year + 1
         growth = 1.02 ** n_years
         exp_future.gdf['value'] = exp_future.gdf['value'] * growth
-        """Impact function."""
+        # Create an impact function 
         impf_tc = ImpfTropCyclone.from_emanuel_usa()
         impf_set = ImpactFuncSet([impf_tc])
-        """ Adaptation measures."""
+        # Create adaptation measures
         meas_1 = Measure(
             haz_type='TC',
             name='Measure A',
@@ -225,22 +220,22 @@ class TestPlotter(unittest.TestCase):
         )
 
         meas_set = MeasureSet(measure_list=[meas_1, meas_2])
-        """Discount rates."""
+        # Create discount rates 
         year_range = np.arange(exp_present.ref_year, exp_future.ref_year + 1)
         annual_discount_zero = np.zeros(n_years)
         discount_zero = DiscRates(year_range, annual_discount_zero)
-        """ Wrap the entity together."""
+        # Wrap the entity together
         entity_present = Entity(exposures=exp_present, disc_rates=discount_zero,
                                 impact_func_set=impf_set, measure_set=meas_set)
         entity_future = Entity(exposures=exp_future, disc_rates=discount_zero,
                                 impact_func_set=impf_set, measure_set=meas_set)
-        """ Cost benefit"""
+        # Create a cost benefit object
         costben = CostBenefit()
         costben.calc(haz_present, entity_present, haz_future=haz_future, 
                     ent_future=entity_future, future_year=future_year,
                     imp_time_depen=1, save_imp=True)
         
-        """ Plotting. """
+        # Call the plotting functions
         costben.plot_cost_benefit()
         costben.plot_event_view((25, 50, 100, 250))
         costben.plot_waterfall_accumulated(haz_present, entity_present, entity_future)
