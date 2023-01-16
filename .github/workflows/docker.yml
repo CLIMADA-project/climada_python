@@ -44,7 +44,7 @@ jobs:
       -
         name: Update and push
         uses: docker/build-push-action@v3
-        if: !(inputs.new_image)
+        if: ${{ ! inputs.new_image }}
         with:
           push: true
           tags: ${{ env.DOCKER_IMAGE }}
