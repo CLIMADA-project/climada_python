@@ -48,5 +48,5 @@ jobs:
         with:
           push: true
           tags: ${{ env.DOCKER_IMAGE }}
-          build_args:
+          build-args:
             - base_image=${{ env.DOCKER_IMAGE }}
