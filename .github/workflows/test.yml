@@ -7,9 +7,6 @@ on:
         required: true
         type: string
 
-defaults:
-
-
 jobs:
   unit-test:
     if: contains( inputs.test_types, 'unit-test' ) || inputs.test_types == 'all'
