@@ -8,14 +8,15 @@ on:
         type: string
 
 defaults:
-  runs-on: ubuntu-latest
-  container:
-      image: peanutfunn/climada_env:${{ github.ref_name }}
-      options: --user root
+
 
 jobs:
   unit-test:
     if: contains( inputs.test_types, 'unit-test' ) || inputs.test_types == 'all'
+    runs-on: ubuntu-latest
+    container:
+      image: peanutfunn/climada_env:${{ github.ref_name }}
+      options: --user root
     steps:
       -
         name: Checkout Repo
@@ -27,6 +28,10 @@ jobs:
 
   data-test:
     if: contains( inputs.test_types, 'data-test' ) || inputs.test_types == 'all'
+    runs-on: ubuntu-latest
+    container:
+      image: peanutfunn/climada_env:${{ github.ref_name }}
+      options: --user root
     steps:
       -
         name: Checkout Repo
@@ -38,6 +43,10 @@ jobs:
 
   integ-test:
     if: contains( inputs.test_types, 'integ-test' ) || inputs.test_types == 'all'
+    runs-on: ubuntu-latest
+    container:
+      image: peanutfunn/climada_env:${{ github.ref_name }}
+      options: --user root
     steps:
       -
         name: Checkout Repo
@@ -49,6 +58,10 @@ jobs:
 
   notebook-test:
     if: contains( inputs.test_types, 'notebook-test' ) || inputs.test_types == 'all'
+    runs-on: ubuntu-latest
+    container:
+      image: peanutfunn/climada_env:${{ github.ref_name }}
+      options: --user root
     steps:
       -
         name: Checkout Repo
@@ -60,6 +73,10 @@ jobs:
 
   install-test:
     if: contains( inputs.test_types, 'install-test' ) || inputs.test_types == 'all'
+    runs-on: ubuntu-latest
+    container:
+      image: peanutfunn/climada_env:${{ github.ref_name }}
+      options: --user root
     steps:
       -
         name: Checkout Repo
