@@ -20,8 +20,10 @@ Test xarray reading capabilities of Hazard base class.
 """
 
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 import datetime as dt
+from pathlib import Path
+
 import numpy as np
 from scipy.sparse import csr_matrix
 
@@ -30,8 +32,6 @@ from pyproj import CRS
 
 from climada.hazard.base import Hazard
 from climada.util.constants import DEF_CRS
-
-from pathlib import Path
 
 
 class TestReadDefaultNetCDF(unittest.TestCase):

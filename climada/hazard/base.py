@@ -459,7 +459,9 @@ class Hazard():
         coordinate_vars : dict(str, str), optional
             Mapping from default coordinate names to coordinate names used in the data
             to read. The default is
-            ``dict(event="time", longitude="longitude", latitude="latitude")``
+            ``dict(event="time", longitude="longitude", latitude="latitude")``, as most
+            of the commonly used hazard data happens to have a "time" attribute but no
+            "event" attribute.
         data_vars : dict(str, str), optional
             Mapping from default variable names to variable names used in the data
             to read. The default names are ``fraction``, ``hazard_type``, ``frequency``,
