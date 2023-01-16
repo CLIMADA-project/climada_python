@@ -3,13 +3,13 @@ name: test
 on:
   workflow_call:
     inputs:
-      test-type:
+      test_types:
         required: true
         type: string
 
 jobs:
   unit-test:
-    if: inputs.test-type == 'unit-test'
+    if: contains( inputs.test_types, 'unit-test' )
     runs-on: ubuntu-latest
     container:
       image: peanutfunn/climada_env:${{ github.ref_name }}
@@ -24,7 +24,7 @@ jobs:
           micromamba run python -m coverage run tests_runner.py unit
 
   data-test:
-    if: inputs.test-type == 'data-test'
+    if: contains( inputs.test_types, 'data-test' )
     runs-on: ubuntu-latest
     container:
       image: peanutfunn/climada_env:${{ github.ref_name }}

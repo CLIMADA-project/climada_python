@@ -8,14 +8,11 @@ jobs:
   docker-build:
     uses: ./.github/workflows/docker.yml
     secrets: inherit
+    with:
+      new_image: ${{ github.event.created }}
 
-  unit-tests:
+  tests:
     needs: docker-build
     uses: ./.github/workflows/test.yml
     with:
-      test-type: unit-test
-
-  data-api-tests:
-    uses: ./.github/workflows/test.yml
-    with:
-      test-type: data-test
+      test_types: unit-test,data-test

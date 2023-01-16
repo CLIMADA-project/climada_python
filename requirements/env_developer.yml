@@ -6,6 +6,7 @@ dependencies:
   - ipython
   - ipykernel
   - mccabe>=0.6
+  - make
   - pandoc
   - sphinx>=2.0
   - pip

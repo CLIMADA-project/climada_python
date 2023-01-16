@@ -2,6 +2,10 @@ name: docker
 
 on:
   workflow_call:
+    inputs:
+      new_image:
+        required: true
+        type: boolean
     secrets:
       DOCKER_USERNAME:
         required: true
@@ -33,6 +37,16 @@ jobs:
       -
         name: Build and push
         uses: docker/build-push-action@v3
+        if: inputs.new_image
         with:
           push: true
-          tags: peanutfunn/climada_env:${{ github.ref_name }}
+          tags: ${{ env.DOCKER_IMAGE }}
+      -
+        name: Update and push
+        uses: docker/build-push-action@v3
+        if: !(inputs.new_image)
+        with:
+          push: true
+          tags: ${{ env.DOCKER_IMAGE }}
+          build_args:
+            - base_image=${{ env.DOCKER_IMAGE }}
