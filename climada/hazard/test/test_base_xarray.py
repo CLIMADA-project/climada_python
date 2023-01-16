@@ -19,8 +19,8 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Test xarray reading capabilities of Hazard base class.
 """
 
-import os
 import unittest
+from unittest.mock import patch, MagicMock
 import datetime as dt
 import numpy as np
 from scipy.sparse import csr_matrix
@@ -86,8 +86,10 @@ class TestReadDefaultNetCDF(unittest.TestCase):
         )
 
         # Fraction default
+        self.assertEqual(hazard.fraction.nnz, 0)
+        np.testing.assert_array_equal(hazard.fraction.shape, hazard.intensity.shape)
         np.testing.assert_array_equal(
-            hazard.fraction.toarray(), [[0, 1, 1, 1, 1, 1], [1, 1, 1, 1, 1, 1]]
+            hazard.fraction.toarray(), np.zeros_like(hazard.intensity.toarray())
         )
 
     def _assert_default_types(self, hazard):
@@ -207,16 +209,43 @@ class TestReadDefaultNetCDF(unittest.TestCase):
         )
 
         # Integer data assertions
-        for key in ("event_id", "date"):
-            dset = dataset.copy(deep=True)
-            dset[key] = np.array(range(size), dtype=np.float64) + 3.5
-            with self.assertRaises(TypeError) as cm:
-                Hazard.from_raster_xarray(dset, "", "")
-            self.assertIn(f"'{key}' data array must be integers", str(cm.exception))
-            dset[key] = np.linspace(0, 10, size, dtype=np.int64)
-            with self.assertRaises(ValueError) as cm:
-                Hazard.from_raster_xarray(dset, "", "")
-            self.assertIn(f"'{key}' data must be larger than zero", str(cm.exception))
+        dset = dataset.copy(deep=True)
+        dset["event_id"] = np.array(range(size), dtype=np.float64) + 3.5
+        with self.assertRaises(TypeError) as cm:
+            Hazard.from_raster_xarray(dset, "", "")
+        self.assertIn("'event_id' data array must be integers", str(cm.exception))
+        dset["event_id"] = np.linspace(0, 10, size, dtype=np.int64)
+        with self.assertRaises(ValueError) as cm:
+            Hazard.from_raster_xarray(dset, "", "")
+        self.assertIn("'event_id' data must be larger than zero", str(cm.exception))
+
+        # Date as datetime
+        date_str = [f"2000-01-{i:02}" for i in range(1, size + 1)]
+        dataset["date"] = date_str
+        hazard = Hazard.from_raster_xarray(dataset, "", "")
+        np.testing.assert_array_equal(
+            hazard.date,
+            [dt.datetime(2000, 1, i).toordinal() for i in range(1, size + 1)],
+        )
+
+    def test_data_vars_repeat(self):
+        """Test if suitable data vars are repeated as expected"""
+        dataset = xr.open_dataset(self.netcdf_path)
+        size = dataset.sizes["time"]
+
+        # Set optionals in the dataset
+        frequency = [1.5]
+        event_name = ["bla"]
+        date = 1
+        dataset["event_name"] = event_name
+        dataset["date"] = date
+        dataset["frequency"] = frequency
+
+        # Check if single-valued arrays are repeated
+        hazard = Hazard.from_raster_xarray(dataset, "", "")
+        np.testing.assert_array_equal(hazard.date, [date] * size)
+        np.testing.assert_array_equal(hazard.event_name, event_name * size)
+        np.testing.assert_array_equal(hazard.frequency, frequency * size)
 
     def test_nan(self):
         """Check handling of NaNs in original data"""
@@ -282,7 +311,8 @@ class TestReadDefaultNetCDF(unittest.TestCase):
         np.testing.assert_array_equal(hazard.centroids.lon, [0, 1, 2, 0, 1, 2])
         self.assertEqual(hazard.centroids.geometry.crs, DEF_CRS)
         np.testing.assert_array_equal(hazard.intensity.toarray(), [[0, 1, 2, 3, 4, 5]])
-        np.testing.assert_array_equal(hazard.fraction.toarray(), [[0, 1, 1, 1, 1, 1]])
+        self.assertEqual(hazard.fraction.nnz, 0)
+        np.testing.assert_array_equal(hazard.fraction.toarray(), [[0, 0, 0, 0, 0, 0]])
 
         # Now drop variable altogether, should raise an error
         ds = ds.drop_vars("time")
@@ -389,6 +419,46 @@ class TestReadDimsCoordsNetCDF(unittest.TestCase):
         )
         np.testing.assert_array_equal(hazard.centroids.lon, [10, 11, 12, 10, 11, 12])
         self._assert_intensity_fraction(hazard)
+
+    def test_load_dataset_rechunk(self):
+        """Load the data from an opened dataset and force rechunking"""
+        dataset = xr.open_dataset(self.netcdf_path)
+        hazard = Hazard.from_raster_xarray(
+            dataset,
+            "",
+            "",
+            coordinate_vars=dict(latitude="latitude", longitude="longitude"),
+            rechunk=True,
+        )
+        np.testing.assert_array_equal(
+            hazard.centroids.lat, [100, 100, 100, 200, 200, 200]
+        )
+        np.testing.assert_array_equal(hazard.centroids.lon, [10, 11, 12, 10, 11, 12])
+        self._assert_intensity_fraction(hazard)
+
+        # Assert that .chunk is called the right way
+        with patch("xarray.Dataset.chunk") as mock:
+            mock.return_value = dataset
+            dataset = xr.open_dataset(self.netcdf_path)
+            Hazard.from_raster_xarray(
+                dataset,
+                "",
+                "",
+                coordinate_vars=dict(latitude="latitude", longitude="longitude"),
+                rechunk=True,
+            )
+            # First latitude dim, then longitude dim, then event dim
+            mock.assert_called_once_with(chunks=dict(y=-1, x=-1, time="auto"))
+
+            # Should not be called by default
+            mock.reset_mock()
+            Hazard.from_raster_xarray(
+                dataset,
+                "",
+                "",
+                coordinate_vars=dict(latitude="latitude", longitude="longitude"),
+            )
+            mock.assert_not_called()
 
     def test_2D_time(self):
         """Test if stacking multiple time dimensions works out"""

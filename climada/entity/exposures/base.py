@@ -83,7 +83,7 @@ class Exposures():
 
     Attributes
     ----------
-    tag : Tag
+    tag : climada.entity.tag.Tag
         metada - information about the source data
     ref_year : int
         metada - reference year
@@ -97,10 +97,10 @@ class Exposures():
         CRS information inherent to GeoDataFrame.
     value : pd.Series
         a value for each exposure
-    impf_ : pd.Series, optional
+    impf_SUFFIX : pd.Series, optional
         e.g. impf_TC. impact functions id for hazard TC.
         There might be different hazards defined: impf_TC, impf_FL, ...
-        If not provided, set to default 'impf_' with ids 1 in check().
+        If not provided, set to default ``impf_`` with ids 1 in check().
     geometry : pd.Series, optional
         geometry of type Point of each instance.
         Computed in method set_geometry_points().
@@ -117,7 +117,7 @@ class Exposures():
         category id for each exposure
     region_id : pd.Series, optional
         region id for each exposure
-    centr_ : pd.Series, optional
+    centr_SUFFIX : pd.Series, optional
         e.g. centr_TC. centroids index for hazard
         TC. There might be different hazards defined: centr_TC, centr_FL, ...
         Computed in method assign_centroids().
@@ -229,8 +229,8 @@ class Exposures():
         """Check Exposures consistency.
 
         Reports missing columns in log messages.
-        If no impf_* column is present in the dataframe, a default column 'impf_' is added with
-        default impact function id 1.
+        If no ``impf_*`` column is present in the dataframe, a default column ``impf_`` is added
+        with default impact function id 1.
         """
         # mandatory columns
         for var in self.vars_oblig:
@@ -338,10 +338,11 @@ class Exposures():
         -------
         str
             a column name, the first of the following that is present in the exposures' dataframe:
-            - impf_[haz_type]
-            - if_[haz_type]
-            - impf_
-            - if_
+
+            - ``impf_[haz_type]``
+            - ``if_[haz_type]``
+            - ``impf_``
+            - ``if_``
 
         Raises
         ------
@@ -370,8 +371,9 @@ class Exposures():
                          threshold=u_coord.NEAREST_NEIGHBOR_THRESHOLD,
                          overwrite=True):
         """Assign for each exposure coordinate closest hazard coordinate.
-        -1 used for disatances > threshold in point distances. If raster hazard,
-        -1 used for centroids outside raster.
+
+        The value -1 is used for distances larger than ``threshold`` in point distances.
+        In case of raster hazards the value -1 is used for centroids outside of the raster.
 
         Parameters
         ----------
@@ -392,23 +394,24 @@ class Exposures():
 
         See Also
         --------
-        climada.util.coordinates.assign_coordinates: method to associate centroids to
-            exposure points
+        climada.util.coordinates.assign_coordinates
+            method to associate centroids to exposure points
 
         Notes
         -----
         The default order of use is:
-            1. if centroid raster is defined, assign exposures points to
-            the closest raster point.
-            2. if no raster, assign centroids to the nearest neighbor using
-            euclidian metric
+
+        1. if centroid raster is defined, assign exposures points to
+           the closest raster point.
+        2. if no raster, assign centroids to the nearest neighbor using
+           euclidian metric
+
         Both cases can introduce innacuracies for coordinates in lat/lon
         coordinates as distances in degrees differ from distances in meters
         on the Earth surface, in particular for higher latitude and distances
         larger than 100km. If more accuracy is needed, please use 'haversine'
         distance metric. This however is slower for (quasi-)gridded data,
         and works only for non-gridded data.
-
         """
         haz_type = hazard.tag.haz_type
         centr_haz = INDICATOR_CENTR + haz_type

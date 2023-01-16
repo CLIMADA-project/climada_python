@@ -222,11 +222,12 @@ class Measure():
 
         Returns
         -------
-        new_exp, new_ifs, new_haz : climada.entity.Exposure,
-                                    climada.entity.ImpactFuncSet,
-                                    climada.hazard.Hazard
-            Exposure, impact function set with implemented measure
-            with all defined parameters.
+        new_exp : climada.entity.Exposure
+            Exposure with implemented measure with all defined parameters
+        new_ifs : climada.entity.ImpactFuncSet
+            Impact function set with implemented measure with all defined parameters
+        new_haz : climada.hazard.Hazard
+            Hazard with implemented measure with all defined parameters
         """
         # change hazard
         new_haz = self._change_all_hazard(hazard)
