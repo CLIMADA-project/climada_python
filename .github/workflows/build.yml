@@ -15,4 +15,4 @@ jobs:
     needs: docker-build
     uses: ./.github/workflows/test.yml
     with:
-      test_types: unit-test,data-test
+      test_types: all

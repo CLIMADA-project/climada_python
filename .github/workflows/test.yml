@@ -7,13 +7,15 @@ on:
         required: true
         type: string
 
+defaults:
+  runs-on: ubuntu-latest
+  container:
+      image: peanutfunn/climada_env:${{ github.ref_name }}
+      options: --user root
+
 jobs:
   unit-test:
-    if: contains( inputs.test_types, 'unit-test' )
-    runs-on: ubuntu-latest
-    container:
-      image: peanutfunn/climada_env:${{ github.ref_name }}
-      options: --user root
+    if: contains( inputs.test_types, 'unit-test' ) || inputs.test_types == 'all'
     steps:
       -
         name: Checkout Repo
@@ -21,19 +23,48 @@ jobs:
       -
         name: Run Unit Tests
         run: |
-          micromamba run python -m coverage run tests_runner.py unit
+          micromamba run make unit_test
 
   data-test:
-    if: contains( inputs.test_types, 'data-test' )
-    runs-on: ubuntu-latest
-    container:
-      image: peanutfunn/climada_env:${{ github.ref_name }}
-      options: --user root
+    if: contains( inputs.test_types, 'data-test' ) || inputs.test_types == 'all'
     steps:
       -
         name: Checkout Repo
         uses: actions/checkout@v3
       -
-        name: Run Unit Tests
+        name: Run Data API Tests
         run: |
-          micromamba run python test_data_api.py
+          micromamba run make data_test
+
+  integ-test:
+    if: contains( inputs.test_types, 'integ-test' ) || inputs.test_types == 'all'
+    steps:
+      -
+        name: Checkout Repo
+        uses: actions/checkout@v3
+      -
+        name: Run Data API Tests
+        run: |
+          micromamba run make integ_test
+
+  notebook-test:
+    if: contains( inputs.test_types, 'notebook-test' ) || inputs.test_types == 'all'
+    steps:
+      -
+        name: Checkout Repo
+        uses: actions/checkout@v3
+      -
+        name: Run Data API Tests
+        run: |
+          micromamba run make notebook_test
+
+  install-test:
+    if: contains( inputs.test_types, 'install-test' ) || inputs.test_types == 'all'
+    steps:
+      -
+        name: Checkout Repo
+        uses: actions/checkout@v3
+      -
+        name: Run Data API Tests
+        run: |
+          micromamba run make install_test
