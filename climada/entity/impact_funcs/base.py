@@ -206,13 +206,12 @@ class ImpactFunc():
 
     @classmethod
     def from_sigmoid_impf(cls, intensity, L, k, x0, if_id=1):
-        """ Sigmoid type impact function hinging on three parameter.
+        """Sigmoid type impact function hinging on three parameter.
 
         This type of impact function is very flexible for any sort of study,
         hazard and resolution. The sigmoid is defined as:
 
-        .. math::
-            f(x) = \frac{L}{1+exp^{-k(x-x0)}}
+        .. math:: f(x) = \\frac{L}{1+exp^{-k(x-x0)}}
 
         For more information: https://en.wikipedia.org/wiki/Logistic_function
 
@@ -221,22 +220,21 @@ class ImpactFunc():
 
         Parameters
         ----------
-            intensity: tuple(float, float, float)
-                tuple of 3 intensity numbers along np.arange(min, max, step)
-            L : float
-                "top" of sigmoid
-            k : float
-                "slope" of sigmoid
-            x0 : float
-                intensity value where f(x)==L/2
-            if_id : int, optional, default=1
-                impact function id
+        intensity: tuple(float, float, float)
+            tuple of 3 intensity numbers along np.arange(min, max, step)
+        L : float
+            "top" of sigmoid
+        k : float
+            "slope" of sigmoid
+        x0 : float
+            intensity value where f(x)==L/2
+        if_id : int, optional, default=1
+            impact function id
 
         Return
         ------
         impf : climada.entity.impact_funcs.ImpactFunc
             Step impact function
-
         """
         inten_min, inten_max, inten_step = intensity
         intensity = np.arange(inten_min, inten_max, inten_step)
