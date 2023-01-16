@@ -30,7 +30,7 @@ notebook_test : ## Test notebooks in doc/tutorial
 
 .PHONY : integ_test
 integ_test : ## Integration tests execution with xml reports
-	python -m coverage run --parallel-mode --concurrency=multiprocessing tests_runner.py integ
+	python -m coverage run tests_runner.py integ
 	python -m coverage combine
 	python -m coverage xml -o coverage.xml
 	python -m coverage html -d coverage
