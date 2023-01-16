@@ -370,7 +370,7 @@ class Exposures():
     def assign_centroids(self, hazard, distance='euclidean',
                          threshold=u_coord.NEAREST_NEIGHBOR_THRESHOLD,
                          overwrite=True):
-                         
+          
         """Wrapper for u_coord.assign_haz_centroids():
         Assign for each exposure coordinate closest hazard coordinate.
 
@@ -398,7 +398,7 @@ class Exposures():
         --------
         climada.util.coordinates.assign_grid_points: method to associate centroids to
             exposure points when centroids is a raster
-        climada.util.coordinates.assign_coordinates: method to associate centroids to
+        climada.util.coordinates.assign_coordinates: 
             method to associate centroids to exposure points
         Notes
         -----
