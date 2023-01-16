@@ -18,21 +18,22 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 test plots
 """
+import copy
 import unittest
+import urllib
+
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import contextily as ctx
-import urllib
 
-from climada.entity.entity_def import Entity
-from climada.hazard.base import Hazard
-from climada.hazard import Centroids
-from climada.entity.exposures.base import Exposures
-from climada.entity import DiscRates
-from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
-from climada.engine import ImpactCalc, ImpactFreqCurve
+from climada.engine import ImpactCalc, ImpactFreqCurve, CostBenefit
+from climada.entity import (Entity, ImpactFuncSet, Exposures, DiscRates, ImpfTropCyclone, Measure,
+                            MeasureSet)
+from climada.hazard import Hazard, Centroids
 from climada.util.constants import HAZ_DEMO_MAT, ENT_DEMO_TODAY
+from climada.util.api_client import Client
+
 
 class TestPlotter(unittest.TestCase):
     """Test plot functions."""
@@ -94,7 +95,7 @@ class TestPlotter(unittest.TestCase):
 
     def test_hazard_rp_intensity(self):
         """"Plot exceedance intensity maps for different return periods"""
-        hazard = Hazard.from_mat(HAZ_DEMO_MAT)  
+        hazard = Hazard.from_mat(HAZ_DEMO_MAT)
         (axis1, axis2), _ = hazard.plot_rp_intensity([25, 50])
         self.assertEqual('Return period: 25 years', axis1.get_title())
         self.assertEqual('Return period: 50 years', axis2.get_title())
@@ -103,7 +104,7 @@ class TestPlotter(unittest.TestCase):
         """Plot centroids scatter points over earth."""
         centroids = Centroids.from_base_grid()
         centroids.plot()
-        
+
     def test_exposures_value_pass(self):
         """Plot exposures values."""
         myexp = pd.read_excel(ENT_DEMO_TODAY)
@@ -169,7 +170,79 @@ class TestPlotter(unittest.TestCase):
         rates[95:120] = 0.035
         disc = DiscRates(years=years, rates=rates)
         disc.plot()
-    
+
+    def test_cost_benefit(self):
+        """ Test plot functions of cost benefit"""
+
+        # Load hazard from the data API
+        client = Client()
+
+        future_year = 2080
+        haz_present = client.get_hazard('tropical_cyclone',
+                                properties={'country_name': 'Haiti',
+                                            'climate_scenario': 'historical',
+                                            'nb_synth_tracks':'10'})
+        haz_future = client.get_hazard('tropical_cyclone',
+                                properties={'country_name': 'Haiti',
+                                            'climate_scenario': 'rcp60',
+                                            'ref_year': str(future_year),
+                                            'nb_synth_tracks':'10'})
+
+        # Create an exposure
+        exp_present = client.get_litpop(country='Haiti')
+        exp_future = copy.deepcopy(exp_present)
+        exp_future.ref_year = future_year
+        n_years = exp_future.ref_year - exp_present.ref_year + 1
+        growth = 1.02 ** n_years
+        exp_future.gdf['value'] = exp_future.gdf['value'] * growth
+        # Create an impact function
+        impf_tc = ImpfTropCyclone.from_emanuel_usa()
+        impf_set = ImpactFuncSet([impf_tc])
+        # Create adaptation measures
+        meas_1 = Measure(
+            haz_type='TC',
+            name='Measure A',
+            color_rgb=np.array([0.8, 0.1, 0.1]),
+            cost=5000000000,
+            hazard_inten_imp=(1, -5),
+            risk_transf_cover=0,
+        )
+
+        meas_2 = Measure(
+            haz_type='TC',
+            name='Measure B',
+            color_rgb=np.array([0.1, 0.1, 0.8]),
+            cost=220000000,
+            paa_impact=(1, -0.10),
+        )
+
+        meas_set = MeasureSet(measure_list=[meas_1, meas_2])
+        # Create discount rates
+        year_range = np.arange(exp_present.ref_year, exp_future.ref_year + 1)
+        annual_discount_zero = np.zeros(n_years)
+        discount_zero = DiscRates(year_range, annual_discount_zero)
+        # Wrap the entity together
+        entity_present = Entity(exposures=exp_present, disc_rates=discount_zero,
+                                impact_func_set=impf_set, measure_set=meas_set)
+        entity_future = Entity(exposures=exp_future, disc_rates=discount_zero,
+                                impact_func_set=impf_set, measure_set=meas_set)
+        # Create a cost benefit object
+        costben = CostBenefit()
+        costben.calc(haz_present, entity_present, haz_future=haz_future,
+                    ent_future=entity_future, future_year=future_year,
+                    imp_time_depen=1, save_imp=True)
+
+        # Call the plotting functions
+        costben.plot_cost_benefit()
+        costben.plot_event_view((25, 50, 100, 250))
+        costben.plot_waterfall_accumulated(haz_present, entity_present, entity_future)
+        ax = costben.plot_waterfall(haz_present, entity_present,
+                                    haz_future, entity_future)
+        costben.plot_arrow_averted(axis = ax, in_meas_names=['Measure A', 'Measure B'],
+                                    accumulate=True)
+        CostBenefit._plot_list_cost_ben(cb_list = [costben])
+
+
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestPlotter)
