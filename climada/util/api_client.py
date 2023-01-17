@@ -266,14 +266,14 @@ class Client():
         else:
             raise ValueError(f'URL not as expected, cannot figure out host and port from "{url}"')
         return host, port
-    
+
     @staticmethod
     def _is_online(url):
         try:
             host, port = Client._host_and_port_from_url(url)
-        except ValueError as ve:
+        except ValueError as vle:
             raise ValueError("You may want to revise the data_api.url configuration"
-                             " in the climada.conf file") from ve
+                             " in the climada.conf file") from vle
         socket.setdefaulttimeout(1)
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as skt:
             try:
