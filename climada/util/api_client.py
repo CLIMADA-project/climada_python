@@ -47,16 +47,6 @@ HAZ_TYPES = [ht.str() for ht in CONFIG.data_api.supported_hazard_types.list()]
 EXP_TYPES = [et.str() for et in CONFIG.data_api.supported_exposures_types.list()]
 
 
-def host_and_port_from_url(url):
-    urlpat = r"http(s?)://([^:/]+)(:\d+)?(/|$)"
-    match = re.match(urlpat, url)
-    if match:
-        host = match.group(2)
-        port = int(match.group(3)[1:]) if match.group(3) else 443 if match.group(1) else 80
-    else:
-        raise ValueError(f'URL not as expected, cannot figure out host and port from "{url}"')
-    return host, port
-
 class Download(Model):
     """Database entry keeping track of downloaded files from the CLIMADA data API"""
     url = CharField()
@@ -267,9 +257,20 @@ class Client():
         """To be raised if there is no internet connection and no cached result."""
 
     @staticmethod
+    def _host_and_port_from_url(url):
+        urlpat = r"http(s?)://([^:/]+)(:\d+)?(/|$)"
+        match = re.match(urlpat, url)
+        if match:
+            host = match.group(2)
+            port = int(match.group(3)[1:]) if match.group(3) else 443 if match.group(1) else 80
+        else:
+            raise ValueError(f'URL not as expected, cannot figure out host and port from "{url}"')
+        return host, port
+    
+    @staticmethod
     def _is_online(url):
         try:
-            host, port = host_and_port_from_url(url)
+            host, port = Client._host_and_port_from_url(url)
         except ValueError as ve:
             raise ValueError("You may want to revise the data_api.url configuration"
                              " in the climada.conf file") from ve
