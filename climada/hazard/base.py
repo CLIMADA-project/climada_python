@@ -446,7 +446,7 @@ class Hazard():
         Parameters
         ----------
         data : xarray.Dataset or str
-            The data to read from. May be a opened dataset or a path to a raster data
+            The data to read from. May be an opened dataset or a path to a raster data
             file, in which case the file is opened first. Works with any file format
             supported by ``xarray``.
         hazard_type : str
