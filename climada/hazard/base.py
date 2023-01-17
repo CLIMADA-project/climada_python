@@ -838,7 +838,7 @@ class Hazard():
             Does the following based on the ``user_key``:
             * If the key is an empty string, return the default value
             * If the key is a non-empty string, load the data for that key and return it.
-            * If the key is ``None``, look for the``default_key`` in the data. If it
+            * If the key is ``None``, look for the ``default_key`` in the data. If it
               exists, return that data. If not, return the default value.
 
             Parameters
@@ -2426,7 +2426,8 @@ class Hazard():
             in an exposures gdf. E.g. "centr_TC"
 
         """
-        from climada.entity.exposures import INDICATOR_CENTR
+        from climada.entity.exposures import INDICATOR_CENTR  # pylint: disable=import-outside-toplevel
+        # import outside toplevel is necessary for it not being circular
         return INDICATOR_CENTR + self.tag.haz_type
 
     @property
