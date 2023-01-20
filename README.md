@@ -60,7 +60,7 @@ As key link, please use https://wcr.ethz.ch/research/climada.html, as it will la
 
 ## Contributing
 
-See the [Contribution Guide](/CONTRIBUTING.md).
+See the [Contribution Guide](CONTRIBUTING.md).
 
 ## Versioning
 
