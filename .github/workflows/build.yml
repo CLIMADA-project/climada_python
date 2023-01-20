@@ -12,5 +12,7 @@ jobs:
   tests:
     needs: docker-build
     uses: ./.github/workflows/test.yml
+    permissions:  # For publishing results
+      checks: write
     with:
       test_types: unit-test,data-test,notebook-test,install-test
