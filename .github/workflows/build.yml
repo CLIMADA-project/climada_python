@@ -1,8 +1,6 @@
 name: build
 
-on:
-  push:
-    branches:
+on: [push, pull_request]
 
 jobs:
   docker-build:
