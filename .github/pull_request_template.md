@@ -13,6 +13,7 @@ This PR fixes #
 - [ ] [Tests][testing] updated
 - [ ] [Tests][testing] passing
 - [ ] No new [linter issues][linter]
+- [ ] [Changelog](https://github.com/CLIMADA-project/climada_python/blob/main/CHANGELOG.md) updated
 
 ### PR Reviewer Checklist
 
