@@ -12,7 +12,7 @@ Code freeze date: YYYY-MM-DD
 
 ### Added
 
-- Changelog based on the CLIMADA release overview and https://keepachangelog.com template
+- Changelog based on the CLIMADA release overview and https://keepachangelog.com template [#626](https://github.com/CLIMADA-project/climada_python/pull/626)
 
 ### Changed
 
