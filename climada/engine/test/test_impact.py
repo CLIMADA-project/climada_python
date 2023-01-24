@@ -73,10 +73,12 @@ class TestImpact(unittest.TestCase):
         """test concatenation of impacts"""
 
         def test_haztype_unit_crs_attrs(self,imp1,imp2,imp3,imp3_3,imp3_2):
-            with self.assertRaises(ValueError):
+            with self.assertRaises(ValueError) as cm:
                 Impact.concat([imp1, imp2, imp3_3])
-            with self.assertRaises(ValueError):
+            self.assertIn("Not all impacts have a hazard type", str(cm.exception))
+            with self.assertRaises(ValueError) as cm:
                 Impact.concat([imp1, imp2, imp3_2])
+                self.assertIn("Impacts are based on hazards of different types", str(cm.exception))
             with self.assertRaises(ValueError):
                 imp3.unit = ''
                 Impact.concat([imp1, imp2, imp3])
