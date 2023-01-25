@@ -38,7 +38,7 @@ from pathos.pools import ProcessPool as Pool
 import rasterio
 from rasterio.features import rasterize
 from rasterio.warp import reproject, Resampling, calculate_default_transform
-#import sparse as sp
+import sparse as sp
 from scipy import sparse
 import xarray as xr
 
