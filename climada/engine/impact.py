@@ -1408,7 +1408,7 @@ class Impact():
         Parameters
         ----------
         imp_list : list of climada.engine.Impact objects
-            list of Impact object to concatenate
+            list of Impact objects to concatenate
         reset_event_ids: boolean, optional
             reset event ids of the concatenated impact object
 
@@ -1417,40 +1417,31 @@ class Impact():
         impact: climada.engine.Impact
             New impact object which is a concatenation of all impacts
         """
-
-        # check_attributes(imp_list)
-            #for attr in ['unit', 'crs']
-        #      attrs_list = [getattr(imp,attr) for imp in imp_list if getattr(imp, attr) != '']
-
+        
         def check_exposure(imp_list):
+            """ checks if impacts are based on the same exposure """
 
             #check crs
-            #crs = np.unique([imp.crs for imp in imp_list])
-            #if len(crs) > 1:
-            #    raise ValueError(f"The given impacts have different exposure crs: {crs}. ")
+            crs = set([imp.crs for imp in imp_list])
+            if len(set(crs)) > 1:
+                raise ValueError(f"The impacts have different exposure crs.")
 
             #check total value
             tot_vals = np.unique([imp.tot_value for imp in imp_list])
             if len(tot_vals) > 1:
-                raise ValueError("The impacts are not based on the same exposure."
-                                 "The total exposure values are different.")
+                raise ValueError("The impacts have different total exposure values.")
 
             # compare exposure coordinates
             for imp2 in imp_list[1::]:
                 if not np.array_equal(imp_list[0].coord_exp, imp2.coord_exp):
-                    raise ValueError("The impacts are not based on same exposure.")
+                    raise ValueError("The impacts have different exposure coordinates.")
 
             return True
 
         #check if exposure is consistent
         check_exposure(imp_list)
 
-        # concatenate attributes
-
-        #get hazard frequencies
-        frequency = np.concatenate([imp.frequency for imp in imp_list], axis=0)
-
-        #event IDs
+        # concatenate event IDs
         event_ids = [event_id for imp in imp_list for event_id in imp.event_id]
         if reset_event_ids:
             event_id = np.array(list(range(len(event_ids))))
@@ -1459,21 +1450,23 @@ class Impact():
                 raise ValueError("Duplicate event IDs found. Consider to set reset_event_id = True.")
             event_id = np.array(event_ids)
 
+        # concatenate impact matrices
+        imp_mats =[imp.imp_mat for imp in imp_list]
+        if None in imp_mats:
+            raise ValueError("Passed an impact object with an undefined impact matrix.")
+        dims = np.unique([imp.imp_mat.shape[1] for imp in imp_list])
+        if len(dims)>1:
+            raise ValueError("Impact matrices do not have the same number of exposure points.")
+        imp_mat = sparse.vstack(imp_mats)
+
         #event names
         event_name = [event_name for imp in imp_list for event_name in imp.event_name]
 
         #event dates
         date = np.array([date for imp in imp_list for date in imp.date])
 
-        #impact matrix
-        #TODO: Check what happens with empty impact matrix (write test)
-        imp_mats =[imp.imp_mat for imp in imp_list]
-        dims = np.unique([imp.imp_mat.shape[1] for imp in imp_list])
-        if None in imp_mats:
-            raise ValueError("Passed an impact object with an undefined impact matrix.")
-        if len(dims)>1:
-            raise ValueError("Impact matrices do not have the same number of exposure points.")
-        imp_mat = sparse.vstack(imp_mats)
+        # concatenate hazard frequencies
+        frequency = np.concatenate([imp.frequency for imp in imp_list], axis=0)
 
         # concatenate impact attributes
         at_event = np.concatenate([imp.at_event for imp in imp_list], axis=0)
@@ -1486,8 +1479,6 @@ class Impact():
         unit = imp_list[0].unit
         coord_exp = imp_list[0].coord_exp
         tot_value = imp_list[0].tot_value
-
-
 
         return cls(
             event_id = event_id,

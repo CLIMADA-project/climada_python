@@ -69,84 +69,18 @@ class TestImpact(unittest.TestCase):
             np.stack([exp.gdf.latitude.values, exp.gdf.longitude.values], axis=1)
             )
 
-class TestImpactConcat(unittest.TestCase)
-    def test_concat_pass(self):
-        """test concatenation of impacts
-        test different exposures, test empty or None impact matrix, duplicate event_ids"""
+class TestImpactConcat(unittest.TestCase):
+    """ test Impact.concat """
 
-        def test_haztype_unit_crs_attrs(self,imp1,imp2,imp3,imp3_3,imp3_2):
-            with self.assertRaises(ValueError) as cm:
-                Impact.concat([imp1, imp2, imp3_3])
-            self.assertIn("Not all impacts have a hazard type", str(cm.exception))
-            with self.assertRaises(ValueError) as cm:
-                Impact.concat([imp1, imp2, imp3_2])
-                self.assertIn("Impacts are based on hazards of different types", str(cm.exception))
-            with self.assertRaises(ValueError):
-                imp3.unit = ''
-                Impact.concat([imp1, imp2, imp3])
-            with self.assertRaises(ValueError):
-                imp3.unit = 'OTHER'
-                Impact.concat([imp1, imp2, imp3])
-            imp3.unit = imp2.unit
-            with self.assertRaises(ValueError):
-                imp3.crs = ''
-                Impact.concat([imp1, imp2, imp3])
-            with self.assertRaises(ValueError):
-                imp3.crs = 'OTHER'
-                Impact.concat([imp1, imp2, imp3])
-            imp3.crs = imp2.crs
-            with self.assertRaises(ValueError):
-                imp3.new_attr = 'test_attr'
-                Impact.concat([imp1, imp2, imp3])
-            delattr(imp3, "new_attr")
+    def test_check_exposure_pass(self):
+        """test exposure checks"""
 
-        def test_dates_events_exposure(self, imp1, imp2, imp3):
-            with self.assertRaises(ValueError):
-                dates0 = np.array(imp3.date, copy=True)
-                imp3.date[0] = imp2.date[0]
-                Impact.concat([imp1, imp2, imp3])
-            imp3.date = dates0
-            with self.assertRaises(ValueError):
-                imp3.tot_value = 1
-                Impact.concat([imp1, imp2, imp3])
-            imp3.tot_value = imp2.tot_value
-            with self.assertRaises(ValueError):
-                imp3.coord_exp[0][0] = 0
-                Impact.concat([imp1, imp2, imp3])
-            imp3.coord_exp = imp2.coord_exp
-            with self.assertRaises(ValueError):
-                imp3.event_id[0] = imp2.event_id[-1]
-                Impact.concat([imp1, imp2, imp3])
-            imp3.event_id[0] = imp3.event_id[0] + 1
-            with self.assertRaises(ValueError):
-                imp3.event_name[0] = imp2.event_name[-1]
-                Impact.concat([imp1, imp2, imp3])
-            imp3.event_name[0] = imp3.event_name[0] + 1
-
-        def test_results(self, imp1, imp2, imp3):
-            imp = Impact.concat([imp1, imp2, imp3])
-            self.assertEqual(len(imp1.event_id)+len(imp2.event_id)+len(imp3.event_id),len(imp.event_id))
-            self.assertEqual(len(imp1.event_name) + len(imp2.event_name) + len(imp3.event_name), len(imp.event_name))
-            self.assertEqual(len(imp1.date) + len(imp2.date) + len(imp3.event_name), len(imp.date))
-            self.assertEqual(len(imp1.frequency) + len(imp2.frequency) + len(imp3.frequency), len(imp.frequency))
-            self.assertEqual(imp1.eai_exp[0]+imp2.eai_exp[0]+imp3.eai_exp[0], imp.eai_exp[0])
-            self.assertEqual(len(imp1.at_event) + len(imp2.at_event) + len(imp3.at_event), len(imp.at_event))
-            self.assertEqual(np.nansum([imp1.aai_agg,imp2.aai_agg,imp3.aai_agg]), imp.aai_agg)
-            self.assertEqual(len(hazard.date), imp.imp_mat.shape[0])
-            self.assertEqual(len(ent.exposures.gdf.index), imp.imp_mat.shape[1])
-
-        ### get test data ###
-
+        #get test data
         ent = Entity.from_excel(ENT_DEMO_TODAY)
         ent.check()
-
         hazard = Hazard.from_hdf5(HAZ_TEST_TC)
-        hazard2 = Hazard.from_hdf5(HAZ_TEST_TC)
-        hazard2.tag.haz_type = 'OTHER'
-        hazard3 = Hazard.from_hdf5(HAZ_TEST_TC)
-        hazard3.tag.haz_type = ''
 
-        #create hazard subsets
+        # create hazard subsets
         date0 = hazard.date[0]
         date1 = hazard.date[int(np.floor(len(hazard.date) / 3))]
         date2 = hazard.date[int(np.floor(len(hazard.date) / 3)) * 2]
@@ -154,42 +88,115 @@ class TestImpactConcat(unittest.TestCase)
         haz_subset1 = hazard.select(date=(date0, date1 - 1))
         haz_subset2 = hazard.select(date=(date1, date2 - 1))
         haz_subset3 = hazard.select(date=(date2, date3))
-        haz2_subset3 = hazard2.select(date=(date2, date3))
-        haz3_subset3 = hazard3.select(date=(date2, date3))
 
-        #compute impacts separately
+        # compute impacts separately
         imp1 = ImpactCalc(ent.exposures, ent.impact_funcs, haz_subset1).impact()
         imp2 = ImpactCalc(ent.exposures, ent.impact_funcs, haz_subset2).impact()
         imp3 = ImpactCalc(ent.exposures, ent.impact_funcs, haz_subset3).impact()
 
-        #and another impact with other hazard type
-        ent2 = Entity.from_excel(ENT_DEMO_TODAY)
-        ent2.check()
-        ent2.impact_funcs._data['OTHER'] = ent2.impact_funcs._data['TC']
-        ent2.impact_funcs._data['OTHER'][1].haz_type = 'OTHER'
-        ent2.impact_funcs._data['OTHER'][3].haz_type = 'OTHER'
-        gdf_new = ent2.exposures.gdf.rename(columns={'impf_TC': 'impf_OTHER'})
-        ent2.exposures.gdf = gdf_new
-        imp3_2 = ImpactCalc(ent2.exposures, ent2.impact_funcs, haz2_subset3).impact()
+        # test crs
+        with self.assertRaises(ValueError) as cm:
+            imp3.crs = 'OTHER'
+            Impact.concat([imp1, imp2, imp3])
+        self.assertIn("The impacts have different exposure crs", str(cm.exception))
+        #reset crs
+        imp3.crs = imp2.crs
 
-        #and another impact with empty hazard type
-        ent3 = Entity.from_excel(ENT_DEMO_TODAY)
-        ent3.check()
-        ent3.impact_funcs._data[''] = ent3.impact_funcs._data['TC']
-        ent3.impact_funcs._data[''][1].haz_type = ''
-        ent3.impact_funcs._data[''][3].haz_type = ''
-        gdf_new = ent3.exposures.gdf.rename(columns={'impf_TC': 'impf_'})
-        ent3.exposures.gdf = gdf_new
-        imp3_3 = ImpactCalc(ent3.exposures, ent3.impact_funcs, haz3_subset3).impact()
+        #test total exposure value
+        with self.assertRaises(ValueError) as cm:
+            imp3.tot_value = 1
+            Impact.concat([imp1, imp2, imp3])
+        self.assertIn("The impacts have different total exposure values", str(cm.exception))
+        # reset exposure value
+        imp3.tot_value = imp2.tot_value
 
-        #first set of error tests
-        test_haztype_unit_crs_attrs(self, imp1, imp2, imp3, imp3_3, imp3_2)
+        #test exposure coordinates
+        with self.assertRaises(ValueError) as cm:
+            imp3.coord_exp[0][0] = 0
+            Impact.concat([imp1, imp2, imp3])
+        self.assertIn("The impacts have different exposure coordinates", str(cm.exception))
+        # reset exposure coordinates
+        imp3.coord_exp = imp2.coord_exp
 
-        #second set of error tests
-        test_dates_events_exposure(self, imp1, imp2, imp3)
+    def test_check_event_ids_and_imp_mat(self):
+        """test event_id checks and impact matrices check"""
 
-        #test results of concatenation
-        test_results(self, imp1, imp2, imp3)
+        # get test data
+        ent = Entity.from_excel(ENT_DEMO_TODAY)
+        ent.check()
+        hazard = Hazard.from_hdf5(HAZ_TEST_TC)
+
+        # create hazard subsets
+        date0 = hazard.date[0]
+        date1 = hazard.date[int(np.floor(len(hazard.date) / 3))]
+        date2 = hazard.date[int(np.floor(len(hazard.date) / 3)) * 2]
+        date3 = hazard.date[-1]
+        haz_subset1 = hazard.select(date=(date0, date1 - 1))
+        haz_subset2 = hazard.select(date=(date1, date2 - 1))
+        haz_subset3 = hazard.select(date=(date2, date3))
+
+        # compute impacts separately
+        imp1 = ImpactCalc(ent.exposures, ent.impact_funcs, haz_subset1).impact()
+        imp2 = ImpactCalc(ent.exposures, ent.impact_funcs, haz_subset2).impact()
+        imp3 = ImpactCalc(ent.exposures, ent.impact_funcs, haz_subset3).impact()
+
+        # test event ids
+        with self.assertRaises(ValueError) as cm:
+            imp3.event_id[0] = imp2.event_id[-1]
+            Impact.concat([imp1, imp2, imp3])
+        self.assertIn("Duplicate event IDs found", str(cm.exception))
+        #reset event ids
+        imp3.event_id[0] = imp3.event_id[0] + 1
+
+        # test impact matrices
+        with self.assertRaises(ValueError) as cm:
+            imp3.imp_mat = None
+            Impact.concat([imp1, imp2, imp3])
+        self.assertIn("Passed an impact object with an undefined impact matrix", str(cm.exception))
+
+        with self.assertRaises(ValueError) as cm:
+            imp3.imp_mat = sparse.csr_matrix(np.empty((0, 0)))
+            Impact.concat([imp1, imp2, imp3])
+        self.assertIn("Impact matrices do not have the same number of exposure points", str(cm.exception))
+
+
+    def test_results(self):
+        """test results of impact.concat"""
+
+        # get test data
+        ent = Entity.from_excel(ENT_DEMO_TODAY)
+        ent.check()
+        hazard = Hazard.from_hdf5(HAZ_TEST_TC)
+
+        # create hazard subsets
+        date0 = hazard.date[0]
+        date1 = hazard.date[int(np.floor(len(hazard.date) / 3))]
+        date2 = hazard.date[int(np.floor(len(hazard.date) / 3)) * 2]
+        date3 = hazard.date[-1]
+        haz_subset1 = hazard.select(date=(date0, date1 - 1))
+        haz_subset2 = hazard.select(date=(date1, date2 - 1))
+        haz_subset3 = hazard.select(date=(date2, date3))
+
+        # compute impacts separately
+        imp1 = ImpactCalc(ent.exposures, ent.impact_funcs, haz_subset1).impact()
+        imp2 = ImpactCalc(ent.exposures, ent.impact_funcs, haz_subset2).impact()
+        imp3 = ImpactCalc(ent.exposures, ent.impact_funcs, haz_subset3).impact()
+
+        #concatenate
+        imp = Impact.concat([imp1, imp2, imp3])
+
+        #test results
+        self.assertEqual(len(imp1.event_id)+len(imp2.event_id)+len(imp3.event_id),len(imp.event_id))
+        self.assertEqual(len(imp1.event_name) + len(imp2.event_name) + len(imp3.event_name), len(imp.event_name))
+        self.assertEqual(len(imp1.date) + len(imp2.date) + len(imp3.event_name), len(imp.date))
+        self.assertEqual(len(imp1.frequency) + len(imp2.frequency) + len(imp3.frequency), len(imp.frequency))
+        self.assertEqual(imp1.eai_exp[0]+imp2.eai_exp[0]+imp3.eai_exp[0], imp.eai_exp[0])
+        self.assertEqual(len(imp1.at_event) + len(imp2.at_event) + len(imp3.at_event), len(imp.at_event))
+        self.assertEqual(np.nansum([imp1.aai_agg,imp2.aai_agg,imp3.aai_agg]), imp.aai_agg)
+        self.assertEqual(len(hazard.date), imp.imp_mat.shape[0])
+        self.assertEqual(len(ent.exposures.gdf.index), imp.imp_mat.shape[1])
+
+
 
 class TestFreqCurve(unittest.TestCase):
     """Test exceedence frequency curve computation"""
