@@ -1392,7 +1392,8 @@ class Impact():
     @classmethod
     def concat(cls, imp_list, reset_event_ids = False):
         """
-        Concatenate impact objects with the same exposure. This function is useful if, e.g. different impact functions
+        Concatenate impact objects with the same exposure.
+        This function is useful if, e.g. different impact functions
         have to be applied for different seasons (e.g. for agricultural impacts).
 
         It concatenates the following attributes:
@@ -1417,14 +1418,13 @@ class Impact():
         impact: climada.engine.Impact
             New impact object which is a concatenation of all impacts
         """
-        
         def check_exposure(imp_list):
             """ checks if impacts are based on the same exposure """
 
             #check crs
-            crs = set([imp.crs for imp in imp_list])
+            crs = {imp.crs for imp in imp_list}
             if len(set(crs)) > 1:
-                raise ValueError(f"The impacts have different exposure crs.")
+                raise ValueError("The impacts have different exposure crs.")
 
             #check total value
             tot_vals = np.unique([imp.tot_value for imp in imp_list])
@@ -1447,7 +1447,8 @@ class Impact():
             event_id = np.array(list(range(len(event_ids))))
         else:
             if len(event_ids) != len(set(event_ids)):
-                raise ValueError("Duplicate event IDs found. Consider to set reset_event_id = True.")
+                raise ValueError("Duplicate event IDs found.\
+                Consider to set reset_event_id = True.")
             event_id = np.array(event_ids)
 
         # concatenate impact matrices
