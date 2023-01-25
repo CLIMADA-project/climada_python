@@ -1425,12 +1425,12 @@ class Impact():
         def check_exposure(imp_list):
 
             #check crs
-            crs = numpy.unique([imp.crs for imp in imp_list])
-            if len(crs) > 1:
-                raise ValueError(f"The given impacts have different exposure crs: {crs}. ")
+            #crs = np.unique([imp.crs for imp in imp_list])
+            #if len(crs) > 1:
+            #    raise ValueError(f"The given impacts have different exposure crs: {crs}. ")
 
             #check total value
-            tot_vals = numpy.unique([imp.tot_value for imp in imp_list])
+            tot_vals = np.unique([imp.tot_value for imp in imp_list])
             if len(tot_vals) > 1:
                 raise ValueError("The impacts are not based on the same exposure."
                                  "The total exposure values are different.")
@@ -1446,18 +1446,33 @@ class Impact():
         check_exposure(imp_list)
 
         # concatenate attributes
-        
+
         #get hazard frequencies
         frequency = np.concatenate([imp.frequency for imp in imp_list], axis=0)
 
         #event IDs
         event_ids = [event_id for imp in imp_list for event_id in imp.event_id]
+        if reset_event_ids:
+            event_id = np.array(list(range(len(event_ids))))
+        else:
+            if len(event_ids) != len(set(event_ids)):
+                raise ValueError("Duplicate event IDs found. Consider to set reset_event_id = True.")
+            event_id = np.array(event_ids)
+
+        #event names
+        event_name = [event_name for imp in imp_list for event_name in imp.event_name]
+
+        #event dates
+        date = np.array([date for imp in imp_list for date in imp.date])
 
         #impact matrix
         #TODO: Check what happens with empty impact matrix (write test)
         imp_mats =[imp.imp_mat for imp in imp_list]
+        dims = np.unique([imp.imp_mat.shape[1] for imp in imp_list])
         if None in imp_mats:
             raise ValueError("Passed an impact object with an undefined impact matrix.")
+        if len(dims)>1:
+            raise ValueError("Impact matrices do not have the same number of exposure points.")
         imp_mat = sparse.vstack(imp_mats)
 
         # concatenate impact attributes
@@ -1472,12 +1487,7 @@ class Impact():
         coord_exp = imp_list[0].coord_exp
         tot_value = imp_list[0].tot_value
 
-        if reset_event_id:
-            event_id = np.array(list(range(len(event_ids))))
-        else:
-            if len(event_ids) != len(set(event_ids)):
-                raise ValueError("Duplicate event IDs found. Consider to set reset_event_id = True.")
-            event_id = np.array(event_ids)
+
 
         return cls(
             event_id = event_id,
@@ -1491,7 +1501,7 @@ class Impact():
             eai_exp = eai_exp,
             at_event = at_event,
             aai_agg = aai_agg,
-            imp_mat = imp_mat if imp_mat is not None else sparse.csr_matrix((0, 0)),
+            imp_mat = imp_mat,
             tag = tag
       )
 

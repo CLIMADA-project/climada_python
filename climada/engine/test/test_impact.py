@@ -69,8 +69,10 @@ class TestImpact(unittest.TestCase):
             np.stack([exp.gdf.latitude.values, exp.gdf.longitude.values], axis=1)
             )
 
+class TestImpactConcat(unittest.TestCase)
     def test_concat_pass(self):
-        """test concatenation of impacts"""
+        """test concatenation of impacts
+        test different exposures, test empty or None impact matrix, duplicate event_ids"""
 
         def test_haztype_unit_crs_attrs(self,imp1,imp2,imp3,imp3_3,imp3_2):
             with self.assertRaises(ValueError) as cm:
