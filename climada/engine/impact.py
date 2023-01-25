@@ -105,7 +105,7 @@ class Impact():
         """
         Init Impact object
 
-        Attributes
+        Parameters
         ----------
         event_id : np.array, optional
             id (>0) of each hazard event

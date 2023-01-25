@@ -80,6 +80,7 @@ class LitPop(Exposures):
                        reference_year=DEF_REF_YEAR, gpw_version=GPW_VERSION,
                        data_dir=SYSTEM_DIR):
         """Init new LitPop exposure object for a list of countries (admin 0).
+
         Sets attributes `ref_year`, `tag`, `crs`, `value`, `geometry`, `meta`,
         `value_unit`, `exponents`,`fin_mode`, `gpw_version`, and `admin1_calc`.
 
@@ -98,20 +99,22 @@ class LitPop(Exposures):
             Default: (1, 1)
         fin_mode : str, optional
             Socio-economic value to be used as an asset base that is disaggregated
-            to the grid points within the country
-                * 'pc': produced capital (Source: World Bank), incl. manufactured or
-                  built assets such as machinery, equipment, and physical structures
-                  `pc` is in constant 2014 USD.
-                * 'pop': population count (source: GPW, same as gridded population).
-                  The unit is 'people'.
-                * 'gdp': gross-domestic product (Source: World Bank) [USD]
-                * 'income_group': gdp multiplied by country's income group+1 [USD].
-                  Income groups are 1 (low) to 4 (high income).
-                * 'nfw': non-financial wealth (Source: Credit Suisse, of households only) [USD]
-                * 'tw': total wealth (Source: Credit Suisse, of households only) [USD]
-                * 'norm': normalized by country (no unit)
-                * 'none': LitPop per pixel is returned unchanged (no unit)
-            The default is 'pc'.
+            to the grid points within the country:
+
+            * 'pc': produced capital (Source: World Bank), incl. manufactured or
+              built assets such as machinery, equipment, and physical structures
+              `pc` is in constant 2014 USD.
+            * 'pop': population count (source: GPW, same as gridded population).
+              The unit is 'people'.
+            * 'gdp': gross-domestic product (Source: World Bank) [USD]
+            * 'income_group': gdp multiplied by country's income group+1 [USD].
+              Income groups are 1 (low) to 4 (high income).
+            * 'nfw': non-financial wealth (Source: Credit Suisse, of households only) [USD]
+            * 'tw': total wealth (Source: Credit Suisse, of households only) [USD]
+            * 'norm': normalized by country (no unit)
+            * 'none': LitPop per pixel is returned unchanged (no unit)
+
+            Default: 'pc'
         total_values : list containing numerics, same length as countries, optional
             Total values to be disaggregated to grid in each country.
             The default is None. If None, the total number is extracted from other
@@ -361,20 +364,22 @@ class LitPop(Exposures):
             Default: (1, 1)
         fin_mode : str, optional
             Socio-economic value to be used as an asset base that is disaggregated
-            to the grid points within the country
-                * 'pc': produced capital (Source: World Bank), incl. manufactured or
-                  built assets such as machinery, equipment, and physical structures
-                  (pc is in constant 2014 USD)
-                * 'pop': population count (source: GPW, same as gridded population).
-                  The unit is 'people'.
-                * 'gdp': gross-domestic product (Source: World Bank) [USD]
-                * 'income_group': gdp multiplied by country's income group+1 [USD]
-                  Income groups are 1 (low) to 4 (high income).
-                * 'nfw': non-financial wealth (Source: Credit Suisse, of households only) [USD]
-                * 'tw': total wealth (Source: Credit Suisse, of households only) [USD]
-                * 'norm': normalized by country
-                * 'none': LitPop per pixel is returned unchanged
-            The default is 'pc'.
+            to the grid points within the country:
+
+            * 'pc': produced capital (Source: World Bank), incl. manufactured or
+              built assets such as machinery, equipment, and physical structures
+              (pc is in constant 2014 USD)
+            * 'pop': population count (source: GPW, same as gridded population).
+              The unit is 'people'.
+            * 'gdp': gross-domestic product (Source: World Bank) [USD]
+            * 'income_group': gdp multiplied by country's income group+1 [USD]
+              Income groups are 1 (low) to 4 (high income).
+            * 'nfw': non-financial wealth (Source: Credit Suisse, of households only) [USD]
+            * 'tw': total wealth (Source: Credit Suisse, of households only) [USD]
+            * 'norm': normalized by country
+            * 'none': LitPop per pixel is returned unchanged
+
+            Default: 'pc'
         admin1_calc : boolean, optional
             If True, distribute admin1-level GDP (if available). Default: False
         reference_year : int, optional
@@ -871,15 +876,19 @@ def reproject_input_data(data_array_list, meta_list,
         meta data dictionaries of data arrays in same order as data_array_list.
         Required fields in each dict are 'dtype,', 'width', 'height', 'crs', 'transform'.
         Example:
-            {'driver': 'GTiff',
-             'dtype': 'float32',
-             'nodata': 0,
-             'width': 2702,
-             'height': 1939,
-             'count': 1,
-             'crs': CRS.from_epsg(4326),
-             'transform': Affine(0.00833333333333333, 0.0, -18.175000000000068,
-                                 0.0, -0.00833333333333333, 43.79999999999993)}
+
+        >>> {
+        ...     'driver': 'GTiff',
+        ...     'dtype': 'float32',
+        ...     'nodata': 0,
+        ...     'width': 2702,
+        ...     'height': 1939,
+        ...     'count': 1,
+        ...     'crs': CRS.from_epsg(4326),
+        ...     'transform': Affine(0.00833333333333333, 0.0, -18.175000000000068,
+        ...                         0.0, -0.00833333333333333, 43.79999999999993),
+        ... }
+
         The meta data with the reference grid used to define the global destination
         grid should be first in the list, e.g., GPW population data for LitPop.
     i_align : int, optional
@@ -891,8 +900,7 @@ def reproject_input_data(data_array_list, meta_list,
         as reference data.
     global_origins : tuple with two numbers (lat, lon), optional
         global lon and lat origins as basis for destination grid.
-        The default is the same as for GPW population data:
-            (-180.0, 89.99999999999991)
+        The default is the same as for GPW population data: ``(-180.0, 89.99999999999991)``
     resampling : resampling function, optional
         The default is rasterio.warp.Resampling.bilinear
     conserve : str, optional, either 'mean' or 'sum'
@@ -949,6 +957,7 @@ def gridpoints_core_calc(data_arrays, offsets=None, exponents=None,
     """
     Combines N dense numerical arrays by point-wise multipilcation and
     optionally rescales to new total value:
+
     (1) An offset (1 number per array) is added to all elements in
         the corresponding data array in data_arrays (optional).
     (2) Numbers in each array are taken to the power of the corresponding
