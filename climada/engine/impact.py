@@ -1396,10 +1396,20 @@ class Impact():
         This function is useful if, e.g. different impact functions
         have to be applied for different seasons (e.g. for agricultural impacts).
 
-        It concatenates the following attributes:
-            event_id, event_name, date, frequency, imp_mat, at_event, eai_exp, aai_exp
-        and takes the following attributes from the first impact object in the passed imp_list
+        It checks if the exposures of the passed impact objects are identical and then
+        - concatenates the attributes
+            event_id, event_name, date, frequency, imp_mat, at_event,
+        - sums up the values of attributes
+            eai_exp, aai_exp
+        - and takes the following attributes from the first impact object in the passed imp_list
             coord_exp, crs, unit, tot_value, tag
+
+        If event ids are not unique among the passed impact objects an error is raised.
+        In this case, the user can set reset_event_ids = True to create unique event ids
+        for the concatenated impact.
+
+        If all impact matrices of the impacts in imp_list are empty,
+        the impact matrix of the concatenated impact is also empty.
 
         NOTES
         -----
@@ -1452,6 +1462,7 @@ class Impact():
             event_id = np.array(event_ids)
 
         # concatenate impact matrices
+        imp_mats = [imp.imp_mat for imp in imp_list]
         dims = np.unique([imp.imp_mat.shape[1] for imp in imp_list])
         if len(dims)>1:
             raise ValueError("Impact matrices do not have the same number of exposure points.")
@@ -1466,8 +1477,10 @@ class Impact():
         # concatenate hazard frequencies
         frequency = np.concatenate([imp.frequency for imp in imp_list], axis=0)
 
-        # concatenate impact attributes
+        # concatenate impact at events
         at_event = np.concatenate([imp.at_event for imp in imp_list], axis=0)
+
+        #sum up eai and aai
         eai_exp = np.nansum([imp.eai_exp for imp in imp_list], axis=0)
         aai_agg = np.nansum([imp.aai_agg for imp in imp_list])
 
