@@ -28,6 +28,9 @@ import csv
 import warnings
 import datetime as dt
 from itertools import zip_longest
+from typing import Union, Mapping
+from collections.abc import Collection
+
 import contextily as ctx
 import numpy as np
 from scipy import sparse
@@ -865,76 +868,132 @@ class Impact():
 
         imp_wb.close()
 
-    def write_hdf5(self, file_data, todense=False):
-        """Write centroids attributes into hdf5 format.
+    def write_hdf5(self, file_path: Union[str, Path], dense_imp_mat=False):
+        """Write the data stored in this object into an H5 file
+
+        Try to write all attributes of this class into H5 datasets or attributes.
+        By default, any iterable will be stored in a dataset and any string or scalar
+        will be stored in an attribute. Dictionaries will be stored as groups, with
+        the previous rules being applied recursively to their values.
+
+        The impact matrix can be stored in a sparse or dense format.
+
+        Notes
+        -----
+        This writer does not support attributes with variable types. Please make sure
+        that ``event_name`` is a list of equally-typed values, e.g., all ``str``.
 
         Parameters
         ----------
-        file_data : str or h5
-            If string, path to write data. If h5 object, the datasets will be generated there.
-        todense: bool
-            if True write the sparse matrices as hdf5.dataset by converting them to dense format
-            first. This increases readability of the file for other programs. default: False
+        file_path : str or Path
+            File path to write data into. The enclosing directory must exist.
+        dense_imp_mat : bool
+            If ``True``, write the impact matrix as dense matrix that can be more easily
+            interpreted by common H5 file readers but takes up (vastly) more space.
+            Defaults to ``False``.
         """
-        if isinstance(file_data, (str, Path)):
-            LOGGER.info('Writing %s', file_data)
-            with h5py.File(file_data, 'w') as data:
-                self._write_hdf5(data, todense)
-        else:
-            self._write_hdf5(file_data, todense)
 
-    def _write_hdf5(self, data, todense):
-        str_dt = h5py.special_dtype(vlen=str)
-        for (var_name, var_val) in self.__dict__.items():
-            if var_name == 'tag':
-                # write the dictionary of tags of exposures, impact functions set and hazard
-                # write hazard tag
-                hf_str = data.create_dataset('haz_tag_haz_type', (1,), dtype=str_dt)
-                hf_str[0] = var_val['haz'].haz_type
-                hf_str = data.create_dataset('haz_tag_file_name', (1,), dtype=str_dt)
-                hf_str[0] = str(var_val['haz'].file_name)
-                hf_str = data.create_dataset('haz_tag_description', (1,), dtype=str_dt)
-                hf_str[0] = str(var_val['haz'].description)
-                # write exposure tag
-                hf_str = data.create_dataset('exp_tag_file_name', (1,), dtype=str_dt)
-                hf_str[0] = str(var_val['exp'].file_name)
-                hf_str = data.create_dataset('exp_tag_description', (1,), dtype=str_dt)
-                hf_str[0] = str(var_val['exp'].description)
-                # write impact functions tag
-                hf_str = data.create_dataset('impf_set_tag_file_name', (1,), dtype=str_dt)
-                hf_str[0] = str(var_val['impf_set'].file_name)
-                hf_str = data.create_dataset('impf_set_tag_description', (1,), dtype=str_dt)
-                hf_str[0] = str(var_val['impf_set'].description)
-            elif isinstance(var_val, sparse.csr_matrix):
-                if todense:
-                    data.create_dataset(var_name, data=var_val.toarray())
-                else:
-                    hf_csr = data.create_group(var_name)
-                    hf_csr.create_dataset('data', data=var_val.data)
-                    hf_csr.create_dataset('indices', data=var_val.indices)
-                    hf_csr.create_dataset('indptr', data=var_val.indptr)
-                    hf_csr.attrs['shape'] = var_val.shape
-            elif isinstance(var_val, str):
-                hf_str = data.create_dataset(var_name, (1,), dtype=str_dt)
-                hf_str[0] = var_val
-            elif isinstance(var_val, (int, float)):
-                hf_int = data.create_dataset(var_name, (1,), dtype=float)
-                hf_int[0] = var_val
-            elif isinstance(var_val, list) and var_val and isinstance(var_val[0], str):
-                hf_str = data.create_dataset(var_name, (len(var_val),), dtype=str_dt)
-                for i_ev, var_ev in enumerate(var_val):
-                    hf_str[i_ev] = var_ev
-            elif var_val is not None and var_name != 'pool':
+        def select_writer(writer_map: Mapping, value, default):
+            """Return a writer for the type of 'value'
+
+            This checks a type with ``isinstance``. If a type matches multiple entries
+            in ``writer_map``, the *first* match is chosen.
+
+            Parameters
+            ----------
+            writer_map : dict(type, function)
+                A mapping from data type to writer function
+            value
+                Any value which should be written
+            """
+            for key, writer in writer_map.items():
+                if isinstance(value, key):
+                    return writer
+            return default
+
+        # Open file in write mode
+        with h5py.File(file_path, "w") as file:
+
+            # Define writers for all types
+            type_writers = dict()
+
+            def _str_type_helper(value):
+                """Return string datatype if we assume 'value' contains strings"""
                 try:
-                    data.create_dataset(var_name, data=var_val)
+                    if isinstance(next(iter(value)), str):
+                        return h5py.string_dtype()
+                finally:
+                    return None
+
+            def write_attribute(group, name, value):
+                """Write any attribute. This should work for almost any data"""
+                group.attrs[name] = value
+
+            def write_dataset(group, name, value):
+                """Write a dataset"""
+                group.create_dataset(name, data=value, dtype=_str_type_helper(value))
+
+            def write_dict(group, name, value):
+                """Write a dictionary with unknown level recursively into a group"""
+                new_group = group.create_group(name)
+                for key, val in value.items():
+                    writer = select_writer(type_writers, val, default=write_attribute)
+                    writer(new_group, key, val)
+
+            def write_tag(group, name, value):
+                """Write a tag object using the dict writer"""
+                write_dict(group, name, value.__dict__)
+
+            def _write_csr_dense(group, name, value):
+                """Write a CSR Matrix in dense format"""
+                group.create_dataset(name, data=value.toarray())
+
+            def _write_csr_sparse(group, name, value):
+                """Write a CSR Matrix in sparse format"""
+                group = group.create_group(name)
+                group.create_dataset("data", data=value.data)
+                group.create_dataset("indices", data=value.indices)
+                group.create_dataset("indptr", data=value.indptr)
+                group.attrs["shape"] = value.shape
+
+            def write_csr(group, name, value):
+                """Write a CSR matrix depending on user input"""
+                if dense_imp_mat:
+                    _write_csr_dense(group, name, value)
+                else:
+                    _write_csr_sparse(group, name, value)
+
+            # Set up writers based on types
+            # NOTE: Many things are 'Collection', so make sure that precendence fits!
+            type_writers = {
+                str: write_attribute,
+                Tag: write_tag,
+                TagHaz: write_tag,
+                dict: write_dict,
+                sparse.csr_matrix: write_csr,
+                Collection: write_dataset,
+            }
+
+            # Now iterate over impact attributes
+            for name, value in self.__dict__.items():
+                # Skip for certain attributes and values
+                if value is None or name == "pool":
+                    continue
+
+                # Grab the assumed writer
+                writer = select_writer(type_writers, value, write_attribute)
+                print("Writing {} with {}".format(name, writer))
+
+                # Try writing and fall back to default writer
+                try:
+                    writer(file, name, value)
                 except TypeError:
                     LOGGER.warning(
-                        "write_hdf5: the class member %s is skipped, due to its "
-                        "type, %s, for which writing to hdf5 "
-                        "is not implemented. Reading this H5 file will probably lead to "
-                        "%s being set to its default value.",
-                        var_name, var_val.__class__.__name__, var_name
+                        "Failed to save attribute %s with intended writer. "
+                        "Trying with default writer...",
+                        name,
                     )
+                    write_attribute(file, name, value)
 
     def write_sparse_csr(self, file_name):
         """Write imp_mat matrix in numpy's npz format."""
@@ -1069,7 +1128,7 @@ class Impact():
         self.__dict__ = Impact.from_excel(*args, **kwargs).__dict__
 
     @classmethod
-    def from_hdf5(cls, file_data):
+    def from_hdf5(cls, file_path):
         """Create an impact object from a HDF5 file.
 
         Parameters
@@ -1082,66 +1141,61 @@ class Impact():
         imp : Impact
             Impact with data from the given file
         """
-        if isinstance(file_data, (str, Path)):
-            LOGGER.info('Reading %s', file_data)
-            with h5py.File(file_data, 'r') as data:
-                return cls._from_hdf5(data)
-        else:
-            return cls._from_hdf5(file_data)
+        kwargs = dict()
+        with h5py.File(file_path, "r") as file:
 
-    @classmethod
-    def _from_hdf5(cls, data):
-        imp = cls()
-        impact_kwargs = dict()
-        for (var_name, var_val) in imp.__dict__.items():
-            if var_name != 'tag' and var_name not in data.keys():
-                continue
-            if var_name == 'tag':
-                # read the dictionary of tags of exposures, impact functions set and hazard
-                impact_kwargs["tag"] = dict()
-                # read hazard tag
-                impact_kwargs["tag"]['haz'] = TagHaz()
-                impact_kwargs["tag"]['haz'].haz_type = u_hdf5.to_string(
-                    data.get('haz_tag_haz_type')[0])
-                impact_kwargs["tag"]['haz'].file_name = u_hdf5.to_string(
-                    data.get('haz_tag_file_name')[0])
-                impact_kwargs["tag"]['haz'].description = u_hdf5.to_string(
-                    data.get('haz_tag_description')[0])
-                # read exposure tag
-                impact_kwargs["tag"]['exp'] = Tag()
-                impact_kwargs["tag"]['exp'].file_name = u_hdf5.to_string(
-                    data.get('exp_tag_file_name')[0])
-                impact_kwargs["tag"]['exp'].description = u_hdf5.to_string(
-                    data.get('exp_tag_description')[0])
-                # write impact functions tag
-                impact_kwargs["tag"]['impf_set'] = Tag()
-                impact_kwargs["tag"]['impf_set'].file_name = u_hdf5.to_string(
-                    data.get('impf_set_tag_file_name')[0])
-                impact_kwargs["tag"]['impf_set'].description = u_hdf5.to_string(
-                    data.get('impf_set_tag_description')[0])
-            elif isinstance(var_val, np.ndarray) and var_val.ndim == 1:
-                impact_kwargs[var_name] = np.array(data.get(var_name))
-            elif isinstance(var_val, sparse.csr_matrix):
-                hf_csr = data.get(var_name)
-                if isinstance(hf_csr, h5py.Dataset):
-                    impact_kwargs[var_name] = sparse.csr_matrix(hf_csr)
-                else:
-                    impact_kwargs[var_name] = sparse.csr_matrix(
-                        (hf_csr['data'][:], hf_csr['indices'][:], hf_csr['indptr'][:]),
-                        hf_csr.attrs['shape'])
-            elif isinstance(var_val, str):
-                impact_kwargs[var_name] = u_hdf5.to_string(
-                    data.get(var_name)[0])
-            elif isinstance(var_val, (float, int)):
-                impact_kwargs[var_name] = data.get(var_name)[0]
-            elif isinstance(var_val, list):
-                impact_kwargs[var_name] = [x for x in map(
-                    u_hdf5.to_string, np.array(data.get(var_name)).tolist())]
-            else:
-                impact_kwargs[var_name] = data.get(var_name)
+            # Impact matrix
+            if "imp_mat" in file:
+                impact_matrix = file["imp_mat"]
+                if isinstance(impact_matrix, h5py.Dataset):  # Dense
+                    impact_matrix = sparse.csr_matrix(impact_matrix)
+                else:  # Sparse
+                    impact_matrix = sparse.csr_matrix(
+                        (
+                            impact_matrix["data"],
+                            impact_matrix["indices"],
+                            impact_matrix["indptr"],
+                        ),
+                        shape=impact_matrix.attrs["shape"],
+                    )
+                kwargs["imp_mat"] = impact_matrix
 
-        # Now create the actual object we want to return!
-        return cls(**impact_kwargs)
+            # Scalar attributes
+            scalar_attrs = ("crs", "tot_value", "unit", "aai_agg", "frequency_unit")
+            for attr in scalar_attrs:
+                if attr in file.attrs:
+                    kwargs[attr] = file.attrs[attr]
+
+            # Array attributes
+            array_attrs = (
+                "event_id",
+                "date",
+                "coord_exp",
+                "eai_exp",
+                "at_event",
+                "frequency",
+            )
+            for attr in array_attrs:
+                if attr in file:
+                    kwargs[attr] = file[attr][:]
+
+            # Special handling for 'event_name' because it's a list of strings
+            if "event_name" in file:
+                kwargs["event_name"] = list(file["event_name"].asstr()[:])
+
+            # Tags
+            if "tag" in file:
+                tag_kwargs = dict()
+                tag_group = file["tag"]
+                if "haz" in tag_group:
+                    tag_kwargs["haz"] = TagHaz(**tag_group["haz"].attrs)
+                for subtag in ("exp", "impf_set"):
+                    if subtag in tag_group:
+                        tag_kwargs[subtag] = Tag(**tag_group[subtag].attrs)
+                kwargs["tag"] = tag_kwargs
+
+        # Create the impact object
+        return cls(**kwargs)
 
     @staticmethod
     def video_direct_impact(exp, impf_set, haz_list, file_name='',
