@@ -1391,8 +1391,8 @@ class Impact():
 
     @classmethod
     def concat(cls, imp_list, reset_event_ids = False):
-        """
-        Concatenate impact objects with the same exposure.
+        """Concatenate impact objects with the same exposure
+
         This function is useful if, e.g. different impact functions
         have to be applied for different seasons (e.g. for agricultural impacts).
 
@@ -1452,9 +1452,6 @@ class Impact():
             event_id = np.array(event_ids)
 
         # concatenate impact matrices
-        imp_mats =[imp.imp_mat for imp in imp_list]
-        if None in imp_mats:
-            raise ValueError("Passed an impact object with an undefined impact matrix.")
         dims = np.unique([imp.imp_mat.shape[1] for imp in imp_list])
         if len(dims)>1:
             raise ValueError("Impact matrices do not have the same number of exposure points.")
