@@ -1476,7 +1476,6 @@ class Impact():
         imp_mat = sparse.vstack(imp_mats)
 
         # Concatenate other attributes
-        event_name = list(stack_attribute("event_name").flat)
         kwargs = {
             attr: stack_attribute(attr) for attr in ("date", "frequency", "at_event")
         }
@@ -1484,7 +1483,7 @@ class Impact():
         # Get remaining attributes from first impact object in list
         return cls(
             event_id=event_ids,
-            event_name=event_name,
+            event_name=list(stack_attribute("event_name").flat),
             coord_exp=first_imp.coord_exp,
             crs=first_imp.crs,
             unit=first_imp.unit,
