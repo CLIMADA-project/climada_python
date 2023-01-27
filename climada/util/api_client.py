@@ -260,7 +260,7 @@ class Client():
         parse_result = urlsplit(self.url)
         query_url = urlunsplit((parse_result.scheme, parse_result.netloc, "", "", ""))
 
-        return requests.head(query_url).status_code == 200
+        return requests.head(query_url, timeout=1).status_code == 200
 
     def __init__(self, cache_enabled=None):
         """Constructor of Client.
