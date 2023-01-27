@@ -30,6 +30,7 @@ import datetime as dt
 from itertools import zip_longest
 from typing import Union, Any
 from collections.abc import Collection
+from pathlib import Path
 
 import contextily as ctx
 import numpy as np
@@ -39,9 +40,7 @@ import matplotlib.animation as animation
 import pandas as pd
 import xlsxwriter
 from tqdm import tqdm
-from pathlib import Path
 import h5py
-
 
 from climada.entity import Exposures, Tag
 from climada.hazard import Tag as TagHaz
@@ -50,7 +49,6 @@ from climada import CONFIG
 from climada.util.constants import DEF_CRS, CMAP_IMPACT, DEF_FREQ_UNIT
 import climada.util.coordinates as u_coord
 import climada.util.dates_times as u_dt
-import climada.util.hdf5_handler as u_hdf5
 from climada.util.select import get_attributes_with_matching_dimension
 
 LOGGER = logging.getLogger(__name__)
@@ -869,7 +867,7 @@ class Impact():
         imp_wb.close()
 
     def write_hdf5(self, file_path: Union[str, Path], dense_imp_mat: bool=False):
-        """Write the data stored in this object into an H5 file
+        """Write the data stored in this object into an H5 file.
 
         Try to write all attributes of this class into H5 datasets or attributes.
         By default, any iterable will be stored in a dataset and any string or scalar
@@ -896,7 +894,7 @@ class Impact():
         type_writers = dict()
 
         def write(group: h5py.Group, name: str, value: Any, default_writer):
-            """Write the given name-value pair with a type-specific writer
+            """Write the given name-value pair with a type-specific writer.
 
             This selects a writer by calling ``isinstance(value, key)``, where ``key``
             iterates through the keys of ``type_writers``. If a type matches multiple
@@ -921,14 +919,11 @@ class Impact():
 
             default_writer(group, name, value)
 
-        def _str_type_helper(value):
-            """Return string datatype if we assume 'value' contains strings"""
-            try:
-                if isinstance(next(iter(value)), str):
-                    return h5py.string_dtype()
-                return None
-            except TypeError:
-                return None
+        def _str_type_helper(values: Collection):
+            """Return string datatype if we assume 'values' contains strings"""
+            if isinstance(next(iter(values)), str):
+                return h5py.string_dtype()
+            return None
 
         def write_attribute(group, name, value):
             """Write any attribute. This should work for almost any data"""
@@ -1124,6 +1119,54 @@ class Impact():
         This assumes a specific layout of the file. If values are not found in the
         expected places, they will be set to the default values for an ``Impact`` object.
 
+        The following H5 file structure is assumed (H5 groups are terminated with ``/``,
+        attributes are denoted by ``.attrs/``)::
+
+            file.h5
+            ├─ at_event
+            ├─ coord_exp
+            ├─ eai_exp
+            ├─ event_id
+            ├─ event_name
+            ├─ frequency
+            ├─ imp_mat
+            ├─ tag/
+            │  ├─ exp/
+            │  │  ├─ .attrs/
+            │  │  │  ├─ file_name
+            │  │  │  ├─ description
+            │  ├─ haz/
+            │  │  ├─ .attrs/
+            │  │  │  ├─ haz_type
+            │  │  │  ├─ file_name
+            │  │  │  ├─ description
+            │  ├─ impf_set/
+            │  │  ├─ .attrs/
+            │  │  │  ├─ file_name
+            │  │  │  ├─ description
+            ├─ .attrs/
+            │  ├─ aai_agg
+            │  ├─ crs
+            │  ├─ frequency_unit
+            │  ├─ tot_value
+            │  ├─ unit
+
+        As per the :py:func:`climada.engine.impact.Impact.__init__`, any of these entries
+        is optional. If it is not found, the default value will be used when constructing
+        the Impact.
+
+        The impact matrix ``imp_mat`` can either be an H5 dataset, in which case it is
+        interpreted as dense representation of the matrix, or an H5 group, in which case
+        the group is expected to contain the following data for instantiating a
+        `scipy.sparse.csr_matrix <https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.csr_matrix.html>`_::
+
+            imp_mat/
+            ├─ data
+            ├─ indices
+            ├─ indptr
+            ├─ .attrs/
+            │  ├─ shape
+
         Parameters
         ----------
         file_path : str or Path
@@ -1169,6 +1212,7 @@ class Impact():
 
             # Special handling for 'event_name' because it's a list of strings
             if "event_name" in file:
+                # pylint: disable=no-member
                 kwargs["event_name"] = list(file["event_name"].asstr()[:])
 
             # Tags
