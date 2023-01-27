@@ -28,6 +28,8 @@ import csv
 import warnings
 import datetime as dt
 from itertools import zip_longest
+from typing import Iterable
+
 import contextily as ctx
 import numpy as np
 from scipy import sparse
@@ -1390,122 +1392,110 @@ class Impact():
         return sel_exp
 
     @classmethod
-    def concat(cls, imp_list, reset_event_ids = False):
+    def concat(cls, imp_list: Iterable, reset_event_ids: bool = False):
         """Concatenate impact objects with the same exposure
 
         This function is useful if, e.g. different impact functions
         have to be applied for different seasons (e.g. for agricultural impacts).
 
         It checks if the exposures of the passed impact objects are identical and then
-        - concatenates the attributes
-            event_id, event_name, date, frequency, imp_mat, at_event,
-        - sums up the values of attributes
-            eai_exp, aai_exp
-        - and takes the following attributes from the first impact object in the passed imp_list
-            coord_exp, crs, unit, tot_value, tag
+
+        - concatenates the attributes ``event_id``, ``event_name``, ``date``,
+          ``frequency``, ``imp_mat``, ``at_event``,
+        - sums up the values of attributes ``eai_exp``, ``aai_exp``
+        - and takes the following attributes from the first impact object in the passed
+          impact list: ``coord_exp``, ``crs``, ``unit``, ``tot_value``, ``tag``,
+          ``frequency_unit``
 
         If event ids are not unique among the passed impact objects an error is raised.
-        In this case, the user can set reset_event_ids = True to create unique event ids
+        In this case, the user can set ``reset_event_ids=True`` to create unique event ids
         for the concatenated impact.
 
-        If all impact matrices of the impacts in imp_list are empty,
+        If all impact matrices of the impacts in ``imp_list`` are empty,
         the impact matrix of the concatenated impact is also empty.
-
-        NOTES
-        -----
-        - Concatenation of impacts with different exposure (e.g. different countries)
-                could also be implemented here in the future.
 
         Parameters
         ----------
-        imp_list : list of climada.engine.Impact objects
-            list of Impact objects to concatenate
+        imp_list : Iterable of climada.engine.impact.Impact
+            Iterable of Impact objects to concatenate
         reset_event_ids: boolean, optional
-            reset event ids of the concatenated impact object
+            Reset event ids of the concatenated impact object
 
         Returns
         --------
-        impact: climada.engine.Impact
+        impact: climada.engine.impact.Impact
             New impact object which is a concatenation of all impacts
+
+        Notes
+        -----
+        - Concatenation of impacts with different exposure (e.g. different countries)
+          could also be implemented here in the future.
         """
-        def check_exposure(imp_list):
-            """ checks if impacts are based on the same exposure """
+        def check_unique_attr(attr_name: str):
+            """Check if an attribute is unique among all impacts"""
+            if len({getattr(imp, attr_name) for imp in imp_list}) > 1:
+                raise ValueError(
+                    f"Attribute '{attr_name}' must be unique among impacts"
+                )
 
-            #check crs
-            crs = {imp.crs for imp in imp_list}
-            if len(set(crs)) > 1:
-                raise ValueError("The impacts have different exposure crs.")
+        # Check if single-value attribute are unique
+        for attr in ("crs", "tot_value", "unit", "frequency_unit"):
+            check_unique_attr(attr)
 
-            #check total value
-            tot_vals = np.unique([imp.tot_value for imp in imp_list])
-            if len(tot_vals) > 1:
-                raise ValueError("The impacts have different total exposure values.")
+        # Check exposure coordinates
+        imp_iter = iter(imp_list)
+        first_imp = next(imp_iter)
+        for imp in imp_iter:
+            if not np.array_equal(first_imp.coord_exp, imp.coord_exp):
+                raise ValueError("The impacts have different exposure coordinates")
 
-            # compare exposure coordinates
-            for imp2 in imp_list[1::]:
-                if not np.array_equal(imp_list[0].coord_exp, imp2.coord_exp):
-                    raise ValueError("The impacts have different exposure coordinates.")
+        # Stack attributes
+        def stack_attribute(attr_name: str) -> np.ndarray:
+            """Stack an attribute of all impacts passed to this method"""
+            return np.concatenate([getattr(imp, attr_name) for imp in imp_list])
 
-            return True
-
-        #check if exposure is consistent
-        check_exposure(imp_list)
-
-        # concatenate event IDs
-        event_ids = [event_id for imp in imp_list for event_id in imp.event_id]
+        # Concatenate event IDs
+        event_ids = stack_attribute("event_id")
         if reset_event_ids:
-            event_id = np.array(list(range(len(event_ids))))
+            # NOTE: event_ids must not be zero!
+            event_ids = np.array(range(len(event_ids))) + 1
         else:
-            if len(event_ids) != len(set(event_ids)):
-                raise ValueError("Duplicate event IDs found.\
-                Consider to set reset_event_id = True.")
-            event_id = np.array(event_ids)
+            unique_ids, count = np.unique(event_ids, return_counts=True)
+            if np.any(count > 1):
+                raise ValueError(
+                    f"Duplicate event IDs: {unique_ids[count > 1]}\n"
+                    "Consider setting 'reset_event_ids=True'"
+                )
 
-        # concatenate impact matrices
+        # Concatenate impact matrices
         imp_mats = [imp.imp_mat for imp in imp_list]
-        dims = np.unique([imp.imp_mat.shape[1] for imp in imp_list])
-        if len(dims)>1:
-            raise ValueError("Impact matrices do not have the same number of exposure points.")
+        if len({mat.shape[1] for mat in imp_mats}) > 1:
+            raise ValueError(
+                "Impact matrices do not have the same number of exposure points"
+            )
         imp_mat = sparse.vstack(imp_mats)
 
-        #event names
-        event_name = [event_name for imp in imp_list for event_name in imp.event_name]
+        # Concatenate other attributes
+        event_name = list(stack_attribute("event_name").flat)
+        kwargs = {
+            attr: stack_attribute(attr) for attr in ("date", "frequency", "at_event")
+        }
 
-        #event dates
-        date = np.array([date for imp in imp_list for date in imp.date])
-
-        # concatenate hazard frequencies
-        frequency = np.concatenate([imp.frequency for imp in imp_list], axis=0)
-
-        # concatenate impact at events
-        at_event = np.concatenate([imp.at_event for imp in imp_list], axis=0)
-
-        #sum up eai and aai
-        eai_exp = np.nansum([imp.eai_exp for imp in imp_list], axis=0)
-        aai_agg = np.nansum([imp.aai_agg for imp in imp_list])
-
-        # get remaining attributes from first impact object in list
-        tag = imp_list[0].tag
-        crs = imp_list[0].crs
-        unit = imp_list[0].unit
-        coord_exp = imp_list[0].coord_exp
-        tot_value = imp_list[0].tot_value
-
+        # Get remaining attributes from first impact object in list
         return cls(
-            event_id = event_id,
-            event_name = event_name,
-            date = date,
-            frequency = frequency,
-            coord_exp = coord_exp,
-            crs = crs,
-            unit = unit,
-            tot_value = tot_value,
-            eai_exp = eai_exp,
-            at_event = at_event,
-            aai_agg = aai_agg,
-            imp_mat = imp_mat,
-            tag = tag
-      )
+            event_id=event_ids,
+            event_name=event_name,
+            coord_exp=first_imp.coord_exp,
+            crs=first_imp.crs,
+            unit=first_imp.unit,
+            tot_value=first_imp.tot_value,
+            eai_exp=np.nansum([imp.eai_exp for imp in imp_list], axis=0),
+            aai_agg=np.nansum([imp.aai_agg for imp in imp_list]),
+            imp_mat=imp_mat,
+            tag=first_imp.tag,
+            frequency_unit=first_imp.frequency_unit,
+            **kwargs,
+        )
 
 
 @dataclass
