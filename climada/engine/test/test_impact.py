@@ -765,7 +765,7 @@ class TestImpactH5IO(unittest.TestCase):
             )
 
             if dense_imp_mat:
-                npt.assert_array_equal(file["imp_mat"], impact.imp_mat.todense())
+                npt.assert_array_equal(file["imp_mat"], impact.imp_mat.toarray())
             else:
                 npt.assert_array_equal(file["imp_mat"]["data"], impact.imp_mat.data)
                 npt.assert_array_equal(
@@ -786,7 +786,7 @@ class TestImpactH5IO(unittest.TestCase):
                 for key in value:
                     self.assertDictEqual(value[key].__dict__, value_comp[key].__dict__)
             elif isinstance(value, sparse.csr_matrix):
-                npt.assert_array_equal(value.todense(), value_comp.todense())
+                npt.assert_array_equal(value.toarray(), value_comp.toarray())
             elif np.ndim(value) > 0:
                 npt.assert_array_equal(value, value_comp)
             else:
