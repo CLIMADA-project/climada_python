@@ -811,7 +811,7 @@ class TestImpactH5IO(unittest.TestCase):
 
     def test_write_hdf5_type_fail(self):
         """Test that writing attributes with varying types results in an error"""
-        self.impact.event_name = ["a", 1, 1.0, "b", "c", "d"]
+        self.impact.event_name = [1, "a", 1.0, "b", "c", "d"]
         with self.assertRaises(TypeError) as cm:
             self.impact.write_hdf5(self.filepath)
         self.assertIn("No conversion path for dtype", str(cm.exception))
@@ -830,7 +830,7 @@ class TestImpactH5IO(unittest.TestCase):
             file.create_dataset("imp_mat", data=np.empty((0, 0)))
 
         impact = Impact.from_hdf5(self.filepath)
-        npt.assert_array_equal(impact.imp_mat.todense(), np.empty((0, 0)))
+        npt.assert_array_equal(impact.imp_mat.toarray(), np.empty((0, 0)))
         npt.assert_array_equal(impact.event_id, np.array([]))
         npt.assert_array_equal(impact.event_name, np.array([]))
         self.assertIsInstance(impact.event_name, list)
@@ -850,7 +850,6 @@ class TestImpactH5IO(unittest.TestCase):
         """Try reading a file full of data"""
         # Define the data
         imp_mat = sparse.csr_matrix(np.array([[1, 1, 1], [2, 2, 2]]))
-        print(imp_mat)
         event_id = np.array([1, 2])
         event_name = ["a", "b"]
         date = np.array([10, 11])
@@ -875,7 +874,7 @@ class TestImpactH5IO(unittest.TestCase):
 
         # Write the data
         with h5py.File(self.filepath, "w") as file:
-            file.create_dataset("imp_mat", data=imp_mat.todense())
+            file.create_dataset("imp_mat", data=imp_mat.toarray())
             file.create_dataset("event_id", data=event_id)
             file.create_dataset(
                 "event_name", data=event_name, dtype=h5py.string_dtype()
@@ -898,7 +897,7 @@ class TestImpactH5IO(unittest.TestCase):
 
         # Load and check
         impact = Impact.from_hdf5(self.filepath)
-        npt.assert_array_equal(impact.imp_mat.todense(), imp_mat.todense())
+        npt.assert_array_equal(impact.imp_mat.toarray(), imp_mat.toarray())
         npt.assert_array_equal(impact.event_id, event_id)
         npt.assert_array_equal(impact.event_name, event_name)
         self.assertIsInstance(impact.event_name, list)
@@ -925,7 +924,7 @@ class TestImpactH5IO(unittest.TestCase):
             file["imp_mat"].create_dataset("indptr", data=[0, 2, 3])
             file["imp_mat"].attrs["shape"] = (2, 3)
         impact = Impact.from_hdf5(self.filepath)
-        npt.assert_array_equal([[0, 1, 2], [3, 0, 0]], impact.imp_mat.todense())
+        npt.assert_array_equal(impact.imp_mat.toarray(), [[0, 1, 2], [3, 0, 0]])
 
 
 # Execute Tests

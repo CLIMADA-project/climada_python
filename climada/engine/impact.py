@@ -28,7 +28,7 @@ import csv
 import warnings
 import datetime as dt
 from itertools import zip_longest
-from typing import Union, Mapping
+from typing import Union, Any
 from collections.abc import Collection
 
 import contextily as ctx
@@ -868,7 +868,7 @@ class Impact():
 
         imp_wb.close()
 
-    def write_hdf5(self, file_path: Union[str, Path], dense_imp_mat=False):
+    def write_hdf5(self, file_path: Union[str, Path], dense_imp_mat: bool=False):
         """Write the data stored in this object into an H5 file
 
         Try to write all attributes of this class into H5 datasets or attributes.
@@ -892,108 +892,98 @@ class Impact():
             interpreted by common H5 file readers but takes up (vastly) more space.
             Defaults to ``False``.
         """
+        # Define writers for all types (will be filled later)
+        type_writers = dict()
 
-        def select_writer(writer_map: Mapping, value, default):
-            """Return a writer for the type of 'value'
+        def write(group: h5py.Group, name: str, value: Any, default_writer):
+            """Write the given name-value pair with a type-specific writer
 
-            This checks a type with ``isinstance``. If a type matches multiple entries
-            in ``writer_map``, the *first* match is chosen.
+            This selects a writer by calling ``isinstance(value, key)``, where ``key``
+            iterates through the keys of ``type_writers``. If a type matches multiple
+            entries in ``type_writers``, the *first* match is chosen. If none matches,
+            the ``default_writer`` is used.
 
             Parameters
             ----------
-            writer_map : dict(type, function)
-                A mapping from data type to writer function
-            value
-                Any value which should be written
+            group : h5py.Group
+                The group in the H5 file to write into
+            name : str
+                The identifier of the value
+            value : scalar or array
+                The value/data to write
+            default_writer
+                Fallback writer if no writer in ``type_writers`` matches
             """
-            for key, writer in writer_map.items():
+            for key, writer in type_writers.items():
                 if isinstance(value, key):
-                    return writer
-            return default
+                    writer(group, name, value)
+                    return
+
+            default_writer(group, name, value)
+
+        def _str_type_helper(value):
+            """Return string datatype if we assume 'value' contains strings"""
+            try:
+                if isinstance(next(iter(value)), str):
+                    return h5py.string_dtype()
+                return None
+            except TypeError:
+                return None
+
+        def write_attribute(group, name, value):
+            """Write any attribute. This should work for almost any data"""
+            group.attrs[name] = value
+
+        def write_dataset(group, name, value):
+            """Write a dataset"""
+            group.create_dataset(name, data=value, dtype=_str_type_helper(value))
+
+        def write_dict(group, name, value):
+            """Write a dictionary with unknown level recursively into a group"""
+            group = group.create_group(name)
+            for key, val in value.items():
+                write(group, key, val, write_attribute)
+
+        def write_tag(group, name, value):
+            """Write a tag object using the dict writer"""
+            write_dict(group, name, value.__dict__)
+
+        def _write_csr_dense(group, name, value):
+            """Write a CSR Matrix in dense format"""
+            group.create_dataset(name, data=value.toarray())
+
+        def _write_csr_sparse(group, name, value):
+            """Write a CSR Matrix in sparse format"""
+            group = group.create_group(name)
+            group.create_dataset("data", data=value.data)
+            group.create_dataset("indices", data=value.indices)
+            group.create_dataset("indptr", data=value.indptr)
+            group.attrs["shape"] = value.shape
+
+        def write_csr(group, name, value):
+            """Write a CSR matrix depending on user input"""
+            if dense_imp_mat:
+                _write_csr_dense(group, name, value)
+            else:
+                _write_csr_sparse(group, name, value)
+
+        # Set up writers based on types
+        # NOTE: Many things are 'Collection', so make sure that precendence fits!
+        type_writers = {
+            str: write_attribute,
+            Tag: write_tag,
+            TagHaz: write_tag,
+            dict: write_dict,
+            sparse.csr_matrix: write_csr,
+            Collection: write_dataset,
+        }
 
         # Open file in write mode
         with h5py.File(file_path, "w") as file:
 
-            # Define writers for all types
-            type_writers = dict()
-
-            def _str_type_helper(value):
-                """Return string datatype if we assume 'value' contains strings"""
-                try:
-                    if isinstance(next(iter(value)), str):
-                        return h5py.string_dtype()
-                finally:
-                    return None
-
-            def write_attribute(group, name, value):
-                """Write any attribute. This should work for almost any data"""
-                group.attrs[name] = value
-
-            def write_dataset(group, name, value):
-                """Write a dataset"""
-                group.create_dataset(name, data=value, dtype=_str_type_helper(value))
-
-            def write_dict(group, name, value):
-                """Write a dictionary with unknown level recursively into a group"""
-                new_group = group.create_group(name)
-                for key, val in value.items():
-                    writer = select_writer(type_writers, val, default=write_attribute)
-                    writer(new_group, key, val)
-
-            def write_tag(group, name, value):
-                """Write a tag object using the dict writer"""
-                write_dict(group, name, value.__dict__)
-
-            def _write_csr_dense(group, name, value):
-                """Write a CSR Matrix in dense format"""
-                group.create_dataset(name, data=value.toarray())
-
-            def _write_csr_sparse(group, name, value):
-                """Write a CSR Matrix in sparse format"""
-                group = group.create_group(name)
-                group.create_dataset("data", data=value.data)
-                group.create_dataset("indices", data=value.indices)
-                group.create_dataset("indptr", data=value.indptr)
-                group.attrs["shape"] = value.shape
-
-            def write_csr(group, name, value):
-                """Write a CSR matrix depending on user input"""
-                if dense_imp_mat:
-                    _write_csr_dense(group, name, value)
-                else:
-                    _write_csr_sparse(group, name, value)
-
-            # Set up writers based on types
-            # NOTE: Many things are 'Collection', so make sure that precendence fits!
-            type_writers = {
-                str: write_attribute,
-                Tag: write_tag,
-                TagHaz: write_tag,
-                dict: write_dict,
-                sparse.csr_matrix: write_csr,
-                Collection: write_dataset,
-            }
-
-            # Now iterate over impact attributes
+            # Now write all attributes
             for name, value in self.__dict__.items():
-                # Skip for certain attributes and values
-                if value is None or name == "pool":
-                    continue
-
-                # Grab the assumed writer
-                writer = select_writer(type_writers, value, write_attribute)
-                print("Writing {} with {}".format(name, writer))
-
-                # Try writing and fall back to default writer
-                try:
-                    writer(file, name, value)
-                except TypeError:
-                    LOGGER.warning(
-                        "Failed to save attribute %s with intended writer. "
-                        "Trying with default writer...",
-                        name,
-                    )
-                    write_attribute(file, name, value)
+                write(file, name, value, write_attribute)
 
     def write_sparse_csr(self, file_name):
         """Write imp_mat matrix in numpy's npz format."""
@@ -1128,13 +1118,16 @@ class Impact():
         self.__dict__ = Impact.from_excel(*args, **kwargs).__dict__
 
     @classmethod
-    def from_hdf5(cls, file_path):
-        """Create an impact object from a HDF5 file.
+    def from_hdf5(cls, file_path: Union[str, Path]):
+        """Create an impact object from an H5 file.
+
+        This assumes a specific layout of the file. If values are not found in the
+        expected places, they will be set to the default values for an ``Impact`` object.
 
         Parameters
         ----------
-        file_data : str or h5
-            If string, path to read data. If h5 object, the datasets will be read from there.
+        file_path : str or Path
+            The file path of the file to read.
 
         Returns
         -------
@@ -1161,23 +1154,18 @@ class Impact():
                 kwargs["imp_mat"] = impact_matrix
 
             # Scalar attributes
-            scalar_attrs = ("crs", "tot_value", "unit", "aai_agg", "frequency_unit")
-            for attr in scalar_attrs:
-                if attr in file.attrs:
-                    kwargs[attr] = file.attrs[attr]
+            scalar_attrs = set(
+                ("crs", "tot_value", "unit", "aai_agg", "frequency_unit")
+            ).intersection(file.attrs.keys())
+            kwargs.update({attr: file.attrs[attr] for attr in scalar_attrs})
 
             # Array attributes
-            array_attrs = (
-                "event_id",
-                "date",
-                "coord_exp",
-                "eai_exp",
-                "at_event",
-                "frequency",
-            )
-            for attr in array_attrs:
-                if attr in file:
-                    kwargs[attr] = file[attr][:]
+            # NOTE: Need [:] to copy array data. Otherwise, it would be a view that is
+            #       invalidated once we close the file.
+            array_attrs = set(
+                ("event_id", "date", "coord_exp", "eai_exp", "at_event", "frequency")
+            ).intersection(file.keys())
+            kwargs.update({attr: file[attr][:] for attr in array_attrs})
 
             # Special handling for 'event_name' because it's a list of strings
             if "event_name" in file:
@@ -1187,11 +1175,12 @@ class Impact():
             if "tag" in file:
                 tag_kwargs = dict()
                 tag_group = file["tag"]
+                subtags = set(("exp", "impf_set")).intersection(tag_group.keys())
+                tag_kwargs.update({st: Tag(**tag_group[st].attrs) for st in subtags})
+
+                # Special handling for hazard because it has another tag type
                 if "haz" in tag_group:
                     tag_kwargs["haz"] = TagHaz(**tag_group["haz"].attrs)
-                for subtag in ("exp", "impf_set"):
-                    if subtag in tag_group:
-                        tag_kwargs[subtag] = Tag(**tag_group[subtag].attrs)
                 kwargs["tag"] = tag_kwargs
 
         # Create the impact object
