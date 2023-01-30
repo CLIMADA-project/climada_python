@@ -23,13 +23,16 @@ __all__ = ['CalcCostBenefit']
 
 import logging
 import time
-
 from functools import partial
+from typing import Optional, Union
+
 import pandas as pd
 
 from climada.engine.cost_benefit import CostBenefit
 from climada.engine.unsequa import Calc, InputVar, UncCostBenefitOutput
 from climada.util import log_level
+from climada.hazard import Hazard
+from climada.entity import Entity
 
 LOGGER = logging.getLogger(__name__)
 
@@ -45,15 +48,8 @@ class CalcCostBenefit(Calc):
 
     Attributes
     ----------
-    metric_names : tuple(str)
-        Names of the cost benefit output metris
-        ('tot_climate_risk', 'benefit', 'cost_ben_ratio',
-         'imp_meas_present', 'imp_meas_future')
     value_unit : str
         Unit of the exposures value
-    input_var_names : tuple(str)
-        Names of the required uncertainty variables
-        ('haz_input_var', 'ent_input_var', 'haz_fut_input_var', 'ent_fut_input_var')
     haz_input_var : climada.engine.uncertainty.input_var.InputVar
         Present Hazard uncertainty variable
     ent_input_var : climada.engine.uncertainty.input_var.InputVar
@@ -62,11 +58,38 @@ class CalcCostBenefit(Calc):
         Future Hazard uncertainty variable
     ent_fut_input_var : climada.engine.uncertainty.input_var.InputVar
         Future Entity uncertainty variable
-
+    _input_var_names : tuple(str)
+        Names of the required uncertainty variables
+        ('haz_input_var', 'ent_input_var', 'haz_fut_input_var', 'ent_fut_input_var')
+    _metric_names : tuple(str)
+        Names of the cost benefit output metrics
+        ('tot_climate_risk', 'benefit', 'cost_ben_ratio', 'imp_meas_present', 'imp_meas_future')
     """
 
-    def __init__(self, haz_input_var, ent_input_var,
-                 haz_fut_input_var=None, ent_fut_input_var=None):
+    _input_var_names = (
+        'haz_input_var',
+        'ent_input_var',
+        'haz_fut_input_var',
+        'ent_fut_input_var',
+    )
+    """Names of the required uncertainty variables"""
+
+    _metric_names = (
+        'tot_climate_risk',
+        'benefit',
+        'cost_ben_ratio',
+        'imp_meas_present',
+        'imp_meas_future',
+    )
+    """Names of the cost benefit output metrics"""
+
+    def __init__(
+        self,
+        haz_input_var: Union[InputVar, Hazard],
+        ent_input_var: Union[InputVar, Entity],
+        haz_fut_input_var: Optional[Union[InputVar, Hazard]] = None,
+        ent_fut_input_var: Optional[Union[InputVar, Entity]] = None,
+    ):
         """Initialize UncCalcCostBenefit
 
         Sets the uncertainty input variables, the cost benefit metric_names,
@@ -94,15 +117,11 @@ class CalcCostBenefit(Calc):
         """
 
         Calc.__init__(self)
-        self.input_var_names = ('haz_input_var', 'ent_input_var',
-                             'haz_fut_input_var', 'ent_fut_input_var')
         self.haz_input_var = InputVar.var_to_inputvar(haz_input_var)
         self.ent_input_var = InputVar.var_to_inputvar(ent_input_var)
         self.haz_fut_input_var = InputVar.var_to_inputvar(haz_fut_input_var)
         self.ent_fut_input_var = InputVar.var_to_inputvar(ent_fut_input_var)
-        self.metric_names = ('tot_climate_risk', 'benefit',
-                             'cost_ben_ratio',
-                             'imp_meas_present', 'imp_meas_future')
+
         self.value_unit = self.ent_input_var.evaluate().exposures.value_unit
         self.check_distr()
 
@@ -279,8 +298,11 @@ class CalcCostBenefit(Calc):
         ent_fut = self.ent_fut_input_var.evaluate(**ent_fut_samples)
 
         cb = CostBenefit()
+        ent.exposures.assign_centroids(haz, overwrite=False)
+        if ent_fut:
+            ent_fut.exposures.assign_centroids(haz_fut if haz_fut else haz, overwrite=False)
         cb.calc(hazard=haz, entity=ent, haz_future=haz_fut, ent_future=ent_fut,
-                save_imp=False, **kwargs)
+                save_imp=False, assign_centroids=False, **kwargs)
 
         # Extract from climada.impact the chosen metrics
         return  [cb.imp_meas_present,

@@ -26,7 +26,7 @@ import math
 from multiprocessing import cpu_count
 from pathlib import Path
 import re
-
+import warnings
 import zipfile
 
 from cartopy.io import shapereader
@@ -243,6 +243,27 @@ def latlon_bounds(lat, lon, buffer=0.0):
     lon_min, lon_max = lon_bounds(lon, buffer=buffer)
     return (lon_min, max(lat.min() - buffer, -90), lon_max, min(lat.max() + buffer, 90))
 
+
+def toggle_extent_bounds(bounds_or_extent):
+    """Convert between the "bounds" and the "extent" description of a bounding box
+
+    The difference between the two conventions is in the order in which the bounds for each
+    coordinate direction are given. To convert from one description to the other, the two central
+    entries of the 4-tuple are swapped. Hence, the conversion is symmetric.
+
+    Parameters
+    ----------
+    bounds_or_extent : tuple (a, b, c, d)
+        Bounding box of the given points in "bounds" (or "extent") convention.
+
+    Returns
+    -------
+    extent_or_bounds : tuple (a, c, b, d)
+        Bounding box of the given points in "extent" (or "bounds") convention.
+    """
+    return (bounds_or_extent[0], bounds_or_extent[2], bounds_or_extent[1], bounds_or_extent[3])
+
+
 def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
                 method="equirect", units='km'):
     """Compute approximation of geodistance in specified units
@@ -269,22 +290,26 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
         If False, assume that all longitudinal values lie within a single interval of size 360
         (e.g., between -180 and 180, or between 0 and 360) and such that the shortest path between
         any two points does not cross the antimeridian according to that parametrization. If True,
-        a suitable interval is determined using `lon_bounds` and the longitudinal values are
-        reparametrized accordingly using `lon_normalize`. Note that this option has no effect when
-        using the "geosphere" method because it is independent from the parametrization.
-        Default: True
+        a suitable interval is determined using :py:func:`lon_bounds` and the longitudinal values
+        are reparametrized accordingly using :py:func:`lon_normalize`. Note that this option has
+        no effect when using the "geosphere" method because it is independent from the
+        parametrization. Default: True
     method : str, optional
         Specify an approximation method to use:
-            * "equirect": Distance according to sinusoidal projection. Fast, but inaccurate for
-              large distances and high latitudes.
-            * "geosphere": Exact spherical distance. Much more accurate at all distances, but slow.
+
+        * "equirect": Distance according to sinusoidal projection. Fast, but inaccurate for
+          large distances and high latitudes.
+        * "geosphere": Exact spherical distance. Much more accurate at all distances, but slow.
+
         Note that ellipsoidal distances would be even more accurate, but are currently not
         implemented. Default: "equirect".
     units : str, optional
         Specify a unit for the distance. One of:
-            * "km": distance in km.
-            * "degree": angular distance in decimal degrees.
-            * "radian": angular distance in radians.
+
+        * "km": distance in km.
+        * "degree": angular distance in decimal degrees.
+        * "radian": angular distance in radians.
+
         Default: "km".
 
     Returns
@@ -352,14 +377,12 @@ def compute_geodesic_lengths(gdf):
 
     See also
     --------
-    * dist_approx() which also offers haversine distance calculation options
-     between specific points (not along any geometries however).
-    * interpolation.interpolate_lines()
+    :py:func:`dist_approx` : distance between individual lat/lon-points
 
     Note
     ----
     This implementation relies on non-projected (i.e. geographic coordinate
-    systems that span the entire globe) crs only, which results in
+    systems that span the entire globe) CRS only, which results in
     sea-level distances and hence a certain (minor) level of distortion; cf.
     https://gis.stackexchange.com/questions/176442/what-is-the-real-distance-between-positions
     """
@@ -372,10 +395,11 @@ def compute_geodesic_lengths(gdf):
 
 def get_gridcellarea(lat, resolution=0.5, unit='ha'):
     """The area covered by a grid cell is calculated depending on the latitude
-        1 degree = ONE_LAT_KM (111.12km at the equator)
-        longitudal distance in km = ONE_LAT_KM*resolution*cos(lat)
-        latitudal distance in km = ONE_LAT_KM*resolution
-        area = longitudal distance * latitudal distance
+
+    * 1 degree = ONE_LAT_KM (111.12km at the equator)
+    * longitudal distance in km = ONE_LAT_KM*resolution*cos(lat)
+    * latitudal distance in km = ONE_LAT_KM*resolution
+    * area = longitudal distance * latitudal distance
 
     Parameters
     ----------
@@ -385,7 +409,6 @@ def get_gridcellarea(lat, resolution=0.5, unit='ha'):
         raster resolution in degree (default: 0.5 degree)
     unit: string, optional
         unit of the output area (default: ha, alternatives: m2, km2)
-
     """
 
     if unit == 'm2':
@@ -647,33 +670,9 @@ def get_land_geometry(country_names=None, extent=None, resolution=10):
     geom : shapely.geometry.multipolygon.MultiPolygon
         Polygonal shape of union.
     """
-    resolution = nat_earth_resolution(resolution)
-    shp_file = shapereader.natural_earth(resolution=resolution,
-                                         category='cultural',
-                                         name='admin_0_countries')
-    reader = shapereader.Reader(shp_file)
-    if (country_names is None) and (extent is None):
-        LOGGER.info("Computing earth's land geometry ...")
-        geom = list(reader.geometries())
-        geom = shapely.ops.unary_union(geom)
-
-    elif country_names:
-        countries = list(reader.records())
-        geom = [country.geometry for country in countries
-                if (country.attributes['ISO_A3'] in country_names) or
-                (country.attributes['WB_A3'] in country_names) or
-                (country.attributes['ADM0_A3'] in country_names)]
-        geom = shapely.ops.unary_union(geom)
-
-    else:
-        extent_poly = Polygon([(extent[0], extent[2]), (extent[0], extent[3]),
-                               (extent[1], extent[3]), (extent[1], extent[2])])
-        geom = []
-        for cntry_geom in reader.geometries():
-            inter_poly = cntry_geom.intersection(extent_poly)
-            if not inter_poly.is_empty:
-                geom.append(inter_poly)
-        geom = shapely.ops.unary_union(geom)
+    geom = get_country_geometries(country_names, extent, resolution)
+    # combine all into a single multipolygon
+    geom = geom.geometry.unary_union
     if not isinstance(geom, MultiPolygon):
         geom = MultiPolygon([geom])
     return geom
@@ -701,14 +700,27 @@ def coord_on_land(lat, lon, land_geom=None):
     if lat.size == 0:
         return np.empty((0,), dtype=bool)
     delta_deg = 1
+    lons = lon.copy()
     if land_geom is None:
+        # ensure extent of longitude is consistent
+        bounds = lon_bounds(lons)
+        lon_mid = 0.5 * (bounds[0] + bounds[1])
+        # normalize lon
+        lon_normalize(lons, center=lon_mid)
+        bounds = latlon_bounds(lat, lons, buffer=delta_deg)
+        # load land geometry with appropriate same extent
         land_geom = get_land_geometry(
-            extent=(np.min(lon) - delta_deg,
-                    np.max(lon) + delta_deg,
-                    np.min(lat) - delta_deg,
-                    np.max(lat) + delta_deg),
+            extent=toggle_extent_bounds(bounds),
             resolution=10)
-    return shapely.vectorized.contains(land_geom, lon, lat)
+    elif not land_geom.is_empty:
+        # ensure lon values are within extent of provided land_geom
+        land_bounds = land_geom.bounds
+        if lons.max() > land_bounds[2] or lons.min() < land_bounds[0]:
+            # normalize longitude to land_geom extent
+            lon_mid = 0.5 * (land_bounds[0] + land_bounds[2])
+            lon_normalize(lons, center=lon_mid)
+
+    return shapely.vectorized.contains(land_geom, lons, lat)
 
 def nat_earth_resolution(resolution):
     """Check if resolution is available in Natural Earth. Build string.
@@ -741,11 +753,16 @@ def get_country_geometries(country_names=None, extent=None, resolution=10):
     starts including the projection information. (They are saving a whopping 147 bytes by omitting
     it.) Same goes for UTF.
 
+    If extent is provided, longitude values in 'geom' will all lie within 'extent' longitude
+    range. Therefore setting extent to e.g. [160, 200, -20, 20] will provide longitude values
+    between 160 and 200 degrees.
+
     Parameters
     ----------
     country_names : list, optional
         list with ISO 3166 alpha-3 codes of countries, e.g ['ZWE', 'GBR', 'VNM', 'UZB']
-    extent : tuple (min_lon, max_lon, min_lat, max_lat), optional
+    extent : tuple, optional
+        (min_lon, max_lon, min_lat, max_lat)
         Extent, assumed to be in the same CRS as the natural earth data.
     resolution : float, optional
         10, 50 or 110. Resolution in m. Default: 10m
@@ -777,18 +794,47 @@ def get_country_geometries(country_names=None, extent=None, resolution=10):
     if country_names:
         if isinstance(country_names, str):
             country_names = [country_names]
-        out = out[out.ISO_A3.isin(country_names)]
+        country_mask = np.isin(
+            nat_earth[['ISO_A3', 'WB_A3', 'ADM0_A3']].values,
+            country_names,
+        ).any(axis=1)
+        out = out[country_mask]
 
     if extent:
-        bbox = Polygon([
-            (extent[0], extent[2]),
-            (extent[0], extent[3]),
-            (extent[1], extent[3]),
-            (extent[1], extent[2])
-        ])
-        bbox = gpd.GeoSeries(bbox, crs=out.crs)
-        bbox = gpd.GeoDataFrame({'geometry': bbox}, crs=out.crs)
+        if extent[1] - extent[0] > 360:
+            raise ValueError(
+                f"longitude extent range is greater than 360: {extent[0]} to {extent[1]}"
+            )
+
+        if extent[1] < extent[0]:
+            raise ValueError(
+                f"longitude extent at the left ({extent[0]}) is larger "
+                f"than longitude extent at the right ({extent[1]})"
+            )
+
+        # rewrap longitudes unless longitude extent is already normalized (within [-180, +180])
+        lon_normalized = extent[0] >= -180 and extent[1] <= 180
+        if lon_normalized:
+            bbox = box(*toggle_extent_bounds(extent))
+        else:
+            # split the extent box into two boxes both within [-180, +180] in longitude
+            lon_left, lon_right = lon_normalize(np.array(extent[:2]))
+            extent_left = (lon_left, 180, extent[2], extent[3])
+            extent_right = (-180, lon_right, extent[2], extent[3])
+            bbox = shapely.ops.unary_union(
+                [box(*toggle_extent_bounds(e)) for e in [extent_left, extent_right]]
+            )
+        bbox = gpd.GeoSeries(bbox, crs=DEF_CRS)
+        bbox = gpd.GeoDataFrame({'geometry': bbox}, crs=DEF_CRS)
         out = gpd.overlay(out, bbox, how="intersection")
+        if ~lon_normalized:
+            lon_mid = 0.5 * (extent[0] + extent[1])
+            # reset the CRS attribute after rewrapping (we don't really change the CRS)
+            out = (
+                out
+                .to_crs({"proj": "longlat", "lon_wrap": lon_mid})
+                .set_crs(DEF_CRS, allow_override=True)
+            )
 
     return out
 
@@ -1418,7 +1464,13 @@ def get_country_code(lat, lon, gridded=False):
         extent = (lon.min() - 0.001, lon.max() + 0.001,
                   lat.min() - 0.001, lat.max() + 0.001)
         countries = get_country_geometries(extent=extent)
-        countries['area'] = countries.geometry.area
+        with warnings.catch_warnings():
+            # in order to suppress the following
+            # UserWarning: Geometry is in a geographic CRS. Results from 'area' are likely
+            # incorrect. Use 'GeoSeries.to_crs()' to re-project geometries to a projected CRS
+            # before this operation.
+            warnings.simplefilter('ignore', UserWarning)
+            countries['area'] = countries.geometry.area
         countries = countries.sort_values(by=['area'], ascending=False)
         region_id = np.full((lon.size,), -1, dtype=int)
         total_land = countries.geometry.unary_union
@@ -1440,9 +1492,8 @@ def get_admin1_info(country_names):
     ----------
     country_names : list or str
         string or list with strings, either ISO code or names of countries, e.g.:
-        ['ZWE', 'GBR', 'VNM', 'UZB', 'Kenya', '051']
-        For example, for Armenia, the following inputs work:
-            'Armenia', 'ARM', 'AM', '051', 51
+        ``['ZWE', 'GBR', 'VNM', 'UZB', 'Kenya', '051']`` For example, for Armenia, all of the
+        following inputs work: ``'Armenia', 'ARM', 'AM', '051', 51``
 
     Returns
     -------
@@ -1499,11 +1550,9 @@ def get_admin1_geometries(countries):
     Parameters
     ----------
     countries : list or str or int
-        string or list containing strings, either ISO3 code or ISO2 code or names
-        names of countries, e.g.:
-        ['ZWE', 'GBR', 'VNM', 'UZB', 'Kenya', '051']
-        For example, for Armenia, the following inputs work:
-            'Armenia', 'ARM', 'AM', '051', 51
+        string or list with strings, either ISO code or names of countries, e.g.:
+        ``['ZWE', 'GBR', 'VNM', 'UZB', 'Kenya', '051']`` For example, for Armenia, all of the
+        following inputs work: ``'Armenia', 'ARM', 'AM', '051', 51``
 
     Returns
     -------
@@ -1539,7 +1588,7 @@ def get_admin1_geometries(countries):
         # fill columns with country identifiers (admin 0):
         gdf_tmp.iso_3n = pycountry.countries.lookup(country).numeric
         gdf_tmp.iso_3a = country
-        gdf = gdf.append(gdf_tmp, ignore_index=True)
+        gdf = pd.concat([gdf, gdf_tmp], ignore_index=True)
     return gdf
 
 def get_resolution_1d(coords, min_resol=1.0e-8):
@@ -1603,7 +1652,6 @@ def pts_to_raster_meta(points_bounds, res):
     ras_trans : affine.Affine
         Affine transformation defining the raster.
     """
-    Affine = rasterio.Affine
     bounds = np.asarray(points_bounds).reshape(2, 2)
     res = np.asarray(res).ravel()
     if res.size == 1:
@@ -1613,7 +1661,7 @@ def pts_to_raster_meta(points_bounds, res):
     nsteps[np.abs(nsteps * res) < sizes + np.abs(res) / 2] += 1
     bounds[:, res < 0] = bounds[::-1, res < 0]
     origin = bounds[0, :] - res[:] / 2
-    ras_trans = Affine.translation(*origin) * Affine.scale(*res)
+    ras_trans = rasterio.Affine.translation(*origin) * rasterio.Affine.scale(*res)
     return int(nsteps[1]), int(nsteps[0]), ras_trans
 
 def raster_to_meshgrid(transform, width, height):
@@ -1630,9 +1678,9 @@ def raster_to_meshgrid(transform, width, height):
 
     Returns
     -------
-    x : np.array
+    x : np.array of shape (height, width)
         x-coordinates of grid points.
-    y : np.array
+    y : np.array of shape (height, width)
         y-coordinates of grid points.
     """
     xres, _, xmin, _, yres, ymin = transform[:6]
@@ -1778,6 +1826,39 @@ def _read_raster_reproject(src, src_crs, dst_meta, band=None, geometry=None, dst
 
     return intensity
 
+def _add_gdal_vsi_prefix(path):
+    """Add one of GDAL's virtual file system prefixes if applicable
+
+    GDAL (and thus, rasterio) can be told to read data from compressed files without extracting the
+    data on disk ("GDAL Virtual File Systems"). This utility function tries to guess from a file's
+    suffix whether the file is compressed. If applicable, a prefix is added to the file's path that
+    tells GDAL to use the virtual file system feature.
+
+    For more information about the GDAL Virtual File Systems feature, see:
+    https://gdal.org/user/virtual_file_systems.html
+
+    Parameters
+    ----------
+    path : str or Path
+        Path to a (compressed) raster file to be opened with rasterio.
+
+    Returns
+    -------
+    path : str
+        The path with prefix if applicable, and the original path otherwise. This will always be
+        a string even if the path was provided as a Path object.
+    """
+    supported_suffixes = {
+        ".gz": "gzip",
+        ".zip": "zip",
+        ".tar": "tar",
+        ".tgz": "tar",
+    }
+    suffix = Path(path).suffix
+    if suffix in supported_suffixes:
+        path = f"/vsi{supported_suffixes[suffix]}/{path}"
+    return str(path)
+
 def read_raster(file_name, band=None, src_crs=None, window=None, geometry=None,
                 dst_crs=None, transform=None, width=None, height=None, resampling="nearest"):
     """Read raster of bands and set 0-values to the masked ones.
@@ -1816,11 +1897,9 @@ def read_raster(file_name, band=None, src_crs=None, window=None, geometry=None,
     if not band:
         band = [1]
     LOGGER.info('Reading %s', file_name)
-    if Path(file_name).suffix == '.gz':
-        file_name = '/vsigzip/' + str(file_name)
 
     with rasterio.Env():
-        with rasterio.open(file_name, 'r') as src:
+        with rasterio.open(_add_gdal_vsi_prefix(file_name), 'r') as src:
             dst_meta = src.meta.copy()
 
             if dst_crs or transform:
@@ -1911,11 +1990,9 @@ def read_raster_bounds(path, bounds, res=None, bands=None, resampling="nearest",
     """
     if isinstance(resampling, str):
         resampling = getattr(rasterio.warp.Resampling, resampling)
-    if Path(path).suffix == '.gz':
-        path = '/vsigzip/' + str(path)
     if not bands:
         bands = [1]
-    with rasterio.open(path, 'r') as src:
+    with rasterio.open(_add_gdal_vsi_prefix(path), 'r') as src:
         if res:
             if not isinstance(res, tuple):
                 res = (res, res)
@@ -1952,6 +2029,98 @@ def read_raster_bounds(path, bounds, res=None, bands=None, resampling="nearest",
                 resampling=resampling)
     return data, transform
 
+def _raster_gradient(data, transform, latlon_to_m=False):
+    """Compute the gradient of raster data using finite differences
+
+    Note that the gradient is defined on a staggered grid relative to the input raster. More
+    precisely, the gradients are computed in the cell centers of the input raster so that the
+    shape, size and location of the output raster is different from the input raster.
+
+    Parameters
+    ----------
+    data : np.array
+        A two-dimensional array containing the values.
+    transform : rasterio.Affine
+        Affine transformation defining the input raster.
+    latlon_to_m : boolean, optional
+        If True, convert the raster step sizes from lat/lon-units to meters, applying a latitude
+        correction. Default: False
+
+    Returns
+    -------
+    gradient_data : np.array of shape (ny, nx, 2)
+        The first/second entry in the last dimension is the derivative in y/x direction (y is
+        listed first!).
+    gradient_transform : rasterio.Affine
+        Affine transformation defining the output raster.
+    """
+    xres, _, _, _, yres = transform[:5]
+    gradient_transform =  rasterio.Affine.translation(0.5 * xres, 0.5 * yres) * transform
+
+    if latlon_to_m:
+        height, width = [s - 1 for s in data.shape]
+        _, lat = raster_to_meshgrid(gradient_transform, width, height)
+        xres = ONE_LAT_KM * 1000 * xres * np.cos(np.radians(lat))
+        yres = ONE_LAT_KM * 1000 * yres
+
+    diff_x = np.diff(data, axis=1)
+    diff_x = 0.5 * (diff_x[1:, :] + diff_x[:-1, :])
+    diff_y = np.diff(data, axis=0)
+    diff_y = 0.5 * (diff_y[:, 1:] + diff_y[:, :-1])
+    gradient_data = np.stack([diff_y / yres, diff_x / xres], axis=-1)
+
+    return gradient_data, gradient_transform
+
+def _prepare_raster_sample(path, lat, lon, intermediate_res, fill_value):
+    """Helper function for the sampling of points from a raster file.
+
+    Parameters
+    ----------
+    path : str
+        path of the raster file
+    lat : np.array of shape (npoints,)
+        latitudes in file's CRS
+    lon : np.array of shape (npoints,)
+        longitudes in file's CRS
+    intermediate_res : float or pair of floats or None
+        If given, the raster is not read in its original resolution but in the given one. This can
+        increase performance for files of very high resolution.
+    fill_value : numeric or None
+        The value used outside of the raster bounds.
+
+    Returns
+    -------
+    data : np.array of shape (ny, nx)
+        Raster data from the given raster file that is covering a rectangular region around the
+        given sample points.
+    transform : rasterio.Affine
+        Affine transformation defining the output raster data.
+    fill_value : float
+        The values to use outside of the raster bounds. If None was provided as an input, this is
+        the raster's nodata value (if it exists) or 0.
+    crs : CRS
+        The CRS of the raster file.
+    """
+    LOGGER.info('Sampling from %s', path)
+
+    with rasterio.open(_add_gdal_vsi_prefix(path), "r") as src:
+        if intermediate_res is None:
+            intermediate_res = (np.abs(src.transform[0]), np.abs(src.transform[4]))
+        meta_nodata = src.meta['nodata']
+        crs = src.crs
+
+    bounds = (lon.min(), lat.min(), lon.max(), lat.max())
+    data, transform = read_raster_bounds(path, bounds, res=intermediate_res, pad_cells=2)
+    data = data[0, :, :]
+
+    if fill_value is not None:
+        data[data == meta_nodata] = fill_value
+    else:
+        fill_value = meta_nodata
+    fill_value = fill_value or 0
+
+    return data, transform, fill_value, crs
+
 def read_raster_sample(path, lat, lon, intermediate_res=None, method='linear', fill_value=None):
     """Read point samples from raster file.
 
@@ -1959,59 +2128,90 @@ def read_raster_sample(path, lat, lon, intermediate_res=None, method='linear', f
     ----------
     path : str
         path of the raster file
-    lat : np.array
+    lat : np.array of shape (npoints,)
         latitudes in file's CRS
-    lon : np.array
+    lon : np.array of shape (npoints,)
         longitudes in file's CRS
-    intermediate_res : float, optional
+    intermediate_res : float or pair of floats, optional
         If given, the raster is not read in its original resolution but in the given one. This can
         increase performance for files of very high resolution.
-    method : str, optional
-        The interpolation method, passed to scipy.interp.interpn. Default: 'linear'.
+    method : str or pair of str, optional
+        The interpolation method, passed to `scipy.interpolate.interpn`. Default: 'linear'
     fill_value : numeric, optional
         The value used outside of the raster bounds. Default: The raster's nodata value or 0.
 
     Returns
     -------
-    values : np.array of same length as lat
+    values : np.array of shape (npoints,)
         Interpolated raster values for each given coordinate point.
     """
     if lat.size == 0:
         return np.zeros_like(lat)
 
-    LOGGER.info('Sampling from %s', path)
-    if Path(path).suffix == '.gz':
-        path = '/vsigzip/' + str(path)
+    data, transform, fill_value, _ = _prepare_raster_sample(
+        path, lat, lon, intermediate_res, fill_value)
 
-    with rasterio.open(path, "r") as src:
-        if intermediate_res is None:
-            xres, yres = np.abs(src.transform[0]), np.abs(src.transform[4])
-        else:
-            xres = yres = intermediate_res
-        bounds = (lon.min() - 2 * xres, lat.min() - 2 * yres,
-                  lon.max() + 2 * xres, lat.max() + 2 * yres)
-        win = src.window(*bounds).round_offsets(op='ceil').round_shape(op='floor')
-        win_transform = src.window_transform(win)
-        intermediate_shape = None
-        if intermediate_res is not None:
-            win_bounds = src.window_bounds(win)
-            win_width, win_height = win_bounds[2] - win_bounds[0], win_bounds[3] - win_bounds[1]
-            intermediate_shape = (int(np.ceil(win_height / intermediate_res)),
-                                  int(np.ceil(win_width / intermediate_res)))
-        data = src.read(1, out_shape=intermediate_shape, boundless=True, window=win)
-        if fill_value is not None:
-            data[data == src.meta['nodata']] = fill_value
-        else:
-            fill_value = src.meta['nodata']
+    return interp_raster_data(
+        data, lat, lon, transform, method=method, fill_value=fill_value)
 
+def read_raster_sample_with_gradients(path, lat, lon, intermediate_res=None,
+                                      method=('linear', 'nearest'), fill_value=None):
+    """Read point samples with computed gradients from raster file.
 
-    if intermediate_res is not None:
-        xres, yres = win_width / data.shape[1], win_height / data.shape[0]
-        xres, yres = np.sign(win_transform[0]) * xres, np.sign(win_transform[4]) * yres
-        win_transform = rasterio.Affine(xres, 0, win_transform[2],
-                                        0, yres, win_transform[5])
-    fill_value = fill_value if fill_value else 0
-    return interp_raster_data(data, lat, lon, win_transform, method=method, fill_value=fill_value)
+    For convenience, and because this is the most common use case, the step sizes in the gradient
+    computation are converted to meters if the raster's CRS is EPSG:4326 (lat/lon).
+
+    For example, in case of an elevation data set, not only the heights, but also the slopes of the
+    terrain in x- and y-direction are returned. In addition, if the CRS of the elevation data set
+    is EPSG:4326 (lat/lon) and elevations are given in m, then distances are converted from degrees
+    to meters, so that the unit of the returned slopes is "meters (height) per meter (distance)".
+
+    Parameters
+    ----------
+    path : str
+        path of the raster file
+    lat : np.array of shape (npoints,)
+        latitudes in file's CRS
+    lon : np.array of shape (npoints,)
+        longitudes in file's CRS
+    intermediate_res : float or pair of floats, optional
+        If given, the raster is not read in its original resolution but in the given one. This can
+        increase performance for files of very high resolution.
+    method : str or pair of str, optional
+        The interpolation methods for the data and its gradient, passed to
+        `scipy.interpolate.interpn`. If a single string is given, the same interpolation method is
+        used for both the data and its gradient. Default: ('linear', 'nearest')
+    fill_value : numeric, optional
+        The value used outside of the raster bounds. Default: The raster's nodata value or 0.
+
+    Returns
+    -------
+    values : np.array of shape (npoints,)
+        Interpolated raster values for each given coordinate point.
+    gradient : np.array of shape (npoints, 2)
+        The raster gradient at each of the given coordinate points. The first/second value in each
+        row is the derivative in lat/lon direction (lat is first!).
+    """
+    npoints = lat.size
+
+    if npoints == 0:
+        return np.zeros(npoints), np.zeros((npoints, 2))
+
+    if isinstance(method, str):
+        method = (method, method)
+
+    data, transform, fill_value, crs = _prepare_raster_sample(
+        path, lat, lon, intermediate_res, fill_value)
+
+    interp_data = interp_raster_data(
+        data, lat, lon, transform, method=method[0], fill_value=fill_value)
+
+    is_latlon = crs is not None and crs.to_epsg() == 4326
+    grad_data, grad_transform = _raster_gradient(data, transform, latlon_to_m=is_latlon)
+    interp_grad = interp_raster_data(
+        grad_data, lat, lon, grad_transform, method=method[1], fill_value=fill_value)
+
+    return interp_data, interp_grad
 
 def interp_raster_data(data, interp_y, interp_x, transform, method='linear', fill_value=0):
     """Interpolate raster data, given as array and affine transform
@@ -2019,7 +2219,9 @@ def interp_raster_data(data, interp_y, interp_x, transform, method='linear', fil
     Parameters
     ----------
     data : np.array
-        2d numpy array containing the values
+        Array containing the values. The first two dimensions are always interpreted as
+        corresponding to the y- and x-coordinates of the grid. Additional dimensions can be present
+        in case of multi-band data.
     interp_y : np.array
         y-coordinates of points (corresp. to first axis of data)
     interp_x : np.array
@@ -2027,8 +2229,7 @@ def interp_raster_data(data, interp_y, interp_x, transform, method='linear', fil
     transform : affine.Affine
         affine transform defining the raster
     method : str, optional
-        The interpolation method, passed to
-            scipy.interp.interpn. Default: 'linear'.
+        The interpolation method, passed to scipy.interpolate.interpn. Default: 'linear'.
     fill_value : numeric, optional
         The value used outside of the raster
             bounds. Default: 0.
@@ -2036,21 +2237,22 @@ def interp_raster_data(data, interp_y, interp_x, transform, method='linear', fil
     Returns
     -------
     values : np.array
-        Interpolated raster values for each given coordinate point.
+        Interpolated raster values for each given coordinate point. If multi-band data is provided,
+        the additional dimensions from `data` will also be present in this array.
     """
     xres, _, xmin, _, yres, ymin = transform[:6]
     xmax = xmin + data.shape[1] * xres
     ymax = ymin + data.shape[0] * yres
-    data = np.pad(data, 1, mode='edge')
+    data = np.pad(data, [(1, 1) if i < 2 else (0, 0) for i in range(data.ndim)], mode='edge')
 
     if yres < 0:
         yres = -yres
         ymax, ymin = ymin, ymax
-        data = np.flipud(data)
+        data = np.flip(data, axis=0)
     if xres < 0:
         xres = -xres
         xmax, xmin = xmin, xmax
-        data = np.fliplr(data)
+        data = np.flip(data, axis=1)
     y_dim = ymin - yres / 2 + yres * np.arange(data.shape[0])
     x_dim = xmin - xres / 2 + xres * np.arange(data.shape[1])
 
@@ -2451,8 +2653,10 @@ def set_df_geometry_points(df_val, scheduler=None, crs=None):
             return df_exp.apply(lambda row: Point(row.longitude, row.latitude), axis=1)
 
         ddata = dd.from_pandas(df_val, npartitions=cpu_count())
-        df_val['geometry'] = ddata.map_partitions(apply_point, meta=Point) \
-                                  .compute(scheduler=scheduler)
+        df_val['geometry'] = ddata.map_partitions(
+                                 apply_point,
+                                 meta=('geometry', gpd.array.GeometryDtype)
+                             ).compute(scheduler=scheduler)
     # single process
     else:
         df_val['geometry'] = gpd.GeoSeries(

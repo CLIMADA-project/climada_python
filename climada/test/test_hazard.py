@@ -65,15 +65,16 @@ class TestCentroids(unittest.TestCase):
 
     def test_read_write_vector_pass(self):
         """Test write_raster: Hazard from vector data"""
-        haz_fl = Hazard('FL')
-        haz_fl.event_id = np.array([1])
-        haz_fl.date = np.array([1])
-        haz_fl.frequency = np.array([1])
-        haz_fl.orig = np.array([1])
-        haz_fl.event_name = ['1']
-        haz_fl.intensity = sparse.csr_matrix(np.array([0.5, 0.2, 0.1]))
-        haz_fl.fraction = sparse.csr_matrix(np.array([0.5, 0.2, 0.1]) / 2)
-        haz_fl.centroids = Centroids.from_lat_lon(np.array([1, 2, 3]), np.array([1, 2, 3]))
+        haz_fl = Hazard('FL',
+                        event_id=np.array([1]),
+                        date=np.array([1]),
+                        frequency=np.array([1]),
+                        orig=np.array([1]),
+                        event_name=['1'],
+                        intensity=sparse.csr_matrix(np.array([0.5, 0.2, 0.1])),
+                        fraction=sparse.csr_matrix(np.array([0.5, 0.2, 0.1]) / 2),
+                        centroids=Centroids.from_lat_lon(
+                            np.array([1, 2, 3]), np.array([1, 2, 3])),)
         haz_fl.check()
 
         haz_fl.write_raster(DATA_DIR.joinpath('test_write_hazard.tif'))
@@ -85,15 +86,16 @@ class TestCentroids(unittest.TestCase):
 
     def test_write_fraction_pass(self):
         """Test write_raster with fraction"""
-        haz_fl = Hazard('FL')
-        haz_fl.event_id = np.array([1])
-        haz_fl.date = np.array([1])
-        haz_fl.frequency = np.array([1])
-        haz_fl.orig = np.array([1])
-        haz_fl.event_name = ['1']
-        haz_fl.intensity = sparse.csr_matrix(np.array([0.5, 0.2, 0.1]))
-        haz_fl.fraction = sparse.csr_matrix(np.array([0.5, 0.2, 0.1]) / 2)
-        haz_fl.centroids = Centroids.from_lat_lon(np.array([1, 2, 3]), np.array([1, 2, 3]))
+        haz_fl = Hazard('FL',
+                        event_id=np.array([1]),
+                        date=np.array([1]),
+                        frequency=np.array([1]),
+                        orig=np.array([1]),
+                        event_name=['1'],
+                        intensity=sparse.csr_matrix(np.array([0.5, 0.2, 0.1])),
+                        fraction=sparse.csr_matrix(np.array([0.5, 0.2, 0.1]) / 2),
+                        centroids=Centroids.from_lat_lon(
+                            np.array([1, 2, 3]), np.array([1, 2, 3])),)
         haz_fl.check()
 
         haz_fl.write_raster(DATA_DIR.joinpath('test_write_hazard.tif'), intensity=False)

@@ -24,11 +24,14 @@ __all__ = ['Measure']
 import copy
 import logging
 from pathlib import Path
+from typing import Optional, Tuple
+
 import numpy as np
 import pandas as pd
 from geopandas import GeoDataFrame
 
 from climada.entity.exposures.base import Exposures, INDICATOR_IMPF, INDICATOR_CENTR
+from climada.hazard.base import Hazard
 import climada.util.checker as u_check
 
 LOGGER = logging.getLogger(__name__)
@@ -80,33 +83,87 @@ class Measure():
         cost of risk transfer
     """
 
-    def __init__(self):
-        """Empty initialization."""
-        self.name = ''
-        self.haz_type = ''
-        self.color_rgb = np.array([0, 0, 0])
-        self.cost = 0
+    def __init__(
+        self,
+        name: str = "",
+        haz_type: str = "",
+        cost: float = 0,
+        hazard_set: str = NULL_STR,
+        hazard_freq_cutoff: float = 0,
+        exposures_set: str = NULL_STR,
+        imp_fun_map: str = NULL_STR,
+        hazard_inten_imp: Tuple[float, float] = (1, 0),
+        mdd_impact: Tuple[float, float] = (1, 0),
+        paa_impact: Tuple[float, float] = (1, 0),
+        exp_region_id: Optional[list] = None,
+        risk_transf_attach: float = 0,
+        risk_transf_cover: float = 0,
+        risk_transf_cost_factor: float = 1,
+        color_rgb: Optional[np.ndarray] = None
+    ):
+        """Initialize a Measure object with given values.
+
+        Parameters
+        ----------
+        name : str, optional
+            name of the measure
+        haz_type : str, optional
+            related hazard type (peril), e.g. TC
+        cost : float, optional
+            discounted cost (in same units as assets)
+        hazard_set : str, optional
+            file name of hazard to use (in h5 format)
+        hazard_freq_cutoff : float, optional
+            hazard frequency cutoff
+        exposures_set : str  or climada.entity.Exposure, optional
+            file name of exposure to use (in h5 format) or Exposure instance
+        imp_fun_map : str, optional
+            change of impact function id of exposures, e.g. '1to3'
+        hazard_inten_imp : tuple(float, float), optional
+            parameter a and b of hazard intensity change
+        mdd_impact : tuple(float, float), optional
+            parameter a and b of the impact over the mean damage degree
+        paa_impact : tuple(float, float), optional
+            parameter a and b of the impact over the percentage of affected assets
+        exp_region_id : int, optional
+            region id of the selected exposures to consider ALL the previous
+            parameters
+        risk_transf_attach : float, optional
+            risk transfer attachment
+        risk_transf_cover : float, optional
+            risk transfer cover
+        risk_transf_cost_factor : float, optional
+            factor to multiply to resulting insurance layer to get the total
+            cost of risk transfer
+        color_rgb : np.array, optional
+            integer array of size 3. Color code of this measure in RGB.
+            Default is None (corresponds to black).
+        """
+        self.name = name
+        self.haz_type = haz_type
+        self.color_rgb = np.array([0, 0, 0]) if color_rgb is None else color_rgb
+        self.cost = cost
 
         # related to change in hazard
-        self.hazard_set = NULL_STR
-        self.hazard_freq_cutoff = 0
+        self.hazard_set = hazard_set
+        self.hazard_freq_cutoff = hazard_freq_cutoff
 
         # related to change in exposures
-        self.exposures_set = NULL_STR
-        self.imp_fun_map = NULL_STR  # ids of impact functions to change e.g. 1to10
+        self.exposures_set = exposures_set
+        self.imp_fun_map = imp_fun_map
 
         # related to change in impact functions
-        self.hazard_inten_imp = (1, 0)  # parameter a and b
-        self.mdd_impact = (1, 0)  # parameter a and b
-        self.paa_impact = (1, 0)  # parameter a and b
+        self.hazard_inten_imp = hazard_inten_imp
+        self.mdd_impact = mdd_impact
+        self.paa_impact = paa_impact
 
         # related to change in region
-        self.exp_region_id = []
+        self.exp_region_id = [] if exp_region_id is None else exp_region_id
 
         # risk transfer
-        self.risk_transf_attach = 0
-        self.risk_transf_cover = 0
-        self.risk_transf_cost_factor = 1
+        self.risk_transf_attach = risk_transf_attach
+        self.risk_transf_cover = risk_transf_cover
+        self.risk_transf_cost_factor = risk_transf_cost_factor
 
     def check(self):
         """
@@ -121,7 +178,7 @@ class Measure():
         u_check.size(2, self.mdd_impact, 'Measure.mdd_impact')
         u_check.size(2, self.paa_impact, 'Measure.paa_impact')
 
-    def calc_impact(self, exposures, imp_fun_set, hazard):
+    def calc_impact(self, exposures, imp_fun_set, hazard, assign_centroids=True):
         """
         Apply measure and compute impact and risk transfer of measure
         implemented over inputs.
@@ -134,15 +191,21 @@ class Measure():
             impact function set instance
         hazard : climada.hazard.Hazard
             hazard instance
+        assign_centroids : bool, optional
+            indicates whether centroids are assigned to the self.exposures object.
+            Centroids assignment is an expensive operation; set this to ``False`` to save
+            computation time if the hazards' centroids are already assigned to the exposures
+            object.
+            Default: True
 
         Returns
         -------
-            : climada.engine.Impact
+        climada.engine.Impact
             resulting impact and risk transfer of measure
         """
 
         new_exp, new_impfs, new_haz = self.apply(exposures, imp_fun_set, hazard)
-        return self._calc_impact(new_exp, new_impfs, new_haz)
+        return self._calc_impact(new_exp, new_impfs, new_haz, assign_centroids)
 
     def apply(self, exposures, imp_fun_set, hazard):
         """
@@ -159,11 +222,12 @@ class Measure():
 
         Returns
         -------
-        new_exp, new_ifs, new_haz : climada.entity.Exposure,
-                                    climada.entity.ImpactFuncSet,
-                                    climada.hazard.Hazard
-            Exposure, impact function set with implemented measure
-            with all defined parameters.
+        new_exp : climada.entity.Exposure
+            Exposure with implemented measure with all defined parameters
+        new_ifs : climada.entity.ImpactFuncSet
+            Impact function set with implemented measure with all defined parameters
+        new_haz : climada.hazard.Hazard
+            Hazard with implemented measure with all defined parameters
         """
         # change hazard
         new_haz = self._change_all_hazard(hazard)
@@ -180,7 +244,7 @@ class Measure():
 
         return new_exp, new_impfs, new_haz
 
-    def _calc_impact(self, new_exp, new_impfs, new_haz):
+    def _calc_impact(self, new_exp, new_impfs, new_haz, assign_centroids):
         """Compute impact and risk transfer of measure implemented over inputs.
 
         Parameters
@@ -194,11 +258,11 @@ class Measure():
 
         Returns
         -------
-            : climada.engine.Impact
+        climada.engine.Impact
         """
-        from climada.engine.impact import Impact
-        imp = Impact()
-        imp.calc(new_exp, new_impfs, new_haz)
+        from climada.engine.impact_calc import ImpactCalc  # pylint: disable=import-outside-toplevel
+        imp = ImpactCalc(new_exp, new_impfs, new_haz)\
+              .impact(save_mat=False, assign_centroids=assign_centroids)
         return imp.calc_risk_transfer(self.risk_transf_attach, self.risk_transf_cover)
 
     def _change_all_hazard(self, hazard):
@@ -219,7 +283,6 @@ class Measure():
             return hazard
 
         LOGGER.debug('Setting new hazard %s', self.hazard_set)
-        from climada.hazard.base import Hazard
         new_haz = Hazard.from_hdf5(self.hazard_set)
         new_haz.check()
         return new_haz
@@ -282,12 +345,14 @@ class Measure():
         from_id = int(self.imp_fun_map[0:self.imp_fun_map.find('to')])
         to_id = int(self.imp_fun_map[self.imp_fun_map.find('to') + 2:])
         try:
-            exp_change = np.argwhere(new_exp.gdf[INDICATOR_IMPF + self.haz_type].values == from_id).\
-                reshape(-1)
+            exp_change = np.argwhere(
+                new_exp.gdf[INDICATOR_IMPF + self.haz_type].values == from_id
+            ).reshape(-1)
             new_exp.gdf[INDICATOR_IMPF + self.haz_type].values[exp_change] = to_id
         except KeyError:
-            exp_change = np.argwhere(new_exp.gdf[INDICATOR_IMPF].values == from_id).\
-                reshape(-1)
+            exp_change = np.argwhere(
+                new_exp.gdf[INDICATOR_IMPF].values == from_id
+            ).reshape(-1)
             new_exp.gdf[INDICATOR_IMPF].values[exp_change] = to_id
         return new_exp
 
@@ -356,9 +421,9 @@ class Measure():
         else:
             exp_imp = exposures
 
-        from climada.engine.impact import Impact
-        imp = Impact()
-        imp.calc(exp_imp, impf_set, hazard)
+        from climada.engine.impact_calc import ImpactCalc  # pylint: disable=import-outside-toplevel
+        imp = ImpactCalc(exp_imp, impf_set, hazard)\
+              .impact(assign_centroids=hazard.centr_exp_col not in exp_imp.gdf)
 
         LOGGER.debug('Cutting events whose damage have a frequency > %s.',
                      self.hazard_freq_cutoff)

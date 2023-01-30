@@ -116,31 +116,33 @@ class ImpfSetTropCyclone(ImpactFuncSet):
     @classmethod
     def from_calibrated_regional_ImpfSet(cls, calibration_approach='TDR', q=.5,
                                         input_file_path=None, version=1):
-        """ initiate TC wind impact functions based on Eberenz et al. 2021:
-        https://doi.org/10.5194/nhess-21-393-2021
+        """Calibrated regional TC wind impact functions
+
+        Based on Eberenz et al. 2021: https://doi.org/10.5194/nhess-21-393-2021
 
         Parameters
         ----------
-        calibration_approach : str
-            'TDR' (default): Total damage ratio (TDR) optimization with
+        calibration_approach : str, optional
+            The following values are supported:
+
+            'TDR' (default)
+                Total damage ratio (TDR) optimization with
                 TDR=1.0 (simulated damage = reported damage from EM-DAT)
-            'TDR1.5' : Total damage ratio (TDR) optimization with
+            'TDR1.5'
+                Total damage ratio (TDR) optimization with
                 TDR=1.5 (simulated damage = 1.5*reported damage from EM-DAT)
-            'RMSF': Root-mean-squared fraction (RMSF) optimization
-            'EDR': quantile from individually fitted v_half per event,
+            'RMSF'
+                Root-mean-squared fraction (RMSF) optimization
+            'EDR'
+                quantile from individually fitted v_half per event,
                 i.e. v_half fitted to get EDR=1.0 for each event
-        q : float
-            quantile between 0 and 1.0 to select
-            (EDR only, default=0.5, i.e. median v_half)
-        input_file_path : str or DataFrame
+        q : float, optional
+            Quantile between 0 and 1.0 to select (EDR only).
+            Default: 0.5, i.e. median v_half
+        input_file_path : str or DataFrame, optional
             full path to calibration
             result file to be used instead of default file in repository
             (expert users only)
-
-        Returns
-        -------
-        v_half : dict
-            Impf slope parameter v_half per region
 
         Returns
         -------
@@ -184,23 +186,30 @@ class ImpfSetTropCyclone(ImpactFuncSet):
     @staticmethod
     def calibrated_regional_vhalf(calibration_approach='TDR', q=.5,
                                   input_file_path=None, version=1):
-        """return calibrated TC wind impact function slope parameter v_half
-        per region based on Eberenz et al., 2021: https://doi.org/10.5194/nhess-21-393-2021
+        """Calibrated TC wind impact function slope parameter v_half per region
+
+        Based on Eberenz et al., 2021: https://doi.org/10.5194/nhess-21-393-2021
 
         Parameters
         ----------
-        calibration_approach : str
-            'TDR' (default): Total damage ratio (TDR) optimization with
+        calibration_approach : str, optional
+            The following values are supported:
+
+            'TDR' (default)
+                Total damage ratio (TDR) optimization with
                 TDR=1.0 (simulated damage = reported damage from EM-DAT)
-            'TDR1.5' : Total damage ratio (TDR) optimization with
+            'TDR1.5'
+                Total damage ratio (TDR) optimization with
                 TDR=1.5 (simulated damage = 1.5*reported damage from EM-DAT)
-            'RMSF': Root-mean-squared fraction (RMSF) optimization
-            'EDR': quantile from individually fitted v_half per event,
+            'RMSF'
+                Root-mean-squared fraction (RMSF) optimization
+            'EDR'
+                quantile from individually fitted v_half per event,
                 i.e. v_half fitted to get EDR=1.0 for each event
-        q : float
-            quantile between 0 and 1.0 to select
-            (EDR only, default=0.5, i.e. median v_half)
-        input_file_path : str or DataFrame
+        q : float, optional
+            Quantile between 0 and 1.0 to select (EDR only).
+            Default: 0.5, i.e. median v_half
+        input_file_path : str or DataFrame, optional
             full path to calibration
             result file to be used instead of default file in repository
             (expert users only)

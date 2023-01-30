@@ -551,11 +551,10 @@ class TestFuncs(unittest.TestCase):
         storms = ['1988169N14259', '2002073S16161', '2002143S07157']
         tc_track = tc.TCTracks.from_ibtracs_netcdf(storm_id=storms, provider=["usa", "bom"])
         bounds = (153.585022, -23.200001, 258.714996, 17.514986)
-        extent = (bounds[0], bounds[2], bounds[1], bounds[3])
         bounds_buf = (153.485022, -23.300001, 258.814996, 17.614986)
         np.testing.assert_array_almost_equal(tc_track.bounds, bounds)
         np.testing.assert_array_almost_equal(tc_track.get_bounds(deg_buffer=0.1), bounds_buf)
-        np.testing.assert_array_almost_equal(tc_track.extent, extent)
+        np.testing.assert_array_almost_equal(tc_track.extent, u_coord.toggle_extent_bounds(bounds))
 
     def test_generate_centroids(self):
         """Test centroids generation feature."""
@@ -622,11 +621,31 @@ class TestFuncs(unittest.TestCase):
             with self.assertRaises(ValueError, msg=msg) as _cm:
                 tc_track.equal_timestep(time_step_h=time_step_h)
 
-        # test for tracks with non-normalized longitude
+    def test_interp_track_lonnorm_pass(self):
+        """Interpolate track with non-normalized longitude to min_time_step."""
         tc_track = tc.TCTracks.from_processed_ibtracs_csv(TEST_TRACK)
         tc_track.data[0].lon.values[1] += 360
         tc_track.equal_timestep(time_step_h=1)
         np.testing.assert_array_less(tc_track.data[0].lon.values, 0)
+
+    def test_interp_track_redundancy_pass(self):
+        """Interpolate tracks that are already interpolated."""
+        tc_track = tc.TCTracks.from_processed_ibtracs_csv(TEST_TRACK)
+        tr_before = tc_track.data[0]
+        tc_track.equal_timestep(time_step_h=1)
+
+        # test for case when temporal resolution of all tracks already matches time_step_h
+        expected_warning = 'All tracks are already at the requested temporal resolution.'
+        with self.assertLogs('climada.hazard.tc_tracks', level='INFO') as cm:
+            tc_track.equal_timestep(time_step_h=1)
+        self.assertIn(expected_warning, cm.output[0])
+
+        # test for case when temporal resolution of some tracks already matches time_step_h
+        tc_track.data = [tc_track.data[0], tr_before, tc_track.data[0]]
+        expected_warning = '2 tracks are already at the requested temporal resolution.'
+        with self.assertLogs('climada.hazard.tc_tracks', level='INFO') as cm:
+            tc_track.equal_timestep(time_step_h=1)
+        self.assertIn(expected_warning, cm.output[0])
 
     def test_interp_origin_pass(self):
         """Interpolate track to min_time_step crossing lat origin"""
@@ -897,6 +916,32 @@ class TestFuncs(unittest.TestCase):
         self.assertEqual(sea_land_idx.tolist(), [0,4])
         self.assertEqual(land_sea_idx.tolist(), [2,6])
 
+    def test_track_land_params(self):
+        """Test identification of points on land and distance since landfall"""
+        # 1 pt over the ocean and two points within Fiji, one on each side of the anti-meridian
+        lon_test = np.array([170, 179.18, 180.05])
+        lat_test = np.array([-60, -16.56, -16.85])
+        on_land = np.array([False, True, True])
+        lon_shift = np.array([-360, 0, 360])
+        # ensure both points are considered on land as is
+        np.testing.assert_array_equal(
+            u_coord.coord_on_land(lat = lat_test, lon = lon_test),
+            on_land
+        )
+        # independently on shifts by 360 degrees in longitude
+        np.testing.assert_array_equal(
+            u_coord.coord_on_land(lat = lat_test, lon = lon_test + lon_shift),
+            on_land
+        )
+        np.testing.assert_array_equal(
+            u_coord.coord_on_land(lat = lat_test, lon = lon_test - lon_shift),
+            on_land
+        )
+        # also when longitude is within correct range
+        np.testing.assert_array_equal(
+            u_coord.coord_on_land(lat = lat_test, lon = u_coord.lon_normalize(lon_test)),
+            on_land
+        )
 
 # Execute Tests
 if __name__ == "__main__":

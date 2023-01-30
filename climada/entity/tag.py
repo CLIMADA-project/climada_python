@@ -32,7 +32,9 @@ class Tag():
         description of the data
     """
 
-    def __init__(self, file_name='', description=''):
+    def __init__(self,
+                 file_name: str = '',
+                 description: str = ''):
         """Initialize values.
 
         Parameters

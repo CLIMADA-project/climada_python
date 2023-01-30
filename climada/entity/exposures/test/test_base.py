@@ -22,13 +22,14 @@ import unittest
 import numpy as np
 import pandas as pd
 import geopandas as gpd
-from sklearn.neighbors import DistanceMetric
+from sklearn.metrics import DistanceMetric
 import rasterio
 from rasterio.windows import Window
 
 from climada import CONFIG
 from climada.entity.exposures.base import Exposures, INDICATOR_IMPF, \
      INDICATOR_CENTR, add_sea, DEF_REF_YEAR, DEF_VALUE_UNIT
+from climada.entity import LitPop
 from climada.entity.tag import Tag
 from climada.hazard.base import Hazard, Centroids
 from climada.util.constants import ENT_TEMPLATE_XLS, ONE_LAT_KM, DEF_CRS, HAZ_DEMO_FL
@@ -78,6 +79,31 @@ class TestFuncs(unittest.TestCase):
             exp.assign_centroids(haz)
             self.assertEqual(exp.gdf.shape[0], len(exp.gdf[INDICATOR_CENTR + 'FL']))
             np.testing.assert_array_equal(exp.gdf[INDICATOR_CENTR + 'FL'].values, expected_result)
+            exp.assign_centroids(Hazard(), overwrite=False)
+            self.assertEqual(exp.gdf.shape[0], len(exp.gdf[INDICATOR_CENTR + 'FL']))
+            np.testing.assert_array_equal(exp.gdf[INDICATOR_CENTR + 'FL'].values, expected_result)
+
+    def test__init__meta_type(self):
+        """ Check if meta of type list raises a ValueError in __init__"""
+        with self.assertRaises(ValueError) as cm:
+            Exposures(meta=[])
+        self.assertEqual("meta must be a dictionary",
+                      str(cm.exception))
+
+    def test__init__geometry_type(self):
+        """Check that initialization fails when `geometry` is given as a `str` argument"""
+        with self.assertRaises(ValueError) as cm:
+            Exposures(geometry='myname')
+        self.assertEqual("Exposures is not able to handle customized 'geometry' column names.",
+                         str(cm.exception))
+
+    def test__init__mda_in_kwargs(self):
+        """Check if `_metadata` attributes are instantiated correctly for sub-classes of
+        ``Exposures``"""
+        litpop = LitPop(exponents=2)
+        self.assertEqual(litpop.exponents, 2)
+        litpop = LitPop(meta=dict(exponents=3))
+        self.assertEqual(litpop.exponents, 3)
 
     def test_read_raster_pass(self):
         """from_raster"""
@@ -99,15 +125,13 @@ class TestFuncs(unittest.TestCase):
 
     def test_assign_raster_pass(self):
         """Test assign_centroids with raster hazard"""
-        haz = Hazard('FL')
-
         # explicit, easy-to-understand raster centroids for hazard
-        haz.centroids = Centroids()
-        haz.centroids.meta = {
+        meta = {
             'count': 1, 'crs': DEF_CRS,
             'width': 20, 'height': 10,
             'transform': rasterio.Affine(1.5, 0.0, -20, 0.0, -1.4, 8)
         }
+        haz = Hazard('FL', centroids=Centroids(meta=meta))
 
         # explicit points with known results (see `expected_result` for details)
         exp = Exposures(crs=DEF_CRS)
@@ -160,6 +184,25 @@ class TestFuncs(unittest.TestCase):
         np.testing.assert_array_equal(assigned_centroids.lat, exp.gdf.latitude)
         np.testing.assert_array_equal(assigned_centroids.lon, exp.gdf.longitude)
 
+    def test_affected_total_value(self):
+        exp = Exposures.from_raster(HAZ_DEMO_FL, window=Window(25, 90, 10, 5))
+        haz = Hazard.from_raster([HAZ_DEMO_FL], haz_type='FL', window=Window(25, 90, 10, 5))
+        exp.assign_centroids(haz)
+        tot_val = exp.affected_total_value(haz)
+        self.assertEqual(tot_val, np.sum(exp.gdf.value))
+        new_centr = exp.gdf.centr_FL
+        new_centr[6] = -1
+        exp.gdf.centr_FL = new_centr
+        tot_val = exp.affected_total_value(haz)
+        self.assertAlmostEqual(tot_val, np.sum(exp.gdf.value) - exp.gdf.value[6], places=4)
+        new_vals = exp.gdf.value
+        new_vals[7] = 0
+        exp.gdf.value = new_vals
+        tot_val = exp.affected_total_value(haz)
+        self.assertAlmostEqual(tot_val, np.sum(exp.gdf.value) - exp.gdf.value[6], places=4)
+        exp.gdf.centr_FL = -1
+        tot_val = exp.affected_total_value(haz)
+        self.assertEqual(tot_val, 0)
 
 class TestChecker(unittest.TestCase):
     """Test logs of check function"""
@@ -424,7 +467,7 @@ class TestGeoDFFuncs(unittest.TestCase):
         probe.set_gdf(empty_gdf)
         self.assertTrue(probe.gdf.equals(gpd.GeoDataFrame()))
         self.assertTrue(u_coord.equal_crs(DEF_CRS, probe.crs))
-        self.assertIsNone(probe.gdf.crs)
+        self.assertFalse(hasattr(probe.gdf, "crs"))
 
         probe.set_gdf(gdf_with_geometry)
         self.assertTrue(probe.gdf.equals(gdf_with_geometry))
@@ -434,7 +477,7 @@ class TestGeoDFFuncs(unittest.TestCase):
         probe.set_gdf(gdf_without_geometry)
         self.assertTrue(probe.gdf.equals(good_exposures().gdf))
         self.assertTrue(u_coord.equal_crs(DEF_CRS, probe.crs))
-        self.assertIsNone(probe.gdf.crs)
+        self.assertFalse(hasattr(probe.gdf, "crs"))
 
     def test_set_crs(self):
         """Test setting the CRS"""
@@ -456,6 +499,11 @@ class TestGeoDFFuncs(unittest.TestCase):
         self.assertRaises(ValueError, probe.set_crs, 'epsg:3395')
         self.assertTrue(u_coord.equal_crs('EPSG:4326', probe.meta.get('crs')))
 
+    def test_to_crs_epsg_crs(self):
+        """ Check that if crs and epsg are both provided a ValueError is raised"""
+        with self.assertRaises(ValueError) as cm:
+            Exposures.to_crs(self, crs='GCS', epsg=26915)
+        self.assertEqual("one of crs or epsg must be None", str(cm.exception))
 
 class TestImpactFunctions(unittest.TestCase):
     """Test impact function handling"""

@@ -27,6 +27,7 @@ import itertools
 import logging
 import pathlib
 import warnings
+from typing import Union, Optional, Callable, Dict, Any, List
 
 import geopandas as gpd
 import h5py
@@ -37,7 +38,9 @@ from pathos.pools import ProcessPool as Pool
 import rasterio
 from rasterio.features import rasterize
 from rasterio.warp import reproject, Resampling, calculate_default_transform
+import sparse as sp
 from scipy import sparse
+import xarray as xr
 
 from climada.hazard.tag import Tag as TagHazard
 from climada.hazard.centroids.centr import Centroids
@@ -47,7 +50,7 @@ import climada.util.dates_times as u_dt
 from climada import CONFIG
 import climada.util.hdf5_handler as u_hdf5
 import climada.util.coordinates as u_coord
-from climada.util.constants import ONE_LAT_KM
+from climada.util.constants import ONE_LAT_KM, DEF_CRS, DEF_FREQ_UNIT
 from climada.util.coordinates import NEAREST_NEIGHBOR_THRESHOLD
 
 LOGGER = logging.getLogger(__name__)
@@ -92,6 +95,11 @@ DEF_VAR_MAT = {'field_name': 'hazard',
                }
 """MATLAB variable names"""
 
+DEF_COORDS = dict(event="time", longitude="longitude", latitude="latitude")
+"""Default coordinates when reading Hazard data from an xarray Dataset"""
+
+DEF_DATA_VARS = ["fraction", "frequency", "event_id", "event_name", "date"]
+"""Default keys for optional Hazard attributes when reading from an xarray Dataset"""
 
 class Hazard():
     """
@@ -118,12 +126,15 @@ class Hazard():
         flags indicating historical events (True)
         or probabilistic (False)
     frequency : np.array
-        frequency of each event in years
+        frequency of each event
+    frequency_unit : str
+        unit of the frequency (default: "1/year")
     intensity : sparse.csr_matrix
         intensity of the events at centroids
     fraction : sparse.csr_matrix
-        fraction of affected exposures for each
-        event at each centroid
+        fraction of affected exposures for each event at each centroid.
+        If empty (all 0), it is ignored in the impact computations
+        (i.e., is equivalent to fraction is 1 everywhere).
     """
     intensity_thres = 10
     """Intensity threshold per hazard used to filter lower intensities. To be
@@ -143,7 +154,8 @@ class Hazard():
 
     vars_def = {'date',
                 'orig',
-                'event_name'
+                'event_name',
+                'frequency_unit'
                 }
     """Name of the variables used in impact calculation whose value is
     descriptive and can therefore be set with default values. Types: scalar,
@@ -154,7 +166,20 @@ class Hazard():
     """Name of the variables that aren't need to compute the impact. Types:
     scalar, string, list, 1dim np.array of size num_events."""
 
-    def __init__(self, haz_type='', pool=None):
+    def __init__(self,
+                 haz_type: str = "",
+                 pool: Optional[Pool] = None,
+                 units: str = "",
+                 centroids: Optional[Centroids] = None,
+                 event_id: Optional[np.ndarray] = None,
+                 frequency: Optional[np.ndarray] = None,
+                 frequency_unit: str = DEF_FREQ_UNIT,
+                 event_name: Optional[List[str]] = None,
+                 date: Optional[np.ndarray] = None,
+                 orig: Optional[np.ndarray] = None,
+                 intensity: Optional[sparse.csr_matrix] = None,
+                 fraction: Optional[sparse.csr_matrix] = None,
+                 **tag_kwargs):
         """
         Initialize values.
 
@@ -164,38 +189,82 @@ class Hazard():
             acronym of the hazard type (e.g. 'TC').
         pool : pathos.pool, optional
             Pool that will be used for parallel computation when applicable. Default: None
+        units : str, optional
+            units of the intensity. Defaults to empty string.
+        centroids : Centroids, optional
+            centroids of the events. Defaults to empty Centroids object.
+        event_id : np.array, optional
+            id (>0) of each event. Defaults to empty array.
+        event_name : list(str), optional
+            name of each event (default: event_id). Defaults to empty list.
+        date : np.array, optional
+            integer date corresponding to the proleptic
+            Gregorian ordinal, where January 1 of year 1 has ordinal 1
+            (ordinal format of datetime library). Defaults to empty array.
+        orig : np.array, optional
+            flags indicating historical events (True)
+            or probabilistic (False). Defaults to empty array.
+        frequency : np.array, optional
+            frequency of each event. Defaults to empty array.
+        frequency_unit : str, optional
+            unit of the frequency (default: "1/year").
+        intensity : sparse.csr_matrix, optional
+            intensity of the events at centroids. Defaults to empty matrix.
+        fraction : sparse.csr_matrix, optional
+            fraction of affected exposures for each event at each centroid. Defaults to
+            empty matrix.
+        tag_kwargs
+            Keyword-arguments for creating the HazardTag. ``haz_type`` is also passed
+            to the Tag constructor.
 
         Examples
         --------
-        Fill hazard values by hand:
+        Initialize using keyword arguments:
 
-        >>> haz = Hazard('TC')
-        >>> haz.intensity = sparse.csr_matrix(np.zeros((2, 2)))
-        >>> ...
+        >>> haz = Hazard('TC', intensity=sparse.csr_matrix(np.zeros((2, 2))))
 
         Take hazard values from file:
 
         >>> haz = Hazard.from_mat(HAZ_DEMO_MAT, 'demo')
 
         """
-        self.tag = TagHazard()
-        self.tag.haz_type = haz_type
-        self.units = ''
-        self.centroids = Centroids()
+        self.tag = TagHazard(haz_type, **tag_kwargs)
+        self.units = units
+        self.centroids = centroids if centroids is not None else Centroids()
         # following values are defined for each event
-        self.event_id = np.array([], int)
-        self.frequency = np.array([], float)
-        self.event_name = list()
-        self.date = np.array([], int)
-        self.orig = np.array([], bool)
+        self.event_id = event_id if event_id is not None else np.array([], int)
+        self.frequency = frequency if frequency is not None else np.array(
+            [], float)
+        self.frequency_unit = frequency_unit
+        self.event_name = event_name if event_name is not None else list()
+        self.date = date if date is not None else np.array([], int)
+        self.orig = orig if orig is not None else np.array([], bool)
         # following values are defined for each event and centroid
-        self.intensity = sparse.csr_matrix(np.empty((0, 0)))  # events x centroids
-        self.fraction = sparse.csr_matrix(np.empty((0, 0)))  # events x centroids
-        if pool:
-            self.pool = pool
+        self.intensity = intensity if intensity is not None else sparse.csr_matrix(
+            np.empty((0, 0)))  # events x centroids
+        self.fraction = fraction if fraction is not None else sparse.csr_matrix(
+            self.intensity.shape)  # events x centroids
+
+        self.pool = pool
+        if self.pool:
             LOGGER.info('Using %s CPUs.', self.pool.ncpus)
-        else:
-            self.pool = None
+
+    @classmethod
+    def get_default(cls, attribute):
+        """Get the Hazard type default for a given attribute.
+
+        Parameters
+        ----------
+        attribute : str
+            attribute name
+
+        Returns
+        ------
+        Any
+        """
+        return {
+            'frequency_unit': DEF_FREQ_UNIT,
+        }.get(attribute)
 
     def clear(self):
         """Reinitialize attributes (except the process Pool)."""
@@ -205,7 +274,7 @@ class Hazard():
             elif isinstance(var_val, sparse.csr_matrix):
                 setattr(self, var_name, sparse.csr_matrix(np.empty((0, 0))))
             elif not isinstance(var_val, Pool):
-                setattr(self, var_name, var_val.__class__())
+                setattr(self, var_name, self.get_default(var_name) or var_val.__class__())
 
     def check(self):
         """Check dimension of attributes.
@@ -264,8 +333,8 @@ class Hazard():
         resampling : rasterio.warp.Resampling, optional
             resampling function used for reprojection to dst_crs
 
-        Return
-        ------
+        Returns
+        -------
         Hazard
         """
         if isinstance(files_intensity, (str, pathlib.Path)):
@@ -280,82 +349,53 @@ class Hazard():
             raise ValueError('Number of intensity files differs from fraction files:'
                              f'{len(files_intensity)} != {len(files_fraction)}')
 
+        # List all parameters for initialization here (missing ones will be default)
+        hazard_kwargs = dict()
         if haz_type is not None:
-            try:
-                haz = cls(haz_type=haz_type, pool=pool)
-            except TypeError:
-                haz = cls(pool=pool)
-                LOGGER.warning(
-                    "haz_type argument ('%s') is ignored, haz_type is determined by class",
-                    haz_type)
-        else:
-            haz = cls(pool=pool)
+            hazard_kwargs["haz_type"] = haz_type
+        hazard_kwargs["file_name"] = str(files_intensity) + ' ; ' + str(files_fraction)
 
-        haz.tag.file_name = str(files_intensity) + ' ; ' + str(files_fraction)
-
-        haz.centroids = Centroids.from_raster_file(
+        centroids = Centroids.from_raster_file(
             files_intensity[0], src_crs=src_crs, window=window, geometry=geometry, dst_crs=dst_crs,
             transform=transform, width=width, height=height, resampling=resampling)
-        if haz.pool:
-            chunksize = min(len(files_intensity) // haz.pool.ncpus, 1000)
-            inten_list = haz.pool.map(
-                haz.centroids.values_from_raster_files,
+        if pool:
+            chunksize = min(len(files_intensity) // pool.ncpus, 1000)
+            inten_list = pool.map(
+                centroids.values_from_raster_files,
                 [[f] for f in files_intensity],
                 itertools.repeat(band), itertools.repeat(src_crs),
                 itertools.repeat(window), itertools.repeat(geometry),
                 itertools.repeat(dst_crs), itertools.repeat(transform),
                 itertools.repeat(width), itertools.repeat(height),
                 itertools.repeat(resampling), chunksize=chunksize)
-            haz.intensity = sparse.vstack(inten_list, format='csr')
+            intensity = sparse.vstack(inten_list, format='csr')
             if files_fraction is not None:
-                fract_list = haz.pool.map(
-                    haz.centroids.values_from_raster_files,
+                fract_list = pool.map(
+                    centroids.values_from_raster_files,
                     [[f] for f in files_fraction],
                     itertools.repeat(band), itertools.repeat(src_crs),
                     itertools.repeat(window), itertools.repeat(geometry),
                     itertools.repeat(dst_crs), itertools.repeat(transform),
                     itertools.repeat(width), itertools.repeat(height),
                     itertools.repeat(resampling), chunksize=chunksize)
-                haz.fraction = sparse.vstack(fract_list, format='csr')
+                fraction = sparse.vstack(fract_list, format='csr')
         else:
-            haz.intensity = haz.centroids.values_from_raster_files(
+            intensity = centroids.values_from_raster_files(
                 files_intensity, band=band, src_crs=src_crs, window=window, geometry=geometry,
                 dst_crs=dst_crs, transform=transform, width=width, height=height,
                 resampling=resampling)
             if files_fraction is not None:
-                haz.fraction = haz.centroids.values_from_raster_files(
+                fraction = centroids.values_from_raster_files(
                     files_fraction, band=band, src_crs=src_crs, window=window, geometry=geometry,
                     dst_crs=dst_crs, transform=transform, width=width, height=height,
                     resampling=resampling)
 
         if files_fraction is None:
-            haz.fraction = haz.intensity.copy()
-            haz.fraction.data.fill(1)
+            fraction = intensity.copy()
+            fraction.data.fill(1)
 
-        if 'event_id' in attrs:
-            haz.event_id = attrs['event_id']
-        else:
-            haz.event_id = np.arange(1, haz.intensity.shape[0] + 1)
-        if 'frequency' in attrs:
-            haz.frequency = attrs['frequency']
-        else:
-            haz.frequency = np.ones(haz.event_id.size)
-        if 'event_name' in attrs:
-            haz.event_name = attrs['event_name']
-        else:
-            haz.event_name = list(map(str, haz.event_id))
-        if 'date' in attrs:
-            haz.date = np.array([attrs['date']])
-        else:
-            haz.date = np.ones(haz.event_id.size)
-        if 'orig' in attrs:
-            haz.orig = np.array([attrs['orig']])
-        else:
-            haz.orig = np.ones(haz.event_id.size, bool)
-        if 'unit' in attrs:
-            haz.unit = attrs['unit']
-
-        return haz
+        hazard_kwargs.update(cls._attrs_to_kwargs(attrs, num_events=intensity.shape[0]))
+        return cls(centroids=centroids, intensity=intensity, fraction=fraction, **hazard_kwargs)
 
     def set_raster(self, *args, **kwargs):
         """This function is deprecated, use Hazard.from_raster."""
@@ -368,6 +408,524 @@ class Hazard():
         LOGGER.warning("The use of Hazard.set_vector is deprecated."
                        "Use Hazard.from_vector instead.")
         self.__dict__ = Hazard.from_vector(*args, **kwargs).__dict__
+
+    @classmethod
+    def from_raster_xarray(
+        cls,
+        data: Union[xr.Dataset, str, pathlib.Path],
+        hazard_type: str,
+        intensity_unit: str,
+        *,
+        intensity: str = "intensity",
+        coordinate_vars: Optional[Dict[str, str]] = None,
+        data_vars: Optional[Dict[str, str]] = None,
+        crs: str = DEF_CRS,
+        rechunk: bool = False,
+    ):
+        """Read raster-like data from an xarray Dataset or a raster data file
+
+        This method reads data that can be interpreted using three coordinates for event,
+        latitude, and longitude. The data and the coordinates themselves may be organized
+        in arbitrary dimensions in the Dataset (e.g. three dimensions 'year', 'month',
+        'day' for the coordinate 'event'). The three coordinates to be read can be
+        specified via the ``coordinate_vars`` parameter. See Notes and Examples if you
+        want to load single-event data that does not contain an event dimension.
+
+        The only required data is the intensity. For all other data, this method can
+        supply sensible default values. By default, this method will try to find these
+        "optional" data in the Dataset and read it, or use the default values otherwise.
+        Users may specify the variables in the Dataset to be read for certain Hazard
+        object entries, or may indicate that the default values should be used although
+        the Dataset contains appropriate data. This behavior is controlled via the
+        ``data_vars`` parameter.
+
+        If this method succeeds, it will always return a "consistent" Hazard object,
+        meaning that the object can be used in all CLIMADA operations without throwing
+        an error due to missing data or faulty data types.
+
+        Parameters
+        ----------
+        data : xarray.Dataset or str
+            The data to read from. May be an opened dataset or a path to a raster data
+            file, in which case the file is opened first. Works with any file format
+            supported by ``xarray``.
+        hazard_type : str
+            The type identifier of the hazard. Will be stored directly in the hazard
+            object.
+        intensity_unit : str
+            The physical units of the intensity. Will be stored in the ``hazard.tag``.
+        intensity : str, optional
+            Identifier of the `xarray.DataArray` containing the hazard intensity data.
+        coordinate_vars : dict(str, str), optional
+            Mapping from default coordinate names to coordinate names used in the data
+            to read. The default is
+            ``dict(event="time", longitude="longitude", latitude="latitude")``, as most
+            of the commonly used hazard data happens to have a "time" attribute but no
+            "event" attribute.
+        data_vars : dict(str, str), optional
+            Mapping from default variable names to variable names used in the data
+            to read. The default names are ``fraction``, ``hazard_type``, ``frequency``,
+            ``event_name``, ``event_id``, and ``date``. If these values are not set, the
+            method tries to load data from the default names. If this fails, the method
+            uses default values for each entry. If the values are set to empty strings
+            (``""``), no data is loaded and the default values are used exclusively. See
+            examples for details.
+
+            Default values are:
+
+            * ``date``: The ``event`` coordinate interpreted as date
+            * ``fraction``: ``None``, which results in a value of 1.0 everywhere, see
+              :py:meth:`Hazard.__init__` for details.
+            * ``hazard_type``: Empty string
+            * ``frequency``: 1.0 for every event
+            * ``event_name``: String representation of the event time
+            * ``event_id``: Consecutive integers starting at 1 and increasing with time
+        crs : str, optional
+            Identifier for the coordinate reference system of the coordinates. Defaults
+            to ``EPSG:4326`` (WGS 84), defined by ``climada.util.constants.DEF_CRS``.
+            See https://pyproj4.github.io/pyproj/dev/api/crs/crs.html#pyproj.crs.CRS.from_user_input
+            for further information on how to specify the coordinate system.
+        rechunk : bool, optional
+            Rechunk the dataset before flattening. This might have serious performance
+            implications. Rechunking in general is expensive, but it might be less
+            expensive than stacking a poorly-chunked array. One event being stored in
+            one chunk would be the optimal configuration. If ``rechunk=True``, this will
+            be forced by rechunking the data. Ideally, you would select the chunks in
+            that manner when opening the dataset before passing it to this function.
+            Defaults to ``False``.
+
+        Returns
+        -------
+        hazard : climada.Hazard
+            A hazard object created from the input data
+
+        Notes
+        -----
+        * Single-valued coordinates given by ``coordinate_vars``, that are not proper
+          dimensions of the data, are promoted to dimensions automatically. If one of the
+          three coordinates does not exist, use ``Dataset.expand_dims`` (see
+          https://docs.xarray.dev/en/stable/generated/xarray.Dataset.expand_dims.html
+          and Examples) before loading the Dataset as Hazard.
+        * Single-valued data for variables ``frequency``. ``event_name``, and
+          ``event_date`` will be broadcast to every event.
+        * To avoid confusion in the call signature, several parameters are keyword-only
+          arguments.
+        * The attributes ``Hazard.tag.haz_type`` and ``Hazard.unit`` currently cannot be
+          read from the Dataset. Use the method parameters to set these attributes.
+        * This method does not read coordinate system metadata. Use the ``crs`` parameter
+          to set a custom coordinate system identifier.
+        * This method **does not** read lazily. Single data arrays must fit into memory.
+
+        Examples
+        --------
+        The use of this method is straightforward if the Dataset contains the data with
+        expected names.
+
+        >>> dset = xr.Dataset(
+        ...     dict(
+        ...         intensity=(
+        ...             ["time", "latitude", "longitude"],
+        ...             [[[0, 1, 2], [3, 4, 5]]],
+        ...         )
+        ...     ),
+        ...     dict(
+        ...         time=[datetime.datetime(2000, 1, 1)],
+        ...         latitude=[0, 1],
+        ...         longitude=[0, 1, 2],
+        ...     ),
+        ... )
+        >>> hazard = Hazard.from_raster_xarray(dset, "", "")
+
+        For non-default coordinate names, use the ``coordinate_vars`` argument.
+
+        >>> dset = xr.Dataset(
+        ...     dict(
+        ...         intensity=(
+        ...             ["day", "lat", "longitude"],
+        ...             [[[0, 1, 2], [3, 4, 5]]],
+        ...         )
+        ...     ),
+        ...     dict(
+        ...         day=[datetime.datetime(2000, 1, 1)],
+        ...         lat=[0, 1],
+        ...         longitude=[0, 1, 2],
+        ...     ),
+        ... )
+        >>> hazard = Hazard.from_raster_xarray(
+        ...     dset, "", "", coordinate_vars=dict(event="day", latitude="lat")
+        ... )
+
+        Coordinates can be different from the actual dataset dimensions. The following
+        loads the data with coordinates ``longitude`` and ``latitude`` (default names):
+
+        >>> dset = xr.Dataset(
+        ...     dict(intensity=(["time", "y", "x"], [[[0, 1, 2], [3, 4, 5]]])),
+        ...     dict(
+        ...         time=[datetime.datetime(2000, 1, 1)],
+        ...         y=[0, 1],
+        ...         x=[0, 1, 2],
+        ...         longitude=(["y", "x"], [[0.0, 0.1, 0.2], [0.0, 0.1, 0.2]]),
+        ...         latitude=(["y", "x"], [[0.0, 0.0, 0.0], [0.1, 0.1, 0.1]]),
+        ...     ),
+        ... )
+        >>> hazard = Hazard.from_raster_xarray(dset, "", "")
+
+        Optional data is read from the dataset if the default keys are found. Users can
+        specify custom variables in the data, or that the default keys should be ignored,
+        with the ``data_vars`` argument.
+
+        >>> dset = xr.Dataset(
+        ...     dict(
+        ...         intensity=(
+        ...             ["time", "latitude", "longitude"],
+        ...             [[[0, 1, 2], [3, 4, 5]]],
+        ...         ),
+        ...         fraction=(
+        ...             ["time", "latitude", "longitude"],
+        ...             [[[0.0, 0.1, 0.2], [0.3, 0.4, 0.5]]],
+        ...         ),
+        ...         freq=(["time"], [0.4]),
+        ...         event_id=(["time"], [4]),
+        ...     ),
+        ...     dict(
+        ...         time=[datetime.datetime(2000, 1, 1)],
+        ...         latitude=[0, 1],
+        ...         longitude=[0, 1, 2],
+        ...     ),
+        ... )
+        >>> hazard = Hazard.from_raster_xarray(
+        ...     dset,
+        ...     "",
+        ...     "",
+        ...     data_vars=dict(
+        ...         # Load frequency from 'freq' array
+        ...         frequency="freq",
+        ...         # Ignore 'event_id' array and use default instead
+        ...         event_id="",
+        ...         # 'fraction' array is loaded because it has the default name
+        ...     ),
+        ... )
+        >>> np.array_equal(hazard.frequency, [0.4]) and np.array_equal(
+        ...     hazard.event_id, [1]
+        ... )
+        True
+
+        If your read single-event data your dataset probably will not have a time
+        dimension. As long as a time *coordinate* exists, however, this method will
+        automatically promote it to a dataset dimension and load the data:
+
+        >>> dset = xr.Dataset(
+        ...     dict(
+        ...         intensity=(
+        ...             ["latitude", "longitude"],
+        ...             [[0, 1, 2], [3, 4, 5]],
+        ...         )
+        ...     ),
+        ...     dict(
+        ...         time=[datetime.datetime(2000, 1, 1)],
+        ...         latitude=[0, 1],
+        ...         longitude=[0, 1, 2],
+        ...     ),
+        ... )
+        >>> hazard = Hazard.from_raster_xarray(dset, "", "")  # Same as first example
+
+        If one coordinate is missing altogehter, you must add it or expand the dimensions
+        before loading the dataset:
+
+        >>> dset = xr.Dataset(
+        ...     dict(
+        ...         intensity=(
+        ...             ["latitude", "longitude"],
+        ...             [[0, 1, 2], [3, 4, 5]],
+        ...         )
+        ...     ),
+        ...     dict(
+        ...         latitude=[0, 1],
+        ...         longitude=[0, 1, 2],
+        ...     ),
+        ... )
+        >>> dset = dset.expand_dims(time=[numpy.datetime64("2000-01-01")])
+        >>> hazard = Hazard.from_raster_xarray(dset, "", "")
+        """
+        # If the data is a string, open the respective file
+        if not isinstance(data, xr.Dataset):
+            LOGGER.info("Loading Hazard from file: %s", data)
+            data: xr.Dataset = xr.open_dataset(data, chunks="auto")
+        else:
+            LOGGER.info("Loading Hazard from xarray Dataset")
+
+        # Initialize Hazard object
+        hazard_kwargs = dict(haz_type=hazard_type, units=intensity_unit)
+
+        # Update coordinate identifiers
+        coords = copy.deepcopy(DEF_COORDS)
+        coordinate_vars = coordinate_vars if coordinate_vars is not None else {}
+        unknown_coords = [co for co in coordinate_vars if co not in coords]
+        if unknown_coords:
+            raise ValueError(
+                f"Unknown coordinates passed: '{unknown_coords}'. Supported "
+                f"coordinates are {list(coords.keys())}."
+            )
+        coords.update(coordinate_vars)
+
+        # Retrieve dimensions of coordinates
+        try:
+            dims = dict(
+                event=data[coords["event"]].dims,
+                longitude=data[coords["longitude"]].dims,
+                latitude=data[coords["latitude"]].dims,
+            )
+        # Handle KeyError for better error message
+        except KeyError as err:
+            key = err.args[0]
+            raise RuntimeError(
+                f"Dataset is missing dimension/coordinate: {key}. Dataset dimensions: "
+                f"{list(data.dims.keys())}"
+            ) from err
+
+        # Try promoting single-value coordinates to dimensions
+        for key, val in dims.items():
+            if not val:
+                coord = coords[key]
+                LOGGER.debug("Promoting Dataset coordinate '%s' to dimension", coord)
+                data = data.expand_dims(coord)
+                dims[key] = data[coord].dims
+
+        # Try to rechunk the data to optimize the stack operation afterwards.
+        if rechunk:
+            # We want one event to be contained in one chunk
+            chunks = {dim: -1 for dim in dims["longitude"]}
+            chunks.update({dim: -1 for dim in dims["latitude"]})
+
+            # Chunks can be auto-sized along the event dimensions
+            chunks.update({dim: "auto" for dim in dims["event"]})
+            data = data.chunk(chunks=chunks)
+
+        # Stack (vectorize) the entire dataset into 2D (time, lat/lon)
+        # NOTE: We want the set union of the dimensions, but Python 'set' does not
+        #       preserve order. However, we want longitude to run faster than latitude.
+        #       So we use 'dict' without values, as 'dict' preserves insertion order
+        #       (dict keys behave like a set).
+        data = data.stack(
+            event=dims["event"],
+            lat_lon=dict.fromkeys(dims["latitude"] + dims["longitude"]),
+        )
+
+        # Transform coordinates into centroids
+        centroids = Centroids.from_lat_lon(
+            data[coords["latitude"]].values, data[coords["longitude"]].values, crs=crs,
+        )
+
+        def to_csr_matrix(array: xr.DataArray) -> sparse.csr_matrix:
+            """Store a numpy array as sparse matrix, optimizing storage space
+
+            The CSR matrix stores NaNs explicitly, so we set them to zero.
+            """
+            array = array.where(array.notnull(), 0)
+            array = xr.apply_ufunc(
+                sp.COO.from_numpy,
+                array,
+                dask="parallelized",
+                output_dtypes=[array.dtype]
+            )
+            sparse_coo = array.compute().data  # Load into memory
+            return sparse_coo.tocsr()  # Convert sparse.COO to scipy.sparse.csr_matrix
+
+        # Read the intensity data
+        LOGGER.debug("Loading Hazard intensity from DataArray '%s'", intensity)
+        intensity_matrix = to_csr_matrix(data[intensity])
+
+        # Define accessors for xarray DataArrays
+        def default_accessor(array: xr.DataArray) -> np.ndarray:
+            """Take a DataArray and return its numpy representation"""
+            return array.values
+
+        def strict_positive_int_accessor(array: xr.DataArray) -> np.ndarray:
+            """Take a positive int DataArray and return its numpy representation
+
+            Raises
+            ------
+            TypeError
+                If the underlying data type is not integer
+            ValueError
+                If any value is zero or less
+            """
+            if not np.issubdtype(array.dtype, np.integer):
+                raise TypeError(f"'{array.name}' data array must be integers")
+            if not (array > 0).all():
+                raise ValueError(f"'{array.name}' data must be larger than zero")
+            return array.values
+
+        def date_to_ordinal_accessor(array: xr.DataArray) -> np.ndarray:
+            """Take a DataArray and transform it into ordinals"""
+            if np.issubdtype(array.dtype, np.integer):
+                # Assume that data is ordinals
+                return strict_positive_int_accessor(array)
+
+            # Try transforming to ordinals
+            return np.array(u_dt.datetime64_to_ordinal(array.values))
+
+        def maybe_repeat(values: np.ndarray, times: int) -> np.ndarray:
+            """Return the array or repeat a single-valued array
+
+            If ``values`` has size 1, return an array that repeats this value ``times``
+            times. If the size is different, just return the array.
+            """
+            if values.size == 1:
+                return np.array(list(itertools.repeat(values.flat[0], times)))
+
+            return values
+
+        # Create a DataFrame storing access information for each of data_vars
+        # NOTE: Each row will be passed as arguments to
+        #       `load_from_xarray_or_return_default`, see its docstring for further
+        #       explanation of the DataFrame columns / keywords.
+        num_events = data.sizes["event"]
+        data_ident = pd.DataFrame(
+            data=dict(
+                # The attribute of the Hazard class where the data will be stored
+                hazard_attr=DEF_DATA_VARS,
+                # The identifier and default key used in this method
+                default_key=DEF_DATA_VARS,
+                # The key assigned by the user
+                user_key=None,
+                # The default value for each attribute
+                default_value=[
+                    None,
+                    np.ones(num_events),
+                    np.array(range(num_events), dtype=int) + 1,
+                    list(data[coords["event"]].values),
+                    np.array(u_dt.datetime64_to_ordinal(data[coords["event"]].values)),
+                ],
+                # The accessor for the data in the Dataset
+                accessor=[
+                    to_csr_matrix,
+                    lambda x: maybe_repeat(default_accessor(x), num_events),
+                    strict_positive_int_accessor,
+                    lambda x: list(maybe_repeat(default_accessor(x), num_events).flat),
+                    lambda x: maybe_repeat(date_to_ordinal_accessor(x), num_events),
+                ],
+            )
+        )
+
+        # Check for unexpected keys
+        data_vars = data_vars if data_vars is not None else {}
+        default_keys = data_ident["default_key"]
+        unknown_keys = [
+            key for key in data_vars.keys() if not default_keys.str.contains(key).any()
+        ]
+        if unknown_keys:
+            raise ValueError(
+                f"Unknown data variables passed: '{unknown_keys}'. Supported "
+                f"data variables are {list(default_keys)}."
+            )
+
+        # Update with keys provided by the user
+        # NOTE: Keys in 'default_keys' missing from 'data_vars' will be set to 'None'
+        #       (which is exactly what we want) and the result is written into
+        #       'user_key'. 'default_keys' is not modified.
+        data_ident["user_key"] = default_keys.map(data_vars)
+
+        def load_from_xarray_or_return_default(
+            user_key: Optional[str],
+            default_key: str,
+            hazard_attr: str,
+            accessor: Callable[[xr.DataArray], Any],
+            default_value: Any,
+        ) -> Any:
+            """Load data for a single Hazard attribute or return the default value
+
+            Does the following based on the ``user_key``:
+            * If the key is an empty string, return the default value
+            * If the key is a non-empty string, load the data for that key and return it.
+            * If the key is ``None``, look for the ``default_key`` in the data. If it
+              exists, return that data. If not, return the default value.
+
+            Parameters
+            ----------
+            user_key : str or None
+                The key set by the user to identify the DataArray to read data from.
+            default_key : str
+                The default key identifying the DataArray to read data from.
+            hazard_attr : str
+                The name of the attribute of ``Hazard`` where the data will be stored in.
+            accessor : Callable
+                A callable that takes the DataArray as argument and returns the data
+                structure that is required by the ``Hazard`` attribute.
+            default_value
+                The default value/array to return in case the data could not be found.
+
+            Returns
+            -------
+            The object that will be stored in the ``Hazard`` attribute ``hazard_attr``.
+
+            Raises
+            ------
+            KeyError
+                If ``user_key`` was a non-empty string but no such key was found in the
+                data
+            RuntimeError
+                If the data structure loaded has a different shape than the default data
+                structure
+            """
+            # User does not want to read data
+            if user_key == "":
+                LOGGER.debug(
+                    "Using default values for Hazard.%s per user request", hazard_attr
+                )
+                return default_value
+
+            if not pd.isna(user_key):
+                # Read key exclusively
+                LOGGER.debug(
+                    "Reading data for Hazard.%s from DataArray '%s'",
+                    hazard_attr,
+                    user_key,
+                )
+                val = accessor(data[user_key])
+            else:
+                # Try default key
+                try:
+                    val = accessor(data[default_key])
+                    LOGGER.debug(
+                        "Reading data for Hazard.%s from DataArray '%s'",
+                        hazard_attr,
+                        default_key,
+                    )
+                except KeyError:
+                    LOGGER.debug(
+                        "Using default values for Hazard.%s. No data found", hazard_attr
+                    )
+                    return default_value
+
+            def vshape(array):
+                """Return a shape tuple for any array-like type we use"""
+                if isinstance(array, list):
+                    return len(array)
+                if isinstance(array, sparse.csr_matrix):
+                    return array.get_shape()
+                return array.shape
+
+            # Check size for read data
+            if default_value is not None and not np.array_equal(
+                vshape(val), vshape(default_value)
+            ):
+                raise RuntimeError(
+                    f"'{user_key if user_key else default_key}' must have shape "
+                    f"{vshape(default_value)}, but shape is {vshape(val)}"
+                )
+
+            # Return the data
+            return val
+
+        # Set the Hazard attributes
+        for _, ident in data_ident.iterrows():
+            hazard_kwargs[ident["hazard_attr"]
+                          ] = load_from_xarray_or_return_default(**ident)
+
+        # Done!
+        LOGGER.debug("Hazard successfully loaded. Number of events: %i", num_events)
+        return cls(centroids=centroids, intensity=intensity_matrix, **hazard_kwargs)
 
     @classmethod
     def from_vector(cls, files_intensity, files_fraction=None, attrs=None,
@@ -408,52 +966,83 @@ class Hazard():
         if not frac_name:
             inten_name = ['fraction']
         if files_fraction is not None and len(files_intensity) != len(files_fraction):
-            raise ValueError('Number of intensity files differs from fraction files: %s != %s'
-                             % (len(files_intensity), len(files_fraction)))
+            raise ValueError('Number of intensity files differs from fraction files:'
+                             f' {len(files_intensity)} != {len(files_fraction)}')
 
-        haz = cls() if haz_type is None else cls(haz_type)
-        haz.tag.file_name = str(files_intensity) + ' ; ' + str(files_fraction)
+        hazard_kwargs = dict(
+            file_name=str(files_intensity) + ' ; ' + str(files_fraction))
+        if haz_type is not None:
+            hazard_kwargs["haz_type"] = haz_type
 
         if len(files_intensity) > 0:
-            haz.centroids = Centroids.from_vector_file(files_intensity[0], dst_crs=dst_crs)
+            centroids = Centroids.from_vector_file(files_intensity[0], dst_crs=dst_crs)
         elif files_fraction is not None and len(files_fraction) > 0:
-            haz.centroids = Centroids.from_vector_file(files_fraction[0], dst_crs=dst_crs)
+            centroids = Centroids.from_vector_file(files_fraction[0], dst_crs=dst_crs)
         else:
-            haz.centroids = Centroids()
+            centroids = Centroids()
 
-        haz.intensity = haz.centroids.values_from_vector_files(
+        intensity = centroids.values_from_vector_files(
             files_intensity, val_names=inten_name, dst_crs=dst_crs)
         if files_fraction is None:
-            haz.fraction = haz.intensity.copy()
-            haz.fraction.data.fill(1)
+            fraction = intensity.copy()
+            fraction.data.fill(1)
         else:
-            haz.fraction = haz.centroids.values_from_vector_files(
+            fraction = centroids.values_from_vector_files(
                 files_fraction, val_names=frac_name, dst_crs=dst_crs)
 
-        if 'event_id' in attrs:
-            haz.event_id = attrs['event_id']
-        else:
-            haz.event_id = np.arange(1, haz.intensity.shape[0] + 1)
-        if 'frequency' in attrs:
-            haz.frequency = attrs['frequency']
-        else:
-            haz.frequency = np.ones(haz.event_id.size)
-        if 'event_name' in attrs:
-            haz.event_name = attrs['event_name']
-        else:
-            haz.event_name = list(map(str, haz.event_id))
-        if 'date' in attrs:
-            haz.date = np.array([attrs['date']])
-        else:
-            haz.date = np.ones(haz.event_id.size)
-        if 'orig' in attrs:
-            haz.orig = np.array([attrs['orig']])
-        else:
-            haz.orig = np.ones(haz.event_id.size, bool)
-        if 'unit' in attrs:
-            haz.unit = attrs['unit']
+        hazard_kwargs.update(cls._attrs_to_kwargs(attrs, num_events=intensity.shape[0]))
+        return cls(
+            centroids=centroids, intensity=intensity, fraction=fraction, **hazard_kwargs)
 
-        return haz
+    @staticmethod
+    def _attrs_to_kwargs(attrs: Dict[str, Any], num_events: int) -> Dict[str, Any]:
+        """Transform attributes to init kwargs or use default values
+
+        If attributes are missing from ``attrs``, this method will use a sensible default
+        value.
+
+        Parameters
+        ----------
+        attrs : dict
+            Attributes for a new Hazard object
+        num_events : int
+            Number of events stored in a new Hazard object. Used for determining default
+            values if Hazard object attributes are missing from ``attrs``.
+
+        Returns
+        -------
+        kwargs : dict
+            Keywords arguments to be passed to a Hazard constructor
+        """
+
+        kwargs = dict()
+
+        if 'event_id' in attrs:
+            kwargs["event_id"] = attrs['event_id']
+        else:
+            kwargs["event_id"] = np.arange(1, num_events + 1)
+        if 'frequency' in attrs:
+            kwargs["frequency"] = attrs['frequency']
+        else:
+            kwargs["frequency"] = np.ones(kwargs["event_id"].size)
+        if 'frequency_unit' in attrs:
+            kwargs["frequency_unit"] = attrs['frequency_unit']
+        if 'event_name' in attrs:
+            kwargs["event_name"] = attrs['event_name']
+        else:
+            kwargs["event_name"] = list(map(str, kwargs["event_id"]))
+        if 'date' in attrs:
+            kwargs["date"] = np.array([attrs['date']])
+        else:
+            kwargs["date"] = np.ones(kwargs["event_id"].size)
+        if 'orig' in attrs:
+            kwargs["orig"] = np.array([attrs['orig']])
+        else:
+            kwargs["orig"] = np.ones(kwargs["event_id"].size, bool)
+        if 'unit' in attrs:
+            kwargs["units"] = attrs['unit']
+
+        return kwargs
 
     def reproject_raster(self, dst_crs=False, transform=None, width=None, height=None,
                          resampl_inten=Resampling.nearest, resampl_fract=Resampling.nearest):
@@ -567,8 +1156,7 @@ class Hazard():
                                                 scheduler=scheduler)
         self.intensity = sparse.csr_matrix(raster[:self.size, :, :].reshape(self.size, -1))
         self.fraction = sparse.csr_matrix(raster[self.size:, :, :].reshape(self.size, -1))
-        self.centroids = Centroids()
-        self.centroids.meta = meta
+        self.centroids = Centroids(meta=meta)
         self.check()
 
     def read_mat(self, *args, **kwargs):
@@ -604,9 +1192,6 @@ class Hazard():
         if not var_names:
             var_names = DEF_VAR_MAT
         LOGGER.info('Reading %s', file_name)
-        haz = cls()
-        haz.tag.file_name = str(file_name)
-        haz.tag.description = description
         try:
             data = u_hdf5.read(file_name)
             try:
@@ -614,10 +1199,13 @@ class Hazard():
             except KeyError:
                 pass
 
-            haz_type = u_hdf5.get_string(data[var_names['var_name']['per_id']])
-            haz.tag.haz_type = haz_type
-            haz.centroids = Centroids.from_mat(file_name, var_names=var_names['var_cent'])
-            haz._read_att_mat(data, file_name, var_names)
+            centroids = Centroids.from_mat(file_name, var_names=var_names['var_cent'])
+            attrs = cls._read_att_mat(data, file_name, var_names, centroids, description)
+            haz = cls(haz_type=u_hdf5.get_string(data[var_names['var_name']['per_id']]),
+                      centroids=centroids,
+                      file_name=str(file_name),
+                      **attrs
+                      )
         except KeyError as var_err:
             raise KeyError("Variable not in MAT file: " + str(var_err)) from var_err
         return haz
@@ -658,15 +1246,16 @@ class Hazard():
         if not var_names:
             var_names = DEF_VAR_EXCEL
         LOGGER.info('Reading %s', file_name)
-        haz = cls() if haz_type is None else cls(haz_type)
-        haz.tag.file_name = file_name
-        haz.tag.description = description
+        hazard_kwargs = dict(file_name=file_name, description=description)
+        if haz_type is not None:
+            hazard_kwargs["haz_type"] = haz_type
         try:
-            haz.centroids = Centroids.from_excel(file_name, var_names=var_names['col_centroids'])
-            haz._read_att_excel(file_name, var_names)
+            centroids = Centroids.from_excel(file_name, var_names=var_names['col_centroids'])
+            hazard_kwargs.update(cls._read_att_excel(file_name, var_names, centroids))
         except KeyError as var_err:
             raise KeyError("Variable not in Excel file: " + str(var_err)) from var_err
-        return haz
+
+        return cls(centroids=centroids, **hazard_kwargs)
 
     def select(self, event_names=None, event_id=None, date=None, orig=None,
                reg_id=None, extent=None, reset_frequency=False):
@@ -773,6 +1362,11 @@ class Hazard():
 
         # reset frequency if date span has changed (optional):
         if reset_frequency:
+            if self.frequency_unit not in ['1/year', 'annual', '1/y', '1/a']:
+                LOGGER.warning("Resetting the frequency is based on the calendar year of given"
+                    " dates but the frequency unit here is %s. Consider setting the frequency"
+                    " manually for the selection or changing the frequency unit to %s.",
+                    self.frequency_unit, DEF_FREQ_UNIT)
             year_span_old = np.abs(dt.datetime.fromordinal(self.date.max()).year -
                                    dt.datetime.fromordinal(self.date.min()).year) + 1
             year_span_new = np.abs(dt.datetime.fromordinal(haz.date.max()).year -
@@ -818,8 +1412,9 @@ class Hazard():
             cent_nz = (self.fraction != 0).sum(axis=0).nonzero()[1]
         lon_nz = self.centroids.lon[cent_nz]
         lat_nz = self.centroids.lat[cent_nz]
-        ext = u_coord.latlon_bounds(lat=lat_nz, lon=lon_nz, buffer=buffer)
-        return self.select(extent=(ext[0], ext[2], ext[1], ext[3]))
+        return self.select(extent=u_coord.toggle_extent_bounds(
+            u_coord.latlon_bounds(lat=lat_nz, lon=lon_nz, buffer=buffer)
+        ))
 
     def local_exceedance_inten(self, return_periods=(25, 50, 100, 250)):
         """Compute exceedance intensity map for given return periods.
@@ -843,8 +1438,8 @@ class Hazard():
         inten_stats = np.zeros((len(return_periods), num_cen))
         cen_step = CONFIG.max_matrix_size.int() // self.intensity.shape[0]
         if not cen_step:
-            raise ValueError('Increase max_matrix_size configuration parameter to > %s'
-                             % str(self.intensity.shape[0]))
+            raise ValueError('Increase max_matrix_size configuration parameter to >'
+                             f' {self.intensity.shape[0]}')
         # separte in chunks
         chk = -1
         for chk in range(int(num_cen / cen_step)):
@@ -934,7 +1529,7 @@ class Hazard():
             ValueError
         """
         self._set_coords_centroids()
-        col_label = 'Intensity (%s)' % self.units
+        col_label = f'Intensity ({self.units})'
         crs_epsg, _ = u_plot.get_transformation(self.centroids.geometry.crs)
         if event is not None:
             if isinstance(event, str):
@@ -1019,7 +1614,7 @@ class Hazard():
         list_id = self.event_id[[i_name for i_name, val_name in enumerate(self.event_name)
                                  if val_name == event_name]]
         if list_id.size == 0:
-            raise ValueError("No event with name: %s" % event_name)
+            raise ValueError(f"No event with name: {event_name}")
         return list_id
 
     def get_event_name(self, event_id):
@@ -1110,6 +1705,10 @@ class Hazard():
             per event. If yearrange is not given (None), the year range is
             derived from self.date
         """
+        if self.frequency_unit not in ['1/year', 'annual', '1/y', '1/a']:
+            LOGGER.warning("setting the frequency on a hazard object who's frequency unit"
+                "is %s and not %s will most likely lead to unexpected results",
+                self.frequency_unit, DEF_FREQ_UNIT)
         if not yearrange:
             delta_time = dt.datetime.fromordinal(int(np.max(self.date))).year - \
                          dt.datetime.fromordinal(int(np.min(self.date))).year + 1
@@ -1228,37 +1827,45 @@ class Hazard():
 
         """
         LOGGER.info('Reading %s', file_name)
+        # NOTE: This is a stretch. We instantiate one empty object to iterate over its
+        #       attributes. But then we create a new one with the attributes filled!
         haz = cls()
+        hazard_kwargs = dict()
         with h5py.File(file_name, 'r') as hf_data:
             for (var_name, var_val) in haz.__dict__.items():
                 if var_name != 'tag' and var_name not in hf_data.keys():
                     continue
                 if var_name == 'centroids':
-                    haz.centroids = Centroids.from_hdf5(hf_data.get(var_name))
+                    hazard_kwargs["centroids"] = Centroids.from_hdf5(
+                        hf_data.get(var_name))
                 elif var_name == 'tag':
-                    haz.tag.haz_type = u_hdf5.to_string(hf_data.get('haz_type')[0])
-                    haz.tag.file_name = u_hdf5.to_string(hf_data.get('file_name')[0])
-                    haz.tag.description = u_hdf5.to_string(hf_data.get('description')[0])
+                    hazard_kwargs["haz_type"] = u_hdf5.to_string(
+                        hf_data.get('haz_type')[0])
+                    hazard_kwargs["file_name"] = u_hdf5.to_string(
+                        hf_data.get('file_name')[0])
+                    hazard_kwargs["description"] = u_hdf5.to_string(
+                        hf_data.get('description')[0])
                 elif isinstance(var_val, np.ndarray) and var_val.ndim == 1:
-                    setattr(haz, var_name, np.array(hf_data.get(var_name)))
+                    hazard_kwargs[var_name] = np.array(hf_data.get(var_name))
                 elif isinstance(var_val, sparse.csr_matrix):
                     hf_csr = hf_data.get(var_name)
                     if isinstance(hf_csr, h5py.Dataset):
-                        setattr(haz, var_name, sparse.csr_matrix(hf_csr))
+                        hazard_kwargs[var_name] = sparse.csr_matrix(hf_csr)
                     else:
-                        setattr(haz, var_name, sparse.csr_matrix((hf_csr['data'][:],
-                                                                hf_csr['indices'][:],
-                                                                hf_csr['indptr'][:]),
-                                                                hf_csr.attrs['shape']))
+                        hazard_kwargs[var_name] = sparse.csr_matrix(
+                            (hf_csr['data'][:], hf_csr['indices'][:], hf_csr['indptr'][:]),
+                            hf_csr.attrs['shape'])
                 elif isinstance(var_val, str):
-                    setattr(haz, var_name, u_hdf5.to_string(hf_data.get(var_name)[0]))
+                    hazard_kwargs[var_name] = u_hdf5.to_string(
+                        hf_data.get(var_name)[0])
                 elif isinstance(var_val, list):
-                    var_value = [x for x in map(u_hdf5.to_string,
-                                 np.array(hf_data.get(var_name)).tolist())]
-                    setattr(haz, var_name, var_value)
+                    hazard_kwargs[var_name] = [x for x in map(
+                        u_hdf5.to_string, np.array(hf_data.get(var_name)).tolist())]
                 else:
-                    setattr(haz, var_name, hf_data.get(var_name))
-        return haz
+                    hazard_kwargs[var_name] = hf_data.get(var_name)
+
+        # Now create the actual object we want to return!
+        return cls(**hazard_kwargs)
 
     def _set_coords_centroids(self):
         """If centroids are raster, set lat and lon coordinates"""
@@ -1311,19 +1918,17 @@ class Hazard():
                 except IndexError as err:
                     raise ValueError(f'Wrong event id: {ev_id}.') from err
                 im_val = mat_var[event_pos, :].toarray().transpose()
-                title = 'Event ID %s: %s' % (str(self.event_id[event_pos]),
-                                             self.event_name[event_pos])
+                title = f'Event ID {self.event_id[event_pos]}: {self.event_name[event_pos]}'
             elif ev_id < 0:
                 max_inten = np.asarray(np.sum(mat_var, axis=1)).reshape(-1)
                 event_pos = np.argpartition(max_inten, ev_id)[ev_id:]
                 event_pos = event_pos[np.argsort(max_inten[event_pos])][0]
                 im_val = mat_var[event_pos, :].toarray().transpose()
-                title = '%s-largest Event. ID %s: %s' % (np.abs(ev_id),
-                                                         str(self.event_id[event_pos]),
-                                                         self.event_name[event_pos])
+                title = (f'{np.abs(ev_id)}-largest Event. ID {self.event_id[event_pos]}:'
+                         f' {self.event_name[event_pos]}')
             else:
                 im_val = np.max(mat_var, axis=0).toarray().transpose()
-                title = '%s max intensity at each point' % self.tag.haz_type
+                title = f'{self.tag.haz_type} max intensity at each point'
 
             array_val.append(im_val)
             l_title.append(title)
@@ -1364,21 +1969,18 @@ class Hazard():
             except IndexError as err:
                 raise ValueError(f'Wrong centroid id: {centr_idx}.') from err
             array_val = mat_var[:, centr_pos].toarray()
-            title = 'Centroid %s: (%s, %s)' % (str(centr_idx),
-                                               coord[centr_pos, 0],
-                                               coord[centr_pos, 1])
+            title = f'Centroid {centr_idx}: ({coord[centr_pos, 0]}, {coord[centr_pos, 1]})'
         elif centr_idx < 0:
             max_inten = np.asarray(np.sum(mat_var, axis=0)).reshape(-1)
             centr_pos = np.argpartition(max_inten, centr_idx)[centr_idx:]
             centr_pos = centr_pos[np.argsort(max_inten[centr_pos])][0]
             array_val = mat_var[:, centr_pos].toarray()
 
-            title = '%s-largest Centroid. %s: (%s, %s)' % \
-                    (np.abs(centr_idx), str(centr_pos), coord[centr_pos, 0],
-                     coord[centr_pos, 1])
+            title = (f'{np.abs(centr_idx)}-largest Centroid. {centr_pos}:'
+                     f' ({coord[centr_pos, 0]}, {coord[centr_pos, 1]})')
         else:
             array_val = np.max(mat_var, axis=1).toarray()
-            title = '%s max intensity at each event' % self.tag.haz_type
+            title = f'{self.tag.haz_type} max intensity at each event'
 
         if not axis:
             _, axis = plt.subplots(1)
@@ -1483,46 +2085,57 @@ class Hazard():
 
         return inten_fit
 
-    def _read_att_mat(self, data, file_name, var_names):
+    @staticmethod
+    def _read_att_mat(data, file_name, var_names, centroids, description):
         """Read MATLAB hazard's attributes."""
-        self.frequency = np.squeeze(data[var_names['var_name']['freq']])
-        self.orig = np.squeeze(data[var_names['var_name']['orig']]).astype(bool)
-        self.event_id = np.squeeze(
+        attrs = dict()
+        attrs["frequency"] = np.squeeze(data[var_names['var_name']['freq']])
+        try:
+            attrs["frequency_unit"] = u_hdf5.get_string(
+                data[var_names['var_name']['freq_unit']])
+        except KeyError:
+            pass
+        attrs["orig"] = np.squeeze(
+            data[var_names['var_name']['orig']]).astype(bool)
+        attrs["event_id"] = np.squeeze(
             data[var_names['var_name']['even_id']].astype(int, copy=False))
         try:
-            self.units = u_hdf5.get_string(data[var_names['var_name']['unit']])
+            attrs["units"] = u_hdf5.get_string(
+                data[var_names['var_name']['unit']])
         except KeyError:
             pass
 
-        n_cen = self.centroids.size
-        n_event = len(self.event_id)
+        n_cen = centroids.size
+        n_event = len(attrs["event_id"])
         try:
-            self.intensity = u_hdf5.get_sparse_csr_mat(
+            attrs["intensity"] = u_hdf5.get_sparse_csr_mat(
                 data[var_names['var_name']['inten']], (n_event, n_cen))
         except ValueError as err:
             raise ValueError('Size missmatch in intensity matrix.') from err
         try:
-            self.fraction = u_hdf5.get_sparse_csr_mat(
+            attrs["fraction"] = u_hdf5.get_sparse_csr_mat(
                 data[var_names['var_name']['frac']], (n_event, n_cen))
         except ValueError as err:
             raise ValueError('Size missmatch in fraction matrix.') from err
         except KeyError:
-            self.fraction = sparse.csr_matrix(np.ones(self.intensity.shape, dtype=float))
+            attrs["fraction"] = sparse.csr_matrix(
+                np.ones(attrs["intensity"].shape, dtype=float))
         # Event names: set as event_id if no provided
         try:
-            self.event_name = u_hdf5.get_list_str_from_ref(
+            attrs["event_name"] = u_hdf5.get_list_str_from_ref(
                 file_name, data[var_names['var_name']['ev_name']])
         except KeyError:
-            self.event_name = list(self.event_id)
+            attrs["event_name"] = list(attrs["event_id"])
+        attrs["description"] = description
         try:
             comment = u_hdf5.get_string(data[var_names['var_name']['comment']])
-            self.tag.description += ' ' + comment
+            attrs["description"] += ' ' + comment
         except KeyError:
             pass
 
         try:
             datenum = data[var_names['var_name']['datenum']].squeeze()
-            self.date = np.array([
+            attrs["date"] = np.array([
                 (dt.datetime.fromordinal(int(date))
                  + dt.timedelta(days=date % 1)
                  - dt.timedelta(days=366)).toordinal()
@@ -1530,18 +2143,23 @@ class Hazard():
         except KeyError:
             pass
 
-    def _read_att_excel(self, file_name, var_names):
+        return attrs
+
+    @staticmethod
+    def _read_att_excel(file_name, var_names, centroids):
         """Read Excel hazard's attributes."""
         dfr = pd.read_excel(file_name, var_names['sheet_name']['freq'])
 
         num_events = dfr.shape[0]
-        self.frequency = dfr[var_names['col_name']['freq']].values
-        self.orig = dfr[var_names['col_name']['orig']].values.astype(bool)
-        self.event_id = dfr[var_names['col_name']['even_id']].values. \
-            astype(int, copy=False)
-        self.date = dfr[var_names['col_name']['even_dt']].values. \
-            astype(int, copy=False)
-        self.event_name = dfr[var_names['col_name']['even_name']].values.tolist()
+        attrs = dict()
+        attrs["frequency"] = dfr[var_names['col_name']['freq']].values
+        attrs["orig"] = dfr[var_names['col_name']['orig']].values.astype(bool)
+        attrs["event_id"] = dfr[var_names['col_name']
+                                ['even_id']].values.astype(int, copy=False)
+        attrs["date"] = dfr[var_names['col_name']
+                            ['even_dt']].values.astype(int, copy=False)
+        attrs["event_name"] = dfr[var_names['col_name']
+                                  ['even_name']].values.tolist()
 
         dfr = pd.read_excel(file_name, var_names['sheet_name']['inten'])
         # number of events (ignore centroid_ID column)
@@ -1551,13 +2169,17 @@ class Hazard():
                              'different from the number of defined in its frequency: '
                              f'{dfr.shape[1] - 1} != {num_events}')
         # check number of centroids is the same as retrieved before
-        if dfr.shape[0] is not self.centroids.size:
+        if dfr.shape[0] is not centroids.size:
             raise ValueError('Hazard intensity is given for a number of centroids '
                              'different from the number of centroids defined: '
-                             f'{dfr.shape[0]} != {self.centroids.size}')
+                             f'{dfr.shape[0]} != {centroids.size}')
 
-        self.intensity = sparse.csr_matrix(dfr.values[:, 1:num_events + 1].transpose())
-        self.fraction = sparse.csr_matrix(np.ones(self.intensity.shape, dtype=float))
+        attrs["intensity"] = sparse.csr_matrix(
+            dfr.values[:, 1:num_events + 1].transpose())
+        attrs["fraction"] = sparse.csr_matrix(
+            np.ones(attrs["intensity"].shape, dtype=float))
+
+        return attrs
 
     def append(self, *others):
         """Append the events and centroids to this hazard object.
@@ -1568,10 +2190,8 @@ class Hazard():
         The following kinds of object attributes are processed:
 
         - All centroids are combined together using `Centroids.union`.
-
         - Lists, 1-dimensional arrays (NumPy) and sparse CSR matrices (SciPy) are concatenated.
-        Sparse matrices are concatenated along the first (vertical) axis.
-
+          Sparse matrices are concatenated along the first (vertical) axis.
         - All `tag` attributes are appended to `self.tag`.
 
         For any other type of attribute: A ValueError is raised if an attribute of that name is
@@ -1618,6 +2238,12 @@ class Hazard():
         if len(haz_classes) > 1:
             raise TypeError(f"The given hazards are of different classes: {haz_classes}. "
                             "The hazards are incompatible and cannot be concatenated.")
+
+        freq_units = {haz.frequency_unit for haz in haz_list}
+        if len(freq_units) > 1:
+            raise ValueError(f"The given hazards have different frequency units: {freq_units}. "
+                             "The hazards are incompatible and cannot be concatenated.")
+        self.frequency_unit = freq_units.pop()
 
         units = {haz.units for haz in haz_list if haz.units != ''}
         if len(units) > 1:
@@ -1787,3 +2413,121 @@ class Hazard():
                     ))
 
         return haz_new_cent
+
+    @property
+    def centr_exp_col(self):
+        """
+        Name of the centroids columns for this hazard in an exposures
+
+        Returns
+        -------
+        String
+            centroids string indicator with hazard type defining column
+            in an exposures gdf. E.g. "centr_TC"
+
+        """
+        from climada.entity.exposures import INDICATOR_CENTR  # pylint: disable=import-outside-toplevel
+        # import outside toplevel is necessary for it not being circular
+        return INDICATOR_CENTR + self.tag.haz_type
+
+    @property
+    def haz_type(self):
+        """
+        Hazard type
+
+        Returns
+        -------
+        String
+            Two-letters hazard type string. E.g. "TC", "RF", or "WF"
+
+        """
+        return self.tag.haz_type
+
+    def get_mdr(self, cent_idx, impf):
+        """
+        Return Mean Damage Ratio (mdr) for chosen centroids (cent_idx)
+        for given impact function.
+
+        Parameters
+        ----------
+        cent_idx : array-like
+            array of indices of chosen centroids from hazard
+        impf : ImpactFunc
+            impact function to compute mdr
+
+        Returns
+        -------
+        sparse.csr_matrix
+            sparse matrix (n_events x len(cent_idx)) with mdr values
+
+        See Also
+        --------
+        get_paa: get the paa ffor the given centroids
+
+        """
+        uniq_cent_idx, indices = np.unique(cent_idx, return_inverse=True)
+        mdr = self.intensity[:, uniq_cent_idx]
+        if impf.calc_mdr(0) == 0:
+            mdr.data = impf.calc_mdr(mdr.data)
+        else:
+            LOGGER.warning("Impact function id=%d has mdr(0) != 0."
+                "The mean damage ratio must thus be computed for all values of"
+                "hazard intensity including 0 which can be very time consuming.",
+            impf.id)
+            mdr_array = impf.calc_mdr(mdr.toarray().ravel()).reshape(mdr.shape)
+            mdr = sparse.csr_matrix(mdr_array)
+        return mdr[:, indices]
+
+    def get_paa(self, cent_idx, impf):
+        """
+        Return Percentage of Affected Assets (paa) for chosen centroids (cent_idx)
+        for given impact function.
+
+        Note that value as intensity = 0 are ignored. This is different from
+        get_mdr.
+
+        Parameters
+        ----------
+        cent_idx : array-like
+            array of indices of chosen centroids from hazard
+        impf : ImpactFunc
+            impact function to compute mdr
+
+        Returns
+        -------
+        sparse.csr_matrix
+            sparse matrix (n_events x len(cent_idx)) with paa values
+
+        See Also
+        --------
+        get_mdr: get the mean-damage ratio for the given centroids
+
+        """
+        uniq_cent_idx, indices = np.unique(cent_idx, return_inverse=True)
+        paa = self.intensity[:, uniq_cent_idx]
+        paa.data = np.interp(paa.data, impf.intensity, impf.paa)
+        return paa[:, indices]
+
+    def _get_fraction(self, cent_idx=None):
+        """
+        Return fraction for chosen centroids (cent_idx).
+
+        Parameters
+        ----------
+        cent_idx : array-like
+            array of indices of chosen centroids from hazard
+            Default is None (full fraction is returned)
+
+        Returns
+        -------
+        sparse.csr_matrix or None
+            sparse matrix (n_events x len(cent_idx)) with fraction values
+            None if fraction is empty. (When calculating the impact, an empty fraction is
+            equivalent to the identity under multiplication, i.e. a uniform matrix with
+            value 1 everywhere.)
+        """
+        if self.fraction.nnz == 0:
+            return None
+        if cent_idx is None:
+            return self.fraction
+        return self.fraction[:, cent_idx]

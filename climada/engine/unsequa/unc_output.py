@@ -414,8 +414,9 @@ class UncOutput():
         figsize : tuple(int or float, int or float), optional
             The figsize argument of matplotlib.pyplot.subplots()
             The default is derived from the total number of plots (nplots) as:
-                nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
-                figsize = (ncols * FIG_W, nrows * FIG_H)
+
+            >>> nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
+            >>> figsize = (ncols * FIG_W, nrows * FIG_H)
 
         Raises
         ------
@@ -730,8 +731,9 @@ class UncOutput():
         figsize : tuple(int or float, int or float), optional
             The figsize argument of matplotlib.pyplot.subplots()
             The default is derived from the total number of plots (nplots) as:
-                nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
-                figsize = (ncols * FIG_W, nrows * FIG_H)
+
+            >>> nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
+            >>> figsize = (ncols * FIG_W, nrows * FIG_H)
         axes : matplotlib.pyplot.axes, optional
             Axes handles to use for the plot. The default is None.
         kwargs :
@@ -828,8 +830,9 @@ class UncOutput():
         figsize : tuple(int or float, int or float), optional
             The figsize argument of matplotlib.pyplot.subplots()
             The default is derived from the total number of plots (nplots) as:
-                nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
-                figsize = (ncols * 5, nrows * 5)
+
+            >>> nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
+            >>> figsize = (ncols * 5, nrows * 5)
         axes : matplotlib.pyplot.axes, optional
             Axes handles to use for the plot. The default is None.
         kwargs :
@@ -962,7 +965,7 @@ class UncOutput():
         eai_max_si_df = self.get_largest_si(salib_si, metric_list=['eai_exp'])
 
         plot_val = eai_max_si_df['param']
-        coord = np.array([self.coord_df.latitude, self.coord_df.longitude]).transpose()
+        coord = np.array([self.coord_df.latitude, self.coord_df.longitude]).transpose()  # pylint: disable=no-member
         if 'var_name' not in kwargs:
             kwargs['var_name'] = 'Input parameter with largest ' + salib_si
         if 'title' not in kwargs:

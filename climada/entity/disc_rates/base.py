@@ -24,6 +24,7 @@ __all__ = ['DiscRates']
 import copy
 from array import array
 import logging
+from typing import Optional
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -59,7 +60,7 @@ class DiscRates():
 
     Attributes
     ---------
-    tag: Tag
+    tag: climada.entity.tag.Tag
         information about the source data
     years: np.array
         list of years
@@ -67,7 +68,12 @@ class DiscRates():
         list of discount rates for each year (between 0 and 1)
     """
 
-    def __init__(self, years=None, rates=None, tag=None):
+    def __init__(
+        self,
+        years : Optional[np.ndarray] = None,
+        rates : Optional[np.ndarray] = None,
+        tag : Optional[Tag] = None
+        ):
         """
         Fill discount rates with values and check consistency data
 
@@ -82,13 +88,9 @@ class DiscRates():
         tag : climate.entity.tag
             Metadata. Default is None.
         """
-        years = np.array([]) if years is None else years
-        rates = np.array([]) if rates is None else rates
-
-        self.years = years
-        self.rates = rates
-        tag = Tag() if tag is None else tag
-        self.tag = tag
+        self.years = np.array([]) if years is None else years
+        self.rates = np.array([]) if rates is None else rates
+        self.tag = Tag() if tag is None else tag
 
     def clear(self):
         """Reinitialize attributes."""
@@ -233,9 +235,16 @@ class DiscRates():
         description: str, optional
             description of the data. The default is ''
         var_names: dict, optional
-            name of the variables in the file. The Default is
-            DEF_VAR_MAT = {'sup_field_name': 'entity', 'field_name': 'discount',
-               'var_name': {'year': 'year', 'disc': 'discount_rate'}}
+            name of the variables in the file. Default:
+
+            >>> DEF_VAR_MAT = {
+            ...     'sup_field_name': 'entity',
+            ...     'field_name': 'discount',
+            ...     'var_name': {
+            ...         'year': 'year',
+            ...         'disc': 'discount_rate',
+            ...     }
+            ... }
 
         Returns
         -------
@@ -280,8 +289,14 @@ class DiscRates():
             description of the data. The default is ''
         var_names: dict, optional
             name of the variables in the file. The Default is
-            DEF_VAR_EXCEL = {'sheet_name': 'discount',
-               'col_name': {'year': 'year', 'disc': 'discount_rate'}}
+
+            >>> DEF_VAR_EXCEL = {
+            ...     'sheet_name': 'discount',
+            ...     'col_name': {
+            ...         'year': 'year',
+            ...         'disc': 'discount_rate',
+            ...     }
+            ... }
 
         Returns
         -------
@@ -318,8 +333,14 @@ class DiscRates():
             filename including path and extension
         var_names: dict, optional
             name of the variables in the file. The Default is
-            DEF_VAR_EXCEL = {'sheet_name': 'discount',
-               'col_name': {'year': 'year', 'disc': 'discount_rate'}}
+
+            >>> DEF_VAR_EXCEL = {
+            ...     'sheet_name': 'discount',
+            ...     'col_name': {
+            ...         'year': 'year',
+            ...         'disc': 'discount_rate',
+            ...     }
+            ... }
         """
         if var_names is None:
             var_names = DEF_VAR_EXCEL

@@ -83,7 +83,7 @@ class Exposures():
 
     Attributes
     ----------
-    tag : Tag
+    tag : climada.entity.tag.Tag
         metada - information about the source data
     ref_year : int
         metada - reference year
@@ -97,10 +97,10 @@ class Exposures():
         CRS information inherent to GeoDataFrame.
     value : pd.Series
         a value for each exposure
-    impf_ : pd.Series, optional
+    impf_SUFFIX : pd.Series, optional
         e.g. impf_TC. impact functions id for hazard TC.
         There might be different hazards defined: impf_TC, impf_FL, ...
-        If not provided, set to default 'impf_' with ids 1 in check().
+        If not provided, set to default ``impf_`` with ids 1 in check().
     geometry : pd.Series, optional
         geometry of type Point of each instance.
         Computed in method set_geometry_points().
@@ -117,7 +117,7 @@ class Exposures():
         category id for each exposure
     region_id : pd.Series, optional
         region id for each exposure
-    centr_ : pd.Series, optional
+    centr_SUFFIX : pd.Series, optional
         e.g. centr_TC. centroids index for hazard
         TC. There might be different hazards defined: centr_TC, centr_FL, ...
         Computed in method assign_centroids().
@@ -229,8 +229,8 @@ class Exposures():
         """Check Exposures consistency.
 
         Reports missing columns in log messages.
-        If no impf_* column is present in the dataframe, a default column 'impf_' is added with
-        default impact function id 1.
+        If no ``impf_*`` column is present in the dataframe, a default column ``impf_`` is added
+        with default impact function id 1.
         """
         # mandatory columns
         for var in self.vars_oblig:
@@ -338,10 +338,11 @@ class Exposures():
         -------
         str
             a column name, the first of the following that is present in the exposures' dataframe:
-            - impf_[haz_type]
-            - if_[haz_type]
-            - impf_
-            - if_
+
+            - ``impf_[haz_type]``
+            - ``if_[haz_type]``
+            - ``impf_``
+            - ``if_``
 
         Raises
         ------
@@ -367,10 +368,12 @@ class Exposures():
         raise ValueError(f"Missing exposures impact functions {INDICATOR_IMPF}.")
 
     def assign_centroids(self, hazard, distance='euclidean',
-                         threshold=u_coord.NEAREST_NEIGHBOR_THRESHOLD):
+                         threshold=u_coord.NEAREST_NEIGHBOR_THRESHOLD,
+                         overwrite=True):
         """Assign for each exposure coordinate closest hazard coordinate.
-        -1 used for disatances > threshold in point distances. If raster hazard,
-        -1 used for centroids outside raster.
+
+        The value -1 is used for distances larger than ``threshold`` in point distances.
+        In case of raster hazards the value -1 is used for centroids outside of the raster.
 
         Parameters
         ----------
@@ -385,27 +388,40 @@ class Exposures():
             the index `-1` is assigned.
             Set `threshold` to 0, to disable nearest neighbor matching.
             Default: 100 (km)
+        overwrite: bool
+            If True, overwrite centroids already present. If False, do
+            not assign new centroids. Default is True.
 
         See Also
         --------
-        climada.util.coordinates.assign_coordinates: method to associate centroids to
-            exposure points
+        climada.util.coordinates.assign_coordinates
+            method to associate centroids to exposure points
 
         Notes
         -----
         The default order of use is:
-            1. if centroid raster is defined, assign exposures points to
-            the closest raster point.
-            2. if no raster, assign centroids to the nearest neighbor using
-            euclidian metric
+
+        1. if centroid raster is defined, assign exposures points to
+           the closest raster point.
+        2. if no raster, assign centroids to the nearest neighbor using
+           euclidian metric
+
         Both cases can introduce innacuracies for coordinates in lat/lon
         coordinates as distances in degrees differ from distances in meters
         on the Earth surface, in particular for higher latitude and distances
         larger than 100km. If more accuracy is needed, please use 'haversine'
         distance metric. This however is slower for (quasi-)gridded data,
         and works only for non-gridded data.
-
         """
+        haz_type = hazard.tag.haz_type
+        centr_haz = INDICATOR_CENTR + haz_type
+        if centr_haz in self.gdf:
+            LOGGER.info('Exposures matching centroids already found for %s', haz_type)
+            if overwrite:
+                LOGGER.info('Existing centroids will be overwritten for %s', haz_type)
+            else:
+                return
+
         LOGGER.info('Matching %s exposures with %s centroids.',
                     str(self.gdf.shape[0]), str(hazard.centroids.size))
         if not u_coord.equal_crs(self.crs, hazard.centroids.crs):
@@ -419,7 +435,7 @@ class Exposures():
             assigned = u_coord.assign_coordinates(
                 np.stack([self.gdf.latitude.values, self.gdf.longitude.values], axis=1),
                 hazard.centroids.coord, distance=distance, threshold=threshold)
-        self.gdf[INDICATOR_CENTR + hazard.tag.haz_type] = assigned
+        self.gdf[centr_haz] = assigned
 
     def set_geometry_points(self, scheduler=None):
         """Set geometry attribute of GeoDataFrame with Points from latitude and
@@ -481,8 +497,6 @@ class Exposures():
         Exposures
         """
         exp = cls()
-        if 'geometry' in exp.gdf:
-            raise ValueError("there is already a geometry column defined in the GeoDataFrame")
         exp.tag = Tag()
         exp.tag.file_name = str(file_name)
         meta, value = u_coord.read_raster(file_name, [band], src_crs, window,
@@ -714,7 +728,7 @@ class Exposures():
 
     def plot_basemap(self, mask=None, ignore_zero=False, pop_name=True,
                      buffer=0.0, extend='neither', zoom=10,
-                     url='http://tile.stamen.com/terrain/{z}/{x}/{y}.png',
+                     url=ctx.providers.Stamen.Terrain,
                      axis=None, **kwargs):
         """Scatter points over satellite image using contextily
 
@@ -736,7 +750,7 @@ class Exposures():
          zoom : int, optional
              zoom coefficient used in the satellite image
          url : str, optional
-             image source, e.g. ctx.sources.OSM_C
+             image source, e.g. ctx.providers.OpenStreetMap.Mapnik
          axis : matplotlib.axes._subplots.AxesSubplot, optional
              axis to use
          kwargs : optional
@@ -864,8 +878,7 @@ class Exposures():
         except KeyError as var_err:
             raise KeyError(f"Variable not in MAT file: {var_names.get('field_name')}")\
                 from var_err
-        exp = cls()
-        exp.set_gdf(GeoDataFrame(data=exposures))
+        exp = cls(data=exposures)
 
         _read_mat_metadata(exp, data, file_name, var_names)
         return exp
@@ -984,7 +997,9 @@ class Exposures():
         ]
         crss = [
             ex.crs for ex in exposures_list
-            if isinstance(ex, (Exposures, GeoDataFrame)) and not ex.crs is None
+            if isinstance(ex, (Exposures, GeoDataFrame))
+            and hasattr(ex, "crs")
+            and ex.crs is not None
         ]
         if crss:
             crs = crss[0]
@@ -998,6 +1013,30 @@ class Exposures():
         ), crs=crs)
 
         return exp
+
+    def affected_total_value(self, hazard):
+        """
+        Total value of the exposures that are close enough to be affected
+        by the hazard (sum of value of all exposures points for which
+        a centroids is assigned)
+
+        Parameters
+        ----------
+        hazard : Hazard
+           Hazard affecting Exposures
+
+        Returns
+        -------
+        float
+            Sum of value of all exposures points for which
+            a centroids is assigned
+
+        """
+        nz_mask = (
+            (self.gdf.value.values > 0)
+            & (self.gdf[hazard.centr_exp_col].values >= 0)
+        )
+        return np.sum(self.gdf.value.values[nz_mask])
 
 
 def add_sea(exposures, sea_res, scheduler=None):

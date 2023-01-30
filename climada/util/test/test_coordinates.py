@@ -135,25 +135,25 @@ class TestDistance(unittest.TestCase):
         self.assertAlmostEqual(
             7709.827814738594,
             np.sqrt(u_coord._dist_sqr_approx(lats1, lons1, cos_lats1, lats2, lons2)) * ONE_LAT_KM)
-    
+
     def test_geodesic_length_geog(self):
         """Test compute_geodesic_lengths for geographic input crs"""
-        
+
         LINE_PATH = DEMO_DIR.joinpath('nl_rails.gpkg')
         gdf_rails = gpd.read_file(LINE_PATH).to_crs('epsg:4326')
         lengths_geom = u_coord.compute_geodesic_lengths(gdf_rails)
-        
+
         self.assertEqual(len(lengths_geom), len(gdf_rails))
         self.assertTrue(
             np.all(
-                (abs(lengths_geom - gdf_rails['distance'])/lengths_geom < 0.1) | 
+                (abs(lengths_geom - gdf_rails['distance'])/lengths_geom < 0.1) |
                 (lengths_geom - gdf_rails['distance'] < 10)
                 )
             )
 
     def test_geodesic_length_proj(self):
         """Test compute_geodesic_lengths for projected input crs"""
-        
+
         LINE_PATH = DEMO_DIR.joinpath('nl_rails.gpkg')
         gdf_rails = gpd.read_file(LINE_PATH).to_crs('epsg:4326')
         gdf_rails_proj = gpd.read_file(LINE_PATH).to_crs('epsg:4326').to_crs('EPSG:28992')
@@ -163,10 +163,10 @@ class TestDistance(unittest.TestCase):
 
         for len_proj, len_geom in zip(lengths_proj,lengths_geom):
             self.assertAlmostEqual(len_proj, len_geom, 1)
-        
+
         self.assertTrue(
             np.all(
-                (abs(lengths_proj - gdf_rails_proj['distance'])/lengths_proj < 0.1) | 
+                (abs(lengths_proj - gdf_rails_proj['distance'])/lengths_proj < 0.1) |
                 (lengths_proj - gdf_rails_proj['distance'] < 10)
                 )
             )
@@ -257,6 +257,10 @@ class TestFunc(unittest.TestCase):
         self.assertEqual(bounds, (-179, -90, 180, 90))
         bounds = u_coord.latlon_bounds(lat, lon, buffer=1)
         self.assertEqual(bounds, (-180, -90, 180, 90))
+
+    def test_toggle_extent_bounds(self):
+        """Test the conversion between 'extent' and 'bounds'"""
+        self.assertEqual(u_coord.toggle_extent_bounds((0, -1, 1, 3)), (0, 1, -1, 3))
 
     def test_geosph_vector(self):
         """Test conversion from lat/lon to unit vector on geosphere"""
@@ -404,14 +408,18 @@ class TestFunc(unittest.TestCase):
         self.assertTrue(u_coord.equal_crs(crs_one, crs_two))
 
     def test_set_df_geometry_points_pass(self):
-        """Test set_df_geometry_points"""
+        """Test set_df_geometry_points
+
+        The same test with scheduler other than None runs in
+        climada.test.test_multi_processing.TestCoordinates.test_set_df_geometry_points_scheduled_pass
+        """
         df_val = gpd.GeoDataFrame()
         df_val['latitude'] = np.ones(10) * 40.0
         df_val['longitude'] = np.ones(10) * 0.50
 
         u_coord.set_df_geometry_points(df_val, crs='epsg:2202')
-        self.assertTrue(np.allclose(df_val.geometry[:].x.values, np.ones(10) * 0.5))
-        self.assertTrue(np.allclose(df_val.geometry[:].y.values, np.ones(10) * 40.))
+        np.testing.assert_allclose(df_val.geometry.x.values, np.ones(10) * 0.5)
+        np.testing.assert_allclose(df_val.geometry.y.values, np.ones(10) * 40.)
 
     def test_convert_wgs_to_utm_pass(self):
         """Test convert_wgs_to_utm"""
@@ -754,7 +762,7 @@ class TestAssign(unittest.TestCase):
         lons = np.arange(-160, 180+1, 20)
         lats = np.arange(-60, 60+1, 20)
         lats, lons = [arr.ravel() for arr in np.meshgrid(lats, lons)]
-        centroids = np.transpose([lats, lons])
+        centroids = np.transpose([lats, lons]).copy()  # `copy()` makes it F-contiguous
 
         # Define exposures
         exposures = np.array([
@@ -859,21 +867,21 @@ class TestGetGeodata(unittest.TestCase):
     def test_get_land_geometry_country_pass(self):
         """get_land_geometry with selected countries."""
         iso_countries = ['DEU', 'VNM']
-        res = u_coord.get_land_geometry(iso_countries, 110)
+        res = u_coord.get_land_geometry(country_names=iso_countries, resolution=10)
         self.assertIsInstance(res, shapely.geometry.multipolygon.MultiPolygon)
         for res, ref in zip(res.bounds, (5.85248986800, 8.56557851800,
                                          109.47242272200, 55.065334377000)):
             self.assertAlmostEqual(res, ref)
 
         iso_countries = ['ESP']
-        res = u_coord.get_land_geometry(iso_countries, 110)
+        res = u_coord.get_land_geometry(country_names=iso_countries, resolution=10)
         self.assertIsInstance(res, shapely.geometry.multipolygon.MultiPolygon)
         for res, ref in zip(res.bounds, (-18.16722571499986, 27.642238674000,
                                          4.337087436000, 43.793443101)):
             self.assertAlmostEqual(res, ref)
 
         iso_countries = ['FRA']
-        res = u_coord.get_land_geometry(iso_countries, 110)
+        res = u_coord.get_land_geometry(country_names=iso_countries, resolution=10)
         self.assertIsInstance(res, shapely.geometry.multipolygon.MultiPolygon)
         for res, ref in zip(res.bounds, (-61.79784094999991, -21.37078215899993,
                                          55.854502800000034, 51.08754088371883)):
@@ -899,13 +907,13 @@ class TestGetGeodata(unittest.TestCase):
 
     def test_on_land_pass(self):
         """check point on land with 1:50.000.000 resolution."""
-        lat = np.array([28.203216, 28.555994, 28.860875])
-        lon = np.array([-16.567489, -18.554130, -9.532476])
+        rows, cols, trans = u_coord.pts_to_raster_meta((-179.5, -60, 179.5, 60), (1, -1))
+        xgrid, ygrid = u_coord.raster_to_meshgrid(trans, cols, rows)
+        lat = np.concatenate([[28.203216, 28.555994, 28.860875], ygrid.ravel()])
+        lon = np.concatenate([[-16.567489, -18.554130, -9.532476], xgrid.ravel()])
         res = u_coord.coord_on_land(lat, lon)
-        self.assertEqual(res.size, 3)
-        self.assertTrue(res[0])
-        self.assertFalse(res[1])
-        self.assertTrue(res[2])
+        self.assertEqual(res.size, lat.size)
+        np.testing.assert_array_equal(res[:3], [True, False, True])
 
     def test_dist_to_coast(self):
         """Test point in coast and point not in coast"""
@@ -938,14 +946,12 @@ class TestGetGeodata(unittest.TestCase):
             [1.96475615, 45.23249055],
         ])
         dists = [-3000, -1393549.5, 48.77]
-        dists_lowres = [416.66666667, 1393448.09801077, 1191.38205367]
-        # Warning: This will download more than 300 MB of data!
+        dists_lowres = [729.1666667, 1393670.6973145, 945.73129294]
+        # Warning: This will download more than 300 MB of data if not already present!
         result = u_coord.dist_to_coast_nasa(points[:, 0], points[:, 1], highres=True, signed=True)
         result_lowres = u_coord.dist_to_coast_nasa(points[:, 0], points[:, 1])
-        for d, r in zip(dists, result):
-            self.assertAlmostEqual(d, r)
-        for d, r in zip(dists_lowres, result_lowres):
-            self.assertAlmostEqual(d, r)
+        np.testing.assert_array_almost_equal(dists, result)
+        np.testing.assert_array_almost_equal(dists_lowres, result_lowres)
 
     def test_get_country_geometries_country_pass(self):
         """get_country_geometries with selected countries. issues with the
@@ -958,7 +964,7 @@ class TestGetGeodata(unittest.TestCase):
 
     def test_get_country_geometries_country_norway_pass(self):
         """test correct numeric ISO3 for country Norway"""
-        iso_countries = ['NOR']
+        iso_countries = 'NOR'
         extent = [10, 11, 55, 60]
         res1 = u_coord.get_country_geometries(iso_countries)
         res2 = u_coord.get_country_geometries(extent=extent)
@@ -1003,6 +1009,18 @@ class TestGetGeodata(unittest.TestCase):
         self.assertIsInstance(res, gpd.geodataframe.GeoDataFrame)
         self.assertAlmostEqual(res.area[0], 1.639510995900778)
 
+    def test_get_country_geometries_fail(self):
+        """get_country_geometries with offensive parameters"""
+        with self.assertRaises(ValueError) as cm:
+            u_coord.get_country_geometries(extent=(-20,350,0,0))
+        self.assertIn("longitude extent range is greater than 360: -20 to 350",
+                      str(cm.exception))
+        with self.assertRaises(ValueError) as cm:
+            u_coord.get_country_geometries(extent=(350,-20,0,0))
+        self.assertIn("longitude extent at the left (350) is larger "
+                      "than longitude extent at the right (-20)",
+                      str(cm.exception))
+
     def test_country_code_pass(self):
         """Test set_region_id"""
 
@@ -1045,6 +1063,7 @@ class TestGetGeodata(unittest.TestCase):
         """test get_admin1_geometries"""
         countries = ['CHE', 'Indonesia', '840', 51]
         gdf = u_coord.get_admin1_geometries(countries=countries)
+        self.assertIsInstance(gdf, gpd.GeoDataFrame)
         self.assertEqual(len(gdf.iso_3a.unique()), 4) # 4 countries
         self.assertEqual(gdf.loc[gdf.iso_3a=='CHE'].shape[0], 26) # 26 cantons in CHE
         self.assertEqual(gdf.shape[0], 121) # 121 admin 1 regions in the 4 countries
@@ -1175,7 +1194,7 @@ class TestRasterMeta(unittest.TestCase):
         df_val['value'] = np.ones(len(df_val)) * 10
         crs = 'epsg:2202'
         _raster, meta = u_coord.points_to_raster(df_val, val_names=['value'], crs=crs)
-        self.assertIsNone(df_val.crs)  # points_to_raster must not modify df_val
+        self.assertFalse(hasattr(df_val, "crs"))  # points_to_raster must not modify df_val
         self.assertTrue(u_coord.equal_crs(meta['crs'], crs))
         self.assertAlmostEqual(meta['transform'][0], 0.5)
         self.assertAlmostEqual(meta['transform'][1], 0)
@@ -1340,11 +1359,56 @@ class TestRasterIO(unittest.TestCase):
             self.assertAlmostEqual(values[i], val)
 
         # with explicit intermediate resolution
-        values = u_coord.read_raster_sample(HAZ_DEMO_FL, lat, lon, fill_value=fill_value,
-                                    intermediate_res=res)
+        values = u_coord.read_raster_sample(
+            HAZ_DEMO_FL, lat, lon, fill_value=fill_value, intermediate_res=res)
         self.assertEqual(values.size, lat.size)
         for i, val in enumerate(i_j_vals[:, 2]):
             self.assertAlmostEqual(values[i], val)
+
+        # for the antimeridian tests, use the dist-to-coast dataset
+        path = u_coord._get_dist_to_coast_nasa_tif()
+
+        lat_left = np.array([5.132, 3.442])
+        lon_left = np.array([172.543, 177.234])
+        lat_right = np.array([2.782, -1.293])
+        lon_right = np.array([181.334, 185.968])
+        lat_both = np.concatenate([lat_left, lat_right])
+        lon_both = np.concatenate([lon_left, lon_right])
+        z_left = u_coord.read_raster_sample(path, lat_left, lon_left)
+        z_right = u_coord.read_raster_sample(path, lat_right, lon_right)
+        z_both = u_coord.read_raster_sample(path, lat_both, lon_both)
+        z_both_neg = u_coord.read_raster_sample(path, lat_both, lon_both - 360)
+
+        self.assertEqual(z_both.size, lat_both.size)
+        self.assertEqual(z_both_neg.size, lat_both.size)
+        np.testing.assert_array_almost_equal(z_left, z_both[:z_left.size], )
+        np.testing.assert_array_almost_equal(z_right, z_both[-z_right.size:])
+        np.testing.assert_array_almost_equal(z_left, z_both_neg[:z_left.size])
+        np.testing.assert_array_almost_equal(z_right, z_both_neg[-z_right.size:])
+
+    def test_sample_raster_gradient(self):
+        """Test sampling gradients from a raster file"""
+        path = u_coord._get_dist_to_coast_nasa_tif()
+        res = 0.01
+        for clon, clat in [(0, 0), (119.03, -17.38)]:
+            # extract the values of the corners, of the center, and of an additional point
+            lon = clon + res * (np.array([1, 0, 1, 0, 0.5, 0.349]) - 0.5)
+            lat = clat + res * (np.array([0, 0, 1, 1, 0.5, 0.537]) - 0.5)
+            values, gradient = u_coord.read_raster_sample_with_gradients(path, lat, lon)
+
+            # manually compute the gradient for comparison:
+            lon_size_m = res * u_coord.ONE_LAT_KM * 1000 * np.cos(np.radians(clat))
+            lat_size_m = res * u_coord.ONE_LAT_KM * 1000
+            v10, v00, v11, v01 = values[:4]
+            dx0 = v10 - v00
+            dx1 = v11 - v01
+            dy0 = v01 - v00
+            dy1 = v11 - v10
+            gradx = 0.5 * (dx0 + dx1) / lon_size_m
+            grady = 0.5 * (dy0 + dy1) / lat_size_m
+
+            np.testing.assert_array_almost_equal(gradient[4:, 0], grady)
+            np.testing.assert_array_almost_equal(gradient[4:, 1], gradx)
 
     def test_refine_raster(self):
         """Test refinement of given raster data"""

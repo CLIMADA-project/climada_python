@@ -23,6 +23,7 @@ __all__ = ['ImpactFuncSet']
 
 import copy
 import logging
+from typing import Optional, Iterable
 from itertools import repeat
 import numpy as np
 import pandas as pd
@@ -61,42 +62,57 @@ DEF_VAR_MAT = {'sup_field_name': 'entity',
               }
 """MATLAB variable names"""
 
-class ImpactFuncSet():
+class ImpactFuncSet:
     """Contains impact functions of type ImpactFunc. Loads from
     files with format defined in FILE_EXT.
 
     Attributes
     ----------
-    tag : Tag
+    tag : climada.entity.tag.Tag
         information about the source data
     _data : dict
         contains ImpactFunc classes. It's not suppossed to be
         directly accessed. Use the class methods instead.
     """
 
-    def __init__(self):
-        """Empty initialization.
+    def __init__(
+        self,
+        impact_funcs: Optional[Iterable[ImpactFunc]] = None,
+        tag: Optional[Tag] = None
+    ):
+        """Initialization.
+
+        Build an impact function set from an iterable of ImpactFunc.
+
+        Parameters
+        ----------
+        impact_funcs : iterable of ImpactFunc, optional
+            An iterable (list, set, array, ...) of ImpactFunc.
+        tag : climada.entity.tag.Tag, optional
+            The entity tag of this object.
 
         Examples
         --------
         Fill impact functions with values and check consistency data:
 
-        >>> fun_1 = ImpactFunc()
-        >>> fun_1.haz_type = 'TC'
-        >>> fun_1.id = 3
-        >>> fun_1.intensity = np.array([0, 20])
-        >>> fun_1.paa = np.array([0, 1])
-        >>> fun_1.mdd = np.array([0, 0.5])
-        >>> imp_fun = ImpactFuncSet()
-        >>> imp_fun.append(fun_1)
+        >>> intensity = np.array([0, 20])
+        >>> paa = np.array([0, 1])
+        >>> mdd = np.array([0, 0.5])
+        >>> fun_1 = ImpactFunc("TC", 3, intensity, mdd, paa)
+        >>> imp_fun = ImpactFuncSet([fun_1])
         >>> imp_fun.check()
 
-        Read impact functions from file and checks consistency data.
+        Read impact functions from file and check data consistency.
 
-        >>> imp_fun = ImpactFuncSet()
-        >>> imp_fun.read(ENT_TEMPLATE_XLS)
+        >>> imp_fun = ImpactFuncSet.from_excel(ENT_TEMPLATE_XLS)
         """
+        # TODO: Automatically check this object if impact_funcs is not None.
         self.clear()
+        if tag is not None:
+            self.tag = tag
+        if impact_funcs is not None:
+            for impf in impact_funcs:
+                self.append(impf)
 
     def clear(self):
         """Reinitialize attributes."""
@@ -359,16 +375,13 @@ class ImpactFuncSet():
 
         Returns
         -------
-        ImpFuncSet
+        ImpactFuncSet
         """
         if var_names is None:
             var_names = DEF_VAR_EXCEL
-        imp_func_set = cls()
         dfr = pd.read_excel(file_name, var_names['sheet_name'])
 
-        imp_func_set.clear()
-        imp_func_set.tag.file_name = str(file_name)
-        imp_func_set.tag.description = description
+        imp_func_set = cls(tag=Tag(str(file_name), description))
         imp_func_set._fill_dfr(dfr, var_names)
         return imp_func_set
 
@@ -423,9 +436,6 @@ class ImpactFuncSet():
             return prev_str
 
         imp = u_hdf5.read(file_name)
-        impf_set = cls()
-        impf_set.tag.file_name = str(file_name)
-        impf_set.tag.description = description
 
         try:
             imp = imp[var_names['sup_field_name']]
@@ -434,31 +444,33 @@ class ImpactFuncSet():
         try:
             imp = imp[var_names['field_name']]
             funcs_idx = _get_hdf5_funcs(imp, file_name, var_names)
+            impact_funcs = []
             for imp_key, imp_rows in funcs_idx.items():
-                func = ImpactFunc()
-                func.haz_type = imp_key[0]
-                func.id = imp_key[1]
+                # Store arguments in a dict (missing ones will be default)
+                impf_kwargs = dict()
+                impf_kwargs["haz_type"] = imp_key[0]
+                impf_kwargs["id"] = imp_key[1]
                 # check that this function only has one intensity unit, if provided
                 try:
-                    func.intensity_unit = _get_hdf5_str(imp, imp_rows,
-                                                        file_name,
-                                                        var_names['var_name']['unit'])
+                    impf_kwargs["intensity_unit"] = _get_hdf5_str(
+                        imp, imp_rows, file_name, var_names['var_name']['unit'])
                 except KeyError:
                     pass
                 # check that this function only has one name
                 try:
-                    func.name = _get_hdf5_str(imp, imp_rows, file_name,
-                                              var_names['var_name']['name'])
+                    impf_kwargs["name"] = _get_hdf5_str(
+                        imp, imp_rows, file_name, var_names['var_name']['name'])
                 except KeyError:
-                    func.name = str(func.id)
-                func.intensity = np.take(imp[var_names['var_name']['inten']], imp_rows)
-                func.mdd = np.take(imp[var_names['var_name']['mdd']], imp_rows)
-                func.paa = np.take(imp[var_names['var_name']['paa']], imp_rows)
-                impf_set.append(func)
+                    impf_kwargs["name"] = str(impf_kwargs["idx"])
+                impf_kwargs["intensity"] = np.take(
+                    imp[var_names['var_name']['inten']], imp_rows)
+                impf_kwargs["mdd"] = np.take(imp[var_names['var_name']['mdd']], imp_rows)
+                impf_kwargs["paa"] = np.take(imp[var_names['var_name']['paa']], imp_rows)
+                impact_funcs.append(ImpactFunc(**impf_kwargs))
         except KeyError as err:
             raise KeyError("Not existing variable: %s" % str(err)) from err
 
-        return impf_set
+        return cls(impact_funcs, Tag(str(file_name), description))
 
     def read_mat(self, *args, **kwargs):
         """This function is deprecated, use ImpactFuncSet.from_mat instead."""
@@ -523,32 +535,34 @@ class ImpactFuncSet():
                 df_func = df_func[df_func[var_names['col_name']['func_id']]
                                   == imp_id]
 
-                func = ImpactFunc()
-                func.haz_type = haz_type
-                func.id = imp_id
+                # Store arguments in a dict (missing ones will be default)
+                impf_kwargs = dict()
+                impf_kwargs["haz_type"] = haz_type
+                impf_kwargs["id"] = imp_id
                 # check that the unit of the intensity is the same
                 try:
                     if len(df_func[var_names['col_name']['name']].unique()) != 1:
                         raise ValueError('Impact function with two different names.')
-                    func.name = df_func[var_names['col_name']['name']].values[0]
+                    impf_kwargs["name"] = df_func[var_names['col_name']
+                                                  ['name']].values[0]
                 except KeyError:
-                    func.name = str(func.id)
+                    impf_kwargs["name"] = str(impf_kwargs["id"])
 
                 # check that the unit of the intensity is the same, if provided
                 try:
                     if len(df_func[var_names['col_name']['unit']].unique()) != 1:
-                        raise ValueError('Impact function with two different \
-                                         intensity units.')
-                    func.intensity_unit = \
-                                    df_func[var_names['col_name']['unit']].values[0]
+                        raise ValueError('Impact function with two different'
+                                         ' intensity units.')
+                    impf_kwargs["intensity_unit"] = df_func[var_names['col_name']
+                                                            ['unit']].values[0]
                 except KeyError:
                     pass
 
-                func.intensity = df_func[var_names['col_name']['inten']].values
-                func.mdd = df_func[var_names['col_name']['mdd']].values
-                func.paa = df_func[var_names['col_name']['paa']].values
+                impf_kwargs["intensity"] = df_func[var_names['col_name']['inten']].values
+                impf_kwargs["mdd"] = df_func[var_names['col_name']['mdd']].values
+                impf_kwargs["paa"] = df_func[var_names['col_name']['paa']].values
 
-                self.append(func)
+                self.append(ImpactFunc(**impf_kwargs))
 
         except KeyError as err:
             raise KeyError("Not existing variable: %s" % str(err)) from err
