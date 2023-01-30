@@ -440,7 +440,7 @@ def read_bm_file(bm_path, filename):
     """
     path = Path(filename, bm_path)
     try:
-        LOGGER.debug('Importing %s.', path) 
+        LOGGER.debug('Importing %s.', path)
         curr_file = gdal.Open(str(path))
         band1 = curr_file.GetRasterBand(1)
         arr1 = band1.ReadAsArray()
