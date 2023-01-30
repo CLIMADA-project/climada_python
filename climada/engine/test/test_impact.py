@@ -70,6 +70,120 @@ class TestImpact(unittest.TestCase):
             )
 
 
+class TestImpactConcat(unittest.TestCase):
+    """test Impact.concat"""
+
+    def setUp(self) -> None:
+        """Create two dummy impacts"""
+        self.imp1 = Impact(
+            event_name=["ev1"],
+            date=np.array([735449]),
+            event_id=np.array([2]),
+            frequency=np.array([0.1]),
+            coord_exp=np.array([[45, 8]]),
+            unit="cakes",
+            frequency_unit="bar",
+            crs=DEF_CRS,
+            at_event=np.array([1]),
+            eai_exp=np.array([0.1]),
+            aai_agg=0.1,
+            tot_value=5,
+            imp_mat=sparse.csr_matrix([[1]]),
+        )
+
+        self.imp2 = Impact(
+            event_name=["ev2", "ev3"],
+            date=np.array([735450, 735451]),
+            event_id=np.array([3, 4]),
+            frequency=np.array([0.2, 0.3]),
+            coord_exp=np.array([[45, 8]]),
+            unit="cakes",
+            frequency_unit="bar",
+            crs=DEF_CRS,
+            at_event=np.array([2, 3]),
+            eai_exp=np.array([0.2]),
+            aai_agg=0.2,
+            tot_value=5,
+            imp_mat=sparse.csr_matrix([[2], [3]]),
+        )
+
+    def test_check_exposure_pass(self):
+        """test exposure checks"""
+        # test crs
+        with self.assertRaises(ValueError) as cm:
+            self.imp2.crs = "OTHER"
+            Impact.concat([self.imp1, self.imp2])
+        self.assertIn("Attribute 'crs' must be unique among impacts", str(cm.exception))
+        # reset crs
+        self.imp2.crs = self.imp1.crs
+
+        # test total exposure value
+        with self.assertRaises(ValueError) as cm:
+            self.imp2.tot_value = 1
+            Impact.concat([self.imp1, self.imp2])
+        self.assertIn(
+            "Attribute 'tot_value' must be unique among impacts", str(cm.exception)
+        )
+        # reset exposure value
+        self.imp2.tot_value = self.imp1.tot_value
+
+        # test exposure coordinates
+        with self.assertRaises(ValueError) as cm:
+            self.imp2.coord_exp[0][0] = 0
+            Impact.concat([self.imp1, self.imp2])
+        self.assertIn(
+            "The impacts have different exposure coordinates", str(cm.exception)
+        )
+
+    def test_event_ids(self):
+        """Test if event IDs are handled correctly"""
+        # Resetting
+        imp = Impact.concat([self.imp1, self.imp2], reset_event_ids=True)
+        np.testing.assert_array_equal(imp.event_id, [1, 2, 3])
+
+        # Error on non-unique IDs
+        self.imp2.event_id[0] = self.imp1.event_id[0]
+        with self.assertRaises(ValueError) as cm:
+            Impact.concat([self.imp1, self.imp2])
+        self.assertIn("Duplicate event IDs: [2]", str(cm.exception))
+
+    def test_empty_impact_matrix(self):
+        """Test if empty impact matrices are handled correctly"""
+        # One empty
+        self.imp1.imp_mat = sparse.csr_matrix(np.empty((0, 0)))
+        with self.assertRaises(ValueError) as cm:
+            Impact.concat([self.imp1, self.imp2])
+        self.assertIn(
+            "Impact matrices do not have the same number of exposure points",
+            str(cm.exception),
+        )
+
+        # Both empty
+        self.imp2.imp_mat = sparse.csr_matrix(np.empty((0, 0)))
+        imp = Impact.concat([self.imp1, self.imp2])
+        np.testing.assert_array_equal(imp.imp_mat.toarray(), np.empty((0, 0)))
+
+    def test_results(self):
+        """Test results of impact.concat"""
+        impact = Impact.concat([self.imp1, self.imp2])
+
+        np.testing.assert_array_equal(impact.event_id, [2, 3, 4])
+        np.testing.assert_array_equal(impact.event_name, ["ev1", "ev2", "ev3"])
+        np.testing.assert_array_equal(impact.date, np.array([735449, 735450, 735451]))
+        np.testing.assert_array_equal(impact.frequency, [0.1, 0.2, 0.3])
+        np.testing.assert_array_almost_equal(impact.eai_exp, np.array([0.3]))
+        np.testing.assert_array_equal(impact.at_event, np.array([1, 2, 3]))
+        self.assertAlmostEqual(impact.aai_agg, 0.3)
+        np.testing.assert_array_equal(
+            impact.imp_mat.toarray(), sparse.csr_matrix([[1], [2], [3]]).toarray()
+        )
+        np.testing.assert_array_equal(impact.coord_exp, self.imp1.coord_exp)
+        self.assertEqual(impact.tot_value, self.imp1.tot_value)
+        self.assertEqual(impact.unit, self.imp1.unit)
+        self.assertEqual(impact.frequency_unit, self.imp1.frequency_unit)
+        self.assertEqual(impact.crs, self.imp1.crs)
+
+
 class TestFreqCurve(unittest.TestCase):
     """Test exceedence frequency curve computation"""
     def test_ref_value_pass(self):
@@ -418,6 +532,7 @@ class TestRiskTrans(unittest.TestCase):
         self.assertTrue(residual_aai_agg, 3.1)
         np.testing.assert_array_almost_equal(residual_at_event, np.array([1, 1, 1.5]))
 
+
 def dummy_impact():
 
     imp = Impact()
@@ -438,6 +553,7 @@ def dummy_impact():
         ]))
 
     return imp
+
 
 class TestSelect(unittest.TestCase):
     """Test select method"""
@@ -704,4 +820,5 @@ if __name__ == "__main__":
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestSelect))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestConvertExp))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestImpact))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestImpactConcat))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
