@@ -20,9 +20,12 @@ Test Nightlight module.
 """
 import unittest
 import numpy as np
+import climada.entity.exposures.test as exposures_test
 
 from climada.entity.exposures.litpop import nightlight
 from climada.util.constants import SYSTEM_DIR
+from pathlib import Path
+from osgeo import gdal
 
 BM_FILENAMES = nightlight.BM_FILENAMES
 
@@ -78,6 +81,30 @@ class TestNightLight(unittest.TestCase):
 
         # The same length but not the correct length
         self.assertRaises(ValueError, nightlight.download_nl_files, (1, 0, 1), (1, 1, 1))
+
+    def test_read_bm_files(self):
+        """" Test that read_bm_files function read NASA BlackMarble GeoTiff and output
+             an array and a gdal DataSet."""
+        # Create a path to the file: 'BlackMarble_2016_C1_geo_gray'.
+        file_path = Path(exposures_test.__file__).parent / 'data' / 'BlackMarble_2016_C1_geo_gray.tif'
+        # Check that the array and files are returned 
+        arr1, curr_file = nightlight.read_bm_file(bm_path = str(file_path),
+                                                 filename = 'BlackMarble_2016_C1_geo_gray')
+        # Check that the outputs are a numpy array and a gdal DataSet
+        self.assertIsInstance(arr1, np.ndarray) 
+        self.assertIsInstance(curr_file, gdal.Dataset) 
+        # Check that the correct band is selected 
+        self.assertEqual(curr_file.GetRasterBand(1).DataType, 1) 
+        # Check that the right exception is raised 
+        with self.assertRaises(Exception) as cm:
+            nightlight.read_bm_file(bm_path='/Wrong/path/file', filename='BlackMarble_2016_C1_geo_gray')   
+        self.assertEqual("Failed to import /Wrong/path/file 'NoneType' object has no attribute 'GetRasterBand'",
+                      str(cm.exception))
+        # Check if the logger message is correct
+        with self.assertLogs('climada.entity.exposures.litpop.nightlight', level='DEBUG') as cm:
+            nightlight.read_bm_file(bm_path = str(file_path), 
+                                    filename = 'BlackMarble_2016_C1_geo_gray')
+            self.assertIn("Importing", cm.output[0])
 
 # Execute Tests
 if __name__ == "__main__":
