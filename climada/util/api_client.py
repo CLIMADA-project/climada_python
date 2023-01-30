@@ -253,13 +253,11 @@ class Client():
     class NoConnection(Exception):
         """To be raised if there is no internet connection and no cached result."""
 
-    @property
-    def online(self) -> bool:
+    def _online(self) -> bool:
         """Check if this client can connect to the target URL"""
         # Use just the base location
         parse_result = urlsplit(self.url)
         query_url = urlunsplit((parse_result.scheme, parse_result.netloc, "", "", ""))
-
         return requests.head(query_url, timeout=1).status_code == 200
 
     def __init__(self, cache_enabled=None):
@@ -281,6 +279,7 @@ class Client():
         self.url = CONFIG.data_api.url.str().rstrip("/")
         self.chunk_size = CONFIG.data_api.chunk_size.int()
         self.cache = Cacher(cache_enabled)
+        self.online = self._online()
 
     def _request_200(self, url, params=None):
         """Helper method, triaging successfull and failing requests.
