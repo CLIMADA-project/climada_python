@@ -370,7 +370,6 @@ class Exposures():
     def assign_centroids(self, hazard, distance='euclidean',
                          threshold=u_coord.NEAREST_NEIGHBOR_THRESHOLD,
                          overwrite=True):
-          
         """Wrapper for u_coord.assign_haz_centroids():
         Assign for each exposure coordinate closest hazard coordinate.
 
@@ -416,11 +415,25 @@ class Exposures():
         distance metric. This however is slower for (quasi-)gridded data,
         and works only for non-gridded data.
         """
-        
-        u_coord.assign_haz_centroids(self.gdf, hazard,
+
+        haz_type = hazard.tag.haz_type
+        centr_haz = 'centr_' + haz_type
+        if centr_haz in self.gdf:
+            LOGGER.info('DataFrame matching centroids already found for %s', haz_type)
+            if overwrite:
+                LOGGER.info('Existing centroids will be overwritten for %s', haz_type)
+            else:
+                return
+
+        LOGGER.info('Matching %s exposures with %s centroids.',
+                    str(self.gdf.shape[0]), str(hazard.centroids.size))
+
+        assigned_centr = u_coord.assign_haz_centroids(self.gdf, hazard,
                         distance=distance,
-                        threshold=threshold,
-                        overwrite=overwrite)
+                        threshold=threshold)
+                        
+        self.gdf[centr_haz] = assigned_centr
+
 
     def set_geometry_points(self, scheduler=None):
         """Set geometry attribute of GeoDataFrame with Points from latitude and

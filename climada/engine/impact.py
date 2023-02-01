@@ -1497,8 +1497,7 @@ class Impact():
         )
 
     def assign_centroids(self, hazard, distance='euclidean',
-                         threshold=u_coord.NEAREST_NEIGHBOR_THRESHOLD,
-                         overwrite=True):
+                         threshold=u_coord.NEAREST_NEIGHBOR_THRESHOLD):
         """
         Wrapper for u_coord.assign_haz_centroids():
         Assign for each impact coordinate closest hazard coordinate.
@@ -1544,6 +1543,9 @@ class Impact():
         non-gridded data.
         """
 
+        haz_type = hazard.tag.haz_type
+        centr_haz = 'centr_' + haz_type
+
         #Assert that the imp crs is epsg:4326, as it is required by the u_coord methods
         if not u_coord.equal_crs(self.crs, 'EPSG:4326'):
             raise ValueError('Set Impact to lat/lon crs (EPSG:4326)!')
@@ -1553,10 +1555,9 @@ class Impact():
         coord_gdf = gpd.GeoDataFrame(coord_df,geometry = gpd.points_from_xy(coord_df[:,1],coord_df[:,0],crs = self.crs))
 
         #call the assign_gdf_centroids util function
-        u_coord.assign_haz_centroids(coord_gdf, hazard,
-                        distance=distance,
-                        threshold=threshold,
-                        overwrite=overwrite)
+        coord_gdf[centr_haz] = u_coord.assign_haz_centroids(coord_gdf, hazard,
+                                                distance=distance,
+                                                threshold=threshold)
 
         #create new impact attribute with hazard centroids
         setattr(self,f'centr_{hazard.tag.haz_type}' , coord_df[f'centr_{hazard.tag.haz_type}'])

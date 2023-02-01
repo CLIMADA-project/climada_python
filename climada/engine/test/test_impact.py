@@ -815,7 +815,6 @@ class TestAssignCentroids(unittest.TestCase):
         "Test that hazard centroids get assigned correctly"
         exp = ENT.exposures
         exp.assign_centroids(HAZ)
-        tot_value = exp.affected_total_value(HAZ)
         fake_eai_exp = np.arange(len(exp.gdf))
         fake_at_event = np.arange(HAZ.size)
         fake_aai_agg = np.sum(fake_eai_exp)
