@@ -1,10 +1,10 @@
 # Changelog
 
-## Unreleased
+## v3.3.0 (upcoming)
 
-Release date: YYYY-MM-DD
+Release date: 2023-02-15
 
-Code freeze date: YYYY-MM-DD
+Code freeze date: 2023-02-05
 
 ### Description
 
