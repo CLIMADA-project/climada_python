@@ -402,7 +402,7 @@ def load_nightlight_nasa(bounds, req_files, year):
             continue
         extent = np.int64(np.clip(extent, 0, tile_size[None] - 1))
         # pylint: disable=unsubscriptable-object
-        im_nl, _ = read_bm_file(SYSTEM_DIR, fname %(year))
+        im_nl, _ = read_bm_file(SYSTEM_DIR.joinpath(fname%(year)))
         im_nl = np.flipud(im_nl)
         im_nl = sparse.csc.csc_matrix(im_nl)
         im_nl = im_nl[extent[0, 0]:extent[1, 0] + 1, extent[0, 1]:extent[1, 1] + 1]
@@ -419,7 +419,7 @@ def load_nightlight_nasa(bounds, req_files, year):
     return nightlight, coord_nl
 
 
-def read_bm_file(bm_path, filename):
+def read_bm_file(file_path):
     """Reads a single NASA BlackMarble GeoTiff and returns the data. Run all required checks first.
 
     Note: Legacy for BlackMarble, not required for litpop module
@@ -438,16 +438,14 @@ def read_bm_file(bm_path, filename):
     curr_file : gdal GeoTiff File
         Additional info from which coordinates can be calculated.
     """
-    path = Path(filename, bm_path)
-    try:
-        LOGGER.debug('Importing%s.', path)
-        curr_file = gdal.Open(str(path))
-        band1 = curr_file.GetRasterBand(1)
-        arr1 = band1.ReadAsArray()
-        del band1
-        return arr1, curr_file
-    except Exception as err:
-        raise type(err)(f"Failed to import {path} " + str(err)) from err
+    path = Path(file_path)
+    LOGGER.debug('Importing%s.', path)
+    if not path.exists():
+        raise FileNotFoundError('Invalid path: check that the path to BlackMarble file is correct.')
+    curr_file = gdal.Open(str(path))
+    arr1 = curr_file.GetRasterBand(1).ReadAsArray()
+    return arr1, curr_file
+    
 
 def unzip_tif_to_py(file_gz):
     """Unzip image file, read it, flip the x axis, save values as pickle

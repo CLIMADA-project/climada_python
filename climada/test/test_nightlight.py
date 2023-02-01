@@ -23,10 +23,14 @@ import unittest
 import numpy as np
 
 from shapely.geometry import Polygon
+from climada.entity.exposures.litpop import nightlight 
+from climada.util.constants import (SYSTEM_DIR, CONFIG)
+from climada.util import files_handler 
+from osgeo import gdal
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
-from climada.entity.exposures.litpop import nightlight as nl_utils
-
-from climada.util.constants import SYSTEM_DIR
+BM_FILENAMES = nightlight.BM_FILENAMES
 
 def init_test_shape():
     bounds = (14.18, 35.78, 14.58, 36.09)
@@ -49,9 +53,39 @@ class TestNightlight(unittest.TestCase):
     def test_load_nasa_nl_2016_shape_pass(self):
         """load_nasa_nl_shape_single_tile pass"""
         bounds, shape = init_test_shape()
-        nl_utils.load_nasa_nl_shape(shape, 2016, data_dir=SYSTEM_DIR, dtype=None)
+        nightlight.load_nasa_nl_shape(shape, 2016, data_dir=SYSTEM_DIR, dtype=None)
 
-        # data, meta = nl_utils.load_nasa_nl_shape_single_tile(shape, path, layer=0):
+        # data, meta = nightlight.load_nasa_nl_shape_single_tile(shape, path, layer=0):
+
+    def test_read_bm_files(self):
+        """" Test that read_bm_files function read NASA BlackMarble GeoTiff and output
+             an array and a gdal DataSet."""
+        # Create a temporary directory and the associated path
+        TEMPDIR = TemporaryDirectory()
+        tempdir_path = str(Path(TEMPDIR.name))
+        # Download 'BlackMarble_2016_A1_geo_gray.tif' in the temporary directory and create a path 
+        urls = CONFIG.exposures.litpop.nightlights.nasa_sites.list()
+        url = str(urls[0]) + 'BlackMarble_2016_A1_geo_gray.tif'
+        files_handler.download_file(url = url, download_dir = tempdir_path)
+        file_path = str(Path(TEMPDIR.name, 'BlackMarble_2016_A1_geo_gray.tif'))
+        # Check that the array and gdal DataSet are returned 
+        arr1, curr_file = nightlight.read_bm_file(file_path)
+        # Check that the outputs are a numpy array and a gdal DataSet
+        self.assertIsInstance(arr1, np.ndarray) 
+        self.assertIsInstance(curr_file, gdal.Dataset) 
+        # Check that the correct band is selected 
+        self.assertEqual(curr_file.GetRasterBand(1).DataType, 1) 
+        # Check that the right exception is raised 
+        with self.assertRaises(FileNotFoundError) as cm:
+            nightlight.read_bm_file(file_path = '/Wrong/path/file.tif')   
+        self.assertEqual('Invalid path: check that the path to BlackMarble file is correct.',
+                      str(cm.exception))
+        # Check if the logger message is correct
+        with self.assertLogs('climada.entity.exposures.litpop.nightlight', level = 'DEBUG') as cm:
+            nightlight.read_bm_file(file_path)
+            self.assertIn('Importing' + file_path, cm.output[0])
+        # delate the temporary repository
+        TEMPDIR.cleanup()
 
 
 # Execute Tests
