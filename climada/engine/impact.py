@@ -38,7 +38,7 @@ import matplotlib.animation as animation
 import pandas as pd
 import xlsxwriter
 from tqdm import tqdm
-
+import geopandas as gpd
 
 from climada.entity import Exposures, Tag
 from climada.hazard import Tag as TagHaz
@@ -1550,9 +1550,10 @@ class Impact():
 
         #create geodataframe from coordinates
         coord_df = pd.DataFrame(self.coord_exp, columns=['latitude', 'longitude'])
+        coord_gdf = gpd.GeoDataFrame(coord_df,geometry = gpd.points_from_xy(coord_df[:,1],coord_df[:,0],crs = self.crs))
 
         #call the assign_gdf_centroids util function
-        u_coord.assign_haz_centroids(coord_df, hazard, crs=self.crs,
+        u_coord.assign_haz_centroids(coord_gdf, hazard,
                         distance=distance,
                         threshold=threshold,
                         overwrite=overwrite)

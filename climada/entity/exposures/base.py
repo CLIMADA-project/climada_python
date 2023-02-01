@@ -416,7 +416,8 @@ class Exposures():
         distance metric. This however is slower for (quasi-)gridded data,
         and works only for non-gridded data.
         """
-        u_coord.assign_haz_centroids(self.gdf, hazard, crs = self.crs,
+        
+        u_coord.assign_haz_centroids(self.gdf, hazard,
                         distance=distance,
                         threshold=threshold,
                         overwrite=overwrite)

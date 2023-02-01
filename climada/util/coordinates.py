@@ -1057,7 +1057,7 @@ def assign_coordinates(coords, coords_to_assign, distance="euclidean",
                 coords_to_assign, coords[not_assigned_idx_mask], threshold, **kwargs)
     return assigned_idx
 
-def assign_haz_centroids(coord_df, hazard, crs, distance='euclidean',
+def assign_haz_centroids(coord_gdf, hazard, distance='euclidean',
                         threshold=NEAREST_NEIGHBOR_THRESHOLD,
                         overwrite=True):
     """Assign to each exposure's coordinate point its closest hazard's coordinate.
@@ -1066,12 +1066,10 @@ def assign_haz_centroids(coord_df, hazard, crs, distance='euclidean',
 
     Parameters
     ----------
-    coord_df : pd.DataFrame
-        Dataframe with defined latitude/longitude column
+    coord_gdf : gpd.GeoDataFrame
+        GeoDataframe with defined latitude/longitude column and crs 
     hazard : Hazard
         Hazard to match (with raster or vector centroids).
-    crs : pyproj.crs.crs.CRS
-        Coordinate system of the dataframe
     distance : str, optional
         Distance to use in case of vector centroids.
         Possible values are "euclidean", "haversine" and "approx".
@@ -1108,7 +1106,7 @@ def assign_haz_centroids(coord_df, hazard, crs, distance='euclidean',
 
     haz_type = hazard.tag.haz_type
     centr_haz = 'centr_' + haz_type
-    if centr_haz in coord_df:
+    if centr_haz in coord_gdf:
         LOGGER.info('DataFrame matching centroids already found for %s', haz_type)
         if overwrite:
             LOGGER.info('Existing centroids will be overwritten for %s', haz_type)
@@ -1116,19 +1114,19 @@ def assign_haz_centroids(coord_df, hazard, crs, distance='euclidean',
             return
 
     LOGGER.info('Matching %s coord points with %s hazard centroids.',
-                str(coord_df.shape[0]), str(hazard.centroids.size))
-    if not equal_crs(crs, hazard.centroids.crs):
+                str(coord_gdf.shape[0]), str(hazard.centroids.size))
+    if not equal_crs(coord_gdf.crs, hazard.centroids.crs):
         raise ValueError('Set hazard and DataFrame to same CRS first!')
     if hazard.centroids.meta:
         assigned = assign_grid_points(
-            coord_df.longitude.values, coord_df.latitude.values,
+            coord_gdf.longitude.values, coord_gdf.latitude.values,
             hazard.centroids.meta['width'], hazard.centroids.meta['height'],
             hazard.centroids.meta['transform'])
     else:
         assigned = assign_coordinates(
-            np.stack([coord_df.latitude.values, coord_df.longitude.values], axis=1),
+            np.stack([coord_gdf.latitude.values, coord_gdf.longitude.values], axis=1),
             hazard.centroids.coord, distance=distance, threshold=threshold)
-    coord_df[centr_haz] = assigned
+    coord_gdf[centr_haz] = assigned
 
 @numba.njit
 def _dist_sqr_approx(lats1, lons1, cos_lats1, lats2, lons2):
