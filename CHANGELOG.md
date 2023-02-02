@@ -16,10 +16,11 @@ new:
 updated:
 - contextily >=1.0 (no longer restricted to <1.2 as `contextily.sources` has been replaced in [#517](https://github.com/CLIMADA-project/climada_python/pull/517))
 - cartopy >=0.20.0,<0.20.3 (>=0.20.3 has an issue with geographic crs in plots)
-- matplotlib >=3.2,<3.6 (3.6 depends on cartopy 0.21) 
+- matplotlib >=3.2,<3.6 (3.6 depends on cartopy 0.21)
 
 ### Added
 
+- `climada.engine.impact.Impact` objects have new methods `from_hdf5` and `write_hdf5` for reading their data from, and writing it to, H5 files [#606](https://github.com/CLIMADA-project/climada_python/pull/606)
 - `climada.engine.impact_calc`: this module was separated from `climada.engine.impact` and contains the code that dealing with impact _calculation_ while the latter focuses on impact _data_ [#560](https://github.com/CLIMADA-project/climada_python/pull/560).
 - The classes `Hazard`, `Impact` and `ImpactFreqCurve` have a novel attribute `frequency_unit`. Before it was implicitly set to annual, now it can be specified and accordingly displayed in plots.
 [#532](https://github.com/CLIMADA-project/climada_python/pull/532).
