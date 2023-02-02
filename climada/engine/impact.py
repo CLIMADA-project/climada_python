@@ -893,13 +893,12 @@ class Impact():
         # Define writers for all types (will be filled later)
         type_writers = dict()
 
-        def write(group: h5py.Group, name: str, value: Any, default_writer):
+        def write(group: h5py.Group, name: str, value: Any):
             """Write the given name-value pair with a type-specific writer.
 
             This selects a writer by calling ``isinstance(value, key)``, where ``key``
             iterates through the keys of ``type_writers``. If a type matches multiple
-            entries in ``type_writers``, the *first* match is chosen. If none matches,
-            the ``default_writer`` is used.
+            entries in ``type_writers``, the *first* match is chosen.
 
             Parameters
             ----------
@@ -909,15 +908,17 @@ class Impact():
                 The identifier of the value
             value : scalar or array
                 The value/data to write
-            default_writer
-                Fallback writer if no writer in ``type_writers`` matches
+
+            Raises
+            ------
+            TypeError
+                If no suitable writer could be found for a given type
             """
             for key, writer in type_writers.items():
                 if isinstance(value, key):
-                    writer(group, name, value)
-                    return
+                    return writer(group, name, value)
 
-            default_writer(group, name, value)
+            raise TypeError(f"Could not find a writer for dataset: {name}")
 
         def _str_type_helper(values: Collection):
             """Return string datatype if we assume 'values' contains strings"""
@@ -937,7 +938,7 @@ class Impact():
             """Write a dictionary with unknown level recursively into a group"""
             group = group.create_group(name)
             for key, val in value.items():
-                write(group, key, val, write_attribute)
+                write(group, key, val)
 
         def write_tag(group, name, value):
             """Write a tag object using the dict writer"""
@@ -963,7 +964,8 @@ class Impact():
                 _write_csr_sparse(group, name, value)
 
         # Set up writers based on types
-        # NOTE: Many things are 'Collection', so make sure that precendence fits!
+        # NOTE: 1) Many things are 'Collection', so make sure that precendence fits!
+        #       2) Anything is 'object', so this serves as fallback/default.
         type_writers = {
             str: write_attribute,
             Tag: write_tag,
@@ -971,6 +973,7 @@ class Impact():
             dict: write_dict,
             sparse.csr_matrix: write_csr,
             Collection: write_dataset,
+            object: write_attribute,
         }
 
         # Open file in write mode
@@ -978,7 +981,7 @@ class Impact():
 
             # Now write all attributes
             for name, value in self.__dict__.items():
-                write(file, name, value, write_attribute)
+                write(file, name, value)
 
     def write_sparse_csr(self, file_name):
         """Write imp_mat matrix in numpy's npz format."""
