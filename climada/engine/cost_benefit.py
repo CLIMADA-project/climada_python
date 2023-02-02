@@ -558,11 +558,11 @@ class CostBenefit():
         future_year = ent_future.exposures.ref_year
 
         imp = ImpactCalc(entity.exposures, entity.impact_funcs, hazard)\
-              .impact(assign_centroids=False)
+              .impact(assign_centroids=hazard.centr_exp_col not in entity.exposures.gdf)
         curr_risk = risk_func(imp)
 
         imp = ImpactCalc(ent_future.exposures, ent_future.impact_funcs, haz_future)\
-              .impact(assign_centroids=False)
+              .impact(assign_centroids=hazard.centr_exp_col not in ent_future.exposures.gdf)
         fut_risk = risk_func(imp)
 
         if not axis:
