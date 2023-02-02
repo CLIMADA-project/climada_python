@@ -25,7 +25,6 @@ import numpy as np
 import numpy.testing as npt
 from scipy import sparse
 import h5py
-from collections.abc import Collection
 
 from climada.entity.tag import Tag
 from climada.hazard.tag import Tag as TagHaz
@@ -43,6 +42,32 @@ HAZ :Hazard = Hazard.from_hdf5(HAZ_TEST_TC)
 
 DATA_FOLDER :Path = DEMO_DIR / 'test-results'
 DATA_FOLDER.mkdir(exist_ok=True)
+
+
+def dummy_impact():
+    """Return an impact object for testing"""
+    return Impact(
+        event_id=np.arange(6) + 10,
+        event_name=[0, 1, "two", "three", 30, 31],
+        date=np.arange(6),
+        coord_exp=np.array([[1, 2], [1.5, 2.5]]),
+        crs=DEF_CRS,
+        eai_exp=np.array([7.2, 7.2]),
+        at_event=np.array([0, 2, 4, 6, 60, 62]),
+        frequency=np.array([1 / 6, 1 / 6, 1, 1, 1 / 30, 1 / 30]),
+        tot_value=7,
+        aai_agg=14.4,
+        unit="USD",
+        frequency_unit="1/month",
+        imp_mat=sparse.csr_matrix(
+            np.array([[0, 0], [1, 1], [2, 2], [3, 3], [30, 30], [31, 31]])
+        ),
+        tag={
+            "exp": Tag("file_exp.p", "descr exp"),
+            "haz": TagHaz("TC", "file_haz.p", "descr haz"),
+            "impf_set": Tag(),
+        },
+    )
 
 
 class TestImpact(unittest.TestCase):
@@ -422,28 +447,6 @@ class TestRiskTrans(unittest.TestCase):
         self.assertTrue(residual_aai_agg, 3.1)
         np.testing.assert_array_almost_equal(residual_at_event, np.array([1, 1, 1.5]))
 
-def dummy_impact():
-
-    return Impact(
-        event_id = np.arange(6) + 10,
-        event_name = [0, 1, 'two', 'three', 30, 31],
-        date = np.arange(6),
-        coord_exp = np.array([[1, 2], [1.5, 2.5]]),
-        crs = DEF_CRS,
-        eai_exp = np.array([7.2, 7.2]),
-        at_event = np.array([0, 2, 4, 6, 60, 62]),
-        frequency = np.array([1/6, 1/6, 1, 1, 1/30, 1/30]),
-        tot_value = 7,
-        aai_agg = 14.4,
-        unit = 'USD',
-        frequency_unit = '1/month',
-        imp_mat = sparse.csr_matrix(np.array([
-            [0,0], [1,1], [2,2], [3,3], [30,30], [31,31]
-            ])),
-        tag = {'exp': Tag('file_exp.p', 'descr exp'),
-            'haz': TagHaz('TC', 'file_haz.p', 'descr haz'),
-            'impf_set': Tag()},
-    )
 
 class TestSelect(unittest.TestCase):
     """Test select method"""
