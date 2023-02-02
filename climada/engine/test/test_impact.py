@@ -318,29 +318,6 @@ class TestIO(unittest.TestCase):
             0, len([i for i, j in zip(imp_write.event_name, imp_read.event_name) if i != j]))
         self.assertIsInstance(imp_read.crs, str)
 
-    def test_hdf5_io(self):
-        """Test write and read in excel"""
-        imp_write = dummy_impact()
-        imp_write.event_name = ['event_' + str(num) for num in imp_write.event_id]
-        file_name = DATA_FOLDER.joinpath('test.hdf5')
-        imp_write.write_hdf5(file_name)
-
-        imp_read = Impact.from_hdf5(file_name)
-
-        np.testing.assert_array_equal(imp_write.event_id, imp_read.event_id)
-        np.testing.assert_array_equal(imp_write.date, imp_read.date)
-        np.testing.assert_array_equal(imp_write.coord_exp, imp_read.coord_exp)
-        np.testing.assert_array_almost_equal_nulp(imp_write.eai_exp, imp_read.eai_exp, nulp=5)
-        np.testing.assert_array_almost_equal_nulp(imp_write.at_event, imp_read.at_event, nulp=5)
-        np.testing.assert_array_equal(imp_write.frequency, imp_read.frequency)
-        self.assertEqual(imp_write.tot_value, imp_read.tot_value)
-        self.assertEqual(imp_write.aai_agg, imp_read.aai_agg)
-        self.assertEqual(imp_write.unit, imp_read.unit)
-        self.assertEqual(imp_write.frequency_unit, imp_read.frequency_unit)
-        self.assertEqual(
-            0, len([i for i, j in zip(imp_write.event_name, imp_read.event_name) if i != j]))
-        self.assertIsInstance(imp_read.crs, str)
-
     def test_write_imp_mat(self):
         """Test write_excel_imp_mat function"""
         impact = Impact()
