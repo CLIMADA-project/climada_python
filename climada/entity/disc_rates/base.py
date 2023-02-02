@@ -60,7 +60,7 @@ class DiscRates():
 
     Attributes
     ---------
-    tag: Tag
+    tag: climada.entity.tag.Tag
         information about the source data
     years: np.array
         list of years
@@ -235,9 +235,16 @@ class DiscRates():
         description: str, optional
             description of the data. The default is ''
         var_names: dict, optional
-            name of the variables in the file. The Default is
-            DEF_VAR_MAT = {'sup_field_name': 'entity', 'field_name': 'discount',
-               'var_name': {'year': 'year', 'disc': 'discount_rate'}}
+            name of the variables in the file. Default:
+
+            >>> DEF_VAR_MAT = {
+            ...     'sup_field_name': 'entity',
+            ...     'field_name': 'discount',
+            ...     'var_name': {
+            ...         'year': 'year',
+            ...         'disc': 'discount_rate',
+            ...     }
+            ... }
 
         Returns
         -------
@@ -282,8 +289,14 @@ class DiscRates():
             description of the data. The default is ''
         var_names: dict, optional
             name of the variables in the file. The Default is
-            DEF_VAR_EXCEL = {'sheet_name': 'discount',
-               'col_name': {'year': 'year', 'disc': 'discount_rate'}}
+
+            >>> DEF_VAR_EXCEL = {
+            ...     'sheet_name': 'discount',
+            ...     'col_name': {
+            ...         'year': 'year',
+            ...         'disc': 'discount_rate',
+            ...     }
+            ... }
 
         Returns
         -------
@@ -320,8 +333,14 @@ class DiscRates():
             filename including path and extension
         var_names: dict, optional
             name of the variables in the file. The Default is
-            DEF_VAR_EXCEL = {'sheet_name': 'discount',
-               'col_name': {'year': 'year', 'disc': 'discount_rate'}}
+
+            >>> DEF_VAR_EXCEL = {
+            ...     'sheet_name': 'discount',
+            ...     'col_name': {
+            ...         'year': 'year',
+            ...         'disc': 'discount_rate',
+            ...     }
+            ... }
         """
         if var_names is None:
             var_names = DEF_VAR_EXCEL

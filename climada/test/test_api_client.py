@@ -198,6 +198,13 @@ class TestClient(unittest.TestCase):
         self.assertTrue('[1, 1]' in litpop.tag.description)
         self.assertTrue('pc' in litpop.tag.description)
 
+    def test_get_litpop_fail(self):
+        client = Client()
+        with self.assertRaises(ValueError) as cm:
+            client.get_litpop(['AUT', 'CHE'])
+        self.assertIn(" can only query single countries. Download the data for multiple countries individually and concatenate ",
+            str(cm.exception))
+
     def test_multi_filter(self):
         client = Client()
         testds = client.list_dataset_infos(data_type='storm_europe')

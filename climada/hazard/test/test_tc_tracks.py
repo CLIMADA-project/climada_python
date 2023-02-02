@@ -621,11 +621,31 @@ class TestFuncs(unittest.TestCase):
             with self.assertRaises(ValueError, msg=msg) as _cm:
                 tc_track.equal_timestep(time_step_h=time_step_h)
 
-        # test for tracks with non-normalized longitude
+    def test_interp_track_lonnorm_pass(self):
+        """Interpolate track with non-normalized longitude to min_time_step."""
         tc_track = tc.TCTracks.from_processed_ibtracs_csv(TEST_TRACK)
         tc_track.data[0].lon.values[1] += 360
         tc_track.equal_timestep(time_step_h=1)
         np.testing.assert_array_less(tc_track.data[0].lon.values, 0)
+
+    def test_interp_track_redundancy_pass(self):
+        """Interpolate tracks that are already interpolated."""
+        tc_track = tc.TCTracks.from_processed_ibtracs_csv(TEST_TRACK)
+        tr_before = tc_track.data[0]
+        tc_track.equal_timestep(time_step_h=1)
+
+        # test for case when temporal resolution of all tracks already matches time_step_h
+        expected_warning = 'All tracks are already at the requested temporal resolution.'
+        with self.assertLogs('climada.hazard.tc_tracks', level='INFO') as cm:
+            tc_track.equal_timestep(time_step_h=1)
+        self.assertIn(expected_warning, cm.output[0])
+
+        # test for case when temporal resolution of some tracks already matches time_step_h
+        tc_track.data = [tc_track.data[0], tr_before, tc_track.data[0]]
+        expected_warning = '2 tracks are already at the requested temporal resolution.'
+        with self.assertLogs('climada.hazard.tc_tracks', level='INFO') as cm:
+            tc_track.equal_timestep(time_step_h=1)
+        self.assertIn(expected_warning, cm.output[0])
 
     def test_interp_origin_pass(self):
         """Interpolate track to min_time_step crossing lat origin"""
