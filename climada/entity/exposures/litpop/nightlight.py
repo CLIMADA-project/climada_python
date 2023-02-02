@@ -445,7 +445,6 @@ def read_bm_file(file_path):
     curr_file = gdal.Open(str(path))
     arr1 = curr_file.GetRasterBand(1).ReadAsArray()
     return arr1, curr_file
-    
 
 def unzip_tif_to_py(file_gz):
     """Unzip image file, read it, flip the x axis, save values as pickle

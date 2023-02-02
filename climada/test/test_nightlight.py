@@ -88,6 +88,42 @@ class TestNightlight(unittest.TestCase):
         TEMPDIR.cleanup()
 
 
+
+    def test_download_nl_files(self):
+        """ Test that BlackMarble GeoTiff files are downloaded. """
+        # Create a temporary directory and the associated path
+        TEMPDIR = TemporaryDirectory()
+        tempdir_path = str(Path(TEMPDIR.name))
+        # Test Raises
+        with self.assertRaises(ValueError) as cm:
+            nightlight.download_nl_files(req_files=np.ones(5),
+                                        files_exist=np.zeros(4),
+                                        dwnl_path = tempdir_path)
+        self.assertEqual('The given arguments are invalid. req_files and '
+                         'files_exist must both be as long as there are files to download '
+                         '(8).', str(cm.exception))
+        with self.assertRaises(ValueError) as cm:
+            nightlight.download_nl_files(dwnl_path = 'not a folder')
+        self.assertEqual('The folder not a folder does not exist. Operation aborted.', str(cm.exception))
+        # Test logger 
+        with self.assertLogs('climada.entity.exposures.litpop.nightlight', level = 'DEBUG') as cm:
+            dwl_path = nightlight.download_nl_files(req_files=np.ones(len(BM_FILENAMES),),
+                                        files_exist=np.ones(len(BM_FILENAMES),),
+                                        dwnl_path = tempdir_path, year = 2016)
+            self.assertIn('All required files already exist. No downloads necessary.', cm.output[0])
+        # Test the download 
+        with self.assertLogs('climada.entity.exposures.litpop.nightlight', level = 'DEBUG') as cm:
+            dwl_path = nightlight.download_nl_files(req_files = np.array([1, 0, 0, 0, 0, 0, 0, 0]),
+                                        files_exist = np.array([0, 1, 1, 1, 1, 1, 1, 1]),
+                                        dwnl_path = tempdir_path)
+            self.assertIn('Attempting to download file from '
+                        'https://eoimages.gsfc.nasa.gov/images/imagerecords/'
+                        '144000/144897/BlackMarble_2016_A1_geo_gray.tif', cm.output[0])
+            #Test if dwl_path has been returned 
+            self.assertEqual(tempdir_path == dwl_path, True) 
+        # Delate the temporary repository
+        TEMPDIR.cleanup()
+
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestNightlight)
