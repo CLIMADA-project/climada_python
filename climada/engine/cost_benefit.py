@@ -537,7 +537,8 @@ class CostBenefit():
         hazard : climada.Hazard
         entity : climada.Entity
         haz_future : Hazard
-            hazard in the future (future year provided at ent_future)
+            hazard in the future (future year provided at ent_future).
+            ``haz_future`` is expected to have the same centroids as ``hazard``.
         ent_future : climada.Entity
             entity in the future
         risk_func : func, optional
