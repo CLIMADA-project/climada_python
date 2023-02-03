@@ -11,9 +11,11 @@ Code freeze date: 2023-02-05
 ### Dependency Changes
 
 new:
+
 - sparse (>=0.13) for [#578](https://github.com/CLIMADA-project/climada_python/pull/578)
 
 updated:
+
 - contextily >=1.0 (no longer restricted to <1.2 as `contextily.sources` has been replaced in [#517](https://github.com/CLIMADA-project/climada_python/pull/517))
 - cartopy >=0.20.0,<0.20.3 (>=0.20.3 has an issue with geographic crs in plots)
 - matplotlib >=3.2,<3.6 (3.6 depends on cartopy 0.21)
