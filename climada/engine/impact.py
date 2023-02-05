@@ -99,6 +99,7 @@ class Impact():
                  crs=DEF_CRS,
                  eai_exp=None,
                  at_event=None,
+                 at_reg_id_event=None,
                  tot_value=0,
                  aai_agg=0,
                  unit='',
@@ -129,6 +130,8 @@ class Impact():
             expected impact for each exposure within a period of 1/frequency_unit
         at_event : np.array, optional
             impact for each hazard event
+        at_reg_id_event : np.array, optional
+            impact for each hazard event at each exposure region id
         tot_value : float, optional
             total exposure value affected
         aai_agg : float, optional
@@ -150,6 +153,7 @@ class Impact():
         self.crs = crs
         self.eai_exp = np.array([], float) if eai_exp is None else eai_exp
         self.at_event = np.array([], float) if at_event is None else at_event
+        self.at_reg_id_event = np.array([], float) if at_reg_id_event is None else at_reg_id_event
         self.frequency = np.array([],float) if frequency is None else frequency
         self.frequency_unit = frequency_unit
         self.tot_value = tot_value
@@ -190,8 +194,6 @@ class Impact():
                         ' exposures points.')
         else:
             self.imp_mat = sparse.csr_matrix(np.empty((0, 0)))
-
-
 
     def calc(self, exposures, impact_funcs, hazard, save_mat=False, assign_centroids=True):
         """This function is deprecated, use ``ImpactCalc.impact`` instead.
@@ -389,6 +391,24 @@ class Impact():
         for year in years:
             year_set[year] = sum(self.at_event[orig_year == year])
         return year_set
+
+    def impact_per_exp_reg(self, exposures):
+        """Aggregate impact matrix at the regional level, based on the
+        regions specified in the exposure.
+
+        Parameters
+        ----------
+        exposures : climada.entity.Exposures
+            exposure used to compute imp_mat
+        Returns
+        -------
+        np.matrix
+        """
+        self.at_reg_id_event = np.hstack([
+                       self.imp_mat[:, np.where(exposures.gdf.region_id == reg_id)[0]].sum(1)
+                       for reg_id in exposures.gdf.region_id.unique()
+                       ])
+        return self.at_reg_id_event
 
     def calc_impact_year_set(self,all_years=True, year_range=None):
         """This function is deprecated, use Impact.impact_per_year instead."""
