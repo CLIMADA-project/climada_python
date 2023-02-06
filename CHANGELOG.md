@@ -16,6 +16,7 @@ new:
 
 updated:
 
+- **python 3.9** - python 3.8 will still work, but python 3.9 is now the default version for [installing climada](https://climada-python.readthedocs.io/en/latest/tutorial/climada_installation_step_by_step.html) ([#614](https://github.com/CLIMADA-project/climada_python/pull/614))
 - contextily >=1.0 (no longer restricted to <1.2 as `contextily.sources` has been replaced in [#517](https://github.com/CLIMADA-project/climada_python/pull/517))
 - cartopy >=0.20.0,<0.20.3 (>=0.20.3 has an issue with geographic crs in plots)
 - matplotlib >=3.2,<3.6 (3.6 depends on cartopy 0.21)
