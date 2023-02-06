@@ -60,8 +60,7 @@ Jump right in:
 
    guide/Guide_Introduction
    Getting Started <guide/Guide_get_started>
-   guide/Guide_Installation
-   Very Easy Installation <tutorial/climada_installation_step_by_step>
+   <guide/install>
    Running CLIMADA on Euler <guide/Guide_Euler>
 
 
