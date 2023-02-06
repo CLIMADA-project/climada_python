@@ -32,7 +32,7 @@ setup(
         #   4 - Beta
         #   5 - Production/Stable
         'Development Status :: 4 - Beta',
-        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
         'Topic :: Scientific/Engineering :: Atmospheric Science',
         'Topic :: Scientific/Engineering :: GIS',
         'Topic :: Scientific/Engineering :: Mathematics',
