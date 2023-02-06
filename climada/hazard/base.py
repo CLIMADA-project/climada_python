@@ -1763,6 +1763,9 @@ class Hazard():
         ----------
         file_name: str
             file name to write, with h5 format
+        todense: bool
+            if True write the sparse matrices as hdf5.dataset by converting them to dense format
+            first. This increases readability of the file for other programs. default: False
         """
         LOGGER.info('Writing %s', file_name)
         with h5py.File(file_name, 'w') as hf_data:
