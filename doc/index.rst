@@ -103,5 +103,6 @@ Jump right in:
 
    Python modules <climada/climada>
    README <misc/README>
+   Changelog <misc/CHANGELOG>
    List of Authors <misc/AUTHORS>
    Contribution Guide <misc/CONTRIBUTING>

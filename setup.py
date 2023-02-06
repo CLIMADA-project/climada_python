@@ -68,6 +68,7 @@ setup(
         'salib',
         'scikit-learn',
         'statsmodels',
+        'sparse',
         'tables',
         'tabulate',
         'tqdm',
