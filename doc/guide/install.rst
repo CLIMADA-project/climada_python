@@ -7,7 +7,7 @@ The following sections will guide you through the installation of CLIMADA and it
 .. attention::
 
     CLIMADA has a complicated set of dependencies that cannot be installed with ``pip`` alone.
-    Please make sure you follow the installation instructions carefully!
+    Please follow the installation instructions carefully!
     We recommend to use `Anaconda`_ for creating a suitable software environment to execute CLIMADA.
 
 All following instructions should work on any operating system (OS) that is supported by `Anaconda`_, including in particular: **Windows**, **macOS**, and **Linux**.
@@ -25,7 +25,7 @@ Prerequisites
   All dependencies will be downloaded from the internet.
   Do **not** use a metered, mobile connection!
 * Install `Anaconda`_, following the `installation instructions <https://docs.anaconda.com/anaconda/install/>`_ for your OS.
-* Create a workspace directory, ideally in subdirectory of your user/home directory.
+* Create a **workspace directory**, ideally in subdirectory of your user/home directory.
   Do **not** use a directory that is synchronized by cloud storage systems like OneDrive, iCloud or Polybox!
 
 .. hint:: If you need help with the vocabulary used on this page, refer to the :ref:`Glossary <install-glossary>`.
@@ -159,14 +159,14 @@ Install CLIMADA Petals (Optional)
 
 CLIMADA is divided into two repositories, CLIMADA Core (`climada_python <https://github.com/CLIMADA-project/climada_python>`_) and CLIMADA Petals (`climada_petals <https://github.com/CLIMADA-project/climada_petals>`_).
 The Core contains all the modules necessary for probabilistic impact, averted damage, uncertainty and forecast calculations.
-Data for hazard, exposures and impact functions can be obtained from the `Data API <https://github.com/CLIMADA-project/climada_python/blob/main/doc/tutorial/climada_util_api_client.ipynb>`_.
+Data for hazard, exposures and impact functions can be obtained from the :doc:`CLIMADA Data API </tutorial/climada_util_api_client>`.
 Hazard and Exposures subclasses are included as demonstrators only.
 
 .. attention:: CLIMADA Petals is **not** a standalone module and requires CLIMADA Core to be installed!
 
 CLIMADA Petals contains all the modules for generating data (e.g., ``TC_Surge``, ``WildFire``, ``OpenStreeMap``, ...).
 New modules are developed and tested here.
-Some data created with modules from Petals is available to download from the :doc:`CLIMADA Data API </tutorial/climada_util_api_client>`.
+Some data created with modules from Petals is available to download from the :doc:`Data API </tutorial/climada_util_api_client>`.
 This works with just CLIMADA Core installed.
 CLIMADA Petals can be used to generate additional data of this type, or to have a look at the tutorials for all data types available from the API.
 
@@ -373,12 +373,14 @@ After **each** of the following steps, check if the problem is solved, and only 
    Follow the instructions for :ref:`installing more packages <install-more-packages>`.
 
 #. If you reached this point, something is severely broken.
-   Delete your CLIMADA environment and reinstall everything following one :ref:`instruction set <install-choice>`:
+   The last course of action is to delete your CLIMADA environment:
 
    .. code-block:: shell
 
       conda deactivate
       conda env remove -n climada_env
+
+   Now repeat the :ref:`installation process <install-choice>`.
 
 #. Still no good?
    Please raise an `issue on GitHub <https://github.com/CLIMADA-project/climada_python/issues>`_ to get help.
