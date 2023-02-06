@@ -28,10 +28,9 @@ import csv
 import warnings
 import datetime as dt
 from itertools import zip_longest
-from typing import Union, Any
+from typing import Any, Iterable, Union
 from collections.abc import Collection
 from pathlib import Path
-from typing import Iterable
 
 import contextily as ctx
 import numpy as np
