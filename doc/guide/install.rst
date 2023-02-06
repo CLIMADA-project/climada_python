@@ -170,7 +170,7 @@ Some data created with modules from Petals is available to download from the :do
 This works with just CLIMADA Core installed.
 CLIMADA Petals can be used to generate additional data of this type, or to have a look at the tutorials for all data types available from the API.
 
-To install CLIMADA Petals, we assume you already have installed CLIMADA Core with the advanced instructions above.
+To install CLIMADA Petals, we assume you have already installed CLIMADA Core with the :ref:`advanced instructions <install-advanced>` above.
 
 #. Open the command line and navigate to the workspace directory.
 #. Clone CLIMADA Petals from its `GitHub repository <https://github.com/CLIMADA-project/climada_petals>`_.
@@ -274,6 +274,42 @@ FAQs
 ----
 
 Answers to frequently asked questions.
+
+Updating CLIMADA
+^^^^^^^^^^^^^^^^
+
+We recommend keeping CLIMADA up-to-date.
+To update, follow the instructions based on your :ref:`installation type <install-choice>`:
+
+* **Simple Instructions:** Activate the environment and update CLIMADA using ``pip``:
+
+  .. code-block:: shell
+
+     conda activate climada_env
+     python -m pip install -U climada
+
+  Then, download the latest environment specifications: :download:`env_climada.yml </../requirements/env_climada.yml>`.
+  Use them to update the existing environment:
+
+  .. code-block:: shell
+
+     conda env update -n climada_env -f env_climada.yml
+
+* **Advanced Instructions:** Move into your local CLIMADA repository and pull the latest version of your respective branch:
+
+  .. code-block:: shell
+
+     cd <path/to/workspace>/climada_python
+     git pull
+
+  Then, update the environment:
+
+  .. code-block:: shell
+
+     conda env update -n climada_env -f requirements/env_climada.yml
+     conda env update -n climada_env -f requirements/env_developer.yml
+
+  The same instructions apply for CLIMADA Petals.
 
 .. _install-more-packages:
 
