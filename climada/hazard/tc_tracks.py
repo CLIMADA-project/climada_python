@@ -1385,7 +1385,8 @@ class TCTracks():
             track = ds_dict[f'track{i}']
             track.attrs['orig_event_flag'] = bool(track.attrs['orig_event_flag'])
             # when writing '<U2' and reading in again, xarray reads as dtype 'object'. undo this:
-            track['basin'] = track['basin'].astype('<U2')
+            for varname in ['basin', 'nature']:
+                track[varname] = track[varname].astype('<U2')
             data.append(track)
         return cls(data)
 
@@ -1883,13 +1884,14 @@ def _read_ibtracs_csv_single(file_name):
     tr_ds['central_pressure'] = ('time', cen_pres)
     tr_ds['environmental_pressure'] = ('time', dfr['penv'].values.astype('float'))
     tr_ds['basin'] = ('time', dfr['gen_basin'].values.astype('<U2'))
-    tr_ds['nature'] = ('time', dfr['nature'].values.astype('<U2'))
     tr_ds.attrs['max_sustained_wind_unit'] = max_sus_wind_unit
     tr_ds.attrs['central_pressure_unit'] = 'mb'
     tr_ds.attrs['name'] = name
     tr_ds.attrs['sid'] = name
     tr_ds.attrs['orig_event_flag'] = bool(dfr['original_data']. values[0])
     tr_ds.attrs['data_provider'] = dfr['data_provider'].values[0]
+    if hasattr(dfr, 'nature'):
+        tr_ds['nature'] = ('time', dfr['nature'].values.astype('<U2'))
     try:
         tr_ds.attrs['id_no'] = float(name.replace('N', '0').replace('S', '1'))
     except ValueError:
