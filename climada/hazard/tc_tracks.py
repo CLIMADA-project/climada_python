@@ -178,6 +178,7 @@ class TCTracks():
             - central_pressure (in hPa/mbar)
             - environmental_pressure (in hPa/mbar)
             - basin (for each track position)
+            - nature (for each track position)
             - max_sustained_wind_unit (attrs)
             - central_pressure_unit (attrs)
             - name (attrs)
@@ -575,7 +576,7 @@ class TCTracks():
                         ibtracs_ds[tc_var].values[nonsingular_mask] = (
                             ibtracs_ds[tc_var].sel(storm=nonsingular_mask).interpolate_na(
                                 dim="date_time", method="linear"))
-        ibtracs_ds = ibtracs_ds[['sid', 'name', 'basin', 'time', 'valid_t']
+        ibtracs_ds = ibtracs_ds[['sid', 'name', 'basin', 'time', 'valid_t', 'nature']
                                 + phys_vars + [f'{v}_agency' for v in phys_vars]]
 
         if estimate_missing:
@@ -693,6 +694,7 @@ class TCTracks():
                 'central_pressure': ('time', track_ds.pres.data),
                 'environmental_pressure': ('time', track_ds.poci.data),
                 'basin': ('time', track_ds.basin.data.astype("<U2")),
+                'nature': ('time', track_ds.nature.data.astype("<U2")),
             }, coords={
                 'time': track_ds.time.dt.round('s').data,
                 'lat': ('time', track_ds.lat.data),
@@ -1500,6 +1502,8 @@ class TCTracks():
             track_int = track.resample(time=time_step, skipna=True)\
                              .interpolate('linear')
             track_int['basin'] = track.basin.resample(time=time_step).nearest()
+            if hasattr(track_int, 'nature'):
+                track_int['nature'] = track.nature.resample(time=time_step).ffill()
             track_int['time_step'][:] = time_step_h
             lon_int = lon.resample(time=time_step).interpolate(method)
             lon_int[lon_int > 180] -= 360
@@ -1879,6 +1883,7 @@ def _read_ibtracs_csv_single(file_name):
     tr_ds['central_pressure'] = ('time', cen_pres)
     tr_ds['environmental_pressure'] = ('time', dfr['penv'].values.astype('float'))
     tr_ds['basin'] = ('time', dfr['gen_basin'].values.astype('<U2'))
+    tr_ds['nature'] = ('time', dfr['nature'].values.astype('<U2'))
     tr_ds.attrs['max_sustained_wind_unit'] = max_sus_wind_unit
     tr_ds.attrs['central_pressure_unit'] = 'mb'
     tr_ds.attrs['name'] = name
