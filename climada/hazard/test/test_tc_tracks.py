@@ -95,6 +95,7 @@ class TestIbtracs(unittest.TestCase):
         self.assertAlmostEqual(track_ds.central_pressure.values[0], 1008)
         self.assertAlmostEqual(track_ds.environmental_pressure.values[0], 1012)
         self.assertAlmostEqual(track_ds.radius_max_wind.values[0], 60)
+        self.assertEqual(track_ds.nature[0], 'TS')
         self.assertEqual(track_ds.time.size, 123)
 
         self.assertAlmostEqual(track_ds.lat.values[-1], 36.8, places=5)
@@ -103,6 +104,7 @@ class TestIbtracs(unittest.TestCase):
         self.assertAlmostEqual(track_ds.max_sustained_wind.values[-1], 15)
         self.assertAlmostEqual(track_ds.environmental_pressure.values[-1], 1008)
         self.assertAlmostEqual(track_ds.radius_max_wind.values[-1], 60)
+        self.assertEqual(track_ds.nature[-1], 'DS')
 
         self.assertFalse(np.isnan(track_ds.radius_max_wind.values).any())
         self.assertFalse(np.isnan(track_ds.environmental_pressure.values).any())
@@ -309,7 +311,7 @@ class TestIO(unittest.TestCase):
             np.testing.assert_array_equal(tr.basin, "SP")
 
     def test_hdf5_io(self):
-        """Test writting and reading hdf5 TCTracks instances"""
+        """Test writing and reading hdf5 TCTracks instances"""
         path = DATA_DIR.joinpath("tc_tracks.h5")
         tc_track = tc.TCTracks.from_ibtracs_netcdf(
             provider='usa', year_range=(1993, 1994), basin='EP', estimate_missing=True)
