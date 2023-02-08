@@ -1057,18 +1057,18 @@ def assign_coordinates(coords, coords_to_assign, distance="euclidean",
                 coords_to_assign, coords[not_assigned_idx_mask], threshold, **kwargs)
     return assigned_idx
 
-def assign_gdf_centroids(coord_gdf, hazard, distance='euclidean',
+def assign_gdf_centroids(coord_gdf, centroids, distance='euclidean',
                         threshold=NEAREST_NEIGHBOR_THRESHOLD):
-    """Assign to each exposure's coordinate point its closest hazard's coordinate.
+    """Assign to each exposure's coordinate point its closest centroids's coordinate.
     If disatances > threshold in points' distances, -1 is returned.
-    If raster hazard and coordinate point outside raster, -1 is returned.
+    If raster centroids and coordinate point outside raster, -1 is returned.
 
     Parameters
     ----------
     coord_gdf : gpd.GeoDataFrame
         GeoDataframe with defined latitude/longitude column and crs 
-    hazard : Hazard
-        Hazard to match (with raster or vector centroids).
+    centroids : Centroids
+        (Hazard) centroids to match (as raster or vector centroids).
     distance : str, optional
         Distance to use in case of vector centroids.
         Possible values are "euclidean", "haversine" and "approx".
@@ -1100,17 +1100,17 @@ def assign_gdf_centroids(coord_gdf, hazard, distance='euclidean',
     and works only for non-gridded data.
     """
 
-    if not equal_crs(coord_gdf.crs, hazard.centroids.crs):
+    if not equal_crs(coord_gdf.crs, centroids.crs):
         raise ValueError('Set hazard and GeoDataFrame to same CRS first!')
-    if hazard.centroids.meta:
+    if centroids.meta:
         assigned = assign_grid_points(
             coord_gdf.longitude.values, coord_gdf.latitude.values,
-            hazard.centroids.meta['width'], hazard.centroids.meta['height'],
-            hazard.centroids.meta['transform'])
+            centroids.meta['width'], centroids.meta['height'],
+            centroids.meta['transform'])
     else:
         assigned = assign_coordinates(
             np.stack([coord_gdf.latitude.values, coord_gdf.longitude.values], axis=1),
-            hazard.centroids.coord, distance=distance, threshold=threshold)
+            centroids.coord, distance=distance, threshold=threshold)
     return assigned
 
 @numba.njit

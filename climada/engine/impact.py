@@ -1791,10 +1791,11 @@ class Impact():
 
         #create geodataframe from coordinates
         coord_df = pd.DataFrame(self.coord_exp, columns=['latitude', 'longitude'])
-        coord_gdf = gpd.GeoDataFrame(coord_df,geometry = gpd.points_from_xy(coord_df[:,1],coord_df[:,0],crs = self.crs))
+        geometry = gpd.points_from_xy(coord_df[:,1],coord_df[:,0],crs = self.crs)
+        coord_gdf = gpd.GeoDataFrame(coord_df,geometry = geometry)
 
         #call the assign_gdf_centroids util function
-        coord_gdf[centr_haz] = u_coord.assign_gdf_centroids(coord_gdf, hazard,
+        coord_gdf[centr_haz] = u_coord.assign_gdf_centroids(coord_gdf, hazard.centroids,
                                                 distance=distance,
                                                 threshold=threshold)
 
