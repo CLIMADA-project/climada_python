@@ -1058,7 +1058,7 @@ def assign_coordinates(coords, coords_to_assign, distance="euclidean",
     return assigned_idx
 
 def assign_gdf_centroids(coord_gdf, centroids, distance='euclidean',
-                        threshold=NEAREST_NEIGHBOR_THRESHOLD):
+                        threshold=NEAREST_NEIGHBOR_THRESHOLD,test_crs=True):
     """Assign to each exposure's coordinate point its closest centroids's coordinate.
     If disatances > threshold in points' distances, -1 is returned.
     If raster centroids and coordinate point outside raster, -1 is returned.
@@ -1066,7 +1066,7 @@ def assign_gdf_centroids(coord_gdf, centroids, distance='euclidean',
     Parameters
     ----------
     coord_gdf : gpd.GeoDataFrame
-        GeoDataframe with defined latitude/longitude column and crs 
+        GeoDataframe with defined latitude/longitude column and crs
     centroids : Centroids
         (Hazard) centroids to match (as raster or vector centroids).
     distance : str, optional
@@ -1078,6 +1078,10 @@ def assign_gdf_centroids(coord_gdf, centroids, distance='euclidean',
         the index `-1` is assigned.
         Set `threshold` to 0, to disable nearest neighbor matching.
         Default: 100 (km)
+    test_crs : bool
+        Whether or not to test equal crs from centroids and gdf
+        In case of exp.assign_centroids() the crs is not defined within
+        the GeoDataFrame and the crs match is tested there.
 
     See Also
     --------
@@ -1100,8 +1104,9 @@ def assign_gdf_centroids(coord_gdf, centroids, distance='euclidean',
     and works only for non-gridded data.
     """
 
-    if not equal_crs(coord_gdf.crs, centroids.crs):
+    if test_crs and (not equal_crs(coord_gdf.crs, centroids.crs)):
         raise ValueError('Set hazard and GeoDataFrame to same CRS first!')
+    
     if centroids.meta:
         assigned = assign_grid_points(
             coord_gdf.longitude.values, coord_gdf.latitude.values,

@@ -397,7 +397,7 @@ class Exposures():
         --------
         climada.util.coordinates.assign_grid_points: method to associate centroids to
             exposure points when centroids is a raster
-        climada.util.coordinates.assign_coordinates: 
+        climada.util.coordinates.assign_coordinates:
             method to associate centroids to exposure points
         Notes
         -----
@@ -415,7 +415,6 @@ class Exposures():
         distance metric. This however is slower for (quasi-)gridded data,
         and works only for non-gridded data.
         """
-
         haz_type = hazard.tag.haz_type
         centr_haz = 'centr_' + haz_type
         if centr_haz in self.gdf:
@@ -427,11 +426,12 @@ class Exposures():
 
         LOGGER.info('Matching %s exposures with %s centroids.',
                     str(self.gdf.shape[0]), str(hazard.centroids.size))
-
+        if not u_coord.equal_crs(self.crs, hazard.centroids.crs):
+            raise ValueError('Set hazard and exposure to same CRS first!')
+        
         assigned_centr = u_coord.assign_gdf_centroids(self.gdf, hazard.centroids,
                         distance=distance,
-                        threshold=threshold)
-
+                        threshold=threshold,test_crs=False)
         self.gdf[centr_haz] = assigned_centr
 
 
