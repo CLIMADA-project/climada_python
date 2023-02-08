@@ -21,6 +21,10 @@ Tests on Black marble.
 
 import unittest
 import numpy as np
+import scipy.sparse as sparse
+import gzip
+import shutil
+import os
 
 from shapely.geometry import Polygon
 from climada.entity.exposures.litpop import nightlight 
@@ -67,9 +71,10 @@ class TestNightlight(unittest.TestCase):
         urls = CONFIG.exposures.litpop.nightlights.nasa_sites.list()
         url = str(urls[0]) + 'BlackMarble_2016_A1_geo_gray.tif'
         files_handler.download_file(url = url, download_dir = tempdir_path)
-        file_path = str(Path(TEMPDIR.name, 'BlackMarble_2016_A1_geo_gray.tif'))
+        bm_path = str(TEMPDIR.name)
+        filename = 'BlackMarble_2016_A1_geo_gray.tif'
         # Check that the array and gdal DataSet are returned 
-        arr1, curr_file = nightlight.read_bm_file(file_path)
+        arr1, curr_file = nightlight.read_bm_file(bm_path = bm_path , filename = filename )
         # Check that the outputs are a numpy array and a gdal DataSet
         self.assertIsInstance(arr1, np.ndarray) 
         self.assertIsInstance(curr_file, gdal.Dataset) 
@@ -77,17 +82,15 @@ class TestNightlight(unittest.TestCase):
         self.assertEqual(curr_file.GetRasterBand(1).DataType, 1) 
         # Check that the right exception is raised 
         with self.assertRaises(FileNotFoundError) as cm:
-            nightlight.read_bm_file(file_path = '/Wrong/path/file.tif')   
+            nightlight.read_bm_file(bm_path = '/Wrong/path/file.tif',filename = 'file.tif')   
         self.assertEqual('Invalid path: check that the path to BlackMarble file is correct.',
                       str(cm.exception))
         # Check if the logger message is correct
         with self.assertLogs('climada.entity.exposures.litpop.nightlight', level = 'DEBUG') as cm:
-            nightlight.read_bm_file(file_path)
-            self.assertIn('Importing' + file_path, cm.output[0])
+            nightlight.read_bm_file(bm_path = bm_path , filename = filename )
+            self.assertIn('Importing' + bm_path, cm.output[0])
         # delate the temporary repository
         TEMPDIR.cleanup()
-
-
 
     def test_download_nl_files(self):
         """ Test that BlackMarble GeoTiff files are downloaded. """
@@ -123,6 +126,24 @@ class TestNightlight(unittest.TestCase):
             self.assertEqual(tempdir_path == dwl_path, True) 
         # Delate the temporary repository
         TEMPDIR.cleanup()
+
+    def test_unzip_tif_to_py(self):
+        """ Test that .gz files are unzipped and read as a sparse matrix """
+        # compress a demo .tif file to .gz 
+        path_file_tif = 'data/demo/earth_engine/dresden.tif'
+        with open(path_file_tif, 'rb') as f_in:
+            with gzip.open('dresden.tif.gz','wb') as f_out:
+                shutil.copyfileobj(f_in, f_out)
+        # test LOGGER
+        with self.assertLogs('climada.entity.exposures.litpop.nightlight', level = 'INFO') as cm:
+            file_name, night = nightlight.unzip_tif_to_py('dresden.tif.gz')
+            self.assertIn('Unzipping file dresden.tif', cm.output[0])
+        # test file_name
+            self.assertEqual(str(file_name), 'dresden.tif')
+        # test the sparse matrix 
+            self.assertIsInstance(night, sparse._csr.csr_matrix)
+        # delate the created demo .gz file
+        os.remove('dresden.tif.gz')
 
 # Execute Tests
 if __name__ == "__main__":

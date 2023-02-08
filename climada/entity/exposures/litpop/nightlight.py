@@ -402,7 +402,7 @@ def load_nightlight_nasa(bounds, req_files, year):
             continue
         extent = np.int64(np.clip(extent, 0, tile_size[None] - 1))
         # pylint: disable=unsubscriptable-object
-        im_nl, _ = read_bm_file(SYSTEM_DIR.joinpath(fname%(year)))
+        im_nl, _ = read_bm_file(SYSTEM_DIR, fname %(year))
         im_nl = np.flipud(im_nl)
         im_nl = sparse.csc.csc_matrix(im_nl)
         im_nl = im_nl[extent[0, 0]:extent[1, 0] + 1, extent[0, 1]:extent[1, 1] + 1]
@@ -419,7 +419,7 @@ def load_nightlight_nasa(bounds, req_files, year):
     return nightlight, coord_nl
 
 
-def read_bm_file(file_path):
+def read_bm_file(bm_path, filename):
     """Reads a single NASA BlackMarble GeoTiff and returns the data. Run all required checks first.
 
     Note: Legacy for BlackMarble, not required for litpop module
@@ -438,7 +438,7 @@ def read_bm_file(file_path):
     curr_file : gdal GeoTiff File
         Additional info from which coordinates can be calculated.
     """
-    path = Path(file_path)
+    path = Path(bm_path, filename)
     LOGGER.debug('Importing%s.', path)
     if not path.exists():
         raise FileNotFoundError('Invalid path: check that the path to BlackMarble file is correct.')
@@ -466,7 +466,7 @@ def unzip_tif_to_py(file_gz):
     with gzip.open(file_gz, 'rb') as f_in:
         with file_name.open('wb') as f_out:
             shutil.copyfileobj(f_in, f_out)
-    nightlight = sparse.csc.csc_matrix(plt.imread(file_name))
+    nightlight = sparse.csc_matrix(plt.imread(file_name))
     # flip X axis
     nightlight.indices = -nightlight.indices + nightlight.shape[0] - 1
     nightlight = nightlight.tocsr()
