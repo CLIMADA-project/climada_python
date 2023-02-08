@@ -1791,7 +1791,7 @@ class Impact():
 
         #create geodataframe from coordinates
         coord_df = pd.DataFrame(self.coord_exp, columns=['latitude', 'longitude'])
-        geometry = gpd.points_from_xy(coord_df[:,1],coord_df[:,0],crs = self.crs)
+        geometry = gpd.points_from_xy(coord_df.longitude,coord_df.latitude,crs = self.crs)
         coord_gdf = gpd.GeoDataFrame(coord_df,geometry = geometry)
 
         #call the assign_gdf_centroids util function
