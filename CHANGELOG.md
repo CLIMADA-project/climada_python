@@ -35,40 +35,41 @@ updated:
 - The `Impact` calculation underwent a major refactoring. Now the suggested way to run an impact calculation is by `climada.engine.impact_calc.ImpactCalc.impact()`.
 [#436](https://github.com/CLIMADA-project/climada_python/pull/436)
 - Full initialization of most Climada objects is now possible (and suggested!) in one step, by simply calling the constructor with all arguments required for coherently filling the object with data:
-[#560](https://github.com/CLIMADA-project/climada_python/pull/560)
-[#553](https://github.com/CLIMADA-project/climada_python/pull/553)
-[#550](https://github.com/CLIMADA-project/climada_python/pull/550)
-[#564](https://github.com/CLIMADA-project/climada_python/pull/564)
-[#563](https://github.com/CLIMADA-project/climada_python/pull/563)
-[#565](https://github.com/CLIMADA-project/climada_python/pull/565)
-[#573](https://github.com/CLIMADA-project/climada_python/pull/573)
-[#569](https://github.com/CLIMADA-project/climada_python/pull/569)
-[#570](https://github.com/CLIMADA-project/climada_python/pull/570)
-[#574](https://github.com/CLIMADA-project/climada_python/pull/574)
-[#559](https://github.com/CLIMADA-project/climada_python/pull/559)
-[#571](https://github.com/CLIMADA-project/climada_python/pull/571)
-[#549](https://github.com/CLIMADA-project/climada_python/pull/549)
-[#567](https://github.com/CLIMADA-project/climada_python/pull/567)
-[#568](https://github.com/CLIMADA-project/climada_python/pull/568)
+[#560](https://github.com/CLIMADA-project/climada_python/pull/560),
+[#553](https://github.com/CLIMADA-project/climada_python/pull/553),
+[#550](https://github.com/CLIMADA-project/climada_python/pull/550),
+[#564](https://github.com/CLIMADA-project/climada_python/pull/564),
+[#563](https://github.com/CLIMADA-project/climada_python/pull/563),
+[#565](https://github.com/CLIMADA-project/climada_python/pull/565),
+[#573](https://github.com/CLIMADA-project/climada_python/pull/573),
+[#569](https://github.com/CLIMADA-project/climada_python/pull/569),
+[#570](https://github.com/CLIMADA-project/climada_python/pull/570),
+[#574](https://github.com/CLIMADA-project/climada_python/pull/574),
+[#559](https://github.com/CLIMADA-project/climada_python/pull/559),
+[#571](https://github.com/CLIMADA-project/climada_python/pull/571),
+[#549](https://github.com/CLIMADA-project/climada_python/pull/549),
+[#567](https://github.com/CLIMADA-project/climada_python/pull/567),
+[#568](https://github.com/CLIMADA-project/climada_python/pull/568),
 [#562](https://github.com/CLIMADA-project/climada_python/pull/562).
 - The online documentation has been completely overhauled:
-[#597](https://github.com/CLIMADA-project/climada_python/pull/597)
-[#600](https://github.com/CLIMADA-project/climada_python/pull/600)
-[#609](https://github.com/CLIMADA-project/climada_python/pull/609)
-[#620](https://github.com/CLIMADA-project/climada_python/pull/620)
-[#615](https://github.com/CLIMADA-project/climada_python/pull/615)
-[#617](https://github.com/CLIMADA-project/climada_python/pull/617)
+[#597](https://github.com/CLIMADA-project/climada_python/pull/597),
+[#600](https://github.com/CLIMADA-project/climada_python/pull/600),
+[#609](https://github.com/CLIMADA-project/climada_python/pull/609),
+[#620](https://github.com/CLIMADA-project/climada_python/pull/620),
+[#615](https://github.com/CLIMADA-project/climada_python/pull/615),
+[#617](https://github.com/CLIMADA-project/climada_python/pull/617),
+[#622](https://github.com/CLIMADA-project/climada_python/pull/622).
 
 ### Fixed
 
 - several antimeridian issues:
-[#524](https://github.com/CLIMADA-project/climada_python/pull/524)
-[#551](https://github.com/CLIMADA-project/climada_python/pull/551)
-[#613](https://github.com/CLIMADA-project/climada_python/pull/613)
+[#524](https://github.com/CLIMADA-project/climada_python/pull/524),
+[#551](https://github.com/CLIMADA-project/climada_python/pull/551),
+[#613](https://github.com/CLIMADA-project/climada_python/pull/613).
 
 ### Deprecated
 
 - `climada.enginge.impact.Impact.calc()` and `climada.enginge.impact.Impact.calc_impact_yearset()`
-[#436](https://github.com/CLIMADA-project/climada_python/pull/436)
+[#436](https://github.com/CLIMADA-project/climada_python/pull/436).
 
 ### Removed
