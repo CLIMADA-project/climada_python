@@ -20,15 +20,18 @@ Test Impact class.
 """
 import unittest
 from pathlib import Path
+from tempfile import TemporaryDirectory
 import numpy as np
+import numpy.testing as npt
 from scipy import sparse
+import h5py
 
 from climada.entity.tag import Tag
 from climada.hazard.tag import Tag as TagHaz
 from climada.entity.entity_def import Entity
 from climada.hazard.base import Hazard
 from climada.engine import Impact, ImpactCalc
-from climada.util.constants import ENT_DEMO_TODAY, DEF_CRS, DEMO_DIR
+from climada.util.constants import ENT_DEMO_TODAY, DEF_CRS, DEMO_DIR, DEF_FREQ_UNIT
 import climada.util.coordinates as u_coord
 
 from climada.hazard.test.test_base import HAZ_TEST_TC
@@ -39,6 +42,32 @@ HAZ :Hazard = Hazard.from_hdf5(HAZ_TEST_TC)
 
 DATA_FOLDER :Path = DEMO_DIR / 'test-results'
 DATA_FOLDER.mkdir(exist_ok=True)
+
+
+def dummy_impact():
+    """Return an impact object for testing"""
+    return Impact(
+        event_id=np.arange(6) + 10,
+        event_name=[0, 1, "two", "three", 30, 31],
+        date=np.arange(6),
+        coord_exp=np.array([[1, 2], [1.5, 2.5]]),
+        crs=DEF_CRS,
+        eai_exp=np.array([7.2, 7.2]),
+        at_event=np.array([0, 2, 4, 6, 60, 62]),
+        frequency=np.array([1 / 6, 1 / 6, 1, 1, 1 / 30, 1 / 30]),
+        tot_value=7,
+        aai_agg=14.4,
+        unit="USD",
+        frequency_unit="1/month",
+        imp_mat=sparse.csr_matrix(
+            np.array([[0, 0], [1, 1], [2, 2], [3, 3], [30, 30], [31, 31]])
+        ),
+        tag={
+            "exp": Tag("file_exp.p", "descr exp"),
+            "haz": TagHaz("TC", "file_haz.p", "descr haz"),
+            "impf_set": Tag(),
+        },
+    )
 
 
 class TestImpact(unittest.TestCase):
@@ -533,28 +562,6 @@ class TestRiskTrans(unittest.TestCase):
         np.testing.assert_array_almost_equal(residual_at_event, np.array([1, 1, 1.5]))
 
 
-def dummy_impact():
-
-    imp = Impact()
-    imp.event_id = np.arange(6) + 10
-    imp.event_name = [0, 1, 'two', 'three', 30, 31]
-    imp.date = np.arange(6)
-    imp.coord_exp = np.array([[1, 2], [1.5, 2.5]])
-    imp.crs = DEF_CRS
-    imp.eai_exp = np.array([7.2, 7.2])
-    imp.at_event = np.array([0, 2, 4, 6, 60, 62])
-    imp.frequency = np.array([1/6, 1/6, 1, 1, 1/30, 1/30])
-    imp.tot_value = 7
-    imp.aai_agg = 14.4
-    imp.unit = 'USD'
-    imp.frequency_unit = '1/month'
-    imp.imp_mat = sparse.csr_matrix(np.array([
-        [0,0], [1,1], [2,2], [3,3], [30,30], [31,31]
-        ]))
-
-    return imp
-
-
 class TestSelect(unittest.TestCase):
     """Test select method"""
     def test_select_event_id_pass(self):
@@ -810,6 +817,210 @@ class TestConvertExp(unittest.TestCase):
         self.assertEqual(exp.ref_year, 0)
 
 
+class TestImpactH5IO(unittest.TestCase):
+    """Tests for reading and writing Impact from/to H5 files"""
+
+    def setUp(self) -> None:
+        """Create temporary directory and impact object"""
+        self.tempdir = TemporaryDirectory()
+        self.impact = dummy_impact()
+        self.impact.event_name = list(
+            map(str, range(6))
+        )  # Writer does not support changing types
+        self.filepath = Path(self.tempdir.name) / "file.h5"
+
+    def tearDown(self) -> None:
+        """Remove the temporary directory"""
+        self.tempdir.cleanup()
+
+    def _compare_file_to_imp(self, filepath, impact, dense_imp_mat):
+        """Compare a file to an impact object"""
+        with h5py.File(filepath, "r") as file:
+            npt.assert_array_equal(file["event_id"], impact.event_id)
+            npt.assert_array_equal(file["event_name"].asstr(), impact.event_name)
+            npt.assert_array_equal(file["date"], impact.date)
+            npt.assert_array_equal(file["coord_exp"], impact.coord_exp)
+            self.assertEqual(file.attrs["crs"], DEF_CRS)
+            npt.assert_array_equal(file["eai_exp"], impact.eai_exp)
+            npt.assert_array_equal(file["at_event"], impact.at_event)
+            npt.assert_array_equal(file["frequency"], impact.frequency)
+            self.assertEqual(file.attrs["tot_value"], impact.tot_value)
+            self.assertEqual(file.attrs["unit"], impact.unit)
+            self.assertEqual(file.attrs["aai_agg"], impact.aai_agg)
+            self.assertEqual(file.attrs["frequency_unit"], impact.frequency_unit)
+            self.assertDictEqual(
+                dict(**file["tag"]["exp"].attrs), impact.tag["exp"].__dict__
+            )
+            self.assertDictEqual(
+                dict(**file["tag"]["haz"].attrs), impact.tag["haz"].__dict__
+            )
+            self.assertDictEqual(
+                dict(**file["tag"]["impf_set"].attrs), impact.tag["impf_set"].__dict__
+            )
+
+            if dense_imp_mat:
+                npt.assert_array_equal(file["imp_mat"], impact.imp_mat.toarray())
+            else:
+                npt.assert_array_equal(file["imp_mat"]["data"], impact.imp_mat.data)
+                npt.assert_array_equal(
+                    file["imp_mat"]["indices"], impact.imp_mat.indices
+                )
+                npt.assert_array_equal(file["imp_mat"]["indptr"], impact.imp_mat.indptr)
+                npt.assert_array_equal(
+                    file["imp_mat"].attrs["shape"], impact.imp_mat.shape
+                )
+
+    def _compare_impacts(self, impact_1, impact_2):
+        """Compare to impact instances"""
+        for name, value in impact_1.__dict__.items():
+            self.assertIn(name, impact_2.__dict__)
+            value_comp = getattr(impact_2, name)
+            # NOTE: Tags do not compare
+            if name == "tag":
+                for key in value:
+                    self.assertDictEqual(value[key].__dict__, value_comp[key].__dict__)
+            elif isinstance(value, sparse.csr_matrix):
+                npt.assert_array_equal(value.toarray(), value_comp.toarray())
+            elif np.ndim(value) > 0:
+                npt.assert_array_equal(value, value_comp)
+            else:
+                self.assertEqual(value, value_comp)
+        npt.assert_array_equal(
+            [attr for attr in impact_2.__dict__ if attr not in impact_1.__dict__], []
+        )
+
+    def test_write_hdf5(self):
+        """Test writing an impact into an H5 file"""
+        for dense in (True, False):
+            with self.subTest(dense_imp_mat=dense):
+                self.impact.write_hdf5(self.filepath, dense_imp_mat=dense)
+                self._compare_file_to_imp(
+                    self.filepath, self.impact, dense_imp_mat=dense
+                )
+
+    def test_write_hdf5_without_imp_mat(self):
+        """Test writing an impact into an H5 file with an empty impact matrix"""
+        self.impact.imp_mat = sparse.csr_matrix(np.empty((0, 0)))
+        self.test_write_hdf5()
+
+    def test_write_hdf5_type_fail(self):
+        """Test that writing attributes with varying types results in an error"""
+        self.impact.event_name = [1, "a", 1.0, "b", "c", "d"]
+        with self.assertRaises(TypeError) as cm:
+            self.impact.write_hdf5(self.filepath)
+        self.assertIn("No conversion path for dtype", str(cm.exception))
+
+    def test_cycle_hdf5(self):
+        """Test writing and reading the same object"""
+        for dense in (True, False):
+            with self.subTest(dense_imp_mat=dense):
+                self.impact.write_hdf5(self.filepath, dense_imp_mat=dense)
+                impact_read = Impact.from_hdf5(self.filepath)
+                self._compare_impacts(self.impact, impact_read)
+
+    def test_read_hdf5_minimal(self):
+        """Try reading a basically empty file"""
+        with h5py.File(self.filepath, "w") as file:
+            file.create_dataset("imp_mat", data=np.empty((0, 0)))
+
+        impact = Impact.from_hdf5(self.filepath)
+        npt.assert_array_equal(impact.imp_mat.toarray(), np.empty((0, 0)))
+        npt.assert_array_equal(impact.event_id, np.array([]))
+        npt.assert_array_equal(impact.event_name, np.array([]))
+        self.assertIsInstance(impact.event_name, list)
+        npt.assert_array_equal(impact.date, np.array([]))
+        npt.assert_array_equal(impact.coord_exp, np.array([]))
+        npt.assert_array_equal(impact.eai_exp, np.array([]))
+        npt.assert_array_equal(impact.at_event, np.array([]))
+        npt.assert_array_equal(impact.frequency, np.array([]))
+        self.assertEqual(impact.crs, DEF_CRS)
+        self.assertEqual(impact.frequency_unit, DEF_FREQ_UNIT)
+        self.assertEqual(impact.tot_value, 0)
+        self.assertEqual(impact.aai_agg, 0)
+        self.assertEqual(impact.unit, "")
+        self.assertEqual(impact.tag, {})
+
+    def test_read_hdf5_full(self):
+        """Try reading a file full of data"""
+        # Define the data
+        imp_mat = sparse.csr_matrix(np.array([[1, 1, 1], [2, 2, 2]]))
+        event_id = np.array([1, 2])
+        event_name = ["a", "b"]
+        date = np.array([10, 11])
+        coord_exp = np.array([[1, 2], [1, 3], [2, 1]])
+        eai_exp = np.array([0.1, 0.2, 0.3])
+        at_event = np.array([1, 2])
+        frequency = np.array([0.5, 0.6])
+        crs = "EPSG:1"
+        frequency_unit = "f_unit"
+        tot_value = 100
+        aai_agg = 200
+        unit = "unit"
+        haz_tag = dict(
+            haz_type="haz_type", file_name="file_name", description="description"
+        )
+        exp_tag = dict(file_name="exp", description="exp")
+        impf_set_tag = dict(file_name="impf_set", description="impf_set")
+
+        def write_tag(group, tag_kwds):
+            for key, value in tag_kwds.items():
+                group.attrs[key] = value
+
+        # Write the data
+        with h5py.File(self.filepath, "w") as file:
+            file.create_dataset("imp_mat", data=imp_mat.toarray())
+            file.create_dataset("event_id", data=event_id)
+            file.create_dataset(
+                "event_name", data=event_name, dtype=h5py.string_dtype()
+            )
+            file.create_dataset("date", data=date)
+            file.create_dataset("coord_exp", data=coord_exp)
+            file.create_dataset("eai_exp", data=eai_exp)
+            file.create_dataset("at_event", data=at_event)
+            file.create_dataset("frequency", data=frequency)
+            file.attrs["crs"] = crs
+            file.attrs["frequency_unit"] = frequency_unit
+            file.attrs["tot_value"] = tot_value
+            file.attrs["aai_agg"] = aai_agg
+            file.attrs["unit"] = unit
+            for group, kwds in zip(
+                ("haz", "exp", "impf_set"), (haz_tag, exp_tag, impf_set_tag)
+            ):
+                file.create_group(f"tag/{group}")
+                write_tag(file["tag"][group], kwds)
+
+        # Load and check
+        impact = Impact.from_hdf5(self.filepath)
+        npt.assert_array_equal(impact.imp_mat.toarray(), imp_mat.toarray())
+        npt.assert_array_equal(impact.event_id, event_id)
+        npt.assert_array_equal(impact.event_name, event_name)
+        self.assertIsInstance(impact.event_name, list)
+        npt.assert_array_equal(impact.date, date)
+        npt.assert_array_equal(impact.coord_exp, coord_exp)
+        npt.assert_array_equal(impact.eai_exp, eai_exp)
+        npt.assert_array_equal(impact.at_event, at_event)
+        npt.assert_array_equal(impact.frequency, frequency)
+        self.assertEqual(impact.crs, crs)
+        self.assertEqual(impact.frequency_unit, frequency_unit)
+        self.assertEqual(impact.tot_value, tot_value)
+        self.assertEqual(impact.aai_agg, aai_agg)
+        self.assertEqual(impact.unit, unit)
+        self.assertEqual(impact.tag["haz"].__dict__, haz_tag)
+        self.assertEqual(impact.tag["exp"].__dict__, exp_tag)
+        self.assertEqual(impact.tag["impf_set"].__dict__, impf_set_tag)
+
+        # Check with sparse
+        with h5py.File(self.filepath, "r+") as file:
+            del file["imp_mat"]
+            file.create_group("imp_mat")
+            file["imp_mat"].create_dataset("data", data=[1, 2, 3])
+            file["imp_mat"].create_dataset("indices", data=[1, 2, 0])
+            file["imp_mat"].create_dataset("indptr", data=[0, 2, 3])
+            file["imp_mat"].attrs["shape"] = (2, 3)
+        impact = Impact.from_hdf5(self.filepath)
+        npt.assert_array_equal(impact.imp_mat.toarray(), [[0, 1, 2], [3, 0, 0]])
+
+
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestFreqCurve)
@@ -820,5 +1031,6 @@ if __name__ == "__main__":
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestSelect))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestConvertExp))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestImpact))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestImpactH5IO))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestImpactConcat))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
