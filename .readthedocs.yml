@@ -6,7 +6,7 @@ build:
     python: "mambaforge-4.10"
 
 conda:
-  environment: requirements/env_docs.yml
+  environment: requirements/env_climada.yml
 
 formats:
   - pdf
