@@ -1057,7 +1057,7 @@ def assign_coordinates(coords, coords_to_assign, distance="euclidean",
                 coords_to_assign, coords[not_assigned_idx_mask], threshold, **kwargs)
     return assigned_idx
 
-def assign_haz_centroids(coord_gdf, hazard, distance='euclidean',
+def assign_gdf_centroids(coord_gdf, hazard, distance='euclidean',
                         threshold=NEAREST_NEIGHBOR_THRESHOLD):
     """Assign to each exposure's coordinate point its closest hazard's coordinate.
     If disatances > threshold in points' distances, -1 is returned.

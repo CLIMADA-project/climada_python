@@ -1555,7 +1555,7 @@ class Impact():
         coord_gdf = gpd.GeoDataFrame(coord_df,geometry = gpd.points_from_xy(coord_df[:,1],coord_df[:,0],crs = self.crs))
 
         #call the assign_gdf_centroids util function
-        coord_gdf[centr_haz] = u_coord.assign_haz_centroids(coord_gdf, hazard,
+        coord_gdf[centr_haz] = u_coord.assign_gdf_centroids(coord_gdf, hazard,
                                                 distance=distance,
                                                 threshold=threshold)
 

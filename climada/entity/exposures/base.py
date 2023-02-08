@@ -428,10 +428,10 @@ class Exposures():
         LOGGER.info('Matching %s exposures with %s centroids.',
                     str(self.gdf.shape[0]), str(hazard.centroids.size))
 
-        assigned_centr = u_coord.assign_haz_centroids(self.gdf, hazard,
+        assigned_centr = u_coord.assign_gdf_centroids(self.gdf, hazard,
                         distance=distance,
                         threshold=threshold)
-                        
+
         self.gdf[centr_haz] = assigned_centr
 
 
