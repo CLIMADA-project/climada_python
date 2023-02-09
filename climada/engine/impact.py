@@ -28,6 +28,10 @@ import csv
 import warnings
 import datetime as dt
 from itertools import zip_longest
+from typing import Any, Iterable, Union
+from collections.abc import Collection
+from pathlib import Path
+
 import contextily as ctx
 import numpy as np
 from scipy import sparse
@@ -36,7 +40,7 @@ import matplotlib.animation as animation
 import pandas as pd
 import xlsxwriter
 from tqdm import tqdm
-
+import h5py
 
 from climada.entity import Exposures, Tag
 from climada.hazard import Tag as TagHaz
@@ -862,6 +866,123 @@ class Impact():
 
         imp_wb.close()
 
+    def write_hdf5(self, file_path: Union[str, Path], dense_imp_mat: bool=False):
+        """Write the data stored in this object into an H5 file.
+
+        Try to write all attributes of this class into H5 datasets or attributes.
+        By default, any iterable will be stored in a dataset and any string or scalar
+        will be stored in an attribute. Dictionaries will be stored as groups, with
+        the previous rules being applied recursively to their values.
+
+        The impact matrix can be stored in a sparse or dense format.
+
+        Notes
+        -----
+        This writer does not support attributes with variable types. Please make sure
+        that ``event_name`` is a list of equally-typed values, e.g., all ``str``.
+
+        Parameters
+        ----------
+        file_path : str or Path
+            File path to write data into. The enclosing directory must exist.
+        dense_imp_mat : bool
+            If ``True``, write the impact matrix as dense matrix that can be more easily
+            interpreted by common H5 file readers but takes up (vastly) more space.
+            Defaults to ``False``.
+        """
+        # Define writers for all types (will be filled later)
+        type_writers = dict()
+
+        def write(group: h5py.Group, name: str, value: Any):
+            """Write the given name-value pair with a type-specific writer.
+
+            This selects a writer by calling ``isinstance(value, key)``, where ``key``
+            iterates through the keys of ``type_writers``. If a type matches multiple
+            entries in ``type_writers``, the *first* match is chosen.
+
+            Parameters
+            ----------
+            group : h5py.Group
+                The group in the H5 file to write into
+            name : str
+                The identifier of the value
+            value : scalar or array
+                The value/data to write
+
+            Raises
+            ------
+            TypeError
+                If no suitable writer could be found for a given type
+            """
+            for key, writer in type_writers.items():
+                if isinstance(value, key):
+                    return writer(group, name, value)
+
+            raise TypeError(f"Could not find a writer for dataset: {name}")
+
+        def _str_type_helper(values: Collection):
+            """Return string datatype if we assume 'values' contains strings"""
+            if isinstance(next(iter(values)), str):
+                return h5py.string_dtype()
+            return None
+
+        def write_attribute(group, name, value):
+            """Write any attribute. This should work for almost any data"""
+            group.attrs[name] = value
+
+        def write_dataset(group, name, value):
+            """Write a dataset"""
+            group.create_dataset(name, data=value, dtype=_str_type_helper(value))
+
+        def write_dict(group, name, value):
+            """Write a dictionary with unknown level recursively into a group"""
+            group = group.create_group(name)
+            for key, val in value.items():
+                write(group, key, val)
+
+        def write_tag(group, name, value):
+            """Write a tag object using the dict writer"""
+            write_dict(group, name, value.__dict__)
+
+        def _write_csr_dense(group, name, value):
+            """Write a CSR Matrix in dense format"""
+            group.create_dataset(name, data=value.toarray())
+
+        def _write_csr_sparse(group, name, value):
+            """Write a CSR Matrix in sparse format"""
+            group = group.create_group(name)
+            group.create_dataset("data", data=value.data)
+            group.create_dataset("indices", data=value.indices)
+            group.create_dataset("indptr", data=value.indptr)
+            group.attrs["shape"] = value.shape
+
+        def write_csr(group, name, value):
+            """Write a CSR matrix depending on user input"""
+            if dense_imp_mat:
+                _write_csr_dense(group, name, value)
+            else:
+                _write_csr_sparse(group, name, value)
+
+        # Set up writers based on types
+        # NOTE: 1) Many things are 'Collection', so make sure that precendence fits!
+        #       2) Anything is 'object', so this serves as fallback/default.
+        type_writers = {
+            str: write_attribute,
+            Tag: write_tag,
+            TagHaz: write_tag,
+            dict: write_dict,
+            sparse.csr_matrix: write_csr,
+            Collection: write_dataset,
+            object: write_attribute,
+        }
+
+        # Open file in write mode
+        with h5py.File(file_path, "w") as file:
+
+            # Now write all attributes
+            for name, value in self.__dict__.items():
+                write(file, name, value)
+
     def write_sparse_csr(self, file_name):
         """Write imp_mat matrix in numpy's npz format."""
         LOGGER.info('Writing %s', file_name)
@@ -993,6 +1114,124 @@ class Impact():
         LOGGER.warning("The use of Impact.read_excel is deprecated."
                        "Use Impact.from_excel instead.")
         self.__dict__ = Impact.from_excel(*args, **kwargs).__dict__
+
+    @classmethod
+    def from_hdf5(cls, file_path: Union[str, Path]):
+        """Create an impact object from an H5 file.
+
+        This assumes a specific layout of the file. If values are not found in the
+        expected places, they will be set to the default values for an ``Impact`` object.
+
+        The following H5 file structure is assumed (H5 groups are terminated with ``/``,
+        attributes are denoted by ``.attrs/``)::
+
+            file.h5
+            ├─ at_event
+            ├─ coord_exp
+            ├─ eai_exp
+            ├─ event_id
+            ├─ event_name
+            ├─ frequency
+            ├─ imp_mat
+            ├─ tag/
+            │  ├─ exp/
+            │  │  ├─ .attrs/
+            │  │  │  ├─ file_name
+            │  │  │  ├─ description
+            │  ├─ haz/
+            │  │  ├─ .attrs/
+            │  │  │  ├─ haz_type
+            │  │  │  ├─ file_name
+            │  │  │  ├─ description
+            │  ├─ impf_set/
+            │  │  ├─ .attrs/
+            │  │  │  ├─ file_name
+            │  │  │  ├─ description
+            ├─ .attrs/
+            │  ├─ aai_agg
+            │  ├─ crs
+            │  ├─ frequency_unit
+            │  ├─ tot_value
+            │  ├─ unit
+
+        As per the :py:func:`climada.engine.impact.Impact.__init__`, any of these entries
+        is optional. If it is not found, the default value will be used when constructing
+        the Impact.
+
+        The impact matrix ``imp_mat`` can either be an H5 dataset, in which case it is
+        interpreted as dense representation of the matrix, or an H5 group, in which case
+        the group is expected to contain the following data for instantiating a
+        `scipy.sparse.csr_matrix <https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.csr_matrix.html>`_::
+
+            imp_mat/
+            ├─ data
+            ├─ indices
+            ├─ indptr
+            ├─ .attrs/
+            │  ├─ shape
+
+        Parameters
+        ----------
+        file_path : str or Path
+            The file path of the file to read.
+
+        Returns
+        -------
+        imp : Impact
+            Impact with data from the given file
+        """
+        kwargs = dict()
+        with h5py.File(file_path, "r") as file:
+
+            # Impact matrix
+            if "imp_mat" in file:
+                impact_matrix = file["imp_mat"]
+                if isinstance(impact_matrix, h5py.Dataset):  # Dense
+                    impact_matrix = sparse.csr_matrix(impact_matrix)
+                else:  # Sparse
+                    impact_matrix = sparse.csr_matrix(
+                        (
+                            impact_matrix["data"],
+                            impact_matrix["indices"],
+                            impact_matrix["indptr"],
+                        ),
+                        shape=impact_matrix.attrs["shape"],
+                    )
+                kwargs["imp_mat"] = impact_matrix
+
+            # Scalar attributes
+            scalar_attrs = set(
+                ("crs", "tot_value", "unit", "aai_agg", "frequency_unit")
+            ).intersection(file.attrs.keys())
+            kwargs.update({attr: file.attrs[attr] for attr in scalar_attrs})
+
+            # Array attributes
+            # NOTE: Need [:] to copy array data. Otherwise, it would be a view that is
+            #       invalidated once we close the file.
+            array_attrs = set(
+                ("event_id", "date", "coord_exp", "eai_exp", "at_event", "frequency")
+            ).intersection(file.keys())
+            kwargs.update({attr: file[attr][:] for attr in array_attrs})
+
+            # Special handling for 'event_name' because it's a list of strings
+            if "event_name" in file:
+                # pylint: disable=no-member
+                kwargs["event_name"] = list(file["event_name"].asstr()[:])
+
+            # Tags
+            if "tag" in file:
+                tag_kwargs = dict()
+                tag_group = file["tag"]
+                subtags = set(("exp", "impf_set")).intersection(tag_group.keys())
+                tag_kwargs.update({st: Tag(**tag_group[st].attrs) for st in subtags})
+
+                # Special handling for hazard because it has another tag type
+                if "haz" in tag_group:
+                    tag_kwargs["haz"] = TagHaz(**tag_group["haz"].attrs)
+                kwargs["tag"] = tag_kwargs
+
+        # Create the impact object
+        return cls(**kwargs)
 
     @staticmethod
     def video_direct_impact(exp, impf_set, haz_list, file_name='',
@@ -1388,6 +1627,111 @@ class Impact():
         if sel_exp.size == 0:
             LOGGER.warning("No exposure coordinates match the selection.")
         return sel_exp
+
+    @classmethod
+    def concat(cls, imp_list: Iterable, reset_event_ids: bool = False):
+        """Concatenate impact objects with the same exposure
+
+        This function is useful if, e.g. different impact functions
+        have to be applied for different seasons (e.g. for agricultural impacts).
+
+        It checks if the exposures of the passed impact objects are identical and then
+
+        - concatenates the attributes ``event_id``, ``event_name``, ``date``,
+          ``frequency``, ``imp_mat``, ``at_event``,
+        - sums up the values of attributes ``eai_exp``, ``aai_exp``
+        - and takes the following attributes from the first impact object in the passed
+          impact list: ``coord_exp``, ``crs``, ``unit``, ``tot_value``, ``tag``,
+          ``frequency_unit``
+
+        If event ids are not unique among the passed impact objects an error is raised.
+        In this case, the user can set ``reset_event_ids=True`` to create unique event ids
+        for the concatenated impact.
+
+        If all impact matrices of the impacts in ``imp_list`` are empty,
+        the impact matrix of the concatenated impact is also empty.
+
+        Parameters
+        ----------
+        imp_list : Iterable of climada.engine.impact.Impact
+            Iterable of Impact objects to concatenate
+        reset_event_ids: boolean, optional
+            Reset event ids of the concatenated impact object
+
+        Returns
+        --------
+        impact: climada.engine.impact.Impact
+            New impact object which is a concatenation of all impacts
+
+        Notes
+        -----
+        - Concatenation of impacts with different exposure (e.g. different countries)
+          could also be implemented here in the future.
+        """
+        def check_unique_attr(attr_name: str):
+            """Check if an attribute is unique among all impacts"""
+            if len({getattr(imp, attr_name) for imp in imp_list}) > 1:
+                raise ValueError(
+                    f"Attribute '{attr_name}' must be unique among impacts"
+                )
+
+        # Check if single-value attribute are unique
+        for attr in ("crs", "tot_value", "unit", "frequency_unit"):
+            check_unique_attr(attr)
+
+        # Check exposure coordinates
+        imp_iter = iter(imp_list)
+        first_imp = next(imp_iter)
+        for imp in imp_iter:
+            if not np.array_equal(first_imp.coord_exp, imp.coord_exp):
+                raise ValueError("The impacts have different exposure coordinates")
+
+        # Stack attributes
+        def stack_attribute(attr_name: str) -> np.ndarray:
+            """Stack an attribute of all impacts passed to this method"""
+            return np.concatenate([getattr(imp, attr_name) for imp in imp_list])
+
+        # Concatenate event IDs
+        event_ids = stack_attribute("event_id")
+        if reset_event_ids:
+            # NOTE: event_ids must not be zero!
+            event_ids = np.array(range(len(event_ids))) + 1
+        else:
+            unique_ids, count = np.unique(event_ids, return_counts=True)
+            if np.any(count > 1):
+                raise ValueError(
+                    f"Duplicate event IDs: {unique_ids[count > 1]}\n"
+                    "Consider setting 'reset_event_ids=True'"
+                )
+
+        # Concatenate impact matrices
+        imp_mats = [imp.imp_mat for imp in imp_list]
+        if len({mat.shape[1] for mat in imp_mats}) > 1:
+            raise ValueError(
+                "Impact matrices do not have the same number of exposure points"
+            )
+        imp_mat = sparse.vstack(imp_mats)
+
+        # Concatenate other attributes
+        kwargs = {
+            attr: stack_attribute(attr) for attr in ("date", "frequency", "at_event")
+        }
+
+        # Get remaining attributes from first impact object in list
+        return cls(
+            event_id=event_ids,
+            event_name=list(stack_attribute("event_name").flat),
+            coord_exp=first_imp.coord_exp,
+            crs=first_imp.crs,
+            unit=first_imp.unit,
+            tot_value=first_imp.tot_value,
+            eai_exp=np.nansum([imp.eai_exp for imp in imp_list], axis=0),
+            aai_agg=np.nansum([imp.aai_agg for imp in imp_list]),
+            imp_mat=imp_mat,
+            tag=first_imp.tag,
+            frequency_unit=first_imp.frequency_unit,
+            **kwargs,
+        )
 
 
 @dataclass
