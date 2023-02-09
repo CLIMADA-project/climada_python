@@ -10,6 +10,9 @@ defaults:
 jobs:
   unit-tests:
     runs-on: ubuntu-latest
+    permissions:
+      # For publishing results
+      checks: write
     steps:
       -
         name: Checkout Repo
@@ -36,4 +39,72 @@ jobs:
         with:
           junit_files: tests_xml/*.xml
           check_name: "Unit Test Results"
+          comment_mode: "off"
+
+  data-tests:
+    needs: unit-tests
+    runs-on: ubuntu-latest
+    permissions:
+      # For publishing results
+      checks: write
+    steps:
+      -
+        name: Checkout Repo
+        uses: actions/checkout@v3
+      -
+        name: Install Conda environment
+        uses: mamba-org/provision-with-micromamba@main
+        with:
+          environment-file: requirements/env_climada.yml
+          cache-env: true
+          channels: conda-forge, defaults
+          extra-specs: |
+            coverage
+            nbformat
+            make
+      -
+        name: Run Data Tests
+        run: |
+          make data_test
+      -
+        name: Publish Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          junit_files: tests_xml/*.xml
+          check_name: "Data Test Results"
+          comment_mode: "off"
+
+  notebook-tests:
+    needs: unit-tests
+    runs-on: ubuntu-latest
+    permissions:
+      # For publishing results
+      checks: write
+    steps:
+      -
+        name: Checkout Repo
+        uses: actions/checkout@v3
+      -
+        name: Install Conda environment
+        uses: mamba-org/provision-with-micromamba@main
+        with:
+          environment-file: requirements/env_climada.yml
+          cache-env: true
+          channels: conda-forge, defaults
+          extra-specs: |
+            coverage
+            nbformat
+            make
+      -
+        name: Run Data Tests
+        run: |
+          make notebook_test
+      -
+        name: Publish Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          junit_files: tests_xml/*.xml
+          check_name: "Notebook Test Results"
           comment_mode: "off"
