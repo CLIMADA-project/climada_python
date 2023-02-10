@@ -23,6 +23,10 @@ updated:
 
 ### Added
 
+- `climada.hazard.Hazard.from_raster_xarray` class method for reading `Hazard` objects from an `xarray` raster file or `Dataset`.
+[#507](https://github.com/CLIMADA-project/climada_python/pull/507),
+[#589](https://github.com/CLIMADA-project/climada_python/pull/589),
+[#652](https://github.com/CLIMADA-project/climada_python/pull/652).
 - `climada.engine.impact.Impact` objects have new methods `from_hdf5` and `write_hdf5` for reading their data from, and writing it to, H5 files [#606](https://github.com/CLIMADA-project/climada_python/pull/606)
 - `climada.engine.impact_calc`: this module was separated from `climada.engine.impact` and contains the code that dealing with impact _calculation_ while the latter focuses on impact _data_ [#560](https://github.com/CLIMADA-project/climada_python/pull/560).
 - The classes `Hazard`, `Impact` and `ImpactFreqCurve` have a novel attribute `frequency_unit`. Before it was implicitly set to annual, now it can be specified and accordingly displayed in plots.
