@@ -8,4 +8,5 @@ build:
 conda:
   environment: requirements/env_docs.yml
 
-formats: []
+formats:
+  - pdf
