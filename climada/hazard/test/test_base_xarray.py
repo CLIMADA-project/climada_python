@@ -37,24 +37,26 @@ from climada.util.constants import DEF_CRS
 class TestReadDefaultNetCDF(unittest.TestCase):
     """Test reading a NetCDF file where the coordinates to read match the dimensions"""
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         """Write a simple NetCDF file to read"""
-        self.netcdf_path = Path.cwd() / "default.nc"
-        self.intensity = np.array([[[0, 1, 2], [3, 4, 5]], [[6, 7, 8], [9, 10, 11]]])
-        self.time = np.array([dt.datetime(1999, 1, 1), dt.datetime(2000, 1, 1)])
-        self.latitude = np.array([0, 1])
-        self.longitude = np.array([0, 1, 2])
+        cls.netcdf_path = Path.cwd() / "default.nc"
+        cls.intensity = np.array([[[0, 1, 2], [3, 4, 5]], [[6, 7, 8], [9, 10, 11]]])
+        cls.time = np.array([dt.datetime(1999, 1, 1), dt.datetime(2000, 1, 1)])
+        cls.latitude = np.array([0, 1])
+        cls.longitude = np.array([0, 1, 2])
         dset = xr.Dataset(
             {
-                "intensity": (["time", "latitude", "longitude"], self.intensity),
+                "intensity": (["time", "latitude", "longitude"], cls.intensity),
             },
-            dict(time=self.time, latitude=self.latitude, longitude=self.longitude),
+            dict(time=cls.time, latitude=cls.latitude, longitude=cls.longitude),
         )
-        dset.to_netcdf(self.netcdf_path)
+        dset.to_netcdf(cls.netcdf_path)
 
-    def tearDown(self):
+    @classmethod
+    def tearDownClass(cls):
         """Delete the NetCDF file"""
-        self.netcdf_path.unlink()
+        cls.netcdf_path.unlink()
 
     def _assert_default(self, hazard):
         """Assertions for the default hazard to be loaded"""
@@ -339,41 +341,43 @@ class TestReadDefaultNetCDF(unittest.TestCase):
 class TestReadDimsCoordsNetCDF(unittest.TestCase):
     """Checks for dimensions and coordinates with different names and shapes"""
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         """Write a NetCDF file with many coordinates"""
-        self.netcdf_path = Path.cwd() / "coords.nc"
-        self.intensity = np.array([[[0, 1, 2], [3, 4, 5]]])
-        self.fraction = np.array([[[0, 0, 0], [1, 1, 1]]])
-        self.time = np.array([dt.datetime(2000, 1, 1)])
-        self.x = np.array([0, 1, 2])
-        self.y = np.array([0, 1])
-        self.lon = np.array([1, 2, 3])
-        self.lat = np.array([1, 2])
-        self.years = np.array([dt.datetime(1999, 2, 2)])
-        self.longitude = np.array([[10, 11, 12], [10, 11, 12]])
-        self.latitude = np.array([[100, 100, 100], [200, 200, 200]])
+        cls.netcdf_path = Path.cwd() / "coords.nc"
+        cls.intensity = np.array([[[0, 1, 2], [3, 4, 5]]])
+        cls.fraction = np.array([[[0, 0, 0], [1, 1, 1]]])
+        cls.time = np.array([dt.datetime(2000, 1, 1)])
+        cls.x = np.array([0, 1, 2])
+        cls.y = np.array([0, 1])
+        cls.lon = np.array([1, 2, 3])
+        cls.lat = np.array([1, 2])
+        cls.years = np.array([dt.datetime(1999, 2, 2)])
+        cls.longitude = np.array([[10, 11, 12], [10, 11, 12]])
+        cls.latitude = np.array([[100, 100, 100], [200, 200, 200]])
 
         dset = xr.Dataset(
             {
-                "intensity": (["time", "y", "x"], self.intensity),
-                "fraction": (["time", "y", "x"], self.fraction),
+                "intensity": (["time", "y", "x"], cls.intensity),
+                "fraction": (["time", "y", "x"], cls.fraction),
             },
             {
-                "time": self.time,
-                "x": self.x,
-                "y": self.y,
-                "lon": (["x"], self.lon),
-                "lat": (["y"], self.lat),
-                "years": (["time"], self.years),
-                "latitude": (["y", "x"], self.latitude),
-                "longitude": (["y", "x"], self.longitude),
+                "time": cls.time,
+                "x": cls.x,
+                "y": cls.y,
+                "lon": (["x"], cls.lon),
+                "lat": (["y"], cls.lat),
+                "years": (["time"], cls.years),
+                "latitude": (["y", "x"], cls.latitude),
+                "longitude": (["y", "x"], cls.longitude),
             },
         )
-        dset.to_netcdf(self.netcdf_path)
+        dset.to_netcdf(cls.netcdf_path)
 
-    def tearDown(self):
+    @classmethod
+    def tearDownClass(cls):
         """Delete the NetCDF file"""
-        self.netcdf_path.unlink()
+        cls.netcdf_path.unlink()
 
     def _assert_intensity_fraction(self, hazard):
         """Check if intensity and fraction data are read correctly"""
@@ -439,11 +443,12 @@ class TestReadDimsCoordsNetCDF(unittest.TestCase):
         )
         np.testing.assert_array_equal(hazard.centroids.lon, [10, 11, 12, 10, 11, 12])
         self._assert_intensity_fraction(hazard)
+        dataset.close()
 
         # Assert that .chunk is called the right way
         with patch("xarray.Dataset.chunk") as mock:
-            mock.return_value = dataset
             dataset = xr.open_dataset(self.netcdf_path)
+            mock.return_value = dataset
             Hazard.from_raster_xarray(
                 dataset,
                 "",
@@ -453,9 +458,12 @@ class TestReadDimsCoordsNetCDF(unittest.TestCase):
             )
             # First latitude dim, then longitude dim, then event dim
             mock.assert_called_once_with(chunks=dict(y=-1, x=-1, time="auto"))
+            dataset.close()
 
             # Should not be called by default
             mock.reset_mock()
+            dataset = xr.open_dataset(self.netcdf_path)
+            mock.return_value = dataset
             Hazard.from_raster_xarray(
                 dataset,
                 "",
@@ -463,6 +471,7 @@ class TestReadDimsCoordsNetCDF(unittest.TestCase):
                 coordinate_vars=dict(latitude="latitude", longitude="longitude"),
             )
             mock.assert_not_called()
+            dataset.close()
 
     def test_2D_time(self):
         """Test if stacking multiple time dimensions works out"""
