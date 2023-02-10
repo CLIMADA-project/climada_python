@@ -258,6 +258,8 @@ class Client():
         # Use just the base location
         parse_result = urlsplit(self.url)
         query_url = urlunsplit((parse_result.scheme, parse_result.netloc, "", "", ""))
+
+        # NOTE: 'timeout' might not work as intended, depending on OS and network status
         return requests.head(query_url, timeout=1).status_code == 200
 
     def __init__(self, cache_enabled=None):
