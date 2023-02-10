@@ -1234,6 +1234,8 @@ class TCTracks():
         if not axis:
             proj = ccrs.PlateCarree(central_longitude=mid_lon)
             _, axis, _ = u_plot.make_map(proj=proj, figsize=figsize, adapt_fontsize=adapt_fontsize)
+        else:
+            proj = axis.projection
         axis.set_extent(extent, crs=kwargs['transform'])
         u_plot.add_shapes(axis)
 
