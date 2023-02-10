@@ -651,9 +651,29 @@ class Hazard():
         if not isinstance(data, xr.Dataset):
             LOGGER.info("Loading Hazard from file: %s", data)
             data: xr.Dataset = xr.open_dataset(data, chunks="auto")
+            data_is_mine = True
         else:
             LOGGER.info("Loading Hazard from xarray Dataset")
+            data_is_mine = False
+        try:
+            return cls._from_raster_xarray_dataset(data, hazard_type,
+                intensity_unit, intensity, coordinate_vars, data_vars, crs, rechunk)
+        finally:
+            if data_is_mine:
+                data.close()
 
+    @classmethod
+    def _from_raster_xarray_dataset(
+        cls,
+        data: xr.Dataset,
+        hazard_type: str,
+        intensity_unit: str,
+        intensity: str,
+        coordinate_vars: Optional[Dict[str, str]],
+        data_vars: Optional[Dict[str, str]],
+        crs: str,
+        rechunk: bool,
+    ):
         # Initialize Hazard object
         hazard_kwargs = dict(haz_type=hazard_type, units=intensity_unit)
 
