@@ -926,9 +926,8 @@ class Exposures():
         return exp
 
     def plot(self, *args, **kwargs):
-        """Wrapper of the GeoDataFram.plot method"""
+        """Wrapper of the ``GeoDataFram.plot`` method"""
         self.gdf.plot(*args, **kwargs)
-    plot.__doc__ = GeoDataFrame.plot.__doc__
 
     def copy(self, deep=True):
         """Make a copy of this Exposures object.
