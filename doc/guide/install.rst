@@ -132,9 +132,9 @@ For advanced Python users or developers of CLIMADA, we recommed cloning the CLIM
 
    .. code-block:: shell
 
-        git clone https://github.com/CLIMADA-project/climada_python.git
-        cd climada_python
-        git checkout develop
+      git clone https://github.com/CLIMADA-project/climada_python.git
+      cd climada_python
+      git checkout develop
 
 #. Create an Anaconda environment called ``climada_env`` for installing CLIMADA.
    Use the default environment specs in ``env_climada.yml`` to create it, and update it with the ``env_developer.yml`` specs.
@@ -142,21 +142,21 @@ For advanced Python users or developers of CLIMADA, we recommed cloning the CLIM
 
    .. code-block:: shell
 
-        conda env create -n climada_env -f requirements/env_climada.yml
-        conda env update -n climada_env -f requirements/env_developer.yml
-        conda activate climada_env
+      conda env create -n climada_env -f requirements/env_climada.yml
+      conda env update -n climada_env -f requirements/env_developer.yml
+      conda activate climada_env
 
 #. Install the local CLIMADA source files as Python package using ``pip``:
 
    .. code-block:: shell
 
-        python -m pip install -e ./
+      python -m pip install -e ./
 
    .. hint::
 
-        Using a path ``./`` (referring to the path you are currently located at) will instruct ``pip`` to install the local files instead of downloading the module from the internet.
-        The ``-e`` (for "editable") option further instructs ``pip`` to link to the source files instead of copying them during installation.
-        This means that any changes to the source files will have immediate effects in your environment, and re-installing the module is never required.
+      Using a path ``./`` (referring to the path you are currently located at) will instruct ``pip`` to install the local files instead of downloading the module from the internet.
+      The ``-e`` (for "editable") option further instructs ``pip`` to link to the source files instead of copying them during installation.
+      This means that any changes to the source files will have immediate effects in your environment, and re-installing the module is never required.
 
 #. Verify that everything is installed correctly by executing a single test:
 
@@ -193,23 +193,23 @@ To install CLIMADA Petals, we assume you have already installed CLIMADA Core wit
 
    .. code-block:: shell
 
-        git clone https://github.com/CLIMADA-project/climada_petals.git
-        cd climada_petals
-        git checkout develop
+      git clone https://github.com/CLIMADA-project/climada_petals.git
+      cd climada_petals
+      git checkout develop
 
 #. Update the Anaconda environment with the specifications from Petals and activate it:
 
    .. code-block:: shell
 
-        conda env update -n climada_env -f requirements/env_climada.yml
-        conda env update -n climada_env -f requirements/env_developer.yml
-        conda activate climada_env
+      conda env update -n climada_env -f requirements/env_climada.yml
+      conda env update -n climada_env -f requirements/env_developer.yml
+      conda activate climada_env
 
 #. Install the CLIMADA Petals package:
 
    .. code-block:: shell
 
-        python -m pip install -e ./
+      python -m pip install -e ./
 
 ------------------------------
 Apps for Programming in Python
