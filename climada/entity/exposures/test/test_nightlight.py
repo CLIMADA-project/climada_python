@@ -22,10 +22,9 @@ import unittest
 import numpy as np
 
 from climada.entity.exposures.litpop import nightlight
-from climada.util.constants import (SYSTEM_DIR, CONFIG)
+from climada.util.constants import SYSTEM_DIR
 
 BM_FILENAMES = nightlight.BM_FILENAMES
-DATA_DIR = CONFIG.exposures.test_data.dir()
 
 class TestNightLight(unittest.TestCase):
     """Test nightlight functions."""
