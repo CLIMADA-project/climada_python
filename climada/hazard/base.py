@@ -1812,7 +1812,7 @@ class Hazard():
         """This function is deprecated, use Hazard.from_hdf5."""
         LOGGER.warning("The use of Hazard.read_hdf5 is deprecated."
                        "Use Hazard.from_hdf5 instead.")
-        self.__dict__ = Hazard.from_hdf5(*args, **kwargs).__dict__
+        self.__dict__ = self.__class__.from_hdf5(*args, **kwargs).__dict__
 
     @classmethod
     def from_hdf5(cls, file_name):
