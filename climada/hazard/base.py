@@ -647,20 +647,14 @@ class Hazard():
         >>> dset = dset.expand_dims(time=[numpy.datetime64("2000-01-01")])
         >>> hazard = Hazard.from_raster_xarray(dset, "", "")
         """
-        # If the data is a string, open the respective file
-        if not isinstance(data, xr.Dataset):
-            LOGGER.info("Loading Hazard from file: %s", data)
-            data: xr.Dataset = xr.open_dataset(data, chunks="auto")
-            data_is_mine = True
-        else:
-            LOGGER.info("Loading Hazard from xarray Dataset")
-            data_is_mine = False
-        try:
+        if isinstance(data, xr.Dataset):
             return cls._from_raster_xarray_dataset(data, hazard_type,
                 intensity_unit, intensity, coordinate_vars, data_vars, crs, rechunk)
-        finally:
-            if data_is_mine:
-                data.close()
+        # If the data is a string or a Path, open the respective file
+        LOGGER.info("Loading Hazard from file: %s", data)
+        with xr.open_dataset(data, chunks="auto") as dataset:
+            return cls._from_raster_xarray_dataset(dataset, hazard_type,
+                intensity_unit, intensity, coordinate_vars, data_vars, crs, rechunk)
 
     @classmethod
     def _from_raster_xarray_dataset(
