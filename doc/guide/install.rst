@@ -122,7 +122,7 @@ For advanced Python users or developers of CLIMADA, we recommed cloning the CLIM
         cd climada_python
         git checkout develop
 
-#. Create a Anaconda environment called ``climada_env`` for installing CLIMADA.
+#. Create an Anaconda environment called ``climada_env`` for installing CLIMADA.
    Use the default environment specs in ``env_climada.yml`` to create it, and update it with the ``env_developer.yml`` specs.
    Then activate the environment:
 
@@ -455,13 +455,13 @@ Terminal, Command Line
 
 Environment (Programming)
     A setup where only a specific set of modules and programs can interact.
-    This is especially useful if you want to install programs with incompatible requirements.
+    This is especially useful if you want to install programs with mutually incompatible requirements.
 
 `pip <https://pip.pypa.io/en/stable/index.html>`_
     The Python package installer.
 
 `git <https://git-scm.com/>`_
-    A program for version controlling your software (or any text-based set of files).
+    A popular version control software for programming code (or any text-based set of files).
 
 `GitHub <https://github.com/>`_
     A website that publicly hosts git repositories.
