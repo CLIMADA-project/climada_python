@@ -27,6 +27,15 @@ Prerequisites
 * Install `Anaconda`_, following the `installation instructions <https://docs.anaconda.com/anaconda/install/>`_ for your OS.
 * Create a **workspace directory**, ideally in subdirectory of your user/home directory.
   Do **not** use a directory that is synchronized by cloud storage systems like OneDrive, iCloud or Polybox!
+* **Linux** users need to make sure they have ``git`` and ``curl`` installed.
+  Ubuntu and Debian users may use APT:
+
+  .. code-block:: shell
+
+     apt update
+     apt install curl git
+
+  Both commands will probably require administrator rights, which can be enabled by prepending ``sudo``.
 
 .. hint:: If you need help with the vocabulary used on this page, refer to the :ref:`Glossary <install-glossary>`.
 
@@ -52,9 +61,6 @@ Simple Instructions
 
 These instructions will install the most recent stable version of CLIMADA without cloning its repository.
 
-#. Download the Anaconda environment specifications for CLIMADA: :download:`env_climada.yml </../requirements/env_climada.yml>`.
-   You can also find it online in the `CLIMADA GitHub repository <https://github.com/CLIMADA-project/climada_python/blob/main/requirements/env_climada.yml>`_.
-   Move or copy the file into your workspace directory.
 #. Open the command line and navigate to the workspace directory you created.
    The command for entering a directory is ``cd``.
    Use the following command, where you replace ``<path/to/workspace>`` with the actual path of the workspace folder:
@@ -62,6 +68,14 @@ These instructions will install the most recent stable version of CLIMADA withou
    .. code-block:: shell
 
       cd <path/to/workspace>
+
+#. Download the Anaconda environment specifications for CLIMADA using ``curl``:
+
+   .. code-block:: shell
+
+      curl -o env_climada.yml https://raw.githubusercontent.com/CLIMADA-project/climada_python/main/requirements/env_climada.yml
+
+   Alternatively, download the file through your browser and place it in the workspace directory: :download:`env_climada.yml </../requirements/env_climada.yml>`
 
 #. Instruct Anaconda to create a new environment called ``climada_env`` from the specification file:
 
