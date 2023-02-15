@@ -25,7 +25,8 @@ Prerequisites
   All dependencies will be downloaded from the internet.
   Do **not** use a metered, mobile connection!
 * Install `Anaconda`_, following the `installation instructions <https://docs.anaconda.com/anaconda/install/>`_ for your OS.
-* Create a **workspace directory**, ideally in subdirectory of your user/home directory.
+* Create a **workspace directory**.
+  To make sure that your user can manipulate it without special privileges, use a subdirectory of your user/home directory.
   Do **not** use a directory that is synchronized by cloud storage systems like OneDrive, iCloud or Polybox!
 * **Linux** users need to make sure they have ``git`` and ``curl`` installed.
   Ubuntu and Debian users may use APT:
@@ -75,7 +76,7 @@ These instructions will install the most recent stable version of CLIMADA withou
 
       curl -o env_climada.yml https://raw.githubusercontent.com/CLIMADA-project/climada_python/main/requirements/env_climada.yml
 
-   Alternatively, download the file through your browser and place it in the workspace directory: :download:`env_climada.yml </../requirements/env_climada.yml>`
+   Alternatively, download the file through your browser and place it into the workspace directory: :download:`env_climada.yml </../requirements/env_climada.yml>`
 
 #. Instruct Anaconda to create a new environment called ``climada_env`` from the specification file:
 
@@ -187,7 +188,7 @@ CLIMADA Petals can be used to generate additional data of this type, or to have 
 To install CLIMADA Petals, we assume you have already installed CLIMADA Core with the :ref:`advanced instructions <install-advanced>` above.
 
 #. Open the command line and navigate to the workspace directory.
-#. Clone CLIMADA Petals from its `GitHub repository <https://github.com/CLIMADA-project/climada_petals>`_.
+#. Clone CLIMADA Petals from its `repository <https://github.com/CLIMADA-project/climada_petals>`_.
    Enter the directory and check out the branch of your choice.
    The latest development version will be available under the branch ``develop``.
 
@@ -242,7 +243,8 @@ Spyder
 Installing Spyder into the existing Anaconda environment for CLIMADA might fail depending on the exact versions of dependencies installed.
 Therefore, we recommend installing Spyder in a *separate* environment, and then connecting it to a kernel in the original ``climada_env``.
 
-#. Follow the `installation instructions <https://docs.spyder-ide.org/current/installation.html#installing-with-conda>`_ to install Spyder with ``conda``.
+#. Follow the `Spyder installation instructions <https://docs.spyder-ide.org/current/installation.html#installing-with-conda>`_.
+   Make sure you install it with ``conda``!
 
 #. Check the version of the Spyder kernel in the new environment:
 
@@ -288,6 +290,8 @@ FAQs
 ----
 
 Answers to frequently asked questions.
+
+.. _update-climada:
 
 Updating CLIMADA
 ^^^^^^^^^^^^^^^^
@@ -373,15 +377,11 @@ After **each** of the following steps, check if the problem is solved, and only 
 
       conda activate climada_env
 
-#. Update the environment using the specifications.
-   Replace ``<specs>`` with the path to the specification file(s), depending on the :ref:`installation type <install-choice>` you chose (see above).
-
-   .. code-block:: shell
-
-      conda update -n climada_env -f <specs>
+#. :ref:`Update the conda environment and CLIMADA <update-climada>`.
 
 #. Anaconda will notify you if it is not up-to-date.
    In this case, follow its instructions to update it.
+   Then, repeat the last step and update the environment and CLIMADA (again).
 
 #. Install the missing package manually.
    Follow the instructions for :ref:`installing more packages <install-more-packages>`.
@@ -421,7 +421,7 @@ You can change this setting in multiple ways:
 
      from climada.util import log_level
      with log_level(level="WARNING"):
-         # Silenced code goes here
+         # This code only emits log levels 'WARNING' or higher
          foo()
 
      # Default logging level again
