@@ -23,7 +23,7 @@ updated:
 
 ### Added
 
-- `climada.hazard.Hazard.from_raster_xarray` class method for reading `Hazard` objects from an `xarray` raster file or `Dataset`.
+- `climada.hazard.Hazard.from_xarray_raster(_file)` class methods for reading `Hazard` objects from an `xarray.Dataset`, or from a file that can be read by `xarray`.
 [#507](https://github.com/CLIMADA-project/climada_python/pull/507),
 [#589](https://github.com/CLIMADA-project/climada_python/pull/589),
 [#652](https://github.com/CLIMADA-project/climada_python/pull/652).
