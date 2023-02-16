@@ -259,8 +259,11 @@ class Client():
         parse_result = urlsplit(self.url)
         query_url = urlunsplit((parse_result.scheme, parse_result.netloc, "", "", ""))
 
-        # NOTE: 'timeout' might not work as intended, depending on OS and network status
-        return requests.head(query_url, timeout=1).status_code == 200
+        try:
+            # NOTE: 'timeout' might not work as intended, depending on OS and network status
+            return requests.head(query_url, timeout=1).status_code == 200
+        except (requests.ConnectionError, requests.Timeout):
+            return False
 
     def __init__(self, cache_enabled=None):
         """Constructor of Client.
