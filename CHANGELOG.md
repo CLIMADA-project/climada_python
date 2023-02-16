@@ -59,6 +59,7 @@ updated:
 [#615](https://github.com/CLIMADA-project/climada_python/pull/615),
 [#617](https://github.com/CLIMADA-project/climada_python/pull/617),
 [#622](https://github.com/CLIMADA-project/climada_python/pull/622).
+- Updated installation instructions [#644](https://github.com/CLIMADA-project/climada_python/pull/644)
 
 ### Fixed
 
