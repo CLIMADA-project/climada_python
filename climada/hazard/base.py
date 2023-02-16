@@ -701,8 +701,8 @@ class Hazard():
             if isinstance(data, (pathlib.Path, str)):
                 raise TypeError("Passing a path to this classmethod is not supported. "
                                 "Use Hazard.from_xarray_raster_file instead.")
-            else:
-                raise TypeError("This method only supports xarray.Dataset as input data")
+
+            raise TypeError("This method only supports xarray.Dataset as input data")
 
         # Initialize Hazard object
         hazard_kwargs = dict(haz_type=hazard_type, units=intensity_unit)
