@@ -388,15 +388,18 @@ class Impact():
             year_set[year] = sum(self.at_event[orig_year == year])
         return year_set
 
-    def impact_at_reg(self, exposures):
-        """Aggregate impact at the region_id level (if these are specified in exposure)
-        or at the admin 0 level (if they are not). This method works only if Impact.imp_mat
-        was stored during the impact calculation.
+    def impact_at_reg(self, agg_regions=None):
+        """Aggregate impact on given aggregation regions. This method works 
+        only if Impact.imp_mat was stored during the impact calculation.
 
         Parameters
         ----------
-        exposures : climada.entity.Exposures
-            exposure used to compute imp_mat
+        agg_regions : np.array, list, pd.Series
+            It has the same lenght as the number of coordinates points in exposure 
+            and reports what macro-regions these points belong to. If no aggregation
+            regions are passed, the method aggregate impact at the admin_0 level.
+            Default is None.
+
         Returns
         -------
         pd.DataFrame
@@ -406,21 +409,20 @@ class Impact():
                            "thus the impact per region cannot be computed")
             return None
 
-        if 'region_id' in exposures.gdf.columns:
-            regs = exposures.gdf.region_id
-
-        else:
-            LOGGER.warning("region_id in Exposure not found,"
-                           "impact is calculated at the admin_0 level")
-            regs = pd.Series(u_coord.get_country_code(exposures.gdf.latitude,
-                                                      exposures.gdf.longitude))
+        if agg_regions is None:
+            LOGGER.warning("Aggregation regions were not specified,"
+                           "impact is aggregated at the admin_0 level")
+            agg_regions = pd.Series(u_coord.get_country_code(self.coord_exp[:,0],
+                                                             self.coord_exp[:,1]))
+        elif not isinstance(agg_regions, pd.Series):
+            agg_regions = pd.Series(agg_regions)
 
         at_reg_event = np.hstack([
-                self.imp_mat[:, np.where(regs == reg)[0]].sum(1)
-                for reg in regs.unique()
+                self.imp_mat[:, np.where(agg_regions == reg)[0]].sum(1)
+                for reg in agg_regions.unique()
                 ])
 
-        at_reg_event = pd.DataFrame(at_reg_event, columns=regs.unique())
+        at_reg_event = pd.DataFrame(at_reg_event, columns=agg_regions.unique())
 
         return at_reg_event
 

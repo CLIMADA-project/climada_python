@@ -475,28 +475,26 @@ class TestImpactReg(unittest.TestCase):
         # Read default hazard file
         hazard = Hazard.from_hdf5(HAZ_TEST_TC)
 
-        # Read an exposure with no region id
+        # Read an exposure
         ent = Entity.from_excel(ENT_DEMO_TODAY)
         ent.check()
 
         # Calculate impact
         impact = ImpactCalc(ent.exposures, ent.impact_funcs, hazard).impact(save_mat=True)
-        at_reg_event = impact.impact_at_reg(ent.exposures)
+
+        # Aggregate impact at the admin 0 level
+        at_reg_event = impact.impact_at_reg()
 
         self.assertEqual(at_reg_event.sum().sum(), impact.at_event.sum())
         self.assertEqual(at_reg_event.shape[0], impact.at_event.shape[0])
 
-        # Add dummies region ids
+        # Aggregate impact at user-defined aggregation regions
         region_ids = np.hstack([np.repeat(i, 10) for i in range(5)])
-        ent.exposures.gdf['region_id'] = region_ids
-
-        # Calculate impact
-        impact = ImpactCalc(ent.exposures, ent.impact_funcs, hazard).impact(save_mat=True)
-        at_reg_event = impact.impact_at_reg(ent.exposures)
+        at_reg_event = impact.impact_at_reg(region_ids)
 
         self.assertAlmostEqual(at_reg_event.sum().sum(), impact.at_event.sum(), places=2)
         self.assertEqual(at_reg_event.shape[0], impact.at_event.shape[0])
-        self.assertListEqual(at_reg_event.columns.tolist(), ent.exposures.gdf.region_id.unique().tolist())
+        self.assertListEqual(at_reg_event.columns.tolist(), np.unique(region_ids).tolist())
 
         self.assertEqual(at_reg_event[0].sum(), 2071193014030.06)
         self.assertEqual(at_reg_event[1].sum(), 2163005244090.206)
@@ -504,9 +502,9 @@ class TestImpactReg(unittest.TestCase):
         self.assertEqual(at_reg_event[3].sum(), 2203363516026.8047)
         self.assertEqual(at_reg_event[4].sum(), 1827112892434.1558)
 
-        # Do not save Impact.imp_mat in the impact calculation
+        # Do not save Impact.imp_mat in the impact calculation and does do not aggregate
         impact = ImpactCalc(ent.exposures, ent.impact_funcs, hazard).impact(save_mat=False)
-        at_reg_event = impact.impact_at_reg(ent.exposures)
+        at_reg_event = impact.impact_at_reg()
 
         self.assertIsNone(at_reg_event)
 
