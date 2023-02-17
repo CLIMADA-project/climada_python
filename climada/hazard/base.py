@@ -410,9 +410,52 @@ class Hazard():
         self.__dict__ = Hazard.from_vector(*args, **kwargs).__dict__
 
     @classmethod
-    def from_raster_xarray(
+    def from_xarray_raster_file(
+        cls, filepath: Union[pathlib.Path, str], *args, **kwargs
+    ):
+        """Read raster-like data from a file that can be loaded with xarray
+
+        This wraps :py:meth:`~Hazard.from_xarray_raster` by first opening the target file
+        as xarray dataset and then passing it to that classmethod. Use this wrapper as a
+        simple alternative to opening the file yourself. The signature is exactly the
+        same, except for the first argument, which is replaced by a file path here.
+
+        Additional (keyword) arguments are passed to
+        :py:meth:`~Hazard.from_xarray_raster`.
+
+        Parameters
+        ----------
+        filepath : Path or str
+            Path of the file to read with xarray. May be any file type supported by
+            xarray. See https://docs.xarray.dev/en/stable/user-guide/io.html
+
+        Returns
+        -------
+        hazard : climada.Hazard
+            A hazard object created from the input data
+
+        Examples
+        --------
+
+        >>> hazard = Hazard.from_xarray_raster_file("path/to/file.nc", "", "")
+
+        Notes
+        -----
+
+        If you have specific requirements for opening a data file, prefer opening it
+        yourself and using :py:meth:`~Hazard.from_xarray_raster`, following this pattern:
+
+        >>> open_kwargs = dict(engine="h5netcdf", chunks=dict(x=-1, y="auto"))
+        >>> with xarray.open_dataset("path/to/file.nc", **open_kwargs) as dset:
+        ...     hazard = Hazard.from_xarray_raster(dset, "", "")
+        """
+        with xr.open_dataset(filepath, chunks="auto") as dset:
+            return cls.from_xarray_raster(dset, *args, **kwargs)
+
+    @classmethod
+    def from_xarray_raster(
         cls,
-        data: Union[xr.Dataset, str, pathlib.Path],
+        data: xr.Dataset,
         hazard_type: str,
         intensity_unit: str,
         *,
@@ -422,7 +465,7 @@ class Hazard():
         crs: str = DEF_CRS,
         rechunk: bool = False,
     ):
-        """Read raster-like data from an xarray Dataset or a raster data file
+        """Read raster-like data from an xarray Dataset
 
         This method reads data that can be interpreted using three coordinates for event,
         latitude, and longitude. The data and the coordinates themselves may be organized
@@ -443,12 +486,13 @@ class Hazard():
         meaning that the object can be used in all CLIMADA operations without throwing
         an error due to missing data or faulty data types.
 
+        Use :py:meth:`~Hazard.from_xarray_raster_file` to open a file on disk
+        and load the resulting dataset with this method in one step.
+
         Parameters
         ----------
-        data : xarray.Dataset or str
-            The data to read from. May be an opened dataset or a path to a raster data
-            file, in which case the file is opened first. Works with any file format
-            supported by ``xarray``.
+        data : xarray.Dataset
+            The dataset to read from.
         hazard_type : str
             The type identifier of the hazard. Will be stored directly in the hazard
             object.
@@ -499,6 +543,11 @@ class Hazard():
         hazard : climada.Hazard
             A hazard object created from the input data
 
+        See Also
+        --------
+        :py:meth:`~Hazard.from_xarray_raster_file`
+            Use this method if you want CLIMADA to open and read a file on disk for you.
+
         Notes
         -----
         * Single-valued coordinates given by ``coordinate_vars``, that are not proper
@@ -534,7 +583,7 @@ class Hazard():
         ...         longitude=[0, 1, 2],
         ...     ),
         ... )
-        >>> hazard = Hazard.from_raster_xarray(dset, "", "")
+        >>> hazard = Hazard.from_xarray_raster(dset, "", "")
 
         For non-default coordinate names, use the ``coordinate_vars`` argument.
 
@@ -551,7 +600,7 @@ class Hazard():
         ...         longitude=[0, 1, 2],
         ...     ),
         ... )
-        >>> hazard = Hazard.from_raster_xarray(
+        >>> hazard = Hazard.from_xarray_raster(
         ...     dset, "", "", coordinate_vars=dict(event="day", latitude="lat")
         ... )
 
@@ -568,7 +617,7 @@ class Hazard():
         ...         latitude=(["y", "x"], [[0.0, 0.0, 0.0], [0.1, 0.1, 0.1]]),
         ...     ),
         ... )
-        >>> hazard = Hazard.from_raster_xarray(dset, "", "")
+        >>> hazard = Hazard.from_xarray_raster(dset, "", "")
 
         Optional data is read from the dataset if the default keys are found. Users can
         specify custom variables in the data, or that the default keys should be ignored,
@@ -593,7 +642,7 @@ class Hazard():
         ...         longitude=[0, 1, 2],
         ...     ),
         ... )
-        >>> hazard = Hazard.from_raster_xarray(
+        >>> hazard = Hazard.from_xarray_raster(
         ...     dset,
         ...     "",
         ...     "",
@@ -627,7 +676,7 @@ class Hazard():
         ...         longitude=[0, 1, 2],
         ...     ),
         ... )
-        >>> hazard = Hazard.from_raster_xarray(dset, "", "")  # Same as first example
+        >>> hazard = Hazard.from_xarray_raster(dset, "", "")  # Same as first example
 
         If one coordinate is missing altogehter, you must add it or expand the dimensions
         before loading the dataset:
@@ -645,14 +694,15 @@ class Hazard():
         ...     ),
         ... )
         >>> dset = dset.expand_dims(time=[numpy.datetime64("2000-01-01")])
-        >>> hazard = Hazard.from_raster_xarray(dset, "", "")
+        >>> hazard = Hazard.from_xarray_raster(dset, "", "")
         """
-        # If the data is a string, open the respective file
+        # Check data type for better error message
         if not isinstance(data, xr.Dataset):
-            LOGGER.info("Loading Hazard from file: %s", data)
-            data: xr.Dataset = xr.open_dataset(data, chunks="auto")
-        else:
-            LOGGER.info("Loading Hazard from xarray Dataset")
+            if isinstance(data, (pathlib.Path, str)):
+                raise TypeError("Passing a path to this classmethod is not supported. "
+                                "Use Hazard.from_xarray_raster_file instead.")
+
+            raise TypeError("This method only supports xarray.Dataset as input data")
 
         # Initialize Hazard object
         hazard_kwargs = dict(haz_type=hazard_type, units=intensity_unit)

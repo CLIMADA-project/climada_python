@@ -23,7 +23,11 @@ updated:
 
 ### Added
 
-- `climada.engine.impact.Impact` objects have new methods `from_hdf5` and `write_hdf5` for reading their data from, and writing it to, H5 files [#606](https://github.com/CLIMADA-project/climada_python/pull/606).
+- `climada.hazard.Hazard.from_xarray_raster(_file)` class methods for reading `Hazard` objects from an `xarray.Dataset`, or from a file that can be read by `xarray`.
+[#507](https://github.com/CLIMADA-project/climada_python/pull/507),
+[#589](https://github.com/CLIMADA-project/climada_python/pull/589),
+[#652](https://github.com/CLIMADA-project/climada_python/pull/652).
+- `climada.engine.impact.Impact` objects have new methods `from_hdf5` and `write_hdf5` for reading their data from, and writing it to, H5 files [#606](https://github.com/CLIMADA-project/climada_python/pull/606)
 - `climada.engine.impact.Impact` objects has a new class method `concat` for concatenation of impacts based on the same exposures [#529](https://github.com/CLIMADA-project/climada_python/pull/529).
 - `climada.engine.impact_calc`: this module was separated from `climada.engine.impact` and contains the code that dealing with impact _calculation_ while the latter focuses on impact _data_ [#560](https://github.com/CLIMADA-project/climada_python/pull/560).
 - The classes `Hazard`, `Impact` and `ImpactFreqCurve` have a novel attribute `frequency_unit`. Before it was implicitly set to annual, now it can be specified and accordingly displayed in plots.
