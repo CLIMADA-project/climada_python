@@ -595,6 +595,9 @@ class Impact():
         cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         eai_exp = self._build_exp()
+        # we need to set geometry points because the `plot_raster` method accesses the
+        # exposures' `gdf.crs` property, which raises an error when geometry is not set
+        eai_exp.set_geometry_points()
         axis = eai_exp.plot_raster(res, raster_res, save_tiff, raster_f,
                                    label, axis=axis, adapt_fontsize=adapt_fontsize, **kwargs)
         axis.set_title(self._eai_title())

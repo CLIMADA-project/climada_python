@@ -65,6 +65,13 @@ Jump right in:
 
 
 .. toctree::
+   :caption: API Reference
+   :hidden:
+   
+   Python Modules <climada/climada>
+
+
+.. toctree::
    :maxdepth: 2
    :caption: Tutorials
    :hidden:
@@ -100,7 +107,6 @@ Jump right in:
    :caption: Miscellaneous
    :hidden:
 
-   Python modules <climada/climada>
    README <misc/README>
    Changelog <misc/CHANGELOG>
    List of Authors <misc/AUTHORS>

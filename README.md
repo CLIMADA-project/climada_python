@@ -56,8 +56,8 @@ Bresch, D. N. and Aznar-Siguan, G., 2021: CLIMADA v1.4.1: towards a globally con
 
 Please see all CLIMADA-related scientific publications in our [repository of scientific publications](https://github.com/CLIMADA-project/climada_papers) and cite according to your use of select features, be it hazard set(s), exposure(s) ...
 
-In presentations or other graphical material, as well as in reports etc., where applicable, please add the logo as follows:
-![](https://github.com/CLIMADA-project/climada_python/blob/main/doc/guide/img/CLIMADA_logo_QR.png&raw=true)
+In presentations or other graphical material, as well as in reports etc., where applicable, please add the logo as follows:\
+![https://github.com/CLIMADA-project/climada_python/blob/main/doc/guide/img/CLIMADA_logo_QR.png](https://github.com/CLIMADA-project/climada_python/blob/main/doc/guide/img/CLIMADA_logo_QR.png?raw=true)
 
 As key link, please use https://wcr.ethz.ch/research/climada.html, as it will last and provides a bit of an intro, especially for those not familiar with GitHub - plus a nice CLIMADA infographic towards the bottom of the page
 
