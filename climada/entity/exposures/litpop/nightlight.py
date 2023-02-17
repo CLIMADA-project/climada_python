@@ -439,15 +439,12 @@ def read_bm_file(bm_path, filename):
         Additional info from which coordinates can be calculated.
     """
     path = Path(bm_path, filename)
-    try:
-        LOGGER.debug('Importing %s.', path)
-        curr_file = gdal.Open(str(path))
-        band1 = curr_file.GetRasterBand(1)
-        arr1 = band1.ReadAsArray()
-        del band1
-        return arr1, curr_file
-    except Exception as err:
-        raise type(err)(f"Failed to import {path} " + str(err)) from err
+    LOGGER.debug('Importing%s.', path)
+    if not path.exists():
+        raise FileNotFoundError('Invalid path: check that the path to BlackMarble file is correct.')
+    curr_file = gdal.Open(str(path))
+    arr1 = curr_file.GetRasterBand(1).ReadAsArray()
+    return arr1, curr_file
 
 def unzip_tif_to_py(file_gz):
     """Unzip image file, read it, flip the x axis, save values as pickle
@@ -469,7 +466,7 @@ def unzip_tif_to_py(file_gz):
     with gzip.open(file_gz, 'rb') as f_in:
         with file_name.open('wb') as f_out:
             shutil.copyfileobj(f_in, f_out)
-    nightlight = sparse.csc.csc_matrix(plt.imread(file_name))
+    nightlight = sparse.csc_matrix(plt.imread(file_name))
     # flip X axis
     nightlight.indices = -nightlight.indices + nightlight.shape[0] - 1
     nightlight = nightlight.tocsr()
