@@ -397,7 +397,7 @@ class Impact():
         agg_regions : np.array, list, pd.Series
             It has the same lenght as the number of coordinates points in exposure 
             and reports what macro-regions these points belong to. If no aggregation
-            regions are passed, the method aggregate impact at the admin_0 level.
+            regions are passed, the method aggregates impact at the admin_0 level.
             Default is None.
 
         Returns
