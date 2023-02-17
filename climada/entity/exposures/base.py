@@ -93,8 +93,6 @@ class Exposures():
         latitude
     longitude : pd.Series
         longitude
-    crs : dict or crs
-        CRS information inherent to GeoDataFrame.
     value : pd.Series
         a value for each exposure
     impf_SUFFIX : pd.Series, optional
@@ -891,7 +889,7 @@ class Exposures():
     # Extends the according geopandas method
     #
     def to_crs(self, crs=None, epsg=None, inplace=False):
-        """Wrapper of the GeoDataFrame.to_crs method.
+        """Wrapper of the :py:meth:`GeoDataFrame.to_crs` method.
 
         Transform geometries to a new coordinate reference system.
         Transform all geometries in a GeoSeries to a different coordinate reference system.
@@ -930,7 +928,7 @@ class Exposures():
         return exp
 
     def plot(self, *args, **kwargs):
-        """Wrapper of the ``GeoDataFrame.plot`` method"""
+        """Wrapper of the :py:meth:`GeoDataFrame.plot` method"""
         self.gdf.plot(*args, **kwargs)
 
     def copy(self, deep=True):
