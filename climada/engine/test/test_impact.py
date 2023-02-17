@@ -467,6 +467,50 @@ class TestRPmatrix(unittest.TestCase):
         self.assertAlmostEqual(np.max(impact_rp), 2916964966.388219, places=5)
         self.assertAlmostEqual(np.min(impact_rp), 444457580.131494, places=5)
 
+class TestImpactReg(unittest.TestCase):
+    """Test impact aggregation per exposure region id or admin0"""
+    def test_impact_at_reg(self):
+        """Test calc local impacts per region"""
+
+        # Read default hazard file
+        hazard = Hazard.from_hdf5(HAZ_TEST_TC)
+
+        # Read an exposure with no region id
+        ent = Entity.from_excel(ENT_DEMO_TODAY)
+        ent.check()
+
+        # Calculate impact
+        impact = ImpactCalc(ent.exposures, ent.impact_funcs, hazard).impact(save_mat=True)
+        at_reg_event = impact.impact_at_reg(ent.exposures)
+
+        self.assertEqual(at_reg_event.sum().sum(), impact.at_event.sum())
+        self.assertEqual(at_reg_event.shape[0], impact.at_event.shape[0])
+
+        # Add dummies region ids
+        region_ids = np.hstack([np.repeat(i, 10) for i in range(5)])
+        ent.exposures.gdf['region_id'] = region_ids
+
+        # Calculate impact
+        impact = ImpactCalc(ent.exposures, ent.impact_funcs, hazard).impact(save_mat=True)
+        at_reg_event = impact.impact_at_reg(ent.exposures)
+
+        self.assertAlmostEqual(at_reg_event.sum().sum(), impact.at_event.sum(), places=2)
+        self.assertEqual(at_reg_event.shape[0], impact.at_event.shape[0])
+        self.assertListEqual(at_reg_event.columns.tolist(), ent.exposures.gdf.region_id.unique().tolist())
+
+        self.assertEqual(at_reg_event[0].sum(), 2071193014030.06)
+        self.assertEqual(at_reg_event[1].sum(), 2163005244090.206)
+        self.assertEqual(at_reg_event[2].sum(), 2219969197097.4907)
+        self.assertEqual(at_reg_event[3].sum(), 2203363516026.8047)
+        self.assertEqual(at_reg_event[4].sum(), 1827112892434.1558)
+
+        # Do not save Impact.imp_mat in the impact calculation
+        impact = ImpactCalc(ent.exposures, ent.impact_funcs, hazard).impact(save_mat=False)
+        at_reg_event = impact.impact_at_reg(ent.exposures)
+
+        self.assertIsNone(at_reg_event)
+
+
 class TestRiskTrans(unittest.TestCase):
     """Test risk transfer methods"""
     def test_risk_trans_pass(self):
@@ -816,6 +860,7 @@ if __name__ == "__main__":
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestImpactPerYear))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestIO))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRPmatrix))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestImpactReg))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRiskTrans))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestSelect))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestConvertExp))

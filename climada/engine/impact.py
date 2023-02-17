@@ -99,7 +99,6 @@ class Impact():
                  crs=DEF_CRS,
                  eai_exp=None,
                  at_event=None,
-                 at_reg_id_event=None,
                  tot_value=0,
                  aai_agg=0,
                  unit='',
@@ -130,8 +129,6 @@ class Impact():
             expected impact for each exposure within a period of 1/frequency_unit
         at_event : np.array, optional
             impact for each hazard event
-        at_reg_id_event : np.array, optional
-            impact for each hazard event at each exposure region id
         tot_value : float, optional
             total exposure value affected
         aai_agg : float, optional
@@ -153,7 +150,6 @@ class Impact():
         self.crs = crs
         self.eai_exp = np.array([], float) if eai_exp is None else eai_exp
         self.at_event = np.array([], float) if at_event is None else at_event
-        self.at_reg_id_event = np.array([], float) if at_reg_id_event is None else at_reg_id_event
         self.frequency = np.array([],float) if frequency is None else frequency
         self.frequency_unit = frequency_unit
         self.tot_value = tot_value
@@ -392,9 +388,10 @@ class Impact():
             year_set[year] = sum(self.at_event[orig_year == year])
         return year_set
 
-    def impact_per_exp_reg(self, exposures):
-        """Aggregate impact matrix at the regional level, based on the
-        regions specified in the exposure.
+    def impact_at_reg(self, exposures):
+        """Aggregate impact at the region_id level (if these are specified in exposure)
+        or at the admin 0 level (if they are not). This method works only if Impact.imp_mat
+        was stored during the impact calculation.
 
         Parameters
         ----------
@@ -402,13 +399,30 @@ class Impact():
             exposure used to compute imp_mat
         Returns
         -------
-        np.matrix
+        pd.DataFrame
         """
-        self.at_reg_id_event = np.hstack([
-                       self.imp_mat[:, np.where(exposures.gdf.region_id == reg_id)[0]].sum(1)
-                       for reg_id in exposures.gdf.region_id.unique()
-                       ])
-        return self.at_reg_id_event
+        if self.imp_mat.nnz == 0:
+            LOGGER.warning("No Impact.imp_mat was stored during the impact calculation,"
+                           "thus the impact per region cannot be computed")
+            return None
+
+        if 'region_id' in exposures.gdf.columns:
+            regs = exposures.gdf.region_id
+
+        else:
+            LOGGER.warning("region_id in Exposure not found,"
+                           "impact is calculated at the admin_0 level")
+            regs = pd.Series(u_coord.get_country_code(exposures.gdf.latitude,
+                                                      exposures.gdf.longitude))
+
+        at_reg_event = np.hstack([
+                self.imp_mat[:, np.where(regs == reg)[0]].sum(1)
+                for reg in regs.unique()
+                ])
+
+        at_reg_event = pd.DataFrame(at_reg_event, columns=regs.unique())
+
+        return at_reg_event
 
     def calc_impact_year_set(self,all_years=True, year_range=None):
         """This function is deprecated, use Impact.impact_per_year instead."""
