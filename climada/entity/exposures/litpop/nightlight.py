@@ -355,10 +355,10 @@ def load_nasa_nl_shape_single_tile(geometry, path, layer=0):
     with rasterio.open(path, 'r') as src:
         # read cropped data from  source file (src) to np.ndarray:
         out_image, transform = rasterio.mask.mask(src, [geometry], crop=True)
-        LOGGER.debug(f'Read cropped {path.name} as np.ndarray.')
+        LOGGER.debug('Read cropped %s as np.ndarray.', path.name)
         if out_image.shape[0] < layer:
-            raise IndexError(f"{path.name} has only {out_image.shape[0]} layers, layer {layer} can't"
-                             " be accessed.")
+            raise IndexError(f"{path.name} has only {out_image.shape[0]} layers,"
+                             f" layer {layer} can't be accessed.")
         meta = src.meta
         meta.update({"driver": "GTiff",
                     "height": out_image.shape[1],
