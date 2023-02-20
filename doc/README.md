@@ -15,7 +15,7 @@ You can switch to `latest`, which refers to the latest version of the `develop` 
 You can also build and browse the documentation on your machine.
 This can be useful if you want to access the documentation of a particular feature branch or to check your updates to the documentation.
 
-For building the documentation, you need to follow the [installation instructions for developers](https://climada-python.readthedocs.io/en/latest/guide/Guide_Installation.html#Install-CLIMADA-from-sources-(for-developers)).
+For building the documentation, you need to follow the [advanced installation instructions](https://climada-python.readthedocs.io/en/latest/guide/install.html#advanced-instructions).
 Make sure to install the developer requirements as well.
 
 Then, activate the `climada_env` and navigate to the `doc` directory:

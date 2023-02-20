@@ -8,30 +8,22 @@ Before you start, please have a look at our [Developer Guide][devguide].
 
 To contribute follow these steps:
 
-1. Install CLIMADA following the [installation instructions for developers](https://climada-python.readthedocs.io/en/stable/guide/Guide_Installation.html#Install-CLIMADA-from-sources-(for-developers)).
-2. Additionally, install the packages for developers:
-
-    ```bash
-    conda update -n climada_env -f climada_python/requirements/env_developer.yml
-    ```
-
-3. In the CLIMADA repository, create a new feature branch from the latest `develop` branch:
+1. Install CLIMADA following the [installation instructions for developers](https://climada-python.readthedocs.io/en/latest/guide/install.html#advanced-instructions).
+2. In the CLIMADA repository, create a new feature branch from the latest `develop` branch:
 
     ```bash
     git checkout develop && git pull
     git checkout -b feature/my-fancy-branch
     ```
-
-4. Implement your changes and commit them with [meaningful and well formatted](https://tbaggery.com/2008/04/19/a-note-about-git-commit-messages.html) commit messages.
-5. Add [unit and integration tests][testing] to your code, if applicable.
-6. Use [Pylint](https://pypi.org/project/pylint/) for a static code analysis of your code with CLIMADA's configuration `.pylintrc`:
+3. Implement your changes and commit them with [meaningful and well formatted](https://tbaggery.com/2008/04/19/a-note-about-git-commit-messages.html) commit messages.
+4. Add [unit and integration tests][testing] to your code, if applicable.
+5. Use [Pylint](https://pypi.org/project/pylint/) for a static code analysis of your code with CLIMADA's configuration `.pylintrc`:
 
     ```bash
     pylint
     ```
-
-7. Add your name to the [AUTHORS](AUTHORS.md) file.
-8. Push your updates to the remote repository:
+6. Add your name to the [AUTHORS](AUTHORS.md) file.
+7. Push your updates to the remote repository:
 
     ```bash
     git push --set-upstream origin feature/my-fancy-branch
@@ -47,11 +39,11 @@ To contribute follow these steps:
     git push --set-upstream fork feature/my-fancy-branch
     ```
 
-9. On the [CLIMADA-project/climada_python](https://github.com/CLIMADA-project/climada_python) GitHub repository, create a new pull request with target branch `develop`.
+8. On the [CLIMADA-project/climada_python](https://github.com/CLIMADA-project/climada_python) GitHub repository, create a new pull request with target branch `develop`.
     This also works if you pushed to a fork instead of the main repository.
     Add a description and explanation of your changes and work through the pull request author checklist provided.
     Feel free to request reviews from specific team members.
-10. After approval of the pull request, the branch is merged into `develop` and your changes will become part of the next CLIMADA release.
+9.  After approval of the pull request, the branch is merged into `develop` and your changes will become part of the next CLIMADA release.
 
 ## Resources
 

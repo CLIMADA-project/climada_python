@@ -93,8 +93,6 @@ class Exposures():
         latitude
     longitude : pd.Series
         longitude
-    crs : dict or crs
-        CRS information inherent to GeoDataFrame.
     value : pd.Series
         a value for each exposure
     impf_SUFFIX : pd.Series, optional
@@ -590,16 +588,20 @@ class Exposures():
         extend : str, optional
             extend border colorbar with arrows.
             [ 'neither' | 'both' | 'min' | 'max' ]
+            Default is 'neither'.
         axis : matplotlib.axes._subplots.AxesSubplot, optional
             axis to use
         figsize : tuple
             figure size for plt.subplots
+            Default is (9, 13).
         adapt_fontsize : bool, optional
             If set to true, the size of the fonts will be adapted to the size of the figure.
-            Otherwise the default matplotlib font size is used. Default is True.
+            Otherwise the default matplotlib font size is used.
+            Default is True.
         kwargs : optional
             arguments for hexbin matplotlib function, e.g.
-            reduce_C_function=np.average. Default: reduce_C_function=np.sum
+            `reduce_C_function=np.average`.
+            Default is `reduce_C_function=np.sum`
 
         Returns
         -------
@@ -628,8 +630,8 @@ class Exposures():
                     raster_f=lambda x: np.log10((np.fmax(x + 1, 1))),
                     label='value (log10)', scheduler=None, axis=None,
                     figsize=(9, 13), fill=True, adapt_fontsize=True, **kwargs):
-        """Generate raster from points geometry and plot it using log10 scale:
-        np.log10((np.fmax(raster+1, 1))).
+        """Generate raster from points geometry and plot it using log10 scale
+        `np.log10((np.fmax(raster+1, 1)))`.
 
         Parameters
         ----------
@@ -726,38 +728,38 @@ class Exposures():
 
     def plot_basemap(self, mask=None, ignore_zero=False, pop_name=True,
                      buffer=0.0, extend='neither', zoom=10,
-                     url=ctx.providers.Stamen.Terrain,
-                     axis=None, **kwargs):
+                     url=None, axis=None, **kwargs):
         """Scatter points over satellite image using contextily
 
-         Parameters
-         ----------
-         mask : np.array, optional
-             mask to apply to eai_exp plotted. Same
-             size of the exposures, only the selected indexes will be plot.
-         ignore_zero : bool, optional
-             flag to indicate if zero and negative
-             values are ignored in plot. Default: False
-         pop_name : bool, optional
-             add names of the populated places, by default True.
-         buffer : float, optional
-             border to add to coordinates. Default: 0.0.
-         extend : str, optional
-             extend border colorbar with arrows.
-             [ 'neither' | 'both' | 'min' | 'max' ]
-         zoom : int, optional
-             zoom coefficient used in the satellite image
-         url : str, optional
-             image source, e.g. ctx.providers.OpenStreetMap.Mapnik
-         axis : matplotlib.axes._subplots.AxesSubplot, optional
-             axis to use
-         kwargs : optional
-             arguments for scatter matplotlib function, e.g.
-             cmap='Greys'. Default: 'Wistia'
+        Parameters
+        ----------
+        mask : np.array, optional
+            mask to apply to eai_exp plotted. Same
+            size of the exposures, only the selected indexes will be plot.
+        ignore_zero : bool, optional
+            flag to indicate if zero and negative
+            values are ignored in plot. Default: False
+        pop_name : bool, optional
+            add names of the populated places, by default True.
+        buffer : float, optional
+            border to add to coordinates. Default: 0.0.
+        extend : str, optional
+            extend border colorbar with arrows.
+            [ 'neither' | 'both' | 'min' | 'max' ]
+        zoom : int, optional
+            zoom coefficient used in the satellite image
+        url : Any, optional
+            image source, e.g., ``ctx.providers.OpenStreetMap.Mapnik``.
+            Default: ``ctx.providers.Stamen.Terrain``
+        axis : matplotlib.axes._subplots.AxesSubplot, optional
+            axis to use
+        kwargs : optional
+            arguments for scatter matplotlib function, e.g.
+            cmap='Greys'. Default: 'Wistia'
 
-         Returns
-         -------
-         matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
+        Returns
+        -------
+        matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         if 'geometry' not in self.gdf:
             self.set_geometry_points()
@@ -765,7 +767,7 @@ class Exposures():
         self.to_crs(epsg=3857, inplace=True)
         axis = self.plot_scatter(mask, ignore_zero, pop_name, buffer,
                                  extend, shapes=False, axis=axis, **kwargs)
-        ctx.add_basemap(axis, zoom, url, origin='upper')
+        ctx.add_basemap(axis, zoom, source=url, origin='upper')
         axis.set_axis_off()
         self.to_crs(crs_ori, inplace=True)
         return axis
@@ -885,7 +887,7 @@ class Exposures():
     # Extends the according geopandas method
     #
     def to_crs(self, crs=None, epsg=None, inplace=False):
-        """Wrapper of the GeoDataFrame.to_crs method.
+        """Wrapper of the :py:meth:`GeoDataFrame.to_crs` method.
 
         Transform geometries to a new coordinate reference system.
         Transform all geometries in a GeoSeries to a different coordinate reference system.
@@ -924,9 +926,8 @@ class Exposures():
         return exp
 
     def plot(self, *args, **kwargs):
-        """Wrapper of the GeoDataFram.plot method"""
+        """Wrapper of the :py:meth:`GeoDataFrame.plot` method"""
         self.gdf.plot(*args, **kwargs)
-    plot.__doc__ = GeoDataFrame.plot.__doc__
 
     def copy(self, deep=True):
         """Make a copy of this Exposures object.
