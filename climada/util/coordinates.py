@@ -1106,7 +1106,7 @@ def assign_gdf_centroids(coord_gdf, centroids, distance='euclidean',
 
     if test_crs and (not equal_crs(coord_gdf.crs, centroids.crs)):
         raise ValueError('Set hazard and GeoDataFrame to same CRS first!')
-    
+
     if centroids.meta:
         assigned = assign_grid_points(
             coord_gdf.longitude.values, coord_gdf.latitude.values,

@@ -428,7 +428,7 @@ class Exposures():
                     str(self.gdf.shape[0]), str(hazard.centroids.size))
         if not u_coord.equal_crs(self.crs, hazard.centroids.crs):
             raise ValueError('Set hazard and exposure to same CRS first!')
-        
+
         assigned_centr = u_coord.assign_gdf_centroids(self.gdf, hazard.centroids,
                         distance=distance,
                         threshold=threshold,test_crs=False)
