@@ -278,7 +278,11 @@ class TestGPWPopulation(unittest.TestCase):
             self.assertEqual(data.shape, (31, 36))
             self.assertAlmostEqual(meta['transform'][0], 0.00833333333333333)
             self.assertAlmostEqual(meta['transform'][0], glb_transform[0])
-
+            self.assertEqual(meta['driver'], 'GTiff')
+            self.assertEqual(meta['height'], data.shape[0])
+            self.assertEqual(meta['width'], data.shape[1])
+            self.assertIsInstance(data, np.ndarray)
+            self.assertEqual(len(data.shape), 2) 
         except FileExistsError as err:
             self.assertIn('lease download', err.args[0])
             self.skipTest('GPW input data for GPW v4.%i not found.' %(gpw_version))
