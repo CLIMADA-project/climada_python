@@ -1059,7 +1059,7 @@ def assign_coordinates(coords, coords_to_assign, distance="euclidean",
 
 def assign_gdf_centroids(coord_gdf, centroids, distance='euclidean',
                         threshold=NEAREST_NEIGHBOR_THRESHOLD,test_crs=True):
-    """Assign to each exposure's coordinate point its closest centroids's coordinate.
+    """Assign to each gdf coordinate point its closest centroids's coordinate.
     If disatances > threshold in points' distances, -1 is returned.
     If raster centroids and coordinate point outside raster, -1 is returned.
 

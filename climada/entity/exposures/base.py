@@ -414,9 +414,9 @@ class Exposures():
         and works only for non-gridded data.
         """
         haz_type = hazard.tag.haz_type
-        centr_haz = 'centr_' + haz_type
+        centr_haz = INDICATOR_CENTR + haz_type
         if centr_haz in self.gdf:
-            LOGGER.info('DataFrame matching centroids already found for %s', haz_type)
+            LOGGER.info('Exposures matching centroids already found for %s', haz_type)
             if overwrite:
                 LOGGER.info('Existing centroids will be overwritten for %s', haz_type)
             else:

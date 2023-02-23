@@ -43,7 +43,6 @@ from tqdm import tqdm
 import geopandas as gpd
 import h5py
 
-
 from climada.entity import Exposures, Tag
 from climada.hazard import Tag as TagHaz
 import climada.util.plot as u_plot
