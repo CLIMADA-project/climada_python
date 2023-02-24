@@ -1,5 +1,32 @@
 # Changelog
 
+## Unreleased
+
+Release date: YYYY-MM-DD
+
+Code freeze date: YYYY-MM-DD
+
+### Dependency Updates
+
+Added:
+
+Changed:
+
+Removed:
+
+- `pybufrkit`
+
+### Added
+
+### Changed
+
+### Fixed
+
+### Deprecated
+
+### Removed
+
+
 ## v3.3.0
 
 Release date: 2023-02-17
