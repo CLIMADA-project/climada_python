@@ -54,14 +54,10 @@ jobs:
         name: Run Unit Tests
         run: |
           make unit_test
-      -
-        name: Publish Test Results
-        uses: EnricoMi/publish-unit-test-result-action@v2
-        if: always()
+      - uses: actions/upload-artifact@v3
         with:
-          junit_files: tests_xml/*.xml
-          check_name: "Unit Test Results"
-          comment_mode: "off"
+          name: unit-test-report
+          path: tests_xml/
 
   data-tests:
     needs: build-env
@@ -88,14 +84,10 @@ jobs:
         name: Run Data Tests
         run: |
           make data_test
-      -
-        name: Publish Test Results
-        uses: EnricoMi/publish-unit-test-result-action@v2
-        if: always()
+      - uses: actions/upload-artifact@v3
         with:
-          junit_files: tests_xml/*.xml
-          check_name: "Data Test Results"
-          comment_mode: "off"
+          name: data-test-report
+          path: tests_xml/
 
   notebook-tests:
     needs: build-env
@@ -119,9 +111,48 @@ jobs:
             nbformat
             make
       -
-        name: Run Data Tests
+        name: Run Notebook Tests
         run: |
           make notebook_test
+
+  integration-tests:
+    needs: build-env
+    runs-on: ubuntu-latest
+    permissions:
+      # For publishing results
+      checks: write
+    steps:
+      -
+        name: Checkout Repo
+        uses: actions/checkout@v3
+      -
+        name: Install Conda environment
+        uses: mamba-org/provision-with-micromamba@main
+        with:
+          environment-file: requirements/env_climada.yml
+          cache-env: true
+          channels: conda-forge, defaults
+          extra-specs: |
+            coverage
+            nbformat
+            make
+      -
+        name: Run Integration Tests
+        run: |
+          make integ_test
+      - uses: actions/upload-artifact@v3
+        with:
+          name: integration-test-report
+          path: tests_xml/
+
+  report-test-results:
+    if: ${{ always() }}
+    needs: [unit-tests, data-tests, integration-tests]
+    steps:
+      -
+        uses: actions/download-artifact@v3
+        with:
+          path: tests_xml/
       -
         name: Publish Test Results
         uses: EnricoMi/publish-unit-test-result-action@v2
