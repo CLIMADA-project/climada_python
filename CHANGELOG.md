@@ -14,7 +14,7 @@ Changed:
 
 Removed:
 
-- `pybufrkit`
+- `pybufrkit` [#662](https://github.com/CLIMADA-project/climada_python/pull/662)
 
 ### Added
 
