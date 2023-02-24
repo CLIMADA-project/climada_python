@@ -8,7 +8,29 @@ defaults:
     shell: bash -l {0}
 
 jobs:
+  # --- Build the environment ---
+  # This job is somewhat superfluous but in case the cached environment is outdated,
+  # we only build it once instead of one time per job.
+  build-env:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Checkout Repo
+        uses: actions/checkout@v3
+      -
+        name: Build Conda environment
+        uses: mamba-org/provision-with-micromamba@main
+        with:
+          environment-file: requirements/env_climada.yml
+          cache-env: true
+          channels: conda-forge, defaults
+          extra-specs: |
+            coverage
+            nbformat
+            make
+
   unit-tests:
+    needs: build-env
     runs-on: ubuntu-latest
     permissions:
       # For publishing results
@@ -42,7 +64,7 @@ jobs:
           comment_mode: "off"
 
   data-tests:
-    needs: unit-tests
+    needs: build-env
     runs-on: ubuntu-latest
     permissions:
       # For publishing results
@@ -76,7 +98,7 @@ jobs:
           comment_mode: "off"
 
   notebook-tests:
-    needs: unit-tests
+    needs: build-env
     runs-on: ubuntu-latest
     permissions:
       # For publishing results
