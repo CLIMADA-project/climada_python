@@ -148,6 +148,7 @@ jobs:
   report-test-results:
     if: ${{ always() }}
     needs: [unit-tests, data-tests, integration-tests]
+    runs-on: ubuntu-latest
     steps:
       -
         uses: actions/download-artifact@v3
