@@ -62,7 +62,6 @@ setup(
         'peewee',
         'pillow',
         'pint',
-        'pybufrkit',
         'pycountry',
         'rasterio',
         'salib',
