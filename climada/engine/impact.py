@@ -410,8 +410,6 @@ class Impact():
             return None
 
         if agg_regions is None:
-            LOGGER.warning("Aggregation regions were not specified,"
-                           "impact is aggregated at the admin_0 level")
             agg_regions = pd.Series(u_coord.get_country_code(self.coord_exp[:,0],
                                                              self.coord_exp[:,1]))
         elif not isinstance(agg_regions, pd.Series):
