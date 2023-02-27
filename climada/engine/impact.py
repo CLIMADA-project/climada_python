@@ -403,6 +403,8 @@ class Impact():
         Returns
         -------
         pd.DataFrame
+            Contains the aggregated data per event.
+            Rows: Events. Columns: Unique aggregate regions.
         """
         if self.imp_mat.nnz == 0:
             raise ValueError("The aggregated impact cannot be computed as no"
