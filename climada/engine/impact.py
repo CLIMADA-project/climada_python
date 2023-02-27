@@ -405,9 +405,8 @@ class Impact():
         pd.DataFrame
         """
         if self.imp_mat.nnz == 0:
-            LOGGER.warning("No Impact.imp_mat was stored during the impact calculation,"
-                           "thus the impact per region cannot be computed")
-            return None
+            raise ValueError("The aggregated impact cannot be computed as no"
+                             "Impact.imp_mat was stored during the impact calculation")
 
         if agg_regions is None:
             agg_regions = pd.Series(u_coord.get_country_code(self.coord_exp[:,0],
