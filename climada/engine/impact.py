@@ -394,7 +394,7 @@ class Impact():
 
         Parameters
         ----------
-        agg_regions : np.array, list, pd.Series
+        agg_regions : np.array, list, pd.Series (optional)
             It has the same lenght as the number of coordinates points in exposure 
             and reports what macro-regions these points belong to. If no aggregation
             regions are passed, the method aggregates impact at the country (admin_0) level.
