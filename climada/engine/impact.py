@@ -420,7 +420,7 @@ class Impact():
                 for reg in agg_regions.unique()
                 ])
 
-        at_reg_event = pd.DataFrame(at_reg_event, columns=agg_regions.unique())
+        at_reg_event = pd.DataFrame(at_reg_event, columns=agg_regions.unique(), index=self.event_id)
 
         return at_reg_event
 
