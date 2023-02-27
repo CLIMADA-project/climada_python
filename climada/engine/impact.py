@@ -389,22 +389,26 @@ class Impact():
         return year_set
 
     def impact_at_reg(self, agg_regions=None):
-        """Aggregate impact on given aggregation regions. This method works 
+        """Aggregate impact on given aggregation regions. This method works
         only if Impact.imp_mat was stored during the impact calculation.
 
         Parameters
         ----------
         agg_regions : np.array, list, pd.Series (optional)
-            It has the same lenght as the number of coordinates points in exposure 
-            and reports what macro-regions these points belong to. If no aggregation
-            regions are passed, the method aggregates impact at the country (admin_0) level.
+            It has a lenght equal to the number of coordinates points in exposure
+            and it reports what macro-regions these points belong to. For example,
+            asuming there are three centroids and agg_regions = ['A', 'A', 'B']
+            then impact of the first and second centroids will be assigned to
+            region A, whereas impact from the second centroid will be assigned
+            to area B. If no aggregation regions are passed, the method aggregates
+            impact at the country (admin_0) level.
             Default is None.
 
         Returns
         -------
         pd.DataFrame
             Contains the aggregated data per event.
-            Rows: Events. Columns: Unique aggregate regions.
+            Rows: Hzard events. Columns: Aggregation regions.
         """
         if self.imp_mat.nnz == 0:
             raise ValueError("The aggregated impact cannot be computed as no"
