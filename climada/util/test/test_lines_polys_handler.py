@@ -143,6 +143,25 @@ class TestExposureGeomToPnt(unittest.TestCase):
             52.55795685, 52.55795685, 52.23308448, 52.23308448
             ])
         np.testing.assert_allclose(exp_pnt.gdf.latitude, lat)
+        
+        #projected crs, to_meters=TRUE, FIX, dissag_val
+        res = 20000
+        EXP_POLY_PROJ = Exposures(GDF_POLY.to_crs(epsg=28992))
+        exp_pnt = u_lp.exp_geom_to_pnt(
+            EXP_POLY_PROJ, res=res, to_meters=True,
+            disagg_met=u_lp.DisaggMethod.FIX, disagg_val=res**2
+            )
+        self.check_unchanged_exp(EXP_POLY_PROJ, exp_pnt)
+        val = res**2
+        self.assertEqual(np.unique(exp_pnt.gdf.value)[0], val)
+        lat = np.array([574891.12225222, 547411.67251407, 499789.43052324,
+                        460177.36473906, 364182.25061015, 369862.57549558,
+                        394014.84676059, 444749.18166595, 514229.75466288,
+                        568740.1294081 , 507005.3662343 , 458457.48789088])
+        np.testing.assert_allclose(
+            exp_pnt.gdf.groupby(level=[0])['latitude'].nth(0).values,
+            lat, atol=100000)
+
 
     def test_point_exposure_from_polygons_on_grid(self):
         """Test disaggregation of polygons to points on grid"""
