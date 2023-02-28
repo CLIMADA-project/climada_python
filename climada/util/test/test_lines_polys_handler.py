@@ -143,7 +143,7 @@ class TestExposureGeomToPnt(unittest.TestCase):
             52.55795685, 52.55795685, 52.23308448, 52.23308448
             ])
         np.testing.assert_allclose(exp_pnt.gdf.latitude, lat)
-        
+
         #projected crs, to_meters=TRUE, FIX, dissag_val
         res = 20000
         EXP_POLY_PROJ = Exposures(GDF_POLY.to_crs(epsg=28992))

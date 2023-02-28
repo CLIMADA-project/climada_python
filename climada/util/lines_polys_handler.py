@@ -38,8 +38,8 @@ class DisaggMethod(Enum):
     """
     Disaggregation Method for the ... function
 
-	DIV : the geometry's distributed to equal parts over all its interpolated points
-	FIX : the geometry's value is replicated over all its interpolated points
+    DIV : the geometry's distributed to equal parts over all its interpolated points
+    FIX : the geometry's value is replicated over all its interpolated points
     """
     DIV = 'div'
     FIX = 'fix'
@@ -49,7 +49,7 @@ class AggMethod(Enum):
     """
     Aggregation Method for the aggregate_impact_mat function
 
-	SUM : the impact is summed over all points in the polygon/line
+    SUM : the impact is summed over all points in the polygon/line
     """
     SUM = 'sum'
 
@@ -649,7 +649,7 @@ def _poly_to_pnts(gdf, res, to_meters):
     """
 
     if gdf.empty:
-        return gdf 
+        return gdf
 
     # Needed because gdf.explode(index_parts=True) requires numeric index
     idx = gdf.index.to_list() #To restore the naming of the index
