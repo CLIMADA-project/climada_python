@@ -494,10 +494,7 @@ class TestImpactReg(unittest.TestCase):
         self.assertEqual(at_reg_event.shape[0], imp.at_event.shape[0])
         self.assertEqual(at_reg_event.shape[1], np.unique(region_ids).shape[0])
 
-        # Let's specify sample cities' coords and countries' code
-        # CHE_num_code = 756
-        # ITA_num_code = 380
-
+        # Let's specify sample cities' coords
         zurich_lat, zurich_lon = 47.37, 8.55
         bern_lat, bern_lon = 46.94, 7.44
         rome_lat, rome_lon = 41.89, 12.51
