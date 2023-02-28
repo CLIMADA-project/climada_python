@@ -469,68 +469,74 @@ class TestRPmatrix(unittest.TestCase):
 
 class TestImpactReg(unittest.TestCase):
     """Test impact aggregation per aggregation region or admin 0"""
-    def test_impact_at_reg(self):
+
+    def setUp(self):
+        """Build the impact object for testing"""
+        self.imp = dummy_impact()
+
+    def test_agg_regions(self):
         """Test calc local impacts per region"""
-
-        imp = dummy_impact()
-
         # Aggregate over a single region
         region_ids = ['A', 'A']
-        at_reg_event = imp.impact_at_reg(region_ids)
+        at_reg_event = self.imp.impact_at_reg(region_ids)
 
-        self.assertEqual(at_reg_event.sum().sum(), imp.at_event.sum())
-        self.assertEqual(at_reg_event.shape[0], imp.at_event.shape[0])
+        self.assertEqual(at_reg_event.sum().sum(), self.imp.at_event.sum())
+        self.assertEqual(at_reg_event.shape[0], self.imp.at_event.shape[0])
         self.assertEqual(at_reg_event.shape[1], np.unique(region_ids).shape[0])
 
         # Aggregate over two different regions
         region_ids = ['A', 'B']
+        at_reg_event = self.imp.impact_at_reg(region_ids)
 
-        at_reg_event = imp.impact_at_reg(region_ids)
+        self.assertEqual(at_reg_event['A'].sum(), self.imp.imp_mat[:,0].sum())
+        self.assertEqual(at_reg_event['B'].sum(), self.imp.imp_mat[:,1].sum())
 
-        self.assertEqual(at_reg_event['A'].sum(), imp.imp_mat[:,0].sum())
-        self.assertEqual(at_reg_event['B'].sum(), imp.imp_mat[:,1].sum())
-
-        self.assertEqual(at_reg_event.sum().sum(), imp.at_event.sum())
-        self.assertEqual(at_reg_event.shape[0], imp.at_event.shape[0])
+        self.assertEqual(at_reg_event.sum().sum(), self.imp.at_event.sum())
+        self.assertEqual(at_reg_event.shape[0], self.imp.at_event.shape[0])
         self.assertEqual(at_reg_event.shape[1], np.unique(region_ids).shape[0])
 
+    def test_admin0(self):
+        """Test with aggregation to countries"""
         # Let's specify sample cities' coords
         zurich_lat, zurich_lon = 47.37, 8.55
         bern_lat, bern_lon = 46.94, 7.44
         rome_lat, rome_lon = 41.89, 12.51
 
         # Test admin 0 with one country
-        imp.coord_exp = np.array([[zurich_lat, zurich_lon], [bern_lat, bern_lon]])
+        self.imp.coord_exp = np.array([[zurich_lat, zurich_lon], [bern_lat, bern_lon]])
 
-        at_reg_event = imp.impact_at_reg()
+        at_reg_event = self.imp.impact_at_reg()
 
         self.assertEqual(len(at_reg_event.columns), 1)
         self.assertEqual(at_reg_event.columns[0], 'CHE')
 
-        self.assertEqual(at_reg_event.shape[0], imp.at_event.shape[0])
+        self.assertEqual(at_reg_event.shape[0], self.imp.at_event.shape[0])
         self.assertEqual(at_reg_event['CHE'].sum(),
                          at_reg_event.sum().sum(),
-                         imp.at_event.sum())
+                         self.imp.at_event.sum())
 
         # Test admin 0 with two countries
-        imp.coord_exp = np.array([[rome_lat, rome_lon], [bern_lat, bern_lon]])
-
-        at_reg_event = imp.impact_at_reg()
+        self.imp.coord_exp = np.array([[rome_lat, rome_lon], [bern_lat, bern_lon]])
+        at_reg_event = self.imp.impact_at_reg()
 
         self.assertEqual(len(at_reg_event.columns), 2)
         self.assertEqual(at_reg_event.columns[0], 'CHE')
         self.assertEqual(at_reg_event.columns[1], 'ITA')
 
-        self.assertEqual(at_reg_event.shape[0], imp.at_event.shape[0])
-        self.assertEqual(at_reg_event['CHE'].sum(), imp.imp_mat[:,0].sum())
-        self.assertEqual(at_reg_event['ITA'].sum(), imp.imp_mat[:,1].sum())
-        self.assertEqual(at_reg_event.sum().sum(), imp.at_event.sum())
+        self.assertEqual(at_reg_event.shape[0], self.imp.at_event.shape[0])
+        self.assertEqual(at_reg_event['CHE'].sum(), self.imp.imp_mat[:,0].sum())
+        self.assertEqual(at_reg_event['ITA'].sum(), self.imp.imp_mat[:,1].sum())
+        self.assertEqual(at_reg_event.sum().sum(), self.imp.at_event.sum())
 
+
+    def test_no_imp_mat(self):
+        """Check error if no impact matrix is stored"""
         # Test error when no imp_mat is stored
-        imp.imp_mat = sparse.csr_matrix((0, 0))
+        self.imp.imp_mat = sparse.csr_matrix((0, 0))
 
-        with self.assertRaises(ValueError):
-                imp.impact_at_reg()
+        with self.assertRaises(ValueError) as cm:
+            self.imp.impact_at_reg()
+        self.assertIn("no Impact.imp_mat was stored", str(cm.exception))
 
 class TestRiskTrans(unittest.TestCase):
     """Test risk transfer methods"""
