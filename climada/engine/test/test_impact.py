@@ -472,42 +472,80 @@ class TestImpactReg(unittest.TestCase):
     def test_impact_at_reg(self):
         """Test calc local impacts per region"""
 
-        # Read default hazard file
-        hazard = Hazard.from_hdf5(HAZ_TEST_TC)
+        # # Read default hazard file
+        # hazard = Hazard.from_hdf5(HAZ_TEST_TC)
 
-        # Read an exposure
-        ent = Entity.from_excel(ENT_DEMO_TODAY)
-        ent.check()
+        # # Read an exposure
+        # ent = Entity.from_excel(ENT_DEMO_TODAY)
+        # ent.check()
 
-        # Calculate impact
-        impact = ImpactCalc(ent.exposures, ent.impact_funcs, hazard).impact(save_mat=True)
+        # # Calculate impact
+        # impact = ImpactCalc(ent.exposures, ent.impact_funcs, hazard).impact(save_mat=True)
 
-        # Aggregate impact at the admin 0 level
-        at_reg_event = impact.impact_at_reg()
+        # # Aggregate impact at the admin 0 level
+        # at_reg_event = impact.impact_at_reg()
 
-        self.assertEqual(at_reg_event.sum().sum(), impact.at_event.sum())
-        self.assertEqual(at_reg_event.shape[0], impact.at_event.shape[0])
+        imp = dummy_impact()
 
-        # Aggregate impact at user-defined aggregation regions
-        region_ids = np.hstack([np.repeat(i, 10) for i in range(5)])
-        at_reg_event = impact.impact_at_reg(region_ids)
+        # Aggregate over a single region
+        region_ids = ['A', 'A']
+        at_reg_event = imp.impact_at_reg(region_ids)
 
-        self.assertAlmostEqual(at_reg_event.sum().sum(), impact.at_event.sum(), places=2)
-        self.assertEqual(at_reg_event.shape[0], impact.at_event.shape[0])
-        self.assertListEqual(at_reg_event.columns.tolist(), np.unique(region_ids).tolist())
+        self.assertEqual(at_reg_event.sum().sum(), imp.at_event.sum())
+        self.assertEqual(at_reg_event.shape[0], imp.at_event.shape[0])
+        self.assertEqual(at_reg_event.shape[1], np.unique(region_ids).shape[0])
 
-        self.assertEqual(at_reg_event[0].sum(), 2071193014030.06)
-        self.assertEqual(at_reg_event[1].sum(), 2163005244090.206)
-        self.assertEqual(at_reg_event[2].sum(), 2219969197097.4907)
-        self.assertEqual(at_reg_event[3].sum(), 2203363516026.8047)
-        self.assertEqual(at_reg_event[4].sum(), 1827112892434.1558)
+        # Aggregate over two different regions
+        region_ids = ['A', 'B']
 
-        # Do not save Impact.imp_mat in the impact calculation and does do not aggregate
-        impact = ImpactCalc(ent.exposures, ent.impact_funcs, hazard).impact(save_mat=False)
-        at_reg_event = impact.impact_at_reg()
+        at_reg_event = imp.impact_at_reg(region_ids)
 
-        self.assertIsNone(at_reg_event)
+        self.assertEqual(at_reg_event['A'].sum(), imp.imp_mat[:,0].sum())
+        self.assertEqual(at_reg_event['B'].sum(), imp.imp_mat[:,1].sum())
 
+        self.assertEqual(at_reg_event.sum().sum(), imp.at_event.sum())
+        self.assertEqual(at_reg_event.shape[0], imp.at_event.shape[0])
+        self.assertEqual(at_reg_event.shape[1], np.unique(region_ids).shape[0])
+
+        # Let's specify sample cities' coords and countries' code
+        CHE_num_code = 756
+        ITA_num_code = 380
+        zurich_lat, zurich_lon = 47.37, 8.55
+        bern_lat, bern_lon = 46.94, 7.44
+        rome_lat, rome_lon = 41.89, 12.51
+
+        # Test admin 0 with one country
+        imp.coord_exp = np.array([[zurich_lat, zurich_lon], [bern_lat, bern_lon]])
+
+        at_reg_event = imp.impact_at_reg()
+
+        self.assertEqual(len(at_reg_event.columns), 1)
+        self.assertEqual(at_reg_event.columns[0], CHE_num_code)
+
+        self.assertEqual(at_reg_event.shape[0], imp.at_event.shape[0])
+        self.assertEqual(at_reg_event[CHE_num_code].sum(),
+                         at_reg_event.sum().sum(),
+                         imp.at_event.sum())
+
+        # Test admin 0 with two countries
+        imp.coord_exp = np.array([[rome_lat, rome_lon], [bern_lat, bern_lon]])
+
+        at_reg_event = imp.impact_at_reg()
+
+        self.assertEqual(len(at_reg_event.columns), 2)
+        self.assertEqual(at_reg_event.columns[0], ITA_num_code)
+        self.assertEqual(at_reg_event.columns[1], CHE_num_code)
+
+        self.assertEqual(at_reg_event.shape[0], imp.at_event.shape[0])
+        self.assertEqual(at_reg_event[ITA_num_code].sum(), imp.imp_mat[:,0].sum())
+        self.assertEqual(at_reg_event[CHE_num_code].sum(), imp.imp_mat[:,1].sum())
+        self.assertEqual(at_reg_event.sum().sum(), imp.at_event.sum())
+
+        # Test error when no imp_mat is stored
+        imp.imp_mat = sparse.csr_matrix((0, 0))
+
+        with self.assertRaises(ValueError):
+                imp.impact_at_reg()
 
 class TestRiskTrans(unittest.TestCase):
     """Test risk transfer methods"""
