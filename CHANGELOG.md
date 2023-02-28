@@ -26,6 +26,17 @@ Removed:
 
 ### Removed
 
+## v3.3.1
+
+Release date: 2023-02-27
+
+### Description
+
+Patch-relaese with altered base config file so that the basic installation test passes.
+
+### Changed
+
+- The base config file `climada/conf/climada.conf` has an entry for `CONFIG.hazard.test_data`.
 
 ## v3.3.0
 
