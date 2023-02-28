@@ -468,22 +468,9 @@ class TestRPmatrix(unittest.TestCase):
         self.assertAlmostEqual(np.min(impact_rp), 444457580.131494, places=5)
 
 class TestImpactReg(unittest.TestCase):
-    """Test impact aggregation per exposure region id or admin0"""
+    """Test impact aggregation per aggregation region or admin 0"""
     def test_impact_at_reg(self):
         """Test calc local impacts per region"""
-
-        # # Read default hazard file
-        # hazard = Hazard.from_hdf5(HAZ_TEST_TC)
-
-        # # Read an exposure
-        # ent = Entity.from_excel(ENT_DEMO_TODAY)
-        # ent.check()
-
-        # # Calculate impact
-        # impact = ImpactCalc(ent.exposures, ent.impact_funcs, hazard).impact(save_mat=True)
-
-        # # Aggregate impact at the admin 0 level
-        # at_reg_event = impact.impact_at_reg()
 
         imp = dummy_impact()
 
