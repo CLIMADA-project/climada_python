@@ -394,7 +394,7 @@ class Impact():
 
         Parameters
         ----------
-        agg_regions : np.array, list, pd.Series (optional)
+        agg_regions : np.array, list (optional)
             It has a lenght equal to the number of coordinates points in exposure
             and it reports what macro-regions these points belong to. For example,
             asuming there are three centroids and agg_regions = ['A', 'A', 'B']
@@ -415,17 +415,19 @@ class Impact():
                              "Impact.imp_mat was stored during the impact calculation")
 
         if agg_regions is None:
-            agg_regions = pd.Series(u_coord.get_country_code(self.coord_exp[:,0],
-                                                             self.coord_exp[:,1]))
-        elif not isinstance(agg_regions, pd.Series):
-            agg_regions = pd.Series(agg_regions)
+            agg_regions = u_coord.country_to_iso(
+                u_coord.get_country_code(self.coord_exp[:,0], self.coord_exp[:,1])
+            )
+
+        if isinstance(agg_regions, list):
+            agg_regions = np.array(agg_regions)
 
         at_reg_event = np.hstack([
                 self.imp_mat[:, np.where(agg_regions == reg)[0]].sum(1)
-                for reg in agg_regions.unique()
+                for reg in np.unique(agg_regions)
                 ])
 
-        at_reg_event = pd.DataFrame(at_reg_event, columns=agg_regions.unique(), index=self.event_id)
+        at_reg_event = pd.DataFrame(at_reg_event, columns=np.unique(agg_regions), index=self.event_id)
 
         return at_reg_event
 

@@ -495,8 +495,9 @@ class TestImpactReg(unittest.TestCase):
         self.assertEqual(at_reg_event.shape[1], np.unique(region_ids).shape[0])
 
         # Let's specify sample cities' coords and countries' code
-        CHE_num_code = 756
-        ITA_num_code = 380
+        # CHE_num_code = 756
+        # ITA_num_code = 380
+
         zurich_lat, zurich_lon = 47.37, 8.55
         bern_lat, bern_lon = 46.94, 7.44
         rome_lat, rome_lon = 41.89, 12.51
@@ -507,10 +508,10 @@ class TestImpactReg(unittest.TestCase):
         at_reg_event = imp.impact_at_reg()
 
         self.assertEqual(len(at_reg_event.columns), 1)
-        self.assertEqual(at_reg_event.columns[0], CHE_num_code)
+        self.assertEqual(at_reg_event.columns[0], 'CHE')
 
         self.assertEqual(at_reg_event.shape[0], imp.at_event.shape[0])
-        self.assertEqual(at_reg_event[CHE_num_code].sum(),
+        self.assertEqual(at_reg_event['CHE'].sum(),
                          at_reg_event.sum().sum(),
                          imp.at_event.sum())
 
@@ -520,12 +521,12 @@ class TestImpactReg(unittest.TestCase):
         at_reg_event = imp.impact_at_reg()
 
         self.assertEqual(len(at_reg_event.columns), 2)
-        self.assertEqual(at_reg_event.columns[0], ITA_num_code)
-        self.assertEqual(at_reg_event.columns[1], CHE_num_code)
+        self.assertEqual(at_reg_event.columns[0], 'CHE')
+        self.assertEqual(at_reg_event.columns[1], 'ITA')
 
         self.assertEqual(at_reg_event.shape[0], imp.at_event.shape[0])
-        self.assertEqual(at_reg_event[ITA_num_code].sum(), imp.imp_mat[:,0].sum())
-        self.assertEqual(at_reg_event[CHE_num_code].sum(), imp.imp_mat[:,1].sum())
+        self.assertEqual(at_reg_event['CHE'].sum(), imp.imp_mat[:,0].sum())
+        self.assertEqual(at_reg_event['ITA'].sum(), imp.imp_mat[:,1].sum())
         self.assertEqual(at_reg_event.sum().sum(), imp.at_event.sum())
 
         # Test error when no imp_mat is stored
