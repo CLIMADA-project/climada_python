@@ -337,7 +337,6 @@ dependencies:
     - nbsphinx==0.8.12
     - overpy==0.6
     - peewee==3.15.4
-    - pybufrkit==0.2.19
     - pydata-sphinx-theme==0.8.1
     - pylint==2.7.1
     - readthedocs-sphinx-ext==2.2.0
