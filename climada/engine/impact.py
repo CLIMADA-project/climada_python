@@ -408,7 +408,7 @@ class Impact():
         -------
         pd.DataFrame
             Contains the aggregated data per event.
-            Rows: Hzard events. Columns: Aggregation regions.
+            Rows: Hazard events. Columns: Aggregation regions.
         """
         if self.imp_mat.nnz == 0:
             raise ValueError("The aggregated impact cannot be computed as no"
