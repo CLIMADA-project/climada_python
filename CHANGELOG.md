@@ -18,6 +18,8 @@ Removed:
 
 ### Added
 
+- `Impact.impact_at_reg` method for aggregating impacts per country or custom region [#642](https://github.com/CLIMADA-project/climada_python/pull/642)
+
 ### Changed
 
 ### Fixed
