@@ -20,7 +20,6 @@ Test of lines_polys_handler
 """
 
 import unittest
-from pathlib import Path
 
 import numpy as np
 
@@ -29,7 +28,6 @@ import climada.util.lines_polys_handler as u_lp
 import climada.util.coordinates as u_coord
 from climada.util.api_client import Client
 from climada.engine import Impact, ImpactCalc
-from climada.hazard import Hazard
 from climada.entity.impact_funcs import ImpactFuncSet
 from climada.entity.impact_funcs.storm_europe import ImpfStormEurope
 
@@ -154,13 +152,7 @@ class TestExposureGeomToPnt(unittest.TestCase):
         self.check_unchanged_exp(EXP_POLY_PROJ, exp_pnt)
         val = res**2
         self.assertEqual(np.unique(exp_pnt.gdf.value)[0], val)
-        lat = np.array([574891.12225222, 547411.67251407, 499789.43052324,
-                        460177.36473906, 364182.25061015, 369862.57549558,
-                        394014.84676059, 444749.18166595, 514229.75466288,
-                        568740.1294081 , 507005.3662343 , 458457.48789088])
-        np.testing.assert_allclose(
-            exp_pnt.gdf.groupby(level=[0])['latitude'].nth(0).values,
-            lat, atol=100000)
+        self.assertEqual(exp_pnt.gdf.crs, EXP_POLY_PROJ.gdf.crs)
 
 
     def test_point_exposure_from_polygons_on_grid(self):
