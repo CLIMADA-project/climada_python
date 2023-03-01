@@ -144,7 +144,8 @@ class TestExposureGeomToPnt(unittest.TestCase):
 
         #projected crs, to_meters=TRUE, FIX, dissag_val
         res = 20000
-        EXP_POLY_PROJ = Exposures(GDF_POLY.to_crs(epsg=28992))
+        GDF_POLY_PROJ = GDF_POLY.to_crs(epsg=28992)
+        EXP_POLY_PROJ = Exposures(GDF_POLY_PROJ)
         exp_pnt = u_lp.exp_geom_to_pnt(
             EXP_POLY_PROJ, res=res, to_meters=True,
             disagg_met=u_lp.DisaggMethod.FIX, disagg_val=res**2
