@@ -656,7 +656,8 @@ def _poly_to_pnts(gdf, res, to_meters):
 
     gdf_points = gdf.copy().reset_index(drop=True)
 
-    if to_meters & ~(gdf.geometry.crs.is_projected):
+    # Check if we need to reproject
+    if to_meters and not gdf.geometry.crs.is_projected:
         gdf_points['geometry_pnt'] = gdf_points.apply(
             lambda row: _interp_one_poly_m(row.geometry, res, gdf.crs), axis=1)
     else:
