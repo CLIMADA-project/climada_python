@@ -201,6 +201,8 @@ htmlhelp_basename = 'climadadoc'
 
 # -- Options for LaTeX output --------------------------------------------------
 
+latex_engine = "xelatex"
+
 # The paper size ('letter' or 'a4').
 #latex_paper_size = 'letter'
 

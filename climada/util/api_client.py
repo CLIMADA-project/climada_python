@@ -24,9 +24,8 @@ import hashlib
 import json
 import logging
 from pathlib import Path
-from urllib.parse import quote, unquote
+from urllib.parse import quote, unquote, urlsplit, urlunsplit
 import time
-import socket
 
 import pandas as pd
 from peewee import CharField, DateTimeField, IntegrityError, Model, SqliteDatabase
@@ -244,6 +243,8 @@ class Client():
     """
     MAX_WAITING_PERIOD = 6
     UNLIMITED = 100000
+    DOWNLOAD_TIMEOUT = 3600
+    QUERY_TIMEOUT = 300
 
     class AmbiguousResult(Exception):
         """Custom Exception for Non-Unique Query Result"""
@@ -254,19 +255,17 @@ class Client():
     class NoConnection(Exception):
         """To be raised if there is no internet connection and no cached result."""
 
+    def _online(self) -> bool:
+        """Check if this client can connect to the target URL"""
+        # Use just the base location
+        parse_result = urlsplit(self.url)
+        query_url = urlunsplit((parse_result.scheme, parse_result.netloc, "", "", ""))
 
-    @staticmethod
-    def _is_online(url):
-        host = [x for x in url.split('/')
-                if x not in ['https:', 'http:', '']][0]
-        port = 80 if url.startswith('http://') else 443
-        socket.setdefaulttimeout(1)
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as skt:
-            try:
-                skt.connect((host, port))
-                return True
-            except socket.error:
-                return False
+        try:
+            # NOTE: 'timeout' might not work as intended, depending on OS and network status
+            return requests.head(query_url, timeout=1).status_code == 200
+        except (requests.ConnectionError, requests.Timeout):
+            return False
 
     def __init__(self, cache_enabled=None):
         """Constructor of Client.
@@ -287,7 +286,7 @@ class Client():
         self.url = CONFIG.data_api.url.str().rstrip("/")
         self.chunk_size = CONFIG.data_api.chunk_size.int()
         self.cache = Cacher(cache_enabled)
-        self.online = Client._is_online(self.url)
+        self.online = self._online()
 
     def _request_200(self, url, params=None):
         """Helper method, triaging successfull and failing requests.
@@ -308,7 +307,7 @@ class Client():
             params = dict()
 
         if self.online:
-            page = requests.get(url, params=params)
+            page = requests.get(url, params=params, timeout=Client.QUERY_TIMEOUT)
             if page.status_code != 200:
                 raise Client.NoResult(page.content.decode())
             result = json.loads(page.content.decode())
@@ -529,7 +528,7 @@ class Client():
             path /= unquote(url.split('/')[-1])
         if path.is_file() and not replace:
             raise FileExistsError(path)
-        with requests.get(url, stream=True) as stream:
+        with requests.get(url, stream=True, timeout=Client.DOWNLOAD_TIMEOUT) as stream:
             stream.raise_for_status()
             with open(path, 'wb') as dump:
                 for chunk in stream.iter_content(chunk_size=self.chunk_size):
@@ -538,7 +537,7 @@ class Client():
 
     def _tracked_download(self, remote_url, local_path):
         if local_path.is_dir():
-            raise Exception("tracked download requires a path to a file not a directory")
+            raise ValueError("tracked download requires a path to a file not a directory")
         path_as_str = str(local_path.absolute())
         try:
             dlf = Download.create(url=remote_url,
@@ -550,10 +549,10 @@ class Client():
                 dlf.delete_instance()  # delete entry from database
                 return self._tracked_download(remote_url, local_path)  # and try again
             if dlf.url != remote_url:
-                raise Exception(f"this file ({path_as_str}) has been downloaded from another url"
-                                f" ({dlf.url}), possibly because it belongs to a dataset with a"
-                                " recent version update. Please remove the file or purge the entry"
-                                " from data base before trying again") from ierr
+                raise RuntimeError(f"this file ({path_as_str}) has been downloaded from another"
+                                f" url ({dlf.url}), possibly because it belongs to a dataset with"
+                                " a recent version update. Please remove the file or purge the"
+                                " entry from data base before trying again") from ierr
             return dlf
         try:
             self._download(url=remote_url, path=local_path, replace=True)
@@ -608,7 +607,7 @@ class Client():
             if retries < 1:
                 raise dle
             LOGGER.warning("Download failed: %s, retrying...", dle)
-            time.sleep(self.MAX_WAITING_PERIOD/retries)
+            time.sleep(Client.MAX_WAITING_PERIOD/retries)
             return self._download_file(local_path=local_path, fileinfo=fileinfo, check=check,
                                        retries=retries - 1)
 

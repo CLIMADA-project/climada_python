@@ -127,12 +127,12 @@ class TropCyclone(Hazard):
         category : np.ndarray of int, optional
             For every event, the TC category using the Saffir-Simpson scale:
                 -1 tropical depression
-                 0 tropical storm
-                 1 Hurrican category 1
-                 2 Hurrican category 2
-                 3 Hurrican category 3
-                 4 Hurrican category 4
-                 5 Hurrican category 5
+                0 tropical storm
+                1 Hurrican category 1
+                2 Hurrican category 2
+                3 Hurrican category 3
+                4 Hurrican category 4
+                5 Hurrican category 5
         basin : list of str, optional
             Basin where every event starts:
                 'NA' North Atlantic
