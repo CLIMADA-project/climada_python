@@ -395,11 +395,11 @@ class Impact():
         Parameters
         ----------
         agg_regions : np.array, list (optional)
-            It has a lenght equal to the number of coordinates points in exposure
-            and it reports what macro-regions these points belong to. For example,
+            The length of the array must equal the number of centroids in exposures.
+            It reports what macro-regions these centroids belong to. For example,
             asuming there are three centroids and agg_regions = ['A', 'A', 'B']
             then impact of the first and second centroids will be assigned to
-            region A, whereas impact from the second centroid will be assigned
+            region A, whereas impact from the third centroid will be assigned
             to area B. If no aggregation regions are passed, the method aggregates
             impact at the country (admin_0) level.
             Default is None.
