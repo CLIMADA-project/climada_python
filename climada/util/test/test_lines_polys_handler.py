@@ -183,6 +183,10 @@ class TestExposureGeomToPnt(unittest.TestCase):
         _interp_one_poly_m.assert_called()
         _interp_one_poly.assert_not_called()
 
+        # Reset mocks
+        _interp_one_poly.reset_mock()
+        _interp_one_poly_m.reset_mock()
+
         # Use projected CRS
         EXP_POLY_PROJ = Exposures(GDF_POLY.to_crs(epsg=28992))
         u_lp.exp_geom_to_pnt(
