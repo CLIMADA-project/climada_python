@@ -970,7 +970,9 @@ def _pnts_per_line(length, res):
 
 def _swap_geom_cols(gdf, geom_to, new_geom):
     """
-    Change which column is the geometry column
+    Change which column is the geometry column.
+    Conserves the crs of the original geometry column.
+
     Parameters
     ----------
     gdf : gpd.GeoDataFrame
@@ -987,7 +989,7 @@ def _swap_geom_cols(gdf, geom_to, new_geom):
     """
     gdf_swap = gdf.rename(columns = {'geometry': geom_to})
     gdf_swap.rename(columns = {new_geom: 'geometry'}, inplace=True)
-    gdf_swap.set_geometry('geometry', inplace=True)
+    gdf_swap.set_geometry('geometry', inplace=True, crs=gdf.crs)
     return gdf_swap
 
 
