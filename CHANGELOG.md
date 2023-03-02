@@ -1,30 +1,14 @@
 # Changelog
 
-## Unreleased
+## v3.3.2
 
-Release date: YYYY-MM-DD
-
-Code freeze date: YYYY-MM-DD
+Release date: 2023-03-02
 
 ### Dependency Updates
-
-Added:
-
-Changed:
 
 Removed:
 
 - `pybufrkit` [#662](https://github.com/CLIMADA-project/climada_python/pull/662)
-
-### Added
-
-### Changed
-
-### Fixed
-
-### Deprecated
-
-### Removed
 
 ## v3.3.1
 
