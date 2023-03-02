@@ -20,8 +20,11 @@ Test of lines_polys_handler
 """
 
 import unittest
+from unittest.mock import patch, DEFAULT
 
 import numpy as np
+
+from shapely.geometry import Point
 
 from climada.entity import Exposures
 import climada.util.lines_polys_handler as u_lp
@@ -154,6 +157,43 @@ class TestExposureGeomToPnt(unittest.TestCase):
         self.assertEqual(np.unique(exp_pnt.gdf.value)[0], val)
         self.assertEqual(exp_pnt.gdf.crs, EXP_POLY_PROJ.gdf.crs)
 
+    @patch.multiple(
+        "climada.util.lines_polys_handler",
+        _interp_one_poly=DEFAULT,
+        _interp_one_poly_m=DEFAULT,
+    )
+    def test_point_exposure_from_polygons_reproject_call(
+        self, _interp_one_poly, _interp_one_poly_m
+    ):
+        """Verify that the correct subroutine is called for a reprojected CRS"""
+        # Just have the mocks return an empty geometry
+        _interp_one_poly.return_value = Point(1.0, 1.0)
+        _interp_one_poly_m.return_value = Point(1.0, 1.0)
+
+        # Use geographical CRS
+        EXP_POLY_PROJ = Exposures(GDF_POLY.to_crs(epsg=4326))
+        res = 1
+        u_lp.exp_geom_to_pnt(
+            EXP_POLY_PROJ,
+            res=res,
+            to_meters=True,
+            disagg_met=u_lp.DisaggMethod.FIX,
+            disagg_val=res,
+        )
+        _interp_one_poly_m.assert_called()
+        _interp_one_poly.assert_not_called()
+
+        # Use projected CRS
+        EXP_POLY_PROJ = Exposures(GDF_POLY.to_crs(epsg=28992))
+        u_lp.exp_geom_to_pnt(
+            EXP_POLY_PROJ,
+            res=res,
+            to_meters=True,
+            disagg_met=u_lp.DisaggMethod.FIX,
+            disagg_val=res,
+        )
+        _interp_one_poly_m.assert_not_called()
+        _interp_one_poly.assert_called()
 
     def test_point_exposure_from_polygons_on_grid(self):
         """Test disaggregation of polygons to points on grid"""
