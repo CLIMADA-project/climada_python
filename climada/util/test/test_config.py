@@ -65,7 +65,7 @@ class TestConfig(unittest.TestCase):
         with self.assertRaises(AttributeError) as ve:
             CONFIG.hazard.fire_fly.population.str()
         self.assertIn("there is no 'fire_fly' configured for 'hazard'", str(ve.exception))
-        self.assertIn("check your config files", str(ve.exception))
+        self.assertIn("check your config files: [", str(ve.exception))
 
 
 # Execute Tests
