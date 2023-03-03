@@ -89,7 +89,7 @@ class Config():
         Parameters
         ----------
         name : str, optional
-            the name of the configuration, used only for providing usefule error messages.
+            the name of the configuration, used only for providing sensible error messages.
             Default: None
         root : Config, optional
             the top Config object, required for self referencing str objects,
