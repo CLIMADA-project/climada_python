@@ -95,7 +95,7 @@ class Config():
             the top Config object, required for self referencing str objects,
             if None, it is pointing to self, otherwise it's passed from containing to
             contained.
-            Default: None           
+            Default: None
         val : [float, int, bool, str, list], optional
             the value of the Config in case it's basic, when a dictionary like object is created
             Default: None
