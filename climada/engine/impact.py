@@ -193,8 +193,6 @@ class Impact():
         else:
             self.imp_mat = sparse.csr_matrix(np.empty((0, 0)))
 
-
-
     def calc(self, exposures, impact_funcs, hazard, save_mat=False, assign_centroids=True):
         """This function is deprecated, use ``ImpactCalc.impact`` instead.
         """
@@ -391,6 +389,55 @@ class Impact():
         for year in years:
             year_set[year] = sum(self.at_event[orig_year == year])
         return year_set
+
+    def impact_at_reg(self, agg_regions=None):
+        """Aggregate impact on given aggregation regions. This method works
+        only if Impact.imp_mat was stored during the impact calculation.
+
+        Parameters
+        ----------
+        agg_regions : np.array, list (optional)
+            The length of the array must equal the number of centroids in exposures.
+            It reports what macro-regions these centroids belong to. For example,
+            asuming there are three centroids and agg_regions = ['A', 'A', 'B']
+            then impact of the first and second centroids will be assigned to
+            region A, whereas impact from the third centroid will be assigned
+            to area B. If no aggregation regions are passed, the method aggregates
+            impact at the country (admin_0) level.
+            Default is None.
+
+        Returns
+        -------
+        pd.DataFrame
+            Contains the aggregated data per event.
+            Rows: Hazard events. Columns: Aggregation regions.
+        """
+        if self.imp_mat.nnz == 0:
+            raise ValueError(
+                "The aggregated impact cannot be computed as no Impact.imp_mat was "
+                "stored during the impact calculation"
+            )
+
+        if agg_regions is None:
+            agg_regions = u_coord.country_to_iso(
+                u_coord.get_country_code(self.coord_exp[:, 0], self.coord_exp[:, 1])
+            )
+
+        agg_regions = np.asanyarray(agg_regions)
+        agg_reg_unique = np.unique(agg_regions)
+
+        at_reg_event = np.hstack(
+            [
+                self.imp_mat[:, np.where(agg_regions == reg)[0]].sum(1)
+                for reg in np.unique(agg_reg_unique)
+            ]
+        )
+
+        at_reg_event = pd.DataFrame(
+            at_reg_event, columns=np.unique(agg_reg_unique), index=self.event_id
+        )
+
+        return at_reg_event
 
     def calc_impact_year_set(self,all_years=True, year_range=None):
         """This function is deprecated, use Impact.impact_per_year instead."""

@@ -1,5 +1,41 @@
 # Changelog
 
+## Unreleased
+
+Release date: YYYY-MM-DD
+
+Code freeze date: YYYY-MM-DD
+
+### Dependency Updates
+
+Added:
+
+Changed:
+
+Removed:
+
+### Added
+
+- `Impact.impact_at_reg` method for aggregating impacts per country or custom region [#642](https://github.com/CLIMADA-project/climada_python/pull/642)
+
+### Changed
+
+### Fixed
+
+### Deprecated
+
+### Removed
+
+## v3.3.2
+
+Release date: 2023-03-02
+
+### Dependency Updates
+
+Removed:
+
+- `pybufrkit` [#662](https://github.com/CLIMADA-project/climada_python/pull/662)
+
 ## v3.3.1
 
 Release date: 2023-02-27
