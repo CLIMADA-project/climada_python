@@ -88,13 +88,17 @@ class Config():
         """
         Parameters
         ----------
+        name : str, optional
+            the name of the configuration, used only for providing usefule error messages.
+            Default: None
         root : Config, optional
             the top Config object, required for self referencing str objects,
             if None, it is pointing to self, otherwise it's passed from containing to
             contained.
+            Default: None           
         val : [float, int, bool, str, list], optional
-            the value of the Config in case it's basic, by default None,
-            when a dictionary like object is created
+            the value of the Config in case it's basic, when a dictionary like object is created
+            Default: None
         """
         self._name = name
         if val is not None:
