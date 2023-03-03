@@ -190,7 +190,6 @@ class Cacher():
             [str(a) for a in args] +
             [f"{k}={kwargs[k]}" for k in sorted(kwargs.keys())]
         )
-        print(as_text)
         md5h = hashlib.md5()
         md5h.update(as_text.encode())
         return md5h.hexdigest()

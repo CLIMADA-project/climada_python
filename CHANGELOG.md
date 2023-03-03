@@ -14,8 +14,6 @@ Changed:
 
 Removed:
 
-- `pybufrkit` [#662](https://github.com/CLIMADA-project/climada_python/pull/662)
-
 ### Added
 
 - `Impact.impact_at_reg` method for aggregating impacts per country or custom region [#642](https://github.com/CLIMADA-project/climada_python/pull/642)
@@ -27,6 +25,16 @@ Removed:
 ### Deprecated
 
 ### Removed
+
+## v3.3.2
+
+Release date: 2023-03-02
+
+### Dependency Updates
+
+Removed:
+
+- `pybufrkit` [#662](https://github.com/CLIMADA-project/climada_python/pull/662)
 
 ## v3.3.1
 
