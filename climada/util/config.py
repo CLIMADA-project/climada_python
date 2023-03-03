@@ -84,7 +84,7 @@ class Config():
     def __repr__(self):
         return self.__str__()
 
-    def __init__(self, name, val=None, root=None):
+    def __init__(self, name=None, val=None, root=None):
         """
         Parameters
         ----------
