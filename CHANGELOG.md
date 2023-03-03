@@ -18,9 +18,10 @@ Removed:
 
 - `Impact.impact_at_reg` method for aggregating impacts per country or custom region [#642](https://github.com/CLIMADA-project/climada_python/pull/642)
 
-### Changed
+### Changed 
 
 ### Fixed
+- `util.lines_polys_handler` solve polygon disaggregation issue in metre-based projection   [#666](https://github.com/CLIMADA-project/climada_python/pull/666)
 
 ### Deprecated
 
