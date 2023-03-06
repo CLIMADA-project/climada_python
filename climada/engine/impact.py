@@ -1740,10 +1740,10 @@ class Impact():
     def assign_centroids(self, hazard, distance='euclidean',
                          threshold=u_coord.NEAREST_NEIGHBOR_THRESHOLD):
         """
-        Wrapper for u_coord.assign_haz_centroids():
         Assign for each impact coordinate closest hazard coordinate.
-        -1 used for disatances > threshold in point distances. If raster hazard,
-        -1 used for centroids outside raster.
+        Adds a new attribute to the impact object, ...
+        
+        Uses ``u_coord.assign_centroids_to_gdf()``. See there for details and parameters
 
         Parameters
         ----------
@@ -1758,30 +1758,6 @@ class Impact():
             the index `-1` is assigned.
             Set `threshold` to 0, to disable nearest neighbor matching.
             Default: 100 (km)
-        overwrite: bool
-            If True, overwrite centroids already present. If False, do
-            not assign new centroids. Default is True.
-
-        See Also
-        --------
-        climada.util.coordinates.assign_coordinates: method to associate centroids to
-            impact points
-        climada.util.coordinates.assign_gdf_centroids: method to associate centroids to
-            geodataframe points
-
-        Notes
-        -----
-        The default order of use is:
-            1. if centroid raster is defined, assign impact points to
-            the closest raster point.
-            2. if no raster, assign centroids to the nearest neighbor using
-            euclidian metric.
-        Both cases can introduce inaccuracies for coordinates in lat/lon
-        as distances in degrees differ from distances in meters on the Earth
-        surface, in particular for higher latitude and distances larger than 100km.
-        If more accuracy is needed, please use 'haversine' distance metric.
-        This however is slower for (quasi-)gridded data, and works only for
-        non-gridded data.
         """
 
         haz_type = hazard.tag.haz_type
@@ -1796,8 +1772,8 @@ class Impact():
         geometry = gpd.points_from_xy(coord_df.longitude,coord_df.latitude,crs = self.crs)
         coord_gdf = gpd.GeoDataFrame(coord_df,geometry = geometry)
 
-        #call the assign_gdf_centroids util function
-        coord_gdf[centr_haz] = u_coord.assign_gdf_centroids(coord_gdf, hazard.centroids,
+        #call the assign_centroids_to_gdf util function
+        coord_gdf[centr_haz] = u_coord.assign_centroids_to_gdf(coord_gdf, hazard.centroids,
                                                 distance=distance,
                                                 threshold=threshold)
 

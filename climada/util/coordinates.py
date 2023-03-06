@@ -1057,11 +1057,11 @@ def assign_coordinates(coords, coords_to_assign, distance="euclidean",
                 coords_to_assign, coords[not_assigned_idx_mask], threshold, **kwargs)
     return assigned_idx
 
-def assign_gdf_centroids(coord_gdf, centroids, distance='euclidean',
+def assign_centroids_to_gdf(coord_gdf, centroids, distance='euclidean',
                         threshold=NEAREST_NEIGHBOR_THRESHOLD,test_crs=True):
     """Assign to each gdf coordinate point its closest centroids's coordinate.
     If disatances > threshold in points' distances, -1 is returned.
-    If raster centroids and coordinate point outside raster, -1 is returned.
+    If centroids are in a raster and coordinate point is outside of it ``-1`` is assigned
 
     Parameters
     ----------
@@ -1073,29 +1073,31 @@ def assign_gdf_centroids(coord_gdf, centroids, distance='euclidean',
         Distance to use in case of vector centroids.
         Possible values are "euclidean", "haversine" and "approx".
         Default: "euclidean"
-    threshold : float
+    threshold : float, optional
         If the distance (in km) to the nearest neighbor exceeds `threshold`,
         the index `-1` is assigned.
         Set `threshold` to 0, to disable nearest neighbor matching.
-        Default: 100 (km)
-    test_crs : bool
+        Default: ``NEAREST_NEIGHBOR_THRESHOLD`` (100km)
+    test_crs : bool, optional
         Whether or not to test equal crs from centroids and gdf
         In case of exp.assign_centroids() the crs is not defined within
-        the GeoDataFrame and the crs match is tested there.
+        the GeoDataFrame and the crs match is tested there. Default: True.
 
     See Also
     --------
     climada.util.coordinates.assign_grid_points: method to associate centroids to
-        exposure points when centroids is a raster
+        coordinate points when centroids is a raster
     climada.util.coordinates.assign_coordinates: method to associate centroids to
-        exposure points
+        coordinate points
     Notes
     -----
     The default order of use is:
-        1. if centroid raster is defined, assign exposures points to
-        the closest raster point.
+
+        1. if centroid raster is defined, assign the closest raster point
+        to each gdf coordinate point.
         2. if no raster, assign centroids to the nearest neighbor using
         euclidian metric
+
     Both cases can introduce innacuracies for coordinates in lat/lon
     coordinates as distances in degrees differ from distances in meters
     on the Earth surface, in particular for higher latitude and distances
