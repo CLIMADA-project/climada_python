@@ -23,6 +23,7 @@ import unittest
 from pathlib import Path
 
 from cartopy.io import shapereader
+import pandas as pd
 import geopandas as gpd
 import numpy as np
 from pyproj.crs import CRS as PCRS
@@ -36,6 +37,7 @@ import rasterio.transform
 
 from climada import CONFIG
 from climada.util.constants import HAZ_DEMO_FL, DEF_CRS, ONE_LAT_KM, DEMO_DIR
+from climada.hazard.base import Centroids
 import climada.util.coordinates as u_coord
 
 DATA_DIR = CONFIG.util.test_data.dir()
@@ -515,6 +517,103 @@ class TestAssign(unittest.TestCase):
         out = u_coord.assign_grid_points(xy[:, 0], xy[:, 1], width, height, transform)
         np.testing.assert_array_equal(out, [120, -1])
 
+    def test_assign_centroids_to_gdf(self):
+        """Test assign_centroids_to_gdf function."""
+        #Test 1: Raster data
+        meta = {
+            'count': 1, 'crs': DEF_CRS,
+            'width': 20, 'height': 10,
+            'transform': rasterio.Affine(1.5, 0.0, -20, 0.0, -1.4, 8)
+        }
+        centroids=Centroids(meta=meta)
+        df = pd.DataFrame({
+            'longitude': np.array([
+                -20.1, -20.0, -19.8, -19.0, -18.6, -18.4,
+                -19.0, -19.0, -19.0, -19.0,
+                -20.1, 0.0, 10.1, 10.1, 10.1, 0.0, -20.2, -20.3,
+                -6.4, 9.8, 0.0,
+                ]),
+            'latitude': np.array([
+                7.3, 7.3, 7.3, 7.3, 7.3, 7.3,
+                8.1, 7.9, 6.7, 6.5,
+                8.1, 8.2, 8.3, 0.0, -6.1, -6.2, -6.3, 0.0,
+                -1.9, -1.7, 0.0,
+                ])
+        })
+        gdf = gpd.GeoDataFrame(df,geometry=gpd.points_from_xy(df.longitude, df.latitude),
+                               crs = DEF_CRS)
+        assigned = u_coord.assign_centroids_to_gdf(gdf,centroids)
+
+        expected_result = [
+            # constant y-value, varying x-value
+            -1, 0, 0, 0, 0, 1,
+            # constant x-value, varying y-value
+            -1, 0, 0, 20,
+            # out of bounds: topleft, top, topright, right, bottomright, bottom, bottomleft, left
+            -1, -1, -1, -1, -1, -1, -1, -1,
+            # some explicit points within the raster
+            149, 139, 113,
+        ]
+        np.testing.assert_array_equal(assigned,expected_result)
+
+        # Test 2: Vector data (copied from test_assign_coordinates)
+        # note that the coordinates are in lat/lon
+        gdf_coords = np.array([(0.2, 2), (0, 0), (0, 2), (2.1, 3), (1, 1), (-1, 1), (0, 179.9)])
+        df = pd.DataFrame({
+            'longitude': gdf_coords[:, 1],
+            'latitude': gdf_coords[:, 0]
+        })
+        gdf = gpd.GeoDataFrame(df,geometry=gpd.points_from_xy(df.longitude, df.latitude),
+                               crs = DEF_CRS)
+
+        coords_to_assign = np.array([(2.1, 3), (0, 0), (0, 2), (0.9, 1.0), (0, -179.9)])
+        centroids = Centroids(
+            lat=coords_to_assign[:, 0],
+            lon=coords_to_assign[:, 1],
+            geometry = gpd.GeoSeries(crs=DEF_CRS)
+        )
+        centroids_empty = Centroids()
+
+        expected_results = [
+            # test with different thresholds (in km)
+            (100, [2, 1, 2, 0, 3, -1, 4]),
+            (20, [-1, 1, 2, 0, 3, -1, -1]),
+            (0, [-1, 1, 2, 0, -1, -1, -1]),
+        ]
+
+        for distance in ["euclidean", "haversine", "approx"]:
+            for thresh, result in expected_results:
+                assigned = u_coord.assign_centroids_to_gdf(
+                    gdf, centroids, distance=distance, threshold=thresh)
+                np.testing.assert_array_equal(assigned, result)
+
+            #test empty centroids
+            result = [-1, -1, -1, -1, -1, -1, -1]
+            assigned_idx = u_coord.assign_centroids_to_gdf(
+                    gdf, centroids_empty, distance=distance, threshold=thresh)
+            np.testing.assert_array_equal(assigned_idx, result)
+
+        # Test 3: non matching crs
+        df = pd.DataFrame({
+            'longitude': [10, 20, 30],
+            'latitude': [50, 60, 70]
+        })
+        gdf = gpd.GeoDataFrame(df,geometry=gpd.points_from_xy(df.longitude, df.latitude),
+                               crs = 'EPSG:4326')
+
+        coords_to_assign = np.array([(2.1, 3), (0, 0), (0, 2), (0.9, 1.0), (0, -179.9)])
+        centroids = Centroids(
+            lat=[1100000,1200000],
+            lon=[2500000,2600000],
+            geometry = gpd.GeoSeries(crs='EPSG:2056')
+        )
+        try:
+            assigned = u_coord.assign_centroids_to_gdf(
+                gdf, centroids, distance=distance, threshold=thresh)
+        except ValueError as err:
+            assert(str(err)=='Set hazard and GeoDataFrame to same CRS first!')
+
+        
     def test_dist_sqr_approx_pass(self):
         """Test approximate distance helper function."""
         lats1 = 45.5
