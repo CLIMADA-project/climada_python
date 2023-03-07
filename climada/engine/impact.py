@@ -1777,8 +1777,8 @@ class Impact():
                                                 distance=distance,
                                                 threshold=threshold)
 
-        #create new impact attribute with hazard centroids
-        setattr(self,f'centr_{hazard.tag.haz_type}' , coord_df[f'centr_{hazard.tag.haz_type}'])
+        #return array of matched impact coordinates with hazard centroids
+        return coord_df[centr_haz]
 
 @dataclass
 class ImpactFreqCurve():

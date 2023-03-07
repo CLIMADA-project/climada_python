@@ -827,8 +827,7 @@ class TestAssignCentroids(unittest.TestCase):
         fake_aai_agg = np.sum(fake_eai_exp)
         imp = Impact.from_eih(exp, ENT.impact_funcs, HAZ,
                               fake_at_event, fake_eai_exp, fake_aai_agg)
-        imp.assign_centroids(HAZ)
-        imp_centr = getattr(imp,f'centr_{HAZ.tag.haz_type}')
+        imp_centr = imp.assign_centroids(HAZ)
         np.testing.assert_array_equal(imp_centr,exp.gdf.centr_TC)
 
 
