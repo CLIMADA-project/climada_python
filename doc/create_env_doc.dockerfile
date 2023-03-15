@@ -4,7 +4,7 @@ ENV PATH="/root/miniconda3/bin:${PATH}"
 ARG PATH="/root/miniconda3/bin:${PATH}"
 
 # Specify Miniconda version to download
-ARG MINICONDA=Miniconda3-py38_4.12.0-Linux-x86_64.sh
+ARG MINICONDA=Miniconda3-py39_22.11.1-1-Linux-x86_64.sh
 
 # Install wget for downloading Miniconda
 RUN apt-get update && apt-get install -y wget && rm -rf /var/lib/apt/lists/*

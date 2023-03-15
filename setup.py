@@ -13,7 +13,7 @@ with open(here.joinpath('README.md'), encoding='utf-8') as f:
 setup(
     name='climada',
 
-    version='3.2.0-dev',
+    version='3.3.2-dev',
 
     description='CLIMADA in Python',
 
@@ -32,7 +32,7 @@ setup(
         #   4 - Beta
         #   5 - Production/Stable
         'Development Status :: 4 - Beta',
-        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
         'Topic :: Scientific/Engineering :: Atmospheric Science',
         'Topic :: Scientific/Engineering :: GIS',
         'Topic :: Scientific/Engineering :: Mathematics',
@@ -62,12 +62,12 @@ setup(
         'peewee',
         'pillow',
         'pint',
-        'pybufrkit',
         'pycountry',
         'rasterio',
         'salib',
         'scikit-learn',
         'statsmodels',
+        'sparse',
         'tables',
         'tabulate',
         'tqdm',

@@ -38,8 +38,8 @@ class DisaggMethod(Enum):
     """
     Disaggregation Method for the ... function
 
-	DIV : the geometry's distributed to equal parts over all its interpolated points
-	FIX : the geometry's value is replicated over all its interpolated points
+    DIV : the geometry's distributed to equal parts over all its interpolated points
+    FIX : the geometry's value is replicated over all its interpolated points
     """
     DIV = 'div'
     FIX = 'fix'
@@ -49,7 +49,7 @@ class AggMethod(Enum):
     """
     Aggregation Method for the aggregate_impact_mat function
 
-	SUM : the impact is summed over all points in the polygon/line
+    SUM : the impact is summed over all points in the polygon/line
     """
     SUM = 'sum'
 
@@ -656,7 +656,8 @@ def _poly_to_pnts(gdf, res, to_meters):
 
     gdf_points = gdf.copy().reset_index(drop=True)
 
-    if to_meters:
+    # Check if we need to reproject
+    if to_meters and not gdf.geometry.crs.is_projected:
         gdf_points['geometry_pnt'] = gdf_points.apply(
             lambda row: _interp_one_poly_m(row.geometry, res, gdf.crs), axis=1)
     else:
@@ -969,7 +970,9 @@ def _pnts_per_line(length, res):
 
 def _swap_geom_cols(gdf, geom_to, new_geom):
     """
-    Change which column is the geometry column
+    Change which column is the geometry column.
+    Conserves the crs of the original geometry column.
+
     Parameters
     ----------
     gdf : gpd.GeoDataFrame
@@ -986,7 +989,7 @@ def _swap_geom_cols(gdf, geom_to, new_geom):
     """
     gdf_swap = gdf.rename(columns = {'geometry': geom_to})
     gdf_swap.rename(columns = {new_geom: 'geometry'}, inplace=True)
-    gdf_swap.set_geometry('geometry', inplace=True)
+    gdf_swap.set_geometry('geometry', inplace=True, crs=gdf.crs)
     return gdf_swap
 
 
