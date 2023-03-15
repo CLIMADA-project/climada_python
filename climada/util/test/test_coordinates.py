@@ -607,12 +607,11 @@ class TestAssign(unittest.TestCase):
             lon=[2500000,2600000],
             geometry = gpd.GeoSeries(crs='EPSG:2056')
         )
-        try:
-            assigned = u_coord.assign_centroids_to_gdf(
-                gdf, centroids, distance=distance, threshold=thresh)
-        except ValueError as err:
-            assert(str(err)=='Set hazard and GeoDataFrame to same CRS first!')
 
+        with self.assertRaises(ValueError) as cm:
+            u_coord.assign_centroids_to_gdf(gdf, centroids)
+        self.assertIn('Set hazard and GeoDataFrame to same CRS first!',
+                      str(cm.exception))
         
     def test_dist_sqr_approx_pass(self):
         """Test approximate distance helper function."""
