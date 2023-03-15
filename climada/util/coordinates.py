@@ -1058,7 +1058,7 @@ def assign_coordinates(coords, coords_to_assign, distance="euclidean",
     return assigned_idx
 
 def assign_centroids_to_gdf(coord_gdf, centroids, distance='euclidean',
-                        threshold=NEAREST_NEIGHBOR_THRESHOLD,test_crs=True):
+                        threshold=NEAREST_NEIGHBOR_THRESHOLD):
     """Assign to each gdf coordinate point its closest centroids's coordinate.
     If disatances > threshold in points' distances, -1 is returned.
     If centroids are in a raster and coordinate point is outside of it ``-1`` is assigned
@@ -1078,10 +1078,6 @@ def assign_centroids_to_gdf(coord_gdf, centroids, distance='euclidean',
         the index `-1` is assigned.
         Set `threshold` to 0, to disable nearest neighbor matching.
         Default: ``NEAREST_NEIGHBOR_THRESHOLD`` (100km)
-    test_crs : bool, optional
-        Whether or not to test equal crs from centroids and gdf
-        In case of exp.assign_centroids() the crs is not defined within
-        the GeoDataFrame and the crs match is tested there. Default: True.
 
     See Also
     --------
@@ -1106,8 +1102,13 @@ def assign_centroids_to_gdf(coord_gdf, centroids, distance='euclidean',
     and works only for non-gridded data.
     """
 
-    if test_crs and (not equal_crs(coord_gdf.crs, centroids.crs)):
-        raise ValueError('Set hazard and GeoDataFrame to same CRS first!')
+    try:
+        if not equal_crs(coord_gdf.crs, centroids.crs):
+            raise ValueError('Set hazard and GeoDataFrame to same CRS first!')
+    except AttributeError:
+        # If the coord_gdf has no crs defined (or no valid geometry column), 
+        # no error is raised and it is assumed that the user set the crs correctly
+        pass
 
     if centroids.meta:
         assigned = assign_grid_points(

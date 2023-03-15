@@ -368,10 +368,10 @@ class Exposures():
     def assign_centroids(self, hazard, distance='euclidean',
                          threshold=u_coord.NEAREST_NEIGHBOR_THRESHOLD,
                          overwrite=True):
-        """Assign for each exposure coordinate closest hazard coordinate. 
-        The Exposures ``gdf`` will be altered by this method. It will have an additional 
+        """Assign for each exposure coordinate closest hazard coordinate.
+        The Exposures ``gdf`` will be altered by this method. It will have an additional
         (or modified) column named ``centr_[hazard.HAZ_TYPE]`` after the call.
-        
+
         Uses the utility function ``u_coord.assign_centroids_to_gdf``. See there for details
         and parameters.
 
@@ -428,12 +428,14 @@ class Exposures():
 
         LOGGER.info('Matching %s exposures with %s centroids.',
                     str(self.gdf.shape[0]), str(hazard.centroids.size))
+
         if not u_coord.equal_crs(self.crs, hazard.centroids.crs):
             raise ValueError('Set hazard and exposure to same CRS first!')
+        # Note: equal_crs is tested here, rather than within assign_centroids_to_gdf(),
+        # because exp.gdf.crs may not be defined, but exp.crs must be defined.
 
         assigned_centr = u_coord.assign_centroids_to_gdf(self.gdf, hazard.centroids,
-                        distance=distance,
-                        threshold=threshold,test_crs=False)
+                        distance=distance, threshold=threshold)
         self.gdf[centr_haz] = assigned_centr
 
 
