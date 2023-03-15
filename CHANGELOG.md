@@ -20,6 +20,8 @@ Removed:
 
 ### Changed 
 
+- Improved error messages from `climada.CONFIG` in case of missing configuration values [#670](https://github.com/CLIMADA-project/climada_python/pull/670)
+
 ### Fixed
 - `util.lines_polys_handler` solve polygon disaggregation issue in metre-based projection   [#666](https://github.com/CLIMADA-project/climada_python/pull/666)
 
