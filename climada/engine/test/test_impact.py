@@ -900,7 +900,7 @@ class TestAssignCentroids(unittest.TestCase):
         imp = Impact.from_eih(exp, ENT.impact_funcs, HAZ,
                               fake_at_event, fake_eai_exp, fake_aai_agg)
         imp_centr = imp.assign_centroids(HAZ)
-        np.testing.assert_array_equal(imp_centr,exp.gdf.centr_TC)
+        np.testing.assert_array_equal(imp_centr, exp.gdf.centr_TC)
 
 
 class TestImpactH5IO(unittest.TestCase):

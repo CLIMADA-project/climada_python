@@ -525,7 +525,7 @@ class TestAssign(unittest.TestCase):
             'width': 20, 'height': 10,
             'transform': rasterio.Affine(1.5, 0.0, -20, 0.0, -1.4, 8)
         }
-        centroids=Centroids(meta=meta)
+        centroids = Centroids(meta=meta)
         df = pd.DataFrame({
             'longitude': np.array([
                 -20.1, -20.0, -19.8, -19.0, -18.6, -18.4,
@@ -541,7 +541,7 @@ class TestAssign(unittest.TestCase):
                 ])
         })
         gdf = gpd.GeoDataFrame(df,geometry=gpd.points_from_xy(df.longitude, df.latitude),
-                               crs = DEF_CRS)
+                               crs=DEF_CRS)
         assigned = u_coord.assign_centroids_to_gdf(gdf,centroids)
 
         expected_result = [
@@ -564,7 +564,7 @@ class TestAssign(unittest.TestCase):
             'latitude': gdf_coords[:, 0]
         })
         gdf = gpd.GeoDataFrame(df,geometry=gpd.points_from_xy(df.longitude, df.latitude),
-                               crs = DEF_CRS)
+                               crs=DEF_CRS)
 
         coords_to_assign = np.array([(2.1, 3), (0, 0), (0, 2), (0.9, 1.0), (0, -179.9)])
         centroids = Centroids(
