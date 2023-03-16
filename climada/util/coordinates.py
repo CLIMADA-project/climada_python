@@ -1106,7 +1106,7 @@ def assign_centroids_to_gdf(coord_gdf, centroids, distance='euclidean',
         if not equal_crs(coord_gdf.crs, centroids.crs):
             raise ValueError('Set hazard and GeoDataFrame to same CRS first!')
     except AttributeError:
-        # If the coord_gdf has no crs defined (or no valid geometry column), 
+        # If the coord_gdf has no crs defined (or no valid geometry column),
         # no error is raised and it is assumed that the user set the crs correctly
         pass
 

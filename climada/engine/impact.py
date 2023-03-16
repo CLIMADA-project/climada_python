@@ -1789,7 +1789,7 @@ class Impact():
         """
         Assign for each impact coordinate closest hazard coordinate.
         Adds a new attribute to the impact object, ...
-        
+
         Uses ``u_coord.assign_centroids_to_gdf()``. See there for details and parameters
 
         Parameters
@@ -1816,13 +1816,13 @@ class Impact():
 
         #create geodataframe from coordinates
         coord_df = pd.DataFrame(self.coord_exp, columns=['latitude', 'longitude'])
-        geometry = gpd.points_from_xy(coord_df.longitude,coord_df.latitude,crs = self.crs)
-        coord_gdf = gpd.GeoDataFrame(coord_df,geometry = geometry)
+        geometry = gpd.points_from_xy(coord_df.longitude, coord_df.latitude, crs=self.crs)
+        coord_gdf = gpd.GeoDataFrame(coord_df, geometry=geometry)
 
         #call the assign_centroids_to_gdf util function
         coord_gdf[centr_haz] = u_coord.assign_centroids_to_gdf(coord_gdf, hazard.centroids,
-                                                distance=distance,
-                                                threshold=threshold)
+                                                               distance=distance,
+                                                               threshold=threshold)
 
         #return array of matched impact coordinates with hazard centroids
         return coord_df[centr_haz]
