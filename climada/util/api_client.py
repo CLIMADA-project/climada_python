@@ -83,6 +83,8 @@ class DataTypeInfo():
     status: str
     description:str
     properties:list  # of dict
+    key_reference:list = None
+    version_notes:list = None
 
 
 @dataclass
@@ -371,7 +373,7 @@ class Client():
         -------
         list of DatasetInfo
         """
-        url = f'{self.url}/dataset'
+        url = f'{self.url}/dataset/'
         params = {
             'data_type': data_type,
             'name': name,
@@ -458,7 +460,7 @@ class Client():
         NoResult
             if the uuid is not valid
         """
-        url = f'{self.url}/dataset/{uuid}'
+        url = f'{self.url}/dataset/{uuid}/'
         return DatasetInfo.from_json(self._request_200(url))
 
     def list_data_type_infos(self, data_type_group=None):
@@ -474,7 +476,7 @@ class Client():
         -------
         list of DataTypeInfo
         """
-        url = f'{self.url}/data_type'
+        url = f'{self.url}/data_type/'
         params = {'data_type_group': data_type_group} \
             if data_type_group else {}
         return [DataTypeInfo(**jobj) for jobj in self._request_200(url, params=params)]
@@ -496,7 +498,7 @@ class Client():
         NoResult
             if there is no such data type registered
         """
-        url = f'{self.url}/data_type/{quote(data_type)}'
+        url = f'{self.url}/data_type/{quote(data_type)}/'
         return DataTypeInfo(**self._request_200(url))
 
     def _download(self, url, path, replace=False):
