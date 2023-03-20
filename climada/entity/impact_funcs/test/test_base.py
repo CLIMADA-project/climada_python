@@ -39,24 +39,29 @@ class TestInterpolation(unittest.TestCase):
     def test_set_step(self):
         """Check default impact function: step function"""
         inten = (0, 5, 10)
-        imp_fun = ImpactFunc.from_step_impf(inten)
+        imp_fun = ImpactFunc.from_step_impf(
+            intensity=inten, haz_type='TC', intensity_unit='m/s')
         self.assertTrue(np.array_equal(imp_fun.paa, np.ones(4)))
         self.assertTrue(np.array_equal(imp_fun.mdd, np.array([0, 0, 1, 1])))
         self.assertTrue(np.array_equal(imp_fun.intensity, np.array([0, 5, 5, 10])))
+        self.assertEqual(imp_fun.haz_type, 'TC')
+        self.assertEqual(imp_fun.intensity_unit, 'm/s')
 
     def test_set_sigmoid(self):
         """Check default impact function: sigmoid function"""
         inten = (0, 100, 5)
-        imp_fun = ImpactFunc.from_sigmoid_impf(inten, L=1.0, k=2., x0=50.)
+        imp_fun = ImpactFunc.from_sigmoid_impf(
+            inten, L=1.0, k=2., x0=50., haz_type='RF', name='sigmoid impf')
         self.assertTrue(np.array_equal(imp_fun.paa, np.ones(20)))
         self.assertEqual(imp_fun.mdd[10], 0.5)
         self.assertEqual(imp_fun.mdd[-1], 1.0)
         self.assertTrue(np.array_equal(imp_fun.intensity, np.arange(0, 100, 5)))
+        self.assertEqual(imp_fun.haz_type, 'RF')
+        self.assertEqual(imp_fun.name, 'sigmoid impf')
+
+
 
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestInterpolation)
     unittest.TextTestRunner(verbosity=2).run(TESTS)
-
-
-
