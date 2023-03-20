@@ -23,6 +23,7 @@ import unittest
 from unittest.mock import patch, DEFAULT
 
 import numpy as np
+import copy
 
 from shapely.geometry import Point
 
@@ -41,6 +42,7 @@ from climada.entity.impact_funcs.storm_europe import ImpfStormEurope
 HAZ = Client().get_hazard('storm_europe', name='test_haz_WS_nl', status='test_dataset')
 
 EXP_POLY = Client().get_exposures('base', name='test_polygon_exp', status='test_dataset')
+EXP_POLY.gdf['impf_WS'] = 2
 GDF_POLY = EXP_POLY.gdf
 
 EXP_LINE = Client().get_exposures('base', name='test_line_exp', status='test_dataset')
@@ -50,7 +52,9 @@ EXP_POINT = Client().get_exposures('base', name='test_point_exp', status='test_d
 GDF_POINT = EXP_POINT.gdf
 
 IMPF = ImpfStormEurope.from_welker()
-IMPF_SET = ImpactFuncSet([IMPF])
+IMPF2 = copy.deepcopy(IMPF)
+IMPF2.id = 2
+IMPF_SET = ImpactFuncSet([IMPF, IMPF2])
 
 COL_CHANGING = ['value', 'latitude', 'longitude', 'geometry', 'geometry_orig']
 
