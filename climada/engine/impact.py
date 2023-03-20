@@ -1810,10 +1810,6 @@ class Impact():
         haz_type = hazard.tag.haz_type
         centr_haz = 'centr_' + haz_type
 
-        #Assert that the imp crs is epsg:4326, as it is required by the u_coord methods
-        if not u_coord.equal_crs(self.crs, 'EPSG:4326'):
-            raise ValueError('Set Impact to lat/lon crs (EPSG:4326)!')
-
         #create geodataframe from coordinates
         coord_df = pd.DataFrame(self.coord_exp, columns=['latitude', 'longitude'])
         geometry = gpd.points_from_xy(coord_df.longitude, coord_df.latitude, crs=self.crs)
