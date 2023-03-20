@@ -96,7 +96,7 @@ class ImpactFunc():
         self.mdd = mdd if mdd is not None else np.array([])
         self.paa = paa if paa is not None else np.array([])
 
-    def calc_mdr(self, inten):
+    def calc_mdr(self, inten: Union[float, np.ndarray]) -> np.ndarray:
         """Interpolate impact function to a given intensity.
 
         Parameters
@@ -162,8 +162,14 @@ class ImpactFunc():
             return
 
     @classmethod
-    def from_step_impf(cls, intensity, haz_type, mdd=(0, 1), paa=(1, 1),
-        impf_id=1, **kwargs):
+    def from_step_impf(
+        cls,
+        intensity: tuple[float, float, float],
+        haz_type: str,
+        mdd: tuple[float, float] = (0, 1),
+        paa: tuple[float, float] = (1, 1),
+        impf_id: int = 1,
+        **kwargs):
 
         """ Step function type impact function.
 
@@ -211,7 +217,15 @@ class ImpactFunc():
         self.__dict__ = ImpactFunc.from_step_impf(*args, **kwargs).__dict__
 
     @classmethod
-    def from_sigmoid_impf(cls, intensity, L, k, x0, haz_type, impf_id=1, **kwargs):
+    def from_sigmoid_impf(
+        cls,
+        intensity: tuple[float, float, float],
+        L: float,
+        k: float,
+        x0: float,
+        haz_type: str,
+        impf_id: int = 1,
+        **kwargs):
         """Sigmoid type impact function hinging on three parameter.
 
         This type of impact function is very flexible for any sort of study,
