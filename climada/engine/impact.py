@@ -1673,7 +1673,7 @@ class Impact():
         return sel_ev
 
     def _selected_exposures_idx(self, coord_exp):
-        assigned_idx = u_coord.assign_coordinates(self.coord_exp, coord_exp, threshold=0)
+        assigned_idx = u_coord.match_coordinates(self.coord_exp, coord_exp, threshold=0)
         sel_exp = (assigned_idx >= 0).nonzero()[0]
         if sel_exp.size == 0:
             LOGGER.warning("No exposure coordinates match the selection.")

@@ -1091,9 +1091,9 @@ def match_centroids(coord_gdf, centroids, distance='euclidean',
 
     See Also
     --------
-    climada.util.coordinates.assign_grid_points: method to associate centroids to
+    climada.util.coordinates.match_grid_points: method to associate centroids to
         coordinate points when centroids is a raster
-    climada.util.coordinates.assign_coordinates: method to associate centroids to
+    climada.util.coordinates.match_coordinates: method to associate centroids to
         coordinate points
 
     Notes

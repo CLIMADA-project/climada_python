@@ -397,9 +397,9 @@ class Exposures():
 
         See Also
         --------
-        climada.util.coordinates.assign_grid_points: method to associate centroids to
+        climada.util.coordinates.match_grid_points: method to associate centroids to
             exposure points when centroids is a raster
-        climada.util.coordinates.assign_coordinates:
+        climada.util.coordinates.match_coordinates:
             method to associate centroids to exposure points
         Notes
         -----
