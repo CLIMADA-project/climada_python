@@ -18,6 +18,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 import logging
 import copy
 from enum import Enum
+import math
 
 import cartopy.crs as ccrs
 import geopandas as gpd
@@ -931,9 +932,14 @@ def _line_to_pnts(gdf_lines, res, to_meters):
         line_lengths = gdf_lines.length
 
     line_fractions = [
-        np.linspace(0, 1, num=_pnts_per_line(length, res))
+        _line_fraction(length, res)
         for length in line_lengths
         ]
+
+    # line_fractions = [
+    #     np.linspace(0, 1, num=_pnts_per_line(length, res))
+    #     for length in line_lengths
+    #     ]
 
     gdf_points['geometry_pnt'] = [
         shgeom.MultiPoint([
@@ -951,6 +957,31 @@ def _line_to_pnts(gdf_lines, res, to_meters):
     return gdf_points
 
 
+def _line_fraction(length, res):
+    """
+    Comoute the fraction in which to divide a line of given length at given resolution
+
+    Parameters
+    ----------
+    length : float
+        Length of a string
+    res : float
+        Resolution (length of a string element)
+
+    Returns
+    -------
+    np.ndarray
+        Array of the fraction at which to divide the string of given length
+        into points at the chosen resolution.
+
+    """
+    nb_points = _pnts_per_line(length, res)
+    if nb_points == 1:
+        return np.array([0.5])
+    start = np.abs(length - (nb_points-1)*res) /2
+    return np.arange(start, length, res) / length
+
+
 def _pnts_per_line(length, res):
     """Calculate number of points fitting along a line, given a certain
     resolution (spacing) res between points.
@@ -965,7 +996,7 @@ def _pnts_per_line(length, res):
     int
         Number of points along line
     """
-    return int(np.ceil(length / res) + 1)
+    return int(max(np.round(length / res), 1))
 
 
 def _swap_geom_cols(gdf, geom_to, new_geom):
