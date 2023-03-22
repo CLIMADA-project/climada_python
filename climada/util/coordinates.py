@@ -1085,6 +1085,7 @@ def assign_centroids_to_gdf(coord_gdf, centroids, distance='euclidean',
         coordinate points when centroids is a raster
     climada.util.coordinates.assign_coordinates: method to associate centroids to
         coordinate points
+
     Notes
     -----
     The default order of use is:

@@ -1787,10 +1787,9 @@ class Impact():
     def assign_centroids(self, hazard, distance='euclidean',
                          threshold=u_coord.NEAREST_NEIGHBOR_THRESHOLD):
         """
-        Assign for each impact coordinate closest hazard coordinate.
-        Adds a new attribute to the impact object, ...
-
-        Uses ``u_coord.assign_centroids_to_gdf()``. See there for details and parameters
+        Finds the closest hazard centroid for each impact coordinate.
+        Creates a temporary GeoDataFrame and uses ``u_coord.assign_centroids_to_gdf()``.
+        See there for details and parameters
 
         Parameters
         ----------
@@ -1805,6 +1804,11 @@ class Impact():
             the index `-1` is assigned.
             Set `threshold` to 0, to disable nearest neighbor matching.
             Default: 100 (km)
+
+        Returns
+        -------
+        np.array
+            array of closest Hazard centroids, aligned with the Impact's `coord_exp` array
         """
 
         haz_type = hazard.tag.haz_type
