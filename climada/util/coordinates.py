@@ -924,7 +924,12 @@ def get_region_gridpoints(countries=None, regions=None, resolution=150,
         lat, lon = [ar.ravel() for ar in [lat, lon]]
     return lat, lon
 
-def assign_grid_points(x, y, grid_width, grid_height, grid_transform):
+def assign_grid_points(*args, **kwargs):
+    """This function has been renamed, use ``match_grid_points`` instead."""
+    LOGGER.warning("This function has been renamed, use match_grid_points instead.")
+    return match_grid_points(*args, **kwargs)
+
+def match_grid_points(x, y, grid_width, grid_height, grid_transform):
     """To each coordinate in `x` and `y`, assign the closest centroid in the given raster grid
 
     Make sure that your grid specification is relative to the same coordinate reference system as
@@ -961,7 +966,12 @@ def assign_grid_points(x, y, grid_width, grid_height, grid_transform):
     assigned[(y_i < 0) | (y_i >= grid_height)] = -1
     return assigned
 
-def assign_coordinates(coords, coords_to_assign, distance="euclidean",
+def assign_coordinates(*args, **kwargs):
+    """This function has been renamed, use ``match_coordinates`` instead."""
+    LOGGER.warning("This function has been renamed, use match_coordinates instead.")
+    return match_coordinates(*args, **kwargs)
+
+def match_coordinates(coords, coords_to_assign, distance="euclidean",
                        threshold=NEAREST_NEIGHBOR_THRESHOLD, **kwargs):
     """To each coordinate in `coords`, assign a matching coordinate in `coords_to_assign`
 
@@ -1057,8 +1067,8 @@ def assign_coordinates(coords, coords_to_assign, distance="euclidean",
                 coords_to_assign, coords[not_assigned_idx_mask], threshold, **kwargs)
     return assigned_idx
 
-def assign_centroids_to_gdf(coord_gdf, centroids, distance='euclidean',
-                        threshold=NEAREST_NEIGHBOR_THRESHOLD):
+def match_centroids(coord_gdf, centroids, distance='euclidean',
+                    threshold=NEAREST_NEIGHBOR_THRESHOLD):
     """Assign to each gdf coordinate point its closest centroids's coordinate.
     If disatances > threshold in points' distances, -1 is returned.
     If centroids are in a raster and coordinate point is outside of it ``-1`` is assigned
@@ -1112,12 +1122,12 @@ def assign_centroids_to_gdf(coord_gdf, centroids, distance='euclidean',
         pass
 
     if centroids.meta:
-        assigned = assign_grid_points(
+        assigned = match_grid_points(
             coord_gdf.longitude.values, coord_gdf.latitude.values,
             centroids.meta['width'], centroids.meta['height'],
             centroids.meta['transform'])
     else:
-        assigned = assign_coordinates(
+        assigned = match_coordinates(
             np.stack([coord_gdf.latitude.values, coord_gdf.longitude.values], axis=1),
             centroids.coord, distance=distance, threshold=threshold)
     return assigned

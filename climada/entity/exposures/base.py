@@ -372,7 +372,7 @@ class Exposures():
         The Exposures ``gdf`` will be altered by this method. It will have an additional
         (or modified) column named ``centr_[hazard.HAZ_TYPE]`` after the call.
 
-        Uses the utility function ``u_coord.assign_centroids_to_gdf``. See there for details
+        Uses the utility function ``u_coord.match_centroids``. See there for details
         and parameters.
 
         The value -1 is used for distances larger than ``threshold`` in point distances.
@@ -431,10 +431,10 @@ class Exposures():
 
         if not u_coord.equal_crs(self.crs, hazard.centroids.crs):
             raise ValueError('Set hazard and exposure to same CRS first!')
-        # Note: equal_crs is tested here, rather than within assign_centroids_to_gdf(),
+        # Note: equal_crs is tested here, rather than within match_centroids(),
         # because exp.gdf.crs may not be defined, but exp.crs must be defined.
 
-        assigned_centr = u_coord.assign_centroids_to_gdf(self.gdf, hazard.centroids,
+        assigned_centr = u_coord.match_centroids(self.gdf, hazard.centroids,
                         distance=distance, threshold=threshold)
         self.gdf[centr_haz] = assigned_centr
 

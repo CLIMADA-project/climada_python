@@ -1784,11 +1784,11 @@ class Impact():
             **kwargs,
         )
 
-    def assign_centroids(self, hazard, distance='euclidean',
-                         threshold=u_coord.NEAREST_NEIGHBOR_THRESHOLD):
+    def match_centroids(self, hazard, distance='euclidean',
+                        threshold=u_coord.NEAREST_NEIGHBOR_THRESHOLD):
         """
         Finds the closest hazard centroid for each impact coordinate.
-        Creates a temporary GeoDataFrame and uses ``u_coord.assign_centroids_to_gdf()``.
+        Creates a temporary GeoDataFrame and uses ``u_coord.match_centroids()``.
         See there for details and parameters
 
         Parameters
@@ -1811,21 +1811,11 @@ class Impact():
             array of closest Hazard centroids, aligned with the Impact's `coord_exp` array
         """
 
-        haz_type = hazard.tag.haz_type
-        centr_haz = 'centr_' + haz_type
-
-        #create geodataframe from coordinates
-        coord_df = pd.DataFrame(self.coord_exp, columns=['latitude', 'longitude'])
-        geometry = gpd.points_from_xy(coord_df.longitude, coord_df.latitude, crs=self.crs)
-        coord_gdf = gpd.GeoDataFrame(coord_df, geometry=geometry)
-
-        #call the assign_centroids_to_gdf util function
-        coord_gdf[centr_haz] = u_coord.assign_centroids_to_gdf(coord_gdf, hazard.centroids,
-                                                               distance=distance,
-                                                               threshold=threshold)
-
-        #return array of matched impact coordinates with hazard centroids
-        return coord_df[centr_haz]
+        return u_coord.match_centroids(
+            self._build_exp().gdf,
+            hazard.centroids,
+            distance=distance,
+            threshold=threshold)
 
 @dataclass
 class ImpactFreqCurve():

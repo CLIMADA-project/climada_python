@@ -517,8 +517,8 @@ class TestAssign(unittest.TestCase):
         out = u_coord.assign_grid_points(xy[:, 0], xy[:, 1], width, height, transform)
         np.testing.assert_array_equal(out, [120, -1])
 
-    def test_assign_centroids_to_gdf(self):
-        """Test assign_centroids_to_gdf function."""
+    def test_match_centroids(self):
+        """Test match_centroids function."""
         #Test 1: Raster data
         meta = {
             'count': 1, 'crs': DEF_CRS,
@@ -542,7 +542,7 @@ class TestAssign(unittest.TestCase):
         })
         gdf = gpd.GeoDataFrame(df,geometry=gpd.points_from_xy(df.longitude, df.latitude),
                                crs=DEF_CRS)
-        assigned = u_coord.assign_centroids_to_gdf(gdf,centroids)
+        assigned = u_coord.match_centroids(gdf,centroids)
 
         expected_result = [
             # constant y-value, varying x-value
@@ -583,13 +583,13 @@ class TestAssign(unittest.TestCase):
 
         for distance in ["euclidean", "haversine", "approx"]:
             for thresh, result in expected_results:
-                assigned = u_coord.assign_centroids_to_gdf(
+                assigned = u_coord.match_centroids(
                     gdf, centroids, distance=distance, threshold=thresh)
                 np.testing.assert_array_equal(assigned, result)
 
             #test empty centroids
             result = [-1, -1, -1, -1, -1, -1, -1]
-            assigned_idx = u_coord.assign_centroids_to_gdf(
+            assigned_idx = u_coord.match_centroids(
                     gdf, centroids_empty, distance=distance, threshold=thresh)
             np.testing.assert_array_equal(assigned_idx, result)
 
@@ -609,7 +609,7 @@ class TestAssign(unittest.TestCase):
         )
 
         with self.assertRaises(ValueError) as cm:
-            u_coord.assign_centroids_to_gdf(gdf, centroids)
+            u_coord.match_centroids(gdf, centroids)
         self.assertIn('Set hazard and GeoDataFrame to same CRS first!',
                       str(cm.exception))
         
