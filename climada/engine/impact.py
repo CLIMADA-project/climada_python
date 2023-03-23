@@ -40,7 +40,6 @@ import matplotlib.animation as animation
 import pandas as pd
 import xlsxwriter
 from tqdm import tqdm
-import geopandas as gpd
 import h5py
 
 from climada.entity import Exposures, Tag
