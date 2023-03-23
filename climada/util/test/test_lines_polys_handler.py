@@ -682,6 +682,27 @@ class TestGdfGeomToPnt(unittest.TestCase):
             }
         for res, fraction in res_fractions.items():
             np.testing.assert_allclose(u_lp._line_fraction(2, res), fraction)
+
+    def test_average_line_length(self):
+        """Test that the aggregated line lengths on average converge to the true length"""
+        res = 0.1
+        line_lengths = np.random.random(100) * 10
+        agg_len = sum([u_lp._pnts_per_line(length, res)*res for length in line_lengths])
+        true_len = sum(line_lengths)
+        self.assertAlmostEqual(agg_len/true_len, 1, 1)
+
+        res = 1.2
+        line_lengths = np.random.random(100) * 9
+        agg_len = sum([u_lp._pnts_per_line(length, res)*res for length in line_lengths])
+        true_len = sum(line_lengths)
+        self.assertAlmostEqual(agg_len/true_len, 1, 1)
+
+        res = 4
+        line_lengths = np.random.random(100) * 5
+        agg_len = sum([u_lp._pnts_per_line(length, res)*res for length in line_lengths])
+        true_len = sum(line_lengths)
+        self.assertNotAlmostEqual(agg_len/true_len, 1, 1)
+
     def test_gdf_to_grid(self):
         """"""
         pass
