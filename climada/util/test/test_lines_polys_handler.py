@@ -23,8 +23,10 @@ import unittest
 from unittest.mock import patch, DEFAULT
 
 import numpy as np
+import geopandas as gpd
 
 from shapely.geometry import Point
+from shapely.geometry import LineString
 
 from climada.entity import Exposures
 import climada.util.lines_polys_handler as u_lp
@@ -702,6 +704,17 @@ class TestGdfGeomToPnt(unittest.TestCase):
         agg_len = sum([u_lp._pnts_per_line(length, res)*res for length in line_lengths])
         true_len = sum(line_lengths)
         self.assertTrue(agg_len/true_len < 2)
+
+    def test_resolution_warning(self):
+        lines = [
+            LineString([[0, 0], [0, 2]]),
+            LineString([[0, 0], [0, 12]]),
+            LineString([[0, 0], [0, 20]])
+            ]
+        gdf_lines = gpd.GeoDataFrame(geometry=lines)
+        with self.assertLogs('climada.util.lines_polys_handler', level='WARNING'):
+            u_lp._line_to_pnts(gdf_lines, 1, False)
+
 
     def test_gdf_to_grid(self):
         """"""
