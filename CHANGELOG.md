@@ -21,6 +21,7 @@ Removed:
 ### Changed 
 
 - Improved error messages from `climada.CONFIG` in case of missing configuration values [#670](https://github.com/CLIMADA-project/climada_python/pull/670)
+- Modified the method to disaggregate lines in the lines_polygons_handler utility module in order to better conserve the total length of all lines on average.
 
 ### Fixed
 - `util.lines_polys_handler` solve polygon disaggregation issue in metre-based projection   [#666](https://github.com/CLIMADA-project/climada_python/pull/666)
