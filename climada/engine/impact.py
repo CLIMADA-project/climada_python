@@ -1672,7 +1672,7 @@ class Impact():
         return sel_ev
 
     def _selected_exposures_idx(self, coord_exp):
-        assigned_idx = u_coord.assign_coordinates(self.coord_exp, coord_exp, threshold=0)
+        assigned_idx = u_coord.match_coordinates(self.coord_exp, coord_exp, threshold=0)
         sel_exp = (assigned_idx >= 0).nonzero()[0]
         if sel_exp.size == 0:
             LOGGER.warning("No exposure coordinates match the selection.")
@@ -1783,6 +1783,38 @@ class Impact():
             **kwargs,
         )
 
+    def match_centroids(self, hazard, distance='euclidean',
+                        threshold=u_coord.NEAREST_NEIGHBOR_THRESHOLD):
+        """
+        Finds the closest hazard centroid for each impact coordinate.
+        Creates a temporary GeoDataFrame and uses ``u_coord.match_centroids()``.
+        See there for details and parameters
+
+        Parameters
+        ----------
+        hazard : Hazard
+            Hazard to match (with raster or vector centroids).
+        distance : str, optional
+            Distance to use in case of vector centroids.
+            Possible values are "euclidean", "haversine" and "approx".
+            Default: "euclidean"
+        threshold : float
+            If the distance (in km) to the nearest neighbor exceeds `threshold`,
+            the index `-1` is assigned.
+            Set `threshold` to 0, to disable nearest neighbor matching.
+            Default: 100 (km)
+
+        Returns
+        -------
+        np.array
+            array of closest Hazard centroids, aligned with the Impact's `coord_exp` array
+        """
+
+        return u_coord.match_centroids(
+            self._build_exp().gdf,
+            hazard.centroids,
+            distance=distance,
+            threshold=threshold)
 
 @dataclass
 class ImpactFreqCurve():

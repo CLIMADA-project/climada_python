@@ -369,6 +369,11 @@ class Exposures():
                          threshold=u_coord.NEAREST_NEIGHBOR_THRESHOLD,
                          overwrite=True):
         """Assign for each exposure coordinate closest hazard coordinate.
+        The Exposures ``gdf`` will be altered by this method. It will have an additional
+        (or modified) column named ``centr_[hazard.HAZ_TYPE]`` after the call.
+
+        Uses the utility function ``u_coord.match_centroids``. See there for details
+        and parameters.
 
         The value -1 is used for distances larger than ``threshold`` in point distances.
         In case of raster hazards the value -1 is used for centroids outside of the raster.
@@ -392,9 +397,10 @@ class Exposures():
 
         See Also
         --------
-        climada.util.coordinates.assign_coordinates
+        climada.util.coordinates.match_grid_points: method to associate centroids to
+            exposure points when centroids is a raster
+        climada.util.coordinates.match_coordinates:
             method to associate centroids to exposure points
-
         Notes
         -----
         The default order of use is:
@@ -422,18 +428,16 @@ class Exposures():
 
         LOGGER.info('Matching %s exposures with %s centroids.',
                     str(self.gdf.shape[0]), str(hazard.centroids.size))
+
         if not u_coord.equal_crs(self.crs, hazard.centroids.crs):
             raise ValueError('Set hazard and exposure to same CRS first!')
-        if hazard.centroids.meta:
-            assigned = u_coord.assign_grid_points(
-                self.gdf.longitude.values, self.gdf.latitude.values,
-                hazard.centroids.meta['width'], hazard.centroids.meta['height'],
-                hazard.centroids.meta['transform'])
-        else:
-            assigned = u_coord.assign_coordinates(
-                np.stack([self.gdf.latitude.values, self.gdf.longitude.values], axis=1),
-                hazard.centroids.coord, distance=distance, threshold=threshold)
-        self.gdf[centr_haz] = assigned
+        # Note: equal_crs is tested here, rather than within match_centroids(),
+        # because exp.gdf.crs may not be defined, but exp.crs must be defined.
+
+        assigned_centr = u_coord.match_centroids(self.gdf, hazard.centroids,
+                        distance=distance, threshold=threshold)
+        self.gdf[centr_haz] = assigned_centr
+
 
     def set_geometry_points(self, scheduler=None):
         """Set geometry attribute of GeoDataFrame with Points from latitude and

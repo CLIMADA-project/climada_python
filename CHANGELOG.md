@@ -17,13 +17,19 @@ Removed:
 ### Added
 
 - `Impact.impact_at_reg` method for aggregating impacts per country or custom region [#642](https://github.com/CLIMADA-project/climada_python/pull/642)
+- `Impact.match_centroids` convenience method for matching (hazard) centroids to impact objects [#602](https://github.com/CLIMADA-project/climada_python/pull/602)
+- `climada.util.coordinates.match_centroids` method for matching (hazard) centroids to GeoDataFrames [#602](https://github.com/CLIMADA-project/climada_python/pull/602)
 
-### Changed 
+### Changed
 
 - Improved error messages from `climada.CONFIG` in case of missing configuration values [#670](https://github.com/CLIMADA-project/climada_python/pull/670)
+- Refactored `Exposure.assign_centroids` using a new util function `u_coord.match_centroids` [#602](https://github.com/CLIMADA-project/climada_python/pull/602)
+- Renamed `climada.util.coordinate.assign_grid_points` to `match_grid_points` and `climada.util.coordinates.assign_coordinates` to `match_coordinates`
+[#602](https://github.com/CLIMADA-project/climada_python/pull/602)
 
 ### Fixed
-- `util.lines_polys_handler` solve polygon disaggregation issue in metre-based projection   [#666](https://github.com/CLIMADA-project/climada_python/pull/666)
+
+- `util.lines_polys_handler` solve polygon disaggregation issue in metre-based projection [#666](https://github.com/CLIMADA-project/climada_python/pull/666)
 
 ### Deprecated
 
