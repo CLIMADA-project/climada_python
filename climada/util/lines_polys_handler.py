@@ -18,7 +18,6 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 import logging
 import copy
 from enum import Enum
-import math
 
 import cartopy.crs as ccrs
 import geopandas as gpd
