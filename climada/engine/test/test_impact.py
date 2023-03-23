@@ -888,9 +888,9 @@ class TestConvertExp(unittest.TestCase):
         self.assertEqual(exp.value_unit, imp.unit)
         self.assertEqual(exp.ref_year, 0)
 
-class TestAssignCentroids(unittest.TestCase):
+class TestMatchCentroids(unittest.TestCase):
 
-    def test_assign_centroids(self):
+    def test_match_centroids(self):
         "Test that hazard centroids get assigned correctly"
         exp = ENT.exposures
         exp.assign_centroids(HAZ)
