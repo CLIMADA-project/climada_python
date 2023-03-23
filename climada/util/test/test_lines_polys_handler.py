@@ -663,6 +663,17 @@ class TestGdfGeomToPnt(unittest.TestCase):
         self.assertEqual(u_lp._pnts_per_line(10, 1.5), 7)
         self.assertEqual(u_lp._pnts_per_line(10.5, 1), 10)
 
+    def test_line_fractions(self):
+        """Test the division of lines into fractions"""
+        res_fractions = {
+            2: np.array([0.5]),
+            0.8: np.array([0.5]),
+            0.6: np.array([0.2, 0.8]),
+            0.4: np.array([0.3, 0.7])
+            }
+        for res, fraction in res_fractions.items():
+            np.testing.assert_allclose(u_lp._line_fraction(1, res), fraction)
+
     def test_gdf_to_grid(self):
         """"""
         pass
