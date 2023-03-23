@@ -935,11 +935,6 @@ def _line_to_pnts(gdf_lines, res, to_meters):
         for length in line_lengths
         ]
 
-    # line_fractions = [
-    #     np.linspace(0, 1, num=_pnts_per_line(length, res))
-    #     for length in line_lengths
-    #     ]
-
     gdf_points['geometry_pnt'] = [
         shgeom.MultiPoint([
             line.interpolate(dist, normalized=True)
@@ -975,8 +970,6 @@ def _line_fraction(length, res):
 
     """
     nb_points = _pnts_per_line(length, res)
-    if nb_points == 1:
-        return np.array([0.5])
     start = np.abs(length - (nb_points-1)*res) /2
     return np.arange(start, length, res) / length
 
