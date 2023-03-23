@@ -701,7 +701,7 @@ class TestGdfGeomToPnt(unittest.TestCase):
         line_lengths = np.random.random(100) * 5
         agg_len = sum([u_lp._pnts_per_line(length, res)*res for length in line_lengths])
         true_len = sum(line_lengths)
-        self.assertNotAlmostEqual(agg_len/true_len, 1, 1)
+        self.assertTrue(agg_len/true_len < 2)
 
     def test_gdf_to_grid(self):
         """"""
