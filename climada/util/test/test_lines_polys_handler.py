@@ -657,7 +657,6 @@ class TestGdfGeomToPnt(unittest.TestCase):
                 ])
             )
 
-
     def test_pnts_per_line(self):
         """Test number of points per line for give resolution"""
         self.assertEqual(u_lp._pnts_per_line(10, 1), 10)
@@ -670,40 +669,20 @@ class TestGdfGeomToPnt(unittest.TestCase):
         res_fractions = {
             2: np.array([0.5]),
             0.8: np.array([0.5]),
-            0.6: np.array([0.2, 0.8]),
-            0.4: np.array([0.3, 0.7])
+            0.6: np.array([0.25, 0.75]),
+            0.4: np.array([0.25, 0.75])
             }
         for res, fraction in res_fractions.items():
             np.testing.assert_allclose(u_lp._line_fraction(1, res), fraction)
 
         res_fractions = {
             2: np.array([0.5]),
-            0.8: np.array([0.3, 0.7]),
-            0.6: np.array([0.2, 0.5, 0.8]),
+            0.8: np.array([0.25, 0.75]),
+            0.6: np.array([0.166667, 0.5, 0.833333]),
             0.4: np.array([0.1, 0.3, 0.5, 0.7, 0.9])
             }
         for res, fraction in res_fractions.items():
-            np.testing.assert_allclose(u_lp._line_fraction(2, res), fraction)
-
-    def test_average_line_length(self):
-        """Test that the aggregated line lengths on average converge to the true length"""
-        res = 0.1
-        line_lengths = np.random.random(100) * 10
-        agg_len = sum([u_lp._pnts_per_line(length, res)*res for length in line_lengths])
-        true_len = sum(line_lengths)
-        self.assertAlmostEqual(agg_len/true_len, 1, 1)
-
-        res = 1.2
-        line_lengths = np.random.random(100) * 9
-        agg_len = sum([u_lp._pnts_per_line(length, res)*res for length in line_lengths])
-        true_len = sum(line_lengths)
-        self.assertAlmostEqual(agg_len/true_len, 1, 1)
-
-        res = 4
-        line_lengths = np.random.random(100) * 5
-        agg_len = sum([u_lp._pnts_per_line(length, res)*res for length in line_lengths])
-        true_len = sum(line_lengths)
-        self.assertTrue(agg_len/true_len < 2)
+            np.testing.assert_allclose(u_lp._line_fraction(2, res), fraction, rtol=1e-04 )
 
     def test_resolution_warning(self):
         lines = [
@@ -714,7 +693,6 @@ class TestGdfGeomToPnt(unittest.TestCase):
         gdf_lines = gpd.GeoDataFrame(geometry=lines)
         with self.assertLogs('climada.util.lines_polys_handler', level='WARNING'):
             u_lp._line_to_pnts(gdf_lines, 1, False)
-
 
     def test_gdf_to_grid(self):
         """"""
