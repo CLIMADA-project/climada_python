@@ -964,7 +964,7 @@ def _line_to_pnts(gdf_lines, res, to_meters):
 
 def _line_fraction(length, res):
     """
-    Comoute the fraction in which to divide a line of given length at given resolution
+    Compute the fraction in which to divide a line of given length at given resolution
 
     Parameters
     ----------
@@ -981,9 +981,9 @@ def _line_fraction(length, res):
 
     """
     nb_points = _pnts_per_line(length, res)
-    start = np.abs(length - (nb_points-1)*res) /2
-    return np.arange(start, length, res) / length
-
+    eff_res = 1/nb_points
+    start = eff_res /2
+    return np.arange(start, 1, eff_res)
 
 def _pnts_per_line(length, res):
     """Calculate number of points fitting along a line, given a certain
