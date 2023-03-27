@@ -981,8 +981,8 @@ def _line_fraction(length, res):
 
     """
     nb_points = _pnts_per_line(length, res)
-    eff_res = 1/nb_points
-    start = eff_res /2
+    eff_res = 1 / nb_points
+    start = eff_res / 2
     return np.arange(start, 1, eff_res)
 
 def _pnts_per_line(length, res):
