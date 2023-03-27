@@ -23,8 +23,10 @@ import unittest
 from unittest.mock import patch, DEFAULT
 
 import numpy as np
+import geopandas as gpd
 
 from shapely.geometry import Point
+from shapely.geometry import LineString
 
 from climada.entity import Exposures
 import climada.util.lines_polys_handler as u_lp
@@ -240,13 +242,12 @@ class TestExposureGeomToPnt(unittest.TestCase):
 
     def test_point_exposure_from_lines(self):
         """Test disaggregation of lines to points"""
-        #test start and end point per line
+        #to_meters=False, FIX
         exp_pnt = u_lp.exp_geom_to_pnt(
             EXP_LINE, res=1, to_meters=False,
             disagg_met=u_lp.DisaggMethod.FIX, disagg_val=None
             )
         np.testing.assert_array_equal(exp_pnt.gdf.value[:,0], EXP_LINE.gdf.value)
-        np.testing.assert_array_equal(exp_pnt.gdf.value[:,0], exp_pnt.gdf.value[:,1])
         self.check_unchanged_exp(EXP_LINE, exp_pnt)
 
         #to_meters=False, DIV
@@ -254,8 +255,7 @@ class TestExposureGeomToPnt(unittest.TestCase):
             EXP_LINE, res=1, to_meters=False,
             disagg_met=u_lp.DisaggMethod.DIV, disagg_val=None
             )
-        np.testing.assert_array_equal(exp_pnt.gdf.value[:,0], EXP_LINE.gdf.value/2)
-        np.testing.assert_array_equal(exp_pnt.gdf.value[:,0], exp_pnt.gdf.value[:,1])
+        np.testing.assert_array_equal(exp_pnt.gdf.value[:,0], EXP_LINE.gdf.value)
         self.check_unchanged_exp(EXP_LINE, exp_pnt)
 
         #to_meters=TRUE, FIX, dissag_val
@@ -268,18 +268,12 @@ class TestExposureGeomToPnt(unittest.TestCase):
         val = res**2
         self.assertEqual(np.unique(exp_pnt.gdf.value)[0], val)
         lat = np.array([
-            50.8794    , 50.8003    , 50.955     , 50.9198    , 51.921     ,
-            51.83477563, 51.77826097, 51.6732    , 52.078     , 52.0788    ,
-            50.8963    , 50.8967    , 51.9259    , 51.925     , 51.5457    ,
-            51.5285    , 52.2614    , 52.3091    , 53.1551    , 53.1635    ,
-            51.6814    , 51.61111058, 51.5457    , 52.0518    , 52.052     ,
-            52.3893    , 52.3893    , 52.1543    , 52.1413    , 52.4735    ,
-            52.4784    , 52.6997    , 52.6448    , 52.1139    , 52.1132    ,
-            51.9222    , 51.8701    , 52.4943    , 52.4929    , 51.8402    ,
-            51.8434    , 51.9255    , 51.9403    , 51.2019    , 51.10694216,
-            50.9911    , 52.4919    , 52.4797    , 50.8557    , 50.8627    ,
-            51.0757    , 51.0821    , 50.8207    , 50.8223    , 50.817     ,
-            50.8093    , 51.0723    , 51.0724    , 50.9075    , 50.9141
+            50.83944191, 50.94706532, 51.85008694, 51.7524172 , 52.07732906,
+            50.889641  , 51.90287148, 51.53858598, 52.30223675, 53.15931081,
+            51.61111058, 52.05191342, 52.3893    , 52.14520761, 52.47715845,
+            52.68641293, 52.11355   , 51.90503849, 52.49610201, 51.8418    ,
+            51.93188219, 51.10694216, 52.48596301, 50.87543042, 51.0801347 ,
+            50.82145186, 50.81341953, 51.07235498, 50.9105503
             ])
         np.testing.assert_allclose(exp_pnt.gdf.latitude, lat)
 
@@ -396,15 +390,15 @@ class TestGeomImpactCalcs(unittest.TestCase):
             res=0.05, to_meters=False, disagg_met=u_lp.DisaggMethod.DIV,
             disagg_val=None, agg_met=u_lp.AggMethod.SUM
             )
-        aai_agg1 = 2.18359
+        aai_agg1 = 2.114365936716238
         eai_exp1 =  np.array([
-            8.50634478e-02, 4.24820916e-02, 1.04429093e-01, 1.27160538e-02,
-            8.60539827e-02, 1.75262423e-01, 2.32808488e-02, 2.92552267e-02,
-            4.26205598e-03, 2.31991466e-01, 5.29133033e-03, 2.72705887e-03,
-            8.87954091e-03, 2.95633263e-02, 5.61356696e-01, 1.33011693e-03,
-            9.95247490e-02, 7.72573773e-02, 6.12233710e-03, 1.61239410e-02,
-            1.14566573e-01, 7.45522678e-02, 2.95181528e-01, 4.64021003e-02,
-            1.45806743e-02, 2.49435540e-02, 2.96121155e-05, 1.03654148e-02
+            8.58546479e-02, 4.57753040e-02, 1.07081794e-01, 1.27160538e-02,
+            8.60984331e-02, 1.57751547e-01, 2.32808488e-02, 2.95520878e-02,
+            4.06902083e-03, 2.27553509e-01, 5.29133033e-03, 2.72705887e-03,
+            8.48207692e-03, 2.95633263e-02, 4.88225543e-01, 1.33011693e-03,
+            1.03018186e-01, 7.72573773e-02, 5.48322256e-03, 1.61239410e-02,
+            1.13181160e-01, 8.32840521e-02, 2.99243546e-01, 4.88901364e-02,
+            1.71930351e-02, 2.49435540e-02, 2.96121155e-05, 1.03654148e-02
             ])
         check_impact(self, imp1, HAZ, EXP_LINE, aai_agg1, eai_exp1)
 
@@ -414,21 +408,21 @@ class TestGeomImpactCalcs(unittest.TestCase):
             res=300, to_meters=True, disagg_met=u_lp.DisaggMethod.DIV,
             disagg_val=None, agg_met=u_lp.AggMethod.SUM
             )
-        np.testing.assert_allclose(imp2.eai_exp, imp1.eai_exp, rtol=0.1)
+        np.testing.assert_allclose(imp2.eai_exp, imp1.eai_exp, rtol=0.2)
 
         imp3 = u_lp.calc_geom_impact(
             exp_line_novals, IMPF_SET, HAZ,
             res=300, to_meters=True, disagg_met=u_lp.DisaggMethod.FIX,
             disagg_val=5000, agg_met=u_lp.AggMethod.SUM
             )
-        aai_agg3 = 2.830144
+        aai_agg3 = 2.626753478142696
         eai_exp3 = np.array([
-            0.10973467, 0.05930568, 0.1291031 , 0.02170876, 0.11591773,
-            0.20360855, 0.03329673, 0.03672271, 0.00779005, 0.28260995,
-            0.01006294, 0.00989869, 0.01279569, 0.04986454, 0.62946471,
-            0.00431759, 0.12464957, 0.12455043, 0.01734576, 0.02508649,
-            0.15109773, 0.12019767, 0.36631115, 0.06004143, 0.05308581,
-            0.04738706, 0.00483797, 0.01935157
+            0.10307851, 0.05544964, 0.12810739, 0.01736701, 0.1092617 ,
+            0.19785227, 0.02959709, 0.03617366, 0.00464554, 0.27378204,
+            0.00670862, 0.00329956, 0.01030654, 0.03324303, 0.61571791,
+            0.00215879, 0.12245651, 0.10379203, 0.00536503, 0.01881487,
+            0.14592603, 0.12312706, 0.35965216, 0.05581585, 0.01968975,
+            0.02843223, 0.00241899, 0.01451368
             ])
         check_impact(self, imp3, HAZ, exp_line_novals, aai_agg3, eai_exp3)
 
@@ -476,22 +470,22 @@ class TestGeomImpactCalcs(unittest.TestCase):
             res=0.05, to_meters=False, disagg_met=u_lp.DisaggMethod.DIV,
             disagg_val=None, agg_met=u_lp.AggMethod.SUM
             )
-        aai_agg1 = 2354303.388829326
-        eai_exp1 = np.array(
-            [5.44242706e-04, 7.83583295e-03, 1.83750670e-01, 1.73511269e-02,
-            1.94180761e-02, 3.90576163e-02, 1.10985612e-02, 1.86135108e-01,
-            6.14306427e-02, 6.16206874e-02, 8.56458490e-03, 8.81751253e-03,
-            4.26205598e-03, 8.12498654e-02, 1.57396460e-01, 6.00203189e-03,
-            3.19600253e-01, 1.46198876e-01, 1.29361932e-01, 1.33011693e-03,
-            1.38153438e-01, 4.20094145e-02, 9.14516636e-02, 3.61084945e-02,
-            4.75139931e-02, 7.99620467e-02, 9.23306174e-02, 1.04525623e-01,
-            1.61059946e+04, 1.07420484e+04, 1.44746070e+04, 7.18796281e+04,
-            2.58806206e+04, 2.01316315e+05, 1.76071458e+05, 3.92482129e+05,
-            2.90364327e+05, 9.05399356e+05, 1.94728210e+05, 5.11729689e+04,
-            2.84224294e+02, 2.45938137e+02, 1.90644327e+02, 1.73925079e+02,
-            1.76091839e+02, 4.43054173e+02, 4.41378151e+02, 4.74316805e+02,
-            4.83873464e+02, 2.59001795e+02, 2.48200400e+02, 2.62995792e+02
-            ])
+        aai_agg1 = 2354303.3196003754
+        eai_exp1 = np.array([
+            1.73069928e-04, 8.80741357e-04, 1.77657635e-01, 1.06413744e-02,
+           1.15405492e-02, 3.40097761e-02, 8.91658032e-03, 4.19735141e-02,
+           1.27160538e-02, 2.43849980e-01, 2.32808488e-02, 5.47043065e-03,
+           5.44984095e-03, 5.80779958e-03, 1.06361040e-01, 4.67335812e-02,
+           9.93703142e-02, 8.48207692e-03, 2.95633263e-02, 1.30223646e-01,
+           3.84600393e-01, 2.05709279e-02, 1.39919480e-01, 1.61239410e-02,
+           4.46991386e-02, 1.30045513e-02, 1.30045513e-02, 6.91177788e-04,
+           1.61063727e+04, 1.07420484e+04, 1.44746070e+04, 7.18796281e+04,
+           2.58806206e+04, 2.01316315e+05, 1.76071458e+05, 3.92482129e+05,
+           2.90364327e+05, 9.05399356e+05, 1.94728210e+05, 5.11729689e+04,
+           2.84224294e+02, 2.45938137e+02, 1.90644327e+02, 1.73925079e+02,
+           1.76091839e+02, 4.43054173e+02, 4.41378151e+02, 4.74316805e+02,
+           4.83873464e+02, 2.59001795e+02, 2.48200400e+02, 2.62995792e+02
+           ])
         check_impact(self, imp1, HAZ, exp_mix, aai_agg1, eai_exp1)
 
         imp2 = u_lp.calc_geom_impact(
@@ -499,16 +493,16 @@ class TestGeomImpactCalcs(unittest.TestCase):
             res=5000, to_meters=True, disagg_met=u_lp.DisaggMethod.FIX,
             disagg_val=None, agg_met=u_lp.AggMethod.SUM
             )
-        aai_agg2 = 321653482.41806
+        aai_agg2 = 321653479.4607434
         eai_exp2 = np.array([
-            5.44242706e-04, 4.83197677e-03, 4.12448052e-01, 1.34215052e-01,
-            2.55089453e-01, 3.82348309e-01, 2.24599809e-01, 2.57801309e-01,
-            3.67620642e-01, 5.24002585e-01, 5.62882027e-02, 6.17225877e-02,
-            8.52411196e-03, 4.87499192e-01, 9.09740934e-01, 8.01838920e-03,
-            7.96127932e-02, 1.34945299e+00, 9.06839997e-01, 4.01295245e-01,
-            5.93452277e-01, 8.40188290e-02, 4.67806576e-01, 8.21743744e-02,
-            2.48612395e-01, 1.24387821e-01, 3.48131313e-01, 5.53983704e-01,
-            1.48411250e+06, 1.09137411e+06, 1.62477251e+06, 1.43455724e+07,
+            1.73069928e-04, 8.80741357e-04, 2.17736979e-01, 6.48243461e-02,
+            2.67262620e-02, 3.55078893e-01, 8.14081011e-02, 4.36578022e-01,
+            1.02605091e-01, 3.45121722e-01, 1.62144669e-01, 1.45008544e-01,
+            2.32808488e-02, 2.73521532e-02, 9.51399554e-02, 2.25921717e-01,
+            6.90427531e-01, 5.29133033e-03, 2.72705887e-03, 8.48207692e-03,
+            2.10403881e+00, 1.33011693e-03, 3.14644100e-01, 7.72573773e-02,
+            5.48322256e-03, 1.61239410e-02, 2.68194832e-01, 7.80273077e-02,
+            1.48411299e+06, 1.09137411e+06, 1.62477251e+06, 1.43455724e+07,
             2.94783633e+06, 1.06950486e+07, 3.17592949e+07, 4.58152749e+07,
             3.94173129e+07, 1.48016265e+08, 1.87811203e+07, 5.41509882e+06,
             1.24792652e+04, 1.20008305e+04, 1.43296472e+04, 3.15280802e+04,
@@ -528,18 +522,18 @@ class TestGeomImpactCalcs(unittest.TestCase):
             )
         imp_pnt = ImpactCalc(exp_pnt, IMPF_SET, HAZ).impact(save_mat=True)
         imp_agg = u_lp.impact_pnt_agg(imp_pnt, exp_pnt.gdf, u_lp.AggMethod.SUM)
-        aai_agg = 1282901.377219451
+        aai_agg = 1282901.0114188215
         eai_exp = np.array([
-            1.73069928e-04, 8.80741357e-04, 4.32240819e-03, 8.62816073e-03,
-            2.21441154e-02, 1.09329988e-02, 8.58546479e-02, 4.62370081e-02,
-            8.99584440e-02, 1.27160538e-02, 8.60317575e-02, 2.02440009e-01,
-            2.32808488e-02, 2.86159458e-02, 4.26205598e-03, 2.40051484e-01,
-            5.29133033e-03, 2.72705887e-03, 8.87954091e-03, 2.95633263e-02,
-            6.33106879e-01, 1.33011693e-03, 1.11120718e-01, 7.72573773e-02,
-            6.12233710e-03, 1.61239410e-02, 1.01492204e-01, 7.45522678e-02,
-            1.41155415e-01, 1.53820450e-01, 2.27951125e-02, 2.23629697e-02,
-            8.59651753e-03, 5.98415680e-03, 1.24717770e-02, 1.24717770e-02,
-            1.48060577e-05, 1.48060577e-05, 5.18270742e-03, 5.18270742e-03,
+            0.00000000e+00, 1.73069928e-04, 3.71172778e-04, 5.09568579e-04,
+            8.43340681e-04, 3.47906751e-03, 3.00385618e-03, 5.62430455e-03,
+            9.07998787e-03, 1.30641275e-02, 6.18365411e-03, 4.74934473e-03,
+            8.34810476e-02, 5.07280880e-02, 1.02690634e-01, 1.27160538e-02,
+            8.60984331e-02, 1.62144669e-01, 2.32808488e-02, 2.90389979e-02,
+            4.06902083e-03, 2.33667906e-01, 5.29133033e-03, 2.72705887e-03,
+            8.48207692e-03, 2.95633263e-02, 4.01271600e-01, 1.33011693e-03,
+            9.94596852e-02, 7.72573773e-02, 5.48322256e-03, 1.61239410e-02,
+            4.14706673e-03, 8.32840521e-02, 2.87509619e-01, 4.88901364e-02,
+            1.71930351e-02, 2.49435540e-02, 2.96121155e-05, 1.03654148e-02,
             8.36178802e+03, 7.30704698e+03, 1.20628926e+04, 3.54061498e+04,
             1.23524320e+04, 7.78074661e+04, 1.28292995e+05, 2.31231953e+05,
             1.31911226e+05, 5.37897306e+05, 8.37016948e+04, 1.65661030e+04
@@ -597,26 +591,26 @@ class TestGdfGeomToPnt(unittest.TestCase):
         np.testing.assert_allclose(
             gdf_pnt_d.geometry.x.values,
             np.array([
-                6.0885    , 6.09416494, 6.09160809, 6.08743533, 6.08326257,
-                6.0791987 , 6.07509502, 6.07016232, 6.0640264 , 6.06085342,
-                6.06079
+                6.092507, 6.092895, 6.088363, 6.083726, 6.079199, 6.074582,
+                6.068896, 6.061939, 6.061839
                 ])
             )
         np.testing.assert_allclose(
             gdf_pnt_d.geometry.y.values,
             np.array([
-                50.8794    , 50.87275494, 50.86410478, 50.85590192, 50.84769906,
-                50.83944191, 50.83120479, 50.82346045, 50.81661416, 50.80861974,
-                50.8003
+                50.876242, 50.866888, 50.857725, 50.84861 , 50.839442, 50.830321,
+                50.82186 , 50.814366, 50.80475
                 ])
             )
+
+        #disaggregation in degrees and approximately same value in meters
         gdf_pnt_m = u_lp._line_to_pnts(GDF_LINE.iloc[0:1], 1000, True)
         np.testing.assert_allclose(
             gdf_pnt_m.geometry.x,
-            gdf_pnt_d.geometry.x)
+            gdf_pnt_d.geometry.x, rtol=1e-2)
         np.testing.assert_allclose(
             gdf_pnt_m.geometry.y,
-            gdf_pnt_d.geometry.y)
+            gdf_pnt_d.geometry.y,rtol=1e-2)
 
     def test_gdf_poly_to_pnts(self):
         """Test polygon to points disaggregation"""
@@ -663,13 +657,50 @@ class TestGdfGeomToPnt(unittest.TestCase):
                 ])
             )
 
-
     def test_pnts_per_line(self):
         """Test number of points per line for give resolution"""
-        self.assertEqual(u_lp._pnts_per_line(10, 1), 11)
-        self.assertEqual(u_lp._pnts_per_line(1, 1), 2)
-        self.assertEqual(u_lp._pnts_per_line(10, 1.5), 8)
-        self.assertEqual(u_lp._pnts_per_line(10.5, 1), 12)
+        self.assertEqual(u_lp._pnts_per_line(10, 1), 10)
+        self.assertEqual(u_lp._pnts_per_line(1, 1), 1)
+        self.assertEqual(u_lp._pnts_per_line(10, 1.5), 7)
+        self.assertEqual(u_lp._pnts_per_line(10.5, 1), 10)
+
+    def test_line_fractions(self):
+        """Test the division of lines into fractions"""
+        length = 1
+        res_fractions = {
+            2: np.array([0.5]),
+            0.8: np.array([0.5]),
+            0.6: np.array([0.25, 0.75]),
+            0.4: np.array([0.25, 0.75])
+            }
+        for res, fraction in res_fractions.items():
+            np.testing.assert_allclose(u_lp._line_fraction(length, res), fraction)
+
+        length = 2
+        res_fractions = {
+            2: np.array([0.5]),
+            0.8: np.array([0.25, 0.75]),
+            0.6: np.array([0.166667, 0.5, 0.833333]),
+            0.4: np.array([0.1, 0.3, 0.5, 0.7, 0.9])
+            }
+        for res, fraction in res_fractions.items():
+            np.testing.assert_allclose(u_lp._line_fraction(length, res), fraction, rtol=1e-04 )
+
+    def test_resolution_warning(self):
+        lines = [
+            LineString([[0, 0], [0, 2]]),
+            LineString([[0, 0], [0, 12]]),
+            LineString([[0, 0], [0, 20]])
+            ]
+        gdf_lines = gpd.GeoDataFrame(geometry=lines)
+        with self.assertLogs('climada.util.lines_polys_handler', level='WARNING') as ctx:
+            u_lp._line_to_pnts(gdf_lines, 1, False)
+        self.assertEqual(ctx.records[0].message,
+            f"{2} lines with a length < 10*resolution were found. "
+            "Each of these lines is disaggregate to one point. "
+            "Reaggregatint values will thus likely lead to overestimattion. "
+            "Consider chosing a smaller resolution or filter out the short lines. ")
+
 
     def test_gdf_to_grid(self):
         """"""
@@ -740,28 +771,6 @@ class TestLPUtils(unittest.TestCase):
         gdf_orig['new_geom'] = gdf_orig.geometry
         swap_gdf = u_lp._swap_geom_cols(gdf_orig, 'old_geom', 'new_geom')
         self.assertTrue(np.alltrue(swap_gdf.geometry.geom_equals(gdf_orig.new_geom)))
-
-
-# Not needed, metehods will be incorporated in to ImpactCalc in another
-# pull request
-# class TestImpactSetters(unittest.TestCase):
-#     """ """
-
-#     def test_set_imp_mat(self):
-#         """ test set_imp_mat"""
-#         pass
-
-#     def test_eai_exp_from_mat(self):
-#         """ test eai_exp_from_mat"""
-
-#         pass
-
-#     def test_at_event_from_mat(self):
-#         """Test at_event_from_mat"""
-
-#     def test_aai_agg_from_at_event(self):
-#         """Test aai_agg_from_at_event"""
-#         pass
 
 
 if __name__ == "__main__":
