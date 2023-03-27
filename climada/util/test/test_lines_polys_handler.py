@@ -693,8 +693,14 @@ class TestGdfGeomToPnt(unittest.TestCase):
             LineString([[0, 0], [0, 20]])
             ]
         gdf_lines = gpd.GeoDataFrame(geometry=lines)
-        with self.assertLogs('climada.util.lines_polys_handler', level='WARNING'):
+        with self.assertLogs('climada.util.lines_polys_handler', level='WARNING') as ctx:
             u_lp._line_to_pnts(gdf_lines, 1, False)
+        self.assertEqual(ctx.records[0].message,
+            f"{2} lines with a length < 10*resolution were found. "
+            "Each of these lines is disaggregate to one point. "
+            "Reaggregatint values will thus likely lead to overestimattion. "
+            "Consider chosing a smaller resolution or filter out the short lines. ")
+
 
     def test_gdf_to_grid(self):
         """"""
