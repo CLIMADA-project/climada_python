@@ -767,28 +767,6 @@ class TestLPUtils(unittest.TestCase):
         self.assertTrue(np.alltrue(swap_gdf.geometry.geom_equals(gdf_orig.new_geom)))
 
 
-# Not needed, metehods will be incorporated in to ImpactCalc in another
-# pull request
-# class TestImpactSetters(unittest.TestCase):
-#     """ """
-
-#     def test_set_imp_mat(self):
-#         """ test set_imp_mat"""
-#         pass
-
-#     def test_eai_exp_from_mat(self):
-#         """ test eai_exp_from_mat"""
-
-#         pass
-
-#     def test_at_event_from_mat(self):
-#         """Test at_event_from_mat"""
-
-#     def test_aai_agg_from_at_event(self):
-#         """Test aai_agg_from_at_event"""
-#         pass
-
-
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestExposureGeomToPnt)
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestGeomImpactCalcs))
