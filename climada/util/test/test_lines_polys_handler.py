@@ -666,6 +666,7 @@ class TestGdfGeomToPnt(unittest.TestCase):
 
     def test_line_fractions(self):
         """Test the division of lines into fractions"""
+        length = 1
         res_fractions = {
             2: np.array([0.5]),
             0.8: np.array([0.5]),
@@ -673,8 +674,9 @@ class TestGdfGeomToPnt(unittest.TestCase):
             0.4: np.array([0.25, 0.75])
             }
         for res, fraction in res_fractions.items():
-            np.testing.assert_allclose(u_lp._line_fraction(1, res), fraction)
+            np.testing.assert_allclose(u_lp._line_fraction(length, res), fraction)
 
+        length = 2
         res_fractions = {
             2: np.array([0.5]),
             0.8: np.array([0.25, 0.75]),
@@ -682,7 +684,7 @@ class TestGdfGeomToPnt(unittest.TestCase):
             0.4: np.array([0.1, 0.3, 0.5, 0.7, 0.9])
             }
         for res, fraction in res_fractions.items():
-            np.testing.assert_allclose(u_lp._line_fraction(2, res), fraction, rtol=1e-04 )
+            np.testing.assert_allclose(u_lp._line_fraction(length, res), fraction, rtol=1e-04 )
 
     def test_resolution_warning(self):
         lines = [
