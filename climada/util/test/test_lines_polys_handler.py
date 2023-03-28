@@ -24,6 +24,7 @@ from unittest.mock import patch, DEFAULT
 
 import numpy as np
 import geopandas as gpd
+import copy
 
 from shapely.geometry import Point
 from shapely.geometry import LineString
@@ -43,6 +44,7 @@ from climada.entity.impact_funcs.storm_europe import ImpfStormEurope
 HAZ = Client().get_hazard('storm_europe', name='test_haz_WS_nl', status='test_dataset')
 
 EXP_POLY = Client().get_exposures('base', name='test_polygon_exp', status='test_dataset')
+EXP_POLY.gdf['impf_WS'] = 2
 GDF_POLY = EXP_POLY.gdf
 
 EXP_LINE = Client().get_exposures('base', name='test_line_exp', status='test_dataset')
@@ -52,7 +54,9 @@ EXP_POINT = Client().get_exposures('base', name='test_point_exp', status='test_d
 GDF_POINT = EXP_POINT.gdf
 
 IMPF = ImpfStormEurope.from_welker()
-IMPF_SET = ImpactFuncSet([IMPF])
+IMPF2 = copy.deepcopy(IMPF)
+IMPF2.id = 2
+IMPF_SET = ImpactFuncSet([IMPF, IMPF2])
 
 COL_CHANGING = ['value', 'latitude', 'longitude', 'geometry', 'geometry_orig']
 
@@ -510,6 +514,33 @@ class TestGeomImpactCalcs(unittest.TestCase):
             1.67623417e+04, 1.64528393e+04, 1.47050883e+04, 1.37721978e+04
             ])
         check_impact(self, imp2, HAZ, exp_mix, aai_agg2, eai_exp2)
+
+        # Check non-default impact function id
+        impfdouble = copy.deepcopy(IMPF2)
+        impfdouble.mdd *= 2
+        impf_set = ImpactFuncSet([IMPF, impfdouble])
+        imp3 = u_lp.calc_geom_impact(
+            exp_mix, impf_set, HAZ,
+            res=0.05, to_meters=False, disagg_met=u_lp.DisaggMethod.DIV,
+            disagg_val=None, agg_met=u_lp.AggMethod.SUM
+            )
+        aai_agg3 = 4708604.47775332
+        eai_exp3 = np.array([
+            1.73069928e-04, 8.80741357e-04, 1.77657635e-01, 1.06413744e-02,
+            1.15405492e-02, 3.40097761e-02, 8.91658032e-03, 4.19735141e-02,
+            1.27160538e-02, 2.43849980e-01, 2.32808488e-02, 5.47043065e-03,
+            5.44984095e-03, 5.80779958e-03, 1.06361040e-01, 4.67335812e-02,
+            9.93703142e-02, 8.48207692e-03, 2.95633263e-02, 1.30223646e-01,
+            3.84600393e-01, 2.05709279e-02, 1.39919480e-01, 1.61239410e-02,
+            4.46991386e-02, 1.30045513e-02, 1.30045513e-02, 6.91177788e-04,
+            3.22122197e+04, 2.14840968e+04, 2.89492139e+04, 1.43759256e+05,
+            5.17612411e+04, 4.02632630e+05, 3.52142916e+05, 7.84964258e+05,
+            5.80728653e+05, 1.81079871e+06, 3.89456421e+05, 1.02345938e+05,
+            5.68448588e+02, 4.91876274e+02, 3.81288655e+02, 3.47850159e+02,
+            3.52183678e+02, 8.86108346e+02, 8.82756302e+02, 9.48633609e+02,
+            9.67746928e+02, 5.18003590e+02, 4.96400801e+02, 5.25991584e+02
+            ])
+        check_impact(self, imp3, HAZ, exp_mix, aai_agg3, eai_exp3)
 
     def test_impact_pnt_agg(self):
         """Test impact agreggation method"""
