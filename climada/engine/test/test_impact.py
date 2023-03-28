@@ -888,6 +888,20 @@ class TestConvertExp(unittest.TestCase):
         self.assertEqual(exp.value_unit, imp.unit)
         self.assertEqual(exp.ref_year, 0)
 
+class TestMatchCentroids(unittest.TestCase):
+
+    def test_match_centroids(self):
+        "Test that hazard centroids get assigned correctly"
+        exp = ENT.exposures
+        exp.assign_centroids(HAZ)
+        fake_eai_exp = np.arange(len(exp.gdf))
+        fake_at_event = np.arange(HAZ.size)
+        fake_aai_agg = np.sum(fake_eai_exp)
+        imp = Impact.from_eih(exp, ENT.impact_funcs, HAZ,
+                              fake_at_event, fake_eai_exp, fake_aai_agg)
+        imp_centr = imp.match_centroids(HAZ)
+        np.testing.assert_array_equal(imp_centr, exp.gdf.centr_TC)
+
 
 class TestImpactH5IO(unittest.TestCase):
     """Tests for reading and writing Impact from/to H5 files"""
@@ -1106,4 +1120,5 @@ if __name__ == "__main__":
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestImpact))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestImpactH5IO))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestImpactConcat))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAssignCentroids))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
