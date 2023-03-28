@@ -23,6 +23,7 @@ import array
 import itertools
 import logging
 from typing import Dict
+import os
 
 import matplotlib.cm as cm_mp
 import matplotlib.pyplot as plt
@@ -145,38 +146,80 @@ TRACK_EXTENSION_PARS = {
 # - relative change in translation speed has a mean of 0% /hour and std 4.2%/hr,
 #   autocorr=0
 
+for envvar in [
+    'TRACKGEN_TEST_DECAY_AT_EXTREME_LATS',
+    'TRACKGEN_TEST_DECAY_BEYOND_ADVISORIES',
+    'TRACKGEN_TEST_KILL_BEYOND_ADVISORIES',
+    'TRACKGEN_TEST_KILL_BEYOND_EXTRATROPICAL',
+    'TRACKGEN_TEST_TARGET_PRESSURE_OVER_SEA'
+]:
+    if os.getenv(envvar) is None:
+        os.environ[envvar] = '1'
 
-MAX_WIND_BY_LAT_RANGE = {
-    'EP': {
-        'lat_min': {'lat': [2.5, 7.5], 'max_wind': [72, 115]},
-        'lat_max' : {'lat': [37.5, 57.5], 'max_wind': [75, 55]}
-    },
-    'NA': {
-        'lat_min': {'lat': [7.5, 12.5], 'max_wind': [97, 150]},
-        'lat_max': {'lat': [47.5, 57.5, 67.5], 'max_wind': [105, 75, 50]}
-    },
-    'NI': {
-        'lat_min': {'lat': [2.5, 7.5], 'max_wind': [65, 90]},
-        'lat_max': {'lat': [27.5], 'max_wind': [65]}
-    },
-    'SA': {
-        'lat_min': {'lat': [-40], 'max_wind': [65]},
-        'lat_max': {'lat': [-15], 'max_wind': [40]}
-    },
-    'SI': {
-        'lat_min': {'lat': [-42.5, -37.5, -32.5], 'max_wind': [55, 80, 100]},
-        'lat_max': {'lat': [-7.5, -2.5], 'max_wind': [155, 45]}
-    },
-    'SP': {
-        'lat_min': {'lat': [-52.5, -42.5, -32.5, -27.5], 'max_wind': [45, 60, 80, 120]},
-        'lat_max': {'lat': [-7.5, -2.5], 'max_wind': [120, 30]}
-    },
-    'WP': {
-        'lat_min': {'lat': [2.5, 7.5], 'max_wind': [115, 165]},
-        'lat_max': {'lat': [37.5, 42.5, 47.2], 'max_wind': [110, 90, 70]}
+if int(os.getenv('TRACKGEN_TEST_DECAY_AT_EXTREME_LATS')):
+    MAX_WIND_BY_LAT_RANGE = {
+        'EP': {
+            'lat_min': {'lat': [1, 2.5, 7.5], 'max_wind': [0, 72, 115]},
+            'lat_max' : {'lat': [37.5, 42.5, 47.5, 52.5, 57.5, 62.5, 65], 'max_wind': [95, 75, 75, 67, 55, 30, 0]}
+        },
+        'NA': {
+            'lat_min': {'lat': [5, 7.5, 12.5], 'max_wind': [0, 97, 150]},
+            'lat_max': {'lat': [57.5, 62.5, 67.5, 72.5, 75], 'max_wind': [75, 65, 50, 30, 0]}
+        },
+        'NI': {
+            'lat_min': {'lat': [1, 2.5, 7.5], 'max_wind': [0, 35, 90]},
+            'lat_max': {'lat': [22.5, 27.5, 30], 'max_wind': [140, 45, 0]}
+        },
+        'SA': {
+            'lat_min': {'lat': [-40], 'max_wind': [45]},
+            'lat_max': {'lat': [15], 'max_wind': [30]}
+        },
+        'SI': {
+            'lat_min': {'lat': [-50, -47,5, -42.5, -37.5], 'max_wind': [0, 57, 74, 86]},
+            'lat_max': {'lat': [-7.5, -2.5, -1], 'max_wind': [155, 49, 0]}
+        },
+        'SP': {
+            'lat_min': {'lat': [-70, -67.5, -62.5, -57.5, -52.5, -47.5, -42.5], 'max_wind': [0, 63, 63, 63, 63, 85, 90]},
+            'lat_max': {'lat': [-7.5, -2.5, -1], 'max_wind': [103, 34, 0]}
+        },
+        'WP': {
+            'lat_min': {'lat': [1, 2.5, 7.5], 'max_wind': [0, 125, 165]},
+            'lat_max': {'lat': [47.5, 52.5, 57.5, 62.5, 65], 'max_wind': [85, 75, 42, 40, 0]}
+        }
     }
-}
-"""Maximum max_sustained_wind value found in each basin for latitudinal value ranges."""
+    """Maximum max_sustained_wind value found in each basin for latitudinal value ranges."""
+else:
+    MAX_WIND_BY_LAT_RANGE = {
+        'EP': {
+            'lat_min': {'lat': [2.5, 7.5], 'max_wind': [72, 115]},
+            'lat_max' : {'lat': [37.5, 57.5], 'max_wind': [75, 55]}
+        },
+        'NA': {
+            'lat_min': {'lat': [7.5, 12.5], 'max_wind': [97, 150]},
+            'lat_max': {'lat': [47.5, 57.5, 67.5], 'max_wind': [105, 75, 50]}
+        },
+        'NI': {
+            'lat_min': {'lat': [2.5, 7.5], 'max_wind': [65, 90]},
+            'lat_max': {'lat': [27.5], 'max_wind': [65]}
+        },
+        'SA': {
+            'lat_min': {'lat': [-40], 'max_wind': [65]},
+            'lat_max': {'lat': [-15], 'max_wind': [40]}
+        },
+        'SI': {
+            'lat_min': {'lat': [-42.5, -37.5, -32.5], 'max_wind': [55, 80, 100]},
+            'lat_max': {'lat': [-7.5, -2.5], 'max_wind': [155, 45]}
+        },
+        'SP': {
+            'lat_min': {'lat': [-52.5, -42.5, -32.5, -27.5], 'max_wind': [45, 60, 80, 120]},
+            'lat_max': {'lat': [-7.5, -2.5], 'max_wind': [120, 30]}
+        },
+        'WP': {
+            'lat_min': {'lat': [2.5, 7.5], 'max_wind': [115, 165]},
+            'lat_max': {'lat': [37.5, 42.5, 47.2], 'max_wind': [110, 90, 70]}
+        }
+    }
+    """Maximum max_sustained_wind value found in each basin for latitudinal value ranges."""
 
 
 def calc_perturbed_trajectories(
@@ -494,7 +537,12 @@ def calc_perturbed_trajectories(
                                  ' if use_global_decay_params=False.')
 
         LOGGER.debug('Modelling TC intensities...')
-        ocean_modelled_tracks, sid_extended_tracks_intensity, sid_outside_lat_range = _model_synth_tc_intensity(
+        (
+            ocean_modelled_tracks,
+            sid_extended_tracks_intensity,
+            sid_outside_lat_range, 
+            sid_outside_intensity_range
+        ) = _model_synth_tc_intensity(
             tracks_list=tracks_list,
             random_vec_intensity=random_vec_intensity,
             time_step_h=time_step_h,
@@ -515,7 +563,14 @@ def calc_perturbed_trajectories(
         if len(sid_outside_lat_range):
             LOGGER.debug('Outside latitude range for following events - applied land decay: %s',
                          ', '.join(sid_outside_lat_range))
-
+        if int(os.getenv('TRACKGEN_TEST_KILL_BEYOND_ADVISORIES')):
+            if len(sid_outside_intensity_range):
+                LOGGER.debug('Tracks exceeding final advisory pressure - killed: %s',
+                            ', '.join(sid_outside_intensity_range))
+        elif int(os.getenv('TRACKGEN_TEST_DECAY_BEYOND_ADVISORIES')):
+            if len(sid_outside_intensity_range):
+                LOGGER.debug('Tracks exceeding final advisory pressure - applied land decay: %s',
+                            ', '.join(sid_outside_intensity_range))
         LOGGER.debug(
             f"Extended {nb_extended_tracks} synthetic tracks that ended at Tropical Storm or above category. "
             f"Adapted intensity on {len(ocean_modelled_tracks)} tracks for a total of "
@@ -599,9 +654,24 @@ def _one_rnd_walk(track,
     # calculate historical track values that are used for synthetic track modelling
     if land_geom is not None:
         # compute minimum pressure occurring on or after each timestep
-        target_pressure = np.flip(np.minimum.accumulate(
-            np.flip(track.central_pressure.values)
-        ))
+        if int(os.getenv('TRACKGEN_TEST_TARGET_PRESSURE_OVER_SEA')):
+            # LOGGER.debug('looking at target pressure!')
+            over_sea_pressure = np.array([
+                pres if not land
+                else track.central_pressure.values[-1]
+                for pres, land in zip(track.central_pressure.values, track.on_land.values)
+            ])
+            # if not np.allclose(over_sea_pressure, track.central_pressure.values):
+            #     LOGGER.debug('    adjusted!')
+            # else:
+            #     LOGGER.debug('    not adjusted')
+            target_pressure = np.flip(np.minimum.accumulate(
+                np.flip(over_sea_pressure)
+            ))
+        else:
+            target_pressure = np.flip(np.minimum.accumulate(
+                np.flip(track.central_pressure.values)
+            ))
         # compute linear regression onto intensification and decay
         track_fits_warning = _add_fits_to_track(track, central_pressure_pert)
         # track are not to be cut-off. Latitudinal tresholds are applied later
@@ -2233,7 +2303,7 @@ def _add_id_synth_chunks_shift_init(track: xr.Dataset,
     * 0 for any point that does not neet any intensity modelling, i.e.:
             * If the track starts on land, the first points on land are set to 0
             * If both historical and synthetic tracks have the same points on land, return all 0
-            * If both historical and synthetic tracks have fewer than 2 points on land, return all 0
+            * If both historical and synthetic tracks have fewer than 6 hours on land, return all 0
     * To capture the intensification of a non-landfalling synthetic track versus its historical
       counterpart, the non-landfalling points on the synthetic track are counted as if after a
       land-to-ocean transition.
@@ -2289,7 +2359,8 @@ def _add_id_synth_chunks_shift_init(track: xr.Dataset,
     on_land_synth = track.on_land.values.copy()
     on_land_hist = track.on_land_hist.values.copy()
 
-    below_threshold = np.sum(on_land_synth) <= 2 and np.sum(on_land_hist) <= 2
+    n_frames_threshold = int(np.floor(6 / track.time_step[0]))   # 6 hours over land
+    below_threshold = np.sum(on_land_synth) <= n_frames_threshold and np.sum(on_land_hist) <= n_frames_threshold
     all_equal = np.all(on_land_synth == on_land_hist)
     if below_threshold or all_equal:
         return track, 0, 0, track_end_shift
@@ -2425,6 +2496,7 @@ def _model_synth_tc_intensity(tracks_list,
     # model track intensity
     sid_extended_tracks = []
     sid_outside_lat_range = []
+    sid_outside_intensity_range = []
     if pool:
         chunksize = min(len(tracks_list) // pool.ncpus, 1000)
         tracks_intensified = pool.map(
@@ -2446,14 +2518,23 @@ def _model_synth_tc_intensity(tracks_list,
     if not extend_track:
         for (track,_) in tracks_intensified:
             if not track.orig_event_flag:
+                if np.max(np.diff(track.max_sustained_wind.values)) > 20:
+                    print(f"BEFORE PROBLEM: {track.sid}")
                 _estimate_params_track(track)
                 track.attrs['category'] = climada.hazard.tc_tracks.set_category(
                     track.max_sustained_wind.values, track.max_sustained_wind_unit)
+                if np.max(np.diff(track.max_sustained_wind.values)) > 20:
+                    print(f"AFTER PROBLEM: {track.sid}")
         new_tracks_list = [
             drop_temporary_variables(track, track_vars_attrs)
             for (track,_) in tracks_intensified
         ]
-        return new_tracks_list, sid_extended_tracks, sid_outside_lat_range
+        return (
+            new_tracks_list, 
+            sid_extended_tracks,
+            sid_outside_lat_range,
+            sid_outside_intensity_range
+            )
 
     LOGGER.debug('Extending tracks after intensity modelling')
     # create extension and trajectory
@@ -2512,6 +2593,21 @@ def _model_synth_tc_intensity(tracks_list,
             if np.all(~sea_land) or np.where(sea_land)[0][0] > latrange_out_idx:
                 sid_outside_lat_range.append(track.sid)
                 sea_land[latrange_out_idx] = True
+        # apply decay (landfall) if track falls below the intensity of the final
+        # point in ibtracs
+        intensityrange_out_idx = _get_finalintensity_idx(track, original_track=tracks_list[i])
+        if intensityrange_out_idx < track.time.size:
+            if int(os.getenv('TRACKGEN_TEST_DECAY_BEYOND_ADVISORIES')):
+                if np.all(~sea_land) or np.where(sea_land)[0][0] > intensityrange_out_idx:
+                    sid_outside_intensity_range.append(track.sid)
+                    sea_land[intensityrange_out_idx] = True
+            # if int(os.getenv('TRACKGEN_TEST_KILL_BEYOND_ADVISORIES')):
+            #     print("\n\n\n\nCUTTING DOWN TRACK")
+            #     print("len")
+            #     print(track.time.size)
+            #     print("new last frame")
+            #     print(intensityrange_out_idx)
+            #     track = track.sel(time=slice(None, track.time[intensityrange_out_idx-1]))
         if np.any(sea_land):
             # apply landfall decay thereafter
             sea_land_idx = np.where(sea_land)[0][0]
@@ -2539,7 +2635,7 @@ def _model_synth_tc_intensity(tracks_list,
                     f'Central pressure: {pcen_extend[-1]}.'
                 )
             _estimate_params_track(track)
-
+        
         # cutoff track end?
         extended_cat = np.array([
             climada.hazard.tc_tracks.set_category(
@@ -2548,22 +2644,44 @@ def _model_synth_tc_intensity(tracks_list,
             )
             for idx in range(track.time.size)
         ])
-        if np.any(extended_cat >= 0):
-            cutoff_idx = min(np.where(extended_cat >= 0)[0][-1] + 4, extended_cat.size-1)
-            tracks_intensified_new2.append(track.isel(time=slice(None, cutoff_idx)))
-        else:
-            tracks_intensified_new2.append(track)
+
+        if np.any(extended_cat >= 0):  
+            # Kill the extended track 12 hours after dropping below Cat 1
+            buffer_frames = int(np.ceil(12/time_step_h))
+            cutoff_idx = min(np.where(extended_cat >= 0)[0][-1] + buffer_frames, extended_cat.size-1)
+            track = track.isel(time=slice(None, cutoff_idx))
+
+        # If the parent storm finished as extratropical, kill any extension frames at times beyond the original track end
+        original_size = tracks_list[i].time.size
+        if hasattr(track, 'nature'):
+            advisory_range_et_idx = original_size if tracks_list[i].nature.values[-1] == 'ET' else track.time.size
+            if advisory_range_et_idx < track.time.size:
+                if int(os.getenv('TRACKGEN_TEST_KILL_BEYOND_EXTRATROPICAL')):
+                    track = track.isel(time=slice(None, advisory_range_et_idx))
+                    sid_outside_intensity_range.append(track.sid)
+                    sid_outside_intensity_range = list(set(sid_outside_intensity_range))
+        
+        # If the child storm weakens below the parent's final strength, kill it
+        intensityrange_out_idx = _get_finalintensity_idx(track, original_track=tracks_list[i])
+        intensityrange_out_idx = max(original_size, intensityrange_out_idx)
+        if intensityrange_out_idx < track.time.size:
+            if int(os.getenv('TRACKGEN_TEST_KILL_BEYOND_ADVISORIES')):
+                track = track.isel(time=slice(None, intensityrange_out_idx))
+                sid_outside_intensity_range.append(track.sid)
+                sid_outside_intensity_range = list(set(sid_outside_intensity_range))
+        
+        tracks_intensified_new2.append(track)
         tracks_intensified_new2[i].attrs['category'] = climada.hazard.tc_tracks.set_category(
             tracks_intensified_new2[i].max_sustained_wind.values,
             tracks_intensified_new2[i].max_sustained_wind_unit
         )
-
+        
     LOGGER.debug('dropping temporary variables')
     new_tracks_list = [
         drop_temporary_variables(track, track_vars_attrs)
         for track in tracks_intensified_new2
     ]
-    return new_tracks_list, sid_extended_tracks, sid_outside_lat_range
+    return new_tracks_list, sid_extended_tracks, sid_outside_lat_range, sid_outside_intensity_range
 
 def drop_temporary_variables(track : xr.Dataset, track_vars_attrs):
     # TODO docstring
@@ -2577,8 +2695,8 @@ def drop_temporary_variables(track : xr.Dataset, track_vars_attrs):
             if np.any(np.isnan(track[v].values)):
                 raise ValueError('Missing values in %s: %s', v, track.sid)
     # check time
-    time_steps_h = (track.time.values[1:] - track.time.values[:-1]) / np.timedelta64(1, 'h')
-    if not np.allclose(time_steps_h, time_steps_h[0]):
+    time_steps_h = np.diff(track.time.values) / np.timedelta64(1, 'h')
+    if track.time.size > 1 and not np.allclose(time_steps_h, time_steps_h[0]):
         LOGGER.debug('time steps in hour: %s' % ','.join(time_steps_h.astype(str)))
         raise ValueError('Temporal resolution not constant: %s', track.sid)
     return track.drop_vars(vars_to_drop)
@@ -2836,13 +2954,14 @@ def intensity_evolution_sea(track, id_chunk, central_pressure_pert, rnd_pars_i):
                     pcen_extend = np.concatenate([pcen_extend, pcen_decay])
             pcen_extend = np.fmin(pcen_extend, track_chunk.environmental_pressure.values[-1])
 
-            # finally, truncate track to keep only 3 after entering TD category
+            # finally, truncate track to keep only 4 hours after entering TD category
             extended_cat = np.array([
                 _get_cat_from_pcen(track_chunk, phase='decay', pcen=pcen_extend[idx])
                 for idx in range(pcen_extend.size)
             ])
+            n_buffer_frames = int(np.ceil(12 / time_step_h))
             if np.any(extended_cat >= 0):
-                cutoff_idx = min(np.where(extended_cat >= 0)[0][-1] + 4, extended_cat.size-1)
+                cutoff_idx = min(np.where(extended_cat >= 0)[0][-1] + n_buffer_frames, extended_cat.size-1)
                 pcen_extend = pcen_extend[:cutoff_idx]
             if pcen_extend.size == 0:
                 # in case in the end there is nothing to extend (0 time steps)
@@ -3084,6 +3203,29 @@ def _get_outside_lat_idx(track):
             latrange_out_idx = min(np.where(outside_range)[0][0], latrange_out_idx)
     return latrange_out_idx
 
+def _get_finalintensity_idx(track, original_track):
+    '''Get the index of the frame where the synthetic track's central 
+    pressure first goes above source track's final central pressure (or 
+    the maximum pressure it reaches after its minimum pressure, whichever 
+    is higher)'''
+    # Get source track's maximum pressure (after minimum pressure is achieved)
+    # This is usually the last frame
+    original_pres = original_track.central_pressure.values
+    min_idx = np.where(original_pres == np.min(original_pres))[0][-1]
+    max_pres = np.max(original_pres[min_idx:])
+
+    # Return the index of the first time the random walk goes above this 
+    # pressure in the generated track segments
+    idx = track.central_pressure.values[min_idx:] >= max_pres + 2
+
+    # if idx.any():
+    #     print(f'\nSHORTENING: {track.sid}')
+    #     print(f'len {track.time.size}')
+    #     print(f"idx {np.where(idx)[0][0]}")
+    #     print(f'out {min_idx + np.where(idx)[0][0] if idx.any() else track.time.size}')
+    return min_idx + np.where(idx)[0][0] if idx.any() else track.time.size
+
+
 def _apply_decay_coeffs(track, v_rel, p_rel, land_geom, s_rel):
     """Change track's max sustained wind and central pressure using the land
     decay coefficients.
@@ -3154,7 +3296,7 @@ def _apply_decay_coeffs(track, v_rel, p_rel, land_geom, s_rel):
             if idx + 1 < sea_land_idx.size:
                 # if there is a next landfall, correct until last point before
                 # reaching land again
-                end_cor = sea_land_idx[idx + 1]
+                end_cor = sea_land_idx[idx]
             else:
                 # if there is no further landfall, correct until the end of
                 # the track
