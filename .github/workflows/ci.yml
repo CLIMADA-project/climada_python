@@ -44,6 +44,7 @@ jobs:
       -
         name: Run Linter
         if: ${{ matrix.python-version == '3.9' }}
+        continue-on-error: true  # Pylint reports as bit-encoded return values
         run: |
           micromamba install -y pylint
           echo "::add-matcher::${{ github.workspace }}/.github/matchers/pylint-warning.json"
