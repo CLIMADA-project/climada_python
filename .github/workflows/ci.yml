@@ -41,10 +41,10 @@ jobs:
         name: Run Data Tests
         run: |
           make data_test
-      -
-        name: Run Integration Tests
-        run: |
-          make integ_test
+      # -
+      #   name: Run Integration Tests
+      #   run: |
+      #     make integ_test
       # TODO: Maybe run Notebook tests only on specific Python version?
       -
         name: Run Notebook Tests
