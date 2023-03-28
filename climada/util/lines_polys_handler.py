@@ -930,8 +930,19 @@ def _line_to_pnts(gdf_lines, res, to_meters):
     else:
         line_lengths = gdf_lines.length
 
+    # Add warning if lines are too short w.r.t. resolution
+    failing_res_check_count = len(line_lengths[line_lengths > 10*res])
+    if failing_res_check_count > 0:
+        LOGGER.warning(
+            "%d lines with a length < 10*resolution were found. "
+            "Each of these lines is disaggregate to one point. "
+            "Reaggregatint values will thus likely lead to overestimattion. "
+            "Consider chosing a smaller resolution or filter out the short lines. ",
+            failing_res_check_count
+            )
+
     line_fractions = [
-        np.linspace(0, 1, num=_pnts_per_line(length, res))
+        _line_fraction(length, res)
         for length in line_lengths
         ]
 
@@ -951,6 +962,29 @@ def _line_to_pnts(gdf_lines, res, to_meters):
     return gdf_points
 
 
+def _line_fraction(length, res):
+    """
+    Compute the fraction in which to divide a line of given length at given resolution
+
+    Parameters
+    ----------
+    length : float
+        Length of a string
+    res : float
+        Resolution (length of a string element)
+
+    Returns
+    -------
+    np.ndarray
+        Array of the fraction at which to divide the string of given length
+        into points at the chosen resolution.
+
+    """
+    nb_points = _pnts_per_line(length, res)
+    eff_res = 1 / nb_points
+    start = eff_res / 2
+    return np.arange(start, 1, eff_res)
+
 def _pnts_per_line(length, res):
     """Calculate number of points fitting along a line, given a certain
     resolution (spacing) res between points.
@@ -965,7 +999,7 @@ def _pnts_per_line(length, res):
     int
         Number of points along line
     """
-    return int(np.ceil(length / res) + 1)
+    return int(max(np.round(length / res), 1))
 
 
 def _swap_geom_cols(gdf, geom_to, new_geom):
