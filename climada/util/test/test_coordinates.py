@@ -23,6 +23,7 @@ import unittest
 from pathlib import Path
 
 from cartopy.io import shapereader
+import pandas as pd
 import geopandas as gpd
 import numpy as np
 from pyproj.crs import CRS as PCRS
@@ -36,6 +37,7 @@ import rasterio.transform
 
 from climada import CONFIG
 from climada.util.constants import HAZ_DEMO_FL, DEF_CRS, ONE_LAT_KM, DEMO_DIR
+from climada.hazard.base import Centroids
 import climada.util.coordinates as u_coord
 
 DATA_DIR = CONFIG.util.test_data.dir()
@@ -493,28 +495,124 @@ class TestFunc(unittest.TestCase):
 class TestAssign(unittest.TestCase):
     """Test coordinate assignment functions"""
 
-    def test_assign_grid_points(self):
-        """Test assign_grid_points function"""
+    def test_match_grid_points(self):
+        """Test match_grid_points function"""
         res = (1, -0.5)
         pt_bounds = (5, 40, 10, 50)
         height, width, transform = u_coord.pts_to_raster_meta(pt_bounds, res)
         xy = np.array([[5, 50], [6, 50], [5, 49.5], [10, 40]])
-        out = u_coord.assign_grid_points(xy[:, 0], xy[:, 1], width, height, transform)
+        out = u_coord.match_grid_points(xy[:, 0], xy[:, 1], width, height, transform)
         np.testing.assert_array_equal(out, [0, 1, 6, 125])
 
         res = (0.5, -0.5)
         height, width, transform = u_coord.pts_to_raster_meta(pt_bounds, res)
         xy = np.array([[5.1, 49.95], [5.99, 50.05], [5, 49.6], [10.1, 39.8]])
-        out = u_coord.assign_grid_points(xy[:, 0], xy[:, 1], width, height, transform)
+        out = u_coord.match_grid_points(xy[:, 0], xy[:, 1], width, height, transform)
         np.testing.assert_array_equal(out, [0, 2, 11, 230])
 
         res = (1, -1)
         pt_bounds = (-20, -40, -10, -30)
         height, width, transform = u_coord.pts_to_raster_meta(pt_bounds, res)
         xy = np.array([[-10, -40], [-30, -40]])
-        out = u_coord.assign_grid_points(xy[:, 0], xy[:, 1], width, height, transform)
+        out = u_coord.match_grid_points(xy[:, 0], xy[:, 1], width, height, transform)
         np.testing.assert_array_equal(out, [120, -1])
 
+    def test_match_centroids(self):
+        """Test match_centroids function."""
+        #Test 1: Raster data
+        meta = {
+            'count': 1, 'crs': DEF_CRS,
+            'width': 20, 'height': 10,
+            'transform': rasterio.Affine(1.5, 0.0, -20, 0.0, -1.4, 8)
+        }
+        centroids = Centroids(meta=meta)
+        df = pd.DataFrame({
+            'longitude': np.array([
+                -20.1, -20.0, -19.8, -19.0, -18.6, -18.4,
+                -19.0, -19.0, -19.0, -19.0,
+                -20.1, 0.0, 10.1, 10.1, 10.1, 0.0, -20.2, -20.3,
+                -6.4, 9.8, 0.0,
+                ]),
+            'latitude': np.array([
+                7.3, 7.3, 7.3, 7.3, 7.3, 7.3,
+                8.1, 7.9, 6.7, 6.5,
+                8.1, 8.2, 8.3, 0.0, -6.1, -6.2, -6.3, 0.0,
+                -1.9, -1.7, 0.0,
+                ])
+        })
+        gdf = gpd.GeoDataFrame(df,geometry=gpd.points_from_xy(df.longitude, df.latitude),
+                               crs=DEF_CRS)
+        assigned = u_coord.match_centroids(gdf,centroids)
+
+        expected_result = [
+            # constant y-value, varying x-value
+            -1, 0, 0, 0, 0, 1,
+            # constant x-value, varying y-value
+            -1, 0, 0, 20,
+            # out of bounds: topleft, top, topright, right, bottomright, bottom, bottomleft, left
+            -1, -1, -1, -1, -1, -1, -1, -1,
+            # some explicit points within the raster
+            149, 139, 113,
+        ]
+        np.testing.assert_array_equal(assigned,expected_result)
+
+        # Test 2: Vector data (copied from test_match_coordinates)
+        # note that the coordinates are in lat/lon
+        gdf_coords = np.array([(0.2, 2), (0, 0), (0, 2), (2.1, 3), (1, 1), (-1, 1), (0, 179.9)])
+        df = pd.DataFrame({
+            'longitude': gdf_coords[:, 1],
+            'latitude': gdf_coords[:, 0]
+        })
+        gdf = gpd.GeoDataFrame(df,geometry=gpd.points_from_xy(df.longitude, df.latitude),
+                               crs=DEF_CRS)
+
+        coords_to_assign = np.array([(2.1, 3), (0, 0), (0, 2), (0.9, 1.0), (0, -179.9)])
+        centroids = Centroids(
+            lat=coords_to_assign[:, 0],
+            lon=coords_to_assign[:, 1],
+            geometry = gpd.GeoSeries(crs=DEF_CRS)
+        )
+        centroids_empty = Centroids()
+
+        expected_results = [
+            # test with different thresholds (in km)
+            (100, [2, 1, 2, 0, 3, -1, 4]),
+            (20, [-1, 1, 2, 0, 3, -1, -1]),
+            (0, [-1, 1, 2, 0, -1, -1, -1]),
+        ]
+
+        for distance in ["euclidean", "haversine", "approx"]:
+            for thresh, result in expected_results:
+                assigned = u_coord.match_centroids(
+                    gdf, centroids, distance=distance, threshold=thresh)
+                np.testing.assert_array_equal(assigned, result)
+
+            #test empty centroids
+            result = [-1, -1, -1, -1, -1, -1, -1]
+            assigned_idx = u_coord.match_centroids(
+                    gdf, centroids_empty, distance=distance, threshold=thresh)
+            np.testing.assert_array_equal(assigned_idx, result)
+
+        # Test 3: non matching crs
+        df = pd.DataFrame({
+            'longitude': [10, 20, 30],
+            'latitude': [50, 60, 70]
+        })
+        gdf = gpd.GeoDataFrame(df,geometry=gpd.points_from_xy(df.longitude, df.latitude),
+                               crs = 'EPSG:4326')
+
+        coords_to_assign = np.array([(2.1, 3), (0, 0), (0, 2), (0.9, 1.0), (0, -179.9)])
+        centroids = Centroids(
+            lat=[1100000,1200000],
+            lon=[2500000,2600000],
+            geometry = gpd.GeoSeries(crs='EPSG:2056')
+        )
+
+        with self.assertRaises(ValueError) as cm:
+            u_coord.match_centroids(gdf, centroids)
+        self.assertIn('Set hazard and GeoDataFrame to same CRS first!',
+                      str(cm.exception))
+        
     def test_dist_sqr_approx_pass(self):
         """Test approximate distance helper function."""
         lats1 = 45.5
@@ -529,7 +627,7 @@ class TestAssign(unittest.TestCase):
     def test_wrong_distance_fail(self):
         """Check exception is thrown when wrong distance is given"""
         with self.assertRaises(ValueError) as cm:
-            u_coord.assign_coordinates(np.ones((10, 2)), np.ones((7, 2)), distance='distance')
+            u_coord.match_coordinates(np.ones((10, 2)), np.ones((7, 2)), distance='distance')
         self.assertIn('Coordinate assignment with "distance" distance is not supported.',
                       str(cm.exception))
 
@@ -652,7 +750,7 @@ class TestAssign(unittest.TestCase):
         centroids, exposures = self.data_input_values()
 
         # Interpolate with default threshold
-        neighbors = u_coord.assign_coordinates(exposures, centroids, distance=dist)
+        neighbors = u_coord.match_coordinates(exposures, centroids, distance=dist)
         # Reference output
         ref_neighbors = self.data_ref()
         # Check results
@@ -668,7 +766,7 @@ class TestAssign(unittest.TestCase):
         # Interpolate with lower threshold to raise warnings
         threshold = 40
         with self.assertLogs('climada.util.coordinates', level='INFO') as cm:
-            neighbors = u_coord.assign_coordinates(
+            neighbors = u_coord.match_coordinates(
                 exposures, centroids, distance=dist, threshold=threshold)
         self.assertIn("Distance to closest centroid", cm.output[1])
 
@@ -685,7 +783,7 @@ class TestAssign(unittest.TestCase):
         exposures[2, :] = exposures[0, :]
 
         # Interpolate with default threshold
-        neighbors = u_coord.assign_coordinates(exposures, centroids, distance=dist)
+        neighbors = u_coord.match_coordinates(exposures, centroids, distance=dist)
 
         # Check output neighbors have same size as coordinates
         self.assertEqual(len(neighbors), exposures.shape[0])
@@ -700,7 +798,7 @@ class TestAssign(unittest.TestCase):
         # Interpolate with lower threshold to raise warnings
         threshold = 100
         with self.assertLogs('climada.util.coordinates', level='INFO') as cm:
-            neighbors = u_coord.assign_coordinates(
+            neighbors = u_coord.match_coordinates(
                 exposures, centroids, distance=dist, threshold=threshold)
         self.assertIn("Distance to closest centroid", cm.output[1])
 
@@ -786,12 +884,12 @@ class TestAssign(unittest.TestCase):
             ]
 
         for dist, ref, kwargs in zip(dist_list, ref_neighbors, kwargs_list):
-            neighbors = u_coord.assign_coordinates(
+            neighbors = u_coord.match_coordinates(
                 exposures, centroids, distance=dist, threshold=threshold, **kwargs)
             np.testing.assert_array_equal(neighbors, ref)
 
-    def test_assign_coordinates(self):
-        """Test assign_coordinates function"""
+    def test_match_coordinates(self):
+        """Test match_coordinates function"""
         # note that the coordinates are in lat/lon
         coords = np.array([(0.2, 2), (0, 0), (0, 2), (2.1, 3), (1, 1), (-1, 1), (0, 179.9)])
         coords_to_assign = np.array([(2.1, 3), (0, 0), (0, 2), (0.9, 1.0), (0, -179.9)])
@@ -808,7 +906,7 @@ class TestAssign(unittest.TestCase):
                 coords_typed = coords.astype(test_dtype)
                 coords_to_assign_typed = coords_to_assign.astype(test_dtype)
                 for thresh, result in expected_results:
-                    assigned_idx = u_coord.assign_coordinates(
+                    assigned_idx = u_coord.match_coordinates(
                         coords_typed, coords_to_assign_typed,
                         distance=distance, threshold=thresh)
                     np.testing.assert_array_equal(assigned_idx, result)
@@ -816,14 +914,14 @@ class TestAssign(unittest.TestCase):
             #test empty coords_to_assign
             coords_to_assign_empty = np.array([])
             result = [-1, -1, -1, -1, -1, -1, -1]
-            assigned_idx = u_coord.assign_coordinates(
+            assigned_idx = u_coord.match_coordinates(
                 coords, coords_to_assign_empty, distance=distance, threshold=thresh)
             np.testing.assert_array_equal(assigned_idx, result)
 
             #test empty coords
             coords_empty = np.array([])
             result = np.array([])
-            assigned_idx = u_coord.assign_coordinates(
+            assigned_idx = u_coord.match_coordinates(
                 coords_empty, coords_to_assign, distance=distance, threshold=thresh)
             np.testing.assert_array_equal(assigned_idx, result)
 

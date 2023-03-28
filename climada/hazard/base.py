@@ -1452,7 +1452,7 @@ class Hazard():
         See also
         --------
         self.select: Method to select centroids by lat/lon extent
-        util.coordinates.assign_coordinates: algorithm to match centroids.
+        util.coordinates.match_coordinates: algorithm to match centroids.
 
         """
 
@@ -2320,7 +2320,7 @@ class Hazard():
         # map individual centroids objects to union
         centroids = Centroids.union(*[haz.centroids for haz in haz_list])
         hazcent_in_cent_idx_list = [
-            u_coord.assign_coordinates(haz.centroids.coord, centroids.coord, threshold=0)
+            u_coord.match_coordinates(haz.centroids.coord, centroids.coord, threshold=0)
             for haz in haz_list_nonempty
         ]
 
@@ -2408,7 +2408,7 @@ class Hazard():
             Centroids instance on which to map the hazard.
         threshold: int or float
             Threshold (in km) for mapping haz.centroids not in centroids.
-            Argument is passed to climada.util.coordinates.assign_coordinates.
+            Argument is passed to climada.util.coordinates.match_coordinates.
             Default: 100 (km)
 
         Returns
@@ -2423,7 +2423,7 @@ class Hazard():
 
         See Also
         --------
-        util.coordinates.assign_coordinates: algorithm to match centroids.
+        util.coordinates.match_coordinates: algorithm to match centroids.
 
         """
         # define empty hazard
@@ -2432,7 +2432,7 @@ class Hazard():
 
         # indices for mapping matrices onto common centroids
         if centroids.meta:
-            new_cent_idx = u_coord.assign_grid_points(
+            new_cent_idx = u_coord.match_grid_points(
                 self.centroids.lon, self.centroids.lat,
                 centroids.meta['width'], centroids.meta['height'],
                 centroids.meta['transform'])
@@ -2441,7 +2441,7 @@ class Hazard():
                                  "the raster defined by centroids.meta."
                                  " Please choose a larger raster.")
         else:
-            new_cent_idx = u_coord.assign_coordinates(
+            new_cent_idx = u_coord.match_coordinates(
                 self.centroids.coord, centroids.coord, threshold=threshold
             )
             if -1 in new_cent_idx:
