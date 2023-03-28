@@ -2639,7 +2639,8 @@ def align_raster_data(source, src_crs, src_transform, dst_crs=None, dst_resoluti
     dst_transform, dst_shape = subraster_from_bounds(global_transform, dst_bounds)
 
     destination = np.zeros(dst_shape, dtype=source.dtype)
-    rasterio.warp.reproject(source=source,
+    try:
+        rasterio.warp.reproject(source=source,
                             destination=destination,
                             src_transform=src_transform,
                             src_crs=src_crs,
@@ -2647,6 +2648,12 @@ def align_raster_data(source, src_crs, src_transform, dst_crs=None, dst_resoluti
                             dst_crs=dst_crs,
                             resampling=resampling,
                             **kwargs)
+    except Exception as raster_exc:
+        # rasterio doesn't expose all of their error classes
+        # in particular: rasterio._err.CPLE_AppDefinedError
+        # so we transform the exception to something that can be excepted
+        # e.g. in litpop._get_litpop_single_polygon
+        raise ValueError(raster_exc) from raster_exc
 
     if conserve == 'mean':
         destination *= source.mean() / destination.mean()
