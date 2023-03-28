@@ -42,6 +42,14 @@ jobs:
             nbformat
             make
       -
+        name: Run Linter
+        if: ${{ matrix.python-version == '3.9' }}
+        run: |
+          micromamba install -y pylint
+          echo "::add-matcher::${{ github.workspace }}/.github/matchers/pylint-warning.json"
+          echo "::add-matcher::${{ github.workspace }}/.github/matchers/pylint-error.json"
+          pylint -ry climada
+      -
         name: Run Unit Tests
         run: |
           make unit_test
@@ -86,15 +94,3 @@ jobs:
           junit_files: tests_xml/**/*.xml
           check_name: "Test Results"
           comment_mode: "off"
-
-  linting:
-    runs-on: ubuntu-latest
-    steps:
-      -
-        name: Checkout Repo
-        uses: actions/checkout@v3
-      -
-        name: Lint Code
-        uses: marian-code/python-lint-annotate@v3
-        with:
-          python-root-list: climada/
