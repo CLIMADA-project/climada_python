@@ -78,3 +78,15 @@ jobs:
           junit_files: tests_xml/**/*.xml
           check_name: "Test Results"
           comment_mode: "off"
+
+  linting:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Checkout Repo
+        uses: actions/checkout@v3
+      -
+        name: Lint Code
+        uses: marian-code/python-lint-annotate@v3
+        with:
+          python-root-list: climada/
