@@ -55,6 +55,7 @@ setup(
         'matplotlib',
         'netcdf4',
         'numba',
+        'openpyxl',
         'overpy',
         'pandas',
         'pandas-datareader',
