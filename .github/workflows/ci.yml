@@ -20,12 +20,20 @@ jobs:
       -
         name: Checkout Repo
         uses: actions/checkout@v3
+      # Fetch the date for setting a cache key.
+      -
+        id: date
+        run: |
+          echo "TODAY=$(date -Idate)" >> $GITHUB_OUTPUT
       -
         name: Build Python ${{ matrix.python-version }} environment
         uses: mamba-org/provision-with-micromamba@main
         with:
           environment-file: requirements/env_climada.yml
           cache-env: true
+          # Special cache key because we are using a matrix
+          # NOTE: The cache will be invalidated if the key changes.
+          cache-env-key: ${{ steps.date.outputs.TODAY }}-Python${{ matrix.python-version }}
           channels: conda-forge
           extra-specs: |
             python=${{ matrix.python-version }}
