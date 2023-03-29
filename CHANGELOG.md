@@ -28,6 +28,7 @@ Removed:
 [#602](https://github.com/CLIMADA-project/climada_python/pull/602)
 - Modified the method to disaggregate lines in the `lines_polys_handler` utility module in order to better conserve the total length of all lines on average [#679](https://github.com/CLIMADA-project/climada_python/pull/679).
 - Added test for non-default impact function id in the `lines_polys_handler` [#676](https://github.com/CLIMADA-project/climada_python/pull/676)
+- The sigmoid and step impact functions now require the user to define the hazard type. [#675](https://github.com/CLIMADA-project/climada_python/pull/675)
 
 ### Fixed
 
