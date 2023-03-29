@@ -16,6 +16,11 @@ jobs:
       matrix:
         python-version: ["3.9", "3.10", "3.11"]
 
+    permissions:
+      # For publishing linter checks and annotations
+      checks: write
+      contents: write
+
     steps:
       -
         name: Checkout Repo
