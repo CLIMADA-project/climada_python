@@ -47,7 +47,7 @@ jobs:
         if: ${{ matrix.python-version == '3.9' }}
         continue-on-error: true  # Ruff may throw errors
         run: |
-          ruff --format=github --target-version=py37 climada/
+          ruff --format=github --target-version=py39 climada/
       -
         name: Run Unit Tests
         run: |
