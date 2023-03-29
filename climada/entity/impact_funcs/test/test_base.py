@@ -59,8 +59,6 @@ class TestInterpolation(unittest.TestCase):
         self.assertEqual(imp_fun.haz_type, 'RF')
         self.assertEqual(imp_fun.name, 'sigmoid impf')
 
-
-
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestInterpolation)
