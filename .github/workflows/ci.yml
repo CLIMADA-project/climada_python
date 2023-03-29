@@ -46,13 +46,17 @@ jobs:
             ipython
             nbformat
             make
-            ruff
       -
         name: Run Linter
         if: ${{ matrix.python-version == '3.9' }}
-        continue-on-error: true  # Ruff may throw errors
+        continue-on-error: true  # Pylint reports as bit-encoded return values
         run: |
-          ruff --format=github --target-version=py39 climada/
+          micromamba install -y pylint
+          echo Adding matcher: ${{ github.workspace }}/.github/matchers/pylint-warning.json
+          echo "Adding matcher: ${{ github.workspace }}/.github/matchers/pylint-warning.json"
+          echo "::add-matcher::${{ github.workspace }}/.github/matchers/pylint-warning.json"
+          echo "::add-matcher::${{ github.workspace }}/.github/matchers/pylint-error.json"
+          pylint -ry climada
       -
         name: Run Unit Tests
         run: |
