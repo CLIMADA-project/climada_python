@@ -258,7 +258,7 @@ class ImpactFunc():
         Return
         ------
         impf : climada.entity.impact_funcs.ImpactFunc
-            Step impact function
+            Sigmoid impact function
         """
         inten_min, inten_max, inten_step = intensity
         intensity = np.arange(inten_min, inten_max, inten_step)
