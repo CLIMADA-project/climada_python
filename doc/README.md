@@ -29,7 +29,7 @@ Next, execute `make` (this might take a while when executed for the first time)
 make html
 ```
 
-The documentation will be placed in `doc/_html`. Simply open the page `doc/_html/index.html` with your browser.
+The documentation will be placed in `doc/_build/html`. Simply open the page `doc/_build/html/index.html` with your browser.
 
 ## Updating the Documentation Environment for Readthedocs.org
 
