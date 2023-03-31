@@ -731,7 +731,8 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
                                                        global_origins=global_origins,
                                                        )
     except ValueError as err:
-        if "height must be > 0" in err.args[0] or "width must be > 0" in err.args[0]:
+        if ("height must be > 0" in str(err) or "width must be > 0" in str(err) # rasterio 1.2
+         or "Invalid dataset dimensions :" in str(err)): # rasterio 1.3
             # no grid point within shape after reprojection, None is returned.
             if verbose:
                 LOGGER.info('No data point on destination grid within polygon.')

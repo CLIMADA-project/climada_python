@@ -217,7 +217,7 @@ Apps for Programming in Python
 ------------------------------
 
 To work with CLIMADA, you will need an application that supports Jupyter Notebooks.
-There are plugins available for nearly every code editor or IDE, but if you are unsure about which to choose, we recommend `JupyterLab <https://jupyterlab.readthedocs.io/en/stable/>`_ or `Spyder <https://www.spyder-ide.org/>`_.
+There are plugins available for nearly every code editor or IDE, but if you are unsure about which to choose, we recommend `JupyterLab <https://jupyterlab.readthedocs.io/en/stable/>`_, `Visual Studio Code <https://code.visualstudio.com/>`_ or `Spyder <https://www.spyder-ide.org/>`_.
 
 JupyterLab
 ^^^^^^^^^^
@@ -236,6 +236,59 @@ JupyterLab
       jupyter-lab
 
    JupyterLab will open in a new window of your default browser.
+
+Visual Studio Code (VSCode)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Basic Setup
+"""""""""""
+
+#. Download and install VSCode following the instructions on https://code.visualstudio.com/.
+
+#. Install the Python and Jupyter extensions.
+   In the left sidebar, select the "Extensions" symbol, enter "Python" in the search bar and click *Install* next to the "Python" extension.
+   Repeat this process for "Jupyter".
+
+#. Open a Jupyter Notebook or create a new one.
+   On the top right, click on *Select Kernel*, select *Python Environments...* and then choose the Python interpreter from the ``climada_env``.
+
+See the VSCode docs on `Python <https://code.visualstudio.com/docs/python/python-tutorial>`_ and `Jupyter Notebooks <https://code.visualstudio.com/docs/datascience/jupyter-notebooks>`_ for further information.
+
+Workspace Setup
+"""""""""""""""
+
+Setting up a workspace for the CLIMADA source code is only available for :ref:`advanced installations <install-advanced>`.
+
+#. Open a new VSCode window.
+   Below *Start*, click *Open...*, select the ``climada_python`` repository folder in your workspace directory, and click on *Open* on the bottom right.
+
+#. Click *File* > *Save Workspace As...* and store the workspace settings file next to (**not** in!) the ``climada_python`` folder.
+   This will enable you to load the workspace and all its specific settings in one go.
+
+#. Open the Command Palette by clicking *View* > *Command Palette* or by using the shortcut keys ``Ctrl+Shift+P`` (Windows, Linux) / ``Cmd+Shift+P`` (macOS).
+   Start typing "Python: Select Interpreter" and select it from the dropdown menu.
+   If prompted, choose the option to set the interpreter for the workspace, not just the current folder.
+   Then, choose the Python interpreter from the ``climada_env``.
+
+For further information, refer to the VSCode docs on `Workspaces <https://code.visualstudio.com/docs/editor/workspaces>`_.
+
+Test Explorer Setup
+"""""""""""""""""""
+
+After you set up a workspace, you might want to configure the test explorer for easily running the CLIMADA test suite within VSCode:
+
+#. In the left sidebar, select the "Testing" symbol, and click on *Configure Python Tests*.
+
+#. Select "unittest" as test framework and then select the ``test*`` pattern for test discovery.
+
+#. The "Test Explorer" will display the tree structure of modules, files, test classes and individuals tests.
+   You can run individual tests or test subtrees by clicking the Play buttons next to them.
+
+#. By default, the test explorer will show test output for failed tests when you click on them.
+   To view the logs for any test, click on *View* > *Output*, and select "Python Test Log" from the dropdown menu in the view that just opened.
+   If there are errors during test discovery, you can see what's wrong in the "Python" output.
+
+For further information, see the VSCode docs on `Python Testing <https://code.visualstudio.com/docs/python/testing>`_.
 
 Spyder
 ^^^^^^
