@@ -1,5 +1,65 @@
 # Changelog
 
+## Unreleased
+
+Release date: YYYY-MM-DD
+
+Code freeze date: YYYY-MM-DD
+
+### Dependency Updates
+
+Added:
+
+Changed:
+
+Removed:
+
+### Added
+
+- `Impact.impact_at_reg` method for aggregating impacts per country or custom region [#642](https://github.com/CLIMADA-project/climada_python/pull/642)
+- `Impact.match_centroids` convenience method for matching (hazard) centroids to impact objects [#602](https://github.com/CLIMADA-project/climada_python/pull/602)
+- `climada.util.coordinates.match_centroids` method for matching (hazard) centroids to GeoDataFrames [#602](https://github.com/CLIMADA-project/climada_python/pull/602)
+
+### Changed
+
+- Improved error messages from `climada.CONFIG` in case of missing configuration values [#670](https://github.com/CLIMADA-project/climada_python/pull/670)
+- Refactored `Exposure.assign_centroids` using a new util function `u_coord.match_centroids` [#602](https://github.com/CLIMADA-project/climada_python/pull/602)
+- Renamed `climada.util.coordinate.assign_grid_points` to `match_grid_points` and `climada.util.coordinates.assign_coordinates` to `match_coordinates`
+[#602](https://github.com/CLIMADA-project/climada_python/pull/602)
+- Modified the method to disaggregate lines in the `lines_polys_handler` utility module in order to better conserve the total length of all lines on average [#679](https://github.com/CLIMADA-project/climada_python/pull/679).
+- Added test for non-default impact function id in the `lines_polys_handler` [#676](https://github.com/CLIMADA-project/climada_python/pull/676)
+- The sigmoid and step impact functions now require the user to define the hazard type. [#675](https://github.com/CLIMADA-project/climada_python/pull/675)
+
+### Fixed
+
+- `util.lines_polys_handler` solve polygon disaggregation issue in metre-based projection [#666](https://github.com/CLIMADA-project/climada_python/pull/666)
+
+### Deprecated
+
+### Removed
+
+## v3.3.2
+
+Release date: 2023-03-02
+
+### Dependency Updates
+
+Removed:
+
+- `pybufrkit` [#662](https://github.com/CLIMADA-project/climada_python/pull/662)
+
+## v3.3.1
+
+Release date: 2023-02-27
+
+### Description
+
+Patch-relaese with altered base config file so that the basic installation test passes.
+
+### Changed
+
+- The base config file `climada/conf/climada.conf` has an entry for `CONFIG.hazard.test_data`.
+
 ## v3.3.0
 
 Release date: 2023-02-17

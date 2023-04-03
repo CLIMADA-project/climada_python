@@ -924,7 +924,12 @@ def get_region_gridpoints(countries=None, regions=None, resolution=150,
         lat, lon = [ar.ravel() for ar in [lat, lon]]
     return lat, lon
 
-def assign_grid_points(x, y, grid_width, grid_height, grid_transform):
+def assign_grid_points(*args, **kwargs):
+    """This function has been renamed, use ``match_grid_points`` instead."""
+    LOGGER.warning("This function has been renamed, use match_grid_points instead.")
+    return match_grid_points(*args, **kwargs)
+
+def match_grid_points(x, y, grid_width, grid_height, grid_transform):
     """To each coordinate in `x` and `y`, assign the closest centroid in the given raster grid
 
     Make sure that your grid specification is relative to the same coordinate reference system as
@@ -961,7 +966,12 @@ def assign_grid_points(x, y, grid_width, grid_height, grid_transform):
     assigned[(y_i < 0) | (y_i >= grid_height)] = -1
     return assigned
 
-def assign_coordinates(coords, coords_to_assign, distance="euclidean",
+def assign_coordinates(*args, **kwargs):
+    """This function has been renamed, use ``match_coordinates`` instead."""
+    LOGGER.warning("This function has been renamed, use match_coordinates instead.")
+    return match_coordinates(*args, **kwargs)
+
+def match_coordinates(coords, coords_to_assign, distance="euclidean",
                        threshold=NEAREST_NEIGHBOR_THRESHOLD, **kwargs):
     """To each coordinate in `coords`, assign a matching coordinate in `coords_to_assign`
 
@@ -1056,6 +1066,71 @@ def assign_coordinates(coords, coords_to_assign, distance="euclidean",
             assigned_idx[not_assigned_idx_mask] = nearest_neighbor_funcs[distance](
                 coords_to_assign, coords[not_assigned_idx_mask], threshold, **kwargs)
     return assigned_idx
+
+def match_centroids(coord_gdf, centroids, distance='euclidean',
+                    threshold=NEAREST_NEIGHBOR_THRESHOLD):
+    """Assign to each gdf coordinate point its closest centroids's coordinate.
+    If disatances > threshold in points' distances, -1 is returned.
+    If centroids are in a raster and coordinate point is outside of it ``-1`` is assigned
+
+    Parameters
+    ----------
+    coord_gdf : gpd.GeoDataFrame
+        GeoDataframe with defined latitude/longitude column and crs
+    centroids : Centroids
+        (Hazard) centroids to match (as raster or vector centroids).
+    distance : str, optional
+        Distance to use in case of vector centroids.
+        Possible values are "euclidean", "haversine" and "approx".
+        Default: "euclidean"
+    threshold : float, optional
+        If the distance (in km) to the nearest neighbor exceeds `threshold`,
+        the index `-1` is assigned.
+        Set `threshold` to 0, to disable nearest neighbor matching.
+        Default: ``NEAREST_NEIGHBOR_THRESHOLD`` (100km)
+
+    See Also
+    --------
+    climada.util.coordinates.match_grid_points: method to associate centroids to
+        coordinate points when centroids is a raster
+    climada.util.coordinates.match_coordinates: method to associate centroids to
+        coordinate points
+
+    Notes
+    -----
+    The default order of use is:
+
+        1. if centroid raster is defined, assign the closest raster point
+        to each gdf coordinate point.
+        2. if no raster, assign centroids to the nearest neighbor using
+        euclidian metric
+
+    Both cases can introduce innacuracies for coordinates in lat/lon
+    coordinates as distances in degrees differ from distances in meters
+    on the Earth surface, in particular for higher latitude and distances
+    larger than 100km. If more accuracy is needed, please use 'haversine'
+    distance metric. This however is slower for (quasi-)gridded data,
+    and works only for non-gridded data.
+    """
+
+    try:
+        if not equal_crs(coord_gdf.crs, centroids.crs):
+            raise ValueError('Set hazard and GeoDataFrame to same CRS first!')
+    except AttributeError:
+        # If the coord_gdf has no crs defined (or no valid geometry column),
+        # no error is raised and it is assumed that the user set the crs correctly
+        pass
+
+    if centroids.meta:
+        assigned = match_grid_points(
+            coord_gdf.longitude.values, coord_gdf.latitude.values,
+            centroids.meta['width'], centroids.meta['height'],
+            centroids.meta['transform'])
+    else:
+        assigned = match_coordinates(
+            np.stack([coord_gdf.latitude.values, coord_gdf.longitude.values], axis=1),
+            centroids.coord, distance=distance, threshold=threshold)
+    return assigned
 
 @numba.njit
 def _dist_sqr_approx(lats1, lons1, cos_lats1, lats2, lons2):

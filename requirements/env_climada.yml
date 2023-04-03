@@ -43,5 +43,4 @@ dependencies:
     - deprecation>=2.1
     - overpy>=0.4
     - peewee>=3.14
-    - pybufrkit>=0.2
     - SALib==1.3.12

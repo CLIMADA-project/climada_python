@@ -13,7 +13,7 @@ with open(here.joinpath('README.md'), encoding='utf-8') as f:
 setup(
     name='climada',
 
-    version='3.3.0-dev',
+    version='3.3.2-dev',
 
     description='CLIMADA in Python',
 
@@ -55,6 +55,7 @@ setup(
         'matplotlib',
         'netcdf4',
         'numba',
+        'openpyxl',
         'overpy',
         'pandas',
         'pandas-datareader',
@@ -62,7 +63,6 @@ setup(
         'peewee',
         'pillow',
         'pint',
-        'pybufrkit',
         'pycountry',
         'rasterio',
         'salib',
