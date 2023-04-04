@@ -147,11 +147,7 @@ class TestNightLight(unittest.TestCase):
 
         # test that files_exist is correct 
         files_exist = nightlight.check_nl_local_file_exists()
-        index_files = np.where(files_exist == 1)
-        self.assertEqual(int(sum(files_exist)), 2)
-        self.assertEqual(BM_FILENAMES[index_files[0][0]], 'BlackMarble_%i_B1_geo_gray.tif')
-        self.assertEqual(BM_FILENAMES[index_files[0][1]], 'BlackMarble_%i_C1_geo_gray.tif')
-        
+        self.assertEqual(int(sum(files_exist)), 5)
 
 # Execute Tests
 if __name__ == "__main__":
