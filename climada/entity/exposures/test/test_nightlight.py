@@ -132,7 +132,7 @@ class TestNightLight(unittest.TestCase):
         with self.assertLogs('climada.entity.exposures.litpop.nightlight', level = 'DEBUG') as cm:
             nightlight.check_nl_local_file_exists()
         self.assertIn('Not all satellite files available. '
-                     f'Found 2 out of 8 required files in {Path(SYSTEM_DIR)}', cm.output[0])
+                     f'Found 5 out of 8 required files in {Path(SYSTEM_DIR)}', cm.output[0])
             
         # check logger message: no files found in checkpath 
         with self.assertLogs('climada.entity.exposures.litpop.nightlight', level = 'INFO') as cm:
