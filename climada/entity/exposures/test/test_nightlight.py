@@ -23,6 +23,7 @@ import numpy as np
 
 from climada.entity.exposures.litpop import nightlight
 from climada.util.constants import SYSTEM_DIR
+from pathlib import Path
 
 BM_FILENAMES = nightlight.BM_FILENAMES
 
@@ -116,6 +117,41 @@ class TestNightLight(unittest.TestCase):
         req_files = nightlight.get_required_nl_files(bounds = bounds_c3)
         bool = np.array_equal(np.array([0, 0, 0, 0, 0, 0, 1, 0]), req_files)
         self.assertTrue(bool)
+    
+    def test_check_nl_local_file_exists(self):
+        """ Test that an array with the correct number of already existing files
+            is produced, the LOGGER messages logged and the ValueError raised. """
+
+        # check logger messages by giving a to short req_file
+        with self.assertLogs('climada.entity.exposures.litpop.nightlight', level = 'WARNING') as cm:
+            nightlight.check_nl_local_file_exists(required_files = np.array([0, 0, 1, 1]))
+        self.assertIn('The parameter \'required_files\' was too short and '
+                       'is ignored.', cm.output[0])
+             
+        # check logger message: not all files are available 
+        with self.assertLogs('climada.entity.exposures.litpop.nightlight', level = 'DEBUG') as cm:
+            nightlight.check_nl_local_file_exists()
+        self.assertIn('Not all satellite files available. '
+                     f'Found 2 out of 8 required files in {Path(SYSTEM_DIR)}', cm.output[0])
+            
+        # check logger message: no files found in checkpath 
+        with self.assertLogs('climada.entity.exposures.litpop.nightlight', level = 'INFO') as cm:
+            # using a random path where no files are stored
+            nightlight.check_nl_local_file_exists(check_path = Path('climada/entity/exposures'))
+        self.assertIn('No satellite files found locally in climada/entity/exposures', cm.output[0])
+      
+        # test raises with wrong path
+        with self.assertRaises(ValueError) as cm:
+            nightlight.check_nl_local_file_exists(check_path = '/random/wrong/path')
+        self.assertEqual('The given path does not exist: /random/wrong/path', str(cm.exception))
+
+        # test that files_exist is correct 
+        files_exist = nightlight.check_nl_local_file_exists()
+        index_files = np.where(files_exist == 1)
+        self.assertEqual(int(sum(files_exist)), 2)
+        self.assertEqual(BM_FILENAMES[index_files[0][0]], 'BlackMarble_%i_B1_geo_gray.tif')
+        self.assertEqual(BM_FILENAMES[index_files[0][1]], 'BlackMarble_%i_C1_geo_gray.tif')
+        
 
 # Execute Tests
 if __name__ == "__main__":
