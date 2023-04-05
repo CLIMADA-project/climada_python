@@ -102,7 +102,7 @@ class TestImpactCalc(unittest.TestCase):
             )
 
     def test_error_handling_mismatch_haz_type(self):
-        """Test error handling in case hazard type of hazard 
+        """Test error handling in case hazard type of hazard
         does not appear in impf_set or exposures"""
         exp_haz_correct = deepcopy(ENT.exposures)
         exp_haz_wrong = deepcopy(ENT.exposures)
@@ -120,7 +120,7 @@ class TestImpactCalc(unittest.TestCase):
         except Exception as e:
             self.assertEqual(str(e), "Impact calculation not possible. No impact "
                              "functions found for hazard type TC in exposures.")
-        
+
         impf.haz_type = 'WS'
         impfset_haz_wrong = ImpactFuncSet()
         impfset_haz_wrong.append(impf)
@@ -129,7 +129,7 @@ class TestImpactCalc(unittest.TestCase):
         except Exception as e:
             self.assertEqual(str(e), "Impact calculation not possible. No impact "
                              "functions found for hazard type TC in impf_set.")
-            
+
         impf.haz_type = ''
         impfset_haz_undef = ImpactFuncSet()
         impfset_haz_undef.append(impf)
