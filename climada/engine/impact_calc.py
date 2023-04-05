@@ -73,7 +73,7 @@ class ImpactCalc():
     def n_events(self):
         """Number of hazard events (size of event_id array)"""
         return self.hazard.size
-
+    
     def impact(self, save_mat=True, assign_centroids=True,
                ignore_cover=False, ignore_deductible=False):
         """Compute the impact of a hazard on exposures.
@@ -112,6 +112,22 @@ class ImpactCalc():
         apply_deductible_to_mat : apply deductible to impact matrix
         apply_cover_to_mat : apply cover to impact matrix
         """
+        # check for compability of exposures and hazard type        
+        if all(name not in self.exposures.gdf.columns for 
+               name in ['if_', f'if_{self.hazard.haz_type}', 
+                        'impf_', f'impf_{self.hazard.haz_type}']):
+            raise AttributeError(
+                "Impact calculation not possible. No impact functions found " 
+                f"for hazard type {self.hazard.haz_type} in exposures."
+                )
+        
+        # check for compability of impact function and hazard type
+        if not self.impfset.get_func(haz_type=self.hazard.haz_type):
+            raise AttributeError(
+                "Impact calculation not possible. No impact functions found " 
+                f"for hazard type {self.hazard.haz_type} in impf_set."
+                )
+        
         impf_col = self.exposures.get_impf_column(self.hazard.haz_type)
         exp_gdf = self.minimal_exp_gdf(impf_col, assign_centroids, ignore_cover, ignore_deductible)
         if exp_gdf.size == 0:

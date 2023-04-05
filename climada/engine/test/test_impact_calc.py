@@ -28,7 +28,7 @@ from pathlib import Path
 
 from climada import CONFIG
 from climada.entity.entity_def import Entity
-from climada.entity import Exposures, ImpactFuncSet
+from climada.entity import Exposures, ImpactFuncSet, ImpactFunc
 from climada.hazard.base import Hazard
 from climada.engine import ImpactCalc, Impact
 from climada.engine.impact_calc import LOGGER as ILOG
@@ -100,6 +100,44 @@ class TestImpactCalc(unittest.TestCase):
         np.testing.assert_array_equal(
             imp.todense(), np.array([[0, 0, 1], [0, 1, 0]])
             )
+
+    def test_error_handling_mismatch_haz_type(self):
+        """Test error handling in case hazard type of hazard 
+        does not appear in impf_set or exposures"""
+        exp_haz_correct = deepcopy(ENT.exposures)
+        exp_haz_wrong = deepcopy(ENT.exposures)
+        exp_haz_wrong.gdf.rename(columns={'impf_TC': 'impf_WS'}, inplace=True)
+        impf = ImpactFunc()
+        impf.id = 1
+        impf.intensity = np.array([0, 20])
+        impf.paa = np.array([0, 1])
+        impf.mdd = np.array([0, 0.5])
+        impf.haz_type = 'TC'
+        impfset_haz_correct = ImpactFuncSet()
+        impfset_haz_correct.append(impf)
+        try:
+            ImpactCalc(exp_haz_wrong, impfset_haz_correct, HAZ).impact()
+        except Exception as e:
+            self.assertEqual(str(e), "Impact calculation not possible. No impact "
+                             "functions found for hazard type TC in exposures.")
+        
+        impf.haz_type = 'WS'
+        impfset_haz_wrong = ImpactFuncSet()
+        impfset_haz_wrong.append(impf)
+        try:
+            ImpactCalc(exp_haz_correct, impfset_haz_wrong, HAZ).impact()
+        except Exception as e:
+            self.assertEqual(str(e), "Impact calculation not possible. No impact "
+                             "functions found for hazard type TC in impf_set.")
+            
+        impf.haz_type = ''
+        impfset_haz_undef = ImpactFuncSet()
+        impfset_haz_undef.append(impf)
+        try:
+            ImpactCalc(exp_haz_correct, impfset_haz_undef, HAZ).impact()
+        except Exception as e:
+            self.assertEqual(str(e), "Impact calculation not possible. No impact "
+                             "functions found for hazard type TC in impf_set.")
 
     def test_calc_impact_TC_pass(self):
         """Test compute impact"""

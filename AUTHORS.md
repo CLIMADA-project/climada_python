@@ -28,3 +28,4 @@
 * Lukas Riedel
 * Raphael Portmann
 * Nicolas Colombi
+* Leonie Villiger
