@@ -1392,7 +1392,7 @@ class TestClear(unittest.TestCase):
 def dummy_step_impf(haz):
     from climada.entity import ImpactFunc
     intensity = (0, 1, haz.intensity.max())
-    impf = ImpactFunc.from_step_impf(intensity)
+    impf = ImpactFunc.from_step_impf(intensity, haz_type=haz.tag.haz_type)
     return impf
 
 class TestImpactFuncs(unittest.TestCase):

@@ -96,7 +96,7 @@ class ImpactFunc():
         self.mdd = mdd if mdd is not None else np.array([])
         self.paa = paa if paa is not None else np.array([])
 
-    def calc_mdr(self, inten):
+    def calc_mdr(self, inten: Union[float, np.ndarray]) -> np.ndarray:
         """Interpolate impact function to a given intensity.
 
         Parameters
@@ -162,7 +162,14 @@ class ImpactFunc():
             return
 
     @classmethod
-    def from_step_impf(cls, intensity, mdd=(0, 1), paa=(1, 1), impf_id=1):
+    def from_step_impf(
+        cls,
+        intensity: tuple[float, float, float],
+        haz_type: str,
+        mdd: tuple[float, float] = (0, 1),
+        paa: tuple[float, float] = (1, 1),
+        impf_id: int = 1,
+        **kwargs):
 
         """ Step function type impact function.
 
@@ -176,12 +183,16 @@ class ImpactFunc():
         ----------
         intensity: tuple(float, float, float)
             tuple of 3-intensity numbers: (minimum, threshold, maximum)
+        haz_type: str
+            the reference string for the hazard (e.g., 'TC', 'RF', 'WS', ...)
         mdd: tuple(float, float)
             (min, max) mdd values. The default is (0, 1)
         paa: tuple(float, float)
             (min, max) paa values. The default is (1, 1)
         impf_id : int, optional, default=1
             impact function id
+        kwargs :
+            keyword arguments passed to ImpactFunc()
 
         Return
         ------
@@ -196,7 +207,8 @@ class ImpactFunc():
         mdd_min, mdd_max = mdd
         mdd = np.array([mdd_min, mdd_min, mdd_max, mdd_max])
 
-        return cls(id=impf_id, intensity=intensity, mdd=mdd, paa=paa)
+        return cls(haz_type=haz_type, id=impf_id,
+            intensity=intensity, mdd=mdd, paa=paa, **kwargs)
 
     def set_step_impf(self, *args, **kwargs):
         """This function is deprecated, use ImpactFunc.from_step_impf instead."""
@@ -205,7 +217,15 @@ class ImpactFunc():
         self.__dict__ = ImpactFunc.from_step_impf(*args, **kwargs).__dict__
 
     @classmethod
-    def from_sigmoid_impf(cls, intensity, L, k, x0, if_id=1):
+    def from_sigmoid_impf(
+        cls,
+        intensity: tuple[float, float, float],
+        L: float,
+        k: float,
+        x0: float,
+        haz_type: str,
+        impf_id: int = 1,
+        **kwargs):
         """Sigmoid type impact function hinging on three parameter.
 
         This type of impact function is very flexible for any sort of study,
@@ -228,20 +248,25 @@ class ImpactFunc():
             "slope" of sigmoid
         x0 : float
             intensity value where f(x)==L/2
-        if_id : int, optional, default=1
+        haz_type: str
+            the reference string for the hazard (e.g., 'TC', 'RF', 'WS', ...)
+        impf_id : int, optional, default=1
             impact function id
+        kwargs :
+            keyword arguments passed to ImpactFunc()
 
         Return
         ------
         impf : climada.entity.impact_funcs.ImpactFunc
-            Step impact function
+            Sigmoid impact function
         """
         inten_min, inten_max, inten_step = intensity
         intensity = np.arange(inten_min, inten_max, inten_step)
         paa = np.ones(len(intensity))
         mdd = L / (1 + np.exp(-k * (intensity - x0)))
 
-        return cls(id=if_id, intensity=intensity, paa=paa, mdd=mdd)
+        return cls(haz_type=haz_type, id=impf_id, intensity=intensity,
+            paa=paa, mdd=mdd, **kwargs)
 
     def set_sigmoid_impf(self, *args, **kwargs):
         """This function is deprecated, use LitPop.from_countries instead."""

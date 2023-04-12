@@ -416,7 +416,7 @@ Move into the CLIMADA repository, activate the environment and then execute the 
 
    cd <path/to/workspace>/climada_python
    conda activate climada_env
-   python -m unittest -s climada/ -p "test*.py"
+   python -m unittest discover -s climada -p "test*.py"
 
 Error: ``ModuleNotFoundError``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
