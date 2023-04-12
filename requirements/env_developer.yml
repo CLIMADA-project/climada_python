@@ -7,14 +7,14 @@ dependencies:
   - ipykernel
   - mccabe>=0.6
   - pandoc
-  - sphinx>=2.0
+  - sphinx>=6.1
   - pip
   - pip:
-    - coverage>=4.5
+    - coverage>=7.2
     - descartes
     - nbformat
     - pylint==2.7.1  # 2.7.2 and higher: false positive E1136 and E1137
-    - readthedocs-sphinx-ext>=2.1
+    - readthedocs-sphinx-ext>=2.2
     - nbsphinx
     - myst-parser
     - sphinx-markdown-tables

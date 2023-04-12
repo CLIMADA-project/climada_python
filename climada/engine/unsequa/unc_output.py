@@ -783,11 +783,16 @@ class UncOutput():
 
         for ax, metric in zip(flat_axes, metric_list):
             df_S = self.get_sensitivity(salib_si, [metric]).select_dtypes('number')
+            if not df_S.columns[df_S.isnull().all()].empty:
+                LOGGER.warning("All-NaN columns encountered: %s",
+                               list(df_S.columns[df_S.isnull().all()]))
+            df_S = df_S.loc[:, df_S.notnull().any()]
             if df_S.empty:
                 ax.set_xlabel('Input parameter')
                 ax.remove()
                 continue
             df_S_conf = self.get_sensitivity(salib_si_conf, [metric]).select_dtypes('number')
+            df_S_conf = df_S_conf.loc[:, df_S.columns]
             if df_S_conf.empty:
                 df_S.plot(ax=ax, kind='bar', **kwargs)
             df_S.plot(ax=ax, kind='bar', yerr=df_S_conf, **kwargs)
