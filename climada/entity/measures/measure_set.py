@@ -32,7 +32,7 @@ import pandas as pd
 import xlsxwriter
 
 from climada.entity.measures.base import Measure
-from climada.entity.tag import Tag
+from climada.util.tag import Tag
 import climada.util.hdf5_handler as u_hdf5
 
 LOGGER = logging.getLogger(__name__)
@@ -89,7 +89,7 @@ class MeasureSet():
 
     Attributes
     ----------
-    tag : climada.entity.tag.Tag
+    tag : climada.util.tag.Tag
         information about the source data
     _data : dict
         Contains Measure objects. This attribute is not suppossed to be accessed directly.

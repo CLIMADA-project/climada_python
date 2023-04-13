@@ -29,7 +29,7 @@ import pandas as pd
 import climada.util.coordinates as u_coord
 import climada.util.finance as u_fin
 
-from climada.entity.tag import Tag
+from climada.util.tag import Tag
 from climada.entity.exposures.litpop import nightlight as nl_util
 from climada.entity.exposures.litpop import gpw_population as pop_util
 from climada.entity.exposures.base import Exposures, INDICATOR_IMPF, DEF_REF_YEAR

@@ -36,7 +36,7 @@ from rasterio.warp import Resampling
 import contextily as ctx
 import cartopy.crs as ccrs
 
-from climada.entity.tag import Tag
+from climada.util.tag import Tag
 import climada.util.hdf5_handler as u_hdf5
 from climada.util.constants import ONE_LAT_KM, DEF_CRS, CMAP_RASTER
 import climada.util.coordinates as u_coord
@@ -83,7 +83,7 @@ class Exposures():
 
     Attributes
     ----------
-    tag : climada.entity.tag.Tag
+    tag : climada.util.tag.Tag
         metada - information about the source data
     ref_year : int
         metada - reference year

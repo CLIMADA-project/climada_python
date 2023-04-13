@@ -26,7 +26,7 @@ import numpy.testing as npt
 from scipy import sparse
 import h5py
 
-from climada.entity.tag import Tag
+from climada.util.tag import Tag
 from climada.hazard.tag import Tag as TagHaz
 from climada.entity.entity_def import Entity
 from climada.hazard.base import Hazard

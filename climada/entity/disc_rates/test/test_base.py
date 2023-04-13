@@ -24,7 +24,7 @@ import copy
 
 from climada import CONFIG
 from climada.entity.disc_rates.base import DiscRates
-from climada.entity.tag import Tag
+from climada.util.tag import Tag
 from climada.util.constants import ENT_TEMPLATE_XLS, ENT_DEMO_TODAY
 
 ENT_TEST_MAT = CONFIG.exposures.test_data.dir().joinpath('demo_today.mat')

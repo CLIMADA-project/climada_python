@@ -30,7 +30,7 @@ from climada.util.finance import gdp
 from climada.util.constants import DEF_CRS
 import climada.util.coordinates as u_coord
 from climada.engine import Impact
-from climada.entity.tag import Tag
+from climada.util.tag import Tag
 from climada.hazard.tag import Tag as TagHaz
 
 LOGGER = logging.getLogger(__name__)
