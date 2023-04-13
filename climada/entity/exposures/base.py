@@ -329,7 +329,7 @@ class Exposures():
         Parameters
         ----------
         haz_type : str or None
-            hazard type, as in the hazard's tag.haz_type
+            hazard type, as in the hazard's.haz_type
             which is the HAZ_TYPE constant of the hazard's module
 
         Returns
@@ -417,7 +417,7 @@ class Exposures():
         distance metric. This however is slower for (quasi-)gridded data,
         and works only for non-gridded data.
         """
-        haz_type = hazard.tag.haz_type
+        haz_type = hazard.haz_type
         centr_haz = INDICATOR_CENTR + haz_type
         if centr_haz in self.gdf:
             LOGGER.info('Exposures matching centroids already found for %s', haz_type)

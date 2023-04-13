@@ -42,7 +42,7 @@ import sparse as sp
 from scipy import sparse
 import xarray as xr
 
-from climada.hazard.tag import Tag as TagHazard
+from climada.util.tag import Tag
 from climada.hazard.centroids.centr import Centroids
 import climada.util.plot as u_plot
 import climada.util.checker as u_check
@@ -108,7 +108,11 @@ class Hazard():
 
     Attributes
     ----------
-    tag : TagHazard
+    haz_type : str
+        acronym of the hazard type (e.g. 'TC'). 
+        Note: The acronym is used as reference to the hazard when centroids of multiple hazards
+        are assigned to an ``Exposures`` object.
+    tag : Tag
         information about the source
     units : str
         units of the intensity
@@ -228,7 +232,8 @@ class Hazard():
         >>> haz = Hazard.from_mat(HAZ_DEMO_MAT, 'demo')
 
         """
-        self.tag = TagHazard(haz_type, **tag_kwargs)
+        self.haz_type = haz_type
+        self.tag = Tag(**tag_kwargs)
         self.units = units
         self.centroids = centroids if centroids is not None else Centroids()
         # following values are defined for each event
@@ -559,7 +564,7 @@ class Hazard():
           ``event_date`` will be broadcast to every event.
         * To avoid confusion in the call signature, several parameters are keyword-only
           arguments.
-        * The attributes ``Hazard.tag.haz_type`` and ``Hazard.unit`` currently cannot be
+        * The attributes ``Hazard.haz_type`` and ``Hazard.unit`` currently cannot be
           read from the Dataset. Use the method parameters to set these attributes.
         * This method does not read coordinate system metadata. Use the ``crs`` parameter
           to set a custom coordinate system identifier.
@@ -1340,7 +1345,7 @@ class Hazard():
         """
         # pylint: disable=unidiomatic-typecheck
         if type(self) is Hazard:
-            haz = Hazard(self.tag.haz_type)
+            haz = Hazard(self.haz_type)
         else:
             haz = self.__class__()
 
@@ -1981,7 +1986,7 @@ class Hazard():
                          f' {self.event_name[event_pos]}')
             else:
                 im_val = np.max(mat_var, axis=0).toarray().transpose()
-                title = f'{self.tag.haz_type} max intensity at each point'
+                title = f'{self.haz_type} max intensity at each point'
 
             array_val.append(im_val)
             l_title.append(title)
@@ -2033,7 +2038,7 @@ class Hazard():
                      f' ({coord[centr_pos, 0]}, {coord[centr_pos, 1]})')
         else:
             array_val = np.max(mat_var, axis=1).toarray()
-            title = f'{self.tag.haz_type} max intensity at each event'
+            title = f'{self.haz_type} max intensity at each event'
 
         if not axis:
             _, axis = plt.subplots(1)
@@ -2281,11 +2286,11 @@ class Hazard():
             haz._check_events()
 
         # check type, unit, and attribute consistency among hazards
-        haz_types = {haz.tag.haz_type for haz in haz_list if haz.tag.haz_type != ''}
+        haz_types = {haz.haz_type for haz in haz_list if haz.haz_type != ''}
         if len(haz_types) > 1:
             raise ValueError(f"The given hazards are of different types: {haz_types}. "
                              "The hazards are incompatible and cannot be concatenated.")
-        self.tag.haz_type = haz_types.pop()
+        self.haz_type = haz_types.pop()
 
         haz_classes = {type(haz) for haz in haz_list}
         if len(haz_classes) > 1:
@@ -2380,7 +2385,7 @@ class Hazard():
         if len(haz_list) == 0:
             return cls()
         haz_concat = haz_list[0].__class__()
-        haz_concat.tag.haz_type = haz_list[0].tag.haz_type
+        haz_concat.haz_type = haz_list[0].haz_type
         for attr_name, attr_val in vars(haz_list[0]).items():
             # to save memory, only copy simple attributes like
             # "units" that are not explicitly handled by Hazard.append
@@ -2481,7 +2486,7 @@ class Hazard():
         """
         from climada.entity.exposures import INDICATOR_CENTR  # pylint: disable=import-outside-toplevel
         # import outside toplevel is necessary for it not being circular
-        return INDICATOR_CENTR + self.tag.haz_type
+        return INDICATOR_CENTR + self.haz_type
 
     @property
     def haz_type(self):
@@ -2494,7 +2499,7 @@ class Hazard():
             Two-letters hazard type string. E.g. "TC", "RF", or "WF"
 
         """
-        return self.tag.haz_type
+        return self.haz_type
 
     def get_mdr(self, cent_idx, impf):
         """

@@ -171,7 +171,7 @@ class TestClient(unittest.TestCase):
         self.assertEqual(np.shape(hazard.intensity), (480, 5784))
         self.assertEqual(np.unique(hazard.centroids.region_id), 40)
         self.assertEqual(np.unique(hazard.date).size, 20)
-        self.assertEqual(hazard.tag.haz_type, 'RF')
+        self.assertEqual(hazard.haz_type, 'RF')
 
     def test_get_hazard_fails(self):
         client = Client()

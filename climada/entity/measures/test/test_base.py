@@ -183,7 +183,7 @@ class TestApply(unittest.TestCase):
         new_haz = meas._change_all_hazard(hazard)
 
         self.assertEqual(new_haz.tag.file_name, ref_haz.tag.file_name)
-        self.assertEqual(new_haz.tag.haz_type, ref_haz.tag.haz_type)
+        self.assertEqual(new_haz.haz_type, ref_haz.haz_type)
         self.assertTrue(np.array_equal(new_haz.frequency, ref_haz.frequency))
         self.assertTrue(np.array_equal(new_haz.date, ref_haz.date))
         self.assertTrue(np.array_equal(new_haz.orig, ref_haz.orig))

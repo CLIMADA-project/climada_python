@@ -70,7 +70,7 @@ class TestReader(unittest.TestCase):
             tc_haz = TropCyclone.from_tracks(tc_track, centroids=CENTR_TEST_BRB, model='H08',
                                              store_windfields=True, metric=metric)
 
-            self.assertEqual(tc_haz.tag.haz_type, 'TC')
+            self.assertEqual(tc_haz.haz_type, 'TC')
             self.assertEqual(tc_haz.tag.description, '')
             self.assertEqual(tc_haz.tag.file_name, 'Name: 1951239N12334')
             self.assertEqual(tc_haz.units, 'm/s')
@@ -138,7 +138,7 @@ class TestReader(unittest.TestCase):
         tc_haz = TropCyclone.from_tracks(tc_track, centroids=CENTR_TEST_BRB)
         tc_haz.check()
 
-        self.assertEqual(tc_haz.tag.haz_type, 'TC')
+        self.assertEqual(tc_haz.haz_type, 'TC')
         self.assertEqual(tc_haz.tag.description, '')
         self.assertEqual(tc_haz.tag.file_name, 'Name: 1951239N12334')
         self.assertEqual(tc_haz.units, 'm/s')
@@ -166,7 +166,7 @@ class TestReader(unittest.TestCase):
         tc_haz.remove_duplicates()
         tc_haz.check()
 
-        self.assertEqual(tc_haz.tag.haz_type, 'TC')
+        self.assertEqual(tc_haz.haz_type, 'TC')
         self.assertEqual(tc_haz.tag.description, '')
         self.assertEqual(tc_haz.tag.file_name, ['Name: 1951239N12334', 'Name: 1951239N12334'])
         self.assertEqual(tc_haz.units, 'm/s')

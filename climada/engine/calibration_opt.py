@@ -331,7 +331,7 @@ def calib_all(hazard, exposure, impf_name_or_instance, param_full_dict,
 
     # prepare hazard and exposure
     region_ids = list(np.unique(exposure.region_id))
-    hazard_type = hazard.tag.haz_type
+    hazard_type = hazard.haz_type
     exposure.assign_centroids(hazard)
     # prepare impact data
     if isinstance(impact_data_source, pd.DataFrame):
@@ -397,7 +397,7 @@ def calib_optimize(hazard, exposure, impf_name_or_instance, param_dict,
 
     # prepare hazard and exposure
     region_ids = list(np.unique(exposure.region_id))
-    hazard_type = hazard.tag.haz_type
+    hazard_type = hazard.haz_type
     exposure.assign_centroids(hazard)
     # prepare impact data
     if isinstance(impact_data_source, pd.DataFrame):

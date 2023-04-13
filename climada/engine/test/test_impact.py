@@ -1120,5 +1120,4 @@ if __name__ == "__main__":
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestImpact))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestImpactH5IO))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestImpactConcat))
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAssignCentroids))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
