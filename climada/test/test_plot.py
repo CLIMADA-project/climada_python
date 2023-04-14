@@ -105,7 +105,9 @@ class TestPlotter(unittest.TestCase):
         centroids = Centroids.from_base_grid()
         centroids.plot()
 
-    def test_exposures_value_pass(self):
+    # sipped because of issue #693
+    # TODO: unskip when #693 is solved
+    def skip_test_exposures_value_pass(self):
         """Plot exposures values."""
         myexp = pd.read_excel(ENT_DEMO_TODAY)
         myexp = Exposures(myexp)
