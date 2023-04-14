@@ -109,7 +109,8 @@ class Hazard():
     Attributes
     ----------
     haz_type : str
-        acronym of the hazard type (e.g. 'TC'). 
+        two-letters hazard-type string, e.g., "TC" (tropical cyclone), "RF" (river flood) or "WF"
+        (wild fire).
         Note: The acronym is used as reference to the hazard when centroids of multiple hazards
         are assigned to an ``Exposures`` object.
     tag : Tag
@@ -2487,19 +2488,6 @@ class Hazard():
         from climada.entity.exposures import INDICATOR_CENTR  # pylint: disable=import-outside-toplevel
         # import outside toplevel is necessary for it not being circular
         return INDICATOR_CENTR + self.haz_type
-
-    @property
-    def haz_type(self):
-        """
-        Hazard type
-
-        Returns
-        -------
-        String
-            Two-letters hazard type string. E.g. "TC", "RF", or "WF"
-
-        """
-        return self.haz_type
 
     def get_mdr(self, cent_idx, impf):
         """
