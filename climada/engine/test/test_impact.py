@@ -64,9 +64,10 @@ def dummy_impact():
         ),
         tag={
             "exp": Tag("file_exp.p", "descr exp"),
-            "haz": TagHaz("TC", "file_haz.p", "descr haz"),
+            "haz": Tag("file_haz.p", "descr haz"),
             "impf_set": Tag(),
         },
+        haz_type="TC",
     )
 
 
@@ -1025,6 +1026,7 @@ class TestImpactH5IO(unittest.TestCase):
         self.assertEqual(impact.aai_agg, 0)
         self.assertEqual(impact.unit, "")
         self.assertEqual(impact.tag, {})
+        self.assertEqual(impact.haz_type, "")
 
     def test_read_hdf5_full(self):
         """Try reading a file full of data"""
@@ -1042,9 +1044,8 @@ class TestImpactH5IO(unittest.TestCase):
         tot_value = 100
         aai_agg = 200
         unit = "unit"
-        haz_tag = dict(
-            haz_type="haz_type", file_name="file_name", description="description"
-        )
+        haz_type="haz_type"
+        haz_tag = dict(file_name="file_name", description="description")
         exp_tag = dict(file_name="exp", description="exp")
         impf_set_tag = dict(file_name="impf_set", description="impf_set")
 
@@ -1074,6 +1075,7 @@ class TestImpactH5IO(unittest.TestCase):
             ):
                 file.create_group(f"tag/{group}")
                 write_tag(file["tag"][group], kwds)
+            file.attrs["haz_type"] = haz_type
 
         # Load and check
         impact = Impact.from_hdf5(self.filepath)
@@ -1094,6 +1096,7 @@ class TestImpactH5IO(unittest.TestCase):
         self.assertEqual(impact.tag["haz"].__dict__, haz_tag)
         self.assertEqual(impact.tag["exp"].__dict__, exp_tag)
         self.assertEqual(impact.tag["impf_set"].__dict__, impf_set_tag)
+        self.assertEqual(impact.haz_type, haz_type)
 
         # Check with sparse
         with h5py.File(self.filepath, "r+") as file:

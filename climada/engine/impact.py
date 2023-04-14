@@ -105,7 +105,8 @@ class Impact():
                  aai_agg=0,
                  unit='',
                  imp_mat=None,
-                 tag=None):
+                 tag=None,
+                 haz_type=''):
         """
         Init Impact object
 
@@ -142,8 +143,11 @@ class Impact():
         tag : dict, optional
             dictionary of tags of exposures, impact functions set and
             hazard: {'exp': Tag(), 'impf_set': Tag(), 'haz': TagHaz()}
+        haz_type : str, optional
+            the hazard type
         """
 
+        self.haz_type = haz_type
         self.tag = tag or {}
         self.event_id = np.array([], int) if event_id is None else event_id
         self.event_name = [] if event_name is None else event_name
@@ -254,7 +258,8 @@ class Impact():
             tag = {'exp': exposures.tag,
                    'impf_set': impfset.tag,
                    'haz': hazard.tag
-                   }
+                   },
+            haz_type = hazard.haz_type,
             )
 
     def transfer_risk(self, attachment, cover):
@@ -893,7 +898,7 @@ class Impact():
                   "at_event", "eai_exp", "exp_lat", "exp_lon", "exp_crs"]
         for icol, head_dat in enumerate(header):
             imp_ws.write(0, icol, head_dat)
-        data = [self.tag['haz'].haz_type, str(self.tag['haz'].file_name),
+        data = [str(self.haz_type), str(self.tag['haz'].file_name),
                 str(self.tag['haz'].description)]
         write_col(0, imp_ws, data)
         data = [str(self.tag['exp'].file_name), str(self.tag['exp'].description)]
@@ -1073,7 +1078,7 @@ class Impact():
         # pylint: disable=no-member
         LOGGER.info('Reading %s', file_name)
         imp_df = pd.read_csv(file_name)
-        imp = cls()
+        imp = cls(haz_type=str(imp_df.tag_hazard[0]))
         imp.unit = imp_df.unit[0]
         imp.tot_value = imp_df.tot_value[0]
         imp.aai_agg = imp_df.aai_agg[0]
@@ -1094,7 +1099,7 @@ class Impact():
             imp.crs = u_coord.to_crs_user_input(imp_df.exp_crs.values[0])
         except AttributeError:
             imp.crs = DEF_CRS
-        imp.tag['haz'] = TagHaz(str(imp_df.tag_hazard[0]),
+        imp.tag['haz'] = Tag(
                                  str(imp_df.tag_hazard[1]),
                                  str(imp_df.tag_hazard[2]))
         imp.tag['exp'] = Tag(str(imp_df.tag_exposure[0]),
@@ -1126,8 +1131,8 @@ class Impact():
         LOGGER.info('Reading %s', file_name)
         dfr = pd.read_excel(file_name)
         imp =cls()
-        imp.tag['haz'] = TagHaz(
-            haz_type = dfr['tag_hazard'][0],
+        imp.haz_type = dfr['tag_hazard'][0]
+        imp.tag['haz'] = Tag(
             file_name = dfr['tag_hazard'][1],
             description = dfr['tag_hazard'][2])
         imp.tag['exp'] = Tag()
@@ -1251,7 +1256,7 @@ class Impact():
 
             # Scalar attributes
             scalar_attrs = set(
-                ("crs", "tot_value", "unit", "aai_agg", "frequency_unit")
+                ("crs", "tot_value", "unit", "aai_agg", "frequency_unit", "haz_type")
             ).intersection(file.attrs.keys())
             kwargs.update({attr: file.attrs[attr] for attr in scalar_attrs})
 
@@ -1277,7 +1282,12 @@ class Impact():
 
                 # Special handling for hazard because it has another tag type
                 if "haz" in tag_group:
-                    tag_kwargs["haz"] = TagHaz(**tag_group["haz"].attrs)
+                    try:
+                        tag_type = tag_group["haz"].attrs.pop("haz_type")
+                        kwargs.setdefault("haz_type", tag_type)
+                    except KeyError:
+                        pass
+                    tag_kwargs["haz"] = Tag(**tag_group["haz"].attrs)
                 kwargs["tag"] = tag_kwargs
 
         # Create the impact object
@@ -1779,6 +1789,7 @@ class Impact():
             aai_agg=np.nansum([imp.aai_agg for imp in imp_list]),
             imp_mat=imp_mat,
             tag=first_imp.tag,
+            haz_type=first_imp.haz_type,
             frequency_unit=first_imp.frequency_unit,
             **kwargs,
         )
