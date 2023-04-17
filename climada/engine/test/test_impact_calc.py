@@ -106,23 +106,20 @@ class TestImpactCalc(unittest.TestCase):
         does not appear in impf_set or exposures"""
         haz_tc = Hazard('TC')
         exp_tc = Exposures()
-        exp_tc.gdf['impf_TC'] = None
+        exp_tc.gdf['impf_TC'] = []
         exp_ws = Exposures()
-        exp_ws.gdf['impf_WS'] = None
+        exp_ws.gdf['impf_WS'] = []
         impf = ImpactFunc()
         impf.id = 1
         impf.intensity = np.array([0, 20])
         impf.paa = np.array([0, 1])
         impf.mdd = np.array([0, 0.5])
         impf.haz_type = 'TC'
-        impfset_tc = ImpactFuncSet()
-        impfset_tc.append(impf)
+        impfset_tc = ImpactFuncSet([impf])
         impf.haz_type = 'WS'
-        impfset_ws = ImpactFuncSet()
-        impfset_ws.append(impf)
+        impfset_ws = ImpactFuncSet([impf])
         impf.haz_type = ''
-        impfset_undef = ImpactFuncSet()
-        impfset_undef.append(impf)
+        impfset_undef = ImpactFuncSet([impf])
         try:
             ImpactCalc(exp_ws, impfset_tc, haz_tc).impact()
         except Exception as e:
