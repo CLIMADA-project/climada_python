@@ -106,9 +106,9 @@ class TestImpactCalc(unittest.TestCase):
         does not appear in impf_set or exposures"""
         haz_tc = Hazard('TC')
         exp_tc = Exposures()
-        exp_tc.gdf['impf_TC'] = []
+        exp_tc.gdf['impf_TC'] = 1
         exp_ws = Exposures()
-        exp_ws.gdf['impf_WS'] = []
+        exp_ws.gdf['impf_WS'] = 2
         impf = ImpactFunc()
         impf.id = 1
         impf.intensity = np.array([0, 20])
