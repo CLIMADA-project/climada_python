@@ -1019,7 +1019,7 @@ class Exposures():
 
         return exp
 
-    def affected_total_value(self, hazard):
+    def affected_total_value(self, hazard, threshold_affected=0):
         """
         Total value of the exposures that are close enough to be affected
         by the hazard (sum of value of all exposures points for which
@@ -1029,6 +1029,8 @@ class Exposures():
         ----------
         hazard : Hazard
            Hazard affecting Exposures
+        threshold_affected : int or float
+            Intensity threshold above which an exposures is considere affected.
 
         Returns
         -------
@@ -1037,11 +1039,9 @@ class Exposures():
             a centroids is assigned
 
         """
-        nz_mask = (
-            (self.gdf.value.values > 0)
-            & (self.gdf[hazard.centr_exp_col].values >= 0)
-        )
-        return np.sum(self.gdf.value.values[nz_mask])
+        cent_with_inten_above_thres = np.where(haz_fire.intensity[:,np.unique(exp.gdf[haz_fire.centr_exp_col].values)].sum(axis=0).ravel() > threshold_a)[1]
+        above_thres_mask = np.isin(exp.gdf[hazard.centr_exp_col].values, cent_with_inten_above_thres)
+        return np.sum(exp.gdf.value.values[above_thres_mask])
 
 
 def add_sea(exposures, sea_res, scheduler=None):
