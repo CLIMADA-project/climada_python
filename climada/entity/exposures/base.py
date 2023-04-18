@@ -1039,9 +1039,9 @@ class Exposures():
             a centroids is assigned
 
         """
-        cent_with_inten_above_thres = np.where(haz_fire.intensity[:,np.unique(exp.gdf[haz_fire.centr_exp_col].values)].sum(axis=0).ravel() > threshold_a)[1]
-        above_thres_mask = np.isin(exp.gdf[hazard.centr_exp_col].values, cent_with_inten_above_thres)
-        return np.sum(exp.gdf.value.values[above_thres_mask])
+        cent_with_inten_above_thres = np.where(hazard.intensity[:,np.unique(self.gdf[hazard.centr_exp_col].values)].sum(axis=0).ravel() > threshold_affected)[1]
+        above_thres_mask = np.isin(self.gdf[hazard.centr_exp_col].values, cent_with_inten_above_thres)
+        return np.sum(self.gdf.value.values[above_thres_mask])
 
 
 def add_sea(exposures, sea_res, scheduler=None):
