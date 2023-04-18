@@ -5,8 +5,8 @@ build:
   tools:
     python: "mambaforge-4.10"
   jobs:
-    post_install:
-      - mamba install -c conda-forge -n climada_env ipython pandoc nbformat nbsphinx sphinx-markdown-tables sphinx-book-theme myst-parser
+    post_create_environment:
+      - mamba install -c conda-forge ipython pandoc nbformat nbsphinx sphinx-markdown-tables sphinx-book-theme myst-parser
 
 conda:
   environment: requirements/env_climada.yml
