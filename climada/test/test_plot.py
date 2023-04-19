@@ -121,7 +121,7 @@ class TestPlotter(unittest.TestCase):
         myexp.plot_scatter()
         myexp.plot_basemap()
         # note: not specifying raster_res makes jenkins runout of memory
-        myexp.plot_raster(raster_res = 0.001)
+        myexp.plot_raster(raster_res=0.001)
 
     def test_impact_funcs_pass(self):
         """Plot diferent impact functions."""
