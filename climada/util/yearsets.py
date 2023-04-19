@@ -262,7 +262,7 @@ def compute_imp_per_year(imp, sampling_vect):
     imp_per_year = [np.sum(imp.at_event[list(sampled_events)]) for sampled_events in
                     sampling_vect]
 
-    return imp_per_year
+    return np.array(imp_per_year)
 
 def calculate_correction_fac(imp_per_year, imp):
     """Calculate a correction factor that can be used to scale the yimp in such
