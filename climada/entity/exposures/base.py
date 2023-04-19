@@ -1021,16 +1021,17 @@ class Exposures():
 
     def affected_total_value(self, hazard, threshold_affected=0):
         """
-        Total value of the exposures that are close enough to be affected
-        by the hazard (sum of value of all exposures points for which
-        a centroids is assigned)
+        Total value of the exposures that are affected by at least
+        one hazard event (sum of value of all exposures points for which
+        at least one event has intensitz larger than the threshold).
 
         Parameters
         ----------
         hazard : Hazard
            Hazard affecting Exposures
         threshold_affected : int or float
-            Intensity threshold above which an exposures is considere affected.
+            Hazard intensity threshold above which an exposures is
+            considere affected.
 
         Returns
         -------
@@ -1039,8 +1040,9 @@ class Exposures():
             a centroids is assigned
 
         """
-        cent_with_inten_above_thres = np.where(hazard.intensity[:,np.unique(self.gdf[hazard.centr_exp_col].values)].sum(axis=0).ravel() > threshold_affected)[1]
-        above_thres_mask = np.isin(self.gdf[hazard.centr_exp_col].values, cent_with_inten_above_thres)
+        cents = np.unique(self.gdf[hazard.centr_exp_col].values)
+        cent_with_inten_above_thres = (hazard.intensity[:,cents] > threshold_affected).sum(axis=0).nonzero()[1]
+        above_thres_mask = np.isin(self.gdf[hazard.centr_exp_col].values, cents[cent_with_inten_above_thres])
         return np.sum(self.gdf.value.values[above_thres_mask])
 
 
