@@ -188,15 +188,15 @@ class TestFuncs(unittest.TestCase):
     def test_affected_total_value(self):
         haz_type = 'RF'
         gdf = gpd.GeoDataFrame({
-            'value' : [1, 2, 3],
-            'latitude' : [1, 2, 3],
-            'longitude' : [-1, -2, -3],
-            'centr_' + haz_type : [0, 2, 3]
+            'value' : [1, 2, 3, 4, 5, 6],
+            'latitude' : [1, 2, 3, 4, 5, 6],
+            'longitude' : [-1, -2, -3, -4, -5, -6],
+            'centr_' + haz_type : [0, 2, 2, 3, -1, 4]
         })
         exp = Exposures(gdf, crs=4326)
         intensity = sp.sparse.csr_matrix(np.array(
-            [[0, 1, 10, 2],
-             [-1, 0, 1, 2]]
+            [[0, 0, 1, 10, 2],
+             [-1,0, 0, 1,  2]]
             ))
         cent = Centroids(lat = np.array([1,2,3,4]), lon=np.array([1,2,3,4]))
         haz = Hazard(
@@ -207,11 +207,11 @@ class TestFuncs(unittest.TestCase):
             )
 
         tot_val = exp.affected_total_value(haz, threshold_affected=0)
-        self.assertEqual(tot_val, np.sum(exp.gdf.value[[1, 2]]))
+        self.assertEqual(tot_val, np.sum(exp.gdf.value[[1, 2, 3, 5]]))
         tot_val = exp.affected_total_value(haz, threshold_affected=3)
-        self.assertEqual(tot_val, np.sum(exp.gdf.value[[1]]))
-        tot_val = exp.affected_total_value(haz, threshold_affected=-1)
-        self.assertEqual(tot_val, np.sum(exp.gdf.value[[0,1,2]]))
+        self.assertEqual(tot_val, np.sum(exp.gdf.value[[3]]))
+        tot_val = exp.affected_total_value(haz, threshold_affected=-2)
+        self.assertEqual(tot_val, np.sum(exp.gdf.value[[0, 1, 2, 3, 5]]))
         tot_val = exp.affected_total_value(haz, threshold_affected=11)
         self.assertEqual(tot_val, 0)
 
