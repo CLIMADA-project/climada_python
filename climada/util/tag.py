@@ -18,51 +18,88 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Define Tag class.
 """
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Union, List
+import h5py
 
 __all__ = ['Tag']
+
+
+STR_DT = h5py.special_dtype(vlen=str)
+
+
+def _distinct_list_of_str(list_of_str: list, arg: Union[list, str, object]):
+    if arg:
+        if isinstance(arg, list):
+            for itm in arg:
+                if str(itm) not in list_of_str:
+                    list_of_str.append(str(itm))
+        else:
+            list_of_str.append(str(arg))
+    return list_of_str
+
 
 class Tag():
     """Source data tag for Exposures, DiscRates, ImpactFuncSet, MeasureSet.
 
     Attributes
     ----------
-    file_name : str
+    file_name : List[str]
         name of the source file
-    description : str
+    description : List[str]
         description of the data
     """
 
     def __init__(self,
-                 file_name: str = '',
-                 description: str = ''):
+                 file_name: Union[List[str], str] = None,
+                 description: Union[List[str], str] = None):
         """Initialize values.
 
         Parameters
         ----------
-        file_name : str, optional
+        file_name : Any, optional
             file name to read
-        description : str, optional
+        description : Any, optional
             description of the data
         """
-        self.file_name = str(file_name)
-        self.description = description
+        self.file_name = _distinct_list_of_str([], file_name)
+        self.description = _distinct_list_of_str([], description)
 
-    def append(self, tag):
+    def append(self, tag: Tag):
         """Append input Tag instance information to current Tag."""
-        # add file name if not present in tag
-        if self.file_name == '':
-            self.file_name = tag.file_name
-            self.description = tag.description
-        elif tag.file_name == '':
-            return
-        else:
-            if tag.file_name not in self.file_name:
-                self.file_name += ' + ' + tag.file_name
-            if tag.description not in self.description:
-                self.description += ' + ' + tag.description
+        self.file_name = _distinct_list_of_str(self.file_name, tag.file_name)
+        self.description = _distinct_list_of_str(self.description, tag.description)
+
+    def join_file_names(self):
+        """Get a string with the joined file names."""
+        return ' + '.join([
+            Path(single_name).stem
+            for single_name in self.file_name
+        ])
+
+    def join_descriptions(self):
+        """Get a string with the joined descriptions."""
+        return ' + '.join([file for file in self.description])
 
     def __str__(self):
-        return ' File: ' + self.file_name + '\n Description: ' + \
-            self.description
+        return ' File: ' + self.join_file_names() + \
+             '\n Description: ' +  self.join_descriptions()
 
     __repr__ = __str__
+
+    def to_hdf5(self, hf_data):
+        """Create a dataset in the given hdf5 file and fill it with content
+
+        Parameters
+        ----------
+        hf_data : h5py.File
+            will be updated during the call
+        """        
+        hf_str = hf_data.create_dataset('file_name', (len(self.file_name),), dtype=STR_DT)
+        for i, name in enumerate(self.file_name):
+            hf_str[i] = name
+        hf_str = hf_data.create_dataset('description', (len(self.file_name),), dtype=STR_DT)
+        for i, desc in enumerate(self.description):
+            hf_str[i] = desc

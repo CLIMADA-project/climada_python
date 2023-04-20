@@ -1130,8 +1130,7 @@ class Impact():
         """
         LOGGER.info('Reading %s', file_name)
         dfr = pd.read_excel(file_name)
-        imp =cls()
-        imp.haz_type = dfr['tag_hazard'][0]
+        imp = cls(haz_type=str(dfr['tag_hazard'][0]))
         imp.tag['haz'] = Tag(
             file_name = dfr['tag_hazard'][1],
             description = dfr['tag_hazard'][2])

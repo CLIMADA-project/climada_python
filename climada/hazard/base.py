@@ -1830,10 +1830,7 @@ class Hazard():
                 if var_name == 'centroids':
                     self.centroids.write_hdf5(hf_data.create_group(var_name))
                 elif var_name == 'tag':
-                    hf_str = hf_data.create_dataset('file_name', (1,), dtype=str_dt)
-                    hf_str[0] = str(var_val.file_name)
-                    hf_str = hf_data.create_dataset('description', (1,), dtype=str_dt)
-                    hf_str[0] = str(var_val.description)
+                    var_val.to_hdf5(hf_data)
                 elif isinstance(var_val, sparse.csr_matrix):
                     if todense:
                         hf_data.create_dataset(var_name, data=var_val.toarray())
