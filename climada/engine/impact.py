@@ -1334,6 +1334,8 @@ class Impact():
         -------
         list of Impact
         """
+        from climada.engine.impact_calc import ImpactCalc  # pylint: disable=import-outside-toplevel
+
         if args_exp is None:
             args_exp = dict()
         if args_imp is None:
@@ -1344,8 +1346,7 @@ class Impact():
         # assign centroids once for all
         exp.assign_centroids(haz_list[0])
         for i_time, _ in enumerate(haz_list):
-            imp_tmp = Impact()
-            imp_tmp.calc(exp, impf_set, haz_list[i_time], assign_centroids=False)
+            imp_tmp = ImpactCalc(exp, impf_set, haz_list[i_time]).impact(assign_centroids=False)
             imp_arr = np.maximum(imp_arr, imp_tmp.eai_exp)
             # remove not impacted exposures
             save_exp = imp_arr > imp_thresh
