@@ -261,7 +261,7 @@ class Measure():
             indicates whether centroids are assigned to the exposure object.
             Centroids assignment is an expensive operation; set this to ``False`` to save
             computation time if the hazards' centroids are already assigned to the exposures
-            object.
+            object. Passed to Impact.calc.
         save_mat : bool
             save the calculated Impact's impact matrix. Passed to Impact.calc
 
