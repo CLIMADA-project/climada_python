@@ -330,8 +330,8 @@ class Impact():
         -------
         climada.engine.impact.Impact
         """
-        new_imp = copy.deepcopy(self)
         if attachment or cover:
+            new_imp = copy.deepcopy(self)
             imp_layer = np.minimum(np.maximum(new_imp.at_event - attachment, 0), cover)
             new_imp.at_event = np.maximum(new_imp.at_event - imp_layer, 0)
             new_imp.aai_agg = np.sum(new_imp.at_event * new_imp.frequency)
@@ -344,8 +344,8 @@ class Impact():
             risk_transfer.at_event = imp_layer
             risk_transfer.aai_agg = np.sum(imp_layer * new_imp.frequency)
             return new_imp, risk_transfer
-
-        return new_imp, Impact()
+        else:
+            return self, Impact()
 
     def impact_per_year(self, all_years=True, year_range=None):
         """Calculate yearly impact from impact data.

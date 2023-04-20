@@ -272,8 +272,6 @@ class Measure():
         from climada.engine.impact_calc import ImpactCalc  # pylint: disable=import-outside-toplevel
         imp = ImpactCalc(new_exp, new_impfs, new_haz)\
               .impact(save_mat=save_mat, assign_centroids=assign_centroids)
-        if self.risk_transf_attach == 0 and self.risk_transf_cover == 0:
-            return imp, Impact()
         return imp.calc_risk_transfer(self.risk_transf_attach, self.risk_transf_cover)
 
     def _change_all_hazard(self, hazard):
