@@ -614,8 +614,8 @@ class Exposures():
         cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         crs_epsg, _ = u_plot.get_transformation(self.crs)
-        title = self.tag.description
-        cbar_label = 'Value (%s)' % self.value_unit
+        title = str(self.tag.description)
+        cbar_label = f'Value ({self.value_unit})'
         if 'reduce_C_function' not in kwargs:
             kwargs['reduce_C_function'] = np.sum
         if mask is None:
