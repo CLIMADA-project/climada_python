@@ -162,7 +162,7 @@ def sample_from_poisson(n_sampled_years, lam, seed=None):
 
     Returns
     -------
-        events_per_year : array
+        events_per_year : np.ndarray
             Number of events per sampled year
     """
     if seed is not None:
@@ -184,9 +184,9 @@ def sample_events(events_per_year, freqs_orig, seed=None):
 
     Parameters
     -----------
-        events_per_year : array
+        events_per_year : np.ndarray
             Number of events per sampled year
-        freqs_orig : array
+        freqs_orig : np.ndarray
             Frequency of each input event
         seed : Any, optional
             seed for the default bit generator.
@@ -255,14 +255,14 @@ def compute_imp_per_year(imp, sampling_vect):
 
     Returns
     -------
-        imp_per_year: array
+        imp_per_year: np.ndarray
             Sampled impact per year (length = sampled_years)
     """
 
     imp_per_year = [np.sum(imp.at_event[list(sampled_events)]) for sampled_events in
                     sampling_vect]
 
-    return imp_per_year
+    return np.array(imp_per_year)
 
 def calculate_correction_fac(imp_per_year, imp):
     """Calculate a correction factor that can be used to scale the yimp in such
@@ -271,7 +271,7 @@ def calculate_correction_fac(imp_per_year, imp):
 
     Parameters
     -----------
-        imp_per_year : array
+        imp_per_year : np.ndarray
             sampled yimp
         imp : climada.engine.Impact()
             impact object containing impacts per event
