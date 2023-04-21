@@ -128,9 +128,7 @@ class Entity:
         """
 
         exp = Exposures(pd.read_excel(file_name))
-        exp.tag = Tag()
-        exp.tag.file_name = str(file_name)
-        exp.tag.description = description
+        exp.tag = Tag(file_name=file_name, description=description)
 
         dr = DiscRates.from_excel(file_name, description)
         impf_set = ImpactFuncSet.from_excel(file_name, description)

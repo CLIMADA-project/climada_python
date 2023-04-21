@@ -202,7 +202,7 @@ class Impact():
         """
         LOGGER.warning("The use of Impact().calc() is deprecated."
                        " Use ImpactCalc().impact() instead.")
-        from climada.engine.impact_calc import ImpactCalc
+        from climada.engine.impact_calc import ImpactCalc  # pylint: disable=import-outside-toplevel
         impcalc = ImpactCalc(exposures, impact_funcs, hazard)
         self.__dict__ = impcalc.impact(
             save_mat=save_mat,

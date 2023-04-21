@@ -427,8 +427,7 @@ class MeasureSet():
 
         data = u_hdf5.read(file_name)
         meas_set = cls()
-        meas_set.tag.file_name = str(file_name)
-        meas_set.tag.description = description
+        meas_set.tag = Tag(file_name=file_name, description=description)
         try:
             data = data[var_names['sup_field_name']]
         except KeyError:
@@ -526,8 +525,7 @@ class MeasureSet():
         dfr = pd.read_excel(file_name, var_names['sheet_name'])
         dfr = dfr.fillna('')
         meas_set = cls()
-        meas_set.tag.file_name = str(file_name)
-        meas_set.tag.description = description
+        meas_set.tag = Tag(file_name=file_name, description=description)
         try:
             read_att_excel(meas_set, dfr, var_names)
         except KeyError as var_err:
