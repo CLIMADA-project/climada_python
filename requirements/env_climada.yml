@@ -37,10 +37,10 @@ dependencies:
   - statsmodels>=0.13
   - tabulate>=0.9
   - tqdm>=4.65
+  - unittest-xml-reporting>=3.2
   - xarray>=2023.3
   - xlrd>=2.0
   - xlsxwriter>=3.0
-  - xmlrunner>=1.7
   - pip:
     - deprecation>=2.1
     - overpy>=0.6
