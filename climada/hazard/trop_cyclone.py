@@ -44,6 +44,7 @@ from climada.util import ureg
 import climada.util.constants as u_const
 import climada.util.coordinates as u_coord
 import climada.util.plot as u_plot
+from climada.util.tag import Tag
 
 LOGGER = logging.getLogger(__name__)
 
@@ -316,7 +317,7 @@ class TropCyclone(Hazard):
         haz.intensity_thres = intensity_thres
         LOGGER.debug('Compute frequency.')
         haz.frequency_from_tracks(tracks.data)
-        haz.tag.description = description
+        haz.tag = Tag(description=description)
         return haz
 
     def apply_climate_scenario_knu(
@@ -360,8 +361,8 @@ class TropCyclone(Hazard):
         chg_int_freq = get_knutson_criterion()
         scale_rcp_year  = calc_scale_knutson(ref_year, rcp_scenario)
         haz_cc = self._apply_knutson_criterion(chg_int_freq, scale_rcp_year)
-        haz_cc.tag.description = 'climate change scenario for year %s and RCP %s '\
-        'from Knutson et al 2015.' % (str(ref_year), str(rcp_scenario))
+        haz_cc.tag = Tag(description=f'climate change scenario for year {ref_year}'
+                                     f' and RCP {rcp_scenario} from Knutson et al 2015.')
         return haz_cc
 
     def set_climate_scenario_knu(self, *args, **kwargs):

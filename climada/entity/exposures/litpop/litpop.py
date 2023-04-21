@@ -184,9 +184,9 @@ class LitPop(Exposures):
             LOGGER.warning('Some countries could not be identified and are ignored: '
                            '%s. Litpop only initiated for: %s', countries_out, countries_in)
 
-        tag.description = f'LitPop Exposure for {countries_in} at {res_arcsec} as, ' \
-                          f'year: {reference_year}, financial mode: {fin_mode}, ' \
-                          f'exp: {exponents}, admin1_calc: {admin1_calc}'
+        tag = Tag(description=f'LitPop Exposure for {countries_in} at {res_arcsec} as, '
+                              f'year: {reference_year}, financial mode: {fin_mode}, '
+                              f'exp: {exponents}, admin1_calc: {admin1_calc}')
 
         exp = cls(
             data=Exposures.concat(litpop_list).gdf,
@@ -430,10 +430,9 @@ class LitPop(Exposures):
         else:
             raise NotImplementedError('Not implemented for `shape` of type {type(shape)}')
 
-        tag = Tag()
-        tag.description = f'LitPop Exposure for custom shape in {countries} at ' \
-                          f'{res_arcsec} as, year: {reference_year}, financial mode: ' \
-                          f'{fin_mode}, exp: {exponents}, admin1_calc: {admin1_calc}'
+        tag = Tag(description=f'LitPop Exposure for custom shape in {countries} at '
+                              f'{res_arcsec} as, year: {reference_year}, financial mode: '
+                              f'{fin_mode}, exp: {exponents}, admin1_calc: {admin1_calc}')
         exp.set_gdf(gdf.reset_index())
 
         try:
@@ -511,7 +510,6 @@ class LitPop(Exposures):
             raise NotImplementedError('Not implemented for `shape` of type list or '
                                       'GeoSeries. Loop over elements of series outside method.')
 
-        tag = Tag()
         litpop_gdf, _ = _get_litpop_single_polygon(shape, reference_year,
                                                           res_arcsec, data_dir,
                                                           gpw_version, exponents,
@@ -524,8 +522,8 @@ class LitPop(Exposures):
         elif total_value is not None:
             raise TypeError("total_value must be int, float or None.")
 
-        tag.description = f'LitPop Exposure for custom shape at {res_arcsec} as, ' \
-                          f'year: {reference_year}, exp: {exponents}'
+        tag = Tag(description = f'LitPop Exposure for custom shape at {res_arcsec} as, ' \
+                          f'year: {reference_year}, exp: {exponents}')
 
 
         litpop_gdf[INDICATOR_IMPF] = 1

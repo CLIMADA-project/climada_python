@@ -516,8 +516,8 @@ class TestWriter(unittest.TestCase):
         """Write + read excel file"""
 
         imp_funcs = ImpactFuncSet()
-        imp_funcs.tag.file_name = 'No file name'
-        imp_funcs.tag.description = 'test writer'
+        imp_funcs.tag = Tag(file_name='No file name',
+                            description='test writer')
 
         idx = 1
         name = 'code 1'

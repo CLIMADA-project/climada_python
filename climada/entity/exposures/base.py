@@ -499,8 +499,7 @@ class Exposures():
         Exposures
         """
         exp = cls()
-        exp.tag = Tag()
-        exp.tag.file_name = str(file_name)
+        exp.tag = Tag(file_name=file_name)
         meta, value = u_coord.read_raster(file_name, [band], src_crs, window,
                                           geometry, dst_crs, transform, width,
                                           height, resampling)

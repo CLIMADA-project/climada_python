@@ -697,8 +697,8 @@ class TestAppend(unittest.TestCase):
         haz1 = dummy_hazard()
         haz2 = dummy_hazard()
         haz2.haz_type = 'WS'
-        haz2.tag.file_name = 'file2.mat'
-        haz2.tag.description = 'Description 2'
+        haz2.tag = Tag(file_name='file2.mat',
+                       description='Description 2')
         with self.assertRaises(ValueError) as cm:
             haz1.append(haz2)
 

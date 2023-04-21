@@ -33,6 +33,7 @@ from climada.entity import (Entity, ImpactFuncSet, Exposures, DiscRates, ImpfTro
 from climada.hazard import Hazard, Centroids
 from climada.util.constants import HAZ_DEMO_MAT, ENT_DEMO_TODAY
 from climada.util.api_client import Client
+from climada.util.tag import Tag
 
 
 class TestPlotter(unittest.TestCase):
@@ -110,13 +111,13 @@ class TestPlotter(unittest.TestCase):
         myexp = pd.read_excel(ENT_DEMO_TODAY)
         myexp = Exposures(myexp)
         myexp.check()
-        myexp.tag.description = 'demo_today'
+        myexp.tag = Tag(description='demo_today')
         myax = myexp.plot_hexbin()
         self.assertIn('demo_today', myax.get_title())
 
-        myexp.tag.description = ''
+        myexp.tag = Tag()
         myax = myexp.plot_hexbin()
-        self.assertIn('', myax.get_title())
+        self.assertNotIn('demo_today', myax.get_title())
 
         myexp.plot_scatter()
         myexp.plot_basemap()
