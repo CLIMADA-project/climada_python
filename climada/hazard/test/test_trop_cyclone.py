@@ -71,7 +71,7 @@ class TestReader(unittest.TestCase):
                                              store_windfields=True, metric=metric)
 
             self.assertEqual(tc_haz.haz_type, 'TC')
-            self.assertEqual(tc_haz.tag.description, '')
+            self.assertEqual(tc_haz.tag.description, [])
             self.assertEqual(tc_haz.tag.file_name, ['Name: 1951239N12334'])
             self.assertEqual(tc_haz.units, 'm/s')
             self.assertEqual(tc_haz.centroids.size, 296)
@@ -139,7 +139,7 @@ class TestReader(unittest.TestCase):
         tc_haz.check()
 
         self.assertEqual(tc_haz.haz_type, 'TC')
-        self.assertEqual(tc_haz.tag.description, '')
+        self.assertEqual(tc_haz.tag.description, [])
         self.assertEqual(tc_haz.tag.file_name, ['Name: 1951239N12334'])
         self.assertEqual(tc_haz.units, 'm/s')
         self.assertEqual(tc_haz.centroids.size, 296)
@@ -167,7 +167,7 @@ class TestReader(unittest.TestCase):
         tc_haz.check()
 
         self.assertEqual(tc_haz.haz_type, 'TC')
-        self.assertEqual(tc_haz.tag.description, '')
+        self.assertEqual(tc_haz.tag.description, [])
         self.assertEqual(tc_haz.tag.file_name, ['Name: 1951239N12334', 'Name: 1951239N12334'])
         self.assertEqual(tc_haz.units, 'm/s')
         self.assertEqual(tc_haz.centroids.size, 296)

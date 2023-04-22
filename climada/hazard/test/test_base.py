@@ -32,6 +32,7 @@ from climada.hazard.centroids.centr import Centroids
 import climada.util.dates_times as u_dt
 from climada.util.constants import DEF_FREQ_UNIT, HAZ_TEMPLATE_XLS, HAZ_DEMO_FL
 import climada.util.coordinates as u_coord
+from climada.util.tag import Tag
 
 from climada.test import get_test_file
 import climada.hazard.test as hazard_test
