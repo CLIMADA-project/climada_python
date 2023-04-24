@@ -43,6 +43,8 @@ HAZ :Hazard = Hazard.from_hdf5(HAZ_TEST_TC)
 DATA_FOLDER :Path = DEMO_DIR / 'test-results'
 DATA_FOLDER.mkdir(exist_ok=True)
 
+STR_DT = h5py.special_dtype(vlen=str)
+
 
 def dummy_impact():
     """Return an impact object for testing"""
@@ -935,15 +937,11 @@ class TestImpactH5IO(unittest.TestCase):
             self.assertEqual(file.attrs["unit"], impact.unit)
             self.assertEqual(file.attrs["aai_agg"], impact.aai_agg)
             self.assertEqual(file.attrs["frequency_unit"], impact.frequency_unit)
-            self.assertDictEqual(
-                dict(**file["tag"]["exp"].attrs), impact.tag["exp"].__dict__
-            )
-            self.assertDictEqual(
-                dict(**file["tag"]["haz"].attrs), impact.tag["haz"].__dict__
-            )
-            self.assertDictEqual(
-                dict(**file["tag"]["impf_set"].attrs), impact.tag["impf_set"].__dict__
-            )
+
+            for tagtype in ["exp", "haz", "impf_set"]:
+                self.assertDictEqual(
+                    Tag.from_hdf5(file["tag"][tagtype]).__dict__, impact.tag[tagtype].__dict__
+                )
 
             if dense_imp_mat:
                 npt.assert_array_equal(file["imp_mat"], impact.imp_mat.toarray())
@@ -1045,13 +1043,14 @@ class TestImpactH5IO(unittest.TestCase):
         aai_agg = 200
         unit = "unit"
         haz_type="haz_type"
-        haz_tag = dict(file_name="file_name", description="description")
-        exp_tag = dict(file_name="exp", description="exp")
-        impf_set_tag = dict(file_name="impf_set", description="impf_set")
+        haz_tag = dict(file_name=["file_name"], description=["description"])
+        exp_tag = dict(file_name=["exp"], description=["exp"])
+        impf_set_tag = dict(file_name=["impf_set"], description=["impf_set"])
 
         def write_tag(group, tag_kwds):
             for key, value in tag_kwds.items():
-                group.attrs[key] = value
+                array = group.create_dataset(key, (1,0), STR_DT)
+                array[0] = value
 
         # Write the data
         with h5py.File(self.filepath, "w") as file:
@@ -1073,8 +1072,8 @@ class TestImpactH5IO(unittest.TestCase):
             for group, kwds in zip(
                 ("haz", "exp", "impf_set"), (haz_tag, exp_tag, impf_set_tag)
             ):
-                file.create_group(f"tag/{group}")
-                write_tag(file["tag"][group], kwds)
+                taghdf5 = file.create_group(f"tag/{group}")
+                Tag(**kwds).to_hdf5(taghdf5)
             file.attrs["haz_type"] = haz_type
 
         # Load and check

@@ -103,3 +103,19 @@ class Tag():
         hf_str = hf_data.create_dataset('description', (len(self.file_name),), dtype=STR_DT)
         for i, desc in enumerate(self.description):
             hf_str[i] = desc
+
+    @classmethod
+    def from_hdf5(cls, hf_data):
+        """Create a Tag from content of the given hdf5 file
+
+        Parameters
+        ----------
+        hf_data : h5py.File
+        
+        Returns
+        -------
+        Tag
+        """
+        return cls(
+            file_name=[x.decode() for x in hf_data.get('file_name')],
+            description=[x.decode() for x in hf_data.get('description')])

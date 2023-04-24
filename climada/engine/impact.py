@@ -997,7 +997,8 @@ class Impact():
 
         def write_tag(group, name, value):
             """Write a tag object using the dict writer"""
-            write_dict(group, name, value.__dict__)
+            group = group.create_group(name)  # name is 'exp', 'haz', 'impf_set'
+            value.to_hdf5(group)              # value is a Tag
 
         def _write_csr_dense(group, name, value):
             """Write a CSR Matrix in dense format"""
@@ -1024,7 +1025,6 @@ class Impact():
         type_writers = {
             str: write_attribute,
             Tag: write_tag,
-            TagHaz: write_tag,
             dict: write_dict,
             sparse.csr_matrix: write_csr,
             Collection: write_dataset,
@@ -1274,21 +1274,11 @@ class Impact():
 
             # Tags
             if "tag" in file:
-                tag_kwargs = dict()
                 tag_group = file["tag"]
-                subtags = set(("exp", "impf_set")).intersection(tag_group.keys())
-                tag_kwargs.update({st: Tag(**tag_group[st].attrs) for st in subtags})
+                # the tag group has tags for 'exp', 'haz' and 'impf_set'
+                tag_kwargs = {tag: Tag.from_hdf5(tag_group[tag]) for tag in tag_group.keys()}
 
-                # Special handling for hazard because it has another tag type
-                if "haz" in tag_group:
-                    try:
-                        tag_type = tag_group["haz"].attrs.pop("haz_type")
-                        kwargs.setdefault("haz_type", tag_type)
-                    except KeyError:
-                        pass
-                    tag_kwargs["haz"] = Tag(**tag_group["haz"].attrs)
                 kwargs["tag"] = tag_kwargs
-
         # Create the impact object
         return cls(**kwargs)
 
