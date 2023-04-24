@@ -96,7 +96,7 @@ class Tag():
         ----------
         hf_data : h5py.File
             will be updated during the call
-        """        
+        """
         hf_str = hf_data.create_dataset('file_name', (len(self.file_name),), dtype=STR_DT)
         for i, name in enumerate(self.file_name):
             hf_str[i] = name
@@ -111,7 +111,7 @@ class Tag():
         Parameters
         ----------
         hf_data : h5py.File
-        
+
         Returns
         -------
         Tag
