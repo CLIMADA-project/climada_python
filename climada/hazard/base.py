@@ -1893,12 +1893,15 @@ class Hazard():
                     hazard_kwargs["centroids"] = Centroids.from_hdf5(
                         hf_data.get(var_name))
                 elif var_name == 'tag':
-                    hazard_kwargs["haz_type"] = u_hdf5.to_string(
-                        hf_data.get('haz_type')[0])
-                    hazard_kwargs["file_name"] = u_hdf5.to_string(
-                        hf_data.get('file_name')[0])
-                    hazard_kwargs["description"] = u_hdf5.to_string(
-                        hf_data.get('description')[0])
+                    # legacy behavior: haz_type used to be part of the hazard tag
+                    if "haz_type" in hf_data.keys():
+                        haz_type = u_hdf5.to_string(
+                            hf_data.get("haz_type")[0])
+                        if haz_type:
+                            hazard_kwargs["haz_type"] = haz_type
+                    tag = Tag.from_hdf5(hf_data)
+                    hazard_kwargs["file_name"] = tag.file_name
+                    hazard_kwargs["description"] = tag.description
                 elif isinstance(var_val, np.ndarray) and var_val.ndim == 1:
                     hazard_kwargs[var_name] = np.array(hf_data.get(var_name))
                 elif isinstance(var_val, sparse.csr_matrix):
