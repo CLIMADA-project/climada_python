@@ -81,7 +81,7 @@ class Tag():
 
     def join_descriptions(self):
         """Get a string with the joined descriptions."""
-        return ' + '.join([file for file in self.description])
+        return ' + '.join(self.description)
 
     def __str__(self):
         return ' File: ' + self.join_file_names() + \
