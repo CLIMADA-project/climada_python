@@ -36,7 +36,6 @@ import pathos.pools
 import xarray as xr
 
 from climada.hazard.base import Hazard
-from climada.hazard.tag import Tag as TagHazard
 from climada.hazard.tc_tracks import TCTracks, estimate_rmw
 from climada.hazard.tc_clim_change import get_knutson_criterion, calc_scale_knutson
 from climada.hazard.centroids.centr import Centroids
@@ -317,7 +316,8 @@ class TropCyclone(Hazard):
         haz.intensity_thres = intensity_thres
         LOGGER.debug('Compute frequency.')
         haz.frequency_from_tracks(tracks.data)
-        haz.tag = Tag(description=description)
+        haz.tag.append(Tag(description=description))
+        print('tag tag tag ', haz.tag)
         return haz
 
     def apply_climate_scenario_knu(
@@ -419,7 +419,7 @@ class TropCyclone(Hazard):
         # initialization
         track = tracks.get_track(track_name)
         if not track:
-            raise ValueError('%s not found in track data.' % track_name)
+            raise ValueError(f'{track_name} not found in track data.')
         idx_plt = np.argwhere(
             (track.lon.values < centroids.total_bounds[2] + 1)
             & (centroids.total_bounds[0] - 1 < track.lon.values)
@@ -556,8 +556,8 @@ class TropCyclone(Hazard):
             shape=(1, ncentroids))
         intensity_sparse.eliminate_zeros()
 
-        new_haz = cls()
-        new_haz.tag = TagHazard(HAZ_TYPE, 'Name: ' + track.name)
+        new_haz = cls(haz_type=HAZ_TYPE)
+        new_haz.tag = Tag(file_name=f'Name: {track.name}')
         new_haz.intensity_thres = intensity_thres
         new_haz.intensity = intensity_sparse
         if store_windfields:
@@ -618,7 +618,7 @@ class TropCyclone(Hazard):
         # Criterion per basin
         for basin in np.unique(tc_cc.basin):
 
-            bas_sel = (np.array(tc_cc.basin) == basin)
+            bas_sel = np.array(tc_cc.basin) == basin
 
             # Apply intensity change
             inten_chg = [chg
@@ -745,7 +745,7 @@ def compute_windfields(
     v_centr_normed[close_centr_msk] /= d_centr[close_centr_msk, None]
 
     # make sure that central pressure never exceeds environmental pressure
-    pres_exceed_msk = (t_cen > t_env)
+    pres_exceed_msk = t_cen > t_env
     t_cen[pres_exceed_msk] = t_env[pres_exceed_msk]
 
     # extrapolate radius of max wind from pressure if not given (and convert to km)
@@ -756,7 +756,7 @@ def compute_windfields(
 
     # adjust pressure at previous track point
     prev_pres = t_cen[:-1].copy()
-    msk = (prev_pres < 850)
+    msk = prev_pres < 850
     prev_pres[msk] = t_cen[1:][msk]
 
     # derive (absolute) angular velocity from parametric wind profile
@@ -896,7 +896,7 @@ def _vtrans(
     v_trans_norm[1:] *= KMH_TO_MS / t_tstep[1:]
 
     # limit to 30 nautical miles per hour
-    msk = (v_trans_norm > 30 * KN_TO_MS)
+    msk = v_trans_norm > 30 * KN_TO_MS
     fact = 30 * KN_TO_MS / v_trans_norm[msk]
     v_trans[msk, :] *= fact[:, None]
     v_trans_norm[msk] *= fact
