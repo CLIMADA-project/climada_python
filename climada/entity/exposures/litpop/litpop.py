@@ -145,7 +145,6 @@ class LitPop(Exposures):
             total_values = [None] * len(countries)
         elif len(total_values) != len(countries):
             raise ValueError("'countries' and 'total_values' must be lists of same length")
-        tag = Tag()
 
         # litpop_list is initiated, a list containing one Exposure instance per
         # country and None for countries that could not be identified:
@@ -430,9 +429,9 @@ class LitPop(Exposures):
         else:
             raise NotImplementedError('Not implemented for `shape` of type {type(shape)}')
 
-        tag = Tag(description=f'LitPop Exposure for custom shape in {countries} at '
-                              f'{res_arcsec} as, year: {reference_year}, financial mode: '
-                              f'{fin_mode}, exp: {exponents}, admin1_calc: {admin1_calc}')
+        exp.tag.append(Tag(description=f'LitPop Exposure for custom shape in {countries} at '
+                                    f'{res_arcsec} as, year: {reference_year}, financial mode: '
+                                    f'{fin_mode}, exp: {exponents}, admin1_calc: {admin1_calc}'))
         exp.set_gdf(gdf.reset_index())
 
         try:
@@ -524,7 +523,6 @@ class LitPop(Exposures):
 
         tag = Tag(description = f'LitPop Exposure for custom shape at {res_arcsec} as, ' \
                           f'year: {reference_year}, exp: {exponents}')
-
 
         litpop_gdf[INDICATOR_IMPF] = 1
 

@@ -27,7 +27,6 @@ from scipy import sparse
 import h5py
 
 from climada.util.tag import Tag
-from climada.hazard.tag import Tag as TagHaz
 from climada.entity.entity_def import Entity
 from climada.hazard.base import Hazard
 from climada.engine import Impact, ImpactCalc
@@ -357,9 +356,9 @@ class TestIO(unittest.TestCase):
         # Create impact object
         num_ev = 10
         num_exp = 5
-        imp_write = Impact()
+        imp_write = Impact(haz_type='TC')
         imp_write.tag = {'exp': Tag('file_exp.p', 'descr exp'),
-                         'haz': TagHaz('TC', 'file_haz.p', 'descr haz'),
+                         'haz': Tag('file_haz.p', 'descr haz'),
                          'impf_set': Tag()}
         imp_write.event_id = np.arange(num_ev)
         imp_write.event_name = ['event_' + str(num) for num in imp_write.event_id]
@@ -397,9 +396,9 @@ class TestIO(unittest.TestCase):
         # Create impact object
         num_ev = 5
         num_exp = 10
-        imp_write = Impact()
+        imp_write = Impact(haz_type='TC')
         imp_write.tag = {'exp': Tag('file_exp.p', 'descr exp'),
-                         'haz': TagHaz('TC', 'file_haz.p', 'descr haz'),
+                         'haz': Tag('file_haz.p', 'descr haz'),
                          'impf_set': Tag()}
         imp_write.event_id = np.arange(num_ev)
         imp_write.event_name = ['event_' + str(num) for num in imp_write.event_id]

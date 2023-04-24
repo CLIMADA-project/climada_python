@@ -43,7 +43,6 @@ from tqdm import tqdm
 import h5py
 
 from climada.entity import Exposures, Tag
-from climada.hazard import Tag as TagHaz
 import climada.util.plot as u_plot
 from climada import CONFIG
 from climada.util.constants import DEF_CRS, CMAP_IMPACT, DEF_FREQ_UNIT
@@ -59,9 +58,6 @@ class Impact():
 
     Attributes
     ----------
-    tag : dict
-        dictionary of tags of exposures, impact functions set and
-        hazard: {'exp': Tag(), 'impf_set': Tag(), 'haz': TagHaz()}
     event_id : np.array
         id (>0) of each hazard event
     event_name : list
@@ -89,6 +85,11 @@ class Impact():
     imp_mat : sparse.csr_matrix
         matrix num_events x num_exp with impacts.
         only filled if save_mat is True in calc()
+    tag : dict
+        dictionary of tags of exposures, impact functions set and
+        hazard: {'exp': Tag(), 'impf_set': Tag(), 'haz': Tag()}
+    haz_type : str
+        the hazard type of the hazard
     """
 
     def __init__(self,
@@ -142,7 +143,7 @@ class Impact():
             matrix num_events x num_exp with impacts.
         tag : dict, optional
             dictionary of tags of exposures, impact functions set and
-            hazard: {'exp': Tag(), 'impf_set': Tag(), 'haz': TagHaz()}
+            hazard: {'exp': Tag(), 'impf_set': Tag(), 'haz': Tag()}
         haz_type : str, optional
             the hazard type
         """
@@ -1824,7 +1825,7 @@ class ImpactFreqCurve():
 
     tag : dict = field(default_factory=dict)
     """dictionary of tags of exposures, impact functions set and
-        hazard: {'exp': Tag(), 'impf_set': Tag(), 'haz': TagHaz()}"""
+        hazard: {'exp': Tag(), 'impf_set': Tag(), 'haz': Tag()}"""
 
     return_per : np.array = np.array([])
     """return period"""
