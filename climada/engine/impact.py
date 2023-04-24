@@ -862,7 +862,7 @@ class Impact():
                              "unit", "tot_value", "aai_agg", "event_id",
                              "event_name", "event_date", "event_frequency", "frequency_unit",
                              "at_event", "eai_exp", "exp_lat", "exp_lon", "exp_crs"])
-            csv_data = [[[self.tag['haz'].haz_type], [self.tag['haz'].file_name],
+            csv_data = [[[self.haz_type], [self.tag['haz'].file_name],
                          [self.tag['haz'].description]],
                         [[self.tag['exp'].file_name], [self.tag['exp'].description]],
                         [[self.tag['impf_set'].file_name], [self.tag['impf_set'].description]],
