@@ -1100,13 +1100,12 @@ class Impact():
             imp.crs = u_coord.to_crs_user_input(imp_df.exp_crs.values[0])
         except AttributeError:
             imp.crs = DEF_CRS
-        imp.tag['haz'] = Tag(
-                                 str(imp_df.tag_hazard[1]),
-                                 str(imp_df.tag_hazard[2]))
+        imp.tag['haz'] = Tag(str(imp_df.tag_hazard[1]),
+                             str(imp_df.tag_hazard[2]))
         imp.tag['exp'] = Tag(str(imp_df.tag_exposure[0]),
-                              str(imp_df.tag_exposure[1]))
+                             str(imp_df.tag_exposure[1]))
         imp.tag['impf_set'] = Tag(str(imp_df.tag_impact_func[0]),
-                                 str(imp_df.tag_impact_func[1]))
+                                  str(imp_df.tag_impact_func[1]))
         return imp
 
     def read_csv(self, *args, **kwargs):

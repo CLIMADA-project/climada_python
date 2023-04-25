@@ -553,8 +553,8 @@ class Exposures():
         cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         crs_epsg, _ = u_plot.get_transformation(self.crs)
-        title = self.tag.description
-        cbar_label = 'Value (%s)' % self.value_unit
+        title = "\n".join(self.tag.description)
+        cbar_label = f'Value ({self.value_unit})'
         if mask is None:
             mask = np.ones((self.gdf.shape[0],), dtype=bool)
         if ignore_zero:
@@ -613,7 +613,7 @@ class Exposures():
         cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         crs_epsg, _ = u_plot.get_transformation(self.crs)
-        title = str(self.tag.description)
+        title = "\n".join(self.tag.description)
         cbar_label = f'Value ({self.value_unit})'
         if 'reduce_C_function' not in kwargs:
             kwargs['reduce_C_function'] = np.sum
