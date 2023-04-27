@@ -79,26 +79,22 @@ class Centroids():
 
     Attributes
     ----------
-    meta : dict, optional
-        rasterio meta dictionary containing raster properties: width, height, crs and transform
-        must be present at least. The affine ransformation needs to be shearless (only stretching)
-        and have positive x- and negative y-orientation.
-    lat : np.array, optional
-        latitude of size size
-    lon : np.array, optional
-        longitude of size size
-    geometry : gpd.GeoSeries, optional
-        contains lat and lon crs. Might contain geometry points for lat and lon
+    lat : np.array
+        latitudes
+    lon : np.array
+        longitudes
+    crs : str, optional
+        coordinate reference system, default is WGS84
     area_pixel : np.array, optional
-        area of size size
+        areas
     dist_coast : np.array, optional
-        distance to coast of size size
+        distances to coast
     on_land : np.array, optional
-        on land (True) and on sea (False) of size size
+        on land (True) and on sea (False)
     region_id : np.array, optional
-        country region code of size size
+        region numeric codes
     elevation : np.array, optional
-        elevation of size size
+        elevations
     """
 
     vars_check = {'lat', 'lon', 'geometry', 'area_pixel', 'dist_coast',
@@ -107,10 +103,9 @@ class Centroids():
 
     def __init__(
         self,
-        lat: Optional[np.ndarray] = None,
-        lon: Optional[np.ndarray] = None,
-        geometry: Optional[gpd.GeoSeries] = None,
-        meta: Optional[Dict[Any, Any]] = None,
+        lat: np.ndarray,
+        lon: np.ndarray,
+        crs: str = DEF_CRS,
         area_pixel: Optional[np.ndarray] = None,
         on_land: Optional[np.ndarray] = None,
         region_id: Optional[np.ndarray] = None,
@@ -121,18 +116,12 @@ class Centroids():
 
         Parameters
         ----------
-        lat : np.array, optional
+        lat : np.array
             latitude of size size. Defaults to empty array
-        lon : np.array, optional
+        lon : np.array
             longitude of size size. Defaults to empty array
-        geometry : gpd.GeoSeries, optional
-            contains lat and lon crs. Might contain geometry points for lat and lon.
-            Defaults to empty gpd.Geoseries with crs=DEF_CRS
-        meta : dict, optional
-            rasterio meta dictionary containing raster properties: width, height, crs and
-            transform must be present at least. The affine ransformation needs to be
-            shearless (only stretching) and have positive x- and negative y-orientation.
-            Defaults to empty dict()
+        crs : str
+            coordinate reference system
         area_pixel : np.array, optional
             area of size size. Defaults to empty array
         on_land : np.array, optional
@@ -144,38 +133,39 @@ class Centroids():
         dist_coast : np.array, optional
             distance to coast of size size. Defaults to empty array
         """
+        self.gdf = gpd.GeoDataFrame({
+            'geometry': gpd.points_from_xy(lon, lat, crs=crs),
+            'on_land' : on_land,
+            'region_id' : region_id,
+            'elevation' : elevation,
+            'area_pixel' : area_pixel,
+            'dist_coast' : dist_coast,
+        })
 
-        self.lat = lat if lat is not None else np.array([])
-        self.lon = lon if lon is not None else np.array([])
-        self.geometry = geometry if geometry is not None else gpd.GeoSeries(crs=DEF_CRS)
-        self.meta = meta if meta is not None else dict()
-        self.area_pixel = area_pixel if area_pixel is not None else np.array([])
-        self.on_land = on_land if on_land is not None else np.array([])
-        self.region_id = region_id if region_id is not None else np.array([])
-        self.elevation = elevation if elevation is not None else np.array([])
-        self.dist_coast = dist_coast if dist_coast is not None else np.array([])
-
-    def check(self):
-        """Check integrity of stored information.
-
-        Checks that either `meta` attribute is set, or `lat`, `lon` and `geometry.crs`.
-        Checks sizes of (optional) data attributes."""
-        n_centr = self.size
-        for var_name, var_val in self.__dict__.items():
-            if var_name in self.vars_check:
-                if var_val.size > 0 and var_val.size != n_centr:
-                    raise ValueError(f'Wrong {var_name} size: {n_centr} != {var_val.size}.')
-        if self.meta:
-            for name in ['width', 'height', 'crs', 'transform']:
-                if name not in self.meta.keys():
-                    raise ValueError('Missing meta information: %s' % name)
-            xres, xshear, _xoff, yshear, yres, _yoff = self.meta['transform'][:6]
-            if xshear != 0 or yshear != 0:
-                raise ValueError('Affine transformations with shearing components are not '
-                                 'supported.')
-            if yres > 0 or xres < 0:
-                raise ValueError('Affine transformations with positive y-orientation '
-                                 'or negative x-orientation are not supported.')
+    @property
+    def lat():
+        return self.gdf.geometry.y
+    @property
+    def lon():
+        return self.gdf.geometry.x
+    @property
+    def geometry():
+        return self.gdf['geometry']
+    @property
+    def on_land():
+        return self.gdf['on_land']
+    @property
+    def region_id():
+        return self.gdf['region_id']
+    @property
+    def elevation():
+        return self.gdf['elevation']
+    @property
+    def area_pixel():
+        return self.gdf['area_pixel']
+    @property
+    def dist_coast():
+        return self.gdf['dist_coast']
 
     def equal(self, centr):
         """Return True if two centroids equal, False otherwise
@@ -189,16 +179,7 @@ class Centroids():
         -------
         eq : bool
         """
-        if self.meta and centr.meta:
-            return (u_coord.equal_crs(self.meta['crs'], centr.meta['crs'])
-                    and self.meta['height'] == centr.meta['height']
-                    and self.meta['width'] == centr.meta['width']
-                    and self.meta['transform'] == centr.meta['transform'])
-        return (u_coord.equal_crs(self.crs, centr.crs)
-                and self.lat.shape == centr.lat.shape
-                and self.lon.shape == centr.lon.shape
-                and np.allclose(self.lat, centr.lat)
-                and np.allclose(self.lon, centr.lon))
+        return self.gdf.equals(centr.gdf)
 
     @staticmethod
     def from_base_grid(land=False, res_as=360, base_file=None):
@@ -241,107 +222,6 @@ class Centroids():
         return centroids
 
     @classmethod
-    def from_geodataframe(cls, gdf, geometry_alias='geom'):
-        """Create Centroids instance from GeoDataFrame.
-
-        The geometry, lat, and lon attributes are set from the GeoDataFrame.geometry attribute,
-        while the columns are copied as attributes to the Centroids object in the form of
-        numpy.ndarrays using pandas.Series.to_numpy. The Series dtype will thus be respected.
-
-        Columns named lat or lon are ignored, as they would overwrite the coordinates extracted
-        from the point features. If the geometry attribute bears an alias, it can be dropped by
-        setting the geometry_alias parameter.
-
-        If the GDF includes a region_id column, but no on_land column, then on_land=True is
-        inferred for those centroids that have a set region_id.
-
-        Example
-        -------
-        >>> gdf = geopandas.read_file('centroids.shp')
-        >>> gdf.region_id = gdf.region_id.astype(int)  # type coercion
-        >>> centroids = Centroids.from_geodataframe(gdf)
-
-        Parameters
-        ----------
-        gdf : GeoDataFrame
-            Where the geometry column needs to consist of point features. See above for details on
-            processing.
-        geometry_alias : str, opt
-            Alternate name for the geometry column; dropped to avoid duplicate assignment.
-
-        Returns
-        -------
-        centr : Centroids
-            Centroids with data from given GeoDataFrame
-        """
-        geometry = gdf.geometry
-        lat = gdf.geometry.y.to_numpy(copy=True)
-        lon = gdf.geometry.x.to_numpy(copy=True)
-        centroids = cls(lat=lat, lon=lon, geometry=geometry)
-
-        for col in gdf.columns:
-            if col in [geometry_alias, 'geometry', 'lat', 'lon']:
-                continue  # skip these, because they're already set above
-            val = gdf[col].to_numpy(copy=True)
-            setattr(centroids, col, val)
-
-        if centroids.on_land.size == 0:
-            try:
-                centroids.on_land = ~np.isnan(centroids.region_id)
-            except KeyError:
-                pass
-
-        return centroids
-
-    def set_raster_from_pix_bounds(self, *args, **kwargs):
-        """This function is deprecated, use Centroids.from_pix_bounds instead."""
-        LOGGER.warning("The use of Centroids.set_raster_from_pix_bounds is deprecated. "
-                       "Use Centroids.from_pix_bounds instead.")
-        self.__dict__ = Centroids.from_pix_bounds(*args, **kwargs).__dict__
-
-    @classmethod
-    def from_pix_bounds(cls, xf_lat, xo_lon, d_lat, d_lon, n_lat, n_lon, crs=DEF_CRS):
-        """Create Centroids object with meta attribute according to pixel border data.
-
-        Parameters
-        ----------
-        xf_lat : float
-            upper latitude (top)
-        xo_lon : float
-            left longitude
-        d_lat : float
-            latitude step (negative)
-        d_lon : float
-            longitude step (positive)
-        n_lat : int
-            number of latitude points
-        n_lon : int
-            number of longitude points
-        crs : dict() or rasterio.crs.CRS, optional
-            CRS. Default: DEF_CRS
-
-        Returns
-        -------
-        centr : Centroids
-            Centroids with meta according to given pixel border data.
-        """
-        meta = {
-            'dtype': 'float32',
-            'width': n_lon,
-            'height': n_lat,
-            'crs': crs,
-            'transform': rasterio.Affine(d_lon, 0.0, xo_lon, 0.0, d_lat, xf_lat),
-        }
-
-        return cls(meta=meta)
-
-    def set_raster_from_pnt_bounds(self, *args, **kwargs):
-        """This function is deprecated, use Centroids.from_pnt_bounds instead."""
-        LOGGER.warning("The use of Centroids.set_raster_from_pnt_bounds is deprecated. "
-                       "Use Centroids.from_pnt_bounds instead.")
-        self.__dict__ = Centroids.from_pnt_bounds(*args, **kwargs).__dict__
-
-    @classmethod
     def from_pnt_bounds(cls, points_bounds, res, crs=DEF_CRS):
         """Create Centroids object with meta attribute according to points border data.
 
@@ -369,35 +249,6 @@ class Centroids():
             'transform': ras_trans,
         }
         return cls(meta=meta)
-
-    def set_lat_lon(self, *args, **kwargs):
-        """This function is deprecated, use Centroids.from_lat_lon instead."""
-        LOGGER.warning("The use of Centroids.set_lat_lon is deprecated. "
-                       "Use Centroids.from_lat_lon instead.")
-        self.__dict__ = Centroids.from_lat_lon(*args, **kwargs).__dict__
-
-    @classmethod
-    def from_lat_lon(cls, lat, lon, crs=DEF_CRS):
-        """Create Centroids object from given latitude, longitude and CRS.
-
-        Parameters
-        ----------
-        lat : np.array
-            latitude
-        lon : np.array
-            longitude
-        crs : dict() or rasterio.crs.CRS, optional
-            CRS. Default: DEF_CRS
-
-        Returns
-        -------
-        centr : Centroids
-            Centroids with points according to given coordinates
-        """
-        lat = np.asarray(lat)
-        lon = np.asarray(lon)
-        geometry = gpd.GeoSeries(crs=crs)
-        return cls(lat=lat, lon=lon, geometry=geometry)
 
     def set_raster_file(self, file_name, band=None, **kwargs):
         """This function is deprecated, use Centroids.from_raster_file
@@ -506,17 +357,6 @@ class Centroids():
 
         return sparse.vstack(values, format='csr')
 
-
-    def set_vector_file(self, file_name, inten_name=None, **kwargs):
-        """This function is deprecated, use Centroids.from_vector_file
-        and Centroids.values_from_vector_files instead."""
-        LOGGER.warning("The use of Centroids.set_vector_file is deprecated. "
-                       "Use Centroids.from_vector_file and "
-                       "Centroids.values_from_vector_files instead.")
-        if not self.geometry.any():
-            self.__dict__ = Centroids.from_vector_file(file_name, **kwargs).__dict__
-        return self.values_from_vector_files([file_name], val_names=inten_name, **kwargs)
-
     @classmethod
     def from_vector_file(cls, file_name, dst_crs=None):
         """Create Centroids object from vector file (any format supported by fiona).
@@ -533,9 +373,13 @@ class Centroids():
         centr : Centroids
             Centroids with points according to the given vector file
         """
-        lat, lon, geometry, _ = u_coord.read_vector(
-            file_name, [], dst_crs=dst_crs)
-        return cls(lat=lat, lon=lon, geometry=geometry)
+        data_frame = gpd.read_file(file_name)
+        if dst_crs is None:
+            geometry = data_frame.geometry
+        else:
+            geometry = data_frame.geometry.to_crs(dst_crs)
+        lat, lon = geometry[:].y.values, geometry[:].x.values
+        return cls(lat=lat, lon=lon, dst_crs)
 
     def values_from_vector_files(self, file_names, val_names=None, dst_crs=None):
         """Read intensity or other data from vector files, making sure that geometry is compatible.
@@ -576,12 +420,6 @@ class Centroids():
 
         return sparse.vstack(values, format='csr')
 
-    def read_mat(self, *args, **kwargs):
-        """This function is deprecated, use Centroids.from_mat instead."""
-        LOGGER.warning("The use of Centroids.read_mat is deprecated."
-                       "Use Centroids.from_mat instead.")
-        self.__dict__ = Centroids.from_mat(*args, **kwargs).__dict__
-
     @classmethod
     def from_mat(cls, file_name, var_names=None):
         """Read centroids from CLIMADA's MATLAB version.
@@ -621,26 +459,19 @@ class Centroids():
         try:
             cen_lat = np.squeeze(cent[var_names['var_name']['lat']])
             cen_lon = np.squeeze(cent[var_names['var_name']['lon']])
-            centr = cls.from_lat_lon(cen_lat, cen_lon)
-
             try:
-                centr.dist_coast = np.squeeze(cent[var_names['var_name']['dist_coast']])
+                dist_coast = np.squeeze(cent[var_names['var_name']['dist_coast']])
             except KeyError:
                 pass
             try:
-                centr.region_id = np.squeeze(cent[var_names['var_name']['region_id']])
+                region_id = np.squeeze(cent[var_names['var_name']['region_id']])
             except KeyError:
                 pass
+            centr = cls.(cen_lat, cen_lon, dist_coast=dist_coast, region_id=region_id)
         except KeyError as err:
             raise KeyError("Not existing variable: %s" % str(err)) from err
 
         return centr
-
-    def read_excel(self, *args, **kwargs):
-        """This function is deprecated, use Centroids.from_excel instead."""
-        LOGGER.warning("The use of Centroids.read_excel is deprecated."
-                       "Use Centroids.from_excel instead.")
-        self.__dict__ = Centroids.from_excel(*args, **kwargs).__dict__
 
     @classmethod
     def from_excel(cls, file_name, var_names=None):
@@ -679,10 +510,6 @@ class Centroids():
             raise KeyError("Not existing variable: %s" % str(err)) from err
 
         return centr
-
-    def clear(self):
-        """Clear vector and raster data."""
-        self.__init__()
 
     def append(self, centr):
         """Append centroids points.
