@@ -606,6 +606,9 @@ def clean_emdat_df(emdat_file, countries=None, hazard=None, year_range=None,
                     years_list.append(np.nan)
             df_data[col] = years_list
     if version <= 2018 and target_version >= 2020:
+        # create 'Start Year', -Month' and -Day' from 'Start date'
+        # ignore 'End date'
+        # replace NaN with None in 'Disaster Subtype', 'Disaster Type' and 'Country'
         date_list = list()
         year_list = list()
         month_list = list()
