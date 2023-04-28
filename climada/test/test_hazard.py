@@ -25,6 +25,7 @@ import datetime as dt
 from scipy import sparse
 
 from climada import CONFIG
+from climada.hazard import tc_tracks as tc
 from climada.hazard.base import Hazard
 from climada.hazard.centroids import Centroids
 from climada.hazard.storm_europe import StormEurope
@@ -206,9 +207,48 @@ class TestStormEurope(unittest.TestCase):
         self.assertEqual(len(cm.output), 1)
         self.assertIn('event definition is inaccuratly implemented', cm.output[0])
 
+class TestTcTracks(unittest.TestCase):
+    """ Test methods to create TcTracks objects from netcdf"""
+
+    def test_ibtracs_with_basin(self):
+        """Filter TCs by (genesis) basin."""
+        # South Atlantic (not usually a TC location at all)
+        tc_track = tc.TCTracks.from_ibtracs_netcdf(basin="SA")
+        self.assertEqual(tc_track.size, 3)
+
+        # the basin is not necessarily the genesis basin
+        tc_track = tc.TCTracks.from_ibtracs_netcdf(
+            year_range=(1995, 1995), basin="SP", estimate_missing=True)
+        self.assertEqual(tc_track.size, 6)
+        self.assertEqual(tc_track.data[0].basin[0], 'SP')
+        self.assertEqual(tc_track.data[5].basin[0], 'SI')
+
+        # genesis in NI
+        tc_track = tc.TCTracks.from_ibtracs_netcdf(
+            year_range=(1994, 1994), genesis_basin="NI", estimate_missing=True)
+        self.assertEqual(tc_track.size, 5)
+        for tr in tc_track.data:
+            self.assertEqual(tr.basin[0], "NI")
+
+        # genesis in EP, but crosses WP at some point
+        tc_track = tc.TCTracks.from_ibtracs_netcdf(
+            year_range=(2002, 2003), basin="WP", genesis_basin="EP")
+        self.assertEqual(tc_track.size, 3)
+        for tr in tc_track.data:
+            self.assertEqual(tr.basin[0], "EP")
+            self.assertIn("WP", tr.basin)
+        
+    def test_cutoff_tracks(self):
+        tc_track = tc.TCTracks.from_ibtracs_netcdf(storm_id='1986226N30276')
+        tc_track.equal_timestep()
+        with self.assertLogs('climada.hazard.tc_tracks_synth', level='DEBUG') as cm:
+            tc_track.calc_perturbed_trajectories(nb_synth_tracks=10)
+        self.assertIn('The following generated synthetic tracks moved beyond '
+                      'the range of [-70, 70] degrees latitude', cm.output[1])
 
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestCentroids)
     TESTS.addTest(unittest.TestLoader().loadTestsFromTestCase(TestStormEurope))
+    TESTS.addTest(unittest.TestLoader().loadTestsFromTestCase(TestTcTracks))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
