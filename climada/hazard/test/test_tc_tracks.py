@@ -508,7 +508,7 @@ class TestIO(unittest.TestCase):
         split.set_index('sid', inplace=True)
         self.assertIsInstance(split.loc['1980052S16155'].geometry, MultiLineString)
         self.assertIsInstance(split.loc['2018079S09162'].geometry, LineString)
-        self.assertEqual(len(split.loc['1980052S16155'].geometry), 8)
+        self.assertEqual(len(split.loc['1980052S16155'].geometry.geoms), 8)
         self.assertFalse(split.loc['2018079S09162'].geometry.is_simple)
 
         nosplit = anti_track.to_geodataframe(split_lines_antimeridian=False)

@@ -70,11 +70,12 @@ BM_FILENAMES = ['BlackMarble_%i_A1_geo_gray.tif',
 def load_nasa_nl_shape(geometry, year, data_dir=SYSTEM_DIR, dtype='float32'):
     """Read nightlight data from NASA BlackMarble tiles
     cropped to given shape(s) and combine arrays from each tile.
+
     1) check and download required blackmarble files
     2) read and crop data from each file required in a bounding box around
-        the given `geometry`.
+       the given `geometry`.
     3) combine data from all input files into one array. this array then
-        contains all data in the geographic bounding box around `geometry`.
+       contains all data in the geographic bounding box around `geometry`.
     4) return array with nightlight data
 
     Parameters
@@ -199,15 +200,15 @@ def get_required_nl_files(bounds):
 
     # Now latitude. The height of all tiles is the same as the height.
     # Note that for this analysis returns an index which follows from North to South oritentation.
-    first_tile_lat = min(np.floor(-(min_lat - (90)) / tile_width), 1)
+    first_tile_lat = min(np.floor(-(min_lat - 90) / tile_width), 1)
     last_tile_lat = min(np.floor(-(max_lat - 90) / tile_width), 1)
 
     for i_lon in range(0, int(len(req_files) / 2)):
         if first_tile_lon <= i_lon <= last_tile_lon:
             if first_tile_lat == 0 or last_tile_lat == 0:
-                req_files[((i_lon)) * 2] = 1
+                req_files[(i_lon) * 2] = 1
             if first_tile_lat == 1 or last_tile_lat == 1:
-                req_files[((i_lon)) * 2 + 1] = 1
+                req_files[(i_lon) * 2 + 1] = 1
         else:
             continue
     return req_files
@@ -330,8 +331,7 @@ def download_nl_files(req_files=np.ones(len(BM_FILENAMES),),
     return dwnl_path
 
 def load_nasa_nl_shape_single_tile(geometry, path, layer=0):
-    """Read nightlight data from single NASA BlackMarble tile
-    and crop to given shape.
+    """Read nightlight data from single NASA BlackMarble tile and crop to given shape.
 
     Parameters
     ----------
@@ -355,6 +355,10 @@ def load_nasa_nl_shape_single_tile(geometry, path, layer=0):
     with rasterio.open(path, 'r') as src:
         # read cropped data from  source file (src) to np.ndarray:
         out_image, transform = rasterio.mask.mask(src, [geometry], crop=True)
+        LOGGER.debug('Read cropped %s as np.ndarray.', path.name)
+        if out_image.shape[0] < layer:
+            raise IndexError(f"{path.name} has only {out_image.shape[0]} layers,"
+                             f" layer {layer} can't be accessed.")
         meta = src.meta
         meta.update({"driver": "GTiff",
                     "height": out_image.shape[1],
@@ -439,15 +443,12 @@ def read_bm_file(bm_path, filename):
         Additional info from which coordinates can be calculated.
     """
     path = Path(bm_path, filename)
-    try:
-        LOGGER.debug('Importing %s.', path)
-        curr_file = gdal.Open(str(path))
-        band1 = curr_file.GetRasterBand(1)
-        arr1 = band1.ReadAsArray()
-        del band1
-        return arr1, curr_file
-    except Exception as err:
-        raise type(err)(f"Failed to import {path} " + str(err)) from err
+    LOGGER.debug('Importing%s.', path)
+    if not path.exists():
+        raise FileNotFoundError('Invalid path: check that the path to BlackMarble file is correct.')
+    curr_file = gdal.Open(str(path))
+    arr1 = curr_file.GetRasterBand(1).ReadAsArray()
+    return arr1, curr_file
 
 def unzip_tif_to_py(file_gz):
     """Unzip image file, read it, flip the x axis, save values as pickle
@@ -469,7 +470,7 @@ def unzip_tif_to_py(file_gz):
     with gzip.open(file_gz, 'rb') as f_in:
         with file_name.open('wb') as f_out:
             shutil.copyfileobj(f_in, f_out)
-    nightlight = sparse.csc.csc_matrix(plt.imread(file_name))
+    nightlight = sparse.csc_matrix(plt.imread(file_name))
     # flip X axis
     nightlight.indices = -nightlight.indices + nightlight.shape[0] - 1
     nightlight = nightlight.tocsr()

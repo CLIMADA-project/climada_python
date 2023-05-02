@@ -26,3 +26,6 @@
 * Zélie Standhanske
 * Yue Yu
 * Lukas Riedel
+* Raphael Portmann
+* Nicolas Colombi
+* Leonie Villiger

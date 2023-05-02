@@ -28,7 +28,7 @@ from pathlib import Path
 
 from climada import CONFIG
 from climada.entity.entity_def import Entity
-from climada.entity import Exposures, ImpactFuncSet
+from climada.entity import Exposures, ImpactFuncSet, ImpactFunc
 from climada.hazard.base import Hazard
 from climada.engine import ImpactCalc, Impact
 from climada.engine.impact_calc import LOGGER as ILOG
@@ -100,6 +100,41 @@ class TestImpactCalc(unittest.TestCase):
         np.testing.assert_array_equal(
             imp.todense(), np.array([[0, 0, 1], [0, 1, 0]])
             )
+
+    def test_error_handling_mismatch_haz_type(self):
+        """Test error handling in case hazard type of hazard
+        does not appear in impf_set or exposures"""
+        haz_tc = Hazard('TC')
+        exp_tc = Exposures()
+        exp_tc.gdf['impf_TC'] = 1
+        exp_ws = Exposures()
+        exp_ws.gdf['impf_WS'] = 2
+        impf = ImpactFunc()
+        impf.id = 1
+        impf.intensity = np.array([0, 20])
+        impf.paa = np.array([0, 1])
+        impf.mdd = np.array([0, 0.5])
+        impf.haz_type = 'TC'
+        impfset_tc = ImpactFuncSet([impf])
+        impf.haz_type = 'WS'
+        impfset_ws = ImpactFuncSet([impf])
+        impf.haz_type = ''
+        impfset_undef = ImpactFuncSet([impf])
+        try:
+            ImpactCalc(exp_ws, impfset_tc, haz_tc).impact()
+        except Exception as e:
+            self.assertEqual(str(e), "Impact calculation not possible. No impact "
+                             "functions found for hazard type TC in exposures.")
+        try:
+            ImpactCalc(exp_tc, impfset_ws, haz_tc).impact()
+        except Exception as e:
+            self.assertEqual(str(e), "Impact calculation not possible. No impact "
+                             "functions found for hazard type TC in impf_set.")
+        try:
+            ImpactCalc(exp_tc, impfset_undef, haz_tc).impact()
+        except Exception as e:
+            self.assertEqual(str(e), "Impact calculation not possible. No impact "
+                             "functions found for hazard type TC in impf_set.")
 
     def test_calc_impact_TC_pass(self):
         """Test compute impact"""

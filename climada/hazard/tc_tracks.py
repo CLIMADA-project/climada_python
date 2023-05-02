@@ -127,9 +127,9 @@ IBTRACS_AGENCY_1MIN_WIND_FACTOR = {
 """Scale and shift used by agencies to convert their internal Dvorak 1-minute sustained winds to
 the officially reported values that are in IBTrACS. From Table 1 in:
 
-Knapp, K.R., Kruk, M.C. (2010): Quantifying Interagency Differences in Tropical Cyclone Best-Track
+Knapp, K.R. & Kruk, M.C. (2010): Quantifying Interagency Differences in Tropical Cyclone Best-Track
 Wind Speed Estimates. Monthly Weather Review 138(4): 1459–1473.
-https://library.wmo.int/index.php?lvl=notice_display&id=135"""
+https://journals.ametsoc.org/view/journals/mwre/138/4/2009mwr3123.1.xml"""
 
 DEF_ENV_PRESSURE = 1010
 """Default environmental pressure"""
@@ -360,10 +360,12 @@ class TCTracks():
         provider : str or list of str, optional
             Either specify an agency, such as "usa", "newdelhi", "bom", "cma", "tokyo", or the
             special values "official" and "official_3h":
-              * "official" means using the (usually 6-hourly) officially reported values of the
-                officially responsible agencies.
-              * "official_3h" means to include (inofficial) 3-hourly data of the officially
-                responsible agencies (whenever available).
+
+            * "official" means using the (usually 6-hourly) officially reported values of the
+              officially responsible agencies.
+            * "official_3h" means to include (inofficial) 3-hourly data of the officially
+              responsible agencies (whenever available).
+
             If you want to restrict to the officially reported values by the officially responsible
             agencies (`provider="official"`) without any modifications to the original official
             data, make sure to also set `estimate_missing=False` and `interpolate_missing=False`.
@@ -373,8 +375,8 @@ class TCTracks():
             are not reported by the first agency for this storm are taken from the next agency in
             the list that did report this variable for this storm. For different storms, the same
             variable might be taken from different agencies.
-            Default: ['official_3h', 'usa', 'tokyo', 'newdelhi', 'reunion', 'bom', 'nadi',
-            'wellington', 'cma', 'hko', 'ds824', 'td9636', 'td9635', 'neumann', 'mlc']
+            Default: ``['official_3h', 'usa', 'tokyo', 'newdelhi', 'reunion', 'bom', 'nadi',
+            'wellington', 'cma', 'hko', 'ds824', 'td9636', 'td9635', 'neumann', 'mlc']``
         rescale_windspeeds : bool, optional
             If True, all wind speeds are linearly rescaled to 1-minute sustained winds.
             Note however that the IBTrACS documentation (Section 5.2,
@@ -1235,25 +1237,32 @@ class TCTracks():
         if not axis:
             proj = ccrs.PlateCarree(central_longitude=mid_lon)
             _, axis, _ = u_plot.make_map(proj=proj, figsize=figsize, adapt_fontsize=adapt_fontsize)
+        else:
+            proj = axis.projection
         axis.set_extent(extent, crs=kwargs['transform'])
         u_plot.add_shapes(axis)
 
-        synth_flag = False
         cmap = ListedColormap(colors=CAT_COLORS)
         norm = BoundaryNorm([0] + SAFFIR_SIM_CAT, len(SAFFIR_SIM_CAT))
         for track in self.data:
             lonlat = np.stack([track.lon.values, track.lat.values], axis=-1)
             lonlat[:, 0] = u_coord.lon_normalize(lonlat[:, 0], center=mid_lon)
             segments = np.stack([lonlat[:-1], lonlat[1:]], axis=1)
-            # remove segments which cross 180 degree longitude boundary
-            segments = segments[segments[:, 0, 0] * segments[:, 1, 0] >= 0, :, :]
-            if track.orig_event_flag:
-                track_lc = LineCollection(segments, cmap=cmap, norm=norm,
-                                          linestyle='solid', **kwargs)
-            else:
-                synth_flag = True
-                track_lc = LineCollection(segments, cmap=cmap, norm=norm,
-                                          linestyle=':', **kwargs)
+
+            # Truncate segments which cross the antimeridian.
+            # Note: Since we apply `lon_normalize` above and shift the central longitude of the
+            # plot to `mid_lon`, this is not necessary (and will do nothing) in cases where all
+            # tracks are located in a region around the antimeridian, like the Pacific ocean.
+            # The only case where this is relevant: Crowded global data sets where `mid_lon`
+            # falls back to 0, i.e. using the [-180, 180] range.
+            mask = (segments[:, 0, 0] > 100) & (segments[:, 1, 0] < -100)
+            segments[mask, 1, 0] = 180
+            mask = (segments[:, 0, 0] < -100) & (segments[:, 1, 0] > 100)
+            segments[mask, 1, 0] = -180
+
+            track_lc = LineCollection(
+                segments, linestyle='solid' if track.orig_event_flag else ':',
+                cmap=cmap, norm=norm, **kwargs)
             track_lc.set_array(track.max_sustained_wind.values)
             axis.add_collection(track_lc)
 
@@ -1261,7 +1270,7 @@ class TCTracks():
             leg_lines = [Line2D([0], [0], color=CAT_COLORS[i_col], lw=2)
                          for i_col in range(len(SAFFIR_SIM_CAT))]
             leg_names = [CAT_NAMES[i_col] for i_col in sorted(CAT_NAMES.keys())]
-            if synth_flag:
+            if any(not tr.orig_event_flag for tr in self.data):
                 leg_lines.append(Line2D([0], [0], color='grey', lw=2, ls='solid'))
                 leg_lines.append(Line2D([0], [0], color='grey', lw=2, ls=':'))
                 leg_names.append('Historical')
