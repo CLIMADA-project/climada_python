@@ -655,16 +655,11 @@ def _one_rnd_walk(track,
     if land_geom is not None:
         # compute minimum pressure occurring on or after each timestep
         if int(os.getenv('TRACKGEN_TEST_TARGET_PRESSURE_OVER_SEA')):
-            # LOGGER.debug('looking at target pressure!')
             over_sea_pressure = np.array([
                 pres if not land
                 else track.central_pressure.values[-1]
                 for pres, land in zip(track.central_pressure.values, track.on_land.values)
             ])
-            # if not np.allclose(over_sea_pressure, track.central_pressure.values):
-            #     LOGGER.debug('    adjusted!')
-            # else:
-            #     LOGGER.debug('    not adjusted')
             target_pressure = np.flip(np.minimum.accumulate(
                 np.flip(over_sea_pressure)
             ))
@@ -2601,13 +2596,6 @@ def _model_synth_tc_intensity(tracks_list,
                 if np.all(~sea_land) or np.where(sea_land)[0][0] > intensityrange_out_idx:
                     sid_outside_intensity_range.append(track.sid)
                     sea_land[intensityrange_out_idx] = True
-            # if int(os.getenv('TRACKGEN_TEST_KILL_BEYOND_ADVISORIES')):
-            #     print("\n\n\n\nCUTTING DOWN TRACK")
-            #     print("len")
-            #     print(track.time.size)
-            #     print("new last frame")
-            #     print(intensityrange_out_idx)
-            #     track = track.sel(time=slice(None, track.time[intensityrange_out_idx-1]))
         if np.any(sea_land):
             # apply landfall decay thereafter
             sea_land_idx = np.where(sea_land)[0][0]
@@ -3206,23 +3194,13 @@ def _get_outside_lat_idx(track):
 def _get_finalintensity_idx(track, original_track):
     '''Get the index of the frame where the synthetic track's central 
     pressure first goes above source track's final central pressure (or 
-    the maximum pressure it reaches after its minimum pressure, whichever 
-    is higher)'''
-    # Get source track's maximum pressure (after minimum pressure is achieved)
-    # This is usually the last frame
+    the source track's maximum pressure reacheed after its minimum pressure, 
+    whichever is higher). This is usually the last frame.'''
     original_pres = original_track.central_pressure.values
     min_idx = np.where(original_pres == np.min(original_pres))[0][-1]
     max_pres = np.max(original_pres[min_idx:])
 
-    # Return the index of the first time the random walk goes above this 
-    # pressure in the generated track segments
     idx = track.central_pressure.values[min_idx:] >= max_pres + 2
-
-    # if idx.any():
-    #     print(f'\nSHORTENING: {track.sid}')
-    #     print(f'len {track.time.size}')
-    #     print(f"idx {np.where(idx)[0][0]}")
-    #     print(f'out {min_idx + np.where(idx)[0][0] if idx.any() else track.time.size}')
     return min_idx + np.where(idx)[0][0] if idx.any() else track.time.size
 
 
