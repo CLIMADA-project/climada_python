@@ -64,10 +64,40 @@ def dummy_track_builder(vars_dict):
           'time': time
       }, attrs={
           'orig_event_flag': False,
-          'max_sustained_wind_unit': 'kn'
+          'max_sustained_wind_unit': 'kn',
+          'sid': 'XXXX'
       }
     )
     return tc_track
+
+def check_id_chunk_vs_on_land_synth(id_chunk, on_land_synth, idx_start_model, time_step_h=3):
+    """Checks that id_chunk is compatible with on_land_synth and idx_start_model"""
+    # ensure id_chunk is non-0 from idx_start_model onwards
+    if np.flatnonzero(id_chunk)[0] != idx_start_model:
+        return False
+    # ensure id_chunk is non-0 from idx_start_model onwards
+    if np.any(id_chunk == 0):
+        last_zero = np.where(id_chunk == 0)[0][-1]
+        if last_zero != idx_start_model - 1:
+            return False
+    elif idx_start_model != 0:
+        return False
+    min_n_ts = tc_synth.NEGLECT_LANDFALL_DURATION_HOUR/time_step_h
+    # check long landfalls have negative id_chunk
+    if np.any(np.diff(on_land_synth.astype(int)) == 1):
+        for lf_start in np.where(np.diff(on_land_synth.astype(int)) == 1)[0]+1:
+            if np.any(np.diff(on_land_synth[lf_start:].astype(int)) == -1):
+                nts_lf = np.where(np.diff(on_land_synth[lf_start:].astype(int)) == -1)[0][0]+1
+            else:
+                nts_lf = on_land_synth.size - lf_start
+            if nts_lf > min_n_ts:
+                if np.any(id_chunk[lf_start:lf_start+nts_lf] > 0):
+                    return False
+    if np.any(np.logical_and(~on_land_synth, id_chunk < 0)):
+        return False
+    
+    # check id chunk
+    return tc_synth.check_id_chunk(id_chunk, sid="test", raise_error=False)
 
 class TestDecay(unittest.TestCase):
     def test_apply_decay_no_landfall_pass(self):
@@ -774,9 +804,372 @@ class TestSynthIdChunks(unittest.TestCase):
         np.testing.assert_array_equal(synth_track.id_chunk.data, expected_id_chunk)
         np.testing.assert_array_equal(synth_track.central_pressure.data, expected_pcen)
 
+class TestSynthExtIdChunks(unittest.TestCase):
+    def test_get_shift_idx_start_wo_transition_both(self):
+        """Test _get_shift_idx_start for idealized case without any landfall"""
+        # case without any landfall
+        on_land_hist = np.repeat([False], 10)
+        on_land_synth = np.repeat([False], 10)
+        shift_first_sea, idx_start_model = tc_synth._get_shift_idx_start(on_land_hist, on_land_synth, 3)
+        self.assertEqual(shift_first_sea, 0)
+        self.assertEqual(idx_start_model, 10)
+
+        # case fully over land: cannot deal with
+        # on_land_hist = np.repeat([True], 10)
+        # on_land_synth = np.repeat([True], 10)
+        # shift_first_sea, idx_start_model = tc_synth._get_shift_idx_start(on_land_hist, on_land_synth, 3)
+        # self.assertEqual(shift_first_sea, 0)
+        # self.assertEqual(idx_start_model, 10)
+
+    def test_get_shift_idx_start_ocean_both(self):
+        """Test _get_shift_idx_start for idealized case with hist and synth
+        tracks starting over the ocean"""
+        # at a 3h res, idx_start_model is one timestep before first hist
+        # landfall (or at synth landfall)
+
+        # case with same landfalls
+        on_land_hist = np.array([False, False, False, True, True, True, False, False, True])
+        on_land_synth = on_land_hist
+        shift_first_sea, idx_start_model = tc_synth._get_shift_idx_start(on_land_hist, on_land_synth, 3)
+        self.assertEqual(shift_first_sea, 0)
+        # modelling one timestep before hist LF
+        self.assertEqual(idx_start_model, 2)
+
+
+        # Synth LF before Hist LF: no shift, model from synth LF
+        on_land_hist = np.array([False, False, False, True, True, True, False, False, True])
+        on_land_synth = np.array([False, False, True, True, True, True, False, False, True])
+        shift_first_sea, idx_start_model = tc_synth._get_shift_idx_start(on_land_hist, on_land_synth, 3)
+        self.assertEqual(shift_first_sea, 0)
+        self.assertEqual(idx_start_model, 2)
+        # check if id_chunk would match as well
+        pcen = np.arange(on_land_hist.size)
+        tc_track = dummy_track_builder({'on_land': on_land_synth, 'on_land_hist': on_land_hist, 'central_pressure': pcen.copy()})
+        tc_track_new, _, _, track_end_shift = tc_synth._add_id_synth_chunks_shift_init(
+            tc_track, 3
+        )
+        self.assertTrue(check_id_chunk_vs_on_land_synth(tc_track_new['id_chunk'].values, on_land_synth, idx_start_model))
+        self.assertIsNone(track_end_shift)
+
+        # Hist LF before Synth LF: no shift, model from hist LF minus 4h
+        on_land_hist = np.array([False, False, True, True, True, True, False, False, True])
+        on_land_synth = np.array([False, False, False, True, True, True, False, False, True])
+        shift_first_sea, idx_start_model = tc_synth._get_shift_idx_start(on_land_hist, on_land_synth, 3)
+        self.assertEqual(shift_first_sea, 0)
+        self.assertEqual(idx_start_model, 1)
+        # check if id_chunk would match as well
+        pcen = np.arange(on_land_hist.size)
+        tc_track = dummy_track_builder({'on_land': on_land_synth, 'on_land_hist': on_land_hist, 'central_pressure': pcen.copy()})
+        tc_track_new, _, _, track_end_shift = tc_synth._add_id_synth_chunks_shift_init(
+            tc_track, 3
+        )
+        self.assertTrue(check_id_chunk_vs_on_land_synth(tc_track_new['id_chunk'].values, on_land_synth, idx_start_model))
+        self.assertIsNone(track_end_shift)
+    
+    def test_get_shift_idx_start_land_hist(self):
+        """Test _get_shift_idx_start for idealized case with hist starting over land"""
+        
+        # case 1a i: synth reaches land soonish and moves back to sea thereafter
+        on_land_hist = np.array([True, True, False, False, True, True, False, False, True])
+        on_land_synth = np.array([False, False, True, False, False, False, False, True, False])
+        shift_first_sea, idx_start_model = tc_synth._get_shift_idx_start(on_land_hist, on_land_synth, 3)
+        # shift by +1 (End of LF: index 2 of on_land_hist to index 3 of on_land_synth)
+        self.assertEqual(shift_first_sea, 1)
+        # modelling 4h i.e. one timestep before hist LF, that is, index 4 + 1 (shift) - 1 (4h) = 4
+        self.assertEqual(idx_start_model, 4)
+        # check if id_chunk would match as well
+        pcen = np.arange(on_land_hist.size)
+        tc_track = dummy_track_builder({'on_land': on_land_synth, 'on_land_hist': on_land_hist,
+                                        'central_pressure': pcen.copy(),
+                                        'lon': pcen.copy(), 'lat': pcen.copy()})
+        tc_track_new, _, _, track_end_shift = tc_synth._add_id_synth_chunks_shift_init(
+            tc_track, 3
+        )
+        self.assertTrue(check_id_chunk_vs_on_land_synth(tc_track_new['id_chunk'].values, on_land_synth, idx_start_model))
+        np.testing.assert_array_equal(track_end_shift['lon'].values, on_land_hist.size - np.array([2,1,1]))
+
+        # case 1a ii: synth reaches land soonish but never moves back to sea thereafter
+        on_land_hist = np.array([True, True, False, False, True, True, False, False, True])
+        on_land_synth = np.array([False, False, True, True, True, True, True, True, True])
+        shift_first_sea, idx_start_model = tc_synth._get_shift_idx_start(on_land_hist, on_land_synth, 3)
+        # shift by -2 (First over sea: index 2 of on_land_hist to index 0 of on_land_synth)
+        self.assertEqual(shift_first_sea, -2)
+        # modelling 4h i.e. one timestep before hist LF, that is, index 4 + -2 (shift) - 1 (4h) = 1
+        self.assertEqual(idx_start_model, 1)
+        # check if id_chunk would match as well
+        pcen = np.arange(on_land_hist.size)
+        tc_track = dummy_track_builder({'on_land': on_land_synth, 'on_land_hist': on_land_hist,
+                                        'central_pressure': pcen.copy(),
+                                        'lon': pcen.copy(), 'lat': pcen.copy()})
+        tc_track_new, _, _, track_end_shift = tc_synth._add_id_synth_chunks_shift_init(
+            tc_track, 3
+        )
+        self.assertTrue(check_id_chunk_vs_on_land_synth(tc_track_new['id_chunk'].values, on_land_synth, idx_start_model))
+        self.assertIsNone(track_end_shift)
+
+
+        # case 1b: synth not over land soon and hist not over ocean soon:
+        # no shift, explicit modelling from the start
+        on_land_hist = np.array([True, True, True, True, True, True, True, False, True])
+        on_land_synth = np.array([False, False, False, False, False, False, False, True, False])
+        shift_first_sea, idx_start_model = tc_synth._get_shift_idx_start(on_land_hist, on_land_synth, 3)
+        # shift by +1 (End of LF: index 2 of on_land_hist to index 3 of on_land_synth)
+        self.assertEqual(shift_first_sea, 0)
+        # modelling 4h i.e. one timestep before hist LF, that is, index 4 + 1 (shift) - 1 (4h) = 4
+        self.assertEqual(idx_start_model, 0)
+        # check if id_chunk would match as well
+        pcen = np.arange(on_land_hist.size)
+        tc_track = dummy_track_builder({'on_land': on_land_synth, 'on_land_hist': on_land_hist,
+                                        'central_pressure': pcen.copy(),
+                                        'lon': pcen.copy(), 'lat': pcen.copy()})
+        tc_track_new, _, _, track_end_shift = tc_synth._add_id_synth_chunks_shift_init(
+            tc_track, 3
+        )
+        self.assertTrue(check_id_chunk_vs_on_land_synth(tc_track_new['id_chunk'].values, on_land_synth, idx_start_model))
+        self.assertIsNone(track_end_shift)
+
+
+        # case 1c: synth not over land anytime soon but hist soon over the ocean
+        on_land_hist = np.array([True, True, False, False, True, True, False, False, True])
+        on_land_synth = np.array([False, False, False, False, False, False, False, True, False])
+        shift_first_sea, idx_start_model = tc_synth._get_shift_idx_start(on_land_hist, on_land_synth, 3)
+        # shift by -2 (First over sea: index 2 of on_land_hist to index 0 of on_land_synth)
+        self.assertEqual(shift_first_sea, -2)
+        # modelling 4h i.e. one timestep before hist LF, that is, index 4 + -2 (shift) - 1 (4h) = 1
+        self.assertEqual(idx_start_model, 1)
+        # check if id_chunk would match as well
+        pcen = np.arange(on_land_hist.size)
+        tc_track = dummy_track_builder({'on_land': on_land_synth, 'on_land_hist': on_land_hist,
+                                        'central_pressure': pcen.copy(),
+                                        'lon': pcen.copy(), 'lat': pcen.copy()})
+        tc_track_new, _, _, track_end_shift = tc_synth._add_id_synth_chunks_shift_init(
+            tc_track, 3
+        )
+        self.assertTrue(check_id_chunk_vs_on_land_synth(tc_track_new['id_chunk'].values, on_land_synth, idx_start_model))
+        self.assertIsNone(track_end_shift)
+
+    def test_get_shift_idx_start_land_synth(self):
+        """Test _get_shift_idx_start for idealized case with synth starting over land"""
+        
+        # case 2a i: hist reaches land soonish and moves back to sea thereafter
+        on_land_hist = np.array([False, False, True, False, False, False, False, True, False])
+        on_land_synth = np.array([True, True, False, False, True, True, False, False, True])
+        shift_first_sea, idx_start_model = tc_synth._get_shift_idx_start(on_land_hist, on_land_synth, 3)
+        # shift by -1 (End of LF: index 3 of on_land_hist to index 2 of on_land_synth)
+        self.assertEqual(shift_first_sea, -1)
+        # modelling 4h i.e. one timestep before hist LF would be, index 7 + -1
+        # (shift) - 1 (4h) = 6 but synth landfall at index 4
+        self.assertEqual(idx_start_model, 4)
+        # check if id_chunk would match as well
+        pcen = np.arange(on_land_hist.size)
+        tc_track = dummy_track_builder({'on_land': on_land_synth, 'on_land_hist': on_land_hist,
+                                        'central_pressure': pcen.copy(),
+                                        'lon': pcen.copy(), 'lat': pcen.copy()})
+        tc_track_new, _, _, track_end_shift = tc_synth._add_id_synth_chunks_shift_init(
+            tc_track, 3
+        )
+        # TODO understand why this fails. Somehow id_chunk is not what it should be
+        self.assertTrue(check_id_chunk_vs_on_land_synth(tc_track_new['id_chunk'].values, on_land_synth, idx_start_model))
+        self.assertIsNone(track_end_shift)
+
+        # case 2a ii: hist reaches land soonish but never moves back to sea
+        # thereafter: need to model from the start
+        on_land_hist = np.array([False, False, True, True, True, True, True, True, True])
+        on_land_synth = np.array([True, True, False, False, True, True, False, False, True])
+        shift_first_sea, idx_start_model = tc_synth._get_shift_idx_start(on_land_hist, on_land_synth, 3)
+        # no shift
+        self.assertEqual(shift_first_sea, 0)
+        # modelling from the start
+        self.assertEqual(idx_start_model, 0)
+        # check if id_chunk would match as well
+        pcen = np.arange(on_land_hist.size)
+        tc_track = dummy_track_builder({'on_land': on_land_synth, 'on_land_hist': on_land_hist,
+                                        'central_pressure': pcen.copy(),
+                                        'lon': pcen.copy(), 'lat': pcen.copy()})
+        tc_track_new, _, _, track_end_shift = tc_synth._add_id_synth_chunks_shift_init(
+            tc_track, 3
+        )
+        self.assertTrue(check_id_chunk_vs_on_land_synth(tc_track_new['id_chunk'].values, on_land_synth, idx_start_model))
+        self.assertIsNone(track_end_shift)
+
+
+        # case 2b: Hist track not over land soon AND synth track NOT soon over the ocean:
+        # no shift, explicit modelling from the start
+        on_land_hist = np.array([False, False, False, False, False, False, False, True, False])
+        on_land_synth = np.array([True, True, True, True, True, True, True, False, True])
+        shift_first_sea, idx_start_model = tc_synth._get_shift_idx_start(on_land_hist, on_land_synth, 3)
+        # shift by +1 (End of LF: index 2 of on_land_hist to index 3 of on_land_synth)
+        self.assertEqual(shift_first_sea, 0)
+        # modelling 4h i.e. one timestep before hist LF, that is, index 4 + 1 (shift) - 1 (4h) = 4
+        self.assertEqual(idx_start_model, 0)
+        # check if id_chunk would match as well
+        pcen = np.arange(on_land_hist.size)
+        tc_track = dummy_track_builder({'on_land': on_land_synth, 'on_land_hist': on_land_hist,
+                                        'central_pressure': pcen.copy(),
+                                        'lon': pcen.copy(), 'lat': pcen.copy()})
+        tc_track_new, _, _, track_end_shift = tc_synth._add_id_synth_chunks_shift_init(
+            tc_track, 3
+        )
+        self.assertTrue(check_id_chunk_vs_on_land_synth(tc_track_new['id_chunk'].values, on_land_synth, idx_start_model))
+        self.assertIsNone(track_end_shift)
+
+
+        # case 1c: hist track not over land soon AND synth track soon over the ocean
+        on_land_hist = np.array([False, False, False, False, False, False, False, True, False])
+        on_land_synth = np.array([True, True, False, False, True, True, True, False, True])
+        shift_first_sea, idx_start_model = tc_synth._get_shift_idx_start(on_land_hist, on_land_synth, 3)
+        # shift by 2 (First over sea: index 0 of on_land_hist to index 2 of on_land_synth)
+        self.assertEqual(shift_first_sea, 2)
+        # modelling 4h i.e. one timestep before hist LF, that is, index 7 + 2
+        # (shift) - 1 (4h) = 8 but synth LF at 4
+        self.assertEqual(idx_start_model, 4)
+        # check if id_chunk would match as well
+        pcen = np.arange(on_land_hist.size)
+        tc_track = dummy_track_builder({'on_land': on_land_synth, 'on_land_hist': on_land_hist,
+                                        'central_pressure': pcen.copy(),
+                                        'lon': pcen.copy(), 'lat': pcen.copy()})
+        tc_track_new, _, _, track_end_shift = tc_synth._add_id_synth_chunks_shift_init(
+            tc_track, 3
+        )
+        self.assertTrue(check_id_chunk_vs_on_land_synth(tc_track_new['id_chunk'].values, on_land_synth, idx_start_model))
+        np.testing.assert_array_equal(track_end_shift['lon'].values, on_land_hist.size - np.array([2,1,1,1]))
+
+    # def test_ext_id_synth_chunks_nolf(self):
+    #     """Test _add_id_synth_chunks_shift_init for idealized case without any
+    #     landfall"""
+        
+        
+    #     # process is:
+    #     # _add_id_synth_chunks_shift_init
+    #     # 
+    #     LOGGER.debug('Identifying tracks chunks...')
+    #     tracks_with_id_chunks = [
+    #         _add_id_synth_chunks_shift_init(track, time_step_h, land_geom, shift_values_init=True)
+    #         for track in tracks.data
+    #     ]
+
+    #     # TODO track extension when shifted
+    #     if extend_track:
+    #         # get random numbers: track_ext.time.size-2 for each track_ext
+    #         LOGGER.debug('Extending tracks after shift')
+    #         random_traj_extension = [
+    #             _get_random_trajectory_ext(track_id_chunks[3], time_step_h)
+    #             for track_id_chunks in tracks_with_id_chunks
+    #         ]
+    #         # create the tracks with extension
+    #         tracks_with_id_chunks_extended = [
+    #             _create_track_from_ext(track, track_ext, rnd_tpl)
+    #             if track_ext is not None
+    #             else track
+    #             for (track, _, _, track_ext),rnd_tpl in zip(tracks_with_id_chunks, random_traj_extension)
+    #         ]
+    #         # get new land_geom
+    #         extent = climada.util.coordinates.latlon_bounds(
+    #             np.concatenate([t.lat.values for t in tracks_with_id_chunks_extended]),
+    #             np.concatenate([t.lon.values for t in tracks_with_id_chunks_extended]),
+    #             buffer=0.1
+    #         )
+    #         extent = (extent[0], extent[2], extent[1], extent[3])
+    #         land_geom = climada.util.coordinates.get_land_geometry(
+    #             extent=extent, resolution=10
+    #         )
+    #         # on_land still True for id_chunk NA
+    #         # extend id_chunk and get number of chunks
+    #         tracks_list = tracks_with_id_chunks_extended
+    #         no_chunks = [
+    #             _track_ext_id_chunk(track, land_geom)
+    #             for track in tracks_with_id_chunks_extended
+    #         ]
+
+    #     on_land_hist = np.repeat(np.array([False]), 9)
+    #     on_land = on_land_hist
+    #     pcen = np.arange(0, len(on_land))
+    #     # expected values
+    #     expected_id_chunk = np.repeat(0, len(on_land))
+    #     expected_no_chunks_land = 0
+    #     expected_no_chunks_sea = 0
+    #     # create fake xarray with time, on_land and on_land_hist
+    #     tc_track = dummy_track_builder({'on_land': on_land, 'on_land_hist': on_land_hist, 'central_pressure': pcen.copy()})
+    #     # call _add_id_synth_chunks
+    #     synth_track, no_chunks_sea, no_chunks_land, _ = tc_synth._add_id_synth_chunks_shift_init(tc_track)
+    #     # check output
+    #     self.assertEqual(no_chunks_land, expected_no_chunks_land)
+    #     self.assertEqual(no_chunks_sea, expected_no_chunks_sea)
+    #     np.testing.assert_array_equal(synth_track.id_chunk.data, expected_id_chunk)
+    #     np.testing.assert_array_equal(synth_track.central_pressure.data, pcen)
+
+class TestSynthDataFit(unittest.TestCase):
+
+    def test_get_fit_order(self):
+        """Test _get_fit_order"""
+        # sample values
+        pcen_vals = np.arange(880, 1000)
+        pcen_pert = 15
+        var_names = ['max_sustained_wind', 'radius_max_wind', "radius_oci"]
+
+        # 1 for max_sustained_wind
+        self.assertEqual(tc_synth._get_fit_order(pcen=pcen_vals, central_pressure_pert=pcen_pert, var_name=var_names[0]),
+                         1)
+        # 1 if less than 5 pcen values provided
+        for i in range(5):
+            self.assertEqual(
+                tc_synth._get_fit_order(pcen=pcen_vals[:i], central_pressure_pert=pcen_pert, var_name='radius_max_wind'),
+                1
+            )
+        # tuple if more than 5 values provided and covering enough bins
+        self.assertIsInstance(tc_synth._get_fit_order(pcen=pcen_vals, central_pressure_pert=pcen_pert, var_name=var_names[1]),
+                            tuple)
+        # 1 if enough values but only covering a single bin
+        self.assertEqual(
+            tc_synth._get_fit_order(pcen=np.arange(999,1000,0.01), central_pressure_pert=pcen_pert, var_name='radius_max_wind'),
+            1
+        )
+        # check number of bins is a expected - up to 4
+        # range over which bins cover values: [pcen.min() - pcen_pert-1, pcen.max()+1]
+        # hence max bin width:
+        # max_bin_width = (pcen_vals.max() + 1 - (pcen_vals.min() -
+        # pcen_pert-1))/4
+        # TODO does not make sense
+        # max_pcen = 1000
+        # max_bin_width = (max_pcen + 1 )
+        # for n_bin in np.arange(1,5):
+        #     min_pcen = max_pcen + 
+        #     max_pcen = pcen_vals.min() - pcen_pert + n_bin*max_bin_width -1
+        #     print(max_pcen)
+        #     print(tc_synth._get_fit_order(pcen=pcen_vals[pcen_vals < max_pcen], central_pressure_pert=pcen_pert, var_name='radius_max_wind'))
+
+
+
+
+    def test_prepare_data_piecewise(self):
+        """Test _prepare_data_piecewise"""
+        # TODO
+        x = _prepare_data_piecewise(np.arange(20), (0,5,12,20))
+
+    def test_get_fit_single_phase(self):
+        """Test _get_fit_single_phase"""
+
+        # sample:
+        pcen = np.concatenate([np.arange(1000,900,-5), np.arange(905,990,10)])
+        lons = np.repeat([-80], len(pcen))
+        lats = np.repeat([30], len(pcen))
+        vmax = tc._estimate_vmax(np.repeat([np.nan], len(pcen)), lons, lats, pcen)
+        rmax = tc.estimate_rmw(np.repeat([np.nan], len(pcen)), pcen)
+        roci = tc.estimate_roci(np.repeat([np.nan], len(pcen)), pcen)
+        tc_track = dummy_track_builder({
+            'central_pressure': np.concatenate([np.arange(1000,900,-5), np.arange(905,990,10)]),
+            'max_sustained_wind': vmax,
+            'radius_max_wind': rmax,
+            'radius_oci': roci
+        })
+        res = _get_fit_single_phase(tc_track, 15)
+        # res['radius_max_wind']['fit'].predict(tc_synth._prepare_data_piecewise(pcen, res['radius_max_wind']['order']))
+
+
 # Execute Tests
 if __name__ == "__main__":
-    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestDecay)
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestSynth))
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestSynthIdChunks))
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestSynthExtIdChunks)
+    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestSynth))
+    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestSynthIdChunks))
+    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestSynthExtIdChunks))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
