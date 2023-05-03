@@ -29,6 +29,13 @@ import climada.util.coordinates as u_coord
 from climada.util.constants import SYSTEM_DIR
 from climada import CONFIG
 
+bounds = (8.41, 47.2, 8.70, 47.45) # (min_lon, max_lon, min_lat, max_lat)
+shape = Polygon([
+    (bounds[0], bounds[3]),
+    (bounds[2], bounds[3]),
+    (bounds[2], bounds[1]),
+    (bounds[0], bounds[1])
+    ])
 
 class TestLitPopExposure(unittest.TestCase):
     """Test LitPop exposure data model:"""
@@ -122,14 +129,7 @@ class TestLitPopExposure(unittest.TestCase):
     def test_from_shape_zurich_pass(self):
         """test initiating LitPop for custom shape (square around Zurich City)
         Distributing an imaginary total value of 1000 USD"""
-        bounds = (8.41, 47.2, 8.70, 47.45) # (min_lon, max_lon, min_lat, max_lat)
         total_value=1000
-        shape = Polygon([
-            (bounds[0], bounds[3]),
-            (bounds[2], bounds[3]),
-            (bounds[2], bounds[1]),
-            (bounds[0], bounds[1])
-            ])
         ent = lp.LitPop.from_shape(shape, total_value, res_arcsec=30, reference_year=2016)
         self.assertEqual(ent.gdf.value.sum(), 1000.0)
         self.assertEqual(ent.gdf.value.min(), 0.0)
@@ -144,13 +144,7 @@ class TestLitPopExposure(unittest.TestCase):
     def test_from_shape_and_countries_zurich_pass(self):
         """test initiating LitPop for custom shape (square around Zurich City)
         with from_shape_and_countries()"""
-        bounds = (8.41, 47.2, 8.70, 47.45) # (min_lon, max_lon, min_lat, max_lat)
-        shape = Polygon([
-            (bounds[0], bounds[3]),
-            (bounds[2], bounds[3]),
-            (bounds[2], bounds[1]),
-            (bounds[0], bounds[1])
-            ])
+        
         ent = lp.LitPop.from_shape_and_countries(
             shape, 'Switzerland', res_arcsec=30, reference_year=2016)
         self.assertEqual(ent.gdf.value.min(), 0.0)
@@ -185,6 +179,46 @@ class TestLitPopExposure(unittest.TestCase):
         self.assertEqual(ent.value_unit, 'people')
         self.assertAlmostEqual(ent.gdf.latitude.max(), 47.2541666666666)
         self.assertAlmostEqual(ent.meta['transform'][0], 30/3600)
+
+    def test_from_nightlight_intensity(self):
+        """ Test raises, logger and if methods from_countries and from_shape are 
+            are used."""
+
+        with self.assertRaises(ValueError) as cm:
+            lp.LitPop.from_nightlight_intensity()
+        self.assertEqual('Either `countries` or `shape` required. Aborting.', str(cm.exception))
+
+        with self.assertRaises(ValueError) as cm:
+            lp.LitPop.from_nightlight_intensity(countries = 'Liechtenstein', shape = shape)
+        self.assertEqual('Not allowed to set both `countries` and `shape`. Aborting.', str(cm.exception))
+        
+        exp = lp.LitPop.from_nightlight_intensity(countries = 'Liechtenstein') 
+        self.assertEqual(exp.fin_mode, 'none')
+
+        exp = lp.LitPop.from_nightlight_intensity(shape = shape) 
+        self.assertEqual(exp.value_unit, '')
+        
+        with self.assertLogs('climada.entity.exposures.litpop.litpop', level = 'WARNING') as cm:
+            lp.LitPop.from_nightlight_intensity(shape = shape)
+        self.assertIn('Note: set_nightlight_intensity sets values to raw nightlight intensity,', cm.output[0])
+
+    def test_from_population(self):
+        """ Test raises, logger and if methods from_countries and from_shape are 
+            are used."""
+
+        with self.assertRaises(ValueError) as cm:
+            lp.LitPop.from_population()
+        self.assertEqual('Either `countries` or `shape` required. Aborting.', str(cm.exception))
+
+        exp = lp.LitPop.from_population(countries = 'Liechtenstein') 
+        self.assertEqual(exp.fin_mode, 'pop')
+
+        exp = lp.LitPop.from_population(shape = shape) 
+        self.assertEqual(exp.value_unit, 'people')
+
+        with self.assertRaises(ValueError) as cm:
+            lp.LitPop.from_population(countries = 'Liechtenstein', shape = shape)
+        self.assertEqual('Not allowed to set both `countries` and `shape`. Aborting.', str(cm.exception))        
 
 class TestAdmin1(unittest.TestCase):
     """Test the admin1 functionalities within the LitPop module"""
@@ -265,20 +299,17 @@ class TestGPWPopulation(unittest.TestCase):
     def test_load_gpw_pop_shape_pass(self):
         """test method gpw_population.load_gpw_pop_shape"""
         gpw_version = CONFIG.exposures.litpop.gpw_population.gpw_version.int()
-        bounds = (8.41, 47.2, 8.70, 47.45) # (min_lon, max_lon, min_lat, max_lat)
-        shape = Polygon([
-            (bounds[0], bounds[3]),
-            (bounds[2], bounds[3]),
-            (bounds[2], bounds[1]),
-            (bounds[0], bounds[1])
-            ])
         try:
             data, meta, glb_transform = \
                 gpw_population.load_gpw_pop_shape(shape, 2020, gpw_version, verbose=False)
             self.assertEqual(data.shape, (31, 36))
             self.assertAlmostEqual(meta['transform'][0], 0.00833333333333333)
             self.assertAlmostEqual(meta['transform'][0], glb_transform[0])
-
+            self.assertEqual(meta['driver'], 'GTiff')
+            self.assertEqual(meta['height'], data.shape[0])
+            self.assertEqual(meta['width'], data.shape[1])
+            self.assertIsInstance(data, np.ndarray)
+            self.assertEqual(len(data.shape), 2) 
         except FileExistsError as err:
             self.assertIn('lease download', err.args[0])
             self.skipTest('GPW input data for GPW v4.%i not found.' %(gpw_version))
