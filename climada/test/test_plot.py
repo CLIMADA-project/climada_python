@@ -105,9 +105,7 @@ class TestPlotter(unittest.TestCase):
         centroids = Centroids.from_base_grid()
         centroids.plot()
 
-    # sipped because of issue #693
-    # TODO: unskip when #693 is solved
-    def skip_test_exposures_value_pass(self):
+    def test_exposures_value_pass(self):
         """Plot exposures values."""
         myexp = pd.read_excel(ENT_DEMO_TODAY)
         myexp = Exposures(myexp)
@@ -122,7 +120,8 @@ class TestPlotter(unittest.TestCase):
 
         myexp.plot_scatter()
         myexp.plot_basemap()
-        myexp.plot_raster()
+        # note: not specifying raster_res makes jenkins runout of memory
+        myexp.plot_raster(raster_res=0.001)
 
     def test_impact_funcs_pass(self):
         """Plot diferent impact functions."""

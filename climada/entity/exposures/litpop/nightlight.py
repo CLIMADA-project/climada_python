@@ -200,15 +200,15 @@ def get_required_nl_files(bounds):
 
     # Now latitude. The height of all tiles is the same as the height.
     # Note that for this analysis returns an index which follows from North to South oritentation.
-    first_tile_lat = min(np.floor(-(min_lat - (90)) / tile_width), 1)
+    first_tile_lat = min(np.floor(-(min_lat - 90) / tile_width), 1)
     last_tile_lat = min(np.floor(-(max_lat - 90) / tile_width), 1)
 
     for i_lon in range(0, int(len(req_files) / 2)):
         if first_tile_lon <= i_lon <= last_tile_lon:
             if first_tile_lat == 0 or last_tile_lat == 0:
-                req_files[((i_lon)) * 2] = 1
+                req_files[(i_lon) * 2] = 1
             if first_tile_lat == 1 or last_tile_lat == 1:
-                req_files[((i_lon)) * 2 + 1] = 1
+                req_files[(i_lon) * 2 + 1] = 1
         else:
             continue
     return req_files
@@ -355,6 +355,10 @@ def load_nasa_nl_shape_single_tile(geometry, path, layer=0):
     with rasterio.open(path, 'r') as src:
         # read cropped data from  source file (src) to np.ndarray:
         out_image, transform = rasterio.mask.mask(src, [geometry], crop=True)
+        LOGGER.debug('Read cropped %s as np.ndarray.', path.name)
+        if out_image.shape[0] < layer:
+            raise IndexError(f"{path.name} has only {out_image.shape[0]} layers,"
+                             f" layer {layer} can't be accessed.")
         meta = src.meta
         meta.update({"driver": "GTiff",
                     "height": out_image.shape[1],
