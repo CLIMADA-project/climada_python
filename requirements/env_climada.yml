@@ -40,7 +40,3 @@ dependencies:
   - xlrd>=2.0
   - xlsxwriter>=3.0
   - xmlrunner>=1.7
-  - pip:
-    - deprecation>=2.1
-    - overpy>=0.6
-    - peewee>=3.16

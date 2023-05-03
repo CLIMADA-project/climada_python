@@ -38,12 +38,9 @@ extensions = ['matplotlib.sphinxext.plot_directive',
               'sphinx.ext.viewcode',
               'sphinx.ext.napoleon',
               'sphinx.ext.ifconfig',
-              'nbsphinx',
-              'myst_parser',
+              'myst_nb',
               'sphinx_markdown_tables',
               'readthedocs_ext.readthedocs',]
-
-nbsphinx_allow_errors = True
 
 # read the docs version used for links
 if 'dev' in __version__:
@@ -53,12 +50,6 @@ else:
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = []
-
-# The suffix of source filenames.
-source_suffix = {
-    ".rst": "restructuredtext",
-    ".md": "markdown",
-}
 
 # The encoding of source files.
 #source_encoding = 'utf-8'
@@ -246,6 +237,9 @@ def remove_module_docstring(app, what, name, obj, options, lines):
         del lines[:]
 
 autodoc_member_order = "bysource"
+
+# Jupyter Notebooks will not be executed when creating the docs
+nb_execution_mode = "off"
 
 def setup(app):
     app.connect("autodoc-skip-member", skip)
