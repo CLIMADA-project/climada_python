@@ -238,8 +238,27 @@ def remove_module_docstring(app, what, name, obj, options, lines):
 
 autodoc_member_order = "bysource"
 
+# --- MYST Parser settings ----
+
 # Jupyter Notebooks will not be executed when creating the docs
 nb_execution_mode = "off"
+
+# Extensions, see https://myst-parser.readthedocs.io/en/latest/configuration.html#list-of-syntax-extensions
+myst_enable_extensions = [
+    "amsmath",
+    "colon_fence",
+    "deflist",
+    "dollarmath",
+    "html_image",
+]
+
+# URI schemes that are converted to external links
+myst_url_schemes = ("http", "https", "mailto")
+
+# Generate heading anchors for linking to them, up to heading level 4
+myst_heading_anchors = 4
+
+# ---
 
 def setup(app):
     app.connect("autodoc-skip-member", skip)
