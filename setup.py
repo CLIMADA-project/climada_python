@@ -13,7 +13,7 @@ with open(here.joinpath('README.md'), encoding='utf-8') as f:
 # Requirements for documentation
 DEPS_DOC = [
     "ipython",
-    "myst_nb",
+    "myst-nb",
     "readthedocs-sphinx-ext>=2.2",
     "sphinx",
     "sphinx-book-theme",
