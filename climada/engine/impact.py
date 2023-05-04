@@ -41,6 +41,7 @@ import pandas as pd
 import xlsxwriter
 from tqdm import tqdm
 import h5py
+from pyproj import CRS
 
 from climada.entity import Exposures, Tag
 from climada.hazard import Tag as TagHaz
@@ -149,7 +150,7 @@ class Impact():
         self.event_name = [] if event_name is None else event_name
         self.date = np.array([], int) if date is None else date
         self.coord_exp = np.array([], float) if coord_exp is None else coord_exp
-        self.crs = crs
+        self.crs = crs.to_wkt() if isinstance(crs, CRS) else crs
         self.eai_exp = np.array([], float) if eai_exp is None else eai_exp
         self.at_event = np.array([], float) if at_event is None else at_event
         self.frequency = np.array([],float) if frequency is None else frequency
