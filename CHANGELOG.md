@@ -13,12 +13,15 @@ Added:
 Changed:
 
 Removed:
+- `nbsphinx` [#712](https://github.com/CLIMADA-project/climada_python/pull/712)
+- `pandoc` [#712](https://github.com/CLIMADA-project/climada_python/pull/712)
 
 ### Added
 
 - `Impact.impact_at_reg` method for aggregating impacts per country or custom region [#642](https://github.com/CLIMADA-project/climada_python/pull/642)
 - `Impact.match_centroids` convenience method for matching (hazard) centroids to impact objects [#602](https://github.com/CLIMADA-project/climada_python/pull/602)
 - `climada.util.coordinates.match_centroids` method for matching (hazard) centroids to GeoDataFrames [#602](https://github.com/CLIMADA-project/climada_python/pull/602)
+- 'Extra' requirements `doc`, `test`, and `dev` for Python package [#712](https://github.com/CLIMADA-project/climada_python/pull/712)
 
 ### Changed
 
@@ -30,6 +33,7 @@ Removed:
 - Added test for non-default impact function id in the `lines_polys_handler` [#676](https://github.com/CLIMADA-project/climada_python/pull/676)
 - The sigmoid and step impact functions now require the user to define the hazard type. [#675](https://github.com/CLIMADA-project/climada_python/pull/675)
 - Improved error messages produced by `ImpactCalc.impact()` in case hazard type is not found in exposures/impf_set [#691](https://github.com/CLIMADA-project/climada_python/pull/691)
+- Use `myst-nb` for parsing Jupyter Notebooks for the documentation instead of `nbsphinx` [#712](https://github.com/CLIMADA-project/climada_python/pull/712)
 
 ### Fixed
 
@@ -38,6 +42,8 @@ Removed:
 ### Deprecated
 
 ### Removed
+
+- `requirements/env_developer.yml` environment specs. Use 'extra' requirements when installing the Python package instead [#712](https://github.com/CLIMADA-project/climada_python/pull/712)
 
 ## v3.3.2
 
