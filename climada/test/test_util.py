@@ -21,63 +21,20 @@ Tests on lines_polys_handlers.
 """
 
 import unittest
-import copy
 
 import numpy as np
 
 from climada.entity import Exposures
 import climada.util.lines_polys_handler as u_lp
-from climada.util.api_client import Client
 from climada.engine import Impact
-from climada.entity.impact_funcs import ImpactFuncSet
-from climada.entity.impact_funcs.storm_europe import ImpfStormEurope
 
-HAZ = Client().get_hazard("storm_europe", name="test_haz_WS_nl", status="test_dataset")
-
-EXP_POLY = Client().get_exposures(
-    "base", name="test_polygon_exp", status="test_dataset"
+from climada.util.test.test_lines_polys_handler import (
+    HAZ,
+    EXP_POLY,
+    GDF_POLY,
+    IMPF_SET,
+    check_impact,
 )
-EXP_POLY.gdf["impf_WS"] = 2
-GDF_POLY = EXP_POLY.gdf
-
-EXP_LINE = Client().get_exposures("base", name="test_line_exp", status="test_dataset")
-GDF_LINE = EXP_LINE.gdf
-
-EXP_POINT = Client().get_exposures("base", name="test_point_exp", status="test_dataset")
-GDF_POINT = EXP_POINT.gdf
-
-IMPF = ImpfStormEurope.from_welker()
-IMPF2 = copy.deepcopy(IMPF)
-IMPF2.id = 2
-IMPF_SET = ImpactFuncSet([IMPF, IMPF2])
-
-COL_CHANGING = ["value", "latitude", "longitude", "geometry", "geometry_orig"]
-
-
-def check_unchanged_geom_gdf(self, gdf_geom, gdf_pnt):
-    """Test properties that should not change"""
-    for n in gdf_pnt.index.levels[1]:
-        sub_gdf_pnt = gdf_pnt.xs(n, level=1)
-        rows_sel = sub_gdf_pnt.index.to_numpy()
-        sub_gdf = gdf_geom.loc[rows_sel]
-        self.assertTrue(
-            np.alltrue(sub_gdf.geometry.geom_equals(sub_gdf_pnt.geometry_orig))
-        )
-    for col in gdf_pnt.columns:
-        if col not in COL_CHANGING:
-            np.testing.assert_allclose(gdf_pnt[col].unique(), gdf_geom[col].unique())
-
-
-def check_impact(self, imp, haz, exp, aai_agg, eai_exp):
-    """Test properties of imapcts"""
-    self.assertEqual(len(haz.event_id), len(imp.at_event))
-    self.assertIsInstance(imp, Impact)
-    self.assertTrue(hasattr(imp, "geom_exp"))
-    self.assertTrue(hasattr(imp, "coord_exp"))
-    self.assertTrue(np.all(imp.geom_exp.sort_index() == exp.gdf.geometry.sort_index()))
-    self.assertEqual(len(imp.coord_exp), len(exp.gdf))
-    self.assertAlmostEqual(imp.aai_agg, aai_agg, 3)
-    np.testing.assert_allclose(imp.eai_exp, eai_exp, rtol=1e-5)
 
 
 class TestGeomImpactCalcs(unittest.TestCase):
