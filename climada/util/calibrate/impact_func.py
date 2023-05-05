@@ -11,14 +11,27 @@ from scipy.optimize import (
     Bounds,
     LinearConstraint,
     NonlinearConstraint,
-    OptimizeResult,
     minimize,
 )
 from bayes_opt import BayesianOptimization
 
-from ...hazard import Hazard
-from ...entity import Exposures, ImpactFunc, ImpactFuncSet
-from ...engine import Impact, ImpactCalc
+from climada.hazard import Hazard
+from climada.entity import Exposures, ImpactFunc, ImpactFuncSet
+from climada.engine import Impact, ImpactCalc
+
+
+def cost_func_rmse(impact: Impact, data: pd.DataFrame) -> Number:
+    return np.sqrt(((impact - data) ** 2).mean(axis=None))
+
+
+def impf_step_generator(threshold: Number, paa: Number) -> ImpactFuncSet:
+    return ImpactFuncSet(
+        [
+            ImpactFunc.from_step_impf(
+                haz_type="RF", intensity=(0, threshold, 100), paa=(0, paa)
+            )
+        ]
+    )
 
 
 @dataclass
@@ -28,7 +41,7 @@ class Input:
     hazard: Hazard
     exposure: Exposures
     data: pd.DataFrame
-    cost_func: Callable[[Impact, pd.DataFrame], float]
+    cost_func: Callable[[Impact, pd.DataFrame], Number]
     impact_func_gen: Callable[..., ImpactFuncSet]
     bounds: Optional[Mapping[str, Union[Bounds, Tuple[Number, Number]]]] = None
     constraints: Optional[
@@ -40,7 +53,7 @@ class Input:
 
     def __post_init__(self):
         """Prepare input data"""
-        self.hazard = self.hazard.select(event_id=self.data.index)
+        self.hazard = self.hazard.select(event_id=self.data.index.tolist())
         self.exposure.assign_centroids(self.hazard)
 
 
@@ -51,7 +64,7 @@ class Output:
     params: Mapping[str, Number]
     target: Number
     success: bool
-    result: Optional[OptimizeResult] = None
+    result: Optional[Any] = None
 
 
 @dataclass
@@ -88,23 +101,32 @@ class Optimizer(ABC):
 class ScipyMinimizeOptimizer(Optimizer):
     """An optimization using scipy.optimize.minimize"""
 
-    _param_names: List[str] = field(default_factory=list)
+    def __post_init__(self):
+        """Create a private attribute for storing the parameter names"""
+        self._param_names: List[str] = list()
 
     def _kwargs_to_impact_func_gen(self, *args, **kwargs) -> Dict[str, Any]:
         return dict(zip(self._param_names, args[0].flat))
+
+    def _select_by_param_names(self, mapping: Mapping[str, Any]) -> List[Any]:
+        """Return a list of entries from a map with matching keys or ``None``"""
+        return [mapping.get(key) for key in self._param_names]
 
     def run(self, params_init: Mapping[str, Number], **opt_kwargs):
         """Execute the optimization"""
         self._param_names = list(params_init.keys())
 
         # Transform data to match minimize input
-        bounds = self.input.bounds
-        if bounds is not None:
-            bounds = [bounds.get(name) for name in self._param_names]
-
-        constraints = self.input.constraints
-        if constraints is not None:
-            constraints = [constraints.get(name) for name in self._param_names]
+        bounds = (
+            self._select_by_param_names(self.input.bounds)
+            if self.input.bounds is not None
+            else None
+        )
+        constraints = (
+            self._select_by_param_names(self.input.constraints)
+            if self.input.constraints is not None
+            else None
+        )
 
         x0 = np.array(list(params_init.values()))
         res = minimize(
@@ -126,21 +148,28 @@ class BayesianOptimizer(Optimizer):
     verbose: InitVar[int] = 1
     random_state: InitVar[int] = 1
     allow_duplicate_points: InitVar[bool] = True
-    init_kwds: InitVar[Mapping[str, Any]] = field(default_factory=dict)
+    bayes_opt_kwds: InitVar[Optional[Mapping[str, Any]]] = None
 
-    def __post_init__(self, **kwargs):
+    def __post_init__(
+        self, verbose, random_state, allow_duplicate_points, bayes_opt_kwds
+    ):
         """Create optimizer"""
-        init_kwds = kwargs.pop("init_kwds")
         self.optimizer = BayesianOptimization(
             f=lambda **kwargs: self._opt_func(**kwargs),
             pbounds=self.input.bounds,
-            **kwargs,
-            **init_kwds,
+            verbose=verbose,
+            random_state=random_state,
+            allow_duplicate_points=allow_duplicate_points,
+            **bayes_opt_kwds,
         )
 
     def run(self, init_points: int = 100, n_iter: int = 200, **opt_kwargs):
         """Execute the optimization"""
-        opt_kwargs.update(init_points=init_points, n_iter=n_iter)
-        self.optimizer.maximize(**opt_kwargs)
+        self.optimizer.maximize(init_points=init_points, n_iter=n_iter, **opt_kwargs)
         opt = self.optimizer.max
-        return Output(params=opt["params"], target=opt["target"], success=True)
+        return Output(
+            params=opt["params"],
+            target=opt["target"],
+            success=True,
+            result=self.optimizer,
+        )
