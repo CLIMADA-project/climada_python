@@ -20,7 +20,7 @@ This is the Python (3.8+) version of CLIMADA - please see https://github.com/dav
 ## Getting started
 
 CLIMADA runs on Windows, macOS and Linux.
-The released versions can be installed directly through Anaconda:
+The released versions of the CLIMADA core can be installed directly through Anaconda:
 ```shell
 conda install -c conda-forge climada
 ```
