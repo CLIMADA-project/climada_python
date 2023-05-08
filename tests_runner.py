@@ -17,6 +17,7 @@ def find_unit_tests():
     suite.addTest(unittest.TestLoader().discover('climada.engine.test'))
     suite.addTest(unittest.TestLoader().discover('climada.engine.unsequa.test'))
     suite.addTest(unittest.TestLoader().discover('climada.util.test'))
+    suite.addTest(unittest.TestLoader().discover('climada.util.calibrate.test'))
     return suite
 
 def find_integ_tests():
