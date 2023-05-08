@@ -43,7 +43,43 @@ ConstraintType = Union[LinearConstraint, NonlinearConstraint, Mapping]
 
 @dataclass
 class Input:
-    """Define the static input for a calibration task"""
+    """Define the static input for a calibration task
+
+    Parameters
+    ----------
+    hazard : climada.Hazard
+        Hazard object to compute impacts from
+    exposure : climada.Exposures
+        Exposures object to compute impacts from
+    data : pandas.Dataframe
+        The data to compare computed impacts to. Index: Event IDs matching the IDs of
+        ``hazard``. Columns: Arbitrary columns.
+    cost_func : Callable
+        Function that takes an ``Impact`` object and a ``pandas.Dataframe`` as argument
+        and returns a single number. The optimization algorithm will try to minimize this
+        number. See this module for a suggestion of cost functions.
+    impact_func_gen : Callable
+        Function that takes the parameters as keyword arguments and returns an impact
+        function set. This will be called each time the optimization algorithm updates
+        the parameters.
+    bounds : Mapping (str, {Bounds, tuple(float, float)}), optional
+        The bounds for the parameters. Keys: parameter names. Values:
+        ``scipy.minimize.Bounds`` instance or tuple of minimum and maximum value.
+        Unbounded parameters need not be specified here. See the documentation for
+        the selected optimization algorithm on which data types are supported.
+    constraints : Constraint or list of Constraint, optional
+        One or multiple instances of ``scipy.minimize.LinearConstraint``,
+        ``scipy.minimize.NonlinearConstraint``, or a mapping. See the documentation for
+        the selected optimization algorithm on which data types are supported.
+    impact_calc_kwds : Mapping (str, Any), optional
+        Keyword arguments to :py:meth:`climada.engine.impact_calc.ImpactCalc.impact`.
+        Defaults to ``{"assign_centroids": False}`` (by default, centroids are assigned
+        here via the ``align`` parameter, to avoid assigning them each time the impact is
+        calculated).
+    align : bool, optional
+        Match event IDs from ``hazard`` and ``data``, and assign the centroids from
+        ``hazard`` to ``exposure``. Defaults to ``True``.
+    """
 
     hazard: Hazard
     exposure: Exposures

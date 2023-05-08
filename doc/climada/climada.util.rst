@@ -9,6 +9,13 @@ climada\.util\.api\_client module
     :undoc-members:
     :show-inheritance:
 
+climada\.util\.calibrate module
+-------------------------------
+
+.. automodule:: climada.util.calibrate.impact_func
+    :members:
+    :show-inheritance:
+
 climada\.util\.checker module
 -----------------------------
 
