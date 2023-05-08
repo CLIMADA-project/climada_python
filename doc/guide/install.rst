@@ -332,19 +332,11 @@ Updating CLIMADA
 We recommend keeping CLIMADA up-to-date.
 To update, follow the instructions based on your :ref:`installation type <install-choice>`:
 
-* **Simple Instructions:** Activate the environment and update CLIMADA using ``pip``:
+* **Simple Instructions:** Update CLIMADA using ``conda``:
 
   .. code-block:: shell
 
-     conda activate climada_env
-     python -m pip install -U climada
-
-  Then, download the latest environment specifications: :download:`env_climada.yml </../requirements/env_climada.yml>`.
-  Use them to update the existing environment:
-
-  .. code-block:: shell
-
-     conda env update -n climada_env -f env_climada.yml
+     conda update -n climada_env -c conda-forge climada
 
 * **Advanced Instructions:** Move into your local CLIMADA repository and pull the latest version of your respective branch:
 
