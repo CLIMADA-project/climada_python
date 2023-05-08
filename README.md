@@ -24,7 +24,7 @@ The released versions of the CLIMADA core can be installed directly through Anac
 ```shell
 conda install -c conda-forge climada
 ```
-It is **highly recommend** to install CLIMADA into a **separate** Anaconda environment.
+It is **highly recommended** to install CLIMADA into a **separate** Anaconda environment.
 See the [installation guide](https://climada-python.readthedocs.io/en/latest/guide/install.html) for further information.
 
 Follow the [tutorial](https://climada-python.readthedocs.io/en/latest/tutorial/1_main_climada.html) `climada_python-x.y.z/doc/tutorial/1_main_climada.ipynb` in a Jupyter Notebook to see what can be done with CLIMADA and how.
