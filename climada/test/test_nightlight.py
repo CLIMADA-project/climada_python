@@ -182,16 +182,15 @@ class TestNightlight(unittest.TestCase):
         night, coord_nl, fn_light = nightlight.load_nightlight_noaa()
         self.assertIsInstance(night, sparse._csr.csr_matrix)
         self.assertIn('F182013.v4c_web.stable_lights.avg_vis.tif',str(fn_light))
-        self.assertTrue(np.array_equal(np.array([[-65,NOAA_RESOLUTION_DEG],
+        self.assertTrue(np.array_equal(np.array([[-65, NOAA_RESOLUTION_DEG],
                                     [-180, NOAA_RESOLUTION_DEG]]),coord_nl))
         os.remove(SYSTEM_DIR.joinpath('F182013.v4c_web.stable_lights.avg_vis.p'))
-        
+    
         # with arguments
-        night, coord_nl, fn_light = nightlight.load_nightlight_noaa(ref_year = 2010, sat_name = 'F18')
+        night, coord_nl, fn_light = nightlight.load_nightlight_noaa(ref_year = 2013, sat_name = 'F18')
         self.assertIsInstance(night, sparse._csr.csr_matrix)
-        self.assertIn('F182010.v4d_web.stable_lights.avg_vis', str(fn_light))
-        file = str(SYSTEM_DIR.joinpath('F182010.v4d_web.stable_lights.avg_vis.p')) 
-        os.remove(file)
+        self.assertIn('F182013.v4c_web.stable_lights.avg_vis.tif', str(fn_light))
+        os.remove(SYSTEM_DIR.joinpath('F182013.v4c_web.stable_lights.avg_vis.p'))
         os.remove(path_fake_file)
 
         # test raises from wrong input agruments
