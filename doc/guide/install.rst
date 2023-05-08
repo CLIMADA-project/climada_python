@@ -85,7 +85,7 @@ Advanced Instructions
 
 For advanced Python users or developers of CLIMADA, we recommed cloning the CLIMADA repository and installing the package from source.
 
-#. If you are using a **Linux** OS, make sure they have ``git`` installed
+#. If you are using a **Linux** OS, make sure you have ``git`` installed
    (Windows and macOS users are good to go once Anaconda is installed).
    On Ubuntu and Debian, you may use APT:
 
