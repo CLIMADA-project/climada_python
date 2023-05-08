@@ -465,7 +465,7 @@ All of these approaches can also be combined.
 `Mamba <https://mamba.readthedocs.io/en/latest/>`_ Instead of Anaconda
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-If you prefer using Mamba, you should be able to simply replace all ``conda`` commands with ``mamba``, **except** ``conda activate`` and ``conda deactivate``.
+If you prefer using Mamba, you should be able to simply replace all ``conda`` commands with ``mamba``.
 Note that we can only provide **limited support** for Mamba installations!
 
 Error: ``operation not permitted``
