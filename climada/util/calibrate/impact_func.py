@@ -20,8 +20,12 @@ from climada.entity import Exposures, ImpactFunc, ImpactFuncSet
 from climada.engine import Impact, ImpactCalc
 
 
-def cost_func_rmse(impact: Impact, data: pd.DataFrame) -> Number:
-    return np.sqrt(((impact - data) ** 2).mean(axis=None))
+def cost_func_rmse(
+    impact: Impact,
+    data: pd.DataFrame,
+    impact_proc: Callable[[Impact], pd.DataFrame] = lambda x: x.impact_at_reg(),
+) -> Number:
+    return np.sqrt(np.mean(((impact_proc(impact) - data) ** 2).to_numpy()))
 
 
 def impf_step_generator(threshold: Number, paa: Number) -> ImpactFuncSet:
@@ -34,6 +38,9 @@ def impf_step_generator(threshold: Number, paa: Number) -> ImpactFuncSet:
     )
 
 
+ConstraintType = Union[LinearConstraint, NonlinearConstraint, Mapping]
+
+
 @dataclass
 class Input:
     """Define the static input for a calibration task"""
@@ -44,17 +51,23 @@ class Input:
     cost_func: Callable[[Impact, pd.DataFrame], Number]
     impact_func_gen: Callable[..., ImpactFuncSet]
     bounds: Optional[Mapping[str, Union[Bounds, Tuple[Number, Number]]]] = None
-    constraints: Optional[
-        Mapping[str, Union[LinearConstraint, NonlinearConstraint, Mapping]]
-    ] = None
+    constraints: Optional[Union[ConstraintType, list[ConstraintType]]] = None
     impact_calc_kwds: Mapping[str, Any] = field(
-        default_factory=lambda: dict(assign_centroids=False)
+        default_factory=lambda: {"assign_centroids": False}
     )
+    align: InitVar[bool] = True
 
-    def __post_init__(self):
+    def __post_init__(self, align):
         """Prepare input data"""
-        self.hazard = self.hazard.select(event_id=self.data.index.tolist())
-        self.exposure.assign_centroids(self.hazard)
+        if align:
+            event_diff = np.setdiff1d(self.data.index, self.hazard.event_id)
+            if event_diff.size > 0:
+                raise RuntimeError(
+                    "Event IDs in 'data' do not match event IDs in 'hazard': \n"
+                    f"{event_diff}"
+                )
+            self.hazard = self.hazard.select(event_id=self.data.index.tolist())
+            self.exposure.assign_centroids(self.hazard)
 
 
 @dataclass
@@ -76,7 +89,7 @@ class Optimizer(ABC):
     def _target_func(self, impact: Impact, data: pd.DataFrame):
         return self.input.cost_func(impact, data)
 
-    def _kwargs_to_impact_func_gen(self, *args, **kwargs) -> Dict[str, Any]:
+    def _kwargs_to_impact_func_gen(self, *_, **kwargs) -> Dict[str, Any]:
         """Define how the parameters to 'opt_func' must be transformed"""
         return kwargs
 
@@ -88,7 +101,7 @@ class Optimizer(ABC):
             exposures=self.input.exposure,
             impfset=impf_set,
             hazard=self.input.hazard,
-        ).impact(assign_centroids=False, **self.input.impact_calc_kwds)
+        ).impact(**self.input.impact_calc_kwds)
         return self._target_func(impact, self.input.data)
 
     @abstractmethod
@@ -105,35 +118,36 @@ class ScipyMinimizeOptimizer(Optimizer):
         """Create a private attribute for storing the parameter names"""
         self._param_names: List[str] = list()
 
-    def _kwargs_to_impact_func_gen(self, *args, **kwargs) -> Dict[str, Any]:
+    def _kwargs_to_impact_func_gen(self, *args, **_) -> Dict[str, Any]:
         return dict(zip(self._param_names, args[0].flat))
 
     def _select_by_param_names(self, mapping: Mapping[str, Any]) -> List[Any]:
         """Return a list of entries from a map with matching keys or ``None``"""
         return [mapping.get(key) for key in self._param_names]
 
-    def run(self, params_init: Mapping[str, Number], **opt_kwargs):
+    def run(self, **opt_kwargs):
         """Execute the optimization"""
+        # Parse kwargs
+        params_init = opt_kwargs.pop("params_init")
+        method = opt_kwargs.pop("method", "trust-constr")
+
+        # Store names to rebuild dict when the minimize iterator returns an array
         self._param_names = list(params_init.keys())
 
-        # Transform data to match minimize input
+        # Transform bounds to match minimize input
         bounds = (
             self._select_by_param_names(self.input.bounds)
             if self.input.bounds is not None
             else None
         )
-        constraints = (
-            self._select_by_param_names(self.input.constraints)
-            if self.input.constraints is not None
-            else None
-        )
 
         x0 = np.array(list(params_init.values()))
         res = minimize(
-            fun=lambda x: self._opt_func(x),
+            fun=self._opt_func,
             x0=x0,
             bounds=bounds,
-            constraints=constraints,
+            constraints=self.input.constraints,
+            method=method,
             **opt_kwargs,
         )
 
