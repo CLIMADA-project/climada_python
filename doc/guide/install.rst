@@ -25,15 +25,6 @@ Prerequisites
   All dependencies will be downloaded from the internet.
   Do **not** use a metered, mobile connection!
 * Install `Anaconda`_, following the `installation instructions <https://docs.anaconda.com/anaconda/install/>`_ for your OS.
-* **Linux** users need to make sure they have ``git`` and ``curl`` installed.
-  Ubuntu and Debian users may use APT:
-
-  .. code-block:: shell
-
-     apt update
-     apt install curl git
-
-  Both commands will probably require administrator rights, which can be enabled by prepending ``sudo``.
 
 .. hint:: If you need help with the vocabulary used on this page, refer to the :ref:`Glossary <install-glossary>`.
 
@@ -93,6 +84,17 @@ Advanced Instructions
 ---------------------
 
 For advanced Python users or developers of CLIMADA, we recommed cloning the CLIMADA repository and installing the package from source.
+
+#. If you are using a **Linux** OS, make sure they have ``git`` installed
+   (Windows and macOS users are good to go once Anaconda is installed).
+   On Ubuntu and Debian, you may use APT:
+
+   .. code-block:: shell
+
+      apt update
+      apt install git
+
+   Both commands will probably require administrator rights, which can be enabled by prepending ``sudo``.
 
 #. Create a **workspace directory**.
    To make sure that your user can manipulate it without special privileges, use a subdirectory of your user/home directory.
