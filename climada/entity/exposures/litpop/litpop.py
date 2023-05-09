@@ -19,9 +19,13 @@ Define LitPop class.
 """
 import logging
 from pathlib import Path
+from numbers import Real
+from typing import Optional, Union
+from collections.abc import Collection
+
 import numpy as np
 import rasterio
-import geopandas
+import geopandas as gpd
 from shapefile import Shape
 import shapely
 import pandas as pd
@@ -39,6 +43,9 @@ LOGGER = logging.getLogger(__name__)
 
 GPW_VERSION = CONFIG.exposures.litpop.gpw_population.gpw_version.int()
 """Version of Gridded Population of the World (GPW) input data. Check for updates."""
+
+Disaggregate_Types = Union[float, gpd.GeoSeries, gpd.GeoDataFrame]
+
 
 class LitPop(Exposures):
     """
@@ -75,10 +82,20 @@ class LitPop(Exposures):
         self.__dict__ = LitPop.from_countries(*args, **kwargs).__dict__
 
     @classmethod
-    def from_countries(cls, countries, res_arcsec=30, exponents=(1,1),
-                       fin_mode='pc', total_values=None, admin1_calc=False,
-                       reference_year=DEF_REF_YEAR, gpw_version=GPW_VERSION,
-                       data_dir=SYSTEM_DIR):
+    def from_countries(
+        cls,
+        countries,
+        res_arcsec=30,
+        exponents=(1, 1),
+        fin_mode="pc",
+        total_values: Optional[
+            Union[Disaggregate_Types, Collection[Optional[Disaggregate_Types]]]
+        ] = None,
+        admin1_calc=False,
+        reference_year=DEF_REF_YEAR,
+        gpw_version=GPW_VERSION,
+        data_dir=SYSTEM_DIR,
+    ):
         """Init new LitPop exposure object for a list of countries (admin 0).
 
         Sets attributes `ref_year`, `tag`, `crs`, `value`, `geometry`, `meta`,
@@ -115,10 +132,16 @@ class LitPop(Exposures):
             * 'none': LitPop per pixel is returned unchanged (no unit)
 
             Default: 'pc'
-        total_values : list containing numerics, same length as countries, optional
-            Total values to be disaggregated to grid in each country.
-            The default is None. If None, the total number is extracted from other
-            sources depending on the value of fin_mode.
+        total_values : List of numbers or disaggregation information, optional
+            If numeric, the argument is interpreted as total values to be disaggregated
+            to grid in each country. The default is None. If None, the total number is
+            extracted from other sources depending on the value of fin_mode.
+            If a ``geopandas.GeoSeries`` or ``GeoDataFrame``, the respective geometries
+            are used for disaggregation instead of disaggregation on each whole
+            country. If a single argument, it is applied to every ``country``.
+            See :py:func:`disaggregate_value_by_geometries` for information on
+            disaggregation. For each country, this function is called once with the
+            correcsponding entry in ``total_values``.
         admin1_calc : boolean, optional
             If True, distribute admin1-level GDP (if available). Default: False
         reference_year : int, optional
@@ -141,7 +164,7 @@ class LitPop(Exposures):
         if isinstance(countries, (int, str)):
             countries = [countries] # for backward compatibility
 
-        if total_values is None: # init list with total values per countries
+        if not isinstance(total_values, Collection):
             total_values = [None] * len(countries)
         elif len(total_values) != len(countries):
             raise ValueError("'countries' and 'total_values' must be lists of same length")
@@ -413,13 +436,13 @@ class LitPop(Exposures):
             shape_gdf = shape_gdf.drop(
                 columns=shape_gdf.columns[shape_gdf.columns != 'geometry'])
             # extract gdf with data points within shape:
-            gdf = geopandas.sjoin(exp.gdf, shape_gdf, how='right')
+            gdf = gpd.sjoin(exp.gdf, shape_gdf, how='right')
             gdf = gdf.drop(columns=['index_left'])
         elif isinstance(shape, (shapely.geometry.MultiPolygon, shapely.geometry.Polygon)):
             # works if shape is Polygon or MultiPolygon
             gdf = exp.gdf.loc[exp.gdf.geometry.within(shape)]
-        elif isinstance(shape, (geopandas.GeoSeries, list)):
-            gdf = geopandas.GeoDataFrame(columns=exp.gdf.columns)
+        elif isinstance(shape, (gpd.GeoSeries, list)):
+            gdf = gpd.GeoDataFrame(columns=exp.gdf.columns)
             for shp in shape:
                 if isinstance(shp, (shapely.geometry.MultiPolygon,
                                     shapely.geometry.Polygon)):
@@ -507,7 +530,7 @@ class LitPop(Exposures):
         exp : LitPop
             The exposure LitPop within shape
         """
-        if isinstance(shape, (geopandas.GeoSeries, list)):
+        if isinstance(shape, (gpd.GeoSeries, list)):
             raise NotImplementedError('Not implemented for `shape` of type list or '
                                       'GeoSeries. Loop over elements of series outside method.')
 
@@ -560,9 +583,16 @@ class LitPop(Exposures):
         return exp
 
     @staticmethod
-    def _from_country(country, res_arcsec=30, exponents=(1,1), fin_mode=None,
-                         total_value=None, reference_year=DEF_REF_YEAR,
-                         gpw_version=GPW_VERSION, data_dir=SYSTEM_DIR):
+    def _from_country(
+        country,
+        res_arcsec=30,
+        exponents=(1, 1),
+        fin_mode=None,
+        total_value: Optional[Disaggregate_Types] = None,
+        reference_year=DEF_REF_YEAR,
+        gpw_version=GPW_VERSION,
+        data_dir=SYSTEM_DIR,
+    ):
         """init LitPop exposure object for one single country
         See docstring of from_countries() for detailled description of parameters.
 
@@ -574,7 +604,10 @@ class LitPop(Exposures):
             horizontal resolution in arc-sec.
         exponents : tuple of two integers, optional
         fin_mode : str, optional
-        total_value : numeric, optional
+        total_value : numeric, geopandas.GeoSeries or geopandas.GeoDataFrame, optional
+            Total value to disaggregate on the country or geometries with total values
+            for disaggregation. See :py:func:`disaggregate_value_by_geometries` for
+            details on disaggregation.
         reference_year : int, optional
         gpw_version : int, optional
         data_dir : Path, optional
@@ -602,7 +635,7 @@ class LitPop(Exposures):
             return None
         LOGGER.info('\n LitPop: Init Exposure for country: %s (%i)...\n',
                     iso3a, iso3n)
-        litpop_gdf = geopandas.GeoDataFrame()
+        litpop_gdf = gpd.GeoDataFrame()
         total_population = 0
 
         # for countries with multiple sperated shapes (e.g., islands), data
@@ -632,13 +665,16 @@ class LitPop(Exposures):
         elif total_value is None:
             total_value = _get_total_value_per_country(iso3a, fin_mode, reference_year)
 
-        # disaggregate total value proportional to LitPop values:
-        if isinstance(total_value, (float, int)):
-            litpop_gdf['value'] = np.divide(litpop_gdf['value'],
-                                            litpop_gdf['value'].sum()) * total_value
-        elif total_value is not None:
-            raise TypeError("total_value must be int or float.")
+        # Disaggregate total value according to input
+        try:
+            litpop_gdf["value"] = disaggregate_value_by_geometries(
+                litpop_gdf, total_value
+            )
+        except ValueError as err:
+            if "Columns must be same length as key" in str(err):
+                raise ValueError("")
 
+        # Build exposure object
         exp = LitPop()
         exp.set_gdf(litpop_gdf)
         exp.gdf[INDICATOR_IMPF] = 1
@@ -646,6 +682,84 @@ class LitPop(Exposures):
 
     # Alias method names for backward compatibility:
     set_country = set_countries
+
+
+def disaggregate_value_by_geometries(
+    data: gpd.GeoDataFrame,
+    disaggregate: Union[float, gpd.GeoSeries, gpd.GeoDataFrame],
+    value_col: str = "value",
+    population_col: str  = "population",
+    total_value_col: str = "total_value",
+):
+    """Disaggregate the data values using custom geometries and/or total values
+
+    This selects a value column, normalizes it, scales it with a total value, and returns
+    the resulting column.
+
+    Depending on the type of ``disaggregate``, this function behaves differently. In a
+    first step, the value column is normalized (by its sum). If ``disaggregate`` is a
+    number, the value column is then multiplied with this value and returned.
+
+    If ``disaggregate`` is a ``geopandas`` object, the data will be grouped according
+    to its geometries. The data is then normalized on the group level. If
+    ``disaggregate`` has a total value column, the respective value is disaggregated
+    on the group. If not, the population column of the group is summed up and this
+    value is disaggregated onto the value column.
+
+    Input series or frames will not be modified.
+
+    Parameters
+    ----------
+    data : geopandas.GeoDataFrame
+        The GeoDataFrame containing the value column to (dis)aggregate. Must contain
+        a value column. If ``disaggregate`` is not a ``GeoDataFrame`` with a total value
+        column, ``data`` must also contain a population column.
+    disaggregate : Number or geopandas.GeoSeries or geopandas.GeoDataFrame
+        Disaggregation information. May be a number, a ``GeoSeries`` or a
+        ``GeoDataFrame``. The data frame may contain a total value column.
+    value_col : str
+        The name of the value column in ``data``. Defaults to ``"value"``.
+    population_col : str
+        The name of the population column in ``data``. Defaults to ``"population"``.
+    total_value_col : str
+        The name of the total_value column in ``disaggregate``. Defaults to
+        ``"total_value"``.
+    """
+    def normalize(col):
+        """Devide a series by its sum and return it"""
+        return col / col.sum()
+
+    def scale_by_population_sum(df):
+        """Scale by summing up the population column"""
+        return normalize(df[value_col]) * df[population_col].sum()
+
+    def scale_by_total_value(df):
+        """Scale by the total value column, which is assumed to be broadcasted"""
+        return normalize(df[value_col]) * df[total_value_col]
+
+    # Normalize and multiply with total value
+    if isinstance(disaggregate, Real):
+        return normalize(data[value_col]) * disaggregate
+
+    # Promote to dataframe to join
+    if isinstance(disaggregate, gpd.GeoSeries):
+        disaggregate = gpd.GeoDataFrame(geometry=disaggregate, crs=disaggregate.crs)
+
+    # 'disaggregate' is geopandas object: Join both series/frames
+    data_join = data.sjoin(
+        disaggregate.to_crs(data.crs), how="left", predicate="within"
+    )
+
+    # Group by geometries in 'disaggregate'
+    grouped = data_join.groupby("index_right", group_keys=False)
+
+    # If total value per geometry is given, use it
+    if total_value_col in disaggregate.columns:
+        return grouped.apply(scale_by_total_value)
+
+    # Otherwise, normalize by the sum of population in this geometry
+    return grouped.apply(scale_by_population_sum)
+
 
 def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
                                gpw_version, exponents, region_id=None, verbose=False):
@@ -746,8 +860,9 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
                                         total_val_rescale=None)
 
     # mask entries outside polygon (set to NaN) and set total population:
-    litpop_array = u_coord.mask_raster_with_geometry(litpop_array, meta_out['transform'],
-                                                     [polygon], nodata=np.nan)
+    mask_raster_args = [meta_out['transform'], [polygon], np.nan]
+    litpop_array = u_coord.mask_raster_with_geometry(litpop_array, *mask_raster_args)
+    pop_array = u_coord.mask_raster_with_geometry(pop, *mask_raster_args)
     meta_out['total_population'] = total_population
 
     # extract coordinates as meshgrid arrays:
@@ -755,12 +870,14 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
                                           meta_out['width'],
                                           meta_out['height'])
     # init GeoDataFrame from data and coordinates:
-    gdf = geopandas.GeoDataFrame({'value': litpop_array.flatten()}, crs=meta_out['crs'],
-                                 geometry=geopandas.points_from_xy(
-                                     np.round_(lon.flatten(), decimals = 8, out = None),
-                                     np.round_(lat.flatten(), decimals = 8, out = None)
-                                     )
-                                 )
+    gdf = gpd.GeoDataFrame(
+        {"value": litpop_array.flatten(), "population": pop_array.flatten()},
+        crs=meta_out["crs"],
+        geometry=gpd.points_from_xy(
+            np.round_(lon.flatten(), decimals=8, out=None),
+            np.round_(lat.flatten(), decimals=8, out=None),
+        ),
+    )
     gdf['latitude'] = np.round_(lat.flatten(), decimals = 8, out = None)
     gdf['longitude'] = np.round_(lon.flatten(), decimals = 8, out = None)
     if region_id is not None: # set region_id

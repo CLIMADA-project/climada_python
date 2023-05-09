@@ -19,10 +19,17 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Unit Tests for LitPop class.
 """
 
-import numpy as np
+
 import unittest
+
+import numpy as np
+import numpy.testing as npt
 from rasterio.crs import CRS
 from rasterio import Affine
+import geopandas as gpd
+from shapely.geometry import Polygon
+
+from climada.util.constants import DEF_CRS
 from climada.entity.exposures.litpop import litpop as lp
 
 
@@ -371,7 +378,73 @@ class TestLitPop(unittest.TestCase):
         self.assertEqual(lp.get_value_unit('nfw'), 'USD')
         self.assertEqual(lp.get_value_unit('none'), '')
 
+
+class TestDisaggregateValueByGeometries(unittest.TestCase):
+    """Test function 'disaggregate_value_by_geometries'"""
+
+    def setUp(self):
+        """Prepare testing data"""
+        # The data frame
+        self.lon = [0, 1, 2, 0, 1, 2]
+        self.lat = [0, 0, 0, 1, 1, 1]
+        self.points = gpd.points_from_xy(x=self.lon, y=self.lat, crs=DEF_CRS)
+        self.data = gpd.GeoDataFrame(
+            data={"value": [0, 1, 2, 3, 4, 5], "population": np.ones(6)},
+            geometry=self.points,
+            crs=DEF_CRS,
+        )
+
+        # The disaggregation frame
+        self.poly_1 = Polygon(
+            [self.points[0], self.points[1], self.points[4], self.points[3]]
+        ).buffer(0.1)
+        poly_2 = Polygon([(1.9, 0), (2.1, 0), (2.1, 1), (1.9, 1)]).buffer(0.1)
+        self.polys = gpd.GeoSeries([self.poly_1, poly_2], crs=DEF_CRS)
+        self.disagg = gpd.GeoDataFrame(
+            data={"total_value": [10, 2.55]}, geometry=self.polys, crs=DEF_CRS
+        )
+
+    def test_disagg_single_value(self):
+        """Test disaggregation with a single value"""
+        # Test default column
+        out = lp.disaggregate_value_by_geometries(self.data, 15)
+        self.assertEqual(out.name, "value")
+        npt.assert_allclose(out, self.data["value"])
+
+        # Test custom column
+        out = lp.disaggregate_value_by_geometries(self.data, 6, value_col="population")
+        self.assertEqual(out.name, "population")
+        npt.assert_allclose(out, 1.0)
+
+    def test_disagg_series(self):
+        """Test disaggregation with custom geometries"""
+        out = lp.disaggregate_value_by_geometries(self.data, self.polys).sort_index()
+        npt.assert_allclose(
+            out, [0, 1 / 8 * 4, 2 / 7 * 2, 3 / 8 * 4, 4 / 8 * 4, 5 / 7 * 2]
+        )
+
+    def test_disagg_frame(self):
+        """Test disaggregation with custom geometries and total values"""
+        out = lp.disaggregate_value_by_geometries(self.data, self.disagg).sort_index()
+        npt.assert_allclose(
+            out, [0, 1 / 8 * 10, 2 / 7 * 2.55, 3 / 8 * 10, 4 / 8 * 10, 5 / 7 * 2.55]
+        )
+
+    def test_assign_dropped(self):
+        """Test if assignment to original frame with dropped elements works"""
+        polys = gpd.GeoSeries([self.poly_1], crs=DEF_CRS)
+        out = lp.disaggregate_value_by_geometries(self.data, polys)
+        self.assertEqual(out.size, 4)
+
+        self.data["value"] = out
+        npt.assert_allclose(
+            self.data["value"].to_numpy(), [0, 1 / 8 * 4, 2, 3 / 8 * 4, 4 / 8 * 4, 5]
+        )
+
+
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestLitPop)
-    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestUncertainty))
+    TESTS.addTests(
+        unittest.TestLoader().loadTestsFromTestCase(TestDisaggregateValueByGeometries)
+    )
     unittest.TextTestRunner(verbosity=2).run(TESTS)
