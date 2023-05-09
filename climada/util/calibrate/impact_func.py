@@ -45,7 +45,7 @@ ConstraintType = Union[LinearConstraint, NonlinearConstraint, Mapping]
 class Input:
     """Define the static input for a calibration task
 
-    Parameters
+    Attributes
     ----------
     hazard : climada.Hazard
         Hazard object to compute impacts from
@@ -108,7 +108,21 @@ class Input:
 
 @dataclass
 class Output:
-    """Define the output of a calibration task"""
+    """Generic output of a calibration task
+
+    Attributes
+    ----------
+    params : Mapping (str, Number)
+        The optimal parameters
+    target : Number
+        The target function value for the optimal parameters
+    success : bool
+        If the calibration succeeded. The definition depends on the actual optimization
+        algorithm used.
+    result
+        A result object specific to the optimization algorithm used. See the optimizer
+        documentation for details.
+    """
 
     params: Mapping[str, Number]
     target: Number
@@ -118,19 +132,77 @@ class Output:
 
 @dataclass
 class Optimizer(ABC):
-    """Define the basic interface for an optimization"""
+    """Abstract base class (interface) for an optimization
+
+    This defines the interface for optimizers in CLIMADA. New optimizers can be created
+    by deriving from this class and overriding at least the :py:meth:`run` method.
+
+    Attributes
+    ----------
+    input : Input
+        The input object for the optimization task. See :py:class:`Input`.
+    """
 
     input: Input
 
-    def _target_func(self, impact: Impact, data: pd.DataFrame):
+    def _target_func(self, impact: Impact, data: pd.DataFrame) -> Number:
+        """Target function for the optimizer
+
+        The default version of this function simply returns the value of the cost
+        function evaluated on the arguments.
+
+        Paramters
+        ---------
+        impact : climada.engine.Impact
+            The impact object returned by the impact calculation.
+        data : pandas.DataFrame
+            The data used for calibration. See :py:attr:`Input.data`.
+
+        Returns
+        -------
+        The value of the target function for the optimizer.
+        """
         return self.input.cost_func(impact, data)
 
     def _kwargs_to_impact_func_gen(self, *_, **kwargs) -> Dict[str, Any]:
-        """Define how the parameters to 'opt_func' must be transformed"""
+        """Define how the parameters to 'opt_func' must be transformed
+
+        Optimizers may implement different ways of representing the parameters (e.g.,
+        key-value pairs, arrays, etc.). Depending on this representation, the parameters
+        must be transformed to match the syntax of the impact function generator used,
+        see :py:attr:`Input.impact_func_gen`.
+
+        In this default version, the method simply returns its keyword arguments as
+        mapping. Override this method if the optimizer used *does not* represent
+        parameters as key-value pairs.
+
+        Parameters
+        ----------
+        kwargs
+            The parameters as key-value pairs.
+
+        Returns
+        -------
+        The parameters as key-value pairs.
+        """
         return kwargs
 
-    def _opt_func(self, *args, **kwargs):
-        """The optimization function that is iterated"""
+    def _opt_func(self, *args, **kwargs) -> Number:
+        """The optimization function iterated by the optimizer
+
+        This function takes arbitrary arguments from the optimizer, generates a new set
+        of impact functions from it, computes the impact, and finally calculates the
+        target function value and returns it.
+
+        Parameters
+        ----------
+        args, kwargs
+            Arbitrary arguments from the optimizer, including parameters
+
+        Returns
+        -------
+        Target function value for the given arguments
+        """
         params = self._kwargs_to_impact_func_gen(*args, **kwargs)
         impf_set = self.input.impact_func_gen(**params)
         impact = ImpactCalc(
@@ -143,7 +215,6 @@ class Optimizer(ABC):
     @abstractmethod
     def run(self, **opt_kwargs) -> Output:
         """Execute the optimization"""
-        pass
 
 
 @dataclass
@@ -155,14 +226,33 @@ class ScipyMinimizeOptimizer(Optimizer):
         self._param_names: List[str] = list()
 
     def _kwargs_to_impact_func_gen(self, *args, **_) -> Dict[str, Any]:
+        """Transform the array of parameters into key-value pairs"""
         return dict(zip(self._param_names, args[0].flat))
 
     def _select_by_param_names(self, mapping: Mapping[str, Any]) -> List[Any]:
         """Return a list of entries from a map with matching keys or ``None``"""
         return [mapping.get(key) for key in self._param_names]
 
-    def run(self, **opt_kwargs):
-        """Execute the optimization"""
+    def run(self, **opt_kwargs) -> Output:
+        """Execute the optimization
+
+        Parameters
+        ----------
+        params_init : Mapping (str, Number)
+            The initial guess for all parameters as key-value pairs.
+        method : str, optional
+            The minimization method applied. Defaults to ``"trust-constr"``.
+            See https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html
+            for details.
+        kwargs
+            Additional keyword arguments passed to ``scipy.optimize.minimize``.
+
+        Returns
+        -------
+        output : Output
+            The output of the optimization. The :py:attr:`Output.result` attribute
+            stores the associated ``scipy.optimize.OptimizeResult`` instance.
+        """
         # Parse kwargs
         params_init = opt_kwargs.pop("params_init")
         method = opt_kwargs.pop("method", "trust-constr")
@@ -213,9 +303,17 @@ class BayesianOptimizer(Optimizer):
             **bayes_opt_kwds,
         )
 
-    def run(self, init_points: int = 100, n_iter: int = 200, **opt_kwargs):
+    def run(self, **opt_kwargs):
         """Execute the optimization"""
+        # Retrieve parameters
+        num_params = len(self.input.bounds)
+        init_points = opt_kwargs.pop("init_points", 10**num_params)
+        n_iter = opt_kwargs.pop("n_iter", 10**num_params)
+
+        # Run optimizer
         self.optimizer.maximize(init_points=init_points, n_iter=n_iter, **opt_kwargs)
+
+        # Return output
         opt = self.optimizer.max
         return Output(
             params=opt["params"],
