@@ -408,38 +408,39 @@ class TestDisaggregateValueByGeometries(unittest.TestCase):
         """Test disaggregation with a single value"""
         # Test default column
         out = lp.disaggregate_value_by_geometries(self.data, 15)
-        self.assertEqual(out.name, "value")
-        npt.assert_allclose(out, self.data["value"])
+        npt.assert_allclose(out["value"], self.data["value"])
+        npt.assert_array_equal(out["population"], self.data["population"])
 
         # Test custom column
         out = lp.disaggregate_value_by_geometries(self.data, 6, value_col="population")
-        self.assertEqual(out.name, "population")
-        npt.assert_allclose(out, 1.0)
+        npt.assert_allclose(out["population"], [1.0] * 6)
+        npt.assert_array_equal(out["value"], self.data["value"])
 
     def test_disagg_series(self):
         """Test disaggregation with custom geometries"""
         out = lp.disaggregate_value_by_geometries(self.data, self.polys).sort_index()
         npt.assert_allclose(
-            out, [0, 1 / 8 * 4, 2 / 7 * 2, 3 / 8 * 4, 4 / 8 * 4, 5 / 7 * 2]
+            out["value"], [0, 1 / 8 * 4, 2 / 7 * 2, 3 / 8 * 4, 4 / 8 * 4, 5 / 7 * 2]
         )
 
     def test_disagg_frame(self):
         """Test disaggregation with custom geometries and total values"""
         out = lp.disaggregate_value_by_geometries(self.data, self.disagg).sort_index()
         npt.assert_allclose(
-            out, [0, 1 / 8 * 10, 2 / 7 * 2.55, 3 / 8 * 10, 4 / 8 * 10, 5 / 7 * 2.55]
+            out["value"],
+            [0, 1 / 8 * 10, 2 / 7 * 2.55, 3 / 8 * 10, 4 / 8 * 10, 5 / 7 * 2.55],
         )
 
     def test_assign_dropped(self):
         """Test if assignment to original frame with dropped elements works"""
         polys = gpd.GeoSeries([self.poly_1], crs=DEF_CRS)
         out = lp.disaggregate_value_by_geometries(self.data, polys)
-        self.assertEqual(out.size, 4)
+        self.assertEqual(out["value"].size, 4)
 
-        self.data["value"] = out
         npt.assert_allclose(
-            self.data["value"].to_numpy(), [0, 1 / 8 * 4, 2, 3 / 8 * 4, 4 / 8 * 4, 5]
+            out["value"].to_numpy(), [0, 1 / 8 * 4, 3 / 8 * 4, 4 / 8 * 4]
         )
+        npt.assert_array_equal(out["population"], [1, 1, 1, 1])
 
 
 if __name__ == "__main__":

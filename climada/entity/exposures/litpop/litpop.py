@@ -20,7 +20,7 @@ Define LitPop class.
 import logging
 from pathlib import Path
 from numbers import Real
-from typing import Optional, Union
+from typing import Optional, Union, Callable
 from collections.abc import Collection
 
 import numpy as np
@@ -688,9 +688,9 @@ def disaggregate_value_by_geometries(
     data: gpd.GeoDataFrame,
     disaggregate: Union[float, gpd.GeoSeries, gpd.GeoDataFrame],
     value_col: str = "value",
-    population_col: str  = "population",
+    population_col: str = "population",
     total_value_col: str = "total_value",
-):
+) -> gpd.GeoDataFrame:
     """Disaggregate the data values using custom geometries and/or total values
 
     This selects a value column, normalizes it, scales it with a total value, and returns
@@ -705,6 +705,9 @@ def disaggregate_value_by_geometries(
     ``disaggregate`` has a total value column, the respective value is disaggregated
     on the group. If not, the population column of the group is summed up and this
     value is disaggregated onto the value column.
+
+    If entries in ``data`` are outside any geometries in ``disaggregate``, they will
+    be ignored.
 
     Input series or frames will not be modified.
 
@@ -724,7 +727,13 @@ def disaggregate_value_by_geometries(
     total_value_col : str
         The name of the total_value column in ``disaggregate``. Defaults to
         ``"total_value"``.
+
+    Returns
+    -------
+    Copy of ``data`` with value column replaced by the disaggregated values. Rows with
+    positions outside any geometry in ``disaggregate`` are dropped.
     """
+
     def normalize(col):
         """Devide a series by its sum and return it"""
         return col / col.sum()
@@ -737,11 +746,20 @@ def disaggregate_value_by_geometries(
         """Scale by the total value column, which is assumed to be broadcasted"""
         return normalize(df[value_col]) * df[total_value_col]
 
+    def copy_replace(new_values):
+        """Copy 'data', replace its value column with 'new_values'"""
+        ret = data.copy()
+        index_diff = ret.index.difference(new_values.index)
+        if not index_diff.empty:
+            ret = ret.drop(index=index_diff)
+        ret[value_col] = new_values
+        return ret
+
     # Normalize and multiply with total value
     if isinstance(disaggregate, Real):
-        return normalize(data[value_col]) * disaggregate
+        return copy_replace(normalize(data[value_col]) * disaggregate)
 
-    # Promote to dataframe to join
+    # Promote to dataframe for join operation
     if isinstance(disaggregate, gpd.GeoSeries):
         disaggregate = gpd.GeoDataFrame(geometry=disaggregate, crs=disaggregate.crs)
 
@@ -751,14 +769,35 @@ def disaggregate_value_by_geometries(
     )
 
     # Group by geometries in 'disaggregate'
-    grouped = data_join.groupby("index_right", group_keys=False)
+    # NOTE: Workaround for pandas bug: https://github.com/pandas-dev/pandas/issues/53163
+    #       The group.apply does not work if we only have a single group. Check this in
+    #       advance. For a single group, we can just apply the function to the whole
+    #       frame with NaNs dropped.
+    def group_apply(df: gpd.GeoDataFrame, group_key: str, apply_func: Callable):
+        """Group ``df`` by ``group_key`` and apply ``callable``
+
+        This function first checks if grouping is at all necessary. If grouping would
+        result in a single group, it immediately applies ``apply_func`` to the data
+        frame.
+        """
+        df_dropna = df.dropna(subset=group_key)
+        if df_dropna[group_key].unique().size == 1:
+            return apply_func(df_dropna)
+
+        return df.groupby(group_key, group_keys=False).apply(apply_func)
+
+    # Group by the index of 'disaggregate'
+    group_key = "index_right"
 
     # If total value per geometry is given, use it
     if total_value_col in disaggregate.columns:
-        return grouped.apply(scale_by_total_value)
-
+        res = group_apply(data_join, group_key, scale_by_total_value)
     # Otherwise, normalize by the sum of population in this geometry
-    return grouped.apply(scale_by_population_sum)
+    else:
+        res = group_apply(data_join, group_key, scale_by_population_sum)
+
+    # Drop non-matching rows and replace value column with new results
+    return copy_replace(res)
 
 
 def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
