@@ -1019,11 +1019,35 @@ class Exposures():
 
         return exp
 
+    def _centroids_total_value(self, hazard):
+        """
+        Total value of the exposures that are close enough to be affected
+        by the hazard (sum of value of all exposures points for which
+        a centroids is assigned)
+
+        Parameters
+        ----------
+        hazard : Hazard
+           Hazard affecting Exposures
+
+        Returns
+        -------
+        float
+            Sum of value of all exposures points for which
+            a centroids is assigned
+
+        """
+        nz_mask = (
+            (self.gdf.value.values > 0)
+            & (self.gdf[hazard.centr_exp_col].values >= 0)
+        )
+        return np.sum(self.gdf.value.values[nz_mask])
+
     def affected_total_value(self, hazard, threshold_affected=0):
         """
         Total value of the exposures that are affected by at least
         one hazard event (sum of value of all exposures points for which
-        at least one event has intensitz larger than the threshold).
+        at least one event has intensity larger than the threshold).
 
         Parameters
         ----------

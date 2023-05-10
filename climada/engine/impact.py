@@ -244,7 +244,7 @@ class Impact():
                                  axis=1),
             crs = exposures.crs,
             unit = exposures.value_unit,
-            tot_value = exposures.affected_total_value(hazard),
+            tot_value = exposures._centroids_total_value(hazard),
             eai_exp = eai_exp,
             at_event = at_event,
             aai_agg = aai_agg,
