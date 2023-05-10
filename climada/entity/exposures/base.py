@@ -1046,8 +1046,12 @@ class Exposures():
             & (assigned_centroids.values >= 0)
         )
         cents = np.unique(assigned_centroids[nz_mask])
-        cent_with_inten_above_thres = (hazard.intensity[:,cents].max(axis=0) > threshold_affected).nonzero()[1]
-        above_thres_mask = np.isin(self.gdf[hazard.centr_exp_col].values, cents[cent_with_inten_above_thres])
+        cent_with_inten_above_thres = (
+            hazard.intensity[:,cents].max(axis=0) > threshold_affected
+            ).nonzero()[1]
+        above_thres_mask = np.isin(
+            self.gdf[hazard.centr_exp_col].values, cents[cent_with_inten_above_thres]
+            )
         return np.sum(self.gdf.value.values[above_thres_mask])
 
 
