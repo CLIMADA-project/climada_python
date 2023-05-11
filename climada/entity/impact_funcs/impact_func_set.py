@@ -68,7 +68,7 @@ class ImpactFuncSet:
 
     Attributes
     ----------
-    tag : Tag
+    tag : climada.entity.tag.Tag
         information about the source data
     _data : dict
         contains ImpactFunc classes. It's not suppossed to be
@@ -105,11 +105,8 @@ class ImpactFuncSet:
         Read impact functions from file and check data consistency.
 
         >>> imp_fun = ImpactFuncSet.from_excel(ENT_TEMPLATE_XLS)
-
-        Todo
-        ----
-        * Automatically check this object if impact_funcs is not None.
         """
+        # TODO: Automatically check this object if impact_funcs is not None.
         self.clear()
         if tag is not None:
             self.tag = tag

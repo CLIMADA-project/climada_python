@@ -298,17 +298,15 @@ class Calc():
 
         Parameters
         ----------
-        unc_output : climada.engine.uncertainty.unc_output.UncOutput()
+        unc_output : climada.engine.uncertainty.unc_output.UncOutput
             Uncertainty data object in which to store the sensitivity indices
-        sensitivity_method : str
-            sensitivity analysis method from SALib.analyse
-            Possible choices:
-                'fast', 'rbd_fact', 'morris', 'sobol', 'delta', 'ff'
-            The default is 'sobol'.
-            Note that in Salib, sampling methods and sensitivity analysis
-            methods should be used in specific pairs.
+        sensitivity_method : str, optional
+            Sensitivity analysis method from SALib.analyse. Possible choices: 'fast', 'rbd_fact',
+            'morris', 'sobol', 'delta', 'ff'. Note that in Salib, sampling methods and sensitivity
+            analysis methods should be used in specific pairs:
             https://salib.readthedocs.io/en/latest/api.html
-        sensitivity_kwargs: dict(), optional
+            Default: 'sobol'
+        sensitivity_kwargs: dict, optional
             Keyword arguments of the chosen SALib analyse method.
             The default is to use SALib's default arguments.
 
