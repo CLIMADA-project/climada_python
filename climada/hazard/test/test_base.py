@@ -357,6 +357,30 @@ class TestSelect(unittest.TestCase):
         self.assertIsInstance(sel_haz.intensity, sparse.csr_matrix)
         self.assertIsInstance(sel_haz.fraction, sparse.csr_matrix)
 
+    def test_select_event_id(self):
+        """Test select historical events."""
+        haz = dummy_hazard()
+        sel_haz = haz.select(event_id=np.array([4, 1]))
+
+        self.assertTrue(np.array_equal(sel_haz.centroids.coord, haz.centroids.coord))
+        self.assertEqual(sel_haz.tag, haz.tag)
+        self.assertEqual(sel_haz.units, haz.units)
+        self.assertTrue(np.array_equal(sel_haz.event_id, np.array([4, 1])))
+        self.assertTrue(np.array_equal(sel_haz.date, np.array([4, 1])))
+        self.assertTrue(np.array_equal(sel_haz.orig, np.array([True, True])))
+        self.assertTrue(np.array_equal(sel_haz.frequency, np.array([0.2, 0.1])))
+        self.assertEqual(sel_haz.frequency_unit, haz.frequency_unit)
+        self.assertTrue(np.array_equal(sel_haz.fraction.toarray(),
+                                       np.array([[0.3, 0.2, 0.0],
+                                                 [0.02, 0.03, 0.04]])))
+        self.assertTrue(np.array_equal(sel_haz.intensity.toarray(),
+                                       np.array([[5.3, 0.2, 0.0],
+                                                 [0.2, 0.3, 0.4]])))
+        self.assertEqual(sel_haz.event_name, ['ev4', 'ev1'])
+        self.assertIsInstance(sel_haz, Hazard)
+        self.assertIsInstance(sel_haz.intensity, sparse.csr_matrix)
+        self.assertIsInstance(sel_haz.fraction, sparse.csr_matrix)
+
     def test_select_orig_pass(self):
         """Test select historical events."""
         haz = dummy_hazard()

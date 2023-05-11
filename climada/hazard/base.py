@@ -1359,7 +1359,7 @@ class Hazard():
                 return None
 
         # filter events hist/synthetic
-        if isinstance(orig, bool):
+        if orig is not None:
             sel_ev &= (self.orig.astype(bool) == orig)
             if not np.any(sel_ev):
                 LOGGER.info('No hazard with %s original events.', str(orig))
@@ -1367,7 +1367,7 @@ class Hazard():
 
         # filter events based on name
         sel_ev = np.argwhere(sel_ev).reshape(-1)
-        if isinstance(event_names, list):
+        if event_names is not None:
             filtered_events = [self.event_name[i] for i in sel_ev]
             try:
                 new_sel = [filtered_events.index(n) for n in event_names]
@@ -1378,7 +1378,7 @@ class Hazard():
             sel_ev = sel_ev[new_sel]
 
         # filter events based on id
-        if isinstance(event_id, list):
+        if event_id is not None:
             # preserves order of event_id
             sel_ev = np.array([
                 np.argwhere(self.event_id == n)[0,0]
