@@ -1019,7 +1019,7 @@ class Exposures():
 
         return exp
 
-    def _centroids_total_value(self, hazard):
+    def centroids_total_value(self, hazard):
         """
         Total value of the exposures that are close enough to be affected
         by the hazard (sum of value of all exposures points for which
