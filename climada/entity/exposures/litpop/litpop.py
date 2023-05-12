@@ -774,14 +774,13 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
                                           meta_out['width'],
                                           meta_out['height'])
     # init GeoDataFrame from data and coordinates:
-    gdf = geopandas.GeoDataFrame({'value': litpop_array.flatten()}, crs=meta_out['crs'],
-                                 geometry=geopandas.points_from_xy(
-                                     np.round_(lon.flatten(), decimals = 8, out = None),
-                                     np.round_(lat.flatten(), decimals = 8, out = None)
-                                     )
-                                 )
-    gdf['latitude'] = np.round_(lat.flatten(), decimals = 8, out = None)
-    gdf['longitude'] = np.round_(lon.flatten(), decimals = 8, out = None)
+    latitude = np.round(lat.flatten(), decimals=8)
+    longitude = np.round(lon.flatten(), decimals=8)
+    gdf = geopandas.GeoDataFrame(
+        {'value': litpop_array.flatten(), "latitude": latitude, "longitude": longitude},
+        crs=meta_out['crs'],
+        geometry=geopandas.points_from_xy(longitude, latitude),
+    )
     if region_id is not None: # set region_id
         gdf['region_id'] = region_id
     else:
