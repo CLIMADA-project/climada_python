@@ -17,6 +17,7 @@ dependencies:
   - netcdf4>=1.6
   - numba>=0.56
   - openpyxl>=3.1
+  - pandas>=1.5,<2.0  # 2.0 removed append and iteritems from DataFrame
   - pandas-datareader>=0.10
   - pathos>=0.3
   - pint>=0.20
@@ -36,10 +37,10 @@ dependencies:
   - statsmodels>=0.13
   - tabulate>=0.9
   - tqdm>=4.65
+  - unittest-xml-reporting>=3.2
   - xarray>=2023.3
   - xlrd>=2.0
   - xlsxwriter>=3.0
-  - xmlrunner>=1.7
   - pip:
     - deprecation>=2.1
     - overpy>=0.6
