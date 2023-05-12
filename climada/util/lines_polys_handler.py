@@ -38,8 +38,8 @@ class DisaggMethod(Enum):
     """
     Disaggregation Method for the ... function
 
-	DIV : the geometry's distributed to equal parts over all its interpolated points
-	FIX : the geometry's value is replicated over all its interpolated points
+    DIV : the geometry's distributed to equal parts over all its interpolated points
+    FIX : the geometry's value is replicated over all its interpolated points
     """
     DIV = 'div'
     FIX = 'fix'
@@ -49,7 +49,7 @@ class AggMethod(Enum):
     """
     Aggregation Method for the aggregate_impact_mat function
 
-	SUM : the impact is summed over all points in the polygon/line
+    SUM : the impact is summed over all points in the polygon/line
     """
     SUM = 'sum'
 
@@ -656,7 +656,8 @@ def _poly_to_pnts(gdf, res, to_meters):
 
     gdf_points = gdf.copy().reset_index(drop=True)
 
-    if to_meters:
+    # Check if we need to reproject
+    if to_meters and not gdf.geometry.crs.is_projected:
         gdf_points['geometry_pnt'] = gdf_points.apply(
             lambda row: _interp_one_poly_m(row.geometry, res, gdf.crs), axis=1)
     else:
@@ -929,8 +930,19 @@ def _line_to_pnts(gdf_lines, res, to_meters):
     else:
         line_lengths = gdf_lines.length
 
+    # Add warning if lines are too short w.r.t. resolution
+    failing_res_check_count = len(line_lengths[line_lengths > 10*res])
+    if failing_res_check_count > 0:
+        LOGGER.warning(
+            "%d lines with a length < 10*resolution were found. "
+            "Each of these lines is disaggregate to one point. "
+            "Reaggregatint values will thus likely lead to overestimattion. "
+            "Consider chosing a smaller resolution or filter out the short lines. ",
+            failing_res_check_count
+            )
+
     line_fractions = [
-        np.linspace(0, 1, num=_pnts_per_line(length, res))
+        _line_fraction(length, res)
         for length in line_lengths
         ]
 
@@ -950,6 +962,29 @@ def _line_to_pnts(gdf_lines, res, to_meters):
     return gdf_points
 
 
+def _line_fraction(length, res):
+    """
+    Compute the fraction in which to divide a line of given length at given resolution
+
+    Parameters
+    ----------
+    length : float
+        Length of a string
+    res : float
+        Resolution (length of a string element)
+
+    Returns
+    -------
+    np.ndarray
+        Array of the fraction at which to divide the string of given length
+        into points at the chosen resolution.
+
+    """
+    nb_points = _pnts_per_line(length, res)
+    eff_res = 1 / nb_points
+    start = eff_res / 2
+    return np.arange(start, 1, eff_res)
+
 def _pnts_per_line(length, res):
     """Calculate number of points fitting along a line, given a certain
     resolution (spacing) res between points.
@@ -964,12 +999,14 @@ def _pnts_per_line(length, res):
     int
         Number of points along line
     """
-    return int(np.ceil(length / res) + 1)
+    return int(max(np.round(length / res), 1))
 
 
 def _swap_geom_cols(gdf, geom_to, new_geom):
     """
-    Change which column is the geometry column
+    Change which column is the geometry column.
+    Conserves the crs of the original geometry column.
+
     Parameters
     ----------
     gdf : gpd.GeoDataFrame
@@ -986,7 +1023,7 @@ def _swap_geom_cols(gdf, geom_to, new_geom):
     """
     gdf_swap = gdf.rename(columns = {'geometry': geom_to})
     gdf_swap.rename(columns = {new_geom: 'geometry'}, inplace=True)
-    gdf_swap.set_geometry('geometry', inplace=True)
+    gdf_swap.set_geometry('geometry', inplace=True, crs=gdf.crs)
     return gdf_swap
 
 

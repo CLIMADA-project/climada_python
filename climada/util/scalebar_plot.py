@@ -197,9 +197,9 @@ def scale_bar(ax, location, length, metres_per_unit=1000, unit_name='km',
     va :
         Vertical alignment. Default: 'bottom'
     plot_kwargs :
-        Keyword arguments for plot, overridden by **kwargs.
+        Keyword arguments for plot, overridden by `**kwargs`.
     text_kwargs :
-        Keyword arguments for text, overridden by **kwargs.
+        Keyword arguments for text, overridden by `**kwargs`.
     kwargs :
         Keyword arguments for both plot and text.
     """

@@ -29,6 +29,7 @@ from rasterio.windows import Window
 from climada import CONFIG
 from climada.entity.exposures.base import Exposures, INDICATOR_IMPF, \
      INDICATOR_CENTR, add_sea, DEF_REF_YEAR, DEF_VALUE_UNIT
+from climada.entity import LitPop
 from climada.entity.tag import Tag
 from climada.hazard.base import Hazard, Centroids
 from climada.util.constants import ENT_TEMPLATE_XLS, ONE_LAT_KM, DEF_CRS, HAZ_DEMO_FL
@@ -88,6 +89,21 @@ class TestFuncs(unittest.TestCase):
             Exposures(meta=[])
         self.assertEqual("meta must be a dictionary",
                       str(cm.exception))
+
+    def test__init__geometry_type(self):
+        """Check that initialization fails when `geometry` is given as a `str` argument"""
+        with self.assertRaises(ValueError) as cm:
+            Exposures(geometry='myname')
+        self.assertEqual("Exposures is not able to handle customized 'geometry' column names.",
+                         str(cm.exception))
+
+    def test__init__mda_in_kwargs(self):
+        """Check if `_metadata` attributes are instantiated correctly for sub-classes of
+        ``Exposures``"""
+        litpop = LitPop(exponents=2)
+        self.assertEqual(litpop.exponents, 2)
+        litpop = LitPop(meta=dict(exponents=3))
+        self.assertEqual(litpop.exponents, 3)
 
     def test_read_raster_pass(self):
         """from_raster"""

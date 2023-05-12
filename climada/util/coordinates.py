@@ -290,22 +290,26 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
         If False, assume that all longitudinal values lie within a single interval of size 360
         (e.g., between -180 and 180, or between 0 and 360) and such that the shortest path between
         any two points does not cross the antimeridian according to that parametrization. If True,
-        a suitable interval is determined using `lon_bounds` and the longitudinal values are
-        reparametrized accordingly using `lon_normalize`. Note that this option has no effect when
-        using the "geosphere" method because it is independent from the parametrization.
-        Default: True
+        a suitable interval is determined using :py:func:`lon_bounds` and the longitudinal values
+        are reparametrized accordingly using :py:func:`lon_normalize`. Note that this option has
+        no effect when using the "geosphere" method because it is independent from the
+        parametrization. Default: True
     method : str, optional
         Specify an approximation method to use:
-            * "equirect": Distance according to sinusoidal projection. Fast, but inaccurate for
-              large distances and high latitudes.
-            * "geosphere": Exact spherical distance. Much more accurate at all distances, but slow.
+
+        * "equirect": Distance according to sinusoidal projection. Fast, but inaccurate for
+          large distances and high latitudes.
+        * "geosphere": Exact spherical distance. Much more accurate at all distances, but slow.
+
         Note that ellipsoidal distances would be even more accurate, but are currently not
         implemented. Default: "equirect".
     units : str, optional
         Specify a unit for the distance. One of:
-            * "km": distance in km.
-            * "degree": angular distance in decimal degrees.
-            * "radian": angular distance in radians.
+
+        * "km": distance in km.
+        * "degree": angular distance in decimal degrees.
+        * "radian": angular distance in radians.
+
         Default: "km".
 
     Returns
@@ -373,14 +377,12 @@ def compute_geodesic_lengths(gdf):
 
     See also
     --------
-    * dist_approx() which also offers haversine distance calculation options
-     between specific points (not along any geometries however).
-    * interpolation.interpolate_lines()
+    :py:func:`dist_approx` : distance between individual lat/lon-points
 
     Note
     ----
     This implementation relies on non-projected (i.e. geographic coordinate
-    systems that span the entire globe) crs only, which results in
+    systems that span the entire globe) CRS only, which results in
     sea-level distances and hence a certain (minor) level of distortion; cf.
     https://gis.stackexchange.com/questions/176442/what-is-the-real-distance-between-positions
     """
@@ -393,10 +395,11 @@ def compute_geodesic_lengths(gdf):
 
 def get_gridcellarea(lat, resolution=0.5, unit='ha'):
     """The area covered by a grid cell is calculated depending on the latitude
-        1 degree = ONE_LAT_KM (111.12km at the equator)
-        longitudal distance in km = ONE_LAT_KM*resolution*cos(lat)
-        latitudal distance in km = ONE_LAT_KM*resolution
-        area = longitudal distance * latitudal distance
+
+    * 1 degree = ONE_LAT_KM (111.12km at the equator)
+    * longitudal distance in km = ONE_LAT_KM*resolution*cos(lat)
+    * latitudal distance in km = ONE_LAT_KM*resolution
+    * area = longitudal distance * latitudal distance
 
     Parameters
     ----------
@@ -406,7 +409,6 @@ def get_gridcellarea(lat, resolution=0.5, unit='ha'):
         raster resolution in degree (default: 0.5 degree)
     unit: string, optional
         unit of the output area (default: ha, alternatives: m2, km2)
-
     """
 
     if unit == 'm2':
@@ -922,7 +924,12 @@ def get_region_gridpoints(countries=None, regions=None, resolution=150,
         lat, lon = [ar.ravel() for ar in [lat, lon]]
     return lat, lon
 
-def assign_grid_points(x, y, grid_width, grid_height, grid_transform):
+def assign_grid_points(*args, **kwargs):
+    """This function has been renamed, use ``match_grid_points`` instead."""
+    LOGGER.warning("This function has been renamed, use match_grid_points instead.")
+    return match_grid_points(*args, **kwargs)
+
+def match_grid_points(x, y, grid_width, grid_height, grid_transform):
     """To each coordinate in `x` and `y`, assign the closest centroid in the given raster grid
 
     Make sure that your grid specification is relative to the same coordinate reference system as
@@ -959,7 +966,12 @@ def assign_grid_points(x, y, grid_width, grid_height, grid_transform):
     assigned[(y_i < 0) | (y_i >= grid_height)] = -1
     return assigned
 
-def assign_coordinates(coords, coords_to_assign, distance="euclidean",
+def assign_coordinates(*args, **kwargs):
+    """This function has been renamed, use ``match_coordinates`` instead."""
+    LOGGER.warning("This function has been renamed, use match_coordinates instead.")
+    return match_coordinates(*args, **kwargs)
+
+def match_coordinates(coords, coords_to_assign, distance="euclidean",
                        threshold=NEAREST_NEIGHBOR_THRESHOLD, **kwargs):
     """To each coordinate in `coords`, assign a matching coordinate in `coords_to_assign`
 
@@ -1054,6 +1066,71 @@ def assign_coordinates(coords, coords_to_assign, distance="euclidean",
             assigned_idx[not_assigned_idx_mask] = nearest_neighbor_funcs[distance](
                 coords_to_assign, coords[not_assigned_idx_mask], threshold, **kwargs)
     return assigned_idx
+
+def match_centroids(coord_gdf, centroids, distance='euclidean',
+                    threshold=NEAREST_NEIGHBOR_THRESHOLD):
+    """Assign to each gdf coordinate point its closest centroids's coordinate.
+    If disatances > threshold in points' distances, -1 is returned.
+    If centroids are in a raster and coordinate point is outside of it ``-1`` is assigned
+
+    Parameters
+    ----------
+    coord_gdf : gpd.GeoDataFrame
+        GeoDataframe with defined latitude/longitude column and crs
+    centroids : Centroids
+        (Hazard) centroids to match (as raster or vector centroids).
+    distance : str, optional
+        Distance to use in case of vector centroids.
+        Possible values are "euclidean", "haversine" and "approx".
+        Default: "euclidean"
+    threshold : float, optional
+        If the distance (in km) to the nearest neighbor exceeds `threshold`,
+        the index `-1` is assigned.
+        Set `threshold` to 0, to disable nearest neighbor matching.
+        Default: ``NEAREST_NEIGHBOR_THRESHOLD`` (100km)
+
+    See Also
+    --------
+    climada.util.coordinates.match_grid_points: method to associate centroids to
+        coordinate points when centroids is a raster
+    climada.util.coordinates.match_coordinates: method to associate centroids to
+        coordinate points
+
+    Notes
+    -----
+    The default order of use is:
+
+        1. if centroid raster is defined, assign the closest raster point
+        to each gdf coordinate point.
+        2. if no raster, assign centroids to the nearest neighbor using
+        euclidian metric
+
+    Both cases can introduce innacuracies for coordinates in lat/lon
+    coordinates as distances in degrees differ from distances in meters
+    on the Earth surface, in particular for higher latitude and distances
+    larger than 100km. If more accuracy is needed, please use 'haversine'
+    distance metric. This however is slower for (quasi-)gridded data,
+    and works only for non-gridded data.
+    """
+
+    try:
+        if not equal_crs(coord_gdf.crs, centroids.crs):
+            raise ValueError('Set hazard and GeoDataFrame to same CRS first!')
+    except AttributeError:
+        # If the coord_gdf has no crs defined (or no valid geometry column),
+        # no error is raised and it is assumed that the user set the crs correctly
+        pass
+
+    if centroids.meta:
+        assigned = match_grid_points(
+            coord_gdf.longitude.values, coord_gdf.latitude.values,
+            centroids.meta['width'], centroids.meta['height'],
+            centroids.meta['transform'])
+    else:
+        assigned = match_coordinates(
+            np.stack([coord_gdf.latitude.values, coord_gdf.longitude.values], axis=1),
+            centroids.coord, distance=distance, threshold=threshold)
+    return assigned
 
 @numba.njit
 def _dist_sqr_approx(lats1, lons1, cos_lats1, lats2, lons2):
@@ -1490,9 +1567,8 @@ def get_admin1_info(country_names):
     ----------
     country_names : list or str
         string or list with strings, either ISO code or names of countries, e.g.:
-        ['ZWE', 'GBR', 'VNM', 'UZB', 'Kenya', '051']
-        For example, for Armenia, the following inputs work:
-            'Armenia', 'ARM', 'AM', '051', 51
+        ``['ZWE', 'GBR', 'VNM', 'UZB', 'Kenya', '051']`` For example, for Armenia, all of the
+        following inputs work: ``'Armenia', 'ARM', 'AM', '051', 51``
 
     Returns
     -------
@@ -1549,11 +1625,9 @@ def get_admin1_geometries(countries):
     Parameters
     ----------
     countries : list or str or int
-        string or list containing strings, either ISO3 code or ISO2 code or names
-        names of countries, e.g.:
-        ['ZWE', 'GBR', 'VNM', 'UZB', 'Kenya', '051']
-        For example, for Armenia, the following inputs work:
-            'Armenia', 'ARM', 'AM', '051', 51
+        string or list with strings, either ISO code or names of countries, e.g.:
+        ``['ZWE', 'GBR', 'VNM', 'UZB', 'Kenya', '051']`` For example, for Armenia, all of the
+        following inputs work: ``'Armenia', 'ARM', 'AM', '051', 51``
 
     Returns
     -------
@@ -2565,7 +2639,8 @@ def align_raster_data(source, src_crs, src_transform, dst_crs=None, dst_resoluti
     dst_transform, dst_shape = subraster_from_bounds(global_transform, dst_bounds)
 
     destination = np.zeros(dst_shape, dtype=source.dtype)
-    rasterio.warp.reproject(source=source,
+    try:
+        rasterio.warp.reproject(source=source,
                             destination=destination,
                             src_transform=src_transform,
                             src_crs=src_crs,
@@ -2573,6 +2648,12 @@ def align_raster_data(source, src_crs, src_transform, dst_crs=None, dst_resoluti
                             dst_crs=dst_crs,
                             resampling=resampling,
                             **kwargs)
+    except Exception as raster_exc:
+        # rasterio doesn't expose all of their error classes
+        # in particular: rasterio._err.CPLE_AppDefinedError
+        # so we transform the exception to something that can be excepted
+        # e.g. in litpop._get_litpop_single_polygon
+        raise ValueError(raster_exc) from raster_exc
 
     if conserve == 'mean':
         destination *= source.mean() / destination.mean()

@@ -50,6 +50,21 @@ class Config():
     Like this it's possible to refer to e.g. test files in the climada sources.
     """
 
+    def __getattribute__(self, __name):
+        # the only reason for overriding __getattribute__: better error messages in case a
+        # configuration value is asked for but never defined in any of the possible config files
+        try:
+            return super().__getattribute__(__name)
+        except AttributeError:
+            conf_files = [Path(_find_in_parents(conf_dir, CONFIG_NAME))
+                          if _find_in_parents(conf_dir, CONFIG_NAME)
+                          else conf_dir / CONFIG_NAME
+                          for conf_dir in CONFIG_DIRS[::-1]]
+            raise AttributeError(  # pylint: disable=raise-missing-from
+                f"there is no '{__name}' configured for '{super().__getattribute__('_name')}'."
+                f" check your config files: {conf_files}"
+            )
+
     def __str__(self):
         # pylint: disable=bare-except,multiple-statements,too-complex
         try: return self.str()
@@ -63,24 +78,29 @@ class Config():
         try: return str(self.list())
         except: pass
         return '{{{}}}'.format(", ".join([
-            f'{k}: {v}' for (k, v) in self.__dict__.items() if not k == '_root'
+            f'{k}: {v}' for (k, v) in self.__dict__.items() if not k in {'_name', '_root'}
         ]))
 
     def __repr__(self):
         return self.__str__()
 
-    def __init__(self, val=None, root=None):
+    def __init__(self, name=None, val=None, root=None):
         """
         Parameters
         ----------
+        name : str, optional
+            the name of the configuration, used only for providing sensible error messages.
+            Default: None
         root : Config, optional
             the top Config object, required for self referencing str objects,
             if None, it is pointing to self, otherwise it's passed from containing to
             contained.
+            Default: None
         val : [float, int, bool, str, list], optional
-            the value of the Config in case it's basic, by default None,
-            when a dictionary like object is created
+            the value of the Config in case it's basic, when a dictionary like object is created
+            Default: None
         """
+        self._name = name
         if val is not None:
             self._val = val
         if root is None:
@@ -255,29 +275,29 @@ class Config():
         return Path(*parts)
 
     @classmethod
-    def _objectify_dict(cls, dct, root):
+    def _objectify_dict(cls, name, dct, root):
         # pylint: disable=protected-access
-        obj = Config(root=root)
+        obj = Config(name=name, root=root)
         for key, val in dct.items():
             if val.__class__ is dict:
-                obj.__setattr__(key, cls._objectify_dict(val, obj._root))
+                obj.__setattr__(key, cls._objectify_dict(name=key, dct=val, root=obj._root))
             elif val.__class__ is list:
-                obj.__setattr__(key, cls._objectify_list(val, obj._root))
+                obj.__setattr__(key, cls._objectify_list(name=key, lst=val, root=obj._root))
             else:
-                obj.__setattr__(key, Config(val, root=obj._root))
+                obj.__setattr__(key, Config(name=key, val=val, root=obj._root))
         return obj
 
     @classmethod
-    def _objectify_list(cls, lst, root):
+    def _objectify_list(cls, name, lst, root):
         objs = list()
         for item in lst:
             if item.__class__ is dict:
-                objs.append(cls._objectify_dict(item, root))
+                objs.append(cls._objectify_dict(name, item, root))
             elif item.__class__ is list:
-                objs.append(cls._objectify_list(item, root))
+                objs.append(cls._objectify_list(name, item, root))
             else:
-                objs.append(Config(item, root=root))
-        return Config(objs, root)
+                objs.append(Config(name=name, val=item, root=root))
+        return Config(name=name, val=objs, root=root)
 
     @classmethod
     def from_dict(cls, dct):
@@ -292,7 +312,7 @@ class Config():
         Config
             contaning the same data as the input parameter `dct`
         """
-        return cls._objectify_dict(dct, root=None)
+        return cls._objectify_dict('climada.CONFIG', dct, root=None)
 
 
 def _supersede(nested, addendum):
@@ -334,11 +354,12 @@ def _fetch_conf(directories, config_name):
 
 SOURCE_DIR = Path(__file__).absolute().parent.parent.parent
 CONFIG_NAME = 'climada.conf'
-CONFIG = Config.from_dict(_fetch_conf([
+CONFIG_DIRS = [
     Path(SOURCE_DIR, 'climada', 'conf'),  # default config from the climada repository
     Path(Path.home(), 'climada', 'conf'),  # ~/climada/conf directory
     Path(Path.home(), '.config'),  # ~/.config directory
     Path.cwd(),  # current working directory
-], CONFIG_NAME))
+]
+CONFIG = Config.from_dict(_fetch_conf(CONFIG_DIRS, CONFIG_NAME))
 Config.SOURCE_DIR = SOURCE_DIR
 LOGGER.setLevel(getattr(logging, CONFIG.log_level.str()))

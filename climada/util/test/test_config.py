@@ -61,6 +61,16 @@ class TestConfig(unittest.TestCase):
         self.assertEqual(conf.a._root, conf._root)
         self.assertEqual(conf.a.str(), 'https://host/page.domain')
 
+    def test_missing(self):
+        with self.assertRaises(AttributeError) as ve:
+            CONFIG.hazard.fire_fly.population.str()
+        self.assertIn("there is no 'fire_fly' configured for 'hazard'", str(ve.exception))
+        self.assertIn("check your config files: [", str(ve.exception))
+        
+        with self.assertRaises(AttributeError) as ve:
+            CONFIG.some_module.str()
+        self.assertIn("there is no 'some_module' configured for 'climada.CONFIG'", str(ve.exception))
+
 
 # Execute Tests
 if __name__ == "__main__":

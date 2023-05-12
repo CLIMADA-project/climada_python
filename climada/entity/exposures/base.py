@@ -83,7 +83,7 @@ class Exposures():
 
     Attributes
     ----------
-    tag : Tag
+    tag : climada.entity.tag.Tag
         metada - information about the source data
     ref_year : int
         metada - reference year
@@ -93,14 +93,12 @@ class Exposures():
         latitude
     longitude : pd.Series
         longitude
-    crs : dict or crs
-        CRS information inherent to GeoDataFrame.
     value : pd.Series
         a value for each exposure
-    impf_ : pd.Series, optional
+    impf_SUFFIX : pd.Series, optional
         e.g. impf_TC. impact functions id for hazard TC.
         There might be different hazards defined: impf_TC, impf_FL, ...
-        If not provided, set to default 'impf_' with ids 1 in check().
+        If not provided, set to default ``impf_`` with ids 1 in check().
     geometry : pd.Series, optional
         geometry of type Point of each instance.
         Computed in method set_geometry_points().
@@ -117,7 +115,7 @@ class Exposures():
         category id for each exposure
     region_id : pd.Series, optional
         region id for each exposure
-    centr_ : pd.Series, optional
+    centr_SUFFIX : pd.Series, optional
         e.g. centr_TC. centroids index for hazard
         TC. There might be different hazards defined: centr_TC, centr_FL, ...
         Computed in method assign_centroids().
@@ -229,8 +227,8 @@ class Exposures():
         """Check Exposures consistency.
 
         Reports missing columns in log messages.
-        If no impf_* column is present in the dataframe, a default column 'impf_' is added with
-        default impact function id 1.
+        If no ``impf_*`` column is present in the dataframe, a default column ``impf_`` is added
+        with default impact function id 1.
         """
         # mandatory columns
         for var in self.vars_oblig:
@@ -338,10 +336,11 @@ class Exposures():
         -------
         str
             a column name, the first of the following that is present in the exposures' dataframe:
-            - impf_[haz_type]
-            - if_[haz_type]
-            - impf_
-            - if_
+
+            - ``impf_[haz_type]``
+            - ``if_[haz_type]``
+            - ``impf_``
+            - ``if_``
 
         Raises
         ------
@@ -370,8 +369,14 @@ class Exposures():
                          threshold=u_coord.NEAREST_NEIGHBOR_THRESHOLD,
                          overwrite=True):
         """Assign for each exposure coordinate closest hazard coordinate.
-        -1 used for disatances > threshold in point distances. If raster hazard,
-        -1 used for centroids outside raster.
+        The Exposures ``gdf`` will be altered by this method. It will have an additional
+        (or modified) column named ``centr_[hazard.HAZ_TYPE]`` after the call.
+
+        Uses the utility function ``u_coord.match_centroids``. See there for details
+        and parameters.
+
+        The value -1 is used for distances larger than ``threshold`` in point distances.
+        In case of raster hazards the value -1 is used for centroids outside of the raster.
 
         Parameters
         ----------
@@ -392,23 +397,25 @@ class Exposures():
 
         See Also
         --------
-        climada.util.coordinates.assign_coordinates: method to associate centroids to
-            exposure points
-
+        climada.util.coordinates.match_grid_points: method to associate centroids to
+            exposure points when centroids is a raster
+        climada.util.coordinates.match_coordinates:
+            method to associate centroids to exposure points
         Notes
         -----
         The default order of use is:
-            1. if centroid raster is defined, assign exposures points to
-            the closest raster point.
-            2. if no raster, assign centroids to the nearest neighbor using
-            euclidian metric
+
+        1. if centroid raster is defined, assign exposures points to
+           the closest raster point.
+        2. if no raster, assign centroids to the nearest neighbor using
+           euclidian metric
+
         Both cases can introduce innacuracies for coordinates in lat/lon
         coordinates as distances in degrees differ from distances in meters
         on the Earth surface, in particular for higher latitude and distances
         larger than 100km. If more accuracy is needed, please use 'haversine'
         distance metric. This however is slower for (quasi-)gridded data,
         and works only for non-gridded data.
-
         """
         haz_type = hazard.tag.haz_type
         centr_haz = INDICATOR_CENTR + haz_type
@@ -421,18 +428,16 @@ class Exposures():
 
         LOGGER.info('Matching %s exposures with %s centroids.',
                     str(self.gdf.shape[0]), str(hazard.centroids.size))
+
         if not u_coord.equal_crs(self.crs, hazard.centroids.crs):
             raise ValueError('Set hazard and exposure to same CRS first!')
-        if hazard.centroids.meta:
-            assigned = u_coord.assign_grid_points(
-                self.gdf.longitude.values, self.gdf.latitude.values,
-                hazard.centroids.meta['width'], hazard.centroids.meta['height'],
-                hazard.centroids.meta['transform'])
-        else:
-            assigned = u_coord.assign_coordinates(
-                np.stack([self.gdf.latitude.values, self.gdf.longitude.values], axis=1),
-                hazard.centroids.coord, distance=distance, threshold=threshold)
-        self.gdf[centr_haz] = assigned
+        # Note: equal_crs is tested here, rather than within match_centroids(),
+        # because exp.gdf.crs may not be defined, but exp.crs must be defined.
+
+        assigned_centr = u_coord.match_centroids(self.gdf, hazard.centroids,
+                        distance=distance, threshold=threshold)
+        self.gdf[centr_haz] = assigned_centr
+
 
     def set_geometry_points(self, scheduler=None):
         """Set geometry attribute of GeoDataFrame with Points from latitude and
@@ -494,8 +499,6 @@ class Exposures():
         Exposures
         """
         exp = cls()
-        if 'geometry' in exp.gdf:
-            raise ValueError("there is already a geometry column defined in the GeoDataFrame")
         exp.tag = Tag()
         exp.tag.file_name = str(file_name)
         meta, value = u_coord.read_raster(file_name, [band], src_crs, window,
@@ -591,16 +594,20 @@ class Exposures():
         extend : str, optional
             extend border colorbar with arrows.
             [ 'neither' | 'both' | 'min' | 'max' ]
+            Default is 'neither'.
         axis : matplotlib.axes._subplots.AxesSubplot, optional
             axis to use
         figsize : tuple
             figure size for plt.subplots
+            Default is (9, 13).
         adapt_fontsize : bool, optional
             If set to true, the size of the fonts will be adapted to the size of the figure.
-            Otherwise the default matplotlib font size is used. Default is True.
+            Otherwise the default matplotlib font size is used.
+            Default is True.
         kwargs : optional
             arguments for hexbin matplotlib function, e.g.
-            reduce_C_function=np.average. Default: reduce_C_function=np.sum
+            `reduce_C_function=np.average`.
+            Default is `reduce_C_function=np.sum`
 
         Returns
         -------
@@ -629,8 +636,8 @@ class Exposures():
                     raster_f=lambda x: np.log10((np.fmax(x + 1, 1))),
                     label='value (log10)', scheduler=None, axis=None,
                     figsize=(9, 13), fill=True, adapt_fontsize=True, **kwargs):
-        """Generate raster from points geometry and plot it using log10 scale:
-        np.log10((np.fmax(raster+1, 1))).
+        """Generate raster from points geometry and plot it using log10 scale
+        `np.log10((np.fmax(raster+1, 1)))`.
 
         Parameters
         ----------
@@ -727,38 +734,38 @@ class Exposures():
 
     def plot_basemap(self, mask=None, ignore_zero=False, pop_name=True,
                      buffer=0.0, extend='neither', zoom=10,
-                     url=ctx.providers.Stamen.Terrain,
-                     axis=None, **kwargs):
+                     url=None, axis=None, **kwargs):
         """Scatter points over satellite image using contextily
 
-         Parameters
-         ----------
-         mask : np.array, optional
-             mask to apply to eai_exp plotted. Same
-             size of the exposures, only the selected indexes will be plot.
-         ignore_zero : bool, optional
-             flag to indicate if zero and negative
-             values are ignored in plot. Default: False
-         pop_name : bool, optional
-             add names of the populated places, by default True.
-         buffer : float, optional
-             border to add to coordinates. Default: 0.0.
-         extend : str, optional
-             extend border colorbar with arrows.
-             [ 'neither' | 'both' | 'min' | 'max' ]
-         zoom : int, optional
-             zoom coefficient used in the satellite image
-         url : str, optional
-             image source, e.g. ctx.providers.OpenStreetMap.Mapnik
-         axis : matplotlib.axes._subplots.AxesSubplot, optional
-             axis to use
-         kwargs : optional
-             arguments for scatter matplotlib function, e.g.
-             cmap='Greys'. Default: 'Wistia'
+        Parameters
+        ----------
+        mask : np.array, optional
+            mask to apply to eai_exp plotted. Same
+            size of the exposures, only the selected indexes will be plot.
+        ignore_zero : bool, optional
+            flag to indicate if zero and negative
+            values are ignored in plot. Default: False
+        pop_name : bool, optional
+            add names of the populated places, by default True.
+        buffer : float, optional
+            border to add to coordinates. Default: 0.0.
+        extend : str, optional
+            extend border colorbar with arrows.
+            [ 'neither' | 'both' | 'min' | 'max' ]
+        zoom : int, optional
+            zoom coefficient used in the satellite image
+        url : Any, optional
+            image source, e.g., ``ctx.providers.OpenStreetMap.Mapnik``.
+            Default: ``ctx.providers.Stamen.Terrain``
+        axis : matplotlib.axes._subplots.AxesSubplot, optional
+            axis to use
+        kwargs : optional
+            arguments for scatter matplotlib function, e.g.
+            cmap='Greys'. Default: 'Wistia'
 
-         Returns
-         -------
-         matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
+        Returns
+        -------
+        matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         if 'geometry' not in self.gdf:
             self.set_geometry_points()
@@ -766,7 +773,7 @@ class Exposures():
         self.to_crs(epsg=3857, inplace=True)
         axis = self.plot_scatter(mask, ignore_zero, pop_name, buffer,
                                  extend, shapes=False, axis=axis, **kwargs)
-        ctx.add_basemap(axis, zoom, url, origin='upper')
+        ctx.add_basemap(axis, zoom, source=url, origin='upper')
         axis.set_axis_off()
         self.to_crs(crs_ori, inplace=True)
         return axis
@@ -886,7 +893,7 @@ class Exposures():
     # Extends the according geopandas method
     #
     def to_crs(self, crs=None, epsg=None, inplace=False):
-        """Wrapper of the GeoDataFrame.to_crs method.
+        """Wrapper of the :py:meth:`GeoDataFrame.to_crs` method.
 
         Transform geometries to a new coordinate reference system.
         Transform all geometries in a GeoSeries to a different coordinate reference system.
@@ -925,9 +932,8 @@ class Exposures():
         return exp
 
     def plot(self, *args, **kwargs):
-        """Wrapper of the GeoDataFram.plot method"""
+        """Wrapper of the :py:meth:`GeoDataFrame.plot` method"""
         self.gdf.plot(*args, **kwargs)
-    plot.__doc__ = GeoDataFrame.plot.__doc__
 
     def copy(self, deep=True):
         """Make a copy of this Exposures object.

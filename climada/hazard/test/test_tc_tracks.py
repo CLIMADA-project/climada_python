@@ -242,34 +242,6 @@ class TestIbtracs(unittest.TestCase):
         self.assertAlmostEqual(tc_try.data[0].central_pressure.values[5], 1008, places=0)
         self.assertAlmostEqual(tc_try.data[0].central_pressure.values[-1], 1012, places=0)
 
-    def test_ibtracs_with_basin(self):
-        """Filter TCs by (genesis) basin."""
-        # South Atlantic (not usually a TC location at all)
-        tc_track = tc.TCTracks.from_ibtracs_netcdf(basin="SA")
-        self.assertEqual(tc_track.size, 3)
-
-        # the basin is not necessarily the genesis basin
-        tc_track = tc.TCTracks.from_ibtracs_netcdf(
-            year_range=(1995, 1995), basin="SP", estimate_missing=True)
-        self.assertEqual(tc_track.size, 6)
-        self.assertEqual(tc_track.data[0].basin[0], 'SP')
-        self.assertEqual(tc_track.data[5].basin[0], 'SI')
-
-        # genesis in NI
-        tc_track = tc.TCTracks.from_ibtracs_netcdf(
-            year_range=(1994, 1994), genesis_basin="NI", estimate_missing=True)
-        self.assertEqual(tc_track.size, 5)
-        for tr in tc_track.data:
-            self.assertEqual(tr.basin[0], "NI")
-
-        # genesis in EP, but crosses WP at some point
-        tc_track = tc.TCTracks.from_ibtracs_netcdf(
-            year_range=(2002, 2003), basin="WP", genesis_basin="EP")
-        self.assertEqual(tc_track.size, 3)
-        for tr in tc_track.data:
-            self.assertEqual(tr.basin[0], "EP")
-            self.assertIn("WP", tr.basin)
-
     def test_ibtracs_discard_single_points(self):
         """Check discard_single_points option"""
         passed = False
@@ -508,7 +480,7 @@ class TestIO(unittest.TestCase):
         split.set_index('sid', inplace=True)
         self.assertIsInstance(split.loc['1980052S16155'].geometry, MultiLineString)
         self.assertIsInstance(split.loc['2018079S09162'].geometry, LineString)
-        self.assertEqual(len(split.loc['1980052S16155'].geometry), 8)
+        self.assertEqual(len(split.loc['1980052S16155'].geometry.geoms), 8)
         self.assertFalse(split.loc['2018079S09162'].geometry.is_simple)
 
         nosplit = anti_track.to_geodataframe(split_lines_antimeridian=False)
@@ -621,11 +593,31 @@ class TestFuncs(unittest.TestCase):
             with self.assertRaises(ValueError, msg=msg) as _cm:
                 tc_track.equal_timestep(time_step_h=time_step_h)
 
-        # test for tracks with non-normalized longitude
+    def test_interp_track_lonnorm_pass(self):
+        """Interpolate track with non-normalized longitude to min_time_step."""
         tc_track = tc.TCTracks.from_processed_ibtracs_csv(TEST_TRACK)
         tc_track.data[0].lon.values[1] += 360
         tc_track.equal_timestep(time_step_h=1)
         np.testing.assert_array_less(tc_track.data[0].lon.values, 0)
+
+    def test_interp_track_redundancy_pass(self):
+        """Interpolate tracks that are already interpolated."""
+        tc_track = tc.TCTracks.from_processed_ibtracs_csv(TEST_TRACK)
+        tr_before = tc_track.data[0]
+        tc_track.equal_timestep(time_step_h=1)
+
+        # test for case when temporal resolution of all tracks already matches time_step_h
+        expected_warning = 'All tracks are already at the requested temporal resolution.'
+        with self.assertLogs('climada.hazard.tc_tracks', level='INFO') as cm:
+            tc_track.equal_timestep(time_step_h=1)
+        self.assertIn(expected_warning, cm.output[0])
+
+        # test for case when temporal resolution of some tracks already matches time_step_h
+        tc_track.data = [tc_track.data[0], tr_before, tc_track.data[0]]
+        expected_warning = '2 tracks are already at the requested temporal resolution.'
+        with self.assertLogs('climada.hazard.tc_tracks', level='INFO') as cm:
+            tc_track.equal_timestep(time_step_h=1)
+        self.assertIn(expected_warning, cm.output[0])
 
     def test_interp_origin_pass(self):
         """Interpolate track to min_time_step crossing lat origin"""
