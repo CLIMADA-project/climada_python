@@ -168,7 +168,7 @@ class TestNightlight(unittest.TestCase):
         night, coord_nl, fn_light = nightlight.load_nightlight_noaa()
         self.assertIsInstance(night, sparse._csr.csr_matrix)
         self.assertIn('F182013.v4c_web.stable_lights.avg_vis.tif',str(fn_light))
-        self.assertTrue(np.array_equal(np.array([[-65,NOAA_RESOLUTION_DEG],
+        self.assertTrue(np.array_equal(np.array([[-65, NOAA_RESOLUTION_DEG],
                                     [-180, NOAA_RESOLUTION_DEG]]),coord_nl))
         os.remove(SYSTEM_DIR.joinpath('F182013.v4c_web.stable_lights.avg_vis.p'))
         # With arguments
