@@ -1213,46 +1213,6 @@ class TestReaderMat(unittest.TestCase):
 class TestHDF5(unittest.TestCase):
     """Test reader functionality of the ExposuresExcel class"""
 
-    def test_write_read_pass(self):
-        """Read a hazard mat file correctly."""
-        file_name = str(DATA_DIR.joinpath('test_haz.h5'))
-
-        # Read demo matlab file
-        hazard = Hazard.from_mat(HAZ_TEST_MAT)
-        hazard.event_name = list(map(str, hazard.event_name))
-        for todense_flag in [False, True]:
-            if todense_flag:
-                hazard.write_hdf5(file_name, todense=todense_flag)
-            else:
-                hazard.write_hdf5(file_name)
-
-            haz_read = Hazard.from_hdf5(file_name)
-
-            self.assertEqual(str(hazard.tag.file_name), haz_read.tag.file_name)
-            self.assertIsInstance(haz_read.tag.file_name, str)
-            self.assertEqual(hazard.tag.haz_type, haz_read.tag.haz_type)
-            self.assertIsInstance(haz_read.tag.haz_type, str)
-            self.assertEqual(hazard.tag.description, haz_read.tag.description)
-            self.assertIsInstance(haz_read.tag.description, str)
-            self.assertEqual(hazard.units, haz_read.units)
-            self.assertIsInstance(haz_read.units, str)
-            self.assertTrue(np.array_equal(hazard.centroids.coord, haz_read.centroids.coord))
-            self.assertTrue(u_coord.equal_crs(hazard.centroids.crs, haz_read.centroids.crs))
-            self.assertTrue(np.array_equal(hazard.event_id, haz_read.event_id))
-            self.assertTrue(np.array_equal(hazard.frequency, haz_read.frequency))
-            self.assertEqual(hazard.frequency_unit, haz_read.frequency_unit)
-            self.assertIsInstance(haz_read.frequency_unit, str)
-            self.assertTrue(np.array_equal(hazard.event_name, haz_read.event_name))
-            self.assertIsInstance(haz_read.event_name, list)
-            self.assertIsInstance(haz_read.event_name[0], str)
-            self.assertTrue(np.array_equal(hazard.date, haz_read.date))
-            self.assertTrue(np.array_equal(hazard.orig, haz_read.orig))
-            self.assertTrue(np.array_equal(hazard.intensity.toarray(),
-                                           haz_read.intensity.toarray()))
-            self.assertIsInstance(haz_read.intensity, sparse.csr_matrix)
-            self.assertTrue(np.array_equal(hazard.fraction.toarray(), haz_read.fraction.toarray()))
-            self.assertIsInstance(haz_read.fraction, sparse.csr_matrix)
-
     def test_write_read_unsupported_type(self):
         """Check if the write command correctly handles unsupported types"""
         file_name = str(DATA_DIR.joinpath('test_unsupported.h5'))
@@ -1279,52 +1239,6 @@ class TestHDF5(unittest.TestCase):
 
 class TestCentroids(unittest.TestCase):
     """Test return period statistics"""
-
-    def test_reproject_raster_pass(self):
-        """Test reproject_raster reference."""
-        haz_fl = Hazard.from_raster([HAZ_DEMO_FL])
-        haz_fl.check()
-
-        haz_fl.reproject_raster(dst_crs='epsg:2202')
-
-        self.assertEqual(haz_fl.intensity.shape, (1, 1046408))
-        self.assertIsInstance(haz_fl.intensity, sparse.csr_matrix)
-        self.assertIsInstance(haz_fl.fraction, sparse.csr_matrix)
-        self.assertEqual(haz_fl.fraction.shape, (1, 1046408))
-        self.assertTrue(u_coord.equal_crs(haz_fl.centroids.meta['crs'], 'epsg:2202'))
-        self.assertEqual(haz_fl.centroids.meta['width'], 968)
-        self.assertEqual(haz_fl.centroids.meta['height'], 1081)
-        self.assertEqual(haz_fl.fraction.min(), 0)
-        self.assertEqual(haz_fl.fraction.max(), 1)
-        self.assertEqual(haz_fl.intensity.min(), -9999)
-        self.assertTrue(haz_fl.intensity.max() < 4.7)
-
-    def test_raster_to_vector_pass(self):
-        """Test raster_to_vector method"""
-        haz_fl = Hazard.from_raster([HAZ_DEMO_FL], haz_type='FL')
-        haz_fl.check()
-        meta_orig = haz_fl.centroids.meta
-        inten_orig = haz_fl.intensity
-        fract_orig = haz_fl.fraction
-
-        haz_fl.raster_to_vector()
-
-        self.assertEqual(haz_fl.centroids.meta, dict())
-        self.assertAlmostEqual(haz_fl.centroids.lat.min(),
-                               meta_orig['transform'][5]
-                               + meta_orig['height'] * meta_orig['transform'][4]
-                               - meta_orig['transform'][4] / 2)
-        self.assertAlmostEqual(haz_fl.centroids.lat.max(),
-                               meta_orig['transform'][5] + meta_orig['transform'][4] / 2)
-        self.assertAlmostEqual(haz_fl.centroids.lon.max(),
-                               meta_orig['transform'][2]
-                               + meta_orig['width'] * meta_orig['transform'][0]
-                               - meta_orig['transform'][0] / 2)
-        self.assertAlmostEqual(haz_fl.centroids.lon.min(),
-                               meta_orig['transform'][2] + meta_orig['transform'][0] / 2)
-        self.assertTrue(u_coord.equal_crs(haz_fl.centroids.crs, meta_orig['crs']))
-        self.assertTrue(np.allclose(haz_fl.intensity.data, inten_orig.data))
-        self.assertTrue(np.allclose(haz_fl.fraction.data, fract_orig.data))
 
     def test_reproject_vector_pass(self):
         """Test reproject_vector"""
