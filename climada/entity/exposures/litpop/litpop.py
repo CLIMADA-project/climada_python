@@ -1021,19 +1021,19 @@ def gridpoints_core_calc(
     # NOTE: Setting dtype will cause an error if shapes are not compatible
     data = np.asarray(data_arrays, dtype=float)
 
-    def prepare_input(input, default_value, name):
+    def prepare_input(input_data, default_value, name):
         """Prepare the offset and exposure inputs
 
         If they are ``None``, use the default values. If not, cast them to an array and
         ensure that the array has only one dimension. Finally, check if the values are
         positive.
         """
-        if input is None:
+        if input_data is None:
             return default_value
 
-        ret = np.asarray(input, dtype=float)
+        ret = np.asarray(input_data, dtype=float)
         if ret.ndim > 1:
-            raise ValueError(f"Provide {name} as 1D array or list")
+            raise ValueError(f"Provide {name} as 1D array or list of scalars")
         if np.any(ret < 0):
             raise ValueError(
                 f"{name} values < 0 are not allowed, because negative {name} "
@@ -1042,7 +1042,7 @@ def gridpoints_core_calc(
         return ret
 
     offsets = prepare_input(offsets, 0, "offsets")
-    exponents = prepare_input(exponents, 1, "offsets")
+    exponents = prepare_input(exponents, 1, "exponents")
 
     # Steps 1-3: arrays are multiplied after application of offets and exponents:
     data = data.T  # Transpose so that broadcasting over last dimension works
