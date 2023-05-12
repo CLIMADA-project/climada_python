@@ -163,35 +163,40 @@ class TestNightlight(unittest.TestCase):
         os.remove(Path(SYSTEM_DIR, 'F182013.v4c_web.stable_lights.avg_vis.p'))
 
     def test_load_nightlight_noaa(self):
-        """ Test that data is downloaded if not present in SYSTEM_DIR,
-            or not downloaded if present. Test the three outputs of the
-            function."""
+        """ Test that data is not downloaded if a .tif.gz file is present 
+            in SYSTEM_DIR. """
         
-        # path of fake .tif.gz file
-        path_fake_file = SYSTEM_DIR.joinpath('F182013.v4c_web.stable_lights.avg_vis.tif.gz')
+        # initialization 
+        sat_name = 'E99'
+        year = 2013
+        pattern = f"{sat_name}{year}.v4c_web.stable_lights.avg_vis"
+        img = f"{pattern}.tif.gz"
+        pfile = f"{pattern}.p"
+        tiffile = f"{pattern}.tif"
+        
         # create an empty image 
         image = np.zeros((100, 100), dtype=np.uint8)
         # save the image as .tif
         with io.BytesIO() as mem:
             tifffile.imwrite(mem, image)
             # compressed image to a gzip file 
-            with gzip.GzipFile(path_fake_file, 'wb') as f:
+            with gzip.GzipFile(SYSTEM_DIR.joinpath(img), 'wb') as f:
                 f.write(mem.getvalue())
 
         # using already existing file and without providing arguments
         night, coord_nl, fn_light = nightlight.load_nightlight_noaa()
         self.assertIsInstance(night, sparse._csr.csr_matrix)
-        self.assertIn('F182013.v4c_web.stable_lights.avg_vis.tif',str(fn_light))
+        self.assertIn(tiffile, str(fn_light))
         self.assertTrue(np.array_equal(np.array([[-65, NOAA_RESOLUTION_DEG],
                                     [-180, NOAA_RESOLUTION_DEG]]),coord_nl))
-        os.remove(SYSTEM_DIR.joinpath('F182013.v4c_web.stable_lights.avg_vis.p'))
+        os.remove(SYSTEM_DIR.joinpath(pfile))
     
         # with arguments
-        night, coord_nl, fn_light = nightlight.load_nightlight_noaa(ref_year = 2013, sat_name = 'F18')
+        night, coord_nl, fn_light = nightlight.load_nightlight_noaa(ref_year = year, sat_name = sat_name)
         self.assertIsInstance(night, sparse._csr.csr_matrix)
-        self.assertIn('F182013.v4c_web.stable_lights.avg_vis.tif', str(fn_light))
-        os.remove(SYSTEM_DIR.joinpath('F182013.v4c_web.stable_lights.avg_vis.p'))
-        os.remove(path_fake_file)
+        self.assertIn(tiffile, str(fn_light))
+        os.remove(SYSTEM_DIR.joinpath(pfile))
+        os.remove(SYSTEM_DIR.joinpath(img))
 
         # test raises from wrong input agruments
         with self.assertRaises(ValueError) as cm:
