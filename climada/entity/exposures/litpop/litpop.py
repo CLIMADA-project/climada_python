@@ -974,8 +974,10 @@ def reproject_input_data(data_array_list, meta_list,
     meta_out['width'] = data_out_list[-1].shape[1]
     return data_out_list, meta_out
 
-def gridpoints_core_calc(data_arrays, offsets=None, exponents=None,
-                         total_val_rescale=None):
+
+def gridpoints_core_calc(
+    data_arrays, offsets=None, exponents=None, total_val_rescale=None
+):
     """
     Combines N dense numerical arrays by point-wise multipilcation and
     optionally rescales to new total value:
@@ -1013,47 +1015,49 @@ def gridpoints_core_calc(data_arrays, offsets=None, exponents=None,
 
     Returns
     -------
-    result_array : np.array of same shape as arrays in data_arrays
+    result : np.asarray of same shape as arrays in data_arrays
         Results from calculation described above.
     """
-    # convert input data to arrays
-    # check integrity of data_array input (length and type):
-    try:
-        data_arrays = [np.array(data) for data in data_arrays]
-        if len(list({data.shape for data in data_arrays})) > 1:
-            raise ValueError("Elements in data_arrays don't agree in shape.")
-    except AttributeError as err:
-        raise TypeError("data_arrays or contained elements have wrong type.") from err
+    # Convert input data to arrays
+    # NOTE: Setting dtype will cause an error if shapes are not compatible
+    data = np.asarray(data_arrays, dtype=float)
 
-    # if None, defaults for offsets and exponents are set:
-    if offsets is None:
-        offsets = np.zeros(len(data_arrays))
-    if exponents is None:
-        exponents = np.ones(len(data_arrays))
-    if np.min(offsets) < 0:
-        raise ValueError("offset values < 0 are not allowed, because negative offset "
-                         "values produce undesired negative disaggregation values.")
-    if np.min(exponents) < 0:
-        raise ValueError("exponents < 0 are not allowed, because negative exponents "
-                         "produce 'inf' values where the initial value is 0.")
+    def prepare_input(input, default_value, name):
+        """Prepare the offset and exposure inputs
+
+        If they are ``None``, use the default values. If not, cast them to an array and
+        ensure that the array has only one dimension. Finally, check if the values are
+        positive.
+        """
+        if input is None:
+            return default_value
+
+        ret = np.asarray(input, dtype=float)
+        if ret.ndim > 1:
+            raise ValueError(f"Provide {name} as 1D array or list")
+        if np.any(ret < 0):
+            raise ValueError(
+                f"{name} values < 0 are not allowed, because negative {name} "
+                "values produce undesired negative disaggregation values."
+            )
+        return ret
+
+    offsets = prepare_input(offsets, 0, "offsets")
+    exponents = prepare_input(exponents, 1, "offsets")
+
     # Steps 1-3: arrays are multiplied after application of offets and exponents:
-    #       (arrays are converted to float to prevent ValueError:
-    #       "Integers to negative integer powers are not allowed.")
-    result_array = np.power(np.array(data_arrays[0]+offsets[0], dtype=float),
-                            exponents[0])
-    for i in np.arange(1, len(data_arrays)):
-        result_array = np.multiply(result_array,
-                                   np.power(np.array(data_arrays[i]+offsets[i], dtype=float),
-                                            exponents[i])
-                                   )
+    data = data.T  # Transpose so that broadcasting over last dimension works
+    data = (data + offsets) ** exponents
+    result = data.prod(axis=-1).T  # Transpose back
 
-    # Steps 4+5: if total value for rescaling is provided, result_array is normalized and
+    # Steps 4+5: if total value for rescaling is provided, result is normalized and
     # scaled with this total value (total_val_rescale):
     if isinstance(total_val_rescale, (float, int)):
-        return np.divide(result_array, result_array.sum()) * total_val_rescale
+        return result / result.sum() * total_val_rescale
     if total_val_rescale is not None:
         raise TypeError("total_val_rescale must be int or float.")
-    return result_array
+    return result
+
 
 # The following functions are only required if calc_admin1 is True,
 # not for core LitPop. They are maintained here mainly for backward compatibility
