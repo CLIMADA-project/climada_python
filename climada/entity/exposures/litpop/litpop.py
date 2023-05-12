@@ -460,8 +460,18 @@ class LitPop(Exposures):
         self.__dict__ = LitPop.from_shape(*args, **kwargs).__dict__
 
     @classmethod
-    def from_shape(cls, shape, total_value, res_arcsec=30, exponents=(1,1), value_unit='USD',
-                   reference_year=DEF_REF_YEAR, gpw_version=GPW_VERSION, data_dir=SYSTEM_DIR):
+    def from_shape(
+        cls,
+        shape,
+        total_value,
+        res_arcsec=30,
+        exponents=(1,1),
+        value_unit='USD',
+        region_id=None,
+        reference_year=DEF_REF_YEAR,
+        gpw_version=GPW_VERSION,
+        data_dir=SYSTEM_DIR,
+    ):
         """init LitPop exposure object for a custom shape.
         Requires user input regarding the total value to be disaggregated.
 
@@ -488,6 +498,9 @@ class LitPop(Exposures):
             Defining power with which lit (nightlights) and pop (gpw) go into LitPop.
         value_unit : str
             Unit of exposure values. The default is USD.
+        region_id : int, optional
+            The numeric ISO 3166 region associated with the shape. If ``None``, it will
+            be determined automatically (at a slight computational cost).
         reference_year : int, optional
             Reference year for data sources. Default: CONFIG.exposures.def_ref_year
         gpw_version : int, optional
@@ -512,10 +525,15 @@ class LitPop(Exposures):
                                       'GeoSeries. Loop over elements of series outside method.')
 
         tag = Tag()
-        litpop_gdf, _ = _get_litpop_single_polygon(shape, reference_year,
-                                                          res_arcsec, data_dir,
-                                                          gpw_version, exponents,
-                                                          )
+        litpop_gdf, _ = _get_litpop_single_polygon(
+            shape,
+            reference_year,
+            res_arcsec,
+            data_dir,
+            gpw_version,
+            exponents,
+            region_id=region_id,
+        )
 
         # disaggregate total value proportional to LitPop values:
         if isinstance(total_value, (float, int)):
@@ -673,8 +691,9 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
         Defining power with which lit (nightlights) and pop (gpw) go into LitPop. To get
         nightlights^3 without population count: (3, 0). To use population count alone: (0, 1).
     region_id : int, optional
-        if provided, region_id of gdf is set to value.
-        The default is None, this implies that region_id is not set.
+        if provided, region_id of gdf is set to value. The default is ``None``, in which
+        case the region is determined automatically for every location of the resulting
+        GeoDataFrame.
     verbose : bool, optional
         Enable verbose logging about the used GPW version and reference year as well as about the
         boundary case where no grid points from the GPW grid are contained in the specified
@@ -766,7 +785,9 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
     if region_id is not None: # set region_id
         gdf['region_id'] = region_id
     else:
-        gdf['region_id'] = u_coord.get_country_code(gdf.latitude, gdf.longitude)
+        gdf['region_id'] = u_coord.get_country_code(
+            gdf.latitude, gdf.longitude, gridded=True
+        )
     # remove entries outside polygon with `dropna` and return GeoDataFrame:
     return gdf.dropna(), meta_out
 
