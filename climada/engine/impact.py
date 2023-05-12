@@ -73,6 +73,8 @@ class Impact():
         ordinal 1 (ordinal format of datetime library)
     coord_exp : np.array
         exposures coordinates [lat, lon] (in degrees)
+    crs : str
+        WKT string of the impact's crs
     eai_exp : np.array
         expected impact for each exposure within a period of 1/frequency_unit
     at_event : np.array
