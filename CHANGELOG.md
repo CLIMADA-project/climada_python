@@ -30,12 +30,15 @@ Removed:
 - Added test for non-default impact function id in the `lines_polys_handler` [#676](https://github.com/CLIMADA-project/climada_python/pull/676)
 - The sigmoid and step impact functions now require the user to define the hazard type. [#675](https://github.com/CLIMADA-project/climada_python/pull/675)
 - Improved error messages produced by `ImpactCalc.impact()` in case hazard type is not found in exposures/impf_set [#691](https://github.com/CLIMADA-project/climada_python/pull/691)
+- `Exposures.affected_total_value` now takes a hazard intensity threshold as argument.  [#702](https://github.com/CLIMADA-project/climada_python/pull/702)
 
 ### Fixed
 
 - `util.lines_polys_handler` solve polygon disaggregation issue in metre-based projection [#666](https://github.com/CLIMADA-project/climada_python/pull/666)
 
 ### Deprecated
+
+- `Impact.tot_value`: Use `Exposures.affected_total_value` to compute the total value affected by a hazard intensity above a custom threshold [#702](https://github.com/CLIMADA-project/climada_python/pull/702)
 
 ### Removed
 
