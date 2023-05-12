@@ -37,7 +37,11 @@ Removed:
 
 ### Deprecated
 
+- `Centroids.from_geodataframe` and `Centroids.from_pix_bounds` [#721](https://github.com/CLIMADA-project/climada_python/pull/721)
+
 ### Removed
+
+- `Centroids.set_raster_from_pix_bounds` [#721](https://github.com/CLIMADA-project/climada_python/pull/721)
 
 ## v3.3.2
 
