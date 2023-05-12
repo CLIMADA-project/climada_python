@@ -307,7 +307,8 @@ class Centroids():
         """Create Centroids object with meta attribute according to pixel border data.
 
         .. deprecated:: 3.3
-           This method will be removed in a future version. Use
+           This method will be removed in a future version. CLIMADA will only support
+           regular grids with a constant lat/lon resolution then. Use
            :py:meth:`from_pnt_bounds` instead.
 
         Parameters
