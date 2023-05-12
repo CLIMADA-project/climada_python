@@ -181,7 +181,7 @@ Then, add the ``dev`` extra specification to the ``pip install`` command (**mind
 
 .. code-block:: shell
 
-   python -m pip install -e './[dev]'
+   python -m pip install -e "./[dev]"
 
 The CLIMADA Python package defines the following `extras <https://peps.python.org/pep-0508/#extras>`_:
 
@@ -196,7 +196,7 @@ The CLIMADA Python package defines the following `extras <https://peps.python.or
    * - ``test``
      - for running and evaluating tests
    * - ``dev``
-     - of ``doc`` and ``test``
+     - combination of ``doc`` and ``test``
 
 Install CLIMADA Petals (Optional)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
