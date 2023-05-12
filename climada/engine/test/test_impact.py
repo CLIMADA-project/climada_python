@@ -26,6 +26,7 @@ import numpy.testing as npt
 from scipy import sparse
 import h5py
 from pyproj import CRS
+from rasterio.crs import CRS as rCRS
 
 from climada.entity.tag import Tag
 from climada.hazard.tag import Tag as TagHaz
@@ -102,6 +103,12 @@ class TestImpact(unittest.TestCase):
     def test_pyproj_crs(self):
         """Check if initializing with a pyproj.CRS transforms it into a string"""
         crs = CRS.from_epsg(4326)
+        impact = Impact(crs=crs)
+        self.assertEqual(impact.crs, crs.to_wkt())
+
+    def test_rasterio_crs(self):
+        """Check if initializing with a rasterio.crs.CRS transforms it into a string"""
+        crs = rCRS.from_epsg(4326)
         impact = Impact(crs=crs)
         self.assertEqual(impact.crs, crs.to_wkt())
 
