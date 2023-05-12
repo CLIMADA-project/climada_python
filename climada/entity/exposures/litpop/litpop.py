@@ -1014,7 +1014,7 @@ def gridpoints_core_calc(
 
     Returns
     -------
-    result : np.asarray of same shape as arrays in data_arrays
+    result : np.array of same shape as arrays in data_arrays
         Results from calculation described above.
     """
     # Convert input data to arrays
