@@ -777,7 +777,7 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
     latitude = np.round(lat.flatten(), decimals=8)
     longitude = np.round(lon.flatten(), decimals=8)
     gdf = geopandas.GeoDataFrame(
-        {'value': litpop_array.flatten(), "latitude": latitude, "longitude": longitude},
+        {"value": litpop_array.flatten(), "latitude": latitude, "longitude": longitude},
         crs=meta_out['crs'],
         geometry=geopandas.points_from_xy(longitude, latitude),
     )
