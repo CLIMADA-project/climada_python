@@ -37,6 +37,7 @@ Removed:
 - Improved error messages produced by `ImpactCalc.impact()` in case hazard type is not found in exposures/impf_set [#691](https://github.com/CLIMADA-project/climada_python/pull/691)
 - Tests with long runtime were moved to integration tests in `climada/test` [#709](https://github.com/CLIMADA-project/climada_python/pull/709)
 - Use `myst-nb` for parsing Jupyter Notebooks for the documentation instead of `nbsphinx` [#712](https://github.com/CLIMADA-project/climada_python/pull/712)
+- Installation guide now recommends installing CLIMADA directly via `conda install` [#714](https://github.com/CLIMADA-project/climada_python/pull/714)
 - `Exposures.affected_total_value` now takes a hazard intensity threshold as argument. Affected values are only those for which at least one event exceeds the threshold. (previously, all exposures points with an assigned centroid were considered affected) [#702](https://github.com/CLIMADA-project/climada_python/pull/702)
 
 ### Fixed
@@ -45,9 +46,12 @@ Removed:
 
 ### Deprecated
 
+- `Centroids.from_geodataframe` and `Centroids.from_pix_bounds` [#721](https://github.com/CLIMADA-project/climada_python/pull/721)
 - `Impact.tot_value`: Use `Exposures.affected_total_value` to compute the total value affected by a hazard intensity above a custom threshold [#702](https://github.com/CLIMADA-project/climada_python/pull/702)
 
 ### Removed
+
+- `Centroids.set_raster_from_pix_bounds` [#721](https://github.com/CLIMADA-project/climada_python/pull/721)
 
 - `requirements/env_developer.yml` environment specs. Use 'extra' requirements when installing the Python package instead [#712](https://github.com/CLIMADA-project/climada_python/pull/712)
 

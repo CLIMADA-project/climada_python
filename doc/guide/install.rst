@@ -25,18 +25,6 @@ Prerequisites
   All dependencies will be downloaded from the internet.
   Do **not** use a metered, mobile connection!
 * Install `Anaconda`_, following the `installation instructions <https://docs.anaconda.com/anaconda/install/>`_ for your OS.
-* Create a **workspace directory**.
-  To make sure that your user can manipulate it without special privileges, use a subdirectory of your user/home directory.
-  Do **not** use a directory that is synchronized by cloud storage systems like OneDrive, iCloud or Polybox!
-* **Linux** users need to make sure they have ``git`` and ``curl`` installed.
-  Ubuntu and Debian users may use APT:
-
-  .. code-block:: shell
-
-     apt update
-     apt install curl git
-
-  Both commands will probably require administrator rights, which can be enabled by prepending ``sudo``.
 
 .. hint:: If you need help with the vocabulary used on this page, refer to the :ref:`Glossary <install-glossary>`.
 
@@ -62,29 +50,12 @@ Simple Instructions
 
 These instructions will install the most recent stable version of CLIMADA without cloning its repository.
 
-#. Open the command line and navigate to the workspace directory you created.
-   The command for entering a directory is ``cd``.
-   Use the following command, where you replace ``<path/to/workspace>`` with the actual path of the workspace folder:
+#. Open the command line.
+   Create a new conda environment with CLIMADA by executing
 
    .. code-block:: shell
 
-      cd <path/to/workspace>
-
-#. Download the Anaconda environment specifications for CLIMADA using ``curl``:
-
-   .. code-block:: shell
-
-      curl -o env_climada.yml https://raw.githubusercontent.com/CLIMADA-project/climada_python/main/requirements/env_climada.yml
-
-   Alternatively, download the file through your browser and place it into the workspace directory: :download:`env_climada.yml </../requirements/env_climada.yml>`
-
-#. Instruct Anaconda to create a new environment called ``climada_env`` from the specification file:
-
-   .. code-block:: shell
-
-      conda env create -n climada_env -f env_climada.yml
-
-   This might take around 5 minutes, depending on your internet connection speed and computer hardware.
+      conda create -n climada_env -c conda-forge climada
 
 #. Activate the environment:
 
@@ -94,12 +65,6 @@ These instructions will install the most recent stable version of CLIMADA withou
 
    You should now see ``(climada_env)`` appear in the beginning of your command prompt.
    This means the environment is activated.
-
-#. Download and install the stable CLIMADA version using ``pip``:
-
-   .. code-block:: shell
-
-      python -m pip install climada
 
 #. Verify that everything is installed correctly by executing a single test:
 
@@ -119,6 +84,21 @@ Advanced Instructions
 ---------------------
 
 For advanced Python users or developers of CLIMADA, we recommed cloning the CLIMADA repository and installing the package from source.
+
+#. If you are using a **Linux** OS, make sure you have ``git`` installed
+   (Windows and macOS users are good to go once Anaconda is installed).
+   On Ubuntu and Debian, you may use APT:
+
+   .. code-block:: shell
+
+      apt update
+      apt install git
+
+   Both commands will probably require administrator rights, which can be enabled by prepending ``sudo``.
+
+#. Create a **workspace directory**.
+   To make sure that your user can manipulate it without special privileges, use a subdirectory of your user/home directory.
+   Do **not** use a directory that is synchronized by cloud storage systems like OneDrive, iCloud or Polybox!
 
 #. Open the command line and navigate to the workspace directory you created using ``cd``.
    Replace ``<path/to/workspace>`` with the path of the directory that contains the workspace folder:
@@ -381,19 +361,11 @@ Updating CLIMADA
 We recommend keeping CLIMADA up-to-date.
 To update, follow the instructions based on your :ref:`installation type <install-choice>`:
 
-* **Simple Instructions:** Activate the environment and update CLIMADA using ``pip``:
+* **Simple Instructions:** Update CLIMADA using ``conda``:
 
   .. code-block:: shell
 
-     conda activate climada_env
-     python -m pip install -U climada
-
-  Then, download the latest environment specifications: :download:`env_climada.yml </../requirements/env_climada.yml>`.
-  Use them to update the existing environment:
-
-  .. code-block:: shell
-
-     conda env update -n climada_env -f env_climada.yml
+     conda update -n climada_env -c conda-forge climada
 
 * **Advanced Instructions:** Move into your local CLIMADA repository and pull the latest version of your respective branch:
 
@@ -514,7 +486,7 @@ All of these approaches can also be combined.
 `Mamba <https://mamba.readthedocs.io/en/latest/>`_ Instead of Anaconda
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-If you prefer using Mamba, you should be able to simply replace all ``conda`` commands with ``mamba``, **except** ``conda activate`` and ``conda deactivate``.
+If you prefer using Mamba, you should be able to simply replace all ``conda`` commands with ``mamba``.
 Note that we can only provide **limited support** for Mamba installations!
 
 Error: ``operation not permitted``
