@@ -244,6 +244,10 @@ class Centroids():
     def from_geodataframe(cls, gdf, geometry_alias='geom'):
         """Create Centroids instance from GeoDataFrame.
 
+        .. deprecated:: 3.3
+           This method will be removed in a future version. Pass the data you want to
+           construct the Centroids with to the constructor instead.
+
         The geometry, lat, and lon attributes are set from the GeoDataFrame.geometry attribute,
         while the columns are copied as attributes to the Centroids object in the form of
         numpy.ndarrays using pandas.Series.to_numpy. The Series dtype will thus be respected.
@@ -274,6 +278,11 @@ class Centroids():
         centr : Centroids
             Centroids with data from given GeoDataFrame
         """
+        LOGGER.warning(
+            "Centroids.from_geodataframe has been deprecated and will be removed in a "
+            "future version. Use ther default constructor instead."
+        )
+
         geometry = gdf.geometry
         lat = gdf.geometry.y.to_numpy(copy=True)
         lon = gdf.geometry.x.to_numpy(copy=True)
@@ -293,15 +302,14 @@ class Centroids():
 
         return centroids
 
-    def set_raster_from_pix_bounds(self, *args, **kwargs):
-        """This function is deprecated, use Centroids.from_pix_bounds instead."""
-        LOGGER.warning("The use of Centroids.set_raster_from_pix_bounds is deprecated. "
-                       "Use Centroids.from_pix_bounds instead.")
-        self.__dict__ = Centroids.from_pix_bounds(*args, **kwargs).__dict__
-
     @classmethod
     def from_pix_bounds(cls, xf_lat, xo_lon, d_lat, d_lon, n_lat, n_lon, crs=DEF_CRS):
         """Create Centroids object with meta attribute according to pixel border data.
+
+        .. deprecated:: 3.3
+           This method will be removed in a future version. CLIMADA will only support
+           regular grids with a constant lat/lon resolution then. Use
+           :py:meth:`from_pnt_bounds` instead.
 
         Parameters
         ----------
@@ -325,6 +333,11 @@ class Centroids():
         centr : Centroids
             Centroids with meta according to given pixel border data.
         """
+        LOGGER.warning(
+            "Centroids.from_pix_bounds has been deprecated and will be removed in a "
+            "future version. Use Centroids.from_pnt_bounds instead."
+        )
+
         meta = {
             'dtype': 'float32',
             'width': n_lon,
