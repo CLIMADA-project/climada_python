@@ -19,20 +19,21 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Tests on Black marble.
 """
 
-import unittest
+import gzip
+import io
+from pathlib import Path
 import os
 import tarfile
+from tempfile import TemporaryDirectory
+import unittest
+
 import affine
 import numpy as np
 import scipy.sparse as sparse
-import gzip
-import tifffile
-import io
-
+from PIL import Image
 from shapely.geometry import Polygon
-from pathlib import Path
-from tempfile import TemporaryDirectory
 from osgeo import gdal
+
 from climada.entity.exposures.litpop import nightlight
 from climada.util.constants import (SYSTEM_DIR, CONFIG)
 from climada.util import (files_handler, ureg)
@@ -55,7 +56,7 @@ class TestNightlight(unittest.TestCase):
     """Test litpop.nightlight"""
 
     def test_load_nasa_nl_shape_single_tile(self):
-        """ Test that the function returns a np.ndarray containing 
+        """ Test that the function returns a np.ndarray containing
             the cropped .tif image values. Test that
             just one layer is returned. """
 
@@ -66,7 +67,7 @@ class TestNightlight(unittest.TestCase):
         # Test cropped output
         out_image, meta = nightlight.load_nasa_nl_shape_single_tile(geometry = shape, path = path)
         self.assertIsInstance(out_image, np.ndarray)
-        self.assertEqual(len(out_image.shape), 2) 
+        self.assertEqual(len(out_image.shape), 2)
 
         # Test meta ouput
         self.assertEqual(meta['height'],out_image.shape[0])
@@ -83,11 +84,11 @@ class TestNightlight(unittest.TestCase):
         with self.assertLogs('climada.entity.exposures.litpop.nightlight', level='DEBUG') as cm:
             nightlight.load_nasa_nl_shape_single_tile(geometry = shape, path = path)
         self.assertIn('Read cropped BlackMarble_2016_C1_geo_gray.tif as np.ndarray.', cm.output[0])
-        
+
     def test_read_bm_files(self):
         """" Test that read_bm_files function read NASA BlackMarble GeoTiff and output
              an array and a gdal DataSet."""
-        
+
         # Download 'BlackMarble_2016_A1_geo_gray.tif' in the temporary directory and create a path
         temp_dir = TemporaryDirectory()
         urls = CONFIG.exposures.litpop.nightlights.nasa_sites.list()
@@ -117,7 +118,7 @@ class TestNightlight(unittest.TestCase):
 
     def test_download_nl_files(self):
         """ Test that BlackMarble GeoTiff files are downloaded. """
-        
+
         # Test Raises
         temp_dir = TemporaryDirectory()
         with self.assertRaises(ValueError) as cm:
@@ -151,7 +152,7 @@ class TestNightlight(unittest.TestCase):
         temp_dir.cleanup()
 
     def test_unzip_tif_to_py(self):
-        """ Test that .gz files are unzipped and read as a sparse matrix, 
+        """ Test that .gz files are unzipped and read as a sparse matrix,
             file_name is correct and logger message recorded. """
 
         path_file_tif_gz = str(Path(SYSTEM_DIR, 'F182013.v4c_web.stable_lights.avg_vis.tif.gz'))
@@ -163,24 +164,26 @@ class TestNightlight(unittest.TestCase):
         os.remove(Path(SYSTEM_DIR, 'F182013.v4c_web.stable_lights.avg_vis.p'))
 
     def test_load_nightlight_noaa(self):
-        """ Test that data is not downloaded if a .tif.gz file is present 
+        """ Test that data is not downloaded if a .tif.gz file is present
             in SYSTEM_DIR. """
-        
-        # initialization 
+
+        # initialization
         sat_name = 'E99'
         year = 2013
         pattern = f"{sat_name}{year}.v4c_web.stable_lights.avg_vis"
-        img = f"{pattern}.tif.gz"
+        gzfile = f"{pattern}.tif.gz"
         pfile = f"{pattern}.p"
         tiffile = f"{pattern}.tif"
-        
-        # create an empty image 
+
+        # create an empty image
         image = np.zeros((100, 100), dtype=np.uint8)
+        pilim = Image.fromarray(image)
+
         # save the image as .tif
         with io.BytesIO() as mem:
-            tifffile.imwrite(mem, image)
-            # compressed image to a gzip file 
-            with gzip.GzipFile(SYSTEM_DIR.joinpath(img), 'wb') as f:
+            pilim.save(mem, "tiff")
+            # compressed image to a gzip file
+            with gzip.GzipFile(SYSTEM_DIR.joinpath(gzfile), 'wb') as f:
                 f.write(mem.getvalue())
 
         # using already existing file and without providing arguments
@@ -190,36 +193,36 @@ class TestNightlight(unittest.TestCase):
         self.assertTrue(np.array_equal(np.array([[-65, NOAA_RESOLUTION_DEG],
                                     [-180, NOAA_RESOLUTION_DEG]]),coord_nl))
         os.remove(SYSTEM_DIR.joinpath(pfile))
-    
+
         # with arguments
         night, coord_nl, fn_light = nightlight.load_nightlight_noaa(ref_year = year, sat_name = sat_name)
         self.assertIsInstance(night, sparse._csr.csr_matrix)
         self.assertIn(tiffile, str(fn_light))
         os.remove(SYSTEM_DIR.joinpath(pfile))
-        os.remove(SYSTEM_DIR.joinpath(img))
+        os.remove(SYSTEM_DIR.joinpath(gzfile))
 
         # test raises from wrong input agruments
         with self.assertRaises(ValueError) as cm:
             night, coord_nl, fn_light = nightlight.load_nightlight_noaa(
                                             ref_year = 2050, sat_name = 'F150')
-        self.assertEqual('Nightlight intensities for year 2050 and satellite F150 do not exist.', 
+        self.assertEqual('Nightlight intensities for year 2050 and satellite F150 do not exist.',
                             str(cm.exception))
 
     def test_untar_noaa_stable_nighlight(self):
-        """ Testing that input .tar file is moved into SYSTEM_DIR, 
-            tif.gz file is extracted from .tar file and moved into SYSTEM_DIR, 
+        """ Testing that input .tar file is moved into SYSTEM_DIR,
+            tif.gz file is extracted from .tar file and moved into SYSTEM_DIR,
             exception are raised when no .tif.gz file is present in the tar file,
-            and the logger message is recorded if more then one .tif.gz is present in 
+            and the logger message is recorded if more then one .tif.gz is present in
             .tar file. """
 
         # Create path to .tif.gz and .csv files already existing in SYSTEM_DIR
-        path_tif_gz_1 = Path(SYSTEM_DIR, 'F182013.v4c_web.stable_lights.avg_vis.tif.gz') 
-        path_csv = Path(SYSTEM_DIR, 'GDP_TWN_IMF_WEO_data.csv')  
-        path_tar = Path(SYSTEM_DIR, 'sample.tar')  
+        path_tif_gz_1 = Path(SYSTEM_DIR, 'F182013.v4c_web.stable_lights.avg_vis.tif.gz')
+        path_csv = Path(SYSTEM_DIR, 'GDP_TWN_IMF_WEO_data.csv')
+        path_tar = Path(SYSTEM_DIR, 'sample.tar')
 
-        # Create .tar file and add .tif.gz and .csv 
+        # Create .tar file and add .tif.gz and .csv
         file_tar = tarfile.open(path_tar, "w") #create the tar file
-        file_tar.add(name = path_tif_gz_1, recursive = False, arcname = 'F182013.v4c_web.stable_lights.avg_vis.tif.gz') 
+        file_tar.add(name = path_tif_gz_1, recursive = False, arcname = 'F182013.v4c_web.stable_lights.avg_vis.tif.gz')
         file_tar.close()
 
         # Test that the files has been moved
@@ -229,9 +232,9 @@ class TestNightlight(unittest.TestCase):
         os.remove(path_tar)
 
         # Put no .tif.gz file in .tar file and check raises
-        path_tar = Path(SYSTEM_DIR, 'sample.tar') 
+        path_tar = Path(SYSTEM_DIR, 'sample.tar')
         file_tar = tarfile.open(path_tar, "w") #create the tar file
-        file_tar.add(name = path_csv, recursive = False, arcname ='GDP_TWN_IMF_WEO_data.csv' ) 
+        file_tar.add(name = path_csv, recursive = False, arcname ='GDP_TWN_IMF_WEO_data.csv' )
         file_tar.close()
         with self.assertRaises(ValueError) as cm:
             nightlight.untar_noaa_stable_nightlight(path_tar)
@@ -239,10 +242,10 @@ class TestNightlight(unittest.TestCase):
                             f'in file {path_tar}',str(cm.exception))
         os.remove(path_tar)
 
-        # Test logger with having two .tif.gz file in .tar file  
+        # Test logger with having two .tif.gz file in .tar file
         file_tar = tarfile.open(path_tar, "w") #create the tar file
-        file_tar.add(name = path_tif_gz_1, recursive = False, arcname = 'F182013.v4c_web.stable_lights.avg_vis.tif.gz' ) 
-        file_tar.add(name = path_tif_gz_1, recursive = False, arcname = 'F182013.v4c_web.stable_lights.avg_vis.tif.gz' ) 
+        file_tar.add(name = path_tif_gz_1, recursive = False, arcname = 'F182013.v4c_web.stable_lights.avg_vis.tif.gz' )
+        file_tar.add(name = path_tif_gz_1, recursive = False, arcname = 'F182013.v4c_web.stable_lights.avg_vis.tif.gz' )
         file_tar.close()
         with self.assertLogs('climada.entity.exposures.litpop.nightlight', level = 'WARNING') as cm:
             nightlight.untar_noaa_stable_nightlight(path_tar)
