@@ -80,8 +80,6 @@ class Impact():
         frequency of event
     frequency_unit : str
         frequency unit used (given by hazard), default is '1/year'
-    tot_value : float
-        total exposure value affected
     aai_agg : float
         average impact within a period of 1/frequency_unit (aggregated)
     unit : str
@@ -154,7 +152,7 @@ class Impact():
         self.at_event = np.array([], float) if at_event is None else at_event
         self.frequency = np.array([],float) if frequency is None else frequency
         self.frequency_unit = frequency_unit
-        self.tot_value = tot_value
+        self._tot_value = tot_value
         self.aai_agg = aai_agg
         self.unit = unit
 
@@ -246,7 +244,7 @@ class Impact():
                                  axis=1),
             crs = exposures.crs,
             unit = exposures.value_unit,
-            tot_value = exposures.affected_total_value(hazard),
+            tot_value = exposures.centroids_total_value(hazard),
             eai_exp = eai_exp,
             at_event = at_event,
             aai_agg = aai_agg,
@@ -256,6 +254,29 @@ class Impact():
                    'haz': hazard.tag
                    }
             )
+
+    @property
+    def tot_value(self):
+        """Return the total exposure value close to a hazard
+
+        .. deprecated:: 3.3
+           Use :py:meth:`climada.entity.exposures.base.Exposures.affected_total_value`
+           instead.
+        """
+        LOGGER.warning("The Impact.tot_value attribute is deprecated."
+                       "Use Exposures.affected_total_value to calculate the affected "
+                       "total exposure value based on a specific hazard intensity "
+                       "threshold")
+        return self._tot_value
+
+    @tot_value.setter
+    def tot_value(self, value):
+        """Set the total exposure value close to a hazard"""
+        LOGGER.warning("The Impact.tot_value attribute is deprecated."
+                       "Use Exposures.affected_total_value to calculate the affected "
+                       "total exposure value based on a specific hazard intensity "
+                       "threshold")
+        self._tot_value = value
 
     def transfer_risk(self, attachment, cover):
         """Compute the risk transfer for the full portfolio. This is the risk
@@ -860,7 +881,7 @@ class Impact():
                          [self.tag['haz'].description]],
                         [[self.tag['exp'].file_name], [self.tag['exp'].description]],
                         [[self.tag['impf_set'].file_name], [self.tag['impf_set'].description]],
-                        [self.unit], [self.tot_value], [self.aai_agg],
+                        [self.unit], [self._tot_value], [self.aai_agg],
                         self.event_id, self.event_name, self.date,
                         self.frequency, [self.frequency_unit], self.at_event,
                         self.eai_exp, self.coord_exp[:, 0], self.coord_exp[:, 1],
@@ -901,7 +922,7 @@ class Impact():
         data = [str(self.tag['impf_set'].file_name), str(self.tag['impf_set'].description)]
         write_col(2, imp_ws, data)
         write_col(3, imp_ws, [self.unit])
-        write_col(4, imp_ws, [self.tot_value])
+        write_col(4, imp_ws, [self._tot_value])
         write_col(5, imp_ws, [self.aai_agg])
         write_col(6, imp_ws, self.event_id)
         write_col(7, imp_ws, self.event_name)
@@ -1030,8 +1051,9 @@ class Impact():
         with h5py.File(file_path, "w") as file:
 
             # Now write all attributes
+            # NOTE: Remove leading underscore to write '_tot_value' as regular attribute
             for name, value in self.__dict__.items():
-                write(file, name, value)
+                write(file, name.lstrip("_"), value)
 
     def write_sparse_csr(self, file_name):
         """Write imp_mat matrix in numpy's npz format."""
