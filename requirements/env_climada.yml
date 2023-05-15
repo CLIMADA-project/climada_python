@@ -41,7 +41,3 @@ dependencies:
   - xarray>=2023.3
   - xlrd>=2.0
   - xlsxwriter>=3.0
-  - pip:
-    - deprecation>=2.1
-    - overpy>=0.6
-    - peewee>=3.16
