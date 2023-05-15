@@ -1066,7 +1066,8 @@ class Exposures():
         -------
         float
             Sum of value of all exposures points for which
-            a centroids is assigned
+            a centroids is assigned and that have at least one
+            event intensity above threshold.
 
         """
         assigned_centroids = self.gdf[hazard.centr_exp_col]
