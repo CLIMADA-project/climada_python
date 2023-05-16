@@ -42,7 +42,7 @@ import xlsxwriter
 from tqdm import tqdm
 import h5py
 from pyproj import CRS as pyprojCRS
-from rasterio.crs import CRS as rasterioCRS
+from rasterio.crs import CRS as rasterioCRS  # pylint: disable=no-name-in-module
 
 from climada.entity import Exposures, Tag
 from climada.hazard import Tag as TagHaz
