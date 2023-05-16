@@ -39,7 +39,7 @@ Removed:
 - Use `myst-nb` for parsing Jupyter Notebooks for the documentation instead of `nbsphinx` [#712](https://github.com/CLIMADA-project/climada_python/pull/712)
 - Installation guide now recommends installing CLIMADA directly via `conda install` [#714](https://github.com/CLIMADA-project/climada_python/pull/714)
 - `Exposures.affected_total_value` now takes a hazard intensity threshold as argument. Affected values are only those for which at least one event exceeds the threshold. (previously, all exposures points with an assigned centroid were considered affected) [#702](https://github.com/CLIMADA-project/climada_python/pull/702)
-- Users can opt-out of the climada specific logging definitions and freely configure logging to their will, by setting the config value `logging.climada_style` to `false`.
+- Users can opt-out of the climada specific logging definitions and freely configure logging to their will, by setting the config value `logging.climada_style` to `false`. [#724](https://github.com/CLIMADA-project/climada_python/pull/724)
 
 ### Fixed
 
