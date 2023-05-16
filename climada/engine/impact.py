@@ -41,6 +41,8 @@ import pandas as pd
 import xlsxwriter
 from tqdm import tqdm
 import h5py
+from pyproj import CRS as pyprojCRS
+from rasterio.crs import CRS as rasterioCRS  # pylint: disable=no-name-in-module
 
 from climada.entity import Exposures, Tag
 from climada.hazard import Tag as TagHaz
@@ -72,6 +74,8 @@ class Impact():
         ordinal 1 (ordinal format of datetime library)
     coord_exp : np.array
         exposures coordinates [lat, lon] (in degrees)
+    crs : str
+        WKT string of the impact's crs
     eai_exp : np.array
         expected impact for each exposure within a period of 1/frequency_unit
     at_event : np.array
@@ -124,7 +128,8 @@ class Impact():
         coord_exp : np.array, optional
             exposures coordinates [lat, lon] (in degrees)
         crs : Any, optional
-            coordinate reference system
+            Coordinate reference system. CRS instances from ``pyproj`` and ``rasterio``
+            will be transformed into WKT. Other types are not handled explicitly.
         eai_exp : np.array, optional
             expected impact for each exposure within a period of 1/frequency_unit
         at_event : np.array, optional
@@ -147,7 +152,7 @@ class Impact():
         self.event_name = [] if event_name is None else event_name
         self.date = np.array([], int) if date is None else date
         self.coord_exp = np.array([], float) if coord_exp is None else coord_exp
-        self.crs = crs
+        self.crs = crs.to_wkt() if isinstance(crs, (pyprojCRS, rasterioCRS)) else crs
         self.eai_exp = np.array([], float) if eai_exp is None else eai_exp
         self.at_event = np.array([], float) if at_event is None else at_event
         self.frequency = np.array([],float) if frequency is None else frequency
