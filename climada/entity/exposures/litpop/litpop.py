@@ -499,8 +499,11 @@ class LitPop(Exposures):
         value_unit : str
             Unit of exposure values. The default is USD.
         region_id : int, optional
-            The numeric ISO 3166 region associated with the shape. If ``None``, it will
-            be determined automatically (at a slight computational cost).
+            The numeric ISO 3166 region associated with the shape. If set to a value,
+            this single value will be set for every coordinate in the ``GeoDataFrame``
+            of the resulting ``LitPop`` instance. If ``None`` (default), the region ID
+            for every coordinate will be determined automatically (at a slight
+            computational cost).
         reference_year : int, optional
             Reference year for data sources. Default: CONFIG.exposures.def_ref_year
         gpw_version : int, optional
@@ -532,7 +535,7 @@ class LitPop(Exposures):
             data_dir,
             gpw_version,
             exponents,
-            region_id=region_id,
+            region_id
         )
 
         # disaggregate total value proportional to LitPop values:
@@ -1031,15 +1034,15 @@ def gridpoints_core_calc(
         if input_data is None:
             return default_value
 
-        ret = np.asarray(input_data, dtype=float)
-        if ret.ndim > 1:
+        array = np.asarray(input_data, dtype=float)
+        if array.ndim > 1:
             raise ValueError(f"Provide {name} as 1D array or list of scalars")
-        if np.any(ret < 0):
+        if np.any(array < 0):
             raise ValueError(
                 f"{name} values < 0 are not allowed, because negative {name} "
                 "values produce undesired negative disaggregation values."
             )
-        return ret
+        return array
 
     offsets = prepare_input(offsets, 0, "offsets")
     exponents = prepare_input(exponents, 1, "exponents")
