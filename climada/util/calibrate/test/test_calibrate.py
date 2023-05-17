@@ -13,7 +13,7 @@ from scipy.optimize import OptimizeResult
 from climada.entity import Exposures, ImpactFuncSet
 from climada.hazard import Hazard, Centroids
 
-from climada.util.calibrate.impact_func import Input, ScipyMinimizeOptimizer
+from climada.util.calibrate.impact_func import Input, ScipyMinimizeOptimizer, BayesianOptimizer
 
 
 def hazard():
@@ -132,11 +132,10 @@ class TestInputPostInit(unittest.TestCase):
         self.assertNotIn("3", str(cm.exception))
 
 
-class TestScipyMinimizeOptimizer(unittest.TestCase):
-    """Tests for the optimizer based on scipy.optimize.minimize"""
-
+class TestOptimizer(unittest.TestCase):
+    """Base class for testing optimizers. Creates an input mock"""
     def setUp(self):
-        """Mock the input and create the optimizer"""
+        """Mock the input"""
         self.input = MagicMock(
             spec_set=Input(
                 hazard=create_autospec(Hazard, instance=True),
@@ -147,6 +146,14 @@ class TestScipyMinimizeOptimizer(unittest.TestCase):
                 align=False,
             )
         )
+
+
+class TestScipyMinimizeOptimizer(TestOptimizer):
+    """Tests for the optimizer based on scipy.optimize.minimize"""
+
+    def setUp(self):
+        """Create the input and optimizer"""
+        super().setUp()
         self.optimizer = ScipyMinimizeOptimizer(self.input)
 
     @patch("climada.util.calibrate.impact_func.ImpactCalc", autospec=True)
@@ -230,6 +237,31 @@ class TestScipyMinimizeOptimizer(unittest.TestCase):
         minimize_mock.assert_called_once()
         assert_bounds_in_call(bounds=[None, "a", (1, 2)])
 
+
+class TestBayesianOptimizer(TestOptimizer):
+    """Tests for the optimizer based on bayes_opt.BayesianOptimization"""
+
+    def setUp(self):
+        """Create the input and optimizer"""
+        super().setUp()
+        self.optimizer = BayesianOptimizer(self.input)
+    
+    @patch("climada.util.calibrate.impact_func.ImpactCalc", autospec=True)
+    def test_kwargs_to_impact_func_gen(self, _):
+        """Test transform of minimize func arguments to impact_func_gen arguments
+
+        We test the method '_kwargs_to_impact_func_gen' through 'run' because it is
+        private.
+        """
+        # Create stubs
+        self.input.bounds = {"x_2": (0, 1), "x 1": (1, 2)}
+        self.input.cost_func.return_value = 1.0
+
+        # Call 'run'
+        self.optimizer.run(init_points=2, n_iter=1)
+
+        # Check call to '_kwargs_to_impact_func_gen'
+        self.input.impact_func_gen.assert_any_call(**self.input.bounds)
 
 # Execute Tests
 if __name__ == "__main__":

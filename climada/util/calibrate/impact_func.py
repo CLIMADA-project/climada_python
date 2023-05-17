@@ -28,6 +28,7 @@ def cost_func_rmse(
     return np.sqrt(np.mean(((impact_proc(impact) - data) ** 2).to_numpy()))
 
 
+# TODO: haz_type has to be set from outside!
 def impf_step_generator(threshold: Number, paa: Number) -> ImpactFuncSet:
     return ImpactFuncSet(
         [
@@ -294,14 +295,21 @@ class BayesianOptimizer(Optimizer):
         self, verbose, random_state, allow_duplicate_points, bayes_opt_kwds
     ):
         """Create optimizer"""
+        if bayes_opt_kwds is None:
+            bayes_opt_kwds = {}
+
         self.optimizer = BayesianOptimization(
-            f=lambda **kwargs: self._opt_func(**kwargs),
+            f=self._opt_func,
             pbounds=self.input.bounds,
             verbose=verbose,
             random_state=random_state,
             allow_duplicate_points=allow_duplicate_points,
             **bayes_opt_kwds,
         )
+    
+    def _target_func(self, impact: Impact, data: pd.DataFrame) -> Number:
+        """Invert the cost function because BayesianOptimization maximizes the target"""
+        return 1 / self.input.cost_func(impact, data)
 
     def run(self, **opt_kwargs):
         """Execute the optimization"""
