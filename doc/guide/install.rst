@@ -456,13 +456,13 @@ After **each** of the following steps, check if the problem is solved, and only 
 Logging Configuration
 ^^^^^^^^^^^^^^^^^^^^^
 
-Climada makes use of the standard `logging <https://docs.python.org/3/howto/logging.html>` package.
+Climada makes use of the standard `logging <https://docs.python.org/3/howto/logging.html>`_ package.
 By default, the "climada"-``Logger`` is detached from ``logging.root``, logging to `stdout` with
 the level set to ``WARNING``.
 
 If you prefer another logging configuration, e.g., for using Climada embedded in another application,
 you can opt out of the default pre-configuration by setting the config value for
-``logging.climada_style`` to ``false``` in the :doc:`configuration file <Guide_Configuration>`
+``logging.climada_style`` to ``false`` in the :doc:`configuration file <Guide_Configuration>`
 ``climada.conf``.
 
 Changing the logging level can be done in multiple ways:
