@@ -22,6 +22,7 @@ Generate synthetic tropical cyclone tracks from real ones
 import array
 import itertools
 import logging
+import warnings
 import matplotlib.cm as cm_mp
 from matplotlib.lines import Line2D
 import matplotlib.pyplot as plt
@@ -752,7 +753,7 @@ def _decay_calc_coeff(x_val, v_lf, p_lf):
     v_rel : dict
     p_rel : dict
     """
-    np.warnings.filterwarnings('ignore')
+    warnings.filterwarnings('ignore')
     v_rel = dict()
     p_rel = dict()
     for ss_scale, val_lf in v_lf.items():
@@ -930,7 +931,7 @@ def _apply_decay_coeffs(track, v_rel, p_rel, land_geom, s_rel):
             track.max_sustained_wind[land_sea:end_cor] += - r_diff
 
         # correct limits
-        np.warnings.filterwarnings('ignore')
+        warnings.filterwarnings('ignore')
         cor_p = track.central_pressure.values > track.environmental_pressure.values
         track.central_pressure[cor_p] = track.environmental_pressure[cor_p]
         track.max_sustained_wind[track.max_sustained_wind < 0] = 0
