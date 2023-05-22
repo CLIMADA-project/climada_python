@@ -49,15 +49,17 @@ def get_attributes_with_matching_dimension(obj, dims):
     list_of_attrs = []
     for attr, value in obj.__dict__.items():
 
-        try:
-
-            if isinstance(value, list):
+        if isinstance(value, list):
+            try:
                 value = np.array(value)
+            except ValueError as verr:
+                if "inhomogenous shape" in str(verr):
+                    continue
 
+        try:
             if all([dims.count(i) <= value.shape.count(i) for i in set(dims)]):
                 list_of_attrs.append(attr)
-
         except AttributeError:
-            pass
+            continue
 
     return list_of_attrs
