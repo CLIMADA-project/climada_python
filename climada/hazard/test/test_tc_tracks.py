@@ -257,7 +257,7 @@ class TestIbtracs(unittest.TestCase):
         self.assertTrue(passed)
 
     def test_ibtracs_additional_variables(self):
-        """Check discard_single_points option"""
+        """Check additional_variables option"""
         tc_track = tc.TCTracks.from_ibtracs_netcdf(
             storm_id='2017242N16333',
             additional_variables=[
