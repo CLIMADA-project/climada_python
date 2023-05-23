@@ -118,26 +118,27 @@ For advanced Python users or developers of CLIMADA, we recommed cloning the CLIM
       git checkout develop
 
 #. Create an Anaconda environment called ``climada_env`` for installing CLIMADA.
-   Use the default environment specs in ``env_climada.yml`` to create it, and update it with the ``env_developer.yml`` specs.
+   Use the default environment specs in ``env_climada.yml`` to create it.
    Then activate the environment:
 
    .. code-block:: shell
 
       conda env create -n climada_env -f requirements/env_climada.yml
-      conda env update -n climada_env -f requirements/env_developer.yml
       conda activate climada_env
 
-#. Install the local CLIMADA source files as Python package using ``pip``:
+#. Install the local CLIMADA source files as Python package using ``pip``, including additional
+   requirements for developers:
 
    .. code-block:: shell
 
-      python -m pip install -e ./
+      python -m pip install -e .[dev]
 
    .. hint::
 
-      Using a path ``./`` (referring to the path you are currently located at) will instruct ``pip`` to install the local files instead of downloading the module from the internet.
+      Using a path ``.`` (referring to the path you are currently located at) will instruct ``pip`` to install the local files instead of downloading the module from the internet.
       The ``-e`` (for "editable") option further instructs ``pip`` to link to the source files instead of copying them during installation.
       This means that any changes to the source files will have immediate effects in your environment, and re-installing the module is never required.
+      Specifying the ``[dev]`` extra requirement will instruct ``pip`` to install additional packages that are required for testing and compiling the docs.
 
 #. Verify that everything is installed correctly by executing a single test:
 
