@@ -1017,7 +1017,7 @@ def gridpoints_core_calc(
 
     Returns
     -------
-    result : np.array of same shape as arrays in data_arrays
+    np.array of same shape as arrays in data_arrays
         Results from calculation described above.
     """
     # Convert input data to arrays
@@ -1048,17 +1048,18 @@ def gridpoints_core_calc(
     exponents = prepare_input(exponents, 1, "exponents")
 
     # Steps 1-3: arrays are multiplied after application of offets and exponents:
-    data = data.T  # Transpose so that broadcasting over last dimension works
-    data = (data + offsets) ** exponents
-    result = data.prod(axis=-1).T  # Transpose back
+    # NOTE: Transpose so that broadcasting over last dimension works. Computing the
+    #       product over the last axis is also much faster. Then transpose back.
+    data = (data.T + offsets) ** exponents
+    data = data.prod(axis=-1).T
 
     # Steps 4+5: if total value for rescaling is provided, result is normalized and
     # scaled with this total value (total_val_rescale):
     if isinstance(total_val_rescale, (float, int)):
-        return result / result.sum() * total_val_rescale
+        return data / data.sum() * total_val_rescale
     if total_val_rescale is not None:
         raise TypeError("total_val_rescale must be int or float.")
-    return result
+    return data
 
 
 # The following functions are only required if calc_admin1 is True,
