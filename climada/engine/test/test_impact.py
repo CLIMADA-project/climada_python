@@ -25,6 +25,8 @@ import numpy as np
 import numpy.testing as npt
 from scipy import sparse
 import h5py
+from pyproj import CRS
+from rasterio.crs import CRS as rCRS
 
 from climada.entity.tag import Tag
 from climada.hazard.tag import Tag as TagHaz
@@ -98,6 +100,17 @@ class TestImpact(unittest.TestCase):
             np.stack([exp.gdf.latitude.values, exp.gdf.longitude.values], axis=1)
             )
 
+    def test_pyproj_crs(self):
+        """Check if initializing with a pyproj.CRS transforms it into a string"""
+        crs = CRS.from_epsg(4326)
+        impact = Impact(crs=crs)
+        self.assertEqual(impact.crs, crs.to_wkt())
+
+    def test_rasterio_crs(self):
+        """Check if initializing with a rasterio.crs.CRS transforms it into a string"""
+        crs = rCRS.from_epsg(4326)
+        impact = Impact(crs=crs)
+        self.assertEqual(impact.crs, crs.to_wkt())
 
 class TestImpactConcat(unittest.TestCase):
     """test Impact.concat"""
@@ -926,7 +939,7 @@ class TestImpactH5IO(unittest.TestCase):
             npt.assert_array_equal(file["event_name"].asstr(), impact.event_name)
             npt.assert_array_equal(file["date"], impact.date)
             npt.assert_array_equal(file["coord_exp"], impact.coord_exp)
-            self.assertEqual(file.attrs["crs"], DEF_CRS)
+            self.assertEqual(file.attrs["crs"], impact.crs)
             npt.assert_array_equal(file["eai_exp"], impact.eai_exp)
             npt.assert_array_equal(file["at_event"], impact.at_event)
             npt.assert_array_equal(file["frequency"], impact.frequency)
