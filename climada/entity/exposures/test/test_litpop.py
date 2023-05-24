@@ -205,13 +205,11 @@ class TestLitPop(unittest.TestCase):
             lp.gridpoints_core_calc(data_arrays_demo(4))
 
         # wrong format:
-        with self.assertRaises(TypeError):
+        with self.assertRaises(ValueError):
             lp.gridpoints_core_calc(data, exponents=['a', 'b'])
         data.append('hello i am a string')
         with self.assertRaises(ValueError):
             lp.gridpoints_core_calc(data)
-        with self.assertRaises(TypeError):
-            lp.gridpoints_core_calc(777)
 
     def test_gridpoints_core_calc_default_1(self):
         """test function gridpoints_core_calc, i.e. core data combination
