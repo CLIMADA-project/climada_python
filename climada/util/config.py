@@ -357,7 +357,7 @@ Config.SOURCE_DIR = SOURCE_DIR
 
 
 # set climada style logging
-if CONFIG.logging.climada_style.bool():
+if CONFIG.logging.managed.bool():
     LOGGER = logging.getLogger('climada')
     LOGGER.propagate = False
     FORMATTER = logging.Formatter(
