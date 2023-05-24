@@ -543,11 +543,11 @@ def load_nightlight_noaa(ref_year=2013, sat_name=None):
                              str(ref_year) + '*.stable_lights.avg_vis'))
     # check if file exists in SYSTEM_DIR, download if not
     if glob.glob(fn_light + ".p"):
-        fn_light = glob.glob(fn_light + ".p")[0]
+        fn_light = sorted(glob.glob(fn_light + ".p"))[0]
         with open(fn_light, 'rb') as f_nl:
             nightlight = pickle.load(f_nl)
     elif glob.glob(fn_light + ".tif.gz"):
-        fn_light = glob.glob(fn_light + ".tif.gz")[0]
+        fn_light = sorted(glob.glob(fn_light + ".tif.gz"))[0]
         fn_light, nightlight = unzip_tif_to_py(fn_light)
     else:
         # iterate over all satellites if no satellite name provided
