@@ -220,7 +220,24 @@ class Optimizer(ABC):
 
 @dataclass
 class ScipyMinimizeOptimizer(Optimizer):
-    """An optimization using scipy.optimize.minimize"""
+    """An optimization using scipy.optimize.minimize
+
+    By default, this optimizer uses the ``"trust-constr"`` method. This
+    is advertised as the most general minimization method of the ``scipy`` pacjage and
+    supports bounds and constraints on the parameters. Users are free to choose
+    any method of the catalogue, but must be aware that they might require different
+    input parameters. These can be supplied via additional keyword arguments to
+    :py:meth:`run`.
+
+    See https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html
+    for details.
+
+    Parameters
+    ----------
+    input : Input
+        The input data for this optimizer. Supported data types for
+        :py:attr:`constraint` might vary depending on the minimization method used.
+    """
 
     def __post_init__(self):
         """Create a private attribute for storing the parameter names"""
@@ -284,7 +301,47 @@ class ScipyMinimizeOptimizer(Optimizer):
 
 @dataclass
 class BayesianOptimizer(Optimizer):
-    """An optimization using bayes_opt.BayesianOptimization"""
+    """An optimization using bayes_opt.BayesianOptimization
+
+    For details on the underlying optimizer, see
+    https://github.com/bayesian-optimization/BayesianOptimization.
+
+    Parameters
+    ----------
+    input : Input
+        The input data for this optimizer. See the Notes below for input requirements.
+    verbose : int, optional
+        Verbosity of the optimizer output. Defaults to 1.
+    random_state : int, optional
+        Seed for initializing the random number generator. Defaults to 1.
+    allow_duplicate_points : bool, optional
+        Allow the optimizer to sample the same points in parameter space multiple times.
+        This may happen if the parameter space is tightly bound or constrained. Defaults
+        to ``True``.
+    bayes_opt_kwds : dict
+        Additional keyword arguments passed to the ``BayesianOptimization`` constructor.
+
+    Notes
+    -----
+    The following requirements apply to the parameters of :py:class:`Input` when using
+    this class:
+
+    bounds
+        Setting ``bounds`` in the ``Input`` is required because the optimizer first
+        "explores" the bound parameter space and then narrows its search to regions
+        where the cost function is low.
+    constraints
+        Must be an instance of ``scipy.minimize.LinearConstraint`` or
+        ``scipy.minimize.NonlinearConstraint``. See
+        https://github.com/bayesian-optimization/BayesianOptimization/blob/master/examples/constraints.ipynb
+        for further information.
+
+    Attributes
+    ----------
+    optimizer : bayes_opt.BayesianOptimization
+        The optimizer instance of this class. Will be returned by :py:meth:`run` in
+        :py:attr:`Output.result`.
+    """
 
     verbose: InitVar[int] = 1
     random_state: InitVar[int] = 1
@@ -298,6 +355,9 @@ class BayesianOptimizer(Optimizer):
         if bayes_opt_kwds is None:
             bayes_opt_kwds = {}
 
+        if self.input.bounds is None:
+            raise ValueError("Input.bounds is required for this optimizer")
+
         self.optimizer = BayesianOptimization(
             f=self._opt_func,
             pbounds=self.input.bounds,
@@ -306,13 +366,35 @@ class BayesianOptimizer(Optimizer):
             allow_duplicate_points=allow_duplicate_points,
             **bayes_opt_kwds,
         )
-    
+
     def _target_func(self, impact: Impact, data: pd.DataFrame) -> Number:
         """Invert the cost function because BayesianOptimization maximizes the target"""
         return 1 / self.input.cost_func(impact, data)
 
     def run(self, **opt_kwargs):
-        """Execute the optimization"""
+        """Execute the optimization
+
+        Implementation detail: ``BayesianOptimization`` *maximizes* a target function.
+        Therefore, this class inverts the cost function and used that as target
+        function. The cost function is still minimized.
+
+        Parameters
+        ----------
+        init_points : int, optional
+            Number of initial samples taken from the parameter space. Defaults to 10^N,
+            where N is the number of parameters.
+        n_iter : int, optional
+            Number of iteration steps after initial sampling. Defaults to 10^N, where N
+            is the number of parameters.
+        opt_kwargs
+            Further keyword arguments passed to ``BayesianOptimization.maximize``.
+
+        Returns
+        -------
+        output : Output
+            Optimization output. :py:attr:`Output.result` will be the
+            :py:attr:`optimizer` used by this class instance.
+        """
         # Retrieve parameters
         num_params = len(self.input.bounds)
         init_points = opt_kwargs.pop("init_points", 10**num_params)
