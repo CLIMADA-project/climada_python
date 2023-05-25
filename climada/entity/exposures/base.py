@@ -1081,6 +1081,11 @@ class Exposures():
         --------
         Exposures.assign_centroids : method to assign centroids.
 
+        Note
+        ----
+        The fraction attribute of the hazard is ignored. Thus, for hazards
+        with fraction defined the affected values will be overestimated.
+
         """
         self.assign_centroids(hazard=hazard, overwrite=overwrite_assigned_centroids)
         assigned_centroids = self.gdf[hazard.centr_exp_col]
