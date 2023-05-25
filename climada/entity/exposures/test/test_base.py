@@ -202,36 +202,36 @@ class TestFuncs(unittest.TestCase):
             haz_type=haz_type, centroids=cent, intensity=intensity, event_id=[1, 2]
         )
 
-        #do not reassign centroids
+        # do not reassign centroids
         tot_val = exp.affected_total_value(
             haz, threshold_affected=0, overwrite_assigned_centroids=False
-            )
+        )
         self.assertEqual(tot_val, np.sum(exp.gdf.value[[1, 2, 3, 5]]))
         tot_val = exp.affected_total_value(
             haz, threshold_affected=3, overwrite_assigned_centroids=False
-            )
+        )
         self.assertEqual(tot_val, np.sum(exp.gdf.value[[3]]))
         tot_val = exp.affected_total_value(
             haz, threshold_affected=-2, overwrite_assigned_centroids=False
-            )
+        )
         self.assertEqual(tot_val, np.sum(exp.gdf.value[[0, 1, 2, 3, 5]]))
         tot_val = exp.affected_total_value(
             haz, threshold_affected=11, overwrite_assigned_centroids=False
-            )
+        )
         self.assertEqual(tot_val, 0)
 
-        #reassign centroids (i.e. to [0, 1, 2, 3, -1, -1])
+        # reassign centroids (i.e. to [0, 1, 2, 3, -1, -1])
         tot_val = exp.affected_total_value(
             haz, threshold_affected=11, overwrite_assigned_centroids=True
-            )
+        )
         self.assertEqual(tot_val, 0)
         tot_val = exp.affected_total_value(
             haz, threshold_affected=0, overwrite_assigned_centroids=False
-            )
+        )
         self.assertEqual(tot_val, 7)
         tot_val = exp.affected_total_value(
             haz, threshold_affected=3, overwrite_assigned_centroids=False
-            )
+        )
         self.assertEqual(tot_val, 4)
 
 class TestChecker(unittest.TestCase):

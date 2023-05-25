@@ -1049,9 +1049,11 @@ class Exposures():
         return np.sum(self.gdf.value.values[nz_mask])
 
     def affected_total_value(
-        self, hazard: Hazard, threshold_affected: float = 0,
-        overwrite_assigned_centroids: bool = True
-        ):
+        self,
+        hazard: Hazard,
+        threshold_affected: float = 0,
+        overwrite_assigned_centroids: bool = True,
+    ):
         """
         Total value of the exposures that are affected by at least
         one hazard event (sum of value of all exposures points for which
@@ -1067,7 +1069,7 @@ class Exposures():
             The default is 0.
         overwrite_assigned_centroids : boolean
             Assign centroids from the hazard to the exposures and overwrite
-            exsisting ones.
+            existing ones.
             The default is True.
 
         Returns
