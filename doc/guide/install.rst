@@ -118,13 +118,12 @@ For advanced Python users or developers of CLIMADA, we recommed cloning the CLIM
       git checkout develop
 
 #. Create an Anaconda environment called ``climada_env`` for installing CLIMADA.
-   Use the default environment specs in ``env_climada.yml`` to create it, and update it with the ``env_developer.yml`` specs.
+   Use the default environment specs in ``env_climada.yml`` to create it.
    Then activate the environment:
 
    .. code-block:: shell
 
       conda env create -n climada_env -f requirements/env_climada.yml
-      conda env update -n climada_env -f requirements/env_developer.yml
       conda activate climada_env
 
 #. Install the local CLIMADA source files as Python package using ``pip``:
