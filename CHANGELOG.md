@@ -9,6 +9,9 @@ Code freeze date: YYYY-MM-DD
 ### Dependency Updates
 
 Added:
+- `pytest` [#726](https://github.com/CLIMADA-project/climada_python/pull/726)
+- `pytest-cov` [#726](https://github.com/CLIMADA-project/climada_python/pull/726)
+- `pytest-subtests` [#726](https://github.com/CLIMADA-project/climada_python/pull/726)
 
 Changed:
 
@@ -39,6 +42,7 @@ Removed:
 - Use `myst-nb` for parsing Jupyter Notebooks for the documentation instead of `nbsphinx` [#712](https://github.com/CLIMADA-project/climada_python/pull/712)
 - Installation guide now recommends installing CLIMADA directly via `conda install` [#714](https://github.com/CLIMADA-project/climada_python/pull/714)
 - `Exposures.affected_total_value` now takes a hazard intensity threshold as argument. Affected values are only those for which at least one event exceeds the threshold. (previously, all exposures points with an assigned centroid were considered affected) [#702](https://github.com/CLIMADA-project/climada_python/pull/702)
+- Use `pytest` for executing tests [#726](https://github.com/CLIMADA-project/climada_python/pull/726)
 
 ### Fixed
 
