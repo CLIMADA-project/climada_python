@@ -1048,7 +1048,12 @@ class Exposures():
         )
         return np.sum(self.gdf.value.values[nz_mask])
 
-    def affected_total_value(self, hazard: Hazard, threshold_affected: float = 0):
+    def affected_total_value(
+        self,
+        hazard: Hazard,
+        threshold_affected: float = 0,
+        overwrite_assigned_centroids: bool = True,
+    ):
         """
         Total value of the exposures that are affected by at least
         one hazard event (sum of value of all exposures points for which
@@ -1061,6 +1066,11 @@ class Exposures():
         threshold_affected : int or float
             Hazard intensity threshold above which an exposures is
             considere affected.
+            The default is 0.
+        overwrite_assigned_centroids : boolean
+            Assign centroids from the hazard to the exposures and overwrite
+            existing ones.
+            The default is True.
 
         Returns
         -------
@@ -1069,7 +1079,17 @@ class Exposures():
             a centroids is assigned and that have at least one
             event intensity above threshold.
 
+        See Also
+        --------
+        Exposures.assign_centroids : method to assign centroids.
+
+        Note
+        ----
+        The fraction attribute of the hazard is ignored. Thus, for hazards
+        with fraction defined the affected values will be overestimated.
+
         """
+        self.assign_centroids(hazard=hazard, overwrite=overwrite_assigned_centroids)
         assigned_centroids = self.gdf[hazard.centr_exp_col]
         nz_mask = (self.gdf.value.values > 0) & (assigned_centroids.values >= 0)
         cents = np.unique(assigned_centroids[nz_mask])

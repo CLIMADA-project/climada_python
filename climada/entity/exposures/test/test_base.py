@@ -190,26 +190,49 @@ class TestFuncs(unittest.TestCase):
         gdf = gpd.GeoDataFrame(
             {
                 "value": [1, 2, 3, 4, 5, 6],
-                "latitude": [1, 2, 3, 4, 5, 6],
-                "longitude": [-1, -2, -3, -4, -5, -6],
+                "latitude": [1, 2, 3, 4, 1, 0],
+                "longitude": [-1, -2, -3, -4, 0, 1],
                 "centr_" + haz_type: [0, 2, 2, 3, -1, 4],
             }
         )
         exp = Exposures(gdf, crs=4326)
         intensity = sp.sparse.csr_matrix(np.array([[0, 0, 1, 10, 2], [-1, 0, 0, 1, 2]]))
-        cent = Centroids(lat=np.array([1, 2, 3, 4]), lon=np.array([1, 2, 3, 4]))
+        cent = Centroids(lat=np.array([1, 2, 3, 4]), lon=np.array([-1, -2, -3, -4]))
         haz = Hazard(
             haz_type=haz_type, centroids=cent, intensity=intensity, event_id=[1, 2]
         )
 
-        tot_val = exp.affected_total_value(haz, threshold_affected=0)
+        # do not reassign centroids
+        tot_val = exp.affected_total_value(
+            haz, threshold_affected=0, overwrite_assigned_centroids=False
+        )
         self.assertEqual(tot_val, np.sum(exp.gdf.value[[1, 2, 3, 5]]))
-        tot_val = exp.affected_total_value(haz, threshold_affected=3)
+        tot_val = exp.affected_total_value(
+            haz, threshold_affected=3, overwrite_assigned_centroids=False
+        )
         self.assertEqual(tot_val, np.sum(exp.gdf.value[[3]]))
-        tot_val = exp.affected_total_value(haz, threshold_affected=-2)
+        tot_val = exp.affected_total_value(
+            haz, threshold_affected=-2, overwrite_assigned_centroids=False
+        )
         self.assertEqual(tot_val, np.sum(exp.gdf.value[[0, 1, 2, 3, 5]]))
-        tot_val = exp.affected_total_value(haz, threshold_affected=11)
+        tot_val = exp.affected_total_value(
+            haz, threshold_affected=11, overwrite_assigned_centroids=False
+        )
         self.assertEqual(tot_val, 0)
+
+        # reassign centroids (i.e. to [0, 1, 2, 3, -1, -1])
+        tot_val = exp.affected_total_value(
+            haz, threshold_affected=11, overwrite_assigned_centroids=True
+        )
+        self.assertEqual(tot_val, 0)
+        tot_val = exp.affected_total_value(
+            haz, threshold_affected=0, overwrite_assigned_centroids=False
+        )
+        self.assertEqual(tot_val, 7)
+        tot_val = exp.affected_total_value(
+            haz, threshold_affected=3, overwrite_assigned_centroids=False
+        )
+        self.assertEqual(tot_val, 4)
 
 class TestChecker(unittest.TestCase):
     """Test logs of check function"""
