@@ -1405,8 +1405,7 @@ class TCTracks():
             # when writing '<U*' and reading in again, xarray reads as dtype 'object'. undo this:
             for varname in track.data_vars:
                 if track[varname].dtype == "object":
-                    strlen = track[varname].str.len().max().item()
-                    track[varname] = track[varname].astype(f"<U{strlen}")
+                    track[varname] = track[varname].astype(str)
             data.append(track)
         return cls(data)
 
