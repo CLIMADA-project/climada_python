@@ -1990,7 +1990,7 @@ def read_raster(file_name, band=None, src_crs=None, window=None, geometry=None,
             else:
                 if geometry:
                     inten, trans = rasterio.mask.mask(
-                        dataset=src, 
+                        dataset=src,
                         shapes=geometry.geoms if isinstance(geometry, MultiPolygon) else geometry,
                         crop=True,
                         indexes=band
