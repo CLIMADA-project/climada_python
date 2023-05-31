@@ -715,14 +715,15 @@ class TCTracks():
                 'data_provider': provider_str,
                 'category': category[i_track],
             }
+            # automatically assign the remaining variables as attributes or data variables
             for varname in ["time_step", "basin", "name", "sid", "id_no"] + additional_variables:
                 values = track_ds[varname].data
-                dtype_kind = track_ds[varname].dtype.kind
-                if dtype_kind == "S":
-                    strlen = track_ds[varname].str.len().max().item()
-                    values = values.astype(f"<U{strlen}")
+                if track_ds[varname].dtype.kind == "S":
+                    # This converts the `bytes` (dtype "|S*") in IBTrACS to the more common `str`
+                    # objects (dtype "<U*") that we use in CLIMADA.
+                    values = values.astype(str)
                 if values.ndim == 0:
-                    attrs[varname] = (values.astype(str) if dtype_kind == "S" else values).item()
+                    attrs[varname] = values.item()
                 else:
                     data_vars[varname] = ('time', values)
             all_tracks.append(xr.Dataset(data_vars, coords=coords, attrs=attrs))
