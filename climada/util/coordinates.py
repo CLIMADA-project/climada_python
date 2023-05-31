@@ -1989,7 +1989,12 @@ def read_raster(file_name, band=None, src_crs=None, window=None, geometry=None,
                                                transform=transform, resampling=resampling)
             else:
                 if geometry:
-                    inten, trans = rasterio.mask.mask(src, geometry, crop=True, indexes=band)
+                    inten, trans = rasterio.mask.mask(
+                        dataset=src, 
+                        shapes=geometry.geoms if isinstance(geometry, MultiPolygon) else geometry,
+                        crop=True,
+                        indexes=band
+                    )
                     if dst_meta['nodata'] and np.isnan(dst_meta['nodata']):
                         inten[np.isnan(inten)] = 0
                     else:
