@@ -423,8 +423,8 @@ class Centroids():
         return self.values_from_raster_files([file_name], band=band, **kwargs)
 
     @classmethod
-    def from_raster_file(cls, file_name, src_crs=None, window=False,
-                         geometry=False, dst_crs=False, transform=None, width=None,
+    def from_raster_file(cls, file_name, src_crs=None, window=None,
+                         geometry=None, dst_crs=None, transform=None, width=None,
                          height=None, resampling=Resampling.nearest):
         """Create a new Centroids object from a raster file
 
@@ -439,8 +439,8 @@ class Centroids():
             source CRS. Provide it if error without it.
         window : rasterio.windows.Window, optional
             window to read
-        geometry : shapely.geometry, optional
-            consider pixels only in shape
+        geometry : list of shapely.geometry, optional
+            consider pixels only within these shapes
         dst_crs : crs, optional
             reproject to given crs
         transform : rasterio.Affine
@@ -462,8 +462,8 @@ class Centroids():
             transform, width, height, resampling)
         return cls(meta=meta)
 
-    def values_from_raster_files(self, file_names, band=None, src_crs=None, window=False,
-                                 geometry=False, dst_crs=False, transform=None, width=None,
+    def values_from_raster_files(self, file_names, band=None, src_crs=None, window=None,
+                                 geometry=None, dst_crs=None, transform=None, width=None,
                                  height=None, resampling=Resampling.nearest):
         """Read raster of bands and set 0 values to the masked ones.
 
@@ -480,8 +480,8 @@ class Centroids():
             source CRS. Provide it if error without it.
         window : rasterio.windows.Window, optional
             window to read
-        geometry : shapely.geometry, optional
-            consider pixels only in shape
+        geometry : list of shapely.geometry, optional
+            consider pixels only within these shapes
         dst_crs : crs, optional
             reproject to given crs
         transform : rasterio.Affine
