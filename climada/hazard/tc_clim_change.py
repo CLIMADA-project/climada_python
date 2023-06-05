@@ -37,81 +37,81 @@ def get_knutson_criterion():
     Returns
     -------
     criterion : list(dict)
-        list of the criterion dictionary for frequency and intensity change
-        per basin, per category taken from the Table 3 in Knutson et al. 2015.
+        list of the criterion dictionary for frequency change per basin, 
+        per category taken from the Table 3 in Knutson et al. 2015.
         with items 'basin' (str), 'category' (list(int)), 'year' (int),
-        'change' (float), 'variable' ('intensity' or 'frequency')
+        'change' (float)
     """
     # NA
     na = [
         {'basin': 'NA', 'category': [0, 1, 2, 3, 4, 5],
-         'year': 2100, 'change': 1, 'variable': 'frequency'},
+         'year': 2100, 'change': 1},
         {'basin': 'NA', 'category': [1, 2, 3, 4, 5],
-         'year': 2100, 'change': 1, 'variable': 'frequency'},
+         'year': 2100, 'change': 1},
         {'basin': 'NA', 'category': [3, 4, 5],
-         'year': 2100, 'change': 1, 'variable': 'frequency'},
+         'year': 2100, 'change': 1},
         {'basin': 'NA', 'category': [4, 5],
-         'year': 2100, 'change': 1, 'variable': 'frequency'},
+         'year': 2100, 'change': 1},
         ]
 
     # EP
     ep = [
         {'basin': 'EP', 'category': [0, 1, 2, 3, 4, 5],
-         'year': 2100, 'change': 1.163, 'variable': 'frequency'},
+         'year': 2100, 'change': 1.163},
         {'basin': 'EP', 'category': [1, 2, 3, 4, 5],
-         'year': 2100, 'change': 1.193, 'variable': 'frequency'},
+         'year': 2100, 'change': 1.193},
         {'basin': 'EP', 'category': [3, 4, 5],
-         'year': 2100, 'change': 1.837, 'variable': 'frequency'},
+         'year': 2100, 'change': 1.837},
         {'basin': 'EP', 'category': [4, 5],
-         'year': 2100, 'change': 3.375, 'variable': 'frequency'},
+         'year': 2100, 'change': 3.375},
         ]
 
     # WP
     wp = [
         {'basin': 'WP', 'category': [0, 1, 2, 3, 4, 5],
-         'year': 2100, 'change': 1 - 0.345, 'variable': 'frequency'},
+         'year': 2100, 'change': 1 - 0.345},
         {'basin': 'WP', 'category': [1, 2, 3, 4, 5],
-         'year': 2100, 'change': 1 - 0.316, 'variable': 'frequency'},
+         'year': 2100, 'change': 1 - 0.316},
         {'basin': 'WP', 'category': [3, 4, 5],
-         'year': 2100, 'change': 1 - 0.169, 'variable': 'frequency'},
+         'year': 2100, 'change': 1 - 0.169},
         {'basin': 'WP', 'category': [4, 5],
-         'year': 2100, 'change': 1, 'variable': 'frequency'},
+         'year': 2100, 'change': 1},
         ]
 
     # SP
     sp = [
         {'basin': 'SP', 'category': [0, 1, 2, 3, 4, 5],
-         'year': 2100, 'change': 1 - 0.366, 'variable': 'frequency'},
+         'year': 2100, 'change': 1 - 0.366},
         {'basin': 'SP', 'category': [1, 2, 3, 4, 5],
-         'year': 2100, 'change': 1 - 0.406, 'variable': 'frequency'},
+         'year': 2100, 'change': 1 - 0.406},
         {'basin': 'SP', 'category': [3, 4, 5],
-         'year': 2100, 'change': 1 - 0.506, 'variable': 'frequency'},
+         'year': 2100, 'change': 1 - 0.506},
         {'basin': 'SP', 'category': [4, 5],
-         'year': 2100, 'change': 1 - 0.583, 'variable': 'frequency'}
+         'year': 2100, 'change': 1 - 0.583}
         ]
 
     # NI
     ni = [
         {'basin': 'NI', 'category': [0, 1, 2, 3, 4, 5],
-         'year': 2100, 'change': 1, 'variable': 'frequency'},
+         'year': 2100, 'change': 1},
         {'basin': 'NI', 'category': [1, 2, 3, 4, 5],
-         'year': 2100, 'change': 1.256, 'variable': 'frequency'},
+         'year': 2100, 'change': 1.256},
         {'basin': 'NI', 'category': [3, 4, 5],
-         'year': 2100, 'change': 1, 'variable': 'frequency'},
+         'year': 2100, 'change': 1},
         {'basin': 'NI', 'category': [4, 5],
-         'year': 2100, 'change': 1, 'variable': 'frequency'}
+         'year': 2100, 'change': 1}
         ]
 
     # SI
     si = [
         {'basin': 'SI', 'category': [0, 1, 2, 3, 4, 5],
-         'year': 2100, 'change': 1 - 0.261, 'variable': 'frequency'},
+         'year': 2100, 'change': 1 - 0.261},
         {'basin': 'SI', 'category': [1, 2, 3, 4, 5],
-         'year': 2100, 'change': 1 - 0.284, 'variable': 'frequency'},
+         'year': 2100, 'change': 1 - 0.284},
         {'basin': 'SI', 'category': [3, 4, 5],
-         'year': 2100, 'change': 1, 'variable': 'frequency'},
+         'year': 2100, 'change': 1},
         {'basin': 'SI', 'category': [4, 5],
-         'year': 2100, 'change': 1, 'variable': 'frequency'},
+         'year': 2100, 'change': 1},
         ]
 
     return na + ep + wp + sp + ni + si

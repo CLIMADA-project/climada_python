@@ -608,7 +608,7 @@ class TropCyclone(Hazard):
         Returns
         -------
         tc_cc : climada.hazard.TropCyclone
-            Tropical cyclone with frequency and intensity scaled inspired by
+            Tropical cyclone with frequency scaled inspired by
             the Knutson criterion. Returns a new instance of TropCyclone.
         """
 
@@ -622,8 +622,7 @@ class TropCyclone(Hazard):
             # Apply frequency change
             freq_chg = [chg
                         for chg in chg_int_freq
-                        if (chg['variable'] == 'frequency' and
-                            chg['basin'] == basin)
+                        if chg['basin'] == basin
                         ]
             freq_chg.sort(reverse=False, key=lambda x: len(x['category']))
 
