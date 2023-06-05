@@ -52,8 +52,6 @@ def get_knutson_criterion():
          'year': 2100, 'change': 1, 'variable': 'frequency'},
         {'basin': 'NA', 'category': [4, 5],
          'year': 2100, 'change': 1, 'variable': 'frequency'},
-        {'basin': 'NA', 'category': [1, 2, 3, 4, 5],
-         'year': 2100, 'change': 1.045, 'variable': 'intensity'}
         ]
 
     # EP
@@ -66,10 +64,6 @@ def get_knutson_criterion():
          'year': 2100, 'change': 1.837, 'variable': 'frequency'},
         {'basin': 'EP', 'category': [4, 5],
          'year': 2100, 'change': 3.375, 'variable': 'frequency'},
-        {'basin': 'EP', 'category': [0],
-         'year': 2100, 'change': 1.082, 'variable': 'intensity'},
-        {'basin': 'EP', 'category': [1, 2, 3, 4, 5],
-         'year': 2100, 'change': 1.078, 'variable': 'intensity'}
         ]
 
     # WP
@@ -82,10 +76,6 @@ def get_knutson_criterion():
          'year': 2100, 'change': 1 - 0.169, 'variable': 'frequency'},
         {'basin': 'WP', 'category': [4, 5],
          'year': 2100, 'change': 1, 'variable': 'frequency'},
-        {'basin': 'WP', 'category': [0],
-         'year': 2100, 'change': 1.074, 'variable': 'intensity'},
-        {'basin': 'WP', 'category': [1, 2, 3, 4, 5],
-         'year': 2100, 'change': 1.055, 'variable': 'intensity'},
         ]
 
     # SP
@@ -122,8 +112,6 @@ def get_knutson_criterion():
          'year': 2100, 'change': 1, 'variable': 'frequency'},
         {'basin': 'SI', 'category': [4, 5],
          'year': 2100, 'change': 1, 'variable': 'frequency'},
-        {'basin': 'SI', 'category': [1, 2, 3, 4, 5],
-         'year': 2100, 'change': 1.033, 'variable': 'intensity'}
         ]
 
     return na + ep + wp + sp + ni + si
@@ -132,8 +120,8 @@ def get_knutson_criterion():
 def calc_scale_knutson(ref_year=2050, rcp_scenario=45):
     """
     Comparison 2081-2100 (i.e., late twenty-first century) and 2001-20
-    (i.e., present day). Late twenty-first century effects on intensity and
-    frequency per Saffir-Simpson-category and ocean basin is scaled to target
+    (i.e., present day). Late twenty-first century effects on frequency 
+    per Saffir-Simpson-category and ocean basin is scaled to target
     year and target RCP proportional to total radiative forcing of the
     respective RCP and year.
 
