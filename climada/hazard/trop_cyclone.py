@@ -637,7 +637,7 @@ class TropCyclone(Hazard):
                 if sel_cat_chg.any():
                     # prevent freq_scaling from becoming negative which would lead
                     # to negative frequencies
-                    freq_scaling = np.min(1 + (chg['change'] - 1) * scaling_rcp_year, 0)
+                    freq_scaling = np.max([1 + (chg['change'] - 1) * scaling_rcp_year, 0])
                     tc_cc.frequency[sel_cat_chg] *= freq_scaling
                 cat_larger_list += cat_chg_list
 
