@@ -619,19 +619,6 @@ class TropCyclone(Hazard):
 
             bas_sel = (np.array(tc_cc.basin) == basin)
 
-            # Apply intensity change
-            inten_chg = [chg
-                         for chg in chg_int_freq
-                         if (chg['variable'] == 'intensity' and
-                             chg['basin'] == basin)
-                         ]
-            for chg in inten_chg:
-                sel_cat_chg = np.isin(tc_cc.category, chg['category']) & bas_sel
-                inten_scaling = 1 + (chg['change'] - 1) * scaling_rcp_year
-                tc_cc.intensity = sparse.diags(
-                    np.where(sel_cat_chg, inten_scaling, 1)
-                    ).dot(tc_cc.intensity)
-
             # Apply frequency change
             freq_chg = [chg
                         for chg in chg_int_freq
