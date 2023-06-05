@@ -649,13 +649,11 @@ class TropCyclone(Hazard):
                                 ]
                 sel_cat_chg = np.isin(tc_cc.category, cat_chg_list) & bas_sel
                 if sel_cat_chg.any():
-                    freq_scaling = 1 + (chg['change'] - 1) * scaling_rcp_year
+                    # prevent freq_scaling from becoming negative which would lead
+                    # to negative frequencies
+                    freq_scaling = np.min(1 + (chg['change'] - 1) * scaling_rcp_year, 0)
                     tc_cc.frequency[sel_cat_chg] *= freq_scaling
                 cat_larger_list += cat_chg_list
-
-        if (tc_cc.frequency < 0).any():
-            raise ValueError("The application of the given climate scenario"
-                             "resulted in at least one negative frequency.")
 
         return tc_cc
 
