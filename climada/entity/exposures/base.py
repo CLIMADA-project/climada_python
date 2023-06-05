@@ -465,8 +465,8 @@ class Exposures():
         self.__dict__ = Exposures.from_raster(*args, **kwargs).__dict__
 
     @classmethod
-    def from_raster(cls, file_name, band=1, src_crs=None, window=False,
-                        geometry=False, dst_crs=False, transform=None,
+    def from_raster(cls, file_name, band=1, src_crs=None, window=None,
+                        geometry=None, dst_crs=None, transform=None,
                         width=None, height=None, resampling=Resampling.nearest):
         """Read raster data and set latitude, longitude, value and meta
 
@@ -481,8 +481,8 @@ class Exposures():
         window : rasterio.windows.Windows, optional
             window where data is
             extracted
-        geometry : shapely.geometry, optional
-            consider pixels only in shape
+        geometry : list of shapely.geometry, optional
+            consider pixels only within these shape
         dst_crs : crs, optional
             reproject to given crs
         transform : rasterio.Affine

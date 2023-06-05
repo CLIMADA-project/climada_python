@@ -288,8 +288,8 @@ class Hazard():
 
     @classmethod
     def from_raster(cls, files_intensity, files_fraction=None, attrs=None,
-                    band=None, haz_type=None, pool=None, src_crs=None, window=False,
-                    geometry=False, dst_crs=False, transform=None, width=None,
+                    band=None, haz_type=None, pool=None, src_crs=None, window=None,
+                    geometry=None, dst_crs=None, transform=None, width=None,
                     height=None, resampling=Resampling.nearest):
         """Create Hazard with intensity and fraction values from raster files
 
@@ -320,8 +320,8 @@ class Hazard():
         window : rasterio.windows.Windows, optional
             window where data is
             extracted
-        geometry : shapely.geometry, optional
-            consider pixels only in shape
+        geometry : list of shapely.geometry, optional
+            consider pixels only within these shapes
         dst_crs : crs, optional
             reproject to given crs
         transform : rasterio.Affine
