@@ -123,28 +123,30 @@ class TestNightLight(unittest.TestCase):
             is produced, the LOGGER messages logged and the ValueError raised. """
 
         # check logger messages by giving a to short req_file
-        with self.assertLogs('climada.entity.exposures.litpop.nightlight', level = 'WARNING') as cm:
+        with self.assertLogs('climada.entity.exposures.litpop.nightlight', level='WARNING') as cm:
             nightlight.check_nl_local_file_exists(required_files = np.array([0, 0, 1, 1]))
         self.assertIn('The parameter \'required_files\' was too short and is ignored',
                       cm.output[0])
              
         # check logger message: not all files are available 
-        with self.assertLogs('climada.entity.exposures.litpop.nightlight', level = 'DEBUG') as cm:
+        with self.assertLogs('climada.entity.exposures.litpop.nightlight', level='DEBUG') as cm:
             nightlight.check_nl_local_file_exists()
         self.assertIn('Not all satellite files available. '
                       f'Found 5 out of 8 required files in {Path(SYSTEM_DIR)}', cm.output[0])
             
-        # check logger message: no files found in checkpath 
-        with self.assertLogs('climada.entity.exposures.litpop.nightlight', level = 'INFO') as cm:
+        # check logger message: no files found in checkpath
+        check_path = Path('climada/entity/exposures')
+        with self.assertLogs('climada.entity.exposures.litpop.nightlight', level='INFO') as cm:
             # using a random path where no files are stored
-            nightlight.check_nl_local_file_exists(check_path = Path('climada/entity/exposures'))
-        self.assertIn(f'No satellite files found locally in {Path("climada/entity/exposures")}',
+            nightlight.check_nl_local_file_exists(check_path=check_path)
+        self.assertIn(f'No satellite files found locally in {check_path}',
                       cm.output[0])
       
         # test raises with wrong path
+        check_path = Path('/random/wrong/path')
         with self.assertRaises(ValueError) as cm:
-            nightlight.check_nl_local_file_exists(check_path = '/random/wrong/path')
-        self.assertEqual(f'The given path does not exist: {Path("/random/wrong/path")}',
+            nightlight.check_nl_local_file_exists(check_path=check_path)
+        self.assertEqual(f'The given path does not exist: {check_path}',
                          str(cm.exception))
 
         # test that files_exist is correct 
