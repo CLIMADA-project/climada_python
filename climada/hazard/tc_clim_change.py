@@ -45,13 +45,13 @@ def get_knutson_criterion():
     # NA
     na = [
         {'basin': 'NA', 'category': [0, 1, 2, 3, 4, 5],
-         'year': 2100, 'change': 1},
+         'year': 2100, 'change': 1 - 0.094},
         {'basin': 'NA', 'category': [1, 2, 3, 4, 5],
-         'year': 2100, 'change': 1},
+         'year': 2100, 'change': 1 - 0.175},
         {'basin': 'NA', 'category': [3, 4, 5],
-         'year': 2100, 'change': 1},
+         'year': 2100, 'change': 1.027},
         {'basin': 'NA', 'category': [4, 5],
-         'year': 2100, 'change': 1},
+         'year': 2100, 'change': 1.421},
         ]
 
     # EP
@@ -63,7 +63,7 @@ def get_knutson_criterion():
         {'basin': 'EP', 'category': [3, 4, 5],
          'year': 2100, 'change': 1.837},
         {'basin': 'EP', 'category': [4, 5],
-         'year': 2100, 'change': 3.375},
+         'year': 2100, 'change': 4.375},
         ]
 
     # WP
@@ -75,7 +75,7 @@ def get_knutson_criterion():
         {'basin': 'WP', 'category': [3, 4, 5],
          'year': 2100, 'change': 1 - 0.169},
         {'basin': 'WP', 'category': [4, 5],
-         'year': 2100, 'change': 1},
+         'year': 2100, 'change': 1 - 0.065},
         ]
 
     # SP
@@ -93,13 +93,13 @@ def get_knutson_criterion():
     # NI
     ni = [
         {'basin': 'NI', 'category': [0, 1, 2, 3, 4, 5],
-         'year': 2100, 'change': 1},
+         'year': 2100, 'change': 1.195},
         {'basin': 'NI', 'category': [1, 2, 3, 4, 5],
          'year': 2100, 'change': 1.256},
         {'basin': 'NI', 'category': [3, 4, 5],
-         'year': 2100, 'change': 1},
+         'year': 2100, 'change': 1.217},
         {'basin': 'NI', 'category': [4, 5],
-         'year': 2100, 'change': 1}
+         'year': 2100, 'change': 3.}
         ]
 
     # SI
@@ -109,9 +109,9 @@ def get_knutson_criterion():
         {'basin': 'SI', 'category': [1, 2, 3, 4, 5],
          'year': 2100, 'change': 1 - 0.284},
         {'basin': 'SI', 'category': [3, 4, 5],
-         'year': 2100, 'change': 1},
+         'year': 2100, 'change': 1 - 0.083},
         {'basin': 'SI', 'category': [4, 5],
-         'year': 2100, 'change': 1},
+         'year': 2100, 'change': 1.636},
         ]
 
     return na + ep + wp + sp + ni + si

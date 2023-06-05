@@ -596,7 +596,7 @@ class TropCyclone(Hazard):
         scaling_rcp_year: float
     ):
         """
-        Apply changes to intensities and cumulative frequencies.
+        Apply changes to frequencies.
 
         Parameters
         ----------
