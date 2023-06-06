@@ -29,18 +29,15 @@ class TestKnutson(unittest.TestCase):
     def test_get_pass(self):
         """Test get_knutson_criterion function."""
         criterion = tc_cc.get_knutson_criterion()
-        self.assertEqual(len(criterion), 20)
+        self.assertEqual(len(criterion), 24)
         for crit_val in criterion:
             self.assertTrue('year' in crit_val)
             self.assertTrue('change' in crit_val)
-            self.assertTrue('variable' in crit_val)
-        self.assertEqual(criterion[0]['variable'], "frequency")
-        self.assertEqual(criterion[0]['change'], 1)
-        self.assertEqual(criterion[4]['variable'], "intensity")
-        self.assertEqual(criterion[4]['change'], 1.045)
+
+        self.assertEqual(criterion[0]['change'], 1 - 0.094)
+        self.assertEqual(criterion[4]['change'], 1.163)
         self.assertEqual(criterion[-10]['basin'], "SP")
-        self.assertEqual(criterion[-10]['variable'], "frequency")
-        self.assertEqual(criterion[-10]['change'], 1 - 0.583)
+        self.assertEqual(criterion[-10]['change'], 1 - 0.506)
 
     def test_scale_pass(self):
         """Test calc_scale_knutson function."""
