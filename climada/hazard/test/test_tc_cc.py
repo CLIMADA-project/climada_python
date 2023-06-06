@@ -29,7 +29,7 @@ class TestKnutson(unittest.TestCase):
     def test_get_pass(self):
         """Test get_knutson_criterion function."""
         criterion = tc_cc.get_knutson_criterion()
-        self.assertTrue(len(criterion), 20)
+        self.assertEqual(len(criterion), 20)
         for crit_val in criterion:
             self.assertTrue('year' in crit_val)
             self.assertTrue('change' in crit_val)
