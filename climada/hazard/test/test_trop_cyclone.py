@@ -423,6 +423,22 @@ class TestClimateSce(unittest.TestCase):
         res_frequency[3] = 0.5 * (1 + (1.025 - 1) * scale)
         self.assertTrue(np.allclose(tc_cc.frequency, res_frequency))
 
+    def test_no_negative_freq(self):
+        """Test _apply_knutson_criterion with too high changes and check 
+        that no negative frequencies are returned."""
+        criterion = [{'basin': 'SP', 'category': [0, 1],
+                      'year': 2100, 'change': 0.5}
+                     ]
+
+        tc = TropCyclone(
+            frequency=np.ones(2),
+            basin=['SP', 'SP'],
+            category=np.array([0, 1]),
+        )
+
+        tc_cc = tc._apply_knutson_criterion(criterion, 3)
+        self.assertEqual(tc_cc.frequency.min(), 0.)      
+
 class TestDumpReloadCycle(unittest.TestCase):
     def setUp(self):
         """Create a TropCyclone object and a temporary directory"""
