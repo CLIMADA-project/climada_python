@@ -307,7 +307,7 @@ class TestWindfieldHelpers(unittest.TestCase):
 
 
 class TestClimateSce(unittest.TestCase):
-    def test_apply_criterion_track(self):
+    def test_apply_climate_scenario_track(self):
         """Test _apply_criterion function."""
         intensity = np.zeros((4, 10))
         intensity[0, :] = np.arange(10)
@@ -323,16 +323,22 @@ class TestClimateSce(unittest.TestCase):
         )
 
         tc_cc = tc.apply_climate_scenario_knu(ref_year=2050, rcp_scenario=45)
-        self.assertTrue(np.allclose(tc.intensity[1, :].toarray(), tc_cc.intensity[1, :].toarray()))
-        self.assertTrue(np.allclose(tc.intensity[3, :].toarray(), tc_cc.intensity[3, :].toarray()))
         self.assertFalse(
-            np.allclose(tc.intensity[0, :].toarray(), tc_cc.intensity[0, :].toarray()))
+            np.allclose(tc.frequency[1], tc_cc.frequency[1])
+            )
         self.assertFalse(
-            np.allclose(tc.intensity[2, :].toarray(), tc_cc.intensity[2, :].toarray()))
-        self.assertTrue(np.allclose(tc.frequency, tc_cc.frequency))
+            np.allclose(tc.frequency[0], tc_cc.frequency[0])
+        )
+        self.assertFalse(
+            np.allclose(tc.frequency[2], tc_cc.frequency[2])
+            )
+        self.assertTrue(
+            np.allclose(tc.frequency[3], tc_cc.frequency[3])
+            )
         self.assertEqual(
             tc_cc.tag.description,
-            'climate change scenario for year 2050 and RCP 45 from Knutson et al 2015.')
+            'climate change scenario for year 2050 and RCP 45 from Knutson et al 2015.'
+            )
 
     def test_apply_criterion_track(self):
         """Test _apply_criterion function."""
