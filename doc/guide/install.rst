@@ -452,35 +452,43 @@ After **each** of the following steps, check if the problem is solved, and only 
 #. Still no good?
    Please raise an `issue on GitHub <https://github.com/CLIMADA-project/climada_python/issues>`_ to get help.
 
-Changing the Logging Level
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+Logging Configuration
+^^^^^^^^^^^^^^^^^^^^^
 
-By default the logging level is set to ``INFO``, which is quite verbose.
-You can change this setting in multiple ways:
+Climada makes use of the standard `logging <https://docs.python.org/3/howto/logging.html>`_ package.
+By default, the "climada"-``Logger`` is detached from ``logging.root``, logging to `stdout` with
+the level set to ``WARNING``.
+
+If you prefer another logging configuration, e.g., for using Climada embedded in another application,
+you can opt out of the default pre-configuration by setting the config value for
+``logging.climada_style`` to ``false`` in the :doc:`configuration file <Guide_Configuration>`
+``climada.conf``.
+
+Changing the logging level can be done in multiple ways:
 
 * Adjust the :doc:`configuration file <Guide_Configuration>` ``climada.conf`` by setting a the value of the ``global.log_level`` property.
+  This only has an effect if the ``logging.climada_style`` is set to ``true`` though.
 
 * Set a global logging level in your Python script:
 
   .. code-block:: python
 
-     from climada.util.config import LOGGER
-     from logging import WARNING
-     LOGGER.setLevel(WARNING)
+     import logging
+     logging.getLogger('climada').setLevel(logging.ERROR)  # to silence all warnings
 
 * Set a local logging level in a context manager:
 
   .. code-block:: python
 
      from climada.util import log_level
-     with log_level(level="WARNING"):
-         # This code only emits log levels 'WARNING' or higher
+     with log_level(level="INFO"):
+         # This also emits all info log messages
          foo()
 
      # Default logging level again
      bar()
 
-All of these approaches can also be combined.
+All three approaches can also be combined.
 
 `Mamba <https://mamba.readthedocs.io/en/latest/>`_ Instead of Anaconda
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
