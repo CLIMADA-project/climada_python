@@ -730,8 +730,9 @@ def _compute_windfields_sparse(
     windfields_shape = (npositions, ncentroids * 2)
     intensity_shape = (1, ncentroids)
 
-    # Split into chunks that allow to store 5 arrays with `ncentroids` entries for each position:
-    memreq_per_pos_gb = (8 * 5 * ncentroids) / 1e9
+    # Split into chunks so that 5 arrays with `coastal_centr.size` entries can be stored for
+    # each position in a chunk:
+    memreq_per_pos_gb = (8 * 5 * max(1, coastal_centr.size)) / 1e9
     max_chunksize = max(2, int(max_memory_gb / memreq_per_pos_gb) - 1)
     n_chunks = int(np.ceil(npositions / max_chunksize))
     if n_chunks > 1:
@@ -896,10 +897,8 @@ def compute_windfields(
         return windfields, reachable_centr_idx
 
     # The memory requirements for each track position are estimated for the case of 10 arrays
-    # containing `nreachable` float64 (8 Byte) values each. Most of the memory is required
-    # when computing the vectors from reachable centroids to the eye (and derived quantities).
-    # The chunking is only relevant in extreme cases with a very high temporal
-    # and/or spatial resolution.
+    # containing `nreachable` float64 (8 Byte) values each. The chunking is only relevant in
+    # extreme cases with a very high temporal and/or spatial resolution.
     memreq_per_pos_gb = (8 * 10 * nreachable) / 1e9
     max_chunksize = max(2, int(max_memory_gb / memreq_per_pos_gb) - 1)
     n_chunks = int(np.ceil(npositions / max_chunksize))
