@@ -57,6 +57,9 @@ speed calculations are done."""
 DEF_INTENSITY_THRES = 17.5
 """Default value for the threshold below which wind speeds (in m/s) are stored as 0."""
 
+DEF_MAX_MEMORY_GB = 8
+"""Default value of the memory limit (in GB) for windfield computations (in each thread)."""
+
 MODEL_VANG = {'H08': 0, 'H1980': 1, 'H10': 2, 'ER11': 3}
 """Enumerate different symmetric wind field models."""
 
@@ -179,6 +182,7 @@ class TropCyclone(Hazard):
         max_latitude: float = 61,
         max_dist_inland_km: float = 1000,
         max_dist_eye_km: float = DEF_MAX_DIST_EYE_KM,
+        max_memory_gb: float = DEF_MAX_MEMORY_GB,
     ):
         """
         Create new TropCyclone instance that contains windfields from the specified tracks.
@@ -238,6 +242,10 @@ class TropCyclone(Hazard):
         max_dist_eye_km : float, optional
             No wind speed calculation is done for centroids with a distance (in km) to the TC
             center ("eye") larger than this parameter. Default: 300
+        max_memory_gb : float, optional
+            To avoid memory issues, the computation is done for chunks of the track sequentially.
+            The chunk size is determined depending on the available memory (in GB). Note that this
+            limit applies to each thread separately if a `pool` is used. Default: 8
 
         Raises
         ------
@@ -293,6 +301,7 @@ class TropCyclone(Hazard):
                 itertools.repeat(metric, num_tracks),
                 itertools.repeat(intensity_thres, num_tracks),
                 itertools.repeat(max_dist_eye_km, num_tracks),
+                itertools.repeat(max_memory_gb, num_tracks),
                 chunksize=chunksize)
         else:
             last_perc = 0
@@ -306,7 +315,8 @@ class TropCyclone(Hazard):
                     cls.from_single_track(track, centroids, coastal_idx,
                                           model=model, store_windfields=store_windfields,
                                           metric=metric, intensity_thres=intensity_thres,
-                                          max_dist_eye_km=max_dist_eye_km))
+                                          max_dist_eye_km=max_dist_eye_km,
+                                          max_memory_gb=max_memory_gb))
             if last_perc < 100:
                 LOGGER.info("Progress: 100%")
 
@@ -500,7 +510,7 @@ class TropCyclone(Hazard):
         metric: str = "equirect",
         intensity_thres: float = DEF_INTENSITY_THRES,
         max_dist_eye_km: float = DEF_MAX_DIST_EYE_KM,
-        max_chunksize: int = 100,
+        max_memory_gb: float = DEF_MAX_MEMORY_GB,
     ):
         """
         Generate windfield hazard from a single track dataset
@@ -529,13 +539,9 @@ class TropCyclone(Hazard):
         max_dist_eye_km : float, optional
             No wind speed calculation is done for centroids with a distance (in km) to the TC
             center ("eye") larger than this parameter. Default: 300
-        max_chunksize : int, optional
+        max_memory_gb : float, optional
             To avoid memory issues, the computation is done for chunks of the track sequentially.
-            Each chunk contains between `max_chunksize/2` and `max_chunksize` track positions.
-            In extreme cases (e.g. very high temporal resolution and/or low spatial resolution),
-            and if a lot of memory is available, increasing this parameter might speed up the
-            computations. On the other hand, if memory is scarce, reducing this parameter might
-            help. Default: 50
+            The chunk size is determined depending on the available memory (in GB). Default: 8
 
         Raises
         ------
@@ -549,41 +555,12 @@ class TropCyclone(Hazard):
             mod_id = MODEL_VANG[model]
         except KeyError as err:
             raise ValueError(f'Model not implemented: {model}.') from err
-        npositions = track.sizes["time"]
         ncentroids = centroids.coord.shape[0]
         coastal_centr = centroids.coord[coastal_idx]
-
-        n_chunks = max(1, track.sizes["time"] // (max_chunksize // 2))
-        chunksize = int(np.ceil(track.sizes["time"] / n_chunks))
-        l_results = [
-            compute_windfields(
-                track.isel(time=slice(
-                    # subtract 1 to generate an overlap between consecutive chunks
-                    max(0, i_chunk * chunksize - 1),
-                    (i_chunk + 1) * chunksize,
-                )),
-                coastal_centr,
-                mod_id,
-                metric=metric,
-                max_dist_eye_km=max_dist_eye_km,
-            )
-            for i_chunk in range(n_chunks)
-        ]
-
-        reachable_centr_idx, reachable_centr_inv = np.unique(
-            np.concatenate([d[1] for d in l_results]),
-            return_inverse=True,
+        windfields, reachable_centr_idx = compute_windfields(
+            track, coastal_centr, mod_id, metric=metric, max_dist_eye_km=max_dist_eye_km,
+            max_memory_gb=max_memory_gb,
         )
-        nreachable = reachable_centr_idx.size
-        split_indices = np.cumsum([d[1].size for d in l_results])[:-1]
-        reachable_centr_inv = np.split(reachable_centr_inv, split_indices)
-        windfields = np.zeros((npositions, nreachable, 2))
-        for i_chunk, ((arr, _), inv) in enumerate(zip(l_results, reachable_centr_inv)):
-            chunk_start = i_chunk * chunksize
-            chunk_end = (i_chunk + 1) * chunksize
-            offset = 0 if i_chunk == 0 else 1
-            windfields[chunk_start:chunk_end, inv, :] = arr[offset:, :, :]
-
         reachable_coastal_centr_idx = coastal_idx[reachable_centr_idx]
         npositions = windfields.shape[0]
 
@@ -705,6 +682,7 @@ def compute_windfields(
     model: int,
     metric: str = "equirect",
     max_dist_eye_km: float = DEF_MAX_DIST_EYE_KM,
+    max_memory_gb: float = DEF_MAX_MEMORY_GB,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Compute 1-minute sustained winds (in m/s) at 10 meters above ground
 
@@ -727,6 +705,9 @@ def compute_windfields(
     max_dist_eye_km : float, optional
         No wind speed calculation is done for centroids with a distance (in km) to the TC center
         ("eye") larger than this parameter. Default: 300
+    max_memory_gb : float, optional
+        To avoid memory issues, the computation is done for chunks of the track sequentially.
+        The chunk size is determined depending on the available memory (in GB). Default: 8
 
     Returns
     -------
@@ -772,6 +753,19 @@ def compute_windfields(
     nreachable = track_centr.shape[0]
     if nreachable == 0:
         return windfields, reachable_centr_idx
+
+    # The memory requirements for each track position are estimated for the case of 5 arrays
+    # containing `nreachable` float64 (8 Byte) values each. Most of the memory is required
+    # when computing the vectors from reachable centroids to the eye (and derived quantities).
+    # The chunking is only relevant in extreme cases with a very high temporal
+    # and/or spatial resolution.
+    memreq_per_pos_gb = (8 * 5 * nreachable) / 1e9
+    max_chunksize = max(2, int(max_memory_gb / memreq_per_pos_gb) - 1)
+    n_chunks = int(np.ceil(npositions / max_chunksize))
+    if n_chunks > 1:
+        return _compute_windfields_chunked(
+            n_chunks, track, centroids, model, metric=metric, max_dist_eye_km=max_dist_eye_km,
+        )
 
     # compute distances (in km) and vectors to all centroids
     [d_centr], [v_centr_normed] = u_coord.dist_approx(
@@ -856,6 +850,51 @@ def compute_windfields(
     windfields[np.isnan(windfields)] = 0
     windfields[0, :, :] = 0
     [reachable_centr_idx] = track_centr_msk.nonzero()
+    return windfields, reachable_centr_idx
+
+def _compute_windfields_chunked(
+    n_chunks: int,
+    track: xr.Dataset,
+    *args,
+    **kwargs,
+):
+    """Call `compute_windfields` for chunks of the track and re-assemble the results
+
+    Parameters
+    ----------
+    n_chunks : int
+        Number of chunks to use.
+    args, kwargs :
+        The remaining arguments are passed on to `compute_windfields`.
+
+    Returns
+    -------
+    windfields, reachable_centr_idx :
+        See `compute_windfields` for a description of the return values.
+    """
+    npositions = track.sizes["time"]
+    chunks = np.array_split(np.arange(npositions), n_chunks)
+    results = [
+        compute_windfields(track.isel(time=chunk), *args, **kwargs)
+        for chunk in [
+            # generate an overlap between consecutive chunks:
+            ([] if i == 0 else [chunks[i - 1][-1]]) + chunk.tolist()
+            for i, chunk in enumerate(chunks)
+        ]
+    ]
+    # concatenate the results into one
+    reachable_centr_idx, reachable_centr_inv = np.unique(
+        np.concatenate([d[1] for d in results]),
+        return_inverse=True,
+    )
+    windfields = np.zeros((npositions, reachable_centr_idx.size, 2))
+    split_indices = np.cumsum([d[1].size for d in results])[:-1]
+    reachable_centr_inv = np.split(reachable_centr_inv, split_indices)
+    for chunk, (arr, _), inv in zip(chunks, results, reachable_centr_inv):
+        chunk_start, chunk_end = chunk[[0, -1]]
+        # remove overlapping positions from chunk data
+        offset = arr.shape[0] - chunk.size
+        windfields[chunk_start:chunk_end + 1, inv, :] = arr[offset:, :, :]
     return windfields, reachable_centr_idx
 
 def _close_centroids(

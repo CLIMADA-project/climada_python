@@ -46,6 +46,25 @@ CENTR_TEST_BRB = Centroids.from_mat(DATA_DIR.joinpath('centr_brb_test.mat'))
 
 class TestReader(unittest.TestCase):
     """Test loading funcions from the TropCyclone class"""
+    def test_memory_limit(self):
+        """Test from_tracks when memory is (very) limited"""
+        tc_track = TCTracks.from_processed_ibtracs_csv(TEST_TRACK)
+        tc_track.equal_timestep()
+        tc_track.data = tc_track.data[:1]
+        # A very low memory constraint forces the algorithm to split the track into chunks.
+        # This should not affect the results. In practice, chunking is not applied due to limited
+        # memory, but due to very high spatial/temporal resolution of the centroids/tracks. We
+        # simulate this situation by artificially reducing the available memory.
+        tc_haz = TropCyclone.from_tracks(tc_track, centroids=CENTR_TEST_BRB, max_memory_gb=0.001)
+        intensity_idx = [0, 1, 2,  3,  80, 100, 120, 200, 220, 250, 260, 295]
+        intensity_values = [
+            25.60778909, 26.90887264, 28.26624642, 25.54092386, 31.21941738, 36.16596567,
+            21.11399856, 28.01452136, 32.65076804, 31.33884098, 0, 40.27002104,
+        ]
+        np.testing.assert_array_almost_equal(
+            tc_haz.intensity[0, intensity_idx].toarray()[0],
+            intensity_values,
+        )
 
     def test_set_one_pass(self):
         """Test _tc_from_track function."""
