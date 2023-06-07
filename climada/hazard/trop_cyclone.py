@@ -500,6 +500,7 @@ class TropCyclone(Hazard):
         metric: str = "equirect",
         intensity_thres: float = DEF_INTENSITY_THRES,
         max_dist_eye_km: float = DEF_MAX_DIST_EYE_KM,
+        max_chunksize: int = 100,
     ):
         """
         Generate windfield hazard from a single track dataset
@@ -528,6 +529,13 @@ class TropCyclone(Hazard):
         max_dist_eye_km : float, optional
             No wind speed calculation is done for centroids with a distance (in km) to the TC
             center ("eye") larger than this parameter. Default: 300
+        max_chunksize : int, optional
+            To avoid memory issues, the computation is done for chunks of the track sequentially.
+            Each chunk contains between `max_chunksize/2` and `max_chunksize` track positions.
+            In extreme cases (e.g. very high temporal resolution and/or low spatial resolution),
+            and if a lot of memory is available, increasing this parameter might speed up the
+            computations. On the other hand, if memory is scarce, reducing this parameter might
+            help. Default: 50
 
         Raises
         ------
@@ -541,10 +549,41 @@ class TropCyclone(Hazard):
             mod_id = MODEL_VANG[model]
         except KeyError as err:
             raise ValueError(f'Model not implemented: {model}.') from err
+        npositions = track.sizes["time"]
         ncentroids = centroids.coord.shape[0]
         coastal_centr = centroids.coord[coastal_idx]
-        windfields, reachable_centr_idx = compute_windfields(
-            track, coastal_centr, mod_id, metric=metric, max_dist_eye_km=max_dist_eye_km)
+
+        n_chunks = max(1, track.sizes["time"] // (max_chunksize // 2))
+        chunksize = int(np.ceil(track.sizes["time"] / n_chunks))
+        l_results = [
+            compute_windfields(
+                track.isel(time=slice(
+                    # subtract 1 to generate an overlap between consecutive chunks
+                    max(0, i_chunk * chunksize - 1),
+                    (i_chunk + 1) * chunksize,
+                )),
+                coastal_centr,
+                mod_id,
+                metric=metric,
+                max_dist_eye_km=max_dist_eye_km,
+            )
+            for i_chunk in range(n_chunks)
+        ]
+
+        reachable_centr_idx, reachable_centr_inv = np.unique(
+            np.concatenate([d[1] for d in l_results]),
+            return_inverse=True,
+        )
+        nreachable = reachable_centr_idx.size
+        split_indices = np.cumsum([d[1].size for d in l_results])[:-1]
+        reachable_centr_inv = np.split(reachable_centr_inv, split_indices)
+        windfields = np.zeros((npositions, nreachable, 2))
+        for i_chunk, ((arr, _), inv) in enumerate(zip(l_results, reachable_centr_inv)):
+            chunk_start = i_chunk * chunksize
+            chunk_end = (i_chunk + 1) * chunksize
+            offset = 0 if i_chunk == 0 else 1
+            windfields[chunk_start:chunk_end, inv, :] = arr[offset:, :, :]
+
         reachable_coastal_centr_idx = coastal_idx[reachable_centr_idx]
         npositions = windfields.shape[0]
 
@@ -693,7 +732,10 @@ def compute_windfields(
     -------
     windfields : np.ndarray of shape (npositions, nreachable, 2)
         Directional wind fields for each track position on those centroids within reach
-        of the TC track.
+        of the TC track. Note that the wind speeds at the first position are all zero because
+        the discrete time derivatives involved in the process are implemented using backward
+        differences. However, the first position is usually not relevant for impact calculations
+        since it is far off shore.
     reachable_centr_idx : np.ndarray of shape (nreachable,)
         List of indices of input centroids within reach of the TC track.
     """
