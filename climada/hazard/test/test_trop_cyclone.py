@@ -102,11 +102,11 @@ class TestReader(unittest.TestCase):
             self.assertEqual(tc_haz.event_id[0], 1)
             self.assertEqual(tc_haz.event_name, ['1951239N12334'])
             self.assertTrue(np.array_equal(tc_haz.frequency, np.array([1])))
-            self.assertTrue(isinstance(tc_haz.fraction, sparse.csr.csr_matrix))
+            self.assertTrue(isinstance(tc_haz.fraction, sparse.csr_matrix))
             self.assertEqual(tc_haz.fraction.shape, (1, 296))
             self.assertIsNone(tc_haz._get_fraction())
 
-            self.assertTrue(isinstance(tc_haz.intensity, sparse.csr.csr_matrix))
+            self.assertTrue(isinstance(tc_haz.intensity, sparse.csr_matrix))
             self.assertEqual(tc_haz.intensity.shape, (1, 296))
             self.assertEqual(np.nonzero(tc_haz.intensity)[0].size, 280)
 
@@ -170,8 +170,8 @@ class TestReader(unittest.TestCase):
         self.assertIsInstance(tc_haz.basin, list)
         self.assertIsInstance(tc_haz.category, np.ndarray)
         self.assertTrue(np.array_equal(tc_haz.frequency, np.array([1])))
-        self.assertTrue(isinstance(tc_haz.intensity, sparse.csr.csr_matrix))
-        self.assertTrue(isinstance(tc_haz.fraction, sparse.csr.csr_matrix))
+        self.assertTrue(isinstance(tc_haz.intensity, sparse.csr_matrix))
+        self.assertTrue(isinstance(tc_haz.fraction, sparse.csr_matrix))
         self.assertEqual(tc_haz.intensity.shape, (1, 296))
         self.assertEqual(tc_haz.fraction.shape, (1, 296))
 
@@ -195,8 +195,8 @@ class TestReader(unittest.TestCase):
         self.assertEqual(tc_haz.event_name, ['1951239N12334'])
         self.assertTrue(np.array_equal(tc_haz.frequency, np.array([1])))
         self.assertTrue(np.array_equal(tc_haz.orig, np.array([True])))
-        self.assertTrue(isinstance(tc_haz.intensity, sparse.csr.csr_matrix))
-        self.assertTrue(isinstance(tc_haz.fraction, sparse.csr.csr_matrix))
+        self.assertTrue(isinstance(tc_haz.intensity, sparse.csr_matrix))
+        self.assertTrue(isinstance(tc_haz.fraction, sparse.csr_matrix))
         self.assertEqual(tc_haz.intensity.shape, (1, 296))
         self.assertEqual(tc_haz.fraction.shape, (1, 296))
 

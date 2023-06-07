@@ -99,7 +99,7 @@ class TropCyclone(Hazard):
         *  3 Hurrican category 3
         *  4 Hurrican category 4
         *  5 Hurrican category 5
-    basin : list(str)
+    basin : list of str
         Basin where every event starts:
 
         * 'NA' North Atlantic
@@ -109,6 +109,10 @@ class TropCyclone(Hazard):
         * 'SI' South Indian
         * 'SP' Southern Pacific
         * 'SA' South Atlantic
+    windfields : list of csr_matrix
+        For each event, the full velocity vectors at each centroid and track position in a sparse
+        matrix of shape (npositions, ncentroids * 2) that can be reshaped to a full ndarray of
+        shape (npositions, ncentroids, 2).
     """
     intensity_thres = DEF_INTENSITY_THRES
     """intensity threshold for storage in m/s"""
@@ -146,7 +150,9 @@ class TropCyclone(Hazard):
                 'SP' Southern Pacific
                 'SA' South Atlantic
         windfields : list of csr_matrix, optional
-            For each event
+            For each event, the full velocity vectors at each centroid and track position in a
+            sparse matrix of shape (npositions,  ncentroids * 2) that can be reshaped to a full
+            ndarray of shape (npositions, ncentroids, 2).
         **kwargs : Hazard properties, optional
             All other keyword arguments are passed to the Hazard constructor.
         """
@@ -551,40 +557,23 @@ class TropCyclone(Hazard):
         -------
         haz : TropCyclone
         """
-        try:
-            mod_id = MODEL_VANG[model]
-        except KeyError as err:
-            raise ValueError(f'Model not implemented: {model}.') from err
-        ncentroids = centroids.coord.shape[0]
-        coastal_centr = centroids.coord[coastal_idx]
-        windfields, reachable_centr_idx = compute_windfields(
-            track, coastal_centr, mod_id, metric=metric, max_dist_eye_km=max_dist_eye_km,
+        intensity_sparse, windfields_sparse = _compute_windfields_sparse(
+            track=track,
+            centroids=centroids,
+            coastal_idx=coastal_idx,
+            model=model,
+            store_windfields=store_windfields,
+            metric=metric,
+            intensity_thres=intensity_thres,
+            max_dist_eye_km=max_dist_eye_km,
             max_memory_gb=max_memory_gb,
         )
-        reachable_coastal_centr_idx = coastal_idx[reachable_centr_idx]
-        npositions = windfields.shape[0]
-
-        intensity = np.linalg.norm(windfields, axis=-1).max(axis=0)
-        intensity[intensity < intensity_thres] = 0
-        intensity_sparse = sparse.csr_matrix(
-            (intensity, reachable_coastal_centr_idx, [0, intensity.size]),
-            shape=(1, ncentroids))
-        intensity_sparse.eliminate_zeros()
 
         new_haz = cls()
         new_haz.tag = TagHazard(HAZ_TYPE, 'Name: ' + track.name)
         new_haz.intensity_thres = intensity_thres
         new_haz.intensity = intensity_sparse
         if store_windfields:
-            n_reachable_coastal_centr = reachable_coastal_centr_idx.size
-            indices = np.zeros((npositions, n_reachable_coastal_centr, 2), dtype=np.int64)
-            indices[:, :, 0] = 2 * reachable_coastal_centr_idx[None]
-            indices[:, :, 1] = 2 * reachable_coastal_centr_idx[None] + 1
-            indices = indices.ravel()
-            indptr = np.arange(npositions + 1) * n_reachable_coastal_centr * 2
-            windfields_sparse = sparse.csr_matrix((windfields.ravel(), indices, indptr),
-                                                  shape=(npositions, ncentroids * 2))
-            windfields_sparse.eliminate_zeros()
             new_haz.windfields = [windfields_sparse]
         new_haz.units = 'm/s'
         new_haz.centroids = centroids
@@ -675,6 +664,158 @@ class TropCyclone(Hazard):
 
         return tc_cc
 
+def _compute_windfields_sparse(
+    track: xr.Dataset,
+    centroids: Centroids,
+    coastal_idx: np.ndarray,
+    model: str = 'H08',
+    store_windfields: bool = False,
+    metric: str = "equirect",
+    intensity_thres: float = DEF_INTENSITY_THRES,
+    max_dist_eye_km: float = DEF_MAX_DIST_EYE_KM,
+    max_memory_gb: float = DEF_MAX_MEMORY_GB,
+) -> Tuple[sparse.csr_matrix, Optional[sparse.csr_matrix]]:
+    """Version of `compute_windfields` that returns sparse matrices and limits memory usage
+
+    Parameters
+    ----------
+    track : xr.Dataset
+        Single tropical cyclone track.
+    centroids : Centroids
+        Centroids instance.
+    coastal_idx : np.ndarray
+        Indices of centroids close to coast.
+    model : str, optional
+        Parametric wind field model, one of "H1980" (the prominent Holland 1980 model),
+        "H08" (Holland 1980 with b-value from Holland 2008), "H10" (Holland et al. 2010), or
+        "ER11" (Emanuel and Rotunno 2011).
+        Default: "H08".
+    store_windfields : boolean, optional
+        If True, store windfields. Default: False.
+    metric : str, optional
+        Specify an approximation method to use for earth distances: "equirect" (faster) or
+        "geosphere" (more accurate). See `dist_approx` function in `climada.util.coordinates`.
+        Default: "equirect".
+    intensity_thres : float, optional
+        Wind speeds (in m/s) below this threshold are stored as 0. Default: 17.5
+    max_dist_eye_km : float, optional
+        No wind speed calculation is done for centroids with a distance (in km) to the TC
+        center ("eye") larger than this parameter. Default: 300
+    max_memory_gb : float, optional
+        To avoid memory issues, the computation is done for chunks of the track sequentially.
+        The chunk size is determined depending on the available memory (in GB). Default: 8
+
+    Raises
+    ------
+    ValueError
+
+    Returns
+    -------
+    intensity : csr_matrix
+        Maximum wind speed in each centroid over the whole storm life time.
+    windfields : csr_matrix or None
+        If store_windfields is True, the full velocity vectors at each centroid and track position
+        are stored in a sparse matrix of shape (npositions,  ncentroids * 2) that can be reshaped
+        to a full ndarray of shape (npositions, ncentroids, 2).
+        If store_windfields is False, `None` is returned.
+    """
+    try:
+        mod_id = MODEL_VANG[model]
+    except KeyError as err:
+        raise ValueError(f'Model not implemented: {model}.') from err
+
+    ncentroids = centroids.coord.shape[0]
+    coastal_centr = centroids.coord[coastal_idx]
+    npositions = track.sizes["time"]
+    windfields_shape = (npositions, ncentroids * 2)
+    intensity_shape = (1, ncentroids)
+
+    # Split into chunks that allow to store 5 arrays with `ncentroids` entries for each position:
+    memreq_per_pos_gb = (8 * 5 * ncentroids) / 1e9
+    max_chunksize = max(2, int(max_memory_gb / memreq_per_pos_gb) - 1)
+    n_chunks = int(np.ceil(npositions / max_chunksize))
+    if n_chunks > 1:
+        return _compute_windfields_sparse_chunked(
+            n_chunks,
+            track,
+            centroids,
+            coastal_idx,
+            model=model,
+            store_windfields=store_windfields,
+            metric=metric,
+            intensity_thres=intensity_thres,
+            max_dist_eye_km=max_dist_eye_km,
+            max_memory_gb=max_memory_gb,
+        )
+
+    windfields, reachable_centr_idx = compute_windfields(
+        track, coastal_centr, mod_id, metric=metric, max_dist_eye_km=max_dist_eye_km,
+        max_memory_gb=0.8 * max_memory_gb,
+    )
+    reachable_coastal_centr_idx = coastal_idx[reachable_centr_idx]
+    npositions = windfields.shape[0]
+
+    intensity = np.linalg.norm(windfields, axis=-1).max(axis=0)
+    intensity[intensity < intensity_thres] = 0
+    intensity_sparse = sparse.csr_matrix(
+        (intensity, reachable_coastal_centr_idx, [0, intensity.size]),
+        shape=intensity_shape)
+    intensity_sparse.eliminate_zeros()
+
+    windfields_sparse = None
+    if store_windfields:
+        n_reachable_coastal_centr = reachable_coastal_centr_idx.size
+        indices = np.zeros((npositions, n_reachable_coastal_centr, 2), dtype=np.int64)
+        indices[:, :, 0] = 2 * reachable_coastal_centr_idx[None]
+        indices[:, :, 1] = 2 * reachable_coastal_centr_idx[None] + 1
+        indices = indices.ravel()
+        indptr = np.arange(npositions + 1) * n_reachable_coastal_centr * 2
+        windfields_sparse = sparse.csr_matrix((windfields.ravel(), indices, indptr),
+                                              shape=windfields_shape)
+        windfields_sparse.eliminate_zeros()
+
+    return intensity_sparse, windfields_sparse
+
+def _compute_windfields_sparse_chunked(
+    n_chunks: int,
+    track: xr.Dataset,
+    *args,
+    **kwargs,
+) -> Tuple[sparse.csr_matrix, Optional[sparse.csr_matrix]]:
+    """Call `_compute_windfields_sparse` for chunks of the track and re-assemble the results
+
+    Parameters
+    ----------
+    n_chunks : int
+        Number of chunks to use.
+    track : xr.Dataset
+        Single tropical cyclone track.
+    args, kwargs :
+        The remaining arguments are passed on to `compute_windfields`.
+
+    Returns
+    -------
+    intensity, windfields :
+        See `_compute_windfields_sparse` for a description of the return values.
+    """
+    npositions = track.sizes["time"]
+    chunks = np.array_split(np.arange(npositions), n_chunks)
+    intensities = []
+    windfields = []
+    for i, chunk in enumerate(chunks):
+        # generate an overlap between consecutive chunks:
+        chunk = ([] if i == 0 else [chunks[i - 1][-1]]) + chunk.tolist()
+        inten, win = _compute_windfields_sparse(track.isel(time=chunk), *args, **kwargs)
+        offset = 0 if i == 0 else 1
+        if win is None:
+            windfields = None
+        else:
+            windfields.append(win[offset:])
+        intensities.append(inten)
+    intensity = sparse.csr_matrix(sparse.vstack(intensities, format="csr").max(axis=0, ))
+    if windfields is not None:
+        windfields = sparse.vstack(windfields, format="csr")
+    return intensity, windfields
 
 def compute_windfields(
     track: xr.Dataset,
@@ -720,21 +861,21 @@ def compute_windfields(
     reachable_centr_idx : np.ndarray of shape (nreachable,)
         List of indices of input centroids within reach of the TC track.
     """
+    # start with the assumption that no centroids are within reach
+    npositions = track.sizes["time"]
+    reachable_centr_idx = np.zeros((0,), dtype=np.int64)
+    windfields = np.zeros((npositions, 0, 2), dtype=np.float64)
+
+    # The wind field model requires at least two track positions because translational speed
+    # as well as the change in pressure (in case of H08) are required.
+    if npositions < 2:
+        return windfields, reachable_centr_idx
+
     # copies of track data (note that max wind records are not used in all wind field models)
     t_lat, t_lon, t_tstep, t_rad, t_env, t_cen = [
         track[ar].values.copy() for ar in ['lat', 'lon', 'time_step', 'radius_max_wind',
                                            'environmental_pressure', 'central_pressure']
     ]
-
-    # start with the assumption that no centroids are within reach
-    npositions = t_lat.shape[0]
-    reachable_centr_idx = np.zeros((0,), dtype=np.int64)
-    windfields = np.zeros((npositions, 0, 2), dtype=np.float64)
-
-    # the wind field model requires at least two track positions because translational speed
-    # as well as the change in pressure are required
-    if npositions < 2:
-        return windfields, reachable_centr_idx
 
     # normalize longitude values (improves performance of `dist_approx` and `_close_centroids`)
     mid_lon = 0.5 * sum(u_coord.lon_bounds(t_lon))
@@ -857,13 +998,15 @@ def _compute_windfields_chunked(
     track: xr.Dataset,
     *args,
     **kwargs,
-):
+) -> Tuple[np.ndarray, np.ndarray]:
     """Call `compute_windfields` for chunks of the track and re-assemble the results
 
     Parameters
     ----------
     n_chunks : int
         Number of chunks to use.
+    track : xr.Dataset
+        Single tropical cyclone track.
     args, kwargs :
         The remaining arguments are passed on to `compute_windfields`.
 

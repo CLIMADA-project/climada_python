@@ -35,7 +35,7 @@ class DummyClass(object):
         self.array = np.arange(25)
         self.array_opt = np.arange(25)
         self.list = np.arange(25).tolist()
-        self.sparse_arr = sparse.csr.csr_matrix(np.zeros((25, 2)))
+        self.sparse_arr = sparse.csr_matrix(np.zeros((25, 2)))
         self.name = 'name class'
 
 class TestChecks(unittest.TestCase):
@@ -57,7 +57,7 @@ class TestChecks(unittest.TestCase):
         self.assertIn('Invalid DummyClass.array size: 25 != 3.', str(cm.exception))
 
         dummy = DummyClass()
-        dummy.sparse_arr = sparse.csr.csr_matrix(np.zeros((25, 1)))
+        dummy.sparse_arr = sparse.csr_matrix(np.zeros((25, 1)))
         with self.assertRaises(ValueError) as cm:
             u_check.check_oligatories(dummy.__dict__, dummy.vars_oblig, "DummyClass.",
                                       dummy.id.size, dummy.id.size, 2)

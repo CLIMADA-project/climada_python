@@ -57,8 +57,8 @@ class TestReader(unittest.TestCase):
         self.assertEqual(dt.datetime.fromordinal(storms.date[0]).day, 26)
         self.assertEqual(storms.event_id[0], 1)
         self.assertEqual(storms.event_name[0], 'Lothar')
-        self.assertTrue(isinstance(storms.intensity, sparse.csr.csr_matrix))
-        self.assertTrue(isinstance(storms.fraction, sparse.csr.csr_matrix))
+        self.assertTrue(isinstance(storms.intensity, sparse.csr_matrix))
+        self.assertTrue(isinstance(storms.fraction, sparse.csr_matrix))
         self.assertEqual(storms.intensity.shape, (2, 9944))
         self.assertEqual(storms.fraction.shape, (2, 9944))
 
@@ -123,7 +123,7 @@ class TestReader(unittest.TestCase):
         self.assertEqual(np.count_nonzero(storms_prob.orig), 2)
         self.assertEqual(storms_prob.centroids.size, 3054)
         self.assertIsInstance(storms_prob.intensity,
-                              sparse.csr.csr_matrix)
+                              sparse.csr_matrix)
 
     def test_cosmoe_read(self):
         """test reading from cosmo-e netcdf"""
@@ -141,9 +141,9 @@ class TestReader(unittest.TestCase):
         self.assertEqual(haz.event_id[-1], 21)
         self.assertEqual(haz.event_name[-1], '2018-01-03_ens21')
         self.assertIsInstance(haz.intensity,
-                              sparse.csr.csr_matrix)
+                              sparse.csr_matrix)
         self.assertIsInstance(haz.fraction,
-                              sparse.csr.csr_matrix)
+                              sparse.csr_matrix)
         self.assertEqual(haz.intensity.shape, (21, 25))
         self.assertAlmostEqual(haz.intensity.max(), 36.426735,places=3)
         self.assertEqual(haz.fraction.shape, (21, 25))
