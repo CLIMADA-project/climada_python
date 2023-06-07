@@ -754,12 +754,12 @@ def compute_windfields(
     if nreachable == 0:
         return windfields, reachable_centr_idx
 
-    # The memory requirements for each track position are estimated for the case of 5 arrays
+    # The memory requirements for each track position are estimated for the case of 10 arrays
     # containing `nreachable` float64 (8 Byte) values each. Most of the memory is required
     # when computing the vectors from reachable centroids to the eye (and derived quantities).
     # The chunking is only relevant in extreme cases with a very high temporal
     # and/or spatial resolution.
-    memreq_per_pos_gb = (8 * 5 * nreachable) / 1e9
+    memreq_per_pos_gb = (8 * 10 * nreachable) / 1e9
     max_chunksize = max(2, int(max_memory_gb / memreq_per_pos_gb) - 1)
     n_chunks = int(np.ceil(npositions / max_chunksize))
     if n_chunks > 1:
