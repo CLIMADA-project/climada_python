@@ -36,6 +36,7 @@ from rasterio.warp import Resampling
 import contextily as ctx
 import cartopy.crs as ccrs
 
+from climada.hazard import Hazard
 from climada.entity.tag import Tag
 import climada.util.hdf5_handler as u_hdf5
 from climada.util.constants import ONE_LAT_KM, DEF_CRS, CMAP_RASTER
@@ -464,8 +465,8 @@ class Exposures():
         self.__dict__ = Exposures.from_raster(*args, **kwargs).__dict__
 
     @classmethod
-    def from_raster(cls, file_name, band=1, src_crs=None, window=False,
-                        geometry=False, dst_crs=False, transform=None,
+    def from_raster(cls, file_name, band=1, src_crs=None, window=None,
+                        geometry=None, dst_crs=None, transform=None,
                         width=None, height=None, resampling=Resampling.nearest):
         """Read raster data and set latitude, longitude, value and meta
 
@@ -480,8 +481,8 @@ class Exposures():
         window : rasterio.windows.Windows, optional
             window where data is
             extracted
-        geometry : shapely.geometry, optional
-            consider pixels only in shape
+        geometry : list of shapely.geometry, optional
+            consider pixels only within these shape
         dst_crs : crs, optional
             reproject to given crs
         transform : rasterio.Affine
@@ -1019,11 +1020,15 @@ class Exposures():
 
         return exp
 
-    def affected_total_value(self, hazard):
-        """
-        Total value of the exposures that are close enough to be affected
-        by the hazard (sum of value of all exposures points for which
-        a centroids is assigned)
+    def centroids_total_value(self, hazard):
+        """Compute value of exposures close enough to be affected by hazard
+
+        .. deprecated:: 3.3
+           This method will be removed in a future version. Use
+           :py:meth:`affected_total_value` instead.
+
+        This method computes the sum of the value of all exposures points for which a
+        Hazard centroid is assigned.
 
         Parameters
         ----------
@@ -1042,6 +1047,59 @@ class Exposures():
             & (self.gdf[hazard.centr_exp_col].values >= 0)
         )
         return np.sum(self.gdf.value.values[nz_mask])
+
+    def affected_total_value(
+        self,
+        hazard: Hazard,
+        threshold_affected: float = 0,
+        overwrite_assigned_centroids: bool = True,
+    ):
+        """
+        Total value of the exposures that are affected by at least
+        one hazard event (sum of value of all exposures points for which
+        at least one event has intensity larger than the threshold).
+
+        Parameters
+        ----------
+        hazard : Hazard
+           Hazard affecting Exposures
+        threshold_affected : int or float
+            Hazard intensity threshold above which an exposures is
+            considere affected.
+            The default is 0.
+        overwrite_assigned_centroids : boolean
+            Assign centroids from the hazard to the exposures and overwrite
+            existing ones.
+            The default is True.
+
+        Returns
+        -------
+        float
+            Sum of value of all exposures points for which
+            a centroids is assigned and that have at least one
+            event intensity above threshold.
+
+        See Also
+        --------
+        Exposures.assign_centroids : method to assign centroids.
+
+        Note
+        ----
+        The fraction attribute of the hazard is ignored. Thus, for hazards
+        with fraction defined the affected values will be overestimated.
+
+        """
+        self.assign_centroids(hazard=hazard, overwrite=overwrite_assigned_centroids)
+        assigned_centroids = self.gdf[hazard.centr_exp_col]
+        nz_mask = (self.gdf.value.values > 0) & (assigned_centroids.values >= 0)
+        cents = np.unique(assigned_centroids[nz_mask])
+        cent_with_inten_above_thres = (
+            hazard.intensity[:, cents].max(axis=0) > threshold_affected
+        ).nonzero()[1]
+        above_thres_mask = np.isin(
+            self.gdf[hazard.centr_exp_col].values, cents[cent_with_inten_above_thres]
+        )
+        return np.sum(self.gdf.value.values[above_thres_mask])
 
 
 def add_sea(exposures, sea_res, scheduler=None):
