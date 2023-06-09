@@ -12,8 +12,10 @@ from scipy.optimize import (
     LinearConstraint,
     NonlinearConstraint,
     minimize,
+    OptimizeResult,
 )
 from bayes_opt import BayesianOptimization
+from bayes_opt.target_space import TargetSpace
 
 from climada.hazard import Hazard
 from climada.entity import Exposures, ImpactFunc, ImpactFuncSet
@@ -117,18 +119,52 @@ class Output:
         The optimal parameters
     target : Number
         The target function value for the optimal parameters
-    success : bool
-        If the calibration succeeded. The definition depends on the actual optimization
-        algorithm used.
-    result
-        A result object specific to the optimization algorithm used. See the optimizer
-        documentation for details.
     """
 
     params: Mapping[str, Number]
     target: Number
-    success: bool
-    result: Optional[Any] = None
+
+
+@dataclass
+class ScipyMinimizeOptimizerOutput(Output):
+    """Output of a calibration with :py:class:`ScipyMinimizeOptimizer`
+
+    Attributes
+    ----------
+    result : scipy.minimize.OptimizeResult
+        The OptimizeResult instance returned by ``scipy.optimize.minimize``.
+    """
+
+    result: OptimizeResult
+
+
+@dataclass
+class BayesianOptimizerOutput(Output):
+    """Output of a calibration with :py:class:`BayesianOptimizer`
+
+    Attributes
+    ----------
+    p_space : bayes_opt.target_space.TargetSpace
+        The parameter space sampled by the optimizer.
+    """
+
+    p_space: TargetSpace
+
+    def p_space_to_dataframe(self):
+        """Return the sampled parameter space as pandas.DataFrame
+
+        Returns
+        -------
+        pandas.DataFrame
+            Data frame whose columns are the parameter values and the associated target
+            function value (``target``) and whose rows are the optimizer iterations.
+        """
+        data = {
+            self.p_space.keys[i]: self.p_space.params[..., i]
+            for i in range(self.p_space.dim)
+        }
+        data["target"] = self.p_space.target
+        return pd.DataFrame.from_dict(data)
 
 
 @dataclass
@@ -223,7 +259,7 @@ class ScipyMinimizeOptimizer(Optimizer):
     """An optimization using scipy.optimize.minimize
 
     By default, this optimizer uses the ``"trust-constr"`` method. This
-    is advertised as the most general minimization method of the ``scipy`` pacjage and
+    is advertised as the most general minimization method of the ``scipy`` package and
     supports bounds and constraints on the parameters. Users are free to choose
     any method of the catalogue, but must be aware that they might require different
     input parameters. These can be supplied via additional keyword arguments to
@@ -267,9 +303,10 @@ class ScipyMinimizeOptimizer(Optimizer):
 
         Returns
         -------
-        output : Output
-            The output of the optimization. The :py:attr:`Output.result` attribute
-            stores the associated ``scipy.optimize.OptimizeResult`` instance.
+        output : ScipyMinimizeOptimizerOutput
+            The output of the optimization. The
+            :py:attr:`ScipyMinimizeOptimizerOutput.result` attribute stores the
+            associated ``scipy.optimize.OptimizeResult`` instance.
         """
         # Parse kwargs
         params_init = opt_kwargs.pop("params_init")
@@ -296,12 +333,17 @@ class ScipyMinimizeOptimizer(Optimizer):
         )
 
         params = dict(zip(self._param_names, res.x.flat))
-        return Output(params=params, target=res.fun, success=res.success, result=res)
+        return ScipyMinimizeOptimizerOutput(params=params, target=res.fun, result=res)
 
 
 @dataclass
 class BayesianOptimizer(Optimizer):
-    """An optimization using bayes_opt.BayesianOptimization
+    """An optimization using ``bayes_opt.BayesianOptimization``
+
+    This optimizer reports the target function value for each parameter set and
+    *maximizes* that value. Therefore, a higher target function value is better.
+    The cost function, however, is still minimized: The target function is defined as
+    the inverse of the cost function.
 
     For details on the underlying optimizer, see
     https://github.com/bayesian-optimization/BayesianOptimization.
@@ -374,9 +416,9 @@ class BayesianOptimizer(Optimizer):
     def run(self, **opt_kwargs):
         """Execute the optimization
 
-        Implementation detail: ``BayesianOptimization`` *maximizes* a target function.
-        Therefore, this class inverts the cost function and used that as target
-        function. The cost function is still minimized.
+        ``BayesianOptimization`` *maximizes* a target function. Therefore, this class
+        inverts the cost function and used that as target function. The cost function is
+        still minimized.
 
         Parameters
         ----------
@@ -405,9 +447,8 @@ class BayesianOptimizer(Optimizer):
 
         # Return output
         opt = self.optimizer.max
-        return Output(
+        return BayesianOptimizerOutput(
             params=opt["params"],
             target=opt["target"],
-            success=True,
-            result=self.optimizer,
+            p_space=self.optimizer.space,
         )
