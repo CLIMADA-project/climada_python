@@ -12,9 +12,10 @@ climada\.util\.api\_client module
 climada\.util\.calibrate module
 -------------------------------
 
-.. automodule:: climada.util.calibrate.impact_func
-    :members:
-    :show-inheritance:
+.. toctree::
+   :maxdepth: 1
+
+   climada.util.calibrate
 
 climada\.util\.checker module
 -----------------------------
