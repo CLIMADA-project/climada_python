@@ -9,11 +9,9 @@ from scipy.optimize import NonlinearConstraint
 
 from climada.entity import ImpactFuncSet, ImpactFunc
 
-from climada.util.calibrate.impact_func import (
-    Input,
-    ScipyMinimizeOptimizer,
-    cost_func_rmse,
-)
+from climada.util.calibrate import Input, ScipyMinimizeOptimizer
+from climada.util.calibrate.impact_func import cost_func_rmse
+
 from climada.util.calibrate.test.test_calibrate import hazard, exposure
 
 
@@ -54,7 +52,7 @@ class TestScipyMinimizeOptimizer(unittest.TestCase):
         output = optimizer.run(params_init={"slope": 0.1})
 
         # Result should be nearly exact
-        self.assertTrue(output.success)
+        self.assertTrue(output.result.success)
         self.assertAlmostEqual(output.params["slope"], 1.0)
         self.assertAlmostEqual(output.target, 0.0)
 
@@ -65,7 +63,7 @@ class TestScipyMinimizeOptimizer(unittest.TestCase):
         output = optimizer.run(params_init={"slope": 0.1})
 
         # Result should be very close to the bound
-        self.assertTrue(output.success)
+        self.assertTrue(output.result.success)
         self.assertGreater(output.params["slope"], 0.89)
         self.assertAlmostEqual(output.params["slope"], 0.91, places=2)
 
@@ -96,7 +94,7 @@ class TestScipyMinimizeOptimizer(unittest.TestCase):
         )
 
         # Check results (low accuracy)
-        self.assertTrue(output.success)
+        self.assertTrue(output.result.success)
         self.assertAlmostEqual(output.params["intensity_1"], 1.0, places=3)
         self.assertAlmostEqual(output.params["intensity_2"], 3.0, places=3)
         self.assertAlmostEqual(output.target, 0.0, places=3)

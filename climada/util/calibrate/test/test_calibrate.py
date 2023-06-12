@@ -13,7 +13,7 @@ from scipy.optimize import OptimizeResult
 from climada.entity import Exposures, ImpactFuncSet
 from climada.hazard import Hazard, Centroids
 
-from climada.util.calibrate.impact_func import Input, ScipyMinimizeOptimizer, BayesianOptimizer
+from climada.util.calibrate import Input, ScipyMinimizeOptimizer, BayesianOptimizer
 
 
 def hazard():
@@ -134,6 +134,7 @@ class TestInputPostInit(unittest.TestCase):
 
 class TestOptimizer(unittest.TestCase):
     """Base class for testing optimizers. Creates an input mock"""
+
     def setUp(self):
         """Mock the input"""
         self.input = MagicMock(
@@ -156,7 +157,7 @@ class TestScipyMinimizeOptimizer(TestOptimizer):
         super().setUp()
         self.optimizer = ScipyMinimizeOptimizer(self.input)
 
-    @patch("climada.util.calibrate.impact_func.ImpactCalc", autospec=True)
+    @patch("climada.util.calibrate.base.ImpactCalc", autospec=True)
     def test_kwargs_to_impact_func_gen(self, _):
         """Test transform of minimize func arguments to impact_func_gen arguments
 
@@ -191,10 +192,12 @@ class TestScipyMinimizeOptimizer(TestOptimizer):
         self.assertListEqual(list(output.params.keys()), list(params_init.keys()))
         npt.assert_allclose(list(output.params.values()), list(params_init.values()))
         self.assertEqual(output.target, target_func_value)
-        self.assertTrue(output.success)  # NOTE: For scipy.optimize, this means no error
         self.assertIsInstance(output.result, OptimizeResult)
 
-    @patch("climada.util.calibrate.impact_func.minimize", autospec=True)
+        # NOTE: For scipy.optimize, this means no error
+        self.assertTrue(output.result.success)
+
+    @patch("climada.util.calibrate.scipy_optimizer.minimize", autospec=True)
     def test_bounds_select(self, minimize_mock):
         """Test the _select_by_param_names method
 
@@ -244,9 +247,8 @@ class TestBayesianOptimizer(TestOptimizer):
     def setUp(self):
         """Create the input and optimizer"""
         super().setUp()
-        self.optimizer = BayesianOptimizer(self.input)
-    
-    @patch("climada.util.calibrate.impact_func.ImpactCalc", autospec=True)
+
+    @patch("climada.util.calibrate.base.ImpactCalc", autospec=True)
     def test_kwargs_to_impact_func_gen(self, _):
         """Test transform of minimize func arguments to impact_func_gen arguments
 
@@ -256,12 +258,17 @@ class TestBayesianOptimizer(TestOptimizer):
         # Create stubs
         self.input.bounds = {"x_2": (0, 1), "x 1": (1, 2)}
         self.input.cost_func.return_value = 1.0
+        self.optimizer = BayesianOptimizer(self.input)
 
         # Call 'run'
         self.optimizer.run(init_points=2, n_iter=1)
 
         # Check call to '_kwargs_to_impact_func_gen'
-        self.input.impact_func_gen.assert_any_call(**self.input.bounds)
+        call_args = self.input.impact_func_gen.call_args_list
+        self.assertEqual(len(call_args), 3)
+        for args in call_args:
+            self.assertSequenceEqual(args.kwargs.keys(), self.input.bounds.keys())
+
 
 # Execute Tests
 if __name__ == "__main__":
