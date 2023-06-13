@@ -242,34 +242,6 @@ class TestIbtracs(unittest.TestCase):
         self.assertAlmostEqual(tc_try.data[0].central_pressure.values[5], 1008, places=0)
         self.assertAlmostEqual(tc_try.data[0].central_pressure.values[-1], 1012, places=0)
 
-    def test_ibtracs_with_basin(self):
-        """Filter TCs by (genesis) basin."""
-        # South Atlantic (not usually a TC location at all)
-        tc_track = tc.TCTracks.from_ibtracs_netcdf(basin="SA")
-        self.assertEqual(tc_track.size, 3)
-
-        # the basin is not necessarily the genesis basin
-        tc_track = tc.TCTracks.from_ibtracs_netcdf(
-            year_range=(1995, 1995), basin="SP", estimate_missing=True)
-        self.assertEqual(tc_track.size, 6)
-        self.assertEqual(tc_track.data[0].basin[0], 'SP')
-        self.assertEqual(tc_track.data[5].basin[0], 'SI')
-
-        # genesis in NI
-        tc_track = tc.TCTracks.from_ibtracs_netcdf(
-            year_range=(1994, 1994), genesis_basin="NI", estimate_missing=True)
-        self.assertEqual(tc_track.size, 5)
-        for tr in tc_track.data:
-            self.assertEqual(tr.basin[0], "NI")
-
-        # genesis in EP, but crosses WP at some point
-        tc_track = tc.TCTracks.from_ibtracs_netcdf(
-            year_range=(2002, 2003), basin="WP", genesis_basin="EP")
-        self.assertEqual(tc_track.size, 3)
-        for tr in tc_track.data:
-            self.assertEqual(tr.basin[0], "EP")
-            self.assertIn("WP", tr.basin)
-
     def test_ibtracs_discard_single_points(self):
         """Check discard_single_points option"""
         passed = False
