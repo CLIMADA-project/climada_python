@@ -49,11 +49,10 @@ class Input:
     impact_calc_kwds : Mapping (str, Any), optional
         Keyword arguments to :py:meth:`climada.engine.impact_calc.ImpactCalc.impact`.
         Defaults to ``{"assign_centroids": False}`` (by default, centroids are assigned
-        here via the ``align`` parameter, to avoid assigning them each time the impact is
-        calculated).
-    align : bool, optional
-        Match event IDs from ``hazard`` and ``data``, and assign the centroids from
-        ``hazard`` to ``exposure``. Defaults to ``True``.
+        here via the ``assign_centroids`` parameter, to avoid assigning them each time
+        the impact is calculated).
+    assign_centroids : bool, optional
+        If ``True`` (default), assign the hazard centroids to the exposure.
     """
 
     hazard: Hazard
@@ -66,18 +65,11 @@ class Input:
     impact_calc_kwds: Mapping[str, Any] = field(
         default_factory=lambda: {"assign_centroids": False}
     )
-    align: InitVar[bool] = True
+    assign_centroids: InitVar[bool] = True
 
-    def __post_init__(self, align):
+    def __post_init__(self, assign_centroids):
         """Prepare input data"""
-        if align:
-            event_diff = np.setdiff1d(self.data.index, self.hazard.event_id)
-            if event_diff.size > 0:
-                raise RuntimeError(
-                    "Event IDs in 'data' do not match event IDs in 'hazard': \n"
-                    f"{event_diff}"
-                )
-            self.hazard = self.hazard.select(event_id=self.data.index.tolist())
+        if assign_centroids:
             self.exposure.assign_centroids(self.hazard)
 
 

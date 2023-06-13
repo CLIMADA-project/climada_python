@@ -26,6 +26,7 @@ class TestScipyMinimizeOptimizer(unittest.TestCase):
         self.hazard.event_name = ["event"] * len(self.hazard.event_id)
         self.exposure = exposure()
         self.events = [10, 1]
+        self.hazard = self.hazard.select(event_id=self.events)
         self.data = pd.DataFrame(
             data={"a": [3, 1], "b": [0.2, 0.01]}, index=self.events
         )

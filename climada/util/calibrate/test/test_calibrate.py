@@ -57,36 +57,33 @@ class TestInputPostInit(unittest.TestCase):
         self.cost_func = lambda impact, data: 1.0
         self.impact_func_gen = lambda **kwargs: ImpactFuncSet()
 
-    @patch("climada.util.calibrate.impact_func.np.setdiff1d")
-    def test_post_init_calls(self, setdiff1d_mock):
+    def test_post_init_calls(self):
         """Test if post_init calls stuff correctly using mocks"""
         # Create mocks
-        hazard_mock_1 = create_autospec(Hazard())
-        event_id = [10]
-        hazard_mock_1.event_id = event_id
-        hazard_mock_2 = create_autospec(Hazard())
         exposure_mock = create_autospec(Exposures())
-        setdiff1d_mock.return_value = np.array([])
 
-        # Make first hazard mock return another instance
-        hazard_mock_1.select.return_value = hazard_mock_2
-
-        # Create input
+        # Default
         input = Input(
-            hazard=hazard_mock_1,
+            hazard=self.hazard,
             exposure=exposure_mock,
             data=self.data,
             cost_func=self.cost_func,
             impact_func_gen=self.impact_func_gen,
         )
+        exposure_mock.assign_centroids.assert_called_once_with(self.hazard)
+        exposure_mock.reset_mock()
 
-        # Query checks
-        npt.assert_array_equal(setdiff1d_mock.call_args.args[0], self.data_events)
-        npt.assert_array_equal(setdiff1d_mock.call_args.args[1], event_id)
-        hazard_mock_1.select.assert_called_once_with(event_id=self.data_events)
-        self.assertNotEqual(input.hazard, hazard_mock_1)
-        self.assertEqual(input.hazard, hazard_mock_2)
-        exposure_mock.assign_centroids.assert_called_once_with(hazard_mock_2)
+        # Default
+        input = Input(
+            hazard=self.hazard,
+            exposure=exposure_mock,
+            data=self.data,
+            cost_func=self.cost_func,
+            impact_func_gen=self.impact_func_gen,
+            assign_centroids=False
+        )
+        exposure_mock.assign_centroids.assert_not_called()
+        
 
     def test_post_init(self):
         """Test if post_init results in a sensible hazard and exposure"""
@@ -100,36 +97,8 @@ class TestInputPostInit(unittest.TestCase):
         )
 
         # Check hazard and exposure
-        npt.assert_array_equal(input.hazard.event_id, self.data.index)
         self.assertIn("centr_", input.exposure.gdf)
         npt.assert_array_equal(input.exposure.gdf["centr_"], [0, 1, -1])
-
-    def test_non_matching_events(self):
-        """Test if non-matching events result in errors"""
-        data = pd.DataFrame(data={"a": [1, 2, 3]}, index=[9, 3, 12])
-        input_kwargs = {
-            "hazard": self.hazard,
-            "exposure": self.exposure,
-            "data": data,
-            "cost_func": self.cost_func,
-            "impact_func_gen": self.impact_func_gen,
-            "align": False,
-        }
-
-        # No error without alignment
-        Input(**input_kwargs)
-
-        # Error with alignment
-        input_kwargs.update(align=True)
-        with self.assertRaises(RuntimeError) as cm:
-            Input(**input_kwargs)
-
-        self.assertIn(
-            "Event IDs in 'data' do not match event IDs in 'hazard'", str(cm.exception)
-        )
-        self.assertIn("9", str(cm.exception))
-        self.assertIn("12", str(cm.exception))
-        self.assertNotIn("3", str(cm.exception))
 
 
 class TestOptimizer(unittest.TestCase):
@@ -144,7 +113,7 @@ class TestOptimizer(unittest.TestCase):
                 data=create_autospec(pd.DataFrame, instance=True),
                 cost_func=MagicMock(),
                 impact_func_gen=MagicMock(),
-                align=False,
+                assign_centroids=False,
             )
         )
 
