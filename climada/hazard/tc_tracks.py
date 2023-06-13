@@ -22,7 +22,6 @@ Define TCTracks: IBTracs reader and tracks manager.
 __all__ = ['CAT_NAMES', 'SAFFIR_SIM_CAT', 'TCTracks', 'set_category']
 
 # standard libraries
-import contextlib
 import datetime as dt
 import itertools
 import logging
@@ -53,10 +52,6 @@ import shapely.ops
 from sklearn.metrics import DistanceMetric
 import statsmodels.api as sm
 import xarray as xr
-from xarray.backends import NetCDF4DataStore
-from xarray.backends.api import dump_to_store
-from xarray.backends.common import ArrayWriter
-from xarray.backends.store import StoreBackendEntrypoint
 
 # climada dependencies
 from climada.util import ureg
