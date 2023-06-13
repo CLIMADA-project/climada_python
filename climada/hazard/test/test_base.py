@@ -1214,46 +1214,6 @@ class TestReaderMat(unittest.TestCase):
 class TestHDF5(unittest.TestCase):
     """Test reader functionality of the ExposuresExcel class"""
 
-    def test_write_read_pass(self):
-        """Read a hazard mat file correctly."""
-        file_name = str(DATA_DIR.joinpath('test_haz.h5'))
-
-        # Read demo matlab file
-        hazard = Hazard.from_mat(HAZ_TEST_MAT)
-        hazard.event_name = list(map(str, hazard.event_name))
-        for todense_flag in [False, True]:
-            if todense_flag:
-                hazard.write_hdf5(file_name, todense=todense_flag)
-            else:
-                hazard.write_hdf5(file_name)
-
-            haz_read = Hazard.from_hdf5(file_name)
-
-            self.assertEqual(hazard.tag.file_name, haz_read.tag.file_name)
-            self.assertIsInstance(haz_read.tag.file_name, list)
-            self.assertEqual(hazard.haz_type, haz_read.haz_type)
-            self.assertIsInstance(haz_read.haz_type, str)
-            self.assertEqual(hazard.tag.description, haz_read.tag.description)
-            self.assertIsInstance(haz_read.tag.description, list)
-            self.assertEqual(hazard.units, haz_read.units)
-            self.assertIsInstance(haz_read.units, str)
-            self.assertTrue(np.array_equal(hazard.centroids.coord, haz_read.centroids.coord))
-            self.assertTrue(u_coord.equal_crs(hazard.centroids.crs, haz_read.centroids.crs))
-            self.assertTrue(np.array_equal(hazard.event_id, haz_read.event_id))
-            self.assertTrue(np.array_equal(hazard.frequency, haz_read.frequency))
-            self.assertEqual(hazard.frequency_unit, haz_read.frequency_unit)
-            self.assertIsInstance(haz_read.frequency_unit, str)
-            self.assertTrue(np.array_equal(hazard.event_name, haz_read.event_name))
-            self.assertIsInstance(haz_read.event_name, list)
-            self.assertIsInstance(haz_read.event_name[0], str)
-            self.assertTrue(np.array_equal(hazard.date, haz_read.date))
-            self.assertTrue(np.array_equal(hazard.orig, haz_read.orig))
-            self.assertTrue(np.array_equal(hazard.intensity.toarray(),
-                                           haz_read.intensity.toarray()))
-            self.assertIsInstance(haz_read.intensity, sparse.csr_matrix)
-            self.assertTrue(np.array_equal(hazard.fraction.toarray(), haz_read.fraction.toarray()))
-            self.assertIsInstance(haz_read.fraction, sparse.csr_matrix)
-
     def test_write_read_unsupported_type(self):
         """Check if the write command correctly handles unsupported types"""
         file_name = str(DATA_DIR.joinpath('test_unsupported.h5'))

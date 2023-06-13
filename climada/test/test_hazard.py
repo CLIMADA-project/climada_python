@@ -129,7 +129,7 @@ class TestStormEurope(unittest.TestCase):
 
         def _test_first(haz):
             """Test the expected first entry of the hazard"""
-            self.assertEqual(haz.tag.haz_type, "WS")
+            self.assertEqual(haz.haz_type, "WS")
             self.assertEqual(haz.units, "m/s")
             self.assertEqual(haz.event_id.size, 1)
             self.assertEqual(haz.date.size, 1)
@@ -157,7 +157,7 @@ class TestStormEurope(unittest.TestCase):
         # Now load both
         storms = StormEurope.from_footprints(WS_DEMO_NC, description="test_description")
 
-        self.assertEqual(storms.tag.haz_type, "WS")
+        self.assertEqual(storms.haz_type, "WS")
         self.assertEqual(storms.units, "m/s")
         self.assertEqual(storms.event_id.size, 2)
         self.assertEqual(storms.date.size, 2)
@@ -188,7 +188,7 @@ class TestStormEurope(unittest.TestCase):
             grib_dir=dsdir,
             delete_raw_data=False,
         )
-        self.assertEqual(haz.tag.haz_type, "WS")
+        self.assertEqual(haz.haz_type, "WS")
         self.assertEqual(haz.units, "m/s")
         self.assertEqual(haz.event_id.size, 40)
         self.assertEqual(haz.date.size, 40)
@@ -280,12 +280,12 @@ class TestBase(unittest.TestCase):
 
             haz_read = Hazard.from_hdf5(file_name)
 
-            self.assertEqual(str(hazard.tag.file_name), haz_read.tag.file_name)
-            self.assertIsInstance(haz_read.tag.file_name, str)
-            self.assertEqual(hazard.tag.haz_type, haz_read.tag.haz_type)
-            self.assertIsInstance(haz_read.tag.haz_type, str)
+            self.assertEqual(hazard.tag.file_name, haz_read.tag.file_name)
+            self.assertIsInstance(haz_read.tag.file_name, list)
+            self.assertEqual(hazard.haz_type, haz_read.haz_type)
+            self.assertIsInstance(haz_read.haz_type, str)
             self.assertEqual(hazard.tag.description, haz_read.tag.description)
-            self.assertIsInstance(haz_read.tag.description, str)
+            self.assertIsInstance(haz_read.tag.description, list)
             self.assertEqual(hazard.units, haz_read.units)
             self.assertIsInstance(haz_read.units, str)
             self.assertTrue(
