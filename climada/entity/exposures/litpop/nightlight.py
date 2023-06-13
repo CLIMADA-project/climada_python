@@ -311,6 +311,7 @@ def download_nl_files(req_files=np.ones(len(BM_FILENAMES),),
                 continue # file already available or not required
             path_check = False
             # loop through different possible URLs defined in CONFIG:
+            value_err = None
             for url in CONFIG.exposures.litpop.nightlights.nasa_sites.list():
                 try: # control for ValueError due to wrong URL
                     curr_file = url.str() + BM_FILENAMES[num_files] %(year)
@@ -321,10 +322,13 @@ def download_nl_files(req_files=np.ones(len(BM_FILENAMES),),
                     value_err = err
             if path_check: # download succesful
                 continue
-            raise ValueError("Download failed, check URLs in " +
-                             "CONFIG.exposures.litpop.nightlights.nasa_sites! \n Last " +
-                             "error message: \n" + value_err.args[0])
-
+            if value_err:
+                raise ValueError("Download failed,"
+                                 " check URLs inCONFIG.exposures.litpop.nightlights.nasa_sites!\n"
+                                 f" Last error message:\n {value_err.args[0]}")
+            else:
+                raise ValueError("Download failed, file not found and no nasa sites configured,"
+                                 " check URLs in CONFIG.exposures.litpop.nightlights.nasa_sites!")
     except Exception as exc:
         raise RuntimeError('Download failed. Please check the network '
             'connection and whether filenames are still valid.') from exc
@@ -539,11 +543,11 @@ def load_nightlight_noaa(ref_year=2013, sat_name=None):
                              str(ref_year) + '*.stable_lights.avg_vis'))
     # check if file exists in SYSTEM_DIR, download if not
     if glob.glob(fn_light + ".p"):
-        fn_light = glob.glob(fn_light + ".p")[0]
+        fn_light = sorted(glob.glob(fn_light + ".p"))[0]
         with open(fn_light, 'rb') as f_nl:
             nightlight = pickle.load(f_nl)
     elif glob.glob(fn_light + ".tif.gz"):
-        fn_light = glob.glob(fn_light + ".tif.gz")[0]
+        fn_light = sorted(glob.glob(fn_light + ".tif.gz"))[0]
         fn_light, nightlight = unzip_tif_to_py(fn_light)
     else:
         # iterate over all satellites if no satellite name provided
