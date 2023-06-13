@@ -27,13 +27,17 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import contextily as ctx
 
+from climada.engine.unsequa import  UncOutput
 from climada.engine import ImpactCalc, ImpactFreqCurve, CostBenefit
 from climada.entity import (Entity, ImpactFuncSet, Exposures, DiscRates, ImpfTropCyclone, Measure,
                             MeasureSet)
 from climada.hazard import Hazard, Centroids
-from climada.util.constants import HAZ_DEMO_MAT, ENT_DEMO_TODAY
+from climada.util.constants import HAZ_DEMO_MAT, ENT_DEMO_TODAY, TEST_UNC_OUTPUT_COSTBEN
 from climada.util.api_client import Client
 
+apiclient = Client()
+ds = apiclient.get_dataset_info(name=TEST_UNC_OUTPUT_COSTBEN, status='test_dataset')
+_target_dir, [test_unc_output_costben] = apiclient.download_dataset(ds)
 
 class TestPlotter(unittest.TestCase):
     """Test plot functions."""
@@ -243,6 +247,23 @@ class TestPlotter(unittest.TestCase):
                                     accumulate=True)
         CostBenefit._plot_list_cost_ben(cb_list = [costben])
 
+    def test_plot_unc_cb(self):
+        """Test all cost benefit plots"""
+        unc_output = UncOutput.from_hdf5(test_unc_output_costben)
+        plt_s = unc_output.plot_sample()
+        self.assertIsNotNone(plt_s)
+        plt.close()
+        plt_u = unc_output.plot_uncertainty()
+        self.assertIsNotNone(plt_u)
+        plt.close()
+        with self.assertRaises(ValueError):
+            unc_output.plot_rp_uncertainty()
+        plt_sens = unc_output.plot_sensitivity()
+        self.assertIsNotNone(plt_sens)
+        plt.close()
+        plt_sens_2 = unc_output.plot_sensitivity_second_order(salib_si='S1')
+        self.assertIsNotNone(plt_sens_2)
+        plt.close()
 
 # Execute Tests
 if __name__ == "__main__":
