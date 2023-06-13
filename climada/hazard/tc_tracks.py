@@ -1398,6 +1398,25 @@ class TCTracks():
             TCTracks with data from the given HDF5 file.
         """
         ds_combined = xr.open_dataset(file_name)
+        if len(ds_combined.dims) == 0:
+            # this might be the legacy file format that is no longer supported, double-check:
+            try:
+                with xr.open_dataset(file_name, group="track0") as tr:
+                    assert "time" in tr.dims and "max_sustained_wind" in tr.variables
+                is_legacy = True
+            except:
+                is_legacy = False
+            raise ValueError(
+                (
+                    f"The file you try to read ({file_name}) is in a format that is no longer"
+                    " supported by CLIMADA. Please store the data again using"
+                    " TCTracks.write_hdf5. If you struggle to convert the data, please open an"
+                    " issue on GitHub."
+                ) if is_legacy else (
+                    f"Unknown HDF5/NetCDF file format: {file_name}"
+                )
+            )
+
         # when writing '<U*' and reading in again, xarray reads as dtype 'object'. undo this:
         for varname in ds_combined.data_vars:
             if ds_combined[varname].dtype == "object":

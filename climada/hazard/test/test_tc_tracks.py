@@ -44,6 +44,7 @@ TEST_TRACK_EMANUEL_CORR = DATA_DIR.joinpath('temp_mpircp85cal_full.mat')
 TEST_TRACK_CHAZ = DATA_DIR.joinpath('chaz_test_tracks.nc')
 TEST_TRACK_STORM = DATA_DIR.joinpath('storm_test_tracks.txt')
 TEST_TRACKS_ANTIMERIDIAN = DATA_DIR.joinpath('tracks-antimeridian')
+TEST_TRACKS_LEGACY_HDF5 = DATA_DIR.joinpath('tctracks_hdf5_legacy.nc')
 
 
 class TestIbtracs(unittest.TestCase):
@@ -338,6 +339,11 @@ class TestIO(unittest.TestCase):
                 self.assertEqual(tr[v].dtype, tr_read[v].dtype)
                 np.testing.assert_array_equal(tr[v].values, tr_read[v].values)
             self.assertEqual(tr.sid, tr_read.sid)
+
+        # attempting to read the legacy file format should fail gracefully
+        with self.assertRaises(ValueError) as cm:
+            tc.TCTracks.from_hdf5(TEST_TRACKS_LEGACY_HDF5)
+        self.assertIn("no longer supported by CLIMADA", str(cm.exception))
 
     def test_from_processed_ibtracs_csv(self):
         tc_track = tc.TCTracks.from_processed_ibtracs_csv(TEST_TRACK)
