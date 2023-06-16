@@ -23,6 +23,7 @@ from datetime import datetime
 import hashlib
 import json
 import logging
+from os.path import commonprefix
 from pathlib import Path
 from urllib.parse import quote, unquote, urlsplit, urlunsplit
 import time
@@ -1029,7 +1030,7 @@ class Client():
             default: True
         """
 
-        # collect files from datasets that should not be removed
+        # collect urls from datasets that should not be removed
         test_datasets = self.list_dataset_infos(status='test_dataset') if keep_testfiles else []
         test_urls = set(filinf.url for dsinf in test_datasets for filinf in dsinf.files)
 
@@ -1043,19 +1044,11 @@ class Client():
 
         # helper function for filtering by target_dir
         target_dir = Path(target_dir).absolute()
-        def beneath(path: Path):
-            if not path.exists():
-                return False
-            while path != path.parent:
-                if target_dir == path:
-                    return True
-                path = path.parent
-            return False
 
         # remove files and sqlite db entries
         for obsolete in to_be_removed:
             opath = Path(obsolete.path)
-            if beneath(opath):
+            if opath.exists() and Path(commonprefix([target_dir, opath])) == target_dir:
                 opath.unlink()
                 obsolete.delete_instance()
 
