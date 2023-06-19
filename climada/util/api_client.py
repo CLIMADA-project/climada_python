@@ -595,9 +595,15 @@ class Client():
                 local_path /= fileinfo.file_name
             downloaded = self._tracked_download(remote_url=fileinfo.url, local_path=local_path)
             if not downloaded.enddownload:
-                raise Download.Failed("Download seems to be in progress, please try again later"
-                                      " or remove cache entry from database by calling"
-                                      f" `Client.purge_cache_db(Path('{local_path}'))`!")
+                raise Download.Failed(f"A download of {fileinfo.url} via the API Client has been"
+                                      " requested before. Either it is still in progress or the"
+                                      " process got interrupted. In the former case just wait"
+                                      " until the download has finished and try again, in the"
+                                      f" latter run `Client.purge_cache_db(Path('{local_path}'))`"
+                                      " from Python. If unsure, check your internet connection,"
+                                      " wait for as long as it takes to download a file of size"
+                                      f" {fileinfo.file_size} and try again. If the problem"
+                                      " persists, purge the cache db with said call.")
             try:
                 check(local_path, fileinfo)
             except Download.Failed as dlf:
@@ -1016,7 +1022,7 @@ class Client():
         with the API client, if they are beneath the given directory and if one of the following
         is the case:
         - there status is neither 'active' nor 'test_dataset'
-        = their status is 'test_dataset' and keep_testfiles is set to False
+        - their status is 'test_dataset' and keep_testfiles is set to False
         - their status is 'active' and they are outdated, i.e., there is a dataset with the same
           data_type and name but a newer version.
 
@@ -1032,10 +1038,12 @@ class Client():
 
         # collect urls from datasets that should not be removed
         test_datasets = self.list_dataset_infos(status='test_dataset') if keep_testfiles else []
-        test_urls = set(filinf.url for dsinf in test_datasets for filinf in dsinf.files)
+        test_urls = set(
+            file_info.url for ds_info in test_datasets for file_info in ds_info.files)
 
         active_datasets = self.list_dataset_infos(status='active', version='newest')
-        active_urls = set(filinf.url for dsinf in active_datasets for filinf in dsinf.files)
+        active_urls = set(
+            file_info.url for ds_info in active_datasets for file_info in ds_info.files)
 
         not_to_be_removed = test_urls.union(active_urls)
 
@@ -1059,6 +1067,6 @@ class Client():
                     rm_empty_dirs(subdir)
             try:
                 directory.rmdir()
-            except OSError:
+            except OSError:  # raised when the directory is not empty
                 pass
         rm_empty_dirs(target_dir)
