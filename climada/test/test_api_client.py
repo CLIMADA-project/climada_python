@@ -19,8 +19,8 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Test save module.
 """
 from pathlib import Path
+import tempfile
 import unittest
-from shutil import rmtree
 
 import numpy as np
 
@@ -232,6 +232,46 @@ class TestClient(unittest.TestCase):
         straight, multi = Client._divide_straight_from_multi(properties)
         self.assertEqual(straight, {'b': '1'})
         self.assertEqual(multi, {'country_name': ['x', 'y', 'z']})
+
+    def test_purge_cache(self):
+        client = Client()
+        
+        active_ds = client.get_dataset_info(data_type="litpop", name="LitPop_150arcsec_ABW", version="v2")
+        outdated_ds = client.get_dataset_info(data_type="litpop", name="LitPop_150arcsec_ABW", version="v1")
+        test_ds = client.get_dataset_info(data_type="storm_europe", name="test_storm_europe_icon_2021012800", version="v1", status="test_dataset")
+        expired_ds = client.get_dataset_info(data_type="tropical_cyclone", name="rename_files2", version="v1", status="expired")
+        
+        with tempfile.TemporaryDirectory() as temp_dir:
+            for ds in [active_ds, outdated_ds, test_ds, expired_ds]:
+                client.download_dataset(dataset=ds, target_dir=Path(temp_dir))
+            self.assertEqual(  # outdated dataset present
+                1,
+                len(list(Path(temp_dir).joinpath('exposures/litpop/LitPop_150arcsec_ABW/v1').iterdir()))
+            )
+            self.assertEqual(  # expired data set present
+                1,
+                len(list(Path(temp_dir).joinpath('hazard/tropical_cyclone/rename_files2/v1').iterdir()))
+            )
+
+            client.purge_cache(target_dir=temp_dir)
+            self.assertFalse(  # outdated data set removed
+                Path(temp_dir).joinpath('exposures/litpop/LitPop_150arcsec_ABW/v1').is_dir()
+            )
+            self.assertFalse(  # expired data set removed
+                Path(temp_dir).joinpath('hazard/tropical_cyclone/rename_files2/v1').is_dir()
+            )
+            self.assertEqual(  # test files are still there
+                3,
+                len(list(Path(temp_dir).joinpath('hazard/storm_europe/test_storm_europe_icon_2021012800/v1').iterdir()))
+            )
+
+            client.purge_cache(target_dir=temp_dir, keep_testfiles=False)
+            self.assertTrue(  # uptodate active dataset file still there
+                Path(temp_dir).joinpath('exposures/litpop/LitPop_150arcsec_ABW/v2/LitPop_150arcsec_ABW.hdf5').exists()
+            )
+            self.assertFalse(  # test data removed, empty directories removed
+                Path(temp_dir).joinpath('hazard/').exists()
+            )
 
 
 def rm_empty_dir(folder):
