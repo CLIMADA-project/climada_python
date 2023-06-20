@@ -189,6 +189,9 @@ class TCTracks():
         Computed during processing:
             - on_land (bool for each track position)
             - dist_since_lf (in km)
+        Additional data variables such as "nature" (specifiying, for each track position, whether a
+        system is a disturbance, tropical storm, post-transition extratropical storm etc.) might be
+        included, depending on the data source and on use cases.
     """
     def __init__(self,
                  data: Optional[List[xr.Dataset]] = None,
@@ -328,7 +331,7 @@ class TCTracks():
     def from_ibtracs_netcdf(cls, provider=None, rescale_windspeeds=True, storm_id=None,
                             year_range=None, basin=None, genesis_basin=None,
                             interpolate_missing=True, estimate_missing=False, correct_pres=False,
-                            discard_single_points=True,
+                            discard_single_points=True, additional_variables=None,
                             file_name='IBTrACS.ALL.v04r00.nc'):
         """Create new TCTracks object from IBTrACS databse.
 
@@ -438,6 +441,10 @@ class TCTracks():
         file_name : str, optional
             Name of NetCDF file to be dowloaded or located at climada/data/system.
             Default: 'IBTrACS.ALL.v04r00.nc'
+        additional_variables : list of str, optional
+            If specified, additional IBTrACS data variables are extracted, such as "nature" or
+            "storm_speed". Only variables that are not agency-specific are supported.
+            Default: None.
 
         Returns
         -------
@@ -461,6 +468,9 @@ class TCTracks():
                 raise ValueError(
                     f'Error while downloading {IBTRACS_URL}. Try to download it manually and '
                     f'put the file in {ibtracs_path}') from err
+
+        if additional_variables is None:
+            additional_variables = []
 
         ibtracs_ds = xr.open_dataset(ibtracs_path)
         ibtracs_date = ibtracs_ds.attrs["date_created"]
@@ -576,7 +586,8 @@ class TCTracks():
                             ibtracs_ds[tc_var].sel(storm=nonsingular_mask).interpolate_na(
                                 dim="date_time", method="linear"))
         ibtracs_ds = ibtracs_ds[['sid', 'name', 'basin', 'time', 'valid_t']
-                                + phys_vars + [f'{v}_agency' for v in phys_vars]]
+                                + additional_variables + phys_vars
+                                + [f'{v}_agency' for v in phys_vars]]
 
         if estimate_missing:
             ibtracs_ds['pres'][:] = _estimate_pressure(
@@ -685,28 +696,37 @@ class TCTracks():
                     "{}({})".format(v, track_ds[f'{v}_agency'].astype(str).item())
                     for v in phys_vars)
 
-            all_tracks.append(xr.Dataset({
-                'time_step': ('time', track_ds.time_step.data),
+            data_vars = {
                 'radius_max_wind': ('time', track_ds.rmw.data),
                 'radius_oci': ('time', track_ds.roci.data),
                 'max_sustained_wind': ('time', track_ds.wind.data),
                 'central_pressure': ('time', track_ds.pres.data),
                 'environmental_pressure': ('time', track_ds.poci.data),
-                'basin': ('time', track_ds.basin.data.astype("<U2")),
-            }, coords={
-                'time': track_ds.time.dt.round('s').data,
+            }
+            coords = {
+                'time': ('time', track_ds.time.dt.round('s').data),
                 'lat': ('time', track_ds.lat.data),
                 'lon': ('time', track_ds.lon.data),
-            }, attrs={
+            }
+            attrs = {
                 'max_sustained_wind_unit': 'kn',
                 'central_pressure_unit': 'mb',
-                'name': track_ds.name.astype(str).item(),
-                'sid': track_ds.sid.astype(str).item(),
                 'orig_event_flag': True,
                 'data_provider': provider_str,
-                'id_no': track_ds.id_no.item(),
                 'category': category[i_track],
-            }))
+            }
+            # automatically assign the remaining variables as attributes or data variables
+            for varname in ["time_step", "basin", "name", "sid", "id_no"] + additional_variables:
+                values = track_ds[varname].data
+                if track_ds[varname].dtype.kind == "S":
+                    # This converts the `bytes` (dtype "|S*") in IBTrACS to the more common `str`
+                    # objects (dtype "<U*") that we use in CLIMADA.
+                    values = values.astype(str)
+                if values.ndim == 0:
+                    attrs[varname] = values.item()
+                else:
+                    data_vars[varname] = ('time', values)
+            all_tracks.append(xr.Dataset(data_vars, coords=coords, attrs=attrs))
         if last_perc != 100:
             LOGGER.info("Progress: 100%")
         if len(all_tracks) == 0:
@@ -1382,8 +1402,10 @@ class TCTracks():
         for i in track_no:
             track = ds_dict[f'track{i}']
             track.attrs['orig_event_flag'] = bool(track.attrs['orig_event_flag'])
-            # when writing '<U2' and reading in again, xarray reads as dtype 'object'. undo this:
-            track['basin'] = track['basin'].astype('<U2')
+            # when writing '<U*' and reading in again, xarray reads as dtype 'object'. undo this:
+            for varname in track.data_vars:
+                if track[varname].dtype == "object":
+                    track[varname] = track[varname].astype(str)
             data.append(track)
         return cls(data)
 
@@ -1499,7 +1521,9 @@ class TCTracks():
             time_step = pd.tseries.frequencies.to_offset(pd.Timedelta(hours=time_step_h)).freqstr
             track_int = track.resample(time=time_step, skipna=True)\
                              .interpolate('linear')
-            track_int['basin'] = track.basin.resample(time=time_step).nearest()
+            for var in track.data_vars:
+                if "time" in track[var].dims and track[var].dtype.kind != "f":
+                    track_int[var] = track[var].resample(time=time_step).nearest()
             track_int['time_step'][:] = time_step_h
             lon_int = lon.resample(time=time_step).interpolate(method)
             lon_int[lon_int > 180] -= 360

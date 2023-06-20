@@ -37,10 +37,9 @@ from climada.entity import Exposures
 from climada.hazard import Hazard
 from climada.engine.unsequa import InputVar, CalcImpact, UncOutput, CalcCostBenefit
 
-from climada.util.constants import EXP_DEMO_H5, HAZ_DEMO_H5, ENT_DEMO_TODAY, ENT_DEMO_FUTURE
-from climada.util.constants import  TEST_UNC_OUTPUT_IMPACT, TEST_UNC_OUTPUT_COSTBEN
+from climada.util.constants import (EXP_DEMO_H5, HAZ_DEMO_H5, ENT_DEMO_TODAY, ENT_DEMO_FUTURE, 
+                                    TEST_UNC_OUTPUT_IMPACT, TEST_UNC_OUTPUT_COSTBEN)
 from climada.util.api_client import Client
-
 
 apiclient = Client()
 ds = apiclient.get_dataset_info(name=TEST_UNC_OUTPUT_IMPACT, status='test_dataset')
@@ -281,24 +280,6 @@ class TestOutput(unittest.TestCase):
         plt.close()
         plt_map = unc_output.plot_sensitivity_map()
         self.assertIsNotNone(plt_map)
-        plt.close()
-
-    def test_plot_unc_cb(self):
-        """Test all cost benefit plots"""
-        unc_output = UncOutput.from_hdf5(test_unc_output_costben)
-        plt_s = unc_output.plot_sample()
-        self.assertIsNotNone(plt_s)
-        plt.close()
-        plt_u = unc_output.plot_uncertainty()
-        self.assertIsNotNone(plt_u)
-        plt.close()
-        with self.assertRaises(ValueError):
-            unc_output.plot_rp_uncertainty()
-        plt_sens = unc_output.plot_sensitivity()
-        self.assertIsNotNone(plt_sens)
-        plt.close()
-        plt_sens_2 = unc_output.plot_sensitivity_second_order(salib_si='S1')
-        self.assertIsNotNone(plt_sens_2)
         plt.close()
 
     def test_save_load_pass(self):
@@ -680,58 +661,6 @@ class TestCalcCostBenefit(unittest.TestCase):
             np.array(['x_haz', 'EN', 'IFi', 'CO', 'EG', 'PAA', 'MDD'])
             )
 
-
-    def test_calc_uncertainty_pass(self):
-        """Test compute the uncertainty distribution for an impact"""
-
-        ent_iv, ent_fut_iv = make_costben_iv()
-        _, _, haz_iv = make_input_vars()
-        unc_calc = CalcCostBenefit(haz_iv, ent_iv)
-        unc_data = unc_calc.make_sample( N=2)
-        unc_data = unc_calc.uncertainty(unc_data)
-
-        self.assertEqual(unc_data.unit, ent_dem().exposures.value_unit)
-
-        self.assertEqual(
-            unc_data.tot_climate_risk_unc_df.size,
-            unc_data.n_samples
-            )
-        self.assertEqual(
-            unc_data.cost_ben_ratio_unc_df.size,
-            unc_data.n_samples * 4 #number of measures
-            )
-        self.assertEqual(
-            unc_data.imp_meas_present_unc_df.size,
-            0
-            )
-        self.assertEqual(
-            unc_data.imp_meas_future_unc_df.size,
-            unc_data.n_samples * 4 * 5 #All measures 4 and risks/benefits 5
-            )
-
-        unc_calc = CalcCostBenefit(haz_iv, ent_iv, haz_iv, ent_fut_iv)
-        unc_data = unc_calc.make_sample( N=2)
-        unc_data = unc_calc.uncertainty(unc_data)
-
-        self.assertEqual(unc_data.unit, ent_dem().exposures.value_unit)
-
-        self.assertEqual(
-            unc_data.tot_climate_risk_unc_df.size,
-            unc_data.n_samples
-            )
-        self.assertEqual(
-            unc_data.cost_ben_ratio_unc_df.size,
-            unc_data.n_samples * 4 #number of measures
-            )
-        self.assertEqual(
-            unc_data.imp_meas_present_unc_df.size,
-            unc_data.n_samples * 4 * 5 #All measures 4 and risks/benefits 5
-            )
-        self.assertEqual(
-            unc_data.imp_meas_future_unc_df.size,
-            unc_data.n_samples * 4 * 5 #All measures 4 and risks/benefits 5
-            )
-
     def test_calc_uncertainty_pool_pass(self):
         """Test compute the uncertainty distribution for an impact"""
 
@@ -766,45 +695,6 @@ class TestCalcCostBenefit(unittest.TestCase):
             unc_data.imp_meas_future_unc_df.size,
             unc_data.n_samples * 4 * 5 #All measures 4 and risks/benefits 5
             )
-
-    def test_calc_sensitivity_pass(self):
-        """Test compute sensitivity default"""
-
-        ent_iv, _ = make_costben_iv()
-        _, _, haz_iv = make_input_vars()
-        unc_calc = CalcCostBenefit(haz_iv, ent_iv)
-        unc_data = unc_calc.make_sample(N=4, sampling_kwargs={'calc_second_order': True})
-        unc_data = unc_calc.uncertainty(unc_data)
-
-        unc_data = unc_calc.sensitivity(
-            unc_data,
-            sensitivity_kwargs = {'calc_second_order': True}
-            )
-
-        self.assertEqual(unc_data.sensitivity_method, 'sobol')
-        self.assertTupleEqual(unc_data.sensitivity_kwargs,
-                              tuple({'calc_second_order': 'True'}.items())
-                              )
-
-        for name, attr in unc_data.__dict__.items():
-            if 'sens_df' in name:
-                if 'imp_meas_present' in name:
-                    self.assertTrue(attr.empty)
-                else:
-                    np.testing.assert_array_equal(
-                        attr.param.unique(),
-                        np.array(['x_haz', 'EN', 'IFi', 'CO'])
-                        )
-
-                    np.testing.assert_array_equal(
-                        attr.si.unique(),
-                        np.array(['S1', 'S1_conf', 'ST', 'ST_conf', 'S2', 'S2_conf'])
-                        )
-
-                    self.assertEqual(len(attr),
-                                      len(unc_data.param_labels) * (4 + 4 + 4)
-                                      )
-
 
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestInputVar)

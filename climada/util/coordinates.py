@@ -1946,8 +1946,8 @@ def read_raster(file_name, band=None, src_crs=None, window=None, geometry=None,
         band number to read. Default: 1
     window : rasterio.windows.Window, optional
         window to read
-    geometry : shapely.geometry, optional
-        consider pixels only in shape
+    geometry : list of shapely.geometry, optional
+        consider pixels only within these shapes
     dst_crs : crs, optional
         reproject to given crs
     transform : rasterio.Affine
