@@ -317,7 +317,6 @@ class TropCyclone(Hazard):
         LOGGER.debug('Compute frequency.')
         haz.frequency_from_tracks(tracks.data)
         haz.tag.append(Tag(description=description))
-        print('tag tag tag ', haz.tag)
         return haz
 
     def apply_climate_scenario_knu(

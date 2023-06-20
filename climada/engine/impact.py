@@ -44,13 +44,14 @@ import h5py
 from pyproj import CRS as pyprojCRS
 from rasterio.crs import CRS as rasterioCRS  # pylint: disable=no-name-in-module
 
-from climada.entity import Exposures, Tag
-import climada.util.plot as u_plot
+from climada.entity import Exposures
 from climada import CONFIG
 from climada.util.constants import DEF_CRS, CMAP_IMPACT, DEF_FREQ_UNIT
 import climada.util.coordinates as u_coord
 import climada.util.dates_times as u_dt
+import climada.util.plot as u_plot
 from climada.util.select import get_attributes_with_matching_dimension
+from climada.util.tag import Tag
 
 LOGGER = logging.getLogger(__name__)
 
