@@ -1,0 +1,26 @@
+# This workflow will create a new minor release from main
+
+# the new version number is the old one increased by 1 in the given level [major, minor, patch]
+# some files are updated accordingly (e.g., _version.py, setup.py and CHANGELOG.md)
+# a new release is made on GitHub, tagged with v[new version number]
+
+name: Create a new minor release
+
+on: workflow_dispatch
+
+jobs:
+  github:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@master
+        with:
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+      - name: Prepare new release
+        run: .github/scripts/prepare_release.py minor
+        env:
+          GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+      - name: Publish
+        run: .github/scripts/make_release.py
+        env:
+          GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
