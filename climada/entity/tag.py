@@ -18,9 +18,14 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Define (deprecated) Tag class.
 """
+
+from deprecation import deprecated
+
 from climada.util.tag import Tag as _Tag
 
+
+@deprecated(details="This class is not supported anymore and will be removed in the next version of climada.")
 class Tag(_Tag):
-    """deprecated, kept for backwards compatibility with climada <= 3.3
+    """kept for backwards compatibility with climada <= 3.3
     use ``climada.util.tag.Tag`` instead
     """
