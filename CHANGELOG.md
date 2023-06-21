@@ -9,6 +9,7 @@ Code freeze date: YYYY-MM-DD
 ### Dependency Updates
 
 Added:
+
 - `pytest` [#726](https://github.com/CLIMADA-project/climada_python/pull/726)
 - `pytest-cov` [#726](https://github.com/CLIMADA-project/climada_python/pull/726)
 - `pytest-subtests` [#726](https://github.com/CLIMADA-project/climada_python/pull/726)
@@ -16,6 +17,7 @@ Added:
 Changed:
 
 Removed:
+
 - `nbsphinx` [#712](https://github.com/CLIMADA-project/climada_python/pull/712)
 - `pandoc` [#712](https://github.com/CLIMADA-project/climada_python/pull/712)
 
@@ -48,6 +50,7 @@ Removed:
 - Use `pytest` for executing tests [#726](https://github.com/CLIMADA-project/climada_python/pull/726)
 - Users can opt-out of the climada specific logging definitions and freely configure logging to their will, by setting the config value `logging.managed` to `false`. [#724](https://github.com/CLIMADA-project/climada_python/pull/724)
 - Add option to read additional variables from IBTrACS when using `TCTracks.from_ibtracs_netcdf` [#728](https://github.com/CLIMADA-project/climada_python/pull/728)
+- The `haz_type` attribute has been moved from `climada.hazard.tag.Tag` to `climada.hazard.Hazard` itself. [#736](https://github.com/CLIMADA-project/climada_python/pull/736)
 
 ### Fixed
 
@@ -58,6 +61,7 @@ Removed:
 
 - `Centroids.from_geodataframe` and `Centroids.from_pix_bounds` [#721](https://github.com/CLIMADA-project/climada_python/pull/721)
 - `Impact.tot_value`: Use `Exposures.affected_total_value` to compute the total value affected by a hazard intensity above a custom threshold [#702](https://github.com/CLIMADA-project/climada_python/pull/702)
+- `climada.hazard.tag.Tag` and `climada.entity.tag.Tag`. [#736](https://github.com/CLIMADA-project/climada_python/pull/736). They were unified into `climada.util.tag.Tag`. Note: the latter is to be deprecated and removed in a future version as well.
 
 ### Removed
 
