@@ -30,10 +30,10 @@ import h5py
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from pyproj.crs import CRS
+from pyproj.crs.crs import CRS
 import rasterio
-from rasterio.warp import Resampling
 from scipy import sparse
+from rasterio.warp import Resampling
 from shapely.geometry.point import Point
 
 from climada.util.constants import (DEF_CRS,
@@ -110,7 +110,7 @@ class Centroids():
         dist_coast: Optional[np.ndarray] = None,
         elevation: Optional[np.ndarray] = None,
         area_pixel: Optional[np.ndarray] = None,
-        **kwargs: Optional[dict] = None
+        **kwargs
     ):
         """Initialization
 
@@ -143,15 +143,15 @@ class Centroids():
         }
         if kwargs:
             attr_dict = dict(**attr_dict, **kwargs)
-        self.gdf = gpd.GeoDataFrame(attr_dict, crs=crs)
+        self.gdf = gpd.GeoDataFrame(data=attr_dict, crs=crs)
 
-    @property``
+    @property
     def lat(self):
-        return self.gdf.geometry.y
+        return self.gdf.geometry.y.values
 
     @property
     def lon(self):
-        return self.gdf.geometry.x
+        return self.gdf.geometry.x.values
 
     @property
     def geometry(self):
@@ -215,8 +215,8 @@ class Centroids():
         return self.gdf.equals(other.gdf) & u_coord.equal_crs(self.crs, other.crs)
 
     @classmethod
-    def from_gdf(cls, gdf):
-        return cls(lon=gdf.x, lat=gdf.y, crs=gdf.crs, **gdf.drop('geometry').to_dict())
+    def from_geodataframe(cls, gdf):
+        return cls(lon=gdf.geometry.x.values, lat=gdf.geometry.y.values, crs=gdf.crs, **gdf.drop(columns=['geometry']).to_dict(orient='list'))
 
 
     @classmethod
@@ -242,7 +242,6 @@ class Centroids():
         rows, cols, ras_trans = u_coord.pts_to_raster_meta(points_bounds, (res, -res))
         x_grid, y_grid = u_coord.raster_to_meshgrid(ras_trans, cols, rows)
         return cls(lat=y_grid, lon=x_grid, crs=crs)
-
 
 
     def append(self, centr):
@@ -308,7 +307,7 @@ class Centroids():
                         getattr(Centroids, fun_name)(cent)
 
         # create new Centroids object and set concatenated attributes
-        centroids = Centroids()
+        centroids = Centroids(None, None)
         for attr_name, attr_val in vars(cent_list[0]).items():
             if isinstance(attr_val, np.ndarray) and attr_val.ndim == 1:
                 attr_val_list = [getattr(cent, attr_name) for cent in cent_list]
