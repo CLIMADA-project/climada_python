@@ -13,12 +13,18 @@ Added:
 Changed:
 
 Removed:
+- `nbsphinx` [#712](https://github.com/CLIMADA-project/climada_python/pull/712)
+- `pandoc` [#712](https://github.com/CLIMADA-project/climada_python/pull/712)
 
 ### Added
 
 - `Impact.impact_at_reg` method for aggregating impacts per country or custom region [#642](https://github.com/CLIMADA-project/climada_python/pull/642)
 - `Impact.match_centroids` convenience method for matching (hazard) centroids to impact objects [#602](https://github.com/CLIMADA-project/climada_python/pull/602)
 - `climada.util.coordinates.match_centroids` method for matching (hazard) centroids to GeoDataFrames [#602](https://github.com/CLIMADA-project/climada_python/pull/602)
+- 'Extra' requirements `doc`, `test`, and `dev` for Python package [#712](https://github.com/CLIMADA-project/climada_python/pull/712)
+- Added method `Exposures.centroids_total_value` to replace the functionality of `Exposures.affected_total_value`. This method is temporary and deprecated. [#702](https://github.com/CLIMADA-project/climada_python/pull/702)
+- New method `climada.util.api_client.Client.purge_cache`: utility function to remove outdated files from the local file system to free disk space. 
+  ([#737](https://github.com/CLIMADA-project/climada_python/pull/737))
 
 ### Changed
 
@@ -30,14 +36,30 @@ Removed:
 - Added test for non-default impact function id in the `lines_polys_handler` [#676](https://github.com/CLIMADA-project/climada_python/pull/676)
 - The sigmoid and step impact functions now require the user to define the hazard type. [#675](https://github.com/CLIMADA-project/climada_python/pull/675)
 - Improved error messages produced by `ImpactCalc.impact()` in case hazard type is not found in exposures/impf_set [#691](https://github.com/CLIMADA-project/climada_python/pull/691)
+- Tests with long runtime were moved to integration tests in `climada/test` [#709](https://github.com/CLIMADA-project/climada_python/pull/709)
+- Use `myst-nb` for parsing Jupyter Notebooks for the documentation instead of `nbsphinx` [#712](https://github.com/CLIMADA-project/climada_python/pull/712)
+- Installation guide now recommends installing CLIMADA directly via `conda install` [#714](https://github.com/CLIMADA-project/climada_python/pull/714)
+- `Exposures.affected_total_value` now takes a hazard intensity threshold as argument. Affected values are only those for which at least one event exceeds the threshold. (previously, all exposures points with an assigned centroid were considered affected). By default the centroids are reassigned. [#702](https://github.com/CLIMADA-project/climada_python/pull/702) [#730](https://github.com/CLIMADA-project/climada_python/pull/730)
+- Add option to pass region ID to `LitPop.from_shape` [#720](https://github.com/CLIMADA-project/climada_python/pull/720)
+- Slightly improved performance on `LitPop`-internal computations [#720](https://github.com/CLIMADA-project/climada_python/pull/720)
+- Users can opt-out of the climada specific logging definitions and freely configure logging to their will, by setting the config value `logging.managed` to `false`. [#724](https://github.com/CLIMADA-project/climada_python/pull/724)
+- Add option to read additional variables from IBTrACS when using `TCTracks.from_ibtracs_netcdf` [#728](https://github.com/CLIMADA-project/climada_python/pull/728)
 
 ### Fixed
 
 - `util.lines_polys_handler` solve polygon disaggregation issue in metre-based projection [#666](https://github.com/CLIMADA-project/climada_python/pull/666)
+- Problem with `pyproj.CRS` as `Impact` attribute, [#706](https://github.com/CLIMADA-project/climada_python/issues/706). Now CRS is always stored as `str` in WKT format.
 
 ### Deprecated
 
+- `Centroids.from_geodataframe` and `Centroids.from_pix_bounds` [#721](https://github.com/CLIMADA-project/climada_python/pull/721)
+- `Impact.tot_value`: Use `Exposures.affected_total_value` to compute the total value affected by a hazard intensity above a custom threshold [#702](https://github.com/CLIMADA-project/climada_python/pull/702)
+
 ### Removed
+
+- `Centroids.set_raster_from_pix_bounds` [#721](https://github.com/CLIMADA-project/climada_python/pull/721)
+
+- `requirements/env_developer.yml` environment specs. Use 'extra' requirements when installing the Python package instead [#712](https://github.com/CLIMADA-project/climada_python/pull/712)
 
 ## v3.3.2
 

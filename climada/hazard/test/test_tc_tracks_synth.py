@@ -598,14 +598,6 @@ class TestSynth(unittest.TestCase):
                 break
         self.assertTrue(found)
 
-    def test_cutoff_tracks(self):
-        tc_track = tc.TCTracks.from_ibtracs_netcdf(storm_id='1986226N30276')
-        tc_track.equal_timestep()
-        with self.assertLogs('climada.hazard.tc_tracks_synth', level='DEBUG') as cm:
-            tc_track.calc_perturbed_trajectories(nb_synth_tracks=10)
-        self.assertIn('The following generated synthetic tracks moved beyond '
-                      'the range of [-70, 70] degrees latitude', cm.output[1])
-
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestDecay)
