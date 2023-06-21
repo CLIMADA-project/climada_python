@@ -21,11 +21,7 @@ pipeline {
         source activate climada_env
         rm -rf tests_xml/
         rm -rf coverage/
-        python -m coverage run --parallel-mode --concurrency=multiprocessing tests_runner.py unit
-        python -m coverage run --parallel-mode --concurrency=multiprocessing tests_runner.py integ
-        python -m coverage combine
-        python -m coverage xml -o coverage.xml
-        python -m coverage html -d coverage'''
+        make test'''
       }
     }
   }

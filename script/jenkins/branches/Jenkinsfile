@@ -23,11 +23,10 @@ pipeline {
             sh '''#!/bin/bash
             export PATH=$PATH:$CONDAPATH
             source activate climada_env
+            python -m pip install pytest pytest-cov pytest-subtests
             rm -rf tests_xml/
             rm -rf coverage/
-            python -m coverage run tests_runner.py unit
-            python -m coverage xml -o coverage.xml
-            python -m coverage html -d coverage'''
+            make unit_test'''
           }
         }
 
