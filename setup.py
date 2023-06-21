@@ -22,10 +22,12 @@ DEPS_DOC = [
 
 # Requirements for testing
 DEPS_TEST = [
-    "coverage>=7.2",
     "ipython",
     "mccabe>=0.6",
     "pylint==2.7.1",
+    "pytest",
+    "pytest-cov",
+    "pytest-subtests",
 ]
 
 setup(

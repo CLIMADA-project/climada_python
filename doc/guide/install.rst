@@ -148,6 +148,8 @@ For advanced Python users or developers of CLIMADA, we recommed cloning the CLIM
    If this test passes, great!
    You are good to go.
 
+.. _install-dev:
+
 Install Developer Dependencies (Optional)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -176,6 +178,15 @@ The CLIMADA Python package defines the following `extras <https://peps.python.or
      - for running and evaluating tests
    * - ``dev``
      - combination of ``doc`` and ``test``
+
+For executing the pre-defined test scripts in exactly the same way as they are executed by the automated CI pipeline, you will need ``make`` to be installed.
+On macOS and on Linux it is pre-installed. On Windows, it can easily be installed with conda:
+
+.. code-block:: shell
+
+   conda install -n climada_env make
+
+Instructions for running the test scripts can be found in the :doc:`Testing and CI Guide <Guide_Continuous_Integration_and_Testing>`.
 
 Install CLIMADA Petals (Optional)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
