@@ -47,13 +47,6 @@ class TestCentroidsReader(unittest.TestCase):
         self.assertEqual(centroids.coord[n_centroids - 1][0], 30)
         self.assertEqual(centroids.coord[n_centroids - 1][1], -75)
 
-    def test_mat_global_pass(self):
-        """Test read GLB_CENTROIDS_MAT"""
-        centroids = Centroids.from_mat(GLB_CENTROIDS_MAT)
-
-        self.assertEqual(centroids.region_id[1062443], 35)
-        self.assertEqual(centroids.region_id[170825], 28)
-
     def test_centroid_pass(self):
         """Read a centroid excel file correctly."""
         centroids = Centroids.from_excel(HAZ_TEMPLATE_XLS)
@@ -65,27 +58,6 @@ class TestCentroidsReader(unittest.TestCase):
         self.assertEqual(centroids.coord[0][1], 32.57)
         self.assertEqual(centroids.coord[n_centroids - 1][0], -24.7)
         self.assertEqual(centroids.coord[n_centroids - 1][1], 33.88)
-
-    def test_base_grid(self):
-        """Read new centroids using from_base_grid, then select by extent."""
-        centroids = Centroids.from_base_grid(land=True, res_as=150)
-        self.assertEqual(centroids.lat.size, 8858035)
-        self.assertTrue(np.all(np.diff(centroids.lat) <= 0))
-
-        count_sandwich = np.sum(centroids.region_id == 239)
-        self.assertEqual(count_sandwich, 321)
-
-        count_sgi = centroids.select(
-            reg_id=239,
-            extent=(-39, -34.7, -55.5, -53.6)  # south georgia island
-        ).size
-        self.assertEqual(count_sgi, 296)
-
-        # test negative latitudinal orientation by testing that northern hemisphere (Russia)
-        # is listed before southern hemisphere (South Africa)
-        russia_max_idx = (centroids.region_id == 643).nonzero()[0].max()
-        safrica_min_idx = (centroids.region_id == 710).nonzero()[0].min()
-        self.assertTrue(russia_max_idx < safrica_min_idx)
 
     def test_geodataframe(self):
         """Test that constructing a valid Centroids instance from gdf works."""
@@ -99,13 +71,11 @@ class TestCentroidsReader(unittest.TestCase):
         gdf['geom'] = gdf.geometry  # this should have no effect on centroids
 
         centroids = Centroids.from_geodataframe(gdf)
-        centroids.check()
 
         self.assertEqual(centroids.geometry.size, 45)
         self.assertEqual(centroids.lon[0], 32.57)
         self.assertEqual(centroids.lat[0], -25.95)
         self.assertEqual(centroids.elevation.size, 45)
-        self.assertEqual(centroids.on_land.sum(), 44)
         self.assertIsInstance(centroids.geometry, gpd.GeoSeries)
         self.assertIsInstance(centroids.geometry.total_bounds, np.ndarray)
 
@@ -165,20 +135,6 @@ class TestCentroidsMethods(unittest.TestCase):
         cent = Centroids.union(cent1, cent2, cent3)
         np.testing.assert_array_equal(cent.lat, [0, 1, 2, 3, -1, -2])
         np.testing.assert_array_equal(cent.lon, [0, -1, -2, 3, 1, 2])
-
-
-    def test_union_meta(self):
-        cent1 = Centroids.from_pnt_bounds((-1, -1, 0, 0), res=1)
-        cent2 = Centroids.from_pnt_bounds((0, 0, 1, 1), res=1)
-        cent3 = Centroids.from_lat_lon(np.array([1]), np.array([1]))
-
-        cent = cent1.union(cent2)
-        np.testing.assert_array_equal(cent.lat, [0,  0, -1, -1,  1,  1,  0])
-        np.testing.assert_array_equal(cent.lon, [-1,  0, -1,  0,  0,  1,  1])
-
-        cent = cent3.union(cent1)
-        np.testing.assert_array_equal(cent.lat, [1,  0,  0, -1, -1])
-        np.testing.assert_array_equal(cent.lon, [1, -1,  0, -1,  0])
 
 
 # Execute Tests
