@@ -258,7 +258,6 @@ class Centroids():
         """
         self.gdf = pd.concat([self.gdf, centr.gdf])
 
-
     def union(self, *others):
         """
         Create the union of centroids from the inputs.
@@ -492,9 +491,6 @@ class Centroids():
         """
         if sel_cen is None:
             sel_cen = self.select_mask(reg_id=reg_id, extent=extent)
-
-        if not self.lat.size or not self.lon.size:
-            self.set_meta_to_lat_lon()
 
         centr = Centroids.from_lat_lon(self.lat[sel_cen], self.lon[sel_cen], self.geometry.crs)
         if self.area_pixel.size:
