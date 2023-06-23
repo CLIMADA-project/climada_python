@@ -24,8 +24,16 @@ from deprecation import deprecated
 from climada.util.tag import Tag as _Tag
 
 
-@deprecated(details="This class is not supported anymore and will be removed in the next version of climada.")
+# deprecating the whole class instead of just the constructor (s.b.) would be preferable
+# but deprecated classes seem to cause an issue when unpickling with the pandas.HDFStore
+# which is used in Exposures.from_hdf5()
+#
+# @deprecated(details="This class is not supported anymore.")
 class Tag(_Tag):
     """kept for backwards compatibility with climada <= 3.3
     use ``climada.util.tag.Tag`` instead
     """
+    @deprecated(details="This class is not supported anymore and will be removed in the next"
+                " version of climada.")
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
