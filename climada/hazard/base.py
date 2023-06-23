@@ -288,8 +288,8 @@ class Hazard():
 
     @classmethod
     def from_raster(cls, files_intensity, files_fraction=None, attrs=None,
-                    band=None, haz_type=None, pool=None, src_crs=None, window=False,
-                    geometry=False, dst_crs=False, transform=None, width=None,
+                    band=None, haz_type=None, pool=None, src_crs=None, window=None,
+                    geometry=None, dst_crs=None, transform=None, width=None,
                     height=None, resampling=Resampling.nearest):
         """Create Hazard with intensity and fraction values from raster files
 
@@ -320,8 +320,8 @@ class Hazard():
         window : rasterio.windows.Windows, optional
             window where data is
             extracted
-        geometry : shapely.geometry, optional
-            consider pixels only in shape
+        geometry : list of shapely.geometry, optional
+            consider pixels only within these shapes
         dst_crs : crs, optional
             reproject to given crs
         transform : rasterio.Affine
@@ -410,9 +410,52 @@ class Hazard():
         self.__dict__ = Hazard.from_vector(*args, **kwargs).__dict__
 
     @classmethod
-    def from_raster_xarray(
+    def from_xarray_raster_file(
+        cls, filepath: Union[pathlib.Path, str], *args, **kwargs
+    ):
+        """Read raster-like data from a file that can be loaded with xarray
+
+        This wraps :py:meth:`~Hazard.from_xarray_raster` by first opening the target file
+        as xarray dataset and then passing it to that classmethod. Use this wrapper as a
+        simple alternative to opening the file yourself. The signature is exactly the
+        same, except for the first argument, which is replaced by a file path here.
+
+        Additional (keyword) arguments are passed to
+        :py:meth:`~Hazard.from_xarray_raster`.
+
+        Parameters
+        ----------
+        filepath : Path or str
+            Path of the file to read with xarray. May be any file type supported by
+            xarray. See https://docs.xarray.dev/en/stable/user-guide/io.html
+
+        Returns
+        -------
+        hazard : climada.Hazard
+            A hazard object created from the input data
+
+        Examples
+        --------
+
+        >>> hazard = Hazard.from_xarray_raster_file("path/to/file.nc", "", "")
+
+        Notes
+        -----
+
+        If you have specific requirements for opening a data file, prefer opening it
+        yourself and using :py:meth:`~Hazard.from_xarray_raster`, following this pattern:
+
+        >>> open_kwargs = dict(engine="h5netcdf", chunks=dict(x=-1, y="auto"))
+        >>> with xarray.open_dataset("path/to/file.nc", **open_kwargs) as dset:
+        ...     hazard = Hazard.from_xarray_raster(dset, "", "")
+        """
+        with xr.open_dataset(filepath, chunks="auto") as dset:
+            return cls.from_xarray_raster(dset, *args, **kwargs)
+
+    @classmethod
+    def from_xarray_raster(
         cls,
-        data: Union[xr.Dataset, str, pathlib.Path],
+        data: xr.Dataset,
         hazard_type: str,
         intensity_unit: str,
         *,
@@ -422,7 +465,7 @@ class Hazard():
         crs: str = DEF_CRS,
         rechunk: bool = False,
     ):
-        """Read raster-like data from an xarray Dataset or a raster data file
+        """Read raster-like data from an xarray Dataset
 
         This method reads data that can be interpreted using three coordinates for event,
         latitude, and longitude. The data and the coordinates themselves may be organized
@@ -443,12 +486,13 @@ class Hazard():
         meaning that the object can be used in all CLIMADA operations without throwing
         an error due to missing data or faulty data types.
 
+        Use :py:meth:`~Hazard.from_xarray_raster_file` to open a file on disk
+        and load the resulting dataset with this method in one step.
+
         Parameters
         ----------
-        data : xarray.Dataset or str
-            The data to read from. May be an opened dataset or a path to a raster data
-            file, in which case the file is opened first. Works with any file format
-            supported by ``xarray``.
+        data : xarray.Dataset
+            The dataset to read from.
         hazard_type : str
             The type identifier of the hazard. Will be stored directly in the hazard
             object.
@@ -499,6 +543,11 @@ class Hazard():
         hazard : climada.Hazard
             A hazard object created from the input data
 
+        See Also
+        --------
+        :py:meth:`~Hazard.from_xarray_raster_file`
+            Use this method if you want CLIMADA to open and read a file on disk for you.
+
         Notes
         -----
         * Single-valued coordinates given by ``coordinate_vars``, that are not proper
@@ -534,7 +583,7 @@ class Hazard():
         ...         longitude=[0, 1, 2],
         ...     ),
         ... )
-        >>> hazard = Hazard.from_raster_xarray(dset, "", "")
+        >>> hazard = Hazard.from_xarray_raster(dset, "", "")
 
         For non-default coordinate names, use the ``coordinate_vars`` argument.
 
@@ -551,7 +600,7 @@ class Hazard():
         ...         longitude=[0, 1, 2],
         ...     ),
         ... )
-        >>> hazard = Hazard.from_raster_xarray(
+        >>> hazard = Hazard.from_xarray_raster(
         ...     dset, "", "", coordinate_vars=dict(event="day", latitude="lat")
         ... )
 
@@ -568,7 +617,7 @@ class Hazard():
         ...         latitude=(["y", "x"], [[0.0, 0.0, 0.0], [0.1, 0.1, 0.1]]),
         ...     ),
         ... )
-        >>> hazard = Hazard.from_raster_xarray(dset, "", "")
+        >>> hazard = Hazard.from_xarray_raster(dset, "", "")
 
         Optional data is read from the dataset if the default keys are found. Users can
         specify custom variables in the data, or that the default keys should be ignored,
@@ -593,7 +642,7 @@ class Hazard():
         ...         longitude=[0, 1, 2],
         ...     ),
         ... )
-        >>> hazard = Hazard.from_raster_xarray(
+        >>> hazard = Hazard.from_xarray_raster(
         ...     dset,
         ...     "",
         ...     "",
@@ -627,7 +676,7 @@ class Hazard():
         ...         longitude=[0, 1, 2],
         ...     ),
         ... )
-        >>> hazard = Hazard.from_raster_xarray(dset, "", "")  # Same as first example
+        >>> hazard = Hazard.from_xarray_raster(dset, "", "")  # Same as first example
 
         If one coordinate is missing altogehter, you must add it or expand the dimensions
         before loading the dataset:
@@ -645,14 +694,15 @@ class Hazard():
         ...     ),
         ... )
         >>> dset = dset.expand_dims(time=[numpy.datetime64("2000-01-01")])
-        >>> hazard = Hazard.from_raster_xarray(dset, "", "")
+        >>> hazard = Hazard.from_xarray_raster(dset, "", "")
         """
-        # If the data is a string, open the respective file
+        # Check data type for better error message
         if not isinstance(data, xr.Dataset):
-            LOGGER.info("Loading Hazard from file: %s", data)
-            data: xr.Dataset = xr.open_dataset(data, chunks="auto")
-        else:
-            LOGGER.info("Loading Hazard from xarray Dataset")
+            if isinstance(data, (pathlib.Path, str)):
+                raise TypeError("Passing a path to this classmethod is not supported. "
+                                "Use Hazard.from_xarray_raster_file instead.")
+
+            raise TypeError("This method only supports xarray.Dataset as input data")
 
         # Initialize Hazard object
         hazard_kwargs = dict(haz_type=hazard_type, units=intensity_unit)
@@ -1309,7 +1359,7 @@ class Hazard():
                 return None
 
         # filter events hist/synthetic
-        if isinstance(orig, bool):
+        if orig is not None:
             sel_ev &= (self.orig.astype(bool) == orig)
             if not np.any(sel_ev):
                 LOGGER.info('No hazard with %s original events.', str(orig))
@@ -1317,7 +1367,7 @@ class Hazard():
 
         # filter events based on name
         sel_ev = np.argwhere(sel_ev).reshape(-1)
-        if isinstance(event_names, list):
+        if event_names is not None:
             filtered_events = [self.event_name[i] for i in sel_ev]
             try:
                 new_sel = [filtered_events.index(n) for n in event_names]
@@ -1328,7 +1378,7 @@ class Hazard():
             sel_ev = sel_ev[new_sel]
 
         # filter events based on id
-        if isinstance(event_id, list):
+        if event_id is not None:
             # preserves order of event_id
             sel_ev = np.array([
                 np.argwhere(self.event_id == n)[0,0]
@@ -1402,7 +1452,7 @@ class Hazard():
         See also
         --------
         self.select: Method to select centroids by lat/lon extent
-        util.coordinates.assign_coordinates: algorithm to match centroids.
+        util.coordinates.match_coordinates: algorithm to match centroids.
 
         """
 
@@ -2270,7 +2320,7 @@ class Hazard():
         # map individual centroids objects to union
         centroids = Centroids.union(*[haz.centroids for haz in haz_list])
         hazcent_in_cent_idx_list = [
-            u_coord.assign_coordinates(haz.centroids.coord, centroids.coord, threshold=0)
+            u_coord.match_coordinates(haz.centroids.coord, centroids.coord, threshold=0)
             for haz in haz_list_nonempty
         ]
 
@@ -2358,7 +2408,7 @@ class Hazard():
             Centroids instance on which to map the hazard.
         threshold: int or float
             Threshold (in km) for mapping haz.centroids not in centroids.
-            Argument is passed to climada.util.coordinates.assign_coordinates.
+            Argument is passed to climada.util.coordinates.match_coordinates.
             Default: 100 (km)
 
         Returns
@@ -2373,7 +2423,7 @@ class Hazard():
 
         See Also
         --------
-        util.coordinates.assign_coordinates: algorithm to match centroids.
+        util.coordinates.match_coordinates: algorithm to match centroids.
 
         """
         # define empty hazard
@@ -2382,7 +2432,7 @@ class Hazard():
 
         # indices for mapping matrices onto common centroids
         if centroids.meta:
-            new_cent_idx = u_coord.assign_grid_points(
+            new_cent_idx = u_coord.match_grid_points(
                 self.centroids.lon, self.centroids.lat,
                 centroids.meta['width'], centroids.meta['height'],
                 centroids.meta['transform'])
@@ -2391,7 +2441,7 @@ class Hazard():
                                  "the raster defined by centroids.meta."
                                  " Please choose a larger raster.")
         else:
-            new_cent_idx = u_coord.assign_coordinates(
+            new_cent_idx = u_coord.match_coordinates(
                 self.centroids.coord, centroids.coord, threshold=threshold
             )
             if -1 in new_cent_idx:

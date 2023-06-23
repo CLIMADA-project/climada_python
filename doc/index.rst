@@ -16,7 +16,7 @@ Jump right in:
 
 * :doc:`README <misc/README>`
 * :doc:`Getting Started <guide/Guide_get_started>`
-* :doc:`Installation <guide/Guide_Installation>`
+* :doc:`Installation <guide/install>`
 * :doc:`Overview <tutorial/1_main_climada>`
 * `GitHub Repository <https://github.com/CLIMADA-project/climada_python>`_
 * :doc:`Module Reference <climada/climada>`
@@ -60,9 +60,15 @@ Jump right in:
 
    guide/Guide_Introduction
    Getting Started <guide/Guide_get_started>
-   guide/Guide_Installation
-   Very Easy Installation <tutorial/climada_installation_step_by_step>
+   guide/install
    Running CLIMADA on Euler <guide/Guide_Euler>
+
+
+.. toctree::
+   :caption: API Reference
+   :hidden:
+   
+   Python Modules <climada/climada>
 
 
 .. toctree::
@@ -101,7 +107,6 @@ Jump right in:
    :caption: Miscellaneous
    :hidden:
 
-   Python modules <climada/climada>
    README <misc/README>
    Changelog <misc/CHANGELOG>
    List of Authors <misc/AUTHORS>

@@ -41,6 +41,8 @@ import pandas as pd
 import xlsxwriter
 from tqdm import tqdm
 import h5py
+from pyproj import CRS as pyprojCRS
+from rasterio.crs import CRS as rasterioCRS  # pylint: disable=no-name-in-module
 
 from climada.entity import Exposures, Tag
 from climada.hazard import Tag as TagHaz
@@ -72,6 +74,8 @@ class Impact():
         ordinal 1 (ordinal format of datetime library)
     coord_exp : np.array
         exposures coordinates [lat, lon] (in degrees)
+    crs : str
+        WKT string of the impact's crs
     eai_exp : np.array
         expected impact for each exposure within a period of 1/frequency_unit
     at_event : np.array
@@ -80,8 +84,6 @@ class Impact():
         frequency of event
     frequency_unit : str
         frequency unit used (given by hazard), default is '1/year'
-    tot_value : float
-        total exposure value affected
     aai_agg : float
         average impact within a period of 1/frequency_unit (aggregated)
     unit : str
@@ -126,7 +128,8 @@ class Impact():
         coord_exp : np.array, optional
             exposures coordinates [lat, lon] (in degrees)
         crs : Any, optional
-            coordinate reference system
+            Coordinate reference system. CRS instances from ``pyproj`` and ``rasterio``
+            will be transformed into WKT. Other types are not handled explicitly.
         eai_exp : np.array, optional
             expected impact for each exposure within a period of 1/frequency_unit
         at_event : np.array, optional
@@ -149,12 +152,12 @@ class Impact():
         self.event_name = [] if event_name is None else event_name
         self.date = np.array([], int) if date is None else date
         self.coord_exp = np.array([], float) if coord_exp is None else coord_exp
-        self.crs = crs
+        self.crs = crs.to_wkt() if isinstance(crs, (pyprojCRS, rasterioCRS)) else crs
         self.eai_exp = np.array([], float) if eai_exp is None else eai_exp
         self.at_event = np.array([], float) if at_event is None else at_event
         self.frequency = np.array([],float) if frequency is None else frequency
         self.frequency_unit = frequency_unit
-        self.tot_value = tot_value
+        self._tot_value = tot_value
         self.aai_agg = aai_agg
         self.unit = unit
 
@@ -192,8 +195,6 @@ class Impact():
                         ' exposures points.')
         else:
             self.imp_mat = sparse.csr_matrix(np.empty((0, 0)))
-
-
 
     def calc(self, exposures, impact_funcs, hazard, save_mat=False, assign_centroids=True):
         """This function is deprecated, use ``ImpactCalc.impact`` instead.
@@ -248,7 +249,7 @@ class Impact():
                                  axis=1),
             crs = exposures.crs,
             unit = exposures.value_unit,
-            tot_value = exposures.affected_total_value(hazard),
+            tot_value = exposures.centroids_total_value(hazard),
             eai_exp = eai_exp,
             at_event = at_event,
             aai_agg = aai_agg,
@@ -258,6 +259,29 @@ class Impact():
                    'haz': hazard.tag
                    }
             )
+
+    @property
+    def tot_value(self):
+        """Return the total exposure value close to a hazard
+
+        .. deprecated:: 3.3
+           Use :py:meth:`climada.entity.exposures.base.Exposures.affected_total_value`
+           instead.
+        """
+        LOGGER.warning("The Impact.tot_value attribute is deprecated."
+                       "Use Exposures.affected_total_value to calculate the affected "
+                       "total exposure value based on a specific hazard intensity "
+                       "threshold")
+        return self._tot_value
+
+    @tot_value.setter
+    def tot_value(self, value):
+        """Set the total exposure value close to a hazard"""
+        LOGGER.warning("The Impact.tot_value attribute is deprecated."
+                       "Use Exposures.affected_total_value to calculate the affected "
+                       "total exposure value based on a specific hazard intensity "
+                       "threshold")
+        self._tot_value = value
 
     def transfer_risk(self, attachment, cover):
         """Compute the risk transfer for the full portfolio. This is the risk
@@ -391,6 +415,55 @@ class Impact():
         for year in years:
             year_set[year] = sum(self.at_event[orig_year == year])
         return year_set
+
+    def impact_at_reg(self, agg_regions=None):
+        """Aggregate impact on given aggregation regions. This method works
+        only if Impact.imp_mat was stored during the impact calculation.
+
+        Parameters
+        ----------
+        agg_regions : np.array, list (optional)
+            The length of the array must equal the number of centroids in exposures.
+            It reports what macro-regions these centroids belong to. For example,
+            asuming there are three centroids and agg_regions = ['A', 'A', 'B']
+            then impact of the first and second centroids will be assigned to
+            region A, whereas impact from the third centroid will be assigned
+            to area B. If no aggregation regions are passed, the method aggregates
+            impact at the country (admin_0) level.
+            Default is None.
+
+        Returns
+        -------
+        pd.DataFrame
+            Contains the aggregated data per event.
+            Rows: Hazard events. Columns: Aggregation regions.
+        """
+        if self.imp_mat.nnz == 0:
+            raise ValueError(
+                "The aggregated impact cannot be computed as no Impact.imp_mat was "
+                "stored during the impact calculation"
+            )
+
+        if agg_regions is None:
+            agg_regions = u_coord.country_to_iso(
+                u_coord.get_country_code(self.coord_exp[:, 0], self.coord_exp[:, 1])
+            )
+
+        agg_regions = np.asanyarray(agg_regions)
+        agg_reg_unique = np.unique(agg_regions)
+
+        at_reg_event = np.hstack(
+            [
+                self.imp_mat[:, np.where(agg_regions == reg)[0]].sum(1)
+                for reg in np.unique(agg_reg_unique)
+            ]
+        )
+
+        at_reg_event = pd.DataFrame(
+            at_reg_event, columns=np.unique(agg_reg_unique), index=self.event_id
+        )
+
+        return at_reg_event
 
     def calc_impact_year_set(self,all_years=True, year_range=None):
         """This function is deprecated, use Impact.impact_per_year instead."""
@@ -595,6 +668,9 @@ class Impact():
         cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         eai_exp = self._build_exp()
+        # we need to set geometry points because the `plot_raster` method accesses the
+        # exposures' `gdf.crs` property, which raises an error when geometry is not set
+        eai_exp.set_geometry_points()
         axis = eai_exp.plot_raster(res, raster_res, save_tiff, raster_f,
                                    label, axis=axis, adapt_fontsize=adapt_fontsize, **kwargs)
         axis.set_title(self._eai_title())
@@ -810,7 +886,7 @@ class Impact():
                          [self.tag['haz'].description]],
                         [[self.tag['exp'].file_name], [self.tag['exp'].description]],
                         [[self.tag['impf_set'].file_name], [self.tag['impf_set'].description]],
-                        [self.unit], [self.tot_value], [self.aai_agg],
+                        [self.unit], [self._tot_value], [self.aai_agg],
                         self.event_id, self.event_name, self.date,
                         self.frequency, [self.frequency_unit], self.at_event,
                         self.eai_exp, self.coord_exp[:, 0], self.coord_exp[:, 1],
@@ -851,7 +927,7 @@ class Impact():
         data = [str(self.tag['impf_set'].file_name), str(self.tag['impf_set'].description)]
         write_col(2, imp_ws, data)
         write_col(3, imp_ws, [self.unit])
-        write_col(4, imp_ws, [self.tot_value])
+        write_col(4, imp_ws, [self._tot_value])
         write_col(5, imp_ws, [self.aai_agg])
         write_col(6, imp_ws, self.event_id)
         write_col(7, imp_ws, self.event_name)
@@ -980,8 +1056,9 @@ class Impact():
         with h5py.File(file_path, "w") as file:
 
             # Now write all attributes
+            # NOTE: Remove leading underscore to write '_tot_value' as regular attribute
             for name, value in self.__dict__.items():
-                write(file, name, value)
+                write(file, name.lstrip("_"), value)
 
     def write_sparse_csr(self, file_name):
         """Write imp_mat matrix in numpy's npz format."""
@@ -1622,7 +1699,7 @@ class Impact():
         return sel_ev
 
     def _selected_exposures_idx(self, coord_exp):
-        assigned_idx = u_coord.assign_coordinates(self.coord_exp, coord_exp, threshold=0)
+        assigned_idx = u_coord.match_coordinates(self.coord_exp, coord_exp, threshold=0)
         sel_exp = (assigned_idx >= 0).nonzero()[0]
         if sel_exp.size == 0:
             LOGGER.warning("No exposure coordinates match the selection.")
@@ -1733,6 +1810,38 @@ class Impact():
             **kwargs,
         )
 
+    def match_centroids(self, hazard, distance='euclidean',
+                        threshold=u_coord.NEAREST_NEIGHBOR_THRESHOLD):
+        """
+        Finds the closest hazard centroid for each impact coordinate.
+        Creates a temporary GeoDataFrame and uses ``u_coord.match_centroids()``.
+        See there for details and parameters
+
+        Parameters
+        ----------
+        hazard : Hazard
+            Hazard to match (with raster or vector centroids).
+        distance : str, optional
+            Distance to use in case of vector centroids.
+            Possible values are "euclidean", "haversine" and "approx".
+            Default: "euclidean"
+        threshold : float
+            If the distance (in km) to the nearest neighbor exceeds `threshold`,
+            the index `-1` is assigned.
+            Set `threshold` to 0, to disable nearest neighbor matching.
+            Default: 100 (km)
+
+        Returns
+        -------
+        np.array
+            array of closest Hazard centroids, aligned with the Impact's `coord_exp` array
+        """
+
+        return u_coord.match_centroids(
+            self._build_exp().gdf,
+            hazard.centroids,
+            distance=distance,
+            threshold=threshold)
 
 @dataclass
 class ImpactFreqCurve():

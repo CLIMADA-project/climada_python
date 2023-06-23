@@ -2,6 +2,14 @@
 # test, coverage and lint
 ###
 
+PYTEST_JUNIT_ARGS = --junitxml=tests_xml/tests.xml
+
+PYTEST_COV_ARGS = \
+	--cov --cov-config=.coveragerc --cov-report html --cov-report xml \
+	--cov-report term:skip-covered
+
+PYTEST_ARGS = $(PYTEST_JUNIT_ARGS) $(PYTEST_COV_ARGS)
+
 .PHONY : help
 help:  ## Use one of the following instructions:
 	@fgrep -h "##" $(MAKEFILE_LIST) | fgrep -v fgrep | sed -e 's/\\$$//' | sed -e 's/##//'
@@ -12,13 +20,12 @@ lint : ## Static code analysis with Pylint
 
 .PHONY : unit_test
 unit_test : ## Unit tests execution with coverage and xml reports
-	python -m coverage run tests_runner.py unit
-	python -m coverage xml -o coverage.xml
-	python -m coverage html -d coverage
+	pytest $(PYTEST_ARGS) --ignore=climada/test climada/
 
 .PHONY : install_test
 install_test : ## Test installation was successful
-	python tests_install.py report
+	pytest $(PYTEST_JUNIT_ARGS) climada/engine/test/test_cost_benefit.py \
+	climada/engine/test/test_impact.py
 
 .PHONY : data_test
 data_test : ## Test data APIs
@@ -30,21 +37,14 @@ notebook_test : ## Test notebooks in doc/tutorial
 
 .PHONY : integ_test
 integ_test : ## Integration tests execution with xml reports
-	python -m coverage run --parallel-mode --concurrency=multiprocessing tests_runner.py integ
-	python -m coverage combine
-	python -m coverage xml -o coverage.xml
-	python -m coverage html -d coverage
+	pytest $(PYTEST_ARGS) climada/test/
 
 .PHONY : test
 test : ## Unit and integration tests execution with coverage and xml reports
-	python -m coverage run --parallel-mode --concurrency=multiprocessing tests_runner.py unit
-	python -m coverage run --parallel-mode --concurrency=multiprocessing tests_runner.py integ
-	python -m coverage combine
-	python -m coverage xml -o coverage.xml
-	python -m coverage html -d coverage
+	pytest $(PYTEST_ARGS) climada/
 
 .PHONY : ci-clean
 ci-clean :
 	rm -rf tests_xml
-	rm pylint.log
-
+	rm pylint.log coverage.xml
+	rm -r coverage

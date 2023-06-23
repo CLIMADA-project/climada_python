@@ -23,10 +23,10 @@ from datetime import datetime
 import hashlib
 import json
 import logging
+from os.path import commonprefix
 from pathlib import Path
-from urllib.parse import quote, unquote
+from urllib.parse import quote, unquote, urlsplit, urlunsplit
 import time
-import socket
 
 import pandas as pd
 from peewee import CharField, DateTimeField, IntegrityError, Model, SqliteDatabase
@@ -84,6 +84,8 @@ class DataTypeInfo():
     status: str
     description:str
     properties:list  # of dict
+    key_reference:list = None
+    version_notes:list = None
 
 
 @dataclass
@@ -191,7 +193,6 @@ class Cacher():
             [str(a) for a in args] +
             [f"{k}={kwargs[k]}" for k in sorted(kwargs.keys())]
         )
-        print(as_text)
         md5h = hashlib.md5()
         md5h.update(as_text.encode())
         return md5h.hexdigest()
@@ -244,6 +245,8 @@ class Client():
     """
     MAX_WAITING_PERIOD = 6
     UNLIMITED = 100000
+    DOWNLOAD_TIMEOUT = 3600
+    QUERY_TIMEOUT = 300
 
     class AmbiguousResult(Exception):
         """Custom Exception for Non-Unique Query Result"""
@@ -254,19 +257,17 @@ class Client():
     class NoConnection(Exception):
         """To be raised if there is no internet connection and no cached result."""
 
+    def _online(self) -> bool:
+        """Check if this client can connect to the target URL"""
+        # Use just the base location
+        parse_result = urlsplit(self.url)
+        query_url = urlunsplit((parse_result.scheme, parse_result.netloc, "", "", ""))
 
-    @staticmethod
-    def _is_online(url):
-        host = [x for x in url.split('/')
-                if x not in ['https:', 'http:', '']][0]
-        port = 80 if url.startswith('http://') else 443
-        socket.setdefaulttimeout(1)
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as skt:
-            try:
-                skt.connect((host, port))
-                return True
-            except socket.error:
-                return False
+        try:
+            # NOTE: 'timeout' might not work as intended, depending on OS and network status
+            return requests.head(query_url, timeout=1).status_code == 200
+        except (requests.ConnectionError, requests.Timeout):
+            return False
 
     def __init__(self, cache_enabled=None):
         """Constructor of Client.
@@ -287,7 +288,7 @@ class Client():
         self.url = CONFIG.data_api.url.str().rstrip("/")
         self.chunk_size = CONFIG.data_api.chunk_size.int()
         self.cache = Cacher(cache_enabled)
-        self.online = Client._is_online(self.url)
+        self.online = self._online()
 
     def _request_200(self, url, params=None):
         """Helper method, triaging successfull and failing requests.
@@ -308,7 +309,7 @@ class Client():
             params = dict()
 
         if self.online:
-            page = requests.get(url, params=params)
+            page = requests.get(url, params=params, timeout=Client.QUERY_TIMEOUT)
             if page.status_code != 200:
                 raise Client.NoResult(page.content.decode())
             result = json.loads(page.content.decode())
@@ -373,7 +374,7 @@ class Client():
         -------
         list of DatasetInfo
         """
-        url = f'{self.url}/dataset'
+        url = f'{self.url}/dataset/'
         params = {
             'data_type': data_type,
             'name': name,
@@ -460,7 +461,7 @@ class Client():
         NoResult
             if the uuid is not valid
         """
-        url = f'{self.url}/dataset/{uuid}'
+        url = f'{self.url}/dataset/{uuid}/'
         return DatasetInfo.from_json(self._request_200(url))
 
     def list_data_type_infos(self, data_type_group=None):
@@ -476,7 +477,7 @@ class Client():
         -------
         list of DataTypeInfo
         """
-        url = f'{self.url}/data_type'
+        url = f'{self.url}/data_type/'
         params = {'data_type_group': data_type_group} \
             if data_type_group else {}
         return [DataTypeInfo(**jobj) for jobj in self._request_200(url, params=params)]
@@ -498,7 +499,7 @@ class Client():
         NoResult
             if there is no such data type registered
         """
-        url = f'{self.url}/data_type/{quote(data_type)}'
+        url = f'{self.url}/data_type/{quote(data_type)}/'
         return DataTypeInfo(**self._request_200(url))
 
     def _download(self, url, path, replace=False):
@@ -529,7 +530,7 @@ class Client():
             path /= unquote(url.split('/')[-1])
         if path.is_file() and not replace:
             raise FileExistsError(path)
-        with requests.get(url, stream=True) as stream:
+        with requests.get(url, stream=True, timeout=Client.DOWNLOAD_TIMEOUT) as stream:
             stream.raise_for_status()
             with open(path, 'wb') as dump:
                 for chunk in stream.iter_content(chunk_size=self.chunk_size):
@@ -538,7 +539,7 @@ class Client():
 
     def _tracked_download(self, remote_url, local_path):
         if local_path.is_dir():
-            raise Exception("tracked download requires a path to a file not a directory")
+            raise ValueError("tracked download requires a path to a file not a directory")
         path_as_str = str(local_path.absolute())
         try:
             dlf = Download.create(url=remote_url,
@@ -550,10 +551,10 @@ class Client():
                 dlf.delete_instance()  # delete entry from database
                 return self._tracked_download(remote_url, local_path)  # and try again
             if dlf.url != remote_url:
-                raise Exception(f"this file ({path_as_str}) has been downloaded from another url"
-                                f" ({dlf.url}), possibly because it belongs to a dataset with a"
-                                " recent version update. Please remove the file or purge the entry"
-                                " from data base before trying again") from ierr
+                raise RuntimeError(f"this file ({path_as_str}) has been downloaded from another"
+                                f" url ({dlf.url}), possibly because it belongs to a dataset with"
+                                " a recent version update. Please remove the file or purge the"
+                                " entry from data base before trying again") from ierr
             return dlf
         try:
             self._download(url=remote_url, path=local_path, replace=True)
@@ -594,21 +595,27 @@ class Client():
                 local_path /= fileinfo.file_name
             downloaded = self._tracked_download(remote_url=fileinfo.url, local_path=local_path)
             if not downloaded.enddownload:
-                raise Download.Failed("Download seems to be in progress, please try again later"
-                                      " or remove cache entry by calling"
-                                      f" `Client.purge_cache(Path('{local_path}'))`!")
+                raise Download.Failed(f"A download of {fileinfo.url} via the API Client has been"
+                                      " requested before. Either it is still in progress or the"
+                                      " process got interrupted. In the former case just wait"
+                                      " until the download has finished and try again, in the"
+                                      f" latter run `Client.purge_cache_db(Path('{local_path}'))`"
+                                      " from Python. If unsure, check your internet connection,"
+                                      " wait for as long as it takes to download a file of size"
+                                      f" {fileinfo.file_size} and try again. If the problem"
+                                      " persists, purge the cache db with said call.")
             try:
                 check(local_path, fileinfo)
             except Download.Failed as dlf:
                 local_path.unlink(missing_ok=True)
-                self.purge_cache(local_path)
+                self.purge_cache_db(local_path)
                 raise dlf
             return local_path
         except Download.Failed as dle:
             if retries < 1:
                 raise dle
             LOGGER.warning("Download failed: %s, retrying...", dle)
-            time.sleep(self.MAX_WAITING_PERIOD/retries)
+            time.sleep(Client.MAX_WAITING_PERIOD/retries)
             return self._download_file(local_path=local_path, fileinfo=fileinfo, check=check,
                                        retries=retries - 1)
 
@@ -663,7 +670,7 @@ class Client():
         return target_dir
 
     @staticmethod
-    def purge_cache(local_path):
+    def purge_cache_db(local_path):
         """Removes entry from the sqlite database that keeps track of files downloaded by
         `cached_download`. This may be necessary in case a previous attempt has failed
         in an uncontroled way (power outage or the like).
@@ -1009,3 +1016,57 @@ class Client():
         """
         return Client.into_datasets_df(dataset_infos) \
             .merge(pd.DataFrame([dsfile for ds in dataset_infos for dsfile in ds.files]))
+
+    def purge_cache(self, target_dir=SYSTEM_DIR, keep_testfiles=True):
+        """Removes downloaded dataset files from the given directory if they have been downloaded
+        with the API client, if they are beneath the given directory and if one of the following
+        is the case:
+        - there status is neither 'active' nor 'test_dataset'
+        - their status is 'test_dataset' and keep_testfiles is set to False
+        - their status is 'active' and they are outdated, i.e., there is a dataset with the same
+          data_type and name but a newer version.
+
+        Parameters
+        ----------
+        target_dir : Path or str, optional
+            files downloaded beneath this directory and empty subdirectories will be removed.
+            default: SYSTEM_DIR
+        keep_testfiles : bool, optional
+            if set to True, files from datasets with status 'test_dataset' will not be removed.
+            default: True
+        """
+
+        # collect urls from datasets that should not be removed
+        test_datasets = self.list_dataset_infos(status='test_dataset') if keep_testfiles else []
+        test_urls = set(
+            file_info.url for ds_info in test_datasets for file_info in ds_info.files)
+
+        active_datasets = self.list_dataset_infos(status='active', version='newest')
+        active_urls = set(
+            file_info.url for ds_info in active_datasets for file_info in ds_info.files)
+
+        not_to_be_removed = test_urls.union(active_urls)
+
+        # make a list of downloaded files that could be removed
+        to_be_removed = [d for d in Download.select() if d.url not in not_to_be_removed]
+
+        # helper function for filtering by target_dir
+        target_dir = Path(target_dir).absolute()
+
+        # remove files and sqlite db entries
+        for obsolete in to_be_removed:
+            opath = Path(obsolete.path)
+            if opath.exists() and Path(commonprefix([target_dir, opath])) == target_dir:
+                opath.unlink()
+                obsolete.delete_instance()
+
+        # clean up: remove all empty directories beneath target_dir
+        def rm_empty_dirs(directory: Path):
+            for subdir in directory.iterdir():
+                if subdir.is_dir():
+                    rm_empty_dirs(subdir)
+            try:
+                directory.rmdir()
+            except OSError:  # raised when the directory is not empty
+                pass
+        rm_empty_dirs(target_dir)
