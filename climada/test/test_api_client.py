@@ -19,8 +19,8 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Test save module.
 """
 from pathlib import Path
+import tempfile
 import unittest
-from shutil import rmtree
 
 import numpy as np
 
@@ -140,9 +140,10 @@ class TestClient(unittest.TestCase):
                                          dump_dir=DATA_DIR)
         self.assertEqual(len(exposures.gdf), 5782)
         self.assertEqual(np.unique(exposures.gdf.region_id), 40)
-        self.assertIn('[0, 1]', exposures.tag.description)
-        self.assertIn('pop', exposures.tag.description)
-        exposures
+        self.assertEqual(exposures.tag.description,
+            ["LitPop Exposure for ['AUT'] at 150 as, year: 2018, financial mode: pop, exp: [0, 1], admin1_calc: False"])
+        self.assertEqual(exposures.tag.file_name,
+            [])
 
     def test_get_exposures_fails(self):
         client = Client()
@@ -171,7 +172,7 @@ class TestClient(unittest.TestCase):
         self.assertEqual(np.shape(hazard.intensity), (480, 5784))
         self.assertEqual(np.unique(hazard.centroids.region_id), 40)
         self.assertEqual(np.unique(hazard.date).size, 20)
-        self.assertEqual(hazard.tag.haz_type, 'RF')
+        self.assertEqual(hazard.haz_type, 'RF')
 
     def test_get_hazard_fails(self):
         client = Client()
@@ -195,8 +196,10 @@ class TestClient(unittest.TestCase):
         litpop = client.get_litpop(country='LUX', version='v1', dump_dir=DATA_DIR)
         self.assertEqual(len(litpop.gdf), 188)
         self.assertEqual(np.unique(litpop.gdf.region_id), 442)
-        self.assertTrue('[1, 1]' in litpop.tag.description)
-        self.assertTrue('pc' in litpop.tag.description)
+        self.assertEqual(litpop.tag.description,
+            ["LitPop Exposure for ['LUX'] at 150 as, year: 2018, financial mode: pc, exp: [1, 1], admin1_calc: False"])
+        self.assertEqual(litpop.tag.file_name,
+            [])
 
     def test_get_litpop_fail(self):
         client = Client()
@@ -232,6 +235,46 @@ class TestClient(unittest.TestCase):
         straight, multi = Client._divide_straight_from_multi(properties)
         self.assertEqual(straight, {'b': '1'})
         self.assertEqual(multi, {'country_name': ['x', 'y', 'z']})
+
+    def test_purge_cache(self):
+        client = Client()
+        
+        active_ds = client.get_dataset_info(data_type="litpop", name="LitPop_150arcsec_ABW", version="v2")
+        outdated_ds = client.get_dataset_info(data_type="litpop", name="LitPop_150arcsec_ABW", version="v1")
+        test_ds = client.get_dataset_info(data_type="storm_europe", name="test_storm_europe_icon_2021012800", version="v1", status="test_dataset")
+        expired_ds = client.get_dataset_info(data_type="tropical_cyclone", name="rename_files2", version="v1", status="expired")
+        
+        with tempfile.TemporaryDirectory() as temp_dir:
+            for ds in [active_ds, outdated_ds, test_ds, expired_ds]:
+                client.download_dataset(dataset=ds, target_dir=Path(temp_dir))
+            self.assertEqual(  # outdated dataset present
+                1,
+                len(list(Path(temp_dir).joinpath('exposures/litpop/LitPop_150arcsec_ABW/v1').iterdir()))
+            )
+            self.assertEqual(  # expired data set present
+                1,
+                len(list(Path(temp_dir).joinpath('hazard/tropical_cyclone/rename_files2/v1').iterdir()))
+            )
+
+            client.purge_cache(target_dir=temp_dir)
+            self.assertFalse(  # outdated data set removed
+                Path(temp_dir).joinpath('exposures/litpop/LitPop_150arcsec_ABW/v1').is_dir()
+            )
+            self.assertFalse(  # expired data set removed
+                Path(temp_dir).joinpath('hazard/tropical_cyclone/rename_files2/v1').is_dir()
+            )
+            self.assertEqual(  # test files are still there
+                3,
+                len(list(Path(temp_dir).joinpath('hazard/storm_europe/test_storm_europe_icon_2021012800/v1').iterdir()))
+            )
+
+            client.purge_cache(target_dir=temp_dir, keep_testfiles=False)
+            self.assertTrue(  # uptodate active dataset file still there
+                Path(temp_dir).joinpath('exposures/litpop/LitPop_150arcsec_ABW/v2/LitPop_150arcsec_ABW.hdf5').exists()
+            )
+            self.assertFalse(  # test data removed, empty directories removed
+                Path(temp_dir).joinpath('hazard/').exists()
+            )
 
 
 def rm_empty_dir(folder):
