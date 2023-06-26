@@ -37,7 +37,7 @@ def get_knutson_criterion():
     Returns
     -------
     criterion : list(dict)
-        list of the criterion dictionary for frequency change per basin, 
+        list of the criterion dictionary for frequency change per basin,
         per category taken from the Table 3 in Knutson et al. 2015.
         with items 'basin' (str), 'category' (list(int)), 'year' (int),
         'change' (float)
@@ -120,7 +120,7 @@ def get_knutson_criterion():
 def calc_scale_knutson(ref_year=2050, rcp_scenario=45):
     """
     Comparison 2081-2100 (i.e., late twenty-first century) and 2001-20
-    (i.e., present day). Late twenty-first century effects on frequency 
+    (i.e., present day). Late twenty-first century effects on frequency
     per Saffir-Simpson-category and ocean basin is scaled to target
     year and target RCP proportional to total radiative forcing of the
     respective RCP and year.
