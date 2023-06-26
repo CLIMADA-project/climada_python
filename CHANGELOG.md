@@ -9,6 +9,9 @@ Code freeze date: YYYY-MM-DD
 ### Dependency Updates
 
 Added:
+- `pytest` [#726](https://github.com/CLIMADA-project/climada_python/pull/726)
+- `pytest-cov` [#726](https://github.com/CLIMADA-project/climada_python/pull/726)
+- `pytest-subtests` [#726](https://github.com/CLIMADA-project/climada_python/pull/726)
 
 Changed:
 
@@ -23,7 +26,8 @@ Removed:
 - `climada.util.coordinates.match_centroids` method for matching (hazard) centroids to GeoDataFrames [#602](https://github.com/CLIMADA-project/climada_python/pull/602)
 - 'Extra' requirements `doc`, `test`, and `dev` for Python package [#712](https://github.com/CLIMADA-project/climada_python/pull/712)
 - Added method `Exposures.centroids_total_value` to replace the functionality of `Exposures.affected_total_value`. This method is temporary and deprecated. [#702](https://github.com/CLIMADA-project/climada_python/pull/702)
-
+- New method `climada.util.api_client.Client.purge_cache`: utility function to remove outdated files from the local file system to free disk space. 
+  ([#737](https://github.com/CLIMADA-project/climada_python/pull/737))
 
 ### Changed
 
@@ -41,6 +45,8 @@ Removed:
 - `Exposures.affected_total_value` now takes a hazard intensity threshold as argument. Affected values are only those for which at least one event exceeds the threshold. (previously, all exposures points with an assigned centroid were considered affected). By default the centroids are reassigned. [#702](https://github.com/CLIMADA-project/climada_python/pull/702) [#730](https://github.com/CLIMADA-project/climada_python/pull/730)
 - Add option to pass region ID to `LitPop.from_shape` [#720](https://github.com/CLIMADA-project/climada_python/pull/720)
 - Slightly improved performance on `LitPop`-internal computations [#720](https://github.com/CLIMADA-project/climada_python/pull/720)
+- Use `pytest` for executing tests [#726](https://github.com/CLIMADA-project/climada_python/pull/726)
+- Users can opt-out of the climada specific logging definitions and freely configure logging to their will, by setting the config value `logging.managed` to `false`. [#724](https://github.com/CLIMADA-project/climada_python/pull/724)
 - Add option to read additional variables from IBTrACS when using `TCTracks.from_ibtracs_netcdf` [#728](https://github.com/CLIMADA-project/climada_python/pull/728)
 
 ### Fixed

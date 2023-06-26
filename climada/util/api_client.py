@@ -23,6 +23,7 @@ from datetime import datetime
 import hashlib
 import json
 import logging
+from os.path import commonprefix
 from pathlib import Path
 from urllib.parse import quote, unquote, urlsplit, urlunsplit
 import time
@@ -594,14 +595,20 @@ class Client():
                 local_path /= fileinfo.file_name
             downloaded = self._tracked_download(remote_url=fileinfo.url, local_path=local_path)
             if not downloaded.enddownload:
-                raise Download.Failed("Download seems to be in progress, please try again later"
-                                      " or remove cache entry by calling"
-                                      f" `Client.purge_cache(Path('{local_path}'))`!")
+                raise Download.Failed(f"A download of {fileinfo.url} via the API Client has been"
+                                      " requested before. Either it is still in progress or the"
+                                      " process got interrupted. In the former case just wait"
+                                      " until the download has finished and try again, in the"
+                                      f" latter run `Client.purge_cache_db(Path('{local_path}'))`"
+                                      " from Python. If unsure, check your internet connection,"
+                                      " wait for as long as it takes to download a file of size"
+                                      f" {fileinfo.file_size} and try again. If the problem"
+                                      " persists, purge the cache db with said call.")
             try:
                 check(local_path, fileinfo)
             except Download.Failed as dlf:
                 local_path.unlink(missing_ok=True)
-                self.purge_cache(local_path)
+                self.purge_cache_db(local_path)
                 raise dlf
             return local_path
         except Download.Failed as dle:
@@ -663,7 +670,7 @@ class Client():
         return target_dir
 
     @staticmethod
-    def purge_cache(local_path):
+    def purge_cache_db(local_path):
         """Removes entry from the sqlite database that keeps track of files downloaded by
         `cached_download`. This may be necessary in case a previous attempt has failed
         in an uncontroled way (power outage or the like).
@@ -1009,3 +1016,57 @@ class Client():
         """
         return Client.into_datasets_df(dataset_infos) \
             .merge(pd.DataFrame([dsfile for ds in dataset_infos for dsfile in ds.files]))
+
+    def purge_cache(self, target_dir=SYSTEM_DIR, keep_testfiles=True):
+        """Removes downloaded dataset files from the given directory if they have been downloaded
+        with the API client, if they are beneath the given directory and if one of the following
+        is the case:
+        - there status is neither 'active' nor 'test_dataset'
+        - their status is 'test_dataset' and keep_testfiles is set to False
+        - their status is 'active' and they are outdated, i.e., there is a dataset with the same
+          data_type and name but a newer version.
+
+        Parameters
+        ----------
+        target_dir : Path or str, optional
+            files downloaded beneath this directory and empty subdirectories will be removed.
+            default: SYSTEM_DIR
+        keep_testfiles : bool, optional
+            if set to True, files from datasets with status 'test_dataset' will not be removed.
+            default: True
+        """
+
+        # collect urls from datasets that should not be removed
+        test_datasets = self.list_dataset_infos(status='test_dataset') if keep_testfiles else []
+        test_urls = set(
+            file_info.url for ds_info in test_datasets for file_info in ds_info.files)
+
+        active_datasets = self.list_dataset_infos(status='active', version='newest')
+        active_urls = set(
+            file_info.url for ds_info in active_datasets for file_info in ds_info.files)
+
+        not_to_be_removed = test_urls.union(active_urls)
+
+        # make a list of downloaded files that could be removed
+        to_be_removed = [d for d in Download.select() if d.url not in not_to_be_removed]
+
+        # helper function for filtering by target_dir
+        target_dir = Path(target_dir).absolute()
+
+        # remove files and sqlite db entries
+        for obsolete in to_be_removed:
+            opath = Path(obsolete.path)
+            if opath.exists() and Path(commonprefix([target_dir, opath])) == target_dir:
+                opath.unlink()
+                obsolete.delete_instance()
+
+        # clean up: remove all empty directories beneath target_dir
+        def rm_empty_dirs(directory: Path):
+            for subdir in directory.iterdir():
+                if subdir.is_dir():
+                    rm_empty_dirs(subdir)
+            try:
+                directory.rmdir()
+            except OSError:  # raised when the directory is not empty
+                pass
+        rm_empty_dirs(target_dir)
