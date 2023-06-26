@@ -67,6 +67,17 @@ class Tag():
         self.file_name = _distinct_list_of_str([], file_name)
         self.description = _distinct_list_of_str([], description)
 
+    def __getattribute__(self, name):
+        # Need to override this because of pickle.load, which is used in Exposures.from_hdf5:
+        # the attribute assignment there is not done neither via __init__ nor via __setattr__.
+        # The outcome is e.g., a description of type str
+        val = super().__getattribute__(name)
+        if name in ['file_name', 'description'] and not isinstance(val, list):
+            if not val:
+                return []
+            return [str(val)]
+        return val
+
     def append(self, tag: Tag):
         """Append input Tag instance information to current Tag."""
         self.file_name = _distinct_list_of_str(self.file_name, tag.file_name)
