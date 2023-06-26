@@ -32,7 +32,7 @@ import pandas as pd
 import xlsxwriter
 
 from climada.entity.measures.base import Measure
-from climada.entity.tag import Tag
+from climada.util.tag import Tag
 import climada.util.hdf5_handler as u_hdf5
 
 LOGGER = logging.getLogger(__name__)
@@ -89,7 +89,7 @@ class MeasureSet():
 
     Attributes
     ----------
-    tag : climada.entity.tag.Tag
+    tag : climada.util.tag.Tag
         information about the source data
     _data : dict
         Contains Measure objects. This attribute is not suppossed to be accessed directly.
@@ -427,8 +427,7 @@ class MeasureSet():
 
         data = u_hdf5.read(file_name)
         meas_set = cls()
-        meas_set.tag.file_name = str(file_name)
-        meas_set.tag.description = description
+        meas_set.tag = Tag(file_name=file_name, description=description)
         try:
             data = data[var_names['sup_field_name']]
         except KeyError:
@@ -526,8 +525,7 @@ class MeasureSet():
         dfr = pd.read_excel(file_name, var_names['sheet_name'])
         dfr = dfr.fillna('')
         meas_set = cls()
-        meas_set.tag.file_name = str(file_name)
-        meas_set.tag.description = description
+        meas_set.tag = Tag(file_name=file_name, description=description)
         try:
             read_att_excel(meas_set, dfr, var_names)
         except KeyError as var_err:

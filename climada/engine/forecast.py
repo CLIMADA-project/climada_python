@@ -246,7 +246,7 @@ class Forecast:
             run_datetime = self.run_datetime[0]
         haz_ind = np.argwhere(np.isin(self.run_datetime, run_datetime))[0][0]
         return (
-            self.hazard[haz_ind].tag.haz_type
+            self.hazard[haz_ind].haz_type
             + "_"
             + self.haz_model
             + "_run"
