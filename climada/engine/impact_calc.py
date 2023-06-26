@@ -231,7 +231,7 @@ class ImpactCalc():
             self.exposures.assign_centroids(self.hazard, overwrite=True)
         elif self.hazard.centr_exp_col not in self.exposures.gdf.columns:
             raise ValueError("'assign_centroids' is set to 'False' but no centroids are assigned"
-                             f" for the given hazard type ({self.hazard.tag.haz_type})."
+                             f" for the given hazard type ({self.hazard.haz_type})."
                              " Run 'exposures.assign_centroids()' beforehand or set"
                              " 'assign_centroids' to 'True'")
         mask = (
