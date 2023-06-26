@@ -10,10 +10,30 @@ here = Path(__file__).parent.absolute()
 with open(here.joinpath('README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
+# Requirements for documentation
+DEPS_DOC = [
+    "ipython",
+    "myst-nb",
+    "readthedocs-sphinx-ext>=2.2",
+    "sphinx",
+    "sphinx-book-theme",
+    "sphinx-markdown-tables",
+]
+
+# Requirements for testing
+DEPS_TEST = [
+    "ipython",
+    "mccabe>=0.6",
+    "pylint==2.7.1",
+    "pytest",
+    "pytest-cov",
+    "pytest-subtests",
+]
+
 setup(
     name='climada',
 
-    version='3.2.0-dev',
+    version='3.3.2-dev',
 
     description='CLIMADA in Python',
 
@@ -32,7 +52,7 @@ setup(
         #   4 - Beta
         #   5 - Production/Stable
         'Development Status :: 4 - Beta',
-        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
         'Topic :: Scientific/Engineering :: Atmospheric Science',
         'Topic :: Scientific/Engineering :: GIS',
         'Topic :: Scientific/Engineering :: Mathematics',
@@ -55,6 +75,7 @@ setup(
         'matplotlib',
         'netcdf4',
         'numba',
+        'openpyxl',
         'overpy',
         'pandas',
         'pandas-datareader',
@@ -62,12 +83,12 @@ setup(
         'peewee',
         'pillow',
         'pint',
-        'pybufrkit',
         'pycountry',
         'rasterio',
         'salib',
         'scikit-learn',
         'statsmodels',
+        'sparse',
         'tables',
         'tabulate',
         'tqdm',
@@ -76,6 +97,12 @@ setup(
         'xlsxwriter',
         'xmlrunner'
     ],
+
+    extras_require={
+        "doc": DEPS_DOC,
+        "test": DEPS_TEST,
+        "dev": DEPS_DOC + DEPS_TEST
+    },
 
     include_package_data=True
 )

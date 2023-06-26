@@ -242,34 +242,6 @@ class TestIbtracs(unittest.TestCase):
         self.assertAlmostEqual(tc_try.data[0].central_pressure.values[5], 1008, places=0)
         self.assertAlmostEqual(tc_try.data[0].central_pressure.values[-1], 1012, places=0)
 
-    def test_ibtracs_with_basin(self):
-        """Filter TCs by (genesis) basin."""
-        # South Atlantic (not usually a TC location at all)
-        tc_track = tc.TCTracks.from_ibtracs_netcdf(basin="SA")
-        self.assertEqual(tc_track.size, 3)
-
-        # the basin is not necessarily the genesis basin
-        tc_track = tc.TCTracks.from_ibtracs_netcdf(
-            year_range=(1995, 1995), basin="SP", estimate_missing=True)
-        self.assertEqual(tc_track.size, 6)
-        self.assertEqual(tc_track.data[0].basin[0], 'SP')
-        self.assertEqual(tc_track.data[5].basin[0], 'SI')
-
-        # genesis in NI
-        tc_track = tc.TCTracks.from_ibtracs_netcdf(
-            year_range=(1994, 1994), genesis_basin="NI", estimate_missing=True)
-        self.assertEqual(tc_track.size, 5)
-        for tr in tc_track.data:
-            self.assertEqual(tr.basin[0], "NI")
-
-        # genesis in EP, but crosses WP at some point
-        tc_track = tc.TCTracks.from_ibtracs_netcdf(
-            year_range=(2002, 2003), basin="WP", genesis_basin="EP")
-        self.assertEqual(tc_track.size, 3)
-        for tr in tc_track.data:
-            self.assertEqual(tr.basin[0], "EP")
-            self.assertIn("WP", tr.basin)
-
     def test_ibtracs_discard_single_points(self):
         """Check discard_single_points option"""
         passed = False
@@ -284,6 +256,37 @@ class TestIbtracs(unittest.TestCase):
                     break
         self.assertTrue(passed)
 
+    def test_ibtracs_additional_variables(self):
+        """Check additional_variables option"""
+        # this is the complete list (as of May 2023) of variables in IBTrACS that are not
+        # agency-specific and that are not already considered by other parts of
+        # `from_ibtracs_netcdf`:
+        addtl_vars = [
+            'numobs', 'season', 'number', 'subbasin', 'name', 'source_usa', 'source_jma',
+            'source_cma', 'source_hko', 'source_new', 'source_reu', 'source_bom', 'source_nad',
+            'source_wel', 'source_td5', 'source_td6', 'source_ds8', 'source_neu', 'source_mlc',
+            'iso_time', 'nature', 'wmo_wind', 'wmo_pres', 'wmo_agency', 'track_type',
+            'main_track_sid', 'dist2land', 'landfall', 'iflag', 'storm_speed', 'storm_dir',
+        ]
+        tc_track = tc.TCTracks.from_ibtracs_netcdf(
+            storm_id='2017242N16333',
+            additional_variables=addtl_vars,
+        )
+        track_ds = tc_track.get_track()
+        for v in addtl_vars:
+            self.assertIn(v, list(track_ds.data_vars) + list(track_ds.attrs))
+        self.assertEqual(track_ds.attrs["numobs"], 123)
+        self.assertEqual(track_ds.attrs["season"], 2017)
+        self.assertEqual(track_ds["nature"].values[0], "TS")
+        self.assertEqual(track_ds["nature"].values[-1], "DS")
+        self.assertEqual(track_ds["subbasin"].values[0], "NA")
+        self.assertEqual(track_ds["subbasin"].values[58], "CS")
+        self.assertEqual(track_ds["dist2land"].values[0], 1020)
+        self.assertEqual(track_ds["dist2land"].values[-1], 0)
+        self.assertEqual(track_ds["storm_speed"].values[0], 13.0)
+        self.assertEqual(track_ds["storm_speed"].values[5], 11.0)
+        self.assertEqual(track_ds["storm_speed"].values[-1], 8.0)
+
 class TestIO(unittest.TestCase):
     """Test reading of tracks from files of different formats"""
     def test_netcdf_io(self):
@@ -291,11 +294,18 @@ class TestIO(unittest.TestCase):
         path = DATA_DIR.joinpath("tc_tracks_nc")
         path.mkdir(exist_ok=True)
         tc_track = tc.TCTracks.from_ibtracs_netcdf(
-            provider='usa', storm_id='1988234N13299', estimate_missing=True)
-        tc_track.write_netcdf(str(path))
+            provider='usa', storm_id='1988234N13299', estimate_missing=True,
+            additional_variables=["numobs", "storm_speed", "nature"],
+        )
+        tc_track.write_netcdf(path)
+        tc_read = tc.TCTracks.from_netcdf(path)
 
-        tc_read = tc.TCTracks.from_netcdf(str(path))
-        self.assertEqual(tc_track.get_track().sid, tc_read.get_track().sid)
+        ds_read = tc_read.get_track()
+        ds_write = tc_track.get_track()
+        self.assertEqual(ds_write.attrs, ds_read.attrs)
+        self.assertEqual(sorted(ds_write.data_vars), sorted(ds_read.data_vars))
+        for v in ds_write.data_vars:
+            np.testing.assert_array_equal(ds_write[v], ds_read[v])
 
     def test_read_legacy_netcdf(self):
         """Test reading from NetCDF files with legacy basin attributes"""
@@ -309,7 +319,7 @@ class TestIO(unittest.TestCase):
             np.testing.assert_array_equal(tr.basin, "SP")
 
     def test_hdf5_io(self):
-        """Test writting and reading hdf5 TCTracks instances"""
+        """Test writing and reading hdf5 TCTracks instances"""
         path = DATA_DIR.joinpath("tc_tracks.h5")
         tc_track = tc.TCTracks.from_ibtracs_netcdf(
             provider='usa', year_range=(1993, 1994), basin='EP', estimate_missing=True)
@@ -508,7 +518,7 @@ class TestIO(unittest.TestCase):
         split.set_index('sid', inplace=True)
         self.assertIsInstance(split.loc['1980052S16155'].geometry, MultiLineString)
         self.assertIsInstance(split.loc['2018079S09162'].geometry, LineString)
-        self.assertEqual(len(split.loc['1980052S16155'].geometry), 8)
+        self.assertEqual(len(split.loc['1980052S16155'].geometry.geoms), 8)
         self.assertFalse(split.loc['2018079S09162'].geometry.is_simple)
 
         nosplit = anti_track.to_geodataframe(split_lines_antimeridian=False)
@@ -621,11 +631,31 @@ class TestFuncs(unittest.TestCase):
             with self.assertRaises(ValueError, msg=msg) as _cm:
                 tc_track.equal_timestep(time_step_h=time_step_h)
 
-        # test for tracks with non-normalized longitude
+    def test_interp_track_lonnorm_pass(self):
+        """Interpolate track with non-normalized longitude to min_time_step."""
         tc_track = tc.TCTracks.from_processed_ibtracs_csv(TEST_TRACK)
         tc_track.data[0].lon.values[1] += 360
         tc_track.equal_timestep(time_step_h=1)
         np.testing.assert_array_less(tc_track.data[0].lon.values, 0)
+
+    def test_interp_track_redundancy_pass(self):
+        """Interpolate tracks that are already interpolated."""
+        tc_track = tc.TCTracks.from_processed_ibtracs_csv(TEST_TRACK)
+        tr_before = tc_track.data[0]
+        tc_track.equal_timestep(time_step_h=1)
+
+        # test for case when temporal resolution of all tracks already matches time_step_h
+        expected_warning = 'All tracks are already at the requested temporal resolution.'
+        with self.assertLogs('climada.hazard.tc_tracks', level='INFO') as cm:
+            tc_track.equal_timestep(time_step_h=1)
+        self.assertIn(expected_warning, cm.output[0])
+
+        # test for case when temporal resolution of some tracks already matches time_step_h
+        tc_track.data = [tc_track.data[0], tr_before, tc_track.data[0]]
+        expected_warning = '2 tracks are already at the requested temporal resolution.'
+        with self.assertLogs('climada.hazard.tc_tracks', level='INFO') as cm:
+            tc_track.equal_timestep(time_step_h=1)
+        self.assertIn(expected_warning, cm.output[0])
 
     def test_interp_origin_pass(self):
         """Interpolate track to min_time_step crossing lat origin"""

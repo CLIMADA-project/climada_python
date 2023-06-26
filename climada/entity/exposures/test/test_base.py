@@ -25,10 +25,12 @@ import geopandas as gpd
 from sklearn.metrics import DistanceMetric
 import rasterio
 from rasterio.windows import Window
+import scipy as sp
 
 from climada import CONFIG
 from climada.entity.exposures.base import Exposures, INDICATOR_IMPF, \
      INDICATOR_CENTR, add_sea, DEF_REF_YEAR, DEF_VALUE_UNIT
+from climada.entity import LitPop
 from climada.entity.tag import Tag
 from climada.hazard.base import Hazard, Centroids
 from climada.util.constants import ENT_TEMPLATE_XLS, ONE_LAT_KM, DEF_CRS, HAZ_DEMO_FL
@@ -88,6 +90,21 @@ class TestFuncs(unittest.TestCase):
             Exposures(meta=[])
         self.assertEqual("meta must be a dictionary",
                       str(cm.exception))
+
+    def test__init__geometry_type(self):
+        """Check that initialization fails when `geometry` is given as a `str` argument"""
+        with self.assertRaises(ValueError) as cm:
+            Exposures(geometry='myname')
+        self.assertEqual("Exposures is not able to handle customized 'geometry' column names.",
+                         str(cm.exception))
+
+    def test__init__mda_in_kwargs(self):
+        """Check if `_metadata` attributes are instantiated correctly for sub-classes of
+        ``Exposures``"""
+        litpop = LitPop(exponents=2)
+        self.assertEqual(litpop.exponents, 2)
+        litpop = LitPop(meta=dict(exponents=3))
+        self.assertEqual(litpop.exponents, 3)
 
     def test_read_raster_pass(self):
         """from_raster"""
@@ -169,24 +186,53 @@ class TestFuncs(unittest.TestCase):
         np.testing.assert_array_equal(assigned_centroids.lon, exp.gdf.longitude)
 
     def test_affected_total_value(self):
-        exp = Exposures.from_raster(HAZ_DEMO_FL, window=Window(25, 90, 10, 5))
-        haz = Hazard.from_raster([HAZ_DEMO_FL], haz_type='FL', window=Window(25, 90, 10, 5))
-        exp.assign_centroids(haz)
-        tot_val = exp.affected_total_value(haz)
-        self.assertEqual(tot_val, np.sum(exp.gdf.value))
-        new_centr = exp.gdf.centr_FL
-        new_centr[6] = -1
-        exp.gdf.centr_FL = new_centr
-        tot_val = exp.affected_total_value(haz)
-        self.assertAlmostEqual(tot_val, np.sum(exp.gdf.value) - exp.gdf.value[6], places=4)
-        new_vals = exp.gdf.value
-        new_vals[7] = 0
-        exp.gdf.value = new_vals
-        tot_val = exp.affected_total_value(haz)
-        self.assertAlmostEqual(tot_val, np.sum(exp.gdf.value) - exp.gdf.value[6], places=4)
-        exp.gdf.centr_FL = -1
-        tot_val = exp.affected_total_value(haz)
+        haz_type = "RF"
+        gdf = gpd.GeoDataFrame(
+            {
+                "value": [1, 2, 3, 4, 5, 6],
+                "latitude": [1, 2, 3, 4, 1, 0],
+                "longitude": [-1, -2, -3, -4, 0, 1],
+                "centr_" + haz_type: [0, 2, 2, 3, -1, 4],
+            }
+        )
+        exp = Exposures(gdf, crs=4326)
+        intensity = sp.sparse.csr_matrix(np.array([[0, 0, 1, 10, 2], [-1, 0, 0, 1, 2]]))
+        cent = Centroids(lat=np.array([1, 2, 3, 4]), lon=np.array([-1, -2, -3, -4]))
+        haz = Hazard(
+            haz_type=haz_type, centroids=cent, intensity=intensity, event_id=[1, 2]
+        )
+
+        # do not reassign centroids
+        tot_val = exp.affected_total_value(
+            haz, threshold_affected=0, overwrite_assigned_centroids=False
+        )
+        self.assertEqual(tot_val, np.sum(exp.gdf.value[[1, 2, 3, 5]]))
+        tot_val = exp.affected_total_value(
+            haz, threshold_affected=3, overwrite_assigned_centroids=False
+        )
+        self.assertEqual(tot_val, np.sum(exp.gdf.value[[3]]))
+        tot_val = exp.affected_total_value(
+            haz, threshold_affected=-2, overwrite_assigned_centroids=False
+        )
+        self.assertEqual(tot_val, np.sum(exp.gdf.value[[0, 1, 2, 3, 5]]))
+        tot_val = exp.affected_total_value(
+            haz, threshold_affected=11, overwrite_assigned_centroids=False
+        )
         self.assertEqual(tot_val, 0)
+
+        # reassign centroids (i.e. to [0, 1, 2, 3, -1, -1])
+        tot_val = exp.affected_total_value(
+            haz, threshold_affected=11, overwrite_assigned_centroids=True
+        )
+        self.assertEqual(tot_val, 0)
+        tot_val = exp.affected_total_value(
+            haz, threshold_affected=0, overwrite_assigned_centroids=False
+        )
+        self.assertEqual(tot_val, 7)
+        tot_val = exp.affected_total_value(
+            haz, threshold_affected=3, overwrite_assigned_centroids=False
+        )
+        self.assertEqual(tot_val, 4)
 
 class TestChecker(unittest.TestCase):
     """Test logs of check function"""

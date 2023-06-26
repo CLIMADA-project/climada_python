@@ -68,39 +68,40 @@ class InputVar():
     --------
 
     Categorical variable function: LitPop exposures with m,n exponents in [0,5]
-        import scipy as sp
-        def litpop_cat(m, n):
-            exp = Litpop.from_countries('CHE', exponent=[m, n])
-            return exp
-        distr_dict = {
-            'm': sp.stats.randint(low=0, high=5),
-            'n': sp.stats.randint(low=0, high=5)
-            }
-        iv_cat = InputVar(func=litpop_cat, distr_dict=distr_dict)
+
+    >>> import scipy as sp
+    >>> def litpop_cat(m, n):
+    ...     exp = Litpop.from_countries('CHE', exponent=[m, n])
+    ...     return exp
+    >>> distr_dict = {
+    ...     'm': sp.stats.randint(low=0, high=5),
+    ...     'n': sp.stats.randint(low=0, high=5)
+    ...     }
+    >>> iv_cat = InputVar(func=litpop_cat, distr_dict=distr_dict)
 
     Continuous variable function: Impact function for TC
-        import scipy as sp
-        def imp_fun_tc(G, v_half, vmin, k, _id=1):
-            intensity = np.linspace(0, 150, num=100)
-            mdd = np.repeat(1, len(intensity))
-            paa = np.array([sigmoid_function(v, G, v_half, vmin, k)
-                            for v in intensity])
-            imp_fun = ImpactFunc(haz_type='TC',
-                                 id=_id,
-                                 intensity_unit='m/s',
-                                 intensity=intensity,
-                                 mdd=mdd,
-                                 paa=paa)
-            imp_fun.check()
-            impf_set = ImpactFuncSet([imp_fun])
-            return impf_set
-        distr_dict = {"G": sp.stats.uniform(0.8, 1),
-              "v_half": sp.stats.uniform(50, 100),
-              "vmin": sp.stats.norm(loc=15, scale=30),
-              "k": sp.stats.randint(low=1, high=9)
-              }
-        iv_cont = InputVar(func=imp_fun_tc, distr_dict=distr_dict)
 
+    >>> import scipy as sp
+    >>> def imp_fun_tc(G, v_half, vmin, k, _id=1):
+    ...     intensity = np.linspace(0, 150, num=100)
+    ...     mdd = np.repeat(1, len(intensity))
+    ...     paa = np.array([sigmoid_function(v, G, v_half, vmin, k)
+    ...                     for v in intensity])
+    ...     imp_fun = ImpactFunc(haz_type='TC',
+    ...                          id=_id,
+    ...                          intensity_unit='m/s',
+    ...                          intensity=intensity,
+    ...                          mdd=mdd,
+    ...                          paa=paa)
+    ...     imp_fun.check()
+    ...     impf_set = ImpactFuncSet([imp_fun])
+    ...     return impf_set
+    >>> distr_dict = {"G": sp.stats.uniform(0.8, 1),
+    ...       "v_half": sp.stats.uniform(50, 100),
+    ...       "vmin": sp.stats.norm(loc=15, scale=30),
+    ...       "k": sp.stats.randint(low=1, high=9)
+    ...       }
+    >>> iv_cont = InputVar(func=imp_fun_tc, distr_dict=distr_dict)
     """
 
     def __init__(
@@ -163,8 +164,9 @@ class InputVar():
         figsize: tuple(int or float, int or float), optional
             The figsize argument of matplotlib.pyplot.subplots()
             The default is derived from the total number of plots (nplots) as:
-                nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
-                figsize = (ncols * FIG_W, nrows * FIG_H)
+
+            >>> nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
+            >>> figsize = (ncols * FIG_W, nrows * FIG_H)
 
         Returns
         -------
@@ -233,6 +235,7 @@ class InputVar():
         Helper wrapper for basic hazard uncertainty input variable
 
         The following types of uncertainties can be added:
+
         HE: sub-sampling events from the total event set
             For each sub-sample, n_ev events are sampled with replacement.
             HE is the value of the seed
@@ -300,6 +303,7 @@ class InputVar():
         Helper wrapper for basic exposure uncertainty input variable
 
         The following types of uncertainties can be added:
+
         ET: scale the total value (homogeneously)
             The value at each exposure point is multiplied by a number
             sampled uniformly from a distribution with
@@ -350,13 +354,14 @@ class InputVar():
 
     @staticmethod
     def impfset(impf_set_list, haz_id_dict= None, bounds_mdd=None, bounds_paa=None,
-                    bounds_impfi=None):
+                bounds_impfi=None):
         """
         Helper wrapper for basic impact function set uncertainty input variable.
 
         One impact function (chosen with haz_type and fun_id) is characterized.
 
         The following types of uncertainties can be added:
+
         MDD: scale the mdd (homogeneously)
             The value of mdd at each intensity is multiplied by a number
             sampled uniformly from a distribution with
@@ -436,6 +441,7 @@ class InputVar():
         fun_id will be affected by bounds_impfi, bounds_mdd, bounds_paa.
 
         The following types of uncertainties can be added:
+
         DR: value of constant discount rate (homogeneously)
             The value of the discounts in each year is
             sampled uniformly from a distribution with
@@ -473,9 +479,7 @@ class InputVar():
             sampled. For example, impact functions obtained from different
             calibration methods.
 
-
         If a bounds is None, this parameter is assumed to have no uncertainty.
-
 
         Parameters
         ----------
@@ -570,6 +574,7 @@ class InputVar():
         fun_id will be affected by bounds_impfi, bounds_mdd, bounds_paa.
 
         The following types of uncertainties can be added:
+
         CO: scale the cost (homogeneously)
             The cost of all measures is multiplied by the same number
             sampled uniformly from a distribution with
@@ -603,9 +608,7 @@ class InputVar():
             sampled. For example, impact functions obtained from different
             calibration methods.
 
-
         If a bounds is None, this parameter is assumed to have no uncertainty.
-
 
         Parameters
         ----------

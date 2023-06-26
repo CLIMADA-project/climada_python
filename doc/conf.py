@@ -37,10 +37,10 @@ extensions = ['matplotlib.sphinxext.plot_directive',
               'sphinx.ext.inheritance_diagram',
               'sphinx.ext.viewcode',
               'sphinx.ext.napoleon',
-              'nbsphinx',
+              'sphinx.ext.ifconfig',
+              'myst_nb',
+              'sphinx_markdown_tables',
               'readthedocs_ext.readthedocs',]
-
-nbsphinx_allow_errors = True
 
 # read the docs version used for links
 if 'dev' in __version__:
@@ -49,10 +49,7 @@ else:
     read_docs_url = 'en/v{}/'.format(__version__)
 
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ['_templates']
-
-# The suffix of source filenames.
-source_suffix = '.rst'
+templates_path = []
 
 # The encoding of source files.
 #source_encoding = 'utf-8'
@@ -61,9 +58,9 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'climada'
-copyright = u'2017, ETH Zurich'
-author = u'CLIMADA contributors'
+project = 'CLIMADA'
+copyright = '2017, ETH Zurich'
+author = 'CLIMADA contributors'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -89,7 +86,7 @@ language = 'en'
 
 # List of directories, relative to source directory, that shouldn't be searched
 # for source files.
-exclude_trees = ['_build']
+# exclude_trees = []
 
 # The reST default role (used for this markup: `text`) to use for all documents.
 #default_role = None
@@ -114,7 +111,7 @@ pygments_style = 'sphinx'
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This patterns also effect to html_static_path and html_extra_path
-exclude_patterns = ['test', 'Thumbs.db', '.DS_Store']
+exclude_patterns = ['_build', 'test', 'Thumbs.db', '.DS_Store']
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = True
@@ -123,7 +120,7 @@ todo_include_todos = True
 
 # The theme to use for HTML and HTML Help pages.  Major themes that come with
 # Sphinx are currently 'default' and 'sphinxdoc'.
-html_theme = 'sphinxdoc'
+html_theme = "sphinx_book_theme"
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -142,12 +139,12 @@ html_theme = 'sphinxdoc'
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
-#html_logo = None
+html_logo = "img/logo.png"
 
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
 # pixels large.
-#html_favicon = None
+html_favicon = "img/petals.ico"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -195,6 +192,8 @@ htmlhelp_basename = 'climadadoc'
 
 # -- Options for LaTeX output --------------------------------------------------
 
+latex_engine = "xelatex"
+
 # The paper size ('letter' or 'a4').
 #latex_paper_size = 'letter'
 
@@ -239,9 +238,35 @@ def remove_module_docstring(app, what, name, obj, options, lines):
 
 autodoc_member_order = "bysource"
 
+# --- MYST Parser settings ----
+
+# Jupyter Notebooks will not be executed when creating the docs
+nb_execution_mode = "off"
+
+# Extensions, see https://myst-parser.readthedocs.io/en/latest/configuration.html#list-of-syntax-extensions
+myst_enable_extensions = [
+    "amsmath",
+    "colon_fence",
+    "deflist",
+    "dollarmath",
+    "html_image",
+]
+
+# URI schemes that are converted to external links
+myst_url_schemes = ("http", "https", "mailto")
+
+# Generate heading anchors for linking to them, up to heading level 4
+myst_heading_anchors = 4
+
+# ---
+
 def setup(app):
     app.connect("autodoc-skip-member", skip)
     app.connect("autodoc-process-docstring", remove_module_docstring)
+
+    # Pass to the app if we are building this on ReadTheDocs
+    on_rtd = True if (os.environ.get('READTHEDOCS') == 'True') else False
+    app.add_config_value('readthedocs', on_rtd, 'env')
 
 # improve parameters description
 napoleon_use_param = False

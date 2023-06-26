@@ -127,9 +127,9 @@ IBTRACS_AGENCY_1MIN_WIND_FACTOR = {
 """Scale and shift used by agencies to convert their internal Dvorak 1-minute sustained winds to
 the officially reported values that are in IBTrACS. From Table 1 in:
 
-Knapp, K.R., Kruk, M.C. (2010): Quantifying Interagency Differences in Tropical Cyclone Best-Track
+Knapp, K.R. & Kruk, M.C. (2010): Quantifying Interagency Differences in Tropical Cyclone Best-Track
 Wind Speed Estimates. Monthly Weather Review 138(4): 1459–1473.
-https://library.wmo.int/index.php?lvl=notice_display&id=135"""
+https://journals.ametsoc.org/view/journals/mwre/138/4/2009mwr3123.1.xml"""
 
 DEF_ENV_PRESSURE = 1010
 """Default environmental pressure"""
@@ -189,6 +189,9 @@ class TCTracks():
         Computed during processing:
             - on_land (bool for each track position)
             - dist_since_lf (in km)
+        Additional data variables such as "nature" (specifiying, for each track position, whether a
+        system is a disturbance, tropical storm, post-transition extratropical storm etc.) might be
+        included, depending on the data source and on use cases.
     """
     def __init__(self,
                  data: Optional[List[xr.Dataset]] = None,
@@ -328,7 +331,7 @@ class TCTracks():
     def from_ibtracs_netcdf(cls, provider=None, rescale_windspeeds=True, storm_id=None,
                             year_range=None, basin=None, genesis_basin=None,
                             interpolate_missing=True, estimate_missing=False, correct_pres=False,
-                            discard_single_points=True,
+                            discard_single_points=True, additional_variables=None,
                             file_name='IBTrACS.ALL.v04r00.nc'):
         """Create new TCTracks object from IBTrACS databse.
 
@@ -348,18 +351,21 @@ class TCTracks():
         to be larger than `central_pressure`.
 
         Note that the tracks returned by this function might contain irregular time steps since
-        that is often the case for the original IBTrACS records. Apply the `equal_timestep`
-        function afterwards to enforce regular time steps.
+        that is often the case for the original IBTrACS records: many agencies add an additional
+        time step at landfall. Apply the `equal_timestep` function afterwards to enforce regular
+        time steps.
 
         Parameters
         ----------
         provider : str or list of str, optional
             Either specify an agency, such as "usa", "newdelhi", "bom", "cma", "tokyo", or the
             special values "official" and "official_3h":
-              * "official" means using the (usually 6-hourly) officially reported values of the
-                officially responsible agencies.
-              * "official_3h" means to include (inofficial) 3-hourly data of the officially
-                responsible agencies (whenever available).
+
+            * "official" means using the (usually 6-hourly) officially reported values of the
+              officially responsible agencies.
+            * "official_3h" means to include (inofficial) 3-hourly data of the officially
+              responsible agencies (whenever available).
+
             If you want to restrict to the officially reported values by the officially responsible
             agencies (`provider="official"`) without any modifications to the original official
             data, make sure to also set `estimate_missing=False` and `interpolate_missing=False`.
@@ -369,8 +375,8 @@ class TCTracks():
             are not reported by the first agency for this storm are taken from the next agency in
             the list that did report this variable for this storm. For different storms, the same
             variable might be taken from different agencies.
-            Default: ['official_3h', 'usa', 'tokyo', 'newdelhi', 'reunion', 'bom', 'nadi',
-            'wellington', 'cma', 'hko', 'ds824', 'td9636', 'td9635', 'neumann', 'mlc']
+            Default: ``['official_3h', 'usa', 'tokyo', 'newdelhi', 'reunion', 'bom', 'nadi',
+            'wellington', 'cma', 'hko', 'ds824', 'td9636', 'td9635', 'neumann', 'mlc']``
         rescale_windspeeds : bool, optional
             If True, all wind speeds are linearly rescaled to 1-minute sustained winds.
             Note however that the IBTrACS documentation (Section 5.2,
@@ -396,9 +402,9 @@ class TCTracks():
             which simulates the genesis location. Note that the resulting genesis basin of a
             particular track may depend on the selected `provider` and on `estimate_missing`
             because only the first *valid* eye position is considered. Possible values are 'NA'
-            (North Atlantic), 'SA' (South Atlantic), 'EP'​ (Eastern North Pacific, which includes
-            the Central Pacific region), 'WP'​ (Western North Pacific), 'SP'​ (South Pacific),
-            'SI'​ (South Indian), 'NI'​ (North Indian). If None, this filter is not applied.
+            (North Atlantic), 'SA' (South Atlantic), 'EP' (Eastern North Pacific, which includes
+            the Central Pacific region), 'WP' (Western North Pacific), 'SP' (South Pacific),
+            'SI' (South Indian), 'NI' (North Indian). If None, this filter is not applied.
             Default: None.
         interpolate_missing : bool, optional
             If True, interpolate temporal reporting gaps within a variable (such as pressure, wind
@@ -435,6 +441,10 @@ class TCTracks():
         file_name : str, optional
             Name of NetCDF file to be dowloaded or located at climada/data/system.
             Default: 'IBTrACS.ALL.v04r00.nc'
+        additional_variables : list of str, optional
+            If specified, additional IBTrACS data variables are extracted, such as "nature" or
+            "storm_speed". Only variables that are not agency-specific are supported.
+            Default: None.
 
         Returns
         -------
@@ -458,6 +468,9 @@ class TCTracks():
                 raise ValueError(
                     f'Error while downloading {IBTRACS_URL}. Try to download it manually and '
                     f'put the file in {ibtracs_path}') from err
+
+        if additional_variables is None:
+            additional_variables = []
 
         ibtracs_ds = xr.open_dataset(ibtracs_path)
         ibtracs_date = ibtracs_ds.attrs["date_created"]
@@ -573,7 +586,8 @@ class TCTracks():
                             ibtracs_ds[tc_var].sel(storm=nonsingular_mask).interpolate_na(
                                 dim="date_time", method="linear"))
         ibtracs_ds = ibtracs_ds[['sid', 'name', 'basin', 'time', 'valid_t']
-                                + phys_vars + [f'{v}_agency' for v in phys_vars]]
+                                + additional_variables + phys_vars
+                                + [f'{v}_agency' for v in phys_vars]]
 
         if estimate_missing:
             ibtracs_ds['pres'][:] = _estimate_pressure(
@@ -682,28 +696,37 @@ class TCTracks():
                     "{}({})".format(v, track_ds[f'{v}_agency'].astype(str).item())
                     for v in phys_vars)
 
-            all_tracks.append(xr.Dataset({
-                'time_step': ('time', track_ds.time_step.data),
+            data_vars = {
                 'radius_max_wind': ('time', track_ds.rmw.data),
                 'radius_oci': ('time', track_ds.roci.data),
                 'max_sustained_wind': ('time', track_ds.wind.data),
                 'central_pressure': ('time', track_ds.pres.data),
                 'environmental_pressure': ('time', track_ds.poci.data),
-                'basin': ('time', track_ds.basin.data.astype("<U2")),
-            }, coords={
-                'time': track_ds.time.dt.round('s').data,
+            }
+            coords = {
+                'time': ('time', track_ds.time.dt.round('s').data),
                 'lat': ('time', track_ds.lat.data),
                 'lon': ('time', track_ds.lon.data),
-            }, attrs={
+            }
+            attrs = {
                 'max_sustained_wind_unit': 'kn',
                 'central_pressure_unit': 'mb',
-                'name': track_ds.name.astype(str).item(),
-                'sid': track_ds.sid.astype(str).item(),
                 'orig_event_flag': True,
                 'data_provider': provider_str,
-                'id_no': track_ds.id_no.item(),
                 'category': category[i_track],
-            }))
+            }
+            # automatically assign the remaining variables as attributes or data variables
+            for varname in ["time_step", "basin", "name", "sid", "id_no"] + additional_variables:
+                values = track_ds[varname].data
+                if track_ds[varname].dtype.kind == "S":
+                    # This converts the `bytes` (dtype "|S*") in IBTrACS to the more common `str`
+                    # objects (dtype "<U*") that we use in CLIMADA.
+                    values = values.astype(str)
+                if values.ndim == 0:
+                    attrs[varname] = values.item()
+                else:
+                    data_vars[varname] = ('time', values)
+            all_tracks.append(xr.Dataset(data_vars, coords=coords, attrs=attrs))
         if last_perc != 100:
             LOGGER.info("Progress: 100%")
         if len(all_tracks) == 0:
@@ -1041,7 +1064,18 @@ class TCTracks():
         return cls(data)
 
     def equal_timestep(self, time_step_h=1, land_params=False, pool=None):
-        """Generate interpolated track values to time steps of time_step_h.
+        """Resample all tracks at the specified temporal resolution
+
+        The resulting track data will be given at evenly distributed time steps, relative to
+        midnight (00:00). For example, if `time_step_h` is 1 and the original track data starts
+        at 06:30, the interpolated track will not have a time step at 06:30 because only multiples
+        of 01:00 (relative to midnight) are included. In this case, the interpolated track will
+        start at 07:00.
+
+        Depending on the original resolution of the track data, this method may up- or downsample
+        track time steps.
+
+        Note that tracks that already have the specified resolution remain unchanged.
 
         Parameters
         ----------
@@ -1057,7 +1091,24 @@ class TCTracks():
 
         if time_step_h <= 0:
             raise ValueError(f"time_step_h is not a positive number: {time_step_h}")
-        LOGGER.info('Interpolating %s tracks to %sh time steps.', self.size, time_step_h)
+
+        # set step size to None for tracks that already have the specified resolution
+        l_time_step_h = [
+            None if np.allclose(np.unique(tr['time_step'].values), time_step_h)
+            else time_step_h
+            for tr in self.data
+        ]
+
+        n_skip = np.sum([ts is None for ts in l_time_step_h])
+        if n_skip == self.size:
+            LOGGER.info('All tracks are already at the requested temporal resolution.')
+            return
+        if n_skip > 0:
+            LOGGER.info('%d track%s already at the requested temporal resolution.',
+                        n_skip, "s are" if n_skip > 1 else " is")
+
+        LOGGER.info('Interpolating %d tracks to %sh time steps.',
+                    self.size - n_skip, time_step_h)
 
         if land_params:
             extent = self.get_extent()
@@ -1067,21 +1118,24 @@ class TCTracks():
 
         if pool:
             chunksize = min(self.size // pool.ncpus, 1000)
-            self.data = pool.map(self._one_interp_data, self.data,
-                                 itertools.repeat(time_step_h, self.size),
-                                 itertools.repeat(land_geom, self.size),
-                                 chunksize=chunksize)
+            self.data = pool.map(
+                self._one_interp_data,
+                self.data,
+                l_time_step_h,
+                itertools.repeat(land_geom, self.size),
+                chunksize=chunksize
+            )
         else:
             last_perc = 0
             new_data = []
-            for track in self.data:
+            for track, ts_h in zip(self.data, l_time_step_h):
                 # progress indicator
                 perc = 100 * len(new_data) / len(self.data)
                 if perc - last_perc >= 10:
                     LOGGER.debug("Progress: %d%%", perc)
                     last_perc = perc
-                new_data.append(
-                    self._one_interp_data(track, time_step_h, land_geom))
+                track_int = self._one_interp_data(track, ts_h, land_geom)
+                new_data.append(track_int)
             self.data = new_data
 
     def calc_random_walk(self, **kwargs):
@@ -1201,25 +1255,32 @@ class TCTracks():
         if not axis:
             proj = ccrs.PlateCarree(central_longitude=mid_lon)
             _, axis, _ = u_plot.make_map(proj=proj, figsize=figsize, adapt_fontsize=adapt_fontsize)
+        else:
+            proj = axis.projection
         axis.set_extent(extent, crs=kwargs['transform'])
         u_plot.add_shapes(axis)
 
-        synth_flag = False
         cmap = ListedColormap(colors=CAT_COLORS)
         norm = BoundaryNorm([0] + SAFFIR_SIM_CAT, len(SAFFIR_SIM_CAT))
         for track in self.data:
             lonlat = np.stack([track.lon.values, track.lat.values], axis=-1)
             lonlat[:, 0] = u_coord.lon_normalize(lonlat[:, 0], center=mid_lon)
             segments = np.stack([lonlat[:-1], lonlat[1:]], axis=1)
-            # remove segments which cross 180 degree longitude boundary
-            segments = segments[segments[:, 0, 0] * segments[:, 1, 0] >= 0, :, :]
-            if track.orig_event_flag:
-                track_lc = LineCollection(segments, cmap=cmap, norm=norm,
-                                          linestyle='solid', **kwargs)
-            else:
-                synth_flag = True
-                track_lc = LineCollection(segments, cmap=cmap, norm=norm,
-                                          linestyle=':', **kwargs)
+
+            # Truncate segments which cross the antimeridian.
+            # Note: Since we apply `lon_normalize` above and shift the central longitude of the
+            # plot to `mid_lon`, this is not necessary (and will do nothing) in cases where all
+            # tracks are located in a region around the antimeridian, like the Pacific ocean.
+            # The only case where this is relevant: Crowded global data sets where `mid_lon`
+            # falls back to 0, i.e. using the [-180, 180] range.
+            mask = (segments[:, 0, 0] > 100) & (segments[:, 1, 0] < -100)
+            segments[mask, 1, 0] = 180
+            mask = (segments[:, 0, 0] < -100) & (segments[:, 1, 0] > 100)
+            segments[mask, 1, 0] = -180
+
+            track_lc = LineCollection(
+                segments, linestyle='solid' if track.orig_event_flag else ':',
+                cmap=cmap, norm=norm, **kwargs)
             track_lc.set_array(track.max_sustained_wind.values)
             axis.add_collection(track_lc)
 
@@ -1227,7 +1288,7 @@ class TCTracks():
             leg_lines = [Line2D([0], [0], color=CAT_COLORS[i_col], lw=2)
                          for i_col in range(len(SAFFIR_SIM_CAT))]
             leg_names = [CAT_NAMES[i_col] for i_col in sorted(CAT_NAMES.keys())]
-            if synth_flag:
+            if any(not tr.orig_event_flag for tr in self.data):
                 leg_lines.append(Line2D([0], [0], color='grey', lw=2, ls='solid'))
                 leg_lines.append(Line2D([0], [0], color='grey', lw=2, ls=':'))
                 leg_names.append('Historical')
@@ -1259,6 +1320,13 @@ class TCTracks():
     @classmethod
     def from_netcdf(cls, folder_name):
         """Create new TCTracks object from NetCDF files contained in a given folder
+
+        Warning
+        -------
+        Do not use this classmethod for reading IBTrACS NetCDF files! If you need to
+        manually download IBTrACS NetCDF files, place them in the
+        ``~/climada/data/system`` folder and use the ``TCTracks.from_ibtracks_netcdf``
+        classmethod.
 
         Parameters
         ----------
@@ -1335,8 +1403,10 @@ class TCTracks():
         for i in track_no:
             track = ds_dict[f'track{i}']
             track.attrs['orig_event_flag'] = bool(track.attrs['orig_event_flag'])
-            # when writing '<U2' and reading in again, xarray reads as dtype 'object'. undo this:
-            track['basin'] = track['basin'].astype('<U2')
+            # when writing '<U*' and reading in again, xarray reads as dtype 'object'. undo this:
+            for varname in track.data_vars:
+                if track[varname].dtype == "object":
+                    track[varname] = track[varname].astype(str)
             data.append(track)
         return cls(data)
 
@@ -1424,8 +1494,9 @@ class TCTracks():
         ----------
         track : xr.Dataset
             Track data.
-        time_step_h : int or float
-            Desired temporal resolution in hours (may be non-integer-valued).
+        time_step_h : int, float or None
+            Desired temporal resolution in hours (may be non-integer-valued). If None, no
+            interpolation is done and the input track dataset is returned unchanged.
         land_geom : shapely.geometry.multipolygon.MultiPolygon, optional
             Land geometry. If given, recompute `dist_since_lf` and `on_land` property.
 
@@ -1433,7 +1504,13 @@ class TCTracks():
         -------
         track_int : xr.Dataset
         """
-        if track.time.size >= 2:
+        if time_step_h is None:
+            return track
+        if track.time.size < 2:
+            LOGGER.warning('Track interpolation not done. '
+                           'Not enough elements for %s', track.name)
+            track_int = track
+        else:
             method = ['linear', 'quadratic', 'cubic'][min(2, track.time.size - 2)]
 
             # handle change of sign in longitude
@@ -1445,7 +1522,9 @@ class TCTracks():
             time_step = pd.tseries.frequencies.to_offset(pd.Timedelta(hours=time_step_h)).freqstr
             track_int = track.resample(time=time_step, skipna=True)\
                              .interpolate('linear')
-            track_int['basin'] = track.basin.resample(time=time_step).nearest()
+            for var in track.data_vars:
+                if "time" in track[var].dims and track[var].dtype.kind != "f":
+                    track_int[var] = track[var].resample(time=time_step).nearest()
             track_int['time_step'][:] = time_step_h
             lon_int = lon.resample(time=time_step).interpolate(method)
             lon_int[lon_int > 180] -= 360
@@ -1458,10 +1537,6 @@ class TCTracks():
             # restrict to time steps within original bounds
             track_int = track_int.sel(
                 time=(track.time[0] <= track_int.time) & (track_int.time <= track.time[-1]))
-        else:
-            LOGGER.warning('Track interpolation not done. '
-                           'Not enough elements for %s', track.name)
-            track_int = track
 
         if land_geom:
             track_land_params(track_int, land_geom)

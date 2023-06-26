@@ -80,6 +80,7 @@ class LitPop(Exposures):
                        reference_year=DEF_REF_YEAR, gpw_version=GPW_VERSION,
                        data_dir=SYSTEM_DIR):
         """Init new LitPop exposure object for a list of countries (admin 0).
+
         Sets attributes `ref_year`, `tag`, `crs`, `value`, `geometry`, `meta`,
         `value_unit`, `exponents`,`fin_mode`, `gpw_version`, and `admin1_calc`.
 
@@ -98,20 +99,22 @@ class LitPop(Exposures):
             Default: (1, 1)
         fin_mode : str, optional
             Socio-economic value to be used as an asset base that is disaggregated
-            to the grid points within the country
-                * 'pc': produced capital (Source: World Bank), incl. manufactured or
-                  built assets such as machinery, equipment, and physical structures
-                  `pc` is in constant 2014 USD.
-                * 'pop': population count (source: GPW, same as gridded population).
-                  The unit is 'people'.
-                * 'gdp': gross-domestic product (Source: World Bank) [USD]
-                * 'income_group': gdp multiplied by country's income group+1 [USD].
-                  Income groups are 1 (low) to 4 (high income).
-                * 'nfw': non-financial wealth (Source: Credit Suisse, of households only) [USD]
-                * 'tw': total wealth (Source: Credit Suisse, of households only) [USD]
-                * 'norm': normalized by country (no unit)
-                * 'none': LitPop per pixel is returned unchanged (no unit)
-            The default is 'pc'.
+            to the grid points within the country:
+
+            * 'pc': produced capital (Source: World Bank), incl. manufactured or
+              built assets such as machinery, equipment, and physical structures
+              `pc` is in constant 2014 USD.
+            * 'pop': population count (source: GPW, same as gridded population).
+              The unit is 'people'.
+            * 'gdp': gross-domestic product (Source: World Bank) [USD]
+            * 'income_group': gdp multiplied by country's income group+1 [USD].
+              Income groups are 1 (low) to 4 (high income).
+            * 'nfw': non-financial wealth (Source: Credit Suisse, of households only) [USD]
+            * 'tw': total wealth (Source: Credit Suisse, of households only) [USD]
+            * 'norm': normalized by country (no unit)
+            * 'none': LitPop per pixel is returned unchanged (no unit)
+
+            Default: 'pc'
         total_values : list containing numerics, same length as countries, optional
             Total values to be disaggregated to grid in each country.
             The default is None. If None, the total number is extracted from other
@@ -361,20 +364,22 @@ class LitPop(Exposures):
             Default: (1, 1)
         fin_mode : str, optional
             Socio-economic value to be used as an asset base that is disaggregated
-            to the grid points within the country
-                * 'pc': produced capital (Source: World Bank), incl. manufactured or
-                  built assets such as machinery, equipment, and physical structures
-                  (pc is in constant 2014 USD)
-                * 'pop': population count (source: GPW, same as gridded population).
-                  The unit is 'people'.
-                * 'gdp': gross-domestic product (Source: World Bank) [USD]
-                * 'income_group': gdp multiplied by country's income group+1 [USD]
-                  Income groups are 1 (low) to 4 (high income).
-                * 'nfw': non-financial wealth (Source: Credit Suisse, of households only) [USD]
-                * 'tw': total wealth (Source: Credit Suisse, of households only) [USD]
-                * 'norm': normalized by country
-                * 'none': LitPop per pixel is returned unchanged
-            The default is 'pc'.
+            to the grid points within the country:
+
+            * 'pc': produced capital (Source: World Bank), incl. manufactured or
+              built assets such as machinery, equipment, and physical structures
+              (pc is in constant 2014 USD)
+            * 'pop': population count (source: GPW, same as gridded population).
+              The unit is 'people'.
+            * 'gdp': gross-domestic product (Source: World Bank) [USD]
+            * 'income_group': gdp multiplied by country's income group+1 [USD]
+              Income groups are 1 (low) to 4 (high income).
+            * 'nfw': non-financial wealth (Source: Credit Suisse, of households only) [USD]
+            * 'tw': total wealth (Source: Credit Suisse, of households only) [USD]
+            * 'norm': normalized by country
+            * 'none': LitPop per pixel is returned unchanged
+
+            Default: 'pc'
         admin1_calc : boolean, optional
             If True, distribute admin1-level GDP (if available). Default: False
         reference_year : int, optional
@@ -455,8 +460,18 @@ class LitPop(Exposures):
         self.__dict__ = LitPop.from_shape(*args, **kwargs).__dict__
 
     @classmethod
-    def from_shape(cls, shape, total_value, res_arcsec=30, exponents=(1,1), value_unit='USD',
-                   reference_year=DEF_REF_YEAR, gpw_version=GPW_VERSION, data_dir=SYSTEM_DIR):
+    def from_shape(
+        cls,
+        shape,
+        total_value,
+        res_arcsec=30,
+        exponents=(1,1),
+        value_unit='USD',
+        region_id=None,
+        reference_year=DEF_REF_YEAR,
+        gpw_version=GPW_VERSION,
+        data_dir=SYSTEM_DIR,
+    ):
         """init LitPop exposure object for a custom shape.
         Requires user input regarding the total value to be disaggregated.
 
@@ -483,6 +498,12 @@ class LitPop(Exposures):
             Defining power with which lit (nightlights) and pop (gpw) go into LitPop.
         value_unit : str
             Unit of exposure values. The default is USD.
+        region_id : int, optional
+            The numeric ISO 3166 region associated with the shape. If set to a value,
+            this single value will be set for every coordinate in the ``GeoDataFrame``
+            of the resulting ``LitPop`` instance. If ``None`` (default), the region ID
+            for every coordinate will be determined automatically (at a slight
+            computational cost).
         reference_year : int, optional
             Reference year for data sources. Default: CONFIG.exposures.def_ref_year
         gpw_version : int, optional
@@ -507,10 +528,15 @@ class LitPop(Exposures):
                                       'GeoSeries. Loop over elements of series outside method.')
 
         tag = Tag()
-        litpop_gdf, _ = _get_litpop_single_polygon(shape, reference_year,
-                                                          res_arcsec, data_dir,
-                                                          gpw_version, exponents,
-                                                          )
+        litpop_gdf, _ = _get_litpop_single_polygon(
+            shape,
+            reference_year,
+            res_arcsec,
+            data_dir,
+            gpw_version,
+            exponents,
+            region_id
+        )
 
         # disaggregate total value proportional to LitPop values:
         if isinstance(total_value, (float, int)):
@@ -668,8 +694,9 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
         Defining power with which lit (nightlights) and pop (gpw) go into LitPop. To get
         nightlights^3 without population count: (3, 0). To use population count alone: (0, 1).
     region_id : int, optional
-        if provided, region_id of gdf is set to value.
-        The default is None, this implies that region_id is not set.
+        if provided, region_id of gdf is set to value. The default is ``None``, in which
+        case the region is determined automatically for every location of the resulting
+        GeoDataFrame.
     verbose : bool, optional
         Enable verbose logging about the used GPW version and reference year as well as about the
         boundary case where no grid points from the GPW grid are contained in the specified
@@ -726,7 +753,8 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
                                                        global_origins=global_origins,
                                                        )
     except ValueError as err:
-        if "height must be > 0" in err.args[0] or "width must be > 0" in err.args[0]:
+        if ("height must be > 0" in str(err) or "width must be > 0" in str(err) # rasterio 1.2
+         or "Invalid dataset dimensions :" in str(err)): # rasterio 1.3
             # no grid point within shape after reprojection, None is returned.
             if verbose:
                 LOGGER.info('No data point on destination grid within polygon.')
@@ -749,18 +777,19 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
                                           meta_out['width'],
                                           meta_out['height'])
     # init GeoDataFrame from data and coordinates:
-    gdf = geopandas.GeoDataFrame({'value': litpop_array.flatten()}, crs=meta_out['crs'],
-                                 geometry=geopandas.points_from_xy(
-                                     np.round_(lon.flatten(), decimals = 8, out = None),
-                                     np.round_(lat.flatten(), decimals = 8, out = None)
-                                     )
-                                 )
-    gdf['latitude'] = np.round_(lat.flatten(), decimals = 8, out = None)
-    gdf['longitude'] = np.round_(lon.flatten(), decimals = 8, out = None)
+    latitude = np.round(lat.flatten(), decimals=8)
+    longitude = np.round(lon.flatten(), decimals=8)
+    gdf = geopandas.GeoDataFrame(
+        {"value": litpop_array.flatten(), "latitude": latitude, "longitude": longitude},
+        crs=meta_out['crs'],
+        geometry=geopandas.points_from_xy(longitude, latitude),
+    )
     if region_id is not None: # set region_id
         gdf['region_id'] = region_id
     else:
-        gdf['region_id'] = u_coord.get_country_code(gdf.latitude, gdf.longitude)
+        gdf['region_id'] = u_coord.get_country_code(
+            gdf.latitude, gdf.longitude, gridded=True
+        )
     # remove entries outside polygon with `dropna` and return GeoDataFrame:
     return gdf.dropna(), meta_out
 
@@ -871,15 +900,19 @@ def reproject_input_data(data_array_list, meta_list,
         meta data dictionaries of data arrays in same order as data_array_list.
         Required fields in each dict are 'dtype,', 'width', 'height', 'crs', 'transform'.
         Example:
-            {'driver': 'GTiff',
-             'dtype': 'float32',
-             'nodata': 0,
-             'width': 2702,
-             'height': 1939,
-             'count': 1,
-             'crs': CRS.from_epsg(4326),
-             'transform': Affine(0.00833333333333333, 0.0, -18.175000000000068,
-                                 0.0, -0.00833333333333333, 43.79999999999993)}
+
+        >>> {
+        ...     'driver': 'GTiff',
+        ...     'dtype': 'float32',
+        ...     'nodata': 0,
+        ...     'width': 2702,
+        ...     'height': 1939,
+        ...     'count': 1,
+        ...     'crs': CRS.from_epsg(4326),
+        ...     'transform': Affine(0.00833333333333333, 0.0, -18.175000000000068,
+        ...                         0.0, -0.00833333333333333, 43.79999999999993),
+        ... }
+
         The meta data with the reference grid used to define the global destination
         grid should be first in the list, e.g., GPW population data for LitPop.
     i_align : int, optional
@@ -891,8 +924,7 @@ def reproject_input_data(data_array_list, meta_list,
         as reference data.
     global_origins : tuple with two numbers (lat, lon), optional
         global lon and lat origins as basis for destination grid.
-        The default is the same as for GPW population data:
-            (-180.0, 89.99999999999991)
+        The default is the same as for GPW population data: ``(-180.0, 89.99999999999991)``
     resampling : resampling function, optional
         The default is rasterio.warp.Resampling.bilinear
     conserve : str, optional, either 'mean' or 'sum'
@@ -944,11 +976,14 @@ def reproject_input_data(data_array_list, meta_list,
     meta_out['width'] = data_out_list[-1].shape[1]
     return data_out_list, meta_out
 
-def gridpoints_core_calc(data_arrays, offsets=None, exponents=None,
-                         total_val_rescale=None):
+
+def gridpoints_core_calc(
+    data_arrays, offsets=None, exponents=None, total_val_rescale=None
+):
     """
     Combines N dense numerical arrays by point-wise multipilcation and
     optionally rescales to new total value:
+
     (1) An offset (1 number per array) is added to all elements in
         the corresponding data array in data_arrays (optional).
     (2) Numbers in each array are taken to the power of the corresponding
@@ -982,47 +1017,50 @@ def gridpoints_core_calc(data_arrays, offsets=None, exponents=None,
 
     Returns
     -------
-    result_array : np.array of same shape as arrays in data_arrays
+    np.array of same shape as arrays in data_arrays
         Results from calculation described above.
     """
-    # convert input data to arrays
-    # check integrity of data_array input (length and type):
-    try:
-        data_arrays = [np.array(data) for data in data_arrays]
-        if len(list({data.shape for data in data_arrays})) > 1:
-            raise ValueError("Elements in data_arrays don't agree in shape.")
-    except AttributeError as err:
-        raise TypeError("data_arrays or contained elements have wrong type.") from err
+    # Convert input data to arrays
+    # NOTE: Setting dtype will cause an error if shapes are not compatible
+    data = np.asarray(data_arrays, dtype=float)
 
-    # if None, defaults for offsets and exponents are set:
-    if offsets is None:
-        offsets = np.zeros(len(data_arrays))
-    if exponents is None:
-        exponents = np.ones(len(data_arrays))
-    if np.min(offsets) < 0:
-        raise ValueError("offset values < 0 are not allowed, because negative offset "
-                         "values produce undesired negative disaggregation values.")
-    if np.min(exponents) < 0:
-        raise ValueError("exponents < 0 are not allowed, because negative exponents "
-                         "produce 'inf' values where the initial value is 0.")
+    def prepare_input(input_data, default_value, name):
+        """Prepare the offset and exposure inputs
+
+        If they are ``None``, use the default values. If not, cast them to an array and
+        ensure that the array has only one dimension. Finally, check if the values are
+        positive.
+        """
+        if input_data is None:
+            return default_value
+
+        array = np.asarray(input_data, dtype=float)
+        if array.ndim > 1:
+            raise ValueError(f"Provide {name} as 1D array or list of scalars")
+        if np.any(array < 0):
+            raise ValueError(
+                f"{name} values < 0 are not allowed, because negative {name} "
+                "values produce undesired negative disaggregation values."
+            )
+        return array
+
+    offsets = prepare_input(offsets, 0, "offsets")
+    exponents = prepare_input(exponents, 1, "exponents")
+
     # Steps 1-3: arrays are multiplied after application of offets and exponents:
-    #       (arrays are converted to float to prevent ValueError:
-    #       "Integers to negative integer powers are not allowed.")
-    result_array = np.power(np.array(data_arrays[0]+offsets[0], dtype=float),
-                            exponents[0])
-    for i in np.arange(1, len(data_arrays)):
-        result_array = np.multiply(result_array,
-                                   np.power(np.array(data_arrays[i]+offsets[i], dtype=float),
-                                            exponents[i])
-                                   )
+    # NOTE: Transpose so that broadcasting over last dimension works. Computing the
+    #       product over the last axis is also much faster. Then transpose back.
+    data = (data.T + offsets) ** exponents
+    data = data.prod(axis=-1).T
 
-    # Steps 4+5: if total value for rescaling is provided, result_array is normalized and
+    # Steps 4+5: if total value for rescaling is provided, result is normalized and
     # scaled with this total value (total_val_rescale):
     if isinstance(total_val_rescale, (float, int)):
-        return np.divide(result_array, result_array.sum()) * total_val_rescale
+        return data / data.sum() * total_val_rescale
     if total_val_rescale is not None:
         raise TypeError("total_val_rescale must be int or float.")
-    return result_array
+    return data
+
 
 # The following functions are only required if calc_admin1 is True,
 # not for core LitPop. They are maintained here mainly for backward compatibility
