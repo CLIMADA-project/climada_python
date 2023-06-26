@@ -337,7 +337,7 @@ class TestClimateSce(unittest.TestCase):
             )
         self.assertEqual(
             tc_cc.tag.description,
-            'climate change scenario for year 2050 and RCP 45 from Knutson et al 2015.'
+            ['climate change scenario for year 2050 and RCP 45 from Knutson et al 2015.']
             )
 
     def test_apply_criterion_track(self):
