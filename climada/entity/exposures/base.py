@@ -37,7 +37,7 @@ import contextily as ctx
 import cartopy.crs as ccrs
 
 from climada.hazard import Hazard
-from climada.entity.tag import Tag
+from climada.util.tag import Tag
 import climada.util.hdf5_handler as u_hdf5
 from climada.util.constants import ONE_LAT_KM, DEF_CRS, CMAP_RASTER
 import climada.util.coordinates as u_coord
@@ -84,7 +84,7 @@ class Exposures():
 
     Attributes
     ----------
-    tag : climada.entity.tag.Tag
+    tag : climada.util.tag.Tag
         metada - information about the source data
     ref_year : int
         metada - reference year
@@ -330,7 +330,7 @@ class Exposures():
         Parameters
         ----------
         haz_type : str or None
-            hazard type, as in the hazard's tag.haz_type
+            hazard type, as in the hazard's.haz_type
             which is the HAZ_TYPE constant of the hazard's module
 
         Returns
@@ -418,7 +418,7 @@ class Exposures():
         distance metric. This however is slower for (quasi-)gridded data,
         and works only for non-gridded data.
         """
-        haz_type = hazard.tag.haz_type
+        haz_type = hazard.haz_type
         centr_haz = INDICATOR_CENTR + haz_type
         if centr_haz in self.gdf:
             LOGGER.info('Exposures matching centroids already found for %s', haz_type)
@@ -500,8 +500,7 @@ class Exposures():
         Exposures
         """
         exp = cls()
-        exp.tag = Tag()
-        exp.tag.file_name = str(file_name)
+        exp.tag = Tag(file_name=file_name)
         meta, value = u_coord.read_raster(file_name, [band], src_crs, window,
                                           geometry, dst_crs, transform, width,
                                           height, resampling)
@@ -555,8 +554,8 @@ class Exposures():
         cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         crs_epsg, _ = u_plot.get_transformation(self.crs)
-        title = self.tag.description
-        cbar_label = 'Value (%s)' % self.value_unit
+        title = "\n".join(self.tag.description)
+        cbar_label = f'Value ({self.value_unit})'
         if mask is None:
             mask = np.ones((self.gdf.shape[0],), dtype=bool)
         if ignore_zero:
@@ -615,8 +614,8 @@ class Exposures():
         cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         crs_epsg, _ = u_plot.get_transformation(self.crs)
-        title = self.tag.description
-        cbar_label = 'Value (%s)' % self.value_unit
+        title = "\n".join(self.tag.description)
+        cbar_label = f'Value ({self.value_unit})'
         if 'reduce_C_function' not in kwargs:
             kwargs['reduce_C_function'] = np.sum
         if mask is None:

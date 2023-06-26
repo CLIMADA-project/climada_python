@@ -140,9 +140,10 @@ class TestClient(unittest.TestCase):
                                          dump_dir=DATA_DIR)
         self.assertEqual(len(exposures.gdf), 5782)
         self.assertEqual(np.unique(exposures.gdf.region_id), 40)
-        self.assertIn('[0, 1]', exposures.tag.description)
-        self.assertIn('pop', exposures.tag.description)
-        exposures
+        self.assertEqual(exposures.tag.description,
+            ["LitPop Exposure for ['AUT'] at 150 as, year: 2018, financial mode: pop, exp: [0, 1], admin1_calc: False"])
+        self.assertEqual(exposures.tag.file_name,
+            [])
 
     def test_get_exposures_fails(self):
         client = Client()
@@ -171,7 +172,7 @@ class TestClient(unittest.TestCase):
         self.assertEqual(np.shape(hazard.intensity), (480, 5784))
         self.assertEqual(np.unique(hazard.centroids.region_id), 40)
         self.assertEqual(np.unique(hazard.date).size, 20)
-        self.assertEqual(hazard.tag.haz_type, 'RF')
+        self.assertEqual(hazard.haz_type, 'RF')
 
     def test_get_hazard_fails(self):
         client = Client()
@@ -195,8 +196,10 @@ class TestClient(unittest.TestCase):
         litpop = client.get_litpop(country='LUX', version='v1', dump_dir=DATA_DIR)
         self.assertEqual(len(litpop.gdf), 188)
         self.assertEqual(np.unique(litpop.gdf.region_id), 442)
-        self.assertTrue('[1, 1]' in litpop.tag.description)
-        self.assertTrue('pc' in litpop.tag.description)
+        self.assertEqual(litpop.tag.description,
+            ["LitPop Exposure for ['LUX'] at 150 as, year: 2018, financial mode: pc, exp: [1, 1], admin1_calc: False"])
+        self.assertEqual(litpop.tag.file_name,
+            [])
 
     def test_get_litpop_fail(self):
         client = Client()
