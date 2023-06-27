@@ -31,7 +31,7 @@ import matplotlib.pyplot as plt
 import xlsxwriter
 
 import climada.util.checker as u_check
-from climada.entity.tag import Tag
+from climada.util.tag import Tag
 import climada.util.finance as u_fin
 import climada.util.hdf5_handler as u_hdf5
 
@@ -60,7 +60,7 @@ class DiscRates():
 
     Attributes
     ---------
-    tag: climada.entity.tag.Tag
+    tag: climada.util.tag.Tag
         information about the source data
     years: np.array
         list of years

@@ -48,7 +48,7 @@ class TestReader(unittest.TestCase):
         """Test from_footprints while passing in a reference raster."""
         storms = StormEurope.from_footprints(WS_DEMO_NC, ref_raster=WS_DEMO_NC[1])
 
-        self.assertEqual(storms.tag.haz_type, 'WS')
+        self.assertEqual(storms.haz_type, 'WS')
         self.assertEqual(storms.units, 'm/s')
         self.assertEqual(storms.event_id.size, 2)
         self.assertEqual(storms.date.size, 2)
@@ -131,7 +131,7 @@ class TestReader(unittest.TestCase):
             DATA_DIR.joinpath('storm_europe_cosmoe_forecast_vmax_testfile.nc'),
             run_datetime=dt.datetime(2018,1,1),
             event_date=dt.datetime(2018,1,3))
-        self.assertEqual(haz.tag.haz_type, 'WS')
+        self.assertEqual(haz.haz_type, 'WS')
         self.assertEqual(haz.units, 'm/s')
         self.assertEqual(haz.event_id.size, 21)
         self.assertEqual(haz.date.size, 21)

@@ -31,7 +31,7 @@ import matplotlib.pyplot as plt
 import xlsxwriter
 
 from climada.entity.impact_funcs.base import ImpactFunc
-from climada.entity.tag import Tag
+from climada.util.tag import Tag
 import climada.util.plot as u_plot
 import climada.util.hdf5_handler as u_hdf5
 
@@ -68,7 +68,7 @@ class ImpactFuncSet:
 
     Attributes
     ----------
-    tag : climada.entity.tag.Tag
+    tag : climada.util.tag.Tag
         information about the source data
     _data : dict
         contains ImpactFunc classes. It's not suppossed to be
@@ -88,7 +88,7 @@ class ImpactFuncSet:
         ----------
         impact_funcs : iterable of ImpactFunc, optional
             An iterable (list, set, array, ...) of ImpactFunc.
-        tag : climada.entity.tag.Tag, optional
+        tag : climada.util.tag.Tag, optional
             The entity tag of this object.
 
         Examples

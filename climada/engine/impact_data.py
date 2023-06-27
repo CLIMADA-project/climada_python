@@ -30,8 +30,7 @@ from climada.util.finance import gdp
 from climada.util.constants import DEF_CRS
 import climada.util.coordinates as u_coord
 from climada.engine import Impact
-from climada.entity.tag import Tag
-from climada.hazard.tag import Tag as TagHaz
+from climada.util.tag import Tag
 
 LOGGER = logging.getLogger(__name__)
 
@@ -897,26 +896,26 @@ def emdat_impact_event(emdat_file_csv, countries=None, hazard=None, year_range=N
 
 
 def emdat_to_impact(emdat_file_csv, hazard_type_climada, year_range=None, countries=None,
-                    hazard_type_emdat=None,
-                    reference_year=None, imp_str="Total Damages"):
+                    hazard_type_emdat=None, reference_year=None, imp_str="Total Damages"):
     """function to load EM-DAT data return impact per event
 
     Parameters
     ----------
-     emdat_file_csv : str or pd.DataFrame
+    emdat_file_csv : str or pd.DataFrame
         Either string with full path to CSV-file or
         pandas.DataFrame loaded from EM-DAT CSV
     countries : list of str
         country ISO3-codes or names, e.g. ['JAM', 'CUB'].
         default: countries=None for all countries
-    hazard_type_climada : list or str
+    hazard_type_climada : str
+        CLIMADA hazard type abbreviations, e.g. TC, BF, etc.
+    hazard_type_emdat : list or str
         List of Disaster (sub-)type accordung EMDAT terminology, i.e.:
         Animal accident, Drought, Earthquake, Epidemic, Extreme temperature,
         Flood, Fog, Impact, Insect infestation, Landslide, Mass movement (dry),
         Storm, Volcanic activity, Wildfire;
         Coastal Flooding, Convective Storm, Riverine Flood, Tropical cyclone,
-        Tsunami, etc.;
-        OR CLIMADA hazard type abbreviations, e.g. TC, BF, etc.
+        Tsunami, etc.
     year_range : list or tuple
         Year range to be extracted, e.g. (2000, 2015);
         (only min and max are considered)
@@ -955,12 +954,11 @@ def emdat_to_impact(emdat_file_csv, hazard_type_climada, year_range=None, countr
     if reference_year == 0:
         reference_year = None
     # Inititate Impact-instance:
-    impact_instance = Impact()
+    impact_instance = Impact(haz_type=hazard_type_climada)
 
     impact_instance.tag = dict()
-    impact_instance.tag['haz'] = TagHaz(haz_type=hazard_type_climada,
-                                        file_name=emdat_file_csv,
-                                        description='EM-DAT impact, direct import')
+    impact_instance.tag['haz'] = Tag(file_name=emdat_file_csv,
+                                     description='EM-DAT impact, direct import')
     impact_instance.tag['exp'] = Tag(file_name=emdat_file_csv,
                                      description='EM-DAT impact, direct import')
     impact_instance.tag['impf_set'] = Tag(file_name=None, description=None)

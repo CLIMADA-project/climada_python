@@ -16,7 +16,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
-Define Tag class.
+Define (deprecated) Tag class.
 """
 
 __all__ = ['Tag']
@@ -24,8 +24,12 @@ __all__ = ['Tag']
 import logging
 from pathlib import Path
 
+from deprecation import deprecated
+
 LOGGER = logging.getLogger(__name__)
 
+
+@deprecated(details="This class is not supported anymore and will be removed in the next version of climada.")
 class Tag(object):
     """Contain information used to tag a Hazard.
 
