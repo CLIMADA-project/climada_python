@@ -765,6 +765,10 @@ class TCTracks():
         ----------
         file_names : str or list of str
             Absolute file name(s) or folder name containing the files to read.
+        subset : list of int, optional
+            If given, only include the tracks with the given indices. Since the simulation files
+            can be huge, this feature is useful for running tests on smaller subsets or on random
+            subsamples. Default: None
         hemisphere : str or None, optional
             For global data sets, restrict to northern ('N') or southern ('S') hemisphere.
             Default: None (no restriction)
@@ -1714,6 +1718,10 @@ def _read_file_emanuel(path, subset=None, hemisphere=None, rmw_corr=False):
     ----------
     path : str
         absolute path of file to read.
+    subset : list of int, optional
+        If given, only include the tracks with the given indices. Since the simulation files
+        can be huge, this feature is useful for running tests on smaller subsets or on random
+        subsamples. Default: None
     hemisphere : str or None, optional
         For global data sets, restrict to northern ('N') or southern ('S') hemisphere.
         Default: None (no restriction)
@@ -1778,7 +1786,7 @@ def _read_file_emanuel(path, subset=None, hemisphere=None, rmw_corr=False):
 
         valid_idx = (lat[i_track, :] != 0).nonzero()[0]
         nnodes = valid_idx.size
-        time_step = np.abs(np.diff(hours[i_track, valid_idx])).min()
+        time_step = np.float64(np.abs(np.diff(hours[i_track, valid_idx])).min())
 
         # deal with change of year
         year = np.full(valid_idx.size, years[i_track])
