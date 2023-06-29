@@ -34,7 +34,7 @@ class ScipyMinimizeOptimizer(Optimizer):
         """Create a private attribute for storing the parameter names"""
         self._param_names: List[str] = list()
 
-    def _kwargs_to_impact_func_gen(self, *args, **_) -> Dict[str, Any]:
+    def _kwargs_to_impact_func_creator(self, *args, **_) -> Dict[str, Any]:
         """Transform the array of parameters into key-value pairs"""
         return dict(zip(self._param_names, args[0].flat))
 

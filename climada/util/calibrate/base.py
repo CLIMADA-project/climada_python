@@ -5,7 +5,6 @@ from dataclasses import dataclass, field, InitVar
 from typing import Callable, Mapping, Optional, Tuple, Union, Any, Dict
 from numbers import Number
 
-import numpy as np
 import pandas as pd
 from scipy.optimize import Bounds, LinearConstraint, NonlinearConstraint
 
@@ -29,14 +28,19 @@ class Input:
     data : pandas.Dataframe
         The data to compare computed impacts to. Index: Event IDs matching the IDs of
         ``hazard``. Columns: Arbitrary columns.
-    cost_func : Callable
-        Function that takes an ``Impact`` object and a ``pandas.Dataframe`` as argument
-        and returns a single number. The optimization algorithm will try to minimize this
-        number. See this module for a suggestion of cost functions.
-    impact_func_gen : Callable
+    impact_func_creator : Callable
         Function that takes the parameters as keyword arguments and returns an impact
         function set. This will be called each time the optimization algorithm updates
         the parameters.
+    impact_to_dataframe : Callable
+        Function that takes an impact object as input and transforms its data into a
+        pandas.DataFrame that is compatible with the format of :py:attr:`data`.
+        The return value of this function will be passed to the :py:attr`cost_func`
+        as first argument.
+    cost_func : Callable
+        Function that takes two ``pandas.Dataframe`` objects and returns the scalar
+        "cost" between them. The optimization algorithm will try to minimize this
+        number.
     bounds : Mapping (str, {Bounds, tuple(float, float)}), optional
         The bounds for the parameters. Keys: parameter names. Values:
         ``scipy.minimize.Bounds`` instance or tuple of minimum and maximum value.
@@ -58,8 +62,9 @@ class Input:
     hazard: Hazard
     exposure: Exposures
     data: pd.DataFrame
-    cost_func: Callable[[Impact, pd.DataFrame], Number]
-    impact_func_gen: Callable[..., ImpactFuncSet]
+    impact_func_creator: Callable[..., ImpactFuncSet]
+    impact_to_dataframe: Callable[[Impact], pd.DataFrame]
+    cost_func: Callable[[pd.DataFrame, pd.DataFrame], Number]
     bounds: Optional[Mapping[str, Union[Bounds, Tuple[Number, Number]]]] = None
     constraints: Optional[Union[ConstraintType, list[ConstraintType]]] = None
     impact_calc_kwds: Mapping[str, Any] = field(
@@ -104,7 +109,7 @@ class Optimizer(ABC):
 
     input: Input
 
-    def _target_func(self, impact: Impact, data: pd.DataFrame) -> Number:
+    def _target_func(self, impact: pd.DataFrame, data: pd.DataFrame) -> Number:
         """Target function for the optimizer
 
         The default version of this function simply returns the value of the cost
@@ -123,13 +128,13 @@ class Optimizer(ABC):
         """
         return self.input.cost_func(impact, data)
 
-    def _kwargs_to_impact_func_gen(self, *_, **kwargs) -> Dict[str, Any]:
+    def _kwargs_to_impact_func_creator(self, *_, **kwargs) -> Dict[str, Any]:
         """Define how the parameters to :py:meth:`_opt_func` must be transformed
 
         Optimizers may implement different ways of representing the parameters (e.g.,
         key-value pairs, arrays, etc.). Depending on this representation, the parameters
         must be transformed to match the syntax of the impact function generator used,
-        see :py:attr:`Input.impact_func_gen`.
+        see :py:attr:`Input.impact_func_creator`.
 
         In this default version, the method simply returns its keyword arguments as
         mapping. Override this method if the optimizer used *does not* represent
@@ -162,14 +167,15 @@ class Optimizer(ABC):
         -------
         Target function value for the given arguments
         """
-        params = self._kwargs_to_impact_func_gen(*args, **kwargs)
-        impf_set = self.input.impact_func_gen(**params)
+        params = self._kwargs_to_impact_func_creator(*args, **kwargs)
+        impf_set = self.input.impact_func_creator(**params)
         impact = ImpactCalc(
             exposures=self.input.exposure,
             impfset=impf_set,
             hazard=self.input.hazard,
         ).impact(**self.input.impact_calc_kwds)
-        return self._target_func(impact, self.input.data)
+        impact_df = self.input.impact_to_dataframe(impact)
+        return self._target_func(impact_df, self.input.data)
 
     @abstractmethod
     def run(self, **opt_kwargs) -> Output:

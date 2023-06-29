@@ -9,8 +9,7 @@ from scipy.optimize import NonlinearConstraint
 
 from climada.entity import ImpactFuncSet, ImpactFunc
 
-from climada.util.calibrate import Input, ScipyMinimizeOptimizer
-from climada.util.calibrate.impact_func import cost_func_rmse
+from climada.util.calibrate import Input, ScipyMinimizeOptimizer, rmse, impact_at_reg
 
 from climada.util.calibrate.test.test_calibrate import hazard, exposure
 
@@ -30,10 +29,8 @@ class TestScipyMinimizeOptimizer(unittest.TestCase):
         self.data = pd.DataFrame(
             data={"a": [3, 1], "b": [0.2, 0.01]}, index=self.events
         )
-        self.cost_func = partial(
-            cost_func_rmse, impact_proc=lambda impact: impact.impact_at_reg(["a", "b"])
-        )
-        self.impact_func_gen = lambda slope: ImpactFuncSet(
+        self.impact_to_dataframe = partial(impact_at_reg, region_ids=["a", "b"])
+        self.impact_func_creator = lambda slope: ImpactFuncSet(
             [
                 ImpactFunc(
                     intensity=np.array([0, 10]),
@@ -44,7 +41,12 @@ class TestScipyMinimizeOptimizer(unittest.TestCase):
             ]
         )
         self.input = Input(
-            self.hazard, self.exposure, self.data, self.cost_func, self.impact_func_gen
+            self.hazard,
+            self.exposure,
+            self.data,
+            self.impact_func_creator,
+            self.impact_to_dataframe,
+            rmse,
         )
 
     def test_single(self):
@@ -71,7 +73,7 @@ class TestScipyMinimizeOptimizer(unittest.TestCase):
     def test_multiple_constrained(self):
         """Test with multiple constrained parameters"""
         # Set new generator
-        self.input.impact_func_gen = lambda intensity_1, intensity_2: ImpactFuncSet(
+        self.input.impact_func_creator = lambda intensity_1, intensity_2: ImpactFuncSet(
             [
                 ImpactFunc(
                     intensity=np.array([0, intensity_1, intensity_2]),

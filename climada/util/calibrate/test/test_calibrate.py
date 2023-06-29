@@ -54,6 +54,7 @@ class TestInputPostInit(unittest.TestCase):
         self.data = pd.DataFrame(data={"a": [1, 2]}, index=self.data_events)
 
         # Create dummy funcs
+        self.impact_to_dataframe = lambda _: pd.DataFrame()
         self.cost_func = lambda impact, data: 1.0
         self.impact_func_gen = lambda **kwargs: ImpactFuncSet()
 
@@ -68,7 +69,8 @@ class TestInputPostInit(unittest.TestCase):
             exposure=exposure_mock,
             data=self.data,
             cost_func=self.cost_func,
-            impact_func_gen=self.impact_func_gen,
+            impact_func_creator=self.impact_func_gen,
+            impact_to_dataframe=self.impact_to_dataframe
         )
         exposure_mock.assign_centroids.assert_called_once_with(self.hazard)
         exposure_mock.reset_mock()
@@ -79,7 +81,8 @@ class TestInputPostInit(unittest.TestCase):
             exposure=exposure_mock,
             data=self.data,
             cost_func=self.cost_func,
-            impact_func_gen=self.impact_func_gen,
+            impact_func_creator=self.impact_func_gen,
+            impact_to_dataframe=self.impact_to_dataframe,
             assign_centroids=False
         )
         exposure_mock.assign_centroids.assert_not_called()
@@ -93,7 +96,8 @@ class TestInputPostInit(unittest.TestCase):
             exposure=self.exposure,
             data=self.data,
             cost_func=self.cost_func,
-            impact_func_gen=self.impact_func_gen,
+            impact_func_creator=self.impact_func_gen,
+            impact_to_dataframe=self.impact_to_dataframe
         )
 
         # Check hazard and exposure
@@ -112,7 +116,8 @@ class TestOptimizer(unittest.TestCase):
                 exposure=create_autospec(Exposures, instance=True),
                 data=create_autospec(pd.DataFrame, instance=True),
                 cost_func=MagicMock(),
-                impact_func_gen=MagicMock(),
+                impact_func_creator=MagicMock(),
+                impact_to_dataframe=MagicMock(),
                 assign_centroids=False,
             )
         )
@@ -127,10 +132,10 @@ class TestScipyMinimizeOptimizer(TestOptimizer):
         self.optimizer = ScipyMinimizeOptimizer(self.input)
 
     @patch("climada.util.calibrate.base.ImpactCalc", autospec=True)
-    def test_kwargs_to_impact_func_gen(self, _):
+    def test_kwargs_to_impact_func_creator(self, _):
         """Test transform of minimize func arguments to impact_func_gen arguments
 
-        We test the method '_kwargs_to_impact_func_gen' through 'run' because it is
+        We test the method '_kwargs_to_impact_func_creator' through 'run' because it is
         private.
         """
         # Create stubs
@@ -142,8 +147,8 @@ class TestScipyMinimizeOptimizer(TestOptimizer):
         params_init = {"x_2": 1, "x 1": 2, "x_3": 3}  # NOTE: Also works with whitespace
         self.optimizer.run(params_init=params_init, options={"maxiter": 1})
 
-        # Check call to '_kwargs_to_impact_func_gen'
-        self.input.impact_func_gen.assert_any_call(**params_init)
+        # Check call to '_kwargs_to_impact_func_creator'
+        self.input.impact_func_creator.assert_any_call(**params_init)
 
     def test_output(self):
         """Check output reporting"""
@@ -218,10 +223,10 @@ class TestBayesianOptimizer(TestOptimizer):
         super().setUp()
 
     @patch("climada.util.calibrate.base.ImpactCalc", autospec=True)
-    def test_kwargs_to_impact_func_gen(self, _):
+    def test_kwargs_to_impact_func_creator(self, _):
         """Test transform of minimize func arguments to impact_func_gen arguments
 
-        We test the method '_kwargs_to_impact_func_gen' through 'run' because it is
+        We test the method '_kwargs_to_impact_func_creator' through 'run' because it is
         private.
         """
         # Create stubs
@@ -233,7 +238,7 @@ class TestBayesianOptimizer(TestOptimizer):
         self.optimizer.run(init_points=2, n_iter=1)
 
         # Check call to '_kwargs_to_impact_func_gen'
-        call_args = self.input.impact_func_gen.call_args_list
+        call_args = self.input.impact_func_creator.call_args_list
         self.assertEqual(len(call_args), 3)
         for args in call_args:
             self.assertSequenceEqual(args.kwargs.keys(), self.input.bounds.keys())

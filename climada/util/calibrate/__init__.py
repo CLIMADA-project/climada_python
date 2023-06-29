@@ -3,3 +3,4 @@
 from .base import Input
 from .bayesian_optimizer import BayesianOptimizer
 from .scipy_optimizer import ScipyMinimizeOptimizer
+from .func import rmse, rmsf, impact_at_reg
