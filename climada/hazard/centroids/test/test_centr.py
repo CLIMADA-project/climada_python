@@ -29,6 +29,9 @@ from climada import CONFIG
 from climada.hazard.centroids.centr import Centroids
 from climada.util.constants import GLB_CENTROIDS_MAT, HAZ_TEMPLATE_XLS
 import climada.hazard.test as hazard_test
+from climada.util.constants import DEF_CRS
+import climada.util.coordinates as u_coord
+
 
 HAZ_TEST_MAT = Path(hazard_test.__file__).parent / 'data' / 'atl_prob_no_name.mat'
 
@@ -36,20 +39,9 @@ HAZ_TEST_MAT = Path(hazard_test.__file__).parent / 'data' / 'atl_prob_no_name.ma
 class TestCentroidsReader(unittest.TestCase):
     """Test read functions Centroids"""
 
-    def test_mat_pass(self):
-        """Read a centroid mat file correctly."""
-        centroids = Centroids.from_mat(HAZ_TEST_MAT)
-
-        n_centroids = 100
-        self.assertEqual(centroids.coord.shape, (n_centroids, 2))
-        self.assertEqual(centroids.coord[0][0], 21)
-        self.assertEqual(centroids.coord[0][1], -84)
-        self.assertEqual(centroids.coord[n_centroids - 1][0], 30)
-        self.assertEqual(centroids.coord[n_centroids - 1][1], -75)
-
     def test_centroid_pass(self):
         """Read a centroid excel file correctly."""
-        centroids = Centroids.from_excel(HAZ_TEMPLATE_XLS)
+        centroids = Centroids.from_excel(HAZ_TEMPLATE_XLS, crs=DEF_CRS)
 
         n_centroids = 45
         self.assertEqual(centroids.coord.shape[0], n_centroids)
@@ -61,40 +53,40 @@ class TestCentroidsReader(unittest.TestCase):
 
     def test_geodataframe(self):
         """Test that constructing a valid Centroids instance from gdf works."""
-        gdf = gpd.GeoDataFrame(pd.read_excel(HAZ_TEMPLATE_XLS))
-        gdf.geometry = gpd.points_from_xy(
-                gdf['longitude'], gdf['latitude']
-        )
-        gdf['elevation'] = np.random.rand(gdf.geometry.size)
-        gdf['region_id'] = np.zeros(gdf.geometry.size)
-        gdf['region_id'][0] = np.NaN
-        gdf['geom'] = gdf.geometry  # this should have no effect on centroids
+        crs = DEF_CRS
+        lat = np.arange(170, 180)
+        lon = np.arange(-50, -40)
+        elevation = np.repeat(1, 10)
+        region_id = np.arange(1, 11)
+        extra = np.repeat(str('a'), 10)
+
+        gdf = gpd.GeoDataFrame({
+            'geometry' : gpd.points_from_xy(lon, lat),
+            'elevation' : elevation,
+            'region_id' : region_id,
+            'extra' : extra
+        }, crs=crs)
 
         centroids = Centroids.from_geodataframe(gdf)
 
-        self.assertEqual(centroids.geometry.size, 45)
-        self.assertEqual(centroids.lon[0], 32.57)
-        self.assertEqual(centroids.lat[0], -25.95)
-        self.assertEqual(centroids.elevation.size, 45)
-        self.assertIsInstance(centroids.geometry, gpd.GeoSeries)
-        self.assertIsInstance(centroids.geometry.total_bounds, np.ndarray)
+        for name, array in zip(['lat', 'lon', 'elevation', 'region_id'],
+                                [lat, lon, elevation, region_id]):
+            np.testing.assert_array_equal(array, getattr(centroids, name))
+        np.testing.assert_array_equal(extra, centroids.gdf.extra.values)
+        self.assertTrue(u_coord.equal_crs(centroids.crs, crs))
 
 
 class TestCentroidsWriter(unittest.TestCase):
 
-    def test_write_hdf5(self):
-        tmpfile = 'test_write_hdf5.out.hdf5'
-        xf_lat, xo_lon, d_lat, d_lon, n_lat, n_lon = 5, 6.5, -0.08, 0.12, 4, 5
-        centr = Centroids.from_pix_bounds(xf_lat, xo_lon, d_lat, d_lon, n_lat, n_lon)
-        with self.assertLogs('climada.hazard.centroids.centr', level='INFO') as cm:
-            centr.write_hdf5(tmpfile)
-        self.assertEqual(1, len(cm.output))
-        self.assertIn(f"Writing {tmpfile}", cm.output[0])
-        centr.meta['nodata'] = None
-        with self.assertLogs('climada.hazard.centroids.centr', level='INFO') as cm:
-            centr.write_hdf5(tmpfile)
-        self.assertEqual(2, len(cm.output))
-        self.assertIn("Skip writing Centroids.meta['nodata'] for it is None.", cm.output[1])
+    def test_read_write_hdf5(self):
+        tmpfile = Path('test_write_hdf5.out.hdf5')
+        latitude = np.arange(0,10)
+        longitude = np.arange(-10,0)
+        crs = DEF_CRS
+        centroids_w = Centroids(latitude=latitude, longitude=longitude, crs=crs)
+        centroids_w.write_hdf5(tmpfile)
+        centroids_r = Centroids.from_hdf5(tmpfile)
+        self.assertTrue(centroids_w == centroids_r)
         Path(tmpfile).unlink()
 
 
@@ -103,14 +95,14 @@ class TestCentroidsMethods(unittest.TestCase):
     def test_union(self):
         lat, lon = np.array([0, 1]), np.array([0, -1])
         on_land = np.array([True, True])
-        cent1 = Centroids(lat=lat, lon=lon, on_land=on_land)
+        cent1 = Centroids(latitude=lat, longitude=lon, on_land=on_land)
 
         lat2, lon2 = np.array([2, 3]), np.array([-2, 3])
         on_land2 = np.array([False, False])
-        cent2 = Centroids(lat=lat2, lon=lon2, on_land=on_land2)
+        cent2 = Centroids(latitude=lat2, longitude=lon2, on_land=on_land2)
 
         lat3, lon3 = np.array([-1, -2]), np.array([1, 2])
-        cent3 = Centroids(lat=lat3,lon=lon3)
+        cent3 = Centroids(latitude=lat3,longitude=lon3)
 
         cent = cent1.union(cent2)
         np.testing.assert_array_equal(cent.lat, [0, 1, 2, 3])
