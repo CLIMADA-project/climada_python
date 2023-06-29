@@ -929,40 +929,11 @@ def compute_windfields(
     # translational speed of track at every node (in m/s)
     [v_trans_norm, v_trans] = _vtrans(t_lat, t_lon, t_tstep, metric=metric)
 
-    # adjust pressure at previous track point
-    prev_pres = t_cen[:-1].copy()
-    msk = prev_pres < 850
-    prev_pres[msk] = t_cen[1:][msk]
-
     # derive (absolute) angular velocity from parametric wind profile
-    v_ang_norm = np.zeros((npositions, nreachable), dtype=np.float64)
-    if model == MODEL_VANG['H1980']:
-        # convert surface winds (in m/s) to gradient winds without translational influence
-        t_vmax = track.max_sustained_wind.values.copy() * KN_TO_MS
-        t_gradient_winds = np.fmax(0, t_vmax - v_trans_norm) / GRADIENT_LEVEL_TO_SURFACE_WINDS
-        hol_b = _B_holland_1980(t_gradient_winds[1:], t_env[1:], t_cen[1:])
-        v_ang_norm[1:] = _stat_holland_1980(d_centr[1:], t_rad[1:], hol_b, t_env[1:],
-                                            t_cen[1:], t_lat[1:], close_centr_msk[1:])
-        v_ang_norm *= GRADIENT_LEVEL_TO_SURFACE_WINDS
-    elif model == MODEL_VANG['H08']:
-        # this model doesn't use the recorded surface winds
-        hol_b = _bs_holland_2008(v_trans_norm[1:], t_env[1:], t_cen[1:], prev_pres,
-                                 t_lat[1:], t_tstep[1:])
-        v_ang_norm[1:] = _stat_holland_1980(d_centr[1:], t_rad[1:], hol_b, t_env[1:],
-                                            t_cen[1:], t_lat[1:], close_centr_msk[1:])
-    elif model == MODEL_VANG['H10']:
-        # this model doesn't use the recorded surface winds
-        hol_b = _bs_holland_2008(v_trans_norm[1:], t_env[1:], t_cen[1:], prev_pres,
-                                 t_lat[1:], t_tstep[1:])
-        t_vmax = _v_max_s_holland_2008(t_env[1:], t_cen[1:], hol_b)
-        hol_x = _x_holland_2010(d_centr[1:], t_rad[1:], t_vmax, hol_b, close_centr_msk[1:])
-        v_ang_norm[1:] = _stat_holland_2010(d_centr[1:], t_vmax, t_rad[1:], hol_b,
-                                            close_centr_msk[1:], hol_x)
-    elif model == MODEL_VANG['ER11']:
-        t_vmax = track.max_sustained_wind.values.copy() * KN_TO_MS
-        v_ang_norm[:] = _stat_er_2011(d_centr, t_vmax, t_rad, t_lat)
-    else:
-        raise NotImplementedError
+    v_ang_norm = _compute_angular_windspeeds(
+        track, t_tstep, t_lat, t_cen, t_env, t_rad, v_trans_norm, d_centr,
+        close_centr_msk, model, cyclostrophic=False,
+    )
 
     # vectorial angular velocity
     hemisphere = 'N'
@@ -1038,6 +1009,79 @@ def _compute_windfields_chunked(
         offset = arr.shape[0] - chunk.size
         windfields[chunk_start:chunk_end + 1, inv, :] = arr[offset:, :, :]
     return windfields, reachable_centr_idx
+
+def _compute_angular_windspeeds(
+    track, t_tstep, t_lat, t_cen, t_env, t_rad, v_trans, d_centr, close_centr_msk, model,
+    cyclostrophic=False,
+):
+    """Compute (absolute) angular wind speeds according to a parametric wind profile
+
+    Parameters
+    ----------
+    track : xr.Dataset
+        Single tropical cyclone track.
+    t_tstep : np.ndarray of shape (npositions,)
+        Time step size at each track position.
+    t_lat : np.ndarray of shape (npositions,)
+        Latitudinal coordinates of track positions.
+    t_cen : np.ndarray of shape (npositions,)
+        Central pressure (in hPa) at each track position.
+    t_env : np.ndarray of shape (npositions,)
+        Environmental pressure (in hPa) at each track position.
+    v_trans : np.ndarray of shape (npositions,)
+        Translational wind speed (in m/s) at each track position.
+    d_centr : np.ndarray of shape (npositions, ncentroids)
+        Distance (in km) between centroids and track positions.
+    close_centr_msk : np.ndarray of shape (npositions, ncentroids)
+        For each track position one row indicating which centroids are within reach.
+    model : int
+        Wind profile model selection according to MODEL_VANG.
+    cyclostrophic : bool, optional
+        If True, don't apply the influence of the Coriolis force (set the Coriolis terms to 0).
+        Default: False
+
+    Returns
+    -------
+    ndarray of shape (npositions, ncentroids)
+    """
+    # adjust pressure at previous track point
+    prev_pres = t_cen[:-1].copy()
+    msk = prev_pres < 850
+    prev_pres[msk] = t_cen[1:][msk]
+
+    result = np.zeros(d_centr.shape, dtype=np.float64)
+    if model == MODEL_VANG['H1980']:
+        # convert surface winds (in m/s) to gradient winds without translational influence
+        t_vmax = track.max_sustained_wind.values.copy() * KN_TO_MS
+        t_gradient_winds = np.fmax(0, t_vmax - v_trans) / GRADIENT_LEVEL_TO_SURFACE_WINDS
+        hol_b = _B_holland_1980(t_gradient_winds[1:], t_env[1:], t_cen[1:])
+        result[1:] = _stat_holland_1980(d_centr[1:], t_rad[1:], hol_b, t_env[1:],
+                                        t_cen[1:], t_lat[1:], close_centr_msk[1:],
+                                        cyclostrophic=cyclostrophic)
+        result *= GRADIENT_LEVEL_TO_SURFACE_WINDS
+    elif model == MODEL_VANG['H08']:
+        # this model doesn't use the recorded surface winds
+        hol_b = _bs_holland_2008(v_trans[1:], t_env[1:], t_cen[1:], prev_pres,
+                                 t_lat[1:], t_tstep[1:])
+        result[1:] = _stat_holland_1980(d_centr[1:], t_rad[1:], hol_b, t_env[1:],
+                                        t_cen[1:], t_lat[1:], close_centr_msk[1:],
+                                        cyclostrophic=cyclostrophic)
+    elif model == MODEL_VANG['H10']:
+        # this model doesn't use the recorded surface winds
+        # this model is always cyclostrophic
+        hol_b = _bs_holland_2008(v_trans[1:], t_env[1:], t_cen[1:], prev_pres,
+                                 t_lat[1:], t_tstep[1:])
+        t_vmax = _v_max_s_holland_2008(t_env[1:], t_cen[1:], hol_b)
+        hol_x = _x_holland_2010(d_centr[1:], t_rad[1:], t_vmax, hol_b, close_centr_msk[1:])
+        result[1:] = _stat_holland_2010(d_centr[1:], t_vmax, t_rad[1:], hol_b,
+                                        close_centr_msk[1:], hol_x)
+    elif model == MODEL_VANG['ER11']:
+        t_vmax = track.max_sustained_wind.values.copy() * KN_TO_MS
+        result[:] = _stat_er_2011(d_centr, t_vmax, t_rad, t_lat, cyclostrophic=cyclostrophic)
+    else:
+        raise NotImplementedError
+
+    return result
 
 def _close_centroids(
     t_lat: np.ndarray,
