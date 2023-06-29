@@ -36,7 +36,7 @@ from scipy import sparse
 from climada.util.config import CONFIG
 from climada.hazard.base import Hazard
 from climada.hazard.centroids.centr import Centroids
-from climada.hazard.tag import Tag as TagHazard
+from climada.util.tag import Tag
 from climada.util.files_handler import get_file_names
 from climada.util.dates_times import (datetime64_to_ordinal,
                                       last_year,
@@ -204,8 +204,7 @@ class StormEurope(Hazard):
 
         if description is None:
             description = "WISC historical hazard set."
-        haz.tag = TagHazard(
-            HAZ_TYPE, 'Hazard set not saved by default',
+        haz.tag = Tag(
             description=description,
         )
 

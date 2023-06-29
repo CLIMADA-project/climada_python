@@ -420,8 +420,8 @@ class TestReaderMat(unittest.TestCase):
         self.assertEqual(imp_funcs._data[hazard][second_id].paa[8], 1)
 
         # general information
-        self.assertEqual(imp_funcs.tag.file_name, str(ENT_TEST_MAT))
-        self.assertEqual(imp_funcs.tag.description, description)
+        self.assertEqual(imp_funcs.tag.file_name, [str(ENT_TEST_MAT)])
+        self.assertEqual(imp_funcs.tag.description, [description])
 
 class TestReaderExcel(unittest.TestCase):
     """Test reader functionality of the imp_funcsFuncsExcel class"""
@@ -497,8 +497,8 @@ class TestReaderExcel(unittest.TestCase):
         self.assertEqual(imp_funcs._data[hazard][second_id].paa[8], 1)
 
         # general information
-        self.assertEqual(imp_funcs.tag.file_name, str(ENT_DEMO_TODAY))
-        self.assertEqual(imp_funcs.tag.description, description)
+        self.assertEqual(imp_funcs.tag.file_name, [str(ENT_DEMO_TODAY)])
+        self.assertEqual(imp_funcs.tag.description, [description])
 
     def test_template_file_pass(self):
         """Read template excel file"""
@@ -516,8 +516,8 @@ class TestWriter(unittest.TestCase):
         """Write + read excel file"""
 
         imp_funcs = ImpactFuncSet()
-        imp_funcs.tag.file_name = 'No file name'
-        imp_funcs.tag.description = 'test writer'
+        imp_funcs.tag = Tag(file_name='No file name',
+                            description='test writer')
 
         idx = 1
         name = 'code 1'
@@ -562,8 +562,8 @@ class TestWriter(unittest.TestCase):
 
         imp_res = ImpactFuncSet.from_excel(file_name)
 
-        self.assertEqual(imp_res.tag.file_name, str(file_name))
-        self.assertEqual(imp_res.tag.description, '')
+        self.assertEqual(imp_res.tag.file_name, [str(file_name)])
+        self.assertEqual(imp_res.tag.description, [])
 
         # first function
         for fun_haz, fun_dict in imp_res.get_func().items():

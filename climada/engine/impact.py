@@ -44,14 +44,14 @@ import h5py
 from pyproj import CRS as pyprojCRS
 from rasterio.crs import CRS as rasterioCRS  # pylint: disable=no-name-in-module
 
-from climada.entity import Exposures, Tag
-from climada.hazard import Tag as TagHaz
-import climada.util.plot as u_plot
+from climada.entity import Exposures
 from climada import CONFIG
 from climada.util.constants import DEF_CRS, CMAP_IMPACT, DEF_FREQ_UNIT
 import climada.util.coordinates as u_coord
 import climada.util.dates_times as u_dt
+import climada.util.plot as u_plot
 from climada.util.select import get_attributes_with_matching_dimension
+from climada.util.tag import Tag
 
 LOGGER = logging.getLogger(__name__)
 
@@ -61,9 +61,6 @@ class Impact():
 
     Attributes
     ----------
-    tag : dict
-        dictionary of tags of exposures, impact functions set and
-        hazard: {'exp': Tag(), 'impf_set': Tag(), 'haz': TagHaz()}
     event_id : np.array
         id (>0) of each hazard event
     event_name : list
@@ -91,6 +88,11 @@ class Impact():
     imp_mat : sparse.csr_matrix
         matrix num_events x num_exp with impacts.
         only filled if save_mat is True in calc()
+    tag : dict
+        dictionary of tags of exposures, impact functions set and
+        hazard: {'exp': Tag(), 'impf_set': Tag(), 'haz': Tag()}
+    haz_type : str
+        the hazard type of the hazard
     """
 
     def __init__(self,
@@ -107,7 +109,8 @@ class Impact():
                  aai_agg=0,
                  unit='',
                  imp_mat=None,
-                 tag=None):
+                 tag=None,
+                 haz_type=''):
         """
         Init Impact object
 
@@ -144,9 +147,12 @@ class Impact():
             matrix num_events x num_exp with impacts.
         tag : dict, optional
             dictionary of tags of exposures, impact functions set and
-            hazard: {'exp': Tag(), 'impf_set': Tag(), 'haz': TagHaz()}
+            hazard: {'exp': Tag(), 'impf_set': Tag(), 'haz': Tag()}
+        haz_type : str, optional
+            the hazard type
         """
 
+        self.haz_type = haz_type
         self.tag = tag or {}
         self.event_id = np.array([], int) if event_id is None else event_id
         self.event_name = [] if event_name is None else event_name
@@ -201,7 +207,7 @@ class Impact():
         """
         LOGGER.warning("The use of Impact().calc() is deprecated."
                        " Use ImpactCalc().impact() instead.")
-        from climada.engine.impact_calc import ImpactCalc
+        from climada.engine.impact_calc import ImpactCalc  # pylint: disable=import-outside-toplevel
         impcalc = ImpactCalc(exposures, impact_funcs, hazard)
         self.__dict__ = impcalc.impact(
             save_mat=save_mat,
@@ -257,7 +263,8 @@ class Impact():
             tag = {'exp': exposures.tag,
                    'impf_set': impfset.tag,
                    'haz': hazard.tag
-                   }
+                   },
+            haz_type = hazard.haz_type,
             )
 
     @property
@@ -882,7 +889,7 @@ class Impact():
                              "unit", "tot_value", "aai_agg", "event_id",
                              "event_name", "event_date", "event_frequency", "frequency_unit",
                              "at_event", "eai_exp", "exp_lat", "exp_lon", "exp_crs"])
-            csv_data = [[[self.tag['haz'].haz_type], [self.tag['haz'].file_name],
+            csv_data = [[[self.haz_type], [self.tag['haz'].file_name],
                          [self.tag['haz'].description]],
                         [[self.tag['exp'].file_name], [self.tag['exp'].description]],
                         [[self.tag['impf_set'].file_name], [self.tag['impf_set'].description]],
@@ -919,7 +926,7 @@ class Impact():
                   "at_event", "eai_exp", "exp_lat", "exp_lon", "exp_crs"]
         for icol, head_dat in enumerate(header):
             imp_ws.write(0, icol, head_dat)
-        data = [self.tag['haz'].haz_type, str(self.tag['haz'].file_name),
+        data = [str(self.haz_type), str(self.tag['haz'].file_name),
                 str(self.tag['haz'].description)]
         write_col(0, imp_ws, data)
         data = [str(self.tag['exp'].file_name), str(self.tag['exp'].description)]
@@ -1018,7 +1025,8 @@ class Impact():
 
         def write_tag(group, name, value):
             """Write a tag object using the dict writer"""
-            write_dict(group, name, value.__dict__)
+            group = group.create_group(name)  # name is 'exp', 'haz', 'impf_set'
+            value.to_hdf5(group)              # value is a Tag
 
         def _write_csr_dense(group, name, value):
             """Write a CSR Matrix in dense format"""
@@ -1045,7 +1053,6 @@ class Impact():
         type_writers = {
             str: write_attribute,
             Tag: write_tag,
-            TagHaz: write_tag,
             dict: write_dict,
             sparse.csr_matrix: write_csr,
             Collection: write_dataset,
@@ -1100,7 +1107,7 @@ class Impact():
         # pylint: disable=no-member
         LOGGER.info('Reading %s', file_name)
         imp_df = pd.read_csv(file_name)
-        imp = cls()
+        imp = cls(haz_type=str(imp_df.tag_hazard[0]))
         imp.unit = imp_df.unit[0]
         imp.tot_value = imp_df.tot_value[0]
         imp.aai_agg = imp_df.aai_agg[0]
@@ -1121,13 +1128,12 @@ class Impact():
             imp.crs = u_coord.to_crs_user_input(imp_df.exp_crs.values[0])
         except AttributeError:
             imp.crs = DEF_CRS
-        imp.tag['haz'] = TagHaz(str(imp_df.tag_hazard[0]),
-                                 str(imp_df.tag_hazard[1]),
-                                 str(imp_df.tag_hazard[2]))
+        imp.tag['haz'] = Tag(str(imp_df.tag_hazard[1]),
+                             str(imp_df.tag_hazard[2]))
         imp.tag['exp'] = Tag(str(imp_df.tag_exposure[0]),
-                              str(imp_df.tag_exposure[1]))
+                             str(imp_df.tag_exposure[1]))
         imp.tag['impf_set'] = Tag(str(imp_df.tag_impact_func[0]),
-                                 str(imp_df.tag_impact_func[1]))
+                                  str(imp_df.tag_impact_func[1]))
         return imp
 
     def read_csv(self, *args, **kwargs):
@@ -1152,9 +1158,8 @@ class Impact():
         """
         LOGGER.info('Reading %s', file_name)
         dfr = pd.read_excel(file_name)
-        imp =cls()
-        imp.tag['haz'] = TagHaz(
-            haz_type = dfr['tag_hazard'][0],
+        imp = cls(haz_type=str(dfr['tag_hazard'][0]))
+        imp.tag['haz'] = Tag(
             file_name = dfr['tag_hazard'][1],
             description = dfr['tag_hazard'][2])
         imp.tag['exp'] = Tag()
@@ -1278,7 +1283,7 @@ class Impact():
 
             # Scalar attributes
             scalar_attrs = set(
-                ("crs", "tot_value", "unit", "aai_agg", "frequency_unit")
+                ("crs", "tot_value", "unit", "aai_agg", "frequency_unit", "haz_type")
             ).intersection(file.attrs.keys())
             kwargs.update({attr: file.attrs[attr] for attr in scalar_attrs})
 
@@ -1297,16 +1302,11 @@ class Impact():
 
             # Tags
             if "tag" in file:
-                tag_kwargs = dict()
                 tag_group = file["tag"]
-                subtags = set(("exp", "impf_set")).intersection(tag_group.keys())
-                tag_kwargs.update({st: Tag(**tag_group[st].attrs) for st in subtags})
+                # the tag group has tags for 'exp', 'haz' and 'impf_set'
+                tag_kwargs = {tag: Tag.from_hdf5(tag_group[tag]) for tag in tag_group.keys()}
 
-                # Special handling for hazard because it has another tag type
-                if "haz" in tag_group:
-                    tag_kwargs["haz"] = TagHaz(**tag_group["haz"].attrs)
                 kwargs["tag"] = tag_kwargs
-
         # Create the impact object
         return cls(**kwargs)
 
@@ -1351,6 +1351,8 @@ class Impact():
         -------
         list of Impact
         """
+        from climada.engine.impact_calc import ImpactCalc  # pylint: disable=import-outside-toplevel
+
         if args_exp is None:
             args_exp = dict()
         if args_imp is None:
@@ -1361,8 +1363,7 @@ class Impact():
         # assign centroids once for all
         exp.assign_centroids(haz_list[0])
         for i_time, _ in enumerate(haz_list):
-            imp_tmp = Impact()
-            imp_tmp.calc(exp, impf_set, haz_list[i_time], assign_centroids=False)
+            imp_tmp = ImpactCalc(exp, impf_set, haz_list[i_time]).impact(assign_centroids=False)
             imp_arr = np.maximum(imp_arr, imp_tmp.eai_exp)
             # remove not impacted exposures
             save_exp = imp_arr > imp_thresh
@@ -1806,6 +1807,7 @@ class Impact():
             aai_agg=np.nansum([imp.aai_agg for imp in imp_list]),
             imp_mat=imp_mat,
             tag=first_imp.tag,
+            haz_type=first_imp.haz_type,
             frequency_unit=first_imp.frequency_unit,
             **kwargs,
         )
@@ -1850,7 +1852,7 @@ class ImpactFreqCurve():
 
     tag : dict = field(default_factory=dict)
     """dictionary of tags of exposures, impact functions set and
-        hazard: {'exp': Tag(), 'impf_set': Tag(), 'haz': TagHaz()}"""
+        hazard: {'exp': Tag(), 'impf_set': Tag(), 'haz': Tag()}"""
 
     return_per : np.array = np.array([])
     """return period"""

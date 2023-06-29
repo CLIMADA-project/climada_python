@@ -32,6 +32,7 @@ from climada.hazard.centroids.centr import Centroids
 import climada.util.dates_times as u_dt
 from climada.util.constants import DEF_FREQ_UNIT, HAZ_TEMPLATE_XLS, HAZ_DEMO_FL
 import climada.util.coordinates as u_coord
+from climada.util.tag import Tag
 
 from climada.test import get_test_file
 import climada.hazard.test as hazard_test
@@ -242,9 +243,9 @@ class TestRemoveDupl(unittest.TestCase):
         self.assertTrue((haz1.intensity != haz2.intensity).nnz == 0)
         self.assertTrue((haz1.fraction != haz2.fraction).nnz == 0)
         self.assertEqual(haz1.units, haz2.units)
-        self.assertEqual(haz1.tag.file_name, [haz2.tag.file_name, haz2.tag.file_name])
-        self.assertEqual(haz1.tag.haz_type, haz2.tag.haz_type)
-        self.assertEqual(haz1.tag.description, [haz2.tag.description, haz2.tag.description])
+        self.assertEqual(haz1.tag.file_name, haz2.tag.file_name)
+        self.assertEqual(haz1.haz_type, haz2.haz_type)
+        self.assertEqual(haz1.tag.description, haz2.tag.description)
 
     def test_same_events_same(self):
         """Append hazard with same events and diff centroids. After removing
@@ -301,10 +302,10 @@ class TestRemoveDupl(unittest.TestCase):
         self.assertEqual(haz_res.units, haz1.units)
 
         self.assertEqual(haz1.tag.file_name,
-                         [haz_res.tag.file_name, haz2.tag.file_name])
-        self.assertEqual(haz1.tag.haz_type, haz_res.tag.haz_type)
+                         haz_res.tag.file_name + haz2.tag.file_name)
+        self.assertEqual(haz1.haz_type, haz_res.haz_type)
         self.assertEqual(haz1.tag.description,
-                         [haz_res.tag.description, haz2.tag.description])
+                         haz_res.tag.description + haz2.tag.description)
 
 class TestSelect(unittest.TestCase):
     """Test select method."""
@@ -643,7 +644,7 @@ class TestAppend(unittest.TestCase):
             self.assertTrue((hazard.fraction != haz1_orig.fraction).nnz == 0)
             self.assertEqual(hazard.units, haz1_orig.units)
             self.assertEqual(hazard.tag.file_name, haz1_orig.tag.file_name)
-            self.assertEqual(hazard.tag.haz_type, haz1_orig.tag.haz_type)
+            self.assertEqual(hazard.haz_type, haz1_orig.haz_type)
             self.assertEqual(hazard.tag.description, haz1_orig.tag.description)
 
         haz1 = Hazard.from_excel(HAZ_TEMPLATE_XLS, haz_type='TC')
@@ -711,18 +712,18 @@ class TestAppend(unittest.TestCase):
         self.assertEqual(haz1.centroids.size, 3)
         self.assertTrue(np.array_equal(haz1.centroids.coord, haz2.centroids.coord))
         self.assertEqual(haz1.tag.file_name,
-                         [haz1_orig.tag.file_name, haz2.tag.file_name])
-        self.assertEqual(haz1.tag.haz_type, haz1_orig.tag.haz_type)
+                         haz1_orig.tag.file_name + haz2.tag.file_name)
+        self.assertEqual(haz1.haz_type, haz1_orig.haz_type)
         self.assertEqual(haz1.tag.description,
-                         [haz1_orig.tag.description, haz2.tag.description])
+                         haz1_orig.tag.description + haz2.tag.description)
 
     def test_incompatible_type_fail(self):
         """Raise error when append two incompatible hazards."""
         haz1 = dummy_hazard()
         haz2 = dummy_hazard()
-        haz2.tag.haz_type = 'WS'
-        haz2.tag.file_name = 'file2.mat'
-        haz2.tag.description = 'Description 2'
+        haz2.haz_type = 'WS'
+        haz2.tag = Tag(file_name='file2.mat',
+                       description='Description 2')
         with self.assertRaises(ValueError) as cm:
             haz1.append(haz2)
 
@@ -796,10 +797,10 @@ class TestAppend(unittest.TestCase):
         self.assertEqual(haz1_orig.units, haz1.units)
         self.assertEqual(haz1_orig.frequency_unit, haz1.frequency_unit)
         self.assertEqual(haz1.tag.file_name,
-                         [haz1_orig.tag.file_name, haz2.tag.file_name])
-        self.assertEqual(haz1.tag.haz_type, haz1_orig.tag.haz_type)
+                         haz1_orig.tag.file_name + haz2.tag.file_name)
+        self.assertEqual(haz1.haz_type, haz1_orig.haz_type)
         self.assertEqual(haz1.tag.description,
-                         [haz1_orig.tag.description, haz2.tag.description])
+                         haz1_orig.tag.description + haz2.tag.description)
 
     def test_same_events_append(self):
         """Append hazard with same events (and diff centroids).
@@ -858,10 +859,10 @@ class TestAppend(unittest.TestCase):
         self.assertEqual(haz1_ori.units, haz1.units)
 
         self.assertEqual(haz1.tag.file_name,
-                         [haz1_ori.tag.file_name, haz2.tag.file_name])
-        self.assertEqual(haz1.tag.haz_type, haz1_ori.tag.haz_type)
+                         haz1_ori.tag.file_name + haz2.tag.file_name)
+        self.assertEqual(haz1.haz_type, haz1_ori.haz_type)
         self.assertEqual(haz1.tag.description,
-                         [haz1_ori.tag.description, haz2.tag.description])
+                         haz1_ori.tag.description + haz2.tag.description)
 
     def test_concat_pass(self):
         """Test concatenate function."""
@@ -982,7 +983,7 @@ class TestAppend(unittest.TestCase):
         self.assertTrue(np.array_equal(haz_2.event_id, np.array([1])))
         self.assertTrue(np.array_equal(haz_2.event_name, ['ev1']))
         self.assertTrue(np.array_equal(haz_2.orig, [True]))
-        self.assertEqual(haz_2.tag.description, 'Description 1')
+        self.assertEqual(haz_2.tag.description, ['Description 1'])
 
         """Test error for projection"""
         lat3, lon3 = np.array([0.5, 3]), np.array([-0.5, 3])
@@ -1029,7 +1030,7 @@ class TestAppend(unittest.TestCase):
         self.assertTrue(np.array_equal(haz_4.event_id, np.array([1])))
         self.assertTrue(np.array_equal(haz_4.event_name, ['ev1']))
         self.assertTrue(np.array_equal(haz_4.orig, [True]))
-        self.assertEqual(haz_4.tag.description, 'Description 1')
+        self.assertEqual(haz_4.tag.description, ['Description 1'])
 
 
 class TestStats(unittest.TestCase):
@@ -1145,9 +1146,9 @@ class TestReaderExcel(unittest.TestCase):
         self.assertTrue(np.all(hazard.orig))
 
         # tag hazard
-        self.assertEqual(hazard.tag.file_name, HAZ_TEMPLATE_XLS)
-        self.assertEqual(hazard.tag.description, description)
-        self.assertEqual(hazard.tag.haz_type, 'TC')
+        self.assertEqual(hazard.tag.file_name, [str(HAZ_TEMPLATE_XLS)])
+        self.assertEqual(hazard.tag.description, [description])
+        self.assertEqual(hazard.haz_type, 'TC')
 
 class TestReaderMat(unittest.TestCase):
     """Test reader functionality of the ExposuresExcel class"""
@@ -1205,10 +1206,10 @@ class TestReaderMat(unittest.TestCase):
         self.assertFalse(hazard.orig[4818])
 
         # tag hazard
-        self.assertEqual(hazard.tag.file_name, str(HAZ_TEST_MAT))
+        self.assertEqual(hazard.tag.file_name, [str(HAZ_TEST_MAT)])
         self.assertEqual(hazard.tag.description,
-                         ' TC hazard event set, generated 14-Nov-2017 10:09:05')
-        self.assertEqual(hazard.tag.haz_type, 'TC')
+                         [' TC hazard event set, generated 14-Nov-2017 10:09:05'])
+        self.assertEqual(hazard.haz_type, 'TC')
 
 class TestHDF5(unittest.TestCase):
     """Test reader functionality of the ExposuresExcel class"""
@@ -1305,13 +1306,14 @@ class TestClear(unittest.TestCase):
         haz1.frequency_unit = "1/m"
         haz1.foo = np.arange(10)
         haz1.clear()
-        self.assertEqual(list(vars(haz1.tag).values()), ['', '', ''])
+        self.assertEqual(list(vars(haz1.tag).values()), [[], []])
+        self.assertEqual(haz1.haz_type, '')
         self.assertEqual(haz1.units, '')
         self.assertEqual(haz1.frequency_unit, DEF_FREQ_UNIT)
         self.assertEqual(haz1.centroids.size, 0)
         self.assertEqual(len(haz1.event_name), 0)
         for attr in vars(haz1).keys():
-            if attr not in ['tag', 'units', 'event_name', 'pool', 'frequency_unit']:
+            if attr not in ['tag', 'haz_type', 'units', 'event_name', 'pool', 'frequency_unit']:
                 self.assertEqual(getattr(haz1, attr).size, 0)
         self.assertIsNone(haz1.pool)
 
@@ -1330,7 +1332,7 @@ class TestClear(unittest.TestCase):
 def dummy_step_impf(haz):
     from climada.entity import ImpactFunc
     intensity = (0, 1, haz.intensity.max())
-    impf = ImpactFunc.from_step_impf(intensity, haz_type=haz.tag.haz_type)
+    impf = ImpactFunc.from_step_impf(intensity, haz_type=haz.haz_type)
     return impf
 
 class TestImpactFuncs(unittest.TestCase):
@@ -1339,14 +1341,14 @@ class TestImpactFuncs(unittest.TestCase):
         """Test haz_type property"""
         haz = dummy_hazard()
         self.assertEqual(haz.haz_type, 'TC')
-        haz.tag.haz_type = 'random'
+        haz.haz_type = 'random'
         self.assertEqual(haz.haz_type, 'random')
 
     def test_cent_exp_col(self):
         """Test return of centroid exposures column"""
         haz = dummy_hazard()
         self.assertEqual(haz.centr_exp_col, 'centr_TC')
-        haz.tag.haz_type = 'random'
+        haz.haz_type = 'random'
         self.assertEqual(haz.centr_exp_col, 'centr_random')
         haz = Hazard()
         self.assertEqual(haz.centr_exp_col, 'centr_')

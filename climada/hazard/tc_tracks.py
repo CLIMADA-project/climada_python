@@ -22,12 +22,10 @@ Define TCTracks: IBTracs reader and tracks manager.
 __all__ = ['CAT_NAMES', 'SAFFIR_SIM_CAT', 'TCTracks', 'set_category']
 
 # standard libraries
-import contextlib
 import datetime as dt
 import itertools
 import logging
 from typing import Optional, List
-import pathlib
 import re
 import shutil
 import warnings
@@ -53,10 +51,6 @@ import shapely.ops
 from sklearn.metrics import DistanceMetric
 import statsmodels.api as sm
 import xarray as xr
-from xarray.backends import NetCDF4DataStore
-from xarray.backends.api import dump_to_store
-from xarray.backends.common import ArrayWriter
-from xarray.backends.store import StoreBackendEntrypoint
 
 # climada dependencies
 from climada.util import ureg
@@ -1402,7 +1396,9 @@ class TCTracks():
         tracks : TCTracks
             TCTracks with data from the given HDF5 file.
         """
+        _raise_if_legacy_or_unknown_hdf5_format(file_name)
         ds_combined = xr.open_dataset(file_name)
+
         # when writing '<U*' and reading in again, xarray reads as dtype 'object'. undo this:
         for varname in ds_combined.data_vars:
             if ds_combined[varname].dtype == "object":
@@ -1560,6 +1556,56 @@ class TCTracks():
         if land_geom:
             track_land_params(track_int, land_geom)
         return track_int
+
+def _raise_if_legacy_or_unknown_hdf5_format(file_name):
+    """Raise an exception if the HDF5 format of the file is not supported
+
+    Since the HDF5 format changed without preserving backwards compatibility, a verbose error
+    message is produced if users attempt to open a file in the legacy format. This function also
+    raises an error if the file is not supported for other (unknown) reasons.
+
+    Parameters
+    ----------
+    file_name : str or Path
+        Path to a NetCDF-compliant HDF5 file.
+
+    Raises
+    ------
+    ValueError
+    """
+    test_ds = xr.open_dataset(file_name)
+    if len(test_ds.dims) > 0:
+        # The legacy format only has data in the subgroups, not in the root.
+        # => This cannot be the legacy file format!
+        return
+    # After this line, it is sure that the format is not supported (since there is no data in the
+    # root group). Before raising an exception, we double-check if it is the legacy format.
+    try:
+        # Check if the file has groups 'track{i}' by trying to access the first group.
+        with xr.open_dataset(file_name, group="track0") as ds_track:
+            # Check if the group actually contains track data:
+            is_legacy = (
+                "time" in ds_track.dims
+                and "max_sustained_wind" in ds_track.variables
+            )
+    except OSError as err:
+        if "group not found" in str(err):
+            # No 'track0' group. => This cannot be the legacy file format!
+            is_legacy = False
+        else:
+            # A different (unexpected) error occurred. => Re-raise the exception.
+            raise
+
+    raise ValueError(
+        (
+            f"The file you try to read ({file_name}) is in a format that is no longer"
+            " supported by CLIMADA. Please store the data again using"
+            " TCTracks.write_hdf5. If you struggle to convert the data, please open an"
+            " issue on GitHub."
+        ) if is_legacy else (
+            f"Unknown HDF5/NetCDF file format: {file_name}"
+        )
+    )
 
 def _read_one_gettelman(nc_data, i_track):
     """Read a single track from Andrew Gettelman's NetCDF dataset
