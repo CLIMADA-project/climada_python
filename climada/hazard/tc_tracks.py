@@ -155,6 +155,7 @@ STORM_1MIN_WIND_FACTOR = 0.88
 Bloemendaal et al. (2020): Generation of a global synthetic tropical cyclone hazard
 dataset using STORM. Scientific Data 7(1): 40."""
 
+
 class TCTracks():
     """Contains tropical cyclone tracks.
 
@@ -1360,27 +1361,35 @@ class TCTracks():
             Specifies a compression level (0-9) for the zlib compression of the data.
             A value of 0 or None disables compression. Default: 5
         """
-        data = []
-        for track in self.data:
-            # convert "time" into a data variable and use a neutral name for the steps
-            track = track.rename(time="step")
-            track["time"] = ("step", track["step"].values)
-            track["step"] = np.arange(track.sizes["step"])
-            # change dtype from bool to int to be NetCDF4-compliant
-            track.attrs['orig_event_flag'] = int(track.attrs['orig_event_flag'])
-            data.append(track)
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore",
+                message="invalid value encountered in cast",
+                module="xarray",
+                category=RuntimeWarning,
+            )
 
-        # concatenate all data sets along new dimension "storm"
-        ds_combined = xr.combine_nested(data, concat_dim=["storm"])
-        ds_combined["storm"] = np.arange(ds_combined.sizes["storm"])
+            data = []
+            for track in self.data:
+                # convert "time" into a data variable and use a neutral name for the steps
+                track = track.rename(time="step")
+                track["time"] = ("step", track["step"].values)
+                track["step"] = np.arange(track.sizes["step"])
+                # change dtype from bool to int to be NetCDF4-compliant
+                track.attrs['orig_event_flag'] = int(track.attrs['orig_event_flag'])
+                data.append(track)
 
-        # convert attributes to data variables of combined dataset
-        df_attrs = pd.DataFrame([t.attrs for t in data], index=ds_combined["storm"].to_series())
-        ds_combined = xr.merge([ds_combined, df_attrs.to_xarray()])
+            # concatenate all data sets along new dimension "storm"
+            ds_combined = xr.combine_nested(data, concat_dim=["storm"])
+            ds_combined["storm"] = np.arange(ds_combined.sizes["storm"])
 
-        encoding = {v: dict(zlib=True, complevel=complevel) for v in ds_combined.data_vars}
-        LOGGER.info('Writing %d tracks to %s', self.size, file_name)
-        ds_combined.to_netcdf(file_name, encoding=encoding)
+            # convert attributes to data variables of combined dataset
+            df_attrs = pd.DataFrame([t.attrs for t in data], index=ds_combined["storm"].to_series())
+            ds_combined = xr.merge([ds_combined, df_attrs.to_xarray()])
+
+            encoding = {v: dict(zlib=True, complevel=complevel) for v in ds_combined.data_vars}
+            LOGGER.info('Writing %d tracks to %s', self.size, file_name)
+            ds_combined.to_netcdf(file_name, encoding=encoding)
 
     @classmethod
     def from_hdf5(cls, file_name):
@@ -1396,34 +1405,42 @@ class TCTracks():
         tracks : TCTracks
             TCTracks with data from the given HDF5 file.
         """
-        _raise_if_legacy_or_unknown_hdf5_format(file_name)
-        ds_combined = xr.open_dataset(file_name)
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore",
+                message="invalid value encountered in cast",
+                module="xarray",
+                category=RuntimeWarning,
+            )
 
-        # when writing '<U*' and reading in again, xarray reads as dtype 'object'. undo this:
-        for varname in ds_combined.data_vars:
-            if ds_combined[varname].dtype == "object":
-                ds_combined[varname] = ds_combined[varname].astype(str)
-        data = []
-        for i in range(ds_combined.sizes["storm"]):
-            # extract a single storm and restrict to valid time steps
-            track = (
-                ds_combined
-                .isel(storm=i)
-                .dropna(dim="step", how="any", subset=["time", "lat", "lon"])
-            )
-            # convert the "time" variable to a coordinate
-            track = track.drop_vars(["storm", "step"]).rename(step="time")
-            track = track.assign_coords(time=track["time"]).compute()
-            # convert 0-dimensional variables to attributes:
-            attr_vars = [v for v in track.data_vars if track[v].ndim == 0]
-            track = (
-                track
-                .assign_attrs({v: track[v].item() for v in attr_vars})
-                .drop_vars(attr_vars)
-            )
-            track.attrs['orig_event_flag'] = bool(track.attrs['orig_event_flag'])
-            data.append(track)
-        return cls(data)
+            _raise_if_legacy_or_unknown_hdf5_format(file_name)
+            ds_combined = xr.open_dataset(file_name)
+
+            # when writing '<U*' and reading in again, xarray reads as dtype 'object'. undo this:
+            for varname in ds_combined.data_vars:
+                if ds_combined[varname].dtype == "object":
+                    ds_combined[varname] = ds_combined[varname].astype(str)
+            data = []
+            for i in range(ds_combined.sizes["storm"]):
+                # extract a single storm and restrict to valid time steps
+                track = (
+                    ds_combined
+                    .isel(storm=i)
+                    .dropna(dim="step", how="any", subset=["time", "lat", "lon"])
+                )
+                # convert the "time" variable to a coordinate
+                track = track.drop_vars(["storm", "step"]).rename(step="time")
+                track = track.assign_coords(time=track["time"]).compute()
+                # convert 0-dimensional variables to attributes:
+                attr_vars = [v for v in track.data_vars if track[v].ndim == 0]
+                track = (
+                    track
+                    .assign_attrs({v: track[v].item() for v in attr_vars})
+                    .drop_vars(attr_vars)
+                )
+                track.attrs['orig_event_flag'] = bool(track.attrs['orig_event_flag'])
+                data.append(track)
+            return cls(data)
 
     def to_geodataframe(self, as_points=False, split_lines_antimeridian=True):
         """Transform this TCTracks instance into a GeoDataFrame.
