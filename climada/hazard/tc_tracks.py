@@ -758,20 +758,20 @@ class TCTracks():
         self.__dict__ = TCTracks.from_simulations_emanuel(*args, **kwargs).__dict__
 
     @classmethod
-    def from_simulations_emanuel(cls, file_names, subset=None, hemisphere=None):
+    def from_simulations_emanuel(cls, file_names, hemisphere=None, subset=None):
         """Create new TCTracks object from Kerry Emanuel's tracks.
 
         Parameters
         ----------
         file_names : str or list of str
             Absolute file name(s) or folder name containing the files to read.
+        hemisphere : str or None, optional
+            For global data sets, restrict to northern ('N') or southern ('S') hemisphere.
+            Default: None (no restriction)
         subset : list of int, optional
             If given, only include the tracks with the given indices. Since the simulation files
             can be huge, this feature is useful for running tests on smaller subsets or on random
             subsamples. Default: None
-        hemisphere : str or None, optional
-            For global data sets, restrict to northern ('N') or southern ('S') hemisphere.
-            Default: None (no restriction)
 
         Returns
         -------
@@ -781,7 +781,7 @@ class TCTracks():
         data = []
         for path in get_file_names(file_names):
             data.extend(_read_file_emanuel(
-                path, subset=subset, hemisphere=hemisphere,
+                path, hemisphere=hemisphere, subset=subset,
                 rmw_corr=Path(path).name in EMANUEL_RMW_CORR_FILES))
         return cls(data)
 
@@ -1711,22 +1711,22 @@ def _read_one_gettelman(nc_data, i_track):
                    'category': set_category(wind, 'kn')}
     return tr_ds
 
-def _read_file_emanuel(path, subset=None, hemisphere=None, rmw_corr=False):
+def _read_file_emanuel(path, hemisphere=None, rmw_corr=False, subset=None):
     """Read track data from file containing Kerry Emanuel simulations.
 
     Parameters
     ----------
     path : str
         absolute path of file to read.
-    subset : list of int, optional
-        If given, only include the tracks with the given indices. Since the simulation files
-        can be huge, this feature is useful for running tests on smaller subsets or on random
-        subsamples. Default: None
     hemisphere : str or None, optional
         For global data sets, restrict to northern ('N') or southern ('S') hemisphere.
         Default: None (no restriction)
     rmw_corr : str, optional
         If True, multiply the radius of maximum wind by factor 2. Default: False.
+    subset : list of int, optional
+        If given, only include the tracks with the given indices. Since the simulation files
+        can be huge, this feature is useful for running tests on smaller subsets or on random
+        subsamples. Default: None
 
     Returns
     -------
