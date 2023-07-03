@@ -25,13 +25,14 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 import numpy as np
 from scipy import sparse
+import xarray as xr
 
 from climada.util import ureg
 from climada.hazard.tc_tracks import TCTracks
 from climada.hazard.trop_cyclone import (
     TropCyclone, _close_centroids, _vtrans, _B_holland_1980, _bs_holland_2008,
     _v_max_s_holland_2008, _x_holland_2010, _stat_holland_1980, _stat_holland_2010,
-    _stat_er_2011,
+    _stat_er_2011, _track_to_si,
 )
 from climada.hazard.centroids.centr import Centroids
 import climada.hazard.test as hazard_test
@@ -226,45 +227,54 @@ class TestWindfieldHelpers(unittest.TestCase):
 
     def test_B_holland_1980_pass(self):
         """Test _B_holland_1980 function."""
-        gradient_winds = np.array([35, 40])
-        penv = np.array([1010, 1010])
-        pcen = np.array([995, 980])
-        _B_res = _B_holland_1980(gradient_winds, penv, pcen)
-        np.testing.assert_array_almost_equal(_B_res, [2.5, 1.667213])
+        si_track = xr.Dataset({
+            "env": ("time",  [1010, 1010]),
+            "cen": ("time",  [995, 980]),
+            "vgrad": ("time",  [35, 40]),
+        })
+        _B_holland_1980(si_track)
+        np.testing.assert_array_almost_equal(si_track["hol_b"], [2.5, 1.667213])
 
     def test_bs_holland_2008_pass(self):
         """Test _bs_holland_2008 function. Compare to MATLAB reference."""
-        v_trans = np.array([5.241999541820597, 5.123882725120426])
-        penv = np.array([1010, 1010])
-        pcen = np.array([1005.263333333329, 1005.268166666671])
-        prepcen = np.array([1005.258500000000, 1005.263333333329])
-        lat = np.array([12.299999504631343, 12.299999279463769])
-        tint = np.array([1.0, 1.0])
-        _bs_res = _bs_holland_2008(v_trans, penv, pcen, prepcen, lat, tint)
-        np.testing.assert_array_almost_equal(_bs_res, [1.270856908796045, 1.265551666104679])
+        si_track = xr.Dataset({
+            "tstep": ("time", [1.0, 1.0, 1.0]),
+            "lat": ("time", [12.299999504631234, 12.299999504631343, 12.299999279463769]),
+            "env": ("time", [1010, 1010, 1010]),
+            "cen": ("time", [1005.258500000000, 1005.263333333329, 1005.268166666671]),
+            "vtrans_norm": ("time",  [np.nan, 5.241999541820597, 5.123882725120426]),
+        })
+        _bs_holland_2008(si_track)
+        np.testing.assert_array_almost_equal(
+            si_track["hol_b"], [np.nan, 1.270856908796045, 1.265551666104679])
 
     def test_v_max_s_holland_2008_pass(self):
         """Test _v_max_s_holland_2008 function."""
         # Numbers analogous to test_B_holland_1980_pass
-        penv = np.array([1010, 1010])
-        pcen = np.array([995, 980])
-        b_s = np.array([2.5, 1.67])
-        v_max_s = _v_max_s_holland_2008(penv, pcen, b_s)
-        np.testing.assert_array_almost_equal(v_max_s, [34.635341, 40.033421])
+        si_track = xr.Dataset({
+            "env": ("time", [1010, 1010]),
+            "cen": ("time", [995, 980]),
+            "hol_b": ("time", [2.5, 1.67]),
+        })
+        _v_max_s_holland_2008(si_track)
+        np.testing.assert_array_almost_equal(si_track["vmax"], [34.635341, 40.033421])
 
     def test_holland_2010_pass(self):
         """Test Holland et al. 2010 wind field model."""
         # test at centroids within and outside of radius of max wind
+        si_track = xr.Dataset({
+            "rad": ("time", [75, 40]),
+            "vmax": ("time", [35.0, 40.0]),
+            "hol_b": ("time", [1.80, 2.5]),
+        })
         d_centr = np.array([[35, 75, 220], [30, 1000, 300]], dtype=float)
-        r_max = np.array([75, 40], dtype=float)
-        v_max_s = np.array([35.0, 40.0])
-        hol_b = np.array([1.80, 2.5])
-        mask = np.array([[True, True, True], [True, False, True]], dtype=bool)
-        hol_x = _x_holland_2010(d_centr, r_max, v_max_s, hol_b, mask)
-        np.testing.assert_array_almost_equal(hol_x, [[0.5, 0.5, 0.47273], [0.5, 0, 0.211602]])
+        close_centr = np.array([[True, True, True], [True, False, True]], dtype=bool)
+        hol_x = _x_holland_2010(si_track, d_centr, close_centr)
+        np.testing.assert_array_almost_equal(
+            hol_x, [[0.5, 0.5, 0.47273], [0.5, 0, 0.211602]])
 
         # test exactly at radius of maximum wind (35 m/s) and at peripheral radius (17 m/s)
-        v_ang_norm = _stat_holland_2010(d_centr, v_max_s, r_max, hol_b, mask, hol_x)
+        v_ang_norm = _stat_holland_2010(si_track, d_centr, close_centr, hol_x)
         np.testing.assert_array_almost_equal(v_ang_norm,
             [[15.957853, 35.0, 20.99411], [33.854826, 0, 17.0]])
 
@@ -274,55 +284,61 @@ class TestWindfieldHelpers(unittest.TestCase):
             [299.4501244109841, 291.0737897183741, 292.5441003235722, 40.665454622610511],
             [293.6067129546862, 1000.0, 298.2652319413182, 70.0],
         ])
-        r_max = np.array([40.665454622610511, 75.547902916671745])
-        hol_b = np.array([1.486076257880692, 1.265551666104679])
-        penv = np.array([1010.0, 1010.0])
-        pcen = np.array([970.8727666672957, 1005.268166666671])
-        lat = np.array([-14.089110370469488, 12.299999279463769])
+        si_track = xr.Dataset({
+            "rad": ("time", [40.665454622610511, 75.547902916671745]),
+            "hol_b": ("time", [1.486076257880692, 1.265551666104679]),
+            "env": ("time", [1010.0, 1010.0]),
+            "cen": ("time", [970.8727666672957, 1005.268166666671]),
+            "lat": ("time", [-14.089110370469488, 12.299999279463769]),
+            "cp": ("time", [3.54921922e-05, 3.10598285e-05]),
+        })
         mask = np.array([[True, True, True, True], [True, False, True, True]], dtype=bool)
-        v_ang_norm = _stat_holland_1980(d_centr, r_max, hol_b, penv, pcen, lat, mask)
+        v_ang_norm = _stat_holland_1980(si_track, d_centr, mask)
         np.testing.assert_array_almost_equal(v_ang_norm,
             [[11.279764005440288, 11.682978583939310, 11.610940769149384, 42.412845],
              [5.384115724400597, 0, 5.281356766052531, 12.763087]])
 
         # without Coriolis force, values are higher, esp. far away from the center:
-        v_ang_norm = _stat_holland_1980(d_centr, r_max, hol_b, penv, pcen, lat, mask,
-                                        cyclostrophic=True)
+        v_ang_norm = _stat_holland_1980(si_track, d_centr, mask, cyclostrophic=True)
         np.testing.assert_array_almost_equal(v_ang_norm,
             [[15.719924, 16.037052, 15.980323, 43.128461],
              [8.836768,  0,  8.764678, 13.807452]])
 
         d_centr = np.array([[], []])
         mask = np.ones_like(d_centr, dtype=bool)
-        v_ang_norm = _stat_holland_1980(d_centr, r_max, hol_b, penv, pcen, lat, mask)
+        v_ang_norm = _stat_holland_1980(si_track, d_centr, mask)
         np.testing.assert_array_equal(v_ang_norm, np.array([[], []]))
 
     def test_er_2011_pass(self):
         """Test Emanuel and Rotunno 2011 wind field model."""
         # test at centroids within and outside of radius of max wind
-        d_centr = np.array([[35, 75, 220], [30, 1000, 300]], dtype=float)
-        r_max = np.array([75, 40], dtype=float)
-        v_max = np.array([35.0, 40.0])
-        lat = np.array([20, 27])
-        v_ang_norm = _stat_er_2011(d_centr, v_max, r_max, lat)
+        d_centr = np.array([[35, 70, 75, 220], [30, 150, 1000, 300]], dtype=float)
+        si_track = xr.Dataset({
+            "rad": ("time", [75.0, 40.0]),
+            "vmax": ("time", [35.0, 40.0]),
+            "lat": ("time", [20.0, 27.0]),
+            "cp": ("time", [4.98665369e-05, 6.61918149e-05]),
+        })
+        mask = np.array([[True, True, True, True], [True, False, True, True]], dtype=bool)
+        v_ang_norm = _stat_er_2011(si_track, d_centr, mask)
         np.testing.assert_array_almost_equal(v_ang_norm,
-            [[28.258025, 36.869995, 22.521237],
-             [39.670883,  3.300626, 10.827206]])
+            [[28.258025, 36.782418, 36.869995, 22.521237],
+             [39.670883, 0, 3.300626, 10.827206]])
 
     def test_vtrans_pass(self):
         """Test _vtrans function. Compare to MATLAB reference."""
         tc_track = TCTracks.from_processed_ibtracs_csv(TEST_TRACK)
         tc_track.equal_timestep()
+        track_ds = tc_track.data[0]
 
-        v_trans, _ = _vtrans(
-            tc_track.data[0].lat.values, tc_track.data[0].lon.values,
-            tc_track.data[0].time_step.values)
+        si_track = _track_to_si(track_ds)
+        _vtrans(si_track)
 
         to_kn = (1.0 * ureg.meter / ureg.second).to(ureg.knot).magnitude
 
-        self.assertEqual(v_trans.size, tc_track.data[0].time.size)
-        self.assertEqual(v_trans[0], 0)
-        self.assertAlmostEqual(v_trans[1] * to_kn, 10.191466246)
+        self.assertEqual(si_track["vtrans_norm"].size, track_ds["time"].size)
+        self.assertEqual(si_track["vtrans_norm"].values[0], 0)
+        self.assertAlmostEqual(si_track["vtrans_norm"].values[1] * to_kn, 10.191466246)
 
 
 class TestClimateSce(unittest.TestCase):

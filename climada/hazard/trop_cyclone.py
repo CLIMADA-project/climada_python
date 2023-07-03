@@ -834,7 +834,7 @@ def compute_windfields(
     Parameters
     ----------
     track : xr.Dataset
-        Track infomation.
+        Track information.
     centroids : np.ndarray with two dimensions
         Each row is a centroid [lat, lon].
         Centroids that are not within reach of the track are ignored.
@@ -872,25 +872,24 @@ def compute_windfields(
     if npositions < 2:
         return windfields, reachable_centr_idx
 
-    # copies of track data (note that max wind records are not used in all wind field models)
-    t_lat, t_lon, t_tstep, t_rad, t_env, t_cen = [
-        track[ar].values.copy() for ar in ['lat', 'lon', 'time_step', 'radius_max_wind',
-                                           'environmental_pressure', 'central_pressure']
-    ]
+    si_track = _track_to_si(track, metric=metric)
 
     # normalize longitude values (improves performance of `dist_approx` and `_close_centroids`)
-    mid_lon = 0.5 * sum(u_coord.lon_bounds(t_lon))
-    u_coord.lon_normalize(t_lon, center=mid_lon)
-    u_coord.lon_normalize(centroids[:, 1], center=mid_lon)
+    u_coord.lon_normalize(centroids[:, 1], center=si_track.attrs["mid_lon"])
 
     # Filter early with a larger threshold, but inaccurate (lat/lon) distances.
     # There is another filtering step with more accurate distances in km later.
     max_dist_eye_deg = max_dist_eye_km / (
-        u_const.ONE_LAT_KM * np.cos(np.radians(np.abs(t_lat).max()))
+        u_const.ONE_LAT_KM * np.cos(np.radians(np.abs(si_track["lat"].values).max()))
     )
 
     # restrict to centroids within rectangular bounding boxes around track positions
-    track_centr_msk = _close_centroids(t_lat, t_lon, centroids, max_dist_eye_deg)
+    track_centr_msk = _close_centroids(
+        si_track["lat"].values,
+        si_track["lon"].values,
+        centroids,
+        max_dist_eye_deg,
+    )
     track_centr = centroids[track_centr_msk]
     nreachable = track_centr.shape[0]
     if nreachable == 0:
@@ -909,7 +908,8 @@ def compute_windfields(
 
     # compute distances (in km) and vectors to all centroids
     [d_centr], [v_centr_normed] = u_coord.dist_approx(
-        t_lat[None], t_lon[None], track_centr[None, :, 0], track_centr[None, :, 1],
+        si_track["lat"].values[None], si_track["lon"].values[None],
+        track_centr[None, :, 0], track_centr[None, :, 1],
         log=True, normalize=False, method=metric)
 
     # exclude centroids that are too far from or too close to the eye
@@ -919,28 +919,15 @@ def compute_windfields(
     v_centr_normed[~close_centr_msk] = 0
     v_centr_normed[close_centr_msk] /= d_centr[close_centr_msk, None]
 
-    # make sure that central pressure never exceeds environmental pressure
-    pres_exceed_msk = t_cen > t_env
-    t_cen[pres_exceed_msk] = t_env[pres_exceed_msk]
-
-    # extrapolate radius of max wind from pressure if not given (and convert to km)
-    t_rad[:] = estimate_rmw(t_rad, t_cen) * NM_TO_KM
-
-    # translational speed of track at every node (in m/s)
-    [v_trans_norm, v_trans] = _vtrans(t_lat, t_lon, t_tstep, metric=metric)
-
     # derive (absolute) angular velocity from parametric wind profile
     v_ang_norm = _compute_angular_windspeeds(
-        track, t_tstep, t_lat, t_cen, t_env, t_rad, v_trans_norm, d_centr,
-        close_centr_msk, model, cyclostrophic=False,
+        si_track, d_centr, close_centr_msk, model, cyclostrophic=False,
     )
 
     # vectorial angular velocity
-    hemisphere = 'N'
-    if np.count_nonzero(t_lat < 0) > np.count_nonzero(t_lat > 0):
-        hemisphere = 'S'
-    v_ang_rotate = [1.0, -1.0] if hemisphere == 'N' else [-1.0, 1.0]
-    windfields = np.array(v_ang_rotate)[..., :] * v_centr_normed[:, :, ::-1]
+    windfields = (
+        si_track.attrs["latsign"] * np.array([1.0, -1.0])[..., :] * v_centr_normed[:, :, ::-1]
+    )
     windfields[close_centr_msk] *= v_ang_norm[close_centr_msk, None]
 
     # Influence of translational speed decreases with distance from eye.
@@ -951,13 +938,13 @@ def compute_windfields(
     #   wind speed profiles in a GIS. UNED/GRID-Geneva.
     #   https://unepgrid.ch/en/resource/19B7D302
     #
-    t_rad_bc = np.broadcast_arrays(t_rad[:, None], d_centr)[0]
+    t_rad_bc = np.broadcast_arrays(si_track["rad"].values[:, None], d_centr)[0]
     v_trans_corr = np.zeros_like(d_centr)
     v_trans_corr[close_centr_msk] = np.fmin(
         1, t_rad_bc[close_centr_msk] / d_centr[close_centr_msk])
 
     # add angular and corrected translational velocity vectors
-    windfields[1:] += v_trans[1:, None, :] * v_trans_corr[1:, :, None]
+    windfields[1:] += si_track["vtrans"].values[1:, None, :] * v_trans_corr[1:, :, None]
     windfields[np.isnan(windfields)] = 0
     windfields[0, :, :] = 0
     [reachable_centr_idx] = track_centr_msk.nonzero()
@@ -1010,26 +997,85 @@ def _compute_windfields_chunked(
         windfields[chunk_start:chunk_end + 1, inv, :] = arr[offset:, :, :]
     return windfields, reachable_centr_idx
 
-def _compute_angular_windspeeds(
-    track, t_tstep, t_lat, t_cen, t_env, t_rad, v_trans, d_centr, close_centr_msk, model,
-    cyclostrophic=False,
-):
-    """Compute (absolute) angular wind speeds according to a parametric wind profile
+def _track_to_si(
+    track: xr.Dataset,
+    metric: str = "equirect",
+) -> xr.Dataset:
+    """Convert track variables to SI units and prepare for wind field computation
+
+    In addition to unit conversion, the variable names are shortened, the longitudinal coordinates
+    are normalized and additional variables are defined:
+
+    * cp (coriolis parameter)
+    * vtrans (translational velocity vectors)
+    * vtrans_norm (absolute value of translational speed)
+
+    Furthermore, some scalar variables are stored as attributes:
+
+    * latsign (1.0 if the track is located on the northern and -1.0 if on southern hemisphere)
+    * mid_lon (the central longitude that was used to normalize the longitudinal coordinates)
+
+    Finally, some corrections are applied to variables:
+
+    * clip central pressure values so that environmental pressure values are never exceeded
+    * extrapolate radius of max wind from pressure if missing
 
     Parameters
     ----------
     track : xr.Dataset
-        Single tropical cyclone track.
-    t_tstep : np.ndarray of shape (npositions,)
-        Time step size at each track position.
-    t_lat : np.ndarray of shape (npositions,)
-        Latitudinal coordinates of track positions.
-    t_cen : np.ndarray of shape (npositions,)
-        Central pressure (in hPa) at each track position.
-    t_env : np.ndarray of shape (npositions,)
-        Environmental pressure (in hPa) at each track position.
-    v_trans : np.ndarray of shape (npositions,)
-        Translational wind speed (in m/s) at each track position.
+        Track information.
+    metric : str, optional
+        Specify an approximation method to use for earth distances: "equirect" (faster) or
+        "geosphere" (more accurate). See `dist_approx` function in `climada.util.coordinates`.
+        Default: "equirect".
+
+    Returns
+    -------
+    xr.Dataset
+    """
+    si_track = track[["lat", "lon", "time"]].copy()
+    si_track["tstep"] = track["time_step"]
+    si_track["cen"] = track["central_pressure"]
+    si_track["env"] = track["environmental_pressure"]
+    si_track["vmax"] = track["max_sustained_wind"] * KN_TO_MS
+
+    # normalize longitudinal coordinates
+    si_track.attrs["mid_lon"] = 0.5 * sum(u_coord.lon_bounds(si_track["lon"].values))
+    u_coord.lon_normalize(si_track["lon"].values, center=si_track.attrs["mid_lon"])
+
+    # make sure that central pressure never exceeds environmental pressure
+    pres_exceed_msk = (si_track["cen"] > si_track["env"]).values
+    si_track["cen"].values[pres_exceed_msk] = si_track["env"].values[pres_exceed_msk]
+
+    # extrapolate radius of max wind from pressure if not given
+    si_track["rad"] = track["radius_max_wind"].copy()
+    si_track["rad"].values[:] = estimate_rmw(si_track["rad"].values, si_track["cen"].values)
+    si_track["rad"] *= NM_TO_KM
+
+    hemisphere = 'N'
+    if np.count_nonzero(si_track["lat"] < 0) > np.count_nonzero(si_track["lat"] > 0):
+        hemisphere = 'S'
+    si_track.attrs["latsign"] = 1.0 if hemisphere == 'N' else -1.0
+
+    # add translational speed of track at every node (in m/s)
+    _vtrans(si_track, metric=metric)
+
+    # convert surface winds to gradient winds without translational influence
+    si_track["vgrad"] = (
+        np.fmax(0, si_track["vmax"] - si_track["vtrans_norm"]) / GRADIENT_LEVEL_TO_SURFACE_WINDS
+    )
+
+    si_track["cp"] = ("time", _coriolis_parameter(si_track["lat"].values))
+
+    return si_track
+
+def _compute_angular_windspeeds(si_track, d_centr, close_centr_msk, model, cyclostrophic=False):
+    """Compute (absolute) angular wind speeds according to a parametric wind profile
+
+    Parameters
+    ----------
+    si_track : xr.Dataset
+        Output of `_track_to_si`.
     d_centr : np.ndarray of shape (npositions, ncentroids)
         Distance (in km) between centroids and track positions.
     close_centr_msk : np.ndarray of shape (npositions, ncentroids)
@@ -1044,42 +1090,28 @@ def _compute_angular_windspeeds(
     -------
     ndarray of shape (npositions, ncentroids)
     """
-    # adjust pressure at previous track point
-    prev_pres = t_cen[:-1].copy()
-    msk = prev_pres < 850
-    prev_pres[msk] = t_cen[1:][msk]
-
-    result = np.zeros(d_centr.shape, dtype=np.float64)
     if model == MODEL_VANG['H1980']:
-        # convert surface winds (in m/s) to gradient winds without translational influence
-        t_vmax = track.max_sustained_wind.values.copy() * KN_TO_MS
-        t_gradient_winds = np.fmax(0, t_vmax - v_trans) / GRADIENT_LEVEL_TO_SURFACE_WINDS
-        hol_b = _B_holland_1980(t_gradient_winds[1:], t_env[1:], t_cen[1:])
-        result[1:] = _stat_holland_1980(d_centr[1:], t_rad[1:], hol_b, t_env[1:],
-                                        t_cen[1:], t_lat[1:], close_centr_msk[1:],
-                                        cyclostrophic=cyclostrophic)
-        result *= GRADIENT_LEVEL_TO_SURFACE_WINDS
-    elif model == MODEL_VANG['H08']:
-        # this model doesn't use the recorded surface winds
-        hol_b = _bs_holland_2008(v_trans[1:], t_env[1:], t_cen[1:], prev_pres,
-                                 t_lat[1:], t_tstep[1:])
-        result[1:] = _stat_holland_1980(d_centr[1:], t_rad[1:], hol_b, t_env[1:],
-                                        t_cen[1:], t_lat[1:], close_centr_msk[1:],
-                                        cyclostrophic=cyclostrophic)
+        _B_holland_1980(si_track)
+    elif model in [MODEL_VANG['H08'], MODEL_VANG['H10']]:
+        _bs_holland_2008(si_track)
+
+    if model in [MODEL_VANG['H1980'], MODEL_VANG['H08']]:
+        result = _stat_holland_1980(
+            si_track, d_centr, close_centr_msk, cyclostrophic=cyclostrophic,
+        )
+        if model == MODEL_VANG['H1980']:
+            result *= GRADIENT_LEVEL_TO_SURFACE_WINDS
     elif model == MODEL_VANG['H10']:
-        # this model doesn't use the recorded surface winds
         # this model is always cyclostrophic
-        hol_b = _bs_holland_2008(v_trans[1:], t_env[1:], t_cen[1:], prev_pres,
-                                 t_lat[1:], t_tstep[1:])
-        t_vmax = _v_max_s_holland_2008(t_env[1:], t_cen[1:], hol_b)
-        hol_x = _x_holland_2010(d_centr[1:], t_rad[1:], t_vmax, hol_b, close_centr_msk[1:])
-        result[1:] = _stat_holland_2010(d_centr[1:], t_vmax, t_rad[1:], hol_b,
-                                        close_centr_msk[1:], hol_x)
+        _v_max_s_holland_2008(si_track)
+        hol_x = _x_holland_2010(si_track, d_centr, close_centr_msk)
+        result = _stat_holland_2010(si_track, d_centr, close_centr_msk, hol_x)
     elif model == MODEL_VANG['ER11']:
-        t_vmax = track.max_sustained_wind.values.copy() * KN_TO_MS
-        result[:] = _stat_er_2011(d_centr, t_vmax, t_rad, t_lat, cyclostrophic=cyclostrophic)
+        result = _stat_er_2011(si_track, d_centr, close_centr_msk, cyclostrophic=cyclostrophic)
     else:
         raise NotImplementedError
+
+    result[0, :] *= 0
 
     return result
 
@@ -1123,51 +1155,44 @@ def _close_centroids(
     # for each centroid, check whether it is in the buffer for any of the track positions
     return mask.any(axis=0)
 
-def _vtrans(
-    t_lat: np.ndarray,
-    t_lon: np.ndarray,
-    t_tstep: np.ndarray,
-    metric: str = "equirect"
-) -> Tuple[np.ndarray, np.ndarray]:
+def _vtrans(si_track: xr.Dataset, metric: str = "equirect"):
     """Translational vector and velocity (in m/s) at each track node.
+
+    The track dataset is modified in place, with the following variables added:
+
+    * vtrans (directional vectors of velocity, in meters per second)
+    * vtrans_norm (absolute velocity in meters per second; the first velocity is always 0)
+
+    The meridional component (v) of the vectors is listed first.
 
     Parameters
     ----------
-    t_lat : np.ndarray
-        track latitudes (in degrees)
-    t_lon : np.ndarray
-        track longitudes (in degrees)
-    t_tstep : np.ndarray
-        track time steps (in hours)
+    si_track : xr.Dataset
+        Track information as returned by `_track_to_si`.
     metric : str, optional
         Specify an approximation method to use for earth distances: "equirect" (faster) or
         "geosphere" (more accurate). See `dist_approx` function in `climada.util.coordinates`.
         Default: "equirect".
-
-    Returns
-    -------
-    v_trans_norm : np.ndarray of same shape as input
-        Absolute velocity in meters per second. The first velocity is always 0.
-    v_trans : np.ndarray
-        Directional vectors of velocity (in meters per second).
     """
-    v_trans = np.zeros((t_lat.size, 2))
-    v_trans_norm = np.zeros((t_lat.size,))
+    npositions = si_track.sizes["time"]
+    si_track["vtrans_norm"] = (["time"], np.zeros((npositions,)))
+    si_track["vtrans"] = (["time", "component"], np.zeros((npositions, 2)))
+    si_track["component"] = ("component", ["v", "u"])
+
+    t_lat, t_lon = si_track["lat"].values, si_track["lon"].values
     norm, vec = u_coord.dist_approx(t_lat[:-1, None], t_lon[:-1, None],
                                     t_lat[1:, None], t_lon[1:, None],
                                     log=True, normalize=False, method=metric)
-    v_trans[1:, :] = vec[:, 0, 0]
-    v_trans[1:, :] *= KMH_TO_MS / t_tstep[1:, None]
-    v_trans_norm[1:] = norm[:, 0, 0]
-    v_trans_norm[1:] *= KMH_TO_MS / t_tstep[1:]
+    si_track["vtrans"].values[1:, :] = vec[:, 0, 0]
+    si_track["vtrans"].values[1:, :] *= KMH_TO_MS / si_track["tstep"].values[1:, None]
+    si_track["vtrans_norm"].values[1:] = norm[:, 0, 0]
+    si_track["vtrans_norm"].values[1:] *= KMH_TO_MS / si_track["tstep"].values[1:]
 
     # limit to 30 nautical miles per hour
-    msk = v_trans_norm > 30 * KN_TO_MS
-    fact = 30 * KN_TO_MS / v_trans_norm[msk]
-    v_trans[msk, :] *= fact[:, None]
-    v_trans_norm[msk] *= fact
-    return v_trans_norm, v_trans
-
+    msk = si_track["vtrans_norm"].values > 30 * KN_TO_MS
+    fact = 30 * KN_TO_MS / si_track["vtrans_norm"].values[msk]
+    si_track["vtrans"].values[msk, :] *= fact[:, None]
+    si_track["vtrans_norm"].values[msk] *= fact
 
 def _coriolis_parameter(lat: np.ndarray) -> np.ndarray:
     """Compute the Coriolis parameter from latitude.
@@ -1184,16 +1209,10 @@ def _coriolis_parameter(lat: np.ndarray) -> np.ndarray:
     """
     return 2 * V_ANG_EARTH * np.sin(np.radians(np.abs(lat)))
 
-
-def _bs_holland_2008(
-    v_trans: np.ndarray,
-    penv: np.ndarray,
-    pcen: np.ndarray,
-    prepcen: np.ndarray,
-    lat: np.ndarray,
-    tint: np.ndarray
-) -> np.ndarray:
+def _bs_holland_2008(si_track: xr.Dataset):
     """Holland's 2008 b-value estimate for sustained surface winds.
+
+    The result is stored in place as a new data variable "hol_b".
 
     Unlike the original 1980 formula (see `_B_holland_1980`), this approach does not require any
     wind speed measurements, but is based on the more reliable pressure information.
@@ -1224,37 +1243,29 @@ def _bs_holland_2008(
 
     Parameters
     ----------
-    v_trans : np.ndarray
-        Translational wind (in m/s).
-    penv : np.ndarray
-        Environmental pressure (in hPa).
-    pcen : np.ndarray
-        Central pressure (in hPa).
-    prepcen : np.ndarray
-        Central pressure (in hPa) at previous track position.
-    lat : np.ndarray
-        Latitude (in degrees).
-    tint : np.ndarray
-        Time step (in h).
-
-    Returns
-    -------
-    b_s : np.ndarray
-        Holland b-value
+    si_track : xr.Dataset
+        Output of `_track_to_si`.
     """
-    pdelta = penv - pcen
-    hol_xx = 0.6 * (1. - pdelta / 215)
-    hol_b = -4.4e-5 * pdelta**2 + 0.01 * pdelta + \
-        0.03 * (pcen - prepcen) / tint - 0.014 * abs(lat) + \
-        0.15 * v_trans**hol_xx + 1.0
-    return np.clip(hol_b, 1, 2.5)
+    # adjust pressure at previous track point
+    prev_cen = np.zeros_like(si_track["cen"].values)
+    prev_cen[1:] = si_track["cen"].values[:-1].copy()
+    msk = prev_cen < 850
+    prev_cen[msk] = si_track["cen"].values[msk]
 
-def _v_max_s_holland_2008(
-    penv: np.ndarray,
-    pcen: np.ndarray,
-    b_s: np.ndarray,
-) -> np.ndarray:
+    pdelta = si_track["env"] - si_track["cen"]
+    hol_xx = 0.6 * (1. - pdelta / 215)
+    si_track["hol_b"] = (
+        -4.4e-5 * pdelta**2 + 0.01 * pdelta
+        + 0.03 * (si_track["cen"] - prev_cen) / si_track["tstep"] - 0.014 * abs(si_track["lat"])
+        + 0.15 * si_track["vtrans_norm"]**hol_xx + 1.0
+    )
+    si_track["hol_b"] = np.clip(si_track["hol_b"], 1, 2.5)
+
+def _v_max_s_holland_2008(si_track: xr.Dataset):
     """Compute maximum surface winds from pressure according to Holland 2008.
+
+    The result is stored in place as a data variable "vmax". If a variable of that name already
+    exists, its values are overwritten.
 
     This function implements equation (11) in the following paper:
 
@@ -1270,28 +1281,17 @@ def _v_max_s_holland_2008(
 
     Parameters
     ----------
-    penv : np.ndarray
-        Environmental pressure (in hPa).
-    pcen : np.ndarray
-        Central pressure (in hPa).
-    b_s : np.ndarray
-        Holland's b-parameter according to `_bs_holland_2008`.
-
-    Returns
-    -------
-    v_max_s : np.ndarray
-        Maximum surface winds (in m/s).
+    si_track : xr.Dataset
+        Output of `_track_to_si` with "hol_b" variable (see _bs_holland_2008).
     """
     # the factor 100 is from conversion between mbar (hPa) and pascal (Pa)
-    v_squared = b_s / (RHO_AIR * np.exp(1)) * 100 * (penv - pcen)
-    return np.sqrt(v_squared)
+    pdelta = 100 * (si_track["env"] - si_track["cen"])
+    si_track["vmax"] = np.sqrt(si_track["hol_b"] / (RHO_AIR * np.exp(1)) * pdelta)
 
-def _B_holland_1980(
-    gradient_winds: np.ndarray,
-    penv: np.ndarray,
-    pcen: np.ndarray,
-) -> np.ndarray:  # pylint: disable=invalid-name
+def _B_holland_1980(si_track: xr.Dataset):  # pylint: disable=invalid-name
     """Holland's 1980 B-value computation for gradient-level winds.
+
+    The result is stored in place as a new data variable "hol_b".
 
     The parameter applies to gradient-level winds (about 1000 metres above the earth's surface).
     The formula for B is derived from equations (5) and (6) in the following paper:
@@ -1309,30 +1309,17 @@ def _B_holland_1980(
 
     Parameters
     ----------
-    gradient_winds : np.ndarray
-        Maximum gradient-level wind speeds (m/s) of the tropical cyclone. If your data are maximum
-        surface wind speeds (e.g. from IBTrACS), make sure to subtract translational wind speed and
-        convert to gradient-level winds first.
-    penv : np.ndarray
-        Environmental pressure (hPa).
-    pcen : np.ndarray
-        Central pressure (hPa).
-
-    Returns
-    -------
-    B : np.ndarray
-        Holland b-value
+    si_track : xr.Dataset
+        Output of `_track_to_si` with "vgrad" variable (see _vgrad).
     """
-    # the factor 100 is from conversion between mbar and pascal
-    pdelta = 100 * (penv - pcen)
-    hol_b = gradient_winds**2 * np.exp(1) * RHO_AIR / np.fmax(np.spacing(1), pdelta)
-    return np.clip(hol_b, 1, 2.5)
+    # the factor 100 is from conversion between mbar (hPa) and pascal (Pa)
+    pdelta = 100 * (si_track["env"] - si_track["cen"])
+    si_track["hol_b"] = si_track["vgrad"]**2 * np.exp(1) * RHO_AIR / np.fmax(np.spacing(1), pdelta)
+    si_track["hol_b"] = np.clip(si_track["hol_b"], 1, 2.5)
 
 def _x_holland_2010(
+    si_track: xr.Dataset,
     d_centr: np.ndarray,
-    r_max: np.ndarray,
-    v_max_s: np.ndarray,
-    hol_b: np.ndarray,
     close_centr: np.ndarray,
     v_n: Union[float, np.ndarray] = 17.0,
     r_n: Union[float, np.ndarray] = 300
@@ -1354,14 +1341,10 @@ def _x_holland_2010(
 
     Parameters
     ----------
+    si_track : xr.Dataset
+        Output of `_track_to_si` with "hol_b" variable (see _bs_holland_2008).
     d_centr : np.ndarray of shape (nnodes, ncentroids)
         Distance (in km) between centroids and track nodes.
-    r_max : np.ndarray of shape (nnodes,)
-        Radius (in km) of maximum winds at each track node.
-    v_max_s : np.ndarray of shape (nnodes,)
-        Maximum surface winds (in m/s) at each track node.
-    hol_b : np.ndarray of shape (nnodes,)
-        Holland's b parameter at each track node.
     close_centr : np.ndarray of shape (nnodes, ncentroids)
         Mask indicating for each track node which centroids are within reach of the windfield.
     v_n : np.ndarray of shape (nnodes,) or float, optional
@@ -1381,8 +1364,10 @@ def _x_holland_2010(
     x = np.zeros_like(d_centr)
     r_max, v_max_s, hol_b, d_centr, v_n, r_n = [
         ar[close_centr] for ar in np.broadcast_arrays(
-            r_max[:, None], v_max_s[:, None], hol_b[:, None], d_centr,
-            np.atleast_1d(v_n)[:, None], np.atleast_1d(r_n)[:, None])
+            si_track["rad"].values[:, None], si_track["vmax"].values[:, None],
+            si_track["hol_b"].values[:, None], d_centr,
+            np.atleast_1d(v_n)[:, None], np.atleast_1d(r_n)[:, None],
+        )
     ]
 
     # compute peripheral exponent from second measurement
@@ -1395,14 +1380,11 @@ def _x_holland_2010(
     x[close_centr] = np.clip(x[close_centr], 0.0, 0.5)
     return x
 
-
 def _stat_holland_2010(
+    si_track: xr.Dataset,
     d_centr: np.ndarray,
-    v_max_s: np.ndarray,
-    r_max: np.ndarray,
-    hol_b: np.ndarray,
     close_centr: np.ndarray,
-    x: Union[float, np.ndarray]
+    x: Union[float, np.ndarray],
 ) -> np.ndarray:
     """Symmetric and static surface wind fields (in m/s) according to Holland et al. 2010
 
@@ -1419,18 +1401,13 @@ def _stat_holland_2010(
 
     Parameters
     ----------
+    si_track : xr.Dataset
+        Output of `_track_to_si` with "hol_b" (see _bs_holland_2008) data variables.
     d_centr : np.ndarray of shape (nnodes, ncentroids)
         Distance (in km) between centroids and track nodes.
-    v_max_s : np.ndarray of shape (nnodes,)
-        Maximum surface wind speeds (in m/s) of the tropical cyclone according to
-        `_v_max_s_holland_2008`.
-    r_max : np.ndarray of shape (nnodes,)
-        Radius (in km) of maximum winds at each track node.
-    hol_b : np.ndarray of shape (nnodes,)
-        Holland's b parameter at each track node according to `_bs_holland_2008`.
     close_centr : np.ndarray of shape (nnodes, ncentroids)
         Mask indicating for each track node which centroids are within reach of the windfield.
-    x : np.ndarray of shape (nnodes, ncentroids) or float, optional
+    x : np.ndarray of shape (nnodes, ncentroids) or float
         The exponent according to `_x_holland_2010`.
 
     Returns
@@ -1441,7 +1418,9 @@ def _stat_holland_2010(
     v_ang = np.zeros_like(d_centr)
     d_centr, v_max_s, r_max, hol_b, x = [
         ar[close_centr] for ar in np.broadcast_arrays(
-            d_centr, v_max_s[:, None], r_max[:, None], hol_b[:, None], x)
+            d_centr, si_track["vmax"].values[:, None], si_track["rad"].values[:, None],
+            si_track["hol_b"].values[:, None], x,
+        )
     ]
 
     r_max_norm = (r_max / d_centr)**hol_b
@@ -1449,12 +1428,8 @@ def _stat_holland_2010(
     return v_ang
 
 def _stat_holland_1980(
+    si_track: xr.Dataset,
     d_centr: np.ndarray,
-    r_max: np.ndarray,
-    hol_b: np.ndarray,
-    penv: np.ndarray,
-    pcen: np.ndarray,
-    lat: np.ndarray,
     close_centr: np.ndarray,
     cyclostrophic: bool = False
 ) -> np.ndarray:
@@ -1480,18 +1455,10 @@ def _stat_holland_1980(
 
     Parameters
     ----------
+    si_track : xr.Dataset
+        Output of `_track_to_si` with "hol_b" (see, e.g., _B_holland_1980) data variable.
     d_centr : np.ndarray of shape (nnodes, ncentroids)
         Distance (in km) between centroids and track nodes.
-    r_max : np.ndarray of shape (nnodes,)
-        Radius (in km) of maximum winds at each track node.
-    hol_b : np.ndarray of shape (nnodes,)
-        Holland's b parameter at each track node.
-    penv : np.ndarray of shape (nnodes,)
-        Environmental pressure (in hPa) at each track node.
-    pcen : np.ndarray of shape (nnodes,)
-        Central pressure (in hPa) at each track node.
-    lat : np.ndarray of shape (nnodes,)
-        Latitudinal coordinate (in degrees) of each track node.
     close_centr : np.ndarray of shape (nnodes, ncentroids)
         Mask indicating for each track node which centroids are within reach of the windfield.
     cyclostrophic : bool, optional
@@ -1504,15 +1471,18 @@ def _stat_holland_1980(
         Absolute values of wind speeds (m/s) in angular direction.
     """
     v_ang = np.zeros_like(d_centr)
-    d_centr, r_max, hol_b, penv, pcen, lat = [
+    d_centr, r_max, hol_b, penv, pcen, lat, coriolis_p = [
         ar[close_centr] for ar in np.broadcast_arrays(
-            d_centr, r_max[:, None], hol_b[:, None], penv[:, None], pcen[:, None], lat[:, None])
+            d_centr, si_track["rad"].values[:, None], si_track["hol_b"].values[:, None],
+            si_track["env"].values[:, None], si_track["cen"].values[:, None],
+            si_track["lat"].values[:, None], si_track["cp"].values[:, None]
+        )
     ]
 
     r_coriolis = 0
     if not cyclostrophic:
         # d_centr is in km, convert to m and apply Coriolis parameter
-        r_coriolis = 0.5 * KM_TO_M * d_centr * _coriolis_parameter(lat)
+        r_coriolis = 0.5 * KM_TO_M * d_centr * coriolis_p
 
     # the factor 100 is from conversion between mbar and pascal
     r_max_norm = (r_max / d_centr)**hol_b
@@ -1523,10 +1493,9 @@ def _stat_holland_1980(
     return v_ang
 
 def _stat_er_2011(
+    si_track: xr.Dataset,
     d_centr: np.ndarray,
-    v_max: np.ndarray,
-    r_max: np.ndarray,
-    lat: np.ndarray,
+    close_centr: np.ndarray,
     cyclostrophic: bool = False,
 ) -> np.ndarray:
     """Symmetric and static wind fields (in m/s) according to Emanuel and Rotunno 2011
@@ -1550,14 +1519,12 @@ def _stat_er_2011(
 
     Parameters
     ----------
+    si_track : xr.Dataset
+        Output of `_track_to_si`.
     d_centr : np.ndarray of shape (nnodes, ncentroids)
         Distance (in km) between centroids and track nodes.
-    v_max : np.ndarray of shape (nnodes,)
-        Maximum wind speeds (in m/s) of the tropical cyclone at each track node.
-    r_max : np.ndarray of shape (nnodes,)
-        Radius (in km) of maximum winds at each track node.
-    lat : np.ndarray of shape (nnodes,)
-        Latitudinal coordinate (in degrees) of each track node.
+    close_centr : np.ndarray of shape (nnodes, ncentroids)
+        Mask indicating for each track node which centroids are within reach of the windfield.
     cyclostrophic : bool, optional
         If True, don't apply the influence of the Coriolis force (set the Coriolis terms to 0) in
         the computation of M_max. Default: False
@@ -1567,22 +1534,30 @@ def _stat_er_2011(
     v_ang : np.ndarray (nnodes, ncentroids)
         Absolute values of wind speeds (m/s) in angular direction.
     """
+    v_ang = np.zeros_like(d_centr)
+    d_centr, r_max, v_max, coriolis_p = [
+        ar[close_centr] for ar in np.broadcast_arrays(
+            d_centr, si_track["rad"].values[:, None],
+            si_track["vmax"].values[:, None],
+            si_track["cp"].values[:, None],
+        )
+    ]
+
     # convert to SI units
-    r_max = KM_TO_M * r_max
-    d_centr = KM_TO_M * d_centr
+    r_max *= KM_TO_M
+    d_centr *= KM_TO_M
 
     # compute the momentum at the maximum
-    M_max = r_max * v_max
+    momentum_max = r_max * v_max
 
     if not cyclostrophic:
         # add the influence of the Coriolis force
-        M_max += 0.5 * _coriolis_parameter(lat) * r_max**2
+        momentum_max += 0.5 * coriolis_p * r_max**2
 
     # rescale the momentum using formula (36) in Emanuel and Rotunno 2011 with Ck == Cd
-    r_max_norm = (d_centr / r_max[:, None])**2
-    M = M_max[:, None] * 2 * r_max_norm / (1 + r_max_norm)
+    r_max_norm = (d_centr / r_max)**2
+    momentum = momentum_max * 2 * r_max_norm / (1 + r_max_norm)
 
     # extract the velocity from the rescaled momentum through division by r
-    v_ang = np.fmax(0, M / (d_centr + 1e-11))
-
+    v_ang[close_centr] = np.fmax(0, momentum / (d_centr + 1e-11))
     return v_ang
