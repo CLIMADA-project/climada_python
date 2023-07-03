@@ -794,7 +794,7 @@ def _compute_windfields_sparse_chunked(
     track : xr.Dataset
         Single tropical cyclone track.
     args, kwargs :
-        The remaining arguments are passed on to `compute_windfields`.
+        The remaining arguments are passed on to `_compute_windfields_sparse`.
 
     Returns
     -------
@@ -908,7 +908,7 @@ def compute_windfields(
             n_chunks, track, centroids, model, metric=metric, max_dist_eye_km=max_dist_eye_km,
         )
 
-    # compute distances (in km) and vectors to all centroids
+    # compute distances (in m) and vectors to all centroids
     [d_centr], [v_centr_normed] = u_coord.dist_approx(
         si_track["lat"].values[None], si_track["lon"].values[None],
         track_centr[None, :, 0], track_centr[None, :, 1],
