@@ -32,7 +32,7 @@ from climada.hazard.tc_tracks import TCTracks
 from climada.hazard.trop_cyclone import (
     TropCyclone, _close_centroids, _vtrans, _B_holland_1980, _bs_holland_2008,
     _v_max_s_holland_2008, _x_holland_2010, _stat_holland_1980, _stat_holland_2010,
-    _stat_er_2011, _track_to_si,
+    _stat_er_2011, _track_to_si, MBAR_TO_PA, KM_TO_M, H_TO_S,
 )
 from climada.hazard.centroids.centr import Centroids
 import climada.hazard.test as hazard_test
@@ -228,8 +228,8 @@ class TestWindfieldHelpers(unittest.TestCase):
     def test_B_holland_1980_pass(self):
         """Test _B_holland_1980 function."""
         si_track = xr.Dataset({
-            "env": ("time",  [1010, 1010]),
-            "cen": ("time",  [995, 980]),
+            "env": ("time",  MBAR_TO_PA * np.array([1010, 1010])),
+            "cen": ("time",  MBAR_TO_PA * np.array([995, 980])),
             "vgrad": ("time",  [35, 40]),
         })
         _B_holland_1980(si_track)
@@ -238,22 +238,22 @@ class TestWindfieldHelpers(unittest.TestCase):
     def test_bs_holland_2008_pass(self):
         """Test _bs_holland_2008 function. Compare to MATLAB reference."""
         si_track = xr.Dataset({
-            "tstep": ("time", [1.0, 1.0, 1.0]),
+            "tstep": ("time", H_TO_S * np.array([1.0, 1.0, 1.0])),
             "lat": ("time", [12.299999504631234, 12.299999504631343, 12.299999279463769]),
-            "env": ("time", [1010, 1010, 1010]),
-            "cen": ("time", [1005.258500000000, 1005.263333333329, 1005.268166666671]),
+            "env": ("time", MBAR_TO_PA * np.array([1010, 1010, 1010])),
+            "cen": ("time", MBAR_TO_PA * np.array([1005.2585, 1005.2633, 1005.2682])),
             "vtrans_norm": ("time",  [np.nan, 5.241999541820597, 5.123882725120426]),
         })
         _bs_holland_2008(si_track)
         np.testing.assert_array_almost_equal(
-            si_track["hol_b"], [np.nan, 1.270856908796045, 1.265551666104679])
+            si_track["hol_b"], [np.nan, 1.27085617, 1.26555341])
 
     def test_v_max_s_holland_2008_pass(self):
         """Test _v_max_s_holland_2008 function."""
         # Numbers analogous to test_B_holland_1980_pass
         si_track = xr.Dataset({
-            "env": ("time", [1010, 1010]),
-            "cen": ("time", [995, 980]),
+            "env": ("time", MBAR_TO_PA * np.array([1010, 1010])),
+            "cen": ("time", MBAR_TO_PA * np.array([995, 980])),
             "hol_b": ("time", [2.5, 1.67]),
         })
         _v_max_s_holland_2008(si_track)
@@ -263,11 +263,11 @@ class TestWindfieldHelpers(unittest.TestCase):
         """Test Holland et al. 2010 wind field model."""
         # test at centroids within and outside of radius of max wind
         si_track = xr.Dataset({
-            "rad": ("time", [75, 40]),
+            "rad": ("time", KM_TO_M * np.array([75, 40])),
             "vmax": ("time", [35.0, 40.0]),
             "hol_b": ("time", [1.80, 2.5]),
         })
-        d_centr = np.array([[35, 75, 220], [30, 1000, 300]], dtype=float)
+        d_centr = KM_TO_M * np.array([[35, 75, 220], [30, 1000, 300]], dtype=float)
         close_centr = np.array([[True, True, True], [True, False, True]], dtype=bool)
         hol_x = _x_holland_2010(si_track, d_centr, close_centr)
         np.testing.assert_array_almost_equal(
@@ -280,15 +280,15 @@ class TestWindfieldHelpers(unittest.TestCase):
 
     def test_stat_holland_1980(self):
         """Test _stat_holland_1980 function. Compare to MATLAB reference."""
-        d_centr = np.array([
+        d_centr = KM_TO_M * np.array([
             [299.4501244109841, 291.0737897183741, 292.5441003235722, 40.665454622610511],
             [293.6067129546862, 1000.0, 298.2652319413182, 70.0],
         ])
         si_track = xr.Dataset({
-            "rad": ("time", [40.665454622610511, 75.547902916671745]),
+            "rad": ("time", KM_TO_M * np.array([40.665454622610511, 75.547902916671745])),
             "hol_b": ("time", [1.486076257880692, 1.265551666104679]),
-            "env": ("time", [1010.0, 1010.0]),
-            "cen": ("time", [970.8727666672957, 1005.268166666671]),
+            "env": ("time", MBAR_TO_PA * np.array([1010.0, 1010.0])),
+            "cen": ("time", MBAR_TO_PA * np.array([970.8727666672957, 1005.268166666671])),
             "lat": ("time", [-14.089110370469488, 12.299999279463769]),
             "cp": ("time", [3.54921922e-05, 3.10598285e-05]),
         })
@@ -312,9 +312,9 @@ class TestWindfieldHelpers(unittest.TestCase):
     def test_er_2011_pass(self):
         """Test Emanuel and Rotunno 2011 wind field model."""
         # test at centroids within and outside of radius of max wind
-        d_centr = np.array([[35, 70, 75, 220], [30, 150, 1000, 300]], dtype=float)
+        d_centr = KM_TO_M * np.array([[35, 70, 75, 220], [30, 150, 1000, 300]], dtype=float)
         si_track = xr.Dataset({
-            "rad": ("time", [75.0, 40.0]),
+            "rad": ("time", KM_TO_M * np.array([75.0, 40.0])),
             "vmax": ("time", [35.0, 40.0]),
             "lat": ("time", [20.0, 27.0]),
             "cp": ("time", [4.98665369e-05, 6.61918149e-05]),

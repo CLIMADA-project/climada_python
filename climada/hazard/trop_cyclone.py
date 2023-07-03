@@ -78,6 +78,8 @@ KMH_TO_MS = (1.0 * ureg.km / ureg.hour).to(ureg.meter / ureg.second).magnitude
 KN_TO_MS = (1.0 * ureg.knot).to(ureg.meter / ureg.second).magnitude
 NM_TO_KM = (1.0 * ureg.nautical_mile).to(ureg.kilometer).magnitude
 KM_TO_M = (1.0 * ureg.kilometer).to(ureg.meter).magnitude
+H_TO_S = (1.0 * ureg.hours).to(ureg.seconds).magnitude
+MBAR_TO_PA = (1.0 * ureg.millibar).to(ureg.pascal).magnitude
 """Unit conversion factors for JIT functions that can't use ureg"""
 
 V_ANG_EARTH = 7.29e-5
@@ -910,10 +912,10 @@ def compute_windfields(
     [d_centr], [v_centr_normed] = u_coord.dist_approx(
         si_track["lat"].values[None], si_track["lon"].values[None],
         track_centr[None, :, 0], track_centr[None, :, 1],
-        log=True, normalize=False, method=metric)
+        log=True, normalize=False, method=metric, units="m")
 
     # exclude centroids that are too far from or too close to the eye
-    close_centr_msk = (d_centr <= max_dist_eye_km) & (d_centr > 1e-2)
+    close_centr_msk = (d_centr <= max_dist_eye_km * KM_TO_M) & (d_centr > 1)
     if not np.any(close_centr_msk):
         return windfields, reachable_centr_idx
     v_centr_normed[~close_centr_msk] = 0
@@ -1034,9 +1036,9 @@ def _track_to_si(
     xr.Dataset
     """
     si_track = track[["lat", "lon", "time"]].copy()
-    si_track["tstep"] = track["time_step"]
-    si_track["cen"] = track["central_pressure"]
-    si_track["env"] = track["environmental_pressure"]
+    si_track["tstep"] = track["time_step"] * H_TO_S
+    si_track["cen"] = track["central_pressure"] * MBAR_TO_PA
+    si_track["env"] = track["environmental_pressure"] * MBAR_TO_PA
     si_track["vmax"] = track["max_sustained_wind"] * KN_TO_MS
 
     # normalize longitudinal coordinates
@@ -1049,8 +1051,10 @@ def _track_to_si(
 
     # extrapolate radius of max wind from pressure if not given
     si_track["rad"] = track["radius_max_wind"].copy()
-    si_track["rad"].values[:] = estimate_rmw(si_track["rad"].values, si_track["cen"].values)
-    si_track["rad"] *= NM_TO_KM
+    si_track["rad"].values[:] = estimate_rmw(
+        si_track["rad"].values, si_track["cen"].values / MBAR_TO_PA,
+    )
+    si_track["rad"] *= NM_TO_KM * KM_TO_M
 
     hemisphere = 'N'
     if np.count_nonzero(si_track["lat"] < 0) > np.count_nonzero(si_track["lat"] > 0):
@@ -1077,7 +1081,7 @@ def _compute_angular_windspeeds(si_track, d_centr, close_centr_msk, model, cyclo
     si_track : xr.Dataset
         Output of `_track_to_si`.
     d_centr : np.ndarray of shape (npositions, ncentroids)
-        Distance (in km) between centroids and track positions.
+        Distance (in m) between centroids and track positions.
     close_centr_msk : np.ndarray of shape (npositions, ncentroids)
         For each track position one row indicating which centroids are within reach.
     model : int
@@ -1182,11 +1186,9 @@ def _vtrans(si_track: xr.Dataset, metric: str = "equirect"):
     t_lat, t_lon = si_track["lat"].values, si_track["lon"].values
     norm, vec = u_coord.dist_approx(t_lat[:-1, None], t_lon[:-1, None],
                                     t_lat[1:, None], t_lon[1:, None],
-                                    log=True, normalize=False, method=metric)
-    si_track["vtrans"].values[1:, :] = vec[:, 0, 0]
-    si_track["vtrans"].values[1:, :] *= KMH_TO_MS / si_track["tstep"].values[1:, None]
-    si_track["vtrans_norm"].values[1:] = norm[:, 0, 0]
-    si_track["vtrans_norm"].values[1:] *= KMH_TO_MS / si_track["tstep"].values[1:]
+                                    log=True, normalize=False, method=metric, units="m")
+    si_track["vtrans"].values[1:, :] = vec[:, 0, 0] / si_track["tstep"].values[1:, None]
+    si_track["vtrans_norm"].values[1:] = norm[:, 0, 0] / si_track["tstep"].values[1:]
 
     # limit to 30 nautical miles per hour
     msk = si_track["vtrans_norm"].values > 30 * KN_TO_MS
@@ -1249,14 +1251,18 @@ def _bs_holland_2008(si_track: xr.Dataset):
     # adjust pressure at previous track point
     prev_cen = np.zeros_like(si_track["cen"].values)
     prev_cen[1:] = si_track["cen"].values[:-1].copy()
-    msk = prev_cen < 850
+    msk = prev_cen < 850 * MBAR_TO_PA
     prev_cen[msk] = si_track["cen"].values[msk]
 
-    pdelta = si_track["env"] - si_track["cen"]
+    # The formula assumes that pressure values are in millibar (hPa) instead of SI units (Pa),
+    # and time steps are in hours instead of seconds, but translational wind speed is still
+    # expected to be in m/s.
+    pdelta = (si_track["env"] - si_track["cen"]) / MBAR_TO_PA
     hol_xx = 0.6 * (1. - pdelta / 215)
     si_track["hol_b"] = (
         -4.4e-5 * pdelta**2 + 0.01 * pdelta
-        + 0.03 * (si_track["cen"] - prev_cen) / si_track["tstep"] - 0.014 * abs(si_track["lat"])
+        + 0.03 * (si_track["cen"] - prev_cen) / si_track["tstep"] * (H_TO_S / MBAR_TO_PA)
+        - 0.014 * abs(si_track["lat"])
         + 0.15 * si_track["vtrans_norm"]**hol_xx + 1.0
     )
     si_track["hol_b"] = np.clip(si_track["hol_b"], 1, 2.5)
@@ -1284,8 +1290,7 @@ def _v_max_s_holland_2008(si_track: xr.Dataset):
     si_track : xr.Dataset
         Output of `_track_to_si` with "hol_b" variable (see _bs_holland_2008).
     """
-    # the factor 100 is from conversion between mbar (hPa) and pascal (Pa)
-    pdelta = 100 * (si_track["env"] - si_track["cen"])
+    pdelta = si_track["env"] - si_track["cen"]
     si_track["vmax"] = np.sqrt(si_track["hol_b"] / (RHO_AIR * np.exp(1)) * pdelta)
 
 def _B_holland_1980(si_track: xr.Dataset):  # pylint: disable=invalid-name
@@ -1312,8 +1317,7 @@ def _B_holland_1980(si_track: xr.Dataset):  # pylint: disable=invalid-name
     si_track : xr.Dataset
         Output of `_track_to_si` with "vgrad" variable (see _vgrad).
     """
-    # the factor 100 is from conversion between mbar (hPa) and pascal (Pa)
-    pdelta = 100 * (si_track["env"] - si_track["cen"])
+    pdelta = si_track["env"] - si_track["cen"]
     si_track["hol_b"] = si_track["vgrad"]**2 * np.exp(1) * RHO_AIR / np.fmax(np.spacing(1), pdelta)
     si_track["hol_b"] = np.clip(si_track["hol_b"], 1, 2.5)
 
@@ -1322,7 +1326,7 @@ def _x_holland_2010(
     d_centr: np.ndarray,
     close_centr: np.ndarray,
     v_n: Union[float, np.ndarray] = 17.0,
-    r_n: Union[float, np.ndarray] = 300
+    r_n_km: Union[float, np.ndarray] = 300.0,
 ) -> np.ndarray:
     """Compute exponent for wind model according to Holland et al. 2010.
 
@@ -1344,14 +1348,14 @@ def _x_holland_2010(
     si_track : xr.Dataset
         Output of `_track_to_si` with "hol_b" variable (see _bs_holland_2008).
     d_centr : np.ndarray of shape (nnodes, ncentroids)
-        Distance (in km) between centroids and track nodes.
+        Distance (in m) between centroids and track nodes.
     close_centr : np.ndarray of shape (nnodes, ncentroids)
         Mask indicating for each track node which centroids are within reach of the windfield.
     v_n : np.ndarray of shape (nnodes,) or float, optional
         Peripheral wind speeds (in m/s) at radius `r_n` outside of radius of maximum winds `r_max`.
         In absence of a second wind speed measurement, this value defaults to 17 m/s following
         Holland et al. 2010 (at a radius of 300 km).
-    r_n : np.ndarray of shape (nnodes,) or float, optional
+    r_n_km : np.ndarray of shape (nnodes,) or float, optional
         Radius (in km) where the peripheral wind speed `v_n` is measured (or assumed).
         In absence of a second wind speed measurement, this value defaults to 300 km following
         Holland et al. 2010.
@@ -1366,9 +1370,12 @@ def _x_holland_2010(
         ar[close_centr] for ar in np.broadcast_arrays(
             si_track["rad"].values[:, None], si_track["vmax"].values[:, None],
             si_track["hol_b"].values[:, None], d_centr,
-            np.atleast_1d(v_n)[:, None], np.atleast_1d(r_n)[:, None],
+            np.atleast_1d(v_n)[:, None], np.atleast_1d(r_n_km)[:, None],
         )
     ]
+
+    # convert to SI units
+    r_n *= KM_TO_M
 
     # compute peripheral exponent from second measurement
     r_max_norm = (r_max / r_n)**hol_b
@@ -1404,7 +1411,7 @@ def _stat_holland_2010(
     si_track : xr.Dataset
         Output of `_track_to_si` with "hol_b" (see _bs_holland_2008) data variables.
     d_centr : np.ndarray of shape (nnodes, ncentroids)
-        Distance (in km) between centroids and track nodes.
+        Distance (in m) between centroids and track nodes.
     close_centr : np.ndarray of shape (nnodes, ncentroids)
         Mask indicating for each track node which centroids are within reach of the windfield.
     x : np.ndarray of shape (nnodes, ncentroids) or float
@@ -1458,7 +1465,7 @@ def _stat_holland_1980(
     si_track : xr.Dataset
         Output of `_track_to_si` with "hol_b" (see, e.g., _B_holland_1980) data variable.
     d_centr : np.ndarray of shape (nnodes, ncentroids)
-        Distance (in km) between centroids and track nodes.
+        Distance (in m) between centroids and track nodes.
     close_centr : np.ndarray of shape (nnodes, ncentroids)
         Mask indicating for each track node which centroids are within reach of the windfield.
     cyclostrophic : bool, optional
@@ -1481,14 +1488,10 @@ def _stat_holland_1980(
 
     r_coriolis = 0
     if not cyclostrophic:
-        # d_centr is in km, convert to m and apply Coriolis parameter
-        r_coriolis = 0.5 * KM_TO_M * d_centr * coriolis_p
+        r_coriolis = 0.5 * d_centr * coriolis_p
 
-    # the factor 100 is from conversion between mbar and pascal
     r_max_norm = (r_max / d_centr)**hol_b
-    sqrt_term = 100 * hol_b / RHO_AIR * r_max_norm * (penv - pcen) \
-                * np.exp(-r_max_norm) + r_coriolis**2
-
+    sqrt_term = hol_b / RHO_AIR * r_max_norm * (penv - pcen) * np.exp(-r_max_norm) + r_coriolis**2
     v_ang[close_centr] = np.sqrt(np.fmax(0, sqrt_term)) - r_coriolis
     return v_ang
 
@@ -1522,7 +1525,7 @@ def _stat_er_2011(
     si_track : xr.Dataset
         Output of `_track_to_si`.
     d_centr : np.ndarray of shape (nnodes, ncentroids)
-        Distance (in km) between centroids and track nodes.
+        Distance (in m) between centroids and track nodes.
     close_centr : np.ndarray of shape (nnodes, ncentroids)
         Mask indicating for each track node which centroids are within reach of the windfield.
     cyclostrophic : bool, optional
@@ -1542,10 +1545,6 @@ def _stat_er_2011(
             si_track["cp"].values[:, None],
         )
     ]
-
-    # convert to SI units
-    r_max *= KM_TO_M
-    d_centr *= KM_TO_M
 
     # compute the momentum at the maximum
     momentum_max = r_max * v_max
