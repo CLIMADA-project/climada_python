@@ -44,6 +44,7 @@ TEST_TRACK_EMANUEL_CORR = DATA_DIR.joinpath('temp_mpircp85cal_full.mat')
 TEST_TRACK_CHAZ = DATA_DIR.joinpath('chaz_test_tracks.nc')
 TEST_TRACK_STORM = DATA_DIR.joinpath('storm_test_tracks.txt')
 TEST_TRACKS_ANTIMERIDIAN = DATA_DIR.joinpath('tracks-antimeridian')
+TEST_TRACKS_LEGACY_HDF5 = DATA_DIR.joinpath('tctracks_hdf5_legacy.nc')
 
 
 class TestIbtracs(unittest.TestCase):
@@ -339,6 +340,11 @@ class TestIO(unittest.TestCase):
                 np.testing.assert_array_equal(tr[v].values, tr_read[v].values)
             self.assertEqual(tr.sid, tr_read.sid)
 
+        # attempting to read the legacy file format should fail gracefully
+        with self.assertRaises(ValueError) as cm:
+            tc.TCTracks.from_hdf5(TEST_TRACKS_LEGACY_HDF5)
+        self.assertIn("no longer supported by CLIMADA", str(cm.exception))
+
     def test_from_processed_ibtracs_csv(self):
         tc_track = tc.TCTracks.from_processed_ibtracs_csv(TEST_TRACK)
 
@@ -372,7 +378,8 @@ class TestIO(unittest.TestCase):
         self.assertEqual(tc_track.data[0].time.size, 93)
         self.assertEqual(tc_track.data[0].lon[11], -115.57)
         self.assertEqual(tc_track.data[0].lat[23], 10.758)
-        self.assertEqual(tc_track.data[0].time_step[7], 2)
+        self.assertEqual(tc_track.data[0].time_step[7], 2.0)
+        self.assertEqual(tc_track.data[0].time_step.dtype, float)
         self.assertAlmostEqual(tc_track.data[0].radius_max_wind[15], 44.27645788336934)
         self.assertEqual(tc_track.data[0].max_sustained_wind[21], 27.1)
         self.assertEqual(tc_track.data[0].central_pressure[29], 995.31)
@@ -404,6 +411,16 @@ class TestIO(unittest.TestCase):
         tc_track = tc.TCTracks.from_simulations_emanuel(TEST_TRACK_EMANUEL_CORR)
         self.assertEqual(len(tc_track.data), 5)
         self.assertTrue(np.all([np.all(d.basin == 'GB') for d in tc_track.data]))
+
+        sub_idx = [2, 4]
+        tracks_sub = tc.TCTracks.from_simulations_emanuel(TEST_TRACK_EMANUEL_CORR, subset=sub_idx)
+        self.assertEqual(len(tracks_sub.data), len(sub_idx))
+        for var in ["time", "lat", "lon", "max_sustained_wind"]:
+            for i, idx in enumerate(sub_idx):
+                np.testing.assert_array_equal(
+                    tracks_sub.data[i][var].values,
+                    tc_track.data[idx][var].values,
+                )
 
     def test_read_gettelman(self):
         """Test reading and model of TC from Gettelman track files"""

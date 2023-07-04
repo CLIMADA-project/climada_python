@@ -31,7 +31,7 @@ from climada import CONFIG
 from climada.entity.exposures.base import Exposures, INDICATOR_IMPF, \
      INDICATOR_CENTR, add_sea, DEF_REF_YEAR, DEF_VALUE_UNIT
 from climada.entity import LitPop
-from climada.entity.tag import Tag
+from climada.util.tag import Tag
 from climada.hazard.base import Hazard, Centroids
 from climada.util.constants import ENT_TEMPLATE_XLS, ONE_LAT_KM, DEF_CRS, HAZ_DEMO_FL
 import climada.util.coordinates as u_coord
@@ -448,8 +448,8 @@ class TestGeoDFFuncs(unittest.TestCase):
         self.assertTrue(u_coord.equal_crs(exp.crs, 'epsg:3395'))
         self.assertEqual(exp.ref_year, DEF_REF_YEAR)
         self.assertEqual(exp.value_unit, DEF_VALUE_UNIT)
-        self.assertEqual(exp.tag.description, '')
-        self.assertEqual(exp.tag.file_name, '')
+        self.assertEqual(exp.tag.description, [])
+        self.assertEqual(exp.tag.file_name, [])
 
     def test_to_crs_pass(self):
         """Test to_crs function copy."""
@@ -462,8 +462,8 @@ class TestGeoDFFuncs(unittest.TestCase):
         self.assertTrue(u_coord.equal_crs(exp_tr.crs, 'epsg:3395'))
         self.assertEqual(exp_tr.ref_year, DEF_REF_YEAR)
         self.assertEqual(exp_tr.value_unit, DEF_VALUE_UNIT)
-        self.assertEqual(exp_tr.tag.description, '')
-        self.assertEqual(exp_tr.tag.file_name, '')
+        self.assertEqual(exp_tr.tag.description, [])
+        self.assertEqual(exp_tr.tag.file_name, [])
 
     def test_constructor_pass(self):
         """Test initialization with input GeoDataFrame"""

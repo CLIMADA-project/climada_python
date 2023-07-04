@@ -189,7 +189,8 @@ class TestWBWealthAccount(unittest.TestCase):
         res_year, res_val, _ = world_bank_wealth_account(cntry_iso, ref_year,
                                                          variable_name=var_name)
         ref_val = [5415188681934.5,  # values sporadically updated by worldbank
-                   5861193808779.6]  # <- October 27 2021
+                   5861193808779.6,  # <- October 27 2021
+                   5861186556152.8]  # <- June 29 2023
         self.assertEqual(res_year, ref_year)
         self.assertIn(res_val, ref_val)
 
