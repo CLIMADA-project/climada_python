@@ -28,7 +28,6 @@ import h5py
 from pyproj import CRS
 from rasterio.crs import CRS as rCRS
 
-from climada.util.tag import Tag
 from climada.entity.entity_def import Entity
 from climada.hazard.base import Hazard
 from climada.engine import Impact, ImpactCalc
@@ -65,11 +64,6 @@ def dummy_impact():
         imp_mat=sparse.csr_matrix(
             np.array([[0, 0], [1, 1], [2, 2], [3, 3], [30, 30], [31, 31]])
         ),
-        tag={
-            "exp": Tag("file_exp.p", "descr exp"),
-            "haz": Tag("file_haz.p", "descr haz"),
-            "impf_set": Tag(),
-        },
         haz_type="TC",
     )
 
@@ -370,9 +364,6 @@ class TestIO(unittest.TestCase):
         num_ev = 10
         num_exp = 5
         imp_write = Impact(haz_type='TC')
-        imp_write.tag = {'exp': Tag('file_exp.p', 'descr exp'),
-                         'haz': Tag('file_haz.p', 'descr haz'),
-                         'impf_set': Tag()}
         imp_write.event_id = np.arange(num_ev)
         imp_write.event_name = ['event_' + str(num) for num in imp_write.event_id]
         imp_write.date = np.ones(num_ev)
@@ -410,9 +401,6 @@ class TestIO(unittest.TestCase):
         num_ev = 5
         num_exp = 10
         imp_write = Impact(haz_type='TC')
-        imp_write.tag = {'exp': Tag('file_exp.p', 'descr exp'),
-                         'haz': Tag('file_haz.p', 'descr haz'),
-                         'impf_set': Tag()}
         imp_write.event_id = np.arange(num_ev)
         imp_write.event_name = ['event_' + str(num) for num in imp_write.event_id]
         imp_write.date = np.ones(num_ev)
@@ -950,11 +938,6 @@ class TestImpactH5IO(unittest.TestCase):
             self.assertEqual(file.attrs["aai_agg"], impact.aai_agg)
             self.assertEqual(file.attrs["frequency_unit"], impact.frequency_unit)
 
-            for tagtype in ["exp", "haz", "impf_set"]:
-                self.assertDictEqual(
-                    Tag.from_hdf5(file["tag"][tagtype]).__dict__, impact.tag[tagtype].__dict__
-                )
-
             if dense_imp_mat:
                 npt.assert_array_equal(file["imp_mat"], impact.imp_mat.toarray())
             else:
@@ -972,11 +955,7 @@ class TestImpactH5IO(unittest.TestCase):
         for name, value in impact_1.__dict__.items():
             self.assertIn(name, impact_2.__dict__)
             value_comp = getattr(impact_2, name)
-            # NOTE: Tags do not compare
-            if name == "tag":
-                for key in value:
-                    self.assertDictEqual(value[key].__dict__, value_comp[key].__dict__)
-            elif isinstance(value, sparse.csr_matrix):
+            if isinstance(value, sparse.csr_matrix):
                 npt.assert_array_equal(value.toarray(), value_comp.toarray())
             elif np.ndim(value) > 0:
                 npt.assert_array_equal(value, value_comp)
@@ -1035,7 +1014,6 @@ class TestImpactH5IO(unittest.TestCase):
         self.assertEqual(impact.tot_value, 0)
         self.assertEqual(impact.aai_agg, 0)
         self.assertEqual(impact.unit, "")
-        self.assertEqual(impact.tag, {})
         self.assertEqual(impact.haz_type, "")
 
     def test_read_hdf5_full(self):
@@ -1055,14 +1033,6 @@ class TestImpactH5IO(unittest.TestCase):
         aai_agg = 200
         unit = "unit"
         haz_type="haz_type"
-        haz_tag = dict(file_name=["file_name"], description=["description"])
-        exp_tag = dict(file_name=["exp"], description=["exp"])
-        impf_set_tag = dict(file_name=["impf_set"], description=["impf_set"])
-
-        def write_tag(group, tag_kwds):
-            for key, value in tag_kwds.items():
-                array = group.create_dataset(key, (1,0), STR_DT)
-                array[0] = value
 
         # Write the data
         with h5py.File(self.filepath, "w") as file:
@@ -1081,11 +1051,6 @@ class TestImpactH5IO(unittest.TestCase):
             file.attrs["tot_value"] = tot_value
             file.attrs["aai_agg"] = aai_agg
             file.attrs["unit"] = unit
-            for group, kwds in zip(
-                ("haz", "exp", "impf_set"), (haz_tag, exp_tag, impf_set_tag)
-            ):
-                taghdf5 = file.create_group(f"tag/{group}")
-                Tag(**kwds).to_hdf5(taghdf5)
             file.attrs["haz_type"] = haz_type
 
         # Load and check
@@ -1104,9 +1069,6 @@ class TestImpactH5IO(unittest.TestCase):
         self.assertEqual(impact.tot_value, tot_value)
         self.assertEqual(impact.aai_agg, aai_agg)
         self.assertEqual(impact.unit, unit)
-        self.assertEqual(impact.tag["haz"].__dict__, haz_tag)
-        self.assertEqual(impact.tag["exp"].__dict__, exp_tag)
-        self.assertEqual(impact.tag["impf_set"].__dict__, impf_set_tag)
         self.assertEqual(impact.haz_type, haz_type)
 
         # Check with sparse
