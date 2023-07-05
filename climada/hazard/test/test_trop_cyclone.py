@@ -18,7 +18,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Test TropCyclone class
 """
-
+import copy
 import unittest
 import datetime as dt
 from pathlib import Path
@@ -31,7 +31,7 @@ from climada.hazard.tc_tracks import TCTracks
 from climada.hazard.trop_cyclone import (
     TropCyclone, _close_centroids, _vtrans, _B_holland_1980, _bs_holland_2008,
     _v_max_s_holland_2008, _x_holland_2010, _stat_holland_1980, _stat_holland_2010,
-    _stat_er_2011,
+    _stat_er_2011, _extract_vmax_in_mps_from_track,
 )
 from climada.hazard.centroids.centr import Centroids
 import climada.hazard.test as hazard_test
@@ -131,6 +131,48 @@ class TestReader(unittest.TestCase):
             for idx, val in zip(intensity_idx, intensity_values[model]):
                 if val == 0:
                     self.assertEqual(tc_haz.intensity[0, idx], 0)
+
+    def test_windfield_models_different_windunits(self):
+        """
+        Test _tc_from_track function should calculate the same results or raise ValueError
+         with different windspeed units.
+         """
+        intensity_idx = [0, 1, 2,  3,  80, 100, 120, 200, 220, 250, 260, 295]
+        intensity_values = {
+            # Holland 1980 and Emanuel & Rotunno 2011 use recorded wind speeds, that is why checking them for different
+            # windspeed units is so important:
+            "H1980": [21.376807, 21.957217, 22.569568, 21.284351, 24.254226, 26.971303,
+                      19.220149, 21.984516, 24.196388, 23.449116,  0, 31.550207],
+            "ER11": [23.565332, 24.931413, 26.360758, 23.490333, 29.601171, 34.522795,
+                     18.996389, 26.102109, 30.780737, 29.498453,  0, 38.368805],
+        }
+
+        tc_track = TCTracks.from_processed_ibtracs_csv(TEST_TRACK)
+        tc_track.equal_timestep()
+        tc_track.data = tc_track.data[:1]
+
+        tc_track_kmph = copy.deepcopy(tc_track)
+        tc_track_kmph.data[0]['max_sustained_wind'] = \
+            tc_track_kmph.data[0].max_sustained_wind * (1.0 * ureg.knot).to(ureg.km / ureg.hour).magnitude
+        tc_track_kmph.data[0]['max_sustained_wind_unit'] = 'km/h'
+
+        tc_track_mps = copy.deepcopy(tc_track)
+        tc_track_mps.data[0]['max_sustained_wind'] = \
+            tc_track_mps.data[0].max_sustained_wind * (1.0 * ureg.knot).to(ureg.meter / ureg.second).magnitude
+        tc_track_mps.data[0]['max_sustained_wind_unit'] = 'm/s'
+
+        for model in ["H1980", "ER11"]:
+            for tc_track_i in [tc_track_kmph, tc_track_mps]:
+                tc_haz = TropCyclone.from_tracks(tc_track_i, centroids=CENTR_TEST_BRB, model=model)
+                np.testing.assert_array_almost_equal(
+                    tc_haz.intensity[0, intensity_idx].toarray()[0], intensity_values[model])
+                for idx, val in zip(intensity_idx, intensity_values[model]):
+                    if val == 0:
+                        self.assertEqual(tc_haz.intensity[0, idx], 0)
+
+        tc_track.data[0]['max_sustained_wind_unit'] = 'elbows/fortnight'
+        with self.assertRaises(ValueError):
+            TropCyclone.from_tracks(tc_track, centroids=CENTR_TEST_BRB, model=model)
 
     def test_set_one_file_pass(self):
         """Test from_tracks with one input."""
@@ -305,6 +347,27 @@ class TestWindfieldHelpers(unittest.TestCase):
         self.assertEqual(v_trans[0], 0)
         self.assertAlmostEqual(v_trans[1] * to_kn, 10.191466246)
 
+    def test_extract_vmax(self):
+        """ Test _extract_vmax_in_mps_from_track should create the same output independent of the input unit """
+        tc_track = TCTracks.from_processed_ibtracs_csv(TEST_TRACK_SHORT).data[0]
+
+        tc_track_kmph = copy.deepcopy(tc_track)
+        tc_track_kmph['max_sustained_wind'] =\
+            tc_track_kmph.max_sustained_wind * (1.0 * ureg.knot).to(ureg.km / ureg.hour).magnitude
+        tc_track_kmph['max_sustained_wind_unit'] = 'km/h'
+
+        t_vmax = _extract_vmax_in_mps_from_track(tc_track)
+        t_vmax_from_kmph = _extract_vmax_in_mps_from_track(tc_track_kmph)
+
+        np.testing.assert_array_almost_equal(t_vmax, t_vmax_from_kmph)
+
+    def test_extract_vmax_raises_valueerror(self):
+        """ Test _extract_vmax_in_mps_from_track should raise ValueError """
+        tc_track = TCTracks.from_processed_ibtracs_csv(TEST_TRACK_SHORT).data[0]
+        tc_track['max_sustained_wind_unit'] = 'elbows/fortnight'
+
+        with self.assertRaises(ValueError):
+            _extract_vmax_in_mps_from_track(tc_track)
 
 class TestClimateSce(unittest.TestCase):
     def test_apply_criterion_track(self):

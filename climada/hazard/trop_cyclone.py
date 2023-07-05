@@ -762,7 +762,7 @@ def compute_windfields(
     v_ang_norm = np.zeros((npositions, nreachable), dtype=np.float64)
     if model == MODEL_VANG['H1980']:
         # convert surface winds (in m/s) to gradient winds without translational influence
-        t_vmax = track.max_sustained_wind.values.copy() * KN_TO_MS
+        t_vmax = _extract_vmax_in_mps_from_track(track)
         t_gradient_winds = np.fmax(0, t_vmax - v_trans_norm) / GRADIENT_LEVEL_TO_SURFACE_WINDS
         hol_b = _B_holland_1980(t_gradient_winds[1:], t_env[1:], t_cen[1:])
         v_ang_norm[1:] = _stat_holland_1980(d_centr[1:], t_rad[1:], hol_b, t_env[1:],
@@ -783,7 +783,7 @@ def compute_windfields(
         v_ang_norm[1:] = _stat_holland_2010(d_centr[1:], t_vmax, t_rad[1:], hol_b,
                                             close_centr_msk[1:], hol_x)
     elif model == MODEL_VANG['ER11']:
-        t_vmax = track.max_sustained_wind.values.copy() * KN_TO_MS
+        t_vmax = _extract_vmax_in_mps_from_track(track)
         v_ang_norm[:] = _stat_er_2011(d_centr, t_vmax, t_rad, t_lat)
     else:
         raise NotImplementedError
@@ -1319,3 +1319,34 @@ def _stat_er_2011(
     v_ang = np.fmax(0, M / (d_centr + 1e-11))
 
     return v_ang
+
+def _extract_vmax_in_mps_from_track(
+        track: xr.Dataset,
+) -> np.ndarray:
+    """extract the maximum sustained windspeed and convert it in m/s
+
+    Parameters
+    ----------
+    track : xr.Dataset
+        Track infomation.
+
+    Raises
+    ------
+    ValueError
+
+    Returns
+    -------
+    t_vmax : np.ndarray (nnodes,)
+        maximum sustained windspeed (m/s) per node of the track.
+
+    """
+    if track.max_sustained_wind_unit == 'm/s':
+        t_vmax = track.max_sustained_wind.values.copy()
+    elif track.max_sustained_wind_unit == 'kn':
+        t_vmax = track.max_sustained_wind.values.copy() * KN_TO_MS
+    elif track.max_sustained_wind_unit == 'km/h':
+        t_vmax = track.max_sustained_wind.values.copy() * KMH_TO_MS
+    else:
+        raise ValueError(f'The max_sustained_wind_unit {track.max_sustained_wind_unit} in the provided track is not '
+                         f'supported. Use m/s, kn or km/h.')
+    return t_vmax
