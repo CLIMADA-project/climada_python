@@ -874,9 +874,9 @@ def compute_windfields(
     if npositions < 2:
         return windfields, reachable_centr_idx
 
-    si_track = _track_to_si(track, metric=metric)
+    si_track = tctrack_to_si(track, metric=metric)
 
-    # normalize longitude values (improves performance of `dist_approx` and `_close_centroids`)
+    # normalize longitude values (improves performance of `dist_approx` and `get_close_centroids`)
     u_coord.lon_normalize(centroids[:, 1], center=si_track.attrs["mid_lon"])
 
     # Filter early with a larger threshold, but inaccurate (lat/lon) distances.
@@ -886,7 +886,7 @@ def compute_windfields(
     )
 
     # restrict to centroids within rectangular bounding boxes around track positions
-    track_centr_msk = _close_centroids(
+    track_centr_msk = get_close_centroids(
         si_track["lat"].values,
         si_track["lon"].values,
         centroids,
@@ -922,7 +922,7 @@ def compute_windfields(
     v_centr_normed[close_centr_msk] /= d_centr[close_centr_msk, None]
 
     # derive (absolute) angular velocity from parametric wind profile
-    v_ang_norm = _compute_angular_windspeeds(
+    v_ang_norm = compute_angular_windspeeds(
         si_track, d_centr, close_centr_msk, model, cyclostrophic=False,
     )
 
@@ -999,7 +999,7 @@ def _compute_windfields_chunked(
         windfields[chunk_start:chunk_end + 1, inv, :] = arr[offset:, :, :]
     return windfields, reachable_centr_idx
 
-def _track_to_si(
+def tctrack_to_si(
     track: xr.Dataset,
     metric: str = "equirect",
 ) -> xr.Dataset:
@@ -1100,13 +1100,13 @@ def _track_to_si(
 
     return si_track
 
-def _compute_angular_windspeeds(si_track, d_centr, close_centr_msk, model, cyclostrophic=False):
+def compute_angular_windspeeds(si_track, d_centr, close_centr_msk, model, cyclostrophic=False):
     """Compute (absolute) angular wind speeds according to a parametric wind profile
 
     Parameters
     ----------
     si_track : xr.Dataset
-        Output of `_track_to_si`.
+        Output of `tctrack_to_si`.
     d_centr : np.ndarray of shape (npositions, ncentroids)
         Distance (in m) between centroids and track positions.
     close_centr_msk : np.ndarray of shape (npositions, ncentroids)
@@ -1146,7 +1146,7 @@ def _compute_angular_windspeeds(si_track, d_centr, close_centr_msk, model, cyclo
 
     return result
 
-def _close_centroids(
+def get_close_centroids(
     t_lat: np.ndarray,
     t_lon: np.ndarray,
     centroids: np.ndarray,
@@ -1199,7 +1199,7 @@ def _vtrans(si_track: xr.Dataset, metric: str = "equirect"):
     Parameters
     ----------
     si_track : xr.Dataset
-        Track information as returned by `_track_to_si`.
+        Track information as returned by `tctrack_to_si`.
     metric : str, optional
         Specify an approximation method to use for earth distances: "equirect" (faster) or
         "geosphere" (more accurate). See `dist_approx` function in `climada.util.coordinates`.
@@ -1273,7 +1273,7 @@ def _bs_holland_2008(si_track: xr.Dataset):
     Parameters
     ----------
     si_track : xr.Dataset
-        Output of `_track_to_si`.
+        Output of `tctrack_to_si`.
     """
     # adjust pressure at previous track point
     prev_cen = np.zeros_like(si_track["cen"].values)
@@ -1315,7 +1315,7 @@ def _v_max_s_holland_2008(si_track: xr.Dataset):
     Parameters
     ----------
     si_track : xr.Dataset
-        Output of `_track_to_si` with "hol_b" variable (see _bs_holland_2008).
+        Output of `tctrack_to_si` with "hol_b" variable (see _bs_holland_2008).
     """
     pdelta = si_track["env"] - si_track["cen"]
     si_track["vmax"] = np.sqrt(si_track["hol_b"] / (RHO_AIR * np.exp(1)) * pdelta)
@@ -1342,7 +1342,7 @@ def _B_holland_1980(si_track: xr.Dataset):  # pylint: disable=invalid-name
     Parameters
     ----------
     si_track : xr.Dataset
-        Output of `_track_to_si` with "vgrad" variable (see _vgrad).
+        Output of `tctrack_to_si` with "vgrad" variable (see _vgrad).
     """
     pdelta = si_track["env"] - si_track["cen"]
     si_track["hol_b"] = si_track["vgrad"]**2 * np.exp(1) * RHO_AIR / np.fmax(np.spacing(1), pdelta)
@@ -1373,7 +1373,7 @@ def _x_holland_2010(
     Parameters
     ----------
     si_track : xr.Dataset
-        Output of `_track_to_si` with "hol_b" variable (see _bs_holland_2008).
+        Output of `tctrack_to_si` with "hol_b" variable (see _bs_holland_2008).
     d_centr : np.ndarray of shape (nnodes, ncentroids)
         Distance (in m) between centroids and track nodes.
     close_centr : np.ndarray of shape (nnodes, ncentroids)
@@ -1436,7 +1436,7 @@ def _stat_holland_2010(
     Parameters
     ----------
     si_track : xr.Dataset
-        Output of `_track_to_si` with "hol_b" (see _bs_holland_2008) data variables.
+        Output of `tctrack_to_si` with "hol_b" (see _bs_holland_2008) data variables.
     d_centr : np.ndarray of shape (nnodes, ncentroids)
         Distance (in m) between centroids and track nodes.
     close_centr : np.ndarray of shape (nnodes, ncentroids)
@@ -1490,7 +1490,7 @@ def _stat_holland_1980(
     Parameters
     ----------
     si_track : xr.Dataset
-        Output of `_track_to_si` with "hol_b" (see, e.g., _B_holland_1980) data variable.
+        Output of `tctrack_to_si` with "hol_b" (see, e.g., _B_holland_1980) data variable.
     d_centr : np.ndarray of shape (nnodes, ncentroids)
         Distance (in m) between centroids and track nodes.
     close_centr : np.ndarray of shape (nnodes, ncentroids)
@@ -1550,7 +1550,7 @@ def _stat_er_2011(
     Parameters
     ----------
     si_track : xr.Dataset
-        Output of `_track_to_si`.
+        Output of `tctrack_to_si`.
     d_centr : np.ndarray of shape (nnodes, ncentroids)
         Distance (in m) between centroids and track nodes.
     close_centr : np.ndarray of shape (nnodes, ncentroids)

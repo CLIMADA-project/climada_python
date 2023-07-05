@@ -31,9 +31,9 @@ import xarray as xr
 from climada.util import ureg
 from climada.hazard.tc_tracks import TCTracks
 from climada.hazard.trop_cyclone import (
-    TropCyclone, _close_centroids, _vtrans, _B_holland_1980, _bs_holland_2008,
+    TropCyclone, get_close_centroids, _vtrans, _B_holland_1980, _bs_holland_2008,
     _v_max_s_holland_2008, _x_holland_2010, _stat_holland_1980, _stat_holland_2010,
-    _stat_er_2011, _track_to_si, MBAR_TO_PA, KM_TO_M, H_TO_S,
+    _stat_er_2011, tctrack_to_si, MBAR_TO_PA, KM_TO_M, H_TO_S,
 )
 from climada.hazard.centroids.centr import Centroids
 import climada.hazard.test as hazard_test
@@ -252,13 +252,13 @@ class TestReader(unittest.TestCase):
 class TestWindfieldHelpers(unittest.TestCase):
     """Test helper functions of TC wind field model"""
 
-    def test_close_centroids_pass(self):
-        """Test _close_centroids function."""
+    def testget_close_centroids_pass(self):
+        """Test get_close_centroids function."""
         t_lat = np.array([0, -0.5, 0])
         t_lon = np.array([0.9, 2, 3.2])
         centroids = np.array([[0, -0.2], [0, 0.9], [-1.1, 1.2], [1, 2.1], [0, 4.3], [0.6, 3.8]])
         test_mask = np.array([False, True, True, False, False, True])
-        mask = _close_centroids(t_lat, t_lon, centroids, 1)
+        mask = get_close_centroids(t_lat, t_lon, centroids, 1)
         np.testing.assert_equal(mask, test_mask)
 
         # example where antimeridian is crossed
@@ -267,7 +267,7 @@ class TestWindfieldHelpers(unittest.TestCase):
         t_lon[t_lon > 180] -= 360
         centroids = np.array([[-11, 169], [-7, 176], [4, -170], [10, 170], [-10, -160]])
         test_mask = np.array([True, True, True, False, False])
-        mask = _close_centroids(t_lat, t_lon, centroids, 5)
+        mask = get_close_centroids(t_lat, t_lon, centroids, 5)
         np.testing.assert_equal(mask, test_mask)
 
     def test_B_holland_1980_pass(self):
@@ -376,7 +376,7 @@ class TestWindfieldHelpers(unittest.TestCase):
         tc_track.equal_timestep()
         track_ds = tc_track.data[0]
 
-        si_track = _track_to_si(track_ds)
+        si_track = tctrack_to_si(track_ds)
         _vtrans(si_track)
 
         to_kn = (1.0 * ureg.meter / ureg.second).to(ureg.knot).magnitude
@@ -385,8 +385,8 @@ class TestWindfieldHelpers(unittest.TestCase):
         self.assertEqual(si_track["vtrans_norm"].values[0], 0)
         self.assertAlmostEqual(si_track["vtrans_norm"].values[1] * to_kn, 10.191466246)
 
-    def test_track_to_si(self):
-        """ Test _track_to_si should create the same vmax output independent of the input unit """
+    def testtctrack_to_si(self):
+        """ Test tctrack_to_si should create the same vmax output independent of the input unit """
         tc_track = TCTracks.from_processed_ibtracs_csv(TEST_TRACK_SHORT).data[0]
 
         tc_track_kmph = tc_track.copy(deep=True)
@@ -395,14 +395,14 @@ class TestWindfieldHelpers(unittest.TestCase):
         )
         tc_track_kmph.attrs['max_sustained_wind_unit'] = 'km/h'
 
-        si_track = _track_to_si(tc_track)
-        si_track_from_kmph = _track_to_si(tc_track_kmph)
+        si_track = tctrack_to_si(tc_track)
+        si_track_from_kmph = tctrack_to_si(tc_track_kmph)
 
         np.testing.assert_array_almost_equal(si_track["vmax"], si_track_from_kmph["vmax"])
 
         tc_track.attrs['max_sustained_wind_unit'] = 'elbows/fortnight'
         with self.assertRaises(ValueError):
-            _track_to_si(tc_track)
+            tctrack_to_si(tc_track)
 
 
 class TestClimateSce(unittest.TestCase):
