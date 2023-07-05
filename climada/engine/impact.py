@@ -21,7 +21,7 @@ Define Impact and ImpactFreqCurve classes.
 
 __all__ = ['ImpactFreqCurve', 'Impact']
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 import logging
 import copy
 import csv
