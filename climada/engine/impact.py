@@ -1653,7 +1653,7 @@ class Impact():
         - sums up the values of attributes ``eai_exp``, ``aai_exp``
         - and takes the following attributes from the first impact object in the passed
           impact list: ``coord_exp``, ``crs``, ``unit``, ``tot_value``,
-          ``frequency_unit``
+          ``frequency_unit``, ``haz_type``
 
         If event ids are not unique among the passed impact objects an error is raised.
         In this case, the user can set ``reset_event_ids=True`` to create unique event ids
