@@ -765,10 +765,6 @@ class TCTracks():
         ----------
         file_names : str or list of str
             Absolute file name(s) or folder name containing the files to read.
-        subset : list of int, optional
-            If given, only include the tracks with the given indices. Since the simulation files
-            can be huge, this feature is useful for running tests on smaller subsets or on random
-            subsamples. Default: None
         hemisphere : str or None, optional
             For global data sets, restrict to northern ('N') or southern ('S') hemisphere.
             Default: None (no restriction)
@@ -1722,10 +1718,6 @@ def _read_file_emanuel(path, hemisphere=None, rmw_corr=False, subset=None):
     ----------
     path : str
         absolute path of file to read.
-    subset : list of int, optional
-        If given, only include the tracks with the given indices. Since the simulation files
-        can be huge, this feature is useful for running tests on smaller subsets or on random
-        subsamples. Default: None
     hemisphere : str or None, optional
         For global data sets, restrict to northern ('N') or southern ('S') hemisphere.
         Default: None (no restriction)
