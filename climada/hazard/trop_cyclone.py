@@ -1347,6 +1347,6 @@ def _extract_vmax_in_mps_from_track(
     elif track.max_sustained_wind_unit == 'km/h':
         t_vmax = track.max_sustained_wind.values.copy() * KMH_TO_MS
     else:
-        raise ValueError(f'The max_sustained_wind_unit {track.max_sustained_wind_unit} in the provided track is not '
-                         f'supported. Use m/s, kn or km/h.')
+        raise ValueError(f'The max_sustained_wind_unit {track.max_sustained_wind_unit} in'
+                         f' the provided track is not supported. Use m/s, kn or km/h.')
     return t_vmax
