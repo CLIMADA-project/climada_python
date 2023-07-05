@@ -19,10 +19,11 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Test TropCyclone class
 """
 
-import unittest
 import datetime as dt
 from pathlib import Path
 from tempfile import TemporaryDirectory
+import unittest
+
 import numpy as np
 from scipy import sparse
 import xarray as xr
@@ -151,6 +152,50 @@ class TestReader(unittest.TestCase):
             for idx, val in zip(intensity_idx, intensity_values[model]):
                 if val == 0:
                     self.assertEqual(tc_haz.intensity[0, idx], 0)
+
+    def test_windfield_models_different_windunits(self):
+        """
+        Test _tc_from_track function should calculate the same results or raise ValueError
+         with different windspeed units.
+         """
+        intensity_idx = [0, 1, 2,  3,  80, 100, 120, 200, 220, 250, 260, 295]
+        intensity_values = {
+            # Holland 1980 and Emanuel & Rotunno 2011 use recorded wind speeds, that is why checking them for different
+            # windspeed units is so important:
+            "H1980": [21.376807, 21.957217, 22.569568, 21.284351, 24.254226, 26.971303,
+                      19.220149, 21.984516, 24.196388, 23.449116,  0, 31.550207],
+            "ER11": [23.565332, 24.931413, 26.360758, 23.490333, 29.601171, 34.522795,
+                     18.996389, 26.102109, 30.780737, 29.498453,  0, 38.368805],
+        }
+
+        tc_track = TCTracks.from_processed_ibtracs_csv(TEST_TRACK)
+        tc_track.equal_timestep()
+        tc_track.data = tc_track.data[:1]
+
+        tc_track_kmph = TCTracks(data=[ds.copy(deep=True) for ds in tc_track.data])
+        tc_track_kmph.data[0]['max_sustained_wind'] *= (
+            (1.0 * ureg.knot).to(ureg.km / ureg.hour).magnitude
+        )
+        tc_track_kmph.data[0].attrs['max_sustained_wind_unit'] = 'km/h'
+
+        tc_track_mps = TCTracks(data=[ds.copy(deep=True) for ds in tc_track.data])
+        tc_track_mps.data[0]['max_sustained_wind'] *= (
+            (1.0 * ureg.knot).to(ureg.meter / ureg.second).magnitude
+        )
+        tc_track_mps.data[0].attrs['max_sustained_wind_unit'] = 'm/s'
+
+        for model in ["H1980", "ER11"]:
+            for tc_track_i in [tc_track_kmph, tc_track_mps]:
+                tc_haz = TropCyclone.from_tracks(tc_track_i, centroids=CENTR_TEST_BRB, model=model)
+                np.testing.assert_array_almost_equal(
+                    tc_haz.intensity[0, intensity_idx].toarray()[0], intensity_values[model])
+                for idx, val in zip(intensity_idx, intensity_values[model]):
+                    if val == 0:
+                        self.assertEqual(tc_haz.intensity[0, idx], 0)
+
+        tc_track.data[0].attrs['max_sustained_wind_unit'] = 'elbows/fortnight'
+        with self.assertRaises(ValueError):
+            TropCyclone.from_tracks(tc_track, centroids=CENTR_TEST_BRB, model=model)
 
     def test_set_one_file_pass(self):
         """Test from_tracks with one input."""
@@ -339,6 +384,25 @@ class TestWindfieldHelpers(unittest.TestCase):
         self.assertEqual(si_track["vtrans_norm"].size, track_ds["time"].size)
         self.assertEqual(si_track["vtrans_norm"].values[0], 0)
         self.assertAlmostEqual(si_track["vtrans_norm"].values[1] * to_kn, 10.191466246)
+
+    def test_track_to_si(self):
+        """ Test _track_to_si should create the same vmax output independent of the input unit """
+        tc_track = TCTracks.from_processed_ibtracs_csv(TEST_TRACK_SHORT).data[0]
+
+        tc_track_kmph = tc_track.copy(deep=True)
+        tc_track_kmph['max_sustained_wind'] *= (
+            (1.0 * ureg.knot).to(ureg.km / ureg.hour).magnitude
+        )
+        tc_track_kmph.attrs['max_sustained_wind_unit'] = 'km/h'
+
+        si_track = _track_to_si(tc_track)
+        si_track_from_kmph = _track_to_si(tc_track_kmph)
+
+        np.testing.assert_array_almost_equal(si_track["vmax"], si_track_from_kmph["vmax"])
+
+        tc_track.attrs['max_sustained_wind_unit'] = 'elbows/fortnight'
+        with self.assertRaises(ValueError):
+            _track_to_si(tc_track)
 
 
 class TestClimateSce(unittest.TestCase):

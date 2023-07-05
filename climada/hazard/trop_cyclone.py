@@ -1037,9 +1037,36 @@ def _track_to_si(
     """
     si_track = track[["lat", "lon", "time"]].copy()
     si_track["tstep"] = track["time_step"] * H_TO_S
-    si_track["cen"] = track["central_pressure"] * MBAR_TO_PA
     si_track["env"] = track["environmental_pressure"] * MBAR_TO_PA
-    si_track["vmax"] = track["max_sustained_wind"] * KN_TO_MS
+
+    configs = {
+        "cen": {
+            "long_name": "central_pressure",
+            "conv_factors": {
+                "Pa": 1.0,
+                "hPa": MBAR_TO_PA,
+                "mb": MBAR_TO_PA,
+            },
+        },
+        "vmax": {
+            "long_name": "max_sustained_wind",
+            "conv_factors": {
+                "m/s": 1.0,
+                "kn": KN_TO_MS,
+                "km/h": KMH_TO_MS,
+            }
+        },
+    }
+    for var_name, config in configs.items():
+        long_name = config['long_name']
+        conv_factors = config["conv_factors"]
+        unit = track.attrs[f"{long_name}_unit"]
+        if unit not in conv_factors:
+            raise ValueError(
+                f'The {long_name}_unit {unit} in the provided track is not supported.'
+                f' Use one of {", ".join(conv_factors.keys())}.'
+             )
+        si_track[var_name] = track[long_name] * conv_factors[unit]
 
     # normalize longitudinal coordinates
     si_track.attrs["mid_lon"] = 0.5 * sum(u_coord.lon_bounds(si_track["lon"].values))
