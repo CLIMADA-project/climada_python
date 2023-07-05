@@ -1175,6 +1175,7 @@ class Impact():
             │  ├─ aai_agg
             │  ├─ crs
             │  ├─ frequency_unit
+            │  ├─ haz_type
             │  ├─ tot_value
             │  ├─ unit
 

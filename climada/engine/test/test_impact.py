@@ -937,6 +937,7 @@ class TestImpactH5IO(unittest.TestCase):
             self.assertEqual(file.attrs["unit"], impact.unit)
             self.assertEqual(file.attrs["aai_agg"], impact.aai_agg)
             self.assertEqual(file.attrs["frequency_unit"], impact.frequency_unit)
+            self.assertEqual(file.attrs["haz_type"], impact.haz_type)
 
             if dense_imp_mat:
                 npt.assert_array_equal(file["imp_mat"], impact.imp_mat.toarray())
