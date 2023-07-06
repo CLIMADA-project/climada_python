@@ -1039,34 +1039,22 @@ def tctrack_to_si(
     si_track["tstep"] = track["time_step"] * H_TO_S
     si_track["env"] = track["environmental_pressure"] * MBAR_TO_PA
 
-    configs = {
-        "cen": {
-            "long_name": "central_pressure",
-            "conv_factors": {
-                "Pa": 1.0,
-                "hPa": MBAR_TO_PA,
-                "mb": MBAR_TO_PA,
-            },
-        },
-        "vmax": {
-            "long_name": "max_sustained_wind",
-            "conv_factors": {
-                "m/s": 1.0,
-                "kn": KN_TO_MS,
-                "km/h": KMH_TO_MS,
-            }
-        },
-    }
-    for var_name, config in configs.items():
-        long_name = config['long_name']
-        conv_factors = config["conv_factors"]
+    # we support some non-standard unit names
+    unit_replace = {"mb": "mbar", "kn": "knots"}
+    configs = [
+        ("central_pressure", "cen", "Pa"),
+        ("max_sustained_wind", "vmax", "m/s"),
+    ]
+    for long_name, var_name, si_unit in configs:
         unit = track.attrs[f"{long_name}_unit"]
-        if unit not in conv_factors:
+        unit = unit_replace.get(unit, unit)
+        try:
+            conv_factor = ureg(unit).to(si_unit).magnitude
+        except:
             raise ValueError(
-                f'The {long_name}_unit {unit} in the provided track is not supported.'
-                f' Use one of {", ".join(conv_factors.keys())}.'
+                f"The {long_name}_unit '{unit}' in the provided track is not supported."
              )
-        si_track[var_name] = track[long_name] * conv_factors[unit]
+        si_track[var_name] = track[long_name] * conv_factor
 
     # normalize longitudinal coordinates
     si_track.attrs["mid_lon"] = 0.5 * sum(u_coord.lon_bounds(si_track["lon"].values))
