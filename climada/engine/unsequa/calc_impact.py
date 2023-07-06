@@ -284,7 +284,7 @@ class CalcImpact(Calc):
 
         exp.assign_centroids(haz, overwrite=False)
         imp = ImpactCalc(exposures=exp, impfset=impf, hazard=haz)\
-              .impact(assign_centroids=False)
+              .impact(assign_centroids=False, save_mat=False)
 
         # Extract from climada.impact the chosen metrics
         freq_curve = imp.calc_freq_curve(self.rp).impact
