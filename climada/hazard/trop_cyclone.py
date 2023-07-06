@@ -1389,10 +1389,10 @@ def _x_holland_2010(
 
     Returns
     -------
-    x : np.ndarray of shape (nnodes, ncentroids)
+    hol_x : np.ndarray of shape (nnodes, ncentroids)
         Exponents according to Holland et al. 2010.
     """
-    x = np.zeros_like(d_centr)
+    hol_x = np.zeros_like(d_centr)
     r_max, v_max_s, hol_b, d_centr, v_n, r_n = [
         ar[close_centr] for ar in np.broadcast_arrays(
             si_track["rad"].values[:, None], si_track["vmax"].values[:, None],
@@ -1410,15 +1410,15 @@ def _x_holland_2010(
 
     # linearly interpolate between max exponent and peripheral exponent
     x_max = 0.5
-    x[close_centr] = x_max + np.fmax(0, d_centr - r_max) * (x_n - x_max) / (r_n - r_max)
-    x[close_centr] = np.clip(x[close_centr], 0.0, 0.5)
-    return x
+    hol_x[close_centr] = x_max + np.fmax(0, d_centr - r_max) * (x_n - x_max) / (r_n - r_max)
+    hol_x[close_centr] = np.clip(hol_x[close_centr], 0.0, 0.5)
+    return hol_x
 
 def _stat_holland_2010(
     si_track: xr.Dataset,
     d_centr: np.ndarray,
     close_centr: np.ndarray,
-    x: Union[float, np.ndarray],
+    hol_x: Union[float, np.ndarray],
 ) -> np.ndarray:
     """Symmetric and static surface wind fields (in m/s) according to Holland et al. 2010
 
@@ -1441,7 +1441,7 @@ def _stat_holland_2010(
         Distance (in m) between centroids and track nodes.
     close_centr : np.ndarray of shape (nnodes, ncentroids)
         Mask indicating for each track node which centroids are within reach of the windfield.
-    x : np.ndarray of shape (nnodes, ncentroids) or float
+    hol_x : np.ndarray of shape (nnodes, ncentroids) or float
         The exponent according to `_x_holland_2010`.
 
     Returns
@@ -1450,15 +1450,15 @@ def _stat_holland_2010(
         Absolute values of wind speeds (in m/s) in angular direction.
     """
     v_ang = np.zeros_like(d_centr)
-    d_centr, v_max_s, r_max, hol_b, x = [
+    d_centr, v_max_s, r_max, hol_b, hol_x = [
         ar[close_centr] for ar in np.broadcast_arrays(
             d_centr, si_track["vmax"].values[:, None], si_track["rad"].values[:, None],
-            si_track["hol_b"].values[:, None], x,
+            si_track["hol_b"].values[:, None], hol_x,
         )
     ]
 
     r_max_norm = (r_max / d_centr)**hol_b
-    v_ang[close_centr] = v_max_s * (r_max_norm * np.exp(1 - r_max_norm))**x
+    v_ang[close_centr] = v_max_s * (r_max_norm * np.exp(1 - r_max_norm))**hol_x
     return v_ang
 
 def _stat_holland_1980(
@@ -1505,11 +1505,11 @@ def _stat_holland_1980(
         Absolute values of wind speeds (m/s) in angular direction.
     """
     v_ang = np.zeros_like(d_centr)
-    d_centr, r_max, hol_b, penv, pcen, lat, coriolis_p = [
+    d_centr, r_max, hol_b, penv, pcen, coriolis_p = [
         ar[close_centr] for ar in np.broadcast_arrays(
             d_centr, si_track["rad"].values[:, None], si_track["hol_b"].values[:, None],
             si_track["env"].values[:, None], si_track["cen"].values[:, None],
-            si_track["lat"].values[:, None], si_track["cp"].values[:, None]
+            si_track["cp"].values[:, None]
         )
     ]
 
