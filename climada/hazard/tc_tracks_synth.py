@@ -3051,11 +3051,17 @@ def intensity_evolution_land(track, id_chunk, v_rel, p_rel, s_rel):
                 method="geosphere",
                 units="km"
             )[0, 0, 0]
+            if d_dist_since_lf < 1:
+                LOGGER.debug('Tiny distance since landfall found, adjusting up for track '
+                             'extension calculations: %s',  str(d_dist_since_lf))
+                d_dist_since_lf = 1
+
             dist_since_lf_extend = np.arange(
                 track_chunk.dist_since_lf.values[-1],
                 target_dist_since_lf,
                 d_dist_since_lf
             ) + d_dist_since_lf
+
             if dist_since_lf_extend.size > 0:
                 v_decay_extend = _decay_v_function(v_rel[ss_scale], dist_since_lf_extend)
                 v_extend = v_landfall * v_decay_extend
