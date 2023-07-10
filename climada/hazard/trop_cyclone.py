@@ -744,6 +744,7 @@ def _compute_windfields_sparse(
     if npositions < 2:
         return intensity_sparse, windfields_sparse
 
+    # convert track variables to SI units
     si_track = tctrack_to_si(track, metric=metric)
 
     # normalize longitudinal coordinates of centroids
@@ -889,8 +890,7 @@ def _compute_windfields_sparse_chunked(
     intensity = sparse.csr_matrix(sparse.vstack([intensity, inten_rest]).max(axis=0))
     if windfields is not None:
         # eliminate the overlap between consecutive chunks
-        win_rest = win_rest[1:, :]
-        windfields = sparse.vstack([windfields, win_rest], format="csr")
+        windfields = sparse.vstack([windfields, win_rest[1:, :]], format="csr")
     return intensity, windfields
 
 def _compute_windfields(
@@ -1485,7 +1485,7 @@ def _stat_holland_1980(
     ----------
     si_track : xr.Dataset
         Output of `tctrack_to_si` with "hol_b" (see, e.g., _B_holland_1980) data variable. The data
-        variables used by this function are "lat", "rad", "cen", "env", and "hol_b".
+        variables used by this function are "lat", "cp", "rad", "cen", "env", and "hol_b".
     d_centr : np.ndarray of shape (nnodes, ncentroids)
         Distance (in m) between centroids and track nodes.
     close_centr : np.ndarray of shape (nnodes, ncentroids)
@@ -1545,7 +1545,7 @@ def _stat_er_2011(
     Parameters
     ----------
     si_track : xr.Dataset
-        Output of `tctrack_to_si`. The data variables used by this function are "lat", "rad",
+        Output of `tctrack_to_si`. The data variables used by this function are "lat", "cp", "rad",
         and "vmax".
     d_centr : np.ndarray of shape (nnodes, ncentroids)
         Distance (in m) between centroids and track nodes.
