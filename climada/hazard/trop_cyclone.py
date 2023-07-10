@@ -732,14 +732,70 @@ def _compute_windfields_sparse(
     windfields_shape = (npositions, ncentroids * 2)
     intensity_shape = (1, ncentroids)
 
-    # Split into chunks so that 5 arrays with `coastal_centr.size` entries can be stored for
-    # each position in a chunk:
-    memreq_per_pos_gb = (8 * 5 * max(1, coastal_centr.size)) / 1e9
-    max_chunksize = max(2, int(max_memory_gb / memreq_per_pos_gb) - 1)
-    n_chunks = int(np.ceil(npositions / max_chunksize))
-    if n_chunks > 1:
+    # start with the assumption that no centroids are within reach
+    windfields_sparse = (
+        sparse.csr_matrix(([], ([], [])), shape=windfields_shape)
+        if store_windfields else None
+    )
+    intensity_sparse = sparse.csr_matrix(([], ([], [])), shape=intensity_shape)
+
+    # The wind field model requires at least two track positions because translational speed
+    # as well as the change in pressure (in case of H08) are required.
+    if npositions < 2:
+        return intensity_sparse, windfields_sparse
+
+    si_track = tctrack_to_si(track, metric=metric)
+
+    # normalize longitudinal coordinates of centroids
+    u_coord.lon_normalize(coastal_centr[:, 1], center=si_track.attrs["mid_lon"])
+
+    # Filter early with a larger threshold, but inaccurate (lat/lon) distances.
+    # There is another filtering step with more accurate distances in km later.
+    max_dist_eye_deg = max_dist_eye_km / (
+        u_const.ONE_LAT_KM * np.cos(np.radians(np.abs(si_track["lat"].values).max()))
+    )
+
+    # Restrict to the bounding box of the whole track first (this can already reduce the number of
+    # centroids that are considered by a factor larger than 30).
+    coastal_idx = coastal_idx[
+        (coastal_centr[:, 0] >= si_track["lat"].values.min() - max_dist_eye_deg)
+        & (coastal_centr[:, 0] <= si_track["lat"].values.max() + max_dist_eye_deg)
+        & (coastal_centr[:, 1] >= si_track["lon"].values.min() - max_dist_eye_deg)
+        & (coastal_centr[:, 1] <= si_track["lon"].values.max() + max_dist_eye_deg)
+    ]
+    coastal_centr = centroids.coord[coastal_idx]
+
+    # After the previous filtering step, finding and storing the reachable centroids is not a
+    # memory bottle neck and can be done before chunking:
+    #
+    #   For illustration, take an extreme case: the bounding box of the TC track is 40° x 50° and
+    #   the spatial resolution is 0.1°, ocean centroids are not excluded, and the track life time
+    #   is very long with high temporal resolution. Altogether, 300 time steps and 200,000
+    #   centroids. Then, the mask that describes which centroids are affected by each track
+    #   position, has 60,000,000 entries (60 MB) which should never cause memory issues.
+    track_centr_msk = get_close_centroids(
+        si_track["lat"].values,
+        si_track["lon"].values,
+        coastal_centr,
+        max_dist_eye_deg,
+    )
+    coastal_idx = coastal_idx[track_centr_msk.any(axis=0)]
+    coastal_centr = centroids.coord[coastal_idx]
+    nreachable = coastal_centr.shape[0]
+    if nreachable == 0:
+        return intensity_sparse, windfields_sparse
+
+    # the total memory requirement in GB if we compute everything without chunking:
+    # 8 Bytes per entry (float64), 10 arrays
+    total_memory_gb = npositions * nreachable * 8 * 10 / 1e9
+    if total_memory_gb > max_memory_gb and npositions > 2:
+        # If the number of positions is down to 2 already, we cannot split any further. In that
+        # case, we just take the risk and try to do the computation anyway. It might still work
+        # since we have only computed an upper bound for the number of affected centroids.
+
+        # Split the track into chunks, compute the result for each chunk, and combine:
         return _compute_windfields_sparse_chunked(
-            n_chunks,
+            track_centr_msk,
             track,
             centroids,
             coastal_idx,
@@ -751,9 +807,8 @@ def _compute_windfields_sparse(
             max_memory_gb=max_memory_gb,
         )
 
-    windfields, reachable_centr_idx = compute_windfields(
-        track, coastal_centr, mod_id, metric=metric, max_dist_eye_km=max_dist_eye_km,
-        max_memory_gb=0.8 * max_memory_gb,
+    windfields, reachable_centr_idx = _compute_windfields(
+        si_track, coastal_centr, mod_id, metric=metric, max_dist_eye_km=max_dist_eye_km,
     )
     reachable_coastal_centr_idx = coastal_idx[reachable_centr_idx]
     npositions = windfields.shape[0]
@@ -780,19 +835,23 @@ def _compute_windfields_sparse(
     return intensity_sparse, windfields_sparse
 
 def _compute_windfields_sparse_chunked(
-    n_chunks: int,
+    track_centr_msk: np.ndarray,
     track: xr.Dataset,
     *args,
+    max_memory_gb: float = DEF_MAX_MEMORY_GB,
     **kwargs,
 ) -> Tuple[sparse.csr_matrix, Optional[sparse.csr_matrix]]:
     """Call `_compute_windfields_sparse` for chunks of the track and re-assemble the results
 
     Parameters
     ----------
-    n_chunks : int
-        Number of chunks to use.
+    track_centr_msk : np.ndarray
+        Each row is a mask that indicates the centroids within reach for one track position.
     track : xr.Dataset
         Single tropical cyclone track.
+    max_memory_gb : float, optional
+        Maximum memory requirements (in GB) for the computation of a single chunk of the track.
+        Default: 8
     args, kwargs :
         The remaining arguments are passed on to `_compute_windfields_sparse`.
 
@@ -802,41 +861,57 @@ def _compute_windfields_sparse_chunked(
         See `_compute_windfields_sparse` for a description of the return values.
     """
     npositions = track.sizes["time"]
-    chunks = np.array_split(np.arange(npositions), n_chunks)
-    intensities = []
-    windfields = []
-    for i, chunk in enumerate(chunks):
-        # generate an overlap between consecutive chunks:
-        chunk = ([] if i == 0 else [chunks[i - 1][-1]]) + chunk.tolist()
-        inten, win = _compute_windfields_sparse(track.isel(time=chunk), *args, **kwargs)
-        offset = 0 if i == 0 else 1
-        if win is None:
-            windfields = None
-        else:
-            windfields.append(win[offset:])
-        intensities.append(inten)
-    intensity = sparse.csr_matrix(sparse.vstack(intensities, format="csr").max(axis=0, ))
+    # The memory requirements for each track position are estimated for the case of 10 arrays
+    # containing `nreachable` float64 (8 Byte) values each. The chunking is only relevant in
+    # extreme cases with a very high temporal and/or spatial resolution.
+    max_nreachable = max_memory_gb * 1e9 / (8 * 10 * npositions)
+    chunk_size = 2
+    while chunk_size < npositions:
+        chunk_size += 1
+        nreachable = track_centr_msk[:chunk_size].any(axis=0).sum()
+        if nreachable > max_nreachable:
+            chunk_size = chunk_size - 1
+            break
+
+    intensity, windfields = _compute_windfields_sparse(
+        track.isel(time=slice(0, chunk_size)), *args,
+        max_memory_gb=max_memory_gb, **kwargs,
+    )
+
+    if chunk_size == npositions:
+        return intensity, windfields
+
+    inten_rest, win_rest = _compute_windfields_sparse_chunked(
+        track_centr_msk[chunk_size - 1:], track.isel(time=slice(chunk_size - 1, None)), *args,
+        max_memory_gb=max_memory_gb, **kwargs,
+    )
+
+    intensity = sparse.csr_matrix(sparse.vstack([intensity, inten_rest]).max(axis=0))
     if windfields is not None:
-        windfields = sparse.vstack(windfields, format="csr")
+        # eliminate the overlap between consecutive chunks
+        win_rest = win_rest[1:, :]
+        windfields = sparse.vstack([windfields, win_rest], format="csr")
     return intensity, windfields
 
-def compute_windfields(
-    track: xr.Dataset,
+def _compute_windfields(
+    si_track: xr.Dataset,
     centroids: np.ndarray,
     model: int,
     metric: str = "equirect",
     max_dist_eye_km: float = DEF_MAX_DIST_EYE_KM,
-    max_memory_gb: float = DEF_MAX_MEMORY_GB,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Compute 1-minute sustained winds (in m/s) at 10 meters above ground
 
     In a first step, centroids within reach of the track are determined so that wind fields will
-    only be computed and returned for those centroids.
+    only be computed and returned for those centroids. Still, since computing the distance of
+    the storm center to the centroids is computationally expensive, make sure to pre-filter the
+    centroids and call this function only for those centroids that are potentially affected.
 
     Parameters
     ----------
-    track : xr.Dataset
-        Track information.
+    si_track : xr.Dataset
+        Output of `tctrack_to_si`. Which data variables are used in the computation of the wind
+        speeds depends on the selected model.
     centroids : np.ndarray with two dimensions
         Each row is a centroid [lat, lon].
         Centroids that are not within reach of the track are ignored.
@@ -849,9 +924,6 @@ def compute_windfields(
     max_dist_eye_km : float, optional
         No wind speed calculation is done for centroids with a distance (in km) to the TC center
         ("eye") larger than this parameter. Default: 300
-    max_memory_gb : float, optional
-        To avoid memory issues, the computation is done for chunks of the track sequentially.
-        The chunk size is determined depending on the available memory (in GB). Default: 8
 
     Returns
     -------
@@ -865,59 +937,28 @@ def compute_windfields(
         List of indices of input centroids within reach of the TC track.
     """
     # start with the assumption that no centroids are within reach
-    npositions = track.sizes["time"]
+    npositions = si_track.sizes["time"]
     reachable_centr_idx = np.zeros((0,), dtype=np.int64)
     windfields = np.zeros((npositions, 0, 2), dtype=np.float64)
-
-    # The wind field model requires at least two track positions because translational speed
-    # as well as the change in pressure (in case of H08) are required.
-    if npositions < 2:
-        return windfields, reachable_centr_idx
-
-    si_track = tctrack_to_si(track, metric=metric)
-
-    # normalize longitude values (improves performance of `dist_approx` and `get_close_centroids`)
-    u_coord.lon_normalize(centroids[:, 1], center=si_track.attrs["mid_lon"])
-
-    # Filter early with a larger threshold, but inaccurate (lat/lon) distances.
-    # There is another filtering step with more accurate distances in km later.
-    max_dist_eye_deg = max_dist_eye_km / (
-        u_const.ONE_LAT_KM * np.cos(np.radians(np.abs(si_track["lat"].values).max()))
-    )
-
-    # restrict to centroids within rectangular bounding boxes around track positions
-    track_centr_msk = get_close_centroids(
-        si_track["lat"].values,
-        si_track["lon"].values,
-        centroids,
-        max_dist_eye_deg,
-    )
-    track_centr = centroids[track_centr_msk]
-    nreachable = track_centr.shape[0]
-    if nreachable == 0:
-        return windfields, reachable_centr_idx
-
-    # The memory requirements for each track position are estimated for the case of 10 arrays
-    # containing `nreachable` float64 (8 Byte) values each. The chunking is only relevant in
-    # extreme cases with a very high temporal and/or spatial resolution.
-    memreq_per_pos_gb = (8 * 10 * nreachable) / 1e9
-    max_chunksize = max(2, int(max_memory_gb / memreq_per_pos_gb) - 1)
-    n_chunks = int(np.ceil(npositions / max_chunksize))
-    if n_chunks > 1:
-        return _compute_windfields_chunked(
-            n_chunks, track, centroids, model, metric=metric, max_dist_eye_km=max_dist_eye_km,
-        )
 
     # compute distances (in m) and vectors to all centroids
     [d_centr], [v_centr_normed] = u_coord.dist_approx(
         si_track["lat"].values[None], si_track["lon"].values[None],
-        track_centr[None, :, 0], track_centr[None, :, 1],
+        centroids[None, :, 0], centroids[None, :, 1],
         log=True, normalize=False, method=metric, units="m")
 
     # exclude centroids that are too far from or too close to the eye
     close_centr_msk = (d_centr <= max_dist_eye_km * KM_TO_M) & (d_centr > 1)
     if not np.any(close_centr_msk):
         return windfields, reachable_centr_idx
+
+    # restrict to the centroids that are within reach of any of the positions
+    track_centr_msk = close_centr_msk.any(axis=0)
+    close_centr_msk = close_centr_msk[:, track_centr_msk]
+    d_centr = d_centr[:, track_centr_msk]
+    v_centr_normed = v_centr_normed[:, track_centr_msk, :]
+
+    # normalize the vectors pointing from the eye to the centroids
     v_centr_normed[~close_centr_msk] = 0
     v_centr_normed[close_centr_msk] /= d_centr[close_centr_msk, None]
 
@@ -950,53 +991,6 @@ def compute_windfields(
     windfields[np.isnan(windfields)] = 0
     windfields[0, :, :] = 0
     [reachable_centr_idx] = track_centr_msk.nonzero()
-    return windfields, reachable_centr_idx
-
-def _compute_windfields_chunked(
-    n_chunks: int,
-    track: xr.Dataset,
-    *args,
-    **kwargs,
-) -> Tuple[np.ndarray, np.ndarray]:
-    """Call `compute_windfields` for chunks of the track and re-assemble the results
-
-    Parameters
-    ----------
-    n_chunks : int
-        Number of chunks to use.
-    track : xr.Dataset
-        Single tropical cyclone track.
-    args, kwargs :
-        The remaining arguments are passed on to `compute_windfields`.
-
-    Returns
-    -------
-    windfields, reachable_centr_idx :
-        See `compute_windfields` for a description of the return values.
-    """
-    npositions = track.sizes["time"]
-    chunks = np.array_split(np.arange(npositions), n_chunks)
-    results = [
-        compute_windfields(track.isel(time=chunk), *args, **kwargs)
-        for chunk in [
-            # generate an overlap between consecutive chunks:
-            ([] if i == 0 else [chunks[i - 1][-1]]) + chunk.tolist()
-            for i, chunk in enumerate(chunks)
-        ]
-    ]
-    # concatenate the results into one
-    reachable_centr_idx, reachable_centr_inv = np.unique(
-        np.concatenate([d[1] for d in results]),
-        return_inverse=True,
-    )
-    windfields = np.zeros((npositions, reachable_centr_idx.size, 2))
-    split_indices = np.cumsum([d[1].size for d in results])[:-1]
-    reachable_centr_inv = np.split(reachable_centr_inv, split_indices)
-    for chunk, (arr, _), inv in zip(chunks, results, reachable_centr_inv):
-        chunk_start, chunk_end = chunk[[0, -1]]
-        # remove overlapping positions from chunk data
-        offset = arr.shape[0] - chunk.size
-        windfields[chunk_start:chunk_end + 1, inv, :] = arr[offset:, :, :]
     return windfields, reachable_centr_idx
 
 def tctrack_to_si(
@@ -1094,7 +1088,8 @@ def compute_angular_windspeeds(si_track, d_centr, close_centr_msk, model, cyclos
     Parameters
     ----------
     si_track : xr.Dataset
-        Output of `tctrack_to_si`.
+        Output of `tctrack_to_si`. Which data variables are used in the computation of the wind
+        profile depends on the selected model.
     d_centr : np.ndarray of shape (npositions, ncentroids)
         Distance (in m) between centroids and track positions.
     close_centr_msk : np.ndarray of shape (npositions, ncentroids)
@@ -1162,17 +1157,17 @@ def get_close_centroids(
 
     Returns
     -------
-    mask : np.ndarray of shape (ncentroids,)
+    mask : np.ndarray of shape (npositions, ncentroids)
         Mask that is True for close centroids and False for other centroids.
     """
     centr_lat, centr_lon = centroids[:, 0], centroids[:, 1]
     # check for each track position which centroids are within buffer, uses NumPy's broadcasting
-    mask = ((t_lat[:, None] - buffer <= centr_lat[None])
-            & (centr_lat[None] <= t_lat[:, None] + buffer)
-            & (t_lon[:, None] - buffer <= centr_lon[None])
-            & (centr_lon[None] <= t_lon[:, None] + buffer))
-    # for each centroid, check whether it is in the buffer for any of the track positions
-    return mask.any(axis=0)
+    return (
+        (t_lat[:, None] - buffer <= centr_lat[None])
+        & (centr_lat[None] <= t_lat[:, None] + buffer)
+        & (t_lon[:, None] - buffer <= centr_lon[None])
+        & (centr_lon[None] <= t_lon[:, None] + buffer)
+    )
 
 def _vtrans(si_track: xr.Dataset, metric: str = "equirect"):
     """Translational vector and velocity (in m/s) at each track node.
@@ -1187,7 +1182,9 @@ def _vtrans(si_track: xr.Dataset, metric: str = "equirect"):
     Parameters
     ----------
     si_track : xr.Dataset
-        Track information as returned by `tctrack_to_si`.
+        Track information as returned by `tctrack_to_si`. The data variables used by this function
+        are "lat", "lon", and "tstep". The results are stored in place as new data
+        variables "vtrans" and "vtrans_norm".
     metric : str, optional
         Specify an approximation method to use for earth distances: "equirect" (faster) or
         "geosphere" (more accurate). See `dist_approx` function in `climada.util.coordinates`.
@@ -1261,7 +1258,9 @@ def _bs_holland_2008(si_track: xr.Dataset):
     Parameters
     ----------
     si_track : xr.Dataset
-        Output of `tctrack_to_si`.
+        Output of `tctrack_to_si`. The data variables used by this function are "lat", "tstep",
+        "vtrans_norm", "cen", and "env". The result is stored in place as a new data
+        variable "hol_b".
     """
     # adjust pressure at previous track point
     prev_cen = np.zeros_like(si_track["cen"].values)
@@ -1303,7 +1302,10 @@ def _v_max_s_holland_2008(si_track: xr.Dataset):
     Parameters
     ----------
     si_track : xr.Dataset
-        Output of `tctrack_to_si` with "hol_b" variable (see _bs_holland_2008).
+        Output of `tctrack_to_si` with "hol_b" variable (see _bs_holland_2008). The data variables
+        used by this function are "env", "cen", and "hol_b". The results are stored in place as
+        a new data variable "vmax". If a variable of that name already exists, its values are
+        overwritten.
     """
     pdelta = si_track["env"] - si_track["cen"]
     si_track["vmax"] = np.sqrt(si_track["hol_b"] / (RHO_AIR * np.exp(1)) * pdelta)
@@ -1330,7 +1332,9 @@ def _B_holland_1980(si_track: xr.Dataset):  # pylint: disable=invalid-name
     Parameters
     ----------
     si_track : xr.Dataset
-        Output of `tctrack_to_si` with "vgrad" variable (see _vgrad).
+        Output of `tctrack_to_si` with "vgrad" variable (see _vgrad). The data variables
+        used by this function are "vgrad", "env", and "cen". The results are stored in place as
+        a new data variable "hol_b".
     """
     pdelta = si_track["env"] - si_track["cen"]
     si_track["hol_b"] = si_track["vgrad"]**2 * np.exp(1) * RHO_AIR / np.fmax(np.spacing(1), pdelta)
@@ -1361,7 +1365,8 @@ def _x_holland_2010(
     Parameters
     ----------
     si_track : xr.Dataset
-        Output of `tctrack_to_si` with "hol_b" variable (see _bs_holland_2008).
+        Output of `tctrack_to_si` with "hol_b" variable (see _bs_holland_2008). The data variables
+        used by this function are "rad", "vmax", and "hol_b".
     d_centr : np.ndarray of shape (nnodes, ncentroids)
         Distance (in m) between centroids and track nodes.
     close_centr : np.ndarray of shape (nnodes, ncentroids)
@@ -1424,7 +1429,8 @@ def _stat_holland_2010(
     Parameters
     ----------
     si_track : xr.Dataset
-        Output of `tctrack_to_si` with "hol_b" (see _bs_holland_2008) data variables.
+        Output of `tctrack_to_si` with "hol_b" (see _bs_holland_2008) data variables. The data
+        variables used by this function are "vmax", "rad", and "hol_b".
     d_centr : np.ndarray of shape (nnodes, ncentroids)
         Distance (in m) between centroids and track nodes.
     close_centr : np.ndarray of shape (nnodes, ncentroids)
@@ -1478,7 +1484,8 @@ def _stat_holland_1980(
     Parameters
     ----------
     si_track : xr.Dataset
-        Output of `tctrack_to_si` with "hol_b" (see, e.g., _B_holland_1980) data variable.
+        Output of `tctrack_to_si` with "hol_b" (see, e.g., _B_holland_1980) data variable. The data
+        variables used by this function are "lat", "rad", "cen", "env", and "hol_b".
     d_centr : np.ndarray of shape (nnodes, ncentroids)
         Distance (in m) between centroids and track nodes.
     close_centr : np.ndarray of shape (nnodes, ncentroids)
@@ -1538,7 +1545,8 @@ def _stat_er_2011(
     Parameters
     ----------
     si_track : xr.Dataset
-        Output of `tctrack_to_si`.
+        Output of `tctrack_to_si`. The data variables used by this function are "lat", "rad",
+        and "vmax".
     d_centr : np.ndarray of shape (nnodes, ncentroids)
         Distance (in m) between centroids and track nodes.
     close_centr : np.ndarray of shape (nnodes, ncentroids)

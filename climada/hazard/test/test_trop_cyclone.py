@@ -252,12 +252,14 @@ class TestReader(unittest.TestCase):
 class TestWindfieldHelpers(unittest.TestCase):
     """Test helper functions of TC wind field model"""
 
-    def testget_close_centroids_pass(self):
+    def test_get_close_centroids_pass(self):
         """Test get_close_centroids function."""
         t_lat = np.array([0, -0.5, 0])
         t_lon = np.array([0.9, 2, 3.2])
         centroids = np.array([[0, -0.2], [0, 0.9], [-1.1, 1.2], [1, 2.1], [0, 4.3], [0.6, 3.8]])
-        test_mask = np.array([False, True, True, False, False, True])
+        test_mask = np.array([[False, True, False, False, False, False],
+                              [False, False, True, False, False, False],
+                              [False, False, False, False, False, True]])
         mask = get_close_centroids(t_lat, t_lon, centroids, 1)
         np.testing.assert_equal(mask, test_mask)
 
@@ -268,7 +270,7 @@ class TestWindfieldHelpers(unittest.TestCase):
         centroids = np.array([[-11, 169], [-7, 176], [4, -170], [10, 170], [-10, -160]])
         test_mask = np.array([True, True, True, False, False])
         mask = get_close_centroids(t_lat, t_lon, centroids, 5)
-        np.testing.assert_equal(mask, test_mask)
+        np.testing.assert_equal(mask.any(axis=0), test_mask)
 
     def test_B_holland_1980_pass(self):
         """Test _B_holland_1980 function."""
