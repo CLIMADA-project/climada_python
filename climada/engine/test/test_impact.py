@@ -77,8 +77,7 @@ class TestImpact(unittest.TestCase):
         fake_eai_exp = np.arange(len(exp.gdf))
         fake_at_event = np.arange(HAZ.size)
         fake_aai_agg = np.sum(fake_eai_exp)
-        imp = Impact.from_eih(exp, ENT.impact_funcs, HAZ,
-                              fake_at_event, fake_eai_exp, fake_aai_agg)
+        imp = Impact.from_eih(exp, HAZ, fake_at_event, fake_eai_exp, fake_aai_agg)
         self.assertEqual(imp.crs, exp.crs)
         self.assertEqual(imp.aai_agg, fake_aai_agg)
         self.assertEqual(imp.imp_mat.size, 0)
@@ -900,8 +899,7 @@ class TestMatchCentroids(unittest.TestCase):
         fake_eai_exp = np.arange(len(exp.gdf))
         fake_at_event = np.arange(HAZ.size)
         fake_aai_agg = np.sum(fake_eai_exp)
-        imp = Impact.from_eih(exp, ENT.impact_funcs, HAZ,
-                              fake_at_event, fake_eai_exp, fake_aai_agg)
+        imp = Impact.from_eih(exp, HAZ, fake_at_event, fake_eai_exp, fake_aai_agg)
         imp_centr = imp.match_centroids(HAZ)
         np.testing.assert_array_equal(imp_centr, exp.gdf.centr_TC)
 

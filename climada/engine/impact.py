@@ -207,10 +207,12 @@ class Impact():
 
 #TODO: new name
     @classmethod
-    def from_eih(cls, exposures, impfset, hazard,
-                 at_event, eai_exp, aai_agg, imp_mat=None):
+    def from_eih(cls, exposures, hazard, at_event, eai_exp, aai_agg, imp_mat=None):
         """
         Set Impact attributes from precalculated impact metrics.
+
+        .. versionchanged:: 3.3
+           The ``impfset`` argument was removed.
 
         Parameters
         ----------
