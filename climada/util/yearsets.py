@@ -82,7 +82,6 @@ def impact_yearset(imp, sampled_years, lam=None, correction_fac=True, seed=None)
 
     #save calculations in yimp
     yimp.event_id = np.arange(1, n_sampled_years+1)
-    yimp.tag['yimp object'] = True
     yimp.date = u_dt.str_to_date([str(date) + '-01-01' for date in sampled_years])
     yimp.frequency = np.ones(n_sampled_years)*sum(len(row) for row in sampling_vect
                                                             )/n_sampled_years
@@ -139,7 +138,6 @@ def impact_yearset_from_sampling_vect(imp, sampled_years, sampling_vect, correct
     yimp.at_event = imp_per_year
     n_sampled_years = len(sampled_years)
     yimp.event_id = np.arange(1, n_sampled_years+1)
-    yimp.tag['yimp object'] = True
     yimp.date = u_dt.str_to_date([str(date) + '-01-01' for date in sampled_years])
     yimp.frequency = np.ones(n_sampled_years)*sum(len(row) for row in sampling_vect
                                                             )/n_sampled_years
