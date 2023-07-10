@@ -3,6 +3,7 @@
 from dataclasses import dataclass, InitVar
 from typing import Mapping, Optional, Any
 from numbers import Number
+from itertools import combinations
 
 import pandas as pd
 from bayes_opt import BayesianOptimization
@@ -147,14 +148,56 @@ class BayesianOptimizerOutput(Output):
         Returns
         -------
         pandas.DataFrame
-            Data frame whose columns are the parameter values and the associated target
-            function value (``target``) and whose rows are the optimizer iterations.
+            Data frame whose columns are the parameter values and the associated cost
+            function value (``Cost Function``) and whose rows are the optimizer
+            iterations.
         """
         data = {
             self.p_space.keys[i]: self.p_space.params[..., i]
             for i in range(self.p_space.dim)
         }
-        data["target"] = self.p_space.target
+        data["Cost Function"] = -self.p_space.target
         data = pd.DataFrame.from_dict(data)
         data.index.rename("Iteration", inplace=True)
         return data
+
+    def plot_p_space(
+        self,
+        p_space_df: Optional[pd.DataFrame] = None,
+        min_def: Optional[str] = "Cost Function",
+        min_fmt: str = "x",
+        min_color: str = "r",
+        **plot_kwargs
+    ):
+        """Plot the parameter space"""
+        if p_space_df is None:
+            p_space_df = self.p_space_to_dataframe()
+        
+        # Plot defaults
+        cmap = plot_kwargs.pop("cmap", "viridis_r")
+        s = plot_kwargs.pop("s", 40)
+        c = plot_kwargs.pop("c", "Cost Function")
+
+        # Ignore cost dimension
+        params = p_space_df.columns.tolist()
+        try:
+            params.remove(c)
+        except ValueError:
+            pass
+
+        # Iterate over parameter combinations
+        for p_first, p_second in combinations(params, 2):
+            ax = p_space_df.plot(
+                kind="scatter",
+                x=p_first,
+                y=p_second,
+                c=c,
+                s=s,
+                cmap=cmap,
+                **plot_kwargs,
+            )
+
+            # Plot the minimum
+            if min_def is not None:
+                best = p_space_df.iloc[p_space_df.idxmin()[min_def]]
+                ax.plot(best[p_first], best[p_second], min_fmt, color=min_color)

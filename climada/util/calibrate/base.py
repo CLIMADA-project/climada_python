@@ -6,11 +6,14 @@ from typing import Callable, Mapping, Optional, Tuple, Union, Any, Dict
 from numbers import Number
 
 import pandas as pd
+import numpy as np
 from scipy.optimize import Bounds, LinearConstraint, NonlinearConstraint
+import seaborn as sns
 
 from climada.hazard import Hazard
 from climada.entity import Exposures, ImpactFuncSet
 from climada.engine import Impact, ImpactCalc
+import climada.util.coordinates as u_coord
 
 ConstraintType = Union[LinearConstraint, NonlinearConstraint, Mapping]
 
@@ -92,6 +95,113 @@ class Output:
 
     params: Mapping[str, Number]
     target: Number
+
+
+@dataclass
+class OutputEvaluator:
+    """Evaluate the output of a calibration task
+
+    Parameters
+    ----------
+    input : Input
+        The input object for the optimization task.
+    output : Output
+        The output object returned by the optimization task.
+
+    Attributes
+    ----------
+    impf_set : climada.entity.ImpactFuncSet
+        The impact function set built from the optimized parameters
+    impact : climada.engine.Impact
+        An impact object calculated using the optimal :py:attr:`impf_set`
+    """
+
+    input: Input
+    output: Output
+
+    def __post_init__(self):
+        """Compute the impact for the optimal parameters"""
+        self.impf_set = self.input.impact_func_creator(**self.output.params)
+        self.impact = ImpactCalc(
+            exposures=self.input.exposure,
+            impfset=self.impf_set,
+            hazard=self.input.hazard,
+        ).impact(assign_centroids=True, save_mat=True)
+        self._impact_label = f"Impact [{self.input.exposure.value_unit}]"
+
+    def plot_impf_set(self, **plot_kwargs):
+        """Plot the optimized impact functions"""
+        return self.impf_set.plot(**plot_kwargs)
+
+    def plot_at_event(self, **plot_kwargs):
+        data = (
+            pd.concat(
+                [
+                    pd.Series([self.impact.at_event]),
+                    self.input.data.sum(axis="columns"),
+                ],
+                ignore_index=True,
+                axis=1,
+            )
+            .rename(columns={0: "Model", 1: "Data"})
+            .set_index(self.input.hazard.event_name)
+        )
+        ylabel = plot_kwargs.pop("ylabel", self._impact_label)
+        return data.plot.bar(ylabel=ylabel, **plot_kwargs)
+
+    def plot_at_region(self, agg_regions=None, **plot_kwargs):
+        data = pd.concat(
+            [
+                self.impact.impact_at_reg(agg_regions).sum(axis="index"),
+                self.input.data.sum(axis="index"),
+            ],
+            axis=1,
+        ).rename(columns={0: "Model", 1: "Data"})
+
+        # Use nice country names if no agg_regions were given
+        if agg_regions is None:
+            data = data.rename(
+                index=lambda x: u_coord.country_to_iso(x, representation="name")
+            )
+
+        ylabel = plot_kwargs.pop("ylabel", self._impact_label)
+        return data.plot.bar(ylabel=ylabel, **plot_kwargs)
+
+    def plot_event_region_heatmap(self, agg_regions=None, **plot_kwargs):
+        # Data preparation
+        agg = self.impact.impact_at_reg(agg_regions)
+        data = (agg + 1) / (self.input.data + 1)
+        data = data.transform(np.log10).replace(0, np.nan)
+        data = data.where((agg < 1) & (self.input.data < 1))
+
+        # Use nice country names if no agg_regions were given
+        if agg_regions is None:
+            data = data.rename(
+                index=lambda x: u_coord.country_to_iso(x, representation="name")
+            )
+
+        # Default plot settings
+        annot = plot_kwargs.pop("annot", True)
+        vmax = plot_kwargs.pop("vmax", 3)
+        vmin = plot_kwargs.pop("vmin", -vmax)
+        center = plot_kwargs.pop("center", 0)
+        fmt = plot_kwargs.pop("fmt", ".1f")
+        cmap = plot_kwargs.pop("cmap", "RdBu_r")
+        cbar_kws = plot_kwargs.pop(
+            "cbar_kws", {"label": r"Model Error $\log_{10}(\mathrm{Impact})$"}
+        )
+
+        return sns.heatmap(
+            data,
+            annot=annot,
+            vmin=vmin,
+            vmax=vmax,
+            center=center,
+            fmt=fmt,
+            cmap=cmap,
+            cbar_kws=cbar_kws,
+            **plot_kwargs,
+        )
 
 
 @dataclass

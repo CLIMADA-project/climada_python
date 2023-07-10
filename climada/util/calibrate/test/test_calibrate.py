@@ -243,6 +243,21 @@ class TestBayesianOptimizer(TestOptimizer):
         for args in call_args:
             self.assertSequenceEqual(args.kwargs.keys(), self.input.bounds.keys())
 
+    @patch("climada.util.calibrate.base.ImpactCalc", autospec=True)
+    def test_target_func(self, _):
+        """Test if cost function is transformed correctly
+        
+        We test the method '_target_func' through 'run' because it is
+        private"""
+        self.input.bounds = {"x_2": (0, 1), "x 1": (1, 2)}
+        self.input.cost_func.side_effect = [1.0, -1.0]
+        self.optimizer = BayesianOptimizer(self.input)
+
+        # Call 'run'
+        output = self.optimizer.run(init_points=1, n_iter=1)
+
+        # Check target space
+        npt.assert_array_equal(output.p_space.target, [-1.0, 1.0])
 
 # Execute Tests
 if __name__ == "__main__":
