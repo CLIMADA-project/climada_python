@@ -635,9 +635,13 @@ class TropCyclone(Hazard):
                                 ]
                 sel_cat_chg = np.isin(tc_cc.category, cat_chg_list) & bas_sel
                 if sel_cat_chg.any():
-                    # prevent freq_scaling from becoming negative which would lead
-                    # to negative frequencies
-                    freq_scaling = np.max([1 + (chg['change'] - 1) * scaling_rcp_year, 0])
+                    freq_scaling = 1 + (chg['change'] - 1) * scaling_rcp_year
+                    if freq_scaling < 0:
+                        # prevent freq_scaling from becoming negative which would lead
+                        # to negative frequencies
+                        LOGGER.warning("A correction is applied to avoid frequencies become zero.")
+                        freq_scaling = 0
+
                     tc_cc.frequency[sel_cat_chg] *= freq_scaling
                 cat_larger_list += cat_chg_list
 
