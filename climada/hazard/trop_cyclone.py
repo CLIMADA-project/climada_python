@@ -629,20 +629,39 @@ class TropCyclone(Hazard):
             # Scale frequencies by category
             cat_larger_list = []
             for chg in freq_chg:
+                # whole cat group
+                sel_cat_all = (np.isin(tc_cc.category, chg['category']) & bas_sel)
+
                 cat_chg_list = [cat
                                 for cat in chg['category']
                                 if cat not in cat_larger_list
                                 ]
-                sel_cat_chg = np.isin(tc_cc.category, cat_chg_list) & bas_sel
-                if sel_cat_chg.any():
-                    freq_scaling = 1 + (chg['change'] - 1) * scaling_rcp_year
-                    if freq_scaling < 0:
-                        # prevent freq_scaling from becoming negative which would lead
-                        # to negative frequencies
-                        LOGGER.warning("A correction is applied to avoid frequencies become zero.")
-                        freq_scaling = 0
 
-                    tc_cc.frequency[sel_cat_chg] *= freq_scaling
+                # cats to change
+                sel_cat_chg = np.isin(tc_cc.category, cat_chg_list) & bas_sel
+
+                # cats already changed
+                sel_cat_larger = (np.isin(tc_cc.category, cat_larger_list) & bas_sel)
+
+                if sel_cat_chg.any():
+                    # scaling factor to whole cat group
+                    freq_scaling = 1 + (chg['change'] - 1) * scaling_rcp_year
+
+                    # scaling factor to missing cats to change
+                    freq_scaling_cor = (
+                        (np.sum(self.frequency[sel_cat_all]) * freq_scaling
+                         - np.sum(tc_cc.frequency[sel_cat_larger]))
+                        / np.sum(self.frequency[sel_cat_chg])
+                    )
+
+                    if freq_scaling_cor < 0:
+                        LOGGER.warning("The application of the given climate scenario"
+                                       " would result in negative frequency correction factors."
+                                       " Frequencies are thus left unchanged but this"
+                                       " should warrant attention from the user.")
+                        freq_scaling_cor = 1
+
+                    tc_cc.frequency[sel_cat_chg] *= freq_scaling_cor
                 cat_larger_list += cat_chg_list
 
         return tc_cc
