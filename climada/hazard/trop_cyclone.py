@@ -1451,7 +1451,7 @@ def _stat_holland_2010(
         )
     ]
 
-    r_max_norm = (r_max / d_centr)**hol_b
+    r_max_norm = (r_max / np.fmax(1, d_centr))**hol_b
     v_ang[close_centr] = v_max_s * (r_max_norm * np.exp(1 - r_max_norm))**hol_x
     return v_ang
 
@@ -1512,7 +1512,7 @@ def _stat_holland_1980(
     if not cyclostrophic:
         r_coriolis = 0.5 * d_centr * coriolis_p
 
-    r_max_norm = (r_max / d_centr)**hol_b
+    r_max_norm = (r_max / np.fmax(1, d_centr))**hol_b
     sqrt_term = hol_b / RHO_AIR * r_max_norm * (penv - pcen) * np.exp(-r_max_norm) + r_coriolis**2
     v_ang[close_centr] = np.sqrt(np.fmax(0, sqrt_term)) - r_coriolis
     return v_ang
