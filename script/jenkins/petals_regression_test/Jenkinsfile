@@ -11,6 +11,9 @@ pipeline {
         source activate climada_env
         pip install -e ~/jobs/petals_install_env/workspace/
 
+        cp ~/jobs/petals_install_env/workspace/climada.conf ./climada_conf
+        python script/jenkins/set_config.py test_directory ~/jobs/petals_install_env/workspace/climada_petals
+
         pytest --junitxml=tests_xml/tests.xml ~/jobs/petals_install_env/workspace/climada_petals
         '''
       }
