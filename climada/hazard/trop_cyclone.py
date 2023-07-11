@@ -866,31 +866,35 @@ def _compute_windfields_sparse_chunked(
     # containing `nreachable` float64 (8 Byte) values each. The chunking is only relevant in
     # extreme cases with a very high temporal and/or spatial resolution.
     max_nreachable = max_memory_gb * 1e9 / (8 * 10 * npositions)
+    split_pos = [0]
     chunk_size = 2
-    while chunk_size < npositions:
+    while split_pos[-1] + chunk_size < npositions:
         chunk_size += 1
-        nreachable = track_centr_msk[:chunk_size].any(axis=0).sum()
+        # create overlap between consecutive chunks
+        chunk_start = max(0, split_pos[-1] - 1)
+        chunk_end = chunk_start + chunk_size
+        nreachable = track_centr_msk[chunk_start:chunk_end].any(axis=0).sum()
         if nreachable > max_nreachable:
-            chunk_size = chunk_size - 1
-            break
+            split_pos.append(chunk_end - 1)
+            chunk_size = 2
+    split_pos.append(npositions)
 
-    intensity, windfields = _compute_windfields_sparse(
-        track.isel(time=slice(0, chunk_size)), *args,
-        max_memory_gb=max_memory_gb, **kwargs,
-    )
+    intensity = []
+    windfields = []
+    for prev_chunk_end, chunk_end in zip(split_pos[:-1], split_pos[1:]):
+        chunk_start = max(0, prev_chunk_end - 1)
+        inten, win = _compute_windfields_sparse(
+            track.isel(time=slice(chunk_start, chunk_end)), *args,
+            max_memory_gb=max_memory_gb, **kwargs,
+        )
+        intensity.append(inten)
+        windfields.append(win)
 
-    if chunk_size == npositions:
-        return intensity, windfields
-
-    inten_rest, win_rest = _compute_windfields_sparse_chunked(
-        track_centr_msk[chunk_size - 1:], track.isel(time=slice(chunk_size - 1, None)), *args,
-        max_memory_gb=max_memory_gb, **kwargs,
-    )
-
-    intensity = sparse.csr_matrix(sparse.vstack([intensity, inten_rest]).max(axis=0))
-    if windfields is not None:
+    intensity = sparse.csr_matrix(sparse.vstack(intensity).max(axis=0))
+    if windfields[0] is not None:
         # eliminate the overlap between consecutive chunks
-        windfields = sparse.vstack([windfields, win_rest[1:, :]], format="csr")
+        windfields = [windfields[0]] + [win[1:, :] for win in windfields[1:]]
+        windfields = sparse.vstack(windfields, format="csr")
     return intensity, windfields
 
 def _compute_windfields(
