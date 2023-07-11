@@ -30,7 +30,6 @@ from climada.util.finance import gdp
 from climada.util.constants import DEF_CRS
 import climada.util.coordinates as u_coord
 from climada.engine import Impact
-from climada.util.tag import Tag
 
 LOGGER = logging.getLogger(__name__)
 
@@ -955,14 +954,6 @@ def emdat_to_impact(emdat_file_csv, hazard_type_climada, year_range=None, countr
         reference_year = None
     # Inititate Impact-instance:
     impact_instance = Impact(haz_type=hazard_type_climada)
-
-    impact_instance.tag = dict()
-    impact_instance.tag['haz'] = Tag(file_name=emdat_file_csv,
-                                     description='EM-DAT impact, direct import')
-    impact_instance.tag['exp'] = Tag(file_name=emdat_file_csv,
-                                     description='EM-DAT impact, direct import')
-    impact_instance.tag['impf_set'] = Tag(file_name=None, description=None)
-
 
     # Load EM-DAT impact data by event:
     em_data = emdat_impact_event(emdat_file_csv, countries=countries, hazard=hazard_type_emdat,

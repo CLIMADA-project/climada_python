@@ -28,7 +28,7 @@ Removed:
 - `climada.util.coordinates.match_centroids` method for matching (hazard) centroids to GeoDataFrames [#602](https://github.com/CLIMADA-project/climada_python/pull/602)
 - 'Extra' requirements `doc`, `test`, and `dev` for Python package [#712](https://github.com/CLIMADA-project/climada_python/pull/712)
 - Added method `Exposures.centroids_total_value` to replace the functionality of `Exposures.affected_total_value`. This method is temporary and deprecated. [#702](https://github.com/CLIMADA-project/climada_python/pull/702)
-- New method `climada.util.api_client.Client.purge_cache`: utility function to remove outdated files from the local file system to free disk space. 
+- New method `climada.util.api_client.Client.purge_cache`: utility function to remove outdated files from the local file system to free disk space.
   ([#737](https://github.com/CLIMADA-project/climada_python/pull/737))
 
 ### Changed
@@ -52,6 +52,8 @@ Removed:
 - Add option to read additional variables from IBTrACS when using `TCTracks.from_ibtracs_netcdf` [#728](https://github.com/CLIMADA-project/climada_python/pull/728)
 - The `haz_type` attribute has been moved from `climada.hazard.tag.Tag` to `climada.hazard.Hazard` itself. [#736](https://github.com/CLIMADA-project/climada_python/pull/736)
 - New file format for `TCTracks` I/O with better performance. This change is not backwards compatible: If you stored `TCTracks` objects with `TCTracks.write_hdf5`, reload the original data and store them again. [#735](https://github.com/CLIMADA-project/climada_python/pull/735)
+- Add option to load only a subset when reading TC tracks using `TCTracks.from_simulations_emanuel`. [#741](https://github.com/CLIMADA-project/climada_python/pull/741)
+- Set `save_mat` to `False` in the `unsequa` module [#746](https://github.com/CLIMADA-project/climada_python/pull/746)
 
 ### Fixed
 
@@ -67,8 +69,8 @@ Removed:
 ### Removed
 
 - `Centroids.set_raster_from_pix_bounds` [#721](https://github.com/CLIMADA-project/climada_python/pull/721)
-
 - `requirements/env_developer.yml` environment specs. Use 'extra' requirements when installing the Python package instead [#712](https://github.com/CLIMADA-project/climada_python/pull/712)
+- `Impact.tag` attribute. This change is not backwards-compatible with respect to the files written and read by the `Impact` class [#743](https://github.com/CLIMADA-project/climada_python/pull/743)
 
 ## v3.3.2
 
