@@ -1,0 +1,25 @@
+pipeline {
+  agent any
+
+  stages {
+    stage('integ_test') {
+      steps {
+        sh '''#!/bin/bash
+        export PATH=$PATH:$CONDAPATH
+        mamba env update -n climada_env -f ~/jobs/petals_install_env/workspace/requirements/env_climada.yml
+
+        source activate climada_env
+        pip install -e ~/jobs/petals_install_env/workspace/
+
+        pytest ~/jobs/petals_install_env/workspace/climada_petals
+        '''
+      }
+    }
+  }
+
+  post {
+    always {
+      junit 'tests_xml/*.xml'
+    }
+  }
+}
