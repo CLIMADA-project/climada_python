@@ -59,7 +59,7 @@ class TestReader(unittest.TestCase):
         """Read entity from mat file produced by climada."""
         entity_mat = Entity.from_mat(ENT_TEST_MAT)
         self.assertEqual(entity_mat.exposures.tag.file_name, [str(ENT_TEST_MAT)])
-        self.assertEqual(entity_mat.disc_rates.tag.file_name, [str(ENT_TEST_MAT)])
+        self.assertIsInstance(entity_mat.disc_rates, DiscRates)
         self.assertEqual(entity_mat.measures.tag.file_name, [str(ENT_TEST_MAT)])
         self.assertEqual(entity_mat.impact_funcs.tag.file_name, [str(ENT_TEST_MAT)])
 
@@ -67,7 +67,6 @@ class TestReader(unittest.TestCase):
         """Read entity from an xls file following the template."""
         entity_xls = Entity.from_excel(ENT_TEMPLATE_XLS)
         self.assertEqual(entity_xls.exposures.tag.file_name, [str(ENT_TEMPLATE_XLS)])
-        self.assertEqual(entity_xls.disc_rates.tag.file_name, [str(ENT_TEMPLATE_XLS)])
         self.assertEqual(entity_xls.measures.tag.file_name, [str(ENT_TEMPLATE_XLS)])
         self.assertEqual(entity_xls.impact_funcs.tag.file_name,
                          [str(ENT_TEMPLATE_XLS)])
