@@ -310,8 +310,7 @@ class TestReaderExcel(unittest.TestCase):
 
     def test_demo_file(self):
         """Read demo excel file"""
-        description = 'One single file.'
-        meas = MeasureSet.from_excel(ENT_DEMO_TODAY, description)
+        meas = MeasureSet.from_excel(ENT_DEMO_TODAY)
 
         # Check results
         n_meas = 4
@@ -428,8 +427,7 @@ class TestReaderMat(unittest.TestCase):
 
     def test_demo_file(self):
         # Read demo excel file
-        description = 'One single file.'
-        meas = MeasureSet.from_mat(ENT_TEST_MAT, description)
+        meas = MeasureSet.from_mat(ENT_TEST_MAT)
 
         # Check results
         n_meas = 4
@@ -529,7 +527,7 @@ class TestWriter(unittest.TestCase):
         file_name = DATA_DIR.joinpath('test_meas.xlsx')
         meas_set.write_excel(file_name)
 
-        meas_read = MeasureSet.from_excel(file_name, 'test')
+        meas_read = MeasureSet.from_excel(file_name)
 
         meas_list = meas_read.get_measure('TC')
         meas_list.extend(meas_read.get_measure('FL'))
