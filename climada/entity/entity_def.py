@@ -99,7 +99,7 @@ class Entity:
             exposures=Exposures.from_mat(file_name),
             disc_rates=DiscRates.from_mat(file_name, description),
             impact_func_set=ImpactFuncSet.from_mat(file_name, description),
-            measure_set=MeasureSet.from_mat(file_name, description)
+            measure_set=MeasureSet.from_mat(file_name)
             )
 
     def read_mat(self, *args, **kwargs):
@@ -132,7 +132,7 @@ class Entity:
 
         dr = DiscRates.from_excel(file_name, description)
         impf_set = ImpactFuncSet.from_excel(file_name, description)
-        meas_set = MeasureSet.from_excel(file_name, description)
+        meas_set = MeasureSet.from_excel(file_name)
 
         return cls(
             exposures=exp,
