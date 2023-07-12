@@ -60,6 +60,7 @@ class TestReader(unittest.TestCase):
         entity_mat = Entity.from_mat(ENT_TEST_MAT)
         self.assertEqual(entity_mat.exposures.tag.file_name, [str(ENT_TEST_MAT)])
         self.assertEqual(entity_mat.disc_rates.tag.file_name, [str(ENT_TEST_MAT)])
+        self.assertIsInstance(entity_mat.measures, MeasureSet)
         self.assertEqual(entity_mat.impact_funcs.tag.file_name, [str(ENT_TEST_MAT)])
 
     def test_from_excel(self):
