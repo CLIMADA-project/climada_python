@@ -746,23 +746,22 @@ def _compute_windfields_sparse(
 
     # convert track variables to SI units
     si_track = tctrack_to_si(track, metric=metric)
+    t_lat, t_lon = si_track["lat"].values, si_track["lon"].values
 
     # normalize longitudinal coordinates of centroids
     u_coord.lon_normalize(coastal_centr[:, 1], center=si_track.attrs["mid_lon"])
 
-    # Filter early with a larger threshold, but inaccurate (lat/lon) distances.
-    # There is another filtering step with more accurate distances in km later.
-    max_dist_eye_deg = max_dist_eye_km / (
-        u_const.ONE_LAT_KM * np.cos(np.radians(np.abs(si_track["lat"].values).max()))
-    )
-
     # Restrict to the bounding box of the whole track first (this can already reduce the number of
     # centroids that are considered by a factor larger than 30).
+    max_dist_eye_lat = max_dist_eye_km / u_const.ONE_LAT_KM
+    max_dist_eye_lon = max_dist_eye_km / (
+        u_const.ONE_LAT_KM * np.cos(np.radians(np.abs(coastal_centr[:, 0])))
+    )
     coastal_idx = coastal_idx[
-        (coastal_centr[:, 0] >= si_track["lat"].values.min() - max_dist_eye_deg)
-        & (coastal_centr[:, 0] <= si_track["lat"].values.max() + max_dist_eye_deg)
-        & (coastal_centr[:, 1] >= si_track["lon"].values.min() - max_dist_eye_deg)
-        & (coastal_centr[:, 1] <= si_track["lon"].values.max() + max_dist_eye_deg)
+        (t_lat.min() - coastal_centr[:, 0] <= max_dist_eye_lat)
+        & (coastal_centr[:, 0] - t_lat.max() <= max_dist_eye_lat)
+        & (t_lon.min() - coastal_centr[:, 1] <= max_dist_eye_lon)
+        & (coastal_centr[:, 1] - t_lon.max() <= max_dist_eye_lon)
     ]
     coastal_centr = centroids.coord[coastal_idx]
 
@@ -774,12 +773,7 @@ def _compute_windfields_sparse(
     #   is very long with high temporal resolution. Altogether, 300 time steps and 200,000
     #   centroids. Then, the mask that describes which centroids are affected by each track
     #   position, has 60,000,000 entries (60 MB) which should never cause memory issues.
-    track_centr_msk = get_close_centroids(
-        si_track["lat"].values,
-        si_track["lon"].values,
-        coastal_centr,
-        max_dist_eye_deg,
-    )
+    track_centr_msk = get_close_centroids(t_lat, t_lon, coastal_centr, max_dist_eye_km)
     coastal_idx = coastal_idx[track_centr_msk.any(axis=0)]
     coastal_centr = centroids.coord[coastal_idx]
     nreachable = coastal_centr.shape[0]
@@ -1137,7 +1131,7 @@ def get_close_centroids(
     t_lat: np.ndarray,
     t_lon: np.ndarray,
     centroids: np.ndarray,
-    buffer: float,
+    buffer_km: float,
 ) -> np.ndarray:
     """Check whether centroids lay within a rectangular buffer around track positions
 
@@ -1156,8 +1150,9 @@ def get_close_centroids(
         Longitudinal coordinates of track positions, normalized around a central longitude.
     centroids : np.ndarray of shape (ncentroids, 2)
         Coordinates of centroids, each row is a pair [lat, lon].
-    buffer : float
-        Size of the buffer (in degrees).
+    buffer_km : float
+        Size of the buffer (in km). The buffer is converted to a lat/lon buffer, rescaled in
+        longitudinal direction according to the t_lat coordinates.
 
     Returns
     -------
@@ -1165,12 +1160,14 @@ def get_close_centroids(
         Mask that is True for close centroids and False for other centroids.
     """
     centr_lat, centr_lon = centroids[:, 0], centroids[:, 1]
+    buffer_lat = buffer_km / u_const.ONE_LAT_KM
+    buffer_lon = buffer_km / (u_const.ONE_LAT_KM * np.cos(np.radians(np.abs(t_lat[:, None]))))
     # check for each track position which centroids are within buffer, uses NumPy's broadcasting
+    diff_lat = t_lat[:, None] - centr_lat[None]
+    diff_lon = t_lon[:, None] - centr_lon[None]
     return (
-        (t_lat[:, None] - buffer <= centr_lat[None])
-        & (centr_lat[None] <= t_lat[:, None] + buffer)
-        & (t_lon[:, None] - buffer <= centr_lon[None])
-        & (centr_lon[None] <= t_lon[:, None] + buffer)
+        (diff_lat <= buffer_lat) & (diff_lat >= -buffer_lat)
+        & (diff_lon <= buffer_lon) & (diff_lon >= -buffer_lon)
     )
 
 def _vtrans(si_track: xr.Dataset, metric: str = "equirect"):
