@@ -256,10 +256,12 @@ class TestWindfieldHelpers(unittest.TestCase):
         """Test get_close_centroids function."""
         t_lat = np.array([0, -0.5, 0])
         t_lon = np.array([0.9, 2, 3.2])
-        centroids = np.array([[0, -0.2], [0, 0.9], [-1.1, 1.2], [1, 2.1], [0, 4.3], [0.6, 3.8]])
-        test_mask = np.array([[False, True, False, False, False, False],
-                              [False, False, True, False, False, False],
-                              [False, False, False, False, False, True]])
+        centroids = np.array([
+            [0, -0.2], [0, 0.9], [-1.1, 1.2], [1, 2.1], [0, 4.3], [0.6, 3.8], [0.9, 4.1],
+        ])
+        test_mask = np.array([[False, True, False, False, False, False, False],
+                              [False, False, True, False, False, False, False],
+                              [False, False, False, False, False, True, False]])
         mask = get_close_centroids(t_lat, t_lon, centroids, 112.0)
         np.testing.assert_equal(mask, test_mask)
 

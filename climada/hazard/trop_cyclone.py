@@ -755,7 +755,7 @@ def _compute_windfields_sparse(
     # centroids that are considered by a factor larger than 30).
     max_dist_eye_lat = max_dist_eye_km / u_const.ONE_LAT_KM
     max_dist_eye_lon = max_dist_eye_km / (
-        u_const.ONE_LAT_KM * np.cos(np.radians(np.abs(coastal_centr[:, 0])))
+        u_const.ONE_LAT_KM * np.cos(np.radians(np.abs(coastal_centr[:, 0]) + max_dist_eye_lat))
     )
     coastal_idx = coastal_idx[
         (t_lat.min() - coastal_centr[:, 0] <= max_dist_eye_lat)
@@ -766,14 +766,10 @@ def _compute_windfields_sparse(
     coastal_centr = centroids.coord[coastal_idx]
 
     # After the previous filtering step, finding and storing the reachable centroids is not a
-    # memory bottle neck and can be done before chunking:
-    #
-    #   For illustration, take an extreme case: the bounding box of the TC track is 40° x 50° and
-    #   the spatial resolution is 0.1°, ocean centroids are not excluded, and the track life time
-    #   is very long with high temporal resolution. Altogether, 300 time steps and 200,000
-    #   centroids. Then, the mask that describes which centroids are affected by each track
-    #   position, has 60,000,000 entries (60 MB) which should never cause memory issues.
-    track_centr_msk = get_close_centroids(t_lat, t_lon, coastal_centr, max_dist_eye_km)
+    # memory bottle neck and can be done before chunking.
+    track_centr_msk = get_close_centroids(
+        t_lat, t_lon, coastal_centr, max_dist_eye_km, metric=metric,
+    )
     coastal_idx = coastal_idx[track_centr_msk.any(axis=0)]
     coastal_centr = centroids.coord[coastal_idx]
     nreachable = coastal_centr.shape[0]
@@ -1132,8 +1128,9 @@ def get_close_centroids(
     t_lon: np.ndarray,
     centroids: np.ndarray,
     buffer_km: float,
+    metric: str = "equirect",
 ) -> np.ndarray:
-    """Check whether centroids lay within a rectangular buffer around track positions
+    """Check whether centroids lay within a buffer around track positions
 
     The longitudinal coordinates are assumed to be normalized around a central longitude. This
     makes sure that the buffered bounding box around the track doesn't cross the antimeridian.
@@ -1153,22 +1150,38 @@ def get_close_centroids(
     buffer_km : float
         Size of the buffer (in km). The buffer is converted to a lat/lon buffer, rescaled in
         longitudinal direction according to the t_lat coordinates.
+    metric : str, optional
+        Specify an approximation method to use for earth distances: "equirect" (faster) or
+        "geosphere" (more accurate). See `dist_approx` function in `climada.util.coordinates`.
+        Default: "equirect".
 
     Returns
     -------
     mask : np.ndarray of shape (npositions, ncentroids)
         Mask that is True for close centroids and False for other centroids.
     """
+    npositions = t_lat.size
+    ncentroids = centroids.shape[0]
     centr_lat, centr_lon = centroids[:, 0], centroids[:, 1]
     buffer_lat = buffer_km / u_const.ONE_LAT_KM
-    buffer_lon = buffer_km / (u_const.ONE_LAT_KM * np.cos(np.radians(np.abs(t_lat[:, None]))))
+    buffer_lon = buffer_km / (u_const.ONE_LAT_KM * np.cos(np.radians(
+        np.fmin(89.999, np.abs(t_lat[:, None]) + buffer_lat)
+    )))
     # check for each track position which centroids are within buffer, uses NumPy's broadcasting
     diff_lat = t_lat[:, None] - centr_lat[None]
     diff_lon = t_lon[:, None] - centr_lon[None]
-    return (
+    [idx_rects] = (
         (diff_lat <= buffer_lat) & (diff_lat >= -buffer_lat)
         & (diff_lon <= buffer_lon) & (diff_lon >= -buffer_lon)
+    ).any(axis=0).nonzero()
+    [d_centr] = u_coord.dist_approx(
+        t_lat[None], t_lon[None],
+        centr_lat[None, idx_rects], centr_lon[None, idx_rects],
+        normalize=False, method=metric, units="km",
     )
+    mask = np.zeros((npositions, ncentroids), dtype=bool)
+    mask[:, idx_rects] = (d_centr <= buffer_km)
+    return mask
 
 def _vtrans(si_track: xr.Dataset, metric: str = "equirect"):
     """Translational vector and velocity (in m/s) at each track node.
