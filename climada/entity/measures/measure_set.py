@@ -115,9 +115,7 @@ class MeasureSet():
         ...     mdd_impact=(1, 0),
         ...     paa_impact=(1, 0),
         ... )
-        >>> meas = MeasureSet(
-        ...     measure_list=[act_1]
-        ... )
+        >>> meas = MeasureSet([act_1])
         >>> meas.check()
 
         Read measures from file and checks consistency data:
