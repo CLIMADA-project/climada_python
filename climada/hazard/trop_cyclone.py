@@ -1168,11 +1168,11 @@ def get_close_centroids(
         np.fmin(89.999, np.abs(t_lat[:, None]) + buffer_lat)
     )))
     # check for each track position which centroids are within buffer, uses NumPy's broadcasting
-    diff_lat = t_lat[:, None] - centr_lat[None]
-    diff_lon = t_lon[:, None] - centr_lon[None]
     [idx_rects] = (
-        (diff_lat <= buffer_lat) & (diff_lat >= -buffer_lat)
-        & (diff_lon <= buffer_lon) & (diff_lon >= -buffer_lon)
+        (t_lat[:, None] - buffer_lat <= centr_lat[None])
+        & (t_lat[:, None] + buffer_lat >= centr_lat[None])
+        & (t_lon[:, None] - buffer_lon <= centr_lon[None])
+        & (t_lon[:, None] + buffer_lon >= centr_lon[None])
     ).any(axis=0).nonzero()
     [d_centr] = u_coord.dist_approx(
         t_lat[None], t_lon[None],
