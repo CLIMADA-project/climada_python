@@ -97,7 +97,7 @@ class Entity:
         """
         return cls(
             exposures=Exposures.from_mat(file_name),
-            disc_rates=DiscRates.from_mat(file_name, description),
+            disc_rates=DiscRates.from_mat(file_name),
             impact_func_set=ImpactFuncSet.from_mat(file_name, description),
             measure_set=MeasureSet.from_mat(file_name, description)
             )
@@ -130,7 +130,7 @@ class Entity:
         exp = Exposures(pd.read_excel(file_name))
         exp.tag = Tag(file_name=file_name, description=description)
 
-        dr = DiscRates.from_excel(file_name, description)
+        dr = DiscRates.from_excel(file_name)
         impf_set = ImpactFuncSet.from_excel(file_name, description)
         meas_set = MeasureSet.from_excel(file_name, description)
 
