@@ -1038,10 +1038,10 @@ def tctrack_to_si(
         unit = unit_replace.get(unit, unit)
         try:
             conv_factor = ureg(unit).to(si_unit).magnitude
-        except:
+        except Exception as ex:
             raise ValueError(
                 f"The {long_name}_unit '{unit}' in the provided track is not supported."
-             )
+             ) from ex
         si_track[var_name] = track[long_name] * conv_factor
 
     # normalize longitudinal coordinates
