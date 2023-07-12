@@ -334,7 +334,9 @@ class Client():
     def _divide_straight_from_multi(properties):
         straights, multis = dict(), dict()
         for k, _v in properties.items():
-            if isinstance(_v, str):
+            if _v is None:
+                straights[k] = ''
+            elif isinstance(_v, str):
                 straights[k] = _v
             elif isinstance(_v, list):
                 multis[k] = _v
