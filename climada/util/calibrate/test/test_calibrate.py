@@ -247,8 +247,8 @@ class TestBayesianOptimizer(TestOptimizer):
     def test_target_func(self, _):
         """Test if cost function is transformed correctly
         
-        We test the method '_target_func' through 'run' because it is
-        private"""
+        We test the method '_target_func' through 'run' because it is private
+        """
         self.input.bounds = {"x_2": (0, 1), "x 1": (1, 2)}
         self.input.cost_func.side_effect = [1.0, -1.0]
         self.optimizer = BayesianOptimizer(self.input)
@@ -264,5 +264,8 @@ if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestInputPostInit)
     TESTS.addTests(
         unittest.TestLoader().loadTestsFromTestCase(TestScipyMinimizeOptimizer)
+    )
+    TESTS.addTests(
+        unittest.TestLoader().loadTestsFromTestCase(TestBayesianOptimizer)
     )
     unittest.TextTestRunner(verbosity=2).run(TESTS)
