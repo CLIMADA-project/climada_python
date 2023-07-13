@@ -31,7 +31,6 @@ import matplotlib.pyplot as plt
 import xlsxwriter
 
 import climada.util.checker as u_check
-from climada.util.tag import Tag
 import climada.util.finance as u_fin
 import climada.util.hdf5_handler as u_hdf5
 
@@ -60,8 +59,6 @@ class DiscRates():
 
     Attributes
     ---------
-    tag: climada.util.tag.Tag
-        information about the source data
     years: np.array
         list of years
     rates: np.array
@@ -71,8 +68,7 @@ class DiscRates():
     def __init__(
         self,
         years : Optional[np.ndarray] = None,
-        rates : Optional[np.ndarray] = None,
-        tag : Optional[Tag] = None
+        rates : Optional[np.ndarray] = None
         ):
         """
         Fill discount rates with values and check consistency data
@@ -85,17 +81,13 @@ class DiscRates():
             Discount rates for each year in years.
             Default is numpy.array([]).
             Note: rates given in float, e.g., to set 1% rate use 0.01
-        tag : climate.entity.tag
-            Metadata. Default is None.
         """
         self.years = np.array([]) if years is None else years
         self.rates = np.array([]) if rates is None else rates
-        self.tag = Tag() if tag is None else tag
 
     def clear(self):
         """Reinitialize attributes."""
 
-        self.tag = Tag()
         # Following values are given for each defined year
         self.years = np.array([], int)
         self.rates = np.array([], float)
@@ -129,8 +121,7 @@ class DiscRates():
         pos_year = np.isin(self.years, year_range)
 
         return DiscRates(years=self.years[pos_year],
-                         rates=self.rates[pos_year],
-                         tag=self.tag)
+                         rates=self.rates[pos_year])
 
     def append(self, disc_rates):
         """
@@ -150,8 +141,6 @@ class DiscRates():
         if self.years.size == 0:
             self.__dict__ = copy.deepcopy(disc_rates.__dict__)
             return
-
-        self.tag.append(disc_rates.tag)
 
         new_year = array('l')
         new_rate = array('d')
@@ -224,7 +213,7 @@ class DiscRates():
         return axis
 
     @classmethod
-    def from_mat(cls, file_name, description='', var_names=None):
+    def from_mat(cls, file_name, var_names=None):
         """
         Read MATLAB file generated with previous MATLAB CLIMADA version.
 
@@ -254,7 +243,6 @@ class DiscRates():
         if var_names is None:
             var_names = DEF_VAR_MAT
         disc = u_hdf5.read(file_name)
-        tag = Tag(file_name=str(file_name), description=description)
         try:
             disc = disc[var_names['sup_field_name']]
         except KeyError:
@@ -268,7 +256,7 @@ class DiscRates():
         except KeyError as err:
             raise KeyError("Not existing variable: %s" % str(err)) from err
 
-        return cls(years=years, rates=rates, tag=tag)
+        return cls(years=years, rates=rates)
 
     def read_mat(self, *args, **kwargs):
         """This function is deprecated, use DiscRates.from_mats instead."""
@@ -277,7 +265,7 @@ class DiscRates():
         self.__dict__ = DiscRates.from_mat(*args, **kwargs).__dict__
 
     @classmethod
-    def from_excel(cls, file_name, description='', var_names=None):
+    def from_excel(cls, file_name, var_names=None):
         """
         Read excel file following template and store variables.
 
@@ -306,7 +294,6 @@ class DiscRates():
         if var_names is None:
             var_names = DEF_VAR_EXCEL
         dfr = pd.read_excel(file_name, var_names['sheet_name'])
-        tag = Tag(file_name=str(file_name), description=description)
         try:
             years = dfr[var_names['col_name']['year']].values. \
                 astype(int, copy=False)
@@ -314,7 +301,7 @@ class DiscRates():
         except KeyError as err:
             raise KeyError("Not existing variable: %s" % str(err)) from err
 
-        return cls(years=years, rates=rates, tag=tag)
+        return cls(years=years, rates=rates)
 
     def read_excel(self, *args, **kwargs):
         """This function is deprecated, use DiscRates.from_excel instead."""
