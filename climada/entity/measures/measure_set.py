@@ -32,7 +32,6 @@ import pandas as pd
 import xlsxwriter
 
 from climada.entity.measures.base import Measure
-from climada.util.tag import Tag
 import climada.util.hdf5_handler as u_hdf5
 
 LOGGER = logging.getLogger(__name__)
@@ -89,8 +88,6 @@ class MeasureSet():
 
     Attributes
     ----------
-    tag : climada.util.tag.Tag
-        information about the source data
     _data : dict
         Contains Measure objects. This attribute is not suppossed to be accessed directly.
         Use the available methods instead.
@@ -98,8 +95,7 @@ class MeasureSet():
 
     def __init__(
         self,
-        measure_list: Optional[List[Measure]] = None,
-        tag: Optional[Tag] = None,
+        measure_list: Optional[List[Measure]] = None
     ):
         """Initialize a new MeasureSet object with specified data.
 
@@ -107,8 +103,6 @@ class MeasureSet():
         ----------
         measure_list : list of Measure objects, optional
             The measures to include in the MeasureSet
-        tag : Tag, optional
-            Information about the source data
 
         Examples
         --------
@@ -121,33 +115,27 @@ class MeasureSet():
         ...     mdd_impact=(1, 0),
         ...     paa_impact=(1, 0),
         ... )
-        >>> meas = MeasureSet(
-        ...     measure_list=[act_1],
-        ...     tag=Tag(description="my dummy MeasureSet.")
-        ... )
+        >>> meas = MeasureSet([act_1])
         >>> meas.check()
 
         Read measures from file and checks consistency data:
 
         >>> meas = MeasureSet.from_excel(ENT_TEMPLATE_XLS)
         """
-        self.clear(tag=tag)
+        self.clear()
         if measure_list is not None:
             for meas in measure_list:
                 self.append(meas)
 
-    def clear(self, tag: Optional[Tag] = None, _data: Optional[dict] = None):
+    def clear(self, _data: Optional[dict] = None):
         """Reinitialize attributes.
 
         Parameters
         ----------
-        tag : Tag, optional
-            Information about the source data. If not given, an empty Tag object is used.
         _data : dict, optional
             A dict containing the Measure objects. For internal use only: It's not suppossed to be
             set directly. Use the class methods instead.
         """
-        self.tag = tag if tag is not None else Tag()
         self._data = _data if _data is not None else dict()  # {hazard_type : {name: Measure()}}
 
     def append(self, meas):
@@ -353,15 +341,13 @@ class MeasureSet():
             self.__dict__ = copy.deepcopy(meas_set.__dict__)
             return
 
-        self.tag.append(meas_set.tag)
-
         new_func = meas_set.get_measure()
         for _, meas_dict in new_func.items():
             for _, meas in meas_dict.items():
                 self.append(meas)
 
     @classmethod
-    def from_mat(cls, file_name, description='', var_names=None):
+    def from_mat(cls, file_name, var_names=None):
         """Read MATLAB file generated with previous MATLAB CLIMADA version.
 
         Parameters
@@ -427,7 +413,6 @@ class MeasureSet():
 
         data = u_hdf5.read(file_name)
         meas_set = cls()
-        meas_set.tag = Tag(file_name=file_name, description=description)
         try:
             data = data[var_names['sup_field_name']]
         except KeyError:
@@ -448,7 +433,7 @@ class MeasureSet():
         self.__dict__ = MeasureSet.from_mat(*args, **kwargs).__dict__
 
     @classmethod
-    def from_excel(cls, file_name, description='', var_names=None):
+    def from_excel(cls, file_name, var_names=None):
         """Read excel file following template and store variables.
 
         Parameters
@@ -525,7 +510,6 @@ class MeasureSet():
         dfr = pd.read_excel(file_name, var_names['sheet_name'])
         dfr = dfr.fillna('')
         meas_set = cls()
-        meas_set.tag = Tag(file_name=file_name, description=description)
         try:
             read_att_excel(meas_set, dfr, var_names)
         except KeyError as var_err:
