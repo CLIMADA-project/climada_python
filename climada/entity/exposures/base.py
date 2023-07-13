@@ -37,7 +37,6 @@ import contextily as ctx
 import cartopy.crs as ccrs
 
 from climada.hazard import Hazard
-from climada.util.tag import Tag
 import climada.util.hdf5_handler as u_hdf5
 from climada.util.constants import ONE_LAT_KM, DEF_CRS, CMAP_RASTER
 import climada.util.coordinates as u_coord
@@ -84,8 +83,6 @@ class Exposures():
 
     Attributes
     ----------
-    tag : climada.util.tag.Tag
-        metada - information about the source data
     ref_year : int
         metada - reference year
     value_unit : str
@@ -121,7 +118,7 @@ class Exposures():
         TC. There might be different hazards defined: centr_TC, centr_FL, ...
         Computed in method assign_centroids().
     """
-    _metadata = ['tag', 'ref_year', 'value_unit', 'meta']
+    _metadata = ['ref_year', 'value_unit', 'meta']
 
     vars_oblig = ['value', 'latitude', 'longitude']
     """Name of the variables needed to compute the impact."""
@@ -142,7 +139,7 @@ class Exposures():
             # In case of gdf without geometry, empty or before set_geometry_points was called
             return self.meta.get('crs')
 
-    def __init__(self, *args, meta=None, tag=None, ref_year=DEF_REF_YEAR,
+    def __init__(self, *args, meta=None, ref_year=DEF_REF_YEAR,
                  value_unit=DEF_VALUE_UNIT, crs=None, **kwargs):
         """Creates an Exposures object from a GeoDataFrame
 
@@ -154,8 +151,6 @@ class Exposures():
             Named arguments of the GeoDataFrame constructor, additionally
         meta : dict, optional
             Metadata dictionary. Default: {} (empty dictionary)
-        tag : climada.entity.exposures.tag.Tag, optional
-            Exposures tag. Defaults to the entry of the same name in `meta` or an empty Tag object.
         ref_year : int, optional
             Reference Year. Defaults to the entry of the same name in `meta` or 2018.
         value_unit : str, optional
@@ -168,7 +163,6 @@ class Exposures():
         self.meta = {} if meta is None else meta
         if not isinstance(self.meta, dict):
             raise ValueError("meta must be a dictionary")
-        self.tag = self.meta.get('tag', Tag()) if tag is None else tag
         self.ref_year = self.meta.get('ref_year', DEF_REF_YEAR) if ref_year is None else ref_year
         self.value_unit = (self.meta.get('value_unit', DEF_VALUE_UNIT)
                            if value_unit is None else value_unit)
@@ -500,7 +494,6 @@ class Exposures():
         Exposures
         """
         exp = cls()
-        exp.tag = Tag(file_name=file_name)
         meta, value = u_coord.read_raster(file_name, [band], src_crs, window,
                                           geometry, dst_crs, transform, width,
                                           height, resampling)
@@ -520,7 +513,7 @@ class Exposures():
 
     def plot_scatter(self, mask=None, ignore_zero=False, pop_name=True,
                      buffer=0.0, extend='neither', axis=None, figsize=(9, 13),
-                     adapt_fontsize=True, **kwargs):
+                     adapt_fontsize=True, title="", **kwargs):
         """Plot exposures geometry's value sum scattered over Earth's map.
         The plot will we projected according to the current crs.
 
@@ -545,17 +538,17 @@ class Exposures():
         adapt_fontsize : bool, optional
             If set to true, the size of the fonts will be adapted to the size of the figure.
             Otherwise the default matplotlib font size is used. Default is True.
+        title : str, optional
+            a title for the plot
         kwargs : optional
             arguments for scatter matplotlib function, e.g.
-            cmap='Greys'. Default: 'Wistia'
+            cmap='Greys'
 
         Returns
         -------
         cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         crs_epsg, _ = u_plot.get_transformation(self.crs)
-        title = "\n".join(self.tag.description)
-        cbar_label = f'Value ({self.value_unit})'
         if mask is None:
             mask = np.ones((self.gdf.shape[0],), dtype=bool)
         if ignore_zero:
@@ -565,8 +558,12 @@ class Exposures():
         value = self.gdf.value[mask][pos_vals].values
         coord = np.stack([self.gdf.latitude[mask][pos_vals].values,
                           self.gdf.longitude[mask][pos_vals].values], axis=1)
-        return u_plot.geo_scatter_from_array(value, coord, cbar_label, title,
-                                             pop_name, buffer, extend,
+        return u_plot.geo_scatter_from_array(value, coord,
+                                             cbar_label=f'Value ({self.value_unit})',
+                                             title=title,
+                                             pop_name=pop_name,
+                                             buffer=buffer,
+                                             extend=extend,
                                              proj=crs_epsg,
                                              axes=axis,
                                              figsize=figsize,
@@ -575,7 +572,7 @@ class Exposures():
 
     def plot_hexbin(self, mask=None, ignore_zero=False, pop_name=True,
                     buffer=0.0, extend='neither', axis=None, figsize=(9, 13),
-                    adapt_fontsize=True, **kwargs):
+                    adapt_fontsize=True, title="", **kwargs):
         """Plot exposures geometry's value sum binned over Earth's map.
         An other function for the bins can be set through the key reduce_C_function.
         The plot will we projected according to the current crs.
@@ -604,6 +601,8 @@ class Exposures():
             If set to true, the size of the fonts will be adapted to the size of the figure.
             Otherwise the default matplotlib font size is used.
             Default is True.
+        title : str, optional
+            a title for the plot
         kwargs : optional
             arguments for hexbin matplotlib function, e.g.
             `reduce_C_function=np.average`.
@@ -614,8 +613,6 @@ class Exposures():
         cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         crs_epsg, _ = u_plot.get_transformation(self.crs)
-        title = "\n".join(self.tag.description)
-        cbar_label = f'Value ({self.value_unit})'
         if 'reduce_C_function' not in kwargs:
             kwargs['reduce_C_function'] = np.sum
         if mask is None:
@@ -627,9 +624,16 @@ class Exposures():
         value = self.gdf.value[mask][pos_vals].values
         coord = np.stack([self.gdf.latitude[mask][pos_vals].values,
                           self.gdf.longitude[mask][pos_vals].values], axis=1)
-        return u_plot.geo_bin_from_array(value, coord, cbar_label, title,
-                                         pop_name, buffer, extend, proj=crs_epsg,
-                                         axes=axis, figsize=figsize, adapt_fontsize=adapt_fontsize,
+        return u_plot.geo_bin_from_array(value, coord, 
+                                         cbar_label=f'Value ({self.value_unit})',
+                                         title=title,
+                                         pop_name=pop_name,
+                                         buffer=buffer,
+                                         extend=extend,
+                                         proj=crs_epsg,
+                                         axes=axis,
+                                         figsize=figsize,
+                                         adapt_fontsize=adapt_fontsize,
                                          **kwargs)
 
     def plot_raster(self, res=None, raster_res=None, save_tiff=None,
@@ -1156,8 +1160,7 @@ def add_sea(exposures, sea_res, scheduler=None):
         crs=exposures.crs,
         ref_year=exposures.ref_year,
         value_unit=exposures.value_unit,
-        meta=exposures.meta,
-        tag=exposures.tag
+        meta=exposures.meta
     )
 
 
@@ -1216,5 +1219,3 @@ def _read_mat_metadata(exposures, data, file_name, var_names):
             file_name, data[var_names['var_name']['uni']][0][0])
     except KeyError:
         exposures.value_unit = DEF_VALUE_UNIT
-
-    exposures.tag = Tag(file_name)

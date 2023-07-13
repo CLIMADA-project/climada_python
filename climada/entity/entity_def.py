@@ -25,7 +25,6 @@ import logging
 from typing import Optional
 import pandas as pd
 
-from climada.util.tag import Tag
 from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
 from climada.entity.disc_rates.base import DiscRates
 from climada.entity.measures.measure_set import MeasureSet
@@ -125,7 +124,6 @@ class Entity:
         """
 
         exp = Exposures(pd.read_excel(file_name))
-        exp.tag = Tag(file_name=file_name, description=description)
 
         dr = DiscRates.from_excel(file_name)
         impf_set = ImpactFuncSet.from_excel(file_name)
