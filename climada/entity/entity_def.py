@@ -176,8 +176,3 @@ class Entity:
             if not isinstance(value, DiscRates):
                 raise ValueError("Input value is not (sub)class of DiscRates.")
         super().__setattr__(name, value)
-
-    def __str__(self):
-        return 'Exposures: \n' + self.exposures.tag.__str__()
-
-    __repr__ = __str__

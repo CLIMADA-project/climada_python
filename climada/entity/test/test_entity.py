@@ -105,24 +105,6 @@ class TestCheck(unittest.TestCase):
         self.assertIn('DiscRates', str(cm.exception))
 
 
-class TestStringRepr(unittest.TestCase):
-    """Test the representation dunder methods of Entity"""
-    def setUp(self):
-        self.entity = Entity()
-        self.entity.exposures.tag.description = ["foo", "bar"]
-
-    def test_str(self):
-        """Test Entity.__str__"""
-        out = str(self.entity)
-        self.assertIn("Exposures", out)
-        self.assertIn("Description: foo + bar", out)
-
-    def test_repr(self):
-        """Test Entity.__repr__"""
-        out = repr(self.entity)
-        self.assertIn("Exposures", out)
-        self.assertIn("Description: foo + bar", out)
-
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReader)
