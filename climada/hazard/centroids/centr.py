@@ -82,9 +82,9 @@ class Centroids():
     Attributes
     ----------
     lat : np.array
-        latitudes
+        latitudes in the chosen crs (can be any unit)
     lon : np.array
-        longitudes
+        longitudes in the chosen crs (can be any unit)
     crs : str, optional
         coordinate reference system, default is WGS84
     area_pixel : np.array, optional
@@ -111,7 +111,6 @@ class Centroids():
         on_land: Optional[np.ndarray] = None,
         dist_coast: Optional[np.ndarray] = None,
         elevation: Optional[np.ndarray] = None,
-        area_pixel: Optional[np.ndarray] = None,
         **kwargs
     ):
         """Initialization
@@ -146,8 +145,6 @@ class Centroids():
             attr_dict['dist_coast'] = dist_coast
         if elevation is not None:
             attr_dict['elevation'] = elevation
-        if area_pixel is not None:
-            attr_dict['area_pixel'] = area_pixel
         if kwargs:
             attr_dict = dict(**attr_dict, **kwargs)
         self.gdf = gpd.GeoDataFrame(data=attr_dict, crs=crs)
@@ -175,10 +172,6 @@ class Centroids():
     @property
     def elevation(self):
         return self.gdf['elevation']
-
-    @property
-    def area_pixel(self):
-        return self.gdf['area_pixel']
 
     @property
     def dist_coast(self):
@@ -328,55 +321,11 @@ class Centroids():
         """
         ne_geom = self._ne_crs_geom(scheduler)
         LOGGER.debug('Setting region_id %s points.', str(self.size))
-        self.gdf.region_id = u_coord.get_country_code(
-            ne_geom.geometry[:].y.values, ne_geom.geometry[:].x.values)
-
-    def set_area_pixel(self, min_resol=1.0e-8, scheduler=None):
-        """Set `area_pixel` attribute for every pixel or point (area in m*m).
-
-        Parameters
-        ----------
-        min_resol : float, optional
-            if centroids are points, use this minimum resolution in lat and lon. Default: 1.0e-8
-        scheduler : str
-            used for dask map_partitions. “threads”, “synchronous” or “processes”
-        """
-
-        res = u_coord.get_resolution(self.lat, self.lon, min_resol=min_resol)
-        res = np.abs(res).min()
-        LOGGER.debug('Setting area_pixel %s points.', str(self.lat.size))
-        xy_pixels = self.geometry.buffer(res / 2).envelope
-        if PROJ_CEA == self.geometry.crs:
-            self.gdf.area_pixel = xy_pixels.area.values
+        if u_coord.equal_crs(self.crs, 'epsg:4326'):
+            self.gdf.region_id = u_coord.get_country_code(
+                ne_geom.geometry[:].y.values, ne_geom.geometry[:].x.values)
         else:
-            self.gdf.area_pixel = xy_pixels.to_crs(crs={'proj': 'cea'}).area.values
-
-    def set_area_approx(self, min_resol=1.0e-8):
-        """Set `area_pixel` attribute for every pixel or point (approximate area in m*m).
-
-        Values are differentiated per latitude. Faster than `set_area_pixel`.
-
-        Parameters
-        ----------
-        min_resol : float, optional
-            if centroids are points, use this minimum resolution in lat and lon. Default: 1.0e-8
-        """
-        res_lat, res_lon = np.abs(
-            u_coord.get_resolution(self.lat, self.lon, min_resol=min_resol))
-        lat_unique = np.array(np.unique(self.lat))
-        lon_unique_len = len(np.unique(self.lon))
-        if PROJ_CEA == self.geometry.crs:
-            self.gdf.area_pixel = np.repeat(res_lat * res_lon, lon_unique_len)
-            return None
-
-        LOGGER.debug('Setting area_pixel approx %s points.', str(self.size))
-        res_lat = res_lat * ONE_LAT_KM * 1000
-        res_lon = res_lon * ONE_LAT_KM * 1000 * np.cos(np.radians(lat_unique))
-        area_approx = np.repeat(res_lat * res_lon, lon_unique_len)
-        if area_approx.size == self.size:
-            self.gdf.area_pixel = area_approx
-        else:
-            raise ValueError('Pixel area of points cannot be computed.')
+            raise NotImplementedError('The region id can only be assigned if the crs is epsg:4326')
 
     def set_elevation(self, topo_path):
         """Set elevation attribute for every pixel or point in meters.
@@ -396,10 +345,13 @@ class Centroids():
         signed : bool
             If True, use signed distances (positive off shore and negative on land). Default: False.
         precomputed : bool
-            If True, use precomputed distances (from NASA). Default: False.
+            If True, use precomputed distances (from NASA). Works only for crs=epsg:4326
+            Default: False.
         scheduler : str
             Used for dask map_partitions. "threads", "synchronous" or "processes"
         """
+        if not u_coord.equal_crs(self.crs, 'epsg:4326'):
+            raise NotImplementedError('The distance to coast can only be assigned if the crs is epsg:4326')
         if precomputed:
             self.gdf.dist_coast = u_coord.dist_to_coast_nasa(
                 self.lat, self.lon, highres=True, signed=signed)
@@ -416,6 +368,9 @@ class Centroids():
         scheduler : str
             used for dask map_partitions. “threads”, “synchronous” or “processes”
         """
+        if not u_coord.equal_crs(self.crs, 'epsg:4326'):
+            raise NotImplementedError('The on land property can only be assigned if the crs is epsg:4326')
+
         ne_geom = self._ne_crs_geom(scheduler)
         LOGGER.debug('Setting on_land %s points.', str(self.lat.size))
         self.gdf.on_land = u_coord.coord_on_land(
