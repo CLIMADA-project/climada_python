@@ -1167,20 +1167,32 @@ def get_close_centroids(
     buffer_lon = buffer_km / (u_const.ONE_LAT_KM * np.cos(np.radians(
         np.fmin(89.999, np.abs(t_lat[:, None]) + buffer_lat)
     )))
-    # check for each track position which centroids are within buffer, uses NumPy's broadcasting
+    # check for each track position which centroids are within rectangular buffers
     [idx_rects] = (
         (t_lat[:, None] - buffer_lat <= centr_lat[None])
         & (t_lat[:, None] + buffer_lat >= centr_lat[None])
         & (t_lon[:, None] - buffer_lon <= centr_lon[None])
         & (t_lon[:, None] + buffer_lon >= centr_lon[None])
     ).any(axis=0).nonzero()
-    [d_centr] = u_coord.dist_approx(
-        t_lat[None], t_lon[None],
-        centr_lat[None, idx_rects], centr_lon[None, idx_rects],
-        normalize=False, method=metric, units="km",
-    )
+
+    # We do the distance computation for chunks of the track since computing the distance requires
+    # npositions*ncentroids*8*3 Bytes of memory. For example, Hurricane FAITH's life time was more
+    # than 500 hours. At 0.5-hourly resolution and 1,000,000 centroids, that's 24 GB of memory for
+    # FAITH. With a chunk size of 10, this figure is down to 360 MB. The final mask will require
+    # 1.0 GB of memory.
+    chunk_size = 10
+    chunks = np.split(np.arange(t_lat.size), np.arange(chunk_size, t_lat.size, chunk_size))
+    dist_mask_rects = np.concatenate([
+        (
+            u_coord.dist_approx(
+                t_lat[None, chunk], t_lon[None, chunk],
+                centr_lat[None, idx_rects], centr_lon[None, idx_rects],
+                normalize=False, method=metric, units="km",
+            )[0] <= buffer_km
+        ) for chunk in chunks
+    ], axis=0)
     mask = np.zeros((npositions, ncentroids), dtype=bool)
-    mask[:, idx_rects] = (d_centr <= buffer_km)
+    mask[:, idx_rects] = dist_mask_rects
     return mask
 
 def _vtrans(si_track: xr.Dataset, metric: str = "equirect"):
