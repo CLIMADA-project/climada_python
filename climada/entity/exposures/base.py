@@ -626,7 +626,7 @@ class Exposures():
         coord = np.stack([self.gdf.latitude[mask][pos_vals].values,
                           self.gdf.longitude[mask][pos_vals].values], axis=1)
         return u_plot.geo_bin_from_array(array_sub=value,
-                                         geo_coord=coord, 
+                                         geo_coord=coord,
                                          var_name=f'Value ({self.value_unit})',
                                          title=title,
                                          pop_name=pop_name,

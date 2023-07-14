@@ -105,7 +105,7 @@ class Entity:
         self.__dict__ = Entity.from_mat(*args, **kwargs).__dict__
 
     @classmethod
-    def from_excel(cls, file_name, description=''):
+    def from_excel(cls, file_name):
         """Read csv or xls or xlsx file following climada's template.
 
         Parameters
@@ -125,13 +125,13 @@ class Entity:
 
         exp = Exposures(pd.read_excel(file_name))
 
-        dr = DiscRates.from_excel(file_name)
+        disc_rates = DiscRates.from_excel(file_name)
         impf_set = ImpactFuncSet.from_excel(file_name)
         meas_set = MeasureSet.from_excel(file_name)
 
         return cls(
             exposures=exp,
-            disc_rates=dr,
+            disc_rates=disc_rates,
             impact_func_set=impf_set,
             measure_set=meas_set,
         )
