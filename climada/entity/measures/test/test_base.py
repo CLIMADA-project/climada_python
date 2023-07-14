@@ -165,8 +165,6 @@ class TestApply(unittest.TestCase):
 
         self.assertEqual(new_exp.ref_year, exp.ref_year)
         self.assertEqual(new_exp.value_unit, exp.value_unit)
-        self.assertEqual(new_exp.tag.file_name, exp.tag.file_name)
-        self.assertEqual(new_exp.tag.description, exp.tag.description)
         self.assertTrue(np.array_equal(new_exp.gdf.value.values, exp.gdf.value.values))
         self.assertTrue(np.array_equal(new_exp.gdf.latitude.values, exp.gdf.latitude.values))
         self.assertTrue(np.array_equal(new_exp.gdf.longitude.values, exp.gdf.longitude.values))
@@ -204,8 +202,6 @@ class TestApply(unittest.TestCase):
 
         self.assertEqual(new_exp.ref_year, ref_exp.ref_year)
         self.assertEqual(new_exp.value_unit, ref_exp.value_unit)
-        self.assertEqual(new_exp.tag.file_name, ref_exp.tag.file_name)
-        self.assertEqual(new_exp.tag.description, ref_exp.tag.description)
         self.assertTrue(np.array_equal(new_exp.gdf.value.values, ref_exp.gdf.value.values))
         self.assertTrue(np.array_equal(new_exp.gdf.latitude.values, ref_exp.gdf.latitude.values))
         self.assertTrue(np.array_equal(new_exp.gdf.longitude.values, ref_exp.gdf.longitude.values))
@@ -271,8 +267,6 @@ class TestApply(unittest.TestCase):
         # unchanged meta data
         self.assertEqual(res_exp.ref_year, exp.ref_year)
         self.assertEqual(res_exp.value_unit, exp.value_unit)
-        self.assertEqual(res_exp.tag.file_name, exp.tag.file_name)
-        self.assertEqual(res_exp.tag.description, exp.tag.description)
         self.assertTrue(u_coord.equal_crs(res_exp.crs, exp.crs))
         self.assertFalse(hasattr(exp.gdf, "crs"))
         self.assertFalse(hasattr(res_exp.gdf, "crs"))
