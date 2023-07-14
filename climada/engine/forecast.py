@@ -1064,18 +1064,6 @@ class Forecast:
             polygon_file_crs, self._impact[haz_ind].crs, always_xy=True
         )
         # checking the decision dict and define the corresponding functions
-        if not (
-            isinstance(decision_dict["probability_aggregation"], float)
-            & isinstance(decision_dict["area_aggregation"], float)
-        ):
-            ValueError(
-                " If decision_level is 'exposure_point',"
-                + "parameters probability_aggregation and "
-                + "area_aggregation of "
-                + "Forecast.plot_warn_map() must both be "
-                + "floats between [0..1]. Which each "
-                + "specify quantiles."
-            )
         decision_dict_functions = decision_dict.copy()
         for aggregation in decision_dict:
             if isinstance(decision_dict[aggregation], float):
