@@ -1744,7 +1744,7 @@ class Hazard():
             return
         unique_pos = sorted([events.index(event) for event in set_ev])
         for var_name, var_val in vars(self).items():
-            if isinstance(var_val, sparse.csr.csr_matrix):
+            if isinstance(var_val, sparse.csr_matrix):
                 setattr(self, var_name, var_val[unique_pos, :])
             elif isinstance(var_val, np.ndarray) and var_val.ndim == 1:
                 setattr(self, var_name, var_val[unique_pos])
@@ -2331,7 +2331,7 @@ class Hazard():
         # concatenate array and list attributes of non-empty hazards
         for attr_name in attributes:
             attr_val_list = [getattr(haz, attr_name) for haz in haz_list_nonempty]
-            if isinstance(attr_val_list[0], sparse.csr.csr_matrix):
+            if isinstance(attr_val_list[0], sparse.csr_matrix):
                 # map sparse matrix onto centroids
                 setattr(self, attr_name, sparse.vstack([
                     sparse.csr_matrix(
@@ -2388,7 +2388,7 @@ class Hazard():
         for attr_name, attr_val in vars(haz_list[0]).items():
             # to save memory, only copy simple attributes like
             # "units" that are not explicitly handled by Hazard.append
-            if not (isinstance(attr_val, (list, np.ndarray, sparse.csr.csr_matrix))
+            if not (isinstance(attr_val, (list, np.ndarray, sparse.csr_matrix))
                     or attr_name in ["tag", "centroids"]):
                 setattr(haz_concat, attr_name, copy.deepcopy(attr_val))
         haz_concat.append(*haz_list)
