@@ -421,6 +421,35 @@ class Centroids():
         plt.tight_layout()
         return ax
 
+    def get_area_pixel(self, min_resol=1.0e-8, scheduler=None):
+        """Computes the area per centroid in the CEA projection
+        assuming that the centroids define a regular grid of pixels
+        (area in m*m).
+
+        Parameters
+        ----------
+        min_resol : float, optional
+            Use this minimum resolution in lat and lon. Is passed to the
+            method climada.util.coordinates.get_resolution.
+            Default: 1.0e-8
+        scheduler : str
+            used for dask map_partitions. “threads”, “synchronous” or “processes”
+
+        See also
+        --------
+        climada.util.coordinates.get_resolution
+        """
+
+        res = u_coord.get_resolution(self.lat, self.lon, min_resol=min_resol)
+        res = np.abs(res).min()
+        LOGGER.debug('Setting area_pixel %s points.', str(self.lat.size))
+        xy_pixels = self.geometry.buffer(res / 2).envelope
+        if PROJ_CEA == self.geometry.crs:
+            area_pixel = xy_pixels.area.values
+        else:
+            area_pixel = xy_pixels.to_crs(crs={'proj': 'cea'}).area.values
+        return area_pixel
+
 
     '''
     I/O methods
@@ -565,34 +594,6 @@ class Centroids():
 
         return cls.from_geodataframe(gdf)
 
-    def area_pixel(self, min_resol=1.0e-8, scheduler=None):
-        """Computes the area per centroid in the CEA projection
-        assuming that the centroids define a regular grid of pixels
-        (area in m*m).
-
-        Parameters
-        ----------
-        min_resol : float, optional
-            Use this minimum resolution in lat and lon. Is passed to the
-            method climada.util.coordinates.get_resolution.
-            Default: 1.0e-8
-        scheduler : str
-            used for dask map_partitions. “threads”, “synchronous” or “processes”
-
-        See also
-        --------
-        climada.util.coordinates.get_resolution
-        """
-
-        res = u_coord.get_resolution(self.lat, self.lon, min_resol=min_resol)
-        res = np.abs(res).min()
-        LOGGER.debug('Setting area_pixel %s points.', str(self.lat.size))
-        xy_pixels = self.geometry.buffer(res / 2).envelope
-        if PROJ_CEA == self.geometry.crs:
-            area_pixel = xy_pixels.area.values
-        else:
-            area_pixel = xy_pixels.to_crs(crs={'proj': 'cea'}).area.values
-        return area_pixel
 
     def _ne_crs_geom(self, scheduler=None):
         """Return `geometry` attribute in the CRS of Natural Earth.
