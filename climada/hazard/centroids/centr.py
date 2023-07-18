@@ -109,8 +109,6 @@ class Centroids():
         crs: str = DEF_CRS,
         region_id: Optional[np.ndarray] = None,
         on_land: Optional[np.ndarray] = None,
-        dist_coast: Optional[np.ndarray] = None,
-        elevation: Optional[np.ndarray] = None,
         **kwargs
     ):
         """Initialization
@@ -141,8 +139,6 @@ class Centroids():
             attr_dict['region_id'] = region_id
         if on_land is not None:
             attr_dict['on_land'] = on_land
-        if dist_coast is not None:
-            attr_dict['dist_coast'] = dist_coast
         if elevation is not None:
             attr_dict['elevation'] = elevation
         if kwargs:
@@ -168,14 +164,6 @@ class Centroids():
     @property
     def region_id(self):
         return self.gdf['region_id']
-
-    @property
-    def elevation(self):
-        return self.gdf['elevation']
-
-    @property
-    def dist_coast(self):
-        return self.gdf['dist_coast']
 
     @property
     def crs(self):
@@ -217,6 +205,11 @@ class Centroids():
     @classmethod
     def from_geodataframe(cls, gdf):
         return cls(longitude=gdf.geometry.x.values, latitude=gdf.geometry.y.values, crs=gdf.crs, **gdf.drop(columns=['geometry']).to_dict(orient='list'))
+
+    @classmethod
+    def from_exposures(cls, exposures):
+        gdf = exposures.gdf[['geometry', 'region_id']]
+        return cls.from_geodtaframe(gdf)
 
     @classmethod
     def from_pnt_bounds(cls, points_bounds, res, crs=DEF_CRS):
@@ -327,7 +320,7 @@ class Centroids():
         else:
             raise NotImplementedError('The region id can only be assigned if the crs is epsg:4326')
 
-    def set_elevation(self, topo_path):
+    def get_elevation(self, topo_path):
         """Set elevation attribute for every pixel or point in meters.
 
         Parameters
@@ -335,9 +328,9 @@ class Centroids():
         topo_path : str
             Path to a raster file containing gridded elevation data.
         """
-        self.gdf.elevation = u_coord.read_raster_sample(topo_path, self.lat, self.lon)
+        return u_coord.read_raster_sample(topo_path, self.lat, self.lon)
 
-    def set_dist_coast(self, signed=False, precomputed=False, scheduler=None):
+    def get_dist_coast(self, signed=False, precomputed=False, scheduler=None):
         """Set dist_coast attribute for every pixel or point in meters.
 
         Parameters
@@ -353,12 +346,12 @@ class Centroids():
         if not u_coord.equal_crs(self.crs, 'epsg:4326'):
             raise NotImplementedError('The distance to coast can only be assigned if the crs is epsg:4326')
         if precomputed:
-            self.gdf.dist_coast = u_coord.dist_to_coast_nasa(
+            return u_coord.dist_to_coast_nasa(
                 self.lat, self.lon, highres=True, signed=signed)
         else:
             ne_geom = self._ne_crs_geom(scheduler)
             LOGGER.debug('Computing distance to coast for %s centroids.', str(self.size))
-            self.gdf.dist_coast = u_coord.dist_to_coast(ne_geom, signed=signed)
+            return u_coord.dist_to_coast(ne_geom, signed=signed)
 
     def set_on_land(self, scheduler=None):
         """Set on_land attribute for every pixel or point.
