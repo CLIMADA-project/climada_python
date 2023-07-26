@@ -220,7 +220,7 @@ class CostBenefit():
         self.unit = entity.exposures.value_unit
 
         # save measure colors
-        for meas in entity.measures.get_measure(hazard.tag.haz_type):
+        for meas in entity.measures.get_measure(hazard.haz_type):
             self.color_rgb[meas.name] = meas.color_rgb
         self.color_rgb[NO_MEASURE] = colors.to_rgb('deepskyblue')
 
@@ -803,7 +803,7 @@ class CostBenefit():
             impact_meas[NO_MEASURE]['impact'] = imp_tmp
 
         # compute impact for each measure
-        for measure in meas_set.get_measure(hazard.tag.haz_type):
+        for measure in meas_set.get_measure(hazard.haz_type):
             LOGGER.debug('%s impact of measure %s.', when, measure.name)
             imp_tmp, risk_transf = measure.calc_impact(exposures, imp_fun_set, hazard,
                                                        assign_centroids=False)

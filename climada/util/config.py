@@ -30,15 +30,6 @@ import logging
 from pathlib import Path
 
 
-LOGGER = logging.getLogger('climada')
-LOGGER.propagate = False
-FORMATTER = logging.Formatter(
-    "%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-CONSOLE = logging.StreamHandler(stream=sys.stdout)
-CONSOLE.setFormatter(FORMATTER)
-LOGGER.addHandler(CONSOLE)
-
-
 class Config():
     """Convenience Class. A Config object is a slow JSON object like nested dictonary who's values
     can be accessed by their names right away. E.g.: `a.b.c.str()` instead of `a['b']['c']`
@@ -360,6 +351,19 @@ CONFIG_DIRS = [
     Path(Path.home(), '.config'),  # ~/.config directory
     Path.cwd(),  # current working directory
 ]
+
 CONFIG = Config.from_dict(_fetch_conf(CONFIG_DIRS, CONFIG_NAME))
 Config.SOURCE_DIR = SOURCE_DIR
-LOGGER.setLevel(getattr(logging, CONFIG.log_level.str()))
+
+
+# set climada style logging
+if CONFIG.logging.managed.bool():
+    LOGGER = logging.getLogger('climada')
+    LOGGER.propagate = False
+    FORMATTER = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    CONSOLE = logging.StreamHandler(stream=sys.stdout)
+    CONSOLE.setFormatter(FORMATTER)
+    LOGGER.addHandler(CONSOLE)
+
+    LOGGER.setLevel(getattr(logging, CONFIG.log_level.str()))

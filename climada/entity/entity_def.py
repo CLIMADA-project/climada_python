@@ -25,7 +25,7 @@ import logging
 from typing import Optional
 import pandas as pd
 
-from climada.entity.tag import Tag
+from climada.util.tag import Tag
 from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
 from climada.entity.disc_rates.base import DiscRates
 from climada.entity.measures.measure_set import MeasureSet
@@ -78,7 +78,7 @@ class Entity:
         self.measures = MeasureSet() if measure_set is None else measure_set
 
     @classmethod
-    def from_mat(cls, file_name, description=''):
+    def from_mat(cls, file_name):
         """Read MATLAB file of climada.
 
         Parameters
@@ -86,9 +86,6 @@ class Entity:
         file_name : str, optional
             file name(s) or folder name
             containing the files to read
-        description : str or list(str), optional
-            one description of the
-            data or a description of each data file
 
         Returns
         -------
@@ -97,10 +94,10 @@ class Entity:
         """
         return cls(
             exposures=Exposures.from_mat(file_name),
-            disc_rates=DiscRates.from_mat(file_name, description),
-            impact_func_set=ImpactFuncSet.from_mat(file_name, description),
-            measure_set=MeasureSet.from_mat(file_name, description)
-            )
+            disc_rates=DiscRates.from_mat(file_name),
+            impact_func_set=ImpactFuncSet.from_mat(file_name),
+            measure_set=MeasureSet.from_mat(file_name),
+        )
 
     def read_mat(self, *args, **kwargs):
         """This function is deprecated, use Entity.from_mat instead."""
@@ -128,20 +125,18 @@ class Entity:
         """
 
         exp = Exposures(pd.read_excel(file_name))
-        exp.tag = Tag()
-        exp.tag.file_name = str(file_name)
-        exp.tag.description = description
+        exp.tag = Tag(file_name=file_name, description=description)
 
-        dr = DiscRates.from_excel(file_name, description)
-        impf_set = ImpactFuncSet.from_excel(file_name, description)
-        meas_set = MeasureSet.from_excel(file_name, description)
+        dr = DiscRates.from_excel(file_name)
+        impf_set = ImpactFuncSet.from_excel(file_name)
+        meas_set = MeasureSet.from_excel(file_name)
 
         return cls(
             exposures=exp,
             disc_rates=dr,
             impact_func_set=impf_set,
-            measure_set=meas_set
-            )
+            measure_set=meas_set,
+        )
 
     def read_excel(self, *args, **kwargs):
         """This function is deprecated, use Entity.from_excel instead."""
@@ -185,9 +180,6 @@ class Entity:
         super().__setattr__(name, value)
 
     def __str__(self):
-        return 'Exposures: \n' + self.exposures.tag.__str__() + \
-                '\nDiscRates: \n' + self.disc_rates.tag.__str__() + \
-                '\nImpactFuncSet: \n' + self.impact_funcs.tag.__str__() + \
-                '\nMeasureSet: \n' + self.measures.tag.__str__()
+        return 'Exposures: \n' + self.exposures.tag.__str__()
 
     __repr__ = __str__

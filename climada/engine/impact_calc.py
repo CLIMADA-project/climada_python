@@ -112,6 +112,22 @@ class ImpactCalc():
         apply_deductible_to_mat : apply deductible to impact matrix
         apply_cover_to_mat : apply cover to impact matrix
         """
+        # check for compability of exposures and hazard type
+        if all(name not in self.exposures.gdf.columns for
+               name in ['if_', f'if_{self.hazard.haz_type}',
+                        'impf_', f'impf_{self.hazard.haz_type}']):
+            raise AttributeError(
+                "Impact calculation not possible. No impact functions found "
+                f"for hazard type {self.hazard.haz_type} in exposures."
+                )
+
+        # check for compability of impact function and hazard type
+        if not self.impfset.get_func(haz_type=self.hazard.haz_type):
+            raise AttributeError(
+                "Impact calculation not possible. No impact functions found "
+                f"for hazard type {self.hazard.haz_type} in impf_set."
+                )
+
         impf_col = self.exposures.get_impf_column(self.hazard.haz_type)
         exp_gdf = self.minimal_exp_gdf(impf_col, assign_centroids, ignore_cover, ignore_deductible)
         if exp_gdf.size == 0:
@@ -159,9 +175,8 @@ class ImpactCalc():
             imp_mat = None
             at_event, eai_exp, aai_agg = self.stitch_risk_metrics(imp_mat_gen)
         return Impact.from_eih(
-            self.exposures, self.impfset, self.hazard,
-            at_event, eai_exp, aai_agg, imp_mat
-            )
+            self.exposures, self.hazard, at_event, eai_exp, aai_agg, imp_mat
+        )
 
     def _return_empty(self, save_mat):
         """
@@ -186,8 +201,9 @@ class ImpactCalc():
                 )
         else:
             imp_mat = None
-        return Impact.from_eih(self.exposures, self.impfset, self.hazard,
-                        at_event, eai_exp, aai_agg, imp_mat)
+        return Impact.from_eih(
+            self.exposures, self.hazard, at_event, eai_exp, aai_agg, imp_mat
+        )
 
     def minimal_exp_gdf(self, impf_col, assign_centroids, ignore_cover, ignore_deductible):
         """Get minimal exposures geodataframe for impact computation
@@ -215,7 +231,7 @@ class ImpactCalc():
             self.exposures.assign_centroids(self.hazard, overwrite=True)
         elif self.hazard.centr_exp_col not in self.exposures.gdf.columns:
             raise ValueError("'assign_centroids' is set to 'False' but no centroids are assigned"
-                             f" for the given hazard type ({self.hazard.tag.haz_type})."
+                             f" for the given hazard type ({self.hazard.haz_type})."
                              " Run 'exposures.assign_centroids()' beforehand or set"
                              " 'assign_centroids' to 'True'")
         mask = (

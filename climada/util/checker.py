@@ -54,7 +54,7 @@ def check_oligatories(var_dict, var_obl, name_prefix, n_size, n_row, n_col):
                 size(n_size, var_val, name_prefix + var_name)
             elif (isinstance(var_val, np.ndarray) and var_val.ndim == 2):
                 shape(n_row, n_col, var_val, name_prefix + var_name)
-            elif isinstance(var_val, (np.ndarray, sparse.csr.csr_matrix)) and var_val.ndim == 2:
+            elif isinstance(var_val, (np.ndarray, sparse.csr_matrix)) and var_val.ndim == 2:
                 shape(n_row, n_col, var_val, name_prefix + var_name)
 
 def check_optionals(var_dict, var_opt, name_prefix, n_size):

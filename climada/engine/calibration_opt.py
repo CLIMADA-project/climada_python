@@ -31,7 +31,7 @@ from scipy.optimize import minimize
 
 from climada.engine import ImpactCalc
 from climada.entity import ImpactFuncSet, ImpfTropCyclone, impact_funcs
-from climada.engine.impact_data import emdat_impact_yearlysum, emdat_impact_event
+from climada.engine.impact_data import emdat_impact_yearlysum  #, emdat_impact_event
 
 LOGGER = logging.getLogger(__name__)
 
@@ -261,7 +261,7 @@ def init_impact_data(hazard_type,
                                              reference_year=reference_year)
         else:
             raise ValueError('init_impact_data not yet implemented for yearly_impact = False.')
-            em_data = emdat_impact_event(source_file)
+            #em_data = emdat_impact_event(source_file)
     else:
         raise ValueError('init_impact_data not yet implemented for other impact_data_sources '
                          'than emdat.')
@@ -331,7 +331,7 @@ def calib_all(hazard, exposure, impf_name_or_instance, param_full_dict,
 
     # prepare hazard and exposure
     region_ids = list(np.unique(exposure.region_id))
-    hazard_type = hazard.tag.haz_type
+    hazard_type = hazard.haz_type
     exposure.assign_centroids(hazard)
     # prepare impact data
     if isinstance(impact_data_source, pd.DataFrame):
@@ -397,7 +397,7 @@ def calib_optimize(hazard, exposure, impf_name_or_instance, param_dict,
 
     # prepare hazard and exposure
     region_ids = list(np.unique(exposure.region_id))
-    hazard_type = hazard.tag.haz_type
+    hazard_type = hazard.haz_type
     exposure.assign_centroids(hazard)
     # prepare impact data
     if isinstance(impact_data_source, pd.DataFrame):

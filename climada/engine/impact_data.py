@@ -30,8 +30,6 @@ from climada.util.finance import gdp
 from climada.util.constants import DEF_CRS
 import climada.util.coordinates as u_coord
 from climada.engine import Impact
-from climada.entity.tag import Tag
-from climada.hazard.tag import Tag as TagHaz
 
 LOGGER = logging.getLogger(__name__)
 
@@ -114,7 +112,57 @@ VARNAMES_EMDAT = \
             "Reconstruction Costs ('000 US$)": "Reconstruction Costs ('000 US$)",
             "Insured Damages ('000 US$)": "Insured Damages ('000 US$)",
             "Total Damages ('000 US$)": "Total Damages ('000 US$)",
-            'CPI': 'CPI'}}
+            'CPI': 'CPI'},
+     2023: {'Dis No': 'Dis No',
+            'Year': 'Year',
+            'Seq': 'Seq',
+            'Glide': 'Glide',
+            'Disaster Group': 'Disaster Group',
+            'Disaster Subgroup': 'Disaster Subgroup',
+            'Disaster Type': 'Disaster Type',
+            'Disaster Subtype': 'Disaster Subtype',
+            'Disaster Subsubtype': 'Disaster Subsubtype',
+            'Event Name': 'Event Name',
+            'Country': 'Country',
+            'ISO': 'ISO',
+            'Region': 'Region',
+            'Continent': 'Continent',
+            'Location': 'Location',
+            'Origin': 'Origin',
+            'Associated Dis': 'Associated Dis',
+            'Associated Dis2': 'Associated Dis2',
+            'OFDA Response': 'OFDA Response',
+            'Appeal': 'Appeal',
+            'Declaration': 'Declaration',
+            "AID Contribution ('000 US$)": "AID Contribution ('000 US$)",
+            'Dis Mag Value': 'Dis Mag Value',
+            'Dis Mag Scale': 'Dis Mag Scale',
+            'Latitude': 'Latitude',
+            'Longitude': 'Longitude',
+            'Local Time': 'Local Time',
+            'River Basin': 'River Basin',
+            'Start Year': 'Start Year',
+            'Start Month': 'Start Month',
+            'Start Day': 'Start Day',
+            'End Year': 'End Year',
+            'End Month': 'End Month',
+            'End Day': 'End Day',
+            'Total Deaths': 'Total Deaths',
+            'No Injured': 'No Injured',
+            'No Affected': 'No Affected',
+            'No Homeless': 'No Homeless',
+            'Total Affected': 'Total Affected',
+            "Reconstruction Costs ('000 US$)": "Reconstruction Costs ('000 US$)",
+            "Reconstruction Costs, Adjusted ('000 US$)": "Reconstruction Costs, Adjusted ('000 US$)",
+            "Insured Damages ('000 US$)": "Insured Damages ('000 US$)",
+            "Insured Damages, Adjusted ('000 US$)": "Insured Damages, Adjusted ('000 US$)",
+            "Total Damages ('000 US$)": "Total Damages ('000 US$)",
+            "Total Damages, Adjusted ('000 US$)": "Total Damages, Adjusted ('000 US$)",
+            'CPI': 'CPI',
+            'Adm Level': 'Adm Level',
+            'Admin1 Code': 'Admin1 Code',
+            'Admin2 Code': 'Admin2 Code',
+            'Geo Locations': 'Geo Locations'}}
 
 
 def assign_hazard_to_emdat(certainty_level, intensity_path_haz, names_path_haz,
@@ -473,7 +521,7 @@ def check_assigned_track(lookup, checkset):
 
 
 def clean_emdat_df(emdat_file, countries=None, hazard=None, year_range=None,
-                   target_version=2020):
+                   target_version=None):
     """
     Get a clean and standardized DataFrame from EM-DAT-CSV-file
     (1) load EM-DAT data from CSV to DataFrame and remove header/footer,
@@ -501,7 +549,8 @@ def clean_emdat_df(emdat_file, countries=None, hazard=None, year_range=None,
         (only min and max are considered)
     target_version : int
         required EM-DAT data format version (i.e. year of download),
-        changes naming of columns/variables (default: 2020)
+        changes naming of columns/variables,
+        default: newest available version in ``VARNAMES_EMDAT`` that matches the given emdat_file
 
     Returns
     -------
@@ -527,12 +576,16 @@ def clean_emdat_df(emdat_file, countries=None, hazard=None, year_range=None,
 
     # (2)  handle version, clean up, and add columns:
     # (2.1) identify underlying EMDAT version of csv:
-    version = 2020
-    for vers in list(VARNAMES_EMDAT.keys()):
+    version = None
+    for vers in sorted(VARNAMES_EMDAT.keys()):
         if len(df_emdat.columns) >= len(VARNAMES_EMDAT[vers]) and \
            all(item in list(df_emdat.columns) for item in VARNAMES_EMDAT[vers].values()):
             version = vers
+    if not version:
+        raise ValueError("the given emdat_file contains unexpected columns and cannot be"
+                         " associated with any known EM-DAT file structure")
     # (2.2) create new DataFrame df_data with column names as target version
+    target_version = target_version or version
     df_data = pd.DataFrame(index=df_emdat.index.values,
                            columns=VARNAMES_EMDAT[target_version].values())
     if 'Year' not in df_data.columns:  # make sure column "Year" exists
@@ -551,6 +604,9 @@ def clean_emdat_df(emdat_file, countries=None, hazard=None, year_range=None,
                     years_list.append(np.nan)
             df_data[col] = years_list
     if version <= 2018 and target_version >= 2020:
+        # create 'Start Year', -Month' and -Day' from 'Start date'
+        # ignore 'End date'
+        # replace NaN with None in 'Disaster Subtype', 'Disaster Type' and 'Country'
         date_list = list()
         year_list = list()
         month_list = list()
@@ -705,7 +761,7 @@ def scale_impact2refyear(impact_values, year_values, iso3a_values, reference_yea
 
 def emdat_impact_yearlysum(emdat_file_csv, countries=None, hazard=None, year_range=None,
                            reference_year=None, imp_str="Total Damages ('000 US$)",
-                           version=2020):
+                           version=None):
     """function to load EM-DAT data and sum impact per year
 
     Parameters
@@ -727,9 +783,10 @@ def emdat_impact_yearlysum(emdat_file_csv, countries=None, hazard=None, year_ran
     year_range : list or tuple
         Year range to be extracted, e.g. (2000, 2015);
         (only min and max are considered)
-    version : int
+    version : int, optional
         required EM-DAT data format version (i.e. year of download),
-        changes naming of columns/variables (default: 2020)
+        changes naming of columns/variables,
+        default: newest available version in ``VARNAMES_EMDAT``
 
     Returns
     -------
@@ -737,6 +794,7 @@ def emdat_impact_yearlysum(emdat_file_csv, countries=None, hazard=None, year_ran
         DataFrame with summed impact and scaled impact per
         year and country.
     """
+    version = version or max(VARNAMES_EMDAT.keys())
     imp_str = VARNAMES_EMDAT[version][imp_str]
     df_data = clean_emdat_df(emdat_file_csv, countries=countries, hazard=hazard,
                              year_range=year_range, target_version=version)
@@ -773,7 +831,7 @@ def emdat_impact_yearlysum(emdat_file_csv, countries=None, hazard=None, year_ran
 
 def emdat_impact_event(emdat_file_csv, countries=None, hazard=None, year_range=None,
                        reference_year=None, imp_str="Total Damages ('000 US$)",
-                       version=2020):
+                       version=None):
     """function to load EM-DAT data return impact per event
 
     Parameters
@@ -801,8 +859,9 @@ def emdat_impact_event(emdat_file_csv, countries=None, hazard=None, year_range=N
     imp_str : str
         Column name of impact metric in EMDAT CSV,
         default = "Total Damages ('000 US$)"
-    version : int
-        EM-DAT version to take variable/column names from (defaul: 2020)
+    version : int, optional
+        EM-DAT version to take variable/column names from,
+        default: newest available version in ``VARNAMES_EMDAT``
 
     Returns
     -------
@@ -812,6 +871,7 @@ def emdat_impact_event(emdat_file_csv, countries=None, hazard=None, year_range=N
         same unit as chosen impact, but multiplied by 1000 if impact is given
         as 1000 US$ (e.g. imp_str="Total Damages ('000 US$) scaled").
     """
+    version = version or max(VARNAMES_EMDAT.keys())
     imp_str = VARNAMES_EMDAT[version][imp_str]
     df_data = clean_emdat_df(emdat_file_csv, hazard=hazard, year_range=year_range,
                              countries=countries, target_version=version)
@@ -835,26 +895,26 @@ def emdat_impact_event(emdat_file_csv, countries=None, hazard=None, year_range=N
 
 
 def emdat_to_impact(emdat_file_csv, hazard_type_climada, year_range=None, countries=None,
-                    hazard_type_emdat=None,
-                    reference_year=None, imp_str="Total Damages"):
+                    hazard_type_emdat=None, reference_year=None, imp_str="Total Damages"):
     """function to load EM-DAT data return impact per event
 
     Parameters
     ----------
-     emdat_file_csv : str or pd.DataFrame
+    emdat_file_csv : str or pd.DataFrame
         Either string with full path to CSV-file or
         pandas.DataFrame loaded from EM-DAT CSV
     countries : list of str
         country ISO3-codes or names, e.g. ['JAM', 'CUB'].
         default: countries=None for all countries
-    hazard_type_climada : list or str
+    hazard_type_climada : str
+        CLIMADA hazard type abbreviations, e.g. TC, BF, etc.
+    hazard_type_emdat : list or str
         List of Disaster (sub-)type accordung EMDAT terminology, i.e.:
         Animal accident, Drought, Earthquake, Epidemic, Extreme temperature,
         Flood, Fog, Impact, Insect infestation, Landslide, Mass movement (dry),
         Storm, Volcanic activity, Wildfire;
         Coastal Flooding, Convective Storm, Riverine Flood, Tropical cyclone,
-        Tsunami, etc.;
-        OR CLIMADA hazard type abbreviations, e.g. TC, BF, etc.
+        Tsunami, etc.
     year_range : list or tuple
         Year range to be extracted, e.g. (2000, 2015);
         (only min and max are considered)
@@ -883,27 +943,22 @@ def emdat_to_impact(emdat_file_csv, hazard_type_climada, year_range=None, countr
         imp_str = "Insured Damages ('000 US$)"
     elif "Reconstruction Costs" in imp_str:
         imp_str = "Reconstruction Costs ('000 US$)"
-    imp_str = VARNAMES_EMDAT[max(VARNAMES_EMDAT.keys())][imp_str]
+
+    # use the newest version of EMDAT varnames
+    version = max(VARNAMES_EMDAT.keys())
+
+    imp_str = VARNAMES_EMDAT[version][imp_str]
     if not hazard_type_emdat:
         hazard_type_emdat = [hazard_type_climada]
     if reference_year == 0:
         reference_year = None
     # Inititate Impact-instance:
-    impact_instance = Impact()
-
-    impact_instance.tag = dict()
-    impact_instance.tag['haz'] = TagHaz(haz_type=hazard_type_climada,
-                                        file_name=emdat_file_csv,
-                                        description='EM-DAT impact, direct import')
-    impact_instance.tag['exp'] = Tag(file_name=emdat_file_csv,
-                                     description='EM-DAT impact, direct import')
-    impact_instance.tag['impf_set'] = Tag(file_name=None, description=None)
-
+    impact_instance = Impact(haz_type=hazard_type_climada)
 
     # Load EM-DAT impact data by event:
     em_data = emdat_impact_event(emdat_file_csv, countries=countries, hazard=hazard_type_emdat,
                                  year_range=year_range, reference_year=reference_year,
-                                 imp_str=imp_str, version=max(VARNAMES_EMDAT.keys()))
+                                 imp_str=imp_str, version=version)
 
     if isinstance(countries, str):
         countries = [countries]
@@ -915,7 +970,7 @@ def emdat_to_impact(emdat_file_csv, hazard_type_climada, year_range=None, countr
         return impact_instance, countries
     impact_instance.event_id = np.array(em_data.index, int)
     impact_instance.event_name = list(
-        em_data[VARNAMES_EMDAT[max(VARNAMES_EMDAT.keys())]['Dis No']])
+        em_data[VARNAMES_EMDAT[version]['Dis No']])
 
     date_list = list()
     for year in list(em_data['Year']):
@@ -982,8 +1037,7 @@ def emdat_to_impact(emdat_file_csv, hazard_type_climada, year_range=None, countr
             countries_reg_id.append(u_coord.country_to_iso(cntry, "numeric"))
         except LookupError:
             countries_reg_id.append(0)
-        df_tmp = em_data[em_data[VARNAMES_EMDAT[
-            max(VARNAMES_EMDAT.keys())]['ISO']].str.contains(cntry)]
+        df_tmp = em_data[em_data[VARNAMES_EMDAT[version]['ISO']].str.contains(cntry)]
         if not reference_year:
             impact_instance.eai_exp[idx] = sum(np.array(df_tmp["impact"]) *
                                                impact_instance.frequency[0])

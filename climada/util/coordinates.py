@@ -307,6 +307,7 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
         Specify a unit for the distance. One of:
 
         * "km": distance in km.
+        * "m": distance in m.
         * "degree": angular distance in decimal degrees.
         * "radian": angular distance in radians.
 
@@ -322,6 +323,8 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
     """
     if units == "km":
         unit_factor = ONE_LAT_KM
+    elif units == "m":
+        unit_factor = ONE_LAT_KM * 1000.0
     elif units == "radian":
         unit_factor = np.radians(1.0)
     elif units == "degree":
@@ -1946,8 +1949,8 @@ def read_raster(file_name, band=None, src_crs=None, window=None, geometry=None,
         band number to read. Default: 1
     window : rasterio.windows.Window, optional
         window to read
-    geometry : shapely.geometry, optional
-        consider pixels only in shape
+    geometry : list of shapely.geometry, optional
+        consider pixels only within these shapes
     dst_crs : crs, optional
         reproject to given crs
     transform : rasterio.Affine
@@ -2639,7 +2642,8 @@ def align_raster_data(source, src_crs, src_transform, dst_crs=None, dst_resoluti
     dst_transform, dst_shape = subraster_from_bounds(global_transform, dst_bounds)
 
     destination = np.zeros(dst_shape, dtype=source.dtype)
-    rasterio.warp.reproject(source=source,
+    try:
+        rasterio.warp.reproject(source=source,
                             destination=destination,
                             src_transform=src_transform,
                             src_crs=src_crs,
@@ -2647,6 +2651,12 @@ def align_raster_data(source, src_crs, src_transform, dst_crs=None, dst_resoluti
                             dst_crs=dst_crs,
                             resampling=resampling,
                             **kwargs)
+    except Exception as raster_exc:
+        # rasterio doesn't expose all of their error classes
+        # in particular: rasterio._err.CPLE_AppDefinedError
+        # so we transform the exception to something that can be excepted
+        # e.g. in litpop._get_litpop_single_polygon
+        raise ValueError(raster_exc) from raster_exc
 
     if conserve == 'mean':
         destination *= source.mean() / destination.mean()
