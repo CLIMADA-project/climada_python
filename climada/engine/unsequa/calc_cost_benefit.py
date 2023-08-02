@@ -200,8 +200,8 @@ class CalcCostBenefit(Calc):
                 LOGGER.info('Using %s CPUs.', pool.ncpus)
                 chunksize = min(unc_data.n_samples // pool.ncpus, 100)
                 cb_metrics = pool.map(partial(self._map_costben_calc, **cost_benefit_kwargs),
-                                               samples_df.iterrows(),
-                                               chunsize = chunksize)
+                                      samples_df.iterrows(),
+                                      chunksize=chunksize)
 
             else:
                 cb_metrics = map(partial(self._map_costben_calc, **cost_benefit_kwargs),

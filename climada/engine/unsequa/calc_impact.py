@@ -207,8 +207,8 @@ class CalcImpact(Calc):
                 LOGGER.info('Using %s CPUs.', pool.ncpus)
                 chunksize = min(unc_sample.n_samples // pool.ncpus, 100)
                 imp_metrics = pool.map(self._map_impact_calc,
-                                        samples_df.iterrows(),
-                                        chunsize = chunksize)
+                                       samples_df.iterrows(),
+                                       chunksize=chunksize)
 
             else:
                 imp_metrics = map(self._map_impact_calc,
