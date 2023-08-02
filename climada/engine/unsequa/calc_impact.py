@@ -205,7 +205,7 @@ class CalcImpact(Calc):
         with log_level(level='ERROR', name_prefix='climada'):
             if pool:
                 LOGGER.info('Using %s CPUs.', pool.ncpus)
-                chunksize = min(unc_sample.n_samples // pool.ncpus, 100)
+                chunksize = max(min(unc_sample.n_samples // pool.ncpus, 100), 1)
                 imp_metrics = pool.map(self._map_impact_calc,
                                        samples_df.iterrows(),
                                        chunksize=chunksize)

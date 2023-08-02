@@ -299,7 +299,7 @@ class TropCyclone(Hazard):
         LOGGER.info('Mapping %s tracks to %s coastal centroids.', str(tracks.size),
                     str(coastal_idx.size))
         if pool:
-            chunksize = min(num_tracks // pool.ncpus, 1000)
+            chunksize = max(min(num_tracks // pool.ncpus, 1000), 1)
             tc_haz_list = pool.map(
                 cls.from_single_track, tracks.data,
                 itertools.repeat(centroids, num_tracks),
