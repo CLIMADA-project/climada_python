@@ -1084,7 +1084,7 @@ class UncImpactOutput(UncOutput):
     """Extension of UncOutput specific for CalcImpact, returned by the  uncertainty() method.
     """
     def __init__(self, samples_df, unit, aai_agg_unc_df, freq_curve_unc_df, eai_exp_unc_df,
-                 at_event_unc_df, tot_value_unc_df, coord_df):
+                 at_event_unc_df, coord_df):
         """Constructor
 
         Uncertainty output values from impact.calc for each sample
@@ -1107,9 +1107,6 @@ class UncImpactOutput(UncOutput):
         at_event_unc_df : pandas.DataFrame
             Each row contains the values of at_event for one sample (row of
             samples_df)
-        tot_value_unc_df : pandas.DataFrame
-            Each row contains the value of tot_value for one sample (row of
-            samples_df)
         coord_df : pandas.DataFrame
             Coordinates of the exposure
         """
@@ -1122,8 +1119,6 @@ class UncImpactOutput(UncOutput):
         self.eai_exp_sens_df = None
         self.at_event_unc_df = at_event_unc_df
         self.at_event_sens_df = None
-        self.tot_value_unc_df = tot_value_unc_df
-        self.tot_value_sens_df = None
         self.coord_df = coord_df
 
 

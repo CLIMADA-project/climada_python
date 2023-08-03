@@ -68,7 +68,7 @@ class CalcImpact(Calc):
         ('exp_input_var', 'impf_input_var', 'haz_input_var')
     _metric_names : tuple(str)
         Names of the impact output metrics
-        ('aai_agg', 'freq_curve', 'at_event', 'eai_exp', 'tot_value')
+        ('aai_agg', 'freq_curve', 'at_event', 'eai_exp')
     """
 
     _input_var_names = (
@@ -82,8 +82,7 @@ class CalcImpact(Calc):
         'aai_agg',
         'freq_curve',
         'at_event',
-        'eai_exp',
-        'tot_value',
+        'eai_exp'
     )
     """Names of the cost benefit output metrics"""
 
@@ -143,7 +142,6 @@ class CalcImpact(Calc):
         unc_output.freq_curve_unc_df
         unc_output.eai_exp_unc_df
         unc_output.at_event_unc_df
-        unc_output.tot_value_unc_df
         unc_output.unit
 
         Parameters
@@ -209,7 +207,7 @@ class CalcImpact(Calc):
             )
         imp_metrics = itertools.starmap(_map_impact_calc, p_iterator)
         [aai_agg_list, freq_curve_list,
-         eai_exp_list, at_event_list, tot_value_list] = list(zip(*imp_metrics))
+         eai_exp_list, at_event_list] = list(zip(*imp_metrics))
         elapsed_time = (time.time() - start)
         self.est_comp_time(unc_sample.n_samples, elapsed_time, processes)
 
@@ -239,8 +237,7 @@ class CalcImpact(Calc):
         #Perform the actual computation
         with log_level(level='ERROR', name_prefix='climada'):
             [aai_agg_list, freq_curve_list,
-             eai_exp_list, at_event_list,
-             tot_value_list] = list(zip(*imp_metrics))
+             eai_exp_list, at_event_list] = list(zip(*imp_metrics))
 
         # Assign computed impact distribution data to self
         aai_agg_unc_df  = pd.DataFrame(aai_agg_list,
@@ -253,12 +250,6 @@ class CalcImpact(Calc):
         #     df_eai_exp = df_eai_exp.astype(pd.SparseDtype("float", 0.0))
         #eai_exp_unc_df = df_eai_exp
         at_event_unc_df = pd.DataFrame(at_event_list)
-        # Setting to sparse dataframes is not compatible with .to_hdf5
-        # if np.count_nonzero(df_at_event.to_numpy()) / df_at_event.size < 0.5:
-        #     df_at_event = df_at_event.astype(pd.SparseDtype("float", 0.0))
-        #at_event_unc_df = df_at_event
-        tot_value_unc_df = pd.DataFrame(tot_value_list,
-                                                 columns = ['tot_value'])
 
         if calc_eai_exp:
             exp = self.exp_input_var.evaluate()
@@ -272,7 +263,6 @@ class CalcImpact(Calc):
                                freq_curve_unc_df=freq_curve_unc_df,
                                eai_exp_unc_df=eai_exp_unc_df,
                                at_event_unc_df=at_event_unc_df,
-                               tot_value_unc_df=tot_value_unc_df,
                                coord_df=coord_df
                                )
 
@@ -324,4 +314,4 @@ def _map_impact_calc(
     else:
         at_event = np.array([])
 
-    return [imp.aai_agg, freq_curve, eai_exp, at_event, imp.tot_value]
+    return [imp.aai_agg, freq_curve, eai_exp, at_event]
