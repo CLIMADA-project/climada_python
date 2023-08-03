@@ -130,55 +130,139 @@ class OutputEvaluator:
         self._impact_label = f"Impact [{self.input.exposure.value_unit}]"
 
     def plot_impf_set(self, **plot_kwargs):
-        """Plot the optimized impact functions"""
+        """Plot the optimized impact functions
+
+        This calls the plot function of the respective impact function set.
+
+        Parameters
+        ----------
+        plot_kwargs
+            Plotting keyword arguments passed to the underlying plotting method.
+
+        See Also
+        --------
+        :py:meth:`~climada.entity.impact_funcs.impact_func_set.ImpactFuncSet.plot`
+        """
         return self.impf_set.plot(**plot_kwargs)
 
-    def plot_at_event(self, **plot_kwargs):
-        data = (
-            pd.concat(
-                [
-                    pd.Series([self.impact.at_event]),
-                    self.input.data.sum(axis="columns"),
-                ],
-                ignore_index=True,
-                axis=1,
-            )
-            .rename(columns={0: "Model", 1: "Data"})
-            .set_index(self.input.hazard.event_name)
-        )
+    def plot_at_event(
+        self,
+        data_transf: Callable[[pd.DataFrame], pd.DataFrame] = lambda x: x,
+        **plot_kwargs,
+    ):
+        """Create a bar plot comparing estimated model output and data per event
+
+        Every row of the :py:attr:`Input.data` is considered an event.
+        The data to be plotted can be transformed with a generic function
+        ``data_transf``.
+
+        Parameters
+        ----------
+        data_transf : Callable (pd.DataFrame -> pd.DataFrame), optional
+            A function that transforms the data to plot before plotting.
+            It receives a dataframe whose rows represent events and whose columns
+            represent the modelled impact and the calibration data, respectively.
+            By default, the data is not transformed.
+        plot_kwargs
+            Keyword arguments passed to the ``DataFrame.plot.bar`` method.
+
+        Returns
+        -------
+        ax : matplotlib.axes.Axes
+            The plot axis returned by ``DataFrame.plot.bar``
+        """
+        data = pd.concat(
+            [
+                self.input.impact_to_dataframe(self.impact).sum(axis="columns"),
+                self.input.data.sum(axis="columns"),
+            ],
+            axis=1,
+        ).rename(columns={0: "Model", 1: "Data"})
+
+        # Transform data before plotting
+        data = data_transf(data)
+
+        # Now plot
         ylabel = plot_kwargs.pop("ylabel", self._impact_label)
         return data.plot.bar(ylabel=ylabel, **plot_kwargs)
 
-    def plot_at_region(self, agg_regions=None, **plot_kwargs):
+    def plot_at_region(
+        self,
+        data_transf: Callable[[pd.DataFrame], pd.DataFrame] = lambda x: x,
+        **plot_kwargs,
+    ):
+        """Create a bar plot comparing estimated model output and data per event
+
+        Every column of the :py:attr:`Input.data` is considered a region.
+        The data to be plotted can be transformed with a generic function
+        ``data_transf``.
+
+        Parameters
+        ----------
+        data_transf : Callable (pd.DataFrame -> pd.DataFrame), optional
+            A function that transforms the data to plot before plotting.
+            It receives a dataframe whose rows represent regions and whose columns
+            represent the modelled impact and the calibration data, respectively.
+            By default, the data is not transformed.
+        plot_kwargs
+            Keyword arguments passed to the ``DataFrame.plot.bar`` method.
+
+        Returns
+        -------
+        ax : matplotlib.axes.Axes
+            The plot axis returned by ``DataFrame.plot.bar``.
+        """
         data = pd.concat(
             [
-                self.impact.impact_at_reg(agg_regions).sum(axis="index"),
+                self.input.impact_to_dataframe(self.impact).sum(axis="index"),
                 self.input.data.sum(axis="index"),
             ],
             axis=1,
         ).rename(columns={0: "Model", 1: "Data"})
 
-        # Use nice country names if no agg_regions were given
-        if agg_regions is None:
-            data = data.rename(
-                index=lambda x: u_coord.country_to_iso(x, representation="name")
-            )
+        # Transform data before plotting
+        data = data_transf(data)
 
+        # Now plot
         ylabel = plot_kwargs.pop("ylabel", self._impact_label)
         return data.plot.bar(ylabel=ylabel, **plot_kwargs)
 
-    def plot_event_region_heatmap(self, agg_regions=None, **plot_kwargs):
+    def plot_event_region_heatmap(
+        self,
+        data_transf: Callable[[pd.DataFrame], pd.DataFrame] = lambda x: x,
+        **plot_kwargs,
+    ):
+        """Plot a heatmap comparing all events per all regions
+
+        Every column of the :py:attr:`Input.data` is considered a region, and every
+        row is considered an event.
+        The data to be plotted can be transformed with a generic function
+        ``data_transf``.
+
+        Parameters
+        ----------
+        data_transf : Callable (pd.DataFrame -> pd.DataFrame), optional
+            A function that transforms the data to plot before plotting.
+            It receives a dataframe whose rows represent events and whose columns
+            represent the regions, respectively.
+            By default, the data is not transformed.
+        plot_kwargs
+            Keyword arguments passed to the ``DataFrame.plot.bar`` method.
+
+        Returns
+        -------
+        ax : matplotlib.axes.Axes
+            The plot axis returned by ``DataFrame.plot.bar``.
+
+        """
         # Data preparation
-        agg = self.impact.impact_at_reg(agg_regions)
+        agg = self.input.impact_to_dataframe(self.impact)
         data = (agg + 1) / (self.input.data + 1)
         data = data.transform(np.log10).replace(0, np.nan)
-        data = data.where((agg < 1) & (self.input.data < 1))
+        data = data.where((agg > 0) | (self.input.data > 0))
 
-        # Use nice country names if no agg_regions were given
-        if agg_regions is None:
-            data = data.rename(
-                index=lambda x: u_coord.country_to_iso(x, representation="name")
-            )
+        # Transform data
+        data = data_transf(data)
 
         # Default plot settings
         annot = plot_kwargs.pop("annot", True)

@@ -3,7 +3,7 @@
 from dataclasses import dataclass, InitVar
 from typing import Mapping, Optional, Any
 from numbers import Number
-from itertools import combinations
+from itertools import combinations, repeat
 
 import pandas as pd
 from bayes_opt import BayesianOptimization
@@ -164,33 +164,58 @@ class BayesianOptimizerOutput(Output):
     def plot_p_space(
         self,
         p_space_df: Optional[pd.DataFrame] = None,
+        x: Optional[str] = None,
+        y: Optional[str] = None,
         min_def: Optional[str] = "Cost Function",
         min_fmt: str = "x",
         min_color: str = "r",
         **plot_kwargs
     ):
-        """Plot the parameter space"""
+        """Plot the parameter space as scatter plot(s)
+
+        Produce a scatter plot where each point represents a parameter combination
+        sampled by the optimizer. The coloring represents the cost function value.
+        If there are more than two parameters in the input data frame, this method will
+        produce one plot for each combination of two parameters.
+        Explicit parameter names to plot can be given via the ``x`` and ``y`` arguments.
+        If no data frame is provided as argument, the output of
+        :py:meth:`p_space_to_dataframe` is used.
+
+        Parameters
+        ----------
+        p_space_df : pd.DataFrame, optional
+            The parameter space to plot. Defaults to the one returned by
+            :py:meth:`p_space_to_dataframe`
+        x : str, optional
+            The parameter to plot on the x-axis. If ``y`` is *not* given, this will plot
+            ``x`` against all other parameters.
+        y : str, optional
+            The parameter to plot on the y-axis. If ``x`` is *not* given, this will plot
+            ``y`` against all other parameters.
+        min_def : str, optional
+            The name of the column in ``p_space_df`` defining which parameter set
+            represents the minimum, which is plotted separately. Defaults to
+            ``"Cost Function"``. Set to ``None`` to avoid plotting the minimum.
+        min_fmt : str, optional
+            Plot format string for plotting the minimum. Defaults to ``"x"``.
+        min_color : str, optional
+            Color for plotting the minimum. Defaults to ``"r"`` (red).
+        """
         if p_space_df is None:
             p_space_df = self.p_space_to_dataframe()
-        
+
         # Plot defaults
         cmap = plot_kwargs.pop("cmap", "viridis_r")
         s = plot_kwargs.pop("s", 40)
         c = plot_kwargs.pop("c", "Cost Function")
 
-        # Ignore cost dimension
-        params = p_space_df.columns.tolist()
-        try:
-            params.remove(c)
-        except ValueError:
-            pass
-
-        # Iterate over parameter combinations
-        for p_first, p_second in combinations(params, 2):
+        def plot_single(x, y):
+            """Plot a single combination of parameters"""
+            # Plot scatter
             ax = p_space_df.plot(
                 kind="scatter",
-                x=p_first,
-                y=p_second,
+                x=x,
+                y=y,
                 c=c,
                 s=s,
                 cmap=cmap,
@@ -199,5 +224,36 @@ class BayesianOptimizerOutput(Output):
 
             # Plot the minimum
             if min_def is not None:
-                best = p_space_df.iloc[p_space_df.idxmin()[min_def]]
-                ax.plot(best[p_first], best[p_second], min_fmt, color=min_color)
+                best = p_space_df.loc[p_space_df.idxmin()[min_def]]
+                ax.plot(best[x], best[y], min_fmt, color=min_color)
+
+            return ax
+
+        # Ignore cost dimension
+        params = p_space_df.columns.tolist()
+        try:
+            params.remove(c)
+        except ValueError:
+            pass
+
+        # Option 0: Only one parameter
+        if len(params) < 2:
+            return plot_single(x=params[0], y=repeat(0))
+
+        # Option 1: Only a single plot
+        if x is not None and y is not None:
+            return plot_single(x, y)
+
+        # Option 2: Combination of all
+        iterable = combinations(params, 2)
+        # Option 3: Fix one and iterate over all others
+        if x is not None:
+            params.remove(x)
+            iterable = zip(repeat(x), params)
+        elif y is not None:
+            params.remove(y)
+            iterable = zip(params, repeat(y))
+
+        # Iterate over parameter combinations
+        for p_first, p_second in iterable:
+            plot_single(p_first, p_second)
