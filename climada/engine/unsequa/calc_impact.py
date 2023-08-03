@@ -157,9 +157,9 @@ class CalcImpact(Calc):
         calc_at_event : boolean, optional
             Toggle computation of the impact for each event.
             The default is False.
-        pool : pathos.pools.ProcessPool, optional
-            Pool of CPUs for parralel computations.
-            The default is None.
+        processes : int, optional
+            Number of CPUs to use for parralel computations.
+            The default is 1 (not parallel)
 
         Returns
         -------

@@ -149,9 +149,9 @@ class CalcCostBenefit(Calc):
         ----------
         unc_data : climada.engine.uncertainty.unc_output.UncOutput
             Uncertainty data object with the input parameters samples
-        pool : pathos.pools.ProcessPool, optional
-            Pool of CPUs for parralel computations. Default is None.
-            The default is None.
+        processes : int, optional
+            Number of CPUs to use for parralel computations.
+            The default is 1 (not parallel)
         cost_benefit_kwargs : keyword arguments
             Keyword arguments passed on to climada.engine.CostBenefit.calc()
 
