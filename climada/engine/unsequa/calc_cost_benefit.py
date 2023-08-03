@@ -248,8 +248,10 @@ class CalcCostBenefit(Calc):
                                    in zip(imp_metric_names, metrics)
                                     }
                         met_dic.update(dic_tmp)
-                    df_imp_meas = df_imp_meas.append(
-                        pd.DataFrame(met_dic), ignore_index=True
+                    df_imp_meas = pd.concat(
+                        [df_imp_meas, pd.DataFrame(met_dic)],
+                        ignore_index=True,
+                        sort=False
                         )
             im_periods[name + '_unc_df'] = df_imp_meas
         cost_benefit_kwargs = {
