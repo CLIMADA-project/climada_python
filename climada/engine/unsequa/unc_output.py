@@ -64,14 +64,6 @@ SALIB_COMPATIBILITY = {
     'ff' : ['ff'],
     }
 
-plt.style.use('seaborn-white')
-params = {'legend.fontsize': 'x-large',
-         'axes.labelsize': 'x-large',
-         'axes.titlesize':'x-large',
-         'xtick.labelsize':'x-large',
-         'ytick.labelsize':'x-large'}
-mpl.rcParams.update(params)
-
 
 class UncOutput():
     """
