@@ -649,7 +649,7 @@ class UncOutput():
         prop_cycle = plt.rcParams['axes.prop_cycle']
         colors = prop_cycle.by_key()['color']
 
-        for n, (_name, values) in enumerate(unc_df.iteritems()):
+        for n, (_name, values) in enumerate(unc_df.items()):
             values = u_cmv(values, m_unit, n_sig_dig=4)
             count, division = np.histogram(values, bins=100)
             count = count / count.max()
