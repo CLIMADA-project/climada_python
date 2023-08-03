@@ -23,10 +23,12 @@ __all__ = ['CalcCostBenefit']
 
 import logging
 import time
-from functools import partial
-from typing import Optional, Union
+import itertools
 
+from typing import Optional, Union
 import pandas as pd
+import multiprocess as mp
+# use multiprocess fork of multiprocessing because of https://stackoverflow.com/a/65001152/12454103
 
 from climada.engine.cost_benefit import CostBenefit
 from climada.engine.unsequa import Calc, InputVar, UncCostBenefitOutput
@@ -127,7 +129,7 @@ class CalcCostBenefit(Calc):
 
 
 
-    def uncertainty(self, unc_data, pool=None, **cost_benefit_kwargs):
+    def uncertainty(self, unc_data, processes=1, **cost_benefit_kwargs):
         """
         Computes the cost benefit for each sample in unc_output.sample_df.
 
@@ -185,27 +187,44 @@ class CalcCostBenefit(Calc):
 
         start = time.time()
         one_sample = samples_df.iloc[0:1].iterrows()
-        cb_metrics = map(self._map_costben_calc, one_sample)
+        p_iterator = self._sample_parallel_iterator(
+                one_sample,
+                ent_input_var=self.ent_input_var,
+                haz_input_var=self.haz_input_var,
+                ent_fut_input_var=self.ent_fut_input_var,
+                haz_fut_input_var=self.haz_fut_input_var,
+                cost_benefit_kwargs=cost_benefit_kwargs
+            )
+        cb_metrics = itertools.starmap(_map_costben_calc, p_iterator)
         [imp_meas_present,
          imp_meas_future,
          tot_climate_risk,
          benefit,
          cost_ben_ratio] = list(zip(*cb_metrics))
         elapsed_time = (time.time() - start)
-        self.est_comp_time(unc_data.n_samples, elapsed_time, pool)
+        self.est_comp_time(unc_data.n_samples, elapsed_time, processes)
 
         #Compute impact distributions
         with log_level(level='ERROR', name_prefix='climada'):
-            if pool:
-                LOGGER.info('Using %s CPUs.', pool.ncpus)
-                chunksize = min(unc_data.n_samples // pool.ncpus, 100)
-                cb_metrics = pool.map(partial(self._map_costben_calc, **cost_benefit_kwargs),
-                                               samples_df.iterrows(),
-                                               chunsize = chunksize)
-
+            p_iterator = self._sample_parallel_iterator(
+                samples_df.iterrows(),
+                ent_input_var=self.ent_input_var,
+                haz_input_var=self.haz_input_var,
+                ent_fut_input_var=self.ent_fut_input_var,
+                haz_fut_input_var=self.haz_fut_input_var,
+                cost_benefit_kwargs=cost_benefit_kwargs
+            )
+            if processes>1:
+                with mp.Pool(processes=processes) as pool:
+                    LOGGER.info('Using %s CPUs.', processes)
+                    chunksize = min(unc_data.n_samples // processes, 100)
+                    cb_metrics = pool.starmap(
+                        _map_costben_calc, p_iterator, chunksize = chunksize
+                        )
             else:
-                cb_metrics = map(partial(self._map_costben_calc, **cost_benefit_kwargs),
-                                 samples_df.iterrows())
+                cb_metrics = itertools.starmap(
+                    _map_costben_calc, p_iterator
+                    )
 
         #Perform the actual computation
         with log_level(level='ERROR', name_prefix='climada'):
@@ -268,48 +287,54 @@ class CalcCostBenefit(Calc):
                                     unit=unit,
                                     cost_benefit_kwargs=cost_benefit_kwargs)
 
-    def _map_costben_calc(self, param_sample, **kwargs):
-        """
-        Map to compute cost benefit for all parameter samples in parallel
 
-        Parameters
-        ----------
-        param_sample : pd.DataFrame.iterrows()
-            Generator of the parameter samples
-        kwargs :
-            Keyword arguments passed on to climada.engine.CostBenefit.calc()
 
-        Returns
-        -------
-        list
-            icost benefit metrics list for all samples containing
-            imp_meas_present, imp_meas_future, tot_climate_risk,
-            benefit, cost_ben_ratio
+def _map_costben_calc(
+    sample_iterrows, ent_input_var, haz_input_var,
+    ent_fut_input_var, haz_fut_input_var, cost_benefit_kwargs
+    ):
+    """
+    Map to compute cost benefit for all parameter samples in parallel
 
-        """
+    Parameters
+    ----------
+    sample_iterrows : pd.DataFrame.iterrows()
+        Generator of the parameter samples
+    kwargs :
+        Keyword arguments passed on to climada.engine.CostBenefit.calc()
 
-        # [1] only the rows of the dataframe passed by pd.DataFrame.iterrows()
-        haz_samples = param_sample[1][self.haz_input_var.labels].to_dict()
-        ent_samples = param_sample[1][self.ent_input_var.labels].to_dict()
-        haz_fut_samples = param_sample[1][self.haz_fut_input_var.labels].to_dict()
-        ent_fut_samples = param_sample[1][self.ent_fut_input_var.labels].to_dict()
+    Returns
+    -------
+    list
+        icost benefit metrics list for all samples containing
+        imp_meas_present, imp_meas_future, tot_climate_risk,
+        benefit, cost_ben_ratio
 
-        haz = self.haz_input_var.evaluate(**haz_samples)
-        ent = self.ent_input_var.evaluate(**ent_samples)
-        haz_fut = self.haz_fut_input_var.evaluate(**haz_fut_samples)
-        ent_fut = self.ent_fut_input_var.evaluate(**ent_fut_samples)
+    """
 
-        cb = CostBenefit()
-        ent.exposures.assign_centroids(haz, overwrite=False)
-        if ent_fut:
-            ent_fut.exposures.assign_centroids(haz_fut if haz_fut else haz, overwrite=False)
-        cb.calc(hazard=haz, entity=ent, haz_future=haz_fut, ent_future=ent_fut,
-                save_imp=False, assign_centroids=False, **kwargs)
+    # [1] only the rows of the dataframe passed by pd.DataFrame.iterrows()
+    haz_samples = sample_iterrows[1][haz_input_var.labels].to_dict()
+    ent_samples = sample_iterrows[1][ent_input_var.labels].to_dict()
+    haz_fut_samples = sample_iterrows[1][haz_fut_input_var.labels].to_dict()
+    ent_fut_samples = sample_iterrows[1][ent_fut_input_var.labels].to_dict()
 
-        # Extract from climada.impact the chosen metrics
-        return  [cb.imp_meas_present,
-                 cb.imp_meas_future,
-                 cb.tot_climate_risk,
-                 cb.benefit,
-                 cb.cost_ben_ratio
-                 ]
+    haz = haz_input_var.evaluate(**haz_samples)
+    ent = ent_input_var.evaluate(**ent_samples)
+    haz_fut = haz_fut_input_var.evaluate(**haz_fut_samples)
+    ent_fut = ent_fut_input_var.evaluate(**ent_fut_samples)
+
+    cb = CostBenefit()
+    ent.exposures.assign_centroids(haz, overwrite=False)
+    if ent_fut:
+        ent_fut.exposures.assign_centroids(haz_fut if haz_fut else haz, overwrite=False)
+    cb.calc(hazard=haz, entity=ent, haz_future=haz_fut, ent_future=ent_fut,
+            save_imp=False, assign_centroids=False, **cost_benefit_kwargs)
+
+    # Extract from climada.impact the chosen metrics
+    return [
+        cb.imp_meas_present,
+        cb.imp_meas_future,
+        cb.tot_climate_risk,
+        cb.benefit,
+        cb.cost_ben_ratio
+    ]

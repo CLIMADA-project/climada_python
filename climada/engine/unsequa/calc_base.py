@@ -21,6 +21,7 @@ Define Calc (uncertainty calculate) class.
 
 import logging
 import copy
+import itertools
 
 import datetime as dt
 
@@ -126,7 +127,7 @@ class Calc():
             distr_dict.update(input_var.distr_dict)
         return distr_dict
 
-    def est_comp_time(self, n_samples, time_one_run, pool=None):
+    def est_comp_time(self, n_samples, time_one_run, processes=None):
         """
         Estimate the computation time
 
@@ -154,8 +155,7 @@ class Calc():
                 "\n If computation cannot be reduced, consider using"
                 " a surrogate model https://www.uqlab.com/", time_one_run)
 
-        ncpus = pool.ncpus if pool else 1
-        total_time = n_samples * time_one_run / ncpus
+        total_time = n_samples * time_one_run / processes
         LOGGER.info("\n\nEstimated computaion time: %s\n",
                     dt.timedelta(seconds=total_time))
 
@@ -354,11 +354,30 @@ class Calc():
 
         return sens_output
 
+    def _sample_parallel_iterator(self, sample_rows, **kwargs):
+        """
+        Make iterator over rows of dataframe plus repeated kwargs for parallel computing
+
+        Parameters
+        ----------
+        sample_rows : pd.DataFrame.iterrows()
+            Row iterator for samples
+        **kwargs : arguments to repeat
+            Arguments to repeat for parallel computations
+
+        Returns
+        -------
+        iterator
+            suitable for methods _map_impact_calc and _map_costben_calc
+
+        """
+        return zip(sample_rows, *(itertools.repeat(item) for item in kwargs.values()))
+
 
 def _calc_sens_df(method, problem_sa, sensitivity_kwargs, param_labels, X, unc_df):
     sens_first_order_dict = {}
     sens_second_order_dict = {}
-    for (submetric_name, metric_unc) in unc_df.iteritems():
+    for (submetric_name, metric_unc) in unc_df.items():
         Y = metric_unc.to_numpy()
         if X is not None:
             sens_indices = method.analyze(problem_sa, X, Y,
