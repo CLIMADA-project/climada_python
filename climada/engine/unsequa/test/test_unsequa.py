@@ -343,7 +343,7 @@ class TestCalcImpact(unittest.TestCase):
             )
         self.assertTupleEqual(
             unc_calc._metric_names,
-            ('aai_agg', 'freq_curve', 'at_event', 'eai_exp', 'tot_value')
+            ('aai_agg', 'freq_curve', 'at_event', 'eai_exp')
             )
         self.assertEqual(unc_calc.value_unit, exp_iv.evaluate().value_unit)
         self.assertTrue(
@@ -408,10 +408,6 @@ class TestCalcImpact(unittest.TestCase):
             unc_data.aai_agg_unc_df.size,
             unc_data.n_samples
             )
-        self.assertEqual(
-            unc_data.tot_value_unc_df.size,
-            unc_data.n_samples
-            )
 
         self.assertEqual(
             unc_data.freq_curve_unc_df.size,
@@ -439,10 +435,6 @@ class TestCalcImpact(unittest.TestCase):
 
         self.assertEqual(
             unc_data.aai_agg_unc_df.size,
-            unc_data.n_samples
-            )
-        self.assertEqual(
-            unc_data.tot_value_unc_df.size,
             unc_data.n_samples
             )
 
