@@ -217,7 +217,7 @@ class CalcCostBenefit(Calc):
             if processes>1:
                 with mp.Pool(processes=processes) as pool:
                     LOGGER.info('Using %s CPUs.', processes)
-                    chunksize = min(unc_data.n_samples // processes, 100)
+                    chunksize = min(unc_data.n_samples // processes + 1, 100)
                     cb_metrics = pool.starmap(
                         _map_costben_calc, p_iterator, chunksize = chunksize
                         )

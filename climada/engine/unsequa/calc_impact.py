@@ -227,7 +227,7 @@ class CalcImpact(Calc):
             if processes > 1:
                 with mp.Pool(processes=processes) as pool:
                     LOGGER.info('Using %s CPUs.', processes)
-                    chunksize = min(unc_sample.n_samples // processes, 100)
+                    chunksize = min(unc_sample.n_samples // processes + 1, 100)
                     imp_metrics = pool.starmap(
                         _map_impact_calc, p_iterator, chunksize=chunksize
                         )
