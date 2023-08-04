@@ -198,7 +198,7 @@ class CalcCostBenefit(Calc):
         with log_level(level='ERROR', name_prefix='climada'):
             if pool:
                 LOGGER.info('Using %s CPUs.', pool.ncpus)
-                chunksize = min(unc_data.n_samples // pool.ncpus, 100)
+                chunksize = max(min(unc_data.n_samples // pool.ncpus, 100), 1)
                 cb_metrics = pool.map(partial(self._map_costben_calc, **cost_benefit_kwargs),
                                       samples_df.iterrows(),
                                       chunksize=chunksize)
