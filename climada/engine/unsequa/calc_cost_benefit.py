@@ -129,7 +129,7 @@ class CalcCostBenefit(Calc):
 
 
 
-    def uncertainty(self, unc_data, processes=1, **cost_benefit_kwargs):
+    def uncertainty(self, unc_data, processes=1, loglevel='ERROR', **cost_benefit_kwargs):
         """
         Computes the cost benefit for each sample in unc_output.sample_df.
 
@@ -152,6 +152,9 @@ class CalcCostBenefit(Calc):
         processes : int, optional
             Number of CPUs to use for parralel computations.
             The default is 1 (not parallel)
+        loglevel: str
+            Level of warning for the climada logger during the computation.
+            The default is "ERROR".
         cost_benefit_kwargs : keyword arguments
             Keyword arguments passed on to climada.engine.CostBenefit.calc()
 
@@ -170,7 +173,9 @@ class CalcCostBenefit(Calc):
         See Also
         --------
         climada.engine.cost_benefit:
-            Compute risk and adptation option cost benefits.
+            compute risk and adptation option cost benefits.
+        climada.util.log_level:
+            set log level
 
         """
 
@@ -205,7 +210,7 @@ class CalcCostBenefit(Calc):
         self.est_comp_time(unc_data.n_samples, elapsed_time, processes)
 
         #Compute impact distributions
-        with log_level(level='ERROR', name_prefix='climada'):
+        with log_level(level=loglevel, name_prefix='climada'):
             p_iterator = self._sample_parallel_iterator(
                 samples_df.iterrows(),
                 ent_input_var=self.ent_input_var,
@@ -227,7 +232,7 @@ class CalcCostBenefit(Calc):
                     )
 
         #Perform the actual computation
-        with log_level(level='ERROR', name_prefix='climada'):
+        with log_level(level=loglevel, name_prefix='climada'):
             [imp_meas_present,
              imp_meas_future,
              tot_climate_risk,
