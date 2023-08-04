@@ -57,11 +57,15 @@ Removed:
 - `list_dataset_infos` from `climada.util.api_client.Client`: the `properties` argument, a `dict`, can now have `None` as values. Before, only strings and lists of strings were allowed. Setting a particular property to `None` triggers a search for datasets where this property is not assigned. [#752](https://github.com/CLIMADA-project/climada_python/pull/752)
 - Reduce memory requirements of `TropCyclone.from_tracks` [#749](https://github.com/CLIMADA-project/climada_python/pull/749)
 - Support for different wind speed and pressure units in `TCTracks` when running `TropCyclone.from_tracks` [#749](https://github.com/CLIMADA-project/climada_python/pull/749)
+- Changed the parallel package from Pathos to Multiproess in the unsequa module [#763](https://github.com/CLIMADA-project/climada_python/pull/763)
 
 ### Fixed
 
 - `util.lines_polys_handler` solve polygon disaggregation issue in metre-based projection [#666](https://github.com/CLIMADA-project/climada_python/pull/666)
 - Problem with `pyproj.CRS` as `Impact` attribute, [#706](https://github.com/CLIMADA-project/climada_python/issues/706). Now CRS is always stored as `str` in WKT format.
+- upgrade pathos 0.3.0 -> 0.3.1 issue [#761](https://github.com/CLIMADA-project/climada_python/issues/761) (for unsequa module [#763](https://github.com/CLIMADA-project/climada_python/pull/763))
+- Fix bugs with pandas 2.0 (iteritems -> items, append -> concat) (fix issue [#700](https://github.com/CLIMADA-project/climada_python/issues/700) for unsequa module) [#763](https://github.com/CLIMADA-project/climada_python/pull/763))
+- Remove matplotlib styles in unsequa module (fixes issue [#758](https://github.com/CLIMADA-project/climada_python/issues/758)) [#763](https://github.com/CLIMADA-project/climada_python/pull/763)
 
 ### Deprecated
 
@@ -74,6 +78,7 @@ Removed:
 - `Centroids.set_raster_from_pix_bounds` [#721](https://github.com/CLIMADA-project/climada_python/pull/721)
 - `requirements/env_developer.yml` environment specs. Use 'extra' requirements when installing the Python package instead [#712](https://github.com/CLIMADA-project/climada_python/pull/712)
 - `Impact.tag` attribute. This change is not backwards-compatible with respect to the files written and read by the `Impact` class [#743](https://github.com/CLIMADA-project/climada_python/pull/743)
+- `impact.tot_value ` attribute removed from unsequa module [#763](https://github.com/CLIMADA-project/climada_python/pull/763)
 
 ## v3.3.2
 
