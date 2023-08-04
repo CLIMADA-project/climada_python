@@ -193,7 +193,7 @@ def calc_perturbed_trajectories(tracks,
                       for track in tracks.data]
 
     if pool:
-        chunksize = min(tracks.size // pool.ncpus, 1000)
+        chunksize = max(min(tracks.size // pool.ncpus, 1000), 1)
         new_ens = pool.map(_one_rnd_walk, tracks.data,
                            itertools.repeat(nb_synth_tracks, tracks.size),
                            itertools.repeat(max_shift_ini, tracks.size),
@@ -592,7 +592,7 @@ def _calc_land_decay(hist_tracks, land_geom, s_rel=True, check_plot=False,
     if pool:
         dec_val = pool.map(_decay_values, hist_tracks, itertools.repeat(land_geom),
                            itertools.repeat(s_rel),
-                           chunksize=min(len(hist_tracks) // pool.ncpus, 1000))
+                           chunksize=max(min(len(hist_tracks) // pool.ncpus, 1000), 1))
     else:
         dec_val = [_decay_values(track, land_geom, s_rel) for track in hist_tracks]
 
@@ -646,7 +646,7 @@ def _apply_land_decay(tracks, v_rel, p_rel, land_geom, s_rel=True,
             orig_pres.append(np.copy(track.central_pressure.values))
 
     if pool:
-        chunksize = min(len(tracks) // pool.ncpus, 1000)
+        chunksize = max(min(len(tracks) // pool.ncpus, 1000), 1)
         tracks = pool.map(_apply_decay_coeffs, tracks,
                           itertools.repeat(v_rel), itertools.repeat(p_rel),
                           itertools.repeat(land_geom), itertools.repeat(s_rel),
