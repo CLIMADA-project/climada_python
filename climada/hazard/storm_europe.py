@@ -883,7 +883,7 @@ class StormEurope(Hazard):
         # reshape to the raster that the data represents
         intensity2d = intensity1d.reshape(self.centroids.shape)
 
-        # scipy.sparse.csr.csr_matrix elementwise methods (to avoid this:
+        # scipy.sparse.csr_matrix elementwise methods (to avoid this:
         # https://github.com/ContinuumIO/anaconda-issues/issues/9129 )
         intensity2d_sqrt = intensity2d.power(1.0 / power).todense()
         intensity2d_pwr = intensity2d.power(power).todense()

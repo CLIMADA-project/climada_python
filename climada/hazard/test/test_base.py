@@ -1040,7 +1040,7 @@ class TestStats(unittest.TestCase):
         """Test degenerate call."""
         haz = Hazard.from_hdf5(HAZ_TEST_TC)
         return_period = np.array([25, 50, 100, 250])
-        haz.intensity = sparse.csr.csr_matrix(np.zeros(haz.intensity.shape))
+        haz.intensity = sparse.csr_matrix(np.zeros(haz.intensity.shape))
         inten_stats = haz.local_exceedance_inten(return_period)
         self.assertTrue(np.array_equal(inten_stats, np.zeros((4, 100))))
 
