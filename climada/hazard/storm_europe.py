@@ -366,8 +366,6 @@ class StormEurope(Hazard):
             frequency=np.divide(
                 np.ones_like(event_id),
                 np.unique(ncdf.epsd_1).size),
-            description=description,
-            file_name="Hazard set not saved, too large to pickle",
         )
 
         # close netcdf file
@@ -503,8 +501,7 @@ class StormEurope(Hazard):
             frequency=np.divide(
                 np.ones_like(event_id),
                 np.unique(stacked.number).size),
-            description=description,
-            file_name="Hazard set not saved, too large to pickle")
+        )
         haz.check()
 
         # delete generated .grib2 and .4cc40.idx files
@@ -829,8 +826,6 @@ class StormEurope(Hazard):
             # years
             frequency=np.divide(np.repeat(self.frequency, N_PROB_EVENTS),
                                 N_PROB_EVENTS),
-            file_name='Hazard set not saved by default',
-            description='WISC probabilistic hazard set according to Schwierz et al.',
             orig=(event_id % 100 == 0),
         )
         new_haz.check()

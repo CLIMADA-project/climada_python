@@ -350,7 +350,6 @@ class Hazard():
         hazard_kwargs = dict()
         if haz_type is not None:
             hazard_kwargs["haz_type"] = haz_type
-        hazard_kwargs["file_name"] = str(files_intensity) + ' ; ' + str(files_fraction)
 
         centroids = Centroids.from_raster_file(
             files_intensity[0], src_crs=src_crs, window=window, geometry=geometry, dst_crs=dst_crs,
