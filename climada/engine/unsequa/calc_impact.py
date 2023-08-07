@@ -39,7 +39,6 @@ from climada.util import log_level
 
 LOGGER = logging.getLogger(__name__)
 
-
 class CalcImpact(Calc):
     """
     Impact uncertainty caclulation class.
@@ -122,8 +121,7 @@ class CalcImpact(Calc):
                     rp=None,
                     calc_eai_exp=False,
                     calc_at_event=False,
-                    processes=1,
-                    loglevel='ERROR'
+                    processes=1
                     ):
         """
         Computes the impact for each sample in unc_data.sample_df.
@@ -161,9 +159,6 @@ class CalcImpact(Calc):
         processes : int, optional
             Number of CPUs to use for parralel computations.
             The default is 1 (not parallel)
-        loglevel: str
-            Level of warning for the climada logger during the computation.
-            The default is "ERROR".
 
         Returns
         -------
@@ -181,8 +176,6 @@ class CalcImpact(Calc):
         --------
         climada.engine.impact:
             compute impact and risk.
-        climada.util.log_level:
-            set log level
 
         """
 
@@ -219,7 +212,7 @@ class CalcImpact(Calc):
         self.est_comp_time(unc_sample.n_samples, elapsed_time, processes)
 
         #Compute impact distributions
-        with log_level(level=loglevel, name_prefix='climada'):
+        with log_level(level='ERROR', name_prefix='climada'):
             p_iterator = self._sample_parallel_iterator(
                 samples_df.iterrows(),
                 exp_input_var=self.exp_input_var,
@@ -242,7 +235,7 @@ class CalcImpact(Calc):
                     )
 
         #Perform the actual computation
-        with log_level(level=loglevel, name_prefix='climada'):
+        with log_level(level='ERROR', name_prefix='climada'):
             [aai_agg_list, freq_curve_list,
              eai_exp_list, at_event_list] = list(zip(*imp_metrics))
 
