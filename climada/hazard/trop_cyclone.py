@@ -180,7 +180,6 @@ class TropCyclone(Hazard):
         tracks: TCTracks,
         centroids: Optional[Centroids] = None,
         pool: Optional[pathos.pools.ProcessPool] = None,
-        description: str = '',
         model: str = 'H08',
         ignore_distance_to_coast: bool = False,
         store_windfields: bool = False,
