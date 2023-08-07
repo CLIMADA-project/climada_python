@@ -127,10 +127,8 @@ class Centroids():
             on land (True) and on sea (False) of size size. Defaults to empty array
         region_id : np.array, optional
             country region code of size size, Defaults to empty array
-        elevation : np.array, optional
-            elevation of size size. Defaults to empty array
-        dist_coast : np.array, optional
-            distance to coast of size size. Defaults to empty array
+        kwargs:
+            columns of values to passed to the geodataframe constructor
         """
         attr_dict = {
             'geometry': gpd.points_from_xy(longitude, latitude, crs=crs),
@@ -139,8 +137,6 @@ class Centroids():
             attr_dict['region_id'] = region_id
         if on_land is not None:
             attr_dict['on_land'] = on_land
-        if elevation is not None:
-            attr_dict['elevation'] = elevation
         if kwargs:
             attr_dict = dict(**attr_dict, **kwargs)
         self.gdf = gpd.GeoDataFrame(data=attr_dict, crs=crs)
@@ -204,7 +200,12 @@ class Centroids():
 
     @classmethod
     def from_geodataframe(cls, gdf):
-        return cls(longitude=gdf.geometry.x.values, latitude=gdf.geometry.y.values, crs=gdf.crs, **gdf.drop(columns=['geometry']).to_dict(orient='list'))
+        return cls(
+            longitude=gdf.geometry.x.values,
+            latitude=gdf.geometry.y.values,
+            crs=gdf.crs,
+            **gdf.drop(columns=['geometry']).to_dict(orient='list')
+            )
 
     @classmethod
     def from_exposures(cls, exposures):
@@ -233,7 +234,7 @@ class Centroids():
         """
         rows, cols, ras_trans = u_coord.pts_to_raster_meta(points_bounds, (res, -res))
         x_grid, y_grid = u_coord.raster_to_meshgrid(ras_trans, cols, rows)
-        return cls(lat=y_grid, lon=x_grid, crs=crs)
+        return cls(latitude=y_grid.flatten(), longitude=x_grid.flatten(), crs=crs)
 
     def append(self, centr):
         """Append centroids points.
@@ -321,7 +322,7 @@ class Centroids():
             raise NotImplementedError('The region id can only be assigned if the crs is epsg:4326')
 
     def get_elevation(self, topo_path):
-        """Set elevation attribute for every pixel or point in meters.
+        """Return elevation attribute for every pixel or point in meters.
 
         Parameters
         ----------
@@ -331,7 +332,7 @@ class Centroids():
         return u_coord.read_raster_sample(topo_path, self.lat, self.lon)
 
     def get_dist_coast(self, signed=False, precomputed=False, scheduler=None):
-        """Set dist_coast attribute for every pixel or point in meters.
+        """Get dist_coast attribute for every pixel or point in meters.
 
         Parameters
         ----------
@@ -366,7 +367,7 @@ class Centroids():
 
         ne_geom = self._ne_crs_geom(scheduler)
         LOGGER.debug('Setting on_land %s points.', str(self.lat.size))
-        self.gdf.on_land = u_coord.coord_on_land(
+        self.gdf['on_land'] = u_coord.coord_on_land(
             ne_geom.geometry[:].y.values, ne_geom.geometry[:].x.values)
 
     @classmethod
@@ -379,6 +380,65 @@ class Centroids():
             Sub-selection of centroids withtout duplicates
         """
         return cls.from_geodataframe(centroids.gdf.drop_duplicates())
+
+    def select(self, reg_id=None, extent=None, sel_cen=None):
+        """Return Centroids with points in the given reg_id or within mask
+
+        Parameters
+        ----------
+        reg_id : int
+            region to filter according to region_id values
+        extent : tuple
+            Format (min_lon, max_lon, min_lat, max_lat) tuple.
+            If min_lon > lon_max, the extend crosses the antimeridian and is
+            [lon_max, 180] + [-180, lon_min]
+            Borders are inclusive.
+        sel_cen : np.array
+            1-dim mask, overrides reg_id and extent
+
+        Returns
+        -------
+        cen : Centroids
+            Sub-selection of this object
+        """
+        if sel_cen is None:
+            sel_cen = self.select_mask(reg_id=reg_id, extent=extent)
+
+        return Centroids.from_geodataframe(self.gdf[sel_cen])
+
+    def select_mask(self, reg_id=None, extent=None):
+        """
+        Make mask of selected centroids
+
+        Parameters
+        ----------
+        reg_id : int
+            region to filter according to region_id values
+        extent : tuple
+            Format (min_lon, max_lon, min_lat, max_lat) tuple.
+            If min_lon > lon_max, the extend crosses the antimeridian and is
+            [lon_max, 180] + [-180, lon_min]
+            Borders are inclusive.
+
+        Returns
+        -------
+        sel_cen : 1d array of booleans
+            1d mask of selected centroids
+
+        """
+        sel_cen = np.ones(self.size, dtype=bool)
+        if reg_id is not None:
+            sel_cen &= np.isin(self.region_id, reg_id)
+        if extent is not None:
+            lon_min, lon_max, lat_min, lat_max = extent
+            lon_max += 360 if lon_min > lon_max else 0
+            lon_normalized = u_coord.lon_normalize(
+                self.lon.copy(), center=0.5 * (lon_min + lon_max))
+            sel_cen &= (
+              (lon_normalized >= lon_min) & (lon_normalized <= lon_max) &
+              (self.lat >= lat_min) & (self.lat <= lat_max)
+            )
+        return sel_cen
 
     #TODO replace with nice Geodataframe util plot method.
     def plot(self, ax=None, figsize=(9, 13), **kwargs):
@@ -488,7 +548,7 @@ class Centroids():
             file_name, [1], src_crs, window, geometry, dst_crs,
             transform, width, height, resampling)
         lat, lon = _meta_to_lat_lon(meta)
-        return cls(lon=lon, lat=lat, crs=dst_crs)
+        return cls(longitude=lon, latitude=lat, crs=dst_crs)
 
 
     @classmethod
@@ -600,7 +660,7 @@ class Centroids():
         -------
         geo : gpd.GeoSeries
         """
-        if u_coord.equal_crs(self.gdfgeometry.crs, u_coord.NE_CRS):
+        if u_coord.equal_crs(self.gdf.geometry.crs, u_coord.NE_CRS):
             return self.gdf.geometry
         return self.gdf.geometry.to_crs(u_coord.NE_CRS)
 

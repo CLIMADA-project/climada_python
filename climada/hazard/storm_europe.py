@@ -571,7 +571,7 @@ class StormEurope(Hazard):
         if create_meshgrid:
             lats, lons = np.array([np.repeat(lats, len(lons)),
                                    np.tile(lons, len(lats))])
-        cent = Centroids.from_lat_lon(lats, lons)
+        cent = Centroids(latitude=lats, longitude=lons)
         cent.set_on_land()
 
         return cent

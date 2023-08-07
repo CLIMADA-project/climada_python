@@ -56,21 +56,19 @@ class TestCentroidsReader(unittest.TestCase):
         crs = DEF_CRS
         lat = np.arange(170, 180)
         lon = np.arange(-50, -40)
-        elevation = np.repeat(1, 10)
         region_id = np.arange(1, 11)
         extra = np.repeat(str('a'), 10)
 
         gdf = gpd.GeoDataFrame({
             'geometry' : gpd.points_from_xy(lon, lat),
-            'elevation' : elevation,
             'region_id' : region_id,
             'extra' : extra
         }, crs=crs)
 
         centroids = Centroids.from_geodataframe(gdf)
 
-        for name, array in zip(['lat', 'lon', 'elevation', 'region_id'],
-                                [lat, lon, elevation, region_id]):
+        for name, array in zip(['lat', 'lon', 'region_id'],
+                                [lat, lon, region_id]):
             np.testing.assert_array_equal(array, getattr(centroids, name))
         np.testing.assert_array_equal(extra, centroids.gdf.extra.values)
         self.assertTrue(u_coord.equal_crs(centroids.crs, crs))

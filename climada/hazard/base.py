@@ -230,7 +230,7 @@ class Hazard():
         """
         self.tag = TagHazard(haz_type, **tag_kwargs)
         self.units = units
-        self.centroids = centroids if centroids is not None else Centroids()
+        self.centroids = centroids if centroids is not None else Centroids(np.empty(0), np.empty(0))
         # following values are defined for each event
         self.event_id = event_id if event_id is not None else np.array([], int)
         self.frequency = frequency if frequency is not None else np.array(
@@ -283,7 +283,6 @@ class Hazard():
         ------
         ValueError
         """
-        self.centroids.check()
         self._check_events()
 
     @classmethod
@@ -762,8 +761,10 @@ class Hazard():
         )
 
         # Transform coordinates into centroids
-        centroids = Centroids.from_lat_lon(
-            data[coords["latitude"]].values, data[coords["longitude"]].values, crs=crs,
+        centroids = Centroids(
+            latitude=data[coords["latitude"]].values,
+            longitude=data[coords["longitude"]].values,
+            crs=crs,
         )
 
         def to_csr_matrix(array: xr.DataArray) -> sparse.csr_matrix:
@@ -1392,7 +1393,6 @@ class Hazard():
             LOGGER.info('No hazard centroids within extent and region')
             return None
 
-        sel_cen = sel_cen.nonzero()[0]
         for (var_name, var_val) in self.__dict__.items():
             if isinstance(var_val, np.ndarray) and var_val.ndim == 1 \
                     and var_val.size > 0:

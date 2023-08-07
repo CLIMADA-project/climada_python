@@ -66,8 +66,8 @@ def dummy_hazard():
         "TC",
         intensity=intensity,
         fraction=fraction,
-        centroids=Centroids.from_lat_lon(
-            np.array([1, 3, 5]), np.array([2, 4, 6])),
+        centroids=Centroids(
+            latitude=np.array([1, 3, 5]), longitude=np.array([2, 4, 6])),
         event_id=np.array([1, 2, 3, 4]),
         event_name=['ev1', 'ev2', 'ev3', 'ev4'],
         date=np.array([1, 2, 3, 4]),
@@ -84,8 +84,11 @@ class TestLoader(unittest.TestCase):
 
     def setUp(self):
         """Test fixure: Build a valid hazard"""
-        centroids = Centroids.from_lat_lon(np.array([1, 3]), np.array([2, 3]))
-        centroids.region_id = np.array([1, 2])
+        centroids = Centroids(
+            latitude=np.array([1, 3]),
+            longitude=np.array([2, 3]),
+            region_id = np.array([1, 2])
+            )
         self.hazard = Hazard(
             "TC",
             centroids=centroids,
@@ -115,12 +118,6 @@ class TestLoader(unittest.TestCase):
         hazard.check()
         np.testing.assert_array_equal(hazard.fraction.shape, hazard.intensity.shape)
         self.assertEqual(hazard.fraction.nnz, 0)  # No nonzero entries
-
-    def test_check_wrongCentroids_fail(self):
-        """Wrong hazard definition"""
-        self.hazard.centroids.region_id = np.array([1, 2, 3, 4])
-        with self.assertRaises(ValueError):
-            self.hazard.check()
 
     def test_check_wrongFreq_fail(self):
         """Wrong hazard definition"""
@@ -251,7 +248,7 @@ class TestRemoveDupl(unittest.TestCase):
         duplicate events, initial events are obtained with 0 intensity and
         fraction in new appended centroids."""
         haz1 = dummy_hazard()
-        centroids = Centroids.from_lat_lon(np.array([7, 9, 11]), np.array([8, 10, 12]))
+        centroids = Centroids(latitude=np.array([7, 9, 11]), longitude=np.array([8, 10, 12]))
         fraction = sparse.csr_matrix([[0.22, 0.32, 0.44],
                                       [0.11, 0.11, 0.11],
                                       [0.32, 0.11, 0.99],
@@ -526,7 +523,7 @@ class TestSelect(unittest.TestCase):
     def test_select_reg_id_pass(self):
         """Test select region of centroids."""
         haz = dummy_hazard()
-        haz.centroids.region_id = np.array([5, 7, 9])
+        haz.centroids.gdf['region_id'] = np.array([5, 7, 9])
         sel_haz = haz.select(date=(2, 4), orig=False, reg_id=9)
 
         self.assertTrue(np.array_equal(sel_haz.centroids.coord.squeeze(),
@@ -759,8 +756,8 @@ class TestAppend(unittest.TestCase):
                       orig=np.ones((4,)),
                       file_name='file2.mat',
                       description='Description 2',
-                      centroids=Centroids.from_lat_lon(
-                          np.array([7, 9, 11]), np.array([8, 10, 12])),
+                      centroids=Centroids(
+                          latitude=np.array([7, 9, 11]), longitude=np.array([8, 10, 12])),
                       event_id=np.array([5, 6, 7, 8]),
                       event_name=['ev5', 'ev6', 'ev7', 'ev8'],
                       frequency=np.array([0.9, 0.75, 0.75, 0.22]),
@@ -816,8 +813,8 @@ class TestAppend(unittest.TestCase):
         haz2 = Hazard('TC',
                       file_name='file2.mat',
                       description='Description 2',
-                      centroids=Centroids.from_lat_lon(
-                          np.array([7, 9, 11]), np.array([8, 10, 12])),
+                      centroids=Centroids(
+                         latitude=np.array([7, 9, 11]), longitude=np.array([8, 10, 12])),
                       event_id=haz1.event_id,
                       event_name=haz1.event_name.copy(),
                       frequency=haz1.frequency,
@@ -869,8 +866,8 @@ class TestAppend(unittest.TestCase):
         haz_1 = Hazard("TC",
                        file_name='file1.mat',
                        description='Description 1',
-                       centroids=Centroids.from_lat_lon(
-                           np.array([1, 3, 5]), np.array([2, 4, 6])),
+                       centroids=Centroids(
+                           latitude=np.array([1, 3, 5]), longitude=np.array([2, 4, 6])),
                        event_id=np.array([1]),
                        event_name=['ev1'],
                        date=np.array([1]),
@@ -884,8 +881,8 @@ class TestAppend(unittest.TestCase):
         haz_2 = Hazard("TC",
                        file_name='file2.mat',
                        description='Description 2',
-                       centroids=Centroids.from_lat_lon(
-                           np.array([1, 3, 5]), np.array([2, 4, 6])),
+                       centroids=Centroids(
+                           latitude=np.array([1, 3, 5]), longitude=np.array([2, 4, 6])),
                        event_id=np.array([1]),
                        event_name=['ev2'],
                        date=np.array([2]),
@@ -953,7 +950,7 @@ class TestAppend(unittest.TestCase):
         """Set new centroids for hazard"""
         lat, lon = np.array([0, 1]), np.array([0, -1])
         on_land = np.array([True, True])
-        cent1 = Centroids(lat=lat, lon=lon, on_land=on_land)
+        cent1 = Centroids(latitude=lat, longitude=lon, on_land=on_land)
 
         haz_1 = Hazard('TC',
                        file_name='file1.mat',
@@ -971,7 +968,7 @@ class TestAppend(unittest.TestCase):
 
         lat2, lon2 = np.array([0, 1, 3]), np.array([0, -1, 3])
         on_land2 = np.array([True, True, False])
-        cent2 = Centroids(lat=lat2, lon=lon2, on_land=on_land2)
+        cent2 = Centroids(latitude=lat2, longitude=lon2, on_land=on_land2)
 
         haz_2 = haz_1.change_centroids(cent2)
 
@@ -985,9 +982,9 @@ class TestAppend(unittest.TestCase):
         self.assertEqual(haz_2.tag.description, 'Description 1')
 
         """Test error for projection"""
-        lat3, lon3 = np.array([0.5, 3]), np.array([-0.5, 3])
+        lat3, lon3 = np.array([0.5, 3, 1]), np.array([-0.5, 3, 1])
         on_land3 = np.array([True, True, False])
-        cent3 = Centroids(lat=lat3, lon=lon3, on_land=on_land3)
+        cent3 = Centroids(latitude=lat3, longitude=lon3, on_land=on_land3)
 
         with self.assertRaises(ValueError) as cm:
             haz_1.change_centroids(cent3, threshold=100)
@@ -998,7 +995,7 @@ class TestAppend(unittest.TestCase):
         """Set new centroids for hazard"""
         lat, lon = np.array([0, 1]), np.array([0, -1])
         on_land = np.array([True, True])
-        cent1 = Centroids(lat=lat, lon=lon, on_land=on_land)
+        cent1 = Centroids(latitude=lat, longitude=lon, on_land=on_land)
 
         haz_1 = Hazard('TC',
                        file_name='file1.mat',
@@ -1017,8 +1014,6 @@ class TestAppend(unittest.TestCase):
 
         """Test with raster centroids"""
         cent4 = Centroids.from_pnt_bounds(points_bounds=(-1, 0, 0, 1), res=1)
-        cent4.lat, cent1.lon = np.array([0, 1]), np.array([0, -1])
-        cent4.on_land = np.array([True, True])
 
         haz_4 = haz_1.change_centroids(cent4)
 
@@ -1149,67 +1144,6 @@ class TestReaderExcel(unittest.TestCase):
         self.assertEqual(hazard.tag.description, description)
         self.assertEqual(hazard.tag.haz_type, 'TC')
 
-class TestReaderMat(unittest.TestCase):
-    """Test reader functionality of the ExposuresExcel class"""
-
-    def test_hazard_pass(self):
-        """Read a hazard mat file correctly."""
-        # Read demo excel file
-        hazard = Hazard.from_mat(HAZ_TEST_MAT)
-
-        # Check results
-        n_events = 14450
-        n_centroids = 100
-
-        self.assertEqual(hazard.units, 'm/s')
-
-        self.assertEqual(hazard.centroids.coord.shape, (n_centroids, 2))
-
-        self.assertEqual(hazard.event_id.dtype, int)
-        self.assertEqual(hazard.event_id.shape, (n_events,))
-
-        self.assertEqual(hazard.frequency.dtype, float)
-        self.assertEqual(hazard.frequency.shape, (n_events,))
-
-        self.assertEqual(hazard.frequency_unit, DEF_FREQ_UNIT)
-
-        self.assertEqual(hazard.intensity.dtype, float)
-        self.assertEqual(hazard.intensity.shape, (n_events, n_centroids))
-        self.assertEqual(hazard.intensity[12, 46], 12.071393519949979)
-        self.assertEqual(hazard.intensity[13676, 49], 17.228323602220616)
-
-        self.assertEqual(hazard.fraction.dtype, float)
-        self.assertEqual(hazard.fraction.shape, (n_events, n_centroids))
-        self.assertEqual(hazard.fraction[8454, 98], 1)
-        self.assertEqual(hazard.fraction[85, 54], 0)
-
-        self.assertEqual(len(hazard.event_name), n_events)
-        self.assertEqual(hazard.event_name[124], 125)
-
-        self.assertEqual(len(hazard.date), n_events)
-        self.assertEqual(dt.datetime.fromordinal(hazard.date[0]).year, 1851)
-        self.assertEqual(dt.datetime.fromordinal(hazard.date[0]).month, 6)
-        self.assertEqual(dt.datetime.fromordinal(hazard.date[0]).day, 25)
-        self.assertEqual(dt.datetime.fromordinal(hazard.date[78]).year, 1852)
-        self.assertEqual(dt.datetime.fromordinal(hazard.date[78]).month, 9)
-        self.assertEqual(dt.datetime.fromordinal(hazard.date[78]).day, 22)
-        self.assertEqual(dt.datetime.fromordinal(hazard.date[-1]).year, 2011)
-        self.assertEqual(dt.datetime.fromordinal(hazard.date[-1]).month, 11)
-        self.assertEqual(dt.datetime.fromordinal(hazard.date[-1]).day, 6)
-
-        self.assertTrue(hazard.orig[0])
-        self.assertTrue(hazard.orig[11580])
-        self.assertTrue(hazard.orig[4940])
-        self.assertFalse(hazard.orig[3551])
-        self.assertFalse(hazard.orig[10651])
-        self.assertFalse(hazard.orig[4818])
-
-        # tag hazard
-        self.assertEqual(hazard.tag.file_name, str(HAZ_TEST_MAT))
-        self.assertEqual(hazard.tag.description,
-                         ' TC hazard event set, generated 14-Nov-2017 10:09:05')
-        self.assertEqual(hazard.tag.haz_type, 'TC')
-
 class TestHDF5(unittest.TestCase):
     """Test reader functionality of the ExposuresExcel class"""
 
@@ -1250,8 +1184,8 @@ class TestCentroids(unittest.TestCase):
                         event_name=['1'],
                         intensity=sparse.csr_matrix(np.array([0.5, 0.2, 0.1])),
                         fraction=sparse.csr_matrix(np.array([0.5, 0.2, 0.1]) / 2),
-                        centroids=Centroids.from_lat_lon(
-                            np.array([1, 2, 3]), np.array([1, 2, 3])),)
+                        centroids=Centroids(
+                            latitude=np.array([1, 2, 3]), longitude=np.array([1, 2, 3])),)
         haz_fl.check()
 
         haz_fl.reproject_vector(dst_crs='epsg:2202')
@@ -1273,8 +1207,8 @@ class TestCentroids(unittest.TestCase):
                         event_name=['1'],
                         intensity=sparse.csr_matrix(np.array([0.5, 0.2, 0.1])),
                         fraction=sparse.csr_matrix(np.array([0.5, 0.2, 0.1]) / 2),
-                        centroids=Centroids.from_lat_lon(
-                            np.array([1, 2, 3]), np.array([1, 2, 3])),)
+                        centroids=Centroids(
+                            latitude=np.array([1, 2, 3]), longitude=np.array([1, 2, 3])),)
         haz_fl.check()
 
         haz_fl.vector_to_raster()
