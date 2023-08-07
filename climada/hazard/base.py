@@ -23,6 +23,7 @@ __all__ = ['Hazard']
 
 import copy
 import datetime as dt
+from deprecation import deprecated
 import itertools
 import logging
 import pathlib
@@ -2542,3 +2543,10 @@ class Hazard():
         if cent_idx is None:
             return self.fraction
         return self.fraction[:, cent_idx]
+
+    @property
+    @deprecated(details="The tag attribute has been removed from Hazard.")
+    def tag(self):
+        """Deprecated and disfunctional. For backwards compatibility only."""
+        class T: pass
+        return T()
