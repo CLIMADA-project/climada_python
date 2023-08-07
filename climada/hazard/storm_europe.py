@@ -36,7 +36,6 @@ from scipy import sparse
 from climada.util.config import CONFIG
 from climada.hazard.base import Hazard
 from climada.hazard.centroids.centr import Centroids
-from climada.util.tag import Tag
 from climada.util.files_handler import get_file_names
 from climada.util.dates_times import (datetime64_to_ordinal,
                                       last_year,
@@ -120,7 +119,7 @@ class StormEurope(Hazard):
         self.__dict__ = StormEurope.from_footprints(*args, **kwargs).__dict__
 
     @classmethod
-    def from_footprints(cls, path, description=None, ref_raster=None, centroids=None,
+    def from_footprints(cls, path, ref_raster=None, centroids=None,
                         files_omit='fp_era20c_1990012515_701_0.nc', combine_threshold=None,
                         intensity_thres=None):
         """Create new StormEurope object from WISC footprints.
@@ -135,9 +134,6 @@ class StormEurope(Hazard):
             path to a single netCDF WISC footprint, or a folder
             containing only footprints, or a globbing pattern to one or
             more footprints.
-        description : str, optional
-            description of the events, defaults
-            to 'WISC historical hazard set'
         ref_raster : str, optional
             Reference netCDF file from which to
             construct a new barebones Centroids instance. Defaults to
@@ -200,12 +196,6 @@ class StormEurope(Hazard):
         haz.frequency = np.divide(
             np.ones_like(haz.date),
             np.max([(last_year(haz.date) - first_year(haz.date)), 1])
-        )
-
-        if description is None:
-            description = "WISC historical hazard set."
-        haz.tag = Tag(
-            description=description,
         )
 
         if combine_threshold is not None:
