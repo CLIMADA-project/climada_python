@@ -30,6 +30,7 @@ Removed:
 - Added method `Exposures.centroids_total_value` to replace the functionality of `Exposures.affected_total_value`. This method is temporary and deprecated. [#702](https://github.com/CLIMADA-project/climada_python/pull/702)
 - New method `climada.util.api_client.Client.purge_cache`: utility function to remove outdated files from the local file system to free disk space.
   ([#737](https://github.com/CLIMADA-project/climada_python/pull/737))
+- New attribute `climada.entity.exposures.LitPop.description`: used for setting the title in plots from plotting mathods `plot_hexbin` and `plot_scatter`. [#756](https://github.com/CLIMADA-project/climada_python/pull/756)
 
 ### Changed
 
