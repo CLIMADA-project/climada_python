@@ -478,7 +478,7 @@ class Centroids():
         plt.tight_layout()
         return ax
 
-    def get_area_pixel(self, min_resol=1.0e-8, scheduler=None):
+    def get_area_pixel(self, min_resol=1.0e-8):
         """Computes the area per centroid in the CEA projection
         assuming that the centroids define a regular grid of pixels
         (area in m*m).
@@ -489,8 +489,6 @@ class Centroids():
             Use this minimum resolution in lat and lon. Is passed to the
             method climada.util.coordinates.get_resolution.
             Default: 1.0e-8
-        scheduler : str
-            used for dask map_partitions. “threads”, “synchronous” or “processes”
 
         See also
         --------
