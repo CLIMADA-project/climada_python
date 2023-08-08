@@ -1197,37 +1197,6 @@ class TestCentroids(unittest.TestCase):
         self.assertTrue(np.allclose(haz_fl.intensity.toarray(), np.array([0.5, 0.2, 0.1])))
         self.assertTrue(np.allclose(haz_fl.fraction.toarray(), np.array([0.5, 0.2, 0.1]) / 2))
 
-    def test_vector_to_raster_pass(self):
-        """Test vector_to_raster"""
-        haz_fl = Hazard('FL',
-                        event_id=np.array([1]),
-                        date=np.array([1]),
-                        frequency=np.array([1]),
-                        orig=np.array([1]),
-                        event_name=['1'],
-                        intensity=sparse.csr_matrix(np.array([0.5, 0.2, 0.1])),
-                        fraction=sparse.csr_matrix(np.array([0.5, 0.2, 0.1]) / 2),
-                        centroids=Centroids(
-                            latitude=np.array([1, 2, 3]), longitude=np.array([1, 2, 3])),)
-        haz_fl.check()
-
-        haz_fl.vector_to_raster()
-        self.assertTrue(u_coord.equal_crs(haz_fl.centroids.meta['crs'], 'epsg:4326'))
-        self.assertAlmostEqual(haz_fl.centroids.meta['transform'][0], 1.0)
-        self.assertAlmostEqual(haz_fl.centroids.meta['transform'][1], 0)
-        self.assertAlmostEqual(haz_fl.centroids.meta['transform'][2], 0.5)
-        self.assertAlmostEqual(haz_fl.centroids.meta['transform'][3], 0)
-        self.assertAlmostEqual(haz_fl.centroids.meta['transform'][4], -1.0)
-        self.assertAlmostEqual(haz_fl.centroids.meta['transform'][5], 3.5)
-        self.assertEqual(haz_fl.centroids.meta['height'], 3)
-        self.assertEqual(haz_fl.centroids.meta['width'], 3)
-        self.assertEqual(haz_fl.centroids.lat.size, 0)
-        self.assertEqual(haz_fl.centroids.lon.size, 0)
-        self.assertTrue(haz_fl.intensity.min() >= 0)
-        self.assertTrue(haz_fl.intensity.max() <= 0.5)
-        self.assertTrue(haz_fl.fraction.min() >= 0)
-        self.assertTrue(haz_fl.fraction.max() <= 0.5 / 2)
-
 
 class TestClear(unittest.TestCase):
     """Test clear method"""

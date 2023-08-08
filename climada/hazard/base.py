@@ -1160,55 +1160,17 @@ class Hazard():
             fraction.reshape(self.size, dst_meta['height'] * dst_meta['width']))
         self.check()
 
-    def reproject_vector(self, dst_crs, scheduler=None):
+    def reproject_vector(self, dst_crs):
         """Change current point data to a a given projection
 
         Parameters
         ----------
         dst_crs : crs
             reproject to given crs
-        scheduler : str, optional
-            used for dask map_partitions. “threads”,
-            “synchronous” or “processes”
         """
-        self.centroids.set_geometry_points(scheduler)
-        self.centroids.geometry = self.centroids.geometry.to_crs(dst_crs)
-        self.centroids.lat = self.centroids.geometry[:].y
-        self.centroids.lon = self.centroids.geometry[:].x
+        self.centroids.gdf.to_crs(dst_crs, inplace=True)
         self.check()
 
-    def raster_to_vector(self):
-        """Change current raster to points (center of the pixels)"""
-        self.centroids.set_meta_to_lat_lon()
-        self.centroids.meta = dict()
-        self.check()
-
-    def vector_to_raster(self, scheduler=None):
-        """Change current point data to a raster with same resolution
-
-        Parameters
-        ----------
-        scheduler : str, optional
-            used for dask map_partitions. “threads”,
-            “synchronous” or “processes”
-        """
-        points_df = gpd.GeoDataFrame()
-        points_df['latitude'] = self.centroids.lat
-        points_df['longitude'] = self.centroids.lon
-        val_names = ['val' + str(i_ev) for i_ev in range(2 * self.size)]
-        for i_ev, inten_name in enumerate(val_names):
-            if i_ev < self.size:
-                points_df[inten_name] = np.asarray(self.intensity[i_ev, :].toarray()).reshape(-1)
-            else:
-                points_df[inten_name] = np.asarray(self.fraction[i_ev - self.size, :].toarray()). \
-                    reshape(-1)
-        raster, meta = u_coord.points_to_raster(points_df, val_names,
-                                                crs=self.centroids.geometry.crs,
-                                                scheduler=scheduler)
-        self.intensity = sparse.csr_matrix(raster[:self.size, :, :].reshape(self.size, -1))
-        self.fraction = sparse.csr_matrix(raster[self.size:, :, :].reshape(self.size, -1))
-        self.centroids = Centroids(meta=meta)
-        self.check()
 
     def read_mat(self, *args, **kwargs):
         """This function is deprecated, use Hazard.from_mat."""
