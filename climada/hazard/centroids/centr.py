@@ -155,11 +155,15 @@ class Centroids():
 
     @property
     def on_land(self):
-        return self.gdf['on_land']
+        if 'on_land' in self.gdf.columns.values:
+            return self.gdf['on_land']
+        return None
 
     @property
     def region_id(self):
-        return self.gdf['region_id']
+        if 'region_id' in self.gdf.columns.values:
+            return self.gdf['region_id']
+        return None
 
     @property
     def crs(self):
