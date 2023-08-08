@@ -685,7 +685,18 @@ class Centroids():
         return self.gdf.geometry.to_crs(u_coord.NE_CRS)
 
 def _meta_to_lat_lon(meta):
-    """Compute lat and lon of every pixel center from meta raster."""
+    """Compute lat and lon of every pixel center from meta raster.
+
+    Parameters
+    ----------
+    meta : _type_
+        meta description of raster
+
+    Returns
+    -------
+    (np.ndarray, np.ndarray)
+        latitudes, longitudes
+    """
     xgrid, ygrid = u_coord.raster_to_meshgrid(
         meta['transform'], meta['width'], meta['height']
         )
