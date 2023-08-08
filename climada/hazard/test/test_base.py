@@ -1198,38 +1198,6 @@ class TestCentroids(unittest.TestCase):
         self.assertTrue(np.allclose(haz_fl.fraction.toarray(), np.array([0.5, 0.2, 0.1]) / 2))
 
 
-class TestClear(unittest.TestCase):
-    """Test clear method"""
-
-    def test_clear(self):
-        """Clear method clears everything"""
-        haz1 = Hazard.from_excel(HAZ_TEMPLATE_XLS, haz_type='TC')
-        haz1.units = "m"
-        haz1.frequency_unit = "1/m"
-        haz1.foo = np.arange(10)
-        haz1.clear()
-        self.assertEqual(list(vars(haz1.tag).values()), ['', '', ''])
-        self.assertEqual(haz1.units, '')
-        self.assertEqual(haz1.frequency_unit, DEF_FREQ_UNIT)
-        self.assertEqual(haz1.centroids.size, 0)
-        self.assertEqual(len(haz1.event_name), 0)
-        for attr in vars(haz1).keys():
-            if attr not in ['tag', 'units', 'event_name', 'pool', 'frequency_unit']:
-                self.assertEqual(getattr(haz1, attr).size, 0)
-        self.assertIsNone(haz1.pool)
-
-    def test_clear_pool(self):
-        """Clear method should not clear a process pool"""
-        haz1 = Hazard.from_excel(HAZ_TEMPLATE_XLS, haz_type='TC')
-        pool = Pool(nodes=2)
-        haz1.pool = pool
-        haz1.check()
-        haz1.clear()
-        self.assertEqual(haz1.pool, pool)
-        pool.close()
-        pool.join()
-        pool.clear()
-
 def dummy_step_impf(haz):
     from climada.entity import ImpactFunc
     intensity = (0, 1, haz.intensity.max())
