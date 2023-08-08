@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import Optional, Dict, Any
 import warnings
 
+import h5py
 import cartopy.crs as ccrs
 import geopandas as gpd
 import matplotlib.pyplot as plt
@@ -659,13 +660,49 @@ class Centroids():
         if not Path(file_name).is_file():
             raise FileNotFoundError(str(file_name))
 
-        with pd.HDFStore(file_name, mode='r') as store:
-            metadata = store.get_storer('centroids').attrs.metadata
-            # in previous versions of CLIMADA and/or geopandas, the CRS was stored in '_crs'/'crs'
-            crs = metadata.get('crs')
-            gdf = gpd.GeoDataFrame(store['centroids'], crs=crs)
+        try:
+            with pd.HDFStore(file_name, mode='r') as store:
+                metadata = store.get_storer('centroids').attrs.metadata
+                # in previous versions of CLIMADA and/or geopandas, the CRS was stored in '_crs'/'crs'
+                crs = metadata.get('crs')
+                gdf = gpd.GeoDataFrame(store['centroids'], crs=crs)
+        except TypeError:
+            with h5py.File(file_name, 'r') as data:
+                gdf = cls._legacy_from_hdf5(data.get('centroids'))
 
         return cls.from_geodataframe(gdf)
+
+    @classmethod
+    def _legacy_from_hdf5(cls, data):
+        crs = DEF_CRS
+        if data.get('crs'):
+            crs = u_coord.to_crs_user_input(data.get('crs')[0])
+        if data.get('lat') and data.get('lat').size:
+            latitude = np.array(data.get('lat'))
+            longitude = np.array(data.get('lon'))
+        elif data.get('latitude') and data.get('latitude').size:
+            latitude = np.array(data.get('latitude'))
+            longitude = np.array(data.get('longitude'))
+        else:
+            centr_meta = data.get('meta')
+            meta = dict()
+            meta['crs'] = crs
+            for key, value in centr_meta.items():
+                if key != 'transform':
+                    meta[key] = value[0]
+                else:
+                    meta[key] = rasterio.Affine(*value)
+            latitude, longitude = _meta_to_lat_lon(meta)
+
+        extra_values = {}
+        for centr_name in data.keys():
+            if centr_name not in ('crs', 'lat', 'lon', 'meta'):
+                extra_values[centr_name] = np.array(data.get(centr_name))
+
+        return gpd.GeoDataFrame(
+            extra_values,
+            geometry=gpd.points_from_xy(x=longitude, y=latitude, crs=crs)
+        )
 
 
     def _ne_crs_geom(self, scheduler=None):
