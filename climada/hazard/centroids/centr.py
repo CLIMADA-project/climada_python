@@ -573,15 +573,17 @@ class Centroids():
             centroids.to_crs(dst_crs, inplace=True)
         return centroids
 
-
+#TODO: this method is badly written but kept for backwards compatibility. It should be improved.
     @classmethod
-    def from_excel(cls, file_name, crs):
+    def from_excel(cls, file_name, var_names=None):
         """Generate a new centroids object from an excel file with column names in var_names.
 
         Parameters
         ----------
         file_name : str
             absolute or relative file name
+        var_names : dict, default
+            name of the variables
 
         Raises
         ------
@@ -592,9 +594,25 @@ class Centroids():
         centr : Centroids
             Centroids with data from the given file
         """
-        df = pd.read_excel(file_name)
-        centroids = cls(**df.to_dict(orient='list'), crs=crs)
-        return centroids
+        if var_names is None:
+            var_names = DEF_VAR_EXCEL
+
+        try:
+            dfr = pd.read_excel(file_name, var_names['sheet_name'])
+            try:
+                region_id = dfr[var_names['col_name']['region_id']]
+            except KeyError:
+                region_id = None
+                pass
+
+        except KeyError as err:
+            raise KeyError("Not existing variable: %s" % str(err)) from err
+
+        return cls(
+            longitude=dfr[var_names['col_name']['lon']],
+            latitude=dfr[var_names['col_name']['lat']],
+            region_id=region_id
+            )
 
     def write_hdf5(self, file_name):
         """Write data frame and metadata in hdf5 format
