@@ -266,16 +266,6 @@ class Hazard():
             'frequency_unit': DEF_FREQ_UNIT,
         }.get(attribute)
 
-    def clear(self):
-        """Reinitialize attributes (except the process Pool)."""
-        for (var_name, var_val) in self.__dict__.items():
-            if isinstance(var_val, np.ndarray) and var_val.ndim == 1:
-                setattr(self, var_name, np.array([], dtype=var_val.dtype))
-            elif isinstance(var_val, sparse.csr_matrix):
-                setattr(self, var_name, sparse.csr_matrix(np.empty((0, 0))))
-            elif not isinstance(var_val, Pool):
-                setattr(self, var_name, self.get_default(var_name) or var_val.__class__())
-
     def check(self):
         """Check dimension of attributes.
 
