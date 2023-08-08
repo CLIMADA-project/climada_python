@@ -23,13 +23,13 @@ __all__ = ['Hazard']
 
 import copy
 import datetime as dt
+from deprecation import deprecated
 import itertools
 import logging
 import pathlib
 from typing import Union, Optional, Callable, Dict, Any, List
 import warnings
 
-from deprecation import deprecated
 import geopandas as gpd
 import h5py
 import matplotlib.pyplot as plt
@@ -2543,11 +2543,3 @@ class Hazard():
         if cent_idx is None:
             return self.fraction
         return self.fraction[:, cent_idx]
-
-    @property
-    @deprecated(details="The tag attribute has been removed from Hazard.")
-    def tag(self):
-        """Deprecated and disfunctional. For backwards compatibility only."""
-        class _T:
-            pass
-        return _T()
