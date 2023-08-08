@@ -1774,7 +1774,7 @@ class Hazard():
             str_dt = h5py.special_dtype(vlen=str)
             for (var_name, var_val) in self.__dict__.items():
                 if var_name == 'centroids':
-                    self.centroids.write_hdf5(hf_data.create_group(var_name))
+                    pass
                 elif var_name == 'tag':
                     hf_str = hf_data.create_dataset('haz_type', (1,), dtype=str_dt)
                     hf_str[0] = var_val.haz_type
@@ -1809,6 +1809,7 @@ class Hazard():
                             "%s being set to its default value.",
                             var_name, var_val.__class__.__name__, var_name
                         )
+        self.centroids.write_hdf5(file_name, mode='a')
 
     def read_hdf5(self, *args, **kwargs):
         """This function is deprecated, use Hazard.from_hdf5."""
@@ -1841,8 +1842,7 @@ class Hazard():
                 if var_name != 'tag' and var_name not in hf_data.keys():
                     continue
                 if var_name == 'centroids':
-                    hazard_kwargs["centroids"] = Centroids.from_hdf5(
-                        hf_data.get(var_name))
+                    continue
                 elif var_name == 'tag':
                     hazard_kwargs["haz_type"] = u_hdf5.to_string(
                         hf_data.get('haz_type')[0])
@@ -1868,7 +1868,7 @@ class Hazard():
                         u_hdf5.to_string, np.array(hf_data.get(var_name)).tolist())]
                 else:
                     hazard_kwargs[var_name] = hf_data.get(var_name)
-
+        hazard_kwargs["centroids"] = Centroids.from_hdf5(file_name)
         # Now create the actual object we want to return!
         return cls(**hazard_kwargs)
 

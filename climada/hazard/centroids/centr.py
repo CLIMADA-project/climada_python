@@ -614,7 +614,7 @@ class Centroids():
             region_id=region_id
             )
 
-    def write_hdf5(self, file_name):
+    def write_hdf5(self, file_name, mode='w'):
         """Write data frame and metadata in hdf5 format
 
         Parameters
@@ -623,7 +623,7 @@ class Centroids():
             (path and) file name to write to.
         """
         LOGGER.info('Writing %s', file_name)
-        store = pd.HDFStore(file_name, mode='w')
+        store = pd.HDFStore(file_name, mode=mode)
         pandas_df = pd.DataFrame(self.gdf)
         for col in pandas_df.columns:
             if str(pandas_df[col].dtype) == "geometry":
