@@ -685,7 +685,7 @@ class StormEurope(Hazard):
         if method == 'dawkins':
             area_c = area_pixel / 1000 / 1000 * sel_cen
             for i, inten_i in enumerate(intensity):
-                ssi_i = area_c * inten_i.power(3).todense().T
+                ssi_i = inten_i.power(3).dot(area_c)
                 # matrix crossproduct (row x column vector)
                 ssi[i] = ssi_i.item(0)
 
