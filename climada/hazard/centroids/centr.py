@@ -320,7 +320,7 @@ class Centroids():
         ne_geom = self._ne_crs_geom(scheduler)
         LOGGER.debug('Setting region_id %s points.', str(self.size))
         if u_coord.equal_crs(self.crs, 'epsg:4326'):
-            self.gdf.region_id = u_coord.get_country_code(
+            self.gdf['region_id'] = u_coord.get_country_code(
                 ne_geom.geometry[:].y.values, ne_geom.geometry[:].x.values)
         else:
             raise NotImplementedError('The region id can only be assigned if the crs is epsg:4326')
