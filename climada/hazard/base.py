@@ -23,7 +23,6 @@ __all__ = ['Hazard']
 
 import copy
 import datetime as dt
-from deprecation import deprecated
 import itertools
 import logging
 import pathlib
