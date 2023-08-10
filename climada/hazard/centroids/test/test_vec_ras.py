@@ -617,8 +617,9 @@ class TestReader(unittest.TestCase):
         # Test reading values from file with incompatible geometry
         shp_file = shapereader.natural_earth(resolution='10m', category='cultural',
                                              name='populated_places_simple')
-        with self.assertRaises(ValueError):
-            centr.values_from_vector_files(shp_file, val_names=['pop_min', 'pop_max'])
+        with self.assertRaises(ValueError) as ve:
+            centr.values_from_vector_files([shp_file], val_names=['pop_min', 'pop_max'])
+        self.assertIn('could not be broadcast together with shapes', str(ve.exception))
 
     def test_from_raster_file_wrong_fail(self):
         """Test from_raster_file with wrong centroids"""
