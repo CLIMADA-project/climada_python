@@ -151,6 +151,7 @@ class TestPlot(unittest.TestCase):
                             sink.write(f)
         #test plotting functions
         forecast.plot_imp_map(run_datetime=dt.datetime(2017,12,31),
+                              explain_str='test text',
                               polygon_file=str(cantons_file),
                               save_fig=True, close_fig=True)
         map_file_name = (forecast.summary_str(dt.datetime(2017,12,31)) +
@@ -159,10 +160,11 @@ class TestPlot(unittest.TestCase):
         map_file_name_full = Path(FORECAST_PLOT_DIR) / map_file_name
         map_file_name_full.absolute().unlink(missing_ok=False)
         forecast.plot_hist(run_datetime=dt.datetime(2017,12,31),
+                           explain_str='test text',
                            save_fig=False, close_fig=True)
         forecast.plot_exceedence_prob(run_datetime=dt.datetime(2017,12,31),
-                                      threshold=5000, save_fig=False, close_fig=True)
-
+                                      threshold=5000, explain_str='test text',
+                                      save_fig=False, close_fig=True)
 
         forecast.plot_warn_map(str(cantons_file),
                                decision_level = 'polygon',
