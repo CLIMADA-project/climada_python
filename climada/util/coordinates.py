@@ -1121,15 +1121,10 @@ def match_centroids(coord_gdf, centroids, distance='euclidean',
         # no error is raised and it is assumed that the user set the crs correctly
         pass
 
-    if centroids.meta:
-        assigned = match_grid_points(
-            coord_gdf.longitude.values, coord_gdf.latitude.values,
-            centroids.meta['width'], centroids.meta['height'],
-            centroids.meta['transform'])
-    else:
-        assigned = match_coordinates(
-            np.stack([coord_gdf.latitude.values, coord_gdf.longitude.values], axis=1),
-            centroids.coord, distance=distance, threshold=threshold)
+    assigned = match_coordinates(
+        np.stack([coord_gdf.latitude.values, coord_gdf.longitude.values], axis=1),
+        centroids.coord, distance=distance, threshold=threshold
+        )
     return assigned
 
 @numba.njit
