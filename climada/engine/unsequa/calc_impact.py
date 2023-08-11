@@ -56,11 +56,11 @@ class CalcImpact(Calc):
         Compute eai_exp or not
     value_unit : str
         Unit of the exposures value
-    exp_input_var : climada.engine.uncertainty.input_var.InputVar
+    exp_input_var : InputVar or Exposures
         Exposure uncertainty variable
-    impf_input_var : climada.engine.uncertainty.input_var.InputVar
+    impf_input_var : InputVar if ImpactFuncSet
         Impact function set uncertainty variable
-    haz_input_var: climada.engine.uncertainty.input_var.InputVar
+    haz_input_var: InputVar or Hazard
         Hazard uncertainty variable
     _input_var_names : tuple(str)
         Names of the required uncertainty input variables

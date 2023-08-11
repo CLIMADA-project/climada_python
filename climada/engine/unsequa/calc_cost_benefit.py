@@ -52,13 +52,13 @@ class CalcCostBenefit(Calc):
     ----------
     value_unit : str
         Unit of the exposures value
-    haz_input_var : climada.engine.uncertainty.input_var.InputVar
+    haz_input_var : InputVar or Hazard
         Present Hazard uncertainty variable
-    ent_input_var : climada.engine.uncertainty.input_var.InputVar
+    ent_input_var : InputVar or Entity
         Present Entity uncertainty variable
-    haz_unc_fut_Var: climada.engine.uncertainty.input_var.InputVar
+    haz_unc_fut_Var: InputVar or Hazard
         Future Hazard uncertainty variable
-    ent_fut_input_var : climada.engine.uncertainty.input_var.InputVar
+    ent_fut_input_var : InputVar or Entity
         Future Entity uncertainty variable
     _input_var_names : tuple(str)
         Names of the required uncertainty variables
