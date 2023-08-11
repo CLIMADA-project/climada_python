@@ -121,7 +121,7 @@ class Exposures():
         TC. There might be different hazards defined: centr_TC, centr_FL, ...
         Computed in method assign_centroids().
     """
-    _metadata = ['tag', 'ref_year', 'value_unit', 'meta']
+    _metadata = ['tag', 'ref_year', 'value_unit', 'meta', 'description']
 
     vars_oblig = ['value', 'latitude', 'longitude']
     """Name of the variables needed to compute the impact."""
