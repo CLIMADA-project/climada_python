@@ -64,11 +64,8 @@ class LitPop(Exposures):
     gpw_version : int, optional
         Version number of GPW population data, e.g. 11 for v4.11.
         The default is defined in GPW_VERSION.
-    description : str, optional
-        Summary of how the object has been created, set in ``from_shape``, ``from_countries``
-        and ``from_shape_and_countries``.
     """
-    _metadata = Exposures._metadata + ['exponents', 'fin_mode', 'gpw_version', 'description']
+    _metadata = Exposures._metadata + ['exponents', 'fin_mode', 'gpw_version']
 
     def set_countries(self, *args, **kwargs):
         """This function is deprecated, use LitPop.from_countries instead."""
@@ -662,22 +659,6 @@ class LitPop(Exposures):
         exp.set_gdf(litpop_gdf)
         exp.gdf[INDICATOR_IMPF] = 1
         return exp
-
-    def plot_hexbin(self, *args, **kwargs):
-        """Overriding ``Exposures.plot_hexbin``.
-        Sets the object's ``description`` attribute as plot title.
-        """
-        if self.description and 'title' not in kwargs:
-            kwargs['title'] = self.description
-        return super().plot_hexbin(*args, **kwargs)
-
-    def plot_scatter(self, *args, **kwargs):
-        """Overriding ``Exposures.plot_scatter``.
-        Sets the object's ``description`` attribute as plot title.
-        """
-        if self.description and 'title' not in kwargs:
-            kwargs['title'] = self.description
-        return super().plot_scatter(*args, **kwargs)
 
     # Alias method names for backward compatibility:
     set_country = set_countries

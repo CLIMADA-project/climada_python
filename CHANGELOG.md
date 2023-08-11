@@ -30,7 +30,7 @@ Removed:
 - Added method `Exposures.centroids_total_value` to replace the functionality of `Exposures.affected_total_value`. This method is temporary and deprecated. [#702](https://github.com/CLIMADA-project/climada_python/pull/702)
 - New method `climada.util.api_client.Client.purge_cache`: utility function to remove outdated files from the local file system to free disk space.
   ([#737](https://github.com/CLIMADA-project/climada_python/pull/737))
-- New attribute `climada.entity.exposures.LitPop.description`: used for setting the title in plots from plotting mathods `plot_hexbin` and `plot_scatter`. [#756](https://github.com/CLIMADA-project/climada_python/pull/756)
+- New attribute `climada.entity.exposures.Exposures.description`: used for setting the default title in plots from plotting mathods `plot_hexbin` and `plot_scatter`. [#756](https://github.com/CLIMADA-project/climada_python/pull/756)
 
 ### Changed
 
@@ -58,6 +58,7 @@ Removed:
 - `list_dataset_infos` from `climada.util.api_client.Client`: the `properties` argument, a `dict`, can now have `None` as values. Before, only strings and lists of strings were allowed. Setting a particular property to `None` triggers a search for datasets where this property is not assigned. [#752](https://github.com/CLIMADA-project/climada_python/pull/752)
 - Reduce memory requirements of `TropCyclone.from_tracks` [#749](https://github.com/CLIMADA-project/climada_python/pull/749)
 - Support for different wind speed and pressure units in `TCTracks` when running `TropCyclone.from_tracks` [#749](https://github.com/CLIMADA-project/climada_python/pull/749)
+- The title of plots created by the `Exposures` methods `plot_hexbin` and `plot_scatter` can be set as a method argument. [#756](https://github.com/CLIMADA-project/climada_python/pull/756)
 
 ### Fixed
 

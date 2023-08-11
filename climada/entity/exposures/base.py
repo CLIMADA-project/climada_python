@@ -83,6 +83,8 @@ class Exposures():
 
     Attributes
     ----------
+    description : str
+        metadata - description of content and origin of the data
     ref_year : int
         metada - reference year
     value_unit : str
@@ -118,7 +120,7 @@ class Exposures():
         TC. There might be different hazards defined: centr_TC, centr_FL, ...
         Computed in method assign_centroids().
     """
-    _metadata = ['ref_year', 'value_unit', 'meta']
+    _metadata = ['description', 'ref_year', 'value_unit', 'meta']
 
     vars_oblig = ['value', 'latitude', 'longitude']
     """Name of the variables needed to compute the impact."""
@@ -139,7 +141,7 @@ class Exposures():
             # In case of gdf without geometry, empty or before set_geometry_points was called
             return self.meta.get('crs')
 
-    def __init__(self, *args, meta=None, ref_year=DEF_REF_YEAR,
+    def __init__(self, *args, meta=None, description=None, ref_year=DEF_REF_YEAR,
                  value_unit=DEF_VALUE_UNIT, crs=None, **kwargs):
         """Creates an Exposures object from a GeoDataFrame
 
@@ -151,6 +153,8 @@ class Exposures():
             Named arguments of the GeoDataFrame constructor, additionally
         meta : dict, optional
             Metadata dictionary. Default: {} (empty dictionary)
+        description : str, optional
+            Default: None
         ref_year : int, optional
             Reference Year. Defaults to the entry of the same name in `meta` or 2018.
         value_unit : str, optional
@@ -163,6 +167,7 @@ class Exposures():
         self.meta = {} if meta is None else meta
         if not isinstance(self.meta, dict):
             raise ValueError("meta must be a dictionary")
+        self.description = self.meta.get('description') if description is None else description
         self.ref_year = self.meta.get('ref_year', DEF_REF_YEAR) if ref_year is None else ref_year
         self.value_unit = (self.meta.get('value_unit', DEF_VALUE_UNIT)
                            if value_unit is None else value_unit)
@@ -513,7 +518,7 @@ class Exposures():
 
     def plot_scatter(self, mask=None, ignore_zero=False, pop_name=True,
                      buffer=0.0, extend='neither', axis=None, figsize=(9, 13),
-                     adapt_fontsize=True, title="", **kwargs):
+                     adapt_fontsize=True, title=None, **kwargs):
         """Plot exposures geometry's value sum scattered over Earth's map.
         The plot will we projected according to the current crs.
 
@@ -539,7 +544,7 @@ class Exposures():
             If set to true, the size of the fonts will be adapted to the size of the figure.
             Otherwise the default matplotlib font size is used. Default is True.
         title : str, optional
-            a title for the plot
+            a title for the plot. If not set `self.description` is used.
         kwargs : optional
             arguments for scatter matplotlib function, e.g.
             cmap='Greys'
@@ -549,6 +554,8 @@ class Exposures():
         cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         crs_epsg, _ = u_plot.get_transformation(self.crs)
+        title = (self.description.strip() if isinstance(self.description, str) else ""
+                 ) if title is None else title
         if mask is None:
             mask = np.ones((self.gdf.shape[0],), dtype=bool)
         if ignore_zero:
@@ -573,7 +580,7 @@ class Exposures():
 
     def plot_hexbin(self, mask=None, ignore_zero=False, pop_name=True,
                     buffer=0.0, extend='neither', axis=None, figsize=(9, 13),
-                    adapt_fontsize=True, title="", **kwargs):
+                    adapt_fontsize=True, title=None, **kwargs):
         """Plot exposures geometry's value sum binned over Earth's map.
         An other function for the bins can be set through the key reduce_C_function.
         The plot will we projected according to the current crs.
@@ -603,7 +610,7 @@ class Exposures():
             Otherwise the default matplotlib font size is used.
             Default is True.
         title : str, optional
-            a title for the plot
+            a title for the plot. If not set `self.description` is used.
         kwargs : optional
             arguments for hexbin matplotlib function, e.g.
             `reduce_C_function=np.average`.
@@ -614,6 +621,8 @@ class Exposures():
         cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         crs_epsg, _ = u_plot.get_transformation(self.crs)
+        title = (self.description.strip() if isinstance(self.description, str) else ""
+                 ) if title is None else title
         if 'reduce_C_function' not in kwargs:
             kwargs['reduce_C_function'] = np.sum
         if mask is None:
@@ -847,6 +856,8 @@ class Exposures():
             for key, val in metadata.items():
                 if key in type(exp)._metadata: # pylint: disable=protected-access
                     setattr(exp, key, val)
+                if key == 'tag':  # for backwards compatitbility with climada <= 3.x
+                    exp.description = getattr(val, 'description', None)
         return exp
 
     def read_mat(self, *args, **kwargs):
@@ -1162,7 +1173,8 @@ def add_sea(exposures, sea_res, scheduler=None):
         crs=exposures.crs,
         ref_year=exposures.ref_year,
         value_unit=exposures.value_unit,
-        meta=exposures.meta
+        meta=exposures.meta,
+        description=exposures.description,
     )
 
 
