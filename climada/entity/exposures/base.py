@@ -172,6 +172,7 @@ class Exposures():
         self.ref_year = self.meta.get('ref_year', DEF_REF_YEAR) if ref_year is None else ref_year
         self.value_unit = (self.meta.get('value_unit', DEF_VALUE_UNIT)
                            if value_unit is None else value_unit)
+        self.description = kwargs.pop('description') if 'description' in kwargs else None
 
         # remaining generic attributes from derived classes
         for mda in type(self)._metadata:
