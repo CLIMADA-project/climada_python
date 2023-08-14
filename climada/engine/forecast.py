@@ -377,8 +377,7 @@ class Forecast:
             "run_start": (
                 run_datetime.strftime("%d.%m.%Y %HUTC +") + lead_time_str + "d"
             ),
-            "explain_text": ("mean building damage caused by " +
-                             "wind") if explain_str is None else explain_str,
+            "explain_text": "mean building damage caused by wind" if explain_str is None else explain_str,
             "model_text": "CLIMADA IMPACT",
         }
         fig, axes = self._plot_imp_map(
@@ -625,8 +624,7 @@ class Forecast:
             "run_start": (
                 run_datetime.strftime("%d.%m.%Y %HUTC +") + lead_time_str + "d"
             ),
-            "explain_text": ("total building " +
-                             "damage") if explain_str is None else explain_str,
+            "explain_text": ("total building damage") if explain_str is None else explain_str,
             "model_text": "CLIMADA IMPACT",
         }
         title_position = {
@@ -752,8 +750,8 @@ class Forecast:
             figure size for plt.subplots, width, height in inches
             The default is (9, 13)
         adapt_fontsize : bool, optional
-            If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
-            the default matplotlib font size is used. Default is True.
+            If set to true, the size of the fonts will be adapted to the size of the figure.
+            Otherwise, the default matplotlib font size is used. Default is True.
 
         Returns
         -------
@@ -763,10 +761,10 @@ class Forecast:
         if run_datetime is None:
             run_datetime = self.run_datetime[0]
         haz_ind = np.argwhere(np.isin(self.run_datetime, run_datetime))[0][0]
-        wind_map_file_name = (
+        exceedence_map_file_name = (
             self.summary_str(run_datetime) + "_exceed_" + str(threshold) + "_map.jpeg"
         )
-        wind_map_file_name_full = FORECAST_PLOT_DIR / wind_map_file_name
+        exceedence_map_file_name_full = FORECAST_PLOT_DIR / exceedence_map_file_name
         lead_time_str = "{:.0f}".format(
             self.lead_time(run_datetime).days
             + self.lead_time(run_datetime).seconds / 60 / 60 / 24
@@ -796,7 +794,7 @@ class Forecast:
             adapt_fontsize=adapt_fontsize,
         )
         if save_fig:
-            plt.savefig(wind_map_file_name_full)
+            plt.savefig(exceedence_map_file_name_full)
         if close_fig:
             plt.clf()
             plt.close(fig)
