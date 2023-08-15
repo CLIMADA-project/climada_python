@@ -132,7 +132,8 @@ class TestFuncs(unittest.TestCase):
             'width': 20, 'height': 10,
             'transform': rasterio.Affine(1.5, 0.0, -20, 0.0, -1.4, 8)
         }
-        haz = Hazard('FL', centroids=Centroids(meta=meta))
+        y, x = Centroids._meta_to_lat_lon(meta)
+        haz = Hazard('FL', centroids=Centroids(x, y))
 
         # explicit points with known results (see `expected_result` for details)
         exp = Exposures(crs=DEF_CRS)
@@ -197,7 +198,7 @@ class TestFuncs(unittest.TestCase):
         )
         exp = Exposures(gdf, crs=4326)
         intensity = sp.sparse.csr_matrix(np.array([[0, 0, 1, 10, 2], [-1, 0, 0, 1, 2]]))
-        cent = Centroids(lat=np.array([1, 2, 3, 4]), lon=np.array([-1, -2, -3, -4]))
+        cent = Centroids(latitude=np.array([1, 2, 3, 4]), longitude=np.array([-1, -2, -3, -4]))
         haz = Hazard(
             haz_type=haz_type, centroids=cent, intensity=intensity, event_id=[1, 2]
         )
