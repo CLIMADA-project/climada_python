@@ -531,8 +531,12 @@ class Forecast:
         return fig, axis_sub
 
     def plot_hist(
-            self, run_datetime=None, explain_str=None, save_fig=True,
-            close_fig=False, figsize=(9, 8)
+        self,
+        run_datetime=None,
+        explain_str=None,
+        save_fig=True,
+        close_fig=False,
+        figsize=(9, 8),
     ):
         """ plot histogram of the forecasted impacts all ensemble members
 
