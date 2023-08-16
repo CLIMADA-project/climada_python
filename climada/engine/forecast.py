@@ -985,7 +985,7 @@ class Forecast:
             Figure is not drawn if True. The default is False.
         adapt_fontsize : bool, optional
             If set to true, the size of the fonts will be adapted to the size of the figure.
-            Otherwise the default matplotlib font size is used. Default is True.
+            Otherwise, the default matplotlib font size is used. Default is True.
 
         Returns
         -------
@@ -1097,7 +1097,7 @@ class Forecast:
                 decision_dict_functions[aggregation] = np.mean
             else:
                 raise ValueError(
-                    "Parameter area_aggregation of "
+                    "Parameter " + aggregation + " of "
                     + "Forecast.plot_warn_map() must eiter be "
                     + "a float between [0..1], which "
                     + "specifys a quantile. or 'sum' or 'mean'."
