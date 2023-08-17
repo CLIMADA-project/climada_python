@@ -166,7 +166,7 @@ class TestPlot(unittest.TestCase):
                            explain_str='test text',
                            save_fig=False, close_fig=False)
         title_artists = ax.get_figure().get_children()
-        title_texts = [x.get_text() for x in title_artists if type(x) == plt.Text]
+        title_texts = [x.get_text() for x in title_artists if isinstance(x, plt.Text)]
         self.assertIn('test text', title_texts)
         self.assertIn('Wed 03 Jan 2018 00-24UTC', title_texts)
         self.assertIn('31.12.2017 00UTC +3d', title_texts)
@@ -180,7 +180,7 @@ class TestPlot(unittest.TestCase):
                                       threshold=5000, explain_str='test text exceedence',
                                       save_fig=False, close_fig=False)[0][0]
         title_artists = ax.get_figure().get_children()
-        title_texts = [x.get_text() for x in title_artists if type(x) == plt.Text]
+        title_texts = [x.get_text() for x in title_artists if isinstance(x, plt.Text)]
         self.assertIn('test text exceedence', title_texts)
         self.assertIn('Wed 03 Jan 2018 00-24UTC', title_texts)
         self.assertIn('31.12.2017 00UTC +3d', title_texts)
