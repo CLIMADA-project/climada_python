@@ -24,7 +24,6 @@ import copy
 
 from climada import CONFIG
 from climada.entity.disc_rates.base import DiscRates
-from climada.util.tag import Tag
 from climada.util.constants import ENT_TEMPLATE_XLS, ENT_DEMO_TODAY
 
 ENT_TEST_MAT = CONFIG.exposures.test_data.dir().joinpath('demo_today.mat')
@@ -58,11 +57,7 @@ class TestAppend(unittest.TestCase):
         disc_rate = DiscRates()
         disc_rate_add = DiscRates(
             years=np.array([2000, 2001, 2002]),
-            rates=np.array([0.1, 0.2, 0.3]),
-            tag=Tag(
-                file_name = 'file1.txt',
-                description = 'descr1'
-            )
+            rates=np.array([0.1, 0.2, 0.3])
         )
 
         disc_rate.append(disc_rate_add)
@@ -70,20 +65,12 @@ class TestAppend(unittest.TestCase):
 
         self.assertTrue(np.array_equal(disc_rate.years, disc_rate_add.years))
         self.assertTrue(np.array_equal(disc_rate.rates, disc_rate_add.rates))
-        self.assertTrue(np.array_equal(disc_rate.tag.file_name,
-                                       disc_rate_add.tag.file_name))
-        self.assertTrue(np.array_equal(disc_rate.tag.description,
-                                       disc_rate_add.tag.description))
 
     def test_append_equal_same(self):
         """Append the same DiscRates. The inital DiscRates is obtained."""
         disc_rate = DiscRates(
             years=np.array([2000, 2001, 2002]),
             rates=np.array([0.1, 0.2, 0.3]),
-            tag=Tag(
-                file_name = 'file1.txt',
-                description = 'descr1'
-            )
         )
 
         disc_rate_add = copy.deepcopy(disc_rate)
@@ -93,8 +80,6 @@ class TestAppend(unittest.TestCase):
 
         self.assertTrue(np.array_equal(disc_rate.years, disc_rate_add.years))
         self.assertTrue(np.array_equal(disc_rate.rates, disc_rate_add.rates))
-        self.assertTrue(np.array_equal(disc_rate.tag.file_name, disc_rate_add.tag.file_name))
-        self.assertEqual(disc_rate.tag.description, disc_rate_add.tag.description)
 
     def test_append_different_append(self):
         """Append DiscRates with same and new values. The rates with repeated
@@ -102,20 +87,12 @@ class TestAppend(unittest.TestCase):
 
         disc_rate = DiscRates(
             years=np.array([2000, 2001, 2002]),
-            rates=np.array([0.1, 0.2, 0.3]),
-            tag=Tag(
-                file_name = 'file1.txt',
-                description = 'descr1'
-            )
+            rates=np.array([0.1, 0.2, 0.3])
         )
 
         disc_rate_add = DiscRates(
             years=np.array([2000, 2001, 2003]),
-            rates=np.array([0.11, 0.22, 0.33]),
-            tag=Tag(
-                file_name = 'file2.txt',
-                description = 'descr2'
-            )
+            rates=np.array([0.11, 0.22, 0.33])
         )
 
         disc_rate.append(disc_rate_add)
@@ -125,8 +102,7 @@ class TestAppend(unittest.TestCase):
                                        np.array([2000, 2001, 2002, 2003])))
         self.assertTrue(np.array_equal(disc_rate.rates,
                                        np.array([0.11, 0.22, 0.3, 0.33])))
-        self.assertTrue(np.array_equal(disc_rate.tag.file_name, ['file1.txt', 'file2.txt']))
-        self.assertTrue(np.array_equal(disc_rate.tag.description, ['descr1', 'descr2']))
+
 
 class TestSelect(unittest.TestCase):
     """Test select method"""
@@ -136,11 +112,7 @@ class TestSelect(unittest.TestCase):
         rates=np.arange(years.size)
         disc_rate = DiscRates(
             years=years,
-            rates=rates,
-            tag=Tag(
-                file_name = 'file1.txt',
-                description = 'descr1'
-            )
+            rates=rates
         )
 
         year_range = np.arange(2010, 2020)
@@ -153,14 +125,11 @@ class TestSelect(unittest.TestCase):
         """Test select wrong time range."""
         disc_rate = DiscRates(
             years=np.arange(2000, 2050),
-            rates=np.arange(50),
-            tag=Tag(
-                file_name = 'file1.txt',
-                description = 'descr1'
-            )
+            rates=np.arange(50)
         )
         year_range = np.arange(2050, 2060)
         self.assertEqual(None, disc_rate.select(year_range))
+
 
 class TestNetPresValue(unittest.TestCase):
     """Test select method"""
@@ -168,11 +137,7 @@ class TestNetPresValue(unittest.TestCase):
         """Test net_present_value right time range."""
         disc_rate = DiscRates(
             years=np.arange(2000, 2050),
-            rates=np.ones(50) * 0.02,
-            tag=Tag(
-                file_name = 'file1.txt',
-                description = 'descr1'
-            )
+            rates=np.ones(50) * 0.02
         )
 
         val_years = np.ones(23) * 6.512201157564418e9
@@ -183,23 +148,19 @@ class TestNetPresValue(unittest.TestCase):
         """Test net_present_value wrong time range."""
         disc_rate = DiscRates(
             years=np.arange(2000, 2050),
-            rates=np.arange(50) * 0.02,
-            tag=Tag(
-                file_name = 'file1.txt',
-                description = 'descr1'
-            )
+            rates=np.arange(50) * 0.02
         )
         val_years = np.ones(11) * 6.512201157564418e9
         with self.assertRaises(ValueError):
             disc_rate.net_present_value(2050, 2060, val_years)
+
 
 class TestReaderExcel(unittest.TestCase):
     """Test excel reader for discount rates"""
 
     def test_demo_file_pass(self):
         """Read demo excel file."""
-        description = 'One single file.'
-        disc_rate = DiscRates.from_excel(ENT_DEMO_TODAY, description)
+        disc_rate = DiscRates.from_excel(ENT_DEMO_TODAY)
 
         # Check results
         n_rates = 51
@@ -213,9 +174,6 @@ class TestReaderExcel(unittest.TestCase):
         self.assertEqual(disc_rate.rates.shape, (n_rates,))
         self.assertEqual(disc_rate.rates.min(), 0.02)
         self.assertEqual(disc_rate.rates.max(), 0.02)
-
-        self.assertEqual(disc_rate.tag.file_name, [str(ENT_DEMO_TODAY)])
-        self.assertEqual(disc_rate.tag.description, [description])
 
     def test_template_file_pass(self):
         """Read demo excel file."""
@@ -234,8 +192,6 @@ class TestReaderExcel(unittest.TestCase):
         self.assertEqual(disc_rate.rates.min(), 0.02)
         self.assertEqual(disc_rate.rates.max(), 0.02)
 
-        self.assertEqual(disc_rate.tag.file_name, [str(ENT_TEMPLATE_XLS)])
-        self.assertEqual(disc_rate.tag.description, [])
 
 class TestReaderMat(unittest.TestCase):
     """Test mat reader for discount rates"""
@@ -244,8 +200,7 @@ class TestReaderMat(unittest.TestCase):
         """Read demo mat file"""
         # Read demo excel file
 
-        description = 'One single file.'
-        disc_rate = DiscRates.from_mat(file_name=ENT_TEST_MAT, description=description)
+        disc_rate = DiscRates.from_mat(file_name=ENT_TEST_MAT)
 
         # Check results
         n_rates = 51
@@ -259,9 +214,6 @@ class TestReaderMat(unittest.TestCase):
         self.assertEqual(len(disc_rate.rates), n_rates)
         self.assertEqual(disc_rate.rates.min(), 0.02)
         self.assertEqual(disc_rate.rates.max(), 0.02)
-
-        self.assertEqual(disc_rate.tag.file_name, [str(ENT_TEST_MAT)])
-        self.assertEqual(disc_rate.tag.description, [description])
 
 
 class TestWriter(unittest.TestCase):
@@ -281,8 +233,6 @@ class TestWriter(unittest.TestCase):
         self.assertTrue(np.array_equal(disc_read.years, disc_rate.years))
         self.assertTrue(np.array_equal(disc_read.rates, disc_rate.rates))
 
-        self.assertEqual(disc_read.tag.file_name, [str(file_name)])
-        self.assertEqual(disc_read.tag.description, [])
 
 # Execute Tests
 if __name__ == "__main__":

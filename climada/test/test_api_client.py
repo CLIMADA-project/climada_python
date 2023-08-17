@@ -64,6 +64,15 @@ class TestClient(unittest.TestCase):
         dataset2 = client.get_dataset_info_by_uuid(dataset.uuid)
         self.assertEqual(dataset, dataset2)
 
+    def test_search_for_property_not_set(self):
+        """"""
+        client = Client()
+
+        nocountry = client.list_dataset_infos(data_type="earthquake",
+                                              properties={'country_name': None})[0]
+        self.assertNotIn('country_name', nocountry.properties)
+        self.assertIn('spatial_coverage', nocountry.properties)
+
     def test_dataset_offline(self):
         """"""
         client = Client()
