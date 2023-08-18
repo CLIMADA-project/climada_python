@@ -85,9 +85,9 @@ class BayesianOptimizer(Optimizer):
             **bayes_opt_kwds,
         )
 
-    def _target_func(self, impact: pd.DataFrame, data: pd.DataFrame) -> Number:
+    def _target_func(self, true: pd.DataFrame, predicted: pd.DataFrame) -> Number:
         """Invert the cost function because BayesianOptimization maximizes the target"""
-        return -self.input.cost_func(impact, data)
+        return -self.input.cost_func(true, predicted)
 
     def run(self, **opt_kwargs):
         """Execute the optimization

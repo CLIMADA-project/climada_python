@@ -43,7 +43,8 @@ class Input:
     cost_func : Callable
         Function that takes two ``pandas.Dataframe`` objects and returns the scalar
         "cost" between them. The optimization algorithm will try to minimize this
-        number.
+        number. The first argument is the true/correct values (:py:attr:`data`), and the
+        second argument is the estimated/predicted values.
     bounds : Mapping (str, {Bounds, tuple(float, float)}), optional
         The bounds for the parameters. Keys: parameter names. Values:
         ``scipy.minimize.Bounds`` instance or tuple of minimum and maximum value.
@@ -58,6 +59,15 @@ class Input:
         Defaults to ``{"assign_centroids": False}`` (by default, centroids are assigned
         here via the ``assign_centroids`` parameter, to avoid assigning them each time
         the impact is calculated).
+    align_kwds : Mapping (str, Any), optional
+        Keyword arguments to ``pandas.DataFrame.align`` for aligning the :py:attr:`data`
+        with the data frame returned by :py:attr:`impact_to_dataframe`. By default,
+        both axes will be aligned and the fill value is zero
+        (``"axis": None, "fill_value": 0}``). This assumes that if events and/or regions
+        between both data frames do not align, the respective value is assumed to be
+        zero and this will be incorporated into the estimation. If you want to require
+        alignment, set ``"fill_value": None``. This will set non-aligned values to NaN,
+        which typically results in a NaN target function, aborting the estimation.
     assign_centroids : bool, optional
         If ``True`` (default), assign the hazard centroids to the exposure.
     """
@@ -72,6 +82,9 @@ class Input:
     constraints: Optional[Union[ConstraintType, list[ConstraintType]]] = None
     impact_calc_kwds: Mapping[str, Any] = field(
         default_factory=lambda: {"assign_centroids": False}
+    )
+    align_kwds: Mapping[str, Any] = field(
+        default_factory=lambda: {"axis": None, "fill_value": 0}
     )
     assign_centroids: InitVar[bool] = True
 
@@ -303,7 +316,7 @@ class Optimizer(ABC):
 
     input: Input
 
-    def _target_func(self, impact: pd.DataFrame, data: pd.DataFrame) -> Number:
+    def _target_func(self, true: pd.DataFrame, predicted: pd.DataFrame) -> Number:
         """Target function for the optimizer
 
         The default version of this function simply returns the value of the cost
@@ -311,16 +324,18 @@ class Optimizer(ABC):
 
         Parameters
         ----------
-        impact : climada.engine.Impact
-            The impact object returned by the impact calculation.
-        data : pandas.DataFrame
-            The data used for calibration. See :py:attr:`Input.data`.
+        true : pandas.DataFrame
+            The "true" data used for calibration. By default, this is
+            :py:attr:`Input.data`.
+        predicted : pandas.DataFrame
+            The impact predicted by the data calibration after it has been transformed
+            into a dataframe by :py:attr:`Input.impact_to_dataframe`.
 
         Returns
         -------
         The value of the target function for the optimizer.
         """
-        return self.input.cost_func(impact, data)
+        return self.input.cost_func(true, predicted)
 
     def _kwargs_to_impact_func_creator(self, *_, **kwargs) -> Dict[str, Any]:
         """Define how the parameters to :py:meth:`_opt_func` must be transformed
@@ -361,15 +376,23 @@ class Optimizer(ABC):
         -------
         Target function value for the given arguments
         """
+        # Create the impact function set from a new parameter estimate
         params = self._kwargs_to_impact_func_creator(*args, **kwargs)
         impf_set = self.input.impact_func_creator(**params)
+
+        # Compute the impact
         impact = ImpactCalc(
             exposures=self.input.exposure,
             impfset=impf_set,
             hazard=self.input.hazard,
         ).impact(**self.input.impact_calc_kwds)
+
+        # Transform to DataFrame, align, and compute target function
         impact_df = self.input.impact_to_dataframe(impact)
-        return self._target_func(impact_df, self.input.data)
+        data_aligned, impact_df_aligned = self.input.data.align(
+            impact_df, **self.input.align_kwds
+        )
+        return self._target_func(data_aligned, impact_df_aligned)
 
     @abstractmethod
     def run(self, **opt_kwargs) -> Output:
