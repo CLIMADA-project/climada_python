@@ -575,19 +575,24 @@ class Centroids():
             Sparse array of shape (len(val_name), len(geometry)).
         """
         if val_names is None:
-            val_names = ['intensity']
+            val_names = ["intensity"]
 
         values = []
         for file_name in file_names:
             tmp_lat, tmp_lon, tmp_geometry, data = u_coord.read_vector(
-                file_name, val_names, dst_crs=dst_crs)
-            if not (u_coord.equal_crs(tmp_geometry.crs, self.geometry.crs)
-                    and np.allclose(tmp_lat, self.lat)
-                    and np.allclose(tmp_lon, self.lon)):
-                raise ValueError('Vector data inconsistent with contained vector.')
+                file_name, val_names, dst_crs=dst_crs
+            )
+            try:
+                assert u_coord.equal_crs(tmp_geometry.crs, self.geometry.crs)
+                np.testing.assert_allclose(tmp_lat, self.lat)
+                np.testing.assert_allclose(tmp_lon, self.lon)
+            except AssertionError as exc:
+                raise ValueError(
+                    "Vector data inconsistent with contained vector"
+                ) from exc
             values.append(sparse.csr_matrix(data))
 
-        return sparse.vstack(values, format='csr')
+        return sparse.vstack(values, format="csr")
 
     def read_mat(self, *args, **kwargs):
         """This function is deprecated, use Centroids.from_mat instead."""

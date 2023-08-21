@@ -669,7 +669,7 @@ class TestCalcCostBenefit(unittest.TestCase):
         unc_calc = CalcCostBenefit(haz_iv, ent_iv)
         unc_data = unc_calc.make_sample( N=2)
 
-        pool = Pool(n=2)
+        pool = Pool(nodes=2)
         try:
             unc_data = unc_calc.uncertainty(unc_data, pool=pool)
         finally:

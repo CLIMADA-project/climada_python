@@ -24,8 +24,8 @@ unit_test : ## Unit tests execution with coverage and xml reports
 
 .PHONY : install_test
 install_test : ## Test installation was successful
-	pytest $(PYTEST_JUNIT_ARGS) climada/engine/test/test_cost_benefit.py \
-	climada/engine/test/test_impact.py
+	pytest $(PYTEST_JUNIT_ARGS) --pyargs climada.engine.test.test_cost_benefit \
+	climada.engine.test.test_impact
 
 .PHONY : data_test
 data_test : ## Test data APIs

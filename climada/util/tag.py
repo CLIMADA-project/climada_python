@@ -111,7 +111,7 @@ class Tag():
         hf_str = hf_data.create_dataset('file_name', (len(self.file_name),), dtype=STR_DT)
         for i, name in enumerate(self.file_name):
             hf_str[i] = name
-        hf_str = hf_data.create_dataset('description', (len(self.file_name),), dtype=STR_DT)
+        hf_str = hf_data.create_dataset('description', (len(self.description),), dtype=STR_DT)
         for i, desc in enumerate(self.description):
             hf_str[i] = desc
 

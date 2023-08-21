@@ -205,10 +205,10 @@ class CalcImpact(Calc):
         with log_level(level='ERROR', name_prefix='climada'):
             if pool:
                 LOGGER.info('Using %s CPUs.', pool.ncpus)
-                chunksize = min(unc_sample.n_samples // pool.ncpus, 100)
+                chunksize = max(min(unc_sample.n_samples // pool.ncpus, 100), 1)
                 imp_metrics = pool.map(self._map_impact_calc,
-                                        samples_df.iterrows(),
-                                        chunsize = chunksize)
+                                       samples_df.iterrows(),
+                                       chunksize=chunksize)
 
             else:
                 imp_metrics = map(self._map_impact_calc,
@@ -284,7 +284,7 @@ class CalcImpact(Calc):
 
         exp.assign_centroids(haz, overwrite=False)
         imp = ImpactCalc(exposures=exp, impfset=impf, hazard=haz)\
-              .impact(assign_centroids=False)
+              .impact(assign_centroids=False, save_mat=False)
 
         # Extract from climada.impact the chosen metrics
         freq_curve = imp.calc_freq_curve(self.rp).impact
