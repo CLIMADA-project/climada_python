@@ -354,14 +354,14 @@ class Calc():
 
         return sens_output
 
-    def _sample_parallel_iterator(self, sample_rows, **kwargs):
+    def _sample_parallel_iterator(self, samples, chunksize, **kwargs):
         """
         Make iterator over rows of dataframe plus repeated kwargs for parallel computing
 
         Parameters
         ----------
-        sample_rows : pd.DataFrame.iterrows()
-            Row iterator for samples
+        samples : pd.DataFrame
+            Dataframe of samples
         **kwargs : arguments to repeat
             Arguments to repeat for parallel computations
 
@@ -371,8 +371,11 @@ class Calc():
             suitable for methods _map_impact_calc and _map_costben_calc
 
         """
-        return zip(sample_rows, *(itertools.repeat(item) for item in kwargs.values()))
+        return zip(_chunker(samples, chunksize), *(itertools.repeat(item) for item in kwargs.values()))
 
+def _chunker(seq, size):
+    for pos in range(0, len(seq), size):
+        yield seq.iloc[pos:pos + size]
 
 def _calc_sens_df(method, problem_sa, sensitivity_kwargs, param_labels, X, unc_df):
     sens_first_order_dict = {}
@@ -459,6 +462,3 @@ def _si_param_second(param_labels, sens_indices):
         for _ in range(n_params)
         ] * len(si_name_second_order_list)
     return si_names_second_order, param_names_second_order, param_names_second_order_2
-
-
-
