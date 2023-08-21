@@ -123,7 +123,7 @@ class CalcImpact(Calc):
                     calc_eai_exp=False,
                     calc_at_event=False,
                     processes=1,
-                    chunksize=100
+                    chunksize=None
                     ):
         """
         Computes the impact for each sample in unc_data.sample_df.
@@ -163,7 +163,8 @@ class CalcImpact(Calc):
             The default is 1 (not parallel)
         chunksize: int, optional
             Size of the sample chunks to be sent to the processes.
-            Default is 100.
+            Default is equal to the number of samples divided by the
+            number of processes.
 
         Returns
         -------
@@ -186,6 +187,8 @@ class CalcImpact(Calc):
         if unc_sample.samples_df.empty:
             raise ValueError("No sample was found. Please create one first"
                              "using UncImpact.make_sample(N)")
+
+        chunksize = np.ceil(unc_sample.samples_df.shape[0] / processes).astype(int) if chunksize is None else chunksize
 
         samples_df = unc_sample.samples_df.copy(deep=True)
 
@@ -231,9 +234,8 @@ class CalcImpact(Calc):
             if processes > 1:
                 with mp.Pool(processes=processes) as pool:
                     LOGGER.info('Using %s CPUs.', processes)
-                    chunksize = int(2 * processes)
                     imp_metrics = pool.starmap(
-                        _map_impact_calc, p_iterator, chunksize=chunksize
+                        _map_impact_calc, p_iterator
                         )
             else:
                 imp_metrics = itertools.starmap(
@@ -242,7 +244,6 @@ class CalcImpact(Calc):
 
         #Perform the actual computation
         with log_level(level='ERROR', name_prefix='climada'):
-            imp_metrics = [element for sublist in imp_metrics for element in sublist]
             [aai_agg_list, freq_curve_list,
              eai_exp_list, at_event_list] = list(zip(*np.vstack(list(imp_metrics))))
 
