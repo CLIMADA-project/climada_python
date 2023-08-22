@@ -162,7 +162,7 @@ class CalcImpact(Calc):
             Number of CPUs to use for parralel computations.
             The default is 1 (not parallel)
         chunksize: int, optional
-            Size of the sample chunks to be sent to the processes.
+            Size of the sample chunks for parallel processing.
             Default is equal to the number of samples divided by the
             number of processes.
 
@@ -284,8 +284,8 @@ def _map_impact_calc(
 
     Parameters
     ----------
-    sample_iterrows : pd.DataFrame.iterrows()
-        Generator of the parameter samples
+    sample_chunks : pd.DataFrame
+        Dataframe of the parameter samples
 
     Returns
     -------
