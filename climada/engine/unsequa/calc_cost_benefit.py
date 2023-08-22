@@ -27,6 +27,7 @@ import itertools
 
 from typing import Optional, Union
 import pandas as pd
+import numpy as np
 import multiprocess as mp
 # use multiprocess fork of multiprocessing because of https://stackoverflow.com/a/65001152/12454103
 
@@ -129,7 +130,11 @@ class CalcCostBenefit(Calc):
 
 
 
-    def uncertainty(self, unc_data, processes=1, **cost_benefit_kwargs):
+    def uncertainty(self,
+                    unc_sample,
+                    processes=1,
+                    chunksize=None,
+                    **cost_benefit_kwargs):
         """
         Computes the cost benefit for each sample in unc_output.sample_df.
 
@@ -147,13 +152,17 @@ class CalcCostBenefit(Calc):
 
         Parameters
         ----------
-        unc_data : climada.engine.uncertainty.unc_output.UncOutput
+        unc_sample : climada.engine.uncertainty.unc_output.UncOutput
             Uncertainty data object with the input parameters samples
         processes : int, optional
             Number of CPUs to use for parralel computations.
             The default is 1 (not parallel)
         cost_benefit_kwargs : keyword arguments
             Keyword arguments passed on to climada.engine.CostBenefit.calc()
+        chunksize: int, optional
+            Size of the sample chunks for parallel processing.
+            Default is equal to the number of samples divided by the
+            number of processes.
 
         Returns
         -------
@@ -174,11 +183,13 @@ class CalcCostBenefit(Calc):
 
         """
 
-        if unc_data.samples_df.empty:
+        if unc_sample.samples_df.empty:
             raise ValueError("No sample was found. Please create one first" +
                         "using UncImpact.make_sample(N)")
 
-        samples_df = unc_data.samples_df.copy(deep=True)
+        chunksize = np.ceil(unc_sample.samples_df.shape[0] / processes).astype(int) if chunksize is None else chunksize
+
+        samples_df = unc_sample.samples_df.copy(deep=True)
         unit = self.value_unit
 
         LOGGER.info("The freq_curve is not saved. Please "
@@ -186,9 +197,10 @@ class CalcCostBenefit(Calc):
                     "if return period information is needed")
 
         start = time.time()
-        one_sample = samples_df.iloc[0:1].iterrows()
+        one_sample = samples_df.iloc[0:1]
         p_iterator = self._sample_parallel_iterator(
                 one_sample,
+                chunksize=chunksize,
                 ent_input_var=self.ent_input_var,
                 haz_input_var=self.haz_input_var,
                 ent_fut_input_var=self.ent_fut_input_var,
@@ -200,14 +212,15 @@ class CalcCostBenefit(Calc):
          imp_meas_future,
          tot_climate_risk,
          benefit,
-         cost_ben_ratio] = list(zip(*cb_metrics))
+         cost_ben_ratio] = list(zip(*np.vstack(list(cb_metrics))))
         elapsed_time = (time.time() - start)
-        self.est_comp_time(unc_data.n_samples, elapsed_time, processes)
+        self.est_comp_time(unc_sample.n_samples, elapsed_time, processes)
 
         #Compute impact distributions
         with log_level(level='ERROR', name_prefix='climada'):
             p_iterator = self._sample_parallel_iterator(
-                samples_df.iterrows(),
+                samples_df,
+                chunksize=chunksize,
                 ent_input_var=self.ent_input_var,
                 haz_input_var=self.haz_input_var,
                 ent_fut_input_var=self.ent_fut_input_var,
@@ -217,7 +230,7 @@ class CalcCostBenefit(Calc):
             if processes>1:
                 with mp.Pool(processes=processes) as pool:
                     LOGGER.info('Using %s CPUs.', processes)
-                    chunksize = min(unc_data.n_samples // processes + 1, 100)
+                    chunksize = min(unc_sample.n_samples // processes + 1, 100)
                     cb_metrics = pool.starmap(
                         _map_costben_calc, p_iterator, chunksize = chunksize
                         )
@@ -232,7 +245,7 @@ class CalcCostBenefit(Calc):
              imp_meas_future,
              tot_climate_risk,
              benefit,
-             cost_ben_ratio] = list(zip(*cb_metrics)) #Transpose list of list
+             cost_ben_ratio] = list(zip(*np.vstack(list(cb_metrics)))) #Transpose list of list
 
         # Assign computed impact distribution data to self
         tot_climate_risk_unc_df = \
@@ -290,7 +303,7 @@ class CalcCostBenefit(Calc):
 
 
 def _map_costben_calc(
-    sample_iterrows, ent_input_var, haz_input_var,
+    sample_chunks, ent_input_var, haz_input_var,
     ent_fut_input_var, haz_fut_input_var, cost_benefit_kwargs
     ):
     """
@@ -298,8 +311,8 @@ def _map_costben_calc(
 
     Parameters
     ----------
-    sample_iterrows : pd.DataFrame.iterrows()
-        Generator of the parameter samples
+    sample_chunks : pd.DataFrame
+        Dataframe of the parameter samples
     kwargs :
         Keyword arguments passed on to climada.engine.CostBenefit.calc()
 
@@ -312,29 +325,31 @@ def _map_costben_calc(
 
     """
 
-    # [1] only the rows of the dataframe passed by pd.DataFrame.iterrows()
-    haz_samples = sample_iterrows[1][haz_input_var.labels].to_dict()
-    ent_samples = sample_iterrows[1][ent_input_var.labels].to_dict()
-    haz_fut_samples = sample_iterrows[1][haz_fut_input_var.labels].to_dict()
-    ent_fut_samples = sample_iterrows[1][ent_fut_input_var.labels].to_dict()
+    uncertainty_values = []
+    for _, sample in sample_chunks.iterrows():
+        haz_samples = sample[haz_input_var.labels].to_dict()
+        ent_samples = sample[ent_input_var.labels].to_dict()
+        haz_fut_samples = sample[haz_fut_input_var.labels].to_dict()
+        ent_fut_samples = sample[ent_fut_input_var.labels].to_dict()
 
-    haz = haz_input_var.evaluate(**haz_samples)
-    ent = ent_input_var.evaluate(**ent_samples)
-    haz_fut = haz_fut_input_var.evaluate(**haz_fut_samples)
-    ent_fut = ent_fut_input_var.evaluate(**ent_fut_samples)
+        haz = haz_input_var.evaluate(**haz_samples)
+        ent = ent_input_var.evaluate(**ent_samples)
+        haz_fut = haz_fut_input_var.evaluate(**haz_fut_samples)
+        ent_fut = ent_fut_input_var.evaluate(**ent_fut_samples)
 
-    cb = CostBenefit()
-    ent.exposures.assign_centroids(haz, overwrite=False)
-    if ent_fut:
-        ent_fut.exposures.assign_centroids(haz_fut if haz_fut else haz, overwrite=False)
-    cb.calc(hazard=haz, entity=ent, haz_future=haz_fut, ent_future=ent_fut,
-            save_imp=False, assign_centroids=False, **cost_benefit_kwargs)
+        cb = CostBenefit()
+        ent.exposures.assign_centroids(haz, overwrite=False)
+        if ent_fut:
+            ent_fut.exposures.assign_centroids(haz_fut if haz_fut else haz, overwrite=False)
+        cb.calc(hazard=haz, entity=ent, haz_future=haz_fut, ent_future=ent_fut,
+                save_imp=False, assign_centroids=False, **cost_benefit_kwargs)
+        # Extract from climada.impact the chosen metrics
+        uncertainty_values.append([
+            cb.imp_meas_present,
+            cb.imp_meas_future,
+            cb.tot_climate_risk,
+            cb.benefit,
+            cb.cost_ben_ratio
+        ])
 
-    # Extract from climada.impact the chosen metrics
-    return [
-        cb.imp_meas_present,
-        cb.imp_meas_future,
-        cb.tot_climate_risk,
-        cb.benefit,
-        cb.cost_ben_ratio
-    ]
+    return uncertainty_values
