@@ -121,7 +121,8 @@ class CalcImpact(Calc):
                     rp=None,
                     calc_eai_exp=False,
                     calc_at_event=False,
-                    processes=1
+                    processes=1,
+                    chunksize=None
                     ):
         """
         Computes the impact for each sample in unc_data.sample_df.
@@ -159,6 +160,10 @@ class CalcImpact(Calc):
         processes : int, optional
             Number of CPUs to use for parralel computations.
             The default is 1 (not parallel)
+        chunksize: int, optional
+            Size of the sample chunks for parallel processing.
+            Default is equal to the number of samples divided by the
+            number of processes.
 
         Returns
         -------
@@ -183,6 +188,8 @@ class CalcImpact(Calc):
             raise ValueError("No sample was found. Please create one first"
                              "using UncImpact.make_sample(N)")
 
+        chunksize = np.ceil(unc_sample.samples_df.shape[0] / processes).astype(int) if chunksize is None else chunksize
+
         samples_df = unc_sample.samples_df.copy(deep=True)
 
         unit = self.value_unit
@@ -195,9 +202,10 @@ class CalcImpact(Calc):
         self.calc_at_event = calc_at_event
 
         start = time.time()
-        one_sample = samples_df.iloc[0:1].iterrows()
+        one_sample = samples_df.iloc[0:1]
         p_iterator = self._sample_parallel_iterator(
                 one_sample,
+                chunksize=chunksize,
                 exp_input_var=self.exp_input_var,
                 impf_input_var=self.impf_input_var,
                 haz_input_var=self.haz_input_var,
@@ -207,27 +215,27 @@ class CalcImpact(Calc):
             )
         imp_metrics = itertools.starmap(_map_impact_calc, p_iterator)
         [aai_agg_list, freq_curve_list,
-         eai_exp_list, at_event_list] = list(zip(*imp_metrics))
+         eai_exp_list, at_event_list] = list(zip(*np.vstack(list(imp_metrics))))
         elapsed_time = (time.time() - start)
         self.est_comp_time(unc_sample.n_samples, elapsed_time, processes)
 
         #Compute impact distributions
         with log_level(level='ERROR', name_prefix='climada'):
             p_iterator = self._sample_parallel_iterator(
-                samples_df.iterrows(),
+                samples_df,
+                chunksize=chunksize,
                 exp_input_var=self.exp_input_var,
                 impf_input_var=self.impf_input_var,
                 haz_input_var=self.haz_input_var,
                 rp=rp,
                 calc_eai_exp=calc_eai_exp,
-                calc_at_event=calc_at_event
+                calc_at_event=calc_at_event,
             )
             if processes > 1:
                 with mp.Pool(processes=processes) as pool:
                     LOGGER.info('Using %s CPUs.', processes)
-                    chunksize = min(unc_sample.n_samples // processes + 1, 100)
                     imp_metrics = pool.starmap(
-                        _map_impact_calc, p_iterator, chunksize=chunksize
+                        _map_impact_calc, p_iterator
                         )
             else:
                 imp_metrics = itertools.starmap(
@@ -237,7 +245,7 @@ class CalcImpact(Calc):
         #Perform the actual computation
         with log_level(level='ERROR', name_prefix='climada'):
             [aai_agg_list, freq_curve_list,
-             eai_exp_list, at_event_list] = list(zip(*imp_metrics))
+             eai_exp_list, at_event_list] = list(zip(*np.vstack(list(imp_metrics))))
 
         # Assign computed impact distribution data to self
         aai_agg_unc_df  = pd.DataFrame(aai_agg_list,
@@ -268,7 +276,7 @@ class CalcImpact(Calc):
 
 
 def _map_impact_calc(
-    sample_iterrows, exp_input_var, impf_input_var, haz_input_var,
+    sample_chunks, exp_input_var, impf_input_var, haz_input_var,
     rp, calc_eai_exp, calc_at_event
     ):
     """
@@ -276,8 +284,8 @@ def _map_impact_calc(
 
     Parameters
     ----------
-    sample_iterrows : pd.DataFrame.iterrows()
-        Generator of the parameter samples
+    sample_chunks : pd.DataFrame
+        Dataframe of the parameter samples
 
     Returns
     -------
@@ -287,31 +295,32 @@ def _map_impact_calc(
         (np.array([]) if self.calc_at_event=False).
 
     """
+    uncertainty_values = []
+    for _, sample in sample_chunks.iterrows():
+        exp_samples = sample[exp_input_var.labels].to_dict()
+        impf_samples = sample[impf_input_var.labels].to_dict()
+        haz_samples = sample[haz_input_var.labels].to_dict()
 
-    # [1] only the rows of the dataframe passed by pd.DataFrame.iterrows()
-    exp_samples = sample_iterrows[1][exp_input_var.labels].to_dict()
-    impf_samples = sample_iterrows[1][impf_input_var.labels].to_dict()
-    haz_samples = sample_iterrows[1][haz_input_var.labels].to_dict()
+        exp = exp_input_var.evaluate(**exp_samples)
+        impf = impf_input_var.evaluate(**impf_samples)
+        haz = haz_input_var.evaluate(**haz_samples)
 
-    exp = exp_input_var.evaluate(**exp_samples)
-    impf = impf_input_var.evaluate(**impf_samples)
-    haz = haz_input_var.evaluate(**haz_samples)
+        exp.assign_centroids(haz, overwrite=False)
+        imp = ImpactCalc(exposures=exp, impfset=impf, hazard=haz)\
+                .impact(assign_centroids=False, save_mat=False)
 
-    exp.assign_centroids(haz, overwrite=False)
-    imp = ImpactCalc(exposures=exp, impfset=impf, hazard=haz)\
-            .impact(assign_centroids=False, save_mat=False)
+        # Extract from climada.impact the chosen metrics
+        freq_curve = imp.calc_freq_curve(rp).impact
 
-    # Extract from climada.impact the chosen metrics
-    freq_curve = imp.calc_freq_curve(rp).impact
+        if calc_eai_exp:
+            eai_exp = imp.eai_exp
+        else:
+            eai_exp = np.array([])
 
-    if calc_eai_exp:
-        eai_exp = imp.eai_exp
-    else:
-        eai_exp = np.array([])
+        if calc_at_event:
+            at_event= imp.at_event
+        else:
+            at_event = np.array([])
+        uncertainty_values.append([imp.aai_agg, freq_curve, eai_exp, at_event])
 
-    if calc_at_event:
-        at_event= imp.at_event
-    else:
-        at_event = np.array([])
-
-    return [imp.aai_agg, freq_curve, eai_exp, at_event]
+    return uncertainty_values

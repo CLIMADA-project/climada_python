@@ -365,7 +365,7 @@ class Hazard():
             files_intensity[0], src_crs=src_crs, window=window, geometry=geometry, dst_crs=dst_crs,
             transform=transform, width=width, height=height, resampling=resampling)
         if pool:
-            chunksize = min(len(files_intensity) // pool.ncpus, 1000)
+            chunksize = max(min(len(files_intensity) // pool.ncpus, 1000), 1)
             inten_list = pool.map(
                 centroids.values_from_raster_files,
                 [[f] for f in files_intensity],
