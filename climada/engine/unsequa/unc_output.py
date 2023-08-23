@@ -114,12 +114,14 @@ class UncOutput():
 
     def order_samples(self, by):
         """
-        Function to sort the samples dataframe
+        Function to sort the samples dataframe.
+
+        Note: the unc_output.samples_df is ordered inplace.
 
         Parameters
         ----------
-        by_unc_params : list[string]
-            List of the uncertainty parameters to sort by (odering in list is kept)
+        by : list[string]
+            List of the uncertainty parameters to sort by (ordering in list is kept)
 
         Returns
         -------
