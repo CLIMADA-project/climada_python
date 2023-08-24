@@ -42,7 +42,7 @@ import sparse as sp
 from scipy import sparse
 import xarray as xr
 
-from climada.hazard.tag import Tag as TagHazard
+from climada.util.tag import Tag
 from climada.hazard.centroids.centr import Centroids
 import climada.util.plot as u_plot
 import climada.util.checker as u_check
@@ -108,7 +108,12 @@ class Hazard():
 
     Attributes
     ----------
-    tag : TagHazard
+    haz_type : str
+        two-letters hazard-type string, e.g., "TC" (tropical cyclone), "RF" (river flood) or "WF"
+        (wild fire).
+        Note: The acronym is used as reference to the hazard when centroids of multiple hazards
+        are assigned to an ``Exposures`` object.
+    tag : Tag
         information about the source
     units : str
         units of the intensity
@@ -228,7 +233,8 @@ class Hazard():
         >>> haz = Hazard.from_mat(HAZ_DEMO_MAT, 'demo')
 
         """
-        self.tag = TagHazard(haz_type, **tag_kwargs)
+        self.haz_type = haz_type
+        self.tag = Tag(**tag_kwargs)
         self.units = units
         self.centroids = centroids if centroids is not None else Centroids()
         # following values are defined for each event
@@ -288,8 +294,8 @@ class Hazard():
 
     @classmethod
     def from_raster(cls, files_intensity, files_fraction=None, attrs=None,
-                    band=None, haz_type=None, pool=None, src_crs=None, window=False,
-                    geometry=False, dst_crs=False, transform=None, width=None,
+                    band=None, haz_type=None, pool=None, src_crs=None, window=None,
+                    geometry=None, dst_crs=None, transform=None, width=None,
                     height=None, resampling=Resampling.nearest):
         """Create Hazard with intensity and fraction values from raster files
 
@@ -320,8 +326,8 @@ class Hazard():
         window : rasterio.windows.Windows, optional
             window where data is
             extracted
-        geometry : shapely.geometry, optional
-            consider pixels only in shape
+        geometry : list of shapely.geometry, optional
+            consider pixels only within these shapes
         dst_crs : crs, optional
             reproject to given crs
         transform : rasterio.Affine
@@ -359,7 +365,7 @@ class Hazard():
             files_intensity[0], src_crs=src_crs, window=window, geometry=geometry, dst_crs=dst_crs,
             transform=transform, width=width, height=height, resampling=resampling)
         if pool:
-            chunksize = min(len(files_intensity) // pool.ncpus, 1000)
+            chunksize = max(min(len(files_intensity) // pool.ncpus, 1000), 1)
             inten_list = pool.map(
                 centroids.values_from_raster_files,
                 [[f] for f in files_intensity],
@@ -559,7 +565,7 @@ class Hazard():
           ``event_date`` will be broadcast to every event.
         * To avoid confusion in the call signature, several parameters are keyword-only
           arguments.
-        * The attributes ``Hazard.tag.haz_type`` and ``Hazard.unit`` currently cannot be
+        * The attributes ``Hazard.haz_type`` and ``Hazard.unit`` currently cannot be
           read from the Dataset. Use the method parameters to set these attributes.
         * This method does not read coordinate system metadata. Use the ``crs`` parameter
           to set a custom coordinate system identifier.
@@ -1340,7 +1346,7 @@ class Hazard():
         """
         # pylint: disable=unidiomatic-typecheck
         if type(self) is Hazard:
-            haz = Hazard(self.tag.haz_type)
+            haz = Hazard(self.haz_type)
         else:
             haz = self.__class__()
 
@@ -1359,7 +1365,7 @@ class Hazard():
                 return None
 
         # filter events hist/synthetic
-        if isinstance(orig, bool):
+        if orig is not None:
             sel_ev &= (self.orig.astype(bool) == orig)
             if not np.any(sel_ev):
                 LOGGER.info('No hazard with %s original events.', str(orig))
@@ -1367,7 +1373,7 @@ class Hazard():
 
         # filter events based on name
         sel_ev = np.argwhere(sel_ev).reshape(-1)
-        if isinstance(event_names, list):
+        if event_names is not None:
             filtered_events = [self.event_name[i] for i in sel_ev]
             try:
                 new_sel = [filtered_events.index(n) for n in event_names]
@@ -1378,7 +1384,7 @@ class Hazard():
             sel_ev = sel_ev[new_sel]
 
         # filter events based on id
-        if isinstance(event_id, list):
+        if event_id is not None:
             # preserves order of event_id
             sel_ev = np.array([
                 np.argwhere(self.event_id == n)[0,0]
@@ -1738,7 +1744,7 @@ class Hazard():
             return
         unique_pos = sorted([events.index(event) for event in set_ev])
         for var_name, var_val in vars(self).items():
-            if isinstance(var_val, sparse.csr.csr_matrix):
+            if isinstance(var_val, sparse.csr_matrix):
                 setattr(self, var_name, var_val[unique_pos, :])
             elif isinstance(var_val, np.ndarray) and var_val.ndim == 1:
                 setattr(self, var_name, var_val[unique_pos])
@@ -1824,12 +1830,7 @@ class Hazard():
                 if var_name == 'centroids':
                     self.centroids.write_hdf5(hf_data.create_group(var_name))
                 elif var_name == 'tag':
-                    hf_str = hf_data.create_dataset('haz_type', (1,), dtype=str_dt)
-                    hf_str[0] = var_val.haz_type
-                    hf_str = hf_data.create_dataset('file_name', (1,), dtype=str_dt)
-                    hf_str[0] = str(var_val.file_name)
-                    hf_str = hf_data.create_dataset('description', (1,), dtype=str_dt)
-                    hf_str[0] = str(var_val.description)
+                    var_val.to_hdf5(hf_data)
                 elif isinstance(var_val, sparse.csr_matrix):
                     if todense:
                         hf_data.create_dataset(var_name, data=var_val.toarray())
@@ -1892,12 +1893,15 @@ class Hazard():
                     hazard_kwargs["centroids"] = Centroids.from_hdf5(
                         hf_data.get(var_name))
                 elif var_name == 'tag':
-                    hazard_kwargs["haz_type"] = u_hdf5.to_string(
-                        hf_data.get('haz_type')[0])
-                    hazard_kwargs["file_name"] = u_hdf5.to_string(
-                        hf_data.get('file_name')[0])
-                    hazard_kwargs["description"] = u_hdf5.to_string(
-                        hf_data.get('description')[0])
+                    # legacy behavior: haz_type used to be part of the hazard tag
+                    if "haz_type" in hf_data.keys():
+                        haz_type = u_hdf5.to_string(
+                            hf_data.get("haz_type")[0])
+                        if haz_type:
+                            hazard_kwargs["haz_type"] = haz_type
+                    tag = Tag.from_hdf5(hf_data)
+                    hazard_kwargs["file_name"] = tag.file_name
+                    hazard_kwargs["description"] = tag.description
                 elif isinstance(var_val, np.ndarray) and var_val.ndim == 1:
                     hazard_kwargs[var_name] = np.array(hf_data.get(var_name))
                 elif isinstance(var_val, sparse.csr_matrix):
@@ -1981,7 +1985,7 @@ class Hazard():
                          f' {self.event_name[event_pos]}')
             else:
                 im_val = np.max(mat_var, axis=0).toarray().transpose()
-                title = f'{self.tag.haz_type} max intensity at each point'
+                title = f'{self.haz_type} max intensity at each point'
 
             array_val.append(im_val)
             l_title.append(title)
@@ -2033,7 +2037,7 @@ class Hazard():
                      f' ({coord[centr_pos, 0]}, {coord[centr_pos, 1]})')
         else:
             array_val = np.max(mat_var, axis=1).toarray()
-            title = f'{self.tag.haz_type} max intensity at each event'
+            title = f'{self.haz_type} max intensity at each event'
 
         if not axis:
             _, axis = plt.subplots(1)
@@ -2281,11 +2285,11 @@ class Hazard():
             haz._check_events()
 
         # check type, unit, and attribute consistency among hazards
-        haz_types = {haz.tag.haz_type for haz in haz_list if haz.tag.haz_type != ''}
+        haz_types = {haz.haz_type for haz in haz_list if haz.haz_type != ''}
         if len(haz_types) > 1:
             raise ValueError(f"The given hazards are of different types: {haz_types}. "
                              "The hazards are incompatible and cannot be concatenated.")
-        self.tag.haz_type = haz_types.pop()
+        self.haz_type = haz_types.pop()
 
         haz_classes = {type(haz) for haz in haz_list}
         if len(haz_classes) > 1:
@@ -2327,7 +2331,7 @@ class Hazard():
         # concatenate array and list attributes of non-empty hazards
         for attr_name in attributes:
             attr_val_list = [getattr(haz, attr_name) for haz in haz_list_nonempty]
-            if isinstance(attr_val_list[0], sparse.csr.csr_matrix):
+            if isinstance(attr_val_list[0], sparse.csr_matrix):
                 # map sparse matrix onto centroids
                 setattr(self, attr_name, sparse.vstack([
                     sparse.csr_matrix(
@@ -2380,11 +2384,11 @@ class Hazard():
         if len(haz_list) == 0:
             return cls()
         haz_concat = haz_list[0].__class__()
-        haz_concat.tag.haz_type = haz_list[0].tag.haz_type
+        haz_concat.haz_type = haz_list[0].haz_type
         for attr_name, attr_val in vars(haz_list[0]).items():
             # to save memory, only copy simple attributes like
             # "units" that are not explicitly handled by Hazard.append
-            if not (isinstance(attr_val, (list, np.ndarray, sparse.csr.csr_matrix))
+            if not (isinstance(attr_val, (list, np.ndarray, sparse.csr_matrix))
                     or attr_name in ["tag", "centroids"]):
                 setattr(haz_concat, attr_name, copy.deepcopy(attr_val))
         haz_concat.append(*haz_list)
@@ -2481,20 +2485,7 @@ class Hazard():
         """
         from climada.entity.exposures import INDICATOR_CENTR  # pylint: disable=import-outside-toplevel
         # import outside toplevel is necessary for it not being circular
-        return INDICATOR_CENTR + self.tag.haz_type
-
-    @property
-    def haz_type(self):
-        """
-        Hazard type
-
-        Returns
-        -------
-        String
-            Two-letters hazard type string. E.g. "TC", "RF", or "WF"
-
-        """
-        return self.tag.haz_type
+        return INDICATOR_CENTR + self.haz_type
 
     def get_mdr(self, cent_idx, impf):
         """

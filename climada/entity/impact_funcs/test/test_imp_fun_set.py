@@ -22,7 +22,7 @@ import unittest
 import numpy as np
 
 from climada import CONFIG
-from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet, ImpactFunc, Tag
+from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet, ImpactFunc
 from climada.util.constants import ENT_TEMPLATE_XLS, ENT_DEMO_TODAY
 
 ENT_TEST_MAT = CONFIG.exposures.test_data.dir().joinpath('demo_today.mat')
@@ -33,7 +33,6 @@ class TestConstructor(unittest.TestCase):
         """All attributes are defined"""
         imp_fun = ImpactFuncSet()
         vulner_1 = ImpactFunc("TC", "2")
-        self.assertTrue(hasattr(imp_fun, 'tag'))
         self.assertTrue(hasattr(imp_fun, '_data'))
         self.assertTrue(hasattr(vulner_1, 'haz_type'))
         self.assertTrue(hasattr(vulner_1, 'name'))
@@ -301,16 +300,13 @@ class TestExtend(unittest.TestCase):
         """Extend ImpactFuncSet to empty one."""
         imp_fun = ImpactFuncSet()
         imp_fun_add = ImpactFuncSet(
-            (ImpactFunc("TC", 1), ImpactFunc("TC", 3), ImpactFunc("FL", 3)),
-            Tag('file1.txt'))
+            (ImpactFunc("TC", 1), ImpactFunc("TC", 3), ImpactFunc("FL", 3)))
         imp_fun.extend(imp_fun_add)
         imp_fun.check()
 
         self.assertEqual(imp_fun.size(), 3)
         self.assertEqual(imp_fun.size('TC'), 2)
         self.assertEqual(imp_fun.size('FL'), 1)
-        self.assertEqual(imp_fun.tag.file_name, imp_fun_add.tag.file_name)
-        self.assertEqual(imp_fun.tag.description, imp_fun_add.tag.description)
 
     def test_extend_equal_same(self):
         """Extend the same ImpactFuncSet. The inital ImpactFuncSet is obtained."""
@@ -353,8 +349,7 @@ class TestReaderMat(unittest.TestCase):
     def test_demo_file_pass(self):
         """Read demo excel file"""
         # Read demo mat file
-        description = 'One single file.'
-        imp_funcs = ImpactFuncSet.from_mat(ENT_TEST_MAT, description)
+        imp_funcs = ImpactFuncSet.from_mat(ENT_TEST_MAT)
 
         # Check results
         n_funcs = 2
@@ -419,9 +414,6 @@ class TestReaderMat(unittest.TestCase):
         self.assertEqual(imp_funcs._data[hazard][second_id].paa[0], 0)
         self.assertEqual(imp_funcs._data[hazard][second_id].paa[8], 1)
 
-        # general information
-        self.assertEqual(imp_funcs.tag.file_name, str(ENT_TEST_MAT))
-        self.assertEqual(imp_funcs.tag.description, description)
 
 class TestReaderExcel(unittest.TestCase):
     """Test reader functionality of the imp_funcsFuncsExcel class"""
@@ -430,8 +422,7 @@ class TestReaderExcel(unittest.TestCase):
         """Read demo excel file"""
         # Read demo excel file
 
-        description = 'One single file.'
-        imp_funcs = ImpactFuncSet.from_excel(ENT_DEMO_TODAY, description)
+        imp_funcs = ImpactFuncSet.from_excel(ENT_DEMO_TODAY)
 
         # Check results
         n_funcs = 2
@@ -495,10 +486,6 @@ class TestReaderExcel(unittest.TestCase):
         self.assertEqual(imp_funcs._data[hazard][second_id].paa.shape, (9,))
         self.assertEqual(imp_funcs._data[hazard][second_id].paa[0], 0)
         self.assertEqual(imp_funcs._data[hazard][second_id].paa[8], 1)
-
-        # general information
-        self.assertEqual(imp_funcs.tag.file_name, str(ENT_DEMO_TODAY))
-        self.assertEqual(imp_funcs.tag.description, description)
 
     def test_template_file_pass(self):
         """Read template excel file"""
@@ -516,8 +503,6 @@ class TestWriter(unittest.TestCase):
         """Write + read excel file"""
 
         imp_funcs = ImpactFuncSet()
-        imp_funcs.tag.file_name = 'No file name'
-        imp_funcs.tag.description = 'test writer'
 
         idx = 1
         name = 'code 1'
@@ -561,9 +546,6 @@ class TestWriter(unittest.TestCase):
         imp_funcs.write_excel(file_name)
 
         imp_res = ImpactFuncSet.from_excel(file_name)
-
-        self.assertEqual(imp_res.tag.file_name, str(file_name))
-        self.assertEqual(imp_res.tag.description, '')
 
         # first function
         for fun_haz, fun_dict in imp_res.get_func().items():

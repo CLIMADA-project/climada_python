@@ -16,53 +16,24 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
-Define Tag class.
+Define (deprecated) Tag class.
 """
 
-__all__ = ['Tag']
+from deprecation import deprecated
 
-class Tag():
-    """Source data tag for Exposures, DiscRates, ImpactFuncSet, MeasureSet.
+from climada.util.tag import Tag as _Tag
 
-    Attributes
-    ----------
-    file_name : str
-        name of the source file
-    description : str
-        description of the data
+
+# deprecating the whole class instead of just the constructor (s.b.) would be preferable
+# but deprecated classes seem to cause an issue when unpickling with the pandas.HDFStore
+# which is used in Exposures.from_hdf5()
+#
+# @deprecated(details="This class is not supported anymore.")
+class Tag(_Tag):
+    """kept for backwards compatibility with climada <= 3.3
+    use ``climada.util.tag.Tag`` instead
     """
-
-    def __init__(self,
-                 file_name: str = '',
-                 description: str = ''):
-        """Initialize values.
-
-        Parameters
-        ----------
-        file_name : str, optional
-            file name to read
-        description : str, optional
-            description of the data
-        """
-        self.file_name = str(file_name)
-        self.description = description
-
-    def append(self, tag):
-        """Append input Tag instance information to current Tag."""
-        # add file name if not present in tag
-        if self.file_name == '':
-            self.file_name = tag.file_name
-            self.description = tag.description
-        elif tag.file_name == '':
-            return
-        else:
-            if tag.file_name not in self.file_name:
-                self.file_name += ' + ' + tag.file_name
-            if tag.description not in self.description:
-                self.description += ' + ' + tag.description
-
-    def __str__(self):
-        return ' File: ' + self.file_name + '\n Description: ' + \
-            self.description
-
-    __repr__ = __str__
+    @deprecated(details="This class is not supported anymore and will be removed in the next"
+                " version of climada.")
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
