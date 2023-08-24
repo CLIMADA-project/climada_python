@@ -31,7 +31,6 @@ import matplotlib.pyplot as plt
 import xlsxwriter
 
 from climada.entity.impact_funcs.base import ImpactFunc
-from climada.entity.tag import Tag
 import climada.util.plot as u_plot
 import climada.util.hdf5_handler as u_hdf5
 
@@ -68,8 +67,6 @@ class ImpactFuncSet:
 
     Attributes
     ----------
-    tag : climada.entity.tag.Tag
-        information about the source data
     _data : dict
         contains ImpactFunc classes. It's not suppossed to be
         directly accessed. Use the class methods instead.
@@ -77,8 +74,7 @@ class ImpactFuncSet:
 
     def __init__(
         self,
-        impact_funcs: Optional[Iterable[ImpactFunc]] = None,
-        tag: Optional[Tag] = None
+        impact_funcs: Optional[Iterable[ImpactFunc]] = None
     ):
         """Initialization.
 
@@ -88,8 +84,6 @@ class ImpactFuncSet:
         ----------
         impact_funcs : iterable of ImpactFunc, optional
             An iterable (list, set, array, ...) of ImpactFunc.
-        tag : climada.entity.tag.Tag, optional
-            The entity tag of this object.
 
         Examples
         --------
@@ -108,15 +102,12 @@ class ImpactFuncSet:
         """
         # TODO: Automatically check this object if impact_funcs is not None.
         self.clear()
-        if tag is not None:
-            self.tag = tag
         if impact_funcs is not None:
             for impf in impact_funcs:
                 self.append(impf)
 
     def clear(self):
         """Reinitialize attributes."""
-        self.tag = Tag()
         self._data = dict()  # {hazard_type : {id:ImpactFunc}}
 
     def append(self, func):
@@ -312,8 +303,6 @@ class ImpactFuncSet:
             self.__dict__ = copy.deepcopy(impact_funcs.__dict__)
             return
 
-        self.tag.append(impact_funcs.tag)
-
         new_func = impact_funcs.get_func()
         for _, vul_dict in new_func.items():
             for _, vul in vul_dict.items():
@@ -361,7 +350,7 @@ class ImpactFuncSet:
         return axis
 
     @classmethod
-    def from_excel(cls, file_name, description='', var_names=None):
+    def from_excel(cls, file_name, var_names=None):
         """Read excel file following template and store variables.
 
         Parameters
@@ -381,7 +370,7 @@ class ImpactFuncSet:
             var_names = DEF_VAR_EXCEL
         dfr = pd.read_excel(file_name, var_names['sheet_name'])
 
-        imp_func_set = cls(tag=Tag(str(file_name), description))
+        imp_func_set = cls()
         imp_func_set._fill_dfr(dfr, var_names)
         return imp_func_set
 
@@ -392,7 +381,7 @@ class ImpactFuncSet:
         self.__dict__ = ImpactFuncSet.from_excel(*args, **kwargs).__dict__
 
     @classmethod
-    def from_mat(cls, file_name, description='', var_names=None):
+    def from_mat(cls, file_name, var_names=None):
         """Read MATLAB file generated with previous MATLAB CLIMADA version.
 
         Parameters
@@ -470,7 +459,7 @@ class ImpactFuncSet:
         except KeyError as err:
             raise KeyError("Not existing variable: %s" % str(err)) from err
 
-        return cls(impact_funcs, Tag(str(file_name), description))
+        return cls(impact_funcs)
 
     def read_mat(self, *args, **kwargs):
         """This function is deprecated, use ImpactFuncSet.from_mat instead."""

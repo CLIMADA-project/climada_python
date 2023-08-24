@@ -307,6 +307,7 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
         Specify a unit for the distance. One of:
 
         * "km": distance in km.
+        * "m": distance in m.
         * "degree": angular distance in decimal degrees.
         * "radian": angular distance in radians.
 
@@ -322,6 +323,8 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
     """
     if units == "km":
         unit_factor = ONE_LAT_KM
+    elif units == "m":
+        unit_factor = ONE_LAT_KM * 1000.0
     elif units == "radian":
         unit_factor = np.radians(1.0)
     elif units == "degree":
@@ -1946,8 +1949,8 @@ def read_raster(file_name, band=None, src_crs=None, window=None, geometry=None,
         band number to read. Default: 1
     window : rasterio.windows.Window, optional
         window to read
-    geometry : shapely.geometry, optional
-        consider pixels only in shape
+    geometry : list of shapely.geometry, optional
+        consider pixels only within these shapes
     dst_crs : crs, optional
         reproject to given crs
     transform : rasterio.Affine

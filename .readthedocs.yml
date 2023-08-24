@@ -8,5 +8,12 @@ build:
 conda:
   environment: requirements/env_docs.yml
 
+python:
+  install:
+    - method: pip
+      path: .
+      extra_requirements:
+        - doc
+
 formats:
   - pdf

@@ -1,0 +1,25 @@
+# .coveragerc to control coverage.py
+
+[run]
+# Also report branch coverage
+branch = True
+# Set concurrency type for correct coverage of multi-processing code
+concurrency = multiprocessing
+
+[paths]
+source = climada/
+
+[report]
+# Regexes for lines to exclude from consideration
+exclude_also =
+    # Main code is not run
+    if __name__ == .__main__.:
+
+    # Abtract methods are not run
+    @(abc\.)?abstractmethod
+
+# Never fail when reporting
+ignore_errors = True
+
+[html]
+directory = coverage
