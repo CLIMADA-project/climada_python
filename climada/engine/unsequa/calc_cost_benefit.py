@@ -212,7 +212,10 @@ class CalcCostBenefit(Calc):
          imp_meas_future,
          tot_climate_risk,
          benefit,
-         cost_ben_ratio] = list(zip(*np.vstack(list(cb_metrics))))
+         cost_ben_ratio] = [
+                 list(itertools.chain.from_iterable(x))
+                 for x in list(zip(*cb_metrics))
+                 ]
         elapsed_time = (time.time() - start)
         self.est_comp_time(unc_sample.n_samples, elapsed_time, processes)
 
@@ -245,7 +248,10 @@ class CalcCostBenefit(Calc):
              imp_meas_future,
              tot_climate_risk,
              benefit,
-             cost_ben_ratio] = list(zip(*np.vstack(list(cb_metrics)))) #Transpose list of list
+             cost_ben_ratio] = [
+                 list(itertools.chain.from_iterable(x))
+                 for x in list(zip(*cb_metrics))
+                 ]
 
         # Assign computed impact distribution data to self
         tot_climate_risk_unc_df = \
@@ -352,4 +358,4 @@ def _map_costben_calc(
             cb.cost_ben_ratio
         ])
 
-    return uncertainty_values
+    return list(zip(*uncertainty_values))

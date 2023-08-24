@@ -215,7 +215,10 @@ class CalcImpact(Calc):
             )
         imp_metrics = itertools.starmap(_map_impact_calc, p_iterator)
         [aai_agg_list, freq_curve_list,
-         eai_exp_list, at_event_list] = list(zip(*np.vstack(list(imp_metrics))))
+         eai_exp_list, at_event_list] = [
+                 list(itertools.chain.from_iterable(x))
+                 for x in list(zip(*imp_metrics))
+                 ]
         elapsed_time = (time.time() - start)
         self.est_comp_time(unc_sample.n_samples, elapsed_time, processes)
 
@@ -245,7 +248,10 @@ class CalcImpact(Calc):
         #Perform the actual computation
         with log_level(level='ERROR', name_prefix='climada'):
             [aai_agg_list, freq_curve_list,
-             eai_exp_list, at_event_list] = list(zip(*np.vstack(list(imp_metrics))))
+             eai_exp_list, at_event_list] = [
+                 list(itertools.chain.from_iterable(x))
+                 for x in list(zip(*imp_metrics))
+                 ]
 
         # Assign computed impact distribution data to self
         aai_agg_unc_df  = pd.DataFrame(aai_agg_list,
@@ -321,6 +327,7 @@ def _map_impact_calc(
             at_event= imp.at_event
         else:
             at_event = np.array([])
+
         uncertainty_values.append([imp.aai_agg, freq_curve, eai_exp, at_event])
 
-    return uncertainty_values
+    return list(zip(*uncertainty_values))
