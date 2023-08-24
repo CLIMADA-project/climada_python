@@ -371,7 +371,10 @@ class Calc():
             suitable for methods _map_impact_calc and _map_costben_calc
 
         """
-        return zip(_chunker(samples, chunksize), *(itertools.repeat(item) for item in kwargs.values()))
+        return zip(
+            _chunker(samples, chunksize),
+            *(itertools.repeat(item) for item in kwargs.values())
+            )
 
 def _chunker(seq, size):
     for pos in range(0, len(seq), size):

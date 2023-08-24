@@ -53,13 +53,13 @@ class CalcCostBenefit(Calc):
     ----------
     value_unit : str
         Unit of the exposures value
-    haz_input_var : climada.engine.uncertainty.input_var.InputVar
+    haz_input_var : InputVar or Hazard
         Present Hazard uncertainty variable
-    ent_input_var : climada.engine.uncertainty.input_var.InputVar
+    ent_input_var : InputVar or Entity
         Present Entity uncertainty variable
-    haz_unc_fut_Var: climada.engine.uncertainty.input_var.InputVar
+    haz_unc_fut_Var: InputVar or Hazard
         Future Hazard uncertainty variable
-    ent_fut_input_var : climada.engine.uncertainty.input_var.InputVar
+    ent_fut_input_var : InputVar or Entity
         Future Entity uncertainty variable
     _input_var_names : tuple(str)
         Names of the required uncertainty variables
@@ -179,7 +179,7 @@ class CalcCostBenefit(Calc):
         See Also
         --------
         climada.engine.cost_benefit:
-            Compute risk and adptation option cost benefits.
+            compute risk and adptation option cost benefits.
 
         """
 
@@ -187,7 +187,9 @@ class CalcCostBenefit(Calc):
             raise ValueError("No sample was found. Please create one first" +
                         "using UncImpact.make_sample(N)")
 
-        chunksize = np.ceil(unc_sample.samples_df.shape[0] / processes).astype(int) if chunksize is None else chunksize
+        chunksize = np.ceil(
+            unc_sample.samples_df.shape[0] / processes
+            ).astype(int) if chunksize is None else chunksize
 
         samples_df = unc_sample.samples_df.copy(deep=True)
         unit = self.value_unit

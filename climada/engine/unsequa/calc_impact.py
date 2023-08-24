@@ -39,7 +39,6 @@ from climada.util import log_level
 
 LOGGER = logging.getLogger(__name__)
 
-
 class CalcImpact(Calc):
     """
     Impact uncertainty caclulation class.
@@ -57,11 +56,11 @@ class CalcImpact(Calc):
         Compute eai_exp or not
     value_unit : str
         Unit of the exposures value
-    exp_input_var : climada.engine.uncertainty.input_var.InputVar
+    exp_input_var : InputVar or Exposures
         Exposure uncertainty variable
-    impf_input_var : climada.engine.uncertainty.input_var.InputVar
+    impf_input_var : InputVar if ImpactFuncSet
         Impact function set uncertainty variable
-    haz_input_var: climada.engine.uncertainty.input_var.InputVar
+    haz_input_var: InputVar or Hazard
         Hazard uncertainty variable
     _input_var_names : tuple(str)
         Names of the required uncertainty input variables
@@ -180,7 +179,8 @@ class CalcImpact(Calc):
 
         See Also
         --------
-        climada.engine.impact: Compute risk.
+        climada.engine.impact:
+            compute impact and risk.
 
         """
 
@@ -188,7 +188,9 @@ class CalcImpact(Calc):
             raise ValueError("No sample was found. Please create one first"
                              "using UncImpact.make_sample(N)")
 
-        chunksize = np.ceil(unc_sample.samples_df.shape[0] / processes).astype(int) if chunksize is None else chunksize
+        chunksize = np.ceil(
+            unc_sample.samples_df.shape[0] / processes
+            ).astype(int) if chunksize is None else chunksize
 
         samples_df = unc_sample.samples_df.copy(deep=True)
 
