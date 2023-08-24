@@ -188,7 +188,9 @@ class CalcImpact(Calc):
             raise ValueError("No sample was found. Please create one first"
                              "using UncImpact.make_sample(N)")
 
-        chunksize = np.ceil(unc_sample.samples_df.shape[0] / processes).astype(int) if chunksize is None else chunksize
+        chunksize = np.ceil(
+            unc_sample.samples_df.shape[0] / processes
+            ).astype(int) if chunksize is None else chunksize
 
         samples_df = unc_sample.samples_df.copy(deep=True)
 

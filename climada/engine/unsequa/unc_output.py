@@ -112,7 +112,7 @@ class UncOutput():
         self.samples_df = samples_df
         self.unit = unit
 
-    def order_samples(self, by):
+    def order_samples(self, by_parameters):
         """
         Function to sort the samples dataframe.
 
@@ -120,7 +120,7 @@ class UncOutput():
 
         Parameters
         ----------
-        by : list[string]
+        by_parameters : list[string]
             List of the uncertainty parameters to sort by (ordering in list is kept)
 
         Returns
@@ -128,7 +128,7 @@ class UncOutput():
         None.
 
         """
-        self.samples_df.sort_values(by=by, inplace=True, axis=0)
+        self.samples_df.sort_values(by=by_parameters, inplace=True, axis=0)
 
     def get_samples_df(self):
         return getattr(self, 'samples_df')
