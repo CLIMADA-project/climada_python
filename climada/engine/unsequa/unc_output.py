@@ -19,7 +19,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define Uncertainty class.
 """
 
-__all__ = ['UncOutput', 'UncCostBenefitOutput', 'UncImpactOutput']
+__all__ = ['UncOutput', 'UncCostBenefitOutput', 'UncImpactOutput', 'UncDeltaImpactOutput']
 
 import logging
 import datetime as dt
@@ -414,9 +414,8 @@ class UncOutput():
         figsize : tuple(int or float, int or float), optional
             The figsize argument of matplotlib.pyplot.subplots()
             The default is derived from the total number of plots (nplots) as:
-
-            >>> nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
-            >>> figsize = (ncols * FIG_W, nrows * FIG_H)
+                nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
+                figsize = (ncols * FIG_W, nrows * FIG_H)
 
         Raises
         ------
@@ -731,9 +730,8 @@ class UncOutput():
         figsize : tuple(int or float, int or float), optional
             The figsize argument of matplotlib.pyplot.subplots()
             The default is derived from the total number of plots (nplots) as:
-
-            >>> nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
-            >>> figsize = (ncols * FIG_W, nrows * FIG_H)
+                nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
+                figsize = (ncols * FIG_W, nrows * FIG_H)
         axes : matplotlib.pyplot.axes, optional
             Axes handles to use for the plot. The default is None.
         kwargs :
@@ -783,16 +781,11 @@ class UncOutput():
 
         for ax, metric in zip(flat_axes, metric_list):
             df_S = self.get_sensitivity(salib_si, [metric]).select_dtypes('number')
-            if not df_S.columns[df_S.isnull().all()].empty:
-                LOGGER.warning("All-NaN columns encountered: %s",
-                               list(df_S.columns[df_S.isnull().all()]))
-            df_S = df_S.loc[:, df_S.notnull().any()]
             if df_S.empty:
                 ax.set_xlabel('Input parameter')
                 ax.remove()
                 continue
             df_S_conf = self.get_sensitivity(salib_si_conf, [metric]).select_dtypes('number')
-            df_S_conf = df_S_conf.loc[:, df_S.columns]
             if df_S_conf.empty:
                 df_S.plot(ax=ax, kind='bar', **kwargs)
             df_S.plot(ax=ax, kind='bar', yerr=df_S_conf, **kwargs)
@@ -835,9 +828,8 @@ class UncOutput():
         figsize : tuple(int or float, int or float), optional
             The figsize argument of matplotlib.pyplot.subplots()
             The default is derived from the total number of plots (nplots) as:
-
-            >>> nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
-            >>> figsize = (ncols * 5, nrows * 5)
+                nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
+                figsize = (ncols * 5, nrows * 5)
         axes : matplotlib.pyplot.axes, optional
             Axes handles to use for the plot. The default is None.
         kwargs :
@@ -1134,7 +1126,55 @@ class UncImpactOutput(UncOutput):
         self.tot_value_sens_df = None
         self.coord_df = coord_df
 
+class UncDeltaImpactOutput(UncOutput):
+    """Extension of UncOutput specific for CalcDeltaImpact, returned by the  uncertainty() method.
+    """
+    def __init__(self, samples_df, unit, aai_agg_unc_df, freq_curve_unc_df, eai_exp_unc_df,
+                 at_event_initial_unc_df, at_event_final_unc_df, tot_value_unc_df, coord_df):
+        """Constructor
 
+        Uncertainty output values from impact.calc for each sample
+
+        Parameters
+        ----------
+        samples_df : pandas.DataFrame
+            input parameters samples
+        unit : str
+            value unit
+        aai_agg_unc_df : pandas.DataFrame
+            Each row contains the value of aai_aag for one sample (row of
+            samples_df)
+        freq_curve_unc_df : pandas.DataFrame
+            Each row contains the values of the impact exceedence frequency
+            curve for one sample (row of samples_df)
+        eai_exp_unc_df : pandas.DataFrame
+            Each row contains the values of eai_exp for one sample (row of
+            samples_df)
+        at_event_unc_df : pandas.DataFrame
+            Each row contains the values of at_event for one sample (row of
+            samples_df)
+        tot_value_unc_df : pandas.DataFrame
+            Each row contains the value of tot_value for one sample (row of
+            samples_df)
+        coord_df : pandas.DataFrame
+            Coordinates of the exposure
+        """
+        super().__init__(samples_df, unit)
+        self.aai_agg_unc_df = aai_agg_unc_df
+        self.aai_agg_sens_df = None
+        self.freq_curve_unc_df = freq_curve_unc_df
+        self.freq_curve_sens_df = None
+        self.eai_exp_unc_df = eai_exp_unc_df
+        self.eai_exp_sens_df = None
+        self.at_event_initial_unc_df = at_event_initial_unc_df
+        self.at_event_initial_sens_df = None
+        self.at_event_final_unc_df = at_event_final_unc_df
+        self.at_event_final_sens_df = None
+        self.tot_value_unc_df = tot_value_unc_df
+        self.tot_value_sens_df = None
+        self.coord_df = coord_df
+        
+        
 class UncCostBenefitOutput(UncOutput):
     """Extension of UncOutput specific for CalcCostBenefit, returned by the uncertainty() method.
     """

@@ -248,7 +248,7 @@ class CalcDeltaImpact(Calc):
                                                  columns = ['tot_value'])
 
         if calc_eai_exp:
-            exp = self.exp_input_var.evaluate()
+            exp = self.exp_initial_input_var.evaluate()  # note: changed from exp_input_var to exp_initial_input_var on July 24th. In my understanding, this is just to get the lat, lon information of the exposure, which is not chaning between intial and final maps - SM
             coord_df = exp.gdf[['latitude', 'longitude']]
         else:
             coord_df = pd.DataFrame([])
@@ -318,16 +318,25 @@ class CalcDeltaImpact(Calc):
             eai_exp_final = np.array([])
 
         if self.calc_at_event:
-            at_event_initial = imp_initial.at_event
-            at_event_final = imp_final.at_event
+            at_event_initial = np.mean(imp_initial.at_event[
+                imp_initial.at_event>np.quantile(imp_initial.at_event,.9)])
+            at_event_final = np.mean(imp_final.at_event[
+                imp_final.at_event>np.quantile(imp_final.at_event,.9)])
         else:
             at_event_initial = np.array([])
             at_event_final = np.array([])
 
 
+#        return [
+#            imp_final.aai_agg - imp_initial.aai_agg,
+#            freq_curve_final - freq_curve_initial,
+#            eai_exp_final - eai_exp_initial,
+#            at_event_final - at_event_initial,
+#            imp_final.tot_value - imp_initial.tot_value]
+
         return [
-            imp_final.aai_agg - imp_initial.aai_agg,
-            freq_curve_final - freq_curve_initial,
-            eai_exp_final - eai_exp_initial,
-            at_event_final - at_event_initial,
-            imp_final.tot_value - imp_initial.tot_value]
+            (imp_final.aai_agg - imp_initial.aai_agg)/imp_initial.aai_agg,
+            (freq_curve_final - freq_curve_initial)/freq_curve_initial,
+            (eai_exp_final - eai_exp_initial)/eai_exp_initial,
+            (at_event_final - at_event_initial)/at_event_initial,
+            (imp_final.tot_value - imp_initial.tot_value)/imp_initial.tot_value]

@@ -295,7 +295,10 @@ class CalcImpact(Calc):
             eai_exp = np.array([])
 
         if self.calc_at_event:
-            at_event= imp.at_event
+            #at_event= imp.at_event
+            at_event = np.mean(imp.at_event[
+                imp.at_event>np.quantile(imp.at_event,.9)])
+            
         else:
             at_event = np.array([])
 
