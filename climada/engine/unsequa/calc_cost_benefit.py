@@ -193,6 +193,7 @@ class CalcCostBenefit(Calc):
         data corruption issues. The computational cost should be
         minimal as only a list of floats.'''
         samples_df = unc_sample.samples_df.copy(deep=True)
+
         if chunksize is None:
             chunksize = _multiprocess_chunksize(samples_df, processes)
         unit = self.value_unit
@@ -201,55 +202,19 @@ class CalcCostBenefit(Calc):
                     "change the risk_func (see climada.engine.cost_benefit) "
                     "if return period information is needed")
 
-        start = time.time()
         one_sample = samples_df.iloc[0:1]
-        p_iterator = _sample_parallel_iterator(
-                samples=one_sample,
-                chunksize=chunksize,
-                ent_input_var=self.ent_input_var,
-                haz_input_var=self.haz_input_var,
-                ent_fut_input_var=self.ent_fut_input_var,
-                haz_fut_input_var=self.haz_fut_input_var,
-                cost_benefit_kwargs=cost_benefit_kwargs
-            )
-        cb_metrics = itertools.starmap(_map_costben_calc, p_iterator)
-        [imp_meas_present,
-         imp_meas_future,
-         tot_climate_risk,
-         benefit,
-         cost_ben_ratio] = _transpose_chunked_data(cb_metrics)
+        start = time.time()
+        self._compute_cb_metrics(one_sample, cost_benefit_kwargs, chunksize=1, processes=1)
         elapsed_time = (time.time() - start)
         self.est_comp_time(unc_sample.n_samples, elapsed_time, processes)
 
         #Compute impact distributions
-        with log_level(level='ERROR', name_prefix='climada'):
-            p_iterator = _sample_parallel_iterator(
-                samples=samples_df,
-                chunksize=chunksize,
-                ent_input_var=self.ent_input_var,
-                haz_input_var=self.haz_input_var,
-                ent_fut_input_var=self.ent_fut_input_var,
-                haz_fut_input_var=self.haz_fut_input_var,
-                cost_benefit_kwargs=cost_benefit_kwargs
-            )
-            if processes>1:
-                with mp.Pool(processes=processes) as pool:
-                    LOGGER.info('Using %s CPUs.', processes)
-                    cb_metrics = pool.starmap(
-                        _map_costben_calc, p_iterator
-                        )
-            else:
-                cb_metrics = itertools.starmap(
-                    _map_costben_calc, p_iterator
-                    )
+        [imp_meas_present,
+        imp_meas_future,
+        tot_climate_risk,
+        benefit,
+        cost_ben_ratio] = self._compute_cb_metrics(samples_df, cost_benefit_kwargs, chunksize, processes)
 
-        #Perform the actual computation
-        with log_level(level='ERROR', name_prefix='climada'):
-            [imp_meas_present,
-             imp_meas_future,
-             tot_climate_risk,
-             benefit,
-             cost_ben_ratio] = _transpose_chunked_data(cb_metrics)
         # Assign computed impact distribution data to self
         tot_climate_risk_unc_df = \
             pd.DataFrame(tot_climate_risk, columns = ['tot_climate_risk'])
@@ -303,6 +268,33 @@ class CalcCostBenefit(Calc):
                                     unit=unit,
                                     cost_benefit_kwargs=cost_benefit_kwargs)
 
+    def _compute_cb_metrics(
+            self, samples_df, cost_benefit_kwargs, chunksize, processes
+            ):
+        with log_level(level='ERROR', name_prefix='climada'):
+            p_iterator = _sample_parallel_iterator(
+                samples=samples_df,
+                chunksize=chunksize,
+                ent_input_var=self.ent_input_var,
+                haz_input_var=self.haz_input_var,
+                ent_fut_input_var=self.ent_fut_input_var,
+                haz_fut_input_var=self.haz_fut_input_var,
+                cost_benefit_kwargs=cost_benefit_kwargs
+            )
+            if processes>1:
+                with mp.Pool(processes=processes) as pool:
+                    LOGGER.info('Using %s CPUs.', processes)
+                    cb_metrics = pool.starmap(
+                        _map_costben_calc, p_iterator
+                        )
+            else:
+                cb_metrics = itertools.starmap(
+                    _map_costben_calc, p_iterator
+                    )
+
+        #Perform the actual computation
+        with log_level(level='ERROR', name_prefix='climada'):
+            return _transpose_chunked_data(cb_metrics)
 
 
 def _map_costben_calc(

@@ -207,51 +207,21 @@ class CalcImpact(Calc):
         self.calc_eai_exp = calc_eai_exp
         self.calc_at_event = calc_at_event
 
-        start = time.time()
         one_sample = samples_df.iloc[0:1]
-        p_iterator = _sample_parallel_iterator(
-                samples=one_sample,
-                chunksize=chunksize,
-                exp_input_var=self.exp_input_var,
-                impf_input_var=self.impf_input_var,
-                haz_input_var=self.haz_input_var,
-                rp=rp,
-                calc_eai_exp=calc_eai_exp,
-                calc_at_event=calc_at_event
+        start = time.time()
+        self._compute_imp_metrics(
+            one_sample, rp, calc_eai_exp, calc_at_event, chunksize=1, processes=1
             )
-        imp_metrics = itertools.starmap(_map_impact_calc, p_iterator)
-        [aai_agg_list, freq_curve_list,
-         eai_exp_list, at_event_list] = _transpose_chunked_data(imp_metrics)
         elapsed_time = (time.time() - start)
         self.est_comp_time(unc_sample.n_samples, elapsed_time, processes)
 
-        #Compute impact distributions
-        with log_level(level='ERROR', name_prefix='climada'):
-            p_iterator = _sample_parallel_iterator(
-                samples=samples_df,
-                chunksize=chunksize,
-                exp_input_var=self.exp_input_var,
-                impf_input_var=self.impf_input_var,
-                haz_input_var=self.haz_input_var,
-                rp=rp,
-                calc_eai_exp=calc_eai_exp,
-                calc_at_event=calc_at_event,
+        [aai_agg_list,
+        freq_curve_list,
+        eai_exp_list,
+        at_event_list] =  self._compute_imp_metrics(
+            samples_df, rp, calc_eai_exp, calc_at_event,
+            chunksize=chunksize, processes=processes
             )
-            if processes > 1:
-                with mp.Pool(processes=processes) as pool:
-                    LOGGER.info('Using %s CPUs.', processes)
-                    imp_metrics = pool.starmap(
-                        _map_impact_calc, p_iterator
-                        )
-            else:
-                imp_metrics = itertools.starmap(
-                    _map_impact_calc, p_iterator
-                    )
-
-        #Perform the actual computation
-        with log_level(level='ERROR', name_prefix='climada'):
-            [aai_agg_list, freq_curve_list,
-             eai_exp_list, at_event_list] = _transpose_chunked_data(imp_metrics)
 
         # Assign computed impact distribution data to self
         aai_agg_unc_df  = pd.DataFrame(aai_agg_list,
@@ -279,6 +249,36 @@ class CalcImpact(Calc):
                                at_event_unc_df=at_event_unc_df,
                                coord_df=coord_df
                                )
+
+    def _compute_imp_metrics(
+            self, samples_df, rp, calc_eai_exp, calc_at_event, chunksize, processes
+            ):
+        #Compute impact distributions
+        with log_level(level='ERROR', name_prefix='climada'):
+            p_iterator = _sample_parallel_iterator(
+                samples=samples_df,
+                chunksize=chunksize,
+                exp_input_var=self.exp_input_var,
+                impf_input_var=self.impf_input_var,
+                haz_input_var=self.haz_input_var,
+                rp=rp,
+                calc_eai_exp=calc_eai_exp,
+                calc_at_event=calc_at_event,
+            )
+            if processes > 1:
+                with mp.Pool(processes=processes) as pool:
+                    LOGGER.info('Using %s CPUs.', processes)
+                    imp_metrics = pool.starmap(
+                        _map_impact_calc, p_iterator
+                        )
+            else:
+                imp_metrics = itertools.starmap(
+                    _map_impact_calc, p_iterator
+                    )
+
+        #Perform the actual computation
+        with log_level(level='ERROR', name_prefix='climada'):
+            return _transpose_chunked_data(imp_metrics)
 
 
 def _map_impact_calc(
