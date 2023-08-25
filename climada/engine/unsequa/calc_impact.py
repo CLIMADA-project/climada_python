@@ -33,7 +33,7 @@ import multiprocess as mp
 
 from climada.engine import ImpactCalc
 from climada.engine.unsequa import Calc, InputVar, UncImpactOutput
-from climada.engine.unsequa.calc_base import _sample_parallel_iterator
+from climada.engine.unsequa.calc_base import _sample_parallel_iterator, _multiprocess_chunksize
 from climada.entity import Exposures, ImpactFuncSet
 from climada.hazard import Hazard
 from climada.util import log_level
@@ -189,15 +189,14 @@ class CalcImpact(Calc):
             raise ValueError("No sample was found. Please create one first"
                              "using UncImpact.make_sample(N)")
 
-        chunksize = np.ceil(
-            unc_sample.samples_df.shape[0] / processes
-            ).astype(int) if chunksize is None else chunksize
 
         '''copy may not be needed, but is kept to prevent potential
         data corruption issues. The computational cost should be
         minimal as only a list of floats.'''
         samples_df = unc_sample.samples_df.copy(deep=True)
 
+        if chunksize is None:
+            chunksize = _multiprocess_chunksize(samples_df, processes)
         unit = self.value_unit
 
         if rp is None:

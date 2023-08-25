@@ -354,6 +354,11 @@ class Calc():
 
         return sens_output
 
+def _multiprocess_chunksize(samples_df, processes):
+    return np.ceil(
+        samples_df.shape[0] / processes
+        ).astype(int)
+
 def _sample_parallel_iterator(samples, chunksize, **kwargs):
     """
     Make iterator over chunks of samples
