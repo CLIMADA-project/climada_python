@@ -355,11 +355,54 @@ class Calc():
         return sens_output
 
 def _multiprocess_chunksize(samples_df, processes):
+    """Divides the samples into chunks for multiprocesses computing
+
+    The goal is to send to each processing node an equal number
+    of samples to process. This make the parallel processing anologous
+    to running the uncertainty assessment independently on each nodes
+    for a subset of the samples, instead of distributing individual samples
+    on the nodes dynamically. Hence, all the heavy input variables
+    are copied/sent once to each node only.
+
+    Parameters
+    ----------
+    samples_df : pd.DataFrame
+        samples dataframe
+    processes : int
+        number of processes
+
+    Returns
+    -------
+    int
+        the number of samples in each chunk
+    """
     return np.ceil(
         samples_df.shape[0] / processes
         ).astype(int)
 
 def _transpose_chunked_data(metrics):
+    """Transposes the output metrics lists
+
+    [ [x1, [y1, z1]], [x2, [y2, z2]] ] ->
+    [ [x1, x2], [[y1, z1], [y2, z2]] ]
+
+    Parameters
+    ----------
+    metrics : list
+        list of list as returned by the uncertainty mapings
+
+    Returns
+    -------
+    list
+        list of climada output uncertainty
+
+    See Also
+    --------
+    calc_impact._map_impact_calc
+        map for impact uncertainty
+    calc_cost_benefits._map_costben_calc
+        map for cost benefit uncertainty
+    """
     return [
         list(itertools.chain.from_iterable(x))
         for x in zip(*metrics)

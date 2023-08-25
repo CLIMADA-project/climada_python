@@ -210,7 +210,7 @@ class CalcImpact(Calc):
         one_sample = samples_df.iloc[0:1]
         start = time.time()
         self._compute_imp_metrics(
-            one_sample, rp, calc_eai_exp, calc_at_event, chunksize=1, processes=1
+            one_sample, chunksize=1, processes=1
             )
         elapsed_time = (time.time() - start)
         self.est_comp_time(unc_sample.n_samples, elapsed_time, processes)
@@ -219,8 +219,7 @@ class CalcImpact(Calc):
         freq_curve_list,
         eai_exp_list,
         at_event_list] =  self._compute_imp_metrics(
-            samples_df, rp, calc_eai_exp, calc_at_event,
-            chunksize=chunksize, processes=processes
+            samples_df, chunksize=chunksize, processes=processes
             )
 
         # Assign computed impact distribution data to self
@@ -250,9 +249,23 @@ class CalcImpact(Calc):
                                coord_df=coord_df
                                )
 
-    def _compute_imp_metrics(
-            self, samples_df, rp, calc_eai_exp, calc_at_event, chunksize, processes
-            ):
+    def _compute_imp_metrics(self, samples_df, chunksize, processes):
+        """Compute the uncertainty metrics
+
+        Parameters
+        ----------
+        samples_df : pd.DataFrame
+            dataframe of input parameter samples
+        chunksize : int
+            size of the samples chunks
+        processes : int
+            number of processes to use
+
+        Returns
+        -------
+        list
+            values of impact metrics per sample
+        """
         #Compute impact distributions
         with log_level(level='ERROR', name_prefix='climada'):
             p_iterator = _sample_parallel_iterator(
@@ -261,9 +274,9 @@ class CalcImpact(Calc):
                 exp_input_var=self.exp_input_var,
                 impf_input_var=self.impf_input_var,
                 haz_input_var=self.haz_input_var,
-                rp=rp,
-                calc_eai_exp=calc_eai_exp,
-                calc_at_event=calc_at_event,
+                rp=self.rp,
+                calc_eai_exp=self.calc_eai_exp,
+                calc_at_event=self.calc_at_event,
             )
             if processes > 1:
                 with mp.Pool(processes=processes) as pool:

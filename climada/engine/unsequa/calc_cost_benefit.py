@@ -271,6 +271,24 @@ class CalcCostBenefit(Calc):
     def _compute_cb_metrics(
             self, samples_df, cost_benefit_kwargs, chunksize, processes
             ):
+        """Compute the uncertainty metrics
+
+        Parameters
+        ----------
+        samples_df : pd.DataFrame
+            dataframe of input parameter samples
+        cost_benefit_kwargs: kwargs
+            arguments to be passed to the cost_benefit.calc method
+        chunksize : int
+            size of the samples chunks
+        processes : int
+            number of processes to use
+
+        Returns
+        -------
+        list
+            values of impact metrics per sample
+        """
         with log_level(level='ERROR', name_prefix='climada'):
             p_iterator = _sample_parallel_iterator(
                 samples=samples_df,
