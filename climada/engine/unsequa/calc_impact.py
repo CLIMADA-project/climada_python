@@ -252,7 +252,7 @@ class CalcImpact(Calc):
             [aai_agg_list, freq_curve_list,
              eai_exp_list, at_event_list] = [
                  list(itertools.chain.from_iterable(x))
-                 for x in list(zip(*imp_metrics))
+                 for x in zip(*imp_metrics)
                  ]
 
         # Assign computed impact distribution data to self
