@@ -360,4 +360,5 @@ def _map_costben_calc(
             cb.cost_ben_ratio
         ])
 
+    # Transpose list
     return list(zip(*uncertainty_values))
