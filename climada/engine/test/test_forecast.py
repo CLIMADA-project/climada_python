@@ -104,7 +104,8 @@ class TestPlot(unittest.TestCase):
 
     def test_Forecast_plot(self):
         """Test cplotting functions from the Forecast class"""
-                #hazard
+        ## given a forecast based on hazard exposure and vulnerability
+        #hazard
         haz1 = StormEurope.from_cosmoe_file(
             HAZ_DIR.joinpath('storm_europe_cosmoe_forecast_vmax_testfile.nc'),
             run_datetime=dt.datetime(2018,1,1),
@@ -149,8 +150,10 @@ class TestPlot(unittest.TestCase):
                     for f in source:
                         if f['properties']['adm0_a3'] == 'CHE':
                             sink.write(f)
-        #test plotting functions
+        ## test plotting functions
+        # should save plot without failing
         forecast.plot_imp_map(run_datetime=dt.datetime(2017,12,31),
+                              explain_str='test text',
                               polygon_file=str(cantons_file),
                               save_fig=True, close_fig=True)
         map_file_name = (forecast.summary_str(dt.datetime(2017,12,31)) +
@@ -158,12 +161,30 @@ class TestPlot(unittest.TestCase):
                          '.jpeg')
         map_file_name_full = Path(FORECAST_PLOT_DIR) / map_file_name
         map_file_name_full.absolute().unlink(missing_ok=False)
-        forecast.plot_hist(run_datetime=dt.datetime(2017,12,31),
-                           save_fig=False, close_fig=True)
-        forecast.plot_exceedence_prob(run_datetime=dt.datetime(2017,12,31),
-                                      threshold=5000, save_fig=False, close_fig=True)
-
-
+        #should contain title strings
+        ax = forecast.plot_hist(run_datetime=dt.datetime(2017,12,31),
+                           explain_str='test text',
+                           save_fig=False, close_fig=False)
+        title_artists = ax.get_figure().get_children()
+        title_texts = [x.get_text() for x in title_artists if isinstance(x, plt.Text)]
+        self.assertIn('test text', title_texts)
+        self.assertIn('Wed 03 Jan 2018 00-24UTC', title_texts)
+        self.assertIn('31.12.2017 00UTC +3d', title_texts)
+        #should contain average impact in axes
+        artists = ax.get_children()
+        texts = [x.get_text() for x in artists if type(x) == plt.Text]
+        self.assertIn('mean impact:\n 26  USD', texts)
+        ax.get_figure().clf()
+        #should contain title strings
+        ax = forecast.plot_exceedence_prob(run_datetime=dt.datetime(2017,12,31),
+                                      threshold=5000, explain_str='test text exceedence',
+                                      save_fig=False, close_fig=False)[0][0]
+        title_artists = ax.get_figure().get_children()
+        title_texts = [x.get_text() for x in title_artists if isinstance(x, plt.Text)]
+        self.assertIn('test text exceedence', title_texts)
+        self.assertIn('Wed 03 Jan 2018 00-24UTC', title_texts)
+        self.assertIn('31.12.2017 00UTC +3d', title_texts)
+        ax.get_figure().clf()
         forecast.plot_warn_map(str(cantons_file),
                                decision_level = 'polygon',
                                thresholds=[100000,500000,
@@ -187,9 +208,10 @@ class TestPlot(unittest.TestCase):
                                close_fig=True)
         forecast.plot_hexbin_ei_exposure()
         plt.close()
-        with self.assertRaises(ValueError):
+        # should fail because of invalid decision_level
+        with self.assertRaises(ValueError) as cm:
             forecast.plot_warn_map(str(cantons_file),
-                                   decision_level = 'test_fail',
+                                   decision_level='test_fail',
                                    probability_aggregation=0.2,
                                    area_aggregation=0.2,
                                    title="Building damage warning",
@@ -197,9 +219,13 @@ class TestPlot(unittest.TestCase):
                                    save_fig=False,
                                    close_fig=True)
         plt.close()
-        with self.assertRaises(ValueError):
+        self.assertIn(
+            "Parameter decision_level", str(cm.exception)
+        )
+        # should fail because of invalid probability_aggregation
+        with self.assertRaises(ValueError) as cm:
             forecast.plot_warn_map(str(cantons_file),
-                                   decision_level = 'exposure_point',
+                                   decision_level='exposure_point',
                                    probability_aggregation='test_fail',
                                    area_aggregation=0.2,
                                    title="Building damage warning",
@@ -207,9 +233,13 @@ class TestPlot(unittest.TestCase):
                                    save_fig=False,
                                    close_fig=True)
         plt.close()
-        with self.assertRaises(ValueError):
+        self.assertIn(
+            "Parameter probability_aggregation", str(cm.exception)
+        )
+        # should fail because of invalid area_aggregation
+        with self.assertRaises(ValueError) as cm:
             forecast.plot_warn_map(str(cantons_file),
-                                   decision_level = 'exposure_point',
+                                   decision_level='exposure_point',
                                    probability_aggregation=0.2,
                                    area_aggregation='test_fail',
                                    title="Building damage warning",
@@ -217,6 +247,9 @@ class TestPlot(unittest.TestCase):
                                    save_fig=False,
                                    close_fig=True)
         plt.close()
+        self.assertIn(
+            "Parameter area_aggregation", str(cm.exception)
+        )
 
 
 # Execute Tests

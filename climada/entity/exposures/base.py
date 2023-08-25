@@ -121,7 +121,7 @@ class Exposures():
         TC. There might be different hazards defined: centr_TC, centr_FL, ...
         Computed in method assign_centroids().
     """
-    _metadata = ['tag', 'ref_year', 'value_unit', 'meta']
+    _metadata = ['tag', 'ref_year', 'value_unit', 'meta', 'description']
 
     vars_oblig = ['value', 'latitude', 'longitude']
     """Name of the variables needed to compute the impact."""
@@ -172,6 +172,7 @@ class Exposures():
         self.ref_year = self.meta.get('ref_year', DEF_REF_YEAR) if ref_year is None else ref_year
         self.value_unit = (self.meta.get('value_unit', DEF_VALUE_UNIT)
                            if value_unit is None else value_unit)
+        self.description = kwargs.pop('description') if 'description' in kwargs else None
 
         # remaining generic attributes from derived classes
         for mda in type(self)._metadata:
