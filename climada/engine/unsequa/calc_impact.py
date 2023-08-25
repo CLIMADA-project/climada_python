@@ -28,8 +28,9 @@ import itertools
 
 import pandas as pd
 import numpy as np
-import multiprocess as mp
-# use multiprocess fork of multiprocessing because of https://stackoverflow.com/a/65001152/12454103
+import pathos.multiprocessing as mp
+# use pathos.multiprocess fork of multiprocessing for compatibility
+# wiht notebooks and other environments https://stackoverflow.com/a/65001152/12454103
 
 from climada.engine import ImpactCalc
 from climada.engine.unsequa import Calc, InputVar, UncImpactOutput
