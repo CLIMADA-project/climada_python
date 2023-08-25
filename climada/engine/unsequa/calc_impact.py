@@ -33,6 +33,7 @@ import multiprocess as mp
 
 from climada.engine import ImpactCalc
 from climada.engine.unsequa import Calc, InputVar, UncImpactOutput
+from climada.engine.unsequa.calc_base import _sample_parallel_iterator
 from climada.entity import Exposures, ImpactFuncSet
 from climada.hazard import Hazard
 from climada.util import log_level
@@ -205,8 +206,8 @@ class CalcImpact(Calc):
 
         start = time.time()
         one_sample = samples_df.iloc[0:1]
-        p_iterator = self._sample_parallel_iterator(
-                one_sample,
+        p_iterator = _sample_parallel_iterator(
+                samples=one_sample,
                 chunksize=chunksize,
                 exp_input_var=self.exp_input_var,
                 impf_input_var=self.impf_input_var,
@@ -226,8 +227,8 @@ class CalcImpact(Calc):
 
         #Compute impact distributions
         with log_level(level='ERROR', name_prefix='climada'):
-            p_iterator = self._sample_parallel_iterator(
-                samples_df,
+            p_iterator = _sample_parallel_iterator(
+                samples=samples_df,
                 chunksize=chunksize,
                 exp_input_var=self.exp_input_var,
                 impf_input_var=self.impf_input_var,

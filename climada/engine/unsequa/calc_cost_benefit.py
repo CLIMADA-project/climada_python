@@ -33,6 +33,7 @@ import multiprocess as mp
 
 from climada.engine.cost_benefit import CostBenefit
 from climada.engine.unsequa import Calc, InputVar, UncCostBenefitOutput
+from climada.engine.unsequa.calc_base import _sample_parallel_iterator
 from climada.util import log_level
 from climada.hazard import Hazard
 from climada.entity import Entity
@@ -200,8 +201,8 @@ class CalcCostBenefit(Calc):
 
         start = time.time()
         one_sample = samples_df.iloc[0:1]
-        p_iterator = self._sample_parallel_iterator(
-                one_sample,
+        p_iterator = _sample_parallel_iterator(
+                samples=one_sample,
                 chunksize=chunksize,
                 ent_input_var=self.ent_input_var,
                 haz_input_var=self.haz_input_var,
@@ -223,8 +224,8 @@ class CalcCostBenefit(Calc):
 
         #Compute impact distributions
         with log_level(level='ERROR', name_prefix='climada'):
-            p_iterator = self._sample_parallel_iterator(
-                samples_df,
+            p_iterator = _sample_parallel_iterator(
+                samples=samples_df,
                 chunksize=chunksize,
                 ent_input_var=self.ent_input_var,
                 haz_input_var=self.haz_input_var,

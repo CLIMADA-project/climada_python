@@ -354,31 +354,37 @@ class Calc():
 
         return sens_output
 
-    def _sample_parallel_iterator(self, samples, chunksize, **kwargs):
+def _sample_parallel_iterator(samples, chunksize, **kwargs):
+    """
+    Make iterator over chunks of samples
+    with repeated kwargs for each chunk.
+
+    Parameters
+    ----------
+    samples : pd.DataFrame
+        Dataframe of samples
+    **kwargs : arguments to repeat
+        Arguments to repeat for parallel computations
+
+    Returns
+    -------
+    iterator
+        suitable for methods _map_impact_calc and _map_costben_calc
+
+    """
+    def _chunker(df, size):
         """
-        Make iterator over rows of dataframe plus repeated kwargs for parallel computing
-
-        Parameters
-        ----------
-        samples : pd.DataFrame
-            Dataframe of samples
-        **kwargs : arguments to repeat
-            Arguments to repeat for parallel computations
-
-        Returns
-        -------
-        iterator
-            suitable for methods _map_impact_calc and _map_costben_calc
-
+        Divide the dataframe into chunks of size number of lines
         """
-        return zip(
-            _chunker(samples, chunksize),
-            *(itertools.repeat(item) for item in kwargs.values())
-            )
+        for pos in range(0, len(df), size):
+            yield df.iloc[pos:pos + size]
 
-def _chunker(seq, size):
-    for pos in range(0, len(seq), size):
-        yield seq.iloc[pos:pos + size]
+    return zip(
+        _chunker(samples, chunksize),
+        *(itertools.repeat(item) for item in kwargs.values())
+        )
+
+
 
 def _calc_sens_df(method, problem_sa, sensitivity_kwargs, param_labels, X, unc_df):
     sens_first_order_dict = {}
