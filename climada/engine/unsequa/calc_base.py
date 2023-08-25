@@ -359,6 +359,12 @@ def _multiprocess_chunksize(samples_df, processes):
         samples_df.shape[0] / processes
         ).astype(int)
 
+def _transpose_chunked_data(metrics):
+    return [
+        list(itertools.chain.from_iterable(x))
+        for x in zip(*metrics)
+        ]
+
 def _sample_parallel_iterator(samples, chunksize, **kwargs):
     """
     Make iterator over chunks of samples

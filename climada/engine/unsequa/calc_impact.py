@@ -33,7 +33,7 @@ import multiprocess as mp
 
 from climada.engine import ImpactCalc
 from climada.engine.unsequa import Calc, InputVar, UncImpactOutput
-from climada.engine.unsequa.calc_base import _sample_parallel_iterator, _multiprocess_chunksize
+from climada.engine.unsequa.calc_base import _sample_parallel_iterator, _multiprocess_chunksize, _transpose_chunked_data
 from climada.entity import Exposures, ImpactFuncSet
 from climada.hazard import Hazard
 from climada.util import log_level
@@ -220,10 +220,7 @@ class CalcImpact(Calc):
             )
         imp_metrics = itertools.starmap(_map_impact_calc, p_iterator)
         [aai_agg_list, freq_curve_list,
-         eai_exp_list, at_event_list] = [
-                 list(itertools.chain.from_iterable(x))
-                 for x in list(zip(*imp_metrics))
-                 ]
+         eai_exp_list, at_event_list] = _transpose_chunked_data(imp_metrics)
         elapsed_time = (time.time() - start)
         self.est_comp_time(unc_sample.n_samples, elapsed_time, processes)
 
@@ -253,10 +250,7 @@ class CalcImpact(Calc):
         #Perform the actual computation
         with log_level(level='ERROR', name_prefix='climada'):
             [aai_agg_list, freq_curve_list,
-             eai_exp_list, at_event_list] = [
-                 list(itertools.chain.from_iterable(x))
-                 for x in zip(*imp_metrics)
-                 ]
+             eai_exp_list, at_event_list] = _transpose_chunked_data(imp_metrics)
 
         # Assign computed impact distribution data to self
         aai_agg_unc_df  = pd.DataFrame(aai_agg_list,

@@ -33,7 +33,7 @@ import multiprocess as mp
 
 from climada.engine.cost_benefit import CostBenefit
 from climada.engine.unsequa import Calc, InputVar, UncCostBenefitOutput
-from climada.engine.unsequa.calc_base import _sample_parallel_iterator, _multiprocess_chunksize
+from climada.engine.unsequa.calc_base import _sample_parallel_iterator, _multiprocess_chunksize, _transpose_chunked_data
 from climada.util import log_level
 from climada.hazard import Hazard
 from climada.entity import Entity
@@ -216,10 +216,7 @@ class CalcCostBenefit(Calc):
          imp_meas_future,
          tot_climate_risk,
          benefit,
-         cost_ben_ratio] = [
-                 list(itertools.chain.from_iterable(x))
-                 for x in list(zip(*cb_metrics))
-                 ]
+         cost_ben_ratio] = _transpose_chunked_data(cb_metrics)
         elapsed_time = (time.time() - start)
         self.est_comp_time(unc_sample.n_samples, elapsed_time, processes)
 
@@ -251,11 +248,7 @@ class CalcCostBenefit(Calc):
              imp_meas_future,
              tot_climate_risk,
              benefit,
-             cost_ben_ratio] = [
-                 list(itertools.chain.from_iterable(x))
-                 for x in list(zip(*cb_metrics))
-                 ]
-
+             cost_ben_ratio] = _transpose_chunked_data(cb_metrics)
         # Assign computed impact distribution data to self
         tot_climate_risk_unc_df = \
             pd.DataFrame(tot_climate_risk, columns = ['tot_climate_risk'])
