@@ -192,6 +192,9 @@ class CalcCostBenefit(Calc):
             unc_sample.samples_df.shape[0] / processes
             ).astype(int) if chunksize is None else chunksize
 
+        '''copy may not be needed, but is kept to prevent potential
+        data corruption issues. The computational cost should be
+        minimal as only a list of floats.'''
         samples_df = unc_sample.samples_df.copy(deep=True)
         unit = self.value_unit
 
