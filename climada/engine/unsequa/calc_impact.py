@@ -200,9 +200,9 @@ class CalcImpact(Calc):
                              "using UncImpact.make_sample(N)")
 
 
-        '''copy may not be needed, but is kept to prevent potential
-        data corruption issues. The computational cost should be
-        minimal as only a list of floats is copied.'''
+        # copy may not be needed, but is kept to prevent potential
+        # data corruption issues. The computational cost should be
+        # minimal as only a list of floats is copied.'''
         samples_df = unc_sample.samples_df.copy(deep=True)
 
         if chunksize is None:
@@ -224,10 +224,12 @@ class CalcImpact(Calc):
         elapsed_time = (time.time() - start)
         self.est_comp_time(unc_sample.n_samples, elapsed_time, processes)
 
-        [aai_agg_list,
-        freq_curve_list,
-        eai_exp_list,
-        at_event_list] =  self._compute_imp_metrics(
+        [
+            aai_agg_list,
+            freq_curve_list,
+            eai_exp_list,
+            at_event_list
+        ] =  self._compute_imp_metrics(
             samples_df, chunksize=chunksize, processes=processes
             )
 
@@ -305,12 +307,24 @@ def _map_impact_calc(
     rp, calc_eai_exp, calc_at_event
     ):
     """
-    Map to compute impact for all parameter samples in parrallel
+    Map to compute impact for all parameter samples in parallel
 
     Parameters
     ----------
     sample_chunks : pd.DataFrame
         Dataframe of the parameter samples
+    exp_input_var : InputVar or Exposures
+        Exposure uncertainty variable
+    impf_input_var : InputVar if ImpactFuncSet
+        Impact function set uncertainty variable
+    haz_input_var: InputVar or Hazard
+        Hazard uncertainty variable
+    rp : list(int)
+        List of the chosen return periods.
+    calc_eai_exp : bool
+        Compute eai_exp or not
+    calc_at_event : bool
+        Compute eai_exp or not
 
     Returns
     -------

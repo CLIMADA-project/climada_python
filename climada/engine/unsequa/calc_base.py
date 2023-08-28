@@ -64,7 +64,7 @@ class Calc():
     once for each sub-sample.
     Note that for each process, all the input variables must be copied once,
     and hence each parallel process requires roughly the same amount of memory
-    as is a single process would be used.
+    as if a single process would be used.
 
     This approach differs from the usual parallelization strategy (where individual
     samples are distributed), because each sample requires the entire input data.
@@ -73,7 +73,6 @@ class Calc():
     Parallelization is currently not available for the sensitivity computation,
     as this requires all samples simoultenaously in the current implementation
     of the SaLib library.
-
     """
 
     _input_var_names = ()
@@ -466,8 +465,29 @@ def _sample_parallel_iterator(samples, chunksize, **kwargs):
         )
 
 
-
 def _calc_sens_df(method, problem_sa, sensitivity_kwargs, param_labels, X, unc_df):
+    """Compute the sensitifity indices
+
+    Parameters
+    ----------
+    method : str
+        SALib sensitivity method name
+    problem_sa :dict
+        dictionnary for sensitivty method for SALib
+    sensitivity_kwargs : kwargs
+        passed on to SALib.method.analyse
+    param_labels : list(str)
+        list of name of uncertainty input parameters
+    X : numpy.ndarray
+        array of input parameter samples
+    unc_df : DataFrame
+        Dataframe containing the uncertainty values
+
+    Returns
+    -------
+    DataFrame
+        Values of the sensitivity indices
+    """
     sens_first_order_dict = {}
     sens_second_order_dict = {}
     for (submetric_name, metric_unc) in unc_df.items():
@@ -516,6 +536,21 @@ def _calc_sens_df(method, problem_sa, sensitivity_kwargs, param_labels, X, unc_d
 
 
 def _si_param_first(param_labels, sens_indices):
+    """Extract the first order sensivity indices from SALib ouput
+
+    Parameters
+    ----------
+    param_labels : list(str)
+        name of the unceratinty input parameters
+    sens_indices : dict
+       sensitivity indidices dictionnary as produced by SALib
+
+    Returns
+    -------
+    si_names_first_order, param_names_first_order: list, list
+        Names of the sensivity indices of first order for all input parameters
+        and Parameter names for each sentivity index
+    """
     n_params  = len(param_labels)
 
     si_name_first_order_list = [
@@ -533,6 +568,21 @@ def _si_param_first(param_labels, sens_indices):
 
 
 def _si_param_second(param_labels, sens_indices):
+    """Extract second order sensitivity indices
+
+    Parameters
+    ----------
+    param_labels : list(str)
+        name of the unceratinty input parameters
+    sens_indices : dict
+       sensitivity indidices dictionnary as produced by SALib
+
+    Returns
+    -------
+    si_names_second_order, param_names_second_order, param_names_second_order_2: list, list, list
+        Names of the sensivity indices of second order for all input parameters
+        and Pairs of parameter names for each 2nd order sentivity index
+    """
     n_params  = len(param_labels)
     si_name_second_order_list = [
         key

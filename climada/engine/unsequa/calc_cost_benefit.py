@@ -194,9 +194,9 @@ class CalcCostBenefit(Calc):
             raise ValueError("No sample was found. Please create one first" +
                         "using UncImpact.make_sample(N)")
 
-        '''copy may not be needed, but is kept to prevent potential
-        data corruption issues. The computational cost should be
-        minimal as only a list of floats is copied.'''
+        # copy may not be needed, but is kept to prevent potential
+        # data corruption issues. The computational cost should be
+        # minimal as only a list of floats is copied.
         samples_df = unc_sample.samples_df.copy(deep=True)
 
         if chunksize is None:
@@ -214,11 +214,13 @@ class CalcCostBenefit(Calc):
         self.est_comp_time(unc_sample.n_samples, elapsed_time, processes)
 
         #Compute impact distributions
-        [imp_meas_present,
-        imp_meas_future,
-        tot_climate_risk,
-        benefit,
-        cost_ben_ratio] = self._compute_cb_metrics(samples_df, cost_benefit_kwargs, chunksize, processes)
+        [
+            imp_meas_present,
+            imp_meas_future,
+            tot_climate_risk,
+            benefit,
+            cost_ben_ratio
+        ] = self._compute_cb_metrics(samples_df, cost_benefit_kwargs, chunksize, processes)
 
         # Assign computed impact distribution data to self
         tot_climate_risk_unc_df = \
@@ -331,7 +333,18 @@ def _map_costben_calc(
     ----------
     sample_chunks : pd.DataFrame
         Dataframe of the parameter samples
-    kwargs :
+    haz_input_var : InputVar
+        Hazard uncertainty variable or Hazard for the present Hazard
+        in climada.engine.CostBenefit.calc
+    ent_input_var : InputVar
+        Entity uncertainty variable or Entity for the present Entity
+        in climada.engine.CostBenefit.calc
+    haz_fut_input_var: InputVar
+        Hazard uncertainty variable or Hazard for the future Hazard
+    ent_fut_input_var : InputVar
+        Entity uncertainty variable or Entity for the future Entity
+        in climada.engine.CostBenefit.calc
+   cost_benefit_kwargs :
         Keyword arguments passed on to climada.engine.CostBenefit.calc()
 
     Returns
