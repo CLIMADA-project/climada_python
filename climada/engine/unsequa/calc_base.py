@@ -21,6 +21,7 @@ Define Calc (uncertainty calculate) class.
 
 import logging
 import copy
+import itertools
 
 import datetime as dt
 
@@ -47,6 +48,31 @@ class Calc():
         Names of the required uncertainty variables.
     _metric_names : tuple(str)
         Names of the output metrics.
+
+    Notes
+    -----
+    Parallelization logics: for computation of the uncertainty users may
+    specify a number N of processes on which to perform the computations in
+    parallel. Since the computation for each individual sample of the
+    input parameters is independent of one another, we implemented a simple
+    distribution on the processes.
+
+    1. The samples are divided in N equal sub-sample chunks
+    2. Each chunk of samples is sent as one to a node for processing
+
+    Hence, this is equivalent to the user running the computation N times,
+    once for each sub-sample.
+    Note that for each process, all the input variables must be copied once,
+    and hence each parallel process requires roughly the same amount of memory
+    as if a single process would be used.
+
+    This approach differs from the usual parallelization strategy (where individual
+    samples are distributed), because each sample requires the entire input data.
+    With this method, copying data between processes is reduced to a minimum.
+
+    Parallelization is currently not available for the sensitivity computation,
+    as this requires all samples simoultenaously in the current implementation
+    of the SaLib library.
     """
 
     _input_var_names = ()
@@ -126,7 +152,7 @@ class Calc():
             distr_dict.update(input_var.distr_dict)
         return distr_dict
 
-    def est_comp_time(self, n_samples, time_one_run, pool=None):
+    def est_comp_time(self, n_samples, time_one_run, processes=None):
         """
         Estimate the computation time
 
@@ -154,8 +180,7 @@ class Calc():
                 "\n If computation cannot be reduced, consider using"
                 " a surrogate model https://www.uqlab.com/", time_one_run)
 
-        ncpus = pool.ncpus if pool else 1
-        total_time = n_samples * time_one_run / ncpus
+        total_time = n_samples * time_one_run / processes
         LOGGER.info("\n\nEstimated computaion time: %s\n",
                     dt.timedelta(seconds=total_time))
 
@@ -354,11 +379,118 @@ class Calc():
 
         return sens_output
 
+def _multiprocess_chunksize(samples_df, processes):
+    """Divides the samples into chunks for multiprocesses computing
+
+    The goal is to send to each processing node an equal number
+    of samples to process. This make the parallel processing anologous
+    to running the uncertainty assessment independently on each nodes
+    for a subset of the samples, instead of distributing individual samples
+    on the nodes dynamically. Hence, all the heavy input variables
+    are copied/sent once to each node only.
+
+    Parameters
+    ----------
+    samples_df : pd.DataFrame
+        samples dataframe
+    processes : int
+        number of processes
+
+    Returns
+    -------
+    int
+        the number of samples in each chunk
+    """
+    return np.ceil(
+        samples_df.shape[0] / processes
+        ).astype(int)
+
+def _transpose_chunked_data(metrics):
+    """Transposes the output metrics lists from one list per
+    chunk of samples to one list per output metric
+
+    [ [x1, [y1, z1]], [x2, [y2, z2]] ] ->
+    [ [x1, x2], [[y1, z1], [y2, z2]] ]
+
+    Parameters
+    ----------
+    metrics : list
+        list of list as returned by the uncertainty mapings
+
+    Returns
+    -------
+    list
+        list of climada output uncertainty
+
+    See Also
+    --------
+    calc_impact._map_impact_calc
+        map for impact uncertainty
+    calc_cost_benefits._map_costben_calc
+        map for cost benefit uncertainty
+    """
+    return [
+        list(itertools.chain.from_iterable(x))
+        for x in zip(*metrics)
+        ]
+
+def _sample_parallel_iterator(samples, chunksize, **kwargs):
+    """
+    Make iterator over chunks of samples
+    with repeated kwargs for each chunk.
+
+    Parameters
+    ----------
+    samples : pd.DataFrame
+        Dataframe of samples
+    **kwargs : arguments to repeat
+        Arguments to repeat for parallel computations
+
+    Returns
+    -------
+    iterator
+        suitable for methods _map_impact_calc and _map_costben_calc
+
+    """
+    def _chunker(df, size):
+        """
+        Divide the dataframe into chunks of size number of lines
+        """
+        for pos in range(0, len(df), size):
+            yield df.iloc[pos:pos + size]
+
+    return zip(
+        _chunker(samples, chunksize),
+        *(itertools.repeat(item) for item in kwargs.values())
+        )
+
 
 def _calc_sens_df(method, problem_sa, sensitivity_kwargs, param_labels, X, unc_df):
+    """Compute the sensitifity indices
+
+    Parameters
+    ----------
+    method : str
+        SALib sensitivity method name
+    problem_sa :dict
+        dictionnary for sensitivty method for SALib
+    sensitivity_kwargs : kwargs
+        passed on to SALib.method.analyse
+    param_labels : list(str)
+        list of name of uncertainty input parameters
+    X : numpy.ndarray
+        array of input parameter samples
+    unc_df : DataFrame
+        Dataframe containing the uncertainty values
+
+    Returns
+    -------
+    DataFrame
+        Values of the sensitivity indices
+    """
     sens_first_order_dict = {}
     sens_second_order_dict = {}
-    for (submetric_name, metric_unc) in unc_df.iteritems():
+    for (submetric_name, metric_unc) in unc_df.items():
         Y = metric_unc.to_numpy()
         if X is not None:
             sens_indices = method.analyze(problem_sa, X, Y,
@@ -404,6 +536,21 @@ def _calc_sens_df(method, problem_sa, sensitivity_kwargs, param_labels, X, unc_d
 
 
 def _si_param_first(param_labels, sens_indices):
+    """Extract the first order sensivity indices from SALib ouput
+
+    Parameters
+    ----------
+    param_labels : list(str)
+        name of the unceratinty input parameters
+    sens_indices : dict
+       sensitivity indidices dictionnary as produced by SALib
+
+    Returns
+    -------
+    si_names_first_order, param_names_first_order: list, list
+        Names of the sensivity indices of first order for all input parameters
+        and Parameter names for each sentivity index
+    """
     n_params  = len(param_labels)
 
     si_name_first_order_list = [
@@ -421,6 +568,21 @@ def _si_param_first(param_labels, sens_indices):
 
 
 def _si_param_second(param_labels, sens_indices):
+    """Extract second order sensitivity indices
+
+    Parameters
+    ----------
+    param_labels : list(str)
+        name of the unceratinty input parameters
+    sens_indices : dict
+       sensitivity indidices dictionnary as produced by SALib
+
+    Returns
+    -------
+    si_names_second_order, param_names_second_order, param_names_second_order_2: list, list, list
+        Names of the sensivity indices of second order for all input parameters
+        and Pairs of parameter names for each 2nd order sentivity index
+    """
     n_params  = len(param_labels)
     si_name_second_order_list = [
         key
