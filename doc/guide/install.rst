@@ -309,13 +309,16 @@ For further information, refer to the VSCode docs on `Workspaces <https://code.v
 Test Explorer Setup
 """""""""""""""""""
 
-After you set up a workspace, you might want to configure the test explorer for easily running the CLIMADA test suite within VSCode:
+After you set up a workspace, you might want to configure the test explorer for easily running the CLIMADA test suite within VSCode.
+
+.. note:: Please install the additional :ref:`test dependencies <install-dev>` before proceeding.
 
 #. In the left sidebar, select the "Testing" symbol, and click on *Configure Python Tests*.
 
-#. Select "unittest" as test framework and then select the ``test*`` pattern for test discovery.
+#. Select "pytest" as test framework and then select ``climada`` as the directory containing the test files.
 
-#. The "Test Explorer" will display the tree structure of modules, files, test classes and individuals tests.
+#. Select "Testing" in the Activity Bar on the left or through *View* > *Testing*.
+   The "Test Explorer" in the left sidebar will display the tree structure of modules, files, test classes and individual tests.
    You can run individual tests or test subtrees by clicking the Play buttons next to them.
 
 #. By default, the test explorer will show test output for failed tests when you click on them.
