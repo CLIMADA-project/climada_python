@@ -66,6 +66,10 @@ class Calc():
     and hence each parallel process requires roughly the same amount of memory
     as is a single process would be used.
 
+    This approach differs from the usual parallelization strategy (where individual
+    samples are distributed), because each sample requires the entire input data.
+    With this method, copying data between processes is reduced to a minimum.
+
     Parallelization is currently not available for the sensitivity computation,
     as this requires all samples simoultenaously in the current implementation
     of the SaLib library.
