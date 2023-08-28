@@ -119,7 +119,7 @@ class TestCentroids(unittest.TestCase):
                                     np.array([0.0, 0.05, 0.1, 0.25])))
         self.assertTrue(np.allclose(np.unique(np.array(haz_read.intensity.toarray())),
                                     np.array([0.0, 0.05, 0.1, 0.25])))
-        
+
 
 class TestStormEurope(unittest.TestCase):
     """Test methods to create StormEurope object"""
@@ -138,8 +138,8 @@ class TestStormEurope(unittest.TestCase):
             self.assertEqual(dt.datetime.fromordinal(haz.date[0]).day, 26)
             self.assertEqual(haz.event_id[0], 1)
             self.assertEqual(haz.event_name[0], "Lothar")
-            self.assertIsInstance(haz.intensity, sparse.csr.csr_matrix)
-            self.assertIsInstance(haz.fraction, sparse.csr.csr_matrix)
+            self.assertIsInstance(haz.intensity, sparse.csr_matrix)
+            self.assertIsInstance(haz.fraction, sparse.csr_matrix)
             self.assertEqual(haz.intensity.shape, (1, 9944))
             self.assertEqual(haz.fraction.shape, (1, 9944))
             self.assertEqual(haz.frequency[0], 1.0)
@@ -166,8 +166,8 @@ class TestStormEurope(unittest.TestCase):
         self.assertEqual(dt.datetime.fromordinal(storms.date[0]).day, 26)
         self.assertEqual(storms.event_id[0], 1)
         self.assertEqual(storms.event_name[0], "Lothar")
-        self.assertIsInstance(storms.intensity, sparse.csr.csr_matrix)
-        self.assertIsInstance(storms.fraction, sparse.csr.csr_matrix)
+        self.assertIsInstance(storms.intensity, sparse.csr_matrix)
+        self.assertIsInstance(storms.fraction, sparse.csr_matrix)
         self.assertEqual(storms.intensity.shape, (2, 9944))
         self.assertEqual(storms.fraction.shape, (2, 9944))
 
@@ -197,8 +197,8 @@ class TestStormEurope(unittest.TestCase):
         self.assertEqual(dt.datetime.fromordinal(haz.date[0]).day, 28)
         self.assertEqual(haz.event_id[-1], 40)
         self.assertEqual(haz.event_name[-1], "2021-01-28_ens40")
-        self.assertIsInstance(haz.intensity, sparse.csr.csr_matrix)
-        self.assertIsInstance(haz.fraction, sparse.csr.csr_matrix)
+        self.assertIsInstance(haz.intensity, sparse.csr_matrix)
+        self.assertIsInstance(haz.fraction, sparse.csr_matrix)
         self.assertEqual(haz.intensity.shape, (40, 49))
         self.assertAlmostEqual(haz.intensity.max(), 17.276321, places=3)
         self.assertEqual(haz.fraction.shape, (40, 49))

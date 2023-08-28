@@ -1115,7 +1115,7 @@ class TCTracks():
             land_geom = None
 
         if pool:
-            chunksize = min(self.size // pool.ncpus, 1000)
+            chunksize = max(min(self.size // pool.ncpus, 1000), 1)
             self.data = pool.map(
                 self._one_interp_data,
                 self.data,

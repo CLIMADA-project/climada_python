@@ -229,6 +229,7 @@ class InputVar():
 
         return InputVar(func=lambda: var, distr_dict={})
 
+
     @staticmethod
     def haz(haz_list, n_ev=None, bounds_int=None, bounds_frac=None, bounds_freq=None):
         """

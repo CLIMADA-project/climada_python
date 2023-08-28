@@ -686,7 +686,6 @@ class TestReturnImpact(unittest.TestCase):
         self.icalc._return_impact(self.imp_mat_gen, save_mat=True)
         from_eih_mock.assert_called_once_with(
             ENT.exposures,
-            ENT.impact_funcs,
             HAZ,
             "at_event",
             "eai_exp",
@@ -707,11 +706,10 @@ class TestReturnImpact(unittest.TestCase):
         # Need to check every argument individually due to the last one being a matrix
         call_args = from_eih_mock.call_args.args
         self.assertEqual(call_args[0], ENT.exposures)
-        self.assertEqual(call_args[1], ENT.impact_funcs)
-        self.assertEqual(call_args[2], HAZ)
-        self.assertEqual(call_args[3], "at_event")
-        self.assertEqual(call_args[4], "eai_exp")
-        self.assertEqual(call_args[5], "aai_agg")
+        self.assertEqual(call_args[1], HAZ)
+        self.assertEqual(call_args[2], "at_event")
+        self.assertEqual(call_args[3], "eai_exp")
+        self.assertEqual(call_args[4], "aai_agg")
         np.testing.assert_array_equal(
             from_eih_mock.call_args.args[-1], sparse.csr_matrix((0, 0)).toarray()
         )
