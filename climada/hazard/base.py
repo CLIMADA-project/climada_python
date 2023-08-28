@@ -1266,8 +1266,6 @@ class Hazard():
         ----------
         file_name : str
             absolute file name
-        description : str, optional
-            description of the data
         var_names (dict, default): name of the variables in the file,
             default: DEF_VAR_EXCEL constant
         haz_type : str, optional
@@ -2157,11 +2155,6 @@ class Hazard():
                 file_name, data[var_names['var_name']['ev_name']])
         except KeyError:
             attrs["event_name"] = list(attrs["event_id"])
-        try:
-            comment = u_hdf5.get_string(data[var_names['var_name']['comment']])
-            attrs["description"] += ' ' + comment
-        except KeyError:
-            pass
 
         try:
             datenum = data[var_names['var_name']['datenum']].squeeze()
