@@ -59,6 +59,7 @@ Removed:
 - Reduce memory requirements of `TropCyclone.from_tracks` [#749](https://github.com/CLIMADA-project/climada_python/pull/749)
 - Support for different wind speed and pressure units in `TCTracks` when running `TropCyclone.from_tracks` [#749](https://github.com/CLIMADA-project/climada_python/pull/749)
 - Changed the parallel package from Pathos to Multiproess in the unsequa module [#763](https://github.com/CLIMADA-project/climada_python/pull/763)
+- Updated installation instructions to use conda for core and petals [#776](https://github.com/CLIMADA-project/climada_python/pull/776)
 
 ### Fixed
 

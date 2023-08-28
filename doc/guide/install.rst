@@ -37,10 +37,30 @@ Depening on your level of expertise, we provide two different approaches:
 
 * If you have never worked with a command line, or if you just want to give CLIMADA a try, follow the :ref:`simple instructions <install-simple>`.
 * If you want to use the very latest development version of CLIMADA or even develop new CLIMADA code, follow the :ref:`advanced instructions <install-advanced>`.
-  If you want to install `CLIMADA Petals`_, also follow these.
 
 Both approaches are not mutually exclusive.
 After successful installation, you may switch your setup at any time.
+
+.. _petals-notes:
+
+Notes on the CLIMADA Petals Package
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+CLIMADA is divided into two packages, CLIMADA Core (`climada_python <https://github.com/CLIMADA-project/climada_python>`_) and CLIMADA Petals (`climada_petals <https://github.com/CLIMADA-project/climada_petals>`_).
+The Core contains all the modules necessary for probabilistic impact, averted damage, uncertainty and forecast calculations.
+Data for hazard, exposures and impact functions can be obtained from the :doc:`CLIMADA Data API </tutorial/climada_util_api_client>`.
+Hazard and Exposures subclasses are included as demonstrators only.
+
+.. attention:: CLIMADA Petals is **not** a standalone module and requires CLIMADA Core to be installed!
+
+CLIMADA Petals contains all the modules for generating data (e.g., ``TC_Surge``, ``WildFire``, ``OpenStreeMap``, ...).
+New modules are developed and tested here.
+Some data created with modules from Petals is available to download from the :doc:`Data API </tutorial/climada_util_api_client>`.
+This works with just CLIMADA Core installed.
+CLIMADA Petals can be used to generate additional data of this type, or to have a look at the tutorials for all data types available from the API.
+
+Both :ref:`installation approaches <install-choice>` mentioned above support CLIMADA Petals.
+If you are unsure whether you need Petals, you can install the Core first and later add Petals in both approaches.
 
 .. _install-simple:
 
@@ -76,6 +96,12 @@ These instructions will install the most recent stable version of CLIMADA withou
    After a while, some text should appear in your terminal.
    In the end, you should see an "Ok".
    If so, great! You are good to go.
+
+#. *Optional:* Install CLIMADA Petals into the environment:
+
+   .. code-block:: shell
+
+      conda install -n climada_env -c conda-forge climada-petals
 
 .. _install-advanced:
 
@@ -191,18 +217,7 @@ Instructions for running the test scripts can be found in the :doc:`Testing and 
 Install CLIMADA Petals (Optional)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-CLIMADA is divided into two repositories, CLIMADA Core (`climada_python <https://github.com/CLIMADA-project/climada_python>`_) and CLIMADA Petals (`climada_petals <https://github.com/CLIMADA-project/climada_petals>`_).
-The Core contains all the modules necessary for probabilistic impact, averted damage, uncertainty and forecast calculations.
-Data for hazard, exposures and impact functions can be obtained from the :doc:`CLIMADA Data API </tutorial/climada_util_api_client>`.
-Hazard and Exposures subclasses are included as demonstrators only.
-
-.. attention:: CLIMADA Petals is **not** a standalone module and requires CLIMADA Core to be installed!
-
-CLIMADA Petals contains all the modules for generating data (e.g., ``TC_Surge``, ``WildFire``, ``OpenStreeMap``, ...).
-New modules are developed and tested here.
-Some data created with modules from Petals is available to download from the :doc:`Data API </tutorial/climada_util_api_client>`.
-This works with just CLIMADA Core installed.
-CLIMADA Petals can be used to generate additional data of this type, or to have a look at the tutorials for all data types available from the API.
+If you are unsure whether you need Petals, see the :ref:`notes above <petals-notes>`.
 
 To install CLIMADA Petals, we assume you have already installed CLIMADA Core with the :ref:`advanced instructions <install-advanced>` above.
 
@@ -294,13 +309,16 @@ For further information, refer to the VSCode docs on `Workspaces <https://code.v
 Test Explorer Setup
 """""""""""""""""""
 
-After you set up a workspace, you might want to configure the test explorer for easily running the CLIMADA test suite within VSCode:
+After you set up a workspace, you might want to configure the test explorer for easily running the CLIMADA test suite within VSCode.
+
+.. note:: Please install the additional :ref:`test dependencies <install-dev>` before proceeding.
 
 #. In the left sidebar, select the "Testing" symbol, and click on *Configure Python Tests*.
 
-#. Select "unittest" as test framework and then select the ``test*`` pattern for test discovery.
+#. Select "pytest" as test framework and then select ``climada`` as the directory containing the test files.
 
-#. The "Test Explorer" will display the tree structure of modules, files, test classes and individuals tests.
+#. Select "Testing" in the Activity Bar on the left or through *View* > *Testing*.
+   The "Test Explorer" in the left sidebar will display the tree structure of modules, files, test classes and individual tests.
    You can run individual tests or test subtrees by clicking the Play buttons next to them.
 
 #. By default, the test explorer will show test output for failed tests when you click on them.
