@@ -62,6 +62,8 @@ setup(
 
     packages=find_packages() + ['data'],
 
+    python_requires=">=3.9,<3.11",
+
     install_requires=[
         'bottleneck',
         'cartopy',
