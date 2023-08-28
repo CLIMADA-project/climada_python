@@ -381,7 +381,8 @@ def _multiprocess_chunksize(samples_df, processes):
         ).astype(int)
 
 def _transpose_chunked_data(metrics):
-    """Transposes the output metrics lists
+    """Transposes the output metrics lists from one list per
+    chunk of samples to one list per output metric
 
     [ [x1, [y1, z1]], [x2, [y2, z2]] ] ->
     [ [x1, x2], [[y1, z1], [y2, z2]] ]
