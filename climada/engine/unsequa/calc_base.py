@@ -48,6 +48,26 @@ class Calc():
         Names of the required uncertainty variables.
     _metric_names : tuple(str)
         Names of the output metrics.
+
+    Notes
+    -----
+    Parallelization logics: for computation of the uncertainty users may
+    specify a number N of processes on which to perform the computations in
+    parallel. Since the computation for each individual sample of the
+    input parameters is independent of one another, we implemented a simple
+    distribution on the processes.
+    1. The samples are divided in N equal sub-sample chunks
+    2. Each chunk of samples is sent as one to a node for processing
+    Hence, this is equivalent to the user running the computation N times,
+    once for each sub-sample.
+    Note that for each process, all the input variables must be copied once,
+    and hence each parallel process requires roughly the same amount of memory
+    as is a single process would be used.
+
+    Parallelization is currently not available for the sensitivity computation,
+    as this requires all samples simoultenaously in the current implementation
+    of the SaLib library.
+
     """
 
     _input_var_names = ()

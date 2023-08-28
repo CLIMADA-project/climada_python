@@ -179,6 +179,11 @@ class CalcImpact(Calc):
             If no sampling parameters defined, the distribution cannot
             be computed.
 
+        Notes
+        -----
+        Parallelization logic is described in the base class
+        here :py:class:`~climada.engine.unsequa.calc_base.Calc`
+
         See Also
         --------
         climada.engine.impact:
@@ -193,7 +198,7 @@ class CalcImpact(Calc):
 
         '''copy may not be needed, but is kept to prevent potential
         data corruption issues. The computational cost should be
-        minimal as only a list of floats.'''
+        minimal as only a list of floats is copied.'''
         samples_df = unc_sample.samples_df.copy(deep=True)
 
         if chunksize is None:
@@ -228,10 +233,7 @@ class CalcImpact(Calc):
         freq_curve_unc_df = pd.DataFrame(freq_curve_list,
                                     columns=['rp' + str(n) for n in rp])
         eai_exp_unc_df =  pd.DataFrame(eai_exp_list)
-        # Setting to sparse dataframes is not compatible with .to_hdf5
-        # if np.count_nonzero(df_eai_exp.to_numpy()) / df_eai_exp.size < 0.5:
-        #     df_eai_exp = df_eai_exp.astype(pd.SparseDtype("float", 0.0))
-        #eai_exp_unc_df = df_eai_exp
+        # Note: sparse dataframes are not used as they are not nativel y compatible with .to_hdf5
         at_event_unc_df = pd.DataFrame(at_event_list)
 
         if calc_eai_exp:

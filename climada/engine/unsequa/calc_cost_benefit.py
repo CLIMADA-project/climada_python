@@ -178,6 +178,11 @@ class CalcCostBenefit(Calc):
             If no sampling parameters defined, the uncertainty distribution
             cannot be computed.
 
+        Notes
+        -----
+        Parallelization logic is described in the base class
+        here :py:class:`~climada.engine.unsequa.calc_base.Calc`
+
         See Also
         --------
         climada.engine.cost_benefit:
@@ -191,7 +196,7 @@ class CalcCostBenefit(Calc):
 
         '''copy may not be needed, but is kept to prevent potential
         data corruption issues. The computational cost should be
-        minimal as only a list of floats.'''
+        minimal as only a list of floats is copied.'''
         samples_df = unc_sample.samples_df.copy(deep=True)
 
         if chunksize is None:
