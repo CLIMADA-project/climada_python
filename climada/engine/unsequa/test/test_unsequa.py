@@ -28,7 +28,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import scipy as sp
 
-from pathos.pools import ProcessPool as Pool
 from tables.exceptions import HDF5ExtError
 
 from climada.entity import ImpactFunc, ImpactFuncSet
@@ -37,7 +36,7 @@ from climada.entity import Exposures
 from climada.hazard import Hazard
 from climada.engine.unsequa import InputVar, CalcImpact, UncOutput, CalcCostBenefit
 
-from climada.util.constants import (EXP_DEMO_H5, HAZ_DEMO_H5, ENT_DEMO_TODAY, ENT_DEMO_FUTURE, 
+from climada.util.constants import (EXP_DEMO_H5, HAZ_DEMO_H5, ENT_DEMO_TODAY, ENT_DEMO_FUTURE,
                                     TEST_UNC_OUTPUT_IMPACT, TEST_UNC_OUTPUT_COSTBEN)
 from climada.util.api_client import Client
 
@@ -344,7 +343,7 @@ class TestCalcImpact(unittest.TestCase):
             )
         self.assertTupleEqual(
             unc_calc._metric_names,
-            ('aai_agg', 'freq_curve', 'at_event', 'eai_exp', 'tot_value')
+            ('aai_agg', 'freq_curve', 'at_event', 'eai_exp')
             )
         self.assertEqual(unc_calc.value_unit, exp_iv.evaluate().value_unit)
         self.assertTrue(
@@ -409,10 +408,6 @@ class TestCalcImpact(unittest.TestCase):
             unc_data.aai_agg_unc_df.size,
             unc_data.n_samples
             )
-        self.assertEqual(
-            unc_data.tot_value_unc_df.size,
-            unc_data.n_samples
-            )
 
         self.assertEqual(
             unc_data.freq_curve_unc_df.size,
@@ -429,14 +424,9 @@ class TestCalcImpact(unittest.TestCase):
         unc_calc = CalcImpact(exp_unc, impf_unc, haz)
         unc_data = unc_calc.make_sample(N=2)
 
-        pool = Pool(nodes=2)
-        try:
-            unc_data = unc_calc.uncertainty(unc_data, calc_eai_exp=False,
-                             calc_at_event=False, pool=pool)
-        finally:
-            pool.close()
-            pool.join()
-            pool.clear()
+        unc_data = unc_calc.uncertainty(
+            unc_data, calc_eai_exp=False, calc_at_event=False, processes=4
+            )
 
         self.assertEqual(unc_data.unit, exp_dem().value_unit)
         self.assertListEqual(unc_calc.rp, [5, 10, 20, 50, 100, 250])
@@ -445,10 +435,6 @@ class TestCalcImpact(unittest.TestCase):
 
         self.assertEqual(
             unc_data.aai_agg_unc_df.size,
-            unc_data.n_samples
-            )
-        self.assertEqual(
-            unc_data.tot_value_unc_df.size,
             unc_data.n_samples
             )
 
@@ -667,15 +653,9 @@ class TestCalcCostBenefit(unittest.TestCase):
         ent_iv, _ = make_costben_iv()
         _, _, haz_iv = make_input_vars()
         unc_calc = CalcCostBenefit(haz_iv, ent_iv)
-        unc_data = unc_calc.make_sample( N=2)
+        unc_data = unc_calc.make_sample(N=2)
 
-        pool = Pool(nodes=2)
-        try:
-            unc_data = unc_calc.uncertainty(unc_data, pool=pool)
-        finally:
-            pool.close()
-            pool.join()
-            pool.clear()
+        unc_data = unc_calc.uncertainty(unc_data, processes=2)
 
         self.assertEqual(unc_data.unit, ent_dem().exposures.value_unit)
 

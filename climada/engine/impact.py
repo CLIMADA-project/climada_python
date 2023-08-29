@@ -434,7 +434,7 @@ class Impact():
             Contains the aggregated data per event.
             Rows: Hazard events. Columns: Aggregation regions.
         """
-        if self.imp_mat.nnz == 0:
+        if np.prod(self.imp_mat.shape) == 0:
             raise ValueError(
                 "The aggregated impact cannot be computed as no Impact.imp_mat was "
                 "stored during the impact calculation"
