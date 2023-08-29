@@ -24,6 +24,7 @@ from unittest.mock import patch, DEFAULT
 
 import numpy as np
 import geopandas as gpd
+import pandas as pd
 import copy
 
 from shapely.geometry import Point
@@ -366,7 +367,7 @@ class TestGeomImpactCalcs(unittest.TestCase):
     def test_calc_geom_impact_mixed(self):
         """ test calc_geom_impact() with a mixed exp (points, lines and polygons) """
         # mixed exposures
-        gdf_mix = GDF_LINE.append(GDF_POLY).append(GDF_POINT).reset_index(drop=True)
+        gdf_mix = pd.concat([GDF_LINE, GDF_POLY, GDF_POINT]).reset_index(drop=True)
         exp_mix = Exposures(gdf_mix)
 
         imp1 = u_lp.calc_geom_impact(
@@ -444,7 +445,7 @@ class TestGeomImpactCalcs(unittest.TestCase):
 
     def test_impact_pnt_agg(self):
         """Test impact agreggation method"""
-        gdf_mix = GDF_LINE.append(GDF_POLY).append(GDF_POINT).reset_index(drop=True)
+        gdf_mix = pd.concat([GDF_LINE, GDF_POLY, GDF_POINT]).reset_index(drop=True)
         exp_mix = Exposures(gdf_mix)
 
         exp_pnt = u_lp.exp_geom_to_pnt(
