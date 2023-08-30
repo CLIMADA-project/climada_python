@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """This script is part of the GitHub CI make-release pipeline
 
-It reads the version number from climada/_version.py and then uses the `gh` cli
+It reads the version number from climada*/_version.py and then uses the `gh` cli
 to create the new release.
 
 """

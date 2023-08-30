@@ -86,6 +86,7 @@ Removed:
 - `requirements/env_developer.yml` environment specs. Use 'extra' requirements when installing the Python package instead [#712](https://github.com/CLIMADA-project/climada_python/pull/712)
 - `Impact.tag` attribute. This change is not backwards-compatible with respect to the files written and read by the `Impact` class [#743](https://github.com/CLIMADA-project/climada_python/pull/743)
 - `Exposures.tag` attribute. This change is not backwards-compatible with respect to the files written and read by the `Exposures` class [#756](https://github.com/CLIMADA-project/climada_python/pull/756)
+- `Hazard.tag` attribute. This change is not backwards-compatible with respect to the files written and read by the `Hazard` class [#767](https://github.com/CLIMADA-project/climada_python/pull/767)
 - `impact.tot_value ` attribute removed from unsequa module [#763](https://github.com/CLIMADA-project/climada_python/pull/763)
 
 ## v3.3.2
