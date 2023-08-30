@@ -554,8 +554,8 @@ class Exposures():
         cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         crs_epsg, _ = u_plot.get_transformation(self.crs)
-        title = (self.description.strip() if isinstance(self.description, str) else ""
-                 ) if title is None else title
+        if title is None:
+            title = self.description
         if mask is None:
             mask = np.ones((self.gdf.shape[0],), dtype=bool)
         if ignore_zero:
@@ -621,8 +621,8 @@ class Exposures():
         cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         crs_epsg, _ = u_plot.get_transformation(self.crs)
-        title = (self.description.strip() if isinstance(self.description, str) else ""
-                 ) if title is None else title
+        if title is None:
+            title = self.description
         if 'reduce_C_function' not in kwargs:
             kwargs['reduce_C_function'] = np.sum
         if mask is None:
