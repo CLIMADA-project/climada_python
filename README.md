@@ -66,12 +66,6 @@ The [used version](https://zenodo.org/search?page=1&size=20&q=climada) and/or th
 - *Uncertainty and sensitivity analysis (unsequa)*:  Kropf, C. M. et al., 2022: Uncertainty and sensitivity analysis for probabilistic weather and climate-risk modelling: an implementation in CLIMADA v.3.1.0. Geoscientific Model Development 15, 7177–7201, [https://doi.org/10.5194/gmd-15-7177-2022](https://doi.org/10.5194/gmd-15-7177-2022
 )
 
-- *Lines and polygons exposures*: Mühlhofer, E., et al., 2023: OpenStreetMap for Multi-Faceted Climate Risk Assessments. [https://eartharxiv.org/repository/view/5615/](https://eartharxiv.org/repository/view/5615/
-)
-
-- *Open Street Map eposures*: Mühlhofer, E., et al., 2023: OpenStreetMap for Multi-Faceted Climate Risk Assessments. [https://eartharxiv.org/repository/view/5615/](https://eartharxiv.org/repository/view/5615/
-)
-
 - *LitPop exposures* : Eberenz, S., et al., D. N. (2020): Asset exposure data for global physical risk assessment. Earth System Science Data 12, 817–833, [https://doi.org/10.3929/ethz-b-000409595](https://doi.org/10.3929/ethz-b-000409595)
 
 
