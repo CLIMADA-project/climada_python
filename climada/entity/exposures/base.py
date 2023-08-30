@@ -857,7 +857,8 @@ class Exposures():
                 if key in type(exp)._metadata: # pylint: disable=protected-access
                     setattr(exp, key, val)
                 if key == 'tag':  # for backwards compatitbility with climada <= 3.x
-                    exp.description = getattr(val, 'description', None)
+                    descriptions = [u_hdf5.to_string(x) for x in getattr(val, 'description', [])]
+                    exp.description = "\n".join(descriptions) if descriptions else None
         return exp
 
     def read_mat(self, *args, **kwargs):
