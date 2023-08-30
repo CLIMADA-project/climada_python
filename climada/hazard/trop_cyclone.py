@@ -43,7 +43,6 @@ from climada.util import ureg
 import climada.util.constants as u_const
 import climada.util.coordinates as u_coord
 import climada.util.plot as u_plot
-from climada.util.tag import Tag
 
 LOGGER = logging.getLogger(__name__)
 
@@ -181,7 +180,6 @@ class TropCyclone(Hazard):
         tracks: TCTracks,
         centroids: Optional[Centroids] = None,
         pool: Optional[pathos.pools.ProcessPool] = None,
-        description: str = '',
         model: str = 'H08',
         ignore_distance_to_coast: bool = False,
         store_windfields: bool = False,
@@ -334,7 +332,6 @@ class TropCyclone(Hazard):
         haz.intensity_thres = intensity_thres
         LOGGER.debug('Compute frequency.')
         haz.frequency_from_tracks(tracks.data)
-        haz.tag.append(Tag(description=description))
         return haz
 
     def apply_climate_scenario_knu(
@@ -378,8 +375,6 @@ class TropCyclone(Hazard):
         chg_int_freq = get_knutson_criterion()
         scale_rcp_year  = calc_scale_knutson(ref_year, rcp_scenario)
         haz_cc = self._apply_knutson_criterion(chg_int_freq, scale_rcp_year)
-        haz_cc.tag = Tag(description=f'climate change scenario for year {ref_year}'
-                                     f' and RCP {rcp_scenario} from Knutson et al 2015.')
         return haz_cc
 
     def set_climate_scenario_knu(self, *args, **kwargs):
@@ -572,7 +567,6 @@ class TropCyclone(Hazard):
         )
 
         new_haz = cls(haz_type=HAZ_TYPE)
-        new_haz.tag = Tag(file_name=f'Name: {track.name}')
         new_haz.intensity_thres = intensity_thres
         new_haz.intensity = intensity_sparse
         if store_windfields:
