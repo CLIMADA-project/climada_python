@@ -19,6 +19,6 @@ jobs:
         with:
           token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
       - name: Update files
-        run: .github/scripts/setup_devbranch.sh
+        run: bash .github/scripts/setup_devbranch.sh
         env:
           GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}

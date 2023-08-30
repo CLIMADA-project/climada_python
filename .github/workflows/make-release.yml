@@ -28,10 +28,10 @@ jobs:
         with:
           token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
       - name: Prepare new release
-        run: .github/scripts/prepare_release.py ${{ inputs.level }}
+        run: python .github/scripts/prepare_release.py ${{ inputs.level }}
         env:
           GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
       - name: Publish
-        run: .github/scripts/make_release.py
+        run: python .github/scripts/make_release.py
         env:
           GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
