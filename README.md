@@ -6,7 +6,7 @@
 
 CLIMADA stands for **CLIM**ate **ADA**ptation and is a probabilistic natural catastrophe impact model, that also calculates averted damage (benefit) thanks to adaptation measures of any kind (from grey to green infrastructure, behavioural, etc.).
 
-As of today, CLIMADA provides global coverage of major climate-related extreme-weather hazards at high resolution via a [data API](https://climada.ethz.ch/data-api/v1/docs), namely (i) tropical cyclones, (ii) river flood, (iii) agro drought and (iv) European winter storms, all at 4km spatial resolution - wildfire to be added soon. For all hazards, historic and probabilistic event sets exist, for some also under select climate forcing scenarios (RCPs) at distinct time horizons (e.g. 2040). See also [papers](https://github.com/CLIMADA-project/climada_papers) for details.
+As of today, CLIMADA provides global coverage of major climate-related extreme-weather hazards at high resolution via a [data API](https://climada.ethz.ch/data-api/v1/docs) such as tropical cyclones, river flood, European winter storms, earthquakes, ..., all at 4km spatial resolution - wildfire to be added soon. For all hazards, historic and probabilistic event sets exist, for some also under select climate forcing scenarios (RCPs) at distinct time horizons (e.g. 2040). See also [papers](https://github.com/CLIMADA-project/climada_papers) for details.
 
 CLIMADA is divided into two parts (two repositories):
 
@@ -15,30 +15,33 @@ CLIMADA is divided into two parts (two repositories):
 
 It is recommend for new users to begin with the core (1) and the [tutorials](https://github.com/CLIMADA-project/climada_python/tree/main/doc/tutorial) therein.
 
-This is the Python (3.8+) version of CLIMADA - please see https://github.com/davidnbresch/climada for backward compatibility (MATLAB).
+This is the Python (3.8+) version of CLIMADA - please see [https://github.com/davidnbresch/climada](https://github.com/davidnbresch/climada) for backward compatibility (MATLAB).
 
 ## Getting started
 
 CLIMADA runs on Windows, macOS and Linux.
 The released versions of the CLIMADA core can be installed directly through Anaconda:
+
 ```shell
 conda install -c conda-forge climada
 ```
+
 It is **highly recommended** to install CLIMADA into a **separate** Anaconda environment.
 See the [installation guide](https://climada-python.readthedocs.io/en/latest/guide/install.html) for further information.
 
-Follow the [tutorial](https://climada-python.readthedocs.io/en/latest/tutorial/1_main_climada.html) `climada_python-x.y.z/doc/tutorial/1_main_climada.ipynb` in a Jupyter Notebook to see what can be done with CLIMADA and how.
+Follow the [tutorial](https://climada-python.readthedocs.io/en/stable/tutorial/1_main_climada.html) `climada_python-x.y.z/doc/tutorial/1_main_climada.ipynb` in a Jupyter Notebook to see what can be done with CLIMADA and how.
 
 ## Documentation
 
 Documentation is available on Read the Docs:
 
-Note that all the documentations has two versions,'latest' and 'stable', and explicit version numbers, such as 'v3.1.1', in the url path. 'latest' is created from the 'develop' branch and has the latest changes by developers, 'stable' from the latest release. For more details about documentation versions, please have a look at [here](https://readthedocs.org/projects/climada-python/versions/).
+Note that all the documentations has two versions,'latest' and 'stable', and explicit version numbers, 'vx.x.x', in the url path. 'stable' is created from the latest release (installed via conda) and 'latest' is created from the 'develop' branch and has the latest changes by developers. For more details about documentation versions, please have a look at [here](https://readthedocs.org/projects/climada-python/versions/).
 
 CLIMADA python:
 
 * [online (recommended)](https://climada-python.readthedocs.io/en/latest/)
 * [PDF file](https://climada-python.readthedocs.io/_/downloads/en/stable/pdf/)
+* [core Tutorials on GitHub](https://github.com/CLIMADA-project/climada_python/tree/main/doc/tutorial)
 
 CLIMADA petals:
 
@@ -52,9 +55,7 @@ The documentation can also be [built locally](https://climada-python.readthedocs
 
 If you use CLIMADA please cite (in general, in particular for academic work) :
 
-The [used version](https://zenodo.org/search?page=1&size=20&q=climada)
-
-and/or the following published articles depending on which functionalities you made use of:
+The [used version](https://zenodo.org/search?page=1&size=20&q=climada) and/or the following published articles depending on which functionalities you made use of:
 
 - *Impact calculations*: Aznar-Siguan, G. and Bresch, D. N., 2019: CLIMADA v1: a global weather and climate risk assessment platform, Geosci. Model Dev., 12, 3085–3097, [https://doi.org/10.5194/gmd-12-3085-2019](https://doi.org/10.5194/gmd-14-351-2021
 )
