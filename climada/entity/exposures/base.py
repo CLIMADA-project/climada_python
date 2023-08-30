@@ -555,7 +555,7 @@ class Exposures():
         """
         crs_epsg, _ = u_plot.get_transformation(self.crs)
         if title is None:
-            title = self.description
+            title = self.description or ""
         if mask is None:
             mask = np.ones((self.gdf.shape[0],), dtype=bool)
         if ignore_zero:
@@ -622,7 +622,7 @@ class Exposures():
         """
         crs_epsg, _ = u_plot.get_transformation(self.crs)
         if title is None:
-            title = self.description
+            title = self.description or ""
         if 'reduce_C_function' not in kwargs:
             kwargs['reduce_C_function'] = np.sum
         if mask is None:
