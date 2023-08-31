@@ -21,7 +21,7 @@ Define (deprecated) Tag class.
 
 from deprecation import deprecated
 
-from climada.util.tag import Tag as _Tag
+from .tag import Tag as _Tag
 
 
 # deprecating the whole class instead of just the constructor (s.b.) would be preferable
