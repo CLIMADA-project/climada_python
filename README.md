@@ -37,7 +37,6 @@ The online documentation is available on Read the Docs: https://climada-python.r
 
 The documentation of each release version of CLIMADA can be accessed separately through the drop-down menu at the bottom of the left sidebar. Additionally, the version 'stable' refers to the most recent release (installed via `conda`), and 'latest' refers to the latest unstable development version (the `develop` branch).
 
-Note that all the documentations has two versions,'latest' and 'stable', and explicit version numbers, 'vx.x.x', in the url path. 'stable' is created from the latest release (installed via conda) and 'latest' is created from the 'develop' branch and has the latest changes by developers. For more details about documentation versions, please have a look at [here](https://readthedocs.org/projects/climada-python/versions/).
 
 CLIMADA python:
 
