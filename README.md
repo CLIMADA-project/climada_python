@@ -15,7 +15,7 @@ CLIMADA is divided into two parts (two repositories):
 
 It is recommend for new users to begin with the core (1) and the [tutorials](https://github.com/CLIMADA-project/climada_python/tree/main/doc/tutorial) therein.
 
-This is the Python (3.8+) version of CLIMADA - please see [https://github.com/davidnbresch/climada](https://github.com/davidnbresch/climada) for backward compatibility (MATLAB).
+This is the Python (3.9+) version of CLIMADA - please see https://github.com/davidnbresch/climada for backward compatibility (MATLAB).
 
 ## Getting started
 
