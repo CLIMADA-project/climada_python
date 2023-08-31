@@ -29,7 +29,6 @@ import pandas as pd
 import climada.util.coordinates as u_coord
 import climada.util.finance as u_fin
 
-from climada.util.tag import Tag
 from climada.entity.exposures.litpop import nightlight as nl_util
 from climada.entity.exposures.litpop import gpw_population as pop_util
 from climada.entity.exposures.base import Exposures, INDICATOR_IMPF, DEF_REF_YEAR
@@ -81,7 +80,7 @@ class LitPop(Exposures):
                        data_dir=SYSTEM_DIR):
         """Init new LitPop exposure object for a list of countries (admin 0).
 
-        Sets attributes `ref_year`, `tag`, `crs`, `value`, `geometry`, `meta`,
+        Sets attributes `ref_year`, `crs`, `value`, `geometry`, `meta`,
         `value_unit`, `exponents`,`fin_mode`, `gpw_version`, and `admin1_calc`.
 
         Parameters
@@ -183,19 +182,19 @@ class LitPop(Exposures):
             LOGGER.warning('Some countries could not be identified and are ignored: '
                            '%s. Litpop only initiated for: %s', countries_out, countries_in)
 
-        tag = Tag(description=f'LitPop Exposure for {countries_in} at {res_arcsec} as, '
-                              f'year: {reference_year}, financial mode: {fin_mode}, '
-                              f'exp: {exponents}, admin1_calc: {admin1_calc}')
+        description = (f'LitPop Exposure for {countries_in} at {res_arcsec} as,'
+                       f' year: {reference_year}, financial mode: {fin_mode},'
+                       f' exp: {exponents}, admin1_calc: {admin1_calc}')
 
         exp = cls(
             data=Exposures.concat(litpop_list).gdf,
             crs=litpop_list[0].crs,
             ref_year=reference_year,
-            tag=tag,
             value_unit=get_value_unit(fin_mode),
-            exponents = exponents,
-            gpw_version = gpw_version,
-            fin_mode = fin_mode,
+            exponents=exponents,
+            gpw_version=gpw_version,
+            fin_mode=fin_mode,
+            description=description
         )
 
         try:
@@ -429,9 +428,9 @@ class LitPop(Exposures):
         else:
             raise NotImplementedError('Not implemented for `shape` of type {type(shape)}')
 
-        exp.tag.append(Tag(description=f'LitPop Exposure for custom shape in {countries} at '
-                                    f'{res_arcsec} as, year: {reference_year}, financial mode: '
-                                    f'{fin_mode}, exp: {exponents}, admin1_calc: {admin1_calc}'))
+        exp.description = (f'LitPop Exposure for custom shape in {countries} at'
+                           f' {res_arcsec} as, year: {reference_year}, financial mode:'
+                           f' {fin_mode}, exp: {exponents}, admin1_calc: {admin1_calc}')
         exp.set_gdf(gdf.reset_index())
 
         try:
@@ -473,7 +472,7 @@ class LitPop(Exposures):
         """init LitPop exposure object for a custom shape.
         Requires user input regarding the total value to be disaggregated.
 
-        Sets attributes `ref_year`, `tag`, `crs`, `value`, `geometry`, `meta`,
+        Sets attributes `ref_year`, `crs`, `value`, `geometry`, `meta`,
         `value_unit`, `exponents`,`fin_mode`, `gpw_version`, and `admin1_calc`.
 
         This method can be used to initiated LitPop Exposure for sub-national
@@ -542,21 +541,21 @@ class LitPop(Exposures):
         elif total_value is not None:
             raise TypeError("total_value must be int, float or None.")
 
-        tag = Tag(description = f'LitPop Exposure for custom shape at {res_arcsec} as, ' \
-                          f'year: {reference_year}, exp: {exponents}')
+        description = (f'LitPop Exposure for custom shape at {res_arcsec} as,'
+                       f' year: {reference_year}, exp: {exponents}')
 
         litpop_gdf[INDICATOR_IMPF] = 1
 
         exp = cls(
-                  data=litpop_gdf,
-                  crs=litpop_gdf.crs,
-                  ref_year=reference_year,
-                  tag=tag,
-                  value_unit=value_unit,
-                  exponents = exponents,
-                  gpw_version = gpw_version,
-                  fin_mode = None,
-                  )
+            data=litpop_gdf,
+            crs=litpop_gdf.crs,
+            ref_year=reference_year,
+            value_unit=value_unit,
+            exponents=exponents,
+            gpw_version=gpw_version,
+            fin_mode=None,
+            description=description
+        )
 
         if min(len(exp.gdf.latitude.unique()), len(exp.gdf.longitude.unique())) > 1:
         #if exp.gdf.shape[0] > 1 and len(exp.gdf.latitude.unique()) > 1:

@@ -70,9 +70,9 @@ class TestLitPopExposure(unittest.TestCase):
         # confirm that the total value is equal to GDP * (income_group+1):
         self.assertAlmostEqual(ent.gdf.value.sum()/gdp('CHE', 2016)[1],
                                (income_group('CHE', 2016)[1] + 1))
-        self.assertIn("LitPop Exposure for ['CHE'] at 300 as, year: 2016", ent.tag.description[0])
-        self.assertIn('income_group', ent.tag.description[0])
-        self.assertIn('1, 1', ent.tag.description[0])
+        self.assertIn("LitPop Exposure for ['CHE'] at 300 as, year: 2016", ent.description)
+        self.assertIn('income_group', ent.description)
+        self.assertIn('1, 1', ent.description)
         self.assertTrue(u_coord.equal_crs(ent.crs, 'epsg:4326'))
         self.assertEqual(ent.meta['width'], 54)
         self.assertEqual(ent.meta['height'], 23)

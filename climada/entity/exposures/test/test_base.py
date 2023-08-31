@@ -31,7 +31,6 @@ from climada import CONFIG
 from climada.entity.exposures.base import Exposures, INDICATOR_IMPF, \
      INDICATOR_CENTR, add_sea, DEF_REF_YEAR, DEF_VALUE_UNIT
 from climada.entity import LitPop
-from climada.util.tag import Tag
 from climada.hazard.base import Hazard, Centroids
 from climada.util.constants import ENT_TEMPLATE_XLS, ONE_LAT_KM, DEF_CRS, HAZ_DEMO_FL
 import climada.util.coordinates as u_coord
@@ -294,7 +293,6 @@ class TestIO(unittest.TestCase):
         exp_df = Exposures(df)
         # set metadata
         exp_df.ref_year = 2020
-        exp_df.tag = Tag(ENT_TEMPLATE_XLS, 'ENT_TEMPLATE_XLS')
         exp_df.value_unit = 'XSD'
         exp_df.check()
 
@@ -305,7 +303,6 @@ class TestIO(unittest.TestCase):
         exp_df.check()
         # set metadata
         exp_df.ref_year = 2020
-        exp_df.tag = Tag(ENT_TEMPLATE_XLS, 'ENT_TEMPLATE_XLS')
         exp_df.value_unit = 'XSD'
 
         file_name = DATA_DIR.joinpath('test_hdf5_exp.h5')
@@ -324,8 +321,7 @@ class TestIO(unittest.TestCase):
         self.assertDictEqual(exp_df.meta, exp_read.meta)
         self.assertTrue(u_coord.equal_crs(exp_df.crs, exp_read.crs))
         self.assertTrue(u_coord.equal_crs(exp_df.gdf.crs, exp_read.gdf.crs))
-        self.assertEqual(exp_df.tag.file_name, exp_read.tag.file_name)
-        self.assertEqual(exp_df.tag.description, exp_read.tag.description)
+        self.assertEqual(exp_df.description, exp_read.description)
         np.testing.assert_array_equal(exp_df.gdf.latitude.values, exp_read.gdf.latitude.values)
         np.testing.assert_array_equal(exp_df.gdf.longitude.values, exp_read.gdf.longitude.values)
         np.testing.assert_array_equal(exp_df.gdf.value.values, exp_read.gdf.value.values)
@@ -433,8 +429,7 @@ class TestGeoDFFuncs(unittest.TestCase):
         self.assertTrue(u_coord.equal_crs(exp_copy.crs, exp.crs))
         self.assertEqual(exp_copy.ref_year, exp.ref_year)
         self.assertEqual(exp_copy.value_unit, exp.value_unit)
-        self.assertEqual(exp_copy.tag.description, exp.tag.description)
-        self.assertEqual(exp_copy.tag.file_name, exp.tag.file_name)
+        self.assertEqual(exp_copy.description, exp.description)
         np.testing.assert_array_equal(exp_copy.gdf.latitude.values, exp.gdf.latitude.values)
         np.testing.assert_array_equal(exp_copy.gdf.longitude.values, exp.gdf.longitude.values)
 
@@ -448,8 +443,7 @@ class TestGeoDFFuncs(unittest.TestCase):
         self.assertTrue(u_coord.equal_crs(exp.crs, 'epsg:3395'))
         self.assertEqual(exp.ref_year, DEF_REF_YEAR)
         self.assertEqual(exp.value_unit, DEF_VALUE_UNIT)
-        self.assertEqual(exp.tag.description, [])
-        self.assertEqual(exp.tag.file_name, [])
+        self.assertEqual(exp.description, None)
 
     def test_to_crs_pass(self):
         """Test to_crs function copy."""
@@ -462,8 +456,7 @@ class TestGeoDFFuncs(unittest.TestCase):
         self.assertTrue(u_coord.equal_crs(exp_tr.crs, 'epsg:3395'))
         self.assertEqual(exp_tr.ref_year, DEF_REF_YEAR)
         self.assertEqual(exp_tr.value_unit, DEF_VALUE_UNIT)
-        self.assertEqual(exp_tr.tag.description, [])
-        self.assertEqual(exp_tr.tag.file_name, [])
+        self.assertEqual(exp_tr.description, None)
 
     def test_constructor_pass(self):
         """Test initialization with input GeoDataFrame"""
