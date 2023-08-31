@@ -31,7 +31,6 @@ from .tag import Tag as _Tag
 # @deprecated(details="This class is not supported anymore.")
 class Tag(_Tag):
     """kept for backwards compatibility with climada <= 3.3
-    use ``climada.util.tag.Tag`` instead
     """
     @deprecated(details="This class is not supported anymore and will be removed in the next"
                 " version of climada.")
