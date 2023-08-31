@@ -6,7 +6,8 @@
 
 CLIMADA stands for **CLIM**ate **ADA**ptation and is a probabilistic natural catastrophe impact model, that also calculates averted damage (benefit) thanks to adaptation measures of any kind (from grey to green infrastructure, behavioural, etc.).
 
-As of today, CLIMADA provides global coverage of major climate-related extreme-weather hazards at high resolution via a [data API](https://climada.ethz.ch/data-api/v1/docs) such as tropical cyclones, river flood, European winter storms, earthquakes, ..., all at 4km spatial resolution - wildfire to be added soon. For all hazards, historic and probabilistic event sets exist, for some also under select climate forcing scenarios (RCPs) at distinct time horizons (e.g. 2040). See also [papers](https://github.com/CLIMADA-project/climada_papers) for details.
+As of today, CLIMADA provides global coverage of major climate-related extreme-weather hazards at high resolution via a [data API](https://climada.ethz.ch/data-api/v1/docs) at 4km spatial resolution. For select hazards, historic and probabilistic, and past, present and future climate event sets exist at distinct time horizons.
+You will find a repository containing scientific peer-reviewed articles that explain software components implemented in CLIMADA here: https://github.com/CLIMADA-project/climada_papers
 
 CLIMADA is divided into two parts (two repositories):
 
