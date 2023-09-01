@@ -217,7 +217,7 @@ def prepare_new_release(level):
         else:
             raise
     new_version_number = bump_version_number(last_version_number, level)
-    raise Exception(new_version_number)
+
     update_setup(new_version_number).gitadd()
     update_version(new_version_number).gitadd()
     update_changelog(new_version_number).gitadd()
