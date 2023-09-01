@@ -6,32 +6,17 @@ Release date: YYYY-MM-DD
 
 Code freeze date: YYYY-MM-DD
 
-### Description
-
-### Dependency Changes
-
-### Added
-
-### Changed
-
-### Fixed
-
-### Deprecated
-
-### Removed
-
-## 4.3.1
-
-Release date: 2023-09-01
-
 ### Dependency Updates
 
 Added:
+
 - `pytest` [#726](https://github.com/CLIMADA-project/climada_python/pull/726)
 - `pytest-cov` [#726](https://github.com/CLIMADA-project/climada_python/pull/726)
 - `pytest-subtests` [#726](https://github.com/CLIMADA-project/climada_python/pull/726)
 - `unittest-xml-reporting`
+
 Changed:
+
 - `cartopy` >=0.20.0,<0.20.3 &rarr; >=0.21
 - `cfgrib` >=0.9.7,<0.9.10 &rarr; =0.9.9
 - `contextily` >=1.0 &rarr; >=1.3
@@ -63,7 +48,9 @@ Changed:
 - `xarray` >=0.13 &rarr; >=2023.5
 - `xlrd` >=1.2 &rarr; >=2.0
 - `xlsxwriter` >=1.3 &rarr; >=3.1
+
 Removed:
+
 - `nbsphinx` [#712](https://github.com/CLIMADA-project/climada_python/pull/712)
 - `pandoc` [#712](https://github.com/CLIMADA-project/climada_python/pull/712)
 - `xmlrunner`
@@ -76,7 +63,7 @@ Removed:
 - 'Extra' requirements `doc`, `test`, and `dev` for Python package [#712](https://github.com/CLIMADA-project/climada_python/pull/712)
 - Added method `Exposures.centroids_total_value` to replace the functionality of `Exposures.affected_total_value`. This method is temporary and deprecated. [#702](https://github.com/CLIMADA-project/climada_python/pull/702)
 - New method `climada.util.api_client.Client.purge_cache`: utility function to remove outdated files from the local file system to free disk space.
-([#737](https://github.com/CLIMADA-project/climada_python/pull/737))
+  ([#737](https://github.com/CLIMADA-project/climada_python/pull/737))
 - New attribute `climada.hazard.Hazard.haz_type`: used for assigning impacts to hazards. In previous versions this information was stored in the now removed `climada.hazard.tag.Tag` class. [#736](https://github.com/CLIMADA-project/climada_python/pull/736)
 - New attribute `climada.entity.exposures.Exposures.description`: used for setting the default title in plots from plotting mathods `plot_hexbin` and `plot_scatter`. In previous versions this information was stored in the deprecated `climada.entity.tag.Tag` class. [#756](https://github.com/CLIMADA-project/climada_python/pull/756)
 - Added advanced examples in unsequa tutorial for coupled input variables and for handling efficiently the loading of multiple large files [#766](https://github.com/CLIMADA-project/climada_python/pull/766)
@@ -132,14 +119,14 @@ Removed:
 - `Centroids.set_raster_from_pix_bounds` [#721](https://github.com/CLIMADA-project/climada_python/pull/721)
 - `requirements/env_developer.yml` environment specs. Use 'extra' requirements when installing the Python package instead [#712](https://github.com/CLIMADA-project/climada_python/pull/712)
 - The `climada.entitity.tag.Tag` class, together with `Impact.tag`, `Exposures.tag`, `ImpactFuncSet.tag`, `MeasuresSet.tag`, `Hazard.tag` attributes.
-This may break backwards-compatibility with respect to the files written and read by the `Impact` class.
-[#736](https://github.com/CLIMADA-project/climada_python/pull/736),
-[#743](https://github.com/CLIMADA-project/climada_python/pull/743),
-[#753](https://github.com/CLIMADA-project/climada_python/pull/753),
-[#754](https://github.com/CLIMADA-project/climada_python/pull/754),
-[#756](https://github.com/CLIMADA-project/climada_python/pull/756),
-[#767](https://github.com/CLIMADA-project/climada_python/pull/767),
-[#779](https://github.com/CLIMADA-project/climada_python/pull/779)
+  This may break backwards-compatibility with respect to the files written and read by the `Impact` class.
+  [#736](https://github.com/CLIMADA-project/climada_python/pull/736),
+  [#743](https://github.com/CLIMADA-project/climada_python/pull/743),
+  [#753](https://github.com/CLIMADA-project/climada_python/pull/753),
+  [#754](https://github.com/CLIMADA-project/climada_python/pull/754),
+  [#756](https://github.com/CLIMADA-project/climada_python/pull/756),
+  [#767](https://github.com/CLIMADA-project/climada_python/pull/767),
+  [#779](https://github.com/CLIMADA-project/climada_python/pull/779)
 - `impact.tot_value` attribute removed from unsequa module [#763](https://github.com/CLIMADA-project/climada_python/pull/763)
 
 ## v3.3.2
@@ -149,6 +136,7 @@ Release date: 2023-03-02
 ### Dependency Updates
 
 Removed:
+
 - `pybufrkit` [#662](https://github.com/CLIMADA-project/climada_python/pull/662)
 
 ## v3.3.1
@@ -167,11 +155,18 @@ Patch-relaese with altered base config file so that the basic installation test 
 
 Release date: 2023-02-17
 
+Code freeze date: 2023-02-05
+
+### Description
+
 ### Dependency Changes
 
 new:
+
 - sparse (>=0.13) for [#578](https://github.com/CLIMADA-project/climada_python/pull/578)
+
 updated:
+
 - **python 3.9** - python 3.8 will still work, but python 3.9 is now the default version for [installing climada](https://climada-python.readthedocs.io/en/latest/tutorial/climada_installation_step_by_step.html) ([#614](https://github.com/CLIMADA-project/climada_python/pull/614))
 - contextily >=1.0 (no longer restricted to <1.2 as `contextily.sources` has been replaced in [#517](https://github.com/CLIMADA-project/climada_python/pull/517))
 - cartopy >=0.20.0,<0.20.3 (>=0.20.3 has an issue with geographic crs in plots)
@@ -253,3 +248,4 @@ updated:
 - `climada.enginge.impact.Impact.calc()` and `climada.enginge.impact.Impact.calc_impact_yearset()`
 [#436](https://github.com/CLIMADA-project/climada_python/pull/436).
 
+### Removed
