@@ -13,13 +13,47 @@ Added:
 - `pytest` [#726](https://github.com/CLIMADA-project/climada_python/pull/726)
 - `pytest-cov` [#726](https://github.com/CLIMADA-project/climada_python/pull/726)
 - `pytest-subtests` [#726](https://github.com/CLIMADA-project/climada_python/pull/726)
+- `unittest-xml-reporting`
 
 Changed:
+
+- `cartopy` >=0.20.0,<0.20.3 &rarr; >=0.21
+- `cfgrib` >=0.9.7,<0.9.10 &rarr; =0.9.9
+- `contextily` >=1.0 &rarr; >=1.3
+- `dask` >=2.25 &rarr; >=2023
+- `eccodes` [auto] &rarr; =2.27
+- `gdal` !=3.4.1 &rarr; >=3.6
+- `geopandas` >=0.8 &rarr; >=0.13
+- `h5py` >=2.10 &rarr; >=3.8
+- `haversine` >=2.3 &rarr; >=2.8
+- `matplotlib` >=3.2,< 3.6 &rarr; >=3.7
+- `netcdf4` >=1.5 &rarr; >=1.6
+- `numba` >=0.51,!=0.55.0 &rarr; >=0.57
+- `openpyxl` >=3.0 &rarr; >=3.1
+- `pandas-datareader` >=0.9 &rarr; >=0.10
+- `pathos` >=0.2 &rarr; >=0.3
+- `pint` >=0.15 &rarr; >=0.22
+- `proj` !=9.0.0 &rarr; >=9.1
+- `pycountry` >=20.7 &rarr; >=22.3
+- `pytables` >=3.6 &rarr; >=3.7
+- `rasterio` >=1.2.7,<1.3 &rarr; >=1.3
+- `requests` >=2.24 &rarr; >=2.31
+- `salib` >=1.3.0 &rarr; >=1.4
+- `scikit-learn` >=1.0 &rarr; >=1.2
+- `scipy` >=1.6 &rarr; >=1.10
+- `sparse` >=0.13 &rarr; >=0.14
+- `statsmodels` >=0.11 &rarr; >=0.14
+- `tabulate` >=0.8 &rarr; >=0.9
+- `tqdm` >=4.48 &rarr; >=4.65
+- `xarray` >=0.13 &rarr; >=2023.5
+- `xlrd` >=1.2 &rarr; >=2.0
+- `xlsxwriter` >=1.3 &rarr; >=3.1
 
 Removed:
 
 - `nbsphinx` [#712](https://github.com/CLIMADA-project/climada_python/pull/712)
 - `pandoc` [#712](https://github.com/CLIMADA-project/climada_python/pull/712)
+- `xmlrunner`
 
 ### Added
 
