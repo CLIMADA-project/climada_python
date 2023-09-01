@@ -111,7 +111,7 @@ def update_changelog(nvn):
                             if "release date: " in line.lower():
                                 today = time.strftime("%Y-%m-%d")
                                 lines[i] = f"Release date: {today}"
-                    changelog.write("\n".join(lines).replace("\n\n", "\n"))
+                    changelog.write(re.sub("\n+$", "\n", "\n".join(lines)))
                     changelog.write("\n")
     return GitFile('CHANGELOG.md')
 
