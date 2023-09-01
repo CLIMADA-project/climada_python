@@ -39,8 +39,11 @@ def bump_version_number(version_number: str, level: str) -> str:
     major, minor, patch = version_number.split(".")
     if level == "major":
         major = str(int(major)+1)
+        minor = "0"
+        patch = "0"
     elif level == "minor":
         minor = str(int(minor)+1)
+        patch = "0"
     elif level == "patch":
         patch = str(int(patch)+1)
     else:
@@ -111,7 +114,7 @@ def update_changelog(nvn):
                             if "release date: " in line.lower():
                                 today = time.strftime("%Y-%m-%d")
                                 lines[i] = f"Release date: {today}"
-                    changelog.write("\n".join(lines).replace("\n\n", "\n"))
+                    changelog.write(re.sub("\n+$", "\n", "\n".join(lines)))
                     changelog.write("\n")
     return GitFile('CHANGELOG.md')
 
