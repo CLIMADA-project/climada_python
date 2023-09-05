@@ -53,7 +53,9 @@ The documentation can also be [built locally](https://climada-python.readthedocs
 
 ## Citing CLIMADA
 
-See the [Citation Guide](Citation_guide.md).
+See the [Citation Guide](https://climada-python.readthedocs.io/en/latest/misc/citation.html).
+
+Please use the following logo if you are presenting results obtained with or through CLIMADA:
 
 ![https://github.com/CLIMADA-project/climada_python/blob/main/doc/guide/img/CLIMADA_logo_QR.png](https://github.com/CLIMADA-project/climada_python/blob/main/doc/guide/img/CLIMADA_logo_QR.png?raw=true)
 
