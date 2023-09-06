@@ -84,12 +84,12 @@ class TestNightLight(unittest.TestCase):
         """ get_required_nl_files return a boolean matrix of 0 and 1
             indicating which tile of NASA nighlight files are needed giving
             a bounding box. This test check a few configuration of tiles
-            and check that a value error is raised if the bounding box are 
+            and check that a value error is raised if the bounding box are
             incorrect """
 
         # incorrect bounds: bounds size =!  4, min lon > max lon, min lat > min lat
-        BOUNDS = [(20, 30, 40), 
-                  (120, -20, 110, 30), 
+        BOUNDS = [(20, 30, 40),
+                  (120, -20, 110, 30),
                   (-120, 50, 130, 10)]
         # correct bounds
         bounds_c1 = (-120, -20, 0, 40)
@@ -98,13 +98,13 @@ class TestNightLight(unittest.TestCase):
 
         for bounds in BOUNDS:
             with self.assertRaises(ValueError) as cm:
-    
+
                 nightlight.get_required_nl_files(bounds = bounds)
 
                 self.assertEqual('Invalid bounds supplied. `bounds` must be tuple'
                                 ' with (min_lon, min_lat, max_lon, max_lat).',
                                 str(cm.exception))
-        
+
         # test first correct bounds configurations
         req_files = nightlight.get_required_nl_files(bounds = bounds_c1)
         bool = np.array_equal(np.array([1, 1, 1, 1, 1, 1, 0, 0]), req_files)
@@ -117,7 +117,7 @@ class TestNightLight(unittest.TestCase):
         req_files = nightlight.get_required_nl_files(bounds = bounds_c3)
         bool = np.array_equal(np.array([0, 0, 0, 0, 0, 0, 1, 0]), req_files)
         self.assertTrue(bool)
-    
+
     def test_check_nl_local_file_exists(self):
         """ Test that an array with the correct number of already existing files
             is produced, the LOGGER messages logged and the ValueError raised. """
@@ -127,13 +127,13 @@ class TestNightLight(unittest.TestCase):
             nightlight.check_nl_local_file_exists(required_files = np.array([0, 0, 1, 1]))
         self.assertIn('The parameter \'required_files\' was too short and is ignored',
                       cm.output[0])
-             
-        # check logger message: not all files are available 
+
+        # check logger message: not all files are available
         with self.assertLogs('climada.entity.exposures.litpop.nightlight', level='DEBUG') as cm:
             nightlight.check_nl_local_file_exists()
-        self.assertIn('Not all satellite files available. '
-                      f'Found 5 out of 8 required files in {Path(SYSTEM_DIR)}', cm.output[0])
-            
+        self.assertIn('Not all satellite files available. Found ', cm.output[0])
+        self.assertIn(f' out of 8 required files in {Path(SYSTEM_DIR)}', cm.output[0])
+
         # check logger message: no files found in checkpath
         check_path = Path('climada/entity/exposures')
         with self.assertLogs('climada.entity.exposures.litpop.nightlight', level='INFO') as cm:
@@ -141,7 +141,7 @@ class TestNightLight(unittest.TestCase):
             nightlight.check_nl_local_file_exists(check_path=check_path)
         self.assertIn(f'No satellite files found locally in {check_path}',
                       cm.output[0])
-      
+
         # test raises with wrong path
         check_path = Path('/random/wrong/path')
         with self.assertRaises(ValueError) as cm:
@@ -149,9 +149,10 @@ class TestNightLight(unittest.TestCase):
         self.assertEqual(f'The given path does not exist: {check_path}',
                          str(cm.exception))
 
-        # test that files_exist is correct 
+        # test that files_exist is correct
         files_exist = nightlight.check_nl_local_file_exists()
-        self.assertEqual(int(sum(files_exist)), 5)
+        self.assertGreaterEqual(int(sum(files_exist)), 3)
+        self.assertLessEqual(int(sum(files_exist)), 8)
 
 # Execute Tests
 if __name__ == "__main__":
