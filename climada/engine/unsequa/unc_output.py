@@ -64,14 +64,6 @@ SALIB_COMPATIBILITY = {
     'ff' : ['ff'],
     }
 
-plt.style.use('seaborn-white')
-params = {'legend.fontsize': 'x-large',
-         'axes.labelsize': 'x-large',
-         'axes.titlesize':'x-large',
-         'xtick.labelsize':'x-large',
-         'ytick.labelsize':'x-large'}
-mpl.rcParams.update(params)
-
 
 class UncOutput():
     """
@@ -119,6 +111,24 @@ class UncOutput():
         #Data
         self.samples_df = samples_df
         self.unit = unit
+
+    def order_samples(self, by_parameters):
+        """
+        Function to sort the samples dataframe.
+
+        Note: the unc_output.samples_df is ordered inplace.
+
+        Parameters
+        ----------
+        by_parameters : list[string]
+            List of the uncertainty parameters to sort by (ordering in list is kept)
+
+        Returns
+        -------
+        None.
+
+        """
+        self.samples_df.sort_values(by=by_parameters, inplace=True, axis=0)
 
     def get_samples_df(self):
         return getattr(self, 'samples_df')
@@ -649,7 +659,7 @@ class UncOutput():
         prop_cycle = plt.rcParams['axes.prop_cycle']
         colors = prop_cycle.by_key()['color']
 
-        for n, (_name, values) in enumerate(unc_df.iteritems()):
+        for n, (_name, values) in enumerate(unc_df.items()):
             values = u_cmv(values, m_unit, n_sig_dig=4)
             count, division = np.histogram(values, bins=100)
             count = count / count.max()
@@ -1092,7 +1102,7 @@ class UncImpactOutput(UncOutput):
     """Extension of UncOutput specific for CalcImpact, returned by the  uncertainty() method.
     """
     def __init__(self, samples_df, unit, aai_agg_unc_df, freq_curve_unc_df, eai_exp_unc_df,
-                 at_event_unc_df, tot_value_unc_df, coord_df):
+                 at_event_unc_df, coord_df):
         """Constructor
 
         Uncertainty output values from impact.calc for each sample
@@ -1115,9 +1125,6 @@ class UncImpactOutput(UncOutput):
         at_event_unc_df : pandas.DataFrame
             Each row contains the values of at_event for one sample (row of
             samples_df)
-        tot_value_unc_df : pandas.DataFrame
-            Each row contains the value of tot_value for one sample (row of
-            samples_df)
         coord_df : pandas.DataFrame
             Coordinates of the exposure
         """
@@ -1130,8 +1137,6 @@ class UncImpactOutput(UncOutput):
         self.eai_exp_sens_df = None
         self.at_event_unc_df = at_event_unc_df
         self.at_event_sens_df = None
-        self.tot_value_unc_df = tot_value_unc_df
-        self.tot_value_sens_df = None
         self.coord_df = coord_df
 
 

@@ -25,7 +25,6 @@ import logging
 from typing import Optional
 import pandas as pd
 
-from climada.util.tag import Tag
 from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
 from climada.entity.disc_rates.base import DiscRates
 from climada.entity.measures.measure_set import MeasureSet
@@ -106,7 +105,7 @@ class Entity:
         self.__dict__ = Entity.from_mat(*args, **kwargs).__dict__
 
     @classmethod
-    def from_excel(cls, file_name, description=''):
+    def from_excel(cls, file_name):
         """Read csv or xls or xlsx file following climada's template.
 
         Parameters
@@ -125,15 +124,14 @@ class Entity:
         """
 
         exp = Exposures(pd.read_excel(file_name))
-        exp.tag = Tag(file_name=file_name, description=description)
 
-        dr = DiscRates.from_excel(file_name)
+        disc_rates = DiscRates.from_excel(file_name)
         impf_set = ImpactFuncSet.from_excel(file_name)
         meas_set = MeasureSet.from_excel(file_name)
 
         return cls(
             exposures=exp,
-            disc_rates=dr,
+            disc_rates=disc_rates,
             impact_func_set=impf_set,
             measure_set=meas_set,
         )
@@ -178,8 +176,3 @@ class Entity:
             if not isinstance(value, DiscRates):
                 raise ValueError("Input value is not (sub)class of DiscRates.")
         super().__setattr__(name, value)
-
-    def __str__(self):
-        return 'Exposures: \n' + self.exposures.tag.__str__()
-
-    __repr__ = __str__
