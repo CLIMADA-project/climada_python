@@ -156,8 +156,6 @@ class TestEmdatProcessing(unittest.TestCase):
                 reference_year=None,
                 imp_str="Total Affected",
             )
-            # TODO: pandas 2.1 will eventually raise a FutureWarning here, 
-            # but about array concatenation of empty entries. fix it!
 
     def test_emdat_affected_yearlysum(self):
         """test emdat_impact_yearlysum yearly impact data extraction"""
