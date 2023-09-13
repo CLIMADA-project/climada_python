@@ -1506,6 +1506,47 @@ def natearth_country_to_int(country):
         return int(country.ISO_N3)
     return country_to_iso(str(country.NAME), representation="numeric")
 
+
+def longitudinal_extent(lon: np.ndarray):
+    """Calculate the extent of an array of longitudinal coordinates.
+    Since those are located around a circle, the widest gap between them is identified and the
+    extent is consideered the inverse part of the circle.
+
+    Parameters
+    ----------
+    lon : np.ndarray
+        longitude of points in epsg:4326
+
+    Returns
+    -------
+    (number, number)
+        the western and eastern longitudinal boundaries that define the extent,
+        the former is granted to be smaller than the latter, if necessary 360 degree will be added
+        or subtracted from either of the values.
+    """
+    arr = lon.copy()  ## unnecessary - if it wasn't for the next two lines
+    arr[arr < -180] += 360  ## shouldn't happen, just in case...
+    arr[arr > 180] -= 360  ## dito
+
+    sortd = arr.copy()
+    sortd.sort()
+    topdiff = (
+        np.append(sortd[1:], [sortd[0] + 360]) - sortd
+    ).argmax()
+
+    sorted_index = arr.argsort()
+    max_i = sorted_index[topdiff]
+    min_i = sorted_index[(topdiff + 1) % arr.size]
+
+    e_west = arr[min_i]
+    e_east = arr[max_i]
+    if e_west <= e_east:
+        return e_west, e_east
+    if 180 - e_west < e_east + 180:
+        return e_west - 360, e_east
+    return e_west, e_east + 360
+
+
 def get_country_code(lat, lon, gridded=False):
     """Provide numeric (ISO 3166) code for every point.
 
@@ -1514,9 +1555,9 @@ def get_country_code(lat, lon, gridded=False):
 
     Parameters
     ----------
-    lat : np.array
+    lat : np.ndarray
         latitude of points in epsg:4326
-    lon : np.array
+    lon : np.ndarray
         longitude of points in epsg:4326
     gridded : bool
         If True, interpolate precomputed gridded data which is usually much faster. Default: False.
@@ -1539,7 +1580,8 @@ def get_country_code(lat, lon, gridded=False):
                                        method='nearest', fill_value=0)
         region_id = region_id.astype(int)
     else:
-        extent = (lon.min() - 0.001, lon.max() + 0.001,
+        lonmin, lonmax = longitudinal_extent(lon)
+        extent = (lonmin - 0.001, lonmax + 0.001,
                   lat.min() - 0.001, lat.max() + 0.001)
         countries = get_country_geometries(extent=extent)
         with warnings.catch_warnings():

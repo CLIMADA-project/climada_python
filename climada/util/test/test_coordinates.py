@@ -492,6 +492,19 @@ class TestFunc(unittest.TestCase):
         self.assertEqual(u_coord.country_natid2iso(natid_list), al3_list)
         self.assertEqual(u_coord.country_natid2iso(natid_list[1]), al3_list[1])
 
+    def test_longitudinal_extent(self):
+        # test longitudinal extent calculation
+        # find the biggest gap
+        self.assertEqual((-100, 140), u_coord.longitudinal_extent(np.array([20, 80, 140, 260, 320])))
+        # adjust so that the western boundary is smaller than the eastern boundary
+        self.assertEqual((-181, -171), u_coord.longitudinal_extent(np.array([-171,179])))
+        self.assertEqual((171, 181), u_coord.longitudinal_extent(np.array([171,-179])))
+        self.assertEqual((175, 185), u_coord.longitudinal_extent(np.array([-175,175])))
+        # don't fail (completely) if all gaps are equal
+        arbitrary_extent = u_coord.longitudinal_extent(np.array([20, 80, 140, -160, -100, -40]))
+        self.assertEqual(300, arbitrary_extent[1] - arbitrary_extent[0])
+
+
 class TestAssign(unittest.TestCase):
     """Test coordinate assignment functions"""
 
