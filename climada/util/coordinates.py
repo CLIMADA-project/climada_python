@@ -1524,9 +1524,11 @@ def longitudinal_extent(lon: np.ndarray):
         the former is granted to be smaller than the latter, if necessary 360 degree will be added
         or subtracted from either of the values.
     """
-    arr = lon.copy()  ## unnecessary - if it wasn't for the next two lines
-    arr[arr < -180] += 360  ## shouldn't happen, just in case...
-    arr[arr > 180] -= 360  ## dito
+    arr = lon.copy()  ## unnecessary - if it wasn't for the next four lines
+    while (arr < -180).any():
+        arr[arr < -180] += 360  ## shouldn't happen, just in case...
+    while (arr > 180).any():
+        arr[arr > 180] -= 360  ## dito
 
     sortd = arr.copy()
     sortd.sort()
