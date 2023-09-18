@@ -33,7 +33,7 @@ data_test : ## Test data APIs
 
 .PHONY : notebook_test
 notebook_test : ## Test notebooks in doc/tutorial
-	python script/jenkins/test_notebooks.py
+	python script/jenkins/test_notebooks.py report
 
 .PHONY : integ_test
 integ_test : ## Integration tests execution with xml reports
