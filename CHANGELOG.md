@@ -14,6 +14,8 @@ Code freeze date: YYYY-MM-DD
 
 ### Changed
 
+- Rearranged file-system structure: `data` is now a subdirectory of `climada_python` and not deployed to the environment root anymore. [#781](https://github.com/CLIMADA-project/climada_python/pull/781)
+
 ### Fixed
 
 ### Deprecated
