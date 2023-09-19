@@ -10,14 +10,13 @@ import nbformat
 
 import climada
 
-NOTEBOOK_DIR = Path(__file__).parent.joinpath('doc', 'tutorial')
-'''The path to the notebook directories.'''
 
 BOUND_TO_FAIL = '# Note: execution of this cell will fail'
 '''Cells containing this line will not be executed in the test'''
 
 EXCLUDED_FROM_NOTEBOOK_TEST = ['climada_installation_step_by_step.ipynb']
 '''These notebooks are excluded from being tested'''
+
 
 class NotebookTest(unittest.TestCase):
     '''Generic TestCase for testing the executability of notebooks
@@ -117,10 +116,17 @@ class NotebookTest(unittest.TestCase):
             os.chdir(cwd)
 
 
-def main():
+def main(install_dir):
+    import xmlrunner
+    
+    sys.path.append(str(install_dir))
+    
+    notebook_dir = install_dir.joinpath('doc', 'tutorial')
+    '''The path to the notebook directories.'''
+
     # list notebooks in the NOTEBOOK_DIR
     notebooks = [f.absolute()
-                 for f in sorted(NOTEBOOK_DIR.iterdir())
+                 for f in sorted(notebook_dir.iterdir())
                  if os.path.splitext(f)[1] == ('.ipynb')
                  and not f.name in EXCLUDED_FROM_NOTEBOOK_TEST]
 
@@ -132,22 +138,16 @@ def main():
         setattr(NBTest, test_name, NBTest.test_notebook)
         suite.addTest(NBTest(test_name, notebook.parent, notebook.name))
 
-    # run the tests depending on the first input argument: None or 'report'.
-    # write xml reports for 'report'
-    if sys.argv[1:]:
-        arg = sys.argv[1]
-        if arg == 'report':
-            import xmlrunner
-            outdirstr = str(Path(__file__).parent.joinpath('tests_xml'))
-            xmlrunner.XMLTestRunner(output=outdirstr).run(suite)
-        else:
-            jd, nb = os.path.split(arg)
-            unittest.TextTestRunner(verbosity=2).run(NotebookTest('test_notebook', jd, nb))
-    # with no argument just run the test
-    else:
-        unittest.TextTestRunner(verbosity=2).run(suite)
+    # run the tests and write xml reports to tests_xml
+    output_dir = install_dir.joinpath('tests_xml')
+    xmlrunner.XMLTestRunner(output=str(output_dir)).run(suite)
 
 
 if __name__ == '__main__':
-    sys.path.append(str(Path.cwd()))
-    main()
+    if sys.argv[1] == 'report':
+        install_dir = Path(sys.argv[2]) if len(sys.argv) > 2 else Path.cwd()
+        main(install_dir)
+    
+    else:
+        jd, nb = os.path.split(sys.argv[1])
+        unittest.TextTestRunner(verbosity=2).run(NotebookTest('test_notebook', jd, nb))

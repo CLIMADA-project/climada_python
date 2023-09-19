@@ -144,7 +144,7 @@ class TestEmdatProcessing(unittest.TestCase):
         self.assertEqual(2000, df['reference_year'].min())
 
     def test_emdat_impact_yearlysum_no_futurewarning(self):
-        """Ensure that no FutureWarning is issued"""
+        """Ensure that no FutureWarning about `DataFrame.append` being deprecated is issued"""
         with warnings.catch_warnings():
             # Make sure that FutureWarning will cause an error
             warnings.simplefilter("error", category=FutureWarning)
@@ -156,6 +156,8 @@ class TestEmdatProcessing(unittest.TestCase):
                 reference_year=None,
                 imp_str="Total Affected",
             )
+            # TODO: pandas 2.1 will eventually raise a FutureWarning here, 
+            # but about array concatenation of empty entries. fix it!
 
     def test_emdat_affected_yearlysum(self):
         """test emdat_impact_yearlysum yearly impact data extraction"""

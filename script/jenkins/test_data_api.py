@@ -122,4 +122,6 @@ class TestDataAvail(unittest.TestCase):
 # Execute Tests
 if __name__ == '__main__':
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestDataAvail)
-    xmlrunner.XMLTestRunner(output=str(Path(__file__).parent.joinpath('tests_xml'))).run(TESTS)
+    from sys import argv
+    outputdir = argv[1] if len(argv) > 1 else str(Path.cwd().joinpath('tests_xml'))
+    xmlrunner.XMLTestRunner(output=outputdir).run(TESTS)
