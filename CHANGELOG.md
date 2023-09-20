@@ -14,6 +14,8 @@ Code freeze date: YYYY-MM-DD
 
 ### Changed
 
+- Rearranged file-system structure: `data` directory moved into `climada` package directory. [#781](https://github.com/CLIMADA-project/climada_python/pull/781)
+
 ### Fixed
 
 ### Deprecated
