@@ -92,7 +92,7 @@ class NotebookTest(unittest.TestCase):
                     and not ln.startswith('ask_ok(')
                     and not ln.startswith('pool')  # by convention Pool objects are called pool
                     and not ln.strip().endswith('?')
-                    and re.search(r'(\W|^)Pool\(', ln)  # prevent Pool object creation
+                    and not re.search(r'(\W|^)Pool\(', ln)  # prevent Pool object creation
                 ])
 
                 # execute the python code
