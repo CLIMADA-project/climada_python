@@ -57,6 +57,8 @@ setup(
 
     keywords='climate adaptation',
 
+    python_requires=">=3.9,<3.12",
+
     install_requires=[
         'bottleneck',
         'cartopy',

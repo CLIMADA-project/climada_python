@@ -103,6 +103,7 @@ Jump right in:
    Performance and Best Practices <guide/Guide_Py_Performance>
    Coding Conventions <guide/Guide_Miscellaneous>
    Building the Documentation <README>
+   guide/github-actions
 
 
 .. toctree::
