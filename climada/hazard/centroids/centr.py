@@ -326,6 +326,7 @@ class Centroids():
         else:
             raise NotImplementedError('The region id can only be assigned if the crs is epsg:4326')
 
+    # NOT REALLY AN ELEVATION FUNCTION, JUST READ RASTER
     def get_elevation(self, topo_path):
         """Return elevation attribute for every pixel or point in meters.
 
