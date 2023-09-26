@@ -18,6 +18,8 @@ Code freeze date: YYYY-MM-DD
 
 ### Fixed
 
+- `climada.util.coordinates.get_country_code` bug, occurring with non-standard longitudinal coordinates around the anti-meridian. [#770](https://github.com/CLIMADA-project/climada_python/issues/770)
+
 ### Deprecated
 
 ### Removed
