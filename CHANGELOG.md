@@ -1,12 +1,27 @@
 # Changelog
 
-## 4.0.0
+## Unreleased
 
-Release date: 2023-09-01
+Release date: YYYY-MM-DD
+
+Code freeze date: YYYY-MM-DD
 
 ### Description
 
 ### Dependency Changes
+
+Added:
+
+- `matplotlib-base` None &rarr; >=3.8
+
+Changed:
+
+- `geopandas` >=0.13 &rarr; >=0.14
+- `pandas` >=1.5,<2.0 &rarr; >=2.1
+
+Removed:
+
+- `matplotlib` >=3.7
 
 ### Added
 
