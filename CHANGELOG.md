@@ -14,15 +14,38 @@ Code freeze date: YYYY-MM-DD
 
 ### Changed
 
+### Fixed
+
+### Deprecated
+
+### Removed
+
+## 4.0.1
+
+Release date: 2023-09-27
+
+### Dependency Changes
+
+Added:
+
+- `matplotlib-base` None &rarr; >=3.8
+
+Changed:
+
+- `geopandas` >=0.13 &rarr; >=0.14
+- `pandas` >=1.5,<2.0 &rarr; >=2.1
+
+Removed:
+
+- `matplotlib` >=3.7
+
+### Changed
+
 - Rearranged file-system structure: `data` directory moved into `climada` package directory. [#781](https://github.com/CLIMADA-project/climada_python/pull/781)
 
 ### Fixed
 
 - `climada.util.coordinates.get_country_code` bug, occurring with non-standard longitudinal coordinates around the anti-meridian. [#770](https://github.com/CLIMADA-project/climada_python/issues/770)
-
-### Deprecated
-
-### Removed
 
 ## 4.0.0
 
