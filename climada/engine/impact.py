@@ -21,7 +21,7 @@ Define Impact and ImpactFreqCurve classes.
 
 __all__ = ['ImpactFreqCurve', 'Impact']
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import logging
 import copy
 import csv
@@ -1785,10 +1785,10 @@ class ImpactFreqCurve():
     """Impact exceedence frequency curve.
     """
 
-    return_per : np.array = np.array([])
+    return_per : np.ndarray = field(default_factory=lambda: np.empty(0))
     """return period"""
 
-    impact : np.array = np.array([])
+    impact : np.ndarray = field(default_factory=lambda: np.empty(0))
     """impact exceeding frequency"""
 
     unit : str = ''

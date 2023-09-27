@@ -4,6 +4,28 @@
 
 Release date: 2023-09-01
 
+### Description
+
+### Dependency Changes
+
+### Added
+
+### Changed
+
+- Rearranged file-system structure: `data` directory moved into `climada` package directory. [#781](https://github.com/CLIMADA-project/climada_python/pull/781)
+
+### Fixed
+
+- `climada.util.coordinates.get_country_code` bug, occurring with non-standard longitudinal coordinates around the anti-meridian. [#770](https://github.com/CLIMADA-project/climada_python/issues/770)
+
+### Deprecated
+
+### Removed
+
+## 4.0.0
+
+Release date: 2023-09-01
+
 ### Dependency Updates
 
 Added:
