@@ -114,13 +114,13 @@ class TestPlotter(unittest.TestCase):
         myexp = pd.read_excel(ENT_DEMO_TODAY)
         myexp = Exposures(myexp)
         myexp.check()
-        myexp.tag.description = 'demo_today'
+        myexp.description = 'demo_today'
         myax = myexp.plot_hexbin()
-        self.assertIn('demo_today', myax.get_title())
+        self.assertEqual('demo_today', myax.get_title())
 
-        myexp.tag.description = ''
+        myexp.description = None
         myax = myexp.plot_hexbin()
-        self.assertIn('', myax.get_title())
+        self.assertEqual('', myax.get_title())
 
         myexp.plot_scatter()
         myexp.plot_basemap()

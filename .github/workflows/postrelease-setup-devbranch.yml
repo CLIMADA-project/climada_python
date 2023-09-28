@@ -1,0 +1,24 @@
+# This workflow will re-initialize the develop branch after a release was published
+
+# the version number of setup.py and _version.py will be taken from main, but have a "-dev" appendix
+# the CHANGELOG.md file will be updated and have a vanila "Unreleased" section
+# the doc/misc/README.md file is taken over from main
+
+name: Post-release develop setup
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  github:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@master
+        with:
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+      - name: Update files
+        run: bash .github/scripts/setup_devbranch.sh
+        env:
+          GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}

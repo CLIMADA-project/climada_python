@@ -35,7 +35,6 @@ class TestConstructor(unittest.TestCase):
         """All attributes are defined"""
         meas = MeasureSet()
         act_1 = Measure(name='Seawall')
-        self.assertTrue(hasattr(meas, 'tag'))
         self.assertTrue(hasattr(meas, '_data'))
         self.assertTrue(hasattr(act_1, 'name'))
         self.assertTrue(hasattr(act_1, 'color_rgb'))
@@ -311,8 +310,7 @@ class TestReaderExcel(unittest.TestCase):
 
     def test_demo_file(self):
         """Read demo excel file"""
-        description = 'One single file.'
-        meas = MeasureSet.from_excel(ENT_DEMO_TODAY, description)
+        meas = MeasureSet.from_excel(ENT_DEMO_TODAY)
 
         # Check results
         n_meas = 4
@@ -348,9 +346,6 @@ class TestReaderExcel(unittest.TestCase):
         self.assertEqual(act_buil.paa_impact, (1, 0))
         self.assertEqual(act_buil.risk_transf_attach, 0)
         self.assertEqual(act_buil.risk_transf_cover, 0)
-
-        self.assertEqual(meas.tag.file_name, str(ENT_DEMO_TODAY))
-        self.assertEqual(meas.tag.description, description)
 
     def test_template_file_pass(self):
         """Read template excel file"""
@@ -426,16 +421,13 @@ class TestReaderExcel(unittest.TestCase):
         self.assertEqual(act_buil.risk_transf_cover, 1000000000)
         self.assertEqual(act_buil.risk_transf_cost_factor, 2)
 
-        self.assertEqual(meas.tag.file_name, str(ENT_TEMPLATE_XLS))
-        self.assertEqual(meas.tag.description, '')
 
 class TestReaderMat(unittest.TestCase):
     """Test reader functionality of the MeasuresMat class"""
 
     def test_demo_file(self):
         # Read demo excel file
-        description = 'One single file.'
-        meas = MeasureSet.from_mat(ENT_TEST_MAT, description)
+        meas = MeasureSet.from_mat(ENT_TEST_MAT)
 
         # Check results
         n_meas = 4
@@ -491,8 +483,6 @@ class TestReaderMat(unittest.TestCase):
         self.assertEqual(act_buil.risk_transf_attach, 0)
         self.assertEqual(act_buil.risk_transf_cover, 0)
 
-        self.assertEqual(meas.tag.file_name, str(ENT_TEST_MAT))
-        self.assertEqual(meas.tag.description, description)
 
 class TestWriter(unittest.TestCase):
     """Test reader functionality of the MeasuresExcel class"""
@@ -537,10 +527,7 @@ class TestWriter(unittest.TestCase):
         file_name = DATA_DIR.joinpath('test_meas.xlsx')
         meas_set.write_excel(file_name)
 
-        meas_read = MeasureSet.from_excel(file_name, 'test')
-
-        self.assertEqual(meas_read.tag.file_name, str(file_name))
-        self.assertEqual(meas_read.tag.description, 'test')
+        meas_read = MeasureSet.from_excel(file_name)
 
         meas_list = meas_read.get_measure('TC')
         meas_list.extend(meas_read.get_measure('FL'))

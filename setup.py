@@ -2,7 +2,7 @@
 """
 
 from pathlib import Path
-from setuptools import find_packages, setup
+from setuptools import setup, find_namespace_packages
 
 here = Path(__file__).parent.absolute()
 
@@ -22,16 +22,18 @@ DEPS_DOC = [
 
 # Requirements for testing
 DEPS_TEST = [
-    "coverage>=7.2",
     "ipython",
     "mccabe>=0.6",
     "pylint==2.7.1",
+    "pytest",
+    "pytest-cov",
+    "pytest-subtests",
 ]
 
 setup(
     name='climada',
 
-    version='3.3.2-dev',
+    version='4.0.1',
 
     description='CLIMADA in Python',
 
@@ -46,9 +48,6 @@ setup(
     license='OSI Approved :: GNU Lesser General Public License v3 (GPLv3)',
 
     classifiers=[
-        #   3 - Alpha
-        #   4 - Beta
-        #   5 - Production/Stable
         'Development Status :: 4 - Beta',
         'Programming Language :: Python :: 3.9',
         'Topic :: Scientific/Engineering :: Atmospheric Science',
@@ -58,7 +57,7 @@ setup(
 
     keywords='climate adaptation',
 
-    packages=find_packages() + ['data'],
+    python_requires=">=3.9,<3.12",
 
     install_requires=[
         'bottleneck',
@@ -102,5 +101,8 @@ setup(
         "dev": DEPS_DOC + DEPS_TEST
     },
 
-    include_package_data=True
+    packages=find_namespace_packages(include=['climada*']),
+
+    setup_requires=['setuptools_scm'],
+    include_package_data=True,
 )
