@@ -512,11 +512,10 @@ class Centroids():
     I/O methods
     '''
 
-
     @classmethod
     def from_raster_file(cls, file_name, src_crs=None, window=None,
                          geometry=None, dst_crs=None, transform=None, width=None,
-                         height=None, resampling=Resampling.nearest):
+                         height=None, resampling=Resampling.nearest, return_meta=False):
         """Create a new Centroids object from a raster file
 
         Select region using window or geometry. Reproject input by providing
@@ -552,7 +551,9 @@ class Centroids():
             file_name, [1], src_crs, window, geometry, dst_crs,
             transform, width, height, resampling)
         lat, lon = _meta_to_lat_lon(meta)
-        return cls(longitude=lon, latitude=lat, crs=dst_crs)
+        if return_meta:
+            return cls(longitude=lon, latitude=lat, crs=meta['crs']), meta
+        return cls(longitude=lon, latitude=lat, crs=meta['crs'])
 
     @classmethod
     def from_meta(cls, meta):
@@ -571,7 +572,6 @@ class Centroids():
         crs = meta['crs']
         lat, lon = _meta_to_lat_lon(meta)
         return cls(longitude=lon, latitude=lat, crs=crs)
-
 
     @classmethod
     def from_vector_file(cls, file_name, dst_crs=None):
