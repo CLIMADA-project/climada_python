@@ -41,7 +41,7 @@ class TestCentroidsReader(unittest.TestCase):
 
     def test_centroid_pass(self):
         """Read a centroid excel file correctly."""
-        centroids = Centroids.from_excel(HAZ_TEMPLATE_XLS, crs=DEF_CRS)
+        centroids = Centroids.from_excel(HAZ_TEMPLATE_XLS)
 
         n_centroids = 45
         self.assertEqual(centroids.coord.shape[0], n_centroids)

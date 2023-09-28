@@ -554,6 +554,24 @@ class Centroids():
         lat, lon = _meta_to_lat_lon(meta)
         return cls(longitude=lon, latitude=lat, crs=dst_crs)
 
+    @classmethod
+    def from_meta(cls, meta):
+        """initiate centroids from meta raster definition
+
+        Parameters
+        ----------
+        meta : dict
+            meta description of raster
+
+        Returns
+        -------
+        Centroid
+            Centroids initialized for raster described by meta.
+        """
+        crs = meta['crs']
+        lat, lon = _meta_to_lat_lon(meta)
+        return cls(longitude=lon, latitude=lat, crs=crs)
+
 
     @classmethod
     def from_vector_file(cls, file_name, dst_crs=None):
@@ -727,7 +745,7 @@ def _meta_to_lat_lon(meta):
 
     Parameters
     ----------
-    meta : _type_
+    meta : dict
         meta description of raster
 
     Returns

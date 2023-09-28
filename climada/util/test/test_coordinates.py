@@ -526,7 +526,7 @@ class TestAssign(unittest.TestCase):
             'width': 20, 'height': 10,
             'transform': rasterio.Affine(1.5, 0.0, -20, 0.0, -1.4, 8)
         }
-        centroids = Centroids(meta=meta)
+        centroids = Centroids.from_meta(meta=meta)
         df = pd.DataFrame({
             'longitude': np.array([
                 -20.1, -20.0, -19.8, -19.0, -18.6, -18.4,
@@ -613,7 +613,7 @@ class TestAssign(unittest.TestCase):
             u_coord.match_centroids(gdf, centroids)
         self.assertIn('Set hazard and GeoDataFrame to same CRS first!',
                       str(cm.exception))
-        
+
     def test_dist_sqr_approx_pass(self):
         """Test approximate distance helper function."""
         lats1 = 45.5

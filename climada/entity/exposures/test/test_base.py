@@ -131,8 +131,7 @@ class TestFuncs(unittest.TestCase):
             'width': 20, 'height': 10,
             'transform': rasterio.Affine(1.5, 0.0, -20, 0.0, -1.4, 8)
         }
-        y, x = Centroids._meta_to_lat_lon(meta)
-        haz = Hazard('FL', centroids=Centroids(x, y))
+        haz = Hazard('FL', centroids=Centroids.from_meta(meta))
 
         # explicit points with known results (see `expected_result` for details)
         exp = Exposures(crs=DEF_CRS)
