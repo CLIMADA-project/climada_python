@@ -802,30 +802,46 @@ def emdat_impact_yearlysum(emdat_file_csv, countries=None, hazard=None, year_ran
     df_data[imp_str + " scaled"] = scale_impact2refyear(df_data[imp_str].values,
                                                         df_data.Year.values, df_data.ISO.values,
                                                         reference_year=reference_year)
-    out = pd.DataFrame(columns=['ISO', 'region_id', 'year', 'impact',
-                                'impact_scaled', 'reference_year'])
-    for country in df_data.ISO.unique():
-        country = u_coord.country_to_iso(country, "alpha3")
-        if not df_data.loc[df_data.ISO == country].size:
-            continue
-        all_years = np.arange(min(df_data.Year), max(df_data.Year) + 1)
-        data_out = pd.DataFrame(index=np.arange(0, len(all_years)),
-                                columns=out.columns)
-        df_country = df_data.loc[df_data.ISO == country]
-        for cnt, year in enumerate(all_years):
-            data_out.loc[cnt, 'year'] = year
-            data_out.loc[cnt, 'reference_year'] = reference_year
-            data_out.loc[cnt, 'ISO'] = country
-            data_out.loc[cnt, 'region_id'] = u_coord.country_to_iso(country, "numeric")
-            data_out.loc[cnt, 'impact'] = \
-                np.nansum(df_country[df_country.Year.isin([year])][imp_str])
-            data_out.loc[cnt, 'impact_scaled'] = \
-                np.nansum(df_country[df_country.Year.isin([year])][imp_str + " scaled"])
-            if '000 US' in imp_str:  # EM-DAT damages provided in '000 USD
-                data_out.loc[cnt, 'impact'] = data_out.loc[cnt, 'impact'] * 1e3
-                data_out.loc[cnt, 'impact_scaled'] = data_out.loc[cnt, 'impact_scaled'] * 1e3
-        out = pd.concat([out, data_out])
-    out = out.reset_index(drop=True)
+
+    def country_df(df_data):
+        for data_iso in df_data.ISO.unique():
+            country = u_coord.country_to_iso(data_iso, "alpha3")
+
+            df_country = df_data.loc[df_data.ISO == country]
+            if not df_country.size:
+                continue
+
+            # Retrieve impact data for all years
+            all_years = np.arange(min(df_data.Year), max(df_data.Year) + 1)
+            data_out = pd.DataFrame.from_records(
+                [
+                    (
+                        year,
+                        np.nansum(df_country[df_country.Year.isin([year])][imp_str]),
+                        np.nansum(
+                            df_country[df_country.Year.isin([year])][
+                                imp_str + " scaled"
+                            ]
+                        ),
+                    )
+                    for year in all_years
+                ],
+                columns=["year", "impact", "impact_scaled"]
+            )
+
+            # Add static data
+            data_out["reference_year"] = reference_year
+            data_out["ISO"] = country
+            data_out["region_id"] = u_coord.country_to_iso(country, "numeric")
+
+            # EMDAT provides damage data in 1000 USD
+            if "000 US" in imp_str:
+                data_out["impact"] = data_out["impact"] * 1e3
+                data_out["impact_scaled"] = data_out["impact_scaled"] * 1e3
+
+            yield data_out
+
+    out = pd.concat(list(country_df(df_data)), ignore_index=True)
     return out
 
 

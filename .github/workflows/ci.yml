@@ -1,0 +1,70 @@
+name: GitHub CI
+
+# Execute this for every push
+on: [push]
+
+# Use bash explicitly for being able to enter the conda environment
+defaults:
+  run:
+    shell: bash -l {0}
+
+jobs:
+  build-and-test:
+    name: Build Env, Install, Unit Tests
+    runs-on: ubuntu-latest
+    permissions:
+      # For publishing results
+      checks: write
+
+    # Run this test for different Python versions
+    strategy:
+      # Do not abort other tests if only a single one fails
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.10", "3.11"]
+
+    steps:
+      -
+        name: Checkout Repo
+        uses: actions/checkout@v3
+      -
+        # Store the current date to use it as cache key for the environment
+        name: Get current date
+        id: date
+        run: echo "date=$(date +%Y-%m-%d)" >> "${GITHUB_OUTPUT}"
+      -
+        name: Create Environment with Mamba
+        uses: mamba-org/setup-micromamba@v1
+        with:
+          environment-name: climada_env_${{ matrix.python-version }}
+          environment-file: requirements/env_climada.yml
+          create-args: >-
+            python=${{ matrix.python-version }}
+            make
+          init-shell: >-
+            bash
+          # Persist environment for branch, Python version, single day
+          cache-environment-key: env-${{ github.ref }}-${{ matrix.python-version }}-${{ steps.date.outputs.date }}
+      -
+        name: Install CLIMADA
+        run: |
+          python -m pip install ".[test]"
+      -
+        name: Run Unit Tests
+        run: |
+          make unit_test
+      -
+        name: Publish Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          junit_files: tests_xml/tests.xml
+          check_name: "Unit Test Results Python ${{ matrix.python-version }}"
+          comment_mode: "off"
+      -
+        name: Upload Coverage Reports
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-report-unittests-py${{ matrix.python-version }}
+          path: coverage/

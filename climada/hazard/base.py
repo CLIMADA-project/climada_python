@@ -26,8 +26,8 @@ import datetime as dt
 import itertools
 import logging
 import pathlib
-import warnings
 from typing import Union, Optional, Callable, Dict, Any, List
+import warnings
 
 import geopandas as gpd
 import h5py
@@ -42,7 +42,6 @@ import sparse as sp
 from scipy import sparse
 import xarray as xr
 
-from climada.util.tag import Tag
 from climada.hazard.centroids.centr import Centroids
 import climada.util.plot as u_plot
 import climada.util.checker as u_check
@@ -113,8 +112,6 @@ class Hazard():
         (wild fire).
         Note: The acronym is used as reference to the hazard when centroids of multiple hazards
         are assigned to an ``Exposures`` object.
-    tag : Tag
-        information about the source
     units : str
         units of the intensity
     centroids : Centroids
@@ -145,8 +142,7 @@ class Hazard():
     """Intensity threshold per hazard used to filter lower intensities. To be
     set for every hazard type"""
 
-    vars_oblig = {'tag',
-                  'units',
+    vars_oblig = {'units',
                   'centroids',
                   'event_id',
                   'frequency',
@@ -155,7 +151,7 @@ class Hazard():
                   }
     """Name of the variables needed to compute the impact. Types: scalar, str,
     list, 1dim np.array of size num_events, scipy.sparse matrix of shape
-    num_events x num_centroids, Centroids and Tag."""
+    num_events x num_centroids, Centroids."""
 
     vars_def = {'date',
                 'orig',
@@ -183,8 +179,7 @@ class Hazard():
                  date: Optional[np.ndarray] = None,
                  orig: Optional[np.ndarray] = None,
                  intensity: Optional[sparse.csr_matrix] = None,
-                 fraction: Optional[sparse.csr_matrix] = None,
-                 **tag_kwargs):
+                 fraction: Optional[sparse.csr_matrix] = None):
         """
         Initialize values.
 
@@ -218,9 +213,6 @@ class Hazard():
         fraction : sparse.csr_matrix, optional
             fraction of affected exposures for each event at each centroid. Defaults to
             empty matrix.
-        tag_kwargs
-            Keyword-arguments for creating the HazardTag. ``haz_type`` is also passed
-            to the Tag constructor.
 
         Examples
         --------
@@ -234,7 +226,6 @@ class Hazard():
 
         """
         self.haz_type = haz_type
-        self.tag = Tag(**tag_kwargs)
         self.units = units
         self.centroids = centroids if centroids is not None else Centroids()
         # following values are defined for each event
@@ -359,7 +350,6 @@ class Hazard():
         hazard_kwargs = dict()
         if haz_type is not None:
             hazard_kwargs["haz_type"] = haz_type
-        hazard_kwargs["file_name"] = str(files_intensity) + ' ; ' + str(files_fraction)
 
         centroids = Centroids.from_raster_file(
             files_intensity[0], src_crs=src_crs, window=window, geometry=geometry, dst_crs=dst_crs,
@@ -503,7 +493,7 @@ class Hazard():
             The type identifier of the hazard. Will be stored directly in the hazard
             object.
         intensity_unit : str
-            The physical units of the intensity. Will be stored in the ``hazard.tag``.
+            The physical units of the intensity.
         intensity : str, optional
             Identifier of the `xarray.DataArray` containing the hazard intensity data.
         coordinate_vars : dict(str, str), optional
@@ -1025,8 +1015,7 @@ class Hazard():
             raise ValueError('Number of intensity files differs from fraction files:'
                              f' {len(files_intensity)} != {len(files_fraction)}')
 
-        hazard_kwargs = dict(
-            file_name=str(files_intensity) + ' ; ' + str(files_fraction))
+        hazard_kwargs = {}
         if haz_type is not None:
             hazard_kwargs["haz_type"] = haz_type
 
@@ -1222,15 +1211,13 @@ class Hazard():
         self.__dict__ = Hazard.from_mat(*args, **kwargs).__dict__
 
     @classmethod
-    def from_mat(cls, file_name, description='', var_names=None):
+    def from_mat(cls, file_name, var_names=None):
         """Read climada hazard generate with the MATLAB code in .mat format.
 
         Parameters
         ----------
         file_name : str
             absolute file name
-        description : str, optional
-            description of the data
         var_names : dict, optional
             name of the variables in the file,
             default: DEF_VAR_MAT constant
@@ -1256,10 +1243,9 @@ class Hazard():
                 pass
 
             centroids = Centroids.from_mat(file_name, var_names=var_names['var_cent'])
-            attrs = cls._read_att_mat(data, file_name, var_names, centroids, description)
+            attrs = cls._read_att_mat(data, file_name, var_names, centroids)
             haz = cls(haz_type=u_hdf5.get_string(data[var_names['var_name']['per_id']]),
                       centroids=centroids,
-                      file_name=str(file_name),
                       **attrs
                       )
         except KeyError as var_err:
@@ -1273,15 +1259,13 @@ class Hazard():
         self.__dict__ = Hazard.from_excel(*args, **kwargs).__dict__
 
     @classmethod
-    def from_excel(cls, file_name, description='', var_names=None, haz_type=None):
+    def from_excel(cls, file_name, var_names=None, haz_type=None):
         """Read climada hazard generated with the MATLAB code in Excel format.
 
         Parameters
         ----------
         file_name : str
             absolute file name
-        description : str, optional
-            description of the data
         var_names (dict, default): name of the variables in the file,
             default: DEF_VAR_EXCEL constant
         haz_type : str, optional
@@ -1302,7 +1286,7 @@ class Hazard():
         if not var_names:
             var_names = DEF_VAR_EXCEL
         LOGGER.info('Reading %s', file_name)
-        hazard_kwargs = dict(file_name=file_name, description=description)
+        hazard_kwargs = {}
         if haz_type is not None:
             hazard_kwargs["haz_type"] = haz_type
         try:
@@ -1829,8 +1813,6 @@ class Hazard():
             for (var_name, var_val) in self.__dict__.items():
                 if var_name == 'centroids':
                     self.centroids.write_hdf5(hf_data.create_group(var_name))
-                elif var_name == 'tag':
-                    var_val.to_hdf5(hf_data)
                 elif isinstance(var_val, sparse.csr_matrix):
                     if todense:
                         hf_data.create_dataset(var_name, data=var_val.toarray())
@@ -1887,21 +1869,11 @@ class Hazard():
         hazard_kwargs = dict()
         with h5py.File(file_name, 'r') as hf_data:
             for (var_name, var_val) in haz.__dict__.items():
-                if var_name != 'tag' and var_name not in hf_data.keys():
+                if var_name not in hf_data.keys():
                     continue
                 if var_name == 'centroids':
                     hazard_kwargs["centroids"] = Centroids.from_hdf5(
                         hf_data.get(var_name))
-                elif var_name == 'tag':
-                    # legacy behavior: haz_type used to be part of the hazard tag
-                    if "haz_type" in hf_data.keys():
-                        haz_type = u_hdf5.to_string(
-                            hf_data.get("haz_type")[0])
-                        if haz_type:
-                            hazard_kwargs["haz_type"] = haz_type
-                    tag = Tag.from_hdf5(hf_data)
-                    hazard_kwargs["file_name"] = tag.file_name
-                    hazard_kwargs["description"] = tag.description
                 elif isinstance(var_val, np.ndarray) and var_val.ndim == 1:
                     hazard_kwargs[var_name] = np.array(hf_data.get(var_name))
                 elif isinstance(var_val, sparse.csr_matrix):
@@ -2143,7 +2115,7 @@ class Hazard():
         return inten_fit
 
     @staticmethod
-    def _read_att_mat(data, file_name, var_names, centroids, description):
+    def _read_att_mat(data, file_name, var_names, centroids):
         """Read MATLAB hazard's attributes."""
         attrs = dict()
         attrs["frequency"] = np.squeeze(data[var_names['var_name']['freq']])
@@ -2183,12 +2155,6 @@ class Hazard():
                 file_name, data[var_names['var_name']['ev_name']])
         except KeyError:
             attrs["event_name"] = list(attrs["event_id"])
-        attrs["description"] = description
-        try:
-            comment = u_hdf5.get_string(data[var_names['var_name']['comment']])
-            attrs["description"] += ' ' + comment
-        except KeyError:
-            pass
 
         try:
             datenum = data[var_names['var_name']['datenum']].squeeze()
@@ -2249,7 +2215,6 @@ class Hazard():
         - All centroids are combined together using `Centroids.union`.
         - Lists, 1-dimensional arrays (NumPy) and sparse CSR matrices (SciPy) are concatenated.
           Sparse matrices are concatenated along the first (vertical) axis.
-        - All `tag` attributes are appended to `self.tag`.
 
         For any other type of attribute: A ValueError is raised if an attribute of that name is
         not defined in all of the non-empty hazards at least. However, there is no check that the
@@ -2316,11 +2281,6 @@ class Hazard():
                 raise ValueError(f"Attribute {attr_name} is not shared by all hazards. "
                                  "The hazards are incompatible and cannot be concatenated.")
 
-        # append all tags (to keep track of input files and descriptions)
-        for haz in haz_list:
-            if haz.tag is not self.tag:
-                self.tag.append(haz.tag)
-
         # map individual centroids objects to union
         centroids = Centroids.union(*[haz.centroids for haz in haz_list])
         hazcent_in_cent_idx_list = [
@@ -2357,7 +2317,7 @@ class Hazard():
         and then applies the `append` method. Please refer to the docs of `Hazard.append` for
         caveats and limitations of the concatenation procedure.
 
-        For centroids, tags, lists, arrays and sparse matrices, the remarks in `Hazard.append`
+        For centroids, lists, arrays and sparse matrices, the remarks in `Hazard.append`
         apply. All other attributes are copied from the first object in `haz_list`.
 
         Note that `Hazard.concat` can be used to concatenate hazards of a subclass. The result's
@@ -2389,7 +2349,7 @@ class Hazard():
             # to save memory, only copy simple attributes like
             # "units" that are not explicitly handled by Hazard.append
             if not (isinstance(attr_val, (list, np.ndarray, sparse.csr_matrix))
-                    or attr_name in ["tag", "centroids"]):
+                    or attr_name in ["centroids"]):
                 setattr(haz_concat, attr_name, copy.deepcopy(attr_val))
         haz_concat.append(*haz_list)
         return haz_concat
