@@ -492,6 +492,7 @@ class TestFunc(unittest.TestCase):
         self.assertEqual(u_coord.country_natid2iso(natid_list), al3_list)
         self.assertEqual(u_coord.country_natid2iso(natid_list[1]), al3_list[1])
 
+
 class TestAssign(unittest.TestCase):
     """Test coordinate assignment functions"""
 
