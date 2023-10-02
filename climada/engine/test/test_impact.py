@@ -562,9 +562,13 @@ class TestImpactReg(unittest.TestCase):
 
     def test_no_imp_mat(self):
         """Check error if no impact matrix is stored"""
-        # Test error when no imp_mat is stored
-        self.imp.imp_mat = sparse.csr_matrix((0, 0))
+        # A matrix with only zeros should work!
+        self.imp.imp_mat = sparse.csr_matrix(np.zeros_like(self.imp.imp_mat.toarray()))
+        at_reg = self.imp.impact_at_reg(["A", "A"])
+        self.assertEqual(at_reg["A"].sum(), 0)
 
+        # An empty matrix should not work
+        self.imp.imp_mat = sparse.csr_matrix((0, 0))
         with self.assertRaises(ValueError) as cm:
             self.imp.impact_at_reg()
         self.assertIn("no Impact.imp_mat was stored", str(cm.exception))

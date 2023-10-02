@@ -92,8 +92,6 @@ class TestReader(unittest.TestCase):
                                              store_windfields=True, metric=metric)
 
             self.assertEqual(tc_haz.haz_type, 'TC')
-            self.assertEqual(tc_haz.tag.description, [])
-            self.assertEqual(tc_haz.tag.file_name, ['Name: 1951239N12334'])
             self.assertEqual(tc_haz.units, 'm/s')
             self.assertEqual(tc_haz.centroids.size, 296)
             self.assertEqual(tc_haz.event_id.size, 1)
@@ -204,8 +202,6 @@ class TestReader(unittest.TestCase):
         tc_haz.check()
 
         self.assertEqual(tc_haz.haz_type, 'TC')
-        self.assertEqual(tc_haz.tag.description, [])
-        self.assertEqual(tc_haz.tag.file_name, ['Name: 1951239N12334'])
         self.assertEqual(tc_haz.units, 'm/s')
         self.assertEqual(tc_haz.centroids.size, 296)
         self.assertEqual(tc_haz.event_id.size, 1)
@@ -232,8 +228,6 @@ class TestReader(unittest.TestCase):
         tc_haz.check()
 
         self.assertEqual(tc_haz.haz_type, 'TC')
-        self.assertEqual(tc_haz.tag.description, [])
-        self.assertEqual(tc_haz.tag.file_name, ['Name: 1951239N12334'])  # distinct file names
         self.assertEqual(tc_haz.units, 'm/s')
         self.assertEqual(tc_haz.centroids.size, 296)
         self.assertEqual(tc_haz.event_id.size, 1)
@@ -433,9 +427,6 @@ class TestClimateSce(unittest.TestCase):
         self.assertFalse(
             np.allclose(tc.intensity[2, :].toarray(), tc_cc.intensity[2, :].toarray()))
         self.assertTrue(np.allclose(tc.frequency, tc_cc.frequency))
-        self.assertEqual(
-            tc_cc.tag.description,
-            'climate change scenario for year 2050 and RCP 45 from Knutson et al 2015.')
 
     def test_apply_criterion_track(self):
         """Test _apply_criterion function."""

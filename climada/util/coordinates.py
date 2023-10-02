@@ -1539,9 +1539,8 @@ def get_country_code(lat, lon, gridded=False):
                                        method='nearest', fill_value=0)
         region_id = region_id.astype(int)
     else:
-        extent = (lon.min() - 0.001, lon.max() + 0.001,
-                  lat.min() - 0.001, lat.max() + 0.001)
-        countries = get_country_geometries(extent=extent)
+        (lon_min, lat_min, lon_max, lat_max) = latlon_bounds(lat, lon, 0.001)
+        countries = get_country_geometries(extent=(lon_min, lon_max, lat_min, lat_max))
         with warnings.catch_warnings():
             # in order to suppress the following
             # UserWarning: Geometry is in a geographic CRS. Results from 'area' are likely

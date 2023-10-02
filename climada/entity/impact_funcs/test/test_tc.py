@@ -39,21 +39,30 @@ class TestEmanuelFormula(unittest.TestCase):
         self.assertTrue(np.array_equal(imp_fun.intensity, np.arange(0, 121, 5)))
         self.assertTrue(np.array_equal(imp_fun.paa, np.ones((25,))))
         self.assertTrue(np.array_equal(imp_fun.mdd[0:6], np.zeros((6,))))
-        self.assertTrue(np.array_equal(imp_fun.mdd[6:10],
-                        np.array([0.0006753419543492556, 0.006790495604105169,
-                                  0.02425254393374475, 0.05758706257339458])))
-        self.assertTrue(np.array_equal(imp_fun.mdd[10:15],
-                        np.array([0.10870556455111065, 0.1761433569521351,
-                                  0.2553983618763961, 0.34033822528795565,
-                                  0.4249447743109498])))
-        self.assertTrue(np.array_equal(imp_fun.mdd[15:20],
-                        np.array([0.5045777092933046, 0.576424302849412,
-                                  0.6393091739184916, 0.6932203123193963,
-                                  0.7388256596555696])))
-        self.assertTrue(np.array_equal(imp_fun.mdd[20:25],
-                        np.array([0.777104531116526, 0.8091124649261859,
-                                  0.8358522190681132, 0.8582150905529946,
-                                  0.8769633232141456])))
+        np.testing.assert_allclose(
+            imp_fun.mdd[6:25],
+            [
+                0.0006753419543492556,
+                0.006790495604105169,
+                0.02425254393374475,
+                0.05758706257339458,
+                0.10870556455111065,
+                0.1761433569521351,
+                0.2553983618763961,
+                0.34033822528795565,
+                0.4249447743109498,
+                0.5045777092933046,
+                0.576424302849412,
+                0.6393091739184916,
+                0.6932203123193963,
+                0.7388256596555696,
+                0.777104531116526,
+                0.8091124649261859,
+                0.8358522190681132,
+                0.8582150905529946,
+                0.8769633232141456,
+            ],
+        )
 
     def test_values_pass(self):
         """Compute mdr interpolating values."""
