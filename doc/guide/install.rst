@@ -147,7 +147,7 @@ For advanced Python users or developers of CLIMADA, we recommed cloning the CLIM
 
    .. code-block:: shell
 
-      conda env create -n climada_env python=3.9
+      conda create -n climada_env python=3.9
 
    .. note::
 
