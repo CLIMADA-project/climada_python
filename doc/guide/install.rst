@@ -143,13 +143,31 @@ For advanced Python users or developers of CLIMADA, we recommed cloning the CLIM
       cd climada_python
       git checkout develop
 
-#. Create an Anaconda environment called ``climada_env`` for installing CLIMADA.
-   Use the default environment specs in ``env_climada.yml`` to create it.
+#. Create an Anaconda environment called ``climada_env`` for installing CLIMADA:
+
+   .. code-block:: shell
+
+      conda create -n climada_env python=3.9
+
+   .. note::
+
+      CLIMADA can be installed for different Python versions.
+      If you want to use a different version, replace the version specification in the command above with another allowed version.
+
+      .. list-table::
+         :width: 60%
+
+         * - **Supported Version**
+           - ``3.9``
+         * - Allowed Versions
+           - ``3.9``, ``3.10``, ``3.11``
+
+#. Use the default environment specs in ``env_climada.yml`` to install all dependencies.
    Then activate the environment:
 
    .. code-block:: shell
 
-      conda env create -n climada_env -f requirements/env_climada.yml
+      conda env update -n climada_env -f requirements/env_climada.yml
       conda activate climada_env
 
 #. Install the local CLIMADA source files as Python package using ``pip``:
@@ -237,7 +255,6 @@ To install CLIMADA Petals, we assume you have already installed CLIMADA Core wit
    .. code-block:: shell
 
       conda env update -n climada_env -f requirements/env_climada.yml
-      conda env update -n climada_env -f requirements/env_developer.yml
       conda activate climada_env
 
 #. Install the CLIMADA Petals package:
@@ -288,15 +305,20 @@ Basic Setup
 
 See the VSCode docs on `Python <https://code.visualstudio.com/docs/python/python-tutorial>`_ and `Jupyter Notebooks <https://code.visualstudio.com/docs/datascience/jupyter-notebooks>`_ for further information.
 
+.. hint::
+
+   Both of the following setup instructions work analogously for Core and Petals.
+   The specific instructions for Petals are shown in square brackets: []
+
 Workspace Setup
 """""""""""""""
 
 Setting up a workspace for the CLIMADA source code is only available for :ref:`advanced installations <install-advanced>`.
 
 #. Open a new VSCode window.
-   Below *Start*, click *Open...*, select the ``climada_python`` repository folder in your workspace directory, and click on *Open* on the bottom right.
+   Below *Start*, click *Open...*, select the ``climada_python`` [``climada_petals``] repository folder in your workspace directory, and click on *Open* on the bottom right.
 
-#. Click *File* > *Save Workspace As...* and store the workspace settings file next to (**not** in!) the ``climada_python`` folder.
+#. Click *File* > *Save Workspace As...* and store the workspace settings file next to (**not** in!) the ``climada_python`` [``climada_petals``] folder.
    This will enable you to load the workspace and all its specific settings in one go.
 
 #. Open the Command Palette by clicking *View* > *Command Palette* or by using the shortcut keys ``Ctrl+Shift+P`` (Windows, Linux) / ``Cmd+Shift+P`` (macOS).
@@ -315,7 +337,7 @@ After you set up a workspace, you might want to configure the test explorer for 
 
 #. In the left sidebar, select the "Testing" symbol, and click on *Configure Python Tests*.
 
-#. Select "pytest" as test framework and then select ``climada`` as the directory containing the test files.
+#. Select "pytest" as test framework and then select ``climada`` [``climada_petals``] as the directory containing the test files.
 
 #. Select "Testing" in the Activity Bar on the left or through *View* > *Testing*.
    The "Test Explorer" in the left sidebar will display the tree structure of modules, files, test classes and individual tests.
@@ -407,7 +429,6 @@ To update, follow the instructions based on your :ref:`installation type <instal
   .. code-block:: shell
 
      conda env update -n climada_env -f requirements/env_climada.yml
-     conda env update -n climada_env -f requirements/env_developer.yml
 
   The same instructions apply for CLIMADA Petals.
 
