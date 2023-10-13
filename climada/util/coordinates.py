@@ -1073,7 +1073,7 @@ def match_coordinates(coords, coords_to_assign, distance="euclidean",
 def match_centroids(coord_gdf, centroids, distance='euclidean',
                     threshold=NEAREST_NEIGHBOR_THRESHOLD):
     """Assign to each gdf coordinate point its closest centroids's coordinate.
-    If disatances > threshold in points' distances, -1 is returned.
+    If distances > threshold in points' distances, -1 is returned.
     If centroids are in a raster and coordinate point is outside of it ``-1`` is assigned
 
     Parameters

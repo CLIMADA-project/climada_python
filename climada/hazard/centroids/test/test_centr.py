@@ -27,7 +27,7 @@ import geopandas as gpd
 
 from climada import CONFIG
 from climada.hazard.centroids.centr import Centroids
-from climada.util.constants import GLB_CENTROIDS_MAT, HAZ_TEMPLATE_XLS
+from climada.util.constants import HAZ_TEMPLATE_XLS
 import climada.hazard.test as hazard_test
 from climada.util.constants import DEF_CRS
 import climada.util.coordinates as u_coord

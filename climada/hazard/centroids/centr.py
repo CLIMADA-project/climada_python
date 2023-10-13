@@ -214,6 +214,20 @@ class Centroids():
 
     @classmethod
     def from_exposures(cls, exposures):
+        """
+        Generate centroids form the location of an exposures.
+
+        Parameters
+        ----------
+        exposures : Exposure
+            exposures from which to take the centroids location
+            and region_id (if defined)
+
+        Returns
+        -------
+        Centroids
+            Centroids built from the exposures
+        """
         gdf = exposures.gdf[['geometry', 'region_id']]
         return cls.from_geodtaframe(gdf)
 
