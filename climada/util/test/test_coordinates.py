@@ -547,9 +547,9 @@ class TestAssign(unittest.TestCase):
 
         expected_result = [
             # constant y-value, varying x-value
-            -1, 0, 0, 0, 0, 1,
+            0, 0, 0, 0, 0, 1,
             # constant x-value, varying y-value
-            -1, 0, 0, 20,
+            0, 0, 0, 20,
             # out of bounds: topleft, top, topright, right, bottomright, bottom, bottomleft, left
             -1, -1, -1, -1, -1, -1, -1, -1,
             # some explicit points within the raster
@@ -569,11 +569,11 @@ class TestAssign(unittest.TestCase):
 
         coords_to_assign = np.array([(2.1, 3), (0, 0), (0, 2), (0.9, 1.0), (0, -179.9)])
         centroids = Centroids(
-            lat=coords_to_assign[:, 0],
-            lon=coords_to_assign[:, 1],
-            geometry = gpd.GeoSeries(crs=DEF_CRS)
+            latitude=coords_to_assign[:, 0],
+            longitude=coords_to_assign[:, 1],
+            crs=DEF_CRS
         )
-        centroids_empty = Centroids()
+        centroids_empty = Centroids(latitude=np.array([]), longitude=np.array([]))
 
         expected_results = [
             # test with different thresholds (in km)
@@ -604,9 +604,9 @@ class TestAssign(unittest.TestCase):
 
         coords_to_assign = np.array([(2.1, 3), (0, 0), (0, 2), (0.9, 1.0), (0, -179.9)])
         centroids = Centroids(
-            lat=[1100000,1200000],
-            lon=[2500000,2600000],
-            geometry = gpd.GeoSeries(crs='EPSG:2056')
+            latitude=[1100000,1200000],
+            longitude=[2500000,2600000],
+            crs='EPSG:2056'
         )
 
         with self.assertRaises(ValueError) as cm:

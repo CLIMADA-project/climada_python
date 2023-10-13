@@ -150,9 +150,9 @@ class TestFuncs(unittest.TestCase):
 
         expected_result = [
             # constant y-value, varying x-value
-            -1, 0, 0, 0, 0, 1,
+            0, 0, 0, 0, 0, 1,
             # constant x-value, varying y-value
-            -1, 0, 0, 20,
+            0, 0, 0, 20,
             # out of bounds: topleft, top, topright, right, bottomright, bottom, bottomleft, left
             -1, -1, -1, -1, -1, -1, -1, -1,
             # some explicit points within the raster
