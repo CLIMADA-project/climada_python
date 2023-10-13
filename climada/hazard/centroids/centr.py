@@ -760,7 +760,9 @@ class Centroids():
         extra_values = {}
         for centr_name in data.keys():
             if centr_name not in ('crs', 'lat', 'lon', 'meta'):
-                extra_values[centr_name] = np.array(data.get(centr_name))
+                values = np.array(data.get(centr_name))
+                if latitude.size != 0 and values.size != 0 :
+                    extra_values[centr_name] = values
 
         return gpd.GeoDataFrame(
             extra_values,
