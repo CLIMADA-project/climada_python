@@ -203,8 +203,29 @@ class Centroids():
         """
         return self.gdf.equals(other.gdf) & u_coord.equal_crs(self.crs, other.crs)
 
+    def to_default_crs(self):
+        """
+        Project the current centroids to the default CRS (epsg4326)
+        Modifies the object in place.
+        """
+        self.gdf.to_crs(DEF_CRS, inplace=True)
+
     @classmethod
     def from_geodataframe(cls, gdf):
+        """Initialize centroids from a geodataframe
+
+        Parameters
+        ----------
+        gdf : GeoDataFrame
+            Input geodataframe with centroids as points
+            in the geometry column. All other columns are
+            attached to the centroids geodataframe.
+
+        Returns
+        -------
+        Centroids
+            Centroids built from the geodataframe.
+        """
         return cls(
             longitude=gdf.geometry.x.values,
             latitude=gdf.geometry.y.values,
@@ -338,7 +359,10 @@ class Centroids():
             self.gdf['region_id'] = u_coord.get_country_code(
                 ne_geom.geometry[:].y.values, ne_geom.geometry[:].x.values)
         else:
-            raise NotImplementedError('The region id can only be assigned if the crs is epsg:4326')
+            raise NotImplementedError(
+                'The region id can only be assigned if the crs is epsg:4326'
+                'Please use .to_default_crs to change to epsg:4326'
+                )
 
     # NOT REALLY AN ELEVATION FUNCTION, JUST READ RASTER
     def get_elevation(self, topo_path):
@@ -365,7 +389,10 @@ class Centroids():
             Used for dask map_partitions. "threads", "synchronous" or "processes"
         """
         if not u_coord.equal_crs(self.crs, 'epsg:4326'):
-            raise NotImplementedError('The distance to coast can only be assigned if the crs is epsg:4326')
+            raise NotImplementedError(
+                'The distance to coast can only be assigned if the crs is epsg:4326'
+                'Please use .to_default_crs to change to epsg:4326'
+                )
         if precomputed:
             return u_coord.dist_to_coast_nasa(
                 self.lat, self.lon, highres=True, signed=signed)
@@ -383,7 +410,10 @@ class Centroids():
             used for dask map_partitions. “threads”, “synchronous” or “processes”
         """
         if not u_coord.equal_crs(self.crs, 'epsg:4326'):
-            raise NotImplementedError('The on land property can only be assigned if the crs is epsg:4326')
+            raise NotImplementedError(
+                'The on land property can only be assigned if the crs is epsg:4326'
+                'Please use .to_default_crs to change to epsg:4326'
+                )
 
         ne_geom = self._ne_crs_geom(scheduler)
         LOGGER.debug('Setting on_land %s points.', str(self.lat.size))
