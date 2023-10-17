@@ -8,6 +8,7 @@ from numbers import Number
 import pandas as pd
 import numpy as np
 from scipy.optimize import Bounds, LinearConstraint, NonlinearConstraint
+import matplotlib.pyplot as plt
 import seaborn as sns
 
 from climada.hazard import Hazard
@@ -157,6 +158,80 @@ class OutputEvaluator:
         :py:meth:`~climada.entity.impact_funcs.impact_func_set.ImpactFuncSet.plot`
         """
         return self.impf_set.plot(**plot_kwargs)
+    
+    def plot_impf_variability(
+        self,
+        cost_func_diff: float = 0.1,
+        p_space_df: Optional[pd.DataFrame] = None,
+        plot_haz: bool = False,
+        haz_vals: Optional[np.array] = None,
+        **plot_kwargs
+    ):
+        """Plot impact function variability with parameter combinations of almost equal 
+        cost function values
+
+        Args:
+            cost_func_diff (float, optional): Max deviation from optimal cost function value 
+                (as fraction). Defaults to 0.1 (i.e. 10%).
+            p_space_df (pd.DataFrame, optional): parameter space. Defaults to None.
+            plot_haz (bool, optional): Whether or not to plot hazard intensity distibution. 
+                Defaults to False.
+            haz_vals (np.array, optional): Hazard values at exposure points (if 
+                pre-calculated). Defaults to None.
+        """
+        haz_type = self.input.hazard.haz_type
+        if p_space_df is None:
+            p_space_df = self.output.p_space_to_dataframe()
+
+        # Ignore cost dimension
+        params = p_space_df.columns.tolist()
+        try:
+            params.remove('Cost Function') #Hardcoded name i.o.?
+        except ValueError:
+            pass
+
+        #determine cost function values within 'cost_func_diff' % of best estimate
+        max_cost_func_val = p_space_df['Cost Function'].min()*(1+cost_func_diff)
+        params_within_range = p_space_df.loc[p_space_df['Cost Function']<=max_cost_func_val,
+                                             params]
+
+        # Initialize figure
+        fig,ax = plt.subplots()
+
+        #Plot best-fit impact function
+        best_impf = self.impf_set.get_func(haz_type=haz_type)[0]
+        ax.plot(best_impf.intensity,best_impf.mdd*best_impf.paa*100,color='tab:blue',
+                lw=3,zorder=2,label='best fit')
+
+        #Plot all impact functions within 'cost_func_diff' % of best estimate
+        for row in range(params_within_range.shape[0]):
+            label = f'within {int(cost_func_diff*100)} percent of best fit' if row==0 else None
+
+            sel_params = params_within_range.iloc[row,:].to_dict()
+            temp_impf_set = self.input.impact_func_creator(**sel_params)
+            temp_impf = temp_impf_set.get_func(haz_type=haz_type)[0]
+
+            ax.plot(temp_impf.intensity,temp_impf.mdd*temp_impf.paa*100,color='grey',
+                    alpha=0.4,label=label)
+            
+        # Plot hazard intensity value distributions
+        if plot_haz:
+            if haz_vals is None:
+                haz_vals = self.input.hazard.intensity[:,self.input.exposure.gdf[f"centr_{haz_type}"]]
+
+            ax2 = ax.twinx()
+            ax2.hist(haz_vals[haz_vals.nonzero()].getA1(),bins=40,color='tab:orange',
+                     alpha=0.3,label='Hazard intensity\noccurence')
+            ax2.set(ylabel='Hazard intensity occurence (#Exposure points)')
+            ax.axvline(x=haz_vals.max(),label='Maximum hazard value',color='tab:orange')
+            ax2.legend(loc='lower right')
+
+        ax.set(xlabel=f"Intensity ({self.input.hazard.units})",
+               ylabel="Mean Damage Ratio (MDR) in %",
+               xlim=(min(best_impf.intensity),max(best_impf.intensity)))
+        ax.legend()
+        return ax
+
 
     def plot_at_event(
         self,
