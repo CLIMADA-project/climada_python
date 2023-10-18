@@ -16,6 +16,8 @@ Code freeze date: YYYY-MM-DD
 
 ### Fixed
 
+- Fix the dist_approx util function when used with method="geosphere" and log=True and points that are very close. [#792](https://github.com/CLIMADA-project/climada_python/pull/792)
+
 ### Deprecated
 
 ### Removed
