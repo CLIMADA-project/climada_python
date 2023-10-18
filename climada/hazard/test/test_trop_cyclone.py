@@ -306,20 +306,42 @@ class TestWindfieldHelpers(unittest.TestCase):
         """Test Holland et al. 2010 wind field model."""
         # test at centroids within and outside of radius of max wind
         si_track = xr.Dataset({
-            "rad": ("time", KM_TO_M * np.array([75, 40])),
-            "vmax": ("time", [35.0, 40.0]),
-            "hol_b": ("time", [1.80, 2.5]),
+            "rad": ("time", KM_TO_M * np.array([75, 40, 70, 103, 96])),
+            "vmax": ("time", [35.0, 40.0, 90.0, 18.0, 12.0]),
+            "hol_b": ("time", [1.80, 2.5, 2.5, 1.9, 1.75]),
         })
-        d_centr = KM_TO_M * np.array([[35, 75, 220], [30, 1000, 300]], dtype=float)
-        close_centr = np.array([[True, True, True], [True, False, True]], dtype=bool)
+        d_centr = KM_TO_M * np.array([
+            [35, 75, 220],
+            [30, 1000, 300],
+            [35, 105, 300],
+            [35, 105, 300],
+            [35, 105, 300],
+        ], dtype=float)
+        close_centr = np.array([
+            [True, True, True],
+            [True, False, True],
+            [True, True, True],
+            [True, True, True],
+            [True, True, True],
+        ], dtype=bool)
         hol_x = _x_holland_2010(si_track, d_centr, close_centr)
-        np.testing.assert_array_almost_equal(
-            hol_x, [[0.5, 0.5, 0.47273], [0.5, 0, 0.211602]])
+        np.testing.assert_array_almost_equal(hol_x, [
+            [0.5, 0.500000, 0.472730],
+            [0.5, 0.000000, 0.211602],
+            [0.5, 0.519094, 0.625478],
+            [0.5, 0.495423, 0.049174],
+            [0.5, 0.464344, 0.000000],
+        ])
 
         # test exactly at radius of maximum wind (35 m/s) and at peripheral radius (17 m/s)
         v_ang_norm = _stat_holland_2010(si_track, d_centr, close_centr, hol_x)
-        np.testing.assert_array_almost_equal(v_ang_norm,
-            [[15.957853, 35.0, 20.99411], [33.854826, 0, 17.0]])
+        np.testing.assert_array_almost_equal(v_ang_norm, [
+            [15.957853, 35.000000, 20.99411],
+            [33.854826, 0.0000000, 17.00000],
+            [20.859647, 74.020685, 17.00000],
+            [1.6966103, 17.994120, 17.00000],
+            [2.5723079, 11.935104, 12.00000],
+        ])
 
     def test_stat_holland_1980(self):
         """Test _stat_holland_1980 function. Compare to MATLAB reference."""
