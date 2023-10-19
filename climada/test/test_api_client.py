@@ -64,6 +64,15 @@ class TestClient(unittest.TestCase):
         dataset2 = client.get_dataset_info_by_uuid(dataset.uuid)
         self.assertEqual(dataset, dataset2)
 
+    def test_search_for_property_not_set(self):
+        """"""
+        client = Client()
+
+        nocountry = client.list_dataset_infos(data_type="earthquake",
+                                              properties={'country_name': None})[0]
+        self.assertNotIn('country_name', nocountry.properties)
+        self.assertIn('spatial_coverage', nocountry.properties)
+
     def test_dataset_offline(self):
         """"""
         client = Client()
@@ -140,10 +149,8 @@ class TestClient(unittest.TestCase):
                                          dump_dir=DATA_DIR)
         self.assertEqual(len(exposures.gdf), 5782)
         self.assertEqual(np.unique(exposures.gdf.region_id), 40)
-        self.assertEqual(exposures.tag.description,
-            ["LitPop Exposure for ['AUT'] at 150 as, year: 2018, financial mode: pop, exp: [0, 1], admin1_calc: False"])
-        self.assertEqual(exposures.tag.file_name,
-            [])
+        self.assertEqual(exposures.description,
+            "LitPop Exposure for ['AUT'] at 150 as, year: 2018, financial mode: pop, exp: [0, 1], admin1_calc: False")
 
     def test_get_exposures_fails(self):
         client = Client()
@@ -196,10 +203,8 @@ class TestClient(unittest.TestCase):
         litpop = client.get_litpop(country='LUX', version='v1', dump_dir=DATA_DIR)
         self.assertEqual(len(litpop.gdf), 188)
         self.assertEqual(np.unique(litpop.gdf.region_id), 442)
-        self.assertEqual(litpop.tag.description,
-            ["LitPop Exposure for ['LUX'] at 150 as, year: 2018, financial mode: pc, exp: [1, 1], admin1_calc: False"])
-        self.assertEqual(litpop.tag.file_name,
-            [])
+        self.assertEqual(litpop.description,
+            "LitPop Exposure for ['LUX'] at 150 as, year: 2018, financial mode: pc, exp: [1, 1], admin1_calc: False")
 
     def test_get_litpop_fail(self):
         client = Client()

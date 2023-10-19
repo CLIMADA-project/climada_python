@@ -19,12 +19,10 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define Tag class.
 """
 from __future__ import annotations
-
 from pathlib import Path
 from typing import Union, List
-import h5py
 
-__all__ = ['Tag']
+import h5py
 
 
 STR_DT = h5py.special_dtype(vlen=str)
@@ -42,7 +40,8 @@ def _distinct_list_of_str(list_of_str: list, arg: Union[list, str, object]):
 
 
 class Tag():
-    """Source data tag for Exposures, DiscRates, ImpactFuncSet, MeasureSet.
+    """Deprecated since climada 4.*. This class is only used for unpickling, e.g., when reading
+    Exposures hdf5 data files that have been created with climada <=3.*.
 
     Attributes
     ----------
@@ -111,7 +110,7 @@ class Tag():
         hf_str = hf_data.create_dataset('file_name', (len(self.file_name),), dtype=STR_DT)
         for i, name in enumerate(self.file_name):
             hf_str[i] = name
-        hf_str = hf_data.create_dataset('description', (len(self.file_name),), dtype=STR_DT)
+        hf_str = hf_data.create_dataset('description', (len(self.description),), dtype=STR_DT)
         for i, desc in enumerate(self.description):
             hf_str[i] = desc
 

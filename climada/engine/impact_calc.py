@@ -175,9 +175,8 @@ class ImpactCalc():
             imp_mat = None
             at_event, eai_exp, aai_agg = self.stitch_risk_metrics(imp_mat_gen)
         return Impact.from_eih(
-            self.exposures, self.impfset, self.hazard,
-            at_event, eai_exp, aai_agg, imp_mat
-            )
+            self.exposures, self.hazard, at_event, eai_exp, aai_agg, imp_mat
+        )
 
     def _return_empty(self, save_mat):
         """
@@ -202,8 +201,9 @@ class ImpactCalc():
                 )
         else:
             imp_mat = None
-        return Impact.from_eih(self.exposures, self.impfset, self.hazard,
-                        at_event, eai_exp, aai_agg, imp_mat)
+        return Impact.from_eih(
+            self.exposures, self.hazard, at_event, eai_exp, aai_agg, imp_mat
+        )
 
     def minimal_exp_gdf(self, impf_col, assign_centroids, ignore_cover, ignore_deductible):
         """Get minimal exposures geodataframe for impact computation

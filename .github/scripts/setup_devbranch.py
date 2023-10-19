@@ -104,8 +104,9 @@ def setup_devbranch():
     Just changes files, all `git` commands are in the setup_devbranch.sh file.
     """
     main_version = get_last_version().strip('v')
-
-    dev_version = f"{main_version}-dev"
+    semver = main_version.split(".")
+    semver[-1] = f"{int(semver[-1]) + 1}-dev"
+    dev_version = ".".join(semver)
 
     update_setup(dev_version)
     update_version(dev_version)

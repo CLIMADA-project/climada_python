@@ -24,16 +24,16 @@ unit_test : ## Unit tests execution with coverage and xml reports
 
 .PHONY : install_test
 install_test : ## Test installation was successful
-	pytest $(PYTEST_JUNIT_ARGS) climada/engine/test/test_cost_benefit.py \
-	climada/engine/test/test_impact.py
+	pytest $(PYTEST_JUNIT_ARGS) --pyargs climada.engine.test.test_cost_benefit \
+	climada.engine.test.test_impact
 
 .PHONY : data_test
 data_test : ## Test data APIs
-	python test_data_api.py
+	python script/jenkins/test_data_api.py
 
 .PHONY : notebook_test
 notebook_test : ## Test notebooks in doc/tutorial
-	python test_notebooks.py
+	python script/jenkins/test_notebooks.py report
 
 .PHONY : integ_test
 integ_test : ## Integration tests execution with xml reports
