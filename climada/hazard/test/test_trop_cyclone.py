@@ -429,12 +429,8 @@ class TestClimateSce(unittest.TestCase):
         self.assertFalse(
             np.allclose(tc.frequency[2], tc_cc.frequency[2])
             )
-        self.assertTrue(
+        self.assertFalse(
             np.allclose(tc.frequency[3], tc_cc.frequency[3])
-            )
-        self.assertEqual(
-            tc_cc.tag.description,
-            ['climate change scenario for year 2050 and RCP 45 from Knutson et al 2015.']
             )
 
     def test_apply_criterion_track(self):
@@ -445,7 +441,8 @@ class TestClimateSce(unittest.TestCase):
                    ]
         scale = 0.75
 
-        # artificially increase the size of the hazard by repeating (tiling) the data:
+        # artificially increase the size of
+        # the hazard by repeating (tiling) the data:
         ntiles = 8
 
         intensity = np.zeros((4, 10))
@@ -462,7 +459,7 @@ class TestClimateSce(unittest.TestCase):
             event_id=np.arange(intensity.shape[0]),
         )
 
-        tc_cc = tc._apply_knutson_criterion(criterion, scale)
+        tc_cc = tc.apply_climate_scenario_knu()
         for i_tile in range(ntiles):
             offset = i_tile * 4
             # no factor applied because of category 0
@@ -484,7 +481,7 @@ class TestClimateSce(unittest.TestCase):
                 )
 
     def test_two_criterion_track(self):
-        """Test _apply_criterion function with two criteria"""
+        """Test apply_climate_scenario_knu function with two criteria"""
         criterion = [
             {'basin': 'WP', 'category': [1, 2, 3, 4, 5],
              'year': 2100, 'change': 1.025},
@@ -512,7 +509,7 @@ class TestClimateSce(unittest.TestCase):
             event_id=np.arange(4),
         )
 
-        tc_cc = tc._apply_knutson_criterion(criterion, scale)
+        tc_cc = tc.apply_climate_scenario_knu(criterion, scale)
 
         res_frequency = np.ones(4) * 0.5
         res_frequency[1] = 0.5 * (1 + (0.7 - 1) * scale)
@@ -521,7 +518,7 @@ class TestClimateSce(unittest.TestCase):
         self.assertTrue(np.allclose(tc_cc.frequency, res_frequency))
 
     def test_no_negative_freq(self):
-        """Test _apply_knutson_criterion with too high changes and check 
+        """Test apply_climate_scenario_knu with too high changes and check 
         that no negative frequencies are returned."""
         criterion = [{'basin': 'SP', 'category': [0, 1],
                       'year': 2100, 'change': 0.5}
@@ -533,8 +530,8 @@ class TestClimateSce(unittest.TestCase):
             category=np.array([0, 1]),
         )
 
-        tc_cc = tc._apply_knutson_criterion(criterion, 3)
-        self.assertEqual(tc_cc.frequency.min(), 0.)      
+        tc_cc = tc.apply_climate_scenario_knu(criterion, 3)
+        self.assertTrue(tc_cc.frequency.min() >= 0.)
 
 class TestDumpReloadCycle(unittest.TestCase):
     def setUp(self):

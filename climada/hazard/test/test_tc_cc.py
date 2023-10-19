@@ -26,37 +26,45 @@ import climada.hazard.tc_clim_change as tc_cc
 class TestKnutson(unittest.TestCase):
     """Test loading funcions from the TropCyclone class"""
 
-    def test_get_pass(self):
+    def test_get_knutson_scaling_pass(self):
         """Test get_knutson_criterion function."""
-        criterion = tc_cc.get_knutson_criterion()
-        self.assertEqual(len(criterion), 24)
-        for crit_val in criterion:
-            self.assertTrue('year' in crit_val)
-            self.assertTrue('change' in crit_val)
+        criterion = tc_cc.get_knutson_scaling_factor()
+        self.assertEqual(criterion.shape, (21, 4))
 
-        self.assertEqual(criterion[0]['change'], 1 - 0.094)
-        self.assertEqual(criterion[4]['change'], 1.163)
-        self.assertEqual(criterion[-10]['basin'], "SP")
-        self.assertEqual(criterion[-10]['change'], 1 - 0.506)
+        self.assertEqual(criterion.columns[0], '2.6')
+        self.assertEqual(criterion.columns[1], '4.5')
+        self.assertEqual(criterion.columns[2], '6.0')
+        self.assertEqual(criterion.columns[3], '8.5')
 
-    def test_scale_pass(self):
-        """Test calc_scale_knutson function."""
-        self.assertAlmostEqual(tc_cc.calc_scale_knutson(ref_year=2050, rcp_scenario=45),
-                               0.759630751756698)
-        self.assertAlmostEqual(tc_cc.calc_scale_knutson(ref_year=2070, rcp_scenario=45),
-                               0.958978483788876)
-        self.assertAlmostEqual(tc_cc.calc_scale_knutson(ref_year=2060, rcp_scenario=60),
-                               0.825572149523299)
-        self.assertAlmostEqual(tc_cc.calc_scale_knutson(ref_year=2080, rcp_scenario=60),
-                               1.309882943406079)
-        self.assertAlmostEqual(tc_cc.calc_scale_knutson(ref_year=2090, rcp_scenario=85),
-                               2.635069196605717)
-        self.assertAlmostEqual(tc_cc.calc_scale_knutson(ref_year=2100, rcp_scenario=85),
-                               2.940055236533517)
-        self.assertAlmostEqual(tc_cc.calc_scale_knutson(ref_year=2066, rcp_scenario=26),
-                               0.341930203294547)
-        self.assertAlmostEqual(tc_cc.calc_scale_knutson(ref_year=2078, rcp_scenario=26),
-                               0.312383928930456)
+        self.assertAlmostEqual(criterion.loc[2030, '2.6'], -16.13547, 4)
+        self.assertAlmostEqual(criterion.loc[2050, '4.5'], -25.19448, 4)
+        self.assertAlmostEqual(criterion.loc[2070, '6.0'], -31.06633, 4)
+        self.assertAlmostEqual(criterion.loc[2100, '8.5'], -58.98637, 4)
+
+    def test_get_gmst_pass(self):
+        """Test get_gmst_info function."""
+        gmst_data, gmst_start_year, gmst_end_year, rcps = tc_cc.get_gmst_info()
+
+        self.assertAlmostEqual(gmst_data.shape,
+                               (len(rcps),
+                                 gmst_end_year-gmst_start_year+1))
+        self.assertAlmostEqual(gmst_data[0,0], -0.16)
+        self.assertAlmostEqual(gmst_data[0,-1], 1.27641, 4)
+        self.assertAlmostEqual(gmst_data[-1,0], -0.16)
+        self.assertAlmostEqual(gmst_data[-1,-1], 4.477764, 4)
+
+    def test_get_knutson_data_pass(self):
+        """Test get_knutson_data function."""
+
+        data_knutson = tc_cc.get_knutson_data()
+
+        self.assertAlmostEqual(data_knutson.shape, (4,6,5))
+        self.assertAlmostEqual(data_knutson[0,0,0], -34.49)
+        self.assertAlmostEqual(data_knutson[-1,-1,-1], 15.419)
+        self.assertAlmostEqual(data_knutson[0,-1,-1], 4.689)
+        self.assertAlmostEqual(data_knutson[-1,0,0], 5.848)
+        self.assertAlmostEqual(data_knutson[-1,0,-1], 22.803)
+        self.assertAlmostEqual(data_knutson[2,3,2], 4.324)
 
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestKnutson)
