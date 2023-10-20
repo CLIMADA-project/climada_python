@@ -518,7 +518,7 @@ class Hazard():
               :py:meth:`Hazard.__init__` for details.
             * ``hazard_type``: Empty string
             * ``frequency``: 1.0 for every event
-            * ``event_name``: String representation of the event time
+            * ``event_name``: String representation of the event id
             * ``event_id``: Consecutive integers starting at 1 and increasing with time
         crs : str, optional
             Identifier for the coordinate reference system of the coordinates. Defaults
@@ -840,7 +840,7 @@ class Hazard():
                     None,
                     np.ones(num_events),
                     np.array(range(num_events), dtype=int) + 1,
-                    list(data[coords["event"]].values),
+                    [str(x) for x in np.array(range(num_events), dtype=int) + 1],
                     np.array(u_dt.datetime64_to_ordinal(data[coords["event"]].values)),
                 ],
                 # The accessor for the data in the Dataset
