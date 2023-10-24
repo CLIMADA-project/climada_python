@@ -164,7 +164,8 @@ class OutputEvaluator:
         cost_func_diff: float = 0.1,
         p_space_df: Optional[pd.DataFrame] = None,
         plot_haz: bool = True,
-        **plot_kwargs
+        plot_impf_kws : dict = {},
+        plot_hist_kws : dict = {},
     ):
 
         """Plot impact function variability with parameter combinations of
@@ -197,40 +198,55 @@ class OutputEvaluator:
                                              max_cost_func_val,params]
 
         # Initialize figure
-        fig,ax = plt.subplots()
+        _,ax = plt.subplots()
 
-        #Plot best-fit impact function
-        best_impf = self.impf_set.get_func(haz_type=haz_type)[0]
-        ax.plot(best_impf.intensity,best_impf.mdd*best_impf.paa*100,
-                color='tab:blue',lw=2,zorder=3,label='best fit',**plot_kwargs)
+        # Plot defaults
+        color = plot_impf_kws.pop('color','tab:blue')
+        lw = plot_impf_kws.pop('lw',2)
+        zorder = plot_impf_kws.pop('zorder',3)
+        label = plot_impf_kws.pop('label','best fit')
 
-        #Plot all impact functions within 'cost_func_diff' % of best estimate
-        for row in range(params_within_range.shape[0]):
-            label = f'within {int(cost_func_diff*100)} percent of best fit' if row==0 else None
+        #get number of impact functions and create a plot for each
+        n_impf = len(self.impf_set.get_func(haz_type=haz_type))
+        for impf_idx in range(n_impf):
 
-            sel_params = params_within_range.iloc[row,:].to_dict()
-            temp_impf_set = self.input.impact_func_creator(**sel_params)
-            temp_impf = temp_impf_set.get_func(haz_type=haz_type)[0]
+            #Plot best-fit impact function
+            best_impf = self.impf_set.get_func(haz_type=haz_type)[impf_idx]
+            ax.plot(best_impf.intensity,best_impf.mdd*best_impf.paa*100,
+                    color=color,lw=lw,zorder=zorder,label=label,**plot_impf_kws)
 
-            ax.plot(temp_impf.intensity,temp_impf.mdd*temp_impf.paa*100,
-                    color='grey',alpha=0.4,label=label)
+            #Plot all impact functions within 'cost_func_diff' % of best estimate
+            for row in range(params_within_range.shape[0]):
+                label_temp = f'within {int(cost_func_diff*100)} percent of best fit' if row==0 else None
 
-        # Plot hazard intensity value distributions
-        if plot_haz:
-            haz_vals = self.input.hazard.intensity[:,self.input.exposure.gdf[f"centr_{haz_type}"]]
+                sel_params = params_within_range.iloc[row,:].to_dict()
+                temp_impf_set = self.input.impact_func_creator(**sel_params)
+                temp_impf = temp_impf_set.get_func(haz_type=haz_type)[impf_idx]
 
-            ax2 = ax.twinx()
-            ax2.hist(haz_vals.data,bins=40,color='tab:orange',
-                     alpha=0.3,label='Hazard intensity\noccurence')
-            ax2.set(ylabel='Hazard intensity occurence (#Exposure points)')
-            ax.axvline(x=haz_vals.max(),label='Maximum hazard value',
-                       color='tab:orange')
-            ax2.legend(loc='lower right')
+                ax.plot(temp_impf.intensity,temp_impf.mdd*temp_impf.paa*100,
+                        color='grey',alpha=0.4,label=label_temp)
 
-        ax.set(xlabel=f"Intensity ({self.input.hazard.units})",
-               ylabel="Mean Damage Ratio (MDR) in %",
-               xlim=(min(best_impf.intensity),max(best_impf.intensity)))
-        ax.legend()
+            # Plot hazard intensity value distributions
+            if plot_haz:
+                haz_vals = self.input.hazard.intensity[:,self.input.exposure.gdf[f"centr_{haz_type}"]]
+
+                #Plot defaults
+                color_hist = plot_hist_kws.pop('color','tab:orange')
+                alpha_hist = plot_hist_kws.pop('alpha',0.3)
+
+                ax2 = ax.twinx()
+                ax2.hist(haz_vals.data,bins=40,color=color_hist,
+                        alpha=alpha_hist,label='Hazard intensity\noccurence')
+                ax2.set(ylabel='Hazard intensity occurence (#Exposure points)')
+                ax.axvline(x=haz_vals.max(),label='Maximum hazard value',
+                        color='tab:orange')
+                ax2.legend(loc='lower right')
+
+            ax.set(xlabel=f"Intensity ({self.input.hazard.units})",
+                ylabel="Mean Damage Ratio (MDR) in %",
+                xlim=(min(best_impf.intensity),max(best_impf.intensity)))
+            ax.legend()
+
         return ax
 
 
