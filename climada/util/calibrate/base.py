@@ -158,39 +158,41 @@ class OutputEvaluator:
         :py:meth:`~climada.entity.impact_funcs.impact_func_set.ImpactFuncSet.plot`
         """
         return self.impf_set.plot(**plot_kwargs)
-    
+
     def plot_impf_variability(
         self,
         cost_func_diff: float = 0.1,
         p_space_df: Optional[pd.DataFrame] = None,
-        plot_haz: bool = False,
-        haz_vals: Optional[np.array] = None,
+        plot_haz: bool = True,
         **plot_kwargs
     ):
-        """Plot impact function variability with parameter combinations of almost equal 
+        """Plot impact function variability with parameter combinations of almost equal
         cost function values
 
         Args:
-            cost_func_diff (float, optional): Max deviation from optimal cost function value 
+            cost_func_diff (float, optional): Max deviation from optimal cost function value
                 (as fraction). Defaults to 0.1 (i.e. 10%).
             p_space_df (pd.DataFrame, optional): parameter space. Defaults to None.
-            plot_haz (bool, optional): Whether or not to plot hazard intensity distibution. 
+            plot_haz (bool, optional): Whether or not to plot hazard intensity distibution.
                 Defaults to False.
-            haz_vals (np.array, optional): Hazard values at exposure points (if 
+            haz_vals (np.array, optional): Hazard values at exposure points (if
                 pre-calculated). Defaults to None.
         """
+
         haz_type = self.input.hazard.haz_type
         if p_space_df is None:
             p_space_df = self.output.p_space_to_dataframe()
 
-        # Ignore cost dimension
+        # Retrieve list of parameters required for creating impact functions
+        # and remove the dimension 'Cost Function'.
         params = p_space_df.columns.tolist()
         try:
-            params.remove('Cost Function') #Hardcoded name i.o.?
+            params.remove('Cost Function')
         except ValueError:
             pass
 
-        #determine cost function values within 'cost_func_diff' % of best estimate
+        # Retrieve parameters of impact functions with cost function values
+        # within 'cost_func_diff' % of the best estimate
         max_cost_func_val = p_space_df['Cost Function'].min()*(1+cost_func_diff)
         params_within_range = p_space_df.loc[p_space_df['Cost Function']<=max_cost_func_val,
                                              params]
@@ -201,7 +203,7 @@ class OutputEvaluator:
         #Plot best-fit impact function
         best_impf = self.impf_set.get_func(haz_type=haz_type)[0]
         ax.plot(best_impf.intensity,best_impf.mdd*best_impf.paa*100,color='tab:blue',
-                lw=3,zorder=2,label='best fit')
+                lw=2,zorder=3,label='best fit')
 
         #Plot all impact functions within 'cost_func_diff' % of best estimate
         for row in range(params_within_range.shape[0]):
@@ -213,14 +215,13 @@ class OutputEvaluator:
 
             ax.plot(temp_impf.intensity,temp_impf.mdd*temp_impf.paa*100,color='grey',
                     alpha=0.4,label=label)
-            
+
         # Plot hazard intensity value distributions
         if plot_haz:
-            if haz_vals is None:
-                haz_vals = self.input.hazard.intensity[:,self.input.exposure.gdf[f"centr_{haz_type}"]]
+            haz_vals = self.input.hazard.intensity[:,self.input.exposure.gdf[f"centr_{haz_type}"]]
 
             ax2 = ax.twinx()
-            ax2.hist(haz_vals[haz_vals.nonzero()].getA1(),bins=40,color='tab:orange',
+            ax2.hist(haz_vals.data,bins=40,color='tab:orange',
                      alpha=0.3,label='Hazard intensity\noccurence')
             ax2.set(ylabel='Hazard intensity occurence (#Exposure points)')
             ax.axvline(x=haz_vals.max(),label='Maximum hazard value',color='tab:orange')
