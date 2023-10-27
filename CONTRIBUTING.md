@@ -11,6 +11,9 @@ For orientation, these are some categories of possible contributions we can thin
 * **Documentation and Tutorial Updates:** Found a typo in the documentation? Is a tutorial lacking some information you find important? Simply fix a line, or add a paragraph. We are happy to incorporate you additions! Please raise a pull request!
 * **New Modules and Utility Functions:** Did you create a function or an entire module you find useful for your work? Maybe you are not the only one! As a module has to be carefully integrated into the framework, it might help if you talk to us first for designing and planning. You can do that by raising an issue or starting a [discussion](https://github.com/CLIMADA-project/climada_python/discussions) on GitHub.
 
+A good place to start a personal discussion is our monthly CLIMADA developers call.
+Please contact the [lead developers](https://wcr.ethz.ch/research/climada.html) if you want to join.
+
 ## Why Should You Contribute?
 
 * You will be listed as author of the CLIMADA repository in the [AUTHORS](AUTHORS.md) file.
