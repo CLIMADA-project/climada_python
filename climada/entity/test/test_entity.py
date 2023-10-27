@@ -58,15 +58,10 @@ class TestReader(unittest.TestCase):
     def test_from_mat(self):
         """Read entity from mat file produced by climada."""
         entity_mat = Entity.from_mat(ENT_TEST_MAT)
-        self.assertEqual(entity_mat.exposures.tag.file_name, [str(ENT_TEST_MAT)])
+        self.assertIsInstance(entity_mat.exposures, Exposures)
         self.assertIsInstance(entity_mat.disc_rates, DiscRates)
         self.assertIsInstance(entity_mat.measures, MeasureSet)
-        self.assertTrue(isinstance(entity_mat.impact_funcs, ImpactFuncSet))
-
-    def test_from_excel(self):
-        """Read entity from an xls file following the template."""
-        entity_xls = Entity.from_excel(ENT_TEMPLATE_XLS)
-        self.assertEqual(entity_xls.exposures.tag.file_name, [str(ENT_TEMPLATE_XLS)])
+        self.assertIsInstance(entity_mat.impact_funcs, ImpactFuncSet)
 
 
 class TestCheck(unittest.TestCase):
@@ -109,24 +104,6 @@ class TestCheck(unittest.TestCase):
             ent.disc_rates = Exposures()
         self.assertIn('DiscRates', str(cm.exception))
 
-
-class TestStringRepr(unittest.TestCase):
-    """Test the representation dunder methods of Entity"""
-    def setUp(self):
-        self.entity = Entity()
-        self.entity.exposures.tag.description = ["foo", "bar"]
-
-    def test_str(self):
-        """Test Entity.__str__"""
-        out = str(self.entity)
-        self.assertIn("Exposures", out)
-        self.assertIn("Description: foo + bar", out)
-
-    def test_repr(self):
-        """Test Entity.__repr__"""
-        out = repr(self.entity)
-        self.assertIn("Exposures", out)
-        self.assertIn("Description: foo + bar", out)
 
 # Execute Tests
 if __name__ == "__main__":

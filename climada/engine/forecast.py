@@ -313,6 +313,7 @@ class Forecast:
     def plot_imp_map(
         self,
         run_datetime=None,
+        explain_str=None,
         save_fig=True,
         close_fig=False,
         polygon_file=None,
@@ -321,13 +322,17 @@ class Forecast:
         figsize=(9, 13),
         adapt_fontsize=True,
     ):
-        """plot a map of the impacts
+        """ plot a map of the impacts
 
         Parameters
         ----------
         run_datetime : datetime.datetime, optional
             Select the used hazard by the run_datetime,
             default is first element of attribute run_datetime.
+        explain_str : str, optional
+            Short str which explains type of impact, explain_str is included
+            in the title of the figure.
+            default is 'mean building damage caused by wind'
         save_fig : bool, optional
             Figure is saved if True, folder is within your configurable
             save_dir and filename is derived from the method summary_str()
@@ -372,7 +377,7 @@ class Forecast:
             "run_start": (
                 run_datetime.strftime("%d.%m.%Y %HUTC +") + lead_time_str + "d"
             ),
-            "explain_text": ("mean building damage caused by wind"),
+            "explain_text": "mean building damage caused by wind" if explain_str is None else explain_str,
             "model_text": "CLIMADA IMPACT",
         }
         fig, axes = self._plot_imp_map(
@@ -526,15 +531,24 @@ class Forecast:
         return fig, axis_sub
 
     def plot_hist(
-        self, run_datetime=None, save_fig=True, close_fig=False, figsize=(9, 8)
+        self,
+        run_datetime=None,
+        explain_str=None,
+        save_fig=True,
+        close_fig=False,
+        figsize=(9, 8),
     ):
-        """plot histogram of the forecasted impacts all ensemble members
+        """ plot histogram of the forecasted impacts all ensemble members
 
         Parameters
         ----------
         run_datetime : datetime.datetime, optional
             Select the used hazard by the run_datetime,
             default is first element of attribute run_datetime.
+        explain_str : str, optional
+            Short str which explains type of impact, explain_str is included
+            in the title of the figure.
+            default is 'total building damage'
         save_fig : bool, optional
             Figure is saved if True, folder is within your configurable
             save_dir and filename is derived from the method summary_str()
@@ -603,7 +617,7 @@ class Forecast:
         axes.xaxis.set_ticks(x_ticks)
         axes.xaxis.set_ticklabels(x_ticklabels)
         plt.xticks(rotation=15, horizontalalignment="right")
-        plt.xlim([(10**-0.25) * bins[0], (10**0.25) * bins[-1]])
+        plt.xlim([(10 ** -0.25) * bins[0], (10 ** 0.25) * bins[-1]])
 
         lead_time_str = "{:.0f}".format(
             self.lead_time(run_datetime).days
@@ -614,7 +628,7 @@ class Forecast:
             "run_start": (
                 run_datetime.strftime("%d.%m.%Y %HUTC +") + lead_time_str + "d"
             ),
-            "explain_text": ("total building damage"),
+            "explain_text": ("total building damage") if explain_str is None else explain_str,
             "model_text": "CLIMADA IMPACT",
         }
         title_position = {
@@ -656,8 +670,9 @@ class Forecast:
         plt.text(
             0.75,
             0.85,
-            "mean damage:\nCHF "
-            + self._number_to_str(self._impact[haz_ind].at_event.mean()),
+            "mean impact:\n "
+            + self._number_to_str(self._impact[haz_ind].at_event.mean())
+            + ' ' + self._impact[haz_ind].unit,
             horizontalalignment="center",
             verticalalignment="center",
             transform=axes.transAxes,
@@ -740,7 +755,7 @@ class Forecast:
             The default is (9, 13)
         adapt_fontsize : bool, optional
             If set to true, the size of the fonts will be adapted to the size of the figure.
-            Otherwise the default matplotlib font size is used. Default is True.
+            Otherwise, the default matplotlib font size is used. Default is True.
 
         Returns
         -------
@@ -750,10 +765,10 @@ class Forecast:
         if run_datetime is None:
             run_datetime = self.run_datetime[0]
         haz_ind = np.argwhere(np.isin(self.run_datetime, run_datetime))[0][0]
-        wind_map_file_name = (
+        exceedence_map_file_name = (
             self.summary_str(run_datetime) + "_exceed_" + str(threshold) + "_map.jpeg"
         )
-        wind_map_file_name_full = FORECAST_PLOT_DIR / wind_map_file_name
+        exceedence_map_file_name_full = FORECAST_PLOT_DIR / exceedence_map_file_name
         lead_time_str = "{:.0f}".format(
             self.lead_time(run_datetime).days
             + self.lead_time(run_datetime).seconds / 60 / 60 / 24
@@ -783,7 +798,7 @@ class Forecast:
             adapt_fontsize=adapt_fontsize,
         )
         if save_fig:
-            plt.savefig(wind_map_file_name_full)
+            plt.savefig(exceedence_map_file_name_full)
         if close_fig:
             plt.clf()
             plt.close(fig)
@@ -974,7 +989,7 @@ class Forecast:
             Figure is not drawn if True. The default is False.
         adapt_fontsize : bool, optional
             If set to true, the size of the fonts will be adapted to the size of the figure.
-            Otherwise the default matplotlib font size is used. Default is True.
+            Otherwise, the default matplotlib font size is used. Default is True.
 
         Returns
         -------
@@ -1086,7 +1101,7 @@ class Forecast:
                 decision_dict_functions[aggregation] = np.mean
             else:
                 raise ValueError(
-                    "Parameter area_aggregation of "
+                    "Parameter " + aggregation + " of "
                     + "Forecast.plot_warn_map() must eiter be "
                     + "a float between [0..1], which "
                     + "specifys a quantile. or 'sum' or 'mean'."
