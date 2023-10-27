@@ -40,3 +40,4 @@ dependencies:
   - xarray>=2023.8
   - xlrd>=2.0
   - xlsxwriter>=3.1
+  - xyzservices<2023.10.1
