@@ -14,6 +14,8 @@ Code freeze date: YYYY-MM-DD
 
 ### Changed
 
+- The default tile layer in Exposures maps is not StamenTerrain anymore, but OpenStreetMap. Affected methods are `climada.engine.Impact.plot_basemap_eai_exposure`,`climada.engine.Impact.plot_basemap_impact_exposure` and `climada.entity.Exposures.plot_basemap`. [#797](https://github.com/CLIMADA-project/climada_python/pull/797)
+
 ### Fixed
 
 ### Deprecated
