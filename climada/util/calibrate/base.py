@@ -197,9 +197,6 @@ class OutputEvaluator:
         params_within_range = p_space_df.loc[p_space_df['Cost Function'] <=
                                              max_cost_func_val,params]
 
-        # Initialize figure
-        _,ax = plt.subplots()
-
         # Plot defaults
         color = plot_impf_kws.pop('color','tab:blue')
         lw = plot_impf_kws.pop('lw',2)
@@ -208,7 +205,11 @@ class OutputEvaluator:
 
         #get number of impact functions and create a plot for each
         n_impf = len(self.impf_set.get_func(haz_type=haz_type))
+        axes=[]
+
         for impf_idx in range(n_impf):
+
+            _,ax = plt.subplots()
 
             #Plot best-fit impact function
             best_impf = self.impf_set.get_func(haz_type=haz_type)[impf_idx]
@@ -246,8 +247,12 @@ class OutputEvaluator:
                 ylabel="Mean Damage Ratio (MDR) in %",
                 xlim=(min(best_impf.intensity),max(best_impf.intensity)))
             ax.legend()
+            axes.append(ax)
 
-        return ax
+        if n_impf > 1:
+            return axes
+        else:
+            return ax
 
 
     def plot_at_event(
