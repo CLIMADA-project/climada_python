@@ -263,12 +263,42 @@ To install CLIMADA Petals, we assume you have already installed CLIMADA Core wit
 
       python -m pip install -e ./
 
+.. _my-overview:
 ------------------------------
-Apps for Programming in Python
+Apps for working with CLIMADA
 ------------------------------
+
 
 To work with CLIMADA, you will need an application that supports Jupyter Notebooks.
 There are plugins available for nearly every code editor or IDE, but if you are unsure about which to choose, we recommend `JupyterLab <https://jupyterlab.readthedocs.io/en/stable/>`_, `Visual Studio Code <https://code.visualstudio.com/>`_ or `Spyder <https://www.spyder-ide.org/>`_.
+It is easy to get confused by all the different softwares and their uses so here is an overview of which tools we use for what:
+
++------------------------------------------------------+----------------+---------------------------------------------------------------------------------------------------------------------------------------------------+----------------------------+
+| Use                                                  | Tools          | Description                                                                                                                                       | Useful for                 |
++======================================================+================+===================================================================================================================================================+============================+
+| Distribution / manage virtual environment & packages | Recommended:   | - install CLIMADA, manage & use the climada_env, install packages                                                                                 | CLIMADA users & developers |
+|                                                      | Anaconda       | - includes Anaconda navigator, which is a desktop GUI and can be used to launch applications like Jupyter Notebook, Spyder etc.                   |                            |
+|                                                      |                |                                                                                                                                                   |                            |
+|                                                      | Alternatives:  |                                                                                                                                                   |                            |
+|                                                      | Mamba          |                                                                                                                                                   |                            |
++------------------------------------------------------+----------------+---------------------------------------------------------------------------------------------------------------------------------------------------+----------------------------+
+| IDE (Integrated Development Environment)             | Recommended:   | - write and run code                                                                                                                              | CLIMADA users & developers |
+|                                                      | VSCode         |                                                                                                                                                   |                            |
+|                                                      |                | Useful for developers:                                                                                                                            |                            |
+|                                                      | Alternatives:  |                                                                                                                                                   |                            |
+|                                                      | Spyder         | - VSCode also has a GUI to commit changes to GitHub (similar to GitHub Desktop, but in the same place as your code)                               |                            |
+|                                                      | JupyterLab     | - VSCode test explorer shows results for individual tests & any classes and files containing these tests (folders display a failure or pass icon) |                            |
+|                                                      | PyCharm        |                                                                                                                                                   |                            |
+|                                                      | & many more    |                                                                                                                                                   |                            |
++------------------------------------------------------+----------------+---------------------------------------------------------------------------------------------------------------------------------------------------+----------------------------+
+| Git GUI (Graphical User Interface)                   | GitHub Desktop | - provides an interface which keeps track of the branch you're working on, changes you made etc.                                                  | CLIMADA developers         |
+|                                                      | Gitkraken      | - allows you to commit changes, push to GitHub etc. without having to use command line                                                            |                            |
+|                                                      |                | - the code itself is not written using these applications but with your IDE of choice (see above)                                                 |                            |
++------------------------------------------------------+----------------+---------------------------------------------------------------------------------------------------------------------------------------------------+----------------------------+
+| Continuous Integration (CI) server                   | Jenkins        | - automatically checks code changes in GitHub repositories, e.g. when you create a pull request for the develop branch                            | CLIMADA developers         |
+|                                                      |                | - performs static code analysis using pylint                                                                                                      |                            |
+|                                                      |                | - you don't need to do any installations, this runs automatically                                                                                 |                            |
++------------------------------------------------------+----------------+---------------------------------------------------------------------------------------------------------------------------------------------------+----------------------------+
 
 JupyterLab
 ^^^^^^^^^^
