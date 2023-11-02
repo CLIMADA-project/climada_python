@@ -263,7 +263,7 @@ To install CLIMADA Petals, we assume you have already installed CLIMADA Core wit
 
       python -m pip install -e ./
 
-.. _my-overview:
+.. _app-overview:
 ------------------------------
 Apps for working with CLIMADA
 ------------------------------
