@@ -297,7 +297,7 @@ It is easy to get confused by all the different softwares and their uses so here
 +------------------------------------------------------+----------------+---------------------------------------------------------------------------------------------------------------------------------------------------+----------------------------+
 | Continuous Integration (CI) server                   | Jenkins        | - automatically checks code changes in GitHub repositories, e.g. when you create a pull request for the develop branch                            | CLIMADA developers         |
 |                                                      |                | - performs static code analysis using pylint                                                                                                      |                            |
-|                                                      |                | - you don't need to do any installations, this runs automatically                                                                                 |                            |
+|                                                      |                | - you don't need to do any installations, this runs automatically (see: :doc:`GitHub Actions CI <github-actions>`)                                |                            |
 +------------------------------------------------------+----------------+---------------------------------------------------------------------------------------------------------------------------------------------------+----------------------------+
 
 JupyterLab
