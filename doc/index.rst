@@ -98,8 +98,9 @@ Jump right in:
    guide/Guide_CLIMADA_Tutorial
    guide/Guide_Configuration
    guide/Guide_Continuous_Integration_and_Testing
-   guide/Guide_Reviewer_Checklist
+   guide/Guide_Review
    guide/Guide_PythonDos-n-Donts
+   guide/Exception_Logging
    Performance and Best Practices <guide/Guide_Py_Performance>
    Coding Conventions <guide/Guide_Miscellaneous>
    Building the Documentation <README>
