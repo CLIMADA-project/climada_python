@@ -18,7 +18,7 @@ Please contact the [lead developers](https://wcr.ethz.ch/research/climada.html) 
 
 * You will be listed as author of the CLIMADA repository in the [AUTHORS](AUTHORS.md) file.
 * You will improve the quality of the CLIMADA software for you and for everybody else using it.
-* You will hopefully gain insights into scientific software development.
+* You will gain insights into scientific software development.
 
 ## Minimal Steps to Contribute
 
