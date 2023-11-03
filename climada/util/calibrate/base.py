@@ -229,7 +229,9 @@ class OutputEvaluator:
 
             # Plot hazard intensity value distributions
             if plot_haz:
-                haz_vals = self.input.hazard.intensity[:,self.input.exposure.gdf[f"centr_{haz_type}"]]
+                haz_vals = self.input.hazard.intensity[
+                    :, self.input.exposure.gdf[f"centr_{haz_type}"]
+                ]
 
                 #Plot defaults
                 color_hist = plot_hist_kws.pop('color','tab:orange')
