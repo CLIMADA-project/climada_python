@@ -14,6 +14,8 @@ Code freeze date: YYYY-MM-DD
 
 ### Changed
 
+- The default tile layer in Exposures maps is not Stamen Terrain anymore, but [CartoDB Positron](https://github.com/CartoDB/basemap-styles). Affected methods are `climada.engine.Impact.plot_basemap_eai_exposure`,`climada.engine.Impact.plot_basemap_impact_exposure` and `climada.entity.Exposures.plot_basemap`. [#798](https://github.com/CLIMADA-project/climada_python/pull/798)
+
 ### Fixed
 
 - Fix the dist_approx util function when used with method="geosphere" and log=True and points that are very close. [#792](https://github.com/CLIMADA-project/climada_python/pull/792)
