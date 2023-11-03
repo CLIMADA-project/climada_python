@@ -277,13 +277,20 @@ class TestFunc(unittest.TestCase):
     def test_dist_approx_pass(self):
         """Test approximate distance functions"""
         data = np.array([
-            # lat1, lon1, lat2, lon2, dist, dist_sph
+            # lat1, lon1, lat2, lon2, dist_equirect, dist_geosphere
             [45.5, -32.1, 14, 56, 7702.88906574, 8750.64119051],
             [45.5, 147.8, 14, -124, 7709.82781473, 8758.34146833],
             [45.5, 507.9, 14, -124, 7702.88906574, 8750.64119051],
             [45.5, -212.2, 14, -124, 7709.82781473, 8758.34146833],
             [-3, -130.1, 4, -30.5, 11079.7217421, 11087.0352544],
         ])
+        # conversion factors from reference data (in km, see above) to other units
+        factors_km_to_x = {
+            "m": 1e3,
+            "radian": np.radians(1.0) / u_coord.ONE_LAT_KM,
+            "degree": 1.0 / u_coord.ONE_LAT_KM,
+            "km": 1.0,
+        }
         compute_dist = np.stack([
             u_coord.dist_approx(data[:, None, 0], data[:, None, 1],
                                 data[:, None, 2], data[:, None, 3],
@@ -297,9 +304,7 @@ class TestFunc(unittest.TestCase):
             self.assertAlmostEqual(d[0], cd[0])
             self.assertAlmostEqual(d[1], cd[1])
 
-        for units, factor in zip(["radian", "degree", "km"],
-                                 [np.radians(1.0), 1.0, u_coord.ONE_LAT_KM]):
-            factor /= u_coord.ONE_LAT_KM
+        for units, factor in factors_km_to_x.items():
             compute_dist = np.stack([
                 u_coord.dist_approx(data[:, None, 0], data[:, None, 1],
                                     data[:, None, 2], data[:, None, 3],
@@ -309,21 +314,29 @@ class TestFunc(unittest.TestCase):
                                     method="geosphere", units=units)[:, 0, 0],
             ], axis=-1)
             self.assertEqual(compute_dist.shape[0], data.shape[0])
+            places = 4 if units == "m" else 7
             for d, cd in zip(data[:, 4:], compute_dist):
-                self.assertAlmostEqual(d[0] * factor, cd[0])
-                self.assertAlmostEqual(d[1] * factor, cd[1])
+                self.assertAlmostEqual(d[0] * factor, cd[0], places=places)
+                self.assertAlmostEqual(d[1] * factor, cd[1], places=places)
 
     def test_dist_approx_log_pass(self):
         """Test log-functionality of approximate distance functions"""
         data = np.array([
-            # lat1, lon1, lat2, lon2, dist, dist_sph
+            # lat1, lon1, lat2, lon2, dist_equirect, dist_geosphere
             [0, 0, 0, 1, 111.12, 111.12],
             [-13, 179, 5, -179, 2011.84774049, 2012.30698122],
+            [24., 85., 23.99999967, 85., 3.666960e-5, 3.666960e-5],
+            [24., 85., 24., 85., 0, 0],
         ])
+        # conversion factors from reference data (in km, see above) to other units
+        factors_km_to_x = {
+            "m": 1e3,
+            "radian": np.radians(1.0) / u_coord.ONE_LAT_KM,
+            "degree": 1.0 / u_coord.ONE_LAT_KM,
+            "km": 1.0,
+        }
         for i, method in enumerate(["equirect", "geosphere"]):
-            for units, factor in zip(["radian", "degree", "km"],
-                                     [np.radians(1.0), 1.0, u_coord.ONE_LAT_KM]):
-                factor /= u_coord.ONE_LAT_KM
+            for units, factor in factors_km_to_x.items():
                 dist, vec = u_coord.dist_approx(data[:, None, 0], data[:, None, 1],
                                                 data[:, None, 2], data[:, None, 3],
                                                 log=True, method=method, units=units)
@@ -613,7 +626,7 @@ class TestAssign(unittest.TestCase):
             u_coord.match_centroids(gdf, centroids)
         self.assertIn('Set hazard and GeoDataFrame to same CRS first!',
                       str(cm.exception))
-        
+
     def test_dist_sqr_approx_pass(self):
         """Test approximate distance helper function."""
         lats1 = 45.5
