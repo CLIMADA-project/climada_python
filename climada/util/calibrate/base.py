@@ -253,8 +253,8 @@ class OutputEvaluator:
 
         if n_impf > 1:
             return axes
-        else:
-            return ax
+
+        return ax
 
 
     def plot_at_event(
