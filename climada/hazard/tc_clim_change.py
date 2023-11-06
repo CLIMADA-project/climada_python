@@ -35,8 +35,12 @@ MAP_VARS_NAMES = dict(
     zip(['cat05', 'cat45', 'intensity'], range(3))
     )
 
+MAP_PERC_NAMES = dict(
+    zip(['5/10', '25', '50', '75', '90/95'], range(5))
+    )
+
 def get_knutson_scaling_factor(
-            pct=0,
+            percentile='50',
             basin='NA',
             variable='cat05',
             baseline=(1950, 2018)
@@ -62,13 +66,12 @@ def get_knutson_scaling_factor(
 
     Parameters
     ----------
-    pct: int
-        percentile of interest:
-            0 = 5% or 10%
-            1 = 25%
-            2 = 50%
-            3 = 75%
-            4 = 95% or 90%
+    percentile: str
+        percentile of Knutson et al. 2020 estimates. These estimates come from a
+        review of state-of-the-art literature and models. See Knutson et al. 2020
+        for more details. Possible values are:
+            '5/10', '25', '50', '75', '90/95'
+        Default: '50'
     basin : str
         region of interest, possible choices are:
             'NA', 'WP', 'EP', 'NI', 'SI', 'SP'
@@ -79,6 +82,11 @@ def get_knutson_scaling_factor(
         the starting and ending years that define the historical
         baseline. The historical baseline period must fall within
         the GSMT data period, i.e., 1880-2100.
+    Returns
+    -------
+    future_change_variable : pd.DataFrame
+        data frame with future projections of the selected variables at different
+        times (indexes) and for RCPs 2.6, 4.5, 6.0 and 8.5 (columns).
     """
 
     # this could become an input variable in the future
@@ -88,13 +96,16 @@ def get_knutson_scaling_factor(
         }
 
     base_start_year, base_end_year = baseline
-    gmst_data, gmst_start_year, gmst_end_year, rcps = get_gmst_info()
+    gmst_info = get_gmst_info()
+    
     knutson_data = get_knutson_data()
 
-    nrcps, gmst_years = gmst_data.shape
+    nrcps, gmst_years = gmst_info['gmst_data'].shape
 
-    if ((base_start_year <= gmst_start_year) or (base_start_year >= gmst_end_year) or
-        (base_end_year <= gmst_start_year) or (base_end_year >= gmst_end_year)):
+    if ((base_start_year <= gmst_info['gmst_start_year']) or
+        (base_start_year >= gmst_info['gmst_end_year']) or
+        (base_end_year <= gmst_info['gmst_start_year']) or
+        (base_end_year >= gmst_info['gmst_end_year'])):
 
         raise ValueError("The selected historical baseline falls outside"
                          "the GMST data period 1880-2100")
@@ -103,10 +114,11 @@ def get_knutson_scaling_factor(
     # (these annual values correspond to y in the paper)
 
     var_id = MAP_VARS_NAMES[variable]
+    perc_id = MAP_PERC_NAMES[percentile]
 
     try:
         basin_id = MAP_BASINS_NAMES[basin]
-        knutson_value = knutson_data[var_id, basin_id, pct]
+        knutson_value = knutson_data[var_id, basin_id, perc_id]
 
     except KeyError:
         # no scaling factors are defined for this basin. Most likely SA.
@@ -117,12 +129,12 @@ def get_knutson_scaling_factor(
 
     for i in range(nrcps):
         for j in range(gmst_years):
-            tc_properties[i, j] = exp(beta * gmst_data[i, j])
+            tc_properties[i, j] = exp(beta * gmst_info['gmst_data'][i, j])
 
     # calculate baselines for each RCP as averages of the annual values
 
-    base_start_index = base_start_year - gmst_start_year
-    base_end_index = base_end_year - gmst_start_year
+    base_start_index = base_start_year - gmst_info['gmst_start_year']
+    base_end_index = base_end_year - gmst_info['gmst_start_year']
 
     baseline_properties = np.empty(nrcps)
     for i in range(nrcps):
@@ -140,7 +152,7 @@ def get_knutson_scaling_factor(
     for window in range(windows_props['windows']):
         mid_year = windows_props['start'] + (window) * windows_props['interval']
         mid_years[window] = mid_year
-        mid_index = mid_year - gmst_start_year
+        mid_index = mid_year - gmst_info['gmst_start_year']
         actual_smoothing = min(
             windows_props['smoothing'],
             gmst_years - mid_index - 1,
@@ -155,20 +167,38 @@ def get_knutson_scaling_factor(
                 ) / baseline_properties[i]
         count += 1
 
-    return pd.DataFrame(predicted_property_pcs,
-                        index=mid_years, columns=rcps)
+    future_change_variable = pd.DataFrame(predicted_property_pcs,
+                                          index=mid_years,
+                                          columns=gmst_info['rcps'])
+    return future_change_variable
 
 def get_gmst_info():
     """
-    Get Global Mean Surface Temperature data from 1880 to 2100 for RCPs 2.6, 4.5, 6.0 and 8.5
+    Get Global Mean Surface Temperature (GMST) data from 1880 to 2100 for
+    RCPs 2.6, 4.5, 6.0 and 8.5.
+
+    Returns
+    -------
+    gmst_info : dict
+        dictionary with keys:
+        - rcps: list of strings referring to RCPs 2.6, 4.5, 6.0 and 8.5
+        - gmst_start_year: integer with the GMST data starting year, 1880
+        - gmst_start_year: integer with the GMST data ending year, 2100
+        - gmst_data: array with GMST data across RCPs (first dim) and years (second dim)
     """
-    rcps = ['2.6', '4.5', '6.0', '8.5']
-    gmst_start_year = 1880
-    gmst_end_year = 2100
 
-    gmst_data = np.empty((len(rcps), gmst_end_year-gmst_start_year+1))
+    gmst_info = {}
 
-    gmst_data[0] = [
+    gmst_info.update({'rcps' : ['2.6', '4.5', '6.0', '8.5']})
+    gmst_info({'gmst_start_year' : 1880})
+    gmst_info({'gmst_end_year' : 2100})
+
+    gmst_info.update({'gmst_data':
+        np.empty((len(gmst_info['rcps']),
+                  gmst_info['gmst_end_year']-gmst_info['gmst_start_year']+1))
+    })
+
+    gmst_info['gmst_data'][0] = [
         -0.16,-0.08,-0.1,-0.16,-0.28,-0.32,-0.3,-0.35,-0.16,-0.1,
         -0.35,-0.22,-0.27,-0.31,-0.3,-0.22,-0.11,-0.11,-0.26,-0.17,
         -0.08,-0.15,-0.28,-0.37, -0.47,-0.26,-0.22,-0.39,-0.43,-0.48,
@@ -200,7 +230,7 @@ def get_gmst_info():
         1.297514286,1.312114286,1.276714286,1.281414286,1.276414286
     ]
 
-    gmst_data[1] = [
+    gmst_info['gmst_data'][1] = [
         -0.16,-0.08,-0.1,-0.16,-0.28,-0.32,-0.3,-0.35,-0.16,-0.1,
         -0.35, -0.22,-0.27,-0.31,-0.3,-0.22,-0.11,-0.11,-0.26,-0.17,
         -0.08,-0.15,-0.28,-0.37,-0.47,-0.26,-0.22,-0.39,-0.43,-0.48,
@@ -229,7 +259,7 @@ def get_gmst_info():
         2.186492857,2.181092857,2.217592857,2.210492857,2.223692857
     ]
 
-    gmst_data[2] = [
+    gmst_info['gmst_data'][2] = [
         -0.16,-0.08,-0.1,-0.16,-0.28,-0.32,-0.3,-0.35,-0.16,-0.1,-0.35,-0.22,-0.27,
         -0.31,-0.3,-0.22,-0.11,-0.11,-0.26,-0.17,-0.08,-0.15,-0.28,-0.37,-0.47,-0.26,
         -0.22,-0.39,-0.43,-0.48,-0.43,-0.44,-0.36,-0.34,-0.15,-0.14,-0.36,-0.46,-0.29,
@@ -253,7 +283,7 @@ def get_gmst_info():
         2.644714286,2.688414286,2.688514286,2.685314286,2.724614286,2.746214286,2.773814286
     ]
 
-    gmst_data[3] = [
+    gmst_info['gmst_data'][3] = [
         -0.16,-0.08,-0.1,-0.16,-0.28,-0.32,-0.3,-0.35,-0.16,-0.1,-0.35,-0.22,-0.27,
         -0.31,-0.3,-0.22,-0.11,-0.11,-0.26,-0.17,-0.08,-0.15,-0.28,-0.37,-0.47,-0.26,
         -0.22,-0.39,-0.43,-0.48,-0.43,-0.44,-0.36,-0.34,-0.15,-0.14,-0.36,-0.46,-0.29,
@@ -277,7 +307,7 @@ def get_gmst_info():
         4.172064286,4.225264286,4.275064286,4.339064286,4.375864286,4.408064286,4.477764286
         ]
 
-    return gmst_data, gmst_start_year, gmst_end_year, rcps
+    return gmst_info
 
 def get_knutson_data():
     """
@@ -286,15 +316,24 @@ def get_knutson_data():
     Tropical cyclones and climate change assessment. Part II: Projected 
         response to anthropogenic warming. Bull. Amer. Meteor. Soc., 101 (3), E303–E322, 
         https://doi.org/10.1175/BAMS-D-18-0194.1.
-    
-    for 4 variables (i.e., cat05 frequency, cat45 frequency, intensity precipitation rate), 
+
+    for 4 variables (i.e., cat05 frequency, cat45 frequency, intensity, precipitation rate), 
     6 regions (i.e., N. Atl, NW Pac., NE Pac., N. Ind, S. Ind., SW Pac.) and 
-    5 metrics (i.e., 5% or 10%, 25%, median, 75%, 95% or 90%).
+    5 metrics (i.e., 5% or 10%, 25%, 50%, 75%, 95% or 90%).
+
+    Returns
+    -------
+    knutson_data : np.array of dimension (4x6x5)
+        array contaning data used by Knutson et al. (2020) to project changes in cat05 frequency,
+        cat45 frequency, intensity and precipitation rate (first array's dimension), for the
+        N. Atl, NW Pac., NE Pac., N. Ind, S. Ind., SW Pac. regions (second array's dimension)
+        for the 5%/10%, 25%, 50%, 75%, 95%/90% percentiles (thirs array's dimension).
     """
 
-    knutson_data = np.empty((4, 6, 5))
+    knutson_data = np.empty((4,6,5))
 
-    # fig 1 in Knutson et al. 2020 (except min, max metrics and global region)
+    # fig 1 in Knutson et al. 2020
+    # (except min, max metrics and global region): cat05 frequency 
     knutson_data[0,0]=[-34.49,-24.875,-14.444,3.019,28.737]
     knutson_data[0,1]=[-30.444,-20,-10.27,0.377,17.252]
     knutson_data[0,2]=[-32.075,-18.491,-3.774,11.606,36.682]
@@ -302,7 +341,8 @@ def get_knutson_data():
     knutson_data[0,4]=[-32.778,-22.522,-17.297,-8.995,7.241]
     knutson_data[0,5]=[-40.417,-26.321,-18.113,-8.21,4.689]
 
-    # fig 2 in Knutson et al. 2020 (except min, max metrics and global region)
+    # fig 2 in Knutson et al. 2020
+    # (except min, max metrics and global region): cat45 frequency
     knutson_data[1,0]=[-38.038,-22.264,11.321,38.302,81.874]
     knutson_data[1,1]=[-25.811,-14.34,-4.75,16.146,41.979]
     knutson_data[1,2]=[-24.83,-6.792,22.642,57.297,104.315]
@@ -310,7 +350,8 @@ def get_knutson_data():
     knutson_data[1,4]=[-23.229,-13.611,4.528,26.645,63.514]
     knutson_data[1,5]=[-42.453,-29.434,-14.467,-0.541,19.061]
 
-    # fig 3 in Knutson et al. 2020 (except min, max metrics and global region)
+    # fig 3 in Knutson et al. 2020
+    # (except min, max metrics and global region): intensity
     knutson_data[2,0]=[0.543,1.547,2.943,4.734,6.821]
     knutson_data[2,1]=[1.939,3.205,5.328,6.549,9.306]
     knutson_data[2,2]=[-2.217,0.602,5.472,9.191,10.368]
@@ -318,7 +359,8 @@ def get_knutson_data():
     knutson_data[2,4]=[1.605,3.455,5.405,7.69,10.884]
     knutson_data[2,5]=[-6.318,-0.783,0.938,5.314,12.213]
 
-    # fig 4 in Knutson et al. 2020 (except min, max metrics and global region)
+    # fig 4 in Knutson et al. 2020:
+    # (except min, max metrics and global region): precipitation rate
     knutson_data[3,0]=[5.848,9.122,15.869,20.352,22.803]
     knutson_data[3,1]=[6.273,12.121,16.486,18.323,23.784]
     knutson_data[3,2]=[6.014,8.108,21.081,29.324,31.838]

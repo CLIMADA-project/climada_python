@@ -336,7 +336,7 @@ class TropCyclone(Hazard):
 
     def apply_climate_scenario_knu(
         self,
-        pct: int = 2,
+        percentile: str = '50',
         rcp_scenario: int = 85,
         ref_year: int = 2035,
         baseline: tuple = (1982, 2022)
@@ -369,14 +369,12 @@ class TropCyclone(Hazard):
             Default: 85
         baseline : tuple of int
             the starting and ending years that define the historical baseline.
-        pct: int
-            percentile of interest:
-                0 = 5% or 10%
-                1 = 25%
-                2 = 50%
-                3 = 75%
-                4 = 95% or 90%
-            Default: 2
+        percentile: str
+            percentile of Knutson et al. 2020 estimates. These estimates come from a
+            review of state-of-the-art literature and models. See Knutson et al. 2020
+            for more details. Possible values are:
+                '5/10', '25', '50', '75', '90/95'
+            Default: '50'
         Returns
         -------
         haz_cc : climada.hazard.TropCyclone
@@ -397,7 +395,7 @@ class TropCyclone(Hazard):
         for basin in np.unique(tc_cc.basin):
             scale_year_rcp_05, scale_year_rcp_45 = [
                         get_knutson_scaling_factor(
-                                pct=pct,
+                                percentile=percentile,
                                 variable=variable,
                                 basin=basin,
                                 baseline=baseline
