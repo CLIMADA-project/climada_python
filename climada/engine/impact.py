@@ -673,7 +673,7 @@ class Impact():
 
     def plot_basemap_eai_exposure(self, mask=None, ignore_zero=False, pop_name=True,
                                   buffer=0.0, extend='neither', zoom=10,
-                                  url=ctx.providers.Stamen.Terrain,
+                                  url=ctx.providers.CartoDB.Positron,
                                   axis=None, **kwargs):
         """Plot basemap expected impact of each exposure within a period of 1/frequency_unit.
 
@@ -694,7 +694,7 @@ class Impact():
         zoom : int, optional
             zoom coefficient used in the satellite image
         url : str, optional
-            image source, e.g. ctx.providers.OpenStreetMap.Mapnik
+            image source, default: ctx.providers.CartoDB.Positron
         axis : matplotlib.axes.Axes, optional
             axis to use
         kwargs : dict, optional
@@ -764,7 +764,7 @@ class Impact():
 
     def plot_basemap_impact_exposure(self, event_id=1, mask=None, ignore_zero=False,
                                      pop_name=True, buffer=0.0, extend='neither', zoom=10,
-                                     url=ctx.providers.Stamen.Terrain,
+                                     url=ctx.providers.CartoDB.Positron,
                                      axis=None, **kwargs):
         """Plot basemap impact of an event at each exposure.
         Requires attribute imp_mat.
@@ -789,7 +789,7 @@ class Impact():
         zoom : int, optional
             zoom coefficient used in the satellite image
         url : str, optional
-            image source, e.g. ctx.providers.OpenStreetMap.Mapnik
+            image source, default: ctx.providers.CartoDB.Positron
         axis : matplotlib.axes.Axes, optional
             axis to use
         kwargs : dict, optional
