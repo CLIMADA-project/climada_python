@@ -174,10 +174,14 @@ class OutputEvaluator:
 
         Args:
             cost_func_diff (float, optional): Max deviation from optimal cost
-            function value (as fraction). Defaults to 0.1 (i.e. 10%).
+                function value (as fraction). Defaults to 0.1 (i.e. 10%).
             p_space_df (pd.DataFrame, optional): parameter space. Defaults to None.
             plot_haz (bool, optional): Whether or not to plot hazard intensity
-            distibution. Defaults to False.
+                distibution. Defaults to False.
+            plot_impf_kws (dict, optional): Keyword arguments for impact
+                function plot. Defaults to None.
+            plot_hist_kws (dict, optional): Keyword arguments for hazard
+                intensity distribution plot. Defaults to None.
         """
 
         # Initialize plot keyword arguments
@@ -193,10 +197,10 @@ class OutputEvaluator:
             # which is defined for the BayesianOptimizerOutput class
             if not hasattr(self.output,"p_space_to_dataframe"):
                 raise TypeError(
-                    f"To derive the full impact function parameter space, "
-                    f"plot_impf_variability requires BayesianOptimizerOutput "
-                    f"as output attribute, which provides the method "
-                    f"p_space_to_dataframe()."
+                    "To derive the full impact function parameter space, "
+                    "plot_impf_variability() requires BayesianOptimizerOutput "
+                    "as OutputEvaluator.output attribute, which provides the "
+                    "method p_space_to_dataframe()."
                 )
             p_space_df = self.output.p_space_to_dataframe()
 
