@@ -15,6 +15,7 @@ from climada.hazard import Hazard
 from climada.entity import Exposures, ImpactFuncSet
 from climada.engine import Impact, ImpactCalc
 import climada.util.coordinates as u_coord
+# from .bayesian_optimizer import BayesianOptimizerOutput
 
 ConstraintType = Union[LinearConstraint, NonlinearConstraint, Mapping]
 
@@ -164,8 +165,8 @@ class OutputEvaluator:
         cost_func_diff: float = 0.1,
         p_space_df: Optional[pd.DataFrame] = None,
         plot_haz: bool = True,
-        plot_impf_kws : dict = {},
-        plot_hist_kws : dict = {},
+        plot_impf_kws: Optional[dict] = None,
+        plot_hist_kws: Optional[dict] = None,
     ):
 
         """Plot impact function variability with parameter combinations of
@@ -179,8 +180,24 @@ class OutputEvaluator:
             distibution. Defaults to False.
         """
 
+        # Initialize plot keyword arguments
+        if plot_impf_kws is None:
+            plot_impf_kws = {}
+        if plot_hist_kws is None:
+            plot_hist_kws = {}
+
+        # Retrieve hazard type and parameter space
         haz_type = self.input.hazard.haz_type
         if p_space_df is None:
+            # Assert that self.output has the p_space_to_dataframe() method,
+            # which is defined for the BayesianOptimizerOutput class
+            if not hasattr(self.output,"p_space_to_dataframe"):
+                raise TypeError(
+                    f"To derive the full impact function parameter space, "
+                    f"plot_impf_variability requires BayesianOptimizerOutput "
+                    f"as output attribute, which provides the method "
+                    f"p_space_to_dataframe()."
+                )
             p_space_df = self.output.p_space_to_dataframe()
 
         # Retrieve list of parameters required for creating impact functions
@@ -193,11 +210,18 @@ class OutputEvaluator:
 
         # Retrieve parameters of impact functions with cost function values
         # within 'cost_func_diff' % of the best estimate
-        max_cost_func_val = p_space_df['Cost Function'].min()*(1+cost_func_diff)
-        params_within_range = p_space_df.loc[p_space_df['Cost Function'] <=
-                                             max_cost_func_val,params]
+        params_within_range = p_space_df[params]
+        plot_space_label = 'Parameter space'
+        if cost_func_diff is not None:
+            max_cost_func_val = (p_space_df['Cost Function'].min()*
+                                 (1+cost_func_diff))
+            params_within_range = p_space_df.loc[
+                p_space_df['Cost Function'] <=max_cost_func_val,params
+            ]
+            plot_space_label = (f"within {int(cost_func_diff*100)} percent "
+                                f"of best fit")
 
-        # Plot defaults
+        # Set plot defaults
         color = plot_impf_kws.pop('color','tab:blue')
         lw = plot_impf_kws.pop('lw',2)
         zorder = plot_impf_kws.pop('zorder',3)
@@ -218,7 +242,7 @@ class OutputEvaluator:
 
             #Plot all impact functions within 'cost_func_diff' % of best estimate
             for row in range(params_within_range.shape[0]):
-                label_temp = f'within {int(cost_func_diff*100)} percent of best fit' if row==0 else None
+                label_temp = plot_space_label if row == 0 else None
 
                 sel_params = params_within_range.iloc[row,:].to_dict()
                 temp_impf_set = self.input.impact_func_creator(**sel_params)
