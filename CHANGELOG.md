@@ -14,6 +14,7 @@ Code freeze date: YYYY-MM-DD
 
 ### Changed
 
+- Update `CONTRIBUTING.md` to better explain types of contributions to this repository [#797](https://github.com/CLIMADA-project/climada_python/pull/797)
 - The default tile layer in Exposures maps is not Stamen Terrain anymore, but [CartoDB Positron](https://github.com/CartoDB/basemap-styles). Affected methods are `climada.engine.Impact.plot_basemap_eai_exposure`,`climada.engine.Impact.plot_basemap_impact_exposure` and `climada.entity.Exposures.plot_basemap`. [#798](https://github.com/CLIMADA-project/climada_python/pull/798)
 
 ### Fixed
