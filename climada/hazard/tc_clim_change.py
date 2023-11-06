@@ -190,8 +190,8 @@ def get_gmst_info():
     gmst_info = {}
 
     gmst_info.update({'rcps' : ['2.6', '4.5', '6.0', '8.5']})
-    gmst_info({'gmst_start_year' : 1880})
-    gmst_info({'gmst_end_year' : 2100})
+    gmst_info.update({'gmst_start_year' : 1880})
+    gmst_info.update({'gmst_end_year' : 2100})
 
     gmst_info.update({'gmst_data':
         np.empty((len(gmst_info['rcps']),
