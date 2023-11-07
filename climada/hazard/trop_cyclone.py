@@ -371,10 +371,12 @@ class TropCyclone(Hazard):
             the starting and ending years that define the historical baseline.
         percentile: str
             percentile of Knutson et al. 2020 estimates. These estimates come from a
-            review of state-of-the-art literature and models. See Knutson et al. 2020
+            review of state-of-the-art literature and models. As extreme percentiles,
+            the 5th and 95th are reported for variable cat05 and the 10th and 90th
+            for cat45 and intensity. All three (cat05, cat45, intensity) report the
+            25th, 50th and 75th percentiles. Refer to the mentioned publications above
             for more details. Possible values are:
                 '5/10', '25', '50', '75', '90/95'
-            Default: '50'
         Returns
         -------
         haz_cc : climada.hazard.TropCyclone
@@ -636,7 +638,7 @@ class TropCyclone(Hazard):
                          else str(track.basin.values[0])]
         return new_haz
 
-def compute_windfields(
+def _compute_windfields_sparse(
     track: xr.Dataset,
     centroids: Centroids,
     coastal_idx: np.ndarray,
